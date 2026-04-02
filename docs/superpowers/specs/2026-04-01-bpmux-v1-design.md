@@ -97,7 +97,9 @@ Developer A                              Developer B
 
 The MCP server and TUI (or stdout logger in headless mode) run concurrently within the same process (tokio tasks). In headless mode (`--headless`), the TUI is replaced by a simple line-by-line stdout logger (`[timestamp] sender: message`). The MCP server, P2P connection, control socket, and log file all function identically — only the human-facing output changes. Messages from any source (TUI input, MCP tool call, remote peer) are appended to the session log and a notification is sent via a tokio broadcast channel to wake real-time consumers (TUI redraw, peer relay). The broadcast channel carries only a wake signal, not the message payload — consumers always read from the log.
 
-The session's message log is written to `~/.bpmux/sessions/<session-id>/messages.jsonl` — one JSON object per line. This file is the single source of truth. `read_messages` reads from the log file, not from an in-memory channel. This guarantees no messages are lost due to slow receivers.
+The session's message log is written to `~/.bpmux/sessions/<session-id>/messages-current.jsonl` — one JSON object per line. This file is the single source of truth. `read_messages` reads from the log file, not from an in-memory channel. This guarantees no messages are lost due to slow receivers.
+
+**Log management:** The log file grows indefinitely during a session. To prevent performance degradation (Claude Code itself has documented JSONL files growing to 5+ GB causing hangs), bpmux rotates logs by day: `messages-YYYY-MM-DD.jsonl` segments, with `messages-current.jsonl` as the active file. When a day boundary is crossed, the active segment is closed and a new one begins. Completed segments are compressed (gzip). `read_messages` reads from the active segment by default; `search_messages` (v1.x) searches across all segments. The TUI chat pane renders from the active segment; older segments are loadable on demand.
 
 The log serves multiple purposes beyond message delivery:
 - **Decision journal:** AI reasoning captured in the chat is a permanent record of what was decided and why. Research on decision journaling (Farnam Street, Alliance for Decision Education) shows that recording reasoning before outcomes creates a feedback loop that corrects hindsight bias and improves future decision quality. The log enables this naturally — teams can review past reasoning against actual outcomes.
@@ -139,7 +141,7 @@ For terminal users (Claude Code workflow). Built with `ratatui` + `crossterm`:
 
 - **Chat pane** — scrollable message history, each message prefixed with sender identity and timestamp. Sender identities render as `ryan:human`, `ryan:claude-code`, `ryan:ollama-codellama`, `alice:human`, etc. In solo mode, only local identities appear. In pair mode, both local and remote identities are visible.
 - **Input pane** — text input at the bottom for composing messages. Supports commands: `/trust <participant>`, `/untrust <participant>`, `/quit`
-- **Status bar** — connection state (solo / connected to `<peer>`), session code (for sharing), number of connected MCP clients
+- **Status bar** — connection state (solo / connected to `<peer>` / degraded), session code (for sharing), number of connected MCP clients
 
 The TUI redraws on every new message (from any source) using ratatui's immediate-mode rendering. State is immutable — each event produces a new state snapshot that drives the next render.
 
@@ -227,7 +229,7 @@ Note: the token must be copied from the file into the config manually (or via a 
   - Request: `{"type": "send", "text": "message content"}`
   - Success response: `{"ok": true}`
   - Error response: `{"ok": false, "error": "reason"}`
-- `bpmux log` — dump the message history from the active session's log file (`~/.bpmux/sessions/current/messages.jsonl`, resolved via the same `current` symlink as `bpmux send`). Supports `--follow` for live tailing.
+- `bpmux log` — dump the message history from the active session's log file (`~/.bpmux/sessions/current/messages-current.jsonl`, resolved via the same `current` symlink as `bpmux send`). Supports `--follow` for live tailing.
 
 ### Message Model (v1)
 
@@ -244,6 +246,7 @@ Messages are unstructured text with metadata:
 Sender identities follow the pattern `<peer-name>:<participant>`:
 - `ryan:human`, `ryan:claude`
 - `alice:human`, `alice:opencode`
+- `bpmux:system` — reserved for system messages (partition markers, session events). Not a participant; a log annotation.
 
 No structured message types in v1. If patterns emerge (e.g., AIs consistently sending context summaries in a particular format), structured types can be added in a future version.
 
@@ -291,7 +294,7 @@ bpmux handles this by tracking each client's read cursor server-side (see `read_
 
 After compaction, the AI simply calls `read_messages()` and gets caught up on exactly what it missed — no duplicates, no wasted tokens.
 
-**Inactivity detection:** bpmux tracks when each MCP client last called `read_messages`. If a client has been silent for a configurable period (default: 5 minutes), the TUI/Web UI shows a status indicator: `ryan:claude-code — inactive (last seen 5m ago)`. This helps the human distinguish "my AI is thinking" from "my AI hit its token limit and went dark." The inactivity threshold is configurable in `~/.bpmux/config.toml`:
+**Inactivity detection and degraded sessions:** bpmux tracks when each MCP client last called `read_messages`. If a client has been silent for a configurable period (default: 5 minutes), the TUI/Web UI shows a status indicator: `ryan:claude-code — inactive (last seen 5m ago)`. The status bar reflects three session states: **solo** (no peer connected), **connected** (peer active), and **degraded** (peer connected but one or more AIs inactive). A degraded session means the P2P transport is up but an AI participant has gone silent — likely due to an API outage or rate limit, which is architecturally distinct from peer disconnection. The human should be aware that their partner's AI is not contributing. This helps the human distinguish "my AI is thinking" from "my AI hit its token limit and went dark." The inactivity threshold is configurable in `~/.bpmux/config.toml`:
 
 ```toml
 [context]
@@ -347,7 +350,7 @@ When the WebRTC connection degrades or drops:
 5. If all restart attempts fail, display a reconnection prompt in the TUI
 6. If the signaling server is unavailable, fall back to manual re-exchange
 
-During disconnection, local messages continue to be appended to the log file as usual. A separate send queue (bounded at 1000 messages, FIFO) tracks which messages have not yet been delivered to the peer. When the connection is re-established, the queue is flushed in order. If the queue fills, the oldest unsent messages are dequeued (they remain in the local log permanently but will not be delivered to the peer — the peer's log will have a gap). If the connection is not re-established within 10 minutes, the queue is cleared and the node stops attempting to flush. The local log always contains the complete local history; delivery gaps only affect the remote peer's view.
+During disconnection, local messages continue to be appended to the log file as usual. A separate send queue (bounded at 1000 messages, FIFO) tracks which messages have not yet been delivered to the peer. When the connection is re-established, bpmux inserts a system message into both logs: `[bpmux:system — reconnected after partition. N messages exchanged locally during disconnect.]` This marks the boundary where two conversation threads diverged and merged, helping both humans and AIs understand that messages from the partition period were composed without visibility into the other side. The queue is then flushed in order. If the queue fills, the oldest unsent messages are dequeued (they remain in the local log permanently but will not be delivered to the peer — the peer's log will have a gap). If the connection is not re-established within 10 minutes, the queue is cleared and the node stops attempting to flush. The local log always contains the complete local history; delivery gaps only affect the remote peer's view.
 
 ## Future Vision (v2+)
 
@@ -627,7 +630,7 @@ Messages flowing through bpmux will contain codebase context, architectural reas
 
 **In transit (signaling):** The signaling server WebSocket connection should use TLS (WSS) when deployed. In local development, plain WS over localhost is acceptable.
 
-**At rest:** Session log files (`~/.bpmux/sessions/<id>/messages.jsonl`) contain the full message history. These are encrypted at rest using AES-256-GCM with a session key derived from a passphrase.
+**At rest:** Session log files (`~/.bpmux/sessions/<id>/messages-current.jsonl`) contain the full message history. These are encrypted at rest using AES-256-GCM with a session key derived from a passphrase.
 
 **Key derivation:** PBKDF2-HMAC-SHA256 with 600,000 iterations and a random 16-byte salt (stored alongside the encrypted log as `~/.bpmux/sessions/<id>/salt`). These parameters match OWASP 2024 recommendations.
 
@@ -658,6 +661,8 @@ Messages flowing through bpmux will contain codebase context, architectural reas
 **Control socket (`ctl.sock`):** Unix domain socket permissions are set to user-only (mode 600). Only the owning user's processes can connect.
 
 **Session log files:** File permissions set to user-only (mode 600). Encrypted at rest as described above.
+
+**Log ownership:** Session logs are owned by the participants, not the organization. The at-rest encryption uses a passphrase held only by the session participants — there is no organizational key, no escrow, and no access path for management. This is a structural protection against surveillance use, not a policy. Research shows that monitored developers report higher anxiety, lower productivity, and higher attrition (HBR 2022). bpmux is a tool for developers, not for surveilling developers. (See `docs/research/2026-04-02-responsible-ai.md`.)
 
 ### LLM Security
 
