@@ -21,8 +21,9 @@ struct Cli {
 pub fn run() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
-    // Create session
-    let session_dir = session::create_session_dir()?;
+    // Resume existing session or create new one
+    let base = session::default_sessions_base()?;
+    let session_dir = session::resume_or_create_session(&base)?;
     let session_id = session_dir
         .file_name()
         .and_then(|n| n.to_str())

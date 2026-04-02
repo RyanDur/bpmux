@@ -3,7 +3,7 @@ use thiserror::Error;
 
 use crate::session::message::Message;
 
-pub fn create_session_dir() -> Result<PathBuf, LogError> {
+pub fn default_sessions_base() -> Result<PathBuf, LogError> {
     let base = dirs::home_dir()
         .ok_or_else(|| {
             LogError::Io(std::io::Error::new(
@@ -13,7 +13,24 @@ pub fn create_session_dir() -> Result<PathBuf, LogError> {
         })?
         .join(".bpmux")
         .join("sessions");
+    Ok(base)
+}
 
+pub fn resume_or_create_session(base: &Path) -> Result<PathBuf, LogError> {
+    let current = base.join("current");
+
+    // If a current symlink exists and points to a valid directory, resume it
+    if current.is_symlink() {
+        let target = std::fs::read_link(&current)?;
+        if target.is_dir() {
+            return Ok(target);
+        }
+    }
+
+    create_session(base)
+}
+
+pub fn create_session(base: &Path) -> Result<PathBuf, LogError> {
     let session_id = uuid::Uuid::new_v4().to_string();
     let session_dir = base.join(&session_id);
     std::fs::create_dir_all(&session_dir)?;
@@ -111,12 +128,38 @@ mod tests {
 
     #[test]
     fn creates_session_directory() {
-        let dir = create_session_dir().expect("create session");
+        let base = TempDir::new().expect("temp base");
+        let dir = create_session(base.path()).expect("create session");
         assert!(dir.exists());
         assert!(dir.is_dir());
+        // current symlink should point to the session
+        let current = base.path().join("current");
+        assert!(current.is_symlink());
+    }
 
-        // Clean up
-        std::fs::remove_dir_all(dir.parent().expect("parent").parent().expect("base"))
-            .expect("cleanup");
+    #[test]
+    fn resumes_existing_session() {
+        let base = TempDir::new().expect("temp base");
+
+        // Create a session first
+        let dir1 = create_session(base.path()).expect("create session");
+        assert!(dir1.exists());
+
+        // Write a message to it
+        let msg = Message {
+            from: "ryan:human".to_string(),
+            text: "persisted message".to_string(),
+            ts: Utc::now(),
+        };
+        append_message(&dir1, &msg).expect("append");
+
+        // Resume should return the same directory
+        let dir2 = resume_or_create_session(base.path()).expect("resume");
+        assert_eq!(dir1, dir2);
+
+        // Messages should be readable from the resumed session
+        let messages = read_messages(&dir2).expect("read");
+        assert_eq!(messages.len(), 1);
+        assert_eq!(messages[0].text, "persisted message");
     }
 }
