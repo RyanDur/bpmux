@@ -764,31 +764,9 @@ bpmux ensures the human always has the information needed to make decisions:
 
 ## Development Practices
 
-### Working Agreement: Ground Control / Major Tom
+### How We Build bpmux
 
-Claude writes all code. The human (Ground Control) owns all decisions.
-
-**Pairing style:**
-- Exploration: Claude navigates (points to files, explains, suggests). Human drives (runs commands, reads code, asks questions). Exit when we agree on the next behavior to build.
-- TDD (Inverted Ping Pong): Agree on the test → Claude writes failing test → Agree on approach → Claude writes minimum code to pass. Nothing moves without human sign-off.
-- Refactor: Either party proposes. Claude writes. Human approves before committing.
-
-**Values:** Confidence, Understanding, Simplicity, Shippability, Maintainability, Feedback.
-
-**Principles:**
-- Test-drive everything. Outside-in. Small increments.
-- Real collaborators over mocks (classicist TDD).
-- Tests are documentation. Flaky/failing tests are serious problems.
-- Fix root causes. Don't patch symptoms, skip tests, or ignore failures.
-- If code needs a comment to explain what it does, refactor. Comments are for why when the cause is outside our control.
-
-**Agent workflow:** Opus orchestrates. Sonnet implements. Haiku verifies.
-- Opus — decisions, architecture, review. No implementation code.
-- Sonnet — implementation. One objective per launch. TDD. Does not commit or push.
-- Haiku — research, verification, CI watch. Concise summaries.
-- Session shape: Opus reads context → Haiku researches → Opus decides → Sonnet implements → Haiku pre-screens → Opus reviews → Ground Control decides → Ground Control commits and pushes → Haiku watches CI → repeat.
-
-Full working agreement is documented in `AGENT_WORKFLOW.md`. (Prerequisite: create `AGENT_WORKFLOW.md` and `CLAUDE.md` before any implementation stories begin — story 0.)
+The working agreement for building bpmux is documented in `AGENT_WORKFLOW.md`. It is our process, not a bpmux feature. Different teams using bpmux will bring their own processes.
 
 ### Development Practices
 
