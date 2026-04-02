@@ -44,6 +44,12 @@ pub fn render(frame: &mut Frame, app: &App) {
         .block(Block::default().borders(Borders::ALL).title(" > "));
     frame.render_widget(input, chunks[1]);
 
+    // Show cursor at end of input text
+    #[allow(clippy::cast_possible_truncation)]
+    let cursor_x = chunks[1].x + 1 + app.input.len() as u16;
+    let cursor_y = chunks[1].y + 1;
+    frame.set_cursor_position((cursor_x, cursor_y));
+
     // Status bar
     let status = Paragraph::new(Line::from(vec![
         Span::styled(" solo", Style::default().fg(Color::Yellow)),
