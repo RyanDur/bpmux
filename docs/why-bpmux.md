@@ -19,3 +19,11 @@ The fact that we are designing a tool for AI-to-AI coordination — not as scien
 bpmux exists because the next friction point in software development is the boundary between human intent and AI capability. Pairing reduced knowledge silos. TDD reduced debugging. Continuous delivery reduced deployment risk. bpmux reduces the cost of context — the most expensive thing in collaborative AI-assisted development.
 
 This is such an exciting time to be a developer.
+
+---
+
+*Added later that same night:*
+
+Our ideas need to become bigger. The thin slices will become larger. A story might be more application-level as opposed to feature-level. The working agreement is where we are comfortable today. As we come to trust AI more, and the models become more reliable and can handle more, the agreement will need to change. The world is going to change.
+
+But the change should not drive people apart. It should make our aspirations grow.
