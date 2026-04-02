@@ -30,7 +30,7 @@
 
 ## 3. Communication Overhead Scales Non-Linearly
 
-**The research:** Brooks' Law: adding people to a late project makes it later. Communication pairs grow as n(n-1)/2. A 10-person team spends 30-40% of capacity on coordination. 60% of knowledge workers' time is spent on coordination rather than skilled work. Each person beyond 7 in a decision group reduces effectiveness by ~10%.
+**The research:** Brooks' Law (The Mythical Man-Month, 1975): adding people to a late project makes it later. Communication pairs grow as n(n-1)/2. The general pattern — coordination overhead grows faster than team size — is well-established in software engineering literature, though specific percentages (often cited as 30-40% of capacity on coordination) come from industry surveys (McKinsey, Asana) rather than controlled studies.
 
 **The challenge to bpmux:** bpmux ADDS communication channels. With 2 humans and 2 AIs, that's 6 possible communication pairs. The AIs generate messages continuously — each `send_message` call adds to everyone's context. If the AI-to-AI chatter is high-volume, the humans may drown in noise rather than gain clarity. The channel becomes a firehose.
 

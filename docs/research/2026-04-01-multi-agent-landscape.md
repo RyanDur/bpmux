@@ -52,14 +52,14 @@
 ## Failure Modes (What Went Wrong)
 
 ### File Conflicts
-The #1 failure across all multi-agent systems. Multiple agents editing the same file leads to destructive overwrites. Even with git, agents restore old files and wipe out changes.
+The most commonly reported failure across multi-agent systems we surveyed. Multiple agents editing the same file leads to destructive overwrites. Even with git, agents restore old files and wipe out changes.
 
 **bpmux implication:** v1 avoids this entirely — bpmux is a communication channel, not a code editor. For v2 (integrated coding tools), file ownership per agent or git worktree isolation is essential.
 
 ### Context Overflow
 Single agents struggle with large codebases. Multiple agents each with their own context window help — but coordination between those windows is the hard part.
 
-**bpmux implication:** This is bpmux's core value proposition. The shared message log IS the coordination layer between context windows.
+**bpmux implication:** This is the problem bpmux aims to solve. Our hypothesis: a shared message log can serve as the coordination layer between context windows. This is untested — dogfooding will validate or invalidate it.
 
 ### Coordination Bottleneck at the Human
 Without agent-to-agent communication, the human becomes a relay — copying context between AI sessions. One developer described it as "managing a team of toddlers fighting over the same keyboard."
@@ -99,7 +99,7 @@ Yegge went through four failed orchestrator designs before Gas Town worked: Type
 ## Patterns That Work (What to Steal)
 
 ### Specialization Over Generalists
-Three focused agents consistently outperform one generalist agent. Assign distinct roles (architect, implementer, reviewer) rather than having every agent do everything.
+Practitioners report (Osmani, Yegge, Claude Code docs) that focused agents outperform generalist agents. Assign distinct roles (architect, implementer, reviewer) rather than having every agent do everything. This is practitioner consensus, not a controlled study.
 
 **bpmux application:** Already reflected in the working agreement (Opus architects, Sonnet implements, Haiku verifies) and the solo orchestration mode (Claude as architect, local model as implementer).
 
@@ -138,10 +138,10 @@ Yegge chose Go over TypeScript because AI models waste tokens on complex type sy
 
 **bpmux application:** Rust is more complex than Go, but bpmux's agent-facing surface is simple: MCP tools with clear contracts. The complexity is in the transport layer (WebRTC), not in the AI-facing interface.
 
-### Right-Size Teams (3-5 Agents)
-Costs scale linearly, coordination overhead increases non-linearly. Beyond 5 agents, diminishing returns. 5-6 tasks per agent keeps everyone productive.
+### Right-Size Teams
+Claude Code docs recommend 3-5 teammates; Wills ran ~20 agents but reported cognitive fatigue after 3 hours. The general pattern from Brooks' Law — coordination overhead grows faster than team size — applies, though specific numbers for AI agent teams are anecdotal, not studied.
 
-**bpmux application:** Relevant for v3 (teams). The 2-peer v1 limit is well within the effective range.
+**bpmux application:** Relevant for v3 (teams). The 2-peer v1 limit sidesteps the scaling question entirely.
 
 ### Server-Side Task Coordination
 Shared task lists with claiming, dependencies, and status tracking. File-lock-based claiming prevents race conditions.
@@ -155,9 +155,9 @@ The industry is building multi-agent from the **solo developer** direction — o
 - Solo multi-agent: coordination is between AIs, human is orchestrator
 - Pair programming with AI: coordination is between human-AI pairs, humans are collaborators
 
-bpmux occupies unique territory. The closest existing tools (Claude Agent Teams, VS Code Multi-Agent, Gas Town) solve orchestration. bpmux solves collaboration. Beads solves memory. These are complementary, not competing — bpmux could integrate with Beads for task tracking while providing the real-time communication channel that none of these tools have.
+Based on our survey, no existing tool provides P2P communication between two developer-AI pairs. The tools we found (Claude Agent Teams, VS Code Multi-Agent, Gas Town) solve orchestration — one human directing multiple AIs. bpmux aims to solve collaboration — multiple humans with AIs coordinating together. Beads solves memory. These appear complementary, not competing — bpmux could integrate with Beads for task tracking while providing the real-time communication channel.
 
-Yegge's observation that "nobody knows how to scale coordination to large companies" and the industry default of "one engineer per repo" is a direct validation of bpmux. If coordination is the unsolved problem, and everyone else is avoiding it, then a tool that makes coordination cheap has outsized value.
+Yegge's observation that "nobody knows how to scale coordination to large companies" and the industry default of "one engineer per repo" suggests coordination is an unsolved problem. Our hypothesis: if coordination is the bottleneck, a tool that makes it cheaper has value. This is a bet, not a validated finding.
 
 ## Sources
 

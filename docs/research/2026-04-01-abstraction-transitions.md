@@ -28,7 +28,7 @@ John Backus, creator of FORTRAN, described the culture of early programming as a
 
 Assembly programmers opposed FORTRAN on three grounds:
 
-**Performance:** Compiled code couldn't match hand-optimized assembly. This was initially true — early compilers did produce suboptimal machine language. A 1965 Honeywell briefing noted that a highly skilled assembly programmer could still beat COBOL's output.
+**Performance:** Compiled code couldn't match hand-optimized assembly. This was initially true — early compilers did produce suboptimal machine language. Contemporary accounts describe skilled assembly programmers outperforming early compiler output (see Backus's own accounts of FORTRAN's early reception).
 
 **Control:** Surrendering intimate control over memory and CPU instructions to a compiler felt risky. "If I don't code it down to the metal, how can I trust what's happening?"
 
@@ -38,7 +38,7 @@ Assembly programmers opposed FORTRAN on three grounds:
 
 Richard Hamming observed: "The opposition to FORTRAN and any automatic coding system seems to me very very high. And the courage [Backus] had to persist I think should be recognized."
 
-FORTRAN won. Compilers got better — today they consistently outperform hand-optimized assembly for most use cases. What was formerly a laborious task of manually keying in a thousand program instructions could now be done in 47. The programmers who resisted weren't replaced — many became the ones writing compilers and building the tools everyone else used.
+FORTRAN won. Compilers improved dramatically over subsequent decades. What was formerly a laborious task of manual instruction-level programming could now be expressed at a much higher level of abstraction (IBM's historical accounts describe order-of-magnitude reductions in program length). The programmers who resisted weren't replaced — the demand for programmers grew as the scope of what software could do expanded. Some assembly experts moved into compiler development and systems programming, though the claim that resisters specifically became compiler writers is a commonly told narrative, not a documented historical finding.
 
 And critically: **programmers didn't write less code. They wrote orders of magnitude more, tackling problems that would have been economically impossible before.**
 
@@ -72,9 +72,9 @@ The same is true now. The developer who understands architecture, testing, secur
 
 ## The Stigmergic View of Abstraction Transitions
 
-Every abstraction transition is a form of stigmergy. The compiler modifies the environment (produces machine code), and that modification enables the next level of work. The practitioner leaves traces (source code in a high-level language), and the compiler responds to those traces. The environment mediates between human intent and machine execution.
+We observe a structural similarity between abstraction transitions and stigmergy: the compiler modifies the environment (produces machine code), and that modification enables the next level of work. This is our interpretive lens, not a claim made by the historical sources. No one in the FORTRAN era described what they were doing as stigmergy (Grassé coined the term for termite behavior, not computing).
 
-AI-assisted development is the next layer. The developer leaves traces (natural language intent, test specifications, architectural decisions), and the AI responds by modifying the shared artifact (the codebase). bpmux makes these traces visible to all participants — not just the AI that responds to them, but the partner's AI and both humans. The shared environment expands from "one developer + one compiler" to "multiple developers + multiple AIs + a shared conversation about the work."
+That said, the structural parallel is useful for design thinking: if AI-assisted development is an abstraction transition where developers leave traces (intent, tests, decisions) and AI responds by modifying the shared artifact, then bpmux's role is to make those traces visible to all participants. This framing informs our design — it doesn't prove it's correct.
 
 ## What This Means for bpmux
 

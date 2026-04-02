@@ -39,11 +39,11 @@ bpmux works the same way. The shared chat is the environment. The working agreem
 ### The Jevons Paradox — Efficiency Increases Demand
 In 1865, William Stanley Jevons observed that improvements in coal efficiency didn't reduce coal consumption — they increased it. Making a resource cheaper to use doesn't shrink demand; it unlocks latent demand that was previously uneconomical.
 
-**Inspiration for bpmux:** AI coding tools make software cheaper to produce. The Jevons Paradox predicts this won't reduce the amount of software — it will explode it. Problems that were "not worth building" become viable. The threshold for "should we build this?" drops dramatically.
+**Inspiration for bpmux:** AI coding tools make software cheaper to produce. If the Jevons Paradox holds for software (and historical precedent from high-level languages suggests it does), this won't reduce the amount of software — it will expand it. Problems that were "not worth building" become viable.
 
-bpmux exists because of Jevons. If AI makes individual development more efficient, coordination becomes the new bottleneck. More software, more ambitious projects, more need for collaboration tools that keep up with the expanded scope.
+Our hypothesis: if AI makes individual development more efficient, coordination becomes the new bottleneck. bpmux is a bet on this hypothesis.
 
-Addy Osmani articulated this: "Every time we've made it easier to write software, we've ended up writing exponentially more of it." Spreadsheets didn't eliminate accountants. ATMs didn't reduce bank branches. AI won't reduce the need for developers — it will expand what developers tackle.
+Addy Osmani articulated the pattern (practitioner blog post, not peer-reviewed): "Every time we've made it easier to write software, we've ended up writing exponentially more of it." Common examples cited in this argument (spreadsheets/accountants, ATMs/bank branches) are directionally supported by labor economics research but the specific causal claims are debated by economists.
 
 ### The Efficiency Paradox — From "Can We?" to "Should We?"
 As activation costs plummet, the constraint shifts from implementation capacity to judgment and taste. The bottleneck becomes "what should we prioritize?" not "can we build this?"
@@ -82,9 +82,9 @@ One week, ~20 parallel agents, $6,000 in API credits, ~800 commits:
 7. Be ruthless about restarting
 8. Commit early and often
 
-Key insight: managing a swarm is "a powerful floodlight" rather than "single laser focus." Severe cognitive fatigue after 3 hours. Comparable output to traditional development — velocity gains aren't guaranteed.
+Key observation: managing a swarm is "a powerful floodlight" rather than "single laser focus." Severe cognitive fatigue after 3 hours. Comparable output to traditional development — velocity gains aren't guaranteed. Note: this is one person's account (n=1, one week), not a study. Treat as a useful data point, not a finding.
 
-**Inspiration for bpmux:** The cognitive fatigue finding is critical. bpmux's token awareness and bounded context windows aren't just about cost — they're about human attention. If the human drowns in AI output, the swarm is counterproductive. The visibility markers, inactivity detection, and "AI sees a window, human sees everything" design all address this. The human needs to be an effective floodlight, not an overwhelmed one.
+**Inspiration for bpmux:** The cognitive fatigue observation is relevant. bpmux's token awareness and bounded context windows aren't just about cost — they're about human attention. If the human drowns in AI output, the swarm is counterproductive. The visibility markers, inactivity detection, and "AI sees a window, human sees everything" design all address this. The human needs to be an effective floodlight, not an overwhelmed one.
 
 Also: "commit early and often" as a safety net for aggressive restarts maps directly to trunk-based development and the pre-push quality gates in the spec.
 

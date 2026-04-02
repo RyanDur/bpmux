@@ -1,10 +1,10 @@
 # Initial Capacity Alignment Analysis
 
-*How Initial Capacity's published opinions reinforce or challenge bpmux's design.*
+*How Initial Capacity's published opinions align with bpmux's design choices. Note: IC's articles are practitioner opinion pieces, not peer-reviewed research. Alignment with an experienced consultancy's opinions is informative for design direction but is not evidence that the design is correct.*
 
 ---
 
-## Strong Reinforcements
+## Strong Alignment (Practitioner Opinion)
 
 ### "A story is a placeholder for a conversation" → bpmux is the conversation
 IC's user story article argues that stories are dialogue, not documentation. The 3 C's (Card, Conversation, Confirmation) prioritize real-time discussion over written specs. Remote work trends toward excessive documentation undermine this collaborative strength.
