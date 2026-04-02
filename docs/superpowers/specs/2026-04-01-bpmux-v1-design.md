@@ -365,11 +365,14 @@ A P2P group chat for AI pair programming sessions. Prove the concept, dogfood so
 ### v2 — The Pairing Platform
 bpmux becomes the coding environment. Claude and other models run inside bpmux, not the other way around. Solo orchestration (one human + multiple AIs) may prove more impactful than team pairing — industry research shows scaling coordination beyond 2-3 people at agent velocity is unsolved, while single-developer orchestration is where the most productivity gains are being reported. v2 prioritizes the solo orchestration experience alongside pair support.
 
+Historical precedent (assembly → FORTRAN, the efficiency paradox): every abstraction transition expanded the scope of what gets built. v2 should support bigger units of work — stories that are application-level, not just feature-level. The working agreement evolves: as models prove reliable, the human delegates larger scopes of autonomous work while retaining architectural judgment and final approval. The agreement is designed to be loosened over time, not locked in place.
+
 - Integrated coding tools (file editing, terminal, search, LSP)
 - AI actions visible in the shared chat (edits, commands, reasoning)
 - Multiple AI backends (Claude API, local MLX models via Ollama)
 - The chat is the workspace, the workspace is the chat
 - Plugin/extension system for custom tools
+- Support for larger work scopes (the unit of delegation grows as trust is earned)
 
 ### v3 — Teams
 Scale from 1:1 pairing to full team collaboration. Research on shared mental models shows the coordination payoff is highest for distributed teams — which is bpmux's primary use case. However, industry experience (Yegge/Gas Town) warns that scaling beyond 2-3 people at agent velocity is an unsolved problem. v3 should be informed by real data from v1/v2 dogfooding, not designed upfront.
@@ -386,6 +389,8 @@ Scale from 1:1 pairing to full team collaboration. Research on shared mental mod
 - Structured message protocol (typed messages for file changes, intent, conflicts)
 - AI-to-AI delegation protocol (Claude delegates tasks to local models with structured handoff)
 - Cross-project context (AI retains learnings across different codebases/engagements)
+- Swarm-style exploration (multiple AI candidates generate competing solutions within a session, best is selected — the Clone Wars pattern from Initial Capacity, complementary to the hierarchical working agreement)
+- Evolving working agreements (as models improve, the human delegates larger scopes; bpmux could track and surface agreement changes over time, making the trust evolution visible)
 
 ## When to Use bpmux
 
