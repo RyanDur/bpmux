@@ -379,6 +379,8 @@ A P2P group chat for AI pair programming sessions. Prove the concept, dogfood so
 **How we measure (see `docs/research/2026-04-02-measurement.md` for full detail):**
 bpmux's own data provides six quantitative metrics: context recovery time, message reference rate, session continuity, human participation rate, read cursor patterns, and trust level changes. Three structured qualitative observations supplement the quantitative data. We report observations, not conclusions — at n=1-2, nothing reaches statistical significance.
 
+**First dogfooding project: bpmux-metrics.** A small analytics app that reads bpmux's message log and computes the metrics automatically — a dashboard for the measurements described above. Built using bpmux itself (the first app developed through the bpmux channel). The act of building it generates the data it measures. This is both the measurement tool and the first real test of whether bpmux works.
+
 - Solo mode: persistent chat between you and your AI(s), survives across sessions
 - Pair mode: two developers + two AIs on a shared P2P channel
 - TUI + Web UI (Claude Desktop preview panel)
