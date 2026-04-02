@@ -94,6 +94,10 @@ The MCP server and TUI (or stdout logger in headless mode) run concurrently with
 
 The session's message log is written to `~/.bpmux/sessions/<session-id>/messages.jsonl` — one JSON object per line. This file is the single source of truth. `read_messages` reads from the log file, not from an in-memory channel. This guarantees no messages are lost due to slow receivers.
 
+The log serves multiple purposes beyond message delivery:
+- **Decision journal:** AI reasoning captured in the chat is a permanent record of what was decided and why. Research shows decision journaling improves forecasting accuracy by 19% (Behavioral Science & Policy, 2024) by creating a feedback loop that corrects hindsight bias. The log enables this naturally — teams can review past reasoning against actual outcomes.
+- **Retrospective artifact:** The US Army's After Action Review (AAR) — "one of the most successful organizational learning methods yet devised" — compares intended outcomes to actual outcomes. The bpmux log is the source material for engineering retrospectives: what was discussed, decided, implemented, and what actually happened. Searchable, persistent, and complete.
+
 ### Signaling
 
 WebRTC requires an initial handshake to exchange connection information (SDP offers/answers). bpmux supports two signaling mechanisms:
@@ -130,6 +134,8 @@ Not all messages deserve the same visual prominence. Informed by calm technology
 - **Ambient** — heartbeats, acknowledgments. Minimal indicator or hidden until scrolled to.
 
 Tiers are assigned based on sender, recipient, and content patterns. The human can override: expand any message, pin to focal, mute a participant, or `/focus` to hide below Active. Tiers are a rendering concern — they don't affect the message log or what the AI sees via `read_messages`. Transparency is preserved: everything is available, not everything is prominent. (See `docs/research/2026-04-01-awareness-design.md` for the full design rationale.)
+
+**Message age decay:** Older messages gradually fade in visual prominence, inspired by pheromone evaporation in ant colony optimization — where old trails lose influence so the colony doesn't get stuck on outdated paths (Dorigo, 1992). In bpmux, a decision made 2 hours ago should not have the same visual weight as one made 2 minutes ago. Messages age from Active → Peripheral → Ambient over time. The decay rate is configurable. Pinned messages resist decay. This prevents the chat from being dominated by stale context while keeping recent activity prominent.
 
 **TUI (Terminal User Interface):**
 For terminal users (Claude Code workflow). Built with `ratatui` + `crossterm`:
