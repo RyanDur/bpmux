@@ -48,7 +48,11 @@
 
 **Our response:** bpmux provides transparency (the human can see everything) and visibility markers (the human knows what the AI has seen). These keep the human *informed* but don't keep them *engaged* — that requires process discipline from the team, which is outside bpmux's scope. bpmux provides the information. Whether the human pays attention is up to them.
 
+Simon Willison (2026) names the mechanism: speed itself causes disengagement. When AI agents produce code faster than humans can comprehend, developers become disconnected from what's being built. The solution isn't better tools — it's deliberately limiting throughput to match comprehension capacity. bpmux's human participation rate metric can detect when this is happening, but preventing it is a team discipline.
+
 **Risk level:** Medium-High. This is the most concerning finding. bpmux mitigates the information problem (the human can see what's happening) but not the behavioral problem (the human choosing to look). The behavioral problem is a team process concern.
+
+**Source:** [Simon Willison — Thoughts on Slowing the Fuck Down (2026)](https://simonwillison.net/2026/Mar/25/thoughts-on-slowing-the-fuck-down/)
 
 ---
 
