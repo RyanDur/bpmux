@@ -45,7 +45,7 @@ Our hypothesis: if AI makes individual development more efficient, coordination 
 
 Addy Osmani articulated the pattern (practitioner blog post, not peer-reviewed): "Every time we've made it easier to write software, we've ended up writing exponentially more of it." This is supported by specific historical data:
 - **Spreadsheets and accountants:** BLS data shows US accountants grew from ~339,000 (1980) to ~1.4 million (2022) despite VisiCalc, Lotus 1-2-3, and Excel automating routine bookkeeping. ([BLS](https://www.bls.gov/ooh/business-and-financial/accountants-and-auditors.htm); [Tim Harford analysis](https://timharford.com/2024/03/what-the-birth-of-the-spreadsheet-teaches-us-about-generative-ai/))
-- **ATMs and bank branches:** James Bessen (Yale/IMF, 2015) found that urban bank branches increased 43% after ATM deployment, and total teller employment grew from ~500,000 to ~600,000 even as ~400,000 ATMs were deployed. ATMs reduced branch costs, enabling expansion. ([Bessen, IMF 2015](https://www.imf.org/external/pubs/ft/fandd/2015/03/bessen.htm))
+- **ATMs and bank branches:** James Bessen (Boston University, 2015; published in IMF *Finance & Development*) found that urban bank branches increased 43% after ATM deployment, and total teller employment grew from ~500,000 to ~600,000 even as ~400,000 ATMs were deployed. ATMs reduced branch costs, enabling expansion. ([Bessen, IMF 2015](https://www.imf.org/external/pubs/ft/fandd/2015/03/bessen.htm))
 
 ### The Efficiency Paradox — From "Can We?" to "Should We?"
 As activation costs plummet, the constraint shifts from implementation capacity to judgment and taste. The bottleneck becomes "what should we prioritize?" not "can we build this?"
@@ -124,7 +124,7 @@ Stigmergy, coined by Pierre-Paul Grassé in the 1950s to describe termite nest-b
 - **Sign-based:** Signals left in the environment (pheromone trails, messages) that guide behavior
 - **Sematectonic:** Modifications to the artifact itself (nest walls, code changes) that stimulate the next action
 
-bpmux is a stigmergic system. v1 is sign-based (messages as signals). v2 adds sematectonic (code changes as traces). This is not a metaphor we imposed — stigmergy in software development is established peer-reviewed research (Crowston et al.). bpmux extends Crowston's finding from asynchronous code-artifact coordination to real-time multi-participant conversation.
+bpmux is designed as a stigmergic system. v1 is sign-based (messages as signals). v2 adds sematectonic (code changes as traces). Stigmergy in software development is established peer-reviewed research (Crowston et al.) — but Crowston studied asynchronous coordination through code artifacts over days and weeks. bpmux hypothesizes that the same principle applies to real-time conversation in synchronous pairing. This is an informed design choice based on Crowston's work, not a validated extension of it. Whether stigmergic coordination that eliminated communication in async FLOSS also works when applied to a synchronous chat channel is a question dogfooding will answer.
 
 Every other inspiration maps to a facet of stigmergy:
 

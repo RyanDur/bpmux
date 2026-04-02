@@ -54,7 +54,7 @@
 
 ## 5. Transparency Can Be Overwhelming
 
-**The research:** CSCW research on awareness shows that while real-time awareness is valuable, too much awareness information leads to "awareness overload" — the cost of processing awareness information exceeds its value. This is documented in Dourish & Bellotti's work and subsequent studies.
+**The research:** Dourish & Bellotti's foundational 1992 CSCW paper established that awareness of collaborators' activities is critical for coordination. Building on their awareness framework, later CSCW researchers (Hudson & Smith 1996, and the broader information overload literature — Frontiers in Psychology 2023) identified that too much awareness information leads to "awareness overload" — the cost of processing awareness information exceeds its value.
 
 **The challenge to bpmux:** The transparency principle ("everything is visible to everyone") means the human sees ALL AI-to-AI communication. If two AIs are actively reasoning about the codebase, the chat stream could be overwhelming. The human might start ignoring it, defeating the purpose.
 
@@ -68,7 +68,7 @@
 
 | Risk | Severity | Mitigation | Status |
 |---|---|---|---|
-| Human-AI teams underperform on decisions | Medium | Division of labor via working agreement; coding is a creation task | Partially mitigated |
+| Human-AI teams underperform on decisions | Medium | Division of labor via working agreement; coding is mixed (creation + decisions) | Partially mitigated |
 | Pair programming has mixed evidence | Low-Medium | Solo mode is first-class; not for every task | Mitigated |
 | Communication overhead | Medium | Token awareness, bounded windows | Mitigated by design, defaults TBD |
 | Commitment deficits | Medium-High | Working agreement, human sign-off | Process control only — fragile |
@@ -80,7 +80,7 @@
 
 2. **Pheromone oversaturation** — too many traces in the environment make coordination harder, not easier. Token awareness and bounded windows are the evaporation mechanism. Dogfooding will calibrate the right decay rate.
 
-3. **Human-AI complementarity is hard to achieve** — but the research says it works best with predetermined division of labor (the working agreement) and creation tasks (coding). Both are bpmux's design center.
+3. **Human-AI complementarity is hard to achieve** — the research says it works best with predetermined division of labor (the working agreement). Coding is mixed: generation is creation (positive effects), but architecture and design decisions are decision-making (negative effects). The working agreement attempts to route these correctly, but coding is inherently both.
 
 These should be tracked as explicit risks and watched during dogfooding. They're properties of the system type, not flaws in the design.
 

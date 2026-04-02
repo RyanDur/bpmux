@@ -45,8 +45,9 @@
 - Dependency-aware task graph: blocks, depends_on, relates_to, parent-child hierarchies
 - `bd ready --json` lets agents query actionable work deterministically
 - Multi-agent coordination via shared git repo with AI-assisted merge conflict resolution
-- 18.7k GitHub stars, actively maintained (v0.59.0 as of March 2026)
-- Born from failure: Yegge's previous approach generated 605+ markdown plan files — "chaos"
+- ~19k+ GitHub stars (as of April 2026), actively maintained
+- Born from failure: Yegge's previous approach generated 605+ markdown plan files
+- Gas Town was the fourth functioning orchestrator after multiple iterations (TS/Temporal failed, TS produced Beads, Python, then Go/Gas Town)
 - Core insight (from Claude): "Beads isn't issue tracking for agents — it's external memory for agents"
 
 ## Failure Modes (What Went Wrong)

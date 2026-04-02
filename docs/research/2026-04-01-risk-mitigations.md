@@ -34,7 +34,7 @@
 
 **bpmux design response:** AI-to-AI messages don't need to be focal — they can be **peripheral**. The TUI/Web UI could render AI-to-AI messages in a visually distinct, lower-salience style (dimmed text, collapsed by default, expandable on demand). The human sees that conversation is happening (ambient awareness) without being forced to read every message (focal attention). This is supported by research showing that peripheral displays "help users stay aware of information without being overly intrusive or distracting."
 
-**Information filtering strategies.** A 2023 comprehensive review in *Frontiers in Psychology* identifies four overload coping strategies: ignoring, filtering, customizing, and saving. The relevant ones for bpmux: **filtering** (the token-aware read window already does this for the AI) and **customizing** (letting the human configure what they see). The research recommends "establishing common rules (etiquette in dealing with ICT)" as a team-level strategy — which maps to the working agreement.
+**Information filtering strategies.** Information overload literature identifies coping strategies including ignoring, filtering, customizing, and saving (taxonomy cited in a 2023 *Frontiers in Psychology* review, though the taxonomy may originate from earlier work). The relevant ones for bpmux: **filtering** (the token-aware read window already does this for the AI) and **customizing** (letting the human configure what they see). The research recommends "establishing common rules (etiquette in dealing with ICT)" as a team-level strategy — which maps to the working agreement.
 
 **From risk to strength:** If bpmux implements peripheral rendering for AI-to-AI messages, it becomes a tool that provides *more* awareness with *less* cognitive cost than reading raw Claude Code output. The research says ambient awareness is valuable when it's well-designed. Full transparency + intelligent rendering = awareness without overload.
 
@@ -56,14 +56,14 @@
 
 **What the working agreement provides (process):** The division of labor (human decides, AI implements). Predetermined division of labor is identified by the Nature study as promising (only 3 of 106 studies explored it). The working agreement is an instance of this approach — but it's a process choice, not a bpmux feature.
 
-**Creation tasks show positive effects.** The Nature study found positive effects for creation tasks (g = 0.19). Coding involves substantial creation, though the study doesn't explicitly classify coding in their taxonomy (see supporting-research.md for this caveat).
+**Creation tasks show positive effects, but coding is mixed.** The Nature study found positive effects for creation tasks (g = 0.19) but losses for decision-making tasks. Coding involves both: code generation is creation, but architecture choices, design tradeoffs, and bug triage are decision-making — exactly the category where human-AI teams underperform. The study doesn't explicitly classify coding in their taxonomy. We cannot lean on "coding is a creation task" as a blanket justification. The honest framing: bpmux's working agreement attempts to route creation work to the AI and decision work to the human, but coding is inherently mixed.
 
 **What bpmux could add as a feature:** The Kühl (2022) finding — that AI-to-human delegation outperforms human-to-AI delegation — suggests bpmux could support an explicit escalation pattern. An MCP tool like `request_decision(question, options)` would let the AI formally surface a judgment call to the human through the chat, with the question pinned or highlighted in the TUI/Web UI until the human responds. This moves decision escalation from ad-hoc chat messages to a structured feature. This is a hypothesis for dogfooding.
 
 **From risk to possible strength:** bpmux's persistent chat makes AI reasoning visible — a prerequisite for effective human review of AI decisions. But visibility alone doesn't solve the decision underperformance problem. The working agreement (process) plus visible reasoning (tool) together address it. Neither alone is sufficient.
 
 **Sources:**
-- [Kühl et al. (2022) — Cognitive Challenges in Human-AI Collaboration: Productive Delegation (Information Systems Research)](https://pubsonline.informs.org/doi/10.1287/isre.2021.1079)
+- [Fugener, Grahl, Gupta & Ketter (2022) — Cognitive Challenges in Human-AI Collaboration: Productive Delegation (Information Systems Research)](https://pubsonline.informs.org/doi/10.1287/isre.2021.1079)
 - [Vaccaro et al. (2024) — When combinations of humans and AI are useful (Nature Human Behaviour)](https://www.nature.com/articles/s41562-024-02024-1)
 
 ---
@@ -78,7 +78,7 @@
 
 **bpmux is stigmergic by design.** The message log is a shared environment, not a set of pairwise channels. Adding a third or fourth participant doesn't create new communication pairs — everyone reads from and writes to the same log. The coordination cost scales linearly (each participant reads the log) not quadratically (each participant talks to every other).
 
-**From risk to strength:** Brooks' Law applies to systems with pairwise communication channels. Stigmergic systems scale differently — through one shared environment rather than n(n-1)/2 channels. bpmux's architecture is inherently resistant to the coordination overhead that Brooks describes. This isn't a claim — it's a structural property of the design, supported by Crowston's finding that stigmergic coordination works without direct communication.
+**From risk to different scaling curve:** Brooks' Law describes quadratic overhead from pairwise channels. Stigmergy replaces this with linear reading overhead (each participant reads the shared log) plus a noise-filtering problem (more participants = more traces to parse). This is better, but not free. Token awareness and bounded windows are the cost-management mechanism for the reading overhead. The noise-filtering problem is addressed by message tiers (v1.x). Stigmergy doesn't eliminate coordination costs — it shifts them from communication overhead to information processing overhead, which is more tractable.
 
 **Source:** [Bolici, Howison & Crowston (2016) — Stigmergic coordination in FLOSS development teams](https://www.sciencedirect.com/science/article/pii/S1389041715000339)
 
@@ -90,7 +90,7 @@
 |---|---|---|---|---|
 | Commitment deficits | Visibility markers, inactivity detection, sender identity | Role specification, human sign-off gates | Lou et al. 2025 | Tool supports awareness; process provides accountability. Neither alone is sufficient. |
 | Awareness overload | Bounded read windows, token awareness | — | Weiser (calm tech), Frontiers in Psych 2023 | Add peripheral rendering for AI-to-AI messages (v1.x) |
-| Decision underperformance | Persistent visible chat (AI reasoning transparent) | Division of labor, human decides | Kühl 2022 (ISR), Vaccaro 2024 (Nature) | Explore `request_decision` MCP tool for structured escalation |
+| Decision underperformance | Persistent visible chat (AI reasoning transparent) | Division of labor, human decides | Fugener et al. 2022 (ISR), Vaccaro 2024 (Nature) | Explore `request_decision` MCP tool for structured escalation |
 | Communication overhead | Stigmergic architecture (shared log, not pairwise channels) | — | Crowston 2016 | Structural property of the design |
 
 **The honest picture:** bpmux mitigates two risks structurally (communication overhead via stigmergy, awareness overload via bounded windows + future peripheral rendering). For the other two (commitment deficits, decision underperformance), bpmux provides *supporting* features (visibility, transparency) but the actual mitigation comes from the team's process discipline. The tool makes good process easier to follow — it doesn't replace it.

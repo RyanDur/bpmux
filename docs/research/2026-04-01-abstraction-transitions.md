@@ -70,13 +70,15 @@ The assembly programmer's understanding of memory and CPU didn't become worthles
 
 The same is true now. The developer who understands architecture, testing, security, and system design doesn't become worthless when AI writes the code — they become the most valuable person in the room because they know when the AI is wrong, and why.
 
+**Where the analogy breaks down:** FORTRAN's output was deterministic. The same code compiled to the same machine code every time. Once you verified the compiler was correct, you could trust it. AI outputs are stochastic — the same prompt produces different code each time, and verification is harder than compilation. Things go wrong more often and less predictably with stochastic tools than with deterministic compilers. This is why bpmux's spec emphasizes TDD and verification gates — they compensate for the property that FORTRAN compilers had but AI tools don't. The emotional arc of the transition is the same; the verification burden is higher.
+
 ---
 
 ## The Stigmergic View of Abstraction Transitions
 
 The connection between stigmergy and software development is not our invention — it is established academic research. Kevin Crowston at Syracuse University found that in FLOSS (Free/Libre Open Source Software) development, 14 out of 20 multi-developer tasks were completed with no direct communication between developers. Coordination happened through the code artifact itself — traces left in the shared environment that guided subsequent work (Bolici, Howison & Crowston, 2016, *Cognitive Systems Research*).
 
-No one in the FORTRAN era used the word "stigmergy," but the structural pattern is the same: the compiler modifies the environment (produces machine code), and that modification enables the next level of work. bpmux extends Crowston's finding from code artifacts to real-time conversation — a richer medium for leaving and responding to traces.
+No one in the FORTRAN era used the word "stigmergy," but the structural pattern is similar: the compiler modifies the environment (produces machine code), and that modification enables the next level of work. bpmux hypothesizes that Crowston's finding (stigmergic coordination in async FLOSS development) also applies to real-time conversation in synchronous pairing — but this is a leap across two dimensions (async → sync, code artifacts → messages) that has not been validated.
 
 **Sources:**
 - [Bolici, Howison & Crowston (2016) — Stigmergic coordination in FLOSS development teams](https://www.sciencedirect.com/science/article/pii/S1389041715000339)

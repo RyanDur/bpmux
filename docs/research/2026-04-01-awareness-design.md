@@ -24,7 +24,7 @@ Technology should move between the center and periphery of attention. Not everyt
 
 **Source:** [Amber Case — Principles of Calm Technology](https://calmtech.com/book) | [Weiser & Brown — The Coming Age of Calm Technology (1996)](https://calmtech.com/papers/coming-age-calm-technology)
 
-### 2. Progressive Disclosure (Nielsen 1995)
+### 2. Progressive Disclosure (popularized by Nielsen Norman Group)
 
 Show only what's needed now. Defer complexity until it's requested. This reduces cognitive load by presenting the most important information first, with details available on demand.
 
