@@ -39,3 +39,25 @@ bpmux is a tool for preventing that. When an AI explains its reasoning in the sh
 We didn't start with this framing. We started with "two developers keep losing context when they switch whose AI is driving." But it turns out context loss is just the symptom. The disease is cognitive and intent debt — and AI is making it accumulate faster than ever.
 
 bpmux doesn't just reduce the cost of context. It prevents the debts that accumulate when context is lost.
+
+---
+
+*Still that morning:*
+
+A person is made of many people. Ubuntu: "I am because we are." An AI session in isolation has only its own context. An AI session connected to bpmux has the accumulated reasoning of every participant. It is because they were.
+
+The persistent message log is collective memory. Short-term memory (the read cursor — what just happened) and long-term memory (semantic search — what was ever decided about this topic) give the AI what humans have naturally: working memory and recall. When two nodes connect, their memories merge. Each node gains the collective understanding of both sides. That's not just sharing messages. That's distributed collective memory.
+
+This is the deeper purpose. bpmux isn't a chat app. It isn't a collaboration tool. It's collective memory for human-AI teams — where each participant is shaped by all the others, and no one's reasoning is lost.
+
+---
+
+*And a commitment:*
+
+A tool that captures AI reasoning in a persistent, searchable log is one design decision away from a developer surveillance tool. The difference is who controls the log, who has access, and whether the tool is designed for the developer's benefit or management's oversight.
+
+Research is clear: monitored employees report higher anxiety, lower productivity, and are more likely to leave. Developer work specifically requires psychological safety — admitting knowledge gaps, experimenting with approaches that might fail. If developers self-censor because someone might read their AI conversations, the tool destroys the value it was built to create.
+
+bpmux is a tool for developers, not for surveilling developers. The persistent log exists to prevent cognitive and intent debt — not to create a performance record. Every design decision about access control, data retention, and organizational features must be evaluated against this principle.
+
+Let's be responsible.

@@ -6,7 +6,7 @@
 
 ## The Argument
 
-Sutton observed that across 70 years of AI research, general methods that leverage computation consistently outperform domain-specific knowledge-based approaches. Building human knowledge into AI systems "always helps in the short term, and is personally satisfying to the researcher, but in the long run it plateaus and even inhibits further progress." The two methods that scale are search and learning — not human-engineered heuristics.
+Sutton observed that across several landmark AI domains (chess, Go, speech recognition, computer vision) spanning decades, general methods that leverage computation consistently outperform domain-specific knowledge-based approaches. Building human knowledge into AI systems "always helps in the short term, and is personally satisfying to the researcher, but in the long run it plateaus and even inhibits further progress." The two methods that scale are search and learning — not human-engineered heuristics.
 
 This is "bitter" because it means our hard-won expertise is less valuable than we want it to believe.
 
