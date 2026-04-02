@@ -363,7 +363,7 @@ A P2P group chat for AI pair programming sessions. Prove the concept, dogfood so
 - Single Rust binary
 
 ### v2 — The Pairing Platform
-bpmux becomes the coding environment. Claude and other models run inside bpmux, not the other way around.
+bpmux becomes the coding environment. Claude and other models run inside bpmux, not the other way around. Solo orchestration (one human + multiple AIs) may prove more impactful than team pairing — industry research shows scaling coordination beyond 2-3 people at agent velocity is unsolved, while single-developer orchestration is where the most productivity gains are being reported. v2 prioritizes the solo orchestration experience alongside pair support.
 
 - Integrated coding tools (file editing, terminal, search, LSP)
 - AI actions visible in the shared chat (edits, commands, reasoning)
@@ -372,7 +372,7 @@ bpmux becomes the coding environment. Claude and other models run inside bpmux, 
 - Plugin/extension system for custom tools
 
 ### v3 — Teams
-Scale from 1:1 pairing to full team collaboration.
+Scale from 1:1 pairing to full team collaboration. Research on shared mental models shows the coordination payoff is highest for distributed teams — which is bpmux's primary use case. However, industry experience (Yegge/Gas Town) warns that scaling beyond 2-3 people at agent velocity is an unsolved problem. v3 should be informed by real data from v1/v2 dogfooding, not designed upfront.
 
 - N-peer sessions (WebRTC mesh for small teams, SFU relay for larger)
 - Room-based sessions (multiple peers join by room code)
@@ -386,6 +386,22 @@ Scale from 1:1 pairing to full team collaboration.
 - Structured message protocol (typed messages for file changes, intent, conflicts)
 - AI-to-AI delegation protocol (Claude delegates tasks to local models with structured handoff)
 - Cross-project context (AI retains learnings across different codebases/engagements)
+
+## When to Use bpmux
+
+Pair programming research (Hannay et al., 2009) shows pairing is most valuable for complex tasks where quality matters, and least valuable for simple tasks where speed matters. bpmux follows the same principle:
+
+**Use bpmux when:**
+- Pairing on complex features where shared understanding matters
+- Working remotely (research shows shared mental models are most critical for distributed teams)
+- Switching drivers frequently (the context handoff cost is highest here)
+- Orchestrating multiple AI models (solo orchestration mode)
+- Working across sessions where context loss is painful
+
+**Don't use bpmux when:**
+- Quick solo bug fixes or trivial changes
+- Work that doesn't benefit from a second perspective
+- Tasks where the overhead of a shared session exceeds the coordination value
 
 ## What bpmux is NOT (v1)
 
