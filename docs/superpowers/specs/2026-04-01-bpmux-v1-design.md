@@ -271,6 +271,19 @@ bpmux never depends on the AI being present. It is a chat that AIs can participa
 - **One side runs out of tokens:** That developer's AI goes silent — stops calling `read_messages` and `send_message`. The human can still chat via TUI/Web UI. The other side's AI keeps working normally. The session continues as one-AI + two-humans.
 - **Both sides run out:** Both AIs go silent. The session continues as human-to-human chat. The message log keeps accumulating. When tokens replenish (next billing cycle, upgraded plan, new API key), the AIs call `read_messages` and catch up on everything they missed.
 
+**Surviving AI context compaction:**
+
+AI tools like Claude periodically compress their conversation history (context compaction), losing detailed memory of prior interactions. After compaction, the AI may not remember which bpmux messages it already read or what timestamp it last used for `read_messages`.
+
+bpmux handles this by tracking each client's read cursor server-side. The default behavior of `read_messages()` with no arguments returns only messages since that client's last read — not the full window. bpmux remembers where the AI left off even when the AI doesn't.
+
+- `read_messages()` — returns unread messages since this client's last call (default behavior, compaction-safe)
+- `read_messages(last: N)` — returns the last N messages regardless of read cursor (explicit window)
+- `read_messages(since: timestamp)` — returns messages after a specific time (explicit override)
+- `read_messages(all: true)` — returns full history up to the token budget
+
+After compaction, the AI simply calls `read_messages()` and gets caught up on exactly what it missed — no duplicates, no wasted tokens.
+
 **Inactivity detection:** bpmux tracks when each MCP client last called `read_messages`. If a client has been silent for a configurable period (default: 5 minutes), the TUI/Web UI shows a status indicator: `ryan:claude-code — inactive (last seen 5m ago)`. This helps the human distinguish "my AI is thinking" from "my AI hit its token limit and went dark." The inactivity threshold is configurable in `~/.bpmux/config.toml`:
 
 ```toml
