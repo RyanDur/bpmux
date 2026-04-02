@@ -59,9 +59,52 @@ Push-backs must define the gap precisely before relaunching.
 - Opus extracts durable learnings before deleting any project memory. Status is ephemeral. Lessons are permanent.
 - Ground Control approves cleanup.
 
+## Story Delivery
+
+Every story follows this flow:
+
+1. **Acceptance test first.** The story's expected behaviors become a failing test before any production code is written. This is the first task, not an afterthought.
+2. **Build until the acceptance test passes.** Implementation is driven by the failing test, not by a plan. The plan is a hypothesis about how to make the test pass; the test is the truth.
+3. **Smoke test as a user.** After the acceptance test passes, Ground Control runs the binary and tests the actual user experience. Subagents cannot do this — it's a human checkpoint. Does it feel right? Does the cursor show? Does the output make sense?
+4. **Push and verify CI.** Push after every completed story. CI must pass. Do not accumulate local commits without remote validation.
+5. **Retrospect.** What worked? What didn't? Update this agreement if the process needs to change.
+
+## Quality Gates
+
+All gates must pass before pushing:
+
+```bash
+cargo fmt --check && cargo clippy -- -D warnings && cargo test
+```
+
+The pre-push hook enforces this locally. CI enforces it remotely. If either fails, stop and fix — do not bypass.
+
+**The pre-push hook must actually work.** If it passes silently when tools are missing (e.g., `cargo: command not found`), that's a broken gate, not a passing gate. The hook must fail loudly on any error.
+
+## Multi-Session Review
+
+Different AI sessions are naturally critical of each other's work. Use this:
+
+- **Implementation session** creates the work
+- **Editorial session(s)** review the work with fresh context
+- The editorial session checks: Are claims backed by evidence? Do caveats travel with claims? Is the reasoning honest?
+- Findings are captured in editor-notes documents and addressed by the implementation session
+
+This catches patterns that a single session cannot see in its own work.
+
+## Lessons Learned
+
+- **Acceptance tests before production code.** Story 1 shipped with broken persistence because the acceptance test was written after the implementation, not before.
+- **Use the thing as a user.** Unit tests prove components work. Only using the product proves it works. The cursor was invisible because nobody tried typing in it.
+- **Push early.** Local commits without CI are unvalidated. Push after each story.
+- **The plan is a hypothesis.** Review against the story's expected behaviors, not just the plan's task descriptions. The story is the truth.
+- **Caveats don't travel.** When a claim appears in multiple documents, the caveat must appear every time, not just the first time.
+- **Research has diminishing returns.** 27 documents is thorough. 28 would have been procrastination. Build when the research is sufficient, not when it's exhaustive.
+
 ## Git & Tooling
 
 - Always `git pull --rebase`, never plain `git pull`.
+- Push after every completed story. CI must be green.
 
 ## Explanation Preferences
 
