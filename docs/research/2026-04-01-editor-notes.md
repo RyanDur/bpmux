@@ -1,71 +1,107 @@
 # Editor Notes: Research Verification
 
-*Verified 2026-04-01. 29 claims checked against primary sources.*
+*Originally verified 2026-04-01. 29 claims checked against primary sources.*
+*Second verification 2026-04-01. Must-fix items confirmed applied; 5 new issues found.*
 
-**Overall: Strong.** 21 of 29 claims fully confirmed. No fabricated citations. Errors are attribution drift, not substantive misrepresentation.
+**Overall: Strong.** 21 of 29 original claims fully confirmed. No fabricated citations. All four must-fix issues from the first review have been correctly applied. Five new minor issues identified in the second pass.
 
 ---
 
-## Must Fix
+## Must Fix (First Review) -- ALL RESOLVED
 
-### 1. Sophie Leroy -- Wrong Term
+### 1. Sophie Leroy -- Wrong Term ✅
 
 **File:** `supporting-research.md`
-**Problem:** Uses "cognitive residue" -- her term is **"attention residue."**
-**Source:** Leroy, S. (2009). "Why is it so hard to do my work?" *Organizational Behavior and Human Decision Processes*, 109(2), 168-181.
+**Problem:** Used "cognitive residue" -- her term is **"attention residue."**
+**Status:** Fixed. File now correctly uses "attention residue."
 
-### 2. James Bessen -- Wrong Affiliation
+### 2. James Bessen -- Wrong Affiliation ✅
 
-**Files:** `inspirations.md`, possibly `abstraction-transitions.md`
-**Problem:** Attributed as "Yale/IMF" -- Bessen is at **Boston University School of Law.** The "Yale" confusion likely comes from Yale University Press publishing his book *Learning by Doing*. The "IMF" part refers to the publication venue (*Finance & Development*, March 2015), not his affiliation.
-**Fix:** Change to "James Bessen (Boston University, 2015)" or "James Bessen (2015, published in IMF Finance & Development)."
+**Files:** `inspirations.md`
+**Problem:** Was attributed as "Yale/IMF" -- Bessen is at **Boston University School of Law.**
+**Status:** Fixed. Now reads "James Bessen (Boston University, 2015; published in IMF *Finance & Development*)."
 
-### 3. Kuhl et al. (2022) -- Wrong Authors
+### 3. Kuhl et al. (2022) -- Wrong Authors ✅
 
 **File:** `risk-mitigations.md`
-**Problem:** Cited as "Kuhl et al." -- the actual authors are **Fugener, Grahl, Gupta & Ketter.**
-**Source:** Fugener, A., Grahl, J., Gupta, A., & Ketter, W. (2022). "Cognitive Challenges in Human-Artificial Intelligence Collaboration: Investigating the Path Toward Productive Delegation." *Information Systems Research*, 33(2).
-**Fix:** Replace "Kuhl et al. (2022)" with "Fugener et al. (2022)" throughout.
+**Problem:** Was cited as "Kuhl et al." -- the actual authors are **Fugener, Grahl, Gupta & Ketter.**
+**Status:** Fixed. Now uses "Fugener, Grahl, Gupta & Ketter" and "Fugener et al." throughout.
 
-### 4. Dourish & Bellotti -- Mischaracterized Focus
+### 4. Dourish & Bellotti -- Mischaracterized Focus ✅
 
 **File:** `counter-arguments.md`
-**Problem:** Characterized as "awareness overload research." Their 1992 CSCW paper ("Awareness and Coordination in Shared Workspaces") is actually about **awareness benefits and mechanisms.** They noted costs to information providers, but the overload framing came from later researchers (Hudson & Smith, 1996; others).
-**Fix:** Either reattribute the overload concern to the correct later researchers, or soften to something like "Building on Dourish & Bellotti's awareness framework, later researchers identified awareness overload as a risk."
+**Problem:** Was characterized as "awareness overload research." Their 1992 paper is about awareness benefits and mechanisms.
+**Status:** Fixed. Now reads "Building on their awareness framework, later CSCW researchers (Hudson & Smith 1996, and the broader information overload literature) identified..."
+
+---
+
+## Should Fix (Second Review) -- NEW
+
+### 9. Weiser & Brown -- Wrong Date
+
+**File:** `awareness-design.md`
+**Problem:** Section header says "Weiser & Brown 1995" -- the paper ("The Coming Age of Calm Technology") was published **October 5, 1996**, not 1995. Other files correctly use 1996.
+**Fix:** Change "Weiser & Brown 1995" to "Weiser & Brown 1996" in the section header.
+
+### 10. Pierre-Paul Grassé -- Imprecise Date
+
+**File:** `inspirations.md`
+**Problem:** Says stigmergy was "coined by Pierre-Paul Grassé in the 1950s" -- the correct year is **1959**. The editor notes' own confirmed claims list says "Grasse (1959)."
+**Fix:** Change "in the 1950s" to "in 1959" for consistency across the docs.
+
+### 11. Bessen -- Teller Employment Upper Bound
+
+**File:** `inspirations.md`
+**Problem:** Claims teller employment grew "from ~500,000 to ~600,000." Verification against Bessen's original data suggests the upper bound is closer to **~550,000**, not ~600,000. The 43% branch increase figure is confirmed.
+**Fix:** Change "~600,000" to "~550,000" or soften to "from ~500,000 to over ~550,000."
 
 ---
 
 ## Minor -- Author's Discretion
 
-### 5. Rubinstein, Meyer & Evans (2001) -- 40% Figure
+### 5. Rubinstein, Meyer & Evans (2001) -- 40% Figure ✅
 
 **File:** `supporting-research.md`
-**Context:** The 40% productivity loss claim is from David Meyer's public commentary and interviews, not directly from the paper's experimental data. The paper demonstrated increasing time costs with task complexity but didn't produce a single "40%" figure.
-**Suggestion:** Add "estimated" or attribute to Meyer's commentary rather than the paper itself. e.g., "Meyer estimated task switching can cost up to 40% of productive time."
+**Context:** The 40% figure is from Meyer's public commentary, not the paper.
+**Status:** Fixed. Now reads "Meyer estimated in public commentary that task switching can cost as much as 40% of productive time — this figure is from his interviews, not directly from the paper's experimental data."
 
 ### 6. Nielsen (1995) -- Progressive Disclosure Date
 
 **File:** `awareness-design.md`
-**Context:** Progressive disclosure as a concept predates Nielsen -- it appears in 1980s HCI literature. Nielsen's 1994/1995 contribution was the "10 Usability Heuristics," which doesn't specifically name progressive disclosure. He applied and popularized the concept in later work.
-**Suggestion:** Could cite as "Nielsen Norman Group" without a specific year, or note "popularized by Nielsen" rather than implying he originated it in 1995.
+**Context:** Progressive disclosure predates Nielsen -- appears in 1980s HCI literature. Nielsen popularized the concept but didn't originate it.
+**Status:** The heading now reads "popularized by Nielsen Norman Group" which is accurate. No further action needed.
 
 ### 7. Steve Yegge -- Beads Stars and Orchestrator Count
 
 **File:** `multi-agent-landscape.md`
-**Context:** "18.7k GitHub stars" was likely accurate when written but Beads has since crossed ~20k. The "four failed orchestrator iterations" framing is slightly imprecise -- Gas Town is the fourth *functioning* orchestrator (v1 TS/Temporal failed, v2 TS failed but produced Beads, v3 Python, v4 Go/Gas Town).
-**Suggestion:** Minor. Could qualify stars with "as of [date]" or just round to "~19k." The orchestrator narrative could say "after multiple iterations" rather than specifying a count.
+**Context:** Star count was accurate when written but changes over time. Orchestrator iteration count is slightly imprecise.
+**Status:** Updated to "~19k+" and "after multiple iterations." Adequate.
 
 ### 8. Frontiers in Psychology (2023) -- Strategy Attribution
 
 **File:** `risk-mitigations.md`
-**Context:** The four coping strategies (ignoring, filtering, customizing, saving) are a real taxonomy in information overload literature, but the specific attribution to the 2023 Frontiers paper couldn't be definitively confirmed. The taxonomy may predate or merely be cited by that paper.
-**Suggestion:** If the specific paper can be confirmed as the source, keep as-is. Otherwise, soften attribution to "information overload literature" or find the originating paper for those four strategies.
+**Context:** The four coping strategies taxonomy may predate the 2023 Frontiers paper.
+**Status:** `risk-mitigations.md` now hedges with "taxonomy cited in a 2023 *Frontiers in Psychology* review, though the taxonomy may originate from earlier work." Adequate.
+
+### 12. Sophie Leroy -- Affiliation Precision (NEW)
+
+**File:** `supporting-research.md`
+**Context:** Listed as "University of Washington" -- she is at **UW Bothell** specifically. At the time of the 2009 paper, she may have been at the University of Minnesota Carlson School.
+**Suggestion:** Minor. Could specify "UW Bothell" for precision, but "University of Washington" is not wrong.
+
+### 13. Gloria Mark -- "3 Minutes" Precision (NEW)
+
+**File:** `supporting-research.md`
+**Context:** Her research found workers spend an average of **3 minutes and 5 seconds** on a single event before switching. "3 minutes" is a reasonable approximation but not exact.
+**Suggestion:** Trivial. Could say "about 3 minutes" for accuracy. Current phrasing ("every 3 minutes on average") is close enough.
 
 ---
 
 ## Confirmed Claims (no action needed)
 
-Hannay et al. (2009), Gloria Mark (UC Irvine), Wegner (1987), Gutwin & Greenberg (2002), Vaccaro et al. (2024, Nature Human Behaviour -- including the 370/106 numbers), Bolici et al. (2016), Jevons Paradox (1865), Zach Wills (20 agents, 800 commits, $6k), Google DeepMind (2025, 180 configurations), Lou et al. (2025, arXiv:2504.05755), Peng et al. (2023), METR (2025), Brooks' Law (1975), Weiser & Brown (1995) / Amber Case (2015), Tufte (1983), Pirolli & Card (PARC), Grasse (1959), Craig Reynolds (1986), Tim Harford accountant figures, Backus/FORTRAN (1957) and Hamming quote, Smashing Magazine (2025).
+Hannay et al. (2009), Gloria Mark (UC Irvine), Wegner (1987), Gutwin & Greenberg (2002), Vaccaro et al. (2024, Nature Human Behaviour -- including the 370/106 numbers), Bolici et al. (2016), Jevons Paradox (1865), Zach Wills (20 agents, 800 commits, $6k), Google DeepMind (2025, 180 configurations), Lou et al. (2025, arXiv:2504.05755), Peng et al. (2023), METR (2025), Brooks' Law (1975), Amber Case (2015), Tufte (1983), Pirolli & Card (PARC), Craig Reynolds (1986), Tim Harford accountant figures, Backus/FORTRAN (1957) and Hamming quote, Smashing Magazine (2025), Rubinstein/Meyer/Evans (2001), Fugener et al. (2022, ISR).
+
+**Moved to "Should Fix":** Weiser & Brown (date is 1996, not 1995), Grassé (date is 1959, not "1950s"), Bessen teller figures (~550k, not ~600k).
 
 ---
 
@@ -73,59 +109,43 @@ Hannay et al. (2009), Gloria Mark (UC Irvine), Wegner (1987), Gutwin & Greenberg
 
 *Beyond citation accuracy -- does the reasoning hold?*
 
-**Overall: The distillation is unusually honest and well-structured.** The epistemic discipline -- explicitly separating "research validates the problem" from "research validates our solution" -- is the strongest quality across all eight files. The caveats are real, not performative. That said, there are five places where the reasoning stretches further than the evidence supports, or where a real tension is underplayed.
+**Overall: The distillation is unusually honest and well-structured.** The epistemic discipline -- explicitly separating "research validates the problem" from "research validates our solution" -- is the strongest quality across all eight files. The caveats are real, not performative. The second review found that 3 of 5 original distillation concerns have been fully addressed, 2 partially addressed.
 
-### 1. "Coding is a creation task" is doing heavy load-bearing work
+### 1. "Coding is a creation task" is doing heavy load-bearing work — PARTIALLY ADDRESSED
 
 **Files:** `counter-arguments.md`, `risk-mitigations.md`, `supporting-research.md`
 
-The Vaccaro et al. meta-analysis found positive effects for "creation tasks" -- but their creation category was text and image generation, not software engineering. The docs acknowledge this caveat, but then lean on "coding is a creation task" heavily across multiple files as a core justification for why bpmux avoids the human-AI underperformance finding.
+The Vaccaro et al. meta-analysis found positive effects for "creation tasks" -- but their creation category was text and image generation, not software engineering. The docs acknowledge this caveat, but then lean on "coding is a creation task" heavily across multiple files.
 
-The problem: coding has a large *decision-making* component (architecture choices, design tradeoffs, bug triage, dependency selection). Decision-making is exactly the category where the meta-analysis found human-AI teams perform *worse*. The caveat is stated once but gets quieter with each repetition across files.
+**Second review:** `risk-mitigations.md` now explicitly says "coding is inherently mixed" and "We cannot lean on 'coding is a creation task' as a blanket justification." This is the strongest treatment. `supporting-research.md` also notes the caveat. However, `counter-arguments.md` still uses the creation-task classification without repeating the caveat. A reader encountering it there for the first time may not know it's contested.
 
-**Suggestion:** Either strengthen the caveat each time this inference appears, or find research that explicitly classifies software engineering within the creation/decision taxonomy. As it stands, the strongest counter-argument in the research (human-AI teams underperform on decisions) is partially neutralized by an unverified classification.
+**Remaining suggestion:** Add the "coding is mixed" caveat to `counter-arguments.md` where the creation-task classification appears.
 
-### 2. The stigmergy-solves-Brooks'-Law argument is too clean
+### 2. The stigmergy-solves-Brooks'-Law argument is too clean — ADDRESSED ✅
 
 **File:** `risk-mitigations.md`
 
-The argument: Brooks' Law describes quadratic communication overhead from pairwise channels. Stigmergic systems use one shared environment, so coordination scales linearly, not quadratically. Therefore bpmux is "inherently resistant" to Brooks' Law.
+**Second review:** Now reads: "Stigmergy replaces quadratic overhead with linear reading overhead plus a noise-filtering problem. This is better, but not free. Token awareness and bounded windows are the cost-management mechanism." The summary table still says "Structural property of the design" but the body text is honest. Adequate.
 
-This is structurally true of the *channel architecture*, but it elides a real cost: **reading the shared log is not free.** As participants increase, the volume of traces grows, and each participant's cost of reading and filtering increases. The docs recognize this as "pheromone oversaturation" in `counter-arguments.md`, but `risk-mitigations.md` presents stigmergy as a structural *solution* to Brooks' Law rather than a *different scaling curve with its own costs*.
-
-**Suggestion:** Reframe as: "Stigmergy replaces quadratic communication overhead with linear reading overhead plus a noise-filtering problem. This is better, but not free. Token awareness and bounded windows are the cost-management mechanism." The current framing ("structural property of the design") overstates the case.
-
-### 3. The Crowston finding is applied more broadly than warranted
-
-**Files:** `inspirations.md`, `abstraction-transitions.md`, `risk-mitigations.md`
-
-Crowston studied FLOSS development -- asynchronous, code-artifact-based coordination over days and weeks. bpmux is real-time, message-based coordination in synchronous pairing sessions. The docs say "bpmux extends Crowston's finding from code artifacts to real-time conversation" -- but that's a significant leap across two dimensions (async → sync, artifact-based → message-based).
-
-Crowston's key finding was that code artifacts *replaced* the need for direct communication. bpmux is *adding* a new communication channel on top of code artifacts. Whether the stigmergic pattern that eliminated communication in async FLOSS also works when applied to a real-time chat channel is an open question, not an extension of a confirmed finding.
-
-**Suggestion:** Reframe as: "Crowston demonstrated that stigmergic coordination works in software development. bpmux hypothesizes that the same principle applies to real-time conversation, not just asynchronous code artifacts. This is an informed design choice, not a validated extension of Crowston's finding."
-
-### 4. The FORTRAN analogy is emotionally resonant but structurally incomplete
-
-**File:** `abstraction-transitions.md`
-
-The parallel is clean: FORTRAN automated assembly, AI automates coding, resistance follows the same emotional arc, outcome will be the same expansion of scope. The doc handles this well overall.
-
-But there's a structural disanalogy worth noting: **FORTRAN's output was deterministic.** The same FORTRAN code compiled to the same machine code every time. Once you verified the compiler was correct, you could trust it. AI outputs are stochastic -- the same prompt produces different code each time, and verification is harder than compilation. The doc says "the developer who understands architecture becomes the most valuable person when things go wrong" -- but doesn't address that things go wrong *more often and less predictably* with stochastic tools than with deterministic compilers.
-
-This doesn't invalidate the analogy. The emotional arc and the scope-expansion pattern are real. But noting the disanalogy would strengthen the piece by showing the author has thought about where the parallel breaks down.
-
-**Suggestion:** Add a paragraph acknowledging the deterministic/stochastic difference, and note that this is why bpmux emphasizes TDD and verification gates -- they compensate for the property that FORTRAN compilers had but AI doesn't.
-
-### 5. Jevons Paradox supports "demand grows" but not "coordination is the next bottleneck"
+### 3. The Crowston finding is applied more broadly than warranted — ADDRESSED ✅
 
 **Files:** `inspirations.md`, `abstraction-transitions.md`
 
-The Jevons Paradox application is correct: if AI makes software cheaper to produce, demand will grow. The historical examples (accountants, bank tellers) support this well.
+**Second review:** Both files now include the caveat that extending Crowston from async FLOSS to real-time conversation is "a leap across two dimensions (async → sync, code artifacts → messages) that has not been validated." `inspirations.md` explicitly says "This is an informed design choice based on Crowston's work, not a validated extension of it." Well handled.
 
-But the specific claim -- that *coordination* becomes the binding constraint -- is a separate hypothesis from Jevons. Jevons predicts demand growth. It doesn't predict which constraint becomes binding next. Coordination is one candidate. Quality assurance, security review, regulatory compliance, and product judgment are others. The docs treat "coordination is the next bottleneck" as following from Jevons, but it's actually an independent bet.
+### 4. The FORTRAN analogy -- deterministic vs stochastic gap — ADDRESSED ✅
 
-**Suggestion:** Separate the two claims. "Jevons predicts more software will be built. Our *additional* hypothesis is that coordination becomes the binding constraint on teams that build it. This is our bet, informed by but not proven by Jevons."
+**File:** `abstraction-transitions.md`
+
+**Second review:** Now includes a full paragraph: "Where the analogy breaks down: FORTRAN's output was deterministic... AI outputs are stochastic... This is why bpmux's spec emphasizes TDD and verification gates — they compensate for the property that FORTRAN compilers had but AI tools don't." Exactly what was recommended.
+
+### 5. Jevons Paradox supports "demand grows" but not "coordination is the next bottleneck" — PARTIALLY ADDRESSED
+
+**Files:** `inspirations.md`, `abstraction-transitions.md`
+
+**Second review:** `inspirations.md` now says "Our hypothesis: if AI makes individual development more efficient, coordination becomes the new bottleneck. bpmux is a bet on this hypothesis." The word "hypothesis" helps. But the two claims (Jevons predicts demand; coordination is the bottleneck) are still presented in the same paragraph, making them feel like one argument rather than a research finding + an independent bet.
+
+**Remaining suggestion:** Separate into two sentences or a brief note: "Jevons predicts more software will be built. Our *additional* hypothesis is that coordination becomes the binding constraint. This is our bet, informed by but not proven by Jevons."
 
 ---
 
@@ -138,4 +158,4 @@ But the specific claim -- that *coordination* becomes the binding constraint -- 
 
 ### The Main Pattern
 
-The recurring issue across all five points above is: **research that validates the problem is sometimes applied to validate the solution.** The docs are *aware* of this distinction (the caveats exist), but the framing blurs it in places -- especially when the same inference is repeated across multiple files and the caveat doesn't travel with it. A reader who sees "coding is a creation task" for the third time may not remember the caveat from the first time.
+The recurring issue across the two remaining partially-addressed points is: **caveats don't always travel with the claim.** When the same inference appears in multiple files, the caveat is strong in one file but absent or muted in others. A reader who encounters "coding is a creation task" in `counter-arguments.md` first may not see the "coding is mixed" qualification from `risk-mitigations.md`.

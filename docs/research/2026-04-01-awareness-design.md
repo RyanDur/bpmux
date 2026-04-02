@@ -12,7 +12,7 @@ The challenge: how do we keep everything visible (transparency) while making onl
 
 ## Five Design Philosophies
 
-### 1. Calm Technology (Weiser & Brown 1995, Case 2015)
+### 1. Calm Technology (Weiser & Brown 1996, Case 2015)
 
 Technology should move between the center and periphery of attention. Not everything needs to be focal. The periphery is "what we are attuned to without attending to explicitly." By placing things in the periphery, we can be aware of many more things than if everything demanded focal attention.
 

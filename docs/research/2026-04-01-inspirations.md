@@ -39,13 +39,13 @@ bpmux works the same way. The shared chat is the environment. The working agreem
 ### The Jevons Paradox — Efficiency Increases Demand
 In 1865, William Stanley Jevons observed that improvements in coal efficiency didn't reduce coal consumption — they increased it. Making a resource cheaper to use doesn't shrink demand; it unlocks latent demand that was previously uneconomical.
 
-**Inspiration for bpmux:** AI coding tools make software cheaper to produce. If the Jevons Paradox holds for software (and historical precedent from high-level languages suggests it does), this won't reduce the amount of software — it will expand it. Problems that were "not worth building" become viable.
+**Inspiration for bpmux:** AI coding tools make software cheaper to produce. If the Jevons Paradox holds for software (and historical precedent from high-level languages suggests it does), this won't reduce the amount of software — it will expand it. Problems that were "not worth building" become viable. Jevons predicts demand growth. It doesn't predict which constraint becomes binding next.
 
-Our hypothesis: if AI makes individual development more efficient, coordination becomes the new bottleneck. bpmux is a bet on this hypothesis.
+Our *additional* hypothesis — separate from Jevons — is that coordination becomes the binding constraint on teams that build more software. Other candidates include quality assurance, security review, regulatory compliance, and product judgment. Coordination is our bet, informed by but not proven by Jevons.
 
 Addy Osmani articulated the pattern (practitioner blog post, not peer-reviewed): "Every time we've made it easier to write software, we've ended up writing exponentially more of it." This is supported by specific historical data:
 - **Spreadsheets and accountants:** BLS data shows US accountants grew from ~339,000 (1980) to ~1.4 million (2022) despite VisiCalc, Lotus 1-2-3, and Excel automating routine bookkeeping. ([BLS](https://www.bls.gov/ooh/business-and-financial/accountants-and-auditors.htm); [Tim Harford analysis](https://timharford.com/2024/03/what-the-birth-of-the-spreadsheet-teaches-us-about-generative-ai/))
-- **ATMs and bank branches:** James Bessen (Boston University, 2015; published in IMF *Finance & Development*) found that urban bank branches increased 43% after ATM deployment, and total teller employment grew from ~500,000 to ~600,000 even as ~400,000 ATMs were deployed. ATMs reduced branch costs, enabling expansion. ([Bessen, IMF 2015](https://www.imf.org/external/pubs/ft/fandd/2015/03/bessen.htm))
+- **ATMs and bank branches:** James Bessen (Boston University, 2015; published in IMF *Finance & Development*) found that urban bank branches increased 43% after ATM deployment, and total teller employment grew from ~500,000 to over ~550,000 even as ~400,000 ATMs were deployed. ATMs reduced branch costs, enabling expansion. ([Bessen, IMF 2015](https://www.imf.org/external/pubs/ft/fandd/2015/03/bessen.htm))
 
 ### The Efficiency Paradox — From "Can We?" to "Should We?"
 As activation costs plummet, the constraint shifts from implementation capacity to judgment and taste. The bottleneck becomes "what should we prioritize?" not "can we build this?"
@@ -120,7 +120,7 @@ High-performing teams know not just the answers but who has which answers. The m
 
 Every inspiration on this page is a facet of the same idea: **stigmergy** — coordination through a shared environment rather than through a manager.
 
-Stigmergy, coined by Pierre-Paul Grassé in the 1950s to describe termite nest-building, has two forms:
+Stigmergy, coined by Pierre-Paul Grassé in 1959 to describe termite nest-building, has two forms:
 - **Sign-based:** Signals left in the environment (pheromone trails, messages) that guide behavior
 - **Sematectonic:** Modifications to the artifact itself (nest walls, code changes) that stimulate the next action
 
