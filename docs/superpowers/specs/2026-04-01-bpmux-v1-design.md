@@ -169,7 +169,7 @@ The MCP server is the constant. The human interface is interchangeable. Both hum
 - `create_session(name: string)` — start a new bpmux session. Starts the node (if not already running), returns the session code for sharing with a peer. In Claude Desktop, this is how the user starts a session without a terminal.
 - `join_session(name: string, code: string)` — join an existing session by code. Starts the node (if not already running), connects to the peer via the signaling server.
 - `send_message(text: string)` — send a text message to the session. Sender identity is `<peer-name>:<tool-name>`, where `tool-name` is taken from the MCP `initialize` request's `clientInfo.name` field (e.g., `"claude-code"`, `"opencode"`). bpmux accepts the name as-is without validation.
-- `read_messages(since?: timestamp)` — read message history (all, or since a given timestamp). Returns an array of messages.
+- `read_messages(since?: timestamp, last?: number, all?: boolean)` — read message history. Returns an array of messages. Default (no args): returns unread messages since this client's last read, using the server-side read cursor. Overrides: `since` (messages after a timestamp), `last` (most recent N messages, default window: 50), `all` (full history up to token budget). All modes respect the configured token budget. The read cursor advances on every call regardless of which mode is used.
 - `open_chat()` — returns the Web UI URL (`http://localhost:<web-port>`). In Claude Desktop, this renders in the preview panel. In terminal environments, the user opens the URL in a browser. The TUI is also always available via `bpmux` in a separate terminal for users who prefer a terminal-native experience.
 - `session_status()` — returns current session state: connected/solo, peer name, session code, connected MCP clients, trust levels.
 
@@ -243,13 +243,10 @@ Messages flowing through bpmux are consumed by AI models, and every message cost
 
 **Mechanisms:**
 
-**`read_messages` pagination (default: last 50 messages):**
-`read_messages` returns a bounded window, not the full history. Parameters:
-- `since: timestamp` — messages after this time
-- `last: number` — most recent N messages (default: 50)
-- `all: boolean` — return full history (opt-in, not default)
+**`read_messages` is bounded by default:**
+The default call (`read_messages()` with no args) returns only unread messages since the client's last call, using a server-side read cursor. This is the most token-efficient mode — no duplicates, no re-reading old context.
 
-When a peer joins and their AI calls `read_messages` with defaults, it gets the last 50 messages — enough context to orient, not enough to blow a budget. The AI can request more if it needs to.
+For a newly connected client (no prior reads), the default falls back to the last 50 messages — enough context to orient, not enough to blow a budget. The AI can request more via `read_messages(last: 100)` or `read_messages(all: true)` if it needs to. All modes respect the configured token budget.
 
 **Message size limits:**
 Individual messages are capped at 4KB of text. This prevents an AI from dumping an entire file diff into a single message. If an AI needs to share large context, it should summarize or reference a file path rather than inline the content.
@@ -275,12 +272,7 @@ bpmux never depends on the AI being present. It is a chat that AIs can participa
 
 AI tools like Claude periodically compress their conversation history (context compaction), losing detailed memory of prior interactions. After compaction, the AI may not remember which bpmux messages it already read or what timestamp it last used for `read_messages`.
 
-bpmux handles this by tracking each client's read cursor server-side. The default behavior of `read_messages()` with no arguments returns only messages since that client's last read — not the full window. bpmux remembers where the AI left off even when the AI doesn't.
-
-- `read_messages()` — returns unread messages since this client's last call (default behavior, compaction-safe)
-- `read_messages(last: N)` — returns the last N messages regardless of read cursor (explicit window)
-- `read_messages(since: timestamp)` — returns messages after a specific time (explicit override)
-- `read_messages(all: true)` — returns full history up to the token budget
+bpmux handles this by tracking each client's read cursor server-side (see `read_messages` definition in MCP Server section). The default behavior of `read_messages()` with no arguments returns only messages since that client's last read. bpmux remembers where the AI left off even when the AI doesn't.
 
 After compaction, the AI simply calls `read_messages()` and gets caught up on exactly what it missed — no duplicates, no wasted tokens.
 
