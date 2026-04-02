@@ -6,11 +6,16 @@ bpmux (beep-boop multiplexer) is a peer-to-peer group chat for AI pair programmi
 
 ## Problem
 
-When two developers pair program with AI assistants (e.g., both using Claude Code), only one AI is active at a time. When the pair switches who is driving, the new driver's AI starts cold — it has no context about what the other AI just did, what was considered and rejected, or what the plan was. The current workaround is asking the AI to summarize context, pasting it into a commit message or chat, and hoping the other AI picks it up. This is manual, lossy, and breaks flow. Everything the AI knew — intent, reasoning, rejected approaches, work-in-progress state, codebase mental model — is reduced to a paragraph.
+AI-assisted development is accelerating code generation while eroding shared understanding. Margaret-Anne Storey (2026) identifies two debts that accumulate when AI writes code faster than teams can comprehend it:
+
+- **Cognitive debt** — the erosion of shared understanding across a team. Team members can no longer articulate *why* design decisions were made or *how* components interact.
+- **Intent debt** — the absence of externalized rationale. The code is clean, the tests pass, and the *why* is nowhere to be found. Intent debt is what makes cognitive debt permanent — if the rationale isn't captured, it can't be recovered.
+
+These debts manifest concretely in pair programming with AI: when two developers use AI assistants, only one AI is active at a time. When the pair switches who is driving, the new driver's AI starts cold — it has no context about what the other AI just did, what was considered and rejected, or what the plan was. The current workaround is asking the AI to summarize context, pasting it into a commit message or chat, and hoping the other AI picks it up. This is manual, lossy, and breaks flow. Everything the AI knew — intent, reasoning, rejected approaches, work-in-progress state, codebase mental model — is reduced to a paragraph. That lost context is cognitive and intent debt accumulating in real time.
 
 ## Solution
 
-A persistent P2P group chat where all four participants (two humans, two AIs) converse in real time. The chat is the central experience:
+A persistent P2P group chat that prevents cognitive and intent debt by making AI reasoning visible and durable. All four participants (two humans, two AIs) converse in real time. The chat is the central experience:
 
 - **Humans** see and type in a terminal UI (TUI)
 - **AIs** see and send messages via MCP tools in their coding environment (e.g., Claude Code)
@@ -368,6 +373,8 @@ A P2P group chat for AI pair programming sessions. Prove the concept, dogfood so
 - Does the persistent message log actually reduce context loss across sessions, or is it noise?
 - Do humans stay engaged (Ground Control) or defer to the AIs (commitment deficit)?
 - Where in the coding workflow do decision-making bottlenecks appear?
+- **Cognitive debt:** After a session, can you explain why the code is the way it is? Can a new AI session? If the answer is "read the bpmux log" — debt prevented. If the answer is "I don't know, it just works" — debt accumulating.
+- **Intent debt:** When a new AI session starts and reads the log, does it have enough rationale to make safe changes? Or does it just see what happened without understanding why?
 
 - Solo mode: persistent chat between you and your AI(s), survives across sessions
 - Pair mode: two developers + two AIs on a shared P2P channel

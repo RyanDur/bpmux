@@ -27,3 +27,15 @@ This is such an exciting time to be a developer.
 Our ideas need to become bigger. The thin slices will become larger. A story might be more application-level as opposed to feature-level. The working agreement is where we are comfortable today. As we come to trust AI more, and the models become more reliable and can handle more, the agreement will need to change. The world is going to change.
 
 But the change should not drive people apart. It should make our aspirations grow.
+
+---
+
+*The next morning:*
+
+Margaret-Anne Storey named what we were building toward without knowing it. AI makes code faster to write — but it makes understanding faster to lose. The code is clean, the tests pass, and nobody can explain why it's that way. She calls this cognitive debt and intent debt. The code gets better while the understanding gets worse.
+
+bpmux is a tool for preventing that. When an AI explains its reasoning in the shared chat, that's intent being captured. When all four participants see the conversation, that's understanding being shared. The persistent log means the reasoning doesn't disappear when a session ends. The transparency means no one is working in the dark.
+
+We didn't start with this framing. We started with "two developers keep losing context when they switch whose AI is driving." But it turns out context loss is just the symptom. The disease is cognitive and intent debt — and AI is making it accumulate faster than ever.
+
+bpmux doesn't just reduce the cost of context. It prevents the debts that accumulate when context is lost.
