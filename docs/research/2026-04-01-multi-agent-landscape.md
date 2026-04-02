@@ -29,6 +29,26 @@
 - Closest to bpmux's pair mode but tied to Windsurf's editor
 - AIs don't talk to each other
 
+### Gas Town (Steve Yegge)
+- Multi-agent workspace manager that orchestrates 20-30 Claude Code instances in parallel
+- "The Mayor" is a Claude instance with full workspace context, you tell it what to do, it delegates
+- Four failed iterations before the current design (TypeScript+Temporal → Go monolith → Python scripts → Go)
+- Chose Go because AI models waste tokens on TypeScript's complex type system
+- Key insight: "When work needs to be done, nature prefers colonies" — factories over super-agents
+- Scaling remains unsolved: even experienced teams can't coordinate more than ~2-3 people at max agent velocity
+- "Nobody knows how" to scale this to large companies — orgs are adopting "one engineer per repo" instead
+- 100% vibe coded, 20 days old at launch, "rough but the clearest picture of orchestrated AI development"
+
+### Beads (Steve Yegge)
+- Persistent structured memory for coding agents — a git-backed JSONL issue tracker
+- Solves inter-session amnesia: agents lose context between 10-minute sessions, Beads provides continuity
+- Dependency-aware task graph: blocks, depends_on, relates_to, parent-child hierarchies
+- `bd ready --json` lets agents query actionable work deterministically
+- Multi-agent coordination via shared git repo with AI-assisted merge conflict resolution
+- 18.7k GitHub stars, actively maintained (v0.59.0 as of March 2026)
+- Born from failure: Yegge's previous approach generated 605+ markdown plan files — "chaos"
+- Core insight (from Claude): "Beads isn't issue tracking for agents — it's external memory for agents"
+
 ## Failure Modes (What Went Wrong)
 
 ### File Conflicts
@@ -61,6 +81,21 @@ Multiple agents without coordination primitives create duplicate work or conflic
 
 **bpmux implication:** For v1, this is less relevant (2 peers, communication channel only). For v2+, task claiming and work partitioning become critical.
 
+### Plan Proliferation (Beads)
+Yegge's pre-Beads approach generated 605+ markdown plan files. Agents create nested plans that recurse endlessly, forget outer context, and restart planning from scratch at deeper levels. Markdown doesn't scale as a planning medium for agents.
+
+**bpmux implication:** bpmux's message log is a stream, not a planning document. This avoids plan proliferation by design. But if we ever add structured task management (v2+), Beads' graph-based approach is the proven alternative to markdown plans.
+
+### Speed Creates Coordination Problems (Gas Town)
+At maximum agent velocity, 2-hour-old information is "ancient." Coordination becomes essential, not optional. Even experienced teams can't effectively coordinate more than 2-3 people at agent-assisted speeds. Organizations are giving up on team scaling and going "one engineer per repo."
+
+**bpmux implication:** This is a direct validation of bpmux's reason to exist. If coordination breaks down at speed, and the industry is defaulting to solo work as a workaround, then a tool that makes coordination cheap is high value. bpmux's real-time P2P chat is faster coordination than git-based async.
+
+### Orchestrator Iteration (Gas Town)
+Yegge went through four failed orchestrator designs before Gas Town worked: TypeScript+Temporal (too heavyweight), Go monolith (wrong problem), Python scripts (too ad-hoc), then finally a Go implementation. The lesson: orchestration is hard to get right, and simpler is better.
+
+**bpmux implication:** v1 is deliberately simple — a message bus, not an orchestrator. This is the right starting point. Let the orchestration patterns emerge from usage rather than designing them upfront.
+
 ## Patterns That Work (What to Steal)
 
 ### Specialization Over Generalists
@@ -88,6 +123,21 @@ AGENTS.md / CLAUDE.md files that capture patterns, gotchas, and style rules so e
 
 **bpmux application:** Already in the spec (CLAUDE.md and AGENT_WORKFLOW.md as story 0 prerequisites). bpmux's persistent message log adds another layer — the AI reads the history of past decisions, not just static rules.
 
+### External Memory Over Markdown Plans (Beads)
+Structured, queryable task storage beats markdown files. Agents need to query "what's ready to work on?" deterministically, not parse a plan document. Git-backed JSONL with dependency tracking gives agents a database they can reason about.
+
+**bpmux application:** The persistent message log is bpmux's version of external memory — but for conversations, not tasks. If bpmux adds task management (v2+), Beads' architecture (git-backed, dependency-aware, query-friendly) is the model to follow. Could even integrate with Beads directly rather than building a competing task system.
+
+### Transparency at Velocity (Gas Town)
+When agents move fast, everything must be visible. Yegge insists on workflows that are "all transparent, announced, all the time." Hidden agent work at high velocity leads to conflicts and wasted effort.
+
+**bpmux application:** Already a core principle — "everything is visible to everyone." Validated by Gas Town's experience at scale.
+
+### Simplicity in Agent Code (Gas Town)
+Yegge chose Go over TypeScript because AI models waste tokens on complex type systems. Simple code is easier for agents to understand and generate correctly.
+
+**bpmux application:** Rust is more complex than Go, but bpmux's agent-facing surface is simple: MCP tools with clear contracts. The complexity is in the transport layer (WebRTC), not in the AI-facing interface.
+
 ### Right-Size Teams (3-5 Agents)
 Costs scale linearly, coordination overhead increases non-linearly. Beyond 5 agents, diminishing returns. 5-6 tasks per agent keeps everyone productive.
 
@@ -105,7 +155,9 @@ The industry is building multi-agent from the **solo developer** direction — o
 - Solo multi-agent: coordination is between AIs, human is orchestrator
 - Pair programming with AI: coordination is between human-AI pairs, humans are collaborators
 
-bpmux occupies unique territory. The closest existing tools (Claude Agent Teams, VS Code Multi-Agent) solve orchestration. bpmux solves collaboration.
+bpmux occupies unique territory. The closest existing tools (Claude Agent Teams, VS Code Multi-Agent, Gas Town) solve orchestration. bpmux solves collaboration. Beads solves memory. These are complementary, not competing — bpmux could integrate with Beads for task tracking while providing the real-time communication channel that none of these tools have.
+
+Yegge's observation that "nobody knows how to scale coordination to large companies" and the industry default of "one engineer per repo" is a direct validation of bpmux. If coordination is the unsolved problem, and everyone else is avoiding it, then a tool that makes coordination cheap has outsized value.
 
 ## Sources
 
@@ -114,3 +166,8 @@ bpmux occupies unique territory. The closest existing tools (Claude Agent Teams,
 - [Building a C compiler with parallel Claudes](https://www.anthropic.com/engineering/building-c-compiler)
 - [The Code Agent Orchestra — Addy Osmani](https://addyosmani.com/blog/code-agent-orchestra/)
 - [AI Agents Collaborate Like a Dev Team](https://medium.com/coding-nexus/how-i-got-my-ai-coding-agents-to-talk-plan-and-code-together-like-a-real-dev-team-8ccde98de886)
+- [Welcome to Gas Town — Steve Yegge](https://steve-yegge.medium.com/welcome-to-gas-town-4f25ee16dd04)
+- [The Future of Coding Agents — Steve Yegge](https://steve-yegge.medium.com/the-future-of-coding-agents-e9451a84207c)
+- [Introducing Beads — Steve Yegge](https://steve-yegge.medium.com/introducing-beads-a-coding-agent-memory-system-637d7d92514a)
+- [Gas Town GitHub](https://github.com/steveyegge/gastown)
+- [Beads GitHub](https://github.com/steveyegge/beads)
