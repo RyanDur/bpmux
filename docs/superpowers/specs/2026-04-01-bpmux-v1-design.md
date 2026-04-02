@@ -24,7 +24,7 @@ Both views show the same conversation. When one AI broadcasts its reasoning, the
 
 At its core, bpmux is a **general-purpose shared environment** for stigmergic coordination — the trace left by one participant's action stimulates the next action by another. No central orchestrator. No encoded coordination patterns. The coordination emerges from the shared space, not from a manager directing it. This follows both Grassé's stigmergy (1959), Crowston's finding that FLOSS teams coordinate through shared artifacts without direct communication (Bolici, Howison & Crowston, 2016), and Sutton's Bitter Lesson (2019) — that general methods outperform domain-specific knowledge encoding over time. bpmux hypothesizes that stigmergic coordination applies to real-time conversation, not just asynchronous code artifacts — this is an informed design choice, not a validated extension. v1 is sign-based stigmergy (messages as signals). v2 adds sematectonic stigmergy (code changes as traces). The working agreement (Ground Control / Major Tom) is a human process discipline carried in `AGENT_WORKFLOW.md`, not encoded into bpmux's logic — different teams can use different agreements without changing the tool.
 
-**Everything is visible to everyone.** There are no private channels or hidden messages. AI-to-AI messages are visible to both humans. Human messages are visible to both AIs. The humans always see the full, unfiltered conversation — including what the AIs are saying to each other. This transparency is a feature: Ground Control can see exactly what the AIs are reasoning about, catch mistakes, and intervene. (The AIs see a bounded window for token efficiency, but the humans see everything.)
+**Everything is visible to everyone.** There are no private channels or hidden messages. AI-to-AI messages are visible to both humans. Human messages are visible to both AIs. The humans always see the full, unfiltered conversation — including what the AIs are saying to each other. This transparency is a feature: the humans can see exactly what the AIs are reasoning about, catch mistakes, and intervene. (The AIs see a bounded window for token efficiency, but the humans see everything.)
 
 ## Architecture
 
@@ -371,7 +371,7 @@ A P2P group chat for AI pair programming sessions. Prove the concept, dogfood so
 **What v1 is testing beyond the technology:**
 - Does stigmergic coordination work in real-time chat? (Crowston proved it for async code artifacts — real-time conversation is our untested hypothesis)
 - Does the persistent message log actually reduce context loss across sessions, or is it noise?
-- Do humans stay engaged (Ground Control) or defer to the AIs (commitment deficit)?
+- Do humans stay engaged or defer to the AIs (commitment deficit)?
 - Where in the coding workflow do decision-making bottlenecks appear?
 - **Cognitive debt:** After a session, can you explain why the code is the way it is? Can a new AI session? If the answer is "read the bpmux log" — debt prevented. If the answer is "I don't know, it just works" — debt accumulating.
 - **Intent debt:** When a new AI session starts and reads the log, does it have enough rationale to make safe changes? Or does it just see what happened without understanding why?
@@ -388,7 +388,7 @@ A P2P group chat for AI pair programming sessions. Prove the concept, dogfood so
 ### v2 — The Pairing Platform
 bpmux becomes the coding environment. Claude and other models run inside bpmux, not the other way around. Solo orchestration (one human + multiple AIs) may prove more impactful than team pairing — practitioner accounts (Yegge/Gas Town, Wills' 20-agent experiment) and Google DeepMind's 2025 study on agent system scaling report that coordination beyond 2-3 people at agent velocity remains unsolved, while single-developer orchestration is where the most productivity gains are being reported. v2 prioritizes the solo orchestration experience alongside pair support.
 
-Historical precedent (assembly → FORTRAN, the efficiency paradox): every abstraction transition expanded the scope of what gets built. v2 should support bigger units of work — stories that are application-level, not just feature-level. The working agreement evolves: as models prove reliable, the human delegates larger scopes of autonomous work while retaining architectural judgment and final approval. The agreement is designed to be loosened over time, not locked in place.
+Historical precedent (assembly → FORTRAN, the efficiency paradox): every abstraction transition expanded the scope of what gets built. v2 should support bigger units of work — stories that are application-level, not just feature-level.
 
 - Integrated coding tools (file editing, terminal, search, LSP)
 - AI actions visible in the shared chat (edits, commands, reasoning)
@@ -412,8 +412,7 @@ Scale from 1:1 pairing to full team collaboration. Espinosa et al.'s research on
 - Structured message protocol (typed messages for file changes, intent, conflicts)
 - AI-to-AI delegation protocol (Claude delegates tasks to local models with structured handoff)
 - Cross-project context (AI retains learnings across different codebases/engagements)
-- Swarm-style exploration (multiple AI candidates generate competing solutions within a session, best is selected — the Clone Wars pattern from Initial Capacity, complementary to the hierarchical working agreement)
-- Evolving working agreements (as models improve, the human delegates larger scopes; bpmux could track and surface agreement changes over time, making the trust evolution visible)
+- Swarm-style exploration (multiple AI candidates generate competing solutions within a session, best is selected — the Clone Wars pattern from Initial Capacity)
 
 ## When to Use bpmux
 
@@ -726,7 +725,7 @@ peer_ai = "untrusted"
 ```
 
 **Defense layer 5 — Human in the loop:**
-The working agreement already establishes that Ground Control (the human) owns all decisions. bpmux reinforces this:
+bpmux ensures the human always has the information needed to make decisions:
 - AI tools cannot change trust levels — only the human can via TUI/CLI
 - The TUI shows all messages unfiltered so the human always has the full picture
 - The visibility markers show what the AI has seen — if a suspicious message was delivered, the human knows
@@ -751,7 +750,7 @@ The working agreement already establishes that Ground Control (the human) owns a
 | Prompt injection via peer messages | Provenance labeling + MCP tool safety descriptions + injection pattern detection + untrusted wrapping |
 | Context poisoning | Bounded message window (default 50) limits exposure; visibility markers show human what AI has seen |
 | AI-to-AI manipulation | Peer AI untrusted by default; messages wrapped with safety prefix |
-| Exfiltration via AI | Human in the loop; AI cannot change trust levels; Ground Control owns all decisions |
+| Exfiltration via AI | Human in the loop; AI cannot change trust levels; humans own all decisions |
 | Privilege escalation via message content | Role impersonation blocking; `from` field set by node, not message content |
 
 ## Risks
