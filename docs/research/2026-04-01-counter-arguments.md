@@ -1,6 +1,6 @@
-# Counter-Arguments: Research That Challenges bpmux's Approach
+# Known Risks: Research-Informed Constraints on Stigmergic Coordination
 
-*Compiled April 1, 2026. Intellectual honesty requires looking at what might be wrong.*
+*Compiled April 1, 2026. These aren't arguments against bpmux's approach — they're properties of stigmergic systems that need to be managed.*
 
 ---
 
@@ -58,9 +58,9 @@
 
 **The challenge to bpmux:** The transparency principle ("everything is visible to everyone") means the human sees ALL AI-to-AI communication. If two AIs are actively reasoning about the codebase, the chat stream could be overwhelming. The human might start ignoring it, defeating the purpose.
 
-**Our response:** The bounded read window helps — the AI sees 50 messages, not everything. But the HUMAN sees everything in the TUI/Web UI. There's no corresponding "awareness budget" for the human view. We might need a way to collapse or filter AI-to-AI messages in the TUI — showing them on demand rather than inline. But this conflicts with transparency.
+**Our response:** The bounded read window helps — the AI sees 50 messages, not everything. But the HUMAN sees everything in the TUI/Web UI. There's no corresponding "awareness budget" for the human view. In stigmergic terms, this is pheromone oversaturation — too many traces in the environment make it harder, not easier, to coordinate. Ant colonies solve this through pheromone evaporation (old signals fade). bpmux may need an equivalent — older messages fading visually, AI-to-AI chatter collapsible, or a focus mode that highlights only recent activity. Dogfooding will reveal the right balance.
 
-**Risk level:** Medium. Tension between transparency and usability. Dogfooding will reveal whether full transparency is actually useful or whether humans need a filtered view.
+**Risk level:** Medium. Not a tension between transparency and usability, but a signal-to-noise problem inherent in any stigmergic system. The traces need to be visible but not overwhelming.
 
 ---
 
@@ -74,13 +74,15 @@
 | Commitment deficits | Medium-High | Working agreement, human sign-off | Process control only — fragile |
 | Awareness overload | Medium | Bounded AI window; human view TBD | Not yet mitigated for human view |
 
-**The honest assessment:** None of this research says bpmux is the *wrong* approach. But it does say the approach has known failure modes that need to be monitored during dogfooding. The two biggest risks are:
+**The honest assessment:** None of this research says bpmux is the *wrong* approach. The risks are inherent to stigmergic systems, not specific to bpmux's design:
 
-1. **Commitment deficits** — the human disengages because the AIs are "handling it." This is a behavioral risk, not a technical one, and the working agreement is the only defense.
+1. **Commitment deficits** — agents (human or AI) disengage when the environment seems to be self-coordinating. In ant colonies, this doesn't happen because ants are hardwired to respond to pheromones. Humans aren't. The working agreement is the behavioral defense.
 
-2. **Awareness overload** — the transparency principle may need to evolve into "transparency on demand" rather than "everything visible all the time." The human TUI/Web UI might need message filtering or collapsing for AI-to-AI chatter.
+2. **Pheromone oversaturation** — too many traces in the environment make coordination harder, not easier. Token awareness and bounded windows are the evaporation mechanism. Dogfooding will calibrate the right decay rate.
 
-Both of these should be tracked as explicit risks and watched during dogfooding. If they materialize, they'll require spec changes.
+3. **Human-AI complementarity is hard to achieve** — but the research says it works best with predetermined division of labor (the working agreement) and creation tasks (coding). Both are bpmux's design center.
+
+These should be tracked as explicit risks and watched during dogfooding. They're properties of the system type, not flaws in the design.
 
 ## Sources
 

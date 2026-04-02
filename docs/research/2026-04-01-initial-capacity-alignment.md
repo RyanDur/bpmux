@@ -38,28 +38,24 @@ IC's tech radar puts "TDD for AI applications" in the Adopt ring, arguing it pro
 
 ---
 
-## Interesting Tensions
+## Resolved Through Stigmergy
 
 ### "The Eventual Clone Wars" — swarms over hierarchies
-IC's most provocative article argues that agentic coding should abandon familiar team structures (architect, developer, QA) in favor of computational swarms. Deploy many agents, select the best solution. "Building agentic software is closer to natural selection than it is to a software team."
+IC's most provocative article argues that agentic coding should abandon familiar team structures (architect, developer, QA) in favor of computational swarms. Deploy many agents, select the best solution.
 
-**Tension with bpmux:** bpmux's working agreement explicitly assigns roles — Opus architects, Sonnet implements, Haiku verifies. The Ground Control model is hierarchical by design. IC's "Clone Wars" argues this approach replicates human organizational structures that don't map well to AI capabilities.
+**Initially this seemed like a tension** — bpmux's working agreement assigns hierarchical roles (Opus architects, Sonnet implements, Haiku verifies). But under the stigmergy framing, there is no tension. Both hierarchy and swarm are emergent behaviors from the same shared environment — like ant colonies switching between exploration (scouts searching independently) and exploitation (workers following established trails). bpmux's shared chat is the environment; the working agreement is one behavioral pattern that emerges from it, and swarm-style exploration is another. The same colony, the same pheromone trails, different modes depending on the situation. The v2 roadmap supports both through the same chat.
 
-**Resolution:** Under the stigmergy framing, this tension dissolves entirely. Both hierarchy and swarm are emergent behaviors from the same shared environment — like ant colonies switching between exploration (scouts searching independently) and exploitation (workers following established trails). bpmux's shared chat is the environment; the working agreement is one behavioral pattern that emerges from it, and swarm-style exploration is another. The same colony, the same pheromone trails, different modes depending on the situation. The v2 roadmap supports both: hierarchical delegation (Claude assigns tasks) AND competitive exploration (multiple models tackle the same problem) through the same chat.
+## Aligned Through Simplicity
 
-### "Start with the simplest approach that solves the problem" vs. bpmux's scope
-IC's "Scoping an Agentic Application" article advocates for starting simple and avoiding over-engineering. Don't use agents when pipelines suffice. Don't add complexity unnecessarily.
+### "Start with the simplest approach that solves the problem"
+IC's "Scoping an Agentic Application" article advocates for starting simple. Don't use agents when pipelines suffice.
 
-**Tension with bpmux:** Is bpmux the simplest approach to solving the context handoff problem? A simpler solution might be: a shared markdown file in the repo that both AIs read. Or CLAUDE.md with better conventions. Or just... talking to your partner and manually sharing context.
-
-**Resolution:** The spec addresses this with the "When to Use bpmux" section — it's not for every situation. And v1 IS the simple approach: a message bus. Not an orchestrator, not a coding platform. The question is whether even a message bus is overkill for the problem. Dogfooding will answer this.
+**This aligns with bpmux.** v1 IS the simple approach: a shared environment (message bus), not an orchestrator or coding platform. The spec's "When to Use bpmux" section acknowledges it's not for every situation. And the stigmergy framing reinforces simplicity — don't build a manager, build an environment. Let coordination emerge. Dogfooding will reveal whether even this level of structure is more than needed.
 
 ### Frameworks vs. direct integration
 IC says experienced teams often prefer direct API integration over frameworks for greater control and easier debugging.
 
-**Tension with bpmux:** bpmux is building everything from scratch in Rust rather than extending an existing tool (OpenCode, Claude Code plugins, etc.).
-
-**Resolution:** This aligns with IC's recommendation for experienced teams. bpmux is building the novel part (P2P context sharing) directly rather than fighting a framework's assumptions. The MCP integration is standards-based (per IC's tech radar: MCP in the Trial ring), not proprietary.
+**This aligns with bpmux.** bpmux builds the novel part (P2P stigmergic coordination) directly rather than fighting a framework's assumptions. The MCP integration is standards-based (per IC's tech radar: MCP in the Trial ring), not proprietary.
 
 ---
 
@@ -92,11 +88,11 @@ IC values conversation over documentation. But bpmux's message log IS documentat
 | Vertical story slicing (INVEST) | Explicitly in spec | Strong match |
 | TDD for AI applications | Outside-in TDD | Strong match |
 | Start simple | v1 is a message bus, not a platform | Match |
-| Swarms over hierarchies | Working agreement is hierarchical | Tension — complementary scopes |
+| Swarms over hierarchies | Both emerge from the same stigmergic environment | Resolved — different modes, same environment |
 | AI code review burden | Not addressed for cross-pair review | Gap for v2 |
 | Conversation vs. documentation | Log may create chilling effect | Watch during dogfooding |
 
-**Overall:** IC's published opinions strongly reinforce bpmux's core design decisions — especially around testing, stories, and the role of engineering judgment. The one genuine tension (swarm vs. hierarchy) is a scope difference, not a contradiction. The two concerns (code review and chilling effect) are v2 and dogfooding considerations respectively.
+**Overall:** IC's published opinions strongly reinforce bpmux's core design decisions — testing, stories, engineering judgment, simplicity, and pragmatism all align. The swarm-vs-hierarchy question (Clone Wars) was initially a tension but is resolved through the stigmergy framing: both are emergent behaviors from the same shared environment. The two remaining concerns (cross-pair code review and potential chilling effect of persistent logs) are v2 and dogfooding considerations respectively — not challenges to the approach itself.
 
 ## Sources
 

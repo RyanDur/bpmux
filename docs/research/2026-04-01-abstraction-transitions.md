@@ -70,6 +70,12 @@ The same is true now. The developer who understands architecture, testing, secur
 
 ---
 
+## The Stigmergic View of Abstraction Transitions
+
+Every abstraction transition is a form of stigmergy. The compiler modifies the environment (produces machine code), and that modification enables the next level of work. The practitioner leaves traces (source code in a high-level language), and the compiler responds to those traces. The environment mediates between human intent and machine execution.
+
+AI-assisted development is the next layer. The developer leaves traces (natural language intent, test specifications, architectural decisions), and the AI responds by modifying the shared artifact (the codebase). bpmux makes these traces visible to all participants — not just the AI that responds to them, but the partner's AI and both humans. The shared environment expands from "one developer + one compiler" to "multiple developers + multiple AIs + a shared conversation about the work."
+
 ## What This Means for bpmux
 
 ### Our ideas need to become bigger

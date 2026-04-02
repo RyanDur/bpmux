@@ -28,11 +28,9 @@ The v2/v3 vision (multiple AIs coordinating) doesn't need a complex orchestratio
 ### Swarm Intelligence — No CEO Ant
 A single ant is not particularly smart. There is no "CEO ant" directing traffic. The complex, efficient behavior of the colony emerges from simple local interactions between thousands of autonomous individuals. Swarm intelligence systems consist of simple agents interacting locally with one another and with their environment.
 
-**Inspiration for bpmux:** The working agreement has Opus as "architect/PM" — a hierarchical role. IC's Clone Wars article challenges this: maybe the future isn't specialized roles but competitive swarms. Both patterns have value:
-- **Hierarchy** (working agreement) — good when you know the approach and need disciplined execution
-- **Swarm** (competitive exploration) — good when you don't know the approach and need to search the solution space
+**Inspiration for bpmux:** Ant colonies don't choose between hierarchy and swarm — they do both, depending on the situation. Scouts explore independently (swarm). Workers follow established trails to known food (hierarchy). Same colony, same pheromone trails, different modes.
 
-bpmux could support both: hierarchical delegation through the chat (Claude assigns tasks to local models) AND swarm-style exploration (multiple models tackle the same problem, human selects the best). The chat is the environment for both patterns.
+bpmux works the same way. The shared chat is the environment. The working agreement (Opus architects, Sonnet implements) is one emergent pattern — disciplined execution along an established trail. Swarm-style exploration (multiple models tackle the same problem, human selects the best) is another. Both use the same chat, the same message log, the same simple rules. The environment enables both without choosing between them.
 
 ---
 
