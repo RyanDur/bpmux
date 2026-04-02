@@ -121,6 +121,16 @@ WebRTC requires an initial handshake to exchange connection information (SDP off
 
 bpmux provides multiple ways for humans to see and participate in the conversation. All interfaces show the same chat, read from the same log, and support the same visibility markers. Use whichever fits your workflow.
 
+**Message tiers (awareness management):**
+Not all messages deserve the same visual prominence. Informed by calm technology principles (Weiser & Brown 1996, Case 2015), progressive disclosure (Nielsen 1995), and information scent theory (Pirolli & Card, PARC), bpmux renders messages at four tiers:
+
+- **Focal** — needs human action (decision request, conflict, error). Full content, highlighted, persistent until acknowledged.
+- **Active** — human-relevant information (AI announcing work, partner's message). Full content, normal rendering.
+- **Peripheral** — AI-to-AI context, routine status. Collapsed to one-line summary (sender + topic), expandable on demand.
+- **Ambient** — heartbeats, acknowledgments. Minimal indicator or hidden until scrolled to.
+
+Tiers are assigned based on sender, recipient, and content patterns. The human can override: expand any message, pin to focal, mute a participant, or `/focus` to hide below Active. Tiers are a rendering concern — they don't affect the message log or what the AI sees via `read_messages`. Transparency is preserved: everything is available, not everything is prominent. (See `docs/research/2026-04-01-awareness-design.md` for the full design rationale.)
+
 **TUI (Terminal User Interface):**
 For terminal users (Claude Code workflow). Built with `ratatui` + `crossterm`:
 
