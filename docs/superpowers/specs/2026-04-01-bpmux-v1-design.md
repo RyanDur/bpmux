@@ -95,7 +95,7 @@ The MCP server and TUI (or stdout logger in headless mode) run concurrently with
 The session's message log is written to `~/.bpmux/sessions/<session-id>/messages.jsonl` — one JSON object per line. This file is the single source of truth. `read_messages` reads from the log file, not from an in-memory channel. This guarantees no messages are lost due to slow receivers.
 
 The log serves multiple purposes beyond message delivery:
-- **Decision journal:** AI reasoning captured in the chat is a permanent record of what was decided and why. Research shows decision journaling improves forecasting accuracy by 19% (Behavioral Science & Policy, 2024) by creating a feedback loop that corrects hindsight bias. The log enables this naturally — teams can review past reasoning against actual outcomes.
+- **Decision journal:** AI reasoning captured in the chat is a permanent record of what was decided and why. Research on decision journaling (Farnam Street, Alliance for Decision Education) shows that recording reasoning before outcomes creates a feedback loop that corrects hindsight bias and improves future decision quality. The log enables this naturally — teams can review past reasoning against actual outcomes.
 - **Retrospective artifact:** The US Army's After Action Review (AAR) — "one of the most successful organizational learning methods yet devised" — compares intended outcomes to actual outcomes. The bpmux log is the source material for engineering retrospectives: what was discussed, decided, implemented, and what actually happened. Searchable, persistent, and complete.
 
 ### Signaling
@@ -125,17 +125,9 @@ WebRTC requires an initial handshake to exchange connection information (SDP off
 
 bpmux provides multiple ways for humans to see and participate in the conversation. All interfaces show the same chat, read from the same log, and support the same visibility markers. Use whichever fits your workflow.
 
-**Message tiers (awareness management):**
-Not all messages deserve the same visual prominence. Informed by calm technology principles (Weiser & Brown 1996, Case 2015), progressive disclosure (Nielsen 1995), and information scent theory (Pirolli & Card, PARC), bpmux renders messages at four tiers:
+**Message rendering (v1):** All messages render at equal prominence in v1. This is intentionally simple — dogfooding will reveal what message patterns are actually noisy before we add complexity.
 
-- **Focal** — needs human action (decision request, conflict, error). Full content, highlighted, persistent until acknowledged.
-- **Active** — human-relevant information (AI announcing work, partner's message). Full content, normal rendering.
-- **Peripheral** — AI-to-AI context, routine status. Collapsed to one-line summary (sender + topic), expandable on demand.
-- **Ambient** — heartbeats, acknowledgments. Minimal indicator or hidden until scrolled to.
-
-Tiers are assigned based on sender, recipient, and content patterns. The human can override: expand any message, pin to focal, mute a participant, or `/focus` to hide below Active. Tiers are a rendering concern — they don't affect the message log or what the AI sees via `read_messages`. Transparency is preserved: everything is available, not everything is prominent. (See `docs/research/2026-04-01-awareness-design.md` for the full design rationale.)
-
-**Message age decay:** Older messages gradually fade in visual prominence, inspired by pheromone evaporation in ant colony optimization — where old trails lose influence so the colony doesn't get stuck on outdated paths (Dorigo, 1992). In bpmux, a decision made 2 hours ago should not have the same visual weight as one made 2 minutes ago. Messages age from Active → Peripheral → Ambient over time. The decay rate is configurable. Pinned messages resist decay. This prevents the chat from being dominated by stale context while keeping recent activity prominent.
+**Message tiers and age decay (v1.x — designed, deferred):** Research on calm technology (Weiser & Brown 1996, Case 2015), progressive disclosure (Nielsen 1995), information scent (Pirolli & Card, PARC), and pheromone evaporation (Dorigo 1992) informs a four-tier rendering model (focal / active / peripheral / ambient) with age-based decay. The full design is documented in `docs/research/2026-04-01-awareness-design.md` and ready to implement when dogfooding reveals the need. The design principles: transparency is about availability, not salience; the human controls the zoom level; tiers are a rendering concern that doesn't affect the message log or `read_messages`.
 
 **TUI (Terminal User Interface):**
 For terminal users (Claude Code workflow). Built with `ratatui` + `crossterm`:
