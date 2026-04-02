@@ -22,14 +22,15 @@ The definitive meta-analysis (Hannay et al., 2009 — 18 studies) found that pai
 
 **Key finding:** It takes 23 minutes to regain focus after an interruption. Interrupted tasks take twice as long and contain twice as many errors.
 
-Gloria Mark's research at UC Irvine found that knowledge workers switch tasks every 3 minutes on average and experience significant interruptions every 11 minutes. Each switch costs cognitive residue — attention that stays stuck on the previous task (Sophie Leroy, University of Washington). Mark's research shows it takes an average of 23 minutes and 15 seconds to fully regain focus after a significant interruption.
+Gloria Mark's research at UC Irvine found that knowledge workers switch tasks every 3 minutes on average and experience significant interruptions every 11 minutes, taking an average of 23 minutes and 15 seconds to fully regain focus. Each switch costs cognitive residue — attention that stays stuck on the previous task (Sophie Leroy, University of Washington). Rubinstein, Meyer & Evans (2001, *Journal of Experimental Psychology*) found that mental blocks from task switching can cost as much as 40% of productive time.
 
 **Why this is relevant to bpmux:** The current "summarize context, paste into commit message, partner's AI reads it" workflow is a forced context reconstruction. bpmux's hypothesis: a persistent shared message log reduces this cost by providing continuity across AI sessions. The context switching research validates that the *problem* is real and costly. Whether bpmux's approach to solving it is effective remains to be tested through dogfooding.
 
 **Sources:**
 - [Gloria Mark, UC Irvine — Context switching research](https://www.ics.uci.edu/~gmark/)
 - [Sophie Leroy — Attention residue](https://www.sciencedirect.com/science/article/abs/pii/S0749597809000399)
-- [Context Switching Cost for Developers](https://super-productivity.com/blog/context-switching-costs-for-developers/)
+- [Rubinstein, Meyer & Evans (2001) — Executive Control of Cognitive Processes in Task Switching (APA)](https://www.apa.org/pubs/journals/releases/xhp274763.pdf)
+- [APA — Multitasking: Switching Costs](https://www.apa.org/topics/research/multitasking)
 
 ---
 
@@ -79,7 +80,11 @@ Gutwin and Greenberg's framework for workspace awareness (2002) identifies the e
 
 Research on complementarity in human-AI collaboration (2024-2025) shows that the ideal is "complementary team performance — a level of performance that neither can attain individually." However, this is **rarely observed** in practice, suggesting insufficient understanding of how to design for it. The key: AI automates easy tasks, augments humans on medium tasks, and humans handle hard tasks without AI. Optimized role specification leads to faster decisions, higher quality, and greater satisfaction.
 
-**Why this is relevant to bpmux:** The Ground Control / Major Tom working agreement is a role specification design: Claude handles code generation (a creation task, where the Nature study found positive effects), the human handles decisions and quality judgment. The research found that "predetermined division of labor" showed promise but was understudied (only 3 studies). Our working agreement is an instance of this understudied approach. The research suggests it's a promising direction, not a proven one.
+**Why this is relevant to bpmux:** The Ground Control / Major Tom working agreement is a role specification design. The Nature study found positive effects for creation tasks and that "predetermined division of labor" showed promise (only 3 studies explored it). Important caveat: the study's "creation tasks" focused on content generation (text, images). Coding is not explicitly classified in their taxonomy — we infer it fits as a creation task, but the paper does not make this classification. The research suggests predetermined division of labor is a promising direction, not a proven one. Our working agreement is an instance of this understudied approach.
+
+**Sources:**
+- [Vaccaro, Almaatouq & Malone (2024) — Nature Human Behaviour](https://www.nature.com/articles/s41562-024-02024-1)
+- [MIT Sloan summary](https://mitsloan.mit.edu/press/humans-and-ai-do-they-work-better-together-or-alone)
 
 **Source:** [Complementarity in Human-AI Collaboration: Concept, Sources, and Evidence](https://www.tandfonline.com/doi/full/10.1080/0960085X.2025.2475962)
 

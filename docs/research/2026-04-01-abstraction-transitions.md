@@ -38,7 +38,9 @@ Assembly programmers opposed FORTRAN on three grounds:
 
 Richard Hamming observed: "The opposition to FORTRAN and any automatic coding system seems to me very very high. And the courage [Backus] had to persist I think should be recognized."
 
-FORTRAN won. Compilers improved dramatically over subsequent decades. What was formerly a laborious task of manual instruction-level programming could now be expressed at a much higher level of abstraction (IBM's historical accounts describe order-of-magnitude reductions in program length). The programmers who resisted weren't replaced — the demand for programmers grew as the scope of what software could do expanded. Some assembly experts moved into compiler development and systems programming, though the claim that resisters specifically became compiler writers is a commonly told narrative, not a documented historical finding.
+FORTRAN won. Compilers improved dramatically over subsequent decades. IBM's documentation records a specific example: a programmer wrote 47 FORTRAN statements that the IBM 704 compiled into approximately 1,000 machine instructions (Backus et al., "The FORTRAN Automatic Coding System," 1957; [IBM History](https://www.ibm.com/history/fortran); [original paper, Computer History Museum](https://archive.computerhistory.org/resources/text/Fortran/102663113.05.01.acc.pdf)). Modern optimizing compilers (GCC, LLVM) generally match or exceed hand-written assembly for general-purpose code, though hand-tuned assembly still wins in narrow domains (SIMD-heavy, embedded, cryptographic routines). This is practitioner consensus in the systems programming community, not a single definitive study.
+
+The programmers who resisted weren't replaced — the demand for programmers grew as the scope of what software could do expanded. Some assembly experts moved into compiler development and systems programming, though the claim that resisters specifically became compiler writers is a commonly told narrative, not a documented historical finding.
 
 And critically: **programmers didn't write less code. They wrote orders of magnitude more, tackling problems that would have been economically impossible before.**
 
@@ -72,9 +74,13 @@ The same is true now. The developer who understands architecture, testing, secur
 
 ## The Stigmergic View of Abstraction Transitions
 
-We observe a structural similarity between abstraction transitions and stigmergy: the compiler modifies the environment (produces machine code), and that modification enables the next level of work. This is our interpretive lens, not a claim made by the historical sources. No one in the FORTRAN era described what they were doing as stigmergy (Grassé coined the term for termite behavior, not computing).
+The connection between stigmergy and software development is not our invention — it is established academic research. Kevin Crowston at Syracuse University found that in FLOSS (Free/Libre Open Source Software) development, 14 out of 20 multi-developer tasks were completed with no direct communication between developers. Coordination happened through the code artifact itself — traces left in the shared environment that guided subsequent work (Bolici, Howison & Crowston, 2016, *Cognitive Systems Research*).
 
-That said, the structural parallel is useful for design thinking: if AI-assisted development is an abstraction transition where developers leave traces (intent, tests, decisions) and AI responds by modifying the shared artifact, then bpmux's role is to make those traces visible to all participants. This framing informs our design — it doesn't prove it's correct.
+No one in the FORTRAN era used the word "stigmergy," but the structural pattern is the same: the compiler modifies the environment (produces machine code), and that modification enables the next level of work. bpmux extends Crowston's finding from code artifacts to real-time conversation — a richer medium for leaving and responding to traces.
+
+**Sources:**
+- [Bolici, Howison & Crowston (2016) — Stigmergic coordination in FLOSS development teams](https://www.sciencedirect.com/science/article/pii/S1389041715000339)
+- [Crowston — Stigmergy and Implicit Coordination in Software Development](https://www.researchgate.net/publication/282862646)
 
 ## What This Means for bpmux
 

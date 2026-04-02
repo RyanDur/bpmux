@@ -139,9 +139,11 @@ Yegge chose Go over TypeScript because AI models waste tokens on complex type sy
 **bpmux application:** Rust is more complex than Go, but bpmux's agent-facing surface is simple: MCP tools with clear contracts. The complexity is in the transport layer (WebRTC), not in the AI-facing interface.
 
 ### Right-Size Teams
-Claude Code docs recommend 3-5 teammates; Wills ran ~20 agents but reported cognitive fatigue after 3 hours. The general pattern from Brooks' Law — coordination overhead grows faster than team size — applies, though specific numbers for AI agent teams are anecdotal, not studied.
+Claude Code docs recommend 3-5 teammates; Wills ran ~20 agents but reported cognitive fatigue after 3 hours (n=1). Google DeepMind's 2025 research ("Towards a Science of Scaling Agent Systems," 180 agent configurations) found that more agents often degrade performance on sequential tasks and that unstructured agent teams can amplify errors. No study identifies a specific optimal agent count — "3-5" is practitioner heuristic, not a research finding.
 
 **bpmux application:** Relevant for v3 (teams). The 2-peer v1 limit sidesteps the scaling question entirely.
+
+**Source:** [Google DeepMind — Towards a Science of Scaling Agent Systems](https://research.google/blog/towards-a-science-of-scaling-agent-systems-when-and-why-agent-systems-work/)
 
 ### Server-Side Task Coordination
 Shared task lists with claiming, dependencies, and status tracking. File-lock-based claiming prevents race conditions.
