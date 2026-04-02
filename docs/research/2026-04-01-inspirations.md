@@ -116,18 +116,28 @@ High-performing teams know not just the answers but who has which answers. The m
 
 ---
 
-## The Synthesis
+## The Synthesis: Stigmergy Is the Unifying Concept
 
-bpmux draws from all of these:
+Every inspiration on this page is a facet of the same idea: **stigmergy** — coordination through a shared environment rather than through a manager.
 
-- **Stigmergy** for the coordination model (environment as message, not manager as coordinator)
-- **Boids** for the design philosophy (simple rules, emergent complexity)
-- **Jevons Paradox** for the market thesis (efficiency creates demand for coordination)
-- **FORTRAN** for the emotional grounding (this transition is real, valid, and ultimately expansive)
-- **Practical swarm management** for the UX constraints (cognitive fatigue is real, bound the firehose)
-- **Shared mental models** for the collaboration theory (make the invisible visible)
+Stigmergy, coined by Pierre-Paul Grassé in the 1950s to describe termite nest-building, has two forms:
+- **Sign-based:** Signals left in the environment (pheromone trails, messages) that guide behavior
+- **Sematectonic:** Modifications to the artifact itself (nest walls, code changes) that stimulate the next action
 
-The common thread: **simple, transparent, shared environments enable coordination that no amount of top-down planning can match.** bpmux is a shared environment for human-AI collaboration. Keep it simple. Make everything visible. Let the coordination emerge.
+bpmux is a stigmergic system. v1 is sign-based (messages as signals). v2 adds sematectonic (code changes as traces). This framing isn't just a metaphor — it's the architectural principle that explains why bpmux works and why it's designed the way it is.
+
+Every other inspiration maps to a facet of stigmergy:
+
+- **Boids** — stigmergy's design philosophy. Simple local rules, emergent global behavior. bpmux has simple rules (read messages, send messages, relay to peer) that produce emergent coordination.
+- **Swarm intelligence** — stigmergy at scale. No CEO ant, no central orchestrator. bpmux's chat is the environment; the coordination emerges from traces left by participants.
+- **Jevons Paradox** — stigmergy's economic context. Efficiency creates demand. AI makes development cheaper → more software gets built → coordination becomes the bottleneck → a stigmergic coordination tool becomes high-value.
+- **FORTRAN transition** — stigmergy's emotional context. Every abstraction transition faces resistance from the priesthood. The transition is real, valid, and ultimately expansive. The practitioners who leaned in gained a bigger canvas.
+- **Practical swarm management** — stigmergy's constraints. The environment can become noisy (too many pheromone trails). Token awareness, bounded windows, and visibility markers prevent the shared environment from overwhelming its participants.
+- **Shared mental models / Transactive memory** — stigmergy's cognitive dimension. The shared environment doesn't just coordinate actions — it builds shared understanding. "Who knows what" becomes visible through traces in the environment.
+
+**The hierarchy-vs-swarm tension dissolves under this framing.** Ant colonies use both: swarming exploration (scouts search independently) and hierarchical exploitation (workers follow established trails to known food). The same shared environment supports both modes. bpmux's working agreement (hierarchical) and IC's Clone Wars pattern (competitive swarm) aren't opposing philosophies — they're different behaviors that emerge from the same stigmergic environment depending on the situation.
+
+**The core principle:** Don't build an orchestrator. Build a shared environment. Keep it simple. Make traces visible. Let the coordination emerge.
 
 ## Sources
 

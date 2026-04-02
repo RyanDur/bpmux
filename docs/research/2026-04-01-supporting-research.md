@@ -2,6 +2,8 @@
 
 *Compiled April 1, 2026. Academic and industry research that reinforces bpmux's design approach.*
 
+**Unifying lens:** bpmux is a stigmergic coordination system — a shared environment where traces left by one participant stimulate action by another. Each research domain below validates a different facet of this approach: shared mental models explain *why* the shared environment builds understanding, transactive memory explains *how* "who knows what" becomes visible, workspace awareness explains *what* participants need to see, context switching costs explain *what happens without* a shared environment, and the efficiency paradox explains *why there's a market* for one.
+
 ---
 
 ## 1. Pair Programming Effectiveness
