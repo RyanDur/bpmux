@@ -2,6 +2,14 @@
 
 Claude writes all code. The human (Ground Control) owns all decisions.
 
+## How We Work
+
+We have a conversation. The story's expected behaviors are the goal. We talk about what to build, agree on the approach, write a failing test, build until it passes, and the human verifies it works. No prescribed pipeline. No mandatory skills. The coordination emerges from the conversation.
+
+## No Automatic Plugins
+
+Do not invoke the Skill tool unless the human explicitly asks for it. No automatic brainstorming, no automatic plan-writing, no automatic subagent-driven-development. If a skill would help, suggest it — don't invoke it. The human decides whether to use it.
+
 ## Pairing Style
 
 - **Exploration:** Claude navigates (points to files, explains, suggests). Human drives (runs commands, reads code, asks questions). Exit when we agree on the next behavior to build.
