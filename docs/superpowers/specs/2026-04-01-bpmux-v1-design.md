@@ -264,6 +264,21 @@ Not all messages need to reach the AI. bpmux distinguishes:
 
 The AI sees a window. The human sees everything. This means the human can always provide context the AI missed by referencing something from the full log.
 
+**Graceful degradation when AIs hit token limits:**
+
+bpmux never depends on the AI being present. It is a chat that AIs can participate in, not a system that requires AIs to function.
+
+- **One side runs out of tokens:** That developer's AI goes silent — stops calling `read_messages` and `send_message`. The human can still chat via TUI/Web UI. The other side's AI keeps working normally. The session continues as one-AI + two-humans.
+- **Both sides run out:** Both AIs go silent. The session continues as human-to-human chat. The message log keeps accumulating. When tokens replenish (next billing cycle, upgraded plan, new API key), the AIs call `read_messages` and catch up on everything they missed.
+
+**Inactivity detection:** bpmux tracks when each MCP client last called `read_messages`. If a client has been silent for a configurable period (default: 5 minutes), the TUI/Web UI shows a status indicator: `ryan:claude-code — inactive (last seen 5m ago)`. This helps the human distinguish "my AI is thinking" from "my AI hit its token limit and went dark." The inactivity threshold is configurable in `~/.bpmux/config.toml`:
+
+```toml
+[context]
+# Minutes of MCP silence before marking a client as inactive
+inactivity_timeout = 5
+```
+
 **TUI visibility marker:**
 The TUI marks the boundary of what each AI has seen. Each connected MCP client gets its own visibility marker, displayed as a labeled horizontal line in the chat pane (e.g., `── claude-code saw up to here ──`, `── ollama-codellama saw up to here ──`). Messages above a client's marker are outside that AI's current context window. The marker for a given client updates each time that client calls `read_messages`.
 
