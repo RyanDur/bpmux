@@ -6,7 +6,7 @@
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 #[test]
 fn messages_persist_across_session_resumes() {
-    use bpmux::session::{append_message, read_messages, resume_or_create_session, Message};
+    use bpmux::session::{Message, append_message, read_messages, resume_or_create_session};
     use chrono::Utc;
     use tempfile::TempDir;
 
@@ -31,7 +31,10 @@ fn messages_persist_across_session_resumes() {
     let session2 = resume_or_create_session(base.path()).expect("resume session");
 
     // Should be the same directory
-    assert_eq!(session1, session2, "resumed session should be the same directory");
+    assert_eq!(
+        session1, session2,
+        "resumed session should be the same directory"
+    );
 
     // Messages should persist
     let messages = read_messages(&session2).expect("read messages");
