@@ -46,9 +46,9 @@
 
 **The challenge to bpmux:** If developers rely on the AI to carry context and make decisions, they may disengage. "The AI is watching the chat, I don't need to pay attention." This is especially risky in the solo orchestration mode — if Claude is coordinating with local models, the human might check out entirely, losing the "Ground Control" oversight that the working agreement depends on.
 
-**Our response:** The transparency principle and the working agreement are designed to counter this. Ground Control owns all decisions. Nothing ships without human sign-off. The visibility markers show what the AI has seen, keeping the human engaged as the informed decision-maker. But the risk is real — the research says the tendency to disengage is measurable and significant.
+**Our response:** bpmux provides transparency (the human can see everything) and visibility markers (the human knows what the AI has seen). These keep the human *informed* but don't keep them *engaged* — that requires process discipline from the team, which is outside bpmux's scope. bpmux provides the information. Whether the human pays attention is up to them.
 
-**Risk level:** Medium-High. This is the most concerning finding. The working agreement is a process control, not a technical one — it works only if the human follows it.
+**Risk level:** Medium-High. This is the most concerning finding. bpmux mitigates the information problem (the human can see what's happening) but not the behavioral problem (the human choosing to look). The behavioral problem is a team process concern.
 
 ---
 
@@ -68,7 +68,7 @@
 
 | Risk | Severity | Mitigation | Status |
 |---|---|---|---|
-| Human-AI teams underperform on decisions | Medium | Division of labor via working agreement; coding is mixed (creation + decisions) | Partially mitigated |
+| Human-AI teams underperform on decisions | Medium | bpmux provides visible reasoning for human review; division of labor is a team process decision | Partially mitigated (tool provides info, process provides discipline) |
 | Pair programming has mixed evidence | Low-Medium | Solo mode is first-class; not for every task | Mitigated |
 | Communication overhead | Medium | Token awareness, bounded windows | Mitigated by design, defaults TBD |
 | Commitment deficits | Medium-High | Working agreement, human sign-off | Process control only — fragile |
@@ -76,11 +76,11 @@
 
 **The honest assessment:** None of this research says bpmux is the *wrong* approach. The risks are inherent to stigmergic systems, not specific to bpmux's design:
 
-1. **Commitment deficits** — agents (human or AI) disengage when the environment seems to be self-coordinating. In ant colonies, this doesn't happen because ants are hardwired to respond to pheromones. Humans aren't. The working agreement is the behavioral defense.
+1. **Commitment deficits** — agents (human or AI) disengage when the environment seems to be self-coordinating. In ant colonies, this doesn't happen because ants are hardwired to respond to pheromones. Humans aren't. bpmux provides information (transparency, visibility markers) but the behavioral defense against disengagement is a team process concern, not a tool feature.
 
 2. **Pheromone oversaturation** — too many traces in the environment make coordination harder, not easier. Token awareness and bounded windows are the evaporation mechanism. Dogfooding will calibrate the right decay rate.
 
-3. **Human-AI complementarity is hard to achieve** — the research says it works best with predetermined division of labor (the working agreement). Coding is mixed: generation is creation (positive effects), but architecture and design decisions are decision-making (negative effects). The working agreement attempts to route these correctly, but coding is inherently both.
+3. **Human-AI complementarity is hard to achieve** — the research says it works best with predetermined division of labor. Coding is mixed: generation is creation (positive effects), but architecture and design decisions are decision-making (negative effects). How teams divide labor is a process choice. bpmux makes the AI's reasoning visible so the human can exercise judgment — but it doesn't enforce the division.
 
 These should be tracked as explicit risks and watched during dogfooding. They're properties of the system type, not flaws in the design.
 

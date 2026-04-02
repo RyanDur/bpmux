@@ -30,7 +30,7 @@ A single ant is not particularly smart. There is no "CEO ant" directing traffic.
 
 **Inspiration for bpmux:** Ant colonies don't choose between hierarchy and swarm — they do both, depending on the situation. Scouts explore independently (swarm). Workers follow established trails to known food (hierarchy). Same colony, same pheromone trails, different modes.
 
-bpmux works the same way. The shared chat is the environment. The working agreement (Opus architects, Sonnet implements) is one emergent pattern — disciplined execution along an established trail. Swarm-style exploration (multiple models tackle the same problem, human selects the best) is another. Both use the same chat, the same message log, the same simple rules. The environment enables both without choosing between them.
+bpmux works the same way. The shared chat is the environment. Different coordination patterns emerge depending on the situation — disciplined execution along an established trail, or competitive exploration where multiple models tackle the same problem. The team decides which mode to use. bpmux provides the environment; it doesn't impose the pattern.
 
 ---
 
@@ -50,7 +50,7 @@ Addy Osmani articulated the pattern (practitioner blog post, not peer-reviewed):
 ### The Efficiency Paradox — From "Can We?" to "Should We?"
 As activation costs plummet, the constraint shifts from implementation capacity to judgment and taste. The bottleneck becomes "what should we prioritize?" not "can we build this?"
 
-**Inspiration for bpmux:** This is why Ground Control (the human) owns all decisions. As AI handles more implementation, the human's role shifts toward judgment: is this the right thing to build? Is the AI solving the right problem? Is the quality acceptable? bpmux's transparency principle ensures the human has the information to make these judgment calls.
+**Inspiration for bpmux:** As AI handles more implementation, the human's role shifts toward judgment: is this the right thing to build? Is the AI solving the right problem? bpmux's transparency principle ensures the human has the information to make these judgment calls. How the human exercises that judgment is their process, not bpmux's.
 
 ---
 
@@ -61,7 +61,7 @@ John Backus faced a "priesthood of programmers" who regarded with "hostility and
 
 **Inspiration for bpmux:** Every abstraction transition faces this resistance. The current version: "AI can't replace understanding." True — but it doesn't need to replace understanding. It augments it. The assembly programmer's knowledge didn't become worthless; it became the foundation for writing better compilers. Today's engineering judgment won't become worthless; it'll become the foundation for directing AI more effectively.
 
-bpmux is designed for the transition period — when humans still need to be deeply involved (Ground Control), but the tools are getting capable enough to handle larger scopes. The working agreement is explicitly designed to evolve: more AI autonomy as trust is earned.
+bpmux is designed for the transition period — when humans still need to be deeply involved, but the tools are getting capable enough to handle larger scopes. How deeply involved the human stays is their decision, not bpmux's.
 
 ### Richard Hamming's Observation
 "The opposition to FORTRAN and any automatic coding system seems to me very very high. And the courage [Backus] had to persist I think should be recognized."
@@ -135,7 +135,7 @@ Every other inspiration maps to a facet of stigmergy:
 - **Practical swarm management** — stigmergy's constraints. The environment can become noisy (too many pheromone trails). Token awareness, bounded windows, and visibility markers prevent the shared environment from overwhelming its participants.
 - **Shared mental models / Transactive memory** — stigmergy's cognitive dimension. The shared environment doesn't just coordinate actions — it builds shared understanding. "Who knows what" becomes visible through traces in the environment.
 
-**The hierarchy-vs-swarm tension dissolves under this framing.** Ant colonies use both: swarming exploration (scouts search independently) and hierarchical exploitation (workers follow established trails to known food). The same shared environment supports both modes. bpmux's working agreement (hierarchical) and IC's Clone Wars pattern (competitive swarm) aren't opposing philosophies — they're different behaviors that emerge from the same stigmergic environment depending on the situation.
+**The hierarchy-vs-swarm tension dissolves under this framing.** Ant colonies use both: swarming exploration (scouts search independently) and hierarchical exploitation (workers follow established trails to known food). The same shared environment supports both modes. Hierarchical delegation and competitive swarm exploration aren't opposing philosophies — they're different behaviors that emerge from the same environment depending on the situation. bpmux provides the environment. The team chooses the behavior.
 
 **The core principle:** Don't build an orchestrator. Build a shared environment. Keep it simple. Make traces visible. Let the coordination emerge.
 

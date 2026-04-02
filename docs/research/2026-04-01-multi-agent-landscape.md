@@ -70,7 +70,7 @@ Without agent-to-agent communication, the human becomes a relay — copying cont
 ### Verification Outpaced by Generation
 The bottleneck in multi-agent systems is no longer code generation — it's verification. Agents produce code faster than it can be reviewed.
 
-**bpmux implication:** The Ground Control / Major Tom working agreement addresses this. The human owns all decisions. TDD gates every change. The AI doesn't ship without human sign-off.
+**bpmux implication:** bpmux provides visibility into AI reasoning (the human can see what the AI is doing), but it doesn't enforce verification gates. That's a team process decision, not a tool feature. A team using bpmux without TDD or review discipline would still face this risk.
 
 ### Lost System Understanding
 Delegating too much without oversight creates comprehension debt. If the human loses understanding of their own system, they lose the ability to fix it.
@@ -102,7 +102,7 @@ Yegge went through four failed orchestrator designs before Gas Town worked: Type
 ### Specialization Over Generalists
 Practitioners report (Osmani, Yegge, Claude Code docs) that focused agents outperform generalist agents. Assign distinct roles (architect, implementer, reviewer) rather than having every agent do everything. This is practitioner consensus, not a controlled study.
 
-**bpmux application:** Already reflected in the working agreement (Opus architects, Sonnet implements, Haiku verifies) and the solo orchestration mode (Claude as architect, local model as implementer).
+**bpmux application:** bpmux's multi-MCP-client support enables connecting multiple specialized AIs to the same session. How those AIs are specialized (by role, by task, by domain) is a team process decision, not a bpmux feature.
 
 ### Hierarchical Delegation
 Feature leads spawning specialists prevents context fragmentation at the orchestrator level. The lead holds the big picture; specialists hold the details.
@@ -112,7 +112,7 @@ Feature leads spawning specialists prevents context fragmentation at the orchest
 ### Quality Gates at Transitions
 Plan approval before coding, hooks on task completion, human review before merge. The most reliable multi-agent systems gate transitions, not just outputs.
 
-**bpmux application:** Already in the spec via TDD (tests gate implementation), pre-push hooks (quality gates shipping), and the working agreement (Ground Control approves before commit).
+**bpmux application:** Quality gates (TDD, pre-push hooks, review discipline) are team process decisions. bpmux's contribution is making AI reasoning visible so that whatever review process the team uses has the full context available.
 
 ### Git Worktrees for Isolation
 Giving each agent its own worktree eliminates merge conflicts entirely. True parallelism without coordination overhead.

@@ -113,5 +113,5 @@ The research validates that the *problems* bpmux targets are real (context loss,
 | Shared mental models | Shared understanding improves distributed team coordination (Espinosa) | Shared chat across all participants | Strong (peer-reviewed), but studied human teams, not human-AI |
 | Transactive memory | "Who knows what" drives team performance (Wegner, Lewis) | Sender identity, visibility markers | Strong (peer-reviewed), but analogy to AI participants is our inference |
 | Workspace awareness | Real-time awareness enables fluid coordination (Gutwin & Greenberg) | Status indicators, inactivity detection | Strong (peer-reviewed), but studied collaborative editors, not AI chat |
-| Human-AI complementarity | Predetermined division of labor shows promise; creation tasks positive (Nature 2024) | Ground Control working agreement | Strong (meta-analysis), but only 3 studies on division of labor |
+| Human-AI complementarity | Predetermined division of labor shows promise; creation tasks positive (Nature 2024) | Visible reasoning enables human review (tool); division of labor is team process | Strong (meta-analysis), but only 3 studies on division of labor |
 | Verification bottleneck | Generation outpaces review in multi-agent systems (Osmani) | TDD, human sign-off | Practitioner observation (blog post), not peer-reviewed |

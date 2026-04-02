@@ -61,9 +61,9 @@ No one has to write documentation. The conversation IS the intent record. This i
 
 ### The Working Agreement (process, not tool)
 
-Storey's first recommendation: "Require human understanding — at least one team member must fully comprehend each AI-generated change." This is Ground Control. The human owns all decisions. Nothing ships without human sign-off. The working agreement prevents cognitive debt at the process level; bpmux prevents intent debt at the tool level.
+Storey's first recommendation: "Require human understanding — at least one team member must fully comprehend each AI-generated change." bpmux makes this possible by keeping reasoning visible. Whether the team actually requires understanding before shipping is a process decision, not a tool feature.
 
-Storey's fourth recommendation: "Embrace deliberate practices — pair programming, refactoring, TDD." These are the exact practices in bpmux's spec. The connection is not coincidental — they come from the same Pivotal/XP lineage that Storey is drawing on.
+Storey's fourth recommendation: "Embrace deliberate practices — pair programming, refactoring, TDD." These are team process choices. bpmux's contribution: the persistent log captures the reasoning that informs those practices, and the transparent chat makes pair programming across AI sessions possible.
 
 ### Stigmergy and Debt
 

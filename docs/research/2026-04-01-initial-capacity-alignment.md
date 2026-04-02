@@ -21,10 +21,10 @@ IC argues for abandoning semantic labels (unit, integration, acceptance) in favo
 
 **bpmux alignment:** The spec's test pyramid (unit → integration → e2e) uses traditional labels but the CI/CD design supports the fast/slow split: `cargo test` runs fast tests on every push and pre-push; `cargo test --test e2e` runs slow tests separately in CI. The gating structure matches IC's recommendation even if the naming doesn't.
 
-### "The silver bullet isn't the agent — it's the engineer who knows how to wield it" → Ground Control
+### "The silver bullet isn't the agent — it's the engineer who knows how to wield it" → bpmux's transparency
 IC's "Return of the Software Engineer" argues that engineering judgment — understanding the complete software lifecycle, catching what agents miss — is what makes AI useful. Breadth over specialization. The bottleneck is understanding, not coding speed.
 
-**bpmux alignment:** The Ground Control / Major Tom working agreement is this philosophy in action. The human owns decisions, architecture, and quality judgment. The AI writes code. bpmux's transparency principle ensures the human maintains understanding — they see everything the AIs are doing. The research on commitment deficits (humans disengaging) is the exact risk IC's article warns about: if you lose understanding, the AI's speed becomes dangerous, not helpful.
+**bpmux alignment:** bpmux's transparency principle ensures the human can maintain understanding — they see everything the AIs are doing and reasoning about. bpmux provides the information; what the human does with it (how they exercise judgment, how they review, when they intervene) is their process, not bpmux's.
 
 ### Vertical story slicing (INVEST) → bpmux spec's thin vertical slices
 IC's user story article recommends INVEST criteria with vertical slicing — small pieces of full functionality, not horizontal technical layers.
@@ -84,7 +84,7 @@ IC values conversation over documentation. But bpmux's message log IS documentat
 | Stories as conversations | Core design — bpmux IS the conversation | Strong match |
 | Classical testing (real collaborators) | Mandated in spec | Strong match |
 | Fast/slow test split | CI/CD gating structure matches | Strong match |
-| Engineer judgment > AI speed | Ground Control model | Strong match |
+| Engineer judgment > AI speed | Transparency keeps human informed | Strong match |
 | Vertical story slicing (INVEST) | Explicitly in spec | Strong match |
 | TDD for AI applications | Outside-in TDD | Strong match |
 | Start simple | v1 is a message bus, not a platform | Match |
