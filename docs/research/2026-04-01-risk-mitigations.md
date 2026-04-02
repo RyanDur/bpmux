@@ -12,11 +12,13 @@
 
 **Accountability through role clarity.** Lou et al. (2025, "Unraveling Human-AI Teaming," arXiv:2504.05755) found that clear role specification — well-defined roles based on expertise — provides structure that supports effective team coordination. Ambiguous responsibility distribution undermines collaboration. The recommendation: explicit role assignments with adaptive flexibility.
 
-**bpmux already does this.** The Ground Control / Major Tom agreement is explicit role specification: human decides, AI implements, human approves. This isn't just a process document — it's a research-supported mitigation for the commitment deficit. The key addition: **make the role assignment visible in the tool**. The TUI/Web UI could display the current working agreement alongside the chat, reinforcing who owns what.
+**What bpmux provides (tool features):** Visibility markers (descriptive feedback on who has seen what), inactivity detection (signals when a participant goes silent), sender identity (makes clear who said what). These are features that *support* awareness but do not enforce role discipline.
 
-**Feedback systems.** The same review identifies four types of feedback (descriptive, normative, corrective, evaluative) as critical for maintaining engagement. bpmux's visibility markers and inactivity detection are descriptive feedback. The working agreement's review cycle (Opus reviews → Ground Control decides) is evaluative feedback.
+**What the working agreement provides (process):** Role specification (Ground Control decides, AI implements), human sign-off gates, review chains. The working agreement is how the team using bpmux chooses to work — it is not a feature of bpmux itself.
 
-**From risk to strength:** If bpmux's visible role assignments and feedback systems *reduce* commitment deficits compared to working with AI in a tool that has no explicit role clarity (raw Claude Code without a working agreement), then bpmux doesn't just mitigate the risk — it becomes the *solution* to the commitment deficit. The hypothesis: structured, visible collaboration roles keep humans engaged where unstructured AI interaction lets them drift.
+**The gap:** bpmux provides awareness. The working agreement provides accountability. Research says you need both. bpmux cannot take credit for the process discipline of its users. A team using bpmux without a working agreement would still have the commitment deficit risk — bpmux's transparency helps but doesn't solve it alone.
+
+**What bpmux could add as a feature:** Display the team's working agreement in the TUI/Web UI sidebar — making process visible alongside conversation. bpmux could also surface role-related prompts (e.g., "Ground Control hasn't approved this yet") if the team configures their agreement into the tool. This would move role clarity from process-only to process-supported-by-tool. This is a hypothesis worth exploring in dogfooding, not a proven mitigation.
 
 **Source:** [Lou et al. (2025) — Unraveling Human-AI Teaming](https://arxiv.org/html/2504.05755v2)
 
@@ -50,13 +52,15 @@
 
 **AI delegates to humans, not the other way around.** Research published in *Information Systems Research* (Kühl et al., 2022) found a striking asymmetry: human-AI team performance improves when AI delegates work to humans, but NOT when humans delegate to AI. Even when AI delegated to low-performing humans, combined performance improved. By contrast, "humans did not delegate well and did not benefit from delegation to the AI" because humans cannot accurately assess their own capability relative to task difficulty.
 
-**bpmux's working agreement already implements this pattern — partially.** Ground Control (human) makes all decisions, but the AI proposes and implements. The research suggests the optimal direction is actually: **AI identifies what needs human judgment and escalates**. The `read_messages` / `send_message` pattern supports this — the AI can surface decisions for human review through the chat, effectively delegating judgment calls to the human.
+**What bpmux provides (tool features):** A persistent, visible chat where AI reasoning is transparent. When an AI sends a message explaining its reasoning or asking for a decision, that's visible to the human in the TUI/Web UI. The chat is a natural escalation channel — the AI can surface decisions for human review. bpmux makes the AI's reasoning available; it doesn't control how the team divides labor.
 
-**Creation tasks show positive effects.** The Nature study found positive effects for creation tasks (g = 0.19). Coding involves substantial creation (writing new code, generating solutions). The study's authors hypothesize creation tasks succeed because "even when they require creativity, they also involve substantial amounts of routine generation" — which describes AI-assisted coding well.
+**What the working agreement provides (process):** The division of labor (human decides, AI implements). Predetermined division of labor is identified by the Nature study as promising (only 3 of 106 studies explored it). The working agreement is an instance of this approach — but it's a process choice, not a bpmux feature.
 
-**Predetermined division of labor is promising but understudied.** Only 3 of 106 studies in the meta-analysis explored predetermined division of labor. Those 3 showed promise. bpmux's working agreement is an explicit, predetermined division of labor. This doesn't prove it works, but it places bpmux in the small set of approaches the research identifies as promising.
+**Creation tasks show positive effects.** The Nature study found positive effects for creation tasks (g = 0.19). Coding involves substantial creation, though the study doesn't explicitly classify coding in their taxonomy (see supporting-research.md for this caveat).
 
-**From risk to strength:** The research says human-AI teams fail when roles are ambiguous and humans make final calls on tasks where AI is more accurate. bpmux's design inverts this for the dangerous cases: on coding tasks (creation), the AI generates and the human reviews. On architecture decisions (judgment), the human leads and the AI advises through the chat. The visible, persistent record of reasoning in the chat means the human can review AI decisions with full context — addressing the "AI confidence display" recommendation from the meta-analysis.
+**What bpmux could add as a feature:** The Kühl (2022) finding — that AI-to-human delegation outperforms human-to-AI delegation — suggests bpmux could support an explicit escalation pattern. An MCP tool like `request_decision(question, options)` would let the AI formally surface a judgment call to the human through the chat, with the question pinned or highlighted in the TUI/Web UI until the human responds. This moves decision escalation from ad-hoc chat messages to a structured feature. This is a hypothesis for dogfooding.
+
+**From risk to possible strength:** bpmux's persistent chat makes AI reasoning visible — a prerequisite for effective human review of AI decisions. But visibility alone doesn't solve the decision underperformance problem. The working agreement (process) plus visible reasoning (tool) together address it. Neither alone is sufficient.
 
 **Sources:**
 - [Kühl et al. (2022) — Cognitive Challenges in Human-AI Collaboration: Productive Delegation (Information Systems Research)](https://pubsonline.informs.org/doi/10.1287/isre.2021.1079)
@@ -82,11 +86,11 @@
 
 ## Summary
 
-| Risk | Mitigation Strategy | Research Support | bpmux Implementation | Status |
+| Risk | What bpmux provides (tool) | What the working agreement provides (process) | Research Support | Status |
 |---|---|---|---|---|
-| Commitment deficits | Explicit role specification + visible feedback | Lou et al. 2025 (arXiv) | Working agreement + visibility markers | Already designed; add role display to TUI/Web UI |
-| Awareness overload | Peripheral rendering for AI-to-AI messages | Weiser (calm tech), Frontiers in Psych 2023 | Not yet designed | Add peripheral rendering as v1.x feature |
-| Decision underperformance | AI-to-human delegation + creation tasks + predetermined labor division | Kühl 2022 (ISR), Vaccaro 2024 (Nature) | Working agreement + chat-based escalation | Already designed; strengthen AI escalation pattern |
-| Communication overhead | Stigmergic coordination (shared environment, not pairwise channels) | Crowston 2016 (Cognitive Systems Research) | Message log architecture | Already designed — structural property |
+| Commitment deficits | Visibility markers, inactivity detection, sender identity | Role specification, human sign-off gates | Lou et al. 2025 | Tool supports awareness; process provides accountability. Neither alone is sufficient. |
+| Awareness overload | Bounded read windows, token awareness | — | Weiser (calm tech), Frontiers in Psych 2023 | Add peripheral rendering for AI-to-AI messages (v1.x) |
+| Decision underperformance | Persistent visible chat (AI reasoning transparent) | Division of labor, human decides | Kühl 2022 (ISR), Vaccaro 2024 (Nature) | Explore `request_decision` MCP tool for structured escalation |
+| Communication overhead | Stigmergic architecture (shared log, not pairwise channels) | — | Crowston 2016 | Structural property of the design |
 
-**The pattern:** Three of four risks have mitigations that bpmux already implements (working agreement, visibility markers, stigmergic architecture). The fourth (awareness overload) needs a design addition: peripheral rendering for AI-to-AI messages in the TUI/Web UI. This is a small, well-defined feature that can be added as a v1.x iteration informed by dogfooding.
+**The honest picture:** bpmux mitigates two risks structurally (communication overhead via stigmergy, awareness overload via bounded windows + future peripheral rendering). For the other two (commitment deficits, decision underperformance), bpmux provides *supporting* features (visibility, transparency) but the actual mitigation comes from the team's process discipline. The tool makes good process easier to follow — it doesn't replace it.
