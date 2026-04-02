@@ -365,7 +365,7 @@ A P2P group chat for AI pair programming sessions. Prove the concept, dogfood so
 - Single Rust binary
 
 ### v2 — The Pairing Platform
-bpmux becomes the coding environment. Claude and other models run inside bpmux, not the other way around. Solo orchestration (one human + multiple AIs) may prove more impactful than team pairing — industry research shows scaling coordination beyond 2-3 people at agent velocity is unsolved, while single-developer orchestration is where the most productivity gains are being reported. v2 prioritizes the solo orchestration experience alongside pair support.
+bpmux becomes the coding environment. Claude and other models run inside bpmux, not the other way around. Solo orchestration (one human + multiple AIs) may prove more impactful than team pairing — practitioner accounts (Yegge/Gas Town, Wills' 20-agent experiment) and Google DeepMind's 2025 study on agent system scaling report that coordination beyond 2-3 people at agent velocity remains unsolved, while single-developer orchestration is where the most productivity gains are being reported. v2 prioritizes the solo orchestration experience alongside pair support.
 
 Historical precedent (assembly → FORTRAN, the efficiency paradox): every abstraction transition expanded the scope of what gets built. v2 should support bigger units of work — stories that are application-level, not just feature-level. The working agreement evolves: as models prove reliable, the human delegates larger scopes of autonomous work while retaining architectural judgment and final approval. The agreement is designed to be loosened over time, not locked in place.
 
@@ -377,7 +377,7 @@ Historical precedent (assembly → FORTRAN, the efficiency paradox): every abstr
 - Support for larger work scopes (the unit of delegation grows as trust is earned)
 
 ### v3 — Teams
-Scale from 1:1 pairing to full team collaboration. Research on shared mental models shows the coordination payoff is highest for distributed teams — which is bpmux's primary use case. However, industry experience (Yegge/Gas Town) warns that scaling beyond 2-3 people at agent velocity is an unsolved problem. v3 should be informed by real data from v1/v2 dogfooding, not designed upfront.
+Scale from 1:1 pairing to full team collaboration. Espinosa et al.'s research on shared mental models in distributed software teams found the coordination payoff is highest for geographically distributed teams — which is bpmux's primary use case. However, practitioner experience (Yegge/Gas Town) warns that scaling beyond 2-3 people at agent velocity is an unsolved problem. v3 should be informed by real data from v1/v2 dogfooding, not designed upfront.
 
 - N-peer sessions (WebRTC mesh for small teams, SFU relay for larger)
 - Room-based sessions (multiple peers join by room code)
@@ -400,7 +400,7 @@ Pair programming research (Hannay et al., 2009) shows pairing is most valuable f
 
 **Use bpmux when:**
 - Pairing on complex features where shared understanding matters
-- Working remotely (research shows shared mental models are most critical for distributed teams)
+- Working remotely (Espinosa et al. found shared mental models most critical for distributed teams)
 - Switching drivers frequently (the context handoff cost is highest here)
 - Orchestrating multiple AI models (solo orchestration mode)
 - Working across sessions where context loss is painful
@@ -735,7 +735,7 @@ The working agreement already establishes that Ground Control (the human) owns a
 - **WebRTC crate maturity** — `webrtc-rs` has had maintenance gaps. `str0m` is actively maintained but has a different (sans-I/O) API style that may require more integration work. Evaluate both early in the transport story; if neither fits, `libdatachannel` (C library) with Rust FFI bindings is a fallback.
 - **Rust learning curve** — first Rust project. Ownership, borrowing, and async lifetimes will slow early progress. Mitigated by: small scope, known architecture (battleship blueprint), strong type system experience from Kotlin/TypeScript.
 - **MCP SDK availability** — the Rust MCP ecosystem is young. May need to implement the protocol directly. The protocol is simple (JSON-RPC over TCP), so this is not high risk.
-- **Commitment deficits** — research (2025) shows humans invest less effort when working with AI teammates. If the human disengages because the AIs are "handling it," Ground Control oversight breaks down. The working agreement is the defense, but it's a process control, not a technical one. Watch for this during dogfooding. (See `docs/research/2026-04-01-counter-arguments.md`.)
+- **Commitment deficits** — a 2025 study (published in *Computers in Human Behavior*) found evidence of reduced teammate commitment in human-AI teams. If the human disengages because the AIs are "handling it," Ground Control oversight breaks down. The working agreement is the defense, but it's a process control, not a technical one. Watch for this during dogfooding. (See `docs/research/2026-04-01-counter-arguments.md`.)
 - **Awareness overload** — full transparency ("everything visible to everyone") may overwhelm the human when AI-to-AI chatter is high-volume. CSCW research warns that awareness information has a cost. The TUI/Web UI may need message filtering or collapsing for AI-to-AI messages — this would be a v1.x iteration informed by dogfooding. (See `docs/research/2026-04-01-counter-arguments.md`.)
 - **NAT traversal** — symmetric NAT environments (corporate VPNs, strict firewalls) may prevent direct P2P connection. No TURN server is planned for v1. The 5-second ICE gathering window may be insufficient on restrictive networks. Known limitation — document in README. Manual signaling mode is available as a workaround but does not solve the underlying NAT issue.
 
