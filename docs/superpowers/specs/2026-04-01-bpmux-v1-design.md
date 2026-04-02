@@ -445,6 +445,7 @@ Pair programming research (Hannay et al., 2009) shows pairing is most valuable f
 - Not a structured protocol — just text messages
 - Not more than 2 peers — one-to-one pairing only (the message protocol and data model are peer-count-agnostic by design; the 2-peer limit is a transport constraint, not a protocol constraint, so teams can be supported in a future version by swapping the P2P transport for a relay/SFU without changing the message model)
 - Not a local model runner — the M5 Max / MLX integration is a future feature
+- Not a speed limiter — bpmux makes AI reasoning visible and can detect when speed outpaces comprehension (via human participation rate), but it does not throttle how fast AIs produce output. How fast to go is a team decision, not a tool constraint. (Willison 2026: the problem is AI producing faster than humans can understand. bpmux shows you that it's happening; slowing down is up to you.)
 
 ## Technology
 
