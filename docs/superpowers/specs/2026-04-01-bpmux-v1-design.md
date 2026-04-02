@@ -373,8 +373,11 @@ A P2P group chat for AI pair programming sessions. Prove the concept, dogfood so
 - Does the persistent message log actually reduce context loss across sessions, or is it noise?
 - Do humans stay engaged or defer to the AIs (commitment deficit)?
 - Where in the coding workflow do decision-making bottlenecks appear?
-- **Cognitive debt:** After a session, can you explain why the code is the way it is? Can a new AI session? If the answer is "read the bpmux log" — debt prevented. If the answer is "I don't know, it just works" — debt accumulating.
-- **Intent debt:** When a new AI session starts and reads the log, does it have enough rationale to make safe changes? Or does it just see what happened without understanding why?
+- **Cognitive debt:** After a session, can you explain why the code is the way it is? Can a new AI session?
+- **Intent debt:** When a new AI session reads the log, does it have enough rationale to make safe changes?
+
+**How we measure (see `docs/research/2026-04-02-measurement.md` for full detail):**
+bpmux's own data provides six quantitative metrics: context recovery time, message reference rate, session continuity, human participation rate, read cursor patterns, and trust level changes. Three structured qualitative observations supplement the quantitative data. We report observations, not conclusions — at n=1-2, nothing reaches statistical significance.
 
 - Solo mode: persistent chat between you and your AI(s), survives across sessions
 - Pair mode: two developers + two AIs on a shared P2P channel
