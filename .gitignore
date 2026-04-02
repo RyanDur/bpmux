@@ -11,9 +11,8 @@
 # Preview server test files
 .preview/
 
-# Rust (for when we start building)
+# Rust build output
 /target/
-Cargo.lock
 
 # bpmux runtime
 ~/.bpmux/
