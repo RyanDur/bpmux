@@ -3,6 +3,30 @@ use thiserror::Error;
 
 use crate::session::message::Message;
 
+pub fn create_session_dir() -> Result<PathBuf, LogError> {
+    let base = dirs::home_dir()
+        .ok_or_else(|| LogError::Io(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "home directory not found",
+        )))?
+        .join(".bpmux")
+        .join("sessions");
+
+    let session_id = uuid::Uuid::new_v4().to_string();
+    let session_dir = base.join(&session_id);
+    std::fs::create_dir_all(&session_dir)?;
+
+    // Create/update "current" symlink
+    let current = base.join("current");
+    if current.exists() || current.is_symlink() {
+        std::fs::remove_file(&current)?;
+    }
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(&session_dir, &current)?;
+
+    Ok(session_dir)
+}
+
 #[derive(Error, Debug)]
 pub enum LogError {
     #[error("IO error: {0}")]
@@ -81,5 +105,16 @@ mod tests {
         let dir = TempDir::new().expect("temp dir");
         let messages = read_messages(dir.path()).expect("read");
         assert!(messages.is_empty());
+    }
+
+    #[test]
+    fn creates_session_directory() {
+        let dir = create_session_dir().expect("create session");
+        assert!(dir.exists());
+        assert!(dir.is_dir());
+
+        // Clean up
+        std::fs::remove_dir_all(dir.parent().expect("parent").parent().expect("base"))
+            .expect("cleanup");
     }
 }
