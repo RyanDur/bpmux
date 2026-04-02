@@ -245,10 +245,11 @@ In addition to the chat stream, bpmux maintains a set of **shared notes** — pe
 
 **Characteristics:**
 - Notes are visible to all participants — humans and AIs. No private notes. Consistent with the transparency principle.
-- Notes are always included in `read_messages` responses as a separate `notes` array, regardless of the read cursor or window size. They are never truncated by the token budget.
-- Notes are stored in the session log alongside messages but tagged as notes.
+- Notes are always included in `read_messages` responses as a separate `notes` array, regardless of the read cursor or window size.
+- Notes are capped at **20 active notes per session**. When the cap is reached, `save_note` returns an error — the AI must delete an existing note before adding a new one. This prevents unbounded token drain.
+- Notes are stored in the session log alongside messages but tagged as notes. Deletions are logged to the session history for auditability.
 - Notes are displayed in a dedicated section of the TUI/Web UI (e.g., a sidebar or pinned area above the chat).
-- Notes count toward token usage, so AIs should keep them concise. The note size limit is the same as messages (4KB).
+- Notes count toward token usage, so AIs should keep them concise. The note size limit is the same as messages (4KB). Maximum aggregate note payload: 20 x 4KB = 80KB.
 
 ### Token Awareness
 
