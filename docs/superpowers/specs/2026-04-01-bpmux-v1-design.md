@@ -417,6 +417,7 @@ Scale from 1:1 pairing to full team collaboration. Espinosa et al.'s research on
 - Structured message protocol (typed messages for file changes, intent, conflicts)
 - AI-to-AI delegation protocol (Claude delegates tasks to local models with structured handoff)
 - Cross-project context (AI retains learnings across different codebases/engagements)
+- Semantic search over message history (RAG over the log — `search_messages(query: "...")` returns relevant messages regardless of when they were sent, solving the relevance-vs-recency problem. The read cursor handles "what's new"; semantic search handles "what's relevant." Sutton-aligned: search over the log rather than encoding relevance heuristics.)
 - Swarm-style exploration (multiple AI candidates generate competing solutions within a session, best is selected — the Clone Wars pattern from Initial Capacity)
 
 ## When to Use bpmux
