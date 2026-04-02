@@ -21,6 +21,32 @@
 - **Distinguish test types by purpose:** unit (per bounded context), integration (cross-context), e2e (real binary).
 - **Real collaborators over mocks.** Use real implementations wherever feasible (already in spec).
 
+## Functional Programming in Rust (aligns with your Kotlin/TypeScript FP experience)
+
+Rust is "aggressively mixed-paradigm" — FP is native, not bolted on. Your existing FP muscle memory transfers directly:
+
+**What transfers from your TypeScript/Kotlin ROP style:**
+- `Result<T, E>` with `map`, `and_then`, `or_else`, `unwrap_or` → your `Result.map`, `andThen`, `or`, `either`
+- `Option<T>` with the same combinators → your `Maybe` type
+- `?` operator for early returns → your railway-oriented pipelines
+- `enum` with `match` → your sealed classes / discriminated unions
+- Closures as first-class values → your arrow functions
+- `Iterator` trait with `.map()`, `.filter()`, `.fold()` → your functional collection pipelines
+
+**Core FP practices for bpmux:**
+- **Prefer iterators over manual loops.** Rust iterators are lazy (execute only when consumed) and the compiler optimizes them to be as fast as manual `for` loops. Use `.map()`, `.filter()`, `.collect()` for declarative data pipelines.
+- **Immutability by default.** Rust enforces this — variables are immutable unless you write `mut`. This aligns with the spec's "immutability by default" principle and with your existing style.
+- **Algebraic data types (enums) + exhaustive pattern matching.** Use `enum` and `match` instead of inheritance. The compiler ensures every variant is handled. This replaces your Kotlin sealed classes.
+- **Pure functions where possible.** Output depends solely on inputs, no side effects. More testable, more predictable.
+- **Higher-order functions.** Functions that take functions as arguments (`.map()`, `.filter()`, `.fold()`). Same patterns as your TypeScript/Kotlin code.
+
+**Cautions:**
+- **Avoid excessive recursion.** Rust does not guarantee tail-call optimization (TCO). For large datasets, use iterators instead. This is different from languages with TCO (Haskell, Scala).
+- **Pragmatism over purity.** Rust is not Haskell. If a nested iterator chain is harder to read than a simple loop, use the loop. "Idiomatic Rust is whatever is easiest to read and maintain."
+- **Ownership complicates closures.** Closures that capture variables by reference interact with the borrow checker. Use `move` closures when spawning tokio tasks. This is the main Rust-specific learning curve for FP.
+
+**Sources:** [ANSSI Secure Rust Guidelines](https://anssi-fr.github.io/rust-guide/) | [Google Comprehensive Rust](https://google.github.io/comprehensive-rust/)
+
 ## Code Organization
 
 - **Borrowing over cloning.** Prefer `&T` and `&mut T`. Clone only when ownership transfer is needed.
