@@ -17,6 +17,8 @@ A persistent P2P group chat where all four participants (two humans, two AIs) co
 
 Both views show the same conversation. When one AI broadcasts its reasoning, the other AI reads it in its next MCP call. When a human types a message, both AIs and both humans see it. No context is lost, no summaries needed.
 
+At its core, bpmux is a shared environment for stigmergic coordination — participants modify the environment (send messages), and those modifications stimulate action by other participants (read and respond). No central orchestrator. The coordination emerges from the shared space, not from a manager directing it. This is the same pattern that enables ant colonies, Wikipedia, and open source to coordinate without hierarchy.
+
 **Everything is visible to everyone.** There are no private channels or hidden messages. AI-to-AI messages are visible to both humans. Human messages are visible to both AIs. The humans always see the full, unfiltered conversation — including what the AIs are saying to each other. This transparency is a feature: Ground Control can see exactly what the AIs are reasoning about, catch mistakes, and intervene. (The AIs see a bounded window for token efficiency, but the humans see everything.)
 
 ## Architecture
