@@ -232,25 +232,6 @@ Sender identities follow the pattern `<peer-name>:<participant>`:
 
 No structured message types in v1. If patterns emerge (e.g., AIs consistently sending context summaries in a particular format), structured types can be added in a future version.
 
-### Shared Notes
-
-In addition to the chat stream, bpmux maintains a set of **shared notes** — persistent, short-form context visible to all participants. Notes are the distilled ideas that survive when chat messages scroll out of the read window.
-
-**Purpose:** Chat is the conversation. Notes are the conclusions. An AI reads a long discussion about architecture, forms a decision, and pins a note. After context compaction or a new session, the AI gets its unread messages AND all active notes — the important decisions survive even when the conversation that produced them is gone.
-
-**MCP tools:**
-- `save_note(text: string, tag?: string)` — create a shared note. Optional tag for categorization (e.g., `"decision"`, `"idea"`, `"todo"`). Sender identity is attached automatically.
-- `list_notes(tag?: string)` — return all active notes, optionally filtered by tag.
-- `delete_note(id: string)` — remove a note. Any participant can delete any note.
-
-**Characteristics:**
-- Notes are visible to all participants — humans and AIs. No private notes. Consistent with the transparency principle.
-- Notes are always included in `read_messages` responses as a separate `notes` array, regardless of the read cursor or window size.
-- Notes are capped at **20 active notes per session**. When the cap is reached, `save_note` returns an error — the AI must delete an existing note before adding a new one. This prevents unbounded token drain.
-- Notes are stored in the session log alongside messages but tagged as notes. Deletions are logged to the session history for auditability.
-- Notes are displayed in a dedicated section of the TUI/Web UI (e.g., a sidebar or pinned area above the chat).
-- Notes count toward token usage, so AIs should keep them concise. The note size limit is the same as messages (4KB). Maximum aggregate note payload: 20 x 4KB = 80KB.
-
 ### Token Awareness
 
 Messages flowing through bpmux are consumed by AI models, and every message costs tokens. For enterprise users with API keys, this is a rounding error. For individual subscribers on capped plans (e.g., Claude's $20/month subscription), bpmux draining their available usage is a real risk. bpmux must be a responsible steward of the user's token budget.
@@ -400,6 +381,7 @@ Scale from 1:1 pairing to full team collaboration.
 - Dashboard for observability across team AI usage
 
 ### Future explorations
+- Shared notes (pinned, persistent context visible to all — "chat is the conversation, notes are the conclusions." Deferred from v1: the persistent log + read cursor already solve restart context loss, and compaction hasn't been painful enough to justify a second storage concept.)
 - History sync over WebRTC (transfer context between machines via the P2P channel)
 - Structured message protocol (typed messages for file changes, intent, conflicts)
 - AI-to-AI delegation protocol (Claude delegates tasks to local models with structured handoff)
