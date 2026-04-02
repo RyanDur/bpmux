@@ -84,6 +84,21 @@ Rust is "aggressively mixed-paradigm" — FP is native, not bolted on. Your exis
 - **`cargo fmt` enforced.** Already in spec: pre-push hook runs `cargo fmt --check`.
 - **`cargo audit` + `cargo deny` in CI.** Already in spec.
 
+## Project Structure
+
+- **Thin binary.** `src/main.rs` is a thin wrapper that creates the tokio runtime, parses CLI args, and dispatches to `src/lib.rs`. All business logic lives in `src/lib.rs` and its modules. This makes bounded contexts testable without running the full binary.
+- **`pub use` re-exports.** Each bounded context (`signaling/`, `transport/`, `session/`, etc.) has a `mod.rs` or module file that re-exports its public API. Internal structure is hidden. External callers see a flat API.
+- **`Cargo.lock` committed.** bpmux is a binary, not a library. The lock file ensures reproducible builds and goes in git.
+- **`cargo check` for fast feedback.** Faster than `cargo build` — checks types and borrows without codegen. Use during development for quick iteration.
+
+## Naming Conventions (Rust API Guidelines)
+
+- **Types, Traits, Enums:** `PascalCase` — `SessionState`, `SignalingMessage`, `TrustLevel`
+- **Functions, Variables, Modules:** `snake_case` — `read_messages`, `session_code`, `signaling`
+- **Constants, Statics:** `SCREAMING_SNAKE_CASE` — `DEFAULT_MCP_PORT`, `MAX_MESSAGE_SIZE`
+- **Enum variants:** `PascalCase` — `TrustLevel::PeerAi`, `SessionState::Degraded`
+- **Crate/module names:** `snake_case`, no hyphens in module names (hyphens OK in Cargo.toml package name)
+
 ## bpmux-Specific Patterns
 
 - **Bounded contexts as modules.** `signaling/`, `transport/`, `session/`, `mcp/`, `terminal/`, `web/` — each with its own error types, public API, and internal implementation.
