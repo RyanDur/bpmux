@@ -1,9 +1,9 @@
 use ratatui::{
+    Frame,
     layout::{Constraint, Layout},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
-    Frame,
 };
 
 use crate::terminal::app::App;
@@ -23,10 +23,7 @@ pub fn render(frame: &mut Frame, app: &App) {
         .map(|msg| {
             let time = msg.ts.format("%H:%M:%S").to_string();
             Line::from(vec![
-                Span::styled(
-                    format!("[{time}] "),
-                    Style::default().fg(Color::DarkGray),
-                ),
+                Span::styled(format!("[{time}] "), Style::default().fg(Color::DarkGray)),
                 Span::styled(
                     format!("{}: ", msg.from),
                     Style::default()
@@ -38,8 +35,8 @@ pub fn render(frame: &mut Frame, app: &App) {
         })
         .collect();
 
-    let chat = Paragraph::new(messages)
-        .block(Block::default().borders(Borders::ALL).title(" bpmux "));
+    let chat =
+        Paragraph::new(messages).block(Block::default().borders(Borders::ALL).title(" bpmux "));
     frame.render_widget(chat, chunks[0]);
 
     // Input pane
@@ -61,21 +58,23 @@ mod tests {
     use super::*;
     use crate::session::Message;
     use chrono::Utc;
-    use ratatui::backend::TestBackend;
     use ratatui::Terminal;
+    use ratatui::backend::TestBackend;
 
     #[allow(clippy::unwrap_used)]
     #[test]
     fn renders_without_panic() {
         let backend = TestBackend::new(80, 24);
         let mut terminal = Terminal::new(backend).unwrap();
-        let app = App::new("ryan".to_string(), "test-id".to_string(), vec![
-            Message {
+        let app = App::new(
+            "ryan".to_string(),
+            "test-id".to_string(),
+            vec![Message {
                 from: "ryan:human".to_string(),
                 text: "hello".to_string(),
                 ts: Utc::now(),
-            },
-        ]);
+            }],
+        );
 
         terminal.draw(|frame| render(frame, &app)).unwrap();
 

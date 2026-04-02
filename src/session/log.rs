@@ -5,10 +5,12 @@ use crate::session::message::Message;
 
 pub fn create_session_dir() -> Result<PathBuf, LogError> {
     let base = dirs::home_dir()
-        .ok_or_else(|| LogError::Io(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            "home directory not found",
-        )))?
+        .ok_or_else(|| {
+            LogError::Io(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "home directory not found",
+            ))
+        })?
         .join(".bpmux")
         .join("sessions");
 
