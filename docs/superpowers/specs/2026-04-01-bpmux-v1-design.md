@@ -363,6 +363,12 @@ v1 builds the P2P infrastructure, message protocol, and multi-participant chat. 
 ### v1 — The Communication Channel (now)
 A P2P group chat for AI pair programming sessions. Prove the concept, dogfood solo and with a partner.
 
+**What v1 is testing beyond the technology:**
+- Does stigmergic coordination work in real-time chat? (Crowston proved it for async code artifacts — real-time conversation is our untested hypothesis)
+- Does the persistent message log actually reduce context loss across sessions, or is it noise?
+- Do humans stay engaged (Ground Control) or defer to the AIs (commitment deficit)?
+- Where in the coding workflow do decision-making bottlenecks appear?
+
 - Solo mode: persistent chat between you and your AI(s), survives across sessions
 - Pair mode: two developers + two AIs on a shared P2P channel
 - TUI + Web UI (Claude Desktop preview panel)
@@ -412,6 +418,9 @@ Pair programming research (Hannay et al., 2009) shows pairing is most valuable f
 - Switching drivers frequently (the context handoff cost is highest here)
 - Orchestrating multiple AI models (solo orchestration mode)
 - Working across sessions where context loss is painful
+
+**Be vigilant when:**
+- Making architectural or design decisions through the chat — research shows human-AI teams underperform specifically on decision tasks (Vaccaro et al., 2024). Coding is mixed: generation is creation (where human-AI teams show gains), but architecture, design tradeoffs, and dependency choices are decisions (where they show losses). The humans should lead decisions, not defer to what the AIs suggest in the chat.
 
 **Don't use bpmux when:**
 - Quick solo bug fixes or trivial changes
