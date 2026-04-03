@@ -35,8 +35,17 @@ pub fn render(frame: &mut Frame, app: &App) {
         })
         .collect();
 
-    let chat =
-        Paragraph::new(messages).block(Block::default().borders(Borders::ALL).title(" bpmux "));
+    // Auto-scroll: show the latest messages at the bottom
+    let chat_height = chunks[0].height.saturating_sub(2) as usize; // minus borders
+    let scroll = if messages.len() > chat_height {
+        (messages.len() - chat_height) as u16
+    } else {
+        0
+    };
+
+    let chat = Paragraph::new(messages)
+        .block(Block::default().borders(Borders::ALL).title(" bpmux "))
+        .scroll((scroll, 0));
     frame.render_widget(chat, chunks[0]);
 
     // Input pane
