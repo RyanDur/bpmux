@@ -60,6 +60,9 @@ pub fn run_tui(
                         return Ok(());
                     }
                 }
+                KeyCode::Char('t') if app.input.is_empty() => {
+                    app.show_timestamps = !app.show_timestamps;
+                }
                 KeyCode::Char(c) => {
                     app.input.push(c);
                 }

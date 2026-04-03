@@ -21,8 +21,6 @@ pub fn render(frame: &mut Frame, app: &App) {
         .messages
         .iter()
         .flat_map(|msg| {
-            let time = msg.ts.format("%H:%M:%S").to_string();
-
             // Short name: "ryan:human" → "ryan", "claude-code:ws" → "claude-code"
             let short_name = msg.from.split(':').next().unwrap_or(&msg.from);
 
@@ -30,16 +28,21 @@ pub fn render(frame: &mut Frame, app: &App) {
             let is_human = msg.from.ends_with(":human");
             let name_color = if is_human { Color::Cyan } else { Color::Green };
 
-            let content = Line::from(vec![
-                Span::styled(format!("[{time}] "), Style::default().fg(Color::DarkGray)),
-                Span::styled(
-                    format!("{short_name}: "),
-                    Style::default().fg(name_color).add_modifier(Modifier::BOLD),
-                ),
-                Span::raw(&msg.text),
-            ]);
+            let mut spans = Vec::new();
+            if app.show_timestamps {
+                let time = msg.ts.format("%H:%M:%S").to_string();
+                spans.push(Span::styled(
+                    format!("[{time}] "),
+                    Style::default().fg(Color::DarkGray),
+                ));
+            }
+            spans.push(Span::styled(
+                format!("{short_name}: "),
+                Style::default().fg(name_color).add_modifier(Modifier::BOLD),
+            ));
+            spans.push(Span::raw(&msg.text));
 
-            [content, Line::default()]
+            [Line::from(spans), Line::default()]
         })
         .collect();
 

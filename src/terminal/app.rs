@@ -8,6 +8,7 @@ pub struct App {
     pub peer_name: String,
     pub session_id: String,
     pub should_quit: bool,
+    pub show_timestamps: bool,
 }
 
 impl App {
@@ -19,6 +20,7 @@ impl App {
             peer_name,
             session_id,
             should_quit: false,
+            show_timestamps: false,
         }
     }
 
