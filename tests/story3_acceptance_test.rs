@@ -1,7 +1,8 @@
-//! Story 3 Acceptance Test: AI responds to human in conversation
+//! Story 3 Acceptance Test: WebSocket client participates in conversation
 //!
-//! End-to-end test proving: human types in TUI → bot receives via WebSocket →
-//! bot calls Claude API → response appears in TUI.
+//! Proves: WebSocket client connects → receives human's message →
+//! sends a response → response appears in TUI. Uses real collaborators,
+//! no mocks, no external APIs.
 
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
@@ -47,13 +48,7 @@ fn read_until_contains(
 }
 
 #[test]
-#[ignore] // Requires ANTHROPIC_API_KEY and a running bpmux — run with: cargo test --test story3_acceptance_test -- --ignored
-fn ai_responds_to_human() {
-    if std::env::var("ANTHROPIC_API_KEY").is_err() {
-        eprintln!("Skipping story3: ANTHROPIC_API_KEY not set");
-        return;
-    }
-
+fn ws_client_participates_in_conversation() {
     let bin = env!("CARGO_BIN_EXE_bpmux");
     let temp_dir = tempfile::TempDir::new().expect("temp dir");
     let session_base = temp_dir.path().to_str().expect("temp path");
@@ -89,15 +84,17 @@ fn ai_responds_to_human() {
     let (screen, _) = read_until_contains(&mut reader, "solo", Duration::from_secs(5));
     assert!(screen.contains("solo"), "TUI should show solo status");
 
-    // 3. Connect bot via WebSocket
+    // 3. Connect WebSocket client, then have human type, then receive via WS.
+    //    All WS operations happen inside one block_on so the runtime stays active
+    //    and can buffer incoming frames while we do PTY I/O on a spawned thread.
     let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
-    let bot_handle = rt.spawn(async move {
+    rt.block_on(async {
         use futures_util::{SinkExt, StreamExt};
         use tokio_tungstenite::connect_async;
 
         let ws_url = format!("ws://127.0.0.1:{port}/ws");
 
-        // Retry connection — server may need a moment
+        // Connect (retry until server is ready)
         let ws_stream = tokio::time::timeout(Duration::from_secs(5), async {
             loop {
                 match connect_async(&ws_url).await {
@@ -114,109 +111,62 @@ fn ai_responds_to_human() {
         // Identify
         ws_tx
             .send(tokio_tungstenite::tungstenite::Message::Text(
-                serde_json::json!({"type": "identify", "name": "claude"}).to_string().into(),
+                serde_json::json!({"type": "identify", "name": "bot"})
+                    .to_string()
+                    .into(),
             ))
             .await
             .expect("send identify");
 
-        // Wait for welcome
+        // Receive welcome
         let welcome = ws_rx.next().await.expect("receive").expect("welcome msg");
         let welcome: serde_json::Value =
             serde_json::from_str(welcome.to_text().expect("text")).expect("parse welcome");
-        assert_eq!(welcome["type"], "welcome", "First response should be welcome");
+        assert_eq!(
+            welcome["type"], "welcome",
+            "First response should be welcome"
+        );
 
-        // Listen for messages and respond to @claude mentions
-        while let Some(Ok(frame)) = ws_rx.next().await {
-            if let Ok(text) = frame.to_text() {
-                let msg: serde_json::Value = match serde_json::from_str(text) {
-                    Ok(v) => v,
-                    Err(_) => continue,
-                };
+        // Human types a message on a blocking thread (PTY I/O is synchronous)
+        let pty_done = tokio::task::spawn_blocking(move || {
+            writer.write_all(b"hello from human").expect("type message");
+            writer.write_all(b"\r").expect("press enter");
+            writer
+        });
 
-                if msg["type"] != "message" {
-                    continue;
-                }
+        // Receive the human's message via WS push
+        let msg = tokio::time::timeout(Duration::from_secs(5), ws_rx.next())
+            .await
+            .expect("should receive message within timeout")
+            .expect("stream not ended")
+            .expect("message ok");
+        let msg: serde_json::Value =
+            serde_json::from_str(msg.to_text().expect("text")).expect("parse message");
+        assert_eq!(msg["type"], "message");
+        assert_eq!(msg["text"], "hello from human");
 
-                let from = msg["from"].as_str().unwrap_or("");
-                let body = msg["text"].as_str().unwrap_or("");
+        // Send a response
+        ws_tx
+            .send(tokio_tungstenite::tungstenite::Message::Text(
+                serde_json::json!({"type": "send", "text": "hello from bot"})
+                    .to_string()
+                    .into(),
+            ))
+            .await
+            .expect("send reply");
 
-                // Loop prevention
-                if from.contains("claude") {
-                    continue;
-                }
-
-                // Trigger: respond when mentioned
-                if !body.contains("@claude") {
-                    continue;
-                }
-
-                // Call Claude API
-                let api_key =
-                    std::env::var("ANTHROPIC_API_KEY").expect("ANTHROPIC_API_KEY must be set");
-                let client = reqwest::Client::new();
-                let response = client
-                    .post("https://api.anthropic.com/v1/messages")
-                    .header("x-api-key", &api_key)
-                    .header("anthropic-version", "2023-06-01")
-                    .header("content-type", "application/json")
-                    .json(&serde_json::json!({
-                        "model": "claude-sonnet-4-20250514",
-                        "max_tokens": 256,
-                        "system": "You are a coding peer in a pair programming session. Be concise. One short sentence.",
-                        "messages": [{"role": "user", "content": body}]
-                    }))
-                    .send()
-                    .await
-                    .expect("Claude API call");
-
-                let result: serde_json::Value =
-                    response.json().await.expect("parse Claude response");
-                let reply = result["content"][0]["text"]
-                    .as_str()
-                    .unwrap_or("(no response)");
-
-                // Send response back to bpmux
-                ws_tx
-                    .send(tokio_tungstenite::tungstenite::Message::Text(
-                        serde_json::json!({"type": "send", "text": reply}).to_string().into(),
-                    ))
-                    .await
-                    .expect("send reply");
-
-                // One response is enough for the test
-                break;
-            }
-        }
+        // Wait for PTY write to finish, get writer back for cleanup
+        let _writer = pty_done.await.expect("pty write thread");
     });
 
-    // 4. Human types a message mentioning @claude
-    // Give the bot a moment to connect
-    std::thread::sleep(Duration::from_secs(2));
-    writer
-        .write_all(b"@claude what is 2+2?")
-        .expect("type message");
-    writer.write_all(b"\r").expect("press enter");
-
-    // 5. Verify human message appears
-    let (screen, _) =
-        read_until_contains(&mut reader, "@claude what is 2+2?", Duration::from_secs(3));
+    // 4. Verify bot response appears in TUI
+    let (screen, _) = read_until_contains(&mut reader, "hello from bot", Duration::from_secs(5));
     assert!(
-        screen.contains("@claude what is 2+2?"),
-        "Human message should appear. Screen:\n{screen}"
-    );
-
-    // 6. Wait for bot response to appear in TUI
-    // The bot calls the real Claude API, so give it time
-    let (screen, _) = read_until_contains(&mut reader, "claude:ws", Duration::from_secs(30));
-    assert!(
-        screen.contains("claude:ws"),
-        "Bot response should appear in TUI with claude:ws sender. Screen:\n{screen}"
+        screen.contains("hello from bot"),
+        "Bot response should appear in TUI. Screen:\n{screen}"
     );
 
     // Cleanup
-    rt.block_on(async {
-        bot_handle.abort();
-    });
     let _ = child.kill();
     let _ = child.wait();
 }
