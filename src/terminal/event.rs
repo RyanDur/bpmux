@@ -21,7 +21,11 @@ pub fn run_tui(
         // Check for messages from other sources (MCP, WebSocket) via broadcast
         match wake_rx.try_recv() {
             Ok(msg) => {
-                app.messages.push(msg);
+                // Skip messages we sent from this TUI (already in app.messages via submit_message)
+                let self_identity = format!("{}:human", app.peer_name);
+                if msg.from != self_identity {
+                    app.messages.push(msg);
+                }
                 continue; // Redraw immediately
             }
             Err(broadcast::error::TryRecvError::Lagged(_)) => {
