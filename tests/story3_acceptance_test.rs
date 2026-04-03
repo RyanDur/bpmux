@@ -47,8 +47,8 @@ fn read_until_contains(
 }
 
 #[test]
+#[ignore] // Requires ANTHROPIC_API_KEY and a running bpmux — run with: cargo test --test story3_acceptance_test -- --ignored
 fn ai_responds_to_human() {
-    // Skip if no API key — this test calls the real Claude API
     if std::env::var("ANTHROPIC_API_KEY").is_err() {
         eprintln!("Skipping story3: ANTHROPIC_API_KEY not set");
         return;
