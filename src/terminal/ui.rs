@@ -20,18 +20,26 @@ pub fn render(frame: &mut Frame, app: &App) {
     let messages: Vec<Line> = app
         .messages
         .iter()
-        .map(|msg| {
+        .flat_map(|msg| {
             let time = msg.ts.format("%H:%M:%S").to_string();
-            Line::from(vec![
+
+            // Short name: "ryan:human" → "ryan", "claude-code:ws" → "claude-code"
+            let short_name = msg.from.split(':').next().unwrap_or(&msg.from);
+
+            // Color by sender type: human = cyan, AI = green
+            let is_human = msg.from.ends_with(":human");
+            let name_color = if is_human { Color::Cyan } else { Color::Green };
+
+            let content = Line::from(vec![
                 Span::styled(format!("[{time}] "), Style::default().fg(Color::DarkGray)),
                 Span::styled(
-                    format!("{}: ", msg.from),
-                    Style::default()
-                        .fg(Color::Cyan)
-                        .add_modifier(Modifier::BOLD),
+                    format!("{short_name}: "),
+                    Style::default().fg(name_color).add_modifier(Modifier::BOLD),
                 ),
                 Span::raw(&msg.text),
-            ])
+            ]);
+
+            [content, Line::default()]
         })
         .collect();
 
@@ -116,7 +124,7 @@ mod tests {
         let buffer = terminal.backend().buffer().clone();
         let content = buffer_to_string(&buffer);
         assert!(content.contains("hello"));
-        assert!(content.contains("ryan:human"));
+        assert!(content.contains("ryan:"));
         assert!(content.contains("solo"));
     }
 

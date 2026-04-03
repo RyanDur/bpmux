@@ -101,7 +101,7 @@ fn human_and_ai_share_a_conversation() {
         "Human message should appear in TUI. Screen:\n{screen}"
     );
     assert!(
-        screen.contains("ryan:human"),
+        screen.contains("ryan:"),
         "Sender identity should show. Screen:\n{screen}"
     );
 
