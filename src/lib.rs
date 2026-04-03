@@ -1,10 +1,11 @@
 #![deny(unsafe_code)]
 
+pub mod bridge;
 pub mod mcp;
 pub mod session;
 pub mod terminal;
 
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 
@@ -26,10 +27,30 @@ struct Cli {
     /// Session base directory (defaults to ~/.bpmux/sessions)
     #[arg(long)]
     session_base: Option<String>,
+
+    #[command(subcommand)]
+    command: Option<Command>,
+}
+
+#[derive(Subcommand)]
+enum Command {
+    /// Run as a channel bridge for Claude Code integration
+    Bridge {
+        /// bpmux server port to connect to
+        #[arg(long, default_value = "4117")]
+        port: u16,
+    },
 }
 
 pub fn run() -> anyhow::Result<()> {
     let cli = Cli::parse();
+
+    // Dispatch subcommands
+    if let Some(Command::Bridge { port }) = cli.command {
+        return bridge::run_bridge(port);
+    }
+
+    // Default: run the TUI + MCP server
 
     // Resume existing session or create new one
     // Priority: CLI flag > env var > default
@@ -55,12 +76,13 @@ pub fn run() -> anyhow::Result<()> {
     let mut app = terminal::App::new(cli.name.clone(), session_id, messages);
 
     // Wake channel — MCP server sends wake signals when messages arrive
-    let (wake_tx, mut wake_rx) = broadcast::channel::<()>(16);
+    let (wake_tx, mut wake_rx) = broadcast::channel::<session::Message>(64);
 
     // Start MCP/HTTP server on a dedicated thread with its own tokio runtime
     let mcp_session_dir = session_dir.clone();
     let mcp_name = cli.name.clone();
     let mcp_port = cli.mcp_port;
+    let mcp_wake_tx = wake_tx.clone();
     let ct = CancellationToken::new();
     let server_ct = ct.clone();
     std::thread::spawn(move || {
@@ -70,7 +92,8 @@ pub fn run() -> anyhow::Result<()> {
         };
         rt.block_on(async move {
             if let Err(e) =
-                mcp::run_mcp_server(mcp_session_dir, mcp_name, wake_tx, mcp_port, server_ct).await
+                mcp::run_mcp_server(mcp_session_dir, mcp_name, mcp_wake_tx, mcp_port, server_ct)
+                    .await
             {
                 eprintln!("MCP server error: {e}");
             }
@@ -79,7 +102,13 @@ pub fn run() -> anyhow::Result<()> {
 
     // Run TUI (blocking, on the main thread)
     let mut terminal = ratatui::init();
-    let result = terminal::run_tui(&mut terminal, &mut app, &session_dir, &mut wake_rx);
+    let result = terminal::run_tui(
+        &mut terminal,
+        &mut app,
+        &session_dir,
+        &mut wake_rx,
+        &wake_tx,
+    );
     ratatui::restore();
 
     result.map_err(|e| anyhow::anyhow!("{e}"))

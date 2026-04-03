@@ -21,11 +21,15 @@ use crate::session;
 pub struct BpmuxMcpServer {
     session_dir: Arc<PathBuf>,
     peer_name: Arc<String>,
-    wake_tx: broadcast::Sender<()>,
+    wake_tx: broadcast::Sender<session::Message>,
 }
 
 impl BpmuxMcpServer {
-    pub fn new(session_dir: PathBuf, peer_name: String, wake_tx: broadcast::Sender<()>) -> Self {
+    pub fn new(
+        session_dir: PathBuf,
+        peer_name: String,
+        wake_tx: broadcast::Sender<session::Message>,
+    ) -> Self {
         Self {
             session_dir: Arc::new(session_dir),
             peer_name: Arc::new(peer_name),
@@ -47,7 +51,7 @@ impl BpmuxMcpServer {
 
         match session::append_message(&self.session_dir, &msg) {
             Ok(()) => {
-                let _ = self.wake_tx.send(());
+                let _ = self.wake_tx.send(msg);
                 "message sent".to_string()
             }
             Err(e) => format!("error: {e}"),
@@ -131,24 +135,44 @@ impl ServerHandler for BpmuxMcpServer {
 pub async fn run_mcp_server(
     session_dir: PathBuf,
     peer_name: String,
-    wake_tx: broadcast::Sender<()>,
+    wake_tx: broadcast::Sender<session::Message>,
     port: u16,
     ct: CancellationToken,
 ) -> anyhow::Result<()> {
     let dir = session_dir.clone();
+    let mcp_dir = dir.clone();
     let name = peer_name.clone();
     let tx = wake_tx.clone();
 
     let service: StreamableHttpService<BpmuxMcpServer, LocalSessionManager> =
         StreamableHttpService::new(
-            move || Ok(BpmuxMcpServer::new(dir.clone(), name.clone(), tx.clone())),
+            move || {
+                Ok(BpmuxMcpServer::new(
+                    mcp_dir.clone(),
+                    name.clone(),
+                    tx.clone(),
+                ))
+            },
             Default::default(),
             StreamableHttpServerConfig::default()
                 .with_stateful_mode(true)
                 .with_cancellation_token(ct.child_token()),
         );
 
-    let router = axum::Router::new().nest_service("/mcp", service);
+    let ws_state = Arc::new(super::ws::WsState {
+        session_dir: Arc::new(session_dir),
+        session_id: dir
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("unknown")
+            .to_string(),
+        wake_tx,
+    });
+
+    let router = axum::Router::new()
+        .nest_service("/mcp", service)
+        .route("/ws", axum::routing::any(super::ws::ws_handler))
+        .with_state(ws_state);
     let listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{port}")).await?;
 
     axum::serve(listener, router)

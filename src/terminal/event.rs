@@ -12,19 +12,30 @@ pub fn run_tui(
     terminal: &mut DefaultTerminal,
     app: &mut App,
     session_dir: &Path,
-    wake_rx: &mut broadcast::Receiver<()>,
+    wake_rx: &mut broadcast::Receiver<session::Message>,
+    wake_tx: &broadcast::Sender<session::Message>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     loop {
         terminal.draw(|frame| ui::render(frame, app))?;
 
-        // Check for wake signals from MCP server (non-blocking)
-        if wake_rx.try_recv().is_ok() {
-            // Reload messages from the log to pick up MCP-sent messages
-            match session::read_messages(session_dir) {
-                Ok(messages) => app.messages = messages,
-                Err(e) => eprintln!("Error reading messages: {e}"),
+        // Check for messages from other sources (MCP, WebSocket) via broadcast
+        match wake_rx.try_recv() {
+            Ok(msg) => {
+                app.messages.push(msg);
+                continue; // Redraw immediately
             }
-            continue; // Redraw immediately
+            Err(broadcast::error::TryRecvError::Lagged(_)) => {
+                // Fell behind — reload everything from disk
+                match session::read_messages(session_dir) {
+                    Ok(messages) => app.messages = messages,
+                    Err(e) => eprintln!("Error reading messages: {e}"),
+                }
+                continue;
+            }
+            Err(broadcast::error::TryRecvError::Empty) => {}
+            Err(broadcast::error::TryRecvError::Closed) => {
+                return Ok(());
+            }
         }
 
         if event::poll(std::time::Duration::from_millis(100))?
@@ -38,6 +49,8 @@ pub fn run_tui(
                 KeyCode::Enter => {
                     if let Some(msg) = app.submit_message() {
                         session::append_message(session_dir, &msg)?;
+                        // Broadcast to WebSocket clients and other consumers
+                        let _ = wake_tx.send(msg);
                     }
                     if app.should_quit {
                         return Ok(());
