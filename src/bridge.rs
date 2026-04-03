@@ -46,6 +46,84 @@ impl BridgeServer {
     }
 }
 
+/// Connect to bpmux's WebSocket, identify, and forward messages until disconnected.
+/// Returns when the connection drops.
+async fn run_ws_connection(
+    port: u16,
+    peer: Peer<RoleServer>,
+    ws_tx_store: Arc<Mutex<Option<WsSink>>>,
+    messages_store: Arc<Mutex<Vec<String>>>,
+) {
+    let ws_url = format!("ws://127.0.0.1:{port}/ws");
+    let (ws_stream, _) = match tokio_tungstenite::connect_async(&ws_url).await {
+        Ok(conn) => conn,
+        Err(e) => {
+            eprintln!("Bridge: failed to connect to bpmux WebSocket: {e}");
+            return;
+        }
+    };
+
+    let (ws_tx, mut ws_rx) = ws_stream.split();
+    *ws_tx_store.lock().await = Some(ws_tx);
+
+    // Identify with bpmux
+    {
+        let mut tx = ws_tx_store.lock().await;
+        if let Some(ref mut tx) = *tx {
+            let identify = json!({"type": "identify", "name": "claude-code"}).to_string();
+            if let Err(e) = tx.send(tungstenite::Message::Text(identify.into())).await {
+                eprintln!("Bridge: failed to identify: {e}");
+                return;
+            }
+        }
+    }
+
+    // Read welcome
+    if let Some(Ok(_welcome)) = ws_rx.next().await {
+        eprintln!("Bridge: connected to bpmux on port {port}");
+    }
+
+    // Forward bpmux messages → channel notifications until disconnected
+    while let Some(Ok(frame)) = ws_rx.next().await {
+        if let tungstenite::Message::Text(text) = frame {
+            let msg: Result<ServerMessage, _> = serde_json::from_str(&text);
+            if let Ok(ServerMessage::Message { from, text, ts }) = msg {
+                // Don't forward our own messages back
+                if from.contains("claude-code") {
+                    continue;
+                }
+
+                // Buffer the message for read_messages
+                messages_store.lock().await.push(format!("[{from}] {text}"));
+
+                let notification = CustomNotification::new(
+                    "notifications/claude/channel",
+                    Some(json!({
+                        "content": format!("[{from}] {text}"),
+                        "meta": {
+                            "from": from,
+                            "ts": ts,
+                            "source": "bpmux"
+                        }
+                    })),
+                );
+
+                if let Err(e) = peer
+                    .send_notification(ServerNotification::CustomNotification(notification))
+                    .await
+                {
+                    eprintln!("Bridge: failed to send channel notification: {e}");
+                    break;
+                }
+            }
+        }
+    }
+
+    // Connection dropped — clear the sender so tool calls know we're disconnected
+    *ws_tx_store.lock().await = None;
+    eprintln!("Bridge: disconnected from bpmux");
+}
+
 impl ServerHandler for BridgeServer {
     fn get_info(&self) -> ServerInfo {
         let mut capabilities = ServerCapabilities::builder().enable_tools().build();
@@ -70,76 +148,22 @@ impl ServerHandler for BridgeServer {
         let messages_store = self.messages.clone();
 
         async move {
-            // Store the peer for sending channel notifications
             *peer_store.lock().await = Some(peer.clone());
 
-            // Connect to bpmux's WebSocket endpoint
-            let ws_url = format!("ws://127.0.0.1:{port}/ws");
-            let (ws_stream, _) = match tokio_tungstenite::connect_async(&ws_url).await {
-                Ok(conn) => conn,
-                Err(e) => {
-                    eprintln!("Bridge: failed to connect to bpmux WebSocket: {e}");
-                    return;
-                }
-            };
-
-            let (ws_tx, mut ws_rx) = ws_stream.split();
-            *ws_tx_store.lock().await = Some(ws_tx);
-
-            // Identify with bpmux
-            {
-                let mut tx = ws_tx_store.lock().await;
-                if let Some(ref mut tx) = *tx {
-                    let identify = json!({"type": "identify", "name": "claude-code"}).to_string();
-                    if let Err(e) = tx.send(tungstenite::Message::Text(identify.into())).await {
-                        eprintln!("Bridge: failed to identify: {e}");
-                        return;
-                    }
-                }
-            }
-
-            // Read welcome (discard — we don't need session_id here)
-            if let Some(Ok(_welcome)) = ws_rx.next().await {
-                // Welcome received
-            }
-
-            // Forward bpmux messages → Claude Code channel notifications
+            // Reconnection loop — keeps trying to connect to bpmux
             tokio::spawn(async move {
-                while let Some(Ok(frame)) = ws_rx.next().await {
-                    if let tungstenite::Message::Text(text) = frame {
-                        let msg: Result<ServerMessage, _> = serde_json::from_str(&text);
-                        if let Ok(ServerMessage::Message { from, text, ts }) = msg {
-                            // Don't forward our own messages back
-                            if from.contains("claude-code") {
-                                continue;
-                            }
+                loop {
+                    run_ws_connection(
+                        port,
+                        peer.clone(),
+                        ws_tx_store.clone(),
+                        messages_store.clone(),
+                    )
+                    .await;
 
-                            // Buffer the message for read_messages
-                            messages_store.lock().await.push(format!("[{from}] {text}"));
-
-                            let notification = CustomNotification::new(
-                                "notifications/claude/channel",
-                                Some(json!({
-                                    "content": format!("[{from}] {text}"),
-                                    "meta": {
-                                        "from": from,
-                                        "ts": ts,
-                                        "source": "bpmux"
-                                    }
-                                })),
-                            );
-
-                            if let Err(e) = peer
-                                .send_notification(ServerNotification::CustomNotification(
-                                    notification,
-                                ))
-                                .await
-                            {
-                                eprintln!("Bridge: failed to send channel notification: {e}");
-                                break;
-                            }
-                        }
-                    }
+                    // Wait before reconnecting
+                    eprintln!("Bridge: reconnecting in 3 seconds...");
+                    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
                 }
             });
         }
@@ -217,7 +241,7 @@ impl ServerHandler for BridgeServer {
                         }
                     } else {
                         return Ok(CallToolResult::error(vec![Content::text(
-                            "not connected to bpmux",
+                            "not connected to bpmux — reconnecting",
                         )]));
                     }
 
