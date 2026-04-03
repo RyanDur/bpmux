@@ -1,0 +1,5 @@
+{
+  "name": "bpmux",
+  "description": "Connect Claude Code to a bpmux session for shared AI reasoning",
+  "version": "0.1.0"
+}
