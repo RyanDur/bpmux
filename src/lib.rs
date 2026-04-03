@@ -32,9 +32,13 @@ pub fn run() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     // Resume existing session or create new one
+    // Priority: CLI flag > env var > default
     let base = match &cli.session_base {
         Some(path) => std::path::PathBuf::from(path),
-        None => session::default_sessions_base()?,
+        None => match std::env::var("BPMUX_SESSION_BASE") {
+            Ok(path) => std::path::PathBuf::from(path),
+            Err(_) => session::default_sessions_base()?,
+        },
     };
     std::fs::create_dir_all(&base)?;
     let session_dir = session::resume_or_create_session(&base)?;

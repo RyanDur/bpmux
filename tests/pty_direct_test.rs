@@ -44,13 +44,18 @@ fn read_with_timeout(reader: &mut dyn Read, timeout: Duration) -> Vec<u8> {
     all_bytes
 }
 
-/// Spawn bpmux in a PTY, read raw output, and return (raw_bytes, child).
-/// The child must be killed by the caller.
+/// Spawn bpmux in a PTY with an isolated session directory.
+/// Returns (raw_bytes, child, _temp_dir). Keep _temp_dir alive until done.
 fn spawn_and_read_bpmux(
     name: &str,
     read_timeout: Duration,
-) -> (Vec<u8>, Box<dyn portable_pty::Child + Send + Sync>) {
+) -> (
+    Vec<u8>,
+    Box<dyn portable_pty::Child + Send + Sync>,
+    tempfile::TempDir,
+) {
     let bin = env!("CARGO_BIN_EXE_bpmux");
+    let temp_dir = tempfile::TempDir::new().expect("temp dir");
 
     let pty_system = native_pty_system();
     let pair = pty_system
@@ -65,6 +70,8 @@ fn spawn_and_read_bpmux(
     let mut cmd = CommandBuilder::new(bin);
     cmd.arg("--name");
     cmd.arg(name);
+    cmd.arg("--session-base");
+    cmd.arg(temp_dir.path().to_str().expect("temp path"));
     cmd.env("TERM", "xterm-256color");
 
     let child = pair.slave.spawn_command(cmd).expect("spawn bpmux");
@@ -76,7 +83,7 @@ fn spawn_and_read_bpmux(
     // Drop the master to signal EOF/hangup to the child
     drop(pair.master);
 
-    (raw, child)
+    (raw, child, temp_dir)
 }
 
 #[test]
@@ -111,7 +118,7 @@ fn echo_through_pty() {
 
 #[test]
 fn bpmux_writes_to_pty() {
-    let (raw, mut child) = spawn_and_read_bpmux("test-pty", Duration::from_secs(3));
+    let (raw, mut child, _temp) = spawn_and_read_bpmux("test-pty", Duration::from_secs(3));
 
     eprintln!("bpmux wrote {} bytes to PTY", raw.len());
 
@@ -148,7 +155,7 @@ fn bpmux_writes_to_pty() {
 
 #[test]
 fn bpmux_ui_elements_present() {
-    let (raw, mut child) = spawn_and_read_bpmux("uitest", Duration::from_secs(3));
+    let (raw, mut child, _temp) = spawn_and_read_bpmux("uitest", Duration::from_secs(3));
 
     let mut screen = ratatui_testlib::ScreenState::new(80, 24);
     screen.feed(&raw);

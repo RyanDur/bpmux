@@ -18,6 +18,8 @@ jobs:
         run: cargo clippy -- -D warnings
       - name: Test
         run: cargo test
+        env:
+          BPMUX_SESSION_BASE: ${{ runner.temp }}/bpmux-sessions
       - name: Audit
         run: |
           cargo install cargo-audit
