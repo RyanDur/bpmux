@@ -20,7 +20,8 @@ pub fn render(frame: &mut Frame, app: &App) {
     let messages: Vec<Line> = app
         .messages
         .iter()
-        .flat_map(|msg| {
+        .enumerate()
+        .flat_map(|(i, msg)| {
             // Short name: "ryan:human" → "ryan", "claude-code:ws" → "claude-code"
             let short_name = msg.from.split(':').next().unwrap_or(&msg.from);
 
@@ -42,7 +43,19 @@ pub fn render(frame: &mut Frame, app: &App) {
             ));
             spans.push(Span::raw(&msg.text));
 
-            [Line::from(spans), Line::default()]
+            let content = Line::from(spans);
+
+            // Add blank line separator only when the next message is from a different sender
+            let next_is_different = app
+                .messages
+                .get(i + 1)
+                .is_some_and(|next| next.from != msg.from);
+
+            if next_is_different {
+                vec![content, Line::default()]
+            } else {
+                vec![content]
+            }
         })
         .collect();
 
