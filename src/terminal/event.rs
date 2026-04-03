@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use crossterm::event::{self, Event, KeyCode, KeyEventKind};
+use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
 use ratatui::DefaultTerminal;
 use tokio::sync::broadcast;
 
@@ -60,7 +60,7 @@ pub fn run_tui(
                         return Ok(());
                     }
                 }
-                KeyCode::Char('t') if app.input.is_empty() => {
+                KeyCode::Char('t') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                     app.show_timestamps = !app.show_timestamps;
                 }
                 KeyCode::Char(c) => {
