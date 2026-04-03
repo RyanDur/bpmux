@@ -3,7 +3,7 @@ use ratatui::{
     layout::{Constraint, Layout},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, Borders, Paragraph, Wrap},
 };
 
 use crate::terminal::app::App;
@@ -35,28 +35,48 @@ pub fn render(frame: &mut Frame, app: &App) {
         })
         .collect();
 
-    // Auto-scroll: show the latest messages at the bottom
-    let chat_height = chunks[0].height.saturating_sub(2) as usize; // minus borders
-    let scroll = if messages.len() > chat_height {
-        (messages.len() - chat_height) as u16
+    // Auto-scroll: calculate total rendered lines including wrapping
+    let chat_inner_width = chunks[0].width.saturating_sub(2) as usize; // minus borders
+    let chat_height = chunks[0].height.saturating_sub(2) as usize;
+    let total_lines: usize = messages
+        .iter()
+        .map(|line| {
+            let line_width: usize = line.spans.iter().map(|s| s.content.len()).sum();
+            if chat_inner_width > 0 {
+                line_width.max(1).div_ceil(chat_inner_width)
+            } else {
+                1
+            }
+        })
+        .sum();
+    let scroll = if total_lines > chat_height {
+        (total_lines - chat_height) as u16
     } else {
         0
     };
 
     let chat = Paragraph::new(messages)
         .block(Block::default().borders(Borders::ALL).title(" bpmux "))
+        .wrap(Wrap { trim: false })
         .scroll((scroll, 0));
     frame.render_widget(chat, chunks[0]);
 
     // Input pane
     let input = Paragraph::new(app.input.as_str())
-        .block(Block::default().borders(Borders::ALL).title(" > "));
+        .block(Block::default().borders(Borders::ALL).title(" > "))
+        .wrap(Wrap { trim: false });
     frame.render_widget(input, chunks[1]);
 
-    // Show cursor at end of input text
+    // Show cursor at end of input text, accounting for wrapping
     #[allow(clippy::cast_possible_truncation)]
-    let cursor_x = chunks[1].x + 1 + app.input.len() as u16;
-    let cursor_y = chunks[1].y + 1;
+    let input_inner_width = chunks[1].width.saturating_sub(2) as usize;
+    let (cursor_x, cursor_y) = if input_inner_width > 0 {
+        let x = (app.input.len() % input_inner_width) as u16;
+        let y = (app.input.len() / input_inner_width) as u16;
+        (chunks[1].x + 1 + x, chunks[1].y + 1 + y)
+    } else {
+        (chunks[1].x + 1, chunks[1].y + 1)
+    };
     frame.set_cursor_position((cursor_x, cursor_y));
 
     // Status bar
