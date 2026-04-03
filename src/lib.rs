@@ -6,6 +6,7 @@ pub mod terminal;
 
 use clap::Parser;
 use tokio::sync::broadcast;
+use tokio_util::sync::CancellationToken;
 
 #[derive(Parser)]
 #[command(
@@ -52,17 +53,20 @@ pub fn run() -> anyhow::Result<()> {
     // Wake channel — MCP server sends wake signals when messages arrive
     let (wake_tx, mut wake_rx) = broadcast::channel::<()>(16);
 
-    // Start MCP server on a dedicated thread with its own tokio runtime
+    // Start MCP/HTTP server on a dedicated thread with its own tokio runtime
     let mcp_session_dir = session_dir.clone();
     let mcp_name = cli.name.clone();
     let mcp_port = cli.mcp_port;
+    let ct = CancellationToken::new();
+    let server_ct = ct.clone();
     std::thread::spawn(move || {
         let Ok(rt) = tokio::runtime::Runtime::new() else {
-            eprintln!("Failed to create MCP tokio runtime");
+            eprintln!("Failed to create server tokio runtime");
             return;
         };
         rt.block_on(async move {
-            if let Err(e) = mcp::run_mcp_server(mcp_session_dir, mcp_name, wake_tx, mcp_port).await
+            if let Err(e) =
+                mcp::run_mcp_server(mcp_session_dir, mcp_name, wake_tx, mcp_port, server_ct).await
             {
                 eprintln!("MCP server error: {e}");
             }

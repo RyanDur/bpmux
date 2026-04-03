@@ -1,3 +1,4 @@
+use std::future::Future;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -6,10 +7,13 @@ use rmcp::model::{
     ServerInfo, Tool,
 };
 use rmcp::service::RequestContext;
-use rmcp::{ErrorData, RoleServer, ServerHandler, ServiceExt};
-type McpError = ErrorData;
-use tokio::net::TcpListener;
+use rmcp::transport::streamable_http_server::session::local::LocalSessionManager;
+use rmcp::transport::streamable_http_server::{StreamableHttpServerConfig, StreamableHttpService};
+use rmcp::{ErrorData, RoleServer, ServerHandler};
 use tokio::sync::broadcast;
+use tokio_util::sync::CancellationToken;
+
+type McpError = ErrorData;
 
 use crate::session;
 
@@ -124,29 +128,32 @@ impl ServerHandler for BpmuxMcpServer {
     }
 }
 
-use std::future::Future;
-
 pub async fn run_mcp_server(
     session_dir: PathBuf,
     peer_name: String,
     wake_tx: broadcast::Sender<()>,
     port: u16,
+    ct: CancellationToken,
 ) -> anyhow::Result<()> {
-    let listener = TcpListener::bind(format!("127.0.0.1:{port}")).await?;
+    let dir = session_dir.clone();
+    let name = peer_name.clone();
+    let tx = wake_tx.clone();
 
-    loop {
-        let (stream, _addr) = listener.accept().await?;
-        let server = BpmuxMcpServer::new(session_dir.clone(), peer_name.clone(), wake_tx.clone());
-        tokio::spawn(async move {
-            match server.serve(stream).await {
-                Ok(service) => {
-                    // Keep the service alive until the client disconnects
-                    let _ = service.waiting().await;
-                }
-                Err(e) => {
-                    eprintln!("MCP serve error: {e:?}");
-                }
-            }
-        });
-    }
+    let service: StreamableHttpService<BpmuxMcpServer, LocalSessionManager> =
+        StreamableHttpService::new(
+            move || Ok(BpmuxMcpServer::new(dir.clone(), name.clone(), tx.clone())),
+            Default::default(),
+            StreamableHttpServerConfig::default()
+                .with_stateful_mode(true)
+                .with_cancellation_token(ct.child_token()),
+        );
+
+    let router = axum::Router::new().nest_service("/mcp", service);
+    let listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{port}")).await?;
+
+    axum::serve(listener, router)
+        .with_graceful_shutdown(async move { ct.cancelled_owned().await })
+        .await?;
+
+    Ok(())
 }

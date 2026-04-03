@@ -107,30 +107,34 @@ fn human_and_ai_share_a_conversation() {
 
     eprintln!("Steps 1-3 passed. Connecting MCP client...");
 
-    // 4. Connect MCP client
+    // 4. Connect MCP client over HTTP
     let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
     rt.block_on(async {
+        use rmcp::transport::streamable_http_client::StreamableHttpClientTransportConfig;
         use std::time::Duration;
-        use tokio::net::TcpStream;
 
-        // Retry connection — MCP server may need a moment
-        let stream = tokio::time::timeout(Duration::from_secs(5), async {
+        let mcp_url = format!("http://127.0.0.1:{mcp_port}/mcp");
+
+        // Retry connection — HTTP server may need a moment
+        tokio::time::timeout(Duration::from_secs(5), async {
             loop {
-                match TcpStream::connect(format!("127.0.0.1:{mcp_port}")).await {
-                    Ok(stream) => return stream,
+                match reqwest::get(&mcp_url).await {
+                    Ok(_) => return,
                     Err(_) => tokio::time::sleep(Duration::from_millis(100)).await,
                 }
             }
         })
         .await
-        .expect("MCP server should be reachable");
+        .expect("MCP HTTP server should be reachable");
 
-        eprintln!("TCP connected to MCP server. Starting handshake...");
+        // 5. MCP handshake over HTTP
+        use rmcp::ServiceExt;
+        use rmcp::transport::StreamableHttpClientTransport;
 
-        // 5. MCP handshake
-        let client = rmcp::serve_client((), stream).await.expect("MCP handshake");
-
-        eprintln!("MCP handshake succeeded!");
+        let transport = StreamableHttpClientTransport::from_config(
+            StreamableHttpClientTransportConfig::with_uri(mcp_url),
+        );
+        let client = ().serve(transport).await.expect("MCP handshake");
 
         // 6. Verify tools exist
         let tools = client.peer().list_all_tools().await.expect("list tools");
