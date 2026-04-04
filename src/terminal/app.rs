@@ -9,6 +9,7 @@ pub struct App {
     pub session_id: String,
     pub should_quit: bool,
     pub show_timestamps: bool,
+    pub connected_peers: usize,
 }
 
 impl App {
@@ -21,6 +22,7 @@ impl App {
             session_id,
             should_quit: false,
             show_timestamps: false,
+            connected_peers: 0,
         }
     }
 

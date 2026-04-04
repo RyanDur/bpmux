@@ -68,11 +68,11 @@ pub fn run() -> anyhow::Result<()> {
     let session_dir = session::resume_or_create_session(&base)?;
 
     let (wake_tx, mut wake_rx) = broadcast::channel::<session::Message>(64);
-    let session = session::Session::new(session_dir, wake_tx);
+    let session = Arc::new(session::Session::new(session_dir, wake_tx));
     let messages = session.read_messages()?;
     let mut app = terminal::App::new(cli.name.clone(), session.id.clone(), messages);
 
-    let server_session = Arc::new(session.clone());
+    let server_session = Arc::clone(&session);
     let server_name = cli.name.clone();
     let server_port = cli.mcp_port;
     let ct = CancellationToken::new();

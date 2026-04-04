@@ -105,8 +105,16 @@ pub fn render(frame: &mut Frame, app: &App) {
     frame.set_cursor_position((cursor_x, cursor_y));
 
     // Status bar
+    let connection_status = if app.connected_peers == 0 {
+        Span::styled(" solo", Style::default().fg(Color::Yellow))
+    } else {
+        Span::styled(
+            format!(" {} connected", app.connected_peers),
+            Style::default().fg(Color::Green),
+        )
+    };
     let mut status_spans = vec![
-        Span::styled(" solo", Style::default().fg(Color::Yellow)),
+        connection_status,
         Span::raw(" | "),
         Span::raw(&app.session_id),
     ];
@@ -207,6 +215,41 @@ mod tests {
         assert!(
             scrolled.contains("scrolled up 3"),
             "Should show scroll indicator. Screen:\n{scrolled}"
+        );
+    }
+
+    #[allow(clippy::unwrap_used)]
+    #[test]
+    fn status_bar_shows_solo_when_no_peers() {
+        let backend = TestBackend::new(80, 15);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let app = App::new("dev".to_string(), "test-id".to_string(), vec![]);
+
+        terminal.draw(|frame| render(frame, &app)).unwrap();
+        let screen = buffer_to_string(terminal.backend().buffer());
+        assert!(
+            screen.contains("solo"),
+            "Should show 'solo' with no peers. Screen:\n{screen}"
+        );
+    }
+
+    #[allow(clippy::unwrap_used)]
+    #[test]
+    fn status_bar_shows_peer_count_when_connected() {
+        let backend = TestBackend::new(80, 15);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let mut app = App::new("dev".to_string(), "test-id".to_string(), vec![]);
+        app.connected_peers = 2;
+
+        terminal.draw(|frame| render(frame, &app)).unwrap();
+        let screen = buffer_to_string(terminal.backend().buffer());
+        assert!(
+            screen.contains("2 connected"),
+            "Should show '2 connected' with peers. Screen:\n{screen}"
+        );
+        assert!(
+            !screen.contains("solo"),
+            "Should not show 'solo' when peers connected. Screen:\n{screen}"
         );
     }
 

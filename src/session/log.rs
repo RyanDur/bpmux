@@ -1,15 +1,28 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use thiserror::Error;
 use tokio::sync::broadcast;
 
 use crate::session::message::Message;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Session {
     pub dir: PathBuf,
     pub id: String,
     pub wake_tx: broadcast::Sender<Message>,
+    pub connected_peers: AtomicUsize,
+}
+
+impl Clone for Session {
+    fn clone(&self) -> Self {
+        Self {
+            dir: self.dir.clone(),
+            id: self.id.clone(),
+            wake_tx: self.wake_tx.clone(),
+            connected_peers: AtomicUsize::new(self.connected_peers.load(Ordering::Relaxed)),
+        }
+    }
 }
 
 impl Session {
@@ -19,7 +32,29 @@ impl Session {
             .and_then(|n| n.to_str())
             .unwrap_or("unknown")
             .to_string();
-        Self { dir, id, wake_tx }
+        Self {
+            dir,
+            id,
+            wake_tx,
+            connected_peers: AtomicUsize::new(0),
+        }
+    }
+
+    pub fn peer_connected(&self) -> usize {
+        self.connected_peers.fetch_add(1, Ordering::Relaxed) + 1
+    }
+
+    pub fn peer_disconnected(&self) -> usize {
+        self.connected_peers
+            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |n| {
+                Some(n.saturating_sub(1))
+            })
+            .unwrap_or(0)
+            .saturating_sub(1)
+    }
+
+    pub fn peer_count(&self) -> usize {
+        self.connected_peers.load(Ordering::Relaxed)
     }
 
     pub fn broadcast(&self, msg: &Message) -> Result<(), LogError> {

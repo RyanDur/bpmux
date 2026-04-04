@@ -13,6 +13,7 @@ pub fn run_tui(
     wake_rx: &mut broadcast::Receiver<session::Message>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     loop {
+        app.connected_peers = session.peer_count();
         terminal.draw(|frame| ui::render(frame, app))?;
         match wake_rx.try_recv() {
             Ok(msg) => {

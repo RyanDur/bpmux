@@ -33,6 +33,8 @@ async fn run_ws_session(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let name = wait_for_identify(&mut tx, &mut rx).await?;
     let identity = format!("{name}:ws");
+    let count = session.peer_connected();
+    eprintln!("WebSocket peer {identity} connected ({count} total)");
     let mut broadcast_rx = session.subscribe();
     send_json(
         &mut tx,
@@ -41,30 +43,36 @@ async fn run_ws_session(
         },
     )
     .await?;
-    loop {
-        tokio::select! {
-            broadcast_result = broadcast_rx.recv() => {
-                match broadcast_result {
-                    Ok(msg) => { send_json(&mut tx, &ServerMessage::from(msg)).await?; }
-                    Err(broadcast::error::RecvError::Lagged(n)) => {
-                        eprintln!("WebSocket client {identity} lagged by {n} messages");
+    let result: Result<(), Box<dyn std::error::Error + Send + Sync>> = async {
+        loop {
+            tokio::select! {
+                broadcast_result = broadcast_rx.recv() => {
+                    match broadcast_result {
+                        Ok(msg) => { send_json(&mut tx, &ServerMessage::from(msg)).await?; }
+                        Err(broadcast::error::RecvError::Lagged(n)) => {
+                            eprintln!("WebSocket client {identity} lagged by {n} messages");
+                        }
+                        Err(broadcast::error::RecvError::Closed) => break,
                     }
-                    Err(broadcast::error::RecvError::Closed) => break,
                 }
-            }
-            ws_result = rx.next() => {
-                match ws_result {
-                    Some(Ok(WsMessage::Text(text))) => {
-                        handle_client_message(&text, &identity, &session, &mut tx).await?;
+                ws_result = rx.next() => {
+                    match ws_result {
+                        Some(Ok(WsMessage::Text(text))) => {
+                            handle_client_message(&text, &identity, &session, &mut tx).await?;
+                        }
+                        Some(Ok(WsMessage::Close(_))) | None => break,
+                        Some(Err(e)) => { eprintln!("WebSocket read error for {identity}: {e}"); break; }
+                        _ => {}
                     }
-                    Some(Ok(WsMessage::Close(_))) | None => break,
-                    Some(Err(e)) => { eprintln!("WebSocket read error for {identity}: {e}"); break; }
-                    _ => {}
                 }
             }
         }
+        Ok(())
     }
-    Ok(())
+    .await;
+    let count = session.peer_disconnected();
+    eprintln!("WebSocket peer {identity} disconnected ({count} remaining)");
+    result
 }
 
 async fn wait_for_identify(
