@@ -148,8 +148,10 @@ pub fn render(frame: &mut Frame, app: &App) {
             }
         })
         .sum();
-    let max_scroll = if total_lines > chat_height {
-        (total_lines - chat_height) as u16
+    // Add 1 line of padding so the last message is always fully visible.
+    // Our line count estimate can undershoot ratatui's actual wrapping.
+    let max_scroll = if total_lines >= chat_height {
+        (total_lines - chat_height + 1) as u16
     } else {
         0
     };
