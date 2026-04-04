@@ -43,14 +43,18 @@ enum Command {
         /// bpmux server port to connect to
         #[arg(long, default_value = "4117")]
         port: u16,
+
+        /// Identity name for this bridge in the session
+        #[arg(long, default_value = "claude-code")]
+        name: String,
     },
 }
 
 pub fn run() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
-    if let Some(Command::Bridge { port }) = cli.command {
-        return bridge::run_bridge(port);
+    if let Some(Command::Bridge { port, name }) = cli.command {
+        return bridge::run_bridge(port, &name);
     }
 
     let base = match &cli.session_base {

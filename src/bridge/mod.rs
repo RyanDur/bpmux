@@ -30,15 +30,17 @@ type WsSink = futures::stream::SplitSink<
 #[derive(Clone)]
 pub struct BridgeServer {
     port: u16,
+    name: String,
     peer: Arc<Mutex<Option<Peer<RoleServer>>>>,
     ws_tx: Arc<Mutex<Option<WsSink>>>,
     messages: Arc<Mutex<Vec<String>>>,
 }
 
 impl BridgeServer {
-    fn new(port: u16) -> Self {
+    fn new(port: u16, name: String) -> Self {
         Self {
             port,
+            name,
             peer: Arc::new(Mutex::new(None)),
             ws_tx: Arc::new(Mutex::new(None)),
             messages: Arc::new(Mutex::new(Vec::new())),
@@ -50,6 +52,7 @@ impl BridgeServer {
 /// Returns when the connection drops.
 async fn run_ws_connection(
     port: u16,
+    name: String,
     peer: Peer<RoleServer>,
     ws_tx_store: Arc<Mutex<Option<WsSink>>>,
     messages_store: Arc<Mutex<Vec<String>>>,
@@ -70,7 +73,7 @@ async fn run_ws_connection(
     {
         let mut tx = ws_tx_store.lock().await;
         if let Some(ref mut tx) = *tx {
-            let identify = json!({"type": "identify", "name": "claude-code"}).to_string();
+            let identify = json!({"type": "identify", "name": name}).to_string();
             if let Err(e) = tx.send(tungstenite::Message::Text(identify.into())).await {
                 eprintln!("Bridge: failed to identify: {e}");
                 return;
@@ -89,7 +92,7 @@ async fn run_ws_connection(
             let msg: Result<ServerMessage, _> = serde_json::from_str(&text);
             if let Ok(ServerMessage::Message { from, text, ts }) = msg {
                 // Don't forward our own messages back
-                if from.contains("claude-code") {
+                if from.contains(&name) {
                     continue;
                 }
 
@@ -143,6 +146,7 @@ impl ServerHandler for BridgeServer {
     ) -> impl Future<Output = ()> + Send + '_ {
         let peer = context.peer.clone();
         let port = self.port;
+        let name = self.name.clone();
         let peer_store = self.peer.clone();
         let ws_tx_store = self.ws_tx.clone();
         let messages_store = self.messages.clone();
@@ -155,6 +159,7 @@ impl ServerHandler for BridgeServer {
                 loop {
                     run_ws_connection(
                         port,
+                        name.clone(),
                         peer.clone(),
                         ws_tx_store.clone(),
                         messages_store.clone(),
@@ -242,10 +247,10 @@ impl ServerHandler for BridgeServer {
     }
 }
 
-pub fn run_bridge(port: u16) -> anyhow::Result<()> {
+pub fn run_bridge(port: u16, name: &str) -> anyhow::Result<()> {
     let rt = tokio::runtime::Runtime::new()?;
     rt.block_on(async {
-        let server = BridgeServer::new(port);
+        let server = BridgeServer::new(port, name.to_string());
         let (stdin, stdout) = rmcp::transport::io::stdio();
         let service = server.serve((stdin, stdout)).await?;
         service.waiting().await?;
