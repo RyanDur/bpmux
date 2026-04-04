@@ -15,6 +15,8 @@ Four roles, no hierarchy. Each brings a different lens:
 
 The owner is always human. PM, designer, and tech lead may be AI agents. All communication flows through bpmux — single source of truth.
 
+Everyone can give their opinion on anything. Roles define responsibility, not conversation boundaries.
+
 ## How We Work
 
 Stories drive everything. The PM keeps the backlog ordered. The tech lead pulls from the top. The owner accepts or rejects delivered work. No one assigns work — position in the backlog is priority.
@@ -206,6 +208,8 @@ This catches patterns that a single session cannot see in its own work.
 - **Research is the owner's domain.** The PM surfaces research questions. The owner decides what to investigate. The PM translates findings into stories.
 - **Misleading information is worse than no information.** Archive stale docs. Correct errors immediately. The accuracy audit and contradiction register are living documents.
 - **No UI/UX changes without the designer.** The designer approves the approach before dev builds, not just reviews after. This includes colors, layout, keybindings, status bar changes, and any visual or interaction changes.
+- **Quality gate in worktrees before merge.** Run quality checks (code, test, design) in the worktree before merging to main.
+- **Sub-agents do the work, stay available in bpmux.** Delegate to sub-agents, stay responsive for coordination. The team needs you present, not heads-down.
 
 ## Git & Tooling
 
