@@ -56,14 +56,10 @@ if [ -z "$NEW_MESSAGES" ]; then
   exit 0
 fi
 
-# New messages found — block and inject them
-jq -nc --arg ctx "$NEW_MESSAGES" '{
-  "decision": "block",
-  "reason": "New bpmux messages received",
-  "hookSpecificOutput": {
-    "hookEventName": "Stop",
-    "additionalContext": $ctx
-  }
+# New messages found — continue with the new messages as context
+jq -nc --arg msgs "$NEW_MESSAGES" '{
+  "continue": true,
+  "systemMessage": ("New bpmux messages:\n" + $msgs)
 }'
 
 exit 0

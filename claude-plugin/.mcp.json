@@ -3,7 +3,7 @@
     "bpmux-bridge": {
       "type": "stdio",
       "command": "cargo",
-      "args": ["run", "--manifest-path", "$CLAUDE_PROJECT_DIR/Cargo.toml", "--", "bridge", "--port", "4117", "--name", "claude-code"]
+      "args": ["run", "--manifest-path", "$CLAUDE_PROJECT_DIR/Cargo.toml", "--", "bridge", "--port", "4117", "--name", "pm"]
     }
   }
 }

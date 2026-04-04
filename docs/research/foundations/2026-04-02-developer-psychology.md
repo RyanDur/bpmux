@@ -41,7 +41,7 @@ Amy Edmondson's research at Harvard Business School defines psychological safety
 
 bpmux makes AI reasoning visible to all participants. This creates a paradox:
 
-**Safety argument:** Transparency reduces uncertainty. When developers can see how the AI arrived at a suggestion, they can evaluate it critically rather than accept it on authority. Edmondson's framework supports this -- visible reasoning frames work as a learning problem, not a performance evaluation.
+**Safety argument:** Context support reduces uncertainty. When developers can see how the AI arrived at a suggestion, they can evaluate it critically rather than accept it on authority. Edmondson's framework supports this -- context support (access to information and resources) is positively associated with psychological safety because it reduces insecurity and defensiveness. When safety is present, visible reasoning frames work as a learning problem, not a performance evaluation.
 
 **Anxiety argument:** If developers know their partner (and the AI) can see their reasoning process, including false starts, misunderstandings, and corrections, this creates performance anxiety. Research on AI monitoring tools shows they can increase fear of error, discourage experimentation, and suppress voice behavior.
 

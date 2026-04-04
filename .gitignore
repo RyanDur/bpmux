@@ -17,5 +17,8 @@
 # bpmux runtime
 ~/.bpmux/
 
+# Machine-specific MCP config (contains absolute paths)
+.mcp.json
+
 # OS
 .DS_Store

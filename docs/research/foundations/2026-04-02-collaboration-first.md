@@ -32,7 +32,7 @@ A collaboration-first AI tool would invert the priority. Instead of asking "how 
 
 **The idea:** The AI's reasoning is visible to all team members. Not just its output, but its process.
 
-**What the research says:** Edmondson's work on psychological safety -- the foundation of Google's Project Aristotle findings -- shows that high-performing teams are built on the ability to speak up without fear. Transparency in decision-making creates this safety because it removes the asymmetry: when everyone can see the reasoning, nobody has to guess at hidden motives or unspoken assumptions.
+**What the research says:** Edmondson's work on psychological safety -- the foundation of Google's Project Aristotle findings -- shows that high-performing teams are built on the ability to speak up without fear. Psychological safety enables transparent behavior (sharing information, admitting errors, seeking feedback) because it removes the interpersonal risk: when people believe they will not be punished for speaking up, they are willing to make their reasoning visible. Context support -- including access to shared information -- is positively associated with safety by reducing insecurity and defensiveness, but it is safety that enables the transparency, not the reverse.
 
 The research connects transparency directly to team outcomes: organizations that cultivate psychological safety report measurably higher engagement and lower turnover. More importantly for software teams, transparent decision-making helps surface hidden expectations, challenge inaccurate assumptions, and ensure that decision-making processes are clearly understood. Teams become better at adapting when they know *why* decisions are made.
 

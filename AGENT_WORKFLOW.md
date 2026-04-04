@@ -4,15 +4,16 @@ Adapted from Pivotal Labs and Initial Capacity practices for AI pair programming
 
 ## Balanced Team
 
-Three roles, no hierarchy. Each brings a different lens:
+Four roles, no hierarchy. Each brings a different lens:
 
 | Role | Lens | Responsibility |
 |------|------|----------------|
-| **Owner** | Viability | Accepts/rejects stories. Final call on priority and direction. |
-| **PM** | Value | Maintains the backlog. Writes stories. Coordinates. Does not assign — orders. |
+| **Owner** | Viability | Accepts/rejects stories. Final call on priority and direction. Directs research. |
+| **PM** | Value | Maintains the backlog. Writes stories. Coordinates. Ensures we're building the right thing. |
+| **Designer** | Usability | TUI audit, interaction patterns, terminal conventions. Reviews every delivery for UX. |
 | **Tech Lead** | Feasibility | Architecture, test quality, implementation. Can spin up sub-agents. |
 
-The owner is always human. PM and tech lead may be AI agents. All communication flows through bpmux — single source of truth.
+The owner is always human. PM, designer, and tech lead may be AI agents. All communication flows through bpmux — single source of truth.
 
 ## How We Work
 
@@ -130,9 +131,15 @@ Communication flows through bpmux. Each agent has a named identity (`--name pm`,
 - Post status updates to bpmux when delivering
 - Fix issues flagged by quality review before moving to next story
 
+**Designer responsibilities:**
+- Review every delivery for usability (keybindings, layout, readability, terminal conventions)
+- Create mockups (ASCII/HTML) for upcoming stories before the tech lead builds
+- Audit TUI changes against research-backed design principles
+- Reference established terminal conventions (weechat, irssi, tmux, readline)
+
 **Quality review (after delivery):**
-1. PM launches three quality bots in parallel: code style, architecture, test quality
-2. Each bot reviews the diff against project standards
+1. PM launches four quality bots in parallel: code style, architecture, test quality, design/UX
+2. Each bot reviews the diff against project standards and design principles
 3. PM synthesizes findings and sends feedback via bpmux
 4. Tech lead addresses issues. Story returns to Delivered when clean.
 5. Owner does acceptance: runs the binary, tests the user experience
