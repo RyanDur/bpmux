@@ -7,8 +7,10 @@ pub mod session;
 pub mod terminal;
 pub mod transport;
 
+use std::sync::Arc;
+
 use clap::{Parser, Subcommand};
-use tokio::sync::{broadcast, oneshot};
+use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 
 #[derive(Parser)]
@@ -47,15 +49,10 @@ enum Command {
 pub fn run() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
-    // Dispatch subcommands
     if let Some(Command::Bridge { port }) = cli.command {
         return bridge::run_bridge(port);
     }
 
-    // Default: run the TUI + server
-
-    // Resume existing session or create new one
-    // Priority: CLI flag > env var > default
     let base = match &cli.session_base {
         Some(path) => std::path::PathBuf::from(path),
         None => match std::env::var("BPMUX_SESSION_BASE") {
@@ -65,65 +62,34 @@ pub fn run() -> anyhow::Result<()> {
     };
     std::fs::create_dir_all(&base)?;
     let session_dir = session::resume_or_create_session(&base)?;
-    let session_id = session_dir
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("unknown")
-        .to_string();
 
-    // Load existing messages
-    let messages = session::read_messages(&session_dir)?;
-
-    // Create app state
-    let mut app = terminal::App::new(cli.name.clone(), session_id, messages);
-
-    // Wake channel -- server sends wake signals when messages arrive
     let (wake_tx, mut wake_rx) = broadcast::channel::<session::Message>(64);
+    let session = session::Session::new(session_dir, wake_tx);
+    let messages = session.read_messages()?;
+    let mut app = terminal::App::new(cli.name.clone(), session.id.clone(), messages);
 
-    // Start server on a dedicated thread with its own tokio runtime
-    let server_session_dir = session_dir.clone();
+    let server_session = Arc::new(session.clone());
     let server_name = cli.name.clone();
     let server_port = cli.mcp_port;
-    let server_wake_tx = wake_tx.clone();
     let ct = CancellationToken::new();
     let server_ct = ct.clone();
-    let (ready_tx, ready_rx) = oneshot::channel::<()>();
     std::thread::spawn(move || {
         let Ok(rt) = tokio::runtime::Runtime::new() else {
             eprintln!("Failed to create server tokio runtime");
             return;
         };
         rt.block_on(async move {
-            if let Err(e) = server::run_server(
-                server_session_dir,
-                server_name,
-                server_wake_tx,
-                server_port,
-                server_ct,
-                Some(ready_tx),
-            )
-            .await
+            if let Err(e) =
+                server::run_server(server_session, server_name, server_port, server_ct).await
             {
                 eprintln!("Server error: {e}");
             }
         });
     });
 
-    // Wait for server to be ready before launching TUI
-    if ready_rx.blocking_recv().is_err() {
-        anyhow::bail!("Server failed to start");
-    }
-
-    // Run TUI (blocking, on the main thread)
     let mut terminal = ratatui::init();
-    let result = terminal::run_tui(
-        &mut terminal,
-        &mut app,
-        &session_dir,
-        &mut wake_rx,
-        &wake_tx,
-    );
+    let result = terminal::run_tui(&mut terminal, &mut app, &session, &mut wake_rx);
     ratatui::restore();
 
-    result
+    result.map_err(|e| anyhow::anyhow!("{e}"))
 }

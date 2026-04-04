@@ -1,4 +1,4 @@
-use crate::session::{self, Message};
+use crate::session::Message;
 use chrono::Utc;
 
 pub struct App {
@@ -29,18 +29,15 @@ impl App {
         if text.is_empty() {
             return None;
         }
-
         if text == "/quit" {
             self.should_quit = true;
             return None;
         }
-
         let msg = Message {
-            from: session::participant_id(&self.peer_name, session::ROLE_HUMAN),
+            from: format!("{}:human", self.peer_name),
             text,
             ts: Utc::now(),
         };
-
         self.messages.push(msg.clone());
         self.input.clear();
         Some(msg)
@@ -56,9 +53,7 @@ mod tests {
     fn submits_message_and_clears_input() {
         let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
         app.input = "hello world".to_string();
-
         let msg = app.submit_message().unwrap();
-
         assert_eq!(msg.from, "ryan:human");
         assert_eq!(msg.text, "hello world");
         assert!(app.input.is_empty());
@@ -69,7 +64,6 @@ mod tests {
     fn ignores_empty_input() {
         let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
         app.input = "   ".to_string();
-
         let msg = app.submit_message();
         assert!(msg.is_none());
     }
@@ -78,7 +72,6 @@ mod tests {
     fn quit_command_sets_flag() {
         let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
         app.input = "/quit".to_string();
-
         let msg = app.submit_message();
         assert!(msg.is_none());
         assert!(app.should_quit);

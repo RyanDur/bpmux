@@ -1,8 +1,45 @@
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use thiserror::Error;
 use tokio::sync::broadcast;
 
 use crate::session::message::Message;
+
+#[derive(Debug, Clone)]
+pub struct Session {
+    pub dir: PathBuf,
+    pub id: String,
+    pub wake_tx: broadcast::Sender<Message>,
+}
+
+impl Session {
+    pub fn new(dir: PathBuf, wake_tx: broadcast::Sender<Message>) -> Self {
+        let id = dir
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("unknown")
+            .to_string();
+        Self { dir, id, wake_tx }
+    }
+
+    pub fn broadcast(&self, msg: &Message) -> Result<(), LogError> {
+        append_message(&self.dir, msg)?;
+        let _ = self.wake_tx.send(msg.clone());
+        Ok(())
+    }
+
+    pub fn read_messages(&self) -> Result<Vec<Message>, LogError> {
+        read_messages(&self.dir)
+    }
+
+    pub fn subscribe(&self) -> broadcast::Receiver<Message> {
+        self.wake_tx.subscribe()
+    }
+
+    pub fn into_arc(self) -> Arc<Self> {
+        Arc::new(self)
+    }
+}
 
 pub fn default_sessions_base() -> Result<PathBuf, LogError> {
     let base = dirs::home_dir()
@@ -19,15 +56,12 @@ pub fn default_sessions_base() -> Result<PathBuf, LogError> {
 
 pub fn resume_or_create_session(base: &Path) -> Result<PathBuf, LogError> {
     let current = base.join("current");
-
-    // If a current symlink exists and points to a valid directory, resume it
     if current.is_symlink() {
         let target = std::fs::read_link(&current)?;
         if target.is_dir() {
             return Ok(target);
         }
     }
-
     create_session(base)
 }
 
@@ -35,15 +69,12 @@ pub fn create_session(base: &Path) -> Result<PathBuf, LogError> {
     let session_id = uuid::Uuid::new_v4().to_string();
     let session_dir = base.join(&session_id);
     std::fs::create_dir_all(&session_dir)?;
-
-    // Create/update "current" symlink
     let current = base.join("current");
     if current.exists() || current.is_symlink() {
         std::fs::remove_file(&current)?;
     }
     #[cfg(unix)]
     std::os::unix::fs::symlink(&session_dir, &current)?;
-
     Ok(session_dir)
 }
 
@@ -63,7 +94,6 @@ pub fn append_message(session_dir: &Path, message: &Message) -> Result<(), LogEr
     let path = log_path(session_dir);
     let mut line = serde_json::to_string(message)?;
     line.push('\n');
-
     use std::io::Write;
     let mut file = std::fs::OpenOptions::new()
         .create(true)
@@ -73,29 +103,17 @@ pub fn append_message(session_dir: &Path, message: &Message) -> Result<(), LogEr
     Ok(())
 }
 
-pub fn broadcast_message(
-    session_dir: &Path,
-    msg: &Message,
-    wake_tx: &broadcast::Sender<Message>,
-) -> Result<(), LogError> {
-    append_message(session_dir, msg)?;
-    let _ = wake_tx.send(msg.clone());
-    Ok(())
-}
-
 pub fn read_messages(session_dir: &Path) -> Result<Vec<Message>, LogError> {
     let path = log_path(session_dir);
     if !path.exists() {
         return Ok(vec![]);
     }
-
     let content = std::fs::read_to_string(&path)?;
     let messages: Result<Vec<Message>, _> = content
         .lines()
         .filter(|line| !line.is_empty())
         .map(serde_json::from_str)
         .collect();
-
     Ok(messages?)
 }
 
@@ -109,7 +127,6 @@ mod tests {
     #[test]
     fn appends_and_reads_messages() {
         let dir = TempDir::new().expect("temp dir");
-
         let msg1 = Message {
             from: "ryan:human".to_string(),
             text: "first message".to_string(),
@@ -120,10 +137,8 @@ mod tests {
             text: "second message".to_string(),
             ts: Utc::now(),
         };
-
         append_message(dir.path(), &msg1).expect("append 1");
         append_message(dir.path(), &msg2).expect("append 2");
-
         let messages = read_messages(dir.path()).expect("read");
         assert_eq!(messages.len(), 2);
         assert_eq!(messages[0].text, "first message");
@@ -143,7 +158,6 @@ mod tests {
         let dir = create_session(base.path()).expect("create session");
         assert!(dir.exists());
         assert!(dir.is_dir());
-        // current symlink should point to the session
         let current = base.path().join("current");
         assert!(current.is_symlink());
     }
@@ -151,26 +165,46 @@ mod tests {
     #[test]
     fn resumes_existing_session() {
         let base = TempDir::new().expect("temp base");
-
-        // Create a session first
         let dir1 = create_session(base.path()).expect("create session");
         assert!(dir1.exists());
-
-        // Write a message to it
         let msg = Message {
             from: "ryan:human".to_string(),
             text: "persisted message".to_string(),
             ts: Utc::now(),
         };
         append_message(&dir1, &msg).expect("append");
-
-        // Resume should return the same directory
         let dir2 = resume_or_create_session(base.path()).expect("resume");
         assert_eq!(dir1, dir2);
-
-        // Messages should be readable from the resumed session
         let messages = read_messages(&dir2).expect("read");
         assert_eq!(messages.len(), 1);
         assert_eq!(messages[0].text, "persisted message");
+    }
+
+    #[test]
+    fn session_broadcasts_and_reads() {
+        let dir = TempDir::new().expect("temp dir");
+        let (tx, mut rx) = broadcast::channel(16);
+        let session = Session::new(dir.path().to_path_buf(), tx);
+        let msg = Message {
+            from: "ryan:human".to_string(),
+            text: "via session".to_string(),
+            ts: Utc::now(),
+        };
+        session.broadcast(&msg).expect("broadcast");
+        let received = rx.try_recv().expect("receive broadcast");
+        assert_eq!(received.text, "via session");
+        let messages = session.read_messages().expect("read");
+        assert_eq!(messages.len(), 1);
+        assert_eq!(messages[0].text, "via session");
+    }
+
+    #[test]
+    fn session_derives_id_from_dir_name() {
+        let base = TempDir::new().expect("temp base");
+        let session_dir = base.path().join("my-session-id");
+        std::fs::create_dir_all(&session_dir).expect("create dir");
+        let (tx, _rx) = broadcast::channel(16);
+        let session = Session::new(session_dir, tx);
+        assert_eq!(session.id, "my-session-id");
     }
 }

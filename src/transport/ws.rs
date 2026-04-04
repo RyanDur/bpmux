@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use anyhow::{Result, bail};
 use axum::extract::State;
 use axum::extract::ws::{Message as WsMessage, WebSocket, WebSocketUpgrade};
 use axum::response::Response;
@@ -10,18 +9,19 @@ use tokio::sync::broadcast;
 
 use crate::session;
 use crate::transport::protocol::{ClientMessage, ServerMessage};
-use crate::transport::state::ServerState;
 
 const MAX_MESSAGE_SIZE: usize = 4096;
 
-pub async fn ws_handler(ws: WebSocketUpgrade, State(state): State<Arc<ServerState>>) -> Response {
-    ws.on_upgrade(|socket| handle_ws(socket, state))
+pub async fn ws_handler(
+    ws: WebSocketUpgrade,
+    State(session): State<Arc<session::Session>>,
+) -> Response {
+    ws.on_upgrade(|socket| handle_ws(socket, session))
 }
 
-async fn handle_ws(socket: WebSocket, state: Arc<ServerState>) {
+async fn handle_ws(socket: WebSocket, session: Arc<session::Session>) {
     let (tx, rx) = socket.split();
-
-    if let Err(e) = run_ws_session(tx, rx, state).await {
+    if let Err(e) = run_ws_session(tx, rx, session).await {
         eprintln!("WebSocket session error: {e}");
     }
 }
@@ -29,68 +29,48 @@ async fn handle_ws(socket: WebSocket, state: Arc<ServerState>) {
 async fn run_ws_session(
     mut tx: SplitSink<WebSocket, WsMessage>,
     mut rx: SplitStream<WebSocket>,
-    state: Arc<ServerState>,
-) -> Result<()> {
-    // Phase 1: Wait for identify (5 second timeout)
+    session: Arc<session::Session>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let name = wait_for_identify(&mut tx, &mut rx).await?;
-    let identity = session::participant_id(&name, session::ROLE_WS);
-
-    // Subscribe to broadcast BEFORE sending welcome (avoid missing messages)
-    let mut broadcast_rx = state.wake_tx.subscribe();
-
-    // Send welcome
+    let identity = format!("{name}:ws");
+    let mut broadcast_rx = session.subscribe();
     send_json(
         &mut tx,
         &ServerMessage::Welcome {
-            session_id: state.session_id.clone(),
+            session_id: session.id.clone(),
         },
     )
     .await?;
-
-    // Phase 2: Bidirectional message loop
     loop {
         tokio::select! {
-            // Messages from broadcast -> push to WebSocket client
             broadcast_result = broadcast_rx.recv() => {
                 match broadcast_result {
-                    Ok(msg) => {
-                        send_json(&mut tx, &ServerMessage::from(msg)).await?;
-                    }
+                    Ok(msg) => { send_json(&mut tx, &ServerMessage::from(msg)).await?; }
                     Err(broadcast::error::RecvError::Lagged(n)) => {
                         eprintln!("WebSocket client {identity} lagged by {n} messages");
                     }
                     Err(broadcast::error::RecvError::Closed) => break,
                 }
             }
-            // Messages from WebSocket client -> process
             ws_result = rx.next() => {
                 match ws_result {
                     Some(Ok(WsMessage::Text(text))) => {
-                        handle_client_message(
-                            &text,
-                            &identity,
-                            &state,
-                            &mut tx,
-                        ).await?;
+                        handle_client_message(&text, &identity, &session, &mut tx).await?;
                     }
                     Some(Ok(WsMessage::Close(_))) | None => break,
-                    Some(Err(e)) => {
-                        eprintln!("WebSocket read error for {identity}: {e}");
-                        break;
-                    }
-                    _ => {} // Binary, Ping, Pong -- ignore
+                    Some(Err(e)) => { eprintln!("WebSocket read error for {identity}: {e}"); break; }
+                    _ => {}
                 }
             }
         }
     }
-
     Ok(())
 }
 
 async fn wait_for_identify(
     tx: &mut SplitSink<WebSocket, WsMessage>,
     rx: &mut SplitStream<WebSocket>,
-) -> Result<String> {
+) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
     let timeout = tokio::time::timeout(std::time::Duration::from_secs(5), async {
         while let Some(Ok(msg)) = rx.next().await {
             if let WsMessage::Text(text) = msg {
@@ -117,22 +97,21 @@ async fn wait_for_identify(
                 }
             }
         }
-        bail!("connection closed before identify")
+        Err("connection closed before identify".into())
     })
     .await;
-
     match timeout {
         Ok(result) => result,
-        Err(_) => bail!("identify timeout (5s)"),
+        Err(_) => Err("identify timeout (5s)".into()),
     }
 }
 
 async fn handle_client_message(
     text: &str,
     identity: &str,
-    state: &ServerState,
+    session: &session::Session,
     tx: &mut SplitSink<WebSocket, WsMessage>,
-) -> Result<()> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     if text.len() > MAX_MESSAGE_SIZE {
         send_json(
             tx,
@@ -143,7 +122,6 @@ async fn handle_client_message(
         .await?;
         return Ok(());
     }
-
     match serde_json::from_str::<ClientMessage>(text) {
         Ok(ClientMessage::Send { text: msg_text }) => {
             let msg = session::Message {
@@ -151,7 +129,7 @@ async fn handle_client_message(
                 text: msg_text,
                 ts: chrono::Utc::now(),
             };
-            session::broadcast_message(&state.session_dir, &msg, &state.wake_tx)?;
+            session.broadcast(&msg)?;
         }
         Ok(ClientMessage::Ping) => {
             send_json(tx, &ServerMessage::Pong).await?;
@@ -175,11 +153,13 @@ async fn handle_client_message(
             .await?;
         }
     }
-
     Ok(())
 }
 
-async fn send_json(tx: &mut SplitSink<WebSocket, WsMessage>, msg: &ServerMessage) -> Result<()> {
+async fn send_json(
+    tx: &mut SplitSink<WebSocket, WsMessage>,
+    msg: &ServerMessage,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let json = serde_json::to_string(msg)?;
     tx.send(WsMessage::Text(json.into())).await?;
     Ok(())
