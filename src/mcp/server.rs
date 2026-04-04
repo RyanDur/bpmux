@@ -158,7 +158,7 @@ pub async fn run_mcp_server(
                 .with_cancellation_token(ct.child_token()),
         );
 
-    let ws_state = Arc::new(super::ws::WsState {
+    let ws_state = Arc::new(super::state::ServerState {
         session_dir: Arc::new(session_dir),
         session_id: dir
             .file_name()

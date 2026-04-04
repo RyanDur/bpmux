@@ -6,7 +6,7 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use serde::Deserialize;
 
-use super::ws::WsState;
+use super::state::ServerState;
 use crate::session;
 
 #[derive(Deserialize)]
@@ -16,7 +16,7 @@ pub struct PostMessage {
 }
 
 pub async fn post_message(
-    State(state): State<Arc<WsState>>,
+    State(state): State<Arc<ServerState>>,
     Json(payload): Json<PostMessage>,
 ) -> impl IntoResponse {
     if payload.text.is_empty() {
@@ -55,7 +55,7 @@ mod tests {
 
     fn test_app(dir: &TempDir) -> (axum::Router, broadcast::Sender<session::Message>) {
         let (tx, _rx) = broadcast::channel(16);
-        let state = Arc::new(WsState {
+        let state = Arc::new(ServerState {
             session_dir: Arc::new(dir.path().to_path_buf()),
             session_id: "test".to_string(),
             wake_tx: tx.clone(),

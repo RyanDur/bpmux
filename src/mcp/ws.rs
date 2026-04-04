@@ -1,4 +1,3 @@
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use axum::extract::State;
@@ -9,22 +8,16 @@ use futures::{SinkExt, StreamExt};
 use tokio::sync::broadcast;
 
 use crate::mcp::protocol::{ClientMessage, ServerMessage};
+use crate::mcp::state::ServerState;
 use crate::session;
 
 const MAX_MESSAGE_SIZE: usize = 4096;
 
-#[derive(Clone)]
-pub struct WsState {
-    pub session_dir: Arc<PathBuf>,
-    pub session_id: String,
-    pub wake_tx: broadcast::Sender<session::Message>,
-}
-
-pub async fn ws_handler(ws: WebSocketUpgrade, State(state): State<Arc<WsState>>) -> Response {
+pub async fn ws_handler(ws: WebSocketUpgrade, State(state): State<Arc<ServerState>>) -> Response {
     ws.on_upgrade(|socket| handle_ws(socket, state))
 }
 
-async fn handle_ws(socket: WebSocket, state: Arc<WsState>) {
+async fn handle_ws(socket: WebSocket, state: Arc<ServerState>) {
     let (tx, rx) = socket.split();
 
     if let Err(e) = run_ws_session(tx, rx, state).await {
@@ -35,7 +28,7 @@ async fn handle_ws(socket: WebSocket, state: Arc<WsState>) {
 async fn run_ws_session(
     mut tx: SplitSink<WebSocket, WsMessage>,
     mut rx: SplitStream<WebSocket>,
-    state: Arc<WsState>,
+    state: Arc<ServerState>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Phase 1: Wait for identify (5 second timeout)
     let name = wait_for_identify(&mut tx, &mut rx).await?;
@@ -136,7 +129,7 @@ async fn wait_for_identify(
 async fn handle_client_message(
     text: &str,
     identity: &str,
-    state: &WsState,
+    state: &ServerState,
     tx: &mut SplitSink<WebSocket, WsMessage>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     if text.len() > MAX_MESSAGE_SIZE {
