@@ -3,8 +3,8 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use rmcp::model::{
-    CallToolRequestParams, CallToolResult, Content, ListToolsResult, ServerCapabilities,
-    ServerInfo, Tool,
+    CallToolRequestParams, CallToolResult, Content, ListToolsResult, ServerCapabilities, ServerInfo,
+    Tool,
 };
 use rmcp::service::RequestContext;
 use rmcp::transport::streamable_http_server::session::local::LocalSessionManager;
