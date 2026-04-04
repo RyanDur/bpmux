@@ -6,6 +6,7 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph, Wrap},
 };
 
+use crate::session;
 use crate::terminal::app::App;
 
 pub fn render(frame: &mut Frame, app: &App) {
@@ -16,9 +17,10 @@ pub fn render(frame: &mut Frame, app: &App) {
     ])
     .split(frame.area());
 
-    // Chat pane
-    let messages: Vec<Line> = app
-        .messages
+    // Chat pane — only show chat messages
+    let chat_messages: Vec<&session::Message> =
+        app.messages.iter().filter(|m| m.is_chat()).collect();
+    let messages: Vec<Line> = chat_messages
         .iter()
         .enumerate()
         .flat_map(|(i, msg)| {
@@ -46,8 +48,7 @@ pub fn render(frame: &mut Frame, app: &App) {
             let content = Line::from(spans);
 
             // Add blank line separator only when the next message is from a different sender
-            let next_is_different = app
-                .messages
+            let next_is_different = chat_messages
                 .get(i + 1)
                 .is_some_and(|next| next.from != msg.from);
 
@@ -149,6 +150,7 @@ mod tests {
                 from: "ryan:human".to_string(),
                 text: "hello".to_string(),
                 ts: Utc::now(),
+                message_type: None,
             }],
         );
 
@@ -173,6 +175,7 @@ mod tests {
                 from: "dev:human".to_string(),
                 text: format!("message {i}"),
                 ts: Utc::now(),
+                message_type: None,
             })
             .collect();
 
@@ -250,6 +253,42 @@ mod tests {
         assert!(
             !screen.contains("solo"),
             "Should not show 'solo' when peers connected. Screen:\n{screen}"
+        );
+    }
+
+    #[allow(clippy::unwrap_used)]
+    #[test]
+    fn system_messages_filtered_from_chat() {
+        let backend = TestBackend::new(80, 15);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let app = App::new(
+            "dev".to_string(),
+            "test-id".to_string(),
+            vec![
+                Message {
+                    from: "dev:human".to_string(),
+                    text: "visible chat".to_string(),
+                    ts: Utc::now(),
+                    message_type: None,
+                },
+                Message {
+                    from: "ryan:claude-code".to_string(),
+                    text: "[turn complete]".to_string(),
+                    ts: Utc::now(),
+                    message_type: Some("system".to_string()),
+                },
+            ],
+        );
+
+        terminal.draw(|frame| render(frame, &app)).unwrap();
+        let screen = buffer_to_string(terminal.backend().buffer());
+        assert!(
+            screen.contains("visible chat"),
+            "Chat messages should appear. Screen:\n{screen}"
+        );
+        assert!(
+            !screen.contains("turn complete"),
+            "System messages should be filtered. Screen:\n{screen}"
         );
     }
 

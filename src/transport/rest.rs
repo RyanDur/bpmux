@@ -12,6 +12,7 @@ use crate::session;
 pub struct PostMessage {
     pub from: String,
     pub text: String,
+    pub message_type: Option<String>,
 }
 
 pub async fn post_message(
@@ -28,6 +29,7 @@ pub async fn post_message(
         from: payload.from,
         text: payload.text,
         ts: chrono::Utc::now(),
+        message_type: payload.message_type,
     };
     if let Err(e) = session.broadcast(&msg) {
         return (

@@ -82,6 +82,7 @@ mod tests {
             from: "dev:human".to_string(),
             text: "hello".to_string(),
             ts: chrono::Utc::now(),
+            message_type: None,
         };
         let server_msg: ServerMessage = session_msg.into();
         let json = serde_json::to_string(&server_msg).expect("serialize");

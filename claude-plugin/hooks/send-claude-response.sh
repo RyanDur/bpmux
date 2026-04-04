@@ -11,6 +11,6 @@ BPMUX_API="http://127.0.0.1:4117/api/messages"
 # POST turn-complete notification to bpmux REST endpoint
 curl -s -X POST "$BPMUX_API" \
   -H "Content-Type: application/json" \
-  -d '{"from":"ryan:claude-code","text":"[turn complete]"}' >/dev/null 2>&1
+  -d '{"from":"ryan:claude-code","text":"[turn complete]","message_type":"system"}' >/dev/null 2>&1
 
 exit 0

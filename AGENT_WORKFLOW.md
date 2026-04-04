@@ -1,10 +1,77 @@
-# Working Agreement: Ground Control / Major Tom
+# Working Agreement
 
-Claude writes all code. The human (Ground Control) owns all decisions.
+Adapted from Pivotal Labs and Initial Capacity practices for AI pair programming.
+
+## Balanced Team
+
+Three roles, no hierarchy. Each brings a different lens:
+
+| Role | Lens | Responsibility |
+|------|------|----------------|
+| **Owner** | Viability | Accepts/rejects stories. Final call on priority and direction. |
+| **PM** | Value | Maintains the backlog. Writes stories. Coordinates. Does not assign — orders. |
+| **Tech Lead** | Feasibility | Architecture, test quality, implementation. Can spin up sub-agents. |
+
+The owner is always human. PM and tech lead may be AI agents. All communication flows through bpmux — single source of truth.
 
 ## How We Work
 
-We have a conversation. The story's expected behaviors are the goal. We talk about what to build, agree on the approach, write a failing test, build until it passes, and the human verifies it works. No prescribed pipeline. No mandatory skills. The coordination emerges from the conversation.
+Stories drive everything. The PM keeps the backlog ordered. The tech lead pulls from the top. The owner accepts or rejects delivered work. No one assigns work — position in the backlog is priority.
+
+The first few weeks of a new codebase are the most important code you'll write. Get the foundation right.
+
+## The Backlog
+
+One ordered list. Position is priority. No P1/P2/P3 labels — if it's more important, it's higher.
+
+**Story types:**
+- **Feature** — delivers user value. The only type that moves the product forward.
+- **Bug** — defect in accepted work. Steps to reproduce, expected vs actual.
+- **Chore** — necessary work with no direct user value (tech debt, cleanup).
+
+**Story lifecycle:**
+
+```
+Icebox → Ready → Started → Delivered → Accepted/Rejected
+```
+
+| State | Who acts | What happens |
+|-------|----------|--------------|
+| Icebox | Anyone | Raw ideas, unrefined |
+| Ready | PM | Story has acceptance criteria, is small, is estimable |
+| Started | Tech Lead | Pulls from top of Ready. Writing tests and code. |
+| Delivered | Tech Lead | Tests pass, clippy clean, fmt clean. Ready for review. |
+| Accepted | Owner | Verified against acceptance criteria. Done. |
+| Rejected | Owner/PM | Explains why. Returns to Started. |
+
+**Rules:**
+- Tech lead always pulls from the top of Ready. No cherry-picking.
+- PM never assigns stories. PM orders the backlog.
+- Priority changes = reorder the backlog, not interrupt the developer.
+- Started work finishes before new work starts. No story interruptions.
+- Priority changes require all three participants to discuss before switching.
+
+## Story Format
+
+Stories describe WHAT and WHY, never HOW. The tech lead decides how.
+
+```
+Title: [Verb] [what] [context]
+
+As a [user role]
+I want [capability]
+So that [business outcome]
+
+Acceptance Criteria:
+GIVEN [context]
+WHEN [action]
+THEN [observable result]
+```
+
+- Smallest possible increment of user value.
+- "And" in acceptance criteria is a smell — split the story.
+- GIVEN/WHEN/THEN maps directly to test cases. The tech lead uses these to write the acceptance test first.
+- No implementation details in the story.
 
 ## No Automatic Plugins
 
@@ -35,37 +102,52 @@ Do not invoke the Skill tool unless the human explicitly asks for it. No automat
 
 ## Agent Workflow
 
+### Single-Session (Owner + one Claude)
+
 Opus orchestrates. Sonnet implements. Haiku verifies.
 
-**Roles:**
 - **Opus** — decisions, architecture, review. No implementation code.
-- **Sonnet** — implementation. One objective per launch. TDD. Does not commit or push.
-- **Haiku** — research, verification, CI watch. Concise summaries. If Haiku hits limits, Sonnet takes over — never Opus.
+- **Sonnet** — implementation. One objective per launch. TDD.
+- **Haiku** — research, verification, CI watch.
 
-**Delegation:** Opus spends tokens on decisions, not data gathering. Before reading a file: "Could Haiku summarize what I need?"
-- Haiku: specific question in, concise answer out.
-- Sonnet: Opus drafts a plan (problem, root cause, files, verification, quality bar) → Ground Control approves → then launch. No exceptions. Don't send step-by-step instructions or code snippets — Sonnet reads the codebase itself.
+Delegation: Opus spends tokens on decisions, not data gathering. Before reading a file: "Could Haiku summarize what I need?"
 
-**Review (after Sonnet returns):**
-1. Tests green
-2. Haiku pre-screens diff against objective
-3. Opus reviews: structural repetition, naming drift, design fit
-4. Opus presents findings + recommendation to Ground Control
-5. Ground Control decides: ship, push back, or redirect
+### Multi-Session (Owner + PM + Tech Lead)
 
-Push-backs must define the gap precisely before relaunching.
+Communication flows through bpmux. Each agent has a named identity (`--name pm`, `--name dev`).
 
-**Quality:** Strict review, never soft-pass. Repetition = duplicated structure, not just text — find the abstraction. One clean Sonnet launch beats two where the first gets soft-passed.
+**PM responsibilities:**
+- Maintain the ordered backlog (GitHub issues)
+- Write stories with GIVEN/WHEN/THEN acceptance criteria
+- Run quality bots on delivered work (code style, architecture, test quality — in parallel)
+- Accept or reject delivered work against acceptance criteria (or escalate to owner)
+- Never write implementation code
 
-**Feedback loops:** Precise objectives reduce relaunches. Include quality bar upfront. Make loops visible — announce launches, report CI, explain failures. No silent re-runs.
+**Tech Lead responsibilities:**
+- Pull from the top of Ready
+- Write the acceptance test first, then implement
+- Can spin up sub-agents for implementation
+- Post status updates to bpmux when delivering
+- Fix issues flagged by quality review before moving to next story
 
-**Session shape:** Opus reads context → Haiku researches → Opus decides → Sonnet implements → Haiku pre-screens → Opus reviews → Ground Control decides → Ground Control commits and pushes → Haiku watches CI → repeat.
+**Quality review (after delivery):**
+1. PM launches three quality bots in parallel: code style, architecture, test quality
+2. Each bot reviews the diff against project standards
+3. PM synthesizes findings and sends feedback via bpmux
+4. Tech lead addresses issues. Story returns to Delivered when clean.
+5. Owner does acceptance: runs the binary, tests the user experience
 
-**Session close:**
-- Haiku drafts checkpoint: branch, last commit, what's done, next concrete step, blockers.
-- Haiku flags stale project memories.
-- Opus extracts durable learnings before deleting any project memory. Status is ephemeral. Lessons are permanent.
-- Ground Control approves cleanup.
+**Coordination rules:**
+- Structural changes must be sequential. Only independent work parallelizes.
+- One agent works on shared files at a time. Claim your context, stay in your lane.
+- If blocked, stop and communicate. Don't keep writing to files someone else is changing.
+
+### Session Close
+
+- Draft checkpoint: branch, last commit, what's done, next concrete step, blockers.
+- Flag stale project memories.
+- Extract durable learnings. Status is ephemeral. Lessons are permanent.
+- Owner approves cleanup.
 
 ## Story Delivery
 
@@ -108,6 +190,11 @@ This catches patterns that a single session cannot see in its own work.
 - **The plan is a hypothesis.** Review against the story's expected behaviors, not just the plan's task descriptions. The story is the truth.
 - **Caveats don't travel.** When a claim appears in multiple documents, the caveat must appear every time, not just the first time.
 - **Research has diminishing returns.** 27 documents is thorough. 28 would have been procrastination. Build when the research is sufficient, not when it's exhaustive.
+- **Six agents on shared files is deadlock, not parallelism.** Structural changes must be sequential. Agents naturally tried to coordinate ("please stop editing") but without enforcement it failed.
+- **Never interrupt a started story.** When we reprioritized mid-flight, the tech lead rushed to close and shipped tautological tests. Finish the current story first.
+- **Test the right seam.** Tests that call methods which don't touch the thing being asserted pass by coincidence. Map assertions back to acceptance criteria, not just code coverage.
+- **Testing is knowledge transfer.** Tests document behavior for the next developer (or agent) who reads the code. Tautological tests transfer false knowledge.
+- **The PM orders, the PM doesn't assign.** Reorder the backlog, don't send "do this now" messages. Protect developer flow.
 
 ## Git & Tooling
 

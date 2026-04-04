@@ -166,11 +166,13 @@ mod tests {
             from: "ryan:human".to_string(),
             text: "first message".to_string(),
             ts: Utc::now(),
+            message_type: None,
         };
         let msg2 = Message {
             from: "ryan:human".to_string(),
             text: "second message".to_string(),
             ts: Utc::now(),
+            message_type: None,
         };
         append_message(dir.path(), &msg1).expect("append 1");
         append_message(dir.path(), &msg2).expect("append 2");
@@ -206,6 +208,7 @@ mod tests {
             from: "ryan:human".to_string(),
             text: "persisted message".to_string(),
             ts: Utc::now(),
+            message_type: None,
         };
         append_message(&dir1, &msg).expect("append");
         let dir2 = resume_or_create_session(base.path()).expect("resume");
@@ -224,6 +227,7 @@ mod tests {
             from: "ryan:human".to_string(),
             text: "via session".to_string(),
             ts: Utc::now(),
+            message_type: None,
         };
         session.broadcast(&msg).expect("broadcast");
         let received = rx.try_recv().expect("receive broadcast");
@@ -241,5 +245,27 @@ mod tests {
         let (tx, _rx) = broadcast::channel(16);
         let session = Session::new(session_dir, tx);
         assert_eq!(session.id, "my-session-id");
+    }
+
+    #[test]
+    fn peer_count_shared_through_arc() {
+        let dir = TempDir::new().expect("temp dir");
+        let (tx, _rx) = broadcast::channel(16);
+        let session = std::sync::Arc::new(Session::new(dir.path().to_path_buf(), tx));
+        let server_session = std::sync::Arc::clone(&session);
+
+        assert_eq!(session.peer_count(), 0);
+
+        server_session.peer_connected();
+        assert_eq!(session.peer_count(), 1);
+
+        server_session.peer_connected();
+        assert_eq!(session.peer_count(), 2);
+
+        server_session.peer_disconnected();
+        assert_eq!(session.peer_count(), 1);
+
+        server_session.peer_disconnected();
+        assert_eq!(session.peer_count(), 0);
     }
 }

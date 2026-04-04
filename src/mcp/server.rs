@@ -49,6 +49,7 @@ impl BpmuxMcpServer {
             from: format!("{}:mcp-client", self.peer_name),
             text,
             ts: chrono::Utc::now(),
+            message_type: None,
         };
         self.session.broadcast(&msg).map_err(|e| format!("{e}"))?;
         Ok("message sent".to_string())

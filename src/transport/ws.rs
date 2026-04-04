@@ -142,6 +142,7 @@ async fn handle_client_message(
                 from: identity.to_string(),
                 text: msg_text,
                 ts: chrono::Utc::now(),
+                message_type: None,
             };
             session.broadcast(&msg)?;
         }

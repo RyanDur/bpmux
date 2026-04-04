@@ -55,6 +55,7 @@ impl App {
             from: format!("{}:human", self.peer_name),
             text,
             ts: Utc::now(),
+            message_type: None,
         };
         self.messages.push(msg.clone());
         self.input.clear();
@@ -122,6 +123,7 @@ mod tests {
             from: "bot:ws".to_string(),
             text: "hello".to_string(),
             ts: Utc::now(),
+            message_type: None,
         });
         assert_eq!(app.scroll_offset, 0);
         assert_eq!(app.messages.len(), 1);
@@ -135,6 +137,7 @@ mod tests {
             from: "bot:ws".to_string(),
             text: "hello".to_string(),
             ts: Utc::now(),
+            message_type: None,
         });
         assert_eq!(app.scroll_offset, 6);
         assert_eq!(app.messages.len(), 1);
