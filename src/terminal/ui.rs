@@ -14,7 +14,7 @@ const SENDER_PALETTE: [Color; 6] = [
     Color::Green,
     Color::Yellow,
     Color::Magenta,
-    Color::LightBlue,
+    Color::LightCyan,
     Color::LightRed,
 ];
 
@@ -148,10 +148,18 @@ pub fn render(frame: &mut Frame, app: &App) {
             }
         })
         .sum();
-    // Add 1 line of padding so the last message is always fully visible.
-    // Our line count estimate can undershoot ratatui's actual wrapping.
-    let max_scroll = if total_lines >= chat_height {
-        (total_lines - chat_height + 1) as u16
+    // Ratatui's Wrap may produce more lines than our byte-length estimate.
+    // Add padding proportional to wrapped message count to compensate.
+    let wrapped_count = messages
+        .iter()
+        .filter(|line| {
+            let w: usize = line.spans.iter().map(|s| s.content.len()).sum();
+            chat_inner_width > 0 && w > chat_inner_width
+        })
+        .count();
+    let padded_total = total_lines + wrapped_count;
+    let max_scroll = if padded_total > chat_height {
+        (padded_total - chat_height) as u16
     } else {
         0
     };
