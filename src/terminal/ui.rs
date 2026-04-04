@@ -9,6 +9,22 @@ use ratatui::{
 use crate::session;
 use crate::terminal::app::App;
 
+const SENDER_PALETTE: [Color; 6] = [
+    Color::Cyan,
+    Color::Green,
+    Color::Yellow,
+    Color::Magenta,
+    Color::Blue,
+    Color::Red,
+];
+
+fn sender_color(name: &str) -> Color {
+    let hash: usize = name.bytes().fold(0usize, |acc, b| {
+        acc.wrapping_mul(31).wrapping_add(b as usize)
+    });
+    SENDER_PALETTE[hash % SENDER_PALETTE.len()]
+}
+
 pub fn render(frame: &mut Frame, app: &App) {
     let chunks = Layout::vertical([
         Constraint::Min(3),    // chat pane
@@ -28,9 +44,9 @@ pub fn render(frame: &mut Frame, app: &App) {
             // Short name: "ryan:human" → "ryan", "claude-code:ws" → "claude-code"
             let short_name = msg.from.split(':').next().unwrap_or(&msg.from);
 
-            // Color by sender type: human = cyan, AI = green
+            // Deterministic color from sender name — same name always gets same color
             let is_human = msg.from.ends_with(":human");
-            let name_color = if is_human { Color::Cyan } else { Color::Green };
+            let name_color = sender_color(short_name);
 
             // Build the prefix (timestamp + name)
             let mut prefix = String::new();
@@ -68,7 +84,11 @@ pub fn render(frame: &mut Frame, app: &App) {
                 }
                 spans.push(Span::styled(
                     format!("{short_name}: "),
-                    Style::default().fg(name_color).add_modifier(Modifier::BOLD),
+                    if is_human {
+                        Style::default().fg(name_color).add_modifier(Modifier::BOLD)
+                    } else {
+                        Style::default().fg(name_color)
+                    },
                 ));
                 spans.push(Span::raw(display_text));
                 lines.push(Line::from(spans));
@@ -88,7 +108,11 @@ pub fn render(frame: &mut Frame, app: &App) {
                 }
                 spans.push(Span::styled(
                     format!("{short_name}: "),
-                    Style::default().fg(name_color).add_modifier(Modifier::BOLD),
+                    if is_human {
+                        Style::default().fg(name_color).add_modifier(Modifier::BOLD)
+                    } else {
+                        Style::default().fg(name_color)
+                    },
                 ));
                 spans.push(Span::raw(&msg.text));
                 lines.push(Line::from(spans));
@@ -459,6 +483,29 @@ mod tests {
         assert!(
             screen.contains("[+"),
             "6-line message SHOULD be truncated. Screen:\n{screen}"
+        );
+    }
+
+    #[test]
+    fn different_senders_get_different_colors() {
+        let ryan_color = super::sender_color("ryan");
+        let dev_color = super::sender_color("dev");
+        let pm_color = super::sender_color("pm");
+
+        // At minimum, not all three should be the same color
+        assert!(
+            !(ryan_color == dev_color && dev_color == pm_color),
+            "ryan, dev, and pm should not all have the same color"
+        );
+    }
+
+    #[test]
+    fn same_sender_gets_consistent_color() {
+        let color1 = super::sender_color("dev");
+        let color2 = super::sender_color("dev");
+        assert_eq!(
+            color1, color2,
+            "Same sender should always get the same color"
         );
     }
 
