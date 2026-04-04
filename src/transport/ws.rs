@@ -32,7 +32,7 @@ async fn run_ws_session(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Phase 1: Wait for identify (5 second timeout)
     let name = wait_for_identify(&mut tx, &mut rx).await?;
-    let identity = format!("{name}:ws");
+    let identity = session::participant_id(&name, session::ROLE_WS);
 
     // Subscribe to broadcast BEFORE sending welcome (avoid missing messages)
     let mut broadcast_rx = state.wake_tx.subscribe();

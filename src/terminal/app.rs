@@ -1,4 +1,4 @@
-use crate::session::Message;
+use crate::session::{self, Message};
 use chrono::Utc;
 
 pub struct App {
@@ -36,7 +36,7 @@ impl App {
         }
 
         let msg = Message {
-            from: format!("{}:human", self.peer_name),
+            from: session::participant_id(&self.peer_name, session::ROLE_HUMAN),
             text,
             ts: Utc::now(),
         };

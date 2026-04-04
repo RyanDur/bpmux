@@ -22,7 +22,7 @@ pub fn run_tui(
         match wake_rx.try_recv() {
             Ok(msg) => {
                 // Skip messages we sent from this TUI (already in app.messages via submit_message)
-                let self_identity = format!("{}:human", app.peer_name);
+                let self_identity = session::participant_id(&app.peer_name, session::ROLE_HUMAN);
                 if msg.from != self_identity {
                     app.messages.push(msg);
                 }

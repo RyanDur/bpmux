@@ -11,7 +11,7 @@ use std::sync::Arc;
 use futures::{SinkExt, StreamExt};
 use rmcp::model::{
     CallToolRequestParams, CallToolResult, Content, CustomNotification, ListToolsResult,
-    ServerCapabilities, ServerInfo, ServerNotification, Tool,
+    ServerCapabilities, ServerInfo, ServerNotification,
 };
 use rmcp::service::{NotificationContext, Peer, RequestContext};
 use rmcp::{ErrorData, RoleServer, ServerHandler, ServiceExt};
@@ -174,33 +174,11 @@ impl ServerHandler for BridgeServer {
         _request: Option<rmcp::model::PaginatedRequestParams>,
         _context: RequestContext<RoleServer>,
     ) -> impl Future<Output = Result<ListToolsResult, McpError>> + Send + '_ {
-        let send_schema = json!({
-            "type": "object",
-            "properties": {
-                "text": {
-                    "type": "string",
-                    "description": "The message text to send to the bpmux session"
-                }
-            },
-            "required": ["text"]
-        });
-
-        let read_schema = json!({
-            "type": "object",
-            "properties": {}
-        });
-
         let tools = vec![
-            Tool::new(
-                "send_message",
+            crate::mcp::tools::send_message_tool(
                 "Send a message to the bpmux session. Your message will appear in the shared chat.",
-                send_schema.as_object().cloned().unwrap_or_default(),
             ),
-            Tool::new(
-                "read_messages",
-                "Read recent messages from the bpmux session.",
-                read_schema.as_object().cloned().unwrap_or_default(),
-            ),
+            crate::mcp::tools::read_messages_tool("Read recent messages from the bpmux session."),
         ];
 
         std::future::ready(Ok(ListToolsResult::with_all_items(tools)))
