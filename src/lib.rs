@@ -44,7 +44,7 @@ enum Command {
         #[arg(long, default_value = "4117")]
         port: u16,
 
-        /// Identity name for this bridge in the session
+        /// Base identity name for this bridge (a unique suffix is appended)
         #[arg(long, default_value = "claude-code")]
         name: String,
     },

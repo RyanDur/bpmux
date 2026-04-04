@@ -38,6 +38,12 @@ pub struct BridgeServer {
 
 impl BridgeServer {
     fn new(port: u16, name: String) -> Self {
+        let name = if name == "claude-code" {
+            let suffix: String = uuid::Uuid::new_v4().to_string()[..4].to_string();
+            format!("agent-{suffix}")
+        } else {
+            name
+        };
         Self {
             port,
             name,
