@@ -23,8 +23,12 @@ pub fn run_tui(
                     app.receive_message(msg);
                     if scrolled_up || app.scroll_offset > 0 {
                         use std::io::Write;
-                        let _ = std::io::stdout().write_all(b"\x07");
-                        let _ = std::io::stdout().flush();
+                        if let Ok(mut tty) =
+                            std::fs::OpenOptions::new().write(true).open("/dev/tty")
+                        {
+                            let _ = tty.write_all(b"\x07");
+                            let _ = tty.flush();
+                        }
                     }
                 }
                 continue;
