@@ -20,6 +20,7 @@ pub fn render(frame: &mut Frame, app: &App) {
     // Chat pane — only show chat messages
     let chat_messages: Vec<&session::Message> =
         app.messages.iter().filter(|m| m.is_chat()).collect();
+    let chat_inner_width_for_truncation = frame.area().width.saturating_sub(4) as usize;
     let messages: Vec<Line> = chat_messages
         .iter()
         .enumerate()
@@ -31,21 +32,68 @@ pub fn render(frame: &mut Frame, app: &App) {
             let is_human = msg.from.ends_with(":human");
             let name_color = if is_human { Color::Cyan } else { Color::Green };
 
-            let mut spans = Vec::new();
+            // Build the prefix (timestamp + name)
+            let mut prefix = String::new();
             if app.show_timestamps {
                 let time = msg.ts.format("%H:%M:%S").to_string();
-                spans.push(Span::styled(
-                    format!("[{time}] "),
-                    Style::default().fg(Color::DarkGray),
-                ));
+                prefix.push_str(&format!("[{time}] "));
             }
-            spans.push(Span::styled(
-                format!("{short_name}: "),
-                Style::default().fg(name_color).add_modifier(Modifier::BOLD),
-            ));
-            spans.push(Span::raw(&msg.text));
+            prefix.push_str(&format!("{short_name}: "));
 
-            let content = Line::from(spans);
+            // Estimate wrapped line count for truncation decision
+            let full_len = prefix.len() + msg.text.len();
+            let wrapped_lines = if chat_inner_width_for_truncation > 0 {
+                full_len.max(1).div_ceil(chat_inner_width_for_truncation)
+            } else {
+                1
+            };
+
+            let mut lines = Vec::new();
+
+            if wrapped_lines > 5 {
+                // Truncate: show first 3 lines worth of text, then [+N lines]
+                let first_line_text_budget =
+                    chat_inner_width_for_truncation.saturating_sub(prefix.len());
+                let subsequent_budget = chat_inner_width_for_truncation * 2;
+                let truncated_chars = first_line_text_budget + subsequent_budget;
+                let display_text: String = msg.text.chars().take(truncated_chars).collect();
+                let remaining_lines = wrapped_lines.saturating_sub(3);
+
+                let mut spans = Vec::new();
+                if app.show_timestamps {
+                    let time = msg.ts.format("%H:%M:%S").to_string();
+                    spans.push(Span::styled(
+                        format!("[{time}] "),
+                        Style::default().fg(Color::DarkGray),
+                    ));
+                }
+                spans.push(Span::styled(
+                    format!("{short_name}: "),
+                    Style::default().fg(name_color).add_modifier(Modifier::BOLD),
+                ));
+                spans.push(Span::raw(display_text));
+                lines.push(Line::from(spans));
+
+                lines.push(Line::from(Span::styled(
+                    format!("  [+{remaining_lines} lines]"),
+                    Style::default().fg(Color::DarkGray),
+                )));
+            } else {
+                let mut spans = Vec::new();
+                if app.show_timestamps {
+                    let time = msg.ts.format("%H:%M:%S").to_string();
+                    spans.push(Span::styled(
+                        format!("[{time}] "),
+                        Style::default().fg(Color::DarkGray),
+                    ));
+                }
+                spans.push(Span::styled(
+                    format!("{short_name}: "),
+                    Style::default().fg(name_color).add_modifier(Modifier::BOLD),
+                ));
+                spans.push(Span::raw(&msg.text));
+                lines.push(Line::from(spans));
+            }
 
             // Add blank line separator only when the next message is from a different sender
             let next_is_different = chat_messages
@@ -53,10 +101,10 @@ pub fn render(frame: &mut Frame, app: &App) {
                 .is_some_and(|next| next.from != msg.from);
 
             if next_is_different {
-                vec![content, Line::default()]
-            } else {
-                vec![content]
+                lines.push(Line::default());
             }
+
+            lines
         })
         .collect();
 
@@ -289,6 +337,66 @@ mod tests {
         assert!(
             !screen.contains("turn complete"),
             "System messages should be filtered. Screen:\n{screen}"
+        );
+    }
+
+    #[allow(clippy::unwrap_used)]
+    #[test]
+    fn long_messages_truncated_with_indicator() {
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).unwrap();
+
+        // A message long enough to exceed 5 wrapped lines at 78 chars inner width
+        // 78 chars per line * 6 lines = 468 chars minimum
+        let long_text = "word ".repeat(100); // ~500 chars, well over 5 lines
+
+        let app = App::new(
+            "dev".to_string(),
+            "test-id".to_string(),
+            vec![Message {
+                from: "bot:ws".to_string(),
+                text: long_text,
+                ts: Utc::now(),
+                message_type: None,
+            }],
+        );
+
+        terminal.draw(|frame| render(frame, &app)).unwrap();
+        let screen = buffer_to_string(terminal.backend().buffer());
+
+        assert!(
+            screen.contains("+"),
+            "Long message should show [+N lines] indicator. Screen:\n{screen}"
+        );
+    }
+
+    #[allow(clippy::unwrap_used)]
+    #[test]
+    fn short_messages_not_truncated() {
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).unwrap();
+
+        let app = App::new(
+            "dev".to_string(),
+            "test-id".to_string(),
+            vec![Message {
+                from: "bot:ws".to_string(),
+                text: "short message".to_string(),
+                ts: Utc::now(),
+                message_type: None,
+            }],
+        );
+
+        terminal.draw(|frame| render(frame, &app)).unwrap();
+        let screen = buffer_to_string(terminal.backend().buffer());
+
+        assert!(
+            screen.contains("short message"),
+            "Short message should render fully. Screen:\n{screen}"
+        );
+        assert!(
+            !screen.contains("+"),
+            "Short message should not be truncated. Screen:\n{screen}"
         );
     }
 
