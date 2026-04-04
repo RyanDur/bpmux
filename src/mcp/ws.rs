@@ -157,8 +157,7 @@ async fn handle_client_message(
                 text: msg_text,
                 ts: chrono::Utc::now(),
             };
-            session::append_message(&state.session_dir, &msg)?;
-            let _ = state.wake_tx.send(msg);
+            session::broadcast_message(&state.session_dir, &msg, &state.wake_tx)?;
         }
         Ok(ClientMessage::Ping) => {
             send_json(tx, &ServerMessage::Pong).await?;

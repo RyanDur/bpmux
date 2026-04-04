@@ -32,14 +32,12 @@ pub async fn post_message(
         ts: chrono::Utc::now(),
     };
 
-    if let Err(e) = session::append_message(&state.session_dir, &msg) {
+    if let Err(e) = session::broadcast_message(&state.session_dir, &msg, &state.wake_tx) {
         return (
             StatusCode::INTERNAL_SERVER_ERROR,
-            format!("failed to append: {e}"),
+            format!("failed to broadcast: {e}"),
         );
     }
-
-    let _ = state.wake_tx.send(msg);
 
     (StatusCode::CREATED, "message sent".to_string())
 }
@@ -69,7 +67,7 @@ mod tests {
     }
 
     fn init_session(dir: &TempDir) -> PathBuf {
-        let messages_file = dir.path().join("messages.jsonl");
+        let messages_file = dir.path().join("messages-current.jsonl");
         std::fs::write(&messages_file, "").expect("create messages file");
         dir.path().to_path_buf()
     }

@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 use thiserror::Error;
+use tokio::sync::broadcast;
 
 use crate::session::message::Message;
 
@@ -69,6 +70,16 @@ pub fn append_message(session_dir: &Path, message: &Message) -> Result<(), LogEr
         .append(true)
         .open(path)?;
     file.write_all(line.as_bytes())?;
+    Ok(())
+}
+
+pub fn broadcast_message(
+    session_dir: &Path,
+    msg: &Message,
+    wake_tx: &broadcast::Sender<Message>,
+) -> Result<(), LogError> {
+    append_message(session_dir, msg)?;
+    let _ = wake_tx.send(msg.clone());
     Ok(())
 }
 

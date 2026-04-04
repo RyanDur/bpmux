@@ -52,9 +52,7 @@ pub fn run_tui(
             match key.code {
                 KeyCode::Enter => {
                     if let Some(msg) = app.submit_message() {
-                        session::append_message(session_dir, &msg)?;
-                        // Broadcast to WebSocket clients and other consumers
-                        let _ = wake_tx.send(msg);
+                        session::broadcast_message(session_dir, &msg, wake_tx)?;
                     }
                     if app.should_quit {
                         return Ok(());
