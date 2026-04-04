@@ -18,6 +18,10 @@ Organized by bounded context (App Continuum), not by technical layer:
 
 - `src/session/` — Session state, message log, JSONL persistence
 - `src/terminal/` — TUI rendering, input handling, chat display
+- `src/mcp/` — MCP tool handler (send/read messages via MCP protocol)
+- `src/transport/` — HTTP/WebSocket transport layer (REST API, WebSocket protocol, shared server state)
+- `src/bridge/` — Channel bridge: stdio MCP server connecting Claude Code to bpmux via WebSocket
+- `src/server.rs` — HTTP server startup, router assembly, graceful shutdown
 
 ## Code Style
 

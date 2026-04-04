@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use rmcp::transport::streamable_http_server::session::local::LocalSessionManager;
 use rmcp::transport::streamable_http_server::{StreamableHttpServerConfig, StreamableHttpService};
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, oneshot};
 use tokio_util::sync::CancellationToken;
 
 use crate::mcp::BpmuxMcpServer;
@@ -16,6 +16,7 @@ pub async fn run_server(
     wake_tx: broadcast::Sender<session::Message>,
     port: u16,
     ct: CancellationToken,
+    ready_tx: Option<oneshot::Sender<()>>,
 ) -> anyhow::Result<()> {
     let dir = session_dir.clone();
     let mcp_dir = dir.clone();
@@ -56,6 +57,11 @@ pub async fn run_server(
         )
         .with_state(ws_state);
     let listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{port}")).await?;
+
+    // Signal that the server is ready to accept connections
+    if let Some(tx) = ready_tx {
+        let _ = tx.send(());
+    }
 
     axum::serve(listener, router)
         .with_graceful_shutdown(async move { ct.cancelled_owned().await })

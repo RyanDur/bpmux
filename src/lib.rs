@@ -8,7 +8,7 @@ pub mod terminal;
 pub mod transport;
 
 use clap::{Parser, Subcommand};
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, oneshot};
 use tokio_util::sync::CancellationToken;
 
 #[derive(Parser)]
@@ -87,6 +87,7 @@ pub fn run() -> anyhow::Result<()> {
     let server_wake_tx = wake_tx.clone();
     let ct = CancellationToken::new();
     let server_ct = ct.clone();
+    let (ready_tx, ready_rx) = oneshot::channel::<()>();
     std::thread::spawn(move || {
         let Ok(rt) = tokio::runtime::Runtime::new() else {
             eprintln!("Failed to create server tokio runtime");
@@ -99,6 +100,7 @@ pub fn run() -> anyhow::Result<()> {
                 server_wake_tx,
                 server_port,
                 server_ct,
+                Some(ready_tx),
             )
             .await
             {
@@ -106,6 +108,11 @@ pub fn run() -> anyhow::Result<()> {
             }
         });
     });
+
+    // Wait for server to be ready before launching TUI
+    if ready_rx.blocking_recv().is_err() {
+        anyhow::bail!("Server failed to start");
+    }
 
     // Run TUI (blocking, on the main thread)
     let mut terminal = ratatui::init();
@@ -118,5 +125,5 @@ pub fn run() -> anyhow::Result<()> {
     );
     ratatui::restore();
 
-    result.map_err(|e| anyhow::anyhow!("{e}"))
+    result
 }

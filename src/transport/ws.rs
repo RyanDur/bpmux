@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use anyhow::{bail, Result};
 use axum::extract::State;
 use axum::extract::ws::{Message as WsMessage, WebSocket, WebSocketUpgrade};
 use axum::response::Response;
@@ -29,7 +30,7 @@ async fn run_ws_session(
     mut tx: SplitSink<WebSocket, WsMessage>,
     mut rx: SplitStream<WebSocket>,
     state: Arc<ServerState>,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<()> {
     // Phase 1: Wait for identify (5 second timeout)
     let name = wait_for_identify(&mut tx, &mut rx).await?;
     let identity = session::participant_id(&name, session::ROLE_WS);
@@ -89,7 +90,7 @@ async fn run_ws_session(
 async fn wait_for_identify(
     tx: &mut SplitSink<WebSocket, WsMessage>,
     rx: &mut SplitStream<WebSocket>,
-) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<String> {
     let timeout = tokio::time::timeout(std::time::Duration::from_secs(5), async {
         while let Some(Ok(msg)) = rx.next().await {
             if let WsMessage::Text(text) = msg {
@@ -116,13 +117,13 @@ async fn wait_for_identify(
                 }
             }
         }
-        Err("connection closed before identify".into())
+        bail!("connection closed before identify")
     })
     .await;
 
     match timeout {
         Ok(result) => result,
-        Err(_) => Err("identify timeout (5s)".into()),
+        Err(_) => bail!("identify timeout (5s)"),
     }
 }
 
@@ -131,7 +132,7 @@ async fn handle_client_message(
     identity: &str,
     state: &ServerState,
     tx: &mut SplitSink<WebSocket, WsMessage>,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<()> {
     if text.len() > MAX_MESSAGE_SIZE {
         send_json(
             tx,
@@ -181,7 +182,7 @@ async fn handle_client_message(
 async fn send_json(
     tx: &mut SplitSink<WebSocket, WsMessage>,
     msg: &ServerMessage,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<()> {
     let json = serde_json::to_string(msg)?;
     tx.send(WsMessage::Text(json.into())).await?;
     Ok(())

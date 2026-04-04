@@ -1,5 +1,6 @@
 use std::path::Path;
 
+use anyhow::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
 use ratatui::DefaultTerminal;
 use tokio::sync::broadcast;
@@ -14,7 +15,7 @@ pub fn run_tui(
     session_dir: &Path,
     wake_rx: &mut broadcast::Receiver<session::Message>,
     wake_tx: &broadcast::Sender<session::Message>,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<()> {
     loop {
         terminal.draw(|frame| ui::render(frame, app))?;
 
