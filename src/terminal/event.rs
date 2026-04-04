@@ -91,6 +91,12 @@ pub fn run_tui(
                     }
                     app.input.clear();
                 }
+                KeyCode::Up if key.modifiers.is_empty() => {
+                    app.history_up();
+                }
+                KeyCode::Down if key.modifiers.is_empty() => {
+                    app.history_down();
+                }
                 KeyCode::Char(c) => {
                     app.input.push(c);
                 }

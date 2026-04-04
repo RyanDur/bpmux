@@ -1,6 +1,8 @@
 use crate::session::Message;
 use chrono::Utc;
 
+const MAX_HISTORY: usize = 50;
+
 pub struct App {
     pub messages: Vec<Message>,
     pub input: String,
@@ -13,6 +15,8 @@ pub struct App {
     pub show_timestamps: bool,
     pub connected_peers: usize,
     pub unread_count: usize,
+    pub input_history: Vec<String>,
+    pub history_index: Option<usize>,
 }
 
 impl App {
@@ -29,6 +33,8 @@ impl App {
             show_timestamps: false,
             connected_peers: 0,
             unread_count: 0,
+            input_history: Vec::new(),
+            history_index: None,
         }
     }
 
@@ -68,6 +74,21 @@ impl App {
         if text.is_empty() {
             return None;
         }
+        if text == "/help" {
+            let help = format!(
+                "Commands:\n  /help     — show this help\n  /quit     — exit bpmux\n\nKeybindings:\n  Enter     — send message\n  Esc       — clear input\n  Ctrl+C    — clear input (empty: quit)\n  Ctrl+U/D  — scroll up/down\n  Ctrl+T    — toggle timestamps\n  PageUp/Dn — scroll\n\nSession: {}",
+                self.session_id
+            );
+            let msg = Message {
+                from: "bpmux".to_string(),
+                text: help,
+                ts: Utc::now(),
+                message_type: None,
+            };
+            self.messages.push(msg);
+            self.input.clear();
+            return None;
+        }
         if text == "/quit" {
             self.should_quit = true;
             return None;
@@ -80,7 +101,39 @@ impl App {
         };
         self.messages.push(msg.clone());
         self.input.clear();
+        if self.input_history.len() >= MAX_HISTORY {
+            self.input_history.remove(0);
+        }
+        self.input_history.push(msg.text.clone());
+        self.history_index = None;
         Some(msg)
+    }
+
+    pub fn history_up(&mut self) {
+        if self.input_history.is_empty() {
+            return;
+        }
+        let new_index = match self.history_index {
+            None => self.input_history.len() - 1,
+            Some(0) => 0,
+            Some(i) => i - 1,
+        };
+        self.history_index = Some(new_index);
+        self.input = self.input_history[new_index].clone();
+    }
+
+    pub fn history_down(&mut self) {
+        let Some(current) = self.history_index else {
+            return;
+        };
+        if current + 1 >= self.input_history.len() {
+            self.history_index = None;
+            self.input.clear();
+        } else {
+            let new_index = current + 1;
+            self.history_index = Some(new_index);
+            self.input = self.input_history[new_index].clone();
+        }
     }
 }
 
@@ -200,6 +253,49 @@ mod tests {
         });
         assert_eq!(app.scroll_offset, 0);
         assert_eq!(app.messages.len(), 1);
+    }
+
+    #[test]
+    fn up_arrow_recalls_last_sent_message() {
+        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        app.input = "hello".to_string();
+        app.submit_message();
+        app.input = "world".to_string();
+        app.submit_message();
+
+        app.history_up();
+        assert_eq!(app.input, "world");
+        assert_eq!(app.history_index, Some(1));
+
+        app.history_up();
+        assert_eq!(app.input, "hello");
+        assert_eq!(app.history_index, Some(0));
+    }
+
+    #[test]
+    fn down_arrow_returns_to_empty_after_recalling() {
+        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        app.input = "hello".to_string();
+        app.submit_message();
+
+        app.history_up();
+        assert_eq!(app.input, "hello");
+
+        app.history_down();
+        assert!(app.input.is_empty());
+        assert_eq!(app.history_index, None);
+    }
+
+    #[test]
+    fn history_caps_at_50_entries() {
+        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        for i in 0..60 {
+            app.input = format!("msg {i}");
+            app.submit_message();
+        }
+        assert_eq!(app.input_history.len(), MAX_HISTORY);
+        assert_eq!(app.input_history[0], "msg 10");
+        assert_eq!(app.input_history[49], "msg 59");
     }
 
     #[test]
