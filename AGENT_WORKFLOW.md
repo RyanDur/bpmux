@@ -205,6 +205,7 @@ This catches patterns that a single session cannot see in its own work.
 - **Define the question before launching research agents (Wave 0).** Unfocused research produces volume, not insight. State what you're trying to learn and what would change your mind before spinning up agents.
 - **Research is the owner's domain.** The PM surfaces research questions. The owner decides what to investigate. The PM translates findings into stories.
 - **Misleading information is worse than no information.** Archive stale docs. Correct errors immediately. The accuracy audit and contradiction register are living documents.
+- **No UI/UX changes without the designer.** The designer approves the approach before dev builds, not just reviews after. This includes colors, layout, keybindings, status bar changes, and any visual or interaction changes.
 
 ## Git & Tooling
 
