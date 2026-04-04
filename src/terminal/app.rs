@@ -5,11 +5,14 @@ pub struct App {
     pub messages: Vec<Message>,
     pub input: String,
     pub scroll_offset: u16,
+    pub max_scroll: u16,
+    pub at_boundary: bool,
     pub peer_name: String,
     pub session_id: String,
     pub should_quit: bool,
     pub show_timestamps: bool,
     pub connected_peers: usize,
+    pub unread_count: usize,
 }
 
 impl App {
@@ -18,20 +21,37 @@ impl App {
             messages,
             input: String::new(),
             scroll_offset: 0,
+            max_scroll: 0,
+            at_boundary: false,
             peer_name,
             session_id,
             should_quit: false,
             show_timestamps: false,
             connected_peers: 0,
+            unread_count: 0,
         }
     }
 
     pub fn scroll_up(&mut self, lines: u16) {
-        self.scroll_offset = self.scroll_offset.saturating_add(lines);
+        let before = self.scroll_offset;
+        self.scroll_offset = self
+            .scroll_offset
+            .saturating_add(lines)
+            .min(self.max_scroll);
+        if self.scroll_offset != before {
+            self.at_boundary = false;
+        }
     }
 
     pub fn scroll_down(&mut self, lines: u16) {
+        let before = self.scroll_offset;
         self.scroll_offset = self.scroll_offset.saturating_sub(lines);
+        if self.scroll_offset != before {
+            self.at_boundary = false;
+        }
+        if self.scroll_offset == 0 {
+            self.unread_count = 0;
+        }
     }
 
     pub fn receive_message(&mut self, msg: Message) {
@@ -39,6 +59,7 @@ impl App {
         self.messages.push(msg);
         if !was_at_bottom {
             self.scroll_offset = self.scroll_offset.saturating_add(1);
+            self.unread_count += 1;
         }
     }
 
@@ -99,10 +120,19 @@ mod tests {
     #[test]
     fn scroll_up_increases_offset() {
         let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        app.max_scroll = 100;
         app.scroll_up(5);
         assert_eq!(app.scroll_offset, 5);
         app.scroll_up(3);
         assert_eq!(app.scroll_offset, 8);
+    }
+
+    #[test]
+    fn scroll_up_clamps_to_max_scroll() {
+        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        app.max_scroll = 10;
+        app.scroll_up(15);
+        assert_eq!(app.scroll_offset, 10);
     }
 
     #[test]
@@ -113,6 +143,49 @@ mod tests {
         assert_eq!(app.scroll_offset, 7);
         app.scroll_down(10);
         assert_eq!(app.scroll_offset, 0);
+    }
+
+    #[test]
+    fn receiving_message_when_scrolled_up_increments_unread_count() {
+        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        app.scroll_offset = 5;
+        app.receive_message(Message {
+            from: "bot:ws".to_string(),
+            text: "hello".to_string(),
+            ts: Utc::now(),
+            message_type: None,
+        });
+        assert_eq!(app.unread_count, 1);
+        app.receive_message(Message {
+            from: "bot:ws".to_string(),
+            text: "world".to_string(),
+            ts: Utc::now(),
+            message_type: None,
+        });
+        assert_eq!(app.unread_count, 2);
+    }
+
+    #[test]
+    fn scrolling_to_bottom_resets_unread_count() {
+        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        app.scroll_offset = 3;
+        app.unread_count = 5;
+        app.scroll_down(3);
+        assert_eq!(app.scroll_offset, 0);
+        assert_eq!(app.unread_count, 0);
+    }
+
+    #[test]
+    fn receiving_message_at_bottom_does_not_increment_unread_count() {
+        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        assert_eq!(app.scroll_offset, 0);
+        app.receive_message(Message {
+            from: "bot:ws".to_string(),
+            text: "hello".to_string(),
+            ts: Utc::now(),
+            message_type: None,
+        });
+        assert_eq!(app.unread_count, 0);
     }
 
     #[test]

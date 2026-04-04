@@ -214,6 +214,13 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             Style::default().fg(Color::Rgb(98, 114, 164)),
         ));
     }
+    if app.unread_count > 0 {
+        status_spans.push(Span::raw(" | "));
+        status_spans.push(Span::styled(
+            format!("{} new", app.unread_count),
+            Style::default().fg(Color::Rgb(255, 121, 198)),
+        ));
+    }
     let status = Paragraph::new(Line::from(status_spans)).style(
         Style::default()
             .bg(Color::Rgb(68, 71, 90))
@@ -507,6 +514,22 @@ mod tests {
         assert!(
             screen.contains("[+"),
             "11-line message SHOULD be truncated. Screen:\n{screen}"
+        );
+    }
+
+    #[allow(clippy::unwrap_used)]
+    #[test]
+    fn status_bar_shows_unread_count_when_scrolled_up() {
+        let backend = TestBackend::new(80, 15);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let mut app = App::new("dev".to_string(), "test-id".to_string(), vec![]);
+        app.unread_count = 3;
+
+        terminal.draw(|frame| render(frame, &mut app)).unwrap();
+        let screen = buffer_to_string(terminal.backend().buffer());
+        assert!(
+            screen.contains("3 new"),
+            "Should show '3 new' unread indicator. Screen:\n{screen}"
         );
     }
 
