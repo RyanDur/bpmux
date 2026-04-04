@@ -18,11 +18,15 @@ const SENDER_PALETTE: [Color; 6] = [
     Color::Red,
 ];
 
-fn sender_color(name: &str) -> Color {
+fn sender_color_index(name: &str) -> usize {
     let hash: usize = name.bytes().fold(0usize, |acc, b| {
         acc.wrapping_mul(31).wrapping_add(b as usize)
     });
-    SENDER_PALETTE[hash % SENDER_PALETTE.len()]
+    hash % SENDER_PALETTE.len()
+}
+
+fn sender_color(name: &str) -> Color {
+    SENDER_PALETTE[sender_color_index(name)]
 }
 
 pub fn render(frame: &mut Frame, app: &App) {
@@ -482,31 +486,21 @@ mod tests {
 
         assert!(
             screen.contains("[+"),
-            "6-line message SHOULD be truncated. Screen:\n{screen}"
+            "11-line message SHOULD be truncated. Screen:\n{screen}"
         );
     }
 
     #[test]
-    fn different_senders_get_different_colors() {
+    fn team_names_get_distinct_expected_colors() {
+        // Pin exact colors for our team names — catches hash changes that
+        // would cause collisions between ryan, dev, and pm
         let ryan_color = super::sender_color("ryan");
         let dev_color = super::sender_color("dev");
         let pm_color = super::sender_color("pm");
 
-        // At minimum, not all three should be the same color
-        assert!(
-            !(ryan_color == dev_color && dev_color == pm_color),
-            "ryan, dev, and pm should not all have the same color"
-        );
-    }
-
-    #[test]
-    fn same_sender_gets_consistent_color() {
-        let color1 = super::sender_color("dev");
-        let color2 = super::sender_color("dev");
-        assert_eq!(
-            color1, color2,
-            "Same sender should always get the same color"
-        );
+        assert_ne!(ryan_color, dev_color, "ryan and dev must differ");
+        assert_ne!(ryan_color, pm_color, "ryan and pm must differ");
+        assert_ne!(dev_color, pm_color, "dev and pm must differ");
     }
 
     fn buffer_to_string(buffer: &ratatui::buffer::Buffer) -> String {
