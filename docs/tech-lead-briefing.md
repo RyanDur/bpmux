@@ -2,94 +2,102 @@
 
 While you were offline, the PM and owner completed a full research and planning session. Here's everything you need to know, plus questions for you.
 
+## How we work together now
+
+**The balanced team is now four roles: Owner, PM, Designer, Tech Lead.** The designer reviews every delivery for usability — keybindings, layout, terminal conventions. Your deliveries will be reviewed by 4 quality bots (code style, architecture, test quality, design/UX).
+
+**Work closely with the designer.** Check the mockups before implementing any TUI story. The designer references established terminal conventions (weechat, irssi, tmux, readline). If a design decision doesn't feel right technically, push back — but don't skip the conversation.
+
+Mockups for the top 4 stories: `docs/research/process/tui-mockups.md`
+Design principles (10 rules, research-backed): `docs/research/process/design-principles.md`
+
 ## What changed in the repo
 
 - **ROADMAP.md** — three-horizon roadmap mapping all 28 open issues. Read this first.
-- **AGENT_WORKFLOW.md** — Designer added as 4th role. Quality review now includes design/UX bot.
-- **README.md** — full setup guide for new users including bridge, plugin, keybindings.
-- **docs/research/** — 93 files reorganized into 8 topic directories. 13 new research docs added.
+- **AGENT_WORKFLOW.md** — Designer added as 4th role. Quality review now 4 bots.
+- **README.md** — full setup guide for new users.
+- **docs/research/** — ~108 files reorganized into 8 topic directories. New deep reads, synthesis docs, design principles, session analysis, mockups, and more.
 - **.mcp.json** — untracked from git (machine-specific paths). Added to .gitignore.
-- **Commit a690504** has all the research/workflow changes. **Commit f9b8d26** has the roadmap.
+- **docs/research/editorial/accuracy-audit.md** — 15 issues found in original research docs, 2 high-severity fixed (ChatCollab attribution corrected to Klieger et al., Edmondson causality direction corrected).
 
-## New stories filed
+## Backlog (priority order — pull from top)
 
-**Ready (priority order — pull from top):**
-1. **#18** Truncate long AI messages (render-layer, ~5 lines of code)
-2. **#19** Per-agent colors (render-layer, ~10 lines)
-3. **#20** Terminal bell on new messages (1 line: emit \x07)
-4. **#21** Unread message indicator when scrolled up (~20 lines)
-5. **#22** @-mention addressing (parse @name, highlight in render)
-6. **#23** Agent activity indicator in status bar (new message_type: "activity")
+Full rationale: `docs/research/synthesis/backlog-priorities.md`
+
+1. **#18** Truncate long AI messages
+2. **#19** Per-agent colors — 6-color palette, hash-based assignment, bold for humans / normal for AI. See mockup.
+3. **#20** Terminal bell — emit `\x07` on new message
+4. **#21** Unread indicator — "N new messages" in status bar when scrolled up
+5. **#22** @-mention addressing
+6. **#23** Agent activity indicator
 7. **#16** Auto-scroll fix
 8. **#15** Input box visibility
 9. **#14** TUI border rendering
-10. **#17** Esc safety (change Esc to clear input, /quit or Ctrl-C to exit)
+10. **#17** Esc safety
 
-**Also filed (#24-#31):** Input history, onboarding, help overlay, /who, join/leave events, read cursor, reconnection backfill, debug toggle.
+**Also filed (#24-#31):** Input history, onboarding, help overlay, /who, join/leave, read cursor, backfill, debug toggle.
 
-**Icebox (need your input):**
+**Icebox (need your input before scheduling):**
 - **#32** `bpmux connect <tool>` command
 - **#33** MLX model as bpmux participant
 - **#34** Identity protocol (`name:tool` instead of `:ws`)
 
-## Key research findings that affect your work
+## Key findings that affect your work
 
 ### 1. Conduit model evolved: "opinionated conduit"
-The conduit model holds but needs to be more expressive. Like SMTP: structure opinions yes, behavior opinions no. Three additions proposed:
-- **Message IDs** — add `id: String` to Message struct. Invisible, zero-risk, unlocks everything else (reply references, read cursors, ack targeting). The designer says this is the single most important structural change.
-- **`in_reply_to: Option<String>`** — cheap to add now, expensive to retrofit later. Pull as a chore before @-mention addressing (#22).
-- **Expanded `message_type`** — already exists as `Option<String>`. Consider "activity" type for #23.
+Like SMTP: structure opinions yes, behavior opinions no. Three additions:
+- **Message IDs** — add `id: String` to Message. Invisible, zero-risk, unlocks reply references and read cursors.
+- **`in_reply_to: Option<String>`** — cheap now, expensive to retrofit. Pull as chore before @-mentions (#22).
+- **Expanded `message_type`** — already `Option<String>`. Consider "activity" for #23.
 
 Read: `docs/research/architecture/conduit-model-reevaluation.md`
 
-### 2. The TUI viewport problem is an AI problem
-Session data analysis (521 messages across 3 sessions): median human message is 54 chars. Messages over 390 chars (5 wrapped lines) are almost exclusively from AI. One long AI message fills the entire 80x24 viewport. That's why #18 (truncation) is the #1 priority.
+### 2. The viewport problem is an AI problem
+Session analysis (521 messages, 3 sessions): median substantive message is 54 chars. Messages over 390 chars are almost exclusively from AI. One long AI message fills the entire viewport. **Truncation design: show 3 lines of content + `[+N lines]`** (not 5 — the 390-char/5-line number is when the problem *starts*; the design recommendation is to truncate at 3 visible lines). Line counting should be wrapped terminal lines at 80 columns, not source text lines.
 
 Read: `docs/research/process/session-analysis.md`
 
 ### 3. 7/10 coding agents can connect TODAY
-bpmux's Streamable HTTP MCP endpoint works with Copilot, Cursor, Windsurf, Cline, Continue, Gemini, and Amazon Q — zero code changes needed. Only Aider lacks MCP. Zed and OpenCode need a thin bridge.
+bpmux's Streamable HTTP MCP endpoint works with Copilot, Cursor, Windsurf, Cline, Continue, Gemini, and Amazon Q — zero code changes. Aider lacks MCP. Zed and OpenCode need `mcp-remote` bridge.
 
-Read: `docs/research/architecture/cross-tool-integration.md`
+Read: `docs/research/landscape/coding-agent-compatibility.md`
 
 ### 4. Clark & Brennan: AI agents skip the acceptance phase
-Communication isn't just transmission — it's joint establishment of mutual belief. bpmux handles presentation (sending messages) but provides no structural support for the acceptance phase (evidence of understanding). AI agents won't seek or provide grounding evidence on their own. The message ID and in_reply_to fields are the minimum structural investment to enable grounding.
+Communication is joint establishment of mutual belief, not just transmission. bpmux handles presentation but not acceptance (evidence of understanding). AI agents won't provide grounding evidence unless the medium requires it structurally. Message IDs and in_reply_to are the minimum structural investment.
 
 Read: `docs/research/foundations/clark-brennan-deep-read.md`
 
-### 5. Edmondson: first interactions determine trajectory
-Psychological safety is the single strongest predictor of learning behavior. The first few interactions with bpmux determine whether it feels safe or like surveillance. This means onboarding (#25) and /help (#26) aren't polish — they're load-bearing.
+### 5. Edmondson: first interactions likely set trajectory
+Psychological safety is the strongest predictor of learning behavior. Early interactions likely set the pattern (self-sealing — hard to reverse). Onboarding (#25) and /help (#26) are load-bearing, not polish.
 
 Read: `docs/research/foundations/edmondson-deep-read.md`
 
 ### 6. Channels dependency is HIGH risk
-`--dangerously-load-development-channels` is experimental. No stability guarantee. Anthropic can break it without notice (precedent: Claude 4.6 removed prefilling with a hard 400 error). Our fallback already works: hooks provide per-turn sync. WebRTC (#5) is the long-term path that doesn't depend on experimental APIs.
+Experimental, no stability guarantee, can break without notice. Three-tier fallback: channels (real-time) → hooks (per-turn) → bpmux-side polling (degraded). We own the transport layer (WebSocket/REST). Channels is just the last mile into Claude Code. WebRTC (#5) is the long-term path.
 
-### 7. TUI mockups exist
-ASCII mockups for #18-#21 are at `docs/research/process/tui-mockups.md`. These are reference designs — feel free to deviate.
+### 7. Architecture issues found by quality review
+- **Tool schemas duplicated:** `mcp/server.rs` defines send/read schemas inline instead of using shared helpers in `mcp/tools.rs`. The bridge correctly uses the shared version. Fix: use `mcp::tools::send_message_tool()` in server.rs.
+- **Message identity convention not enforced:** `name:role` format constructed in 4 places with no shared function. REST endpoint accepts any `from` value. Consider a factory method or shared identity formatter.
 
-## Design principles (10 research-backed rules)
-Read: `docs/research/process/design-principles.md`
+### 8. Keybinding conflict: Ctrl-U/D
+Ctrl-U is readline "kill line." Ctrl-D is readline "delete char" / "EOF." We use both for vim-style scroll. This conflicts with every developer's terminal muscle memory. **The designer and you should decide:** does context (input-focused vs chat-focused) determine the binding? Or do we pick one convention? This is unresolved.
 
-The ones most relevant to your immediate work:
-- **Principle 1:** Messages must be readable without re-reading (truncation)
-- **Principle 2:** Participants need who/what/where awareness (colors, activity)
-- **Principle 7:** Respect terminal conventions (readline, vim scroll)
-- **Principle 8:** Make quitting safe and destruction recoverable (Esc → clear input)
+## User study plan (affects your work)
+
+We're planning to let other developers try bpmux. The JSONL log is a research artifact — its format matters for data collection. Specifically:
+- **Build /help (#26) before giving to anyone** — load-bearing for first-run experience
+- The log format may need a `session_started` event (version + terminal size at launch)
+- Phase 1 is silent observation (JSONL analysis only). Phase 2 is exit interviews after 2-3 sessions.
 
 ## Questions for you
 
-1. **Message IDs:** What format? UUID, monotonic sequence, or timestamp-based? The designer recommends adding the field now even if nothing uses it yet.
-
-2. **in_reply_to:** Should this go in before @-mentions (#22), or is it premature? The PM says cheap structural investment. What do you think?
-
-3. **Identity protocol (#34):** The WebSocket handler hardcodes `:ws`. The proposal is `{"type": "identify", "name": "pm", "tool": "claude-code"}` → identity `pm:claude-code`. Does this break anything?
-
-4. **Truncation (#18):** The designer says "clamp to 3 visible lines + [+N lines]". Is there a ratatui-native way to do this, or is it a manual line-count in the render function?
-
-5. **Activity indicator (#23):** This needs a new `message_type: "activity"` convention. Agents broadcast `/working-on <description>` as an activity message. The status bar shows the most recent activity per peer. Feasible?
-
-6. **Anything we missed?** You've been building this codebase. What do you see that the research and design team doesn't?
+1. **Message IDs:** What format? UUID, monotonic sequence, or timestamp-based?
+2. **in_reply_to:** Before @-mentions (#22) or premature?
+3. **Identity protocol (#34):** `{"type": "identify", "name": "pm", "tool": "claude-code"}` → `pm:claude-code`. Breaks anything?
+4. **Truncation (#18):** Ratatui-native way to clamp rendered lines, or manual in the render function? Design says 3 lines of wrapped content + `[+N lines]`.
+5. **Activity indicator (#23):** `message_type: "activity"` convention, status bar shows per-peer activity. Feasible?
+6. **Keybinding conflict:** Ctrl-U/D for scroll vs readline convention. What's the right call?
+7. **Anything we missed?** You know the codebase. What do the research and design teams not see?
 
 ## The thesis (updated)
 
