@@ -147,7 +147,7 @@ impl ServerHandler for BridgeServer {
         capabilities.experimental = Some(experimental);
 
         ServerInfo::new(capabilities)
-            .with_instructions("bpmux channel bridge — connects Claude Code to a bpmux session")
+            .with_instructions("bpmux channel bridge — connects Claude Code to a bpmux session. The TUI is an 80x24 terminal. Keep messages concise — under 3 lines when possible. Send detailed content through your coding tool, use bpmux for coordination and short updates.")
     }
 
     fn on_initialized(
