@@ -64,10 +64,10 @@ pub fn run_tui(
                 KeyCode::PageDown => {
                     app.scroll_down(5);
                 }
-                KeyCode::Up if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                KeyCode::Up if key.modifiers.contains(KeyModifiers::ALT) => {
                     app.scroll_up(5);
                 }
-                KeyCode::Down if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                KeyCode::Down if key.modifiers.contains(KeyModifiers::ALT) => {
                     app.scroll_down(5);
                 }
                 KeyCode::Esc => {
