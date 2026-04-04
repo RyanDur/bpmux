@@ -12,14 +12,25 @@ type McpError = ErrorData;
 
 use crate::session;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct BpmuxMcpServer {
     session: Arc<session::Session>,
     peer_name: Arc<String>,
 }
 
+impl Clone for BpmuxMcpServer {
+    fn clone(&self) -> Self {
+        self.session.peer_connected();
+        Self {
+            session: Arc::clone(&self.session),
+            peer_name: Arc::clone(&self.peer_name),
+        }
+    }
+}
+
 impl BpmuxMcpServer {
     pub fn new(session: Arc<session::Session>, peer_name: String) -> Self {
+        session.peer_connected();
         Self {
             session,
             peer_name: Arc::new(peer_name),
@@ -46,6 +57,12 @@ impl BpmuxMcpServer {
     fn handle_read_messages(&self) -> Result<String, String> {
         let messages = self.session.read_messages().map_err(|e| format!("{e}"))?;
         serde_json::to_string(&messages).map_err(|e| format!("serializing: {e}"))
+    }
+}
+
+impl Drop for BpmuxMcpServer {
+    fn drop(&mut self) {
+        self.session.peer_disconnected();
     }
 }
 
