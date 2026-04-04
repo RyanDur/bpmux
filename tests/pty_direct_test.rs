@@ -72,6 +72,8 @@ fn spawn_and_read_bpmux(
     cmd.arg(name);
     cmd.arg("--session-base");
     cmd.arg(temp_dir.path().to_str().expect("temp path"));
+    cmd.arg("--mcp-port");
+    cmd.arg("0");
     cmd.env("TERM", "xterm-256color");
 
     let child = pair.slave.spawn_command(cmd).expect("spawn bpmux");

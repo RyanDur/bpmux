@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use axum::extract::State;
 use axum::extract::ws::{Message as WsMessage, WebSocket, WebSocketUpgrade};
 use axum::response::Response;
@@ -179,10 +179,7 @@ async fn handle_client_message(
     Ok(())
 }
 
-async fn send_json(
-    tx: &mut SplitSink<WebSocket, WsMessage>,
-    msg: &ServerMessage,
-) -> Result<()> {
+async fn send_json(tx: &mut SplitSink<WebSocket, WsMessage>, msg: &ServerMessage) -> Result<()> {
     let json = serde_json::to_string(msg)?;
     tx.send(WsMessage::Text(json.into())).await?;
     Ok(())
