@@ -52,6 +52,12 @@ pub fn run_tui(
                 KeyCode::Char('t') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                     app.show_timestamps = !app.show_timestamps;
                 }
+                KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    app.scroll_up(10);
+                }
+                KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    app.scroll_down(10);
+                }
                 KeyCode::Char(c) => {
                     app.input.push(c);
                 }
@@ -62,12 +68,6 @@ pub fn run_tui(
                     app.scroll_up(5);
                 }
                 KeyCode::PageDown => {
-                    app.scroll_down(5);
-                }
-                KeyCode::Up if key.modifiers.contains(KeyModifiers::ALT) => {
-                    app.scroll_up(5);
-                }
-                KeyCode::Down if key.modifiers.contains(KeyModifiers::ALT) => {
                     app.scroll_down(5);
                 }
                 KeyCode::Esc => {
