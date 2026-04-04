@@ -135,40 +135,21 @@ pub fn render(frame: &mut Frame, app: &App) {
         })
         .collect();
 
-    // Auto-scroll: calculate total rendered lines including wrapping
+    let chat = Paragraph::new(messages)
+        .block(Block::default().borders(Borders::ALL).title(" bpmux "))
+        .wrap(Wrap { trim: false });
+
+    // Use ratatui's actual line count instead of estimating
     let chat_height = chunks[0].height.saturating_sub(2) as usize;
-    let total_lines: usize = messages
-        .iter()
-        .map(|line| {
-            let line_width: usize = line.spans.iter().map(|s| s.content.len()).sum();
-            if chat_inner_width > 0 {
-                line_width.max(1).div_ceil(chat_inner_width)
-            } else {
-                1
-            }
-        })
-        .sum();
-    // Ratatui's Wrap may produce more lines than our byte-length estimate.
-    // Add padding proportional to wrapped message count to compensate.
-    let wrapped_count = messages
-        .iter()
-        .filter(|line| {
-            let w: usize = line.spans.iter().map(|s| s.content.len()).sum();
-            chat_inner_width > 0 && w > chat_inner_width
-        })
-        .count();
-    let padded_total = total_lines + wrapped_count;
-    let max_scroll = if padded_total > chat_height {
-        (padded_total - chat_height) as u16
+    let total_lines = chat.line_count(chat_inner_width as u16);
+    let max_scroll = if total_lines > chat_height {
+        (total_lines - chat_height) as u16
     } else {
         0
     };
     let scroll = max_scroll.saturating_sub(app.scroll_offset);
 
-    let chat = Paragraph::new(messages)
-        .block(Block::default().borders(Borders::ALL).title(" bpmux "))
-        .wrap(Wrap { trim: false })
-        .scroll((scroll, 0));
+    let chat = chat.scroll((scroll, 0));
     frame.render_widget(chat, chunks[0]);
 
     // Input pane
