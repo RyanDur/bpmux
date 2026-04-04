@@ -82,6 +82,12 @@ pub fn run_tui(
                         bell();
                     }
                 }
+                KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    if app.input.is_empty() {
+                        return Ok(());
+                    }
+                    app.input.clear();
+                }
                 KeyCode::Char(c) => {
                     app.input.push(c);
                 }
@@ -99,7 +105,7 @@ pub fn run_tui(
                     }
                 }
                 KeyCode::Esc => {
-                    return Ok(());
+                    app.input.clear();
                 }
                 _ => {}
             }
