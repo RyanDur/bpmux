@@ -83,21 +83,24 @@ fn messages_flow_through_bridge() {
         writer.write_all(b"hello from human").expect("type message");
         writer.write_all(b"\r").expect("press enter");
 
-        // Wait for message to propagate through bpmux → WebSocket → bridge
-        tokio::time::sleep(Duration::from_secs(2)).await;
-
-        // 6. Read messages through bridge — should contain human's message
-        let params = rmcp::model::CallToolRequestParams::new("read_messages");
-        let result = client
-            .peer()
-            .call_tool(params)
-            .await
-            .expect("read_messages via bridge");
-        let content = format!("{result:?}");
-        assert!(
-            content.contains("hello from human"),
-            "Bridge should relay messages from bpmux. Got: {content}"
-        );
+        // 6. Read messages through bridge — retry until human's message appears
+        let _content = tokio::time::timeout(Duration::from_secs(10), async {
+            loop {
+                let params = rmcp::model::CallToolRequestParams::new("read_messages");
+                let result = client
+                    .peer()
+                    .call_tool(params)
+                    .await
+                    .expect("read_messages via bridge");
+                let content = format!("{result:?}");
+                if content.contains("hello from human") {
+                    return content;
+                }
+                tokio::time::sleep(Duration::from_millis(200)).await;
+            }
+        })
+        .await
+        .expect("Bridge should relay messages from bpmux within timeout");
 
         // 7. Send a reply through the bridge
         let mut params = rmcp::model::CallToolRequestParams::new("send_message");

@@ -29,16 +29,19 @@ pub fn run_tui(
                 if msg.from != self_identity {
                     let short_name = msg.from.split(':').next().unwrap_or(&msg.from).to_string();
                     let preview: String = msg.text.chars().take(50).collect();
+                    let was_scrolled = app.scroll_offset > 0;
                     app.receive_message(msg);
-                    let _ = std::process::Command::new("osascript")
-                        .args([
-                            "-e",
-                            &format!(
-                                "display notification \"{}\" with title \"bpmux — {}\"",
-                                preview, short_name
-                            ),
-                        ])
-                        .spawn();
+                    if was_scrolled || app.scroll_offset > 0 {
+                        let _ = std::process::Command::new("osascript")
+                            .args([
+                                "-e",
+                                &format!(
+                                    "display notification \"{}\" with title \"bpmux — {}\"",
+                                    preview, short_name
+                                ),
+                            ])
+                            .spawn();
+                    }
                 }
                 continue;
             }

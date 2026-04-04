@@ -83,7 +83,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
                     let time = msg.ts.format("%H:%M:%S").to_string();
                     spans.push(Span::styled(
                         format!("[{time}] "),
-                        Style::default().fg(Color::DarkGray),
+                        Style::default().fg(Color::Rgb(98, 114, 164)),
                     ));
                 }
                 spans.push(Span::styled(
@@ -99,7 +99,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
 
                 lines.push(Line::from(Span::styled(
                     format!("  [+{remaining_lines} lines]"),
-                    Style::default().fg(Color::DarkGray),
+                    Style::default().fg(Color::Rgb(98, 114, 164)),
                 )));
             } else {
                 let mut spans = Vec::new();
@@ -107,7 +107,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
                     let time = msg.ts.format("%H:%M:%S").to_string();
                     spans.push(Span::styled(
                         format!("[{time}] "),
-                        Style::default().fg(Color::DarkGray),
+                        Style::default().fg(Color::Rgb(98, 114, 164)),
                     ));
                 }
                 spans.push(Span::styled(
@@ -136,7 +136,18 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         .collect();
 
     let chat = Paragraph::new(messages)
-        .block(Block::default().borders(Borders::ALL).title(" bpmux "))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" bpmux ")
+                .title_style(Style::default().fg(Color::Rgb(189, 147, 249)))
+                .border_style(Style::default().fg(Color::Rgb(68, 71, 90)))
+                .style(
+                    Style::default()
+                        .bg(Color::Rgb(40, 42, 54))
+                        .fg(Color::Rgb(248, 248, 242)),
+                ),
+        )
         .wrap(Wrap { trim: false });
 
     // Use ratatui's actual line count instead of estimating
@@ -155,7 +166,18 @@ pub fn render(frame: &mut Frame, app: &mut App) {
 
     // Input pane
     let input = Paragraph::new(app.input.as_str())
-        .block(Block::default().borders(Borders::ALL).title(" > "))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" > ")
+                .title_style(Style::default().fg(Color::Rgb(189, 147, 249)))
+                .border_style(Style::default().fg(Color::Rgb(68, 71, 90)))
+                .style(
+                    Style::default()
+                        .bg(Color::Rgb(40, 42, 54))
+                        .fg(Color::Rgb(248, 248, 242)),
+                ),
+        )
         .wrap(Wrap { trim: false });
     frame.render_widget(input, chunks[1]);
 
@@ -173,11 +195,11 @@ pub fn render(frame: &mut Frame, app: &mut App) {
 
     // Status bar
     let connection_status = if app.connected_peers == 0 {
-        Span::styled(" solo", Style::default().fg(Color::Yellow))
+        Span::styled(" solo", Style::default().fg(Color::Rgb(255, 184, 108)))
     } else {
         Span::styled(
             format!(" {} connected", app.connected_peers),
-            Style::default().fg(Color::Green),
+            Style::default().fg(Color::Rgb(80, 250, 123)),
         )
     };
     let mut status_spans = vec![
@@ -189,10 +211,14 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         status_spans.push(Span::raw(" | "));
         status_spans.push(Span::styled(
             format!("scrolled up {}", app.scroll_offset),
-            Style::default().fg(Color::DarkGray),
+            Style::default().fg(Color::Rgb(98, 114, 164)),
         ));
     }
-    let status = Paragraph::new(Line::from(status_spans));
+    let status = Paragraph::new(Line::from(status_spans)).style(
+        Style::default()
+            .bg(Color::Rgb(68, 71, 90))
+            .fg(Color::Rgb(248, 248, 242)),
+    );
     frame.render_widget(status, chunks[2]);
 }
 
