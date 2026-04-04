@@ -24,6 +24,14 @@ impl App {
         }
     }
 
+    pub fn scroll_up(&mut self, lines: u16) {
+        self.scroll_offset = self.scroll_offset.saturating_add(lines);
+    }
+
+    pub fn scroll_down(&mut self, lines: u16) {
+        self.scroll_offset = self.scroll_offset.saturating_sub(lines);
+    }
+
     pub fn submit_message(&mut self) -> Option<Message> {
         let text = self.input.trim().to_string();
         if text.is_empty() {
@@ -75,5 +83,42 @@ mod tests {
         let msg = app.submit_message();
         assert!(msg.is_none());
         assert!(app.should_quit);
+    }
+
+    #[test]
+    fn scroll_up_increases_offset() {
+        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        app.scroll_up(5);
+        assert_eq!(app.scroll_offset, 5);
+        app.scroll_up(3);
+        assert_eq!(app.scroll_offset, 8);
+    }
+
+    #[test]
+    fn scroll_down_decreases_offset_to_zero() {
+        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        app.scroll_offset = 10;
+        app.scroll_down(3);
+        assert_eq!(app.scroll_offset, 7);
+        app.scroll_down(10);
+        assert_eq!(app.scroll_offset, 0);
+    }
+
+    #[test]
+    fn new_message_resets_scroll_when_at_bottom() {
+        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        app.scroll_offset = 0;
+        app.input = "hello".to_string();
+        app.submit_message();
+        assert_eq!(app.scroll_offset, 0);
+    }
+
+    #[test]
+    fn new_message_preserves_scroll_when_scrolled_up() {
+        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        app.scroll_offset = 5;
+        app.input = "hello".to_string();
+        app.submit_message();
+        assert_eq!(app.scroll_offset, 5);
     }
 }

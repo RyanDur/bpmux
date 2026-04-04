@@ -73,11 +73,12 @@ pub fn render(frame: &mut Frame, app: &App) {
             }
         })
         .sum();
-    let scroll = if total_lines > chat_height {
+    let max_scroll = if total_lines > chat_height {
         (total_lines - chat_height) as u16
     } else {
         0
     };
+    let scroll = max_scroll.saturating_sub(app.scroll_offset);
 
     let chat = Paragraph::new(messages)
         .block(Block::default().borders(Borders::ALL).title(" bpmux "))
@@ -104,11 +105,19 @@ pub fn render(frame: &mut Frame, app: &App) {
     frame.set_cursor_position((cursor_x, cursor_y));
 
     // Status bar
-    let status = Paragraph::new(Line::from(vec![
+    let mut status_spans = vec![
         Span::styled(" solo", Style::default().fg(Color::Yellow)),
         Span::raw(" | "),
         Span::raw(&app.session_id),
-    ]));
+    ];
+    if app.scroll_offset > 0 {
+        status_spans.push(Span::raw(" | "));
+        status_spans.push(Span::styled(
+            format!("scrolled up {}", app.scroll_offset),
+            Style::default().fg(Color::DarkGray),
+        ));
+    }
+    let status = Paragraph::new(Line::from(status_spans));
     frame.render_widget(status, chunks[2]);
 }
 
@@ -142,6 +151,63 @@ mod tests {
         assert!(content.contains("hello"));
         assert!(content.contains("ryan:"));
         assert!(content.contains("solo"));
+    }
+
+    #[allow(clippy::unwrap_used)]
+    #[test]
+    fn scroll_offset_shows_earlier_messages() {
+        let backend = TestBackend::new(80, 15); // enough for chat + input + status
+        let mut terminal = Terminal::new(backend).unwrap();
+
+        // Create enough messages to overflow the chat pane
+        let messages: Vec<Message> = (0..20)
+            .map(|i| Message {
+                from: "dev:human".to_string(),
+                text: format!("message {i}"),
+                ts: Utc::now(),
+            })
+            .collect();
+
+        // At scroll_offset 0 (bottom), last message visible
+        let mut app = App::new("dev".to_string(), "test-id".to_string(), messages.clone());
+        terminal.draw(|frame| render(frame, &app)).unwrap();
+        let at_bottom = buffer_to_string(terminal.backend().buffer());
+        assert!(
+            at_bottom.contains("message 19"),
+            "Bottom should show last message. Screen:\n{at_bottom}"
+        );
+
+        // Scroll up — earlier messages become visible, latest may not be
+        app.scroll_up(15);
+        terminal.draw(|frame| render(frame, &app)).unwrap();
+        let scrolled = buffer_to_string(terminal.backend().buffer());
+        assert!(
+            scrolled.contains("message 0"),
+            "Scrolled up should show earlier messages. Screen:\n{scrolled}"
+        );
+    }
+
+    #[allow(clippy::unwrap_used)]
+    #[test]
+    fn scroll_indicator_shows_when_scrolled_up() {
+        let backend = TestBackend::new(80, 15);
+        let mut terminal = Terminal::new(backend).unwrap();
+
+        let mut app = App::new("dev".to_string(), "test-id".to_string(), vec![]);
+        terminal.draw(|frame| render(frame, &app)).unwrap();
+        let at_bottom = buffer_to_string(terminal.backend().buffer());
+        assert!(
+            !at_bottom.contains("scrolled up"),
+            "No scroll indicator at bottom"
+        );
+
+        app.scroll_up(3);
+        terminal.draw(|frame| render(frame, &app)).unwrap();
+        let scrolled = buffer_to_string(terminal.backend().buffer());
+        assert!(
+            scrolled.contains("scrolled up 3"),
+            "Should show scroll indicator. Screen:\n{scrolled}"
+        );
     }
 
     fn buffer_to_string(buffer: &ratatui::buffer::Buffer) -> String {
