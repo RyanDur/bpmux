@@ -11,6 +11,23 @@ use common::read_until_contains;
 use portable_pty::{CommandBuilder, PtySize, native_pty_system};
 use std::time::Duration;
 
+/// Retry send_message until the bridge's WebSocket connection is ready.
+async fn send_when_ready(client: &rmcp::service::RunningService<rmcp::RoleClient, ()>, text: &str) {
+    tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            let mut params = rmcp::model::CallToolRequestParams::new("send_message");
+            params.arguments = serde_json::json!({"text": text}).as_object().cloned();
+            let result = client.peer().call_tool(params).await.expect("tool call");
+            if !result.is_error.unwrap_or(false) {
+                return;
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+    })
+    .await
+    .expect("bridge should connect within timeout");
+}
+
 #[test]
 fn two_bridges_show_distinct_identities() {
     let bin = env!("CARGO_BIN_EXE_bpmux");
@@ -48,7 +65,7 @@ fn two_bridges_show_distinct_identities() {
     let (screen, _) = read_until_contains(&mut reader, "solo", Duration::from_secs(5));
     assert!(screen.contains("solo"), "TUI should render");
 
-    // 3. Start two bridges with different names, send messages, check TUI
+    // 3. Start two bridges with different names and send messages
     let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
     rt.block_on(async {
         use rmcp::ServiceExt;
@@ -80,30 +97,11 @@ fn two_bridges_show_distinct_identities() {
 
         let pm_client = ().serve(pm_process).await.expect("MCP handshake with pm bridge");
 
-        // Wait for both bridges to connect to WebSocket
-        tokio::time::sleep(Duration::from_secs(2)).await;
+        // 4. Send from dev — retries until WebSocket is connected
+        send_when_ready(&dev_client, "hello from dev").await;
 
-        // 4. Send a message from dev bridge
-        let mut params = rmcp::model::CallToolRequestParams::new("send_message");
-        params.arguments = serde_json::json!({"text": "hello from dev"})
-            .as_object()
-            .cloned();
-        let result = dev_client.peer().call_tool(params).await.expect("dev send");
-        assert!(!result.is_error.unwrap_or(false), "dev send should succeed");
-
-        // Wait for message to propagate
-        tokio::time::sleep(Duration::from_secs(2)).await;
-
-        // 5. Send a message from pm bridge
-        let mut params = rmcp::model::CallToolRequestParams::new("send_message");
-        params.arguments = serde_json::json!({"text": "hello from pm"})
-            .as_object()
-            .cloned();
-        let result = pm_client.peer().call_tool(params).await.expect("pm send");
-        assert!(!result.is_error.unwrap_or(false), "pm send should succeed");
-
-        // Wait for pm message to propagate through bpmux
-        tokio::time::sleep(Duration::from_secs(2)).await;
+        // 5. Send from pm — retries until WebSocket is connected
+        send_when_ready(&pm_client, "hello from pm").await;
 
         dev_client.cancel().await.expect("cleanup dev");
         pm_client.cancel().await.expect("cleanup pm");
@@ -112,7 +110,6 @@ fn two_bridges_show_distinct_identities() {
     // 6. Verify both identities appear distinctly in the TUI
     let (screen, _) = read_until_contains(&mut reader, "hello from pm", Duration::from_secs(5));
 
-    // TUI shows short names (strips ":ws" suffix)
     assert!(
         screen.contains("dev:") && screen.contains("hello from dev"),
         "Dev bridge should show as 'dev' in TUI. Screen:\n{screen}"

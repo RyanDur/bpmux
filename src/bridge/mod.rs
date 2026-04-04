@@ -210,10 +210,16 @@ impl ServerHandler for BridgeServer {
                         }
                     };
 
-                    let send_msg = serde_json::to_string(&ClientMessage::Send {
+                    let send_msg = match serde_json::to_string(&ClientMessage::Send {
                         text: text.to_string(),
-                    })
-                    .unwrap_or_default();
+                    }) {
+                        Ok(json) => json,
+                        Err(e) => {
+                            return Ok(CallToolResult::error(vec![Content::text(format!(
+                                "failed to serialize message: {e}"
+                            ))]));
+                        }
+                    };
 
                     let mut tx = ws_tx.lock().await;
                     if let Some(ref mut tx) = *tx {
