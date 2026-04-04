@@ -12,6 +12,8 @@ pub enum ClientMessage {
     Send { text: String },
     #[serde(rename = "ping")]
     Ping,
+    #[serde(rename = "rename")]
+    Rename { name: String },
 }
 
 /// Messages sent from server to WebSocket client

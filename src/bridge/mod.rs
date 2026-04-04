@@ -30,7 +30,7 @@ type WsSink = futures::stream::SplitSink<
 #[derive(Clone)]
 pub struct BridgeServer {
     port: u16,
-    name: String,
+    name: Arc<Mutex<String>>,
     peer: Arc<Mutex<Option<Peer<RoleServer>>>>,
     ws_tx: Arc<Mutex<Option<WsSink>>>,
     messages: Arc<Mutex<Vec<String>>>,
@@ -46,7 +46,7 @@ impl BridgeServer {
         };
         Self {
             port,
-            name,
+            name: Arc::new(Mutex::new(name)),
             peer: Arc::new(Mutex::new(None)),
             ws_tx: Arc::new(Mutex::new(None)),
             messages: Arc::new(Mutex::new(Vec::new())),
@@ -58,7 +58,7 @@ impl BridgeServer {
 /// Returns when the connection drops.
 async fn run_ws_connection(
     port: u16,
-    name: String,
+    name: Arc<Mutex<String>>,
     peer: Peer<RoleServer>,
     ws_tx_store: Arc<Mutex<Option<WsSink>>>,
     messages_store: Arc<Mutex<Vec<String>>>,
@@ -77,9 +77,10 @@ async fn run_ws_connection(
 
     // Identify with bpmux
     {
+        let current_name = name.lock().await.clone();
         let mut tx = ws_tx_store.lock().await;
         if let Some(ref mut tx) = *tx {
-            let identify = json!({"type": "identify", "name": name}).to_string();
+            let identify = json!({"type": "identify", "name": current_name}).to_string();
             if let Err(e) = tx.send(tungstenite::Message::Text(identify.into())).await {
                 eprintln!("Bridge: failed to identify: {e}");
                 return;
@@ -98,9 +99,12 @@ async fn run_ws_connection(
             let msg: Result<ServerMessage, _> = serde_json::from_str(&text);
             if let Ok(ServerMessage::Message { from, text, ts }) = msg {
                 // Don't forward our own messages back
-                if from.contains(&name) {
+                let current_name = name.lock().await;
+                if from.contains(current_name.as_str()) {
+                    drop(current_name);
                     continue;
                 }
+                drop(current_name);
 
                 // Buffer the message for read_messages
                 messages_store.lock().await.push(format!("[{from}] {text}"));
@@ -190,6 +194,9 @@ impl ServerHandler for BridgeServer {
                 "Send a message to the bpmux session. Your message will appear in the shared chat.",
             ),
             crate::mcp::tools::read_messages_tool("Read recent messages from the bpmux session."),
+            crate::mcp::tools::set_name_tool(
+                "Set your display name in the bpmux session. Call this once at the start to identify yourself (e.g., 'dev', 'pm').",
+            ),
         ];
 
         std::future::ready(Ok(ListToolsResult::with_all_items(tools)))
@@ -202,6 +209,7 @@ impl ServerHandler for BridgeServer {
     ) -> impl Future<Output = Result<CallToolResult, McpError>> + Send + '_ {
         let ws_tx = self.ws_tx.clone();
         let messages = self.messages.clone();
+        let name = self.name.clone();
 
         async move {
             match request.name.as_ref() {
@@ -241,6 +249,36 @@ impl ServerHandler for BridgeServer {
                     }
 
                     Ok(CallToolResult::success(vec![Content::text("message sent")]))
+                }
+                "set_name" => {
+                    let args = request.arguments.unwrap_or_default();
+                    let new_name = match args.get("name").and_then(|v| v.as_str()) {
+                        Some(n) => n.to_string(),
+                        None => {
+                            return Ok(CallToolResult::error(vec![Content::text(
+                                "missing 'name' argument",
+                            )]));
+                        }
+                    };
+
+                    // Update the bridge's internal name
+                    *name.lock().await = new_name.clone();
+
+                    // Send rename to bpmux server
+                    let rename_msg =
+                        serde_json::json!({"type": "rename", "name": new_name}).to_string();
+                    let mut tx = ws_tx.lock().await;
+                    if let Some(ref mut tx) = *tx
+                        && let Err(e) = tx.send(tungstenite::Message::Text(rename_msg.into())).await
+                    {
+                        return Ok(CallToolResult::error(vec![Content::text(format!(
+                            "failed to rename: {e}"
+                        ))]));
+                    }
+
+                    Ok(CallToolResult::success(vec![Content::text(format!(
+                        "name set to {new_name}"
+                    ))]))
                 }
                 "read_messages" => {
                     let msgs = messages.lock().await;

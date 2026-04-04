@@ -33,7 +33,7 @@ async fn run_ws_session(
     session: Arc<session::Session>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let name = wait_for_identify(&mut tx, &mut rx).await?;
-    let identity = format!("{name}:ws");
+    let mut identity = format!("{name}:ws");
     session.peer_connected();
     let mut broadcast_rx = session.subscribe();
     let mut heartbeat = tokio::time::interval(HEARTBEAT_INTERVAL);
@@ -65,7 +65,9 @@ async fn run_ws_session(
                 ws_result = rx.next() => {
                     match ws_result {
                         Some(Ok(WsMessage::Text(text))) => {
-                            handle_client_message(&text, &identity, &session, &mut tx).await?;
+                            if let Some(new_identity) = handle_client_message(&text, &identity, &session, &mut tx).await? {
+                                identity = new_identity;
+                            }
                         }
                         Some(Ok(WsMessage::Close(_))) | None => break,
                         Some(Err(e)) => { eprintln!("WebSocket read error for {identity}: {e}"); break; }
@@ -120,12 +122,13 @@ async fn wait_for_identify(
     }
 }
 
+/// Returns Some(new_identity) if the client renamed itself.
 async fn handle_client_message(
     text: &str,
     identity: &str,
     session: &session::Session,
     tx: &mut SplitSink<WebSocket, WsMessage>,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<Option<String>, Box<dyn std::error::Error + Send + Sync>> {
     if text.len() > MAX_MESSAGE_SIZE {
         send_json(
             tx,
@@ -134,7 +137,7 @@ async fn handle_client_message(
             },
         )
         .await?;
-        return Ok(());
+        return Ok(None);
     }
     match serde_json::from_str::<ClientMessage>(text) {
         Ok(ClientMessage::Send { text: msg_text }) => {
@@ -148,6 +151,9 @@ async fn handle_client_message(
         }
         Ok(ClientMessage::Ping) => {
             send_json(tx, &ServerMessage::Pong).await?;
+        }
+        Ok(ClientMessage::Rename { name }) => {
+            return Ok(Some(format!("{name}:ws")));
         }
         Ok(ClientMessage::Identify { .. }) => {
             send_json(
@@ -168,7 +174,7 @@ async fn handle_client_message(
             .await?;
         }
     }
-    Ok(())
+    Ok(None)
 }
 
 async fn send_json(
