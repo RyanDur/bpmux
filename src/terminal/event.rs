@@ -22,7 +22,9 @@ pub fn run_tui(
                     let scrolled_up = app.scroll_offset > 0;
                     app.receive_message(msg);
                     if scrolled_up || app.scroll_offset > 0 {
-                        print!("\x07");
+                        use std::io::Write;
+                        let _ = std::io::stdout().write_all(b"\x07");
+                        let _ = std::io::stdout().flush();
                     }
                 }
                 continue;
