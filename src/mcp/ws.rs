@@ -29,7 +29,7 @@ async fn run_ws_session(
     mut tx: SplitSink<WebSocket, WsMessage>,
     mut rx: SplitStream<WebSocket>,
     state: Arc<ServerState>,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<()> {
     // Phase 1: Wait for identify (5 second timeout)
     let name = wait_for_identify(&mut tx, &mut rx).await?;
     let identity = format!("{name}:ws");
