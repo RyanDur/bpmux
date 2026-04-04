@@ -2,8 +2,10 @@
 
 pub mod bridge;
 pub mod mcp;
+pub mod server;
 pub mod session;
 pub mod terminal;
+pub mod transport;
 
 use clap::{Parser, Subcommand};
 use tokio::sync::broadcast;
@@ -50,7 +52,7 @@ pub fn run() -> anyhow::Result<()> {
         return bridge::run_bridge(port);
     }
 
-    // Default: run the TUI + MCP server
+    // Default: run the TUI + server
 
     // Resume existing session or create new one
     // Priority: CLI flag > env var > default
@@ -75,14 +77,14 @@ pub fn run() -> anyhow::Result<()> {
     // Create app state
     let mut app = terminal::App::new(cli.name.clone(), session_id, messages);
 
-    // Wake channel — MCP server sends wake signals when messages arrive
+    // Wake channel -- server sends wake signals when messages arrive
     let (wake_tx, mut wake_rx) = broadcast::channel::<session::Message>(64);
 
-    // Start MCP/HTTP server on a dedicated thread with its own tokio runtime
-    let mcp_session_dir = session_dir.clone();
-    let mcp_name = cli.name.clone();
-    let mcp_port = cli.mcp_port;
-    let mcp_wake_tx = wake_tx.clone();
+    // Start server on a dedicated thread with its own tokio runtime
+    let server_session_dir = session_dir.clone();
+    let server_name = cli.name.clone();
+    let server_port = cli.mcp_port;
+    let server_wake_tx = wake_tx.clone();
     let ct = CancellationToken::new();
     let server_ct = ct.clone();
     std::thread::spawn(move || {
@@ -91,17 +93,16 @@ pub fn run() -> anyhow::Result<()> {
             return;
         };
         rt.block_on(async move {
-            if let Err(e) = mcp::run_mcp_server(
-                mcp_session_dir,
-                mcp_name,
-                mcp_wake_tx,
-                mcp_port,
+            if let Err(e) = server::run_server(
+                server_session_dir,
+                server_name,
+                server_wake_tx,
+                server_port,
                 server_ct,
-                None,
             )
             .await
             {
-                eprintln!("MCP server error: {e}");
+                eprintln!("Server error: {e}");
             }
         });
     });

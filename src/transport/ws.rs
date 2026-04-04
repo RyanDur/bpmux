@@ -7,9 +7,9 @@ use futures::stream::{SplitSink, SplitStream};
 use futures::{SinkExt, StreamExt};
 use tokio::sync::broadcast;
 
-use crate::mcp::protocol::{ClientMessage, ServerMessage};
-use crate::mcp::state::ServerState;
 use crate::session;
+use crate::transport::protocol::{ClientMessage, ServerMessage};
+use crate::transport::state::ServerState;
 
 const MAX_MESSAGE_SIZE: usize = 4096;
 
@@ -49,7 +49,7 @@ async fn run_ws_session(
     // Phase 2: Bidirectional message loop
     loop {
         tokio::select! {
-            // Messages from broadcast → push to WebSocket client
+            // Messages from broadcast -> push to WebSocket client
             broadcast_result = broadcast_rx.recv() => {
                 match broadcast_result {
                     Ok(msg) => {
@@ -61,7 +61,7 @@ async fn run_ws_session(
                     Err(broadcast::error::RecvError::Closed) => break,
                 }
             }
-            // Messages from WebSocket client → process
+            // Messages from WebSocket client -> process
             ws_result = rx.next() => {
                 match ws_result {
                     Some(Ok(WsMessage::Text(text))) => {
@@ -77,7 +77,7 @@ async fn run_ws_session(
                         eprintln!("WebSocket read error for {identity}: {e}");
                         break;
                     }
-                    _ => {} // Binary, Ping, Pong — ignore
+                    _ => {} // Binary, Ping, Pong -- ignore
                 }
             }
         }

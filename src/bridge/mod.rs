@@ -19,7 +19,7 @@ use serde_json::json;
 use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite;
 
-use crate::mcp::protocol::{ClientMessage, ServerMessage};
+use crate::transport::protocol::{ClientMessage, ServerMessage};
 
 type McpError = ErrorData;
 type WsSink = futures::stream::SplitSink<

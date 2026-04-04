@@ -6,8 +6,8 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use serde::Deserialize;
 
-use super::state::ServerState;
 use crate::session;
+use crate::transport::state::ServerState;
 
 #[derive(Deserialize)]
 pub struct PostMessage {
