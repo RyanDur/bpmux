@@ -10,12 +10,12 @@ use crate::session;
 use crate::terminal::app::App;
 
 const SENDER_PALETTE: [Color; 6] = [
-    Color::Cyan,
-    Color::Green,
-    Color::Yellow,
-    Color::Magenta,
-    Color::LightCyan,
-    Color::LightRed,
+    Color::Rgb(139, 233, 253), // Dracula cyan
+    Color::Rgb(80, 250, 123),  // Dracula green
+    Color::Rgb(255, 184, 108), // Dracula orange
+    Color::Rgb(189, 147, 249), // Dracula purple
+    Color::Rgb(255, 121, 198), // Dracula pink
+    Color::Rgb(241, 250, 140), // Dracula yellow
 ];
 
 fn sender_color_index(name: &str) -> usize {
@@ -29,7 +29,7 @@ fn sender_color(name: &str) -> Color {
     SENDER_PALETTE[sender_color_index(name)]
 }
 
-pub fn render(frame: &mut Frame, app: &App) {
+pub fn render(frame: &mut Frame, app: &mut App) {
     let chunks = Layout::vertical([
         Constraint::Min(3),    // chat pane
         Constraint::Length(3), // input pane
@@ -147,6 +147,7 @@ pub fn render(frame: &mut Frame, app: &App) {
     } else {
         0
     };
+    app.max_scroll = max_scroll;
     let scroll = max_scroll.saturating_sub(app.scroll_offset);
 
     let chat = chat.scroll((scroll, 0));
@@ -219,7 +220,8 @@ mod tests {
             }],
         );
 
-        terminal.draw(|frame| render(frame, &app)).unwrap();
+        let mut app = app;
+        terminal.draw(|frame| render(frame, &mut app)).unwrap();
 
         let buffer = terminal.backend().buffer().clone();
         let content = buffer_to_string(&buffer);
@@ -246,7 +248,7 @@ mod tests {
 
         // At scroll_offset 0 (bottom), last message visible
         let mut app = App::new("dev".to_string(), "test-id".to_string(), messages.clone());
-        terminal.draw(|frame| render(frame, &app)).unwrap();
+        terminal.draw(|frame| render(frame, &mut app)).unwrap();
         let at_bottom = buffer_to_string(terminal.backend().buffer());
         assert!(
             at_bottom.contains("message 19"),
@@ -255,7 +257,7 @@ mod tests {
 
         // Scroll up — earlier messages become visible, latest may not be
         app.scroll_up(15);
-        terminal.draw(|frame| render(frame, &app)).unwrap();
+        terminal.draw(|frame| render(frame, &mut app)).unwrap();
         let scrolled = buffer_to_string(terminal.backend().buffer());
         assert!(
             scrolled.contains("message 0"),
@@ -270,15 +272,16 @@ mod tests {
         let mut terminal = Terminal::new(backend).unwrap();
 
         let mut app = App::new("dev".to_string(), "test-id".to_string(), vec![]);
-        terminal.draw(|frame| render(frame, &app)).unwrap();
+        terminal.draw(|frame| render(frame, &mut app)).unwrap();
         let at_bottom = buffer_to_string(terminal.backend().buffer());
         assert!(
             !at_bottom.contains("scrolled up"),
             "No scroll indicator at bottom"
         );
 
+        app.max_scroll = 100;
         app.scroll_up(3);
-        terminal.draw(|frame| render(frame, &app)).unwrap();
+        terminal.draw(|frame| render(frame, &mut app)).unwrap();
         let scrolled = buffer_to_string(terminal.backend().buffer());
         assert!(
             scrolled.contains("scrolled up 3"),
@@ -291,9 +294,9 @@ mod tests {
     fn status_bar_shows_solo_when_no_peers() {
         let backend = TestBackend::new(80, 15);
         let mut terminal = Terminal::new(backend).unwrap();
-        let app = App::new("dev".to_string(), "test-id".to_string(), vec![]);
+        let mut app = App::new("dev".to_string(), "test-id".to_string(), vec![]);
 
-        terminal.draw(|frame| render(frame, &app)).unwrap();
+        terminal.draw(|frame| render(frame, &mut app)).unwrap();
         let screen = buffer_to_string(terminal.backend().buffer());
         assert!(
             screen.contains("solo"),
@@ -309,7 +312,7 @@ mod tests {
         let mut app = App::new("dev".to_string(), "test-id".to_string(), vec![]);
         app.connected_peers = 2;
 
-        terminal.draw(|frame| render(frame, &app)).unwrap();
+        terminal.draw(|frame| render(frame, &mut app)).unwrap();
         let screen = buffer_to_string(terminal.backend().buffer());
         assert!(
             screen.contains("2 connected"),
@@ -326,7 +329,7 @@ mod tests {
     fn system_messages_filtered_from_chat() {
         let backend = TestBackend::new(80, 15);
         let mut terminal = Terminal::new(backend).unwrap();
-        let app = App::new(
+        let mut app = App::new(
             "dev".to_string(),
             "test-id".to_string(),
             vec![
@@ -345,7 +348,7 @@ mod tests {
             ],
         );
 
-        terminal.draw(|frame| render(frame, &app)).unwrap();
+        terminal.draw(|frame| render(frame, &mut app)).unwrap();
         let screen = buffer_to_string(terminal.backend().buffer());
         assert!(
             screen.contains("visible chat"),
@@ -368,7 +371,7 @@ mod tests {
         // 73 + 78*10 = 853 chars = 11 lines.
         let long_text = "word ".repeat(200); // ~1000 chars, well over 10 lines
 
-        let app = App::new(
+        let mut app = App::new(
             "dev".to_string(),
             "test-id".to_string(),
             vec![Message {
@@ -379,7 +382,7 @@ mod tests {
             }],
         );
 
-        terminal.draw(|frame| render(frame, &app)).unwrap();
+        terminal.draw(|frame| render(frame, &mut app)).unwrap();
         let screen = buffer_to_string(terminal.backend().buffer());
 
         assert!(
@@ -398,7 +401,7 @@ mod tests {
         let backend = TestBackend::new(80, 24);
         let mut terminal = Terminal::new(backend).unwrap();
 
-        let app = App::new(
+        let mut app = App::new(
             "dev".to_string(),
             "test-id".to_string(),
             vec![Message {
@@ -409,7 +412,7 @@ mod tests {
             }],
         );
 
-        terminal.draw(|frame| render(frame, &app)).unwrap();
+        terminal.draw(|frame| render(frame, &mut app)).unwrap();
         let screen = buffer_to_string(terminal.backend().buffer());
 
         assert!(
@@ -432,7 +435,7 @@ mod tests {
         // 10 lines = 73 + 78*9 = 775 chars.
         let text_for_ten_lines = "a".repeat(775);
 
-        let app = App::new(
+        let mut app = App::new(
             "dev".to_string(),
             "test-id".to_string(),
             vec![Message {
@@ -443,7 +446,7 @@ mod tests {
             }],
         );
 
-        terminal.draw(|frame| render(frame, &app)).unwrap();
+        terminal.draw(|frame| render(frame, &mut app)).unwrap();
         let screen = buffer_to_string(terminal.backend().buffer());
 
         assert!(
@@ -461,7 +464,7 @@ mod tests {
         // 11 lines = 73 + 78*10 = 853 chars
         let text_for_eleven_lines = "a".repeat(853);
 
-        let app = App::new(
+        let mut app = App::new(
             "dev".to_string(),
             "test-id".to_string(),
             vec![Message {
@@ -472,7 +475,7 @@ mod tests {
             }],
         );
 
-        terminal.draw(|frame| render(frame, &app)).unwrap();
+        terminal.draw(|frame| render(frame, &mut app)).unwrap();
         let screen = buffer_to_string(terminal.backend().buffer());
 
         assert!(
