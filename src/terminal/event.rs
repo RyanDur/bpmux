@@ -6,6 +6,14 @@ use crate::session;
 use crate::terminal::app::App;
 use crate::terminal::ui;
 
+fn bell() {
+    use std::io::Write;
+    if let Ok(mut tty) = std::fs::OpenOptions::new().write(true).open("/dev/tty") {
+        let _ = tty.write_all(b"\x07");
+        let _ = tty.flush();
+    }
+}
+
 pub fn run_tui(
     terminal: &mut DefaultTerminal,
     app: &mut App,
@@ -19,16 +27,18 @@ pub fn run_tui(
             Ok(msg) => {
                 let self_identity = format!("{}:human", app.peer_name);
                 if msg.from != self_identity {
+                    let short_name = msg.from.split(':').next().unwrap_or(&msg.from).to_string();
+                    let preview: String = msg.text.chars().take(50).collect();
                     app.receive_message(msg);
-                    {
-                        use std::io::Write;
-                        if let Ok(mut tty) =
-                            std::fs::OpenOptions::new().write(true).open("/dev/tty")
-                        {
-                            let _ = tty.write_all(b"\x07");
-                            let _ = tty.flush();
-                        }
-                    }
+                    let _ = std::process::Command::new("osascript")
+                        .args([
+                            "-e",
+                            &format!(
+                                "display notification \"{}\" with title \"bpmux — {}\"",
+                                preview, short_name
+                            ),
+                        ])
+                        .spawn();
                 }
                 continue;
             }
@@ -66,7 +76,11 @@ pub fn run_tui(
                     app.scroll_up(10);
                 }
                 KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    let before = app.scroll_offset;
                     app.scroll_down(10);
+                    if app.scroll_offset == before {
+                        bell();
+                    }
                 }
                 KeyCode::Char(c) => {
                     app.input.push(c);
@@ -78,7 +92,11 @@ pub fn run_tui(
                     app.scroll_up(5);
                 }
                 KeyCode::PageDown => {
+                    let before = app.scroll_offset;
                     app.scroll_down(5);
+                    if app.scroll_offset == before {
+                        bell();
+                    }
                 }
                 KeyCode::Esc => {
                     return Ok(());
