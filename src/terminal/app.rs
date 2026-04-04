@@ -32,6 +32,14 @@ impl App {
         self.scroll_offset = self.scroll_offset.saturating_sub(lines);
     }
 
+    pub fn receive_message(&mut self, msg: Message) {
+        let was_at_bottom = self.scroll_offset == 0;
+        self.messages.push(msg);
+        if !was_at_bottom {
+            self.scroll_offset = self.scroll_offset.saturating_add(1);
+        }
+    }
+
     pub fn submit_message(&mut self) -> Option<Message> {
         let text = self.input.trim().to_string();
         if text.is_empty() {
@@ -105,20 +113,28 @@ mod tests {
     }
 
     #[test]
-    fn new_message_resets_scroll_when_at_bottom() {
+    fn incoming_message_stays_at_bottom_when_at_bottom() {
         let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
-        app.scroll_offset = 0;
-        app.input = "hello".to_string();
-        app.submit_message();
         assert_eq!(app.scroll_offset, 0);
+        app.receive_message(Message {
+            from: "bot:ws".to_string(),
+            text: "hello".to_string(),
+            ts: Utc::now(),
+        });
+        assert_eq!(app.scroll_offset, 0);
+        assert_eq!(app.messages.len(), 1);
     }
 
     #[test]
-    fn new_message_preserves_scroll_when_scrolled_up() {
+    fn incoming_message_preserves_viewport_when_scrolled_up() {
         let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
         app.scroll_offset = 5;
-        app.input = "hello".to_string();
-        app.submit_message();
-        assert_eq!(app.scroll_offset, 5);
+        app.receive_message(Message {
+            from: "bot:ws".to_string(),
+            text: "hello".to_string(),
+            ts: Utc::now(),
+        });
+        assert_eq!(app.scroll_offset, 6);
+        assert_eq!(app.messages.len(), 1);
     }
 }

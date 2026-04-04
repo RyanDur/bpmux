@@ -18,12 +18,7 @@ pub fn run_tui(
             Ok(msg) => {
                 let self_identity = format!("{}:human", app.peer_name);
                 if msg.from != self_identity {
-                    // Auto-scroll only when already at bottom
-                    let was_at_bottom = app.scroll_offset == 0;
-                    app.messages.push(msg);
-                    if !was_at_bottom {
-                        app.scroll_offset = app.scroll_offset.saturating_add(1);
-                    }
+                    app.receive_message(msg);
                 }
                 continue;
             }
