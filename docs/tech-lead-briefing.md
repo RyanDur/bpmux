@@ -99,6 +99,19 @@ We're planning to let other developers try bpmux. The JSONL log is a research ar
 6. **Keybinding conflict:** Ctrl-U/D for scroll vs readline convention. What's the right call?
 7. **Anything we missed?** You know the codebase. What do the research and design teams not see?
 
+## Test coverage gaps (from quality review)
+
+49 tests pass. No tautological tests, no mocks, all names describe behavior. But 4 modules have **zero unit tests:**
+
+1. **`mcp/server.rs`** — Clone/Drop peer counting, tool dispatch error handling. Highest risk.
+2. **`transport/ws.rs`** — Identify timeout (5s), oversized message rejection (4096 bytes), heartbeat, broadcast lag recovery.
+3. **`bridge/mod.rs`** — Own-message filtering (`from.contains(&name)`), reconnection loop, disconnected send handling.
+4. **`terminal/event.rs`** — All keyboard handling. Ctrl-T, Ctrl-U/D, PageUp/PageDown, Esc, Backspace. Only Enter is covered via PTY integration tests.
+
+Also missing: GET /api/messages has no test (unit or integration).
+
+When you touch any of these modules, consider adding tests first. The safety net is thin here.
+
 ## The thesis (updated)
 
 > bpmux is collective memory for human-AI teams. The persistent log is the primitive. Everything else is built on top of it. Communication is not transmission — it is the joint establishment of mutual belief.
