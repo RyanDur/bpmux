@@ -14,8 +14,8 @@ const SENDER_PALETTE: [Color; 6] = [
     Color::Green,
     Color::Yellow,
     Color::Magenta,
-    Color::Blue,
-    Color::Red,
+    Color::LightBlue,
+    Color::LightRed,
 ];
 
 fn sender_color_index(name: &str) -> usize {
