@@ -202,6 +202,9 @@ This catches patterns that a single session cannot see in its own work.
 - **Test the right seam.** Tests that call methods which don't touch the thing being asserted pass by coincidence. Map assertions back to acceptance criteria, not just code coverage.
 - **Testing is knowledge transfer.** Tests document behavior for the next developer (or agent) who reads the code. Tautological tests transfer false knowledge.
 - **The PM orders, the PM doesn't assign.** Reorder the backlog, don't send "do this now" messages. Protect developer flow.
+- **Define the question before launching research agents (Wave 0).** Unfocused research produces volume, not insight. State what you're trying to learn and what would change your mind before spinning up agents.
+- **Research is the owner's domain.** The PM surfaces research questions. The owner decides what to investigate. The PM translates findings into stories.
+- **Misleading information is worse than no information.** Archive stale docs. Correct errors immediately. The accuracy audit and contradiction register are living documents.
 
 ## Git & Tooling
 
