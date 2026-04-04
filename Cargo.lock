@@ -252,6 +252,7 @@ dependencies = [
  "expectrl",
  "futures",
  "futures-util",
+ "http-body-util",
  "portable-pty",
  "ratatui",
  "ratatui-testlib",
@@ -264,6 +265,7 @@ dependencies = [
  "tokio",
  "tokio-tungstenite 0.26.2",
  "tokio-util",
+ "tower",
  "uuid",
 ]
 

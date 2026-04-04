@@ -17,13 +17,23 @@ if [ -z "$LINES" ]; then
 fi
 
 echo "--- Recent bpmux messages ---"
-while IFS= read -r line; do
-  sender=$(echo "$line" | grep -o '"sender":"[^"]*"' | head -1 | cut -d'"' -f4)
-  text=$(echo "$line" | grep -o '"text":"[^"]*"' | head -1 | cut -d'"' -f4)
-  if [ -n "$sender" ] && [ -n "$text" ]; then
-    echo "[$sender] $text"
-  fi
-done <<< "$LINES"
+if command -v jq >/dev/null 2>&1; then
+  echo "$LINES" | while IFS= read -r line; do
+    from=$(echo "$line" | jq -r '.from // empty' 2>/dev/null)
+    text=$(echo "$line" | jq -r '.text // empty' 2>/dev/null)
+    if [ -n "$from" ] && [ -n "$text" ]; then
+      echo "[$from] $text"
+    fi
+  done
+else
+  while IFS= read -r line; do
+    from=$(echo "$line" | grep -o '"from":"[^"]*"' | head -1 | cut -d'"' -f4)
+    text=$(echo "$line" | grep -o '"text":"[^"]*"' | head -1 | cut -d'"' -f4)
+    if [ -n "$from" ] && [ -n "$text" ]; then
+      echo "[$from] $text"
+    fi
+  done <<< "$LINES"
+fi
 echo "--- End bpmux messages ---"
 
 exit 0

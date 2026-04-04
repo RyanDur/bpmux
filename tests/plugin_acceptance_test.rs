@@ -48,10 +48,10 @@ fn hook_reads_jsonl_and_outputs_formatted_messages() {
     let tmp = tempfile::tempdir().unwrap();
     let session_dir = create_session_dir(&tmp);
 
-    // Write JSONL messages
-    let jsonl = r#"{"sender":"alice","text":"hello world"}
-{"sender":"bob","text":"how are you"}
-{"sender":"alice","text":"doing great"}
+    // Write JSONL messages (using "from" field matching session::Message)
+    let jsonl = r#"{"from":"alice","text":"hello world","ts":"2026-04-03T12:00:00Z"}
+{"from":"bob","text":"how are you","ts":"2026-04-03T12:01:00Z"}
+{"from":"alice","text":"doing great","ts":"2026-04-03T12:02:00Z"}
 "#;
     fs::write(session_dir.join("messages-current.jsonl"), jsonl).unwrap();
 
@@ -122,19 +122,13 @@ fn session_start_outputs_context() {
 }
 
 #[test]
-fn send_user_message_appends_to_jsonl() {
-    let tmp = tempfile::tempdir().unwrap();
-    let session_dir = create_session_dir(&tmp);
-
-    // Create an empty messages file
-    let messages_file = session_dir.join("messages-current.jsonl");
-    fs::write(&messages_file, "").unwrap();
-
+fn send_user_message_exits_cleanly_when_server_unavailable() {
+    // The script POSTs to bpmux REST endpoint — when bpmux isn't
+    // running, curl fails silently and the script still exits 0.
     let input = r#"{"prompt":"what does this function do?"}"#;
 
     let output = Command::new("bash")
         .arg(send_user_message_script())
-        .env("HOME", tmp.path())
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
@@ -151,15 +145,10 @@ fn send_user_message_appends_to_jsonl() {
         })
         .unwrap();
 
-    assert!(output.status.success(), "script exited non-zero");
-
-    let content = fs::read_to_string(&messages_file).unwrap();
-    let line = content.lines().next().expect("should have one line");
-    let msg: serde_json::Value = serde_json::from_str(line).expect("valid JSON");
-
-    assert_eq!(msg["from"], "ryan:claude-code-user");
-    assert_eq!(msg["text"], "what does this function do?");
-    assert!(msg["ts"].is_string(), "should have a timestamp");
+    assert!(
+        output.status.success(),
+        "script should exit 0 even when bpmux is unavailable"
+    );
 }
 
 #[test]
@@ -191,74 +180,40 @@ fn send_user_message_silent_when_no_session() {
 }
 
 #[test]
-fn send_claude_response_appends_to_jsonl() {
-    let tmp = tempfile::tempdir().unwrap();
-    let session_dir = create_session_dir(&tmp);
-
-    let messages_file = session_dir.join("messages-current.jsonl");
-    fs::write(&messages_file, "").unwrap();
-
-    let input = r#"{"response":"The function calculates the sum of two integers."}"#;
-
+fn send_claude_response_exits_cleanly_when_server_unavailable() {
+    // The Stop hook POSTs a turn-complete notification to bpmux REST
+    // endpoint. When bpmux isn't running, curl fails silently.
+    // NOTE: Stop hooks do NOT receive Claude's response text — only
+    // common fields. The script sends a "[turn complete]" notification.
     let output = Command::new("bash")
         .arg(send_claude_response_script())
-        .env("HOME", tmp.path())
-        .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
-        .spawn()
-        .and_then(|mut child| {
-            use std::io::Write;
-            child
-                .stdin
-                .take()
-                .unwrap()
-                .write_all(input.as_bytes())
-                .unwrap();
-            child.wait_with_output()
-        })
+        .output()
         .unwrap();
 
-    assert!(output.status.success(), "script exited non-zero");
-
-    let content = fs::read_to_string(&messages_file).unwrap();
-    let line = content.lines().next().expect("should have one line");
-    let msg: serde_json::Value = serde_json::from_str(line).expect("valid JSON");
-
-    assert_eq!(msg["from"], "ryan:claude-code");
-    assert_eq!(
-        msg["text"],
-        "The function calculates the sum of two integers."
+    assert!(
+        output.status.success(),
+        "script should exit 0 even when bpmux is unavailable"
     );
-    assert!(msg["ts"].is_string(), "should have a timestamp");
 }
 
 #[test]
-fn send_claude_response_silent_when_no_session() {
-    let tmp = tempfile::tempdir().unwrap();
-
-    let input = r#"{"response":"hello"}"#;
-
+fn send_claude_response_produces_no_stdout() {
+    // The Stop hook should not produce stdout — it only curls the endpoint.
     let output = Command::new("bash")
         .arg(send_claude_response_script())
-        .env("HOME", tmp.path())
-        .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
-        .spawn()
-        .and_then(|mut child| {
-            use std::io::Write;
-            child
-                .stdin
-                .take()
-                .unwrap()
-                .write_all(input.as_bytes())
-                .unwrap();
-            child.wait_with_output()
-        })
+        .output()
         .unwrap();
 
     assert!(output.status.success(), "script should exit 0");
+    assert!(
+        output.stdout.is_empty(),
+        "stop hook should produce no stdout, got: {}",
+        String::from_utf8_lossy(&output.stdout)
+    );
 }
 
 #[test]

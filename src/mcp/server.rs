@@ -172,6 +172,10 @@ pub async fn run_mcp_server(
     let router = axum::Router::new()
         .nest_service("/mcp", service)
         .route("/ws", axum::routing::any(super::ws::ws_handler))
+        .route(
+            "/api/messages",
+            axum::routing::post(super::rest::post_message),
+        )
         .with_state(ws_state);
     let listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{port}")).await?;
 
