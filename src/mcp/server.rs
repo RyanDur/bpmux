@@ -37,10 +37,13 @@ impl BpmuxMcpServer {
         }
     }
 
-    fn handle_send_message(&self, args: &serde_json::Map<String, serde_json::Value>) -> String {
+    fn handle_send_message(
+        &self,
+        args: &serde_json::Map<String, serde_json::Value>,
+    ) -> Result<String, String> {
         let text = match args.get("text").and_then(|v| v.as_str()) {
             Some(t) => t.to_string(),
-            None => return "error: missing 'text' argument".to_string(),
+            None => return Err("missing 'text' argument".to_string()),
         };
 
         let msg = session::Message {
@@ -49,23 +52,14 @@ impl BpmuxMcpServer {
             ts: chrono::Utc::now(),
         };
 
-        match session::append_message(&self.session_dir, &msg) {
-            Ok(()) => {
-                let _ = self.wake_tx.send(msg);
-                "message sent".to_string()
-            }
-            Err(e) => format!("error: {e}"),
-        }
+        session::broadcast_message(&self.session_dir, &msg, &self.wake_tx)
+            .map_err(|e| format!("{e}"))?;
+        Ok("message sent".to_string())
     }
 
-    fn handle_read_messages(&self) -> String {
-        match session::read_messages(&self.session_dir) {
-            Ok(messages) => match serde_json::to_string(&messages) {
-                Ok(json) => json,
-                Err(e) => format!("error serializing: {e}"),
-            },
-            Err(e) => format!("error: {e}"),
-        }
+    fn handle_read_messages(&self) -> Result<String, String> {
+        let messages = session::read_messages(&self.session_dir).map_err(|e| format!("{e}"))?;
+        serde_json::to_string(&messages).map_err(|e| format!("serializing: {e}"))
     }
 }
 
@@ -125,10 +119,15 @@ impl ServerHandler for BpmuxMcpServer {
                 self.handle_send_message(&args)
             }
             "read_messages" => self.handle_read_messages(),
-            other => format!("unknown tool: {other}"),
+            other => Err(format!("unknown tool: {other}")),
         };
 
-        std::future::ready(Ok(CallToolResult::success(vec![Content::text(result)])))
+        let call_result = match result {
+            Ok(text) => CallToolResult::success(vec![Content::text(text)]),
+            Err(e) => CallToolResult::error(vec![Content::text(e)]),
+        };
+
+        std::future::ready(Ok(call_result))
     }
 }
 
