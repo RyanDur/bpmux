@@ -11,6 +11,7 @@ use crate::session;
 use crate::transport::protocol::{ClientMessage, ServerMessage};
 
 const MAX_MESSAGE_SIZE: usize = 4096;
+const HEARTBEAT_INTERVAL: std::time::Duration = std::time::Duration::from_secs(30);
 
 pub async fn ws_handler(
     ws: WebSocketUpgrade,
@@ -33,9 +34,10 @@ async fn run_ws_session(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let name = wait_for_identify(&mut tx, &mut rx).await?;
     let identity = format!("{name}:ws");
-    let count = session.peer_connected();
-    eprintln!("WebSocket peer {identity} connected ({count} total)");
+    session.peer_connected();
     let mut broadcast_rx = session.subscribe();
+    let mut heartbeat = tokio::time::interval(HEARTBEAT_INTERVAL);
+    heartbeat.tick().await;
     send_json(
         &mut tx,
         &ServerMessage::Welcome {
@@ -55,6 +57,11 @@ async fn run_ws_session(
                         Err(broadcast::error::RecvError::Closed) => break,
                     }
                 }
+                _ = heartbeat.tick() => {
+                    if tx.send(WsMessage::Ping(vec![].into())).await.is_err() {
+                        break;
+                    }
+                }
                 ws_result = rx.next() => {
                     match ws_result {
                         Some(Ok(WsMessage::Text(text))) => {
@@ -70,8 +77,7 @@ async fn run_ws_session(
         Ok(())
     }
     .await;
-    let count = session.peer_disconnected();
-    eprintln!("WebSocket peer {identity} disconnected ({count} remaining)");
+    session.peer_disconnected();
     result
 }
 
