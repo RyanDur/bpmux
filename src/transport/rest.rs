@@ -15,6 +15,19 @@ pub struct PostMessage {
     pub message_type: Option<String>,
 }
 
+pub async fn get_messages(State(session): State<Arc<session::Session>>) -> impl IntoResponse {
+    match session.read_messages() {
+        Ok(messages) => (
+            StatusCode::OK,
+            serde_json::to_string(&messages).unwrap_or_else(|_| "[]".to_string()),
+        ),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("failed to read: {e}"),
+        ),
+    }
+}
+
 pub async fn post_message(
     State(session): State<Arc<session::Session>>,
     Json(payload): Json<PostMessage>,
