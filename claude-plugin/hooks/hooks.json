@@ -7,6 +7,22 @@
             "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR\"/claude-plugin/hooks/check-bpmux.sh",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/claude-plugin/hooks/send-user-message.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/claude-plugin/hooks/send-claude-response.sh",
+            "timeout": 5
           }
         ]
       }
