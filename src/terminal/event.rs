@@ -19,7 +19,11 @@ pub fn run_tui(
             Ok(msg) => {
                 let self_identity = format!("{}:human", app.peer_name);
                 if msg.from != self_identity {
+                    let scrolled_up = app.scroll_offset > 0;
                     app.receive_message(msg);
+                    if scrolled_up || app.scroll_offset > 0 {
+                        print!("\x07");
+                    }
                 }
                 continue;
             }
