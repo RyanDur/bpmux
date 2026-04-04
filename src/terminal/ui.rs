@@ -20,7 +20,7 @@ pub fn render(frame: &mut Frame, app: &App) {
     // Chat pane — only show chat messages
     let chat_messages: Vec<&session::Message> =
         app.messages.iter().filter(|m| m.is_chat()).collect();
-    let chat_inner_width_for_truncation = frame.area().width.saturating_sub(4) as usize;
+    let chat_inner_width = chunks[0].width.saturating_sub(2) as usize;
     let messages: Vec<Line> = chat_messages
         .iter()
         .enumerate()
@@ -42,8 +42,8 @@ pub fn render(frame: &mut Frame, app: &App) {
 
             // Estimate wrapped line count for truncation decision
             let full_len = prefix.len() + msg.text.len();
-            let wrapped_lines = if chat_inner_width_for_truncation > 0 {
-                full_len.max(1).div_ceil(chat_inner_width_for_truncation)
+            let wrapped_lines = if chat_inner_width > 0 {
+                full_len.max(1).div_ceil(chat_inner_width)
             } else {
                 1
             };
@@ -52,9 +52,8 @@ pub fn render(frame: &mut Frame, app: &App) {
 
             if wrapped_lines > 5 {
                 // Truncate: show first 3 lines worth of text, then [+N lines]
-                let first_line_text_budget =
-                    chat_inner_width_for_truncation.saturating_sub(prefix.len());
-                let subsequent_budget = chat_inner_width_for_truncation * 2;
+                let first_line_text_budget = chat_inner_width.saturating_sub(prefix.len());
+                let subsequent_budget = chat_inner_width * 2;
                 let truncated_chars = first_line_text_budget + subsequent_budget;
                 let display_text: String = msg.text.chars().take(truncated_chars).collect();
                 let remaining_lines = wrapped_lines.saturating_sub(3);
@@ -109,7 +108,6 @@ pub fn render(frame: &mut Frame, app: &App) {
         .collect();
 
     // Auto-scroll: calculate total rendered lines including wrapping
-    let chat_inner_width = chunks[0].width.saturating_sub(2) as usize; // minus borders
     let chat_height = chunks[0].height.saturating_sub(2) as usize;
     let total_lines: usize = messages
         .iter()
@@ -346,8 +344,9 @@ mod tests {
         let backend = TestBackend::new(80, 24);
         let mut terminal = Terminal::new(backend).unwrap();
 
-        // A message long enough to exceed 5 wrapped lines at 78 chars inner width
-        // 78 chars per line * 6 lines = 468 chars minimum
+        // 78 chars inner width. 6+ wrapped lines should truncate.
+        // "bot: " prefix = 5 chars, so 73 chars of text per first line, 78 per subsequent
+        // 73 + 78*5 = 463 chars = 6 lines. Use more to be safe.
         let long_text = "word ".repeat(100); // ~500 chars, well over 5 lines
 
         let app = App::new(
@@ -365,8 +364,12 @@ mod tests {
         let screen = buffer_to_string(terminal.backend().buffer());
 
         assert!(
-            screen.contains("+"),
+            screen.contains("[+"),
             "Long message should show [+N lines] indicator. Screen:\n{screen}"
+        );
+        assert!(
+            screen.contains("lines]"),
+            "Indicator should show line count. Screen:\n{screen}"
         );
     }
 
@@ -395,8 +398,67 @@ mod tests {
             "Short message should render fully. Screen:\n{screen}"
         );
         assert!(
-            !screen.contains("+"),
+            !screen.contains("[+"),
             "Short message should not be truncated. Screen:\n{screen}"
+        );
+    }
+
+    #[allow(clippy::unwrap_used)]
+    #[test]
+    fn five_line_message_not_truncated() {
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).unwrap();
+
+        // 78 inner width. "bot: " = 5 chars prefix. First line fits 73 chars of text.
+        // 5 lines = 73 + 78*4 = 385 chars. Stay just under.
+        let text_for_five_lines = "a".repeat(385);
+
+        let app = App::new(
+            "dev".to_string(),
+            "test-id".to_string(),
+            vec![Message {
+                from: "bot:ws".to_string(),
+                text: text_for_five_lines.clone(),
+                ts: Utc::now(),
+                message_type: None,
+            }],
+        );
+
+        terminal.draw(|frame| render(frame, &app)).unwrap();
+        let screen = buffer_to_string(terminal.backend().buffer());
+
+        assert!(
+            !screen.contains("[+"),
+            "5-line message should NOT be truncated. Screen:\n{screen}"
+        );
+    }
+
+    #[allow(clippy::unwrap_used)]
+    #[test]
+    fn six_line_message_is_truncated() {
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).unwrap();
+
+        // 6 lines = 73 + 78*5 = 463 chars
+        let text_for_six_lines = "a".repeat(463);
+
+        let app = App::new(
+            "dev".to_string(),
+            "test-id".to_string(),
+            vec![Message {
+                from: "bot:ws".to_string(),
+                text: text_for_six_lines,
+                ts: Utc::now(),
+                message_type: None,
+            }],
+        );
+
+        terminal.draw(|frame| render(frame, &app)).unwrap();
+        let screen = buffer_to_string(terminal.backend().buffer());
+
+        assert!(
+            screen.contains("[+"),
+            "6-line message SHOULD be truncated. Screen:\n{screen}"
         );
     }
 
