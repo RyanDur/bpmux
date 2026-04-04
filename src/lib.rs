@@ -92,7 +92,7 @@ pub fn run() -> anyhow::Result<()> {
         };
         rt.block_on(async move {
             if let Err(e) =
-                mcp::run_mcp_server(mcp_session_dir, mcp_name, mcp_wake_tx, mcp_port, server_ct)
+                mcp::run_mcp_server(mcp_session_dir, mcp_name, mcp_wake_tx, mcp_port, server_ct, None)
                     .await
             {
                 eprintln!("MCP server error: {e}");
