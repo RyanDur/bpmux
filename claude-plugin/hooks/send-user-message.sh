@@ -24,10 +24,18 @@ if [ -z "$PROMPT" ]; then
   exit 0
 fi
 
+# Classify: Claude Code internal probes are system noise, not user messages
+MSG_TYPE="chat"
+case "$PROMPT" in
+  "hello"|"what does this function do?"|\[turn\ complete\])
+    MSG_TYPE="system"
+    ;;
+esac
+
 # POST to bpmux REST endpoint
 if command -v jq >/dev/null 2>&1; then
-  BODY=$(jq -nc --arg from "ryan:claude-code-user" --arg text "$PROMPT" \
-    '{"from":$from,"text":$text}')
+  BODY=$(jq -nc --arg from "ryan:claude-code-user" --arg text "$PROMPT" --arg mt "$MSG_TYPE" \
+    '{"from":$from,"text":$text,"message_type":$mt}')
   curl -s -X POST "$BPMUX_API" \
     -H "Content-Type: application/json" \
     -d "$BODY" >/dev/null 2>&1
