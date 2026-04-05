@@ -3,7 +3,8 @@
 # Checks for new bpmux messages. If any, continues with a signal.
 # Lean: only count + latest sender, not full content.
 
-BPMUX_API="http://127.0.0.1:4117/api/messages"
+BPMUX_PORT="${BPMUX_PORT:-4117}"
+BPMUX_API="http://127.0.0.1:${BPMUX_PORT}/api/messages"
 LAST_SEEN_FILE="/tmp/bpmux-last-seen-$PPID"
 
 if ! command -v jq >/dev/null 2>&1; then

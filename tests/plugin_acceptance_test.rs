@@ -167,12 +167,11 @@ fn send_user_message_silent_when_no_session() {
 
 #[test]
 fn send_claude_response_exits_cleanly_when_server_unavailable() {
-    // The Stop hook POSTs a turn-complete notification to bpmux REST
-    // endpoint. When bpmux isn't running, curl fails silently.
-    // NOTE: Stop hooks do NOT receive Claude's response text — only
-    // common fields. The script sends a "[turn complete]" notification.
+    // The Stop hook curls the bpmux REST API. When bpmux isn't running,
+    // curl fails silently. Use isolated port so running bpmux doesn't interfere.
     let output = Command::new("bash")
         .arg(send_claude_response_script())
+        .env("BPMUX_PORT", "19999")
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
         .output()
@@ -187,10 +186,12 @@ fn send_claude_response_exits_cleanly_when_server_unavailable() {
 #[test]
 fn send_claude_response_produces_no_stdout() {
     // The Stop hook should not produce stdout when no bpmux is running.
+    // Use an isolated port so running bpmux on 4117 doesn't interfere.
     let tmp = tempfile::tempdir().unwrap();
     let output = Command::new("bash")
         .arg(send_claude_response_script())
         .env("HOME", tmp.path())
+        .env("BPMUX_PORT", "19999")
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
         .output()
