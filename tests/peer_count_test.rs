@@ -16,7 +16,7 @@ fn status_bar_shows_peer_count() {
     let bin = env!("CARGO_BIN_EXE_bpmux");
     let temp_dir = tempfile::TempDir::new().expect("temp dir");
     let session_base = temp_dir.path().to_str().expect("temp path");
-    let port = 14123;
+    let port = common::free_port();
 
     // 1. Start bpmux in a PTY
     let pty_system = native_pty_system();
@@ -94,7 +94,19 @@ fn status_bar_shows_peer_count() {
         "Status bar should have shown connected peers. Screen:\n{screen}"
     );
 
+    // Drain PTY output so bpmux can exit when killed.
+    let mut drain_reader = pair.master.try_clone_reader().expect("clone reader 2");
+    let drainer = std::thread::spawn(move || {
+        let mut buf = [0u8; 4096];
+        while let Ok(n) = std::io::Read::read(&mut drain_reader, &mut buf) {
+            if n == 0 {
+                break;
+            }
+        }
+    });
+
     // Cleanup
     let _ = child.kill();
     let _ = child.wait();
+    let _ = drainer.join();
 }

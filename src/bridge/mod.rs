@@ -130,17 +130,9 @@ async fn run_ws_connection(
                 // Buffer ALL messages for read_messages (pull model)
                 messages_store.lock().await.push(format!("[{from}] {text}"));
 
-                // Only push notifications for human messages or @mentions of me
-                let current_name = name.lock().await;
-                let is_human = from.ends_with(":human");
-                let mentions_me = text.contains(&format!("@{}", current_name.as_str()));
-                drop(current_name);
-
-                if !is_human && !mentions_me {
-                    continue;
-                }
-
-                // Full content notification — filter above controls volume
+                // Push every non-self message. Agents need to see each other
+                // to collaborate; the @mention-only filter caused parallel
+                // monologues. Let data drive any future filtering.
                 let short_name = from.split(':').next().unwrap_or(&from);
                 let notification = CustomNotification::new(
                     "notifications/claude/channel",
