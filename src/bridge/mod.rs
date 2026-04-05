@@ -140,12 +140,12 @@ async fn run_ws_connection(
                     continue;
                 }
 
-                // Signal-only notification
+                // Full content notification — filter above controls volume
                 let short_name = from.split(':').next().unwrap_or(&from);
                 let notification = CustomNotification::new(
                     "notifications/claude/channel",
                     Some(json!({
-                        "content": format!("new message from {short_name}"),
+                        "content": format!("{short_name}: {text}"),
                         "meta": {
                             "from": from,
                             "ts": ts,
