@@ -95,6 +95,24 @@ async fn run_ws_connection(
         eprintln!("Bridge: connected to bpmux on port {port}");
     }
 
+    // Backfill missed messages from REST API on reconnect
+    let backfill_url = format!("http://127.0.0.1:{port}/api/messages");
+    if let Ok(output) = std::process::Command::new("curl")
+        .args(["-s", &backfill_url])
+        .output()
+        && let Ok(body) = String::from_utf8(output.stdout)
+        && let Ok(msgs) = serde_json::from_str::<Vec<serde_json::Value>>(&body)
+    {
+        let mut store = messages_store.lock().await;
+        store.clear();
+        for msg in msgs {
+            if let (Some(from), Some(text)) = (msg["from"].as_str(), msg["text"].as_str()) {
+                store.push(format!("[{from}] {text}"));
+            }
+        }
+        eprintln!("Bridge: backfilled {} messages", store.len());
+    }
+
     // Forward bpmux messages → channel notifications until disconnected
     while let Some(Ok(frame)) = ws_rx.next().await {
         if let tungstenite::Message::Text(text) = frame {
