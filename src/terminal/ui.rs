@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use ratatui::{
     Frame,
     layout::{Constraint, Layout},
@@ -8,6 +10,8 @@ use ratatui::{
 
 use crate::session;
 use crate::terminal::app::App;
+
+const ACTIVITY_STALE_SECS: u64 = 60;
 
 const SENDER_PALETTE: [Color; 6] = [
     Color::Rgb(139, 233, 253), // Dracula cyan
@@ -258,6 +262,24 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         status_spans.push(Span::styled(
             format!("{} new", app.unread_count),
             Style::default().fg(Color::Rgb(255, 121, 198)),
+        ));
+    }
+    let now = Instant::now();
+    let mut peers: Vec<_> = app.peer_activity.iter().collect();
+    peers.sort_by_key(|(name, _)| (*name).clone());
+    for (peer, (status, updated_at)) in &peers {
+        let short_name = peer.split(':').next().unwrap_or(peer);
+        let stale = now.duration_since(*updated_at).as_secs() >= ACTIVITY_STALE_SECS;
+        let display_status = if stale { "idle" } else { status.as_str() };
+        let color = if stale {
+            Color::Rgb(98, 114, 164) // Dracula comment
+        } else {
+            Color::Rgb(80, 250, 123) // Dracula green
+        };
+        status_spans.push(Span::raw(" | "));
+        status_spans.push(Span::styled(
+            format!("{short_name} [{display_status}]"),
+            Style::default().fg(color),
         ));
     }
     let status = Paragraph::new(Line::from(status_spans)).style(
