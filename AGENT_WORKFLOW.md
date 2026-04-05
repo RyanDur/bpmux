@@ -157,6 +157,7 @@ Communication flows through bpmux. Each agent has a named identity (`--name pm`,
 - No echo messages. If you agree and have nothing to add, say nothing.
 - Decisions need one-word buy-in ("agree"). Routine answers need no confirmation.
 - When building, dev leads. PM and designer review deliveries, don't narrate the process.
+- PM facilitates general conversations. Routes questions to the right person, invites input explicitly ("@dev thoughts?"). Prevents pile-on and deadlock.
 - Research backing: Liu et al. CHI 2025 (turn types), Kim et al. IUI 2025 (reactive > proactive), Clark & Brennan (grounding), Zuill (mob programming).
 
 ### Session Close
