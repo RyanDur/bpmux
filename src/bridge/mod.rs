@@ -130,10 +130,12 @@ async fn run_ws_connection(
                 // Buffer the message for read_messages
                 messages_store.lock().await.push(format!("[{from}] {text}"));
 
+                // Signal-only notification — full content available via read_messages
+                let short_name = from.split(':').next().unwrap_or(&from);
                 let notification = CustomNotification::new(
                     "notifications/claude/channel",
                     Some(json!({
-                        "content": format!("[{from}] {text}"),
+                        "content": format!("new message from {short_name}"),
                         "meta": {
                             "from": from,
                             "ts": ts,
