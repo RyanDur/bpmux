@@ -151,6 +151,14 @@ Communication flows through bpmux. Each agent has a named identity (`--name pm`,
 - One agent works on shared files at a time. Claim your context, stay in your lane.
 - If blocked, stop and communicate. Don't keep writing to files someone else is changing.
 
+**Communication protocol (turn-taking):**
+- Allocated turns: if the owner addresses someone by name or asks a domain question, that person answers. Others wait.
+- Open turns: domain lead answers first (PM for product, designer for UX, dev for technical). Others add only if they disagree or have new information.
+- No echo messages. If you agree and have nothing to add, say nothing.
+- Decisions need one-word buy-in ("agree"). Routine answers need no confirmation.
+- When building, dev leads. PM and designer review deliveries, don't narrate the process.
+- Research backing: Liu et al. CHI 2025 (turn types), Kim et al. IUI 2025 (reactive > proactive), Clark & Brennan (grounding), Zuill (mob programming).
+
 ### Session Close
 
 - Draft checkpoint: branch, last commit, what's done, next concrete step, blockers.
