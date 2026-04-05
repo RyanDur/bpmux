@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use axum::Json;
-use axum::extract::State;
+use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use serde::Deserialize;
@@ -15,12 +15,31 @@ pub struct PostMessage {
     pub message_type: Option<String>,
 }
 
-pub async fn get_messages(State(session): State<Arc<session::Session>>) -> impl IntoResponse {
+#[derive(Deserialize)]
+pub struct GetMessagesParams {
+    pub limit: Option<usize>,
+    pub offset: Option<usize>,
+}
+
+pub async fn get_messages(
+    State(session): State<Arc<session::Session>>,
+    Query(params): Query<GetMessagesParams>,
+) -> impl IntoResponse {
     match session.read_messages() {
-        Ok(messages) => (
-            StatusCode::OK,
-            serde_json::to_string(&messages).unwrap_or_else(|_| "[]".to_string()),
-        ),
+        Ok(messages) => {
+            let offset = params.offset.unwrap_or(0);
+            let limit = params.limit.unwrap_or(20);
+            let page: Vec<_> = messages
+                .into_iter()
+                .rev()
+                .skip(offset)
+                .take(limit)
+                .collect();
+            (
+                StatusCode::OK,
+                serde_json::to_string(&page).unwrap_or_else(|_| "[]".to_string()),
+            )
+        }
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             format!("failed to read: {e}"),
@@ -68,7 +87,10 @@ mod tests {
         let (tx, _rx) = broadcast::channel(16);
         let session = Arc::new(session::Session::new(dir.path().to_path_buf(), tx.clone()));
         let router = axum::Router::new()
-            .route("/api/messages", axum::routing::post(post_message))
+            .route(
+                "/api/messages",
+                axum::routing::get(get_messages).post(post_message),
+            )
             .with_state(session);
         (router, tx)
     }
@@ -128,5 +150,92 @@ mod tests {
             .expect("build request");
         let response = app.oneshot(request).await.expect("response");
         assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    }
+
+    fn seed_messages(dir: &TempDir, count: usize) -> Arc<session::Session> {
+        let (tx, _rx) = broadcast::channel(16);
+        let session = Arc::new(session::Session::new(dir.path().to_path_buf(), tx));
+        for i in 0..count {
+            let msg = session::Message {
+                from: "user".to_string(),
+                text: format!("msg {i}"),
+                ts: chrono::Utc::now(),
+                message_type: None,
+            };
+            session.broadcast(&msg).expect("broadcast");
+        }
+        session
+    }
+
+    #[tokio::test]
+    async fn gets_messages_with_limit() {
+        let dir = TempDir::new().expect("tmpdir");
+        init_session(&dir);
+        let session = seed_messages(&dir, 5);
+        let router = axum::Router::new()
+            .route("/api/messages", axum::routing::get(get_messages))
+            .with_state(session);
+        let request = Request::builder()
+            .method("GET")
+            .uri("/api/messages?limit=2")
+            .body(Body::empty())
+            .expect("build request");
+        let response = router.oneshot(request).await.expect("response");
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("read body");
+        let msgs: Vec<serde_json::Value> = serde_json::from_slice(&body).expect("parse json");
+        assert_eq!(msgs.len(), 2);
+        // Most recent first
+        assert_eq!(msgs[0]["text"], "msg 4");
+        assert_eq!(msgs[1]["text"], "msg 3");
+    }
+
+    #[tokio::test]
+    async fn gets_messages_with_offset() {
+        let dir = TempDir::new().expect("tmpdir");
+        init_session(&dir);
+        let session = seed_messages(&dir, 5);
+        let router = axum::Router::new()
+            .route("/api/messages", axum::routing::get(get_messages))
+            .with_state(session);
+        let request = Request::builder()
+            .method("GET")
+            .uri("/api/messages?limit=2&offset=2")
+            .body(Body::empty())
+            .expect("build request");
+        let response = router.oneshot(request).await.expect("response");
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("read body");
+        let msgs: Vec<serde_json::Value> = serde_json::from_slice(&body).expect("parse json");
+        assert_eq!(msgs.len(), 2);
+        // Reversed: [4,3,2,1,0], skip 2 -> [2,1,0], take 2 -> [2,1]
+        assert_eq!(msgs[0]["text"], "msg 2");
+        assert_eq!(msgs[1]["text"], "msg 1");
+    }
+
+    #[tokio::test]
+    async fn defaults_to_twenty_messages() {
+        let dir = TempDir::new().expect("tmpdir");
+        init_session(&dir);
+        let session = seed_messages(&dir, 25);
+        let router = axum::Router::new()
+            .route("/api/messages", axum::routing::get(get_messages))
+            .with_state(session);
+        let request = Request::builder()
+            .method("GET")
+            .uri("/api/messages")
+            .body(Body::empty())
+            .expect("build request");
+        let response = router.oneshot(request).await.expect("response");
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("read body");
+        let msgs: Vec<serde_json::Value> = serde_json::from_slice(&body).expect("parse json");
+        assert_eq!(msgs.len(), 20);
     }
 }

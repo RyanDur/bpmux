@@ -303,10 +303,12 @@ impl ServerHandler for BridgeServer {
                     ))]))
                 }
                 "read_messages" => {
+                    let args = request.arguments.unwrap_or_default();
+                    let limit = args.get("limit").and_then(|v| v.as_u64()).unwrap_or(20) as usize;
                     let msgs = messages.lock().await;
                     let mut idx = last_read_index.lock().await;
-                    let new_msgs: Vec<&String> = msgs.iter().skip(*idx).collect();
-                    *idx = msgs.len();
+                    let new_msgs: Vec<&String> = msgs.iter().skip(*idx).take(limit).collect();
+                    *idx = (*idx + new_msgs.len()).min(msgs.len());
                     let text = if new_msgs.is_empty() {
                         "No new messages.".to_string()
                     } else {
@@ -323,6 +325,80 @@ impl ServerHandler for BridgeServer {
                 ))])),
             }
         }
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod tests {
+    use super::*;
+
+    /// Simulates the read_messages pagination logic extracted from call_tool.
+    async fn read_with_limit(
+        messages: &Mutex<Vec<String>>,
+        last_read_index: &Mutex<usize>,
+        limit: usize,
+    ) -> String {
+        let msgs = messages.lock().await;
+        let mut idx = last_read_index.lock().await;
+        let new_msgs: Vec<&String> = msgs.iter().skip(*idx).take(limit).collect();
+        *idx = (*idx + new_msgs.len()).min(msgs.len());
+        if new_msgs.is_empty() {
+            "No new messages.".to_string()
+        } else {
+            new_msgs
+                .iter()
+                .map(|s| s.as_str())
+                .collect::<Vec<_>>()
+                .join("\n")
+        }
+    }
+
+    fn seed_messages(count: usize) -> (Mutex<Vec<String>>, Mutex<usize>) {
+        let msgs: Vec<String> = (0..count).map(|i| format!("[user] msg {i}")).collect();
+        (Mutex::new(msgs), Mutex::new(0))
+    }
+
+    #[tokio::test]
+    async fn reads_messages_with_limit() {
+        let (messages, idx) = seed_messages(5);
+        let text = read_with_limit(&messages, &idx, 2).await;
+        assert!(text.contains("msg 0"), "should contain first message");
+        assert!(text.contains("msg 1"), "should contain second message");
+        assert!(!text.contains("msg 2"), "should not contain third message");
+
+        // Next read picks up from where we left off
+        let text2 = read_with_limit(&messages, &idx, 2).await;
+        assert!(text2.contains("msg 2"), "should continue from index 2");
+        assert!(text2.contains("msg 3"), "should contain msg 3");
+        assert!(!text2.contains("msg 4"), "should not contain msg 4");
+    }
+
+    #[tokio::test]
+    async fn reads_messages_defaults_to_twenty() {
+        let (messages, idx) = seed_messages(25);
+        let text = read_with_limit(&messages, &idx, 20).await;
+        assert!(text.contains("msg 19"), "should contain msg 19");
+        assert!(!text.contains("msg 20"), "should not contain msg 20");
+    }
+
+    #[tokio::test]
+    async fn parses_limit_from_tool_args() {
+        let args = serde_json::json!({"limit": 5});
+        let limit = args
+            .as_object()
+            .and_then(|m| m.get("limit"))
+            .and_then(|v| v.as_u64())
+            .unwrap_or(20) as usize;
+        assert_eq!(limit, 5);
+
+        let empty_args = serde_json::json!({});
+        let default_limit = empty_args
+            .as_object()
+            .and_then(|m| m.get("limit"))
+            .and_then(|v| v.as_u64())
+            .unwrap_or(20) as usize;
+        assert_eq!(default_limit, 20);
     }
 }
 

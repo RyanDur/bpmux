@@ -21,7 +21,7 @@ if [ "$COUNT" = "0" ]; then
 fi
 
 # Get only the latest chat message
-LATEST=$(tail -n 20 "$MESSAGES_FILE" 2>/dev/null | jq -r 'select((.message_type // "chat") == "chat")' 2>/dev/null | tail -n 1)
+LATEST=$(tail -n 20 "$MESSAGES_FILE" 2>/dev/null | jq -c 'select((.message_type // "chat") == "chat")' 2>/dev/null | tail -n 1)
 FROM=$(echo "$LATEST" | jq -r '.from // empty' 2>/dev/null)
 TEXT=$(echo "$LATEST" | jq -r '.text // empty' 2>/dev/null)
 

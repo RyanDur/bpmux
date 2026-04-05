@@ -41,7 +41,12 @@ pub fn set_name_tool(description: &'static str) -> Tool {
 pub fn read_messages_tool(description: &'static str) -> Tool {
     let schema = serde_json::json!({
         "type": "object",
-        "properties": {}
+        "properties": {
+            "limit": {
+                "type": "integer",
+                "description": "Maximum number of messages to return (default 20)"
+            }
+        }
     });
 
     Tool::new(

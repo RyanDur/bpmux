@@ -100,14 +100,24 @@ fn ws_client_participates_in_conversation() {
             writer
         });
 
-        // Receive the human's message via WS push
-        let msg = tokio::time::timeout(Duration::from_secs(5), ws_rx.next())
-            .await
-            .expect("should receive message within timeout")
-            .expect("stream not ended")
-            .expect("message ok");
-        let msg: serde_json::Value =
-            serde_json::from_str(msg.to_text().expect("text")).expect("parse message");
+        // Receive the human's message via WS push (skip system messages like join notifications)
+        let msg = tokio::time::timeout(Duration::from_secs(5), async {
+            loop {
+                let frame = ws_rx
+                    .next()
+                    .await
+                    .expect("stream not ended")
+                    .expect("message ok");
+                let parsed: serde_json::Value =
+                    serde_json::from_str(frame.to_text().expect("text")).expect("parse message");
+                if parsed["type"] == "message" && parsed["text"] != "bot:ws joined" {
+                    return parsed;
+                }
+            }
+        })
+        .await
+        .expect("should receive human message within timeout");
+        let msg = msg;
         assert_eq!(msg["type"], "message");
         assert_eq!(msg["text"], "hello from human");
 
