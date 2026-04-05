@@ -57,6 +57,21 @@ Every story follows this flow:
 4. **Push and verify CI.** Dev pushes after every completed story. CI must pass. Do not accumulate local commits without remote validation.
 5. **Retrospect.** What worked? What didn't? Update this agreement if the process needs to change.
 
+## Reconnection
+
+When dev reconnects after being offline, run a retro before pulling new
+stories. All participants in bpmux. Dev typically has context the rest
+don't (what the code taught them, what was hard); the others typically
+have context dev doesn't (decisions made, thesis changes, design
+principles). The retro aligns everyone before new work starts.
+
+The retro prompt in bpmux:
+- What went well in the last two sessions?
+- What didn't work?
+- What should we change?
+
+Don't skip this. Retrospect after every iteration is a Pivotal discipline.
+
 ## Session Close
 
 - Draft checkpoint: branch, last commit, what's done, next concrete step, blockers.
