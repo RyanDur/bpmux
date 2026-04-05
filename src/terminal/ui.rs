@@ -33,6 +33,17 @@ fn sender_color(name: &str) -> Color {
     SENDER_PALETTE[sender_color_index(name)]
 }
 
+/// Color for channel tags. Broadcast = subdued Dracula comment gray.
+/// Directed channels = sender palette offset by 3 so channel and sender
+/// colors don't collide for the same name.
+fn channel_tag_color(tag: &str, is_broadcast: bool) -> Color {
+    if is_broadcast {
+        Color::Rgb(98, 114, 164) // Dracula comment gray (#6272A4)
+    } else {
+        SENDER_PALETTE[(sender_color_index(tag) + 3) % SENDER_PALETTE.len()]
+    }
+}
+
 fn parse_inline_code(text: &str) -> Vec<(String, bool)> {
     let mut segments = Vec::new();
     let mut remaining = text;
@@ -142,10 +153,10 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             let name_color = sender_color(short_name);
 
             // Channel tag: [broadcast], [a↔b] (DM), [a+b+c] (group)
-            let channel_tag = match &msg.to {
-                None => "[broadcast] ".to_string(),
+            let (channel_tag, is_broadcast) = match &msg.to {
+                None => ("[broadcast] ".to_string(), true),
                 Some(recipients) if recipients.iter().any(|r| r == "all") => {
-                    "[broadcast] ".to_string()
+                    ("[broadcast] ".to_string(), true)
                 }
                 Some(recipients) => {
                     let mut names: Vec<&str> = recipients.iter().map(|s| s.as_str()).collect();
@@ -154,11 +165,12 @@ pub fn render(frame: &mut Frame, app: &mut App) {
                         names.push(sender_short);
                     }
                     names.sort();
-                    if names.len() == 2 {
+                    let tag = if names.len() == 2 {
                         format!("[{}↔{}] ", names[0], names[1])
                     } else {
                         format!("[{}] ", names.join("+"))
-                    }
+                    };
+                    (tag, false)
                 }
             };
 
@@ -181,8 +193,9 @@ pub fn render(frame: &mut Frame, app: &mut App) {
 
             let mut lines = Vec::new();
 
-            // Channel tag style: dim gray to visually separate from sender name
-            let tag_style = Style::default().fg(Color::Rgb(98, 114, 164));
+            let ts_style = Style::default().fg(Color::Rgb(98, 114, 164));
+            let tag_color = channel_tag_color(&channel_tag, is_broadcast);
+            let tag_style = Style::default().fg(tag_color);
 
             if wrapped_lines > 10 && !app.expanded_messages.contains(&i) {
                 // Truncate: show first 7 lines worth of text, then [+N lines]
@@ -195,7 +208,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
                 let mut spans = Vec::new();
                 if app.show_timestamps {
                     let time = msg.ts.format("%H:%M:%S").to_string();
-                    spans.push(Span::styled(format!("[{time}] "), tag_style));
+                    spans.push(Span::styled(format!("[{time}] "), ts_style));
                 }
                 spans.push(Span::styled(channel_tag.clone(), tag_style));
                 spans.push(Span::styled(
@@ -233,7 +246,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
                         if li == 0 {
                             if app.show_timestamps {
                                 let time = msg.ts.format("%H:%M:%S").to_string();
-                                spans.push(Span::styled(format!("[{time}] "), tag_style));
+                                spans.push(Span::styled(format!("[{time}] "), ts_style));
                             }
                             spans.push(Span::styled(channel_tag.clone(), tag_style));
                             spans.push(Span::styled(
@@ -258,7 +271,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
                     if li == 0 {
                         if app.show_timestamps {
                             let time = msg.ts.format("%H:%M:%S").to_string();
-                            spans.push(Span::styled(format!("[{time}] "), tag_style));
+                            spans.push(Span::styled(format!("[{time}] "), ts_style));
                         }
                         spans.push(Span::styled(channel_tag.clone(), tag_style));
                         spans.push(Span::styled(
