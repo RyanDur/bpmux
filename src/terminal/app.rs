@@ -20,6 +20,7 @@ pub struct App {
     pub input_history: Vec<String>,
     pub history_index: Option<usize>,
     pub peer_activity: HashMap<String, (String, Instant)>,
+    pub show_system_messages: bool,
 }
 
 impl App {
@@ -39,6 +40,7 @@ impl App {
             input_history: Vec::new(),
             history_index: None,
             peer_activity: HashMap::new(),
+            show_system_messages: false,
         }
     }
 
@@ -88,7 +90,7 @@ impl App {
         }
         if text == "/help" {
             let help = format!(
-                "Commands:\n  /help     — show this help\n  /quit     — exit bpmux\n\nKeybindings:\n  Enter     — send message\n  Esc       — clear input\n  Ctrl+C    — clear input (empty: quit)\n  Ctrl+U/D  — scroll up/down\n  Ctrl+T    — toggle timestamps\n  PageUp/Dn — scroll\n\nSession: {}",
+                "Commands:\n  /help     — show this help\n  /who      — list participants\n  /debug    — toggle system messages\n  /quit     — exit bpmux\n\nKeybindings:\n  Enter     — send message\n  Esc       — clear input\n  Ctrl+C    — clear input (empty: quit)\n  Ctrl+U/D  — scroll up/down\n  Ctrl+T    — toggle timestamps\n  PageUp/Dn — scroll\n\nSession: {}",
                 self.session_id
             );
             let msg = Message {
@@ -101,8 +103,51 @@ impl App {
             self.input.clear();
             return None;
         }
+        if text == "/who" {
+            let mut participants = vec![format!("{} (you)", self.peer_name)];
+            for (peer, (status, _)) in &self.peer_activity {
+                let short = peer.split(':').next().unwrap_or(peer);
+                participants.push(format!("{} [{}]", short, status));
+            }
+            if self.connected_peers > 0 {
+                participants.push(format!("{} connected", self.connected_peers));
+            }
+            let msg = Message {
+                from: "bpmux".to_string(),
+                text: format!("Participants:\n  {}", participants.join("\n  ")),
+                ts: Utc::now(),
+                message_type: None,
+            };
+            self.messages.push(msg);
+            self.input.clear();
+            return None;
+        }
         if text == "/quit" {
             self.should_quit = true;
+            return None;
+        }
+        if text == "/debug" {
+            self.show_system_messages = !self.show_system_messages;
+            let state = if self.show_system_messages {
+                "on"
+            } else {
+                "off"
+            };
+            let msg = Message {
+                from: "bpmux".to_string(),
+                text: format!(
+                    "Debug mode {state}. System messages are now {}.",
+                    if self.show_system_messages {
+                        "visible"
+                    } else {
+                        "hidden"
+                    }
+                ),
+                ts: Utc::now(),
+                message_type: None,
+            };
+            self.messages.push(msg);
+            self.input.clear();
             return None;
         }
         if text.starts_with('/') {
@@ -339,6 +384,30 @@ mod tests {
     }
 
     #[test]
+    fn who_command_lists_peer_name_and_returns_none() {
+        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        app.input = "/who".to_string();
+        let msg = app.submit_message();
+        assert!(msg.is_none());
+        assert!(app.input.is_empty());
+        assert_eq!(app.messages.len(), 1);
+        assert_eq!(app.messages[0].from, "bpmux");
+        assert!(app.messages[0].text.contains("ryan (you)"));
+    }
+
+    #[test]
+    fn who_command_includes_peer_activity_and_connected_count() {
+        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        app.update_activity("dev:claude-code".to_string(), "working".to_string());
+        app.connected_peers = 2;
+        app.input = "/who".to_string();
+        let msg = app.submit_message();
+        assert!(msg.is_none());
+        assert!(app.messages[0].text.contains("dev [working]"));
+        assert!(app.messages[0].text.contains("2 connected"));
+    }
+
+    #[test]
     fn unrecognized_command_adds_error_message_without_broadcast() {
         let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
         app.input = "/foo".to_string();
@@ -386,5 +455,36 @@ mod tests {
         });
         assert!(app.messages.is_empty());
         assert!(app.peer_activity.contains_key("dev:claude-code"));
+    }
+
+    #[test]
+    fn debug_toggles_show_system_messages() {
+        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        assert!(!app.show_system_messages);
+
+        app.input = "/debug".to_string();
+        let msg = app.submit_message();
+        assert!(msg.is_none());
+        assert!(app.show_system_messages);
+        assert!(app.input.is_empty());
+        assert_eq!(app.messages.len(), 1);
+        assert!(app.messages[0].text.contains("Debug mode on"));
+        assert!(app.messages[0].text.contains("visible"));
+
+        app.input = "/debug".to_string();
+        let msg = app.submit_message();
+        assert!(msg.is_none());
+        assert!(!app.show_system_messages);
+        assert_eq!(app.messages.len(), 2);
+        assert!(app.messages[1].text.contains("Debug mode off"));
+        assert!(app.messages[1].text.contains("hidden"));
+    }
+
+    #[test]
+    fn help_includes_debug_command() {
+        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        app.input = "/help".to_string();
+        app.submit_message();
+        assert!(app.messages[0].text.contains("/debug"));
     }
 }
