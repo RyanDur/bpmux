@@ -120,9 +120,19 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         .filter(|m| m.is_chat() || app.show_system_messages)
         .collect();
     let chat_inner_width = chunks[0].width.saturating_sub(2) as usize;
+    let chat_height = chunks[0].height.saturating_sub(2) as usize;
+
+    // Virtualization: only render messages near the visible window
+    let visible_window = chat_height * 3; // generous buffer for scroll
+    let total_msgs = chat_messages.len();
+    let scroll_back = app.scroll_offset as usize;
+    let needed = visible_window + scroll_back;
+    let start_idx = total_msgs.saturating_sub(needed);
+
     let messages: Vec<Line> = chat_messages
         .iter()
         .enumerate()
+        .skip(start_idx)
         .flat_map(|(i, msg)| {
             // Short name: "ryan:human" → "ryan", "claude-code:ws" → "claude-code"
             let short_name = msg.from.split(':').next().unwrap_or(&msg.from);
@@ -281,7 +291,6 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         .wrap(Wrap { trim: false });
 
     // Use ratatui's actual line count instead of estimating
-    let chat_height = chunks[0].height.saturating_sub(2) as usize;
     let total_lines = chat.line_count(chat_inner_width as u16);
     let max_scroll = if total_lines > chat_height {
         (total_lines - chat_height) as u16
