@@ -45,6 +45,13 @@ async fn run_ws_session(
         },
     )
     .await?;
+    let join_msg = session::Message {
+        from: "bpmux".to_string(),
+        text: format!("{identity} joined"),
+        ts: chrono::Utc::now(),
+        message_type: Some("system".to_string()),
+    };
+    session.broadcast(&join_msg)?;
     let result: Result<(), Box<dyn std::error::Error + Send + Sync>> = async {
         loop {
             tokio::select! {
@@ -79,6 +86,13 @@ async fn run_ws_session(
         Ok(())
     }
     .await;
+    let leave_msg = session::Message {
+        from: "bpmux".to_string(),
+        text: format!("{identity} left"),
+        ts: chrono::Utc::now(),
+        message_type: Some("system".to_string()),
+    };
+    let _ = session.broadcast(&leave_msg);
     session.peer_disconnected();
     result
 }

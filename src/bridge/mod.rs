@@ -34,6 +34,7 @@ pub struct BridgeServer {
     peer: Arc<Mutex<Option<Peer<RoleServer>>>>,
     ws_tx: Arc<Mutex<Option<WsSink>>>,
     messages: Arc<Mutex<Vec<String>>>,
+    last_read_index: Arc<Mutex<usize>>,
 }
 
 impl BridgeServer {
@@ -50,6 +51,7 @@ impl BridgeServer {
             peer: Arc::new(Mutex::new(None)),
             ws_tx: Arc::new(Mutex::new(None)),
             messages: Arc::new(Mutex::new(Vec::new())),
+            last_read_index: Arc::new(Mutex::new(0)),
         }
     }
 }
@@ -209,6 +211,7 @@ impl ServerHandler for BridgeServer {
     ) -> impl Future<Output = Result<CallToolResult, McpError>> + Send + '_ {
         let ws_tx = self.ws_tx.clone();
         let messages = self.messages.clone();
+        let last_read_index = self.last_read_index.clone();
         let name = self.name.clone();
 
         async move {
@@ -282,10 +285,17 @@ impl ServerHandler for BridgeServer {
                 }
                 "read_messages" => {
                     let msgs = messages.lock().await;
-                    let text = if msgs.is_empty() {
-                        "No messages yet.".to_string()
+                    let mut idx = last_read_index.lock().await;
+                    let new_msgs: Vec<&String> = msgs.iter().skip(*idx).collect();
+                    *idx = msgs.len();
+                    let text = if new_msgs.is_empty() {
+                        "No new messages.".to_string()
                     } else {
-                        msgs.join("\n")
+                        new_msgs
+                            .iter()
+                            .map(|s| s.as_str())
+                            .collect::<Vec<_>>()
+                            .join("\n")
                     };
                     Ok(CallToolResult::success(vec![Content::text(text)]))
                 }

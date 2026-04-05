@@ -79,6 +79,16 @@ mod tests {
     }
 
     #[test]
+    fn deserializes_rename() {
+        let json = r#"{"type": "rename", "name": "new-name"}"#;
+        let msg: ClientMessage = serde_json::from_str(json).expect("parse");
+        match msg {
+            ClientMessage::Rename { name } => assert_eq!(name, "new-name"),
+            other => panic!("expected Rename, got {other:?}"),
+        }
+    }
+
+    #[test]
     fn serializes_message_from_session_message() {
         let session_msg = Message {
             from: "dev:human".to_string(),
