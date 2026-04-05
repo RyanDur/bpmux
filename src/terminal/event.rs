@@ -135,6 +135,18 @@ pub fn run_tui(
                 KeyCode::Char('e') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                     app.move_cursor_end();
                 }
+                KeyCode::Char('k') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    app.kill_to_end();
+                }
+                KeyCode::Char('w') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    app.delete_word_backward();
+                }
+                KeyCode::Left if key.modifiers.contains(KeyModifiers::ALT) => {
+                    app.move_word_left();
+                }
+                KeyCode::Right if key.modifiers.contains(KeyModifiers::ALT) => {
+                    app.move_word_right();
+                }
                 KeyCode::Char(c) => {
                     app.insert_char(c);
                 }

@@ -93,6 +93,50 @@ impl App {
         self.cursor_pos = self.input.len();
     }
 
+    pub fn kill_to_end(&mut self) {
+        self.input.truncate(self.cursor_pos);
+    }
+
+    pub fn delete_word_backward(&mut self) {
+        if self.cursor_pos == 0 {
+            return;
+        }
+        let before = &self.input[..self.cursor_pos];
+        let trimmed = before.trim_end();
+        let word_start = trimmed
+            .rfind(|c: char| c.is_whitespace())
+            .map(|i| i + 1)
+            .unwrap_or(0);
+        self.input.drain(word_start..self.cursor_pos);
+        self.cursor_pos = word_start;
+    }
+
+    pub fn move_word_left(&mut self) {
+        if self.cursor_pos == 0 {
+            return;
+        }
+        let before = &self.input[..self.cursor_pos];
+        let trimmed = before.trim_end();
+        self.cursor_pos = trimmed
+            .rfind(|c: char| c.is_whitespace())
+            .map(|i| i + 1)
+            .unwrap_or(0);
+    }
+
+    pub fn move_word_right(&mut self) {
+        if self.cursor_pos >= self.input.len() {
+            return;
+        }
+        let after = &self.input[self.cursor_pos..];
+        let skip_word = after
+            .find(|c: char| c.is_whitespace())
+            .unwrap_or(after.len());
+        let skip_space = after[skip_word..]
+            .find(|c: char| !c.is_whitespace())
+            .unwrap_or(after.len() - skip_word);
+        self.cursor_pos += skip_word + skip_space;
+    }
+
     pub fn clear_input(&mut self) {
         self.input.clear();
         self.cursor_pos = 0;
