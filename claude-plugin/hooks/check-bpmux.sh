@@ -5,7 +5,12 @@
 # Exits silently if bpmux isn't running or the log doesn't exist.
 
 MESSAGES_FILE="$HOME/.bpmux/sessions/current/messages-current.jsonl"
-MY_NAME="${BPMUX_NAME:-}" # Set BPMUX_NAME env var to filter own messages
+# Read bridge name from temp file (written by set_name tool on the bridge)
+MY_NAME=""
+NAME_FILE="/tmp/bpmux-bridge-name"
+if [ -f "$NAME_FILE" ]; then
+  MY_NAME=$(cat "$NAME_FILE" 2>/dev/null)
+fi
 
 if [ ! -f "$MESSAGES_FILE" ]; then
   exit 0

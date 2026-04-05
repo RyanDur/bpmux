@@ -285,6 +285,9 @@ impl ServerHandler for BridgeServer {
                     // Update the bridge's internal name
                     *name.lock().await = new_name.clone();
 
+                    // Write name to temp file for hook filtering
+                    let _ = std::fs::write("/tmp/bpmux-bridge-name", &new_name);
+
                     // Send rename to bpmux server
                     let rename_msg =
                         serde_json::json!({"type": "rename", "name": new_name}).to_string();
