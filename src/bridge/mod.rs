@@ -37,17 +37,26 @@ pub struct BridgeServer {
     last_read_index: Arc<Mutex<usize>>,
 }
 
+/// Resolve the bridge's display name. The CLI default "claude-code" is a
+/// sentinel that triggers `agent-XXXX` auto-generation. Empty strings and
+/// unexpanded env-var placeholders (e.g. "${BPMUX_ROLE}" when the var isn't
+/// set) also fall through to auto-generation so the bridge never identifies
+/// itself with a broken value.
+fn resolve_bridge_name(raw: &str) -> String {
+    let is_placeholder = raw.starts_with("${") && raw.ends_with('}');
+    if raw.is_empty() || raw == "claude-code" || is_placeholder {
+        let suffix: String = uuid::Uuid::new_v4().to_string()[..4].to_string();
+        format!("agent-{suffix}")
+    } else {
+        raw.to_string()
+    }
+}
+
 impl BridgeServer {
     fn new(port: u16, name: String) -> Self {
-        let name = if name == "claude-code" {
-            let suffix: String = uuid::Uuid::new_v4().to_string()[..4].to_string();
-            format!("agent-{suffix}")
-        } else {
-            name
-        };
         Self {
             port,
-            name: Arc::new(Mutex::new(name)),
+            name: Arc::new(Mutex::new(resolve_bridge_name(&name))),
             peer: Arc::new(Mutex::new(None)),
             ws_tx: Arc::new(Mutex::new(None)),
             messages: Arc::new(Mutex::new(Vec::new())),
@@ -361,6 +370,41 @@ mod tests {
     fn seed_messages(count: usize) -> (Mutex<Vec<String>>, Mutex<usize>) {
         let msgs: Vec<String> = (0..count).map(|i| format!("[user] msg {i}")).collect();
         (Mutex::new(msgs), Mutex::new(0))
+    }
+
+    #[test]
+    fn resolve_bridge_name_uses_given_name_when_provided() {
+        assert_eq!(resolve_bridge_name("dev"), "dev");
+        assert_eq!(resolve_bridge_name("pm"), "pm");
+        assert_eq!(resolve_bridge_name("designer"), "designer");
+    }
+
+    #[test]
+    fn resolve_bridge_name_generates_agent_suffix_for_default() {
+        let name = resolve_bridge_name("claude-code");
+        assert!(
+            name.starts_with("agent-"),
+            "expected agent-XXXX, got: {name}"
+        );
+        assert_eq!(name.len(), "agent-".len() + 4);
+    }
+
+    #[test]
+    fn resolve_bridge_name_generates_agent_suffix_when_empty() {
+        let name = resolve_bridge_name("");
+        assert!(
+            name.starts_with("agent-"),
+            "empty name should auto-generate, got: {name}"
+        );
+    }
+
+    #[test]
+    fn resolve_bridge_name_generates_agent_suffix_for_unexpanded_placeholder() {
+        let name = resolve_bridge_name("${BPMUX_ROLE}");
+        assert!(
+            name.starts_with("agent-"),
+            "unexpanded placeholder should auto-generate, got: {name}"
+        );
     }
 
     #[tokio::test]
