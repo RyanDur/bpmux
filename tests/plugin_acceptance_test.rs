@@ -225,7 +225,7 @@ fn hooks_json_includes_stop_hook() {
 
 #[test]
 fn plugin_manifest_is_valid_json() {
-    let manifest_path = project_dir().join("claude-plugin/plugin.json");
+    let manifest_path = project_dir().join("claude-plugin/.claude-plugin/plugin.json");
     let content = fs::read_to_string(&manifest_path).unwrap();
     let value: serde_json::Value = serde_json::from_str(&content).unwrap();
 
