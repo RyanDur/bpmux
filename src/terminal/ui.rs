@@ -29,6 +29,37 @@ fn sender_color(name: &str) -> Color {
     SENDER_PALETTE[sender_color_index(name)]
 }
 
+fn parse_mentions(text: &str) -> Vec<Span<'static>> {
+    let mut spans = Vec::new();
+    let mut remaining = text;
+    while let Some(at_pos) = remaining.find('@') {
+        if at_pos > 0 {
+            spans.push(Span::raw(remaining[..at_pos].to_string()));
+        }
+        let after_at = &remaining[at_pos + 1..];
+        let mention_end = after_at
+            .find(|c: char| !c.is_alphanumeric() && c != '-' && c != '_')
+            .unwrap_or(after_at.len());
+        if mention_end > 0 {
+            let mention = &remaining[at_pos..at_pos + 1 + mention_end];
+            spans.push(Span::styled(
+                mention.to_string(),
+                Style::default()
+                    .fg(Color::Rgb(139, 233, 253))
+                    .add_modifier(Modifier::BOLD),
+            ));
+            remaining = &remaining[at_pos + 1 + mention_end..];
+        } else {
+            spans.push(Span::raw(remaining[at_pos..at_pos + 1].to_string()));
+            remaining = &remaining[at_pos + 1..];
+        }
+    }
+    if !remaining.is_empty() {
+        spans.push(Span::raw(remaining.to_string()));
+    }
+    spans
+}
+
 pub fn render(frame: &mut Frame, app: &mut App) {
     let input_lines = if app.input.is_empty() {
         1
@@ -102,7 +133,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
                         Style::default().fg(name_color)
                     },
                 ));
-                spans.push(Span::raw(display_text));
+                spans.extend(parse_mentions(&display_text));
                 lines.push(Line::from(spans));
 
                 lines.push(Line::from(Span::styled(
@@ -126,7 +157,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
                         Style::default().fg(name_color)
                     },
                 ));
-                spans.push(Span::raw(&msg.text));
+                spans.extend(parse_mentions(&msg.text));
                 lines.push(Line::from(spans));
             }
 
@@ -569,6 +600,49 @@ mod tests {
         assert_ne!(ryan_color, dev_color, "ryan and dev must differ");
         assert_ne!(ryan_color, pm_color, "ryan and pm must differ");
         assert_ne!(dev_color, pm_color, "dev and pm must differ");
+    }
+
+    #[test]
+    fn parse_mentions_highlights_mention_in_text() {
+        let spans = super::parse_mentions("hello @dev how are you");
+        assert_eq!(spans.len(), 3);
+        assert_eq!(spans[0].content, "hello ");
+        assert_eq!(spans[1].content, "@dev");
+        assert_eq!(
+            spans[1].style,
+            Style::default()
+                .fg(Color::Rgb(139, 233, 253))
+                .add_modifier(Modifier::BOLD)
+        );
+        assert_eq!(spans[2].content, " how are you");
+    }
+
+    #[test]
+    fn parse_mentions_no_mentions_returns_single_span() {
+        let spans = super::parse_mentions("no mentions");
+        assert_eq!(spans.len(), 1);
+        assert_eq!(spans[0].content, "no mentions");
+    }
+
+    #[test]
+    fn parse_mentions_multiple_mentions() {
+        let spans = super::parse_mentions("@dev @pm");
+        assert_eq!(spans.len(), 3);
+        assert_eq!(spans[0].content, "@dev");
+        assert_eq!(
+            spans[0].style,
+            Style::default()
+                .fg(Color::Rgb(139, 233, 253))
+                .add_modifier(Modifier::BOLD)
+        );
+        assert_eq!(spans[1].content, " ");
+        assert_eq!(spans[2].content, "@pm");
+        assert_eq!(
+            spans[2].style,
+            Style::default()
+                .fg(Color::Rgb(139, 233, 253))
+                .add_modifier(Modifier::BOLD)
+        );
     }
 
     fn buffer_to_string(buffer: &ratatui::buffer::Buffer) -> String {
