@@ -225,7 +225,7 @@ impl ServerHandler for BridgeServer {
     ) -> impl Future<Output = Result<ListToolsResult, McpError>> + Send + '_ {
         let tools = vec![
             crate::mcp::tools::send_message_tool(
-                "Send a message to the bpmux session. Your message will appear in the shared chat.",
+                "Send a message to the bpmux session. Your message will appear in the shared chat. Do not prefix your name — the session adds the sender automatically.",
             ),
             crate::mcp::tools::read_messages_tool("Read recent messages from the bpmux session."),
             crate::mcp::tools::set_name_tool(
