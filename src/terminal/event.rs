@@ -76,13 +76,19 @@ pub fn run_tui(
                     app.show_timestamps = !app.show_timestamps;
                 }
                 KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    let before = app.scroll_offset;
                     app.scroll_up(10);
+                    if app.scroll_offset == before && before > 0 && !app.at_boundary {
+                        bell();
+                        app.at_boundary = true;
+                    }
                 }
                 KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                     let before = app.scroll_offset;
                     app.scroll_down(10);
-                    if app.scroll_offset == before {
+                    if app.scroll_offset == before && !app.at_boundary {
                         bell();
+                        app.at_boundary = true;
                     }
                 }
                 KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
@@ -104,13 +110,19 @@ pub fn run_tui(
                     app.input.pop();
                 }
                 KeyCode::PageUp => {
+                    let before = app.scroll_offset;
                     app.scroll_up(5);
+                    if app.scroll_offset == before && before > 0 && !app.at_boundary {
+                        bell();
+                        app.at_boundary = true;
+                    }
                 }
                 KeyCode::PageDown => {
                     let before = app.scroll_offset;
                     app.scroll_down(5);
-                    if app.scroll_offset == before {
+                    if app.scroll_offset == before && !app.at_boundary {
                         bell();
+                        app.at_boundary = true;
                     }
                 }
                 KeyCode::Esc => {
