@@ -148,24 +148,31 @@ pub fn render(frame: &mut Frame, app: &mut App) {
                     Style::default().fg(Color::Rgb(98, 114, 164)),
                 )));
             } else {
-                let mut spans = Vec::new();
-                if app.show_timestamps {
-                    let time = msg.ts.format("%H:%M:%S").to_string();
-                    spans.push(Span::styled(
-                        format!("[{time}] "),
-                        Style::default().fg(Color::Rgb(98, 114, 164)),
-                    ));
-                }
-                spans.push(Span::styled(
-                    format!("{short_name}: "),
-                    if is_human {
-                        Style::default().fg(name_color).add_modifier(Modifier::BOLD)
+                let text_lines: Vec<&str> = msg.text.split('\n').collect();
+                for (li, text_line) in text_lines.iter().enumerate() {
+                    let mut spans = Vec::new();
+                    if li == 0 {
+                        if app.show_timestamps {
+                            let time = msg.ts.format("%H:%M:%S").to_string();
+                            spans.push(Span::styled(
+                                format!("[{time}] "),
+                                Style::default().fg(Color::Rgb(98, 114, 164)),
+                            ));
+                        }
+                        spans.push(Span::styled(
+                            format!("{short_name}: "),
+                            if is_human {
+                                Style::default().fg(name_color).add_modifier(Modifier::BOLD)
+                            } else {
+                                Style::default().fg(name_color)
+                            },
+                        ));
                     } else {
-                        Style::default().fg(name_color)
-                    },
-                ));
-                spans.extend(parse_mentions(&msg.text));
-                lines.push(Line::from(spans));
+                        spans.push(Span::raw("  "));
+                    }
+                    spans.extend(parse_mentions(text_line));
+                    lines.push(Line::from(spans));
+                }
             }
 
             // Add blank line separator only when the next message is from a different sender
