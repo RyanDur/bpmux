@@ -30,10 +30,18 @@ fn sender_color(name: &str) -> Color {
 }
 
 pub fn render(frame: &mut Frame, app: &mut App) {
+    let input_lines = if app.input.is_empty() {
+        1
+    } else {
+        let width = frame.area().width.saturating_sub(4) as usize; // borders + padding
+        app.input.len().max(1).div_ceil(width.max(1))
+    };
+    let input_height = (input_lines + 2).min(8) as u16; // +2 for borders, cap at 8
+
     let chunks = Layout::vertical([
-        Constraint::Min(3),    // chat pane
-        Constraint::Length(3), // input pane
-        Constraint::Length(1), // status bar
+        Constraint::Min(3),               // chat pane
+        Constraint::Length(input_height), // input pane — grows with content
+        Constraint::Length(1),            // status bar
     ])
     .split(frame.area());
 
@@ -169,7 +177,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title(" > ")
+                .title(format!(" {} > ", app.peer_name))
                 .title_style(Style::default().fg(Color::Rgb(189, 147, 249)))
                 .border_style(Style::default().fg(Color::Rgb(68, 71, 90)))
                 .style(
@@ -530,6 +538,23 @@ mod tests {
         assert!(
             screen.contains("3 new"),
             "Should show '3 new' unread indicator. Screen:\n{screen}"
+        );
+    }
+
+    #[allow(clippy::unwrap_used)]
+    #[test]
+    fn renders_without_panic_with_long_input() {
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let mut app = App::new("ryan".to_string(), "test-id".to_string(), vec![]);
+        app.input = "a".repeat(500);
+
+        terminal.draw(|frame| render(frame, &mut app)).unwrap();
+
+        let screen = buffer_to_string(terminal.backend().buffer());
+        assert!(
+            screen.contains("ryan >"),
+            "Input title should include peer name. Screen:\n{screen}"
         );
     }
 
