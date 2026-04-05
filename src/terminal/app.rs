@@ -171,6 +171,20 @@ mod tests {
     }
 
     #[test]
+    fn help_command_adds_message_and_clears_input() {
+        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        app.input = "/help".to_string();
+        let msg = app.submit_message();
+        assert!(msg.is_none());
+        assert!(app.input.is_empty());
+        assert_eq!(app.messages.len(), 1);
+        assert_eq!(app.messages[0].from, "bpmux");
+        assert!(app.messages[0].text.contains("/help"));
+        assert!(app.messages[0].text.contains("/quit"));
+        assert!(app.messages[0].text.contains("test-session"));
+    }
+
+    #[test]
     fn scroll_up_increases_offset() {
         let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
         app.max_scroll = 100;
