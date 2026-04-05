@@ -1,21 +1,11 @@
 #!/bin/bash
 # check-bpmux.sh — UserPromptSubmit hook
-# Reads recent bpmux messages and injects only relevant ones into context.
-# Filters: skip system messages, skip own messages, optionally filter by @mention.
-# Exits silently if bpmux isn't running or the log doesn't exist.
+# Lightweight context injection: count + latest message only.
+# Agents use read_messages tool to pull full context when needed.
 
 MESSAGES_FILE="$HOME/.bpmux/sessions/current/messages-current.jsonl"
-# Self-filtering: future improvement — skip own messages
-# For now, only system messages are filtered
-MY_NAME=""
 
 if [ ! -f "$MESSAGES_FILE" ]; then
-  exit 0
-fi
-
-LINES=$(tail -n 10 "$MESSAGES_FILE" 2>/dev/null)
-
-if [ -z "$LINES" ]; then
   exit 0
 fi
 
@@ -23,34 +13,26 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 0
 fi
 
-FILTERED=""
-while IFS= read -r line; do
-  from=$(echo "$line" | jq -r '.from // empty' 2>/dev/null)
-  text=$(echo "$line" | jq -r '.text // empty' 2>/dev/null)
-  msg_type=$(echo "$line" | jq -r '.message_type // "chat"' 2>/dev/null)
+# Count non-system chat messages
+COUNT=$(tail -n 20 "$MESSAGES_FILE" 2>/dev/null | jq -r 'select((.message_type // "chat") == "chat") | .from' 2>/dev/null | wc -l | tr -d ' ')
 
-  # Skip system messages
-  [ "$msg_type" = "system" ] && continue
-
-  # Skip empty
-  [ -z "$from" ] || [ -z "$text" ] && continue
-
-  # Skip own messages if BPMUX_NAME is set
-  if [ -n "$MY_NAME" ]; then
-    case "$from" in
-      *"$MY_NAME"*) continue ;;
-    esac
-  fi
-
-  FILTERED="${FILTERED}[$from] $text\n"
-done <<< "$LINES"
-
-if [ -z "$FILTERED" ]; then
+if [ "$COUNT" = "0" ]; then
   exit 0
 fi
 
-echo "--- Recent bpmux messages ---"
-printf "%b" "$FILTERED"
-echo "--- End bpmux messages ---"
+# Get only the latest chat message
+LATEST=$(tail -n 20 "$MESSAGES_FILE" 2>/dev/null | jq -r 'select((.message_type // "chat") == "chat")' 2>/dev/null | tail -n 1)
+FROM=$(echo "$LATEST" | jq -r '.from // empty' 2>/dev/null)
+TEXT=$(echo "$LATEST" | jq -r '.text // empty' 2>/dev/null)
+
+if [ -z "$FROM" ] || [ -z "$TEXT" ]; then
+  exit 0
+fi
+
+# Truncate preview to 100 chars
+PREVIEW=$(echo "$TEXT" | cut -c1-100)
+
+echo "bpmux: $COUNT recent messages. Latest from $FROM: $PREVIEW"
+echo "Use read_messages to see full conversation."
 
 exit 0
