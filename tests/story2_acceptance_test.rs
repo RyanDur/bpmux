@@ -6,9 +6,9 @@
 
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-mod common;
+mod harness;
 
-use common::read_until_contains;
+use harness::pty::read_until_contains;
 use portable_pty::{CommandBuilder, PtySize, native_pty_system};
 use std::io::Write;
 use std::time::Duration;

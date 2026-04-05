@@ -5,9 +5,9 @@
 
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-mod common;
+mod harness;
 
-use common::read_until_contains;
+use harness::pty::read_until_contains;
 use portable_pty::{CommandBuilder, PtySize, native_pty_system};
 use std::time::Duration;
 
@@ -16,7 +16,7 @@ fn status_bar_shows_peer_count() {
     let bin = env!("CARGO_BIN_EXE_bpmux");
     let temp_dir = tempfile::TempDir::new().expect("temp dir");
     let session_base = temp_dir.path().to_str().expect("temp path");
-    let port = common::free_port();
+    let port = harness::port::free_port();
 
     // 1. Start bpmux in a PTY
     let pty_system = native_pty_system();
