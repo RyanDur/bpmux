@@ -5,9 +5,9 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use portable_pty::{CommandBuilder, PtySize, native_pty_system};
-use ratatui_testlib::ScreenState;
 
 use super::port::free_port;
+use super::screen::Screen;
 
 /// A running bpmux instance in a PTY.
 ///
@@ -23,7 +23,7 @@ pub struct TestBpmux {
     _drainer: Option<std::thread::JoinHandle<()>>,
     _session_dir: tempfile::TempDir,
     writer: Arc<Mutex<Box<dyn Write + Send>>>,
-    bytes: Arc<Mutex<Vec<u8>>>,
+    screen: Arc<Mutex<Screen>>,
     port: u16,
 }
 
@@ -71,18 +71,15 @@ impl TestBpmux {
         let mut reader = pair.master.try_clone_reader().expect("clone reader");
         let writer = pair.master.take_writer().expect("take writer");
 
-        let bytes: Arc<Mutex<Vec<u8>>> = Arc::new(Mutex::new(Vec::new()));
-        let bytes_feed = Arc::clone(&bytes);
+        let screen = Arc::new(Mutex::new(Screen::new()));
+        let screen_feed = Arc::clone(&screen);
         let drainer = std::thread::spawn(move || {
             let mut buf = [0u8; 4096];
             while let Ok(n) = reader.read(&mut buf) {
                 if n == 0 {
                     break;
                 }
-                bytes_feed
-                    .lock()
-                    .expect("bytes lock")
-                    .extend_from_slice(&buf[..n]);
+                screen_feed.lock().expect("screen lock").feed(&buf[..n]);
             }
         });
 
@@ -91,7 +88,7 @@ impl TestBpmux {
             _drainer: Some(drainer),
             _session_dir: session_dir,
             writer: Arc::new(Mutex::new(writer)),
-            bytes,
+            screen,
             port,
         };
         assert!(
@@ -121,10 +118,7 @@ impl TestBpmux {
     /// Current TUI snapshot, rebuilt from accumulated bytes so callers
     /// never catch the screen mid-redraw.
     pub fn tui(&self) -> String {
-        let bytes = self.bytes.lock().expect("bytes lock");
-        let mut screen = ScreenState::new(80, 24);
-        screen.feed(&bytes);
-        screen.contents()
+        self.screen.lock().expect("screen lock").contents()
     }
 
     /// Type text into the TUI and press Enter, as a user would.

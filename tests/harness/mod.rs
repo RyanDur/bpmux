@@ -11,3 +11,4 @@ pub mod mcp;
 pub mod peer;
 pub mod port;
 pub mod pty;
+pub mod screen;

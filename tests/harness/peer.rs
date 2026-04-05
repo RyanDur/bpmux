@@ -75,15 +75,66 @@ impl WsPeer {
                 let Some(raw) = self.next_text().await else {
                     panic!("websocket closed before a user message arrived");
                 };
-                if let Ok(ServerMessage::Message { from, text, .. }) =
-                    serde_json::from_str::<ServerMessage>(&raw)
-                    && from != "bpmux"
-                {
-                    return (from, text);
+                if let Some(msg) = extract_user_message(&raw) {
+                    return msg;
                 }
             }
         })
         .await;
         result.expect("timed out waiting for user message")
+    }
+}
+
+/// Parse a WebSocket text frame and return `(from, text)` if it represents
+/// a user `Message` (not a system announcement from "bpmux", not welcome/
+/// pong/error). Returns `None` for anything that should be skipped.
+fn extract_user_message(raw: &str) -> Option<(String, String)> {
+    match serde_json::from_str::<ServerMessage>(raw).ok()? {
+        ServerMessage::Message { from, text, .. } if from != "bpmux" => Some((from, text)),
+        _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn user_message_is_extracted() {
+        let raw = r#"{"type":"message","from":"dev","text":"hello","ts":"2026-04-05T00:00:00Z"}"#;
+        assert_eq!(
+            extract_user_message(raw),
+            Some(("dev".to_string(), "hello".to_string()))
+        );
+    }
+
+    #[test]
+    fn system_message_from_bpmux_is_skipped() {
+        let raw =
+            r#"{"type":"message","from":"bpmux","text":"bot joined","ts":"2026-04-05T00:00:00Z"}"#;
+        assert_eq!(extract_user_message(raw), None);
+    }
+
+    #[test]
+    fn welcome_frame_is_skipped() {
+        let raw = r#"{"type":"welcome","session_id":"abc-123"}"#;
+        assert_eq!(extract_user_message(raw), None);
+    }
+
+    #[test]
+    fn pong_frame_is_skipped() {
+        let raw = r#"{"type":"pong"}"#;
+        assert_eq!(extract_user_message(raw), None);
+    }
+
+    #[test]
+    fn error_frame_is_skipped() {
+        let raw = r#"{"type":"error","reason":"nope"}"#;
+        assert_eq!(extract_user_message(raw), None);
+    }
+
+    #[test]
+    fn malformed_frame_is_skipped() {
+        assert_eq!(extract_user_message("not json"), None);
     }
 }

@@ -128,6 +128,16 @@ impl NotificationCapture {
     pub fn received(&self) -> Vec<String> {
         self.received.lock().expect("capture lock").clone()
     }
+
+    /// Test-only entry point that simulates a notification arrival,
+    /// bypassing the rmcp `NotificationContext` plumbing.
+    #[cfg(test)]
+    fn push_for_test(&self, content: &str) {
+        self.received
+            .lock()
+            .expect("capture lock")
+            .push(content.to_string());
+    }
 }
 
 impl ClientHandler for NotificationCapture {
@@ -148,5 +158,49 @@ impl ClientHandler for NotificationCapture {
                     .push(content.to_string());
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn wait_for_returns_when_content_already_present() {
+        let capture = NotificationCapture::default();
+        capture.push_for_test("dev: hello there");
+        capture
+            .wait_for("hello there", Duration::from_millis(100))
+            .await;
+    }
+
+    #[tokio::test]
+    async fn wait_for_returns_when_content_arrives() {
+        let capture = NotificationCapture::default();
+        let writer = capture.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_millis(50)).await;
+            writer.push_for_test("dev: arriving soon");
+        });
+        capture
+            .wait_for("arriving soon", Duration::from_secs(1))
+            .await;
+    }
+
+    #[tokio::test]
+    #[should_panic(expected = "notification containing")]
+    async fn wait_for_panics_on_timeout() {
+        let capture = NotificationCapture::default();
+        capture
+            .wait_for("never arrives", Duration::from_millis(100))
+            .await;
+    }
+
+    #[tokio::test]
+    async fn received_returns_pushed_contents_in_order() {
+        let capture = NotificationCapture::default();
+        capture.push_for_test("first");
+        capture.push_for_test("second");
+        assert_eq!(capture.received(), vec!["first", "second"]);
     }
 }
