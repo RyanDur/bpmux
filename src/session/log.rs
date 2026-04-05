@@ -167,12 +167,14 @@ mod tests {
             text: "first message".to_string(),
             ts: Utc::now(),
             message_type: None,
+            to: None,
         };
         let msg2 = Message {
             from: "ryan:human".to_string(),
             text: "second message".to_string(),
             ts: Utc::now(),
             message_type: None,
+            to: None,
         };
         append_message(dir.path(), &msg1).expect("append 1");
         append_message(dir.path(), &msg2).expect("append 2");
@@ -209,6 +211,7 @@ mod tests {
             text: "persisted message".to_string(),
             ts: Utc::now(),
             message_type: None,
+            to: None,
         };
         append_message(&dir1, &msg).expect("append");
         let dir2 = resume_or_create_session(base.path()).expect("resume");
@@ -228,6 +231,7 @@ mod tests {
             text: "via session".to_string(),
             ts: Utc::now(),
             message_type: None,
+            to: None,
         };
         session.broadcast(&msg).expect("broadcast");
         let received = rx.try_recv().expect("receive broadcast");

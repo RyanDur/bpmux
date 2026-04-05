@@ -13,7 +13,11 @@ pub enum ClientMessage {
         tool: Option<String>,
     },
     #[serde(rename = "send")]
-    Send { text: String },
+    Send {
+        text: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        to: Option<Vec<String>>,
+    },
     #[serde(rename = "ping")]
     Ping,
     #[serde(rename = "rename")]
@@ -31,6 +35,8 @@ pub enum ServerMessage {
         from: String,
         text: String,
         ts: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        to: Option<Vec<String>>,
     },
     #[serde(rename = "error")]
     Error { reason: String },
@@ -44,11 +50,13 @@ impl From<Message> for ServerMessage {
             from: msg.from,
             text: msg.text,
             ts: msg.ts.to_rfc3339(),
+            to: msg.to,
         }
     }
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
     use super::*;
 
@@ -83,7 +91,23 @@ mod tests {
         let json = r#"{"type": "send", "text": "hello"}"#;
         let msg: ClientMessage = serde_json::from_str(json).expect("parse");
         match msg {
-            ClientMessage::Send { text } => assert_eq!(text, "hello"),
+            ClientMessage::Send { text, to } => {
+                assert_eq!(text, "hello");
+                assert_eq!(to, None);
+            }
+            other => panic!("expected Send, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn deserializes_send_with_to() {
+        let json = r#"{"type": "send", "text": "hey", "to": ["pm", "designer"]}"#;
+        let msg: ClientMessage = serde_json::from_str(json).expect("parse");
+        match msg {
+            ClientMessage::Send { text, to } => {
+                assert_eq!(text, "hey");
+                assert_eq!(to, Some(vec!["pm".to_string(), "designer".to_string()]));
+            }
             other => panic!("expected Send, got {other:?}"),
         }
     }
@@ -115,6 +139,7 @@ mod tests {
             text: "hello".to_string(),
             ts: chrono::Utc::now(),
             message_type: None,
+            to: None,
         };
         let server_msg: ServerMessage = session_msg.into();
         let json = serde_json::to_string(&server_msg).expect("serialize");

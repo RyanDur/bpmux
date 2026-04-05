@@ -216,6 +216,7 @@ impl App {
                 text: help,
                 ts: Utc::now(),
                 message_type: None,
+                to: None,
             };
             self.messages.push(msg);
             self.clear_input();
@@ -235,6 +236,7 @@ impl App {
                 text: format!("Participants:\n  {}", participants.join("\n  ")),
                 ts: Utc::now(),
                 message_type: None,
+                to: None,
             };
             self.messages.push(msg);
             self.clear_input();
@@ -263,6 +265,7 @@ impl App {
                 ),
                 ts: Utc::now(),
                 message_type: None,
+                to: None,
             };
             self.messages.push(msg);
             self.clear_input();
@@ -277,6 +280,7 @@ impl App {
                 ),
                 ts: Utc::now(),
                 message_type: None,
+                to: None,
             };
             self.messages.push(msg);
             self.clear_input();
@@ -287,6 +291,7 @@ impl App {
             text,
             ts: Utc::now(),
             message_type: None,
+            to: None,
         };
         self.messages.push(msg.clone());
         self.clear_input();
@@ -412,6 +417,7 @@ mod tests {
             text: "hello".to_string(),
             ts: Utc::now(),
             message_type: None,
+            to: None,
         });
         assert_eq!(app.unread_count, 1);
         app.receive_message(Message {
@@ -419,6 +425,7 @@ mod tests {
             text: "world".to_string(),
             ts: Utc::now(),
             message_type: None,
+            to: None,
         });
         assert_eq!(app.unread_count, 2);
     }
@@ -442,6 +449,7 @@ mod tests {
             text: "hello".to_string(),
             ts: Utc::now(),
             message_type: None,
+            to: None,
         });
         assert_eq!(app.unread_count, 0);
     }
@@ -455,6 +463,7 @@ mod tests {
             text: "hello".to_string(),
             ts: Utc::now(),
             message_type: None,
+            to: None,
         });
         assert_eq!(app.scroll_offset, 0);
         assert_eq!(app.messages.len(), 1);
@@ -550,6 +559,7 @@ mod tests {
             text: "hello".to_string(),
             ts: Utc::now(),
             message_type: None,
+            to: None,
         });
         assert_eq!(app.scroll_offset, 6);
         assert_eq!(app.messages.len(), 1);
@@ -572,6 +582,7 @@ mod tests {
             text: "working".to_string(),
             ts: Utc::now(),
             message_type: Some("activity".to_string()),
+            to: None,
         });
         assert!(app.messages.is_empty());
         assert!(app.peer_activity.contains_key("dev:claude-code"));

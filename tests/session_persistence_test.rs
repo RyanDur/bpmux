@@ -19,12 +19,14 @@ fn messages_persist_across_session_resumes() {
         text: "first session message".to_string(),
         ts: Utc::now(),
         message_type: None,
+        to: None,
     };
     let msg2 = Message {
         from: "ryan:human".to_string(),
         text: "second session message".to_string(),
         ts: Utc::now(),
         message_type: None,
+        to: None,
     };
     append_message(&session1, &msg1).expect("append 1");
     append_message(&session1, &msg2).expect("append 2");

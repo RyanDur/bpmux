@@ -49,6 +49,7 @@ async fn run_ws_session(
         text: format!("{identity} joined"),
         ts: chrono::Utc::now(),
         message_type: Some("system".to_string()),
+        to: None,
     };
     session.broadcast(&join_msg)?;
     let result: Result<(), Box<dyn std::error::Error + Send + Sync>> = async {
@@ -56,7 +57,11 @@ async fn run_ws_session(
             tokio::select! {
                 broadcast_result = broadcast_rx.recv() => {
                     match broadcast_result {
-                        Ok(msg) => { send_json(&mut tx, &ServerMessage::from(msg)).await?; }
+                        Ok(msg) => {
+                            if should_deliver(&msg, &identity) {
+                                send_json(&mut tx, &ServerMessage::from(msg)).await?;
+                            }
+                        }
                         Err(broadcast::error::RecvError::Lagged(n)) => {
                             eprintln!("WebSocket client {identity} lagged by {n} messages");
                         }
@@ -90,6 +95,7 @@ async fn run_ws_session(
         text: format!("{identity} left"),
         ts: chrono::Utc::now(),
         message_type: Some("system".to_string()),
+        to: None,
     };
     let _ = session.broadcast(&leave_msg);
     session.peer_disconnected();
@@ -138,6 +144,31 @@ async fn wait_for_identify(
     }
 }
 
+/// Short name for identity matching: "dev:claude-code" → "dev".
+fn short_name(identity: &str) -> &str {
+    identity.split(':').next().unwrap_or(identity)
+}
+
+/// Decide whether a message should be pushed to a given peer.
+/// Broadcast (to=None) → everyone. Addressed (to=Some) → only
+/// named recipients and the original sender.
+fn should_deliver(msg: &session::Message, peer_identity: &str) -> bool {
+    let recipients = match &msg.to {
+        None => return true,
+        Some(r) => r,
+    };
+    // to:["all"] is explicit broadcast
+    if recipients.iter().any(|r| r == "all") {
+        return true;
+    }
+    let peer_short = short_name(peer_identity);
+    let sender_short = short_name(&msg.from);
+    if peer_short == sender_short {
+        return true;
+    }
+    recipients.iter().any(|r| r == peer_short)
+}
+
 /// Returns Some(new_identity) if the client renamed itself.
 async fn handle_client_message(
     text: &str,
@@ -156,12 +187,13 @@ async fn handle_client_message(
         return Ok(None);
     }
     match serde_json::from_str::<ClientMessage>(text) {
-        Ok(ClientMessage::Send { text: msg_text }) => {
+        Ok(ClientMessage::Send { text: msg_text, to }) => {
             let msg = session::Message {
                 from: identity.to_string(),
                 text: msg_text,
                 ts: chrono::Utc::now(),
                 message_type: None,
+                to,
             };
             session.broadcast(&msg)?;
         }
@@ -201,4 +233,72 @@ async fn send_json(
     let json = serde_json::to_string(msg)?;
     tx.send(WsMessage::Text(json.into())).await?;
     Ok(())
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod tests {
+    use super::*;
+    use chrono::Utc;
+
+    fn msg(from: &str, to: Option<Vec<&str>>) -> session::Message {
+        session::Message {
+            from: from.to_string(),
+            text: "test".to_string(),
+            ts: Utc::now(),
+            message_type: None,
+            to: to.map(|v| v.into_iter().map(String::from).collect()),
+        }
+    }
+
+    #[test]
+    fn broadcast_delivered_to_everyone() {
+        assert!(should_deliver(
+            &msg("dev:claude-code", None),
+            "pm:claude-code"
+        ));
+        assert!(should_deliver(&msg("dev:claude-code", None), "ryan:human"));
+    }
+
+    #[test]
+    fn addressed_delivered_to_recipient() {
+        let m = msg("dev:claude-code", Some(vec!["pm"]));
+        assert!(should_deliver(&m, "pm:claude-code"));
+    }
+
+    #[test]
+    fn addressed_delivered_to_sender() {
+        let m = msg("dev:claude-code", Some(vec!["pm"]));
+        assert!(should_deliver(&m, "dev:claude-code"));
+    }
+
+    #[test]
+    fn addressed_not_delivered_to_non_recipient() {
+        let m = msg("dev:claude-code", Some(vec!["pm"]));
+        assert!(!should_deliver(&m, "designer:claude-code"));
+    }
+
+    #[test]
+    fn group_addressed_delivered_to_all_named() {
+        let m = msg("dev:claude-code", Some(vec!["pm", "designer"]));
+        assert!(should_deliver(&m, "pm:claude-code"));
+        assert!(should_deliver(&m, "designer:claude-code"));
+        assert!(should_deliver(&m, "dev:human"));
+        assert!(!should_deliver(&m, "ryan:human"));
+    }
+
+    #[test]
+    fn to_all_is_broadcast() {
+        let m = msg("dev:claude-code", Some(vec!["all"]));
+        assert!(should_deliver(&m, "pm:claude-code"));
+        assert!(should_deliver(&m, "ryan:human"));
+        assert!(should_deliver(&m, "designer:claude-code"));
+    }
+
+    #[test]
+    fn short_name_strips_tool_suffix() {
+        assert_eq!(short_name("dev:claude-code"), "dev");
+        assert_eq!(short_name("ryan:human"), "ryan");
+        assert_eq!(short_name("bpmux"), "bpmux");
+    }
 }

@@ -127,7 +127,7 @@ async fn run_ws_connection(
     while let Some(Ok(frame)) = ws_rx.next().await {
         if let tungstenite::Message::Text(text) = frame {
             let msg: Result<ServerMessage, _> = serde_json::from_str(&text);
-            if let Ok(ServerMessage::Message { from, text, ts }) = msg {
+            if let Ok(ServerMessage::Message { from, text, ts, .. }) = msg {
                 // Don't forward our own messages back
                 let current_name = name.lock().await;
                 if from.contains(current_name.as_str()) {
@@ -259,8 +259,16 @@ impl ServerHandler for BridgeServer {
                         }
                     };
 
+                    let to: Option<Vec<String>> =
+                        args.get("to").and_then(|v| v.as_array()).map(|arr| {
+                            arr.iter()
+                                .filter_map(|v| v.as_str().map(String::from))
+                                .collect()
+                        });
+
                     let send_msg = match serde_json::to_string(&ClientMessage::Send {
                         text: text.to_string(),
+                        to,
                     }) {
                         Ok(json) => json,
                         Err(e) => {
@@ -339,6 +347,17 @@ impl ServerHandler for BridgeServer {
             }
         }
     }
+}
+
+pub fn run_bridge(port: u16, name: &str) -> anyhow::Result<()> {
+    let rt = tokio::runtime::Runtime::new()?;
+    rt.block_on(async {
+        let server = BridgeServer::new(port, name.to_string());
+        let (stdin, stdout) = rmcp::transport::io::stdio();
+        let service = server.serve((stdin, stdout)).await?;
+        service.waiting().await?;
+        anyhow::Ok(())
+    })
 }
 
 #[cfg(test)]
@@ -448,15 +467,4 @@ mod tests {
             .unwrap_or(20) as usize;
         assert_eq!(default_limit, 20);
     }
-}
-
-pub fn run_bridge(port: u16, name: &str) -> anyhow::Result<()> {
-    let rt = tokio::runtime::Runtime::new()?;
-    rt.block_on(async {
-        let server = BridgeServer::new(port, name.to_string());
-        let (stdin, stdout) = rmcp::transport::io::stdio();
-        let service = server.serve((stdin, stdout)).await?;
-        service.waiting().await?;
-        anyhow::Ok(())
-    })
 }

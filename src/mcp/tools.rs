@@ -7,6 +7,11 @@ pub fn send_message_tool(description: &'static str) -> Tool {
             "text": {
                 "type": "string",
                 "description": "The message text to send"
+            },
+            "to": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Optional list of recipient names (short form, e.g. [\"pm\", \"designer\"]). Omit for broadcast."
             }
         },
         "required": ["text"]

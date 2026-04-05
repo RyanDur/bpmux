@@ -50,6 +50,7 @@ impl BpmuxMcpServer {
             text,
             ts: chrono::Utc::now(),
             message_type: None,
+            to: None,
         };
         self.session.broadcast(&msg).map_err(|e| format!("{e}"))?;
         Ok("message sent".to_string())

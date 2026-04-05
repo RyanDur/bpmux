@@ -62,6 +62,7 @@ pub async fn post_message(
         text: payload.text,
         ts: chrono::Utc::now(),
         message_type: payload.message_type,
+        to: None,
     };
     if let Err(e) = session.broadcast(&msg) {
         return (
@@ -161,6 +162,7 @@ mod tests {
                 text: format!("msg {i}"),
                 ts: chrono::Utc::now(),
                 message_type: None,
+                to: None,
             };
             session.broadcast(&msg).expect("broadcast");
         }

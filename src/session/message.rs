@@ -8,6 +8,11 @@ pub struct Message {
     pub ts: DateTime<Utc>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub message_type: Option<String>,
+    /// Addressed recipients. `None` = broadcast (everyone sees it).
+    /// `Some(vec)` = only named participants (plus sender) see the push.
+    /// Names are short-form (e.g. `"dev"`, not `"dev:claude-code"`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub to: Option<Vec<String>>,
 }
 
 impl Message {
@@ -28,6 +33,7 @@ mod tests {
             text: "hello".to_string(),
             ts: Utc::now(),
             message_type: None,
+            to: None,
         };
         assert!(msg.is_chat());
     }
@@ -39,6 +45,7 @@ mod tests {
             text: "[turn complete]".to_string(),
             ts: Utc::now(),
             message_type: Some("system".to_string()),
+            to: None,
         };
         assert!(!msg.is_chat());
     }
@@ -50,6 +57,7 @@ mod tests {
             text: "hello".to_string(),
             ts: Utc::now(),
             message_type: Some("chat".to_string()),
+            to: None,
         };
         assert!(msg.is_chat());
     }
@@ -63,6 +71,7 @@ mod tests {
                 .expect("test timestamp")
                 .with_timezone(&Utc),
             message_type: None,
+            to: None,
         };
 
         let json = serde_json::to_string(&msg).expect("serialize");

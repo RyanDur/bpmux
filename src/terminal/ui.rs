@@ -141,12 +141,34 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             let is_human = msg.from.ends_with(":human");
             let name_color = sender_color(short_name);
 
-            // Build the prefix (timestamp + name)
+            // Channel tag: [broadcast], [a↔b] (DM), [a+b+c] (group)
+            let channel_tag = match &msg.to {
+                None => "[broadcast] ".to_string(),
+                Some(recipients) if recipients.iter().any(|r| r == "all") => {
+                    "[broadcast] ".to_string()
+                }
+                Some(recipients) => {
+                    let mut names: Vec<&str> = recipients.iter().map(|s| s.as_str()).collect();
+                    let sender_short = msg.from.split(':').next().unwrap_or(&msg.from);
+                    if !names.contains(&sender_short) {
+                        names.push(sender_short);
+                    }
+                    names.sort();
+                    if names.len() == 2 {
+                        format!("[{}↔{}] ", names[0], names[1])
+                    } else {
+                        format!("[{}] ", names.join("+"))
+                    }
+                }
+            };
+
+            // Build the prefix (timestamp + channel tag + name)
             let mut prefix = String::new();
             if app.show_timestamps {
                 let time = msg.ts.format("%H:%M:%S").to_string();
                 prefix.push_str(&format!("[{time}] "));
             }
+            prefix.push_str(&channel_tag);
             prefix.push_str(&format!("{short_name}: "));
 
             // Estimate wrapped line count for truncation decision
@@ -159,6 +181,9 @@ pub fn render(frame: &mut Frame, app: &mut App) {
 
             let mut lines = Vec::new();
 
+            // Channel tag style: dim gray to visually separate from sender name
+            let tag_style = Style::default().fg(Color::Rgb(98, 114, 164));
+
             if wrapped_lines > 10 && !app.expanded_messages.contains(&i) {
                 // Truncate: show first 7 lines worth of text, then [+N lines]
                 let first_line_text_budget = chat_inner_width.saturating_sub(prefix.len());
@@ -170,11 +195,9 @@ pub fn render(frame: &mut Frame, app: &mut App) {
                 let mut spans = Vec::new();
                 if app.show_timestamps {
                     let time = msg.ts.format("%H:%M:%S").to_string();
-                    spans.push(Span::styled(
-                        format!("[{time}] "),
-                        Style::default().fg(Color::Rgb(98, 114, 164)),
-                    ));
+                    spans.push(Span::styled(format!("[{time}] "), tag_style));
                 }
+                spans.push(Span::styled(channel_tag.clone(), tag_style));
                 spans.push(Span::styled(
                     format!("{short_name}: "),
                     if is_human {
@@ -210,11 +233,9 @@ pub fn render(frame: &mut Frame, app: &mut App) {
                         if li == 0 {
                             if app.show_timestamps {
                                 let time = msg.ts.format("%H:%M:%S").to_string();
-                                spans.push(Span::styled(
-                                    format!("[{time}] "),
-                                    Style::default().fg(Color::Rgb(98, 114, 164)),
-                                ));
+                                spans.push(Span::styled(format!("[{time}] "), tag_style));
                             }
+                            spans.push(Span::styled(channel_tag.clone(), tag_style));
                             spans.push(Span::styled(
                                 format!("{short_name}: "),
                                 if is_human {
@@ -237,11 +258,9 @@ pub fn render(frame: &mut Frame, app: &mut App) {
                     if li == 0 {
                         if app.show_timestamps {
                             let time = msg.ts.format("%H:%M:%S").to_string();
-                            spans.push(Span::styled(
-                                format!("[{time}] "),
-                                Style::default().fg(Color::Rgb(98, 114, 164)),
-                            ));
+                            spans.push(Span::styled(format!("[{time}] "), tag_style));
                         }
+                        spans.push(Span::styled(channel_tag.clone(), tag_style));
                         spans.push(Span::styled(
                             format!("{short_name}: "),
                             if is_human {
@@ -251,7 +270,8 @@ pub fn render(frame: &mut Frame, app: &mut App) {
                             },
                         ));
                     } else if !in_code_block {
-                        spans.push(Span::raw("  "));
+                        // Indent continuation to align with body start
+                        spans.push(Span::raw(" ".repeat(prefix.len())));
                     }
                     if in_code_block {
                         spans.push(Span::styled(format!("  {text_line}"), code_style));
@@ -407,6 +427,7 @@ mod tests {
                 text: "hello".to_string(),
                 ts: Utc::now(),
                 message_type: None,
+                to: None,
             }],
         );
 
@@ -433,6 +454,7 @@ mod tests {
                 text: format!("message {i}"),
                 ts: Utc::now(),
                 message_type: None,
+                to: None,
             })
             .collect();
 
@@ -528,12 +550,14 @@ mod tests {
                     text: "visible chat".to_string(),
                     ts: Utc::now(),
                     message_type: None,
+                    to: None,
                 },
                 Message {
                     from: "ryan:claude-code".to_string(),
                     text: "[turn complete]".to_string(),
                     ts: Utc::now(),
                     message_type: Some("system".to_string()),
+                    to: None,
                 },
             ],
         );
@@ -569,6 +593,7 @@ mod tests {
                 text: long_text,
                 ts: Utc::now(),
                 message_type: None,
+                to: None,
             }],
         );
 
@@ -599,6 +624,7 @@ mod tests {
                 text: "short message".to_string(),
                 ts: Utc::now(),
                 message_type: None,
+                to: None,
             }],
         );
 
@@ -621,9 +647,9 @@ mod tests {
         let backend = TestBackend::new(80, 24);
         let mut terminal = Terminal::new(backend).unwrap();
 
-        // 78 inner width. "bot: " = 5 chars prefix. First line fits 73 chars of text.
-        // 10 lines = 73 + 78*9 = 775 chars.
-        let text_for_ten_lines = "a".repeat(775);
+        // 78 inner width. "[broadcast] bot: " = 17 chars prefix.
+        // First line fits 61 chars of text. 10 lines = 61 + 78*9 = 763 chars.
+        let text_for_ten_lines = "a".repeat(763);
 
         let mut app = App::new(
             "dev".to_string(),
@@ -633,6 +659,7 @@ mod tests {
                 text: text_for_ten_lines,
                 ts: Utc::now(),
                 message_type: None,
+                to: None,
             }],
         );
 
@@ -651,8 +678,8 @@ mod tests {
         let backend = TestBackend::new(80, 24);
         let mut terminal = Terminal::new(backend).unwrap();
 
-        // 11 lines = 73 + 78*10 = 853 chars
-        let text_for_eleven_lines = "a".repeat(853);
+        // 11 lines = 61 + 78*10 = 841 chars
+        let text_for_eleven_lines = "a".repeat(841);
 
         let mut app = App::new(
             "dev".to_string(),
@@ -662,6 +689,7 @@ mod tests {
                 text: text_for_eleven_lines,
                 ts: Utc::now(),
                 message_type: None,
+                to: None,
             }],
         );
 
@@ -777,12 +805,14 @@ mod tests {
                     text: "visible chat".to_string(),
                     ts: Utc::now(),
                     message_type: None,
+                    to: None,
                 },
                 Message {
                     from: "ryan:claude-code".to_string(),
                     text: "[turn complete]".to_string(),
                     ts: Utc::now(),
                     message_type: Some("system".to_string()),
+                    to: None,
                 },
             ],
         );
@@ -813,6 +843,7 @@ mod tests {
                 text: "before\n```\nlet x = 1;\n```\nafter".to_string(),
                 ts: Utc::now(),
                 message_type: None,
+                to: None,
             }],
         );
 

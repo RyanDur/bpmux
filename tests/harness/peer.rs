@@ -1,6 +1,7 @@
 //! Direct WebSocket peer for tests that need to act as a raw bpmux client
 //! (no bridge, no MCP). Use `WsPeer::connect` to identify and stay alive;
 //! use `send`/`next_text` to exchange messages.
+#![allow(clippy::panic, clippy::expect_used, clippy::unwrap_used)]
 
 use std::time::Duration;
 
@@ -47,13 +48,22 @@ impl WsPeer {
         Self { tx, rx }
     }
 
-    /// Send a `send` command to bpmux.
+    /// Send a broadcast `send` command to bpmux (no addressee).
     pub async fn send(&mut self, text: &str) {
         let msg = serde_json::json!({"type": "send", "text": text}).to_string();
         self.tx
             .send(WsMessage::Text(msg.into()))
             .await
             .expect("send");
+    }
+
+    /// Send an addressed `send` command to bpmux.
+    pub async fn send_to(&mut self, text: &str, to: &[&str]) {
+        let msg = serde_json::json!({"type": "send", "text": text, "to": to}).to_string();
+        self.tx
+            .send(WsMessage::Text(msg.into()))
+            .await
+            .expect("send_to");
     }
 
     /// Next text frame, stripped of non-text frames. Returns None on close.
@@ -82,6 +92,21 @@ impl WsPeer {
         })
         .await;
         result.expect("timed out waiting for user message")
+    }
+
+    /// Like `recv_message` but returns `None` on timeout instead of panicking.
+    /// Used to assert that a peer does NOT receive a message.
+    pub async fn recv_message_or_timeout(&mut self, timeout: Duration) -> Option<(String, String)> {
+        tokio::time::timeout(timeout, async {
+            loop {
+                let raw = self.next_text().await?;
+                if let Some(msg) = extract_user_message(&raw) {
+                    return Some(msg);
+                }
+            }
+        })
+        .await
+        .unwrap_or(None)
     }
 }
 
