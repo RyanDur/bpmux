@@ -8,6 +8,7 @@ const MAX_HISTORY: usize = 50;
 pub struct App {
     pub messages: Vec<Message>,
     pub input: String,
+    pub cursor_pos: usize,
     pub scroll_offset: u16,
     pub max_scroll: u16,
     pub at_boundary: bool,
@@ -29,6 +30,7 @@ impl App {
         Self {
             messages,
             input: String::new(),
+            cursor_pos: 0,
             scroll_offset: 0,
             max_scroll: 0,
             at_boundary: false,
@@ -44,6 +46,56 @@ impl App {
             show_system_messages: false,
             expanded_messages: HashSet::new(),
         }
+    }
+
+    pub fn insert_char(&mut self, c: char) {
+        self.input.insert(self.cursor_pos, c);
+        self.cursor_pos += c.len_utf8();
+    }
+
+    pub fn delete_char(&mut self) {
+        if self.cursor_pos > 0 {
+            let prev = self.input[..self.cursor_pos]
+                .char_indices()
+                .next_back()
+                .map(|(i, _)| i)
+                .unwrap_or(0);
+            self.input.remove(prev);
+            self.cursor_pos = prev;
+        }
+    }
+
+    pub fn move_cursor_left(&mut self) {
+        if self.cursor_pos > 0 {
+            self.cursor_pos = self.input[..self.cursor_pos]
+                .char_indices()
+                .next_back()
+                .map(|(i, _)| i)
+                .unwrap_or(0);
+        }
+    }
+
+    pub fn move_cursor_right(&mut self) {
+        if self.cursor_pos < self.input.len() {
+            self.cursor_pos = self.input[self.cursor_pos..]
+                .char_indices()
+                .nth(1)
+                .map(|(i, _)| self.cursor_pos + i)
+                .unwrap_or(self.input.len());
+        }
+    }
+
+    pub fn move_cursor_home(&mut self) {
+        self.cursor_pos = 0;
+    }
+
+    pub fn move_cursor_end(&mut self) {
+        self.cursor_pos = self.input.len();
+    }
+
+    pub fn clear_input(&mut self) {
+        self.input.clear();
+        self.cursor_pos = 0;
     }
 
     pub fn scroll_up(&mut self, lines: u16) {
@@ -122,7 +174,7 @@ impl App {
                 message_type: None,
             };
             self.messages.push(msg);
-            self.input.clear();
+            self.clear_input();
             return None;
         }
         if text == "/who" {
@@ -141,7 +193,7 @@ impl App {
                 message_type: None,
             };
             self.messages.push(msg);
-            self.input.clear();
+            self.clear_input();
             return None;
         }
         if text == "/quit" {
@@ -169,7 +221,7 @@ impl App {
                 message_type: None,
             };
             self.messages.push(msg);
-            self.input.clear();
+            self.clear_input();
             return None;
         }
         if text.starts_with('/') {
@@ -183,7 +235,7 @@ impl App {
                 message_type: None,
             };
             self.messages.push(msg);
-            self.input.clear();
+            self.clear_input();
             return None;
         }
         let msg = Message {
@@ -193,7 +245,9 @@ impl App {
             message_type: None,
         };
         self.messages.push(msg.clone());
-        self.input.clear();
+        self.clear_input();
+        self.scroll_offset = 0;
+        self.unread_count = 0;
         if self.input_history.len() >= MAX_HISTORY {
             self.input_history.remove(0);
         }
@@ -221,7 +275,7 @@ impl App {
         };
         if current + 1 >= self.input_history.len() {
             self.history_index = None;
-            self.input.clear();
+            self.clear_input();
         } else {
             let new_index = current + 1;
             self.history_index = Some(new_index);

@@ -109,7 +109,7 @@ pub fn run_tui(
                     if app.input.is_empty() {
                         return Ok(());
                     }
-                    app.input.clear();
+                    app.clear_input();
                 }
                 KeyCode::Up if key.modifiers.is_empty() => {
                     app.history_up();
@@ -117,11 +117,29 @@ pub fn run_tui(
                 KeyCode::Down if key.modifiers.is_empty() => {
                     app.history_down();
                 }
+                KeyCode::Left if key.modifiers.is_empty() => {
+                    app.move_cursor_left();
+                }
+                KeyCode::Right if key.modifiers.is_empty() => {
+                    app.move_cursor_right();
+                }
+                KeyCode::Home => {
+                    app.move_cursor_home();
+                }
+                KeyCode::End => {
+                    app.move_cursor_end();
+                }
+                KeyCode::Char('a') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    app.move_cursor_home();
+                }
+                KeyCode::Char('e') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    app.move_cursor_end();
+                }
                 KeyCode::Char(c) => {
-                    app.input.push(c);
+                    app.insert_char(c);
                 }
                 KeyCode::Backspace => {
-                    app.input.pop();
+                    app.delete_char();
                 }
                 KeyCode::PageUp => {
                     let before = app.scroll_offset;
@@ -140,7 +158,7 @@ pub fn run_tui(
                     }
                 }
                 KeyCode::Esc => {
-                    app.input.clear();
+                    app.clear_input();
                 }
                 _ => {}
             }

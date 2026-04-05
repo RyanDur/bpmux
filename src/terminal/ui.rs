@@ -324,8 +324,8 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     #[allow(clippy::cast_possible_truncation)]
     let input_inner_width = chunks[1].width.saturating_sub(2) as usize;
     let (cursor_x, cursor_y) = if input_inner_width > 0 {
-        let x = (app.input.len() % input_inner_width) as u16;
-        let y = (app.input.len() / input_inner_width) as u16;
+        let x = (app.cursor_pos % input_inner_width) as u16;
+        let y = (app.cursor_pos / input_inner_width) as u16;
         (chunks[1].x + 1 + x, chunks[1].y + 1 + y)
     } else {
         (chunks[1].x + 1, chunks[1].y + 1)
