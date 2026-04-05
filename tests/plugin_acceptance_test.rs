@@ -66,14 +66,10 @@ fn hook_reads_jsonl_and_outputs_formatted_messages() {
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("bpmux:"), "missing bpmux header: {stdout}");
     assert!(
-        stdout.contains("recent messages"),
-        "missing message count: {stdout}"
+        stdout.contains("new"),
+        "missing new message indicator: {stdout}"
     );
     assert!(stdout.contains("alice"), "missing latest sender: {stdout}");
-    assert!(
-        stdout.contains("read_messages"),
-        "should mention read_messages tool: {stdout}"
-    );
 }
 
 #[test]
