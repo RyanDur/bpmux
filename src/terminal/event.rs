@@ -57,10 +57,20 @@ pub fn run_tui(
                 return Ok(());
             }
         }
-        if event::poll(std::time::Duration::from_millis(100))?
-            && let Event::Key(key) = event::read()?
-        {
+        // Drain ALL pending key events before re-rendering.
+        // Prevents buffer lag when key repeat is faster than render.
+        if !event::poll(std::time::Duration::from_millis(100))? {
+            continue;
+        }
+        loop {
+            let ev = event::read()?;
+            let Event::Key(key) = ev else {
+                break;
+            };
             if key.kind != KeyEventKind::Press {
+                if !event::poll(std::time::Duration::ZERO)? {
+                    break;
+                }
                 continue;
             }
             match key.code {
@@ -129,6 +139,10 @@ pub fn run_tui(
                     app.input.clear();
                 }
                 _ => {}
+            }
+            // Check for more buffered events
+            if !event::poll(std::time::Duration::ZERO)? {
+                break;
             }
         }
     }
