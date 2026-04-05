@@ -75,11 +75,15 @@ pub fn run_tui(
             }
             match key.code {
                 KeyCode::Enter => {
-                    if let Some(msg) = app.submit_message() {
-                        session.broadcast(&msg)?;
-                    }
-                    if app.should_quit {
-                        return Ok(());
+                    if app.input.is_empty() {
+                        app.toggle_last_truncated();
+                    } else {
+                        if let Some(msg) = app.submit_message() {
+                            session.broadcast(&msg)?;
+                        }
+                        if app.should_quit {
+                            return Ok(());
+                        }
                     }
                 }
                 KeyCode::Char('t') if key.modifiers.contains(KeyModifiers::CONTROL) => {

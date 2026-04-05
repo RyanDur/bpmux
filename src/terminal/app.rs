@@ -1,6 +1,6 @@
 use crate::session::Message;
 use chrono::Utc;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::time::Instant;
 
 const MAX_HISTORY: usize = 50;
@@ -21,6 +21,7 @@ pub struct App {
     pub history_index: Option<usize>,
     pub peer_activity: HashMap<String, (String, Instant)>,
     pub show_system_messages: bool,
+    pub expanded_messages: HashSet<usize>,
 }
 
 impl App {
@@ -41,6 +42,7 @@ impl App {
             history_index: None,
             peer_activity: HashMap::new(),
             show_system_messages: false,
+            expanded_messages: HashSet::new(),
         }
     }
 
@@ -63,6 +65,26 @@ impl App {
         }
         if self.scroll_offset == 0 {
             self.unread_count = 0;
+        }
+    }
+
+    pub fn toggle_last_truncated(&mut self) {
+        let width = 78usize; // approximate inner width
+        for (i, msg) in self.messages.iter().enumerate().rev() {
+            if !msg.is_chat() && !self.show_system_messages {
+                continue;
+            }
+            let prefix_len = msg.from.split(':').next().unwrap_or(&msg.from).len() + 2;
+            let full_len = prefix_len + msg.text.len();
+            let wrapped = full_len.max(1).div_ceil(width.max(1));
+            if wrapped > 10 {
+                if self.expanded_messages.contains(&i) {
+                    self.expanded_messages.remove(&i);
+                } else {
+                    self.expanded_messages.insert(i);
+                }
+                return;
+            }
         }
     }
 

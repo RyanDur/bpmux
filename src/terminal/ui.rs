@@ -116,7 +116,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
 
             let mut lines = Vec::new();
 
-            if wrapped_lines > 10 {
+            if wrapped_lines > 10 && !app.expanded_messages.contains(&i) {
                 // Truncate: show first 7 lines worth of text, then [+N lines]
                 let first_line_text_budget = chat_inner_width.saturating_sub(prefix.len());
                 let subsequent_budget = chat_inner_width * 6;
