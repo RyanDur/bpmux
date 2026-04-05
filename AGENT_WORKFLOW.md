@@ -47,6 +47,16 @@ Communication flows through bpmux. Each agent has a named identity (`--name pm`,
 - One agent works on shared files at a time. Claim your context, stay in your lane.
 - If blocked, stop and communicate. Don't keep writing to files someone else is changing.
 
+## Story Delivery
+
+Every story follows this flow:
+
+1. **Acceptance test first.** The story's expected behaviors become a failing test before any production code is written. Dev's first task, not an afterthought.
+2. **Build until the acceptance test passes.** Implementation is driven by the failing test, not by a plan. The plan is a hypothesis about how to make the test pass; the test is the truth.
+3. **Smoke test as a user.** After the acceptance test passes, the owner runs the binary and tests the actual user experience. This is a human checkpoint — it cannot be delegated.
+4. **Push and verify CI.** Dev pushes after every completed story. CI must pass. Do not accumulate local commits without remote validation.
+5. **Retrospect.** What worked? What didn't? Update this agreement if the process needs to change.
+
 ## Session Close
 
 - Draft checkpoint: branch, last commit, what's done, next concrete step, blockers.

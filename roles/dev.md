@@ -45,16 +45,6 @@ The pre-push hook must actually work. If it passes silently when tools are missi
 - Always `git pull --rebase`, never plain `git pull`.
 - Push after every completed story. CI must be green.
 
-## Delivery flow
-
-Every story follows this flow:
-
-1. **Acceptance test first.** The story's expected behaviors become a failing test before any production code is written. This is the first task, not an afterthought.
-2. **Build until the acceptance test passes.** Implementation is driven by the failing test, not by a plan. The plan is a hypothesis about how to make the test pass; the test is the truth.
-3. **Smoke test as a user.** After the acceptance test passes, the owner runs the binary and tests the actual user experience. You cannot do this for them — it's a human checkpoint.
-4. **Push and verify CI.** Push after every completed story. CI must pass. Do not accumulate local commits without remote validation.
-5. **Retrospect.** What worked? What didn't? Update the working agreement if the process needs to change.
-
 ## When you're stuck
 
 - Blocked by architecture? Discuss in bpmux, don't guess.
