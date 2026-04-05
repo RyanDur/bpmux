@@ -18,7 +18,7 @@ fn ws_client_participates_in_conversation() {
     let bin = env!("CARGO_BIN_EXE_bpmux");
     let temp_dir = tempfile::TempDir::new().expect("temp dir");
     let session_base = temp_dir.path().to_str().expect("temp path");
-    let port = 14118;
+    let port = common::free_port();
 
     // 1. Spawn bpmux in a PTY
     let pty_system = native_pty_system();

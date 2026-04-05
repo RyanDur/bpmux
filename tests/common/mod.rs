@@ -1,6 +1,15 @@
 use ratatui_testlib::ScreenState;
 use std::io::Read;
+use std::net::TcpListener;
 use std::time::{Duration, Instant};
+
+pub fn free_port() -> u16 {
+    TcpListener::bind("127.0.0.1:0")
+        .expect("bind to free port")
+        .local_addr()
+        .expect("local addr")
+        .port()
+}
 
 pub fn read_until_contains(
     reader: &mut dyn Read,

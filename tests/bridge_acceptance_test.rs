@@ -23,7 +23,7 @@ fn messages_flow_through_bridge() {
     let bin = env!("CARGO_BIN_EXE_bpmux");
     let temp_dir = tempfile::TempDir::new().expect("temp dir");
     let session_base = temp_dir.path().to_str().expect("temp path");
-    let port = 14119;
+    let port = common::free_port();
 
     // 1. Start bpmux in a PTY
     let pty_system = native_pty_system();
