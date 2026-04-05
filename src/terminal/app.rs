@@ -1,5 +1,7 @@
 use crate::session::Message;
 use chrono::Utc;
+use std::collections::HashMap;
+use std::time::Instant;
 
 const MAX_HISTORY: usize = 50;
 
@@ -17,6 +19,7 @@ pub struct App {
     pub unread_count: usize,
     pub input_history: Vec<String>,
     pub history_index: Option<usize>,
+    pub peer_activity: HashMap<String, (String, Instant)>,
 }
 
 impl App {
@@ -35,6 +38,7 @@ impl App {
             unread_count: 0,
             input_history: Vec::new(),
             history_index: None,
+            peer_activity: HashMap::new(),
         }
     }
 
@@ -60,7 +64,15 @@ impl App {
         }
     }
 
+    pub fn update_activity(&mut self, peer: String, status: String) {
+        self.peer_activity.insert(peer, (status, Instant::now()));
+    }
+
     pub fn receive_message(&mut self, msg: Message) {
+        if msg.message_type.as_deref() == Some("activity") {
+            self.update_activity(msg.from, msg.text);
+            return;
+        }
         let was_at_bottom = self.scroll_offset == 0;
         self.messages.push(msg);
         if !was_at_bottom {
@@ -91,6 +103,20 @@ impl App {
         }
         if text == "/quit" {
             self.should_quit = true;
+            return None;
+        }
+        if text.starts_with('/') {
+            let msg = Message {
+                from: "bpmux".to_string(),
+                text: format!(
+                    "Unknown command: {}. Type /help for available commands.",
+                    text
+                ),
+                ts: Utc::now(),
+                message_type: None,
+            };
+            self.messages.push(msg);
+            self.input.clear();
             return None;
         }
         let msg = Message {
@@ -313,6 +339,20 @@ mod tests {
     }
 
     #[test]
+    fn unrecognized_command_adds_error_message_without_broadcast() {
+        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        app.input = "/foo".to_string();
+        let msg = app.submit_message();
+        assert!(msg.is_none());
+        assert!(app.input.is_empty());
+        assert_eq!(app.messages.len(), 1);
+        assert_eq!(app.messages[0].from, "bpmux");
+        assert!(app.messages[0].text.contains("Unknown command"));
+        assert!(app.messages[0].text.contains("/foo"));
+        assert!(app.messages[0].text.contains("/help"));
+    }
+
+    #[test]
     fn incoming_message_preserves_viewport_when_scrolled_up() {
         let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
         app.scroll_offset = 5;
@@ -324,5 +364,27 @@ mod tests {
         });
         assert_eq!(app.scroll_offset, 6);
         assert_eq!(app.messages.len(), 1);
+    }
+
+    #[test]
+    fn update_activity_adds_entry() {
+        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        app.update_activity("dev:claude-code".to_string(), "working".to_string());
+        assert!(app.peer_activity.contains_key("dev:claude-code"));
+        let (status, _) = &app.peer_activity["dev:claude-code"];
+        assert_eq!(status, "working");
+    }
+
+    #[test]
+    fn activity_message_does_not_appear_in_messages() {
+        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        app.receive_message(Message {
+            from: "dev:claude-code".to_string(),
+            text: "working".to_string(),
+            ts: Utc::now(),
+            message_type: Some("activity".to_string()),
+        });
+        assert!(app.messages.is_empty());
+        assert!(app.peer_activity.contains_key("dev:claude-code"));
     }
 }
