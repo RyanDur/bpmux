@@ -82,7 +82,8 @@ async fn run_ws_connection(
         let current_name = name.lock().await.clone();
         let mut tx = ws_tx_store.lock().await;
         if let Some(ref mut tx) = *tx {
-            let identify = json!({"type": "identify", "name": current_name}).to_string();
+            let identify = json!({"type": "identify", "name": current_name, "tool": "claude-code"})
+                .to_string();
             if let Err(e) = tx.send(tungstenite::Message::Text(identify.into())).await {
                 eprintln!("Bridge: failed to identify: {e}");
                 return;

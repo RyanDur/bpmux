@@ -7,7 +7,11 @@ use crate::session::Message;
 #[serde(tag = "type")]
 pub enum ClientMessage {
     #[serde(rename = "identify")]
-    Identify { name: String },
+    Identify {
+        name: String,
+        #[serde(default)]
+        tool: Option<String>,
+    },
     #[serde(rename = "send")]
     Send { text: String },
     #[serde(rename = "ping")]
@@ -49,11 +53,27 @@ mod tests {
     use super::*;
 
     #[test]
-    fn deserializes_identify() {
+    fn deserializes_identify_without_tool() {
         let json = r#"{"type": "identify", "name": "claude"}"#;
         let msg: ClientMessage = serde_json::from_str(json).expect("parse");
         match msg {
-            ClientMessage::Identify { name } => assert_eq!(name, "claude"),
+            ClientMessage::Identify { name, tool } => {
+                assert_eq!(name, "claude");
+                assert_eq!(tool, None);
+            }
+            other => panic!("expected Identify, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn deserializes_identify_with_tool() {
+        let json = r#"{"type": "identify", "name": "claude", "tool": "claude-code"}"#;
+        let msg: ClientMessage = serde_json::from_str(json).expect("parse");
+        match msg {
+            ClientMessage::Identify { name, tool } => {
+                assert_eq!(name, "claude");
+                assert_eq!(tool, Some("claude-code".to_string()));
+            }
             other => panic!("expected Identify, got {other:?}"),
         }
     }

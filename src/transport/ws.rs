@@ -32,8 +32,7 @@ async fn run_ws_session(
     mut rx: SplitStream<WebSocket>,
     session: Arc<session::Session>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let name = wait_for_identify(&mut tx, &mut rx).await?;
-    let mut identity = format!("{name}:ws");
+    let mut identity = wait_for_identify(&mut tx, &mut rx).await?;
     session.peer_connected();
     let mut broadcast_rx = session.subscribe();
     let mut heartbeat = tokio::time::interval(HEARTBEAT_INTERVAL);
@@ -105,7 +104,10 @@ async fn wait_for_identify(
         while let Some(Ok(msg)) = rx.next().await {
             if let WsMessage::Text(text) = msg {
                 match serde_json::from_str::<ClientMessage>(&text) {
-                    Ok(ClientMessage::Identify { name }) => return Ok(name),
+                    Ok(ClientMessage::Identify { name, tool }) => {
+                        let tool_name = tool.unwrap_or_else(|| "ws".to_string());
+                        return Ok(format!("{name}:{tool_name}"));
+                    }
                     Ok(_) => {
                         send_json(
                             tx,
@@ -167,7 +169,8 @@ async fn handle_client_message(
             send_json(tx, &ServerMessage::Pong).await?;
         }
         Ok(ClientMessage::Rename { name }) => {
-            return Ok(Some(format!("{name}:ws")));
+            let tool = identity.split(':').nth(1).unwrap_or("ws");
+            return Ok(Some(format!("{name}:{tool}")));
         }
         Ok(ClientMessage::Identify { .. }) => {
             send_json(
