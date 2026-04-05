@@ -33,33 +33,66 @@ fn sender_color(name: &str) -> Color {
     SENDER_PALETTE[sender_color_index(name)]
 }
 
-fn parse_mentions(text: &str) -> Vec<Span<'static>> {
-    let mut spans = Vec::new();
+fn parse_inline_code(text: &str) -> Vec<(String, bool)> {
+    let mut segments = Vec::new();
     let mut remaining = text;
-    while let Some(at_pos) = remaining.find('@') {
-        if at_pos > 0 {
-            spans.push(Span::raw(remaining[..at_pos].to_string()));
+    while let Some(open) = remaining.find('`') {
+        if open > 0 {
+            segments.push((remaining[..open].to_string(), false));
         }
-        let after_at = &remaining[at_pos + 1..];
-        let mention_end = after_at
-            .find(|c: char| !c.is_alphanumeric() && c != '-' && c != '_')
-            .unwrap_or(after_at.len());
-        if mention_end > 0 {
-            let mention = &remaining[at_pos..at_pos + 1 + mention_end];
-            spans.push(Span::styled(
-                mention.to_string(),
-                Style::default()
-                    .fg(Color::Rgb(139, 233, 253))
-                    .add_modifier(Modifier::BOLD),
-            ));
-            remaining = &remaining[at_pos + 1 + mention_end..];
+        let after_open = &remaining[open + 1..];
+        if let Some(close) = after_open.find('`') {
+            segments.push((after_open[..close].to_string(), true));
+            remaining = &after_open[close + 1..];
         } else {
-            spans.push(Span::raw(remaining[at_pos..at_pos + 1].to_string()));
-            remaining = &remaining[at_pos + 1..];
+            // No closing backtick — treat as literal
+            segments.push((remaining[open..open + 1].to_string(), false));
+            remaining = &remaining[open + 1..];
         }
     }
     if !remaining.is_empty() {
-        spans.push(Span::raw(remaining.to_string()));
+        segments.push((remaining.to_string(), false));
+    }
+    segments
+}
+
+fn parse_mentions(text: &str) -> Vec<Span<'static>> {
+    let inline_segments = parse_inline_code(text);
+    let mut spans = Vec::new();
+    for (segment, is_code) in inline_segments {
+        if is_code {
+            spans.push(Span::styled(
+                segment,
+                Style::default().fg(Color::Rgb(255, 184, 108)),
+            ));
+        } else {
+            let mut remaining = segment.as_str();
+            while let Some(at_pos) = remaining.find('@') {
+                if at_pos > 0 {
+                    spans.push(Span::raw(remaining[..at_pos].to_string()));
+                }
+                let after_at = &remaining[at_pos + 1..];
+                let mention_end = after_at
+                    .find(|c: char| !c.is_alphanumeric() && c != '-' && c != '_')
+                    .unwrap_or(after_at.len());
+                if mention_end > 0 {
+                    let mention = &remaining[at_pos..at_pos + 1 + mention_end];
+                    spans.push(Span::styled(
+                        mention.to_string(),
+                        Style::default()
+                            .fg(Color::Rgb(139, 233, 253))
+                            .add_modifier(Modifier::BOLD),
+                    ));
+                    remaining = &remaining[at_pos + 1 + mention_end..];
+                } else {
+                    spans.push(Span::raw(remaining[at_pos..at_pos + 1].to_string()));
+                    remaining = &remaining[at_pos + 1..];
+                }
+            }
+            if !remaining.is_empty() {
+                spans.push(Span::raw(remaining.to_string()));
+            }
+        }
     }
     spans
 }
@@ -148,8 +181,48 @@ pub fn render(frame: &mut Frame, app: &mut App) {
                     Style::default().fg(Color::Rgb(98, 114, 164)),
                 )));
             } else {
+                let code_style = Style::default()
+                    .fg(Color::Rgb(248, 248, 242))
+                    .bg(Color::Rgb(68, 71, 90));
                 let text_lines: Vec<&str> = msg.text.split('\n').collect();
+                let mut in_code_block = false;
                 for (li, text_line) in text_lines.iter().enumerate() {
+                    if text_line.trim() == "```"
+                        || text_line.trim().starts_with("```") && !in_code_block
+                    {
+                        in_code_block = !in_code_block;
+                        continue;
+                    }
+                    if in_code_block && text_line.trim().ends_with("```") {
+                        // Closing fence on same line as content — render content, then exit
+                        let content = text_line.trim().trim_end_matches("```");
+                        let mut spans = Vec::new();
+                        if li == 0 {
+                            if app.show_timestamps {
+                                let time = msg.ts.format("%H:%M:%S").to_string();
+                                spans.push(Span::styled(
+                                    format!("[{time}] "),
+                                    Style::default().fg(Color::Rgb(98, 114, 164)),
+                                ));
+                            }
+                            spans.push(Span::styled(
+                                format!("{short_name}: "),
+                                if is_human {
+                                    Style::default().fg(name_color).add_modifier(Modifier::BOLD)
+                                } else {
+                                    Style::default().fg(name_color)
+                                },
+                            ));
+                        }
+                        if !content.is_empty() {
+                            spans.push(Span::styled(format!("  {content}"), code_style));
+                        }
+                        if !spans.is_empty() {
+                            lines.push(Line::from(spans));
+                        }
+                        in_code_block = false;
+                        continue;
+                    }
                     let mut spans = Vec::new();
                     if li == 0 {
                         if app.show_timestamps {
@@ -167,10 +240,14 @@ pub fn render(frame: &mut Frame, app: &mut App) {
                                 Style::default().fg(name_color)
                             },
                         ));
-                    } else {
+                    } else if !in_code_block {
                         spans.push(Span::raw("  "));
                     }
-                    spans.extend(parse_mentions(text_line));
+                    if in_code_block {
+                        spans.push(Span::styled(format!("  {text_line}"), code_style));
+                    } else {
+                        spans.extend(parse_mentions(text_line));
+                    }
                     lines.push(Line::from(spans));
                 }
             }
@@ -712,6 +789,80 @@ mod tests {
             screen.contains("turn complete"),
             "System messages should appear when debug is on. Screen:\n{screen}"
         );
+    }
+
+    #[allow(clippy::unwrap_used)]
+    #[test]
+    fn message_with_code_block_renders_without_panic() {
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let mut app = App::new(
+            "dev".to_string(),
+            "test-id".to_string(),
+            vec![Message {
+                from: "dev:human".to_string(),
+                text: "before\n```\nlet x = 1;\n```\nafter".to_string(),
+                ts: Utc::now(),
+                message_type: None,
+            }],
+        );
+
+        terminal.draw(|frame| render(frame, &mut app)).unwrap();
+        let screen = buffer_to_string(terminal.backend().buffer());
+        assert!(
+            screen.contains("before"),
+            "Text before code block should render. Screen:\n{screen}"
+        );
+        assert!(
+            screen.contains("let x = 1;"),
+            "Code block content should render. Screen:\n{screen}"
+        );
+        assert!(
+            screen.contains("after"),
+            "Text after code block should render. Screen:\n{screen}"
+        );
+        assert!(
+            !screen.contains("```"),
+            "Fence markers should not render. Screen:\n{screen}"
+        );
+    }
+
+    #[test]
+    fn parse_inline_code_detects_backtick_spans() {
+        let segments = super::parse_inline_code("hello `code` world");
+        assert_eq!(segments.len(), 3);
+        assert_eq!(segments[0], ("hello ".to_string(), false));
+        assert_eq!(segments[1], ("code".to_string(), true));
+        assert_eq!(segments[2], (" world".to_string(), false));
+    }
+
+    #[test]
+    fn parse_inline_code_no_backticks() {
+        let segments = super::parse_inline_code("no code here");
+        assert_eq!(segments.len(), 1);
+        assert_eq!(segments[0], ("no code here".to_string(), false));
+    }
+
+    #[test]
+    fn parse_inline_code_unclosed_backtick_treated_as_literal() {
+        let segments = super::parse_inline_code("hello `unclosed");
+        assert_eq!(segments.len(), 3);
+        assert_eq!(segments[0], ("hello ".to_string(), false));
+        assert_eq!(segments[1], ("`".to_string(), false));
+        assert_eq!(segments[2], ("unclosed".to_string(), false));
+    }
+
+    #[test]
+    fn parse_mentions_styles_inline_code_with_orange() {
+        let spans = super::parse_mentions("use `cargo build` to compile");
+        assert_eq!(spans.len(), 3);
+        assert_eq!(spans[0].content, "use ");
+        assert_eq!(spans[1].content, "cargo build");
+        assert_eq!(
+            spans[1].style,
+            Style::default().fg(Color::Rgb(255, 184, 108))
+        );
+        assert_eq!(spans[2].content, " to compile");
     }
 
     fn buffer_to_string(buffer: &ratatui::buffer::Buffer) -> String {
