@@ -80,9 +80,12 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     ])
     .split(frame.area());
 
-    // Chat pane — only show chat messages
-    let chat_messages: Vec<&session::Message> =
-        app.messages.iter().filter(|m| m.is_chat()).collect();
+    // Chat pane — show chat messages (and system messages when debug is on)
+    let chat_messages: Vec<&session::Message> = app
+        .messages
+        .iter()
+        .filter(|m| m.is_chat() || app.show_system_messages)
+        .collect();
     let chat_inner_width = chunks[0].width.saturating_sub(2) as usize;
     let messages: Vec<Line> = chat_messages
         .iter()
@@ -664,6 +667,43 @@ mod tests {
             Style::default()
                 .fg(Color::Rgb(139, 233, 253))
                 .add_modifier(Modifier::BOLD)
+        );
+    }
+
+    #[allow(clippy::unwrap_used)]
+    #[test]
+    fn system_messages_visible_when_debug_on() {
+        let backend = TestBackend::new(80, 15);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let mut app = App::new(
+            "dev".to_string(),
+            "test-id".to_string(),
+            vec![
+                Message {
+                    from: "dev:human".to_string(),
+                    text: "visible chat".to_string(),
+                    ts: Utc::now(),
+                    message_type: None,
+                },
+                Message {
+                    from: "ryan:claude-code".to_string(),
+                    text: "[turn complete]".to_string(),
+                    ts: Utc::now(),
+                    message_type: Some("system".to_string()),
+                },
+            ],
+        );
+        app.show_system_messages = true;
+
+        terminal.draw(|frame| render(frame, &mut app)).unwrap();
+        let screen = buffer_to_string(terminal.backend().buffer());
+        assert!(
+            screen.contains("visible chat"),
+            "Chat messages should appear. Screen:\n{screen}"
+        );
+        assert!(
+            screen.contains("turn complete"),
+            "System messages should appear when debug is on. Screen:\n{screen}"
         );
     }
 
