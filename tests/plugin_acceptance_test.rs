@@ -186,9 +186,11 @@ fn send_claude_response_exits_cleanly_when_server_unavailable() {
 
 #[test]
 fn send_claude_response_produces_no_stdout() {
-    // The Stop hook should not produce stdout — it only curls the endpoint.
+    // The Stop hook should not produce stdout when no bpmux is running.
+    let tmp = tempfile::tempdir().unwrap();
     let output = Command::new("bash")
         .arg(send_claude_response_script())
+        .env("HOME", tmp.path())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
         .output()

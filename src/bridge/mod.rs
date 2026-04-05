@@ -127,10 +127,20 @@ async fn run_ws_connection(
                 }
                 drop(current_name);
 
-                // Buffer the message for read_messages
+                // Buffer ALL messages for read_messages (pull model)
                 messages_store.lock().await.push(format!("[{from}] {text}"));
 
-                // Signal-only notification — full content available via read_messages
+                // Only push notifications for human messages or @mentions of me
+                let current_name = name.lock().await;
+                let is_human = from.ends_with(":human");
+                let mentions_me = text.contains(&format!("@{}", current_name.as_str()));
+                drop(current_name);
+
+                if !is_human && !mentions_me {
+                    continue;
+                }
+
+                // Signal-only notification
                 let short_name = from.split(':').next().unwrap_or(&from);
                 let notification = CustomNotification::new(
                     "notifications/claude/channel",

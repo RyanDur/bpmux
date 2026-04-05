@@ -16,7 +16,7 @@ fn status_bar_shows_peer_count() {
     let bin = env!("CARGO_BIN_EXE_bpmux");
     let temp_dir = tempfile::TempDir::new().expect("temp dir");
     let session_base = temp_dir.path().to_str().expect("temp path");
-    let port = 14122;
+    let port = 14123;
 
     // 1. Start bpmux in a PTY
     let pty_system = native_pty_system();
