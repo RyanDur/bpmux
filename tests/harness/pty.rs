@@ -1,6 +1,7 @@
-//! PTY helpers: reading TUI output and running bpmux in a pseudo-terminal.
+//! PTY helpers: running bpmux in a pseudo-terminal and observing its TUI.
 
-use std::io::Read;
+use std::io::{Read, Write};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use portable_pty::{CommandBuilder, PtySize, native_pty_system};
@@ -8,58 +9,34 @@ use ratatui_testlib::ScreenState;
 
 use super::port::free_port;
 
-/// Read from `reader` until the rendered screen contains `target` or the
-/// timeout elapses. Returns the final screen contents and the raw bytes read.
-pub fn read_until_contains(
-    reader: &mut dyn Read,
-    target: &str,
-    timeout: Duration,
-) -> (String, Vec<u8>) {
-    let mut all_bytes = Vec::new();
-    let mut buf = [0u8; 4096];
-    let start = Instant::now();
-
-    loop {
-        if start.elapsed() >= timeout {
-            break;
-        }
-        match reader.read(&mut buf) {
-            Ok(0) => break,
-            Ok(n) => {
-                all_bytes.extend_from_slice(&buf[..n]);
-                let mut screen = ScreenState::new(80, 24);
-                screen.feed(&all_bytes);
-                if screen.contents().contains(target) {
-                    break;
-                }
-            }
-            Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                std::thread::sleep(Duration::from_millis(50));
-            }
-            Err(_) => break,
-        }
-        std::thread::sleep(Duration::from_millis(50));
-    }
-
-    let mut screen = ScreenState::new(80, 24);
-    screen.feed(&all_bytes);
-    (screen.contents(), all_bytes)
-}
-
-/// A running bpmux instance in a PTY, with output drained in the background.
+/// A running bpmux instance in a PTY.
 ///
-/// Uses a free port and a temporary session directory. Drops kill the
-/// process; the drainer thread exits when the PTY closes.
+/// The drainer thread continuously reads the PTY and feeds a shared
+/// `ScreenState` that tests can query via `wait_for_tui`. Without the
+/// drainer the PTY buffer fills and bpmux blocks on writes, which is
+/// what tests (and production) would experience with no terminal attached.
+///
+/// Uses a free port and a temporary session directory. Drop kills the
+/// process; the drainer exits when the PTY closes.
 pub struct TestBpmux {
     child: Box<dyn portable_pty::Child + Send + Sync>,
     _drainer: Option<std::thread::JoinHandle<()>>,
     _session_dir: tempfile::TempDir,
+    writer: Arc<Mutex<Box<dyn Write + Send>>>,
+    bytes: Arc<Mutex<Vec<u8>>>,
     port: u16,
 }
 
 impl TestBpmux {
-    /// Spawn bpmux and block until the TUI renders.
+    /// Spawn bpmux with the default identity ("human") and block until the
+    /// TUI renders.
     pub fn start() -> Self {
+        Self::start_named("human")
+    }
+
+    /// Spawn bpmux with a specific `--name` identity and block until the TUI
+    /// renders.
+    pub fn start_named(name: &str) -> Self {
         let bin = env!("CARGO_BIN_EXE_bpmux");
         let session_dir = tempfile::TempDir::new().expect("temp dir");
         let session_base = session_dir
@@ -81,7 +58,7 @@ impl TestBpmux {
 
         let mut cmd = CommandBuilder::new(bin);
         cmd.arg("--name");
-        cmd.arg("human");
+        cmd.arg(name);
         cmd.arg("--mcp-port");
         cmd.arg(port.to_string());
         cmd.arg("--session-base");
@@ -92,28 +69,70 @@ impl TestBpmux {
         drop(pair.slave);
 
         let mut reader = pair.master.try_clone_reader().expect("clone reader");
-        let (screen, _) = read_until_contains(&mut reader, "solo", Duration::from_secs(5));
-        assert!(screen.contains("solo"), "TUI should render");
+        let writer = pair.master.take_writer().expect("take writer");
 
+        let bytes: Arc<Mutex<Vec<u8>>> = Arc::new(Mutex::new(Vec::new()));
+        let bytes_feed = Arc::clone(&bytes);
         let drainer = std::thread::spawn(move || {
             let mut buf = [0u8; 4096];
             while let Ok(n) = reader.read(&mut buf) {
                 if n == 0 {
                     break;
                 }
+                bytes_feed
+                    .lock()
+                    .expect("bytes lock")
+                    .extend_from_slice(&buf[..n]);
             }
         });
 
-        Self {
+        let bpmux = Self {
             child,
             _drainer: Some(drainer),
             _session_dir: session_dir,
+            writer: Arc::new(Mutex::new(writer)),
+            bytes,
             port,
-        }
+        };
+        assert!(
+            bpmux.wait_for_tui("solo", Duration::from_secs(5)),
+            "TUI should render"
+        );
+        bpmux
     }
 
     pub fn port(&self) -> u16 {
         self.port
+    }
+
+    /// Poll the rendered TUI until it contains `target`. Returns true if
+    /// found within `timeout`, false otherwise.
+    pub fn wait_for_tui(&self, target: &str, timeout: Duration) -> bool {
+        let start = Instant::now();
+        while start.elapsed() < timeout {
+            if self.tui().contains(target) {
+                return true;
+            }
+            std::thread::sleep(Duration::from_millis(50));
+        }
+        false
+    }
+
+    /// Current TUI snapshot, rebuilt from accumulated bytes so callers
+    /// never catch the screen mid-redraw.
+    pub fn tui(&self) -> String {
+        let bytes = self.bytes.lock().expect("bytes lock");
+        let mut screen = ScreenState::new(80, 24);
+        screen.feed(&bytes);
+        screen.contents()
+    }
+
+    /// Type text into the TUI and press Enter, as a user would.
+    pub fn type_line(&self, text: &str) {
+        let mut w = self.writer.lock().expect("writer lock");
+        w.write_all(text.as_bytes()).expect("type text");
+        w.write_all(b"\r").expect("press enter");
+        w.flush().expect("flush");
     }
 }
 

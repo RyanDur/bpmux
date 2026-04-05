@@ -13,121 +13,30 @@
 
 mod harness;
 
-use harness::pty::read_until_contains;
-use portable_pty::{CommandBuilder, PtySize, native_pty_system};
-use std::io::Write;
+use harness::bridge::TestBridge;
+use harness::pty::TestBpmux;
 use std::time::Duration;
 
 #[test]
 fn messages_flow_through_bridge() {
-    let bin = env!("CARGO_BIN_EXE_bpmux");
-    let temp_dir = tempfile::TempDir::new().expect("temp dir");
-    let session_base = temp_dir.path().to_str().expect("temp path");
-    let port = harness::port::free_port();
-
-    // 1. Start bpmux in a PTY
-    let pty_system = native_pty_system();
-    let pair = pty_system
-        .openpty(PtySize {
-            rows: 24,
-            cols: 80,
-            pixel_width: 0,
-            pixel_height: 0,
-        })
-        .expect("openpty");
-
-    let mut cmd = CommandBuilder::new(bin);
-    cmd.arg("--name");
-    cmd.arg("dev");
-    cmd.arg("--mcp-port");
-    cmd.arg(port.to_string());
-    cmd.arg("--session-base");
-    cmd.arg(session_base);
-    cmd.env("TERM", "xterm-256color");
-
-    let mut child = pair.slave.spawn_command(cmd).expect("spawn bpmux");
-    drop(pair.slave);
-
-    let mut reader = pair.master.try_clone_reader().expect("clone reader");
-    let mut writer = pair.master.take_writer().expect("take writer");
-
-    // 2. Wait for TUI
-    let (screen, _) = read_until_contains(&mut reader, "solo", Duration::from_secs(5));
-    assert!(screen.contains("solo"), "TUI should render");
-
-    // 3. Start the bridge as a subprocess, connect as MCP client over stdio
+    let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
     rt.block_on(async {
-        use rmcp::ServiceExt;
-        use rmcp::transport::child_process::{ConfigureCommandExt, TokioChildProcess};
+        let bridge = TestBridge::connect(&bpmux, "bridge").await;
 
-        // Spawn bridge as child process — MCP over stdio
-        let child_process =
-            TokioChildProcess::new(tokio::process::Command::new(bin).configure(|cmd| {
-                cmd.arg("bridge").arg("--port").arg(port.to_string());
-            }))
-            .expect("spawn bridge");
+        bpmux.type_line("hello from human");
+        bridge
+            .wait_for_message("hello from human", Duration::from_secs(10))
+            .await;
 
-        // Connect as MCP client to the bridge
-        let client = ().serve(child_process).await.expect("MCP handshake with bridge");
+        bridge.send("hello from bridge").await;
 
-        // 4. Verify bridge exposes tools
-        let tools = client.peer().list_all_tools().await.expect("list tools");
-        let names: Vec<&str> = tools.iter().map(|t| t.name.as_ref()).collect();
-        assert!(
-            names.contains(&"send_message"),
-            "bridge should expose send_message tool: {names:?}"
-        );
-
-        // 5. Human types a message in TUI
-        writer.write_all(b"hello from human").expect("type message");
-        writer.write_all(b"\r").expect("press enter");
-
-        // 6. Read messages through bridge — retry until human's message appears
-        let _content = tokio::time::timeout(Duration::from_secs(10), async {
-            loop {
-                let params = rmcp::model::CallToolRequestParams::new("read_messages");
-                let result = client
-                    .peer()
-                    .call_tool(params)
-                    .await
-                    .expect("read_messages via bridge");
-                let content = format!("{result:?}");
-                if content.contains("hello from human") {
-                    return content;
-                }
-                tokio::time::sleep(Duration::from_millis(200)).await;
-            }
-        })
-        .await
-        .expect("Bridge should relay messages from bpmux within timeout");
-
-        // 7. Send a reply through the bridge
-        let mut params = rmcp::model::CallToolRequestParams::new("send_message");
-        params.arguments = serde_json::json!({"text": "hello from bridge"})
-            .as_object()
-            .cloned();
-        let result = client
-            .peer()
-            .call_tool(params)
-            .await
-            .expect("send_message via bridge");
-        assert!(
-            !result.is_error.unwrap_or(false),
-            "send_message should succeed"
-        );
-
-        client.cancel().await.expect("cleanup");
+        bridge.close().await;
     });
 
-    // 8. Verify bridge's message appears in TUI
-    let (screen, _) = read_until_contains(&mut reader, "hello from bridge", Duration::from_secs(5));
     assert!(
-        screen.contains("hello from bridge"),
-        "Bridge message should appear in TUI. Screen:\n{screen}"
+        bpmux.wait_for_tui("hello from bridge", Duration::from_secs(5)),
+        "Bridge message should appear in TUI. Screen:\n{}",
+        bpmux.tui()
     );
-
-    // Cleanup
-    let _ = child.kill();
-    let _ = child.wait();
 }

@@ -7,106 +7,28 @@
 
 mod harness;
 
-use harness::pty::read_until_contains;
-use portable_pty::{CommandBuilder, PtySize, native_pty_system};
+use harness::peer::WsPeer;
+use harness::pty::TestBpmux;
 use std::time::Duration;
 
 #[test]
 fn status_bar_shows_peer_count() {
-    let bin = env!("CARGO_BIN_EXE_bpmux");
-    let temp_dir = tempfile::TempDir::new().expect("temp dir");
-    let session_base = temp_dir.path().to_str().expect("temp path");
-    let port = harness::port::free_port();
+    let bpmux = TestBpmux::start();
+    assert!(
+        bpmux.tui().contains("solo"),
+        "TUI should start in solo mode"
+    );
 
-    // 1. Start bpmux in a PTY
-    let pty_system = native_pty_system();
-    let pair = pty_system
-        .openpty(PtySize {
-            rows: 24,
-            cols: 80,
-            pixel_width: 0,
-            pixel_height: 0,
-        })
-        .expect("openpty");
-
-    let mut cmd = CommandBuilder::new(bin);
-    cmd.arg("--name");
-    cmd.arg("dev");
-    cmd.arg("--mcp-port");
-    cmd.arg(port.to_string());
-    cmd.arg("--session-base");
-    cmd.arg(session_base);
-    cmd.env("TERM", "xterm-256color");
-
-    let mut child = pair.slave.spawn_command(cmd).expect("spawn bpmux");
-    drop(pair.slave);
-
-    let mut reader = pair.master.try_clone_reader().expect("clone reader");
-    let _writer = pair.master.take_writer().expect("take writer");
-
-    // 2. Wait for TUI — should show "solo"
-    let (screen, _) = read_until_contains(&mut reader, "solo", Duration::from_secs(5));
-    assert!(screen.contains("solo"), "TUI should show solo initially");
-
-    // 3. Connect a WebSocket client and identify
     let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
     rt.block_on(async {
-        use futures_util::{SinkExt, StreamExt};
-        use tokio_tungstenite::connect_async;
-
-        let ws_url = format!("ws://127.0.0.1:{port}/ws");
-
-        let ws_stream = tokio::time::timeout(Duration::from_secs(5), async {
-            loop {
-                match connect_async(&ws_url).await {
-                    Ok((stream, _)) => return stream,
-                    Err(_) => tokio::time::sleep(Duration::from_millis(100)).await,
-                }
-            }
-        })
-        .await
-        .expect("WebSocket should connect");
-
-        let (mut ws_tx, mut ws_rx) = ws_stream.split();
-
-        // Identify
-        ws_tx
-            .send(tokio_tungstenite::tungstenite::Message::Text(
-                serde_json::json!({"type": "identify", "name": "test-peer"})
-                    .to_string()
-                    .into(),
-            ))
-            .await
-            .expect("send identify");
-
-        // Read welcome
-        ws_rx.next().await.expect("receive").expect("welcome msg");
-
-        // 4. Wait for status bar to update while keeping WS alive
+        let _peer = WsPeer::connect(&bpmux, "test-peer").await;
+        // Keep the WebSocket alive long enough for the TUI to update.
         tokio::time::sleep(Duration::from_secs(2)).await;
     });
 
-    // Check after async block — peer may have disconnected but "1 connected" should have appeared
-    let (screen, _) = read_until_contains(&mut reader, "connected", Duration::from_secs(3));
-    // Accept any connected count — the peer was connected during the sleep
     assert!(
-        screen.contains("connected"),
-        "Status bar should have shown connected peers. Screen:\n{screen}"
+        bpmux.wait_for_tui("connected", Duration::from_secs(3)),
+        "Status bar should reflect a connected peer. Screen:\n{}",
+        bpmux.tui()
     );
-
-    // Drain PTY output so bpmux can exit when killed.
-    let mut drain_reader = pair.master.try_clone_reader().expect("clone reader 2");
-    let drainer = std::thread::spawn(move || {
-        let mut buf = [0u8; 4096];
-        while let Ok(n) = std::io::Read::read(&mut drain_reader, &mut buf) {
-            if n == 0 {
-                break;
-            }
-        }
-    });
-
-    // Cleanup
-    let _ = child.kill();
-    let _ = child.wait();
-    let _ = drainer.join();
 }

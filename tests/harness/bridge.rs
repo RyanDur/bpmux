@@ -66,6 +66,33 @@ impl TestBridge {
         .expect("bridge should become ready within timeout");
     }
 
+    /// Poll `read_messages` until the returned content contains `substring`,
+    /// or panic on timeout. Each poll consumes the unread buffer, so callers
+    /// should only assert substrings that haven't been consumed already.
+    pub async fn wait_for_message(&self, substring: &str, timeout: Duration) {
+        let result = tokio::time::timeout(timeout, async {
+            loop {
+                let params = rmcp::model::CallToolRequestParams::new("read_messages");
+                let result = self
+                    .client
+                    .peer()
+                    .call_tool(params)
+                    .await
+                    .expect("read_messages");
+                let text = format!("{result:?}");
+                if text.contains(substring) {
+                    return;
+                }
+                tokio::time::sleep(Duration::from_millis(200)).await;
+            }
+        })
+        .await;
+        assert!(
+            result.is_ok(),
+            "message containing {substring:?} not read within {timeout:?}"
+        );
+    }
+
     /// Cancel the MCP client, bounded so cleanup can't hang.
     pub async fn close(self) {
         let _ = tokio::time::timeout(Duration::from_secs(2), self.client.cancel()).await;
