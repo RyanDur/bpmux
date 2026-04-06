@@ -399,11 +399,20 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     for (peer, (status, updated_at)) in &peers {
         let short_name = peer.split(':').next().unwrap_or(peer);
         let stale = now.duration_since(*updated_at).as_secs() >= ACTIVITY_STALE_SECS;
-        let display_status = if stale { "idle" } else { status.as_str() };
-        let color = if stale {
-            Color::Rgb(98, 114, 164) // Dracula comment
+        let is_blocked = status.starts_with("blocked");
+        let display_status = if is_blocked {
+            status.as_str()
+        } else if stale {
+            "idle"
         } else {
-            Color::Rgb(80, 250, 123) // Dracula green
+            "busy"
+        };
+        let color = if is_blocked {
+            Color::Rgb(241, 250, 140) // Dracula yellow — blocked, needs attention
+        } else if stale {
+            Color::Rgb(98, 114, 164) // Dracula comment — idle
+        } else {
+            Color::Rgb(80, 250, 123) // Dracula green — busy
         };
         status_spans.push(Span::raw(" | "));
         status_spans.push(Span::styled(

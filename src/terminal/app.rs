@@ -193,6 +193,25 @@ impl App {
             self.update_activity(msg.from, msg.text);
             return;
         }
+        // Track peer activity from regular chat messages for busy/idle/blocked
+        if msg.is_chat() {
+            let peer = msg.from.clone();
+            if msg.text.starts_with("/status blocked") {
+                let reason = msg
+                    .text
+                    .strip_prefix("/status blocked")
+                    .unwrap_or("")
+                    .trim();
+                let status = if reason.is_empty() {
+                    "blocked".to_string()
+                } else {
+                    format!("blocked: {reason}")
+                };
+                self.update_activity(peer, status);
+            } else {
+                self.update_activity(peer, "busy".to_string());
+            }
+        }
         let was_at_bottom = self.scroll_offset == 0;
         self.messages.push(msg);
         if !was_at_bottom {
@@ -208,7 +227,7 @@ impl App {
         }
         if text == "/help" {
             let help = format!(
-                "Commands:\n  /to <who> <msg> — send to specific recipients (e.g. /to dev,pm hello)\n  /help     — show this help\n  /who      — list participants\n  /debug    — toggle system messages\n  /quit     — exit bpmux\n\nKeybindings:\n  Enter     — send message\n  Esc       — clear input\n  Ctrl+C    — clear input (empty: quit)\n  Ctrl+U/D  — scroll up/down\n  Ctrl+T    — toggle timestamps\n  PageUp/Dn — scroll\n\nSession: {}",
+                "Commands:\n  /to <who> <msg> — send to specific recipients (e.g. /to dev,pm hello)\n  /status blocked [reason] — declare yourself blocked\n  /help     — show this help\n  /who      — list participants\n  /debug    — toggle system messages\n  /quit     — exit bpmux\n\nKeybindings:\n  Enter     — send message\n  Esc       — clear input\n  Ctrl+C    — clear input (empty: quit)\n  Ctrl+U/D  — scroll up/down\n  Ctrl+T    — toggle timestamps\n  PageUp/Dn — scroll\n\nSession: {}",
                 self.session_id
             );
             let msg = Message {
@@ -270,6 +289,21 @@ impl App {
             self.messages.push(msg);
             self.clear_input();
             return None;
+        }
+        if text.starts_with("/status ") {
+            // Send as a regular message — the convention is parsed by receivers
+            let msg = Message {
+                from: format!("{}:human", self.peer_name),
+                text,
+                ts: Utc::now(),
+                message_type: None,
+                to: None,
+            };
+            self.messages.push(msg.clone());
+            self.clear_input();
+            self.scroll_offset = 0;
+            self.unread_count = 0;
+            return Some(msg);
         }
         if let Some(rest) = text.strip_prefix("/to ") {
             let rest = rest.trim_start();
