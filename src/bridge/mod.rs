@@ -127,7 +127,14 @@ async fn run_ws_connection(
     while let Some(Ok(frame)) = ws_rx.next().await {
         if let tungstenite::Message::Text(text) = frame {
             let msg: Result<ServerMessage, _> = serde_json::from_str(&text);
-            if let Ok(ServerMessage::Message { from, text, ts, .. }) = msg {
+            if let Ok(ServerMessage::Message {
+                from,
+                text,
+                ts,
+                message_type,
+                ..
+            }) = msg
+            {
                 // Don't forward our own messages back
                 let current_name = name.lock().await;
                 if from.contains(current_name.as_str()) {
@@ -136,12 +143,19 @@ async fn run_ws_connection(
                 }
                 drop(current_name);
 
-                // Buffer ALL messages for read_messages (pull model)
+                // Skip activity and system messages — they drive the TUI status
+                // bar only, not agent chat
+                let mt = message_type.as_deref();
+                if mt == Some("activity") || mt == Some("system") {
+                    continue;
+                }
+
+                // Buffer chat messages for read_messages (pull model)
                 messages_store.lock().await.push(format!("[{from}] {text}"));
 
-                // Push every non-self message. Agents need to see each other
-                // to collaborate; the @mention-only filter caused parallel
-                // monologues. Let data drive any future filtering.
+                // Push every non-self chat message. Agents need to see each
+                // other to collaborate; the @mention-only filter caused
+                // parallel monologues. Let data drive any future filtering.
                 let short_name = from.split(':').next().unwrap_or(&from);
                 let notification = CustomNotification::new(
                     "notifications/claude/channel",

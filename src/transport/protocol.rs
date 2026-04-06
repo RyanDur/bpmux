@@ -39,6 +39,8 @@ pub enum ServerMessage {
         ts: String,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         to: Option<Vec<String>>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        message_type: Option<String>,
     },
     #[serde(rename = "error")]
     Error { reason: String },
@@ -53,6 +55,7 @@ impl From<Message> for ServerMessage {
             text: msg.text,
             ts: msg.ts.to_rfc3339(),
             to: msg.to,
+            message_type: msg.message_type,
         }
     }
 }
