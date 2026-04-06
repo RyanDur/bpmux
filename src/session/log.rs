@@ -352,7 +352,12 @@ mod tests {
     #[test]
     fn saves_and_reads_handoff() {
         let dir = TempDir::new().expect("temp dir");
-        save_handoff(dir.path(), "dev", "Working on auth refactor. Tests passing.").expect("save");
+        save_handoff(
+            dir.path(),
+            "dev",
+            "Working on auth refactor. Tests passing.",
+        )
+        .expect("save");
         let handoff = read_handoff(dir.path(), "dev").expect("read");
         assert_eq!(
             handoff,
@@ -365,7 +370,9 @@ mod tests {
         let dir = TempDir::new().expect("temp dir");
         let long_text: String = "x".repeat(600);
         save_handoff(dir.path(), "dev", &long_text).expect("save");
-        let handoff = read_handoff(dir.path(), "dev").expect("read").expect("some");
+        let handoff = read_handoff(dir.path(), "dev")
+            .expect("read")
+            .expect("some");
         assert_eq!(handoff.len(), 500);
     }
 
