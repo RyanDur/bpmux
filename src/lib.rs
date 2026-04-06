@@ -120,34 +120,37 @@ pub fn run() -> anyhow::Result<()> {
     let server_port = cli.mcp_port;
     let ct = CancellationToken::new();
     let server_ct = ct.clone();
-    std::thread::spawn(move || {
-        let Ok(rt) = tokio::runtime::Runtime::new() else {
-            eprintln!("Failed to create server tokio runtime");
-            return;
-        };
-        rt.block_on(async move {
+
+    // Single tokio runtime for both server and TUI.
+    // The TUI uses crossterm's EventStream (async) so it can select!
+    // over both terminal events and broadcast messages — zero-latency
+    // message delivery with no polling.
+    let rt = tokio::runtime::Runtime::new()?;
+    let result = rt.block_on(async {
+        tokio::spawn(async move {
             if let Err(e) =
                 server::run_server(server_session, server_name, server_port, server_ct).await
             {
                 eprintln!("Server error: {e}");
             }
         });
-    });
 
-    // Enable mouse capture and focus tracking
-    crossterm::execute!(
-        std::io::stdout(),
-        crossterm::event::EnableMouseCapture,
-        crossterm::event::EnableFocusChange,
-    )?;
-    let mut terminal = ratatui::init();
-    let result = terminal::run_tui(&mut terminal, &mut app, &session, &mut wake_rx);
-    ratatui::restore();
-    crossterm::execute!(
-        std::io::stdout(),
-        crossterm::event::DisableMouseCapture,
-        crossterm::event::DisableFocusChange,
-    )?;
+        // Enable mouse capture and focus tracking
+        crossterm::execute!(
+            std::io::stdout(),
+            crossterm::event::EnableMouseCapture,
+            crossterm::event::EnableFocusChange,
+        )?;
+        let mut terminal = ratatui::init();
+        let result = terminal::run_tui(&mut terminal, &mut app, &session, &mut wake_rx).await;
+        ratatui::restore();
+        crossterm::execute!(
+            std::io::stdout(),
+            crossterm::event::DisableMouseCapture,
+            crossterm::event::DisableFocusChange,
+        )?;
+        result
+    });
 
     result.map_err(|e| anyhow::anyhow!("{e}"))
 }
