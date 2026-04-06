@@ -904,68 +904,45 @@ impl App {
             }
         }
 
-        // Board width for centering and rules
-        const BOARD_WIDTH: usize = 40;
-        let rule = "━".repeat(BOARD_WIDTH);
-
         let mut lines: Vec<String> = Vec::new();
-        lines.push(format!("━━ Board {}", "━".repeat(BOARD_WIDTH - 9)));
+        lines.push("## Board".to_string());
 
         if !active.is_empty() {
-            lines.push(format!(" ● Active ({})", active.len()));
+            lines.push(String::new());
+            lines.push(format!("### ● Active ({})", active.len()));
             for item in &active {
                 let status_tag = item
                     .status
                     .as_ref()
-                    .map(|s| format!(" ✓ {s}"))
+                    .map(|s| format!(" *{s}*"))
                     .unwrap_or_default();
-                let max_title = BOARD_WIDTH - 8 - status_tag.len();
-                let display_title = if item.title.len() > max_title {
-                    format!("{}…", &item.title[..max_title.saturating_sub(1)])
-                } else {
-                    item.title.clone()
-                };
-                lines.push(format!("   #{} {display_title}{status_tag}", item.number));
+                lines.push(format!("- **#{}** {}{status_tag}", item.number, item.title));
             }
         }
 
         if !backlog.is_empty() {
             lines.push(String::new());
-            lines.push(format!(" ○ Backlog ({})", backlog.len()));
+            lines.push(format!("### ○ Backlog ({})", backlog.len()));
             for item in backlog.iter().take(10) {
-                let max_title = BOARD_WIDTH - 8;
-                let display_title = if item.title.len() > max_title {
-                    format!("{}…", &item.title[..max_title.saturating_sub(1)])
-                } else {
-                    item.title.clone()
-                };
-                lines.push(format!("   #{} {display_title}", item.number));
+                lines.push(format!("- **#{}** {}", item.number, item.title));
             }
             if backlog.len() > 10 {
-                lines.push(format!("   +{} more", backlog.len() - 10));
+                lines.push(format!("- *+{} more*", backlog.len() - 10));
             }
         }
 
         if !icebox.is_empty() {
             lines.push(String::new());
-            lines.push(format!(" ◌ Icebox ({})", icebox.len()));
+            lines.push(format!("### ◌ Icebox ({})", icebox.len()));
             if let Some(first) = icebox.first() {
-                let max_title = BOARD_WIDTH - 8;
-                let display_title = if first.title.len() > max_title {
-                    format!("{}…", &first.title[..max_title.saturating_sub(1)])
-                } else {
-                    first.title.clone()
-                };
-                lines.push(format!("   #{} {display_title}", first.number));
+                lines.push(format!("- **#{}** {}", first.number, first.title));
             }
             if icebox.len() > 1 {
-                lines.push(format!("   +{} more", icebox.len() - 1));
+                lines.push(format!("- *+{} more*", icebox.len() - 1));
             }
         }
 
-        lines.push(rule);
-
-        if lines.len() <= 2 {
+        if lines.len() <= 1 {
             Ok("No open issues found.".to_string())
         } else {
             Ok(lines.join("\n"))
