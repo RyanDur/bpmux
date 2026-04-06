@@ -121,11 +121,39 @@ impl TestBpmux {
         self.screen.lock().expect("screen lock").contents()
     }
 
+    /// Type characters into the TUI without pressing Enter.
+    pub fn type_chars(&self, text: &str) {
+        let mut w = self.writer.lock().expect("writer lock");
+        w.write_all(text.as_bytes()).expect("type text");
+        w.flush().expect("flush");
+    }
+
     /// Type text into the TUI and press Enter, as a user would.
     pub fn type_line(&self, text: &str) {
         let mut w = self.writer.lock().expect("writer lock");
         w.write_all(text.as_bytes()).expect("type text");
         w.write_all(b"\r").expect("press enter");
+        w.flush().expect("flush");
+    }
+
+    /// Send mouse scroll-up events through the PTY (SGR mouse protocol).
+    /// Each call sends `count` scroll-up events at position (col=10, row=10).
+    pub fn mouse_scroll_up(&self, count: usize) {
+        let mut w = self.writer.lock().expect("writer lock");
+        for _ in 0..count {
+            // SGR: \x1b[<64;col;rowM = scroll up (button 64)
+            w.write_all(b"\x1b[<64;10;10M").expect("scroll up");
+        }
+        w.flush().expect("flush");
+    }
+
+    /// Send mouse scroll-down events through the PTY (SGR mouse protocol).
+    pub fn mouse_scroll_down(&self, count: usize) {
+        let mut w = self.writer.lock().expect("writer lock");
+        for _ in 0..count {
+            // SGR: \x1b[<65;col;rowM = scroll down (button 65)
+            w.write_all(b"\x1b[<65;10;10M").expect("scroll down");
+        }
         w.flush().expect("flush");
     }
 }

@@ -1,13 +1,13 @@
 use ratatui::{
     Frame,
-    layout::{Constraint, Layout},
+    layout::{Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph, Wrap},
+    widgets::{Block, Borders, Clear, Paragraph, Wrap},
 };
 
 use crate::session;
-use crate::terminal::app::App;
+use crate::terminal::app::{self, App};
 
 const SENDER_PALETTE: [Color; 6] = [
     Color::Rgb(139, 233, 253), // Dracula cyan
@@ -120,11 +120,24 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     ])
     .split(frame.area());
 
-    // Chat pane — show chat messages (and system messages when debug is on)
+    // Chat pane — show chat messages (and system messages when debug is on),
+    // filtered by current_view when set.
     let chat_messages: Vec<&session::Message> = app
         .messages
         .iter()
-        .filter(|m| m.is_chat() || app.show_system_messages)
+        .filter(|m| {
+            if !m.is_chat() {
+                return app.show_system_messages;
+            }
+            // Local system messages (from "bpmux") always pass the view filter
+            if m.from == "bpmux" {
+                return true;
+            }
+            match &app.current_view {
+                None => true,
+                Some(view) => app::channel_name(m) == *view,
+            }
+        })
         .collect();
     let chat_inner_width = chunks[0].width.saturating_sub(2) as usize;
     let chat_height = chunks[0].height.saturating_sub(2) as usize;
@@ -332,8 +345,26 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     let chat = chat.scroll((scroll, 0));
     frame.render_widget(chat, chunks[0]);
 
-    // Input pane
-    let input = Paragraph::new(app.input.as_str())
+    // Input pane — with syntax coloring for slash commands
+    let input_line = if app.input.starts_with('/') {
+        // Color the command keyword differently from the arguments
+        let cmd_end = app.input.find(' ').unwrap_or(app.input.len());
+        let cmd = &app.input[..cmd_end];
+        let rest = &app.input[cmd_end..];
+        Line::from(vec![
+            Span::styled(
+                cmd.to_string(),
+                Style::default().fg(Color::Rgb(189, 147, 249)), // Dracula purple
+            ),
+            Span::styled(
+                rest.to_string(),
+                Style::default().fg(Color::Rgb(248, 248, 242)), // Default fg
+            ),
+        ])
+    } else {
+        Line::from(app.input.as_str())
+    };
+    let input = Paragraph::new(input_line)
         .block(
             Block::default()
                 .borders(Borders::ALL)
@@ -361,6 +392,55 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     };
     frame.set_cursor_position((cursor_x, cursor_y));
 
+    // Command autocomplete popup — shown when input starts with `/`
+    let matches = app.popup_matches();
+    if !matches.is_empty() {
+        let popup_height = matches.len() as u16 + 2; // +2 for borders
+        let popup_width = 40u16.min(chunks[1].width);
+        // Position popup above the input pane
+        let popup_y = chunks[1].y.saturating_sub(popup_height);
+        let popup_area = Rect::new(chunks[1].x, popup_y, popup_width, popup_height);
+
+        let items: Vec<Line> = matches
+            .iter()
+            .enumerate()
+            .map(|(i, (cmd, desc))| {
+                let selected = app.popup_selected == Some(i);
+                let (cmd_style, desc_style) = if selected {
+                    (
+                        Style::default()
+                            .fg(Color::Rgb(248, 248, 242))
+                            .bg(Color::Rgb(68, 71, 90)),
+                        Style::default()
+                            .fg(Color::Rgb(189, 147, 249))
+                            .bg(Color::Rgb(68, 71, 90)),
+                    )
+                } else {
+                    (
+                        Style::default().fg(Color::Rgb(189, 147, 249)),
+                        Style::default().fg(Color::Rgb(98, 114, 164)),
+                    )
+                };
+                Line::from(vec![
+                    Span::styled(format!(" {cmd:<10}"), cmd_style),
+                    Span::styled((*desc).to_string(), desc_style),
+                ])
+            })
+            .collect();
+        let popup = Paragraph::new(items).block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::Rgb(98, 114, 164)))
+                .style(
+                    Style::default()
+                        .bg(Color::Rgb(40, 42, 54))
+                        .fg(Color::Rgb(248, 248, 242)),
+                ),
+        );
+        frame.render_widget(Clear, popup_area);
+        frame.render_widget(popup, popup_area);
+    }
+
     // Status bar
     let connection_status = if app.connected_peers == 0 {
         Span::styled(" solo", Style::default().fg(Color::Rgb(255, 184, 108)))
@@ -370,15 +450,35 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             Style::default().fg(Color::Rgb(80, 250, 123)),
         )
     };
-    let channel_count = app.active_channels.len();
-    let channel_label = match channel_count {
-        0 => String::new(),
-        1 => " \u{00B7} 1 channel".to_string(),
-        n => format!(" \u{00B7} {n} channels"),
+    let is_broadcast_view = app.current_view.as_deref() == Some("broadcast");
+    let (view_label, channel_label) = if is_broadcast_view {
+        let side_convos = app
+            .active_channels
+            .iter()
+            .filter(|ch| *ch != "broadcast")
+            .count();
+        let label = format!(
+            " \u{00B7} {} side convo{} \u{00B7} /view all",
+            side_convos,
+            if side_convos == 1 { "" } else { "s" }
+        );
+        (" [broadcast]".to_string(), label)
+    } else {
+        let channel_count = app.active_channels.len();
+        let label = match channel_count {
+            0 => String::new(),
+            1 => " \u{00B7} 1 channel".to_string(),
+            n => format!(" \u{00B7} {n} channels"),
+        };
+        let view = match &app.current_view {
+            None => " [all]".to_string(),
+            Some(v) => format!(" [{v}]"),
+        };
+        (view, label)
     };
     let mut status_spans = vec![
         Span::styled(
-            " [all]",
+            view_label,
             Style::default().fg(Color::Rgb(139, 233, 253)), // Dracula cyan
         ),
         Span::styled(

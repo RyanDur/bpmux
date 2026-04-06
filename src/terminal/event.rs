@@ -1,4 +1,4 @@
-use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
+use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers, MouseEventKind};
 use ratatui::DefaultTerminal;
 use tokio::sync::broadcast;
 
@@ -64,6 +64,22 @@ pub fn run_tui(
         }
         loop {
             let ev = event::read()?;
+            // Handle mouse scroll events
+            if let Event::Mouse(mouse) = &ev {
+                match mouse.kind {
+                    MouseEventKind::ScrollUp => {
+                        app.scroll_up(3);
+                    }
+                    MouseEventKind::ScrollDown => {
+                        app.scroll_down(3);
+                    }
+                    _ => {}
+                }
+                if !event::poll(std::time::Duration::ZERO)? {
+                    break;
+                }
+                continue;
+            }
             let Event::Key(key) = ev else {
                 break;
             };
@@ -73,7 +89,26 @@ pub fn run_tui(
                 }
                 continue;
             }
+            // When popup is visible, intercept navigation keys
+            let popup_open = app.popup_visible();
             match key.code {
+                // Popup navigation — Up/Down move selection, Tab/Enter accept
+                KeyCode::Up if key.modifiers.is_empty() && popup_open => {
+                    app.popup_up();
+                }
+                KeyCode::Down if key.modifiers.is_empty() && popup_open => {
+                    app.popup_down();
+                }
+                KeyCode::Tab if popup_open && app.popup_selected.is_some() => {
+                    app.popup_accept();
+                }
+                KeyCode::Enter if popup_open && app.popup_selected.is_some() => {
+                    app.popup_accept();
+                }
+                KeyCode::Esc if popup_open => {
+                    app.popup_dismiss();
+                    app.clear_input();
+                }
                 KeyCode::Enter => {
                     if app.input.is_empty() {
                         app.toggle_last_truncated();
@@ -148,7 +183,12 @@ pub fn run_tui(
                     app.move_word_right();
                 }
                 KeyCode::Tab => {
-                    app.tab_complete();
+                    if popup_open {
+                        // Start popup selection at first item
+                        app.popup_down();
+                    } else {
+                        app.tab_complete();
+                    }
                 }
                 KeyCode::Char(c) => {
                     app.insert_char(c);

@@ -74,6 +74,19 @@ http://127.0.0.1:4117/mcp
 --session-base <PATH>  Session directory (default: ~/.bpmux/sessions)
 ```
 
+## Directed Messaging
+
+Send messages to specific participants:
+
+```
+/to dev hello                   → DM to dev
+/to dev,designer let's discuss  → group message to dev + designer
+```
+
+Messages without `/to` broadcast to everyone. The TUI tags each message with its channel: `[broadcast]`, `[you↔dev]`, `[dev+designer+pm]`.
+
+Tab completion works after `/to` — type a few characters and press Tab.
+
 ## TUI Keybindings
 
 | Key | Action |
@@ -83,8 +96,82 @@ http://127.0.0.1:4117/mcp
 | Ctrl+D | Scroll down (half page) |
 | PageUp/PageDown | Scroll up/down |
 | Ctrl+T | Toggle timestamps |
+| Tab | Complete recipient name after `/to` |
 | Esc | Quit |
 | /quit | Quit |
+
+## Team Development Setup
+
+bpmux uses a hub-and-spoke workspace model. The shared repo (`bpmux/`) holds all code, docs, and team norms. Each AI role gets its own Claude Code workspace (`bpmux-dev/`, `bpmux-pm/`, `bpmux-designer/`) with its own `.mcp.json` and `CLAUDE.md`.
+
+**Why separate workspaces?** Each AI agent accumulates context and memory specific to its role — dev learns about architecture, PM learns about backlog priorities, designer learns about UX conventions. Separate workspaces keep this context naturally segregated. Anything that needs to be shared lives in the repo or in the bpmux chat log, not in any single agent's memory.
+
+### Directory structure
+
+```
+IdeaProjects/
+├── bpmux/              # Shared repo — code, docs, roles, norms
+├── bpmux-dev/          # Dev workspace (Claude Code)
+│   ├── .mcp.json       # Bridge connection config
+│   └── CLAUDE.md       # Dev-specific instructions
+├── bpmux-pm/           # PM workspace (Claude Code)
+│   ├── .mcp.json
+│   └── CLAUDE.md
+└── bpmux-designer/     # Designer workspace (Claude Code)
+    ├── .mcp.json
+    └── CLAUDE.md
+```
+
+### Setting up a new role workspace
+
+1. Create the workspace directory next to `bpmux/`:
+   ```bash
+   mkdir bpmux-{role}
+   ```
+
+2. Add a `.mcp.json` that connects to the bridge:
+   ```json
+   {
+     "mcpServers": {
+       "bpmux-bridge": {
+         "type": "stdio",
+         "command": "cargo",
+         "args": ["run", "--manifest-path", "../bpmux/Cargo.toml", "--", "bridge", "--port", "4200", "--name", "your-role"]
+       }
+     }
+   }
+   ```
+
+3. Add a `CLAUDE.md` that points to the shared repo:
+   ```markdown
+   # bpmux-{role} workspace
+   Read these first:
+   1. `../bpmux/welcome.md` — team values and norms
+   2. `../bpmux/roles/{role}.md` — your role contract
+   3. `../bpmux/AGENT_WORKFLOW.md` — how we work
+   ```
+
+4. Launch Claude Code in the workspace with the bridge:
+   ```bash
+   cd bpmux-{role}
+   claude --dangerously-load-development-channels server:bpmux-bridge
+   ```
+
+### Running a team session
+
+1. Start bpmux in one terminal:
+   ```bash
+   cd bpmux && cargo run -- --name ryan
+   ```
+
+2. Launch each agent in its own terminal:
+   ```bash
+   cd bpmux-dev && claude --dangerously-load-development-channels server:bpmux-bridge
+   cd bpmux-pm && claude --dangerously-load-development-channels server:bpmux-bridge
+   cd bpmux-designer && claude --dangerously-load-development-channels server:bpmux-bridge
+   ```
+
+3. All participants see each other in the TUI. Messages persist in the JSONL log.
 
 ## Claude Code Plugin
 
@@ -102,7 +189,9 @@ claude --plugin-dir ./claude-plugin --dangerously-load-development-channels serv
 
 ## Architecture
 
-Organized by bounded context (App Continuum):
+Organized by bounded context (App Continuum). Each directory owns one concern — no cross-boundary imports except through explicit interfaces.
+
+**Why bounded contexts?** bpmux is a message bus with multiple integration surfaces (TUI, HTTP/MCP, WebSocket, stdio bridge). Organizing by technical layer (models/, views/, controllers/) would scatter each integration across the entire tree. Bounded contexts keep each integration self-contained, so changes to the MCP interface don't touch the TUI.
 
 ```
 src/session/    — Session state, message log, JSONL persistence

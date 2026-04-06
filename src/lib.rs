@@ -91,9 +91,12 @@ pub fn run() -> anyhow::Result<()> {
         });
     });
 
+    // Enable mouse capture for scroll wheel support
+    crossterm::execute!(std::io::stdout(), crossterm::event::EnableMouseCapture)?;
     let mut terminal = ratatui::init();
     let result = terminal::run_tui(&mut terminal, &mut app, &session, &mut wake_rx);
     ratatui::restore();
+    crossterm::execute!(std::io::stdout(), crossterm::event::DisableMouseCapture)?;
 
     result.map_err(|e| anyhow::anyhow!("{e}"))
 }

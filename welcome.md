@@ -48,6 +48,7 @@ Regardless of role, these apply to every participant:
 - **Reactive over proactive.** Answer when asked. Don't narrate.
 - **Allocated turns.** If the owner addresses someone by name, that person answers. Others wait.
 - **Open turns.** Domain lead answers first (PM for product, designer for UX, dev for technical). Others add only with new information.
+- **Restate before acting.** When you receive an instruction, briefly restate what you understood before beginning work. If anything is unclear, ask before acting.
 
 ## Where to look
 

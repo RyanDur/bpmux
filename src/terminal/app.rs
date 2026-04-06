@@ -5,14 +5,38 @@ use std::time::Instant;
 
 const MAX_HISTORY: usize = 50;
 
-/// Normalize a message's `to` field into a channel key for deduplication.
-/// `None` = broadcast channel. `Some(sorted_recipients)` = directed channel.
-fn normalize_channel(to: &Option<Vec<String>>) -> Option<Vec<String>> {
-    to.as_ref().map(|recipients| {
-        let mut sorted = recipients.clone();
-        sorted.sort();
-        sorted
-    })
+/// Registered slash commands with brief descriptions for the popup.
+pub const SLASH_COMMANDS: &[(&str, &str)] = &[
+    ("/to", "send to recipients"),
+    ("/view", "filter view by channel"),
+    ("/status", "declare your status"),
+    ("/help", "show this help"),
+    ("/who", "list participants"),
+    ("/debug", "toggle system messages"),
+    ("/quit", "exit bpmux"),
+];
+
+/// Compute the display name for a message's channel.
+/// Returns "broadcast" for `None` / `["all"]`, "a↔b" for 2-person DMs,
+/// "a+b+c" for groups. The sender is included in directed channels.
+pub fn channel_name(msg: &crate::session::Message) -> String {
+    match &msg.to {
+        None => "broadcast".to_string(),
+        Some(recipients) if recipients.iter().any(|r| r == "all") => "broadcast".to_string(),
+        Some(recipients) => {
+            let sender_short = msg.from.split(':').next().unwrap_or(&msg.from);
+            let mut names: Vec<&str> = recipients.iter().map(|s| s.as_str()).collect();
+            if !names.contains(&sender_short) {
+                names.push(sender_short);
+            }
+            names.sort();
+            if names.len() == 2 {
+                format!("{}\u{2194}{}", names[0], names[1])
+            } else {
+                names.join("+")
+            }
+        }
+    }
 }
 
 pub struct App {
@@ -37,16 +61,21 @@ pub struct App {
     pub dm_unread_from: Vec<String>,
     /// When set, the status bar flashes yellow until this instant passes.
     pub dm_flash_until: Option<Instant>,
-    /// Distinct channels seen this session. `None` = broadcast, `Some(sorted_recipients)` = directed.
-    pub active_channels: HashSet<Option<Vec<String>>>,
+    /// Distinct channel names seen this session (e.g. "broadcast", "dev↔human", "dev+human+pm").
+    pub active_channels: HashSet<String>,
+    /// Current view filter. `None` = all, `Some("broadcast")` = broadcast only,
+    /// `Some("a↔b")` or `Some("a+b+c")` = specific directed channel.
+    pub current_view: Option<String>,
+    /// Selected index in the command autocomplete popup. `None` = nothing selected.
+    pub popup_selected: Option<usize>,
 }
 
 impl App {
     pub fn new(peer_name: String, session_id: String, messages: Vec<Message>) -> Self {
-        let mut active_channels: HashSet<Option<Vec<String>>> = HashSet::new();
+        let mut active_channels: HashSet<String> = HashSet::new();
         for msg in &messages {
             if msg.is_chat() {
-                active_channels.insert(normalize_channel(&msg.to));
+                active_channels.insert(channel_name(msg));
             }
         }
         Self {
@@ -70,12 +99,15 @@ impl App {
             dm_unread_from: Vec::new(),
             dm_flash_until: None,
             active_channels,
+            current_view: None,
+            popup_selected: None,
         }
     }
 
     pub fn insert_char(&mut self, c: char) {
         self.input.insert(self.cursor_pos, c);
         self.cursor_pos += c.len_utf8();
+        self.popup_selected = None;
     }
 
     pub fn delete_char(&mut self) {
@@ -87,6 +119,7 @@ impl App {
                 .unwrap_or(0);
             self.input.remove(prev);
             self.cursor_pos = prev;
+            self.popup_selected = None;
         }
     }
 
@@ -228,7 +261,7 @@ impl App {
         }
         // Track active channels
         if msg.is_chat() {
-            self.active_channels.insert(normalize_channel(&msg.to));
+            self.active_channels.insert(channel_name(&msg));
         }
         // Track peer presence and self-declared status
         if msg.is_chat() {
@@ -277,7 +310,7 @@ impl App {
         }
         if text == "/help" {
             let help = format!(
-                "Commands:\n  /to <who> <msg> — send to specific recipients (e.g. /to dev,pm hello)\n  /status blocked [reason] — declare yourself blocked\n  /help     — show this help\n  /who      — list participants\n  /debug    — toggle system messages\n  /quit     — exit bpmux\n\nKeybindings:\n  Enter     — send message\n  Esc       — clear input\n  Ctrl+C    — clear input (empty: quit)\n  Ctrl+U/D  — scroll up/down\n  Ctrl+T    — toggle timestamps\n  PageUp/Dn — scroll\n\nSession: {}",
+                "Commands:\n  /to <who> <msg> — send to specific recipients (e.g. /to dev,pm hello)\n  /view [channel] — filter view (broadcast, all, dev\u{2194}human, etc.)\n  /status blocked [reason] — declare yourself blocked\n  /help     — show this help\n  /who      — list participants\n  /debug    — toggle system messages\n  /quit     — exit bpmux\n\nKeybindings:\n  Enter     — send message\n  Esc       — clear input\n  Ctrl+C    — clear input (empty: quit)\n  Ctrl+U/D  — scroll up/down\n  Ctrl+T    — toggle timestamps\n  PageUp/Dn — scroll\n\nSession: {}",
                 self.session_id
             );
             let msg = Message {
@@ -432,6 +465,84 @@ impl App {
             self.clear_input();
             return None;
         }
+        if text == "/view" {
+            // List available channels
+            let mut channel_names: Vec<&str> =
+                self.active_channels.iter().map(|s| s.as_str()).collect();
+            channel_names.sort();
+            let list = if channel_names.is_empty() {
+                "No channels yet.".to_string()
+            } else {
+                format!("Available channels: {}", channel_names.join(", "))
+            };
+            let msg = Message {
+                from: "bpmux".to_string(),
+                text: list,
+                ts: Utc::now(),
+                message_type: None,
+                to: None,
+            };
+            self.messages.push(msg);
+            self.clear_input();
+            return None;
+        }
+        if let Some(arg) = text.strip_prefix("/view ") {
+            let arg = arg.trim();
+            if arg == "all" {
+                self.current_view = None;
+                self.scroll_offset = 0;
+                let msg = Message {
+                    from: "bpmux".to_string(),
+                    text: "View set to all channels.".to_string(),
+                    ts: Utc::now(),
+                    message_type: None,
+                    to: None,
+                };
+                self.messages.push(msg);
+                self.clear_input();
+                return None;
+            }
+            if arg == "broadcast" {
+                self.current_view = Some("broadcast".to_string());
+                self.scroll_offset = 0;
+                let msg = Message {
+                    from: "bpmux".to_string(),
+                    text: "View set to broadcast.".to_string(),
+                    ts: Utc::now(),
+                    message_type: None,
+                    to: None,
+                };
+                self.messages.push(msg);
+                self.clear_input();
+                return None;
+            }
+            // Check if arg matches a known channel
+            if self.active_channels.contains(arg) {
+                self.current_view = Some(arg.to_string());
+                self.scroll_offset = 0;
+                let msg = Message {
+                    from: "bpmux".to_string(),
+                    text: format!("View set to {arg}."),
+                    ts: Utc::now(),
+                    message_type: None,
+                    to: None,
+                };
+                self.messages.push(msg);
+                self.clear_input();
+                return None;
+            }
+            // No match
+            let msg = Message {
+                from: "bpmux".to_string(),
+                text: format!("no channel matches \"{arg}\". Type /view to list channels."),
+                ts: Utc::now(),
+                message_type: None,
+                to: None,
+            };
+            self.messages.push(msg);
+            self.clear_input();
+            return None;
+        }
         if text.starts_with('/') {
             let msg = Message {
                 from: "bpmux".to_string(),
@@ -499,6 +610,69 @@ impl App {
         self.input = format!("/to {}{} ", prefix_part, completed);
         self.cursor_pos = self.input.len();
         true
+    }
+
+    /// Returns the filtered list of slash commands matching current input.
+    pub fn popup_matches(&self) -> Vec<(&'static str, &'static str)> {
+        if !self.input.starts_with('/') || self.input.contains(' ') {
+            return vec![];
+        }
+        let typed = self.input.split_whitespace().next().unwrap_or(&self.input);
+        SLASH_COMMANDS
+            .iter()
+            .filter(|(cmd, _)| cmd.starts_with(typed))
+            .copied()
+            .collect()
+    }
+
+    /// Returns true if the popup is currently visible.
+    pub fn popup_visible(&self) -> bool {
+        !self.popup_matches().is_empty()
+    }
+
+    /// Move popup selection up.
+    pub fn popup_up(&mut self) {
+        let count = self.popup_matches().len();
+        if count == 0 {
+            return;
+        }
+        self.popup_selected = Some(match self.popup_selected {
+            None | Some(0) => count - 1,
+            Some(i) => i - 1,
+        });
+    }
+
+    /// Move popup selection down.
+    pub fn popup_down(&mut self) {
+        let count = self.popup_matches().len();
+        if count == 0 {
+            return;
+        }
+        self.popup_selected = Some(match self.popup_selected {
+            None => 0,
+            Some(i) if i + 1 >= count => 0,
+            Some(i) => i + 1,
+        });
+    }
+
+    /// Accept the currently selected popup item — fills input with the command + trailing space.
+    /// Returns true if a selection was applied.
+    pub fn popup_accept(&mut self) -> bool {
+        let matches = self.popup_matches();
+        if let Some(idx) = self.popup_selected
+            && let Some((cmd, _)) = matches.get(idx)
+        {
+            self.input = format!("{} ", cmd);
+            self.cursor_pos = self.input.len();
+            self.popup_selected = None;
+            return true;
+        }
+        false
+    }
+
+    /// Dismiss the popup without selecting.
+    pub fn popup_dismiss(&mut self) {
+        self.popup_selected = None;
     }
 
     pub fn history_up(&mut self) {
@@ -986,18 +1160,6 @@ mod tests {
     }
 
     #[test]
-    fn normalize_channel_sorts_recipients() {
-        let to = Some(vec!["pm".to_string(), "dev".to_string()]);
-        let to_reversed = Some(vec!["dev".to_string(), "pm".to_string()]);
-        assert_eq!(normalize_channel(&to), normalize_channel(&to_reversed));
-    }
-
-    #[test]
-    fn normalize_channel_none_is_broadcast() {
-        assert_eq!(normalize_channel(&None), None);
-    }
-
-    #[test]
     fn broadcast_message_adds_channel() {
         let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
         assert_eq!(app.active_channels.len(), 0);
@@ -1009,6 +1171,7 @@ mod tests {
             to: None,
         });
         assert_eq!(app.active_channels.len(), 1);
+        assert!(app.active_channels.contains("broadcast"));
     }
 
     #[test]
@@ -1032,7 +1195,28 @@ mod tests {
     }
 
     #[test]
-    fn same_recipients_do_not_create_duplicate_channel() {
+    fn same_channel_does_not_duplicate() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.receive_message(Message {
+            from: "dev:claude-code".to_string(),
+            text: "hey".to_string(),
+            ts: Utc::now(),
+            message_type: None,
+            to: Some(vec!["ryan".to_string()]),
+        });
+        app.receive_message(Message {
+            from: "dev:claude-code".to_string(),
+            text: "also hey".to_string(),
+            ts: Utc::now(),
+            message_type: None,
+            to: Some(vec!["ryan".to_string()]),
+        });
+        assert_eq!(app.active_channels.len(), 1);
+        assert!(app.active_channels.contains("dev\u{2194}ryan"));
+    }
+
+    #[test]
+    fn different_senders_create_different_channels() {
         let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
         app.receive_message(Message {
             from: "dev:claude-code".to_string(),
@@ -1048,7 +1232,121 @@ mod tests {
             message_type: None,
             to: Some(vec!["ryan".to_string()]),
         });
-        assert_eq!(app.active_channels.len(), 1);
+        assert_eq!(app.active_channels.len(), 2);
+        assert!(app.active_channels.contains("dev\u{2194}ryan"));
+        assert!(app.active_channels.contains("pm\u{2194}ryan"));
+    }
+
+    #[test]
+    fn channel_name_broadcast() {
+        let msg = Message {
+            from: "dev:claude-code".to_string(),
+            text: "hi".to_string(),
+            ts: Utc::now(),
+            message_type: None,
+            to: None,
+        };
+        assert_eq!(channel_name(&msg), "broadcast");
+    }
+
+    #[test]
+    fn channel_name_to_all_is_broadcast() {
+        let msg = Message {
+            from: "dev:claude-code".to_string(),
+            text: "hi".to_string(),
+            ts: Utc::now(),
+            message_type: None,
+            to: Some(vec!["all".to_string()]),
+        };
+        assert_eq!(channel_name(&msg), "broadcast");
+    }
+
+    #[test]
+    fn channel_name_dm() {
+        let msg = Message {
+            from: "dev:claude-code".to_string(),
+            text: "hey".to_string(),
+            ts: Utc::now(),
+            message_type: None,
+            to: Some(vec!["ryan".to_string()]),
+        };
+        assert_eq!(channel_name(&msg), "dev\u{2194}ryan");
+    }
+
+    #[test]
+    fn channel_name_group() {
+        let msg = Message {
+            from: "pm:claude-code".to_string(),
+            text: "hey".to_string(),
+            ts: Utc::now(),
+            message_type: None,
+            to: Some(vec!["dev".to_string(), "ryan".to_string()]),
+        };
+        assert_eq!(channel_name(&msg), "dev+pm+ryan");
+    }
+
+    #[test]
+    fn view_broadcast_sets_current_view() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.input = "/view broadcast".to_string();
+        let msg = app.submit_message();
+        assert!(msg.is_none());
+        assert_eq!(app.current_view, Some("broadcast".to_string()));
+    }
+
+    #[test]
+    fn view_all_clears_current_view() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.current_view = Some("broadcast".to_string());
+        app.input = "/view all".to_string();
+        let msg = app.submit_message();
+        assert!(msg.is_none());
+        assert_eq!(app.current_view, None);
+    }
+
+    #[test]
+    fn view_known_channel_sets_current_view() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.active_channels.insert("dev\u{2194}ryan".to_string());
+        app.input = "/view dev\u{2194}ryan".to_string();
+        let msg = app.submit_message();
+        assert!(msg.is_none());
+        assert_eq!(app.current_view, Some("dev\u{2194}ryan".to_string()));
+    }
+
+    #[test]
+    fn view_unknown_channel_shows_error() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let original_view = app.current_view.clone();
+        app.input = "/view fake".to_string();
+        let msg = app.submit_message();
+        assert!(msg.is_none());
+        assert_eq!(app.current_view, original_view);
+        assert!(
+            app.messages
+                .last()
+                .unwrap()
+                .text
+                .contains("no channel matches")
+        );
+    }
+
+    #[test]
+    fn bare_view_lists_channels() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.active_channels.insert("broadcast".to_string());
+        app.active_channels.insert("dev\u{2194}ryan".to_string());
+        app.input = "/view".to_string();
+        let msg = app.submit_message();
+        assert!(msg.is_none());
+        assert!(
+            app.messages
+                .last()
+                .unwrap()
+                .text
+                .contains("Available channels")
+        );
+        assert!(app.messages.last().unwrap().text.contains("broadcast"));
     }
 
     #[test]
@@ -1062,5 +1360,69 @@ mod tests {
             to: None,
         });
         assert_eq!(app.active_channels.len(), 0);
+    }
+
+    #[test]
+    fn popup_matches_filters_by_typed_prefix() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.input = "/v".to_string();
+        let m = app.popup_matches();
+        assert_eq!(m.len(), 1);
+        assert_eq!(m[0].0, "/view");
+    }
+
+    #[test]
+    fn popup_matches_returns_all_on_bare_slash() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.input = "/".to_string();
+        assert_eq!(app.popup_matches().len(), SLASH_COMMANDS.len());
+    }
+
+    #[test]
+    fn popup_matches_empty_after_space() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.input = "/to dev".to_string();
+        assert!(app.popup_matches().is_empty());
+    }
+
+    #[test]
+    fn popup_navigation_wraps_around() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.input = "/".to_string();
+        let count = app.popup_matches().len();
+
+        // Down from None starts at 0
+        app.popup_down();
+        assert_eq!(app.popup_selected, Some(0));
+
+        // Up from 0 wraps to last
+        app.popup_up();
+        assert_eq!(app.popup_selected, Some(count - 1));
+
+        // Down from last wraps to 0
+        app.popup_down();
+        assert_eq!(app.popup_selected, Some(0));
+    }
+
+    #[test]
+    fn popup_accept_fills_input() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.input = "/t".to_string();
+        app.popup_down(); // select /to
+        assert!(app.popup_accept());
+        assert_eq!(app.input, "/to ");
+        assert_eq!(app.cursor_pos, 4);
+        assert!(app.popup_selected.is_none());
+    }
+
+    #[test]
+    fn popup_selected_resets_on_input_change() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.input = "/".to_string();
+        app.cursor_pos = 1;
+        app.popup_down();
+        assert!(app.popup_selected.is_some());
+        app.insert_char('t');
+        assert!(app.popup_selected.is_none());
     }
 }
