@@ -1,6 +1,7 @@
 use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers, MouseEventKind};
 use ratatui::DefaultTerminal;
 use tokio::sync::broadcast;
+use chrono;
 
 use crate::session;
 use crate::terminal::app::App;
@@ -49,9 +50,19 @@ pub fn run_tui(
                 }
                 continue;
             }
-            Err(broadcast::error::TryRecvError::Lagged(_)) => {
+            Err(broadcast::error::TryRecvError::Lagged(n)) => {
                 match session.read_messages() {
-                    Ok(messages) => app.messages = messages,
+                    Ok(messages) => {
+                        app.messages = messages;
+                        app.messages.push(session::Message {
+                            from: "bpmux".to_string(),
+                            text: format!("Caught up — {n} messages arrived while processing."),
+                            ts: chrono::Utc::now(),
+                            message_type: Some("system".to_string()),
+                            to: None,
+                        });
+                        app.scroll_offset = 0;
+                    }
                     Err(e) => eprintln!("Error reading messages: {e}"),
                 }
                 continue;
@@ -63,7 +74,7 @@ pub fn run_tui(
         }
         // Drain ALL pending key events before re-rendering.
         // Prevents buffer lag when key repeat is faster than render.
-        if !event::poll(std::time::Duration::from_millis(100))? {
+        if !event::poll(std::time::Duration::from_millis(16))? {
             continue;
         }
         loop {

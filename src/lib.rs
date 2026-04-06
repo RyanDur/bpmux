@@ -67,7 +67,7 @@ pub fn run() -> anyhow::Result<()> {
     std::fs::create_dir_all(&base)?;
     let session_dir = session::resume_or_create_session(&base)?;
 
-    let (wake_tx, mut wake_rx) = broadcast::channel::<session::Message>(64);
+    let (wake_tx, mut wake_rx) = broadcast::channel::<session::Message>(256);
     let session = Arc::new(session::Session::new(session_dir, wake_tx));
     let messages = session.read_messages()?;
     let pins = session.read_pins()?;
