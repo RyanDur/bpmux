@@ -183,16 +183,10 @@ pub fn write_pins(session_dir: &Path, pins: &[String]) -> Result<(), LogError> {
     Ok(())
 }
 
-pub fn add_pin(
-    session_dir: &Path,
-    text: String,
-) -> Result<Result<Vec<String>, String>, LogError> {
+pub fn add_pin(session_dir: &Path, text: String) -> Result<Result<Vec<String>, String>, LogError> {
     let mut pins = read_pins(session_dir)?;
     // Duplicate guard: case-insensitive exact match
-    if let Some(pos) = pins
-        .iter()
-        .position(|p| p.eq_ignore_ascii_case(&text))
-    {
+    if let Some(pos) = pins.iter().position(|p| p.eq_ignore_ascii_case(&text)) {
         return Ok(Err(format!("already pinned as #{}", pos + 1)));
     }
     if pins.len() >= MAX_PINS {

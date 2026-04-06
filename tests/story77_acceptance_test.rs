@@ -31,10 +31,7 @@ fn ac1_agent_pins_via_rest() {
         .output()
         .expect("curl");
     let body = String::from_utf8_lossy(&output.stdout);
-    assert!(
-        body.contains("pinned #1"),
-        "should confirm pin: {body}"
-    );
+    assert!(body.contains("pinned #1"), "should confirm pin: {body}");
 
     // GET pins
     let output = std::process::Command::new("curl")
@@ -77,10 +74,7 @@ fn ac2_duplicate_pin_rejected() {
     assert!(first.contains("201"), "first pin should succeed: {first}");
 
     let dup = pin("Test-Decision");
-    assert!(
-        dup.contains("409"),
-        "duplicate should return 409: {dup}"
-    );
+    assert!(dup.contains("409"), "duplicate should return 409: {dup}");
     assert!(
         dup.contains("already pinned"),
         "should say already pinned: {dup}"

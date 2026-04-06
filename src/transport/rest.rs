@@ -75,9 +75,7 @@ pub async fn post_message(
 
 // --- Pin endpoints ---
 
-pub async fn get_pins(
-    State(session): State<Arc<session::Session>>,
-) -> impl IntoResponse {
+pub async fn get_pins(State(session): State<Arc<session::Session>>) -> impl IntoResponse {
     match session.read_pins() {
         Ok(pins) => {
             let numbered: Vec<serde_json::Value> = pins
@@ -108,7 +106,10 @@ pub async fn add_pin(
     Json(payload): Json<AddPinRequest>,
 ) -> impl IntoResponse {
     if payload.text.is_empty() {
-        return (StatusCode::BAD_REQUEST, "text must not be empty".to_string());
+        return (
+            StatusCode::BAD_REQUEST,
+            "text must not be empty".to_string(),
+        );
     }
     match session.add_pin(payload.text.clone()) {
         Ok(Ok(pins)) => {
@@ -197,10 +198,7 @@ mod tests {
                 axum::routing::get(get_messages).post(post_message),
             )
             .route("/api/pins", axum::routing::get(get_pins).post(add_pin))
-            .route(
-                "/api/pins/{index}",
-                axum::routing::delete(remove_pin),
-            )
+            .route("/api/pins/{index}", axum::routing::delete(remove_pin))
             .with_state(session);
         (router, tx)
     }
@@ -363,7 +361,9 @@ mod tests {
             .method("POST")
             .uri("/api/pins")
             .header("Content-Type", "application/json")
-            .body(Body::from(r#"{"text":"channels-as-views","from":"dev:claude-code"}"#))
+            .body(Body::from(
+                r#"{"text":"channels-as-views","from":"dev:claude-code"}"#,
+            ))
             .expect("build request");
         let response = app.clone().oneshot(request).await.expect("response");
         assert_eq!(response.status(), StatusCode::CREATED);
@@ -419,7 +419,9 @@ mod tests {
             .method("POST")
             .uri("/api/pins")
             .header("Content-Type", "application/json")
-            .body(Body::from(r#"{"text":"to remove","from":"dev:claude-code"}"#))
+            .body(Body::from(
+                r#"{"text":"to remove","from":"dev:claude-code"}"#,
+            ))
             .expect("build request");
         app.clone().oneshot(request).await.expect("response");
 
@@ -472,7 +474,9 @@ mod tests {
             .method("POST")
             .uri("/api/pins")
             .header("Content-Type", "application/json")
-            .body(Body::from(r#"{"text":"broadcast test","from":"dev:claude-code"}"#))
+            .body(Body::from(
+                r#"{"text":"broadcast test","from":"dev:claude-code"}"#,
+            ))
             .expect("build request");
         app.oneshot(request).await.expect("response");
 

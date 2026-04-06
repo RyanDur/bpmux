@@ -628,11 +628,7 @@ impl App {
                 return None;
             }
             // Duplicate guard: case-insensitive exact match
-            if let Some(pos) = self
-                .pins
-                .iter()
-                .position(|p| p.eq_ignore_ascii_case(arg))
-            {
+            if let Some(pos) = self.pins.iter().position(|p| p.eq_ignore_ascii_case(arg)) {
                 let msg = Message {
                     from: "bpmux".to_string(),
                     text: format!("already pinned as #{}", pos + 1),
@@ -1940,12 +1936,13 @@ mod tests {
         app.input = "/pin Channels-As-Views".to_string();
         app.submit_message();
         assert_eq!(app.pins.len(), 1);
-        assert!(app
-            .messages
-            .last()
-            .unwrap()
-            .text
-            .contains("already pinned as #1"));
+        assert!(
+            app.messages
+                .last()
+                .unwrap()
+                .text
+                .contains("already pinned as #1")
+        );
     }
 
     #[test]

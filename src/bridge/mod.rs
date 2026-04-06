@@ -254,9 +254,7 @@ impl ServerHandler for BridgeServer {
             crate::mcp::tools::unpin_tool(
                 "Remove a pin by its 1-based index. Any participant can unpin any pin — it's shared space.",
             ),
-            crate::mcp::tools::list_pins_tool(
-                "List current pins as a numbered list.",
-            ),
+            crate::mcp::tools::list_pins_tool("List current pins as a numbered list."),
         ];
 
         std::future::ready(Ok(ListToolsResult::with_all_items(tools)))
@@ -416,9 +414,16 @@ impl ServerHandler for BridgeServer {
                     .to_string();
                     let result = tokio::process::Command::new("curl")
                         .args([
-                            "-s", "-X", "POST", &api_url, "-H",
-                            "Content-Type: application/json", "-d", &body,
-                            "-w", "\n%{http_code}",
+                            "-s",
+                            "-X",
+                            "POST",
+                            &api_url,
+                            "-H",
+                            "Content-Type: application/json",
+                            "-d",
+                            &body,
+                            "-w",
+                            "\n%{http_code}",
                         ])
                         .output()
                         .await;
@@ -433,9 +438,7 @@ impl ServerHandler for BridgeServer {
                                     body.to_string(),
                                 )]))
                             } else {
-                                Ok(CallToolResult::error(vec![Content::text(
-                                    body.to_string(),
-                                )]))
+                                Ok(CallToolResult::error(vec![Content::text(body.to_string())]))
                             }
                         }
                         Err(e) => Ok(CallToolResult::error(vec![Content::text(format!(
@@ -473,9 +476,7 @@ impl ServerHandler for BridgeServer {
                                     body.to_string(),
                                 )]))
                             } else {
-                                Ok(CallToolResult::error(vec![Content::text(
-                                    body.to_string(),
-                                )]))
+                                Ok(CallToolResult::error(vec![Content::text(body.to_string())]))
                             }
                         }
                         Err(e) => Ok(CallToolResult::error(vec![Content::text(format!(
@@ -496,9 +497,7 @@ impl ServerHandler for BridgeServer {
                                 serde_json::from_str::<Vec<serde_json::Value>>(body.trim())
                             {
                                 if pins.is_empty() {
-                                    Ok(CallToolResult::success(vec![Content::text(
-                                        "No pins yet.",
-                                    )]))
+                                    Ok(CallToolResult::success(vec![Content::text("No pins yet.")]))
                                 } else {
                                     let list: Vec<String> = pins
                                         .iter()
