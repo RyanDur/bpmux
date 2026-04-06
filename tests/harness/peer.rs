@@ -76,6 +76,20 @@ impl WsPeer {
             .expect("send_to");
     }
 
+    /// Send a handoff response.
+    pub async fn send_handoff(&mut self, text: &str) {
+        let msg = serde_json::json!({"type": "handoff", "text": text}).to_string();
+        self.tx
+            .send(WsMessage::Text(msg.into()))
+            .await
+            .expect("send handoff");
+    }
+
+    /// Initiate a graceful WebSocket close.
+    pub async fn close(mut self) {
+        let _ = self.tx.send(WsMessage::Close(None)).await;
+    }
+
     /// Next text frame, stripped of non-text frames. Returns None on close.
     pub async fn next_text(&mut self) -> Option<String> {
         while let Some(Ok(frame)) = self.rx.next().await {

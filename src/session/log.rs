@@ -79,6 +79,14 @@ impl Session {
         remove_pin(&self.dir, index)
     }
 
+    pub fn save_handoff(&self, name: &str, text: &str) -> Result<(), LogError> {
+        save_handoff(&self.dir, name, text)
+    }
+
+    pub fn read_handoff(&self, name: &str) -> Result<Option<String>, LogError> {
+        read_handoff(&self.dir, name)
+    }
+
     pub fn subscribe(&self) -> broadcast::Receiver<Message> {
         self.wake_tx.subscribe()
     }
@@ -201,6 +209,33 @@ pub fn remove_pin(
     Ok(Ok(pins))
 }
 
+// --- Handoff persistence ---
+
+const MAX_HANDOFF_CHARS: usize = 500;
+
+fn handoff_path(session_dir: &Path, name: &str) -> PathBuf {
+    session_dir.join(format!("handoff_{name}.txt"))
+}
+
+pub fn save_handoff(session_dir: &Path, name: &str, text: &str) -> Result<(), LogError> {
+    let truncated: String = text.chars().take(MAX_HANDOFF_CHARS).collect();
+    let path = handoff_path(session_dir, name);
+    std::fs::write(path, truncated)?;
+    Ok(())
+}
+
+pub fn read_handoff(session_dir: &Path, name: &str) -> Result<Option<String>, LogError> {
+    let path = handoff_path(session_dir, name);
+    if !path.exists() {
+        return Ok(None);
+    }
+    let content = std::fs::read_to_string(&path)?;
+    if content.is_empty() {
+        return Ok(None);
+    }
+    Ok(Some(content))
+}
+
 pub fn read_messages(session_dir: &Path) -> Result<Vec<Message>, LogError> {
     let path = log_path(session_dir);
     if !path.exists() {
@@ -312,6 +347,57 @@ mod tests {
         let (tx, _rx) = broadcast::channel(16);
         let session = Session::new(session_dir, tx);
         assert_eq!(session.id, "my-session-id");
+    }
+
+    #[test]
+    fn saves_and_reads_handoff() {
+        let dir = TempDir::new().expect("temp dir");
+        save_handoff(dir.path(), "dev", "Working on auth refactor. Tests passing.").expect("save");
+        let handoff = read_handoff(dir.path(), "dev").expect("read");
+        assert_eq!(
+            handoff,
+            Some("Working on auth refactor. Tests passing.".to_string())
+        );
+    }
+
+    #[test]
+    fn handoff_truncates_at_500_chars() {
+        let dir = TempDir::new().expect("temp dir");
+        let long_text: String = "x".repeat(600);
+        save_handoff(dir.path(), "dev", &long_text).expect("save");
+        let handoff = read_handoff(dir.path(), "dev").expect("read").expect("some");
+        assert_eq!(handoff.len(), 500);
+    }
+
+    #[test]
+    fn handoff_returns_none_when_missing() {
+        let dir = TempDir::new().expect("temp dir");
+        let handoff = read_handoff(dir.path(), "dev").expect("read");
+        assert_eq!(handoff, None);
+    }
+
+    #[test]
+    fn handoff_overwrites_previous() {
+        let dir = TempDir::new().expect("temp dir");
+        save_handoff(dir.path(), "dev", "first").expect("save 1");
+        save_handoff(dir.path(), "dev", "second").expect("save 2");
+        let handoff = read_handoff(dir.path(), "dev").expect("read");
+        assert_eq!(handoff, Some("second".to_string()));
+    }
+
+    #[test]
+    fn handoff_is_per_participant() {
+        let dir = TempDir::new().expect("temp dir");
+        save_handoff(dir.path(), "dev", "dev context").expect("save dev");
+        save_handoff(dir.path(), "pm", "pm context").expect("save pm");
+        assert_eq!(
+            read_handoff(dir.path(), "dev").expect("read"),
+            Some("dev context".to_string())
+        );
+        assert_eq!(
+            read_handoff(dir.path(), "pm").expect("read"),
+            Some("pm context".to_string())
+        );
     }
 
     #[test]
