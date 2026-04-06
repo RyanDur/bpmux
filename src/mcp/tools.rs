@@ -43,6 +43,26 @@ pub fn set_name_tool(description: &'static str) -> Tool {
     )
 }
 
+pub fn set_status_tool(description: &'static str) -> Tool {
+    let schema = serde_json::json!({
+        "type": "object",
+        "properties": {
+            "status": {
+                "type": "string",
+                "enum": ["available", "busy", "help"],
+                "description": "Your current status: available (green), busy (yellow), or help (red, needs attention)"
+            }
+        },
+        "required": ["status"]
+    });
+
+    Tool::new(
+        "set_status",
+        description,
+        schema.as_object().cloned().unwrap_or_default(),
+    )
+}
+
 pub fn read_messages_tool(description: &'static str) -> Tool {
     let schema = serde_json::json!({
         "type": "object",

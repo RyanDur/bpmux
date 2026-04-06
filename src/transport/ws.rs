@@ -187,12 +187,16 @@ async fn handle_client_message(
         return Ok(None);
     }
     match serde_json::from_str::<ClientMessage>(text) {
-        Ok(ClientMessage::Send { text: msg_text, to }) => {
+        Ok(ClientMessage::Send {
+            text: msg_text,
+            to,
+            message_type,
+        }) => {
             let msg = session::Message {
                 from: identity.to_string(),
                 text: msg_text,
                 ts: chrono::Utc::now(),
-                message_type: None,
+                message_type,
                 to,
             };
             session.broadcast(&msg)?;

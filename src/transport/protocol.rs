@@ -17,6 +17,8 @@ pub enum ClientMessage {
         text: String,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         to: Option<Vec<String>>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        message_type: Option<String>,
     },
     #[serde(rename = "ping")]
     Ping,
@@ -91,7 +93,7 @@ mod tests {
         let json = r#"{"type": "send", "text": "hello"}"#;
         let msg: ClientMessage = serde_json::from_str(json).expect("parse");
         match msg {
-            ClientMessage::Send { text, to } => {
+            ClientMessage::Send { text, to, .. } => {
                 assert_eq!(text, "hello");
                 assert_eq!(to, None);
             }
@@ -104,7 +106,7 @@ mod tests {
         let json = r#"{"type": "send", "text": "hey", "to": ["pm", "designer"]}"#;
         let msg: ClientMessage = serde_json::from_str(json).expect("parse");
         match msg {
-            ClientMessage::Send { text, to } => {
+            ClientMessage::Send { text, to, .. } => {
                 assert_eq!(text, "hey");
                 assert_eq!(to, Some(vec!["pm".to_string(), "designer".to_string()]));
             }

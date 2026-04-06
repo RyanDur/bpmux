@@ -395,19 +395,16 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     peers.sort_by_key(|(name, _)| (*name).clone());
     for (peer, (status, _)) in &peers {
         let short_name = peer.split(':').next().unwrap_or(peer);
-        let is_blocked = status.starts_with("blocked");
-        let display_status = status.as_str();
-        let color = if is_blocked {
-            Color::Rgb(241, 250, 140) // Dracula yellow — blocked, needs attention
-        } else if display_status == "connected" {
-            Color::Rgb(80, 250, 123) // Dracula green — connected
-        } else {
-            Color::Rgb(139, 233, 253) // Dracula cyan — self-declared status
+        let dot_color = match status.as_str() {
+            "busy" => Color::Rgb(241, 250, 140), // Yellow — busy
+            "help" => Color::Rgb(255, 85, 85),   // Red — needs help
+            _ => Color::Rgb(80, 250, 123),       // Green — available/connected
         };
-        status_spans.push(Span::raw(" | "));
+        status_spans.push(Span::raw(" "));
+        status_spans.push(Span::styled("\u{25CF}", Style::default().fg(dot_color)));
         status_spans.push(Span::styled(
-            format!("{short_name} [{display_status}]"),
-            Style::default().fg(color),
+            format!(" {short_name}"),
+            Style::default().fg(Color::Rgb(248, 248, 242)),
         ));
     }
     // DM unread badge with sender names

@@ -231,6 +231,9 @@ impl ServerHandler for BridgeServer {
             crate::mcp::tools::set_name_tool(
                 "Set your display name in the bpmux session. Call this once at the start to identify yourself (e.g., 'dev', 'pm').",
             ),
+            crate::mcp::tools::set_status_tool(
+                "Set your status in the bpmux session. available = green dot (can respond), busy = yellow dot (working), help = red dot (needs attention).",
+            ),
         ];
 
         std::future::ready(Ok(ListToolsResult::with_all_items(tools)))
@@ -269,6 +272,7 @@ impl ServerHandler for BridgeServer {
                     let send_msg = match serde_json::to_string(&ClientMessage::Send {
                         text: text.to_string(),
                         to,
+                        message_type: None,
                     }) {
                         Ok(json) => json,
                         Err(e) => {
@@ -321,6 +325,37 @@ impl ServerHandler for BridgeServer {
 
                     Ok(CallToolResult::success(vec![Content::text(format!(
                         "name set to {new_name}"
+                    ))]))
+                }
+                "set_status" => {
+                    let args = request.arguments.unwrap_or_default();
+                    let status = match args.get("status").and_then(|v| v.as_str()) {
+                        Some(s) => s.to_string(),
+                        None => {
+                            return Ok(CallToolResult::error(vec![Content::text(
+                                "missing 'status' argument",
+                            )]));
+                        }
+                    };
+
+                    // Send as activity message so TUI status bar picks it up
+                    let send_msg = serde_json::json!({
+                        "type": "send",
+                        "text": status,
+                        "message_type": "activity"
+                    })
+                    .to_string();
+                    let mut tx = ws_tx.lock().await;
+                    if let Some(ref mut tx) = *tx
+                        && let Err(e) = tx.send(tungstenite::Message::Text(send_msg.into())).await
+                    {
+                        return Ok(CallToolResult::error(vec![Content::text(format!(
+                            "failed to set status: {e}"
+                        ))]));
+                    }
+
+                    Ok(CallToolResult::success(vec![Content::text(format!(
+                        "status set to {status}"
                     ))]))
                 }
                 "read_messages" => {

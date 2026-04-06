@@ -57,6 +57,16 @@ impl WsPeer {
             .expect("send");
     }
 
+    /// Send an activity message (status update, not shown in chat).
+    pub async fn send_activity(&mut self, status: &str) {
+        let msg = serde_json::json!({"type": "send", "text": status, "message_type": "activity"})
+            .to_string();
+        self.tx
+            .send(WsMessage::Text(msg.into()))
+            .await
+            .expect("send_activity");
+    }
+
     /// Send an addressed `send` command to bpmux.
     pub async fn send_to(&mut self, text: &str, to: &[&str]) {
         let msg = serde_json::json!({"type": "send", "text": text, "to": to}).to_string();
