@@ -135,10 +135,7 @@ fn render_sidebar(frame: &mut Frame, app: &App, area: Rect) {
                         select_marker,
                         Style::default().bg(bg).fg(Color::Rgb(189, 147, 249)),
                     ),
-                    Span::styled(
-                        arrow,
-                        Style::default().bg(bg).fg(Color::Rgb(98, 114, 164)),
-                    ),
+                    Span::styled(arrow, Style::default().bg(bg).fg(Color::Rgb(98, 114, 164))),
                     Span::styled(ch.chars().take(16).collect::<String>(), name_style),
                 ]);
             }
