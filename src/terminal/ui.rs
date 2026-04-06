@@ -1,5 +1,3 @@
-use std::time::Instant;
-
 use ratatui::{
     Frame,
     layout::{Constraint, Layout},
@@ -416,22 +414,11 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             Style::default().fg(Color::Rgb(241, 250, 140)), // Dracula yellow
         ));
     }
-    // Flash status bar yellow on DM arrival
-    let is_flashing = app
-        .dm_flash_until
-        .is_some_and(|deadline| Instant::now() < deadline);
-    let status_bg = if is_flashing {
-        Color::Rgb(241, 250, 140) // Dracula yellow flash
-    } else {
-        Color::Rgb(68, 71, 90) // Normal background
-    };
-    let status_fg = if is_flashing {
-        Color::Rgb(40, 42, 54) // Dark text on yellow
-    } else {
-        Color::Rgb(248, 248, 242) // Normal foreground
-    };
-    let status = Paragraph::new(Line::from(status_spans))
-        .style(Style::default().bg(status_bg).fg(status_fg));
+    let status = Paragraph::new(Line::from(status_spans)).style(
+        Style::default()
+            .bg(Color::Rgb(68, 71, 90))
+            .fg(Color::Rgb(248, 248, 242)),
+    );
     frame.render_widget(status, chunks[2]);
 }
 
