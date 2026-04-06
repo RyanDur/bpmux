@@ -1,7 +1,7 @@
+use chrono;
 use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers, MouseEventKind};
 use ratatui::DefaultTerminal;
 use tokio::sync::broadcast;
-use chrono;
 
 use crate::session;
 use crate::terminal::app::App;
