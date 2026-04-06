@@ -29,15 +29,19 @@ pub fn run_tui(
                 if msg.from != self_identity {
                     let short_name = msg.from.split(':').next().unwrap_or(&msg.from).to_string();
                     let preview: String = msg.text.chars().take(50).collect();
-                    let was_scrolled = app.scroll_offset > 0;
+                    let is_dm = msg.to.as_ref().is_some_and(|r| {
+                        r.iter().any(|n| n == &app.peer_name) && !r.iter().all(|n| n == "all")
+                    });
                     app.receive_message(msg);
-                    if was_scrolled || app.scroll_offset > 0 {
+                    // OS notification when TUI is unfocused
+                    if !app.tui_focused {
+                        let sound = if is_dm { " sound name \"default\"" } else { "" };
                         let _ = std::process::Command::new("osascript")
                             .args([
                                 "-e",
                                 &format!(
-                                    "display notification \"{}\" with title \"bpmux — {}\"",
-                                    preview, short_name
+                                    "display notification \"{}\" with title \"bpmux — {}\"{}",
+                                    preview, short_name, sound
                                 ),
                             ])
                             .spawn();
@@ -64,6 +68,15 @@ pub fn run_tui(
         }
         loop {
             let ev = event::read()?;
+            // Track terminal focus for notification gating
+            if matches!(&ev, Event::FocusGained) {
+                app.tui_focused = true;
+                continue;
+            }
+            if matches!(&ev, Event::FocusLost) {
+                app.tui_focused = false;
+                continue;
+            }
             // Handle mouse scroll events
             if let Event::Mouse(mouse) = &ev {
                 match mouse.kind {

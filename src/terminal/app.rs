@@ -90,6 +90,9 @@ pub struct App {
     /// Send target set by sidebar selection. `None` = broadcast.
     /// When set, outgoing messages are directed to this channel's participants.
     pub send_target: Option<String>,
+    /// Whether the terminal window has focus. Used to gate OS notifications.
+    /// Defaults to true (assume focused — no false noise).
+    pub tui_focused: bool,
 }
 
 impl App {
@@ -131,6 +134,7 @@ impl App {
             sidebar_selected: 0,
             channel_unread: HashMap::new(),
             send_target: None,
+            tui_focused: true,
         }
     }
 
