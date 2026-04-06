@@ -1,6 +1,7 @@
 use crate::session::Message;
 use chrono::Utc;
 use std::collections::{HashMap, HashSet};
+use std::path::PathBuf;
 use std::time::Instant;
 
 const MAX_HISTORY: usize = 50;
@@ -9,6 +10,9 @@ const MAX_HISTORY: usize = 50;
 pub const SLASH_COMMANDS: &[(&str, &str)] = &[
     ("/to", "send to recipients"),
     ("/view", "filter view by channel"),
+    ("/pin", "pin a decision"),
+    ("/pins", "list pinned items"),
+    ("/unpin", "remove a pin by number"),
     ("/status", "declare your status"),
     ("/help", "show this help"),
     ("/who", "list participants"),
@@ -40,6 +44,7 @@ pub fn channel_name(msg: &crate::session::Message) -> String {
 }
 
 pub struct App {
+    pub session_dir: Option<PathBuf>,
     pub messages: Vec<Message>,
     pub input: String,
     pub cursor_pos: usize,
@@ -68,6 +73,8 @@ pub struct App {
     pub current_view: Option<String>,
     /// Selected index in the command autocomplete popup. `None` = nothing selected.
     pub popup_selected: Option<usize>,
+    /// Pinned theory items. Max 5, persisted in session state.
+    pub pins: Vec<String>,
 }
 
 impl App {
@@ -79,6 +86,7 @@ impl App {
             }
         }
         Self {
+            session_dir: None,
             messages,
             input: String::new(),
             cursor_pos: 0,
@@ -101,6 +109,7 @@ impl App {
             active_channels,
             current_view: None,
             popup_selected: None,
+            pins: Vec::new(),
         }
     }
 
@@ -310,7 +319,7 @@ impl App {
         }
         if text == "/help" {
             let help = format!(
-                "Commands:\n  /to <who> <msg> — send to specific recipients (e.g. /to dev,pm hello)\n  /view [channel] — filter view (broadcast, all, dev\u{2194}human, etc.)\n  /status blocked [reason] — declare yourself blocked\n  /help     — show this help\n  /who      — list participants\n  /debug    — toggle system messages\n  /quit     — exit bpmux\n\nKeybindings:\n  Enter     — send message\n  Esc       — clear input\n  Ctrl+C    — clear input (empty: quit)\n  Ctrl+U/D  — scroll up/down\n  Ctrl+T    — toggle timestamps\n  PageUp/Dn — scroll\n\nSession: {}",
+                "Commands:\n  /to <who> <msg> — send to specific recipients (e.g. /to dev,pm hello)\n  /view [channel] — filter view (broadcast, all, dev\u{2194}human, etc.)\n  /pin <text>     — pin a decision (max 5)\n  /pins           — list pinned items\n  /unpin <n>      — remove pin by number\n  /status blocked [reason] — declare yourself blocked\n  /help     — show this help\n  /who      — list participants\n  /debug    — toggle system messages\n  /quit     — exit bpmux\n\nKeybindings:\n  Enter     — send message\n  Esc       — clear input\n  Ctrl+C    — clear input (empty: quit)\n  Ctrl+U/D  — scroll up/down\n  Ctrl+T    — toggle timestamps\n  PageUp/Dn — scroll\n\nSession: {}",
                 self.session_id
             );
             let msg = Message {
@@ -535,6 +544,127 @@ impl App {
             let msg = Message {
                 from: "bpmux".to_string(),
                 text: format!("no channel matches \"{arg}\". Type /view to list channels."),
+                ts: Utc::now(),
+                message_type: None,
+                to: None,
+            };
+            self.messages.push(msg);
+            self.clear_input();
+            return None;
+        }
+        if text == "/pins" {
+            let list = if self.pins.is_empty() {
+                "No pins yet. Use /pin <text> to pin a decision.".to_string()
+            } else {
+                let items: Vec<String> = self
+                    .pins
+                    .iter()
+                    .enumerate()
+                    .map(|(i, p)| format!("  {}. {}", i + 1, p))
+                    .collect();
+                format!("Pinned:\n{}", items.join("\n"))
+            };
+            let msg = Message {
+                from: "bpmux".to_string(),
+                text: list,
+                ts: Utc::now(),
+                message_type: None,
+                to: None,
+            };
+            self.messages.push(msg);
+            self.clear_input();
+            return None;
+        }
+        if let Some(arg) = text.strip_prefix("/pin ") {
+            let arg = arg.trim();
+            if arg.is_empty() {
+                let msg = Message {
+                    from: "bpmux".to_string(),
+                    text: "Usage: /pin <text>. Example: /pin channels-as-views because filter-on-render".to_string(),
+                    ts: Utc::now(),
+                    message_type: None,
+                    to: None,
+                };
+                self.messages.push(msg);
+                self.clear_input();
+                return None;
+            }
+            if self.pins.len() >= 5 {
+                let msg = Message {
+                    from: "bpmux".to_string(),
+                    text: "max 5 pins — /unpin one first".to_string(),
+                    ts: Utc::now(),
+                    message_type: None,
+                    to: None,
+                };
+                self.messages.push(msg);
+                self.clear_input();
+                return None;
+            }
+            self.pins.push(arg.to_string());
+            if let Some(dir) = &self.session_dir {
+                let _ = crate::session::log::write_pins(dir, &self.pins);
+            }
+            let msg = Message {
+                from: "bpmux".to_string(),
+                text: format!("Pinned #{}: {arg}", self.pins.len()),
+                ts: Utc::now(),
+                message_type: None,
+                to: None,
+            };
+            self.messages.push(msg);
+            self.clear_input();
+            return None;
+        }
+        if text == "/pin" {
+            let msg = Message {
+                from: "bpmux".to_string(),
+                text:
+                    "Usage: /pin <text>. Example: /pin channels-as-views because filter-on-render"
+                        .to_string(),
+                ts: Utc::now(),
+                message_type: None,
+                to: None,
+            };
+            self.messages.push(msg);
+            self.clear_input();
+            return None;
+        }
+        if let Some(arg) = text.strip_prefix("/unpin ") {
+            let arg = arg.trim();
+            match arg.parse::<usize>() {
+                Ok(n) if n >= 1 && n <= self.pins.len() => {
+                    let removed = self.pins.remove(n - 1);
+                    if let Some(dir) = &self.session_dir {
+                        let _ = crate::session::log::write_pins(dir, &self.pins);
+                    }
+                    let msg = Message {
+                        from: "bpmux".to_string(),
+                        text: format!("Unpinned #{n}: {removed}"),
+                        ts: Utc::now(),
+                        message_type: None,
+                        to: None,
+                    };
+                    self.messages.push(msg);
+                }
+                _ => {
+                    let msg = Message {
+                        from: "bpmux".to_string(),
+                        text: format!("no pin #{arg}. Type /pins to list."),
+                        ts: Utc::now(),
+                        message_type: None,
+                        to: None,
+                    };
+                    self.messages.push(msg);
+                }
+            }
+            self.clear_input();
+            return None;
+        }
+        if text == "/unpin" {
+            let msg = Message {
+                from: "bpmux".to_string(),
+                text: "Usage: /unpin <number>. Type /pins to see pin numbers.".to_string(),
                 ts: Utc::now(),
                 message_type: None,
                 to: None,
@@ -1424,5 +1554,92 @@ mod tests {
         assert!(app.popup_selected.is_some());
         app.insert_char('t');
         assert!(app.popup_selected.is_none());
+    }
+
+    #[test]
+    fn pin_adds_to_list() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.input = "/pin channels-as-views because filter-on-render".to_string();
+        app.submit_message();
+        assert_eq!(app.pins.len(), 1);
+        assert_eq!(app.pins[0], "channels-as-views because filter-on-render");
+        assert!(app.messages.last().unwrap().text.contains("Pinned #1"));
+    }
+
+    #[test]
+    fn pin_max_five() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        for i in 1..=5 {
+            app.input = format!("/pin decision {i}");
+            app.submit_message();
+        }
+        assert_eq!(app.pins.len(), 5);
+        app.input = "/pin one too many".to_string();
+        app.submit_message();
+        assert_eq!(app.pins.len(), 5);
+        assert!(app.messages.last().unwrap().text.contains("max 5 pins"));
+    }
+
+    #[test]
+    fn unpin_removes_by_number() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.input = "/pin first".to_string();
+        app.submit_message();
+        app.input = "/pin second".to_string();
+        app.submit_message();
+        app.input = "/unpin 1".to_string();
+        app.submit_message();
+        assert_eq!(app.pins.len(), 1);
+        assert_eq!(app.pins[0], "second");
+        assert!(app.messages.last().unwrap().text.contains("Unpinned #1"));
+    }
+
+    #[test]
+    fn unpin_invalid_number_shows_error() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.input = "/pin something".to_string();
+        app.submit_message();
+        app.input = "/unpin 5".to_string();
+        app.submit_message();
+        assert_eq!(app.pins.len(), 1);
+        assert!(app.messages.last().unwrap().text.contains("no pin #5"));
+    }
+
+    #[test]
+    fn pins_command_lists_pins() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.input = "/pin theory A".to_string();
+        app.submit_message();
+        app.input = "/pin theory B".to_string();
+        app.submit_message();
+        app.input = "/pins".to_string();
+        app.submit_message();
+        let last = &app.messages.last().unwrap().text;
+        assert!(last.contains("1. theory A"));
+        assert!(last.contains("2. theory B"));
+    }
+
+    #[test]
+    fn pins_empty_shows_hint() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.input = "/pins".to_string();
+        app.submit_message();
+        assert!(app.messages.last().unwrap().text.contains("No pins yet"));
+    }
+
+    #[test]
+    fn pin_bare_shows_usage() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.input = "/pin".to_string();
+        app.submit_message();
+        assert!(app.messages.last().unwrap().text.contains("Usage:"));
+    }
+
+    #[test]
+    fn unpin_bare_shows_usage() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.input = "/unpin".to_string();
+        app.submit_message();
+        assert!(app.messages.last().unwrap().text.contains("Usage:"));
     }
 }

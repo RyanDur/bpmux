@@ -112,9 +112,15 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         app.input.len().max(1).div_ceil(width.max(1))
     };
     let input_height = (input_lines + 2).min(8) as u16; // +2 for borders, cap at 8
+    let pin_height = if app.pins.is_empty() {
+        0
+    } else {
+        (app.pins.len() as u16) + 2 // +2 for borders
+    };
 
     let chunks = Layout::vertical([
         Constraint::Min(3),               // chat pane
+        Constraint::Length(pin_height),   // pin bar (0 if no pins)
         Constraint::Length(input_height), // input pane — grows with content
         Constraint::Length(1),            // status bar
     ])
@@ -345,6 +351,38 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     let chat = chat.scroll((scroll, 0));
     frame.render_widget(chat, chunks[0]);
 
+    // Pin bar — rendered between chat and input when pins exist
+    if !app.pins.is_empty() {
+        let pin_lines: Vec<Line> = app
+            .pins
+            .iter()
+            .enumerate()
+            .map(|(i, p)| {
+                Line::from(Span::styled(
+                    format!(" {}. {}", i + 1, p),
+                    Style::default().fg(Color::Rgb(40, 42, 54)), // dark text on yellow
+                ))
+            })
+            .collect();
+        let pin_bar = Paragraph::new(pin_lines).block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" pins ")
+                .title_style(
+                    Style::default()
+                        .fg(Color::Rgb(40, 42, 54))
+                        .add_modifier(Modifier::BOLD),
+                )
+                .border_style(Style::default().fg(Color::Rgb(241, 250, 140)))
+                .style(
+                    Style::default()
+                        .bg(Color::Rgb(241, 250, 140)) // Dracula yellow
+                        .fg(Color::Rgb(40, 42, 54)),
+                ),
+        );
+        frame.render_widget(pin_bar, chunks[1]);
+    }
+
     // Input pane — with syntax coloring for slash commands
     let input_line = if app.input.starts_with('/') {
         // Color the command keyword differently from the arguments
@@ -378,17 +416,17 @@ pub fn render(frame: &mut Frame, app: &mut App) {
                 ),
         )
         .wrap(Wrap { trim: false });
-    frame.render_widget(input, chunks[1]);
+    frame.render_widget(input, chunks[2]);
 
     // Show cursor at end of input text, accounting for wrapping
     #[allow(clippy::cast_possible_truncation)]
-    let input_inner_width = chunks[1].width.saturating_sub(2) as usize;
+    let input_inner_width = chunks[2].width.saturating_sub(2) as usize;
     let (cursor_x, cursor_y) = if input_inner_width > 0 {
         let x = (app.cursor_pos % input_inner_width) as u16;
         let y = (app.cursor_pos / input_inner_width) as u16;
-        (chunks[1].x + 1 + x, chunks[1].y + 1 + y)
+        (chunks[2].x + 1 + x, chunks[2].y + 1 + y)
     } else {
-        (chunks[1].x + 1, chunks[1].y + 1)
+        (chunks[2].x + 1, chunks[2].y + 1)
     };
     frame.set_cursor_position((cursor_x, cursor_y));
 
@@ -396,10 +434,10 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     let matches = app.popup_matches();
     if !matches.is_empty() {
         let popup_height = matches.len() as u16 + 2; // +2 for borders
-        let popup_width = 40u16.min(chunks[1].width);
+        let popup_width = 40u16.min(chunks[2].width);
         // Position popup above the input pane
-        let popup_y = chunks[1].y.saturating_sub(popup_height);
-        let popup_area = Rect::new(chunks[1].x, popup_y, popup_width, popup_height);
+        let popup_y = chunks[2].y.saturating_sub(popup_height);
+        let popup_area = Rect::new(chunks[2].x, popup_y, popup_width, popup_height);
 
         let items: Vec<Line> = matches
             .iter()
@@ -532,7 +570,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             .bg(Color::Rgb(68, 71, 90))
             .fg(Color::Rgb(248, 248, 242)),
     );
-    frame.render_widget(status, chunks[2]);
+    frame.render_widget(status, chunks[3]);
 }
 
 #[cfg(test)]
