@@ -199,11 +199,13 @@ impl App {
             self.update_activity(msg.from, msg.text);
             return;
         }
-        // Auto-set "available" when a peer joins
-        if msg.message_type.as_deref() == Some("system")
-            && let Some(peer) = msg.text.strip_suffix(" joined")
-        {
-            self.update_activity(peer.to_string(), "available".to_string());
+        // Auto-set "available" when a peer joins, remove when they leave
+        if msg.message_type.as_deref() == Some("system") {
+            if let Some(peer) = msg.text.strip_suffix(" joined") {
+                self.update_activity(peer.to_string(), "available".to_string());
+            } else if let Some(peer) = msg.text.strip_suffix(" left") {
+                self.peer_activity.remove(peer);
+            }
         }
         // Track peer presence and self-declared status
         if msg.is_chat() {
