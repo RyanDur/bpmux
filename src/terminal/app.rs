@@ -5,6 +5,16 @@ use std::time::Instant;
 
 const MAX_HISTORY: usize = 50;
 
+/// Normalize a message's `to` field into a channel key for deduplication.
+/// `None` = broadcast channel. `Some(sorted_recipients)` = directed channel.
+fn normalize_channel(to: &Option<Vec<String>>) -> Option<Vec<String>> {
+    to.as_ref().map(|recipients| {
+        let mut sorted = recipients.clone();
+        sorted.sort();
+        sorted
+    })
+}
+
 pub struct App {
     pub messages: Vec<Message>,
     pub input: String,
@@ -27,10 +37,18 @@ pub struct App {
     pub dm_unread_from: Vec<String>,
     /// When set, the status bar flashes yellow until this instant passes.
     pub dm_flash_until: Option<Instant>,
+    /// Distinct channels seen this session. `None` = broadcast, `Some(sorted_recipients)` = directed.
+    pub active_channels: HashSet<Option<Vec<String>>>,
 }
 
 impl App {
     pub fn new(peer_name: String, session_id: String, messages: Vec<Message>) -> Self {
+        let mut active_channels: HashSet<Option<Vec<String>>> = HashSet::new();
+        for msg in &messages {
+            if msg.is_chat() {
+                active_channels.insert(normalize_channel(&msg.to));
+            }
+        }
         Self {
             messages,
             input: String::new(),
@@ -51,6 +69,7 @@ impl App {
             expanded_messages: HashSet::new(),
             dm_unread_from: Vec::new(),
             dm_flash_until: None,
+            active_channels,
         }
     }
 
@@ -206,6 +225,10 @@ impl App {
             } else if let Some(peer) = msg.text.strip_suffix(" left") {
                 self.peer_activity.remove(peer);
             }
+        }
+        // Track active channels
+        if msg.is_chat() {
+            self.active_channels.insert(normalize_channel(&msg.to));
         }
         // Track peer presence and self-declared status
         if msg.is_chat() {
@@ -960,5 +983,84 @@ mod tests {
         app.submit_message();
         assert_eq!(app.dm_unread_from.len(), 0);
         assert!(app.dm_flash_until.is_none());
+    }
+
+    #[test]
+    fn normalize_channel_sorts_recipients() {
+        let to = Some(vec!["pm".to_string(), "dev".to_string()]);
+        let to_reversed = Some(vec!["dev".to_string(), "pm".to_string()]);
+        assert_eq!(normalize_channel(&to), normalize_channel(&to_reversed));
+    }
+
+    #[test]
+    fn normalize_channel_none_is_broadcast() {
+        assert_eq!(normalize_channel(&None), None);
+    }
+
+    #[test]
+    fn broadcast_message_adds_channel() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        assert_eq!(app.active_channels.len(), 0);
+        app.receive_message(Message {
+            from: "dev:claude-code".to_string(),
+            text: "hello".to_string(),
+            ts: Utc::now(),
+            message_type: None,
+            to: None,
+        });
+        assert_eq!(app.active_channels.len(), 1);
+    }
+
+    #[test]
+    fn directed_message_adds_new_channel() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.receive_message(Message {
+            from: "dev:claude-code".to_string(),
+            text: "broadcast".to_string(),
+            ts: Utc::now(),
+            message_type: None,
+            to: None,
+        });
+        app.receive_message(Message {
+            from: "dev:claude-code".to_string(),
+            text: "hey".to_string(),
+            ts: Utc::now(),
+            message_type: None,
+            to: Some(vec!["ryan".to_string()]),
+        });
+        assert_eq!(app.active_channels.len(), 2);
+    }
+
+    #[test]
+    fn same_recipients_do_not_create_duplicate_channel() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.receive_message(Message {
+            from: "dev:claude-code".to_string(),
+            text: "hey".to_string(),
+            ts: Utc::now(),
+            message_type: None,
+            to: Some(vec!["ryan".to_string()]),
+        });
+        app.receive_message(Message {
+            from: "pm:claude-code".to_string(),
+            text: "also hey".to_string(),
+            ts: Utc::now(),
+            message_type: None,
+            to: Some(vec!["ryan".to_string()]),
+        });
+        assert_eq!(app.active_channels.len(), 1);
+    }
+
+    #[test]
+    fn activity_messages_do_not_create_channels() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.receive_message(Message {
+            from: "dev:claude-code".to_string(),
+            text: "busy".to_string(),
+            ts: Utc::now(),
+            message_type: Some("activity".to_string()),
+            to: None,
+        });
+        assert_eq!(app.active_channels.len(), 0);
     }
 }

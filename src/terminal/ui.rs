@@ -370,10 +370,23 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             Style::default().fg(Color::Rgb(80, 250, 123)),
         )
     };
+    let channel_count = app.active_channels.len();
+    let channel_label = match channel_count {
+        0 => String::new(),
+        1 => " \u{00B7} 1 channel".to_string(),
+        n => format!(" \u{00B7} {n} channels"),
+    };
     let mut status_spans = vec![
+        Span::styled(
+            " [all]",
+            Style::default().fg(Color::Rgb(139, 233, 253)), // Dracula cyan
+        ),
+        Span::styled(
+            channel_label,
+            Style::default().fg(Color::Rgb(98, 114, 164)), // Dracula comment
+        ),
+        Span::raw(" "),
         connection_status,
-        Span::raw(" | "),
-        Span::raw(&app.session_id),
     ];
     if app.scroll_offset > 0 {
         status_spans.push(Span::raw(" | "));
