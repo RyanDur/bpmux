@@ -71,7 +71,7 @@ impl Session {
         read_pins(&self.dir)
     }
 
-    pub fn add_pin(&self, text: String) -> Result<Result<Vec<String>, String>, LogError> {
+    pub fn add_pin(&self, text: String) -> Result<Result<Vec<String>, &'static str>, LogError> {
         add_pin(&self.dir, text)
     }
 
@@ -183,14 +183,13 @@ pub fn write_pins(session_dir: &Path, pins: &[String]) -> Result<(), LogError> {
     Ok(())
 }
 
-pub fn add_pin(session_dir: &Path, text: String) -> Result<Result<Vec<String>, String>, LogError> {
+pub fn add_pin(
+    session_dir: &Path,
+    text: String,
+) -> Result<Result<Vec<String>, &'static str>, LogError> {
     let mut pins = read_pins(session_dir)?;
-    // Duplicate guard: case-insensitive exact match
-    if let Some(pos) = pins.iter().position(|p| p.eq_ignore_ascii_case(&text)) {
-        return Ok(Err(format!("already pinned as #{}", pos + 1)));
-    }
     if pins.len() >= MAX_PINS {
-        return Ok(Err("max 5 pins — unpin one first".to_string()));
+        return Ok(Err("max 5 pins — /unpin one first"));
     }
     pins.push(text);
     write_pins(session_dir, &pins)?;
@@ -406,27 +405,6 @@ mod tests {
             read_handoff(dir.path(), "pm").expect("read"),
             Some("pm context".to_string())
         );
-    }
-
-    #[test]
-    fn pin_duplicate_guard_rejects_case_insensitive() {
-        let dir = TempDir::new().expect("temp dir");
-        let result = add_pin(dir.path(), "channels-as-views".to_string()).expect("io");
-        assert!(result.is_ok());
-        let result = add_pin(dir.path(), "Channels-As-Views".to_string()).expect("io");
-        assert_eq!(result.unwrap_err(), "already pinned as #1");
-    }
-
-    #[test]
-    fn pin_duplicate_guard_allows_different_text() {
-        let dir = TempDir::new().expect("temp dir");
-        add_pin(dir.path(), "first pin".to_string())
-            .expect("io")
-            .expect("ok");
-        let result = add_pin(dir.path(), "second pin".to_string())
-            .expect("io")
-            .expect("ok");
-        assert_eq!(result.len(), 2);
     }
 
     #[test]

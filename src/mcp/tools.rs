@@ -81,57 +81,6 @@ pub fn read_messages_tool(description: &'static str) -> Tool {
     )
 }
 
-pub fn pin_tool(description: &'static str) -> Tool {
-    let schema = serde_json::json!({
-        "type": "object",
-        "properties": {
-            "text": {
-                "type": "string",
-                "description": "The decision or fact to pin (e.g. 'channels-as-views because filter-on-render')"
-            }
-        },
-        "required": ["text"]
-    });
-
-    Tool::new(
-        "pin",
-        description,
-        schema.as_object().cloned().unwrap_or_default(),
-    )
-}
-
-pub fn unpin_tool(description: &'static str) -> Tool {
-    let schema = serde_json::json!({
-        "type": "object",
-        "properties": {
-            "index": {
-                "type": "integer",
-                "description": "1-based index of the pin to remove (see list_pins)"
-            }
-        },
-        "required": ["index"]
-    });
-
-    Tool::new(
-        "unpin",
-        description,
-        schema.as_object().cloned().unwrap_or_default(),
-    )
-}
-
-pub fn list_pins_tool(description: &'static str) -> Tool {
-    let schema = serde_json::json!({
-        "type": "object",
-        "properties": {}
-    });
-
-    Tool::new(
-        "list_pins",
-        description,
-        schema.as_object().cloned().unwrap_or_default(),
-    )
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -627,23 +627,10 @@ impl App {
                 self.clear_input();
                 return None;
             }
-            // Duplicate guard: case-insensitive exact match
-            if let Some(pos) = self.pins.iter().position(|p| p.eq_ignore_ascii_case(arg)) {
-                let msg = Message {
-                    from: "bpmux".to_string(),
-                    text: format!("already pinned as #{}", pos + 1),
-                    ts: Utc::now(),
-                    message_type: None,
-                    to: None,
-                };
-                self.messages.push(msg);
-                self.clear_input();
-                return None;
-            }
             if self.pins.len() >= 5 {
                 let msg = Message {
                     from: "bpmux".to_string(),
-                    text: "max 5 pins — unpin one first".to_string(),
+                    text: "max 5 pins — /unpin one first".to_string(),
                     ts: Utc::now(),
                     message_type: None,
                     to: None,
@@ -656,24 +643,16 @@ impl App {
             if let Some(dir) = &self.session_dir {
                 let _ = crate::session::log::write_pins(dir, &self.pins);
             }
-            let pin_num = self.pins.len();
             let msg = Message {
                 from: "bpmux".to_string(),
-                text: format!("Pinned #{pin_num}: {arg}"),
+                text: format!("Pinned #{}: {arg}", self.pins.len()),
                 ts: Utc::now(),
                 message_type: None,
                 to: None,
             };
             self.messages.push(msg);
             self.clear_input();
-            // Return a broadcast system message so all participants see pin changes
-            return Some(Message {
-                from: format!("{}:human", self.peer_name),
-                text: format!("{} pinned #{pin_num}: {arg}", self.peer_name),
-                ts: Utc::now(),
-                message_type: Some("system".to_string()),
-                to: None,
-            });
+            return None;
         }
         if text == "/pin" {
             let msg = Message {
@@ -705,15 +684,6 @@ impl App {
                         to: None,
                     };
                     self.messages.push(msg);
-                    self.clear_input();
-                    // Broadcast unpin to all participants
-                    return Some(Message {
-                        from: format!("{}:human", self.peer_name),
-                        text: format!("{} unpinned #{n}: {removed}", self.peer_name),
-                        ts: Utc::now(),
-                        message_type: Some("system".to_string()),
-                        to: None,
-                    });
                 }
                 _ => {
                     let msg = Message {
@@ -1926,47 +1896,6 @@ mod tests {
         app.input = "/unpin".to_string();
         app.submit_message();
         assert!(app.messages.last().unwrap().text.contains("Usage:"));
-    }
-
-    #[test]
-    fn pin_duplicate_rejected() {
-        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
-        app.input = "/pin channels-as-views".to_string();
-        app.submit_message();
-        app.input = "/pin Channels-As-Views".to_string();
-        app.submit_message();
-        assert_eq!(app.pins.len(), 1);
-        assert!(
-            app.messages
-                .last()
-                .unwrap()
-                .text
-                .contains("already pinned as #1")
-        );
-    }
-
-    #[test]
-    fn pin_broadcasts_system_message() {
-        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
-        app.input = "/pin test pin".to_string();
-        let msg = app.submit_message();
-        assert!(msg.is_some(), "pin should return a broadcast message");
-        let msg = msg.unwrap();
-        assert!(msg.text.contains("ryan pinned #1: test pin"));
-        assert_eq!(msg.message_type.as_deref(), Some("system"));
-    }
-
-    #[test]
-    fn unpin_broadcasts_system_message() {
-        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
-        app.input = "/pin to remove".to_string();
-        app.submit_message();
-        app.input = "/unpin 1".to_string();
-        let msg = app.submit_message();
-        assert!(msg.is_some(), "unpin should return a broadcast message");
-        let msg = msg.unwrap();
-        assert!(msg.text.contains("ryan unpinned #1: to remove"));
-        assert_eq!(msg.message_type.as_deref(), Some("system"));
     }
 
     // Sidebar tests
