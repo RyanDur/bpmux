@@ -62,7 +62,8 @@ pub struct App {
     pub history_index: Option<usize>,
     pub peer_activity: HashMap<String, (String, Instant)>,
     pub show_system_messages: bool,
-    pub expanded_messages: HashSet<usize>,
+    /// Expanded (un-truncated) messages, keyed by timestamp string for stability.
+    pub expanded_messages: HashSet<String>,
     /// Senders of unacknowledged directed messages (DMs). Cleared on user input.
     pub dm_unread_from: Vec<String>,
     /// When set, the status bar flashes yellow until this instant passes.
@@ -253,7 +254,7 @@ impl App {
 
     pub fn toggle_last_truncated(&mut self) {
         let width = 78usize; // approximate inner width
-        for (i, msg) in self.messages.iter().enumerate().rev() {
+        for msg in self.messages.iter().rev() {
             if !msg.is_chat() && !self.show_system_messages {
                 continue;
             }
@@ -261,10 +262,11 @@ impl App {
             let full_len = prefix_len + msg.text.len();
             let wrapped = full_len.max(1).div_ceil(width.max(1));
             if wrapped > 10 {
-                if self.expanded_messages.contains(&i) {
-                    self.expanded_messages.remove(&i);
+                let key = msg.ts.to_rfc3339();
+                if self.expanded_messages.contains(&key) {
+                    self.expanded_messages.remove(&key);
                 } else {
-                    self.expanded_messages.insert(i);
+                    self.expanded_messages.insert(key);
                 }
                 return;
             }

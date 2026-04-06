@@ -309,7 +309,8 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             let tag_color = channel_tag_color(&channel_tag, is_broadcast);
             let tag_style = Style::default().fg(tag_color);
 
-            if wrapped_lines > 10 && !app.expanded_messages.contains(&i) {
+            let msg_key = msg.ts.to_rfc3339();
+            if wrapped_lines > 10 && !app.expanded_messages.contains(&msg_key) {
                 // Truncate: show first 7 lines worth of text, then [+N lines]
                 let first_line_text_budget = chat_inner_width.saturating_sub(prefix.len());
                 let subsequent_budget = chat_inner_width * 6;
