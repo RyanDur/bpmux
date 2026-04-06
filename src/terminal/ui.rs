@@ -142,7 +142,12 @@ fn render_sidebar(frame: &mut Frame, app: &App, area: Rect) {
 
             // Channel entries — indented under project
             let is_current = app.current_view.as_deref() == Some(ch.as_str());
-            let unread = app.channel_unread.get(ch).copied().unwrap_or(0);
+            // Suppress unread count on broadcast — it's ambient, visible from most views
+            let unread = if ch == "broadcast" {
+                0
+            } else {
+                app.channel_unread.get(ch).copied().unwrap_or(0)
+            };
 
             let select_marker = if selected { "▸ " } else { "  " };
             // Prefix: select(2) + indent(2) = 4 chars; border uses 2
@@ -725,7 +730,7 @@ Commands:
 Keys:
   Enter    send / expand    Esc     clear input
   Ctrl+U   scroll up        Ctrl+D  scroll down
-  Alt+1    channel sidebar   Ctrl+T  timestamps
+  ⌥1       channel sidebar   Ctrl+T  timestamps
   Ctrl+C   quit (empty)     ?  this overlay
 
 Press any key to close";

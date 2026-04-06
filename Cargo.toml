@@ -22,6 +22,7 @@ rmcp = { version = "1.3.0", features = ["server", "client", "transport-async-rw"
 axum = { version = "0.8", features = ["ws"] }
 tokio-tungstenite = "0.26"
 tokio-util = { version = "0.7.18", features = ["rt"] }
+tui-markdown = { version = "0.3.7", default-features = false }
 
 [dev-dependencies]
 ratatui-testlib = "0.1.0"
