@@ -24,6 +24,18 @@ cargo run -- --name ryan
 
 Opens a TUI chat. Type messages, press Enter to send. Messages persist across restarts.
 
+### Desktop Notifications (recommended)
+
+Install [code-notify](https://github.com/mylee04/code-notify) to get macOS desktop notifications when agents finish tasks or need permission:
+
+```bash
+brew install mylee04/tools/code-notify
+cn on claude
+cn test  # verify you see a notification
+```
+
+Without code-notify, you won't know when agents are blocked unless you're watching the TUI.
+
 ### Connect Claude Code (MCP)
 
 Add bpmux as an MCP server:
@@ -186,6 +198,44 @@ To use the plugin:
 ```bash
 claude --plugin-dir ./claude-plugin --dangerously-load-development-channels server:bpmux-bridge
 ```
+
+## Migrating to a New Machine
+
+Session data lives in `~/.bpmux/` (not in the repo). To transfer everything to a new machine:
+
+1. **Push all commits** from the old machine
+2. **Clone the repo** on the new machine
+3. **Copy session data:**
+   ```bash
+   # On the old machine
+   cp -r ~/.bpmux ~/transfer-bpmux
+
+   # On the new machine
+   cp -r ~/transfer-bpmux ~/.bpmux
+   ```
+4. **Copy workspace directories** (`bpmux-dev/`, `bpmux-pm/`, `bpmux-designer/`) and update any absolute paths in `.mcp.json` files
+5. **Reinstall dependencies:**
+   ```bash
+   # Rust toolchain
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+   # Desktop notifications
+   brew install mylee04/tools/code-notify
+   cn on claude
+   ```
+
+### Session directory structure
+
+```
+~/.bpmux/
+└── sessions/
+    ├── current -> {uuid}/          # Symlink to active session
+    └── {uuid}/
+        ├── messages-current.jsonl  # Chat history (the primitive)
+        └── pins.json               # Pinned messages
+```
+
+The JSONL log is append-only. Each line is a self-contained message with sender, timestamp, channel, and content. Sessions are identified by UUID — the `current` symlink points to the active one.
 
 ## Architecture
 

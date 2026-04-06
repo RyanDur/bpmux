@@ -22,7 +22,7 @@ One ordered list. Position is priority. No P1/P2/P3 labels — if it's more impo
 **Story lifecycle:**
 
 ```
-Icebox → Ready → Started → Delivered → Accepted/Rejected
+Icebox → Ready → Started → Finished → Delivered → Accepted/Rejected
 ```
 
 | State | Who acts | What happens |
@@ -30,13 +30,17 @@ Icebox → Ready → Started → Delivered → Accepted/Rejected
 | Icebox | Anyone | Raw ideas, unrefined |
 | Ready | PM | Story has acceptance criteria, is small, is estimable |
 | Started | Dev | Pulls from top of Ready. Writing tests and code. |
-| Delivered | Dev | Tests pass, clippy clean, fmt clean. Ready for review. |
+| Finished | Dev | Tests pass, clippy clean, fmt clean. Calls for desk check. |
+| Delivered | Dev | Desk check passed. Merged to main. Ready for owner. |
 | Accepted | Owner | Verified against acceptance criteria. Done. |
 | Rejected | Owner/PM | Explains why. Returns to Started. |
+
+**Desk check (Finished → Delivered):** Dev walks designer + PM through the working software. Quick pass/fail against acceptance criteria. Catches misunderstandings before the owner's time. This gate prevents repeated rejections — quality before speed.
 
 **Flow rules:**
 - Started work finishes before new work starts. No story interruptions.
 - Priority changes require all three participants to discuss before switching.
+- **Designer works one track ahead.** While dev builds story N, designer specs story N+1 (and N+2). Stories should have a designer-approved spec before dev starts them. PM keeps 2-3 stories shaped and ready in the backlog at all times.
 
 ## Multi-Session (Owner + PM + Dev + Designer)
 
