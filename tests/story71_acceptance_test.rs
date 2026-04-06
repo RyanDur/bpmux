@@ -46,7 +46,7 @@ fn ac1_toggle_opens_sidebar() {
 
 /// AC4: GIVEN channels have unread messages
 /// WHEN the tree renders
-/// THEN unread channels show a distinct indicator
+/// THEN unread channels show a count badge
 #[test]
 fn ac4_unread_indicator_in_sidebar() {
     let bpmux = TestBpmux::start();
@@ -67,11 +67,11 @@ fn ac4_unread_indicator_in_sidebar() {
         tokio::time::sleep(Duration::from_millis(500)).await;
     });
 
-    // Open sidebar
+    // Open sidebar — unread channel should show count badge
     bpmux.type_chars("\x02");
     assert!(
-        bpmux.wait_for_tui("●", Duration::from_secs(5)),
-        "Unread channel should show ● indicator. Screen:\n{}",
+        bpmux.wait_for_tui("dev 1", Duration::from_secs(5)),
+        "Unread channel should show count badge. Screen:\n{}",
         bpmux.tui()
     );
 }

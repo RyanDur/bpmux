@@ -144,39 +144,57 @@ fn render_sidebar(frame: &mut Frame, app: &App, area: Rect) {
             let is_current = app.current_view.as_deref() == Some(ch.as_str());
             let unread = app.channel_unread.get(ch).copied().unwrap_or(0);
 
-            let indicator = if unread > 0 { "● " } else { "○ " };
-            let indicator_color = if unread > 0 {
-                Color::Rgb(139, 233, 253) // Dracula cyan — unread
-            } else {
-                Color::Rgb(98, 114, 164) // Dracula comment gray — read
-            };
+            let select_marker = if selected { "▸ " } else { "  " };
+            // Prefix: select(2) + indent(2) = 4 chars; border uses 2
+            let inner_width = area.width.saturating_sub(2) as usize;
+            let prefix_len = 4;
+            let available = inner_width.saturating_sub(prefix_len);
 
-            let label = if unread > 0 {
-                format!("{ch} ({unread})")
+            // Unread count badge takes priority over channel name length
+            let badge = if unread > 0 {
+                format!(" {unread}")
+            } else {
+                String::new()
+            };
+            let name_budget = available.saturating_sub(badge.len());
+            let display_name: String = if ch.len() > name_budget {
+                format!(
+                    "{}…",
+                    ch.chars()
+                        .take(name_budget.saturating_sub(1))
+                        .collect::<String>()
+                )
             } else {
                 ch.clone()
             };
 
-            let select_marker = if selected { "▸ " } else { "  " };
-
-            let name_style = if is_current {
+            let name_style = if is_current || unread > 0 {
                 Style::default()
                     .fg(Color::Rgb(248, 248, 242))
                     .bg(bg)
                     .add_modifier(Modifier::BOLD)
             } else {
-                Style::default().fg(Color::Rgb(248, 248, 242)).bg(bg)
+                Style::default().fg(Color::Rgb(98, 114, 164)).bg(bg)
             };
 
-            Line::from(vec![
+            let mut spans = vec![
                 Span::styled(
                     select_marker,
                     Style::default().bg(bg).fg(Color::Rgb(189, 147, 249)),
                 ),
-                Span::styled("    ", Style::default().bg(bg)), // indent under project
-                Span::styled(indicator, Style::default().bg(bg).fg(indicator_color)),
-                Span::styled(label, name_style),
-            ])
+                Span::styled("  ", Style::default().bg(bg)), // indent under project
+                Span::styled(display_name, name_style),
+            ];
+            if unread > 0 {
+                spans.push(Span::styled(
+                    badge,
+                    Style::default()
+                        .bg(bg)
+                        .fg(Color::Rgb(139, 233, 253))
+                        .add_modifier(Modifier::BOLD),
+                ));
+            }
+            Line::from(spans)
         })
         .collect();
 
@@ -707,7 +725,7 @@ Commands:
 Keys:
   Enter    send / expand    Esc     clear input
   Ctrl+U   scroll up        Ctrl+D  scroll down
-  Ctrl+B   channel sidebar   Ctrl+T  timestamps
+  Alt+1    channel sidebar   Ctrl+T  timestamps
   Ctrl+C   quit (empty)     ?  this overlay
 
 Press any key to close";

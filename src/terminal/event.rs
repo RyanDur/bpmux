@@ -133,10 +133,14 @@ fn handle_terminal_event(
         app.show_help = false;
         return Ok(());
     }
-    // Sidebar toggle: Ctrl+B or Ctrl+1
+    // Sidebar toggle: Ctrl+B, Ctrl+1, or Alt+1 (IntelliJ project tool window)
     if (key.code == KeyCode::Char('b') || key.code == KeyCode::Char('1'))
         && key.modifiers.contains(KeyModifiers::CONTROL)
     {
+        app.toggle_sidebar();
+        return Ok(());
+    }
+    if key.code == KeyCode::Char('1') && key.modifiers.contains(KeyModifiers::ALT) {
         app.toggle_sidebar();
         return Ok(());
     }
