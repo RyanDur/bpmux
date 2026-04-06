@@ -15,33 +15,36 @@
 
 use portable_pty::{CommandBuilder, PtySize, native_pty_system};
 use std::io::Read;
-use std::time::{Duration, Instant};
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
-/// Read all available bytes from a reader with a timeout.
-fn read_with_timeout(reader: &mut dyn Read, timeout: Duration) -> Vec<u8> {
-    let mut all_bytes = Vec::new();
-    let mut buf = [0u8; 4096];
-    let start = Instant::now();
+/// Read bytes from a reader in a background thread, collecting for `timeout`.
+/// Uses a drainer thread so the blocking `read()` call doesn't prevent the
+/// timeout from being respected (the async TUI only writes on events, not
+/// continuously).
+fn read_with_timeout(reader: Box<dyn Read + Send>, timeout: Duration) -> Vec<u8> {
+    let collected = Arc::new(Mutex::new(Vec::new()));
+    let collected_feed = Arc::clone(&collected);
 
-    loop {
-        if start.elapsed() >= timeout {
-            break;
-        }
-        match reader.read(&mut buf) {
-            Ok(0) => break,
-            Ok(n) => {
-                all_bytes.extend_from_slice(&buf[..n]);
-                if n < buf.len() {
-                    std::thread::sleep(Duration::from_millis(50));
+    let drainer = std::thread::spawn(move || {
+        let mut reader = reader;
+        let mut buf = [0u8; 4096];
+        loop {
+            match reader.read(&mut buf) {
+                Ok(0) => break,
+                Ok(n) => {
+                    collected_feed.lock().unwrap().extend_from_slice(&buf[..n]);
                 }
+                Err(_) => break,
             }
-            Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                std::thread::sleep(Duration::from_millis(50));
-            }
-            Err(_) => break,
         }
-    }
-    all_bytes
+    });
+
+    std::thread::sleep(timeout);
+    // Drainer may still be blocked in read(); that's fine — we take what we have.
+    let result = collected.lock().unwrap().clone();
+    drop(drainer); // Don't join — it may be blocked in read()
+    result
 }
 
 /// Spawn bpmux in a PTY with an isolated session directory.
@@ -79,9 +82,8 @@ fn spawn_and_read_bpmux(
     let child = pair.slave.spawn_command(cmd).expect("spawn bpmux");
     drop(pair.slave);
 
-    let mut reader = pair.master.try_clone_reader().expect("clone reader");
-    let raw = read_with_timeout(&mut reader, read_timeout);
-    drop(reader);
+    let reader = pair.master.try_clone_reader().expect("clone reader");
+    let raw = read_with_timeout(reader, read_timeout);
     // Drop the master to signal EOF/hangup to the child
     drop(pair.master);
 
@@ -106,8 +108,8 @@ fn echo_through_pty() {
     let mut child = pair.slave.spawn_command(cmd).expect("spawn echo");
     drop(pair.slave);
 
-    let mut reader = pair.master.try_clone_reader().expect("clone reader");
-    let raw = read_with_timeout(&mut reader, Duration::from_secs(2));
+    let reader = pair.master.try_clone_reader().expect("clone reader");
+    let raw = read_with_timeout(reader, Duration::from_secs(2));
 
     assert!(!raw.is_empty(), "Should have received bytes from echo");
     assert!(

@@ -38,11 +38,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/send-claude-response.sh",
-            "timeout": 5
-          },
-          {
-            "type": "command",
             "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/set-status-available.sh",
             "timeout": 5
           }
