@@ -11,8 +11,6 @@ use ratatui::{
 use crate::session;
 use crate::terminal::app::App;
 
-const ACTIVITY_STALE_SECS: u64 = 15;
-
 const SENDER_PALETTE: [Color; 6] = [
     Color::Rgb(139, 233, 253), // Dracula cyan
     Color::Rgb(80, 250, 123),  // Dracula green
@@ -393,26 +391,18 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             Style::default().fg(Color::Rgb(255, 121, 198)),
         ));
     }
-    let now = Instant::now();
     let mut peers: Vec<_> = app.peer_activity.iter().collect();
     peers.sort_by_key(|(name, _)| (*name).clone());
-    for (peer, (status, updated_at)) in &peers {
+    for (peer, (status, _)) in &peers {
         let short_name = peer.split(':').next().unwrap_or(peer);
-        let stale = now.duration_since(*updated_at).as_secs() >= ACTIVITY_STALE_SECS;
         let is_blocked = status.starts_with("blocked");
-        let display_status = if is_blocked {
-            status.as_str()
-        } else if stale {
-            "idle"
-        } else {
-            status.as_str()
-        };
+        let display_status = status.as_str();
         let color = if is_blocked {
             Color::Rgb(241, 250, 140) // Dracula yellow — blocked, needs attention
-        } else if stale {
-            Color::Rgb(98, 114, 164) // Dracula comment — idle
+        } else if display_status == "connected" {
+            Color::Rgb(80, 250, 123) // Dracula green — connected
         } else {
-            Color::Rgb(80, 250, 123) // Dracula green — busy
+            Color::Rgb(139, 233, 253) // Dracula cyan — self-declared status
         };
         status_spans.push(Span::raw(" | "));
         status_spans.push(Span::styled(
@@ -420,11 +410,12 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             Style::default().fg(color),
         ));
     }
-    // DM unread badge
-    if app.dm_unread > 0 {
+    // DM unread badge with sender names
+    if !app.dm_unread_from.is_empty() {
+        let names = app.dm_unread_from.join(", ");
         status_spans.push(Span::raw(" | "));
         status_spans.push(Span::styled(
-            format!("\u{2709} {}", app.dm_unread),
+            format!("\u{2709} DM from {names}"),
             Style::default().fg(Color::Rgb(241, 250, 140)), // Dracula yellow
         ));
     }

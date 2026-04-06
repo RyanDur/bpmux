@@ -23,8 +23,8 @@ pub struct App {
     pub peer_activity: HashMap<String, (String, Instant)>,
     pub show_system_messages: bool,
     pub expanded_messages: HashSet<usize>,
-    /// Count of directed messages (DMs) the user hasn't acknowledged yet.
-    pub dm_unread: usize,
+    /// Senders of unacknowledged directed messages (DMs). Cleared on user input.
+    pub dm_unread_from: Vec<String>,
     /// When set, the status bar flashes yellow until this instant passes.
     pub dm_flash_until: Option<Instant>,
 }
@@ -49,7 +49,7 @@ impl App {
             peer_activity: HashMap::new(),
             show_system_messages: false,
             expanded_messages: HashSet::new(),
-            dm_unread: 0,
+            dm_unread_from: Vec::new(),
             dm_flash_until: None,
         }
     }
@@ -199,23 +199,22 @@ impl App {
             self.update_activity(msg.from, msg.text);
             return;
         }
-        // Track peer activity from regular chat messages for busy/idle/blocked
+        // Track peer presence and self-declared status
         if msg.is_chat() {
             let peer = msg.from.clone();
-            if msg.text.starts_with("/status blocked") {
-                let reason = msg
-                    .text
-                    .strip_prefix("/status blocked")
-                    .unwrap_or("")
-                    .trim();
-                let status = if reason.is_empty() {
-                    "blocked".to_string()
-                } else {
-                    format!("blocked: {reason}")
-                };
-                self.update_activity(peer, status);
+            if let Some(rest) = msg.text.strip_prefix("/status ") {
+                // Self-declared status: `/status blocked reason` or `/status working on X`
+                self.update_activity(peer, rest.trim().to_string());
             } else {
-                self.update_activity(peer, "active".to_string());
+                // Regular chat = proof of connection, but only set "connected"
+                // if no richer status exists yet
+                if !self.peer_activity.contains_key(&peer) {
+                    self.update_activity(peer, "connected".to_string());
+                } else {
+                    // Refresh timestamp without overwriting self-declared status
+                    let status = self.peer_activity[&peer].0.clone();
+                    self.update_activity(peer, status);
+                }
             }
         }
         // Track DM notifications for visual flash + badge
@@ -223,7 +222,10 @@ impl App {
             let is_directed_at_me = recipients.iter().any(|r| r == &self.peer_name)
                 && !recipients.iter().all(|r| r == "all");
             if is_directed_at_me {
-                self.dm_unread += 1;
+                let sender = msg.from.split(':').next().unwrap_or(&msg.from).to_string();
+                if !self.dm_unread_from.contains(&sender) {
+                    self.dm_unread_from.push(sender);
+                }
                 self.dm_flash_until = Some(Instant::now() + std::time::Duration::from_millis(750));
             }
         }
@@ -236,7 +238,7 @@ impl App {
     }
 
     pub fn submit_message(&mut self) -> Option<Message> {
-        self.dm_unread = 0;
+        self.dm_unread_from.clear();
         self.dm_flash_until = None;
         let text = self.input.trim().to_string();
         if text.is_empty() {
@@ -891,7 +893,7 @@ mod tests {
             message_type: None,
             to: Some(vec!["ryan".to_string()]),
         });
-        assert_eq!(app.dm_unread, 1);
+        assert_eq!(app.dm_unread_from.len(), 1);
         assert!(app.dm_flash_until.is_some());
     }
 
@@ -905,7 +907,7 @@ mod tests {
             message_type: None,
             to: None,
         });
-        assert_eq!(app.dm_unread, 0);
+        assert_eq!(app.dm_unread_from.len(), 0);
         assert!(app.dm_flash_until.is_none());
     }
 
@@ -919,7 +921,7 @@ mod tests {
             message_type: None,
             to: Some(vec!["all".to_string()]),
         });
-        assert_eq!(app.dm_unread, 0);
+        assert_eq!(app.dm_unread_from.len(), 0);
     }
 
     #[test]
@@ -932,7 +934,7 @@ mod tests {
             message_type: None,
             to: Some(vec!["dev".to_string()]),
         });
-        assert_eq!(app.dm_unread, 0);
+        assert_eq!(app.dm_unread_from.len(), 0);
     }
 
     #[test]
@@ -945,10 +947,10 @@ mod tests {
             message_type: None,
             to: Some(vec!["ryan".to_string()]),
         });
-        assert_eq!(app.dm_unread, 1);
+        assert_eq!(app.dm_unread_from.len(), 1);
         app.input = "got it".to_string();
         app.submit_message();
-        assert_eq!(app.dm_unread, 0);
+        assert_eq!(app.dm_unread_from.len(), 0);
         assert!(app.dm_flash_until.is_none());
     }
 }
