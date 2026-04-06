@@ -209,7 +209,7 @@ impl App {
                 };
                 self.update_activity(peer, status);
             } else {
-                self.update_activity(peer, "busy".to_string());
+                self.update_activity(peer, "active".to_string());
             }
         }
         let was_at_bottom = self.scroll_offset == 0;

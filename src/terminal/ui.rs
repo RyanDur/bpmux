@@ -11,7 +11,7 @@ use ratatui::{
 use crate::session;
 use crate::terminal::app::App;
 
-const ACTIVITY_STALE_SECS: u64 = 60;
+const ACTIVITY_STALE_SECS: u64 = 15;
 
 const SENDER_PALETTE: [Color; 6] = [
     Color::Rgb(139, 233, 253), // Dracula cyan
@@ -405,7 +405,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         } else if stale {
             "idle"
         } else {
-            "busy"
+            status.as_str()
         };
         let color = if is_blocked {
             Color::Rgb(241, 250, 140) // Dracula yellow — blocked, needs attention

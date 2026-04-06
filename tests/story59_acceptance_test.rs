@@ -1,7 +1,7 @@
 //! Story 59 Acceptance Test: The owner can see whether each participant is busy, idle, or blocked
 //!
 //! AC1: Status bar shows each participant's current state
-//! AC2: Participant who sent a message within 60s shows as "busy"
+//! AC2: Participant who sent a message within 60s shows as "active"
 //! AC3: Participant with no message in >60s shows as "idle"
 //! AC4: `/status blocked [reason]` sets blocked state with reason
 //! AC5: Blocked participant sending a regular message returns to "busy"
@@ -16,7 +16,7 @@ use std::time::Duration;
 
 /// AC1 + AC2: GIVEN a participant sends a message
 /// WHEN the owner looks at the TUI status bar
-/// THEN that participant shows as "busy"
+/// THEN that participant shows as "active"
 #[test]
 fn ac2_recent_message_shows_busy() {
     let bpmux = TestBpmux::start();
@@ -27,7 +27,7 @@ fn ac2_recent_message_shows_busy() {
         tokio::time::sleep(Duration::from_millis(300)).await;
     });
     assert!(
-        bpmux.wait_for_tui("dev [busy]", Duration::from_secs(5)),
+        bpmux.wait_for_tui("dev [active]", Duration::from_secs(5)),
         "Status bar should show dev as busy after sending a message. Screen:\n{}",
         bpmux.tui()
     );
@@ -80,7 +80,7 @@ fn ac5_blocked_participant_returns_to_busy_on_message() {
         tokio::time::sleep(Duration::from_millis(300)).await;
     });
     assert!(
-        bpmux.wait_for_tui("dev [busy]", Duration::from_secs(5)),
+        bpmux.wait_for_tui("dev [active]", Duration::from_secs(5)),
         "Status bar should return to busy after regular message. Screen:\n{}",
         bpmux.tui()
     );
