@@ -354,7 +354,7 @@ impl App {
         }
         if text == "/help" {
             let help = format!(
-                "Commands:\n  /to <who> <msg> — send to specific recipients (e.g. /to dev,pm hello)\n  /view [channel] — filter view (broadcast, all, dev\u{2194}human, etc.)\n  /pin <text>     — pin a decision (max 5)\n  /pins           — list pinned items\n  /unpin <n>      — remove pin by number\n  /board          — show project board\n  /status blocked [reason] — declare yourself blocked\n  /help     — show this help\n  /who      — list participants\n  /debug    — toggle system messages\n  /quit     — exit bpmux\n\nKeybindings:\n  Enter     — send message\n  Esc       — clear input\n  Ctrl+C    — clear input (empty: quit)\n  Ctrl+U/D  — scroll up/down\n  Ctrl+T    — toggle timestamps\n  PageUp/Dn — scroll\n\nSession: {}",
+                "Commands:\n  /to <who> <msg> — send to specific recipients (e.g. /to dev,pm hello)\n  /view [channel] — filter view (broadcast, all, dev\u{2194}human, etc.)\n  /pin <text>     — pin a decision (max 5)\n  /pins           — list pinned items\n  /unpin <n>      — remove pin by number\n  /board          — show project board\n  /status blocked [reason] — declare yourself blocked\n  /help     — show this help\n  /who      — list participants\n  /debug    — toggle system messages\n  /quit     — exit bpmux\n\nKeybindings:\n  ?         — help overlay\n  Ctrl+B    — toggle sidebar\n  Enter     — send message\n  Esc       — clear input\n  Ctrl+C    — clear input (empty: quit)\n  Ctrl+U/D  — scroll up/down\n  Ctrl+T    — toggle timestamps\n  PageUp/Dn — scroll\n\nSession: {}",
                 self.session_id
             );
             let msg = Message {

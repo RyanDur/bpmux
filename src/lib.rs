@@ -87,6 +87,7 @@ pub fn run() -> anyhow::Result<()> {
                  \n\
                  Quick start:\n\
                  \x20 /to dev hello  — send to a specific participant\n\
+                 \x20 Ctrl+B         — toggle channel sidebar\n\
                  \x20 ?              — show help overlay\n\
                  \x20 /who           — list connected participants\n\
                  \n\
