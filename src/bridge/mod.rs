@@ -355,9 +355,10 @@ impl ServerHandler for BridgeServer {
 
                     // Send as activity message via REST API so TUI status bar picks it up
                     let current_name = name.lock().await.clone();
+                    let identity = format!("{current_name}:claude-code");
                     let api_url = format!("http://127.0.0.1:{port}/api/messages");
                     let body = json!({
-                        "from": current_name,
+                        "from": identity,
                         "text": status,
                         "message_type": "activity"
                     })
