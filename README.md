@@ -213,7 +213,7 @@ Session data lives in `~/.bpmux/` (not in the repo). To transfer everything to a
    # On the new machine
    cp -r ~/transfer-bpmux ~/.bpmux
    ```
-4. **Copy workspace directories** (`bpmux-dev/`, `bpmux-pm/`, `bpmux-designer/`) and update any absolute paths in `.mcp.json` files
+4. **Copy workspace directories** (`bpmux-dev/`, `bpmux-pm/`, `bpmux-designer/`) — `.mcp.json` uses relative paths, so no edits needed if the sibling layout is preserved
 5. **Reinstall dependencies:**
    ```bash
    # Rust toolchain
