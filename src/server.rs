@@ -31,6 +31,14 @@ pub async fn run_server(
             "/api/messages",
             axum::routing::get(transport::rest::get_messages).post(transport::rest::post_message),
         )
+        .route(
+            "/api/pins",
+            axum::routing::get(transport::rest::get_pins).post(transport::rest::add_pin),
+        )
+        .route(
+            "/api/pins/{index}",
+            axum::routing::delete(transport::rest::remove_pin),
+        )
         .with_state(session);
     let listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{port}")).await?;
     axum::serve(listener, router)
