@@ -1049,8 +1049,18 @@ impl App {
 
     /// Toggle sidebar open/closed. When opening, focus moves to sidebar.
     pub fn toggle_sidebar(&mut self) {
-        self.sidebar_open = !self.sidebar_open;
-        self.sidebar_focused = self.sidebar_open;
+        if !self.sidebar_open {
+            // Closed → open + focused
+            self.sidebar_open = true;
+            self.sidebar_focused = true;
+        } else if !self.sidebar_focused {
+            // Open + unfocused → refocus
+            self.sidebar_focused = true;
+        } else {
+            // Open + focused → close
+            self.sidebar_open = false;
+            self.sidebar_focused = false;
+        }
     }
 
     /// Move sidebar selection up (wraps around).
@@ -1090,6 +1100,8 @@ impl App {
                 self.channel_unread.remove(ch);
             }
             self.scroll_offset = 0;
+            // Return focus to input so the user can type immediately
+            self.sidebar_focused = false;
         }
         // Return focus to input after selection
         self.sidebar_focused = false;
@@ -1108,9 +1120,8 @@ impl App {
         self.project_expanded = true;
     }
 
-    /// Close sidebar and return focus to input.
+    /// Unfocus sidebar (return focus to input). Sidebar stays open.
     pub fn sidebar_close(&mut self) {
-        self.sidebar_open = false;
         self.sidebar_focused = false;
     }
 
@@ -2000,9 +2011,21 @@ mod tests {
     }
 
     #[test]
-    fn sidebar_toggle_opens_and_focuses() {
+    fn sidebar_toggle_three_state_cycle() {
         let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        // Closed → open + focused
         assert!(!app.sidebar_open);
+        app.toggle_sidebar();
+        assert!(app.sidebar_open);
+        assert!(app.sidebar_focused);
+        // Open + focused → closed
+        app.toggle_sidebar();
+        assert!(!app.sidebar_open);
+        assert!(!app.sidebar_focused);
+        // Reopen, then unfocus (simulating channel select)
+        app.toggle_sidebar();
+        app.sidebar_focused = false; // simulate select unfocusing
+        // Open + unfocused → refocused
         app.toggle_sidebar();
         assert!(app.sidebar_open);
         assert!(app.sidebar_focused);
@@ -2052,12 +2075,13 @@ mod tests {
     }
 
     #[test]
-    fn sidebar_close_unfocuses() {
+    fn sidebar_close_unfocuses_but_stays_open() {
         let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
         app.toggle_sidebar();
         assert!(app.sidebar_open);
-        app.sidebar_close();
-        assert!(!app.sidebar_open);
+        assert!(app.sidebar_focused);
+        app.sidebar_close(); // Esc — unfocuses but keeps sidebar open
+        assert!(app.sidebar_open);
         assert!(!app.sidebar_focused);
     }
 
