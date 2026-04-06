@@ -1,4 +1,5 @@
 //! PTY helpers: running bpmux in a pseudo-terminal and observing its TUI.
+#![allow(clippy::panic, clippy::expect_used)]
 
 use std::io::{Read, Write};
 use std::sync::{Arc, Mutex};
@@ -137,6 +138,29 @@ impl TestBpmux {
         let mut w = self.writer.lock().expect("writer lock");
         w.write_all(text.as_bytes()).expect("type text");
         w.write_all(b"\r").expect("press enter");
+        w.flush().expect("flush");
+    }
+
+    /// Send a Ctrl+key combination (e.g. 'b' for Ctrl+B).
+    pub fn type_ctrl(&self, ch: char) {
+        let ctrl_byte = (ch as u8) & 0x1f;
+        let mut w = self.writer.lock().expect("writer lock");
+        w.write_all(&[ctrl_byte]).expect("type ctrl");
+        w.flush().expect("flush");
+    }
+
+    /// Send a special key escape sequence (e.g. "Left", "Right", "Up", "Down").
+    pub fn type_key(&self, key: &str) {
+        let seq = match key {
+            "Up" => "\x1b[A",
+            "Down" => "\x1b[B",
+            "Right" => "\x1b[C",
+            "Left" => "\x1b[D",
+            "Esc" => "\x1b",
+            _ => panic!("unsupported key: {key}"),
+        };
+        let mut w = self.writer.lock().expect("writer lock");
+        w.write_all(seq.as_bytes()).expect("type key");
         w.flush().expect("flush");
     }
 

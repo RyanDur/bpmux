@@ -93,6 +93,8 @@ pub struct App {
     /// Whether the terminal window has focus. Used to gate OS notifications.
     /// Defaults to true (assume focused — no false noise).
     pub tui_focused: bool,
+    /// Whether the project tree node is expanded (showing channels).
+    pub project_expanded: bool,
 }
 
 impl App {
@@ -135,6 +137,7 @@ impl App {
             channel_unread: HashMap::new(),
             send_target: None,
             tui_focused: true,
+            project_expanded: true,
         }
     }
 
@@ -980,13 +983,15 @@ impl App {
         self.popup_selected = None;
     }
 
-    /// Sorted list of channel names for the sidebar.
-    /// First entry is always "all" (broadcast/unfiltered view).
+    /// Sidebar entries: project root node at index 0, channels indented below when expanded.
+    /// Index 0 is always the project node (session_id). Selecting it shows all messages.
     pub fn sidebar_channels(&self) -> Vec<String> {
-        let mut channels: Vec<String> = self.active_channels.iter().cloned().collect();
-        channels.sort();
-        let mut result = vec!["all".to_string()];
-        result.extend(channels);
+        let mut result = vec![self.session_id.clone()];
+        if self.project_expanded {
+            let mut channels: Vec<String> = self.active_channels.iter().cloned().collect();
+            channels.sort();
+            result.extend(channels);
+        }
         result
     }
 
@@ -1019,11 +1024,12 @@ impl App {
     }
 
     /// Select the current sidebar item: sets view filter and send target.
-    /// Clears unread count for the selected channel.
+    /// Index 0 (project node) = show all. Index 1+ = specific channel.
     pub fn sidebar_select(&mut self) {
         let channels = self.sidebar_channels();
         if let Some(ch) = channels.get(self.sidebar_selected) {
-            if ch == "all" {
+            if self.sidebar_selected == 0 {
+                // Project root = all messages (deselected state)
                 self.current_view = None;
                 self.send_target = None;
             } else {
@@ -1035,6 +1041,19 @@ impl App {
         }
         // Return focus to input after selection
         self.sidebar_focused = false;
+    }
+
+    /// Collapse the project tree (Left arrow on project node).
+    pub fn sidebar_collapse(&mut self) {
+        if self.project_expanded {
+            self.project_expanded = false;
+            self.sidebar_selected = 0; // snap to project node
+        }
+    }
+
+    /// Expand the project tree (Right arrow on project node).
+    pub fn sidebar_expand(&mut self) {
+        self.project_expanded = true;
     }
 
     /// Close sidebar and return focus to input.
@@ -1882,10 +1901,10 @@ mod tests {
     // Sidebar tests
 
     #[test]
-    fn sidebar_channels_starts_with_all() {
-        let app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+    fn sidebar_channels_starts_with_project_node() {
+        let app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
         let channels = app.sidebar_channels();
-        assert_eq!(channels[0], "all");
+        assert_eq!(channels[0], "test-session");
     }
 
     #[test]
@@ -1912,7 +1931,7 @@ mod tests {
         let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
         app.current_view = Some("broadcast".to_string());
         app.send_target = Some("broadcast".to_string());
-        app.sidebar_selected = 0; // "all" is always first
+        app.sidebar_selected = 0; // project node is always first
         app.sidebar_select();
         assert!(app.current_view.is_none());
         assert!(app.send_target.is_none());
@@ -1922,7 +1941,7 @@ mod tests {
     fn sidebar_select_channel_sets_view_and_target() {
         let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
         app.active_channels.insert("broadcast".to_string());
-        app.sidebar_selected = 1; // "broadcast" (sorted after "all")
+        app.sidebar_selected = 1; // "broadcast" (sorted after project node)
         app.sidebar_select();
         assert_eq!(app.current_view, Some("broadcast".to_string()));
         assert_eq!(app.send_target, Some("broadcast".to_string()));
@@ -1942,7 +1961,7 @@ mod tests {
     fn sidebar_navigation_wraps() {
         let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
         app.active_channels.insert("broadcast".to_string());
-        // channels: ["all", "broadcast"]
+        // channels: ["test", "broadcast"]
         app.sidebar_selected = 0;
         app.sidebar_up(); // wraps to last
         assert_eq!(app.sidebar_selected, 1);
@@ -1958,6 +1977,35 @@ mod tests {
         app.sidebar_close();
         assert!(!app.sidebar_open);
         assert!(!app.sidebar_focused);
+    }
+
+    #[test]
+    fn sidebar_collapse_hides_channels() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.active_channels.insert("broadcast".to_string());
+        assert!(app.project_expanded);
+        assert_eq!(app.sidebar_channels().len(), 2); // project + broadcast
+        app.sidebar_collapse();
+        assert!(!app.project_expanded);
+        assert_eq!(app.sidebar_channels().len(), 1); // project only
+        assert_eq!(app.sidebar_selected, 0); // snapped to project node
+    }
+
+    #[test]
+    fn sidebar_expand_shows_channels() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.active_channels.insert("broadcast".to_string());
+        app.project_expanded = false;
+        assert_eq!(app.sidebar_channels().len(), 1);
+        app.sidebar_expand();
+        assert!(app.project_expanded);
+        assert_eq!(app.sidebar_channels().len(), 2);
+    }
+
+    #[test]
+    fn sidebar_expanded_by_default() {
+        let app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        assert!(app.project_expanded);
     }
 
     #[test]

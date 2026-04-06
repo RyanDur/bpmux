@@ -125,6 +125,8 @@ pub fn run_tui(
                 match key.code {
                     KeyCode::Up => app.sidebar_up(),
                     KeyCode::Down => app.sidebar_down(),
+                    KeyCode::Left => app.sidebar_collapse(),
+                    KeyCode::Right => app.sidebar_expand(),
                     KeyCode::Enter => app.sidebar_select(),
                     KeyCode::Esc => app.sidebar_close(),
                     _ => {}

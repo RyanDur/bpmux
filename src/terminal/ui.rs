@@ -111,10 +111,40 @@ fn render_sidebar(frame: &mut Frame, app: &App, area: Rect) {
         .enumerate()
         .map(|(i, ch)| {
             let selected = i == app.sidebar_selected && app.sidebar_focused;
-            let is_current = match &app.current_view {
-                None => ch == "all",
-                Some(v) => v == ch,
+            let bg = if selected {
+                Color::Rgb(68, 71, 90) // Dracula selection
+            } else {
+                Color::Rgb(40, 42, 54) // Dracula bg
             };
+
+            // Index 0 = project root node
+            if i == 0 {
+                let arrow = if app.project_expanded { "▾ " } else { "▸ " };
+                let is_all = app.current_view.is_none();
+                let name_style = if is_all {
+                    Style::default()
+                        .fg(Color::Rgb(248, 248, 242))
+                        .bg(bg)
+                        .add_modifier(Modifier::BOLD)
+                } else {
+                    Style::default().fg(Color::Rgb(248, 248, 242)).bg(bg)
+                };
+                let select_marker = if selected { "▸ " } else { "  " };
+                return Line::from(vec![
+                    Span::styled(
+                        select_marker,
+                        Style::default().bg(bg).fg(Color::Rgb(189, 147, 249)),
+                    ),
+                    Span::styled(
+                        arrow,
+                        Style::default().bg(bg).fg(Color::Rgb(98, 114, 164)),
+                    ),
+                    Span::styled(ch.chars().take(16).collect::<String>(), name_style),
+                ]);
+            }
+
+            // Channel entries — indented under project
+            let is_current = app.current_view.as_deref() == Some(ch.as_str());
             let unread = app.channel_unread.get(ch).copied().unwrap_or(0);
 
             let indicator = if unread > 0 { "● " } else { "○ " };
@@ -132,12 +162,6 @@ fn render_sidebar(frame: &mut Frame, app: &App, area: Rect) {
 
             let select_marker = if selected { "▸ " } else { "  " };
 
-            let bg = if selected {
-                Color::Rgb(68, 71, 90) // Dracula selection
-            } else {
-                Color::Rgb(40, 42, 54) // Dracula bg
-            };
-
             let name_style = if is_current {
                 Style::default()
                     .fg(Color::Rgb(248, 248, 242))
@@ -152,6 +176,7 @@ fn render_sidebar(frame: &mut Frame, app: &App, area: Rect) {
                     select_marker,
                     Style::default().bg(bg).fg(Color::Rgb(189, 147, 249)),
                 ),
+                Span::styled("    ", Style::default().bg(bg)), // indent under project
                 Span::styled(indicator, Style::default().bg(bg).fg(indicator_color)),
                 Span::styled(label, name_style),
             ])
