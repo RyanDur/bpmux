@@ -76,6 +76,8 @@ pub struct App {
     pub popup_selected: Option<usize>,
     /// Pinned theory items. Max 5, persisted in session state.
     pub pins: Vec<String>,
+    /// Whether the help overlay is visible.
+    pub show_help: bool,
 }
 
 impl App {
@@ -111,6 +113,7 @@ impl App {
             current_view: None,
             popup_selected: None,
             pins: Vec::new(),
+            show_help: false,
         }
     }
 

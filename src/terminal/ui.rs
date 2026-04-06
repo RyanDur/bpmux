@@ -351,6 +351,27 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     let chat = chat.scroll((scroll, 0));
     frame.render_widget(chat, chunks[0]);
 
+    // Unread indicator — shown at bottom of chat area when scrolled up with new messages
+    if app.scroll_offset > 0 && app.unread_count > 0 {
+        let unread_text = format!(
+            "↓ {} new message{}",
+            app.unread_count,
+            if app.unread_count == 1 { "" } else { "s" }
+        );
+        let unread_width = unread_text.len() as u16 + 2; // +2 for padding
+        let unread_x = chunks[0].x + (chunks[0].width.saturating_sub(unread_width)) / 2;
+        let unread_y = chunks[0].y + chunks[0].height.saturating_sub(2);
+        let unread_area = Rect::new(unread_x, unread_y, unread_width, 1);
+        let unread = Paragraph::new(Span::styled(
+            format!(" {unread_text} "),
+            Style::default()
+                .fg(Color::Rgb(40, 42, 54))
+                .bg(Color::Rgb(139, 233, 253)),
+        ));
+        frame.render_widget(Clear, unread_area);
+        frame.render_widget(unread, unread_area);
+    }
+
     // Pin bar — rendered between chat and input when pins exist
     if !app.pins.is_empty() {
         let pin_lines: Vec<Line> = app
@@ -566,6 +587,54 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             .fg(Color::Rgb(248, 248, 242)),
     );
     frame.render_widget(status, chunks[3]);
+
+    // Help overlay — centered modal, dismiss with any key
+    if app.show_help {
+        let help_text = "\
+Commands:
+  /to <who> <msg>   send to recipients
+  /view [channel]   filter by channel
+  /pin /pins /unpin  manage pins (max 5)
+  /board   project board   /who    participants
+  /status  set status      /debug  system msgs
+  /help    help in chat    /quit   exit
+
+Keys:
+  Enter    send / expand    Esc     clear input
+  Ctrl+U   scroll up        Ctrl+D  scroll down
+  Ctrl+C   quit (empty)     Ctrl+T  timestamps
+  ?  this overlay    Tab  autocomplete
+
+Press any key to close";
+
+        let help_lines: Vec<Line> = help_text
+            .lines()
+            .map(|l| Line::from(Span::raw(l.to_string())))
+            .collect();
+        let help_height = (help_lines.len() as u16 + 2).min(frame.area().height); // +2 for borders
+        let help_width = 52u16.min(frame.area().width);
+        let help_x = (frame.area().width.saturating_sub(help_width)) / 2;
+        let help_y = (frame.area().height.saturating_sub(help_height)) / 2;
+        let help_area = Rect::new(help_x, help_y, help_width, help_height);
+        let help_popup = Paragraph::new(help_lines).block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" help ")
+                .title_style(
+                    Style::default()
+                        .fg(Color::Rgb(189, 147, 249))
+                        .add_modifier(Modifier::BOLD),
+                )
+                .border_style(Style::default().fg(Color::Rgb(189, 147, 249)))
+                .style(
+                    Style::default()
+                        .bg(Color::Rgb(40, 42, 54))
+                        .fg(Color::Rgb(248, 248, 242)),
+                ),
+        );
+        frame.render_widget(Clear, help_area);
+        frame.render_widget(help_popup, help_area);
+    }
 }
 
 #[cfg(test)]

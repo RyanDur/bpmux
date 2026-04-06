@@ -89,6 +89,14 @@ pub fn run_tui(
                 }
                 continue;
             }
+            // Help overlay — any key dismisses it
+            if app.show_help {
+                app.show_help = false;
+                if !event::poll(std::time::Duration::ZERO)? {
+                    break;
+                }
+                continue;
+            }
             // When popup is visible, intercept navigation keys
             let popup_open = app.popup_visible();
             match key.code {
@@ -189,6 +197,9 @@ pub fn run_tui(
                     } else {
                         app.tab_complete();
                     }
+                }
+                KeyCode::Char('?') if app.input.is_empty() => {
+                    app.show_help = true;
                 }
                 KeyCode::Char(c) => {
                     app.insert_char(c);
