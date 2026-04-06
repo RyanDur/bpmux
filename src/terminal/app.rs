@@ -78,6 +78,17 @@ pub struct App {
     pub pins: Vec<String>,
     /// Whether the help overlay is visible.
     pub show_help: bool,
+    /// Whether the sidebar tree view is open.
+    pub sidebar_open: bool,
+    /// Whether keyboard focus is on the sidebar (vs input).
+    pub sidebar_focused: bool,
+    /// Index of selected item in the sidebar channel list.
+    pub sidebar_selected: usize,
+    /// Unread message count per channel.
+    pub channel_unread: HashMap<String, usize>,
+    /// Send target set by sidebar selection. `None` = broadcast.
+    /// When set, outgoing messages are directed to this channel's participants.
+    pub send_target: Option<String>,
 }
 
 impl App {
@@ -114,6 +125,11 @@ impl App {
             popup_selected: None,
             pins: Vec::new(),
             show_help: false,
+            sidebar_open: false,
+            sidebar_focused: false,
+            sidebar_selected: 0,
+            channel_unread: HashMap::new(),
+            send_target: None,
         }
     }
 
@@ -272,9 +288,18 @@ impl App {
                 self.peer_activity.remove(peer);
             }
         }
-        // Track active channels
+        // Track active channels and per-channel unread counts
         if msg.is_chat() {
-            self.active_channels.insert(channel_name(&msg));
+            let ch = channel_name(&msg);
+            self.active_channels.insert(ch.clone());
+            // Increment unread if this channel isn't the current view
+            let is_current = match &self.current_view {
+                None => false, // "all" view — no specific channel to clear
+                Some(v) => v == &ch,
+            };
+            if !is_current {
+                *self.channel_unread.entry(ch).or_insert(0) += 1;
+            }
         }
         // Track peer presence and self-declared status
         if msg.is_chat() {
@@ -710,12 +735,33 @@ impl App {
             self.clear_input();
             return None;
         }
+        // Derive `to` from send_target if set (sidebar selection)
+        let to = self.send_target.as_ref().and_then(|ch| {
+            if ch == "broadcast" {
+                return None; // broadcast = no `to`
+            }
+            // Parse channel name back to recipient list, excluding self
+            let names: Vec<String> = if ch.contains('\u{2194}') {
+                ch.split('\u{2194}').map(String::from).collect()
+            } else if ch.contains('+') {
+                ch.split('+').map(String::from).collect()
+            } else {
+                return None;
+            };
+            let recipients: Vec<String> =
+                names.into_iter().filter(|n| n != &self.peer_name).collect();
+            if recipients.is_empty() {
+                None
+            } else {
+                Some(recipients)
+            }
+        });
         let msg = Message {
             from: format!("{}:human", self.peer_name),
             text,
             ts: Utc::now(),
             message_type: None,
-            to: None,
+            to,
         };
         self.messages.push(msg.clone());
         self.clear_input();
@@ -926,6 +972,69 @@ impl App {
     /// Dismiss the popup without selecting.
     pub fn popup_dismiss(&mut self) {
         self.popup_selected = None;
+    }
+
+    /// Sorted list of channel names for the sidebar.
+    /// First entry is always "all" (broadcast/unfiltered view).
+    pub fn sidebar_channels(&self) -> Vec<String> {
+        let mut channels: Vec<String> = self.active_channels.iter().cloned().collect();
+        channels.sort();
+        let mut result = vec!["all".to_string()];
+        result.extend(channels);
+        result
+    }
+
+    /// Toggle sidebar open/closed. When opening, focus moves to sidebar.
+    pub fn toggle_sidebar(&mut self) {
+        self.sidebar_open = !self.sidebar_open;
+        self.sidebar_focused = self.sidebar_open;
+    }
+
+    /// Move sidebar selection up (wraps around).
+    pub fn sidebar_up(&mut self) {
+        let count = self.sidebar_channels().len();
+        if count == 0 {
+            return;
+        }
+        self.sidebar_selected = if self.sidebar_selected == 0 {
+            count - 1
+        } else {
+            self.sidebar_selected - 1
+        };
+    }
+
+    /// Move sidebar selection down (wraps around).
+    pub fn sidebar_down(&mut self) {
+        let count = self.sidebar_channels().len();
+        if count == 0 {
+            return;
+        }
+        self.sidebar_selected = (self.sidebar_selected + 1) % count;
+    }
+
+    /// Select the current sidebar item: sets view filter and send target.
+    /// Clears unread count for the selected channel.
+    pub fn sidebar_select(&mut self) {
+        let channels = self.sidebar_channels();
+        if let Some(ch) = channels.get(self.sidebar_selected) {
+            if ch == "all" {
+                self.current_view = None;
+                self.send_target = None;
+            } else {
+                self.current_view = Some(ch.clone());
+                self.send_target = Some(ch.clone());
+                self.channel_unread.remove(ch);
+            }
+            self.scroll_offset = 0;
+        }
+        // Return focus to input after selection
+        self.sidebar_focused = false;
+    }
+
+    /// Close sidebar and return focus to input.
+    pub fn sidebar_close(&mut self) {
+        self.sidebar_open = false;
+        self.sidebar_focused = false;
     }
 
     pub fn history_up(&mut self) {
@@ -1762,5 +1871,121 @@ mod tests {
         app.input = "/unpin".to_string();
         app.submit_message();
         assert!(app.messages.last().unwrap().text.contains("Usage:"));
+    }
+
+    // Sidebar tests
+
+    #[test]
+    fn sidebar_channels_starts_with_all() {
+        let app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let channels = app.sidebar_channels();
+        assert_eq!(channels[0], "all");
+    }
+
+    #[test]
+    fn sidebar_channels_includes_active_channels() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.active_channels.insert("broadcast".to_string());
+        app.active_channels.insert("dev↔human".to_string());
+        let channels = app.sidebar_channels();
+        assert!(channels.contains(&"broadcast".to_string()));
+        assert!(channels.contains(&"dev↔human".to_string()));
+    }
+
+    #[test]
+    fn sidebar_toggle_opens_and_focuses() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        assert!(!app.sidebar_open);
+        app.toggle_sidebar();
+        assert!(app.sidebar_open);
+        assert!(app.sidebar_focused);
+    }
+
+    #[test]
+    fn sidebar_select_all_clears_view_and_target() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.current_view = Some("broadcast".to_string());
+        app.send_target = Some("broadcast".to_string());
+        app.sidebar_selected = 0; // "all" is always first
+        app.sidebar_select();
+        assert!(app.current_view.is_none());
+        assert!(app.send_target.is_none());
+    }
+
+    #[test]
+    fn sidebar_select_channel_sets_view_and_target() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.active_channels.insert("broadcast".to_string());
+        app.sidebar_selected = 1; // "broadcast" (sorted after "all")
+        app.sidebar_select();
+        assert_eq!(app.current_view, Some("broadcast".to_string()));
+        assert_eq!(app.send_target, Some("broadcast".to_string()));
+    }
+
+    #[test]
+    fn sidebar_select_clears_unread() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.active_channels.insert("broadcast".to_string());
+        app.channel_unread.insert("broadcast".to_string(), 5);
+        app.sidebar_selected = 1;
+        app.sidebar_select();
+        assert_eq!(app.channel_unread.get("broadcast"), None);
+    }
+
+    #[test]
+    fn sidebar_navigation_wraps() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.active_channels.insert("broadcast".to_string());
+        // channels: ["all", "broadcast"]
+        app.sidebar_selected = 0;
+        app.sidebar_up(); // wraps to last
+        assert_eq!(app.sidebar_selected, 1);
+        app.sidebar_down(); // wraps to first
+        assert_eq!(app.sidebar_selected, 0);
+    }
+
+    #[test]
+    fn sidebar_close_unfocuses() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.toggle_sidebar();
+        assert!(app.sidebar_open);
+        app.sidebar_close();
+        assert!(!app.sidebar_open);
+        assert!(!app.sidebar_focused);
+    }
+
+    #[test]
+    fn send_target_directs_outgoing_messages() {
+        let mut app = App::new("human".to_string(), "test".to_string(), vec![]);
+        app.send_target = Some("dev↔human".to_string());
+        app.input = "hello dev".to_string();
+        app.cursor_pos = app.input.len();
+        let msg = app.submit_message().unwrap();
+        assert_eq!(msg.to, Some(vec!["dev".to_string()]));
+    }
+
+    #[test]
+    fn no_send_target_broadcasts() {
+        let mut app = App::new("human".to_string(), "test".to_string(), vec![]);
+        app.input = "hello everyone".to_string();
+        app.cursor_pos = app.input.len();
+        let msg = app.submit_message().unwrap();
+        assert!(msg.to.is_none());
+    }
+
+    #[test]
+    fn channel_unread_increments_on_receive() {
+        let mut app = App::new("human".to_string(), "test".to_string(), vec![]);
+        app.current_view = Some("broadcast".to_string());
+        let msg = Message {
+            from: "dev:claude-code".to_string(),
+            text: "dm message".to_string(),
+            ts: Utc::now(),
+            message_type: None,
+            to: Some(vec!["human".to_string()]),
+        };
+        app.receive_message(msg);
+        let ch = "dev↔human";
+        assert_eq!(*app.channel_unread.get(ch).unwrap_or(&0), 1);
     }
 }

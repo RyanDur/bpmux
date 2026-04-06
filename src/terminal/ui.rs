@@ -104,11 +104,103 @@ fn parse_mentions(text: &str) -> Vec<Span<'static>> {
     spans
 }
 
+fn render_sidebar(frame: &mut Frame, app: &App, area: Rect) {
+    let channels = app.sidebar_channels();
+    let items: Vec<Line> = channels
+        .iter()
+        .enumerate()
+        .map(|(i, ch)| {
+            let selected = i == app.sidebar_selected && app.sidebar_focused;
+            let is_current = match &app.current_view {
+                None => ch == "all",
+                Some(v) => v == ch,
+            };
+            let unread = app.channel_unread.get(ch).copied().unwrap_or(0);
+
+            let indicator = if unread > 0 { "● " } else { "○ " };
+            let indicator_color = if unread > 0 {
+                Color::Rgb(139, 233, 253) // Dracula cyan — unread
+            } else {
+                Color::Rgb(98, 114, 164) // Dracula comment gray — read
+            };
+
+            let label = if unread > 0 {
+                format!("{ch} ({unread})")
+            } else {
+                ch.clone()
+            };
+
+            let select_marker = if selected { "▸ " } else { "  " };
+
+            let bg = if selected {
+                Color::Rgb(68, 71, 90) // Dracula selection
+            } else {
+                Color::Rgb(40, 42, 54) // Dracula bg
+            };
+
+            let name_style = if is_current {
+                Style::default()
+                    .fg(Color::Rgb(248, 248, 242))
+                    .bg(bg)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(Color::Rgb(248, 248, 242)).bg(bg)
+            };
+
+            Line::from(vec![
+                Span::styled(
+                    select_marker,
+                    Style::default().bg(bg).fg(Color::Rgb(189, 147, 249)),
+                ),
+                Span::styled(indicator, Style::default().bg(bg).fg(indicator_color)),
+                Span::styled(label, name_style),
+            ])
+        })
+        .collect();
+
+    let border_color = if app.sidebar_focused {
+        Color::Rgb(189, 147, 249) // Dracula purple — focused
+    } else {
+        Color::Rgb(68, 71, 90) // Dracula selection — unfocused
+    };
+
+    let sidebar = Paragraph::new(items).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(" channels ")
+            .title_style(
+                Style::default()
+                    .fg(Color::Rgb(189, 147, 249))
+                    .add_modifier(Modifier::BOLD),
+            )
+            .border_style(Style::default().fg(border_color))
+            .style(
+                Style::default()
+                    .bg(Color::Rgb(40, 42, 54))
+                    .fg(Color::Rgb(248, 248, 242)),
+            ),
+    );
+    frame.render_widget(sidebar, area);
+}
+
 pub fn render(frame: &mut Frame, app: &mut App) {
+    // Auto-suppress sidebar if terminal is too narrow
+    let sidebar_width = if app.sidebar_open && frame.area().width >= 60 {
+        24u16
+    } else {
+        0
+    };
+
+    // Horizontal split: sidebar | main content
+    let h_chunks = Layout::horizontal([Constraint::Length(sidebar_width), Constraint::Min(1)])
+        .split(frame.area());
+
+    let main_area = h_chunks[1];
+
     let input_lines = if app.input.is_empty() {
         1
     } else {
-        let width = frame.area().width.saturating_sub(4) as usize; // borders + padding
+        let width = main_area.width.saturating_sub(4) as usize; // borders + padding
         app.input.len().max(1).div_ceil(width.max(1))
     };
     let input_height = (input_lines + 2).min(8) as u16; // +2 for borders, cap at 8
@@ -124,7 +216,12 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         Constraint::Length(input_height), // input pane — grows with content
         Constraint::Length(1),            // status bar
     ])
-    .split(frame.area());
+    .split(main_area);
+
+    // Sidebar tree view
+    if sidebar_width > 0 {
+        render_sidebar(frame, app, h_chunks[0]);
+    }
 
     // Chat pane — show chat messages (and system messages when debug is on),
     // filtered by current_view when set.
@@ -421,7 +518,10 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title(format!(" {} > ", app.peer_name))
+                .title(match &app.send_target {
+                    Some(ch) => format!(" {} [{ch}] > ", app.peer_name),
+                    None => format!(" {} > ", app.peer_name),
+                })
                 .title_style(Style::default().fg(Color::Rgb(189, 147, 249)))
                 .border_style(Style::default().fg(Color::Rgb(68, 71, 90)))
                 .style(
@@ -601,8 +701,8 @@ Commands:
 Keys:
   Enter    send / expand    Esc     clear input
   Ctrl+U   scroll up        Ctrl+D  scroll down
-  Ctrl+C   quit (empty)     Ctrl+T  timestamps
-  ?  this overlay    Tab  autocomplete
+  Ctrl+B   channel sidebar   Ctrl+T  timestamps
+  Ctrl+C   quit (empty)     ?  this overlay
 
 Press any key to close";
 

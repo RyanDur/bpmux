@@ -26,8 +26,8 @@ fn ac1_first_launch_shows_welcome() {
         bpmux.tui()
     );
     assert!(
-        bpmux.tui().contains("/help"),
-        "Welcome should mention /help. Screen:\n{}",
+        bpmux.tui().contains("help overlay"),
+        "Welcome should mention help. Screen:\n{}",
         bpmux.tui()
     );
 }

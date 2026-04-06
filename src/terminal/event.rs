@@ -97,6 +97,30 @@ pub fn run_tui(
                 }
                 continue;
             }
+            // Sidebar toggle: Ctrl+B or Ctrl+1
+            if (key.code == KeyCode::Char('b') || key.code == KeyCode::Char('1'))
+                && key.modifiers.contains(KeyModifiers::CONTROL)
+            {
+                app.toggle_sidebar();
+                if !event::poll(std::time::Duration::ZERO)? {
+                    break;
+                }
+                continue;
+            }
+            // When sidebar is focused, intercept navigation keys
+            if app.sidebar_focused {
+                match key.code {
+                    KeyCode::Up => app.sidebar_up(),
+                    KeyCode::Down => app.sidebar_down(),
+                    KeyCode::Enter => app.sidebar_select(),
+                    KeyCode::Esc => app.sidebar_close(),
+                    _ => {}
+                }
+                if !event::poll(std::time::Duration::ZERO)? {
+                    break;
+                }
+                continue;
+            }
             // When popup is visible, intercept navigation keys
             let popup_open = app.popup_visible();
             match key.code {
