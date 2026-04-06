@@ -1,4 +1,6 @@
-use crossterm::event::{self, Event, EventStream, KeyCode, KeyEventKind, KeyModifiers, MouseEventKind};
+use crossterm::event::{
+    self, Event, EventStream, KeyCode, KeyEventKind, KeyModifiers, MouseEventKind,
+};
 use futures::StreamExt;
 use ratatui::DefaultTerminal;
 use tokio::sync::broadcast;
