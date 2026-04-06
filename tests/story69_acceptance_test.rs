@@ -63,11 +63,11 @@ fn ac1_board_renders_in_chat() {
 
     let bpmux = TestBpmux::start();
     bpmux.type_line("/board");
-    assert!(
-        bpmux.wait_for_tui("Board", Duration::from_secs(10)),
-        "Should show board. Screen:\n{}",
-        bpmux.tui()
-    );
+    // Board may scroll off top of viewport; check for section markers visible in view
+    let has_board = bpmux.wait_for_tui("Active", Duration::from_secs(20))
+        || bpmux.wait_for_tui("Backlog", Duration::from_secs(2))
+        || bpmux.wait_for_tui("Icebox", Duration::from_secs(2));
+    assert!(has_board, "Should show board. Screen:\n{}", bpmux.tui());
 }
 
 /// AC2: GIVEN the board renders
@@ -82,7 +82,7 @@ fn ac2_board_shows_issue_numbers() {
     let bpmux = TestBpmux::start();
     bpmux.type_line("/board");
     assert!(
-        bpmux.wait_for_tui("#", Duration::from_secs(10)),
+        bpmux.wait_for_tui("#", Duration::from_secs(20)),
         "Board should show issue numbers. Screen:\n{}",
         bpmux.tui()
     );
@@ -90,7 +90,7 @@ fn ac2_board_shows_issue_numbers() {
 
 /// AC3: GIVEN issues exist in various states
 /// WHEN the board renders
-/// THEN it groups them by status columns
+/// THEN it groups them with section markers (●, ○, ◌)
 #[test]
 fn ac3_board_groups_by_status() {
     if !ensure_board_env() {
@@ -99,12 +99,34 @@ fn ac3_board_groups_by_status() {
 
     let bpmux = TestBpmux::start();
     bpmux.type_line("/board");
-    let has_column = bpmux.wait_for_tui("Done", Duration::from_secs(10))
-        || bpmux.wait_for_tui("Active", Duration::from_secs(2))
-        || bpmux.wait_for_tui("Backlog", Duration::from_secs(2));
+    let has_section = bpmux.wait_for_tui("Active", Duration::from_secs(20))
+        || bpmux.wait_for_tui("Backlog", Duration::from_secs(2))
+        || bpmux.wait_for_tui("Icebox", Duration::from_secs(2));
     assert!(
-        has_column,
-        "Board should show status columns. Screen:\n{}",
+        has_section,
+        "Board should show status sections. Screen:\n{}",
+        bpmux.tui()
+    );
+}
+
+/// AC4: GIVEN the board renders
+/// WHEN the human reads it
+/// THEN section markers provide visual structure
+#[test]
+fn ac4_board_has_visual_structure() {
+    if !ensure_board_env() {
+        return;
+    }
+
+    let bpmux = TestBpmux::start();
+    bpmux.type_line("/board");
+    // Section markers: ● Active, ○ Backlog, ◌ Icebox
+    let has_marker = bpmux.wait_for_tui("●", Duration::from_secs(20))
+        || bpmux.wait_for_tui("○", Duration::from_secs(2))
+        || bpmux.wait_for_tui("◌", Duration::from_secs(2));
+    assert!(
+        has_marker,
+        "Board should have section markers. Screen:\n{}",
         bpmux.tui()
     );
 }

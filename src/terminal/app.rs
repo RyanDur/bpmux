@@ -853,79 +853,122 @@ impl App {
         let json: Vec<serde_json::Value> =
             serde_json::from_slice(&output.stdout).map_err(|e| format!("parse error: {e}"))?;
 
-        let mut active: Vec<String> = Vec::new();
-        let mut backlog: Vec<String> = Vec::new();
-        let mut icebox: Vec<String> = Vec::new();
-        let mut done: Vec<String> = Vec::new();
+        struct BoardItem {
+            number: u64,
+            title: String,
+            status: Option<String>,
+        }
+
+        let mut active: Vec<BoardItem> = Vec::new();
+        let mut backlog: Vec<BoardItem> = Vec::new();
+        let mut icebox: Vec<BoardItem> = Vec::new();
 
         for issue in &json {
             let num = issue["number"].as_u64().unwrap_or(0);
-            let title = issue["title"].as_str().unwrap_or("?");
+            let title = issue["title"].as_str().unwrap_or("?").to_string();
             let state = issue["state"].as_str().unwrap_or("OPEN");
             let labels: Vec<&str> = issue["labels"]
                 .as_array()
                 .map(|arr| arr.iter().filter_map(|l| l["name"].as_str()).collect())
                 .unwrap_or_default();
 
-            // Truncate title to fit 80 cols: "  #NN Title..." = ~74 chars for title
-            let display_title: String = if title.len() > 65 {
-                format!("{}...", &title[..62])
-            } else {
-                title.to_string()
-            };
-            let line = format!("  #{num} {display_title}");
-
             if state == "CLOSED" {
-                done.push(line);
-            } else if labels.contains(&"icebox") {
-                icebox.push(line);
-            } else if labels.contains(&"backlog") {
-                backlog.push(line);
+                continue; // Done items not shown
+            }
+
+            // Derive status from labels for active items
+            let status = if labels.contains(&"delivered") {
+                Some("delivered".to_string())
+            } else if labels.contains(&"finished") {
+                Some("finished".to_string())
+            } else if labels.contains(&"started") {
+                Some("started".to_string())
+            } else if labels.contains(&"rejected") {
+                Some("rejected".to_string())
             } else {
-                active.push(line);
+                None
+            };
+
+            let item = BoardItem {
+                number: num,
+                title,
+                status,
+            };
+
+            if labels.contains(&"icebox") {
+                icebox.push(item);
+            } else if labels.contains(&"backlog") {
+                backlog.push(item);
+            } else {
+                active.push(item);
             }
         }
 
-        let mut sections: Vec<String> = Vec::new();
+        // Board width for centering and rules
+        const BOARD_WIDTH: usize = 40;
+        let rule = "━".repeat(BOARD_WIDTH);
+
+        let mut lines: Vec<String> = Vec::new();
+        lines.push(format!("━━ Board {}", "━".repeat(BOARD_WIDTH - 9)));
+
         if !active.is_empty() {
-            sections.push(format!("Active ({})\n{}", active.len(), active.join("\n")));
-        }
-        if !backlog.is_empty() {
-            sections.push(format!(
-                "Backlog ({})\n{}",
-                backlog.len(),
-                backlog
-                    .iter()
-                    .take(10)
-                    .cloned()
-                    .collect::<Vec<_>>()
-                    .join("\n")
-            ));
-        }
-        if !icebox.is_empty() {
-            sections.push(format!(
-                "Icebox ({})\n{}",
-                icebox.len(),
-                icebox
-                    .iter()
-                    .take(5)
-                    .cloned()
-                    .collect::<Vec<_>>()
-                    .join("\n")
-            ));
-        }
-        if !done.is_empty() {
-            sections.push(format!(
-                "Done ({})\n{}",
-                done.len(),
-                done.iter().take(10).cloned().collect::<Vec<_>>().join("\n")
-            ));
+            lines.push(format!(" ● Active ({})", active.len()));
+            for item in &active {
+                let status_tag = item
+                    .status
+                    .as_ref()
+                    .map(|s| format!(" ✓ {s}"))
+                    .unwrap_or_default();
+                let max_title = BOARD_WIDTH - 8 - status_tag.len();
+                let display_title = if item.title.len() > max_title {
+                    format!("{}…", &item.title[..max_title.saturating_sub(1)])
+                } else {
+                    item.title.clone()
+                };
+                lines.push(format!("   #{} {display_title}{status_tag}", item.number));
+            }
         }
 
-        if sections.is_empty() {
-            Ok("No issues found.".to_string())
+        if !backlog.is_empty() {
+            lines.push(String::new());
+            lines.push(format!(" ○ Backlog ({})", backlog.len()));
+            for item in backlog.iter().take(10) {
+                let max_title = BOARD_WIDTH - 8;
+                let display_title = if item.title.len() > max_title {
+                    format!("{}…", &item.title[..max_title.saturating_sub(1)])
+                } else {
+                    item.title.clone()
+                };
+                lines.push(format!("   #{} {display_title}", item.number));
+            }
+            if backlog.len() > 10 {
+                lines.push(format!("   +{} more", backlog.len() - 10));
+            }
+        }
+
+        if !icebox.is_empty() {
+            lines.push(String::new());
+            lines.push(format!(" ◌ Icebox ({})", icebox.len()));
+            if let Some(first) = icebox.first() {
+                let max_title = BOARD_WIDTH - 8;
+                let display_title = if first.title.len() > max_title {
+                    format!("{}…", &first.title[..max_title.saturating_sub(1)])
+                } else {
+                    first.title.clone()
+                };
+                lines.push(format!("   #{} {display_title}", first.number));
+            }
+            if icebox.len() > 1 {
+                lines.push(format!("   +{} more", icebox.len() - 1));
+            }
+        }
+
+        lines.push(rule);
+
+        if lines.len() <= 2 {
+            Ok("No open issues found.".to_string())
         } else {
-            Ok(format!("Board\n{}", sections.join("\n\n")))
+            Ok(lines.join("\n"))
         }
     }
 
