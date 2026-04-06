@@ -76,6 +76,35 @@ impl McpHttpClient {
         format!("{result:?}")
     }
 
+    pub async fn set_name(&self, name: &str) -> String {
+        let mut params = rmcp::model::CallToolRequestParams::new("set_name");
+        params.arguments = serde_json::json!({"name": name}).as_object().cloned();
+        let result = self
+            .client
+            .peer()
+            .call_tool(params)
+            .await
+            .expect("set_name");
+        assert!(!result.is_error.unwrap_or(false), "set_name should succeed");
+        format!("{result:?}")
+    }
+
+    pub async fn set_status(&self, status: &str) -> String {
+        let mut params = rmcp::model::CallToolRequestParams::new("set_status");
+        params.arguments = serde_json::json!({"status": status}).as_object().cloned();
+        let result = self
+            .client
+            .peer()
+            .call_tool(params)
+            .await
+            .expect("set_status");
+        assert!(
+            !result.is_error.unwrap_or(false),
+            "set_status should succeed"
+        );
+        format!("{result:?}")
+    }
+
     pub async fn close(self) {
         let _ = tokio::time::timeout(Duration::from_secs(2), self.client.cancel()).await;
     }
