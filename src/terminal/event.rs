@@ -14,17 +14,6 @@ fn bell() {
     }
 }
 
-/// Returns true when an incoming message is specifically directed at `peer_name`
-/// (i.e. `msg.to` contains the peer) and is NOT a plain broadcast.
-fn should_bell(msg: &session::Message, peer_name: &str) -> bool {
-    match &msg.to {
-        None => false,
-        Some(recipients) => {
-            recipients.iter().any(|r| r == peer_name) && !recipients.iter().all(|r| r == "all")
-        }
-    }
-}
-
 pub fn run_tui(
     terminal: &mut DefaultTerminal,
     app: &mut App,
@@ -40,9 +29,6 @@ pub fn run_tui(
                 if msg.from != self_identity {
                     let short_name = msg.from.split(':').next().unwrap_or(&msg.from).to_string();
                     let preview: String = msg.text.chars().take(50).collect();
-                    if should_bell(&msg, &app.peer_name) {
-                        bell();
-                    }
                     let was_scrolled = app.scroll_offset > 0;
                     app.receive_message(msg);
                     if was_scrolled || app.scroll_offset > 0 {
@@ -196,52 +182,5 @@ pub fn run_tui(
                 break;
             }
         }
-    }
-}
-
-#[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
-mod tests {
-    use super::*;
-    use chrono::Utc;
-
-    fn msg(to: Option<Vec<&str>>) -> session::Message {
-        session::Message {
-            from: "pm:claude-code".to_string(),
-            text: "hello".to_string(),
-            ts: Utc::now(),
-            message_type: None,
-            to: to.map(|v| v.into_iter().map(String::from).collect()),
-        }
-    }
-
-    #[test]
-    fn broadcast_does_not_bell() {
-        assert!(!should_bell(&msg(None), "ryan"));
-    }
-
-    #[test]
-    fn directed_to_peer_bells() {
-        assert!(should_bell(&msg(Some(vec!["ryan"])), "ryan"));
-    }
-
-    #[test]
-    fn directed_to_other_does_not_bell() {
-        assert!(!should_bell(&msg(Some(vec!["pm"])), "ryan"));
-    }
-
-    #[test]
-    fn all_does_not_bell() {
-        assert!(!should_bell(&msg(Some(vec!["all"])), "ryan"));
-    }
-
-    #[test]
-    fn directed_to_peer_among_multiple_bells() {
-        assert!(should_bell(&msg(Some(vec!["ryan", "pm"])), "ryan"));
-    }
-
-    #[test]
-    fn directed_to_others_not_peer_does_not_bell() {
-        assert!(!should_bell(&msg(Some(vec!["pm", "designer"])), "ryan"));
     }
 }

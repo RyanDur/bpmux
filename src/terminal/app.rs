@@ -23,6 +23,10 @@ pub struct App {
     pub peer_activity: HashMap<String, (String, Instant)>,
     pub show_system_messages: bool,
     pub expanded_messages: HashSet<usize>,
+    /// Count of directed messages (DMs) the user hasn't acknowledged yet.
+    pub dm_unread: usize,
+    /// When set, the status bar flashes yellow until this instant passes.
+    pub dm_flash_until: Option<Instant>,
 }
 
 impl App {
@@ -45,6 +49,8 @@ impl App {
             peer_activity: HashMap::new(),
             show_system_messages: false,
             expanded_messages: HashSet::new(),
+            dm_unread: 0,
+            dm_flash_until: None,
         }
     }
 
@@ -212,6 +218,15 @@ impl App {
                 self.update_activity(peer, "active".to_string());
             }
         }
+        // Track DM notifications for visual flash + badge
+        if let Some(recipients) = &msg.to {
+            let is_directed_at_me = recipients.iter().any(|r| r == &self.peer_name)
+                && !recipients.iter().all(|r| r == "all");
+            if is_directed_at_me {
+                self.dm_unread += 1;
+                self.dm_flash_until = Some(Instant::now() + std::time::Duration::from_millis(750));
+            }
+        }
         let was_at_bottom = self.scroll_offset == 0;
         self.messages.push(msg);
         if !was_at_bottom {
@@ -221,6 +236,8 @@ impl App {
     }
 
     pub fn submit_message(&mut self) -> Option<Message> {
+        self.dm_unread = 0;
+        self.dm_flash_until = None;
         let text = self.input.trim().to_string();
         if text.is_empty() {
             return None;
@@ -862,5 +879,76 @@ mod tests {
         app.input = "/to dev hel".to_string();
         app.cursor_pos = app.input.len();
         assert!(!app.tab_complete());
+    }
+
+    #[test]
+    fn dm_increments_unread_and_sets_flash() {
+        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        app.receive_message(Message {
+            from: "pm:claude-code".to_string(),
+            text: "hey ryan".to_string(),
+            ts: Utc::now(),
+            message_type: None,
+            to: Some(vec!["ryan".to_string()]),
+        });
+        assert_eq!(app.dm_unread, 1);
+        assert!(app.dm_flash_until.is_some());
+    }
+
+    #[test]
+    fn broadcast_does_not_increment_dm_unread() {
+        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        app.receive_message(Message {
+            from: "pm:claude-code".to_string(),
+            text: "hello all".to_string(),
+            ts: Utc::now(),
+            message_type: None,
+            to: None,
+        });
+        assert_eq!(app.dm_unread, 0);
+        assert!(app.dm_flash_until.is_none());
+    }
+
+    #[test]
+    fn to_all_does_not_increment_dm_unread() {
+        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        app.receive_message(Message {
+            from: "pm:claude-code".to_string(),
+            text: "hello".to_string(),
+            ts: Utc::now(),
+            message_type: None,
+            to: Some(vec!["all".to_string()]),
+        });
+        assert_eq!(app.dm_unread, 0);
+    }
+
+    #[test]
+    fn dm_to_other_does_not_increment_dm_unread() {
+        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        app.receive_message(Message {
+            from: "pm:claude-code".to_string(),
+            text: "hey dev".to_string(),
+            ts: Utc::now(),
+            message_type: None,
+            to: Some(vec!["dev".to_string()]),
+        });
+        assert_eq!(app.dm_unread, 0);
+    }
+
+    #[test]
+    fn submit_clears_dm_unread() {
+        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        app.receive_message(Message {
+            from: "pm:claude-code".to_string(),
+            text: "hey".to_string(),
+            ts: Utc::now(),
+            message_type: None,
+            to: Some(vec!["ryan".to_string()]),
+        });
+        assert_eq!(app.dm_unread, 1);
+        app.input = "got it".to_string();
+        app.submit_message();
+        assert_eq!(app.dm_unread, 0);
+        assert!(app.dm_flash_until.is_none());
     }
 }
