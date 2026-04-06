@@ -147,6 +147,9 @@ pub fn run_tui(
                 KeyCode::Right if key.modifiers.contains(KeyModifiers::ALT) => {
                     app.move_word_right();
                 }
+                KeyCode::Tab => {
+                    app.tab_complete();
+                }
                 KeyCode::Char(c) => {
                     app.insert_char(c);
                 }

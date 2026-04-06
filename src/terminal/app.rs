@@ -208,7 +208,7 @@ impl App {
         }
         if text == "/help" {
             let help = format!(
-                "Commands:\n  /help     — show this help\n  /who      — list participants\n  /debug    — toggle system messages\n  /quit     — exit bpmux\n\nKeybindings:\n  Enter     — send message\n  Esc       — clear input\n  Ctrl+C    — clear input (empty: quit)\n  Ctrl+U/D  — scroll up/down\n  Ctrl+T    — toggle timestamps\n  PageUp/Dn — scroll\n\nSession: {}",
+                "Commands:\n  /to <who> <msg> — send to specific recipients (e.g. /to dev,pm hello)\n  /help     — show this help\n  /who      — list participants\n  /debug    — toggle system messages\n  /quit     — exit bpmux\n\nKeybindings:\n  Enter     — send message\n  Esc       — clear input\n  Ctrl+C    — clear input (empty: quit)\n  Ctrl+U/D  — scroll up/down\n  Ctrl+T    — toggle timestamps\n  PageUp/Dn — scroll\n\nSession: {}",
                 self.session_id
             );
             let msg = Message {
@@ -271,6 +271,83 @@ impl App {
             self.clear_input();
             return None;
         }
+        if let Some(rest) = text.strip_prefix("/to ") {
+            let rest = rest.trim_start();
+            if let Some((recipients_str, body)) = rest.split_once(' ') {
+                let body = body.trim().to_string();
+                if body.is_empty() {
+                    let msg = Message {
+                        from: "bpmux".to_string(),
+                        text: "Usage: /to <recipients> <message>. Example: /to dev,pm hello"
+                            .to_string(),
+                        ts: Utc::now(),
+                        message_type: None,
+                        to: None,
+                    };
+                    self.messages.push(msg);
+                    self.clear_input();
+                    return None;
+                }
+                let recipients: Vec<String> = recipients_str
+                    .split(',')
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .collect();
+                if recipients.is_empty() {
+                    let msg = Message {
+                        from: "bpmux".to_string(),
+                        text: "Usage: /to <recipients> <message>. Example: /to dev,pm hello"
+                            .to_string(),
+                        ts: Utc::now(),
+                        message_type: None,
+                        to: None,
+                    };
+                    self.messages.push(msg);
+                    self.clear_input();
+                    return None;
+                }
+                let msg = Message {
+                    from: format!("{}:human", self.peer_name),
+                    text: body,
+                    ts: Utc::now(),
+                    message_type: None,
+                    to: Some(recipients),
+                };
+                self.messages.push(msg.clone());
+                self.clear_input();
+                self.scroll_offset = 0;
+                self.unread_count = 0;
+                if self.input_history.len() >= MAX_HISTORY {
+                    self.input_history.remove(0);
+                }
+                self.input_history.push(self.input.clone());
+                self.history_index = None;
+                return Some(msg);
+            }
+            // `/to <something>` with no body
+            let msg = Message {
+                from: "bpmux".to_string(),
+                text: "Usage: /to <recipients> <message>. Example: /to dev,pm hello".to_string(),
+                ts: Utc::now(),
+                message_type: None,
+                to: None,
+            };
+            self.messages.push(msg);
+            self.clear_input();
+            return None;
+        }
+        if text == "/to" {
+            let msg = Message {
+                from: "bpmux".to_string(),
+                text: "Usage: /to <recipients> <message>. Example: /to dev,pm hello".to_string(),
+                ts: Utc::now(),
+                message_type: None,
+                to: None,
+            };
+            self.messages.push(msg);
+            self.clear_input();
+            return None;
+        }
         if text.starts_with('/') {
             let msg = Message {
                 from: "bpmux".to_string(),
@@ -303,6 +380,41 @@ impl App {
         self.input_history.push(msg.text.clone());
         self.history_index = None;
         Some(msg)
+    }
+
+    /// Tab-complete participant names after `/to `.
+    /// Returns true if completion was applied, false if no match.
+    pub fn tab_complete(&mut self) -> bool {
+        let input = self.input.trim_start();
+        let rest = match input.strip_prefix("/to ") {
+            Some(r) => r,
+            None => return false,
+        };
+        // Only complete in the recipients portion (before any space in the rest)
+        if rest.contains(' ') {
+            return false;
+        }
+        // Get the partial name being typed (after last comma, if CSV)
+        let (prefix_part, partial) = match rest.rfind(',') {
+            Some(i) => (&rest[..=i], rest[i + 1..].trim()),
+            None => ("", rest.trim()),
+        };
+        // Collect known peer short names
+        let mut candidates: Vec<String> = self
+            .peer_activity
+            .keys()
+            .map(|k| k.split(':').next().unwrap_or(k).to_string())
+            .filter(|name| name.starts_with(partial) && name != partial)
+            .collect();
+        candidates.sort();
+        if candidates.is_empty() {
+            return false;
+        }
+        // Pick first match (simple, no cycling for now)
+        let completed = &candidates[0];
+        self.input = format!("/to {}{} ", prefix_part, completed);
+        self.cursor_pos = self.input.len();
+        true
     }
 
     pub fn history_up(&mut self) {
@@ -617,5 +729,104 @@ mod tests {
         app.input = "/help".to_string();
         app.submit_message();
         assert!(app.messages[0].text.contains("/debug"));
+    }
+
+    #[test]
+    fn help_includes_to_command() {
+        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        app.input = "/help".to_string();
+        app.submit_message();
+        assert!(app.messages[0].text.contains("/to"));
+    }
+
+    #[allow(clippy::unwrap_used)]
+    #[test]
+    fn to_single_recipient_returns_directed_message() {
+        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        app.input = "/to dev hello there".to_string();
+        let msg = app.submit_message().unwrap();
+        assert_eq!(msg.from, "ryan:human");
+        assert_eq!(msg.text, "hello there");
+        assert_eq!(msg.to, Some(vec!["dev".to_string()]));
+    }
+
+    #[allow(clippy::unwrap_used)]
+    #[test]
+    fn to_csv_recipients_returns_directed_message() {
+        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        app.input = "/to dev,designer check this".to_string();
+        let msg = app.submit_message().unwrap();
+        assert_eq!(msg.text, "check this");
+        assert_eq!(
+            msg.to,
+            Some(vec!["dev".to_string(), "designer".to_string()])
+        );
+    }
+
+    #[test]
+    fn to_bare_shows_usage() {
+        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        app.input = "/to".to_string();
+        let msg = app.submit_message();
+        assert!(msg.is_none());
+        assert!(app.messages[0].text.contains("Usage:"));
+    }
+
+    #[test]
+    fn to_recipient_no_body_shows_usage() {
+        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        app.input = "/to dev".to_string();
+        let msg = app.submit_message();
+        assert!(msg.is_none());
+        assert!(app.messages[0].text.contains("Usage:"));
+    }
+
+    #[test]
+    fn tab_completes_participant_name_after_to() {
+        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        app.update_activity("dev:claude-code".to_string(), "working".to_string());
+        app.update_activity("designer:claude-code".to_string(), "idle".to_string());
+        app.input = "/to de".to_string();
+        app.cursor_pos = app.input.len();
+        assert!(app.tab_complete());
+        // Should complete to first alphabetical match
+        assert!(
+            app.input.starts_with("/to de"),
+            "should complete a 'de' prefix, got: {}",
+            app.input
+        );
+        assert!(
+            app.input.ends_with(' '),
+            "should add trailing space for body"
+        );
+    }
+
+    #[test]
+    fn tab_completes_csv_second_recipient() {
+        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        app.update_activity("dev:claude-code".to_string(), "working".to_string());
+        app.update_activity("pm:claude-code".to_string(), "idle".to_string());
+        app.input = "/to dev,p".to_string();
+        app.cursor_pos = app.input.len();
+        assert!(app.tab_complete());
+        assert_eq!(app.input, "/to dev,pm ");
+    }
+
+    #[test]
+    fn tab_does_nothing_without_to_prefix() {
+        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        app.input = "hello".to_string();
+        app.cursor_pos = app.input.len();
+        assert!(!app.tab_complete());
+        assert_eq!(app.input, "hello");
+    }
+
+    #[test]
+    fn tab_does_nothing_in_body_portion() {
+        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        app.update_activity("dev:claude-code".to_string(), "working".to_string());
+        app.input = "/to dev hel".to_string();
+        app.cursor_pos = app.input.len();
+        assert!(!app.tab_complete());
     }
 }
