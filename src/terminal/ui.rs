@@ -151,7 +151,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     // Virtualization: only render messages near the visible window
     let visible_window = chat_height * 3; // generous buffer for scroll
     let total_msgs = chat_messages.len();
-    let scroll_back = app.scroll_offset as usize;
+    let scroll_back = app.scroll_offset;
     let needed = visible_window + scroll_back;
     let start_idx = total_msgs.saturating_sub(needed);
 
@@ -340,13 +340,12 @@ pub fn render(frame: &mut Frame, app: &mut App) {
 
     // Use ratatui's actual line count instead of estimating
     let total_lines = chat.line_count(chat_inner_width as u16);
-    let max_scroll = if total_lines > chat_height {
-        (total_lines - chat_height) as u16
-    } else {
-        0
-    };
+    let max_scroll = total_lines.saturating_sub(chat_height);
     app.max_scroll = max_scroll;
-    let scroll = max_scroll.saturating_sub(app.scroll_offset);
+    #[allow(clippy::cast_possible_truncation)]
+    let scroll = max_scroll
+        .saturating_sub(app.scroll_offset)
+        .min(u16::MAX as usize) as u16;
 
     let chat = chat.scroll((scroll, 0));
     frame.render_widget(chat, chunks[0]);

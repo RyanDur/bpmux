@@ -49,8 +49,8 @@ pub struct App {
     pub messages: Vec<Message>,
     pub input: String,
     pub cursor_pos: usize,
-    pub scroll_offset: u16,
-    pub max_scroll: u16,
+    pub scroll_offset: usize,
+    pub max_scroll: usize,
     pub at_boundary: bool,
     pub peer_name: String,
     pub session_id: String,
@@ -213,7 +213,7 @@ impl App {
         self.cursor_pos = 0;
     }
 
-    pub fn scroll_up(&mut self, lines: u16) {
+    pub fn scroll_up(&mut self, lines: usize) {
         let before = self.scroll_offset;
         self.scroll_offset = self
             .scroll_offset
@@ -224,7 +224,7 @@ impl App {
         }
     }
 
-    pub fn scroll_down(&mut self, lines: u16) {
+    pub fn scroll_down(&mut self, lines: usize) {
         let before = self.scroll_offset;
         self.scroll_offset = self.scroll_offset.saturating_sub(lines);
         if self.scroll_offset != before {
