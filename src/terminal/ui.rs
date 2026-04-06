@@ -360,7 +360,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             .map(|(i, p)| {
                 Line::from(Span::styled(
                     format!(" {}. {}", i + 1, p),
-                    Style::default().fg(Color::Rgb(40, 42, 54)), // dark text on yellow
+                    Style::default().fg(Color::Rgb(241, 250, 140)), // Dracula yellow text
                 ))
             })
             .collect();
@@ -370,14 +370,14 @@ pub fn render(frame: &mut Frame, app: &mut App) {
                 .title(" pins ")
                 .title_style(
                     Style::default()
-                        .fg(Color::Rgb(40, 42, 54))
+                        .fg(Color::Rgb(241, 250, 140))
                         .add_modifier(Modifier::BOLD),
                 )
                 .border_style(Style::default().fg(Color::Rgb(241, 250, 140)))
                 .style(
                     Style::default()
-                        .bg(Color::Rgb(241, 250, 140)) // Dracula yellow
-                        .fg(Color::Rgb(40, 42, 54)),
+                        .bg(Color::Rgb(40, 42, 54)) // Dracula background
+                        .fg(Color::Rgb(241, 250, 140)),
                 ),
         );
         frame.render_widget(pin_bar, chunks[1]);

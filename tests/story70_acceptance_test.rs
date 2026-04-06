@@ -69,10 +69,7 @@ fn ac2_pins_delivered_on_connect() {
         }
         false
     });
-    assert!(
-        found_pin,
-        "Connecting agent should receive pinned items"
-    );
+    assert!(found_pin, "Connecting agent should receive pinned items");
 }
 
 /// AC3: GIVEN pins exist
