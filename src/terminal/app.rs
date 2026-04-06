@@ -199,6 +199,12 @@ impl App {
             self.update_activity(msg.from, msg.text);
             return;
         }
+        // Auto-set "available" when a peer joins
+        if msg.message_type.as_deref() == Some("system")
+            && let Some(peer) = msg.text.strip_suffix(" joined")
+        {
+            self.update_activity(peer.to_string(), "available".to_string());
+        }
         // Track peer presence and self-declared status
         if msg.is_chat() {
             let peer = msg.from.clone();

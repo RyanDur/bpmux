@@ -244,10 +244,11 @@ impl ServerHandler for BridgeServer {
         request: CallToolRequestParams,
         _context: RequestContext<RoleServer>,
     ) -> impl Future<Output = Result<CallToolResult, McpError>> + Send + '_ {
+        let port = self.port;
         let ws_tx = self.ws_tx.clone();
+        let name = self.name.clone();
         let messages = self.messages.clone();
         let last_read_index = self.last_read_index.clone();
-        let name = self.name.clone();
 
         async move {
             match request.name.as_ref() {
@@ -338,17 +339,29 @@ impl ServerHandler for BridgeServer {
                         }
                     };
 
-                    // Send as activity message so TUI status bar picks it up
-                    let send_msg = serde_json::json!({
-                        "type": "send",
+                    // Send as activity message via REST API so TUI status bar picks it up
+                    let current_name = name.lock().await.clone();
+                    let api_url = format!("http://127.0.0.1:{port}/api/messages");
+                    let body = json!({
+                        "from": current_name,
                         "text": status,
                         "message_type": "activity"
                     })
                     .to_string();
-                    let mut tx = ws_tx.lock().await;
-                    if let Some(ref mut tx) = *tx
-                        && let Err(e) = tx.send(tungstenite::Message::Text(send_msg.into())).await
-                    {
+                    let result = tokio::process::Command::new("curl")
+                        .args([
+                            "-s",
+                            "-X",
+                            "POST",
+                            &api_url,
+                            "-H",
+                            "Content-Type: application/json",
+                            "-d",
+                            &body,
+                        ])
+                        .output()
+                        .await;
+                    if let Err(e) = result {
                         return Ok(CallToolResult::error(vec![Content::text(format!(
                             "failed to set status: {e}"
                         ))]));
