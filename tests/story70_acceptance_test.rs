@@ -61,10 +61,9 @@ fn ac2_pins_delivered_on_connect() {
                 .await
                 .ok()
                 .flatten()
+                && raw.contains("log-as-primitive")
             {
-                if raw.contains("log-as-primitive") {
-                    return true;
-                }
+                return true;
             }
         }
         false

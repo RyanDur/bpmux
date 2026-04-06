@@ -64,6 +64,10 @@ impl TestBpmux {
         cmd.arg("--session-base");
         cmd.arg(&session_base);
         cmd.env("TERM", "xterm-256color");
+        // Forward BPMUX_REPO so /board works in tests (no git repo in temp dir)
+        if let Ok(repo) = std::env::var("BPMUX_REPO") {
+            cmd.env("BPMUX_REPO", repo);
+        }
 
         let child = pair.slave.spawn_command(cmd).expect("spawn bpmux");
         drop(pair.slave);

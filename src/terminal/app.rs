@@ -13,6 +13,7 @@ pub const SLASH_COMMANDS: &[(&str, &str)] = &[
     ("/pin", "pin a decision"),
     ("/pins", "list pinned items"),
     ("/unpin", "remove a pin by number"),
+    ("/board", "show project board"),
     ("/status", "declare your status"),
     ("/help", "show this help"),
     ("/who", "list participants"),
@@ -319,7 +320,7 @@ impl App {
         }
         if text == "/help" {
             let help = format!(
-                "Commands:\n  /to <who> <msg> — send to specific recipients (e.g. /to dev,pm hello)\n  /view [channel] — filter view (broadcast, all, dev\u{2194}human, etc.)\n  /pin <text>     — pin a decision (max 5)\n  /pins           — list pinned items\n  /unpin <n>      — remove pin by number\n  /status blocked [reason] — declare yourself blocked\n  /help     — show this help\n  /who      — list participants\n  /debug    — toggle system messages\n  /quit     — exit bpmux\n\nKeybindings:\n  Enter     — send message\n  Esc       — clear input\n  Ctrl+C    — clear input (empty: quit)\n  Ctrl+U/D  — scroll up/down\n  Ctrl+T    — toggle timestamps\n  PageUp/Dn — scroll\n\nSession: {}",
+                "Commands:\n  /to <who> <msg> — send to specific recipients (e.g. /to dev,pm hello)\n  /view [channel] — filter view (broadcast, all, dev\u{2194}human, etc.)\n  /pin <text>     — pin a decision (max 5)\n  /pins           — list pinned items\n  /unpin <n>      — remove pin by number\n  /board          — show project board\n  /status blocked [reason] — declare yourself blocked\n  /help     — show this help\n  /who      — list participants\n  /debug    — toggle system messages\n  /quit     — exit bpmux\n\nKeybindings:\n  Enter     — send message\n  Esc       — clear input\n  Ctrl+C    — clear input (empty: quit)\n  Ctrl+U/D  — scroll up/down\n  Ctrl+T    — toggle timestamps\n  PageUp/Dn — scroll\n\nSession: {}",
                 self.session_id
             );
             let msg = Message {
@@ -673,6 +674,24 @@ impl App {
             self.clear_input();
             return None;
         }
+        if text == "/board" {
+            let board_text = match Self::fetch_board() {
+                Ok(text) => text,
+                Err(e) => format!(
+                    "Board unavailable: {e}\nEnsure `gh` CLI is installed and authenticated (`gh auth login`)."
+                ),
+            };
+            let msg = Message {
+                from: "bpmux".to_string(),
+                text: board_text,
+                ts: Utc::now(),
+                message_type: None,
+                to: None,
+            };
+            self.messages.push(msg);
+            self.clear_input();
+            return None;
+        }
         if text.starts_with('/') {
             let msg = Message {
                 from: "bpmux".to_string(),
@@ -740,6 +759,107 @@ impl App {
         self.input = format!("/to {}{} ", prefix_part, completed);
         self.cursor_pos = self.input.len();
         true
+    }
+
+    /// Fetch project board from GitHub Issues via `gh` CLI.
+    fn fetch_board() -> Result<String, String> {
+        let mut cmd = std::process::Command::new("gh");
+        cmd.args([
+            "issue",
+            "list",
+            "--state",
+            "all",
+            "--limit",
+            "50",
+            "--json",
+            "number,title,state,labels",
+        ]);
+        // Use BPMUX_REPO env var if set, so /board works outside the git repo
+        if let Ok(repo) = std::env::var("BPMUX_REPO") {
+            cmd.args(["-R", &repo]);
+        }
+        let output = cmd.output().map_err(|e| format!("failed to run gh: {e}"))?;
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(format!("gh failed: {stderr}"));
+        }
+        let json: Vec<serde_json::Value> =
+            serde_json::from_slice(&output.stdout).map_err(|e| format!("parse error: {e}"))?;
+
+        let mut active: Vec<String> = Vec::new();
+        let mut backlog: Vec<String> = Vec::new();
+        let mut icebox: Vec<String> = Vec::new();
+        let mut done: Vec<String> = Vec::new();
+
+        for issue in &json {
+            let num = issue["number"].as_u64().unwrap_or(0);
+            let title = issue["title"].as_str().unwrap_or("?");
+            let state = issue["state"].as_str().unwrap_or("OPEN");
+            let labels: Vec<&str> = issue["labels"]
+                .as_array()
+                .map(|arr| arr.iter().filter_map(|l| l["name"].as_str()).collect())
+                .unwrap_or_default();
+
+            // Truncate title to fit 80 cols: "  #NN Title..." = ~74 chars for title
+            let display_title: String = if title.len() > 65 {
+                format!("{}...", &title[..62])
+            } else {
+                title.to_string()
+            };
+            let line = format!("  #{num} {display_title}");
+
+            if state == "CLOSED" {
+                done.push(line);
+            } else if labels.contains(&"icebox") {
+                icebox.push(line);
+            } else if labels.contains(&"backlog") {
+                backlog.push(line);
+            } else {
+                active.push(line);
+            }
+        }
+
+        let mut sections: Vec<String> = Vec::new();
+        if !active.is_empty() {
+            sections.push(format!("Active ({})\n{}", active.len(), active.join("\n")));
+        }
+        if !backlog.is_empty() {
+            sections.push(format!(
+                "Backlog ({})\n{}",
+                backlog.len(),
+                backlog
+                    .iter()
+                    .take(10)
+                    .cloned()
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            ));
+        }
+        if !icebox.is_empty() {
+            sections.push(format!(
+                "Icebox ({})\n{}",
+                icebox.len(),
+                icebox
+                    .iter()
+                    .take(5)
+                    .cloned()
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            ));
+        }
+        if !done.is_empty() {
+            sections.push(format!(
+                "Done ({})\n{}",
+                done.len(),
+                done.iter().take(10).cloned().collect::<Vec<_>>().join("\n")
+            ));
+        }
+
+        if sections.is_empty() {
+            Ok("No issues found.".to_string())
+        } else {
+            Ok(format!("Board\n{}", sections.join("\n\n")))
+        }
     }
 
     /// Returns the filtered list of slash commands matching current input.
@@ -834,10 +954,10 @@ impl App {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
 
-    #[allow(clippy::unwrap_used)]
     #[test]
     fn submits_message_and_clears_input() {
         let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
@@ -1127,7 +1247,6 @@ mod tests {
         assert!(app.messages[0].text.contains("/to"));
     }
 
-    #[allow(clippy::unwrap_used)]
     #[test]
     fn to_single_recipient_returns_directed_message() {
         let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
@@ -1138,7 +1257,6 @@ mod tests {
         assert_eq!(msg.to, Some(vec!["dev".to_string()]));
     }
 
-    #[allow(clippy::unwrap_used)]
     #[test]
     fn to_csv_recipients_returns_directed_message() {
         let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
