@@ -24,7 +24,11 @@ pub const SLASH_COMMANDS: &[(&str, &str)] = &[
 /// Compute the display name for a message's channel.
 /// Returns "broadcast" for `None` / `["all"]`, "a↔b" for 2-person DMs,
 /// "a+b+c" for groups. The sender is included in directed channels.
-pub fn channel_name(msg: &crate::session::Message) -> String {
+/// Compute the channel name for a message. The `owner` (TUI user) is excluded
+/// from the name — they're implicit in every channel, like a manager who can
+/// see all Slack rooms. This prevents the view/send mismatch where sending
+/// into a channel creates a different channel name because the owner got added.
+pub fn channel_name(msg: &crate::session::Message, owner: &str) -> String {
     match &msg.to {
         None => "broadcast".to_string(),
         Some(recipients) if recipients.iter().any(|r| r == "all") => "broadcast".to_string(),
@@ -34,9 +38,14 @@ pub fn channel_name(msg: &crate::session::Message) -> String {
             if !names.contains(&sender_short) {
                 names.push(sender_short);
             }
+            // Remove the TUI owner — they're a constant, not a participant to name
+            names.retain(|n| *n != owner);
             names.sort();
-            if names.len() == 2 {
-                format!("{}\u{2194}{}", names[0], names[1])
+            if names.is_empty() {
+                // DM to/from the owner only — show the other party
+                sender_short.to_string()
+            } else if names.len() == 1 {
+                names[0].to_string()
             } else {
                 names.join("+")
             }
@@ -102,7 +111,7 @@ impl App {
         let mut active_channels: HashSet<String> = HashSet::new();
         for msg in &messages {
             if msg.is_chat() {
-                active_channels.insert(channel_name(msg));
+                active_channels.insert(channel_name(msg, &peer_name));
             }
         }
         Self {
@@ -299,7 +308,7 @@ impl App {
         }
         // Track active channels and per-channel unread counts
         if msg.is_chat() {
-            let ch = channel_name(&msg);
+            let ch = channel_name(&msg, &self.peer_name);
             self.active_channels.insert(ch.clone());
             // Increment unread if this channel isn't the current view
             let is_current = match &self.current_view {
@@ -1597,7 +1606,7 @@ mod tests {
             to: Some(vec!["ryan".to_string()]),
         });
         assert_eq!(app.active_channels.len(), 1);
-        assert!(app.active_channels.contains("dev\u{2194}ryan"));
+        assert!(app.active_channels.contains("dev"));
     }
 
     #[test]
@@ -1618,8 +1627,8 @@ mod tests {
             to: Some(vec!["ryan".to_string()]),
         });
         assert_eq!(app.active_channels.len(), 2);
-        assert!(app.active_channels.contains("dev\u{2194}ryan"));
-        assert!(app.active_channels.contains("pm\u{2194}ryan"));
+        assert!(app.active_channels.contains("dev"));
+        assert!(app.active_channels.contains("pm"));
     }
 
     #[test]
@@ -1631,7 +1640,7 @@ mod tests {
             message_type: None,
             to: None,
         };
-        assert_eq!(channel_name(&msg), "broadcast");
+        assert_eq!(channel_name(&msg, "ryan"), "broadcast");
     }
 
     #[test]
@@ -1643,11 +1652,12 @@ mod tests {
             message_type: None,
             to: Some(vec!["all".to_string()]),
         };
-        assert_eq!(channel_name(&msg), "broadcast");
+        assert_eq!(channel_name(&msg, "ryan"), "broadcast");
     }
 
     #[test]
-    fn channel_name_dm() {
+    fn channel_name_dm_excludes_owner() {
+        // dev sends to ryan — owner (ryan) is excluded, channel is just "dev"
         let msg = Message {
             from: "dev:claude-code".to_string(),
             text: "hey".to_string(),
@@ -1655,11 +1665,12 @@ mod tests {
             message_type: None,
             to: Some(vec!["ryan".to_string()]),
         };
-        assert_eq!(channel_name(&msg), "dev\u{2194}ryan");
+        assert_eq!(channel_name(&msg, "ryan"), "dev");
     }
 
     #[test]
-    fn channel_name_group() {
+    fn channel_name_group_excludes_owner() {
+        // pm sends to dev and ryan — owner excluded, channel is "dev+pm"
         let msg = Message {
             from: "pm:claude-code".to_string(),
             text: "hey".to_string(),
@@ -1667,7 +1678,35 @@ mod tests {
             message_type: None,
             to: Some(vec!["dev".to_string(), "ryan".to_string()]),
         };
-        assert_eq!(channel_name(&msg), "dev+pm+ryan");
+        assert_eq!(channel_name(&msg, "ryan"), "dev+pm");
+    }
+
+    #[test]
+    fn channel_name_owner_sending_matches_channel() {
+        // ryan sends to designer+dev+pm — same channel as when they talk
+        let agent_msg = Message {
+            from: "dev:claude-code".to_string(),
+            text: "hey".to_string(),
+            ts: Utc::now(),
+            message_type: None,
+            to: Some(vec!["designer".to_string(), "pm".to_string()]),
+        };
+        let owner_msg = Message {
+            from: "ryan:human".to_string(),
+            text: "hey".to_string(),
+            ts: Utc::now(),
+            message_type: None,
+            to: Some(vec![
+                "designer".to_string(),
+                "dev".to_string(),
+                "pm".to_string(),
+            ]),
+        };
+        assert_eq!(
+            channel_name(&agent_msg, "ryan"),
+            channel_name(&owner_msg, "ryan"),
+            "owner sending into a channel should produce the same channel name"
+        );
     }
 
     #[test]
@@ -2039,7 +2078,7 @@ mod tests {
             to: Some(vec!["human".to_string()]),
         };
         app.receive_message(msg);
-        let ch = "dev↔human";
+        let ch = "dev";
         assert_eq!(*app.channel_unread.get(ch).unwrap_or(&0), 1);
     }
 }

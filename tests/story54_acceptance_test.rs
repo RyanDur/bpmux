@@ -91,8 +91,8 @@ fn ac2_view_all_restores_full_view() {
     );
 }
 
-/// AC3: GIVEN a directed channel exists (e.g. dev↔human)
-/// WHEN the human types `/view dev↔human`
+/// AC3: GIVEN a directed channel exists (e.g. dev — owner excluded from name)
+/// WHEN the human types `/view dev`
 /// THEN only messages in that channel render
 #[test]
 fn ac3_view_specific_channel() {
@@ -107,8 +107,8 @@ fn ac3_view_specific_channel() {
         tokio::time::sleep(Duration::from_millis(300)).await;
     });
 
-    // Filter to dev↔human channel
-    bpmux.type_line("/view dev\u{2194}human");
+    // Filter to dev channel (owner "human" is excluded from channel names)
+    bpmux.type_line("/view dev");
     assert!(
         bpmux.wait_for_tui("View set to dev", Duration::from_secs(5)),
         "Should confirm view switch. Screen:\n{}",
@@ -116,12 +116,12 @@ fn ac3_view_specific_channel() {
     );
     assert!(
         bpmux.wait_for_tui("hey human from dev", Duration::from_secs(5)),
-        "dev↔human message should be visible. Screen:\n{}",
+        "dev channel message should be visible. Screen:\n{}",
         bpmux.tui()
     );
     assert!(
         !bpmux.wait_for_tui("hey human from pm", Duration::from_secs(1)),
-        "pm↔human message should be hidden. Screen:\n{}",
+        "pm channel message should be hidden. Screen:\n{}",
         bpmux.tui()
     );
     assert!(

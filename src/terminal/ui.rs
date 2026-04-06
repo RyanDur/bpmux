@@ -260,7 +260,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             }
             match &app.current_view {
                 None => true,
-                Some(view) => app::channel_name(m) == *view,
+                Some(view) => app::channel_name(m, &app.peer_name) == *view,
             }
         })
         .collect();
@@ -286,27 +286,10 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             let is_human = msg.from.ends_with(":human");
             let name_color = sender_color(short_name);
 
-            // Channel tag: [broadcast], [a↔b] (DM), [a+b+c] (group)
-            let (channel_tag, is_broadcast) = match &msg.to {
-                None => ("[broadcast] ".to_string(), true),
-                Some(recipients) if recipients.iter().any(|r| r == "all") => {
-                    ("[broadcast] ".to_string(), true)
-                }
-                Some(recipients) => {
-                    let mut names: Vec<&str> = recipients.iter().map(|s| s.as_str()).collect();
-                    let sender_short = msg.from.split(':').next().unwrap_or(&msg.from);
-                    if !names.contains(&sender_short) {
-                        names.push(sender_short);
-                    }
-                    names.sort();
-                    let tag = if names.len() == 2 {
-                        format!("[{}↔{}] ", names[0], names[1])
-                    } else {
-                        format!("[{}] ", names.join("+"))
-                    };
-                    (tag, false)
-                }
-            };
+            // Channel tag: [broadcast], [dev], [dev+pm] — owner excluded
+            let ch_name = app::channel_name(msg, &app.peer_name);
+            let is_broadcast = ch_name == "broadcast";
+            let channel_tag = format!("[{ch_name}] ");
 
             // Build the prefix (timestamp + channel tag + name)
             let mut prefix = String::new();

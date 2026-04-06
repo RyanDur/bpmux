@@ -144,10 +144,10 @@ fn ac4_tui_renders_channel_tags() {
         bpmux.tui()
     );
 
-    // TUI should show DM tag
+    // TUI should show DM tag (owner excluded from channel name)
     assert!(
-        bpmux.wait_for_tui("dev\u{2194}human", Duration::from_secs(5)),
-        "DM messages should show [dev↔human] tag. Screen:\n{}",
+        bpmux.wait_for_tui("[dev]", Duration::from_secs(5)),
+        "DM messages should show [dev] tag. Screen:\n{}",
         bpmux.tui()
     );
 }

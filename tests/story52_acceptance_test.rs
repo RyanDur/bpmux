@@ -144,9 +144,9 @@ fn tui_renders_channel_tag_for_to_message() {
     // Human sends a directed message
     bpmux.type_line("/to dev check this out");
 
-    // TUI should render the directed channel tag (dev↔human, sorted)
+    // TUI should render the directed channel tag (owner excluded from name)
     assert!(
-        bpmux.wait_for_tui("dev\u{2194}human", Duration::from_secs(5)),
+        bpmux.wait_for_tui("[dev]", Duration::from_secs(5)),
         "TUI should show channel tag for directed message. Screen:\n{}",
         bpmux.tui()
     );
