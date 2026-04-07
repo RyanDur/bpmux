@@ -230,6 +230,23 @@ fn render_sidebar(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_widget(sidebar, area);
 }
 
+/// Strip heading hash prefixes (e.g. "## ", "### ") from the first span in a line.
+/// tui-markdown keeps hashes in the output; we remove them for GitHub-style rendering.
+fn strip_heading_hashes(spans: &mut Vec<Span<'_>>) {
+    if let Some(first) = spans.first_mut() {
+        let trimmed = first.content.trim_start_matches('#');
+        if trimmed.len() < first.content.len() {
+            // Had leading hashes — strip them plus the trailing space
+            let stripped = trimmed.trim_start();
+            if stripped.is_empty() {
+                spans.remove(0);
+            } else {
+                *first = Span::styled(stripped.to_string(), first.style);
+            }
+        }
+    }
+}
+
 pub fn render(frame: &mut Frame, app: &mut App) {
     // Auto-suppress sidebar if terminal is too narrow
     let sidebar_width = if app.sidebar_open && frame.area().width >= 60 {
@@ -367,6 +384,8 @@ pub fn render(frame: &mut Frame, app: &mut App) {
                     for span in &mut md_line.spans {
                         span.style = line_style.patch(span.style);
                     }
+                    // Strip heading hash prefixes (e.g. "## ") — render as styled text only
+                    strip_heading_hashes(&mut md_line.spans);
                     spans.extend(md_line.spans);
                     lines.push(Line::from(spans));
                 }
@@ -401,6 +420,8 @@ pub fn render(frame: &mut Frame, app: &mut App) {
                     for span in &mut md_line.spans {
                         span.style = line_style.patch(span.style);
                     }
+                    // Strip heading hash prefixes (e.g. "## ") — render as styled text only
+                    strip_heading_hashes(&mut md_line.spans);
                     spans.extend(md_line.spans);
                     lines.push(Line::from(spans));
                 }
@@ -1230,6 +1251,64 @@ mod tests {
             Style::default().fg(Color::Rgb(255, 184, 108))
         );
         assert_eq!(spans[2].content, " to compile");
+    }
+
+    #[allow(clippy::unwrap_used)]
+    #[test]
+    fn markdown_heading_styles_survive_line_reconstruction() {
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let mut app = App::new(
+            "dev".to_string(),
+            "test-id".to_string(),
+            vec![Message {
+                from: "bpmux:ws".to_string(),
+                text: "## Board\n- item one".to_string(),
+                ts: Utc::now(),
+                message_type: None,
+                to: None,
+            }],
+        );
+
+        terminal.draw(|frame| render(frame, &mut app)).unwrap();
+        let buffer = terminal.backend().buffer();
+
+        // Find the "Board" text in the buffer and check its style
+        let mut found_board = false;
+        for y in 0..buffer.area.height {
+            let mut row = String::new();
+            for x in 0..buffer.area.width {
+                if let Some(cell) = buffer.cell((x, y)) {
+                    row.push(cell.symbol().chars().next().unwrap_or(' '));
+                }
+            }
+            if row.contains("Board") {
+                // Find the exact column of 'B' in "Board"
+                if let Some(col) = row.find('B') {
+                    let cell = buffer.cell((col as u16, y)).unwrap();
+                    // Heading 2 should be cyan + bold
+                    assert_eq!(
+                        cell.fg,
+                        Color::Cyan,
+                        "H2 heading should be cyan. Row: {row}"
+                    );
+                    assert!(
+                        cell.modifier.contains(Modifier::BOLD),
+                        "H2 heading should be bold. Row: {row}"
+                    );
+                    found_board = true;
+                }
+                break;
+            }
+        }
+        assert!(found_board, "Should find 'Board' heading in rendered output");
+
+        // Verify hashes are stripped — no "##" should appear in the rendered buffer
+        let screen = buffer_to_string(buffer);
+        assert!(
+            !screen.contains("##"),
+            "Heading hashes should be stripped. Screen:\n{screen}"
+        );
     }
 
     fn buffer_to_string(buffer: &ratatui::buffer::Buffer) -> String {
