@@ -318,47 +318,38 @@ impl App {
         self.peer_activity.insert(peer, (status, Instant::now()));
     }
 
-    pub fn receive_message(&mut self, mut msg: Message) {
-        // Strip transport suffix at the boundary — downstream code
-        // only sees short names like "dev", never "dev:claude-code".
-        msg.from = short_peer_name(&msg.from).to_string();
+    pub fn receive_message(&mut self, msg: Message) {
+        let sender = short_peer_name(&msg.from).to_string();
 
-        if msg.message_type.as_deref() == Some("activity") {
-            self.update_activity(msg.from, msg.text);
-            return;
-        }
-
-        if msg.message_type.as_deref() == Some("system") {
-            if let Some(peer) = msg.text.strip_suffix(" joined") {
-                let short = short_peer_name(peer).to_string();
-                self.update_activity(short, "available".to_string());
-            } else if let Some(peer) = msg.text.strip_suffix(" left") {
-                self.peer_activity.remove(short_peer_name(peer));
+        match msg.message_type.as_deref() {
+            Some("activity") => {
+                self.update_activity(sender, msg.text);
+                return;
             }
-        }
-
-        if msg.is_chat() {
-            // Track channel
-            let ch = channel_name(&msg, &self.peer_name);
-            self.active_channels.insert(ch.clone());
-            let is_current = self.current_view.as_ref().is_some_and(|v| v == &ch);
-            if !is_current {
-                *self.channel_unread.entry(ch).or_insert(0) += 1;
+            Some("system") => {
+                if let Some(peer) = msg.text.strip_suffix(" joined") {
+                    self.update_activity(short_peer_name(peer).to_string(), "available".into());
+                } else if let Some(peer) = msg.text.strip_suffix(" left") {
+                    self.peer_activity.remove(short_peer_name(peer));
+                }
             }
-
-            // Track peer status from /status command
-            if let Some(rest) = msg.text.strip_prefix("/status ") {
-                self.update_activity(msg.from.clone(), rest.trim().to_string());
-            }
-
-            // Track DM notifications
-            if let Some(recipients) = &msg.to {
-                let is_directed_at_me = recipients.iter().any(|r| r == &self.peer_name)
-                    && !recipients.iter().all(|r| r == "all");
-                if is_directed_at_me && !self.dm_unread_from.contains(&msg.from) {
-                    self.dm_unread_from.push(msg.from.clone());
-                    self.dm_flash_until =
-                        Some(Instant::now() + std::time::Duration::from_millis(750));
+            _ => {
+                let ch = channel_name(&msg, &self.peer_name);
+                self.active_channels.insert(ch.clone());
+                if self.current_view.as_ref().is_none_or(|v| v != &ch) {
+                    *self.channel_unread.entry(ch).or_insert(0) += 1;
+                }
+                if let Some(rest) = msg.text.strip_prefix("/status ") {
+                    self.update_activity(sender.clone(), rest.trim().to_string());
+                }
+                if let Some(recipients) = &msg.to {
+                    let directed_at_me = recipients.iter().any(|r| r == &self.peer_name)
+                        && !recipients.iter().all(|r| r == "all");
+                    if directed_at_me && !self.dm_unread_from.contains(&sender) {
+                        self.dm_unread_from.push(sender);
+                        self.dm_flash_until =
+                            Some(Instant::now() + std::time::Duration::from_millis(750));
+                    }
                 }
             }
         }

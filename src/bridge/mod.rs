@@ -58,6 +58,98 @@ impl BridgeServer {
     }
 }
 
+async fn ws_send(ws_tx: &Mutex<Option<WsSink>>, payload: String) -> Result<(), String> {
+    let mut tx = ws_tx.lock().await;
+    let tx = tx.as_mut().ok_or("not connected to bpmux")?;
+    tx.send(tungstenite::Message::Text(payload.into()))
+        .await
+        .map_err(|e| format!("send failed: {e}"))
+}
+
+async fn handle_send(
+    args: &serde_json::Map<String, serde_json::Value>,
+    ws_tx: &Mutex<Option<WsSink>>,
+) -> Result<String, String> {
+    let text = args
+        .get("text")
+        .and_then(|v| v.as_str())
+        .ok_or("missing 'text' argument")?;
+    let to = args.get("to").and_then(|v| v.as_array()).map(|arr| {
+        arr.iter()
+            .filter_map(|v| v.as_str().map(String::from))
+            .collect()
+    });
+    let json = serde_json::to_string(&ClientMessage::Send {
+        text: text.to_string(),
+        to,
+        message_type: None,
+    })
+    .map_err(|e| format!("failed to serialize: {e}"))?;
+    ws_send(ws_tx, json).await?;
+    Ok("message sent".into())
+}
+
+async fn handle_set_name(
+    args: &serde_json::Map<String, serde_json::Value>,
+    name: &Mutex<String>,
+    ws_tx: &Mutex<Option<WsSink>>,
+) -> Result<String, String> {
+    let new_name = args
+        .get("name")
+        .and_then(|v| v.as_str())
+        .ok_or("missing 'name' argument")?
+        .to_string();
+    *name.lock().await = new_name.clone();
+    let json = serde_json::json!({"type": "rename", "name": new_name}).to_string();
+    ws_send(ws_tx, json).await?;
+    Ok(format!("name set to {new_name}"))
+}
+
+async fn handle_set_status(
+    args: &serde_json::Map<String, serde_json::Value>,
+    ws_tx: &Mutex<Option<WsSink>>,
+) -> Result<String, String> {
+    let status = args
+        .get("status")
+        .and_then(|v| v.as_str())
+        .ok_or("missing 'status' argument")?;
+    let json = serde_json::to_string(&ClientMessage::Send {
+        text: status.to_string(),
+        to: None,
+        message_type: Some("activity".into()),
+    })
+    .map_err(|e| format!("failed to serialize: {e}"))?;
+    ws_send(ws_tx, json).await?;
+    Ok(format!("status set to {status}"))
+}
+
+async fn handle_read_messages(
+    args: &serde_json::Map<String, serde_json::Value>,
+    port: u16,
+) -> Result<String, String> {
+    let limit = args.get("limit").and_then(|v| v.as_u64()).unwrap_or(20);
+    let url = format!("http://127.0.0.1:{port}/api/messages?limit={limit}");
+    let body = reqwest::get(&url)
+        .await
+        .map_err(|e| format!("failed to fetch: {e}"))?
+        .text()
+        .await
+        .map_err(|e| format!("failed to read response: {e}"))?;
+    let msgs: Vec<serde_json::Value> = serde_json::from_str(&body).map_err(|_| body.clone())?;
+    if msgs.is_empty() {
+        return Ok("No messages.".into());
+    }
+    Ok(msgs
+        .iter()
+        .filter_map(|m| {
+            let from = m["from"].as_str()?;
+            let text = m["text"].as_str()?;
+            Some(format!("[{from}] {text}"))
+        })
+        .collect::<Vec<_>>()
+        .join("\n"))
+}
+
 /// Connect to bpmux's WebSocket, identify, and forward messages until disconnected.
 async fn run_ws_connection(
     port: u16,
@@ -217,173 +309,18 @@ impl ServerHandler for BridgeServer {
         let name = self.name.clone();
 
         async move {
-            match request.name.as_ref() {
-                "send_message" => {
-                    let args = request.arguments.unwrap_or_default();
-                    let text = match args.get("text").and_then(|v| v.as_str()) {
-                        Some(t) => t,
-                        None => {
-                            return Ok(CallToolResult::error(vec![Content::text(
-                                "missing 'text' argument",
-                            )]));
-                        }
-                    };
-
-                    let to: Option<Vec<String>> =
-                        args.get("to").and_then(|v| v.as_array()).map(|arr| {
-                            arr.iter()
-                                .filter_map(|v| v.as_str().map(String::from))
-                                .collect()
-                        });
-
-                    let send_msg = match serde_json::to_string(&ClientMessage::Send {
-                        text: text.to_string(),
-                        to,
-                        message_type: None,
-                    }) {
-                        Ok(json) => json,
-                        Err(e) => {
-                            return Ok(CallToolResult::error(vec![Content::text(format!(
-                                "failed to serialize message: {e}"
-                            ))]));
-                        }
-                    };
-
-                    let mut tx = ws_tx.lock().await;
-                    if let Some(ref mut tx) = *tx {
-                        if let Err(e) = tx.send(tungstenite::Message::Text(send_msg.into())).await {
-                            return Ok(CallToolResult::error(vec![Content::text(format!(
-                                "failed to send: {e}"
-                            ))]));
-                        }
-                    } else {
-                        return Ok(CallToolResult::error(vec![Content::text(
-                            "not connected to bpmux — reconnecting",
-                        )]));
-                    }
-
-                    Ok(CallToolResult::success(vec![Content::text("message sent")]))
-                }
-                "set_name" => {
-                    let args = request.arguments.unwrap_or_default();
-                    let new_name = match args.get("name").and_then(|v| v.as_str()) {
-                        Some(n) => n.to_string(),
-                        None => {
-                            return Ok(CallToolResult::error(vec![Content::text(
-                                "missing 'name' argument",
-                            )]));
-                        }
-                    };
-
-                    *name.lock().await = new_name.clone();
-
-                    let rename_msg =
-                        serde_json::json!({"type": "rename", "name": new_name}).to_string();
-                    let mut tx = ws_tx.lock().await;
-                    if let Some(ref mut tx) = *tx
-                        && let Err(e) = tx.send(tungstenite::Message::Text(rename_msg.into())).await
-                    {
-                        return Ok(CallToolResult::error(vec![Content::text(format!(
-                            "failed to rename: {e}"
-                        ))]));
-                    }
-
-                    Ok(CallToolResult::success(vec![Content::text(format!(
-                        "name set to {new_name}"
-                    ))]))
-                }
-                "set_status" => {
-                    let args = request.arguments.unwrap_or_default();
-                    let status = match args.get("status").and_then(|v| v.as_str()) {
-                        Some(s) => s.to_string(),
-                        None => {
-                            return Ok(CallToolResult::error(vec![Content::text(
-                                "missing 'status' argument",
-                            )]));
-                        }
-                    };
-
-                    // Send activity via WebSocket (same connection as chat)
-                    let send_msg = match serde_json::to_string(&ClientMessage::Send {
-                        text: status.clone(),
-                        to: None,
-                        message_type: Some("activity".to_string()),
-                    }) {
-                        Ok(json) => json,
-                        Err(e) => {
-                            return Ok(CallToolResult::error(vec![Content::text(format!(
-                                "failed to serialize: {e}"
-                            ))]));
-                        }
-                    };
-
-                    let mut tx = ws_tx.lock().await;
-                    if let Some(ref mut tx) = *tx {
-                        if let Err(e) = tx.send(tungstenite::Message::Text(send_msg.into())).await {
-                            return Ok(CallToolResult::error(vec![Content::text(format!(
-                                "failed to set status: {e}"
-                            ))]));
-                        }
-                    } else {
-                        return Ok(CallToolResult::error(vec![Content::text(
-                            "not connected to bpmux",
-                        )]));
-                    }
-
-                    Ok(CallToolResult::success(vec![Content::text(format!(
-                        "status set to {status}"
-                    ))]))
-                }
-                "read_messages" => {
-                    // Stateless: hit the REST API directly. No local buffer to
-                    // get out of sync on reconnect.
-                    let args = request.arguments.unwrap_or_default();
-                    let limit = args.get("limit").and_then(|v| v.as_u64()).unwrap_or(20);
-                    let url = format!("http://127.0.0.1:{port}/api/messages?limit={limit}");
-
-                    let resp = match reqwest::get(&url).await {
-                        Ok(r) => r,
-                        Err(e) => {
-                            return Ok(CallToolResult::error(vec![Content::text(format!(
-                                "failed to read messages: {e}"
-                            ))]));
-                        }
-                    };
-
-                    let body = match resp.text().await {
-                        Ok(b) => b,
-                        Err(e) => {
-                            return Ok(CallToolResult::error(vec![Content::text(format!(
-                                "failed to read response: {e}"
-                            ))]));
-                        }
-                    };
-
-                    let msgs: Vec<serde_json::Value> = match serde_json::from_str(&body) {
-                        Ok(m) => m,
-                        Err(_) => return Ok(CallToolResult::success(vec![Content::text(body)])),
-                    };
-
-                    if msgs.is_empty() {
-                        return Ok(CallToolResult::success(vec![Content::text("No messages.")]));
-                    }
-
-                    let text = msgs
-                        .iter()
-                        .filter_map(|m| {
-                            let from = m["from"].as_str()?;
-                            let text = m["text"].as_str()?;
-                            Some(format!("[{from}] {text}"))
-                        })
-                        .collect::<Vec<_>>()
-                        .join("\n");
-
-                    Ok(CallToolResult::success(vec![Content::text(text)]))
-                }
-                other => Ok(CallToolResult::error(vec![Content::text(format!(
-                    "unknown tool: {other}"
-                ))])),
-            }
+            let args = request.arguments.unwrap_or_default();
+            let result = match request.name.as_ref() {
+                "send_message" => handle_send(&args, &ws_tx).await,
+                "set_name" => handle_set_name(&args, &name, &ws_tx).await,
+                "set_status" => handle_set_status(&args, &ws_tx).await,
+                "read_messages" => handle_read_messages(&args, port).await,
+                other => Err(format!("unknown tool: {other}")),
+            };
+            Ok(match result {
+                Ok(text) => CallToolResult::success(vec![Content::text(text)]),
+                Err(e) => CallToolResult::error(vec![Content::text(e)]),
+            })
         }
     }
 }

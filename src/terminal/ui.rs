@@ -274,7 +274,6 @@ fn wrap_line_with_indent<'a>(line: Line<'a>, indent: &Span<'a>, max_width: usize
     if max_width == 0 {
         return vec![line];
     }
-    // Calculate total display width using Unicode character count
     let total_width: usize = line.spans.iter().map(|s| s.content.chars().count()).sum();
     if total_width <= max_width {
         return vec![line];
@@ -287,31 +286,36 @@ fn wrap_line_with_indent<'a>(line: Line<'a>, indent: &Span<'a>, max_width: usize
 
     for span in line.spans {
         let style = span.style;
-        let content = span.content;
-        let mut remaining: &str = &content;
+        let mut remaining: &str = &span.content;
 
         while !remaining.is_empty() {
             let available = max_width.saturating_sub(current_width);
-            let remaining_chars = remaining.chars().count();
 
-            if remaining_chars <= available {
-                current_spans.push(Span::styled(remaining.to_string(), style));
-                current_width += remaining_chars;
-                break;
+            // Single pass: walk char_indices to find both the split point
+            // and whether we need to split at all.
+            let mut split_byte = None;
+            let mut char_count = 0;
+            for (byte_pos, _) in remaining.char_indices() {
+                if char_count == available {
+                    split_byte = Some(byte_pos);
+                    break;
+                }
+                char_count += 1;
             }
 
-            // Split at char boundary (not byte boundary)
+            let Some(byte_pos) = split_byte else {
+                // Entire remaining fits in available width
+                current_spans.push(Span::styled(remaining.to_string(), style));
+                current_width += char_count;
+                break;
+            };
+
+            // Take what fits, emit line, continue with indent
             if available > 0 {
-                let byte_idx = remaining
-                    .char_indices()
-                    .nth(available)
-                    .map_or(remaining.len(), |(i, _)| i);
-                let (chunk, rest) = remaining.split_at(byte_idx);
+                let (chunk, rest) = remaining.split_at(byte_pos);
                 current_spans.push(Span::styled(chunk.to_string(), style));
                 remaining = rest;
             }
-
-            // Emit current line, start continuation with indent
             result.push(Line::from(current_spans));
             current_spans = vec![indent.clone()];
             current_width = indent_width;
