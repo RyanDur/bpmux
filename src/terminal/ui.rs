@@ -1032,7 +1032,6 @@ mod tests {
         assert_ne!(dev_color, pm_color, "dev and pm must differ");
     }
 
-
     #[allow(clippy::unwrap_used)]
     #[test]
     fn system_messages_visible_when_debug_on() {
