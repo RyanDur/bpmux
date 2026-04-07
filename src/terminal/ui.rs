@@ -268,6 +268,56 @@ fn render_md_message<'a>(
     lines
 }
 
+/// Wrap a Line into multiple lines if it exceeds `max_width`, adding `indent`
+/// as a prefix on continuation lines (hanging indent).
+fn wrap_line_with_indent<'a>(line: Line<'a>, indent: &Span<'a>, max_width: usize) -> Vec<Line<'a>> {
+    if max_width == 0 {
+        return vec![line];
+    }
+    // Calculate total visible width
+    let total_width: usize = line.spans.iter().map(|s| s.content.len()).sum();
+    if total_width <= max_width {
+        return vec![line];
+    }
+
+    let indent_width = indent.content.len();
+    let mut result = Vec::new();
+    let mut current_spans: Vec<Span<'a>> = Vec::new();
+    let mut current_width = 0usize;
+
+    for span in line.spans {
+        let style = span.style;
+        let content = span.content;
+        let mut remaining: &str = &content;
+
+        while !remaining.is_empty() {
+            let available = max_width.saturating_sub(current_width);
+
+            if remaining.len() <= available {
+                current_spans.push(Span::styled(remaining.to_string(), style));
+                current_width += remaining.len();
+                break;
+            }
+
+            // Split at available boundary
+            if available > 0 {
+                let (chunk, rest) = remaining.split_at(available);
+                current_spans.push(Span::styled(chunk.to_string(), style));
+                remaining = rest;
+            }
+
+            // Emit current line, start continuation with indent
+            result.push(Line::from(current_spans));
+            current_spans = vec![indent.clone()];
+            current_width = indent_width;
+        }
+    }
+    if !current_spans.is_empty() {
+        result.push(Line::from(current_spans));
+    }
+    result
+}
+
 /// Check if a message involves all participants named in the view.
 /// View "dev" matches any message where dev is sender or recipient.
 /// View "dev+pm" matches messages where both dev and pm are involved.
@@ -379,17 +429,23 @@ fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
             prefix_spans.push(Span::styled(channel_tag.clone(), tag_style));
             prefix_spans.push(Span::styled(format!("{short_name}: "), name_style));
 
-            if wrapped_lines > 10 && !app.expanded_messages.contains(&msg_key) {
+            let md_lines = if wrapped_lines > 10 && !app.expanded_messages.contains(&msg_key) {
                 // Truncate: show first 7 lines of markdown, then [+N lines]
                 let remaining_lines = wrapped_lines.saturating_sub(7);
-                lines.extend(render_md_message(&msg.text, prefix_spans, indent, Some(7)));
-                lines.push(Line::from(Span::styled(
+                let mut ls = render_md_message(&msg.text, prefix_spans, indent.clone(), Some(7));
+                ls.push(Line::from(Span::styled(
                     format!("  [+{remaining_lines} lines]"),
                     Style::default().fg(DRACULA_COMMENT),
                 )));
+                ls
             } else {
                 // Render full message text as markdown
-                lines.extend(render_md_message(&msg.text, prefix_spans, indent, None));
+                render_md_message(&msg.text, prefix_spans, indent.clone(), None)
+            };
+
+            // Pre-wrap lines with hanging indent so continuation aligns with text
+            for line in md_lines {
+                lines.extend(wrap_line_with_indent(line, &indent, chat_inner_width));
             }
 
             // Add blank line separator only when the next message is from a different sender
@@ -405,19 +461,15 @@ fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
         })
         .collect();
 
-    let chat = Paragraph::new(messages)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(" bpmux ")
-                .title_style(Style::default().fg(DRACULA_PURPLE))
-                .border_style(Style::default().fg(DRACULA_SELECTION))
-                .style(Style::default().bg(DRACULA_BG).fg(DRACULA_FG)),
-        )
-        .wrap(Wrap { trim: false });
-
-    // Use ratatui's actual line count instead of estimating
-    let total_lines = chat.line_count(chat_inner_width as u16);
+    // Lines are pre-wrapped by wrap_line_with_indent — no ratatui Wrap needed
+    let total_lines = messages.len();
+    let chat_block = Block::default()
+        .borders(Borders::ALL)
+        .title(" bpmux ")
+        .title_style(Style::default().fg(DRACULA_PURPLE))
+        .border_style(Style::default().fg(DRACULA_SELECTION))
+        .style(Style::default().bg(DRACULA_BG).fg(DRACULA_FG));
+    let chat = Paragraph::new(messages).block(chat_block);
     let max_scroll = total_lines.saturating_sub(chat_height);
     app.max_scroll = max_scroll;
     #[allow(clippy::cast_possible_truncation)]
@@ -1241,5 +1293,35 @@ mod tests {
     fn participant_filter_owner_message_always_matches() {
         let msg = chat_msg("ryan:human", "owner broadcast");
         assert!(message_involves_participants(&msg, "dev", "ryan"));
+    }
+
+    #[test]
+    fn wrap_line_short_line_unchanged() {
+        let line = Line::from("short");
+        let indent = Span::raw("   ");
+        let result = wrap_line_with_indent(line, &indent, 80);
+        assert_eq!(result.len(), 1);
+    }
+
+    #[test]
+    fn wrap_line_adds_indent_on_continuation() {
+        let line = Line::from("abcdefghij"); // 10 chars
+        let indent = Span::raw("  "); // 2-char indent
+        let result = wrap_line_with_indent(line, &indent, 5); // wrap at 5
+        // Line 1: "abcde" (5 chars)
+        // Line 2: indent(2) + "fgh" (3 chars = 5 total)
+        // Line 3: indent(2) + "ij" (2 chars)
+        assert_eq!(result.len(), 3);
+        // Continuation lines should start with indent
+        assert_eq!(result[1].spans[0].content, "  ");
+        assert_eq!(result[2].spans[0].content, "  ");
+    }
+
+    #[test]
+    fn wrap_line_zero_width_returns_original() {
+        let line = Line::from("test");
+        let indent = Span::raw("");
+        let result = wrap_line_with_indent(line, &indent, 0);
+        assert_eq!(result.len(), 1);
     }
 }
