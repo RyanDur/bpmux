@@ -37,7 +37,6 @@ fn ac3_roadmap_is_expandable() {
     let bpmux = TestBpmux::start();
 
     bpmux.type_line("/roadmap");
-    std::thread::sleep(Duration::from_millis(500));
 
     // Long roadmap should be truncated with a line count indicator
     assert!(
@@ -48,13 +47,12 @@ fn ac3_roadmap_is_expandable() {
 
     // Press Enter on empty input to expand the last (truncated) message
     bpmux.type_line("");
-    std::thread::sleep(Duration::from_millis(500));
+    std::thread::sleep(Duration::from_secs(2));
 
-    // After expanding, the truncation indicator should be gone — full content visible
+    // After expanding, the truncation indicator should be gone
     let screen = bpmux.tui();
     assert!(
         !screen.contains("lines]"),
-        "Expanded roadmap should not show truncation indicator. Screen:\n{}",
-        screen
+        "Expanded roadmap should not show truncation indicator. Screen:\n{screen}"
     );
 }

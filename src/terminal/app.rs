@@ -1997,4 +1997,33 @@ mod tests {
         app.submit_message();
         assert!(app.input.is_empty());
     }
+
+    #[test]
+    fn toggle_expands_long_system_message() {
+        let mut app = test_app();
+        // Add a long message from "bpmux" (like /roadmap output)
+        let long_text = "x".repeat(1000); // ~13 wrapped lines at width 78
+        app.messages.push(Message {
+            from: "bpmux".into(),
+            text: long_text,
+            ts: chrono::Utc::now(),
+            message_type: None,
+            to: None,
+        });
+        let key = app.messages.last().unwrap().ts.to_rfc3339();
+        assert!(
+            !app.expanded_messages.contains(&key),
+            "should not be expanded initially"
+        );
+        app.toggle_last_truncated();
+        assert!(
+            app.expanded_messages.contains(&key),
+            "should be expanded after toggle"
+        );
+        app.toggle_last_truncated();
+        assert!(
+            !app.expanded_messages.contains(&key),
+            "should collapse after second toggle"
+        );
+    }
 }
