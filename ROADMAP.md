@@ -14,40 +14,62 @@
 
 ### Milestones
 
-1. **TUI reliability** -- borders render correctly, input always visible, auto-scroll works, long messages truncated
-   - [#14](https://github.com/RyanDur/bpmux/issues/14) TUI borders render incorrectly with box-drawing characters
-   - [#15](https://github.com/RyanDur/bpmux/issues/15) A developer can always see what they are typing
-   - [#16](https://github.com/RyanDur/bpmux/issues/16) A developer always sees the latest message
-   - [#17](https://github.com/RyanDur/bpmux/issues/17) A developer cannot accidentally destroy their session
-   - [#18](https://github.com/RyanDur/bpmux/issues/18) A developer can read the chat when AI agents send long messages
+1. **TUI reliability** ✅ -- borders, input, auto-scroll, message truncation all shipped
+   - #14–#18 all closed
 
-2. **Awareness** -- tell agents apart, know when messages arrive, see what agents are doing
-   - [#19](https://github.com/RyanDur/bpmux/issues/19) A developer can tell AI agents apart visually
-   - [#20](https://github.com/RyanDur/bpmux/issues/20) A developer knows when a message arrives while working elsewhere
-   - [#21](https://github.com/RyanDur/bpmux/issues/21) A developer knows new messages arrived while reading history
-   - [#22](https://github.com/RyanDur/bpmux/issues/22) A developer can direct a message to a specific participant
-   - [#23](https://github.com/RyanDur/bpmux/issues/23) A developer knows what each agent is doing between messages
+2. **Awareness** ✅ -- visual identity, notifications, unread counts, directed messaging, status dots
+   - #19–#23 all closed. Status dots (#59, #67) shipped. Unread badge (#63) shipped.
 
-3. **Onboarding** -- first-minute experience, discoverability, input polish
-   - [#24](https://github.com/RyanDur/bpmux/issues/24) A developer can recall previously sent messages
-   - [#25](https://github.com/RyanDur/bpmux/issues/25) A first-time user knows how to use bpmux
-   - [#26](https://github.com/RyanDur/bpmux/issues/26) A developer can discover keybindings while using the TUI
+3. **Onboarding** ✅ -- help overlay (#60), command input bar (#64), message history (#24)
+   - #24–#26 all closed
 
-4. **Session awareness** -- who is here, join/leave visibility
-   - [#27](https://github.com/RyanDur/bpmux/issues/27) A developer knows who is in the session
-   - [#28](https://github.com/RyanDur/bpmux/issues/28) A developer sees when participants join or leave
+4. **Session awareness** ✅ -- participant roster (#27), join/leave (#28)
+   - #27–#28 all closed
 
-5. **Transport reliability** -- cursor-based reads, reconnection recovery
-   - [#29](https://github.com/RyanDur/bpmux/issues/29) An AI tool reads only new messages since its last read
-   - [#30](https://github.com/RyanDur/bpmux/issues/30) A bridge reconnection recovers missed messages
-   - [#31](https://github.com/RyanDur/bpmux/issues/31) A developer can toggle system message visibility for debugging
+5. **Transport reliability** ✅ -- cursor reads (#29), reconnection (#30, #73), system messages (#31)
+   - #29–#31 all closed. Session handoff (#73) shipped.
+
+6. **Channel navigation** ✅ -- sidebar tree view (#66, #71), /board (#69), channel switching (#54, #56)
+   - All closed. Sidebar with ⌥1 toggle, three-state focus, unread counts.
+
+7. **Message rendering** ✅ -- markdown (#80), code blocks (#61), syntax highlighting
+   - tui-markdown integration with bold, headers (no hashes), syntax-highlighted code blocks.
+
+### Active work (Horizon 1 polish)
+
+- [#79](https://github.com/RyanDur/bpmux/issues/79) Channel view shows messages by participant involvement, not exact addressing
+- [#81](https://github.com/RyanDur/bpmux/issues/81) Pasting multiline text sends each line as a separate message
+- [#68](https://github.com/RyanDur/bpmux/issues/68) Status dots survive TUI restart
+- Text wrap alignment — continuation lines should indent to match sender prefix
+- Stale Stop hook removal (send-claude-response.sh still says "Use read_messages")
 
 **Research backing:** Edmondson (1999) -- first interactions disproportionately determine whether a tool feels safe or threatening. Gutwin & Greenberg (2002) -- minimum awareness requires presence, identity, and action visibility. Clark & Brennan (1991) -- reviewability and cotemporality are the constraints that matter most for text media.
 
-**Risks:**
-- Markdown rendering is a rabbit hole. Scoped to code blocks only, gated behind message truncation.
-- Readline editing is non-trivial in terminal raw mode.
-- Agent activity indicator (#23) requires a lightweight status message type from agents -- convention, not protocol.
+**Resolved risks:**
+- ~~Markdown rendering is a rabbit hole.~~ Solved with tui-markdown + syntect. One dependency, no custom parser.
+- ~~Readline editing is non-trivial in terminal raw mode.~~ Shipped with crossterm + custom input handling.
+- ~~Agent activity indicator requires a lightweight status message type.~~ Shipped via hooks (PreToolUse → busy, Stop → available).
+
+---
+
+## Horizon 1.5: Public Face and Memory
+
+**Goal:** bpmux has a website, a migration story, and agents can rebuild theory on reconnect.
+
+### Milestones
+
+1. **Website/docs app** -- explains what bpmux is and why, surfaces research, provides OS-specific downloads
+   - Reference pattern: battleship repo (React + Vite + GitHub Pages + GitHub Releases)
+   - Not prescriptive — shares what we do and what worked, not a mandated process
+
+2. **Teaching handoffs** -- agents distill theory for successors instead of copying files
+   - Naur's theory building: theory can't be copied, only rebuilt through understanding
+   - Medical handoff protocols (SBAR, I-PASS) as structural reference
+   - First real test: machine migration 2026-04-11
+
+3. **Project health signals** -- glanceable board with Accelerate/DORA-aligned metrics
+   - Throughput (stories accepted/cycle), cycle time (start to acceptance), rejection rate
+   - Reference: Forsgren, Humble, Kim — measure flow, not output
 
 ---
 
@@ -128,6 +150,9 @@ Issues that need team discussion before scheduling.
 | [#32](https://github.com/RyanDur/bpmux/issues/32) Connect any coding agent with one command | Generic bridge setup for Cursor, Copilot, etc. | What "one command" means when each tool has different MCP integration models |
 | [#33](https://github.com/RyanDur/bpmux/issues/33) Local MLX model participates | Non-cloud AI joins a session | Whether the bridge contract is general enough or needs a new adapter pattern |
 | [#34](https://github.com/RyanDur/bpmux/issues/34) Identity by name and tool, not hardcoded suffixes | Dynamic participant identity | Whether identity is session-scoped (H2) or persistent (H3), and what the message schema change looks like |
+| [#72](https://github.com/RyanDur/bpmux/issues/72) bpmux-owned desktop notifications | Replace code-notify with native bpmux notifications | Focus detection (crossterm FocusGained/FocusLost) and OS notification integration |
+| [#75](https://github.com/RyanDur/bpmux/issues/75) / [#76](https://github.com/RyanDur/bpmux/issues/76) WebRTC P2P | Spike + full story for peer-to-peer messaging | Rust library choice (datachannel, str0m, webrtc crate), battleship has Kotlin/Spring prior art |
+| [#48](https://github.com/RyanDur/bpmux/issues/48) Auto-onboarding for AI | AI gets role + project context from session on join | Whether this is bpmux's job or the workspace CLAUDE.md |
 
 ---
 
@@ -142,5 +167,5 @@ Issues that need team discussion before scheduling.
 | **File sharing, voice/video, emoji reactions** | General-purpose chat features dilute the product. |
 | **Mobile client** | Users are developers at workstations. |
 | **Persistent user accounts** | Session-scoped identity through H2. Accounts only if a paying enterprise customer needs them. |
-| **Multi-pane layouts** | 80x24 constraint makes sidebars impractical. Status bar is the awareness surface. |
+| **Multi-pane layouts beyond sidebar** | Sidebar is the navigation surface. No additional panes — keep the TUI focused. |
 | **Plugin/extension system** | Not now. But the bridge contract should not prevent future extensibility. |

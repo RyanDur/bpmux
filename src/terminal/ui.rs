@@ -268,6 +268,31 @@ fn render_md_message<'a>(
     lines
 }
 
+/// Check if a message involves all participants named in the view.
+/// View "dev" matches any message where dev is sender or recipient.
+/// View "dev+pm" matches messages where both dev and pm are involved.
+fn message_involves_participants(msg: &session::Message, view: &str, owner: &str) -> bool {
+    let sender_short = msg.from.split(':').next().unwrap_or(&msg.from);
+    // Owner's own messages always appear in whatever view they're in
+    if sender_short == owner {
+        return true;
+    }
+    let view_participants: Vec<&str> = view.split('+').collect();
+
+    view_participants.iter().all(|participant| {
+        if sender_short == *participant {
+            return true;
+        }
+        if *participant == owner {
+            return true;
+        }
+        if let Some(recipients) = &msg.to {
+            return recipients.iter().any(|r| r == participant);
+        }
+        false
+    })
+}
+
 fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
     let chat_messages: Vec<&session::Message> = app
         .messages
@@ -282,7 +307,10 @@ fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
             }
             match &app.current_view {
                 None => true,
-                Some(view) => app::channel_name(m, &app.peer_name) == *view,
+                Some(view) if view == "broadcast" => {
+                    app::channel_name(m, &app.peer_name) == "broadcast"
+                }
+                Some(view) => message_involves_participants(m, view, &app.peer_name),
             }
         })
         .collect();
@@ -1143,5 +1171,65 @@ mod tests {
             s.push('\n');
         }
         s
+    }
+
+    fn directed_msg(from: &str, text: &str, to: &[&str]) -> Message {
+        Message {
+            from: from.to_string(),
+            text: text.to_string(),
+            ts: Utc::now(),
+            message_type: None,
+            to: Some(to.iter().map(|s| s.to_string()).collect()),
+        }
+    }
+
+    #[test]
+    fn participant_filter_matches_sender() {
+        let msg = chat_msg("dev:ws", "hello");
+        assert!(message_involves_participants(&msg, "dev", "ryan"));
+    }
+
+    #[test]
+    fn participant_filter_matches_recipient() {
+        let msg = directed_msg("pm:ws", "hello dev", &["dev"]);
+        assert!(message_involves_participants(&msg, "dev", "ryan"));
+    }
+
+    #[test]
+    fn participant_filter_excludes_unrelated() {
+        let msg = directed_msg("pm:ws", "hello designer", &["designer"]);
+        assert!(!message_involves_participants(&msg, "dev", "ryan"));
+    }
+
+    #[test]
+    fn participant_filter_broadcast_matches_sender() {
+        let msg = chat_msg("dev:ws", "broadcast");
+        assert!(message_involves_participants(&msg, "dev", "ryan"));
+    }
+
+    #[test]
+    fn participant_filter_broadcast_no_match_for_other() {
+        let msg = chat_msg("pm:ws", "broadcast");
+        assert!(!message_involves_participants(&msg, "dev", "ryan"));
+    }
+
+    #[test]
+    fn participant_filter_group_requires_all() {
+        let msg = directed_msg("dev:ws", "hello", &["pm"]);
+        // "dev+pm" view: dev is sender, pm is recipient — both involved
+        assert!(message_involves_participants(&msg, "dev+pm", "ryan"));
+    }
+
+    #[test]
+    fn participant_filter_group_missing_one() {
+        let msg = directed_msg("dev:ws", "hello", &["designer"]);
+        // "dev+pm" view: dev is sender but pm not involved
+        assert!(!message_involves_participants(&msg, "dev+pm", "ryan"));
+    }
+
+    #[test]
+    fn participant_filter_owner_message_always_matches() {
+        let msg = chat_msg("ryan:human", "owner broadcast");
+        assert!(message_involves_participants(&msg, "dev", "ryan"));
     }
 }
