@@ -267,48 +267,7 @@ fn render_md_message<'a>(
     lines
 }
 
-pub fn render(frame: &mut Frame, app: &mut App) {
-    // Auto-suppress sidebar if terminal is too narrow
-    let sidebar_width = if app.sidebar_open && frame.area().width >= 60 {
-        24u16
-    } else {
-        0
-    };
-
-    // Horizontal split: sidebar | main content
-    let h_chunks = Layout::horizontal([Constraint::Length(sidebar_width), Constraint::Min(1)])
-        .split(frame.area());
-
-    let main_area = h_chunks[1];
-
-    let input_lines = if app.input.is_empty() {
-        1
-    } else {
-        let width = main_area.width.saturating_sub(2) as usize; // borders only
-        app.input.len().max(1).div_ceil(width.max(1))
-    };
-    let input_height = (input_lines + 2).min(8) as u16; // +2 for borders, cap at 8
-    let pin_height = if app.pins.is_empty() {
-        0
-    } else {
-        (app.pins.len() as u16) + 2 // +2 for borders
-    };
-
-    let chunks = Layout::vertical([
-        Constraint::Min(3),               // chat pane
-        Constraint::Length(pin_height),   // pin bar (0 if no pins)
-        Constraint::Length(input_height), // input pane — grows with content
-        Constraint::Length(1),            // status bar
-    ])
-    .split(main_area);
-
-    // Sidebar tree view
-    if sidebar_width > 0 {
-        render_sidebar(frame, app, h_chunks[0]);
-    }
-
-    // Chat pane — show chat messages (and system messages when debug is on),
-    // filtered by current_view when set.
+fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
     let chat_messages: Vec<&session::Message> = app
         .messages
         .iter()
@@ -326,8 +285,8 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             }
         })
         .collect();
-    let chat_inner_width = chunks[0].width.saturating_sub(2) as usize;
-    let chat_height = chunks[0].height.saturating_sub(2) as usize;
+    let chat_inner_width = area.width.saturating_sub(2) as usize;
+    let chat_height = area.height.saturating_sub(2) as usize;
 
     // Virtualization: only render messages near the visible window
     let visible_window = chat_height * 3; // generous buffer for scroll
@@ -341,7 +300,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         .enumerate()
         .skip(start_idx)
         .flat_map(|(i, msg)| {
-            // Short name: "ryan:human" → "ryan", "claude-code:ws" → "claude-code"
+            // Short name: "ryan:human" -> "ryan", "claude-code:ws" -> "claude-code"
             let short_name = msg.from.split(':').next().unwrap_or(&msg.from);
 
             // Deterministic color from sender name — same name always gets same color
@@ -438,18 +397,19 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         .min(u16::MAX as usize) as u16;
 
     let chat = chat.scroll((scroll, 0));
-    frame.render_widget(chat, chunks[0]);
+    frame.render_widget(chat, area);
+}
 
-    // Unread indicator — shown at bottom of chat area when scrolled up with new messages
+fn render_unread_indicator(frame: &mut Frame, app: &App, area: Rect) {
     if app.scroll_offset > 0 && app.unread_count > 0 {
         let unread_text = format!(
-            "↓ {} new message{}",
+            "\u{2193} {} new message{}",
             app.unread_count,
             if app.unread_count == 1 { "" } else { "s" }
         );
         let unread_width = unread_text.len() as u16 + 2; // +2 for padding
-        let unread_x = chunks[0].x + (chunks[0].width.saturating_sub(unread_width)) / 2;
-        let unread_y = chunks[0].y + chunks[0].height.saturating_sub(2);
+        let unread_x = area.x + (area.width.saturating_sub(unread_width)) / 2;
+        let unread_y = area.y + area.height.saturating_sub(2);
         let unread_area = Rect::new(unread_x, unread_y, unread_width, 1);
         let unread = Paragraph::new(Span::styled(
             format!(" {unread_text} "),
@@ -458,8 +418,9 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         frame.render_widget(Clear, unread_area);
         frame.render_widget(unread, unread_area);
     }
+}
 
-    // Pin bar — rendered between chat and input when pins exist
+fn render_pins(frame: &mut Frame, app: &App, area: Rect) {
     if !app.pins.is_empty() {
         let pin_lines: Vec<Line> = app
             .pins
@@ -483,10 +444,11 @@ pub fn render(frame: &mut Frame, app: &mut App) {
                 )
                 .border_style(Style::default().fg(Color::Rgb(241, 250, 140))),
         );
-        frame.render_widget(pin_bar, chunks[1]);
+        frame.render_widget(pin_bar, area);
     }
+}
 
-    // Input pane — with syntax coloring for slash commands
+fn render_input(frame: &mut Frame, app: &App, area: Rect) {
     let input_line = if app.input.starts_with('/') {
         // Color the command keyword differently from the arguments
         let cmd_end = app.input.find(' ').unwrap_or(app.input.len());
@@ -518,29 +480,30 @@ pub fn render(frame: &mut Frame, app: &mut App) {
                 .style(Style::default().bg(DRACULA_BG).fg(DRACULA_FG)),
         )
         .wrap(Wrap { trim: false });
-    frame.render_widget(input, chunks[2]);
+    frame.render_widget(input, area);
 
     // Show cursor at end of input text, accounting for wrapping
     #[allow(clippy::cast_possible_truncation)]
-    let input_inner_width = chunks[2].width.saturating_sub(2) as usize;
+    let input_inner_width = area.width.saturating_sub(2) as usize;
     let display_pos = app.input[..app.cursor_pos].chars().count();
     let (cursor_x, cursor_y) = if input_inner_width > 0 {
         let x = (display_pos % input_inner_width) as u16;
         let y = (display_pos / input_inner_width) as u16;
-        (chunks[2].x + 1 + x, chunks[2].y + 1 + y)
+        (area.x + 1 + x, area.y + 1 + y)
     } else {
-        (chunks[2].x + 1, chunks[2].y + 1)
+        (area.x + 1, area.y + 1)
     };
     frame.set_cursor_position((cursor_x, cursor_y));
+}
 
-    // Command autocomplete popup — shown when input starts with `/`
+fn render_popup(frame: &mut Frame, app: &App, input_area: Rect) {
     let matches = app.popup_matches();
     if !matches.is_empty() {
         let popup_height = matches.len() as u16 + 2; // +2 for borders
-        let popup_width = 40u16.min(chunks[2].width);
+        let popup_width = 40u16.min(input_area.width);
         // Position popup above the input pane
-        let popup_y = chunks[2].y.saturating_sub(popup_height);
-        let popup_area = Rect::new(chunks[2].x, popup_y, popup_width, popup_height);
+        let popup_y = input_area.y.saturating_sub(popup_height);
+        let popup_area = Rect::new(input_area.x, popup_y, popup_width, popup_height);
 
         let items: Vec<Line> = matches
             .iter()
@@ -573,8 +536,9 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         frame.render_widget(Clear, popup_area);
         frame.render_widget(popup, popup_area);
     }
+}
 
-    // Status bar
+fn render_status_bar(frame: &mut Frame, app: &App, area: Rect) {
     let connection_status = if app.connected_peers == 0 {
         Span::styled(" solo", Style::default().fg(DRACULA_ORANGE))
     } else {
@@ -662,7 +626,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     }
     // Right-aligned "? help" hint
     let used: usize = status_spans.iter().map(|s| s.content.len()).sum();
-    let bar_width = chunks[3].width as usize;
+    let bar_width = area.width as usize;
     let hint = "? help";
     if used + hint.len() + 1 < bar_width {
         let pad = bar_width.saturating_sub(used + hint.len());
@@ -671,9 +635,10 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     }
     let status = Paragraph::new(Line::from(status_spans))
         .style(Style::default().bg(DRACULA_SELECTION).fg(DRACULA_FG));
-    frame.render_widget(status, chunks[3]);
+    frame.render_widget(status, area);
+}
 
-    // Help overlay — centered modal, dismiss with any key
+fn render_help_overlay(frame: &mut Frame, app: &App, area: Rect) {
     if app.show_help {
         let help_text = "\
 Commands:
@@ -687,7 +652,7 @@ Commands:
 Keys:
   Enter    send / expand    Esc     clear input
   Ctrl+U   scroll up        Ctrl+D  scroll down
-  ⌥1       channel sidebar   Ctrl+T  timestamps
+  \u{2325}1       channel sidebar   Ctrl+T  timestamps
   Ctrl+C   quit (empty)     ?  this overlay
 
 Press any key to close";
@@ -696,10 +661,10 @@ Press any key to close";
             .lines()
             .map(|l| Line::from(Span::raw(l.to_string())))
             .collect();
-        let help_height = (help_lines.len() as u16 + 2).min(frame.area().height); // +2 for borders
-        let help_width = 52u16.min(frame.area().width);
-        let help_x = (frame.area().width.saturating_sub(help_width)) / 2;
-        let help_y = (frame.area().height.saturating_sub(help_height)) / 2;
+        let help_height = (help_lines.len() as u16 + 2).min(area.height); // +2 for borders
+        let help_width = 52u16.min(area.width);
+        let help_x = (area.width.saturating_sub(help_width)) / 2;
+        let help_y = (area.height.saturating_sub(help_height)) / 2;
         let help_area = Rect::new(help_x, help_y, help_width, help_height);
         let help_popup = Paragraph::new(help_lines).block(
             Block::default()
@@ -716,6 +681,54 @@ Press any key to close";
         frame.render_widget(Clear, help_area);
         frame.render_widget(help_popup, help_area);
     }
+}
+
+pub fn render(frame: &mut Frame, app: &mut App) {
+    // Auto-suppress sidebar if terminal is too narrow
+    let sidebar_width = if app.sidebar_open && frame.area().width >= 60 {
+        24u16
+    } else {
+        0
+    };
+
+    // Horizontal split: sidebar | main content
+    let h_chunks = Layout::horizontal([Constraint::Length(sidebar_width), Constraint::Min(1)])
+        .split(frame.area());
+
+    let main_area = h_chunks[1];
+
+    let input_lines = if app.input.is_empty() {
+        1
+    } else {
+        let width = main_area.width.saturating_sub(2) as usize; // borders only
+        app.input.len().max(1).div_ceil(width.max(1))
+    };
+    let input_height = (input_lines + 2).min(8) as u16; // +2 for borders, cap at 8
+    let pin_height = if app.pins.is_empty() {
+        0
+    } else {
+        (app.pins.len() as u16) + 2 // +2 for borders
+    };
+
+    let chunks = Layout::vertical([
+        Constraint::Min(3),               // chat pane
+        Constraint::Length(pin_height),   // pin bar (0 if no pins)
+        Constraint::Length(input_height), // input pane — grows with content
+        Constraint::Length(1),            // status bar
+    ])
+    .split(main_area);
+
+    if sidebar_width > 0 {
+        render_sidebar(frame, app, h_chunks[0]);
+    }
+
+    render_chat(frame, app, chunks[0]);
+    render_unread_indicator(frame, app, chunks[0]);
+    render_pins(frame, app, chunks[1]);
+    render_input(frame, app, chunks[2]);
+    render_popup(frame, app, chunks[2]);
+    render_status_bar(frame, app, chunks[3]);
+    render_help_overlay(frame, app, frame.area());
 }
 
 #[cfg(test)]
