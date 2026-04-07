@@ -567,7 +567,7 @@ fn render_popup(frame: &mut Frame, app: &App, input_area: Rect) {
     }
 }
 
-fn render_status_bar(frame: &mut Frame, app: &App, area: Rect) {
+fn render_status_bar(frame: &mut Frame, app: &mut App, area: Rect) {
     let connection_status = if app.connected_peers == 0 {
         Span::styled(" solo", Style::default().fg(DRACULA_ORANGE))
     } else {
@@ -659,8 +659,11 @@ fn render_status_bar(frame: &mut Frame, app: &App, area: Rect) {
     let hint = "? help";
     if used + hint.len() + 1 < bar_width {
         let pad = bar_width.saturating_sub(used + hint.len());
+        app.help_hint_col = Some(area.x + (used + pad) as u16);
         status_spans.push(Span::raw(" ".repeat(pad)));
         status_spans.push(Span::styled(hint, Style::default().fg(DRACULA_PURPLE)));
+    } else {
+        app.help_hint_col = None;
     }
     let status = Paragraph::new(Line::from(status_spans))
         .style(Style::default().bg(DRACULA_SELECTION).fg(DRACULA_FG));
@@ -747,9 +750,16 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     ])
     .split(main_area);
 
+    // Store layout regions for mouse click detection
     if sidebar_width > 0 {
+        let s = h_chunks[0];
+        app.sidebar_area = Some((s.x, s.y, s.width, s.height));
         render_sidebar(frame, app, h_chunks[0]);
+    } else {
+        app.sidebar_area = None;
     }
+    let sb = chunks[3];
+    app.status_bar_area = Some((sb.x, sb.y, sb.width, sb.height));
 
     render_chat(frame, app, chunks[0]);
     render_unread_indicator(frame, app, chunks[0]);

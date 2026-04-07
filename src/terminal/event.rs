@@ -115,6 +115,36 @@ fn handle_broadcast_message(msg: session::Message, app: &mut App) {
     }
 }
 
+fn handle_mouse_click(col: u16, row: u16, app: &mut App) {
+    // Check if click is in the sidebar area
+    if let Some((sx, sy, sw, _sh)) = app.sidebar_area {
+        if col >= sx && col < sx + sw && row >= sy {
+            // Inside sidebar — find which channel was clicked
+            // Border top = row sy, so content starts at sy + 1
+            let content_row = row.saturating_sub(sy + 1);
+            let channels = app.sidebar_channels();
+            let idx = content_row as usize;
+            if idx < channels.len() {
+                app.sidebar_selected = idx;
+                app.sidebar_select();
+            }
+            return;
+        }
+    } else if col < 3 {
+        // Sidebar is closed — clicking the left edge opens it
+        app.toggle_sidebar();
+        return;
+    }
+
+    // Check if click is on "? help" in the status bar
+    if let Some((_, sb_y, _, _)) = app.status_bar_area
+        && row == sb_y
+        && app.help_hint_col.is_some_and(|hint_col| col >= hint_col)
+    {
+        app.show_help = true;
+    }
+}
+
 fn handle_terminal_event(
     ev: Event,
     app: &mut App,
@@ -129,7 +159,7 @@ fn handle_terminal_event(
         app.tui_focused = false;
         return Ok(());
     }
-    // Handle mouse scroll events
+    // Handle mouse events
     if let Event::Mouse(mouse) = &ev {
         match mouse.kind {
             MouseEventKind::ScrollUp => {
@@ -137,6 +167,9 @@ fn handle_terminal_event(
             }
             MouseEventKind::ScrollDown => {
                 app.scroll_down(3);
+            }
+            MouseEventKind::Down(crossterm::event::MouseButton::Left) => {
+                handle_mouse_click(mouse.column, mouse.row, app);
             }
             _ => {}
         }

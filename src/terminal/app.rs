@@ -104,6 +104,12 @@ pub struct App {
     pub tui_focused: bool,
     /// Whether the project tree node is expanded (showing channels).
     pub project_expanded: bool,
+    /// Layout regions for mouse click detection (updated each render pass).
+    pub sidebar_area: Option<(u16, u16, u16, u16)>,
+    /// Status bar area: (x, y, width, height).
+    pub status_bar_area: Option<(u16, u16, u16, u16)>,
+    /// Column where "? help" starts in the status bar.
+    pub help_hint_col: Option<u16>,
 }
 
 impl App {
@@ -159,6 +165,9 @@ impl App {
             send_target: None,
             tui_focused: true,
             project_expanded: true,
+            sidebar_area: None,
+            status_bar_area: None,
+            help_hint_col: None,
         }
     }
 

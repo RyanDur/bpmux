@@ -199,6 +199,17 @@ impl TestBpmux {
         w.flush().expect("flush");
     }
 
+    /// Send a mouse click at the given (col, row) position (1-based, SGR protocol).
+    pub fn mouse_click(&self, col: u16, row: u16) {
+        let mut w = self.writer.lock().expect("writer lock");
+        // SGR: \x1b[<0;col;rowM = button press, \x1b[<0;col;rowm = button release
+        let press = format!("\x1b[<0;{col};{row}M");
+        let release = format!("\x1b[<0;{col};{row}m");
+        w.write_all(press.as_bytes()).expect("mouse press");
+        w.write_all(release.as_bytes()).expect("mouse release");
+        w.flush().expect("flush");
+    }
+
     /// Send mouse scroll-down events through the PTY (SGR mouse protocol).
     pub fn mouse_scroll_down(&self, count: usize) {
         let mut w = self.writer.lock().expect("writer lock");
