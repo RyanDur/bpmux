@@ -46,7 +46,7 @@ fi
 # Signal only — count, not content
 jq -nc --arg count "$NEW_COUNT" '{
   "continue": true,
-  "systemMessage": ($count + " new bpmux messages. Use read_messages to see them.")
+  "systemMessage": ($count + " new bpmux messages arrived.")
 }'
 
 exit 0
