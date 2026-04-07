@@ -14,6 +14,7 @@ pub const SLASH_COMMANDS: &[(&str, &str)] = &[
     ("/pins", "list pinned items"),
     ("/unpin", "remove a pin by number"),
     ("/board", "show project board"),
+    ("/roadmap", "show project roadmap"),
     ("/status", "declare your status"),
     ("/who", "list participants"),
     ("/debug", "toggle system messages"),
@@ -434,6 +435,9 @@ impl App {
         if text == "/board" {
             return self.handle_board();
         }
+        if text == "/roadmap" {
+            return self.handle_roadmap();
+        }
         if text.starts_with('/') {
             return self.handle_unknown_command(text);
         }
@@ -659,6 +663,16 @@ impl App {
 
     fn handle_unpin_bare(&mut self) -> Option<Message> {
         self.system_message("Usage: /unpin <number>. Type /pins to see pin numbers.".to_string());
+        self.clear_input();
+        None
+    }
+
+    fn handle_roadmap(&mut self) -> Option<Message> {
+        let roadmap_text = match fetch_roadmap() {
+            Ok(text) => text,
+            Err(e) => format!("Roadmap unavailable: {e}"),
+        };
+        self.system_message(roadmap_text);
         self.clear_input();
         None
     }
@@ -936,6 +950,28 @@ impl App {
             self.input = self.input_history[new_index].clone();
         }
     }
+}
+
+/// Resolve the repo root: prefer `BPMUX_ROOT` env var, fall back to `git rev-parse`.
+fn repo_root() -> Result<String, String> {
+    if let Ok(root) = std::env::var("BPMUX_ROOT") {
+        return Ok(root);
+    }
+    let output = std::process::Command::new("git")
+        .args(["rev-parse", "--show-toplevel"])
+        .output()
+        .map_err(|e| format!("failed to find repo root: {e}"))?;
+    if !output.status.success() {
+        return Err("not inside a git repository".to_string());
+    }
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+
+/// Read ROADMAP.md from the repo root.
+fn fetch_roadmap() -> Result<String, String> {
+    let root = repo_root()?;
+    let path = std::path::Path::new(&root).join("ROADMAP.md");
+    std::fs::read_to_string(&path).map_err(|e| format!("cannot read ROADMAP.md: {e}"))
 }
 
 /// Fetch project board from GitHub Issues via `gh` CLI.
@@ -1930,5 +1966,26 @@ mod tests {
         app.current_view = Some("broadcast".to_string());
         app.receive_message(directed_msg("dev:claude-code", "dm message", vec!["human"]));
         assert_eq!(*app.channel_unread.get("dev").unwrap_or(&0), 1);
+    }
+
+    #[test]
+    fn roadmap_command_adds_system_message() {
+        // fetch_roadmap uses git rev-parse which works when tests run from the repo
+        let mut app = test_app();
+        app.input = "/roadmap".to_string();
+        let msg = app.submit_message();
+        assert!(msg.is_none());
+        let last = app.messages.last().expect("should have a message");
+        assert_eq!(last.from, "bpmux");
+        // Either shows roadmap content or an unavailable message
+        assert!(last.text.contains("bpmux Roadmap") || last.text.contains("Roadmap unavailable"),);
+    }
+
+    #[test]
+    fn roadmap_command_clears_input() {
+        let mut app = test_app();
+        app.input = "/roadmap".to_string();
+        app.submit_message();
+        assert!(app.input.is_empty());
     }
 }

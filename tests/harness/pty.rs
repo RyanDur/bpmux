@@ -75,6 +75,9 @@ impl TestBpmux {
         if let Ok(repo) = std::env::var("BPMUX_REPO") {
             cmd.env("BPMUX_REPO", repo);
         }
+        // Set BPMUX_ROOT to the actual repo root so /roadmap can find ROADMAP.md
+        let manifest_dir = env!("CARGO_MANIFEST_DIR");
+        cmd.env("BPMUX_ROOT", manifest_dir);
 
         let child = pair.slave.spawn_command(cmd).expect("spawn bpmux");
         drop(pair.slave);
