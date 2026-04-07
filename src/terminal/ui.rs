@@ -274,13 +274,13 @@ fn wrap_line_with_indent<'a>(line: Line<'a>, indent: &Span<'a>, max_width: usize
     if max_width == 0 {
         return vec![line];
     }
-    // Calculate total visible width
-    let total_width: usize = line.spans.iter().map(|s| s.content.len()).sum();
+    // Calculate total display width using Unicode character count
+    let total_width: usize = line.spans.iter().map(|s| s.content.chars().count()).sum();
     if total_width <= max_width {
         return vec![line];
     }
 
-    let indent_width = indent.content.len();
+    let indent_width = indent.content.chars().count();
     let mut result = Vec::new();
     let mut current_spans: Vec<Span<'a>> = Vec::new();
     let mut current_width = 0usize;
@@ -292,16 +292,21 @@ fn wrap_line_with_indent<'a>(line: Line<'a>, indent: &Span<'a>, max_width: usize
 
         while !remaining.is_empty() {
             let available = max_width.saturating_sub(current_width);
+            let remaining_chars = remaining.chars().count();
 
-            if remaining.len() <= available {
+            if remaining_chars <= available {
                 current_spans.push(Span::styled(remaining.to_string(), style));
-                current_width += remaining.len();
+                current_width += remaining_chars;
                 break;
             }
 
-            // Split at available boundary
+            // Split at char boundary (not byte boundary)
             if available > 0 {
-                let (chunk, rest) = remaining.split_at(available);
+                let byte_idx = remaining
+                    .char_indices()
+                    .nth(available)
+                    .map_or(remaining.len(), |(i, _)| i);
+                let (chunk, rest) = remaining.split_at(byte_idx);
                 current_spans.push(Span::styled(chunk.to_string(), style));
                 remaining = rest;
             }

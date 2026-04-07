@@ -21,6 +21,11 @@ pub const SLASH_COMMANDS: &[(&str, &str)] = &[
     ("/quit", "exit bpmux"),
 ];
 
+/// Strips the transport suffix from a peer name: "dev:claude-code" → "dev".
+fn short_peer_name(peer: &str) -> &str {
+    peer.split(':').next().unwrap_or(peer)
+}
+
 /// Compute the display name for a message's channel.
 /// Returns "broadcast" for `None` / `["all"]`, "a↔b" for 2-person DMs,
 /// "a+b+c" for groups. The sender is included in directed channels.
@@ -115,21 +120,10 @@ pub struct App {
 impl App {
     pub fn new(peer_name: String, session_id: String, messages: Vec<Message>) -> Self {
         let mut active_channels: HashSet<String> = HashSet::new();
-        let mut peer_activity: HashMap<String, (String, Instant)> = HashMap::new();
-        let now = Instant::now();
+        let peer_activity: HashMap<String, (String, Instant)> = HashMap::new();
         for msg in &messages {
-            if msg.is_chat() {
+            if msg.is_chat() && !msg.from.starts_with("agent-") {
                 active_channels.insert(channel_name(msg, &peer_name));
-            }
-            // Rebuild peer activity from persisted messages
-            if msg.message_type.as_deref() == Some("activity") {
-                peer_activity.insert(msg.from.clone(), (msg.text.clone(), now));
-            } else if msg.message_type.as_deref() == Some("system") {
-                if let Some(peer) = msg.text.strip_suffix(" joined") {
-                    peer_activity.insert(peer.to_string(), ("available".to_string(), now));
-                } else if let Some(peer) = msg.text.strip_suffix(" left") {
-                    peer_activity.remove(peer);
-                }
             }
         }
         Self {
@@ -326,7 +320,8 @@ impl App {
 
     pub fn receive_message(&mut self, msg: Message) {
         if msg.message_type.as_deref() == Some("activity") {
-            self.update_activity(msg.from, msg.text);
+            let short = short_peer_name(&msg.from).to_string();
+            self.update_activity(short, msg.text);
             return;
         }
         self.track_peer_presence(&msg);
@@ -347,9 +342,10 @@ impl App {
             return;
         }
         if let Some(peer) = msg.text.strip_suffix(" joined") {
-            self.update_activity(peer.to_string(), "available".to_string());
+            let short = short_peer_name(peer).to_string();
+            self.update_activity(short, "available".to_string());
         } else if let Some(peer) = msg.text.strip_suffix(" left") {
-            self.peer_activity.remove(peer);
+            self.peer_activity.remove(short_peer_name(peer));
         }
     }
 
@@ -369,7 +365,7 @@ impl App {
         if !msg.is_chat() {
             return;
         }
-        let peer = msg.from.clone();
+        let peer = short_peer_name(&msg.from).to_string();
         if let Some(rest) = msg.text.strip_prefix("/status ") {
             self.update_activity(peer, rest.trim().to_string());
         } else if !self.peer_activity.contains_key(&peer) {
@@ -1304,7 +1300,7 @@ mod tests {
     #[test]
     fn who_command_includes_peer_activity_and_connected_count() {
         let mut app = test_app();
-        app.update_activity("dev:claude-code".to_string(), "working".to_string());
+        app.update_activity("dev".to_string(), "working".to_string());
         app.connected_peers = 2;
         app.input = "/who".to_string();
         let msg = app.submit_message();
@@ -1339,9 +1335,9 @@ mod tests {
     #[test]
     fn update_activity_adds_entry() {
         let mut app = test_app();
-        app.update_activity("dev:claude-code".to_string(), "working".to_string());
-        assert!(app.peer_activity.contains_key("dev:claude-code"));
-        let (status, _) = &app.peer_activity["dev:claude-code"];
+        app.update_activity("dev".to_string(), "working".to_string());
+        assert!(app.peer_activity.contains_key("dev"));
+        let (status, _) = &app.peer_activity["dev"];
         assert_eq!(status, "working");
     }
 
@@ -1350,32 +1346,46 @@ mod tests {
         let mut app = test_app();
         app.receive_message(activity_msg("dev:claude-code", "working"));
         assert!(app.messages.is_empty());
-        assert!(app.peer_activity.contains_key("dev:claude-code"));
+        assert!(app.peer_activity.contains_key("dev"));
     }
 
     #[test]
-    fn peer_activity_rebuilt_from_persisted_messages() {
+    fn peer_activity_not_rebuilt_from_log() {
         let messages = vec![
             system_msg("bpmux", "dev:ws joined"),
             activity_msg("dev:ws", "busy"),
             system_msg("bpmux", "pm:ws joined"),
         ];
         let app = App::new("ryan".to_string(), "test-session".to_string(), messages);
-        assert!(app.peer_activity.contains_key("dev:ws"));
-        assert_eq!(app.peer_activity["dev:ws"].0, "busy");
-        assert!(app.peer_activity.contains_key("pm:ws"));
-        assert_eq!(app.peer_activity["pm:ws"].0, "available");
+        assert!(
+            app.peer_activity.is_empty(),
+            "peer_activity should be empty on startup — only live connections populate it"
+        );
     }
 
     #[test]
-    fn peer_activity_respects_leave_on_rebuild() {
-        let messages = vec![
-            system_msg("bpmux", "dev:ws joined"),
-            activity_msg("dev:ws", "busy"),
-            system_msg("bpmux", "dev:ws left"),
-        ];
-        let app = App::new("ryan".to_string(), "test-session".to_string(), messages);
-        assert!(!app.peer_activity.contains_key("dev:ws"));
+    fn live_join_uses_short_name() {
+        let mut app = test_app();
+        app.receive_message(system_msg("bpmux", "dev:claude-code joined"));
+        app.receive_message(system_msg("bpmux", "dev:ws joined"));
+        assert_eq!(
+            app.peer_activity.len(),
+            1,
+            "same role via different transports should dedupe"
+        );
+        assert!(app.peer_activity.contains_key("dev"));
+    }
+
+    #[test]
+    fn live_leave_removes_by_short_name() {
+        let mut app = test_app();
+        app.receive_message(system_msg("bpmux", "dev:claude-code joined"));
+        assert!(app.peer_activity.contains_key("dev"));
+        app.receive_message(system_msg("bpmux", "dev:ws left"));
+        assert!(
+            !app.peer_activity.contains_key("dev"),
+            "leave from any transport should remove"
+        );
     }
 
     #[test]

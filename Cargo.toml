@@ -23,6 +23,7 @@ axum = { version = "0.8", features = ["ws"] }
 tokio-tungstenite = "0.26"
 tokio-util = { version = "0.7.18", features = ["rt"] }
 tui-markdown = "0.3.7"
+reqwest = { version = "0.13.2" }
 
 [dev-dependencies]
 ratatui-testlib = "0.1.0"

@@ -33,15 +33,10 @@ pub struct BridgeServer {
     name: Arc<Mutex<String>>,
     peer: Arc<Mutex<Option<Peer<RoleServer>>>>,
     ws_tx: Arc<Mutex<Option<WsSink>>>,
-    messages: Arc<Mutex<Vec<String>>>,
-    last_read_index: Arc<Mutex<usize>>,
 }
 
-/// Resolve the bridge's display name. The CLI default "claude-code" is a
-/// sentinel that triggers `agent-XXXX` auto-generation. Empty strings and
-/// unexpanded env-var placeholders (e.g. "${BPMUX_ROLE}" when the var isn't
-/// set) also fall through to auto-generation so the bridge never identifies
-/// itself with a broken value.
+/// Resolve the bridge's display name. "claude-code", empty strings, and
+/// unexpanded env-var placeholders trigger agent-XXXX auto-generation.
 fn resolve_bridge_name(raw: &str) -> String {
     let is_placeholder = raw.starts_with("${") && raw.ends_with('}');
     if raw.is_empty() || raw == "claude-code" || is_placeholder {
@@ -59,20 +54,16 @@ impl BridgeServer {
             name: Arc::new(Mutex::new(resolve_bridge_name(&name))),
             peer: Arc::new(Mutex::new(None)),
             ws_tx: Arc::new(Mutex::new(None)),
-            messages: Arc::new(Mutex::new(Vec::new())),
-            last_read_index: Arc::new(Mutex::new(0)),
         }
     }
 }
 
 /// Connect to bpmux's WebSocket, identify, and forward messages until disconnected.
-/// Returns when the connection drops.
 async fn run_ws_connection(
     port: u16,
     name: Arc<Mutex<String>>,
     peer: Peer<RoleServer>,
     ws_tx_store: Arc<Mutex<Option<WsSink>>>,
-    messages_store: Arc<Mutex<Vec<String>>>,
 ) {
     let ws_url = format!("ws://127.0.0.1:{port}/ws");
     let (ws_stream, _) = match tokio_tungstenite::connect_async(&ws_url).await {
@@ -105,29 +96,6 @@ async fn run_ws_connection(
         eprintln!("Bridge: connected to bpmux on port {port}");
     }
 
-    // Backfill missed messages from REST API on reconnect
-    let backfill_url = format!("http://127.0.0.1:{port}/api/messages");
-    if let Ok(output) = std::process::Command::new("curl")
-        .args(["-s", &backfill_url])
-        .output()
-        && let Ok(body) = String::from_utf8(output.stdout)
-        && let Ok(msgs) = serde_json::from_str::<Vec<serde_json::Value>>(&body)
-    {
-        let mut store = messages_store.lock().await;
-        store.clear();
-        for msg in msgs {
-            // Skip activity and system messages during backfill (same filter as live WS)
-            let mt = msg["message_type"].as_str();
-            if mt == Some("activity") || mt == Some("system") {
-                continue;
-            }
-            if let (Some(from), Some(text)) = (msg["from"].as_str(), msg["text"].as_str()) {
-                store.push(format!("[{from}] {text}"));
-            }
-        }
-        eprintln!("Bridge: backfilled {} messages", store.len());
-    }
-
     // Forward bpmux messages → channel notifications until disconnected
     while let Some(Ok(frame)) = ws_rx.next().await {
         if let tungstenite::Message::Text(text) = frame {
@@ -140,32 +108,25 @@ async fn run_ws_connection(
                 ..
             }) = msg
             {
-                // Don't forward our own messages back
+                // Don't forward our own messages back (read name each
+                // iteration so set_name changes take effect immediately)
+                let from_short = from.split(':').next().unwrap_or(&from);
                 let current_name = name.lock().await;
-                if from.contains(current_name.as_str()) {
-                    drop(current_name);
+                if from_short == *current_name {
                     continue;
                 }
                 drop(current_name);
 
-                // Skip activity and system messages — they drive the TUI status
-                // bar only, not agent chat
+                // Skip activity and system messages
                 let mt = message_type.as_deref();
                 if mt == Some("activity") || mt == Some("system") {
                     continue;
                 }
 
-                // Buffer chat messages for read_messages (pull model)
-                messages_store.lock().await.push(format!("[{from}] {text}"));
-
-                // Push every non-self chat message. Agents need to see each
-                // other to collaborate; the @mention-only filter caused
-                // parallel monologues. Let data drive any future filtering.
-                let short_name = from.split(':').next().unwrap_or(&from);
                 let notification = CustomNotification::new(
                     "notifications/claude/channel",
                     Some(json!({
-                        "content": format!("{short_name}: {text}"),
+                        "content": format!("{from_short}: {text}"),
                         "meta": {
                             "from": from,
                             "ts": ts,
@@ -185,7 +146,6 @@ async fn run_ws_connection(
         }
     }
 
-    // Connection dropped — clear the sender so tool calls know we're disconnected
     *ws_tx_store.lock().await = None;
     eprintln!("Bridge: disconnected from bpmux");
 }
@@ -194,7 +154,6 @@ impl ServerHandler for BridgeServer {
     fn get_info(&self) -> ServerInfo {
         let mut capabilities = ServerCapabilities::builder().enable_tools().build();
 
-        // Declare channel capability
         let mut experimental = std::collections::BTreeMap::new();
         experimental.insert("claude/channel".to_string(), serde_json::Map::new());
         capabilities.experimental = Some(experimental);
@@ -212,24 +171,14 @@ impl ServerHandler for BridgeServer {
         let name = self.name.clone();
         let peer_store = self.peer.clone();
         let ws_tx_store = self.ws_tx.clone();
-        let messages_store = self.messages.clone();
 
         async move {
             *peer_store.lock().await = Some(peer.clone());
 
-            // Reconnection loop — keeps trying to connect to bpmux
+            // Reconnection loop
             tokio::spawn(async move {
                 loop {
-                    run_ws_connection(
-                        port,
-                        name.clone(),
-                        peer.clone(),
-                        ws_tx_store.clone(),
-                        messages_store.clone(),
-                    )
-                    .await;
-
-                    // Wait before reconnecting
+                    run_ws_connection(port, name.clone(), peer.clone(), ws_tx_store.clone()).await;
                     eprintln!("Bridge: reconnecting in 3 seconds...");
                     tokio::time::sleep(std::time::Duration::from_secs(3)).await;
                 }
@@ -266,8 +215,6 @@ impl ServerHandler for BridgeServer {
         let port = self.port;
         let ws_tx = self.ws_tx.clone();
         let name = self.name.clone();
-        let messages = self.messages.clone();
-        let last_read_index = self.last_read_index.clone();
 
         async move {
             match request.name.as_ref() {
@@ -328,10 +275,8 @@ impl ServerHandler for BridgeServer {
                         }
                     };
 
-                    // Update the bridge's internal name
                     *name.lock().await = new_name.clone();
 
-                    // Send rename to bpmux server
                     let rename_msg =
                         serde_json::json!({"type": "rename", "name": new_name}).to_string();
                     let mut tx = ws_tx.lock().await;
@@ -358,33 +303,31 @@ impl ServerHandler for BridgeServer {
                         }
                     };
 
-                    // Send as activity message via REST API so TUI status bar picks it up
-                    let current_name = name.lock().await.clone();
-                    let identity = format!("{current_name}:claude-code");
-                    let api_url = format!("http://127.0.0.1:{port}/api/messages");
-                    let body = json!({
-                        "from": identity,
-                        "text": status,
-                        "message_type": "activity"
-                    })
-                    .to_string();
-                    let result = tokio::process::Command::new("curl")
-                        .args([
-                            "-s",
-                            "-X",
-                            "POST",
-                            &api_url,
-                            "-H",
-                            "Content-Type: application/json",
-                            "-d",
-                            &body,
-                        ])
-                        .output()
-                        .await;
-                    if let Err(e) = result {
-                        return Ok(CallToolResult::error(vec![Content::text(format!(
-                            "failed to set status: {e}"
-                        ))]));
+                    // Send activity via WebSocket (same connection as chat)
+                    let send_msg = match serde_json::to_string(&ClientMessage::Send {
+                        text: status.clone(),
+                        to: None,
+                        message_type: Some("activity".to_string()),
+                    }) {
+                        Ok(json) => json,
+                        Err(e) => {
+                            return Ok(CallToolResult::error(vec![Content::text(format!(
+                                "failed to serialize: {e}"
+                            ))]));
+                        }
+                    };
+
+                    let mut tx = ws_tx.lock().await;
+                    if let Some(ref mut tx) = *tx {
+                        if let Err(e) = tx.send(tungstenite::Message::Text(send_msg.into())).await {
+                            return Ok(CallToolResult::error(vec![Content::text(format!(
+                                "failed to set status: {e}"
+                            ))]));
+                        }
+                    } else {
+                        return Ok(CallToolResult::error(vec![Content::text(
+                            "not connected to bpmux",
+                        )]));
                     }
 
                     Ok(CallToolResult::success(vec![Content::text(format!(
@@ -392,21 +335,49 @@ impl ServerHandler for BridgeServer {
                     ))]))
                 }
                 "read_messages" => {
+                    // Stateless: hit the REST API directly. No local buffer to
+                    // get out of sync on reconnect.
                     let args = request.arguments.unwrap_or_default();
-                    let limit = args.get("limit").and_then(|v| v.as_u64()).unwrap_or(20) as usize;
-                    let msgs = messages.lock().await;
-                    let mut idx = last_read_index.lock().await;
-                    let new_msgs: Vec<&String> = msgs.iter().skip(*idx).take(limit).collect();
-                    *idx = (*idx + new_msgs.len()).min(msgs.len());
-                    let text = if new_msgs.is_empty() {
-                        "No new messages.".to_string()
-                    } else {
-                        new_msgs
-                            .iter()
-                            .map(|s| s.as_str())
-                            .collect::<Vec<_>>()
-                            .join("\n")
+                    let limit = args.get("limit").and_then(|v| v.as_u64()).unwrap_or(20);
+                    let url = format!("http://127.0.0.1:{port}/api/messages?limit={limit}");
+
+                    let resp = match reqwest::get(&url).await {
+                        Ok(r) => r,
+                        Err(e) => {
+                            return Ok(CallToolResult::error(vec![Content::text(format!(
+                                "failed to read messages: {e}"
+                            ))]));
+                        }
                     };
+
+                    let body = match resp.text().await {
+                        Ok(b) => b,
+                        Err(e) => {
+                            return Ok(CallToolResult::error(vec![Content::text(format!(
+                                "failed to read response: {e}"
+                            ))]));
+                        }
+                    };
+
+                    let msgs: Vec<serde_json::Value> = match serde_json::from_str(&body) {
+                        Ok(m) => m,
+                        Err(_) => return Ok(CallToolResult::success(vec![Content::text(body)])),
+                    };
+
+                    if msgs.is_empty() {
+                        return Ok(CallToolResult::success(vec![Content::text("No messages.")]));
+                    }
+
+                    let text = msgs
+                        .iter()
+                        .filter_map(|m| {
+                            let from = m["from"].as_str()?;
+                            let text = m["text"].as_str()?;
+                            Some(format!("[{from}] {text}"))
+                        })
+                        .collect::<Vec<_>>()
+                        .join("\n");
+
                     Ok(CallToolResult::success(vec![Content::text(text)]))
                 }
                 other => Ok(CallToolResult::error(vec![Content::text(format!(
@@ -432,32 +403,6 @@ pub fn run_bridge(port: u16, name: &str) -> anyhow::Result<()> {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
-
-    /// Simulates the read_messages pagination logic extracted from call_tool.
-    async fn read_with_limit(
-        messages: &Mutex<Vec<String>>,
-        last_read_index: &Mutex<usize>,
-        limit: usize,
-    ) -> String {
-        let msgs = messages.lock().await;
-        let mut idx = last_read_index.lock().await;
-        let new_msgs: Vec<&String> = msgs.iter().skip(*idx).take(limit).collect();
-        *idx = (*idx + new_msgs.len()).min(msgs.len());
-        if new_msgs.is_empty() {
-            "No new messages.".to_string()
-        } else {
-            new_msgs
-                .iter()
-                .map(|s| s.as_str())
-                .collect::<Vec<_>>()
-                .join("\n")
-        }
-    }
-
-    fn seed_messages(count: usize) -> (Mutex<Vec<String>>, Mutex<usize>) {
-        let msgs: Vec<String> = (0..count).map(|i| format!("[user] msg {i}")).collect();
-        (Mutex::new(msgs), Mutex::new(0))
-    }
 
     #[test]
     fn resolve_bridge_name_uses_given_name_when_provided() {
@@ -492,47 +437,5 @@ mod tests {
             name.starts_with("agent-"),
             "unexpanded placeholder should auto-generate, got: {name}"
         );
-    }
-
-    #[tokio::test]
-    async fn reads_messages_with_limit() {
-        let (messages, idx) = seed_messages(5);
-        let text = read_with_limit(&messages, &idx, 2).await;
-        assert!(text.contains("msg 0"), "should contain first message");
-        assert!(text.contains("msg 1"), "should contain second message");
-        assert!(!text.contains("msg 2"), "should not contain third message");
-
-        // Next read picks up from where we left off
-        let text2 = read_with_limit(&messages, &idx, 2).await;
-        assert!(text2.contains("msg 2"), "should continue from index 2");
-        assert!(text2.contains("msg 3"), "should contain msg 3");
-        assert!(!text2.contains("msg 4"), "should not contain msg 4");
-    }
-
-    #[tokio::test]
-    async fn reads_messages_defaults_to_twenty() {
-        let (messages, idx) = seed_messages(25);
-        let text = read_with_limit(&messages, &idx, 20).await;
-        assert!(text.contains("msg 19"), "should contain msg 19");
-        assert!(!text.contains("msg 20"), "should not contain msg 20");
-    }
-
-    #[tokio::test]
-    async fn parses_limit_from_tool_args() {
-        let args = serde_json::json!({"limit": 5});
-        let limit = args
-            .as_object()
-            .and_then(|m| m.get("limit"))
-            .and_then(|v| v.as_u64())
-            .unwrap_or(20) as usize;
-        assert_eq!(limit, 5);
-
-        let empty_args = serde_json::json!({});
-        let default_limit = empty_args
-            .as_object()
-            .and_then(|m| m.get("limit"))
-            .and_then(|v| v.as_u64())
-            .unwrap_or(20) as usize;
-        assert_eq!(default_limit, 20);
     }
 }

@@ -107,7 +107,24 @@ async fn run_ws_session(
                     match ws_result {
                         Some(Ok(WsMessage::Text(text))) => {
                             if let Some(new_identity) = handle_client_message(&text, &identity, &session, &mut tx).await? {
+                                // Broadcast leave for old name, join for new
+                                let leave = session::Message {
+                                    from: "bpmux".to_string(),
+                                    text: format!("{identity} left"),
+                                    ts: chrono::Utc::now(),
+                                    message_type: Some("system".to_string()),
+                                    to: None,
+                                };
+                                let _ = session.broadcast(&leave);
                                 identity = new_identity;
+                                let join = session::Message {
+                                    from: "bpmux".to_string(),
+                                    text: format!("{identity} joined"),
+                                    ts: chrono::Utc::now(),
+                                    message_type: Some("system".to_string()),
+                                    to: None,
+                                };
+                                let _ = session.broadcast(&join);
                             }
                         }
                         Some(Ok(WsMessage::Close(_))) | None => break,
