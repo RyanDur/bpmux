@@ -21,8 +21,8 @@ use std::time::Duration;
 fn ac1_unread_indicator_when_scrolled_up() {
     let bpmux = TestBpmux::start();
 
-    // Fill chat with messages so we can scroll
-    for i in 0..15 {
+    // Fill chat with messages so we can scroll (needs enough to overflow viewport)
+    for i in 0..25 {
         bpmux.type_line(&format!("fill message {i}"));
         std::thread::sleep(Duration::from_millis(50));
     }
@@ -84,8 +84,8 @@ fn ac2_no_indicator_at_bottom() {
 fn ac3_scroll_to_bottom_clears_indicator() {
     let bpmux = TestBpmux::start();
 
-    // Fill and scroll up
-    for i in 0..15 {
+    // Fill and scroll up (needs enough to overflow viewport)
+    for i in 0..25 {
         bpmux.type_line(&format!("scroll msg {i}"));
         std::thread::sleep(Duration::from_millis(50));
     }
