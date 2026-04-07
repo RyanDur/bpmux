@@ -739,24 +739,41 @@ mod tests {
     use ratatui::Terminal;
     use ratatui::backend::TestBackend;
 
+    fn test_app_with(messages: Vec<Message>) -> App {
+        App::new("dev".to_string(), "test-id".to_string(), messages)
+    }
+
+    fn chat_msg(from: &str, text: &str) -> Message {
+        Message {
+            from: from.to_string(),
+            text: text.to_string(),
+            ts: Utc::now(),
+            message_type: None,
+            to: None,
+        }
+    }
+
+    fn system_msg(from: &str, text: &str) -> Message {
+        Message {
+            from: from.to_string(),
+            text: text.to_string(),
+            ts: Utc::now(),
+            message_type: Some("system".to_string()),
+            to: None,
+        }
+    }
+
     #[allow(clippy::unwrap_used)]
     #[test]
     fn renders_without_panic() {
         let backend = TestBackend::new(80, 24);
         let mut terminal = Terminal::new(backend).unwrap();
-        let app = App::new(
+        let mut app = App::new(
             "ryan".to_string(),
             "test-id".to_string(),
-            vec![Message {
-                from: "ryan:human".to_string(),
-                text: "hello".to_string(),
-                ts: Utc::now(),
-                message_type: None,
-                to: None,
-            }],
+            vec![chat_msg("ryan:human", "hello")],
         );
 
-        let mut app = app;
         terminal.draw(|frame| render(frame, &mut app)).unwrap();
 
         let buffer = terminal.backend().buffer().clone();
@@ -774,17 +791,11 @@ mod tests {
 
         // Create enough messages to overflow the chat pane
         let messages: Vec<Message> = (0..20)
-            .map(|i| Message {
-                from: "dev:human".to_string(),
-                text: format!("message {i}"),
-                ts: Utc::now(),
-                message_type: None,
-                to: None,
-            })
+            .map(|i| chat_msg("dev:human", &format!("message {i}")))
             .collect();
 
         // At scroll_offset 0 (bottom), last message visible
-        let mut app = App::new("dev".to_string(), "test-id".to_string(), messages.clone());
+        let mut app = test_app_with(messages.clone());
         terminal.draw(|frame| render(frame, &mut app)).unwrap();
         let at_bottom = buffer_to_string(terminal.backend().buffer());
         assert!(
@@ -808,7 +819,7 @@ mod tests {
         let backend = TestBackend::new(80, 15);
         let mut terminal = Terminal::new(backend).unwrap();
 
-        let mut app = App::new("dev".to_string(), "test-id".to_string(), vec![]);
+        let mut app = test_app_with(vec![]);
         terminal.draw(|frame| render(frame, &mut app)).unwrap();
         let at_bottom = buffer_to_string(terminal.backend().buffer());
         assert!(
@@ -831,7 +842,7 @@ mod tests {
     fn status_bar_shows_solo_when_no_peers() {
         let backend = TestBackend::new(80, 15);
         let mut terminal = Terminal::new(backend).unwrap();
-        let mut app = App::new("dev".to_string(), "test-id".to_string(), vec![]);
+        let mut app = test_app_with(vec![]);
 
         terminal.draw(|frame| render(frame, &mut app)).unwrap();
         let screen = buffer_to_string(terminal.backend().buffer());
@@ -846,7 +857,7 @@ mod tests {
     fn status_bar_shows_peer_count_when_connected() {
         let backend = TestBackend::new(80, 15);
         let mut terminal = Terminal::new(backend).unwrap();
-        let mut app = App::new("dev".to_string(), "test-id".to_string(), vec![]);
+        let mut app = test_app_with(vec![]);
         app.connected_peers = 2;
 
         terminal.draw(|frame| render(frame, &mut app)).unwrap();
@@ -866,26 +877,10 @@ mod tests {
     fn system_messages_filtered_from_chat() {
         let backend = TestBackend::new(80, 15);
         let mut terminal = Terminal::new(backend).unwrap();
-        let mut app = App::new(
-            "dev".to_string(),
-            "test-id".to_string(),
-            vec![
-                Message {
-                    from: "dev:human".to_string(),
-                    text: "visible chat".to_string(),
-                    ts: Utc::now(),
-                    message_type: None,
-                    to: None,
-                },
-                Message {
-                    from: "ryan:claude-code".to_string(),
-                    text: "[turn complete]".to_string(),
-                    ts: Utc::now(),
-                    message_type: Some("system".to_string()),
-                    to: None,
-                },
-            ],
-        );
+        let mut app = test_app_with(vec![
+            chat_msg("dev:human", "visible chat"),
+            system_msg("ryan:claude-code", "[turn complete]"),
+        ]);
 
         terminal.draw(|frame| render(frame, &mut app)).unwrap();
         let screen = buffer_to_string(terminal.backend().buffer());
@@ -910,17 +905,7 @@ mod tests {
         // 73 + 78*10 = 853 chars = 11 lines.
         let long_text = "word ".repeat(200); // ~1000 chars, well over 10 lines
 
-        let mut app = App::new(
-            "dev".to_string(),
-            "test-id".to_string(),
-            vec![Message {
-                from: "bot:ws".to_string(),
-                text: long_text,
-                ts: Utc::now(),
-                message_type: None,
-                to: None,
-            }],
-        );
+        let mut app = test_app_with(vec![chat_msg("bot:ws", &long_text)]);
 
         terminal.draw(|frame| render(frame, &mut app)).unwrap();
         let screen = buffer_to_string(terminal.backend().buffer());
@@ -941,17 +926,7 @@ mod tests {
         let backend = TestBackend::new(80, 24);
         let mut terminal = Terminal::new(backend).unwrap();
 
-        let mut app = App::new(
-            "dev".to_string(),
-            "test-id".to_string(),
-            vec![Message {
-                from: "bot:ws".to_string(),
-                text: "short message".to_string(),
-                ts: Utc::now(),
-                message_type: None,
-                to: None,
-            }],
-        );
+        let mut app = test_app_with(vec![chat_msg("bot:ws", "short message")]);
 
         terminal.draw(|frame| render(frame, &mut app)).unwrap();
         let screen = buffer_to_string(terminal.backend().buffer());
@@ -976,17 +951,7 @@ mod tests {
         // First line fits 61 chars of text. 10 lines = 61 + 78*9 = 763 chars.
         let text_for_ten_lines = "a".repeat(763);
 
-        let mut app = App::new(
-            "dev".to_string(),
-            "test-id".to_string(),
-            vec![Message {
-                from: "bot:ws".to_string(),
-                text: text_for_ten_lines,
-                ts: Utc::now(),
-                message_type: None,
-                to: None,
-            }],
-        );
+        let mut app = test_app_with(vec![chat_msg("bot:ws", &text_for_ten_lines)]);
 
         terminal.draw(|frame| render(frame, &mut app)).unwrap();
         let screen = buffer_to_string(terminal.backend().buffer());
@@ -1006,17 +971,7 @@ mod tests {
         // 11 lines = 61 + 78*10 = 841 chars
         let text_for_eleven_lines = "a".repeat(841);
 
-        let mut app = App::new(
-            "dev".to_string(),
-            "test-id".to_string(),
-            vec![Message {
-                from: "bot:ws".to_string(),
-                text: text_for_eleven_lines,
-                ts: Utc::now(),
-                message_type: None,
-                to: None,
-            }],
-        );
+        let mut app = test_app_with(vec![chat_msg("bot:ws", &text_for_eleven_lines)]);
 
         terminal.draw(|frame| render(frame, &mut app)).unwrap();
         let screen = buffer_to_string(terminal.backend().buffer());
@@ -1032,7 +987,7 @@ mod tests {
     fn status_bar_shows_unread_count_when_scrolled_up() {
         let backend = TestBackend::new(80, 15);
         let mut terminal = Terminal::new(backend).unwrap();
-        let mut app = App::new("dev".to_string(), "test-id".to_string(), vec![]);
+        let mut app = test_app_with(vec![]);
         app.unread_count = 3;
 
         terminal.draw(|frame| render(frame, &mut app)).unwrap();
@@ -1078,26 +1033,10 @@ mod tests {
     fn system_messages_visible_when_debug_on() {
         let backend = TestBackend::new(80, 15);
         let mut terminal = Terminal::new(backend).unwrap();
-        let mut app = App::new(
-            "dev".to_string(),
-            "test-id".to_string(),
-            vec![
-                Message {
-                    from: "dev:human".to_string(),
-                    text: "visible chat".to_string(),
-                    ts: Utc::now(),
-                    message_type: None,
-                    to: None,
-                },
-                Message {
-                    from: "ryan:claude-code".to_string(),
-                    text: "[turn complete]".to_string(),
-                    ts: Utc::now(),
-                    message_type: Some("system".to_string()),
-                    to: None,
-                },
-            ],
-        );
+        let mut app = test_app_with(vec![
+            chat_msg("dev:human", "visible chat"),
+            system_msg("ryan:claude-code", "[turn complete]"),
+        ]);
         app.show_system_messages = true;
 
         terminal.draw(|frame| render(frame, &mut app)).unwrap();
@@ -1117,17 +1056,10 @@ mod tests {
     fn message_with_code_block_renders_without_panic() {
         let backend = TestBackend::new(80, 24);
         let mut terminal = Terminal::new(backend).unwrap();
-        let mut app = App::new(
-            "dev".to_string(),
-            "test-id".to_string(),
-            vec![Message {
-                from: "dev:human".to_string(),
-                text: "before\n```\nlet x = 1;\n```\nafter".to_string(),
-                ts: Utc::now(),
-                message_type: None,
-                to: None,
-            }],
-        );
+        let mut app = test_app_with(vec![chat_msg(
+            "dev:human",
+            "before\n```\nlet x = 1;\n```\nafter",
+        )]);
 
         terminal.draw(|frame| render(frame, &mut app)).unwrap();
         let screen = buffer_to_string(terminal.backend().buffer());
@@ -1152,17 +1084,7 @@ mod tests {
     fn markdown_heading_styles_survive_line_reconstruction() {
         let backend = TestBackend::new(80, 24);
         let mut terminal = Terminal::new(backend).unwrap();
-        let mut app = App::new(
-            "dev".to_string(),
-            "test-id".to_string(),
-            vec![Message {
-                from: "bpmux:ws".to_string(),
-                text: "## Board\n- item one".to_string(),
-                ts: Utc::now(),
-                message_type: None,
-                to: None,
-            }],
-        );
+        let mut app = test_app_with(vec![chat_msg("bpmux:ws", "## Board\n- item one")]);
 
         terminal.draw(|frame| render(frame, &mut app)).unwrap();
         let buffer = terminal.backend().buffer();

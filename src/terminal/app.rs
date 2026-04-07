@@ -1056,9 +1056,53 @@ impl App {
 mod tests {
     use super::*;
 
+    fn test_app() -> App {
+        App::new("ryan".to_string(), "test-session".to_string(), vec![])
+    }
+
+    fn chat_msg(from: &str, text: &str) -> Message {
+        Message {
+            from: from.to_string(),
+            text: text.to_string(),
+            ts: Utc::now(),
+            message_type: None,
+            to: None,
+        }
+    }
+
+    fn directed_msg(from: &str, text: &str, to: Vec<&str>) -> Message {
+        Message {
+            from: from.to_string(),
+            text: text.to_string(),
+            ts: Utc::now(),
+            message_type: None,
+            to: Some(to.into_iter().map(String::from).collect()),
+        }
+    }
+
+    fn system_msg(from: &str, text: &str) -> Message {
+        Message {
+            from: from.to_string(),
+            text: text.to_string(),
+            ts: Utc::now(),
+            message_type: Some("system".to_string()),
+            to: None,
+        }
+    }
+
+    fn activity_msg(from: &str, text: &str) -> Message {
+        Message {
+            from: from.to_string(),
+            text: text.to_string(),
+            ts: Utc::now(),
+            message_type: Some("activity".to_string()),
+            to: None,
+        }
+    }
+
     #[test]
     fn submits_message_and_clears_input() {
-        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        let mut app = test_app();
         app.input = "hello world".to_string();
         let msg = app.submit_message().unwrap();
         assert_eq!(msg.from, "ryan:human");
@@ -1069,7 +1113,7 @@ mod tests {
 
     #[test]
     fn ignores_empty_input() {
-        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        let mut app = test_app();
         app.input = "   ".to_string();
         let msg = app.submit_message();
         assert!(msg.is_none());
@@ -1077,7 +1121,7 @@ mod tests {
 
     #[test]
     fn quit_command_sets_flag() {
-        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        let mut app = test_app();
         app.input = "/quit".to_string();
         let msg = app.submit_message();
         assert!(msg.is_none());
@@ -1086,7 +1130,7 @@ mod tests {
 
     #[test]
     fn scroll_up_increases_offset() {
-        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        let mut app = test_app();
         app.max_scroll = 100;
         app.scroll_up(5);
         assert_eq!(app.scroll_offset, 5);
@@ -1096,7 +1140,7 @@ mod tests {
 
     #[test]
     fn scroll_up_clamps_to_max_scroll() {
-        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        let mut app = test_app();
         app.max_scroll = 10;
         app.scroll_up(15);
         assert_eq!(app.scroll_offset, 10);
@@ -1104,7 +1148,7 @@ mod tests {
 
     #[test]
     fn scroll_down_decreases_offset_to_zero() {
-        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        let mut app = test_app();
         app.scroll_offset = 10;
         app.scroll_down(3);
         assert_eq!(app.scroll_offset, 7);
@@ -1114,29 +1158,17 @@ mod tests {
 
     #[test]
     fn receiving_message_when_scrolled_up_increments_unread_count() {
-        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        let mut app = test_app();
         app.scroll_offset = 5;
-        app.receive_message(Message {
-            from: "bot:ws".to_string(),
-            text: "hello".to_string(),
-            ts: Utc::now(),
-            message_type: None,
-            to: None,
-        });
+        app.receive_message(chat_msg("bot:ws", "hello"));
         assert_eq!(app.unread_count, 1);
-        app.receive_message(Message {
-            from: "bot:ws".to_string(),
-            text: "world".to_string(),
-            ts: Utc::now(),
-            message_type: None,
-            to: None,
-        });
+        app.receive_message(chat_msg("bot:ws", "world"));
         assert_eq!(app.unread_count, 2);
     }
 
     #[test]
     fn scrolling_to_bottom_resets_unread_count() {
-        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        let mut app = test_app();
         app.scroll_offset = 3;
         app.unread_count = 5;
         app.scroll_down(3);
@@ -1146,36 +1178,24 @@ mod tests {
 
     #[test]
     fn receiving_message_at_bottom_does_not_increment_unread_count() {
-        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        let mut app = test_app();
         assert_eq!(app.scroll_offset, 0);
-        app.receive_message(Message {
-            from: "bot:ws".to_string(),
-            text: "hello".to_string(),
-            ts: Utc::now(),
-            message_type: None,
-            to: None,
-        });
+        app.receive_message(chat_msg("bot:ws", "hello"));
         assert_eq!(app.unread_count, 0);
     }
 
     #[test]
     fn incoming_message_stays_at_bottom_when_at_bottom() {
-        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        let mut app = test_app();
         assert_eq!(app.scroll_offset, 0);
-        app.receive_message(Message {
-            from: "bot:ws".to_string(),
-            text: "hello".to_string(),
-            ts: Utc::now(),
-            message_type: None,
-            to: None,
-        });
+        app.receive_message(chat_msg("bot:ws", "hello"));
         assert_eq!(app.scroll_offset, 0);
         assert_eq!(app.messages.len(), 1);
     }
 
     #[test]
     fn up_arrow_recalls_last_sent_message() {
-        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        let mut app = test_app();
         app.input = "hello".to_string();
         app.submit_message();
         app.input = "world".to_string();
@@ -1192,7 +1212,7 @@ mod tests {
 
     #[test]
     fn down_arrow_returns_to_empty_after_recalling() {
-        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        let mut app = test_app();
         app.input = "hello".to_string();
         app.submit_message();
 
@@ -1206,7 +1226,7 @@ mod tests {
 
     #[test]
     fn history_caps_at_50_entries() {
-        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        let mut app = test_app();
         for i in 0..60 {
             app.input = format!("msg {i}");
             app.submit_message();
@@ -1218,7 +1238,7 @@ mod tests {
 
     #[test]
     fn who_command_lists_peer_name_and_returns_none() {
-        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        let mut app = test_app();
         app.input = "/who".to_string();
         let msg = app.submit_message();
         assert!(msg.is_none());
@@ -1230,7 +1250,7 @@ mod tests {
 
     #[test]
     fn who_command_includes_peer_activity_and_connected_count() {
-        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        let mut app = test_app();
         app.update_activity("dev:claude-code".to_string(), "working".to_string());
         app.connected_peers = 2;
         app.input = "/who".to_string();
@@ -1242,7 +1262,7 @@ mod tests {
 
     #[test]
     fn unrecognized_command_adds_error_message_without_broadcast() {
-        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        let mut app = test_app();
         app.input = "/foo".to_string();
         let msg = app.submit_message();
         assert!(msg.is_none());
@@ -1256,22 +1276,16 @@ mod tests {
 
     #[test]
     fn incoming_message_preserves_viewport_when_scrolled_up() {
-        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        let mut app = test_app();
         app.scroll_offset = 5;
-        app.receive_message(Message {
-            from: "bot:ws".to_string(),
-            text: "hello".to_string(),
-            ts: Utc::now(),
-            message_type: None,
-            to: None,
-        });
+        app.receive_message(chat_msg("bot:ws", "hello"));
         assert_eq!(app.scroll_offset, 6);
         assert_eq!(app.messages.len(), 1);
     }
 
     #[test]
     fn update_activity_adds_entry() {
-        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        let mut app = test_app();
         app.update_activity("dev:claude-code".to_string(), "working".to_string());
         assert!(app.peer_activity.contains_key("dev:claude-code"));
         let (status, _) = &app.peer_activity["dev:claude-code"];
@@ -1280,21 +1294,15 @@ mod tests {
 
     #[test]
     fn activity_message_does_not_appear_in_messages() {
-        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
-        app.receive_message(Message {
-            from: "dev:claude-code".to_string(),
-            text: "working".to_string(),
-            ts: Utc::now(),
-            message_type: Some("activity".to_string()),
-            to: None,
-        });
+        let mut app = test_app();
+        app.receive_message(activity_msg("dev:claude-code", "working"));
         assert!(app.messages.is_empty());
         assert!(app.peer_activity.contains_key("dev:claude-code"));
     }
 
     #[test]
     fn debug_toggles_show_system_messages() {
-        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        let mut app = test_app();
         assert!(!app.show_system_messages);
 
         app.input = "/debug".to_string();
@@ -1317,7 +1325,7 @@ mod tests {
 
     #[test]
     fn to_single_recipient_returns_directed_message() {
-        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        let mut app = test_app();
         app.input = "/to dev hello there".to_string();
         let msg = app.submit_message().unwrap();
         assert_eq!(msg.from, "ryan:human");
@@ -1327,7 +1335,7 @@ mod tests {
 
     #[test]
     fn to_csv_recipients_returns_directed_message() {
-        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        let mut app = test_app();
         app.input = "/to dev,designer check this".to_string();
         let msg = app.submit_message().unwrap();
         assert_eq!(msg.text, "check this");
@@ -1339,7 +1347,7 @@ mod tests {
 
     #[test]
     fn to_bare_shows_usage() {
-        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        let mut app = test_app();
         app.input = "/to".to_string();
         let msg = app.submit_message();
         assert!(msg.is_none());
@@ -1348,7 +1356,7 @@ mod tests {
 
     #[test]
     fn to_recipient_no_body_shows_usage() {
-        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        let mut app = test_app();
         app.input = "/to dev".to_string();
         let msg = app.submit_message();
         assert!(msg.is_none());
@@ -1357,7 +1365,7 @@ mod tests {
 
     #[test]
     fn tab_completes_participant_name_after_to() {
-        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        let mut app = test_app();
         app.update_activity("dev:claude-code".to_string(), "working".to_string());
         app.update_activity("designer:claude-code".to_string(), "idle".to_string());
         app.input = "/to de".to_string();
@@ -1377,7 +1385,7 @@ mod tests {
 
     #[test]
     fn tab_completes_csv_second_recipient() {
-        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        let mut app = test_app();
         app.update_activity("dev:claude-code".to_string(), "working".to_string());
         app.update_activity("pm:claude-code".to_string(), "idle".to_string());
         app.input = "/to dev,p".to_string();
@@ -1388,7 +1396,7 @@ mod tests {
 
     #[test]
     fn tab_does_nothing_without_to_prefix() {
-        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        let mut app = test_app();
         app.input = "hello".to_string();
         app.cursor_pos = app.input.len();
         assert!(!app.tab_complete());
@@ -1397,7 +1405,7 @@ mod tests {
 
     #[test]
     fn tab_does_nothing_in_body_portion() {
-        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        let mut app = test_app();
         app.update_activity("dev:claude-code".to_string(), "working".to_string());
         app.input = "/to dev hel".to_string();
         app.cursor_pos = app.input.len();
@@ -1406,68 +1414,38 @@ mod tests {
 
     #[test]
     fn dm_increments_unread_and_sets_flash() {
-        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
-        app.receive_message(Message {
-            from: "pm:claude-code".to_string(),
-            text: "hey ryan".to_string(),
-            ts: Utc::now(),
-            message_type: None,
-            to: Some(vec!["ryan".to_string()]),
-        });
+        let mut app = test_app();
+        app.receive_message(directed_msg("pm:claude-code", "hey ryan", vec!["ryan"]));
         assert_eq!(app.dm_unread_from.len(), 1);
         assert!(app.dm_flash_until.is_some());
     }
 
     #[test]
     fn broadcast_does_not_increment_dm_unread() {
-        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
-        app.receive_message(Message {
-            from: "pm:claude-code".to_string(),
-            text: "hello all".to_string(),
-            ts: Utc::now(),
-            message_type: None,
-            to: None,
-        });
+        let mut app = test_app();
+        app.receive_message(chat_msg("pm:claude-code", "hello all"));
         assert_eq!(app.dm_unread_from.len(), 0);
         assert!(app.dm_flash_until.is_none());
     }
 
     #[test]
     fn to_all_does_not_increment_dm_unread() {
-        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
-        app.receive_message(Message {
-            from: "pm:claude-code".to_string(),
-            text: "hello".to_string(),
-            ts: Utc::now(),
-            message_type: None,
-            to: Some(vec!["all".to_string()]),
-        });
+        let mut app = test_app();
+        app.receive_message(directed_msg("pm:claude-code", "hello", vec!["all"]));
         assert_eq!(app.dm_unread_from.len(), 0);
     }
 
     #[test]
     fn dm_to_other_does_not_increment_dm_unread() {
-        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
-        app.receive_message(Message {
-            from: "pm:claude-code".to_string(),
-            text: "hey dev".to_string(),
-            ts: Utc::now(),
-            message_type: None,
-            to: Some(vec!["dev".to_string()]),
-        });
+        let mut app = test_app();
+        app.receive_message(directed_msg("pm:claude-code", "hey dev", vec!["dev"]));
         assert_eq!(app.dm_unread_from.len(), 0);
     }
 
     #[test]
     fn submit_clears_dm_unread() {
-        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
-        app.receive_message(Message {
-            from: "pm:claude-code".to_string(),
-            text: "hey".to_string(),
-            ts: Utc::now(),
-            message_type: None,
-            to: Some(vec!["ryan".to_string()]),
-        });
+        let mut app = test_app();
+        app.receive_message(directed_msg("pm:claude-code", "hey", vec!["ryan"]));
         assert_eq!(app.dm_unread_from.len(), 1);
         app.input = "got it".to_string();
         app.submit_message();
@@ -1477,77 +1455,35 @@ mod tests {
 
     #[test]
     fn broadcast_message_adds_channel() {
-        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let mut app = test_app();
         assert_eq!(app.active_channels.len(), 0);
-        app.receive_message(Message {
-            from: "dev:claude-code".to_string(),
-            text: "hello".to_string(),
-            ts: Utc::now(),
-            message_type: None,
-            to: None,
-        });
+        app.receive_message(chat_msg("dev:claude-code", "hello"));
         assert_eq!(app.active_channels.len(), 1);
         assert!(app.active_channels.contains("broadcast"));
     }
 
     #[test]
     fn directed_message_adds_new_channel() {
-        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
-        app.receive_message(Message {
-            from: "dev:claude-code".to_string(),
-            text: "broadcast".to_string(),
-            ts: Utc::now(),
-            message_type: None,
-            to: None,
-        });
-        app.receive_message(Message {
-            from: "dev:claude-code".to_string(),
-            text: "hey".to_string(),
-            ts: Utc::now(),
-            message_type: None,
-            to: Some(vec!["ryan".to_string()]),
-        });
+        let mut app = test_app();
+        app.receive_message(chat_msg("dev:claude-code", "broadcast"));
+        app.receive_message(directed_msg("dev:claude-code", "hey", vec!["ryan"]));
         assert_eq!(app.active_channels.len(), 2);
     }
 
     #[test]
     fn same_channel_does_not_duplicate() {
-        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
-        app.receive_message(Message {
-            from: "dev:claude-code".to_string(),
-            text: "hey".to_string(),
-            ts: Utc::now(),
-            message_type: None,
-            to: Some(vec!["ryan".to_string()]),
-        });
-        app.receive_message(Message {
-            from: "dev:claude-code".to_string(),
-            text: "also hey".to_string(),
-            ts: Utc::now(),
-            message_type: None,
-            to: Some(vec!["ryan".to_string()]),
-        });
+        let mut app = test_app();
+        app.receive_message(directed_msg("dev:claude-code", "hey", vec!["ryan"]));
+        app.receive_message(directed_msg("dev:claude-code", "also hey", vec!["ryan"]));
         assert_eq!(app.active_channels.len(), 1);
         assert!(app.active_channels.contains("dev"));
     }
 
     #[test]
     fn different_senders_create_different_channels() {
-        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
-        app.receive_message(Message {
-            from: "dev:claude-code".to_string(),
-            text: "hey".to_string(),
-            ts: Utc::now(),
-            message_type: None,
-            to: Some(vec!["ryan".to_string()]),
-        });
-        app.receive_message(Message {
-            from: "pm:claude-code".to_string(),
-            text: "also hey".to_string(),
-            ts: Utc::now(),
-            message_type: None,
-            to: Some(vec!["ryan".to_string()]),
-        });
+        let mut app = test_app();
+        app.receive_message(directed_msg("dev:claude-code", "hey", vec!["ryan"]));
+        app.receive_message(directed_msg("pm:claude-code", "also hey", vec!["ryan"]));
         assert_eq!(app.active_channels.len(), 2);
         assert!(app.active_channels.contains("dev"));
         assert!(app.active_channels.contains("pm"));
@@ -1555,75 +1491,35 @@ mod tests {
 
     #[test]
     fn channel_name_broadcast() {
-        let msg = Message {
-            from: "dev:claude-code".to_string(),
-            text: "hi".to_string(),
-            ts: Utc::now(),
-            message_type: None,
-            to: None,
-        };
+        let msg = chat_msg("dev:claude-code", "hi");
         assert_eq!(channel_name(&msg, "ryan"), "broadcast");
     }
 
     #[test]
     fn channel_name_to_all_is_broadcast() {
-        let msg = Message {
-            from: "dev:claude-code".to_string(),
-            text: "hi".to_string(),
-            ts: Utc::now(),
-            message_type: None,
-            to: Some(vec!["all".to_string()]),
-        };
+        let msg = directed_msg("dev:claude-code", "hi", vec!["all"]);
         assert_eq!(channel_name(&msg, "ryan"), "broadcast");
     }
 
     #[test]
     fn channel_name_dm_excludes_owner() {
         // dev sends to ryan — owner (ryan) is excluded, channel is just "dev"
-        let msg = Message {
-            from: "dev:claude-code".to_string(),
-            text: "hey".to_string(),
-            ts: Utc::now(),
-            message_type: None,
-            to: Some(vec!["ryan".to_string()]),
-        };
+        let msg = directed_msg("dev:claude-code", "hey", vec!["ryan"]);
         assert_eq!(channel_name(&msg, "ryan"), "dev");
     }
 
     #[test]
     fn channel_name_group_excludes_owner() {
         // pm sends to dev and ryan — owner excluded, channel is "dev+pm"
-        let msg = Message {
-            from: "pm:claude-code".to_string(),
-            text: "hey".to_string(),
-            ts: Utc::now(),
-            message_type: None,
-            to: Some(vec!["dev".to_string(), "ryan".to_string()]),
-        };
+        let msg = directed_msg("pm:claude-code", "hey", vec!["dev", "ryan"]);
         assert_eq!(channel_name(&msg, "ryan"), "dev+pm");
     }
 
     #[test]
     fn channel_name_owner_sending_matches_channel() {
         // ryan sends to designer+dev+pm — same channel as when they talk
-        let agent_msg = Message {
-            from: "dev:claude-code".to_string(),
-            text: "hey".to_string(),
-            ts: Utc::now(),
-            message_type: None,
-            to: Some(vec!["designer".to_string(), "pm".to_string()]),
-        };
-        let owner_msg = Message {
-            from: "ryan:human".to_string(),
-            text: "hey".to_string(),
-            ts: Utc::now(),
-            message_type: None,
-            to: Some(vec![
-                "designer".to_string(),
-                "dev".to_string(),
-                "pm".to_string(),
-            ]),
-        };
+        let agent_msg = directed_msg("dev:claude-code", "hey", vec!["designer", "pm"]);
+        let owner_msg = directed_msg("ryan:human", "hey", vec!["designer", "dev", "pm"]);
         assert_eq!(
             channel_name(&agent_msg, "ryan"),
             channel_name(&owner_msg, "ryan"),
@@ -1633,7 +1529,7 @@ mod tests {
 
     #[test]
     fn view_broadcast_sets_current_view() {
-        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let mut app = test_app();
         app.input = "/view broadcast".to_string();
         let msg = app.submit_message();
         assert!(msg.is_none());
@@ -1642,7 +1538,7 @@ mod tests {
 
     #[test]
     fn view_all_clears_current_view() {
-        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let mut app = test_app();
         app.current_view = Some("broadcast".to_string());
         app.input = "/view all".to_string();
         let msg = app.submit_message();
@@ -1652,7 +1548,7 @@ mod tests {
 
     #[test]
     fn view_known_channel_sets_current_view() {
-        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let mut app = test_app();
         app.active_channels.insert("dev\u{2194}ryan".to_string());
         app.input = "/view dev\u{2194}ryan".to_string();
         let msg = app.submit_message();
@@ -1662,7 +1558,7 @@ mod tests {
 
     #[test]
     fn view_unknown_channel_shows_error() {
-        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let mut app = test_app();
         let original_view = app.current_view.clone();
         app.input = "/view fake".to_string();
         let msg = app.submit_message();
@@ -1679,7 +1575,7 @@ mod tests {
 
     #[test]
     fn bare_view_lists_channels() {
-        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let mut app = test_app();
         app.active_channels.insert("broadcast".to_string());
         app.active_channels.insert("dev\u{2194}ryan".to_string());
         app.input = "/view".to_string();
@@ -1697,20 +1593,14 @@ mod tests {
 
     #[test]
     fn activity_messages_do_not_create_channels() {
-        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
-        app.receive_message(Message {
-            from: "dev:claude-code".to_string(),
-            text: "busy".to_string(),
-            ts: Utc::now(),
-            message_type: Some("activity".to_string()),
-            to: None,
-        });
+        let mut app = test_app();
+        app.receive_message(activity_msg("dev:claude-code", "busy"));
         assert_eq!(app.active_channels.len(), 0);
     }
 
     #[test]
     fn popup_matches_filters_by_typed_prefix() {
-        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let mut app = test_app();
         app.input = "/v".to_string();
         let m = app.popup_matches();
         assert_eq!(m.len(), 1);
@@ -1719,21 +1609,21 @@ mod tests {
 
     #[test]
     fn popup_matches_returns_all_on_bare_slash() {
-        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let mut app = test_app();
         app.input = "/".to_string();
         assert_eq!(app.popup_matches().len(), SLASH_COMMANDS.len());
     }
 
     #[test]
     fn popup_matches_empty_after_space() {
-        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let mut app = test_app();
         app.input = "/to dev".to_string();
         assert!(app.popup_matches().is_empty());
     }
 
     #[test]
     fn popup_navigation_wraps_around() {
-        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let mut app = test_app();
         app.input = "/".to_string();
         let count = app.popup_matches().len();
 
@@ -1752,7 +1642,7 @@ mod tests {
 
     #[test]
     fn popup_accept_fills_input() {
-        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let mut app = test_app();
         app.input = "/t".to_string();
         app.popup_down(); // select /to
         assert!(app.popup_accept());
@@ -1763,7 +1653,7 @@ mod tests {
 
     #[test]
     fn popup_selected_resets_on_input_change() {
-        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let mut app = test_app();
         app.input = "/".to_string();
         app.cursor_pos = 1;
         app.popup_down();
@@ -1774,7 +1664,7 @@ mod tests {
 
     #[test]
     fn pin_adds_to_list() {
-        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let mut app = test_app();
         app.input = "/pin channels-as-views because filter-on-render".to_string();
         app.submit_message();
         assert_eq!(app.pins.len(), 1);
@@ -1784,7 +1674,7 @@ mod tests {
 
     #[test]
     fn pin_max_five() {
-        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let mut app = test_app();
         for i in 1..=5 {
             app.input = format!("/pin decision {i}");
             app.submit_message();
@@ -1798,7 +1688,7 @@ mod tests {
 
     #[test]
     fn unpin_removes_by_number() {
-        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let mut app = test_app();
         app.input = "/pin first".to_string();
         app.submit_message();
         app.input = "/pin second".to_string();
@@ -1812,7 +1702,7 @@ mod tests {
 
     #[test]
     fn unpin_invalid_number_shows_error() {
-        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let mut app = test_app();
         app.input = "/pin something".to_string();
         app.submit_message();
         app.input = "/unpin 5".to_string();
@@ -1823,7 +1713,7 @@ mod tests {
 
     #[test]
     fn pins_command_lists_pins() {
-        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let mut app = test_app();
         app.input = "/pin theory A".to_string();
         app.submit_message();
         app.input = "/pin theory B".to_string();
@@ -1837,7 +1727,7 @@ mod tests {
 
     #[test]
     fn pins_empty_shows_hint() {
-        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let mut app = test_app();
         app.input = "/pins".to_string();
         app.submit_message();
         assert!(app.messages.last().unwrap().text.contains("No pins yet"));
@@ -1845,7 +1735,7 @@ mod tests {
 
     #[test]
     fn pin_bare_shows_usage() {
-        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let mut app = test_app();
         app.input = "/pin".to_string();
         app.submit_message();
         assert!(app.messages.last().unwrap().text.contains("Usage:"));
@@ -1853,7 +1743,7 @@ mod tests {
 
     #[test]
     fn unpin_bare_shows_usage() {
-        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let mut app = test_app();
         app.input = "/unpin".to_string();
         app.submit_message();
         assert!(app.messages.last().unwrap().text.contains("Usage:"));
@@ -1863,14 +1753,14 @@ mod tests {
 
     #[test]
     fn sidebar_channels_starts_with_project_node() {
-        let app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
+        let app = test_app();
         let channels = app.sidebar_channels();
         assert_eq!(channels[0], "test-session");
     }
 
     #[test]
     fn sidebar_channels_includes_active_channels() {
-        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let mut app = test_app();
         app.active_channels.insert("broadcast".to_string());
         app.active_channels.insert("dev↔human".to_string());
         let channels = app.sidebar_channels();
@@ -1880,7 +1770,7 @@ mod tests {
 
     #[test]
     fn sidebar_toggle_three_state_cycle() {
-        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let mut app = test_app();
         // Closed → open + focused
         assert!(!app.sidebar_open);
         app.toggle_sidebar();
@@ -1901,7 +1791,7 @@ mod tests {
 
     #[test]
     fn sidebar_select_all_clears_view_and_target() {
-        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let mut app = test_app();
         app.current_view = Some("broadcast".to_string());
         app.send_target = Some("broadcast".to_string());
         app.sidebar_selected = 0; // project node is always first
@@ -1912,7 +1802,7 @@ mod tests {
 
     #[test]
     fn sidebar_select_channel_sets_view_and_target() {
-        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let mut app = test_app();
         app.active_channels.insert("broadcast".to_string());
         app.sidebar_selected = 1; // "broadcast" (sorted after project node)
         app.sidebar_select();
@@ -1922,7 +1812,7 @@ mod tests {
 
     #[test]
     fn sidebar_select_clears_unread() {
-        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let mut app = test_app();
         app.active_channels.insert("broadcast".to_string());
         app.channel_unread.insert("broadcast".to_string(), 5);
         app.sidebar_selected = 1;
@@ -1932,9 +1822,9 @@ mod tests {
 
     #[test]
     fn sidebar_navigation_wraps() {
-        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let mut app = test_app();
         app.active_channels.insert("broadcast".to_string());
-        // channels: ["test", "broadcast"]
+        // channels: ["test-session", "broadcast"]
         app.sidebar_selected = 0;
         app.sidebar_up(); // wraps to last
         assert_eq!(app.sidebar_selected, 1);
@@ -1944,7 +1834,7 @@ mod tests {
 
     #[test]
     fn sidebar_close_unfocuses_but_stays_open() {
-        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let mut app = test_app();
         app.toggle_sidebar();
         assert!(app.sidebar_open);
         assert!(app.sidebar_focused);
@@ -1955,7 +1845,7 @@ mod tests {
 
     #[test]
     fn sidebar_collapse_hides_channels() {
-        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let mut app = test_app();
         app.active_channels.insert("broadcast".to_string());
         assert!(app.project_expanded);
         assert_eq!(app.sidebar_channels().len(), 2); // project + broadcast
@@ -1967,7 +1857,7 @@ mod tests {
 
     #[test]
     fn sidebar_expand_shows_channels() {
-        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let mut app = test_app();
         app.active_channels.insert("broadcast".to_string());
         app.project_expanded = false;
         assert_eq!(app.sidebar_channels().len(), 1);
@@ -1978,13 +1868,13 @@ mod tests {
 
     #[test]
     fn sidebar_expanded_by_default() {
-        let app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let app = test_app();
         assert!(app.project_expanded);
     }
 
     #[test]
     fn send_target_directs_outgoing_messages() {
-        let mut app = App::new("human".to_string(), "test".to_string(), vec![]);
+        let mut app = App::new("human".to_string(), "test-session".to_string(), vec![]);
         app.send_target = Some("dev↔human".to_string());
         app.input = "hello dev".to_string();
         app.cursor_pos = app.input.len();
@@ -1994,7 +1884,7 @@ mod tests {
 
     #[test]
     fn no_send_target_broadcasts() {
-        let mut app = App::new("human".to_string(), "test".to_string(), vec![]);
+        let mut app = App::new("human".to_string(), "test-session".to_string(), vec![]);
         app.input = "hello everyone".to_string();
         app.cursor_pos = app.input.len();
         let msg = app.submit_message().unwrap();
@@ -2003,17 +1893,9 @@ mod tests {
 
     #[test]
     fn channel_unread_increments_on_receive() {
-        let mut app = App::new("human".to_string(), "test".to_string(), vec![]);
+        let mut app = App::new("human".to_string(), "test-session".to_string(), vec![]);
         app.current_view = Some("broadcast".to_string());
-        let msg = Message {
-            from: "dev:claude-code".to_string(),
-            text: "dm message".to_string(),
-            ts: Utc::now(),
-            message_type: None,
-            to: Some(vec!["human".to_string()]),
-        };
-        app.receive_message(msg);
-        let ch = "dev";
-        assert_eq!(*app.channel_unread.get(ch).unwrap_or(&0), 1);
+        app.receive_message(directed_msg("dev:claude-code", "dm message", vec!["human"]));
+        assert_eq!(*app.channel_unread.get("dev").unwrap_or(&0), 1);
     }
 }
