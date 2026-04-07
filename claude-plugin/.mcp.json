@@ -1,9 +1,3 @@
 {
-  "mcpServers": {
-    "bpmux-bridge": {
-      "type": "stdio",
-      "command": "cargo",
-      "args": ["run", "--manifest-path", "${CLAUDE_PLUGIN_ROOT}/../Cargo.toml", "--", "bridge", "--port", "4117", "--name", "${BPMUX_ROLE}"]
-    }
-  }
+  "mcpServers": {}
 }

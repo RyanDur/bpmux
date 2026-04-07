@@ -705,16 +705,15 @@ fn render_status_bar(frame: &mut Frame, app: &mut App, area: Rect) {
     let mut peers: Vec<_> = app.peer_activity.iter().collect();
     peers.sort_by_key(|(name, _)| (*name).clone());
     for (peer, (status, _)) in &peers {
-        let short_name = peer.split(':').next().unwrap_or(peer);
         let dot_color = match status.as_str() {
-            "busy" => DRACULA_YELLOW, // Yellow — busy
-            "help" => DRACULA_RED,    // Red — needs help
-            _ => DRACULA_GREEN,       // Green — available/connected
+            "busy" => DRACULA_YELLOW,
+            "help" => DRACULA_RED,
+            _ => DRACULA_GREEN,
         };
         status_spans.push(Span::raw(" "));
         status_spans.push(Span::styled("\u{25CF}", Style::default().fg(dot_color)));
         status_spans.push(Span::styled(
-            format!(" {short_name}"),
+            format!(" {peer}"),
             Style::default().fg(DRACULA_FG),
         ));
     }

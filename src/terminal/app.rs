@@ -122,7 +122,7 @@ impl App {
         let mut active_channels: HashSet<String> = HashSet::new();
         let peer_activity: HashMap<String, (String, Instant)> = HashMap::new();
         for msg in &messages {
-            if msg.is_chat() && !msg.from.starts_with("agent-") {
+            if msg.is_chat() {
                 active_channels.insert(channel_name(msg, &peer_name));
             }
         }
@@ -318,16 +318,50 @@ impl App {
         self.peer_activity.insert(peer, (status, Instant::now()));
     }
 
-    pub fn receive_message(&mut self, msg: Message) {
+    pub fn receive_message(&mut self, mut msg: Message) {
+        // Strip transport suffix at the boundary — downstream code
+        // only sees short names like "dev", never "dev:claude-code".
+        msg.from = short_peer_name(&msg.from).to_string();
+
         if msg.message_type.as_deref() == Some("activity") {
-            let short = short_peer_name(&msg.from).to_string();
-            self.update_activity(short, msg.text);
+            self.update_activity(msg.from, msg.text);
             return;
         }
-        self.track_peer_presence(&msg);
-        self.track_channel_unread(&msg);
-        self.track_peer_status(&msg);
-        self.track_dm_notification(&msg);
+
+        if msg.message_type.as_deref() == Some("system") {
+            if let Some(peer) = msg.text.strip_suffix(" joined") {
+                let short = short_peer_name(peer).to_string();
+                self.update_activity(short, "available".to_string());
+            } else if let Some(peer) = msg.text.strip_suffix(" left") {
+                self.peer_activity.remove(short_peer_name(peer));
+            }
+        }
+
+        if msg.is_chat() {
+            // Track channel
+            let ch = channel_name(&msg, &self.peer_name);
+            self.active_channels.insert(ch.clone());
+            let is_current = self.current_view.as_ref().is_some_and(|v| v == &ch);
+            if !is_current {
+                *self.channel_unread.entry(ch).or_insert(0) += 1;
+            }
+
+            // Track peer status from /status command
+            if let Some(rest) = msg.text.strip_prefix("/status ") {
+                self.update_activity(msg.from.clone(), rest.trim().to_string());
+            }
+
+            // Track DM notifications
+            if let Some(recipients) = &msg.to {
+                let is_directed_at_me = recipients.iter().any(|r| r == &self.peer_name)
+                    && !recipients.iter().all(|r| r == "all");
+                if is_directed_at_me && !self.dm_unread_from.contains(&msg.from) {
+                    self.dm_unread_from.push(msg.from.clone());
+                    self.dm_flash_until =
+                        Some(Instant::now() + std::time::Duration::from_millis(750));
+                }
+            }
+        }
 
         let was_at_bottom = self.scroll_offset == 0;
         self.messages.push(msg);
@@ -335,59 +369,6 @@ impl App {
             self.scroll_offset = self.scroll_offset.saturating_add(1);
             self.unread_count += 1;
         }
-    }
-
-    fn track_peer_presence(&mut self, msg: &Message) {
-        if msg.message_type.as_deref() != Some("system") {
-            return;
-        }
-        if let Some(peer) = msg.text.strip_suffix(" joined") {
-            let short = short_peer_name(peer).to_string();
-            self.update_activity(short, "available".to_string());
-        } else if let Some(peer) = msg.text.strip_suffix(" left") {
-            self.peer_activity.remove(short_peer_name(peer));
-        }
-    }
-
-    fn track_channel_unread(&mut self, msg: &Message) {
-        if !msg.is_chat() {
-            return;
-        }
-        let ch = channel_name(msg, &self.peer_name);
-        self.active_channels.insert(ch.clone());
-        let is_current = self.current_view.as_ref().is_some_and(|v| v == &ch);
-        if !is_current {
-            *self.channel_unread.entry(ch).or_insert(0) += 1;
-        }
-    }
-
-    fn track_peer_status(&mut self, msg: &Message) {
-        if !msg.is_chat() {
-            return;
-        }
-        let peer = short_peer_name(&msg.from).to_string();
-        if let Some(rest) = msg.text.strip_prefix("/status ") {
-            self.update_activity(peer, rest.trim().to_string());
-        } else if !self.peer_activity.contains_key(&peer) {
-            self.update_activity(peer, "connected".to_string());
-        } else {
-            let status = self.peer_activity[&peer].0.clone();
-            self.update_activity(peer, status);
-        }
-    }
-
-    fn track_dm_notification(&mut self, msg: &Message) {
-        let Some(recipients) = &msg.to else { return };
-        let is_directed_at_me = recipients.iter().any(|r| r == &self.peer_name)
-            && !recipients.iter().all(|r| r == "all");
-        if !is_directed_at_me {
-            return;
-        }
-        let sender = msg.from.split(':').next().unwrap_or(&msg.from).to_string();
-        if !self.dm_unread_from.contains(&sender) {
-            self.dm_unread_from.push(sender);
-        }
-        self.dm_flash_until = Some(Instant::now() + std::time::Duration::from_millis(750));
     }
 
     pub fn submit_message(&mut self) -> Option<Message> {
@@ -453,8 +434,7 @@ impl App {
     fn handle_who(&mut self) -> Option<Message> {
         let mut participants = vec![format!("{} (you)", self.peer_name)];
         for (peer, (status, _)) in &self.peer_activity {
-            let short = peer.split(':').next().unwrap_or(peer);
-            participants.push(format!("{} [{}]", short, status));
+            participants.push(format!("{peer} [{status}]"));
         }
         if self.connected_peers > 0 {
             participants.push(format!("{} connected", self.connected_peers));
