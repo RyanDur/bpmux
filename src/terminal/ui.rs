@@ -181,6 +181,41 @@ fn strip_heading_hashes(spans: &mut Vec<Span<'_>>) {
     }
 }
 
+/// Render markdown message text into `Line`s, prepending prefix spans on the first
+/// line and an indent on subsequent lines.  When `line_limit` is `Some(n)`, only
+/// the first `n` markdown lines are emitted.
+fn render_md_message<'a>(
+    text: &'a str,
+    prefix_spans: Vec<Span<'a>>,
+    indent: Span<'a>,
+    line_limit: Option<usize>,
+) -> Vec<Line<'a>> {
+    let md_text = tui_markdown::from_str(text);
+    let iter: Box<dyn Iterator<Item = (usize, Line<'_>)>> = match line_limit {
+        Some(n) => Box::new(md_text.lines.into_iter().take(n).enumerate()),
+        None => Box::new(md_text.lines.into_iter().enumerate()),
+    };
+    let mut lines = Vec::new();
+    for (li, mut md_line) in iter {
+        let mut spans = Vec::new();
+        if li == 0 {
+            spans.extend(prefix_spans.iter().cloned());
+        } else {
+            spans.push(indent.clone());
+        }
+        // Patch line-level style into each span so it survives Line reconstruction
+        let line_style = md_line.style;
+        for span in &mut md_line.spans {
+            span.style = line_style.patch(span.style);
+        }
+        // Strip heading hash prefixes (e.g. "## ") — render as styled text only
+        strip_heading_hashes(&mut md_line.spans);
+        spans.extend(md_line.spans);
+        lines.push(Line::from(spans));
+    }
+    lines
+}
+
 pub fn render(frame: &mut Frame, app: &mut App) {
     // Auto-suppress sidebar if terminal is too narrow
     let sidebar_width = if app.sidebar_open && frame.area().width >= 60 {
@@ -291,74 +326,31 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             let tag_style = Style::default().fg(tag_color);
 
             let msg_key = msg.ts.to_rfc3339();
+            let name_style = if is_human {
+                Style::default().fg(name_color).add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(name_color)
+            };
+            let indent = Span::raw(" ".repeat(prefix.len()));
+            let mut prefix_spans = Vec::new();
+            if app.show_timestamps {
+                let time = msg.ts.format("%H:%M:%S").to_string();
+                prefix_spans.push(Span::styled(format!("[{time}] "), ts_style));
+            }
+            prefix_spans.push(Span::styled(channel_tag.clone(), tag_style));
+            prefix_spans.push(Span::styled(format!("{short_name}: "), name_style));
+
             if wrapped_lines > 10 && !app.expanded_messages.contains(&msg_key) {
                 // Truncate: show first 7 lines of markdown, then [+N lines]
-                let md_text = tui_markdown::from_str(&msg.text);
                 let remaining_lines = wrapped_lines.saturating_sub(7);
-                let name_style = if is_human {
-                    Style::default().fg(name_color).add_modifier(Modifier::BOLD)
-                } else {
-                    Style::default().fg(name_color)
-                };
-                let indent = Span::raw(" ".repeat(prefix.len()));
-                for (li, mut md_line) in md_text.lines.into_iter().take(7).enumerate() {
-                    let mut spans = Vec::new();
-                    if li == 0 {
-                        if app.show_timestamps {
-                            let time = msg.ts.format("%H:%M:%S").to_string();
-                            spans.push(Span::styled(format!("[{time}] "), ts_style));
-                        }
-                        spans.push(Span::styled(channel_tag.clone(), tag_style));
-                        spans.push(Span::styled(format!("{short_name}: "), name_style));
-                    } else {
-                        spans.push(indent.clone());
-                    }
-                    // Patch line-level style into each span so it survives Line reconstruction
-                    let line_style = md_line.style;
-                    for span in &mut md_line.spans {
-                        span.style = line_style.patch(span.style);
-                    }
-                    // Strip heading hash prefixes (e.g. "## ") — render as styled text only
-                    strip_heading_hashes(&mut md_line.spans);
-                    spans.extend(md_line.spans);
-                    lines.push(Line::from(spans));
-                }
-
+                lines.extend(render_md_message(&msg.text, prefix_spans, indent, Some(7)));
                 lines.push(Line::from(Span::styled(
                     format!("  [+{remaining_lines} lines]"),
                     Style::default().fg(Color::Rgb(98, 114, 164)),
                 )));
             } else {
-                // Render message text as markdown
-                let md_text = tui_markdown::from_str(&msg.text);
-                let name_style = if is_human {
-                    Style::default().fg(name_color).add_modifier(Modifier::BOLD)
-                } else {
-                    Style::default().fg(name_color)
-                };
-                let indent = Span::raw(" ".repeat(prefix.len()));
-                for (li, mut md_line) in md_text.lines.into_iter().enumerate() {
-                    let mut spans = Vec::new();
-                    if li == 0 {
-                        if app.show_timestamps {
-                            let time = msg.ts.format("%H:%M:%S").to_string();
-                            spans.push(Span::styled(format!("[{time}] "), ts_style));
-                        }
-                        spans.push(Span::styled(channel_tag.clone(), tag_style));
-                        spans.push(Span::styled(format!("{short_name}: "), name_style));
-                    } else {
-                        spans.push(indent.clone());
-                    }
-                    // Patch line-level style into each span so it survives Line reconstruction
-                    let line_style = md_line.style;
-                    for span in &mut md_line.spans {
-                        span.style = line_style.patch(span.style);
-                    }
-                    // Strip heading hash prefixes (e.g. "## ") — render as styled text only
-                    strip_heading_hashes(&mut md_line.spans);
-                    spans.extend(md_line.spans);
-                    lines.push(Line::from(spans));
-                }
+                // Render full message text as markdown
+                lines.extend(render_md_message(&msg.text, prefix_spans, indent, None));
             }
 
             // Add blank line separator only when the next message is from a different sender
