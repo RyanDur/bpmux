@@ -198,7 +198,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     let input_lines = if app.input.is_empty() {
         1
     } else {
-        let width = main_area.width.saturating_sub(4) as usize; // borders + padding
+        let width = main_area.width.saturating_sub(2) as usize; // borders only
         app.input.len().max(1).div_ceil(width.max(1))
     };
     let input_height = (input_lines + 2).min(8) as u16; // +2 for borders, cap at 8
@@ -490,9 +490,10 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     // Show cursor at end of input text, accounting for wrapping
     #[allow(clippy::cast_possible_truncation)]
     let input_inner_width = chunks[2].width.saturating_sub(2) as usize;
+    let display_pos = app.input[..app.cursor_pos].chars().count();
     let (cursor_x, cursor_y) = if input_inner_width > 0 {
-        let x = (app.cursor_pos % input_inner_width) as u16;
-        let y = (app.cursor_pos / input_inner_width) as u16;
+        let x = (display_pos % input_inner_width) as u16;
+        let y = (display_pos / input_inner_width) as u16;
         (chunks[2].x + 1 + x, chunks[2].y + 1 + y)
     } else {
         (chunks[2].x + 1, chunks[2].y + 1)
