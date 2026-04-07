@@ -1,6 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use super::ui::*;
+use super::markdown::{message_involves_participants, wrap_line_with_indent};
+use super::theme::{DRACULA_CYAN, sender_color};
+use super::ui::render;
 use crate::session::Message;
 use crate::terminal::app::App;
 use chrono::Utc;

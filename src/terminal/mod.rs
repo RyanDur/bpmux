@@ -2,7 +2,9 @@ pub mod app;
 mod commands;
 pub mod event;
 mod input;
+mod markdown;
 mod sidebar;
+mod theme;
 pub mod ui;
 
 pub use app::App;
