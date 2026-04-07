@@ -124,9 +124,11 @@ fn ac3_view_specific_channel() {
         "pm channel message should be hidden. Screen:\n{}",
         bpmux.tui()
     );
+    // After #79, broadcasts from dev ARE visible in the dev channel view
+    // (participant-involvement filtering, not exact channel matching)
     assert!(
-        !bpmux.wait_for_tui("hello everyone", Duration::from_secs(1)),
-        "Broadcast message should be hidden. Screen:\n{}",
+        bpmux.wait_for_tui("hello everyone", Duration::from_secs(1)),
+        "Broadcast from dev should be visible in dev view (#79). Screen:\n{}",
         bpmux.tui()
     );
 }

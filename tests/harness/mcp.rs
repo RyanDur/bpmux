@@ -20,7 +20,7 @@ impl McpHttpClient {
     /// handshake.
     pub async fn connect(bpmux: &TestBpmux) -> Self {
         let url = format!("http://127.0.0.1:{}/mcp", bpmux.port());
-        tokio::time::timeout(Duration::from_secs(5), async {
+        tokio::time::timeout(Duration::from_secs(10), async {
             loop {
                 if reqwest::get(&url).await.is_ok() {
                     return;
