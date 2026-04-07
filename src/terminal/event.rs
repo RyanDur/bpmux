@@ -17,6 +17,24 @@ fn bell() {
     }
 }
 
+fn scroll_up_with_bell(app: &mut App, amount: usize) {
+    let before = app.scroll_offset;
+    app.scroll_up(amount);
+    if app.scroll_offset == before && before > 0 && !app.at_boundary {
+        bell();
+        app.at_boundary = true;
+    }
+}
+
+fn scroll_down_with_bell(app: &mut App, amount: usize) {
+    let before = app.scroll_offset;
+    app.scroll_down(amount);
+    if app.scroll_offset == before && !app.at_boundary {
+        bell();
+        app.at_boundary = true;
+    }
+}
+
 pub async fn run_tui(
     terminal: &mut DefaultTerminal,
     app: &mut App,
@@ -192,20 +210,10 @@ fn handle_terminal_event(
             app.show_timestamps = !app.show_timestamps;
         }
         KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-            let before = app.scroll_offset;
-            app.scroll_up(10);
-            if app.scroll_offset == before && before > 0 && !app.at_boundary {
-                bell();
-                app.at_boundary = true;
-            }
+            scroll_up_with_bell(app, 10);
         }
         KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-            let before = app.scroll_offset;
-            app.scroll_down(10);
-            if app.scroll_offset == before && !app.at_boundary {
-                bell();
-                app.at_boundary = true;
-            }
+            scroll_down_with_bell(app, 10);
         }
         KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             if app.input.is_empty() {
@@ -268,20 +276,10 @@ fn handle_terminal_event(
             app.delete_char();
         }
         KeyCode::PageUp => {
-            let before = app.scroll_offset;
-            app.scroll_up(5);
-            if app.scroll_offset == before && before > 0 && !app.at_boundary {
-                bell();
-                app.at_boundary = true;
-            }
+            scroll_up_with_bell(app, 5);
         }
         KeyCode::PageDown => {
-            let before = app.scroll_offset;
-            app.scroll_down(5);
-            if app.scroll_offset == before && !app.at_boundary {
-                bell();
-                app.at_boundary = true;
-            }
+            scroll_down_with_bell(app, 5);
         }
         KeyCode::Esc => {
             app.clear_input();
