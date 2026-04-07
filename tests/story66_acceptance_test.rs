@@ -19,7 +19,7 @@ use std::time::Duration;
 #[test]
 fn ac1_ac4_channels_under_project_node() {
     let bpmux = TestBpmux::start();
-    bpmux.wait_for_tui("Welcome", Duration::from_secs(5));
+    bpmux.wait_for_tui("? help", Duration::from_secs(5));
     // Open sidebar with Ctrl+B
     bpmux.type_ctrl('b');
     std::thread::sleep(Duration::from_millis(300));
@@ -38,7 +38,7 @@ fn ac1_ac4_channels_under_project_node() {
 #[test]
 fn ac2_left_collapses_project() {
     let bpmux = TestBpmux::start();
-    bpmux.wait_for_tui("Welcome", Duration::from_secs(5));
+    bpmux.wait_for_tui("? help", Duration::from_secs(5));
     // Send a message to create a channel
     bpmux.type_line("hello");
     std::thread::sleep(Duration::from_millis(300));
@@ -67,7 +67,7 @@ fn ac2_left_collapses_project() {
 #[test]
 fn ac3_right_expands_project() {
     let bpmux = TestBpmux::start();
-    bpmux.wait_for_tui("Welcome", Duration::from_secs(5));
+    bpmux.wait_for_tui("? help", Duration::from_secs(5));
     // Open sidebar and collapse
     bpmux.type_ctrl('b');
     std::thread::sleep(Duration::from_millis(300));

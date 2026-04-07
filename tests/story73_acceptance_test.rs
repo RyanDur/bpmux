@@ -19,7 +19,7 @@ use std::time::Duration;
 #[tokio::test]
 async fn ac1_ac2_handoff_saved_and_delivered() {
     let bpmux = TestBpmux::start();
-    bpmux.wait_for_tui("Welcome", Duration::from_secs(5));
+    bpmux.wait_for_tui("? help", Duration::from_secs(5));
 
     // Connect agent
     let mut peer = WsPeer::connect(&bpmux, "bot").await;
@@ -60,7 +60,7 @@ async fn ac1_ac2_handoff_saved_and_delivered() {
 #[tokio::test]
 async fn ac3_no_handoff_when_no_response() {
     let bpmux = TestBpmux::start();
-    bpmux.wait_for_tui("Welcome", Duration::from_secs(5));
+    bpmux.wait_for_tui("? help", Duration::from_secs(5));
 
     // Connect and disconnect without sending handoff
     let peer = WsPeer::connect(&bpmux, "silent").await;
@@ -101,7 +101,7 @@ async fn ac3_no_handoff_when_no_response() {
 #[tokio::test]
 async fn ac4_handoff_delivered_after_pins() {
     let bpmux = TestBpmux::start();
-    bpmux.wait_for_tui("Welcome", Duration::from_secs(5));
+    bpmux.wait_for_tui("? help", Duration::from_secs(5));
 
     // First connection: send handoff
     let mut peer = WsPeer::connect(&bpmux, "agent").await;

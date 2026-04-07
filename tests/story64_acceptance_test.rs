@@ -26,8 +26,8 @@ fn ac1_slash_shows_command_popup() {
     bpmux.type_chars("/");
     std::thread::sleep(Duration::from_millis(300));
     assert!(
-        bpmux.wait_for_tui("/help", Duration::from_secs(3)),
-        "Popup should show /help command. Screen:\n{}",
+        bpmux.wait_for_tui("/who", Duration::from_secs(3)),
+        "Popup should show /who command. Screen:\n{}",
         bpmux.tui()
     );
     assert!(
@@ -54,10 +54,10 @@ fn ac2_typing_filters_popup() {
         "Popup should show /to. Screen:\n{}",
         bpmux.tui()
     );
-    // /help should NOT match (doesn't start with /to)
+    // /who should NOT match (doesn't start with /to)
     assert!(
-        !bpmux.wait_for_tui("show this help", Duration::from_secs(1)),
-        "Popup should not show /help when typing /to. Screen:\n{}",
+        !bpmux.wait_for_tui("list participants", Duration::from_secs(1)),
+        "Popup should not show /who when typing /to. Screen:\n{}",
         bpmux.tui()
     );
 }

@@ -15,7 +15,6 @@ pub const SLASH_COMMANDS: &[(&str, &str)] = &[
     ("/unpin", "remove a pin by number"),
     ("/board", "show project board"),
     ("/status", "declare your status"),
-    ("/help", "show this help"),
     ("/who", "list participants"),
     ("/debug", "toggle system messages"),
     ("/quit", "exit bpmux"),
@@ -374,15 +373,6 @@ impl App {
         if text.is_empty() {
             return None;
         }
-        if text == "/help" {
-            let help = format!(
-                "Commands:\n  /to <who> <msg> — send to specific recipients (e.g. /to dev,pm hello)\n  /view [channel] — filter view (broadcast, all, dev\u{2194}human, etc.)\n  /pin <text>     — pin a decision (max 5)\n  /pins           — list pinned items\n  /unpin <n>      — remove pin by number\n  /board          — show project board\n  /status blocked [reason] — declare yourself blocked\n  /help     — show this help\n  /who      — list participants\n  /debug    — toggle system messages\n  /quit     — exit bpmux\n\nKeybindings:\n  ?         — help overlay\n  Ctrl+B    — toggle sidebar\n  Enter     — send message\n  Esc       — clear input\n  Ctrl+C    — clear input (empty: quit)\n  Ctrl+U/D  — scroll up/down\n  Ctrl+T    — toggle timestamps\n  PageUp/Dn — scroll\n\nSession: {}",
-                self.session_id
-            );
-            self.system_message(help);
-            self.clear_input();
-            return None;
-        }
         if text == "/who" {
             let mut participants = vec![format!("{} (you)", self.peer_name)];
             for (peer, (status, _)) in &self.peer_activity {
@@ -616,10 +606,7 @@ impl App {
             return None;
         }
         if text.starts_with('/') {
-            self.system_message(format!(
-                "Unknown command: {}. Type /help for available commands.",
-                text
-            ));
+            self.system_message(format!("Unknown command: {}. Press ? for help.", text));
             self.clear_input();
             return None;
         }
@@ -1034,20 +1021,6 @@ mod tests {
     }
 
     #[test]
-    fn help_command_adds_message_and_clears_input() {
-        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
-        app.input = "/help".to_string();
-        let msg = app.submit_message();
-        assert!(msg.is_none());
-        assert!(app.input.is_empty());
-        assert_eq!(app.messages.len(), 1);
-        assert_eq!(app.messages[0].from, "bpmux");
-        assert!(app.messages[0].text.contains("/help"));
-        assert!(app.messages[0].text.contains("/quit"));
-        assert!(app.messages[0].text.contains("test-session"));
-    }
-
-    #[test]
     fn scroll_up_increases_offset() {
         let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
         app.max_scroll = 100;
@@ -1214,7 +1187,7 @@ mod tests {
         assert_eq!(app.messages[0].from, "bpmux");
         assert!(app.messages[0].text.contains("Unknown command"));
         assert!(app.messages[0].text.contains("/foo"));
-        assert!(app.messages[0].text.contains("/help"));
+        assert!(app.messages[0].text.contains("?"));
     }
 
     #[test]
@@ -1276,22 +1249,6 @@ mod tests {
         assert_eq!(app.messages.len(), 2);
         assert!(app.messages[1].text.contains("Debug mode off"));
         assert!(app.messages[1].text.contains("hidden"));
-    }
-
-    #[test]
-    fn help_includes_debug_command() {
-        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
-        app.input = "/help".to_string();
-        app.submit_message();
-        assert!(app.messages[0].text.contains("/debug"));
-    }
-
-    #[test]
-    fn help_includes_to_command() {
-        let mut app = App::new("ryan".to_string(), "test-session".to_string(), vec![]);
-        app.input = "/help".to_string();
-        app.submit_message();
-        assert!(app.messages[0].text.contains("/to"));
     }
 
     #[test]

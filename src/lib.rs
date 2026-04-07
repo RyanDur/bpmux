@@ -71,50 +71,9 @@ pub fn run() -> anyhow::Result<()> {
     let session = Arc::new(session::Session::new(session_dir, wake_tx));
     let messages = session.read_messages()?;
     let pins = session.read_pins()?;
-    let is_first_launch = messages.is_empty();
     let mut app = terminal::App::new(cli.name.clone(), session.id.clone(), messages);
     app.session_dir = Some(session.dir.clone());
     app.pins = pins;
-    // Inject welcome or resume message
-    if is_first_launch {
-        app.messages.push(session::Message {
-            from: "bpmux".to_string(),
-            text: format!(
-                "Welcome to bpmux — the shared message bus for AI pair programming.\n\
-                 \n\
-                 You are {name}. Type a message and press Enter to broadcast.\n\
-                 Agents connect via WebSocket on port {port}.\n\
-                 \n\
-                 Quick start:\n\
-                 \x20 /to dev hello  — send to a specific participant\n\
-                 \x20 Ctrl+B         — toggle channel sidebar\n\
-                 \x20 ?              — show help overlay\n\
-                 \x20 /who           — list connected participants\n\
-                 \n\
-                 Session: {sid}",
-                name = cli.name,
-                port = cli.mcp_port,
-                sid = session.id,
-            ),
-            ts: chrono::Utc::now(),
-            message_type: None,
-            to: None,
-        });
-    } else {
-        let msg_count = app.messages.len();
-        app.messages.push(session::Message {
-            from: "bpmux".to_string(),
-            text: format!(
-                "Resumed session {sid} — {msg_count} message{s} in log. Type /help for commands.",
-                sid = session.id,
-                s = if msg_count == 1 { "" } else { "s" },
-            ),
-            ts: chrono::Utc::now(),
-            message_type: None,
-            to: None,
-        });
-    }
-
     let server_session = Arc::clone(&session);
     let server_name = cli.name.clone();
     let server_port = cli.mcp_port;
