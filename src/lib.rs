@@ -99,6 +99,7 @@ pub fn run() -> anyhow::Result<()> {
             std::io::stdout(),
             crossterm::event::EnableMouseCapture,
             crossterm::event::EnableFocusChange,
+            crossterm::event::EnableBracketedPaste,
         )?;
         let mut terminal = ratatui::init();
         let result = terminal::run_tui(&mut terminal, &mut app, &session, &mut wake_rx).await;
@@ -107,6 +108,7 @@ pub fn run() -> anyhow::Result<()> {
             std::io::stdout(),
             crossterm::event::DisableMouseCapture,
             crossterm::event::DisableFocusChange,
+            crossterm::event::DisableBracketedPaste,
         )?;
         result
     });

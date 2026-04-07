@@ -164,6 +164,16 @@ impl TestBpmux {
         w.flush().expect("flush");
     }
 
+    /// Simulate a bracketed paste: wraps text in paste-start/paste-end
+    /// escape sequences so crossterm delivers it as `Event::Paste`.
+    pub fn paste(&self, text: &str) {
+        let mut w = self.writer.lock().expect("writer lock");
+        w.write_all(b"\x1b[200~").expect("paste start");
+        w.write_all(text.as_bytes()).expect("paste content");
+        w.write_all(b"\x1b[201~").expect("paste end");
+        w.flush().expect("flush");
+    }
+
     /// Send mouse scroll-up events through the PTY (SGR mouse protocol).
     /// Each call sends `count` scroll-up events at position (col=10, row=10).
     pub fn mouse_scroll_up(&self, count: usize) {

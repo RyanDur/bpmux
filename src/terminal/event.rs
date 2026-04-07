@@ -142,6 +142,13 @@ fn handle_terminal_event(
         }
         return Ok(());
     }
+    // Bracketed paste: insert all pasted text (including newlines) into the buffer
+    if let Event::Paste(text) = ev {
+        for ch in text.chars() {
+            app.insert_char(ch);
+        }
+        return Ok(());
+    }
     let Event::Key(key) = ev else {
         return Ok(());
     };
