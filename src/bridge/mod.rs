@@ -35,8 +35,6 @@ pub struct BridgeServer {
     ws_tx: Arc<Mutex<Option<WsSink>>>,
 }
 
-/// Resolve the bridge's display name. "claude-code", empty strings, and
-/// unexpanded env-var placeholders trigger agent-XXXX auto-generation.
 pub(crate) fn resolve_bridge_name(raw: &str) -> String {
     let is_placeholder = raw.starts_with("${") && raw.ends_with('}');
     if raw.is_empty() || raw == "claude-code" || is_placeholder {
@@ -154,7 +152,6 @@ async fn handle_read_messages(
         .join("\n"))
 }
 
-/// Connect to bpmux's WebSocket, identify, and forward messages until disconnected.
 async fn run_ws_connection(
     port: u16,
     name: Arc<Mutex<String>>,
@@ -173,7 +170,6 @@ async fn run_ws_connection(
     let (ws_tx, mut ws_rx) = ws_stream.split();
     *ws_tx_store.lock().await = Some(ws_tx);
 
-    // Identify with bpmux
     {
         let current_name = name.lock().await.clone();
         let mut tx = ws_tx_store.lock().await;
@@ -187,12 +183,10 @@ async fn run_ws_connection(
         }
     }
 
-    // Read welcome
     if let Some(Ok(_welcome)) = ws_rx.next().await {
         eprintln!("Bridge: connected to bpmux on port {port}");
     }
 
-    // Forward bpmux messages → channel notifications until disconnected
     while let Some(Ok(frame)) = ws_rx.next().await {
         if let tungstenite::Message::Text(text) = frame {
             let msg: Result<ServerMessage, _> = serde_json::from_str(&text);
@@ -204,8 +198,6 @@ async fn run_ws_connection(
                 ..
             }) = msg
             {
-                // Don't forward our own messages back (read name each
-                // iteration so set_name changes take effect immediately)
                 let from_short = from.split(':').next().unwrap_or(&from);
                 let current_name = name.lock().await;
                 if from_short == *current_name {
@@ -213,7 +205,6 @@ async fn run_ws_connection(
                 }
                 drop(current_name);
 
-                // Skip activity and system messages
                 let mt = message_type.as_deref();
                 if mt == Some("activity") || mt == Some("system") {
                     continue;
@@ -271,7 +262,6 @@ impl ServerHandler for BridgeServer {
         async move {
             *peer_store.lock().await = Some(peer.clone());
 
-            // Reconnection loop
             tokio::spawn(async move {
                 loop {
                     run_ws_connection(port, name.clone(), peer.clone(), ws_tx_store.clone()).await;

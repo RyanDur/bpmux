@@ -52,7 +52,6 @@ pub async fn run_tui(
             maybe_event = events.next() => {
                 let Some(Ok(ev)) = maybe_event else { return Ok(()); };
                 handle_terminal_event(ev, app, session)?;
-                // Drain any buffered events before re-rendering
                 while event::poll(std::time::Duration::ZERO)? {
                     let ev = event::read()?;
                     handle_terminal_event(ev, app, session)?;
@@ -100,7 +99,6 @@ fn handle_broadcast_message(msg: session::Message, app: &mut App) {
             r.iter().any(|n| n == &app.peer_name) && !r.iter().all(|n| n == "all")
         });
         app.receive_message(msg);
-        // OS notification when TUI is unfocused
         if !app.tui_focused {
             let safe_preview = preview.replace('\\', "\\\\").replace('"', "\\\"");
             let safe_name = short_name.replace('\\', "\\\\").replace('"', "\\\"");
@@ -119,11 +117,8 @@ fn handle_broadcast_message(msg: session::Message, app: &mut App) {
 }
 
 fn handle_mouse_click(col: u16, row: u16, app: &mut App) {
-    // Check if click is in the sidebar area
     if let Some((sx, sy, sw, _sh)) = app.sidebar_area {
         if col >= sx && col < sx + sw && row >= sy {
-            // Inside sidebar — find which channel was clicked
-            // Border top = row sy, so content starts at sy + 1
             let content_row = row.saturating_sub(sy + 1);
             let channels = app.sidebar_channels();
             let idx = content_row as usize;
@@ -134,12 +129,10 @@ fn handle_mouse_click(col: u16, row: u16, app: &mut App) {
             return;
         }
     } else if col < 3 {
-        // Sidebar is closed — clicking the left edge opens it
         app.toggle_sidebar();
         return;
     }
 
-    // Check if click is on "? help" in the status bar
     if let Some((_, sb_y, _, _)) = app.status_bar_area
         && row == sb_y
         && app.help_hint_col.is_some_and(|hint_col| col >= hint_col)
@@ -153,7 +146,6 @@ fn handle_terminal_event(
     app: &mut App,
     session: &session::Session,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    // Track terminal focus for notification gating
     if matches!(&ev, Event::FocusGained) {
         app.tui_focused = true;
         return Ok(());
@@ -162,7 +154,6 @@ fn handle_terminal_event(
         app.tui_focused = false;
         return Ok(());
     }
-    // Handle mouse events
     if let Event::Mouse(mouse) = &ev {
         match mouse.kind {
             MouseEventKind::ScrollUp => {
@@ -178,7 +169,6 @@ fn handle_terminal_event(
         }
         return Ok(());
     }
-    // Bracketed paste: insert all pasted text (including newlines) into the buffer
     if let Event::Paste(text) = ev {
         for ch in text.chars() {
             app.insert_char(ch);
@@ -191,12 +181,10 @@ fn handle_terminal_event(
     if key.kind != KeyEventKind::Press {
         return Ok(());
     }
-    // Help overlay — any key dismisses it
     if app.show_help {
         app.show_help = false;
         return Ok(());
     }
-    // Sidebar toggle: Ctrl+B, Ctrl+1, or Alt+1 (IntelliJ project tool window)
     if (key.code == KeyCode::Char('b') || key.code == KeyCode::Char('1'))
         && key.modifiers.contains(KeyModifiers::CONTROL)
     {
@@ -207,7 +195,6 @@ fn handle_terminal_event(
         app.toggle_sidebar();
         return Ok(());
     }
-    // When sidebar is focused, intercept navigation keys
     if app.sidebar_focused {
         match key.code {
             KeyCode::Up => app.sidebar_up(),
@@ -220,10 +207,8 @@ fn handle_terminal_event(
         }
         return Ok(());
     }
-    // When popup is visible, intercept navigation keys
     let popup_open = app.popup_visible();
     match key.code {
-        // Popup navigation — Up/Down move selection, Tab/Enter accept
         KeyCode::Up if key.modifiers.is_empty() && popup_open => {
             app.popup_up();
         }
@@ -303,7 +288,6 @@ fn handle_terminal_event(
         }
         KeyCode::Tab => {
             if popup_open {
-                // Start popup selection at first item
                 app.popup_down();
             } else {
                 app.tab_complete();

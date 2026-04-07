@@ -7,18 +7,11 @@ use std::time::Instant;
 const TRUNCATE_AFTER_LINES: usize = 10;
 const DM_FLASH_DURATION: std::time::Duration = std::time::Duration::from_millis(750);
 
-/// Strips the transport suffix from a peer name: "dev:claude-code" → "dev".
 fn short_peer_name(peer: &str) -> &str {
     peer.split(':').next().unwrap_or(peer)
 }
 
-/// Compute the display name for a message's channel.
-/// Returns "broadcast" for `None` / `["all"]`, "a↔b" for 2-person DMs,
-/// "a+b+c" for groups. The sender is included in directed channels.
-/// Compute the channel name for a message. The `owner` (TUI user) is excluded
-/// from the name — they're implicit in every channel, like a manager who can
-/// see all Slack rooms. This prevents the view/send mismatch where sending
-/// into a channel creates a different channel name because the owner got added.
+/// Owner is excluded from channel names — they're implicit in every channel.
 pub fn channel_name(msg: &crate::session::Message, owner: &str) -> String {
     match &msg.to {
         None => "broadcast".to_string(),
@@ -29,11 +22,9 @@ pub fn channel_name(msg: &crate::session::Message, owner: &str) -> String {
             if !names.contains(&sender_short) {
                 names.push(sender_short);
             }
-            // Remove the TUI owner — they're a constant, not a participant to name
             names.retain(|n| *n != owner);
             names.sort();
             if names.is_empty() {
-                // DM to/from the owner only — show the other party
                 sender_short.to_string()
             } else if names.len() == 1 {
                 names[0].to_string()
@@ -62,44 +53,24 @@ pub struct App {
     pub history_index: Option<usize>,
     pub peer_activity: HashMap<String, (String, Instant)>,
     pub show_system_messages: bool,
-    /// Expanded (un-truncated) messages, keyed by timestamp string for stability.
     pub expanded_messages: HashSet<String>,
-    /// Senders of unacknowledged directed messages (DMs). Cleared on user input.
     pub dm_unread_from: Vec<String>,
-    /// When set, the status bar flashes yellow until this instant passes.
     pub dm_flash_until: Option<Instant>,
-    /// Distinct channel names seen this session (e.g. "broadcast", "dev↔human", "dev+human+pm").
     pub active_channels: HashSet<String>,
-    /// Current view filter. `None` = all, `Some("broadcast")` = broadcast only,
-    /// `Some("a↔b")` or `Some("a+b+c")` = specific directed channel.
     pub current_view: Option<String>,
-    /// Selected index in the command autocomplete popup. `None` = nothing selected.
     pub popup_selected: Option<usize>,
-    /// Pinned theory items. Max 5, persisted in session state.
     pub pins: Vec<String>,
-    /// Whether the help overlay is visible.
     pub show_help: bool,
-    /// Whether the sidebar tree view is open.
     pub sidebar_open: bool,
-    /// Whether keyboard focus is on the sidebar (vs input).
     pub sidebar_focused: bool,
-    /// Index of selected item in the sidebar channel list.
     pub sidebar_selected: usize,
-    /// Unread message count per channel.
     pub channel_unread: HashMap<String, usize>,
-    /// Send target set by sidebar selection. `None` = broadcast.
-    /// When set, outgoing messages are directed to this channel's participants.
     pub send_target: Option<String>,
-    /// Whether the terminal window has focus. Used to gate OS notifications.
-    /// Defaults to true (assume focused — no false noise).
+    /// Defaults to true — assume focused so we don't fire notifications on startup.
     pub tui_focused: bool,
-    /// Whether the project tree node is expanded (showing channels).
     pub project_expanded: bool,
-    /// Layout regions for mouse click detection (updated each render pass).
     pub sidebar_area: Option<(u16, u16, u16, u16)>,
-    /// Status bar area: (x, y, width, height).
     pub status_bar_area: Option<(u16, u16, u16, u16)>,
-    /// Column where "? help" starts in the status bar.
     pub help_hint_col: Option<u16>,
 }
 

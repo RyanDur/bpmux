@@ -17,9 +17,6 @@ pub struct Message {
     pub ts: DateTime<Utc>,
     #[serde(default, skip_serializing_if = "MessageType::is_chat")]
     pub message_type: MessageType,
-    /// Addressed recipients. `None` = broadcast (everyone sees it).
-    /// `Some(vec)` = only named participants (plus sender) see the push.
-    /// Names are short-form (e.g. `"dev"`, not `"dev:claude-code"`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub to: Option<Vec<String>>,
 }
@@ -29,7 +26,6 @@ impl MessageType {
         *self == MessageType::Chat
     }
 
-    /// Convert to wire format. Chat → None (default), others → Some("name").
     pub fn to_wire(&self) -> Option<String> {
         match self {
             MessageType::Chat => None,

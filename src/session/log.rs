@@ -158,8 +158,6 @@ pub fn append_message(session_dir: &Path, message: &Message) -> Result<(), LogEr
     Ok(())
 }
 
-// --- Pin persistence ---
-
 const MAX_PINS: usize = 5;
 
 fn pins_path(session_dir: &Path) -> PathBuf {
@@ -208,8 +206,6 @@ pub fn remove_pin(
     write_pins(session_dir, &pins)?;
     Ok(Ok(pins))
 }
-
-// --- Handoff persistence ---
 
 const MAX_HANDOFF_CHARS: usize = 500;
 

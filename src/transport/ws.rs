@@ -45,7 +45,7 @@ async fn run_ws_session(
         },
     )
     .await?;
-    // Deliver pinned items before message history (theory-first reconnect)
+    // Pins before history — reconnecting agents need theory context first
     if let Ok(pins) = session.read_pins()
         && !pins.is_empty()
     {
@@ -63,7 +63,6 @@ async fn run_ws_session(
         };
         send_json(&mut tx, &pin_msg).await?;
     }
-    // Deliver handoff summary from previous session if available
     let peer_short = short_name(&identity).to_string();
     if let Ok(Some(handoff)) = session.read_handoff(&peer_short) {
         let handoff_msg = ServerMessage::Message {
@@ -108,7 +107,6 @@ async fn run_ws_session(
                     match ws_result {
                         Some(Ok(WsMessage::Text(text))) => {
                             if let Some(new_identity) = handle_client_message(&text, &identity, &session, &mut tx).await? {
-                                // Broadcast leave for old name, join for new
                                 let leave = session::Message {
                                     from: "bpmux".to_string(),
                                     text: format!("{identity} left"),
@@ -192,14 +190,10 @@ async fn wait_for_identify(
     }
 }
 
-/// Short name for identity matching: "dev:claude-code" → "dev".
 pub(crate) fn short_name(identity: &str) -> &str {
     identity.split(':').next().unwrap_or(identity)
 }
 
-/// Decide whether a message should be pushed to a given peer.
-/// Broadcast (to=None) → everyone. Addressed (to=Some) → only
-/// named recipients and the original sender.
 pub(crate) fn should_deliver(msg: &session::Message, peer_identity: &str) -> bool {
     let recipients = match &msg.to {
         None => return true,
@@ -217,7 +211,6 @@ pub(crate) fn should_deliver(msg: &session::Message, peer_identity: &str) -> boo
     recipients.iter().any(|r| r == peer_short)
 }
 
-/// Returns Some(new_identity) if the client renamed itself.
 async fn handle_client_message(
     text: &str,
     identity: &str,
