@@ -19,6 +19,8 @@ pub struct PostMessage {
 pub struct GetMessagesParams {
     pub limit: Option<usize>,
     pub offset: Option<usize>,
+    /// Filter to chat messages only (excludes activity/system). Default: true.
+    pub chat_only: Option<bool>,
 }
 
 pub async fn get_messages(
@@ -27,14 +29,16 @@ pub async fn get_messages(
 ) -> impl IntoResponse {
     match session.read_messages() {
         Ok(messages) => {
+            let chat_only = params.chat_only.unwrap_or(true);
             let offset = params.offset.unwrap_or(0);
             let limit = params.limit.unwrap_or(20);
-            let page: Vec<_> = messages
-                .into_iter()
-                .rev()
-                .skip(offset)
-                .take(limit)
-                .collect();
+            let mut filtered: Vec<_> = if chat_only {
+                messages.into_iter().filter(|m| m.is_chat()).collect()
+            } else {
+                messages
+            };
+            filtered.reverse();
+            let page: Vec<_> = filtered.into_iter().skip(offset).take(limit).collect();
             (
                 StatusCode::OK,
                 serde_json::to_string(&page).unwrap_or_else(|_| "[]".to_string()),
@@ -217,6 +221,71 @@ mod tests {
         // Reversed: [4,3,2,1,0], skip 2 -> [2,1,0], take 2 -> [2,1]
         assert_eq!(msgs[0]["text"], "msg 2");
         assert_eq!(msgs[1]["text"], "msg 1");
+    }
+
+    fn seed_mixed_messages(dir: &TempDir) -> Arc<session::Session> {
+        let (tx, _rx) = broadcast::channel(16);
+        let session = Arc::new(session::Session::new(dir.path().to_path_buf(), tx));
+        for (text, msg_type) in [
+            ("hello", None),
+            ("busy", Some("activity".to_string())),
+            ("world", None),
+            ("available", Some("activity".to_string())),
+            ("goodbye", None),
+        ] {
+            let msg = session::Message {
+                from: "dev".to_string(),
+                text: text.to_string(),
+                ts: chrono::Utc::now(),
+                message_type: msg_type,
+                to: None,
+            };
+            session.broadcast(&msg).expect("broadcast");
+        }
+        session
+    }
+
+    #[tokio::test]
+    async fn chat_only_excludes_activity_by_default() {
+        let dir = TempDir::new().expect("tmpdir");
+        init_session(&dir);
+        let session = seed_mixed_messages(&dir);
+        let router = axum::Router::new()
+            .route("/api/messages", axum::routing::get(get_messages))
+            .with_state(session);
+        let request = Request::builder()
+            .method("GET")
+            .uri("/api/messages?limit=50")
+            .body(Body::empty())
+            .expect("build request");
+        let response = router.oneshot(request).await.expect("response");
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("read body");
+        let msgs: Vec<serde_json::Value> = serde_json::from_slice(&body).expect("parse json");
+        assert_eq!(msgs.len(), 3, "should only return chat messages");
+        assert!(msgs.iter().all(|m| m["message_type"].is_null()));
+    }
+
+    #[tokio::test]
+    async fn chat_only_false_returns_all() {
+        let dir = TempDir::new().expect("tmpdir");
+        init_session(&dir);
+        let session = seed_mixed_messages(&dir);
+        let router = axum::Router::new()
+            .route("/api/messages", axum::routing::get(get_messages))
+            .with_state(session);
+        let request = Request::builder()
+            .method("GET")
+            .uri("/api/messages?limit=50&chat_only=false")
+            .body(Body::empty())
+            .expect("build request");
+        let response = router.oneshot(request).await.expect("response");
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("read body");
+        let msgs: Vec<serde_json::Value> = serde_json::from_slice(&body).expect("parse json");
+        assert_eq!(msgs.len(), 5, "should return all messages");
     }
 
     #[tokio::test]

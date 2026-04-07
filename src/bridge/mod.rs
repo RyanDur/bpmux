@@ -116,6 +116,11 @@ async fn run_ws_connection(
         let mut store = messages_store.lock().await;
         store.clear();
         for msg in msgs {
+            // Skip activity and system messages during backfill (same filter as live WS)
+            let mt = msg["message_type"].as_str();
+            if mt == Some("activity") || mt == Some("system") {
+                continue;
+            }
             if let (Some(from), Some(text)) = (msg["from"].as_str(), msg["text"].as_str()) {
                 store.push(format!("[{from}] {text}"));
             }
