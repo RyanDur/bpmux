@@ -108,9 +108,21 @@ pub struct App {
 impl App {
     pub fn new(peer_name: String, session_id: String, messages: Vec<Message>) -> Self {
         let mut active_channels: HashSet<String> = HashSet::new();
+        let mut peer_activity: HashMap<String, (String, Instant)> = HashMap::new();
+        let now = Instant::now();
         for msg in &messages {
             if msg.is_chat() {
                 active_channels.insert(channel_name(msg, &peer_name));
+            }
+            // Rebuild peer activity from persisted messages
+            if msg.message_type.as_deref() == Some("activity") {
+                peer_activity.insert(msg.from.clone(), (msg.text.clone(), now));
+            } else if msg.message_type.as_deref() == Some("system") {
+                if let Some(peer) = msg.text.strip_suffix(" joined") {
+                    peer_activity.insert(peer.to_string(), ("available".to_string(), now));
+                } else if let Some(peer) = msg.text.strip_suffix(" left") {
+                    peer_activity.remove(peer);
+                }
             }
         }
         Self {
@@ -129,7 +141,7 @@ impl App {
             unread_count: 0,
             input_history: Vec::new(),
             history_index: None,
-            peer_activity: HashMap::new(),
+            peer_activity,
             show_system_messages: false,
             expanded_messages: HashSet::new(),
             dm_unread_from: Vec::new(),
@@ -1294,6 +1306,31 @@ mod tests {
         app.receive_message(activity_msg("dev:claude-code", "working"));
         assert!(app.messages.is_empty());
         assert!(app.peer_activity.contains_key("dev:claude-code"));
+    }
+
+    #[test]
+    fn peer_activity_rebuilt_from_persisted_messages() {
+        let messages = vec![
+            system_msg("bpmux", "dev:ws joined"),
+            activity_msg("dev:ws", "busy"),
+            system_msg("bpmux", "pm:ws joined"),
+        ];
+        let app = App::new("ryan".to_string(), "test-session".to_string(), messages);
+        assert!(app.peer_activity.contains_key("dev:ws"));
+        assert_eq!(app.peer_activity["dev:ws"].0, "busy");
+        assert!(app.peer_activity.contains_key("pm:ws"));
+        assert_eq!(app.peer_activity["pm:ws"].0, "available");
+    }
+
+    #[test]
+    fn peer_activity_respects_leave_on_rebuild() {
+        let messages = vec![
+            system_msg("bpmux", "dev:ws joined"),
+            activity_msg("dev:ws", "busy"),
+            system_msg("bpmux", "dev:ws left"),
+        ];
+        let app = App::new("ryan".to_string(), "test-session".to_string(), messages);
+        assert!(!app.peer_activity.contains_key("dev:ws"));
     }
 
     #[test]

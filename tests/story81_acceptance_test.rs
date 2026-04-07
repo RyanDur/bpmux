@@ -39,7 +39,9 @@ fn ac1_ac2_paste_sends_single_message() {
         );
 
         // Should NOT receive a second message (the paste wasn't split)
-        let extra = peer.recv_message_or_timeout(Duration::from_millis(500)).await;
+        let extra = peer
+            .recv_message_or_timeout(Duration::from_millis(500))
+            .await;
         assert!(
             extra.is_none(),
             "Should not receive additional messages from the paste, got: {extra:?}"

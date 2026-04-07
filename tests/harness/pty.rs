@@ -22,7 +22,7 @@ use super::screen::Screen;
 pub struct TestBpmux {
     child: Box<dyn portable_pty::Child + Send + Sync>,
     _drainer: Option<std::thread::JoinHandle<()>>,
-    _session_dir: tempfile::TempDir,
+    session_dir: Option<tempfile::TempDir>,
     writer: Arc<Mutex<Box<dyn Write + Send>>>,
     screen: Arc<Mutex<Screen>>,
     port: u16,
@@ -38,8 +38,14 @@ impl TestBpmux {
     /// Spawn bpmux with a specific `--name` identity and block until the TUI
     /// renders.
     pub fn start_named(name: &str) -> Self {
-        let bin = env!("CARGO_BIN_EXE_bpmux");
         let session_dir = tempfile::TempDir::new().expect("temp dir");
+        Self::start_with_session(name, session_dir)
+    }
+
+    /// Spawn bpmux reusing an existing session base directory.
+    /// Useful for testing restart scenarios where persisted state matters.
+    pub fn start_with_session(name: &str, session_dir: tempfile::TempDir) -> Self {
+        let bin = env!("CARGO_BIN_EXE_bpmux");
         let session_base = session_dir
             .path()
             .to_str()
@@ -91,7 +97,7 @@ impl TestBpmux {
         let bpmux = Self {
             child,
             _drainer: Some(drainer),
-            _session_dir: session_dir,
+            session_dir: Some(session_dir),
             writer: Arc::new(Mutex::new(writer)),
             screen,
             port,
@@ -105,6 +111,11 @@ impl TestBpmux {
 
     pub fn port(&self) -> u16 {
         self.port
+    }
+
+    /// Take the session directory for reuse in a restart test.
+    pub fn take_session_dir(&mut self) -> tempfile::TempDir {
+        self.session_dir.take().expect("session dir already taken")
     }
 
     /// Poll the rendered TUI until it contains `target`. Returns true if
