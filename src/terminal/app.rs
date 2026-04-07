@@ -1,4 +1,4 @@
-use crate::session::Message;
+use crate::session::{Message, MessageType};
 use chrono::Utc;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
@@ -153,7 +153,7 @@ impl App {
             from: "bpmux".to_string(),
             text,
             ts: Utc::now(),
-            message_type: None,
+            message_type: MessageType::Chat,
             to: None,
         });
     }
@@ -208,19 +208,19 @@ impl App {
     pub fn receive_message(&mut self, msg: Message) {
         let sender = short_peer_name(&msg.from).to_string();
 
-        match msg.message_type.as_deref() {
-            Some("activity") => {
+        match msg.message_type {
+            MessageType::Activity => {
                 self.update_activity(sender, msg.text);
                 return;
             }
-            Some("system") => {
+            MessageType::System => {
                 if let Some(peer) = msg.text.strip_suffix(" joined") {
                     self.update_activity(short_peer_name(peer).to_string(), "available".into());
                 } else if let Some(peer) = msg.text.strip_suffix(" left") {
                     self.peer_activity.remove(short_peer_name(peer));
                 }
             }
-            _ => {
+            MessageType::Chat => {
                 let ch = channel_name(&msg, &self.peer_name);
                 self.active_channels.insert(ch.clone());
                 if self.current_view.as_ref().is_none_or(|v| v != &ch) {

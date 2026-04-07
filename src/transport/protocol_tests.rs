@@ -2,6 +2,7 @@
 
 use super::protocol::*;
 use crate::session::Message;
+use crate::session::MessageType;
 
 #[test]
 fn deserializes_identify_without_tool() {
@@ -81,7 +82,7 @@ fn serializes_message_from_session_message() {
         from: "dev:human".to_string(),
         text: "hello".to_string(),
         ts: chrono::Utc::now(),
-        message_type: None,
+        message_type: MessageType::Chat,
         to: None,
     };
     let server_msg: ServerMessage = session_msg.into();

@@ -56,7 +56,7 @@ impl BpmuxMcpServer {
             from: format!("{name}:mcp-client"),
             text,
             ts: chrono::Utc::now(),
-            message_type: None,
+            message_type: session::MessageType::Chat,
             to,
         };
         self.session.broadcast(&msg).map_err(|e| format!("{e}"))?;
@@ -93,7 +93,7 @@ impl BpmuxMcpServer {
             from: format!("{name}:mcp-client"),
             text: status.clone(),
             ts: chrono::Utc::now(),
-            message_type: Some("activity".to_string()),
+            message_type: session::MessageType::Activity,
             to: None,
         };
         self.session.broadcast(&msg).map_err(|e| format!("{e}"))?;

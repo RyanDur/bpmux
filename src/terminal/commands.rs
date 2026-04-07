@@ -1,5 +1,5 @@
 use super::app::App;
-use crate::session::Message;
+use crate::session::{Message, MessageType};
 use chrono::Utc;
 
 pub(super) const MAX_HISTORY: usize = 50;
@@ -108,7 +108,7 @@ impl App {
             from: format!("{}:human", self.peer_name),
             text,
             ts: Utc::now(),
-            message_type: None,
+            message_type: MessageType::Chat,
             to: None,
         };
         self.messages.push(msg.clone());
@@ -139,7 +139,7 @@ impl App {
             from: format!("{}:human", self.peer_name),
             text: body,
             ts: Utc::now(),
-            message_type: None,
+            message_type: MessageType::Chat,
             to: Some(recipients),
         };
         self.messages.push(msg.clone());
@@ -340,7 +340,7 @@ impl App {
             from: format!("{}:human", self.peer_name),
             text,
             ts: Utc::now(),
-            message_type: None,
+            message_type: MessageType::Chat,
             to,
         };
         self.messages.push(msg.clone());

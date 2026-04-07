@@ -4,6 +4,7 @@ use super::markdown::{message_involves_participants, wrap_line_with_indent};
 use super::theme::{DRACULA_CYAN, sender_color};
 use super::ui::render;
 use crate::session::Message;
+use crate::session::MessageType;
 use crate::terminal::app::App;
 use chrono::Utc;
 use ratatui::Terminal;
@@ -20,7 +21,7 @@ fn chat_msg(from: &str, text: &str) -> Message {
         from: from.to_string(),
         text: text.to_string(),
         ts: Utc::now(),
-        message_type: None,
+        message_type: MessageType::Chat,
         to: None,
     }
 }
@@ -30,7 +31,7 @@ fn system_msg(from: &str, text: &str) -> Message {
         from: from.to_string(),
         text: text.to_string(),
         ts: Utc::now(),
-        message_type: Some("system".to_string()),
+        message_type: MessageType::System,
         to: None,
     }
 }
@@ -406,7 +407,7 @@ fn directed_msg(from: &str, text: &str, to: &[&str]) -> Message {
         from: from.to_string(),
         text: text.to_string(),
         ts: Utc::now(),
-        message_type: None,
+        message_type: MessageType::Chat,
         to: Some(to.iter().map(|s| s.to_string()).collect()),
     }
 }

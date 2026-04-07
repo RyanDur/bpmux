@@ -65,7 +65,7 @@ pub async fn post_message(
         from: payload.from,
         text: payload.text,
         ts: chrono::Utc::now(),
-        message_type: payload.message_type,
+        message_type: session::MessageType::from(payload.message_type.as_deref()),
         to: None,
     };
     if let Err(e) = session.broadcast(&msg) {

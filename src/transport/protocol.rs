@@ -57,7 +57,7 @@ impl From<Message> for ServerMessage {
             text: msg.text,
             ts: msg.ts.to_rfc3339(),
             to: msg.to,
-            message_type: msg.message_type,
+            message_type: msg.message_type.to_wire(),
         }
     }
 }

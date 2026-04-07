@@ -71,7 +71,7 @@ pub async fn run_tui(
                                     from: "bpmux".to_string(),
                                     text: format!("Caught up — {n} messages arrived while processing."),
                                     ts: chrono::Utc::now(),
-                                    message_type: Some("system".to_string()),
+                                    message_type: crate::session::MessageType::System,
                                     to: None,
                                 });
                                 app.scroll_offset = 0;

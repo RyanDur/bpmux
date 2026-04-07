@@ -2,6 +2,7 @@
 
 use super::ws::*;
 use crate::session;
+use crate::session::MessageType;
 use chrono::Utc;
 
 fn msg(from: &str, to: Option<Vec<&str>>) -> session::Message {
@@ -9,7 +10,7 @@ fn msg(from: &str, to: Option<Vec<&str>>) -> session::Message {
         from: from.to_string(),
         text: "test".to_string(),
         ts: Utc::now(),
-        message_type: None,
+        message_type: MessageType::Chat,
         to: to.map(|v| v.into_iter().map(String::from).collect()),
     }
 }

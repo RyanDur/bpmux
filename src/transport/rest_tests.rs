@@ -2,6 +2,7 @@
 
 use super::rest::*;
 use crate::session;
+use crate::session::MessageType;
 use axum::body::Body;
 use axum::http::Request;
 use std::path::PathBuf;
@@ -89,7 +90,7 @@ fn seed_messages(dir: &TempDir, count: usize) -> Arc<session::Session> {
             from: "user".to_string(),
             text: format!("msg {i}"),
             ts: chrono::Utc::now(),
-            message_type: None,
+            message_type: MessageType::Chat,
             to: None,
         };
         session.broadcast(&msg).expect("broadcast");
@@ -151,11 +152,11 @@ fn seed_mixed_messages(dir: &TempDir) -> Arc<session::Session> {
     let (tx, _rx) = broadcast::channel(16);
     let session = Arc::new(session::Session::new(dir.path().to_path_buf(), tx));
     for (text, msg_type) in [
-        ("hello", None),
-        ("busy", Some("activity".to_string())),
-        ("world", None),
-        ("available", Some("activity".to_string())),
-        ("goodbye", None),
+        ("hello", MessageType::Chat),
+        ("busy", MessageType::Activity),
+        ("world", MessageType::Chat),
+        ("available", MessageType::Activity),
+        ("goodbye", MessageType::Chat),
     ] {
         let msg = session::Message {
             from: "dev".to_string(),

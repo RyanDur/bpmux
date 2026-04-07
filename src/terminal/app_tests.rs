@@ -2,6 +2,7 @@
 
 use super::app::*;
 use crate::session::Message;
+use crate::session::MessageType;
 use crate::terminal::commands::MAX_HISTORY;
 use crate::terminal::input::SLASH_COMMANDS;
 use chrono::Utc;
@@ -15,7 +16,7 @@ fn chat_msg(from: &str, text: &str) -> Message {
         from: from.to_string(),
         text: text.to_string(),
         ts: Utc::now(),
-        message_type: None,
+        message_type: MessageType::Chat,
         to: None,
     }
 }
@@ -25,7 +26,7 @@ fn directed_msg(from: &str, text: &str, to: Vec<&str>) -> Message {
         from: from.to_string(),
         text: text.to_string(),
         ts: Utc::now(),
-        message_type: None,
+        message_type: MessageType::Chat,
         to: Some(to.into_iter().map(String::from).collect()),
     }
 }
@@ -35,7 +36,7 @@ fn system_msg(from: &str, text: &str) -> Message {
         from: from.to_string(),
         text: text.to_string(),
         ts: Utc::now(),
-        message_type: Some("system".to_string()),
+        message_type: MessageType::System,
         to: None,
     }
 }
@@ -45,7 +46,7 @@ fn activity_msg(from: &str, text: &str) -> Message {
         from: from.to_string(),
         text: text.to_string(),
         ts: Utc::now(),
-        message_type: Some("activity".to_string()),
+        message_type: MessageType::Activity,
         to: None,
     }
 }
@@ -918,7 +919,7 @@ fn toggle_expands_long_system_message() {
         from: "bpmux".into(),
         text: long_text,
         ts: chrono::Utc::now(),
-        message_type: None,
+        message_type: MessageType::Chat,
         to: None,
     });
     let key = app.messages.last().unwrap().ts.to_rfc3339();

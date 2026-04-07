@@ -5,7 +5,7 @@ pub use log::{
     LogError, Session, append_message, create_session, default_sessions_base, read_messages,
     read_pins, resume_or_create_session,
 };
-pub use message::Message;
+pub use message::{Message, MessageType};
 
 #[cfg(test)]
 mod log_tests;

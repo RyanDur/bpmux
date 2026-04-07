@@ -8,6 +8,7 @@ use futures::{SinkExt, StreamExt};
 use tokio::sync::broadcast;
 
 use crate::session;
+use crate::session::MessageType;
 use crate::transport::protocol::{ClientMessage, ServerMessage};
 
 const MAX_MESSAGE_SIZE: usize = 4096;
@@ -58,7 +59,7 @@ async fn run_ws_session(
             text: format!("Pinned:\n{}", items.join("\n")),
             ts: chrono::Utc::now().to_rfc3339(),
             to: None,
-            message_type: Some("system".to_string()),
+            message_type: MessageType::System.to_wire(),
         };
         send_json(&mut tx, &pin_msg).await?;
     }
@@ -70,7 +71,7 @@ async fn run_ws_session(
             text: format!("Handoff from your last session:\n{handoff}"),
             ts: chrono::Utc::now().to_rfc3339(),
             to: None,
-            message_type: Some("system".to_string()),
+            message_type: MessageType::System.to_wire(),
         };
         send_json(&mut tx, &handoff_msg).await?;
     }
@@ -78,7 +79,7 @@ async fn run_ws_session(
         from: "bpmux".to_string(),
         text: format!("{identity} joined"),
         ts: chrono::Utc::now(),
-        message_type: Some("system".to_string()),
+        message_type: MessageType::System,
         to: None,
     };
     session.broadcast(&join_msg)?;
@@ -112,7 +113,7 @@ async fn run_ws_session(
                                     from: "bpmux".to_string(),
                                     text: format!("{identity} left"),
                                     ts: chrono::Utc::now(),
-                                    message_type: Some("system".to_string()),
+                                    message_type: MessageType::System,
                                     to: None,
                                 };
                                 let _ = session.broadcast(&leave);
@@ -121,7 +122,7 @@ async fn run_ws_session(
                                     from: "bpmux".to_string(),
                                     text: format!("{identity} joined"),
                                     ts: chrono::Utc::now(),
-                                    message_type: Some("system".to_string()),
+                                    message_type: MessageType::System,
                                     to: None,
                                 };
                                 let _ = session.broadcast(&join);
@@ -141,7 +142,7 @@ async fn run_ws_session(
         from: "bpmux".to_string(),
         text: format!("{identity} left"),
         ts: chrono::Utc::now(),
-        message_type: Some("system".to_string()),
+        message_type: MessageType::System,
         to: None,
     };
     let _ = session.broadcast(&leave_msg);
@@ -243,7 +244,7 @@ async fn handle_client_message(
                 from: identity.to_string(),
                 text: msg_text,
                 ts: chrono::Utc::now(),
-                message_type,
+                message_type: MessageType::from(message_type.as_deref()),
                 to,
             };
             session.broadcast(&msg)?;

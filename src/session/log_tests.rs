@@ -2,6 +2,7 @@
 
 use super::log::*;
 use crate::session::Message;
+use crate::session::MessageType;
 use chrono::Utc;
 use tempfile::TempDir;
 use tokio::sync::broadcast;
@@ -13,14 +14,14 @@ fn appends_and_reads_messages() {
         from: "ryan:human".to_string(),
         text: "first message".to_string(),
         ts: Utc::now(),
-        message_type: None,
+        message_type: MessageType::Chat,
         to: None,
     };
     let msg2 = Message {
         from: "ryan:human".to_string(),
         text: "second message".to_string(),
         ts: Utc::now(),
-        message_type: None,
+        message_type: MessageType::Chat,
         to: None,
     };
     append_message(dir.path(), &msg1).expect("append 1");
@@ -57,7 +58,7 @@ fn resumes_existing_session() {
         from: "ryan:human".to_string(),
         text: "persisted message".to_string(),
         ts: Utc::now(),
-        message_type: None,
+        message_type: MessageType::Chat,
         to: None,
     };
     append_message(&dir1, &msg).expect("append");
@@ -77,7 +78,7 @@ fn session_broadcasts_and_reads() {
         from: "ryan:human".to_string(),
         text: "via session".to_string(),
         ts: Utc::now(),
-        message_type: None,
+        message_type: MessageType::Chat,
         to: None,
     };
     session.broadcast(&msg).expect("broadcast");
