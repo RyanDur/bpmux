@@ -246,6 +246,16 @@ impl App {
         self.cursor_pos = 0;
     }
 
+    fn system_message(&mut self, text: String) {
+        self.messages.push(Message {
+            from: "bpmux".to_string(),
+            text,
+            ts: Utc::now(),
+            message_type: None,
+            to: None,
+        });
+    }
+
     pub fn scroll_up(&mut self, lines: usize) {
         let before = self.scroll_offset;
         self.scroll_offset = self
@@ -369,14 +379,7 @@ impl App {
                 "Commands:\n  /to <who> <msg> — send to specific recipients (e.g. /to dev,pm hello)\n  /view [channel] — filter view (broadcast, all, dev\u{2194}human, etc.)\n  /pin <text>     — pin a decision (max 5)\n  /pins           — list pinned items\n  /unpin <n>      — remove pin by number\n  /board          — show project board\n  /status blocked [reason] — declare yourself blocked\n  /help     — show this help\n  /who      — list participants\n  /debug    — toggle system messages\n  /quit     — exit bpmux\n\nKeybindings:\n  ?         — help overlay\n  Ctrl+B    — toggle sidebar\n  Enter     — send message\n  Esc       — clear input\n  Ctrl+C    — clear input (empty: quit)\n  Ctrl+U/D  — scroll up/down\n  Ctrl+T    — toggle timestamps\n  PageUp/Dn — scroll\n\nSession: {}",
                 self.session_id
             );
-            let msg = Message {
-                from: "bpmux".to_string(),
-                text: help,
-                ts: Utc::now(),
-                message_type: None,
-                to: None,
-            };
-            self.messages.push(msg);
+            self.system_message(help);
             self.clear_input();
             return None;
         }
@@ -389,14 +392,7 @@ impl App {
             if self.connected_peers > 0 {
                 participants.push(format!("{} connected", self.connected_peers));
             }
-            let msg = Message {
-                from: "bpmux".to_string(),
-                text: format!("Participants:\n  {}", participants.join("\n  ")),
-                ts: Utc::now(),
-                message_type: None,
-                to: None,
-            };
-            self.messages.push(msg);
+            self.system_message(format!("Participants:\n  {}", participants.join("\n  ")));
             self.clear_input();
             return None;
         }
@@ -411,21 +407,14 @@ impl App {
             } else {
                 "off"
             };
-            let msg = Message {
-                from: "bpmux".to_string(),
-                text: format!(
-                    "Debug mode {state}. System messages are now {}.",
-                    if self.show_system_messages {
-                        "visible"
-                    } else {
-                        "hidden"
-                    }
-                ),
-                ts: Utc::now(),
-                message_type: None,
-                to: None,
-            };
-            self.messages.push(msg);
+            self.system_message(format!(
+                "Debug mode {state}. System messages are now {}.",
+                if self.show_system_messages {
+                    "visible"
+                } else {
+                    "hidden"
+                }
+            ));
             self.clear_input();
             return None;
         }
@@ -449,15 +438,9 @@ impl App {
             if let Some((recipients_str, body)) = rest.split_once(' ') {
                 let body = body.trim().to_string();
                 if body.is_empty() {
-                    let msg = Message {
-                        from: "bpmux".to_string(),
-                        text: "Usage: /to <recipients> <message>. Example: /to dev,pm hello"
-                            .to_string(),
-                        ts: Utc::now(),
-                        message_type: None,
-                        to: None,
-                    };
-                    self.messages.push(msg);
+                    self.system_message(
+                        "Usage: /to <recipients> <message>. Example: /to dev,pm hello".to_string(),
+                    );
                     self.clear_input();
                     return None;
                 }
@@ -467,15 +450,9 @@ impl App {
                     .filter(|s| !s.is_empty())
                     .collect();
                 if recipients.is_empty() {
-                    let msg = Message {
-                        from: "bpmux".to_string(),
-                        text: "Usage: /to <recipients> <message>. Example: /to dev,pm hello"
-                            .to_string(),
-                        ts: Utc::now(),
-                        message_type: None,
-                        to: None,
-                    };
-                    self.messages.push(msg);
+                    self.system_message(
+                        "Usage: /to <recipients> <message>. Example: /to dev,pm hello".to_string(),
+                    );
                     self.clear_input();
                     return None;
                 }
@@ -498,26 +475,16 @@ impl App {
                 return Some(msg);
             }
             // `/to <something>` with no body
-            let msg = Message {
-                from: "bpmux".to_string(),
-                text: "Usage: /to <recipients> <message>. Example: /to dev,pm hello".to_string(),
-                ts: Utc::now(),
-                message_type: None,
-                to: None,
-            };
-            self.messages.push(msg);
+            self.system_message(
+                "Usage: /to <recipients> <message>. Example: /to dev,pm hello".to_string(),
+            );
             self.clear_input();
             return None;
         }
         if text == "/to" {
-            let msg = Message {
-                from: "bpmux".to_string(),
-                text: "Usage: /to <recipients> <message>. Example: /to dev,pm hello".to_string(),
-                ts: Utc::now(),
-                message_type: None,
-                to: None,
-            };
-            self.messages.push(msg);
+            self.system_message(
+                "Usage: /to <recipients> <message>. Example: /to dev,pm hello".to_string(),
+            );
             self.clear_input();
             return None;
         }
@@ -531,14 +498,7 @@ impl App {
             } else {
                 format!("Available channels: {}", channel_names.join(", "))
             };
-            let msg = Message {
-                from: "bpmux".to_string(),
-                text: list,
-                ts: Utc::now(),
-                message_type: None,
-                to: None,
-            };
-            self.messages.push(msg);
+            self.system_message(list);
             self.clear_input();
             return None;
         }
@@ -547,28 +507,14 @@ impl App {
             if arg == "all" {
                 self.current_view = None;
                 self.scroll_offset = 0;
-                let msg = Message {
-                    from: "bpmux".to_string(),
-                    text: "View set to all channels.".to_string(),
-                    ts: Utc::now(),
-                    message_type: None,
-                    to: None,
-                };
-                self.messages.push(msg);
+                self.system_message("View set to all channels.".to_string());
                 self.clear_input();
                 return None;
             }
             if arg == "broadcast" {
                 self.current_view = Some("broadcast".to_string());
                 self.scroll_offset = 0;
-                let msg = Message {
-                    from: "bpmux".to_string(),
-                    text: "View set to broadcast.".to_string(),
-                    ts: Utc::now(),
-                    message_type: None,
-                    to: None,
-                };
-                self.messages.push(msg);
+                self.system_message("View set to broadcast.".to_string());
                 self.clear_input();
                 return None;
             }
@@ -576,26 +522,14 @@ impl App {
             if self.active_channels.contains(arg) {
                 self.current_view = Some(arg.to_string());
                 self.scroll_offset = 0;
-                let msg = Message {
-                    from: "bpmux".to_string(),
-                    text: format!("View set to {arg}."),
-                    ts: Utc::now(),
-                    message_type: None,
-                    to: None,
-                };
-                self.messages.push(msg);
+                self.system_message(format!("View set to {arg}."));
                 self.clear_input();
                 return None;
             }
             // No match
-            let msg = Message {
-                from: "bpmux".to_string(),
-                text: format!("no channel matches \"{arg}\". Type /view to list channels."),
-                ts: Utc::now(),
-                message_type: None,
-                to: None,
-            };
-            self.messages.push(msg);
+            self.system_message(format!(
+                "no channel matches \"{arg}\". Type /view to list channels."
+            ));
             self.clear_input();
             return None;
         }
@@ -611,40 +545,22 @@ impl App {
                     .collect();
                 format!("Pinned:\n{}", items.join("\n"))
             };
-            let msg = Message {
-                from: "bpmux".to_string(),
-                text: list,
-                ts: Utc::now(),
-                message_type: None,
-                to: None,
-            };
-            self.messages.push(msg);
+            self.system_message(list);
             self.clear_input();
             return None;
         }
         if let Some(arg) = text.strip_prefix("/pin ") {
             let arg = arg.trim();
             if arg.is_empty() {
-                let msg = Message {
-                    from: "bpmux".to_string(),
-                    text: "Usage: /pin <text>. Example: /pin channels-as-views because filter-on-render".to_string(),
-                    ts: Utc::now(),
-                    message_type: None,
-                    to: None,
-                };
-                self.messages.push(msg);
+                self.system_message(
+                    "Usage: /pin <text>. Example: /pin channels-as-views because filter-on-render"
+                        .to_string(),
+                );
                 self.clear_input();
                 return None;
             }
             if self.pins.len() >= 5 {
-                let msg = Message {
-                    from: "bpmux".to_string(),
-                    text: "max 5 pins — /unpin one first".to_string(),
-                    ts: Utc::now(),
-                    message_type: None,
-                    to: None,
-                };
-                self.messages.push(msg);
+                self.system_message("max 5 pins — /unpin one first".to_string());
                 self.clear_input();
                 return None;
             }
@@ -652,28 +568,15 @@ impl App {
             if let Some(dir) = &self.session_dir {
                 let _ = crate::session::log::write_pins(dir, &self.pins);
             }
-            let msg = Message {
-                from: "bpmux".to_string(),
-                text: format!("Pinned #{}: {arg}", self.pins.len()),
-                ts: Utc::now(),
-                message_type: None,
-                to: None,
-            };
-            self.messages.push(msg);
+            self.system_message(format!("Pinned #{}: {arg}", self.pins.len()));
             self.clear_input();
             return None;
         }
         if text == "/pin" {
-            let msg = Message {
-                from: "bpmux".to_string(),
-                text:
-                    "Usage: /pin <text>. Example: /pin channels-as-views because filter-on-render"
-                        .to_string(),
-                ts: Utc::now(),
-                message_type: None,
-                to: None,
-            };
-            self.messages.push(msg);
+            self.system_message(
+                "Usage: /pin <text>. Example: /pin channels-as-views because filter-on-render"
+                    .to_string(),
+            );
             self.clear_input();
             return None;
         }
@@ -685,38 +588,19 @@ impl App {
                     if let Some(dir) = &self.session_dir {
                         let _ = crate::session::log::write_pins(dir, &self.pins);
                     }
-                    let msg = Message {
-                        from: "bpmux".to_string(),
-                        text: format!("Unpinned #{n}: {removed}"),
-                        ts: Utc::now(),
-                        message_type: None,
-                        to: None,
-                    };
-                    self.messages.push(msg);
+                    self.system_message(format!("Unpinned #{n}: {removed}"));
                 }
                 _ => {
-                    let msg = Message {
-                        from: "bpmux".to_string(),
-                        text: format!("no pin #{arg}. Type /pins to list."),
-                        ts: Utc::now(),
-                        message_type: None,
-                        to: None,
-                    };
-                    self.messages.push(msg);
+                    self.system_message(format!("no pin #{arg}. Type /pins to list."));
                 }
             }
             self.clear_input();
             return None;
         }
         if text == "/unpin" {
-            let msg = Message {
-                from: "bpmux".to_string(),
-                text: "Usage: /unpin <number>. Type /pins to see pin numbers.".to_string(),
-                ts: Utc::now(),
-                message_type: None,
-                to: None,
-            };
-            self.messages.push(msg);
+            self.system_message(
+                "Usage: /unpin <number>. Type /pins to see pin numbers.".to_string(),
+            );
             self.clear_input();
             return None;
         }
@@ -727,29 +611,15 @@ impl App {
                     "Board unavailable: {e}\nEnsure `gh` CLI is installed and authenticated (`gh auth login`)."
                 ),
             };
-            let msg = Message {
-                from: "bpmux".to_string(),
-                text: board_text,
-                ts: Utc::now(),
-                message_type: None,
-                to: None,
-            };
-            self.messages.push(msg);
+            self.system_message(board_text);
             self.clear_input();
             return None;
         }
         if text.starts_with('/') {
-            let msg = Message {
-                from: "bpmux".to_string(),
-                text: format!(
-                    "Unknown command: {}. Type /help for available commands.",
-                    text
-                ),
-                ts: Utc::now(),
-                message_type: None,
-                to: None,
-            };
-            self.messages.push(msg);
+            self.system_message(format!(
+                "Unknown command: {}. Type /help for available commands.",
+                text
+            ));
             self.clear_input();
             return None;
         }
