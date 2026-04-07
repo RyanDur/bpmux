@@ -252,6 +252,12 @@ fn render_md_message<'a>(
         let line_style = md_line.style;
         for span in &mut md_line.spans {
             span.style = line_style.patch(span.style);
+            // Replace hardcoded ANSI blues from tui-markdown internals
+            if span.style.fg == Some(Color::LightBlue) {
+                span.style.fg = Some(DRACULA_CYAN);
+            } else if span.style.fg == Some(Color::Blue) {
+                span.style.fg = Some(DRACULA_PURPLE);
+            }
         }
         // Strip heading hash prefixes (e.g. "## ") — render as styled text only
         strip_heading_hashes(&mut md_line.spans);
