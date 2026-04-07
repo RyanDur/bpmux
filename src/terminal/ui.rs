@@ -350,7 +350,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
                     Style::default().fg(name_color)
                 };
                 let indent = Span::raw(" ".repeat(prefix.len()));
-                for (li, md_line) in md_text.lines.into_iter().take(7).enumerate() {
+                for (li, mut md_line) in md_text.lines.into_iter().take(7).enumerate() {
                     let mut spans = Vec::new();
                     if li == 0 {
                         if app.show_timestamps {
@@ -361,6 +361,11 @@ pub fn render(frame: &mut Frame, app: &mut App) {
                         spans.push(Span::styled(format!("{short_name}: "), name_style));
                     } else {
                         spans.push(indent.clone());
+                    }
+                    // Patch line-level style into each span so it survives Line reconstruction
+                    let line_style = md_line.style;
+                    for span in &mut md_line.spans {
+                        span.style = line_style.patch(span.style);
                     }
                     spans.extend(md_line.spans);
                     lines.push(Line::from(spans));
@@ -379,7 +384,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
                     Style::default().fg(name_color)
                 };
                 let indent = Span::raw(" ".repeat(prefix.len()));
-                for (li, md_line) in md_text.lines.into_iter().enumerate() {
+                for (li, mut md_line) in md_text.lines.into_iter().enumerate() {
                     let mut spans = Vec::new();
                     if li == 0 {
                         if app.show_timestamps {
@@ -390,6 +395,11 @@ pub fn render(frame: &mut Frame, app: &mut App) {
                         spans.push(Span::styled(format!("{short_name}: "), name_style));
                     } else {
                         spans.push(indent.clone());
+                    }
+                    // Patch line-level style into each span so it survives Line reconstruction
+                    let line_style = md_line.style;
+                    for span in &mut md_line.spans {
+                        span.style = line_style.patch(span.style);
                     }
                     spans.extend(md_line.spans);
                     lines.push(Line::from(spans));
