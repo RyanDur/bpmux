@@ -307,63 +307,69 @@ impl App {
             self.update_activity(msg.from, msg.text);
             return;
         }
-        // Auto-set "available" when a peer joins, remove when they leave
-        if msg.message_type.as_deref() == Some("system") {
-            if let Some(peer) = msg.text.strip_suffix(" joined") {
-                self.update_activity(peer.to_string(), "available".to_string());
-            } else if let Some(peer) = msg.text.strip_suffix(" left") {
-                self.peer_activity.remove(peer);
-            }
-        }
-        // Track active channels and per-channel unread counts
-        if msg.is_chat() {
-            let ch = channel_name(&msg, &self.peer_name);
-            self.active_channels.insert(ch.clone());
-            // Increment unread if this channel isn't the current view
-            let is_current = match &self.current_view {
-                None => false, // "all" view — no specific channel to clear
-                Some(v) => v == &ch,
-            };
-            if !is_current {
-                *self.channel_unread.entry(ch).or_insert(0) += 1;
-            }
-        }
-        // Track peer presence and self-declared status
-        if msg.is_chat() {
-            let peer = msg.from.clone();
-            if let Some(rest) = msg.text.strip_prefix("/status ") {
-                // Self-declared status: `/status blocked reason` or `/status working on X`
-                self.update_activity(peer, rest.trim().to_string());
-            } else {
-                // Regular chat = proof of connection, but only set "connected"
-                // if no richer status exists yet
-                if !self.peer_activity.contains_key(&peer) {
-                    self.update_activity(peer, "connected".to_string());
-                } else {
-                    // Refresh timestamp without overwriting self-declared status
-                    let status = self.peer_activity[&peer].0.clone();
-                    self.update_activity(peer, status);
-                }
-            }
-        }
-        // Track DM notifications for visual flash + badge
-        if let Some(recipients) = &msg.to {
-            let is_directed_at_me = recipients.iter().any(|r| r == &self.peer_name)
-                && !recipients.iter().all(|r| r == "all");
-            if is_directed_at_me {
-                let sender = msg.from.split(':').next().unwrap_or(&msg.from).to_string();
-                if !self.dm_unread_from.contains(&sender) {
-                    self.dm_unread_from.push(sender);
-                }
-                self.dm_flash_until = Some(Instant::now() + std::time::Duration::from_millis(750));
-            }
-        }
+        self.track_peer_presence(&msg);
+        self.track_channel_unread(&msg);
+        self.track_peer_status(&msg);
+        self.track_dm_notification(&msg);
+
         let was_at_bottom = self.scroll_offset == 0;
         self.messages.push(msg);
         if !was_at_bottom {
             self.scroll_offset = self.scroll_offset.saturating_add(1);
             self.unread_count += 1;
         }
+    }
+
+    fn track_peer_presence(&mut self, msg: &Message) {
+        if msg.message_type.as_deref() != Some("system") {
+            return;
+        }
+        if let Some(peer) = msg.text.strip_suffix(" joined") {
+            self.update_activity(peer.to_string(), "available".to_string());
+        } else if let Some(peer) = msg.text.strip_suffix(" left") {
+            self.peer_activity.remove(peer);
+        }
+    }
+
+    fn track_channel_unread(&mut self, msg: &Message) {
+        if !msg.is_chat() {
+            return;
+        }
+        let ch = channel_name(msg, &self.peer_name);
+        self.active_channels.insert(ch.clone());
+        let is_current = self.current_view.as_ref().is_some_and(|v| v == &ch);
+        if !is_current {
+            *self.channel_unread.entry(ch).or_insert(0) += 1;
+        }
+    }
+
+    fn track_peer_status(&mut self, msg: &Message) {
+        if !msg.is_chat() {
+            return;
+        }
+        let peer = msg.from.clone();
+        if let Some(rest) = msg.text.strip_prefix("/status ") {
+            self.update_activity(peer, rest.trim().to_string());
+        } else if !self.peer_activity.contains_key(&peer) {
+            self.update_activity(peer, "connected".to_string());
+        } else {
+            let status = self.peer_activity[&peer].0.clone();
+            self.update_activity(peer, status);
+        }
+    }
+
+    fn track_dm_notification(&mut self, msg: &Message) {
+        let Some(recipients) = &msg.to else { return };
+        let is_directed_at_me = recipients.iter().any(|r| r == &self.peer_name)
+            && !recipients.iter().all(|r| r == "all");
+        if !is_directed_at_me {
+            return;
+        }
+        let sender = msg.from.split(':').next().unwrap_or(&msg.from).to_string();
+        if !self.dm_unread_from.contains(&sender) {
+            self.dm_unread_from.push(sender);
+        }
+        self.dm_flash_until = Some(Instant::now() + std::time::Duration::from_millis(750));
     }
 
     pub fn submit_message(&mut self) -> Option<Message> {
@@ -479,54 +485,45 @@ impl App {
 
     fn handle_to_with_args(&mut self, rest: String) -> Option<Message> {
         let rest = rest.trim_start();
-        if let Some((recipients_str, body)) = rest.split_once(' ') {
-            let body = body.trim().to_string();
-            if body.is_empty() {
-                self.system_message(
-                    "Usage: /to <recipients> <message>. Example: /to dev,pm hello".to_string(),
-                );
-                self.clear_input();
-                return None;
-            }
-            let recipients: Vec<String> = recipients_str
-                .split(',')
-                .map(|s| s.trim().to_string())
-                .filter(|s| !s.is_empty())
-                .collect();
-            if recipients.is_empty() {
-                self.system_message(
-                    "Usage: /to <recipients> <message>. Example: /to dev,pm hello".to_string(),
-                );
-                self.clear_input();
-                return None;
-            }
-            let msg = Message {
-                from: format!("{}:human", self.peer_name),
-                text: body,
-                ts: Utc::now(),
-                message_type: None,
-                to: Some(recipients),
-            };
-            self.messages.push(msg.clone());
-            self.clear_input();
-            self.scroll_offset = 0;
-            self.unread_count = 0;
-            if self.input_history.len() >= MAX_HISTORY {
-                self.input_history.remove(0);
-            }
-            self.input_history.push(self.input.clone());
-            self.history_index = None;
-            return Some(msg);
+        let Some((recipients_str, body)) = rest.split_once(' ') else {
+            return self.show_to_usage();
+        };
+        let body = body.trim().to_string();
+        if body.is_empty() {
+            return self.show_to_usage();
         }
-        // `/to <something>` with no body
-        self.system_message(
-            "Usage: /to <recipients> <message>. Example: /to dev,pm hello".to_string(),
-        );
+        let recipients: Vec<String> = recipients_str
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
+        if recipients.is_empty() {
+            return self.show_to_usage();
+        }
+        let msg = Message {
+            from: format!("{}:human", self.peer_name),
+            text: body,
+            ts: Utc::now(),
+            message_type: None,
+            to: Some(recipients),
+        };
+        self.messages.push(msg.clone());
         self.clear_input();
-        None
+        self.scroll_offset = 0;
+        self.unread_count = 0;
+        if self.input_history.len() >= MAX_HISTORY {
+            self.input_history.remove(0);
+        }
+        self.input_history.push(self.input.clone());
+        self.history_index = None;
+        Some(msg)
     }
 
     fn handle_to_bare(&mut self) -> Option<Message> {
+        self.show_to_usage()
+    }
+
+    fn show_to_usage(&mut self) -> Option<Message> {
         self.system_message(
             "Usage: /to <recipients> <message>. Example: /to dev,pm hello".to_string(),
         );
@@ -601,12 +598,7 @@ impl App {
     fn handle_pin_with_arg(&mut self, arg: String) -> Option<Message> {
         let arg = arg.trim();
         if arg.is_empty() {
-            self.system_message(
-                "Usage: /pin <text>. Example: /pin channels-as-views because filter-on-render"
-                    .to_string(),
-            );
-            self.clear_input();
-            return None;
+            return self.pin_usage();
         }
         if self.pins.len() >= 5 {
             self.system_message("max 5 pins — /unpin one first".to_string());
@@ -623,6 +615,10 @@ impl App {
     }
 
     fn handle_pin_bare(&mut self) -> Option<Message> {
+        self.pin_usage()
+    }
+
+    fn pin_usage(&mut self) -> Option<Message> {
         self.system_message(
             "Usage: /pin <text>. Example: /pin channels-as-views because filter-on-render"
                 .to_string(),
@@ -656,7 +652,7 @@ impl App {
     }
 
     fn handle_board(&mut self) -> Option<Message> {
-        let board_text = match Self::fetch_board() {
+        let board_text = match fetch_board() {
             Ok(text) => text,
             Err(e) => format!(
                 "Board unavailable: {e}\nEnsure `gh` CLI is installed and authenticated (`gh auth login`)."
@@ -747,127 +743,6 @@ impl App {
         self.input = format!("/to {}{} ", prefix_part, completed);
         self.cursor_pos = self.input.len();
         true
-    }
-
-    /// Fetch project board from GitHub Issues via `gh` CLI.
-    fn fetch_board() -> Result<String, String> {
-        let mut cmd = std::process::Command::new("gh");
-        cmd.args([
-            "issue",
-            "list",
-            "--state",
-            "all",
-            "--limit",
-            "50",
-            "--json",
-            "number,title,state,labels",
-        ]);
-        // Use BPMUX_REPO env var if set, so /board works outside the git repo
-        if let Ok(repo) = std::env::var("BPMUX_REPO") {
-            cmd.args(["-R", &repo]);
-        }
-        let output = cmd.output().map_err(|e| format!("failed to run gh: {e}"))?;
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(format!("gh failed: {stderr}"));
-        }
-        let json: Vec<serde_json::Value> =
-            serde_json::from_slice(&output.stdout).map_err(|e| format!("parse error: {e}"))?;
-
-        struct BoardItem {
-            number: u64,
-            title: String,
-            status: Option<String>,
-        }
-
-        let mut active: Vec<BoardItem> = Vec::new();
-        let mut backlog: Vec<BoardItem> = Vec::new();
-        let mut icebox: Vec<BoardItem> = Vec::new();
-
-        for issue in &json {
-            let num = issue["number"].as_u64().unwrap_or(0);
-            let title = issue["title"].as_str().unwrap_or("?").to_string();
-            let state = issue["state"].as_str().unwrap_or("OPEN");
-            let labels: Vec<&str> = issue["labels"]
-                .as_array()
-                .map(|arr| arr.iter().filter_map(|l| l["name"].as_str()).collect())
-                .unwrap_or_default();
-
-            if state == "CLOSED" {
-                continue; // Done items not shown
-            }
-
-            // Derive status from labels for active items
-            let status = if labels.contains(&"delivered") {
-                Some("delivered".to_string())
-            } else if labels.contains(&"finished") {
-                Some("finished".to_string())
-            } else if labels.contains(&"started") {
-                Some("started".to_string())
-            } else if labels.contains(&"rejected") {
-                Some("rejected".to_string())
-            } else {
-                None
-            };
-
-            let item = BoardItem {
-                number: num,
-                title,
-                status,
-            };
-
-            if labels.contains(&"icebox") {
-                icebox.push(item);
-            } else if labels.contains(&"backlog") {
-                backlog.push(item);
-            } else {
-                active.push(item);
-            }
-        }
-
-        let mut lines: Vec<String> = Vec::new();
-        lines.push("## Board".to_string());
-
-        if !active.is_empty() {
-            lines.push(String::new());
-            lines.push(format!("### ● Active ({})", active.len()));
-            for item in &active {
-                let status_tag = item
-                    .status
-                    .as_ref()
-                    .map(|s| format!(" *{s}*"))
-                    .unwrap_or_default();
-                lines.push(format!("- **#{}** {}{status_tag}", item.number, item.title));
-            }
-        }
-
-        if !backlog.is_empty() {
-            lines.push(String::new());
-            lines.push(format!("### ○ Backlog ({})", backlog.len()));
-            for item in backlog.iter().take(10) {
-                lines.push(format!("- **#{}** {}", item.number, item.title));
-            }
-            if backlog.len() > 10 {
-                lines.push(format!("- *+{} more*", backlog.len() - 10));
-            }
-        }
-
-        if !icebox.is_empty() {
-            lines.push(String::new());
-            lines.push(format!("### ◌ Icebox ({})", icebox.len()));
-            if let Some(first) = icebox.first() {
-                lines.push(format!("- **#{}** {}", first.number, first.title));
-            }
-            if icebox.len() > 1 {
-                lines.push(format!("- *+{} more*", icebox.len() - 1));
-            }
-        }
-
-        if lines.len() <= 1 {
-            Ok("No open issues found.".to_string())
-        } else {
-            Ok(lines.join("\n"))
-        }
     }
 
     /// Returns the filtered list of slash commands matching current input.
@@ -1048,6 +923,127 @@ impl App {
             self.history_index = Some(new_index);
             self.input = self.input_history[new_index].clone();
         }
+    }
+}
+
+/// Fetch project board from GitHub Issues via `gh` CLI.
+fn fetch_board() -> Result<String, String> {
+    let mut cmd = std::process::Command::new("gh");
+    cmd.args([
+        "issue",
+        "list",
+        "--state",
+        "all",
+        "--limit",
+        "50",
+        "--json",
+        "number,title,state,labels",
+    ]);
+    // Use BPMUX_REPO env var if set, so /board works outside the git repo
+    if let Ok(repo) = std::env::var("BPMUX_REPO") {
+        cmd.args(["-R", &repo]);
+    }
+    let output = cmd.output().map_err(|e| format!("failed to run gh: {e}"))?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("gh failed: {stderr}"));
+    }
+    let json: Vec<serde_json::Value> =
+        serde_json::from_slice(&output.stdout).map_err(|e| format!("parse error: {e}"))?;
+
+    struct BoardItem {
+        number: u64,
+        title: String,
+        status: Option<String>,
+    }
+
+    let mut active: Vec<BoardItem> = Vec::new();
+    let mut backlog: Vec<BoardItem> = Vec::new();
+    let mut icebox: Vec<BoardItem> = Vec::new();
+
+    for issue in &json {
+        let num = issue["number"].as_u64().unwrap_or(0);
+        let title = issue["title"].as_str().unwrap_or("?").to_string();
+        let state = issue["state"].as_str().unwrap_or("OPEN");
+        let labels: Vec<&str> = issue["labels"]
+            .as_array()
+            .map(|arr| arr.iter().filter_map(|l| l["name"].as_str()).collect())
+            .unwrap_or_default();
+
+        if state == "CLOSED" {
+            continue; // Done items not shown
+        }
+
+        // Derive status from labels for active items
+        let status = if labels.contains(&"delivered") {
+            Some("delivered".to_string())
+        } else if labels.contains(&"finished") {
+            Some("finished".to_string())
+        } else if labels.contains(&"started") {
+            Some("started".to_string())
+        } else if labels.contains(&"rejected") {
+            Some("rejected".to_string())
+        } else {
+            None
+        };
+
+        let item = BoardItem {
+            number: num,
+            title,
+            status,
+        };
+
+        if labels.contains(&"icebox") {
+            icebox.push(item);
+        } else if labels.contains(&"backlog") {
+            backlog.push(item);
+        } else {
+            active.push(item);
+        }
+    }
+
+    let mut lines: Vec<String> = Vec::new();
+    lines.push("## Board".to_string());
+
+    if !active.is_empty() {
+        lines.push(String::new());
+        lines.push(format!("### ● Active ({})", active.len()));
+        for item in &active {
+            let status_tag = item
+                .status
+                .as_ref()
+                .map(|s| format!(" *{s}*"))
+                .unwrap_or_default();
+            lines.push(format!("- **#{}** {}{status_tag}", item.number, item.title));
+        }
+    }
+
+    if !backlog.is_empty() {
+        lines.push(String::new());
+        lines.push(format!("### ○ Backlog ({})", backlog.len()));
+        for item in backlog.iter().take(10) {
+            lines.push(format!("- **#{}** {}", item.number, item.title));
+        }
+        if backlog.len() > 10 {
+            lines.push(format!("- *+{} more*", backlog.len() - 10));
+        }
+    }
+
+    if !icebox.is_empty() {
+        lines.push(String::new());
+        lines.push(format!("### ◌ Icebox ({})", icebox.len()));
+        if let Some(first) = icebox.first() {
+            lines.push(format!("- **#{}** {}", first.number, first.title));
+        }
+        if icebox.len() > 1 {
+            lines.push(format!("- *+{} more*", icebox.len() - 1));
+        }
+    }
+
+    if lines.len() <= 1 {
+        Ok("No open issues found.".to_string())
+    } else {
+        Ok(lines.join("\n"))
     }
 }
 
