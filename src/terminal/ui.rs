@@ -20,6 +20,49 @@ const DRACULA_GREEN: Color = Color::Rgb(80, 250, 123);
 const DRACULA_RED: Color = Color::Rgb(255, 85, 85);
 const DRACULA_PINK: Color = Color::Rgb(255, 121, 198);
 
+/// Dracula-themed stylesheet for tui-markdown rendering.
+/// Replaces default ANSI colors that have poor contrast on dark backgrounds.
+#[derive(Clone, Debug)]
+struct DraculaStyleSheet;
+
+impl tui_markdown::StyleSheet for DraculaStyleSheet {
+    fn heading(&self, level: u8) -> Style {
+        match level {
+            1 => Style::new()
+                .fg(DRACULA_BG)
+                .bg(DRACULA_CYAN)
+                .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
+            2 => Style::new().fg(DRACULA_CYAN).add_modifier(Modifier::BOLD),
+            3 => Style::new()
+                .fg(DRACULA_CYAN)
+                .add_modifier(Modifier::BOLD | Modifier::ITALIC),
+            _ => Style::new().fg(DRACULA_CYAN).add_modifier(Modifier::ITALIC),
+        }
+    }
+
+    fn code(&self) -> Style {
+        Style::new().fg(DRACULA_FG).bg(DRACULA_SELECTION)
+    }
+
+    fn link(&self) -> Style {
+        Style::new()
+            .fg(DRACULA_PURPLE)
+            .add_modifier(Modifier::UNDERLINED)
+    }
+
+    fn blockquote(&self) -> Style {
+        Style::new().fg(DRACULA_GREEN)
+    }
+
+    fn heading_meta(&self) -> Style {
+        Style::new().add_modifier(Modifier::DIM)
+    }
+
+    fn metadata_block(&self) -> Style {
+        Style::new().fg(Color::Rgb(241, 250, 140)) // Dracula yellow
+    }
+}
+
 const SENDER_PALETTE: [Color; 6] = [
     DRACULA_CYAN,              // Dracula cyan
     DRACULA_GREEN,             // Dracula green
@@ -191,7 +234,8 @@ fn render_md_message<'a>(
     indent: Span<'a>,
     line_limit: Option<usize>,
 ) -> Vec<Line<'a>> {
-    let md_text = tui_markdown::from_str(text);
+    let options = tui_markdown::Options::new(DraculaStyleSheet);
+    let md_text = tui_markdown::from_str_with_options(text, &options);
     let iter: Box<dyn Iterator<Item = (usize, Line<'_>)>> = match line_limit {
         Some(n) => Box::new(md_text.lines.into_iter().take(n).enumerate()),
         None => Box::new(md_text.lines.into_iter().enumerate()),
@@ -610,6 +654,15 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             Style::default().fg(Color::Rgb(241, 250, 140)), // Dracula yellow
         ));
     }
+    // Right-aligned "? help" hint
+    let used: usize = status_spans.iter().map(|s| s.content.len()).sum();
+    let bar_width = chunks[3].width as usize;
+    let hint = "? help";
+    if used + hint.len() + 1 < bar_width {
+        let pad = bar_width.saturating_sub(used + hint.len());
+        status_spans.push(Span::raw(" ".repeat(pad)));
+        status_spans.push(Span::styled(hint, Style::default().fg(DRACULA_COMMENT)));
+    }
     let status = Paragraph::new(Line::from(status_spans))
         .style(Style::default().bg(DRACULA_SELECTION).fg(DRACULA_FG));
     frame.render_widget(status, chunks[3]);
@@ -623,7 +676,7 @@ Commands:
   /pin /pins /unpin  manage pins (max 5)
   /board   project board   /who    participants
   /status  set status      /debug  system msgs
-  /help    help in chat    /quit   exit
+  /quit    exit
 
 Keys:
   Enter    send / expand    Esc     clear input
@@ -1110,9 +1163,8 @@ mod tests {
                     let cell = buffer.cell((col as u16, y)).unwrap();
                     // Heading 2 should be cyan + bold
                     assert_eq!(
-                        cell.fg,
-                        Color::Cyan,
-                        "H2 heading should be cyan. Row: {row}"
+                        cell.fg, DRACULA_CYAN,
+                        "H2 heading should be Dracula cyan. Row: {row}"
                     );
                     assert!(
                         cell.modifier.contains(Modifier::BOLD),
