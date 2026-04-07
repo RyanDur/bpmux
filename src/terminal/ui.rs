@@ -40,6 +40,7 @@ fn channel_tag_color(tag: &str, is_broadcast: bool) -> Color {
     }
 }
 
+#[allow(dead_code)]
 fn parse_inline_code(text: &str) -> Vec<(String, bool)> {
     let mut segments = Vec::new();
     let mut remaining = text;
@@ -63,6 +64,7 @@ fn parse_inline_code(text: &str) -> Vec<(String, bool)> {
     segments
 }
 
+#[allow(dead_code)]
 fn parse_mentions(text: &str) -> Vec<Span<'static>> {
     let inline_segments = parse_inline_code(text);
     let mut spans = Vec::new();
@@ -339,29 +341,30 @@ pub fn render(frame: &mut Frame, app: &mut App) {
 
             let msg_key = msg.ts.to_rfc3339();
             if wrapped_lines > 10 && !app.expanded_messages.contains(&msg_key) {
-                // Truncate: show first 7 lines worth of text, then [+N lines]
-                let first_line_text_budget = chat_inner_width.saturating_sub(prefix.len());
-                let subsequent_budget = chat_inner_width * 6;
-                let truncated_chars = first_line_text_budget + subsequent_budget;
-                let display_text: String = msg.text.chars().take(truncated_chars).collect();
+                // Truncate: show first 7 lines of markdown, then [+N lines]
+                let md_text = tui_markdown::from_str(&msg.text);
                 let remaining_lines = wrapped_lines.saturating_sub(7);
-
-                let mut spans = Vec::new();
-                if app.show_timestamps {
-                    let time = msg.ts.format("%H:%M:%S").to_string();
-                    spans.push(Span::styled(format!("[{time}] "), ts_style));
-                }
-                spans.push(Span::styled(channel_tag.clone(), tag_style));
-                spans.push(Span::styled(
-                    format!("{short_name}: "),
-                    if is_human {
-                        Style::default().fg(name_color).add_modifier(Modifier::BOLD)
+                let name_style = if is_human {
+                    Style::default().fg(name_color).add_modifier(Modifier::BOLD)
+                } else {
+                    Style::default().fg(name_color)
+                };
+                let indent = Span::raw(" ".repeat(prefix.len()));
+                for (li, md_line) in md_text.lines.into_iter().take(7).enumerate() {
+                    let mut spans = Vec::new();
+                    if li == 0 {
+                        if app.show_timestamps {
+                            let time = msg.ts.format("%H:%M:%S").to_string();
+                            spans.push(Span::styled(format!("[{time}] "), ts_style));
+                        }
+                        spans.push(Span::styled(channel_tag.clone(), tag_style));
+                        spans.push(Span::styled(format!("{short_name}: "), name_style));
                     } else {
-                        Style::default().fg(name_color)
-                    },
-                ));
-                spans.extend(parse_mentions(&display_text));
-                lines.push(Line::from(spans));
+                        spans.push(indent.clone());
+                    }
+                    spans.extend(md_line.spans);
+                    lines.push(Line::from(spans));
+                }
 
                 lines.push(Line::from(Span::styled(
                     format!("  [+{remaining_lines} lines]"),
