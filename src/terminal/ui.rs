@@ -19,6 +19,7 @@ const DRACULA_ORANGE: Color = Color::Rgb(255, 184, 108);
 const DRACULA_GREEN: Color = Color::Rgb(80, 250, 123);
 const DRACULA_RED: Color = Color::Rgb(255, 85, 85);
 const DRACULA_PINK: Color = Color::Rgb(255, 121, 198);
+const DRACULA_YELLOW: Color = Color::Rgb(241, 250, 140);
 
 /// Dracula-themed stylesheet for tui-markdown rendering.
 /// Replaces default ANSI colors that have poor contrast on dark backgrounds.
@@ -59,17 +60,17 @@ impl tui_markdown::StyleSheet for DraculaStyleSheet {
     }
 
     fn metadata_block(&self) -> Style {
-        Style::new().fg(Color::Rgb(241, 250, 140)) // Dracula yellow
+        Style::new().fg(DRACULA_YELLOW) // Dracula yellow
     }
 }
 
 const SENDER_PALETTE: [Color; 6] = [
-    DRACULA_CYAN,              // Dracula cyan
-    DRACULA_GREEN,             // Dracula green
-    DRACULA_ORANGE,            // Dracula orange
-    DRACULA_PURPLE,            // Dracula purple
-    DRACULA_PINK,              // Dracula pink
-    Color::Rgb(241, 250, 140), // Dracula yellow
+    DRACULA_CYAN,   // Dracula cyan
+    DRACULA_GREEN,  // Dracula green
+    DRACULA_ORANGE, // Dracula orange
+    DRACULA_PURPLE, // Dracula purple
+    DRACULA_PINK,   // Dracula pink
+    DRACULA_YELLOW, // Dracula yellow
 ];
 
 fn sender_color_index(name: &str) -> usize {
@@ -439,10 +440,10 @@ fn render_pins(frame: &mut Frame, app: &App, area: Rect) {
                 .title(" pins ")
                 .title_style(
                     Style::default()
-                        .fg(Color::Rgb(241, 250, 140))
+                        .fg(DRACULA_YELLOW)
                         .add_modifier(Modifier::BOLD),
                 )
-                .border_style(Style::default().fg(Color::Rgb(241, 250, 140))),
+                .border_style(Style::default().fg(DRACULA_YELLOW)),
         );
         frame.render_widget(pin_bar, area);
     }
@@ -604,9 +605,9 @@ fn render_status_bar(frame: &mut Frame, app: &App, area: Rect) {
     for (peer, (status, _)) in &peers {
         let short_name = peer.split(':').next().unwrap_or(peer);
         let dot_color = match status.as_str() {
-            "busy" => Color::Rgb(241, 250, 140), // Yellow — busy
-            "help" => DRACULA_RED,               // Red — needs help
-            _ => DRACULA_GREEN,                  // Green — available/connected
+            "busy" => DRACULA_YELLOW, // Yellow — busy
+            "help" => DRACULA_RED,    // Red — needs help
+            _ => DRACULA_GREEN,       // Green — available/connected
         };
         status_spans.push(Span::raw(" "));
         status_spans.push(Span::styled("\u{25CF}", Style::default().fg(dot_color)));
@@ -621,7 +622,7 @@ fn render_status_bar(frame: &mut Frame, app: &App, area: Rect) {
         status_spans.push(Span::raw(" | "));
         status_spans.push(Span::styled(
             format!("\u{2709} DM from {names}"),
-            Style::default().fg(Color::Rgb(241, 250, 140)), // Dracula yellow
+            Style::default().fg(DRACULA_YELLOW), // Dracula yellow
         ));
     }
     // Right-aligned "? help" hint
