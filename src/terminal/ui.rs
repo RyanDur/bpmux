@@ -9,12 +9,23 @@ use ratatui::{
 use crate::session;
 use crate::terminal::app::{self, App};
 
+const DRACULA_BG: Color = Color::Rgb(40, 42, 54);
+const DRACULA_FG: Color = Color::Rgb(248, 248, 242);
+const DRACULA_SELECTION: Color = Color::Rgb(68, 71, 90);
+const DRACULA_COMMENT: Color = Color::Rgb(98, 114, 164);
+const DRACULA_PURPLE: Color = Color::Rgb(189, 147, 249);
+const DRACULA_CYAN: Color = Color::Rgb(139, 233, 253);
+const DRACULA_ORANGE: Color = Color::Rgb(255, 184, 108);
+const DRACULA_GREEN: Color = Color::Rgb(80, 250, 123);
+const DRACULA_RED: Color = Color::Rgb(255, 85, 85);
+const DRACULA_PINK: Color = Color::Rgb(255, 121, 198);
+
 const SENDER_PALETTE: [Color; 6] = [
-    Color::Rgb(139, 233, 253), // Dracula cyan
-    Color::Rgb(80, 250, 123),  // Dracula green
-    Color::Rgb(255, 184, 108), // Dracula orange
-    Color::Rgb(189, 147, 249), // Dracula purple
-    Color::Rgb(255, 121, 198), // Dracula pink
+    DRACULA_CYAN,              // Dracula cyan
+    DRACULA_GREEN,             // Dracula green
+    DRACULA_ORANGE,            // Dracula orange
+    DRACULA_PURPLE,            // Dracula purple
+    DRACULA_PINK,              // Dracula pink
     Color::Rgb(241, 250, 140), // Dracula yellow
 ];
 
@@ -34,7 +45,7 @@ fn sender_color(name: &str) -> Color {
 /// colors don't collide for the same name.
 fn channel_tag_color(tag: &str, is_broadcast: bool) -> Color {
     if is_broadcast {
-        Color::Rgb(98, 114, 164) // Dracula comment gray (#6272A4)
+        DRACULA_COMMENT // Dracula comment gray (#6272A4)
     } else {
         SENDER_PALETTE[(sender_color_index(tag) + 3) % SENDER_PALETTE.len()]
     }
@@ -48,9 +59,9 @@ fn render_sidebar(frame: &mut Frame, app: &App, area: Rect) {
         .map(|(i, ch)| {
             let selected = i == app.sidebar_selected && app.sidebar_focused;
             let bg = if selected {
-                Color::Rgb(68, 71, 90) // Dracula selection
+                DRACULA_SELECTION // Dracula selection
             } else {
-                Color::Rgb(40, 42, 54) // Dracula bg
+                DRACULA_BG // Dracula bg
             };
 
             // Index 0 = project root node
@@ -59,19 +70,16 @@ fn render_sidebar(frame: &mut Frame, app: &App, area: Rect) {
                 let is_all = app.current_view.is_none();
                 let name_style = if is_all {
                     Style::default()
-                        .fg(Color::Rgb(248, 248, 242))
+                        .fg(DRACULA_FG)
                         .bg(bg)
                         .add_modifier(Modifier::BOLD)
                 } else {
-                    Style::default().fg(Color::Rgb(248, 248, 242)).bg(bg)
+                    Style::default().fg(DRACULA_FG).bg(bg)
                 };
                 let select_marker = if selected { "▸ " } else { "  " };
                 return Line::from(vec![
-                    Span::styled(
-                        select_marker,
-                        Style::default().bg(bg).fg(Color::Rgb(189, 147, 249)),
-                    ),
-                    Span::styled(arrow, Style::default().bg(bg).fg(Color::Rgb(98, 114, 164))),
+                    Span::styled(select_marker, Style::default().bg(bg).fg(DRACULA_PURPLE)),
+                    Span::styled(arrow, Style::default().bg(bg).fg(DRACULA_COMMENT)),
                     Span::styled(ch.chars().take(16).collect::<String>(), name_style),
                 ]);
             }
@@ -111,18 +119,15 @@ fn render_sidebar(frame: &mut Frame, app: &App, area: Rect) {
 
             let name_style = if is_current || unread > 0 {
                 Style::default()
-                    .fg(Color::Rgb(248, 248, 242))
+                    .fg(DRACULA_FG)
                     .bg(bg)
                     .add_modifier(Modifier::BOLD)
             } else {
-                Style::default().fg(Color::Rgb(98, 114, 164)).bg(bg)
+                Style::default().fg(DRACULA_COMMENT).bg(bg)
             };
 
             let mut spans = vec![
-                Span::styled(
-                    select_marker,
-                    Style::default().bg(bg).fg(Color::Rgb(189, 147, 249)),
-                ),
+                Span::styled(select_marker, Style::default().bg(bg).fg(DRACULA_PURPLE)),
                 Span::styled("  ", Style::default().bg(bg)), // indent under project
                 Span::styled(display_name, name_style),
             ];
@@ -131,7 +136,7 @@ fn render_sidebar(frame: &mut Frame, app: &App, area: Rect) {
                     badge,
                     Style::default()
                         .bg(bg)
-                        .fg(Color::Rgb(139, 233, 253))
+                        .fg(DRACULA_CYAN)
                         .add_modifier(Modifier::BOLD),
                 ));
             }
@@ -140,9 +145,9 @@ fn render_sidebar(frame: &mut Frame, app: &App, area: Rect) {
         .collect();
 
     let border_color = if app.sidebar_focused {
-        Color::Rgb(189, 147, 249) // Dracula purple — focused
+        DRACULA_PURPLE // Dracula purple — focused
     } else {
-        Color::Rgb(68, 71, 90) // Dracula selection — unfocused
+        DRACULA_SELECTION // Dracula selection — unfocused
     };
 
     let sidebar = Paragraph::new(items).block(
@@ -151,15 +156,11 @@ fn render_sidebar(frame: &mut Frame, app: &App, area: Rect) {
             .title(" channels ")
             .title_style(
                 Style::default()
-                    .fg(Color::Rgb(189, 147, 249))
+                    .fg(DRACULA_PURPLE)
                     .add_modifier(Modifier::BOLD),
             )
             .border_style(Style::default().fg(border_color))
-            .style(
-                Style::default()
-                    .bg(Color::Rgb(40, 42, 54))
-                    .fg(Color::Rgb(248, 248, 242)),
-            ),
+            .style(Style::default().bg(DRACULA_BG).fg(DRACULA_FG)),
     );
     frame.render_widget(sidebar, area);
 }
@@ -321,7 +322,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
 
             let mut lines = Vec::new();
 
-            let ts_style = Style::default().fg(Color::Rgb(98, 114, 164));
+            let ts_style = Style::default().fg(DRACULA_COMMENT);
             let tag_color = channel_tag_color(&channel_tag, is_broadcast);
             let tag_style = Style::default().fg(tag_color);
 
@@ -346,7 +347,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
                 lines.extend(render_md_message(&msg.text, prefix_spans, indent, Some(7)));
                 lines.push(Line::from(Span::styled(
                     format!("  [+{remaining_lines} lines]"),
-                    Style::default().fg(Color::Rgb(98, 114, 164)),
+                    Style::default().fg(DRACULA_COMMENT),
                 )));
             } else {
                 // Render full message text as markdown
@@ -371,13 +372,9 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             Block::default()
                 .borders(Borders::ALL)
                 .title(" bpmux ")
-                .title_style(Style::default().fg(Color::Rgb(189, 147, 249)))
-                .border_style(Style::default().fg(Color::Rgb(68, 71, 90)))
-                .style(
-                    Style::default()
-                        .bg(Color::Rgb(40, 42, 54))
-                        .fg(Color::Rgb(248, 248, 242)),
-                ),
+                .title_style(Style::default().fg(DRACULA_PURPLE))
+                .border_style(Style::default().fg(DRACULA_SELECTION))
+                .style(Style::default().bg(DRACULA_BG).fg(DRACULA_FG)),
         )
         .wrap(Wrap { trim: false });
 
@@ -406,9 +403,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         let unread_area = Rect::new(unread_x, unread_y, unread_width, 1);
         let unread = Paragraph::new(Span::styled(
             format!(" {unread_text} "),
-            Style::default()
-                .fg(Color::Rgb(40, 42, 54))
-                .bg(Color::Rgb(139, 233, 253)),
+            Style::default().fg(DRACULA_BG).bg(DRACULA_CYAN),
         ));
         frame.render_widget(Clear, unread_area);
         frame.render_widget(unread, unread_area);
@@ -423,7 +418,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             .map(|(i, p)| {
                 Line::from(Span::styled(
                     format!(" {}. {}", i + 1, p),
-                    Style::default().fg(Color::Rgb(248, 248, 242)), // default foreground
+                    Style::default().fg(DRACULA_FG), // default foreground
                 ))
             })
             .collect();
@@ -450,11 +445,11 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         Line::from(vec![
             Span::styled(
                 cmd.to_string(),
-                Style::default().fg(Color::Rgb(189, 147, 249)), // Dracula purple
+                Style::default().fg(DRACULA_PURPLE), // Dracula purple
             ),
             Span::styled(
                 rest.to_string(),
-                Style::default().fg(Color::Rgb(248, 248, 242)), // Default fg
+                Style::default().fg(DRACULA_FG), // Default fg
             ),
         ])
     } else {
@@ -468,13 +463,9 @@ pub fn render(frame: &mut Frame, app: &mut App) {
                     Some(ch) => format!(" {} [{ch}] > ", app.peer_name),
                     None => format!(" {} > ", app.peer_name),
                 })
-                .title_style(Style::default().fg(Color::Rgb(189, 147, 249)))
-                .border_style(Style::default().fg(Color::Rgb(68, 71, 90)))
-                .style(
-                    Style::default()
-                        .bg(Color::Rgb(40, 42, 54))
-                        .fg(Color::Rgb(248, 248, 242)),
-                ),
+                .title_style(Style::default().fg(DRACULA_PURPLE))
+                .border_style(Style::default().fg(DRACULA_SELECTION))
+                .style(Style::default().bg(DRACULA_BG).fg(DRACULA_FG)),
         )
         .wrap(Wrap { trim: false });
     frame.render_widget(input, chunks[2]);
@@ -508,17 +499,13 @@ pub fn render(frame: &mut Frame, app: &mut App) {
                 let selected = app.popup_selected == Some(i);
                 let (cmd_style, desc_style) = if selected {
                     (
-                        Style::default()
-                            .fg(Color::Rgb(248, 248, 242))
-                            .bg(Color::Rgb(68, 71, 90)),
-                        Style::default()
-                            .fg(Color::Rgb(189, 147, 249))
-                            .bg(Color::Rgb(68, 71, 90)),
+                        Style::default().fg(DRACULA_FG).bg(DRACULA_SELECTION),
+                        Style::default().fg(DRACULA_PURPLE).bg(DRACULA_SELECTION),
                     )
                 } else {
                     (
-                        Style::default().fg(Color::Rgb(189, 147, 249)),
-                        Style::default().fg(Color::Rgb(98, 114, 164)),
+                        Style::default().fg(DRACULA_PURPLE),
+                        Style::default().fg(DRACULA_COMMENT),
                     )
                 };
                 Line::from(vec![
@@ -530,12 +517,8 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         let popup = Paragraph::new(items).block(
             Block::default()
                 .borders(Borders::ALL)
-                .border_style(Style::default().fg(Color::Rgb(98, 114, 164)))
-                .style(
-                    Style::default()
-                        .bg(Color::Rgb(40, 42, 54))
-                        .fg(Color::Rgb(248, 248, 242)),
-                ),
+                .border_style(Style::default().fg(DRACULA_COMMENT))
+                .style(Style::default().bg(DRACULA_BG).fg(DRACULA_FG)),
         );
         frame.render_widget(Clear, popup_area);
         frame.render_widget(popup, popup_area);
@@ -543,11 +526,11 @@ pub fn render(frame: &mut Frame, app: &mut App) {
 
     // Status bar
     let connection_status = if app.connected_peers == 0 {
-        Span::styled(" solo", Style::default().fg(Color::Rgb(255, 184, 108)))
+        Span::styled(" solo", Style::default().fg(DRACULA_ORANGE))
     } else {
         Span::styled(
             format!(" {} connected", app.connected_peers),
-            Style::default().fg(Color::Rgb(80, 250, 123)),
+            Style::default().fg(DRACULA_GREEN),
         )
     };
     let is_broadcast_view = app.current_view.as_deref() == Some("broadcast");
@@ -579,11 +562,11 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     let mut status_spans = vec![
         Span::styled(
             view_label,
-            Style::default().fg(Color::Rgb(139, 233, 253)), // Dracula cyan
+            Style::default().fg(DRACULA_CYAN), // Dracula cyan
         ),
         Span::styled(
             channel_label,
-            Style::default().fg(Color::Rgb(98, 114, 164)), // Dracula comment
+            Style::default().fg(DRACULA_COMMENT), // Dracula comment
         ),
         Span::raw(" "),
         connection_status,
@@ -592,14 +575,14 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         status_spans.push(Span::raw(" | "));
         status_spans.push(Span::styled(
             format!("scrolled up {}", app.scroll_offset),
-            Style::default().fg(Color::Rgb(98, 114, 164)),
+            Style::default().fg(DRACULA_COMMENT),
         ));
     }
     if app.unread_count > 0 {
         status_spans.push(Span::raw(" | "));
         status_spans.push(Span::styled(
             format!("{} new", app.unread_count),
-            Style::default().fg(Color::Rgb(255, 121, 198)),
+            Style::default().fg(DRACULA_PINK),
         ));
     }
     let mut peers: Vec<_> = app.peer_activity.iter().collect();
@@ -608,14 +591,14 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         let short_name = peer.split(':').next().unwrap_or(peer);
         let dot_color = match status.as_str() {
             "busy" => Color::Rgb(241, 250, 140), // Yellow — busy
-            "help" => Color::Rgb(255, 85, 85),   // Red — needs help
-            _ => Color::Rgb(80, 250, 123),       // Green — available/connected
+            "help" => DRACULA_RED,               // Red — needs help
+            _ => DRACULA_GREEN,                  // Green — available/connected
         };
         status_spans.push(Span::raw(" "));
         status_spans.push(Span::styled("\u{25CF}", Style::default().fg(dot_color)));
         status_spans.push(Span::styled(
             format!(" {short_name}"),
-            Style::default().fg(Color::Rgb(248, 248, 242)),
+            Style::default().fg(DRACULA_FG),
         ));
     }
     // DM unread badge with sender names
@@ -627,11 +610,8 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             Style::default().fg(Color::Rgb(241, 250, 140)), // Dracula yellow
         ));
     }
-    let status = Paragraph::new(Line::from(status_spans)).style(
-        Style::default()
-            .bg(Color::Rgb(68, 71, 90))
-            .fg(Color::Rgb(248, 248, 242)),
-    );
+    let status = Paragraph::new(Line::from(status_spans))
+        .style(Style::default().bg(DRACULA_SELECTION).fg(DRACULA_FG));
     frame.render_widget(status, chunks[3]);
 
     // Help overlay — centered modal, dismiss with any key
@@ -668,15 +648,11 @@ Press any key to close";
                 .title(" help ")
                 .title_style(
                     Style::default()
-                        .fg(Color::Rgb(189, 147, 249))
+                        .fg(DRACULA_PURPLE)
                         .add_modifier(Modifier::BOLD),
                 )
-                .border_style(Style::default().fg(Color::Rgb(189, 147, 249)))
-                .style(
-                    Style::default()
-                        .bg(Color::Rgb(40, 42, 54))
-                        .fg(Color::Rgb(248, 248, 242)),
-                ),
+                .border_style(Style::default().fg(DRACULA_PURPLE))
+                .style(Style::default().bg(DRACULA_BG).fg(DRACULA_FG)),
         );
         frame.render_widget(Clear, help_area);
         frame.render_widget(help_popup, help_area);
