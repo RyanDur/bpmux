@@ -81,13 +81,15 @@ fn handle_broadcast_message(msg: session::Message, app: &mut App) {
         app.receive_message(msg);
         // OS notification when TUI is unfocused
         if !app.tui_focused {
+            let safe_preview = preview.replace('\\', "\\\\").replace('"', "\\\"");
+            let safe_name = short_name.replace('\\', "\\\\").replace('"', "\\\"");
             let sound = if is_dm { " sound name \"default\"" } else { "" };
             let _ = std::process::Command::new("osascript")
                 .args([
                     "-e",
                     &format!(
                         "display notification \"{}\" with title \"bpmux — {}\"{}",
-                        preview, short_name, sound
+                        safe_preview, safe_name, sound
                     ),
                 ])
                 .spawn();
