@@ -8,6 +8,8 @@ use serde::Deserialize;
 
 use crate::session;
 
+pub const DEFAULT_MESSAGE_LIMIT: usize = 20;
+
 #[derive(Deserialize)]
 pub struct PostMessage {
     pub from: String,
@@ -31,7 +33,7 @@ pub async fn get_messages(
         Ok(messages) => {
             let chat_only = params.chat_only.unwrap_or(true);
             let offset = params.offset.unwrap_or(0);
-            let limit = params.limit.unwrap_or(20);
+            let limit = params.limit.unwrap_or(DEFAULT_MESSAGE_LIMIT);
             let mut filtered: Vec<_> = if chat_only {
                 messages.into_iter().filter(|m| m.is_chat()).collect()
             } else {

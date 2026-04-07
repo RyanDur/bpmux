@@ -127,7 +127,11 @@ async fn handle_read_messages(
     args: &serde_json::Map<String, serde_json::Value>,
     port: u16,
 ) -> Result<String, String> {
-    let limit = args.get("limit").and_then(|v| v.as_u64()).unwrap_or(20);
+    let default_limit = crate::transport::rest::DEFAULT_MESSAGE_LIMIT as u64;
+    let limit = args
+        .get("limit")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(default_limit);
     let url = format!("http://127.0.0.1:{port}/api/messages?limit={limit}");
     let body = reqwest::get(&url)
         .await

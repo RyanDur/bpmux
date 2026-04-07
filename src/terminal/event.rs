@@ -9,6 +9,9 @@ use crate::session;
 use crate::terminal::app::App;
 use crate::terminal::ui;
 
+const NOTIFICATION_PREVIEW_CHARS: usize = 50;
+const PAGE_SCROLL_LINES: usize = 10;
+
 fn bell() {
     use std::io::Write;
     if let Ok(mut tty) = std::fs::OpenOptions::new().write(true).open("/dev/tty") {
@@ -92,7 +95,7 @@ fn handle_broadcast_message(msg: session::Message, app: &mut App) {
     let self_identity = format!("{}:human", app.peer_name);
     if msg.from != self_identity {
         let short_name = msg.from.split(':').next().unwrap_or(&msg.from).to_string();
-        let preview: String = msg.text.chars().take(50).collect();
+        let preview: String = msg.text.chars().take(NOTIFICATION_PREVIEW_CHARS).collect();
         let is_dm = msg.to.as_ref().is_some_and(|r| {
             r.iter().any(|n| n == &app.peer_name) && !r.iter().all(|n| n == "all")
         });
@@ -250,10 +253,10 @@ fn handle_terminal_event(
             app.show_timestamps = !app.show_timestamps;
         }
         KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-            scroll_up_with_bell(app, 10);
+            scroll_up_with_bell(app, PAGE_SCROLL_LINES);
         }
         KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-            scroll_down_with_bell(app, 10);
+            scroll_down_with_bell(app, PAGE_SCROLL_LINES);
         }
         KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             if app.input.is_empty() {

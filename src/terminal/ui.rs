@@ -8,6 +8,11 @@ use ratatui::{
 
 use crate::session;
 use crate::terminal::app::{self, App};
+
+const TRUNCATE_AFTER_LINES: usize = 10;
+const MARKDOWN_SIZE_LIMIT: usize = 5000;
+const SIDEBAR_NAME_WIDTH: usize = 16;
+const MIN_WIDTH_FOR_SIDEBAR: u16 = 60;
 use crate::terminal::markdown::{
     message_involves_participants, render_md_message, wrap_line_with_indent,
 };
@@ -46,7 +51,10 @@ fn render_sidebar(frame: &mut Frame, app: &App, area: Rect) {
                 return Line::from(vec![
                     Span::styled(select_marker, Style::default().bg(bg).fg(DRACULA_PURPLE)),
                     Span::styled(arrow, Style::default().bg(bg).fg(DRACULA_COMMENT)),
-                    Span::styled(ch.chars().take(16).collect::<String>(), name_style),
+                    Span::styled(
+                        ch.chars().take(SIDEBAR_NAME_WIDTH).collect::<String>(),
+                        name_style,
+                    ),
                 ]);
             }
 
@@ -217,7 +225,9 @@ fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
             prefix_spans.push(Span::styled(channel_tag.clone(), tag_style));
             prefix_spans.push(Span::styled(format!("{short_name}: "), name_style));
 
-            let md_lines = if wrapped_lines > 10 && !app.expanded_messages.contains(&msg_key) {
+            let md_lines = if wrapped_lines > TRUNCATE_AFTER_LINES
+                && !app.expanded_messages.contains(&msg_key)
+            {
                 // Truncate: show first 7 lines of markdown, then [+N lines]
                 let remaining_lines = wrapped_lines.saturating_sub(7);
                 let mut ls = render_md_message(&msg.text, prefix_spans, indent.clone(), Some(7));
@@ -230,7 +240,7 @@ fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
                 // Render full message text as markdown.
                 // For very large texts (>5000 chars), render as plain text to
                 // avoid tui_markdown stack overflow on deep markdown structures.
-                if msg.text.len() > 5000 {
+                if msg.text.len() > MARKDOWN_SIZE_LIMIT {
                     let mut ls = Vec::new();
                     for (li, line_text) in msg.text.lines().enumerate() {
                         let mut spans = Vec::new();
@@ -573,7 +583,7 @@ Press any key to close";
 
 pub fn render(frame: &mut Frame, app: &mut App) {
     // Auto-suppress sidebar if terminal is too narrow
-    let sidebar_width = if app.sidebar_open && frame.area().width >= 60 {
+    let sidebar_width = if app.sidebar_open && frame.area().width >= MIN_WIDTH_FOR_SIDEBAR {
         24u16
     } else {
         0

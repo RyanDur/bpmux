@@ -4,6 +4,9 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::time::Instant;
 
+const TRUNCATE_AFTER_LINES: usize = 10;
+const DM_FLASH_DURATION: std::time::Duration = std::time::Duration::from_millis(750);
+
 /// Strips the transport suffix from a peer name: "dev:claude-code" → "dev".
 fn short_peer_name(peer: &str) -> &str {
     peer.split(':').next().unwrap_or(peer)
@@ -189,7 +192,7 @@ impl App {
             let prefix_len = msg.from.split(':').next().unwrap_or(&msg.from).len() + 2;
             let full_len = prefix_len + msg.text.len();
             let wrapped = full_len.max(1).div_ceil(width.max(1));
-            if wrapped > 10 {
+            if wrapped > TRUNCATE_AFTER_LINES {
                 let key = msg.ts.to_rfc3339();
                 if self.expanded_messages.contains(&key) {
                     self.expanded_messages.remove(&key);
@@ -234,8 +237,7 @@ impl App {
                         && !recipients.iter().all(|r| r == "all");
                     if directed_at_me && !self.dm_unread_from.contains(&sender) {
                         self.dm_unread_from.push(sender);
-                        self.dm_flash_until =
-                            Some(Instant::now() + std::time::Duration::from_millis(750));
+                        self.dm_flash_until = Some(Instant::now() + DM_FLASH_DURATION);
                     }
                 }
             }
