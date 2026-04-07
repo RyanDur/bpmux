@@ -40,72 +40,6 @@ fn channel_tag_color(tag: &str, is_broadcast: bool) -> Color {
     }
 }
 
-#[allow(dead_code)]
-fn parse_inline_code(text: &str) -> Vec<(String, bool)> {
-    let mut segments = Vec::new();
-    let mut remaining = text;
-    while let Some(open) = remaining.find('`') {
-        if open > 0 {
-            segments.push((remaining[..open].to_string(), false));
-        }
-        let after_open = &remaining[open + 1..];
-        if let Some(close) = after_open.find('`') {
-            segments.push((after_open[..close].to_string(), true));
-            remaining = &after_open[close + 1..];
-        } else {
-            // No closing backtick — treat as literal
-            segments.push((remaining[open..open + 1].to_string(), false));
-            remaining = &remaining[open + 1..];
-        }
-    }
-    if !remaining.is_empty() {
-        segments.push((remaining.to_string(), false));
-    }
-    segments
-}
-
-#[allow(dead_code)]
-fn parse_mentions(text: &str) -> Vec<Span<'static>> {
-    let inline_segments = parse_inline_code(text);
-    let mut spans = Vec::new();
-    for (segment, is_code) in inline_segments {
-        if is_code {
-            spans.push(Span::styled(
-                segment,
-                Style::default().fg(Color::Rgb(255, 184, 108)),
-            ));
-        } else {
-            let mut remaining = segment.as_str();
-            while let Some(at_pos) = remaining.find('@') {
-                if at_pos > 0 {
-                    spans.push(Span::raw(remaining[..at_pos].to_string()));
-                }
-                let after_at = &remaining[at_pos + 1..];
-                let mention_end = after_at
-                    .find(|c: char| !c.is_alphanumeric() && c != '-' && c != '_')
-                    .unwrap_or(after_at.len());
-                if mention_end > 0 {
-                    let mention = &remaining[at_pos..at_pos + 1 + mention_end];
-                    spans.push(Span::styled(
-                        mention.to_string(),
-                        Style::default()
-                            .fg(Color::Rgb(139, 233, 253))
-                            .add_modifier(Modifier::BOLD),
-                    ));
-                    remaining = &remaining[at_pos + 1 + mention_end..];
-                } else {
-                    spans.push(Span::raw(remaining[at_pos..at_pos + 1].to_string()));
-                    remaining = &remaining[at_pos + 1..];
-                }
-            }
-            if !remaining.is_empty() {
-                spans.push(Span::raw(remaining.to_string()));
-            }
-        }
-    }
-    spans
-}
-
 fn render_sidebar(frame: &mut Frame, app: &App, area: Rect) {
     let channels = app.sidebar_channels();
     let items: Vec<Line> = channels
@@ -1098,48 +1032,6 @@ mod tests {
         assert_ne!(dev_color, pm_color, "dev and pm must differ");
     }
 
-    #[test]
-    fn parse_mentions_highlights_mention_in_text() {
-        let spans = super::parse_mentions("hello @dev how are you");
-        assert_eq!(spans.len(), 3);
-        assert_eq!(spans[0].content, "hello ");
-        assert_eq!(spans[1].content, "@dev");
-        assert_eq!(
-            spans[1].style,
-            Style::default()
-                .fg(Color::Rgb(139, 233, 253))
-                .add_modifier(Modifier::BOLD)
-        );
-        assert_eq!(spans[2].content, " how are you");
-    }
-
-    #[test]
-    fn parse_mentions_no_mentions_returns_single_span() {
-        let spans = super::parse_mentions("no mentions");
-        assert_eq!(spans.len(), 1);
-        assert_eq!(spans[0].content, "no mentions");
-    }
-
-    #[test]
-    fn parse_mentions_multiple_mentions() {
-        let spans = super::parse_mentions("@dev @pm");
-        assert_eq!(spans.len(), 3);
-        assert_eq!(spans[0].content, "@dev");
-        assert_eq!(
-            spans[0].style,
-            Style::default()
-                .fg(Color::Rgb(139, 233, 253))
-                .add_modifier(Modifier::BOLD)
-        );
-        assert_eq!(spans[1].content, " ");
-        assert_eq!(spans[2].content, "@pm");
-        assert_eq!(
-            spans[2].style,
-            Style::default()
-                .fg(Color::Rgb(139, 233, 253))
-                .add_modifier(Modifier::BOLD)
-        );
-    }
 
     #[allow(clippy::unwrap_used)]
     #[test]
@@ -1213,44 +1105,6 @@ mod tests {
         );
         // tui-markdown handles code block rendering — fences may or may not appear
         // depending on markdown parsing context (blank lines before fences etc.)
-    }
-
-    #[test]
-    fn parse_inline_code_detects_backtick_spans() {
-        let segments = super::parse_inline_code("hello `code` world");
-        assert_eq!(segments.len(), 3);
-        assert_eq!(segments[0], ("hello ".to_string(), false));
-        assert_eq!(segments[1], ("code".to_string(), true));
-        assert_eq!(segments[2], (" world".to_string(), false));
-    }
-
-    #[test]
-    fn parse_inline_code_no_backticks() {
-        let segments = super::parse_inline_code("no code here");
-        assert_eq!(segments.len(), 1);
-        assert_eq!(segments[0], ("no code here".to_string(), false));
-    }
-
-    #[test]
-    fn parse_inline_code_unclosed_backtick_treated_as_literal() {
-        let segments = super::parse_inline_code("hello `unclosed");
-        assert_eq!(segments.len(), 3);
-        assert_eq!(segments[0], ("hello ".to_string(), false));
-        assert_eq!(segments[1], ("`".to_string(), false));
-        assert_eq!(segments[2], ("unclosed".to_string(), false));
-    }
-
-    #[test]
-    fn parse_mentions_styles_inline_code_with_orange() {
-        let spans = super::parse_mentions("use `cargo build` to compile");
-        assert_eq!(spans.len(), 3);
-        assert_eq!(spans[0].content, "use ");
-        assert_eq!(spans[1].content, "cargo build");
-        assert_eq!(
-            spans[1].style,
-            Style::default().fg(Color::Rgb(255, 184, 108))
-        );
-        assert_eq!(spans[2].content, " to compile");
     }
 
     #[allow(clippy::unwrap_used)]
