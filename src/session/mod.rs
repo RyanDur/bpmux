@@ -6,3 +6,8 @@ pub use log::{
     read_pins, resume_or_create_session,
 };
 pub use message::Message;
+
+#[cfg(test)]
+mod log_tests;
+#[cfg(test)]
+mod message_tests;

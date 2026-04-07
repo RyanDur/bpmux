@@ -35,8 +35,9 @@ Organized by bounded context (App Continuum), not by technical layer:
 ## Testing
 
 - TDD: outside-in, classicist (real collaborators over mocks)
-- Unit tests in same file (`#[cfg(test)]` module)
+- Unit tests in separate `_tests.rs` files next to the source (e.g. `app.rs` → `app_tests.rs`), declared via `#[cfg(test)] mod x_tests;` in the parent `mod.rs`
 - Integration tests in `tests/`
+- Tests exercise the public API, not private internals
 - `cargo test` must pass before push
 
 ## Working Agreement
