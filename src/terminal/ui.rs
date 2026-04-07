@@ -661,7 +661,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     if used + hint.len() + 1 < bar_width {
         let pad = bar_width.saturating_sub(used + hint.len());
         status_spans.push(Span::raw(" ".repeat(pad)));
-        status_spans.push(Span::styled(hint, Style::default().fg(DRACULA_COMMENT)));
+        status_spans.push(Span::styled(hint, Style::default().fg(DRACULA_PURPLE)));
     }
     let status = Paragraph::new(Line::from(status_spans))
         .style(Style::default().bg(DRACULA_SELECTION).fg(DRACULA_FG));
