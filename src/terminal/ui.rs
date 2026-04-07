@@ -1301,7 +1301,10 @@ mod tests {
                 break;
             }
         }
-        assert!(found_board, "Should find 'Board' heading in rendered output");
+        assert!(
+            found_board,
+            "Should find 'Board' heading in rendered output"
+        );
 
         // Verify hashes are stripped — no "##" should appear in the rendered buffer
         let screen = buffer_to_string(buffer);
