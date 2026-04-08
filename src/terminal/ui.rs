@@ -142,29 +142,48 @@ fn render_sidebar(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_widget(sidebar, area);
 }
 
-fn render_broadcast_banner(frame: &mut Frame, app: &App, area: Rect) {
-    let in_subchannel = app.current_view.as_ref().is_some_and(|v| v != "broadcast");
-    if !in_subchannel || area.height == 0 {
-        return;
-    }
-    let latest_broadcast = app
-        .messages
+const MAX_BANNER_LINES: u16 = 4;
+
+fn latest_broadcast(app: &App) -> Option<&session::Message> {
+    app.messages
         .iter()
         .rev()
-        .find(|m| m.is_chat() && m.to.is_none());
-    let Some(msg) = latest_broadcast else {
+        .find(|m| m.is_chat() && m.to.is_none())
+}
+
+fn broadcast_banner_height(app: &App, width: u16) -> u16 {
+    if app.current_view.as_ref().is_none_or(|v| v == "broadcast") {
+        return 0;
+    }
+    let Some(msg) = latest_broadcast(app) else {
+        return 0;
+    };
+    let sender = msg.from.split(':').next().unwrap_or(&msg.from);
+    let prefix_len = format!("[broadcast] {sender}: ").chars().count();
+    let content_len = prefix_len + msg.text.chars().count();
+    let w = width as usize;
+    if w == 0 {
+        return 1;
+    }
+    (content_len.max(1).div_ceil(w) as u16).min(MAX_BANNER_LINES)
+}
+
+fn render_broadcast_banner(frame: &mut Frame, app: &App, area: Rect) {
+    if area.height == 0 {
+        return;
+    }
+    let Some(msg) = latest_broadcast(app) else {
         return;
     };
     let sender = msg.from.split(':').next().unwrap_or(&msg.from);
-    let available = area.width.saturating_sub(2) as usize;
     let prefix = format!("[broadcast] {sender}: ");
-    let text_budget = available.saturating_sub(prefix.len());
-    let preview: String = msg.text.chars().take(text_budget).collect();
-    let line = Line::from(vec![
+    let text = Line::from(vec![
         Span::styled(&prefix, Style::default().fg(DRACULA_COMMENT)),
-        Span::styled(preview, Style::default().fg(DRACULA_FG)),
+        Span::styled(msg.text.as_str(), Style::default().fg(DRACULA_FG)),
     ]);
-    let banner = Paragraph::new(line).style(Style::default().bg(DRACULA_SELECTION).fg(DRACULA_FG));
+    let banner = Paragraph::new(text)
+        .wrap(Wrap { trim: false })
+        .style(Style::default().bg(DRACULA_SELECTION).fg(DRACULA_FG));
     frame.render_widget(banner, area);
 }
 
@@ -568,11 +587,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     };
     let input_height = (input_lines + 2).min(8) as u16;
 
-    let banner_height = if app.current_view.as_ref().is_some_and(|v| v != "broadcast") {
-        1u16
-    } else {
-        0
-    };
+    let banner_height = broadcast_banner_height(app, main_area.width);
 
     let chunks = Layout::vertical([
         Constraint::Length(banner_height),
