@@ -1,4 +1,5 @@
 use crate::session::Message;
+use crate::session::classifier::{MessageClass, classify};
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 
@@ -8,6 +9,7 @@ const CONTEXT_WINDOW: usize = 5;
 pub struct SearchResult {
     pub messages: Vec<Message>,
     pub match_index: usize,
+    pub message_class: MessageClass,
 }
 
 pub struct SearchFilters {
@@ -16,6 +18,8 @@ pub struct SearchFilters {
     pub after: Option<DateTime<Utc>>,
     pub before: Option<DateTime<Utc>>,
     pub channel: Option<String>,
+    pub message_class: Option<MessageClass>,
+    pub owner_name: String,
 }
 
 pub fn search(messages: &[Message], filters: &SearchFilters) -> Vec<SearchResult> {
@@ -30,6 +34,12 @@ pub fn search(messages: &[Message], filters: &SearchFilters) -> Vec<SearchResult
         if !matches_filters(msg, filters, &query_lower) {
             continue;
         }
+        let msg_class = classify(msg, &filters.owner_name);
+        if let Some(required_class) = filters.message_class
+            && msg_class != required_class
+        {
+            continue;
+        }
         let start = i.saturating_sub(CONTEXT_WINDOW);
         let end = (i + CONTEXT_WINDOW + 1).min(messages.len());
         let cluster: Vec<Message> = messages[start..end]
@@ -41,6 +51,7 @@ pub fn search(messages: &[Message], filters: &SearchFilters) -> Vec<SearchResult
         results.push(SearchResult {
             match_index: i - start,
             messages: cluster,
+            message_class: msg_class,
         });
     }
     results

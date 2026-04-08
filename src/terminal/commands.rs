@@ -224,12 +224,22 @@ impl App {
     }
 
     fn handle_search(&mut self, query: String) -> Option<Message> {
+        let (effective_query, message_class) = match query.as_str() {
+            "corrections" => (
+                String::new(),
+                Some(crate::session::MessageClass::Correction),
+            ),
+            "decisions" => (String::new(), Some(crate::session::MessageClass::Decision)),
+            _ => (query.clone(), None),
+        };
         let filters = crate::session::SearchFilters {
-            query: query.clone(),
+            query: effective_query,
             sender: None,
             after: None,
             before: None,
             channel: None,
+            message_class,
+            owner_name: self.peer_name.clone(),
         };
         let results = crate::session::search(&self.messages, &filters);
         if results.is_empty() {

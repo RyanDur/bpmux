@@ -60,6 +60,7 @@ pub struct SearchParams {
     pub after: Option<String>,
     pub before: Option<String>,
     pub channel: Option<String>,
+    pub message_type: Option<String>,
 }
 
 pub async fn search_messages(
@@ -68,12 +69,20 @@ pub async fn search_messages(
 ) -> impl IntoResponse {
     match session.read_messages() {
         Ok(messages) => {
+            let message_class = params.message_type.as_deref().and_then(|t| match t {
+                "correction" => Some(session::MessageClass::Correction),
+                "decision" => Some(session::MessageClass::Decision),
+                "discussion" => Some(session::MessageClass::Discussion),
+                _ => None,
+            });
             let filters = session::SearchFilters {
                 query: params.query,
                 sender: params.sender,
                 after: params.after.and_then(|s| s.parse().ok()),
                 before: params.before.and_then(|s| s.parse().ok()),
                 channel: params.channel,
+                message_class,
+                owner_name: "ryan".to_string(), // TODO: pass from session config
             };
             let results = session::search(&messages, &filters);
             (

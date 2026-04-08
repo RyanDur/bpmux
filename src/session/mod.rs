@@ -1,7 +1,9 @@
+pub mod classifier;
 pub mod log;
 pub mod message;
 pub mod search;
 
+pub use classifier::{MessageClass, classify};
 pub use log::{
     LogError, Session, append_message, create_session, default_sessions_base, read_messages,
     resume_or_create_session,
