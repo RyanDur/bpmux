@@ -154,14 +154,33 @@ fn render_table(rows: &[Vec<String>], terminal_width: usize) -> String {
     }
     let border_overhead = col_count + 1 + col_count * 2;
     let available = terminal_width.saturating_sub(border_overhead);
-    let col_width = available / col_count;
 
-    if col_width < MIN_COLUMN_WIDTH {
-        render_table_as_cards(rows)
-    } else {
-        let widths = vec![col_width; col_count];
-        render_table_as_grid(rows, &widths)
+    if available / col_count < MIN_COLUMN_WIDTH {
+        return render_table_as_cards(rows);
     }
+
+    let mut max_content: Vec<usize> = vec![0; col_count];
+    for row in rows {
+        for (i, cell) in row.iter().enumerate() {
+            if i < col_count {
+                max_content[i] = max_content[i].max(cell.chars().count());
+            }
+        }
+    }
+    let total_content: usize = max_content.iter().sum::<usize>().max(1);
+    let mut widths: Vec<usize> = max_content
+        .iter()
+        .map(|&c| ((c * available) / total_content).max(MIN_COLUMN_WIDTH))
+        .collect();
+    // Clamp total to available width
+    let total: usize = widths.iter().sum();
+    if total > available {
+        let excess = total - available;
+        if let Some(largest) = widths.iter_mut().max() {
+            *largest = largest.saturating_sub(excess);
+        }
+    }
+    render_table_as_grid(rows, &widths)
 }
 
 fn simplify_markdown(text: &str, terminal_width: usize) -> String {
