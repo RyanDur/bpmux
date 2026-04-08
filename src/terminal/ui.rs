@@ -138,6 +138,32 @@ fn render_sidebar(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_widget(sidebar, area);
 }
 
+fn render_broadcast_banner(frame: &mut Frame, app: &App, area: Rect) {
+    let in_subchannel = app.current_view.as_ref().is_some_and(|v| v != "broadcast");
+    if !in_subchannel || area.height == 0 {
+        return;
+    }
+    let latest_broadcast = app
+        .messages
+        .iter()
+        .rev()
+        .find(|m| m.is_chat() && m.to.is_none());
+    let Some(msg) = latest_broadcast else {
+        return;
+    };
+    let sender = msg.from.split(':').next().unwrap_or(&msg.from);
+    let available = area.width.saturating_sub(2) as usize;
+    let prefix = format!("[broadcast] {sender}: ");
+    let text_budget = available.saturating_sub(prefix.len());
+    let preview: String = msg.text.chars().take(text_budget).collect();
+    let line = Line::from(vec![
+        Span::styled(&prefix, Style::default().fg(DRACULA_COMMENT)),
+        Span::styled(preview, Style::default().fg(DRACULA_FG)),
+    ]);
+    let banner = Paragraph::new(line).style(Style::default().bg(DRACULA_SELECTION).fg(DRACULA_FG));
+    frame.render_widget(banner, area);
+}
+
 fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
     let chat_messages: Vec<&session::Message> = app
         .messages
@@ -595,7 +621,14 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         (app.pins.len() as u16) + 2
     };
 
+    let banner_height = if app.current_view.as_ref().is_some_and(|v| v != "broadcast") {
+        1u16
+    } else {
+        0
+    };
+
     let chunks = Layout::vertical([
+        Constraint::Length(banner_height),
         Constraint::Min(3),
         Constraint::Length(pin_height),
         Constraint::Length(input_height),
@@ -616,11 +649,12 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         status_area.height,
     ));
 
-    render_chat(frame, app, chunks[0]);
-    render_unread_indicator(frame, app, chunks[0]);
-    render_pins(frame, app, chunks[1]);
-    render_input(frame, app, chunks[2]);
-    render_popup(frame, app, chunks[2]);
+    render_broadcast_banner(frame, app, chunks[0]);
+    render_chat(frame, app, chunks[1]);
+    render_unread_indicator(frame, app, chunks[1]);
+    render_pins(frame, app, chunks[2]);
+    render_input(frame, app, chunks[3]);
+    render_popup(frame, app, chunks[3]);
     render_status_bar(frame, app, status_area);
     render_help_overlay(frame, app, main_area);
 }

@@ -57,10 +57,10 @@ pub(super) fn render_md_message<'a>(
             spans.extend(md_line.spans);
             all_lines.push(Line::from(spans));
 
-            if let Some(limit) = line_limit {
-                if all_lines.len() >= limit {
-                    return all_lines;
-                }
+            if let Some(limit) = line_limit
+                && all_lines.len() >= limit
+            {
+                return all_lines;
             }
         }
     }
