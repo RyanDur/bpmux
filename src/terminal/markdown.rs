@@ -414,18 +414,19 @@ pub(crate) fn wrap_line_with_indent<'a>(
             };
 
             if available > 0 {
-                // Prefer breaking at a word boundary (last space before the limit)
                 let chunk = &remaining[..byte_pos];
-                let break_at = chunk
-                    .rfind(' ')
-                    .map(|i| i + 1) // include the space in the current line
-                    .unwrap_or(byte_pos); // no space = fall back to char break
+                let break_at = chunk.rfind(' ').map(|i| i + 1).unwrap_or(byte_pos);
                 let (chunk, rest) = remaining.split_at(break_at);
                 let trimmed = chunk.trim_end();
                 if !trimmed.is_empty() {
                     current_spans.push(Span::styled(trimmed.to_string(), style));
+                    current_width += trimmed.chars().count();
                 }
                 remaining = rest.trim_start();
+            }
+            let content_width = current_width.saturating_sub(indent_width);
+            if content_width < 10 && !remaining.is_empty() && available > 0 {
+                continue;
             }
             result.push(Line::from(current_spans));
             current_spans = vec![indent.clone()];
