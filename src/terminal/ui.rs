@@ -502,10 +502,14 @@ fn render_status_bar(frame: &mut Frame, app: &mut App, area: Rect) {
     // Right-aligned "? help" hint
     let used: usize = status_spans.iter().map(|s| s.content.chars().count()).sum();
     let bar_width = area.width as usize;
-    let hint = "? help";
+    let hint = if app.sidebar_focused {
+        "Enter=switch \u{2191}\u{2193}=nav Esc=close"
+    } else {
+        "?=help \u{2325}1=sidebar Enter=send"
+    };
     let right_margin = 1;
-    if used + hint.len() + right_margin + 1 < bar_width {
-        let pad = bar_width.saturating_sub(used + hint.len() + right_margin);
+    if used + hint.chars().count() + right_margin + 1 < bar_width {
+        let pad = bar_width.saturating_sub(used + hint.chars().count() + right_margin);
         app.help_hint_col = Some(area.x + (used + pad) as u16);
         status_spans.push(Span::raw(" ".repeat(pad)));
         status_spans.push(Span::styled(hint, Style::default().fg(DRACULA_PURPLE)));
