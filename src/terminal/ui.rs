@@ -507,7 +507,7 @@ fn render_status_bar(frame: &mut Frame, app: &mut App, area: Rect) {
         let pad = bar_width.saturating_sub(used + hint.chars().count() + right_margin);
         app.help_hint_col = Some(area.x + (used + pad) as u16);
         status_spans.push(Span::raw(" ".repeat(pad)));
-        status_spans.push(Span::styled(hint, Style::default().fg(DRACULA_PURPLE)));
+        status_spans.push(Span::styled(hint, Style::default().fg(DRACULA_CYAN)));
     } else {
         app.help_hint_col = None;
     }
