@@ -73,21 +73,14 @@ pub fn run() -> anyhow::Result<()> {
     let mut app = terminal::App::new(cli.name.clone(), session.id.clone(), messages);
     app.session_dir = Some(session.dir.clone());
     let server_session = Arc::clone(&session);
-    let server_name = cli.name.clone();
     let server_port = cli.mcp_port;
     let ct = CancellationToken::new();
     let server_ct = ct.clone();
 
-    // Single tokio runtime for both server and TUI.
-    // The TUI uses crossterm's EventStream (async) so it can select!
-    // over both terminal events and broadcast messages — zero-latency
-    // message delivery with no polling.
     let rt = tokio::runtime::Runtime::new()?;
     let result = rt.block_on(async {
         tokio::spawn(async move {
-            if let Err(e) =
-                server::run_server(server_session, server_name, server_port, server_ct).await
-            {
+            if let Err(e) = server::run_server(server_session, server_port, server_ct).await {
                 eprintln!("Server error: {e}");
             }
         });
