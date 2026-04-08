@@ -499,3 +499,33 @@ fn wrap_line_zero_width_returns_original() {
     let result = wrap_line_with_indent(line, &indent, 0);
     assert_eq!(result.len(), 1);
 }
+
+#[test]
+fn table_renders_within_chat_width() {
+    let backend = TestBackend::new(80, 40);
+    let mut terminal = Terminal::new(backend).unwrap();
+
+    let table_text = "Here is a table:\n\n| Header A | Header B |\n|---|---|\n| Short | Longer text that should wrap within cell boundaries without breaking the grid |\n| Another | Cell content here |\n";
+    let mut app = test_app_with(vec![chat_msg("bpmux", table_text)]);
+    terminal.draw(|frame| render(frame, &mut app)).unwrap();
+    let screen = buffer_to_string(terminal.backend().buffer());
+
+    // Table borders should be visible
+    assert!(
+        screen.contains("┌"),
+        "Should have top border. Screen:\n{screen}"
+    );
+    assert!(
+        screen.contains("│"),
+        "Should have side borders. Screen:\n{screen}"
+    );
+    assert!(
+        screen.contains("└"),
+        "Should have bottom border. Screen:\n{screen}"
+    );
+    // Headers should be visible
+    assert!(
+        screen.contains("Header A"),
+        "Should show header. Screen:\n{screen}"
+    );
+}
