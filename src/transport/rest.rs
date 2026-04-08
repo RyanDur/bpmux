@@ -53,6 +53,41 @@ pub async fn get_messages(
     }
 }
 
+#[derive(Deserialize)]
+pub struct SearchParams {
+    pub query: String,
+    pub sender: Option<String>,
+    pub after: Option<String>,
+    pub before: Option<String>,
+    pub channel: Option<String>,
+}
+
+pub async fn search_messages(
+    State(session): State<Arc<session::Session>>,
+    Query(params): Query<SearchParams>,
+) -> impl IntoResponse {
+    match session.read_messages() {
+        Ok(messages) => {
+            let filters = session::SearchFilters {
+                query: params.query,
+                sender: params.sender,
+                after: params.after.and_then(|s| s.parse().ok()),
+                before: params.before.and_then(|s| s.parse().ok()),
+                channel: params.channel,
+            };
+            let results = session::search(&messages, &filters);
+            (
+                StatusCode::OK,
+                serde_json::to_string(&results).unwrap_or_else(|_| "[]".to_string()),
+            )
+        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("failed to search: {e}"),
+        ),
+    }
+}
+
 pub async fn post_message(
     State(session): State<Arc<session::Session>>,
     Json(payload): Json<PostMessage>,

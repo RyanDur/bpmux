@@ -37,6 +37,12 @@ impl App {
         if let Some(arg) = text.strip_prefix("/view ") {
             return self.handle_view_with_arg(arg.to_string());
         }
+        if let Some(query) = text.strip_prefix("/search ") {
+            return self.handle_search(query.to_string());
+        }
+        if text == "/search" {
+            return self.handle_search_bare();
+        }
         if text == "/board" {
             return self.handle_board();
         }
@@ -213,6 +219,43 @@ impl App {
             ),
         };
         self.system_message(board_text);
+        self.clear_input();
+        None
+    }
+
+    fn handle_search(&mut self, query: String) -> Option<Message> {
+        let filters = crate::session::SearchFilters {
+            query: query.clone(),
+            sender: None,
+            after: None,
+            before: None,
+            channel: None,
+        };
+        let results = crate::session::search(&self.messages, &filters);
+        if results.is_empty() {
+            self.system_message(format!("No results for \"{query}\"."));
+        } else {
+            let mut text = format!("── Search: \"{query}\" ({} results) ──\n", results.len());
+            for (i, result) in results.iter().enumerate() {
+                text.push_str(&format!(
+                    "\n[{}] {}\n",
+                    i + 1,
+                    result.messages[0].ts.format("%Y-%m-%d %H:%M")
+                ));
+                for msg in &result.messages {
+                    let sender = msg.from.split(':').next().unwrap_or(&msg.from);
+                    text.push_str(&format!("  {sender}: {}\n", msg.text));
+                }
+            }
+            text.push_str("\n── End of results ──");
+            self.system_message(text);
+        }
+        self.clear_input();
+        None
+    }
+
+    fn handle_search_bare(&mut self) -> Option<Message> {
+        self.system_message("Usage: /search <query>. Example: /search role boundaries".to_string());
         self.clear_input();
         None
     }

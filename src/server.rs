@@ -16,6 +16,10 @@ pub async fn run_server(
             "/api/messages",
             axum::routing::get(transport::rest::get_messages).post(transport::rest::post_message),
         )
+        .route(
+            "/api/search",
+            axum::routing::get(transport::rest::search_messages),
+        )
         .with_state(session);
     let listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{port}")).await?;
     axum::serve(listener, router)
