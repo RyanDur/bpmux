@@ -67,3 +67,18 @@ fn system_message_is_routine() {
     };
     assert_eq!(classify(&m, "ryan"), MessageClass::Routine);
 }
+
+#[test]
+fn short_owner_question_is_not_correction() {
+    let m = msg("ryan:human", "pm, you in?");
+    assert_eq!(classify(&m, "ryan"), MessageClass::Discussion);
+}
+
+#[test]
+fn long_owner_question_is_correction() {
+    let m = msg(
+        "ryan:human",
+        "is there a way for you to look at it before you show me?",
+    );
+    assert_eq!(classify(&m, "ryan"), MessageClass::Correction);
+}

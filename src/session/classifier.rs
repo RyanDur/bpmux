@@ -40,8 +40,8 @@ pub fn classify(msg: &Message, owner_name: &str) -> MessageClass {
 
     if sender == owner_name {
         let has_correction_signal = CORRECTION_SIGNALS.iter().any(|s| text_lower.contains(s));
-        let has_question = msg.text.contains('?');
-        if has_correction_signal || has_question {
+        let has_substantive_question = msg.text.contains('?') && msg.text.len() > 30;
+        if has_correction_signal || has_substantive_question {
             return MessageClass::Correction;
         }
         if DECISION_SIGNALS.iter().any(|s| text_lower.contains(s)) {

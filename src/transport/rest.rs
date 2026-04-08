@@ -100,17 +100,23 @@ pub async fn search_messages(
 pub async fn get_lessons(State(session): State<Arc<session::Session>>) -> impl IntoResponse {
     match session.read_messages() {
         Ok(messages) => {
-            let index = session::lessons::build_index(&messages, "ryan"); // TODO: pass from config
+            let mut index = session::lessons::build_index(&messages, "ryan");
+            let saved = session::lessons::load_index(&session.dir);
+            index.lessons = saved.lessons;
             let groups = session::lessons::group_by_topic(&index);
             let mut text = format!("{} topics indexed\n", groups.len());
             for group in &groups {
                 text.push_str(&format!(
-                    "\n{} ({} corrections)\n",
+                    "\n{} ({} corrections, {} lessons)\n",
                     group.topic,
-                    group.corrections.len()
+                    group.corrections.len(),
+                    group.lessons.len(),
                 ));
                 for c in &group.corrections {
                     text.push_str(&format!("  {}: {}\n", &c.timestamp[..10], c.text_preview));
+                }
+                for l in &group.lessons {
+                    text.push_str(&format!("  {} learned: {}\n", l.author_role, l.lesson));
                 }
             }
             (StatusCode::OK, text)
