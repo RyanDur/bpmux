@@ -25,13 +25,79 @@ pub(super) fn strip_heading_hashes(spans: &mut Vec<Span<'_>>) {
 
 const CHUNK_SIZE_LIMIT: usize = 4000;
 
+fn simplify_markdown(text: &str) -> String {
+    let mut result = String::with_capacity(text.len());
+    for line in text.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with('|') && trimmed.ends_with('|') {
+            if trimmed
+                .chars()
+                .all(|c| c == '|' || c == '-' || c == ' ' || c == ':')
+            {
+                continue;
+            }
+            let cells: Vec<&str> = trimmed
+                .trim_matches('|')
+                .split('|')
+                .map(|c| c.trim())
+                .collect();
+            result.push_str(&cells.join("  ·  "));
+            result.push('\n');
+        } else {
+            result.push_str(line);
+            result.push('\n');
+        }
+    }
+    // Strip link URLs: [text](url) → text
+    let mut output = String::with_capacity(result.len());
+    let mut chars = result.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '[' {
+            let mut link_text = String::new();
+            let mut found_close = false;
+            for inner in chars.by_ref() {
+                if inner == ']' {
+                    found_close = true;
+                    break;
+                }
+                link_text.push(inner);
+            }
+            if found_close && chars.peek() == Some(&'(') {
+                chars.next();
+                let mut depth = 1;
+                for inner in chars.by_ref() {
+                    if inner == '(' {
+                        depth += 1;
+                    } else if inner == ')' {
+                        depth -= 1;
+                        if depth == 0 {
+                            break;
+                        }
+                    }
+                }
+                output.push_str(&link_text);
+            } else {
+                output.push('[');
+                output.push_str(&link_text);
+                if found_close {
+                    output.push(']');
+                }
+            }
+        } else {
+            output.push(c);
+        }
+    }
+    output
+}
+
 pub(super) fn render_md_message<'a>(
     text: &'a str,
     prefix_spans: Vec<Span<'a>>,
     indent: Span<'a>,
     line_limit: Option<usize>,
 ) -> Vec<Line<'a>> {
-    let chunks = chunk_at_paragraphs(text, CHUNK_SIZE_LIMIT);
+    let simplified = simplify_markdown(text);
+    let chunks = chunk_at_paragraphs(&simplified, CHUNK_SIZE_LIMIT);
     let mut all_lines = Vec::new();
 
     for chunk in &chunks {
@@ -54,7 +120,9 @@ pub(super) fn render_md_message<'a>(
                 }
             }
             strip_heading_hashes(&mut md_line.spans);
-            spans.extend(md_line.spans);
+            for span in md_line.spans {
+                spans.push(Span::styled(span.content.to_string(), span.style));
+            }
             all_lines.push(Line::from(spans));
 
             if let Some(limit) = line_limit
@@ -67,21 +135,20 @@ pub(super) fn render_md_message<'a>(
     all_lines
 }
 
-fn chunk_at_paragraphs(text: &str, max_size: usize) -> Vec<&str> {
+fn chunk_at_paragraphs(text: &str, max_size: usize) -> Vec<String> {
     if text.len() <= max_size {
-        return vec![text];
+        return vec![text.to_string()];
     }
     let mut chunks = Vec::new();
     let mut start = 0;
     while start < text.len() {
         if start + max_size >= text.len() {
-            chunks.push(&text[start..]);
+            chunks.push(text[start..].to_string());
             break;
         }
-        // Find the last paragraph break (double newline) within the limit
         let window = &text[start..start + max_size];
         let break_at = window.rfind("\n\n").map(|i| i + 2).unwrap_or(max_size);
-        chunks.push(&text[start..start + break_at]);
+        chunks.push(text[start..start + break_at].to_string());
         start += break_at;
     }
     chunks
