@@ -67,18 +67,6 @@ impl Session {
         read_messages(&self.dir)
     }
 
-    pub fn read_pins(&self) -> Result<Vec<String>, LogError> {
-        read_pins(&self.dir)
-    }
-
-    pub fn add_pin(&self, text: String) -> Result<Result<Vec<String>, &'static str>, LogError> {
-        add_pin(&self.dir, text)
-    }
-
-    pub fn remove_pin(&self, index: usize) -> Result<Result<Vec<String>, String>, LogError> {
-        remove_pin(&self.dir, index)
-    }
-
     pub fn subscribe(&self) -> broadcast::Receiver<Message> {
         self.wake_tx.subscribe()
     }
@@ -148,55 +136,6 @@ pub fn append_message(session_dir: &Path, message: &Message) -> Result<(), LogEr
         .open(path)?;
     file.write_all(line.as_bytes())?;
     Ok(())
-}
-
-const MAX_PINS: usize = 5;
-
-fn pins_path(session_dir: &Path) -> PathBuf {
-    session_dir.join("pins.json")
-}
-
-pub fn read_pins(session_dir: &Path) -> Result<Vec<String>, LogError> {
-    let path = pins_path(session_dir);
-    if !path.exists() {
-        return Ok(vec![]);
-    }
-    let content = std::fs::read_to_string(&path)?;
-    let pins: Vec<String> = serde_json::from_str(&content)?;
-    Ok(pins)
-}
-
-pub fn write_pins(session_dir: &Path, pins: &[String]) -> Result<(), LogError> {
-    let path = pins_path(session_dir);
-    let json = serde_json::to_string(pins)?;
-    std::fs::write(path, json)?;
-    Ok(())
-}
-
-pub fn add_pin(
-    session_dir: &Path,
-    text: String,
-) -> Result<Result<Vec<String>, &'static str>, LogError> {
-    let mut pins = read_pins(session_dir)?;
-    if pins.len() >= MAX_PINS {
-        return Ok(Err("max 5 pins — /unpin one first"));
-    }
-    pins.push(text);
-    write_pins(session_dir, &pins)?;
-    Ok(Ok(pins))
-}
-
-pub fn remove_pin(
-    session_dir: &Path,
-    index: usize,
-) -> Result<Result<Vec<String>, String>, LogError> {
-    let mut pins = read_pins(session_dir)?;
-    if index == 0 || index > pins.len() {
-        return Ok(Err(format!("no pin #{index}. Type /pins to list.")));
-    }
-    pins.remove(index - 1);
-    write_pins(session_dir, &pins)?;
-    Ok(Ok(pins))
 }
 
 pub fn read_messages(session_dir: &Path) -> Result<Vec<Message>, LogError> {

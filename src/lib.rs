@@ -70,10 +70,8 @@ pub fn run() -> anyhow::Result<()> {
     let (wake_tx, mut wake_rx) = broadcast::channel::<session::Message>(256);
     let session = Arc::new(session::Session::new(session_dir, wake_tx));
     let messages = session.read_messages()?;
-    let pins = session.read_pins()?;
     let mut app = terminal::App::new(cli.name.clone(), session.id.clone(), messages);
     app.session_dir = Some(session.dir.clone());
-    app.pins = pins;
     let server_session = Arc::clone(&session);
     let server_name = cli.name.clone();
     let server_port = cli.mcp_port;

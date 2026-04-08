@@ -323,34 +323,6 @@ fn render_unread_indicator(frame: &mut Frame, app: &App, area: Rect) {
     }
 }
 
-fn render_pins(frame: &mut Frame, app: &App, area: Rect) {
-    if !app.pins.is_empty() {
-        let pin_lines: Vec<Line> = app
-            .pins
-            .iter()
-            .enumerate()
-            .map(|(i, p)| {
-                Line::from(Span::styled(
-                    format!(" {}. {}", i + 1, p),
-                    Style::default().fg(DRACULA_FG), // default foreground
-                ))
-            })
-            .collect();
-        let pin_bar = Paragraph::new(pin_lines).block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(" pins ")
-                .title_style(
-                    Style::default()
-                        .fg(DRACULA_YELLOW)
-                        .add_modifier(Modifier::BOLD),
-                )
-                .border_style(Style::default().fg(DRACULA_YELLOW)),
-        );
-        frame.render_widget(pin_bar, area);
-    }
-}
-
 fn render_input(frame: &mut Frame, app: &App, area: Rect) {
     let input_line = if app.input.starts_with('/') {
         // Color the command keyword differently from the arguments
@@ -550,7 +522,6 @@ fn render_help_overlay(frame: &mut Frame, app: &App, area: Rect) {
 Commands:
   /to <who> <msg>   send to recipients
   /view [channel]   filter by channel
-  /pin /pins /unpin  manage pins (max 5)
   /board   project board   /who    participants
   /status  set status      /debug  system msgs
   /quit    exit
@@ -615,11 +586,6 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         app.input.len().max(1).div_ceil(width.max(1))
     };
     let input_height = (input_lines + 2).min(8) as u16;
-    let pin_height = if app.pins.is_empty() {
-        0
-    } else {
-        (app.pins.len() as u16) + 2
-    };
 
     let banner_height = if app.current_view.as_ref().is_some_and(|v| v != "broadcast") {
         1u16
@@ -630,7 +596,6 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     let chunks = Layout::vertical([
         Constraint::Length(banner_height),
         Constraint::Min(3),
-        Constraint::Length(pin_height),
         Constraint::Length(input_height),
     ])
     .split(main_area);
@@ -652,9 +617,8 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     render_broadcast_banner(frame, app, chunks[0]);
     render_chat(frame, app, chunks[1]);
     render_unread_indicator(frame, app, chunks[1]);
-    render_pins(frame, app, chunks[2]);
-    render_input(frame, app, chunks[3]);
-    render_popup(frame, app, chunks[3]);
+    render_input(frame, app, chunks[2]);
+    render_popup(frame, app, chunks[2]);
     render_status_bar(frame, app, status_area);
     render_help_overlay(frame, app, main_area);
 }

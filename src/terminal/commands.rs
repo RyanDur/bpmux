@@ -37,21 +37,6 @@ impl App {
         if let Some(arg) = text.strip_prefix("/view ") {
             return self.handle_view_with_arg(arg.to_string());
         }
-        if text == "/pins" {
-            return self.handle_pins();
-        }
-        if let Some(arg) = text.strip_prefix("/pin ") {
-            return self.handle_pin_with_arg(arg.to_string());
-        }
-        if text == "/pin" {
-            return self.handle_pin_bare();
-        }
-        if let Some(arg) = text.strip_prefix("/unpin ") {
-            return self.handle_unpin_with_arg(arg.to_string());
-        }
-        if text == "/unpin" {
-            return self.handle_unpin_bare();
-        }
         if text == "/board" {
             return self.handle_board();
         }
@@ -213,79 +198,6 @@ impl App {
         None
     }
 
-    fn handle_pins(&mut self) -> Option<Message> {
-        let list = if self.pins.is_empty() {
-            "No pins yet. Use /pin <text> to pin a decision.".to_string()
-        } else {
-            let items: Vec<String> = self
-                .pins
-                .iter()
-                .enumerate()
-                .map(|(i, p)| format!("  {}. {}", i + 1, p))
-                .collect();
-            format!("Pinned:\n{}", items.join("\n"))
-        };
-        self.system_message(list);
-        self.clear_input();
-        None
-    }
-
-    fn handle_pin_with_arg(&mut self, arg: String) -> Option<Message> {
-        let arg = arg.trim();
-        if arg.is_empty() {
-            return self.pin_usage();
-        }
-        if self.pins.len() >= 5 {
-            self.system_message("max 5 pins — /unpin one first".to_string());
-            self.clear_input();
-            return None;
-        }
-        self.pins.push(arg.to_string());
-        if let Some(dir) = &self.session_dir {
-            let _ = crate::session::log::write_pins(dir, &self.pins);
-        }
-        self.system_message(format!("Pinned #{}: {arg}", self.pins.len()));
-        self.clear_input();
-        None
-    }
-
-    fn handle_pin_bare(&mut self) -> Option<Message> {
-        self.pin_usage()
-    }
-
-    fn pin_usage(&mut self) -> Option<Message> {
-        self.system_message(
-            "Usage: /pin <text>. Example: /pin channels-as-views because filter-on-render"
-                .to_string(),
-        );
-        self.clear_input();
-        None
-    }
-
-    fn handle_unpin_with_arg(&mut self, arg: String) -> Option<Message> {
-        let arg = arg.trim();
-        match arg.parse::<usize>() {
-            Ok(n) if n >= 1 && n <= self.pins.len() => {
-                let removed = self.pins.remove(n - 1);
-                if let Some(dir) = &self.session_dir {
-                    let _ = crate::session::log::write_pins(dir, &self.pins);
-                }
-                self.system_message(format!("Unpinned #{n}: {removed}"));
-            }
-            _ => {
-                self.system_message(format!("no pin #{arg}. Type /pins to list."));
-            }
-        }
-        self.clear_input();
-        None
-    }
-
-    fn handle_unpin_bare(&mut self) -> Option<Message> {
-        self.system_message("Usage: /unpin <number>. Type /pins to see pin numbers.".to_string());
-        self.clear_input();
-        None
-    }
-
     fn handle_roadmap(&mut self) -> Option<Message> {
         let roadmap_text = match fetch_roadmap() {
             Ok(text) => text,
@@ -326,7 +238,7 @@ impl App {
             } else if ch.contains('+') {
                 ch.split('+').map(String::from).collect()
             } else {
-                return None;
+                vec![ch.clone()]
             };
             let recipients: Vec<String> =
                 names.into_iter().filter(|n| n != &self.peer_name).collect();

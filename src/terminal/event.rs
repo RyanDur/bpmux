@@ -119,12 +119,17 @@ fn handle_broadcast_message(msg: session::Message, app: &mut App) {
 fn handle_mouse_click(col: u16, row: u16, app: &mut App) {
     if let Some((sx, sy, sw, sh)) = app.sidebar_area {
         if col >= sx && col < sx + sw && row >= sy && row < sy + sh {
-            let content_row = row.saturating_sub(sy + 1);
-            let channels = app.sidebar_channels();
-            let idx = content_row as usize;
-            if idx < channels.len() {
-                app.sidebar_selected = idx;
-                app.sidebar_select();
+            if row == sy {
+                // Click on sidebar header — toggle closed
+                app.toggle_sidebar();
+            } else {
+                let content_row = row.saturating_sub(sy + 1);
+                let channels = app.sidebar_channels();
+                let idx = content_row as usize;
+                if idx < channels.len() {
+                    app.sidebar_selected = idx;
+                    app.sidebar_select();
+                }
             }
             return;
         }

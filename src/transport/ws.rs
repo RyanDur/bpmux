@@ -45,24 +45,6 @@ async fn run_ws_session(
         },
     )
     .await?;
-    // Pins before history — reconnecting agents need theory context first
-    if let Ok(pins) = session.read_pins()
-        && !pins.is_empty()
-    {
-        let items: Vec<String> = pins
-            .iter()
-            .enumerate()
-            .map(|(i, p)| format!("  {}. {}", i + 1, p))
-            .collect();
-        let pin_msg = ServerMessage::Message {
-            from: "bpmux".to_string(),
-            text: format!("Pinned:\n{}", items.join("\n")),
-            ts: chrono::Utc::now().to_rfc3339(),
-            to: None,
-            message_type: MessageType::System.to_wire(),
-        };
-        send_json(&mut tx, &pin_msg).await?;
-    }
     let join_msg = session::Message {
         from: "bpmux".to_string(),
         text: format!("{identity} joined"),

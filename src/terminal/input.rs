@@ -4,9 +4,6 @@ use super::app::App;
 pub(super) const SLASH_COMMANDS: &[(&str, &str)] = &[
     ("/to", "send to recipients"),
     ("/view", "filter view by channel"),
-    ("/pin", "pin a decision"),
-    ("/pins", "list pinned items"),
-    ("/unpin", "remove a pin by number"),
     ("/board", "show project board"),
     ("/roadmap", "show project roadmap"),
     ("/status", "declare your status"),
