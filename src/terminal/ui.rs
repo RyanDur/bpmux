@@ -583,41 +583,44 @@ Press any key to close";
 }
 
 pub fn render(frame: &mut Frame, app: &mut App) {
-    // Auto-suppress sidebar if terminal is too narrow
-    let sidebar_width = if app.sidebar_open && frame.area().width >= MIN_WIDTH_FOR_SIDEBAR {
+    let full = frame.area();
+
+    // Top-level split: content area + full-width status bar
+    let v_split = Layout::vertical([Constraint::Min(3), Constraint::Length(1)]).split(full);
+    let content_area = v_split[0];
+    let status_area = v_split[1];
+
+    let sidebar_width = if app.sidebar_open && full.width >= MIN_WIDTH_FOR_SIDEBAR {
         24u16
     } else {
         0
     };
 
-    // Horizontal split: sidebar | main content
     let h_chunks = Layout::horizontal([Constraint::Length(sidebar_width), Constraint::Min(1)])
-        .split(frame.area());
+        .split(content_area);
 
     let main_area = h_chunks[1];
 
     let input_lines = if app.input.is_empty() {
         1
     } else {
-        let width = main_area.width.saturating_sub(2) as usize; // borders only
+        let width = main_area.width.saturating_sub(2) as usize;
         app.input.len().max(1).div_ceil(width.max(1))
     };
-    let input_height = (input_lines + 2).min(8) as u16; // +2 for borders, cap at 8
+    let input_height = (input_lines + 2).min(8) as u16;
     let pin_height = if app.pins.is_empty() {
         0
     } else {
-        (app.pins.len() as u16) + 2 // +2 for borders
+        (app.pins.len() as u16) + 2
     };
 
     let chunks = Layout::vertical([
-        Constraint::Min(3),               // chat pane
-        Constraint::Length(pin_height),   // pin bar (0 if no pins)
-        Constraint::Length(input_height), // input pane — grows with content
-        Constraint::Length(1),            // status bar
+        Constraint::Min(3),
+        Constraint::Length(pin_height),
+        Constraint::Length(input_height),
     ])
     .split(main_area);
 
-    // Store layout regions for mouse click detection
     if sidebar_width > 0 {
         let s = h_chunks[0];
         app.sidebar_area = Some((s.x, s.y, s.width, s.height));
@@ -625,14 +628,18 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     } else {
         app.sidebar_area = None;
     }
-    let sb = chunks[3];
-    app.status_bar_area = Some((sb.x, sb.y, sb.width, sb.height));
+    app.status_bar_area = Some((
+        status_area.x,
+        status_area.y,
+        status_area.width,
+        status_area.height,
+    ));
 
     render_chat(frame, app, chunks[0]);
     render_unread_indicator(frame, app, chunks[0]);
     render_pins(frame, app, chunks[1]);
     render_input(frame, app, chunks[2]);
     render_popup(frame, app, chunks[2]);
-    render_status_bar(frame, app, chunks[3]);
+    render_status_bar(frame, app, status_area);
     render_help_overlay(frame, app, main_area);
 }
