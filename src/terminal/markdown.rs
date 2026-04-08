@@ -239,7 +239,9 @@ pub(super) fn render_md_message<'a>(
     line_limit: Option<usize>,
     terminal_width: usize,
 ) -> Vec<Line<'a>> {
-    let simplified = simplify_markdown(text, terminal_width);
+    let indent_width = indent.content.chars().count();
+    let table_width = terminal_width.saturating_sub(indent_width);
+    let simplified = simplify_markdown(text, table_width);
     let chunks = chunk_at_paragraphs(&simplified, CHUNK_SIZE_LIMIT);
     let mut all_lines = Vec::new();
 
@@ -377,4 +379,49 @@ pub(crate) fn message_matches_channel(msg: &session::Message, view: &str, owner:
         return false;
     }
     crate::terminal::app::channel_name(msg, owner) == view
+}
+
+#[cfg(test)]
+mod table_tests {
+    use super::*;
+    #[test]
+    fn table_renders_with_borders() {
+        let rows = vec![
+            vec!["Anti-feature".to_string(), "Reason".to_string()],
+            vec![
+                "Threading".to_string(),
+                "Flat chat preserves shared awareness for small teams. Threading fragments it."
+                    .to_string(),
+            ],
+            vec![
+                "Real-time editing".to_string(),
+                "bpmux is a communication channel, not a shared editor.".to_string(),
+            ],
+        ];
+        let output = render_table(&rows, 78);
+        println!("\n{output}");
+        assert!(output.contains("┌"));
+        assert!(output.contains("┤"));
+        assert!(output.contains("└"));
+    }
+}
+
+#[cfg(test)]
+mod table_width_tests {
+    use super::*;
+    #[test]
+    fn table_fits_within_width_minus_indent() {
+        let table = "| A | B |\n|---|---|\n| short | Longer text that should wrap within the cell boundaries properly |\n";
+        let indent_width = 15; // simulates "[broadcast] bpmux: "
+        let terminal_width = 78;
+        let table_width = terminal_width - indent_width;
+        let simplified = simplify_markdown(table, table_width);
+        for line in simplified.lines() {
+            let line_chars = line.chars().count();
+            assert!(
+                line_chars <= table_width,
+                "Table line exceeds width {table_width}: {line_chars} chars: {line}"
+            );
+        }
+    }
 }
