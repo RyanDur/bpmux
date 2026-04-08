@@ -13,6 +13,26 @@ impl App {
             return None;
         }
 
+        if !self.search_results.is_empty() {
+            if let Ok(n) = text.parse::<usize>() {
+                self.expand_search_result(n);
+                self.clear_input();
+                return None;
+            }
+            if text == "next" {
+                let next = self.search_selected.map(|i| i + 1).unwrap_or(0);
+                self.expand_search_result(next);
+                self.clear_input();
+                return None;
+            }
+            if text == "prev" {
+                let prev = self.search_selected.unwrap_or(1).saturating_sub(1);
+                self.expand_search_result(prev);
+                self.clear_input();
+                return None;
+            }
+        }
+
         if text == "/who" {
             return self.handle_who();
         }
@@ -224,16 +244,20 @@ impl App {
     }
 
     fn handle_search(&mut self, query: String) -> Option<Message> {
-        let (effective_query, message_class) = match query.as_str() {
+        let parts: Vec<&str> = query.splitn(2, ' ').collect();
+        let (message_class, keyword) = match parts[0] {
             "corrections" => (
-                String::new(),
                 Some(crate::session::MessageClass::Correction),
+                parts.get(1).unwrap_or(&"").to_string(),
             ),
-            "decisions" => (String::new(), Some(crate::session::MessageClass::Decision)),
-            _ => (query.clone(), None),
+            "decisions" => (
+                Some(crate::session::MessageClass::Decision),
+                parts.get(1).unwrap_or(&"").to_string(),
+            ),
+            _ => (None, query.clone()),
         };
         let filters = crate::session::SearchFilters {
-            query: effective_query,
+            query: keyword,
             sender: None,
             after: None,
             before: None,
@@ -244,24 +268,52 @@ impl App {
         let results = crate::session::search(&self.messages, &filters);
         if results.is_empty() {
             self.system_message(format!("No results for \"{query}\"."));
+            self.search_results.clear();
+            self.search_selected = None;
         } else {
-            let mut text = format!("── Search: \"{query}\" ({} results) ──\n", results.len());
+            let mut text = format!(
+                "── Search: \"{query}\" ({} results) ── type a number to expand ──\n",
+                results.len()
+            );
             for (i, result) in results.iter().enumerate() {
+                let class_label = format!("{:?}", result.message_class).to_lowercase();
+                let ts = result.messages[0].ts.format("%Y-%m-%d %H:%M");
+                let sender = result.messages[result.match_index]
+                    .from
+                    .split(':')
+                    .next()
+                    .unwrap_or("?");
+                let preview: String = result.messages[result.match_index]
+                    .text
+                    .chars()
+                    .take(60)
+                    .collect();
                 text.push_str(&format!(
-                    "\n[{}] {}\n",
-                    i + 1,
-                    result.messages[0].ts.format("%Y-%m-%d %H:%M")
+                    "  [{i}] [{class_label}] {ts} {sender}: {preview}\n"
                 ));
-                for msg in &result.messages {
-                    let sender = msg.from.split(':').next().unwrap_or(&msg.from);
-                    text.push_str(&format!("  {sender}: {}\n", msg.text));
-                }
             }
-            text.push_str("\n── End of results ──");
+            text.push_str("── type number to expand, /search for new query ──");
             self.system_message(text);
+            self.search_results = results;
+            self.search_selected = None;
         }
         self.clear_input();
         None
+    }
+
+    pub(super) fn expand_search_result(&mut self, index: usize) {
+        if let Some(result) = self.search_results.get(index) {
+            let mut text = format!("── Result [{index}] ({:?}) ──\n", result.message_class);
+            for (i, msg) in result.messages.iter().enumerate() {
+                let sender = msg.from.split(':').next().unwrap_or(&msg.from);
+                let ts = msg.ts.format("%H:%M:%S");
+                let marker = if i == result.match_index { " ◀" } else { "" };
+                text.push_str(&format!("  [{ts}] {sender}: {}{marker}\n", msg.text));
+            }
+            text.push_str("── /search for new query ──");
+            self.system_message(text);
+            self.search_selected = Some(index);
+        }
     }
 
     fn handle_search_bare(&mut self) -> Option<Message> {
