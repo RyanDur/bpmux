@@ -55,32 +55,40 @@ fn render_table(rows: &[Vec<String>]) -> String {
             }
         }
     }
-    let mut out = String::new();
-    for (ri, row) in rows.iter().enumerate() {
-        for (i, cell) in row.iter().enumerate() {
-            if i > 0 {
-                out.push_str("  ");
+
+    let separator = |left: char, mid: char, right: char| {
+        let mut s = String::new();
+        s.push(left);
+        for (i, &w) in widths.iter().enumerate() {
+            for _ in 0..w + 2 {
+                s.push('─');
             }
-            let w = widths.get(i).copied().unwrap_or(0);
-            out.push_str(cell);
+            s.push(if i + 1 < col_count { mid } else { right });
+        }
+        s.push('\n');
+        s
+    };
+
+    let mut out = separator('┌', '┬', '┐');
+    for (ri, row) in rows.iter().enumerate() {
+        out.push('│');
+        for (i, w) in widths.iter().enumerate() {
+            let cell = row.get(i).map(|s| s.as_str()).unwrap_or("");
             let pad = w.saturating_sub(cell.chars().count());
+            out.push(' ');
+            out.push_str(cell);
             for _ in 0..pad {
                 out.push(' ');
             }
+            out.push(' ');
+            out.push('│');
         }
         out.push('\n');
         if ri == 0 {
-            for (i, &w) in widths.iter().enumerate() {
-                if i > 0 {
-                    out.push_str("  ");
-                }
-                for _ in 0..w {
-                    out.push('─');
-                }
-            }
-            out.push('\n');
+            out.push_str(&separator('├', '┼', '┤'));
         }
     }
+    out.push_str(&separator('└', '┴', '┘'));
     out
 }
 
@@ -208,8 +216,12 @@ fn chunk_at_paragraphs(text: &str, max_size: usize) -> Vec<String> {
             chunks.push(text[start..].to_string());
             break;
         }
-        let window = &text[start..start + max_size];
-        let break_at = window.rfind("\n\n").map(|i| i + 2).unwrap_or(max_size);
+        let mut end = start + max_size;
+        while !text.is_char_boundary(end) && end > start {
+            end -= 1;
+        }
+        let window = &text[start..end];
+        let break_at = window.rfind("\n\n").map(|i| i + 2).unwrap_or(end - start);
         chunks.push(text[start..start + break_at].to_string());
         start += break_at;
     }
