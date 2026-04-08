@@ -183,35 +183,9 @@ fn render_table(rows: &[Vec<String>], terminal_width: usize) -> String {
     render_table_as_grid(rows, &widths)
 }
 
-fn simplify_markdown(text: &str, terminal_width: usize) -> String {
-    let mut result = String::with_capacity(text.len());
-    let lines: Vec<&str> = text.lines().collect();
-    let mut i = 0;
-    while i < lines.len() {
-        let trimmed = lines[i].trim();
-        if trimmed.starts_with('|') && trimmed.ends_with('|') && !is_table_separator(trimmed) {
-            let mut table_rows = Vec::new();
-            while i < lines.len() {
-                let t = lines[i].trim();
-                if t.starts_with('|') && t.ends_with('|') {
-                    if !is_table_separator(t) {
-                        table_rows.push(parse_table_row(t));
-                    }
-                    i += 1;
-                } else {
-                    break;
-                }
-            }
-            result.push_str(&render_table(&table_rows, terminal_width));
-        } else {
-            result.push_str(lines[i]);
-            result.push('\n');
-            i += 1;
-        }
-    }
-    // Strip link URLs: [text](url) → text
-    let mut output = String::with_capacity(result.len());
-    let mut chars = result.chars().peekable();
+fn strip_link_urls(text: &str) -> String {
+    let mut output = String::with_capacity(text.len());
+    let mut chars = text.chars().peekable();
     while let Some(c) = chars.next() {
         if c == '[' {
             let mut link_text = String::new();
@@ -251,6 +225,47 @@ fn simplify_markdown(text: &str, terminal_width: usize) -> String {
     output
 }
 
+enum Segment {
+    Text(String),
+    Table(Vec<Vec<String>>),
+}
+
+fn split_into_segments(text: &str) -> Vec<Segment> {
+    let mut segments = Vec::new();
+    let mut text_buf = String::new();
+    let lines: Vec<&str> = text.lines().collect();
+    let mut i = 0;
+    while i < lines.len() {
+        let trimmed = lines[i].trim();
+        if trimmed.starts_with('|') && trimmed.ends_with('|') && !is_table_separator(trimmed) {
+            if !text_buf.is_empty() {
+                segments.push(Segment::Text(std::mem::take(&mut text_buf)));
+            }
+            let mut table_rows = Vec::new();
+            while i < lines.len() {
+                let t = lines[i].trim();
+                if t.starts_with('|') && t.ends_with('|') {
+                    if !is_table_separator(t) {
+                        table_rows.push(parse_table_row(t));
+                    }
+                    i += 1;
+                } else {
+                    break;
+                }
+            }
+            segments.push(Segment::Table(table_rows));
+        } else {
+            text_buf.push_str(lines[i]);
+            text_buf.push('\n');
+            i += 1;
+        }
+    }
+    if !text_buf.is_empty() {
+        segments.push(Segment::Text(text_buf));
+    }
+    segments
+}
+
 pub(super) fn render_md_message<'a>(
     text: &'a str,
     prefix_spans: Vec<Span<'a>>,
@@ -260,40 +275,65 @@ pub(super) fn render_md_message<'a>(
 ) -> Vec<Line<'a>> {
     let indent_width = indent.content.chars().count();
     let table_width = terminal_width.saturating_sub(indent_width);
-    let simplified = simplify_markdown(text, table_width);
-    let chunks = chunk_at_paragraphs(&simplified, CHUNK_SIZE_LIMIT);
-    let mut all_lines = Vec::new();
+    let segments = split_into_segments(text);
+    let mut all_lines: Vec<Line<'a>> = Vec::new();
 
-    for chunk in &chunks {
-        let options = tui_markdown::Options::new(DraculaStyleSheet);
-        let md_text = tui_markdown::from_str_with_options(chunk, &options);
-        for mut md_line in md_text.lines {
-            let mut spans = Vec::new();
-            if all_lines.is_empty() {
-                spans.extend(prefix_spans.iter().cloned());
-            } else {
-                spans.push(indent.clone());
-            }
-            let line_style = md_line.style;
-            for span in &mut md_line.spans {
-                span.style = line_style.patch(span.style);
-                if span.style.fg == Some(Color::LightBlue) {
-                    span.style.fg = Some(DRACULA_CYAN);
-                } else if span.style.fg == Some(Color::Blue) {
-                    span.style.fg = Some(DRACULA_PURPLE);
+    for segment in segments {
+        match segment {
+            Segment::Table(rows) => {
+                let table_text = render_table(&rows, table_width);
+                for table_line in table_text.lines() {
+                    let mut spans = Vec::new();
+                    if all_lines.is_empty() {
+                        spans.extend(prefix_spans.iter().cloned());
+                    } else {
+                        spans.push(indent.clone());
+                    }
+                    spans.push(Span::raw(table_line.to_string()));
+                    all_lines.push(Line::from(spans));
                 }
             }
-            strip_heading_hashes(&mut md_line.spans);
-            for span in md_line.spans {
-                spans.push(Span::styled(span.content.to_string(), span.style));
-            }
-            all_lines.push(Line::from(spans));
+            Segment::Text(md_text) => {
+                let simplified = strip_link_urls(&md_text);
+                let chunks = chunk_at_paragraphs(&simplified, CHUNK_SIZE_LIMIT);
+                for chunk in &chunks {
+                    let options = tui_markdown::Options::new(DraculaStyleSheet);
+                    let md = tui_markdown::from_str_with_options(chunk, &options);
+                    for mut md_line in md.lines {
+                        let mut spans = Vec::new();
+                        if all_lines.is_empty() {
+                            spans.extend(prefix_spans.iter().cloned());
+                        } else {
+                            spans.push(indent.clone());
+                        }
+                        let line_style = md_line.style;
+                        for span in &mut md_line.spans {
+                            span.style = line_style.patch(span.style);
+                            if span.style.fg == Some(Color::LightBlue) {
+                                span.style.fg = Some(DRACULA_CYAN);
+                            } else if span.style.fg == Some(Color::Blue) {
+                                span.style.fg = Some(DRACULA_PURPLE);
+                            }
+                        }
+                        strip_heading_hashes(&mut md_line.spans);
+                        for span in md_line.spans {
+                            spans.push(Span::styled(span.content.to_string(), span.style));
+                        }
+                        all_lines.push(Line::from(spans));
 
-            if let Some(limit) = line_limit
-                && all_lines.len() >= limit
-            {
-                return all_lines;
+                        if let Some(limit) = line_limit
+                            && all_lines.len() >= limit
+                        {
+                            return all_lines;
+                        }
+                    }
+                }
             }
+        }
+        if let Some(limit) = line_limit
+            && all_lines.len() >= limit
+        {
+            return all_lines;
         }
     }
     all_lines
@@ -430,12 +470,16 @@ mod table_width_tests {
     use super::*;
     #[test]
     fn table_fits_within_width_minus_indent() {
-        let table = "| A | B |\n|---|---|\n| short | Longer text that should wrap within the cell boundaries properly |\n";
-        let indent_width = 15; // simulates "[broadcast] bpmux: "
-        let terminal_width = 78;
-        let table_width = terminal_width - indent_width;
-        let simplified = simplify_markdown(table, table_width);
-        for line in simplified.lines() {
+        let rows = vec![
+            vec!["A".to_string(), "B".to_string()],
+            vec![
+                "short".to_string(),
+                "Longer text that should wrap within the cell boundaries properly".to_string(),
+            ],
+        ];
+        let table_width = 63; // 78 - 15 indent
+        let output = render_table(&rows, table_width);
+        for line in output.lines() {
             let line_chars = line.chars().count();
             assert!(
                 line_chars <= table_width,
