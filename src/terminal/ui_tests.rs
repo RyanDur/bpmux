@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use super::markdown::{message_involves_participants, wrap_line_with_indent};
+use super::markdown::{message_matches_channel, wrap_line_with_indent};
 use super::theme::{DRACULA_CYAN, sender_color};
 use super::ui::render;
 use crate::session::Message;
@@ -413,79 +413,61 @@ fn directed_msg(from: &str, text: &str, to: &[&str]) -> Message {
 }
 
 #[test]
-fn participant_filter_broadcast_excluded_from_channel_view() {
-    let msg = chat_msg("dev:ws", "hello");
-    assert!(
-        !message_involves_participants(&msg, "dev", "ryan"),
-        "Broadcasts belong in broadcast view, not channel views"
-    );
+fn channel_view_exact_match() {
+    assert!(message_matches_channel(
+        &directed_msg("ryan:human", "hey", &["designer"]),
+        "designer",
+        "ryan"
+    ));
+    assert!(message_matches_channel(
+        &directed_msg("designer:ws", "hi", &["ryan"]),
+        "designer",
+        "ryan"
+    ));
+    assert!(!message_matches_channel(
+        &directed_msg("designer:ws", "group", &["dev", "ryan"]),
+        "designer",
+        "ryan"
+    ));
+    assert!(!message_matches_channel(
+        &directed_msg("designer:ws", "aside", &["dev"]),
+        "designer",
+        "ryan"
+    ));
+    assert!(!message_matches_channel(
+        &directed_msg("pm:ws", "fyi", &["designer"]),
+        "designer",
+        "ryan"
+    ));
+    assert!(!message_matches_channel(
+        &chat_msg("designer:ws", "broadcast"),
+        "designer",
+        "ryan"
+    ));
+    assert!(!message_matches_channel(
+        &chat_msg("ryan:human", "broadcast"),
+        "designer",
+        "ryan"
+    ));
 }
 
 #[test]
-fn participant_filter_excludes_messages_not_involving_owner() {
-    let msg = directed_msg("pm:ws", "hello dev", &["dev"]);
-    assert!(
-        !message_involves_participants(&msg, "dev", "ryan"),
-        "PM→dev message should not show in Ryan's dev channel"
-    );
-}
-
-#[test]
-fn participant_filter_includes_messages_to_owner() {
-    let msg = directed_msg("dev:ws", "hello ryan", &["ryan"]);
-    assert!(message_involves_participants(&msg, "dev", "ryan"));
-}
-
-#[test]
-fn participant_filter_excludes_unrelated() {
-    let msg = directed_msg("pm:ws", "hello designer", &["designer"]);
-    assert!(!message_involves_participants(&msg, "dev", "ryan"));
-}
-
-#[test]
-fn participant_filter_sender_broadcast_excluded() {
-    let msg = chat_msg("dev:ws", "broadcast");
-    assert!(!message_involves_participants(&msg, "dev", "ryan"));
-}
-
-#[test]
-fn participant_filter_broadcast_no_match_for_other() {
-    let msg = chat_msg("pm:ws", "broadcast");
-    assert!(!message_involves_participants(&msg, "dev", "ryan"));
-}
-
-#[test]
-fn participant_filter_group_excludes_without_owner() {
-    let msg = directed_msg("dev:ws", "hello", &["pm"]);
-    assert!(
-        !message_involves_participants(&msg, "dev+pm", "ryan"),
-        "dev→pm without Ryan should not show in Ryan's dev+pm channel"
-    );
-}
-
-#[test]
-fn participant_filter_group_includes_with_owner() {
-    let msg = directed_msg("dev:ws", "hello", &["pm", "ryan"]);
-    assert!(message_involves_participants(&msg, "dev+pm", "ryan"));
-}
-
-#[test]
-fn participant_filter_group_missing_one() {
-    let msg = directed_msg("dev:ws", "hello", &["designer"]);
-    // "dev+pm" view: dev is sender but pm not involved
-    assert!(!message_involves_participants(&msg, "dev+pm", "ryan"));
-}
-
-#[test]
-fn participant_filter_owner_broadcast_excluded_from_channel() {
-    let msg = chat_msg("ryan:human", "owner broadcast");
-    assert!(!message_involves_participants(&msg, "dev", "ryan"));
-}
-
-#[test]
-fn participant_filter_owner_directed_to_channel_matches() {
-    let msg = directed_msg("ryan:human", "hey dev", &["dev"]);
-    assert!(message_involves_participants(&msg, "dev", "ryan"));
+fn channel_view_group_exact_match() {
+    assert!(message_matches_channel(
+        &directed_msg("dev:ws", "hello", &["pm", "ryan"]),
+        "dev+pm",
+        "ryan"
+    ));
+    assert!(!message_matches_channel(
+        &directed_msg("dev:ws", "hello", &["ryan"]),
+        "dev+pm",
+        "ryan"
+    ));
+    assert!(!message_matches_channel(
+        &directed_msg("dev:ws", "hello", &["pm", "designer", "ryan"]),
+        "dev+pm",
+        "ryan"
+    ));
 }
 
 #[test]

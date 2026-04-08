@@ -13,7 +13,7 @@ const TRUNCATE_AFTER_LINES: usize = 10;
 const SIDEBAR_NAME_WIDTH: usize = 16;
 const MIN_WIDTH_FOR_SIDEBAR: u16 = 60;
 use crate::terminal::markdown::{
-    message_involves_participants, render_md_message, wrap_line_with_indent,
+    message_matches_channel, render_md_message, wrap_line_with_indent,
 };
 use crate::terminal::theme::{
     DRACULA_BG, DRACULA_COMMENT, DRACULA_CYAN, DRACULA_FG, DRACULA_GREEN, DRACULA_ORANGE,
@@ -185,7 +185,7 @@ fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
                 Some(view) if view == "broadcast" => {
                     app::channel_name(m, &app.peer_name) == "broadcast"
                 }
-                Some(view) => message_involves_participants(m, view, &app.peer_name),
+                Some(view) => message_matches_channel(m, view, &app.peer_name),
             }
         })
         .collect();

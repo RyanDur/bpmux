@@ -158,24 +158,9 @@ pub(crate) fn wrap_line_with_indent<'a>(
     result
 }
 
-/// Check if a message involves all participants named in the view.
-/// View "dev" matches any message where dev is sender or recipient.
-/// View "dev+pm" matches messages where both dev and pm are involved.
-pub(crate) fn message_involves_participants(
-    msg: &session::Message,
-    view: &str,
-    owner: &str,
-) -> bool {
-    let sender_short = msg.from.split(':').next().unwrap_or(&msg.from);
-
-    // Broadcasts belong in broadcast view, not channel views
-    let Some(recipients) = &msg.to else {
+pub(crate) fn message_matches_channel(msg: &session::Message, view: &str, owner: &str) -> bool {
+    if msg.to.is_none() {
         return false;
-    };
-
-    let is_involved = |name: &str| sender_short == name || recipients.iter().any(|r| r == name);
-
-    // The owner must be involved AND every view participant must be involved
-    let view_participants: Vec<&str> = view.split('+').collect();
-    is_involved(owner) && view_participants.iter().all(|p| is_involved(p))
+    }
+    crate::terminal::app::channel_name(msg, owner) == view
 }

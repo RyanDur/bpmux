@@ -37,11 +37,13 @@
 
 ### Active work (Horizon 1 polish)
 
-- [#79](https://github.com/RyanDur/bpmux/issues/79) Channel view shows messages by participant involvement, not exact addressing
-- [#81](https://github.com/RyanDur/bpmux/issues/81) Pasting multiline text sends each line as a separate message
-- [#68](https://github.com/RyanDur/bpmux/issues/68) Status dots survive TUI restart
-- Text wrap alignment — continuation lines should indent to match sender prefix
-- Stale Stop hook removal (send-claude-response.sh still says "Use read_messages")
+- [#92](https://github.com/RyanDur/bpmux/issues/92) Channel awareness — agents know which channel the owner is talking in (verifying filter behavior)
+- [#97](https://github.com/RyanDur/bpmux/issues/97) Bridge filtering — agents only receive relevant messages (token savings)
+- [#98](https://github.com/RyanDur/bpmux/issues/98) Focus indicators for active panel
+- [#100](https://github.com/RyanDur/bpmux/issues/100) Contextual shortcuts in status bar
+- [#101](https://github.com/RyanDur/bpmux/issues/101) Type-to-filter channels in sidebar
+
+**Recently shipped:** #79 (channel view), #81 (paste fix), #68 (status dots survive restart), #65 (status dots), #83 (/roadmap), #84 (clean startup), #85 (mouse clicks), #86 (text wrap alignment), #87 (activity filtering), #88 (large markdown), #90 (word wrap), #91 (broadcast banner), #93 (remove handoffs), #94 (remove pins), #95 (remove MCP endpoint), #96 (drop connected count)
 
 **Research backing:** Edmondson (1999) -- first interactions disproportionately determine whether a tool feels safe or threatening. Gutwin & Greenberg (2002) -- minimum awareness requires presence, identity, and action visibility. Clark & Brennan (1991) -- reviewability and cotemporality are the constraints that matter most for text media.
 
@@ -62,9 +64,11 @@
    - Reference pattern: battleship repo (React + Vite + GitHub Pages + GitHub Releases)
    - Not prescriptive — shares what we do and what worked, not a mandated process
 
-2. **Teaching handoffs** -- agents distill theory for successors instead of copying files
-   - Naur's theory building: theory can't be copied, only rebuilt through understanding
-   - Medical handoff protocols (SBAR, I-PASS) as structural reference
+2. **Arcs — walkable reasoning paths** -- the log captures teaching moments; arcs make them findable
+   - Naur's theory building: theory can't be copied, only rebuilt through walkthrough. Arcs are asynchronous walkthroughs.
+   - Experiments showed: log-only onboarding scores 4.5/5 on culture, one arc raises culture by a full point
+   - Research backing: CBR (Schank), Experience Factory (Basili), conversation analysis (Sacks), Bohm's dialogue
+   - Nature (base model) + nurture (arcs) = judgment. Neither alone is sufficient.
    - First real test: machine migration 2026-04-11
 
 3. **Project health signals** -- glanceable board with Accelerate/DORA-aligned metrics
