@@ -520,11 +520,12 @@ fn render_status_bar(frame: &mut Frame, app: &mut App, area: Rect) {
         ));
     }
     // Right-aligned "? help" hint
-    let used: usize = status_spans.iter().map(|s| s.content.len()).sum();
+    let used: usize = status_spans.iter().map(|s| s.content.chars().count()).sum();
     let bar_width = area.width as usize;
     let hint = "? help";
-    if used + hint.len() + 1 < bar_width {
-        let pad = bar_width.saturating_sub(used + hint.len());
+    let right_margin = 1;
+    if used + hint.len() + right_margin + 1 < bar_width {
+        let pad = bar_width.saturating_sub(used + hint.len() + right_margin);
         app.help_hint_col = Some(area.x + (used + pad) as u16);
         status_spans.push(Span::raw(" ".repeat(pad)));
         status_spans.push(Span::styled(hint, Style::default().fg(DRACULA_PURPLE)));
@@ -561,8 +562,8 @@ Press any key to close";
             .collect();
         let help_height = (help_lines.len() as u16 + 2).min(area.height); // +2 for borders
         let help_width = 52u16.min(area.width);
-        let help_x = (area.width.saturating_sub(help_width)) / 2;
-        let help_y = (area.height.saturating_sub(help_height)) / 2;
+        let help_x = area.x + (area.width.saturating_sub(help_width)) / 2;
+        let help_y = area.y + (area.height.saturating_sub(help_height)) / 2;
         let help_area = Rect::new(help_x, help_y, help_width, help_height);
         let help_popup = Paragraph::new(help_lines).block(
             Block::default()
@@ -633,5 +634,5 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     render_input(frame, app, chunks[2]);
     render_popup(frame, app, chunks[2]);
     render_status_bar(frame, app, chunks[3]);
-    render_help_overlay(frame, app, frame.area());
+    render_help_overlay(frame, app, main_area);
 }
