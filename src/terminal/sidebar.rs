@@ -4,7 +4,17 @@ impl App {
     pub fn sidebar_channels(&self) -> Vec<String> {
         let mut result = vec![self.session_id.clone()];
         if self.project_expanded {
-            let mut channels: Vec<String> = self.active_channels.iter().cloned().collect();
+            let mut channels: Vec<String> = self
+                .active_channels
+                .iter()
+                .filter(|ch| {
+                    self.sidebar_filter.is_empty()
+                        || ch
+                            .to_lowercase()
+                            .contains(&self.sidebar_filter.to_lowercase())
+                })
+                .cloned()
+                .collect();
             channels.sort();
             result.extend(channels);
         }
@@ -20,6 +30,7 @@ impl App {
         } else {
             self.sidebar_open = false;
             self.sidebar_focused = false;
+            self.sidebar_filter.clear();
         }
     }
 
@@ -56,6 +67,7 @@ impl App {
             }
             self.scroll_offset = 0;
             self.sidebar_focused = false;
+            self.sidebar_filter.clear();
         }
         self.sidebar_focused = false;
     }
@@ -73,5 +85,19 @@ impl App {
 
     pub fn sidebar_close(&mut self) {
         self.sidebar_focused = false;
+        self.sidebar_filter.clear();
+    }
+
+    pub fn sidebar_filter_char(&mut self, c: char) {
+        self.sidebar_filter.push(c);
+        self.sidebar_selected = if self.sidebar_channels().len() > 1 {
+            1
+        } else {
+            0
+        };
+    }
+
+    pub fn sidebar_filter_backspace(&mut self) {
+        self.sidebar_filter.pop();
     }
 }

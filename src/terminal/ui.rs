@@ -126,7 +126,11 @@ fn render_sidebar(frame: &mut Frame, app: &App, area: Rect) {
     let sidebar = Paragraph::new(items).block(
         Block::default()
             .borders(Borders::ALL)
-            .title(" channels ")
+            .title(if app.sidebar_filter.is_empty() {
+                " channels ".to_string()
+            } else {
+                format!(" filter: {} ", app.sidebar_filter)
+            })
             .title_style(
                 Style::default()
                     .fg(DRACULA_PURPLE)

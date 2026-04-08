@@ -67,6 +67,7 @@ pub struct App {
     /// Defaults to true — assume focused so we don't fire notifications on startup.
     pub tui_focused: bool,
     pub project_expanded: bool,
+    pub sidebar_filter: String,
     pub sidebar_area: Option<(u16, u16, u16, u16)>,
     pub status_bar_area: Option<(u16, u16, u16, u16)>,
     pub help_hint_col: Option<u16>,
@@ -112,6 +113,7 @@ impl App {
             send_target: None,
             tui_focused: true,
             project_expanded: true,
+            sidebar_filter: String::new(),
             sidebar_area: None,
             status_bar_area: None,
             help_hint_col: None,

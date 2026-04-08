@@ -213,6 +213,8 @@ fn handle_terminal_event(
             KeyCode::Right => app.sidebar_expand(),
             KeyCode::Enter => app.sidebar_select(),
             KeyCode::Esc => app.sidebar_close(),
+            KeyCode::Backspace => app.sidebar_filter_backspace(),
+            KeyCode::Char(c) => app.sidebar_filter_char(c),
             _ => {}
         }
         return Ok(());
