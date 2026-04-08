@@ -34,11 +34,16 @@ fn is_table_separator(line: &str) -> bool {
             .all(|c| c == '|' || c == '-' || c == ' ' || c == ':')
 }
 
+fn clean_cell(text: &str) -> String {
+    let stripped = strip_link_urls(text);
+    stripped.replace("**", "")
+}
+
 fn parse_table_row(line: &str) -> Vec<String> {
     line.trim()
         .trim_matches('|')
         .split('|')
-        .map(|c| c.trim().to_string())
+        .map(|c| clean_cell(c.trim()))
         .collect()
 }
 
