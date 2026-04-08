@@ -10,7 +10,6 @@ use crate::session;
 use crate::terminal::app::{self, App};
 
 const TRUNCATE_AFTER_LINES: usize = 10;
-const MARKDOWN_SIZE_LIMIT: usize = 5000;
 const SIDEBAR_NAME_WIDTH: usize = 16;
 const MIN_WIDTH_FOR_SIDEBAR: u16 = 60;
 use crate::terminal::markdown::{
@@ -237,25 +236,7 @@ fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
                 )));
                 ls
             } else {
-                // Render full message text as markdown.
-                // For very large texts (>5000 chars), render as plain text to
-                // avoid tui_markdown stack overflow on deep markdown structures.
-                if msg.text.len() > MARKDOWN_SIZE_LIMIT {
-                    let mut ls = Vec::new();
-                    for (li, line_text) in msg.text.lines().enumerate() {
-                        let mut spans = Vec::new();
-                        if li == 0 {
-                            spans.extend(prefix_spans.iter().cloned());
-                        } else {
-                            spans.push(indent.clone());
-                        }
-                        spans.push(Span::raw(line_text.to_string()));
-                        ls.push(Line::from(spans));
-                    }
-                    ls
-                } else {
-                    render_md_message(&msg.text, prefix_spans, indent.clone(), None)
-                }
+                render_md_message(&msg.text, prefix_spans, indent.clone(), None)
             };
 
             // Pre-wrap lines with hanging indent so continuation aligns with text

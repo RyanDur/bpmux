@@ -23,46 +23,68 @@ pub(super) fn strip_heading_hashes(spans: &mut Vec<Span<'_>>) {
     }
 }
 
-/// Render markdown message text into `Line`s, prepending prefix spans on the first
-/// line and an indent on subsequent lines.  When `line_limit` is `Some(n)`, only
-/// the first `n` markdown lines are emitted.
+const CHUNK_SIZE_LIMIT: usize = 4000;
+
 pub(super) fn render_md_message<'a>(
     text: &'a str,
     prefix_spans: Vec<Span<'a>>,
     indent: Span<'a>,
     line_limit: Option<usize>,
 ) -> Vec<Line<'a>> {
-    let options = tui_markdown::Options::new(DraculaStyleSheet);
-    let md_text = tui_markdown::from_str_with_options(text, &options);
-    let iter: Box<dyn Iterator<Item = (usize, Line<'_>)>> = match line_limit {
-        Some(n) => Box::new(md_text.lines.into_iter().take(n).enumerate()),
-        None => Box::new(md_text.lines.into_iter().enumerate()),
-    };
-    let mut lines = Vec::new();
-    for (li, mut md_line) in iter {
-        let mut spans = Vec::new();
-        if li == 0 {
-            spans.extend(prefix_spans.iter().cloned());
-        } else {
-            spans.push(indent.clone());
-        }
-        // Patch line-level style into each span so it survives Line reconstruction
-        let line_style = md_line.style;
-        for span in &mut md_line.spans {
-            span.style = line_style.patch(span.style);
-            // Replace hardcoded ANSI blues from tui-markdown internals
-            if span.style.fg == Some(Color::LightBlue) {
-                span.style.fg = Some(DRACULA_CYAN);
-            } else if span.style.fg == Some(Color::Blue) {
-                span.style.fg = Some(DRACULA_PURPLE);
+    let chunks = chunk_at_paragraphs(text, CHUNK_SIZE_LIMIT);
+    let mut all_lines = Vec::new();
+
+    for chunk in &chunks {
+        let options = tui_markdown::Options::new(DraculaStyleSheet);
+        let md_text = tui_markdown::from_str_with_options(chunk, &options);
+        for mut md_line in md_text.lines {
+            let mut spans = Vec::new();
+            if all_lines.is_empty() {
+                spans.extend(prefix_spans.iter().cloned());
+            } else {
+                spans.push(indent.clone());
+            }
+            let line_style = md_line.style;
+            for span in &mut md_line.spans {
+                span.style = line_style.patch(span.style);
+                if span.style.fg == Some(Color::LightBlue) {
+                    span.style.fg = Some(DRACULA_CYAN);
+                } else if span.style.fg == Some(Color::Blue) {
+                    span.style.fg = Some(DRACULA_PURPLE);
+                }
+            }
+            strip_heading_hashes(&mut md_line.spans);
+            spans.extend(md_line.spans);
+            all_lines.push(Line::from(spans));
+
+            if let Some(limit) = line_limit {
+                if all_lines.len() >= limit {
+                    return all_lines;
+                }
             }
         }
-        // Strip heading hash prefixes (e.g. "## ") — render as styled text only
-        strip_heading_hashes(&mut md_line.spans);
-        spans.extend(md_line.spans);
-        lines.push(Line::from(spans));
     }
-    lines
+    all_lines
+}
+
+fn chunk_at_paragraphs(text: &str, max_size: usize) -> Vec<&str> {
+    if text.len() <= max_size {
+        return vec![text];
+    }
+    let mut chunks = Vec::new();
+    let mut start = 0;
+    while start < text.len() {
+        if start + max_size >= text.len() {
+            chunks.push(&text[start..]);
+            break;
+        }
+        // Find the last paragraph break (double newline) within the limit
+        let window = &text[start..start + max_size];
+        let break_at = window.rfind("\n\n").map(|i| i + 2).unwrap_or(max_size);
+        chunks.push(&text[start..start + break_at]);
+        start += break_at;
+    }
+    chunks
 }
 
 /// Wrap a Line into multiple lines if it exceeds `max_width`, adding `indent`
