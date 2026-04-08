@@ -63,17 +63,6 @@ async fn run_ws_session(
         };
         send_json(&mut tx, &pin_msg).await?;
     }
-    let peer_short = short_name(&identity).to_string();
-    if let Ok(Some(handoff)) = session.read_handoff(&peer_short) {
-        let handoff_msg = ServerMessage::Message {
-            from: "bpmux".to_string(),
-            text: format!("Handoff from your last session:\n{handoff}"),
-            ts: chrono::Utc::now().to_rfc3339(),
-            to: None,
-            message_type: MessageType::System.to_wire(),
-        };
-        send_json(&mut tx, &handoff_msg).await?;
-    }
     let join_msg = session::Message {
         from: "bpmux".to_string(),
         text: format!("{identity} joined"),
@@ -248,10 +237,6 @@ async fn handle_client_message(
         Ok(ClientMessage::Rename { name }) => {
             let tool = identity.split(':').nth(1).unwrap_or("ws");
             return Ok(Some(format!("{name}:{tool}")));
-        }
-        Ok(ClientMessage::Handoff { text: handoff_text }) => {
-            let peer_short = short_name(identity);
-            let _ = session.save_handoff(peer_short, &handoff_text);
         }
         Ok(ClientMessage::Identify { .. }) => {
             send_json(

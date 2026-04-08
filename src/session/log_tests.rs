@@ -100,64 +100,6 @@ fn session_derives_id_from_dir_name() {
 }
 
 #[test]
-fn saves_and_reads_handoff() {
-    let dir = TempDir::new().expect("temp dir");
-    save_handoff(
-        dir.path(),
-        "dev",
-        "Working on auth refactor. Tests passing.",
-    )
-    .expect("save");
-    let handoff = read_handoff(dir.path(), "dev").expect("read");
-    assert_eq!(
-        handoff,
-        Some("Working on auth refactor. Tests passing.".to_string())
-    );
-}
-
-#[test]
-fn handoff_truncates_at_500_chars() {
-    let dir = TempDir::new().expect("temp dir");
-    let long_text: String = "x".repeat(600);
-    save_handoff(dir.path(), "dev", &long_text).expect("save");
-    let handoff = read_handoff(dir.path(), "dev")
-        .expect("read")
-        .expect("some");
-    assert_eq!(handoff.len(), 500);
-}
-
-#[test]
-fn handoff_returns_none_when_missing() {
-    let dir = TempDir::new().expect("temp dir");
-    let handoff = read_handoff(dir.path(), "dev").expect("read");
-    assert_eq!(handoff, None);
-}
-
-#[test]
-fn handoff_overwrites_previous() {
-    let dir = TempDir::new().expect("temp dir");
-    save_handoff(dir.path(), "dev", "first").expect("save 1");
-    save_handoff(dir.path(), "dev", "second").expect("save 2");
-    let handoff = read_handoff(dir.path(), "dev").expect("read");
-    assert_eq!(handoff, Some("second".to_string()));
-}
-
-#[test]
-fn handoff_is_per_participant() {
-    let dir = TempDir::new().expect("temp dir");
-    save_handoff(dir.path(), "dev", "dev context").expect("save dev");
-    save_handoff(dir.path(), "pm", "pm context").expect("save pm");
-    assert_eq!(
-        read_handoff(dir.path(), "dev").expect("read"),
-        Some("dev context".to_string())
-    );
-    assert_eq!(
-        read_handoff(dir.path(), "pm").expect("read"),
-        Some("pm context".to_string())
-    );
-}
-
-#[test]
 fn peer_count_shared_through_arc() {
     let dir = TempDir::new().expect("temp dir");
     let (tx, _rx) = broadcast::channel(16);

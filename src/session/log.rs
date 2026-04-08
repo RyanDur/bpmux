@@ -79,14 +79,6 @@ impl Session {
         remove_pin(&self.dir, index)
     }
 
-    pub fn save_handoff(&self, name: &str, text: &str) -> Result<(), LogError> {
-        save_handoff(&self.dir, name, text)
-    }
-
-    pub fn read_handoff(&self, name: &str) -> Result<Option<String>, LogError> {
-        read_handoff(&self.dir, name)
-    }
-
     pub fn subscribe(&self) -> broadcast::Receiver<Message> {
         self.wake_tx.subscribe()
     }
@@ -205,31 +197,6 @@ pub fn remove_pin(
     pins.remove(index - 1);
     write_pins(session_dir, &pins)?;
     Ok(Ok(pins))
-}
-
-const MAX_HANDOFF_CHARS: usize = 500;
-
-fn handoff_path(session_dir: &Path, name: &str) -> PathBuf {
-    session_dir.join(format!("handoff_{name}.txt"))
-}
-
-pub fn save_handoff(session_dir: &Path, name: &str, text: &str) -> Result<(), LogError> {
-    let truncated: String = text.chars().take(MAX_HANDOFF_CHARS).collect();
-    let path = handoff_path(session_dir, name);
-    std::fs::write(path, truncated)?;
-    Ok(())
-}
-
-pub fn read_handoff(session_dir: &Path, name: &str) -> Result<Option<String>, LogError> {
-    let path = handoff_path(session_dir, name);
-    if !path.exists() {
-        return Ok(None);
-    }
-    let content = std::fs::read_to_string(&path)?;
-    if content.is_empty() {
-        return Ok(None);
-    }
-    Ok(Some(content))
 }
 
 pub fn read_messages(session_dir: &Path) -> Result<Vec<Message>, LogError> {
