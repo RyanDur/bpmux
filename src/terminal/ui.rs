@@ -351,7 +351,11 @@ fn render_input(frame: &mut Frame, app: &App, area: Rect) {
                     None => format!(" {} > ", app.peer_name),
                 })
                 .title_style(Style::default().fg(DRACULA_PURPLE))
-                .border_style(Style::default().fg(DRACULA_SELECTION))
+                .border_style(Style::default().fg(if app.sidebar_focused {
+                    DRACULA_SELECTION
+                } else {
+                    DRACULA_PURPLE
+                }))
                 .style(Style::default().bg(DRACULA_BG).fg(DRACULA_FG)),
         )
         .wrap(Wrap { trim: false });
