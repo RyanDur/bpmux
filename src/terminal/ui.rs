@@ -427,41 +427,13 @@ fn render_status_bar(frame: &mut Frame, app: &mut App, area: Rect) {
     } else {
         Span::raw("")
     };
-    let is_broadcast_view = app.current_view.as_deref() == Some("broadcast");
-    let (view_label, channel_label) = if is_broadcast_view {
-        let side_convos = app
-            .active_channels
-            .iter()
-            .filter(|ch| *ch != "broadcast")
-            .count();
-        let label = format!(
-            " \u{00B7} {} side convo{} \u{00B7} /view all",
-            side_convos,
-            if side_convos == 1 { "" } else { "s" }
-        );
-        (" [broadcast]".to_string(), label)
-    } else {
-        let channel_count = app.active_channels.len();
-        let label = match channel_count {
-            0 => String::new(),
-            1 => " \u{00B7} 1 channel".to_string(),
-            n => format!(" \u{00B7} {n} channels"),
-        };
-        let view = match &app.current_view {
-            None => " [all]".to_string(),
-            Some(v) => format!(" [{v}]"),
-        };
-        (view, label)
+    let view_label = match &app.current_view {
+        None => " [all]".to_string(),
+        Some(v) if v == "broadcast" => " [broadcast]".to_string(),
+        Some(v) => format!(" [{v}]"),
     };
     let mut status_spans = vec![
-        Span::styled(
-            view_label,
-            Style::default().fg(DRACULA_CYAN), // Dracula cyan
-        ),
-        Span::styled(
-            channel_label,
-            Style::default().fg(DRACULA_COMMENT), // Dracula comment
-        ),
+        Span::styled(view_label, Style::default().fg(DRACULA_CYAN)),
         Span::raw(" "),
         connection_status,
     ];
