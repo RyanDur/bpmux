@@ -210,6 +210,13 @@ async fn run_ws_connection(
                     continue;
                 }
 
+                // Only deliver messages relevant to this agent
+                let current_name = name.lock().await;
+                let relevant = match &to {
+                    None => true,
+                    Some(recipients) if recipients.iter().any(|r| r == "all") => true,
+                    Some(recipients) => recipients.iter().any(|r| r == current_name.as_str()),
+                };
                 let channel = match &to {
                     None => "broadcast".to_string(),
                     Some(recipients) if recipients.iter().any(|r| r == "all") => {
@@ -217,6 +224,10 @@ async fn run_ws_connection(
                     }
                     Some(recipients) => recipients.join(","),
                 };
+                drop(current_name);
+                if !relevant {
+                    continue;
+                }
 
                 let notification = CustomNotification::new(
                     "notifications/claude/channel",

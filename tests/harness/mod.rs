@@ -7,7 +7,6 @@
 #![allow(dead_code)]
 
 pub mod bridge;
-pub mod mcp;
 pub mod peer;
 pub mod port;
 pub mod pty;
