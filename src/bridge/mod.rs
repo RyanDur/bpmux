@@ -194,8 +194,8 @@ async fn run_ws_connection(
                 from,
                 text,
                 ts,
+                to,
                 message_type,
-                ..
             }) = msg
             {
                 let from_short = from.split(':').next().unwrap_or(&from);
@@ -210,6 +210,14 @@ async fn run_ws_connection(
                     continue;
                 }
 
+                let channel = match &to {
+                    None => "broadcast".to_string(),
+                    Some(recipients) if recipients.iter().any(|r| r == "all") => {
+                        "broadcast".to_string()
+                    }
+                    Some(recipients) => recipients.join(","),
+                };
+
                 let notification = CustomNotification::new(
                     "notifications/claude/channel",
                     Some(json!({
@@ -217,6 +225,7 @@ async fn run_ws_connection(
                         "meta": {
                             "from": from,
                             "ts": ts,
+                            "channel": channel,
                             "source": "bpmux"
                         }
                     })),
