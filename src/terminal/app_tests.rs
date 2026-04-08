@@ -200,15 +200,13 @@ fn who_command_lists_peer_name_and_returns_none() {
 }
 
 #[test]
-fn who_command_includes_peer_activity_and_connected_count() {
+fn who_command_includes_peer_activity() {
     let mut app = test_app();
     app.update_activity("dev".to_string(), "working".to_string());
-    app.connected_peers = 2;
     app.input = "/who".to_string();
     let msg = app.submit_message();
     assert!(msg.is_none());
     assert!(app.messages[0].text.contains("dev [working]"));
-    assert!(app.messages[0].text.contains("2 connected"));
 }
 
 #[test]

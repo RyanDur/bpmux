@@ -122,21 +122,21 @@ fn status_bar_shows_solo_when_no_peers() {
 }
 
 #[test]
-fn status_bar_shows_peer_count_when_connected() {
+fn status_bar_shows_dots_when_peers_active() {
     let backend = TestBackend::new(80, 15);
     let mut terminal = Terminal::new(backend).unwrap();
     let mut app = test_app_with(vec![]);
-    app.connected_peers = 2;
+    app.update_activity("dev".to_string(), "available".to_string());
 
     terminal.draw(|frame| render(frame, &mut app)).unwrap();
     let screen = buffer_to_string(terminal.backend().buffer());
     assert!(
-        screen.contains("2 connected"),
-        "Should show '2 connected' with peers. Screen:\n{screen}"
+        screen.contains("dev"),
+        "Should show peer dot when active. Screen:\n{screen}"
     );
     assert!(
         !screen.contains("solo"),
-        "Should not show 'solo' when peers connected. Screen:\n{screen}"
+        "Should not show 'solo' when peers active. Screen:\n{screen}"
     );
 }
 

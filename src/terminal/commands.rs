@@ -55,9 +55,6 @@ impl App {
         for (peer, (status, _)) in &self.peer_activity {
             participants.push(format!("{peer} [{status}]"));
         }
-        if self.connected_peers > 0 {
-            participants.push(format!("{} connected", self.connected_peers));
-        }
         self.system_message(format!("Participants:\n  {}", participants.join("\n  ")));
         self.clear_input();
         None

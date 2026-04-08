@@ -414,13 +414,10 @@ fn render_popup(frame: &mut Frame, app: &App, input_area: Rect) {
 }
 
 fn render_status_bar(frame: &mut Frame, app: &mut App, area: Rect) {
-    let connection_status = if app.connected_peers == 0 {
+    let connection_status = if app.peer_activity.is_empty() {
         Span::styled(" solo", Style::default().fg(DRACULA_ORANGE))
     } else {
-        Span::styled(
-            format!(" {} connected", app.connected_peers),
-            Style::default().fg(DRACULA_GREEN),
-        )
+        Span::raw("")
     };
     let is_broadcast_view = app.current_view.as_deref() == Some("broadcast");
     let (view_label, channel_label) = if is_broadcast_view {

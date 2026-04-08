@@ -46,7 +46,6 @@ pub async fn run_tui(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut events = EventStream::new();
     loop {
-        app.connected_peers = session.peer_count();
         terminal.draw(|frame| ui::render(frame, app))?;
         tokio::select! {
             maybe_event = events.next() => {
