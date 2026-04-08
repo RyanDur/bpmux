@@ -1,8 +1,8 @@
-//! Story 79 Acceptance Test: Channel view shows messages by participant
-//! involvement, not exact addressing.
+//! Story 79 Acceptance Test: Channel view shows only conversations
+//! between the owner and the channel's participants.
 //!
-//! AC1: Owner selects "dev" channel → sees broadcasts from dev
-//! AC2: Owner selects "dev" channel → sees all messages from/to dev
+//! AC1: Owner selects "dev" channel → sees only owner↔dev messages
+//! AC2: Messages between other agents are excluded from channel view
 //! AC3: Owner sends a message while in a channel view → message appears
 //! AC4: Viewing "broadcast" = only broadcast messages (unchanged)
 
@@ -14,48 +14,47 @@ use harness::peer::WsPeer;
 use harness::pty::TestBpmux;
 use std::time::Duration;
 
-/// AC1: GIVEN dev has sent both a broadcast and a directed message
+/// AC1: GIVEN dev has sent a broadcast and a DM to the owner
 /// WHEN the owner switches to the "dev" channel view
-/// THEN the broadcast from dev is also visible (not just the DM)
+/// THEN only the DM is visible (broadcasts belong in broadcast view)
 #[test]
-fn ac1_broadcasts_visible_in_participant_view() {
+fn ac1_channel_view_shows_only_owner_participant_messages() {
     let bpmux = TestBpmux::start();
 
     let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
     rt.block_on(async {
         let mut dev = WsPeer::connect(&bpmux, "dev").await;
-        // Broadcast creates a "broadcast" channel entry
         dev.send("broadcast from dev").await;
         tokio::time::sleep(Duration::from_millis(300)).await;
-        // DM to owner creates a "dev" channel entry
         dev.send_to("dm from dev", &["human"]).await;
         tokio::time::sleep(Duration::from_millis(500)).await;
     });
 
-    // Switch to "dev" channel view
     bpmux.type_line("/view dev");
     std::thread::sleep(Duration::from_millis(500));
 
-    // Verify the view changed
     assert!(
         bpmux.wait_for_tui("View set to dev", Duration::from_secs(3)),
         "Should switch to dev view. Screen:\n{}",
         bpmux.tui()
     );
 
-    // The broadcast from dev should be visible in the dev channel view
     let screen = bpmux.tui();
     assert!(
-        screen.contains("broadcast from dev"),
-        "Broadcast from dev should be visible in dev channel view. Screen:\n{screen}"
+        screen.contains("dm from dev"),
+        "DM from dev should be visible. Screen:\n{screen}"
+    );
+    assert!(
+        !screen.contains("broadcast from dev"),
+        "Broadcasts should not appear in channel views. Screen:\n{screen}"
     );
 }
 
-/// AC2: GIVEN dev has exchanged directed messages with pm
+/// AC2: GIVEN dev has exchanged messages with both owner and pm
 /// WHEN the owner switches to the "dev" channel view
-/// THEN messages both from and to dev appear
+/// THEN only owner↔dev messages appear, not dev↔pm messages
 #[test]
-fn ac2_directed_messages_visible_in_participant_view() {
+fn ac2_channel_view_excludes_other_agents_messages() {
     let bpmux = TestBpmux::start();
 
     let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
@@ -63,20 +62,16 @@ fn ac2_directed_messages_visible_in_participant_view() {
         let mut dev = WsPeer::connect(&bpmux, "dev").await;
         let mut pm = WsPeer::connect(&bpmux, "pm").await;
 
-        // DM from dev to owner — creates "dev" channel
         dev.send_to("dev says hi", &["human"]).await;
         tokio::time::sleep(Duration::from_millis(300)).await;
 
-        // DM from dev to pm — creates "dev+pm" channel
         dev.send_to("dev to pm private", &["pm"]).await;
         tokio::time::sleep(Duration::from_millis(300)).await;
 
-        // DM from pm to dev — also involves dev
         pm.send_to("pm to dev reply", &["dev"]).await;
         tokio::time::sleep(Duration::from_millis(500)).await;
     });
 
-    // Switch to "dev" view — should see messages involving dev
     bpmux.type_line("/view dev");
     std::thread::sleep(Duration::from_millis(500));
 
@@ -86,12 +81,12 @@ fn ac2_directed_messages_visible_in_participant_view() {
         "DM from dev to owner should appear. Screen:\n{screen}"
     );
     assert!(
-        screen.contains("dev to pm"),
-        "DM from dev to pm should appear in dev view. Screen:\n{screen}"
+        !screen.contains("dev to pm"),
+        "dev↔pm messages should not appear in owner's dev view. Screen:\n{screen}"
     );
     assert!(
-        screen.contains("pm to dev"),
-        "DM from pm to dev should appear in dev view. Screen:\n{screen}"
+        !screen.contains("pm to dev"),
+        "pm↔dev messages should not appear in owner's dev view. Screen:\n{screen}"
     );
 }
 

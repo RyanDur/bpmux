@@ -164,18 +164,18 @@ pub(crate) fn wrap_line_with_indent<'a>(
 pub(crate) fn message_involves_participants(
     msg: &session::Message,
     view: &str,
-    _owner: &str,
+    owner: &str,
 ) -> bool {
     let sender_short = msg.from.split(':').next().unwrap_or(&msg.from);
-    let view_participants: Vec<&str> = view.split('+').collect();
 
-    // Every view participant must be involved as sender or recipient
-    view_participants.iter().all(|participant| {
-        if sender_short == *participant {
-            return true;
-        }
-        msg.to
-            .as_ref()
-            .is_some_and(|r| r.iter().any(|n| n == participant))
-    })
+    // Broadcasts belong in broadcast view, not channel views
+    let Some(recipients) = &msg.to else {
+        return false;
+    };
+
+    let is_involved = |name: &str| sender_short == name || recipients.iter().any(|r| r == name);
+
+    // The owner must be involved AND every view participant must be involved
+    let view_participants: Vec<&str> = view.split('+').collect();
+    is_involved(owner) && view_participants.iter().all(|p| is_involved(p))
 }

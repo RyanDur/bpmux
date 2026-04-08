@@ -413,14 +413,26 @@ fn directed_msg(from: &str, text: &str, to: &[&str]) -> Message {
 }
 
 #[test]
-fn participant_filter_matches_sender() {
+fn participant_filter_broadcast_excluded_from_channel_view() {
     let msg = chat_msg("dev:ws", "hello");
-    assert!(message_involves_participants(&msg, "dev", "ryan"));
+    assert!(
+        !message_involves_participants(&msg, "dev", "ryan"),
+        "Broadcasts belong in broadcast view, not channel views"
+    );
 }
 
 #[test]
-fn participant_filter_matches_recipient() {
+fn participant_filter_excludes_messages_not_involving_owner() {
     let msg = directed_msg("pm:ws", "hello dev", &["dev"]);
+    assert!(
+        !message_involves_participants(&msg, "dev", "ryan"),
+        "PM→dev message should not show in Ryan's dev channel"
+    );
+}
+
+#[test]
+fn participant_filter_includes_messages_to_owner() {
+    let msg = directed_msg("dev:ws", "hello ryan", &["ryan"]);
     assert!(message_involves_participants(&msg, "dev", "ryan"));
 }
 
@@ -431,9 +443,9 @@ fn participant_filter_excludes_unrelated() {
 }
 
 #[test]
-fn participant_filter_broadcast_matches_sender() {
+fn participant_filter_sender_broadcast_excluded() {
     let msg = chat_msg("dev:ws", "broadcast");
-    assert!(message_involves_participants(&msg, "dev", "ryan"));
+    assert!(!message_involves_participants(&msg, "dev", "ryan"));
 }
 
 #[test]
@@ -443,9 +455,17 @@ fn participant_filter_broadcast_no_match_for_other() {
 }
 
 #[test]
-fn participant_filter_group_requires_all() {
+fn participant_filter_group_excludes_without_owner() {
     let msg = directed_msg("dev:ws", "hello", &["pm"]);
-    // "dev+pm" view: dev is sender, pm is recipient -- both involved
+    assert!(
+        !message_involves_participants(&msg, "dev+pm", "ryan"),
+        "dev→pm without Ryan should not show in Ryan's dev+pm channel"
+    );
+}
+
+#[test]
+fn participant_filter_group_includes_with_owner() {
+    let msg = directed_msg("dev:ws", "hello", &["pm", "ryan"]);
     assert!(message_involves_participants(&msg, "dev+pm", "ryan"));
 }
 
