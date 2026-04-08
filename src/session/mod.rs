@@ -15,6 +15,8 @@ pub use search::{SearchFilters, SearchResult, search};
 #[cfg(test)]
 mod classifier_tests;
 #[cfg(test)]
+mod lessons_tests;
+#[cfg(test)]
 mod log_tests;
 #[cfg(test)]
 mod message_tests;
