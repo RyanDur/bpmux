@@ -15,20 +15,38 @@ fn msg(from: &str, text: &str) -> Message {
 }
 
 #[test]
-fn owner_question_is_correction() {
-    let m = msg("ryan:human", "why did you do that?");
+fn owner_why_question_is_correction() {
+    let m = msg(
+        "ryan:human",
+        "why did you do that instead of the simpler approach?",
+    );
     assert_eq!(classify(&m, "ryan"), MessageClass::Correction);
 }
 
 #[test]
-fn owner_directive_is_correction() {
-    let m = msg("ryan:human", "don't test private functions");
-    assert_eq!(classify(&m, "ryan"), MessageClass::Correction);
-}
-
-#[test]
-fn owner_should_is_correction() {
+fn owner_you_should_is_correction() {
     let m = msg("ryan:human", "you should restate before building");
+    assert_eq!(classify(&m, "ryan"), MessageClass::Correction);
+}
+
+#[test]
+fn owner_go_through_is_correction() {
+    let m = msg(
+        "ryan:human",
+        "design feedback should go through the designer",
+    );
+    assert_eq!(classify(&m, "ryan"), MessageClass::Correction);
+}
+
+#[test]
+fn owner_quality_is_correction() {
+    let m = msg("ryan:human", "quality is the goal. in everything");
+    assert_eq!(classify(&m, "ryan"), MessageClass::Correction);
+}
+
+#[test]
+fn owner_focus_on_is_correction() {
+    let m = msg("ryan:human", "focus on the problem, not the fix");
     assert_eq!(classify(&m, "ryan"), MessageClass::Correction);
 }
 
@@ -41,6 +59,36 @@ fn owner_acceptance_is_decision() {
 #[test]
 fn owner_plain_chat_is_discussion() {
     let m = msg("ryan:human", "sounds good, keep going");
+    assert_eq!(classify(&m, "ryan"), MessageClass::Discussion);
+}
+
+#[test]
+fn owner_restart_question_is_discussion() {
+    let m = msg(
+        "ryan:human",
+        "do I need to restart everything or just bpmux?",
+    );
+    assert_eq!(classify(&m, "ryan"), MessageClass::Discussion);
+}
+
+#[test]
+fn owner_screenshot_is_discussion() {
+    let m = msg(
+        "ryan:human",
+        "/Users/ryandurling/IdeaProjects/bpmux/screen-shots/img_5.png",
+    );
+    assert_eq!(classify(&m, "ryan"), MessageClass::Discussion);
+}
+
+#[test]
+fn owner_keep_going_is_discussion() {
+    let m = msg("ryan:human", "great, keep going");
+    assert_eq!(classify(&m, "ryan"), MessageClass::Discussion);
+}
+
+#[test]
+fn owner_yes_is_discussion() {
+    let m = msg("ryan:human", "yes");
     assert_eq!(classify(&m, "ryan"), MessageClass::Discussion);
 }
 
@@ -66,19 +114,4 @@ fn system_message_is_routine() {
         to: None,
     };
     assert_eq!(classify(&m, "ryan"), MessageClass::Routine);
-}
-
-#[test]
-fn short_owner_question_is_not_correction() {
-    let m = msg("ryan:human", "pm, you in?");
-    assert_eq!(classify(&m, "ryan"), MessageClass::Discussion);
-}
-
-#[test]
-fn long_owner_question_is_correction() {
-    let m = msg(
-        "ryan:human",
-        "is there a way for you to look at it before you show me?",
-    );
-    assert_eq!(classify(&m, "ryan"), MessageClass::Correction);
 }
