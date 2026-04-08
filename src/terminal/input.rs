@@ -5,6 +5,7 @@ pub(super) const SLASH_COMMANDS: &[(&str, &str)] = &[
     ("/to", "send to recipients"),
     ("/view", "filter view by channel"),
     ("/search", "search the log"),
+    ("/lessons", "show indexed corrections"),
     ("/board", "show project board"),
     ("/roadmap", "show project roadmap"),
     ("/status", "declare your status"),

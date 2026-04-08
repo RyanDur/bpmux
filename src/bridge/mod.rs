@@ -205,6 +205,20 @@ fn urlencoding(s: &str) -> String {
         .collect()
 }
 
+async fn handle_list_lessons(
+    _args: &serde_json::Map<String, serde_json::Value>,
+    port: u16,
+) -> Result<String, String> {
+    let url = format!("http://127.0.0.1:{port}/api/lessons");
+    let body = reqwest::get(&url)
+        .await
+        .map_err(|e| format!("failed to fetch: {e}"))?
+        .text()
+        .await
+        .map_err(|e| format!("failed to read: {e}"))?;
+    Ok(body)
+}
+
 async fn run_ws_connection(
     port: u16,
     name: Arc<Mutex<String>>,
@@ -358,6 +372,9 @@ impl ServerHandler for BridgeServer {
             crate::mcp::tools::search_log_tool(
                 "Search the session log by keyword. Returns message clusters with context. Use to find team corrections, decisions, and discussion arcs.",
             ),
+            crate::mcp::tools::list_lessons_tool(
+                "List indexed corrections grouped by topic. Shows what the team has been corrected on.",
+            ),
             crate::mcp::tools::set_name_tool(
                 "Set your display name in the bpmux session. Call this once at the start to identify yourself (e.g., 'dev', 'pm').",
             ),
@@ -386,6 +403,7 @@ impl ServerHandler for BridgeServer {
                 "set_status" => handle_set_status(&args, &ws_tx).await,
                 "read_messages" => handle_read_messages(&args, port).await,
                 "search_log" => handle_search_log(&args, port).await,
+                "list_lessons" => handle_list_lessons(&args, port).await,
                 other => Err(format!("unknown tool: {other}")),
             };
             Ok(match result {

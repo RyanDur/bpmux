@@ -63,6 +63,9 @@ impl App {
         if text == "/search" {
             return self.handle_search_bare();
         }
+        if text == "/lessons" {
+            return self.handle_lessons();
+        }
         if text == "/board" {
             return self.handle_board();
         }
@@ -296,6 +299,38 @@ impl App {
             self.system_message(text);
             self.search_results = results;
             self.search_selected = None;
+        }
+        self.clear_input();
+        None
+    }
+
+    fn handle_lessons(&mut self) -> Option<Message> {
+        let index = crate::session::lessons::build_index(&self.messages, &self.peer_name);
+        let groups = crate::session::lessons::group_by_topic(&index);
+        if groups.is_empty() {
+            self.system_message("No corrections indexed yet.".to_string());
+        } else {
+            let mut text = format!("── Lessons ({} topics) ──\n", groups.len());
+            for group in &groups {
+                text.push_str(&format!(
+                    "\n  {} ({} correction{})\n",
+                    group.topic,
+                    group.corrections.len(),
+                    if group.corrections.len() == 1 {
+                        ""
+                    } else {
+                        "s"
+                    }
+                ));
+                for c in &group.corrections {
+                    text.push_str(&format!("    {}: {}\n", &c.timestamp[..10], c.text_preview));
+                }
+            }
+            text.push_str("\n── /search corrections <topic> for details ──");
+            self.system_message(text);
+        }
+        if let Some(dir) = &self.session_dir {
+            let _ = crate::session::lessons::save_index(dir, &index);
         }
         self.clear_input();
         None

@@ -81,6 +81,19 @@ pub fn read_messages_tool(description: &'static str) -> Tool {
     )
 }
 
+pub fn list_lessons_tool(description: &'static str) -> Tool {
+    let schema = serde_json::json!({
+        "type": "object",
+        "properties": {}
+    });
+
+    Tool::new(
+        "list_lessons",
+        description,
+        schema.as_object().cloned().unwrap_or_default(),
+    )
+}
+
 pub fn search_log_tool(description: &'static str) -> Tool {
     let schema = serde_json::json!({
         "type": "object",

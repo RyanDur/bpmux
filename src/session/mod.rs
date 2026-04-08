@@ -1,4 +1,5 @@
 pub mod classifier;
+pub mod lessons;
 pub mod log;
 pub mod message;
 pub mod search;

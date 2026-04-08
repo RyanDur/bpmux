@@ -97,6 +97,31 @@ pub async fn search_messages(
     }
 }
 
+pub async fn get_lessons(State(session): State<Arc<session::Session>>) -> impl IntoResponse {
+    match session.read_messages() {
+        Ok(messages) => {
+            let index = session::lessons::build_index(&messages, "ryan"); // TODO: pass from config
+            let groups = session::lessons::group_by_topic(&index);
+            let mut text = format!("{} topics indexed\n", groups.len());
+            for group in &groups {
+                text.push_str(&format!(
+                    "\n{} ({} corrections)\n",
+                    group.topic,
+                    group.corrections.len()
+                ));
+                for c in &group.corrections {
+                    text.push_str(&format!("  {}: {}\n", &c.timestamp[..10], c.text_preview));
+                }
+            }
+            (StatusCode::OK, text)
+        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("failed to read: {e}"),
+        ),
+    }
+}
+
 pub async fn post_message(
     State(session): State<Arc<session::Session>>,
     Json(payload): Json<PostMessage>,
