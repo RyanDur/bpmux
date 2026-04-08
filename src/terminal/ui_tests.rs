@@ -457,8 +457,14 @@ fn participant_filter_group_missing_one() {
 }
 
 #[test]
-fn participant_filter_owner_message_always_matches() {
+fn participant_filter_owner_broadcast_excluded_from_channel() {
     let msg = chat_msg("ryan:human", "owner broadcast");
+    assert!(!message_involves_participants(&msg, "dev", "ryan"));
+}
+
+#[test]
+fn participant_filter_owner_directed_to_channel_matches() {
+    let msg = directed_msg("ryan:human", "hey dev", &["dev"]);
     assert!(message_involves_participants(&msg, "dev", "ryan"));
 }
 
