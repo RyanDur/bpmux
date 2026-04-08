@@ -278,14 +278,26 @@ fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
             {
                 // Truncate: show first 7 lines of markdown, then [+N lines]
                 let remaining_lines = wrapped_lines.saturating_sub(7);
-                let mut ls = render_md_message(&msg.text, prefix_spans, indent.clone(), Some(7));
+                let mut ls = render_md_message(
+                    &msg.text,
+                    prefix_spans,
+                    indent.clone(),
+                    Some(7),
+                    chat_inner_width,
+                );
                 ls.push(Line::from(Span::styled(
                     format!("  [+{remaining_lines} lines]"),
                     Style::default().fg(DRACULA_COMMENT),
                 )));
                 ls
             } else {
-                render_md_message(&msg.text, prefix_spans, indent.clone(), None)
+                render_md_message(
+                    &msg.text,
+                    prefix_spans,
+                    indent.clone(),
+                    None,
+                    chat_inner_width,
+                )
             };
 
             // Pre-wrap lines with hanging indent so continuation aligns with text
