@@ -25,27 +25,89 @@ pub(super) fn strip_heading_hashes(spans: &mut Vec<Span<'_>>) {
 
 const CHUNK_SIZE_LIMIT: usize = 4000;
 
+fn is_table_separator(line: &str) -> bool {
+    let trimmed = line.trim();
+    trimmed.starts_with('|')
+        && trimmed.ends_with('|')
+        && trimmed
+            .chars()
+            .all(|c| c == '|' || c == '-' || c == ' ' || c == ':')
+}
+
+fn parse_table_row(line: &str) -> Vec<String> {
+    line.trim()
+        .trim_matches('|')
+        .split('|')
+        .map(|c| c.trim().to_string())
+        .collect()
+}
+
+fn render_table(rows: &[Vec<String>]) -> String {
+    if rows.is_empty() {
+        return String::new();
+    }
+    let col_count = rows.iter().map(|r| r.len()).max().unwrap_or(0);
+    let mut widths = vec![0usize; col_count];
+    for row in rows {
+        for (i, cell) in row.iter().enumerate() {
+            if i < col_count {
+                widths[i] = widths[i].max(cell.chars().count());
+            }
+        }
+    }
+    let mut out = String::new();
+    for (ri, row) in rows.iter().enumerate() {
+        for (i, cell) in row.iter().enumerate() {
+            if i > 0 {
+                out.push_str("  ");
+            }
+            let w = widths.get(i).copied().unwrap_or(0);
+            out.push_str(cell);
+            let pad = w.saturating_sub(cell.chars().count());
+            for _ in 0..pad {
+                out.push(' ');
+            }
+        }
+        out.push('\n');
+        if ri == 0 {
+            for (i, &w) in widths.iter().enumerate() {
+                if i > 0 {
+                    out.push_str("  ");
+                }
+                for _ in 0..w {
+                    out.push('─');
+                }
+            }
+            out.push('\n');
+        }
+    }
+    out
+}
+
 fn simplify_markdown(text: &str) -> String {
     let mut result = String::with_capacity(text.len());
-    for line in text.lines() {
-        let trimmed = line.trim();
-        if trimmed.starts_with('|') && trimmed.ends_with('|') {
-            if trimmed
-                .chars()
-                .all(|c| c == '|' || c == '-' || c == ' ' || c == ':')
-            {
-                continue;
+    let lines: Vec<&str> = text.lines().collect();
+    let mut i = 0;
+    while i < lines.len() {
+        let trimmed = lines[i].trim();
+        if trimmed.starts_with('|') && trimmed.ends_with('|') && !is_table_separator(trimmed) {
+            let mut table_rows = Vec::new();
+            while i < lines.len() {
+                let t = lines[i].trim();
+                if t.starts_with('|') && t.ends_with('|') {
+                    if !is_table_separator(t) {
+                        table_rows.push(parse_table_row(t));
+                    }
+                    i += 1;
+                } else {
+                    break;
+                }
             }
-            let cells: Vec<&str> = trimmed
-                .trim_matches('|')
-                .split('|')
-                .map(|c| c.trim())
-                .collect();
-            result.push_str(&cells.join("  ·  "));
-            result.push('\n');
+            result.push_str(&render_table(&table_rows));
         } else {
-            result.push_str(line);
+            result.push_str(lines[i]);
             result.push('\n');
+            i += 1;
         }
     }
     // Strip link URLs: [text](url) → text
