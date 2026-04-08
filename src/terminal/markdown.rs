@@ -111,11 +111,19 @@ pub(crate) fn wrap_line_with_indent<'a>(
                 break;
             };
 
-            // Take what fits, emit line, continue with indent
             if available > 0 {
-                let (chunk, rest) = remaining.split_at(byte_pos);
-                current_spans.push(Span::styled(chunk.to_string(), style));
-                remaining = rest;
+                // Prefer breaking at a word boundary (last space before the limit)
+                let chunk = &remaining[..byte_pos];
+                let break_at = chunk
+                    .rfind(' ')
+                    .map(|i| i + 1) // include the space in the current line
+                    .unwrap_or(byte_pos); // no space = fall back to char break
+                let (chunk, rest) = remaining.split_at(break_at);
+                let trimmed = chunk.trim_end();
+                if !trimmed.is_empty() {
+                    current_spans.push(Span::styled(trimmed.to_string(), style));
+                }
+                remaining = rest.trim_start();
             }
             result.push(Line::from(current_spans));
             current_spans = vec![indent.clone()];
