@@ -205,6 +205,46 @@ fn urlencoding(s: &str) -> String {
         .collect()
 }
 
+async fn handle_save_lesson(
+    args: &serde_json::Map<String, serde_json::Value>,
+    port: u16,
+    name: &Mutex<String>,
+) -> Result<String, String> {
+    let topic = args
+        .get("topic")
+        .and_then(|v| v.as_str())
+        .ok_or("missing 'topic' argument")?;
+    let lesson = args
+        .get("lesson")
+        .and_then(|v| v.as_str())
+        .ok_or("missing 'lesson' argument")?;
+    let evidence: Vec<String> = args
+        .get("evidence")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_str().map(String::from))
+                .collect()
+        })
+        .unwrap_or_default();
+    let role = name.lock().await.clone();
+    let body = serde_json::json!({
+        "topic": topic,
+        "lesson": lesson,
+        "author_role": role,
+        "evidence": evidence,
+    });
+    let client = reqwest::Client::new();
+    let url = format!("http://127.0.0.1:{port}/api/lessons");
+    client
+        .post(&url)
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("failed to save: {e}"))?;
+    Ok(format!("lesson saved: {topic}"))
+}
+
 async fn handle_list_lessons(
     _args: &serde_json::Map<String, serde_json::Value>,
     port: u16,
@@ -375,6 +415,9 @@ impl ServerHandler for BridgeServer {
             crate::mcp::tools::list_lessons_tool(
                 "List indexed corrections grouped by topic. Shows what the team has been corrected on.",
             ),
+            crate::mcp::tools::save_lesson_tool(
+                "Save what you learned from a correction. Your lesson is tagged with your role and visible to the team.",
+            ),
             crate::mcp::tools::set_name_tool(
                 "Set your display name in the bpmux session. Call this once at the start to identify yourself (e.g., 'dev', 'pm').",
             ),
@@ -404,6 +447,7 @@ impl ServerHandler for BridgeServer {
                 "read_messages" => handle_read_messages(&args, port).await,
                 "search_log" => handle_search_log(&args, port).await,
                 "list_lessons" => handle_list_lessons(&args, port).await,
+                "save_lesson" => handle_save_lesson(&args, port, &name).await,
                 other => Err(format!("unknown tool: {other}")),
             };
             Ok(match result {

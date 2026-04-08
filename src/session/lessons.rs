@@ -20,15 +20,27 @@ pub struct CorrectionEntry {
     pub text_preview: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AgentLesson {
+    pub topic: String,
+    pub lesson: String,
+    pub author_role: String,
+    pub evidence: Vec<String>,
+    pub timestamp: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct LessonIndex {
     pub corrections: Vec<CorrectionEntry>,
+    #[serde(default)]
+    pub lessons: Vec<AgentLesson>,
 }
 
 #[derive(Debug, Clone)]
 pub struct TopicGroup {
     pub topic: String,
     pub corrections: Vec<CorrectionEntry>,
+    pub lessons: Vec<AgentLesson>,
 }
 
 pub fn extract_keywords(text: &str) -> Vec<String> {
@@ -57,21 +69,72 @@ pub fn build_index(messages: &[Message], owner_name: &str) -> LessonIndex {
 }
 
 pub fn group_by_topic(index: &LessonIndex) -> Vec<TopicGroup> {
-    let mut groups: HashMap<String, Vec<CorrectionEntry>> = HashMap::new();
+    let mut correction_groups: HashMap<String, Vec<CorrectionEntry>> = HashMap::new();
     for correction in &index.corrections {
         let topic = if correction.keywords.is_empty() {
             "general".to_string()
         } else {
             correction.keywords[..correction.keywords.len().min(3)].join(" ")
         };
-        groups.entry(topic).or_default().push(correction.clone());
+        correction_groups
+            .entry(topic)
+            .or_default()
+            .push(correction.clone());
     }
-    let mut result: Vec<TopicGroup> = groups
-        .into_iter()
-        .map(|(topic, corrections)| TopicGroup { topic, corrections })
-        .collect();
+    let mut all_topics: HashMap<String, TopicGroup> = HashMap::new();
+    for (topic, corrections) in correction_groups {
+        all_topics
+            .entry(topic.clone())
+            .or_insert_with(|| TopicGroup {
+                topic,
+                corrections: Vec::new(),
+                lessons: Vec::new(),
+            })
+            .corrections = corrections;
+    }
+    for lesson in &index.lessons {
+        let topic = lesson.topic.clone();
+        all_topics
+            .entry(topic.clone())
+            .or_insert_with(|| TopicGroup {
+                topic,
+                corrections: Vec::new(),
+                lessons: Vec::new(),
+            })
+            .lessons
+            .push(lesson.clone());
+    }
+    let mut result: Vec<TopicGroup> = all_topics.into_values().collect();
     result.sort_by(|a, b| b.corrections.len().cmp(&a.corrections.len()));
     result
+}
+
+pub fn add_lesson(
+    session_dir: &Path,
+    topic: &str,
+    lesson_text: &str,
+    author_role: &str,
+    evidence: Vec<String>,
+) -> Result<(), std::io::Error> {
+    let mut index = load_index(session_dir);
+    let existing = index
+        .lessons
+        .iter_mut()
+        .find(|l| l.topic == topic && l.author_role == author_role);
+    if let Some(existing) = existing {
+        existing.lesson = lesson_text.to_string();
+        existing.timestamp = chrono::Utc::now().to_rfc3339();
+        existing.evidence = evidence;
+    } else {
+        index.lessons.push(AgentLesson {
+            topic: topic.to_string(),
+            lesson: lesson_text.to_string(),
+            author_role: author_role.to_string(),
+            evidence,
+            timestamp: chrono::Utc::now().to_rfc3339(),
+        });
+    }
+    save_index(session_dir, &index)
 }
 
 pub fn load_index(session_dir: &Path) -> LessonIndex {

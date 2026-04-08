@@ -305,25 +305,42 @@ impl App {
     }
 
     fn handle_lessons(&mut self) -> Option<Message> {
-        let index = crate::session::lessons::build_index(&self.messages, &self.peer_name);
+        let mut index = crate::session::lessons::build_index(&self.messages, &self.peer_name);
+        if let Some(dir) = &self.session_dir {
+            let saved = crate::session::lessons::load_index(dir);
+            index.lessons = saved.lessons;
+        }
         let groups = crate::session::lessons::group_by_topic(&index);
         if groups.is_empty() {
             self.system_message("No corrections indexed yet.".to_string());
         } else {
-            let mut text = format!("── Lessons ({} topics) ──\n", groups.len());
+            let mut text = format!("── Team Lessons ({} topics) ──\n", groups.len());
             for group in &groups {
+                let correction_count = group.corrections.len();
+                let lesson_count = group.lessons.len();
                 text.push_str(&format!(
-                    "\n  {} ({} correction{})\n",
+                    "\n  {} ({} correction{}, {} lesson{})\n",
                     group.topic,
-                    group.corrections.len(),
-                    if group.corrections.len() == 1 {
-                        ""
-                    } else {
-                        "s"
-                    }
+                    correction_count,
+                    if correction_count == 1 { "" } else { "s" },
+                    lesson_count,
+                    if lesson_count == 1 { "" } else { "s" },
                 ));
-                for c in &group.corrections {
-                    text.push_str(&format!("    {}: {}\n", &c.timestamp[..10], c.text_preview));
+                if !group.corrections.is_empty() {
+                    text.push_str("    Corrections:\n");
+                    for c in &group.corrections {
+                        text.push_str(&format!(
+                            "      {}: {}\n",
+                            &c.timestamp[..10],
+                            c.text_preview
+                        ));
+                    }
+                }
+                if !group.lessons.is_empty() {
+                    text.push_str("    Lessons:\n");
+                    for l in &group.lessons {
+                        text.push_str(&format!("      {}: {}\n", l.author_role, l.lesson));
+                    }
                 }
             }
             text.push_str("\n── /search corrections <topic> for details ──");

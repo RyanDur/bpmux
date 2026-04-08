@@ -22,7 +22,7 @@ pub async fn run_server(
         )
         .route(
             "/api/lessons",
-            axum::routing::get(transport::rest::get_lessons),
+            axum::routing::get(transport::rest::get_lessons).post(transport::rest::post_lesson),
         )
         .with_state(session);
     let listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{port}")).await?;

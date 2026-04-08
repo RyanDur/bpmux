@@ -122,6 +122,40 @@ pub async fn get_lessons(State(session): State<Arc<session::Session>>) -> impl I
     }
 }
 
+#[derive(Deserialize)]
+pub struct SaveLessonPayload {
+    pub topic: String,
+    pub lesson: String,
+    pub author_role: String,
+    pub evidence: Option<Vec<String>>,
+}
+
+pub async fn post_lesson(
+    State(session): State<Arc<session::Session>>,
+    Json(payload): Json<SaveLessonPayload>,
+) -> impl IntoResponse {
+    if let Some(dir) = Some(&session.dir) {
+        match session::lessons::add_lesson(
+            dir,
+            &payload.topic,
+            &payload.lesson,
+            &payload.author_role,
+            payload.evidence.unwrap_or_default(),
+        ) {
+            Ok(()) => (StatusCode::CREATED, "lesson saved".to_string()),
+            Err(e) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("failed to save: {e}"),
+            ),
+        }
+    } else {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "no session directory".to_string(),
+        )
+    }
+}
+
 pub async fn post_message(
     State(session): State<Arc<session::Session>>,
     Json(payload): Json<PostMessage>,
