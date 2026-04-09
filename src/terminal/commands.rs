@@ -1,5 +1,6 @@
 use super::app::App;
 use crate::session::{Message, MessageType};
+use crate::transport::peer::P2pCommand;
 use chrono::Utc;
 
 pub(super) const MAX_HISTORY: usize = 50;
@@ -66,11 +67,29 @@ impl App {
         if text == "/lessons" {
             return self.handle_lessons();
         }
+        if let Some(peer) = text.strip_prefix("/lessons ") {
+            return self.handle_peer_lessons(peer.trim().to_string());
+        }
         if text == "/board" {
             return self.handle_board();
         }
         if text == "/roadmap" {
             return self.handle_roadmap();
+        }
+        if text == "/session" {
+            return self.handle_session();
+        }
+        if let Some(args) = text.strip_prefix("/join ") {
+            return self.handle_join(args.to_string());
+        }
+        if text == "/join" {
+            return self.handle_join_bare();
+        }
+        if let Some(code) = text.strip_prefix("/accept ") {
+            return self.handle_accept(code.trim().to_string());
+        }
+        if text == "/accept" {
+            return self.handle_accept_bare();
         }
         if text.starts_with('/') {
             return self.handle_unknown_command(text);
@@ -348,6 +367,110 @@ impl App {
         }
         if let Some(dir) = &self.session_dir {
             let _ = crate::session::lessons::save_index(dir, &index);
+        }
+        self.clear_input();
+        None
+    }
+
+    fn handle_session(&mut self) -> Option<Message> {
+        self.system_message("Creating P2P session... (gathering ICE candidates)".to_string());
+        self.p2p_command = Some(P2pCommand::CreateSession);
+        self.clear_input();
+        None
+    }
+
+    fn handle_join(&mut self, args: String) -> Option<Message> {
+        let parts: Vec<&str> = args.splitn(2, ' ').collect();
+        if parts.len() < 2 {
+            self.system_message(
+                "Usage: /join <passphrase> <offer-code>".to_string(),
+            );
+            self.clear_input();
+            return None;
+        }
+        let passphrase = parts[0].to_string();
+        let offer_code = parts[1].trim().to_string();
+        self.system_message("Joining session... (decrypting offer, gathering ICE candidates)".to_string());
+        self.p2p_command = Some(P2pCommand::JoinSession {
+            passphrase,
+            offer_code,
+        });
+        self.clear_input();
+        None
+    }
+
+    fn handle_join_bare(&mut self) -> Option<Message> {
+        self.system_message(
+            "Usage: /join <passphrase> <offer-code>".to_string(),
+        );
+        self.clear_input();
+        None
+    }
+
+    fn handle_accept(&mut self, answer_code: String) -> Option<Message> {
+        self.system_message("Accepting answer... (establishing connection)".to_string());
+        self.p2p_command = Some(P2pCommand::AcceptAnswer { answer_code });
+        self.clear_input();
+        None
+    }
+
+    fn handle_accept_bare(&mut self) -> Option<Message> {
+        self.system_message(
+            "Usage: /accept <answer-code>".to_string(),
+        );
+        self.clear_input();
+        None
+    }
+
+    fn handle_peer_lessons(&mut self, peer_name: String) -> Option<Message> {
+        let Some(dir) = &self.session_dir else {
+            self.system_message("No session directory available.".to_string());
+            self.clear_input();
+            return None;
+        };
+
+        let available_peers = crate::session::lessons::list_peer_names(dir);
+        if !available_peers.contains(&peer_name) {
+            if available_peers.is_empty() {
+                self.system_message("No peer lesson indexes available. Connect to a peer first.".to_string());
+            } else {
+                self.system_message(format!(
+                    "Peer \"{peer_name}\" not found. Available: {}",
+                    available_peers.join(", ")
+                ));
+            }
+            self.clear_input();
+            return None;
+        }
+
+        let index = crate::session::lessons::load_peer_index(dir, &peer_name);
+        let groups = crate::session::lessons::group_by_topic(&index);
+        if groups.is_empty() {
+            self.system_message(format!("No lessons from peer \"{peer_name}\"."));
+        } else {
+            let mut text = format!(
+                "── Lessons from {peer_name} ({} topics, read-only) ──\n",
+                groups.len()
+            );
+            for group in &groups {
+                let correction_count = group.corrections.len();
+                let lesson_count = group.lessons.len();
+                text.push_str(&format!(
+                    "\n  {} ({} correction{}, {} lesson{})\n",
+                    group.topic,
+                    correction_count,
+                    if correction_count == 1 { "" } else { "s" },
+                    lesson_count,
+                    if lesson_count == 1 { "" } else { "s" },
+                ));
+                if !group.lessons.is_empty() {
+                    for l in &group.lessons {
+                        text.push_str(&format!("    {}: {}\n", l.author_role, l.lesson));
+                    }
+                }
+            }
+            text.push_str("\n── read-only — use save_lesson to internalize ──");
+            self.system_message(text);
         }
         self.clear_input();
         None

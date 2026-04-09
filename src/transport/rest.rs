@@ -97,15 +97,32 @@ pub async fn search_messages(
     }
 }
 
-pub async fn get_lessons(State(session): State<Arc<session::Session>>) -> impl IntoResponse {
+#[derive(Deserialize)]
+pub struct LessonsQuery {
+    pub topic: Option<String>,
+}
+
+pub async fn get_lessons(
+    State(session): State<Arc<session::Session>>,
+    Query(params): Query<LessonsQuery>,
+) -> impl IntoResponse {
     match session.read_messages() {
         Ok(messages) => {
             let mut index = session::lessons::build_index(&messages, "ryan");
             let saved = session::lessons::load_index(&session.dir);
             index.lessons = saved.lessons;
             let groups = session::lessons::group_by_topic(&index);
-            let mut text = format!("{} topics indexed\n", groups.len());
-            for group in &groups {
+            let topic_filter = params.topic.as_deref().map(str::to_lowercase);
+            let filtered: Vec<_> = groups
+                .iter()
+                .filter(|g| {
+                    topic_filter
+                        .as_ref()
+                        .is_none_or(|f| g.topic.to_lowercase().contains(f))
+                })
+                .collect();
+            let mut text = format!("{} topics indexed\n", filtered.len());
+            for group in &filtered {
                 text.push_str(&format!(
                     "\n{} ({} corrections, {} lessons)\n",
                     group.topic,
@@ -134,6 +151,41 @@ pub struct SaveLessonPayload {
     pub lesson: String,
     pub author_role: String,
     pub evidence: Option<Vec<String>>,
+}
+
+#[derive(Deserialize)]
+pub struct PeerLessonsQuery {
+    pub peer: Option<String>,
+}
+
+pub async fn get_peer_lessons(
+    State(session): State<Arc<session::Session>>,
+    Query(params): Query<PeerLessonsQuery>,
+) -> impl IntoResponse {
+    let Some(peer_name) = params.peer else {
+        let peers = session::lessons::list_peer_names(&session.dir);
+        return (StatusCode::OK, format!("available peers: {}", peers.join(", ")));
+    };
+
+    let index = session::lessons::load_peer_index(&session.dir, &peer_name);
+    let groups = session::lessons::group_by_topic(&index);
+    if groups.is_empty() {
+        return (StatusCode::OK, format!("No lessons from peer \"{peer_name}\"."));
+    }
+
+    let mut text = format!("{} topics from {peer_name} (read-only)\n", groups.len());
+    for group in &groups {
+        text.push_str(&format!(
+            "\n{} ({} corrections, {} lessons)\n",
+            group.topic,
+            group.corrections.len(),
+            group.lessons.len(),
+        ));
+        for l in &group.lessons {
+            text.push_str(&format!("  {} learned: {}\n", l.author_role, l.lesson));
+        }
+    }
+    (StatusCode::OK, text)
 }
 
 pub async fn post_lesson(

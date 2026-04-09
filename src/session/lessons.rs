@@ -152,3 +152,73 @@ pub fn save_index(session_dir: &Path, index: &LessonIndex) -> Result<(), std::io
         .map_err(|e| std::io::Error::other(format!("serialize: {e}")))?;
     std::fs::write(path, json)
 }
+
+pub fn save_peer_index(
+    session_dir: &Path,
+    peer_name: &str,
+    index: &LessonIndex,
+) -> Result<(), std::io::Error> {
+    let path = session_dir.join(format!("lessons-peer-{peer_name}.json"));
+    let json = serde_json::to_string_pretty(index)
+        .map_err(|e| std::io::Error::other(format!("serialize: {e}")))?;
+    std::fs::write(path, json)
+}
+
+pub fn load_peer_index(session_dir: &Path, peer_name: &str) -> LessonIndex {
+    let path = session_dir.join(format!("lessons-peer-{peer_name}.json"));
+    if let Ok(data) = std::fs::read_to_string(&path) {
+        serde_json::from_str(&data).unwrap_or_default()
+    } else {
+        LessonIndex::default()
+    }
+}
+
+pub fn list_peer_names(session_dir: &Path) -> Vec<String> {
+    let mut names = Vec::new();
+    if let Ok(entries) = std::fs::read_dir(session_dir) {
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            let name = name.to_string_lossy();
+            if let Some(peer) = name
+                .strip_prefix("lessons-peer-")
+                .and_then(|s| s.strip_suffix(".json"))
+            {
+                names.push(peer.to_string());
+            }
+        }
+    }
+    names.sort();
+    names
+}
+
+/// Merge a remote lesson index into the local one.
+/// For agent lessons: same topic + same role = keep the one with the newer timestamp.
+/// Corrections are additive (deduplicated by timestamp).
+pub fn merge_indexes(local: &mut LessonIndex, remote: &LessonIndex) {
+    // Merge corrections — deduplicate by timestamp
+    let existing_timestamps: std::collections::HashSet<String> = local
+        .corrections
+        .iter()
+        .map(|c| c.timestamp.clone())
+        .collect();
+    for correction in &remote.corrections {
+        if !existing_timestamps.contains(&correction.timestamp) {
+            local.corrections.push(correction.clone());
+        }
+    }
+
+    // Merge lessons — same topic + same role = keep newer
+    for remote_lesson in &remote.lessons {
+        let existing = local
+            .lessons
+            .iter_mut()
+            .find(|l| l.topic == remote_lesson.topic && l.author_role == remote_lesson.author_role);
+        if let Some(existing) = existing {
+            if remote_lesson.timestamp > existing.timestamp {
+                *existing = remote_lesson.clone();
+            }
+        } else {
+            local.lessons.push(remote_lesson.clone());
+        }
+    }
+}

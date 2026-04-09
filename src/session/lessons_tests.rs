@@ -153,3 +153,141 @@ fn classifier_tags_search_result() {
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].message_class, MessageClass::Correction);
 }
+
+#[test]
+fn merge_adds_new_lessons_from_remote() {
+    let mut local = LessonIndex::default();
+    local.lessons.push(AgentLesson {
+        topic: "quality".to_string(),
+        lesson: "quality compounds".to_string(),
+        author_role: "dev".to_string(),
+        evidence: vec![],
+        timestamp: "2026-04-08T00:00:00Z".to_string(),
+    });
+
+    let remote = LessonIndex {
+        corrections: vec![],
+        lessons: vec![AgentLesson {
+            topic: "role boundaries".to_string(),
+            lesson: "features go through PM".to_string(),
+            author_role: "designer".to_string(),
+            evidence: vec![],
+            timestamp: "2026-04-08T01:00:00Z".to_string(),
+        }],
+    };
+
+    merge_indexes(&mut local, &remote);
+    assert_eq!(local.lessons.len(), 2);
+}
+
+#[test]
+fn merge_keeps_newer_lesson_for_same_topic_and_role() {
+    let mut local = LessonIndex::default();
+    local.lessons.push(AgentLesson {
+        topic: "quality".to_string(),
+        lesson: "old version".to_string(),
+        author_role: "dev".to_string(),
+        evidence: vec![],
+        timestamp: "2026-04-08T00:00:00Z".to_string(),
+    });
+
+    let remote = LessonIndex {
+        corrections: vec![],
+        lessons: vec![AgentLesson {
+            topic: "quality".to_string(),
+            lesson: "newer version".to_string(),
+            author_role: "dev".to_string(),
+            evidence: vec![],
+            timestamp: "2026-04-09T00:00:00Z".to_string(),
+        }],
+    };
+
+    merge_indexes(&mut local, &remote);
+    assert_eq!(local.lessons.len(), 1);
+    assert_eq!(local.lessons[0].lesson, "newer version");
+}
+
+#[test]
+fn merge_keeps_local_when_local_is_newer() {
+    let mut local = LessonIndex::default();
+    local.lessons.push(AgentLesson {
+        topic: "quality".to_string(),
+        lesson: "local newer".to_string(),
+        author_role: "dev".to_string(),
+        evidence: vec![],
+        timestamp: "2026-04-09T00:00:00Z".to_string(),
+    });
+
+    let remote = LessonIndex {
+        corrections: vec![],
+        lessons: vec![AgentLesson {
+            topic: "quality".to_string(),
+            lesson: "remote older".to_string(),
+            author_role: "dev".to_string(),
+            evidence: vec![],
+            timestamp: "2026-04-08T00:00:00Z".to_string(),
+        }],
+    };
+
+    merge_indexes(&mut local, &remote);
+    assert_eq!(local.lessons.len(), 1);
+    assert_eq!(local.lessons[0].lesson, "local newer");
+}
+
+#[test]
+fn merge_deduplicates_corrections_by_timestamp() {
+    let mut local = LessonIndex::default();
+    local.corrections.push(CorrectionEntry {
+        timestamp: "2026-04-08T00:00:00Z".to_string(),
+        keywords: vec!["quality".to_string()],
+        evidence: vec![],
+        text_preview: "quality is the goal".to_string(),
+    });
+
+    let remote = LessonIndex {
+        corrections: vec![
+            CorrectionEntry {
+                timestamp: "2026-04-08T00:00:00Z".to_string(),
+                keywords: vec!["quality".to_string()],
+                evidence: vec![],
+                text_preview: "quality is the goal".to_string(),
+            },
+            CorrectionEntry {
+                timestamp: "2026-04-09T00:00:00Z".to_string(),
+                keywords: vec!["focus".to_string()],
+                evidence: vec![],
+                text_preview: "focus on the problem".to_string(),
+            },
+        ],
+        lessons: vec![],
+    };
+
+    merge_indexes(&mut local, &remote);
+    assert_eq!(local.corrections.len(), 2, "duplicate skipped, new one added");
+}
+
+#[test]
+fn merge_same_topic_different_roles_both_kept() {
+    let mut local = LessonIndex::default();
+    local.lessons.push(AgentLesson {
+        topic: "quality".to_string(),
+        lesson: "dev perspective".to_string(),
+        author_role: "dev".to_string(),
+        evidence: vec![],
+        timestamp: "2026-04-08T00:00:00Z".to_string(),
+    });
+
+    let remote = LessonIndex {
+        corrections: vec![],
+        lessons: vec![AgentLesson {
+            topic: "quality".to_string(),
+            lesson: "pm perspective".to_string(),
+            author_role: "pm".to_string(),
+            evidence: vec![],
+            timestamp: "2026-04-08T00:00:00Z".to_string(),
+        }],
+    };
+
+    merge_indexes(&mut local, &remote);
+    assert_eq!(local.lessons.len(), 2, "different roles are separate");
+}

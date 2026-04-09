@@ -75,6 +75,8 @@ pub struct App {
     pub help_hint_col: Option<u16>,
     /// Screen Y positions of "[+N lines]" truncation indicators and their message keys.
     pub truncation_indicators: Vec<(u16, String)>,
+    /// Pending P2P command for the event loop to execute asynchronously.
+    pub p2p_command: Option<crate::transport::peer::P2pCommand>,
 }
 
 impl App {
@@ -124,6 +126,7 @@ impl App {
             status_bar_area: None,
             help_hint_col: None,
             truncation_indicators: Vec::new(),
+            p2p_command: None,
         }
     }
 

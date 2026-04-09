@@ -559,8 +559,9 @@ Commands:
   /to <who> <msg>   send to recipients
   /view [channel]   filter by channel
   /board   project board   /who    participants
-  /status  set status      /debug  system msgs
-  /quit    exit
+  /session create P2P      /join   join remote
+  /accept  complete P2P    /status set status
+  /debug   system msgs     /quit   exit
 
 Keys:
   Enter    send / expand    Esc     clear input

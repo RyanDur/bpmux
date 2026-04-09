@@ -246,10 +246,30 @@ async fn handle_save_lesson(
 }
 
 async fn handle_list_lessons(
-    _args: &serde_json::Map<String, serde_json::Value>,
+    args: &serde_json::Map<String, serde_json::Value>,
     port: u16,
 ) -> Result<String, String> {
-    let url = format!("http://127.0.0.1:{port}/api/lessons");
+    let mut url = format!("http://127.0.0.1:{port}/api/lessons");
+    if let Some(topic) = args.get("topic").and_then(|v| v.as_str()) {
+        url.push_str(&format!("?topic={}", urlencoding(topic)));
+    }
+    let body = reqwest::get(&url)
+        .await
+        .map_err(|e| format!("failed to fetch: {e}"))?
+        .text()
+        .await
+        .map_err(|e| format!("failed to read: {e}"))?;
+    Ok(body)
+}
+
+async fn handle_list_peer_lessons(
+    args: &serde_json::Map<String, serde_json::Value>,
+    port: u16,
+) -> Result<String, String> {
+    let mut url = format!("http://127.0.0.1:{port}/api/peer-lessons");
+    if let Some(peer) = args.get("peer").and_then(|v| v.as_str()) {
+        url.push_str(&format!("?peer={}", urlencoding(peer)));
+    }
     let body = reqwest::get(&url)
         .await
         .map_err(|e| format!("failed to fetch: {e}"))?
@@ -418,6 +438,9 @@ impl ServerHandler for BridgeServer {
             crate::mcp::tools::save_lesson_tool(
                 "Save what you learned from a correction. Your lesson is tagged with your role and visible to the team.",
             ),
+            crate::mcp::tools::list_peer_lessons_tool(
+                "Read lessons from a connected peer. Returns the peer's lesson index (read-only). Use this to see what another machine has learned. Call save_lesson to internalize anything valuable.",
+            ),
             crate::mcp::tools::set_name_tool(
                 "Set your display name in the bpmux session. Call this once at the start to identify yourself (e.g., 'dev', 'pm').",
             ),
@@ -447,6 +470,7 @@ impl ServerHandler for BridgeServer {
                 "read_messages" => handle_read_messages(&args, port).await,
                 "search_log" => handle_search_log(&args, port).await,
                 "list_lessons" => handle_list_lessons(&args, port).await,
+                "list_peer_lessons" => handle_list_peer_lessons(&args, port).await,
                 "save_lesson" => handle_save_lesson(&args, port, &name).await,
                 other => Err(format!("unknown tool: {other}")),
             };

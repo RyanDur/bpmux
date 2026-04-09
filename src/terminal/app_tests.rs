@@ -849,3 +849,79 @@ fn toggle_expands_long_system_message() {
         "should collapse after second toggle"
     );
 }
+
+// P2P command tests
+
+#[test]
+fn session_command_sets_p2p_command() {
+    let mut app = test_app();
+    app.input = "/session".to_string();
+    app.cursor_pos = app.input.len();
+    let msg = app.submit_message();
+    assert!(msg.is_none(), "session command produces no broadcast message");
+    assert!(
+        matches!(
+            app.p2p_command,
+            Some(crate::transport::peer::P2pCommand::CreateSession)
+        ),
+        "should set P2P command"
+    );
+}
+
+#[test]
+fn join_command_sets_p2p_command_with_args() {
+    let mut app = test_app();
+    app.input = "/join blue-tiger-42 someOfferCode123".to_string();
+    app.cursor_pos = app.input.len();
+    let msg = app.submit_message();
+    assert!(msg.is_none());
+    match &app.p2p_command {
+        Some(crate::transport::peer::P2pCommand::JoinSession {
+            passphrase,
+            offer_code,
+        }) => {
+            assert_eq!(passphrase, "blue-tiger-42");
+            assert_eq!(offer_code, "someOfferCode123");
+        }
+        other => panic!("expected JoinSession, got {other:?}"),
+    }
+}
+
+#[test]
+fn join_without_args_shows_usage() {
+    let mut app = test_app();
+    app.input = "/join".to_string();
+    app.cursor_pos = app.input.len();
+    let msg = app.submit_message();
+    assert!(msg.is_none());
+    assert!(app.p2p_command.is_none(), "no command without args");
+    let last = app.messages.last().unwrap();
+    assert!(last.text.contains("Usage:"));
+}
+
+#[test]
+fn accept_command_sets_p2p_command() {
+    let mut app = test_app();
+    app.input = "/accept someAnswerCode456".to_string();
+    app.cursor_pos = app.input.len();
+    let msg = app.submit_message();
+    assert!(msg.is_none());
+    match &app.p2p_command {
+        Some(crate::transport::peer::P2pCommand::AcceptAnswer { answer_code }) => {
+            assert_eq!(answer_code, "someAnswerCode456");
+        }
+        other => panic!("expected AcceptAnswer, got {other:?}"),
+    }
+}
+
+#[test]
+fn accept_without_args_shows_usage() {
+    let mut app = test_app();
+    app.input = "/accept".to_string();
+    app.cursor_pos = app.input.len();
+    let msg = app.submit_message();
+    assert!(msg.is_none());
+    assert!(app.p2p_command.is_none());
+    let last = app.messages.last().unwrap();
+    assert!(last.text.contains("Usage:"));
+}
