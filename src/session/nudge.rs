@@ -33,6 +33,7 @@ pub fn spawn_nudge_task(session: Arc<Session>, owner_name: String) {
         // Context-triggered recall state
         let mut surfaced_topics: HashSet<String> = HashSet::new();
         let mut recall_count: usize = 0;
+        let mut cached_index = lessons::load_index(&session.dir);
 
         loop {
             let timeout = if pending_experiences.is_empty() {
@@ -62,16 +63,22 @@ pub fn spawn_nudge_task(session: Arc<Session>, owner_name: String) {
                                 pending_experiences.push(preview);
                             }
 
+                            // Refresh cached index when new lessons are saved
+                            if sender == "bpmux" && msg.text.contains("lesson saved") {
+                                cached_index = lessons::load_index(&session.dir);
+                            }
+
                             // Context-triggered recall: check agent messages against lesson topics
                             if msg.is_chat()
                                 && sender != owner_name
                                 && sender != "bpmux"
                                 && recall_count < MAX_RECALL_NUDGES
                             {
-                                check_recall(
+                                check_recall_cached(
                                     &session,
                                     &msg,
                                     sender,
+                                    &cached_index,
                                     &mut surfaced_topics,
                                     &mut recall_count,
                                 );
@@ -92,14 +99,14 @@ pub fn spawn_nudge_task(session: Arc<Session>, owner_name: String) {
     });
 }
 
-fn check_recall(
+fn check_recall_cached(
     session: &Session,
     msg: &Message,
     sender: &str,
+    index: &lessons::LessonIndex,
     surfaced_topics: &mut HashSet<String>,
     recall_count: &mut usize,
 ) {
-    let index = lessons::load_index(&session.dir);
     if index.lessons.is_empty() {
         return;
     }
