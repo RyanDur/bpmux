@@ -177,9 +177,8 @@ fn handle_p2p_command(
                     Ok((answer_sdp, channel_pair)) => {
                         match crypto::encrypt(&answer_sdp, &passphrase) {
                             Ok(code) => {
-                                let _ = tx
-                                    .send(P2pResult::AnswerReady { channel_pair, code })
-                                    .await;
+                                let _ =
+                                    tx.send(P2pResult::AnswerReady { channel_pair, code }).await;
                             }
                             Err(e) => {
                                 let _ = tx.send(P2pResult::Error(e.to_string())).await;
@@ -263,7 +262,12 @@ fn handle_p2p_result(
             ));
         }
         P2pResult::AnswerReady { channel_pair, code } => {
-            spawn_relay_with_sync(session_arc.clone(), app.session_id.clone(), "remote".to_string(), channel_pair);
+            spawn_relay_with_sync(
+                session_arc.clone(),
+                app.session_id.clone(),
+                "remote".to_string(),
+                channel_pair,
+            );
             app.system_message(format!(
                 "Connected to session. Share this answer code with the offerer:\n\n  Answer code: {code}\n\nPeer connected."
             ));
@@ -274,7 +278,12 @@ fn handle_p2p_result(
             channel_pair,
             peer_name,
         } => {
-            spawn_relay_with_sync(session_arc.clone(), app.session_id.clone(), peer_name.clone(), channel_pair);
+            spawn_relay_with_sync(
+                session_arc.clone(),
+                app.session_id.clone(),
+                peer_name.clone(),
+                channel_pair,
+            );
             app.system_message(format!("Connected to peer '{peer_name}'."));
             app.update_activity(peer_name, "available".to_string());
             broadcast_system(session, "remote peer connected");
@@ -293,7 +302,13 @@ fn spawn_relay_with_sync(
 ) {
     tokio::spawn(async move {
         send_lesson_sync(&session, &pair.outbound_tx).await;
-        let _peer = peer::spawn_relay(session, peer_name, session_id, pair.inbound_rx, pair.outbound_tx);
+        let _peer = peer::spawn_relay(
+            session,
+            peer_name,
+            session_id,
+            pair.inbound_rx,
+            pair.outbound_tx,
+        );
         std::future::pending::<()>().await;
     });
 }

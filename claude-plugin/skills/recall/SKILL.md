@@ -2,34 +2,32 @@
 description: Recall the team's lessons before starting work
 ---
 
-Read the team's accumulated lessons from the bpmux session. Use this at the start of every session to orient yourself with what the team has learned.
+Orient yourself with the team's accumulated understanding. Memory science says: retrieval beats re-reading, context-triggered beats bulk-loading. Don't dump everything — orient lightly and search deeply when you need it.
 
 ## Steps
 
-1. Call `list_lessons` to get the full lesson index — corrections and agent-authored lessons grouped by topic.
+1. Call `list_lessons(topic="your role")` to get lessons from your own role first. These are what your predecessor learned — the most relevant starting point.
 
-2. Read through the lessons, focusing on:
-   - Corrections from the owner (what the team was taught)
-   - Lessons from your own role (what your predecessor learned)
-   - Lessons from other roles (what the team knows)
+2. Identify your **3-5 watch topics** — the areas where the team has been corrected most or where your role is most involved. These are your alerts for the session.
 
-3. Summarize the key takeaways for yourself — the 3-5 most important things to keep in mind during this session.
+3. Ask the team: "What are we working on?" Get live context, not historical data.
 
-4. Report to the user: "Recalled N lessons across M topics. Key reminders: [list top 3-5]."
+4. Report briefly: "Oriented. Watch topics: [list 3-5]. Ready."
 
-## During the session
+## During the session (this is where real learning happens)
 
-You have these tools — use them throughout your work, not just at startup:
+The startup is lightweight orientation. The real value is mid-work:
 
-- `search_log(query)` — before making a decision in an area the team has been corrected on, search for what happened. "What did we learn about role boundaries?" is cheaper than repeating the mistake.
-- `list_lessons()` — check what the team knows about a topic before proposing something new.
+- `search_log(query)` — **before** making a decision in a watch-topic area, search for what happened. Retrieval strengthens memory more than re-reading.
+- `list_lessons(topic="X")` — check what the team knows about a specific topic, not everything.
 - `save_lesson(topic, lesson)` — when you learn something, save it immediately. Don't wait for /reflect.
 
-The topics you recalled are your watch list. When your work touches one of those topics, pause and check.
+When your work touches a watch topic, **pause and search** before acting. The 500 tokens spent searching saves the thousands spent on a correction cycle.
 
 ## Guidelines
 
-- Run this at the start of each session — before your first action
-- Focus on lessons that apply to the work ahead, not every lesson ever saved
-- If a lesson conflicts with what you observe in the code or conversation, trust the current state — the lesson may be outdated
-- This is recall, not recitation — internalize the understanding, don't just list the rules
+- Lightweight at startup — 3-5 watch topics, not the full index
+- Deep when relevant — search for context when you encounter a watch topic
+- Retrieval over re-reading — the effort of searching is what builds understanding
+- If a lesson conflicts with current state, trust what you observe — the lesson may be outdated
+- This is orientation, not recitation — internalize the direction, search for the details
