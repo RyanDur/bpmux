@@ -28,6 +28,10 @@ struct Cli {
     #[arg(long, default_value = "4117")]
     mcp_port: u16,
 
+    /// Bind to all network interfaces (enables LAN connections)
+    #[arg(long)]
+    lan: bool,
+
     /// Session base directory (defaults to ~/.bpmux/sessions)
     #[arg(long)]
     session_base: Option<String>,
@@ -74,13 +78,16 @@ pub fn run() -> anyhow::Result<()> {
     app.session_dir = Some(session.dir.clone());
     let server_session = Arc::clone(&session);
     let server_port = cli.mcp_port;
+    let server_lan = cli.lan;
     let ct = CancellationToken::new();
     let server_ct = ct.clone();
 
     let rt = tokio::runtime::Runtime::new()?;
     let result = rt.block_on(async {
         tokio::spawn(async move {
-            if let Err(e) = server::run_server(server_session, server_port, server_ct).await {
+            if let Err(e) =
+                server::run_server(server_session, server_port, server_lan, server_ct).await
+            {
                 eprintln!("Server error: {e}");
             }
         });
