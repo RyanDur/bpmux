@@ -229,7 +229,9 @@ impl App {
             }
             MessageType::System => {
                 if let Some(peer) = msg.text.strip_suffix(" joined") {
-                    self.update_activity(short_peer_name(peer).to_string(), "available".into());
+                    let short = short_peer_name(peer).to_string();
+                    self.update_activity(short.clone(), "available".into());
+                    self.active_channels.insert(short);
                 } else if let Some(peer) = msg.text.strip_suffix(" left") {
                     self.peer_activity.remove(short_peer_name(peer));
                     self.rebuild_channels();
