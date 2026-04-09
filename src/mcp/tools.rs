@@ -153,6 +153,40 @@ pub fn list_peer_lessons_tool(description: &'static str) -> Tool {
     )
 }
 
+pub fn simulate_click_tool(description: &'static str) -> Tool {
+    let schema = serde_json::json!({
+        "type": "object",
+        "properties": {
+            "x": { "type": "integer", "description": "Column position (0-based)" },
+            "y": { "type": "integer", "description": "Row position (0-based)" }
+        },
+        "required": ["x", "y"]
+    });
+    Tool::new(
+        "simulate_click",
+        description,
+        schema.as_object().cloned().unwrap_or_default(),
+    )
+}
+
+pub fn simulate_key_tool(description: &'static str) -> Tool {
+    let schema = serde_json::json!({
+        "type": "object",
+        "properties": {
+            "key": {
+                "type": "string",
+                "description": "Key to press: single character, or 'enter', 'escape', 'tab', 'backspace', 'up', 'down', 'left', 'right'"
+            }
+        },
+        "required": ["key"]
+    });
+    Tool::new(
+        "simulate_key",
+        description,
+        schema.as_object().cloned().unwrap_or_default(),
+    )
+}
+
 pub fn capture_screen_tool(description: &'static str) -> Tool {
     let schema = serde_json::json!({
         "type": "object",

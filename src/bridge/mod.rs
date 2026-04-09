@@ -291,6 +291,50 @@ async fn handle_list_peer_lessons(
     Ok(body)
 }
 
+async fn handle_simulate_click(
+    args: &serde_json::Map<String, serde_json::Value>,
+    port: u16,
+) -> Result<String, String> {
+    let x = args
+        .get("x")
+        .and_then(|v| v.as_u64())
+        .ok_or("missing 'x'")? as u16;
+    let y = args
+        .get("y")
+        .and_then(|v| v.as_u64())
+        .ok_or("missing 'y'")? as u16;
+    let body = serde_json::json!({"x": x, "y": y});
+    let client = reqwest::Client::new();
+    let url = format!("http://127.0.0.1:{port}/api/simulate/click");
+    let resp = client
+        .post(&url)
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("failed: {e}"))?;
+    resp.text().await.map_err(|e| format!("failed: {e}"))
+}
+
+async fn handle_simulate_key(
+    args: &serde_json::Map<String, serde_json::Value>,
+    port: u16,
+) -> Result<String, String> {
+    let key = args
+        .get("key")
+        .and_then(|v| v.as_str())
+        .ok_or("missing 'key'")?;
+    let body = serde_json::json!({"key": key});
+    let client = reqwest::Client::new();
+    let url = format!("http://127.0.0.1:{port}/api/simulate/key");
+    let resp = client
+        .post(&url)
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("failed: {e}"))?;
+    resp.text().await.map_err(|e| format!("failed: {e}"))
+}
+
 async fn handle_capture_screen(port: u16) -> Result<String, String> {
     let url = format!("http://127.0.0.1:{port}/api/screen");
     let body = reqwest::get(&url)
@@ -467,6 +511,12 @@ impl ServerHandler for BridgeServer {
             crate::mcp::tools::capture_screen_tool(
                 "Capture the current TUI screen as text. Returns the 80x24 grid exactly as the user sees it. Use for visual verification and desk checking.",
             ),
+            crate::mcp::tools::simulate_click_tool(
+                "Simulate a mouse click at (x, y) on the TUI. Use with capture_screen for interactive testing.",
+            ),
+            crate::mcp::tools::simulate_key_tool(
+                "Simulate a key press on the TUI. Use with capture_screen for interactive testing.",
+            ),
             crate::mcp::tools::set_name_tool(
                 "Set your display name in the bpmux session. Call this once at the start to identify yourself (e.g., 'dev', 'pm').",
             ),
@@ -499,6 +549,8 @@ impl ServerHandler for BridgeServer {
                 "list_peer_lessons" => handle_list_peer_lessons(&args, port).await,
                 "save_lesson" => handle_save_lesson(&args, port, &name).await,
                 "capture_screen" => handle_capture_screen(port).await,
+                "simulate_click" => handle_simulate_click(&args, port).await,
+                "simulate_key" => handle_simulate_key(&args, port).await,
                 other => Err(format!("unknown tool: {other}")),
             };
             Ok(match result {

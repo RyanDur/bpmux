@@ -50,6 +50,7 @@ pub async fn run_tui(
     session: &session::Session,
     wake_rx: &mut broadcast::Receiver<session::Message>,
     screen_capture: Arc<std::sync::Mutex<String>>,
+    mut injected_rx: mpsc::Receiver<crossterm::event::Event>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut events = EventStream::new();
     let (p2p_tx, mut p2p_rx) = mpsc::channel::<P2pResult>(8);
@@ -160,6 +161,9 @@ pub async fn run_tui(
             }
             Some(state) = project_rx.recv() => {
                 app.project_state = Some(state);
+            }
+            Some(injected) = injected_rx.recv() => {
+                handle_terminal_event(injected, app, session)?;
             }
             Some(result) = p2p_rx.recv() => {
                 handle_p2p_result(

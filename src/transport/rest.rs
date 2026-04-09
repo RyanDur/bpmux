@@ -232,6 +232,73 @@ pub async fn get_screen(
     (StatusCode::OK, screen)
 }
 
+#[derive(Deserialize)]
+pub struct ClickPayload {
+    pub x: u16,
+    pub y: u16,
+}
+
+pub async fn simulate_click(
+    axum::Extension(tx): axum::Extension<tokio::sync::mpsc::Sender<crossterm::event::Event>>,
+    Json(payload): Json<ClickPayload>,
+) -> impl IntoResponse {
+    let event = crossterm::event::Event::Mouse(crossterm::event::MouseEvent {
+        kind: crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left),
+        column: payload.x,
+        row: payload.y,
+        modifiers: crossterm::event::KeyModifiers::empty(),
+    });
+    match tx.send(event).await {
+        Ok(()) => (
+            StatusCode::OK,
+            format!("click at ({}, {})", payload.x, payload.y),
+        ),
+        Err(_) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "event loop not available".to_string(),
+        ),
+    }
+}
+
+#[derive(Deserialize)]
+pub struct KeyPayload {
+    pub key: String,
+}
+
+pub async fn simulate_key(
+    axum::Extension(tx): axum::Extension<tokio::sync::mpsc::Sender<crossterm::event::Event>>,
+    Json(payload): Json<KeyPayload>,
+) -> impl IntoResponse {
+    let key_code = match payload.key.as_str() {
+        "enter" => crossterm::event::KeyCode::Enter,
+        "escape" | "esc" => crossterm::event::KeyCode::Esc,
+        "tab" => crossterm::event::KeyCode::Tab,
+        "backspace" => crossterm::event::KeyCode::Backspace,
+        "up" => crossterm::event::KeyCode::Up,
+        "down" => crossterm::event::KeyCode::Down,
+        "left" => crossterm::event::KeyCode::Left,
+        "right" => crossterm::event::KeyCode::Right,
+        s if s.len() == 1 => crossterm::event::KeyCode::Char(s.chars().next().unwrap_or(' ')),
+        _ => {
+            return (
+                StatusCode::BAD_REQUEST,
+                format!("unknown key: {}", payload.key),
+            );
+        }
+    };
+    let event = crossterm::event::Event::Key(crossterm::event::KeyEvent::new(
+        key_code,
+        crossterm::event::KeyModifiers::empty(),
+    ));
+    match tx.send(event).await {
+        Ok(()) => (StatusCode::OK, format!("key: {}", payload.key)),
+        Err(_) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "event loop not available".to_string(),
+        ),
+    }
+}
+
 pub async fn post_lesson(
     State(session): State<Arc<session::Session>>,
     Json(payload): Json<SaveLessonPayload>,
