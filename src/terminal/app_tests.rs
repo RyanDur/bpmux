@@ -660,13 +660,13 @@ fn sidebar_channels_starts_with_project_node() {
 }
 
 #[test]
-fn sidebar_channels_includes_active_channels() {
+fn sidebar_channels_includes_connected_peers() {
     let mut app = test_app();
     app.active_channels.insert("broadcast".to_string());
-    app.active_channels.insert("dev\u{2194}human".to_string());
+    app.update_activity("dev".to_string(), "available".to_string());
     let channels = app.sidebar_channels();
     assert!(channels.contains(&"broadcast".to_string()));
-    assert!(channels.contains(&"dev\u{2194}human".to_string()));
+    assert!(channels.contains(&"dev".to_string()));
 }
 
 #[test]

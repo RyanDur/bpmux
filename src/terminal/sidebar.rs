@@ -39,23 +39,48 @@ impl App {
             result.push("broadcast".to_string());
         }
 
-        // Collect and categorize channels
-        let mut direct: Vec<String> = Vec::new();
-        let mut groups: Vec<String> = Vec::new();
-        let mut system: Vec<String> = Vec::new();
+        // Build channels from connected peers, not message history
+        let connected: std::collections::HashSet<&str> =
+            self.peer_activity.keys().map(|s| s.as_str()).collect();
 
-        for ch in &self.active_channels {
-            if ch == "broadcast" || !matches_filter(ch) {
-                continue;
-            }
-            if is_system_channel(ch) {
-                system.push(ch.clone());
-            } else if is_group_channel(ch) {
-                groups.push(ch.clone());
-            } else {
-                direct.push(ch.clone());
+        // Direct: connected agents + channels with unread messages
+        let mut direct_set: std::collections::HashSet<String> = connected
+            .iter()
+            .filter(|name| matches_filter(name))
+            .map(|s| s.to_string())
+            .collect();
+        for (ch, &count) in &self.channel_unread {
+            if count > 0
+                && !is_group_channel(ch)
+                && !is_system_channel(ch)
+                && ch != "broadcast"
+                && matches_filter(ch)
+            {
+                direct_set.insert(ch.clone());
             }
         }
+        let mut direct: Vec<String> = direct_set.into_iter().collect();
+
+        // Groups: from active_channels, but only where all participants are connected
+        let mut groups: Vec<String> = self
+            .active_channels
+            .iter()
+            .filter(|ch| {
+                is_group_channel(ch)
+                    && !is_system_channel(ch)
+                    && matches_filter(ch)
+                    && ch.split('+').all(|name| connected.contains(name))
+            })
+            .cloned()
+            .collect();
+
+        // System: bpmux channels from active_channels
+        let mut system: Vec<String> = self
+            .active_channels
+            .iter()
+            .filter(|ch| is_system_channel(ch) && matches_filter(ch))
+            .cloned()
+            .collect();
 
         direct.sort();
         groups.sort();
