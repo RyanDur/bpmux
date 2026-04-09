@@ -2,6 +2,7 @@ pub mod classifier;
 pub mod lessons;
 pub mod log;
 pub mod message;
+pub mod nudge;
 pub mod search;
 
 pub use classifier::{MessageClass, classify};
@@ -20,3 +21,5 @@ mod lessons_tests;
 mod log_tests;
 #[cfg(test)]
 mod message_tests;
+#[cfg(test)]
+mod nudge_tests;

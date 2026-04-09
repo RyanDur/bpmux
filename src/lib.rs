@@ -85,6 +85,8 @@ pub fn run() -> anyhow::Result<()> {
             }
         });
 
+        session::nudge::spawn_nudge_task(Arc::clone(&session), cli.name.clone());
+
         // Enable mouse capture and focus tracking
         crossterm::execute!(
             std::io::stdout(),
