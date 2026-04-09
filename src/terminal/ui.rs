@@ -640,7 +640,7 @@ Press any key to close";
     }
 }
 
-fn render_project_panel(frame: &mut Frame, _app: &mut App, area: Rect) {
+fn render_project_panel(frame: &mut Frame, app: &App, area: Rect) {
     let block = Block::default()
         .borders(Borders::ALL)
         .title(" project ")
@@ -652,27 +652,12 @@ fn render_project_panel(frame: &mut Frame, _app: &mut App, area: Rect) {
         .border_style(Style::default().fg(DRACULA_PURPLE))
         .style(Style::default().bg(DRACULA_BG).fg(DRACULA_FG));
 
-    let mut content = String::new();
-
-    // Metrics first — glanceable status
-    if let Some(metrics) = super::board::fetch_dora_metrics() {
-        content.push_str(&metrics.format());
-        content.push_str("\n\n---\n\n");
-    }
-
-    // Roadmap detail below
-    match super::board::fetch_roadmap() {
-        Ok(text) => content.push_str(&text),
-        Err(_) => match super::board::fetch_board() {
-            Ok(text) => content.push_str(&text),
-            Err(e) => content.push_str(&format!("Project info unavailable: {e}")),
-        },
-    }
+    let content = app.project_view_content.as_deref().unwrap_or("Loading...");
 
     let inner_width = area.width.saturating_sub(2) as usize;
     let prefix_spans = Vec::new();
     let indent = Span::raw("");
-    let md_lines = render_md_message(&content, prefix_spans, indent.clone(), None, inner_width);
+    let md_lines = render_md_message(content, prefix_spans, indent.clone(), None, inner_width);
     let mut wrapped = Vec::new();
     for line in &md_lines {
         wrapped.extend(wrap_line_with_indent(line.clone(), &indent, inner_width));

@@ -391,6 +391,22 @@ fn handle_broadcast_message(msg: session::Message, app: &mut App) {
     }
 }
 
+fn build_project_content() -> String {
+    let mut content = String::new();
+    if let Some(metrics) = super::board::fetch_dora_metrics() {
+        content.push_str(&metrics.format());
+        content.push_str("\n\n---\n\n");
+    }
+    match super::board::fetch_roadmap() {
+        Ok(text) => content.push_str(&text),
+        Err(_) => match super::board::fetch_board() {
+            Ok(text) => content.push_str(&text),
+            Err(e) => content.push_str(&format!("Project info unavailable: {e}")),
+        },
+    }
+    content
+}
+
 fn handle_mouse_click(col: u16, row: u16, app: &mut App) {
     if let Some((sx, sy, sw, sh)) = app.sidebar_area {
         if col >= sx && col < sx + sw && row >= sy && row < sy + sh {
@@ -434,6 +450,11 @@ fn handle_mouse_click(col: u16, row: u16, app: &mut App) {
         && col < cx + cw
     {
         app.show_project_view = !app.show_project_view;
+        if app.show_project_view {
+            app.project_view_content = Some(build_project_content());
+        } else {
+            app.project_view_content = None;
+        }
         return;
     }
 
@@ -497,6 +518,7 @@ fn handle_terminal_event(
     }
     if app.show_project_view && key.code == KeyCode::Esc {
         app.show_project_view = false;
+        app.project_view_content = None;
         return Ok(());
     }
     if (key.code == KeyCode::Char('b') || key.code == KeyCode::Char('1'))

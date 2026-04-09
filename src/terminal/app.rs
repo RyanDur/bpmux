@@ -80,6 +80,8 @@ pub struct App {
     pub project_state: Option<super::board::ProjectState>,
     /// When true, the main area shows the project view instead of chat.
     pub show_project_view: bool,
+    /// Cached project view content (fetched once on open, not per frame).
+    pub project_view_content: Option<String>,
     /// Chat area position for title bar click detection.
     pub chat_area: Option<(u16, u16, u16, u16)>,
     pub should_reload: bool,
@@ -135,6 +137,7 @@ impl App {
             p2p_command: None,
             project_state: None,
             show_project_view: false,
+            project_view_content: None,
             chat_area: None,
             should_reload: false,
         }
