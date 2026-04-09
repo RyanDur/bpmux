@@ -15,6 +15,7 @@ const PAUSE_THRESHOLD: Duration = Duration::from_secs(30);
 const MAX_RECALL_NUDGES: usize = 3;
 const PILEON_WINDOW: Duration = Duration::from_secs(5);
 const PILEON_THRESHOLD: usize = 3;
+const HANDOFF_TIMEOUT: Duration = Duration::from_secs(60);
 
 /// Spawn a task that monitors the session for experiences and nudges
 /// agents to reflect after a natural pause. Also surfaces relevant
@@ -40,6 +41,9 @@ pub fn spawn_nudge_task(session: Arc<Session>, owner_name: String) {
         // Pile-on detection state
         let mut pileon_window_start: Option<Instant> = None;
         let mut pileon_responders: Vec<String> = Vec::new();
+
+        // Handoff tracking state
+        let mut pending_handoff: Option<(String, String, Instant)> = None; // (from, to, when)
 
         loop {
             let timeout = if pending_experiences.is_empty() {
@@ -108,6 +112,18 @@ pub fn spawn_nudge_task(session: Arc<Session>, owner_name: String) {
                                     pileon_responders.clear();
                                 }
                             }
+
+                            // Handoff detection
+                            if msg.is_chat() && sender != "bpmux" {
+                                if let Some(recipient) = detect_handoff(&msg.text, &known_agents, &owner_name) {
+                                    pending_handoff = Some((sender.to_string(), recipient, Instant::now()));
+                                }
+                                if let Some((_, ref to, _)) = pending_handoff
+                                    && sender == to.as_str()
+                                {
+                                    pending_handoff = None;
+                                }
+                            }
                         }
                         Err(broadcast::error::RecvError::Lagged(_)) => continue,
                         Err(broadcast::error::RecvError::Closed) => break,
@@ -118,6 +134,24 @@ pub fn spawn_nudge_task(session: Arc<Session>, owner_name: String) {
                         send_experience_nudge(&session, &pending_experiences, &known_agents);
                     }
                     pending_experiences.clear();
+                }
+                _ = async {
+                    if let Some((_, _, when)) = &pending_handoff {
+                        tokio::time::sleep_until(*when + HANDOFF_TIMEOUT).await;
+                    } else {
+                        std::future::pending::<()>().await;
+                    }
+                }, if pending_handoff.is_some() => {
+                    if let Some((from, to, _)) = pending_handoff.take() {
+                        let nudge = Message {
+                            from: "bpmux".to_string(),
+                            text: format!("{to} hasn't acknowledged the handoff from {from}. Waiting for response."),
+                            ts: chrono::Utc::now(),
+                            message_type: MessageType::Chat,
+                            to: Some(vec![to]),
+                        };
+                        let _ = session.broadcast(&nudge);
+                    }
                 }
             }
         }
@@ -199,6 +233,35 @@ fn reinforcement_trend(lesson: &lessons::AgentLesson) -> String {
         }
         None => format!("reinforced {count}x"),
     }
+}
+
+const HANDOFF_ACTIONS: &[&str] = &[
+    "desk check",
+    "review",
+    "accept",
+    "pick up",
+    "your turn",
+    "delivered",
+    "ready for",
+    "needs your",
+];
+
+fn detect_handoff(text: &str, agents: &[String], owner_name: &str) -> Option<String> {
+    let lower = text.to_lowercase();
+    let mut candidates: Vec<&str> = agents.iter().map(|s| s.as_str()).collect();
+    candidates.push(owner_name);
+
+    for name in &candidates {
+        let patterns = [format!("{name},"), format!("{name} —"), format!("{name}:")];
+        if patterns
+            .iter()
+            .any(|p| lower.starts_with(&p.to_lowercase()))
+            && HANDOFF_ACTIONS.iter().any(|a| lower.contains(a))
+        {
+            return Some(name.to_string());
+        }
+    }
+    None
 }
 
 fn is_coordination(text: &str) -> bool {
