@@ -304,7 +304,8 @@ pub(super) fn render_md_message<'a>(
                 for chunk in &chunks {
                     let options = tui_markdown::Options::new(DraculaStyleSheet);
                     let md = tui_markdown::from_str_with_options(chunk, &options);
-                    for mut md_line in md.lines {
+                    let md_lines = merge_orphan_list_numbers(md.lines);
+                    for mut md_line in md_lines {
                         let mut spans = Vec::new();
                         if all_lines.is_empty() {
                             spans.extend(prefix_spans.iter().cloned());
@@ -365,6 +366,38 @@ fn chunk_at_paragraphs(text: &str, max_size: usize) -> Vec<String> {
         start += break_at;
     }
     chunks
+}
+
+/// tui-markdown sometimes puts list numbers ("1. ", "2. ") on their own line,
+/// separate from the item content. This merges orphan number lines with the
+/// following content line.
+fn merge_orphan_list_numbers(lines: Vec<Line<'_>>) -> Vec<Line<'_>> {
+    fn is_orphan_number(line: &Line<'_>) -> bool {
+        if line.spans.len() != 1 {
+            return false;
+        }
+        let text = line.spans[0].content.trim();
+        text.ends_with('.')
+            && text.len() <= 4
+            && text[..text.len() - 1].chars().all(|c| c.is_ascii_digit())
+    }
+
+    let mut result = Vec::with_capacity(lines.len());
+    let mut iter = lines.into_iter().peekable();
+
+    while let Some(line) = iter.next() {
+        if is_orphan_number(&line) && iter.peek().is_some() {
+            let next = iter.next();
+            if let Some(next_line) = next {
+                let mut merged_spans = line.spans;
+                merged_spans.extend(next_line.spans);
+                result.push(Line::from(merged_spans));
+            }
+        } else {
+            result.push(line);
+        }
+    }
+    result
 }
 
 /// Wrap a Line into multiple lines if it exceeds `max_width`, adding `indent`

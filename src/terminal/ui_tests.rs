@@ -531,6 +531,61 @@ fn table_renders_within_chat_width() {
 }
 
 #[test]
+fn numbered_list_with_bold_renders_inline() {
+    // Reproduce the roadmap-style numbered list that Ryan reported
+    let backend = TestBackend::new(80, 24);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let text = "### Milestones\n\n1. **TUI reliability** -- borders, input, auto-scroll, message truncation all shipped\n   - #14-#18 all closed\n\n2. **Awareness** -- visual identity, notifications\n   - #19-#23 all closed\n\n3. **Onboarding** -- help overlay, command input";
+    let mut app = test_app_with(vec![chat_msg("bpmux:ws", text)]);
+
+    terminal.draw(|frame| render(frame, &mut app)).unwrap();
+    let screen = buffer_to_string(terminal.backend().buffer());
+
+    // Check that "1." appears on the same line as "TUI"
+    let mut found = false;
+    for line in screen.lines() {
+        if line.contains("1.") && line.contains("TUI") {
+            found = true;
+            break;
+        }
+    }
+    assert!(found, "'1.' and 'TUI' should be on the same line");
+}
+
+#[test]
+fn numbered_list_number_stays_inline() {
+    let backend = TestBackend::new(80, 24);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let list_text = "1. First item with enough text to possibly wrap at narrow widths and should still keep the number inline\n2. Second item also with long text\n3. Third item";
+    let mut app = test_app_with(vec![chat_msg("ryan:human", list_text)]);
+
+    terminal.draw(|frame| render(frame, &mut app)).unwrap();
+    let screen = buffer_to_string(terminal.backend().buffer());
+
+    // The number "1." should be on the same line as "First"
+    for line in screen.lines() {
+        if line.contains("1.") {
+            assert!(
+                line.contains("First"),
+                "Number '1.' should be on the same line as 'First', got: '{line}'"
+            );
+            break;
+        }
+    }
+
+    // Also check "2." is inline with "Second"
+    for line in screen.lines() {
+        if line.contains("2.") {
+            assert!(
+                line.contains("Second"),
+                "Number '2.' should be on the same line as 'Second', got: '{line}'"
+            );
+            break;
+        }
+    }
+}
+
+#[test]
 fn wrap_line_keeps_number_with_content() {
     // Simulates a markdown numbered list: "  1. " prefix + long content
     let line = Line::from(vec![
