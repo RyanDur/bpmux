@@ -85,6 +85,7 @@ pub struct App {
     /// Chat area position for title bar click detection.
     pub chat_area: Option<(u16, u16, u16, u16)>,
     pub should_reload: bool,
+    pub system_expanded: bool,
 }
 
 impl App {
@@ -140,6 +141,7 @@ impl App {
             project_view_content: None,
             chat_area: None,
             should_reload: false,
+            system_expanded: false,
         }
     }
 
@@ -239,9 +241,7 @@ impl App {
             }
             MessageType::Chat | MessageType::Insight => {
                 let ch = channel_name(&msg, &self.peer_name);
-                if sender != "bpmux" {
-                    self.active_channels.insert(ch.clone());
-                }
+                self.active_channels.insert(ch.clone());
                 if self.current_view.as_ref().is_none_or(|v| v != &ch) {
                     *self.channel_unread.entry(ch).or_insert(0) += 1;
                 }
