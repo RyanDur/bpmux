@@ -332,9 +332,13 @@ fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
 
     // Lines are pre-wrapped by wrap_line_with_indent — no ratatui Wrap needed
     let total_lines = messages.len();
+    let title = app
+        .project_state
+        .as_ref()
+        .map_or(" bpmux ".to_string(), |s| s.title_summary());
     let chat_block = Block::default()
         .borders(Borders::ALL)
-        .title(" bpmux ")
+        .title(title)
         .title_style(Style::default().fg(DRACULA_PURPLE))
         .border_style(Style::default().fg(DRACULA_SELECTION))
         .style(Style::default().bg(DRACULA_BG).fg(DRACULA_FG));
@@ -597,6 +601,45 @@ Press any key to close";
     }
 }
 
+fn render_project_view(frame: &mut Frame, app: &mut App, area: Rect) {
+    let title = app
+        .project_state
+        .as_ref()
+        .map_or(" bpmux ".to_string(), |s| s.title_summary());
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title(title)
+        .title_style(
+            Style::default()
+                .fg(DRACULA_PURPLE)
+                .add_modifier(Modifier::BOLD),
+        )
+        .border_style(Style::default().fg(DRACULA_PURPLE))
+        .style(Style::default().bg(DRACULA_BG).fg(DRACULA_FG));
+
+    let content = match super::board::fetch_roadmap() {
+        Ok(text) => text,
+        Err(_) => match super::board::fetch_board() {
+            Ok(text) => text,
+            Err(e) => format!("Project info unavailable: {e}"),
+        },
+    };
+
+    let inner_width = area.width.saturating_sub(2) as usize;
+    let prefix_spans = Vec::new();
+    let indent = Span::raw("");
+    let md_lines = render_md_message(&content, prefix_spans, indent.clone(), None, inner_width);
+    let mut wrapped = Vec::new();
+    for line in &md_lines {
+        wrapped.extend(wrap_line_with_indent(line.clone(), &indent, inner_width));
+    }
+
+    let paragraph = Paragraph::new(wrapped)
+        .block(block)
+        .scroll((app.scroll_offset.min(u16::MAX as usize) as u16, 0));
+    frame.render_widget(paragraph, area);
+}
+
 pub fn render(frame: &mut Frame, app: &mut App) {
     let full = frame.area();
 
@@ -647,9 +690,16 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         status_area.height,
     ));
 
+    let chat_rect = chunks[1];
+    app.chat_area = Some((chat_rect.x, chat_rect.y, chat_rect.width, chat_rect.height));
+
     render_broadcast_banner(frame, app, chunks[0]);
-    render_chat(frame, app, chunks[1]);
-    render_unread_indicator(frame, app, chunks[1]);
+    if app.show_project_view {
+        render_project_view(frame, app, chunks[1]);
+    } else {
+        render_chat(frame, app, chunks[1]);
+        render_unread_indicator(frame, app, chunks[1]);
+    }
     render_input(frame, app, chunks[2]);
     render_popup(frame, app, chunks[2]);
     render_status_bar(frame, app, status_area);

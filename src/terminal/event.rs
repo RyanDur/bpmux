@@ -55,6 +55,23 @@ pub async fn run_tui(
     let mut pending_offer: Option<webrtc::PendingOffer> = None;
     let session_arc = Arc::new(session.clone());
 
+    // Periodic project state refresh
+    let (project_tx, mut project_rx) = mpsc::channel::<super::board::ProjectState>(1);
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));
+        loop {
+            interval.tick().await;
+            if let Some(state) = tokio::task::spawn_blocking(super::board::fetch_project_state)
+                .await
+                .ok()
+                .flatten()
+                && project_tx.send(state).await.is_err()
+            {
+                break;
+            }
+        }
+    });
+
     loop {
         terminal.draw(|frame| ui::render(frame, app))?;
         tokio::select! {
@@ -103,6 +120,9 @@ pub async fn run_tui(
                         return Ok(());
                     }
                 }
+            }
+            Some(state) = project_rx.recv() => {
+                app.project_state = Some(state);
             }
             Some(result) = p2p_rx.recv() => {
                 handle_p2p_result(
@@ -387,6 +407,15 @@ fn handle_mouse_click(col: u16, row: u16, app: &mut App) {
         return;
     }
 
+    if let Some((cx, cy, cw, _)) = app.chat_area
+        && row == cy
+        && col >= cx
+        && col < cx + cw
+    {
+        app.show_project_view = !app.show_project_view;
+        return;
+    }
+
     if let Some((_, sb_y, _, _)) = app.status_bar_area
         && row == sb_y
         && app.help_hint_col.is_some_and(|hint_col| col >= hint_col)
@@ -443,6 +472,12 @@ fn handle_terminal_event(
     }
     if app.show_help {
         app.show_help = false;
+        return Ok(());
+    }
+    if app.show_project_view {
+        if key.code == KeyCode::Esc {
+            app.show_project_view = false;
+        }
         return Ok(());
     }
     if (key.code == KeyCode::Char('b') || key.code == KeyCode::Char('1'))

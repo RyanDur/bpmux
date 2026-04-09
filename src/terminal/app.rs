@@ -75,8 +75,13 @@ pub struct App {
     pub help_hint_col: Option<u16>,
     /// Screen Y positions of "[+N lines]" truncation indicators and their message keys.
     pub truncation_indicators: Vec<(u16, String)>,
-    /// Pending P2P command for the event loop to execute asynchronously.
     pub p2p_command: Option<crate::transport::peer::P2pCommand>,
+    /// Live project state from GitHub issues.
+    pub project_state: Option<super::board::ProjectState>,
+    /// When true, the main area shows the project view instead of chat.
+    pub show_project_view: bool,
+    /// Chat area position for title bar click detection.
+    pub chat_area: Option<(u16, u16, u16, u16)>,
 }
 
 impl App {
@@ -127,6 +132,9 @@ impl App {
             help_hint_col: None,
             truncation_indicators: Vec::new(),
             p2p_command: None,
+            project_state: None,
+            show_project_view: false,
+            chat_area: None,
         }
     }
 
