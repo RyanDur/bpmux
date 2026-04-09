@@ -103,6 +103,7 @@ pub async fn search_messages(
 #[derive(Deserialize)]
 pub struct LessonsQuery {
     pub topic: Option<String>,
+    pub limit: Option<usize>,
 }
 
 pub async fn get_lessons(
@@ -114,6 +115,30 @@ pub async fn get_lessons(
             let mut index = session::lessons::build_index(&messages, &session.owner_name);
             let saved = session::lessons::load_index(&session.dir);
             index.lessons = saved.lessons;
+
+            // If limit is set, return top N lessons ranked by reinforcement
+            if let Some(limit) = params.limit {
+                index.lessons.sort_by(|a, b| {
+                    b.reinforcement_count
+                        .cmp(&a.reinforcement_count)
+                        .then_with(|| b.established.cmp(&a.established))
+                });
+                index.lessons.truncate(limit);
+                let mut text = format!("{} top lessons\n", index.lessons.len());
+                let mut watch_topics = Vec::new();
+                for l in &index.lessons {
+                    text.push_str(&format!(
+                        "\n{} ({}): {}\n",
+                        l.topic, l.author_role, l.lesson
+                    ));
+                    if !watch_topics.contains(&l.topic) {
+                        watch_topics.push(l.topic.clone());
+                    }
+                }
+                text.push_str(&format!("\nWatch topics: {}\n", watch_topics.join(", ")));
+                return (StatusCode::OK, text);
+            }
+
             let groups = session::lessons::group_by_topic(&index);
             let topic_filter = params.topic.as_deref().map(str::to_lowercase);
             let filtered: Vec<_> = groups

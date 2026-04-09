@@ -6,9 +6,9 @@ Orient yourself with the team's accumulated understanding. Memory science says: 
 
 ## Steps
 
-1. Call `list_lessons(topic="your role")` to get lessons from your own role first. These are what your predecessor learned — the most relevant starting point.
+1. Call `list_lessons(limit=15)` to get the top lessons ranked by reinforcement. These are the team's most validated learnings — the most important starting point. The response includes watch topics.
 
-2. Identify your **3-5 watch topics** — the areas where the team has been corrected most or where your role is most involved. These are your alerts for the session.
+2. Your **watch topics** come from the response — the areas where the team has the most experience. These are your alerts for the session.
 
 3. Ask the team: "What are we working on?" Get live context, not historical data.
 
