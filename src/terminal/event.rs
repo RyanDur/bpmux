@@ -7,6 +7,7 @@ use futures::StreamExt;
 use ratatui::DefaultTerminal;
 use tokio::sync::{broadcast, mpsc};
 
+use crate::reload;
 use crate::session;
 use crate::terminal::app::App;
 use crate::terminal::ui;
@@ -54,6 +55,9 @@ pub async fn run_tui(
     let mut active_passphrase: Option<String> = None;
     let mut pending_offer: Option<webrtc::PendingOffer> = None;
     let session_arc = Arc::new(session.clone());
+
+    // Watch for binary changes (hot reload)
+    let mut reload_rx = reload::spawn_watcher();
 
     // Periodic project state refresh
     let (project_tx, mut project_rx) = mpsc::channel::<super::board::ProjectState>(1);
@@ -119,6 +123,12 @@ pub async fn run_tui(
                     Err(broadcast::error::RecvError::Closed) => {
                         return Ok(());
                     }
+                }
+            }
+            Ok(()) = reload_rx.changed() => {
+                if *reload_rx.borrow() {
+                    app.should_reload = true;
+                    return Ok(());
                 }
             }
             Some(state) = project_rx.recv() => {

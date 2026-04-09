@@ -82,6 +82,7 @@ pub struct App {
     pub show_project_view: bool,
     /// Chat area position for title bar click detection.
     pub chat_area: Option<(u16, u16, u16, u16)>,
+    pub should_reload: bool,
 }
 
 impl App {
@@ -135,6 +136,7 @@ impl App {
             project_state: None,
             show_project_view: false,
             chat_area: None,
+            should_reload: false,
         }
     }
 

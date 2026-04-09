@@ -2,6 +2,7 @@
 
 pub mod bridge;
 pub mod mcp;
+pub mod reload;
 pub mod server;
 pub mod session;
 pub mod terminal;
@@ -105,6 +106,10 @@ pub fn run() -> anyhow::Result<()> {
         )?;
         result
     });
+
+    if app.should_reload {
+        return reload::relaunch();
+    }
 
     result.map_err(|e| anyhow::anyhow!("{e}"))
 }
