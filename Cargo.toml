@@ -28,6 +28,7 @@ ring = "0.17.14"
 aes-gcm = "0.10.3"
 base64 = "0.22.1"
 webrtc = "0.17.1"
+tui-textarea-2 = "0.10.2"
 
 [dev-dependencies]
 ratatui-testlib = "0.1.0"

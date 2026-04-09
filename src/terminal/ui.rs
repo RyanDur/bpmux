@@ -399,56 +399,27 @@ fn render_unread_indicator(frame: &mut Frame, app: &App, area: Rect) {
     }
 }
 
-fn render_input(frame: &mut Frame, app: &App, area: Rect) {
-    let input_line = if app.input.starts_with('/') {
-        // Color the command keyword differently from the arguments
-        let cmd_end = app.input.find(' ').unwrap_or(app.input.len());
-        let cmd = &app.input[..cmd_end];
-        let rest = &app.input[cmd_end..];
-        Line::from(vec![
-            Span::styled(
-                cmd.to_string(),
-                Style::default().fg(DRACULA_PURPLE), // Dracula purple
-            ),
-            Span::styled(
-                rest.to_string(),
-                Style::default().fg(DRACULA_FG), // Default fg
-            ),
-        ])
-    } else {
-        Line::from(app.input.as_str())
-    };
-    let input = Paragraph::new(input_line)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(match &app.send_target {
-                    Some(ch) => format!(" {} [{ch}] > ", app.peer_name),
-                    None => format!(" {} > ", app.peer_name),
-                })
-                .title_style(Style::default().fg(DRACULA_PURPLE))
-                .border_style(Style::default().fg(if app.sidebar_focused {
-                    DRACULA_SELECTION
-                } else {
-                    DRACULA_PURPLE
-                }))
-                .style(Style::default().bg(DRACULA_BG).fg(DRACULA_FG)),
-        )
-        .wrap(Wrap { trim: false });
-    frame.render_widget(input, area);
+fn render_input(frame: &mut Frame, app: &mut App, area: Rect) {
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title(match &app.send_target {
+            Some(ch) => format!(" {} [{ch}] > ", app.peer_name),
+            None => format!(" {} > ", app.peer_name),
+        })
+        .title_style(Style::default().fg(DRACULA_PURPLE))
+        .border_style(Style::default().fg(if app.sidebar_focused {
+            DRACULA_SELECTION
+        } else {
+            DRACULA_PURPLE
+        }))
+        .style(Style::default().bg(DRACULA_BG).fg(DRACULA_FG));
 
-    // Show cursor at end of input text, accounting for wrapping
-    #[allow(clippy::cast_possible_truncation)]
-    let input_inner_width = area.width.saturating_sub(2) as usize;
-    let display_pos = app.input[..app.cursor_pos].chars().count();
-    let (cursor_x, cursor_y) = if input_inner_width > 0 {
-        let x = (display_pos % input_inner_width) as u16;
-        let y = (display_pos / input_inner_width) as u16;
-        (area.x + 1 + x, area.y + 1 + y)
-    } else {
-        (area.x + 1, area.y + 1)
-    };
-    frame.set_cursor_position((cursor_x, cursor_y));
+    app.textarea.set_block(block);
+    app.textarea
+        .set_style(Style::default().bg(DRACULA_BG).fg(DRACULA_FG));
+    app.textarea
+        .set_cursor_line_style(Style::default().bg(DRACULA_BG));
+    frame.render_widget(&app.textarea, area);
 }
 
 fn render_popup(frame: &mut Frame, app: &App, input_area: Rect) {

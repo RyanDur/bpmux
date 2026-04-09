@@ -3,6 +3,7 @@ use chrono::Utc;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::time::Instant;
+use tui_textarea::TextArea;
 
 const TRUNCATE_AFTER_LINES: usize = 10;
 const DM_FLASH_DURATION: std::time::Duration = std::time::Duration::from_millis(750);
@@ -40,6 +41,7 @@ pub struct App {
     pub messages: Vec<Message>,
     pub input: String,
     pub cursor_pos: usize,
+    pub textarea: TextArea<'static>,
     pub scroll_offset: usize,
     pub max_scroll: usize,
     pub at_boundary: bool,
@@ -104,6 +106,7 @@ impl App {
             messages,
             input: String::new(),
             cursor_pos: 0,
+            textarea: TextArea::default(),
             scroll_offset: 0,
             max_scroll: 0,
             at_boundary: false,
@@ -147,6 +150,21 @@ impl App {
             groups_expanded: true,
             system_expanded: false,
         }
+    }
+
+    /// Sync input/cursor_pos from the textarea widget.
+    pub(super) fn sync_input_from_textarea(&mut self) {
+        self.input = self.textarea.lines().join("");
+        let (row, col) = self.textarea.cursor();
+        let line_offset: usize = self.textarea.lines()[..row].iter().map(|l| l.len()).sum();
+        self.cursor_pos = line_offset + col;
+    }
+
+    /// Push text into the textarea (replacing current content).
+    pub(super) fn set_textarea_content(&mut self, text: &str) {
+        self.textarea = TextArea::from([text]);
+        self.textarea.move_cursor(tui_textarea::CursorMove::End);
+        self.sync_input_from_textarea();
     }
 
     pub(super) fn system_message(&mut self, text: String) {

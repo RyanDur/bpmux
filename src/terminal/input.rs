@@ -1,4 +1,5 @@
 use super::app::App;
+use tui_textarea::CursorMove;
 
 /// Registered slash commands with brief descriptions for the popup.
 pub(super) const SLASH_COMMANDS: &[(&str, &str)] = &[
@@ -18,99 +19,60 @@ pub(super) const SLASH_COMMANDS: &[(&str, &str)] = &[
 
 impl App {
     pub fn insert_char(&mut self, c: char) {
-        self.input.insert(self.cursor_pos, c);
-        self.cursor_pos += c.len_utf8();
+        self.textarea.insert_char(c);
+        self.sync_input_from_textarea();
         self.popup_selected = None;
     }
 
     pub fn delete_char(&mut self) {
-        if self.cursor_pos > 0 {
-            let prev = self.input[..self.cursor_pos]
-                .char_indices()
-                .next_back()
-                .map(|(i, _)| i)
-                .unwrap_or(0);
-            self.input.remove(prev);
-            self.cursor_pos = prev;
-            self.popup_selected = None;
-        }
+        self.textarea.delete_char();
+        self.sync_input_from_textarea();
+        self.popup_selected = None;
     }
 
     pub fn move_cursor_left(&mut self) {
-        if self.cursor_pos > 0 {
-            self.cursor_pos = self.input[..self.cursor_pos]
-                .char_indices()
-                .next_back()
-                .map(|(i, _)| i)
-                .unwrap_or(0);
-        }
+        self.textarea.move_cursor(CursorMove::Back);
+        self.sync_input_from_textarea();
     }
 
     pub fn move_cursor_right(&mut self) {
-        if self.cursor_pos < self.input.len() {
-            self.cursor_pos = self.input[self.cursor_pos..]
-                .char_indices()
-                .nth(1)
-                .map(|(i, _)| self.cursor_pos + i)
-                .unwrap_or(self.input.len());
-        }
+        self.textarea.move_cursor(CursorMove::Forward);
+        self.sync_input_from_textarea();
     }
 
     pub fn move_cursor_home(&mut self) {
-        self.cursor_pos = 0;
+        self.textarea.move_cursor(CursorMove::Head);
+        self.sync_input_from_textarea();
     }
 
     pub fn move_cursor_end(&mut self) {
-        self.cursor_pos = self.input.len();
+        self.textarea.move_cursor(CursorMove::End);
+        self.sync_input_from_textarea();
     }
 
     pub fn kill_to_end(&mut self) {
-        self.input.truncate(self.cursor_pos);
+        self.textarea.delete_line_by_end();
+        self.sync_input_from_textarea();
     }
 
     pub fn delete_word_backward(&mut self) {
-        if self.cursor_pos == 0 {
-            return;
-        }
-        let before = &self.input[..self.cursor_pos];
-        let trimmed = before.trim_end();
-        let word_start = trimmed
-            .rfind(|c: char| c.is_whitespace())
-            .map(|i| i + 1)
-            .unwrap_or(0);
-        self.input.drain(word_start..self.cursor_pos);
-        self.cursor_pos = word_start;
+        self.textarea.delete_word();
+        self.sync_input_from_textarea();
     }
 
     pub fn move_word_left(&mut self) {
-        if self.cursor_pos == 0 {
-            return;
-        }
-        let before = &self.input[..self.cursor_pos];
-        let trimmed = before.trim_end();
-        self.cursor_pos = trimmed
-            .rfind(|c: char| c.is_whitespace())
-            .map(|i| i + 1)
-            .unwrap_or(0);
+        self.textarea.move_cursor(CursorMove::WordBack);
+        self.sync_input_from_textarea();
     }
 
     pub fn move_word_right(&mut self) {
-        if self.cursor_pos >= self.input.len() {
-            return;
-        }
-        let after = &self.input[self.cursor_pos..];
-        let skip_word = after
-            .find(|c: char| c.is_whitespace())
-            .unwrap_or(after.len());
-        let skip_space = after[skip_word..]
-            .find(|c: char| !c.is_whitespace())
-            .unwrap_or(after.len() - skip_word);
-        self.cursor_pos += skip_word + skip_space;
+        self.textarea.move_cursor(CursorMove::WordForward);
+        self.sync_input_from_textarea();
     }
 
     pub fn clear_input(&mut self) {
-        self.input.clear();
-        self.cursor_pos = 0;
+        self.textarea = tui_textarea::TextArea::default();
+        self.sync_input_from_textarea();
     }
 
     pub fn history_up(&mut self) {
@@ -123,7 +85,7 @@ impl App {
             Some(i) => i - 1,
         };
         self.history_index = Some(new_index);
-        self.input = self.input_history[new_index].clone();
+        self.set_textarea_content(&self.input_history[new_index].clone());
     }
 
     pub fn history_down(&mut self) {
@@ -136,28 +98,23 @@ impl App {
         } else {
             let new_index = current + 1;
             self.history_index = Some(new_index);
-            self.input = self.input_history[new_index].clone();
+            self.set_textarea_content(&self.input_history[new_index].clone());
         }
     }
 
-    /// Tab-complete participant names after `/to `.
-    /// Returns true if completion was applied, false if no match.
     pub fn tab_complete(&mut self) -> bool {
         let input = self.input.trim_start();
         let rest = match input.strip_prefix("/to ") {
             Some(r) => r,
             None => return false,
         };
-        // Only complete in the recipients portion (before any space in the rest)
         if rest.contains(' ') {
             return false;
         }
-        // Get the partial name being typed (after last comma, if CSV)
         let (prefix_part, partial) = match rest.rfind(',') {
             Some(i) => (&rest[..=i], rest[i + 1..].trim()),
             None => ("", rest.trim()),
         };
-        // Collect known peer short names
         let mut candidates: Vec<String> = self
             .peer_activity
             .keys()
@@ -168,14 +125,12 @@ impl App {
         if candidates.is_empty() {
             return false;
         }
-        // Pick first match (simple, no cycling for now)
         let completed = &candidates[0];
-        self.input = format!("/to {}{} ", prefix_part, completed);
-        self.cursor_pos = self.input.len();
+        let new_input = format!("/to {}{} ", prefix_part, completed);
+        self.set_textarea_content(&new_input);
         true
     }
 
-    /// Returns the filtered list of slash commands matching current input.
     pub fn popup_matches(&self) -> Vec<(&'static str, &'static str)> {
         if !self.input.starts_with('/') || self.input.contains(' ') {
             return vec![];
@@ -188,12 +143,10 @@ impl App {
             .collect()
     }
 
-    /// Returns true if the popup is currently visible.
     pub fn popup_visible(&self) -> bool {
         !self.popup_matches().is_empty()
     }
 
-    /// Move popup selection up.
     pub fn popup_up(&mut self) {
         let count = self.popup_matches().len();
         if count == 0 {
@@ -205,7 +158,6 @@ impl App {
         });
     }
 
-    /// Move popup selection down.
     pub fn popup_down(&mut self) {
         let count = self.popup_matches().len();
         if count == 0 {
@@ -218,22 +170,19 @@ impl App {
         });
     }
 
-    /// Accept the currently selected popup item — fills input with the command + trailing space.
-    /// Returns true if a selection was applied.
     pub fn popup_accept(&mut self) -> bool {
         let matches = self.popup_matches();
         if let Some(idx) = self.popup_selected
             && let Some((cmd, _)) = matches.get(idx)
         {
-            self.input = format!("{} ", cmd);
-            self.cursor_pos = self.input.len();
+            let new_input = format!("{} ", cmd);
+            self.set_textarea_content(&new_input);
             self.popup_selected = None;
             return true;
         }
         false
     }
 
-    /// Dismiss the popup without selecting.
     pub fn popup_dismiss(&mut self) {
         self.popup_selected = None;
     }
