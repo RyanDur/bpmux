@@ -12,6 +12,11 @@ pub fn send_message_tool(description: &'static str) -> Tool {
                 "type": "array",
                 "items": { "type": "string" },
                 "description": "Optional list of recipient names (short form, e.g. [\"pm\", \"designer\"]). Omit for broadcast."
+            },
+            "message_type": {
+                "type": "string",
+                "enum": ["chat", "insight"],
+                "description": "Message type. Use 'insight' for reasoning traces and architectural decisions. Omit for normal chat."
             }
         },
         "required": ["text"]

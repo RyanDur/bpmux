@@ -84,6 +84,7 @@ pub async fn search_messages(
                 before: params.before.and_then(|s| s.parse().ok()),
                 channel: params.channel,
                 message_class,
+                insight_only: params.message_type.as_deref() == Some("insight"),
                 owner_name: session.owner_name.clone(),
             };
             let results = session::search(&messages, &filters);

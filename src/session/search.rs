@@ -19,6 +19,7 @@ pub struct SearchFilters {
     pub before: Option<DateTime<Utc>>,
     pub channel: Option<String>,
     pub message_class: Option<MessageClass>,
+    pub insight_only: bool,
     pub owner_name: String,
 }
 
@@ -29,6 +30,9 @@ pub fn search(messages: &[Message], filters: &SearchFilters) -> Vec<SearchResult
 
     for (i, msg) in messages.iter().enumerate() {
         if used[i] || !msg.is_chat() {
+            continue;
+        }
+        if filters.insight_only && !msg.message_type.is_insight() {
             continue;
         }
         if !matches_filters(msg, filters, &query_lower) {

@@ -77,10 +77,14 @@ async fn handle_send(
             .filter_map(|v| v.as_str().map(String::from))
             .collect()
     });
+    let message_type = args
+        .get("message_type")
+        .and_then(|v| v.as_str())
+        .map(String::from);
     let json = serde_json::to_string(&ClientMessage::Send {
         text: text.to_string(),
         to,
-        message_type: None,
+        message_type,
     })
     .map_err(|e| format!("failed to serialize: {e}"))?;
     ws_send(ws_tx, json).await?;

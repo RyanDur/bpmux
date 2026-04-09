@@ -265,7 +265,14 @@ fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
             prefix_spans.push(Span::styled(format!("[{time}] "), ts_style));
         }
         prefix_spans.push(Span::styled(channel_tag.clone(), tag_style));
-        prefix_spans.push(Span::styled(format!("{short_name}: "), name_style));
+        if msg.message_type.is_insight() {
+            prefix_spans.push(Span::styled(
+                format!("{short_name} ★ "),
+                Style::default().fg(DRACULA_COMMENT),
+            ));
+        } else {
+            prefix_spans.push(Span::styled(format!("{short_name}: "), name_style));
+        }
 
         let is_long = wrapped_lines > TRUNCATE_AFTER_LINES;
         let is_expanded = app.expanded_messages.contains(&msg_key);

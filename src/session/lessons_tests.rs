@@ -147,6 +147,7 @@ fn classifier_tags_search_result() {
         before: None,
         channel: None,
         message_class: Some(MessageClass::Experience(ExperienceKind::Teaching)),
+        insight_only: false,
         owner_name: "ryan".to_string(),
     };
     let results = search(&messages, &filters);

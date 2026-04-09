@@ -268,18 +268,21 @@ impl App {
 
     fn handle_search(&mut self, query: String) -> Option<Message> {
         let parts: Vec<&str> = query.splitn(2, ' ').collect();
-        let (message_class, keyword) = match parts[0] {
+        let (message_class, insight_only, keyword) = match parts[0] {
             "corrections" | "experiences" => (
                 Some(crate::session::MessageClass::Experience(
                     crate::session::classifier::ExperienceKind::Correction,
                 )),
+                false,
                 parts.get(1).unwrap_or(&"").to_string(),
             ),
             "decisions" => (
                 Some(crate::session::MessageClass::Decision),
+                false,
                 parts.get(1).unwrap_or(&"").to_string(),
             ),
-            _ => (None, query.clone()),
+            "insights" => (None, true, parts.get(1).unwrap_or(&"").to_string()),
+            _ => (None, false, query.clone()),
         };
         let filters = crate::session::SearchFilters {
             query: keyword,
@@ -288,6 +291,7 @@ impl App {
             before: None,
             channel: None,
             message_class,
+            insight_only,
             owner_name: self.peer_name.clone(),
         };
         let results = crate::session::search(&self.messages, &filters);

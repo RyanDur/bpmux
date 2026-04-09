@@ -8,6 +8,7 @@ pub enum MessageType {
     Chat,
     Activity,
     System,
+    Insight,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -23,7 +24,11 @@ pub struct Message {
 
 impl MessageType {
     pub fn is_chat(&self) -> bool {
-        *self == MessageType::Chat
+        matches!(self, MessageType::Chat | MessageType::Insight)
+    }
+
+    pub fn is_insight(&self) -> bool {
+        *self == MessageType::Insight
     }
 
     pub fn to_wire(&self) -> Option<String> {
@@ -31,6 +36,7 @@ impl MessageType {
             MessageType::Chat => None,
             MessageType::Activity => Some("activity".into()),
             MessageType::System => Some("system".into()),
+            MessageType::Insight => Some("insight".into()),
         }
     }
 }
@@ -40,6 +46,7 @@ impl From<Option<&str>> for MessageType {
         match s {
             Some("activity") => MessageType::Activity,
             Some("system") => MessageType::System,
+            Some("insight") => MessageType::Insight,
             _ => MessageType::Chat,
         }
     }
