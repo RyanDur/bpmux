@@ -164,13 +164,19 @@ pub async fn get_peer_lessons(
 ) -> impl IntoResponse {
     let Some(peer_name) = params.peer else {
         let peers = session::lessons::list_peer_names(&session.dir);
-        return (StatusCode::OK, format!("available peers: {}", peers.join(", ")));
+        return (
+            StatusCode::OK,
+            format!("available peers: {}", peers.join(", ")),
+        );
     };
 
     let index = session::lessons::load_peer_index(&session.dir, &peer_name);
     let groups = session::lessons::group_by_topic(&index);
     if groups.is_empty() {
-        return (StatusCode::OK, format!("No lessons from peer \"{peer_name}\"."));
+        return (
+            StatusCode::OK,
+            format!("No lessons from peer \"{peer_name}\"."),
+        );
     }
 
     let mut text = format!("{} topics from {peer_name} (read-only)\n", groups.len());

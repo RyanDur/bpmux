@@ -1,8 +1,8 @@
 use std::sync::Arc;
 use tokio::sync::{broadcast, mpsc};
 
-use crate::session::message::Message;
 use crate::session::Session;
+use crate::session::message::Message;
 
 /// Commands from the TUI to the event loop's P2P handler.
 #[derive(Debug)]
@@ -20,16 +20,9 @@ pub enum P2pCommand {
 /// Results from async P2P operations back to the TUI.
 #[derive(Debug)]
 pub enum P2pResult {
-    OfferReady {
-        code: String,
-        passphrase: String,
-    },
-    AnswerReady {
-        code: String,
-    },
-    Connected {
-        peer_name: String,
-    },
+    OfferReady { code: String, passphrase: String },
+    AnswerReady { code: String },
+    Connected { peer_name: String },
     Error(String),
 }
 
@@ -145,9 +138,7 @@ pub fn spawn_relay(
                     let message = Message {
                         from,
                         text,
-                        ts: ts
-                            .parse()
-                            .unwrap_or_else(|_| chrono::Utc::now()),
+                        ts: ts.parse().unwrap_or_else(|_| chrono::Utc::now()),
                         message_type: message_type.as_deref().into(),
                         to,
                     };
@@ -156,7 +147,9 @@ pub fn spawn_relay(
                 PeerMessage::Hello { .. } => {}
                 PeerMessage::LessonSync { lessons_json } => {
                     // Store peer's lessons separately — no auto-merge
-                    if let Ok(remote_index) = serde_json::from_str::<crate::session::lessons::LessonIndex>(&lessons_json) {
+                    if let Ok(remote_index) =
+                        serde_json::from_str::<crate::session::lessons::LessonIndex>(&lessons_json)
+                    {
                         let _ = crate::session::lessons::save_peer_index(
                             &session_for_inbound.dir,
                             &inbound_peer_name,
@@ -166,15 +159,16 @@ pub fn spawn_relay(
                 }
                 PeerMessage::LessonUpdate { lesson_json } => {
                     // Update the stored peer index
-                    if let Ok(lesson) = serde_json::from_str::<crate::session::lessons::AgentLesson>(&lesson_json) {
+                    if let Ok(lesson) =
+                        serde_json::from_str::<crate::session::lessons::AgentLesson>(&lesson_json)
+                    {
                         let mut peer_index = crate::session::lessons::load_peer_index(
                             &session_for_inbound.dir,
                             &inbound_peer_name,
                         );
-                        let existing = peer_index
-                            .lessons
-                            .iter_mut()
-                            .find(|l| l.topic == lesson.topic && l.author_role == lesson.author_role);
+                        let existing = peer_index.lessons.iter_mut().find(|l| {
+                            l.topic == lesson.topic && l.author_role == lesson.author_role
+                        });
                         if let Some(existing) = existing {
                             *existing = lesson;
                         } else {
@@ -199,7 +193,9 @@ pub fn spawn_relay(
                 }
                 PeerMessage::LessonQueryResponse { lessons_json } => {
                     // Store the queried peer lessons
-                    if let Ok(remote_index) = serde_json::from_str::<crate::session::lessons::LessonIndex>(&lessons_json) {
+                    if let Ok(remote_index) =
+                        serde_json::from_str::<crate::session::lessons::LessonIndex>(&lessons_json)
+                    {
                         let _ = crate::session::lessons::save_peer_index(
                             &session_for_inbound.dir,
                             &inbound_peer_name,

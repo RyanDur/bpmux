@@ -858,7 +858,10 @@ fn session_command_sets_p2p_command() {
     app.input = "/session".to_string();
     app.cursor_pos = app.input.len();
     let msg = app.submit_message();
-    assert!(msg.is_none(), "session command produces no broadcast message");
+    assert!(
+        msg.is_none(),
+        "session command produces no broadcast message"
+    );
     assert!(
         matches!(
             app.p2p_command,

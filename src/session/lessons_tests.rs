@@ -263,7 +263,11 @@ fn merge_deduplicates_corrections_by_timestamp() {
     };
 
     merge_indexes(&mut local, &remote);
-    assert_eq!(local.corrections.len(), 2, "duplicate skipped, new one added");
+    assert_eq!(
+        local.corrections.len(),
+        2,
+        "duplicate skipped, new one added"
+    );
 }
 
 #[test]

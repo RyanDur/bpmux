@@ -28,7 +28,10 @@ fn each_encryption_produces_unique_code() {
     let code1 = crypto::encrypt(plaintext, passphrase).unwrap();
     let code2 = crypto::encrypt(plaintext, passphrase).unwrap();
 
-    assert_ne!(code1, code2, "random salt+iv should produce different codes");
+    assert_ne!(
+        code1, code2,
+        "random salt+iv should produce different codes"
+    );
 
     assert_eq!(crypto::decrypt(&code1, passphrase).unwrap(), plaintext);
     assert_eq!(crypto::decrypt(&code2, passphrase).unwrap(), plaintext);

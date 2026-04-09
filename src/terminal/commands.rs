@@ -382,15 +382,15 @@ impl App {
     fn handle_join(&mut self, args: String) -> Option<Message> {
         let parts: Vec<&str> = args.splitn(2, ' ').collect();
         if parts.len() < 2 {
-            self.system_message(
-                "Usage: /join <passphrase> <offer-code>".to_string(),
-            );
+            self.system_message("Usage: /join <passphrase> <offer-code>".to_string());
             self.clear_input();
             return None;
         }
         let passphrase = parts[0].to_string();
         let offer_code = parts[1].trim().to_string();
-        self.system_message("Joining session... (decrypting offer, gathering ICE candidates)".to_string());
+        self.system_message(
+            "Joining session... (decrypting offer, gathering ICE candidates)".to_string(),
+        );
         self.p2p_command = Some(P2pCommand::JoinSession {
             passphrase,
             offer_code,
@@ -400,9 +400,7 @@ impl App {
     }
 
     fn handle_join_bare(&mut self) -> Option<Message> {
-        self.system_message(
-            "Usage: /join <passphrase> <offer-code>".to_string(),
-        );
+        self.system_message("Usage: /join <passphrase> <offer-code>".to_string());
         self.clear_input();
         None
     }
@@ -415,9 +413,7 @@ impl App {
     }
 
     fn handle_accept_bare(&mut self) -> Option<Message> {
-        self.system_message(
-            "Usage: /accept <answer-code>".to_string(),
-        );
+        self.system_message("Usage: /accept <answer-code>".to_string());
         self.clear_input();
         None
     }
@@ -432,7 +428,9 @@ impl App {
         let available_peers = crate::session::lessons::list_peer_names(dir);
         if !available_peers.contains(&peer_name) {
             if available_peers.is_empty() {
-                self.system_message("No peer lesson indexes available. Connect to a peer first.".to_string());
+                self.system_message(
+                    "No peer lesson indexes available. Connect to a peer first.".to_string(),
+                );
             } else {
                 self.system_message(format!(
                     "Peer \"{peer_name}\" not found. Available: {}",

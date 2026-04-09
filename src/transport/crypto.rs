@@ -1,7 +1,7 @@
 use aes_gcm::aead::Aead;
 use aes_gcm::{Aes256Gcm, KeyInit, Nonce};
-use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
+use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use ring::pbkdf2;
 use ring::rand::{SecureRandom, SystemRandom};
 use std::num::NonZeroU32;
@@ -56,10 +56,12 @@ pub fn encrypt(plaintext: &str, passphrase: &str) -> Result<String, CryptoError>
     let rng = SystemRandom::new();
 
     let mut salt = [0u8; SALT_LEN];
-    rng.fill(&mut salt).map_err(|_| CryptoError::RandomGeneration)?;
+    rng.fill(&mut salt)
+        .map_err(|_| CryptoError::RandomGeneration)?;
 
     let mut iv = [0u8; IV_LEN];
-    rng.fill(&mut iv).map_err(|_| CryptoError::RandomGeneration)?;
+    rng.fill(&mut iv)
+        .map_err(|_| CryptoError::RandomGeneration)?;
 
     let key = derive_key(passphrase, &salt);
     let cipher = Aes256Gcm::new_from_slice(&key).map_err(|_| CryptoError::KeyDerivation)?;
@@ -105,13 +107,14 @@ pub fn decrypt(code: &str, passphrase: &str) -> Result<String, CryptoError> {
 pub fn generate_passphrase() -> Result<String, CryptoError> {
     let rng = SystemRandom::new();
     let mut bytes = [0u8; 6];
-    rng.fill(&mut bytes).map_err(|_| CryptoError::RandomGeneration)?;
+    rng.fill(&mut bytes)
+        .map_err(|_| CryptoError::RandomGeneration)?;
 
     let words = [
-        "alpha", "blue", "coral", "delta", "echo", "frost", "green", "haze",
-        "iron", "jade", "keen", "lime", "mist", "nova", "opal", "peak",
-        "quartz", "reef", "storm", "tide", "ultra", "vine", "wind", "xenon",
-        "yield", "zinc", "amber", "birch", "cedar", "drift", "ember", "fern",
+        "alpha", "blue", "coral", "delta", "echo", "frost", "green", "haze", "iron", "jade",
+        "keen", "lime", "mist", "nova", "opal", "peak", "quartz", "reef", "storm", "tide", "ultra",
+        "vine", "wind", "xenon", "yield", "zinc", "amber", "birch", "cedar", "drift", "ember",
+        "fern",
     ];
 
     let w1 = words[bytes[0] as usize % words.len()];
