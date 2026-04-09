@@ -42,15 +42,18 @@ pub fn search(messages: &[Message], filters: &SearchFilters) -> Vec<SearchResult
         }
         let start = i.saturating_sub(CONTEXT_WINDOW);
         let end = (i + CONTEXT_WINDOW + 1).min(messages.len());
-        let cluster: Vec<Message> = messages[start..end]
+        let cluster: Vec<(usize, Message)> = messages[start..end]
             .iter()
-            .filter(|m| m.is_chat())
-            .cloned()
+            .enumerate()
+            .filter(|(_, m)| m.is_chat())
+            .map(|(j, m)| (start + j, m.clone()))
             .collect();
+        let match_pos = cluster.iter().position(|(idx, _)| *idx == i).unwrap_or(0);
+        let cluster_msgs: Vec<Message> = cluster.into_iter().map(|(_, m)| m).collect();
         used[start..end].fill(true);
         results.push(SearchResult {
-            match_index: i - start,
-            messages: cluster,
+            match_index: match_pos,
+            messages: cluster_msgs,
             message_class: msg_class,
         });
     }
