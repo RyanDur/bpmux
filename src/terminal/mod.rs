@@ -1,4 +1,5 @@
 pub mod app;
+mod board;
 mod commands;
 pub mod event;
 mod input;
