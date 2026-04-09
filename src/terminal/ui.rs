@@ -604,7 +604,7 @@ Press any key to close";
 fn render_project_panel(frame: &mut Frame, _app: &mut App, area: Rect) {
     let block = Block::default()
         .borders(Borders::ALL)
-        .title(" roadmap ")
+        .title(" project ")
         .title_style(
             Style::default()
                 .fg(DRACULA_PURPLE)
@@ -613,13 +613,22 @@ fn render_project_panel(frame: &mut Frame, _app: &mut App, area: Rect) {
         .border_style(Style::default().fg(DRACULA_PURPLE))
         .style(Style::default().bg(DRACULA_BG).fg(DRACULA_FG));
 
-    let content = match super::board::fetch_roadmap() {
-        Ok(text) => text,
+    let mut content = String::new();
+
+    // Metrics first — glanceable status
+    if let Some(metrics) = super::board::fetch_dora_metrics() {
+        content.push_str(&metrics.format());
+        content.push_str("\n\n---\n\n");
+    }
+
+    // Roadmap detail below
+    match super::board::fetch_roadmap() {
+        Ok(text) => content.push_str(&text),
         Err(_) => match super::board::fetch_board() {
-            Ok(text) => text,
-            Err(e) => format!("Project info unavailable: {e}"),
+            Ok(text) => content.push_str(&text),
+            Err(e) => content.push_str(&format!("Project info unavailable: {e}")),
         },
-    };
+    }
 
     let inner_width = area.width.saturating_sub(2) as usize;
     let prefix_spans = Vec::new();
