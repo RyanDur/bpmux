@@ -222,6 +222,16 @@ pub async fn get_peer_lessons(
     (StatusCode::OK, text)
 }
 
+pub async fn get_screen(
+    axum::Extension(capture): axum::Extension<Arc<std::sync::Mutex<String>>>,
+) -> impl IntoResponse {
+    let screen = capture
+        .lock()
+        .map(|s| s.clone())
+        .unwrap_or_else(|_| "screen unavailable".to_string());
+    (StatusCode::OK, screen)
+}
+
 pub async fn post_lesson(
     State(session): State<Arc<session::Session>>,
     Json(payload): Json<SaveLessonPayload>,

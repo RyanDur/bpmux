@@ -291,6 +291,17 @@ async fn handle_list_peer_lessons(
     Ok(body)
 }
 
+async fn handle_capture_screen(port: u16) -> Result<String, String> {
+    let url = format!("http://127.0.0.1:{port}/api/screen");
+    let body = reqwest::get(&url)
+        .await
+        .map_err(|e| format!("failed to capture: {e}"))?
+        .text()
+        .await
+        .map_err(|e| format!("failed to read: {e}"))?;
+    Ok(body)
+}
+
 async fn run_ws_connection(
     port: u16,
     name: Arc<Mutex<String>>,
@@ -453,6 +464,9 @@ impl ServerHandler for BridgeServer {
             crate::mcp::tools::list_peer_lessons_tool(
                 "Read lessons from a connected peer. Returns the peer's lesson index (read-only). Use this to see what another machine has learned. Call save_lesson to internalize anything valuable.",
             ),
+            crate::mcp::tools::capture_screen_tool(
+                "Capture the current TUI screen as text. Returns the 80x24 grid exactly as the user sees it. Use for visual verification and desk checking.",
+            ),
             crate::mcp::tools::set_name_tool(
                 "Set your display name in the bpmux session. Call this once at the start to identify yourself (e.g., 'dev', 'pm').",
             ),
@@ -484,6 +498,7 @@ impl ServerHandler for BridgeServer {
                 "list_lessons" => handle_list_lessons(&args, port).await,
                 "list_peer_lessons" => handle_list_peer_lessons(&args, port).await,
                 "save_lesson" => handle_save_lesson(&args, port, &name).await,
+                "capture_screen" => handle_capture_screen(port).await,
                 other => Err(format!("unknown tool: {other}")),
             };
             Ok(match result {

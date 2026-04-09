@@ -49,6 +49,7 @@ pub async fn run_tui(
     app: &mut App,
     session: &session::Session,
     wake_rx: &mut broadcast::Receiver<session::Message>,
+    screen_capture: Arc<std::sync::Mutex<String>>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut events = EventStream::new();
     let (p2p_tx, mut p2p_rx) = mpsc::channel::<P2pResult>(8);
@@ -78,7 +79,22 @@ pub async fn run_tui(
     });
 
     loop {
-        terminal.draw(|frame| ui::render(frame, app))?;
+        let completed = terminal.draw(|frame| ui::render(frame, app))?;
+        {
+            let buffer = &completed.buffer;
+            let mut capture = String::new();
+            for y in 0..buffer.area.height {
+                for x in 0..buffer.area.width {
+                    if let Some(cell) = buffer.cell((x, y)) {
+                        capture.push_str(cell.symbol());
+                    }
+                }
+                capture.push('\n');
+            }
+            if let Ok(mut sc) = screen_capture.lock() {
+                *sc = capture;
+            }
+        }
         tokio::select! {
             maybe_event = events.next() => {
                 let Some(Ok(ev)) = maybe_event else { return Ok(()); };

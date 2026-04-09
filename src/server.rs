@@ -9,6 +9,7 @@ pub async fn run_server(
     session: Arc<session::Session>,
     port: u16,
     ct: CancellationToken,
+    screen_capture: Arc<std::sync::Mutex<String>>,
 ) -> anyhow::Result<()> {
     let router = axum::Router::new()
         .route("/ws", axum::routing::any(transport::ws::ws_handler))
@@ -28,7 +29,12 @@ pub async fn run_server(
             "/api/peer-lessons",
             axum::routing::get(transport::rest::get_peer_lessons),
         )
-        .with_state(session);
+        .route(
+            "/api/screen",
+            axum::routing::get(transport::rest::get_screen),
+        )
+        .with_state(session)
+        .layer(axum::Extension(screen_capture));
     let listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{port}")).await?;
     axum::serve(listener, router)
         .with_graceful_shutdown(async move { ct.cancelled_owned().await })

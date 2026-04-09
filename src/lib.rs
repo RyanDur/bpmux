@@ -81,11 +81,15 @@ pub fn run() -> anyhow::Result<()> {
     let server_port = cli.mcp_port;
     let ct = CancellationToken::new();
     let server_ct = ct.clone();
+    let screen_capture = Arc::new(std::sync::Mutex::new(String::new()));
 
     let rt = tokio::runtime::Runtime::new()?;
+    let screen_for_server = Arc::clone(&screen_capture);
     let result = rt.block_on(async {
         tokio::spawn(async move {
-            if let Err(e) = server::run_server(server_session, server_port, server_ct).await {
+            if let Err(e) =
+                server::run_server(server_session, server_port, server_ct, screen_for_server).await
+            {
                 eprintln!("Server error: {e}");
             }
         });
@@ -100,7 +104,14 @@ pub fn run() -> anyhow::Result<()> {
             crossterm::event::EnableBracketedPaste,
         )?;
         let mut terminal = ratatui::init();
-        let result = terminal::run_tui(&mut terminal, &mut app, &session, &mut wake_rx).await;
+        let result = terminal::run_tui(
+            &mut terminal,
+            &mut app,
+            &session,
+            &mut wake_rx,
+            Arc::clone(&screen_capture),
+        )
+        .await;
         ratatui::restore();
         crossterm::execute!(
             std::io::stdout(),
