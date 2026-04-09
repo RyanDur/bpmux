@@ -33,9 +33,9 @@ pub fn spawn_nudge_task(session: Arc<Session>, owner_name: String) {
             model.train(&messages, &owner_name);
         }
 
-        // Context-triggered recall state
-        let mut surfaced_topics: HashSet<String> = HashSet::new();
-        let mut recall_count: usize = 0;
+        // Context-triggered recall state — persisted across hot reloads
+        let mut surfaced_topics = load_surfaced_topics(&session.dir);
+        let mut recall_count: usize = surfaced_topics.len();
         let mut cached_index = lessons::load_index(&session.dir);
 
         // Pile-on detection state
@@ -84,6 +84,7 @@ pub fn spawn_nudge_task(session: Arc<Session>, owner_name: String) {
                                 && sender != "bpmux"
                                 && recall_count < MAX_RECALL_NUDGES
                             {
+                                let before = surfaced_topics.len();
                                 check_recall_cached(
                                     &session,
                                     &msg,
@@ -92,6 +93,9 @@ pub fn spawn_nudge_task(session: Arc<Session>, owner_name: String) {
                                     &mut surfaced_topics,
                                     &mut recall_count,
                                 );
+                                if surfaced_topics.len() > before {
+                                    save_surfaced_topics(&session.dir, &surfaced_topics);
+                                }
                             }
 
                             // Pile-on detection
@@ -309,6 +313,22 @@ fn send_experience_nudge(session: &Session, experiences: &[String], agents: &[St
         to: Some(agents.to_vec()),
     };
     let _ = session.broadcast(&nudge);
+}
+
+fn load_surfaced_topics(session_dir: &std::path::Path) -> HashSet<String> {
+    let path = session_dir.join("surfaced-topics.json");
+    if let Ok(data) = std::fs::read_to_string(&path) {
+        serde_json::from_str(&data).unwrap_or_default()
+    } else {
+        HashSet::new()
+    }
+}
+
+fn save_surfaced_topics(session_dir: &std::path::Path, topics: &HashSet<String>) {
+    let path = session_dir.join("surfaced-topics.json");
+    if let Ok(json) = serde_json::to_string(topics) {
+        let _ = std::fs::write(path, json);
+    }
 }
 
 pub(crate) fn build_nudge_text(experiences: &[String]) -> String {
