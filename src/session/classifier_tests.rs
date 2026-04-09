@@ -188,6 +188,33 @@ fn bpmux_system_message_is_routine() {
 }
 
 #[test]
+fn coordination_message_is_discussion() {
+    let m = msg(
+        "dev:claude-code",
+        "Starting on the false positive fix — the classifier is too broad",
+    );
+    assert_eq!(classify(&m, "ryan"), MessageClass::Discussion);
+}
+
+#[test]
+fn delivery_handoff_is_discussion() {
+    let m = msg(
+        "dev:claude-code",
+        "PM, delivered #122. Desk check when ready.",
+    );
+    assert_eq!(classify(&m, "ryan"), MessageClass::Discussion);
+}
+
+#[test]
+fn status_update_with_should_is_discussion() {
+    let m = msg(
+        "pm:claude-code",
+        "Dev should pick up #123 next. The ready queue has two stories.",
+    );
+    assert_eq!(classify(&m, "ryan"), MessageClass::Discussion);
+}
+
+#[test]
 fn is_experience_helper() {
     assert!(MessageClass::Experience(ExperienceKind::Correction).is_experience());
     assert!(MessageClass::Experience(ExperienceKind::Question).is_experience());

@@ -100,6 +100,31 @@ const MIN_EXPERIENCE_LEN: usize = 20;
 
 const REPORT_INDICATORS: &[&str] = &["**", "##", "- ", "* ", "1. ", "2. ", "3. "];
 
+const COORDINATION_PATTERNS: &[&str] = &[
+    "starting on",
+    "working on",
+    "picking up",
+    "delivered",
+    "desk check",
+    "ready for",
+    "available for",
+    "standing by",
+    "on it",
+    "pushed",
+    "committed",
+    "restating",
+    "waiting for",
+    "moving to",
+    "switching to",
+    "current state",
+    "status check",
+    "matches",
+    "sign-off",
+    "accepted",
+    "clean clippy",
+    "tests pass",
+];
+
 pub fn classify(msg: &Message, owner_name: &str) -> MessageClass {
     if !msg.is_chat() {
         return MessageClass::Routine;
@@ -117,13 +142,20 @@ pub fn classify(msg: &Message, owner_name: &str) -> MessageClass {
         return MessageClass::Discussion;
     }
 
+    // Decisions take priority over coordination
+    if DECISION_SIGNALS.iter().any(|s| text_lower.contains(s))
+        && (sender == owner_name || text_lower.contains('#') || text_lower.contains("story"))
+    {
+        return MessageClass::Decision;
+    }
+
+    // Coordination messages from any sender are not experiences
+    if COORDINATION_PATTERNS.iter().any(|p| text_lower.contains(p)) {
+        return MessageClass::Discussion;
+    }
+
     // Status reports with markdown formatting are not experiences
     if REPORT_INDICATORS.iter().any(|r| msg.text.contains(r)) {
-        if DECISION_SIGNALS.iter().any(|s| text_lower.contains(s))
-            && (sender == owner_name || text_lower.contains('#') || text_lower.contains("story"))
-        {
-            return MessageClass::Decision;
-        }
         return MessageClass::Discussion;
     }
 
