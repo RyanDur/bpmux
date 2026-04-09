@@ -40,6 +40,11 @@
             "type": "command",
             "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/set-status-available.sh",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "echo '{\"systemMessage\":\"Before you go: have you reflected? Use /reflect to save what you learned this session.\"}'",
+            "timeout": 5
           }
         ]
       }
