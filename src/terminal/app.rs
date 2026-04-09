@@ -73,6 +73,8 @@ pub struct App {
     pub sidebar_area: Option<(u16, u16, u16, u16)>,
     pub status_bar_area: Option<(u16, u16, u16, u16)>,
     pub help_hint_col: Option<u16>,
+    /// Screen Y positions of "[+N lines]" truncation indicators and their message keys.
+    pub truncation_indicators: Vec<(u16, String)>,
 }
 
 impl App {
@@ -121,6 +123,7 @@ impl App {
             sidebar_area: None,
             status_bar_area: None,
             help_hint_col: None,
+            truncation_indicators: Vec::new(),
         }
     }
 

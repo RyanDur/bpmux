@@ -218,105 +218,117 @@ fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
     let needed = visible_window + scroll_back;
     let start_idx = total_msgs.saturating_sub(needed);
 
-    let messages: Vec<Line> = chat_messages
-        .iter()
-        .enumerate()
-        .skip(start_idx)
-        .flat_map(|(i, msg)| {
-            // Short name: "ryan:human" -> "ryan", "claude-code:ws" -> "claude-code"
-            let short_name = msg.from.split(':').next().unwrap_or(&msg.from);
+    // Track (line_index, message_key) for each "[+N lines]" indicator
+    let mut truncation_line_indices: Vec<(usize, String)> = Vec::new();
 
-            // Deterministic color from sender name — same name always gets same color
-            let is_human = msg.from.ends_with(":human");
-            let name_color = sender_color(short_name);
+    let mut messages: Vec<Line> = Vec::new();
+    for (i, msg) in chat_messages.iter().enumerate().skip(start_idx) {
+        // Short name: "ryan:human" -> "ryan", "claude-code:ws" -> "claude-code"
+        let short_name = msg.from.split(':').next().unwrap_or(&msg.from);
 
-            // Channel tag: [broadcast], [dev], [dev+pm] — owner excluded
-            let ch_name = app::channel_name(msg, &app.peer_name);
-            let is_broadcast = ch_name == "broadcast";
-            let channel_tag = format!("[{ch_name}] ");
+        // Deterministic color from sender name — same name always gets same color
+        let is_human = msg.from.ends_with(":human");
+        let name_color = sender_color(short_name);
 
-            // Build the prefix (timestamp + channel tag + name)
-            let mut prefix = String::new();
-            if app.show_timestamps {
-                let time = msg.ts.format("%H:%M:%S").to_string();
-                prefix.push_str(&format!("[{time}] "));
-            }
-            prefix.push_str(&channel_tag);
-            prefix.push_str(&format!("{short_name}: "));
+        // Channel tag: [broadcast], [dev], [dev+pm] — owner excluded
+        let ch_name = app::channel_name(msg, &app.peer_name);
+        let is_broadcast = ch_name == "broadcast";
+        let channel_tag = format!("[{ch_name}] ");
 
-            // Estimate wrapped line count for truncation decision
-            let full_len = prefix.len() + msg.text.len();
-            let wrapped_lines = if chat_inner_width > 0 {
-                full_len.max(1).div_ceil(chat_inner_width)
-            } else {
-                1
-            };
+        // Build the prefix (timestamp + channel tag + name)
+        let mut prefix = String::new();
+        if app.show_timestamps {
+            let time = msg.ts.format("%H:%M:%S").to_string();
+            prefix.push_str(&format!("[{time}] "));
+        }
+        prefix.push_str(&channel_tag);
+        prefix.push_str(&format!("{short_name}: "));
 
-            let mut lines = Vec::new();
+        // Estimate wrapped line count for truncation decision
+        let full_len = prefix.len() + msg.text.len();
+        let wrapped_lines = if chat_inner_width > 0 {
+            full_len.max(1).div_ceil(chat_inner_width)
+        } else {
+            1
+        };
 
-            let ts_style = Style::default().fg(DRACULA_COMMENT);
-            let tag_color = channel_tag_color(&channel_tag, is_broadcast);
-            let tag_style = Style::default().fg(tag_color);
+        let ts_style = Style::default().fg(DRACULA_COMMENT);
+        let tag_color = channel_tag_color(&channel_tag, is_broadcast);
+        let tag_style = Style::default().fg(tag_color);
 
-            let msg_key = msg.ts.to_rfc3339();
-            let name_style = if is_human {
-                Style::default().fg(name_color).add_modifier(Modifier::BOLD)
-            } else {
-                Style::default().fg(name_color)
-            };
-            let indent = Span::raw(" ".repeat(prefix.len()));
-            let mut prefix_spans = Vec::new();
-            if app.show_timestamps {
-                let time = msg.ts.format("%H:%M:%S").to_string();
-                prefix_spans.push(Span::styled(format!("[{time}] "), ts_style));
-            }
-            prefix_spans.push(Span::styled(channel_tag.clone(), tag_style));
-            prefix_spans.push(Span::styled(format!("{short_name}: "), name_style));
+        let msg_key = msg.ts.to_rfc3339();
+        let name_style = if is_human {
+            Style::default().fg(name_color).add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(name_color)
+        };
+        let indent = Span::raw(" ".repeat(prefix.len()));
+        let mut prefix_spans = Vec::new();
+        if app.show_timestamps {
+            let time = msg.ts.format("%H:%M:%S").to_string();
+            prefix_spans.push(Span::styled(format!("[{time}] "), ts_style));
+        }
+        prefix_spans.push(Span::styled(channel_tag.clone(), tag_style));
+        prefix_spans.push(Span::styled(format!("{short_name}: "), name_style));
 
-            let md_lines = if wrapped_lines > TRUNCATE_AFTER_LINES
-                && !app.expanded_messages.contains(&msg_key)
-            {
-                // Truncate: show first 7 lines of markdown, then [+N lines]
-                let remaining_lines = wrapped_lines.saturating_sub(7);
-                let mut ls = render_md_message(
-                    &msg.text,
-                    prefix_spans,
-                    indent.clone(),
-                    Some(7),
-                    chat_inner_width,
-                );
-                ls.push(Line::from(Span::styled(
-                    format!("  [+{remaining_lines} lines]"),
-                    Style::default().fg(DRACULA_COMMENT),
-                )));
-                ls
-            } else {
-                render_md_message(
-                    &msg.text,
-                    prefix_spans,
-                    indent.clone(),
-                    None,
-                    chat_inner_width,
-                )
-            };
+        let is_truncated =
+            wrapped_lines > TRUNCATE_AFTER_LINES && !app.expanded_messages.contains(&msg_key);
 
-            // Pre-wrap lines with hanging indent so continuation aligns with text
-            for line in md_lines {
-                lines.extend(wrap_line_with_indent(line, &indent, chat_inner_width));
-            }
+        let md_lines = if is_truncated {
+            // Truncate: show first 7 lines of markdown, then [+N lines]
+            let remaining_lines = wrapped_lines.saturating_sub(7);
+            let mut ls = render_md_message(
+                &msg.text,
+                prefix_spans,
+                indent.clone(),
+                Some(7),
+                chat_inner_width,
+            );
+            ls.push(Line::from(Span::styled(
+                format!("  [+{remaining_lines} lines]"),
+                Style::default().fg(DRACULA_COMMENT),
+            )));
+            ls
+        } else {
+            render_md_message(
+                &msg.text,
+                prefix_spans,
+                indent.clone(),
+                None,
+                chat_inner_width,
+            )
+        };
 
-            // Add blank line separator only when the next message is from a different sender
-            let next_is_different = chat_messages
-                .get(i + 1)
-                .is_some_and(|next| next.from != msg.from);
+        // Pre-wrap lines with hanging indent so continuation aligns with text
+        for line in
+            md_lines.iter().take(
+                md_lines
+                    .len()
+                    .saturating_sub(if is_truncated { 1 } else { 0 }),
+            )
+        {
+            messages.extend(wrap_line_with_indent(
+                line.clone(),
+                &indent,
+                chat_inner_width,
+            ));
+        }
 
-            if next_is_different {
-                lines.push(Line::default());
-            }
+        // If truncated, the last line is the indicator — record its position
+        if is_truncated && let Some(indicator_line) = md_lines.last() {
+            truncation_line_indices.push((messages.len(), msg_key));
+            messages.push(indicator_line.clone());
+        }
 
-            lines
-        })
-        .collect();
+        // Add blank line separator only when the next message is from a different sender
+        let next_is_different = chat_messages
+            .get(i + 1)
+            .is_some_and(|next| next.from != msg.from);
+
+        if next_is_different {
+            messages.push(Line::default());
+        }
+    }
 
     // Lines are pre-wrapped by wrap_line_with_indent — no ratatui Wrap needed
     let total_lines = messages.len();
@@ -333,6 +345,18 @@ fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
     let scroll = max_scroll
         .saturating_sub(app.scroll_offset)
         .min(u16::MAX as usize) as u16;
+
+    // Map truncation indicator line indices to screen Y positions
+    let inner_y = area.y + 1; // +1 for top border
+    let scroll_usize = scroll as usize;
+    app.truncation_indicators.clear();
+    for (line_idx, key) in &truncation_line_indices {
+        if *line_idx >= scroll_usize && *line_idx < scroll_usize + chat_height {
+            #[allow(clippy::cast_possible_truncation)]
+            let screen_y = inner_y + (*line_idx - scroll_usize) as u16;
+            app.truncation_indicators.push((screen_y, key.clone()));
+        }
+    }
 
     let chat = chat.scroll((scroll, 0));
     frame.render_widget(chat, area);

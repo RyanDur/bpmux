@@ -137,6 +137,21 @@ fn handle_mouse_click(col: u16, row: u16, app: &mut App) {
         return;
     }
 
+    // Check if the click hit a "[+N lines]" truncation indicator
+    if let Some(key) = app
+        .truncation_indicators
+        .iter()
+        .find(|(y, _)| *y == row)
+        .map(|(_, k)| k.clone())
+    {
+        if app.expanded_messages.contains(&key) {
+            app.expanded_messages.remove(&key);
+        } else {
+            app.expanded_messages.insert(key);
+        }
+        return;
+    }
+
     if let Some((_, sb_y, _, _)) = app.status_bar_area
         && row == sb_y
         && app.help_hint_col.is_some_and(|hint_col| col >= hint_col)
