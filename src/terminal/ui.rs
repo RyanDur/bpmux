@@ -57,22 +57,26 @@ fn render_sidebar(frame: &mut Frame, app: &App, area: Rect) {
                 ]);
             }
 
-            // Channel entries — indented under project
-            let is_current = app.current_view.as_deref() == Some(ch.as_str());
-            // Suppress unread count on broadcast — it's ambient, visible from most views
-            let unread = if ch == "broadcast" {
+            // Detect section headers vs channel entries
+            let is_section = ch.starts_with("▸ ") || ch.starts_with("▾ ");
+            let is_current = !is_section && app.current_view.as_deref() == Some(ch.as_str());
+            let unread = if ch == "broadcast" || is_section {
                 0
             } else {
                 app.channel_unread.get(ch).copied().unwrap_or(0)
             };
 
             let select_marker = if selected { "▸ " } else { "  " };
-            // Prefix: select(2) + indent(2) = 4 chars; border uses 2
             let inner_width = area.width.saturating_sub(2) as usize;
-            let prefix_len = 4;
+            // Section headers: 2-char indent. Children: 4-char indent.
+            let indent = if is_section || ch == "broadcast" {
+                "  "
+            } else {
+                "    "
+            };
+            let prefix_len = 2 + indent.len();
             let available = inner_width.saturating_sub(prefix_len);
 
-            // Unread count badge takes priority over channel name length
             let badge = if unread > 0 {
                 format!(" {unread}")
             } else {
@@ -90,7 +94,9 @@ fn render_sidebar(frame: &mut Frame, app: &App, area: Rect) {
                 ch.clone()
             };
 
-            let name_style = if is_current || unread > 0 {
+            let name_style = if is_section {
+                Style::default().fg(DRACULA_CYAN).bg(bg)
+            } else if is_current || unread > 0 {
                 Style::default()
                     .fg(DRACULA_FG)
                     .bg(bg)
@@ -101,7 +107,7 @@ fn render_sidebar(frame: &mut Frame, app: &App, area: Rect) {
 
             let mut spans = vec![
                 Span::styled(select_marker, Style::default().bg(bg).fg(DRACULA_PURPLE)),
-                Span::styled("  ", Style::default().bg(bg)), // indent under project
+                Span::styled(indent, Style::default().bg(bg)),
                 Span::styled(display_name, name_style),
             ];
             if unread > 0 {

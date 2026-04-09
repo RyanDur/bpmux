@@ -1,60 +1,90 @@
 use super::app::App;
 
-const SYSTEM_HEADER: &str = "▸ system";
-const SYSTEM_HEADER_EXPANDED: &str = "▾ system";
+const SECTION_PREFIX_COLLAPSED: &str = "▸ ";
+const SECTION_PREFIX_EXPANDED: &str = "▾ ";
 
 fn is_system_channel(channel: &str) -> bool {
     channel.contains("bpmux") && channel != "broadcast"
 }
 
-fn channel_sort_key(channel: &str) -> (u8, String) {
-    if channel == "broadcast" {
-        (0, channel.to_string())
-    } else if channel.contains('+') {
-        (2, channel.to_string())
+fn is_group_channel(channel: &str) -> bool {
+    channel.contains('+')
+}
+
+fn section_header(name: &str, count: usize, expanded: bool) -> String {
+    let prefix = if expanded {
+        SECTION_PREFIX_EXPANDED
     } else {
-        (1, channel.to_string())
-    }
+        SECTION_PREFIX_COLLAPSED
+    };
+    format!("{prefix}{name} ({count})")
+}
+
+fn is_section_header(entry: &str) -> bool {
+    entry.starts_with(SECTION_PREFIX_COLLAPSED) || entry.starts_with(SECTION_PREFIX_EXPANDED)
 }
 
 impl App {
     pub fn sidebar_channels(&self) -> Vec<String> {
         let mut result = vec![self.session_id.clone()];
-        if self.project_expanded {
-            let filter = self.sidebar_filter.to_lowercase();
-            let matches_filter =
-                |ch: &str| filter.is_empty() || ch.to_lowercase().contains(&filter);
+        if !self.project_expanded {
+            return result;
+        }
 
-            let mut regular: Vec<String> = self
-                .active_channels
-                .iter()
-                .filter(|ch| !is_system_channel(ch) && matches_filter(ch))
-                .cloned()
-                .collect();
-            regular.sort_by_key(|ch| channel_sort_key(ch));
-            result.extend(regular);
+        let filter = self.sidebar_filter.to_lowercase();
+        let matches_filter = |ch: &str| filter.is_empty() || ch.to_lowercase().contains(&filter);
 
-            let system: Vec<String> = self
-                .active_channels
-                .iter()
-                .filter(|ch| is_system_channel(ch) && matches_filter(ch))
-                .cloned()
-                .collect();
+        // Broadcast always at top level
+        if self.active_channels.contains("broadcast") && matches_filter("broadcast") {
+            result.push("broadcast".to_string());
+        }
 
-            if !system.is_empty() {
-                let header = if self.system_expanded {
-                    format!("{SYSTEM_HEADER_EXPANDED} ({})", system.len())
-                } else {
-                    format!("{SYSTEM_HEADER} ({})", system.len())
-                };
-                result.push(header);
-                if self.system_expanded {
-                    let mut sorted = system;
-                    sorted.sort();
-                    result.extend(sorted);
-                }
+        // Collect and categorize channels
+        let mut direct: Vec<String> = Vec::new();
+        let mut groups: Vec<String> = Vec::new();
+        let mut system: Vec<String> = Vec::new();
+
+        for ch in &self.active_channels {
+            if ch == "broadcast" || !matches_filter(ch) {
+                continue;
+            }
+            if is_system_channel(ch) {
+                system.push(ch.clone());
+            } else if is_group_channel(ch) {
+                groups.push(ch.clone());
+            } else {
+                direct.push(ch.clone());
             }
         }
+
+        direct.sort();
+        groups.sort();
+        system.sort();
+
+        // Direct section
+        if !direct.is_empty() {
+            result.push(section_header("direct", direct.len(), self.direct_expanded));
+            if self.direct_expanded {
+                result.extend(direct);
+            }
+        }
+
+        // Groups section
+        if !groups.is_empty() {
+            result.push(section_header("groups", groups.len(), self.groups_expanded));
+            if self.groups_expanded {
+                result.extend(groups);
+            }
+        }
+
+        // System section
+        if !system.is_empty() {
+            result.push(section_header("system", system.len(), self.system_expanded));
+            if self.system_expanded {
+                result.extend(system);
+            }
+        }
+
         result
     }
 
@@ -94,8 +124,15 @@ impl App {
     pub fn sidebar_select(&mut self) {
         let channels = self.sidebar_channels();
         if let Some(ch) = channels.get(self.sidebar_selected) {
-            if ch.starts_with(SYSTEM_HEADER) || ch.starts_with(SYSTEM_HEADER_EXPANDED) {
-                self.system_expanded = !self.system_expanded;
+            // Toggle section headers
+            if is_section_header(ch) {
+                if ch.contains("direct") {
+                    self.direct_expanded = !self.direct_expanded;
+                } else if ch.contains("groups") {
+                    self.groups_expanded = !self.groups_expanded;
+                } else if ch.contains("system") {
+                    self.system_expanded = !self.system_expanded;
+                }
                 return;
             }
             if self.sidebar_selected == 0 {

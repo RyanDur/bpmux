@@ -85,6 +85,8 @@ pub struct App {
     /// Chat area position for title bar click detection.
     pub chat_area: Option<(u16, u16, u16, u16)>,
     pub should_reload: bool,
+    pub direct_expanded: bool,
+    pub groups_expanded: bool,
     pub system_expanded: bool,
 }
 
@@ -141,6 +143,8 @@ impl App {
             project_view_content: None,
             chat_area: None,
             should_reload: false,
+            direct_expanded: true,
+            groups_expanded: true,
             system_expanded: false,
         }
     }
