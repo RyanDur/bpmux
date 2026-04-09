@@ -54,8 +54,7 @@ pub fn set_status_tool(description: &'static str) -> Tool {
         "properties": {
             "status": {
                 "type": "string",
-                "enum": ["available", "busy", "help"],
-                "description": "Your current status: available (green), busy (yellow), or help (red, needs attention)"
+                "description": "Your status: 'available', 'busy', or 'help'. Add a colon and description for context: 'busy: building #123'"
             }
         },
         "required": ["status"]

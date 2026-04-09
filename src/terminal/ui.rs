@@ -1,7 +1,7 @@
 use ratatui::{
     Frame,
     layout::{Constraint, Layout, Rect},
-    style::{Modifier, Style},
+    style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Clear, Paragraph, Wrap},
 };
@@ -487,6 +487,36 @@ fn render_popup(frame: &mut Frame, app: &App, input_area: Rect) {
     }
 }
 
+const MAX_STATUS_DESC: usize = 15;
+
+fn parse_status(status: &str) -> (Color, Option<&str>) {
+    if let Some(desc) = status.strip_prefix("busy:") {
+        let desc = desc.trim();
+        if desc.is_empty() {
+            (DRACULA_YELLOW, None)
+        } else if desc.len() > MAX_STATUS_DESC {
+            (DRACULA_YELLOW, Some(&desc[..MAX_STATUS_DESC]))
+        } else {
+            (DRACULA_YELLOW, Some(desc))
+        }
+    } else if let Some(desc) = status.strip_prefix("help:") {
+        let desc = desc.trim();
+        if desc.is_empty() {
+            (DRACULA_RED, None)
+        } else if desc.len() > MAX_STATUS_DESC {
+            (DRACULA_RED, Some(&desc[..MAX_STATUS_DESC]))
+        } else {
+            (DRACULA_RED, Some(desc))
+        }
+    } else {
+        match status {
+            "busy" => (DRACULA_YELLOW, None),
+            "help" => (DRACULA_RED, None),
+            _ => (DRACULA_GREEN, None),
+        }
+    }
+}
+
 fn render_status_bar(frame: &mut Frame, app: &mut App, area: Rect) {
     let connection_status = if app.peer_activity.is_empty() {
         Span::styled(" solo", Style::default().fg(DRACULA_ORANGE))
@@ -520,17 +550,19 @@ fn render_status_bar(frame: &mut Frame, app: &mut App, area: Rect) {
     let mut peers: Vec<_> = app.peer_activity.iter().collect();
     peers.sort_by_key(|(name, _)| (*name).clone());
     for (peer, (status, _)) in &peers {
-        let dot_color = match status.as_str() {
-            "busy" => DRACULA_YELLOW,
-            "help" => DRACULA_RED,
-            _ => DRACULA_GREEN,
-        };
+        let (dot_color, description) = parse_status(status);
         status_spans.push(Span::raw(" "));
         status_spans.push(Span::styled("\u{25CF}", Style::default().fg(dot_color)));
         status_spans.push(Span::styled(
             format!(" {peer}"),
             Style::default().fg(DRACULA_FG),
         ));
+        if let Some(desc) = description {
+            status_spans.push(Span::styled(
+                format!(": {desc}"),
+                Style::default().fg(DRACULA_COMMENT),
+            ));
+        }
     }
     // DM unread badge with sender names
     if !app.dm_unread_from.is_empty() {
