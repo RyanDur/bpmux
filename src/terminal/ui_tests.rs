@@ -529,3 +529,26 @@ fn table_renders_within_chat_width() {
         "Should show header. Screen:\n{screen}"
     );
 }
+
+#[test]
+fn wrap_line_keeps_number_with_content() {
+    // Simulates a markdown numbered list: "  1. " prefix + long content
+    let line = Line::from(vec![
+        Span::raw("  1. "),
+        Span::raw(
+            "This is a long list item that should wrap but the number stays with the first words",
+        ),
+    ]);
+    let indent = Span::raw("     "); // 5-char indent matching "  1. "
+    let result = wrap_line_with_indent(line, &indent, 40);
+    // The first line should have "  1. " + some content, not just "  1. " alone
+    let first_line_text: String = result[0]
+        .spans
+        .iter()
+        .map(|s| s.content.to_string())
+        .collect();
+    assert!(
+        first_line_text.len() > 10,
+        "Number should stay with content on first line, got: '{first_line_text}'"
+    );
+}
