@@ -13,6 +13,8 @@ use crate::session::message::{Message, MessageType};
 
 const PAUSE_THRESHOLD: Duration = Duration::from_secs(30);
 const MAX_RECALL_NUDGES: usize = 3;
+const PILEON_WINDOW: Duration = Duration::from_secs(5);
+const PILEON_THRESHOLD: usize = 3;
 
 /// Spawn a task that monitors the session for experiences and nudges
 /// agents to reflect after a natural pause. Also surfaces relevant
@@ -34,6 +36,10 @@ pub fn spawn_nudge_task(session: Arc<Session>, owner_name: String) {
         let mut surfaced_topics: HashSet<String> = HashSet::new();
         let mut recall_count: usize = 0;
         let mut cached_index = lessons::load_index(&session.dir);
+
+        // Pile-on detection state
+        let mut pileon_window_start: Option<Instant> = None;
+        let mut pileon_responders: Vec<String> = Vec::new();
 
         loop {
             let timeout = if pending_experiences.is_empty() {
@@ -82,6 +88,25 @@ pub fn spawn_nudge_task(session: Arc<Session>, owner_name: String) {
                                     &mut surfaced_topics,
                                     &mut recall_count,
                                 );
+                            }
+
+                            // Pile-on detection
+                            if msg.is_chat() && sender == owner_name && msg.to.is_none() {
+                                pileon_window_start = Some(Instant::now());
+                                pileon_responders.clear();
+                            } else if msg.is_chat()
+                                && sender != owner_name
+                                && sender != "bpmux"
+                                && pileon_window_start.is_some_and(|t| t.elapsed() < PILEON_WINDOW)
+                                && !is_coordination(&msg.text)
+                                && !pileon_responders.contains(&sender.to_string())
+                            {
+                                pileon_responders.push(sender.to_string());
+                                if pileon_responders.len() >= PILEON_THRESHOLD {
+                                    send_pileon_nudge(&session, &pileon_responders);
+                                    pileon_window_start = None;
+                                    pileon_responders.clear();
+                                }
                             }
                         }
                         Err(broadcast::error::RecvError::Lagged(_)) => continue,
@@ -174,6 +199,27 @@ fn reinforcement_trend(lesson: &lessons::AgentLesson) -> String {
         }
         None => format!("reinforced {count}x"),
     }
+}
+
+fn is_coordination(text: &str) -> bool {
+    let lower = text.to_lowercase();
+    crate::session::classifier::COORDINATION_PATTERNS
+        .iter()
+        .any(|p| lower.contains(p))
+}
+
+fn send_pileon_nudge(session: &Session, responders: &[String]) {
+    let nudge = Message {
+        from: "bpmux".to_string(),
+        text: format!(
+            "{} responses in quick succession. Was one voice enough?",
+            responders.len()
+        ),
+        ts: chrono::Utc::now(),
+        message_type: MessageType::Chat,
+        to: Some(responders.to_vec()),
+    };
+    let _ = session.broadcast(&nudge);
 }
 
 pub(crate) fn track_agents(msg: &Message, owner_name: &str, agents: &mut Vec<String>) {

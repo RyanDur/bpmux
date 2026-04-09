@@ -100,7 +100,7 @@ const MIN_EXPERIENCE_LEN: usize = 20;
 
 const REPORT_INDICATORS: &[&str] = &["**", "##", "- ", "* ", "1. ", "2. ", "3. "];
 
-const COORDINATION_PATTERNS: &[&str] = &[
+pub const COORDINATION_PATTERNS: &[&str] = &[
     "starting on",
     "working on",
     "picking up",
