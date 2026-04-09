@@ -239,7 +239,9 @@ impl App {
             }
             MessageType::Chat | MessageType::Insight => {
                 let ch = channel_name(&msg, &self.peer_name);
-                self.active_channels.insert(ch.clone());
+                if sender != "bpmux" {
+                    self.active_channels.insert(ch.clone());
+                }
                 if self.current_view.as_ref().is_none_or(|v| v != &ch) {
                     *self.channel_unread.entry(ch).or_insert(0) += 1;
                 }
