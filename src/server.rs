@@ -8,7 +8,6 @@ use crate::transport;
 pub async fn run_server(
     session: Arc<session::Session>,
     port: u16,
-    lan: bool,
     ct: CancellationToken,
 ) -> anyhow::Result<()> {
     let router = axum::Router::new()
@@ -26,8 +25,7 @@ pub async fn run_server(
             axum::routing::get(transport::rest::get_lessons).post(transport::rest::post_lesson),
         )
         .with_state(session);
-    let bind_addr = if lan { "0.0.0.0" } else { "127.0.0.1" };
-    let listener = tokio::net::TcpListener::bind(format!("{bind_addr}:{port}")).await?;
+    let listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{port}")).await?;
     axum::serve(listener, router)
         .with_graceful_shutdown(async move { ct.cancelled_owned().await })
         .await?;
