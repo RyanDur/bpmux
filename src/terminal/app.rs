@@ -238,6 +238,7 @@ impl App {
                     let short = short_peer_name(peer).to_string();
                     self.update_activity(short.clone(), "available".into());
                     self.active_channels.insert(short);
+                    self.rebuild_channels();
                 } else if let Some(peer) = msg.text.strip_suffix(" left") {
                     self.peer_activity.remove(short_peer_name(peer));
                     self.rebuild_channels();
