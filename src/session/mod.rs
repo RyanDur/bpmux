@@ -1,3 +1,4 @@
+pub mod bayes;
 pub mod classifier;
 pub mod lessons;
 pub mod log;

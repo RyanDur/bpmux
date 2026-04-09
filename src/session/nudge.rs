@@ -5,6 +5,7 @@ use tokio::sync::broadcast;
 use tokio::time::Instant;
 
 use crate::session::Session;
+use crate::session::bayes::BayesModel;
 use crate::session::classifier;
 use crate::session::message::{Message, MessageType};
 
@@ -18,11 +19,16 @@ const PAUSE_THRESHOLD: Duration = Duration::from_secs(30);
 /// channel notification and can choose to call save_lesson.
 pub fn spawn_nudge_task(session: Arc<Session>, owner_name: String) {
     let mut rx = session.subscribe();
+    let messages = session.read_messages().unwrap_or_default();
 
     tokio::spawn(async move {
         let mut pending_corrections: Vec<String> = Vec::new();
         let mut last_message_at = Instant::now();
         let mut known_agents: Vec<String> = Vec::new();
+        let mut model = BayesModel::default();
+        if !messages.is_empty() {
+            model.train(&messages, &owner_name);
+        }
 
         loop {
             let timeout = if pending_corrections.is_empty() {
@@ -38,7 +44,12 @@ pub fn spawn_nudge_task(session: Arc<Session>, owner_name: String) {
                         Ok(msg) => {
                             last_message_at = Instant::now();
                             track_agents(&msg, &owner_name, &mut known_agents);
-                            if classifier::classify(&msg, &owner_name).is_experience() {
+                            let class = if model.is_trained() {
+                                model.classify(&msg, &owner_name)
+                            } else {
+                                classifier::classify(&msg, &owner_name)
+                            };
+                            if class.is_experience() {
                                 let preview: String = msg.text.chars().take(80).collect();
                                 pending_corrections.push(preview);
                             }
