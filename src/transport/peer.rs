@@ -18,11 +18,20 @@ pub enum P2pCommand {
 }
 
 /// Results from async P2P operations back to the TUI.
-#[derive(Debug)]
 pub enum P2pResult {
-    OfferReady { code: String, passphrase: String },
-    AnswerReady { code: String },
-    Connected { peer_name: String },
+    OfferReady {
+        offer: crate::transport::webrtc::PendingOffer,
+        code: String,
+        passphrase: String,
+    },
+    AnswerReady {
+        channel_pair: crate::transport::webrtc::DataChannelPair,
+        code: String,
+    },
+    Connected {
+        channel_pair: crate::transport::webrtc::DataChannelPair,
+        peer_name: String,
+    },
     Error(String),
 }
 

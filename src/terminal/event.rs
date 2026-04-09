@@ -12,7 +12,7 @@ use crate::terminal::app::App;
 use crate::terminal::ui;
 use crate::transport::crypto;
 use crate::transport::peer::{self, P2pCommand, P2pResult};
-use crate::transport::webrtc::{self, PendingOffer};
+use crate::transport::webrtc;
 
 const NOTIFICATION_PREVIEW_CHARS: usize = 50;
 const PAGE_SCROLL_LINES: usize = 10;
@@ -52,6 +52,7 @@ pub async fn run_tui(
     let mut events = EventStream::new();
     let (p2p_tx, mut p2p_rx) = mpsc::channel::<P2pResult>(8);
     let mut active_passphrase: Option<String> = None;
+    let mut pending_offer: Option<webrtc::PendingOffer> = None;
     let session_arc = Arc::new(session.clone());
 
     loop {
@@ -69,7 +70,12 @@ pub async fn run_tui(
                 }
                 // Check for P2P commands after handling input
                 if let Some(cmd) = app.p2p_command.take() {
-                    handle_p2p_command(cmd, &p2p_tx, &mut active_passphrase);
+                    handle_p2p_command(
+                        cmd,
+                        &p2p_tx,
+                        &mut active_passphrase,
+                        &mut pending_offer,
+                    );
                 }
             }
             result = wake_rx.recv() => {
@@ -105,6 +111,7 @@ pub async fn run_tui(
                     session,
                     &session_arc,
                     &mut active_passphrase,
+                    &mut pending_offer,
                 );
             }
         }
@@ -115,6 +122,7 @@ fn handle_p2p_command(
     cmd: P2pCommand,
     tx: &mpsc::Sender<P2pResult>,
     active_passphrase: &mut Option<String>,
+    pending_offer: &mut Option<webrtc::PendingOffer>,
 ) {
     let tx = tx.clone();
     match cmd {
@@ -133,17 +141,13 @@ fn handle_p2p_command(
                         let sdp = offer.offer_sdp.clone();
                         match crypto::encrypt(&sdp, &passphrase) {
                             Ok(code) => {
-                                // Send the pending offer back through a separate channel
-                                // For now, we send the result and handle the offer storage
                                 let _ = tx
                                     .send(P2pResult::OfferReady {
+                                        offer,
                                         code,
-                                        passphrase: passphrase.clone(),
+                                        passphrase,
                                     })
                                     .await;
-                                // Store the pending offer — handled via P2pResult
-                                // The PendingOffer is moved into a static holder
-                                store_pending_offer(offer).await;
                             }
                             Err(e) => {
                                 let _ = tx.send(P2pResult::Error(e.to_string())).await;
@@ -173,8 +177,9 @@ fn handle_p2p_command(
                     Ok((answer_sdp, channel_pair)) => {
                         match crypto::encrypt(&answer_sdp, &passphrase) {
                             Ok(code) => {
-                                store_channel_pair(channel_pair).await;
-                                let _ = tx.send(P2pResult::AnswerReady { code }).await;
+                                let _ = tx
+                                    .send(P2pResult::AnswerReady { channel_pair, code })
+                                    .await;
                             }
                             Err(e) => {
                                 let _ = tx.send(P2pResult::Error(e.to_string())).await;
@@ -188,17 +193,19 @@ fn handle_p2p_command(
             });
         }
         P2pCommand::AcceptAnswer { answer_code } => {
-            let passphrase = active_passphrase.clone();
+            let Some(passphrase) = active_passphrase.clone() else {
+                let _ = tx.try_send(P2pResult::Error(
+                    "No active session. Run /session first.".to_string(),
+                ));
+                return;
+            };
+            let Some(offer) = pending_offer.take() else {
+                let _ = tx.try_send(P2pResult::Error(
+                    "No pending offer. Run /session first.".to_string(),
+                ));
+                return;
+            };
             tokio::spawn(async move {
-                let Some(passphrase) = passphrase else {
-                    let _ = tx
-                        .send(P2pResult::Error(
-                            "No active session. Run /session first.".to_string(),
-                        ))
-                        .await;
-                    return;
-                };
-
                 let answer_sdp = match crypto::decrypt(&answer_code, &passphrase) {
                     Ok(sdp) => sdp,
                     Err(e) => {
@@ -207,21 +214,11 @@ fn handle_p2p_command(
                     }
                 };
 
-                let offer = take_pending_offer().await;
-                let Some(offer) = offer else {
-                    let _ = tx
-                        .send(P2pResult::Error(
-                            "No pending offer. Run /session first.".to_string(),
-                        ))
-                        .await;
-                    return;
-                };
-
                 match offer.accept_answer(&answer_sdp).await {
                     Ok(channel_pair) => {
-                        store_channel_pair(channel_pair).await;
                         let _ = tx
                             .send(P2pResult::Connected {
+                                channel_pair,
                                 peer_name: "remote".to_string(),
                             })
                             .await;
@@ -233,30 +230,6 @@ fn handle_p2p_command(
             });
         }
     }
-}
-
-// Temporary static storage for PendingOffer and DataChannelPair.
-// These can't be passed through mpsc because they contain non-Clone types.
-// A Mutex-guarded Option is the simplest approach.
-static PENDING_OFFER: tokio::sync::Mutex<Option<PendingOffer>> =
-    tokio::sync::Mutex::const_new(None);
-static CHANNEL_PAIR: tokio::sync::Mutex<Option<webrtc::DataChannelPair>> =
-    tokio::sync::Mutex::const_new(None);
-
-async fn store_pending_offer(offer: PendingOffer) {
-    *PENDING_OFFER.lock().await = Some(offer);
-}
-
-async fn take_pending_offer() -> Option<PendingOffer> {
-    PENDING_OFFER.lock().await.take()
-}
-
-async fn store_channel_pair(pair: webrtc::DataChannelPair) {
-    *CHANNEL_PAIR.lock().await = Some(pair);
-}
-
-async fn take_channel_pair() -> Option<webrtc::DataChannelPair> {
-    CHANNEL_PAIR.lock().await.take()
 }
 
 async fn send_lesson_sync(session: &Arc<session::Session>, outbound: &mpsc::Sender<String>) {
@@ -275,79 +248,65 @@ fn handle_p2p_result(
     session: &session::Session,
     session_arc: &Arc<session::Session>,
     active_passphrase: &mut Option<String>,
+    pending_offer: &mut Option<webrtc::PendingOffer>,
 ) {
     match result {
-        P2pResult::OfferReady { code, passphrase } => {
+        P2pResult::OfferReady {
+            offer,
+            code,
+            passphrase,
+        } => {
             *active_passphrase = Some(passphrase.clone());
+            *pending_offer = Some(offer);
             app.system_message(format!(
                 "Session ready. Share these with the other machine:\n\n  Passphrase: {passphrase}\n  Offer code: {code}\n\nWaiting for /accept <answer-code>"
             ));
         }
-        P2pResult::AnswerReady { code } => {
-            // Joiner side — spawn relay for the channel pair
-            let session_arc = session_arc.clone();
-            let session_id = app.session_id.clone();
-            tokio::spawn(async move {
-                if let Some(pair) = take_channel_pair().await {
-                    // Send lesson sync before starting the relay
-                    send_lesson_sync(&session_arc, &pair.outbound_tx).await;
-                    let _peer = peer::spawn_relay(
-                        session_arc,
-                        "remote".to_string(),
-                        session_id,
-                        pair.inbound_rx,
-                        pair.outbound_tx,
-                    );
-                    std::future::pending::<()>().await;
-                }
-            });
+        P2pResult::AnswerReady { channel_pair, code } => {
+            spawn_relay_with_sync(session_arc.clone(), app.session_id.clone(), "remote".to_string(), channel_pair);
             app.system_message(format!(
                 "Connected to session. Share this answer code with the offerer:\n\n  Answer code: {code}\n\nPeer connected."
             ));
             app.update_activity("remote".to_string(), "available".to_string());
-            let connect_msg = session::Message {
-                from: "bpmux".to_string(),
-                text: "remote peer connected".to_string(),
-                ts: chrono::Utc::now(),
-                message_type: session::MessageType::System,
-                to: None,
-            };
-            let _ = session.broadcast(&connect_msg);
+            broadcast_system(session, "remote peer connected");
         }
-        P2pResult::Connected { peer_name } => {
-            // Offerer side — spawn relay for the channel pair
-            let session_arc = session_arc.clone();
-            let session_id = app.session_id.clone();
-            let peer_name_clone = peer_name.clone();
-            tokio::spawn(async move {
-                if let Some(pair) = take_channel_pair().await {
-                    // Send lesson sync before starting the relay
-                    send_lesson_sync(&session_arc, &pair.outbound_tx).await;
-                    let _peer = peer::spawn_relay(
-                        session_arc,
-                        peer_name_clone,
-                        session_id,
-                        pair.inbound_rx,
-                        pair.outbound_tx,
-                    );
-                    std::future::pending::<()>().await;
-                }
-            });
+        P2pResult::Connected {
+            channel_pair,
+            peer_name,
+        } => {
+            spawn_relay_with_sync(session_arc.clone(), app.session_id.clone(), peer_name.clone(), channel_pair);
             app.system_message(format!("Connected to peer '{peer_name}'."));
             app.update_activity(peer_name, "available".to_string());
-            let connect_msg = session::Message {
-                from: "bpmux".to_string(),
-                text: "remote peer connected".to_string(),
-                ts: chrono::Utc::now(),
-                message_type: session::MessageType::System,
-                to: None,
-            };
-            let _ = session.broadcast(&connect_msg);
+            broadcast_system(session, "remote peer connected");
         }
         P2pResult::Error(e) => {
             app.system_message(format!("P2P error: {e}"));
         }
     }
+}
+
+fn spawn_relay_with_sync(
+    session: Arc<session::Session>,
+    session_id: String,
+    peer_name: String,
+    pair: webrtc::DataChannelPair,
+) {
+    tokio::spawn(async move {
+        send_lesson_sync(&session, &pair.outbound_tx).await;
+        let _peer = peer::spawn_relay(session, peer_name, session_id, pair.inbound_rx, pair.outbound_tx);
+        std::future::pending::<()>().await;
+    });
+}
+
+fn broadcast_system(session: &session::Session, text: &str) {
+    let msg = session::Message {
+        from: "bpmux".to_string(),
+        text: text.to_string(),
+        ts: chrono::Utc::now(),
+        message_type: session::MessageType::System,
+        to: None,
+    };
+    let _ = session.broadcast(&msg);
 }
 
 fn handle_broadcast_message(msg: session::Message, app: &mut App) {
