@@ -15,7 +15,11 @@ use axum::http::StatusCode;
 
 fn test_app(dir: &TempDir) -> (axum::Router, broadcast::Sender<session::Message>) {
     let (tx, _rx) = broadcast::channel(16);
-    let session = Arc::new(session::Session::new(dir.path().to_path_buf(), tx.clone()));
+    let session = Arc::new(session::Session::new(
+        dir.path().to_path_buf(),
+        "test".to_string(),
+        tx.clone(),
+    ));
     let router = axum::Router::new()
         .route(
             "/api/messages",
@@ -84,7 +88,11 @@ async fn rejects_missing_fields() {
 
 fn seed_messages(dir: &TempDir, count: usize) -> Arc<session::Session> {
     let (tx, _rx) = broadcast::channel(16);
-    let session = Arc::new(session::Session::new(dir.path().to_path_buf(), tx));
+    let session = Arc::new(session::Session::new(
+        dir.path().to_path_buf(),
+        "test".to_string(),
+        tx,
+    ));
     for i in 0..count {
         let msg = session::Message {
             from: "user".to_string(),
@@ -150,7 +158,11 @@ async fn gets_messages_with_offset() {
 
 fn seed_mixed_messages(dir: &TempDir) -> Arc<session::Session> {
     let (tx, _rx) = broadcast::channel(16);
-    let session = Arc::new(session::Session::new(dir.path().to_path_buf(), tx));
+    let session = Arc::new(session::Session::new(
+        dir.path().to_path_buf(),
+        "test".to_string(),
+        tx,
+    ));
     for (text, msg_type) in [
         ("hello", MessageType::Chat),
         ("busy", MessageType::Activity),

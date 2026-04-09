@@ -73,7 +73,7 @@ fn resumes_existing_session() {
 fn session_broadcasts_and_reads() {
     let dir = TempDir::new().expect("temp dir");
     let (tx, mut rx) = broadcast::channel(16);
-    let session = Session::new(dir.path().to_path_buf(), tx);
+    let session = Session::new(dir.path().to_path_buf(), "test".to_string(), tx);
     let msg = Message {
         from: "ryan:human".to_string(),
         text: "via session".to_string(),
@@ -95,7 +95,7 @@ fn session_derives_id_from_dir_name() {
     let session_dir = base.path().join("my-session-id");
     std::fs::create_dir_all(&session_dir).expect("create dir");
     let (tx, _rx) = broadcast::channel(16);
-    let session = Session::new(session_dir, tx);
+    let session = Session::new(session_dir, "test".to_string(), tx);
     assert_eq!(session.id, "my-session-id");
 }
 
@@ -103,7 +103,11 @@ fn session_derives_id_from_dir_name() {
 fn peer_count_shared_through_arc() {
     let dir = TempDir::new().expect("temp dir");
     let (tx, _rx) = broadcast::channel(16);
-    let session = std::sync::Arc::new(Session::new(dir.path().to_path_buf(), tx));
+    let session = std::sync::Arc::new(Session::new(
+        dir.path().to_path_buf(),
+        "test".to_string(),
+        tx,
+    ));
     let server_session = std::sync::Arc::clone(&session);
 
     assert_eq!(session.peer_count(), 0);

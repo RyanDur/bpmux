@@ -69,7 +69,11 @@ pub fn run() -> anyhow::Result<()> {
     let session_dir = session::resume_or_create_session(&base)?;
 
     let (wake_tx, mut wake_rx) = broadcast::channel::<session::Message>(256);
-    let session = Arc::new(session::Session::new(session_dir, wake_tx));
+    let session = Arc::new(session::Session::new(
+        session_dir,
+        cli.name.clone(),
+        wake_tx,
+    ));
     let messages = session.read_messages()?;
     let mut app = terminal::App::new(cli.name.clone(), session.id.clone(), messages);
     app.session_dir = Some(session.dir.clone());
@@ -86,7 +90,7 @@ pub fn run() -> anyhow::Result<()> {
             }
         });
 
-        session::nudge::spawn_nudge_task(Arc::clone(&session), cli.name.clone());
+        session::nudge::spawn_nudge_task(Arc::clone(&session), session.owner_name.clone());
 
         // Enable mouse capture and focus tracking
         crossterm::execute!(

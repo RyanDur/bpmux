@@ -10,6 +10,7 @@ use crate::session::message::Message;
 pub struct Session {
     pub dir: PathBuf,
     pub id: String,
+    pub owner_name: String,
     pub wake_tx: broadcast::Sender<Message>,
     pub connected_peers: AtomicUsize,
 }
@@ -19,6 +20,7 @@ impl Clone for Session {
         Self {
             dir: self.dir.clone(),
             id: self.id.clone(),
+            owner_name: self.owner_name.clone(),
             wake_tx: self.wake_tx.clone(),
             connected_peers: AtomicUsize::new(self.connected_peers.load(Ordering::Relaxed)),
         }
@@ -26,7 +28,7 @@ impl Clone for Session {
 }
 
 impl Session {
-    pub fn new(dir: PathBuf, wake_tx: broadcast::Sender<Message>) -> Self {
+    pub fn new(dir: PathBuf, owner_name: String, wake_tx: broadcast::Sender<Message>) -> Self {
         let id = dir
             .file_name()
             .and_then(|n| n.to_str())
@@ -35,6 +37,7 @@ impl Session {
         Self {
             dir,
             id,
+            owner_name,
             wake_tx,
             connected_peers: AtomicUsize::new(0),
         }

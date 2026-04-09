@@ -84,7 +84,7 @@ pub async fn search_messages(
                 before: params.before.and_then(|s| s.parse().ok()),
                 channel: params.channel,
                 message_class,
-                owner_name: "ryan".to_string(), // TODO: pass from session config
+                owner_name: session.owner_name.clone(),
             };
             let results = session::search(&messages, &filters);
             (
@@ -110,7 +110,7 @@ pub async fn get_lessons(
 ) -> impl IntoResponse {
     match session.read_messages() {
         Ok(messages) => {
-            let mut index = session::lessons::build_index(&messages, "ryan");
+            let mut index = session::lessons::build_index(&messages, &session.owner_name);
             let saved = session::lessons::load_index(&session.dir);
             index.lessons = saved.lessons;
             let groups = session::lessons::group_by_topic(&index);
