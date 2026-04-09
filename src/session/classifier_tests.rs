@@ -173,6 +173,21 @@ fn short_message_not_experience() {
 }
 
 #[test]
+fn status_report_with_formatting_is_discussion() {
+    let m = msg(
+        "pm:claude-code",
+        "**Ready:** #119 (side chat)\n**Backlog:** #82 (website)\nWhat should we focus on next?",
+    );
+    assert_eq!(classify(&m, "ryan"), MessageClass::Discussion);
+}
+
+#[test]
+fn bpmux_system_message_is_routine() {
+    let m = msg("bpmux", "New build detected — reloading in 3 seconds...");
+    assert_eq!(classify(&m, "ryan"), MessageClass::Routine);
+}
+
+#[test]
 fn is_experience_helper() {
     assert!(MessageClass::Experience(ExperienceKind::Correction).is_experience());
     assert!(MessageClass::Experience(ExperienceKind::Question).is_experience());

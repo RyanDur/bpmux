@@ -96,7 +96,9 @@ const DECISION_SIGNALS: &[&str] = &[
     "accepted", "rejected", "closed", "filed", "accept", "ship it", "approved",
 ];
 
-const MIN_EXPERIENCE_LEN: usize = 15;
+const MIN_EXPERIENCE_LEN: usize = 20;
+
+const REPORT_INDICATORS: &[&str] = &["**", "##", "- ", "* ", "1. ", "2. ", "3. "];
 
 pub fn classify(msg: &Message, owner_name: &str) -> MessageClass {
     if !msg.is_chat() {
@@ -104,10 +106,24 @@ pub fn classify(msg: &Message, owner_name: &str) -> MessageClass {
     }
 
     let sender = msg.from.split(':').next().unwrap_or(&msg.from);
+    if sender == "bpmux" {
+        return MessageClass::Routine;
+    }
+
     let text_lower = msg.text.to_lowercase();
 
     let is_operational = OPERATIONAL_PATTERNS.iter().any(|p| text_lower.contains(p));
     if is_operational && sender == owner_name {
+        return MessageClass::Discussion;
+    }
+
+    // Status reports with markdown formatting are not experiences
+    if REPORT_INDICATORS.iter().any(|r| msg.text.contains(r)) {
+        if DECISION_SIGNALS.iter().any(|s| text_lower.contains(s))
+            && (sender == owner_name || text_lower.contains('#') || text_lower.contains("story"))
+        {
+            return MessageClass::Decision;
+        }
         return MessageClass::Discussion;
     }
 
