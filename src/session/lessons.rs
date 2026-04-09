@@ -13,7 +13,7 @@ const STOP_WORDS: &[&str] = &[
 ];
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CorrectionEntry {
+pub struct ExperienceEntry {
     pub timestamp: String,
     pub keywords: Vec<String>,
     pub evidence: Vec<String>,
@@ -31,7 +31,8 @@ pub struct AgentLesson {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct LessonIndex {
-    pub corrections: Vec<CorrectionEntry>,
+    #[serde(alias = "corrections")]
+    pub experiences: Vec<ExperienceEntry>,
     #[serde(default)]
     pub lessons: Vec<AgentLesson>,
 }
@@ -39,7 +40,7 @@ pub struct LessonIndex {
 #[derive(Debug, Clone)]
 pub struct TopicGroup {
     pub topic: String,
-    pub corrections: Vec<CorrectionEntry>,
+    pub experiences: Vec<ExperienceEntry>,
     pub lessons: Vec<AgentLesson>,
 }
 
@@ -57,7 +58,7 @@ pub fn build_index(messages: &[Message], owner_name: &str) -> LessonIndex {
         if classify(msg, owner_name).is_experience() {
             let keywords = extract_keywords(&msg.text);
             let preview: String = msg.text.chars().take(80).collect();
-            index.corrections.push(CorrectionEntry {
+            index.experiences.push(ExperienceEntry {
                 timestamp: msg.ts.to_rfc3339(),
                 keywords,
                 evidence: vec![msg.ts.to_rfc3339()],
@@ -69,28 +70,28 @@ pub fn build_index(messages: &[Message], owner_name: &str) -> LessonIndex {
 }
 
 pub fn group_by_topic(index: &LessonIndex) -> Vec<TopicGroup> {
-    let mut correction_groups: HashMap<String, Vec<CorrectionEntry>> = HashMap::new();
-    for correction in &index.corrections {
-        let topic = if correction.keywords.is_empty() {
+    let mut experience_groups: HashMap<String, Vec<ExperienceEntry>> = HashMap::new();
+    for experience in &index.experiences {
+        let topic = if experience.keywords.is_empty() {
             "general".to_string()
         } else {
-            correction.keywords[..correction.keywords.len().min(3)].join(" ")
+            experience.keywords[..experience.keywords.len().min(3)].join(" ")
         };
-        correction_groups
+        experience_groups
             .entry(topic)
             .or_default()
-            .push(correction.clone());
+            .push(experience.clone());
     }
     let mut all_topics: HashMap<String, TopicGroup> = HashMap::new();
-    for (topic, corrections) in correction_groups {
+    for (topic, corrections) in experience_groups {
         all_topics
             .entry(topic.clone())
             .or_insert_with(|| TopicGroup {
                 topic,
-                corrections: Vec::new(),
+                experiences: Vec::new(),
                 lessons: Vec::new(),
             })
-            .corrections = corrections;
+            .experiences = corrections;
     }
     for lesson in &index.lessons {
         let topic = lesson.topic.clone();
@@ -98,14 +99,14 @@ pub fn group_by_topic(index: &LessonIndex) -> Vec<TopicGroup> {
             .entry(topic.clone())
             .or_insert_with(|| TopicGroup {
                 topic,
-                corrections: Vec::new(),
+                experiences: Vec::new(),
                 lessons: Vec::new(),
             })
             .lessons
             .push(lesson.clone());
     }
     let mut result: Vec<TopicGroup> = all_topics.into_values().collect();
-    result.sort_by(|a, b| b.corrections.len().cmp(&a.corrections.len()));
+    result.sort_by(|a, b| b.experiences.len().cmp(&a.experiences.len()));
     result
 }
 
@@ -193,17 +194,17 @@ pub fn list_peer_names(session_dir: &Path) -> Vec<String> {
 
 /// Merge a remote lesson index into the local one.
 /// For agent lessons: same topic + same role = keep the one with the newer timestamp.
-/// Corrections are additive (deduplicated by timestamp).
+/// Experiences are additive (deduplicated by timestamp).
 pub fn merge_indexes(local: &mut LessonIndex, remote: &LessonIndex) {
-    // Merge corrections — deduplicate by timestamp
+    // Merge experiences — deduplicate by timestamp
     let existing_timestamps: std::collections::HashSet<String> = local
-        .corrections
+        .experiences
         .iter()
         .map(|c| c.timestamp.clone())
         .collect();
-    for correction in &remote.corrections {
-        if !existing_timestamps.contains(&correction.timestamp) {
-            local.corrections.push(correction.clone());
+    for experience in &remote.experiences {
+        if !existing_timestamps.contains(&experience.timestamp) {
+            local.experiences.push(experience.clone());
         }
     }
 

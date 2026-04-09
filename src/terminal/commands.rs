@@ -334,23 +334,23 @@ impl App {
         }
         let groups = crate::session::lessons::group_by_topic(&index);
         if groups.is_empty() {
-            self.system_message("No corrections indexed yet.".to_string());
+            self.system_message("No experiences indexed yet.".to_string());
         } else {
             let mut text = format!("── Team Lessons ({} topics) ──\n", groups.len());
             for group in &groups {
-                let correction_count = group.corrections.len();
+                let experience_count = group.experiences.len();
                 let lesson_count = group.lessons.len();
                 text.push_str(&format!(
-                    "\n  {} ({} correction{}, {} lesson{})\n",
+                    "\n  {} ({} experience{}, {} lesson{})\n",
                     group.topic,
-                    correction_count,
-                    if correction_count == 1 { "" } else { "s" },
+                    experience_count,
+                    if experience_count == 1 { "" } else { "s" },
                     lesson_count,
                     if lesson_count == 1 { "" } else { "s" },
                 ));
-                if !group.corrections.is_empty() {
+                if !group.experiences.is_empty() {
                     text.push_str("    Corrections:\n");
-                    for c in &group.corrections {
+                    for c in &group.experiences {
                         text.push_str(&format!(
                             "      {}: {}\n",
                             &c.timestamp[..10],
@@ -365,7 +365,7 @@ impl App {
                     }
                 }
             }
-            text.push_str("\n── /search corrections <topic> for details ──");
+            text.push_str("\n── /search experiences <topic> for details ──");
             self.system_message(text);
         }
         if let Some(dir) = &self.session_dir {
@@ -454,13 +454,13 @@ impl App {
                 groups.len()
             );
             for group in &groups {
-                let correction_count = group.corrections.len();
+                let experience_count = group.experiences.len();
                 let lesson_count = group.lessons.len();
                 text.push_str(&format!(
-                    "\n  {} ({} correction{}, {} lesson{})\n",
+                    "\n  {} ({} experience{}, {} lesson{})\n",
                     group.topic,
-                    correction_count,
-                    if correction_count == 1 { "" } else { "s" },
+                    experience_count,
+                    if experience_count == 1 { "" } else { "s" },
                     lesson_count,
                     if lesson_count == 1 { "" } else { "s" },
                 ));

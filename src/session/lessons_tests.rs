@@ -17,16 +17,16 @@ fn msg(from: &str, text: &str) -> Message {
 }
 
 #[test]
-fn build_index_finds_corrections() {
+fn build_index_finds_experiences() {
     let messages = vec![
         msg("ryan:human", "you should restate before building"),
         msg("dev:claude-code", "understood"),
         msg("ryan:human", "sounds good"),
     ];
     let index = build_index(&messages, "ryan");
-    assert_eq!(index.corrections.len(), 1);
+    assert_eq!(index.experiences.len(), 1);
     assert!(
-        index.corrections[0]
+        index.experiences[0]
             .text_preview
             .contains("restate before building")
     );
@@ -41,7 +41,7 @@ fn build_index_skips_operational() {
     ];
     let index = build_index(&messages, "ryan");
     assert_eq!(
-        index.corrections.len(),
+        index.experiences.len(),
         0,
         "Operational messages should not be indexed"
     );
@@ -57,7 +57,7 @@ fn group_by_topic_merges_similar() {
     let groups = group_by_topic(&index);
     assert!(
         groups.len() <= 2,
-        "Related corrections should group: {groups:?}"
+        "Related experiences should group: {groups:?}"
     );
 }
 
@@ -65,7 +65,7 @@ fn group_by_topic_merges_similar() {
 fn save_and_load_index_roundtrips() {
     let dir = TempDir::new().unwrap();
     let mut index = LessonIndex::default();
-    index.corrections.push(CorrectionEntry {
+    index.experiences.push(ExperienceEntry {
         timestamp: "2026-04-08T00:00:00Z".to_string(),
         keywords: vec!["quality".to_string()],
         evidence: vec!["ts1".to_string()],
@@ -73,8 +73,8 @@ fn save_and_load_index_roundtrips() {
     });
     save_index(dir.path(), &index).unwrap();
     let loaded = load_index(dir.path());
-    assert_eq!(loaded.corrections.len(), 1);
-    assert_eq!(loaded.corrections[0].text_preview, "quality is the goal");
+    assert_eq!(loaded.experiences.len(), 1);
+    assert_eq!(loaded.experiences[0].text_preview, "quality is the goal");
 }
 
 #[test]
@@ -129,7 +129,7 @@ fn group_by_topic_includes_lessons() {
 #[test]
 fn empty_log_produces_empty_index() {
     let index = build_index(&[], "ryan");
-    assert!(index.corrections.is_empty());
+    assert!(index.experiences.is_empty());
     assert!(index.lessons.is_empty());
 }
 
@@ -166,7 +166,7 @@ fn merge_adds_new_lessons_from_remote() {
     });
 
     let remote = LessonIndex {
-        corrections: vec![],
+        experiences: vec![],
         lessons: vec![AgentLesson {
             topic: "role boundaries".to_string(),
             lesson: "features go through PM".to_string(),
@@ -192,7 +192,7 @@ fn merge_keeps_newer_lesson_for_same_topic_and_role() {
     });
 
     let remote = LessonIndex {
-        corrections: vec![],
+        experiences: vec![],
         lessons: vec![AgentLesson {
             topic: "quality".to_string(),
             lesson: "newer version".to_string(),
@@ -219,7 +219,7 @@ fn merge_keeps_local_when_local_is_newer() {
     });
 
     let remote = LessonIndex {
-        corrections: vec![],
+        experiences: vec![],
         lessons: vec![AgentLesson {
             topic: "quality".to_string(),
             lesson: "remote older".to_string(),
@@ -235,9 +235,9 @@ fn merge_keeps_local_when_local_is_newer() {
 }
 
 #[test]
-fn merge_deduplicates_corrections_by_timestamp() {
+fn merge_deduplicates_experiences_by_timestamp() {
     let mut local = LessonIndex::default();
-    local.corrections.push(CorrectionEntry {
+    local.experiences.push(ExperienceEntry {
         timestamp: "2026-04-08T00:00:00Z".to_string(),
         keywords: vec!["quality".to_string()],
         evidence: vec![],
@@ -245,14 +245,14 @@ fn merge_deduplicates_corrections_by_timestamp() {
     });
 
     let remote = LessonIndex {
-        corrections: vec![
-            CorrectionEntry {
+        experiences: vec![
+            ExperienceEntry {
                 timestamp: "2026-04-08T00:00:00Z".to_string(),
                 keywords: vec!["quality".to_string()],
                 evidence: vec![],
                 text_preview: "quality is the goal".to_string(),
             },
-            CorrectionEntry {
+            ExperienceEntry {
                 timestamp: "2026-04-09T00:00:00Z".to_string(),
                 keywords: vec!["focus".to_string()],
                 evidence: vec![],
@@ -264,7 +264,7 @@ fn merge_deduplicates_corrections_by_timestamp() {
 
     merge_indexes(&mut local, &remote);
     assert_eq!(
-        local.corrections.len(),
+        local.experiences.len(),
         2,
         "duplicate skipped, new one added"
     );
@@ -282,7 +282,7 @@ fn merge_same_topic_different_roles_both_kept() {
     });
 
     let remote = LessonIndex {
-        corrections: vec![],
+        experiences: vec![],
         lessons: vec![AgentLesson {
             topic: "quality".to_string(),
             lesson: "pm perspective".to_string(),

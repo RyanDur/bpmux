@@ -430,13 +430,13 @@ impl ServerHandler for BridgeServer {
             ),
             crate::mcp::tools::read_messages_tool("Read recent messages from the bpmux session."),
             crate::mcp::tools::search_log_tool(
-                "Search the session log by keyword. Returns message clusters with context. Use to find team corrections, decisions, and discussion arcs.",
+                "Search the session log by keyword. Returns message clusters with context. Use to find team experiences, decisions, and discussion arcs.",
             ),
             crate::mcp::tools::list_lessons_tool(
-                "List indexed corrections grouped by topic. Shows what the team has been corrected on.",
+                "List indexed experiences grouped by topic. Shows what the team has learned.",
             ),
             crate::mcp::tools::save_lesson_tool(
-                "Save what you learned from a correction. Your lesson is tagged with your role and visible to the team.",
+                "Save what you learned from an experience. Your lesson is tagged with your role and visible to the team.",
             ),
             crate::mcp::tools::list_peer_lessons_tool(
                 "Read lessons from a connected peer. Returns the peer's lesson index (read-only). Use this to see what another machine has learned. Call save_lesson to internalize anything valuable.",

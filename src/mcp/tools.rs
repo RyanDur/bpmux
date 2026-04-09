@@ -91,7 +91,7 @@ pub fn save_lesson_tool(description: &'static str) -> Tool {
             },
             "lesson": {
                 "type": "string",
-                "description": "What you learned from this correction"
+                "description": "What you learned from this experience"
             },
             "evidence": {
                 "type": "array",

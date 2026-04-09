@@ -11,7 +11,7 @@ use crate::session::message::{Message, MessageType};
 
 const PAUSE_THRESHOLD: Duration = Duration::from_secs(30);
 
-/// Spawn a task that monitors the session for corrections and nudges
+/// Spawn a task that monitors the session for experiences and nudges
 /// agents to reflect after a natural pause.
 ///
 /// The nudge is a chat message from "bpmux" directed to all connected
@@ -22,7 +22,7 @@ pub fn spawn_nudge_task(session: Arc<Session>, owner_name: String) {
     let messages = session.read_messages().unwrap_or_default();
 
     tokio::spawn(async move {
-        let mut pending_corrections: Vec<String> = Vec::new();
+        let mut pending_experiences: Vec<String> = Vec::new();
         let mut last_message_at = Instant::now();
         let mut known_agents: Vec<String> = Vec::new();
         let mut model = BayesModel::default();
@@ -31,7 +31,7 @@ pub fn spawn_nudge_task(session: Arc<Session>, owner_name: String) {
         }
 
         loop {
-            let timeout = if pending_corrections.is_empty() {
+            let timeout = if pending_experiences.is_empty() {
                 Duration::from_secs(3600)
             } else {
                 let elapsed = last_message_at.elapsed();
@@ -51,18 +51,18 @@ pub fn spawn_nudge_task(session: Arc<Session>, owner_name: String) {
                             };
                             if class.is_experience() {
                                 let preview: String = msg.text.chars().take(80).collect();
-                                pending_corrections.push(preview);
+                                pending_experiences.push(preview);
                             }
                         }
                         Err(broadcast::error::RecvError::Lagged(_)) => continue,
                         Err(broadcast::error::RecvError::Closed) => break,
                     }
                 }
-                _ = tokio::time::sleep(timeout), if !pending_corrections.is_empty() => {
+                _ = tokio::time::sleep(timeout), if !pending_experiences.is_empty() => {
                     if !known_agents.is_empty() {
-                        send_nudge(&session, &pending_corrections, &known_agents);
+                        send_nudge(&session, &pending_experiences, &known_agents);
                     }
-                    pending_corrections.clear();
+                    pending_experiences.clear();
                 }
             }
         }
@@ -83,8 +83,8 @@ pub(crate) fn track_agents(msg: &Message, owner_name: &str, agents: &mut Vec<Str
     }
 }
 
-fn send_nudge(session: &Session, corrections: &[String], agents: &[String]) {
-    let nudge_text = build_nudge_text(corrections);
+fn send_nudge(session: &Session, experiences: &[String], agents: &[String]) {
+    let nudge_text = build_nudge_text(experiences);
     let nudge = Message {
         from: "bpmux".to_string(),
         text: nudge_text,

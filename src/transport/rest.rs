@@ -126,12 +126,12 @@ pub async fn get_lessons(
             let mut text = format!("{} topics indexed\n", filtered.len());
             for group in &filtered {
                 text.push_str(&format!(
-                    "\n{} ({} corrections, {} lessons)\n",
+                    "\n{} ({} experiences, {} lessons)\n",
                     group.topic,
-                    group.corrections.len(),
+                    group.experiences.len(),
                     group.lessons.len(),
                 ));
-                for c in &group.corrections {
+                for c in &group.experiences {
                     text.push_str(&format!("  {}: {}\n", &c.timestamp[..10], c.text_preview));
                 }
                 for l in &group.lessons {
@@ -184,9 +184,9 @@ pub async fn get_peer_lessons(
     let mut text = format!("{} topics from {peer_name} (read-only)\n", groups.len());
     for group in &groups {
         text.push_str(&format!(
-            "\n{} ({} corrections, {} lessons)\n",
+            "\n{} ({} experiences, {} lessons)\n",
             group.topic,
-            group.corrections.len(),
+            group.experiences.len(),
             group.lessons.len(),
         ));
         for l in &group.lessons {
