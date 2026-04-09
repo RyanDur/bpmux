@@ -106,7 +106,12 @@ impl App {
             messages,
             input: String::new(),
             cursor_pos: 0,
-            textarea: TextArea::default(),
+            textarea: {
+                let mut ta = TextArea::default();
+                ta.set_hard_tab_indent(false);
+                ta.set_wrap_mode(tui_textarea::WrapMode::Word);
+                ta
+            },
             scroll_offset: 0,
             max_scroll: 0,
             at_boundary: false,
@@ -162,8 +167,11 @@ impl App {
 
     /// Push text into the textarea (replacing current content).
     pub(super) fn set_textarea_content(&mut self, text: &str) {
-        self.textarea = TextArea::from([text]);
-        self.textarea.move_cursor(tui_textarea::CursorMove::End);
+        let mut ta = TextArea::from([text]);
+        ta.set_hard_tab_indent(false);
+        ta.set_wrap_mode(tui_textarea::WrapMode::Word);
+        ta.move_cursor(tui_textarea::CursorMove::End);
+        self.textarea = ta;
         self.sync_input_from_textarea();
     }
 

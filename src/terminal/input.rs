@@ -71,7 +71,10 @@ impl App {
     }
 
     pub fn clear_input(&mut self) {
-        self.textarea = tui_textarea::TextArea::default();
+        let mut ta = tui_textarea::TextArea::default();
+        ta.set_hard_tab_indent(false);
+        ta.set_wrap_mode(tui_textarea::WrapMode::Word);
+        self.textarea = ta;
         self.sync_input_from_textarea();
     }
 
