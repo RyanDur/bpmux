@@ -176,6 +176,33 @@ impl App {
     }
 
     pub fn sidebar_collapse(&mut self) {
+        // Collapse the section the selected item belongs to, not the whole tree
+        let channels = self.sidebar_channels();
+        if let Some(ch) = channels.get(self.sidebar_selected) {
+            if is_section_header(ch) {
+                // Already on a header — collapse the project
+                self.project_expanded = false;
+                self.sidebar_selected = 0;
+                return;
+            }
+            // Find which section this item is in by looking backwards for a header
+            for i in (0..self.sidebar_selected).rev() {
+                if let Some(header) = channels.get(i)
+                    && is_section_header(header)
+                {
+                    if header.contains("direct") {
+                        self.direct_expanded = false;
+                    } else if header.contains("groups") {
+                        self.groups_expanded = false;
+                    } else if header.contains("system") {
+                        self.system_expanded = false;
+                    }
+                    self.sidebar_selected = i;
+                    return;
+                }
+            }
+        }
+        // Fallback: collapse project
         if self.project_expanded {
             self.project_expanded = false;
             self.sidebar_selected = 0;
