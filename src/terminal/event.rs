@@ -58,6 +58,7 @@ pub async fn run_tui(
 
     // Watch for binary changes (hot reload)
     let mut reload_rx = reload::spawn_watcher();
+    let mut reload_at: Option<tokio::time::Instant> = None;
 
     // Periodic project state refresh
     let (project_tx, mut project_rx) = mpsc::channel::<super::board::ProjectState>(1);
@@ -126,10 +127,20 @@ pub async fn run_tui(
                 }
             }
             Ok(()) = reload_rx.changed() => {
-                if *reload_rx.borrow() {
-                    app.should_reload = true;
-                    return Ok(());
+                if *reload_rx.borrow() && reload_at.is_none() {
+                    app.system_message("New build detected — reloading in 3 seconds...".to_string());
+                    reload_at = Some(tokio::time::Instant::now() + std::time::Duration::from_secs(3));
                 }
+            }
+            _ = async {
+                if let Some(at) = reload_at {
+                    tokio::time::sleep_until(at).await;
+                } else {
+                    std::future::pending::<()>().await;
+                }
+            } => {
+                app.should_reload = true;
+                return Ok(());
             }
             Some(state) = project_rx.recv() => {
                 app.project_state = Some(state);
