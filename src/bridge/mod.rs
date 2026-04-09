@@ -58,7 +58,9 @@ impl BridgeServer {
 
 async fn ws_send(ws_tx: &Mutex<Option<WsSink>>, payload: String) -> Result<(), String> {
     let mut tx = ws_tx.lock().await;
-    let tx = tx.as_mut().ok_or("not connected to bpmux")?;
+    let tx = tx
+        .as_mut()
+        .ok_or("not connected to bpmux — reconnecting, try again in a few seconds")?;
     tx.send(tungstenite::Message::Text(payload.into()))
         .await
         .map_err(|e| format!("send failed: {e}"))
