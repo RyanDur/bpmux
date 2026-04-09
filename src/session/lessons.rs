@@ -26,7 +26,12 @@ pub struct AgentLesson {
     pub lesson: String,
     pub author_role: String,
     pub evidence: Vec<String>,
-    pub timestamp: String,
+    #[serde(alias = "timestamp")]
+    pub established: String,
+    #[serde(default)]
+    pub last_reinforced: Option<String>,
+    #[serde(default)]
+    pub reinforcement_count: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -122,9 +127,11 @@ pub fn add_lesson(
         .lessons
         .iter_mut()
         .find(|l| l.topic == topic && l.author_role == author_role);
+    let now = chrono::Utc::now().to_rfc3339();
     if let Some(existing) = existing {
         existing.lesson = lesson_text.to_string();
-        existing.timestamp = chrono::Utc::now().to_rfc3339();
+        existing.last_reinforced = Some(now);
+        existing.reinforcement_count += 1;
         existing.evidence = evidence;
     } else {
         index.lessons.push(AgentLesson {
@@ -132,7 +139,9 @@ pub fn add_lesson(
             lesson: lesson_text.to_string(),
             author_role: author_role.to_string(),
             evidence,
-            timestamp: chrono::Utc::now().to_rfc3339(),
+            established: now,
+            last_reinforced: None,
+            reinforcement_count: 0,
         });
     }
     save_index(session_dir, &index)
@@ -215,7 +224,7 @@ pub fn merge_indexes(local: &mut LessonIndex, remote: &LessonIndex) {
             .iter_mut()
             .find(|l| l.topic == remote_lesson.topic && l.author_role == remote_lesson.author_role);
         if let Some(existing) = existing {
-            if remote_lesson.timestamp > existing.timestamp {
+            if remote_lesson.established > existing.established {
                 *existing = remote_lesson.clone();
             }
         } else {

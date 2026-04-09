@@ -162,7 +162,9 @@ fn merge_adds_new_lessons_from_remote() {
         lesson: "quality compounds".to_string(),
         author_role: "dev".to_string(),
         evidence: vec![],
-        timestamp: "2026-04-08T00:00:00Z".to_string(),
+        established: "2026-04-08T00:00:00Z".to_string(),
+        last_reinforced: None,
+        reinforcement_count: 0,
     });
 
     let remote = LessonIndex {
@@ -172,7 +174,9 @@ fn merge_adds_new_lessons_from_remote() {
             lesson: "features go through PM".to_string(),
             author_role: "designer".to_string(),
             evidence: vec![],
-            timestamp: "2026-04-08T01:00:00Z".to_string(),
+            established: "2026-04-08T01:00:00Z".to_string(),
+            last_reinforced: None,
+            reinforcement_count: 0,
         }],
     };
 
@@ -188,7 +192,9 @@ fn merge_keeps_newer_lesson_for_same_topic_and_role() {
         lesson: "old version".to_string(),
         author_role: "dev".to_string(),
         evidence: vec![],
-        timestamp: "2026-04-08T00:00:00Z".to_string(),
+        established: "2026-04-08T00:00:00Z".to_string(),
+        last_reinforced: None,
+        reinforcement_count: 0,
     });
 
     let remote = LessonIndex {
@@ -198,7 +204,9 @@ fn merge_keeps_newer_lesson_for_same_topic_and_role() {
             lesson: "newer version".to_string(),
             author_role: "dev".to_string(),
             evidence: vec![],
-            timestamp: "2026-04-09T00:00:00Z".to_string(),
+            established: "2026-04-09T00:00:00Z".to_string(),
+            last_reinforced: None,
+            reinforcement_count: 0,
         }],
     };
 
@@ -215,7 +223,9 @@ fn merge_keeps_local_when_local_is_newer() {
         lesson: "local newer".to_string(),
         author_role: "dev".to_string(),
         evidence: vec![],
-        timestamp: "2026-04-09T00:00:00Z".to_string(),
+        established: "2026-04-09T00:00:00Z".to_string(),
+        last_reinforced: None,
+        reinforcement_count: 0,
     });
 
     let remote = LessonIndex {
@@ -225,7 +235,9 @@ fn merge_keeps_local_when_local_is_newer() {
             lesson: "remote older".to_string(),
             author_role: "dev".to_string(),
             evidence: vec![],
-            timestamp: "2026-04-08T00:00:00Z".to_string(),
+            established: "2026-04-08T00:00:00Z".to_string(),
+            last_reinforced: None,
+            reinforcement_count: 0,
         }],
     };
 
@@ -278,7 +290,9 @@ fn merge_same_topic_different_roles_both_kept() {
         lesson: "dev perspective".to_string(),
         author_role: "dev".to_string(),
         evidence: vec![],
-        timestamp: "2026-04-08T00:00:00Z".to_string(),
+        established: "2026-04-08T00:00:00Z".to_string(),
+        last_reinforced: None,
+        reinforcement_count: 0,
     });
 
     let remote = LessonIndex {
@@ -288,7 +302,9 @@ fn merge_same_topic_different_roles_both_kept() {
             lesson: "pm perspective".to_string(),
             author_role: "pm".to_string(),
             evidence: vec![],
-            timestamp: "2026-04-08T00:00:00Z".to_string(),
+            established: "2026-04-08T00:00:00Z".to_string(),
+            last_reinforced: None,
+            reinforcement_count: 0,
         }],
     };
 
