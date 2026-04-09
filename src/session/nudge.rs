@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -7,16 +8,15 @@ use tokio::time::Instant;
 use crate::session::Session;
 use crate::session::bayes::BayesModel;
 use crate::session::classifier;
+use crate::session::lessons;
 use crate::session::message::{Message, MessageType};
 
 const PAUSE_THRESHOLD: Duration = Duration::from_secs(30);
+const MAX_RECALL_NUDGES: usize = 3;
 
 /// Spawn a task that monitors the session for experiences and nudges
-/// agents to reflect after a natural pause.
-///
-/// The nudge is a chat message from "bpmux" directed to all connected
-/// agents (not broadcast to the owner's TUI). Agents see it as a
-/// channel notification and can choose to call save_lesson.
+/// agents to reflect after a natural pause. Also surfaces relevant
+/// lessons when conversation touches known topics.
 pub fn spawn_nudge_task(session: Arc<Session>, owner_name: String) {
     let mut rx = session.subscribe();
     let messages = session.read_messages().unwrap_or_default();
@@ -29,6 +29,10 @@ pub fn spawn_nudge_task(session: Arc<Session>, owner_name: String) {
         if !messages.is_empty() {
             model.train(&messages, &owner_name);
         }
+
+        // Context-triggered recall state
+        let mut surfaced_topics: HashSet<String> = HashSet::new();
+        let mut recall_count: usize = 0;
 
         loop {
             let timeout = if pending_experiences.is_empty() {
@@ -44,6 +48,10 @@ pub fn spawn_nudge_task(session: Arc<Session>, owner_name: String) {
                         Ok(msg) => {
                             last_message_at = Instant::now();
                             track_agents(&msg, &owner_name, &mut known_agents);
+
+                            let sender = msg.from.split(':').next().unwrap_or(&msg.from);
+
+                            // Experience detection
                             let class = if model.is_trained() {
                                 model.classify(&msg, &owner_name)
                             } else {
@@ -53,6 +61,21 @@ pub fn spawn_nudge_task(session: Arc<Session>, owner_name: String) {
                                 let preview: String = msg.text.chars().take(80).collect();
                                 pending_experiences.push(preview);
                             }
+
+                            // Context-triggered recall: check agent messages against lesson topics
+                            if msg.is_chat()
+                                && sender != owner_name
+                                && sender != "bpmux"
+                                && recall_count < MAX_RECALL_NUDGES
+                            {
+                                check_recall(
+                                    &session,
+                                    &msg,
+                                    sender,
+                                    &mut surfaced_topics,
+                                    &mut recall_count,
+                                );
+                            }
                         }
                         Err(broadcast::error::RecvError::Lagged(_)) => continue,
                         Err(broadcast::error::RecvError::Closed) => break,
@@ -60,13 +83,59 @@ pub fn spawn_nudge_task(session: Arc<Session>, owner_name: String) {
                 }
                 _ = tokio::time::sleep(timeout), if !pending_experiences.is_empty() => {
                     if !known_agents.is_empty() {
-                        send_nudge(&session, &pending_experiences, &known_agents);
+                        send_experience_nudge(&session, &pending_experiences, &known_agents);
                     }
                     pending_experiences.clear();
                 }
             }
         }
     });
+}
+
+fn check_recall(
+    session: &Session,
+    msg: &Message,
+    sender: &str,
+    surfaced_topics: &mut HashSet<String>,
+    recall_count: &mut usize,
+) {
+    let index = lessons::load_index(&session.dir);
+    if index.lessons.is_empty() {
+        return;
+    }
+
+    let msg_keywords = lessons::extract_keywords(&msg.text);
+    if msg_keywords.is_empty() {
+        return;
+    }
+
+    for lesson in &index.lessons {
+        if surfaced_topics.contains(&lesson.topic) {
+            continue;
+        }
+
+        let topic_keywords = lessons::extract_keywords(&lesson.topic);
+        let has_overlap = topic_keywords
+            .iter()
+            .any(|tk| msg_keywords.iter().any(|mk| mk == tk));
+
+        if has_overlap {
+            let nudge = Message {
+                from: "bpmux".to_string(),
+                text: format!(
+                    "Watch topic \"{}\". Team learned: {}\nUse search_log(\"{}\") for more context.",
+                    lesson.topic, lesson.lesson, lesson.topic
+                ),
+                ts: chrono::Utc::now(),
+                message_type: MessageType::Chat,
+                to: Some(vec![sender.to_string()]),
+            };
+            let _ = session.broadcast(&nudge);
+            surfaced_topics.insert(lesson.topic.clone());
+            *recall_count += 1;
+            return;
+        }
+    }
 }
 
 pub(crate) fn track_agents(msg: &Message, owner_name: &str, agents: &mut Vec<String>) {
@@ -83,7 +152,7 @@ pub(crate) fn track_agents(msg: &Message, owner_name: &str, agents: &mut Vec<Str
     }
 }
 
-fn send_nudge(session: &Session, experiences: &[String], agents: &[String]) {
+fn send_experience_nudge(session: &Session, experiences: &[String], agents: &[String]) {
     let nudge_text = build_nudge_text(experiences);
     let nudge = Message {
         from: "bpmux".to_string(),
