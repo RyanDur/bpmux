@@ -267,11 +267,11 @@ fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
         prefix_spans.push(Span::styled(channel_tag.clone(), tag_style));
         prefix_spans.push(Span::styled(format!("{short_name}: "), name_style));
 
-        let is_truncated =
-            wrapped_lines > TRUNCATE_AFTER_LINES && !app.expanded_messages.contains(&msg_key);
+        let is_long = wrapped_lines > TRUNCATE_AFTER_LINES;
+        let is_expanded = app.expanded_messages.contains(&msg_key);
+        let is_truncated = is_long && !is_expanded;
 
         let md_lines = if is_truncated {
-            // Truncate: show first 7 lines of markdown, then [+N lines]
             let remaining_lines = wrapped_lines.saturating_sub(7);
             let mut ls = render_md_message(
                 &msg.text,
@@ -295,7 +295,6 @@ fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
             )
         };
 
-        // Pre-wrap lines with hanging indent so continuation aligns with text
         for line in
             md_lines.iter().take(
                 md_lines
@@ -310,10 +309,15 @@ fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
             ));
         }
 
-        // If truncated, the last line is the indicator — record its position
         if is_truncated && let Some(indicator_line) = md_lines.last() {
-            truncation_line_indices.push((messages.len(), msg_key));
+            truncation_line_indices.push((messages.len(), msg_key.clone()));
             messages.push(indicator_line.clone());
+        } else if is_long && is_expanded {
+            truncation_line_indices.push((messages.len(), msg_key));
+            messages.push(Line::from(Span::styled(
+                "  [-collapse]",
+                Style::default().fg(DRACULA_COMMENT),
+            )));
         }
 
         // Add blank line separator only when the next message is from a different sender
