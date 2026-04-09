@@ -474,10 +474,8 @@ fn handle_terminal_event(
         app.show_help = false;
         return Ok(());
     }
-    if app.show_project_view {
-        if key.code == KeyCode::Esc {
-            app.show_project_view = false;
-        }
+    if app.show_project_view && key.code == KeyCode::Esc {
+        app.show_project_view = false;
         return Ok(());
     }
     if (key.code == KeyCode::Char('b') || key.code == KeyCode::Char('1'))
