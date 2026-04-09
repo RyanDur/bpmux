@@ -17,6 +17,16 @@ Read the team's accumulated lessons from the bpmux session. Use this at the star
 
 4. Report to the user: "Recalled N lessons across M topics. Key reminders: [list top 3-5]."
 
+## During the session
+
+You have these tools — use them throughout your work, not just at startup:
+
+- `search_log(query)` — before making a decision in an area the team has been corrected on, search for what happened. "What did we learn about role boundaries?" is cheaper than repeating the mistake.
+- `list_lessons()` — check what the team knows about a topic before proposing something new.
+- `save_lesson(topic, lesson)` — when you learn something, save it immediately. Don't wait for /reflect.
+
+The topics you recalled are your watch list. When your work touches one of those topics, pause and check.
+
 ## Guidelines
 
 - Run this at the start of each session — before your first action
