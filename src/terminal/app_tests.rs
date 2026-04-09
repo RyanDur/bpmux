@@ -863,6 +863,8 @@ fn peer_leave_removes_phantom_channels() {
         message_type: MessageType::System,
         to: None,
     });
+    // View the channel so the message is "read" (no unread count)
+    app.current_view = Some("agent-14c3".to_string());
     app.receive_message(directed_msg(
         "agent-14c3:claude-code",
         "hello",
@@ -873,7 +875,7 @@ fn peer_leave_removes_phantom_channels() {
         "channel should exist while agent is connected"
     );
 
-    // Agent leaves
+    // Agent leaves — channel should be removed since no unread messages
     app.receive_message(Message {
         from: "bpmux".to_string(),
         text: "agent-14c3 left".to_string(),
@@ -883,7 +885,40 @@ fn peer_leave_removes_phantom_channels() {
     });
     assert!(
         !app.active_channels.contains("agent-14c3"),
-        "channel should be removed when agent disconnects"
+        "read channel should be removed when agent disconnects"
+    );
+}
+
+#[test]
+fn peer_leave_keeps_channels_with_unread() {
+    let mut app = test_app();
+    // Agent connects, sends DM, then leaves
+    app.receive_message(Message {
+        from: "dev:claude-code".to_string(),
+        text: "dev joined".to_string(),
+        ts: Utc::now(),
+        message_type: MessageType::System,
+        to: None,
+    });
+    app.current_view = Some("broadcast".to_string());
+    app.receive_message(directed_msg(
+        "dev:claude-code",
+        "unread message",
+        vec!["ryan"],
+    ));
+    assert!(app.channel_unread.get("dev").is_some_and(|&n| n > 0));
+
+    // Agent leaves
+    app.receive_message(Message {
+        from: "bpmux".to_string(),
+        text: "dev left".to_string(),
+        ts: Utc::now(),
+        message_type: MessageType::System,
+        to: None,
+    });
+    assert!(
+        app.active_channels.contains("dev"),
+        "channel with unread messages should be preserved"
     );
 }
 

@@ -195,7 +195,9 @@ impl App {
                 if ch == "broadcast" {
                     return true;
                 }
-                ch.split('+').any(|name| connected.contains(name))
+                let has_connected_peer = ch.split('+').any(|name| connected.contains(name));
+                let has_unread = self.channel_unread.get(ch).is_some_and(|&n| n > 0);
+                has_connected_peer || has_unread
             })
             .collect();
     }
