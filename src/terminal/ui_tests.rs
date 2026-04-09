@@ -477,6 +477,7 @@ fn channel_view_excludes_broadcasts() {
     let mut app = test_app_with(vec![
         chat_msg("ryan:human", "broadcast hello everyone"),
         directed_msg("pm:claude-code", "pm to dev", &["dev"]),
+        chat_msg("bpmux", "Creating P2P session"),
         chat_msg("designer:claude-code", "another broadcast"),
         directed_msg("dev:human", "dev reply to pm", &["pm"]),
     ]);
@@ -485,31 +486,34 @@ fn channel_view_excludes_broadcasts() {
     terminal.draw(|frame| render(frame, &mut app)).unwrap();
     let screen = buffer_to_string(terminal.backend().buffer());
 
-    assert!(
-        screen.contains("pm to dev"),
-        "Directed message to dev should appear in pm view. Screen:\n{screen}"
-    );
-    assert!(
-        screen.contains("dev reply"),
-        "Dev's reply to pm should appear. Screen:\n{screen}"
-    );
-    // Broadcasts should only appear in the banner at the top, not in the chat area.
-    // The chat area is inside the "bpmux" bordered box. Check that broadcast text
-    // doesn't appear on lines inside the box (after the first border line).
+    // Extract chat area content (inside the bordered box)
     let chat_lines: Vec<&str> = screen
         .lines()
         .skip_while(|l| !l.contains("bpmux"))
-        .skip(1) // skip the border line
+        .skip(1)
         .take_while(|l| !l.starts_with('└'))
         .collect();
     let chat_text = chat_lines.join("\n");
+
+    assert!(
+        chat_text.contains("pm to dev"),
+        "Directed message should appear. Chat:\n{chat_text}"
+    );
+    assert!(
+        chat_text.contains("dev reply"),
+        "Dev's reply should appear. Chat:\n{chat_text}"
+    );
     assert!(
         !chat_text.contains("broadcast hello"),
-        "Broadcast should NOT appear in chat area. Chat:\n{chat_text}"
+        "User broadcast should NOT appear in channel view. Chat:\n{chat_text}"
+    );
+    assert!(
+        !chat_text.contains("P2P session"),
+        "bpmux system message should NOT appear in channel view. Chat:\n{chat_text}"
     );
     assert!(
         !chat_text.contains("another broadcast"),
-        "Second broadcast should NOT appear in chat area. Chat:\n{chat_text}"
+        "Designer broadcast should NOT appear in channel view. Chat:\n{chat_text}"
     );
 }
 

@@ -195,10 +195,6 @@ fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
             if !m.is_chat() {
                 return app.show_system_messages;
             }
-            // Local system messages (from "bpmux") always pass the view filter
-            if m.from == "bpmux" {
-                return true;
-            }
             match &app.current_view {
                 None => true,
                 Some(view) if view == "broadcast" => {
