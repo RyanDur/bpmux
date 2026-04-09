@@ -601,21 +601,10 @@ Press any key to close";
     }
 }
 
-fn render_project_view(frame: &mut Frame, app: &mut App, area: Rect) {
-    let title = app
-        .project_state
-        .as_ref()
-        .map_or(" bpmux ".to_string(), |s| s.title_summary());
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .title(title)
-        .title_style(
-            Style::default()
-                .fg(DRACULA_PURPLE)
-                .add_modifier(Modifier::BOLD),
-        )
-        .border_style(Style::default().fg(DRACULA_PURPLE))
-        .style(Style::default().bg(DRACULA_BG).fg(DRACULA_FG));
+fn render_project_overlay(frame: &mut Frame, app: &mut App, area: Rect) {
+    if !app.show_project_view {
+        return;
+    }
 
     let content = match super::board::fetch_roadmap() {
         Ok(text) => text,
@@ -625,7 +614,13 @@ fn render_project_view(frame: &mut Frame, app: &mut App, area: Rect) {
         },
     };
 
-    let inner_width = area.width.saturating_sub(2) as usize;
+    let overlay_width = area.width.saturating_sub(4).min(72);
+    let overlay_height = area.height.saturating_sub(2);
+    let overlay_x = area.x + (area.width.saturating_sub(overlay_width)) / 2;
+    let overlay_y = area.y + 1;
+    let overlay_area = Rect::new(overlay_x, overlay_y, overlay_width, overlay_height);
+
+    let inner_width = overlay_width.saturating_sub(2) as usize;
     let prefix_spans = Vec::new();
     let indent = Span::raw("");
     let md_lines = render_md_message(&content, prefix_spans, indent.clone(), None, inner_width);
@@ -634,10 +629,22 @@ fn render_project_view(frame: &mut Frame, app: &mut App, area: Rect) {
         wrapped.extend(wrap_line_with_indent(line.clone(), &indent, inner_width));
     }
 
-    let paragraph = Paragraph::new(wrapped)
-        .block(block)
-        .scroll((app.scroll_offset.min(u16::MAX as usize) as u16, 0));
-    frame.render_widget(paragraph, area);
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title(" roadmap — Esc to close ")
+        .title_style(
+            Style::default()
+                .fg(DRACULA_PURPLE)
+                .add_modifier(Modifier::BOLD),
+        )
+        .border_style(Style::default().fg(DRACULA_PURPLE))
+        .style(Style::default().bg(DRACULA_BG).fg(DRACULA_FG));
+
+    #[allow(clippy::cast_possible_truncation)]
+    let scroll = app.scroll_offset.min(u16::MAX as usize) as u16;
+    let paragraph = Paragraph::new(wrapped).block(block).scroll((scroll, 0));
+    frame.render_widget(Clear, overlay_area);
+    frame.render_widget(paragraph, overlay_area);
 }
 
 pub fn render(frame: &mut Frame, app: &mut App) {
@@ -694,14 +701,11 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     app.chat_area = Some((chat_rect.x, chat_rect.y, chat_rect.width, chat_rect.height));
 
     render_broadcast_banner(frame, app, chunks[0]);
-    if app.show_project_view {
-        render_project_view(frame, app, chunks[1]);
-    } else {
-        render_chat(frame, app, chunks[1]);
-        render_unread_indicator(frame, app, chunks[1]);
-    }
+    render_chat(frame, app, chunks[1]);
+    render_unread_indicator(frame, app, chunks[1]);
     render_input(frame, app, chunks[2]);
     render_popup(frame, app, chunks[2]);
     render_status_bar(frame, app, status_area);
     render_help_overlay(frame, app, main_area);
+    render_project_overlay(frame, app, main_area);
 }
