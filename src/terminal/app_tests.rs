@@ -850,6 +850,43 @@ fn toggle_expands_long_system_message() {
     );
 }
 
+// Channel cleanup tests
+
+#[test]
+fn peer_leave_removes_phantom_channels() {
+    let mut app = test_app();
+    // Simulate agent connecting and sending a message
+    app.receive_message(Message {
+        from: "agent-14c3:claude-code".to_string(),
+        text: "agent-14c3 joined".to_string(),
+        ts: Utc::now(),
+        message_type: MessageType::System,
+        to: None,
+    });
+    app.receive_message(directed_msg(
+        "agent-14c3:claude-code",
+        "hello",
+        vec!["ryan"],
+    ));
+    assert!(
+        app.active_channels.contains("agent-14c3"),
+        "channel should exist while agent is connected"
+    );
+
+    // Agent leaves
+    app.receive_message(Message {
+        from: "bpmux".to_string(),
+        text: "agent-14c3 left".to_string(),
+        ts: Utc::now(),
+        message_type: MessageType::System,
+        to: None,
+    });
+    assert!(
+        !app.active_channels.contains("agent-14c3"),
+        "channel should be removed when agent disconnects"
+    );
+}
+
 // P2P command tests
 
 #[test]

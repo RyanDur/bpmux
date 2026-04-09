@@ -183,6 +183,23 @@ impl App {
         }
     }
 
+    fn rebuild_channels(&mut self) {
+        let connected: std::collections::HashSet<&str> =
+            self.peer_activity.keys().map(|s| s.as_str()).collect();
+        self.active_channels = self
+            .messages
+            .iter()
+            .filter(|m| m.is_chat())
+            .map(|m| channel_name(m, &self.peer_name))
+            .filter(|ch| {
+                if ch == "broadcast" {
+                    return true;
+                }
+                ch.split('+').any(|name| connected.contains(name))
+            })
+            .collect();
+    }
+
     pub fn update_activity(&mut self, peer: String, status: String) {
         self.peer_activity.insert(peer, (status, Instant::now()));
     }
@@ -200,6 +217,7 @@ impl App {
                     self.update_activity(short_peer_name(peer).to_string(), "available".into());
                 } else if let Some(peer) = msg.text.strip_suffix(" left") {
                     self.peer_activity.remove(short_peer_name(peer));
+                    self.rebuild_channels();
                 }
             }
             MessageType::Chat => {
