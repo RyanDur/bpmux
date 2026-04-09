@@ -32,6 +32,8 @@ pub struct AgentLesson {
     pub last_reinforced: Option<String>,
     #[serde(default)]
     pub reinforcement_count: u32,
+    #[serde(default)]
+    pub reinforcement_history: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -130,8 +132,9 @@ pub fn add_lesson(
     let now = chrono::Utc::now().to_rfc3339();
     if let Some(existing) = existing {
         existing.lesson = lesson_text.to_string();
-        existing.last_reinforced = Some(now);
+        existing.last_reinforced = Some(now.clone());
         existing.reinforcement_count += 1;
+        existing.reinforcement_history.push(now);
         existing.evidence = evidence;
     } else {
         index.lessons.push(AgentLesson {
@@ -142,6 +145,7 @@ pub fn add_lesson(
             established: now,
             last_reinforced: None,
             reinforcement_count: 0,
+            reinforcement_history: Vec::new(),
         });
     }
     save_index(session_dir, &index)

@@ -116,32 +116,63 @@ fn check_recall_cached(
         return;
     }
 
-    for lesson in &index.lessons {
-        if surfaced_topics.contains(&lesson.topic) {
-            continue;
-        }
+    // Find matching lessons, prioritize stalest (least recently reinforced)
+    let mut matches: Vec<&lessons::AgentLesson> = index
+        .lessons
+        .iter()
+        .filter(|l| {
+            !surfaced_topics.contains(&l.topic)
+                && lessons::extract_keywords(&l.topic)
+                    .iter()
+                    .any(|tk| msg_keywords.iter().any(|mk| mk == tk))
+        })
+        .collect();
 
-        let topic_keywords = lessons::extract_keywords(&lesson.topic);
-        let has_overlap = topic_keywords
-            .iter()
-            .any(|tk| msg_keywords.iter().any(|mk| mk == tk));
+    matches.sort_by(|a, b| {
+        let a_time = a.last_reinforced.as_deref().unwrap_or(&a.established);
+        let b_time = b.last_reinforced.as_deref().unwrap_or(&b.established);
+        a_time.cmp(b_time) // oldest first = stalest first
+    });
 
-        if has_overlap {
-            let nudge = Message {
-                from: "bpmux".to_string(),
-                text: format!(
-                    "Watch topic \"{}\". Team learned: {}\nUse search_log(\"{}\") for more context.",
-                    lesson.topic, lesson.lesson, lesson.topic
-                ),
-                ts: chrono::Utc::now(),
-                message_type: MessageType::Chat,
-                to: Some(vec![sender.to_string()]),
-            };
-            let _ = session.broadcast(&nudge);
-            surfaced_topics.insert(lesson.topic.clone());
-            *recall_count += 1;
-            return;
+    if let Some(lesson) = matches.first() {
+        let trend = reinforcement_trend(lesson);
+        let nudge = Message {
+            from: "bpmux".to_string(),
+            text: format!(
+                "Watch topic \"{}\" ({trend}). Team learned: {}\nUse search_log(\"{}\") for more context.",
+                lesson.topic, lesson.lesson, lesson.topic
+            ),
+            ts: chrono::Utc::now(),
+            message_type: MessageType::Chat,
+            to: Some(vec![sender.to_string()]),
+        };
+        let _ = session.broadcast(&nudge);
+        surfaced_topics.insert(lesson.topic.clone());
+        *recall_count += 1;
+    }
+}
+
+fn reinforcement_trend(lesson: &lessons::AgentLesson) -> String {
+    let count = lesson.reinforcement_count;
+    if count == 0 {
+        return "new".to_string();
+    }
+    let last = lesson
+        .last_reinforced
+        .as_deref()
+        .and_then(|s| s.parse::<chrono::DateTime<chrono::Utc>>().ok());
+    match last {
+        Some(ts) => {
+            let age = chrono::Utc::now() - ts;
+            if age.num_hours() < 24 {
+                format!("reinforced {count}x, active")
+            } else if age.num_days() < 3 {
+                format!("reinforced {count}x, recent")
+            } else {
+                format!("reinforced {count}x, fading")
+            }
         }
+        None => format!("reinforced {count}x"),
     }
 }
 

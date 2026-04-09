@@ -166,6 +166,7 @@ fn merge_adds_new_lessons_from_remote() {
         established: "2026-04-08T00:00:00Z".to_string(),
         last_reinforced: None,
         reinforcement_count: 0,
+        reinforcement_history: Vec::new(),
     });
 
     let remote = LessonIndex {
@@ -178,6 +179,7 @@ fn merge_adds_new_lessons_from_remote() {
             established: "2026-04-08T01:00:00Z".to_string(),
             last_reinforced: None,
             reinforcement_count: 0,
+            reinforcement_history: Vec::new(),
         }],
     };
 
@@ -196,6 +198,7 @@ fn merge_keeps_newer_lesson_for_same_topic_and_role() {
         established: "2026-04-08T00:00:00Z".to_string(),
         last_reinforced: None,
         reinforcement_count: 0,
+        reinforcement_history: Vec::new(),
     });
 
     let remote = LessonIndex {
@@ -208,6 +211,7 @@ fn merge_keeps_newer_lesson_for_same_topic_and_role() {
             established: "2026-04-09T00:00:00Z".to_string(),
             last_reinforced: None,
             reinforcement_count: 0,
+            reinforcement_history: Vec::new(),
         }],
     };
 
@@ -227,6 +231,7 @@ fn merge_keeps_local_when_local_is_newer() {
         established: "2026-04-09T00:00:00Z".to_string(),
         last_reinforced: None,
         reinforcement_count: 0,
+        reinforcement_history: Vec::new(),
     });
 
     let remote = LessonIndex {
@@ -239,6 +244,7 @@ fn merge_keeps_local_when_local_is_newer() {
             established: "2026-04-08T00:00:00Z".to_string(),
             last_reinforced: None,
             reinforcement_count: 0,
+            reinforcement_history: Vec::new(),
         }],
     };
 
@@ -294,6 +300,7 @@ fn merge_same_topic_different_roles_both_kept() {
         established: "2026-04-08T00:00:00Z".to_string(),
         last_reinforced: None,
         reinforcement_count: 0,
+        reinforcement_history: Vec::new(),
     });
 
     let remote = LessonIndex {
@@ -306,6 +313,7 @@ fn merge_same_topic_different_roles_both_kept() {
             established: "2026-04-08T00:00:00Z".to_string(),
             last_reinforced: None,
             reinforcement_count: 0,
+            reinforcement_history: Vec::new(),
         }],
     };
 
