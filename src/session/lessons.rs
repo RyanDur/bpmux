@@ -1,5 +1,5 @@
 use crate::session::Message;
-use crate::session::classifier::{MessageClass, classify};
+use crate::session::classifier::classify;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
@@ -54,7 +54,7 @@ pub fn extract_keywords(text: &str) -> Vec<String> {
 pub fn build_index(messages: &[Message], owner_name: &str) -> LessonIndex {
     let mut index = LessonIndex::default();
     for msg in messages {
-        if classify(msg, owner_name) == MessageClass::Correction {
+        if classify(msg, owner_name).is_experience() {
             let keywords = extract_keywords(&msg.text);
             let preview: String = msg.text.chars().take(80).collect();
             index.corrections.push(CorrectionEntry {

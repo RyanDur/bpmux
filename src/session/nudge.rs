@@ -5,7 +5,7 @@ use tokio::sync::broadcast;
 use tokio::time::Instant;
 
 use crate::session::Session;
-use crate::session::classifier::{self, MessageClass};
+use crate::session::classifier;
 use crate::session::message::{Message, MessageType};
 
 const PAUSE_THRESHOLD: Duration = Duration::from_secs(30);
@@ -38,7 +38,7 @@ pub fn spawn_nudge_task(session: Arc<Session>, owner_name: String) {
                         Ok(msg) => {
                             last_message_at = Instant::now();
                             track_agents(&msg, &owner_name, &mut known_agents);
-                            if classifier::classify(&msg, &owner_name) == MessageClass::Correction {
+                            if classifier::classify(&msg, &owner_name).is_experience() {
                                 let preview: String = msg.text.chars().take(80).collect();
                                 pending_corrections.push(preview);
                             }
@@ -84,13 +84,13 @@ fn send_nudge(session: &Session, corrections: &[String], agents: &[String]) {
     let _ = session.broadcast(&nudge);
 }
 
-pub(crate) fn build_nudge_text(corrections: &[String]) -> String {
-    let count = corrections.len();
+pub(crate) fn build_nudge_text(experiences: &[String]) -> String {
+    let count = experiences.len();
     let mut text = format!(
-        "{count} correction{} noted. Consider saving what you learned:\n",
+        "{count} experience{} noted. Consider saving what you learned:\n",
         if count == 1 { "" } else { "s" }
     );
-    for (i, preview) in corrections.iter().enumerate() {
+    for (i, preview) in experiences.iter().enumerate() {
         text.push_str(&format!("  {}. {preview}\n", i + 1));
     }
     text.push_str("Use save_lesson(topic, lesson) to capture your understanding.");

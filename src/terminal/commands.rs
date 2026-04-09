@@ -269,8 +269,10 @@ impl App {
     fn handle_search(&mut self, query: String) -> Option<Message> {
         let parts: Vec<&str> = query.splitn(2, ' ').collect();
         let (message_class, keyword) = match parts[0] {
-            "corrections" => (
-                Some(crate::session::MessageClass::Correction),
+            "corrections" | "experiences" => (
+                Some(crate::session::MessageClass::Experience(
+                    crate::session::classifier::ExperienceKind::Correction,
+                )),
                 parts.get(1).unwrap_or(&"").to_string(),
             ),
             "decisions" => (

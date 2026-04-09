@@ -35,10 +35,15 @@ pub fn search(messages: &[Message], filters: &SearchFilters) -> Vec<SearchResult
             continue;
         }
         let msg_class = classify(msg, &filters.owner_name);
-        if let Some(required_class) = filters.message_class
-            && msg_class != required_class
-        {
-            continue;
+        if let Some(required_class) = filters.message_class {
+            let matches = if required_class.is_experience() {
+                msg_class.is_experience()
+            } else {
+                msg_class == required_class
+            };
+            if !matches {
+                continue;
+            }
         }
         let start = i.saturating_sub(CONTEXT_WINDOW);
         let end = (i + CONTEXT_WINDOW + 1).min(messages.len());

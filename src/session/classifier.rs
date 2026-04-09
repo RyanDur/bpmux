@@ -3,33 +3,71 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub enum MessageClass {
+pub enum ExperienceKind {
     Correction,
+    Question,
+    Teaching,
+    Redirect,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum MessageClass {
+    Experience(ExperienceKind),
     Decision,
     Discussion,
     Routine,
+}
+
+impl MessageClass {
+    pub fn is_experience(&self) -> bool {
+        matches!(self, MessageClass::Experience(_))
+    }
 }
 
 const CORRECTION_SIGNALS: &[&str] = &[
     "don't do",
     "dont do",
     "stop doing",
-    "you should",
-    "we should",
-    "remember,",
-    "are you sure",
     "not that way",
     "that's wrong",
-    "do you know the",
-    "do you know why",
+    "the problem is",
+];
+
+const QUESTION_SIGNALS: &[&str] = &[
+    "do you know",
+    "are you sure",
     "is that right",
     "why would",
     "why did you",
     "why are you",
-    "the problem is",
-    "go through",
+    "what do you think",
+    "have you considered",
+    "what if",
+    "how would you",
+];
+
+const TEACHING_SIGNALS: &[&str] = &[
+    "you should",
+    "we should",
+    "remember,",
+    "the reason is",
+    "this is because",
+    "the way to",
     "focus on",
     "quality is",
+    "go through",
+    "the right way",
+];
+
+const REDIRECT_SIGNALS: &[&str] = &[
+    "not that",
+    "instead,",
+    "rather,",
+    "actually,",
+    "let me clarify",
+    "what i meant",
+    "no,",
 ];
 
 const OPERATIONAL_PATTERNS: &[&str] = &[
@@ -58,6 +96,8 @@ const DECISION_SIGNALS: &[&str] = &[
     "accepted", "rejected", "closed", "filed", "accept", "ship it", "approved",
 ];
 
+const MIN_EXPERIENCE_LEN: usize = 15;
+
 pub fn classify(msg: &Message, owner_name: &str) -> MessageClass {
     if !msg.is_chat() {
         return MessageClass::Routine;
@@ -66,24 +106,28 @@ pub fn classify(msg: &Message, owner_name: &str) -> MessageClass {
     let sender = msg.from.split(':').next().unwrap_or(&msg.from);
     let text_lower = msg.text.to_lowercase();
 
-    if sender == owner_name {
-        let is_operational = OPERATIONAL_PATTERNS.iter().any(|p| text_lower.contains(p));
-        if is_operational {
-            return MessageClass::Discussion;
-        }
+    let is_operational = OPERATIONAL_PATTERNS.iter().any(|p| text_lower.contains(p));
+    if is_operational && sender == owner_name {
+        return MessageClass::Discussion;
+    }
 
-        let has_correction_signal = CORRECTION_SIGNALS.iter().any(|s| text_lower.contains(s));
-        if has_correction_signal && msg.text.len() > 20 {
-            return MessageClass::Correction;
+    if msg.text.len() >= MIN_EXPERIENCE_LEN {
+        if CORRECTION_SIGNALS.iter().any(|s| text_lower.contains(s)) {
+            return MessageClass::Experience(ExperienceKind::Correction);
         }
-
-        if DECISION_SIGNALS.iter().any(|s| text_lower.contains(s)) {
-            return MessageClass::Decision;
+        if QUESTION_SIGNALS.iter().any(|s| text_lower.contains(s)) {
+            return MessageClass::Experience(ExperienceKind::Question);
+        }
+        if TEACHING_SIGNALS.iter().any(|s| text_lower.contains(s)) {
+            return MessageClass::Experience(ExperienceKind::Teaching);
+        }
+        if REDIRECT_SIGNALS.iter().any(|s| text_lower.contains(s)) {
+            return MessageClass::Experience(ExperienceKind::Redirect);
         }
     }
 
     if DECISION_SIGNALS.iter().any(|s| text_lower.contains(s))
-        && (text_lower.contains('#') || text_lower.contains("story"))
+        && (sender == owner_name || text_lower.contains('#') || text_lower.contains("story"))
     {
         return MessageClass::Decision;
     }

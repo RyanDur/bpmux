@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use super::classifier::{MessageClass, classify};
+use super::classifier::{ExperienceKind, MessageClass, classify};
 use super::message::{Message, MessageType};
 use chrono::Utc;
 
@@ -15,39 +15,63 @@ fn msg(from: &str, text: &str) -> Message {
 }
 
 #[test]
-fn owner_why_question_is_correction() {
+fn owner_why_question_is_experience() {
     let m = msg(
         "ryan:human",
         "why did you do that instead of the simpler approach?",
     );
-    assert_eq!(classify(&m, "ryan"), MessageClass::Correction);
+    assert_eq!(
+        classify(&m, "ryan"),
+        MessageClass::Experience(ExperienceKind::Question)
+    );
 }
 
 #[test]
-fn owner_you_should_is_correction() {
+fn owner_you_should_is_teaching() {
     let m = msg("ryan:human", "you should restate before building");
-    assert_eq!(classify(&m, "ryan"), MessageClass::Correction);
+    assert_eq!(
+        classify(&m, "ryan"),
+        MessageClass::Experience(ExperienceKind::Teaching)
+    );
 }
 
 #[test]
-fn owner_go_through_is_correction() {
+fn owner_go_through_is_teaching() {
     let m = msg(
         "ryan:human",
         "design feedback should go through the designer",
     );
-    assert_eq!(classify(&m, "ryan"), MessageClass::Correction);
+    assert_eq!(
+        classify(&m, "ryan"),
+        MessageClass::Experience(ExperienceKind::Teaching)
+    );
 }
 
 #[test]
-fn owner_quality_is_correction() {
+fn owner_quality_is_teaching() {
     let m = msg("ryan:human", "quality is the goal. in everything");
-    assert_eq!(classify(&m, "ryan"), MessageClass::Correction);
+    assert_eq!(
+        classify(&m, "ryan"),
+        MessageClass::Experience(ExperienceKind::Teaching)
+    );
 }
 
 #[test]
-fn owner_focus_on_is_correction() {
+fn owner_focus_on_is_teaching() {
     let m = msg("ryan:human", "focus on the problem, not the fix");
-    assert_eq!(classify(&m, "ryan"), MessageClass::Correction);
+    assert_eq!(
+        classify(&m, "ryan"),
+        MessageClass::Experience(ExperienceKind::Teaching)
+    );
+}
+
+#[test]
+fn owner_dont_do_is_correction() {
+    let m = msg("ryan:human", "don't do that, it breaks the build");
+    assert_eq!(
+        classify(&m, "ryan"),
+        MessageClass::Experience(ExperienceKind::Correction)
+    );
 }
 
 #[test]
@@ -114,4 +138,44 @@ fn system_message_is_routine() {
         to: None,
     };
     assert_eq!(classify(&m, "ryan"), MessageClass::Routine);
+}
+
+// New: experiences from any sender
+
+#[test]
+fn agent_teaching_is_experience() {
+    let m = msg(
+        "dev:claude-code",
+        "you should use the Result type for error handling here",
+    );
+    assert_eq!(
+        classify(&m, "ryan"),
+        MessageClass::Experience(ExperienceKind::Teaching)
+    );
+}
+
+#[test]
+fn agent_question_is_experience() {
+    let m = msg(
+        "pm:claude-code",
+        "have you considered splitting this into two stories?",
+    );
+    assert_eq!(
+        classify(&m, "ryan"),
+        MessageClass::Experience(ExperienceKind::Question)
+    );
+}
+
+#[test]
+fn short_message_not_experience() {
+    let m = msg("ryan:human", "don't do it");
+    assert_eq!(classify(&m, "ryan"), MessageClass::Discussion,);
+}
+
+#[test]
+fn is_experience_helper() {
+    assert!(MessageClass::Experience(ExperienceKind::Correction).is_experience());
+    assert!(MessageClass::Experience(ExperienceKind::Question).is_experience());
+    assert!(!MessageClass::Discussion.is_experience());
+    assert!(!MessageClass::Decision.is_experience());
 }

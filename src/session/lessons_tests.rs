@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use super::classifier::MessageClass;
+use super::classifier::{ExperienceKind, MessageClass};
 use super::lessons::*;
 use super::message::{Message, MessageType};
 use chrono::Utc;
@@ -146,12 +146,12 @@ fn classifier_tags_search_result() {
         after: None,
         before: None,
         channel: None,
-        message_class: Some(MessageClass::Correction),
+        message_class: Some(MessageClass::Experience(ExperienceKind::Teaching)),
         owner_name: "ryan".to_string(),
     };
     let results = search(&messages, &filters);
     assert_eq!(results.len(), 1);
-    assert_eq!(results[0].message_class, MessageClass::Correction);
+    assert!(results[0].message_class.is_experience());
 }
 
 #[test]

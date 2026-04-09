@@ -64,17 +64,17 @@ fn track_agents_no_duplicates() {
 }
 
 #[test]
-fn build_nudge_text_single_correction() {
+fn build_nudge_text_single_experience() {
     let text = build_nudge_text(&["you should focus on the problem".to_string()]);
-    assert!(text.contains("1 correction noted"));
+    assert!(text.contains("1 experience noted"));
     assert!(text.contains("focus on the problem"));
     assert!(text.contains("save_lesson"));
 }
 
 #[test]
-fn build_nudge_text_multiple_corrections() {
+fn build_nudge_text_multiple_experiences() {
     let text = build_nudge_text(&["you should focus".to_string(), "quality is key".to_string()]);
-    assert!(text.contains("2 corrections noted"));
+    assert!(text.contains("2 experiences noted"));
     assert!(text.contains("1. you should focus"));
     assert!(text.contains("2. quality is key"));
 }

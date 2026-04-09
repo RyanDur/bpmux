@@ -70,7 +70,9 @@ pub async fn search_messages(
     match session.read_messages() {
         Ok(messages) => {
             let message_class = params.message_type.as_deref().and_then(|t| match t {
-                "correction" => Some(session::MessageClass::Correction),
+                "correction" | "experience" => Some(session::MessageClass::Experience(
+                    session::classifier::ExperienceKind::Correction,
+                )),
                 "decision" => Some(session::MessageClass::Decision),
                 "discussion" => Some(session::MessageClass::Discussion),
                 _ => None,
