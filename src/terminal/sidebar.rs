@@ -1,5 +1,15 @@
 use super::app::App;
 
+fn channel_sort_key(channel: &str) -> (u8, String) {
+    if channel == "broadcast" {
+        (0, channel.to_string())
+    } else if channel.contains('+') {
+        (2, channel.to_string())
+    } else {
+        (1, channel.to_string())
+    }
+}
+
 impl App {
     pub fn sidebar_channels(&self) -> Vec<String> {
         let mut result = vec![self.session_id.clone()];
@@ -15,7 +25,7 @@ impl App {
                 })
                 .cloned()
                 .collect();
-            channels.sort();
+            channels.sort_by_key(|ch| channel_sort_key(ch));
             result.extend(channels);
         }
         result
