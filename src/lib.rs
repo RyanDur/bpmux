@@ -51,6 +51,13 @@ enum Command {
     },
     /// Run in headless mode for agent testing (no terminal required)
     Test,
+    /// Print an agent's recent lessons to stdout for session-start auto-surface (#157)
+    Recall {
+        /// Role to surface lessons for (e.g. dev, pm, designer).
+        /// Defaults to BPMUX_ROLE env var if unset.
+        #[arg(long)]
+        role: Option<String>,
+    },
 }
 
 pub fn run() -> anyhow::Result<()> {
@@ -59,6 +66,34 @@ pub fn run() -> anyhow::Result<()> {
     let headless = matches!(cli.command, Some(Command::Test));
     if let Some(Command::Bridge { port, name }) = cli.command {
         return bridge::run_bridge(port, &name);
+    }
+
+    if let Some(Command::Recall { role }) = &cli.command {
+        let role = role
+            .clone()
+            .or_else(|| std::env::var("BPMUX_ROLE").ok())
+            .unwrap_or_default();
+        if role.is_empty() {
+            eprintln!("bpmux recall: no role specified (pass --role or set BPMUX_ROLE)");
+            return Ok(());
+        }
+        let base = match &cli.session_base {
+            Some(path) => std::path::PathBuf::from(path),
+            None => match std::env::var("BPMUX_SESSION_BASE") {
+                Ok(path) => std::path::PathBuf::from(path),
+                Err(_) => session::default_sessions_base()?,
+            },
+        };
+        // Read-only: don't create a new session just to recall lessons.
+        // If there's no current session, surface nothing — the hook will
+        // just print a "no prior lessons" line.
+        let session_dir = match session::resume_or_create_session(&base) {
+            Ok(dir) => dir,
+            Err(_) => return Ok(()),
+        };
+        let lessons = session::recall::surface_for_role(&session_dir, &role);
+        print!("{}", session::recall::format_for_surface(&role, &lessons));
+        return Ok(());
     }
 
     let base = match &cli.session_base {

@@ -6,6 +6,7 @@ pub mod instrumented_storage;
 pub mod lessons;
 pub mod log;
 pub mod message;
+pub mod recall;
 pub mod search;
 pub mod storage;
 
@@ -27,3 +28,5 @@ mod lessons_tests;
 mod log_tests;
 #[cfg(test)]
 mod message_tests;
+#[cfg(test)]
+mod recall_tests;
