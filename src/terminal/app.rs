@@ -37,59 +37,76 @@ pub fn channel_name(msg: &crate::session::Message, owner: &str) -> String {
 }
 
 pub struct App {
+    // ── Session identity ──
     pub session_dir: Option<PathBuf>,
+    pub peer_name: String,
+    pub session_id: String,
+
+    // ── Message state ──
     pub messages: Vec<Message>,
+    pub expanded_messages: HashSet<String>,
+    pub truncation_indicators: Vec<(u16, String)>,
+
+    // ── Input ──
     pub input: String,
     pub cursor_pos: usize,
     pub textarea: TextArea<'static>,
+    pub input_history: Vec<String>,
+    pub history_index: Option<usize>,
+    pub popup_selected: Option<usize>,
+
+    // ── Scroll ──
     pub scroll_offset: usize,
     pub max_scroll: usize,
     pub at_boundary: bool,
-    pub peer_name: String,
-    pub session_id: String,
-    pub should_quit: bool,
-    pub show_timestamps: bool,
     pub unread_count: usize,
-    pub input_history: Vec<String>,
-    pub history_index: Option<usize>,
-    pub peer_activity: HashMap<String, (String, Instant)>,
-    pub show_system_messages: bool,
-    pub expanded_messages: HashSet<String>,
-    pub dm_unread_from: Vec<String>,
-    pub dm_flash_until: Option<Instant>,
+
+    // ── Channel view ──
     pub active_channels: HashSet<String>,
     pub current_view: Option<String>,
-    pub popup_selected: Option<usize>,
-    pub show_help: bool,
+    pub send_target: Option<String>,
+    pub channel_unread: HashMap<String, usize>,
+
+    // ── Peers ──
+    pub peer_activity: HashMap<String, (String, Instant)>,
+    pub dm_unread_from: Vec<String>,
+    pub dm_flash_until: Option<Instant>,
+
+    // ── Sidebar ──
     pub sidebar_open: bool,
     pub sidebar_focused: bool,
     pub sidebar_selected: usize,
-    pub channel_unread: HashMap<String, usize>,
-    pub send_target: Option<String>,
-    /// Defaults to true — assume focused so we don't fire notifications on startup.
-    pub tui_focused: bool,
-    pub project_expanded: bool,
     pub sidebar_filter: String,
-    pub search_results: Vec<crate::session::SearchResult>,
-    pub search_selected: Option<usize>,
-    pub sidebar_area: Option<(u16, u16, u16, u16)>,
-    pub status_bar_area: Option<(u16, u16, u16, u16)>,
-    pub help_hint_col: Option<u16>,
-    /// Screen Y positions of "[+N lines]" truncation indicators and their message keys.
-    pub truncation_indicators: Vec<(u16, String)>,
-    pub p2p_command: Option<crate::transport::peer::P2pCommand>,
-    /// Live project state from GitHub issues.
-    pub project_state: Option<super::board::ProjectState>,
-    /// When true, the main area shows the project view instead of chat.
-    pub show_project_view: bool,
-    /// Cached project view content (fetched once on open, not per frame).
-    pub project_view_content: Option<String>,
-    /// Chat area position for title bar click detection.
-    pub chat_area: Option<(u16, u16, u16, u16)>,
-    pub should_reload: bool,
+    pub project_expanded: bool,
     pub direct_expanded: bool,
     pub groups_expanded: bool,
     pub system_expanded: bool,
+
+    // ── Search ──
+    pub search_results: Vec<crate::session::SearchResult>,
+    pub search_selected: Option<usize>,
+
+    // ── Project view ──
+    pub project_state: Option<super::board::ProjectState>,
+    pub show_project_view: bool,
+    pub project_view_content: Option<String>,
+
+    // ── Display toggles ──
+    pub show_timestamps: bool,
+    pub show_system_messages: bool,
+    pub show_help: bool,
+    pub tui_focused: bool,
+
+    // ── Layout positions (set by renderer) ──
+    pub sidebar_area: Option<(u16, u16, u16, u16)>,
+    pub status_bar_area: Option<(u16, u16, u16, u16)>,
+    pub chat_area: Option<(u16, u16, u16, u16)>,
+    pub help_hint_col: Option<u16>,
+
+    // ── Lifecycle ──
+    pub should_quit: bool,
+    pub should_reload: bool,
+    pub p2p_command: Option<crate::transport::peer::P2pCommand>,
 }
 
 impl App {
