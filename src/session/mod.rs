@@ -1,6 +1,7 @@
 pub mod awareness;
 pub mod bayes;
 pub mod classifier;
+pub mod instrumented_storage;
 pub mod lessons;
 pub mod log;
 pub mod message;

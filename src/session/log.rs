@@ -4,6 +4,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use thiserror::Error;
 use tokio::sync::broadcast;
 
+use crate::session::instrumented_storage::InstrumentedStorage;
 use crate::session::message::Message;
 use crate::session::storage::{FileStorage, Storage};
 
@@ -46,7 +47,8 @@ impl Session {
             .and_then(|n| n.to_str())
             .unwrap_or("unknown")
             .to_string();
-        let storage: Arc<dyn Storage> = Arc::new(FileStorage::new(dir.clone()));
+        let storage: Arc<dyn Storage> =
+            Arc::new(InstrumentedStorage::new(FileStorage::new(dir.clone())));
         Self {
             dir,
             id,
