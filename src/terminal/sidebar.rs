@@ -210,6 +210,19 @@ impl App {
     }
 
     pub fn sidebar_expand(&mut self) {
+        let channels = self.sidebar_channels();
+        if let Some(ch) = channels.get(self.sidebar_selected)
+            && is_section_header(ch)
+        {
+            if ch.contains("direct") {
+                self.direct_expanded = true;
+            } else if ch.contains("groups") {
+                self.groups_expanded = true;
+            } else if ch.contains("system") {
+                self.system_expanded = true;
+            }
+            return;
+        }
         self.project_expanded = true;
     }
 
