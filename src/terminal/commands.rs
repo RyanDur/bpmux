@@ -35,65 +35,33 @@ impl App {
             }
         }
 
-        if text == "/who" {
-            return self.handle_who();
-        }
-        if text == "/quit" {
-            return self.handle_quit();
-        }
-        if text == "/debug" {
-            return self.handle_debug();
-        }
-        if text.starts_with("/status ") {
-            return self.handle_status(text);
-        }
-        if let Some(rest) = text.strip_prefix("/to ") {
-            return self.handle_to_with_args(rest.to_string());
-        }
-        if text == "/to" {
-            return self.handle_to_bare();
-        }
-        if text == "/view" {
-            return self.handle_view_bare();
-        }
-        if let Some(arg) = text.strip_prefix("/view ") {
-            return self.handle_view_with_arg(arg.to_string());
-        }
-        if let Some(query) = text.strip_prefix("/search ") {
-            return self.handle_search(query.to_string());
-        }
-        if text == "/search" {
-            return self.handle_search_bare();
-        }
-        if text == "/lessons" {
-            return self.handle_lessons();
-        }
-        if let Some(peer) = text.strip_prefix("/lessons ") {
-            return self.handle_peer_lessons(peer.trim().to_string());
-        }
-        if text == "/board" {
-            return self.handle_board();
-        }
-        if text == "/roadmap" {
-            return self.handle_roadmap();
-        }
-        if text == "/session" {
-            return self.handle_session();
-        }
-        if let Some(args) = text.strip_prefix("/join ") {
-            return self.handle_join(args.to_string());
-        }
-        if text == "/join" {
-            return self.handle_join_bare();
-        }
-        if let Some(code) = text.strip_prefix("/accept ") {
-            return self.handle_accept(code.trim().to_string());
-        }
-        if text == "/accept" {
-            return self.handle_accept_bare();
-        }
         if text.starts_with('/') {
-            return self.handle_unknown_command(text);
+            let (cmd, args) = match text.find(' ') {
+                Some(i) => (&text[..i], text[i + 1..].trim()),
+                None => (text.as_str(), ""),
+            };
+            return match cmd {
+                "/who" => self.handle_who(),
+                "/quit" => self.handle_quit(),
+                "/debug" => self.handle_debug(),
+                "/status" => self.handle_status(text),
+                "/to" if !args.is_empty() => self.handle_to_with_args(args.to_string()),
+                "/to" => self.handle_to_bare(),
+                "/view" if !args.is_empty() => self.handle_view_with_arg(args.to_string()),
+                "/view" => self.handle_view_bare(),
+                "/search" if !args.is_empty() => self.handle_search(args.to_string()),
+                "/search" => self.handle_search_bare(),
+                "/lessons" if !args.is_empty() => self.handle_peer_lessons(args.trim().to_string()),
+                "/lessons" => self.handle_lessons(),
+                "/board" => self.handle_board(),
+                "/roadmap" => self.handle_roadmap(),
+                "/session" => self.handle_session(),
+                "/join" if !args.is_empty() => self.handle_join(args.to_string()),
+                "/join" => self.handle_join_bare(),
+                "/accept" if !args.is_empty() => self.handle_accept(args.trim().to_string()),
+                "/accept" => self.handle_accept_bare(),
+                _ => self.handle_unknown_command(text),
+            };
         }
 
         self.send_chat_message(text)
