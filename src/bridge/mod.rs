@@ -33,6 +33,7 @@ pub struct BridgeServer {
     name: Arc<Mutex<String>>,
     peer: Arc<Mutex<Option<Peer<RoleServer>>>>,
     ws_tx: Arc<Mutex<Option<WsSink>>>,
+    last_channel: Arc<Mutex<Option<Vec<String>>>>,
 }
 
 pub(crate) fn resolve_bridge_name(raw: &str) -> String {
@@ -52,6 +53,7 @@ impl BridgeServer {
             name: Arc::new(Mutex::new(resolve_bridge_name(&name))),
             peer: Arc::new(Mutex::new(None)),
             ws_tx: Arc::new(Mutex::new(None)),
+            last_channel: Arc::new(Mutex::new(None)),
         }
     }
 }
@@ -69,16 +71,21 @@ async fn ws_send(ws_tx: &Mutex<Option<WsSink>>, payload: String) -> Result<(), S
 async fn handle_send(
     args: &serde_json::Map<String, serde_json::Value>,
     ws_tx: &Mutex<Option<WsSink>>,
+    last_channel: &Mutex<Option<Vec<String>>>,
 ) -> Result<String, String> {
     let text = args
         .get("text")
         .and_then(|v| v.as_str())
         .ok_or("missing 'text' argument")?;
-    let to = args.get("to").and_then(|v| v.as_array()).map(|arr| {
+    let explicit_to = args.get("to").and_then(|v| v.as_array()).map(|arr| {
         arr.iter()
             .filter_map(|v| v.as_str().map(String::from))
-            .collect()
+            .collect::<Vec<String>>()
     });
+    let to = match explicit_to {
+        Some(t) => Some(t),
+        None => last_channel.lock().await.clone(),
+    };
     let message_type = args
         .get("message_type")
         .and_then(|v| v.as_str())
@@ -351,6 +358,7 @@ async fn run_ws_connection(
     name: Arc<Mutex<String>>,
     peer: Peer<RoleServer>,
     ws_tx_store: Arc<Mutex<Option<WsSink>>>,
+    last_channel: Arc<Mutex<Option<Vec<String>>>>,
 ) {
     let ws_url = format!("ws://127.0.0.1:{port}/ws");
     let (ws_stream, _) = match tokio_tungstenite::connect_async(&ws_url).await {
@@ -423,6 +431,20 @@ async fn run_ws_connection(
                     continue;
                 }
 
+                // Store channel for reply-to-channel default
+                if let Some(recipients) = &to {
+                    let mut reply_to: Vec<String> = recipients.clone();
+                    if !reply_to.contains(&from_short.to_string()) {
+                        reply_to.push(from_short.to_string());
+                    }
+                    let current_name = name.lock().await;
+                    reply_to.retain(|r| r != current_name.as_str());
+                    drop(current_name);
+                    *last_channel.lock().await = Some(reply_to);
+                } else {
+                    *last_channel.lock().await = None;
+                }
+
                 let notification = CustomNotification::new(
                     "notifications/claude/channel",
                     Some(json!({
@@ -472,13 +494,21 @@ impl ServerHandler for BridgeServer {
         let name = self.name.clone();
         let peer_store = self.peer.clone();
         let ws_tx_store = self.ws_tx.clone();
+        let last_channel = self.last_channel.clone();
 
         async move {
             *peer_store.lock().await = Some(peer.clone());
 
             tokio::spawn(async move {
                 loop {
-                    run_ws_connection(port, name.clone(), peer.clone(), ws_tx_store.clone()).await;
+                    run_ws_connection(
+                        port,
+                        name.clone(),
+                        peer.clone(),
+                        ws_tx_store.clone(),
+                        last_channel.clone(),
+                    )
+                    .await;
                     eprintln!("Bridge: reconnecting in 3 seconds...");
                     tokio::time::sleep(std::time::Duration::from_secs(3)).await;
                 }
@@ -536,11 +566,12 @@ impl ServerHandler for BridgeServer {
         let port = self.port;
         let ws_tx = self.ws_tx.clone();
         let name = self.name.clone();
+        let last_channel = self.last_channel.clone();
 
         async move {
             let args = request.arguments.unwrap_or_default();
             let result = match request.name.as_ref() {
-                "send_message" => handle_send(&args, &ws_tx).await,
+                "send_message" => handle_send(&args, &ws_tx, &last_channel).await,
                 "set_name" => handle_set_name(&args, &name, &ws_tx).await,
                 "set_status" => handle_set_status(&args, &ws_tx).await,
                 "read_messages" => handle_read_messages(&args, port).await,
