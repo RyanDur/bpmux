@@ -113,7 +113,7 @@ pub async fn get_lessons(
     match session.read_messages() {
         Ok(messages) => {
             let mut index = session::lessons::build_index(&messages, &session.owner_name);
-            let saved = session::lessons::load_index(&session.dir);
+            let saved = session.storage.load_lessons();
             index.lessons = saved.lessons;
 
             // If limit is set, return top N lessons ranked by reinforcement
@@ -191,14 +191,14 @@ pub async fn get_peer_lessons(
     Query(params): Query<PeerLessonsQuery>,
 ) -> impl IntoResponse {
     let Some(peer_name) = params.peer else {
-        let peers = session::lessons::list_peer_names(&session.dir);
+        let peers = session.storage.list_peers();
         return (
             StatusCode::OK,
             format!("available peers: {}", peers.join(", ")),
         );
     };
 
-    let index = session::lessons::load_peer_index(&session.dir, &peer_name);
+    let index = session.storage.load_peer_lessons(&peer_name);
     let groups = session::lessons::group_by_topic(&index);
     if groups.is_empty() {
         return (
@@ -303,25 +303,17 @@ pub async fn post_lesson(
     State(session): State<Arc<session::Session>>,
     Json(payload): Json<SaveLessonPayload>,
 ) -> impl IntoResponse {
-    if let Some(dir) = Some(&session.dir) {
-        match session::lessons::add_lesson(
-            dir,
-            &payload.topic,
-            &payload.lesson,
-            &payload.author_role,
-            payload.evidence.unwrap_or_default(),
-        ) {
-            Ok(()) => (StatusCode::CREATED, "lesson saved".to_string()),
-            Err(e) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("failed to save: {e}"),
-            ),
-        }
-    } else {
-        (
+    match session.storage.add_lesson(
+        &payload.topic,
+        &payload.lesson,
+        &payload.author_role,
+        payload.evidence.unwrap_or_default(),
+    ) {
+        Ok(()) => (StatusCode::CREATED, "lesson saved".to_string()),
+        Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            "no session directory".to_string(),
-        )
+            format!("failed to save: {e}"),
+        ),
     }
 }
 

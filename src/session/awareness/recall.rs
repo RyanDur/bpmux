@@ -30,7 +30,7 @@ impl RecallSystem {
     pub fn on_message(&mut self, session: &Session, msg: &Message, sender: &str, owner_name: &str) {
         // Refresh cache when new lessons are saved
         if sender == "bpmux" && msg.text.contains("lesson saved") {
-            self.cached_index = lessons::load_index(&session.dir);
+            self.cached_index = session.storage.load_lessons();
         }
 
         if !msg.is_chat()
@@ -79,7 +79,9 @@ impl RecallSystem {
             let _ = session.broadcast(&nudge);
             self.surfaced_topics.insert(lesson.topic.clone());
             self.recall_count += 1;
-            save_surfaced_topics(&session.dir, &self.surfaced_topics);
+            if let Ok(json) = serde_json::to_string(&self.surfaced_topics) {
+                session.storage.save_state("surfaced-topics", &json);
+            }
         }
     }
 }
@@ -114,15 +116,5 @@ fn load_surfaced_topics(session_dir: &Path) -> HashSet<String> {
         serde_json::from_str(&data).unwrap_or_default()
     } else {
         HashSet::new()
-    }
-}
-
-fn save_surfaced_topics(session_dir: &Path, topics: &HashSet<String>) {
-    let path = session_dir.join("surfaced-topics.json");
-    let tmp = session_dir.join("surfaced-topics.json.tmp");
-    if let Ok(json) = serde_json::to_string(topics)
-        && std::fs::write(&tmp, &json).is_ok()
-    {
-        let _ = std::fs::rename(tmp, path);
     }
 }
