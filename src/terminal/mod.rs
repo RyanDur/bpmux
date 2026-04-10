@@ -10,6 +10,7 @@ mod sidebar;
 mod table;
 mod theme;
 pub mod ui;
+pub mod ui_state;
 
 pub use app::App;
 pub use event::run_tui;

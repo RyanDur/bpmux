@@ -105,6 +105,7 @@ pub async fn run_tui(
                     handle_terminal_event(ev, app, session)?;
                 }
                 if app.should_quit {
+                    super::ui_state::UiState::save(app, session);
                     return Ok(());
                 }
                 // Check for P2P commands after handling input
@@ -156,6 +157,7 @@ pub async fn run_tui(
                     std::future::pending::<()>().await;
                 }
             } => {
+                super::ui_state::UiState::save(app, session);
                 app.should_reload = true;
                 return Ok(());
             }
