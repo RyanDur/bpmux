@@ -5,6 +5,7 @@ pub mod lessons;
 pub mod log;
 pub mod message;
 pub mod search;
+pub mod storage;
 
 pub use classifier::{MessageClass, classify};
 pub use log::{
