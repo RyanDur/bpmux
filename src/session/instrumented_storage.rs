@@ -1,6 +1,12 @@
 //! Decorator over Storage that logs timing and data volume.
+//!
+//! Instrumentation is opt-in via the `BPMUX_STORAGE_LOG` environment variable.
+//! When set, it names a file path that each storage operation appends a line
+//! to. When unset, logging is a no-op — important because the TUI owns the
+//! terminal and any write to stdout/stderr corrupts the rendered frame.
 
-use std::path::Path;
+use std::io::Write;
+use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use super::lessons::LessonIndex;
@@ -11,21 +17,36 @@ use super::storage::Storage;
 
 pub struct InstrumentedStorage<S: Storage> {
     inner: S,
+    log_path: Option<PathBuf>,
 }
 
 impl<S: Storage> InstrumentedStorage<S> {
     pub fn new(inner: S) -> Self {
-        // Log startup metrics
-        if let Ok(messages) = inner.read_messages() {
-            let lessons = inner.load_lessons();
-            eprintln!(
-                "Storage: {} messages, {} experiences, {} lessons",
+        let log_path = std::env::var("BPMUX_STORAGE_LOG").ok().map(PathBuf::from);
+        let this = Self { inner, log_path };
+        if let Ok(messages) = this.inner.read_messages() {
+            let lessons = this.inner.load_lessons();
+            this.log(&format!(
+                "startup: {} messages, {} experiences, {} lessons",
                 messages.len(),
                 lessons.experiences.len(),
                 lessons.lessons.len(),
-            );
+            ));
         }
-        Self { inner }
+        this
+    }
+
+    fn log(&self, line: &str) {
+        let Some(path) = &self.log_path else {
+            return;
+        };
+        if let Ok(mut file) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+        {
+            let _ = writeln!(file, "{line}");
+        }
     }
 }
 
@@ -33,10 +54,10 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
     fn append_message(&self, msg: &Message) -> Result<(), LogError> {
         let start = Instant::now();
         let result = self.inner.append_message(msg);
-        eprintln!(
-            "Storage: append_message {:.1}ms",
+        self.log(&format!(
+            "append_message {:.1}ms",
             start.elapsed().as_secs_f64() * 1000.0
-        );
+        ));
         result
     }
 
@@ -44,11 +65,11 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
         let start = Instant::now();
         let result = self.inner.read_messages();
         if let Ok(ref msgs) = result {
-            eprintln!(
-                "Storage: read_messages {} msgs {:.1}ms",
+            self.log(&format!(
+                "read_messages {} msgs {:.1}ms",
                 msgs.len(),
                 start.elapsed().as_secs_f64() * 1000.0
-            );
+            ));
         }
         result
     }
@@ -56,33 +77,33 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
     fn search_messages(&self, filters: &SearchFilters) -> Vec<SearchResult> {
         let start = Instant::now();
         let results = self.inner.search_messages(filters);
-        eprintln!(
-            "Storage: search '{}' → {} results {:.1}ms",
+        self.log(&format!(
+            "search '{}' → {} results {:.1}ms",
             filters.query,
             results.len(),
             start.elapsed().as_secs_f64() * 1000.0
-        );
+        ));
         results
     }
 
     fn load_lessons(&self) -> LessonIndex {
         let start = Instant::now();
         let index = self.inner.load_lessons();
-        eprintln!(
-            "Storage: load_lessons {} lessons {:.1}ms",
+        self.log(&format!(
+            "load_lessons {} lessons {:.1}ms",
             index.lessons.len(),
             start.elapsed().as_secs_f64() * 1000.0
-        );
+        ));
         index
     }
 
     fn save_lessons(&self, index: &LessonIndex) -> Result<(), std::io::Error> {
         let start = Instant::now();
         let result = self.inner.save_lessons(index);
-        eprintln!(
-            "Storage: save_lessons {:.1}ms",
+        self.log(&format!(
+            "save_lessons {:.1}ms",
             start.elapsed().as_secs_f64() * 1000.0
-        );
+        ));
         result
     }
 
@@ -95,22 +116,22 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
     ) -> Result<(), std::io::Error> {
         let start = Instant::now();
         let result = self.inner.add_lesson(topic, lesson, author_role, evidence);
-        eprintln!(
-            "Storage: add_lesson '{}' {:.1}ms",
+        self.log(&format!(
+            "add_lesson '{}' {:.1}ms",
             topic,
             start.elapsed().as_secs_f64() * 1000.0
-        );
+        ));
         result
     }
 
     fn load_peer_lessons(&self, peer: &str) -> LessonIndex {
         let start = Instant::now();
         let index = self.inner.load_peer_lessons(peer);
-        eprintln!(
-            "Storage: load_peer_lessons '{}' {:.1}ms",
+        self.log(&format!(
+            "load_peer_lessons '{}' {:.1}ms",
             peer,
             start.elapsed().as_secs_f64() * 1000.0
-        );
+        ));
         index
     }
 
