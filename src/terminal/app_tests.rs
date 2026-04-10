@@ -1178,13 +1178,22 @@ fn all_command_toggles_filter_state() {
 }
 
 #[test]
-fn all_command_posts_state_message_to_pane() {
+fn all_command_does_not_post_to_pane() {
+    // Designer flagged 2026-04-10 that the toggle confirmation message
+    // was "noise about a noise filter" — the status bar already shows
+    // "N hidden" / "showing all", so the chat-pane line was redundant.
+    // The /all command now flips state silently. This test guards
+    // against regressing the redundant feedback.
     let mut app = test_app();
+    let before = app.messages.len();
     app.input = "/all".to_string();
     app.submit_message();
-    let last = app.messages.last().unwrap();
-    assert!(last.text.starts_with("/all:"));
-    assert!(last.text.contains("showing all"));
+    assert_eq!(
+        app.messages.len(),
+        before,
+        "/all should flip state silently (status bar carries the feedback)"
+    );
+    assert!(app.show_all_classes, "state still flipped");
 }
 
 #[test]
@@ -1216,4 +1225,95 @@ fn to_command_sets_explicit_privacy_flag() {
         "/to must set explicit_privacy=true for privacy-intent detection"
     );
     assert_eq!(msg.to, Some(vec!["pm".to_string()]));
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// #164 — command UX cleanup tests
+// ─────────────────────────────────────────────────────────────────────
+
+/// `/help` returns a non-empty command list inline (acceptance criterion).
+#[test]
+fn help_command_lists_commands() {
+    let mut app = test_app();
+    app.input = "/help".to_string();
+    app.submit_message();
+    let last = app.messages.last().expect("/help should post a message");
+    assert!(
+        last.text.starts_with("Commands:"),
+        "/help output should start with 'Commands:' header, got: {}",
+        last.text
+    );
+    // Every registered command should appear in the help output.
+    for (name, _) in SLASH_COMMANDS {
+        assert!(
+            last.text.contains(name),
+            "/help should include {name}, got: {}",
+            last.text
+        );
+    }
+}
+
+/// `/help` is sourced from `SLASH_COMMANDS` so it can never drift from
+/// the `?` keybind overlay (#164 single source of truth requirement).
+#[test]
+fn help_command_includes_help_itself() {
+    let mut app = test_app();
+    app.input = "/help".to_string();
+    app.submit_message();
+    let last = app.messages.last().unwrap();
+    assert!(
+        last.text.contains("/help"),
+        "/help should list itself (it's in SLASH_COMMANDS)"
+    );
+}
+
+/// Each command that previously had a `*_bare` sibling now handles the
+/// empty-args case from a single dispatch arm. Verifies that the
+/// dispatcher routes the bare invocation through the same handler as
+/// the with-args invocation, and that the handler returns its usage
+/// string when args are missing.
+///
+/// This is the regression guard for the #164 collapse: if anyone tries
+/// to re-add a `*_bare` arm to the dispatcher, this test still passes
+/// (it's a behavior test, not a structural test) — the structural
+/// guarantee comes from the dispatch table itself, which now has 1 arm
+/// per command.
+#[test]
+fn bare_commands_show_usage_from_single_handler() {
+    let cases = [
+        ("/to", "Usage: /to"),
+        ("/join", "Usage: /join"),
+        ("/accept", "Usage: /accept"),
+        ("/share", "/share"), // share usage uses different prefix
+        ("/search", "Usage: /search"),
+    ];
+    for (cmd, expected_prefix) in cases {
+        let mut app = test_app();
+        app.input = cmd.to_string();
+        app.submit_message();
+        let last = app.messages.last().unwrap();
+        assert!(
+            last.text.contains(expected_prefix),
+            "{cmd} ({} chars) bare invocation should show usage containing '{expected_prefix}', got: {}",
+            cmd.len(),
+            last.text
+        );
+    }
+}
+
+/// `/view` bare lists channels (its bare form is meaningful, not a
+/// usage stub). The collapse merged the listing logic into the
+/// single-arm handler, so verify the listing behavior survived.
+#[test]
+fn view_bare_lists_channels() {
+    let mut app = test_app();
+    app.input = "/view".to_string();
+    app.submit_message();
+    let last = app.messages.last().unwrap();
+    // With no active channels, the listing falls through to "No channels yet."
+    assert!(
+        last.text.contains("channels") || last.text.contains("No channels"),
+        "/view bare should list channels or report none, got: {}",
+        last.text
+    );
 }

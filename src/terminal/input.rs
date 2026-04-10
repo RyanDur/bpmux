@@ -1,21 +1,36 @@
 use super::app::App;
 use tui_textarea::CursorMove;
 
-/// Registered slash commands with brief descriptions for the popup.
+/// Registered slash commands with brief one-line usage descriptions.
+///
+/// **Single source of truth (#164)** — used by:
+/// - the textarea popup completion (this module)
+/// - the `?` keybind help overlay (`ui.rs::render_help_overlay`)
+/// - the `/help` slash command (`commands.rs::handle_help`)
+///
+/// Adding a new command means adding ONE line here. The popup, overlay,
+/// and `/help` all pick it up automatically — no parallel lists to keep
+/// in sync.
+///
+/// Convention: descriptions are short, sentence-case, no trailing period,
+/// fit on one line. Multi-arg commands use comma separators in usage hints
+/// to match the established `/to dev,pm` pattern.
 pub(super) const SLASH_COMMANDS: &[(&str, &str)] = &[
-    ("/to", "send to recipients"),
-    ("/view", "filter view by channel"),
-    ("/share", "propagate to wider scope (#160)"),
-    ("/all", "toggle classifier view filter (#161)"),
-    ("/search", "search the log"),
+    ("/to", "send to recipients (comma-separated)"),
+    ("/share", "propagate a message to a wider scope"),
+    ("/view", "list channels or switch view"),
+    ("/all", "toggle classifier-driven view filter"),
+    ("/search", "search the conversation log"),
+    ("/lessons", "show team lessons (or peer's with arg)"),
     ("/board", "show project board"),
     ("/roadmap", "show project roadmap"),
     ("/status", "declare your status"),
     ("/who", "list participants"),
-    ("/session", "create P2P session"),
-    ("/join", "join a remote session"),
-    ("/accept", "accept connection answer"),
-    ("/debug", "toggle system messages"),
+    ("/session", "create a P2P session"),
+    ("/join", "join a remote P2P session"),
+    ("/accept", "complete a P2P handshake"),
+    ("/debug", "toggle system message visibility"),
+    ("/help", "show this list"),
     ("/quit", "exit bpmux"),
 ];
 

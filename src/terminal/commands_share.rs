@@ -25,6 +25,9 @@ impl App {
     ///   because there's no thread to reference).
     pub(super) fn handle_share(&mut self, rest: String) -> Option<Message> {
         let rest = rest.trim();
+        if rest.is_empty() {
+            return self.show_share_usage();
+        }
         // Parse target scope (first token) and optional body (rest).
         let (scope_str, body_opt) = match rest.split_once(' ') {
             Some((s, b)) => (s, Some(b.trim())),
@@ -143,10 +146,6 @@ impl App {
         self.scroll_offset = 0;
         self.unread_count = 0;
         Some(msg)
-    }
-
-    pub(super) fn handle_share_bare(&mut self) -> Option<Message> {
-        self.show_share_usage()
     }
 
     pub(super) fn show_share_usage(&mut self) -> Option<Message> {

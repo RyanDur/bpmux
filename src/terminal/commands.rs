@@ -1,5 +1,6 @@
 use super::app::App;
 use super::board;
+use super::input::SLASH_COMMANDS;
 use crate::session::{Message, MessageType};
 use crate::transport::peer::P2pCommand;
 use chrono::Utc;
@@ -43,25 +44,20 @@ impl App {
             return match cmd {
                 "/who" => self.handle_who(),
                 "/quit" => self.handle_quit(),
+                "/help" => self.handle_help(),
                 "/debug" => self.handle_debug(),
                 "/status" => self.handle_status(text),
-                "/to" if !args.is_empty() => self.handle_to_with_args(args.to_string()),
-                "/to" => self.handle_to_bare(),
-                "/view" if !args.is_empty() => self.handle_view_with_arg(args.to_string()),
-                "/view" => self.handle_view_bare(),
-                "/search" if !args.is_empty() => self.handle_search(args.to_string()),
-                "/search" => self.handle_search_bare(),
+                "/to" => self.handle_to(args.to_string()),
+                "/view" => self.handle_view(args.to_string()),
+                "/search" => self.handle_search(args.to_string()),
                 "/lessons" if !args.is_empty() => self.handle_peer_lessons(args.trim().to_string()),
                 "/lessons" => self.handle_lessons(),
                 "/board" => self.handle_board(),
                 "/roadmap" => self.handle_roadmap(),
                 "/session" => self.handle_session(),
-                "/join" if !args.is_empty() => self.handle_join(args.to_string()),
-                "/join" => self.handle_join_bare(),
-                "/accept" if !args.is_empty() => self.handle_accept(args.trim().to_string()),
-                "/accept" => self.handle_accept_bare(),
-                "/share" if !args.is_empty() => self.handle_share(args.to_string()),
-                "/share" => self.handle_share_bare(),
+                "/join" => self.handle_join(args.to_string()),
+                "/accept" => self.handle_accept(args.trim().to_string()),
+                "/share" => self.handle_share(args.to_string()),
                 "/all" => self.handle_toggle_all(),
                 _ => self.handle_unknown_command(text),
             };
@@ -122,7 +118,7 @@ impl App {
         Some(msg)
     }
 
-    fn handle_to_with_args(&mut self, rest: String) -> Option<Message> {
+    fn handle_to(&mut self, rest: String) -> Option<Message> {
         let rest = rest.trim_start();
         let Some((recipients_str, body)) = rest.split_once(' ') else {
             return self.show_to_usage();
@@ -162,10 +158,6 @@ impl App {
         Some(msg)
     }
 
-    fn handle_to_bare(&mut self) -> Option<Message> {
-        self.show_to_usage()
-    }
-
     fn show_to_usage(&mut self) -> Option<Message> {
         self.system_message(
             "Usage: /to <recipients> <message>. Example: /to dev,pm hello".to_string(),
@@ -174,23 +166,22 @@ impl App {
         None
     }
 
-    fn handle_view_bare(&mut self) -> Option<Message> {
-        // List available channels
-        let mut channel_names: Vec<&str> =
-            self.active_channels.iter().map(|s| s.as_str()).collect();
-        channel_names.sort();
-        let list = if channel_names.is_empty() {
-            "No channels yet.".to_string()
-        } else {
-            format!("Available channels: {}", channel_names.join(", "))
-        };
-        self.system_message(list);
-        self.clear_input();
-        None
-    }
-
-    fn handle_view_with_arg(&mut self, arg: String) -> Option<Message> {
+    fn handle_view(&mut self, arg: String) -> Option<Message> {
         let arg = arg.trim();
+        if arg.is_empty() {
+            // List available channels (the bare-form behavior)
+            let mut channel_names: Vec<&str> =
+                self.active_channels.iter().map(|s| s.as_str()).collect();
+            channel_names.sort();
+            let list = if channel_names.is_empty() {
+                "No channels yet.".to_string()
+            } else {
+                format!("Available channels: {}", channel_names.join(", "))
+            };
+            self.system_message(list);
+            self.clear_input();
+            return None;
+        }
         if arg == "all" {
             self.current_view = None;
             self.scroll_offset = 0;
@@ -251,8 +242,9 @@ impl App {
     }
 
     fn handle_join(&mut self, args: String) -> Option<Message> {
+        let args = args.trim();
         let parts: Vec<&str> = args.splitn(2, ' ').collect();
-        if parts.len() < 2 {
+        if args.is_empty() || parts.len() < 2 {
             self.system_message("Usage: /join <passphrase> <offer-code>".to_string());
             self.clear_input();
             return None;
@@ -270,21 +262,15 @@ impl App {
         None
     }
 
-    fn handle_join_bare(&mut self) -> Option<Message> {
-        self.system_message("Usage: /join <passphrase> <offer-code>".to_string());
-        self.clear_input();
-        None
-    }
-
     fn handle_accept(&mut self, answer_code: String) -> Option<Message> {
+        let answer_code = answer_code.trim().to_string();
+        if answer_code.is_empty() {
+            self.system_message("Usage: /accept <answer-code>".to_string());
+            self.clear_input();
+            return None;
+        }
         self.system_message("Accepting answer... (establishing connection)".to_string());
         self.p2p_command = Some(P2pCommand::AcceptAnswer { answer_code });
-        self.clear_input();
-        None
-    }
-
-    fn handle_accept_bare(&mut self) -> Option<Message> {
-        self.system_message("Usage: /accept <answer-code>".to_string());
         self.clear_input();
         None
     }
@@ -293,20 +279,31 @@ impl App {
     /// Default state: filter ON, Routine + bpmux-nudges hidden from your
     /// pane. `/all` once flips to "show everything" mode. `/all` again
     /// flips back to filtered.
+    ///
+    /// No system_message — the status bar already shows "N hidden" /
+    /// "showing all" so the chat-pane line was redundant feedback (the
+    /// "noise about a noise filter" anti-pattern designer flagged on
+    /// 2026-04-10). Removing the source beats adding a classifier rule.
     fn handle_toggle_all(&mut self) -> Option<Message> {
         self.show_all_classes = !self.show_all_classes;
-        let state = if self.show_all_classes {
-            "showing all messages including Routine-class and bpmux nudges"
-        } else {
-            "filter re-engaged: Routine-class and bpmux nudges hidden"
-        };
-        self.system_message(format!("/all: {state}"));
+        self.clear_input();
+        None
+    }
+
+    /// `/help` (#164) — print the slash-command list inline in the chat
+    /// pane. Sources from `SLASH_COMMANDS` so this list and the `?`
+    /// overlay can never drift again.
+    fn handle_help(&mut self) -> Option<Message> {
+        self.system_message(format_command_list());
         self.clear_input();
         None
     }
 
     fn handle_unknown_command(&mut self, text: String) -> Option<Message> {
-        self.system_message(format!("Unknown command: {}. Press ? for help.", text));
+        self.system_message(format!(
+            "Unknown command: {}. Type /help or press ? for the command list.",
+            text
+        ));
         self.clear_input();
         None
     }
@@ -358,6 +355,26 @@ impl App {
         self.history_index = None;
         Some(msg)
     }
+}
+
+/// Build the slash-command list text from `SLASH_COMMANDS`. Used by
+/// `/help` (chat-pane) and `?` keybind (overlay) so they can never drift
+/// (#164). Format: `Commands:` header followed by `  /name — description`
+/// lines, aligned on the longest command name for readability.
+pub(super) fn format_command_list() -> String {
+    let mut out = String::from("Commands:\n");
+    let widest = SLASH_COMMANDS
+        .iter()
+        .map(|(name, _)| name.len())
+        .max()
+        .unwrap_or(0);
+    for (name, desc) in SLASH_COMMANDS {
+        out.push_str(&format!("  {name:<widest$}  {desc}\n"));
+    }
+    // Strip the trailing newline so the system_message doesn't render
+    // an empty line at the bottom.
+    out.pop();
+    out
 }
 
 /// Parse an optional `@role ` prefix from chat input (#158). Returns

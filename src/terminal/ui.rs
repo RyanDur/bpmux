@@ -9,6 +9,7 @@ use ratatui::{
 use crate::session;
 use crate::terminal::app::App;
 use crate::terminal::chat;
+use crate::terminal::commands::format_command_list;
 use crate::terminal::sidebar;
 use crate::terminal::status_bar;
 
@@ -130,22 +131,14 @@ fn render_popup(frame: &mut Frame, app: &App, input_area: Rect) {
 
 fn render_help_overlay(frame: &mut Frame, app: &App, area: Rect) {
     if app.show_help {
-        let help_text = "\
-Commands:
-  /to <who> <msg>   send to recipients
-  /view [channel]   filter by channel
-  /board   project board   /who    participants
-  /session create P2P      /join   join remote
-  /accept  complete P2P    /status set status
-  /debug   system msgs     /quit   exit
-
-Keys:
-  Enter    send / expand    Esc     clear input
-  Ctrl+U   scroll up        Ctrl+D  scroll down
-  \u{2325}1       channel sidebar   Ctrl+T  timestamps
-  Ctrl+C   quit (empty)     ?  this overlay
-
-Press any key to close";
+        // Source the command list from `SLASH_COMMANDS` (#164) so the
+        // overlay and the `/help` slash command never drift.
+        let mut help_text = format_command_list();
+        help_text.push_str(
+            "\n\nKeys:\n  Enter    send / expand    Esc     clear input\n  \
+Ctrl+U   scroll up        Ctrl+D  scroll down\n  \u{2325}1       channel sidebar   \
+Ctrl+T  timestamps\n  Ctrl+C   quit (empty)     ?  this overlay\n\nPress any key to close",
+        );
 
         let help_lines: Vec<Line> = help_text
             .lines()
