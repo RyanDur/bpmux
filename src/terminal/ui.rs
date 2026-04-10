@@ -132,8 +132,10 @@ fn render_popup(frame: &mut Frame, app: &App, input_area: Rect) {
 fn render_help_overlay(frame: &mut Frame, app: &App, area: Rect) {
     if app.show_help {
         // Source the command list from `SLASH_COMMANDS` (#164) so the
-        // overlay and the `/help` slash command never drift.
-        let mut help_text = format_command_list();
+        // overlay and the `/help` slash command never drift. Two-column
+        // form to fit alongside the keys section in the 24-row terminal
+        // budget — full descriptions live in the `/help` chat output.
+        let mut help_text = format_command_list(2);
         help_text.push_str(
             "\n\nKeys:\n  Enter    send / expand    Esc     clear input\n  \
 Ctrl+U   scroll up        Ctrl+D  scroll down\n  \u{2325}1       channel sidebar   \
