@@ -109,7 +109,7 @@ If you introduce a new observability stream (trace IDs, peer-relay metrics, clas
 4. **Timestamped lines**
 5. **Silent error handling**
 
-A future story (`docs/research/architecture/2026-04-03-...` — TBD) may consolidate these into a single `BPMUX_LOG=path[:domain1,domain2]` scheme once we have four or more. For now, one env var per sink is simpler.
+A future story (TBD) may consolidate these into a single `BPMUX_LOG=path[:domain1,domain2]` scheme once we have four or more. For now, one env var per sink is simpler.
 
 ## When NOT to use diag
 
@@ -134,4 +134,3 @@ Any new `eprintln!` outside these contexts is a regression. Add it to your PR re
 - Commit `928cbc4` — InstrumentedStorage fix (BPMUX_STORAGE_LOG)
 - Commit `adbd76e` — Background eprintln cleanup (BPMUX_LOG)
 - `.claude/hooks/auto-approve-bash.sh` — BPMUX_HOOK_LOG, same shape
-- [Desk-check TUI changes against a live TUI](../../-Users-ryandurling/memory/feedback_desk_check_tui.md) — designer's lesson from #144 sign-off
