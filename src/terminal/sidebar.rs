@@ -180,7 +180,20 @@ impl App {
         let channels = self.sidebar_channels();
         if let Some(ch) = channels.get(self.sidebar_selected) {
             if is_section_header(ch) {
-                // Already on a header — collapse the project
+                // On a header: if the section itself is expanded, collapse it.
+                // Otherwise fall through to collapsing the project.
+                if ch.contains("direct") && self.direct_expanded {
+                    self.direct_expanded = false;
+                    return;
+                }
+                if ch.contains("groups") && self.groups_expanded {
+                    self.groups_expanded = false;
+                    return;
+                }
+                if ch.contains("system") && self.system_expanded {
+                    self.system_expanded = false;
+                    return;
+                }
                 self.project_expanded = false;
                 self.sidebar_selected = 0;
                 return;
