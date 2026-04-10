@@ -122,6 +122,16 @@ pub(super) fn handle_p2p_command(
     }
 }
 
+async fn send_hello(local_name: &str, local_session_id: &str, outbound: &mpsc::Sender<String>) {
+    let msg = peer::PeerMessage::Hello {
+        session_id: local_session_id.to_string(),
+        name: local_name.to_string(),
+    };
+    if let Ok(json) = serde_json::to_string(&msg) {
+        let _ = outbound.send(json).await;
+    }
+}
+
 async fn send_lesson_sync(session: &Arc<session::Session>, outbound: &mpsc::Sender<String>) {
     let index = session.storage.load_lessons();
     if let Ok(lessons_json) = serde_json::to_string(&index) {
@@ -135,7 +145,6 @@ async fn send_lesson_sync(session: &Arc<session::Session>, outbound: &mpsc::Send
 pub(super) fn handle_p2p_result(
     result: P2pResult,
     app: &mut App,
-    session: &session::Session,
     session_arc: &Arc<session::Session>,
     active_passphrase: &mut Option<String>,
     pending_offer: &mut Option<webrtc::PendingOffer>,
@@ -156,14 +165,13 @@ pub(super) fn handle_p2p_result(
             spawn_relay_with_sync(
                 session_arc.clone(),
                 app.session_id.clone(),
+                app.peer_name.clone(),
                 "remote".to_string(),
                 channel_pair,
             );
             app.system_message(format!(
                 "Connected to session. Share this answer code with the offerer:\n\n  Answer code: {code}\n\nPeer connected."
             ));
-            app.update_activity("remote".to_string(), "available".to_string());
-            broadcast_system(session, "remote peer connected");
         }
         P2pResult::Connected {
             channel_pair,
@@ -172,12 +180,11 @@ pub(super) fn handle_p2p_result(
             spawn_relay_with_sync(
                 session_arc.clone(),
                 app.session_id.clone(),
+                app.peer_name.clone(),
                 peer_name.clone(),
                 channel_pair,
             );
             app.system_message(format!("Connected to peer '{peer_name}'."));
-            app.update_activity(peer_name, "available".to_string());
-            broadcast_system(session, "remote peer connected");
         }
         P2pResult::Error(e) => {
             app.system_message(format!("P2P error: {e}"));
@@ -188,10 +195,12 @@ pub(super) fn handle_p2p_result(
 pub(super) fn spawn_relay_with_sync(
     session: Arc<session::Session>,
     session_id: String,
+    local_name: String,
     peer_name: String,
     pair: webrtc::DataChannelPair,
 ) {
     tokio::spawn(async move {
+        send_hello(&local_name, &session_id, &pair.outbound_tx).await;
         send_lesson_sync(&session, &pair.outbound_tx).await;
         let _peer = peer::spawn_relay(
             session,
@@ -202,15 +211,4 @@ pub(super) fn spawn_relay_with_sync(
         );
         std::future::pending::<()>().await;
     });
-}
-
-pub(super) fn broadcast_system(session: &session::Session, text: &str) {
-    let msg = session::Message {
-        from: "bpmux".to_string(),
-        text: text.to_string(),
-        ts: chrono::Utc::now(),
-        message_type: session::MessageType::System,
-        to: None,
-    };
-    let _ = session.broadcast(&msg);
 }

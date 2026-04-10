@@ -174,7 +174,6 @@ where
                 p2p::handle_p2p_result(
                     result,
                     app,
-                    session,
                     &session_arc,
                     &mut active_passphrase,
                     &mut pending_offer,

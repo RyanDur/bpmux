@@ -121,11 +121,16 @@ pub fn spawn_relay(
     let connected_relay = connected.clone();
     let session_for_inbound = session.clone();
     let local_id = local_session_id.clone();
-    let inbound_peer_name = peer_name.clone();
     let reply_tx = outbound_tx.clone();
+    let initial_peer_name = peer_name.clone();
 
-    // Inbound: remote peer → local session broadcast
+    // Inbound: remote peer → local session broadcast.
+    //
+    // `current_name` starts as the placeholder ("remote") and is replaced
+    // once the remote side sends its Hello. Lesson storage keys and the
+    // disconnect announcement use whatever the most recent name is.
     tokio::spawn(async move {
+        let mut current_name = initial_peer_name;
         while let Some(json) = inbound_rx.recv().await {
             let msg: PeerMessage = match serde_json::from_str(&json) {
                 Ok(m) => m,
@@ -153,23 +158,32 @@ pub fn spawn_relay(
                     };
                     let _ = session_for_inbound.broadcast(&message);
                 }
-                PeerMessage::Hello { .. } => {}
+                PeerMessage::Hello { name, .. } => {
+                    current_name = name.clone();
+                    let joined = Message {
+                        from: "bpmux".to_string(),
+                        text: format!("{name} joined"),
+                        ts: chrono::Utc::now(),
+                        message_type: crate::session::MessageType::System,
+                        to: None,
+                    };
+                    let _ = session_for_inbound.broadcast(&joined);
+                }
                 PeerMessage::LessonSync { lessons_json } => {
                     if let Ok(remote_index) =
                         serde_json::from_str::<crate::session::lessons::LessonIndex>(&lessons_json)
                     {
                         let _ = session_for_inbound
                             .storage
-                            .save_peer_lessons(&inbound_peer_name, &remote_index);
+                            .save_peer_lessons(&current_name, &remote_index);
                     }
                 }
                 PeerMessage::LessonUpdate { lesson_json } => {
                     if let Ok(lesson) =
                         serde_json::from_str::<crate::session::lessons::AgentLesson>(&lesson_json)
                     {
-                        let mut peer_index = session_for_inbound
-                            .storage
-                            .load_peer_lessons(&inbound_peer_name);
+                        let mut peer_index =
+                            session_for_inbound.storage.load_peer_lessons(&current_name);
                         let existing = peer_index.lessons.iter_mut().find(|l| {
                             l.topic == lesson.topic && l.author_role == lesson.author_role
                         });
@@ -180,7 +194,7 @@ pub fn spawn_relay(
                         }
                         let _ = session_for_inbound
                             .storage
-                            .save_peer_lessons(&inbound_peer_name, &peer_index);
+                            .save_peer_lessons(&current_name, &peer_index);
                     }
                 }
                 PeerMessage::LessonQuery => {
@@ -198,11 +212,21 @@ pub fn spawn_relay(
                     {
                         let _ = session_for_inbound
                             .storage
-                            .save_peer_lessons(&inbound_peer_name, &remote_index);
+                            .save_peer_lessons(&current_name, &remote_index);
                     }
                 }
             }
         }
+        // Inbound channel closed — remote peer is gone. Announce so the TUI
+        // clears the status dot and channel list.
+        let left = Message {
+            from: "bpmux".to_string(),
+            text: format!("{current_name} left"),
+            ts: chrono::Utc::now(),
+            message_type: crate::session::MessageType::System,
+            to: None,
+        };
+        let _ = session_for_inbound.broadcast(&left);
         connected_relay.store(false, std::sync::atomic::Ordering::Relaxed);
     });
 
