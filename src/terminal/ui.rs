@@ -9,7 +9,7 @@ use ratatui::{
 use crate::session;
 use crate::terminal::app::{self, App};
 
-const TRUNCATE_AFTER_LINES: usize = 10;
+use super::app::TRUNCATE_AFTER_LINES;
 const SIDEBAR_NAME_WIDTH: usize = 16;
 const MIN_WIDTH_FOR_SIDEBAR: u16 = 60;
 use crate::terminal::markdown::{

@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::time::Instant;
 use tui_textarea::TextArea;
 
-const TRUNCATE_AFTER_LINES: usize = 10;
+pub(super) const TRUNCATE_AFTER_LINES: usize = 10;
 const DM_FLASH_DURATION: std::time::Duration = std::time::Duration::from_millis(750);
 
 fn short_peer_name(peer: &str) -> &str {
