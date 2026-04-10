@@ -221,3 +221,142 @@ fn is_experience_helper() {
     assert!(!MessageClass::Discussion.is_experience());
     assert!(!MessageClass::Decision.is_experience());
 }
+
+// ---------- #152: admission detection ----------
+//
+// Admissions are short, formulaic acceptances of a correction. They fire
+// regardless of message length and regardless of sender role, because the
+// signal is "a correction just landed" — which is valuable whether the
+// corrector is Ryan, another agent, or the same agent reflecting.
+
+#[test]
+fn admission_youre_right_is_correction() {
+    let m = msg("pm:claude-code", "you're right, my bad");
+    assert_eq!(
+        classify(&m, "ryan"),
+        MessageClass::Experience(ExperienceKind::Correction)
+    );
+}
+
+#[test]
+fn admission_my_call_is_correction() {
+    let m = msg(
+        "pm:claude-code",
+        "my call — i assigned blame without checking the diff",
+    );
+    assert_eq!(
+        classify(&m, "ryan"),
+        MessageClass::Experience(ExperienceKind::Correction)
+    );
+}
+
+#[test]
+fn admission_my_miss_is_correction() {
+    let m = msg("dev:claude-code", "my miss, i should have read the commit");
+    assert_eq!(
+        classify(&m, "ryan"),
+        MessageClass::Experience(ExperienceKind::Correction)
+    );
+}
+
+#[test]
+fn admission_my_bad_is_correction() {
+    // Note: 6 chars plus a period. Intentionally under MIN_EXPERIENCE_LEN —
+    // the admission bypass is what makes this fire.
+    let m = msg("designer:claude-code", "my bad.");
+    assert_eq!(
+        classify(&m, "ryan"),
+        MessageClass::Experience(ExperienceKind::Correction)
+    );
+}
+
+#[test]
+fn admission_fair_point_is_correction() {
+    let m = msg("dev:claude-code", "fair point, let me reconsider");
+    assert_eq!(
+        classify(&m, "ryan"),
+        MessageClass::Experience(ExperienceKind::Correction)
+    );
+}
+
+#[test]
+fn admission_good_catch_is_correction() {
+    let m = msg("pm:claude-code", "good catch — fixing now");
+    assert_eq!(
+        classify(&m, "ryan"),
+        MessageClass::Experience(ExperienceKind::Correction)
+    );
+}
+
+#[test]
+fn admission_my_mistake_is_correction() {
+    let m = msg(
+        "dev:claude-code",
+        "my mistake, i shouldn't have shipped that",
+    );
+    assert_eq!(
+        classify(&m, "ryan"),
+        MessageClass::Experience(ExperienceKind::Correction)
+    );
+}
+
+#[test]
+fn admission_wont_do_it_again_is_correction() {
+    let m = msg("pm:claude-code", "won't do it again, adding the check");
+    assert_eq!(
+        classify(&m, "ryan"),
+        MessageClass::Experience(ExperienceKind::Correction)
+    );
+}
+
+#[test]
+fn admission_from_owner_also_classifies() {
+    // Ryan accepting an agent's pushback is just as valuable as an agent
+    // accepting Ryan's pushback.
+    let m = msg("ryan:human", "you're right, that was the wrong framing");
+    assert_eq!(
+        classify(&m, "ryan"),
+        MessageClass::Experience(ExperienceKind::Correction)
+    );
+}
+
+#[test]
+fn diplomatic_without_checking_is_correction() {
+    // This is the actual phrasing that escaped the classifier this morning
+    // when dev corrected PM's lazy-causation habit.
+    let m = msg(
+        "dev:claude-code",
+        "you assigned blame without checking the actual diff",
+    );
+    assert_eq!(
+        classify(&m, "ryan"),
+        MessageClass::Experience(ExperienceKind::Correction)
+    );
+}
+
+#[test]
+fn diplomatic_please_verify_is_correction() {
+    let m = msg(
+        "dev:claude-code",
+        "please verify before attributing the regression to this commit",
+    );
+    assert_eq!(
+        classify(&m, "ryan"),
+        MessageClass::Experience(ExperienceKind::Correction)
+    );
+}
+
+#[test]
+fn admission_not_a_false_positive_inside_longer_message() {
+    // "you're right about that one" — still an admission. Belt-and-
+    // suspenders check: the matcher is substring-based so any occurrence
+    // anywhere in the message fires.
+    let m = msg(
+        "pm:claude-code",
+        "ok i went back and looked at the diff, you're right about that one — shipping the fix",
+    );
+    assert_eq!(
+        classify(&m, "ryan"),
+        MessageClass::Experience(ExperienceKind::Correction)
+    );
+}

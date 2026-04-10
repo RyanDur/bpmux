@@ -91,6 +91,35 @@ const CORRECTION: &[&str] = &[
     "not that way",
     "that's wrong",
     "the problem is",
+    // Diplomatic / peer-to-peer correction variants. These are the forms
+    // one agent uses to push back on another without sounding imperative.
+    // Added for #152 — the morning of 2026-04-10 when dev corrected pm's
+    // lazy-causation habit and the existing patterns didn't catch it.
+    "without checking",
+    "please verify",
+    "before attributing",
+    "lazy causation",
+];
+
+/// Short, formulaic phrases that signal a correction just landed. Catching
+/// these means we don't need to pattern-match the *verbose* correction
+/// itself — we just notice when someone accepts one. See the `#152` story
+/// body for the origin reasoning.
+///
+/// These bypass the `MIN_EXPERIENCE_LEN` gate because admissions are
+/// intentionally short ("my bad" is 6 chars). Without the bypass they'd
+/// never classify as experiences.
+const ADMISSION: &[&str] = &[
+    "you're right",
+    "youre right",
+    "my call",
+    "my miss",
+    "my bad",
+    "my mistake",
+    "fair point",
+    "good catch",
+    "won't do it again",
+    "wont do it again",
 ];
 
 const QUESTION: &[&str] = &[
@@ -149,6 +178,7 @@ pub struct Classifier {
     question: Option<AhoCorasick>,
     teaching: Option<AhoCorasick>,
     redirect: Option<AhoCorasick>,
+    admission: Option<AhoCorasick>,
 }
 
 impl Default for Classifier {
@@ -167,6 +197,7 @@ impl Classifier {
             question: build_matcher(QUESTION),
             teaching: build_matcher(TEACHING),
             redirect: build_matcher(REDIRECT),
+            admission: build_matcher(ADMISSION),
         }
     }
 
@@ -181,6 +212,16 @@ impl Classifier {
         }
 
         let text_lower = msg.text.to_lowercase();
+
+        // Admissions fire regardless of length and before the operational /
+        // coordination filters. "You're right" is 11 chars and would
+        // otherwise fail the `MIN_EXPERIENCE_LEN` gate below. The admission
+        // itself IS the learning signal — the classifier doesn't need to
+        // understand what was corrected, only that a correction was
+        // accepted.
+        if matches(&self.admission, &text_lower) {
+            return MessageClass::Experience(ExperienceKind::Correction);
+        }
 
         if sender == owner_name && matches(&self.operational, &text_lower) {
             return MessageClass::Discussion;
