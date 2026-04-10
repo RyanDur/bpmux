@@ -119,7 +119,10 @@ fn load_surfaced_topics(session_dir: &Path) -> HashSet<String> {
 
 fn save_surfaced_topics(session_dir: &Path, topics: &HashSet<String>) {
     let path = session_dir.join("surfaced-topics.json");
-    if let Ok(json) = serde_json::to_string(topics) {
-        let _ = std::fs::write(path, json);
+    let tmp = session_dir.join("surfaced-topics.json.tmp");
+    if let Ok(json) = serde_json::to_string(topics)
+        && std::fs::write(&tmp, &json).is_ok()
+    {
+        let _ = std::fs::rename(tmp, path);
     }
 }

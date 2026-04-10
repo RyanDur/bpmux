@@ -162,9 +162,11 @@ pub fn load_index(session_dir: &Path) -> LessonIndex {
 
 pub fn save_index(session_dir: &Path, index: &LessonIndex) -> Result<(), std::io::Error> {
     let path = session_dir.join("lessons.json");
+    let tmp = session_dir.join("lessons.json.tmp");
     let json = serde_json::to_string_pretty(index)
         .map_err(|e| std::io::Error::other(format!("serialize: {e}")))?;
-    std::fs::write(path, json)
+    std::fs::write(&tmp, &json)?;
+    std::fs::rename(tmp, path)
 }
 
 pub fn save_peer_index(
@@ -173,9 +175,11 @@ pub fn save_peer_index(
     index: &LessonIndex,
 ) -> Result<(), std::io::Error> {
     let path = session_dir.join(format!("lessons-peer-{peer_name}.json"));
+    let tmp = session_dir.join(format!("lessons-peer-{peer_name}.json.tmp"));
     let json = serde_json::to_string_pretty(index)
         .map_err(|e| std::io::Error::other(format!("serialize: {e}")))?;
-    std::fs::write(path, json)
+    std::fs::write(&tmp, &json)?;
+    std::fs::rename(tmp, path)
 }
 
 pub fn load_peer_index(session_dir: &Path, peer_name: &str) -> LessonIndex {
