@@ -250,3 +250,91 @@ async fn defaults_to_twenty_messages() {
     let msgs: Vec<serde_json::Value> = serde_json::from_slice(&body).expect("parse json");
     assert_eq!(msgs.len(), 20);
 }
+
+// ---------- #159: classifier misfire endpoint ----------
+
+#[tokio::test]
+async fn classifier_misfire_accepts_post_with_reason() {
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (tx, _rx) = broadcast::channel(16);
+    let session = Arc::new(session::Session::new(
+        dir.path().to_path_buf(),
+        "test".to_string(),
+        tx,
+    ));
+    let router = axum::Router::new()
+        .route(
+            "/api/classifier-misfire",
+            axum::routing::post(post_classifier_misfire),
+        )
+        .with_state(session);
+    let request = Request::builder()
+        .method("POST")
+        .uri("/api/classifier-misfire")
+        .header("Content-Type", "application/json")
+        .body(Body::from(
+            r#"{"agent":"dev","nudge_hash":"abc123","reason":"recursive match on bpmux nudge"}"#,
+        ))
+        .expect("build request");
+    let response = router.oneshot(request).await.expect("response");
+    assert_eq!(response.status(), StatusCode::CREATED);
+}
+
+#[tokio::test]
+async fn classifier_misfire_accepts_post_without_reason() {
+    // Per the story's acceptance criteria: reason is OPTIONAL.
+    // State the observation, not the conclusion — agents don't have
+    // to explain WHY a fire was wrong, just marking it as wrong is
+    // valuable feedback.
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (tx, _rx) = broadcast::channel(16);
+    let session = Arc::new(session::Session::new(
+        dir.path().to_path_buf(),
+        "test".to_string(),
+        tx,
+    ));
+    let router = axum::Router::new()
+        .route(
+            "/api/classifier-misfire",
+            axum::routing::post(post_classifier_misfire),
+        )
+        .with_state(session);
+    let request = Request::builder()
+        .method("POST")
+        .uri("/api/classifier-misfire")
+        .header("Content-Type", "application/json")
+        .body(Body::from(r#"{"agent":"dev","nudge_hash":"xyz789"}"#))
+        .expect("build request");
+    let response = router.oneshot(request).await.expect("response");
+    assert_eq!(response.status(), StatusCode::CREATED);
+}
+
+#[tokio::test]
+async fn classifier_misfire_requires_agent_and_hash() {
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (tx, _rx) = broadcast::channel(16);
+    let session = Arc::new(session::Session::new(
+        dir.path().to_path_buf(),
+        "test".to_string(),
+        tx,
+    ));
+    let router = axum::Router::new()
+        .route(
+            "/api/classifier-misfire",
+            axum::routing::post(post_classifier_misfire),
+        )
+        .with_state(session);
+    // Missing nudge_hash
+    let request = Request::builder()
+        .method("POST")
+        .uri("/api/classifier-misfire")
+        .header("Content-Type", "application/json")
+        .body(Body::from(r#"{"agent":"dev"}"#))
+        .expect("build request");
+    let response = router.oneshot(request).await.expect("response");
+    // serde rejection produces 4xx, not 201
+    assert_ne!(response.status(), StatusCode::CREATED);
+}

@@ -261,6 +261,9 @@ impl ServerHandler for BridgeServer {
             crate::mcp::tools::set_status_tool(
                 "Set your status in the bpmux session. available = green dot (can respond), busy = yellow dot (working), help = red dot (needs attention).",
             ),
+            crate::mcp::tools::classifier_misfire_tool(
+                "Report a classifier nudge that fired on a message you judge is NOT a learning moment. The reason field is OPTIONAL — per the 'state observation, not conclusion' framing, simply marking a fire as wrong is valuable training data on its own. Use this whenever you see an experience-nudge in the chat that you reason internally is incorrect, so the team can measure classifier accuracy and tune it over time. See #159.",
+            ),
         ];
 
         std::future::ready(Ok(ListToolsResult::with_all_items(tools)))
@@ -290,6 +293,7 @@ impl ServerHandler for BridgeServer {
                 "capture_screen" => tools::handle_capture_screen(port).await,
                 "simulate_click" => tools::handle_simulate_click(&args, port).await,
                 "simulate_key" => tools::handle_simulate_key(&args, port).await,
+                "classifier_misfire" => tools::handle_classifier_misfire(&args, port, &name).await,
                 other => Err(format!("unknown tool: {other}")),
             };
             Ok(match result {

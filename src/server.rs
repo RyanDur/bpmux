@@ -42,6 +42,10 @@ pub async fn run_server(
             "/api/simulate/key",
             axum::routing::post(transport::rest::simulate_key),
         )
+        .route(
+            "/api/classifier-misfire",
+            axum::routing::post(transport::rest::post_classifier_misfire),
+        )
         .with_state(session)
         .layer(axum::Extension(screen_capture))
         .layer(axum::Extension(inject_tx));

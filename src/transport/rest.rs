@@ -348,3 +348,36 @@ pub async fn post_message(
     }
     (StatusCode::CREATED, "message sent".to_string())
 }
+
+/// POST body for the classifier misfire feedback endpoint (#159).
+#[derive(Deserialize)]
+pub struct ClassifierMisfire {
+    pub agent: String,
+    pub nudge_hash: String,
+    /// Optional per the acceptance criteria — agents can mark a fire
+    /// as wrong without explaining why. Per Naur/Schmidt: state the
+    /// observation, not the conclusion.
+    #[serde(default)]
+    pub reason: Option<String>,
+}
+
+/// Classifier misfire feedback endpoint (#159).
+/// Writes a MISFIRE line to the diag log for later analysis. No effect
+/// on the classifier itself — this is purely a training-signal capture
+/// path so agent knowledge about wrong fires gets externalized instead
+/// of silently dismissed.
+pub async fn post_classifier_misfire(
+    State(_session): State<Arc<session::Session>>,
+    Json(payload): Json<ClassifierMisfire>,
+) -> impl IntoResponse {
+    let reason_field = payload
+        .reason
+        .as_deref()
+        .map(|r| format!(" reason={r:?}"))
+        .unwrap_or_default();
+    session::diag::log_diag(&format!(
+        "MISFIRE agent={} nudge_hash={}{reason_field}",
+        payload.agent, payload.nudge_hash
+    ));
+    (StatusCode::CREATED, "misfire recorded".to_string())
+}
