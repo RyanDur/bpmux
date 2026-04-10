@@ -783,3 +783,39 @@ fn ci_indicator_does_not_evict_help_hint_on_wide_terminal() {
     assert!(content.contains("CI \u{2713}"));
     assert!(content.contains("?=help"));
 }
+
+#[test]
+fn ci_indicator_fits_80x24_with_full_peer_presence() {
+    // Production layout is 80x24. Previous CI tests used 120 cols which
+    // gave the layout arithmetic a lot of slack. This test asserts the
+    // tightest realistic production case: 80 cols, three peers visible,
+    // CI state Red (longest non-whitespace form is same width as Green/
+    // Running). Designer flagged this gap during #151 desk-check.
+    use std::time::Instant;
+    let backend = TestBackend::new(80, 24);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = test_app_with(vec![chat_msg("ryan:human", "hi")]);
+    // Populate three peer activity entries so the status bar renders
+    // the dot cluster at its realistic width.
+    app.peer_activity.insert(
+        "designer".to_string(),
+        ("available".to_string(), Instant::now()),
+    );
+    app.peer_activity
+        .insert("dev".to_string(), ("available".to_string(), Instant::now()));
+    app.peer_activity
+        .insert("pm".to_string(), ("available".to_string(), Instant::now()));
+    app.ci_state = super::ci::CiState::Red;
+    terminal.draw(|frame| render(frame, &mut app)).unwrap();
+    let content = buffer_to_string(terminal.backend().buffer());
+    // Both the CI glyph AND the help hint must survive at 80 cols with
+    // peers present — that's the real-world layout we ship.
+    assert!(
+        content.contains("CI \u{2717}"),
+        "CI indicator missing from 80x24 frame:\n{content}"
+    );
+    assert!(
+        content.contains("?=help"),
+        "help hint evicted by CI indicator at 80x24:\n{content}"
+    );
+}
