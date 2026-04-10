@@ -49,11 +49,14 @@ enum Command {
         #[arg(long, default_value = "claude-code")]
         name: String,
     },
+    /// Run in headless mode for agent testing (no terminal required)
+    Test,
 }
 
 pub fn run() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
+    let headless = matches!(cli.command, Some(Command::Test));
     if let Some(Command::Bridge { port, name }) = cli.command {
         return bridge::run_bridge(port, &name);
     }
@@ -105,31 +108,45 @@ pub fn run() -> anyhow::Result<()> {
 
         session::awareness::spawn(Arc::clone(&session), session.owner_name.clone());
 
-        // Enable mouse capture and focus tracking
-        crossterm::execute!(
-            std::io::stdout(),
-            crossterm::event::EnableMouseCapture,
-            crossterm::event::EnableFocusChange,
-            crossterm::event::EnableBracketedPaste,
-        )?;
-        let mut terminal = ratatui::init();
-        let result = terminal::run_tui(
-            &mut terminal,
-            &mut app,
-            &session,
-            &mut wake_rx,
-            Arc::clone(&screen_capture),
-            inject_rx,
-        )
-        .await;
-        ratatui::restore();
-        crossterm::execute!(
-            std::io::stdout(),
-            crossterm::event::DisableMouseCapture,
-            crossterm::event::DisableFocusChange,
-            crossterm::event::DisableBracketedPaste,
-        )?;
-        result
+        if headless {
+            let backend = ratatui::backend::TestBackend::new(80, 24);
+            let mut terminal = ratatui::Terminal::new(backend)?;
+            eprintln!("bpmux: headless mode (80x24)");
+            terminal::run_tui(
+                &mut terminal,
+                &mut app,
+                &session,
+                &mut wake_rx,
+                Arc::clone(&screen_capture),
+                inject_rx,
+            )
+            .await
+        } else {
+            crossterm::execute!(
+                std::io::stdout(),
+                crossterm::event::EnableMouseCapture,
+                crossterm::event::EnableFocusChange,
+                crossterm::event::EnableBracketedPaste,
+            )?;
+            let mut terminal = ratatui::init();
+            let result = terminal::run_tui(
+                &mut terminal,
+                &mut app,
+                &session,
+                &mut wake_rx,
+                Arc::clone(&screen_capture),
+                inject_rx,
+            )
+            .await;
+            ratatui::restore();
+            crossterm::execute!(
+                std::io::stdout(),
+                crossterm::event::DisableMouseCapture,
+                crossterm::event::DisableFocusChange,
+                crossterm::event::DisableBracketedPaste,
+            )?;
+            result
+        }
     });
 
     if app.should_reload {

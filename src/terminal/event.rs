@@ -4,7 +4,6 @@ use crossterm::event::{
     self, Event, EventStream, KeyCode, KeyEventKind, KeyModifiers, MouseEventKind,
 };
 use futures::StreamExt;
-use ratatui::DefaultTerminal;
 use tokio::sync::{broadcast, mpsc};
 
 use crate::reload;
@@ -44,14 +43,18 @@ fn scroll_down_with_bell(app: &mut App, amount: usize) {
     }
 }
 
-pub async fn run_tui(
-    terminal: &mut DefaultTerminal,
+pub async fn run_tui<B>(
+    terminal: &mut ratatui::Terminal<B>,
     app: &mut App,
     session: &session::Session,
     wake_rx: &mut broadcast::Receiver<session::Message>,
     screen_capture: Arc<std::sync::Mutex<String>>,
     mut injected_rx: mpsc::Receiver<crossterm::event::Event>,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>>
+where
+    B: ratatui::backend::Backend,
+    B::Error: Send + Sync + 'static,
+{
     let mut events = EventStream::new();
     let (p2p_tx, mut p2p_rx) = mpsc::channel::<P2pResult>(8);
     let mut active_passphrase: Option<String> = None;
