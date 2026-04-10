@@ -9,7 +9,7 @@ use ratatui::{
 use crate::session;
 use crate::terminal::app::App;
 use crate::terminal::chat;
-use crate::terminal::commands::format_command_list;
+use crate::terminal::commands_help::format_command_list;
 use crate::terminal::sidebar;
 use crate::terminal::status_bar;
 

@@ -3,6 +3,7 @@ mod board;
 mod chat;
 mod ci;
 mod commands;
+mod commands_help;
 mod commands_search;
 mod commands_share;
 pub mod event;
