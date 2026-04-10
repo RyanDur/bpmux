@@ -100,6 +100,16 @@ pub struct App {
     pub show_help: bool,
     pub tui_focused: bool,
 
+    // ── #161: classifier-driven view filter ──
+    /// When `false` (default), the chat pane hides `MessageClass::Routine`
+    /// messages and bpmux auto-nudges to reduce visual noise. Toggle with
+    /// `/all` or Ctrl+A. Persisted via `UiState`.
+    pub show_all_classes: bool,
+    /// Count of messages suppressed by the class filter on the most
+    /// recent render. Set by `chat::render_chat`, read by
+    /// `status_bar::render` for the `N hidden` counter.
+    pub hidden_class_count: usize,
+
     // ── Layout positions (set by renderer) ──
     pub sidebar_area: Option<(u16, u16, u16, u16)>,
     pub status_bar_area: Option<(u16, u16, u16, u16)>,
@@ -175,6 +185,8 @@ impl App {
             groups_expanded: true,
             system_expanded: false,
             ci_state: super::ci::CiState::Unknown,
+            show_all_classes: false,
+            hidden_class_count: 0,
         }
     }
 

@@ -22,6 +22,12 @@ pub struct UiState {
     pub expanded_messages: HashSet<String>,
     pub show_timestamps: bool,
     pub input: String,
+    /// #161: persist the classifier-driven view filter state across
+    /// hot-reloads and session restarts. Default `false` (filter on).
+    /// Serde default so pre-#161 saved state loads cleanly without
+    /// a migration step.
+    #[serde(default)]
+    pub show_all_classes: bool,
 }
 
 impl UiState {
@@ -39,6 +45,7 @@ impl UiState {
             expanded_messages: app.expanded_messages.clone(),
             show_timestamps: app.show_timestamps,
             input: app.input.clone(),
+            show_all_classes: app.show_all_classes,
         }
     }
 
@@ -53,6 +60,7 @@ impl UiState {
         app.scroll_offset = self.scroll_offset;
         app.expanded_messages = self.expanded_messages.clone();
         app.show_timestamps = self.show_timestamps;
+        app.show_all_classes = self.show_all_classes;
         if !self.input.is_empty() {
             app.set_textarea_content(&self.input);
         }

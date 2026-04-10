@@ -1157,6 +1157,52 @@ fn share_source_scope_reflects_channel_name() {
     );
 }
 
+// ---------- #161: classifier view filter ----------
+
+#[test]
+fn all_command_toggles_filter_state() {
+    let mut app = test_app();
+    assert!(
+        !app.show_all_classes,
+        "filter default is ON (show_all_classes false)"
+    );
+    app.input = "/all".to_string();
+    app.submit_message();
+    assert!(
+        app.show_all_classes,
+        "first /all toggles to showing everything"
+    );
+    app.input = "/all".to_string();
+    app.submit_message();
+    assert!(!app.show_all_classes, "second /all flips back to filtered");
+}
+
+#[test]
+fn all_command_posts_state_message_to_pane() {
+    let mut app = test_app();
+    app.input = "/all".to_string();
+    app.submit_message();
+    let last = app.messages.last().unwrap();
+    assert!(last.text.starts_with("/all:"));
+    assert!(last.text.contains("showing all"));
+}
+
+#[test]
+fn ui_state_persists_show_all_classes() {
+    use crate::terminal::ui_state::UiState;
+    let mut app = test_app();
+    app.show_all_classes = true;
+    let saved = UiState::capture(&app);
+
+    let mut restored = test_app();
+    assert!(!restored.show_all_classes);
+    saved.restore(&mut restored);
+    assert!(
+        restored.show_all_classes,
+        "show_all_classes should persist across capture/restore"
+    );
+}
+
 #[test]
 fn to_command_sets_explicit_privacy_flag() {
     // Verifying that /to tags the message as explicit privacy so /share

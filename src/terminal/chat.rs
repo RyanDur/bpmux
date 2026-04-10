@@ -19,22 +19,68 @@ use crate::terminal::theme::{
 };
 
 pub(super) fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
-    let chat_messages: Vec<&session::Message> = app
-        .messages
-        .iter()
-        .filter(|m| {
-            if !m.is_chat() {
-                return app.show_system_messages;
+    // Channel-view filter (existing behavior) + class filter (#161).
+    // Imperative loop so we can both collect visible messages AND count
+    // the hidden ones for the status bar's "N hidden" indicator.
+    let mut chat_messages: Vec<&session::Message> = Vec::new();
+    let mut hidden_class_count: usize = 0;
+    for m in &app.messages {
+        // Non-chat messages: system/activity, governed by show_system_messages
+        if !m.is_chat() {
+            if app.show_system_messages {
+                chat_messages.push(m);
             }
-            match &app.current_view {
-                None => true,
-                Some(view) if view == "broadcast" => {
-                    app::channel_name(m, &app.peer_name) == "broadcast"
+            continue;
+        }
+        // Channel filter — skip messages that aren't in the current view.
+        let in_channel = match &app.current_view {
+            None => true,
+            Some(view) if view == "broadcast" => {
+                app::channel_name(m, &app.peer_name) == "broadcast"
+            }
+            Some(view) => message_matches_channel(m, view, &app.peer_name),
+        };
+        if !in_channel {
+            continue;
+        }
+        // #161 class filter: when `show_all_classes` is off, hide
+        // (a) classifier auto-nudges (bpmux-sent messages whose text
+        //     starts with the 📝 marker introduced by #163) and
+        // (b) non-bpmux messages that the classifier returns as Routine.
+        //
+        // Important: bpmux sends MORE than just auto-nudges — tool
+        // output (/board, /roadmap, /who, /debug), system notices,
+        // error messages, peer join/leave announcements. The user
+        // wants to see all of those. Only the 📝-prefixed auto-nudges
+        // should be suppressed. And because `session::classify` itself
+        // returns Routine for ANY bpmux-sender message, we must NOT
+        // run the Routine-class check on bpmux content — otherwise we
+        // hide all bpmux output, not just the nudges.
+        //
+        // Hidden messages stay in `app.messages` and become visible
+        // when the user toggles via `/all`. Classifier cost per render
+        // is microseconds via the thread-local Aho-Corasick cache.
+        if !app.show_all_classes {
+            let sender = m.from.split(':').next().unwrap_or(&m.from);
+            if sender == "bpmux" {
+                if m.text.starts_with('\u{1F4DD}') {
+                    hidden_class_count += 1;
+                    continue;
                 }
-                Some(view) => message_matches_channel(m, view, &app.peer_name),
+                // Non-nudge bpmux output (tool results, system notices)
+                // always renders — don't run the Routine-class check
+                // because classify always returns Routine for bpmux.
+            } else if matches!(
+                session::classify(m, &app.peer_name),
+                session::MessageClass::Routine
+            ) {
+                hidden_class_count += 1;
+                continue;
             }
-        })
-        .collect();
+        }
+        chat_messages.push(m);
+    }
+    app.hidden_class_count = hidden_class_count;
     let chat_inner_width = area.width.saturating_sub(2) as usize;
     let chat_height = area.height.saturating_sub(2) as usize;
 

@@ -790,6 +790,107 @@ fn ci_indicator_does_not_evict_help_hint_on_wide_terminal() {
     assert!(content.contains("?=help"));
 }
 
+// ---------- #161: classifier view filter ----------
+
+#[test]
+fn class_filter_hides_bpmux_auto_nudges_by_default() {
+    let backend = TestBackend::new(80, 24);
+    let mut terminal = Terminal::new(backend).unwrap();
+    // Auto-nudges are identified by the 📝 marker prefix added in #163's
+    // build_nudge_text. Non-nudge bpmux messages (tool output, system
+    // notices) do NOT carry the marker and continue rendering normally.
+    let mut app = test_app_with(vec![
+        chat_msg("ryan:human", "hello"),
+        chat_msg(
+            "bpmux",
+            "\u{1F4DD} 3 candidate moments from recent chat. Pointers...",
+        ),
+    ]);
+    assert!(!app.show_all_classes);
+    terminal.draw(|frame| render(frame, &mut app)).unwrap();
+    let content = buffer_to_string(terminal.backend().buffer());
+    assert!(content.contains("hello"), "non-bpmux message should render");
+    assert!(
+        !content.contains("3 candidate moments"),
+        "bpmux auto-nudge (📝 prefix) should be hidden by default"
+    );
+    assert!(
+        app.hidden_class_count >= 1,
+        "hidden count should reflect suppressed auto-nudge, got {}",
+        app.hidden_class_count
+    );
+}
+
+#[test]
+fn class_filter_does_not_hide_non_nudge_bpmux_output() {
+    // Regression guard: bpmux sends legitimate output (/board, /roadmap,
+    // join/leave system notices, tool results) that users want to see.
+    // The filter must only catch the 📝-marked auto-nudges, not all
+    // bpmux-sourced content.
+    let backend = TestBackend::new(80, 24);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = test_app_with(vec![
+        chat_msg("ryan:human", "hello"),
+        chat_msg("bpmux", "## Board\n- #142 delivered\n- #159 ready"),
+    ]);
+    assert!(!app.show_all_classes);
+    terminal.draw(|frame| render(frame, &mut app)).unwrap();
+    let content = buffer_to_string(terminal.backend().buffer());
+    assert!(
+        content.contains("Board") || content.contains("#142"),
+        "non-nudge bpmux output must render:\n{content}"
+    );
+}
+
+#[test]
+fn class_filter_show_all_reveals_auto_nudges() {
+    let backend = TestBackend::new(80, 24);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = test_app_with(vec![
+        chat_msg("ryan:human", "hello"),
+        chat_msg("bpmux", "\u{1F4DD} 3 candidate moments from recent chat"),
+    ]);
+    app.show_all_classes = true;
+    terminal.draw(|frame| render(frame, &mut app)).unwrap();
+    let content = buffer_to_string(terminal.backend().buffer());
+    assert!(content.contains("hello"));
+    assert!(
+        content.contains("3 candidate moments"),
+        "auto-nudge should render when show_all_classes is on"
+    );
+}
+
+#[test]
+fn class_filter_status_bar_shows_hidden_count() {
+    let backend = TestBackend::new(120, 24);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = test_app_with(vec![
+        chat_msg("ryan:human", "substantive message"),
+        chat_msg("bpmux", "\u{1F4DD} auto-nudge one"),
+        chat_msg("bpmux", "\u{1F4DD} auto-nudge two"),
+    ]);
+    terminal.draw(|frame| render(frame, &mut app)).unwrap();
+    let content = buffer_to_string(terminal.backend().buffer());
+    assert!(
+        content.contains("hidden"),
+        "status bar should contain 'hidden' count when filter suppresses messages:\n{content}"
+    );
+}
+
+#[test]
+fn class_filter_status_bar_shows_showing_all() {
+    let backend = TestBackend::new(120, 24);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = test_app_with(vec![chat_msg("ryan:human", "hello")]);
+    app.show_all_classes = true;
+    terminal.draw(|frame| render(frame, &mut app)).unwrap();
+    let content = buffer_to_string(terminal.backend().buffer());
+    assert!(
+        content.contains("showing all"),
+        "status bar should indicate 'showing all' when filter is off:\n{content}"
+    );
+}
+
 #[test]
 fn ci_indicator_fits_80x24_with_full_peer_presence() {
     // Production layout is 80x24. Previous CI tests used 120 cols which

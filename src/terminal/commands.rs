@@ -62,6 +62,7 @@ impl App {
                 "/accept" => self.handle_accept_bare(),
                 "/share" if !args.is_empty() => self.handle_share(args.to_string()),
                 "/share" => self.handle_share_bare(),
+                "/all" => self.handle_toggle_all(),
                 _ => self.handle_unknown_command(text),
             };
         }
@@ -284,6 +285,22 @@ impl App {
 
     fn handle_accept_bare(&mut self) -> Option<Message> {
         self.system_message("Usage: /accept <answer-code>".to_string());
+        self.clear_input();
+        None
+    }
+
+    /// `/all` — toggle the classifier-driven view filter (#161).
+    /// Default state: filter ON, Routine + bpmux-nudges hidden from your
+    /// pane. `/all` once flips to "show everything" mode. `/all` again
+    /// flips back to filtered.
+    fn handle_toggle_all(&mut self) -> Option<Message> {
+        self.show_all_classes = !self.show_all_classes;
+        let state = if self.show_all_classes {
+            "showing all messages including Routine-class and bpmux nudges"
+        } else {
+            "filter re-engaged: Routine-class and bpmux nudges hidden"
+        };
+        self.system_message(format!("/all: {state}"));
         self.clear_input();
         None
     }

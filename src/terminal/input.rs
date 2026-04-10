@@ -5,6 +5,8 @@ use tui_textarea::CursorMove;
 pub(super) const SLASH_COMMANDS: &[(&str, &str)] = &[
     ("/to", "send to recipients"),
     ("/view", "filter view by channel"),
+    ("/share", "propagate to wider scope (#160)"),
+    ("/all", "toggle classifier view filter (#161)"),
     ("/search", "search the log"),
     ("/board", "show project board"),
     ("/roadmap", "show project roadmap"),
