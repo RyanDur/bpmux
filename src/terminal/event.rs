@@ -83,6 +83,14 @@ where
     let mut stall_tick = tokio::time::interval(std::time::Duration::from_secs(5));
     stall_tick.tick().await;
 
+    // Background CI poller (#151). Skip in headless mode because there's no
+    // value in polling `gh` during automated tests, and the subprocess
+    // would slow test startup.
+    let (ci_tx, mut ci_rx) = mpsc::channel::<super::ci::CiState>(4);
+    if !headless {
+        super::ci::spawn_poller(ci_tx);
+    }
+
     loop {
         let completed = terminal.draw(|frame| ui::render(frame, app))?;
         {
@@ -193,6 +201,9 @@ where
                 // Intentionally empty — the tick exists only so the loop
                 // iterates and the top-of-loop `terminal.draw(...)` re-runs
                 // the stall-detection logic in the status bar.
+            }
+            Some(ci) = ci_rx.recv() => {
+                app.ci_state = ci;
             }
         }
     }

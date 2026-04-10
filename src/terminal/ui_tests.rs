@@ -711,3 +711,75 @@ fn raw_help_fresh_stays_red() {
     let (color, _) = parse_status_with_age("help", std::time::Duration::from_secs(2));
     assert_eq!(color, DRACULA_RED);
 }
+
+// ---------- #151: CI status indicator ----------
+
+#[test]
+fn ci_unknown_hides_indicator() {
+    let backend = TestBackend::new(80, 24);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = test_app_with(vec![chat_msg("ryan:human", "hi")]);
+    // ci_state defaults to Unknown at App::new.
+    terminal.draw(|frame| render(frame, &mut app)).unwrap();
+    let content = buffer_to_string(terminal.backend().buffer());
+    assert!(!content.contains("CI \u{2713}"));
+    assert!(!content.contains("CI \u{2717}"));
+    assert!(!content.contains("CI \u{25CB}"));
+}
+
+#[test]
+fn ci_green_renders_check_glyph() {
+    let backend = TestBackend::new(120, 24);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = test_app_with(vec![chat_msg("ryan:human", "hi")]);
+    app.ci_state = super::ci::CiState::Green;
+    terminal.draw(|frame| render(frame, &mut app)).unwrap();
+    let content = buffer_to_string(terminal.backend().buffer());
+    assert!(
+        content.contains("CI \u{2713}"),
+        "expected CI ✓ in frame, got:\n{content}"
+    );
+}
+
+#[test]
+fn ci_red_renders_cross_glyph() {
+    let backend = TestBackend::new(120, 24);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = test_app_with(vec![chat_msg("ryan:human", "hi")]);
+    app.ci_state = super::ci::CiState::Red;
+    terminal.draw(|frame| render(frame, &mut app)).unwrap();
+    let content = buffer_to_string(terminal.backend().buffer());
+    assert!(
+        content.contains("CI \u{2717}"),
+        "expected CI ✗ in frame, got:\n{content}"
+    );
+}
+
+#[test]
+fn ci_running_renders_circle_glyph() {
+    let backend = TestBackend::new(120, 24);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = test_app_with(vec![chat_msg("ryan:human", "hi")]);
+    app.ci_state = super::ci::CiState::Running;
+    terminal.draw(|frame| render(frame, &mut app)).unwrap();
+    let content = buffer_to_string(terminal.backend().buffer());
+    assert!(
+        content.contains("CI \u{25CB}"),
+        "expected CI ◌ in frame, got:\n{content}"
+    );
+}
+
+#[test]
+fn ci_indicator_does_not_evict_help_hint_on_wide_terminal() {
+    // On a wide-enough terminal, both the CI indicator and the help hint
+    // fit alongside each other. Validates that the layout arithmetic
+    // doesn't drop the hint when CI is present.
+    let backend = TestBackend::new(120, 24);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = test_app_with(vec![chat_msg("ryan:human", "hi")]);
+    app.ci_state = super::ci::CiState::Green;
+    terminal.draw(|frame| render(frame, &mut app)).unwrap();
+    let content = buffer_to_string(terminal.backend().buffer());
+    assert!(content.contains("CI \u{2713}"));
+    assert!(content.contains("?=help"));
+}

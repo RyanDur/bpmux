@@ -91,6 +91,9 @@ pub struct App {
     pub show_project_view: bool,
     pub project_view_content: Option<String>,
 
+    // ── CI status (#151) ──
+    pub(super) ci_state: super::ci::CiState,
+
     // ── Display toggles ──
     pub show_timestamps: bool,
     pub show_system_messages: bool,
@@ -171,6 +174,7 @@ impl App {
             direct_expanded: true,
             groups_expanded: true,
             system_expanded: false,
+            ci_state: super::ci::CiState::Unknown,
         }
     }
 

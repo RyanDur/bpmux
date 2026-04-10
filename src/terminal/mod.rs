@@ -1,6 +1,7 @@
 pub mod app;
 mod board;
 mod chat;
+mod ci;
 mod commands;
 mod commands_search;
 pub mod event;

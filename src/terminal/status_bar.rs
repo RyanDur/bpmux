@@ -13,6 +13,7 @@ use ratatui::{
 };
 
 use super::app::App;
+use super::ci::{CiGlyphColor, render_indicator as render_ci};
 use super::theme::{
     DRACULA_COMMENT, DRACULA_CYAN, DRACULA_FG, DRACULA_GREEN, DRACULA_ORANGE, DRACULA_PINK,
     DRACULA_RED, DRACULA_SELECTION, DRACULA_YELLOW,
@@ -47,6 +48,14 @@ pub(super) fn parse_status_with_age(
         return (DRACULA_ORANGE, Some(std::borrow::Cow::Owned(label)));
     }
     (color, desc.map(std::borrow::Cow::Borrowed))
+}
+
+fn ci_color_to_ratatui(color: CiGlyphColor) -> Color {
+    match color {
+        CiGlyphColor::Green => DRACULA_GREEN,
+        CiGlyphColor::Red => DRACULA_RED,
+        CiGlyphColor::Yellow => DRACULA_YELLOW,
+    }
 }
 
 fn parse_status_raw(status: &str) -> (Color, Option<&str>) {
@@ -135,6 +144,19 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
             Style::default().fg(DRACULA_YELLOW),
         ));
     }
+    // CI indicator (#151). Sits between the presence cluster and the
+    // right-aligned keyboard hint — repository state is cognitively
+    // separate from presence state, so the spec groups them that way.
+    // Hidden when state is Unknown (no indicator at startup until the
+    // first poll lands).
+    let ci = render_ci(app.ci_state);
+    // Width budget includes a leading " " separator to keep it visually
+    // distinct from the presence cluster on its left.
+    let ci_width = ci
+        .as_ref()
+        .map(|(label, _)| 1 + label.chars().count())
+        .unwrap_or(0);
+
     // Right-aligned "? help" hint
     let used: usize = status_spans.iter().map(|s| s.content.chars().count()).sum();
     let bar_width = area.width as usize;
@@ -144,10 +166,25 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         "?=help \u{2325}1=sidebar Enter=send"
     };
     let right_margin = 1;
-    if used + hint.chars().count() + right_margin + 1 < bar_width {
-        let pad = bar_width.saturating_sub(used + hint.chars().count() + right_margin);
-        app.help_hint_col = Some(area.x + (used + pad) as u16);
+    // Reserve two spaces of breathing room between the CI indicator and
+    // the help hint when both are shown, so they don't visually fuse.
+    let ci_hint_gap = if ci_width > 0 { 2 } else { 0 };
+    if used + ci_width + ci_hint_gap + hint.chars().count() + right_margin + 1 < bar_width {
+        let pad = bar_width
+            .saturating_sub(used + ci_width + ci_hint_gap + hint.chars().count() + right_margin);
+        // Pad first, then CI indicator, then gap, then hint — the CI
+        // glyph floats next to the hint rather than anchoring to the left
+        // content. That's what the spec mockup shows.
         status_spans.push(Span::raw(" ".repeat(pad)));
+        if let Some((label, color)) = ci {
+            status_spans.push(Span::raw(" "));
+            status_spans.push(Span::styled(
+                label,
+                Style::default().fg(ci_color_to_ratatui(color)),
+            ));
+            status_spans.push(Span::raw(" ".repeat(ci_hint_gap.saturating_sub(1))));
+        }
+        app.help_hint_col = Some(area.x + (used + pad + ci_width + ci_hint_gap) as u16);
         status_spans.push(Span::styled(hint, Style::default().fg(DRACULA_CYAN)));
     } else {
         app.help_hint_col = None;
