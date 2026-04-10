@@ -44,6 +44,19 @@ impl BayesModel {
             return super::classifier::classify(msg, owner_name);
         }
 
+        // Match the pattern classifier's early-return guards so trained
+        // Bayes paths don't accidentally classify bpmux's own nudge text
+        // as a new experience. This closes the "recursive nudge match"
+        // failure mode observed in the #163 interim misfire log — the
+        // pattern classifier already had these guards; Bayes did not.
+        if !msg.is_chat() {
+            return MessageClass::Routine;
+        }
+        let sender = msg.from.split(':').next().unwrap_or(&msg.from);
+        if sender == "bpmux" {
+            return MessageClass::Routine;
+        }
+
         let features = extract_features(msg, owner_name);
         let num_features = count_unique_features(&self.feature_counts);
 

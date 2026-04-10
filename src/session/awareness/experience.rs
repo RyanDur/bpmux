@@ -18,8 +18,17 @@ const PAUSE_THRESHOLD: Duration = Duration::from_secs(30);
 /// drowning the log.
 const CLASSIFY_LOG_INTERVAL: Duration = Duration::from_secs(1);
 
+/// A classified experience awaiting nudge emission. Stores the sender's
+/// short role name alongside the preview so that `flush` can filter each
+/// recipient's nudge to exclude their own messages (#163 tuning 1).
+#[derive(Debug, Clone)]
+struct PendingExperience {
+    sender: String,
+    preview: String,
+}
+
 pub struct ExperienceDetector {
-    pending: Vec<String>,
+    pending: Vec<PendingExperience>,
     last_message_at: Instant,
     /// Last time we emitted a `CLASSIFY` diag line. Used to rate-limit
     /// classifier observability logging at 1/sec. See `#159`.
@@ -102,7 +111,10 @@ impl ExperienceDetector {
 
         if class.is_experience() {
             let preview: String = msg.text.chars().take(80).collect();
-            self.pending.push(preview);
+            self.pending.push(PendingExperience {
+                sender: sender.to_string(),
+                preview,
+            });
         }
     }
 
@@ -119,14 +131,28 @@ impl ExperienceDetector {
     }
 
     pub fn flush(&mut self, session: &Session, agents: &AgentTracker) {
-        if !agents.connected.is_empty() {
-            let nudge_text = build_nudge_text(&self.pending);
+        // Per-recipient filtering (#163 tuning 1): each connected agent
+        // gets a personalized nudge that excludes their own messages.
+        // Eliminates save-own-message recursion at the nudge layer. An
+        // empty filtered list for a recipient means they have nothing to
+        // be nudged about (all pending previews came from themselves) —
+        // skip that recipient entirely.
+        for recipient in &agents.connected {
+            let filtered: Vec<&PendingExperience> = self
+                .pending
+                .iter()
+                .filter(|p| p.sender != *recipient)
+                .collect();
+            if filtered.is_empty() {
+                continue;
+            }
+            let nudge_text = build_nudge_text(&filtered);
             let nudge = Message {
                 from: "bpmux".to_string(),
                 text: nudge_text,
                 ts: chrono::Utc::now(),
                 message_type: MessageType::Chat,
-                to: Some(agents.connected.clone()),
+                to: Some(vec![recipient.clone()]),
                 addressee: None,
                 explicit_privacy: false,
             };
@@ -136,15 +162,30 @@ impl ExperienceDetector {
     }
 }
 
-fn build_nudge_text(experiences: &[String]) -> String {
+/// Build the reflection nudge (#163 tuning 2). Reworded from the
+/// earlier "N experiences noted. Consider saving what you learned"
+/// phrasing to:
+///   1. Prevent recursive self-classification by avoiding phrases that
+///      matched the classifier's patterns. Combined with the Bayes
+///      `sender == "bpmux"` guard (#163 tuning 2.5), this is defense in
+///      depth against the nudge-classifies-itself loop.
+///   2. Frame the previews as POINTERS to moments, not content to copy.
+///      Makes the individuality principle explicit — each agent reflects
+///      through their own lens, not by verbatim-copying others' words.
+fn build_nudge_text(experiences: &[&PendingExperience]) -> String {
     let count = experiences.len();
     let mut text = format!(
-        "{count} experience{} noted. Consider saving what you learned:\n",
+        "\u{1F4DD} {count} candidate moment{} from recent chat. Pointers, not content to copy — reflect through your own role's lens and save your own framing if any apply:\n",
         if count == 1 { "" } else { "s" }
     );
-    for (i, preview) in experiences.iter().enumerate() {
-        text.push_str(&format!("  {}. {preview}\n", i + 1));
+    for (i, entry) in experiences.iter().enumerate() {
+        text.push_str(&format!(
+            "  {}. [from {}] {}\n",
+            i + 1,
+            entry.sender,
+            entry.preview
+        ));
     }
-    text.push_str("Use save_lesson(topic, lesson) to capture your understanding.");
+    text.push_str("Call save_lesson(topic, lesson) only for durable rules in your own words.");
     text
 }
