@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crossterm::event::{self, EventStream};
+use crossterm::event::{self, Event, EventStream};
 use futures::StreamExt;
 use tokio::sync::{broadcast, mpsc};
 
@@ -15,6 +15,20 @@ use crate::transport::webrtc;
 
 const NOTIFICATION_PREVIEW_CHARS: usize = 50;
 
+/// Pull the next terminal event from the real tty reader, or block forever
+/// if the stream is `None` (headless mode). Returning a never-resolving
+/// future in headless is how we keep the `tokio::select!` shape uniform
+/// without creating a crossterm `EventStream` that panics with
+/// "reader source not set" when there's no tty.
+async fn next_terminal_event(
+    stream: &mut Option<EventStream>,
+) -> Option<Result<Event, std::io::Error>> {
+    match stream {
+        Some(s) => s.next().await,
+        None => std::future::pending().await,
+    }
+}
+
 pub async fn run_tui<B>(
     terminal: &mut ratatui::Terminal<B>,
     app: &mut App,
@@ -22,12 +36,20 @@ pub async fn run_tui<B>(
     wake_rx: &mut broadcast::Receiver<session::Message>,
     screen_capture: Arc<std::sync::Mutex<String>>,
     mut injected_rx: mpsc::Receiver<crossterm::event::Event>,
+    headless: bool,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>>
 where
     B: ratatui::backend::Backend,
     B::Error: Send + Sync + 'static,
 {
-    let mut events = EventStream::new();
+    // Skip crossterm's thread-local reader setup when there's no tty.
+    // `EventStream::new()` (or its first poll) panics with "reader source
+    // not set" in headless contexts because there's nothing to read from.
+    let mut events: Option<EventStream> = if headless {
+        None
+    } else {
+        Some(EventStream::new())
+    };
     let (p2p_tx, mut p2p_rx) = mpsc::channel::<P2pResult>(8);
     let mut active_passphrase: Option<String> = None;
     let mut pending_offer: Option<webrtc::PendingOffer> = None;
@@ -72,12 +94,17 @@ where
             }
         }
         tokio::select! {
-            maybe_event = events.next() => {
+            maybe_event = next_terminal_event(&mut events) => {
                 let Some(Ok(ev)) = maybe_event else { return Ok(()); };
                 handle_terminal_event(ev, app, session)?;
-                while event::poll(std::time::Duration::ZERO)? {
-                    let ev = event::read()?;
-                    handle_terminal_event(ev, app, session)?;
+                // Drain any additional queued events without blocking. This
+                // is only meaningful when a real tty is attached; in headless
+                // mode `events` is None and we never reach this branch.
+                if !headless {
+                    while event::poll(std::time::Duration::ZERO)? {
+                        let ev = event::read()?;
+                        handle_terminal_event(ev, app, session)?;
+                    }
                 }
                 if app.should_quit {
                     super::ui_state::UiState::save(app, session);

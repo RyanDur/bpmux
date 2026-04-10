@@ -119,6 +119,7 @@ pub fn run() -> anyhow::Result<()> {
                 &mut wake_rx,
                 Arc::clone(&screen_capture),
                 inject_rx,
+                true,
             )
             .await
         } else {
@@ -136,6 +137,7 @@ pub fn run() -> anyhow::Result<()> {
                 &mut wake_rx,
                 Arc::clone(&screen_capture),
                 inject_rx,
+                false,
             )
             .await;
             ratatui::restore();
