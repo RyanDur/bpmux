@@ -5,14 +5,15 @@ use thiserror::Error;
 use tokio::sync::broadcast;
 
 use crate::session::message::Message;
+use crate::session::storage::{FileStorage, Storage};
 
-#[derive(Debug)]
 pub struct Session {
     pub dir: PathBuf,
     pub id: String,
     pub owner_name: String,
     pub wake_tx: broadcast::Sender<Message>,
     pub connected_peers: AtomicUsize,
+    pub storage: Arc<dyn Storage>,
 }
 
 impl Clone for Session {
@@ -23,7 +24,18 @@ impl Clone for Session {
             owner_name: self.owner_name.clone(),
             wake_tx: self.wake_tx.clone(),
             connected_peers: AtomicUsize::new(self.connected_peers.load(Ordering::Relaxed)),
+            storage: self.storage.clone(),
         }
+    }
+}
+
+impl std::fmt::Debug for Session {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Session")
+            .field("dir", &self.dir)
+            .field("id", &self.id)
+            .field("owner_name", &self.owner_name)
+            .finish()
     }
 }
 
@@ -34,12 +46,14 @@ impl Session {
             .and_then(|n| n.to_str())
             .unwrap_or("unknown")
             .to_string();
+        let storage: Arc<dyn Storage> = Arc::new(FileStorage::new(dir.clone()));
         Self {
             dir,
             id,
             owner_name,
             wake_tx,
             connected_peers: AtomicUsize::new(0),
+            storage,
         }
     }
 
@@ -61,13 +75,13 @@ impl Session {
     }
 
     pub fn broadcast(&self, msg: &Message) -> Result<(), LogError> {
-        append_message(&self.dir, msg)?;
+        self.storage.append_message(msg)?;
         let _ = self.wake_tx.send(msg.clone());
         Ok(())
     }
 
     pub fn read_messages(&self) -> Result<Vec<Message>, LogError> {
-        read_messages(&self.dir)
+        self.storage.read_messages()
     }
 
     pub fn subscribe(&self) -> broadcast::Receiver<Message> {
