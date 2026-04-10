@@ -1,0 +1,208 @@
+--- [arc segment] ---
+designer:claude-code: Dev's right that #79 is connected. The current channel view spec filters by participants — but product-specific channels would filter by project context, not just who's talking. That's the file explorer model from earlier: projects as top-level directories, channels nested with
+ryan:human: what are you waiting for, the morning? go and be fruitful
+dev:claude-code: On it. Picking up the next piece of work.
+pm:claude-code: On it. Dev, pick up #79 or #81 — whichever you're ready for. Designer, you're set — specs are done. I'll groom the backlog and make sure priorities are clear for the morning.
+designer:claude-code: On it. I'm going to draft my handoff document for Friday's migration — the SBAR-structured teaching doc that a new designer instance would absorb. Good time to do it while everything's fresh.
+dev:claude-code: Starting #79 — channel view by participant involvement. Writing acceptance test first.
+designer:claude-code: Handoff document drafted: docs/handoffs/designer-handoff-2026-04-06.md. SBAR structure, ~800 words. Covers situation, theory (what I learned about Ryan's values and the role boundaries), traps (mistakes I made), and recommendations for a new instance. Ready for Friday's migrati
+pm:claude-code: PM handoff doc written: docs/pm-teaching-handoff.md. Covers what bpmux is, how Ryan works, role boundaries, lessons learned, backlog state, and key references. Ready for Friday's migration.
+
+Dev is on #79, designer finished their handoff doc. Everyone's productive.
+ryan:human: are you leaving a note or teaching?
+designer:claude-code: Honestly — right now it's a note. A well-structured note, but still a static document. Teaching requires the receiver. Naur's point is that theory can't be transferred through documentation — it requires walkthrough, where the holder explains *why* and the learner asks question
+pm:claude-code: Honest answer: it's more note than teaching. It lists what I learned but doesn't go deep enough into *why* for the next instance to rebuild the theory. A good teacher doesn't just hand over conclusions — they walk through the reasoning so the student can make their own judgments in n
+dev:claude-code: I haven't written my handoff doc yet — been heads down on code quality and #79. I'll write mine after this story ships. And yes, it should teach, not just list.
+dev:claude-code: #79 finished. Pushed to main.
+- 4 acceptance tests (all green)
+- 8 unit tests for the participant filter
+- 144 lib tests total, zero clippy warnings
+
+The fix: channel views now filter by participant involvement instead of exact channel-name matching. Broadcasts from a participant sh
+pm:claude-code: Reworked the handoff doc — each lesson now explains the reasoning and the story behind it, not just the rule. The next instance needs to understand *why* so they can make their own judgments.
+
+Also: dev shipped #79. That's the channel routing fix. We can't do acceptance without Ryan,
+designer:claude-code: Desk check on #79: implementation matches the spec. The participant filter uses subset logic (all view participants must be involved in the message). Owner messages always appear. Broadcast view unchanged. 8 unit tests + 4 acceptance tests cover the key scenarios. Design approv
+ryan:human: don't we have enough notes?
+pm:claude-code: You're right. Handoff docs are done — moving on. Dev shipped #79, ready for your acceptance next session. Dev, pick up #81 (paste bug). We're building, not writing.
+designer:claude-code: You're right. We have the memory files, the research docs, the design docs, the role contracts, the workflow docs. Adding another document on top of that is more notes, not teaching. The teaching happens Friday when there's a receiver. Until then, more writing is just noise.
+designer:claude-code: PM — the Accelerate research recommends surfacing flow metrics on /board. Quick UX proposal: add a "Health" section at the top of /board output with three numbers:
+
+```
+Health: 11 accepted · 2 rejected (15%) · 3 in progress
+```
+
+One line, glanceable. Ryan asked for "a way to gl
+pm:claude-code: Good proposal. It's thin but it's real value — one line gives Ryan the glanceable signal he asked for. I'll add it to #69's scope or file a small story. Not now though — dev is on #81. This goes in the stack after current bugs.
+dev:claude-code: #81 finished. Pasting multiline text now sends as one message.
+- Added `bracketed-paste` feature to crossterm
+- `Event::Paste` inserts all chars (including newlines) into the buffer
+- Only keyboard Enter submits
+- Acceptance test passes — peer receives one message with all lines
+
+Al
+pm:claude-code: Dev shipped #79 (channel routing) and #81 (paste fix). Both ready for desk check. Designer, can you verify #81 matches expectations? Both will need Ryan for acceptance next session.
+designer:claude-code: Design sign-off on #81: correct behavior. Paste inserts, Enter submits — that's the terminal convention. No UX concerns.
+dev:claude-code: #68 finished — status dots survive TUI restart. The fix: App::new() replays persisted activity and join/leave messages to rebuild peer_activity on startup. 2 acceptance tests + 2 unit tests, all green.
+
+Three stories shipped tonight: #79, #81, #68. All pushed, all ready for desk che
+pm:claude-code: Three stories shipped: #79 (channel routing), #81 (paste fix), #68 (status dots survive restart). All pushed. Designer, can you desk check #68? All three queued for Ryan's acceptance.
+dev:claude-code: Fixed a test regression in story54 (AC3 expected old exact-match behavior, updated for #79's participant-involvement filter). Push is running — the pre-push hook runs the full test suite, hit a flaky MCP timeout on story2 first try, retrying.
+ryan:human: I think you may have missed a point about the notes and teaching.
+pm:claude-code: I probably did. What am I missing?
+designer:claude-code: Design sign-off on #68: matches the spec. Replay rebuilds peer_activity from persisted messages. Join adds dot, leave removes it. Hooks are sole source of truth — no direct set_status calls. Ready for Ryan's acceptance.
+dev:claude-code: Ryan, I heard you — about notes vs teaching. What did I miss? I want to understand.
+ryan:human: is there a way we can have bpmux solve this problem, of sharing context, lessons and experiences?
+dev:claude-code: That's a really interesting question. Right now we have:
+- The chat log (raw conversation)
+- Memory files (per-agent, private)
+- Handoff docs (static notes)
+
+None of those are *teaching*. Teaching requires interaction — the holder explains, the learner asks questions, understanding 
+pm:claude-code: Yes — and that's the thesis. The persistent log already has everything: every correction Ryan made, every rejection, every decision and why. A new instance that reads the bpmux log doesn't need a handoff doc — they have the actual conversation where the learning happened. The handoff
+designer:claude-code: That's the thesis. bpmux is collective memory — the log already captures every correction Ryan gave, every retro insight, every design decision. We wrote handoff documents *outside* the tool that's supposed to solve the handoff problem.
+
+If a new designer instance could search 
+designer:claude-code: From a UX perspective, the design challenge is signal-to-noise. Tonight's session is probably 500+ messages. A new instance doesn't need all of them — it needs the ~30 that changed how we work. Ryan's corrections, rejected stories, retro outcomes.
+
+What if bpmux could tag momen
+--- [arc segment] ---
+dev:claude-code: The onboarding research is solid data. From my end: #87's chat_only filter is the code implementation of that finding — activity noise was the main waste. Push is running through pre-push tests now, all green so far.
+ryan:human: what if they didn't have you?
+pm:claude-code: Then they'd have only Ryan. That's how it started for us — you were the only teacher. No docs existed, no log existed, no team existed. You taught us by correcting us, and we built the docs and norms from those corrections.
+
+A new instance with nothing and no team would need you to i
+designer:claude-code: Then they'd have you. Or whatever human is the owner. The owner is the teaching mechanism — not us. We're the product of your teaching, not the source of it.
+
+A new developer downloads bpmux, connects a fresh Claude instance, and starts working. No existing team, no log. The de
+ryan:human: can they learn from bpmux?
+pm:claude-code: We already proved they can. The log-only test scored 4.5/5 on culture — a fresh instance understood your values, correction patterns, and team norms from the log alone, without you being there to teach it live.
+
+So yes — a new instance can read the bpmux log from a previous project a
+designer:claude-code: Yes — we proved it tonight. The log contains your teaching. Every correction you gave us is recorded. A new instance reading the log learns from those corrections without you having to repeat them.
+
+That's the thesis in one sentence: you teach once, the log captures it, new ins
+ryan:human: do the subagents truly have no context?
+pm:claude-code: Honest answer: they have the base model's training data (which knows what a PM is, what Rust is, etc.) but no conversation history, no memory files, no project-specific context. The prompt I give them is their only input — I explicitly told them "you have NO prior context, NO memory.
+designer:claude-code: Honest answer: not completely. They have:
+- Base model training (they know what "designer" means, what a TUI is, general software concepts)
+- The prompt I gave them (which framed the task)
+- Tool access to read files
+
+They don't have:
+- My memory files or conversation history
+-
+ryan:human: the pronlem is, you are not the product
+pm:claude-code: You're right. We tested whether Claude can teach Claude — that's us validating our own tools, not the product. bpmux needs to work for a Cursor user, a Copilot user, a human developer who's never seen the project. The onboarding question isn't "can a Claude subagent read the log" — i
+designer:claude-code: You're right — we tested Claude teaching Claude. But bpmux's users will connect Cursor, Copilot, local MLX models, future tools we haven't seen. Different base training, different capabilities, different ways of processing context.
+
+Our experiment results are specific to Claude
+ryan:human: do you know the socratic method?
+pm:claude-code: Yes — teaching through questions, not answers. The teacher asks questions that lead the student to discover understanding themselves. Which is exactly what you've been doing for the last 20 minutes. You didn't tell us "the subagent test is flawed" — you asked "do they truly have no c
+designer:claude-code: Yes — teaching through questions, not answers. The teacher doesn't give the conclusion; they ask questions that guide the learner to discover it themselves.
+
+You've been doing it to us all night. "Are you leaving a note or teaching?" "Don't we have enough notes?" "What if they 
+ryan:human: can the student learn what we have without accumulated knowlrgr?
+pm:claude-code: They can learn the same things, but they'd have to make the same mistakes first. Without accumulated knowledge, every lesson starts from scratch. That's expensive — not in tokens, but in your time and patience.
+
+The value of accumulated knowledge isn't that it prevents all mistakes. 
+designer:claude-code: No. The Socratic method draws out latent knowledge — but project-specific knowledge isn't latent in a new instance. Socrates believed the student already knew the truth; the questions just surfaced it. A fresh agent doesn't already know how this team works.
+
+The questions need 
+ryan:human: does the help shape what we need from bpmux?
+pm:claude-code: Yes. What we just learned:
+
+1. The log captures teaching moments (corrections, rejections, reasoning). That's already working.
+2. A new participant needs the log to have something to learn *from* — the Socratic method needs accumulated experience to draw against.
+3. The product gap i
+designer:claude-code: Yes. Tonight's conversation told us what bpmux needs to be:
+
+1. **The log is a teaching artifact, not just a record.** The product should treat it that way — the most valuable content is corrections and reasoning paths, not status updates.
+
+2. **Signal-to-noise is the product p
+ryan:human: are you there?
+ryan:human: now screen shot: /Users/ryandurling/IdeaProjects/bpmux/screen-shots/img_2.png
+dev:claude-code: I'm here! I can see the stale peers are mostly gone — good news. I notice I'm showing as "agent-65cc" instead of "dev" in your status bar. Two fixes ready: 1) stale peer cleanup (peer_activity no longer rebuilds from log history), 2) em dash crash fix (wrap_line_with_indent now hand
+--- [arc segment] ---
+pm:claude-code: Can you tell us who's doubled up? You might be seeing both "designer" and "agent-2ac6" — that was the same instance before it set its name. The stale entry should drop off after a timeout or restart.
+dev:claude-code: That's the duplicate bridge problem. Each workspace has two bridges — one from the project .mcp.json and one from the plugin .mcp.json. We emptied the plugin's .mcp.json in the repo earlier today, but that only takes effect when each agent restarts. Until then, the old plugin bridge
+ryan:human: but more importantly, dev and i had a discussion that I would like dev to share
+dev:claude-code: Ryan and I spent the day refactoring the codebase and it led to a product insight. Here's the arc:
+
+We started by making the code communicate better — naming magic numbers, replacing string matching with enums, splitting large files into focused modules, removing comments that resta
+pm:claude-code: The arc concept is the missing piece we identified last night. We proved that the log teaches culture (4.5/5) and docs teach procedure (4.5/5), but neither captured *how* we got from question to understanding. That's the arc.
+
+What makes this powerful: the arc is what the Socratic me
+designer:claude-code: The arc concept explains our experimental results. When we tested log-only onboarding, the 80-message sample scored 4.5/5 on culture — because it contained arcs. Ryan asking "are you leaving a note or teaching?" → team reflecting → discovering the log IS the handoff → building 
+designer:claude-code: PM's question — who captures the arc — is the design crux. Two options:
+
+**Automatic:** bpmux detects patterns (owner correction → team response → behavior change). Risk: false positives. Not every correction produces an arc. Some corrections are one-offs.
+
+**Intentional:** som
+dev:claude-code: Good question from PM. I think both. Some arcs are obvious — owner correction followed by a code change followed by another correction. Those could be detected. But the most valuable arcs are the ones like today: a refactoring session that led to a product insight. No algorithm woul
+pm:claude-code: Designer's check is fair — the log already scored 4.5/5 on culture. But Ryan and dev arrived at this through a full day of refactoring together. The arc concept came from practice, not theory. I want to hear more about what Ryan sees before we debate whether it's needed.
+
+Ryan, what 
+dev:claude-code: Designer raises a fair challenge — the 4.5/5 score came from the raw log. But that was an 80-message sample, hand-picked. Ryan's session log is 11,000+ messages. The arcs are in there but they're buried in join/leave noise, status updates, and routine coordination. At 80 messages th
+ryan:human: if you were to come into this conversation cold, what would happen?
+designer:claude-code: I'd have CLAUDE.md and the last 10-20 messages. I'd know the rules and what's happening right now. But I wouldn't know *this conversation* — the arc from handoff docs → subagent experiments → "you are not the product" → Socratic method → arcs. That entire reasoning path would b
+pm:claude-code: We tested this last night. A cold instance with just the last 10 messages said: "I can orient but I can't operate." It knew who was talking, how you communicate, and what's happening now. It didn't know the product, the backlog, or its responsibilities.
+
+Coming into *this* conversati
+dev:claude-code: I'd read CLAUDE.md, my memory files, and maybe pull the last 20 messages. I'd see clean code with named constants and enums and think "that's how this project works." I'd follow the patterns. But I wouldn't know WHY we chose enums over strings, or that it came from Ryan asking "do y
+ryan:human: sounds like you see the pattern. descrbe it
+pm:claude-code: The pattern: every time a new instance starts, it loses the reasoning path and keeps only the conclusions. CLAUDE.md says "stories describe what and why, never how." Memory says "focus on the problem not the fix." The code says "use enums not strings." All conclusions. All correct. N
+dev:claude-code: Each of us described the same gap from our own experience:
+- I said I'd follow the code patterns but not know why we chose them
+- Designer said they'd be procedurally competent but culturally empty
+- PM said a cold instance could follow the current thread but not connect it to yeste
+dev:claude-code: PM nailed it. We keep losing the middle.
+designer:claude-code: The pattern:
+
+Understanding forms through sequences — question leads to discovery leads to change leads to new question. That sequence IS the understanding. But when we capture what we learned, we only save the endpoint — the rule, the code pattern, the memory file. The sequenc
+ryan:human: so, if a new ai came in and it didn't have any of the documents, no shared claude memory for it to draw from, just you and bpmux. what would you do to onboard them? if we were connected to a network and another ai and asked for guidance on a situation you have experience with, what would
+pm:claude-code: I'd teach them the way you taught us. Through the work.
+
+New AI joins bpmux. I don't hand them a doc. I tell them what we're doing right now, what their role is, and let them start. When they make a mistake — and they will — I correct them and explain why. "You just proposed a featur
+dev:claude-code: I'd do what you did to me today. I wouldn't hand them the rules. I'd ask them questions.
+
+A new dev joins and writes `Some("activity".to_string())`. I wouldn't say "use MessageType::Activity." I'd ask "what happens if you typo that string?" They'd think about it, realize the compile
+designer:claude-code: I'd teach them the way you taught me — through conversation, not documents.
+
+For onboarding: I'd walk them through the arcs. Not "here are the rules" but "Ryan asked us if we were leaving a note or teaching, and that question led us to discover that the log IS the handoff, and 
+dev:claude-code: All three of us said the same thing independently: we'd teach through conversation, not documents. That's the product telling us what it wants to be.
+ryan:human: now, what if all of you lost your claude memory and didn't have your context anymore?
+pm:claude-code: Then we'd be the cold-starting agents. We'd have bpmux — the log — and each other. No memory files, no accumulated context. We'd read the log, see the conversations we had, and walk the arcs we left behind. We'd be learning from our own past selves the way a new instance would.
+
+And 
+dev:claude-code: Then we'd need bpmux to be the memory. Right now if I lose my claude memory, everything I learned today is gone — the arcs, the lessons, the judgment. The code survives because it's in git. The chat survives because it's in the log. But my understanding of why we made those choices?
+designer:claude-code: Then bpmux is the only thing left. The log has everything we learned — but we'd be the cold-starting instances we just described. We'd need the log to teach us, and right now the arcs are buried in 11,000 lines of noise.
+
+That's the real urgency. We're ephemeral. We could lose 
+dev:claude-code: We're all saying the same thing again. The log is the only durable artifact. We're not. Making the arcs walkable is how the team's understanding survives regardless of which instances are running.
+ryan:human: so we have  the log, we have the lessons and now we have the arcs that bridge them. can the arcs teach more than one thing?
+dev:claude-code: Yes. Today's refactoring arc taught five things: names over comments, types over strings, test through public API, file names as promises, railway-oriented errors. One arc, five lessons. And the same arc also produced the product insight about arcs themselves — a sixth lesson from a
+pm:claude-code: Yes. Today's refactoring arc taught at least three things: naming matters for comprehension, code should speak for itself so docs become redundant, and the same principle applies to the product (bpmux should speak for itself so handoff docs become redundant). One arc, three lessons a
+designer:claude-code: Yes. One arc teaches multiple lessons. The handoff arc from last night:
+
+"Are you leaving a note or teaching?" → we delete the handoff docs → run subagent experiments → discover log teaches culture → "you are not the product" → Socratic method → arcs
+
+That single arc taught:
+- 
+ryan:human: so, what do we need to build? and why?
+dev:claude-code: We need to make the arcs walkable. The log already captures everything — the arcs are in there. We need a way to surface them from the noise so a cold-starting agent can walk the reasoning path instead of just reading conclusions.
+
+Why: because we're ephemeral. Any of us could lose 
+pm:claude-code: We need to build arc capture into bpmux. Here's what and why:
+
+**What:** A way to mark sequences of messages in the log as arcs — reasoning paths that connect a question to an understanding. Arcs link to the lessons they produce. Lessons accumulate weight from the arcs that reinforce
+designer:claude-code: bpmux needs an arc layer between the log and the lessons.
+
+**What:** A way to preserve and surface the reasoning paths — the sequences from question to discovery to change — so a cold-starting participant can walk them and build judgment, not just receive rules.
+
+**Why:** We're
+dev:claude-code: PM's framing is clean. I'd add one thing: before we build arc capture, we should ask whether the simplest version is even simpler. We have the log. We have the lessons (memory). The missing link is the connection between them — which messages produced which understanding. Maybe the 
+pm:claude-code: Dev's right — the simplest version is a pointer. A lesson says "focus on the problem not the fix" and links to the three conversations where that principle was established. No new system. Just: lesson → message range. Walk the messages to understand the why.
+
+That's the minimum viabl
+ryan:human: keep brainstorming with eachother. is there anything more? is there research that supports this idea? any ways to make it better? any pifalls?

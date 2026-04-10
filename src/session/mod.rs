@@ -4,7 +4,6 @@ pub mod classifier;
 pub mod lessons;
 pub mod log;
 pub mod message;
-pub mod nudge;
 pub mod search;
 
 pub use classifier::{MessageClass, classify};
@@ -16,6 +15,8 @@ pub use message::{Message, MessageType};
 pub use search::{SearchFilters, SearchResult, search};
 
 #[cfg(test)]
+mod awareness_tests;
+#[cfg(test)]
 mod classifier_tests;
 #[cfg(test)]
 mod lessons_tests;
@@ -23,5 +24,3 @@ mod lessons_tests;
 mod log_tests;
 #[cfg(test)]
 mod message_tests;
-#[cfg(test)]
-mod nudge_tests;

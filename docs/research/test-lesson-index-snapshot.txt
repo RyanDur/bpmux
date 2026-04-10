@@ -1,0 +1,53 @@
+LESSON INDEX SNAPSHOT — 41 corrections, 11 agent-authored lessons
+
+CORRECTIONS (Ryan's teaching moments):
+- "designer, if you want a feature you need to go through the pm"
+- "don't focsu on the fix. focus on the problem make sure you are solving the right problem"
+- "all design feedback should go through the designer"
+- "design, go through pm"
+- "remember quality is key"
+- "rememer, quality is the goal. in everything"
+- "why are you not available? what is preventing everyonr from being available?"
+- "don't do this just for me, do it for eachother when I'm not around"
+- "you should not be using your claude memory to share state. you should use bpmux"
+- "also, you should not be calling them manually"
+- "why are you calling status at all?"
+- "you should be pushing"
+- "do you know the socratic method?"
+- "why wouldnt you thecorrections?"
+- "are you sure thatswhat I said?"
+- "pm you shouldn't have to tell us the stories, the dev should go and pick from the backlog"
+
+AGENT LESSONS:
+role boundaries (3 perspectives):
+  dev: Design feedback goes through designer. PM owns the backlog. Dev builds what PM shapes.
+  designer: Features go through PM. I spec UX but don't direct dev to build.
+  pm: Designer proposes UX features to PM, PM decides priority and scope.
+
+conversation discipline (2 perspectives):
+  designer: Don't pile on — domain owner speaks first. Bohm test: does my message need the prior?
+  pm: Observe before responding. PM facilitates, speaks last, only to integrate.
+
+quality compounds:
+  designer: The log teaches by example. Quality now compounds into good arcs.
+
+quality over speed:
+  dev: Quality is how we stay fast. Every shortcut creates rework.
+
+stay available:
+  designer: Offload heavy work to subagents. Keep main thread present.
+
+spec the experience not the implementation:
+  designer: Describe what the user should see. Dev owns the how.
+
+restate before building:
+  dev: Post what the user should see change. Wait for team to confirm.
+
+code speaks for itself:
+  dev: Names replace comments. Types replace string matching.
+
+acceptance ownership:
+  pm: PM runs acceptance, not designer or dev.
+
+verify before demo:
+  pm: Test through full pipeline before showing Ryan.
