@@ -24,7 +24,7 @@ pub async fn ws_handler(
 async fn handle_ws(socket: WebSocket, session: Arc<session::Session>) {
     let (tx, rx) = socket.split();
     if let Err(e) = run_ws_session(tx, rx, session).await {
-        eprintln!("WebSocket session error: {e}");
+        crate::session::diag::log_diag(&format!("ws: session error: {e}"));
     }
 }
 
@@ -64,7 +64,9 @@ async fn run_ws_session(
                             }
                         }
                         Err(broadcast::error::RecvError::Lagged(n)) => {
-                            eprintln!("WebSocket client {identity} lagged by {n} messages");
+                            crate::session::diag::log_diag(&format!(
+                                "ws: client {identity} lagged by {n} messages"
+                            ));
                         }
                         Err(broadcast::error::RecvError::Closed) => break,
                     }
@@ -98,7 +100,12 @@ async fn run_ws_session(
                             }
                         }
                         Some(Ok(WsMessage::Close(_))) | None => break,
-                        Some(Err(e)) => { eprintln!("WebSocket read error for {identity}: {e}"); break; }
+                        Some(Err(e)) => {
+                            crate::session::diag::log_diag(&format!(
+                                "ws: read error for {identity}: {e}"
+                            ));
+                            break;
+                        }
                         _ => {}
                     }
                 }

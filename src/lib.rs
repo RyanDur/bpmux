@@ -102,7 +102,7 @@ pub fn run() -> anyhow::Result<()> {
             )
             .await
             {
-                eprintln!("Server error: {e}");
+                session::diag::log_diag(&format!("server: run error: {e}"));
             }
         });
 

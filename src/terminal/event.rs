@@ -111,7 +111,11 @@ where
                                 });
                                 app.scroll_offset = 0;
                             }
-                            Err(e) => eprintln!("Error reading messages: {e}"),
+                            Err(e) => {
+                                crate::session::diag::log_diag(&format!(
+                                    "event: error reading messages: {e}"
+                                ));
+                            }
                         }
                     }
                     Err(broadcast::error::RecvError::Closed) => {
