@@ -1,9 +1,8 @@
-//! Message classification using Chain of Responsibility.
-//!
-//! Each handler examines a message and either classifies it or
-//! passes to the next handler. The chain order defines priority.
+//! Message classification using Chain of Responsibility with
+//! Aho-Corasick multi-pattern matching for O(m) classification.
 
 use crate::session::Message;
+use aho_corasick::AhoCorasick;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -29,18 +28,6 @@ impl MessageClass {
         matches!(self, MessageClass::Experience(_))
     }
 }
-
-/// Context passed through the classification chain.
-pub struct ClassifyContext<'a> {
-    pub msg: &'a Message,
-    pub owner_name: &'a str,
-    pub sender: &'a str,
-    pub text_lower: String,
-}
-
-/// A handler in the classification chain. Returns Some to classify,
-/// None to pass to the next handler.
-type Handler = fn(&ClassifyContext) -> Option<MessageClass>;
 
 const MIN_EXPERIENCE_LEN: usize = 20;
 
@@ -69,210 +56,180 @@ pub const COORDINATION_PATTERNS: &[&str] = &[
     "tests pass",
 ];
 
-/// The classification chain — order defines priority.
-const CHAIN: &[Handler] = &[
-    filter_non_chat,
-    filter_system_sender,
-    filter_owner_operational,
-    detect_decision,
-    filter_coordination,
-    filter_report_formatting,
-    detect_correction,
-    detect_question,
-    detect_teaching,
-    detect_redirect,
+const OPERATIONAL: &[&str] = &[
+    "restart",
+    "rebuild",
+    "see me",
+    "you in?",
+    "see this",
+    "screen-shots",
+    "img_",
+    "how about now",
+    "hows it going",
+    "hows it goin",
+    "everything ok",
+    "something wrong",
+    "need anything",
+    "keep going",
+    "sounds good",
+    "great,",
+    "got it",
+    "restarted",
+    "rebuilt",
 ];
 
-pub fn classify(msg: &Message, owner_name: &str) -> MessageClass {
-    let sender = msg.from.split(':').next().unwrap_or(&msg.from);
-    let ctx = ClassifyContext {
-        msg,
-        owner_name,
-        sender,
-        text_lower: msg.text.to_lowercase(),
-    };
+const DECISION: &[&str] = &[
+    "accepted", "rejected", "closed", "filed", "accept", "ship it", "approved",
+];
 
-    for handler in CHAIN {
-        if let Some(class) = handler(&ctx) {
-            return class;
+const REPORT_INDICATORS: &[&str] = &["**", "##", "- ", "* ", "1. ", "2. ", "3. "];
+
+const CORRECTION: &[&str] = &[
+    "don't do",
+    "dont do",
+    "stop doing",
+    "not that way",
+    "that's wrong",
+    "the problem is",
+];
+
+const QUESTION: &[&str] = &[
+    "do you know",
+    "are you sure",
+    "is that right",
+    "why would",
+    "why did you",
+    "why are you",
+    "what do you think",
+    "have you considered",
+    "what if",
+    "how would you",
+];
+
+const TEACHING: &[&str] = &[
+    "you should",
+    "we should",
+    "remember,",
+    "the reason is",
+    "this is because",
+    "the way to",
+    "focus on",
+    "quality is",
+    "go through",
+    "the right way",
+];
+
+const REDIRECT: &[&str] = &[
+    "not that",
+    "instead,",
+    "rather,",
+    "actually,",
+    "let me clarify",
+    "what i meant",
+    "no,",
+];
+
+fn matches(matcher: &Option<AhoCorasick>, text: &str) -> bool {
+    matcher.as_ref().is_some_and(|m| m.is_match(text))
+}
+
+fn build_matcher(patterns: &[&str]) -> Option<AhoCorasick> {
+    AhoCorasick::builder()
+        .ascii_case_insensitive(true)
+        .build(patterns)
+        .ok()
+}
+
+/// Pre-built pattern matchers for O(m) classification.
+pub struct Classifier {
+    operational: Option<AhoCorasick>,
+    decision: Option<AhoCorasick>,
+    coordination: Option<AhoCorasick>,
+    correction: Option<AhoCorasick>,
+    question: Option<AhoCorasick>,
+    teaching: Option<AhoCorasick>,
+    redirect: Option<AhoCorasick>,
+}
+
+impl Default for Classifier {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Classifier {
+    pub fn new() -> Self {
+        Self {
+            operational: build_matcher(OPERATIONAL),
+            decision: build_matcher(DECISION),
+            coordination: build_matcher(COORDINATION_PATTERNS),
+            correction: build_matcher(CORRECTION),
+            question: build_matcher(QUESTION),
+            teaching: build_matcher(TEACHING),
+            redirect: build_matcher(REDIRECT),
         }
     }
 
-    MessageClass::Discussion
+    pub fn classify(&self, msg: &Message, owner_name: &str) -> MessageClass {
+        if !msg.is_chat() {
+            return MessageClass::Routine;
+        }
+
+        let sender = msg.from.split(':').next().unwrap_or(&msg.from);
+        if sender == "bpmux" {
+            return MessageClass::Routine;
+        }
+
+        let text_lower = msg.text.to_lowercase();
+
+        if sender == owner_name && matches(&self.operational, &text_lower) {
+            return MessageClass::Discussion;
+        }
+
+        if matches(&self.decision, &text_lower)
+            && (sender == owner_name || text_lower.contains('#') || text_lower.contains("story"))
+        {
+            return MessageClass::Decision;
+        }
+
+        if matches(&self.coordination, &text_lower) {
+            return MessageClass::Discussion;
+        }
+
+        if REPORT_INDICATORS.iter().any(|r| msg.text.contains(r)) {
+            return MessageClass::Discussion;
+        }
+
+        if msg.text.len() >= MIN_EXPERIENCE_LEN {
+            if matches(&self.correction, &text_lower) {
+                return MessageClass::Experience(ExperienceKind::Correction);
+            }
+            if matches(&self.question, &text_lower) {
+                return MessageClass::Experience(ExperienceKind::Question);
+            }
+            if matches(&self.teaching, &text_lower) {
+                return MessageClass::Experience(ExperienceKind::Teaching);
+            }
+            if matches(&self.redirect, &text_lower) {
+                return MessageClass::Experience(ExperienceKind::Redirect);
+            }
+        }
+
+        MessageClass::Discussion
+    }
+}
+
+/// Convenience function that creates a temporary classifier.
+/// For hot paths, use Classifier::new() once and reuse.
+pub fn classify(msg: &Message, owner_name: &str) -> MessageClass {
+    // Use a thread-local cached classifier to avoid rebuilding on every call
+    thread_local! {
+        static CLASSIFIER: Classifier = Classifier::new();
+    }
+    CLASSIFIER.with(|c| c.classify(msg, owner_name))
 }
 
 pub fn classify_messages(messages: &[Message], owner_name: &str) -> Vec<MessageClass> {
-    messages.iter().map(|m| classify(m, owner_name)).collect()
-}
-
-// --- Filters (return Discussion/Routine to exclude) ---
-
-fn filter_non_chat(ctx: &ClassifyContext) -> Option<MessageClass> {
-    if !ctx.msg.is_chat() {
-        Some(MessageClass::Routine)
-    } else {
-        None
-    }
-}
-
-fn filter_system_sender(ctx: &ClassifyContext) -> Option<MessageClass> {
-    if ctx.sender == "bpmux" {
-        Some(MessageClass::Routine)
-    } else {
-        None
-    }
-}
-
-fn filter_owner_operational(ctx: &ClassifyContext) -> Option<MessageClass> {
-    const OPERATIONAL: &[&str] = &[
-        "restart",
-        "rebuild",
-        "see me",
-        "you in?",
-        "see this",
-        "screen-shots",
-        "img_",
-        "how about now",
-        "hows it going",
-        "hows it goin",
-        "everything ok",
-        "something wrong",
-        "need anything",
-        "keep going",
-        "sounds good",
-        "great,",
-        "got it",
-        "restarted",
-        "rebuilt",
-    ];
-
-    if ctx.sender == ctx.owner_name && OPERATIONAL.iter().any(|p| ctx.text_lower.contains(p)) {
-        Some(MessageClass::Discussion)
-    } else {
-        None
-    }
-}
-
-fn filter_coordination(ctx: &ClassifyContext) -> Option<MessageClass> {
-    if COORDINATION_PATTERNS
-        .iter()
-        .any(|p| ctx.text_lower.contains(p))
-    {
-        Some(MessageClass::Discussion)
-    } else {
-        None
-    }
-}
-
-fn filter_report_formatting(ctx: &ClassifyContext) -> Option<MessageClass> {
-    const REPORT_INDICATORS: &[&str] = &["**", "##", "- ", "* ", "1. ", "2. ", "3. "];
-
-    if REPORT_INDICATORS.iter().any(|r| ctx.msg.text.contains(r)) {
-        Some(MessageClass::Discussion)
-    } else {
-        None
-    }
-}
-
-// --- Detectors (return a classification when matched) ---
-
-fn detect_decision(ctx: &ClassifyContext) -> Option<MessageClass> {
-    const DECISION_SIGNALS: &[&str] = &[
-        "accepted", "rejected", "closed", "filed", "accept", "ship it", "approved",
-    ];
-
-    if DECISION_SIGNALS.iter().any(|s| ctx.text_lower.contains(s))
-        && (ctx.sender == ctx.owner_name
-            || ctx.text_lower.contains('#')
-            || ctx.text_lower.contains("story"))
-    {
-        Some(MessageClass::Decision)
-    } else {
-        None
-    }
-}
-
-fn detect_correction(ctx: &ClassifyContext) -> Option<MessageClass> {
-    const SIGNALS: &[&str] = &[
-        "don't do",
-        "dont do",
-        "stop doing",
-        "not that way",
-        "that's wrong",
-        "the problem is",
-    ];
-
-    if ctx.msg.text.len() >= MIN_EXPERIENCE_LEN
-        && SIGNALS.iter().any(|s| ctx.text_lower.contains(s))
-    {
-        Some(MessageClass::Experience(ExperienceKind::Correction))
-    } else {
-        None
-    }
-}
-
-fn detect_question(ctx: &ClassifyContext) -> Option<MessageClass> {
-    const SIGNALS: &[&str] = &[
-        "do you know",
-        "are you sure",
-        "is that right",
-        "why would",
-        "why did you",
-        "why are you",
-        "what do you think",
-        "have you considered",
-        "what if",
-        "how would you",
-    ];
-
-    if ctx.msg.text.len() >= MIN_EXPERIENCE_LEN
-        && SIGNALS.iter().any(|s| ctx.text_lower.contains(s))
-    {
-        Some(MessageClass::Experience(ExperienceKind::Question))
-    } else {
-        None
-    }
-}
-
-fn detect_teaching(ctx: &ClassifyContext) -> Option<MessageClass> {
-    const SIGNALS: &[&str] = &[
-        "you should",
-        "we should",
-        "remember,",
-        "the reason is",
-        "this is because",
-        "the way to",
-        "focus on",
-        "quality is",
-        "go through",
-        "the right way",
-    ];
-
-    if ctx.msg.text.len() >= MIN_EXPERIENCE_LEN
-        && SIGNALS.iter().any(|s| ctx.text_lower.contains(s))
-    {
-        Some(MessageClass::Experience(ExperienceKind::Teaching))
-    } else {
-        None
-    }
-}
-
-fn detect_redirect(ctx: &ClassifyContext) -> Option<MessageClass> {
-    const SIGNALS: &[&str] = &[
-        "not that",
-        "instead,",
-        "rather,",
-        "actually,",
-        "let me clarify",
-        "what i meant",
-        "no,",
-    ];
-
-    if ctx.msg.text.len() >= MIN_EXPERIENCE_LEN
-        && SIGNALS.iter().any(|s| ctx.text_lower.contains(s))
-    {
-        Some(MessageClass::Experience(ExperienceKind::Redirect))
-    } else {
-        None
-    }
+    let c = Classifier::new();
+    messages.iter().map(|m| c.classify(m, owner_name)).collect()
 }
