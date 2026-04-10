@@ -23,7 +23,10 @@
 set -euo pipefail
 
 DRY_RUN="${DRY_RUN:-1}"
-LOG_FILE="${BPMUX_HOOK_LOG:-$HOME/.bpmux/hook.log}"
+# Default log path is inside /tmp (already in the path whitelist), so running
+# `tail /tmp/bpmux-hook.log` while reviewing dry-run data doesn't itself
+# trigger a prompt. Override with BPMUX_HOOK_LOG=/path if persistence needed.
+LOG_FILE="${BPMUX_HOOK_LOG:-/tmp/bpmux-hook.log}"
 
 mkdir -p "$(dirname "$LOG_FILE")"
 
