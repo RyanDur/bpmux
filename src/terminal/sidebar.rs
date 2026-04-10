@@ -1,7 +1,146 @@
+use ratatui::{
+    Frame,
+    layout::Rect,
+    style::{Modifier, Style},
+    text::{Line, Span},
+    widgets::{Block, Borders, Paragraph},
+};
+
 use super::app::App;
+use super::theme::{
+    DRACULA_BG, DRACULA_COMMENT, DRACULA_CYAN, DRACULA_FG, DRACULA_PURPLE, DRACULA_SELECTION,
+};
 
 const SECTION_PREFIX_COLLAPSED: &str = "▸ ";
 const SECTION_PREFIX_EXPANDED: &str = "▾ ";
+const SIDEBAR_NAME_WIDTH: usize = 16;
+
+pub(super) fn render(frame: &mut Frame, app: &App, area: Rect) {
+    let channels = app.sidebar_channels();
+    let items: Vec<Line> = channels
+        .iter()
+        .enumerate()
+        .map(|(i, ch)| {
+            let selected = i == app.sidebar_selected && app.sidebar_focused;
+            let bg = if selected {
+                DRACULA_SELECTION
+            } else {
+                DRACULA_BG
+            };
+
+            // Index 0 = project root node
+            if i == 0 {
+                let arrow = if app.project_expanded { "▾ " } else { "▸ " };
+                let is_all = app.current_view.is_none();
+                let name_style = if is_all {
+                    Style::default()
+                        .fg(DRACULA_FG)
+                        .bg(bg)
+                        .add_modifier(Modifier::BOLD)
+                } else {
+                    Style::default().fg(DRACULA_FG).bg(bg)
+                };
+                let select_marker = if selected { "▸ " } else { "  " };
+                return Line::from(vec![
+                    Span::styled(select_marker, Style::default().bg(bg).fg(DRACULA_PURPLE)),
+                    Span::styled(arrow, Style::default().bg(bg).fg(DRACULA_COMMENT)),
+                    Span::styled(
+                        ch.chars().take(SIDEBAR_NAME_WIDTH).collect::<String>(),
+                        name_style,
+                    ),
+                ]);
+            }
+
+            // Detect section headers vs channel entries
+            let is_section = ch.starts_with("▸ ") || ch.starts_with("▾ ");
+            let is_current = !is_section && app.current_view.as_deref() == Some(ch.as_str());
+            let unread = if ch == "broadcast" || is_section {
+                0
+            } else {
+                app.channel_unread.get(ch).copied().unwrap_or(0)
+            };
+
+            let select_marker = if selected { "▸ " } else { "  " };
+            let inner_width = area.width.saturating_sub(2) as usize;
+            // Section headers: 2-char indent. Children: 4-char indent.
+            let indent = if is_section || ch == "broadcast" {
+                "  "
+            } else {
+                "    "
+            };
+            let prefix_len = 2 + indent.len();
+            let available = inner_width.saturating_sub(prefix_len);
+
+            let badge = if unread > 0 {
+                format!(" {unread}")
+            } else {
+                String::new()
+            };
+            let name_budget = available.saturating_sub(badge.len());
+            let display_name: String = if ch.len() > name_budget {
+                format!(
+                    "{}…",
+                    ch.chars()
+                        .take(name_budget.saturating_sub(1))
+                        .collect::<String>()
+                )
+            } else {
+                ch.clone()
+            };
+
+            let name_style = if is_section {
+                Style::default().fg(DRACULA_CYAN).bg(bg)
+            } else if is_current || unread > 0 {
+                Style::default()
+                    .fg(DRACULA_FG)
+                    .bg(bg)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(DRACULA_COMMENT).bg(bg)
+            };
+
+            let mut spans = vec![
+                Span::styled(select_marker, Style::default().bg(bg).fg(DRACULA_PURPLE)),
+                Span::styled(indent, Style::default().bg(bg)),
+                Span::styled(display_name, name_style),
+            ];
+            if unread > 0 {
+                spans.push(Span::styled(
+                    badge,
+                    Style::default()
+                        .bg(bg)
+                        .fg(DRACULA_CYAN)
+                        .add_modifier(Modifier::BOLD),
+                ));
+            }
+            Line::from(spans)
+        })
+        .collect();
+
+    let border_color = if app.sidebar_focused {
+        DRACULA_PURPLE
+    } else {
+        DRACULA_SELECTION
+    };
+
+    let sidebar = Paragraph::new(items).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(if app.sidebar_filter.is_empty() {
+                " channels ".to_string()
+            } else {
+                format!(" filter: {} ", app.sidebar_filter)
+            })
+            .title_style(
+                Style::default()
+                    .fg(DRACULA_PURPLE)
+                    .add_modifier(Modifier::BOLD),
+            )
+            .border_style(Style::default().fg(border_color))
+            .style(Style::default().bg(DRACULA_BG).fg(DRACULA_FG)),
+    );
+    frame.render_widget(sidebar, area);
+}
 
 fn is_system_channel(channel: &str) -> bool {
     channel.contains("bpmux") && channel != "broadcast"
