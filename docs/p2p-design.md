@@ -63,16 +63,23 @@ The Session struct gains a `peers` field — connected remote bpmux instances. E
 
 When a message is broadcast locally, it's also relayed to all connected peers. When a message arrives from a peer, it's broadcast locally. Loop prevention: messages carry an origin ID — don't relay back to the origin.
 
-### Lesson Sync
+### Peer Lesson Visibility
+
+**Peers do NOT merge lesson indexes.** Each agent's memory is personal and unique — merging interpretations across individuals would destroy the diversity of thought that makes collaboration valuable. Instead:
 
 On peer connect:
 1. Each peer sends its lesson index to the other
-2. New lessons are merged (same topic + same role = keep the newer one)
-3. After sync, both peers have the union of lessons
+2. Received lessons are stored in a **separate per-peer file** (`save_peer_lessons(peer_name, index)`) — never merged into the local index
+3. Each agent's local lesson index remains untouched. Peer lessons are read-only visibility, not imports
 
 On new lesson saved:
-1. The lesson is broadcast to all connected peers
-2. Peers merge it into their local index
+1. The lesson is broadcast to all connected peers (visibility)
+2. Peers update their per-peer view of the sender's lessons
+3. Each peer decides independently whether to reflect on the new lesson and save their OWN interpretation in their own words. No automatic writes to local indexes.
+
+**Why this shape**: each role's understanding of an event is personal and unique. A lesson learned by `dev` may frame the same event differently from how `designer` or `pm` would frame it — all three framings can be valid and useful from their respective lenses. Auto-merging would collapse these into a consensus that belongs to nobody.
+
+The code already enforces this: `peer::spawn_relay` calls `save_peer_lessons(&peer_name, &remote_index)` which stores the remote index in a separate file keyed by peer, not merged into the local lesson store.
 
 ### Log Access
 
@@ -90,7 +97,7 @@ Each peer keeps its own log. Search queries are local — you search your own lo
 - `/session` generates encrypted offer code
 - `/join` + `/accept` complete the handshake
 - Messages relay bidirectionally over data channel
-- Lesson sync on connect
+- Peer lesson visibility on connect (read-only, not merged)
 
 ### Phase 2: LAN discovery (mDNS)
 - Automates the SDP exchange on same network
@@ -101,11 +108,11 @@ Each peer keeps its own log. Search queries are local — you search your own lo
 ### Phase 3: Multi-peer
 - More than two instances connected
 - Message relay with loop prevention
-- Lesson sync across the mesh
+- Peer lesson visibility across the mesh (each peer stores others' lessons separately)
 
 ## Open Questions
 
 1. Should the passphrase be human-readable ("blue-tiger-42") or a random string? Human-readable is easier to share verbally but has less entropy.
 2. How long should codes be? Battleship codes are long base64url strings. Short codes trade security for usability.
 3. Should peers share logs or just lessons? Sharing logs is expensive. Sharing lessons is cheap. Log search across peers is a future feature.
-4. What happens when lessons conflict? Two peers have different lessons on the same topic from the same role. Most recent timestamp wins? Or both kept?
+4. ~~What happens when lessons conflict?~~ — Obsolete. Peers do not merge lessons, so there is no conflict. Each agent keeps their own interpretation; conflicting views coexist as separate per-peer files.
