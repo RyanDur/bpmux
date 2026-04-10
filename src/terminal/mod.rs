@@ -5,6 +5,7 @@ mod commands;
 pub mod event;
 mod input;
 mod markdown;
+mod p2p;
 mod sidebar;
 mod theme;
 pub mod ui;

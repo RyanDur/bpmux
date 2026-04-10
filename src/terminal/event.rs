@@ -10,9 +10,9 @@ use tokio::sync::{broadcast, mpsc};
 use crate::reload;
 use crate::session;
 use crate::terminal::app::App;
+use crate::terminal::p2p;
 use crate::terminal::ui;
-use crate::transport::crypto;
-use crate::transport::peer::{self, P2pCommand, P2pResult};
+use crate::transport::peer::P2pResult;
 use crate::transport::webrtc;
 
 const NOTIFICATION_PREVIEW_CHARS: usize = 50;
@@ -109,7 +109,7 @@ pub async fn run_tui(
                 }
                 // Check for P2P commands after handling input
                 if let Some(cmd) = app.p2p_command.take() {
-                    handle_p2p_command(
+                    p2p::handle_p2p_command(
                         cmd,
                         &p2p_tx,
                         &mut active_passphrase,
@@ -166,7 +166,7 @@ pub async fn run_tui(
                 handle_terminal_event(injected, app, session)?;
             }
             Some(result) = p2p_rx.recv() => {
-                handle_p2p_result(
+                p2p::handle_p2p_result(
                     result,
                     app,
                     session,
@@ -177,212 +177,6 @@ pub async fn run_tui(
             }
         }
     }
-}
-
-fn handle_p2p_command(
-    cmd: P2pCommand,
-    tx: &mpsc::Sender<P2pResult>,
-    active_passphrase: &mut Option<String>,
-    pending_offer: &mut Option<webrtc::PendingOffer>,
-) {
-    let tx = tx.clone();
-    match cmd {
-        P2pCommand::CreateSession => {
-            tokio::spawn(async move {
-                let passphrase = match crypto::generate_passphrase() {
-                    Ok(p) => p,
-                    Err(e) => {
-                        let _ = tx.send(P2pResult::Error(e.to_string())).await;
-                        return;
-                    }
-                };
-
-                match webrtc::create_offer().await {
-                    Ok(offer) => {
-                        let sdp = offer.offer_sdp.clone();
-                        match crypto::encrypt(&sdp, &passphrase) {
-                            Ok(code) => {
-                                let _ = tx
-                                    .send(P2pResult::OfferReady {
-                                        offer,
-                                        code,
-                                        passphrase,
-                                    })
-                                    .await;
-                            }
-                            Err(e) => {
-                                let _ = tx.send(P2pResult::Error(e.to_string())).await;
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        let _ = tx.send(P2pResult::Error(e.to_string())).await;
-                    }
-                }
-            });
-        }
-        P2pCommand::JoinSession {
-            passphrase,
-            offer_code,
-        } => {
-            tokio::spawn(async move {
-                let offer_sdp = match crypto::decrypt(&offer_code, &passphrase) {
-                    Ok(sdp) => sdp,
-                    Err(e) => {
-                        let _ = tx.send(P2pResult::Error(e.to_string())).await;
-                        return;
-                    }
-                };
-
-                match webrtc::accept_offer(&offer_sdp).await {
-                    Ok((answer_sdp, channel_pair)) => {
-                        match crypto::encrypt(&answer_sdp, &passphrase) {
-                            Ok(code) => {
-                                let _ =
-                                    tx.send(P2pResult::AnswerReady { channel_pair, code }).await;
-                            }
-                            Err(e) => {
-                                let _ = tx.send(P2pResult::Error(e.to_string())).await;
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        let _ = tx.send(P2pResult::Error(e.to_string())).await;
-                    }
-                }
-            });
-        }
-        P2pCommand::AcceptAnswer { answer_code } => {
-            let Some(passphrase) = active_passphrase.clone() else {
-                let _ = tx.try_send(P2pResult::Error(
-                    "No active session. Run /session first.".to_string(),
-                ));
-                return;
-            };
-            let Some(offer) = pending_offer.take() else {
-                let _ = tx.try_send(P2pResult::Error(
-                    "No pending offer. Run /session first.".to_string(),
-                ));
-                return;
-            };
-            tokio::spawn(async move {
-                let answer_sdp = match crypto::decrypt(&answer_code, &passphrase) {
-                    Ok(sdp) => sdp,
-                    Err(e) => {
-                        let _ = tx.send(P2pResult::Error(e.to_string())).await;
-                        return;
-                    }
-                };
-
-                match offer.accept_answer(&answer_sdp).await {
-                    Ok(channel_pair) => {
-                        let _ = tx
-                            .send(P2pResult::Connected {
-                                channel_pair,
-                                peer_name: "remote".to_string(),
-                            })
-                            .await;
-                    }
-                    Err(e) => {
-                        let _ = tx.send(P2pResult::Error(e.to_string())).await;
-                    }
-                }
-            });
-        }
-    }
-}
-
-async fn send_lesson_sync(session: &Arc<session::Session>, outbound: &mpsc::Sender<String>) {
-    let index = session.storage.load_lessons();
-    if let Ok(lessons_json) = serde_json::to_string(&index) {
-        let msg = peer::PeerMessage::LessonSync { lessons_json };
-        if let Ok(json) = serde_json::to_string(&msg) {
-            let _ = outbound.send(json).await;
-        }
-    }
-}
-
-fn handle_p2p_result(
-    result: P2pResult,
-    app: &mut App,
-    session: &session::Session,
-    session_arc: &Arc<session::Session>,
-    active_passphrase: &mut Option<String>,
-    pending_offer: &mut Option<webrtc::PendingOffer>,
-) {
-    match result {
-        P2pResult::OfferReady {
-            offer,
-            code,
-            passphrase,
-        } => {
-            *active_passphrase = Some(passphrase.clone());
-            *pending_offer = Some(offer);
-            app.system_message(format!(
-                "Session ready. Share these with the other machine:\n\n  Passphrase: {passphrase}\n  Offer code: {code}\n\nWaiting for /accept <answer-code>"
-            ));
-        }
-        P2pResult::AnswerReady { channel_pair, code } => {
-            spawn_relay_with_sync(
-                session_arc.clone(),
-                app.session_id.clone(),
-                "remote".to_string(),
-                channel_pair,
-            );
-            app.system_message(format!(
-                "Connected to session. Share this answer code with the offerer:\n\n  Answer code: {code}\n\nPeer connected."
-            ));
-            app.update_activity("remote".to_string(), "available".to_string());
-            broadcast_system(session, "remote peer connected");
-        }
-        P2pResult::Connected {
-            channel_pair,
-            peer_name,
-        } => {
-            spawn_relay_with_sync(
-                session_arc.clone(),
-                app.session_id.clone(),
-                peer_name.clone(),
-                channel_pair,
-            );
-            app.system_message(format!("Connected to peer '{peer_name}'."));
-            app.update_activity(peer_name, "available".to_string());
-            broadcast_system(session, "remote peer connected");
-        }
-        P2pResult::Error(e) => {
-            app.system_message(format!("P2P error: {e}"));
-        }
-    }
-}
-
-fn spawn_relay_with_sync(
-    session: Arc<session::Session>,
-    session_id: String,
-    peer_name: String,
-    pair: webrtc::DataChannelPair,
-) {
-    tokio::spawn(async move {
-        send_lesson_sync(&session, &pair.outbound_tx).await;
-        let _peer = peer::spawn_relay(
-            session,
-            peer_name,
-            session_id,
-            pair.inbound_rx,
-            pair.outbound_tx,
-        );
-        std::future::pending::<()>().await;
-    });
-}
-
-fn broadcast_system(session: &session::Session, text: &str) {
-    let msg = session::Message {
-        from: "bpmux".to_string(),
-        text: text.to_string(),
-        ts: chrono::Utc::now(),
-        message_type: session::MessageType::System,
-        to: None,
-    };
-    let _ = session.broadcast(&msg);
 }
 
 fn handle_broadcast_message(msg: session::Message, app: &mut App) {
