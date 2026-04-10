@@ -15,6 +15,10 @@ pub struct PostMessage {
     pub from: String,
     pub text: String,
     pub message_type: Option<String>,
+    /// Attention signal (#158) — role this message is directed at.
+    /// See `session::message::Message::addressee`.
+    #[serde(default)]
+    pub addressee: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -333,6 +337,7 @@ pub async fn post_message(
         ts: chrono::Utc::now(),
         message_type: session::MessageType::from(payload.message_type.as_deref()),
         to: None,
+        addressee: payload.addressee,
     };
     if let Err(e) = session.broadcast(&msg) {
         return (

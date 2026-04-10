@@ -12,6 +12,7 @@ fn system_join(name: &str) -> Message {
         ts: Utc::now(),
         message_type: MessageType::System,
         to: None,
+        addressee: None,
     }
 }
 
@@ -22,6 +23,7 @@ fn system_leave(name: &str) -> Message {
         ts: Utc::now(),
         message_type: MessageType::System,
         to: None,
+        addressee: None,
     }
 }
 

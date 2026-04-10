@@ -150,6 +150,7 @@ where
                                     ts: chrono::Utc::now(),
                                     message_type: crate::session::MessageType::System,
                                     to: None,
+                                    addressee: None,
                                 });
                                 app.scroll_offset = 0;
                             }

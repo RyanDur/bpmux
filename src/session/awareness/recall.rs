@@ -75,6 +75,7 @@ impl RecallSystem {
                 ts: chrono::Utc::now(),
                 message_type: MessageType::Chat,
                 to: Some(vec![sender.to_string()]),
+                addressee: None,
             };
             let _ = session.broadcast(&nudge);
             self.surfaced_topics.insert(lesson.topic.clone());

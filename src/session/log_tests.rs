@@ -16,6 +16,7 @@ fn appends_and_reads_messages() {
         ts: Utc::now(),
         message_type: MessageType::Chat,
         to: None,
+        addressee: None,
     };
     let msg2 = Message {
         from: "ryan:human".to_string(),
@@ -23,6 +24,7 @@ fn appends_and_reads_messages() {
         ts: Utc::now(),
         message_type: MessageType::Chat,
         to: None,
+        addressee: None,
     };
     append_message(dir.path(), &msg1).expect("append 1");
     append_message(dir.path(), &msg2).expect("append 2");
@@ -60,6 +62,7 @@ fn resumes_existing_session() {
         ts: Utc::now(),
         message_type: MessageType::Chat,
         to: None,
+        addressee: None,
     };
     append_message(&dir1, &msg).expect("append");
     let dir2 = resume_or_create_session(base.path()).expect("resume");
@@ -80,6 +83,7 @@ fn session_broadcasts_and_reads() {
         ts: Utc::now(),
         message_type: MessageType::Chat,
         to: None,
+        addressee: None,
     };
     session.broadcast(&msg).expect("broadcast");
     let received = rx.try_recv().expect("receive broadcast");

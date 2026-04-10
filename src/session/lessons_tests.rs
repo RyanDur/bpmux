@@ -13,6 +13,7 @@ fn msg(from: &str, text: &str) -> Message {
         ts: Utc::now(),
         message_type: MessageType::Chat,
         to: None,
+        addressee: None,
     }
 }
 

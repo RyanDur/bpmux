@@ -63,6 +63,7 @@ impl PileonDetector {
                     ts: chrono::Utc::now(),
                     message_type: MessageType::Chat,
                     to: Some(self.responders.clone()),
+                    addressee: None,
                 };
                 let _ = session.broadcast(&nudge);
                 self.window_start = None;

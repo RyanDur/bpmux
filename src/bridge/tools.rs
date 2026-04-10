@@ -39,6 +39,13 @@ pub(super) async fn handle_send(
         Some(t) => Some(t),
         None => last_channel.lock().await.clone(),
     };
+    // Attention signal (#158) — optional `addressee` arg identifies the
+    // role whose turn it is to respond. Agents without that role see the
+    // message but should skip responding. See docs/turn-aware-channel-spec.md.
+    let addressee = args
+        .get("addressee")
+        .and_then(|v| v.as_str())
+        .map(String::from);
     let message_type = args
         .get("message_type")
         .and_then(|v| v.as_str())
@@ -46,6 +53,7 @@ pub(super) async fn handle_send(
     let json = serde_json::to_string(&ClientMessage::Send {
         text: text.to_string(),
         to,
+        addressee,
         message_type,
     })
     .map_err(|e| format!("failed to serialize: {e}"))?;
@@ -80,6 +88,7 @@ pub(super) async fn handle_set_status(
     let json = serde_json::to_string(&ClientMessage::Send {
         text: status.to_string(),
         to: None,
+        addressee: None,
         message_type: Some("activity".into()),
     })
     .map_err(|e| format!("failed to serialize: {e}"))?;

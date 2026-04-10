@@ -12,6 +12,7 @@ fn msg(from: &str, to: Option<Vec<&str>>) -> session::Message {
         ts: Utc::now(),
         message_type: MessageType::Chat,
         to: to.map(|v| v.into_iter().map(String::from).collect()),
+        addressee: None,
     }
 }
 

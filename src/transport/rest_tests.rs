@@ -100,6 +100,7 @@ fn seed_messages(dir: &TempDir, count: usize) -> Arc<session::Session> {
             ts: chrono::Utc::now(),
             message_type: MessageType::Chat,
             to: None,
+            addressee: None,
         };
         session.broadcast(&msg).expect("broadcast");
     }
@@ -176,6 +177,7 @@ fn seed_mixed_messages(dir: &TempDir) -> Arc<session::Session> {
             ts: chrono::Utc::now(),
             message_type: msg_type,
             to: None,
+            addressee: None,
         };
         session.broadcast(&msg).expect("broadcast");
     }

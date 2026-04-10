@@ -67,6 +67,7 @@ impl ExperienceDetector {
                 ts: chrono::Utc::now(),
                 message_type: MessageType::Chat,
                 to: Some(agents.connected.clone()),
+                addressee: None,
             };
             let _ = session.broadcast(&nudge);
         }

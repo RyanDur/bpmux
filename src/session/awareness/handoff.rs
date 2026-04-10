@@ -82,6 +82,7 @@ impl HandoffTracker {
                 ts: chrono::Utc::now(),
                 message_type: MessageType::Chat,
                 to: Some(vec![h.to]),
+                addressee: None,
             };
             let _ = session.broadcast(&nudge);
         }

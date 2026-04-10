@@ -104,6 +104,7 @@ async fn run_ws_connection(
                 text,
                 ts,
                 to,
+                addressee: _,
                 message_type,
             }) = msg
             {

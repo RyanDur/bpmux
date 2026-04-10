@@ -203,6 +203,7 @@ impl App {
             ts: Utc::now(),
             message_type: MessageType::Chat,
             to: None,
+            addressee: None,
         });
     }
 

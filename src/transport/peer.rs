@@ -85,6 +85,9 @@ pub enum PeerMessage {
         ts: String,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         to: Option<Vec<String>>,
+        /// Attention signal (#158) — see `session::message::Message::addressee`.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        addressee: Option<String>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         message_type: Option<String>,
         origin: String,
@@ -143,6 +146,7 @@ pub fn spawn_relay(
                     text,
                     ts,
                     to,
+                    addressee,
                     message_type,
                     origin,
                 } => {
@@ -155,6 +159,7 @@ pub fn spawn_relay(
                         ts: ts.parse().unwrap_or_else(|_| chrono::Utc::now()),
                         message_type: message_type.as_deref().into(),
                         to,
+                        addressee,
                     };
                     let _ = session_for_inbound.broadcast(&message);
                 }
@@ -166,6 +171,7 @@ pub fn spawn_relay(
                         ts: chrono::Utc::now(),
                         message_type: crate::session::MessageType::System,
                         to: None,
+                        addressee: None,
                     };
                     let _ = session_for_inbound.broadcast(&joined);
                 }
@@ -225,6 +231,7 @@ pub fn spawn_relay(
             ts: chrono::Utc::now(),
             message_type: crate::session::MessageType::System,
             to: None,
+            addressee: None,
         };
         let _ = session_for_inbound.broadcast(&left);
         connected_relay.store(false, std::sync::atomic::Ordering::Relaxed);
@@ -244,6 +251,7 @@ pub fn spawn_relay(
                         text: msg.text,
                         ts: msg.ts.to_rfc3339(),
                         to: msg.to,
+                        addressee: msg.addressee,
                         message_type: msg.message_type.to_wire(),
                         origin: local_session_id.clone(),
                     };

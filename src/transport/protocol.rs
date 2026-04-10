@@ -17,6 +17,10 @@ pub enum ClientMessage {
         text: String,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         to: Option<Vec<String>>,
+        /// Attention signal (#158): role this message is directed at.
+        /// See `Message::addressee` for the full semantic.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        addressee: Option<String>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         message_type: Option<String>,
     },
@@ -39,6 +43,9 @@ pub enum ServerMessage {
         ts: String,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         to: Option<Vec<String>>,
+        /// Attention signal (#158) — see `Message::addressee`.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        addressee: Option<String>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         message_type: Option<String>,
     },
@@ -55,6 +62,7 @@ impl From<Message> for ServerMessage {
             text: msg.text,
             ts: msg.ts.to_rfc3339(),
             to: msg.to,
+            addressee: msg.addressee,
             message_type: msg.message_type.to_wire(),
         }
     }

@@ -18,6 +18,7 @@ fn chat_msg(from: &str, text: &str) -> Message {
         ts: Utc::now(),
         message_type: MessageType::Chat,
         to: None,
+        addressee: None,
     }
 }
 
@@ -28,6 +29,7 @@ fn directed_msg(from: &str, text: &str, to: Vec<&str>) -> Message {
         ts: Utc::now(),
         message_type: MessageType::Chat,
         to: Some(to.into_iter().map(String::from).collect()),
+        addressee: None,
     }
 }
 
@@ -38,6 +40,7 @@ fn system_msg(from: &str, text: &str) -> Message {
         ts: Utc::now(),
         message_type: MessageType::System,
         to: None,
+        addressee: None,
     }
 }
 
@@ -48,6 +51,7 @@ fn activity_msg(from: &str, text: &str) -> Message {
         ts: Utc::now(),
         message_type: MessageType::Activity,
         to: None,
+        addressee: None,
     }
 }
 
@@ -832,6 +836,7 @@ fn toggle_expands_long_system_message() {
         ts: chrono::Utc::now(),
         message_type: MessageType::Chat,
         to: None,
+        addressee: None,
     });
     let key = app.messages.last().unwrap().ts.to_rfc3339();
     assert!(
@@ -862,6 +867,7 @@ fn peer_leave_removes_phantom_channels() {
         ts: Utc::now(),
         message_type: MessageType::System,
         to: None,
+        addressee: None,
     });
     // View the channel so the message is "read" (no unread count)
     app.current_view = Some("agent-14c3".to_string());
@@ -882,6 +888,7 @@ fn peer_leave_removes_phantom_channels() {
         ts: Utc::now(),
         message_type: MessageType::System,
         to: None,
+        addressee: None,
     });
     assert!(
         !app.active_channels.contains("agent-14c3"),
@@ -899,6 +906,7 @@ fn peer_leave_keeps_channels_with_unread() {
         ts: Utc::now(),
         message_type: MessageType::System,
         to: None,
+        addressee: None,
     });
     app.current_view = Some("broadcast".to_string());
     app.receive_message(directed_msg(
@@ -915,6 +923,7 @@ fn peer_leave_keeps_channels_with_unread() {
         ts: Utc::now(),
         message_type: MessageType::System,
         to: None,
+        addressee: None,
     });
     assert!(
         app.active_channels.contains("dev"),

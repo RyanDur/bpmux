@@ -84,6 +84,7 @@ fn serializes_message_from_session_message() {
         ts: chrono::Utc::now(),
         message_type: MessageType::Chat,
         to: None,
+        addressee: None,
     };
     let server_msg: ServerMessage = session_msg.into();
     let json = serde_json::to_string(&server_msg).expect("serialize");

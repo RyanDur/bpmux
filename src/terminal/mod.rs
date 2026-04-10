@@ -22,4 +22,6 @@ pub use event::run_tui;
 #[cfg(test)]
 mod app_tests;
 #[cfg(test)]
+mod commands_tests;
+#[cfg(test)]
 mod ui_tests;

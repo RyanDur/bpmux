@@ -51,6 +51,7 @@ async fn run_ws_session(
         ts: chrono::Utc::now(),
         message_type: MessageType::System,
         to: None,
+        addressee: None,
     };
     session.broadcast(&join_msg)?;
     let result: Result<(), Box<dyn std::error::Error + Send + Sync>> = async {
@@ -86,6 +87,7 @@ async fn run_ws_session(
                                     ts: chrono::Utc::now(),
                                     message_type: MessageType::System,
                                     to: None,
+                                    addressee: None,
                                 };
                                 let _ = session.broadcast(&leave);
                                 identity = new_identity;
@@ -95,6 +97,7 @@ async fn run_ws_session(
                                     ts: chrono::Utc::now(),
                                     message_type: MessageType::System,
                                     to: None,
+                                    addressee: None,
                                 };
                                 let _ = session.broadcast(&join);
                             }
@@ -120,6 +123,7 @@ async fn run_ws_session(
         ts: chrono::Utc::now(),
         message_type: MessageType::System,
         to: None,
+        addressee: None,
     };
     let _ = session.broadcast(&leave_msg);
     session.peer_disconnected();
@@ -209,6 +213,7 @@ async fn handle_client_message(
         Ok(ClientMessage::Send {
             text: msg_text,
             to,
+            addressee,
             message_type,
         }) => {
             let msg = session::Message {
@@ -217,6 +222,7 @@ async fn handle_client_message(
                 ts: chrono::Utc::now(),
                 message_type: MessageType::from(message_type.as_deref()),
                 to,
+                addressee,
             };
             session.broadcast(&msg)?;
         }

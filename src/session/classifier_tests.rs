@@ -11,6 +11,7 @@ fn msg(from: &str, text: &str) -> Message {
         ts: Utc::now(),
         message_type: MessageType::Chat,
         to: None,
+        addressee: None,
     }
 }
 
@@ -136,6 +137,7 @@ fn system_message_is_routine() {
         ts: Utc::now(),
         message_type: MessageType::System,
         to: None,
+        addressee: None,
     };
     assert_eq!(classify(&m, "ryan"), MessageClass::Routine);
 }

@@ -109,6 +109,7 @@ impl App {
             ts: Utc::now(),
             message_type: MessageType::Chat,
             to: None,
+            addressee: None,
         };
         self.messages.push(msg.clone());
         self.clear_input();
@@ -140,6 +141,7 @@ impl App {
             ts: Utc::now(),
             message_type: MessageType::Chat,
             to: Some(recipients),
+            addressee: None,
         };
         self.messages.push(msg.clone());
         self.clear_input();
@@ -287,6 +289,11 @@ impl App {
     }
 
     fn send_chat_message(&mut self, text: String) -> Option<Message> {
+        // Parse `@role ` prefix as an attention signal (#158).
+        // `@pm what about X?` sets addressee="pm" and strips the prefix.
+        // Distinct from `/to pm "..."` which sets the privacy filter — the
+        // `@role` prefix is advisory addressing on broadcast messages.
+        let (addressee, text) = parse_addressee_prefix(&text);
         // Derive `to` from send_target if set (sidebar selection)
         let to = self.send_target.as_ref().and_then(|ch| {
             if ch == "broadcast" {
@@ -314,6 +321,7 @@ impl App {
             ts: Utc::now(),
             message_type: MessageType::Chat,
             to,
+            addressee,
         };
         self.messages.push(msg.clone());
         self.clear_input();
@@ -326,4 +334,42 @@ impl App {
         self.history_index = None;
         Some(msg)
     }
+}
+
+/// Parse an optional `@role ` prefix from chat input (#158). Returns
+/// `(addressee, remaining_text)`. Only matches a leading `@` followed by
+/// alphanumeric/hyphen characters and a single space — conservative on
+/// purpose so `foo @mention bar` in the body doesn't accidentally set an
+/// addressee. Returns `(None, original_text)` if no prefix is present.
+///
+/// Accepts `@all` as an explicit broadcast addressee (sets
+/// addressee="all") because the spec lists "all" alongside role names.
+pub(super) fn parse_addressee_prefix(text: &str) -> (Option<String>, String) {
+    if !text.starts_with('@') {
+        return (None, text.to_string());
+    }
+    // Walk past '@' and collect alphanumeric/hyphen chars until whitespace.
+    let mut chars = text.char_indices();
+    chars.next(); // consume '@'
+    let mut end = 1;
+    for (i, c) in chars {
+        if c.is_alphanumeric() || c == '-' || c == '_' {
+            end = i + c.len_utf8();
+            continue;
+        }
+        break;
+    }
+    // Must have at least one char after '@' AND be followed by whitespace
+    // to count as a prefix. Bare `@` or `@role` with no body is passthrough.
+    let role = &text[1..end];
+    if role.is_empty() {
+        return (None, text.to_string());
+    }
+    let rest = &text[end..];
+    let rest_trimmed = rest.trim_start();
+    if rest.len() == rest_trimmed.len() {
+        // No whitespace after `@role` — treat as normal text, not a prefix.
+        return (None, text.to_string());
+    }
+    (Some(role.to_string()), rest_trimmed.to_string())
 }
