@@ -152,12 +152,10 @@ fn send_user_message_silent_when_no_session() {
         .spawn()
         .and_then(|mut child| {
             use std::io::Write;
-            child
-                .stdin
-                .take()
-                .unwrap()
-                .write_all(input.as_bytes())
-                .unwrap();
+            // Ignore BrokenPipe: the script `exit 0`s without reading stdin,
+            // so if the child has already exited by the time we write, the
+            // write fails — but that's not what this test asserts.
+            let _ = child.stdin.take().unwrap().write_all(input.as_bytes());
             child.wait_with_output()
         })
         .unwrap();
