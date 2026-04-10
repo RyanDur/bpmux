@@ -9,6 +9,7 @@ mod input;
 mod markdown;
 mod p2p;
 mod sidebar;
+mod status_bar;
 mod table;
 mod theme;
 pub mod ui;

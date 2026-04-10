@@ -76,6 +76,13 @@ where
         }
     });
 
+    // Periodic tick so stall-detection in the status bar re-renders even
+    // when nothing else is happening. Without this, a peer that goes stale
+    // during an idle moment would stay the wrong color until the next
+    // broadcast, key press, or other event.
+    let mut stall_tick = tokio::time::interval(std::time::Duration::from_secs(5));
+    stall_tick.tick().await;
+
     loop {
         let completed = terminal.draw(|frame| ui::render(frame, app))?;
         {
@@ -181,6 +188,11 @@ where
                     &mut active_passphrase,
                     &mut pending_offer,
                 );
+            }
+            _ = stall_tick.tick() => {
+                // Intentionally empty — the tick exists only so the loop
+                // iterates and the top-of-loop `terminal.draw(...)` re-runs
+                // the stall-detection logic in the status bar.
             }
         }
     }

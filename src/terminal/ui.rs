@@ -1,7 +1,7 @@
 use ratatui::{
     Frame,
     layout::{Constraint, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Clear, Paragraph, Wrap},
 };
@@ -10,12 +10,12 @@ use crate::session;
 use crate::terminal::app::App;
 use crate::terminal::chat;
 use crate::terminal::sidebar;
+use crate::terminal::status_bar;
 
 const MIN_WIDTH_FOR_SIDEBAR: u16 = 60;
 use crate::terminal::markdown::{render_md_message, wrap_line_with_indent};
 use crate::terminal::theme::{
-    DRACULA_BG, DRACULA_COMMENT, DRACULA_CYAN, DRACULA_FG, DRACULA_GREEN, DRACULA_ORANGE,
-    DRACULA_PINK, DRACULA_PURPLE, DRACULA_RED, DRACULA_SELECTION, DRACULA_YELLOW,
+    DRACULA_BG, DRACULA_COMMENT, DRACULA_FG, DRACULA_PURPLE, DRACULA_SELECTION,
 };
 
 const MAX_BANNER_LINES: u16 = 4;
@@ -126,114 +126,6 @@ fn render_popup(frame: &mut Frame, app: &App, input_area: Rect) {
         frame.render_widget(Clear, popup_area);
         frame.render_widget(popup, popup_area);
     }
-}
-
-const MAX_STATUS_DESC: usize = 15;
-
-fn parse_status(status: &str) -> (Color, Option<&str>) {
-    if let Some(desc) = status.strip_prefix("busy:") {
-        let desc = desc.trim();
-        if desc.is_empty() {
-            (DRACULA_YELLOW, None)
-        } else if desc.len() > MAX_STATUS_DESC {
-            (DRACULA_YELLOW, Some(&desc[..MAX_STATUS_DESC]))
-        } else {
-            (DRACULA_YELLOW, Some(desc))
-        }
-    } else if let Some(desc) = status.strip_prefix("help:") {
-        let desc = desc.trim();
-        if desc.is_empty() {
-            (DRACULA_RED, None)
-        } else if desc.len() > MAX_STATUS_DESC {
-            (DRACULA_RED, Some(&desc[..MAX_STATUS_DESC]))
-        } else {
-            (DRACULA_RED, Some(desc))
-        }
-    } else {
-        match status {
-            "busy" => (DRACULA_YELLOW, None),
-            "help" => (DRACULA_RED, None),
-            _ => (DRACULA_GREEN, None),
-        }
-    }
-}
-
-fn render_status_bar(frame: &mut Frame, app: &mut App, area: Rect) {
-    let connection_status = if app.peer_activity.is_empty() {
-        Span::styled(" solo", Style::default().fg(DRACULA_ORANGE))
-    } else {
-        Span::raw("")
-    };
-    let view_label = match &app.current_view {
-        None => " [all]".to_string(),
-        Some(v) if v == "broadcast" => " [broadcast]".to_string(),
-        Some(v) => format!(" [{v}]"),
-    };
-    let mut status_spans = vec![
-        Span::styled(view_label, Style::default().fg(DRACULA_CYAN)),
-        Span::raw(" "),
-        connection_status,
-    ];
-    if app.scroll_offset > 0 {
-        status_spans.push(Span::raw(" | "));
-        status_spans.push(Span::styled(
-            format!("scrolled up {}", app.scroll_offset),
-            Style::default().fg(DRACULA_COMMENT),
-        ));
-    }
-    if app.unread_count > 0 {
-        status_spans.push(Span::raw(" | "));
-        status_spans.push(Span::styled(
-            format!("{} new", app.unread_count),
-            Style::default().fg(DRACULA_PINK),
-        ));
-    }
-    let mut peers: Vec<_> = app.peer_activity.iter().collect();
-    peers.sort_by_key(|(name, _)| (*name).clone());
-    for (peer, (status, _)) in &peers {
-        let (dot_color, description) = parse_status(status);
-        status_spans.push(Span::raw(" "));
-        status_spans.push(Span::styled("\u{25CF}", Style::default().fg(dot_color)));
-        status_spans.push(Span::styled(
-            format!(" {peer}"),
-            Style::default().fg(DRACULA_FG),
-        ));
-        if let Some(desc) = description {
-            status_spans.push(Span::styled(
-                format!(": {desc}"),
-                Style::default().fg(DRACULA_COMMENT),
-            ));
-        }
-    }
-    // DM unread badge with sender names
-    if !app.dm_unread_from.is_empty() {
-        let names = app.dm_unread_from.join(", ");
-        status_spans.push(Span::raw(" | "));
-        status_spans.push(Span::styled(
-            format!("\u{2709} DM from {names}"),
-            Style::default().fg(DRACULA_YELLOW), // Dracula yellow
-        ));
-    }
-    // Right-aligned "? help" hint
-    let used: usize = status_spans.iter().map(|s| s.content.chars().count()).sum();
-    let bar_width = area.width as usize;
-    let hint = if app.sidebar_focused {
-        "Enter=switch \u{2191}\u{2193}=nav Esc=close"
-    } else {
-        "?=help \u{2325}1=sidebar Enter=send"
-    };
-    let right_margin = 1;
-    if used + hint.chars().count() + right_margin + 1 < bar_width {
-        let pad = bar_width.saturating_sub(used + hint.chars().count() + right_margin);
-        app.help_hint_col = Some(area.x + (used + pad) as u16);
-        status_spans.push(Span::raw(" ".repeat(pad)));
-        status_spans.push(Span::styled(hint, Style::default().fg(DRACULA_CYAN)));
-    } else {
-        app.help_hint_col = None;
-    }
-    let status = Paragraph::new(Line::from(status_spans))
-        .style(Style::default().bg(DRACULA_SELECTION).fg(DRACULA_FG));
-    frame.render_widget(status, area);
 }
 
 fn render_help_overlay(frame: &mut Frame, app: &App, area: Rect) {
@@ -376,6 +268,6 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     }
     render_input(frame, app, chunks[2]);
     render_popup(frame, app, chunks[2]);
-    render_status_bar(frame, app, status_area);
+    status_bar::render(frame, app, status_area);
     render_help_overlay(frame, app, main_area);
 }

@@ -1,7 +1,10 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use super::markdown::{message_matches_channel, wrap_line_with_indent};
-use super::theme::{DRACULA_CYAN, sender_color};
+use super::status_bar::{STALL_THRESHOLD, parse_status_with_age};
+use super::theme::{
+    DRACULA_CYAN, DRACULA_GREEN, DRACULA_ORANGE, DRACULA_RED, DRACULA_YELLOW, sender_color,
+};
 use super::ui::render;
 use crate::session::Message;
 use crate::session::MessageType;
@@ -653,4 +656,58 @@ fn wrap_line_keeps_number_with_content() {
         first_line_text.len() > 10,
         "Number should stay with content on first line, got: '{first_line_text}'"
     );
+}
+
+#[test]
+fn fresh_busy_is_yellow_not_stalled() {
+    let (color, desc) = parse_status_with_age("busy: compiling", std::time::Duration::from_secs(5));
+    assert_eq!(color, DRACULA_YELLOW);
+    assert_eq!(desc.as_deref(), Some("compiling"));
+}
+
+#[test]
+fn busy_past_threshold_flips_to_stalled_orange() {
+    let age = STALL_THRESHOLD + std::time::Duration::from_secs(1);
+    let (color, desc) = parse_status_with_age("busy: compiling", age);
+    assert_eq!(
+        color, DRACULA_ORANGE,
+        "status should flip to orange past the stall threshold"
+    );
+    assert!(
+        desc.as_deref().unwrap_or("").starts_with("stalled"),
+        "description should be 'stalled Xs', got {desc:?}"
+    );
+}
+
+#[test]
+fn help_past_threshold_also_stalls() {
+    // A "help: permission prompt" that sits for >30s is exactly the #146
+    // failure mode — the hook chain broke and presence would silently lie.
+    // Belt-and-suspenders: the TUI notices the staleness and flips orange.
+    let age = STALL_THRESHOLD + std::time::Duration::from_secs(10);
+    let (color, _) = parse_status_with_age("help: permission prompt", age);
+    assert_eq!(color, DRACULA_ORANGE);
+}
+
+#[test]
+fn available_never_stalls_even_if_old() {
+    // "available" = idle, which is the normal expected state for long
+    // stretches. Aging an idle peer into "stalled" would break the UI for
+    // every quiet moment.
+    let (color, desc) = parse_status_with_age("available", std::time::Duration::from_secs(3600));
+    assert_eq!(color, DRACULA_GREEN);
+    assert!(desc.is_none());
+}
+
+#[test]
+fn raw_busy_without_colon_flips_to_stalled_when_old() {
+    let age = STALL_THRESHOLD + std::time::Duration::from_secs(1);
+    let (color, _) = parse_status_with_age("busy", age);
+    assert_eq!(color, DRACULA_ORANGE);
+}
+
+#[test]
+fn raw_help_fresh_stays_red() {
+    let (color, _) = parse_status_with_age("help", std::time::Duration::from_secs(2));
+    assert_eq!(color, DRACULA_RED);
 }
