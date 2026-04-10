@@ -68,6 +68,7 @@ impl ExperienceDetector {
                 message_type: MessageType::Chat,
                 to: Some(agents.connected.clone()),
                 addressee: None,
+                explicit_privacy: false,
             };
             let _ = session.broadcast(&nudge);
         }

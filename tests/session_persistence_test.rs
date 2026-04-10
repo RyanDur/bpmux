@@ -23,6 +23,7 @@ fn messages_persist_across_session_resumes() {
         message_type: MessageType::Chat,
         to: None,
         addressee: None,
+        explicit_privacy: false,
     };
     let msg2 = Message {
         from: "ryan:human".to_string(),
@@ -31,6 +32,7 @@ fn messages_persist_across_session_resumes() {
         message_type: MessageType::Chat,
         to: None,
         addressee: None,
+        explicit_privacy: false,
     };
     append_message(&session1, &msg1).expect("append 1");
     append_message(&session1, &msg2).expect("append 2");

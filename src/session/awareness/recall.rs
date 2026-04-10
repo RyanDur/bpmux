@@ -76,6 +76,7 @@ impl RecallSystem {
                 message_type: MessageType::Chat,
                 to: Some(vec![sender.to_string()]),
                 addressee: None,
+                explicit_privacy: false,
             };
             let _ = session.broadcast(&nudge);
             self.surfaced_topics.insert(lesson.topic.clone());

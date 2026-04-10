@@ -64,6 +64,7 @@ impl PileonDetector {
                     message_type: MessageType::Chat,
                     to: Some(self.responders.clone()),
                     addressee: None,
+                    explicit_privacy: false,
                 };
                 let _ = session.broadcast(&nudge);
                 self.window_start = None;

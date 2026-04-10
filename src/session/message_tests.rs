@@ -12,6 +12,7 @@ fn chat_message_is_chat() {
         message_type: MessageType::Chat,
         to: None,
         addressee: None,
+        explicit_privacy: false,
     };
     assert!(msg.is_chat());
 }
@@ -25,6 +26,7 @@ fn system_message_is_not_chat() {
         message_type: MessageType::System,
         to: None,
         addressee: None,
+        explicit_privacy: false,
     };
     assert!(!msg.is_chat());
 }
@@ -38,6 +40,7 @@ fn explicit_chat_type_is_chat() {
         message_type: MessageType::Chat,
         to: None,
         addressee: None,
+        explicit_privacy: false,
     };
     assert!(msg.is_chat());
 }
@@ -53,6 +56,7 @@ fn serializes_message_to_json() {
         message_type: MessageType::Chat,
         to: None,
         addressee: None,
+        explicit_privacy: false,
     };
 
     let json = serde_json::to_string(&msg).expect("serialize");
@@ -75,6 +79,7 @@ fn addressee_omitted_by_default_in_json() {
         message_type: MessageType::Chat,
         to: None,
         addressee: None,
+        explicit_privacy: false,
     };
     let json = serde_json::to_string(&msg).expect("serialize");
     assert!(!json.contains("addressee"));
@@ -89,6 +94,7 @@ fn addressee_roundtrips_through_json() {
         message_type: MessageType::Chat,
         to: None,
         addressee: Some("pm".to_string()),
+        explicit_privacy: false,
     };
     let json = serde_json::to_string(&msg).expect("serialize");
     assert!(json.contains(r#""addressee":"pm""#));

@@ -4,7 +4,7 @@ use crate::session::{Message, MessageType};
 use crate::transport::peer::P2pCommand;
 use chrono::Utc;
 
-pub(super) const MAX_HISTORY: usize = 50;
+pub(crate) const MAX_HISTORY: usize = 50;
 
 impl App {
     pub fn submit_message(&mut self) -> Option<Message> {
@@ -60,6 +60,8 @@ impl App {
                 "/join" => self.handle_join_bare(),
                 "/accept" if !args.is_empty() => self.handle_accept(args.trim().to_string()),
                 "/accept" => self.handle_accept_bare(),
+                "/share" if !args.is_empty() => self.handle_share(args.to_string()),
+                "/share" => self.handle_share_bare(),
                 _ => self.handle_unknown_command(text),
             };
         }
@@ -110,6 +112,7 @@ impl App {
             message_type: MessageType::Chat,
             to: None,
             addressee: None,
+            explicit_privacy: false,
         };
         self.messages.push(msg.clone());
         self.clear_input();
@@ -135,6 +138,8 @@ impl App {
         if recipients.is_empty() {
             return self.show_to_usage();
         }
+        // `/to` is user-explicit privacy intent. Flag it so /share can
+        // refuse to propagate it and preserve the DM guarantee.
         let msg = Message {
             from: format!("{}:human", self.peer_name),
             text: body,
@@ -142,6 +147,7 @@ impl App {
             message_type: MessageType::Chat,
             to: Some(recipients),
             addressee: None,
+            explicit_privacy: true,
         };
         self.messages.push(msg.clone());
         self.clear_input();
@@ -322,6 +328,7 @@ impl App {
             message_type: MessageType::Chat,
             to,
             addressee,
+            explicit_privacy: false,
         };
         self.messages.push(msg.clone());
         self.clear_input();

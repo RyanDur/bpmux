@@ -338,6 +338,7 @@ pub async fn post_message(
         message_type: session::MessageType::from(payload.message_type.as_deref()),
         to: None,
         addressee: payload.addressee,
+        explicit_privacy: false,
     };
     if let Err(e) = session.broadcast(&msg) {
         return (

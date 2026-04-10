@@ -14,6 +14,7 @@ fn msg(from: &str, text: &str) -> Message {
         message_type: MessageType::Chat,
         to: None,
         addressee: None,
+        explicit_privacy: false,
     }
 }
 

@@ -27,6 +27,7 @@ fn chat_msg(from: &str, text: &str) -> Message {
         message_type: MessageType::Chat,
         to: None,
         addressee: None,
+        explicit_privacy: false,
     }
 }
 
@@ -38,6 +39,7 @@ fn system_msg(from: &str, text: &str) -> Message {
         message_type: MessageType::System,
         to: None,
         addressee: None,
+        explicit_privacy: false,
     }
 }
 
@@ -415,6 +417,7 @@ fn directed_msg(from: &str, text: &str, to: &[&str]) -> Message {
         message_type: MessageType::Chat,
         to: Some(to.iter().map(|s| s.to_string()).collect()),
         addressee: None,
+        explicit_privacy: false,
     }
 }
 

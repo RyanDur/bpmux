@@ -83,6 +83,7 @@ impl HandoffTracker {
                 message_type: MessageType::Chat,
                 to: Some(vec![h.to]),
                 addressee: None,
+                explicit_privacy: false,
             };
             let _ = session.broadcast(&nudge);
         }

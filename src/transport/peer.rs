@@ -160,6 +160,7 @@ pub fn spawn_relay(
                         message_type: message_type.as_deref().into(),
                         to,
                         addressee,
+                        explicit_privacy: false,
                     };
                     let _ = session_for_inbound.broadcast(&message);
                 }
@@ -172,6 +173,7 @@ pub fn spawn_relay(
                         message_type: crate::session::MessageType::System,
                         to: None,
                         addressee: None,
+                        explicit_privacy: false,
                     };
                     let _ = session_for_inbound.broadcast(&joined);
                 }
@@ -232,6 +234,7 @@ pub fn spawn_relay(
             message_type: crate::session::MessageType::System,
             to: None,
             addressee: None,
+            explicit_privacy: false,
         };
         let _ = session_for_inbound.broadcast(&left);
         connected_relay.store(false, std::sync::atomic::Ordering::Relaxed);

@@ -19,6 +19,7 @@ fn chat_msg(from: &str, text: &str) -> Message {
         message_type: MessageType::Chat,
         to: None,
         addressee: None,
+        explicit_privacy: false,
     }
 }
 
@@ -30,6 +31,7 @@ fn directed_msg(from: &str, text: &str, to: Vec<&str>) -> Message {
         message_type: MessageType::Chat,
         to: Some(to.into_iter().map(String::from).collect()),
         addressee: None,
+        explicit_privacy: false,
     }
 }
 
@@ -41,6 +43,7 @@ fn system_msg(from: &str, text: &str) -> Message {
         message_type: MessageType::System,
         to: None,
         addressee: None,
+        explicit_privacy: false,
     }
 }
 
@@ -52,6 +55,7 @@ fn activity_msg(from: &str, text: &str) -> Message {
         message_type: MessageType::Activity,
         to: None,
         addressee: None,
+        explicit_privacy: false,
     }
 }
 
@@ -837,6 +841,7 @@ fn toggle_expands_long_system_message() {
         message_type: MessageType::Chat,
         to: None,
         addressee: None,
+        explicit_privacy: false,
     });
     let key = app.messages.last().unwrap().ts.to_rfc3339();
     assert!(
@@ -868,6 +873,7 @@ fn peer_leave_removes_phantom_channels() {
         message_type: MessageType::System,
         to: None,
         addressee: None,
+        explicit_privacy: false,
     });
     // View the channel so the message is "read" (no unread count)
     app.current_view = Some("agent-14c3".to_string());
@@ -889,6 +895,7 @@ fn peer_leave_removes_phantom_channels() {
         message_type: MessageType::System,
         to: None,
         addressee: None,
+        explicit_privacy: false,
     });
     assert!(
         !app.active_channels.contains("agent-14c3"),
@@ -907,6 +914,7 @@ fn peer_leave_keeps_channels_with_unread() {
         message_type: MessageType::System,
         to: None,
         addressee: None,
+        explicit_privacy: false,
     });
     app.current_view = Some("broadcast".to_string());
     app.receive_message(directed_msg(
@@ -924,6 +932,7 @@ fn peer_leave_keeps_channels_with_unread() {
         message_type: MessageType::System,
         to: None,
         addressee: None,
+        explicit_privacy: false,
     });
     assert!(
         app.active_channels.contains("dev"),
@@ -1008,4 +1017,157 @@ fn accept_without_args_shows_usage() {
     assert!(app.p2p_command.is_none());
     let last = app.messages.last().unwrap();
     assert!(last.text.contains("Usage:"));
+}
+
+// ---------- #160: /share command ----------
+
+#[test]
+fn share_bare_shows_usage() {
+    let mut app = test_app();
+    app.input = "/share".to_string();
+    let msg = app.submit_message();
+    assert!(msg.is_none());
+    let last = app.messages.last().unwrap();
+    assert!(last.text.contains("Usage: /share"));
+}
+
+#[test]
+fn share_form2_sends_fresh_message_with_marker() {
+    // Form 2: /share all "text" sends a new message with a
+    // [Shared by <sender>] marker.
+    let mut app = test_app();
+    app.input = "/share all hello team".to_string();
+    let msg = app.submit_message().unwrap();
+    assert_eq!(msg.to, None, "all = broadcast");
+    assert!(
+        msg.text.starts_with("[Shared by ryan]"),
+        "expected Shared-by marker, got: {}",
+        msg.text
+    );
+    assert!(msg.text.contains("hello team"));
+    assert!(msg.addressee.is_none(), "addressee not inherited");
+    assert!(!msg.explicit_privacy);
+}
+
+#[test]
+fn share_form2_with_scoped_target() {
+    let mut app = test_app();
+    app.input = "/share dev,designer coordinating on story X".to_string();
+    let msg = app.submit_message().unwrap();
+    assert_eq!(
+        msg.to,
+        Some(vec!["dev".to_string(), "designer".to_string()])
+    );
+    assert!(msg.text.contains("coordinating on story X"));
+}
+
+#[test]
+fn share_form1_propagates_most_recent_from_view() {
+    // Form 1: /share all with no body propagates the most recent message
+    // in the sender's current view.
+    let mut app = test_app();
+    app.messages.push(chat_msg("pm:claude-code", "old message"));
+    app.messages
+        .push(chat_msg("pm:claude-code", "the decision to share"));
+    app.current_view = None; // broadcast view
+    app.input = "/share dev".to_string();
+    let msg = app.submit_message().unwrap();
+    assert_eq!(msg.to, Some(vec!["dev".to_string()]));
+    // Marker format: [Shared by ryan from broadcast thread] <original>
+    assert!(
+        msg.text
+            .starts_with("[Shared by ryan from broadcast thread]"),
+        "marker wrong: {}",
+        msg.text
+    );
+    assert!(msg.text.contains("the decision to share"));
+    assert!(!msg.text.contains("old message"), "only most recent");
+}
+
+#[test]
+fn share_form1_refuses_to_propagate_private_to_message() {
+    // A /to-scoped message has explicit_privacy=true. /share must refuse
+    // to propagate it, per the privacy guarantee.
+    let mut app = test_app();
+    let mut private = chat_msg("pm:claude-code", "private thing");
+    private.to = Some(vec!["ryan".to_string()]);
+    private.explicit_privacy = true;
+    app.messages.push(private);
+    app.current_view = Some("pm".to_string());
+    app.input = "/share all".to_string();
+    let msg = app.submit_message();
+    assert!(msg.is_none(), "private message not propagated");
+    let last = app.messages.last().unwrap();
+    assert!(
+        last.text.contains("cannot share a private message"),
+        "expected privacy refusal, got: {}",
+        last.text
+    );
+}
+
+#[test]
+fn share_form1_with_no_recent_message_shows_error() {
+    // No messages in the current view — /share form 1 can't pick a target.
+    let mut app = test_app();
+    app.current_view = None;
+    app.input = "/share all".to_string();
+    let msg = app.submit_message();
+    assert!(msg.is_none());
+    let last = app.messages.last().unwrap();
+    assert!(last.text.contains("no recent message"));
+}
+
+#[test]
+fn share_does_not_inherit_addressee() {
+    // Even if the source message had addressee set, the propagated copy
+    // must NOT inherit it. Propagation is awareness, not action.
+    let mut app = test_app();
+    let mut directed = chat_msg("pm:claude-code", "pm-directed decision");
+    directed.addressee = Some("dev".to_string());
+    app.messages.push(directed);
+    app.current_view = None;
+    app.input = "/share designer".to_string();
+    let msg = app.submit_message().unwrap();
+    assert!(
+        msg.addressee.is_none(),
+        "addressee must NOT be inherited on propagation, got {:?}",
+        msg.addressee
+    );
+}
+
+#[test]
+fn share_source_scope_reflects_channel_name() {
+    // channel_name derives the view from (from, to) — it includes the
+    // sender and excludes the owner. For a dev-sent message to
+    // ["pm","designer"] in ryan's view, channel_name returns
+    // "designer+dev+pm" (sorted, excluding "ryan").
+    let mut app = test_app();
+    let mut scoped = chat_msg("dev:claude-code", "shipping feature X");
+    scoped.to = Some(vec!["pm".to_string(), "designer".to_string()]);
+    // Not explicit_privacy — this came from a channel view, not /to
+    app.messages.push(scoped);
+    app.current_view = Some("designer+dev+pm".to_string());
+    app.input = "/share all".to_string();
+    let msg = app.submit_message().unwrap();
+    // Source scope in the marker should be the channel_name of the source
+    assert!(
+        msg.text.contains("from designer+dev+pm thread]"),
+        "expected designer+dev+pm source scope, got: {}",
+        msg.text
+    );
+}
+
+#[test]
+fn to_command_sets_explicit_privacy_flag() {
+    // Verifying that /to tags the message as explicit privacy so /share
+    // later refuses to propagate it. Without this flag, channel-scoped
+    // messages and /to DMs look identical on the wire.
+    let mut app = test_app();
+    app.input = "/to pm private thing".to_string();
+    let msg = app.submit_message().unwrap();
+    assert!(
+        msg.explicit_privacy,
+        "/to must set explicit_privacy=true for privacy-intent detection"
+    );
+    assert_eq!(msg.to, Some(vec!["pm".to_string()]));
 }

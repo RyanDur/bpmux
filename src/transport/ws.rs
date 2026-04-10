@@ -52,6 +52,7 @@ async fn run_ws_session(
         message_type: MessageType::System,
         to: None,
         addressee: None,
+        explicit_privacy: false,
     };
     session.broadcast(&join_msg)?;
     let result: Result<(), Box<dyn std::error::Error + Send + Sync>> = async {
@@ -88,6 +89,7 @@ async fn run_ws_session(
                                     message_type: MessageType::System,
                                     to: None,
                                     addressee: None,
+                                    explicit_privacy: false,
                                 };
                                 let _ = session.broadcast(&leave);
                                 identity = new_identity;
@@ -98,6 +100,7 @@ async fn run_ws_session(
                                     message_type: MessageType::System,
                                     to: None,
                                     addressee: None,
+                                    explicit_privacy: false,
                                 };
                                 let _ = session.broadcast(&join);
                             }
@@ -124,6 +127,7 @@ async fn run_ws_session(
         message_type: MessageType::System,
         to: None,
         addressee: None,
+        explicit_privacy: false,
     };
     let _ = session.broadcast(&leave_msg);
     session.peer_disconnected();
@@ -223,6 +227,7 @@ async fn handle_client_message(
                 message_type: MessageType::from(message_type.as_deref()),
                 to,
                 addressee,
+                explicit_privacy: false,
             };
             session.broadcast(&msg)?;
         }

@@ -4,6 +4,7 @@ mod chat;
 mod ci;
 mod commands;
 mod commands_search;
+mod commands_share;
 pub mod event;
 mod event_dispatch;
 mod input;

@@ -194,6 +194,7 @@ mod tests {
             message_type: MessageType::Chat,
             to: None,
             addressee: None,
+            explicit_privacy: false,
         }
     }
 

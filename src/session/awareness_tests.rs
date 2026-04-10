@@ -13,6 +13,7 @@ fn system_join(name: &str) -> Message {
         message_type: MessageType::System,
         to: None,
         addressee: None,
+        explicit_privacy: false,
     }
 }
 
@@ -24,6 +25,7 @@ fn system_leave(name: &str) -> Message {
         message_type: MessageType::System,
         to: None,
         addressee: None,
+        explicit_privacy: false,
     }
 }
 

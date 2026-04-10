@@ -36,6 +36,20 @@ pub struct Message {
     /// `docs/turn-aware-channel-spec.md` Layer 1 for the full design.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub addressee: Option<String>,
+
+    /// **Privacy intent marker** (#160) — set by senders who explicitly
+    /// chose to scope a message via `/to <role> "text"`. Distinguishes
+    /// user-typed directed DMs from channel-derived `to` lists (which
+    /// look identical on the wire otherwise). When `true`, `/share`
+    /// refuses to propagate the message — the sender's explicit privacy
+    /// intent takes precedence over any cross-scope propagation
+    /// request. False/default for channel-view-derived scoping.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub explicit_privacy: bool,
+}
+
+fn is_false(b: &bool) -> bool {
+    !*b
 }
 
 impl MessageType {
