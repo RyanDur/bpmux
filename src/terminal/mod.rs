@@ -1,5 +1,6 @@
 pub mod app;
 mod board;
+mod chat;
 mod commands;
 pub mod event;
 mod input;
