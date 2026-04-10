@@ -293,7 +293,7 @@ fn handle_p2p_command(
 }
 
 async fn send_lesson_sync(session: &Arc<session::Session>, outbound: &mpsc::Sender<String>) {
-    let index = crate::session::lessons::load_index(&session.dir);
+    let index = session.storage.load_lessons();
     if let Ok(lessons_json) = serde_json::to_string(&index) {
         let msg = peer::PeerMessage::LessonSync { lessons_json };
         if let Ok(json) = serde_json::to_string(&msg) {

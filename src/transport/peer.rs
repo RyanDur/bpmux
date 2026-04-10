@@ -155,26 +155,21 @@ pub fn spawn_relay(
                 }
                 PeerMessage::Hello { .. } => {}
                 PeerMessage::LessonSync { lessons_json } => {
-                    // Store peer's lessons separately — no auto-merge
                     if let Ok(remote_index) =
                         serde_json::from_str::<crate::session::lessons::LessonIndex>(&lessons_json)
                     {
-                        let _ = crate::session::lessons::save_peer_index(
-                            &session_for_inbound.dir,
-                            &inbound_peer_name,
-                            &remote_index,
-                        );
+                        let _ = session_for_inbound
+                            .storage
+                            .save_peer_lessons(&inbound_peer_name, &remote_index);
                     }
                 }
                 PeerMessage::LessonUpdate { lesson_json } => {
-                    // Update the stored peer index
                     if let Ok(lesson) =
                         serde_json::from_str::<crate::session::lessons::AgentLesson>(&lesson_json)
                     {
-                        let mut peer_index = crate::session::lessons::load_peer_index(
-                            &session_for_inbound.dir,
-                            &inbound_peer_name,
-                        );
+                        let mut peer_index = session_for_inbound
+                            .storage
+                            .load_peer_lessons(&inbound_peer_name);
                         let existing = peer_index.lessons.iter_mut().find(|l| {
                             l.topic == lesson.topic && l.author_role == lesson.author_role
                         });
@@ -183,16 +178,13 @@ pub fn spawn_relay(
                         } else {
                             peer_index.lessons.push(lesson);
                         }
-                        let _ = crate::session::lessons::save_peer_index(
-                            &session_for_inbound.dir,
-                            &inbound_peer_name,
-                            &peer_index,
-                        );
+                        let _ = session_for_inbound
+                            .storage
+                            .save_peer_lessons(&inbound_peer_name, &peer_index);
                     }
                 }
                 PeerMessage::LessonQuery => {
-                    // Respond with our local lesson index
-                    let local_index = crate::session::lessons::load_index(&session_for_inbound.dir);
+                    let local_index = session_for_inbound.storage.load_lessons();
                     if let Ok(lessons_json) = serde_json::to_string(&local_index) {
                         let response = PeerMessage::LessonQueryResponse { lessons_json };
                         if let Ok(json) = serde_json::to_string(&response) {
@@ -201,15 +193,12 @@ pub fn spawn_relay(
                     }
                 }
                 PeerMessage::LessonQueryResponse { lessons_json } => {
-                    // Store the queried peer lessons
                     if let Ok(remote_index) =
                         serde_json::from_str::<crate::session::lessons::LessonIndex>(&lessons_json)
                     {
-                        let _ = crate::session::lessons::save_peer_index(
-                            &session_for_inbound.dir,
-                            &inbound_peer_name,
-                            &remote_index,
-                        );
+                        let _ = session_for_inbound
+                            .storage
+                            .save_peer_lessons(&inbound_peer_name, &remote_index);
                     }
                 }
             }
