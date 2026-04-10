@@ -1,3 +1,4 @@
+pub mod awareness;
 pub mod bayes;
 pub mod classifier;
 pub mod lessons;

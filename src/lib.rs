@@ -102,7 +102,7 @@ pub fn run() -> anyhow::Result<()> {
             }
         });
 
-        session::nudge::spawn_nudge_task(Arc::clone(&session), session.owner_name.clone());
+        session::awareness::spawn(Arc::clone(&session), session.owner_name.clone());
 
         // Enable mouse capture and focus tracking
         crossterm::execute!(
