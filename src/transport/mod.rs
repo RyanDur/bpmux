@@ -8,6 +8,8 @@ pub mod ws;
 #[cfg(test)]
 mod crypto_tests;
 #[cfg(test)]
+mod peer_tests;
+#[cfg(test)]
 mod protocol_tests;
 #[cfg(test)]
 mod rest_tests;
