@@ -68,23 +68,34 @@ impl TokenRow {
     }
 }
 
+/// Pure helper: resolve the log path from a home directory and an
+/// optional env override. Split out so the resolution logic can be
+/// unit-tested without touching the real env or home dir.
+pub fn resolve_tokens_log_path(home: &Path, env_override: Option<&str>) -> PathBuf {
+    if let Some(dir) = env_override {
+        return PathBuf::from(dir).join("log.jsonl");
+    }
+    home.join(".bpmux").join("tokens").join("log.jsonl")
+}
+
 /// Default log path: `~/.bpmux/tokens/log.jsonl`. Sibling of
 /// `~/.bpmux/sessions/` so tokens and session data share a base but
 /// don't entangle. Cross-session (not scoped under a specific session
 /// dir) because the intended view is trend-over-time across many
 /// sessions of a role's work.
+///
+/// Respects the `BPMUX_TOKENS_DIR` env var for test isolation — same
+/// convention the adapter uses — so the `/tokens` view can be driven
+/// end-to-end in a tempdir without touching the real log.
 pub fn default_tokens_log_path() -> Result<PathBuf, LogError> {
-    let base = dirs::home_dir()
-        .ok_or_else(|| {
-            LogError::Io(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                "home directory not found",
-            ))
-        })?
-        .join(".bpmux")
-        .join("tokens")
-        .join("log.jsonl");
-    Ok(base)
+    let home = dirs::home_dir().ok_or_else(|| {
+        LogError::Io(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "home directory not found",
+        ))
+    })?;
+    let env = std::env::var("BPMUX_TOKENS_DIR").ok();
+    Ok(resolve_tokens_log_path(&home, env.as_deref()))
 }
 
 /// Append one row to the token log as a single JSON line. Creates

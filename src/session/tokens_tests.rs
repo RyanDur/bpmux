@@ -104,15 +104,24 @@ fn read_token_rows_skips_malformed_lines_but_keeps_valid_ones() {
 }
 
 #[test]
-fn default_tokens_log_path_is_under_bpmux_dir() {
-    // Sanity check on the default path — guards against a rename to
-    // e.g. `~/.claude/...` that would silently move the log.
-    let path = default_tokens_log_path().unwrap();
+fn resolve_tokens_log_path_uses_home_dir_when_no_env_override() {
+    // Guards against a rename to e.g. `~/.claude/...` that would
+    // silently move the log. Pure function, no env coupling.
+    let home = std::path::PathBuf::from("/fake/home");
+    let path = resolve_tokens_log_path(&home, None);
     let s = path.to_string_lossy();
-    assert!(s.contains(".bpmux"), "expected .bpmux in path, got {s}");
-    assert!(
-        s.ends_with("tokens/log.jsonl"),
-        "expected tokens/log.jsonl suffix, got {s}"
+    assert!(s.ends_with(".bpmux/tokens/log.jsonl"), "got {s}");
+}
+
+#[test]
+fn resolve_tokens_log_path_honors_env_override_when_set() {
+    // Guards the env var path — tests and adapters use it to redirect
+    // writes to a tempdir.
+    let home = std::path::PathBuf::from("/fake/home");
+    let path = resolve_tokens_log_path(&home, Some("/tmp/custom-tokens"));
+    assert_eq!(
+        path,
+        std::path::PathBuf::from("/tmp/custom-tokens/log.jsonl")
     );
 }
 
