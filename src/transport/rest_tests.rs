@@ -338,3 +338,125 @@ async fn classifier_misfire_requires_agent_and_hash() {
     // serde rejection produces 4xx, not 201
     assert_ne!(response.status(), StatusCode::CREATED);
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// /api/simulate/key tests — #170
+//
+// Behavior-framed names because each test drives the real axum
+// router through the real handler and asserts on the emitted
+// crossterm event (received via the mpsc receiver). The handler is
+// the system under test; the tests describe its observable behavior.
+// ─────────────────────────────────────────────────────────────────────
+
+fn test_app_with_key_injector() -> (
+    axum::Router,
+    tokio::sync::mpsc::Receiver<crossterm::event::Event>,
+) {
+    let (inject_tx, inject_rx) = tokio::sync::mpsc::channel::<crossterm::event::Event>(16);
+    let router = axum::Router::new()
+        .route("/api/simulate/key", axum::routing::post(simulate_key))
+        .layer(axum::Extension(inject_tx));
+    (router, inject_rx)
+}
+
+async fn post_key_payload(router: axum::Router, body: &str) -> axum::http::Response<Body> {
+    let request = Request::builder()
+        .method("POST")
+        .uri("/api/simulate/key")
+        .header("Content-Type", "application/json")
+        .body(Body::from(body.to_string()))
+        .expect("build request");
+    router.oneshot(request).await.expect("response")
+}
+
+#[tokio::test]
+async fn simulate_key_emits_plain_char_event_when_no_modifiers_field_present() {
+    // Backward-compat: payload without `modifiers` field must behave
+    // identically to the current no-modifier path. This guards the
+    // default-empty deserialization.
+    let (router, mut rx) = test_app_with_key_injector();
+    let response = post_key_payload(router, r#"{"key":"1"}"#).await;
+    assert_eq!(response.status(), StatusCode::OK);
+    let event = rx.recv().await.expect("receive event");
+    match event {
+        crossterm::event::Event::Key(k) => {
+            assert_eq!(k.code, crossterm::event::KeyCode::Char('1'));
+            assert_eq!(k.modifiers, crossterm::event::KeyModifiers::empty());
+        }
+        other => panic!("expected Key event, got {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn simulate_key_emits_alt_modified_event_when_modifiers_contains_alt() {
+    // GIVEN `{"key":"1","modifiers":["alt"]}`
+    // WHEN the handler processes the request
+    // THEN the emitted KeyEvent carries the Alt bit
+    let (router, mut rx) = test_app_with_key_injector();
+    let response = post_key_payload(router, r#"{"key":"1","modifiers":["alt"]}"#).await;
+    assert_eq!(response.status(), StatusCode::OK);
+    let event = rx.recv().await.expect("receive event");
+    match event {
+        crossterm::event::Event::Key(k) => {
+            assert_eq!(k.code, crossterm::event::KeyCode::Char('1'));
+            assert!(
+                k.modifiers.contains(crossterm::event::KeyModifiers::ALT),
+                "expected Alt in modifiers, got {:?}",
+                k.modifiers
+            );
+        }
+        other => panic!("expected Key event, got {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn simulate_key_emits_multi_modifier_event_when_ctrl_and_shift_both_set() {
+    let (router, mut rx) = test_app_with_key_injector();
+    let response = post_key_payload(router, r#"{"key":"x","modifiers":["ctrl","shift"]}"#).await;
+    assert_eq!(response.status(), StatusCode::OK);
+    let event = rx.recv().await.expect("receive event");
+    match event {
+        crossterm::event::Event::Key(k) => {
+            assert_eq!(k.code, crossterm::event::KeyCode::Char('x'));
+            assert!(
+                k.modifiers
+                    .contains(crossterm::event::KeyModifiers::CONTROL)
+            );
+            assert!(k.modifiers.contains(crossterm::event::KeyModifiers::SHIFT));
+        }
+        other => panic!("expected Key event, got {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn simulate_key_returns_bad_request_when_modifier_name_is_unknown() {
+    // Unknown modifier strings must fail loudly — silent-ignore was
+    // the bug #170 fixes, where `"alt"` was accepted and dropped so
+    // agents believed they had tested a modifier combination when
+    // they had only tested the plain key.
+    let (router, mut rx) = test_app_with_key_injector();
+    let response = post_key_payload(router, r#"{"key":"1","modifiers":["meta"]}"#).await;
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    // No event should have been queued.
+    assert!(
+        rx.try_recv().is_err(),
+        "unknown modifier must not enqueue event"
+    );
+}
+
+#[tokio::test]
+async fn simulate_key_is_case_insensitive_on_modifier_names() {
+    // Agents type "Alt" / "CTRL" / "shift" variably. Normalize on
+    // the handler side so the adapter contract stays forgiving.
+    let (router, mut rx) = test_app_with_key_injector();
+    let response = post_key_payload(router, r#"{"key":"a","modifiers":["ALT","Shift"]}"#).await;
+    assert_eq!(response.status(), StatusCode::OK);
+    let event = rx.recv().await.expect("receive event");
+    match event {
+        crossterm::event::Event::Key(k) => {
+            assert!(k.modifiers.contains(crossterm::event::KeyModifiers::ALT));
+            assert!(k.modifiers.contains(crossterm::event::KeyModifiers::SHIFT));
+        }
+        other => panic!("expected Key event, got {other:?}"),
+    }
+}

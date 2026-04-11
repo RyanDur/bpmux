@@ -292,7 +292,13 @@ pub(super) async fn handle_simulate_key(
         .get("key")
         .and_then(|v| v.as_str())
         .ok_or("missing 'key'")?;
-    let body = serde_json::json!({"key": key});
+    // Forward `modifiers` if the caller supplied it (#170). Accept an
+    // array of strings; let the REST endpoint validate names so the
+    // bridge doesn't need to know the modifier vocabulary.
+    let mut body = serde_json::json!({"key": key});
+    if let Some(modifiers) = args.get("modifiers") {
+        body["modifiers"] = modifiers.clone();
+    }
     let client = reqwest::Client::new();
     let url = format!("http://127.0.0.1:{port}/api/simulate/key");
     let resp = client

@@ -180,6 +180,14 @@ pub fn simulate_key_tool(description: &'static str) -> Tool {
             "key": {
                 "type": "string",
                 "description": "Key to press: single character, or 'enter', 'escape', 'tab', 'backspace', 'up', 'down', 'left', 'right'"
+            },
+            "modifiers": {
+                "type": "array",
+                "items": {
+                    "type": "string",
+                    "enum": ["ctrl", "control", "alt", "shift", "super"]
+                },
+                "description": "Optional modifier keys to apply (case-insensitive). Combine as an array: ['alt'], ['ctrl','shift'], []. Unknown names are rejected with a 400."
             }
         },
         "required": ["key"]
