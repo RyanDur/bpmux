@@ -42,9 +42,26 @@ impl TestBpmux {
         Self::start_with_session(name, session_dir)
     }
 
+    /// Spawn bpmux with an extra env var set (on top of the usual test
+    /// environment). Useful for features like `/tokens` (#179) that
+    /// read paths from env vars so tests can redirect writes into a
+    /// tempdir.
+    pub fn start_with_env(name: &str, key: &str, value: &str) -> Self {
+        let session_dir = tempfile::TempDir::new().expect("temp dir");
+        Self::start_with_session_and_env(name, session_dir, &[(key, value)])
+    }
+
     /// Spawn bpmux reusing an existing session base directory.
     /// Useful for testing restart scenarios where persisted state matters.
     pub fn start_with_session(name: &str, session_dir: tempfile::TempDir) -> Self {
+        Self::start_with_session_and_env(name, session_dir, &[])
+    }
+
+    fn start_with_session_and_env(
+        name: &str,
+        session_dir: tempfile::TempDir,
+        extra_env: &[(&str, &str)],
+    ) -> Self {
         let bin = env!("CARGO_BIN_EXE_bpmux");
         let session_base = session_dir
             .path()
@@ -78,6 +95,9 @@ impl TestBpmux {
         // Set BPMUX_ROOT to the actual repo root so /roadmap can find ROADMAP.md
         let manifest_dir = env!("CARGO_MANIFEST_DIR");
         cmd.env("BPMUX_ROOT", manifest_dir);
+        for (k, v) in extra_env {
+            cmd.env(*k, *v);
+        }
 
         let child = pair.slave.spawn_command(cmd).expect("spawn bpmux");
         drop(pair.slave);

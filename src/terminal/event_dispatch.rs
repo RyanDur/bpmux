@@ -163,6 +163,12 @@ pub(super) fn handle_terminal_event(
         app.show_help = false;
         return Ok(());
     }
+    if app.show_tokens_view {
+        // Any key dismisses, same UX as the `?` help overlay.
+        app.show_tokens_view = false;
+        app.tokens_view_rows.clear();
+        return Ok(());
+    }
     if app.show_project_view && key.code == KeyCode::Esc {
         app.show_project_view = false;
         app.project_view_content = None;

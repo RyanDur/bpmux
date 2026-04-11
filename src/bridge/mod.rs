@@ -277,6 +277,9 @@ impl ServerHandler for BridgeServer {
             crate::mcp::tools::classifier_misfire_tool(
                 "Report a classifier nudge that fired on a message you judge is NOT a learning moment. The reason field is OPTIONAL — per the 'state observation, not conclusion' framing, simply marking a fire as wrong is valuable training data on its own. Use this whenever you see an experience-nudge in the chat that you reason internally is incorrect, so the team can measure classifier accuracy and tune it over time. See #159.",
             ),
+            crate::mcp::tools::get_token_report_tool(
+                "Get the token-cost report from bpmux's shared token log (#179). Returns JSON with total tokens, row count, per-role breakdown, and the 10 most recent turns (newest first). The data comes from per-harness adapters reading their own LLM-call recordings — you're seeing objective cost data, not self-reported. Same underlying log the `/tokens` TUI view reads, so you see exactly what Ryan sees. Empty report if the log is empty or missing.",
+            ),
         ];
 
         std::future::ready(Ok(ListToolsResult::with_all_items(tools)))
@@ -307,6 +310,7 @@ impl ServerHandler for BridgeServer {
                 "simulate_click" => tools::handle_simulate_click(&args, port).await,
                 "simulate_key" => tools::handle_simulate_key(&args, port).await,
                 "classifier_misfire" => tools::handle_classifier_misfire(&args, port, &name).await,
+                "get_token_report" => tools::handle_get_token_report().await,
                 other => Err(format!("unknown tool: {other}")),
             };
             Ok(match result {

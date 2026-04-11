@@ -91,6 +91,15 @@ pub struct App {
     pub show_project_view: bool,
     pub project_view_content: Option<String>,
 
+    // ── Tokens view (#179) ──
+    /// Whether the `/tokens` overlay is currently rendered. Dismissed
+    /// by any key press, same UX as the `?` help overlay.
+    pub show_tokens_view: bool,
+    /// Snapshot of the token log rows loaded when `/tokens` was
+    /// invoked. Kept on `App` (not re-read on every render) so the
+    /// overlay stays stable across frames until dismissed.
+    pub tokens_view_rows: Vec<crate::session::tokens::TokenRow>,
+
     // ── CI status (#151) ──
     pub(super) ci_state: super::ci::CiState,
 
@@ -179,6 +188,8 @@ impl App {
             project_state: None,
             show_project_view: false,
             project_view_content: None,
+            show_tokens_view: false,
+            tokens_view_rows: Vec::new(),
             chat_area: None,
             should_reload: false,
             direct_expanded: true,

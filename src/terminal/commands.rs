@@ -58,6 +58,7 @@ impl App {
                 "/accept" => self.handle_accept(args.trim().to_string()),
                 "/share" => self.handle_share(args.to_string()),
                 "/all" => self.handle_toggle_all(),
+                "/tokens" => self.handle_tokens(),
                 _ => self.handle_unknown_command(text),
             };
         }

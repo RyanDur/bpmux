@@ -6,6 +6,7 @@ mod commands;
 mod commands_help;
 mod commands_search;
 mod commands_share;
+mod commands_tokens;
 pub mod event;
 mod event_dispatch;
 mod input;

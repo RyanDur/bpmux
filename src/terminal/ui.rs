@@ -10,6 +10,7 @@ use crate::session;
 use crate::terminal::app::App;
 use crate::terminal::chat;
 use crate::terminal::commands_help::format_command_list;
+use crate::terminal::commands_tokens::format_tokens_overlay;
 use crate::terminal::sidebar;
 use crate::terminal::status_bar;
 
@@ -168,6 +169,36 @@ Ctrl+T  timestamps\n  Ctrl+C   quit (empty)     ?  this overlay\n\nPress any key
     }
 }
 
+fn render_tokens_overlay(frame: &mut Frame, app: &App, area: Rect) {
+    if !app.show_tokens_view {
+        return;
+    }
+    let text = format_tokens_overlay(&app.tokens_view_rows);
+    let lines: Vec<Line> = text
+        .lines()
+        .map(|l| Line::from(Span::raw(l.to_string())))
+        .collect();
+    let overlay_height = (lines.len() as u16 + 2).min(area.height);
+    let overlay_width = 48u16.min(area.width);
+    let overlay_x = area.x + (area.width.saturating_sub(overlay_width)) / 2;
+    let overlay_y = area.y + (area.height.saturating_sub(overlay_height)) / 2;
+    let overlay_area = Rect::new(overlay_x, overlay_y, overlay_width, overlay_height);
+    let popup = Paragraph::new(lines).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(" tokens ")
+            .title_style(
+                Style::default()
+                    .fg(DRACULA_PURPLE)
+                    .add_modifier(Modifier::BOLD),
+            )
+            .border_style(Style::default().fg(DRACULA_PURPLE))
+            .style(Style::default().bg(DRACULA_BG).fg(DRACULA_FG)),
+    );
+    frame.render_widget(Clear, overlay_area);
+    frame.render_widget(popup, overlay_area);
+}
+
 fn render_project_panel(frame: &mut Frame, app: &App, area: Rect) {
     let block = Block::default()
         .borders(Borders::ALL)
@@ -265,4 +296,5 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     render_popup(frame, app, chunks[2]);
     status_bar::render(frame, app, status_area);
     render_help_overlay(frame, app, main_area);
+    render_tokens_overlay(frame, app, main_area);
 }

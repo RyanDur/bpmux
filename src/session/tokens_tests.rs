@@ -174,6 +174,39 @@ fn totals_by_role_returns_empty_for_no_rows() {
 }
 
 #[test]
+fn build_token_report_summarizes_rows_into_grand_total_and_role_breakdown() {
+    let rows = vec![
+        row_for("dev", 100, 50),
+        row_for("pm", 200, 75),
+        row_for("dev", 300, 100),
+    ];
+    let report = build_token_report(&rows);
+    assert_eq!(report.total_tokens, 825); // 150 + 275 + 400
+    assert_eq!(report.row_count, 3);
+    assert_eq!(report.by_role.get("dev").copied(), Some(550));
+    assert_eq!(report.by_role.get("pm").copied(), Some(275));
+    // Recent: newest-first order.
+    assert_eq!(report.recent.len(), 3);
+    assert_eq!(report.recent[0].role, "dev"); // last appended
+    assert_eq!(report.recent[0].total_tokens, 400);
+}
+
+#[test]
+fn build_token_report_caps_recent_at_ten_rows() {
+    // 15 rows — recent should contain 10 newest.
+    let rows: Vec<TokenRow> = (0..15)
+        .map(|i| row_for("dev", (i + 1) as u64 * 10, 0))
+        .collect();
+    let report = build_token_report(&rows);
+    assert_eq!(report.row_count, 15);
+    assert_eq!(report.recent.len(), 10);
+    // Newest first — recent[0] should correspond to i=14 (total = 150).
+    assert_eq!(report.recent[0].total_tokens, 150);
+    // Oldest kept — recent[9] should correspond to i=5 (total = 60).
+    assert_eq!(report.recent[9].total_tokens, 60);
+}
+
+#[test]
 fn total_tokens_sums_all_four_usage_fields() {
     let row = TokenRow {
         ts: "2026-04-11T22:30:00+00:00".to_string(),

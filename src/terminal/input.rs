@@ -64,6 +64,7 @@ pub(super) const SLASH_COMMANDS: &[(&str, &str, &str)] = &[
         "sys msg toggle",
         "toggle system message visibility",
     ),
+    ("/tokens", "cost view", "show token cost by role"),
     ("/help", "show this", "show this list"),
     ("/quit", "exit", "exit bpmux"),
 ];

@@ -118,6 +118,68 @@ pub fn append_token_row(path: &Path, row: &TokenRow) -> Result<(), LogError> {
     Ok(())
 }
 
+/// Structured summary of a slice of token rows. Produced by
+/// `build_token_report` and consumed by both the MCP `get_token_report`
+/// tool (JSON-serialized for agents) and potentially the `/tokens` TUI
+/// view as it evolves. Keeping the data shape explicit here means
+/// agents and humans see the same ground truth — no drift between
+/// "what Ryan sees" and "what agents can query."
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct TokenReport {
+    pub total_tokens: u64,
+    pub row_count: usize,
+    /// Role -> sum of `total_tokens()` across all rows for that role.
+    /// `BTreeMap` for stable iteration order in serialized output.
+    pub by_role: BTreeMap<String, u64>,
+    /// Up to the last 10 rows, newest first. Enough to show recent
+    /// activity without returning an unbounded payload.
+    pub recent: Vec<TokenReportEntry>,
+}
+
+/// One entry in the `TokenReport::recent` tail. Compact shape — drops
+/// the debug-aid fields (transcript_line, session_id) that aren't
+/// useful to the agent consumer.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct TokenReportEntry {
+    pub ts: String,
+    pub role: String,
+    pub harness: String,
+    pub model: String,
+    pub total_tokens: u64,
+    pub output_tokens: u64,
+    pub tool_call_count: u32,
+}
+
+/// Build a `TokenReport` summary from a slice of rows. Pure function,
+/// no IO — the caller passes the rows (typically from
+/// `read_token_rows`). Recent entries are newest-first so agents
+/// can truncate the list without losing recency.
+pub fn build_token_report(rows: &[TokenRow]) -> TokenReport {
+    const RECENT_LIMIT: usize = 10;
+    let total_tokens: u64 = rows.iter().map(|r| r.total_tokens()).sum();
+    let by_role = totals_by_role(rows);
+    let recent: Vec<TokenReportEntry> = rows
+        .iter()
+        .rev()
+        .take(RECENT_LIMIT)
+        .map(|r| TokenReportEntry {
+            ts: r.ts.clone(),
+            role: r.role.clone(),
+            harness: r.harness.clone(),
+            model: r.model.clone(),
+            total_tokens: r.total_tokens(),
+            output_tokens: r.output_tokens,
+            tool_call_count: r.tool_call_count,
+        })
+        .collect();
+    TokenReport {
+        total_tokens,
+        row_count: rows.len(),
+        by_role,
+        recent,
+    }
+}
+
 /// Sum of `row.total_tokens()` grouped by `row.role`. Powers the
 /// per-role column in the `/tokens` view. `BTreeMap` (not `HashMap`)
 /// so iteration order is deterministic — the view renders roles in
