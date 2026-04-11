@@ -78,6 +78,42 @@ fn tokens_command_shows_empty_state_when_log_is_missing() {
     );
 }
 
+/// GIVEN a token log with multiple rows
+/// WHEN the user types `/tokens` in a full-sized terminal
+/// THEN the overlay renders the chart section (labelled "per turn")
+#[test]
+fn tokens_command_renders_chart_section_when_rows_are_present() {
+    let tmp = tempfile::tempdir().unwrap();
+    // Seed enough rows so the chart path renders (>= 2 rows).
+    std::fs::create_dir_all(tmp.path()).unwrap();
+    let mut content = String::new();
+    for i in 0..6 {
+        let out = 100 + i * 30;
+        content.push_str(&format!(
+            r#"{{"ts":"2026-04-11T22:3{i}:00.000Z","role":"dev","harness":"claude-code","model":"claude-opus-4-6","input_tokens":5,"cache_creation_input_tokens":0,"cache_read_input_tokens":1000,"output_tokens":{out},"tool_call_count":0,"session_id":"s"}}"#
+        ));
+        content.push('\n');
+    }
+    std::fs::write(tmp.path().join("log.jsonl"), content).unwrap();
+
+    let bpmux =
+        TestBpmux::start_with_env("human", "BPMUX_TOKENS_DIR", tmp.path().to_str().unwrap());
+    bpmux.type_line("/tokens");
+
+    assert!(
+        bpmux.wait_for_tui("Press any key to close", Duration::from_secs(5)),
+        "overlay should render. screen:\n{}",
+        bpmux.tui()
+    );
+    let screen = bpmux.tui();
+    // Chart's block title should be visible when the overlay renders
+    // the chart path (>= 2 rows + wide enough terminal).
+    assert!(
+        screen.contains("per turn"),
+        "chart title missing — chart path didn't render. screen:\n{screen}"
+    );
+}
+
 /// GIVEN the `/tokens` overlay is visible
 /// WHEN the user presses any key
 /// THEN the overlay closes

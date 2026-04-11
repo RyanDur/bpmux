@@ -108,7 +108,10 @@ pub(super) fn format_tokens_overlay(rows: &[crate::session::tokens::TokenRow]) -
 /// `2500000` → `2.5M`. Used by the overlay to keep rows narrow in the
 /// 52-char overlay width budget. Single-decimal-place to match
 /// ratatui Chart axis conventions.
-fn human(n: u64) -> String {
+///
+/// Exposed to `super` because `ui::render_tokens_overlay` also uses
+/// it for axis labels and the breakdown table in the chart layout.
+pub(super) fn human(n: u64) -> String {
     if n < 1_000 {
         n.to_string()
     } else if n < 1_000_000 {
