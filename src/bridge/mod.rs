@@ -99,6 +99,19 @@ async fn run_ws_connection(
     while let Some(Ok(frame)) = ws_rx.next().await {
         if let tungstenite::Message::Text(text) = frame {
             let msg: Result<ServerMessage, _> = serde_json::from_str(&text);
+            // Surface server-side errors so silent drops stop being silent.
+            // Before this was added (2026-04-11), `ServerMessage::Error`
+            // frames from bpmux — including "message too large" rejections
+            // on oversized coordination messages — were parsed and then
+            // silently ignored because the dispatch `if let` only matched
+            // `ServerMessage::Message`. Now they're logged to stderr, which
+            // goes to the Claude Code console where the agent can see the
+            // rejection even though rmcp doesn't let us propagate errors
+            // back to the original tool call.
+            if let Ok(ServerMessage::Error { ref reason }) = msg {
+                eprintln!("Bridge: server rejected message: {reason}");
+                continue;
+            }
             if let Ok(ServerMessage::Message {
                 from,
                 text,

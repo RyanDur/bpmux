@@ -11,7 +11,26 @@ use crate::session;
 use crate::session::MessageType;
 use crate::transport::protocol::{ClientMessage, ServerMessage};
 
-const MAX_MESSAGE_SIZE: usize = 4096;
+/// Maximum accepted size for an inbound client-to-server WebSocket text
+/// frame. Messages larger than this are rejected with a `ServerMessage::Error`
+/// reply and NOT broadcast.
+///
+/// **History** (#tbd — 2026-04-11): originally set to 4096. During a
+/// nav/drive pair-programming experiment on 2026-04-10 evening, coordination
+/// messages (detailed test steps, multi-paragraph instructions, retrospectives)
+/// repeatedly exceeded the 4096 limit and were silently dropped from the
+/// sender's perspective. Silent because `handle_client_message` returned
+/// `Ok(None)` after the size rejection — the broadcast never happened, and
+/// the sender's `ws_send` (see `src/bridge/tools.rs::ws_send`) only checks
+/// that the frame left the socket, not that the server accepted it.
+///
+/// Raised to 65536 (64 KB) — comfortably larger than any legitimate
+/// coordination message bpmux carries (typical: ~1 KB, largest observed:
+/// ~5 KB for session retros), still bounded against DoS. If a future use
+/// case legitimately needs bigger messages (code dumps, diff pastes, full
+/// docs), we should introduce chunked messaging rather than raise this
+/// ceiling further — 64 KB is a generous floor, not a design target.
+const MAX_MESSAGE_SIZE: usize = 65536;
 const HEARTBEAT_INTERVAL: std::time::Duration = std::time::Duration::from_secs(30);
 
 pub async fn ws_handler(
@@ -197,17 +216,43 @@ pub(crate) fn should_deliver(msg: &session::Message, peer_identity: &str) -> boo
     recipients.iter().any(|r| r == peer_short)
 }
 
+/// Pure size check extracted for testability. Returns `true` if the
+/// message body fits within the accepted inbound frame budget; callers
+/// reject oversized messages before broadcasting.
+///
+/// Extracted on 2026-04-11 as part of the silent-drop fix so a unit test
+/// can regression-guard `MAX_MESSAGE_SIZE` without having to stand up a
+/// real WebSocket. If someone lowers the constant back toward its old
+/// (4096) value and breaks legitimate coordination messages, the test
+/// will fail at build time instead of silently reintroducing the bug.
+pub(crate) fn message_size_ok(text: &str) -> bool {
+    text.len() <= MAX_MESSAGE_SIZE
+}
+
 async fn handle_client_message(
     text: &str,
     identity: &str,
     session: &session::Session,
     tx: &mut SplitSink<WebSocket, WsMessage>,
 ) -> Result<Option<String>, Box<dyn std::error::Error + Send + Sync>> {
-    if text.len() > MAX_MESSAGE_SIZE {
+    if !message_size_ok(text) {
+        // Log the drop so oversized messages become visible in the diag
+        // log. Without this, drops were the silent-failure mode that
+        // caused the 2026-04-10 nav/drive experiment to stall — the
+        // server rejected, the client's ws_send returned success, nobody
+        // saw the failure. The diag log (gated on `BPMUX_LOG` env var)
+        // gives post-hoc evidence even if the error reply is ignored.
+        crate::session::diag::log_diag(&format!(
+            "ws: rejected oversized message from {identity}: {} bytes (max {MAX_MESSAGE_SIZE})",
+            text.len()
+        ));
         send_json(
             tx,
             &ServerMessage::Error {
-                reason: "message too large".to_string(),
+                reason: format!(
+                    "message too large: {} bytes exceeds limit of {MAX_MESSAGE_SIZE}",
+                    text.len()
+                ),
             },
         )
         .await?;
