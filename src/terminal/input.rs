@@ -12,26 +12,60 @@ use tui_textarea::CursorMove;
 /// and `/help` all pick it up automatically — no parallel lists to keep
 /// in sync.
 ///
-/// Convention: descriptions are short, sentence-case, no trailing period,
-/// fit on one line. Multi-arg commands use comma separators in usage hints
-/// to match the established `/to dev,pm` pattern.
-pub(super) const SLASH_COMMANDS: &[(&str, &str)] = &[
-    ("/to", "send to recipients (comma-separated)"),
-    ("/share", "propagate a message to a wider scope"),
-    ("/view", "list channels or switch view"),
-    ("/all", "toggle classifier-driven view filter"),
-    ("/search", "search the conversation log"),
-    ("/lessons", "show team lessons (or peer's with arg)"),
-    ("/board", "show project board"),
-    ("/roadmap", "show project roadmap"),
-    ("/status", "declare your status"),
-    ("/who", "list participants"),
-    ("/session", "create a P2P session"),
-    ("/join", "join a remote P2P session"),
-    ("/accept", "complete a P2P handshake"),
-    ("/debug", "toggle system message visibility"),
-    ("/help", "show this list"),
-    ("/quit", "exit bpmux"),
+/// **Tuple shape**: `(name, short_desc, long_desc)`. The short form fits
+/// in the compact 2-column help overlay (≤14 chars per entry). The long
+/// form carries full detail for the `/help` chat-pane output where width
+/// is generous. Two versions of the same information — each at the right
+/// granularity for its surface. See `commands_help::format_command_list`
+/// for the consumer logic.
+///
+/// **Why two descriptions** (#164 re-delivery): the original #164 shipped
+/// with a single description, and the 2-column overlay branch dropped it
+/// entirely for width reasons — producing an overlay that showed command
+/// names with no hint at what each command did. Ryan correctly flagged
+/// that as a regression. The fix carries short descriptions for the
+/// compact surface and long descriptions for the chat-pane surface.
+///
+/// Convention for short: single verb or verb-phrase, sentence case, no
+/// period, ≤14 chars. Convention for long: full sentence fragment, no
+/// period, fits on one line.
+pub(super) const SLASH_COMMANDS: &[(&str, &str, &str)] = &[
+    (
+        "/to",
+        "send to roles",
+        "send to recipients (comma-separated)",
+    ),
+    (
+        "/share",
+        "widen scope",
+        "propagate a message to a wider scope",
+    ),
+    ("/view", "switch view", "list channels or switch view"),
+    (
+        "/all",
+        "toggle filter",
+        "toggle classifier-driven view filter",
+    ),
+    ("/search", "find in log", "search the conversation log"),
+    (
+        "/lessons",
+        "team lessons",
+        "show team lessons (or peer's with arg)",
+    ),
+    ("/board", "project board", "show project board"),
+    ("/roadmap", "roadmap doc", "show project roadmap"),
+    ("/status", "set status", "declare your status"),
+    ("/who", "list peers", "list participants"),
+    ("/session", "start p2p", "create a P2P session"),
+    ("/join", "join p2p", "join a remote P2P session"),
+    ("/accept", "finish p2p", "complete a P2P handshake"),
+    (
+        "/debug",
+        "sys msg toggle",
+        "toggle system message visibility",
+    ),
+    ("/help", "show this", "show this list"),
+    ("/quit", "exit", "exit bpmux"),
 ];
 
 impl App {
@@ -151,6 +185,10 @@ impl App {
         true
     }
 
+    /// Popup completion matches for the typed prefix. Returns
+    /// `(name, short_desc)` pairs — the popup is a compact typing-time
+    /// surface so the short form is appropriate. The long form lives on
+    /// the `/help` chat-pane surface only.
     pub fn popup_matches(&self) -> Vec<(&'static str, &'static str)> {
         if !self.input.starts_with('/') || self.input.contains(' ') {
             return vec![];
@@ -158,8 +196,8 @@ impl App {
         let typed = self.input.split_whitespace().next().unwrap_or(&self.input);
         SLASH_COMMANDS
             .iter()
-            .filter(|(cmd, _)| cmd.starts_with(typed))
-            .copied()
+            .filter(|(cmd, _, _)| cmd.starts_with(typed))
+            .map(|(cmd, short, _)| (*cmd, *short))
             .collect()
     }
 

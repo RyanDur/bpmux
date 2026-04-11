@@ -1244,7 +1244,7 @@ fn help_command_lists_commands() {
         last.text
     );
     // Every registered command should appear in the help output.
-    for (name, _) in SLASH_COMMANDS {
+    for (name, _, _) in SLASH_COMMANDS {
         assert!(
             last.text.contains(name),
             "/help should include {name}, got: {}",
