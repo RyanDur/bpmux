@@ -9,6 +9,7 @@ pub mod message;
 pub mod recall;
 pub mod search;
 pub mod storage;
+pub mod tokens;
 
 pub use classifier::{MessageClass, classify};
 pub use log::{
@@ -30,3 +31,5 @@ mod log_tests;
 mod message_tests;
 #[cfg(test)]
 mod recall_tests;
+#[cfg(test)]
+mod tokens_tests;
