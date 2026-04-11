@@ -91,68 +91,63 @@ pub(super) fn format_command_list(columns: usize) -> String {
 mod tests {
     use super::*;
 
-    /// Regression guard for the #164 rejection — the 2-column overlay form
-    /// must include short descriptions alongside command names, not just
-    /// names alone. The original #164 delivery shipped with names-only in
-    /// the 2-column branch, which produced an overlay that showed
-    /// `/to /share /view` etc. with no hint at what each command did.
-    /// Ryan rejected that as a regression against the pre-#164 overlay
-    /// (which had descriptions in a more compact layout) and re-opened
-    /// the story for a fix.
-    ///
-    /// This test asserts that at least one description word is present in
-    /// the 2-column output. Any short description verb (`send`, `propagate`,
-    /// `filter`, etc.) is acceptable — the test is tolerant of the specific
-    /// phrasing so the green implementation can choose short descriptions
-    /// that fit the 52-char overlay width budget without locking in a
-    /// particular form.
+    // ─────────────────────────────────────────────────────────────────
+    // `format_command_list` unit tests.
+    //
+    // These are UNIT TESTS on the pure `format_command_list` function.
+    // They call the function directly with a specific `columns` value
+    // and assert on its return string. They do NOT exercise the real
+    // `?` overlay render path — that's covered end-to-end by
+    // `tests/story60_acceptance_test.rs::ac5_help_overlay_shows_command_descriptions`.
+    //
+    // Keep both layers: the unit tests here are cheap regression guards
+    // on the function's return value; the story60 test exercises the
+    // real path from keypress through render. Each is appropriate for
+    // its scope.
+    //
+    // **Rename audit (2026-04-11 evening)**: originally named
+    // `overlay_form_includes_short_descriptions_beside_names` and
+    // `chat_pane_form_still_carries_long_descriptions`, framing unit
+    // tests as overlay/chat-pane BEHAVIOR assertions. Ryan caught the
+    // mismatch — the names promised system behavior, the content was
+    // pure function output assertions. Renamed to match content.
+    // ─────────────────────────────────────────────────────────────────
+
     #[test]
-    fn overlay_form_includes_short_descriptions_beside_names() {
+    fn format_command_list_2col_output_contains_short_descriptions() {
+        // Guards the fix from the #164 re-delivery: the 2-column branch
+        // must include short descriptions, not just command names.
+        // If this starts failing, someone has reverted the dropping-
+        // descriptions regression Ryan rejected.
         let output = format_command_list(2);
-        // Sanity: command names are still present in the 2-column form.
-        assert!(
-            output.contains("/to"),
-            "expected /to in 2-column output, got:\n{output}"
-        );
-        assert!(
-            output.contains("/share"),
-            "expected /share in 2-column output, got:\n{output}"
-        );
-        // Regression guard: at least one description token from the
-        // canonical SLASH_COMMANDS descriptions must be present. A
-        // names-only output (the bug state) has none of these words.
-        //
-        // Tokens chosen carefully to avoid collision with command names
-        // themselves — e.g., "search" would false-positive because
-        // `/search` contains "search" as part of the slash command name.
-        // The words below appear in descriptions but NOT in any slash
-        // command name: "propagate" only in /share's description,
-        // "toggle" only in /all and /debug descriptions, "filter" only
-        // in /all's description, "recipients" only in /to's description.
-        let has_description = output.contains("propagate")
-            || output.contains("toggle")
-            || output.contains("filter")
-            || output.contains("recipients");
+        assert!(output.contains("/to"));
+        assert!(output.contains("/share"));
+        // Description tokens chosen to avoid collision with command
+        // names: "propagate" appears only in /share's desc, "toggle"
+        // in /all and /debug descs, "filter" in /all's desc. None
+        // appear as slash-command names themselves.
+        let has_description =
+            output.contains("propagate") || output.contains("toggle") || output.contains("filter");
         assert!(
             has_description,
-            "2-column overlay form must include short descriptions beside names — \
-             the names-only output fails to teach users what each command does. \
-             expected at least one of: propagate, toggle, filter, recipients. got:\n{output}"
+            "expected at least one of: propagate, toggle, filter in output:\n{output}"
         );
     }
 
-    /// Single-column form should still carry the full descriptions from
-    /// `SLASH_COMMANDS` (unchanged by the #164 rework). Included here so
-    /// the rework doesn't accidentally break the chat-pane `/help` output
-    /// while fixing the overlay.
     #[test]
-    fn chat_pane_form_still_carries_long_descriptions() {
+    fn format_command_list_1col_output_contains_long_descriptions() {
+        // Guards that the chat-pane form (columns=1) uses the LONG
+        // description from the 3-tuple, not the short. If this fails,
+        // someone has swapped columns and the chat-pane /help output
+        // is now using the compressed short form instead of the full
+        // text.
         let output = format_command_list(1);
         assert!(output.contains("/to"));
-        // `send to recipients` is from /to's long description in SLASH_COMMANDS.
+        // "send to recipients" is the long description for /to.
+        // The short description is "send to roles" — distinct text.
         assert!(
             output.contains("send to recipients"),
-            "1-column chat-pane output must carry the long description from SLASH_COMMANDS; got:\n{output}"
+            "1-col output should contain /to's long description; got:\n{output}"
         );
     }
 }
