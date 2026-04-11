@@ -50,12 +50,16 @@ The headless instance exposes the same REST API as Ryan's live bpmux — it's no
 - **`GET /api/screen`** — returns the 80×24 rendered frame as plain text. Use this to assert visual correctness
 - **`POST /api/messages`** — inject a message into the session. Useful for setting up state before inspecting the frame
 - **`GET /api/messages?limit=N`** — read recent messages
-- **`GET /api/messages/search?q=...`** — search the session log
+- **`GET /api/search?query=...`** — search the session log
 - **`GET /api/lessons`, `POST /api/lessons`** — lesson index access
-- **`POST /api/click`** — simulate a mouse click at `{col, row}`
-- **`POST /api/key`** — simulate a key press
+- **`GET /api/peer-lessons`** — read another role's lesson index (cross-role visibility for review contexts)
+- **`POST /api/simulate/click`** — simulate a mouse click at `{col, row}`
+- **`POST /api/simulate/key`** — simulate a key press (payload: `{"key": "<name>"}`, see modifier note below)
+- **`POST /api/classifier-misfire`** — report a classifier nudge that fired on a non-learning-moment, for tuning data
 
-The `/api/click` and `/api/key` endpoints are what make the headless instance a real desk-check platform: you can open the sidebar, navigate channels, toggle project view, and verify the frame updates correctly — all via HTTP. No second bridge, no shared state with Ryan.
+The `/api/simulate/click` and `/api/simulate/key` endpoints are what make the headless instance a real desk-check platform: you can navigate channels, trigger handlers, and verify the frame updates correctly — all via HTTP. No second bridge, no shared state with Ryan.
+
+**Known limitation — key modifiers**: the current `POST /api/simulate/key` handler accepts only `{"key": "<name>"}` and ignores any `modifiers` field. This means key combinations like `Alt+1` (toggle sidebar), `Ctrl+C`, or `Shift+Tab` cannot be simulated via the REST endpoint today. Plain keys (`enter`, `esc`, `tab`, `backspace`, arrows, letters, digits) work. See #170 for the follow-up that will add modifier support.
 
 ## Workflow examples
 
@@ -86,31 +90,42 @@ grep -E '[A-Z][a-z]+: ' /tmp/desk-check-frame.txt | grep -v '\[broadcast\]' \
 kill %1; wait %1 2>/dev/null
 ```
 
-### Example 2: verify sidebar navigation (the #145 class of bug)
+### Example 2: verify `/help` slash command renders (the #164 class of bug)
 
 ```bash
 BPMUX_SESSION_BASE=/tmp/bpmux-desk-check-session \
   target/debug/bpmux --mcp-port 4118 --name peer test &
 sleep 2
 
-# Open sidebar (Alt+1)
-curl -s -X POST http://127.0.0.1:4118/api/key \
+# Type "/help" one character at a time (no modifiers needed)
+for ch in "/" "h" "e" "l" "p"; do
+  curl -s -X POST http://127.0.0.1:4118/api/simulate/key \
+    -H 'Content-Type: application/json' \
+    -d "{\"key\":\"$ch\"}"
+done
+
+# Press enter to submit
+curl -s -X POST http://127.0.0.1:4118/api/simulate/key \
   -H 'Content-Type: application/json' \
-  -d '{"key":"1","modifiers":"alt"}'
+  -d '{"key":"enter"}'
 
-# Capture frame with sidebar open
-curl -s http://127.0.0.1:4118/api/screen > /tmp/sidebar-open.txt
+# Capture frame with /help output rendered
+curl -s http://127.0.0.1:4118/api/screen > /tmp/help-output.txt
 
-# Press right arrow to expand a section
-curl -s -X POST http://127.0.0.1:4118/api/key \
-  -H 'Content-Type: application/json' \
-  -d '{"key":"Right"}'
-
-curl -s http://127.0.0.1:4118/api/screen > /tmp/after-right.txt
-diff /tmp/sidebar-open.txt /tmp/after-right.txt
+# Verify expected commands appear. Note: the 80-col TUI wraps long lines,
+# so longer command names (/share, /lessons) can be split across row
+# boundaries as e.g. "/s" + "hare". Either grep for unwrapped short names
+# OR strip the line-wrap artifacts (newlines + column-border chars) before
+# matching. The strip-and-match form catches any command regardless of
+# wrapping:
+grep -q "Commands:" /tmp/help-output.txt && echo "help header rendered"
+grep -q "/to" /tmp/help-output.txt && echo "/to listed"
+tr -d '│\n ' < /tmp/help-output.txt | grep -q "/share" && echo "/share listed"
 
 kill %1; wait %1 2>/dev/null
 ```
+
+**Why this example instead of sidebar navigation**: the `/help` slash command path exercises plain-key simulation (characters + enter) end-to-end without needing any modifier keys. The original sidebar-navigation example — which used `Alt+1` to open the sidebar — cannot currently be expressed via the REST endpoint because `/api/simulate/key` ignores the `modifiers` field. Once #170 lands that modifier support, this section should be expanded with a sidebar-navigation workflow using `Alt+1` + arrow keys for a true #145-class test.
 
 ## When to use this recipe
 
@@ -134,6 +149,9 @@ kill %1; wait %1 2>/dev/null
 | Frame is the same across captures | Event loop is idle, nothing changed | Post a message or simulate a key press to trigger a render |
 | `curl` hangs | Server not fully booted | Increase the `sleep 2` before the first request |
 | `bpmux test` exits immediately | #132 regression | Rebuild with `cargo build` and verify binary is `adbd76e` or later |
+| `POST /api/click` or `POST /api/key` returns 404 | Old endpoint path from an earlier draft of this recipe | Use `/api/simulate/click` and `/api/simulate/key` — the `simulate/` prefix is required |
+| `GET /api/messages/search?q=...` returns 404 | Wrong search path + wrong param name | Use `GET /api/search?query=...` — different path and the param is `query`, not `q` |
+| Key-combination (`Alt+1`, `Ctrl+C`) has no visible effect | The `modifiers` field on `/api/simulate/key` is currently ignored — only plain keys are dispatched | Use plain-key workflows until #170 lands modifier support. See the "Known limitation — key modifiers" note in the endpoints section |
 
 ## Related
 
