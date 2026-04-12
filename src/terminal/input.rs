@@ -70,6 +70,11 @@ pub(super) const SLASH_COMMANDS: &[(&str, &str, &str)] = &[
         "role filter",
         "filter chat view by role (e.g. /focus dev,pm)",
     ),
+    (
+        "/identity",
+        "agent traits",
+        "show identity traits for a role (e.g. /identity dev)",
+    ),
     ("/help", "show this", "show this list"),
     ("/quit", "exit", "exit bpmux"),
 ];

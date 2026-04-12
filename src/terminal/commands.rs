@@ -60,6 +60,7 @@ impl App {
                 "/all" => self.handle_toggle_all(),
                 "/tokens" => self.handle_tokens(),
                 "/focus" => self.handle_focus(args.to_string()),
+                "/identity" => self.handle_identity(args.to_string()),
                 _ => self.handle_unknown_command(text),
             };
         }

@@ -321,6 +321,21 @@ pub(super) async fn handle_capture_screen(port: u16) -> Result<String, String> {
     Ok(body)
 }
 
+/// `get_identity` (#190) — reads the identity file for a role.
+pub(super) async fn handle_get_identity(
+    args: &serde_json::Map<String, serde_json::Value>,
+    default_role: &str,
+) -> Result<String, String> {
+    use crate::session::identity::{default_identity_dir, load_identity};
+    let role = args
+        .get("role")
+        .and_then(|v| v.as_str())
+        .unwrap_or(default_role);
+    let base = default_identity_dir().map_err(|e| format!("identity dir: {e}"))?;
+    let index = load_identity(&base, role);
+    serde_json::to_string_pretty(&index).map_err(|e| format!("serialize: {e}"))
+}
+
 /// `get_token_report` (#179) — reads the token log directly from disk
 /// and returns a structured summary as JSON. Bypasses the HTTP API
 /// because the log is a file on the local filesystem that both the

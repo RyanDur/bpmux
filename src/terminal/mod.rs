@@ -5,6 +5,7 @@ mod ci;
 mod commands;
 mod commands_focus;
 mod commands_help;
+mod commands_identity;
 mod commands_search;
 mod commands_share;
 mod commands_tokens;
