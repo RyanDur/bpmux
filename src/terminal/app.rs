@@ -55,17 +55,11 @@ pub struct App {
     pub history_index: Option<usize>,
     pub popup_selected: Option<usize>,
 
-    // ── Scroll (#180: anchor model) ──
+    // ── Scroll ──
     pub scroll_offset: usize,
     pub max_scroll: usize,
     pub at_boundary: bool,
     pub unread_count: usize,
-    /// #180: when the user is scrolled up, this holds the absolute
-    /// scroll-from-top value (the row the Paragraph is scrolled to).
-    /// `None` = at bottom (auto-follow). `Some(n)` = viewport is
-    /// anchored at row n from the top of the content. New messages
-    /// don't change this value, so the viewport doesn't drift.
-    pub scroll_anchor: Option<usize>,
 
     // ── Channel view ──
     pub active_channels: HashSet<String>,
@@ -176,7 +170,6 @@ impl App {
             scroll_offset: 0,
             max_scroll: 0,
             at_boundary: false,
-            scroll_anchor: None,
             peer_name,
             session_id,
             should_quit: false,
@@ -266,10 +259,6 @@ impl App {
         if self.scroll_offset != before {
             self.at_boundary = false;
         }
-        // #180: set the anchor from the current render position.
-        // scroll = max_scroll - scroll_offset gives the absolute
-        // row-from-top that the Paragraph is scrolled to.
-        self.scroll_anchor = Some(self.max_scroll.saturating_sub(self.scroll_offset));
     }
 
     pub fn scroll_down(&mut self, lines: usize) {
@@ -279,11 +268,7 @@ impl App {
             self.at_boundary = false;
         }
         if self.scroll_offset == 0 {
-            // Back at bottom — clear anchor, resume auto-follow.
-            self.scroll_anchor = None;
             self.unread_count = 0;
-        } else {
-            self.scroll_anchor = Some(self.max_scroll.saturating_sub(self.scroll_offset));
         }
     }
 
@@ -370,17 +355,63 @@ impl App {
             }
         }
 
-        // #180 (anchor model): when scrolled up (anchor is Some),
-        // the viewport is pinned to an absolute row. Don't touch
-        // scroll_offset — the render loop will use scroll_anchor
-        // directly and new messages don't affect it. Just increment
-        // unread_count so the indicator shows.
-        //
-        // When at bottom (anchor is None), scroll_offset stays 0
-        // and the render loop shows the latest messages as usual.
+        let was_at_bottom = self.scroll_offset == 0;
+        // #180: compensate scroll_offset by the number of RENDERED
+        // LINES the message would occupy, not by 1. Also skip
+        // compensation entirely for filtered messages that wouldn't
+        // render. Uses the same approximate width as the render loop
+        // (78 chars inner, matching the default 80-col terminal minus
+        // 2 for borders). Not pixel-perfect — the real line count
+        // depends on markdown rendering and word-wrap — but close
+        // enough to prevent perceptible viewport drift.
+        let would_render = self.would_message_render(&msg);
+        let line_count = if would_render {
+            let sender = msg.from.split(':').next().unwrap_or(&msg.from);
+            // Approximate prefix: "[channel] sender: " = ~15 + name len
+            let prefix_len = sender.len() + 15;
+            let full_len = prefix_len + msg.text.len();
+            const APPROX_INNER_WIDTH: usize = 78;
+            full_len.max(1).div_ceil(APPROX_INNER_WIDTH.max(1)).max(1)
+        } else {
+            0
+        };
         self.messages.push(msg);
-        if self.scroll_anchor.is_some() {
+        if !was_at_bottom && line_count > 0 {
+            self.scroll_offset = self.scroll_offset.saturating_add(line_count);
             self.unread_count += 1;
         }
+    }
+
+    /// Would `msg` pass all the render filters in `chat::render_chat`?
+    /// Mirrors the filter chain (non-chat gate, channel-view gate,
+    /// class filter, focus filter) so `receive_message` can decide
+    /// whether to compensate `scroll_offset`. Must stay in sync with
+    /// the actual render loop; if a new filter is added to
+    /// `render_chat`, add the corresponding check here.
+    fn would_message_render(&self, msg: &Message) -> bool {
+        // Non-chat messages only render if show_system_messages is on.
+        if !msg.is_chat() {
+            return self.show_system_messages;
+        }
+        // Channel-view filter.
+        let in_channel = match &self.current_view {
+            None => true,
+            Some(view) if view == "broadcast" => channel_name(msg, &self.peer_name) == "broadcast",
+            Some(view) => {
+                crate::terminal::markdown::message_matches_channel(msg, view, &self.peer_name)
+            }
+        };
+        if !in_channel {
+            return false;
+        }
+        // Class filter (#161 / #186).
+        if !self.show_all_classes && super::chat::should_hide_by_class(msg, &self.peer_name) {
+            return false;
+        }
+        // Focus filter (#181).
+        if !super::commands_focus::in_focus(msg, self.focused_roles.as_deref(), &self.peer_name) {
+            return false;
+        }
+        true
     }
 }
