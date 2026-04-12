@@ -55,16 +55,11 @@ pub struct App {
     pub history_index: Option<usize>,
     pub popup_selected: Option<usize>,
 
-    // ── Scroll (#180) ──
-    pub scroll_offset: usize, // derived in render for status bar
+    // ── Scroll ──
+    pub scroll_offset: usize,
     pub max_scroll: usize,
     pub at_boundary: bool,
     pub unread_count: usize,
-    /// #180: absolute scroll-from-top position. `None` = at bottom
-    /// (auto-follow). `Some(row)` = viewport anchored at this row.
-    /// Single source of truth for scroll position — scroll_offset is
-    /// derived from this in the render loop.
-    pub scroll_from_top: Option<usize>,
 
     // ── Channel view ──
     pub active_channels: HashSet<String>,
@@ -175,7 +170,6 @@ impl App {
             scroll_offset: 0,
             max_scroll: 0,
             at_boundary: false,
-            scroll_from_top: None,
             peer_name,
             session_id,
             should_quit: false,
@@ -257,29 +251,25 @@ impl App {
     }
 
     pub fn scroll_up(&mut self, lines: usize) {
-        // #180: move viewport toward older content (lower row).
-        // scroll_from_top is the single source of truth.
-        match &mut self.scroll_from_top {
-            Some(pos) => *pos = pos.saturating_sub(lines),
-            None => {
-                // Was at bottom — start anchoring from near-bottom.
-                self.scroll_from_top = Some(self.max_scroll.saturating_sub(lines));
-            }
+        let before = self.scroll_offset;
+        self.scroll_offset = self
+            .scroll_offset
+            .saturating_add(lines)
+            .min(self.max_scroll);
+        if self.scroll_offset != before {
+            self.at_boundary = false;
         }
-        self.at_boundary = false;
     }
 
     pub fn scroll_down(&mut self, lines: usize) {
-        // #180: move viewport toward newer content (higher row).
-        if let Some(pos) = &mut self.scroll_from_top {
-            *pos = pos.saturating_add(lines);
-            // If we've reached or passed max_scroll, snap to bottom.
-            if *pos >= self.max_scroll {
-                self.scroll_from_top = None;
-                self.unread_count = 0;
-            }
+        let before = self.scroll_offset;
+        self.scroll_offset = self.scroll_offset.saturating_sub(lines);
+        if self.scroll_offset != before {
+            self.at_boundary = false;
         }
-        self.at_boundary = false;
+        if self.scroll_offset == 0 {
+            self.unread_count = 0;
+        }
     }
 
     pub fn toggle_last_truncated(&mut self) {
@@ -365,12 +355,10 @@ impl App {
             }
         }
 
-        // #180: when scrolled up (scroll_from_top is Some), don't
-        // touch scroll position — the absolute anchor stays the
-        // same and the viewport doesn't drift. When at bottom
-        // (None), stay at bottom automatically.
+        let was_at_bottom = self.scroll_offset == 0;
         self.messages.push(msg);
-        if self.scroll_from_top.is_some() {
+        if !was_at_bottom {
+            self.scroll_offset = self.scroll_offset.saturating_add(1);
             self.unread_count += 1;
         }
     }

@@ -92,42 +92,37 @@ fn quit_command_sets_flag() {
 }
 
 #[test]
-fn scroll_up_sets_anchor_from_top() {
-    // #180: scroll_from_top is the single source of truth.
+fn scroll_up_increases_offset() {
     let mut app = test_app();
     app.max_scroll = 100;
     app.scroll_up(5);
-    assert_eq!(app.scroll_from_top, Some(95)); // max_scroll - 5
+    assert_eq!(app.scroll_offset, 5);
     app.scroll_up(3);
-    assert_eq!(app.scroll_from_top, Some(92)); // 95 - 3
+    assert_eq!(app.scroll_offset, 8);
 }
 
 #[test]
-fn scroll_up_clamps_to_zero() {
+fn scroll_up_clamps_to_max_scroll() {
     let mut app = test_app();
     app.max_scroll = 10;
     app.scroll_up(15);
-    // max_scroll - 15 = -5, clamped to 0 via saturating_sub.
-    // First scroll_up(15) from None: Some(10 - 15) = Some(0) via saturating_sub.
-    assert_eq!(app.scroll_from_top, Some(0));
+    assert_eq!(app.scroll_offset, 10);
 }
 
 #[test]
-fn scroll_down_to_bottom_clears_anchor() {
+fn scroll_down_decreases_offset_to_zero() {
     let mut app = test_app();
-    app.max_scroll = 100;
-    app.scroll_from_top = Some(90);
-    app.scroll_down(5);
-    assert_eq!(app.scroll_from_top, Some(95));
+    app.scroll_offset = 10;
+    app.scroll_down(3);
+    assert_eq!(app.scroll_offset, 7);
     app.scroll_down(10);
-    // 95 + 10 = 105 >= max_scroll (100) → snaps to None (bottom).
-    assert!(app.scroll_from_top.is_none());
+    assert_eq!(app.scroll_offset, 0);
 }
 
 #[test]
 fn receiving_message_when_scrolled_up_increments_unread_count() {
     let mut app = test_app();
-    app.scroll_from_top = Some(50); // scrolled up
+    app.scroll_offset = 5;
     app.receive_message(chat_msg("bot:ws", "hello"));
     assert_eq!(app.unread_count, 1);
     app.receive_message(chat_msg("bot:ws", "world"));
@@ -137,11 +132,10 @@ fn receiving_message_when_scrolled_up_increments_unread_count() {
 #[test]
 fn scrolling_to_bottom_resets_unread_count() {
     let mut app = test_app();
-    app.max_scroll = 100;
-    app.scroll_from_top = Some(90);
+    app.scroll_offset = 3;
     app.unread_count = 5;
-    app.scroll_down(20); // 90 + 20 = 110 >= 100 → bottom
-    assert!(app.scroll_from_top.is_none());
+    app.scroll_down(3);
+    assert_eq!(app.scroll_offset, 0);
     assert_eq!(app.unread_count, 0);
 }
 
@@ -242,13 +236,11 @@ fn unrecognized_command_adds_error_message_without_broadcast() {
 }
 
 #[test]
-fn incoming_message_when_anchored_does_not_change_anchor() {
-    // #180: when scrolled up, anchor stays at the same row.
+fn incoming_message_preserves_viewport_when_scrolled_up() {
     let mut app = test_app();
-    app.scroll_from_top = Some(50);
+    app.scroll_offset = 5;
     app.receive_message(chat_msg("bot:ws", "hello"));
-    assert_eq!(app.scroll_from_top, Some(50));
-    assert_eq!(app.unread_count, 1);
+    assert_eq!(app.scroll_offset, 6);
     assert_eq!(app.messages.len(), 1);
 }
 

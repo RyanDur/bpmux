@@ -98,11 +98,7 @@ fn scroll_indicator_shows_when_scrolled_up() {
     let backend = TestBackend::new(80, 15);
     let mut terminal = Terminal::new(backend).unwrap();
 
-    // Need enough messages to make scrolling meaningful.
-    let messages: Vec<Message> = (0..20)
-        .map(|i| chat_msg("dev:human", &format!("message {i}")))
-        .collect();
-    let mut app = test_app_with(messages);
+    let mut app = test_app_with(vec![]);
     terminal.draw(|frame| render(frame, &mut app)).unwrap();
     let at_bottom = buffer_to_string(terminal.backend().buffer());
     assert!(
@@ -110,11 +106,12 @@ fn scroll_indicator_shows_when_scrolled_up() {
         "No scroll indicator at bottom"
     );
 
+    app.max_scroll = 100;
     app.scroll_up(3);
     terminal.draw(|frame| render(frame, &mut app)).unwrap();
     let scrolled = buffer_to_string(terminal.backend().buffer());
     assert!(
-        scrolled.contains("scrolled up"),
+        scrolled.contains("scrolled up 3"),
         "Should show scroll indicator. Screen:\n{scrolled}"
     );
 }
