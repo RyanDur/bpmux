@@ -178,7 +178,7 @@ click anywhere or press any key to close",
 /// narrow / short terminals so the overlay is always useful.
 ///
 /// Layout (chart mode):
-/// ```
+/// ```text
 /// ┌ tokens ──────────────────────────────────────────┐
 /// │ Total: 12.3K across 14 rows                      │
 /// │ By role:                                         │
