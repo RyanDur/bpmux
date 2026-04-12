@@ -355,10 +355,37 @@ impl App {
             }
         }
 
+        // #180: estimate the number of rendered lines this message
+        // will occupy and compensate scroll_offset by that amount.
+        // The render loop wraps text at ~78 chars (80 - 2 borders).
+        // The prefix is approximately "[channel] sender: " = ~15 + name.
+        // A separator line is added when the sender differs from the
+        // previous message. This estimate is close enough to prevent
+        // perceptible viewport drift — within ±1 line is fine.
         let was_at_bottom = self.scroll_offset == 0;
+        let line_estimate = {
+            let sender = msg.from.split(':').next().unwrap_or(&msg.from);
+            let prefix_len = sender.len() + 15;
+            const INNER_WIDTH: usize = 78;
+            // Content width = inner width minus prefix/indent (both
+            // first and continuation lines use the same indent).
+            let content_width = INNER_WIDTH.saturating_sub(prefix_len).max(1);
+            let wrapped = msg.text.len().max(1).div_ceil(content_width).max(1);
+            // Add 1 for the blank separator line between different senders.
+            // No separator for the first message or when sender matches.
+            let separator = self
+                .messages
+                .last()
+                .map(|m| {
+                    let prev = m.from.split(':').next().unwrap_or(&m.from);
+                    if prev != sender { 1 } else { 0 }
+                })
+                .unwrap_or(0);
+            wrapped + separator
+        };
         self.messages.push(msg);
         if !was_at_bottom {
-            self.scroll_offset = self.scroll_offset.saturating_add(1);
+            self.scroll_offset = self.scroll_offset.saturating_add(line_estimate);
             self.unread_count += 1;
         }
     }
