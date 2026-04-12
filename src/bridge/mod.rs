@@ -277,6 +277,12 @@ impl ServerHandler for BridgeServer {
             crate::mcp::tools::classifier_misfire_tool(
                 "Report a classifier nudge that fired on a message you judge is NOT a learning moment. The reason field is OPTIONAL — per the 'state observation, not conclusion' framing, simply marking a fire as wrong is valuable training data on its own. Use this whenever you see an experience-nudge in the chat that you reason internally is incorrect, so the team can measure classifier accuracy and tune it over time. See #159.",
             ),
+            crate::mcp::tools::save_bookmark_tool(
+                "Save a session bookmark — structured snapshot of your current state (task, decisions, open questions, next step). Survives compaction. Use before long operations or when you sense compaction is near.",
+            ),
+            crate::mcp::tools::get_bookmark_tool(
+                "Read a session bookmark — the structured state snapshot saved by an agent. Use after compaction to resume context quickly.",
+            ),
             crate::mcp::tools::get_identity_tool(
                 "Get an agent's identity traits — the stable principles and values that persist across sessions. Returns JSON with trait names and descriptions. Omit 'role' to get your own identity; pass a role name to see another agent's.",
             ),
@@ -313,6 +319,14 @@ impl ServerHandler for BridgeServer {
                 "simulate_click" => tools::handle_simulate_click(&args, port).await,
                 "simulate_key" => tools::handle_simulate_key(&args, port).await,
                 "classifier_misfire" => tools::handle_classifier_misfire(&args, port, &name).await,
+                "save_bookmark" => {
+                    let current_name = name.lock().await;
+                    tools::handle_save_bookmark(&args, port, &current_name).await
+                }
+                "get_bookmark" => {
+                    let current_name = name.lock().await;
+                    tools::handle_get_bookmark(&args, port, &current_name).await
+                }
                 "get_identity" => {
                     let current_name = name.lock().await;
                     tools::handle_get_identity(&args, &current_name).await

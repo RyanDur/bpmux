@@ -321,6 +321,91 @@ pub(super) async fn handle_capture_screen(port: u16) -> Result<String, String> {
     Ok(body)
 }
 
+/// `save_bookmark` (#168) — saves session state for post-compaction recovery.
+pub(super) async fn handle_save_bookmark(
+    args: &serde_json::Map<String, serde_json::Value>,
+    _port: u16,
+    name: &str,
+) -> Result<String, String> {
+    use crate::session::bookmark::{Bookmark, save_bookmark};
+    // Get the session dir from the running instance via the screen endpoint.
+    // Simpler: use the session dir from the REST messages path.
+    let session_dir = get_session_dir().await?;
+    let bookmark = Bookmark {
+        current_task: args
+            .get("current_task")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
+        decisions: args
+            .get("decisions")
+            .and_then(|v| v.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_str().map(String::from))
+                    .collect()
+            })
+            .unwrap_or_default(),
+        open_questions: args
+            .get("open_questions")
+            .and_then(|v| v.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_str().map(String::from))
+                    .collect()
+            })
+            .unwrap_or_default(),
+        next_step: args
+            .get("next_step")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
+        notes: args
+            .get("notes")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
+        last_updated: chrono::Utc::now().to_rfc3339(),
+    };
+    let role = name.split(':').next().unwrap_or(name);
+    save_bookmark(&session_dir, role, &bookmark).map_err(|e| format!("save failed: {e}"))?;
+    Ok("bookmark saved".to_string())
+}
+
+/// `get_bookmark` (#168) — reads a session bookmark.
+pub(super) async fn handle_get_bookmark(
+    args: &serde_json::Map<String, serde_json::Value>,
+    _port: u16,
+    name: &str,
+) -> Result<String, String> {
+    use crate::session::bookmark::load_bookmark;
+    let session_dir = get_session_dir().await?;
+    let default_role = name.split(':').next().unwrap_or(name);
+    let role = args
+        .get("role")
+        .and_then(|v| v.as_str())
+        .unwrap_or(default_role);
+    let bookmark = load_bookmark(&session_dir, role);
+    serde_json::to_string_pretty(&bookmark).map_err(|e| format!("serialize: {e}"))
+}
+
+/// Get the session directory path from the running bpmux instance.
+async fn get_session_dir() -> Result<std::path::PathBuf, String> {
+    // Read a message to discover the session dir — the REST endpoint
+    // knows the session. Simpler approach: query the messages endpoint
+    // and infer from the response. But actually, the session dir is
+    // available via the state. For now, use the default sessions base
+    // and find the current symlink.
+    use crate::session::log::default_sessions_base;
+    let base = default_sessions_base().map_err(|e| format!("sessions base: {e}"))?;
+    let current = base.join("current");
+    if current.is_symlink() {
+        std::fs::read_link(&current).map_err(|e| format!("read current: {e}"))
+    } else {
+        Err("no current session".to_string())
+    }
+}
+
 /// `get_identity` (#190) — reads the identity file for a role.
 pub(super) async fn handle_get_identity(
     args: &serde_json::Map<String, serde_json::Value>,

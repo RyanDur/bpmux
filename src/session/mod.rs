@@ -1,5 +1,6 @@
 pub mod awareness;
 pub mod bayes;
+pub mod bookmark;
 pub mod classifier;
 pub mod diag;
 pub mod identity;
