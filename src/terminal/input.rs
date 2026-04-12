@@ -65,6 +65,11 @@ pub(super) const SLASH_COMMANDS: &[(&str, &str, &str)] = &[
         "toggle system message visibility",
     ),
     ("/tokens", "cost view", "show token cost by role"),
+    (
+        "/focus",
+        "role filter",
+        "filter chat view by role (e.g. /focus dev,pm)",
+    ),
     ("/help", "show this", "show this list"),
     ("/quit", "exit", "exit bpmux"),
 ];

@@ -3,6 +3,7 @@ mod board;
 mod chat;
 mod ci;
 mod commands;
+mod commands_focus;
 mod commands_help;
 mod commands_search;
 mod commands_share;

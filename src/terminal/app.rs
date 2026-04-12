@@ -100,6 +100,14 @@ pub struct App {
     /// overlay stays stable across frames until dismissed.
     pub tokens_view_rows: Vec<crate::session::tokens::TokenRow>,
 
+    // ── Focus mode part A (#181) ──
+    /// When `Some(roles)`, the chat view filter narrows to messages
+    /// from the listed roles. Transient per-session (resets on
+    /// restart) — per story decision. `None` = no filter.
+    /// See `commands_focus::in_focus` for the override rules
+    /// (own messages, system messages, addressee=my_role bypass).
+    pub focused_roles: Option<Vec<String>>,
+
     // ── CI status (#151) ──
     pub(super) ci_state: super::ci::CiState,
 
@@ -199,6 +207,7 @@ impl App {
             project_view_content: None,
             show_tokens_view: false,
             tokens_view_rows: Vec::new(),
+            focused_roles: None,
             chat_area: None,
             should_reload: false,
             direct_expanded: true,

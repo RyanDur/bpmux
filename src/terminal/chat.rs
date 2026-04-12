@@ -78,6 +78,13 @@ pub(super) fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
                 continue;
             }
         }
+        // #181 focus-mode display filter. Orthogonal to the classifier
+        // filter above — both can be active. The pure function
+        // `in_focus` handles the override rules (own messages, system
+        // messages, addressee=my_role bypass).
+        if !super::commands_focus::in_focus(m, app.focused_roles.as_deref(), &app.peer_name) {
+            continue;
+        }
         chat_messages.push(m);
     }
     app.hidden_class_count = hidden_class_count;
