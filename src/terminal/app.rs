@@ -55,23 +55,11 @@ pub struct App {
     pub history_index: Option<usize>,
     pub popup_selected: Option<usize>,
 
-    // ── Scroll (#180: tui-scrollview) ──
-    /// Replaced by `chat_scroll_state` for viewport management.
-    /// Kept temporarily for compatibility with status_bar reads.
+    // ── Scroll ──
     pub scroll_offset: usize,
     pub max_scroll: usize,
     pub at_boundary: bool,
     pub unread_count: usize,
-    /// #180: ScrollViewState manages chat viewport position via
-    /// tui-scrollview. Absolute offset (rows from top), populated
-    /// by the render call each frame.
-    pub chat_scroll_state: tui_scrollview::ScrollViewState,
-    /// Whether the user was at the bottom of chat BEFORE the last
-    /// message was received. Used by receive_message to decide
-    /// whether to auto-follow. Tracked here because ScrollViewState
-    /// doesn't expose an is_at_bottom() — we compute it from
-    /// offset + page_size vs content_height.
-    pub chat_at_bottom: bool,
 
     // ── Channel view ──
     pub active_channels: HashSet<String>,
@@ -182,8 +170,6 @@ impl App {
             scroll_offset: 0,
             max_scroll: 0,
             at_boundary: false,
-            chat_scroll_state: tui_scrollview::ScrollViewState::new(),
-            chat_at_bottom: true,
             peer_name,
             session_id,
             should_quit: false,
@@ -265,14 +251,6 @@ impl App {
     }
 
     pub fn scroll_up(&mut self, lines: usize) {
-        // #180: delegate to ScrollViewState. "up" in the user's
-        // mental model is toward older messages = lower offset.
-        for _ in 0..lines {
-            self.chat_scroll_state.scroll_up();
-        }
-        self.chat_at_bottom = false;
-        self.at_boundary = false;
-        // Keep legacy scroll_offset in sync for status bar display.
         let before = self.scroll_offset;
         self.scroll_offset = self
             .scroll_offset
@@ -284,20 +262,12 @@ impl App {
     }
 
     pub fn scroll_down(&mut self, lines: usize) {
-        // #180: delegate to ScrollViewState. "down" in the user's
-        // mental model is toward newer messages = higher offset.
-        for _ in 0..lines {
-            self.chat_scroll_state.scroll_down();
-        }
-        self.at_boundary = false;
-        // Keep legacy scroll_offset in sync.
         let before = self.scroll_offset;
         self.scroll_offset = self.scroll_offset.saturating_sub(lines);
         if self.scroll_offset != before {
             self.at_boundary = false;
         }
         if self.scroll_offset == 0 {
-            self.chat_at_bottom = true;
             self.unread_count = 0;
         }
     }
@@ -385,18 +355,51 @@ impl App {
             }
         }
 
-        // #180 (tui-scrollview): when at bottom, auto-follow by
-        // scrolling to bottom after the message lands. When scrolled
-        // up, do nothing — ScrollViewState's absolute offset stays
-        // stable, so the viewport doesn't move regardless of how
-        // many lines the new message wraps to. The drift bug from
-        // the hand-rolled model disappears by construction.
-        let was_at_bottom = self.chat_at_bottom;
+        let was_at_bottom = self.scroll_offset == 0;
+        // #180: only adjust scroll_offset when the message would
+        // actually render in the current filter state. The previous
+        // code incremented unconditionally, so filtered messages
+        // (activity, nudge, unfocused) caused viewport drift without
+        // adding a visible row. This accumulates into the "jumpy"
+        // behavior Ryan observed.
+        let would_render = self.would_message_render(&msg);
         self.messages.push(msg);
-        if was_at_bottom {
-            self.chat_scroll_state.scroll_to_bottom();
-        } else {
+        if !was_at_bottom && would_render {
+            self.scroll_offset = self.scroll_offset.saturating_add(1);
             self.unread_count += 1;
         }
+    }
+
+    /// Would `msg` pass all the render filters in `chat::render_chat`?
+    /// Mirrors the filter chain (non-chat gate, channel-view gate,
+    /// class filter, focus filter) so `receive_message` can decide
+    /// whether to compensate `scroll_offset`. Must stay in sync with
+    /// the actual render loop; if a new filter is added to
+    /// `render_chat`, add the corresponding check here.
+    fn would_message_render(&self, msg: &Message) -> bool {
+        // Non-chat messages only render if show_system_messages is on.
+        if !msg.is_chat() {
+            return self.show_system_messages;
+        }
+        // Channel-view filter.
+        let in_channel = match &self.current_view {
+            None => true,
+            Some(view) if view == "broadcast" => channel_name(msg, &self.peer_name) == "broadcast",
+            Some(view) => {
+                crate::terminal::markdown::message_matches_channel(msg, view, &self.peer_name)
+            }
+        };
+        if !in_channel {
+            return false;
+        }
+        // Class filter (#161 / #186).
+        if !self.show_all_classes && super::chat::should_hide_by_class(msg, &self.peer_name) {
+            return false;
+        }
+        // Focus filter (#181).
+        if !super::commands_focus::in_focus(msg, self.focused_roles.as_deref(), &self.peer_name) {
+            return false;
+        }
+        true
     }
 }
