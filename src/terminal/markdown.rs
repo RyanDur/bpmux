@@ -321,7 +321,6 @@ pub(crate) fn message_matches_channel(msg: &session::Message, view: &str, owner:
 
 #[cfg(test)]
 mod table_tests {
-    use super::*;
     #[test]
     fn table_renders_with_borders() {
         let rows = vec![
@@ -346,7 +345,6 @@ mod table_tests {
 
 #[cfg(test)]
 mod table_width_tests {
-    use super::*;
     #[test]
     fn table_fits_within_width_minus_indent() {
         let rows = vec![

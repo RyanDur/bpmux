@@ -32,9 +32,9 @@ pub(super) const CLOSE: &str = "\u{00D7}";
 /// `≡` — menu / toggle (hamburger icon).
 pub(super) const MENU: &str = "\u{2261}";
 
-/// `⋮` — more / overflow (material design).
+/// `⋮` — more / overflow (material design). Reserved for future
+/// overflow affordances (e.g., truncated status bar widgets). Not
+/// yet wired to a surface; kept here so the vocabulary stays
+/// consistent when the first consumer lands.
 #[allow(dead_code)]
 pub(super) const MORE: &str = "\u{22EE}";
-
-/// `›` — breadcrumb separator (IntelliJ + web convention).
-pub(super) const BREADCRUMB: &str = "\u{203A}";
