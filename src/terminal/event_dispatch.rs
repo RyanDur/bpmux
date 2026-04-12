@@ -382,7 +382,12 @@ pub(super) fn handle_terminal_event(
             scroll_down_with_bell(app, 5);
         }
         KeyCode::Esc => {
-            app.clear_input();
+            if app.scroll_offset > 0 {
+                app.scroll_offset = 0;
+                app.unread_count = 0;
+            } else {
+                app.clear_input();
+            }
         }
         _ => {}
     }
