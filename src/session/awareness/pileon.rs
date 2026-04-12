@@ -65,6 +65,7 @@ impl PileonDetector {
                     to: Some(self.responders.clone()),
                     addressee: None,
                     explicit_privacy: false,
+                    multi_depth: None,
                 };
                 let _ = session.broadcast(&nudge);
                 self.window_start = None;

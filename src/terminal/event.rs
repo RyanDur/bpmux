@@ -157,6 +157,7 @@ where
                                     message_type: crate::session::MessageType::System,
                                     to: None,
                                     addressee: None,
+                                    multi_depth: None,
                                     explicit_privacy: false,
                                 });
                                 app.scroll_offset = 0;

@@ -246,6 +246,7 @@ impl App {
             to: None,
             addressee: None,
             explicit_privacy: false,
+            multi_depth: None,
         });
     }
 

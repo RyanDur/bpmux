@@ -159,6 +159,7 @@ impl ExperienceDetector {
                 to: Some(vec![recipient.clone()]),
                 addressee: None,
                 explicit_privacy: false,
+                multi_depth: None,
             };
             let _ = session.broadcast(&nudge);
         }

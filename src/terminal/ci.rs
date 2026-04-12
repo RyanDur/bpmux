@@ -98,6 +98,7 @@ pub(super) fn spawn_poller(tx: mpsc::Sender<CiState>, broadcast_session: Option<
                     to: None,
                     addressee: None,
                     explicit_privacy: false,
+                    multi_depth: None,
                 };
                 if let Err(e) = session.broadcast(&msg) {
                     log_diag(&format!("ci: broadcast error: {e}"));

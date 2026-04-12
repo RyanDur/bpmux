@@ -24,6 +24,7 @@ fn messages_persist_across_session_resumes() {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        multi_depth: None,
     };
     let msg2 = Message {
         from: "ryan:human".to_string(),
@@ -33,6 +34,7 @@ fn messages_persist_across_session_resumes() {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        multi_depth: None,
     };
     append_message(&session1, &msg1).expect("append 1");
     append_message(&session1, &msg2).expect("append 2");

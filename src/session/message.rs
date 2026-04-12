@@ -58,6 +58,74 @@ pub struct Message {
     /// request. False/default for channel-view-derived scoping.
     #[serde(default, skip_serializing_if = "is_false")]
     pub explicit_privacy: bool,
+
+    /// **Multi-depth rendering payload** (#184 / #187) — optional
+    /// structured data that lets a single event carry multiple
+    /// rendering depths so each receiving role can render at its
+    /// own default granularity with drill-down available. See
+    /// `MultiDepthPayload` for the shape and `DeepDetail` for the
+    /// preload-vs-on-demand split.
+    ///
+    /// `None` means "no multi-depth metadata, render the text as
+    /// usual." Every existing sender produces `None`; receivers
+    /// that don't understand the field ignore it. Backward-compat
+    /// by construction.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub multi_depth: Option<MultiDepthPayload>,
+}
+
+/// Multi-depth rendering payload carried on a `Message` (#187).
+///
+/// Encodes three rendering depths on a single event:
+/// - `summary` — shallowest form, one short line, always shown
+///   when the event is shown at all
+/// - `role_default` — per-role default depth, keyed by role name.
+///   Roles not in the map fall back to `summary`.
+/// - `deep` — full detail, either preloaded inline or fetched
+///   on demand via a bridge-executable command (token economy)
+///
+/// The sender decides what each role's default depth is. Receivers
+/// still render through their own lens — the schema allows role-
+/// tuned defaults without forcing them.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct MultiDepthPayload {
+    /// Shallowest representation — one short line. If the depth
+    /// system displays the event at all, `summary` is the minimum
+    /// that renders. Example for CI: `"CI \u{2717}"`.
+    pub summary: String,
+
+    /// Role-default depth variants. Keys are short role names
+    /// (`"pm"`, `"dev"`, `"designer"`); values are the text to
+    /// render for that role's default depth. Omitted roles fall
+    /// back to `summary`.
+    #[serde(default)]
+    pub role_default: std::collections::HashMap<String, String>,
+
+    /// Deep-detail data. See `DeepDetail` for the two variants.
+    pub deep: DeepDetail,
+}
+
+/// Deep-detail payload on a multi-depth event. The discriminant
+/// distinguishes preloaded from fetch-on-demand so downstream code
+/// can decide whether to absorb the cost inline or defer it.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum DeepDetail {
+    /// Full text embedded in the payload. Cheap for the renderer
+    /// (no extra fetch) but every receiving agent absorbs the
+    /// token cost even if they never drill down.
+    Preloaded { text: String },
+
+    /// Fetchable via a shell command when drill-down is requested.
+    /// The command is executed by whichever consumer handles the
+    /// drill-down (likely a bridge MCP tool in a follow-up story).
+    /// `description` is a one-line human-readable label for the
+    /// fetch so renderers can show "click to load the build log"
+    /// without knowing the exact command.
+    OnDemand {
+        command: String,
+        description: String,
+    },
 }
 
 fn is_false(b: &bool) -> bool {

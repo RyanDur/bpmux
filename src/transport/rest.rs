@@ -19,6 +19,11 @@ pub struct PostMessage {
     /// See `session::message::Message::addressee`.
     #[serde(default)]
     pub addressee: Option<String>,
+    /// Multi-depth rendering payload (#187). Optional; omitted
+    /// requests produce `multi_depth: None` on the broadcast
+    /// message, which is identical to pre-#187 behavior.
+    #[serde(default)]
+    pub multi_depth: Option<session::message::MultiDepthPayload>,
 }
 
 #[derive(Deserialize)]
@@ -369,6 +374,7 @@ pub async fn post_message(
         to: None,
         addressee: payload.addressee,
         explicit_privacy: false,
+        multi_depth: payload.multi_depth,
     };
     if let Err(e) = session.broadcast(&msg) {
         return (

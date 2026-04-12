@@ -161,6 +161,7 @@ pub fn spawn_relay(
                         to,
                         addressee,
                         explicit_privacy: false,
+                        multi_depth: None,
                     };
                     let _ = session_for_inbound.broadcast(&message);
                 }
@@ -174,6 +175,7 @@ pub fn spawn_relay(
                         to: None,
                         addressee: None,
                         explicit_privacy: false,
+                        multi_depth: None,
                     };
                     let _ = session_for_inbound.broadcast(&joined);
                 }
@@ -235,6 +237,7 @@ pub fn spawn_relay(
             to: None,
             addressee: None,
             explicit_privacy: false,
+            multi_depth: None,
         };
         let _ = session_for_inbound.broadcast(&left);
         connected_relay.store(false, std::sync::atomic::Ordering::Relaxed);

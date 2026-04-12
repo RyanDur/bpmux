@@ -111,6 +111,7 @@ impl App {
             to: None,
             addressee: None,
             explicit_privacy: false,
+            multi_depth: None,
         };
         self.messages.push(msg.clone());
         self.clear_input();
@@ -146,6 +147,7 @@ impl App {
             to: Some(recipients),
             addressee: None,
             explicit_privacy: true,
+            multi_depth: None,
         };
         self.messages.push(msg.clone());
         self.clear_input();
@@ -335,6 +337,7 @@ impl App {
             to,
             addressee,
             explicit_privacy: false,
+            multi_depth: None,
         };
         self.messages.push(msg.clone());
         self.clear_input();

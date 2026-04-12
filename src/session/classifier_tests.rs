@@ -13,6 +13,7 @@ fn msg(from: &str, text: &str) -> Message {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        multi_depth: None,
     }
 }
 
@@ -140,6 +141,7 @@ fn system_message_is_routine() {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        multi_depth: None,
     };
     assert_eq!(classify(&m, "ryan"), MessageClass::Routine);
 }

@@ -15,6 +15,7 @@ fn msg(from: &str, text: &str) -> Message {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        multi_depth: None,
     }
 }
 

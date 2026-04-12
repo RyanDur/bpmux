@@ -86,6 +86,7 @@ fn serializes_message_from_session_message() {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        multi_depth: None,
     };
     let server_msg: ServerMessage = session_msg.into();
     let json = serde_json::to_string(&server_msg).expect("serialize");

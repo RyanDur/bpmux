@@ -66,6 +66,7 @@ impl App {
                 to: target_to,
                 addressee: None,
                 explicit_privacy: false,
+                multi_depth: None,
             };
             self.messages.push(msg.clone());
             self.clear_input();
@@ -140,6 +141,7 @@ impl App {
             to: target_to,
             addressee: None,
             explicit_privacy: false,
+            multi_depth: None,
         };
         self.messages.push(msg.clone());
         self.clear_input();
