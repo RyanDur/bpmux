@@ -207,28 +207,34 @@ fn render_tokens_overlay(frame: &mut Frame, app: &App, area: Rect) {
     if !app.show_tokens_view {
         return;
     }
+    // #195: append usage table to the token text
+    let usage_text = crate::terminal::commands_tokens::format_usage_table(&app.feature_usage);
+
     // Narrow/short terminal fallback — preserves the simpler text
     // overlay for constrained environments where a chart would be
     // unreadable.
     if area.width < 60 || area.height < 16 {
-        render_tokens_text_fallback(frame, &app.tokens_view_rows, area);
+        render_tokens_text_fallback(frame, &app.tokens_view_rows, &usage_text, area);
         return;
     }
-    render_tokens_chart_view(frame, &app.tokens_view_rows, area);
+    render_tokens_chart_view(frame, &app.tokens_view_rows, &usage_text, area);
 }
 
 fn render_tokens_text_fallback(
     frame: &mut Frame,
     rows: &[crate::session::tokens::TokenRow],
+    usage_text: &str,
     area: Rect,
 ) {
-    let text = format_tokens_overlay(rows);
+    let mut text = format_tokens_overlay(rows);
+    text.push_str(usage_text);
+    text.push_str("Press any key to close");
     let lines: Vec<Line> = text
         .lines()
         .map(|l| Line::from(Span::raw(l.to_string())))
         .collect();
     let overlay_height = (lines.len() as u16 + 2).min(area.height);
-    let overlay_width = 48u16.min(area.width);
+    let overlay_width = 52u16.min(area.width);
     let overlay_x = area.x + (area.width.saturating_sub(overlay_width)) / 2;
     let overlay_y = area.y + (area.height.saturating_sub(overlay_height)) / 2;
     let overlay_area = Rect::new(overlay_x, overlay_y, overlay_width, overlay_height);
@@ -251,6 +257,7 @@ fn render_tokens_text_fallback(
 fn render_tokens_chart_view(
     frame: &mut Frame,
     rows: &[crate::session::tokens::TokenRow],
+    usage_text: &str,
     area: Rect,
 ) {
     use crate::session::tokens::totals_by_role;
@@ -266,9 +273,14 @@ fn render_tokens_chart_view(
 
     frame.render_widget(Clear, overlay_rect);
 
+    let title = if usage_text.is_empty() {
+        " tokens "
+    } else {
+        " tokens + usage "
+    };
     let block = Block::default()
         .borders(Borders::ALL)
-        .title(" tokens ")
+        .title(title)
         .title_style(
             Style::default()
                 .fg(DRACULA_PURPLE)
@@ -287,11 +299,14 @@ fn render_tokens_chart_view(
     } else {
         (totals.len() as u16 + 1).min(6) // "By role:" line + entries
     };
+    // #195: footer area grows to fit usage table if present.
+    let usage_line_count = usage_text.lines().count() as u16;
+    let footer_height = (1 + usage_line_count).max(1);
     let chunks = Layout::vertical([
         Constraint::Length(1),
         Constraint::Length(breakdown_height),
         Constraint::Min(4),
-        Constraint::Length(1),
+        Constraint::Length(footer_height),
     ])
     .split(inner);
 
@@ -390,9 +405,17 @@ fn render_tokens_chart_view(
         );
     }
 
-    // ── Footer: dismiss hint ──
+    // ── Footer: usage table + dismiss hint ──
+    // #195: append usage statistics if any features have been used.
+    let mut footer_text = String::new();
+    footer_text.push_str(usage_text);
+    footer_text.push_str("Press any key to close");
+    let footer_lines: Vec<Line> = footer_text
+        .lines()
+        .map(|l| Line::from(Span::raw(l.to_string())))
+        .collect();
     frame.render_widget(
-        Paragraph::new("Press any key to close").style(Style::default().fg(DRACULA_COMMENT)),
+        Paragraph::new(footer_lines).style(Style::default().fg(DRACULA_COMMENT)),
         chunks[3],
     );
 }

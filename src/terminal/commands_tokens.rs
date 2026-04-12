@@ -100,7 +100,45 @@ pub(super) fn format_tokens_overlay(rows: &[crate::session::tokens::TokenRow]) -
         out.push('\n');
     }
 
-    out.push_str("Press any key to close");
+    out
+}
+
+/// #195: format the feature usage table appended to the tokens overlay.
+pub(super) fn format_usage_table(
+    usage: &std::collections::HashMap<String, (usize, chrono::DateTime<chrono::Utc>)>,
+) -> String {
+    let mut out = String::new();
+    if usage.is_empty() {
+        return out;
+    }
+    out.push_str("Feature usage:\n");
+
+    let mut entries: Vec<(&str, usize, &chrono::DateTime<chrono::Utc>)> = usage
+        .iter()
+        .map(|(k, (c, t))| (k.as_str(), *c, t))
+        .collect();
+    // Sort by count descending
+    entries.sort_by(|a, b| b.1.cmp(&a.1));
+
+    let now = chrono::Utc::now();
+    let widest_name = entries.iter().map(|(n, _, _)| n.len()).max().unwrap_or(0);
+    for (name, count, last) in &entries {
+        let age = now.signed_duration_since(**last);
+        let ago = if age.num_seconds() < 60 {
+            "now".to_string()
+        } else if age.num_minutes() < 60 {
+            format!("{} min ago", age.num_minutes())
+        } else {
+            format!("{}h ago", age.num_hours())
+        };
+        let count_style = if *count > 0 {
+            format!("{count:>4}")
+        } else {
+            "   0".to_string()
+        };
+        out.push_str(&format!("  {name:<widest_name$}  {count_style}   {ago}\n"));
+    }
+    out.push('\n');
     out
 }
 
@@ -159,8 +197,7 @@ mod tests {
         assert!(text.contains("pm"));
         assert!(text.contains("400"), "dev should sum to 400, got: {text}");
         assert!(text.contains("200"), "pm should total 200, got: {text}");
-        // Footer
-        assert!(text.contains("Press any key to close"));
+        // Footer moved to renderer (#195)
     }
 
     #[test]
@@ -168,7 +205,6 @@ mod tests {
         let text = format_tokens_overlay(&[]);
         assert!(text.contains("No token rows yet"));
         assert!(text.contains("Total: 0 tokens"));
-        assert!(text.contains("Press any key to close"));
     }
 
     #[test]

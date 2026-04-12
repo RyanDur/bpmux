@@ -314,6 +314,9 @@ impl ServerHandler for BridgeServer {
             crate::mcp::tools::reorder_story_tool(
                 "Reorder a story's priority position within its state column. PM ONLY — other roles are rejected. Position 1 = top of column.",
             ),
+            crate::mcp::tools::get_usage_tool(
+                "Get feature usage statistics — invocation counts and last-used timestamps for all commands/features used this session. JSON format.",
+            ),
         ];
 
         std::future::ready(Ok(ListToolsResult::with_all_items(tools)))
@@ -383,6 +386,7 @@ impl ServerHandler for BridgeServer {
                     let current_name = name.lock().await;
                     tools::handle_reorder_story(&args, &current_name).await
                 }
+                "get_usage" => tools::handle_get_usage(&args).await,
                 other => Err(format!("unknown tool: {other}")),
             };
             Ok(match result {

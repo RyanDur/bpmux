@@ -763,6 +763,18 @@ pub(super) async fn handle_reorder_story(
     Ok(format!("#{number} moved to position {position} in {state}"))
 }
 
+/// Get usage statistics — any agent (#195).
+pub(super) async fn handle_get_usage(
+    _args: &serde_json::Map<String, serde_json::Value>,
+) -> Result<String, String> {
+    let home = dirs::home_dir().ok_or("cannot determine home directory")?;
+    let path = home.join(".bpmux").join("usage.json");
+    match std::fs::read_to_string(&path) {
+        Ok(contents) => Ok(contents),
+        Err(_) => Ok("{}".to_string()),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

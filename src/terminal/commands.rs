@@ -40,6 +40,8 @@ impl App {
                 Some(i) => (&text[..i], text[i + 1..].trim()),
                 None => (text.as_str(), ""),
             };
+            // #195: record command usage before dispatch.
+            self.record_usage(cmd);
             return match cmd {
                 "/who" => self.handle_who(),
                 "/quit" => self.handle_quit(),

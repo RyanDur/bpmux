@@ -106,6 +106,11 @@ pub struct App {
     /// overlay stays stable across frames until dismissed.
     pub tokens_view_rows: Vec<crate::session::tokens::TokenRow>,
 
+    // ── Usage statistics (#195) ──
+    /// Per-feature invocation counts: command name → (count, last_used).
+    /// Incremented at dispatch time in submit_message() and palette.
+    pub feature_usage: HashMap<String, (usize, chrono::DateTime<chrono::Utc>)>,
+
     // ── Focus mode part A (#181) ──
     /// When `Some(roles)`, the chat view filter narrows to messages
     /// from the listed roles. Transient per-session (resets on
@@ -238,6 +243,7 @@ impl App {
             project_view_content: None,
             show_tokens_view: false,
             tokens_view_rows: Vec::new(),
+            feature_usage: HashMap::new(),
             focused_roles: None,
             show_palette: false,
             palette_input: String::new(),
@@ -291,6 +297,31 @@ impl App {
             multi_depth: None,
             topic: None,
         });
+    }
+
+    /// #195: record a feature/command invocation for usage statistics.
+    /// Updates in-memory state and persists to `~/.bpmux/usage.json`.
+    pub fn record_usage(&mut self, feature: &str) {
+        let entry = self
+            .feature_usage
+            .entry(feature.to_string())
+            .or_insert((0, chrono::Utc::now()));
+        entry.0 += 1;
+        entry.1 = chrono::Utc::now();
+
+        // Persist to disk so agents can query via MCP.
+        if let Ok(home) = dirs::home_dir().ok_or(()) {
+            let path = home.join(".bpmux").join("usage.json");
+            let serializable: std::collections::HashMap<String, (usize, String)> = self
+                .feature_usage
+                .iter()
+                .map(|(k, (c, t))| (k.clone(), (*c, t.to_rfc3339())))
+                .collect();
+            let _ = std::fs::create_dir_all(path.parent().unwrap_or(&path));
+            let _ = serde_json::to_string_pretty(&serializable)
+                .ok()
+                .and_then(|json| std::fs::write(&path, json).ok());
+        }
     }
 
     /// #192: return the filtered list of palette actions matching
