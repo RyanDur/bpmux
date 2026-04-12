@@ -123,18 +123,25 @@ pub(super) fn render(frame: &mut Frame, app: &App, area: Rect) {
         DRACULA_SELECTION
     };
 
+    // #183: title gets a `▾` collapse glyph when the sidebar is
+    // open (the click target says "click to collapse"). When in
+    // filter mode, the title shows the filter text instead — the
+    // glyph is omitted to keep the filter label visually distinct
+    // from the normal header state.
+    let title_text = if app.sidebar_filter.is_empty() {
+        format!(" {} channels ", super::icons::COLLAPSE)
+    } else {
+        format!(" filter: {} ", app.sidebar_filter)
+    };
+
     let sidebar = Paragraph::new(items).block(
         Block::default()
             .borders(Borders::ALL)
-            .title(if app.sidebar_filter.is_empty() {
-                " channels ".to_string()
-            } else {
-                format!(" filter: {} ", app.sidebar_filter)
-            })
+            .title(title_text)
             .title_style(
                 Style::default()
-                    .fg(DRACULA_PURPLE)
-                    .add_modifier(Modifier::BOLD),
+                    .fg(DRACULA_CYAN)
+                    .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
             )
             .border_style(Style::default().fg(border_color))
             .style(Style::default().bg(DRACULA_BG).fg(DRACULA_FG)),

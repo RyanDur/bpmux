@@ -100,6 +100,61 @@ fn menu_glyph_disappears_when_sidebar_opens() {
     );
 }
 
+/// GIVEN bpmux is running (default sidebar-closed state)
+/// THEN the chat title displays a `▸` expand glyph signalling the
+///   project view is collapsed and clickable to open
+#[test]
+fn chat_title_shows_expand_glyph_when_project_view_is_collapsed() {
+    let bpmux = TestBpmux::start();
+    assert!(
+        bpmux.wait_for_tui("solo", Duration::from_secs(5)),
+        "TUI should render"
+    );
+    let screen = bpmux.tui();
+    // `▸` (U+25B8) = EXPAND in icons.rs. Sits in the chat block's
+    // title bar, visible in the top border region.
+    assert!(
+        screen.contains('\u{25B8}'),
+        "expected ▸ expand glyph in chat title; screen:\n{screen}"
+    );
+}
+
+/// GIVEN the sidebar is open (after Alt+1)
+/// THEN the sidebar title includes the `▾` collapse glyph
+#[test]
+fn sidebar_title_shows_collapse_glyph_when_open() {
+    let bpmux = TestBpmux::start();
+    let port = bpmux.port();
+    assert!(
+        bpmux.wait_for_tui("solo", Duration::from_secs(5)),
+        "TUI should render"
+    );
+
+    let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
+    rt.block_on(async {
+        let client = reqwest::Client::new();
+        client
+            .post(format!("http://127.0.0.1:{port}/api/simulate/key"))
+            .json(&serde_json::json!({"key": "1", "modifiers": ["alt"]}))
+            .send()
+            .await
+            .expect("POST /api/simulate/key");
+    });
+    std::thread::sleep(Duration::from_millis(300));
+    let screen = bpmux.tui();
+    assert!(
+        sidebar_open(&screen),
+        "sidebar should be open; screen:\n{screen}"
+    );
+    // `▾` (U+25BE) = COLLAPSE in icons.rs. Must appear in the sidebar
+    // title area (first few lines of the screen).
+    let first_lines: String = screen.lines().take(3).collect::<Vec<_>>().join("\n");
+    assert!(
+        first_lines.contains('\u{25BE}'),
+        "expected ▾ collapse glyph in sidebar title; first lines:\n{first_lines}"
+    );
+}
+
 /// GIVEN the help overlay is visible (from `?`)
 /// THEN the overlay includes the click-or-press hint in its footer
 #[test]

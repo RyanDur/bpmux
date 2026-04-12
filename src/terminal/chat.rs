@@ -14,8 +14,8 @@ use crate::terminal::markdown::{
     message_matches_channel, render_md_message, wrap_line_with_indent,
 };
 use crate::terminal::theme::{
-    DRACULA_BG, DRACULA_COMMENT, DRACULA_FG, DRACULA_PURPLE, DRACULA_SELECTION, channel_tag_color,
-    sender_color,
+    DRACULA_BG, DRACULA_COMMENT, DRACULA_CYAN, DRACULA_FG, DRACULA_PURPLE, DRACULA_SELECTION,
+    channel_tag_color, sender_color,
 };
 
 pub(super) fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
@@ -155,9 +155,17 @@ pub(super) fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
                 Some(7),
                 chat_inner_width,
             );
+            // #183: `[+N lines]` gets the clickable-accent treatment
+            // (cyan + underline) so the weak bracket-affordance becomes
+            // an obvious call-to-action. The truncation_indicators
+            // registry (populated below) already tracks which row each
+            // indicator renders on, so the click handler continues to
+            // work unchanged.
             ls.push(Line::from(Span::styled(
                 format!("  [+{remaining_lines} lines]"),
-                Style::default().fg(DRACULA_COMMENT),
+                Style::default()
+                    .fg(DRACULA_CYAN)
+                    .add_modifier(Modifier::UNDERLINED),
             )));
             ls
         } else {
@@ -205,14 +213,35 @@ pub(super) fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
     }
 
     let total_lines = messages.len();
-    let title = app
+    // #183: prefix the title with a `▸`/`▾` toggle glyph so the
+    // click-to-expand/collapse affordance is visible. `▸` when the
+    // project view is collapsed (click to expand), `▾` when open
+    // (click to collapse). Glyph vocabulary shared with the icons
+    // module for consistency across surfaces.
+    let toggle_glyph = if app.show_project_view {
+        super::icons::COLLAPSE
+    } else {
+        super::icons::EXPAND
+    };
+    let title_body = app
         .project_state
         .as_ref()
         .map_or(" bpmux ".to_string(), |s| s.title_summary());
+    // `title_body` already has leading/trailing spaces; splice the
+    // glyph in after the leading space so rendering stays clean.
+    let title = if let Some(rest) = title_body.strip_prefix(' ') {
+        format!(" {toggle_glyph} {rest}")
+    } else {
+        format!("{toggle_glyph} {title_body}")
+    };
     let chat_block = Block::default()
         .borders(Borders::ALL)
         .title(title)
-        .title_style(Style::default().fg(DRACULA_PURPLE))
+        .title_style(
+            Style::default()
+                .fg(DRACULA_CYAN)
+                .add_modifier(Modifier::UNDERLINED),
+        )
         .border_style(Style::default().fg(DRACULA_SELECTION))
         .style(Style::default().bg(DRACULA_BG).fg(DRACULA_FG));
     let chat = Paragraph::new(messages).block(chat_block);

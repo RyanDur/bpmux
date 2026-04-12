@@ -7,7 +7,7 @@
 use ratatui::{
     Frame,
     layout::Rect,
-    style::{Color, Style},
+    style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::Paragraph,
 };
@@ -175,35 +175,60 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         .map(|(label, _)| 1 + label.chars().count())
         .unwrap_or(0);
 
-    // Right-aligned "? help" hint
+    // Right-aligned hint region. #183 splits the hint into two
+    // visual groups:
+    //   - clickable widgets (`?=help`) get cyan + underlined
+    //   - keybind-only labels (`⌥1=sidebar`, `Enter=send`) stay in
+    //     plain foreground so users can distinguish "click OR key"
+    //     from "key only"
     let used: usize = status_spans.iter().map(|s| s.content.chars().count()).sum();
     let bar_width = area.width as usize;
-    let hint = if app.sidebar_focused {
-        "Enter=switch \u{2191}\u{2193}=nav Esc=close"
+    let (clickable_hint, keybind_hint) = if app.sidebar_focused {
+        // In sidebar-focus mode, nothing in the hint is clickable —
+        // it's all keybind guidance. Render the whole string in plain
+        // foreground.
+        ("", "Enter=switch \u{2191}\u{2193}=nav Esc=close")
     } else {
-        "?=help \u{2325}1=sidebar Enter=send"
+        ("?=help", " \u{2325}1=sidebar Enter=send")
     };
+    let hint_len = clickable_hint.chars().count() + keybind_hint.chars().count();
     let right_margin = 1;
     // Reserve two spaces of breathing room between the CI indicator and
     // the help hint when both are shown, so they don't visually fuse.
     let ci_hint_gap = if ci_width > 0 { 2 } else { 0 };
-    if used + ci_width + ci_hint_gap + hint.chars().count() + right_margin + 1 < bar_width {
-        let pad = bar_width
-            .saturating_sub(used + ci_width + ci_hint_gap + hint.chars().count() + right_margin);
+    if used + ci_width + ci_hint_gap + hint_len + right_margin + 1 < bar_width {
+        let pad = bar_width.saturating_sub(used + ci_width + ci_hint_gap + hint_len + right_margin);
         // Pad first, then CI indicator, then gap, then hint — the CI
         // glyph floats next to the hint rather than anchoring to the left
         // content. That's what the spec mockup shows.
         status_spans.push(Span::raw(" ".repeat(pad)));
         if let Some((label, color)) = ci {
             status_spans.push(Span::raw(" "));
+            // #183: CI indicator is treated as clickable per designer's
+            // spec (click handler will eventually open `gh run view`;
+            // today it's passive but the affordance is forward-looking),
+            // so it gets underlined to match the other interactive
+            // status-bar widgets.
             status_spans.push(Span::styled(
                 label,
-                Style::default().fg(ci_color_to_ratatui(color)),
+                Style::default()
+                    .fg(ci_color_to_ratatui(color))
+                    .add_modifier(Modifier::UNDERLINED),
             ));
             status_spans.push(Span::raw(" ".repeat(ci_hint_gap.saturating_sub(1))));
         }
         app.help_hint_col = Some(area.x + (used + pad + ci_width + ci_hint_gap) as u16);
-        status_spans.push(Span::styled(hint, Style::default().fg(DRACULA_CYAN)));
+        if !clickable_hint.is_empty() {
+            status_spans.push(Span::styled(
+                clickable_hint,
+                Style::default()
+                    .fg(DRACULA_CYAN)
+                    .add_modifier(Modifier::UNDERLINED),
+            ));
+        }
+        if !keybind_hint.is_empty() {
+            status_spans.push(Span::styled(keybind_hint, Style::default().fg(DRACULA_FG)));
+        }
     } else {
         app.help_hint_col = None;
     }
