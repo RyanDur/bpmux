@@ -20,9 +20,12 @@ use std::time::Duration;
 fn ac1_click_sidebar_toggles_open() {
     let bpmux = TestBpmux::start();
 
-    // Sidebar is closed by default
-    // Click left edge to open sidebar
-    bpmux.mouse_click(1, 5);
+    // Sidebar is closed by default. #183 added a visible ≡ menu
+    // glyph at the top-left of the chat area — click it to open.
+    // (Previously the click zone was col < 3 on any row; now it's
+    // the glyph cell + 3 cols for Fitts's-law forgiveness.)
+    // SGR mouse coords are 1-indexed: (1, 1) = top-left cell.
+    bpmux.mouse_click(1, 1);
     std::thread::sleep(Duration::from_millis(300));
 
     // Sidebar should now be open — showing "channels" header
