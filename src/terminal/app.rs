@@ -334,7 +334,7 @@ impl App {
                     self.rebuild_channels();
                 }
             }
-            MessageType::Chat | MessageType::Insight => {
+            MessageType::Chat | MessageType::Insight | MessageType::Nudge => {
                 let ch = channel_name(&msg, &self.peer_name);
                 self.active_channels.insert(ch.clone());
                 if self.current_view.as_ref().is_none_or(|v| v != &ch) {

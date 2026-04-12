@@ -18,6 +18,42 @@ use crate::terminal::theme::{
     channel_tag_color, sender_color,
 };
 
+/// Class-filter predicate for #161 / #186. Returns `true` when the
+/// message should be hidden in the default view (when
+/// `show_all_classes` is OFF). Hidden messages reappear when the
+/// user toggles `/all`.
+///
+/// Rules:
+/// - **Typed `Nudge` messages** (classifier-authored experience
+///   nudges, handoff liveness warnings, awareness signals) are
+///   always hidden. This is #186's load-bearing change — before
+///   it, the filter relied on a `📝` text prefix, so any nudge
+///   that forgot the marker (like the handoff warning) slipped
+///   through.
+/// - **Legacy `📝`-prefixed bpmux-sender messages** are still
+///   hidden so historical session logs written before the
+///   `Nudge` type existed continue to filter correctly.
+/// - **Non-bpmux messages classified as `Routine`** are hidden —
+///   the existing #161 behavior for peer-sent routine content.
+/// - **Everything else** (tool output like `/board`, `/roadmap`,
+///   `/who`, `/debug`; regular chat; system notices) is shown.
+///   Critical: we do NOT run the Routine-class check on bpmux
+///   content because `session::classify` returns Routine for
+///   ANY bpmux-sender message, which would hide tool output.
+pub(super) fn should_hide_by_class(m: &session::Message, owner_name: &str) -> bool {
+    if m.message_type == session::MessageType::Nudge {
+        return true;
+    }
+    let sender = m.from.split(':').next().unwrap_or(&m.from);
+    if sender == "bpmux" {
+        return m.text.starts_with('\u{1F4DD}');
+    }
+    matches!(
+        session::classify(m, owner_name),
+        session::MessageClass::Routine
+    )
+}
+
 pub(super) fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
     // Channel-view filter (existing behavior) + class filter (#161).
     // Imperative loop so we can both collect visible messages AND count
@@ -43,40 +79,13 @@ pub(super) fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
         if !in_channel {
             continue;
         }
-        // #161 class filter: when `show_all_classes` is off, hide
-        // (a) classifier auto-nudges (bpmux-sent messages whose text
-        //     starts with the 📝 marker introduced by #163) and
-        // (b) non-bpmux messages that the classifier returns as Routine.
-        //
-        // Important: bpmux sends MORE than just auto-nudges — tool
-        // output (/board, /roadmap, /who, /debug), system notices,
-        // error messages, peer join/leave announcements. The user
-        // wants to see all of those. Only the 📝-prefixed auto-nudges
-        // should be suppressed. And because `session::classify` itself
-        // returns Routine for ANY bpmux-sender message, we must NOT
-        // run the Routine-class check on bpmux content — otherwise we
-        // hide all bpmux output, not just the nudges.
-        //
-        // Hidden messages stay in `app.messages` and become visible
-        // when the user toggles via `/all`. Classifier cost per render
-        // is microseconds via the thread-local Aho-Corasick cache.
-        if !app.show_all_classes {
-            let sender = m.from.split(':').next().unwrap_or(&m.from);
-            if sender == "bpmux" {
-                if m.text.starts_with('\u{1F4DD}') {
-                    hidden_class_count += 1;
-                    continue;
-                }
-                // Non-nudge bpmux output (tool results, system notices)
-                // always renders — don't run the Routine-class check
-                // because classify always returns Routine for bpmux.
-            } else if matches!(
-                session::classify(m, &app.peer_name),
-                session::MessageClass::Routine
-            ) {
-                hidden_class_count += 1;
-                continue;
-            }
+        // #161 / #186 class filter. See `should_hide_by_class` below
+        // for the full rule set. Extracted into a pure function so
+        // the AC can be unit-tested against each rule branch
+        // without needing to drive the full render loop.
+        if !app.show_all_classes && should_hide_by_class(m, &app.peer_name) {
+            hidden_class_count += 1;
+            continue;
         }
         // #181 focus-mode display filter. Orthogonal to the classifier
         // filter above — both can be active. The pure function
@@ -294,5 +303,101 @@ pub(super) fn render_unread_indicator(frame: &mut Frame, app: &App, area: Rect) 
             1,
         );
         frame.render_widget(Paragraph::new(unread_line), unread_area);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    //! Unit tests for `should_hide_by_class` — #161 / #186 class
+    //! filter predicate. Pure function tests named for what the
+    //! function returns, per the test-name discipline.
+
+    use super::*;
+    use crate::session::{Message, MessageType};
+    use chrono::Utc;
+
+    fn msg(from: &str, text: &str, ty: MessageType) -> Message {
+        Message {
+            from: from.to_string(),
+            text: text.to_string(),
+            ts: Utc::now(),
+            message_type: ty,
+            to: None,
+            addressee: None,
+            explicit_privacy: false,
+        }
+    }
+
+    #[test]
+    fn should_hide_returns_true_for_nudge_type_regardless_of_sender_or_text() {
+        // #186 load-bearing case: the handoff liveness warning that
+        // escaped the pre-#186 filter because it didn't start with
+        // 📝. Under the new type-based filter it's hidden by type.
+        let handoff_warning = msg(
+            "bpmux",
+            "dev hasn't acknowledged the handoff from pm. Waiting for response.",
+            MessageType::Nudge,
+        );
+        assert!(should_hide_by_class(&handoff_warning, "ryan"));
+
+        // Nudge type wins over content — even a message with arbitrary
+        // text is hidden if it's typed as Nudge.
+        let arbitrary = msg("bpmux", "anything at all", MessageType::Nudge);
+        assert!(should_hide_by_class(&arbitrary, "ryan"));
+    }
+
+    #[test]
+    fn should_hide_returns_true_for_legacy_pencil_prefixed_bpmux_chat() {
+        // Backward compat: historical sessions logged nudges as
+        // Chat with the 📝 prefix. The filter still catches them.
+        let legacy_nudge = msg(
+            "bpmux",
+            "\u{1F4DD} 2 candidate moments from recent chat",
+            MessageType::Chat,
+        );
+        assert!(should_hide_by_class(&legacy_nudge, "ryan"));
+    }
+
+    #[test]
+    fn should_hide_returns_false_for_bpmux_tool_output_without_pencil_prefix() {
+        // AC #6: the filter must NOT hide tool output. `/board`,
+        // `/roadmap`, `/who`, `/debug`, and `/focus` all go through
+        // `App::system_message` which creates bpmux-sender chat
+        // messages. Hiding these would break the user-facing tool
+        // response loop.
+        let board_output = msg("bpmux", "Roadmap: ...", MessageType::Chat);
+        assert!(!should_hide_by_class(&board_output, "ryan"));
+
+        let who_output = msg("bpmux", "Participants:\n  ryan (you)", MessageType::Chat);
+        assert!(!should_hide_by_class(&who_output, "ryan"));
+
+        let focus_output = msg("bpmux", "focus: off (all roles visible)", MessageType::Chat);
+        assert!(!should_hide_by_class(&focus_output, "ryan"));
+    }
+
+    #[test]
+    fn should_hide_returns_false_for_non_bpmux_pencil_prefixed_message() {
+        // AC #6 prevent-overcorrection case: a message from another
+        // role that happens to start with 📝 must NOT be hidden —
+        // only sender=bpmux gets the prefix-based fallback. A dev
+        // broadcast about a checklist shouldn't accidentally trip
+        // the nudge filter.
+        let dev_message = msg(
+            "dev:claude-code",
+            "\u{1F4DD} TODO list for #186",
+            MessageType::Chat,
+        );
+        assert!(!should_hide_by_class(&dev_message, "ryan"));
+    }
+
+    #[test]
+    fn should_hide_returns_false_for_regular_peer_chat_message() {
+        // Normal peer chat from pm/designer/dev is not filtered.
+        let pm = msg(
+            "pm:claude-code",
+            "what does the queue look like?",
+            MessageType::Chat,
+        );
+        assert!(!should_hide_by_class(&pm, "ryan"));
     }
 }

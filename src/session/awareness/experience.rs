@@ -151,7 +151,11 @@ impl ExperienceDetector {
                 from: "bpmux".to_string(),
                 text: nudge_text,
                 ts: chrono::Utc::now(),
-                message_type: MessageType::Chat,
+                // #186: structured type instead of the 📝 text prefix
+                // as the filterable marker. The prefix stays in the
+                // text for human readability but the filter predicate
+                // is now type-based.
+                message_type: MessageType::Nudge,
                 to: Some(vec![recipient.clone()]),
                 addressee: None,
                 explicit_privacy: false,

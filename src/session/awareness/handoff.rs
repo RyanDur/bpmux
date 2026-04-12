@@ -115,7 +115,11 @@ impl HandoffTracker {
                 h.to, h.from
             ),
             ts: chrono::Utc::now(),
-            message_type: MessageType::Chat,
+            // #186: classifier-authored nudges carry `Nudge` instead
+            // of `Chat` so the default view filter catches them by
+            // type rather than by the fragile text-prefix check that
+            // caught only 📝-marked messages.
+            message_type: MessageType::Nudge,
             to: Some(vec![h.to]),
             addressee: None,
             explicit_privacy: false,

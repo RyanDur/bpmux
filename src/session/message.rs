@@ -9,6 +9,18 @@ pub enum MessageType {
     Activity,
     System,
     Insight,
+    /// Automated bpmux-generated nudge (classifier experience-nudge,
+    /// handoff liveness warning, awareness signal). Distinct from
+    /// `Chat` because these messages are SYSTEM-authored operational
+    /// signals, not human/agent chat content, and #161's default
+    /// view filter hides them. Distinct from `Activity` because
+    /// activity is ephemeral state (status dots, presence), whereas
+    /// nudges are content the classifier produced.
+    ///
+    /// See #186 for the story that introduced this variant. Before
+    /// #186, handoff nudges were emitted as `Chat` and escaped the
+    /// 📝-text-prefix filter because they didn't carry the marker.
+    Nudge,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
@@ -67,6 +79,7 @@ impl MessageType {
             MessageType::Activity => Some("activity".into()),
             MessageType::System => Some("system".into()),
             MessageType::Insight => Some("insight".into()),
+            MessageType::Nudge => Some("nudge".into()),
         }
     }
 }
@@ -77,6 +90,7 @@ impl From<Option<&str>> for MessageType {
             Some("activity") => MessageType::Activity,
             Some("system") => MessageType::System,
             Some("insight") => MessageType::Insight,
+            Some("nudge") => MessageType::Nudge,
             _ => MessageType::Chat,
         }
     }
