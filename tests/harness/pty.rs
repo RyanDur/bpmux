@@ -191,6 +191,7 @@ impl TestBpmux {
             "Right" => "\x1b[C",
             "Left" => "\x1b[D",
             "Esc" => "\x1b",
+            "Alt-1" => "\x1b1",
             _ => panic!("unsupported key: {key}"),
         };
         let mut w = self.writer.lock().expect("writer lock");

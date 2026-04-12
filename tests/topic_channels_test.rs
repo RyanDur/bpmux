@@ -108,6 +108,45 @@ fn switching_topics_filters_messages() {
 }
 
 /// GIVEN a topic is created
+/// WHEN the sidebar is opened
+/// THEN it shows "topics" title and the topic names
+/// AND the active topic has a ● marker
+#[test]
+fn sidebar_shows_topics_when_topics_exist() {
+    let bpmux = TestBpmux::start();
+    assert!(
+        bpmux.wait_for_tui("solo", Duration::from_secs(5)),
+        "TUI should render"
+    );
+    // Create a topic so sidebar switches to topic mode
+    bpmux.type_line("/topic create scroll-fix");
+    std::thread::sleep(Duration::from_millis(300));
+
+    // Open sidebar (Alt+1 = Esc then 1 in raw terminal)
+    bpmux.type_key("Alt-1");
+    std::thread::sleep(Duration::from_millis(300));
+
+    let screen = bpmux.tui();
+    assert!(
+        screen.contains("topics"),
+        "sidebar title should say 'topics'. screen:\n{screen}"
+    );
+    assert!(
+        screen.contains("scroll-fix"),
+        "sidebar should show the created topic. screen:\n{screen}"
+    );
+    assert!(
+        screen.contains("general"),
+        "sidebar should show general topic. screen:\n{screen}"
+    );
+    // Active topic (scroll-fix) should have ● marker
+    assert!(
+        screen.contains("● scroll-fix") || screen.contains("●  scroll-fix"),
+        "active topic should have ● marker. screen:\n{screen}"
+    );
+}
+
+/// GIVEN a topic is created
 /// WHEN /topic is run with no args
 /// THEN the topic list shows the created topic
 #[test]

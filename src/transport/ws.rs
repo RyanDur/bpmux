@@ -295,6 +295,7 @@ async fn handle_client_message(
             to,
             addressee,
             message_type,
+            topic,
         }) => {
             let msg = session::Message {
                 from: identity.to_string(),
@@ -305,7 +306,7 @@ async fn handle_client_message(
                 addressee,
                 explicit_privacy: false,
                 multi_depth: None,
-                topic: None,
+                topic,
             };
             session.broadcast(&msg)?;
         }

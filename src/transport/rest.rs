@@ -24,6 +24,11 @@ pub struct PostMessage {
     /// message, which is identical to pre-#187 behavior.
     #[serde(default)]
     pub multi_depth: Option<session::message::MultiDepthPayload>,
+    /// Topic tag (#191). When set, the message is scoped to the
+    /// named topic and only visible in that topic's view. Omit
+    /// for broadcast (visible in all topics).
+    #[serde(default)]
+    pub topic: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -375,7 +380,7 @@ pub async fn post_message(
         addressee: payload.addressee,
         explicit_privacy: false,
         multi_depth: payload.multi_depth,
-        topic: None,
+        topic: payload.topic,
     };
     if let Err(e) = session.broadcast(&msg) {
         return (

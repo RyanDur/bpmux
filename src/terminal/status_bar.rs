@@ -92,16 +92,50 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     } else {
         Span::raw("")
     };
-    let view_label = match &app.current_view {
-        None => " [all]".to_string(),
-        Some(v) if v == "broadcast" => " [broadcast]".to_string(),
-        Some(v) => format!(" [{v}]"),
+    // #193: board view label, #191: topic mode label.
+    let view_label = if app.show_board {
+        if app.board_detail.is_some() {
+            let visible = super::board_view::visible_stories(&app.board_stories);
+            let idx = app.board_detail.unwrap_or(0);
+            let global_idx = visible.get(idx).copied().unwrap_or(0);
+            app.board_stories
+                .get(global_idx)
+                .map(|s| format!(" #{} detail", s.number))
+                .unwrap_or_else(|| " board".to_string())
+        } else {
+            " board view".to_string()
+        }
+    } else if app.topic_mode() {
+        format!(" {}", app.active_topic)
+    } else {
+        match &app.current_view {
+            None => " [all]".to_string(),
+            Some(v) if v == "broadcast" => " [broadcast]".to_string(),
+            Some(v) => format!(" [{v}]"),
+        }
     };
     let mut status_spans = vec![
         Span::styled(view_label, Style::default().fg(DRACULA_CYAN)),
         Span::raw(" "),
         connection_status,
     ];
+    // #191: cross-topic unread indicators. Show other topics
+    // that have unread messages so the user doesn't miss activity.
+    if app.topic_mode() {
+        for topic in &app.topics {
+            if *topic == app.active_topic {
+                continue;
+            }
+            let unread = app.topic_unreads.get(topic).copied().unwrap_or(0);
+            if unread > 0 {
+                status_spans.push(Span::raw(" | "));
+                status_spans.push(Span::styled(
+                    format!("{topic}: {unread} new"),
+                    Style::default().fg(DRACULA_ORANGE),
+                ));
+            }
+        }
+    }
     // #181: focus-mode indicator — shows the current focus set
     // alongside the view label when `/focus <roles>` is active.
     // Format: `[focus: dev,pm]`. Silent when the filter is off so
@@ -194,11 +228,19 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     //     from "key only"
     let used: usize = status_spans.iter().map(|s| s.content.chars().count()).sum();
     let bar_width = area.width as usize;
-    let (clickable_hint, keybind_hint) = if app.sidebar_focused {
+    let (clickable_hint, keybind_hint) = if app.show_board {
+        if app.board_detail.is_some() {
+            ("", "Esc=back to board")
+        } else {
+            ("", "\u{2191}\u{2193}=nav Enter=detail Esc=close")
+        }
+    } else if app.sidebar_focused {
         // In sidebar-focus mode, nothing in the hint is clickable —
         // it's all keybind guidance. Render the whole string in plain
         // foreground.
         ("", "Enter=switch \u{2191}\u{2193}=nav Esc=close")
+    } else if app.topic_mode() {
+        ("?=help", " \u{2325}1=topics Enter=send")
     } else {
         ("?=help", " \u{2325}1=sidebar Enter=send")
     };

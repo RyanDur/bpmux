@@ -8,7 +8,8 @@ use ratatui::{
 
 use super::app::App;
 use super::theme::{
-    DRACULA_BG, DRACULA_COMMENT, DRACULA_CYAN, DRACULA_FG, DRACULA_PURPLE, DRACULA_SELECTION,
+    DRACULA_BG, DRACULA_COMMENT, DRACULA_CYAN, DRACULA_FG, DRACULA_ORANGE, DRACULA_PURPLE,
+    DRACULA_SELECTION,
 };
 
 const SECTION_PREFIX_COLLAPSED: &str = "▸ ";
@@ -17,7 +18,130 @@ const SIDEBAR_NAME_WIDTH: usize = 16;
 
 pub(super) fn render(frame: &mut Frame, app: &App, area: Rect) {
     let channels = app.sidebar_channels();
-    let items: Vec<Line> = channels
+
+    // #191: topic mode uses a flat list with ● active markers.
+    let items: Vec<Line> = if app.topic_mode() {
+        render_topic_items(&channels, app, area)
+    } else {
+        render_channel_items(&channels, app, area)
+    };
+
+    let border_color = if app.sidebar_focused {
+        DRACULA_PURPLE
+    } else {
+        DRACULA_SELECTION
+    };
+
+    // #191: title says "topics" when in topic mode.
+    let title_text = if !app.sidebar_filter.is_empty() {
+        format!(" filter: {} ", app.sidebar_filter)
+    } else if app.topic_mode() {
+        format!(" {} topics ", super::icons::COLLAPSE)
+    } else {
+        format!(" {} channels ", super::icons::COLLAPSE)
+    };
+
+    let sidebar = Paragraph::new(items).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(title_text)
+            .title_style(
+                Style::default()
+                    .fg(DRACULA_CYAN)
+                    .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
+            )
+            .border_style(Style::default().fg(border_color))
+            .style(Style::default().bg(DRACULA_BG).fg(DRACULA_FG)),
+    );
+    frame.render_widget(sidebar, area);
+}
+
+/// Render sidebar items in topic mode: flat list with ● active
+/// marker, (N) unread counts, per-mockup Dracula colors.
+fn render_topic_items(topics: &[String], app: &App, area: Rect) -> Vec<Line<'static>> {
+    let inner_width = area.width.saturating_sub(2) as usize;
+    topics
+        .iter()
+        .enumerate()
+        .map(|(i, topic)| {
+            let selected = i == app.sidebar_selected && app.sidebar_focused;
+            let bg = if selected {
+                DRACULA_SELECTION
+            } else {
+                DRACULA_BG
+            };
+            let is_active = *topic == app.active_topic;
+            let unread = app.topic_unreads.get(topic).copied().unwrap_or(0);
+
+            let marker = if is_active { "● " } else { "  " };
+            let badge = if unread > 0 {
+                format!("  ({unread})")
+            } else {
+                String::new()
+            };
+
+            // Truncate topic name if needed
+            let prefix_len = 2 + marker.len(); // select_marker + marker
+            let available = inner_width.saturating_sub(prefix_len + badge.len());
+            let display_name: String = if topic.len() > available {
+                format!(
+                    "{}…",
+                    topic
+                        .chars()
+                        .take(available.saturating_sub(1))
+                        .collect::<String>()
+                )
+            } else {
+                topic.clone()
+            };
+
+            // Colors per design spec:
+            // - Active: DRACULA_CYAN, bold
+            // - Unreads: DRACULA_FG, bold (name) + DRACULA_ORANGE (count)
+            // - Quiet: DRACULA_COMMENT (dim)
+            let name_style = if is_active {
+                Style::default()
+                    .fg(DRACULA_CYAN)
+                    .bg(bg)
+                    .add_modifier(Modifier::BOLD)
+            } else if unread > 0 {
+                Style::default()
+                    .fg(DRACULA_FG)
+                    .bg(bg)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(DRACULA_COMMENT).bg(bg)
+            };
+
+            let select_marker = if selected { "▸ " } else { "  " };
+            let mut spans = vec![
+                Span::styled(select_marker, Style::default().bg(bg).fg(DRACULA_PURPLE)),
+                Span::styled(
+                    marker,
+                    Style::default()
+                        .bg(bg)
+                        .fg(if is_active { DRACULA_CYAN } else { DRACULA_BG }),
+                ),
+                Span::styled(display_name, name_style),
+            ];
+            if unread > 0 {
+                spans.push(Span::styled(
+                    badge,
+                    Style::default()
+                        .bg(bg)
+                        .fg(DRACULA_ORANGE)
+                        .add_modifier(Modifier::BOLD),
+                ));
+            }
+            Line::from(spans)
+        })
+        .collect()
+}
+
+/// Render sidebar items in channel mode: the existing channel tree
+/// with sections (direct, groups, system).
+fn render_channel_items(channels: &[String], app: &App, area: Rect) -> Vec<Line<'static>> {
+    channels
         .iter()
         .enumerate()
         .map(|(i, ch)| {
@@ -115,38 +239,7 @@ pub(super) fn render(frame: &mut Frame, app: &App, area: Rect) {
             }
             Line::from(spans)
         })
-        .collect();
-
-    let border_color = if app.sidebar_focused {
-        DRACULA_PURPLE
-    } else {
-        DRACULA_SELECTION
-    };
-
-    // #183: title gets a `▾` collapse glyph when the sidebar is
-    // open (the click target says "click to collapse"). When in
-    // filter mode, the title shows the filter text instead — the
-    // glyph is omitted to keep the filter label visually distinct
-    // from the normal header state.
-    let title_text = if app.sidebar_filter.is_empty() {
-        format!(" {} channels ", super::icons::COLLAPSE)
-    } else {
-        format!(" filter: {} ", app.sidebar_filter)
-    };
-
-    let sidebar = Paragraph::new(items).block(
-        Block::default()
-            .borders(Borders::ALL)
-            .title(title_text)
-            .title_style(
-                Style::default()
-                    .fg(DRACULA_CYAN)
-                    .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
-            )
-            .border_style(Style::default().fg(border_color))
-            .style(Style::default().bg(DRACULA_BG).fg(DRACULA_FG)),
-    );
-    frame.render_widget(sidebar, area);
+        .collect()
 }
 
 fn is_system_channel(channel: &str) -> bool {
@@ -171,7 +264,26 @@ fn is_section_header(entry: &str) -> bool {
 }
 
 impl App {
+    /// Whether the sidebar is in topic mode — topics exist beyond
+    /// the default "general". When true, the sidebar shows topics
+    /// instead of the channel tree.
+    pub fn topic_mode(&self) -> bool {
+        self.topics.len() > 1
+    }
+
     pub fn sidebar_channels(&self) -> Vec<String> {
+        // #191: when topics exist, the sidebar shows topics instead
+        // of the channel tree. Flat list, no sections.
+        if self.topic_mode() {
+            let filter = self.sidebar_filter.to_lowercase();
+            return self
+                .topics
+                .iter()
+                .filter(|t| filter.is_empty() || t.to_lowercase().contains(&filter))
+                .cloned()
+                .collect();
+        }
+
         let mut result = vec![self.session_id.clone()];
         if !self.project_expanded {
             return result;
@@ -295,6 +407,17 @@ impl App {
     pub fn sidebar_select(&mut self) {
         let channels = self.sidebar_channels();
         if let Some(ch) = channels.get(self.sidebar_selected) {
+            // #191: topic mode — selecting a topic switches active_topic.
+            if self.topic_mode() {
+                self.active_topic = ch.clone();
+                self.topic_unreads.remove(ch);
+                self.current_view = None;
+                self.scroll_offset = 0;
+                self.sidebar_focused = false;
+                self.sidebar_filter.clear();
+                return;
+            }
+
             // Toggle section headers
             if is_section_header(ch) {
                 if ch.contains("direct") {
@@ -322,6 +445,10 @@ impl App {
     }
 
     pub fn sidebar_collapse(&mut self) {
+        // Topic mode has no sections to collapse.
+        if self.topic_mode() {
+            return;
+        }
         // Collapse the section the selected item belongs to, not the whole tree
         let channels = self.sidebar_channels();
         if let Some(ch) = channels.get(self.sidebar_selected) {
@@ -369,6 +496,10 @@ impl App {
     }
 
     pub fn sidebar_expand(&mut self) {
+        // Topic mode has no sections to expand.
+        if self.topic_mode() {
+            return;
+        }
         let channels = self.sidebar_channels();
         if let Some(ch) = channels.get(self.sidebar_selected)
             && is_section_header(ch)

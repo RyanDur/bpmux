@@ -23,6 +23,10 @@ pub enum ClientMessage {
         addressee: Option<String>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         message_type: Option<String>,
+        /// Topic tag (#191). Scopes the message to a named topic.
+        /// Omit for broadcast (visible in all topics).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        topic: Option<String>,
     },
     #[serde(rename = "ping")]
     Ping,
