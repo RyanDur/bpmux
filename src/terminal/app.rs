@@ -356,28 +356,16 @@ impl App {
         }
 
         let was_at_bottom = self.scroll_offset == 0;
-        // #180: compensate scroll_offset by the number of RENDERED
-        // LINES the message would occupy, not by 1. Also skip
-        // compensation entirely for filtered messages that wouldn't
-        // render. Uses the same approximate width as the render loop
-        // (78 chars inner, matching the default 80-col terminal minus
-        // 2 for borders). Not pixel-perfect — the real line count
-        // depends on markdown rendering and word-wrap — but close
-        // enough to prevent perceptible viewport drift.
+        // #180: only adjust scroll_offset when the message would
+        // actually render in the current filter state. The previous
+        // code incremented unconditionally, so filtered messages
+        // (activity, nudge, unfocused) caused viewport drift without
+        // adding a visible row. This accumulates into the "jumpy"
+        // behavior Ryan observed.
         let would_render = self.would_message_render(&msg);
-        let line_count = if would_render {
-            let sender = msg.from.split(':').next().unwrap_or(&msg.from);
-            // Approximate prefix: "[channel] sender: " = ~15 + name len
-            let prefix_len = sender.len() + 15;
-            let full_len = prefix_len + msg.text.len();
-            const APPROX_INNER_WIDTH: usize = 78;
-            full_len.max(1).div_ceil(APPROX_INNER_WIDTH.max(1)).max(1)
-        } else {
-            0
-        };
         self.messages.push(msg);
-        if !was_at_bottom && line_count > 0 {
-            self.scroll_offset = self.scroll_offset.saturating_add(line_count);
+        if !was_at_bottom && would_render {
+            self.scroll_offset = self.scroll_offset.saturating_add(1);
             self.unread_count += 1;
         }
     }

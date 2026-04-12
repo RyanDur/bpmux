@@ -142,10 +142,10 @@ pub(super) fn handle_terminal_event(
         }
         match mouse.kind {
             MouseEventKind::ScrollUp => {
-                app.scroll_up(1);
+                app.scroll_up(3);
             }
             MouseEventKind::ScrollDown => {
-                app.scroll_down(1);
+                app.scroll_down(3);
             }
             MouseEventKind::Down(crossterm::event::MouseButton::Left) => {
                 handle_mouse_click(mouse.column, mouse.row, app);
