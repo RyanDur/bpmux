@@ -245,6 +245,53 @@ fn incoming_message_preserves_viewport_when_scrolled_up() {
 }
 
 #[test]
+fn filtered_nudge_does_not_drift_viewport_when_scrolled_up() {
+    // #180 root cause: messages that wouldn't render (nudge, hidden
+    // by class filter) were incrementing scroll_offset anyway, causing
+    // viewport drift without adding a visible row. The fix: only
+    // increment when the message would actually render.
+    let mut app = test_app();
+    app.scroll_offset = 5;
+    // Nudge-type message: passes through to messages.push but is
+    // hidden by should_hide_by_class when show_all_classes is off
+    // (the default).
+    let nudge = Message {
+        from: "bpmux".to_string(),
+        text: "dev hasn't acknowledged".to_string(),
+        ts: Utc::now(),
+        message_type: MessageType::Nudge,
+        to: None,
+        addressee: None,
+        explicit_privacy: false,
+        multi_depth: None,
+    };
+    app.receive_message(nudge);
+    // scroll_offset must NOT have incremented — the nudge is filtered.
+    assert_eq!(
+        app.scroll_offset, 5,
+        "filtered nudge should not drift viewport"
+    );
+    // But the message IS in the log (for /all toggle visibility).
+    assert_eq!(app.messages.len(), 1);
+}
+
+#[test]
+fn unfocused_role_message_does_not_drift_viewport_when_scrolled_up() {
+    // #180: same class of bug for the focus filter. When /focus dev
+    // is active, a pm message wouldn't render. scroll_offset should
+    // not increment.
+    let mut app = test_app();
+    app.focused_roles = Some(vec!["dev".to_string()]);
+    app.scroll_offset = 5;
+    app.receive_message(chat_msg("pm:claude-code", "hello from pm"));
+    assert_eq!(
+        app.scroll_offset, 5,
+        "out-of-focus message should not drift viewport"
+    );
+    assert_eq!(app.messages.len(), 1);
+}
+
+#[test]
 fn update_activity_adds_entry() {
     let mut app = test_app();
     app.update_activity("dev".to_string(), "working".to_string());

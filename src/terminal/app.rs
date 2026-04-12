@@ -356,10 +356,50 @@ impl App {
         }
 
         let was_at_bottom = self.scroll_offset == 0;
+        // #180: only adjust scroll_offset when the message would
+        // actually render in the current filter state. The previous
+        // code incremented unconditionally, so filtered messages
+        // (activity, nudge, unfocused) caused viewport drift without
+        // adding a visible row. This accumulates into the "jumpy"
+        // behavior Ryan observed.
+        let would_render = self.would_message_render(&msg);
         self.messages.push(msg);
-        if !was_at_bottom {
+        if !was_at_bottom && would_render {
             self.scroll_offset = self.scroll_offset.saturating_add(1);
             self.unread_count += 1;
         }
+    }
+
+    /// Would `msg` pass all the render filters in `chat::render_chat`?
+    /// Mirrors the filter chain (non-chat gate, channel-view gate,
+    /// class filter, focus filter) so `receive_message` can decide
+    /// whether to compensate `scroll_offset`. Must stay in sync with
+    /// the actual render loop; if a new filter is added to
+    /// `render_chat`, add the corresponding check here.
+    fn would_message_render(&self, msg: &Message) -> bool {
+        // Non-chat messages only render if show_system_messages is on.
+        if !msg.is_chat() {
+            return self.show_system_messages;
+        }
+        // Channel-view filter.
+        let in_channel = match &self.current_view {
+            None => true,
+            Some(view) if view == "broadcast" => channel_name(msg, &self.peer_name) == "broadcast",
+            Some(view) => {
+                crate::terminal::markdown::message_matches_channel(msg, view, &self.peer_name)
+            }
+        };
+        if !in_channel {
+            return false;
+        }
+        // Class filter (#161 / #186).
+        if !self.show_all_classes && super::chat::should_hide_by_class(msg, &self.peer_name) {
+            return false;
+        }
+        // Focus filter (#181).
+        if !super::commands_focus::in_focus(msg, self.focused_roles.as_deref(), &self.peer_name) {
+            return false;
+        }
+        true
     }
 }
