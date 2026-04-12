@@ -9,6 +9,7 @@ mod commands_share;
 mod commands_tokens;
 pub mod event;
 mod event_dispatch;
+mod icons;
 mod input;
 mod markdown;
 mod p2p;

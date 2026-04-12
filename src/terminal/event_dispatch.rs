@@ -71,9 +71,16 @@ fn handle_mouse_click(col: u16, row: u16, app: &mut App) {
             }
             return;
         }
-    } else if col < 3 {
-        app.toggle_sidebar();
-        return;
+    } else if let Some((mx, my)) = app.menu_click_cell {
+        // #183: the left-edge click zone is now the visible `≡` glyph
+        // at the top-left of the chat area. Narrowed from the old
+        // `col < 3 on any row` catch-all, which triggered false
+        // positives on any upper-left click. Keeping a 3-column-wide
+        // target for Fitts's-law forgiveness.
+        if row == my && col >= mx && col < mx + 3 {
+            app.toggle_sidebar();
+            return;
+        }
     }
 
     // Check if the click hit a "[+N lines]" truncation indicator

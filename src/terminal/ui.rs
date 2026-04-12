@@ -12,13 +12,14 @@ use crate::terminal::app::App;
 use crate::terminal::chat;
 use crate::terminal::commands_help::format_command_list;
 use crate::terminal::commands_tokens::{format_tokens_overlay, human};
+use crate::terminal::icons;
 use crate::terminal::sidebar;
 use crate::terminal::status_bar;
 
 const MIN_WIDTH_FOR_SIDEBAR: u16 = 60;
 use crate::terminal::markdown::{render_md_message, wrap_line_with_indent};
 use crate::terminal::theme::{
-    DRACULA_BG, DRACULA_COMMENT, DRACULA_FG, DRACULA_PURPLE, DRACULA_SELECTION,
+    DRACULA_BG, DRACULA_COMMENT, DRACULA_CYAN, DRACULA_FG, DRACULA_PURPLE, DRACULA_SELECTION,
 };
 
 const MAX_BANNER_LINES: u16 = 4;
@@ -141,7 +142,8 @@ fn render_help_overlay(frame: &mut Frame, app: &App, area: Rect) {
         help_text.push_str(
             "\n\nKeys:\n  Enter    send / expand    Esc     clear input\n  \
 Ctrl+U   scroll up        Ctrl+D  scroll down\n  \u{2325}1       channel sidebar   \
-Ctrl+T  timestamps\n  Ctrl+C   quit (empty)     ?  this overlay\n\nPress any key to close",
+Ctrl+T  timestamps\n  Ctrl+C   quit (empty)     ?  this overlay\n\n\
+click anywhere or press any key to close",
         );
 
         let help_lines: Vec<Line> = help_text
@@ -483,6 +485,25 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     render_input(frame, app, chunks[2]);
     render_popup(frame, app, chunks[2]);
     status_bar::render(frame, app, status_area);
+
+    // #183: when the sidebar is closed, overlay a `≡` glyph at the
+    // top-left of the chat area. This is the "hamburger icon" that
+    // replaces the previously invisible left-edge click zone — the
+    // biggest discoverability win in the clickable-affordances spec.
+    // Stores the click-cell coord on `app.menu_click_cell` so the
+    // mouse handler can detect clicks on just that cell rather than
+    // the old "col < 3 on any row" catch-all.
+    if sidebar_width == 0 {
+        let menu_x = chunks[1].x;
+        let menu_y = chunks[1].y;
+        let menu_area = Rect::new(menu_x, menu_y, 1, 1);
+        let menu = Paragraph::new(Span::styled(icons::MENU, Style::default().fg(DRACULA_CYAN)));
+        frame.render_widget(menu, menu_area);
+        app.menu_click_cell = Some((menu_x, menu_y));
+    } else {
+        app.menu_click_cell = None;
+    }
+
     render_help_overlay(frame, app, main_area);
     render_tokens_overlay(frame, app, main_area);
 }
