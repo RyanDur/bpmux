@@ -14,6 +14,12 @@ fn short_peer_name(peer: &str) -> &str {
 
 /// Owner is excluded from channel names — they're implicit in every channel.
 pub fn channel_name(msg: &crate::session::Message, owner: &str) -> String {
+    // #191: if the message has a topic, use the topic name as the
+    // channel display tag. This makes topic messages show as
+    // "[teaching]" instead of "[broadcast]" in the chat pane.
+    if let Some(topic) = &msg.topic {
+        return topic.clone();
+    }
     match &msg.to {
         None => "broadcast".to_string(),
         Some(recipients) if recipients.iter().any(|r| r == "all") => "broadcast".to_string(),
