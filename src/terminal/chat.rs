@@ -263,10 +263,14 @@ pub(super) fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
     let chat = Paragraph::new(messages).block(chat_block);
     let max_scroll = total_lines.saturating_sub(chat_height);
     app.max_scroll = max_scroll;
+    // #180: scroll_from_top is the single source of truth.
+    // Derive the Paragraph scroll value and the legacy scroll_offset.
     #[allow(clippy::cast_possible_truncation)]
-    let scroll = max_scroll
-        .saturating_sub(app.scroll_offset)
-        .min(u16::MAX as usize) as u16;
+    let scroll = match app.scroll_from_top {
+        Some(pos) => pos.min(max_scroll).min(u16::MAX as usize) as u16,
+        None => max_scroll.min(u16::MAX as usize) as u16,
+    };
+    app.scroll_offset = max_scroll.saturating_sub(scroll as usize);
 
     let inner_y = area.y + 1;
     let scroll_usize = scroll as usize;
@@ -284,7 +288,7 @@ pub(super) fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
 }
 
 pub(super) fn render_unread_indicator(frame: &mut Frame, app: &App, area: Rect) {
-    if app.scroll_offset > 0 && app.unread_count > 0 {
+    if app.scroll_from_top.is_some() && app.unread_count > 0 {
         let unread_text = format!(
             "\u{2193} {} new message{}",
             app.unread_count,
