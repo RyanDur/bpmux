@@ -20,7 +20,7 @@ fn ac3_help_keybinding_shows_overlay() {
     // Press ? to show help overlay
     bpmux.type_chars("?");
     assert!(
-        bpmux.wait_for_tui("Press any key to close", Duration::from_secs(5)),
+        bpmux.wait_for_tui("press any key to close", Duration::from_secs(5)),
         "Should show help overlay. Screen:\n{}",
         bpmux.tui()
     );
@@ -34,7 +34,7 @@ fn ac4_any_key_dismisses_help() {
     let bpmux = TestBpmux::start();
     bpmux.type_chars("?");
     assert!(
-        bpmux.wait_for_tui("Press any key to close", Duration::from_secs(5)),
+        bpmux.wait_for_tui("press any key to close", Duration::from_secs(5)),
         "Help should be visible. Screen:\n{}",
         bpmux.tui()
     );
@@ -43,7 +43,7 @@ fn ac4_any_key_dismisses_help() {
     // Wait briefly, then verify overlay is gone
     std::thread::sleep(Duration::from_millis(300));
     assert!(
-        !bpmux.tui().contains("Press any key to close"),
+        !bpmux.tui().contains("press any key to close"),
         "Help overlay should be dismissed. Screen:\n{}",
         bpmux.tui()
     );
@@ -68,7 +68,7 @@ fn ac5_help_overlay_shows_command_descriptions() {
     let bpmux = TestBpmux::start();
     bpmux.type_chars("?");
     assert!(
-        bpmux.wait_for_tui("Press any key to close", Duration::from_secs(5)),
+        bpmux.wait_for_tui("press any key to close", Duration::from_secs(5)),
         "Help overlay should be visible. Screen:\n{}",
         bpmux.tui()
     );
