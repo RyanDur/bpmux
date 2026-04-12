@@ -131,6 +131,14 @@ pub struct App {
     /// Named topics list their participants explicitly.
     pub topic_participants: HashMap<String, Vec<String>>,
 
+    // ── Board view (#193) ──
+    pub show_board: bool,
+    pub board_stories: Vec<super::board::BoardStory>,
+    /// Index into the flat list of visible stories for arrow-key nav.
+    pub board_selected: usize,
+    /// When Some, shows the detail view for the story at this index.
+    pub board_detail: Option<usize>,
+
     // ── CI status (#151) ──
     pub(super) ci_state: super::ci::CiState,
 
@@ -238,6 +246,10 @@ impl App {
             active_topic: "general".to_string(),
             topic_unreads: HashMap::new(),
             topic_participants: HashMap::new(),
+            show_board: false,
+            board_stories: Vec::new(),
+            board_selected: 0,
+            board_detail: None,
             chat_area: None,
             should_reload: false,
             direct_expanded: true,

@@ -230,13 +230,20 @@ impl App {
     }
 
     fn handle_board(&mut self) -> Option<Message> {
-        let board_text = match board::fetch_board() {
-            Ok(text) => text,
-            Err(e) => format!(
-                "Board unavailable: {e}\nEnsure `gh` CLI is installed and authenticated (`gh auth login`)."
-            ),
-        };
-        self.system_message(board_text);
+        match board::fetch_board_stories() {
+            Ok(stories) => {
+                self.board_stories = stories;
+                self.board_selected = 0;
+                self.board_detail = None;
+                self.show_board = true;
+            }
+            Err(e) => {
+                self.system_message(format!(
+                    "Board unavailable: {e}\n\
+                     Ensure `gh` CLI is installed and authenticated (`gh auth login`)."
+                ));
+            }
+        }
         self.clear_input();
         None
     }

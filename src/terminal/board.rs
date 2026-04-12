@@ -1,3 +1,216 @@
+/// Story state as shown in the board columns (#193).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StoryState {
+    Ready,
+    InProgress,
+    Delivered,
+    Accepted,
+    Deferred,
+    Icebox,
+}
+
+impl StoryState {
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::Ready => "READY",
+            Self::InProgress => "IN PROGRESS",
+            Self::Delivered => "DELIVERED",
+            Self::Accepted => "ACCEPTED",
+            Self::Deferred => "DEFERRED",
+            Self::Icebox => "ICEBOX",
+        }
+    }
+
+    /// Key used in the priority.json file.
+    pub fn priority_key(&self) -> &'static str {
+        match self {
+            Self::Ready => "ready",
+            Self::InProgress => "in_progress",
+            Self::Delivered => "delivered",
+            Self::Accepted => "accepted",
+            Self::Deferred => "deferred",
+            Self::Icebox => "icebox",
+        }
+    }
+}
+
+/// A story on the board, parsed from a GitHub issue.
+#[derive(Debug, Clone)]
+pub struct BoardStory {
+    pub number: u64,
+    pub title: String,
+    pub state: StoryState,
+    pub body: String,
+    pub assignees: Vec<String>,
+    pub created: String,
+    /// For deferred stories, the reason (extracted from label description or body).
+    pub reason: String,
+    pub labels: Vec<String>,
+}
+
+impl BoardStory {
+    /// Short display name: `#NNN title` truncated to fit.
+    pub fn short_name(&self, max_len: usize) -> String {
+        let prefix = format!("#{} ", self.number);
+        let budget = max_len.saturating_sub(prefix.len());
+        if self.title.len() > budget {
+            format!(
+                "{prefix}{}…",
+                self.title
+                    .chars()
+                    .take(budget.saturating_sub(1))
+                    .collect::<String>()
+            )
+        } else {
+            format!("{prefix}{}", self.title)
+        }
+    }
+}
+
+/// Fetch all open + recently closed issues and categorize them into
+/// board columns. Returns stories sorted by state priority.
+pub fn fetch_board_stories() -> Result<Vec<BoardStory>, String> {
+    let mut cmd = std::process::Command::new("gh");
+    cmd.args([
+        "issue",
+        "list",
+        "--state",
+        "all",
+        "--limit",
+        "200",
+        "--json",
+        "number,title,state,labels,body,assignees,createdAt",
+    ]);
+    if let Ok(repo) = std::env::var("BPMUX_REPO") {
+        cmd.args(["-R", &repo]);
+    }
+    let output = cmd.output().map_err(|e| format!("failed to run gh: {e}"))?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("gh failed: {stderr}"));
+    }
+    let json: Vec<serde_json::Value> =
+        serde_json::from_slice(&output.stdout).map_err(|e| format!("parse error: {e}"))?;
+
+    let mut stories = Vec::new();
+    for issue in &json {
+        let num = issue["number"].as_u64().unwrap_or(0);
+        let title = issue["title"].as_str().unwrap_or("?").to_string();
+        let gh_state = issue["state"].as_str().unwrap_or("OPEN");
+        let body = issue["body"].as_str().unwrap_or("").to_string();
+        let assignees: Vec<String> = issue["assignees"]
+            .as_array()
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|a| a["login"].as_str().map(String::from))
+                    .collect()
+            })
+            .unwrap_or_default();
+        let created = issue["createdAt"]
+            .as_str()
+            .unwrap_or("")
+            .chars()
+            .take(10) // YYYY-MM-DD
+            .collect::<String>();
+        let labels: Vec<String> = issue["labels"]
+            .as_array()
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|l| l["name"].as_str().map(String::from))
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        let has = |name: &str| labels.iter().any(|l| l == name);
+
+        let state = if gh_state == "CLOSED" {
+            StoryState::Accepted
+        } else if has("deferred") {
+            StoryState::Deferred
+        } else if has("delivered") {
+            StoryState::Delivered
+        } else if has("started") || has("finished") {
+            StoryState::InProgress
+        } else if has("ready") {
+            StoryState::Ready
+        } else if has("icebox") {
+            StoryState::Icebox
+        } else {
+            // Unlabeled open issues go to icebox
+            StoryState::Icebox
+        };
+
+        // Extract deferred reason from labels or body first line
+        let reason = if state == StoryState::Deferred {
+            labels
+                .iter()
+                .find(|l| l.starts_with("deferred:"))
+                .map(|l| l.strip_prefix("deferred:").unwrap_or(l).trim().to_string())
+                .unwrap_or_default()
+        } else {
+            String::new()
+        };
+
+        stories.push(BoardStory {
+            number: num,
+            title,
+            state,
+            body,
+            assignees,
+            created,
+            reason,
+            labels,
+        });
+    }
+
+    // Sort: Ready, InProgress, Delivered first (active work), then Accepted, Deferred, Icebox
+    stories.sort_by_key(|s| match s.state {
+        StoryState::Ready => 0,
+        StoryState::InProgress => 1,
+        StoryState::Delivered => 2,
+        StoryState::Deferred => 3,
+        StoryState::Accepted => 4,
+        StoryState::Icebox => 5,
+    });
+
+    Ok(stories)
+}
+
+/// Group stories by state for the column layout, sorted by
+/// PM-set priority order from `~/.bpmux/priority.json`.
+pub fn stories_by_state(stories: &[BoardStory]) -> Vec<(StoryState, Vec<&BoardStory>)> {
+    use crate::session::priority;
+    use StoryState::*;
+
+    let priority_index = priority::default_priority_path()
+        .map(|p| priority::load_priority(&p))
+        .unwrap_or_default();
+
+    let states = [Ready, InProgress, Delivered, Accepted, Deferred, Icebox];
+    states
+        .iter()
+        .filter_map(|&st| {
+            let group: Vec<&BoardStory> = stories.iter().filter(|s| s.state == st).collect();
+            if group.is_empty() {
+                return None;
+            }
+            // Apply priority ordering
+            let numbers: Vec<u64> = group.iter().map(|s| s.number).collect();
+            let prio = priority_index
+                .columns
+                .get(st.priority_key())
+                .map(|v| v.as_slice())
+                .unwrap_or(&[]);
+            let ordered = priority::sort_by_priority(&numbers, prio);
+            let sorted: Vec<&BoardStory> = ordered
+                .iter()
+                .filter_map(|&n| group.iter().find(|s| s.number == n).copied())
+                .collect();
+            Some((st, sorted))
+        })
+        .collect()
+}
+
 #[derive(Default, Clone)]
 pub struct ProjectState {
     pub active: usize,

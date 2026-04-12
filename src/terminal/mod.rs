@@ -1,5 +1,6 @@
 pub mod app;
 mod board;
+mod board_view;
 mod chat;
 mod ci;
 mod commands;

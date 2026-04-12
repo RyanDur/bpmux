@@ -9,6 +9,7 @@ use ratatui::{
 
 use crate::session;
 use crate::terminal::app::App;
+use crate::terminal::board_view;
 use crate::terminal::chat;
 use crate::terminal::commands_help::format_command_list;
 use crate::terminal::commands_tokens::{format_tokens_overlay, human};
@@ -510,6 +511,9 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     } else {
         app.menu_click_cell = None;
     }
+
+    // #193: board view replaces chat area when active.
+    board_view::render(frame, app, main_area);
 
     render_help_overlay(frame, app, main_area);
     render_tokens_overlay(frame, app, main_area);
