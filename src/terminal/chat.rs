@@ -263,10 +263,16 @@ pub(super) fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
     let chat = Paragraph::new(messages).block(chat_block);
     let max_scroll = total_lines.saturating_sub(chat_height);
     app.max_scroll = max_scroll;
+
+    // #180 (anchor model): when the user is scrolled up, use the
+    // anchored absolute row. When at bottom, use max_scroll to
+    // show the latest content. The anchor doesn't change when new
+    // messages arrive, so the viewport is rock-solid while scrolled.
     #[allow(clippy::cast_possible_truncation)]
-    let scroll = max_scroll
-        .saturating_sub(app.scroll_offset)
-        .min(u16::MAX as usize) as u16;
+    let scroll = match app.scroll_anchor {
+        Some(anchor) => anchor.min(max_scroll).min(u16::MAX as usize) as u16,
+        None => max_scroll.min(u16::MAX as usize) as u16,
+    };
 
     let inner_y = area.y + 1;
     let scroll_usize = scroll as usize;
@@ -279,12 +285,15 @@ pub(super) fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
         }
     }
 
+    // Keep legacy scroll_offset in sync for status_bar reads.
+    app.scroll_offset = max_scroll.saturating_sub(scroll_usize);
+
     let chat = chat.scroll((scroll, 0));
     frame.render_widget(chat, area);
 }
 
 pub(super) fn render_unread_indicator(frame: &mut Frame, app: &App, area: Rect) {
-    if app.scroll_offset > 0 && app.unread_count > 0 {
+    if app.scroll_anchor.is_some() && app.unread_count > 0 {
         let unread_text = format!(
             "\u{2193} {} new message{}",
             app.unread_count,

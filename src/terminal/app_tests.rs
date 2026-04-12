@@ -122,7 +122,8 @@ fn scroll_down_decreases_offset_to_zero() {
 #[test]
 fn receiving_message_when_scrolled_up_increments_unread_count() {
     let mut app = test_app();
-    app.scroll_offset = 5;
+    // #180: "scrolled up" is now indicated by scroll_anchor.is_some()
+    app.scroll_anchor = Some(10);
     app.receive_message(chat_msg("bot:ws", "hello"));
     assert_eq!(app.unread_count, 1);
     app.receive_message(chat_msg("bot:ws", "world"));
@@ -236,30 +237,34 @@ fn unrecognized_command_adds_error_message_without_broadcast() {
 }
 
 #[test]
-fn incoming_short_message_preserves_viewport_by_one_line() {
+fn incoming_message_when_anchored_does_not_change_anchor() {
+    // #180 (anchor model): when scrolled up, the anchor stays at
+    // the same absolute row regardless of new messages. No
+    // compensation, no estimation, no drift.
     let mut app = test_app();
-    app.scroll_offset = 5;
-    // Short message fits on 1 line → scroll_offset += 1.
+    app.scroll_anchor = Some(10);
     app.receive_message(chat_msg("bot:ws", "hello"));
-    assert_eq!(app.scroll_offset, 6);
-    assert_eq!(app.messages.len(), 1);
+    assert_eq!(app.scroll_anchor, Some(10), "anchor must not change");
+    assert_eq!(app.unread_count, 1);
+    // Long message — same behavior, anchor unchanged.
+    let long_text = "word ".repeat(40);
+    app.receive_message(chat_msg("dev:claude-code", &long_text));
+    assert_eq!(
+        app.scroll_anchor,
+        Some(10),
+        "anchor must not change for long messages either"
+    );
+    assert_eq!(app.unread_count, 2);
 }
 
 #[test]
-fn incoming_long_message_compensates_by_wrapped_line_count() {
-    // #180: a message that wraps to N lines should increment
-    // scroll_offset by N, not by 1. Prevents proportional viewport
-    // drift on long messages.
+fn incoming_message_at_bottom_has_no_anchor() {
+    // When at bottom (anchor=None), messages don't set an anchor.
     let mut app = test_app();
-    app.scroll_offset = 5;
-    // ~200 chars + prefix → should wrap to ~3 lines at 78-char width.
-    let long_text = "word ".repeat(40); // 200 chars
-    app.receive_message(chat_msg("dev:claude-code", &long_text));
-    assert!(
-        app.scroll_offset > 6,
-        "long message should increment scroll_offset by more than 1, got {}",
-        app.scroll_offset
-    );
+    assert!(app.scroll_anchor.is_none());
+    app.receive_message(chat_msg("bot:ws", "hello"));
+    assert!(app.scroll_anchor.is_none());
+    assert_eq!(app.unread_count, 0);
 }
 
 #[test]
