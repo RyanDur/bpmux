@@ -64,6 +64,12 @@ async fn run_ws_session(
         },
     )
     .await?;
+    // #191: per-peer topic subscriptions for delivery-side filtering.
+    // Peers with no subscriptions (empty vec) receive all messages
+    // (legacy behavior). Once a peer subscribes to any topic, they
+    // only receive messages from their subscribed topics + general.
+    let mut peer_topics: Vec<String> = Vec::new();
+
     let join_msg = session::Message {
         from: "bpmux".to_string(),
         text: format!("{identity} joined"),
@@ -82,7 +88,7 @@ async fn run_ws_session(
                 broadcast_result = broadcast_rx.recv() => {
                     match broadcast_result {
                         Ok(msg) => {
-                            if should_deliver(&msg, &identity, None) {
+                            if should_deliver(&msg, &identity, Some(&peer_topics)) {
                                 send_json(&mut tx, &ServerMessage::from(msg)).await?;
                             }
                         }
@@ -102,7 +108,7 @@ async fn run_ws_session(
                 ws_result = rx.next() => {
                     match ws_result {
                         Some(Ok(WsMessage::Text(text))) => {
-                            if let Some(new_identity) = handle_client_message(&text, &identity, &session, &mut tx).await? {
+                            if let Some(new_identity) = handle_client_message(&text, &identity, &session, &mut tx, &mut peer_topics).await? {
                                 let leave = session::Message {
                                     from: "bpmux".to_string(),
                                     text: format!("{identity} left"),
@@ -265,6 +271,7 @@ async fn handle_client_message(
     identity: &str,
     session: &session::Session,
     tx: &mut SplitSink<WebSocket, WsMessage>,
+    peer_topics: &mut Vec<String>,
 ) -> Result<Option<String>, Box<dyn std::error::Error + Send + Sync>> {
     if !message_size_ok(text) {
         // Log the drop so oversized messages become visible in the diag
@@ -297,6 +304,12 @@ async fn handle_client_message(
             message_type,
             topic,
         }) => {
+            // #191: auto-subscribe sender to the topic on first send.
+            if let Some(ref t) = topic {
+                if !peer_topics.contains(t) {
+                    peer_topics.push(t.clone());
+                }
+            }
             let msg = session::Message {
                 from: identity.to_string(),
                 text: msg_text,
@@ -309,6 +322,14 @@ async fn handle_client_message(
                 topic,
             };
             session.broadcast(&msg)?;
+        }
+        Ok(ClientMessage::Subscribe { topics }) => {
+            // #191: explicit topic subscription from client.
+            for t in topics {
+                if !peer_topics.contains(&t) {
+                    peer_topics.push(t);
+                }
+            }
         }
         Ok(ClientMessage::Ping) => {
             send_json(tx, &ServerMessage::Pong).await?;

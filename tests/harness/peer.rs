@@ -67,6 +67,24 @@ impl WsPeer {
             .expect("send_activity");
     }
 
+    /// Send a topic-tagged message (#191).
+    pub async fn send_topic(&mut self, text: &str, topic: &str) {
+        let msg = serde_json::json!({"type": "send", "text": text, "topic": topic}).to_string();
+        self.tx
+            .send(WsMessage::Text(msg.into()))
+            .await
+            .expect("send_topic");
+    }
+
+    /// Send a topic subscription to the server (#191).
+    pub async fn subscribe(&mut self, topics: &[&str]) {
+        let msg = serde_json::json!({"type": "subscribe", "topics": topics}).to_string();
+        self.tx
+            .send(WsMessage::Text(msg.into()))
+            .await
+            .expect("subscribe");
+    }
+
     /// Send an addressed `send` command to bpmux.
     pub async fn send_to(&mut self, text: &str, to: &[&str]) {
         let msg = serde_json::json!({"type": "send", "text": text, "to": to}).to_string();

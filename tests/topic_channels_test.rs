@@ -170,3 +170,63 @@ fn topic_list_shows_created_topics() {
         "topic list should include general. screen:\n{screen}"
     );
 }
+
+/// GIVEN pm is subscribed to topic "teaching" and dev is NOT
+/// WHEN pm sends a message in "teaching"
+/// THEN dev does not receive that message
+/// AND pm does receive it
+#[test]
+fn non_participant_does_not_receive_topic_messages() {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let bpmux = TestBpmux::start();
+        assert!(
+            bpmux.wait_for_tui("solo", Duration::from_secs(5)),
+            "TUI should render"
+        );
+
+        // Connect two peers: pm (participant) and dev (non-participant)
+        let mut pm = harness::peer::WsPeer::connect(&bpmux, "pm").await;
+        let mut dev = harness::peer::WsPeer::connect(&bpmux, "dev").await;
+
+        // Drain join system messages
+        std::thread::sleep(Duration::from_millis(300));
+        let _ = pm.recv_message_or_timeout(Duration::from_millis(500)).await;
+        let _ = pm.recv_message_or_timeout(Duration::from_millis(500)).await;
+        let _ = dev
+            .recv_message_or_timeout(Duration::from_millis(500))
+            .await;
+        let _ = dev
+            .recv_message_or_timeout(Duration::from_millis(500))
+            .await;
+
+        // pm subscribes to "teaching" topic
+        pm.subscribe(&["teaching"]).await;
+        // dev does NOT subscribe — stays on broadcast only
+
+        // pm sends a message in the "teaching" topic
+        pm.send_topic("secret teaching content", "teaching").await;
+
+        // pm should receive it (as the sender, echoed back)
+        let pm_msg = pm.recv_message_or_timeout(Duration::from_secs(2)).await;
+        assert!(
+            pm_msg.is_some(),
+            "pm should receive their own topic message"
+        );
+
+        // dev should NOT receive it — negative test
+        let dev_msg = dev.recv_message_or_timeout(Duration::from_secs(1)).await;
+        assert!(
+            dev_msg.is_none(),
+            "dev should NOT receive topic message they're not subscribed to, but got: {dev_msg:?}"
+        );
+
+        // Verify broadcast still works for both
+        pm.send("broadcast hello").await;
+        let dev_broadcast = dev.recv_message_or_timeout(Duration::from_secs(2)).await;
+        assert!(
+            dev_broadcast.is_some(),
+            "dev should still receive broadcast messages"
+        );
+    });
+}

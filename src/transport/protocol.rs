@@ -32,6 +32,10 @@ pub enum ClientMessage {
     Ping,
     #[serde(rename = "rename")]
     Rename { name: String },
+    /// Subscribe to topics so delivery-side filtering knows what
+    /// this peer should receive (#191).
+    #[serde(rename = "subscribe")]
+    Subscribe { topics: Vec<String> },
 }
 
 /// Messages sent from server to WebSocket client
