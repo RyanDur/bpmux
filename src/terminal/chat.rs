@@ -94,14 +94,17 @@ pub(super) fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
         if !super::commands_focus::in_focus(m, app.focused_roles.as_deref(), &app.peer_name) {
             continue;
         }
-        // #191 topic filter: only show messages matching the active
-        // topic. msg.topic == None maps to "general". System messages
-        // always show regardless of topic.
-        if m.message_type != session::MessageType::System {
-            let msg_topic = m.topic.as_deref().unwrap_or("general");
-            if msg_topic != app.active_topic {
-                continue;
-            }
+        // #191 topic filter: messages with a SPECIFIC topic only
+        // show in that topic's view. Messages with NO topic
+        // (general/broadcast) show in ALL views — they're the
+        // shared baseline that everyone sees regardless of which
+        // topic they're in. This prevents the isolation problem
+        // where switching to a topic cuts you off from all
+        // broadcast conversation.
+        if let Some(msg_topic) = &m.topic
+            && *msg_topic != app.active_topic
+        {
+            continue;
         }
         chat_messages.push(m);
     }
