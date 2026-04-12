@@ -21,6 +21,10 @@ pub fn send_message_tool(description: &'static str) -> Tool {
                 "type": "string",
                 "enum": ["chat", "insight"],
                 "description": "Message type. Use 'insight' for reasoning traces and architectural decisions. Omit for normal chat."
+            },
+            "topic": {
+                "type": "string",
+                "description": "Topic tag (#191). Scopes the message to a named topic — only visible in that topic's view. Omit for broadcast (visible in all topics)."
             }
         },
         "required": ["text"]
@@ -338,6 +342,166 @@ pub fn classifier_misfire_tool(description: &'static str) -> Tool {
 
     Tool::new(
         "classifier_misfire",
+        description,
+        schema.as_object().cloned().unwrap_or_default(),
+    )
+}
+
+// ── Story management tools (#140) ──────────────────────────────
+
+pub fn view_board_tool(description: &'static str) -> Tool {
+    let schema = serde_json::json!({
+        "type": "object",
+        "properties": {}
+    });
+    Tool::new(
+        "view_board",
+        description,
+        schema.as_object().cloned().unwrap_or_default(),
+    )
+}
+
+pub fn create_story_tool(description: &'static str) -> Tool {
+    let schema = serde_json::json!({
+        "type": "object",
+        "properties": {
+            "title": {
+                "type": "string",
+                "description": "Story title"
+            },
+            "body": {
+                "type": "string",
+                "description": "Story body (markdown). Include ## What, ## Why, ## Acceptance criteria sections."
+            }
+        },
+        "required": ["title"]
+    });
+    Tool::new(
+        "create_story",
+        description,
+        schema.as_object().cloned().unwrap_or_default(),
+    )
+}
+
+pub fn start_story_tool(description: &'static str) -> Tool {
+    let schema = serde_json::json!({
+        "type": "object",
+        "properties": {
+            "number": {
+                "type": "integer",
+                "description": "Issue number to mark as started"
+            }
+        },
+        "required": ["number"]
+    });
+    Tool::new(
+        "start_story",
+        description,
+        schema.as_object().cloned().unwrap_or_default(),
+    )
+}
+
+pub fn deliver_story_tool(description: &'static str) -> Tool {
+    let schema = serde_json::json!({
+        "type": "object",
+        "properties": {
+            "number": {
+                "type": "integer",
+                "description": "Issue number to mark as delivered"
+            }
+        },
+        "required": ["number"]
+    });
+    Tool::new(
+        "deliver_story",
+        description,
+        schema.as_object().cloned().unwrap_or_default(),
+    )
+}
+
+pub fn label_story_tool(description: &'static str) -> Tool {
+    let schema = serde_json::json!({
+        "type": "object",
+        "properties": {
+            "number": {
+                "type": "integer",
+                "description": "Issue number to label"
+            },
+            "label": {
+                "type": "string",
+                "description": "Label to add (e.g., 'ready', 'blocked', 'icebox', 'deferred')"
+            }
+        },
+        "required": ["number", "label"]
+    });
+    Tool::new(
+        "label_story",
+        description,
+        schema.as_object().cloned().unwrap_or_default(),
+    )
+}
+
+pub fn accept_story_tool(description: &'static str) -> Tool {
+    let schema = serde_json::json!({
+        "type": "object",
+        "properties": {
+            "number": {
+                "type": "integer",
+                "description": "Issue number to accept"
+            }
+        },
+        "required": ["number"]
+    });
+    Tool::new(
+        "accept_story",
+        description,
+        schema.as_object().cloned().unwrap_or_default(),
+    )
+}
+
+pub fn reject_story_tool(description: &'static str) -> Tool {
+    let schema = serde_json::json!({
+        "type": "object",
+        "properties": {
+            "number": {
+                "type": "integer",
+                "description": "Issue number to reject"
+            },
+            "reason": {
+                "type": "string",
+                "description": "Rejection reason — added as a comment on the issue"
+            }
+        },
+        "required": ["number"]
+    });
+    Tool::new(
+        "reject_story",
+        description,
+        schema.as_object().cloned().unwrap_or_default(),
+    )
+}
+
+pub fn reorder_story_tool(description: &'static str) -> Tool {
+    let schema = serde_json::json!({
+        "type": "object",
+        "properties": {
+            "number": {
+                "type": "integer",
+                "description": "Issue number to reorder"
+            },
+            "state": {
+                "type": "string",
+                "description": "State column to reorder within (e.g., 'ready', 'in_progress', 'delivered', 'icebox')"
+            },
+            "position": {
+                "type": "integer",
+                "description": "Target position (1-indexed). 1 = top of column."
+            }
+        },
+        "required": ["number", "state", "position"]
+    });
+    Tool::new(
+        "reorder_story",
         description,
         schema.as_object().cloned().unwrap_or_default(),
     )

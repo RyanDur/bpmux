@@ -50,11 +50,13 @@ pub(super) async fn handle_send(
         .get("message_type")
         .and_then(|v| v.as_str())
         .map(String::from);
+    let topic = args.get("topic").and_then(|v| v.as_str()).map(String::from);
     let json = serde_json::to_string(&ClientMessage::Send {
         text: text.to_string(),
         to,
         addressee,
         message_type,
+        topic,
     })
     .map_err(|e| format!("failed to serialize: {e}"))?;
     ws_send(ws_tx, json).await?;
@@ -90,6 +92,7 @@ pub(super) async fn handle_set_status(
         to: None,
         addressee: None,
         message_type: Some("activity".into()),
+        topic: None,
     })
     .map_err(|e| format!("failed to serialize: {e}"))?;
     ws_send(ws_tx, json).await?;
@@ -477,4 +480,337 @@ pub(super) async fn handle_classifier_misfire(
         .await
         .map_err(|e| format!("failed to record misfire: {e}"))?;
     Ok("misfire recorded".to_string())
+}
+
+// ── Story management tools (#140) ──────────────────────────────
+// Server-side gh proxy with lane-aware permissions.
+
+/// Compile-time repo root — guaranteed to be the bpmux source
+/// directory regardless of which workspace starts the bridge.
+const REPO_ROOT: &str = env!("CARGO_MANIFEST_DIR");
+
+/// Run a gh command and return stdout. Errors include stderr.
+/// Sets the working directory to the bpmux repo so `gh` can find
+/// git remotes even when the bridge runs from an agent workspace.
+async fn gh(args: &[&str]) -> Result<String, String> {
+    let mut cmd = tokio::process::Command::new("gh");
+    cmd.args(args);
+    if let Ok(repo) = std::env::var("BPMUX_REPO") {
+        cmd.args(["-R", &repo]);
+    } else {
+        // Use the compile-time repo root so gh finds git remotes
+        // regardless of the bridge's runtime working directory.
+        cmd.current_dir(REPO_ROOT);
+    }
+    let output = cmd.output().await.map_err(|e| format!("gh: {e}"))?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("gh failed: {stderr}"));
+    }
+    Ok(String::from_utf8_lossy(&output.stdout).to_string())
+}
+
+/// Extract the short role name from the agent's identity.
+/// "dev:claude-code" → "dev", "pm" → "pm".
+fn role_from_name(name: &str) -> &str {
+    name.split(':').next().unwrap_or(name)
+}
+
+/// Lane check: returns Ok(()) if allowed, Err with rejection message if not.
+fn require_role(agent_name: &str, allowed: &[&str], operation: &str) -> Result<(), String> {
+    let role = role_from_name(agent_name);
+    if allowed.iter().any(|&r| r == role) {
+        Ok(())
+    } else {
+        Err(format!(
+            "{operation} is restricted to {}. ask {} to {operation}.",
+            allowed.join(" or "),
+            allowed[0],
+        ))
+    }
+}
+
+/// View board — any agent, no lane restriction.
+pub(super) async fn handle_view_board(
+    _args: &serde_json::Map<String, serde_json::Value>,
+) -> Result<String, String> {
+    let json_str = gh(&[
+        "issue",
+        "list",
+        "--state",
+        "all",
+        "--limit",
+        "200",
+        "--json",
+        "number,title,state,labels",
+    ])
+    .await?;
+
+    let issues: Vec<serde_json::Value> =
+        serde_json::from_str(&json_str).map_err(|e| format!("parse: {e}"))?;
+
+    let mut ready = Vec::new();
+    let mut in_progress = Vec::new();
+    let mut delivered = Vec::new();
+    let mut accepted = Vec::new();
+    let mut deferred = Vec::new();
+    let mut icebox = Vec::new();
+
+    for issue in &issues {
+        let num = issue["number"].as_u64().unwrap_or(0);
+        let title = issue["title"].as_str().unwrap_or("?");
+        let gh_state = issue["state"].as_str().unwrap_or("OPEN");
+        let labels: Vec<&str> = issue["labels"]
+            .as_array()
+            .map(|arr| arr.iter().filter_map(|l| l["name"].as_str()).collect())
+            .unwrap_or_default();
+
+        let entry = format!("#{num} {title}");
+        let has = |name: &str| labels.contains(&name);
+
+        if gh_state == "CLOSED" {
+            accepted.push(entry);
+        } else if has("deferred") {
+            deferred.push(entry);
+        } else if has("delivered") {
+            delivered.push(entry);
+        } else if has("started") || has("finished") {
+            in_progress.push(entry);
+        } else if has("ready") {
+            ready.push(entry);
+        } else if has("icebox") {
+            icebox.push(entry);
+        } else {
+            icebox.push(entry);
+        }
+    }
+
+    let mut out = String::new();
+    let section = |name: &str, items: &[String], out: &mut String| {
+        out.push_str(&format!("{name} ({})\n", items.len()));
+        for item in items {
+            out.push_str(&format!("  {item}\n"));
+        }
+        out.push('\n');
+    };
+    section("READY", &ready, &mut out);
+    section("IN PROGRESS", &in_progress, &mut out);
+    section("DELIVERED", &delivered, &mut out);
+    section("ACCEPTED", &accepted, &mut out);
+    section("DEFERRED", &deferred, &mut out);
+    section("ICEBOX", &icebox, &mut out);
+    Ok(out)
+}
+
+/// Create a story — any agent can create.
+pub(super) async fn handle_create_story(
+    args: &serde_json::Map<String, serde_json::Value>,
+) -> Result<String, String> {
+    let title = args
+        .get("title")
+        .and_then(|v| v.as_str())
+        .ok_or("missing 'title' argument")?;
+    let body = args.get("body").and_then(|v| v.as_str()).unwrap_or("");
+
+    let mut cmd_args = vec!["issue", "create", "--title", title];
+    if !body.is_empty() {
+        cmd_args.extend(["--body", body]);
+    }
+    let result = gh(&cmd_args).await?;
+    Ok(format!("story created: {}", result.trim()))
+}
+
+/// Start a story — dev only.
+pub(super) async fn handle_start_story(
+    args: &serde_json::Map<String, serde_json::Value>,
+    agent_name: &str,
+) -> Result<String, String> {
+    require_role(agent_name, &["dev"], "start")?;
+    let number = args
+        .get("number")
+        .and_then(|v| v.as_u64())
+        .ok_or("missing 'number' argument")?;
+    gh(&[
+        "issue",
+        "edit",
+        &number.to_string(),
+        "--add-label",
+        "started",
+    ])
+    .await?;
+    Ok(format!("#{number} marked as started"))
+}
+
+/// Deliver a story — dev only.
+pub(super) async fn handle_deliver_story(
+    args: &serde_json::Map<String, serde_json::Value>,
+    agent_name: &str,
+) -> Result<String, String> {
+    require_role(agent_name, &["dev"], "deliver")?;
+    let number = args
+        .get("number")
+        .and_then(|v| v.as_u64())
+        .ok_or("missing 'number' argument")?;
+    // Remove started, add delivered
+    gh(&[
+        "issue",
+        "edit",
+        &number.to_string(),
+        "--remove-label",
+        "started",
+        "--add-label",
+        "delivered",
+    ])
+    .await?;
+    Ok(format!("#{number} marked as delivered"))
+}
+
+/// Add/change labels — PM only.
+pub(super) async fn handle_label_story(
+    args: &serde_json::Map<String, serde_json::Value>,
+    agent_name: &str,
+) -> Result<String, String> {
+    require_role(agent_name, &["pm"], "label")?;
+    let number = args
+        .get("number")
+        .and_then(|v| v.as_u64())
+        .ok_or("missing 'number' argument")?;
+    let label = args
+        .get("label")
+        .and_then(|v| v.as_str())
+        .ok_or("missing 'label' argument")?;
+    gh(&["issue", "edit", &number.to_string(), "--add-label", label]).await?;
+    Ok(format!("#{number} labeled '{label}'"))
+}
+
+/// Accept a story — owner (ryan) only.
+pub(super) async fn handle_accept_story(
+    args: &serde_json::Map<String, serde_json::Value>,
+    agent_name: &str,
+) -> Result<String, String> {
+    require_role(agent_name, &["ryan"], "accept")?;
+    let number = args
+        .get("number")
+        .and_then(|v| v.as_u64())
+        .ok_or("missing 'number' argument")?;
+    // Remove delivered, close the issue
+    gh(&[
+        "issue",
+        "edit",
+        &number.to_string(),
+        "--remove-label",
+        "delivered",
+    ])
+    .await?;
+    gh(&["issue", "close", &number.to_string()]).await?;
+    Ok(format!("#{number} accepted and closed"))
+}
+
+/// Reject a story — owner (ryan) only.
+pub(super) async fn handle_reject_story(
+    args: &serde_json::Map<String, serde_json::Value>,
+    agent_name: &str,
+) -> Result<String, String> {
+    require_role(agent_name, &["ryan"], "reject")?;
+    let number = args
+        .get("number")
+        .and_then(|v| v.as_u64())
+        .ok_or("missing 'number' argument")?;
+    let reason = args
+        .get("reason")
+        .and_then(|v| v.as_str())
+        .unwrap_or("rejected");
+    // Remove delivered, add rejected label, add comment
+    gh(&[
+        "issue",
+        "edit",
+        &number.to_string(),
+        "--remove-label",
+        "delivered",
+        "--add-label",
+        "rejected",
+    ])
+    .await?;
+    gh(&["issue", "comment", &number.to_string(), "--body", reason]).await?;
+    Ok(format!("#{number} rejected: {reason}"))
+}
+
+/// Reorder a story within its state column — PM only (#194).
+pub(super) async fn handle_reorder_story(
+    args: &serde_json::Map<String, serde_json::Value>,
+    agent_name: &str,
+) -> Result<String, String> {
+    require_role(agent_name, &["pm"], "reorder")?;
+    let number = args
+        .get("number")
+        .and_then(|v| v.as_u64())
+        .ok_or("missing 'number' argument")?;
+    let position = args
+        .get("position")
+        .and_then(|v| v.as_u64())
+        .ok_or("missing 'position' argument")? as usize;
+    let state = args
+        .get("state")
+        .and_then(|v| v.as_str())
+        .ok_or("missing 'state' argument (e.g., 'ready', 'in_progress', 'delivered')")?;
+
+    let path = crate::session::priority::default_priority_path()
+        .map_err(|e| format!("priority path: {e}"))?;
+    let mut index = crate::session::priority::load_priority(&path);
+    crate::session::priority::reorder(&mut index, state, number, position);
+    crate::session::priority::save_priority(&path, &index)
+        .map_err(|e| format!("save priority: {e}"))?;
+    Ok(format!("#{number} moved to position {position} in {state}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn role_from_name_extracts_short_role() {
+        assert_eq!(role_from_name("dev:claude-code"), "dev");
+        assert_eq!(role_from_name("pm"), "pm");
+        assert_eq!(role_from_name("designer:cursor"), "designer");
+        assert_eq!(role_from_name("ryan:human"), "ryan");
+    }
+
+    #[test]
+    fn require_role_allows_matching_role() {
+        assert!(require_role("dev:claude-code", &["dev"], "start").is_ok());
+        assert!(require_role("pm", &["pm"], "label").is_ok());
+        assert!(require_role("ryan:human", &["ryan"], "accept").is_ok());
+    }
+
+    #[test]
+    fn require_role_rejects_non_matching_role() {
+        let result = require_role("designer:claude-code", &["dev"], "start");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("restricted to dev"));
+    }
+
+    #[test]
+    fn require_role_rejects_pm_from_dev_operations() {
+        let result = require_role("pm:claude-code", &["dev"], "deliver");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("restricted to dev"));
+    }
+
+    #[test]
+    fn require_role_rejects_dev_from_pm_operations() {
+        let result = require_role("dev:claude-code", &["pm"], "label");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("restricted to pm"));
+    }
+
+    #[test]
+    fn require_role_rejects_agents_from_owner_operations() {
+        let result = require_role("dev:claude-code", &["ryan"], "accept");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("restricted to ryan"));
+
+        let result = require_role("pm:claude-code", &["ryan"], "reject");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("restricted to ryan"));
+    }
 }

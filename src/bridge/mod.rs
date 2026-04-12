@@ -289,6 +289,31 @@ impl ServerHandler for BridgeServer {
             crate::mcp::tools::get_token_report_tool(
                 "Get the token-cost report from bpmux's shared token log (#179). Returns JSON with total tokens, row count, per-role breakdown, and the 10 most recent turns (newest first). The data comes from per-harness adapters reading their own LLM-call recordings — you're seeing objective cost data, not self-reported. Same underlying log the `/tokens` TUI view reads, so you see exactly what Ryan sees. Empty report if the log is empty or missing.",
             ),
+            // #140: story management tools — server-side gh proxy with lane enforcement
+            crate::mcp::tools::view_board_tool(
+                "View the project board — all stories grouped by state (ready, in progress, delivered, accepted, deferred, icebox) with counts. No host permission needed. Same data as the TUI board view.",
+            ),
+            crate::mcp::tools::create_story_tool(
+                "Create a new story (GitHub issue). No host permission needed. Story starts unlabeled in the icebox.",
+            ),
+            crate::mcp::tools::start_story_tool(
+                "Mark a story as started. DEV ONLY — other roles are rejected with a clear message.",
+            ),
+            crate::mcp::tools::deliver_story_tool(
+                "Mark a story as delivered. DEV ONLY — other roles are rejected.",
+            ),
+            crate::mcp::tools::label_story_tool(
+                "Add a label to a story (ready, blocked, icebox, deferred). PM ONLY — other roles are rejected.",
+            ),
+            crate::mcp::tools::accept_story_tool(
+                "Accept a delivered story and close it. OWNER (ryan) ONLY.",
+            ),
+            crate::mcp::tools::reject_story_tool(
+                "Reject a delivered story with a reason. OWNER (ryan) ONLY.",
+            ),
+            crate::mcp::tools::reorder_story_tool(
+                "Reorder a story's priority position within its state column. PM ONLY — other roles are rejected. Position 1 = top of column.",
+            ),
         ];
 
         std::future::ready(Ok(ListToolsResult::with_all_items(tools)))
@@ -332,6 +357,32 @@ impl ServerHandler for BridgeServer {
                     tools::handle_get_identity(&args, &current_name).await
                 }
                 "get_token_report" => tools::handle_get_token_report().await,
+                "view_board" => tools::handle_view_board(&args).await,
+                "create_story" => tools::handle_create_story(&args).await,
+                "start_story" => {
+                    let current_name = name.lock().await;
+                    tools::handle_start_story(&args, &current_name).await
+                }
+                "deliver_story" => {
+                    let current_name = name.lock().await;
+                    tools::handle_deliver_story(&args, &current_name).await
+                }
+                "label_story" => {
+                    let current_name = name.lock().await;
+                    tools::handle_label_story(&args, &current_name).await
+                }
+                "accept_story" => {
+                    let current_name = name.lock().await;
+                    tools::handle_accept_story(&args, &current_name).await
+                }
+                "reject_story" => {
+                    let current_name = name.lock().await;
+                    tools::handle_reject_story(&args, &current_name).await
+                }
+                "reorder_story" => {
+                    let current_name = name.lock().await;
+                    tools::handle_reorder_story(&args, &current_name).await
+                }
                 other => Err(format!("unknown tool: {other}")),
             };
             Ok(match result {
