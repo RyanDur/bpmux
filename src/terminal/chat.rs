@@ -260,31 +260,52 @@ pub(super) fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
         )
         .border_style(Style::default().fg(DRACULA_SELECTION))
         .style(Style::default().bg(DRACULA_BG).fg(DRACULA_FG));
-    let chat = Paragraph::new(messages).block(chat_block);
+
+    // #180 (tui-scrollview): render the block first to get the inner
+    // area, then render message content into a ScrollView. The
+    // ScrollViewState manages viewport position as an absolute row
+    // offset — no compensation math needed when new messages arrive
+    // or when filtered messages land.
+    let inner = chat_block.inner(area);
+    frame.render_widget(chat_block, area);
+
+    #[allow(clippy::cast_possible_truncation)]
+    let content_height = total_lines.max(1) as u16;
+    let mut scroll_view =
+        tui_scrollview::ScrollView::new(ratatui::layout::Size::new(inner.width, content_height));
+    scroll_view.render_widget(
+        Paragraph::new(messages).style(Style::default().bg(DRACULA_BG).fg(DRACULA_FG)),
+        Rect::new(0, 0, inner.width, content_height),
+    );
+
+    // If at bottom, ensure the state tracks the latest content
+    // height so scroll_to_bottom in receive_message stays accurate.
+    if app.chat_at_bottom {
+        app.chat_scroll_state.scroll_to_bottom();
+    }
+
+    frame.render_stateful_widget(scroll_view, inner, &mut app.chat_scroll_state);
+
+    // Update max_scroll for legacy status_bar display.
     let max_scroll = total_lines.saturating_sub(chat_height);
     app.max_scroll = max_scroll;
-    #[allow(clippy::cast_possible_truncation)]
-    let scroll = max_scroll
-        .saturating_sub(app.scroll_offset)
-        .min(u16::MAX as usize) as u16;
 
-    let inner_y = area.y + 1;
-    let scroll_usize = scroll as usize;
+    // Truncation indicator tracking — compute screen positions from
+    // the ScrollViewState offset rather than the old scroll variable.
+    let scroll_y = app.chat_scroll_state.offset().y as usize;
+    let inner_y = inner.y;
     app.truncation_indicators.clear();
     for (line_idx, key) in &truncation_line_indices {
-        if *line_idx >= scroll_usize && *line_idx < scroll_usize + chat_height {
+        if *line_idx >= scroll_y && *line_idx < scroll_y + chat_height {
             #[allow(clippy::cast_possible_truncation)]
-            let screen_y = inner_y + (*line_idx - scroll_usize) as u16;
+            let screen_y = inner_y + (*line_idx - scroll_y) as u16;
             app.truncation_indicators.push((screen_y, key.clone()));
         }
     }
-
-    let chat = chat.scroll((scroll, 0));
-    frame.render_widget(chat, area);
 }
 
 pub(super) fn render_unread_indicator(frame: &mut Frame, app: &App, area: Rect) {
-    if app.scroll_offset > 0 && app.unread_count > 0 {
+    if !app.chat_at_bottom && app.unread_count > 0 {
         let unread_text = format!(
             "\u{2193} {} new message{}",
             app.unread_count,

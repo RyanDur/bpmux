@@ -122,7 +122,9 @@ fn scroll_down_decreases_offset_to_zero() {
 #[test]
 fn receiving_message_when_scrolled_up_increments_unread_count() {
     let mut app = test_app();
-    app.scroll_offset = 5;
+    // #180: simulate scrolled-up state via chat_at_bottom flag
+    // (replaces the old scroll_offset = 5 setup).
+    app.chat_at_bottom = false;
     app.receive_message(chat_msg("bot:ws", "hello"));
     assert_eq!(app.unread_count, 1);
     app.receive_message(chat_msg("bot:ws", "world"));
@@ -236,25 +238,38 @@ fn unrecognized_command_adds_error_message_without_broadcast() {
 }
 
 #[test]
-fn incoming_message_preserves_viewport_when_scrolled_up() {
+fn incoming_message_when_scrolled_up_does_not_auto_follow() {
+    // #180 (tui-scrollview): when the user is scrolled up
+    // (chat_at_bottom = false), a new message should NOT trigger
+    // scroll_to_bottom. The message lands in the log and
+    // unread_count increments, but the viewport stays put.
     let mut app = test_app();
-    app.scroll_offset = 5;
+    app.chat_at_bottom = false;
     app.receive_message(chat_msg("bot:ws", "hello"));
-    assert_eq!(app.scroll_offset, 6);
+    assert!(!app.chat_at_bottom);
+    assert_eq!(app.unread_count, 1);
     assert_eq!(app.messages.len(), 1);
 }
 
 #[test]
-fn filtered_nudge_does_not_drift_viewport_when_scrolled_up() {
-    // #180 root cause: messages that wouldn't render (nudge, hidden
-    // by class filter) were incrementing scroll_offset anyway, causing
-    // viewport drift without adding a visible row. The fix: only
-    // increment when the message would actually render.
+fn incoming_message_when_at_bottom_stays_at_bottom() {
+    // #180: when at bottom, auto-follow by scrolling to bottom.
     let mut app = test_app();
-    app.scroll_offset = 5;
-    // Nudge-type message: passes through to messages.push but is
-    // hidden by should_hide_by_class when show_all_classes is off
-    // (the default).
+    assert!(app.chat_at_bottom);
+    app.receive_message(chat_msg("bot:ws", "hello"));
+    assert!(app.chat_at_bottom);
+    assert_eq!(app.unread_count, 0);
+}
+
+#[test]
+fn filtered_and_unfiltered_messages_both_safe_when_scrolled_up() {
+    // #180 (tui-scrollview): with the absolute-offset model,
+    // ALL message types are safe when scrolled up — the viewport
+    // doesn't move regardless of the message's filter status.
+    let mut app = test_app();
+    app.chat_at_bottom = false;
+    app.receive_message(chat_msg("dev:claude-code", "hello"));
+    assert_eq!(app.unread_count, 1);
     let nudge = Message {
         from: "bpmux".to_string(),
         text: "dev hasn't acknowledged".to_string(),
@@ -266,29 +281,9 @@ fn filtered_nudge_does_not_drift_viewport_when_scrolled_up() {
         multi_depth: None,
     };
     app.receive_message(nudge);
-    // scroll_offset must NOT have incremented — the nudge is filtered.
-    assert_eq!(
-        app.scroll_offset, 5,
-        "filtered nudge should not drift viewport"
-    );
-    // But the message IS in the log (for /all toggle visibility).
-    assert_eq!(app.messages.len(), 1);
-}
-
-#[test]
-fn unfocused_role_message_does_not_drift_viewport_when_scrolled_up() {
-    // #180: same class of bug for the focus filter. When /focus dev
-    // is active, a pm message wouldn't render. scroll_offset should
-    // not increment.
-    let mut app = test_app();
-    app.focused_roles = Some(vec!["dev".to_string()]);
-    app.scroll_offset = 5;
-    app.receive_message(chat_msg("pm:claude-code", "hello from pm"));
-    assert_eq!(
-        app.scroll_offset, 5,
-        "out-of-focus message should not drift viewport"
-    );
-    assert_eq!(app.messages.len(), 1);
+    assert_eq!(app.unread_count, 2);
+    assert_eq!(app.messages.len(), 2);
+    assert!(!app.chat_at_bottom);
 }
 
 #[test]
