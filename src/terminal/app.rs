@@ -380,6 +380,19 @@ impl App {
                 return;
             }
             MessageType::System => {
+                // #191: auto-register topics from creation notifications.
+                // When a "Topic 'X' created" system message arrives,
+                // add the topic to our list so /topic shows it.
+                if msg.text.starts_with("Topic '")
+                    && msg.text.contains("' created")
+                    && let Some(start) = msg.text.find('\'')
+                    && let Some(end) = msg.text[start + 1..].find('\'')
+                {
+                    let topic_name = msg.text[start + 1..start + 1 + end].to_string();
+                    if !self.topics.contains(&topic_name) {
+                        self.topics.push(topic_name);
+                    }
+                }
                 if let Some(peer) = msg.text.strip_suffix(" joined") {
                     let short = short_peer_name(peer).to_string();
                     self.update_activity(short.clone(), "available".into());
@@ -391,6 +404,19 @@ impl App {
                 }
             }
             MessageType::Chat | MessageType::Insight | MessageType::Nudge => {
+                // #191: auto-discover topics from incoming messages.
+                // If a message has a topic we don't know about yet,
+                // register it so /topic list shows it and the sidebar
+                // (future) can display it.
+                if let Some(topic) = &msg.topic {
+                    if !self.topics.contains(topic) {
+                        self.topics.push(topic.clone());
+                    }
+                    // Track unread per topic when not viewing that topic.
+                    if *topic != self.active_topic {
+                        *self.topic_unreads.entry(topic.clone()).or_insert(0) += 1;
+                    }
+                }
                 let ch = channel_name(&msg, &self.peer_name);
                 self.active_channels.insert(ch.clone());
                 if self.current_view.as_ref().is_none_or(|v| v != &ch) {
