@@ -121,6 +121,9 @@ pub struct App {
     pub active_topic: String,
     /// Per-topic unread count for sidebar display.
     pub topic_unreads: HashMap<String, usize>,
+    /// Per-topic participant lists. "general" has no entry (everyone).
+    /// Named topics list their participants explicitly.
+    pub topic_participants: HashMap<String, Vec<String>>,
 
     // ── CI status (#151) ──
     pub(super) ci_state: super::ci::CiState,
@@ -228,6 +231,7 @@ impl App {
             topics: vec!["general".to_string()],
             active_topic: "general".to_string(),
             topic_unreads: HashMap::new(),
+            topic_participants: HashMap::new(),
             chat_area: None,
             should_reload: false,
             direct_expanded: true,
