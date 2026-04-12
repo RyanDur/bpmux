@@ -12,6 +12,7 @@
 //! The indicator state is *passive* — the only side effect is changing a
 //! glyph in the status bar.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -19,6 +20,7 @@ use serde::Deserialize;
 use tokio::sync::mpsc;
 
 use crate::session::diag::log_diag;
+use crate::session::message::{DeepDetail, MultiDepthPayload};
 use crate::session::{Message, MessageType, Session};
 
 /// Three-state CI indicator shown in the status bar. `Unknown` is the
@@ -85,11 +87,17 @@ pub(super) fn spawn_poller(tx: mpsc::Sender<CiState>, broadcast_session: Option<
                     break;
                 }
             }
-            // Broadcast hook (#106). Pure transition logic in
-            // `compute_broadcast_text`; this branch is just IO.
+            // Broadcast hook (#106 / #188). Pure transition logic in
+            // `compute_broadcast_text`; this branch is just IO. The
+            // multi-depth payload (#188) comes from the paired pure
+            // helper `build_multi_depth_for_transition`, which
+            // populates the per-role default depths and the OnDemand
+            // deep-detail pointer at `gh run view <run_id>`.
             if let Some(session) = broadcast_session.as_ref()
                 && let Some(text) = compute_broadcast_text(last_broadcast, &event)
             {
+                let is_recovery = event.state == CiState::Green;
+                let multi_depth = build_multi_depth_for_transition(&event, is_recovery);
                 let msg = Message {
                     from: "bpmux".to_string(),
                     text,
@@ -98,7 +106,7 @@ pub(super) fn spawn_poller(tx: mpsc::Sender<CiState>, broadcast_session: Option<
                     to: None,
                     addressee: None,
                     explicit_privacy: false,
-                    multi_depth: None,
+                    multi_depth: Some(multi_depth),
                 };
                 if let Err(e) = session.broadcast(&msg) {
                     log_diag(&format!("ci: broadcast error: {e}"));
@@ -129,6 +137,76 @@ pub(super) fn compute_broadcast_text(
         CiState::Red if last_broadcast != Some(CiState::Red) => Some(format_failure_line(next)),
         CiState::Green if last_broadcast == Some(CiState::Red) => Some(format_recovery_line(next)),
         _ => None,
+    }
+}
+
+/// Build the `MultiDepthPayload` for a CI transition broadcast
+/// (#188 / #184 child 5). Pure function, no IO — called from
+/// `spawn_poller` alongside `compute_broadcast_text` so the payload
+/// and the text stay consistent by construction.
+///
+/// **Rule table** (designed to match #184's progressive disclosure
+/// pattern while keeping the schema's per-role default_depth map
+/// honest):
+/// - `summary` is the shallowest form — `🔴 CI failed` for a failure,
+///   `🟢 CI recovered` for a recovery. This is what renders if no
+///   role-specific depth applies.
+/// - `role_default`:
+///   - `pm` → summary. PM's decisions need the binary state, not
+///     stage-level detail. Don't crowd the shaping queue view.
+///   - `designer` → summary. Designer acts on "is shipping blocked?",
+///     not on stage-level debug.
+///   - `dev` → detail form (full text including commit sha, title,
+///     and run link). Dev's decisions depend on WHY a build failed
+///     — stage info + commit context is load-bearing.
+/// - `deep`:
+///   - When we have a `run_id` from the gh poll, the deep form is
+///     an `OnDemand` pointer at `gh run view <run_id>`. Token
+///     economy: only the drilling agent pays the cost of fetching
+///     the full log.
+///   - When we don't have a run_id (degenerate gh output), the
+///     deep form is a `Preloaded` placeholder so the payload is
+///     still valid. Rare in practice.
+///
+/// The per-role defaults assume the renderer consumer (#184 child 3)
+/// will look up the viewing role's entry in `role_default` and fall
+/// back to `summary` if missing. Roles not in the map (e.g., `ryan`
+/// itself) fall through to `summary`, which is correct — Ryan's
+/// default CI view should be the binary state, same as pm/designer.
+pub(super) fn build_multi_depth_for_transition(
+    event: &CiEvent,
+    is_recovery: bool,
+) -> MultiDepthPayload {
+    let summary = if is_recovery {
+        "\u{1F7E2} CI recovered".to_string()
+    } else {
+        "\u{1F534} CI failed".to_string()
+    };
+    let dev_detail = if is_recovery {
+        format_recovery_line(event)
+    } else {
+        format_failure_line(event)
+    };
+
+    let mut role_default: HashMap<String, String> = HashMap::new();
+    role_default.insert("pm".to_string(), summary.clone());
+    role_default.insert("designer".to_string(), summary.clone());
+    role_default.insert("dev".to_string(), dev_detail);
+
+    let deep = match event.run_id {
+        Some(id) => DeepDetail::OnDemand {
+            command: format!("gh run view {id}"),
+            description: "full CI run output including all stages and logs".to_string(),
+        },
+        None => DeepDetail::Preloaded {
+            text: "(no run id available)".to_string(),
+        },
+    };
+
+    MultiDepthPayload {
+        summary,
+        role_default,
+        deep,
     }
 }
 
@@ -556,5 +634,139 @@ mod tests {
         assert!(text.contains("CI recovered"));
         assert!(text.contains("cafebab"));
         assert!(text.contains("gh run view 999"));
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // #188 multi-depth payload tests — pure function over the
+    // `build_multi_depth_for_transition` helper. Unit-named per the
+    // test-name discipline: describe what the function returns.
+    // ─────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn build_multi_depth_for_failure_uses_red_glyph_summary() {
+        let ev = event_with_meta(CiState::Red, "abcdef1", "fix: x", 42);
+        let payload = build_multi_depth_for_transition(&ev, false);
+        assert!(
+            payload.summary.contains("CI failed"),
+            "summary should describe failure, got: {}",
+            payload.summary
+        );
+        assert!(payload.summary.contains('\u{1F534}'), "expected red glyph");
+    }
+
+    #[test]
+    fn build_multi_depth_for_recovery_uses_green_glyph_summary() {
+        let ev = event_with_meta(CiState::Green, "abcdef1", "fix: x", 42);
+        let payload = build_multi_depth_for_transition(&ev, true);
+        assert!(
+            payload.summary.contains("CI recovered"),
+            "summary should describe recovery, got: {}",
+            payload.summary
+        );
+        assert!(
+            payload.summary.contains('\u{1F7E2}'),
+            "expected green glyph"
+        );
+    }
+
+    #[test]
+    fn build_multi_depth_sets_pm_and_designer_defaults_to_summary() {
+        let ev = event_with_meta(CiState::Red, "abcdef1", "fix: x", 42);
+        let payload = build_multi_depth_for_transition(&ev, false);
+        // pm and designer default to the summary — binary-state
+        // is all they need to make routing decisions.
+        assert_eq!(payload.role_default.get("pm"), Some(&payload.summary));
+        assert_eq!(payload.role_default.get("designer"), Some(&payload.summary));
+    }
+
+    #[test]
+    fn build_multi_depth_sets_dev_default_to_detail_line_with_sha_and_run_link() {
+        // Dev needs stage/commit context to diagnose a failure —
+        // defaults to the rich form, not the summary.
+        let ev = event_with_meta(
+            CiState::Red,
+            "abcdef1234",
+            "fix: prevent silent drop",
+            54321,
+        );
+        let payload = build_multi_depth_for_transition(&ev, false);
+        let dev = payload.role_default.get("dev").expect("dev entry");
+        assert!(dev.contains("CI failed"));
+        assert!(dev.contains("abcdef1"), "short SHA missing: {dev}");
+        assert!(dev.contains("fix: prevent silent drop"), "title missing");
+        assert!(dev.contains("gh run view 54321"), "run link missing");
+        // Dev's default is strictly richer than the summary — not equal.
+        assert_ne!(dev, &payload.summary);
+    }
+
+    #[test]
+    fn build_multi_depth_deep_detail_is_on_demand_when_run_id_present() {
+        let ev = event_with_meta(CiState::Red, "abcdef1", "fix", 12345);
+        let payload = build_multi_depth_for_transition(&ev, false);
+        match payload.deep {
+            DeepDetail::OnDemand {
+                command,
+                description,
+            } => {
+                assert!(
+                    command.contains("gh run view 12345"),
+                    "command should embed run id: {command}"
+                );
+                assert!(
+                    !description.is_empty(),
+                    "description should be a non-empty label"
+                );
+            }
+            DeepDetail::Preloaded { .. } => {
+                panic!("expected OnDemand when run_id is present")
+            }
+        }
+    }
+
+    #[test]
+    fn build_multi_depth_deep_detail_is_preloaded_fallback_when_run_id_missing() {
+        // Degenerate gh output case — no run_id available. Should
+        // still produce a valid payload, falling back to a
+        // Preloaded placeholder rather than panicking.
+        let ev = event(CiState::Red); // defaults: all metadata None
+        let payload = build_multi_depth_for_transition(&ev, false);
+        match payload.deep {
+            DeepDetail::Preloaded { text } => {
+                assert!(!text.is_empty());
+            }
+            DeepDetail::OnDemand { .. } => {
+                panic!("expected Preloaded fallback when run_id is missing")
+            }
+        }
+    }
+
+    #[test]
+    fn build_multi_depth_recovery_dev_default_describes_recovery_not_failure() {
+        // Guard against a copy-paste bug where recovery rendering
+        // leaks the failure template. Dev's recovery default should
+        // say "CI recovered", not "CI failed".
+        let ev = event_with_meta(CiState::Green, "abcdef1", "fix", 42);
+        let payload = build_multi_depth_for_transition(&ev, true);
+        let dev = payload.role_default.get("dev").expect("dev entry");
+        assert!(dev.contains("CI recovered"));
+        assert!(!dev.contains("CI failed"));
+    }
+
+    #[test]
+    fn build_multi_depth_role_default_has_entries_for_all_three_roles() {
+        // Regression guard: if a future edit drops a role by
+        // accident, this test fires. Three agent roles + optional
+        // ryan (absent, falls back to summary).
+        let ev = event_with_meta(CiState::Red, "abcdef1", "fix", 42);
+        let payload = build_multi_depth_for_transition(&ev, false);
+        assert_eq!(
+            payload.role_default.len(),
+            3,
+            "expected entries for pm, designer, dev; got {:?}",
+            payload.role_default.keys().collect::<Vec<_>>()
+        );
+        assert!(payload.role_default.contains_key("pm"));
+        assert!(payload.role_default.contains_key("designer"));
+        assert!(payload.role_default.contains_key("dev"));
     }
 }
