@@ -282,13 +282,6 @@ impl App {
         self.at_boundary = false;
     }
 
-    /// Jump to the bottom of the chat immediately. Useful for
-    /// laptop users who don't have an End key.
-    pub fn scroll_to_bottom(&mut self) {
-        self.scroll_from_top = None;
-        self.unread_count = 0;
-    }
-
     pub fn toggle_last_truncated(&mut self) {
         let width = 78usize; // approximate inner width
         for msg in self.messages.iter().rev() {

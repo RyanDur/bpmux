@@ -305,13 +305,7 @@ pub(super) fn handle_terminal_event(
             scroll_down_with_bell(app, 5);
         }
         KeyCode::Esc => {
-            if app.scroll_from_top.is_some() {
-                // Jump to bottom when scrolled up — laptop-friendly
-                // alternative to End key.
-                app.scroll_to_bottom();
-            } else {
-                app.clear_input();
-            }
+            app.clear_input();
         }
         _ => {}
     }
