@@ -236,12 +236,30 @@ fn unrecognized_command_adds_error_message_without_broadcast() {
 }
 
 #[test]
-fn incoming_message_preserves_viewport_when_scrolled_up() {
+fn incoming_short_message_preserves_viewport_by_one_line() {
     let mut app = test_app();
     app.scroll_offset = 5;
+    // Short message fits on 1 line → scroll_offset += 1.
     app.receive_message(chat_msg("bot:ws", "hello"));
     assert_eq!(app.scroll_offset, 6);
     assert_eq!(app.messages.len(), 1);
+}
+
+#[test]
+fn incoming_long_message_compensates_by_wrapped_line_count() {
+    // #180: a message that wraps to N lines should increment
+    // scroll_offset by N, not by 1. Prevents proportional viewport
+    // drift on long messages.
+    let mut app = test_app();
+    app.scroll_offset = 5;
+    // ~200 chars + prefix → should wrap to ~3 lines at 78-char width.
+    let long_text = "word ".repeat(40); // 200 chars
+    app.receive_message(chat_msg("dev:claude-code", &long_text));
+    assert!(
+        app.scroll_offset > 6,
+        "long message should increment scroll_offset by more than 1, got {}",
+        app.scroll_offset
+    );
 }
 
 #[test]
