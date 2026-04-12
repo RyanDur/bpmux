@@ -15,6 +15,7 @@ fn msg(from: &str, to: Option<Vec<&str>>) -> session::Message {
         addressee: None,
         explicit_privacy: false,
         multi_depth: None,
+        topic: None,
     }
 }
 

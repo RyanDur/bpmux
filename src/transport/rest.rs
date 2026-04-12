@@ -375,6 +375,7 @@ pub async fn post_message(
         addressee: payload.addressee,
         explicit_privacy: false,
         multi_depth: payload.multi_depth,
+        topic: None,
     };
     if let Err(e) = session.broadcast(&msg) {
         return (

@@ -158,6 +158,7 @@ where
                                     to: None,
                                     addressee: None,
                                     multi_depth: None,
+                                    topic: None,
                                     explicit_privacy: false,
                                 });
                                 app.scroll_offset = 0;

@@ -160,6 +160,7 @@ impl ExperienceDetector {
                 addressee: None,
                 explicit_privacy: false,
                 multi_depth: None,
+                topic: None,
             };
             let _ = session.broadcast(&nudge);
         }

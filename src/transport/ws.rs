@@ -73,6 +73,7 @@ async fn run_ws_session(
         addressee: None,
         explicit_privacy: false,
         multi_depth: None,
+        topic: None,
     };
     session.broadcast(&join_msg)?;
     let result: Result<(), Box<dyn std::error::Error + Send + Sync>> = async {
@@ -111,6 +112,7 @@ async fn run_ws_session(
                                     addressee: None,
                                     explicit_privacy: false,
                                     multi_depth: None,
+                                    topic: None,
                                 };
                                 let _ = session.broadcast(&leave);
                                 identity = new_identity;
@@ -123,6 +125,7 @@ async fn run_ws_session(
                                     addressee: None,
                                     explicit_privacy: false,
                                     multi_depth: None,
+                                    topic: None,
                                 };
                                 let _ = session.broadcast(&join);
                             }
@@ -151,6 +154,7 @@ async fn run_ws_session(
         addressee: None,
         explicit_privacy: false,
         multi_depth: None,
+        topic: None,
     };
     let _ = session.broadcast(&leave_msg);
     session.peer_disconnected();
@@ -278,6 +282,7 @@ async fn handle_client_message(
                 addressee,
                 explicit_privacy: false,
                 multi_depth: None,
+                topic: None,
             };
             session.broadcast(&msg)?;
         }

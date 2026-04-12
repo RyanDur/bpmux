@@ -15,6 +15,7 @@ fn system_join(name: &str) -> Message {
         addressee: None,
         explicit_privacy: false,
         multi_depth: None,
+        topic: None,
     }
 }
 
@@ -28,6 +29,7 @@ fn system_leave(name: &str) -> Message {
         addressee: None,
         explicit_privacy: false,
         multi_depth: None,
+        topic: None,
     }
 }
 
@@ -83,6 +85,7 @@ fn chat_msg(from: &str, text: &str) -> Message {
         addressee: None,
         explicit_privacy: false,
         multi_depth: None,
+        topic: None,
     }
 }
 
@@ -383,6 +386,7 @@ fn bayes_classify_returns_routine_for_non_chat_type() {
         addressee: None,
         explicit_privacy: false,
         multi_depth: None,
+        topic: None,
     };
     assert_eq!(model.classify(&sys_msg, "ryan"), MessageClass::Routine);
 }
@@ -426,6 +430,7 @@ fn handoff_nudge_suppressed_when_recipient_already_responded() {
         addressee: None,
         explicit_privacy: false,
         multi_depth: None,
+        topic: None,
     };
     let _ = session.broadcast(&ack_msg);
 

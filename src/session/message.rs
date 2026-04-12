@@ -59,6 +59,13 @@ pub struct Message {
     #[serde(default, skip_serializing_if = "is_false")]
     pub explicit_privacy: bool,
 
+    /// **Topic** (#191) — which topic this message belongs to.
+    /// `None` maps to the "general" catch-all topic for legacy
+    /// and unscoped messages. New messages get tagged with the
+    /// sender's active topic.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub topic: Option<String>,
+
     /// **Multi-depth rendering payload** (#184 / #187) — optional
     /// structured data that lets a single event carry multiple
     /// rendering depths so each receiving role can render at its

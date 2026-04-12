@@ -131,6 +131,7 @@ mod tests {
             addressee: None,
             explicit_privacy: false,
             multi_depth: None,
+            topic: None,
         }
     }
 
@@ -144,6 +145,7 @@ mod tests {
             addressee: None,
             explicit_privacy: false,
             multi_depth: None,
+            topic: None,
         }
     }
 

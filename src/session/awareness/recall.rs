@@ -78,6 +78,7 @@ impl RecallSystem {
                 addressee: None,
                 explicit_privacy: false,
                 multi_depth: None,
+                topic: None,
             };
             let _ = session.broadcast(&nudge);
             self.surfaced_topics.insert(lesson.topic.clone());

@@ -66,6 +66,7 @@ impl PileonDetector {
                     addressee: None,
                     explicit_privacy: false,
                     multi_depth: None,
+                    topic: None,
                 };
                 let _ = session.broadcast(&nudge);
                 self.window_start = None;

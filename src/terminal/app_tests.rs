@@ -21,6 +21,7 @@ fn chat_msg(from: &str, text: &str) -> Message {
         addressee: None,
         explicit_privacy: false,
         multi_depth: None,
+        topic: None,
     }
 }
 
@@ -34,6 +35,7 @@ fn directed_msg(from: &str, text: &str, to: Vec<&str>) -> Message {
         addressee: None,
         explicit_privacy: false,
         multi_depth: None,
+        topic: None,
     }
 }
 
@@ -47,6 +49,7 @@ fn system_msg(from: &str, text: &str) -> Message {
         addressee: None,
         explicit_privacy: false,
         multi_depth: None,
+        topic: None,
     }
 }
 
@@ -60,6 +63,7 @@ fn activity_msg(from: &str, text: &str) -> Message {
         addressee: None,
         explicit_privacy: false,
         multi_depth: None,
+        topic: None,
     }
 }
 
@@ -847,6 +851,7 @@ fn toggle_expands_long_system_message() {
         addressee: None,
         explicit_privacy: false,
         multi_depth: None,
+        topic: None,
     });
     let key = app.messages.last().unwrap().ts.to_rfc3339();
     assert!(
@@ -880,6 +885,7 @@ fn peer_leave_removes_phantom_channels() {
         addressee: None,
         explicit_privacy: false,
         multi_depth: None,
+        topic: None,
     });
     // View the channel so the message is "read" (no unread count)
     app.current_view = Some("agent-14c3".to_string());
@@ -903,6 +909,7 @@ fn peer_leave_removes_phantom_channels() {
         addressee: None,
         explicit_privacy: false,
         multi_depth: None,
+        topic: None,
     });
     assert!(
         !app.active_channels.contains("agent-14c3"),
@@ -923,6 +930,7 @@ fn peer_leave_keeps_channels_with_unread() {
         addressee: None,
         explicit_privacy: false,
         multi_depth: None,
+        topic: None,
     });
     app.current_view = Some("broadcast".to_string());
     app.receive_message(directed_msg(
@@ -942,6 +950,7 @@ fn peer_leave_keeps_channels_with_unread() {
         addressee: None,
         explicit_privacy: false,
         multi_depth: None,
+        topic: None,
     });
     assert!(
         app.active_channels.contains("dev"),
