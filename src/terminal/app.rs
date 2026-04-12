@@ -113,6 +113,15 @@ pub struct App {
     pub palette_input: String,
     pub palette_selected: usize,
 
+    // ── Topics (#191) ──
+    /// Known topics in this session. "general" always present.
+    pub topics: Vec<String>,
+    /// Which topic the user is currently viewing/typing into.
+    /// Messages sent get tagged with this topic.
+    pub active_topic: String,
+    /// Per-topic unread count for sidebar display.
+    pub topic_unreads: HashMap<String, usize>,
+
     // ── CI status (#151) ──
     pub(super) ci_state: super::ci::CiState,
 
@@ -216,6 +225,9 @@ impl App {
             show_palette: false,
             palette_input: String::new(),
             palette_selected: 0,
+            topics: vec!["general".to_string()],
+            active_topic: "general".to_string(),
+            topic_unreads: HashMap::new(),
             chat_area: None,
             should_reload: false,
             direct_expanded: true,

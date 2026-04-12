@@ -75,6 +75,11 @@ pub(super) const SLASH_COMMANDS: &[(&str, &str, &str)] = &[
         "agent traits",
         "show identity traits for a role (e.g. /identity dev)",
     ),
+    (
+        "/topic",
+        "switch topic",
+        "manage topics (e.g. /topic create scroll-fix)",
+    ),
     ("/help", "show this", "show this list"),
     ("/quit", "exit", "exit bpmux"),
 ];

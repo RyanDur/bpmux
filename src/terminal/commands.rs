@@ -59,6 +59,7 @@ impl App {
                 "/share" => self.handle_share(args.to_string()),
                 "/all" => self.handle_toggle_all(),
                 "/tokens" => self.handle_tokens(),
+                "/topic" => self.handle_topic(args.to_string()),
                 "/focus" => self.handle_focus(args.to_string()),
                 "/identity" => self.handle_identity(args.to_string()),
                 _ => self.handle_unknown_command(text),
@@ -341,7 +342,11 @@ impl App {
             addressee,
             explicit_privacy: false,
             multi_depth: None,
-            topic: None,
+            topic: if self.active_topic == "general" {
+                None
+            } else {
+                Some(self.active_topic.clone())
+            },
         };
         self.messages.push(msg.clone());
         self.clear_input();

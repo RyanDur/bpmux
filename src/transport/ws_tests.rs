@@ -23,44 +23,49 @@ fn msg(from: &str, to: Option<Vec<&str>>) -> session::Message {
 fn broadcast_delivered_to_everyone() {
     assert!(should_deliver(
         &msg("dev:claude-code", None),
-        "pm:claude-code"
+        "pm:claude-code",
+        None,
     ));
-    assert!(should_deliver(&msg("dev:claude-code", None), "ryan:human"));
+    assert!(should_deliver(
+        &msg("dev:claude-code", None),
+        "ryan:human",
+        None,
+    ));
 }
 
 #[test]
 fn addressed_delivered_to_recipient() {
     let m = msg("dev:claude-code", Some(vec!["pm"]));
-    assert!(should_deliver(&m, "pm:claude-code"));
+    assert!(should_deliver(&m, "pm:claude-code", None));
 }
 
 #[test]
 fn addressed_delivered_to_sender() {
     let m = msg("dev:claude-code", Some(vec!["pm"]));
-    assert!(should_deliver(&m, "dev:claude-code"));
+    assert!(should_deliver(&m, "dev:claude-code", None));
 }
 
 #[test]
 fn addressed_not_delivered_to_non_recipient() {
     let m = msg("dev:claude-code", Some(vec!["pm"]));
-    assert!(!should_deliver(&m, "designer:claude-code"));
+    assert!(!should_deliver(&m, "designer:claude-code", None));
 }
 
 #[test]
 fn group_addressed_delivered_to_all_named() {
     let m = msg("dev:claude-code", Some(vec!["pm", "designer"]));
-    assert!(should_deliver(&m, "pm:claude-code"));
-    assert!(should_deliver(&m, "designer:claude-code"));
-    assert!(should_deliver(&m, "dev:human"));
-    assert!(!should_deliver(&m, "ryan:human"));
+    assert!(should_deliver(&m, "pm:claude-code", None));
+    assert!(should_deliver(&m, "designer:claude-code", None));
+    assert!(should_deliver(&m, "dev:human", None));
+    assert!(!should_deliver(&m, "ryan:human", None));
 }
 
 #[test]
 fn to_all_is_broadcast() {
     let m = msg("dev:claude-code", Some(vec!["all"]));
-    assert!(should_deliver(&m, "pm:claude-code"));
-    assert!(should_deliver(&m, "ryan:human"));
-    assert!(should_deliver(&m, "designer:claude-code"));
+    assert!(should_deliver(&m, "pm:claude-code", None));
+    assert!(should_deliver(&m, "ryan:human", None));
+    assert!(should_deliver(&m, "designer:claude-code", None));
 }
 
 #[test]

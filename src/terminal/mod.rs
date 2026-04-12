@@ -9,6 +9,7 @@ mod commands_identity;
 mod commands_search;
 mod commands_share;
 mod commands_tokens;
+mod commands_topic;
 pub mod event;
 mod event_dispatch;
 mod icons;

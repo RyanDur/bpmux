@@ -68,11 +68,18 @@ fn render_broadcast_banner(frame: &mut Frame, app: &App, area: Rect) {
 }
 
 fn render_input(frame: &mut Frame, app: &mut App, area: Rect) {
+    // #191: show active topic in the input prompt so the user knows
+    // which topic they're typing into.
+    let topic_label = if app.active_topic == "general" {
+        String::new()
+    } else {
+        format!(" ({})", app.active_topic)
+    };
     let block = Block::default()
         .borders(Borders::ALL)
         .title(match &app.send_target {
-            Some(ch) => format!(" {} [{ch}] > ", app.peer_name),
-            None => format!(" {} > ", app.peer_name),
+            Some(ch) => format!(" {} [{ch}]{topic_label} > ", app.peer_name),
+            None => format!(" {}{topic_label} > ", app.peer_name),
         })
         .title_style(Style::default().fg(DRACULA_PURPLE))
         .border_style(Style::default().fg(if app.sidebar_focused {

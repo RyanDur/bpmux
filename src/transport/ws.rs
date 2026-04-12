@@ -82,7 +82,7 @@ async fn run_ws_session(
                 broadcast_result = broadcast_rx.recv() => {
                     match broadcast_result {
                         Ok(msg) => {
-                            if should_deliver(&msg, &identity) {
+                            if should_deliver(&msg, &identity, None) {
                                 send_json(&mut tx, &ServerMessage::from(msg)).await?;
                             }
                         }
@@ -207,12 +207,35 @@ pub(crate) fn short_name(identity: &str) -> &str {
     identity.split(':').next().unwrap_or(identity)
 }
 
-pub(crate) fn should_deliver(msg: &session::Message, peer_identity: &str) -> bool {
+/// Check whether a message should be delivered to a specific peer.
+/// `peer_topics` is the set of topics the peer is subscribed to.
+/// If None, the peer receives all topics (legacy / unsubscribed).
+pub(crate) fn should_deliver(
+    msg: &session::Message,
+    peer_identity: &str,
+    peer_topics: Option<&[String]>,
+) -> bool {
+    // Topic filter (#191): if the peer has topic subscriptions,
+    // only deliver messages whose topic matches. Messages with no
+    // topic (legacy/general) always deliver. System messages always
+    // deliver regardless of topic.
+    if let Some(subscribed) = peer_topics
+        && let Some(msg_topic) = &msg.topic
+        && !subscribed.iter().any(|t| t == msg_topic)
+    {
+        // Message is in a topic the peer isn't subscribed to.
+        // Still deliver system messages (joins, leaves).
+        if msg.message_type != session::MessageType::System {
+            return false;
+        }
+    }
+    // msg.topic == None (general) always delivers.
+
+    // Existing recipient-based filter (DMs, scoped messages).
     let recipients = match &msg.to {
         None => return true,
         Some(r) => r,
     };
-    // to:["all"] is explicit broadcast
     if recipients.iter().any(|r| r == "all") {
         return true;
     }
