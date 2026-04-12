@@ -30,6 +30,7 @@ base64 = "0.22.1"
 webrtc = "0.17.1"
 tui-textarea-2 = "0.10.2"
 aho-corasick = "1.1.4"
+tui-scrollview = "0.6.4"
 
 [dev-dependencies]
 ratatui-testlib = "0.1.0"
