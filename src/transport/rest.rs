@@ -37,6 +37,17 @@ pub struct GetMessagesParams {
     pub offset: Option<usize>,
     /// Filter to chat messages only (excludes activity/system). Default: true.
     pub chat_only: Option<bool>,
+    /// Simulate delivery-side filtering as a specific peer (#191).
+    /// When set, only returns messages that would be delivered to this
+    /// role via WebSocket — respects topic subscriptions. The peer
+    /// is treated as having no topic subscriptions (receives general
+    /// only, not topic-scoped messages they're not in).
+    #[serde(rename = "as")]
+    pub as_peer: Option<String>,
+    /// Topic subscriptions for the simulated peer. Comma-separated.
+    /// Only used when `as` is set. Messages from topics not in this
+    /// list are excluded.
+    pub topics: Option<String>,
 }
 
 pub async fn get_messages(
@@ -53,6 +64,20 @@ pub async fn get_messages(
             } else {
                 messages
             };
+            // #191: per-user delivery simulation. When `?as=role` is
+            // set, filter messages through should_deliver as if this
+            // were a WebSocket peer with the specified topic subscriptions.
+            if let Some(ref peer) = params.as_peer {
+                let topic_subs: Vec<String> = params
+                    .topics
+                    .as_deref()
+                    .unwrap_or("")
+                    .split(',')
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .collect();
+                filtered.retain(|m| super::ws::should_deliver(m, peer, Some(&topic_subs)));
+            }
             filtered.reverse();
             let page: Vec<_> = filtered.into_iter().skip(offset).take(limit).collect();
             (
