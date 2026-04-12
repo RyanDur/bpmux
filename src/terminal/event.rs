@@ -86,9 +86,15 @@ where
     // Background CI poller (#151). Skip in headless mode because there's no
     // value in polling `gh` during automated tests, and the subprocess
     // would slow test startup.
+    //
+    // #106: pass `session_arc` so the poller can broadcast activity-type
+    // messages on state transitions (failures always; recoveries after
+    // failures). Headless mode skips the poller entirely, so no broadcast
+    // pathway runs during tests — transition logic is covered by pure
+    // unit tests on `compute_broadcast_text` in `ci.rs`.
     let (ci_tx, mut ci_rx) = mpsc::channel::<super::ci::CiState>(4);
     if !headless {
-        super::ci::spawn_poller(ci_tx);
+        super::ci::spawn_poller(ci_tx, Some(Arc::clone(&session_arc)));
     }
 
     loop {
