@@ -176,9 +176,55 @@ pub(super) fn handle_terminal_event(
         app.tokens_view_rows.clear();
         return Ok(());
     }
+    // #192: command palette intercepts all keys while open.
+    if app.show_palette {
+        match key.code {
+            KeyCode::Esc => {
+                app.show_palette = false;
+                app.palette_input.clear();
+            }
+            KeyCode::Enter => {
+                let matches = app.palette_matches();
+                if let Some((cmd, _)) = matches.get(app.palette_selected) {
+                    let command = cmd.to_string();
+                    app.show_palette = false;
+                    app.palette_input.clear();
+                    // Dispatch the command as if the user typed it.
+                    app.input = command;
+                    let _ = app.submit_message();
+                }
+            }
+            KeyCode::Up => {
+                app.palette_selected = app.palette_selected.saturating_sub(1);
+            }
+            KeyCode::Down => {
+                let count = app.palette_matches().len();
+                if count > 0 {
+                    app.palette_selected = (app.palette_selected + 1).min(count - 1);
+                }
+            }
+            KeyCode::Char(c) => {
+                app.palette_input.push(c);
+                app.palette_selected = 0;
+            }
+            KeyCode::Backspace => {
+                app.palette_input.pop();
+                app.palette_selected = 0;
+            }
+            _ => {}
+        }
+        return Ok(());
+    }
     if app.show_project_view && key.code == KeyCode::Esc {
         app.show_project_view = false;
         app.project_view_content = None;
+        return Ok(());
+    }
+    // #192: Ctrl+K opens the command palette.
+    if key.code == KeyCode::Char('k') && key.modifiers.contains(KeyModifiers::CONTROL) {
+        app.show_palette = !app.show_palette;
+        app.palette_input.clear();
+        app.palette_selected = 0;
         return Ok(());
     }
     if (key.code == KeyCode::Char('b') || key.code == KeyCode::Char('1'))

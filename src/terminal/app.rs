@@ -108,6 +108,11 @@ pub struct App {
     /// (own messages, system messages, addressee=my_role bypass).
     pub focused_roles: Option<Vec<String>>,
 
+    // ── Command palette (#192) ──
+    pub show_palette: bool,
+    pub palette_input: String,
+    pub palette_selected: usize,
+
     // ── CI status (#151) ──
     pub(super) ci_state: super::ci::CiState,
 
@@ -208,6 +213,9 @@ impl App {
             show_tokens_view: false,
             tokens_view_rows: Vec::new(),
             focused_roles: None,
+            show_palette: false,
+            palette_input: String::new(),
+            palette_selected: 0,
             chat_area: None,
             should_reload: false,
             direct_expanded: true,
@@ -248,6 +256,30 @@ impl App {
             explicit_privacy: false,
             multi_depth: None,
         });
+    }
+
+    /// #192: return the filtered list of palette actions matching
+    /// the current palette_input. Fuzzy match: the input chars must
+    /// appear in order in the action name, but not necessarily
+    /// adjacent.
+    pub fn palette_matches(&self) -> Vec<(&'static str, &'static str)> {
+        use super::input::SLASH_COMMANDS;
+        let query = self.palette_input.to_lowercase();
+        if query.is_empty() {
+            return SLASH_COMMANDS
+                .iter()
+                .map(|(name, short, _)| (*name, *short))
+                .collect();
+        }
+        SLASH_COMMANDS
+            .iter()
+            .filter_map(|(name, short, _)| {
+                let haystack = name.to_lowercase();
+                let mut hay_iter = haystack.chars();
+                let matches = query.chars().all(|qc| hay_iter.any(|hc| hc == qc));
+                if matches { Some((*name, *short)) } else { None }
+            })
+            .collect()
     }
 
     pub fn scroll_up(&mut self, lines: usize) {
