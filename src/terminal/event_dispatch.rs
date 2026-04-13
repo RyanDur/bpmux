@@ -347,9 +347,8 @@ pub(super) fn handle_terminal_event(
         KeyCode::Char('e') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             app.move_cursor_end();
         }
-        KeyCode::Char('k') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-            app.kill_to_end();
-        }
+        // Ctrl+K is handled earlier (opens command palette, line ~258).
+        // kill_to_end is unreachable while palette binding exists.
         KeyCode::Char('w') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             app.delete_word_backward();
         }
