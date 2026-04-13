@@ -86,8 +86,8 @@ async fn run_ws_session(
                             // Peers not in the map get an empty list (receive
                             // general/broadcast only, no topic messages).
                             let peer_short = short_name(&identity);
-                            let subs = session.topic_subs.lock().ok()
-                                .map(|map| map.get(peer_short).cloned().unwrap_or_default())
+                            let subs: Vec<String> = session.topic_subs.lock().ok()
+                                .and_then(|map| map.get(peer_short).map(|s| s.iter().cloned().collect()))
                                 .unwrap_or_default();
                             if should_deliver(&msg, &identity, Some(&subs)) {
                                 send_json(&mut tx, &ServerMessage::from(msg)).await?;
@@ -214,18 +214,15 @@ pub(crate) fn short_name(identity: &str) -> &str {
     identity.split(':').next().unwrap_or(identity)
 }
 
-/// Add a topic to a peer's subscription list (shared state).
+/// Add a topic to a peer's subscription set (shared state).
 fn subscribe_peer(
-    subs: &std::sync::Mutex<std::collections::HashMap<String, Vec<String>>>,
+    subs: &std::sync::Mutex<std::collections::HashMap<String, std::collections::HashSet<String>>>,
     identity: &str,
     topic: &str,
 ) {
     let peer = short_name(identity).to_string();
     if let Ok(mut map) = subs.lock() {
-        let topics = map.entry(peer).or_default();
-        if !topics.contains(&topic.to_string()) {
-            topics.push(topic.to_string());
-        }
+        map.entry(peer).or_default().insert(topic.to_string());
     }
 }
 
@@ -233,7 +230,7 @@ fn subscribe_peer(
 /// Called when the server broadcasts a "Created topic 'X' with: A, B, C"
 /// system message.
 pub(crate) fn auto_subscribe_participants(
-    subs: &std::sync::Mutex<std::collections::HashMap<String, Vec<String>>>,
+    subs: &std::sync::Mutex<std::collections::HashMap<String, std::collections::HashSet<String>>>,
     text: &str,
 ) {
     // Parse "Created topic 'X' with: A, B, C"

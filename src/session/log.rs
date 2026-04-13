@@ -18,7 +18,8 @@ pub struct Session {
     /// #191: per-peer topic subscriptions. Shared across all WS
     /// connection handlers so topic creation can auto-subscribe
     /// participants. Key: peer short name, Value: subscribed topics.
-    pub topic_subs: Arc<std::sync::Mutex<std::collections::HashMap<String, Vec<String>>>>,
+    pub topic_subs:
+        Arc<std::sync::Mutex<std::collections::HashMap<String, std::collections::HashSet<String>>>>,
 }
 
 impl Clone for Session {
