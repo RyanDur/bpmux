@@ -63,6 +63,7 @@ fn should_hide_by_class_cached(
     matches!(class, session::MessageClass::Routine)
 }
 
+#[cfg(test)]
 pub(super) fn should_hide_by_class(m: &session::Message, owner_name: &str) -> bool {
     if m.message_type == session::MessageType::Nudge {
         return true;
