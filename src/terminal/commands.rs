@@ -240,7 +240,10 @@ impl App {
                 self.board_stories = stories;
                 self.board_selected = 0;
                 self.board_detail = None;
-                self.show_board = true;
+                // #196: open in project panel (split view) by default.
+                // The full-screen board is still accessible via the
+                // board_detail navigation.
+                self.show_project_view = true;
             }
             Err(e) => {
                 self.system_message(format!(

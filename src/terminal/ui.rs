@@ -421,6 +421,66 @@ fn render_tokens_chart_view(
 }
 
 fn render_project_panel(frame: &mut Frame, app: &App, area: Rect) {
+    use crate::terminal::board::{StoryState, stories_by_state};
+
+    // #196: show board data in the project panel when stories are loaded.
+    if !app.board_stories.is_empty() {
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .title(" project ")
+            .title_style(
+                Style::default()
+                    .fg(DRACULA_PURPLE)
+                    .add_modifier(Modifier::BOLD),
+            )
+            .border_style(Style::default().fg(DRACULA_SELECTION))
+            .style(Style::default().bg(DRACULA_BG).fg(DRACULA_FG));
+
+        let groups = stories_by_state(&app.board_stories);
+        let mut lines: Vec<Line> = Vec::new();
+
+        for (state, stories) in &groups {
+            let color = match state {
+                StoryState::Ready => crate::terminal::theme::DRACULA_GREEN,
+                StoryState::InProgress => crate::terminal::theme::DRACULA_ORANGE,
+                StoryState::Delivered => crate::terminal::theme::DRACULA_YELLOW,
+                _ => DRACULA_COMMENT,
+            };
+
+            // Compressed: accepted + icebox show count only
+            if matches!(state, StoryState::Accepted | StoryState::Icebox) {
+                lines.push(Line::from(Span::styled(
+                    format!("{} ({})", state.label(), stories.len()),
+                    Style::default().fg(DRACULA_COMMENT),
+                )));
+                continue;
+            }
+
+            // Active states: header + stories
+            lines.push(Line::from(Span::styled(
+                format!("{} ({})", state.label(), stories.len()),
+                Style::default().fg(color).add_modifier(Modifier::BOLD),
+            )));
+            for story in stories.iter().take(5) {
+                lines.push(Line::from(Span::styled(
+                    story.short_name(area.width.saturating_sub(4) as usize),
+                    Style::default().fg(DRACULA_FG),
+                )));
+            }
+            if stories.len() > 5 {
+                lines.push(Line::from(Span::styled(
+                    format!("+{} more", stories.len() - 5),
+                    Style::default().fg(DRACULA_COMMENT),
+                )));
+            }
+        }
+
+        let paragraph = Paragraph::new(lines).block(block);
+        frame.render_widget(paragraph, area);
+        return;
+    }
+
+    // Fallback: existing project view content (roadmap/DORA)
     let block = Block::default()
         .borders(Borders::ALL)
         .title(" project ")
