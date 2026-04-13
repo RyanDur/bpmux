@@ -123,7 +123,6 @@ where
             if let Ok(mut sc) = screen_capture.lock() {
                 *sc = capture;
             }
-            capture_countdown = 100; // skip next 100 iterations
         }
         tokio::select! {
             maybe_event = next_terminal_event(&mut events) => {
