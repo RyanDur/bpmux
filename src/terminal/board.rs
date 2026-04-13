@@ -83,6 +83,8 @@ pub fn fetch_board_stories() -> Result<Vec<BoardStory>, String> {
     ]);
     if let Ok(repo) = std::env::var("BPMUX_REPO") {
         cmd.args(["-R", &repo]);
+    } else {
+        cmd.current_dir(env!("CARGO_MANIFEST_DIR"));
     }
     let output = cmd.output().map_err(|e| format!("failed to run gh: {e}"))?;
     if !output.status.success() {
@@ -245,6 +247,8 @@ pub fn fetch_project_state() -> Option<ProjectState> {
     ]);
     if let Ok(repo) = std::env::var("BPMUX_REPO") {
         cmd.args(["-R", &repo]);
+    } else {
+        cmd.current_dir(env!("CARGO_MANIFEST_DIR"));
     }
     let output = cmd.output().ok()?;
     if !output.status.success() {
@@ -314,6 +318,8 @@ pub fn fetch_dora_metrics() -> Option<DoraMetrics> {
     ]);
     if let Ok(repo) = std::env::var("BPMUX_REPO") {
         cmd.args(["-R", &repo]);
+    } else {
+        cmd.current_dir(env!("CARGO_MANIFEST_DIR"));
     }
     let output = cmd.output().ok()?;
     if !output.status.success() {
@@ -418,6 +424,8 @@ pub(super) fn fetch_board() -> Result<String, String> {
     ]);
     if let Ok(repo) = std::env::var("BPMUX_REPO") {
         cmd.args(["-R", &repo]);
+    } else {
+        cmd.current_dir(env!("CARGO_MANIFEST_DIR"));
     }
     let output = cmd.output().map_err(|e| format!("failed to run gh: {e}"))?;
     if !output.status.success() {
