@@ -171,6 +171,65 @@ fn topic_list_shows_created_topics() {
     );
 }
 
+/// GIVEN ryan creates a topic "design" with pm as participant
+/// WHEN ryan sends a message in "design"
+/// THEN pm receives it (auto-subscribed as named participant)
+/// AND dev does NOT receive it (not named as participant)
+#[test]
+fn auto_subscribed_participant_receives_topic_messages() {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let bpmux = TestBpmux::start();
+        assert!(
+            bpmux.wait_for_tui("solo", Duration::from_secs(5)),
+            "TUI should render"
+        );
+
+        // Connect two peers
+        let mut pm = harness::peer::WsPeer::connect(&bpmux, "pm").await;
+        let mut dev = harness::peer::WsPeer::connect(&bpmux, "dev").await;
+
+        // Drain join system messages
+        std::thread::sleep(Duration::from_millis(500));
+        let _ = pm.recv_message_or_timeout(Duration::from_millis(500)).await;
+        let _ = pm.recv_message_or_timeout(Duration::from_millis(500)).await;
+        let _ = dev
+            .recv_message_or_timeout(Duration::from_millis(500))
+            .await;
+        let _ = dev
+            .recv_message_or_timeout(Duration::from_millis(500))
+            .await;
+
+        // Ryan creates a topic with pm (not dev) via TUI
+        bpmux.type_line("/topic create design pm");
+        std::thread::sleep(Duration::from_millis(500));
+
+        // Drain the creation system messages
+        let _ = pm.recv_message_or_timeout(Duration::from_millis(500)).await;
+        let _ = dev
+            .recv_message_or_timeout(Duration::from_millis(500))
+            .await;
+
+        // Ryan sends a message in the topic via TUI
+        bpmux.type_line("testing auto-subscribe");
+        std::thread::sleep(Duration::from_millis(500));
+
+        // pm should receive it (auto-subscribed as named participant)
+        let pm_msg = pm.recv_message_or_timeout(Duration::from_secs(2)).await;
+        assert!(
+            pm_msg.is_some(),
+            "pm should receive topic message as auto-subscribed participant"
+        );
+
+        // dev should NOT receive it
+        let dev_msg = dev.recv_message_or_timeout(Duration::from_secs(1)).await;
+        assert!(
+            dev_msg.is_none(),
+            "dev should NOT receive topic message (not a participant), got: {dev_msg:?}"
+        );
+    });
+}
+
 /// GIVEN pm is subscribed to topic "teaching" and dev is NOT
 /// WHEN pm sends a message in "teaching"
 /// THEN dev does not receive that message

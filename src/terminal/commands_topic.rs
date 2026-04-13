@@ -78,10 +78,7 @@ impl App {
             // via the `to` field so non-participants don't see it.
             let notify = Message {
                 from: "bpmux".to_string(),
-                text: format!(
-                    "Topic '{name}' created by {}. Switch with /topic {name}",
-                    self.peer_name
-                ),
+                text: format!("Created topic '{name}' with: {participant_list}"),
                 ts: Utc::now(),
                 message_type: MessageType::System,
                 to: Some(participants),
