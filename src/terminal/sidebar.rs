@@ -410,6 +410,7 @@ impl App {
             // #191: topic mode — selecting a topic switches active_topic.
             if self.topic_mode() {
                 self.active_topic = ch.clone();
+                self.mark_filters_dirty();
                 self.topic_unreads.remove(ch);
                 self.current_view = None;
                 self.scroll_offset = 0;
@@ -431,9 +432,11 @@ impl App {
             }
             if self.sidebar_selected == 0 {
                 self.current_view = None;
+                self.mark_filters_dirty();
                 self.send_target = None;
             } else {
                 self.current_view = Some(ch.clone());
+                self.mark_filters_dirty();
                 self.send_target = Some(ch.clone());
                 self.channel_unread.remove(ch);
             }

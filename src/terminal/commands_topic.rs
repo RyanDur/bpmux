@@ -69,6 +69,7 @@ impl App {
             self.topic_participants
                 .insert(name.clone(), participants.clone());
             self.active_topic = name.clone();
+            self.mark_filters_dirty();
 
             let participant_list = participants.join(", ");
             self.system_message(format!("Created topic '{name}' with: {participant_list}"));
@@ -96,6 +97,7 @@ impl App {
         let name = args.to_string();
         if self.topics.contains(&name) {
             self.active_topic = name.clone();
+            self.mark_filters_dirty();
             self.system_message(format!("Switched to topic '{name}'."));
         } else {
             self.system_message(format!(

@@ -54,6 +54,10 @@ pub struct App {
     /// message on every render frame. Keyed by message index.
     /// Rebuilt when messages are reloaded (lag recovery).
     pub class_cache: Vec<Option<crate::session::MessageClass>>,
+    /// Cached indices of visible messages. Rebuilt when filter_dirty is set.
+    pub filtered_indices: Vec<usize>,
+    pub cached_hidden_count: usize,
+    pub filter_dirty: bool,
     pub expanded_messages: HashSet<String>,
     pub truncation_indicators: Vec<(u16, String)>,
 
@@ -199,6 +203,9 @@ impl App {
         Self {
             session_dir: None,
             class_cache: Vec::new(),
+            filtered_indices: Vec::new(),
+            cached_hidden_count: 0,
+            filter_dirty: true,
             messages,
             input: String::new(),
             cursor_pos: 0,
@@ -293,6 +300,8 @@ impl App {
     /// Single entry point for adding a message to the display list.
     /// All code paths that add messages should go through this so
     /// the class_cache stays in sync.
+    /// Single entry point for adding a message to the display list.
+    /// Maintains class_cache and marks the filter index dirty.
     pub(super) fn push_message(&mut self, msg: Message) {
         let class = if msg.is_chat() {
             Some(crate::session::classify(&msg, &self.peer_name))
@@ -301,6 +310,7 @@ impl App {
         };
         self.class_cache.push(class);
         self.messages.push(msg);
+        self.filter_dirty = true;
     }
 
     pub(super) fn system_message(&mut self, text: String) {
@@ -315,6 +325,80 @@ impl App {
             multi_depth: None,
             topic: None,
         });
+    }
+
+    /// Rebuild the filtered index if dirty. Called at the start of
+    /// render_chat to avoid per-frame full scans.
+    pub fn rebuild_filtered_if_dirty(&mut self) {
+        // Also rebuild if indices are empty but messages exist
+        // (covers test setups and initial state).
+        if !self.filter_dirty && !self.filtered_indices.is_empty() {
+            return;
+        }
+        if self.messages.is_empty() {
+            return;
+        }
+        self.filter_dirty = false;
+        self.filtered_indices.clear();
+        self.cached_hidden_count = 0;
+        for (idx, m) in self.messages.iter().enumerate() {
+            if !m.is_chat() {
+                if self.show_system_messages {
+                    self.filtered_indices.push(idx);
+                }
+                continue;
+            }
+            let in_channel = match &self.current_view {
+                None => true,
+                Some(view) if view == "broadcast" => {
+                    channel_name(m, &self.peer_name) == "broadcast"
+                }
+                Some(view) => super::markdown::message_matches_channel(m, view, &self.peer_name),
+            };
+            if !in_channel {
+                continue;
+            }
+            if !self.show_all_classes {
+                // Replicate should_hide_by_class logic exactly:
+                // 1. Nudge type → hide
+                // 2. bpmux sender → hide only 📝-prefixed
+                // 3. Otherwise → hide if classified as Routine
+                let hide = if m.message_type == crate::session::MessageType::Nudge {
+                    true
+                } else {
+                    let sender = m.from.split(':').next().unwrap_or(&m.from);
+                    if sender == "bpmux" {
+                        m.text.starts_with('\u{1F4DD}')
+                    } else {
+                        let class = self
+                            .class_cache
+                            .get(idx)
+                            .and_then(|c| c.as_ref())
+                            .copied()
+                            .unwrap_or_else(|| crate::session::classify(m, &self.peer_name));
+                        matches!(class, crate::session::MessageClass::Routine)
+                    }
+                };
+                if hide {
+                    self.cached_hidden_count += 1;
+                    continue;
+                }
+            }
+            if !super::commands_focus::in_focus(m, self.focused_roles.as_deref(), &self.peer_name) {
+                continue;
+            }
+            if let Some(msg_topic) = &m.topic {
+                if *msg_topic != self.active_topic {
+                    continue;
+                }
+            }
+            self.filtered_indices.push(idx);
+        }
+    }
+
+    /// Mark the filtered index as needing rebuild.
+    pub fn mark_filters_dirty(&mut self) {
+        self.filter_dirty = true;
     }
 
     /// #195: record a feature/command invocation for usage statistics.

@@ -193,6 +193,7 @@ impl App {
         }
         if arg == "all" {
             self.current_view = None;
+            self.mark_filters_dirty();
             self.scroll_offset = 0;
             self.system_message("View set to all channels.".to_string());
             self.clear_input();
@@ -200,6 +201,7 @@ impl App {
         }
         if arg == "broadcast" {
             self.current_view = Some("broadcast".to_string());
+            self.mark_filters_dirty();
             self.scroll_offset = 0;
             self.system_message("View set to broadcast.".to_string());
             self.clear_input();
@@ -208,6 +210,7 @@ impl App {
         // Check if arg matches a known channel
         if self.active_channels.contains(arg) {
             self.current_view = Some(arg.to_string());
+            self.mark_filters_dirty();
             self.scroll_offset = 0;
             self.system_message(format!("View set to {arg}."));
             self.clear_input();
@@ -302,6 +305,7 @@ impl App {
     /// 2026-04-10). Removing the source beats adding a classifier rule.
     fn handle_toggle_all(&mut self) -> Option<Message> {
         self.show_all_classes = !self.show_all_classes;
+        self.mark_filters_dirty();
         self.clear_input();
         None
     }

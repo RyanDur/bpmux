@@ -79,60 +79,15 @@ pub(super) fn should_hide_by_class(m: &session::Message, owner_name: &str) -> bo
 }
 
 pub(super) fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
-    // Channel-view filter (existing behavior) + class filter (#161).
-    // Imperative loop so we can both collect visible messages AND count
-    // the hidden ones for the status bar's "N hidden" indicator.
-    let mut chat_messages: Vec<&session::Message> = Vec::new();
-    let mut hidden_class_count: usize = 0;
-    for (idx, m) in app.messages.iter().enumerate() {
-        // Non-chat messages: system/activity, governed by show_system_messages
-        if !m.is_chat() {
-            if app.show_system_messages {
-                chat_messages.push(m);
-            }
-            continue;
-        }
-        // Channel filter — skip messages that aren't in the current view.
-        let in_channel = match &app.current_view {
-            None => true,
-            Some(view) if view == "broadcast" => {
-                app::channel_name(m, &app.peer_name) == "broadcast"
-            }
-            Some(view) => message_matches_channel(m, view, &app.peer_name),
-        };
-        if !in_channel {
-            continue;
-        }
-        // #161 / #186 class filter. Uses cached classification to
-        // avoid re-classifying every message every render frame.
-        if !app.show_all_classes
-            && should_hide_by_class_cached(m, idx, &app.class_cache, &app.peer_name)
-        {
-            hidden_class_count += 1;
-            continue;
-        }
-        // #181 focus-mode display filter. Orthogonal to the classifier
-        // filter above — both can be active. The pure function
-        // `in_focus` handles the override rules (own messages, system
-        // messages, addressee=my_role bypass).
-        if !super::commands_focus::in_focus(m, app.focused_roles.as_deref(), &app.peer_name) {
-            continue;
-        }
-        // #191 topic filter: messages with a SPECIFIC topic only
-        // show in that topic's view. Messages with NO topic
-        // (general/broadcast) show in ALL views — they're the
-        // shared baseline that everyone sees regardless of which
-        // topic they're in. This prevents the isolation problem
-        // where switching to a topic cuts you off from all
-        // broadcast conversation.
-        if let Some(msg_topic) = &m.topic
-            && *msg_topic != app.active_topic
-        {
-            continue;
-        }
-        chat_messages.push(m);
-    }
-    app.hidden_class_count = hidden_class_count;
+    // Rebuild filtered index only when dirty (message arrival,
+    // filter change), not every frame.
+    app.rebuild_filtered_if_dirty();
+    let chat_messages: Vec<&session::Message> = app
+        .filtered_indices
+        .iter()
+        .filter_map(|&idx| app.messages.get(idx))
+        .collect();
+    app.hidden_class_count = app.cached_hidden_count;
     let chat_inner_width = area.width.saturating_sub(2) as usize;
     let chat_height = area.height.saturating_sub(2) as usize;
 

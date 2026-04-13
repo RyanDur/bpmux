@@ -97,10 +97,12 @@ impl App {
             FocusAction::Set(roles) => {
                 let joined = roles.join(", ");
                 self.focused_roles = Some(roles);
+                self.mark_filters_dirty();
                 self.system_message(format!("focus: {joined}"));
             }
             FocusAction::Off => {
                 self.focused_roles = None;
+                self.mark_filters_dirty();
                 self.system_message("focus: off (all roles visible)".to_string());
             }
             FocusAction::Status => {

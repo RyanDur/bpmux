@@ -61,6 +61,7 @@ impl UiState {
         app.expanded_messages = self.expanded_messages.clone();
         app.show_timestamps = self.show_timestamps;
         app.show_all_classes = self.show_all_classes;
+        app.mark_filters_dirty();
         if !self.input.is_empty() {
             app.set_textarea_content(&self.input);
         }
