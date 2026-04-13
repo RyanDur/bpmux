@@ -175,7 +175,7 @@ where
                                     }
                                 }).collect();
                                 app.messages = messages;
-                                app.messages.push(session::Message {
+                                app.push_message(session::Message {
                                     from: "bpmux".to_string(),
                                     text: format!("Caught up — {n} messages arrived while processing."),
                                     ts: chrono::Utc::now(),

@@ -290,8 +290,21 @@ impl App {
         self.sync_input_from_textarea();
     }
 
+    /// Single entry point for adding a message to the display list.
+    /// All code paths that add messages should go through this so
+    /// the class_cache stays in sync.
+    pub(super) fn push_message(&mut self, msg: Message) {
+        let class = if msg.is_chat() {
+            Some(crate::session::classify(&msg, &self.peer_name))
+        } else {
+            None
+        };
+        self.class_cache.push(class);
+        self.messages.push(msg);
+    }
+
     pub(super) fn system_message(&mut self, text: String) {
-        self.messages.push(Message {
+        self.push_message(Message {
             from: "bpmux".to_string(),
             text,
             ts: Utc::now(),
@@ -512,15 +525,7 @@ impl App {
                 .unwrap_or(0);
             wrapped + separator
         };
-        // #195 perf: cache the classification so render_chat doesn't
-        // re-classify every message every frame.
-        let class = if msg.is_chat() {
-            Some(crate::session::classify(&msg, &self.peer_name))
-        } else {
-            None
-        };
-        self.class_cache.push(class);
-        self.messages.push(msg);
+        self.push_message(msg);
         if !was_at_bottom {
             self.scroll_offset = self.scroll_offset.saturating_add(line_estimate);
             self.unread_count += 1;

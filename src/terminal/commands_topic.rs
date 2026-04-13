@@ -87,7 +87,7 @@ impl App {
                 multi_depth: None,
                 topic: None, // system message, visible everywhere
             };
-            self.messages.push(notify.clone());
+            self.push_message(notify.clone());
             self.clear_input();
             return Some(notify);
         }

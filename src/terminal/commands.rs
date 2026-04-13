@@ -118,7 +118,7 @@ impl App {
             multi_depth: None,
             topic: None,
         };
-        self.messages.push(msg.clone());
+        self.push_message(msg.clone());
         self.clear_input();
         self.scroll_offset = 0;
         self.unread_count = 0;
@@ -155,7 +155,7 @@ impl App {
             multi_depth: None,
             topic: None,
         };
-        self.messages.push(msg.clone());
+        self.push_message(msg.clone());
         self.clear_input();
         self.scroll_offset = 0;
         self.unread_count = 0;
@@ -357,7 +357,7 @@ impl App {
                 Some(self.active_topic.clone())
             },
         };
-        self.messages.push(msg.clone());
+        self.push_message(msg.clone());
         self.clear_input();
         self.scroll_offset = 0;
         self.unread_count = 0;
