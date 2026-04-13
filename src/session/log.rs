@@ -167,6 +167,7 @@ pub fn append_message(session_dir: &Path, message: &Message) -> Result<(), LogEr
         .append(true)
         .open(path)?;
     file.write_all(line.as_bytes())?;
+    file.flush()?;
     Ok(())
 }
 

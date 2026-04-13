@@ -271,6 +271,5 @@ pub fn classify(msg: &Message, owner_name: &str) -> MessageClass {
 }
 
 pub fn classify_messages(messages: &[Message], owner_name: &str) -> Vec<MessageClass> {
-    let c = Classifier::new();
-    messages.iter().map(|m| c.classify(m, owner_name)).collect()
+    messages.iter().map(|m| classify(m, owner_name)).collect()
 }
