@@ -56,6 +56,12 @@ pub enum ServerMessage {
         addressee: Option<String>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         message_type: Option<String>,
+        /// Topic tag (#191) — which topic this message belongs to.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        topic: Option<String>,
+        /// Multi-depth payload (#187).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        multi_depth: Option<crate::session::message::MultiDepthPayload>,
     },
     #[serde(rename = "error")]
     Error { reason: String },
@@ -72,6 +78,8 @@ impl From<Message> for ServerMessage {
             to: msg.to,
             addressee: msg.addressee,
             message_type: msg.message_type.to_wire(),
+            topic: msg.topic,
+            multi_depth: msg.multi_depth,
         }
     }
 }

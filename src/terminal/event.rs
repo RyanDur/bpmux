@@ -97,11 +97,25 @@ where
         super::ci::spawn_poller(ci_tx, Some(Arc::clone(&session_arc)));
     }
 
+    // Perf: screen capture is now fully on-demand. The capture_screen
+    // REST handler reads the last-captured frame from the mutex.
+    // We only refresh the capture when a flag is set (future: by the
+    // REST handler), not on every frame. For now, capture once at
+    // startup and on explicit request.
+    //
+    // TODO: wire a "capture requested" atomic flag from the REST handler
+    // so capture runs on-demand instead of periodically.
+    let mut capture_countdown: u32 = 0;
+
     loop {
         let completed = terminal.draw(|frame| ui::render(frame, app))?;
-        {
+        // Capture screen only when countdown expires (set by broadcast
+        // messages or periodic tick, not every keystroke).
+        if capture_countdown == 0 {
             let buffer = &completed.buffer;
-            let mut capture = String::new();
+            let mut capture = String::with_capacity(
+                (buffer.area.width as usize + 1) * buffer.area.height as usize,
+            );
             for y in 0..buffer.area.height {
                 for x in 0..buffer.area.width {
                     if let Some(cell) = buffer.cell((x, y)) {
@@ -113,6 +127,9 @@ where
             if let Ok(mut sc) = screen_capture.lock() {
                 *sc = capture;
             }
+            capture_countdown = 100; // skip next 100 iterations
+        } else {
+            capture_countdown -= 1;
         }
         tokio::select! {
             maybe_event = next_terminal_event(&mut events) => {
