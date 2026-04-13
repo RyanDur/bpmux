@@ -40,6 +40,29 @@ use crate::terminal::theme::{
 ///   Critical: we do NOT run the Routine-class check on bpmux
 ///   content because `session::classify` returns Routine for
 ///   ANY bpmux-sender message, which would hide tool output.
+/// Uses the cached classification when available to avoid
+/// re-classifying every message every render frame.
+fn should_hide_by_class_cached(
+    m: &session::Message,
+    idx: usize,
+    cache: &[Option<session::MessageClass>],
+    owner_name: &str,
+) -> bool {
+    if m.message_type == session::MessageType::Nudge {
+        return true;
+    }
+    let sender = m.from.split(':').next().unwrap_or(&m.from);
+    if sender == "bpmux" {
+        return m.text.starts_with('\u{1F4DD}');
+    }
+    let class = cache
+        .get(idx)
+        .and_then(|c| c.as_ref())
+        .copied()
+        .unwrap_or_else(|| session::classify(m, owner_name));
+    matches!(class, session::MessageClass::Routine)
+}
+
 pub(super) fn should_hide_by_class(m: &session::Message, owner_name: &str) -> bool {
     if m.message_type == session::MessageType::Nudge {
         return true;
@@ -60,7 +83,7 @@ pub(super) fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
     // the hidden ones for the status bar's "N hidden" indicator.
     let mut chat_messages: Vec<&session::Message> = Vec::new();
     let mut hidden_class_count: usize = 0;
-    for m in &app.messages {
+    for (idx, m) in app.messages.iter().enumerate() {
         // Non-chat messages: system/activity, governed by show_system_messages
         if !m.is_chat() {
             if app.show_system_messages {
@@ -79,11 +102,11 @@ pub(super) fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
         if !in_channel {
             continue;
         }
-        // #161 / #186 class filter. See `should_hide_by_class` below
-        // for the full rule set. Extracted into a pure function so
-        // the AC can be unit-tested against each rule branch
-        // without needing to drive the full render loop.
-        if !app.show_all_classes && should_hide_by_class(m, &app.peer_name) {
+        // #161 / #186 class filter. Uses cached classification to
+        // avoid re-classifying every message every render frame.
+        if !app.show_all_classes
+            && should_hide_by_class_cached(m, idx, &app.class_cache, &app.peer_name)
+        {
             hidden_class_count += 1;
             continue;
         }

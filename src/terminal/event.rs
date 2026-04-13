@@ -149,6 +149,14 @@ where
                     Err(broadcast::error::RecvError::Lagged(n)) => {
                         match session.read_messages() {
                             Ok(messages) => {
+                                // Rebuild classification cache after lag recovery
+                                app.class_cache = messages.iter().map(|m| {
+                                    if m.is_chat() {
+                                        Some(crate::session::classify(m, &app.peer_name))
+                                    } else {
+                                        None
+                                    }
+                                }).collect();
                                 app.messages = messages;
                                 app.messages.push(session::Message {
                                     from: "bpmux".to_string(),

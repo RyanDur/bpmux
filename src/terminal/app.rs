@@ -50,6 +50,10 @@ pub struct App {
 
     // ── Message state ──
     pub messages: Vec<Message>,
+    /// Cached classification results to avoid re-classifying every
+    /// message on every render frame. Keyed by message index.
+    /// Rebuilt when messages are reloaded (lag recovery).
+    pub class_cache: Vec<Option<crate::session::MessageClass>>,
     pub expanded_messages: HashSet<String>,
     pub truncation_indicators: Vec<(u16, String)>,
 
@@ -194,6 +198,7 @@ impl App {
         }
         Self {
             session_dir: None,
+            class_cache: Vec::new(),
             messages,
             input: String::new(),
             cursor_pos: 0,
@@ -507,6 +512,14 @@ impl App {
                 .unwrap_or(0);
             wrapped + separator
         };
+        // #195 perf: cache the classification so render_chat doesn't
+        // re-classify every message every frame.
+        let class = if msg.is_chat() {
+            Some(crate::session::classify(&msg, &self.peer_name))
+        } else {
+            None
+        };
+        self.class_cache.push(class);
         self.messages.push(msg);
         if !was_at_bottom {
             self.scroll_offset = self.scroll_offset.saturating_add(line_estimate);
