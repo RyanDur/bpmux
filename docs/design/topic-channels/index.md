@@ -18,6 +18,10 @@ Topics as lightweight sidebar channels. Each topic has its own message stream.
 4. [Cross-topic notification](topics-04-notification.md) — activity elsewhere without disrupting current view
 5. [Topic closing](topics-05-closing.md) — sidebar cleanup + summary
 6. [Focus + topics composing](topics-06-focus-compose.md) — filter by WHO within WHAT
+7. [Invitation and auto-subscribe](topics-07-invitation.md) — participants notified and subscribed at creation
+8. [Leaving a topic](topics-08-leave.md) — `/topic leave` to unsubscribe
+9. [Broadcast from topic](topics-09-broadcast-from-topic.md) — `/broadcast` sends to everyone without leaving
+10. [Cross-topic notification (expanded)](topics-10-cross-topic-notification.md) — multi-topic status bar + sidebar peek
 
 ## How topics fix today's problems
 

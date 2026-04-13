@@ -24,6 +24,10 @@ pub struct PostMessage {
     /// message, which is identical to pre-#187 behavior.
     #[serde(default)]
     pub multi_depth: Option<session::message::MultiDepthPayload>,
+    /// Privacy filter — optional list of recipient names.
+    /// When set, only the listed roles receive the message.
+    #[serde(default)]
+    pub to: Option<Vec<String>>,
     /// Topic tag (#191). When set, the message is scoped to the
     /// named topic and only visible in that topic's view. Omit
     /// for broadcast (visible in all topics).
@@ -396,12 +400,21 @@ pub async fn post_message(
             "text must not be empty".to_string(),
         );
     }
+    if payload.text.len() > 65536 {
+        return (
+            StatusCode::BAD_REQUEST,
+            format!(
+                "message too large: {} bytes exceeds limit of 65536",
+                payload.text.len()
+            ),
+        );
+    }
     let msg = session::Message {
         from: payload.from,
         text: payload.text,
         ts: chrono::Utc::now(),
         message_type: session::MessageType::from(payload.message_type.as_deref()),
-        to: None,
+        to: payload.to,
         addressee: payload.addressee,
         explicit_privacy: false,
         multi_depth: payload.multi_depth,
