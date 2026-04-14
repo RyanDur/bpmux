@@ -83,7 +83,7 @@ fn render_input(frame: &mut Frame, app: &mut App, area: Rect) {
             None => format!(" {}{topic_label} > ", app.peer_name),
         })
         .title_style(Style::default().fg(DRACULA_PURPLE))
-        .border_style(Style::default().fg(if app.sidebar_focused {
+        .border_style(Style::default().fg(if app.sidebar.focused {
             DRACULA_SELECTION
         } else {
             DRACULA_PURPLE
@@ -515,7 +515,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     let content_area = v_split[0];
     let status_area = v_split[1];
 
-    let sidebar_width = if app.sidebar_open && full.width >= MIN_WIDTH_FOR_SIDEBAR {
+    let sidebar_width = if app.sidebar.open && full.width >= MIN_WIDTH_FOR_SIDEBAR {
         24u16
     } else {
         0

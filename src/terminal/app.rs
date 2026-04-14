@@ -42,6 +42,35 @@ pub fn channel_name(msg: &crate::session::Message, owner: &str) -> String {
     }
 }
 
+/// Sidebar navigation state — extracted from App to reduce the God Object.
+/// Methods live in sidebar.rs. Mutated by sidebar key handlers;
+/// read by the sidebar renderer and event dispatch.
+pub struct SidebarState {
+    pub open: bool,
+    pub focused: bool,
+    pub selected: usize,
+    pub filter: String,
+    pub project_expanded: bool,
+    pub direct_expanded: bool,
+    pub groups_expanded: bool,
+    pub system_expanded: bool,
+}
+
+impl Default for SidebarState {
+    fn default() -> Self {
+        Self {
+            open: false,
+            focused: false,
+            selected: 0,
+            filter: String::new(),
+            project_expanded: true,
+            direct_expanded: true,
+            groups_expanded: true,
+            system_expanded: false,
+        }
+    }
+}
+
 pub struct App {
     // ── Session identity ──
     pub session_dir: Option<PathBuf>,
@@ -87,14 +116,7 @@ pub struct App {
     pub dm_flash_until: Option<Instant>,
 
     // ── Sidebar ──
-    pub sidebar_open: bool,
-    pub sidebar_focused: bool,
-    pub sidebar_selected: usize,
-    pub sidebar_filter: String,
-    pub project_expanded: bool,
-    pub direct_expanded: bool,
-    pub groups_expanded: bool,
-    pub system_expanded: bool,
+    pub sidebar: SidebarState,
 
     // ── Search ──
     pub search_results: Vec<crate::session::SearchResult>,
@@ -234,14 +256,10 @@ impl App {
             current_view: None,
             popup_selected: None,
             show_help: false,
-            sidebar_open: false,
-            sidebar_focused: false,
-            sidebar_selected: 0,
+            sidebar: SidebarState::default(),
             channel_unread: HashMap::new(),
             send_target: None,
             tui_focused: true,
-            project_expanded: true,
-            sidebar_filter: String::new(),
             search_results: Vec::new(),
             search_selected: None,
             sidebar_area: None,
@@ -270,9 +288,6 @@ impl App {
             board_detail: None,
             chat_area: None,
             should_reload: false,
-            direct_expanded: true,
-            groups_expanded: true,
-            system_expanded: false,
             ci_state: super::ci::CiState::Unknown,
             show_all_classes: false,
             hidden_class_count: 0,

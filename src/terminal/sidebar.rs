@@ -26,15 +26,15 @@ pub(super) fn render(frame: &mut Frame, app: &App, area: Rect) {
         render_channel_items(&channels, app, area)
     };
 
-    let border_color = if app.sidebar_focused {
+    let border_color = if app.sidebar.focused {
         DRACULA_PURPLE
     } else {
         DRACULA_SELECTION
     };
 
     // #191: title says "topics" when in topic mode.
-    let title_text = if !app.sidebar_filter.is_empty() {
-        format!(" filter: {} ", app.sidebar_filter)
+    let title_text = if !app.sidebar.filter.is_empty() {
+        format!(" filter: {} ", app.sidebar.filter)
     } else if app.topic_mode() {
         format!(" {} topics ", super::icons::COLLAPSE)
     } else {
@@ -64,7 +64,7 @@ fn render_topic_items(topics: &[String], app: &App, area: Rect) -> Vec<Line<'sta
         .iter()
         .enumerate()
         .map(|(i, topic)| {
-            let selected = i == app.sidebar_selected && app.sidebar_focused;
+            let selected = i == app.sidebar.selected && app.sidebar.focused;
             let bg = if selected {
                 DRACULA_SELECTION
             } else {
@@ -145,7 +145,7 @@ fn render_channel_items(channels: &[String], app: &App, area: Rect) -> Vec<Line<
         .iter()
         .enumerate()
         .map(|(i, ch)| {
-            let selected = i == app.sidebar_selected && app.sidebar_focused;
+            let selected = i == app.sidebar.selected && app.sidebar.focused;
             let bg = if selected {
                 DRACULA_SELECTION
             } else {
@@ -154,7 +154,11 @@ fn render_channel_items(channels: &[String], app: &App, area: Rect) -> Vec<Line<
 
             // Index 0 = project root node
             if i == 0 {
-                let arrow = if app.project_expanded { "▾ " } else { "▸ " };
+                let arrow = if app.sidebar.project_expanded {
+                    "▾ "
+                } else {
+                    "▸ "
+                };
                 let is_all = app.current_view.is_none();
                 let name_style = if is_all {
                     Style::default()
@@ -275,7 +279,7 @@ impl App {
         // #191: when topics exist, the sidebar shows topics instead
         // of the channel tree. Flat list, no sections.
         if self.topic_mode() {
-            let filter = self.sidebar_filter.to_lowercase();
+            let filter = self.sidebar.filter.to_lowercase();
             return self
                 .topics
                 .iter()
@@ -285,11 +289,11 @@ impl App {
         }
 
         let mut result = vec![self.session_id.clone()];
-        if !self.project_expanded {
+        if !self.sidebar.project_expanded {
             return result;
         }
 
-        let filter = self.sidebar_filter.to_lowercase();
+        let filter = self.sidebar.filter.to_lowercase();
         let matches_filter = |ch: &str| filter.is_empty() || ch.to_lowercase().contains(&filter);
 
         // Broadcast always at top level
@@ -346,24 +350,36 @@ impl App {
 
         // Direct section
         if !direct.is_empty() {
-            result.push(section_header("direct", direct.len(), self.direct_expanded));
-            if self.direct_expanded {
+            result.push(section_header(
+                "direct",
+                direct.len(),
+                self.sidebar.direct_expanded,
+            ));
+            if self.sidebar.direct_expanded {
                 result.extend(direct);
             }
         }
 
         // Groups section
         if !groups.is_empty() {
-            result.push(section_header("groups", groups.len(), self.groups_expanded));
-            if self.groups_expanded {
+            result.push(section_header(
+                "groups",
+                groups.len(),
+                self.sidebar.groups_expanded,
+            ));
+            if self.sidebar.groups_expanded {
                 result.extend(groups);
             }
         }
 
         // System section
         if !system.is_empty() {
-            result.push(section_header("system", system.len(), self.system_expanded));
-            if self.system_expanded {
+            result.push(section_header(
+                "system",
+                system.len(),
+                self.sidebar.system_expanded,
+            ));
+            if self.sidebar.system_expanded {
                 result.extend(system);
             }
         }
@@ -372,15 +388,15 @@ impl App {
     }
 
     pub fn toggle_sidebar(&mut self) {
-        if !self.sidebar_open {
-            self.sidebar_open = true;
-            self.sidebar_focused = true;
-        } else if !self.sidebar_focused {
-            self.sidebar_focused = true;
+        if !self.sidebar.open {
+            self.sidebar.open = true;
+            self.sidebar.focused = true;
+        } else if !self.sidebar.focused {
+            self.sidebar.focused = true;
         } else {
-            self.sidebar_open = false;
-            self.sidebar_focused = false;
-            self.sidebar_filter.clear();
+            self.sidebar.open = false;
+            self.sidebar.focused = false;
+            self.sidebar.filter.clear();
         }
     }
 
@@ -389,10 +405,10 @@ impl App {
         if count == 0 {
             return;
         }
-        self.sidebar_selected = if self.sidebar_selected == 0 {
+        self.sidebar.selected = if self.sidebar.selected == 0 {
             count - 1
         } else {
-            self.sidebar_selected - 1
+            self.sidebar.selected - 1
         };
     }
 
@@ -401,12 +417,12 @@ impl App {
         if count == 0 {
             return;
         }
-        self.sidebar_selected = (self.sidebar_selected + 1) % count;
+        self.sidebar.selected = (self.sidebar.selected + 1) % count;
     }
 
     pub fn sidebar_select(&mut self) {
         let channels = self.sidebar_channels();
-        if let Some(ch) = channels.get(self.sidebar_selected) {
+        if let Some(ch) = channels.get(self.sidebar.selected) {
             // #191: topic mode — selecting a topic switches active_topic.
             if self.topic_mode() {
                 self.active_topic = ch.clone();
@@ -414,23 +430,23 @@ impl App {
                 self.topic_unreads.remove(ch);
                 self.current_view = None;
                 self.scroll_offset = 0;
-                self.sidebar_focused = false;
-                self.sidebar_filter.clear();
+                self.sidebar.focused = false;
+                self.sidebar.filter.clear();
                 return;
             }
 
             // Toggle section headers
             if is_section_header(ch) {
                 if ch.contains("direct") {
-                    self.direct_expanded = !self.direct_expanded;
+                    self.sidebar.direct_expanded = !self.sidebar.direct_expanded;
                 } else if ch.contains("groups") {
-                    self.groups_expanded = !self.groups_expanded;
+                    self.sidebar.groups_expanded = !self.sidebar.groups_expanded;
                 } else if ch.contains("system") {
-                    self.system_expanded = !self.system_expanded;
+                    self.sidebar.system_expanded = !self.sidebar.system_expanded;
                 }
                 return;
             }
-            if self.sidebar_selected == 0 {
+            if self.sidebar.selected == 0 {
                 self.current_view = None;
                 self.mark_filters_dirty();
                 self.send_target = None;
@@ -441,10 +457,10 @@ impl App {
                 self.channel_unread.remove(ch);
             }
             self.scroll_offset = 0;
-            self.sidebar_focused = false;
-            self.sidebar_filter.clear();
+            self.sidebar.focused = false;
+            self.sidebar.filter.clear();
         }
-        self.sidebar_focused = false;
+        self.sidebar.focused = false;
     }
 
     pub fn sidebar_collapse(&mut self) {
@@ -454,47 +470,47 @@ impl App {
         }
         // Collapse the section the selected item belongs to, not the whole tree
         let channels = self.sidebar_channels();
-        if let Some(ch) = channels.get(self.sidebar_selected) {
+        if let Some(ch) = channels.get(self.sidebar.selected) {
             if is_section_header(ch) {
                 // On a header: if the section itself is expanded, collapse it.
                 // Otherwise fall through to collapsing the project.
-                if ch.contains("direct") && self.direct_expanded {
-                    self.direct_expanded = false;
+                if ch.contains("direct") && self.sidebar.direct_expanded {
+                    self.sidebar.direct_expanded = false;
                     return;
                 }
-                if ch.contains("groups") && self.groups_expanded {
-                    self.groups_expanded = false;
+                if ch.contains("groups") && self.sidebar.groups_expanded {
+                    self.sidebar.groups_expanded = false;
                     return;
                 }
-                if ch.contains("system") && self.system_expanded {
-                    self.system_expanded = false;
+                if ch.contains("system") && self.sidebar.system_expanded {
+                    self.sidebar.system_expanded = false;
                     return;
                 }
-                self.project_expanded = false;
-                self.sidebar_selected = 0;
+                self.sidebar.project_expanded = false;
+                self.sidebar.selected = 0;
                 return;
             }
             // Find which section this item is in by looking backwards for a header
-            for i in (0..self.sidebar_selected).rev() {
+            for i in (0..self.sidebar.selected).rev() {
                 if let Some(header) = channels.get(i)
                     && is_section_header(header)
                 {
                     if header.contains("direct") {
-                        self.direct_expanded = false;
+                        self.sidebar.direct_expanded = false;
                     } else if header.contains("groups") {
-                        self.groups_expanded = false;
+                        self.sidebar.groups_expanded = false;
                     } else if header.contains("system") {
-                        self.system_expanded = false;
+                        self.sidebar.system_expanded = false;
                     }
-                    self.sidebar_selected = i;
+                    self.sidebar.selected = i;
                     return;
                 }
             }
         }
         // Fallback: collapse project
-        if self.project_expanded {
-            self.project_expanded = false;
-            self.sidebar_selected = 0;
+        if self.sidebar.project_expanded {
+            self.sidebar.project_expanded = false;
+            self.sidebar.selected = 0;
         }
     }
 
@@ -504,29 +520,29 @@ impl App {
             return;
         }
         let channels = self.sidebar_channels();
-        if let Some(ch) = channels.get(self.sidebar_selected)
+        if let Some(ch) = channels.get(self.sidebar.selected)
             && is_section_header(ch)
         {
             if ch.contains("direct") {
-                self.direct_expanded = true;
+                self.sidebar.direct_expanded = true;
             } else if ch.contains("groups") {
-                self.groups_expanded = true;
+                self.sidebar.groups_expanded = true;
             } else if ch.contains("system") {
-                self.system_expanded = true;
+                self.sidebar.system_expanded = true;
             }
             return;
         }
-        self.project_expanded = true;
+        self.sidebar.project_expanded = true;
     }
 
     pub fn sidebar_close(&mut self) {
-        self.sidebar_focused = false;
-        self.sidebar_filter.clear();
+        self.sidebar.focused = false;
+        self.sidebar.filter.clear();
     }
 
     pub fn sidebar_filter_char(&mut self, c: char) {
-        self.sidebar_filter.push(c);
-        self.sidebar_selected = if self.sidebar_channels().len() > 1 {
+        self.sidebar.filter.push(c);
+        self.sidebar.selected = if self.sidebar_channels().len() > 1 {
             1
         } else {
             0
@@ -534,6 +550,6 @@ impl App {
     }
 
     pub fn sidebar_filter_backspace(&mut self) {
-        self.sidebar_filter.pop();
+        self.sidebar.filter.pop();
     }
 }

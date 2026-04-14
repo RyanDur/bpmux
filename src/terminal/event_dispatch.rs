@@ -65,7 +65,7 @@ fn handle_mouse_click(col: u16, row: u16, app: &mut App) {
                 let channels = app.sidebar_channels();
                 let idx = content_row as usize;
                 if idx < channels.len() {
-                    app.sidebar_selected = idx;
+                    app.sidebar.selected = idx;
                     app.sidebar_select();
                 }
             }
@@ -268,7 +268,7 @@ pub(super) fn handle_terminal_event(
         app.toggle_sidebar();
         return Ok(());
     }
-    if app.sidebar_focused {
+    if app.sidebar.focused {
         match key.code {
             KeyCode::Up => app.sidebar_up(),
             KeyCode::Down => app.sidebar_down(),

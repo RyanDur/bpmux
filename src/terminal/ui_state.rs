@@ -35,12 +35,12 @@ impl UiState {
         Self {
             current_view: app.current_view.clone(),
             send_target: app.send_target.clone(),
-            sidebar_open: app.sidebar_open,
+            sidebar_open: app.sidebar.open,
             sidebar_focused: false,
-            project_expanded: app.project_expanded,
-            direct_expanded: app.direct_expanded,
-            groups_expanded: app.groups_expanded,
-            system_expanded: app.system_expanded,
+            project_expanded: app.sidebar.project_expanded,
+            direct_expanded: app.sidebar.direct_expanded,
+            groups_expanded: app.sidebar.groups_expanded,
+            system_expanded: app.sidebar.system_expanded,
             scroll_offset: app.scroll_offset,
             expanded_messages: app.expanded_messages.clone(),
             show_timestamps: app.show_timestamps,
@@ -52,11 +52,11 @@ impl UiState {
     pub fn restore(&self, app: &mut App) {
         app.current_view = self.current_view.clone();
         app.send_target = self.send_target.clone();
-        app.sidebar_open = self.sidebar_open;
-        app.project_expanded = self.project_expanded;
-        app.direct_expanded = self.direct_expanded;
-        app.groups_expanded = self.groups_expanded;
-        app.system_expanded = self.system_expanded;
+        app.sidebar.open = self.sidebar_open;
+        app.sidebar.project_expanded = self.project_expanded;
+        app.sidebar.direct_expanded = self.direct_expanded;
+        app.sidebar.groups_expanded = self.groups_expanded;
+        app.sidebar.system_expanded = self.system_expanded;
         app.scroll_offset = self.scroll_offset;
         app.expanded_messages = self.expanded_messages.clone();
         app.show_timestamps = self.show_timestamps;

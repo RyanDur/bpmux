@@ -234,7 +234,7 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         } else {
             ("", "\u{2191}\u{2193}=nav Enter=detail Esc=close")
         }
-    } else if app.sidebar_focused {
+    } else if app.sidebar.focused {
         // In sidebar-focus mode, nothing in the hint is clickable —
         // it's all keybind guidance. Render the whole string in plain
         // foreground.
