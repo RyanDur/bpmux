@@ -330,14 +330,14 @@ fn build_delivery_signals(number: u64, title: &str) -> Vec<ClientMessage> {
             text: format!("#{number} ({title}) delivered — desk-check needed"),
             to: Some(vec!["designer".to_string()]),
             addressee: Some("designer".to_string()),
-            message_type: Some("activity".to_string()),
+            message_type: None,
             topic: None,
         },
         ClientMessage::Send {
             text: format!("#{number} ({title}) delivered. queue update: check ready count"),
             to: Some(vec!["pm".to_string()]),
             addressee: Some("pm".to_string()),
-            message_type: Some("activity".to_string()),
+            message_type: None,
             topic: None,
         },
     ]
@@ -348,7 +348,7 @@ fn build_start_signal(number: u64) -> ClientMessage {
         text: format!("#{number} started. ready queue shrunk — check if restocking needed"),
         to: Some(vec!["pm".to_string()]),
         addressee: Some("pm".to_string()),
-        message_type: Some("activity".to_string()),
+        message_type: None,
         topic: None,
     }
 }
@@ -358,7 +358,7 @@ fn build_accept_signal(number: u64) -> ClientMessage {
         text: format!("#{number} accepted. pick the next story from the ready queue"),
         to: Some(vec!["dev".to_string()]),
         addressee: Some("dev".to_string()),
-        message_type: Some("activity".to_string()),
+        message_type: None,
         topic: None,
     }
 }
@@ -368,7 +368,7 @@ fn build_reject_signal(number: u64, reason: &str) -> ClientMessage {
         text: format!("#{number} rejected: {reason}. fix and re-deliver"),
         to: Some(vec!["dev".to_string()]),
         addressee: Some("dev".to_string()),
-        message_type: Some("activity".to_string()),
+        message_type: None,
         topic: None,
     }
 }
