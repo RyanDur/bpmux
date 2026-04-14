@@ -622,6 +622,7 @@ pub(super) async fn handle_create_story(
 }
 
 /// Start a story — dev only. Sends workflow signals (#197).
+/// Signals fire on INTENT — team is notified even if gh fails.
 pub(super) async fn handle_start_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
@@ -632,22 +633,29 @@ pub(super) async fn handle_start_story(
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
-    gh(&[
-        "issue",
-        "edit",
-        &number.to_string(),
-        "--add-label",
-        "started",
-    ])
-    .await?;
-    // #197: signal PM that ready queue shrunk
+    // Signal fires on intent, before gh call
     let signal =
         serde_json::to_string(&build_start_signal(number)).map_err(|e| format!("signal: {e}"))?;
     let _ = ws_send(ws_tx, signal).await;
-    Ok(format!("#{number} marked as started"))
+    // Label change — uses "in progress" (repo's actual label name)
+    let gh_result = gh(&[
+        "issue",
+        "edit",
+        &number.to_string(),
+        "--remove-label",
+        "ready",
+        "--add-label",
+        "in progress",
+    ])
+    .await;
+    match gh_result {
+        Ok(_) => Ok(format!("#{number} marked as in progress")),
+        Err(e) => Err(format!("#{number} signal sent but gh failed: {e}")),
+    }
 }
 
 /// Deliver a story — dev only. Sends workflow signals (#197).
+/// Signals fire on INTENT — team is notified even if gh fails.
 pub(super) async fn handle_deliver_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
@@ -658,30 +666,33 @@ pub(super) async fn handle_deliver_story(
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
-    // Get story title for the signal
+    // Get story title for the signal (best-effort)
     let title = gh(&["issue", "view", &number.to_string(), "--json", "title"])
         .await
         .ok()
         .and_then(|json| serde_json::from_str::<serde_json::Value>(&json).ok())
         .and_then(|v| v["title"].as_str().map(String::from))
         .unwrap_or_else(|| format!("#{number}"));
-    // Remove started, add delivered
-    gh(&[
-        "issue",
-        "edit",
-        &number.to_string(),
-        "--remove-label",
-        "started",
-        "--add-label",
-        "delivered",
-    ])
-    .await?;
-    // #197: send workflow signals
+    // Signal fires on intent, before gh label change
     for signal in build_delivery_signals(number, &title) {
         let json = serde_json::to_string(&signal).map_err(|e| format!("signal: {e}"))?;
         let _ = ws_send(ws_tx, json).await;
     }
-    Ok(format!("#{number} marked as delivered"))
+    // Label change — uses "in progress" → "delivered"
+    let gh_result = gh(&[
+        "issue",
+        "edit",
+        &number.to_string(),
+        "--remove-label",
+        "in progress",
+        "--add-label",
+        "delivered",
+    ])
+    .await;
+    match gh_result {
+        Ok(_) => Ok(format!("#{number} marked as delivered")),
+        Err(e) => Err(format!("#{number} signal sent but gh failed: {e}")),
+    }
 }
 
 /// Add/change labels — PM only.
@@ -713,20 +724,24 @@ pub(super) async fn handle_accept_story(
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
-    gh(&[
+    // Signal fires on intent
+    let signal =
+        serde_json::to_string(&build_accept_signal(number)).map_err(|e| format!("signal: {e}"))?;
+    let _ = ws_send(ws_tx, signal).await;
+    // gh operations
+    let _ = gh(&[
         "issue",
         "edit",
         &number.to_string(),
         "--remove-label",
         "delivered",
     ])
-    .await?;
-    gh(&["issue", "close", &number.to_string()]).await?;
-    // #197: signal dev to pick next story
-    let signal =
-        serde_json::to_string(&build_accept_signal(number)).map_err(|e| format!("signal: {e}"))?;
-    let _ = ws_send(ws_tx, signal).await;
-    Ok(format!("#{number} accepted and closed"))
+    .await;
+    let gh_result = gh(&["issue", "close", &number.to_string()]).await;
+    match gh_result {
+        Ok(_) => Ok(format!("#{number} accepted and closed")),
+        Err(e) => Err(format!("#{number} signal sent but gh failed: {e}")),
+    }
 }
 
 /// Reject a story — owner (ryan) only. Sends workflow signals (#197).
@@ -744,7 +759,12 @@ pub(super) async fn handle_reject_story(
         .get("reason")
         .and_then(|v| v.as_str())
         .unwrap_or("rejected");
-    gh(&[
+    // Signal fires on intent
+    let signal = serde_json::to_string(&build_reject_signal(number, reason))
+        .map_err(|e| format!("signal: {e}"))?;
+    let _ = ws_send(ws_tx, signal).await;
+    // gh operations
+    let _ = gh(&[
         "issue",
         "edit",
         &number.to_string(),
@@ -753,13 +773,12 @@ pub(super) async fn handle_reject_story(
         "--add-label",
         "rejected",
     ])
-    .await?;
-    gh(&["issue", "comment", &number.to_string(), "--body", reason]).await?;
-    // #197: signal dev to fix and re-deliver
-    let signal = serde_json::to_string(&build_reject_signal(number, reason))
-        .map_err(|e| format!("signal: {e}"))?;
-    let _ = ws_send(ws_tx, signal).await;
-    Ok(format!("#{number} rejected: {reason}"))
+    .await;
+    let gh_result = gh(&["issue", "comment", &number.to_string(), "--body", reason]).await;
+    match gh_result {
+        Ok(_) => Ok(format!("#{number} rejected: {reason}")),
+        Err(e) => Err(format!("#{number} signal sent but gh failed: {e}")),
+    }
 }
 
 /// Reorder a story within its state column — PM only (#194).
