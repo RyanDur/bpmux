@@ -69,7 +69,19 @@ impl BoardStory {
 
 /// Fetch all open + recently closed issues and categorize them into
 /// board columns. Returns stories sorted by state priority.
+///
+/// When `BPMUX_BOARD_FIXTURE` env var is set, reads from that file
+/// instead of calling gh. This lets e2e tests exercise the full
+/// board rendering pipeline with controlled data.
 pub fn fetch_board_stories() -> Result<Vec<BoardStory>, String> {
+    // Test fixture support: read from file instead of gh
+    if let Ok(fixture_path) = std::env::var("BPMUX_BOARD_FIXTURE") {
+        let contents =
+            std::fs::read_to_string(&fixture_path).map_err(|e| format!("fixture read: {e}"))?;
+        let json: Vec<serde_json::Value> =
+            serde_json::from_str(&contents).map_err(|e| format!("fixture parse: {e}"))?;
+        return parse_gh_issues(&json);
+    }
     let mut cmd = std::process::Command::new("gh");
     cmd.args([
         "issue",
@@ -93,9 +105,13 @@ pub fn fetch_board_stories() -> Result<Vec<BoardStory>, String> {
     }
     let json: Vec<serde_json::Value> =
         serde_json::from_slice(&output.stdout).map_err(|e| format!("parse error: {e}"))?;
+    parse_gh_issues(&json)
+}
 
+/// Parse GitHub issue JSON into BoardStory structs.
+fn parse_gh_issues(json: &[serde_json::Value]) -> Result<Vec<BoardStory>, String> {
     let mut stories = Vec::new();
-    for issue in &json {
+    for issue in json {
         let num = issue["number"].as_u64().unwrap_or(0);
         let title = issue["title"].as_str().unwrap_or("?").to_string();
         let gh_state = issue["state"].as_str().unwrap_or("OPEN");
