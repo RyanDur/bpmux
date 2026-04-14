@@ -55,7 +55,7 @@ fn build_project_content() -> String {
 }
 
 fn handle_mouse_click(col: u16, row: u16, app: &mut App) {
-    if let Some((sx, sy, sw, sh)) = app.sidebar_area {
+    if let Some((sx, sy, sw, sh)) = app.layout.sidebar_area {
         if col >= sx && col < sx + sw && row >= sy && row < sy + sh {
             if row == sy {
                 // Click on sidebar header — toggle closed
@@ -71,7 +71,7 @@ fn handle_mouse_click(col: u16, row: u16, app: &mut App) {
             }
             return;
         }
-    } else if let Some((mx, my)) = app.menu_click_cell {
+    } else if let Some((mx, my)) = app.layout.menu_click_cell {
         // #183: the left-edge click zone is now the visible `≡` glyph
         // at the top-left of the chat area. Narrowed from the old
         // `col < 3 on any row` catch-all, which triggered false
@@ -98,7 +98,7 @@ fn handle_mouse_click(col: u16, row: u16, app: &mut App) {
         return;
     }
 
-    if let Some((cx, cy, cw, _)) = app.chat_area
+    if let Some((cx, cy, cw, _)) = app.layout.chat_area
         && row == cy
         && col >= cx
         && col < cx + cw
@@ -112,9 +112,12 @@ fn handle_mouse_click(col: u16, row: u16, app: &mut App) {
         return;
     }
 
-    if let Some((_, sb_y, _, _)) = app.status_bar_area
+    if let Some((_, sb_y, _, _)) = app.layout.status_bar_area
         && row == sb_y
-        && app.help_hint_col.is_some_and(|hint_col| col >= hint_col)
+        && app
+            .layout
+            .help_hint_col
+            .is_some_and(|hint_col| col >= hint_col)
     {
         app.show_help = true;
     }

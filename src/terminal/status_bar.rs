@@ -271,7 +271,7 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
             ));
             status_spans.push(Span::raw(" ".repeat(ci_hint_gap.saturating_sub(1))));
         }
-        app.help_hint_col = Some(area.x + (used + pad + ci_width + ci_hint_gap) as u16);
+        app.layout.help_hint_col = Some(area.x + (used + pad + ci_width + ci_hint_gap) as u16);
         if !clickable_hint.is_empty() {
             status_spans.push(Span::styled(
                 clickable_hint,
@@ -284,7 +284,7 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
             status_spans.push(Span::styled(keybind_hint, Style::default().fg(DRACULA_FG)));
         }
     } else {
-        app.help_hint_col = None;
+        app.layout.help_hint_col = None;
     }
     let status = Paragraph::new(Line::from(status_spans))
         .style(Style::default().bg(DRACULA_SELECTION).fg(DRACULA_FG));

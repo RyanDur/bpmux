@@ -545,12 +545,12 @@ pub fn render(frame: &mut Frame, app: &mut App) {
 
     if sidebar_width > 0 {
         let s = h_chunks[0];
-        app.sidebar_area = Some((s.x, s.y, s.width, s.height));
+        app.layout.sidebar_area = Some((s.x, s.y, s.width, s.height));
         sidebar::render(frame, app, h_chunks[0]);
     } else {
-        app.sidebar_area = None;
+        app.layout.sidebar_area = None;
     }
-    app.status_bar_area = Some((
+    app.layout.status_bar_area = Some((
         status_area.x,
         status_area.y,
         status_area.width,
@@ -563,13 +563,13 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         // Side-by-side: project view (60%) | chat (40%)
         let split = Layout::horizontal([Constraint::Percentage(60), Constraint::Percentage(40)])
             .split(chunks[1]);
-        app.chat_area = Some((split[0].x, split[0].y, split[0].width, split[0].height));
+        app.layout.chat_area = Some((split[0].x, split[0].y, split[0].width, split[0].height));
         render_project_panel(frame, app, split[0]);
         chat::render_chat(frame, app, split[1]);
         chat::render_unread_indicator(frame, app, split[1]);
     } else {
         let chat_rect = chunks[1];
-        app.chat_area = Some((chat_rect.x, chat_rect.y, chat_rect.width, chat_rect.height));
+        app.layout.chat_area = Some((chat_rect.x, chat_rect.y, chat_rect.width, chat_rect.height));
         chat::render_chat(frame, app, chunks[1]);
         chat::render_unread_indicator(frame, app, chunks[1]);
     }
@@ -581,7 +581,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     // top-left of the chat area. This is the "hamburger icon" that
     // replaces the previously invisible left-edge click zone — the
     // biggest discoverability win in the clickable-affordances spec.
-    // Stores the click-cell coord on `app.menu_click_cell` so the
+    // Stores the click-cell coord on `app.layout.menu_click_cell` so the
     // mouse handler can detect clicks on just that cell rather than
     // the old "col < 3 on any row" catch-all.
     if sidebar_width == 0 {
@@ -590,9 +590,9 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         let menu_area = Rect::new(menu_x, menu_y, 1, 1);
         let menu = Paragraph::new(Span::styled(icons::MENU, Style::default().fg(DRACULA_CYAN)));
         frame.render_widget(menu, menu_area);
-        app.menu_click_cell = Some((menu_x, menu_y));
+        app.layout.menu_click_cell = Some((menu_x, menu_y));
     } else {
-        app.menu_click_cell = None;
+        app.layout.menu_click_cell = None;
     }
 
     // #193: board view replaces chat area when active.

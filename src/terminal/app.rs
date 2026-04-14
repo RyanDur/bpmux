@@ -113,6 +113,17 @@ impl Default for TopicState {
 }
 
 /// Scroll state — extracted from App.
+/// Layout positions — set by the renderer each frame, read by
+/// mouse click handler and status bar. Pure render state.
+#[derive(Default)]
+pub struct LayoutState {
+    pub sidebar_area: Option<(u16, u16, u16, u16)>,
+    pub menu_click_cell: Option<(u16, u16)>,
+    pub status_bar_area: Option<(u16, u16, u16, u16)>,
+    pub chat_area: Option<(u16, u16, u16, u16)>,
+    pub help_hint_col: Option<u16>,
+}
+
 pub struct ScrollState {
     pub offset: usize,
     pub max: usize,
@@ -253,18 +264,7 @@ pub struct App {
     pub hidden_class_count: usize,
 
     // ── Layout positions (set by renderer) ──
-    pub sidebar_area: Option<(u16, u16, u16, u16)>,
-
-    /// (#183) Coordinates of the ≡ menu-toggle glyph rendered at the
-    /// top-left of the chat area when the sidebar is closed. Set by
-    /// the renderer each frame; read by the mouse click handler to
-    /// detect "click on the menu icon" without relying on the old
-    /// "col < 3 on any row" heuristic which produced false positives
-    /// on any upper-left click. `None` when the sidebar is open.
-    pub menu_click_cell: Option<(u16, u16)>,
-    pub status_bar_area: Option<(u16, u16, u16, u16)>,
-    pub chat_area: Option<(u16, u16, u16, u16)>,
-    pub help_hint_col: Option<u16>,
+    pub layout: LayoutState,
 
     // ── Lifecycle ──
     pub should_quit: bool,
@@ -318,10 +318,7 @@ impl App {
             tui_focused: true,
             search_results: Vec::new(),
             search_selected: None,
-            sidebar_area: None,
-            menu_click_cell: None,
-            status_bar_area: None,
-            help_hint_col: None,
+            layout: LayoutState::default(),
             truncation_indicators: Vec::new(),
             p2p_command: None,
             project_state: None,
@@ -334,7 +331,6 @@ impl App {
             palette: PaletteState::default(),
             topic: TopicState::default(),
             board: BoardState::default(),
-            chat_area: None,
             should_reload: false,
             ci_state: super::ci::CiState::Unknown,
             show_all_classes: false,
