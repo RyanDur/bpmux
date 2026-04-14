@@ -93,7 +93,7 @@ pub(super) fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
 
     let visible_window = chat_height * 3;
     let total_msgs = chat_messages.len();
-    let scroll_back = app.scroll_offset;
+    let scroll_back = app.scroll.offset;
     let needed = visible_window + scroll_back;
     let start_idx = total_msgs.saturating_sub(needed);
 
@@ -253,10 +253,10 @@ pub(super) fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
         .style(Style::default().bg(DRACULA_BG).fg(DRACULA_FG));
     let chat = Paragraph::new(messages).block(chat_block);
     let max_scroll = total_lines.saturating_sub(chat_height);
-    app.max_scroll = max_scroll;
+    app.scroll.max = max_scroll;
     #[allow(clippy::cast_possible_truncation)]
     let scroll = max_scroll
-        .saturating_sub(app.scroll_offset)
+        .saturating_sub(app.scroll.offset)
         .min(u16::MAX as usize) as u16;
 
     let inner_y = area.y + 1;
@@ -275,11 +275,15 @@ pub(super) fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
 }
 
 pub(super) fn render_unread_indicator(frame: &mut Frame, app: &App, area: Rect) {
-    if app.scroll_offset > 0 && app.unread_count > 0 {
+    if app.scroll.offset > 0 && app.scroll.unread_count > 0 {
         let unread_text = format!(
             "\u{2193} {} new message{}",
-            app.unread_count,
-            if app.unread_count == 1 { "" } else { "s" }
+            app.scroll.unread_count,
+            if app.scroll.unread_count == 1 {
+                ""
+            } else {
+                "s"
+            }
         );
         let unread_line = Line::from(Span::styled(
             unread_text,

@@ -98,65 +98,65 @@ fn quit_command_sets_flag() {
 #[test]
 fn scroll_up_increases_offset() {
     let mut app = test_app();
-    app.max_scroll = 100;
+    app.scroll.max = 100;
     app.scroll_up(5);
-    assert_eq!(app.scroll_offset, 5);
+    assert_eq!(app.scroll.offset, 5);
     app.scroll_up(3);
-    assert_eq!(app.scroll_offset, 8);
+    assert_eq!(app.scroll.offset, 8);
 }
 
 #[test]
 fn scroll_up_clamps_to_max_scroll() {
     let mut app = test_app();
-    app.max_scroll = 10;
+    app.scroll.max = 10;
     app.scroll_up(15);
-    assert_eq!(app.scroll_offset, 10);
+    assert_eq!(app.scroll.offset, 10);
 }
 
 #[test]
 fn scroll_down_decreases_offset_to_zero() {
     let mut app = test_app();
-    app.scroll_offset = 10;
+    app.scroll.offset = 10;
     app.scroll_down(3);
-    assert_eq!(app.scroll_offset, 7);
+    assert_eq!(app.scroll.offset, 7);
     app.scroll_down(10);
-    assert_eq!(app.scroll_offset, 0);
+    assert_eq!(app.scroll.offset, 0);
 }
 
 #[test]
 fn receiving_message_when_scrolled_up_increments_unread_count() {
     let mut app = test_app();
-    app.scroll_offset = 5;
+    app.scroll.offset = 5;
     app.receive_message(chat_msg("bot:ws", "hello"));
-    assert_eq!(app.unread_count, 1);
+    assert_eq!(app.scroll.unread_count, 1);
     app.receive_message(chat_msg("bot:ws", "world"));
-    assert_eq!(app.unread_count, 2);
+    assert_eq!(app.scroll.unread_count, 2);
 }
 
 #[test]
 fn scrolling_to_bottom_resets_unread_count() {
     let mut app = test_app();
-    app.scroll_offset = 3;
-    app.unread_count = 5;
+    app.scroll.offset = 3;
+    app.scroll.unread_count = 5;
     app.scroll_down(3);
-    assert_eq!(app.scroll_offset, 0);
-    assert_eq!(app.unread_count, 0);
+    assert_eq!(app.scroll.offset, 0);
+    assert_eq!(app.scroll.unread_count, 0);
 }
 
 #[test]
 fn receiving_message_at_bottom_does_not_increment_unread_count() {
     let mut app = test_app();
-    assert_eq!(app.scroll_offset, 0);
+    assert_eq!(app.scroll.offset, 0);
     app.receive_message(chat_msg("bot:ws", "hello"));
-    assert_eq!(app.unread_count, 0);
+    assert_eq!(app.scroll.unread_count, 0);
 }
 
 #[test]
 fn incoming_message_stays_at_bottom_when_at_bottom() {
     let mut app = test_app();
-    assert_eq!(app.scroll_offset, 0);
+    assert_eq!(app.scroll.offset, 0);
     app.receive_message(chat_msg("bot:ws", "hello"));
-    assert_eq!(app.scroll_offset, 0);
+    assert_eq!(app.scroll.offset, 0);
     assert_eq!(app.messages.len(), 1);
 }
 
@@ -242,9 +242,9 @@ fn unrecognized_command_adds_error_message_without_broadcast() {
 #[test]
 fn incoming_message_preserves_viewport_when_scrolled_up() {
     let mut app = test_app();
-    app.scroll_offset = 5;
+    app.scroll.offset = 5;
     app.receive_message(chat_msg("bot:ws", "hello"));
-    assert_eq!(app.scroll_offset, 6);
+    assert_eq!(app.scroll.offset, 6);
     assert_eq!(app.messages.len(), 1);
 }
 

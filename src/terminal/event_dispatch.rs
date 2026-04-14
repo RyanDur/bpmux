@@ -21,20 +21,20 @@ fn bell() {
 }
 
 fn scroll_up_with_bell(app: &mut App, amount: usize) {
-    let before = app.scroll_offset;
+    let before = app.scroll.offset;
     app.scroll_up(amount);
-    if app.scroll_offset == before && before > 0 && !app.at_boundary {
+    if app.scroll.offset == before && before > 0 && !app.scroll.at_boundary {
         bell();
-        app.at_boundary = true;
+        app.scroll.at_boundary = true;
     }
 }
 
 fn scroll_down_with_bell(app: &mut App, amount: usize) {
-    let before = app.scroll_offset;
+    let before = app.scroll.offset;
     app.scroll_down(amount);
-    if app.scroll_offset == before && !app.at_boundary {
+    if app.scroll.offset == before && !app.scroll.at_boundary {
         bell();
-        app.at_boundary = true;
+        app.scroll.at_boundary = true;
     }
 }
 
@@ -381,9 +381,9 @@ pub(super) fn handle_terminal_event(
             scroll_down_with_bell(app, 5);
         }
         KeyCode::Esc => {
-            if app.scroll_offset > 0 {
-                app.scroll_offset = 0;
-                app.unread_count = 0;
+            if app.scroll.offset > 0 {
+                app.scroll.offset = 0;
+                app.scroll.unread_count = 0;
             } else {
                 app.clear_input();
             }

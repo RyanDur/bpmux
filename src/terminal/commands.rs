@@ -120,8 +120,8 @@ impl App {
         };
         self.push_message(msg.clone());
         self.clear_input();
-        self.scroll_offset = 0;
-        self.unread_count = 0;
+        self.scroll.offset = 0;
+        self.scroll.unread_count = 0;
         Some(msg)
     }
 
@@ -157,8 +157,8 @@ impl App {
         };
         self.push_message(msg.clone());
         self.clear_input();
-        self.scroll_offset = 0;
-        self.unread_count = 0;
+        self.scroll.offset = 0;
+        self.scroll.unread_count = 0;
         if self.input_history.len() >= MAX_HISTORY {
             self.input_history.remove(0);
         }
@@ -194,7 +194,7 @@ impl App {
         if arg == "all" {
             self.current_view = None;
             self.mark_filters_dirty();
-            self.scroll_offset = 0;
+            self.scroll.offset = 0;
             self.system_message("View set to all channels.".to_string());
             self.clear_input();
             return None;
@@ -202,7 +202,7 @@ impl App {
         if arg == "broadcast" {
             self.current_view = Some("broadcast".to_string());
             self.mark_filters_dirty();
-            self.scroll_offset = 0;
+            self.scroll.offset = 0;
             self.system_message("View set to broadcast.".to_string());
             self.clear_input();
             return None;
@@ -211,7 +211,7 @@ impl App {
         if self.active_channels.contains(arg) {
             self.current_view = Some(arg.to_string());
             self.mark_filters_dirty();
-            self.scroll_offset = 0;
+            self.scroll.offset = 0;
             self.system_message(format!("View set to {arg}."));
             self.clear_input();
             return None;
@@ -366,8 +366,8 @@ impl App {
         };
         self.push_message(msg.clone());
         self.clear_input();
-        self.scroll_offset = 0;
-        self.unread_count = 0;
+        self.scroll.offset = 0;
+        self.scroll.unread_count = 0;
         if self.input_history.len() >= MAX_HISTORY {
             self.input_history.remove(0);
         }

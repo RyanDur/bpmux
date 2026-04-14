@@ -108,7 +108,7 @@ fn scroll_indicator_shows_when_scrolled_up() {
         "No scroll indicator at bottom"
     );
 
-    app.max_scroll = 100;
+    app.scroll.max = 100;
     app.scroll_up(3);
     terminal.draw(|frame| render(frame, &mut app)).unwrap();
     let scrolled = buffer_to_string(terminal.backend().buffer());
@@ -261,7 +261,7 @@ fn status_bar_shows_unread_count_when_scrolled_up() {
     let backend = TestBackend::new(80, 15);
     let mut terminal = Terminal::new(backend).unwrap();
     let mut app = test_app_with(vec![]);
-    app.unread_count = 3;
+    app.scroll.unread_count = 3;
 
     terminal.draw(|frame| render(frame, &mut app)).unwrap();
     let screen = buffer_to_string(terminal.backend().buffer());

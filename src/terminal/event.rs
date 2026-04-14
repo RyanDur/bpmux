@@ -179,7 +179,7 @@ where
                                     topic: None,
                                     explicit_privacy: false,
                                 });
-                                app.scroll_offset = 0;
+                                app.scroll.offset = 0;
                             }
                             Err(e) => {
                                 crate::session::diag::log_diag(&format!(

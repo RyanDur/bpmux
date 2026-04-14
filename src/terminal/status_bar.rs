@@ -148,17 +148,17 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
             Style::default().fg(DRACULA_CYAN),
         ));
     }
-    if app.scroll_offset > 0 {
+    if app.scroll.offset > 0 {
         status_spans.push(Span::raw(" | "));
         status_spans.push(Span::styled(
-            format!("scrolled up {}", app.scroll_offset),
+            format!("scrolled up {}", app.scroll.offset),
             Style::default().fg(DRACULA_COMMENT),
         ));
     }
-    if app.unread_count > 0 {
+    if app.scroll.unread_count > 0 {
         status_spans.push(Span::raw(" | "));
         status_spans.push(Span::styled(
-            format!("{} new", app.unread_count),
+            format!("{} new", app.scroll.unread_count),
             Style::default().fg(DRACULA_PINK),
         ));
     }

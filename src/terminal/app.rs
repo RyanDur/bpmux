@@ -112,6 +112,25 @@ impl Default for TopicState {
     }
 }
 
+/// Scroll state — extracted from App.
+pub struct ScrollState {
+    pub offset: usize,
+    pub max: usize,
+    pub at_boundary: bool,
+    pub unread_count: usize,
+}
+
+impl Default for ScrollState {
+    fn default() -> Self {
+        Self {
+            offset: 0,
+            max: 0,
+            at_boundary: false,
+            unread_count: 0,
+        }
+    }
+}
+
 pub struct BoardState {
     pub show: bool,
     pub stories: Vec<super::board::BoardStory>,
@@ -158,10 +177,7 @@ pub struct App {
     pub popup_selected: Option<usize>,
 
     // ── Scroll ──
-    pub scroll_offset: usize,
-    pub max_scroll: usize,
-    pub at_boundary: bool,
-    pub unread_count: usize,
+    pub scroll: ScrollState,
 
     // ── Channel view ──
     pub active_channels: HashSet<String>,
@@ -280,14 +296,11 @@ impl App {
                 ta.set_wrap_mode(tui_textarea::WrapMode::Word);
                 ta
             },
-            scroll_offset: 0,
-            max_scroll: 0,
-            at_boundary: false,
+            scroll: ScrollState::default(),
             peer_name,
             session_id,
             should_quit: false,
             show_timestamps: false,
-            unread_count: 0,
             input_history: Vec::new(),
             history_index: None,
             peer_activity,
@@ -501,24 +514,25 @@ impl App {
     }
 
     pub fn scroll_up(&mut self, lines: usize) {
-        let before = self.scroll_offset;
-        self.scroll_offset = self
-            .scroll_offset
+        let before = self.scroll.offset;
+        self.scroll.offset = self
+            .scroll
+            .offset
             .saturating_add(lines)
-            .min(self.max_scroll);
-        if self.scroll_offset != before {
-            self.at_boundary = false;
+            .min(self.scroll.max);
+        if self.scroll.offset != before {
+            self.scroll.at_boundary = false;
         }
     }
 
     pub fn scroll_down(&mut self, lines: usize) {
-        let before = self.scroll_offset;
-        self.scroll_offset = self.scroll_offset.saturating_sub(lines);
-        if self.scroll_offset != before {
-            self.at_boundary = false;
+        let before = self.scroll.offset;
+        self.scroll.offset = self.scroll.offset.saturating_sub(lines);
+        if self.scroll.offset != before {
+            self.scroll.at_boundary = false;
         }
-        if self.scroll_offset == 0 {
-            self.unread_count = 0;
+        if self.scroll.offset == 0 {
+            self.scroll.unread_count = 0;
         }
     }
 
@@ -638,7 +652,7 @@ impl App {
         // A separator line is added when the sender differs from the
         // previous message. This estimate is close enough to prevent
         // perceptible viewport drift — within ±1 line is fine.
-        let was_at_bottom = self.scroll_offset == 0;
+        let was_at_bottom = self.scroll.offset == 0;
         let line_estimate = {
             let sender = msg.from.split(':').next().unwrap_or(&msg.from);
             let prefix_len = sender.len() + 15;
@@ -661,8 +675,8 @@ impl App {
         };
         self.push_message(msg);
         if !was_at_bottom {
-            self.scroll_offset = self.scroll_offset.saturating_add(line_estimate);
-            self.unread_count += 1;
+            self.scroll.offset = self.scroll.offset.saturating_add(line_estimate);
+            self.scroll.unread_count += 1;
         }
     }
 }

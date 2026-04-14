@@ -430,7 +430,7 @@ impl App {
                 self.mark_filters_dirty();
                 self.topic.unreads.remove(ch);
                 self.current_view = None;
-                self.scroll_offset = 0;
+                self.scroll.offset = 0;
                 self.sidebar.focused = false;
                 self.sidebar.filter.clear();
                 return;
@@ -457,7 +457,7 @@ impl App {
                 self.send_target = Some(ch.clone());
                 self.channel_unread.remove(ch);
             }
-            self.scroll_offset = 0;
+            self.scroll.offset = 0;
             self.sidebar.focused = false;
             self.sidebar.filter.clear();
         }

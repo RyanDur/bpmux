@@ -41,7 +41,7 @@ impl UiState {
             direct_expanded: app.sidebar.direct_expanded,
             groups_expanded: app.sidebar.groups_expanded,
             system_expanded: app.sidebar.system_expanded,
-            scroll_offset: app.scroll_offset,
+            scroll_offset: app.scroll.offset,
             expanded_messages: app.expanded_messages.clone(),
             show_timestamps: app.show_timestamps,
             input: app.input.clone(),
@@ -57,7 +57,7 @@ impl UiState {
         app.sidebar.direct_expanded = self.direct_expanded;
         app.sidebar.groups_expanded = self.groups_expanded;
         app.sidebar.system_expanded = self.system_expanded;
-        app.scroll_offset = self.scroll_offset;
+        app.scroll.offset = self.scroll_offset;
         app.expanded_messages = self.expanded_messages.clone();
         app.show_timestamps = self.show_timestamps;
         app.show_all_classes = self.show_all_classes;
