@@ -16,14 +16,15 @@ impl App {
         if args.is_empty() {
             // List topics.
             let mut text = String::from("Topics:\n");
-            for t in &self.topics {
-                let active = if *t == self.active_topic { " ●" } else { "" };
+            for t in &self.topic.topics {
+                let active = if *t == self.topic.active { " ●" } else { "" };
                 let participants = self
-                    .topic_participants
+                    .topic
+                    .participants
                     .get(t)
                     .map(|p| p.join(", "))
                     .unwrap_or_else(|| "everyone".to_string());
-                let unread = self.topic_unreads.get(t).copied().unwrap_or(0);
+                let unread = self.topic.unreads.get(t).copied().unwrap_or(0);
                 if unread > 0 {
                     text.push_str(&format!("  {t}{active} [{participants}] ({unread} new)\n"));
                 } else {
@@ -48,7 +49,7 @@ impl App {
                 self.clear_input();
                 return None;
             }
-            if self.topics.contains(&name) {
+            if self.topic.topics.contains(&name) {
                 self.system_message(format!("Topic '{name}' already exists."));
                 self.clear_input();
                 return None;
@@ -65,10 +66,11 @@ impl App {
                 }
             }
 
-            self.topics.push(name.clone());
-            self.topic_participants
+            self.topic.topics.push(name.clone());
+            self.topic
+                .participants
                 .insert(name.clone(), participants.clone());
-            self.active_topic = name.clone();
+            self.topic.active = name.clone();
             self.mark_filters_dirty();
 
             let participant_list = participants.join(", ");
@@ -95,8 +97,8 @@ impl App {
 
         // Switch to existing topic.
         let name = args.to_string();
-        if self.topics.contains(&name) {
-            self.active_topic = name.clone();
+        if self.topic.topics.contains(&name) {
+            self.topic.active = name.clone();
             self.mark_filters_dirty();
             self.system_message(format!("Switched to topic '{name}'."));
         } else {

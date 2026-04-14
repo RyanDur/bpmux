@@ -72,6 +72,46 @@ impl Default for SidebarState {
 }
 
 /// Board view state — extracted from App.
+/// Command palette state — extracted from App.
+pub struct PaletteState {
+    pub show: bool,
+    pub input: String,
+    pub selected: usize,
+}
+
+impl Default for PaletteState {
+    fn default() -> Self {
+        Self {
+            show: false,
+            input: String::new(),
+            selected: 0,
+        }
+    }
+}
+
+/// Topic state — extracted from App.
+pub struct TopicState {
+    /// Known topics in this session. "general" always present.
+    pub topics: Vec<String>,
+    /// Which topic the user is currently viewing/typing into.
+    pub active: String,
+    /// Per-topic unread count for sidebar display.
+    pub unreads: HashMap<String, usize>,
+    /// Per-topic participant lists.
+    pub participants: HashMap<String, Vec<String>>,
+}
+
+impl Default for TopicState {
+    fn default() -> Self {
+        Self {
+            topics: vec!["general".to_string()],
+            active: "general".to_string(),
+            unreads: HashMap::new(),
+            participants: HashMap::new(),
+        }
+    }
+}
+
 pub struct BoardState {
     pub show: bool,
     pub stories: Vec<super::board::BoardStory>,
@@ -169,21 +209,10 @@ pub struct App {
     pub focused_roles: Option<Vec<String>>,
 
     // ── Command palette (#192) ──
-    pub show_palette: bool,
-    pub palette_input: String,
-    pub palette_selected: usize,
+    pub palette: PaletteState,
 
     // ── Topics (#191) ──
-    /// Known topics in this session. "general" always present.
-    pub topics: Vec<String>,
-    /// Which topic the user is currently viewing/typing into.
-    /// Messages sent get tagged with this topic.
-    pub active_topic: String,
-    /// Per-topic unread count for sidebar display.
-    pub topic_unreads: HashMap<String, usize>,
-    /// Per-topic participant lists. "general" has no entry (everyone).
-    /// Named topics list their participants explicitly.
-    pub topic_participants: HashMap<String, Vec<String>>,
+    pub topic: TopicState,
 
     // ── Board view (#193) ──
     pub board: BoardState,
@@ -289,13 +318,8 @@ impl App {
             tokens_view_rows: Vec::new(),
             feature_usage: HashMap::new(),
             focused_roles: None,
-            show_palette: false,
-            palette_input: String::new(),
-            palette_selected: 0,
-            topics: vec!["general".to_string()],
-            active_topic: "general".to_string(),
-            topic_unreads: HashMap::new(),
-            topic_participants: HashMap::new(),
+            palette: PaletteState::default(),
+            topic: TopicState::default(),
             board: BoardState::default(),
             chat_area: None,
             should_reload: false,
@@ -414,7 +438,7 @@ impl App {
                 continue;
             }
             if let Some(msg_topic) = &m.topic {
-                if *msg_topic != self.active_topic {
+                if *msg_topic != self.topic.active {
                     continue;
                 }
             }
@@ -458,7 +482,7 @@ impl App {
     /// adjacent.
     pub fn palette_matches(&self) -> Vec<(&'static str, &'static str)> {
         use super::input::SLASH_COMMANDS;
-        let query = self.palette_input.to_lowercase();
+        let query = self.palette.input.to_lowercase();
         if query.is_empty() {
             return SLASH_COMMANDS
                 .iter()
@@ -560,8 +584,8 @@ impl App {
                     && let Some(end) = msg.text[start + 1..].find('\'')
                 {
                     let topic_name = msg.text[start + 1..start + 1 + end].to_string();
-                    if !self.topics.contains(&topic_name) {
-                        self.topics.push(topic_name);
+                    if !self.topic.topics.contains(&topic_name) {
+                        self.topic.topics.push(topic_name);
                     }
                 }
                 if let Some(peer) = msg.text.strip_suffix(" joined") {
@@ -580,12 +604,12 @@ impl App {
                 // register it so /topic list shows it and the sidebar
                 // (future) can display it.
                 if let Some(topic) = &msg.topic {
-                    if !self.topics.contains(topic) {
-                        self.topics.push(topic.clone());
+                    if !self.topic.topics.contains(topic) {
+                        self.topic.topics.push(topic.clone());
                     }
                     // Track unread per topic when not viewing that topic.
-                    if *topic != self.active_topic {
-                        *self.topic_unreads.entry(topic.clone()).or_insert(0) += 1;
+                    if *topic != self.topic.active {
+                        *self.topic.unreads.entry(topic.clone()).or_insert(0) += 1;
                     }
                 }
                 let ch = channel_name(&msg, &self.peer_name);

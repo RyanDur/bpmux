@@ -70,8 +70,8 @@ fn render_topic_items(topics: &[String], app: &App, area: Rect) -> Vec<Line<'sta
             } else {
                 DRACULA_BG
             };
-            let is_active = *topic == app.active_topic;
-            let unread = app.topic_unreads.get(topic).copied().unwrap_or(0);
+            let is_active = *topic == app.topic.active;
+            let unread = app.topic.unreads.get(topic).copied().unwrap_or(0);
 
             let marker = if is_active { "● " } else { "  " };
             let badge = if unread > 0 {
@@ -272,7 +272,7 @@ impl App {
     /// the default "general". When true, the sidebar shows topics
     /// instead of the channel tree.
     pub fn topic_mode(&self) -> bool {
-        self.topics.len() > 1
+        self.topic.topics.len() > 1
     }
 
     pub fn sidebar_channels(&self) -> Vec<String> {
@@ -281,6 +281,7 @@ impl App {
         if self.topic_mode() {
             let filter = self.sidebar.filter.to_lowercase();
             return self
+                .topic
                 .topics
                 .iter()
                 .filter(|t| filter.is_empty() || t.to_lowercase().contains(&filter))
@@ -425,9 +426,9 @@ impl App {
         if let Some(ch) = channels.get(self.sidebar.selected) {
             // #191: topic mode — selecting a topic switches active_topic.
             if self.topic_mode() {
-                self.active_topic = ch.clone();
+                self.topic.active = ch.clone();
                 self.mark_filters_dirty();
-                self.topic_unreads.remove(ch);
+                self.topic.unreads.remove(ch);
                 self.current_view = None;
                 self.scroll_offset = 0;
                 self.sidebar.focused = false;

@@ -358,10 +358,10 @@ impl App {
             addressee,
             explicit_privacy: false,
             multi_depth: None,
-            topic: if self.active_topic == "general" {
+            topic: if self.topic.active == "general" {
                 None
             } else {
-                Some(self.active_topic.clone())
+                Some(self.topic.active.clone())
             },
         };
         self.push_message(msg.clone());

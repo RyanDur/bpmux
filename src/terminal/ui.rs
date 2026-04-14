@@ -71,10 +71,10 @@ fn render_broadcast_banner(frame: &mut Frame, app: &App, area: Rect) {
 fn render_input(frame: &mut Frame, app: &mut App, area: Rect) {
     // #191: show active topic in the input prompt so the user knows
     // which topic they're typing into.
-    let topic_label = if app.active_topic == "general" {
+    let topic_label = if app.topic.active == "general" {
         String::new()
     } else {
-        format!(" ({})", app.active_topic)
+        format!(" ({})", app.topic.active)
     };
     let block = Block::default()
         .borders(Borders::ALL)
@@ -604,7 +604,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
 }
 
 fn render_command_palette(frame: &mut Frame, app: &App, area: Rect) {
-    if !app.show_palette {
+    if !app.palette.show {
         return;
     }
     let matches = app.palette_matches();
@@ -617,12 +617,12 @@ fn render_command_palette(frame: &mut Frame, app: &App, area: Rect) {
     // Build the content lines.
     let mut lines: Vec<Line> = Vec::new();
     lines.push(Line::from(Span::styled(
-        format!(" > {}_", app.palette_input),
+        format!(" > {}_", app.palette.input),
         Style::default().fg(DRACULA_FG),
     )));
     lines.push(Line::default());
     for (i, (name, short)) in matches.iter().enumerate() {
-        let selected = i == app.palette_selected;
+        let selected = i == app.palette.selected;
         let indicator = if selected { "\u{25B8} " } else { "  " };
         let style = if selected {
             Style::default().fg(DRACULA_CYAN)

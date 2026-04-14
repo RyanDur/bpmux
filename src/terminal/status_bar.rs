@@ -107,7 +107,7 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
             " board view".to_string()
         }
     } else if app.topic_mode() {
-        format!(" {}", app.active_topic)
+        format!(" {}", app.topic.active)
     } else {
         match &app.current_view {
             None => " [all]".to_string(),
@@ -123,11 +123,11 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     // #191: cross-topic unread indicators. Show other topics
     // that have unread messages so the user doesn't miss activity.
     if app.topic_mode() {
-        for topic in &app.topics {
-            if *topic == app.active_topic {
+        for topic in &app.topic.topics {
+            if *topic == app.topic.active {
                 continue;
             }
-            let unread = app.topic_unreads.get(topic).copied().unwrap_or(0);
+            let unread = app.topic.unreads.get(topic).copied().unwrap_or(0);
             if unread > 0 {
                 status_spans.push(Span::raw(" | "));
                 status_spans.push(Span::styled(
