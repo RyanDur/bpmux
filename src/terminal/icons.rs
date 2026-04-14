@@ -8,13 +8,9 @@
 //!
 //! - `EXPAND` / `COLLAPSE` (▸/▾) match IntelliJ tree widgets and
 //!   most file-tree viewers.
-//! - `CLOSE` (×) matches tab close buttons everywhere.
 //! - `MENU` (≡) matches the hamburger-menu pattern from mobile and
 //!   web. Used as the left-edge-zone trigger so the previously
 //!   invisible click region gets a visible affordance.
-//! - `MORE` (⋮) matches material design "more actions" overflow.
-//! - `BREADCRUMB` (›) matches IntelliJ breadcrumbs + web breadcrumb
-//!   separators.
 //!
 //! Using these consistently means a user who learns one glyph can
 //! predict its meaning elsewhere.
@@ -25,16 +21,5 @@ pub(super) const EXPAND: &str = "\u{25B8}";
 /// `▾` — collapse / hide (expanded state).
 pub(super) const COLLAPSE: &str = "\u{25BE}";
 
-/// `×` — close / dismiss (tab close button convention).
-#[allow(dead_code)]
-pub(super) const CLOSE: &str = "\u{00D7}";
-
 /// `≡` — menu / toggle (hamburger icon).
 pub(super) const MENU: &str = "\u{2261}";
-
-/// `⋮` — more / overflow (material design). Reserved for future
-/// overflow affordances (e.g., truncated status bar widgets). Not
-/// yet wired to a surface; kept here so the vocabulary stays
-/// consistent when the first consumer lands.
-#[allow(dead_code)]
-pub(super) const MORE: &str = "\u{22EE}";

@@ -10,9 +10,7 @@ use ratatui::{
 
 use crate::session;
 use crate::terminal::app::{self, App, TRUNCATE_AFTER_LINES};
-use crate::terminal::markdown::{
-    message_matches_channel, render_md_message, wrap_line_with_indent,
-};
+use crate::terminal::markdown::{render_md_message, wrap_line_with_indent};
 use crate::terminal::theme::{
     DRACULA_BG, DRACULA_COMMENT, DRACULA_CYAN, DRACULA_FG, DRACULA_PURPLE, DRACULA_SELECTION,
     channel_tag_color, sender_color,
@@ -40,29 +38,6 @@ use crate::terminal::theme::{
 ///   Critical: we do NOT run the Routine-class check on bpmux
 ///   content because `session::classify` returns Routine for
 ///   ANY bpmux-sender message, which would hide tool output.
-/// Uses the cached classification when available to avoid
-/// re-classifying every message every render frame.
-fn should_hide_by_class_cached(
-    m: &session::Message,
-    idx: usize,
-    cache: &[Option<session::MessageClass>],
-    owner_name: &str,
-) -> bool {
-    if m.message_type == session::MessageType::Nudge {
-        return true;
-    }
-    let sender = m.from.split(':').next().unwrap_or(&m.from);
-    if sender == "bpmux" {
-        return m.text.starts_with('\u{1F4DD}');
-    }
-    let class = cache
-        .get(idx)
-        .and_then(|c| c.as_ref())
-        .copied()
-        .unwrap_or_else(|| session::classify(m, owner_name));
-    matches!(class, session::MessageClass::Routine)
-}
-
 #[cfg(test)]
 pub(super) fn should_hide_by_class(m: &session::Message, owner_name: &str) -> bool {
     if m.message_type == session::MessageType::Nudge {
