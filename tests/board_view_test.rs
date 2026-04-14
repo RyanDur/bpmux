@@ -10,6 +10,15 @@ mod harness;
 use harness::pty::TestBpmux;
 use std::time::Duration;
 
+/// Returns false if gh CLI is not available or not authenticated.
+fn gh_available() -> bool {
+    std::process::Command::new("gh")
+        .args(["auth", "status"])
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
+}
+
 /// GIVEN the TUI is running
 /// WHEN /board is typed
 /// THEN the project panel opens showing board data (state headers)
@@ -17,6 +26,10 @@ use std::time::Duration;
 /// AND Esc closes the panel
 #[test]
 fn board_opens_in_panel_with_chat_visible() {
+    if !gh_available() {
+        eprintln!("SKIP: gh CLI not authenticated");
+        return;
+    }
     let bpmux = TestBpmux::start();
     assert!(
         bpmux.wait_for_tui("solo", Duration::from_secs(5)),
@@ -57,6 +70,10 @@ fn board_opens_in_panel_with_chat_visible() {
 /// THEN story titles are visible in the panel
 #[test]
 fn board_panel_shows_story_titles() {
+    if !gh_available() {
+        eprintln!("SKIP: gh CLI not authenticated");
+        return;
+    }
     let bpmux = TestBpmux::start();
     assert!(
         bpmux.wait_for_tui("solo", Duration::from_secs(5)),
