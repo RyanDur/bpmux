@@ -61,7 +61,7 @@ pub enum ServerMessage {
         topic: Option<String>,
         /// Multi-depth payload (#187).
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        multi_depth: Option<crate::session::message::MultiDepthPayload>,
+        multi_depth: Box<Option<crate::session::message::MultiDepthPayload>>,
     },
     #[serde(rename = "error")]
     Error { reason: String },
@@ -79,7 +79,7 @@ impl From<Message> for ServerMessage {
             addressee: msg.addressee,
             message_type: msg.message_type.to_wire(),
             topic: msg.topic,
-            multi_depth: msg.multi_depth,
+            multi_depth: Box::new(msg.multi_depth),
         }
     }
 }

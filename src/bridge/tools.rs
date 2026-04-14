@@ -581,8 +581,6 @@ pub(super) async fn handle_view_board(
             in_progress.push(entry);
         } else if has("ready") {
             ready.push(entry);
-        } else if has("icebox") {
-            icebox.push(entry);
         } else {
             icebox.push(entry);
         }

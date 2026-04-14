@@ -18,7 +18,7 @@
 │  two-audience + negative tests        peer feedback as information           │
 │                                                                              │
 │  ──────────────────────────────────────────────────────────────              │
-│  arcs: 3 active    lessons: 12    last updated: 2 hours ago                  │
+│  recent arcs: 3    lessons: 12                                               │
 │                                                                              │
 │                                                                              │
 │                                                                              │
@@ -54,6 +54,11 @@
 │    headless desk-check broken → couldn't verify                              │
 │                                                                              │
 │  Total reinforcements: 5 across 3 arcs                                       │
+│                                                                              │
+│  GUIDED ACTION IN:                                                           │
+│  ──────────────────                                                          │
+│  ▸ #193 board view — caught missing agent audience during desk-check         │
+│  ▸ #196 board-in-panel — applied negative test (headless capture check)      │
 │                                                                              │
 └──────────────────────────────────────────────────────────────────────────────┘
 ┌ designer > ──────────────────────────────────────────────────────────────────┐

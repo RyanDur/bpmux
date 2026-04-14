@@ -689,21 +689,21 @@ fn sidebar_channels_includes_connected_peers() {
 fn sidebar_toggle_three_state_cycle() {
     let mut app = test_app();
     // Closed -> open + focused
-    assert!(!app.sidebar_open);
+    assert!(!app.sidebar.open);
     app.toggle_sidebar();
-    assert!(app.sidebar_open);
-    assert!(app.sidebar_focused);
+    assert!(app.sidebar.open);
+    assert!(app.sidebar.focused);
     // Open + focused -> closed
     app.toggle_sidebar();
-    assert!(!app.sidebar_open);
-    assert!(!app.sidebar_focused);
+    assert!(!app.sidebar.open);
+    assert!(!app.sidebar.focused);
     // Reopen, then unfocus (simulating channel select)
     app.toggle_sidebar();
-    app.sidebar_focused = false; // simulate select unfocusing
+    app.sidebar.focused = false; // simulate select unfocusing
     // Open + unfocused -> refocused
     app.toggle_sidebar();
-    assert!(app.sidebar_open);
-    assert!(app.sidebar_focused);
+    assert!(app.sidebar.open);
+    assert!(app.sidebar.focused);
 }
 
 #[test]
@@ -711,7 +711,7 @@ fn sidebar_select_all_clears_view_and_target() {
     let mut app = test_app();
     app.current_view = Some("broadcast".to_string());
     app.send_target = Some("broadcast".to_string());
-    app.sidebar_selected = 0; // project node is always first
+    app.sidebar.selected = 0; // project node is always first
     app.sidebar_select();
     assert!(app.current_view.is_none());
     assert!(app.send_target.is_none());
@@ -721,7 +721,7 @@ fn sidebar_select_all_clears_view_and_target() {
 fn sidebar_select_channel_sets_view_and_target() {
     let mut app = test_app();
     app.active_channels.insert("broadcast".to_string());
-    app.sidebar_selected = 1; // "broadcast" (sorted after project node)
+    app.sidebar.selected = 1; // "broadcast" (sorted after project node)
     app.sidebar_select();
     assert_eq!(app.current_view, Some("broadcast".to_string()));
     assert_eq!(app.send_target, Some("broadcast".to_string()));
@@ -732,7 +732,7 @@ fn sidebar_select_clears_unread() {
     let mut app = test_app();
     app.active_channels.insert("broadcast".to_string());
     app.channel_unread.insert("broadcast".to_string(), 5);
-    app.sidebar_selected = 1;
+    app.sidebar.selected = 1;
     app.sidebar_select();
     assert_eq!(app.channel_unread.get("broadcast"), None);
 }
@@ -742,51 +742,51 @@ fn sidebar_navigation_wraps() {
     let mut app = test_app();
     app.active_channels.insert("broadcast".to_string());
     // channels: ["test-session", "broadcast"]
-    app.sidebar_selected = 0;
+    app.sidebar.selected = 0;
     app.sidebar_up(); // wraps to last
-    assert_eq!(app.sidebar_selected, 1);
+    assert_eq!(app.sidebar.selected, 1);
     app.sidebar_down(); // wraps to first
-    assert_eq!(app.sidebar_selected, 0);
+    assert_eq!(app.sidebar.selected, 0);
 }
 
 #[test]
 fn sidebar_close_unfocuses_but_stays_open() {
     let mut app = test_app();
     app.toggle_sidebar();
-    assert!(app.sidebar_open);
-    assert!(app.sidebar_focused);
+    assert!(app.sidebar.open);
+    assert!(app.sidebar.focused);
     app.sidebar_close(); // Esc -- unfocuses but keeps sidebar open
-    assert!(app.sidebar_open);
-    assert!(!app.sidebar_focused);
+    assert!(app.sidebar.open);
+    assert!(!app.sidebar.focused);
 }
 
 #[test]
 fn sidebar_collapse_hides_channels() {
     let mut app = test_app();
     app.active_channels.insert("broadcast".to_string());
-    assert!(app.project_expanded);
+    assert!(app.sidebar.project_expanded);
     assert_eq!(app.sidebar_channels().len(), 2); // project + broadcast
     app.sidebar_collapse();
-    assert!(!app.project_expanded);
+    assert!(!app.sidebar.project_expanded);
     assert_eq!(app.sidebar_channels().len(), 1); // project only
-    assert_eq!(app.sidebar_selected, 0); // snapped to project node
+    assert_eq!(app.sidebar.selected, 0); // snapped to project node
 }
 
 #[test]
 fn sidebar_expand_shows_channels() {
     let mut app = test_app();
     app.active_channels.insert("broadcast".to_string());
-    app.project_expanded = false;
+    app.sidebar.project_expanded = false;
     assert_eq!(app.sidebar_channels().len(), 1);
     app.sidebar_expand();
-    assert!(app.project_expanded);
+    assert!(app.sidebar.project_expanded);
     assert_eq!(app.sidebar_channels().len(), 2);
 }
 
 #[test]
 fn sidebar_expanded_by_default() {
     let app = test_app();
-    assert!(app.project_expanded);
+    assert!(app.sidebar.project_expanded);
 }
 
 #[test]
@@ -1225,10 +1225,10 @@ fn ui_state_persists_show_all_classes() {
     let saved = UiState::capture(&app);
 
     let mut restored = test_app();
-    assert!(!restored.show_all_classes);
+    assert!(!restored.display.show_all_classes);
     saved.restore(&mut restored);
     assert!(
-        restored.show_all_classes,
+        restored.display.show_all_classes,
         "show_all_classes should persist across capture/restore"
     );
 }
