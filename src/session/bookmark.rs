@@ -42,7 +42,8 @@ pub struct Bookmark {
 
 /// Path to a role's bookmark within a session directory.
 pub fn bookmark_path(session_dir: &Path, role: &str) -> PathBuf {
-    session_dir.join(format!("bookmark-{role}.json"))
+    let safe_role = super::identity::sanitize_name(role);
+    session_dir.join(format!("bookmark-{safe_role}.json"))
 }
 
 /// Load a bookmark. Returns empty bookmark if file doesn't exist.

@@ -36,8 +36,16 @@ pub fn default_identity_dir() -> Result<PathBuf, std::io::Error> {
 }
 
 /// Path to a specific role's identity file within a base directory.
+/// Sanitize a name for use in file paths — only alphanumeric, dash,
+/// underscore allowed. Prevents path traversal via role/peer names.
+pub fn sanitize_name(name: &str) -> String {
+    name.chars()
+        .filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_')
+        .collect()
+}
+
 pub fn identity_path(base: &Path, role: &str) -> PathBuf {
-    base.join(format!("{role}.json"))
+    base.join(format!("{}.json", sanitize_name(role)))
 }
 
 /// Load identity traits for a role. Returns an empty index if the

@@ -502,7 +502,10 @@ async fn gh(args: &[&str]) -> Result<String, String> {
         // regardless of the bridge's runtime working directory.
         cmd.current_dir(REPO_ROOT);
     }
-    let output = cmd.output().await.map_err(|e| format!("gh: {e}"))?;
+    let output = tokio::time::timeout(std::time::Duration::from_secs(30), cmd.output())
+        .await
+        .map_err(|_| "gh command timed out after 30s".to_string())?
+        .map_err(|e| format!("gh: {e}"))?;
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         return Err(format!("gh failed: {stderr}"));
