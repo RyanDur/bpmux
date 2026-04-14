@@ -424,7 +424,7 @@ fn render_project_panel(frame: &mut Frame, app: &App, area: Rect) {
     use crate::terminal::board::{StoryState, stories_by_state};
 
     // #196: show board data in the project panel when stories are loaded.
-    if !app.board_stories.is_empty() {
+    if !app.board.stories.is_empty() {
         let block = Block::default()
             .borders(Borders::ALL)
             .title(" project ")
@@ -436,7 +436,7 @@ fn render_project_panel(frame: &mut Frame, app: &App, area: Rect) {
             .border_style(Style::default().fg(DRACULA_SELECTION))
             .style(Style::default().bg(DRACULA_BG).fg(DRACULA_FG));
 
-        let groups = stories_by_state(&app.board_stories);
+        let groups = stories_by_state(&app.board.stories);
         let mut lines: Vec<Line> = Vec::new();
 
         for (state, stories) in &groups {

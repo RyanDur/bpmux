@@ -34,10 +34,10 @@ fn state_color(state: StoryState) -> ratatui::style::Color {
 const MAX_PER_COLUMN: usize = 6;
 
 pub(super) fn render(frame: &mut Frame, app: &App, area: Rect) {
-    if !app.show_board {
+    if !app.board.show {
         return;
     }
-    if app.board_detail.is_some() {
+    if app.board.detail.is_some() {
         render_detail(frame, app, area);
     } else {
         render_columns(frame, app, area);
@@ -65,8 +65,8 @@ pub(super) fn visible_stories(stories: &[BoardStory]) -> Vec<usize> {
 fn render_columns(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_widget(Clear, area);
 
-    let groups = stories_by_state(&app.board_stories);
-    let visible = visible_stories(&app.board_stories);
+    let groups = stories_by_state(&app.board.stories);
+    let visible = visible_stories(&app.board.stories);
 
     // Layout: 3 columns top row, 3 columns bottom row
     // Split vertically first, then each half into 3 columns
@@ -138,8 +138,8 @@ fn render_columns(frame: &mut Frame, app: &App, area: Rect) {
                     let is_selected = visible
                         .iter()
                         .position(|&idx| {
-                            idx < app.board_stories.len()
-                                && app.board_stories[idx].number == story.number
+                            idx < app.board.stories.len()
+                                && app.board.stories[idx].number == story.number
                         })
                         .is_some_and(|pos| pos == selected);
                     let mut name = story.short_name(col_width.saturating_sub(2));
@@ -197,7 +197,7 @@ fn render_columns(frame: &mut Frame, app: &App, area: Rect) {
         &top_states,
         &groups,
         &visible,
-        app.board_selected,
+        app.board.selected,
         half_height.saturating_sub(1),
     ));
     lines.push(Line::default()); // gap between rows
@@ -205,7 +205,7 @@ fn render_columns(frame: &mut Frame, app: &App, area: Rect) {
         &bottom_states,
         &groups,
         &visible,
-        app.board_selected,
+        app.board.selected,
         half_height.saturating_sub(1),
     ));
 
@@ -227,10 +227,10 @@ fn render_columns(frame: &mut Frame, app: &App, area: Rect) {
 fn render_detail(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_widget(Clear, area);
 
-    let visible = visible_stories(&app.board_stories);
-    let story_idx = app.board_detail.unwrap_or(0);
+    let visible = visible_stories(&app.board.stories);
+    let story_idx = app.board.detail.unwrap_or(0);
     let global_idx = visible.get(story_idx).copied().unwrap_or(0);
-    let story = match app.board_stories.get(global_idx) {
+    let story = match app.board.stories.get(global_idx) {
         Some(s) => s,
         None => return,
     };

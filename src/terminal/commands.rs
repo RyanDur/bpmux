@@ -237,9 +237,9 @@ impl App {
     fn handle_board(&mut self) -> Option<Message> {
         match board::fetch_board_stories() {
             Ok(stories) => {
-                self.board_stories = stories;
-                self.board_selected = 0;
-                self.board_detail = None;
+                self.board.stories = stories;
+                self.board.selected = 0;
+                self.board.detail = None;
                 // #196: open in project panel (split view) by default.
                 // The full-screen board is still accessible via the
                 // board_detail navigation.

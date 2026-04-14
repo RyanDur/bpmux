@@ -71,6 +71,25 @@ impl Default for SidebarState {
     }
 }
 
+/// Board view state — extracted from App.
+pub struct BoardState {
+    pub show: bool,
+    pub stories: Vec<super::board::BoardStory>,
+    pub selected: usize,
+    pub detail: Option<usize>,
+}
+
+impl Default for BoardState {
+    fn default() -> Self {
+        Self {
+            show: false,
+            stories: Vec::new(),
+            selected: 0,
+            detail: None,
+        }
+    }
+}
+
 pub struct App {
     // ── Session identity ──
     pub session_dir: Option<PathBuf>,
@@ -167,12 +186,7 @@ pub struct App {
     pub topic_participants: HashMap<String, Vec<String>>,
 
     // ── Board view (#193) ──
-    pub show_board: bool,
-    pub board_stories: Vec<super::board::BoardStory>,
-    /// Index into the flat list of visible stories for arrow-key nav.
-    pub board_selected: usize,
-    /// When Some, shows the detail view for the story at this index.
-    pub board_detail: Option<usize>,
+    pub board: BoardState,
 
     // ── CI status (#151) ──
     pub(super) ci_state: super::ci::CiState,
@@ -282,10 +296,7 @@ impl App {
             active_topic: "general".to_string(),
             topic_unreads: HashMap::new(),
             topic_participants: HashMap::new(),
-            show_board: false,
-            board_stories: Vec::new(),
-            board_selected: 0,
-            board_detail: None,
+            board: BoardState::default(),
             chat_area: None,
             should_reload: false,
             ci_state: super::ci::CiState::Unknown,

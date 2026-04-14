@@ -221,30 +221,30 @@ pub(super) fn handle_terminal_event(
         return Ok(());
     }
     // #193: board view intercepts keys while open.
-    if app.show_board {
+    if app.board.show {
         match key.code {
             KeyCode::Esc => {
-                if app.board_detail.is_some() {
+                if app.board.detail.is_some() {
                     // Detail → board
-                    app.board_detail = None;
+                    app.board.detail = None;
                 } else {
                     // Board → chat
-                    app.show_board = false;
-                    app.board_stories.clear();
+                    app.board.show = false;
+                    app.board.stories.clear();
                 }
             }
             KeyCode::Enter => {
-                if app.board_detail.is_none() {
-                    app.board_detail = Some(app.board_selected);
+                if app.board.detail.is_none() {
+                    app.board.detail = Some(app.board.selected);
                 }
             }
             KeyCode::Up => {
-                app.board_selected = app.board_selected.saturating_sub(1);
+                app.board.selected = app.board.selected.saturating_sub(1);
             }
             KeyCode::Down => {
-                let visible = super::board_view::visible_stories(&app.board_stories);
+                let visible = super::board_view::visible_stories(&app.board.stories);
                 if !visible.is_empty() {
-                    app.board_selected = (app.board_selected + 1).min(visible.len() - 1);
+                    app.board.selected = (app.board.selected + 1).min(visible.len() - 1);
                 }
             }
             _ => {}

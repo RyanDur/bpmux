@@ -93,12 +93,13 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         Span::raw("")
     };
     // #193: board view label, #191: topic mode label.
-    let view_label = if app.show_board {
-        if app.board_detail.is_some() {
-            let visible = super::board_view::visible_stories(&app.board_stories);
-            let idx = app.board_detail.unwrap_or(0);
+    let view_label = if app.board.show {
+        if app.board.detail.is_some() {
+            let visible = super::board_view::visible_stories(&app.board.stories);
+            let idx = app.board.detail.unwrap_or(0);
             let global_idx = visible.get(idx).copied().unwrap_or(0);
-            app.board_stories
+            app.board
+                .stories
                 .get(global_idx)
                 .map(|s| format!(" #{} detail", s.number))
                 .unwrap_or_else(|| " board".to_string())
@@ -228,8 +229,8 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     //     from "key only"
     let used: usize = status_spans.iter().map(|s| s.content.chars().count()).sum();
     let bar_width = area.width as usize;
-    let (clickable_hint, keybind_hint) = if app.show_board {
-        if app.board_detail.is_some() {
+    let (clickable_hint, keybind_hint) = if app.board.show {
+        if app.board.detail.is_some() {
             ("", "Esc=back to board")
         } else {
             ("", "\u{2191}\u{2193}=nav Enter=detail Esc=close")
