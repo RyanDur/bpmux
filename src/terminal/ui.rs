@@ -204,7 +204,7 @@ click anywhere or press any key to close",
 /// └──────────────────────────────────────────────────┘
 /// ```
 fn render_tokens_overlay(frame: &mut Frame, app: &App, area: Rect) {
-    if !app.show_tokens_view {
+    if !app.tokens.show {
         return;
     }
     // #195: append usage table to the token text
@@ -214,10 +214,10 @@ fn render_tokens_overlay(frame: &mut Frame, app: &App, area: Rect) {
     // overlay for constrained environments where a chart would be
     // unreadable.
     if area.width < 60 || area.height < 16 {
-        render_tokens_text_fallback(frame, &app.tokens_view_rows, &usage_text, area);
+        render_tokens_text_fallback(frame, &app.tokens.rows, &usage_text, area);
         return;
     }
-    render_tokens_chart_view(frame, &app.tokens_view_rows, &usage_text, area);
+    render_tokens_chart_view(frame, &app.tokens.rows, &usage_text, area);
 }
 
 fn render_tokens_text_fallback(
@@ -492,7 +492,7 @@ fn render_project_panel(frame: &mut Frame, app: &App, area: Rect) {
         .border_style(Style::default().fg(DRACULA_PURPLE))
         .style(Style::default().bg(DRACULA_BG).fg(DRACULA_FG));
 
-    let content = app.project_view_content.as_deref().unwrap_or("Loading...");
+    let content = app.project.content.as_deref().unwrap_or("Loading...");
 
     let inner_width = area.width.saturating_sub(2) as usize;
     let prefix_spans = Vec::new();
@@ -559,7 +559,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
 
     render_broadcast_banner(frame, app, chunks[0]);
 
-    if app.show_project_view && chunks[1].width >= 60 {
+    if app.project.show && chunks[1].width >= 60 {
         // Side-by-side: project view (60%) | chat (40%)
         let split = Layout::horizontal([Constraint::Percentage(60), Constraint::Percentage(40)])
             .split(chunks[1]);

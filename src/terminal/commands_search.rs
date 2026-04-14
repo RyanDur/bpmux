@@ -46,8 +46,8 @@ impl App {
         let results = crate::session::search(&self.messages, &filters);
         if results.is_empty() {
             self.system_message(format!("No results for \"{query}\"."));
-            self.search_results.clear();
-            self.search_selected = None;
+            self.search.results.clear();
+            self.search.selected = None;
         } else {
             let mut text = format!(
                 "── Search: \"{query}\" ({} results) ── type a number to expand ──\n",
@@ -72,8 +72,8 @@ impl App {
             }
             text.push_str("── type number to expand, /search for new query ──");
             self.system_message(text);
-            self.search_results = results;
-            self.search_selected = None;
+            self.search.results = results;
+            self.search.selected = None;
         }
         self.clear_input();
         None
@@ -185,7 +185,7 @@ impl App {
     }
 
     pub(super) fn expand_search_result(&mut self, index: usize) {
-        if let Some(result) = self.search_results.get(index) {
+        if let Some(result) = self.search.results.get(index) {
             let mut text = format!("── Result [{index}] ({:?}) ──\n", result.message_class);
             for (i, msg) in result.messages.iter().enumerate() {
                 let sender = msg.from.split(':').next().unwrap_or(&msg.from);
@@ -195,7 +195,7 @@ impl App {
             }
             text.push_str("── /search for new query ──");
             self.system_message(text);
-            self.search_selected = Some(index);
+            self.search.selected = Some(index);
         }
     }
 }

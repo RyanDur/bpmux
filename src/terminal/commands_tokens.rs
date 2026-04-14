@@ -26,8 +26,8 @@ impl App {
                 return None;
             }
         };
-        self.tokens_view_rows = rows;
-        self.show_tokens_view = true;
+        self.tokens.rows = rows;
+        self.tokens.show = true;
         self.clear_input();
         None
     }

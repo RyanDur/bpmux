@@ -115,6 +115,28 @@ impl Default for TopicState {
 /// Scroll state — extracted from App.
 /// Layout positions — set by the renderer each frame, read by
 /// mouse click handler and status bar. Pure render state.
+/// Search state — extracted from App.
+#[derive(Default)]
+pub struct SearchState {
+    pub results: Vec<crate::session::SearchResult>,
+    pub selected: Option<usize>,
+}
+
+/// Project view state — extracted from App.
+#[derive(Default)]
+pub struct ProjectViewState {
+    pub state: Option<super::board::ProjectState>,
+    pub show: bool,
+    pub content: Option<String>,
+}
+
+/// Tokens overlay state — extracted from App.
+#[derive(Default)]
+pub struct TokensViewState {
+    pub show: bool,
+    pub rows: Vec<crate::session::tokens::TokenRow>,
+}
+
 /// Display toggle state — extracted from App.
 pub struct DisplayState {
     pub show_timestamps: bool,
@@ -239,22 +261,13 @@ pub struct App {
     pub sidebar: SidebarState,
 
     // ── Search ──
-    pub search_results: Vec<crate::session::SearchResult>,
-    pub search_selected: Option<usize>,
+    pub search: SearchState,
 
     // ── Project view ──
-    pub project_state: Option<super::board::ProjectState>,
-    pub show_project_view: bool,
-    pub project_view_content: Option<String>,
+    pub project: ProjectViewState,
 
     // ── Tokens view (#179) ──
-    /// Whether the `/tokens` overlay is currently rendered. Dismissed
-    /// by any key press, same UX as the `?` help overlay.
-    pub show_tokens_view: bool,
-    /// Snapshot of the token log rows loaded when `/tokens` was
-    /// invoked. Kept on `App` (not re-read on every render) so the
-    /// overlay stays stable across frames until dismissed.
-    pub tokens_view_rows: Vec<crate::session::tokens::TokenRow>,
+    pub tokens: TokensViewState,
 
     // ── Usage statistics (#195) ──
     /// Per-feature invocation counts: command name → (count, last_used).
@@ -341,16 +354,12 @@ impl App {
             sidebar: SidebarState::default(),
             channel_unread: HashMap::new(),
             send_target: None,
-            search_results: Vec::new(),
-            search_selected: None,
+            search: SearchState::default(),
             layout: LayoutState::default(),
             truncation_indicators: Vec::new(),
             p2p_command: None,
-            project_state: None,
-            show_project_view: false,
-            project_view_content: None,
-            show_tokens_view: false,
-            tokens_view_rows: Vec::new(),
+            project: ProjectViewState::default(),
+            tokens: TokensViewState::default(),
             feature_usage: HashMap::new(),
             focused_roles: None,
             palette: PaletteState::default(),

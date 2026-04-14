@@ -15,20 +15,20 @@ impl App {
             return None;
         }
 
-        if !self.search_results.is_empty() {
+        if !self.search.results.is_empty() {
             if let Ok(n) = text.parse::<usize>() {
                 self.expand_search_result(n);
                 self.clear_input();
                 return None;
             }
             if text == "next" {
-                let next = self.search_selected.map(|i| i + 1).unwrap_or(0);
+                let next = self.search.selected.map(|i| i + 1).unwrap_or(0);
                 self.expand_search_result(next);
                 self.clear_input();
                 return None;
             }
             if text == "prev" {
-                let prev = self.search_selected.unwrap_or(1).saturating_sub(1);
+                let prev = self.search.selected.unwrap_or(1).saturating_sub(1);
                 self.expand_search_result(prev);
                 self.clear_input();
                 return None;
@@ -243,7 +243,7 @@ impl App {
                 // #196: open in project panel (split view) by default.
                 // The full-screen board is still accessible via the
                 // board_detail navigation.
-                self.show_project_view = true;
+                self.project.show = true;
             }
             Err(e) => {
                 self.system_message(format!(

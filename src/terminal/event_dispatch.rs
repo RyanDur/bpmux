@@ -103,11 +103,11 @@ fn handle_mouse_click(col: u16, row: u16, app: &mut App) {
         && col >= cx
         && col < cx + cw
     {
-        app.show_project_view = !app.show_project_view;
-        if app.show_project_view {
-            app.project_view_content = Some(build_project_content());
+        app.project.show = !app.project.show;
+        if app.project.show {
+            app.project.content = Some(build_project_content());
         } else {
-            app.project_view_content = None;
+            app.project.content = None;
         }
         return;
     }
@@ -173,10 +173,10 @@ pub(super) fn handle_terminal_event(
         app.display.show_help = false;
         return Ok(());
     }
-    if app.show_tokens_view {
+    if app.tokens.show {
         // Any key dismisses, same UX as the `?` help overlay.
-        app.show_tokens_view = false;
-        app.tokens_view_rows.clear();
+        app.tokens.show = false;
+        app.tokens.rows.clear();
         return Ok(());
     }
     // #192: command palette intercepts all keys while open.
@@ -218,9 +218,9 @@ pub(super) fn handle_terminal_event(
         }
         return Ok(());
     }
-    if app.show_project_view && key.code == KeyCode::Esc {
-        app.show_project_view = false;
-        app.project_view_content = None;
+    if app.project.show && key.code == KeyCode::Esc {
+        app.project.show = false;
+        app.project.content = None;
         return Ok(());
     }
     // #193: board view intercepts keys while open.

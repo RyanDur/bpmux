@@ -200,13 +200,14 @@ pub(super) fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
     // project view is collapsed (click to expand), `▾` when open
     // (click to collapse). Glyph vocabulary shared with the icons
     // module for consistency across surfaces.
-    let toggle_glyph = if app.show_project_view {
+    let toggle_glyph = if app.project.show {
         super::icons::COLLAPSE
     } else {
         super::icons::EXPAND
     };
     let title_body = app
-        .project_state
+        .project
+        .state
         .as_ref()
         .map_or(" bpmux ".to_string(), |s| s.title_summary());
     // `title_body` already has leading/trailing spaces; splice the

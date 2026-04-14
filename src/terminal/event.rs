@@ -211,7 +211,7 @@ where
                 return Ok(());
             }
             Some(state) = project_rx.recv() => {
-                app.project_state = Some(state);
+                app.project.state = Some(state);
             }
             Some(injected) = injected_rx.recv() => {
                 handle_terminal_event(injected, app, session)?;
