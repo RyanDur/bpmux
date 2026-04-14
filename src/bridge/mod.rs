@@ -366,11 +366,11 @@ impl ServerHandler for BridgeServer {
                 "create_story" => tools::handle_create_story(&args).await,
                 "start_story" => {
                     let current_name = name.lock().await;
-                    tools::handle_start_story(&args, &current_name).await
+                    tools::handle_start_story(&args, &current_name, &ws_tx).await
                 }
                 "deliver_story" => {
                     let current_name = name.lock().await;
-                    tools::handle_deliver_story(&args, &current_name).await
+                    tools::handle_deliver_story(&args, &current_name, &ws_tx).await
                 }
                 "label_story" => {
                     let current_name = name.lock().await;
@@ -378,11 +378,11 @@ impl ServerHandler for BridgeServer {
                 }
                 "accept_story" => {
                     let current_name = name.lock().await;
-                    tools::handle_accept_story(&args, &current_name).await
+                    tools::handle_accept_story(&args, &current_name, &ws_tx).await
                 }
                 "reject_story" => {
                     let current_name = name.lock().await;
-                    tools::handle_reject_story(&args, &current_name).await
+                    tools::handle_reject_story(&args, &current_name, &ws_tx).await
                 }
                 "reorder_story" => {
                     let current_name = name.lock().await;

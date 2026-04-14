@@ -2,6 +2,8 @@
 
 *Opened via command palette (Ctrl+K → "identity") or /identity. Shows values, principles, and the arcs that shaped them.*
 
+**Important**: this is a REVIEW tool for understanding agent identity — not a representation of how agents use identity during work. Agents don't navigate this tree while working. Identity operates through context loading: the identity file loads at session start and passively shapes behavior. This view is for Ryan (examining who each agent is), for retros (reflecting on how identity evolved), and for teaching (showing another team what shaped these principles).
+
 ## Default view: values + principles
 
 ```

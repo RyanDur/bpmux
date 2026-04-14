@@ -621,10 +621,11 @@ pub(super) async fn handle_create_story(
     Ok(format!("story created: {}", result.trim()))
 }
 
-/// Start a story — dev only.
+/// Start a story — dev only. Sends workflow signals (#197).
 pub(super) async fn handle_start_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    ws_tx: &Mutex<Option<WsSink>>,
 ) -> Result<String, String> {
     require_role(agent_name, &["dev"], "start")?;
     let number = args
@@ -639,19 +640,37 @@ pub(super) async fn handle_start_story(
         "started",
     ])
     .await?;
+    // #197: signal PM that ready queue shrunk
+    let pm_signal = serde_json::to_string(&ClientMessage::Send {
+        text: format!("#{number} started. ready queue shrunk — check if restocking needed"),
+        to: Some(vec!["pm".to_string()]),
+        addressee: Some("pm".to_string()),
+        message_type: Some("activity".to_string()),
+        topic: None,
+    })
+    .map_err(|e| format!("signal: {e}"))?;
+    let _ = ws_send(ws_tx, pm_signal).await;
     Ok(format!("#{number} marked as started"))
 }
 
-/// Deliver a story — dev only.
+/// Deliver a story — dev only. Sends workflow signals (#197).
 pub(super) async fn handle_deliver_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    ws_tx: &Mutex<Option<WsSink>>,
 ) -> Result<String, String> {
     require_role(agent_name, &["dev"], "deliver")?;
     let number = args
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
+    // Get story title for the signal
+    let title = gh(&["issue", "view", &number.to_string(), "--json", "title"])
+        .await
+        .ok()
+        .and_then(|json| serde_json::from_str::<serde_json::Value>(&json).ok())
+        .and_then(|v| v["title"].as_str().map(String::from))
+        .unwrap_or_else(|| format!("#{number}"));
     // Remove started, add delivered
     gh(&[
         "issue",
@@ -663,6 +682,27 @@ pub(super) async fn handle_deliver_story(
         "delivered",
     ])
     .await?;
+    // #197: send workflow signals
+    // Signal to designer: desk-check needed
+    let designer_signal = serde_json::to_string(&ClientMessage::Send {
+        text: format!("#{number} ({title}) delivered — desk-check needed"),
+        to: Some(vec!["designer".to_string()]),
+        addressee: Some("designer".to_string()),
+        message_type: Some("activity".to_string()),
+        topic: None,
+    })
+    .map_err(|e| format!("signal: {e}"))?;
+    let _ = ws_send(ws_tx, designer_signal).await;
+    // Signal to pm: queue state update
+    let pm_signal = serde_json::to_string(&ClientMessage::Send {
+        text: format!("#{number} ({title}) delivered. queue update: check ready count"),
+        to: Some(vec!["pm".to_string()]),
+        addressee: Some("pm".to_string()),
+        message_type: Some("activity".to_string()),
+        topic: None,
+    })
+    .map_err(|e| format!("signal: {e}"))?;
+    let _ = ws_send(ws_tx, pm_signal).await;
     Ok(format!("#{number} marked as delivered"))
 }
 
@@ -684,17 +724,17 @@ pub(super) async fn handle_label_story(
     Ok(format!("#{number} labeled '{label}'"))
 }
 
-/// Accept a story — owner (ryan) only.
+/// Accept a story — owner (ryan) only. Sends workflow signals (#197).
 pub(super) async fn handle_accept_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    ws_tx: &Mutex<Option<WsSink>>,
 ) -> Result<String, String> {
     require_role(agent_name, &["ryan"], "accept")?;
     let number = args
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
-    // Remove delivered, close the issue
     gh(&[
         "issue",
         "edit",
@@ -704,13 +744,24 @@ pub(super) async fn handle_accept_story(
     ])
     .await?;
     gh(&["issue", "close", &number.to_string()]).await?;
+    // #197: signal dev to pick next story
+    let dev_signal = serde_json::to_string(&ClientMessage::Send {
+        text: format!("#{number} accepted. pick the next story from the ready queue"),
+        to: Some(vec!["dev".to_string()]),
+        addressee: Some("dev".to_string()),
+        message_type: Some("activity".to_string()),
+        topic: None,
+    })
+    .map_err(|e| format!("signal: {e}"))?;
+    let _ = ws_send(ws_tx, dev_signal).await;
     Ok(format!("#{number} accepted and closed"))
 }
 
-/// Reject a story — owner (ryan) only.
+/// Reject a story — owner (ryan) only. Sends workflow signals (#197).
 pub(super) async fn handle_reject_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    ws_tx: &Mutex<Option<WsSink>>,
 ) -> Result<String, String> {
     require_role(agent_name, &["ryan"], "reject")?;
     let number = args
@@ -721,7 +772,6 @@ pub(super) async fn handle_reject_story(
         .get("reason")
         .and_then(|v| v.as_str())
         .unwrap_or("rejected");
-    // Remove delivered, add rejected label, add comment
     gh(&[
         "issue",
         "edit",
@@ -733,6 +783,16 @@ pub(super) async fn handle_reject_story(
     ])
     .await?;
     gh(&["issue", "comment", &number.to_string(), "--body", reason]).await?;
+    // #197: signal dev to fix and re-deliver
+    let dev_signal = serde_json::to_string(&ClientMessage::Send {
+        text: format!("#{number} rejected: {reason}. fix and re-deliver"),
+        to: Some(vec!["dev".to_string()]),
+        addressee: Some("dev".to_string()),
+        message_type: Some("activity".to_string()),
+        topic: None,
+    })
+    .map_err(|e| format!("signal: {e}"))?;
+    let _ = ws_send(ws_tx, dev_signal).await;
     Ok(format!("#{number} rejected: {reason}"))
 }
 

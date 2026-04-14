@@ -180,7 +180,11 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
             Style::default().fg(DRACULA_COMMENT),
         ));
     }
-    let mut peers: Vec<_> = app.peer_activity.iter().collect();
+    let mut peers: Vec<_> = app
+        .peer_activity
+        .iter()
+        .filter(|(name, _)| *name != "bpmux")
+        .collect();
     peers.sort_by_key(|(name, _)| (*name).clone());
     let now = std::time::Instant::now();
     for (peer, (status, last_seen)) in &peers {
