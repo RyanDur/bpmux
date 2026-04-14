@@ -641,15 +641,9 @@ pub(super) async fn handle_start_story(
     ])
     .await?;
     // #197: signal PM that ready queue shrunk
-    let pm_signal = serde_json::to_string(&ClientMessage::Send {
-        text: format!("#{number} started. ready queue shrunk — check if restocking needed"),
-        to: Some(vec!["pm".to_string()]),
-        addressee: Some("pm".to_string()),
-        message_type: Some("activity".to_string()),
-        topic: None,
-    })
-    .map_err(|e| format!("signal: {e}"))?;
-    let _ = ws_send(ws_tx, pm_signal).await;
+    let signal =
+        serde_json::to_string(&build_start_signal(number)).map_err(|e| format!("signal: {e}"))?;
+    let _ = ws_send(ws_tx, signal).await;
     Ok(format!("#{number} marked as started"))
 }
 
@@ -683,26 +677,10 @@ pub(super) async fn handle_deliver_story(
     ])
     .await?;
     // #197: send workflow signals
-    // Signal to designer: desk-check needed
-    let designer_signal = serde_json::to_string(&ClientMessage::Send {
-        text: format!("#{number} ({title}) delivered — desk-check needed"),
-        to: Some(vec!["designer".to_string()]),
-        addressee: Some("designer".to_string()),
-        message_type: Some("activity".to_string()),
-        topic: None,
-    })
-    .map_err(|e| format!("signal: {e}"))?;
-    let _ = ws_send(ws_tx, designer_signal).await;
-    // Signal to pm: queue state update
-    let pm_signal = serde_json::to_string(&ClientMessage::Send {
-        text: format!("#{number} ({title}) delivered. queue update: check ready count"),
-        to: Some(vec!["pm".to_string()]),
-        addressee: Some("pm".to_string()),
-        message_type: Some("activity".to_string()),
-        topic: None,
-    })
-    .map_err(|e| format!("signal: {e}"))?;
-    let _ = ws_send(ws_tx, pm_signal).await;
+    for signal in build_delivery_signals(number, &title) {
+        let json = serde_json::to_string(&signal).map_err(|e| format!("signal: {e}"))?;
+        let _ = ws_send(ws_tx, json).await;
+    }
     Ok(format!("#{number} marked as delivered"))
 }
 
@@ -745,15 +723,9 @@ pub(super) async fn handle_accept_story(
     .await?;
     gh(&["issue", "close", &number.to_string()]).await?;
     // #197: signal dev to pick next story
-    let dev_signal = serde_json::to_string(&ClientMessage::Send {
-        text: format!("#{number} accepted. pick the next story from the ready queue"),
-        to: Some(vec!["dev".to_string()]),
-        addressee: Some("dev".to_string()),
-        message_type: Some("activity".to_string()),
-        topic: None,
-    })
-    .map_err(|e| format!("signal: {e}"))?;
-    let _ = ws_send(ws_tx, dev_signal).await;
+    let signal =
+        serde_json::to_string(&build_accept_signal(number)).map_err(|e| format!("signal: {e}"))?;
+    let _ = ws_send(ws_tx, signal).await;
     Ok(format!("#{number} accepted and closed"))
 }
 
@@ -784,15 +756,9 @@ pub(super) async fn handle_reject_story(
     .await?;
     gh(&["issue", "comment", &number.to_string(), "--body", reason]).await?;
     // #197: signal dev to fix and re-deliver
-    let dev_signal = serde_json::to_string(&ClientMessage::Send {
-        text: format!("#{number} rejected: {reason}. fix and re-deliver"),
-        to: Some(vec!["dev".to_string()]),
-        addressee: Some("dev".to_string()),
-        message_type: Some("activity".to_string()),
-        topic: None,
-    })
-    .map_err(|e| format!("signal: {e}"))?;
-    let _ = ws_send(ws_tx, dev_signal).await;
+    let signal = serde_json::to_string(&build_reject_signal(number, reason))
+        .map_err(|e| format!("signal: {e}"))?;
+    let _ = ws_send(ws_tx, signal).await;
     Ok(format!("#{number} rejected: {reason}"))
 }
 
@@ -822,6 +788,60 @@ pub(super) async fn handle_reorder_story(
     crate::session::priority::save_priority(&path, &index)
         .map_err(|e| format!("save priority: {e}"))?;
     Ok(format!("#{number} moved to position {position} in {state}"))
+}
+
+// ── Workflow signal builders (#197) ──────────────────────────
+// Pure functions that produce the signal messages. Tested
+// separately from the tool handlers so role-targeting is
+// verified without needing gh.
+
+fn build_delivery_signals(number: u64, title: &str) -> Vec<ClientMessage> {
+    vec![
+        ClientMessage::Send {
+            text: format!("#{number} ({title}) delivered — desk-check needed"),
+            to: Some(vec!["designer".to_string()]),
+            addressee: Some("designer".to_string()),
+            message_type: Some("activity".to_string()),
+            topic: None,
+        },
+        ClientMessage::Send {
+            text: format!("#{number} ({title}) delivered. queue update: check ready count"),
+            to: Some(vec!["pm".to_string()]),
+            addressee: Some("pm".to_string()),
+            message_type: Some("activity".to_string()),
+            topic: None,
+        },
+    ]
+}
+
+fn build_start_signal(number: u64) -> ClientMessage {
+    ClientMessage::Send {
+        text: format!("#{number} started. ready queue shrunk — check if restocking needed"),
+        to: Some(vec!["pm".to_string()]),
+        addressee: Some("pm".to_string()),
+        message_type: Some("activity".to_string()),
+        topic: None,
+    }
+}
+
+fn build_accept_signal(number: u64) -> ClientMessage {
+    ClientMessage::Send {
+        text: format!("#{number} accepted. pick the next story from the ready queue"),
+        to: Some(vec!["dev".to_string()]),
+        addressee: Some("dev".to_string()),
+        message_type: Some("activity".to_string()),
+        topic: None,
+    }
+}
+
+fn build_reject_signal(number: u64, reason: &str) -> ClientMessage {
+    ClientMessage::Send {
+        text: format!("#{number} rejected: {reason}. fix and re-deliver"),
+        to: Some(vec!["dev".to_string()]),
+        addressee: Some("dev".to_string()),
+        message_type: Some("activity".to_string()),
+        topic: None,
+    }
 }
 
 /// Get usage statistics — any agent (#195).
@@ -885,5 +905,87 @@ mod tests {
         let result = require_role("pm:claude-code", &["ryan"], "reject");
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("restricted to ryan"));
+    }
+
+    // ── Workflow signal tests (#197) ──
+
+    #[test]
+    fn delivery_signals_target_designer_and_pm() {
+        let signals = build_delivery_signals(191, "topic channels");
+        assert_eq!(signals.len(), 2, "deliver should produce 2 signals");
+
+        // First signal → designer
+        if let ClientMessage::Send { to, addressee, .. } = &signals[0] {
+            assert_eq!(to.as_ref().unwrap(), &["designer"]);
+            assert_eq!(addressee.as_deref(), Some("designer"));
+        } else {
+            panic!("expected Send variant");
+        }
+
+        // Second signal → pm
+        if let ClientMessage::Send { to, addressee, .. } = &signals[1] {
+            assert_eq!(to.as_ref().unwrap(), &["pm"]);
+            assert_eq!(addressee.as_deref(), Some("pm"));
+        } else {
+            panic!("expected Send variant");
+        }
+    }
+
+    #[test]
+    fn delivery_signals_do_not_target_dev() {
+        let signals = build_delivery_signals(191, "topic channels");
+        for signal in &signals {
+            if let ClientMessage::Send { to, .. } = signal {
+                let recipients = to.as_ref().unwrap();
+                assert!(
+                    !recipients.contains(&"dev".to_string()),
+                    "delivery signal should NOT target dev, got: {recipients:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn start_signal_targets_pm_only() {
+        if let ClientMessage::Send { to, addressee, .. } = build_start_signal(100) {
+            assert_eq!(to.as_ref().unwrap(), &["pm"]);
+            assert_eq!(addressee.as_deref(), Some("pm"));
+        } else {
+            panic!("expected Send variant");
+        }
+    }
+
+    #[test]
+    fn accept_signal_targets_dev_only() {
+        if let ClientMessage::Send { to, addressee, .. } = build_accept_signal(100) {
+            assert_eq!(to.as_ref().unwrap(), &["dev"]);
+            assert_eq!(addressee.as_deref(), Some("dev"));
+        } else {
+            panic!("expected Send variant");
+        }
+    }
+
+    #[test]
+    fn reject_signal_targets_dev_only() {
+        if let ClientMessage::Send { to, addressee, .. } = build_reject_signal(100, "needs fix") {
+            assert_eq!(to.as_ref().unwrap(), &["dev"]);
+            assert_eq!(addressee.as_deref(), Some("dev"));
+        } else {
+            panic!("expected Send variant");
+        }
+    }
+
+    #[test]
+    fn reject_signal_includes_reason() {
+        if let ClientMessage::Send { text, .. } = build_reject_signal(42, "missing AC") {
+            assert!(
+                text.contains("missing AC"),
+                "reason should be in text: {text}"
+            );
+            assert!(
+                text.contains("#42"),
+                "story number should be in text: {text}"
+            );
+        }
     }
 }
