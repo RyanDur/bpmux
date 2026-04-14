@@ -35,7 +35,7 @@ pub fn save_priority(path: &Path, index: &PriorityIndex) -> Result<(), std::io::
         std::fs::create_dir_all(parent)?;
     }
     let json = serde_json::to_string_pretty(index)
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, format!("serialize: {e}")))?;
+        .map_err(|e| std::io::Error::other(format!("serialize: {e}")))?;
     let tmp = path.with_extension("json.tmp");
     std::fs::write(&tmp, json)?;
     std::fs::rename(&tmp, path)?;

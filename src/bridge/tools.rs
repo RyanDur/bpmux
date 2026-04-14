@@ -522,7 +522,7 @@ fn role_from_name(name: &str) -> &str {
 /// Lane check: returns Ok(()) if allowed, Err with rejection message if not.
 fn require_role(agent_name: &str, allowed: &[&str], operation: &str) -> Result<(), String> {
     let role = role_from_name(agent_name);
-    if allowed.iter().any(|&r| r == role) {
+    if allowed.contains(&role) {
         Ok(())
     } else {
         Err(format!(

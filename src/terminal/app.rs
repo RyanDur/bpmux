@@ -73,20 +73,11 @@ impl Default for SidebarState {
 
 /// Board view state — extracted from App.
 /// Command palette state — extracted from App.
+#[derive(Default)]
 pub struct PaletteState {
     pub show: bool,
     pub input: String,
     pub selected: usize,
-}
-
-impl Default for PaletteState {
-    fn default() -> Self {
-        Self {
-            show: false,
-            input: String::new(),
-            selected: 0,
-        }
-    }
 }
 
 /// Topic state — extracted from App.
@@ -160,6 +151,7 @@ impl Default for DisplayState {
     }
 }
 
+#[derive(Default)]
 pub struct LayoutState {
     pub sidebar_area: Option<(u16, u16, u16, u16)>,
     pub menu_click_cell: Option<(u16, u16)>,
@@ -168,18 +160,7 @@ pub struct LayoutState {
     pub help_hint_col: Option<u16>,
 }
 
-impl Default for LayoutState {
-    fn default() -> Self {
-        Self {
-            sidebar_area: None,
-            menu_click_cell: None,
-            status_bar_area: None,
-            chat_area: None,
-            help_hint_col: None,
-        }
-    }
-}
-
+#[derive(Default)]
 pub struct ScrollState {
     pub offset: usize,
     pub max: usize,
@@ -187,33 +168,12 @@ pub struct ScrollState {
     pub unread_count: usize,
 }
 
-impl Default for ScrollState {
-    fn default() -> Self {
-        Self {
-            offset: 0,
-            max: 0,
-            at_boundary: false,
-            unread_count: 0,
-        }
-    }
-}
-
+#[derive(Default)]
 pub struct BoardState {
     pub show: bool,
     pub stories: Vec<super::board::BoardStory>,
     pub selected: usize,
     pub detail: Option<usize>,
-}
-
-impl Default for BoardState {
-    fn default() -> Self {
-        Self {
-            show: false,
-            stories: Vec::new(),
-            selected: 0,
-            detail: None,
-        }
-    }
 }
 
 pub struct App {
@@ -478,10 +438,10 @@ impl App {
             if !super::commands_focus::in_focus(m, self.focused_roles.as_deref(), &self.peer_name) {
                 continue;
             }
-            if let Some(msg_topic) = &m.topic {
-                if *msg_topic != self.topic.active {
-                    continue;
-                }
+            if let Some(msg_topic) = &m.topic
+                && *msg_topic != self.topic.active
+            {
+                continue;
             }
             self.filtered_indices.push(idx);
         }

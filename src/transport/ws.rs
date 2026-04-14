@@ -342,7 +342,7 @@ async fn handle_client_message(
         }) => {
             // #191: auto-subscribe sender to the topic on first send.
             if let Some(ref t) = topic {
-                subscribe_peer(&session.topic_subs, &identity, t);
+                subscribe_peer(&session.topic_subs, identity, t);
             }
             let msg = session::Message {
                 from: identity.to_string(),
@@ -360,7 +360,7 @@ async fn handle_client_message(
         Ok(ClientMessage::Subscribe { topics }) => {
             // #191: explicit topic subscription from client.
             for t in &topics {
-                subscribe_peer(&session.topic_subs, &identity, t);
+                subscribe_peer(&session.topic_subs, identity, t);
             }
         }
         Ok(ClientMessage::Ping) => {
