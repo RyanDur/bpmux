@@ -20,6 +20,7 @@ use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite;
 
 mod tools;
+mod tools_stories;
 
 use crate::transport::protocol::ServerMessage;
 
@@ -362,31 +363,31 @@ impl ServerHandler for BridgeServer {
                     tools::handle_get_identity(&args, &current_name).await
                 }
                 "get_token_report" => tools::handle_get_token_report().await,
-                "view_board" => tools::handle_view_board(&args).await,
-                "create_story" => tools::handle_create_story(&args).await,
+                "view_board" => tools_stories::handle_view_board(&args).await,
+                "create_story" => tools_stories::handle_create_story(&args).await,
                 "start_story" => {
                     let current_name = name.lock().await;
-                    tools::handle_start_story(&args, &current_name, &ws_tx).await
+                    tools_stories::handle_start_story(&args, &current_name, &ws_tx).await
                 }
                 "deliver_story" => {
                     let current_name = name.lock().await;
-                    tools::handle_deliver_story(&args, &current_name, &ws_tx).await
+                    tools_stories::handle_deliver_story(&args, &current_name, &ws_tx).await
                 }
                 "label_story" => {
                     let current_name = name.lock().await;
-                    tools::handle_label_story(&args, &current_name).await
+                    tools_stories::handle_label_story(&args, &current_name).await
                 }
                 "accept_story" => {
                     let current_name = name.lock().await;
-                    tools::handle_accept_story(&args, &current_name, &ws_tx).await
+                    tools_stories::handle_accept_story(&args, &current_name, &ws_tx).await
                 }
                 "reject_story" => {
                     let current_name = name.lock().await;
-                    tools::handle_reject_story(&args, &current_name, &ws_tx).await
+                    tools_stories::handle_reject_story(&args, &current_name, &ws_tx).await
                 }
                 "reorder_story" => {
                     let current_name = name.lock().await;
-                    tools::handle_reorder_story(&args, &current_name).await
+                    tools_stories::handle_reorder_story(&args, &current_name).await
                 }
                 "get_usage" => tools::handle_get_usage(&args).await,
                 other => Err(format!("unknown tool: {other}")),
