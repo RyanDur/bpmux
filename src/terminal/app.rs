@@ -115,13 +115,47 @@ impl Default for TopicState {
 /// Scroll state — extracted from App.
 /// Layout positions — set by the renderer each frame, read by
 /// mouse click handler and status bar. Pure render state.
-#[derive(Default)]
+/// Display toggle state — extracted from App.
+pub struct DisplayState {
+    pub show_timestamps: bool,
+    pub show_system_messages: bool,
+    pub show_help: bool,
+    pub tui_focused: bool,
+    pub show_all_classes: bool,
+    pub hidden_class_count: usize,
+}
+
+impl Default for DisplayState {
+    fn default() -> Self {
+        Self {
+            show_timestamps: false,
+            show_system_messages: false,
+            show_help: false,
+            tui_focused: true,
+            show_all_classes: false,
+            hidden_class_count: 0,
+        }
+    }
+}
+
 pub struct LayoutState {
     pub sidebar_area: Option<(u16, u16, u16, u16)>,
     pub menu_click_cell: Option<(u16, u16)>,
     pub status_bar_area: Option<(u16, u16, u16, u16)>,
     pub chat_area: Option<(u16, u16, u16, u16)>,
     pub help_hint_col: Option<u16>,
+}
+
+impl Default for LayoutState {
+    fn default() -> Self {
+        Self {
+            sidebar_area: None,
+            menu_click_cell: None,
+            status_bar_area: None,
+            chat_area: None,
+            help_hint_col: None,
+        }
+    }
 }
 
 pub struct ScrollState {
@@ -248,21 +282,15 @@ pub struct App {
     pub(super) ci_state: super::ci::CiState,
 
     // ── Display toggles ──
-    pub show_timestamps: bool,
-    pub show_system_messages: bool,
-    pub show_help: bool,
-    pub tui_focused: bool,
+    pub display: DisplayState,
 
     // ── #161: classifier-driven view filter ──
     /// When `false` (default), the chat pane hides `MessageClass::Routine`
     /// messages and bpmux auto-nudges to reduce visual noise. Toggle with
     /// `/all` or Ctrl+A. Persisted via `UiState`.
-    pub show_all_classes: bool,
     /// Count of messages suppressed by the class filter on the most
     /// recent render. Set by `chat::render_chat`, read by
     /// `status_bar::render` for the `N hidden` counter.
-    pub hidden_class_count: usize,
-
     // ── Layout positions (set by renderer) ──
     pub layout: LayoutState,
 
@@ -300,22 +328,19 @@ impl App {
             peer_name,
             session_id,
             should_quit: false,
-            show_timestamps: false,
+            display: DisplayState::default(),
             input_history: Vec::new(),
             history_index: None,
             peer_activity,
-            show_system_messages: false,
             expanded_messages: HashSet::new(),
             dm_unread_from: Vec::new(),
             dm_flash_until: None,
             active_channels,
             current_view: None,
             popup_selected: None,
-            show_help: false,
             sidebar: SidebarState::default(),
             channel_unread: HashMap::new(),
             send_target: None,
-            tui_focused: true,
             search_results: Vec::new(),
             search_selected: None,
             layout: LayoutState::default(),
@@ -333,8 +358,6 @@ impl App {
             board: BoardState::default(),
             should_reload: false,
             ci_state: super::ci::CiState::Unknown,
-            show_all_classes: false,
-            hidden_class_count: 0,
         }
     }
 
@@ -402,7 +425,7 @@ impl App {
         self.cached_hidden_count = 0;
         for (idx, m) in self.messages.iter().enumerate() {
             if !m.is_chat() {
-                if self.show_system_messages {
+                if self.display.show_system_messages {
                     self.filtered_indices.push(idx);
                 }
                 continue;
@@ -417,7 +440,7 @@ impl App {
             if !in_channel {
                 continue;
             }
-            if !self.show_all_classes {
+            if !self.display.show_all_classes {
                 // Replicate should_hide_by_class logic exactly:
                 // 1. Nudge type → hide
                 // 2. bpmux sender → hide only 📝-prefixed
@@ -535,7 +558,7 @@ impl App {
     pub fn toggle_last_truncated(&mut self) {
         let width = 78usize; // approximate inner width
         for msg in self.messages.iter().rev() {
-            if !msg.is_chat() && !self.show_system_messages {
+            if !msg.is_chat() && !self.display.show_system_messages {
                 continue;
             }
             let prefix_len = msg.from.split(':').next().unwrap_or(&msg.from).len() + 2;

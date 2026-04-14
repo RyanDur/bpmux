@@ -307,12 +307,12 @@ fn live_leave_removes_by_short_name() {
 #[test]
 fn debug_toggles_show_system_messages() {
     let mut app = test_app();
-    assert!(!app.show_system_messages);
+    assert!(!app.display.show_system_messages);
 
     app.input = "/debug".to_string();
     let msg = app.submit_message();
     assert!(msg.is_none());
-    assert!(app.show_system_messages);
+    assert!(app.display.show_system_messages);
     assert!(app.input.is_empty());
     assert_eq!(app.messages.len(), 1);
     assert!(app.messages[0].text.contains("Debug mode on"));
@@ -321,7 +321,7 @@ fn debug_toggles_show_system_messages() {
     app.input = "/debug".to_string();
     let msg = app.submit_message();
     assert!(msg.is_none());
-    assert!(!app.show_system_messages);
+    assert!(!app.display.show_system_messages);
     assert_eq!(app.messages.len(), 2);
     assert!(app.messages[1].text.contains("Debug mode off"));
     assert!(app.messages[1].text.contains("hidden"));
@@ -1181,18 +1181,21 @@ fn share_source_scope_reflects_channel_name() {
 fn all_command_toggles_filter_state() {
     let mut app = test_app();
     assert!(
-        !app.show_all_classes,
+        !app.display.show_all_classes,
         "filter default is ON (show_all_classes false)"
     );
     app.input = "/all".to_string();
     app.submit_message();
     assert!(
-        app.show_all_classes,
+        app.display.show_all_classes,
         "first /all toggles to showing everything"
     );
     app.input = "/all".to_string();
     app.submit_message();
-    assert!(!app.show_all_classes, "second /all flips back to filtered");
+    assert!(
+        !app.display.show_all_classes,
+        "second /all flips back to filtered"
+    );
 }
 
 #[test]
@@ -1211,14 +1214,14 @@ fn all_command_does_not_post_to_pane() {
         before,
         "/all should flip state silently (status bar carries the feedback)"
     );
-    assert!(app.show_all_classes, "state still flipped");
+    assert!(app.display.show_all_classes, "state still flipped");
 }
 
 #[test]
 fn ui_state_persists_show_all_classes() {
     use crate::terminal::ui_state::UiState;
     let mut app = test_app();
-    app.show_all_classes = true;
+    app.display.show_all_classes = true;
     let saved = UiState::capture(&app);
 
     let mut restored = test_app();

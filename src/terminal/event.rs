@@ -246,7 +246,7 @@ fn handle_broadcast_message(msg: session::Message, app: &mut App) {
             r.iter().any(|n| n == &app.peer_name) && !r.iter().all(|n| n == "all")
         });
         app.receive_message(msg);
-        if !app.tui_focused {
+        if !app.display.tui_focused {
             let safe_preview = preview.replace('\\', "\\\\").replace('"', "\\\"");
             let safe_name = short_name.replace('\\', "\\\\").replace('"', "\\\"");
             let sound = if is_dm { " sound name \"default\"" } else { "" };

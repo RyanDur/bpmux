@@ -308,7 +308,7 @@ fn system_messages_visible_when_debug_on() {
         chat_msg("dev:human", "visible chat"),
         system_msg("ryan:claude-code", "[turn complete]"),
     ]);
-    app.show_system_messages = true;
+    app.display.show_system_messages = true;
 
     terminal.draw(|frame| render(frame, &mut app)).unwrap();
     let screen = buffer_to_string(terminal.backend().buffer());
@@ -812,7 +812,7 @@ fn class_filter_hides_bpmux_auto_nudges_by_default() {
             "\u{1F4DD} 3 candidate moments from recent chat. Pointers...",
         ),
     ]);
-    assert!(!app.show_all_classes);
+    assert!(!app.display.show_all_classes);
     terminal.draw(|frame| render(frame, &mut app)).unwrap();
     let content = buffer_to_string(terminal.backend().buffer());
     assert!(content.contains("hello"), "non-bpmux message should render");
@@ -821,9 +821,9 @@ fn class_filter_hides_bpmux_auto_nudges_by_default() {
         "bpmux auto-nudge (📝 prefix) should be hidden by default"
     );
     assert!(
-        app.hidden_class_count >= 1,
+        app.display.hidden_class_count >= 1,
         "hidden count should reflect suppressed auto-nudge, got {}",
-        app.hidden_class_count
+        app.display.hidden_class_count
     );
 }
 
@@ -839,7 +839,7 @@ fn class_filter_does_not_hide_non_nudge_bpmux_output() {
         chat_msg("ryan:human", "hello"),
         chat_msg("bpmux", "## Board\n- #142 delivered\n- #159 ready"),
     ]);
-    assert!(!app.show_all_classes);
+    assert!(!app.display.show_all_classes);
     terminal.draw(|frame| render(frame, &mut app)).unwrap();
     let content = buffer_to_string(terminal.backend().buffer());
     assert!(
@@ -856,7 +856,7 @@ fn class_filter_show_all_reveals_auto_nudges() {
         chat_msg("ryan:human", "hello"),
         chat_msg("bpmux", "\u{1F4DD} 3 candidate moments from recent chat"),
     ]);
-    app.show_all_classes = true;
+    app.display.show_all_classes = true;
     terminal.draw(|frame| render(frame, &mut app)).unwrap();
     let content = buffer_to_string(terminal.backend().buffer());
     assert!(content.contains("hello"));
@@ -888,7 +888,7 @@ fn class_filter_status_bar_shows_showing_all() {
     let backend = TestBackend::new(120, 24);
     let mut terminal = Terminal::new(backend).unwrap();
     let mut app = test_app_with(vec![chat_msg("ryan:human", "hello")]);
-    app.show_all_classes = true;
+    app.display.show_all_classes = true;
     terminal.draw(|frame| render(frame, &mut app)).unwrap();
     let content = buffer_to_string(terminal.backend().buffer());
     assert!(

@@ -43,9 +43,9 @@ impl UiState {
             system_expanded: app.sidebar.system_expanded,
             scroll_offset: app.scroll.offset,
             expanded_messages: app.expanded_messages.clone(),
-            show_timestamps: app.show_timestamps,
+            show_timestamps: app.display.show_timestamps,
             input: app.input.clone(),
-            show_all_classes: app.show_all_classes,
+            show_all_classes: app.display.show_all_classes,
         }
     }
 
@@ -59,8 +59,8 @@ impl UiState {
         app.sidebar.system_expanded = self.system_expanded;
         app.scroll.offset = self.scroll_offset;
         app.expanded_messages = self.expanded_messages.clone();
-        app.show_timestamps = self.show_timestamps;
-        app.show_all_classes = self.show_all_classes;
+        app.display.show_timestamps = self.show_timestamps;
+        app.display.show_all_classes = self.show_all_classes;
         app.mark_filters_dirty();
         if !self.input.is_empty() {
             app.set_textarea_content(&self.input);

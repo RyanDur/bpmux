@@ -87,15 +87,15 @@ impl App {
     }
 
     fn handle_debug(&mut self) -> Option<Message> {
-        self.show_system_messages = !self.show_system_messages;
-        let state = if self.show_system_messages {
+        self.display.show_system_messages = !self.display.show_system_messages;
+        let state = if self.display.show_system_messages {
             "on"
         } else {
             "off"
         };
         self.system_message(format!(
             "Debug mode {state}. System messages are now {}.",
-            if self.show_system_messages {
+            if self.display.show_system_messages {
                 "visible"
             } else {
                 "hidden"
@@ -307,7 +307,7 @@ impl App {
     /// "noise about a noise filter" anti-pattern designer flagged on
     /// 2026-04-10). Removing the source beats adding a classifier rule.
     fn handle_toggle_all(&mut self) -> Option<Message> {
-        self.show_all_classes = !self.show_all_classes;
+        self.display.show_all_classes = !self.display.show_all_classes;
         self.mark_filters_dirty();
         self.clear_input();
         None

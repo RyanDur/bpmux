@@ -167,16 +167,16 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     // toggled the filter off via `/all`. Silent when the filter is on
     // but nothing is currently hidden (avoids cluttering the status bar
     // during channels with no Routine messages).
-    if app.show_all_classes {
+    if app.display.show_all_classes {
         status_spans.push(Span::raw(" | "));
         status_spans.push(Span::styled(
             "showing all".to_string(),
             Style::default().fg(DRACULA_COMMENT),
         ));
-    } else if app.hidden_class_count > 0 {
+    } else if app.display.hidden_class_count > 0 {
         status_spans.push(Span::raw(" | "));
         status_spans.push(Span::styled(
-            format!("{} hidden", app.hidden_class_count),
+            format!("{} hidden", app.display.hidden_class_count),
             Style::default().fg(DRACULA_COMMENT),
         ));
     }

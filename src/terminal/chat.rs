@@ -87,7 +87,7 @@ pub(super) fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
         .iter()
         .filter_map(|&idx| app.messages.get(idx))
         .collect();
-    app.hidden_class_count = app.cached_hidden_count;
+    app.display.hidden_class_count = app.cached_hidden_count;
     let chat_inner_width = area.width.saturating_sub(2) as usize;
     let chat_height = area.height.saturating_sub(2) as usize;
 
@@ -109,7 +109,7 @@ pub(super) fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
         let channel_tag = format!("[{ch_name}] ");
 
         let mut prefix = String::new();
-        if app.show_timestamps {
+        if app.display.show_timestamps {
             let time = msg.ts.format("%H:%M:%S").to_string();
             prefix.push_str(&format!("[{time}] "));
         }
@@ -135,7 +135,7 @@ pub(super) fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
         };
         let indent = Span::raw(" ".repeat(prefix.len()));
         let mut prefix_spans = Vec::new();
-        if app.show_timestamps {
+        if app.display.show_timestamps {
             let time = msg.ts.format("%H:%M:%S").to_string();
             prefix_spans.push(Span::styled(format!("[{time}] "), ts_style));
         }

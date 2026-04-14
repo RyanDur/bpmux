@@ -119,7 +119,7 @@ fn handle_mouse_click(col: u16, row: u16, app: &mut App) {
             .help_hint_col
             .is_some_and(|hint_col| col >= hint_col)
     {
-        app.show_help = true;
+        app.display.show_help = true;
     }
 }
 
@@ -129,17 +129,17 @@ pub(super) fn handle_terminal_event(
     session: &session::Session,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     if matches!(&ev, Event::FocusGained) {
-        app.tui_focused = true;
+        app.display.tui_focused = true;
         return Ok(());
     }
     if matches!(&ev, Event::FocusLost) {
-        app.tui_focused = false;
+        app.display.tui_focused = false;
         return Ok(());
     }
     if let Event::Mouse(mouse) = &ev {
-        if app.show_help {
+        if app.display.show_help {
             if mouse.kind == MouseEventKind::Down(crossterm::event::MouseButton::Left) {
-                app.show_help = false;
+                app.display.show_help = false;
             }
             return Ok(());
         }
@@ -169,8 +169,8 @@ pub(super) fn handle_terminal_event(
     if key.kind != KeyEventKind::Press {
         return Ok(());
     }
-    if app.show_help {
-        app.show_help = false;
+    if app.display.show_help {
+        app.display.show_help = false;
         return Ok(());
     }
     if app.show_tokens_view {
@@ -311,7 +311,7 @@ pub(super) fn handle_terminal_event(
             }
         }
         KeyCode::Char('t') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-            app.show_timestamps = !app.show_timestamps;
+            app.display.show_timestamps = !app.display.show_timestamps;
         }
         KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             scroll_up_with_bell(app, PAGE_SCROLL_LINES);
@@ -369,7 +369,7 @@ pub(super) fn handle_terminal_event(
             }
         }
         KeyCode::Char('?') if app.input.is_empty() => {
-            app.show_help = true;
+            app.display.show_help = true;
         }
         KeyCode::Char(c) => {
             app.insert_char(c);

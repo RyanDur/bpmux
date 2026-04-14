@@ -141,7 +141,7 @@ fn render_popup(frame: &mut Frame, app: &App, input_area: Rect) {
 }
 
 fn render_help_overlay(frame: &mut Frame, app: &App, area: Rect) {
-    if app.show_help {
+    if app.display.show_help {
         // Source the command list from `SLASH_COMMANDS` (#164) so the
         // overlay and the `/help` slash command never drift. Two-column
         // form to fit alongside the keys section in the 24-row terminal
