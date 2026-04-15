@@ -150,7 +150,7 @@ impl App {
 
     pub(super) fn show_share_usage(&mut self) -> Option<Message> {
         self.system_message(
-            "Usage: /share <scope> [message]. Forms: `/share all` (propagate last message) or `/share dev \"text\"` (send fresh). Scope: role name(s) or 'all'.".to_string(),
+            "/share <scope> [message]\n/share all — propagate last message\n/share dev \"text\" — send fresh".to_string(),
         );
         self.clear_input();
         None

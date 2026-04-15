@@ -10,9 +10,7 @@ impl App {
     pub(super) fn handle_search(&mut self, query: String) -> Option<Message> {
         let query = query.trim().to_string();
         if query.is_empty() {
-            self.system_message(
-                "Usage: /search <query>. Example: /search role boundaries".to_string(),
-            );
+            self.system_message("/search <query>\nExample: /search role boundaries".to_string());
             self.clear_input();
             return None;
         }

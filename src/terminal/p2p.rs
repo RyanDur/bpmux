@@ -187,7 +187,8 @@ pub(super) fn handle_p2p_result(
             app.system_message(format!("Connected to peer '{peer_name}'."));
         }
         P2pResult::Error(e) => {
-            app.system_message(format!("P2P error: {e}"));
+            app.system_message("Connection failed.".to_string());
+            crate::session::diag::log_diag(&format!("P2P error: {e}"));
         }
     }
 }

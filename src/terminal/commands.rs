@@ -167,9 +167,7 @@ impl App {
     }
 
     fn show_to_usage(&mut self) -> Option<Message> {
-        self.system_message(
-            "Usage: /to <recipients> <message>. Example: /to dev,pm hello".to_string(),
-        );
+        self.system_message("/to <recipients> <message>\nExample: /to dev,pm hello".to_string());
         self.clear_input();
         None
     }
@@ -264,7 +262,7 @@ impl App {
         let args = args.trim();
         let parts: Vec<&str> = args.splitn(2, ' ').collect();
         if args.is_empty() || parts.len() < 2 {
-            self.system_message("Usage: /join <passphrase> <offer-code>".to_string());
+            self.system_message("/join <passphrase> <offer-code>".to_string());
             self.clear_input();
             return None;
         }
@@ -284,7 +282,7 @@ impl App {
     fn handle_accept(&mut self, answer_code: String) -> Option<Message> {
         let answer_code = answer_code.trim().to_string();
         if answer_code.is_empty() {
-            self.system_message("Usage: /accept <answer-code>".to_string());
+            self.system_message("/accept <answer-code>".to_string());
             self.clear_input();
             return None;
         }

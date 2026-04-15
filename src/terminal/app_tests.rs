@@ -355,7 +355,7 @@ fn to_bare_shows_usage() {
     app.input = "/to".to_string();
     let msg = app.submit_message();
     assert!(msg.is_none());
-    assert!(app.messages[0].text.contains("Usage:"));
+    assert!(app.messages[0].text.contains("/"));
 }
 
 #[test]
@@ -364,7 +364,7 @@ fn to_recipient_no_body_shows_usage() {
     app.input = "/to dev".to_string();
     let msg = app.submit_message();
     assert!(msg.is_none());
-    assert!(app.messages[0].text.contains("Usage:"));
+    assert!(app.messages[0].text.contains("/"));
 }
 
 #[test]
@@ -1007,7 +1007,7 @@ fn join_without_args_shows_usage() {
     assert!(msg.is_none());
     assert!(app.p2p_command.is_none(), "no command without args");
     let last = app.messages.last().unwrap();
-    assert!(last.text.contains("Usage:"));
+    assert!(last.text.contains("/"));
 }
 
 #[test]
@@ -1034,7 +1034,7 @@ fn accept_without_args_shows_usage() {
     assert!(msg.is_none());
     assert!(app.p2p_command.is_none());
     let last = app.messages.last().unwrap();
-    assert!(last.text.contains("Usage:"));
+    assert!(last.text.contains("/"));
 }
 
 // ---------- #160: /share command ----------
@@ -1046,7 +1046,7 @@ fn share_bare_shows_usage() {
     let msg = app.submit_message();
     assert!(msg.is_none());
     let last = app.messages.last().unwrap();
-    assert!(last.text.contains("Usage: /share"));
+    assert!(last.text.contains("/share"));
 }
 
 #[test]
@@ -1302,11 +1302,11 @@ fn help_command_includes_help_itself() {
 #[test]
 fn bare_commands_show_usage_from_single_handler() {
     let cases = [
-        ("/to", "Usage: /to"),
-        ("/join", "Usage: /join"),
-        ("/accept", "Usage: /accept"),
-        ("/share", "/share"), // share usage uses different prefix
-        ("/search", "Usage: /search"),
+        ("/to", "/to"),
+        ("/join", "/join"),
+        ("/accept", "/accept"),
+        ("/share", "/share"),
+        ("/search", "/search"),
     ];
     for (cmd, expected_prefix) in cases {
         let mut app = test_app();

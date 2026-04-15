@@ -112,7 +112,7 @@ fn ac5_to_with_no_args_shows_error() {
 
     // TUI should show a usage/error message
     assert!(
-        bpmux.wait_for_tui("Usage:", Duration::from_secs(3)),
+        bpmux.wait_for_tui("/to", Duration::from_secs(3)),
         "Should show usage hint when /to has no arguments. Screen:\n{}",
         bpmux.tui()
     );
@@ -129,7 +129,7 @@ fn ac5_to_with_recipient_but_no_body_shows_error() {
 
     // TUI should show an error
     assert!(
-        bpmux.wait_for_tui("Usage:", Duration::from_secs(3)),
+        bpmux.wait_for_tui("/to", Duration::from_secs(3)),
         "Should show usage hint when /to has no message body. Screen:\n{}",
         bpmux.tui()
     );
