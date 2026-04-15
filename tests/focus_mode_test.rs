@@ -58,8 +58,15 @@ fn focus_hides_messages_from_roles_outside_the_focused_set() {
     );
 
     bpmux.type_line("/focus dev,pm");
-    // Settle a moment for the filter to apply and the viewport to re-render.
-    std::thread::sleep(Duration::from_millis(400));
+    // Wait for the filter to apply: the status-bar indicator is the
+    // observable signal that the re-render has completed.
+    bpmux
+        .wait_until(
+            "status bar to show [focus: dev,pm]",
+            Duration::from_secs(5),
+            || bpmux.tui().contains("[focus: dev,pm]"),
+        )
+        .expect("focus filter should apply");
 
     let screen = bpmux.tui();
     assert!(
@@ -73,11 +80,6 @@ fn focus_hides_messages_from_roles_outside_the_focused_set() {
     assert!(
         !screen.contains("designer-says-gamma"),
         "designer message should be hidden by the focus filter. screen:\n{screen}"
-    );
-    // Status bar indicator.
-    assert!(
-        screen.contains("[focus: dev,pm]"),
-        "status bar should show focus indicator. screen:\n{screen}"
     );
 }
 
@@ -106,22 +108,17 @@ fn focus_off_restores_all_hidden_messages() {
     );
 
     bpmux.type_line("/focus dev");
-    std::thread::sleep(Duration::from_millis(300));
-    let filtered = bpmux.tui();
-    assert!(
-        !filtered.contains("designer-gamma"),
-        "designer message should be hidden. screen:\n{filtered}"
-    );
+    bpmux
+        .wait_for_tui_absent("designer-gamma", Duration::from_secs(5))
+        .expect("designer message should be hidden by the focus filter");
 
     bpmux.type_line("/focus off");
-    std::thread::sleep(Duration::from_millis(300));
-    let restored = bpmux.tui();
     assert!(
-        restored.contains("designer-gamma"),
-        "designer message should reappear after /focus off. screen:\n{restored}"
+        bpmux.wait_for_tui("designer-gamma", Duration::from_secs(5)),
+        "designer message should reappear after /focus off. screen:\n{}",
+        bpmux.tui()
     );
-    assert!(
-        !restored.contains("[focus:"),
-        "status bar should no longer show focus indicator. screen:\n{restored}"
-    );
+    bpmux
+        .wait_for_tui_absent("[focus:", Duration::from_secs(5))
+        .expect("status bar should no longer show focus indicator");
 }

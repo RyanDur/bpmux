@@ -40,8 +40,9 @@ fn ac4_any_key_dismisses_help() {
     );
     // Press a key to dismiss
     bpmux.type_chars("x");
-    // Wait briefly, then verify overlay is gone
-    std::thread::sleep(Duration::from_millis(300));
+    bpmux
+        .wait_for_tui_absent("press any key to close", Duration::from_secs(5))
+        .expect("Help overlay should be dismissed");
     assert!(
         !bpmux.tui().contains("press any key to close"),
         "Help overlay should be dismissed. Screen:\n{}",

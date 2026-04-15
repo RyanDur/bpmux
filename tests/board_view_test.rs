@@ -69,13 +69,15 @@ fn board_renders_fixture_stories_in_panel() {
         "input prompt should be visible alongside board. screen:\n{screen}"
     );
 
-    // Esc closes the panel
+    // Esc closes the panel — verify via the observable signal (panel
+    // headers gone, input prompt visible) rather than a fixed sleep.
     bpmux.type_key("Esc");
-    std::thread::sleep(Duration::from_millis(300));
-    let after = bpmux.tui();
-    let panel_closed =
-        !after.contains("READY (") && !after.contains("DELIVERED (") && after.contains(">");
-    assert!(panel_closed, "Esc should close panel. screen:\n{after}");
+    bpmux
+        .wait_until("board panel to close", Duration::from_secs(5), || {
+            let s = bpmux.tui();
+            !s.contains("READY (") && !s.contains("DELIVERED (") && s.contains(">")
+        })
+        .expect("Esc should close the board panel");
 }
 
 /// GIVEN fixture data has stories in different states

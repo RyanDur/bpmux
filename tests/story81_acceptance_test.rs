@@ -25,7 +25,15 @@ fn ac1_ac2_paste_sends_single_message() {
 
         // Simulate bracketed paste: \x1b[200~ ... \x1b[201~
         bpmux.paste("line one\nline two\nline three");
-        std::thread::sleep(Duration::from_millis(300));
+        // Wait for the LAST pasted line to render in the input area —
+        // that's the observable signal that the paste was processed
+        // end-to-end. Earlier lines live in the buffer but aren't
+        // guaranteed visible in a single-row input box.
+        assert!(
+            bpmux.wait_for_tui("line three", Duration::from_secs(5)),
+            "pasted content should appear in the input before Enter. screen:\n{}",
+            bpmux.tui()
+        );
 
         // Press Enter to submit
         bpmux.type_line("");

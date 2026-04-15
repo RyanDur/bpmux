@@ -24,13 +24,20 @@ fn ac1_unread_indicator_when_scrolled_up() {
     // Fill chat with messages so we can scroll (needs enough to overflow viewport)
     for i in 0..25 {
         bpmux.type_line(&format!("fill message {i}"));
-        std::thread::sleep(Duration::from_millis(50));
     }
-    std::thread::sleep(Duration::from_millis(200));
+    assert!(
+        bpmux.wait_for_tui("fill message 24", Duration::from_secs(10)),
+        "last fill message should render. screen:\n{}",
+        bpmux.tui()
+    );
 
-    // Scroll up
+    // Scroll up — wait for the scroll indicator as the observable signal.
     bpmux.mouse_scroll_up(5);
-    std::thread::sleep(Duration::from_millis(200));
+    assert!(
+        bpmux.wait_for_tui("scrolled up", Duration::from_secs(5)),
+        "scroll-up indicator should appear. screen:\n{}",
+        bpmux.tui()
+    );
 
     // Send a message from a peer so new content arrives
     let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
@@ -87,11 +94,18 @@ fn ac3_scroll_to_bottom_clears_indicator() {
     // Fill and scroll up (needs enough to overflow viewport)
     for i in 0..25 {
         bpmux.type_line(&format!("scroll msg {i}"));
-        std::thread::sleep(Duration::from_millis(50));
     }
-    std::thread::sleep(Duration::from_millis(200));
+    assert!(
+        bpmux.wait_for_tui("scroll msg 24", Duration::from_secs(10)),
+        "last scroll msg should render. screen:\n{}",
+        bpmux.tui()
+    );
     bpmux.mouse_scroll_up(5);
-    std::thread::sleep(Duration::from_millis(200));
+    assert!(
+        bpmux.wait_for_tui("scrolled up", Duration::from_secs(5)),
+        "scroll-up indicator should appear. screen:\n{}",
+        bpmux.tui()
+    );
 
     // Send from peer
     let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
@@ -109,12 +123,7 @@ fn ac3_scroll_to_bottom_clears_indicator() {
 
     // Scroll back to bottom
     bpmux.mouse_scroll_down(20);
-    std::thread::sleep(Duration::from_millis(500));
-
-    let screen = bpmux.tui();
-    assert!(
-        !screen.contains("↓"),
-        "Unread indicator should disappear after scrolling to bottom. Screen:\n{}",
-        screen
-    );
+    bpmux
+        .wait_for_tui_absent("↓", Duration::from_secs(5))
+        .expect("unread indicator should disappear after scrolling to bottom");
 }

@@ -24,7 +24,6 @@ fn ac1_slash_shows_command_popup() {
         bpmux.tui()
     );
     bpmux.type_chars("/");
-    std::thread::sleep(Duration::from_millis(300));
     assert!(
         bpmux.wait_for_tui("/who", Duration::from_secs(3)),
         "Popup should show /who command. Screen:\n{}",
@@ -48,7 +47,6 @@ fn ac2_typing_filters_popup() {
         bpmux.tui()
     );
     bpmux.type_chars("/to");
-    std::thread::sleep(Duration::from_millis(300));
     assert!(
         bpmux.wait_for_tui("/to", Duration::from_secs(3)),
         "Popup should show /to. Screen:\n{}",
@@ -73,7 +71,6 @@ fn ac4_no_matches_hides_popup() {
         bpmux.tui()
     );
     bpmux.type_chars("/xyz");
-    std::thread::sleep(Duration::from_millis(300));
     assert!(
         !bpmux.wait_for_tui("show this help", Duration::from_secs(1)),
         "No command descriptions should appear for /xyz. Screen:\n{}",
@@ -92,7 +89,6 @@ fn ac5_regular_message_no_popup() {
         bpmux.tui()
     );
     bpmux.type_chars("hello world");
-    std::thread::sleep(Duration::from_millis(300));
     assert!(
         !bpmux.wait_for_tui("show this help", Duration::from_secs(1)),
         "Command descriptions should not appear for regular text. Screen:\n{}",

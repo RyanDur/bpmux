@@ -26,7 +26,6 @@ fn ac1_click_sidebar_toggles_open() {
     // the glyph cell + 3 cols for Fitts's-law forgiveness.)
     // SGR mouse coords are 1-indexed: (1, 1) = top-left cell.
     bpmux.mouse_click(1, 1);
-    std::thread::sleep(Duration::from_millis(300));
 
     // Sidebar should now be open — showing "channels" header
     assert!(
@@ -67,7 +66,6 @@ fn ac2_click_channel_switches_view() {
     // The channel list: row 1 = border, row 2 = project root, row 3 = dev channel
     // Click the dev channel line (col 5, row 3)
     bpmux.mouse_click(5, 3);
-    std::thread::sleep(Duration::from_millis(300));
 
     // View should switch to dev channel
     assert!(
@@ -87,7 +85,6 @@ fn ac3_click_help_opens_overlay() {
     // "? help" appears at the right edge of the status bar (row 24 in 24-row terminal)
     // Click near the right edge of the status bar
     bpmux.mouse_click(78, 24);
-    std::thread::sleep(Duration::from_millis(300));
 
     assert!(
         bpmux.wait_for_tui("Commands:", Duration::from_secs(3)),
@@ -111,9 +108,11 @@ fn ac4_keyboard_shortcuts_still_work() {
         bpmux.tui()
     );
 
-    // ? still opens help
-    bpmux.type_ctrl('b'); // close sidebar first
-    std::thread::sleep(Duration::from_millis(200));
+    // ? still opens help — close sidebar first and verify it's gone
+    bpmux.type_ctrl('b');
+    bpmux
+        .wait_for_tui_absent("channels", Duration::from_secs(5))
+        .expect("sidebar should close before opening help");
     bpmux.type_chars("?");
     assert!(
         bpmux.wait_for_tui("Commands:", Duration::from_secs(3)),

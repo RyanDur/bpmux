@@ -19,11 +19,10 @@ fn ac1_roadmap_displays_content() {
     let bpmux = TestBpmux::start();
 
     bpmux.type_line("/roadmap");
-    std::thread::sleep(Duration::from_millis(500));
 
     // ROADMAP.md heading should appear in the chat area
     assert!(
-        bpmux.wait_for_tui("bpmux Roadmap", Duration::from_secs(3)),
+        bpmux.wait_for_tui("bpmux Roadmap", Duration::from_secs(5)),
         "Roadmap content should appear. Screen:\n{}",
         bpmux.tui()
     );
@@ -47,12 +46,7 @@ fn ac3_roadmap_is_expandable() {
 
     // Press Enter on empty input to expand the last (truncated) message
     bpmux.type_line("");
-    std::thread::sleep(Duration::from_secs(2));
-
-    // After expanding, the truncation indicator should be gone
-    let screen = bpmux.tui();
-    assert!(
-        !screen.contains("lines]"),
-        "Expanded roadmap should not show truncation indicator. Screen:\n{screen}"
-    );
+    bpmux
+        .wait_for_tui_absent("lines]", Duration::from_secs(5))
+        .expect("expanded roadmap should not show truncation indicator");
 }

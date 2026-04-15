@@ -45,11 +45,10 @@ fn palette_filters_actions_on_input() {
         "palette should open"
     );
     bpmux.type_chars("tok");
-    std::thread::sleep(Duration::from_millis(300));
-    let screen = bpmux.tui();
     assert!(
-        screen.contains("tokens"),
-        "tokens should match 'tok'. screen:\n{screen}"
+        bpmux.wait_for_tui("tokens", Duration::from_secs(5)),
+        "tokens should match 'tok'. screen:\n{}",
+        bpmux.tui()
     );
 }
 
@@ -70,20 +69,22 @@ fn palette_enter_runs_selected_action() {
     );
     // Type "who" to filter to the /who command, then Enter
     bpmux.type_chars("who");
-    std::thread::sleep(Duration::from_millis(200));
+    assert!(
+        bpmux.wait_for_tui("/who", Duration::from_secs(5)),
+        "palette should filter to /who. screen:\n{}",
+        bpmux.tui()
+    );
     bpmux.type_chars("\r"); // Enter
-    std::thread::sleep(Duration::from_millis(300));
-    let screen = bpmux.tui();
     // /who shows "Participants:" in the chat
     assert!(
-        screen.contains("Participants"),
-        "/who should have run. screen:\n{screen}"
+        bpmux.wait_for_tui("Participants", Duration::from_secs(5)),
+        "/who should have run. screen:\n{}",
+        bpmux.tui()
     );
     // Palette should be closed
-    assert!(
-        !screen.contains("actions"),
-        "palette should be closed after action. screen:\n{screen}"
-    );
+    bpmux
+        .wait_for_tui_absent("actions", Duration::from_secs(5))
+        .expect("palette should close after action");
 }
 
 /// GIVEN the palette is open
@@ -102,10 +103,7 @@ fn palette_esc_closes_without_action() {
         "palette should open"
     );
     bpmux.type_chars("\x1b"); // Esc
-    std::thread::sleep(Duration::from_millis(300));
-    let screen = bpmux.tui();
-    assert!(
-        !screen.contains("actions"),
-        "palette should be closed. screen:\n{screen}"
-    );
+    bpmux
+        .wait_for_tui_absent("actions", Duration::from_secs(5))
+        .expect("palette should close after Esc");
 }

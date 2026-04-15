@@ -154,6 +154,43 @@ impl TestBpmux {
         false
     }
 
+    /// Poll until `cond` returns true or `timeout` expires. Returns
+    /// `Ok(())` on success; on timeout returns an `Err` carrying the
+    /// caller-supplied `what` description and the current TUI snapshot
+    /// so the test failure message shows expected vs actual.
+    ///
+    /// Use this instead of `thread::sleep` when waiting for a UI state
+    /// change — it returns as soon as the condition is met (fast path
+    /// for conditions already true) and surfaces rich diagnostics when
+    /// the condition never becomes true.
+    pub fn wait_until<F>(&self, what: &str, timeout: Duration, mut cond: F) -> Result<(), String>
+    where
+        F: FnMut() -> bool,
+    {
+        let start = Instant::now();
+        loop {
+            if cond() {
+                return Ok(());
+            }
+            if start.elapsed() >= timeout {
+                return Err(format!(
+                    "timeout after {timeout:?} waiting for {what}; screen:\n{}",
+                    self.tui()
+                ));
+            }
+            std::thread::sleep(Duration::from_millis(50));
+        }
+    }
+
+    /// Poll until `target` is no longer visible in the TUI. Inverse of
+    /// `wait_for_tui` — use it when a test waits for state to be
+    /// cleared (e.g. a filter removed, an overlay closed).
+    pub fn wait_for_tui_absent(&self, target: &str, timeout: Duration) -> Result<(), String> {
+        self.wait_until(&format!("'{target}' to disappear"), timeout, || {
+            !self.tui().contains(target)
+        })
+    }
+
     /// Current TUI snapshot, rebuilt from accumulated bytes so callers
     /// never catch the screen mid-redraw.
     pub fn tui(&self) -> String {

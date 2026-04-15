@@ -22,13 +22,10 @@ fn ac1_ac4_channels_under_project_node() {
     bpmux.wait_for_tui("? help", Duration::from_secs(5));
     // Open sidebar with Ctrl+B
     bpmux.type_ctrl('b');
-    std::thread::sleep(Duration::from_millis(300));
-    let screen = bpmux.tui();
-    // Should show the expand indicator ▾ for the project node
     assert!(
-        screen.contains('▾'),
+        bpmux.wait_for_tui("▾", Duration::from_secs(5)),
         "Should show expanded project node with ▾. Screen:\n{}",
-        screen
+        bpmux.tui()
     );
 }
 
@@ -41,23 +38,24 @@ fn ac2_left_collapses_project() {
     bpmux.wait_for_tui("? help", Duration::from_secs(5));
     // Send a message to create a channel
     bpmux.type_line("hello");
-    std::thread::sleep(Duration::from_millis(300));
+    assert!(
+        bpmux.wait_for_tui("hello", Duration::from_secs(5)),
+        "message should appear before opening sidebar. screen:\n{}",
+        bpmux.tui()
+    );
     // Open sidebar
     bpmux.type_ctrl('b');
-    std::thread::sleep(Duration::from_millis(300));
     assert!(
-        bpmux.tui().contains('▾'),
+        bpmux.wait_for_tui("▾", Duration::from_secs(5)),
         "Should start expanded. Screen:\n{}",
         bpmux.tui()
     );
     // Press Left to collapse
     bpmux.type_key("Left");
-    std::thread::sleep(Duration::from_millis(300));
-    let screen = bpmux.tui();
     assert!(
-        screen.contains('▸'),
+        bpmux.wait_for_tui("▸", Duration::from_secs(5)),
         "Should show collapsed indicator ▸. Screen:\n{}",
-        screen
+        bpmux.tui()
     );
 }
 
@@ -70,21 +68,22 @@ fn ac3_right_expands_project() {
     bpmux.wait_for_tui("? help", Duration::from_secs(5));
     // Open sidebar and collapse
     bpmux.type_ctrl('b');
-    std::thread::sleep(Duration::from_millis(300));
-    bpmux.type_key("Left");
-    std::thread::sleep(Duration::from_millis(300));
     assert!(
-        bpmux.tui().contains('▸'),
+        bpmux.wait_for_tui("▾", Duration::from_secs(5)),
+        "sidebar should start expanded. screen:\n{}",
+        bpmux.tui()
+    );
+    bpmux.type_key("Left");
+    assert!(
+        bpmux.wait_for_tui("▸", Duration::from_secs(5)),
         "Should be collapsed. Screen:\n{}",
         bpmux.tui()
     );
     // Press Right to expand
     bpmux.type_key("Right");
-    std::thread::sleep(Duration::from_millis(300));
-    let screen = bpmux.tui();
     assert!(
-        screen.contains('▾'),
+        bpmux.wait_for_tui("▾", Duration::from_secs(5)),
         "Should show expanded indicator ▾. Screen:\n{}",
-        screen
+        bpmux.tui()
     );
 }

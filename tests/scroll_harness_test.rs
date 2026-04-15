@@ -73,18 +73,27 @@ fn scrolled_up_new_message_stays_put() {
     seed_messages(&bpmux, 25);
 
     bpmux.type_ctrl('u');
-    std::thread::sleep(Duration::from_millis(300));
-    let scrolled = bpmux.tui();
-    assert!(
-        !scrolled.contains("msg-024"),
-        "should have scrolled away from last message"
-    );
+    bpmux
+        .wait_until(
+            "viewport to scroll away from msg-024",
+            Duration::from_secs(5),
+            || !bpmux.tui().contains("msg-024"),
+        )
+        .expect("should have scrolled away from last message");
 
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
         post_chat(bpmux.port(), "pm:claude-code", "SHOULD-NOT-APPEAR").await;
     });
-    std::thread::sleep(Duration::from_millis(300));
+    // Negative assertion: verify the message stays absent by checking
+    // AFTER a known-processed downstream signal. The unread-indicator
+    // update when a message arrives while scrolled up IS the signal
+    // that the message was received and routed without yanking.
+    assert!(
+        bpmux.wait_for_tui("new message", Duration::from_secs(5)),
+        "unread indicator should appear when message arrives while scrolled up. screen:\n{}",
+        bpmux.tui()
+    );
     let after = bpmux.tui();
     assert!(
         !after.contains("SHOULD-NOT-APPEAR"),
@@ -99,23 +108,30 @@ fn scroll_to_bottom_shows_new_messages() {
     seed_messages(&bpmux, 25);
 
     bpmux.type_ctrl('u');
-    std::thread::sleep(Duration::from_millis(200));
+    bpmux
+        .wait_until("viewport to scroll up", Duration::from_secs(5), || {
+            !bpmux.tui().contains("msg-024")
+        })
+        .expect("should have scrolled up");
 
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
         post_chat(bpmux.port(), "pm:claude-code", "BOTTOM-MSG").await;
     });
-    std::thread::sleep(Duration::from_millis(200));
+    assert!(
+        bpmux.wait_for_tui("new message", Duration::from_secs(5)),
+        "unread indicator should appear while scrolled up. screen:\n{}",
+        bpmux.tui()
+    );
 
     // Scroll back to bottom with repeated Ctrl+D
     for _ in 0..15 {
         bpmux.type_ctrl('d');
-        std::thread::sleep(Duration::from_millis(30));
     }
-    std::thread::sleep(Duration::from_millis(300));
     assert!(
-        bpmux.tui().contains("BOTTOM-MSG"),
-        "should see new message after scrolling to bottom"
+        bpmux.wait_for_tui("BOTTOM-MSG", Duration::from_secs(5)),
+        "should see new message after scrolling to bottom. screen:\n{}",
+        bpmux.tui()
     );
 }
 
@@ -126,7 +142,11 @@ fn long_message_while_scrolled_up_no_drift() {
     seed_messages(&bpmux, 25);
 
     bpmux.type_ctrl('u');
-    std::thread::sleep(Duration::from_millis(300));
+    bpmux
+        .wait_until("viewport to scroll up", Duration::from_secs(5), || {
+            !bpmux.tui().contains("msg-024")
+        })
+        .expect("should have scrolled up");
     let before_scroll = bpmux.tui();
 
     // Send a very long message that wraps to many lines
@@ -135,7 +155,13 @@ fn long_message_while_scrolled_up_no_drift() {
     rt.block_on(async {
         post_chat(bpmux.port(), "pm:claude-code", &long).await;
     });
-    std::thread::sleep(Duration::from_millis(300));
+    // Wait for the unread-indicator update to confirm the message
+    // was received; THEN verify the viewport did not drift.
+    assert!(
+        bpmux.wait_for_tui("new message", Duration::from_secs(5)),
+        "unread indicator should appear. screen:\n{}",
+        bpmux.tui()
+    );
     let after = bpmux.tui();
 
     // The long message should not be visible (we're scrolled up)
@@ -165,7 +191,11 @@ fn rapid_messages_while_scrolled_up_stable() {
     seed_messages(&bpmux, 25);
 
     bpmux.type_ctrl('u');
-    std::thread::sleep(Duration::from_millis(300));
+    bpmux
+        .wait_until("viewport to scroll up", Duration::from_secs(5), || {
+            !bpmux.tui().contains("msg-024")
+        })
+        .expect("should have scrolled up");
 
     // Find a visible message before the burst
     let before = bpmux.tui();
@@ -187,7 +217,13 @@ fn rapid_messages_while_scrolled_up_stable() {
             tokio::time::sleep(Duration::from_millis(50)).await;
         }
     });
-    std::thread::sleep(Duration::from_millis(500));
+    // Wait for the unread-indicator update (burst arrival signal),
+    // then verify the anchor is still on screen.
+    assert!(
+        bpmux.wait_for_tui("new message", Duration::from_secs(5)),
+        "unread indicator should reflect the burst. screen:\n{}",
+        bpmux.tui()
+    );
 
     let after = bpmux.tui();
     assert!(

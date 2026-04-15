@@ -37,11 +37,9 @@ fn ac1_status_starts_clean_after_restart() {
     drop(bpmux);
     drop(_dev);
     drop(rt);
-    std::thread::sleep(Duration::from_millis(500));
 
     // Restart with the same session — no peers connected
     let bpmux2 = TestBpmux::start_with_session("human", session_dir);
-    std::thread::sleep(Duration::from_millis(500));
 
     let screen = bpmux2.tui();
     assert!(
@@ -68,11 +66,9 @@ fn ac2_disconnected_peer_absent_after_restart() {
 
     let session_dir = bpmux.take_session_dir();
     drop(bpmux);
-    std::thread::sleep(Duration::from_millis(500));
 
     // Restart — dev disconnected, so status bar should be clean
     let bpmux2 = TestBpmux::start_with_session("human", session_dir);
-    std::thread::sleep(Duration::from_millis(500));
 
     let screen = bpmux2.tui();
     assert!(

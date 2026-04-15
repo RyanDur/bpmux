@@ -91,10 +91,11 @@ fn ac5_esc_closes_sidebar() {
         bpmux.tui()
     );
 
-    // Close with Esc
+    // Close with Esc. The original test slept 500ms here with the
+    // comment "at minimum, verify no crash" — it never actually
+    // asserted the sidebar closed. That latent coverage gap is out
+    // of scope for #198 (would be addressed by region-scoped
+    // locators per the designer's test API proposal). The type_chars
+    // call itself is the crash-exercise path.
     bpmux.type_chars("\x1b");
-    std::thread::sleep(Duration::from_millis(500));
-    // After closing, "channels" sidebar title should not be visible
-    // (the word may appear in chat from other messages, so check for sidebar-specific layout)
-    // At minimum, verify no crash
 }

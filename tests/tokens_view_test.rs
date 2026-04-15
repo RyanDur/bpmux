@@ -130,8 +130,9 @@ fn tokens_overlay_dismisses_on_any_key() {
         bpmux.tui()
     );
     bpmux.type_chars("x");
-    // Small settle window before asserting the overlay is gone.
-    std::thread::sleep(Duration::from_millis(300));
+    bpmux
+        .wait_for_tui_absent("Press any key to close", Duration::from_secs(5))
+        .expect("overlay should be dismissed");
     assert!(
         !bpmux.tui().contains("Press any key to close"),
         "overlay should be dismissed. screen:\n{}",

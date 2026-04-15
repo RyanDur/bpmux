@@ -33,21 +33,19 @@ fn topic_messages_display_with_topic_tag() {
         "TUI should render"
     );
     bpmux.type_line("/topic create testing");
-    std::thread::sleep(Duration::from_millis(300));
-    // Verify we're in the topic
-    let screen = bpmux.tui();
     assert!(
-        screen.contains("(testing)"),
-        "input prompt should show topic name. screen:\n{screen}"
+        bpmux.wait_for_tui("(testing)", Duration::from_secs(5)),
+        "input prompt should show topic name. screen:\n{}",
+        bpmux.tui()
     );
     // Send a message in the topic
     bpmux.type_line("hello from testing topic");
-    std::thread::sleep(Duration::from_millis(300));
-    let screen = bpmux.tui();
     assert!(
-        screen.contains("[testing]"),
-        "message should display with [testing] tag. screen:\n{screen}"
+        bpmux.wait_for_tui("[testing]", Duration::from_secs(5)),
+        "message should display with [testing] tag. screen:\n{}",
+        bpmux.tui()
     );
+    let screen = bpmux.tui();
     assert!(
         screen.contains("hello from testing topic"),
         "message content should be visible. screen:\n{screen}"
@@ -77,14 +75,18 @@ fn switching_topics_filters_messages() {
 
     // Create topic and send a topic message
     bpmux.type_line("/topic create scroll-fix");
-    std::thread::sleep(Duration::from_millis(300));
-    bpmux.type_line("topic-only-msg");
-    std::thread::sleep(Duration::from_millis(300));
-    let in_topic = bpmux.tui();
     assert!(
-        in_topic.contains("topic-only-msg"),
-        "should see topic message while in topic"
+        bpmux.wait_for_tui("(scroll-fix)", Duration::from_secs(5)),
+        "topic prompt should show scroll-fix. screen:\n{}",
+        bpmux.tui()
     );
+    bpmux.type_line("topic-only-msg");
+    assert!(
+        bpmux.wait_for_tui("topic-only-msg", Duration::from_secs(5)),
+        "topic message should render. screen:\n{}",
+        bpmux.tui()
+    );
+    let in_topic = bpmux.tui();
     // Broadcast messages should ALSO be visible in topic view
     assert!(
         in_topic.contains("broadcast-visible"),
@@ -93,13 +95,14 @@ fn switching_topics_filters_messages() {
 
     // Switch back to general
     bpmux.type_line("/topic general");
-    std::thread::sleep(Duration::from_millis(300));
+    bpmux
+        .wait_until(
+            "topic-only-msg to be filtered out in general view",
+            Duration::from_secs(5),
+            || !bpmux.tui().contains("topic-only-msg"),
+        )
+        .expect("topic message should be hidden in general view");
     let in_general = bpmux.tui();
-    // Topic-specific message should NOT be visible in general
-    assert!(
-        !in_general.contains("topic-only-msg"),
-        "topic message should be hidden in general view. screen:\n{in_general}"
-    );
     // Broadcast should still be visible
     assert!(
         in_general.contains("broadcast-visible"),
@@ -118,19 +121,39 @@ fn sidebar_shows_topics_when_topics_exist() {
         bpmux.wait_for_tui("solo", Duration::from_secs(5)),
         "TUI should render"
     );
-    // Create a topic so sidebar switches to topic mode
+    // Create a topic so sidebar switches to topic mode. Wait for the
+    // topic-created confirmation system message to render, then for
+    // the prompt to show the active topic — both signals must land
+    // before Alt+1 is pressed, or the keystroke races the creation.
     bpmux.type_line("/topic create scroll-fix");
-    std::thread::sleep(Duration::from_millis(300));
+    assert!(
+        bpmux.wait_for_tui("Created topic 'scroll-fix'", Duration::from_secs(5)),
+        "topic-created system message should render. screen:\n{}",
+        bpmux.tui()
+    );
+    assert!(
+        bpmux.wait_for_tui("(scroll-fix)", Duration::from_secs(5)),
+        "topic should be active before opening sidebar. screen:\n{}",
+        bpmux.tui()
+    );
 
-    // Open sidebar (Alt+1 = Esc then 1 in raw terminal)
+    // Open sidebar (Alt+1 = Esc then 1 in raw terminal). Wait for the
+    // sidebar title specifically (with its box-drawing prefix) — the
+    // status-bar hint "⌥1=topics" also contains "topics" and would
+    // otherwise false-match before the sidebar is actually open.
     bpmux.type_key("Alt-1");
-    std::thread::sleep(Duration::from_millis(300));
+    bpmux
+        .wait_until(
+            "sidebar to open with topic entries",
+            Duration::from_secs(5),
+            || {
+                let s = bpmux.tui();
+                s.contains("scroll-fix") && s.contains("general") && s.contains("●")
+            },
+        )
+        .expect("sidebar should show topic list with active marker");
 
     let screen = bpmux.tui();
-    assert!(
-        screen.contains("topics"),
-        "sidebar title should say 'topics'. screen:\n{screen}"
-    );
     assert!(
         screen.contains("scroll-fix"),
         "sidebar should show the created topic. screen:\n{screen}"
@@ -157,14 +180,21 @@ fn topic_list_shows_created_topics() {
         "TUI should render"
     );
     bpmux.type_line("/topic create my-topic pm,designer");
-    std::thread::sleep(Duration::from_millis(300));
-    bpmux.type_line("/topic");
-    std::thread::sleep(Duration::from_millis(300));
-    let screen = bpmux.tui();
     assert!(
-        screen.contains("my-topic"),
-        "topic list should include my-topic. screen:\n{screen}"
+        bpmux.wait_for_tui("(my-topic)", Duration::from_secs(5)),
+        "topic should be created and active. screen:\n{}",
+        bpmux.tui()
     );
+    bpmux.type_line("/topic");
+    // /topic with no args prints a "Topics:" header listing topics.
+    // Wait for that header — the `my-topic` string alone would
+    // false-match the active-topic prompt from the creation step.
+    assert!(
+        bpmux.wait_for_tui("Topics:", Duration::from_secs(5)),
+        "/topic should print the topic list header. screen:\n{}",
+        bpmux.tui()
+    );
+    let screen = bpmux.tui();
     assert!(
         screen.contains("general"),
         "topic list should include general. screen:\n{screen}"
@@ -190,7 +220,7 @@ fn auto_subscribed_participant_receives_topic_messages() {
         let mut dev = harness::peer::WsPeer::connect(&bpmux, "dev").await;
 
         // Drain join system messages
-        std::thread::sleep(Duration::from_millis(500));
+        tokio::time::sleep(Duration::from_millis(500)).await;
         let _ = pm.recv_message_or_timeout(Duration::from_millis(500)).await;
         let _ = pm.recv_message_or_timeout(Duration::from_millis(500)).await;
         let _ = dev
@@ -202,7 +232,7 @@ fn auto_subscribed_participant_receives_topic_messages() {
 
         // Ryan creates a topic with pm (not dev) via TUI
         bpmux.type_line("/topic create design pm");
-        std::thread::sleep(Duration::from_millis(500));
+        tokio::time::sleep(Duration::from_millis(500)).await;
 
         // Drain the creation system messages
         let _ = pm.recv_message_or_timeout(Duration::from_millis(500)).await;
@@ -212,7 +242,7 @@ fn auto_subscribed_participant_receives_topic_messages() {
 
         // Ryan sends a message in the topic via TUI
         bpmux.type_line("testing auto-subscribe");
-        std::thread::sleep(Duration::from_millis(500));
+        tokio::time::sleep(Duration::from_millis(500)).await;
 
         // pm should receive it (auto-subscribed as named participant)
         let pm_msg = pm.recv_message_or_timeout(Duration::from_secs(2)).await;
@@ -249,7 +279,7 @@ fn non_participant_does_not_receive_topic_messages() {
         let mut dev = harness::peer::WsPeer::connect(&bpmux, "dev").await;
 
         // Drain join system messages
-        std::thread::sleep(Duration::from_millis(300));
+        tokio::time::sleep(Duration::from_millis(300)).await;
         let _ = pm.recv_message_or_timeout(Duration::from_millis(500)).await;
         let _ = pm.recv_message_or_timeout(Duration::from_millis(500)).await;
         let _ = dev

@@ -31,10 +31,8 @@ fn ac1_channel_view_shows_only_owner_participant_messages() {
     });
 
     bpmux.type_line("/view dev");
-    std::thread::sleep(Duration::from_millis(500));
-
     assert!(
-        bpmux.wait_for_tui("View set to dev", Duration::from_secs(3)),
+        bpmux.wait_for_tui("View set to dev", Duration::from_secs(5)),
         "Should switch to dev view. Screen:\n{}",
         bpmux.tui()
     );
@@ -73,13 +71,17 @@ fn ac2_channel_view_excludes_other_agents_messages() {
     });
 
     bpmux.type_line("/view dev");
-    std::thread::sleep(Duration::from_millis(500));
-
-    let screen = bpmux.tui();
     assert!(
-        screen.contains("dev says hi"),
-        "DM from dev to owner should appear. Screen:\n{screen}"
+        bpmux.wait_for_tui("View set to dev", Duration::from_secs(5)),
+        "Should switch to dev view. Screen:\n{}",
+        bpmux.tui()
     );
+    assert!(
+        bpmux.wait_for_tui("dev says hi", Duration::from_secs(5)),
+        "DM from dev to owner should appear. Screen:\n{}",
+        bpmux.tui()
+    );
+    let screen = bpmux.tui();
     assert!(
         !screen.contains("dev to pm"),
         "dev↔pm messages should not appear in owner's dev view. Screen:\n{screen}"
@@ -105,13 +107,15 @@ fn ac3_owner_message_visible_in_channel_view() {
     });
 
     bpmux.type_line("/view dev");
-    std::thread::sleep(Duration::from_millis(300));
+    assert!(
+        bpmux.wait_for_tui("View set to dev", Duration::from_secs(5)),
+        "view switch should land before owner types. screen:\n{}",
+        bpmux.tui()
+    );
 
     bpmux.type_line("owner reply in dev view");
-    std::thread::sleep(Duration::from_millis(500));
-
     assert!(
-        bpmux.wait_for_tui("owner reply in dev view", Duration::from_secs(3)),
+        bpmux.wait_for_tui("owner reply in dev view", Duration::from_secs(5)),
         "Owner's message should appear in the channel view. Screen:\n{}",
         bpmux.tui()
     );
@@ -134,13 +138,18 @@ fn ac4_broadcast_view_unchanged() {
     });
 
     bpmux.type_line("/view broadcast");
-    std::thread::sleep(Duration::from_millis(500));
+    assert!(
+        bpmux.wait_for_tui("View set to broadcast", Duration::from_secs(5)),
+        "Should switch to broadcast view. Screen:\n{}",
+        bpmux.tui()
+    );
+    assert!(
+        bpmux.wait_for_tui("broadcast msg", Duration::from_secs(5)),
+        "Broadcast should appear. Screen:\n{}",
+        bpmux.tui()
+    );
 
     let screen = bpmux.tui();
-    assert!(
-        screen.contains("broadcast msg"),
-        "Broadcast should appear. Screen:\n{screen}"
-    );
     assert!(
         !screen.contains("directed msg"),
         "Directed message should NOT appear in broadcast view. Screen:\n{screen}"

@@ -82,12 +82,12 @@ fn menu_glyph_disappears_when_sidebar_opens() {
             .await
             .expect("POST /api/simulate/key");
     });
-    std::thread::sleep(Duration::from_millis(300));
+    bpmux
+        .wait_until("sidebar to open", Duration::from_secs(5), || {
+            sidebar_open(&bpmux.tui())
+        })
+        .expect("sidebar should be open after Alt+1");
     let after = bpmux.tui();
-    assert!(
-        sidebar_open(&after),
-        "sidebar should be open after Alt+1. screen:\n{after}"
-    );
     // When the sidebar is open, the menu glyph is not rendered —
     // the sidebar's own " channels " header IS the affordance.
     assert!(
@@ -140,12 +140,12 @@ fn sidebar_title_shows_collapse_glyph_when_open() {
             .await
             .expect("POST /api/simulate/key");
     });
-    std::thread::sleep(Duration::from_millis(300));
+    bpmux
+        .wait_until("sidebar to open", Duration::from_secs(5), || {
+            sidebar_open(&bpmux.tui())
+        })
+        .expect("sidebar should be open");
     let screen = bpmux.tui();
-    assert!(
-        sidebar_open(&screen),
-        "sidebar should be open; screen:\n{screen}"
-    );
     // `▾` (U+25BE) = COLLAPSE in icons.rs. Must appear in the sidebar
     // title area (first few lines of the screen).
     let first_lines: String = screen.lines().take(3).collect::<Vec<_>>().join("\n");

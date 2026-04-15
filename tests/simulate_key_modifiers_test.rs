@@ -68,17 +68,13 @@ fn alt_1_via_simulate_key_endpoint_toggles_the_sidebar() {
         );
     });
 
-    // Settle before comparing — ratatui redraws on next event loop tick.
-    std::thread::sleep(Duration::from_millis(300));
+    bpmux
+        .wait_until("sidebar state to flip", Duration::from_secs(5), || {
+            sidebar_open(&bpmux.tui()) != before
+        })
+        .expect("sidebar open-state should have flipped after Alt+1 via endpoint");
     let after = sidebar_open(&bpmux.tui());
-
-    assert_ne!(
-        before,
-        after,
-        "sidebar open-state should have flipped after Alt+1 via endpoint. \
-         before={before}, after={after}. screen:\n{}",
-        bpmux.tui()
-    );
+    assert_ne!(before, after);
 
     // Toggle back — sanity check that the state is symmetric and the
     // first change wasn't a fluke.
@@ -91,13 +87,13 @@ fn alt_1_via_simulate_key_endpoint_toggles_the_sidebar() {
             .await
             .expect("POST /api/simulate/key");
     });
-    std::thread::sleep(Duration::from_millis(300));
+    bpmux
+        .wait_until("sidebar to flip back", Duration::from_secs(5), || {
+            sidebar_open(&bpmux.tui()) == before
+        })
+        .expect("second Alt+1 should restore original sidebar state");
     let restored = sidebar_open(&bpmux.tui());
-    assert_eq!(
-        before, restored,
-        "second Alt+1 should restore original sidebar state. \
-         expected={before}, got={restored}"
-    );
+    assert_eq!(before, restored);
 }
 
 /// Regression guard for the original #170 silent-ignore bug: if the
@@ -128,7 +124,14 @@ fn plain_1_via_simulate_key_endpoint_does_not_toggle_sidebar() {
             .expect("POST /api/simulate/key");
         assert_eq!(resp.status(), reqwest::StatusCode::OK);
     });
-    std::thread::sleep(Duration::from_millis(300));
+    // Wait for the '1' keystroke to be typed into the input field —
+    // by the time "1" appears in the TUI, the event has been processed
+    // end-to-end and we can assert that the sidebar did NOT flip.
+    assert!(
+        bpmux.wait_for_tui("1", Duration::from_secs(5)),
+        "input field should receive the '1' keystroke. screen:\n{}",
+        bpmux.tui()
+    );
     let after = sidebar_open(&bpmux.tui());
 
     // Plain '1' with no modifier types into the input field, which

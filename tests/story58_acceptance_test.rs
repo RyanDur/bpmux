@@ -38,7 +38,6 @@ fn ac1_mouse_scroll_up_shows_history() {
 
     // Scroll up with mouse wheel
     bpmux.mouse_scroll_up(10);
-    std::thread::sleep(Duration::from_millis(300));
 
     // Should now show scroll indicator
     assert!(
@@ -65,7 +64,6 @@ fn ac2_mouse_scroll_down_returns_to_latest() {
 
     // Scroll up
     bpmux.mouse_scroll_up(10);
-    std::thread::sleep(Duration::from_millis(300));
     assert!(
         bpmux.wait_for_tui("scrolled up", Duration::from_secs(5)),
         "Should be scrolled up. Screen:\n{}",
@@ -74,7 +72,6 @@ fn ac2_mouse_scroll_down_returns_to_latest() {
 
     // Scroll back down
     bpmux.mouse_scroll_down(20);
-    std::thread::sleep(Duration::from_millis(300));
 
     // Should see latest message again
     assert!(
@@ -101,7 +98,6 @@ fn ac4_new_message_does_not_yank_viewport() {
 
     // Scroll up
     bpmux.mouse_scroll_up(10);
-    std::thread::sleep(Duration::from_millis(300));
     assert!(
         bpmux.wait_for_tui("scrolled up", Duration::from_secs(5)),
         "Should be scrolled up. Screen:\n{}",
