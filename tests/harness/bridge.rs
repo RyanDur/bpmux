@@ -93,6 +93,44 @@ impl TestBridge {
         );
     }
 
+    /// Invoke an MCP tool and return the parsed JSON response. Use this
+    /// when a test needs to assert on the shape/content of what an
+    /// agent would see via MCP — story #199's agent-side assertion
+    /// primitive. The return is the parsed `Value` of the first text
+    /// content in `CallToolResult`; tests can then index fields
+    /// (`result["number"]`, `result[0]["state"]`) directly.
+    ///
+    /// Returns `Err` with the tool's error text when the call returns
+    /// `is_error: true`, so tests can assert on rejection messages
+    /// (e.g. lane-enforcement checks).
+    pub async fn call_tool(
+        &self,
+        tool: &str,
+        args: serde_json::Value,
+    ) -> Result<serde_json::Value, String> {
+        let mut params = rmcp::model::CallToolRequestParams::new(tool.to_string());
+        params.arguments = args.as_object().cloned();
+        let result = tokio::time::timeout(
+            Duration::from_secs(10),
+            self.client.peer().call_tool(params),
+        )
+        .await
+        .map_err(|_| format!("call_tool({tool}) timed out"))?
+        .map_err(|e| format!("call_tool({tool}) transport error: {e}"))?;
+        let text = result
+            .content
+            .first()
+            .and_then(|c| c.as_text().map(|t| t.text.clone()))
+            .unwrap_or_default();
+        if result.is_error.unwrap_or(false) {
+            return Err(text);
+        }
+        // Many tools return pretty-printed JSON; parse when possible,
+        // but fall through to a string Value for plain-text responses
+        // (e.g. status confirmations like "#200 accepted and closed").
+        Ok(serde_json::from_str(&text).unwrap_or(serde_json::Value::String(text)))
+    }
+
     /// Cancel the MCP client, bounded so cleanup can't hang.
     pub async fn close(self) {
         let _ = tokio::time::timeout(Duration::from_secs(2), self.client.cancel()).await;
