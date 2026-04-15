@@ -85,7 +85,7 @@ impl App {
         // Walk messages in reverse, find the newest chat message that's
         // visible in the sender's current view (matches current_view or is
         // broadcast if view is None).
-        let current_view = self.current_view.clone();
+        let current_view = self.channels.current_view.clone();
         let owner = self.identity.name.clone();
         let source = self
             .messages

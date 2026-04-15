@@ -33,7 +33,12 @@ fn latest_broadcast(app: &App) -> Option<&session::Message> {
 }
 
 fn broadcast_banner_height(app: &App, width: u16) -> u16 {
-    if app.current_view.as_ref().is_none_or(|v| v == "broadcast") {
+    if app
+        .channels
+        .current_view
+        .as_ref()
+        .is_none_or(|v| v == "broadcast")
+    {
         return 0;
     }
     let Some(msg) = latest_broadcast(app) else {
@@ -78,7 +83,7 @@ fn render_input(frame: &mut Frame, app: &mut App, area: Rect) {
     };
     let block = Block::default()
         .borders(Borders::ALL)
-        .title(match &app.send_target {
+        .title(match &app.channels.send_target {
             Some(ch) => format!(" {} [{ch}]{topic_label} > ", app.identity.name),
             None => format!(" {}{topic_label} > ", app.identity.name),
         })

@@ -496,7 +496,7 @@ fn channel_view_excludes_broadcasts() {
         chat_msg("designer:claude-code", "another broadcast"),
         directed_msg("dev:human", "dev reply to pm", &["pm"]),
     ]);
-    app.current_view = Some("pm".to_string());
+    app.channels.current_view = Some("pm".to_string());
 
     terminal.draw(|frame| render(frame, &mut app)).unwrap();
     let screen = buffer_to_string(terminal.backend().buffer());

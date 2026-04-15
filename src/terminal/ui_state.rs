@@ -33,8 +33,8 @@ pub struct UiState {
 impl UiState {
     pub fn capture(app: &App) -> Self {
         Self {
-            current_view: app.current_view.clone(),
-            send_target: app.send_target.clone(),
+            current_view: app.channels.current_view.clone(),
+            send_target: app.channels.send_target.clone(),
             sidebar_open: app.sidebar.open,
             sidebar_focused: false,
             project_expanded: app.sidebar.project_expanded,
@@ -50,8 +50,8 @@ impl UiState {
     }
 
     pub fn restore(&self, app: &mut App) {
-        app.current_view = self.current_view.clone();
-        app.send_target = self.send_target.clone();
+        app.channels.current_view = self.current_view.clone();
+        app.channels.send_target = self.send_target.clone();
         app.sidebar.open = self.sidebar_open;
         app.sidebar.project_expanded = self.project_expanded;
         app.sidebar.direct_expanded = self.direct_expanded;

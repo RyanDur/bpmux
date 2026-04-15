@@ -172,7 +172,7 @@ fn render_channel_items(channels: &[String], app: &App, area: Rect) -> Vec<Line<
                 } else {
                     format!("{} ", super::icons::EXPAND)
                 };
-                let is_all = app.current_view.is_none();
+                let is_all = app.channels.current_view.is_none();
                 let name_style = if is_all {
                     Style::default()
                         .fg(DRACULA_FG)
@@ -199,11 +199,12 @@ fn render_channel_items(channels: &[String], app: &App, area: Rect) -> Vec<Line<
             // Detect section headers vs channel entries
             let is_section = ch.starts_with(&section_prefix_collapsed())
                 || ch.starts_with(&section_prefix_expanded());
-            let is_current = !is_section && app.current_view.as_deref() == Some(ch.as_str());
+            let is_current =
+                !is_section && app.channels.current_view.as_deref() == Some(ch.as_str());
             let unread = if ch == "broadcast" || is_section {
                 0
             } else {
-                app.channel_unread.get(ch).copied().unwrap_or(0)
+                app.channels.unread.get(ch).copied().unwrap_or(0)
             };
 
             let select_marker = if selected {
@@ -320,7 +321,7 @@ impl App {
         let matches_filter = |ch: &str| filter.is_empty() || ch.to_lowercase().contains(&filter);
 
         // Broadcast always at top level
-        if self.active_channels.contains("broadcast") && matches_filter("broadcast") {
+        if self.channels.active.contains("broadcast") && matches_filter("broadcast") {
             result.push("broadcast".to_string());
         }
 
@@ -334,7 +335,7 @@ impl App {
             .filter(|name| matches_filter(name))
             .map(|s| s.to_string())
             .collect();
-        for (ch, &count) in &self.channel_unread {
+        for (ch, &count) in &self.channels.unread {
             if count > 0
                 && !is_group_channel(ch)
                 && !is_system_channel(ch)
@@ -348,7 +349,8 @@ impl App {
 
         // Groups: from active_channels, but only where all participants are connected
         let mut groups: Vec<String> = self
-            .active_channels
+            .channels
+            .active
             .iter()
             .filter(|ch| {
                 is_group_channel(ch)
@@ -361,7 +363,8 @@ impl App {
 
         // System: bpmux channels from active_channels
         let mut system: Vec<String> = self
-            .active_channels
+            .channels
+            .active
             .iter()
             .filter(|ch| is_system_channel(ch) && matches_filter(ch))
             .cloned()
@@ -454,7 +457,7 @@ impl App {
                 self.topic.active = ch.clone();
                 self.mark_filters_dirty();
                 self.topic.unreads.remove(ch);
-                self.current_view = None;
+                self.channels.current_view = None;
                 self.scroll.offset = 0;
                 self.sidebar.focused = false;
                 self.sidebar.filter.clear();
@@ -473,14 +476,14 @@ impl App {
                 return;
             }
             if self.sidebar.selected == 0 {
-                self.current_view = None;
+                self.channels.current_view = None;
                 self.mark_filters_dirty();
-                self.send_target = None;
+                self.channels.send_target = None;
             } else {
-                self.current_view = Some(ch.clone());
+                self.channels.current_view = Some(ch.clone());
                 self.mark_filters_dirty();
-                self.send_target = Some(ch.clone());
-                self.channel_unread.remove(ch);
+                self.channels.send_target = Some(ch.clone());
+                self.channels.unread.remove(ch);
             }
             self.scroll.offset = 0;
             self.sidebar.focused = false;

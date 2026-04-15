@@ -188,7 +188,7 @@ impl App {
         if arg.is_empty() {
             // List available channels (the bare-form behavior)
             let mut channel_names: Vec<&str> =
-                self.active_channels.iter().map(|s| s.as_str()).collect();
+                self.channels.active.iter().map(|s| s.as_str()).collect();
             channel_names.sort();
             let list = if channel_names.is_empty() {
                 "No channels yet.".to_string()
@@ -200,7 +200,7 @@ impl App {
             return None;
         }
         if arg == "all" {
-            self.current_view = None;
+            self.channels.current_view = None;
             self.mark_filters_dirty();
             self.scroll.offset = 0;
             self.system_message("View set to all channels.".to_string());
@@ -208,7 +208,7 @@ impl App {
             return None;
         }
         if arg == "broadcast" {
-            self.current_view = Some("broadcast".to_string());
+            self.channels.current_view = Some("broadcast".to_string());
             self.mark_filters_dirty();
             self.scroll.offset = 0;
             self.system_message("View set to broadcast.".to_string());
@@ -216,8 +216,8 @@ impl App {
             return None;
         }
         // Check if arg matches a known channel
-        if self.active_channels.contains(arg) {
-            self.current_view = Some(arg.to_string());
+        if self.channels.active.contains(arg) {
+            self.channels.current_view = Some(arg.to_string());
             self.mark_filters_dirty();
             self.scroll.offset = 0;
             self.system_message(format!("View set to {arg}."));
@@ -335,7 +335,7 @@ impl App {
         // `@role` prefix is advisory addressing on broadcast messages.
         let (addressee, text) = parse_addressee_prefix(&text);
         // Derive `to` from send_target if set (sidebar selection)
-        let to = self.send_target.as_ref().and_then(|ch| {
+        let to = self.channels.send_target.as_ref().and_then(|ch| {
             if ch == "broadcast" {
                 return None; // broadcast = no `to`
             }

@@ -109,7 +109,7 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     } else if app.topic_mode() {
         format!(" {}", app.topic.active)
     } else {
-        match &app.current_view {
+        match &app.channels.current_view {
             None => " [all]".to_string(),
             Some(v) if v == "broadcast" => " [broadcast]".to_string(),
             Some(v) => format!(" [{v}]"),

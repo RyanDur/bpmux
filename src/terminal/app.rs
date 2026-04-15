@@ -148,6 +148,15 @@ pub struct TokensViewState {
     pub rows: Vec<crate::session::tokens::TokenRow>,
 }
 
+/// Channel view state — extracted from App.
+#[derive(Default)]
+pub struct ChannelState {
+    pub active: HashSet<String>,
+    pub current_view: Option<String>,
+    pub send_target: Option<String>,
+    pub unread: HashMap<String, usize>,
+}
+
 /// Peer presence state — extracted from App.
 #[derive(Default)]
 pub struct PeerState {
@@ -240,10 +249,7 @@ pub struct App {
     pub scroll: ScrollState,
 
     // ── Channel view ──
-    pub active_channels: HashSet<String>,
-    pub current_view: Option<String>,
-    pub send_target: Option<String>,
-    pub channel_unread: HashMap<String, usize>,
+    pub channels: ChannelState,
 
     // ── Peers ──
     pub peers: PeerState,
@@ -345,12 +351,14 @@ impl App {
                 ..Default::default()
             },
             expanded_messages: HashSet::new(),
-            active_channels,
-            current_view: None,
+            channels: ChannelState {
+                active: active_channels,
+                current_view: None,
+                send_target: None,
+                unread: HashMap::new(),
+            },
             popup_selected: None,
             sidebar: SidebarState::default(),
-            channel_unread: HashMap::new(),
-            send_target: None,
             search: SearchState::default(),
             layout: LayoutState::default(),
             truncation_indicators: Vec::new(),
@@ -436,7 +444,7 @@ impl App {
                 }
                 continue;
             }
-            let in_channel = match &self.current_view {
+            let in_channel = match &self.channels.current_view {
                 None => true,
                 Some(view) if view == "broadcast" => {
                     channel_name(m, &self.identity.name) == "broadcast"
@@ -584,7 +592,7 @@ impl App {
     fn rebuild_channels(&mut self) {
         let connected: std::collections::HashSet<&str> =
             self.peers.activity.keys().map(|s| s.as_str()).collect();
-        self.active_channels = self
+        self.channels.active = self
             .messages
             .iter()
             .filter(|m| m.is_chat())
@@ -594,7 +602,7 @@ impl App {
                     return true;
                 }
                 let has_connected_peer = ch.split('+').any(|name| connected.contains(name));
-                let has_unread = self.channel_unread.get(ch).is_some_and(|&n| n > 0);
+                let has_unread = self.channels.unread.get(ch).is_some_and(|&n| n > 0);
                 has_connected_peer || has_unread
             })
             .collect();
@@ -629,7 +637,7 @@ impl App {
                 if let Some(peer) = msg.text.strip_suffix(" joined") {
                     let short = short_peer_name(peer).to_string();
                     self.update_activity(short.clone(), "available".into());
-                    self.active_channels.insert(short);
+                    self.channels.active.insert(short);
                     self.rebuild_channels();
                 } else if let Some(peer) = msg.text.strip_suffix(" left") {
                     self.peers.activity.remove(short_peer_name(peer));
@@ -651,9 +659,9 @@ impl App {
                     }
                 }
                 let ch = channel_name(&msg, &self.identity.name);
-                self.active_channels.insert(ch.clone());
-                if self.current_view.as_ref().is_none_or(|v| v != &ch) {
-                    *self.channel_unread.entry(ch).or_insert(0) += 1;
+                self.channels.active.insert(ch.clone());
+                if self.channels.current_view.as_ref().is_none_or(|v| v != &ch) {
+                    *self.channels.unread.entry(ch).or_insert(0) += 1;
                 }
                 if let Some(rest) = msg.text.strip_prefix("/status ") {
                     self.update_activity(sender.clone(), rest.trim().to_string());

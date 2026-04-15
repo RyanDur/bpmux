@@ -460,10 +460,10 @@ fn submit_clears_dm_unread() {
 #[test]
 fn broadcast_message_adds_channel() {
     let mut app = test_app();
-    assert_eq!(app.active_channels.len(), 0);
+    assert_eq!(app.channels.active.len(), 0);
     app.receive_message(chat_msg("dev:claude-code", "hello"));
-    assert_eq!(app.active_channels.len(), 1);
-    assert!(app.active_channels.contains("broadcast"));
+    assert_eq!(app.channels.active.len(), 1);
+    assert!(app.channels.active.contains("broadcast"));
 }
 
 #[test]
@@ -471,7 +471,7 @@ fn directed_message_adds_new_channel() {
     let mut app = test_app();
     app.receive_message(chat_msg("dev:claude-code", "broadcast"));
     app.receive_message(directed_msg("dev:claude-code", "hey", vec!["ryan"]));
-    assert_eq!(app.active_channels.len(), 2);
+    assert_eq!(app.channels.active.len(), 2);
 }
 
 #[test]
@@ -479,8 +479,8 @@ fn same_channel_does_not_duplicate() {
     let mut app = test_app();
     app.receive_message(directed_msg("dev:claude-code", "hey", vec!["ryan"]));
     app.receive_message(directed_msg("dev:claude-code", "also hey", vec!["ryan"]));
-    assert_eq!(app.active_channels.len(), 1);
-    assert!(app.active_channels.contains("dev"));
+    assert_eq!(app.channels.active.len(), 1);
+    assert!(app.channels.active.contains("dev"));
 }
 
 #[test]
@@ -488,9 +488,9 @@ fn different_senders_create_different_channels() {
     let mut app = test_app();
     app.receive_message(directed_msg("dev:claude-code", "hey", vec!["ryan"]));
     app.receive_message(directed_msg("pm:claude-code", "also hey", vec!["ryan"]));
-    assert_eq!(app.active_channels.len(), 2);
-    assert!(app.active_channels.contains("dev"));
-    assert!(app.active_channels.contains("pm"));
+    assert_eq!(app.channels.active.len(), 2);
+    assert!(app.channels.active.contains("dev"));
+    assert!(app.channels.active.contains("pm"));
 }
 
 #[test]
@@ -537,37 +537,40 @@ fn view_broadcast_sets_current_view() {
     app.input = "/view broadcast".to_string();
     let msg = app.submit_message();
     assert!(msg.is_none());
-    assert_eq!(app.current_view, Some("broadcast".to_string()));
+    assert_eq!(app.channels.current_view, Some("broadcast".to_string()));
 }
 
 #[test]
 fn view_all_clears_current_view() {
     let mut app = test_app();
-    app.current_view = Some("broadcast".to_string());
+    app.channels.current_view = Some("broadcast".to_string());
     app.input = "/view all".to_string();
     let msg = app.submit_message();
     assert!(msg.is_none());
-    assert_eq!(app.current_view, None);
+    assert_eq!(app.channels.current_view, None);
 }
 
 #[test]
 fn view_known_channel_sets_current_view() {
     let mut app = test_app();
-    app.active_channels.insert("dev\u{2194}ryan".to_string());
+    app.channels.active.insert("dev\u{2194}ryan".to_string());
     app.input = "/view dev\u{2194}ryan".to_string();
     let msg = app.submit_message();
     assert!(msg.is_none());
-    assert_eq!(app.current_view, Some("dev\u{2194}ryan".to_string()));
+    assert_eq!(
+        app.channels.current_view,
+        Some("dev\u{2194}ryan".to_string())
+    );
 }
 
 #[test]
 fn view_unknown_channel_shows_error() {
     let mut app = test_app();
-    let original_view = app.current_view.clone();
+    let original_view = app.channels.current_view.clone();
     app.input = "/view fake".to_string();
     let msg = app.submit_message();
     assert!(msg.is_none());
-    assert_eq!(app.current_view, original_view);
+    assert_eq!(app.channels.current_view, original_view);
     assert!(
         app.messages
             .last()
@@ -580,8 +583,8 @@ fn view_unknown_channel_shows_error() {
 #[test]
 fn bare_view_lists_channels() {
     let mut app = test_app();
-    app.active_channels.insert("broadcast".to_string());
-    app.active_channels.insert("dev\u{2194}ryan".to_string());
+    app.channels.active.insert("broadcast".to_string());
+    app.channels.active.insert("dev\u{2194}ryan".to_string());
     app.input = "/view".to_string();
     let msg = app.submit_message();
     assert!(msg.is_none());
@@ -599,7 +602,7 @@ fn bare_view_lists_channels() {
 fn activity_messages_do_not_create_channels() {
     let mut app = test_app();
     app.receive_message(activity_msg("dev:claude-code", "busy"));
-    assert_eq!(app.active_channels.len(), 0);
+    assert_eq!(app.channels.active.len(), 0);
 }
 
 #[test]
@@ -678,7 +681,7 @@ fn sidebar_channels_starts_with_project_node() {
 #[test]
 fn sidebar_channels_includes_connected_peers() {
     let mut app = test_app();
-    app.active_channels.insert("broadcast".to_string());
+    app.channels.active.insert("broadcast".to_string());
     app.update_activity("dev".to_string(), "available".to_string());
     let channels = app.sidebar_channels();
     assert!(channels.contains(&"broadcast".to_string()));
@@ -709,38 +712,38 @@ fn sidebar_toggle_three_state_cycle() {
 #[test]
 fn sidebar_select_all_clears_view_and_target() {
     let mut app = test_app();
-    app.current_view = Some("broadcast".to_string());
-    app.send_target = Some("broadcast".to_string());
+    app.channels.current_view = Some("broadcast".to_string());
+    app.channels.send_target = Some("broadcast".to_string());
     app.sidebar.selected = 0; // project node is always first
     app.sidebar_select();
-    assert!(app.current_view.is_none());
-    assert!(app.send_target.is_none());
+    assert!(app.channels.current_view.is_none());
+    assert!(app.channels.send_target.is_none());
 }
 
 #[test]
 fn sidebar_select_channel_sets_view_and_target() {
     let mut app = test_app();
-    app.active_channels.insert("broadcast".to_string());
+    app.channels.active.insert("broadcast".to_string());
     app.sidebar.selected = 1; // "broadcast" (sorted after project node)
     app.sidebar_select();
-    assert_eq!(app.current_view, Some("broadcast".to_string()));
-    assert_eq!(app.send_target, Some("broadcast".to_string()));
+    assert_eq!(app.channels.current_view, Some("broadcast".to_string()));
+    assert_eq!(app.channels.send_target, Some("broadcast".to_string()));
 }
 
 #[test]
 fn sidebar_select_clears_unread() {
     let mut app = test_app();
-    app.active_channels.insert("broadcast".to_string());
-    app.channel_unread.insert("broadcast".to_string(), 5);
+    app.channels.active.insert("broadcast".to_string());
+    app.channels.unread.insert("broadcast".to_string(), 5);
     app.sidebar.selected = 1;
     app.sidebar_select();
-    assert_eq!(app.channel_unread.get("broadcast"), None);
+    assert_eq!(app.channels.unread.get("broadcast"), None);
 }
 
 #[test]
 fn sidebar_navigation_wraps() {
     let mut app = test_app();
-    app.active_channels.insert("broadcast".to_string());
+    app.channels.active.insert("broadcast".to_string());
     // channels: ["test-session", "broadcast"]
     app.sidebar.selected = 0;
     app.sidebar_up(); // wraps to last
@@ -763,7 +766,7 @@ fn sidebar_close_unfocuses_but_stays_open() {
 #[test]
 fn sidebar_collapse_hides_channels() {
     let mut app = test_app();
-    app.active_channels.insert("broadcast".to_string());
+    app.channels.active.insert("broadcast".to_string());
     assert!(app.sidebar.project_expanded);
     assert_eq!(app.sidebar_channels().len(), 2); // project + broadcast
     app.sidebar_collapse();
@@ -775,7 +778,7 @@ fn sidebar_collapse_hides_channels() {
 #[test]
 fn sidebar_expand_shows_channels() {
     let mut app = test_app();
-    app.active_channels.insert("broadcast".to_string());
+    app.channels.active.insert("broadcast".to_string());
     app.sidebar.project_expanded = false;
     assert_eq!(app.sidebar_channels().len(), 1);
     app.sidebar_expand();
@@ -792,7 +795,7 @@ fn sidebar_expanded_by_default() {
 #[test]
 fn send_target_directs_outgoing_messages() {
     let mut app = App::new("human".to_string(), "test-session".to_string(), vec![]);
-    app.send_target = Some("dev\u{2194}human".to_string());
+    app.channels.send_target = Some("dev\u{2194}human".to_string());
     app.input = "hello dev".to_string();
     app.cursor_pos = app.input.len();
     let msg = app.submit_message().unwrap();
@@ -811,9 +814,9 @@ fn no_send_target_broadcasts() {
 #[test]
 fn channel_unread_increments_on_receive() {
     let mut app = App::new("human".to_string(), "test-session".to_string(), vec![]);
-    app.current_view = Some("broadcast".to_string());
+    app.channels.current_view = Some("broadcast".to_string());
     app.receive_message(directed_msg("dev:claude-code", "dm message", vec!["human"]));
-    assert_eq!(*app.channel_unread.get("dev").unwrap_or(&0), 1);
+    assert_eq!(*app.channels.unread.get("dev").unwrap_or(&0), 1);
 }
 
 #[test]
@@ -888,14 +891,14 @@ fn peer_leave_removes_phantom_channels() {
         topic: None,
     });
     // View the channel so the message is "read" (no unread count)
-    app.current_view = Some("agent-14c3".to_string());
+    app.channels.current_view = Some("agent-14c3".to_string());
     app.receive_message(directed_msg(
         "agent-14c3:claude-code",
         "hello",
         vec!["ryan"],
     ));
     assert!(
-        app.active_channels.contains("agent-14c3"),
+        app.channels.active.contains("agent-14c3"),
         "channel should exist while agent is connected"
     );
 
@@ -912,7 +915,7 @@ fn peer_leave_removes_phantom_channels() {
         topic: None,
     });
     assert!(
-        !app.active_channels.contains("agent-14c3"),
+        !app.channels.active.contains("agent-14c3"),
         "read channel should be removed when agent disconnects"
     );
 }
@@ -932,13 +935,13 @@ fn peer_leave_keeps_channels_with_unread() {
         multi_depth: None,
         topic: None,
     });
-    app.current_view = Some("broadcast".to_string());
+    app.channels.current_view = Some("broadcast".to_string());
     app.receive_message(directed_msg(
         "dev:claude-code",
         "unread message",
         vec!["ryan"],
     ));
-    assert!(app.channel_unread.get("dev").is_some_and(|&n| n > 0));
+    assert!(app.channels.unread.get("dev").is_some_and(|&n| n > 0));
 
     // Agent leaves
     app.receive_message(Message {
@@ -953,7 +956,7 @@ fn peer_leave_keeps_channels_with_unread() {
         topic: None,
     });
     assert!(
-        app.active_channels.contains("dev"),
+        app.channels.active.contains("dev"),
         "channel with unread messages should be preserved"
     );
 }
@@ -1087,7 +1090,7 @@ fn share_form1_propagates_most_recent_from_view() {
     app.messages.push(chat_msg("pm:claude-code", "old message"));
     app.messages
         .push(chat_msg("pm:claude-code", "the decision to share"));
-    app.current_view = None; // broadcast view
+    app.channels.current_view = None; // broadcast view
     app.input = "/share dev".to_string();
     let msg = app.submit_message().unwrap();
     assert_eq!(msg.to, Some(vec!["dev".to_string()]));
@@ -1111,7 +1114,7 @@ fn share_form1_refuses_to_propagate_private_to_message() {
     private.to = Some(vec!["ryan".to_string()]);
     private.explicit_privacy = true;
     app.messages.push(private);
-    app.current_view = Some("pm".to_string());
+    app.channels.current_view = Some("pm".to_string());
     app.input = "/share all".to_string();
     let msg = app.submit_message();
     assert!(msg.is_none(), "private message not propagated");
@@ -1127,7 +1130,7 @@ fn share_form1_refuses_to_propagate_private_to_message() {
 fn share_form1_with_no_recent_message_shows_error() {
     // No messages in the current view — /share form 1 can't pick a target.
     let mut app = test_app();
-    app.current_view = None;
+    app.channels.current_view = None;
     app.input = "/share all".to_string();
     let msg = app.submit_message();
     assert!(msg.is_none());
@@ -1143,7 +1146,7 @@ fn share_does_not_inherit_addressee() {
     let mut directed = chat_msg("pm:claude-code", "pm-directed decision");
     directed.addressee = Some("dev".to_string());
     app.messages.push(directed);
-    app.current_view = None;
+    app.channels.current_view = None;
     app.input = "/share designer".to_string();
     let msg = app.submit_message().unwrap();
     assert!(
@@ -1164,7 +1167,7 @@ fn share_source_scope_reflects_channel_name() {
     scoped.to = Some(vec!["pm".to_string(), "designer".to_string()]);
     // Not explicit_privacy — this came from a channel view, not /to
     app.messages.push(scoped);
-    app.current_view = Some("designer+dev+pm".to_string());
+    app.channels.current_view = Some("designer+dev+pm".to_string());
     app.input = "/share all".to_string();
     let msg = app.submit_message().unwrap();
     // Source scope in the marker should be the channel_name of the source
