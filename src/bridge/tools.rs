@@ -392,13 +392,7 @@ pub(super) async fn handle_get_bookmark(
     serde_json::to_string_pretty(&bookmark).map_err(|e| format!("serialize: {e}"))
 }
 
-/// Get the session directory path from the running bpmux instance.
 async fn get_session_dir() -> Result<std::path::PathBuf, String> {
-    // Read a message to discover the session dir — the REST endpoint
-    // knows the session. Simpler approach: query the messages endpoint
-    // and infer from the response. But actually, the session dir is
-    // available via the state. For now, use the default sessions base
-    // and find the current symlink.
     use crate::session::log::default_sessions_base;
     let base = default_sessions_base().map_err(|e| format!("sessions base: {e}"))?;
     let current = base.join("current");

@@ -71,8 +71,6 @@ impl Default for SidebarState {
     }
 }
 
-/// Board view state — extracted from App.
-/// Command palette state — extracted from App.
 #[derive(Default)]
 pub struct PaletteState {
     pub show: bool,
@@ -330,7 +328,6 @@ impl App {
         }
     }
 
-    /// Sync input/cursor_pos from the textarea widget.
     pub(super) fn sync_input_from_textarea(&mut self) {
         self.input = self.textarea.lines().join("");
         let (row, col) = self.textarea.cursor();
@@ -338,7 +335,6 @@ impl App {
         self.cursor_pos = line_offset + col;
     }
 
-    /// Push text into the textarea (replacing current content).
     pub(super) fn set_textarea_content(&mut self, text: &str) {
         let mut ta = TextArea::from([text]);
         ta.set_hard_tab_indent(false);
@@ -348,11 +344,8 @@ impl App {
         self.sync_input_from_textarea();
     }
 
-    /// Single entry point for adding a message to the display list.
-    /// All code paths that add messages should go through this so
-    /// the class_cache stays in sync.
-    /// Single entry point for adding a message to the display list.
-    /// Maintains class_cache and marks the filter index dirty.
+    /// Single entry point for adding a message. Maintains class_cache
+    /// and marks the filter index dirty.
     pub(super) fn push_message(&mut self, msg: Message) {
         let class = if msg.is_chat() {
             Some(crate::session::classify(&msg, &self.peer_name))
@@ -447,7 +440,6 @@ impl App {
         }
     }
 
-    /// Mark the filtered index as needing rebuild.
     pub fn mark_filters_dirty(&mut self) {
         self.filter_dirty = true;
     }
