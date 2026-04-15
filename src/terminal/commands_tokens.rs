@@ -28,6 +28,7 @@ impl App {
         };
         self.tokens.rows = rows;
         self.tokens.show = true;
+        self.input_mode = super::app::InputMode::Tokens;
         self.clear_input();
         None
     }

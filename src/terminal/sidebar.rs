@@ -392,12 +392,15 @@ impl App {
         if !self.sidebar.open {
             self.sidebar.open = true;
             self.sidebar.focused = true;
+            self.input_mode = super::app::InputMode::Sidebar;
         } else if !self.sidebar.focused {
             self.sidebar.focused = true;
+            self.input_mode = super::app::InputMode::Sidebar;
         } else {
             self.sidebar.open = false;
             self.sidebar.focused = false;
             self.sidebar.filter.clear();
+            self.input_mode = super::app::InputMode::Chat;
         }
     }
 
@@ -539,6 +542,7 @@ impl App {
     pub fn sidebar_close(&mut self) {
         self.sidebar.focused = false;
         self.sidebar.filter.clear();
+        self.input_mode = super::app::InputMode::Chat;
     }
 
     pub fn sidebar_filter_char(&mut self, c: char) {

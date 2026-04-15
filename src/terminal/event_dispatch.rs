@@ -120,6 +120,7 @@ fn handle_mouse_click(col: u16, row: u16, app: &mut App) {
             .is_some_and(|hint_col| col >= hint_col)
     {
         app.display.show_help = true;
+        app.input_mode = super::app::InputMode::Help;
     }
 }
 
@@ -169,96 +170,109 @@ pub(super) fn handle_terminal_event(
     if key.kind != KeyEventKind::Press {
         return Ok(());
     }
-    if app.display.show_help {
-        app.display.show_help = false;
-        return Ok(());
-    }
-    if app.tokens.show {
-        // Any key dismisses, same UX as the `?` help overlay.
-        app.tokens.show = false;
-        app.tokens.rows.clear();
-        return Ok(());
-    }
-    // #192: command palette intercepts all keys while open.
-    if app.palette.show {
-        match key.code {
-            KeyCode::Esc => {
-                app.palette.show = false;
-                app.palette.input.clear();
-            }
-            KeyCode::Enter => {
-                let matches = app.palette_matches();
-                if let Some((cmd, _)) = matches.get(app.palette.selected) {
-                    let command = cmd.to_string();
+    // Modal dispatch via InputMode enum — explicit state machine
+    // replacing the old implicit priority chain of boolean flags.
+    use super::app::InputMode;
+    match app.input_mode {
+        InputMode::Help => {
+            app.display.show_help = false;
+            app.input_mode = InputMode::Chat;
+            return Ok(());
+        }
+        InputMode::Tokens => {
+            app.tokens.show = false;
+            app.tokens.rows.clear();
+            app.input_mode = InputMode::Chat;
+            return Ok(());
+        }
+        InputMode::Palette => {
+            match key.code {
+                KeyCode::Esc => {
                     app.palette.show = false;
                     app.palette.input.clear();
-                    // Dispatch the command as if the user typed it.
-                    app.input = command;
-                    let _ = app.submit_message();
+                    app.input_mode = InputMode::Chat;
                 }
-            }
-            KeyCode::Up => {
-                app.palette.selected = app.palette.selected.saturating_sub(1);
-            }
-            KeyCode::Down => {
-                let count = app.palette_matches().len();
-                if count > 0 {
-                    app.palette.selected = (app.palette.selected + 1).min(count - 1);
+                KeyCode::Enter => {
+                    let matches = app.palette_matches();
+                    if let Some((cmd, _)) = matches.get(app.palette.selected) {
+                        let command = cmd.to_string();
+                        app.palette.show = false;
+                        app.palette.input.clear();
+                        app.input_mode = InputMode::Chat;
+                        app.input = command;
+                        let _ = app.submit_message();
+                    }
                 }
+                KeyCode::Up => {
+                    app.palette.selected = app.palette.selected.saturating_sub(1);
+                }
+                KeyCode::Down => {
+                    let count = app.palette_matches().len();
+                    if count > 0 {
+                        app.palette.selected = (app.palette.selected + 1).min(count - 1);
+                    }
+                }
+                KeyCode::Char(c) => {
+                    app.palette.input.push(c);
+                    app.palette.selected = 0;
+                }
+                KeyCode::Backspace => {
+                    app.palette.input.pop();
+                    app.palette.selected = 0;
+                }
+                _ => {}
             }
-            KeyCode::Char(c) => {
-                app.palette.input.push(c);
-                app.palette.selected = 0;
-            }
-            KeyCode::Backspace => {
-                app.palette.input.pop();
-                app.palette.selected = 0;
-            }
-            _ => {}
+            return Ok(());
         }
-        return Ok(());
-    }
-    if app.project.show && key.code == KeyCode::Esc {
-        app.project.show = false;
-        app.project.content = None;
-        return Ok(());
-    }
-    // #193: board view intercepts keys while open.
-    if app.board.show {
-        match key.code {
-            KeyCode::Esc => {
-                if app.board.detail.is_some() {
-                    // Detail → board
-                    app.board.detail = None;
-                } else {
-                    // Board → chat
-                    app.board.show = false;
-                    app.board.stories.clear();
-                }
+        InputMode::Project => {
+            if key.code == KeyCode::Esc {
+                app.project.show = false;
+                app.project.content = None;
+                app.input_mode = InputMode::Chat;
             }
-            KeyCode::Enter => {
-                if app.board.detail.is_none() {
-                    app.board.detail = Some(app.board.selected);
-                }
-            }
-            KeyCode::Up => {
-                app.board.selected = app.board.selected.saturating_sub(1);
-            }
-            KeyCode::Down => {
-                let visible = super::board_view::visible_stories(&app.board.stories);
-                if !visible.is_empty() {
-                    app.board.selected = (app.board.selected + 1).min(visible.len() - 1);
-                }
-            }
-            _ => {}
+            return Ok(());
         }
-        return Ok(());
+        InputMode::Board => {
+            match key.code {
+                KeyCode::Esc => {
+                    if app.board.detail.is_some() {
+                        app.board.detail = None;
+                    } else {
+                        app.board.show = false;
+                        app.board.stories.clear();
+                        app.input_mode = InputMode::Chat;
+                    }
+                }
+                KeyCode::Enter => {
+                    if app.board.detail.is_none() {
+                        app.board.detail = Some(app.board.selected);
+                    }
+                }
+                KeyCode::Up => {
+                    app.board.selected = app.board.selected.saturating_sub(1);
+                }
+                KeyCode::Down => {
+                    let visible = super::board_view::visible_stories(&app.board.stories);
+                    if !visible.is_empty() {
+                        app.board.selected = (app.board.selected + 1).min(visible.len() - 1);
+                    }
+                }
+                _ => {}
+            }
+            return Ok(());
+        }
+        InputMode::Sidebar | InputMode::Chat => {}
     }
-    // #192: Ctrl+K opens the command palette.
+    // Ctrl+K opens the command palette.
     if key.code == KeyCode::Char('k') && key.modifiers.contains(KeyModifiers::CONTROL) {
         app.palette.show = !app.palette.show;
         app.palette.input.clear();
         app.palette.selected = 0;
+        app.input_mode = if app.palette.show {
+            InputMode::Palette
+        } else {
+            InputMode::Chat
+        };
         return Ok(());
     }
     if (key.code == KeyCode::Char('b') || key.code == KeyCode::Char('1'))
@@ -370,6 +384,7 @@ pub(super) fn handle_terminal_event(
         }
         KeyCode::Char('?') if app.input.is_empty() => {
             app.display.show_help = true;
+            app.input_mode = InputMode::Help;
         }
         KeyCode::Char(c) => {
             app.insert_char(c);

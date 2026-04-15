@@ -244,6 +244,7 @@ impl App {
                 // The full-screen board is still accessible via the
                 // board_detail navigation.
                 self.project.show = true;
+                self.input_mode = super::app::InputMode::Project;
             }
             Err(e) => {
                 self.system_message(format!(
