@@ -71,6 +71,28 @@ impl Default for SidebarState {
     }
 }
 
+/// Which modal overlay is active. Only one can be active at a time.
+/// Replaces the implicit priority chain of boolean flags that
+/// required reading the entire event_dispatch to understand ordering.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum InputMode {
+    /// Normal chat input — no overlay active.
+    #[default]
+    Chat,
+    /// Help overlay (? key).
+    Help,
+    /// Tokens + usage overlay (/tokens).
+    Tokens,
+    /// Command palette (Ctrl+K).
+    Palette,
+    /// Project panel (/board, header click).
+    Project,
+    /// Full-screen board detail.
+    Board,
+    /// Sidebar navigation (Alt+1).
+    Sidebar,
+}
+
 #[derive(Default)]
 pub struct PaletteState {
     pub show: bool,
@@ -249,6 +271,9 @@ pub struct App {
     // ── Board view (#193) ──
     pub board: BoardState,
 
+    // ── Modal state ──
+    pub input_mode: InputMode,
+
     // ── CI status (#151) ──
     pub(super) ci_state: super::ci::CiState,
 
@@ -323,6 +348,7 @@ impl App {
             palette: PaletteState::default(),
             topic: TopicState::default(),
             board: BoardState::default(),
+            input_mode: InputMode::Chat,
             should_reload: false,
             ci_state: super::ci::CiState::Unknown,
         }
