@@ -95,10 +95,44 @@ impl App {
     pub(super) fn handle_focus(&mut self, args: String) -> Option<Message> {
         match parse_focus_args(&args) {
             FocusAction::Set(roles) => {
-                let joined = roles.join(", ");
-                self.focused_roles = Some(roles);
-                self.mark_filters_dirty();
-                self.system_message(format!("focus: {joined}"));
+                // Known = peers seen in messages + peer_activity + self
+                let mut known: std::collections::HashSet<String> =
+                    self.peer_activity.keys().cloned().collect();
+                known.insert(self.identity.name.clone());
+                for m in &self.messages {
+                    let sender = m.from.split(':').next().unwrap_or(&m.from);
+                    if sender != "bpmux" {
+                        known.insert(sender.to_string());
+                    }
+                }
+                let known: Vec<String> = {
+                    let mut v: Vec<String> = known.into_iter().collect();
+                    v.sort();
+                    v
+                };
+                let mut valid = Vec::new();
+                let mut unknown = Vec::new();
+                for role in &roles {
+                    if known.iter().any(|k| k == role) {
+                        if !valid.contains(role) {
+                            valid.push(role.clone());
+                        }
+                    } else {
+                        unknown.push(role.clone());
+                    }
+                }
+                for u in &unknown {
+                    let known_list = known.join(", ");
+                    self.system_message(format!("Unknown role \"{u}\". Known: {known_list}."));
+                }
+                if valid.is_empty() {
+                    self.system_message("Focus unchanged.".to_string());
+                } else {
+                    let joined = valid.join(", ");
+                    self.focused_roles = Some(valid);
+                    self.mark_filters_dirty();
+                    self.system_message(format!("Focus: {joined}."));
+                }
             }
             FocusAction::Off => {
                 self.focused_roles = None;
