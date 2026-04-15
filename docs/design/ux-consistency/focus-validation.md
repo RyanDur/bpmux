@@ -39,7 +39,18 @@ Focus: dev.
 /focus                   → Focus cleared.           (no argument = clear)
 /focus asdf              → Unknown role "asdf". Known: dev, pm, designer, ryan.
                            Focus unchanged.
+/focus designer          → Focus: designer.         (focusing on self is valid —
+                                                     filters to only your own messages)
+/focus ryan              → Focus: ryan.             (human is a valid peer)
 ```
+
+## Data source
+
+Validate against `peer_activity` keys in `app.rs`. This includes all
+peers seen during the current session (human and agent). If `ryan` has
+sent a message, `ryan` is a valid focus target. If no peers have been
+seen yet, the "Known:" list is empty and ALL role names are unknown —
+that's correct behavior (you can't focus on someone who hasn't appeared).
 
 ## Mockup
 

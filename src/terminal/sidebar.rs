@@ -289,7 +289,7 @@ impl App {
                 .collect();
         }
 
-        let mut result = vec![self.session_id.clone()];
+        let mut result = vec![self.identity.id.clone()];
         if !self.sidebar.project_expanded {
             return result;
         }

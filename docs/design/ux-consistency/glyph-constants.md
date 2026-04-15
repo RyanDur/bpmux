@@ -20,27 +20,28 @@ Every user-visible glyph is a named constant in `icons.rs`. No raw
 // icons.rs — single source of truth for all TUI glyphs
 
 // Navigation & structure
-pub(super) const EXPAND: &str = "\u{25B8}";      // ▸
-pub(super) const COLLAPSE: &str = "\u{25BE}";    // ▾
-pub(super) const MENU: &str = "\u{2261}";         // ≡
-pub(super) const OPTION_KEY: &str = "\u{2325}";   // ⌥
-pub(super) const UP_ARROW: &str = "\u{2191}";     // ↑
-pub(super) const DOWN_ARROW: &str = "\u{2193}";   // ↓
-pub(super) const RIGHT_ARROW: &str = "\u{2192}";  // →
+pub(super) const EXPAND: &str = "\u{25B8}";       // ▸
+pub(super) const COLLAPSE: &str = "\u{25BE}";     // ▾
+pub(super) const MENU: &str = "\u{2261}";          // ≡
+pub(super) const OPTION_KEY: &str = "\u{2325}";    // ⌥
+pub(super) const UP_ARROW: &str = "\u{2191}";      // ↑
+pub(super) const DOWN_ARROW: &str = "\u{2193}";    // ↓
+pub(super) const RIGHT_ARROW: &str = "\u{2192}";   // →
+pub(super) const BIDIR_ARROW: &str = "\u{2194}";   // ↔
 
 // Status indicators
-pub(super) const ACTIVE: &str = "\u{25CF}";       // ●
-pub(super) const INACTIVE: &str = "\u{25CB}";     // ○
-pub(super) const CHECK: &str = "\u{2713}";        // ✓
-pub(super) const CROSS: &str = "\u{2717}";        // ✗
-pub(super) const HIGHLIGHT: &str = "\u{25C0}";    // ◀
+pub(super) const ACTIVE: &str = "\u{25CF}";        // ●
+pub(super) const INACTIVE: &str = "\u{25CB}";      // ○
+pub(super) const CHECK: &str = "\u{2713}";         // ✓
+pub(super) const CROSS: &str = "\u{2717}";         // ✗
+pub(super) const HIGHLIGHT: &str = "\u{25C0}";     // ◀
 
 // Communication
-pub(super) const ENVELOPE: &str = "\u{2709}";     // ✉
+pub(super) const ENVELOPE: &str = "\u{2709}";      // ✉
 
 // Typography
-pub(super) const EM_DASH: &str = "\u{2014}";      // —
-pub(super) const ELLIPSIS: &str = "\u{2026}";     // …
+pub(super) const EM_DASH: &str = "\u{2014}";       // —
+pub(super) const ELLIPSIS: &str = "\u{2026}";      // …
 ```
 
 ## Migration
@@ -68,6 +69,7 @@ board.rs        "● " (literal)          icons::ACTIVE
 board.rs        "○ " (literal)          icons::INACTIVE
 topic.rs        " ●" (literal)          icons::ACTIVE
 search.rs       " ◀" (literal)          icons::HIGHLIGHT
+commands.rs     "\u{2194}" (literal)    icons::BIDIR_ARROW
 ```
 
 ## Note on emoji glyphs

@@ -57,9 +57,9 @@ impl App {
         if let Some(body) = body_opt
             && !body.is_empty()
         {
-            let marker = format!("[Shared by {}] {body}", self.peer_name);
+            let marker = format!("[Shared by {}] {body}", self.identity.name);
             let msg = Message {
-                from: format!("{}:human", self.peer_name),
+                from: format!("{}:human", self.identity.name),
                 text: marker,
                 ts: Utc::now(),
                 message_type: MessageType::Chat,
@@ -86,7 +86,7 @@ impl App {
         // visible in the sender's current view (matches current_view or is
         // broadcast if view is None).
         let current_view = self.current_view.clone();
-        let owner = self.peer_name.clone();
+        let owner = self.identity.name.clone();
         let source = self
             .messages
             .iter()
@@ -123,11 +123,11 @@ impl App {
         // the original message (or "broadcast" if None).
         let source_scope = match &source.to {
             None => "broadcast".to_string(),
-            Some(_) => super::app::channel_name(&source, &self.peer_name),
+            Some(_) => super::app::channel_name(&source, &self.identity.name),
         };
         let marker = format!(
             "[Shared by {} from {source_scope} thread] {}",
-            self.peer_name, source.text
+            self.identity.name, source.text
         );
 
         // Addressee is explicitly NOT inherited — propagated messages are
@@ -135,7 +135,7 @@ impl App {
         // addressee, the receiving agent treats the propagated copy as
         // awareness only.
         let msg = Message {
-            from: format!("{}:human", self.peer_name),
+            from: format!("{}:human", self.identity.name),
             text: marker,
             ts: Utc::now(),
             message_type: MessageType::Chat,

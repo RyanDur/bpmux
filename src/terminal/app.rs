@@ -196,11 +196,16 @@ pub struct BoardState {
     pub detail: Option<usize>,
 }
 
+/// Session identity — frozen after construction. These fields
+/// are set once in App::new() and must not change during the session.
+pub struct SessionIdentity {
+    pub dir: Option<PathBuf>,
+    pub name: String,
+    pub id: String,
+}
+
 pub struct App {
-    // ── Session identity ──
-    pub session_dir: Option<PathBuf>,
-    pub peer_name: String,
-    pub session_id: String,
+    pub identity: SessionIdentity,
 
     // ── Message state ──
     pub messages: Vec<Message>,
@@ -306,7 +311,11 @@ impl App {
             }
         }
         Self {
-            session_dir: None,
+            identity: SessionIdentity {
+                dir: None,
+                name: peer_name.clone(),
+                id: session_id.clone(),
+            },
             class_cache: Vec::new(),
             filtered_indices: Vec::new(),
             cached_hidden_count: 0,
@@ -321,8 +330,6 @@ impl App {
                 ta
             },
             scroll: ScrollState::default(),
-            peer_name,
-            session_id,
             should_quit: false,
             display: DisplayState::default(),
             input_history: Vec::new(),
@@ -374,7 +381,7 @@ impl App {
     /// and marks the filter index dirty.
     pub(super) fn push_message(&mut self, msg: Message) {
         let class = if msg.is_chat() {
-            Some(crate::session::classify(&msg, &self.peer_name))
+            Some(crate::session::classify(&msg, &self.identity.name))
         } else {
             None
         };
@@ -421,20 +428,26 @@ impl App {
             let in_channel = match &self.current_view {
                 None => true,
                 Some(view) if view == "broadcast" => {
-                    channel_name(m, &self.peer_name) == "broadcast"
+                    channel_name(m, &self.identity.name) == "broadcast"
                 }
-                Some(view) => super::markdown::message_matches_channel(m, view, &self.peer_name),
+                Some(view) => {
+                    super::markdown::message_matches_channel(m, view, &self.identity.name)
+                }
             };
             if !in_channel {
                 continue;
             }
             if !self.display.show_all_classes
-                && super::chat::should_hide_by_class(m, &self.peer_name)
+                && super::chat::should_hide_by_class(m, &self.identity.name)
             {
                 self.cached_hidden_count += 1;
                 continue;
             }
-            if !super::commands_focus::in_focus(m, self.focused_roles.as_deref(), &self.peer_name) {
+            if !super::commands_focus::in_focus(
+                m,
+                self.focused_roles.as_deref(),
+                &self.identity.name,
+            ) {
                 continue;
             }
             if let Some(msg_topic) = &m.topic
@@ -554,7 +567,7 @@ impl App {
             .messages
             .iter()
             .filter(|m| m.is_chat())
-            .map(|m| channel_name(m, &self.peer_name))
+            .map(|m| channel_name(m, &self.identity.name))
             .filter(|ch| {
                 if ch == "broadcast" {
                     return true;
@@ -616,7 +629,7 @@ impl App {
                         *self.topic.unreads.entry(topic.clone()).or_insert(0) += 1;
                     }
                 }
-                let ch = channel_name(&msg, &self.peer_name);
+                let ch = channel_name(&msg, &self.identity.name);
                 self.active_channels.insert(ch.clone());
                 if self.current_view.as_ref().is_none_or(|v| v != &ch) {
                     *self.channel_unread.entry(ch).or_insert(0) += 1;
@@ -625,7 +638,7 @@ impl App {
                     self.update_activity(sender.clone(), rest.trim().to_string());
                 }
                 if let Some(recipients) = &msg.to {
-                    let directed_at_me = recipients.iter().any(|r| r == &self.peer_name)
+                    let directed_at_me = recipients.iter().any(|r| r == &self.identity.name)
                         && !recipients.iter().all(|r| r == "all");
                     if directed_at_me && !self.dm_unread_from.contains(&sender) {
                         self.dm_unread_from.push(sender);

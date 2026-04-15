@@ -72,7 +72,7 @@ impl App {
     }
 
     fn handle_who(&mut self) -> Option<Message> {
-        let mut participants = vec![format!("{} (you)", self.peer_name)];
+        let mut participants = vec![format!("{} (you)", self.identity.name)];
         for (peer, (status, _)) in &self.peer_activity {
             participants.push(format!("{peer} [{status}]"));
         }
@@ -108,7 +108,7 @@ impl App {
     fn handle_status(&mut self, text: String) -> Option<Message> {
         // Send as a regular message — the convention is parsed by receivers
         let msg = Message {
-            from: format!("{}:human", self.peer_name),
+            from: format!("{}:human", self.identity.name),
             text,
             ts: Utc::now(),
             message_type: MessageType::Chat,
@@ -145,7 +145,7 @@ impl App {
         // `/to` is user-explicit privacy intent. Flag it so /share can
         // refuse to propagate it and preserve the DM guarantee.
         let msg = Message {
-            from: format!("{}:human", self.peer_name),
+            from: format!("{}:human", self.identity.name),
             text: body,
             ts: Utc::now(),
             message_type: MessageType::Chat,
@@ -342,8 +342,10 @@ impl App {
             } else {
                 vec![ch.clone()]
             };
-            let recipients: Vec<String> =
-                names.into_iter().filter(|n| n != &self.peer_name).collect();
+            let recipients: Vec<String> = names
+                .into_iter()
+                .filter(|n| n != &self.identity.name)
+                .collect();
             if recipients.is_empty() {
                 None
             } else {
@@ -351,7 +353,7 @@ impl App {
             }
         });
         let msg = Message {
-            from: format!("{}:human", self.peer_name),
+            from: format!("{}:human", self.identity.name),
             text,
             ts: Utc::now(),
             message_type: MessageType::Chat,

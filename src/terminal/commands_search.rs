@@ -41,7 +41,7 @@ impl App {
             channel: None,
             message_class,
             insight_only,
-            owner_name: self.peer_name.clone(),
+            owner_name: self.identity.name.clone(),
         };
         let results = crate::session::search(&self.messages, &filters);
         if results.is_empty() {
@@ -80,8 +80,8 @@ impl App {
     }
 
     pub(super) fn handle_lessons(&mut self) -> Option<Message> {
-        let mut index = crate::session::lessons::build_index(&self.messages, &self.peer_name);
-        if let Some(dir) = &self.session_dir {
+        let mut index = crate::session::lessons::build_index(&self.messages, &self.identity.name);
+        if let Some(dir) = &self.identity.dir {
             let saved = crate::session::lessons::load_index(dir);
             index.lessons = saved.lessons;
         }
@@ -121,7 +121,7 @@ impl App {
             text.push_str("\n── /search experiences <topic> for details ──");
             self.system_message(text);
         }
-        if let Some(dir) = &self.session_dir {
+        if let Some(dir) = &self.identity.dir {
             let _ = crate::session::lessons::save_index(dir, &index);
         }
         self.clear_input();
@@ -129,7 +129,7 @@ impl App {
     }
 
     pub(super) fn handle_peer_lessons(&mut self, peer_name: String) -> Option<Message> {
-        let Some(dir) = &self.session_dir else {
+        let Some(dir) = &self.identity.dir else {
             self.system_message("No session directory available.".to_string());
             self.clear_input();
             return None;

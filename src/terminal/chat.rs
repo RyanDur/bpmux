@@ -78,7 +78,7 @@ pub(super) fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
         let short_name = msg.from.split(':').next().unwrap_or(&msg.from);
         let is_human = msg.from.ends_with(":human");
         let name_color = sender_color(short_name);
-        let ch_name = app::channel_name(msg, &app.peer_name);
+        let ch_name = app::channel_name(msg, &app.identity.name);
         let is_broadcast = ch_name == "broadcast";
         let channel_tag = format!("[{ch_name}] ");
 

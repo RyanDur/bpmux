@@ -79,8 +79,8 @@ fn render_input(frame: &mut Frame, app: &mut App, area: Rect) {
     let block = Block::default()
         .borders(Borders::ALL)
         .title(match &app.send_target {
-            Some(ch) => format!(" {} [{ch}]{topic_label} > ", app.peer_name),
-            None => format!(" {}{topic_label} > ", app.peer_name),
+            Some(ch) => format!(" {} [{ch}]{topic_label} > ", app.identity.name),
+            None => format!(" {}{topic_label} > ", app.identity.name),
         })
         .title_style(Style::default().fg(DRACULA_PURPLE))
         .border_style(Style::default().fg(if app.sidebar.focused {

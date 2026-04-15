@@ -164,8 +164,8 @@ pub(super) fn handle_p2p_result(
         P2pResult::AnswerReady { channel_pair, code } => {
             spawn_relay_with_sync(
                 session_arc.clone(),
-                app.session_id.clone(),
-                app.peer_name.clone(),
+                app.identity.id.clone(),
+                app.identity.name.clone(),
                 "remote".to_string(),
                 channel_pair,
             );
@@ -179,8 +179,8 @@ pub(super) fn handle_p2p_result(
         } => {
             spawn_relay_with_sync(
                 session_arc.clone(),
-                app.session_id.clone(),
-                app.peer_name.clone(),
+                app.identity.id.clone(),
+                app.identity.name.clone(),
                 peer_name.clone(),
                 channel_pair,
             );

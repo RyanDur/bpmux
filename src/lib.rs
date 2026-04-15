@@ -113,7 +113,7 @@ pub fn run() -> anyhow::Result<()> {
     ));
     let messages = session.read_messages()?;
     let mut app = terminal::App::new(cli.name.clone(), session.id.clone(), messages);
-    app.session_dir = Some(session.dir.clone());
+    app.identity.dir = Some(session.dir.clone());
     terminal::ui_state::UiState::load_and_restore(&mut app, &session);
     let server_session = Arc::clone(&session);
     let server_port = cli.mcp_port;

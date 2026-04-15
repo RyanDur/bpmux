@@ -56,7 +56,7 @@ impl App {
             }
 
             // Parse participants — always include self (the creator).
-            let mut participants: Vec<String> = vec![self.peer_name.clone()];
+            let mut participants: Vec<String> = vec![self.identity.name.clone()];
             if let Some(participant_str) = parts.get(1) {
                 for p in participant_str.split(',') {
                     let p = p.trim().to_string();
