@@ -8,7 +8,7 @@
 use crossterm::event::{Event, KeyCode, KeyEventKind, KeyModifiers, MouseEventKind};
 
 use crate::session;
-use crate::terminal::app::App;
+use crate::terminal::app::{App, InputMode};
 
 const PAGE_SCROLL_LINES: usize = 10;
 
@@ -121,7 +121,7 @@ fn handle_mouse_click(col: u16, row: u16, app: &mut App) {
             .is_some_and(|hint_col| col >= hint_col)
     {
         app.display.show_help = true;
-        app.input_mode = super::app::InputMode::Help;
+        app.input_mode = InputMode::Help;
     }
 }
 
@@ -173,7 +173,6 @@ pub(super) fn handle_terminal_event(
     }
     // Modal dispatch via InputMode enum — explicit state machine
     // replacing the old implicit priority chain of boolean flags.
-    use super::app::InputMode;
     match app.input_mode {
         InputMode::Help => {
             app.display.show_help = false;

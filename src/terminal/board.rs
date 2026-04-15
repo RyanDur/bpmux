@@ -320,7 +320,7 @@ impl DoraMetrics {
     }
 }
 
-pub fn fetch_dora_metrics() -> Option<DoraMetrics> {
+pub(super) fn fetch_dora_metrics() -> Option<DoraMetrics> {
     let mut cmd = std::process::Command::new("gh");
     cmd.args([
         "issue",
