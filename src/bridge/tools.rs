@@ -342,15 +342,13 @@ pub(super) async fn handle_capture_screen(port: u16) -> Result<String, String> {
     Ok(body)
 }
 
-/// `save_bookmark` (#168) — saves session state for post-compaction recovery.
+/// #168: post-compaction recovery — bookmark survives context resets.
 pub(super) async fn handle_save_bookmark(
     args: &serde_json::Map<String, serde_json::Value>,
     _port: u16,
     name: &str,
 ) -> Result<String, String> {
     use crate::session::bookmark::{Bookmark, save_bookmark};
-    // Get the session dir from the running instance via the screen endpoint.
-    // Simpler: use the session dir from the REST messages path.
     let session_dir = get_session_dir().await?;
     let bookmark = Bookmark {
         current_task: args
@@ -393,7 +391,7 @@ pub(super) async fn handle_save_bookmark(
     Ok("bookmark saved".to_string())
 }
 
-/// `get_bookmark` (#168) — reads a session bookmark.
+/// #168: bookmark recovery companion to save_bookmark.
 pub(super) async fn handle_get_bookmark(
     args: &serde_json::Map<String, serde_json::Value>,
     _port: u16,
@@ -421,7 +419,7 @@ async fn get_session_dir() -> Result<std::path::PathBuf, String> {
     }
 }
 
-/// `get_identity` (#190) — reads the identity file for a role.
+/// #190: per-role identity traits loaded at session start.
 pub(super) async fn handle_get_identity(
     args: &serde_json::Map<String, serde_json::Value>,
     default_role: &str,
@@ -502,7 +500,7 @@ pub(super) async fn handle_classifier_misfire(
 // ── Story management tools (#140) ──────────────────────────────
 // Server-side gh proxy with lane-aware permissions.
 
-/// Get usage statistics — any agent (#195).
+/// #195: agent-visible feature usage counts from the local session.
 pub(super) async fn handle_get_usage(
     _args: &serde_json::Map<String, serde_json::Value>,
 ) -> Result<String, String> {

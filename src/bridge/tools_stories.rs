@@ -50,13 +50,10 @@ pub(super) async fn gh(args: &[&str]) -> Result<String, String> {
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
-/// Extract the short role name from the agent's identity.
-/// "dev:claude-code" → "dev", "pm" → "pm".
 pub(super) fn role_from_name(name: &str) -> &str {
     name.split(':').next().unwrap_or(name)
 }
 
-/// Lane check: returns Ok(()) if allowed, Err with rejection message if not.
 pub(super) fn require_role(
     agent_name: &str,
     allowed: &[&str],
@@ -74,7 +71,6 @@ pub(super) fn require_role(
     }
 }
 
-/// View board — any agent, no lane restriction.
 pub(super) async fn handle_view_board(
     _args: &serde_json::Map<String, serde_json::Value>,
 ) -> Result<String, String> {
@@ -155,7 +151,6 @@ pub(super) async fn handle_view_board(
     Ok(out)
 }
 
-/// Create a story — any agent can create.
 pub(super) async fn handle_create_story(
     args: &serde_json::Map<String, serde_json::Value>,
 ) -> Result<String, String> {
@@ -173,8 +168,8 @@ pub(super) async fn handle_create_story(
     Ok(format!("story created: {}", result.trim()))
 }
 
-/// Start a story — dev only. Sends workflow signals (#197).
-/// Signals fire on INTENT — team is notified even if gh fails.
+/// #197: signal fires on INTENT (before gh) so the team is notified
+/// even when the gh label edit fails.
 pub(super) async fn handle_start_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
@@ -255,7 +250,6 @@ pub(super) async fn handle_deliver_story(
     }
 }
 
-/// Add/change labels — PM only.
 pub(super) async fn handle_label_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
@@ -273,7 +267,6 @@ pub(super) async fn handle_label_story(
     Ok(format!("#{number} labeled '{label}'"))
 }
 
-/// Accept a story — owner (ryan) only. Sends workflow signals (#197).
 pub(super) async fn handle_accept_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
@@ -307,7 +300,6 @@ pub(super) async fn handle_accept_story(
     }
 }
 
-/// Reject a story — owner (ryan) only. Sends workflow signals (#197).
 pub(super) async fn handle_reject_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
@@ -426,7 +418,7 @@ pub(super) async fn handle_fail_desk_check(
     }
 }
 
-/// Reorder a story within its state column — PM only (#194).
+/// #194: PM-controlled priority reordering; persists to priority index.
 pub(super) async fn handle_reorder_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
