@@ -137,12 +137,12 @@ impl App {
             FocusAction::Off => {
                 self.focused_roles = None;
                 self.mark_filters_dirty();
-                self.system_message("focus: off (all roles visible)".to_string());
+                self.system_message("Focus cleared.".to_string());
             }
             FocusAction::Status => {
                 let text = match self.focused_roles.as_ref() {
-                    None => "focus: off (all roles visible)".to_string(),
-                    Some(roles) => format!("focus: {}", roles.join(", ")),
+                    None => "Focus: off.".to_string(),
+                    Some(roles) => format!("Focus: {}.", roles.join(", ")),
                 };
                 self.system_message(text);
             }
