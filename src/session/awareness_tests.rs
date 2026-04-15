@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used)]
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::awareness::agents::AgentTracker;
 use super::awareness::experience;

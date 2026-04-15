@@ -74,6 +74,7 @@ pub fn sort_by_priority(numbers: &[u64], priority: &[u64]) -> Vec<u64> {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
     use super::*;
 

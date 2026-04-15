@@ -69,6 +69,7 @@ pub fn save_identity(base: &Path, role: &str, index: &IdentityIndex) -> Result<(
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
     use super::*;
     use tempfile::tempdir;

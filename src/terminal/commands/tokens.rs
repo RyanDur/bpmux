@@ -161,6 +161,7 @@ pub(crate) fn human(n: u64) -> String {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
     use super::*;
     use crate::session::tokens::TokenRow;
