@@ -42,7 +42,7 @@ impl App {
             let name = parts[0].trim().to_string();
             if name.is_empty() {
                 self.system_message(
-                    "Usage: /topic create <name> [participants]\n\
+                    "/topic create <name> [participants]\n\
                      Example: /topic create teaching pm,designer"
                         .to_string(),
                 );
