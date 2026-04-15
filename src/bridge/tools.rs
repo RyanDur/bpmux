@@ -149,7 +149,7 @@ pub(super) async fn handle_search_log(
         urlencoding(query)
     );
     if let Some(sender) = args.get("sender").and_then(|v| v.as_str()) {
-        url.push_str(&format!("&sender={sender}"));
+        url.push_str(&format!("&sender={}", urlencoding(sender)));
     }
     let body = reqwest::get(&url)
         .await
