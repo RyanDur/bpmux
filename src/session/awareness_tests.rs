@@ -93,27 +93,22 @@ fn chat_msg(from: &str, text: &str) -> Message {
 fn classify_log_disabled_by_default_suppresses_log() {
     // Default state (flag false) means `last_classify_log` should
     // remain None even after messages are classified.
-    let mut detector = experience::ExperienceDetector::new(&[], "ryan");
-    // Explicit: disabled
-    detector.set_classify_log_for_test(false);
+    let mut detector = experience::ExperienceDetector::with_classify_log(&[], "ryan", false);
     let msg = chat_msg("dev:claude-code", "this is a decision to ship");
     detector.on_message(&msg, "dev");
-    assert_eq!(
-        detector.classify_log_count(),
-        0,
+    assert!(
+        !detector.has_classify_log(),
         "classify-log should not fire when disabled"
     );
 }
 
 #[test]
 fn classify_log_enabled_fires_on_first_message() {
-    let mut detector = experience::ExperienceDetector::new(&[], "ryan");
-    detector.set_classify_log_for_test(true);
+    let mut detector = experience::ExperienceDetector::with_classify_log(&[], "ryan", true);
     let msg = chat_msg("dev:claude-code", "this is a test classification message");
     detector.on_message(&msg, "dev");
-    assert_eq!(
-        detector.classify_log_count(),
-        1,
+    assert!(
+        detector.has_classify_log(),
         "classify-log should fire once when enabled"
     );
 }
@@ -127,14 +122,12 @@ fn classify_log_rate_limits_rapid_messages() {
     // we can't distinguish "fired once, rate-limited 9" from "fired 10
     // times" at this level. The guarantee we CAN test here is that
     // the code path doesn't panic or double-count on rapid input.
-    let mut detector = experience::ExperienceDetector::new(&[], "ryan");
-    detector.set_classify_log_for_test(true);
+    let mut detector = experience::ExperienceDetector::with_classify_log(&[], "ryan", true);
     for i in 0..10 {
         let msg = chat_msg("dev:claude-code", &format!("message {i}"));
         detector.on_message(&msg, "dev");
     }
-    // The fact that we got here without panic is the invariant.
-    assert_eq!(detector.classify_log_count(), 1);
+    assert!(detector.has_classify_log());
 }
 
 #[test]
@@ -146,13 +139,11 @@ fn classify_log_does_not_affect_classification_behavior() {
     // state is identical.
     let msg = chat_msg("ryan:human", "don't do that, it breaks the build");
 
-    let mut detector_a = experience::ExperienceDetector::new(&[], "ryan");
-    detector_a.set_classify_log_for_test(false);
+    let mut detector_a = experience::ExperienceDetector::with_classify_log(&[], "ryan", false);
     detector_a.on_message(&msg, "ryan");
     let has_pending_without = detector_a.has_pending();
 
-    let mut detector_b = experience::ExperienceDetector::new(&[], "ryan");
-    detector_b.set_classify_log_for_test(true);
+    let mut detector_b = experience::ExperienceDetector::with_classify_log(&[], "ryan", true);
     detector_b.on_message(&msg, "ryan");
     let has_pending_with = detector_b.has_pending();
 

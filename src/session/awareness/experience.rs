@@ -37,7 +37,7 @@ pub struct ExperienceDetector {
     /// (rather than re-reading the env var on every message) because env
     /// access is process-global, expensive, and — in modern Rust — marked
     /// `unsafe` to mutate. Production reads it once at startup; tests can
-    /// set it directly via `set_classify_log_for_test`.
+    /// set it directly via `with_classify_log`.
     classify_log_enabled: bool,
     model: BayesModel,
     owner_name: String,
@@ -45,6 +45,20 @@ pub struct ExperienceDetector {
 
 impl ExperienceDetector {
     pub fn new(messages: &[Message], owner_name: &str) -> Self {
+        Self::with_classify_log(
+            messages,
+            owner_name,
+            std::env::var("BPMUX_CLASSIFY_LOG").is_ok(),
+        )
+    }
+
+    /// Construct with explicit classify-log flag. Production uses
+    /// `new()` which reads the env var. Tests pass the flag directly.
+    pub fn with_classify_log(
+        messages: &[Message],
+        owner_name: &str,
+        classify_log_enabled: bool,
+    ) -> Self {
         let mut model = BayesModel::default();
         if !messages.is_empty() {
             model.train(messages, owner_name);
@@ -53,28 +67,14 @@ impl ExperienceDetector {
             pending: Vec::new(),
             last_message_at: Instant::now(),
             last_classify_log: None,
-            classify_log_enabled: std::env::var("BPMUX_CLASSIFY_LOG").is_ok(),
+            classify_log_enabled,
             model,
             owner_name: owner_name.to_string(),
         }
     }
 
-    /// Test-only override for the classify-log flag. Production reads
-    /// `BPMUX_CLASSIFY_LOG` at construction; tests set the flag directly
-    /// to avoid mutating process-global env in a crate that denies
-    /// unsafe code.
-    #[cfg(test)]
-    pub fn set_classify_log_for_test(&mut self, enabled: bool) {
-        self.classify_log_enabled = enabled;
-    }
-
-    #[cfg(test)]
-    pub fn classify_log_count(&self) -> usize {
-        if self.last_classify_log.is_some() {
-            1
-        } else {
-            0
-        }
+    pub fn has_classify_log(&self) -> bool {
+        self.last_classify_log.is_some()
     }
 
     pub fn on_message(&mut self, msg: &Message, sender: &str) {
