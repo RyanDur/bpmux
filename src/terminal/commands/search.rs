@@ -120,8 +120,10 @@ impl App {
             text.push_str("\n── /search experiences <topic> for details ──");
             self.system_message(text);
         }
-        if let Some(dir) = &self.identity.dir {
-            let _ = crate::session::lessons::save_index(dir, &index);
+        if let Some(dir) = &self.identity.dir
+            && let Err(e) = crate::session::lessons::save_index(dir, &index)
+        {
+            crate::session::diag::log_diag(&format!("save_index failed: {e}"));
         }
         self.clear_input();
         None
