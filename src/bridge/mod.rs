@@ -61,6 +61,26 @@ impl BridgeServer {
     }
 }
 
+/// Validate a meta payload against the Claude Code channel contract.
+///
+/// Returns Err if any value is null. Claude Code v2.1.109+ rejects
+/// notifications with null meta values, breaking the MCP stdio pipe
+/// entirely (silent on v2.1.92, loud on later versions). This check
+/// fails loudly at the boundary so we catch our own contract violations
+/// before they cross into a system we don't control.
+pub(super) fn validate_meta(
+    meta: &serde_json::Map<String, serde_json::Value>,
+) -> Result<(), String> {
+    for (key, value) in meta {
+        if value.is_null() {
+            return Err(format!(
+                "meta['{key}'] is null — Claude Code will reject the notification"
+            ));
+        }
+    }
+    Ok(())
+}
+
 /// Build the `meta` payload for a channel notification.
 ///
 /// Optional fields are OMITTED (not sent as null) when absent. This matters
@@ -129,105 +149,143 @@ async fn run_ws_connection(
         }
     }
 
-    if let Some(Ok(_welcome)) = ws_rx.next().await {
-        eprintln!("Bridge: connected to bpmux on port {port}");
+    match ws_rx.next().await {
+        Some(Ok(_welcome)) => {
+            eprintln!("Bridge: connected to bpmux on port {port}");
+        }
+        Some(Err(e)) => {
+            eprintln!("Bridge: welcome frame error: {e}");
+            return;
+        }
+        None => {
+            eprintln!("Bridge: connection closed before welcome");
+            return;
+        }
     }
 
-    while let Some(Ok(frame)) = ws_rx.next().await {
-        if let tungstenite::Message::Text(text) = frame {
-            let msg: Result<ServerMessage, _> = serde_json::from_str(&text);
-            // Surface server-side errors so silent drops stop being silent.
-            // Before this was added (2026-04-11), `ServerMessage::Error`
-            // frames from bpmux — including "message too large" rejections
-            // on oversized coordination messages — were parsed and then
-            // silently ignored because the dispatch `if let` only matched
-            // `ServerMessage::Message`. Now they're logged to stderr, which
-            // goes to the Claude Code console where the agent can see the
-            // rejection even though rmcp doesn't let us propagate errors
-            // back to the original tool call.
-            if let Ok(ServerMessage::Error { ref reason }) = msg {
-                eprintln!("Bridge: server rejected message: {reason}");
+    while let Some(frame_result) = ws_rx.next().await {
+        let frame = match frame_result {
+            Ok(f) => f,
+            Err(e) => {
+                eprintln!("Bridge: websocket receive error: {e}");
+                break;
+            }
+        };
+        let text = match frame {
+            tungstenite::Message::Text(t) => t,
+            tungstenite::Message::Close(_) => {
+                eprintln!("Bridge: server closed connection");
+                break;
+            }
+            tungstenite::Message::Ping(_) | tungstenite::Message::Pong(_) => continue,
+            other => {
+                eprintln!(
+                    "Bridge: unexpected frame type ({} bytes), dropping",
+                    match &other {
+                        tungstenite::Message::Binary(b) => b.len(),
+                        _ => 0,
+                    }
+                );
                 continue;
             }
-            if let Ok(ServerMessage::Message {
-                from,
-                text,
-                ts,
-                to,
-                addressee,
-                message_type,
-                topic,
-                multi_depth: _,
-            }) = msg
+        };
+        let msg: ServerMessage = match serde_json::from_str(&text) {
+            Ok(m) => m,
+            Err(e) => {
+                eprintln!("Bridge: failed to parse server message: {e} (text: {text})");
+                continue;
+            }
+        };
+        // Surface server-side errors so silent drops stop being silent.
+        if let ServerMessage::Error { ref reason } = msg {
+            eprintln!("Bridge: server rejected message: {reason}");
+            continue;
+        }
+        if let ServerMessage::Message {
+            from,
+            text,
+            ts,
+            to,
+            addressee,
+            message_type,
+            topic,
+            multi_depth: _,
+        } = msg
+        {
+            let from_short = from.split(':').next().unwrap_or(&from);
+            let current_name = name.lock().await;
+            if from_short == *current_name {
+                continue;
+            }
+            drop(current_name);
+
+            let mt = message_type.as_deref();
+            if mt == Some("activity") || mt == Some("system") {
+                continue;
+            }
+
+            // Only deliver messages relevant to this agent
+            let current_name = name.lock().await;
+            let relevant = match &to {
+                None => true,
+                Some(recipients) if recipients.iter().any(|r| r == "all") => true,
+                Some(recipients) => recipients.iter().any(|r| r == current_name.as_str()),
+            };
+            let channel = match &to {
+                None => "broadcast".to_string(),
+                Some(recipients) if recipients.iter().any(|r| r == "all") => {
+                    "broadcast".to_string()
+                }
+                Some(recipients) => recipients.join(","),
+            };
+            drop(current_name);
+            if !relevant {
+                continue;
+            }
+
+            // Store channel for reply-to-channel default
+            if let Some(recipients) = &to {
+                let mut reply_to: Vec<String> = recipients.clone();
+                if !reply_to.contains(&from_short.to_string()) {
+                    reply_to.push(from_short.to_string());
+                }
+                let current_name = name.lock().await;
+                reply_to.retain(|r| r != current_name.as_str());
+                drop(current_name);
+                *last_channel.lock().await = Some(reply_to);
+            } else {
+                *last_channel.lock().await = None;
+            }
+
+            let meta = build_notification_meta(
+                &from,
+                &ts,
+                &channel,
+                addressee.as_deref(),
+                topic.as_deref(),
+                message_type.as_deref(),
+            );
+            // Boundary validator: fail loudly if our payload violates the
+            // Claude Code contract, rather than silently shipping it and
+            // watching the MCP pipe crash.
+            if let Err(violation) = validate_meta(&meta) {
+                eprintln!("Bridge: CONTRACT VIOLATION on outbound notification: {violation}");
+                continue;
+            }
+            let notification = CustomNotification::new(
+                "notifications/claude/channel",
+                Some(json!({
+                    "content": format!("{from_short}: {text}"),
+                    "meta": meta
+                })),
+            );
+
+            if let Err(e) = peer
+                .send_notification(ServerNotification::CustomNotification(notification))
+                .await
             {
-                let from_short = from.split(':').next().unwrap_or(&from);
-                let current_name = name.lock().await;
-                if from_short == *current_name {
-                    continue;
-                }
-                drop(current_name);
-
-                let mt = message_type.as_deref();
-                if mt == Some("activity") || mt == Some("system") {
-                    continue;
-                }
-
-                // Only deliver messages relevant to this agent
-                let current_name = name.lock().await;
-                let relevant = match &to {
-                    None => true,
-                    Some(recipients) if recipients.iter().any(|r| r == "all") => true,
-                    Some(recipients) => recipients.iter().any(|r| r == current_name.as_str()),
-                };
-                let channel = match &to {
-                    None => "broadcast".to_string(),
-                    Some(recipients) if recipients.iter().any(|r| r == "all") => {
-                        "broadcast".to_string()
-                    }
-                    Some(recipients) => recipients.join(","),
-                };
-                drop(current_name);
-                if !relevant {
-                    continue;
-                }
-
-                // Store channel for reply-to-channel default
-                if let Some(recipients) = &to {
-                    let mut reply_to: Vec<String> = recipients.clone();
-                    if !reply_to.contains(&from_short.to_string()) {
-                        reply_to.push(from_short.to_string());
-                    }
-                    let current_name = name.lock().await;
-                    reply_to.retain(|r| r != current_name.as_str());
-                    drop(current_name);
-                    *last_channel.lock().await = Some(reply_to);
-                } else {
-                    *last_channel.lock().await = None;
-                }
-
-                let meta = build_notification_meta(
-                    &from,
-                    &ts,
-                    &channel,
-                    addressee.as_deref(),
-                    topic.as_deref(),
-                    message_type.as_deref(),
-                );
-                let notification = CustomNotification::new(
-                    "notifications/claude/channel",
-                    Some(json!({
-                        "content": format!("{from_short}: {text}"),
-                        "meta": meta
-                    })),
-                );
-
-                if let Err(e) = peer
-                    .send_notification(ServerNotification::CustomNotification(notification))
-                    .await
-                {
-                    eprintln!("Bridge: failed to send channel notification: {e}");
-                    break;
-                }
+                eprintln!("Bridge: failed to send channel notification: {e}");
+                break;
             }
         }
     }

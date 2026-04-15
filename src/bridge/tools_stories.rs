@@ -254,14 +254,17 @@ pub(super) async fn handle_accept_story(
     if let Err(e) = ws_send(ws_tx, signal).await {
         eprintln!("Bridge: signal send failed: {e}");
     }
-    let _ = gh(&[
+    if let Err(e) = gh(&[
         "issue",
         "edit",
         &number.to_string(),
         "--remove-label",
         "delivered",
     ])
-    .await;
+    .await
+    {
+        eprintln!("Bridge: gh remove-label delivered failed for #{number}: {e}");
+    }
     let gh_result = gh(&["issue", "close", &number.to_string()]).await;
     match gh_result {
         Ok(_) => Ok(format!("#{number} accepted and closed")),
@@ -289,7 +292,7 @@ pub(super) async fn handle_reject_story(
     if let Err(e) = ws_send(ws_tx, signal).await {
         eprintln!("Bridge: signal send failed: {e}");
     }
-    let _ = gh(&[
+    if let Err(e) = gh(&[
         "issue",
         "edit",
         &number.to_string(),
@@ -298,7 +301,10 @@ pub(super) async fn handle_reject_story(
         "--add-label",
         "rejected",
     ])
-    .await;
+    .await
+    {
+        eprintln!("Bridge: gh relabel delivered→rejected failed for #{number}: {e}");
+    }
     let gh_result = gh(&["issue", "comment", &number.to_string(), "--body", reason]).await;
     match gh_result {
         Ok(_) => Ok(format!("#{number} rejected: {reason}")),

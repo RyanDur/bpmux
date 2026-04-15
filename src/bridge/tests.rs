@@ -133,6 +133,62 @@ fn build_meta_never_contains_null_values() {
     }
 }
 
+// ── validate_meta boundary check ───────────────────────────
+//
+// This is the runtime validator wired in just before peer.send_notification.
+// Its job is to catch our own contract violations at the boundary rather
+// than silently shipping them into Claude Code (where they vanish silently
+// on v2.1.92 or crash the MCP pipe on v2.1.109+).
+
+#[test]
+fn validate_meta_accepts_payload_with_no_nulls() {
+    let meta = build_notification_meta(
+        "ryan",
+        "t",
+        "broadcast",
+        Some("dev"),
+        Some("topic"),
+        Some("chat"),
+    );
+    assert!(validate_meta(&meta).is_ok());
+}
+
+#[test]
+fn validate_meta_rejects_payload_with_null_value() {
+    let mut meta = serde_json::Map::new();
+    meta.insert("from".to_string(), serde_json::json!("ryan"));
+    meta.insert("addressee".to_string(), serde_json::Value::Null);
+    let err = validate_meta(&meta).expect_err("should reject null");
+    assert!(err.contains("addressee"));
+    assert!(err.contains("null"));
+}
+
+#[test]
+fn validate_meta_rejects_payload_with_null_in_any_position() {
+    let keys = ["from", "ts", "channel", "source", "addressee", "topic"];
+    for null_key in keys {
+        let mut meta = serde_json::Map::new();
+        for k in keys {
+            if k == null_key {
+                meta.insert(k.to_string(), serde_json::Value::Null);
+            } else {
+                meta.insert(k.to_string(), serde_json::json!("value"));
+            }
+        }
+        let result = validate_meta(&meta);
+        assert!(
+            result.is_err(),
+            "validator must catch null at key {null_key}"
+        );
+    }
+}
+
+#[test]
+fn validate_meta_accepts_empty_map() {
+    let meta = serde_json::Map::new();
+    assert!(validate_meta(&meta).is_ok());
+}
+
 #[test]
 fn build_meta_mixed_presence_only_includes_present_keys() {
     let meta = build_notification_meta("ryan", "t", "dev", Some("dev"), None, Some("chat"));
