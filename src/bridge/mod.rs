@@ -61,6 +61,42 @@ impl BridgeServer {
     }
 }
 
+/// Build the `meta` payload for a channel notification.
+///
+/// Optional fields are OMITTED (not sent as null) when absent. This matters
+/// because:
+/// - The MCP channel spec treats meta entries as tag attributes — null isn't a valid attribute
+/// - Claude Code v2.1.109+ rejects notifications with null meta values outright
+/// - Presence-as-signal semantics: "no addressee" (key omitted) means broadcast attention,
+///   whereas "addressee: null" could be misread as "explicitly addressed to nobody"
+///
+/// Core fields (from/ts/channel/source) are always present. The three optional
+/// fields (addressee/topic/message_type) are only included when non-None.
+pub(super) fn build_notification_meta(
+    from: &str,
+    ts: &str,
+    channel: &str,
+    addressee: Option<&str>,
+    topic: Option<&str>,
+    message_type: Option<&str>,
+) -> serde_json::Map<String, serde_json::Value> {
+    let mut meta = serde_json::Map::new();
+    meta.insert("from".to_string(), json!(from));
+    meta.insert("ts".to_string(), json!(ts));
+    meta.insert("channel".to_string(), json!(channel));
+    meta.insert("source".to_string(), json!("bpmux"));
+    if let Some(a) = addressee {
+        meta.insert("addressee".to_string(), json!(a));
+    }
+    if let Some(t) = topic {
+        meta.insert("topic".to_string(), json!(t));
+    }
+    if let Some(mt) = message_type {
+        meta.insert("message_type".to_string(), json!(mt));
+    }
+    meta
+}
+
 async fn run_ws_connection(
     port: u16,
     name: Arc<Mutex<String>>,
@@ -169,19 +205,19 @@ async fn run_ws_connection(
                     *last_channel.lock().await = None;
                 }
 
+                let meta = build_notification_meta(
+                    &from,
+                    &ts,
+                    &channel,
+                    addressee.as_deref(),
+                    topic.as_deref(),
+                    message_type.as_deref(),
+                );
                 let notification = CustomNotification::new(
                     "notifications/claude/channel",
                     Some(json!({
                         "content": format!("{from_short}: {text}"),
-                        "meta": {
-                            "from": from,
-                            "ts": ts,
-                            "channel": channel,
-                            "source": "bpmux",
-                            "addressee": addressee,
-                            "topic": topic,
-                            "message_type": message_type
-                        }
+                        "meta": meta
                     })),
                 );
 
