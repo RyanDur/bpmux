@@ -68,18 +68,32 @@ pub async fn get_messages(
             } else {
                 messages
             };
-            // #191: per-user delivery simulation. When `?as=role` is
-            // set, filter messages through should_deliver as if this
-            // were a WebSocket peer with the specified topic subscriptions.
+            // #191 / #204: per-caller delivery filter. When `?as=role`
+            // is set, apply the same topic-subscription filter the
+            // WebSocket push path uses — non-participants of a topic
+            // do not see topic-scoped messages via REST either. If
+            // `?topics=<csv>` is also provided, use those as the
+            // subscription set (test simulation path). Otherwise read
+            // the real subscription set from `session.topic_subs` for
+            // that peer — the live-agent path, closing the contract
+            // gap between REST pull and WS push.
             if let Some(ref peer) = params.as_peer {
-                let topic_subs: Vec<String> = params
-                    .topics
-                    .as_deref()
-                    .unwrap_or("")
-                    .split(',')
-                    .map(|s| s.trim().to_string())
-                    .filter(|s| !s.is_empty())
-                    .collect();
+                let topic_subs: Vec<String> = if let Some(csv) = params.topics.as_deref() {
+                    csv.split(',')
+                        .map(|s| s.trim().to_string())
+                        .filter(|s| !s.is_empty())
+                        .collect()
+                } else {
+                    session
+                        .topic_subs
+                        .lock()
+                        .ok()
+                        .and_then(|map| {
+                            map.get(peer.as_str())
+                                .map(|set| set.iter().cloned().collect())
+                        })
+                        .unwrap_or_default()
+                };
                 filtered.retain(|m| super::ws::should_deliver(m, peer, Some(&topic_subs)));
             }
             filtered.reverse();

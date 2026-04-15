@@ -444,7 +444,10 @@ impl ServerHandler for BridgeServer {
                 "send_message" => tools::handle_send(&args, &ws_tx, &last_channel).await,
                 "set_name" => tools::handle_set_name(&args, &name, &ws_tx).await,
                 "set_status" => tools::handle_set_status(&args, &ws_tx).await,
-                "read_messages" => tools::handle_read_messages(&args, port).await,
+                "read_messages" => {
+                    let current_name = name.lock().await;
+                    tools::handle_read_messages(&args, port, &current_name).await
+                }
                 "search_log" => tools::handle_search_log(&args, port).await,
                 "list_lessons" => tools::handle_list_lessons(&args, port).await,
                 "list_peer_lessons" => tools::handle_list_peer_lessons(&args, port).await,

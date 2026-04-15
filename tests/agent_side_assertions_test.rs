@@ -72,13 +72,12 @@ fn view_board_response_exposes_story_fields_for_agent_assertions() {
 }
 
 /// AC: non-participant of a topic does NOT receive the topic message
-/// via the agent-side path.
+/// via the agent-side push path.
 ///
-/// The implemented filter runs on the WebSocket push path (topic_subs
-/// in ws.rs). A non-subscribed agent's NotificationCapture therefore
-/// proves the negative. The REST read_messages path returns the full
-/// curated log regardless of caller identity — a separate gap, out of
-/// #199's agent-assertion scope.
+/// The filter runs on the WebSocket push path via `topic_subs` in
+/// ws.rs. #204 closed the matching gap on the REST read_messages
+/// pull path — see `read_messages_filters_topic_messages_for_non_subscribed_agent`
+/// below for that assertion.
 ///
 /// Subscribes pm to "teaching" (auto, on first topic send). dev
 /// stays on broadcast only. Asserts dev's capture contains the
@@ -276,6 +275,62 @@ fn fail_desk_check_signal_routes_to_dev_not_ryan() {
 
         designer.close().await;
         ryan.close().await;
+        dev.close().await;
+    });
+}
+
+/// AC (#204): non-participant of a topic does NOT see the topic
+/// message via read_messages (the REST pull path), matching the
+/// WebSocket push filter. Before this fix the two paths diverged —
+/// an agent polling via read_messages could see topic messages it
+/// wasn't subscribed to, while the same agent receiving via push
+/// could not.
+#[test]
+fn read_messages_filters_topic_messages_for_non_subscribed_agent() {
+    let bpmux = TestBpmux::start();
+    let rt = tokio::runtime::Runtime::new().expect("rt");
+    rt.block_on(async {
+        let pm = TestBridge::connect(&bpmux, "pm").await;
+        let dev = TestBridge::connect(&bpmux, "dev").await;
+
+        // Let both bridges finish WebSocket handshake + join
+        // announcements before sending.
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        // Broadcast to confirm the baseline pull path works for both.
+        pm.send("plain broadcast").await;
+
+        // pm auto-subscribes to "teaching" on first topic send; dev
+        // stays on broadcast only.
+        pm.call_tool(
+            "send_message",
+            serde_json::json!({"text": "secret topic content", "topic": "teaching"}),
+        )
+        .await
+        .expect("topic send");
+
+        // Barrier broadcast gives us a known-delivered tail event —
+        // dev's capture passes this barrier before we read.
+        pm.send("barrier broadcast").await;
+        dev.capture
+            .wait_for("barrier broadcast", Duration::from_secs(5))
+            .await;
+
+        let dev_messages = dev
+            .call_tool("read_messages", serde_json::json!({}))
+            .await
+            .expect("read_messages");
+        let body = serde_json::to_string(&dev_messages).expect("serialize");
+        assert!(
+            body.contains("plain broadcast") && body.contains("barrier broadcast"),
+            "dev should see broadcasts via read_messages. got: {body}"
+        );
+        assert!(
+            !body.contains("secret topic content"),
+            "dev (non-participant) should NOT see topic messages via read_messages. got: {body}"
+        );
+
+        pm.close().await;
         dev.close().await;
     });
 }

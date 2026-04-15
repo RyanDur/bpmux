@@ -123,13 +123,20 @@ pub(super) fn curate_message(raw: &serde_json::Value) -> Option<serde_json::Valu
 pub(super) async fn handle_read_messages(
     args: &serde_json::Map<String, serde_json::Value>,
     port: u16,
+    agent_name: &str,
 ) -> Result<String, String> {
     let default_limit = crate::transport::rest::DEFAULT_MESSAGE_LIMIT as u64;
     let limit = args
         .get("limit")
         .and_then(|v| v.as_u64())
         .unwrap_or(default_limit);
-    let url = format!("http://127.0.0.1:{port}/api/messages?limit={limit}");
+    // #204: pass the agent's short name as `?as=` so the REST endpoint
+    // applies the topic-subscription filter — matching the WebSocket
+    // push path. Without this the agent reads messages it would not
+    // see via notifications, silently diverging the two paths.
+    let short = agent_name.split(':').next().unwrap_or(agent_name);
+    let as_encoded = urlencoding(short);
+    let url = format!("http://127.0.0.1:{port}/api/messages?limit={limit}&as={as_encoded}");
     let body = reqwest::get(&url)
         .await
         .map_err(|e| format!("failed to fetch: {e}"))?
