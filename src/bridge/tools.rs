@@ -119,12 +119,29 @@ pub(super) async fn handle_read_messages(
     if msgs.is_empty() {
         return Ok("No messages.".into());
     }
+    // Include metadata so agents can implement addressee protocol,
+    // topic filtering, and timestamp-based reasoning.
     Ok(msgs
         .iter()
         .filter_map(|m| {
             let from = m["from"].as_str()?;
             let text = m["text"].as_str()?;
-            Some(format!("[{from}] {text}"))
+            let ts = m["ts"].as_str().unwrap_or("");
+            let ts_short: String = ts.chars().take(19).collect();
+            let mut meta = String::new();
+            if let Some(addressee) = m["addressee"].as_str() {
+                meta.push_str(&format!(" @{addressee}"));
+            }
+            if let Some(topic) = m["topic"].as_str() {
+                meta.push_str(&format!(" #{topic}"));
+            }
+            if let Some(to) = m["to"].as_array() {
+                let names: Vec<&str> = to.iter().filter_map(|v| v.as_str()).collect();
+                if !names.is_empty() {
+                    meta.push_str(&format!(" to:[{}]", names.join(",")));
+                }
+            }
+            Some(format!("[{ts_short}] [{from}]{meta} {text}"))
         })
         .collect::<Vec<_>>()
         .join("\n"))

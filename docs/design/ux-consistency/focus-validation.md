@@ -27,7 +27,7 @@ Focus: dev.
 
 ## Rules
 
-1. **Validate each role** against `peer_activity` keys (known peers seen this session)
+1. **Validate each role** against known peers seen this session
 2. **Warn per unknown role** — don't silently drop it
 3. **Apply the valid ones** — if the user typed `/focus dev,deisgner`, still apply `dev`
 4. **Show what stuck** — confirm which roles are now focused after validation
@@ -44,13 +44,12 @@ Focus: dev.
 /focus ryan              → Focus: ryan.             (human is a valid peer)
 ```
 
-## Data source
+## What counts as "known"
 
-Validate against `peer_activity` keys in `app.rs`. This includes all
-peers seen during the current session (human and agent). If `ryan` has
-sent a message, `ryan` is a valid focus target. If no peers have been
-seen yet, the "Known:" list is empty and ALL role names are unknown —
-that's correct behavior (you can't focus on someone who hasn't appeared).
+A role is known if the user has seen a message from that peer during
+this session. If ryan has spoken, "ryan" is valid. If no peers have
+appeared yet, the "Known:" list is empty and ALL names are unknown —
+that's correct (you can't focus on someone who hasn't appeared).
 
 ## Mockup
 
