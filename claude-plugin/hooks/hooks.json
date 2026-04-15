@@ -75,6 +75,18 @@
           }
         ]
       }
+    ],
+    "StopFailure": [
+      {
+        "matcher": "rate_limit|server_error|authentication_failed|billing_error",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/stop-failure.sh",
+            "timeout": 5
+          }
+        ]
+      }
     ]
   }
 }
