@@ -38,7 +38,6 @@ use crate::terminal::theme::{
 ///   Critical: we do NOT run the Routine-class check on bpmux
 ///   content because `session::classify` returns Routine for
 ///   ANY bpmux-sender message, which would hide tool output.
-#[cfg(test)]
 pub(super) fn should_hide_by_class(m: &session::Message, owner_name: &str) -> bool {
     if m.message_type == session::MessageType::Nudge {
         return true;

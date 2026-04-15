@@ -402,31 +402,11 @@ impl App {
             if !in_channel {
                 continue;
             }
-            if !self.display.show_all_classes {
-                // Replicate should_hide_by_class logic exactly:
-                // 1. Nudge type → hide
-                // 2. bpmux sender → hide only 📝-prefixed
-                // 3. Otherwise → hide if classified as Routine
-                let hide = if m.message_type == crate::session::MessageType::Nudge {
-                    true
-                } else {
-                    let sender = m.from.split(':').next().unwrap_or(&m.from);
-                    if sender == "bpmux" {
-                        m.text.starts_with('\u{1F4DD}')
-                    } else {
-                        let class = self
-                            .class_cache
-                            .get(idx)
-                            .and_then(|c| c.as_ref())
-                            .copied()
-                            .unwrap_or_else(|| crate::session::classify(m, &self.peer_name));
-                        matches!(class, crate::session::MessageClass::Routine)
-                    }
-                };
-                if hide {
-                    self.cached_hidden_count += 1;
-                    continue;
-                }
+            if !self.display.show_all_classes
+                && super::chat::should_hide_by_class(m, &self.peer_name)
+            {
+                self.cached_hidden_count += 1;
+                continue;
             }
             if !super::commands_focus::in_focus(m, self.focused_roles.as_deref(), &self.peer_name) {
                 continue;
