@@ -216,9 +216,7 @@ impl App {
             return None;
         }
         // No match
-        self.system_message(format!(
-            "no channel matches \"{arg}\". Type /view to list channels."
-        ));
+        self.system_message(format!("No channel matches \"{arg}\"."));
         self.clear_input();
         None
     }
@@ -226,7 +224,7 @@ impl App {
     fn handle_roadmap(&mut self) -> Option<Message> {
         let roadmap_text = match board::fetch_roadmap() {
             Ok(text) => text,
-            Err(e) => format!("Roadmap unavailable: {e}"),
+            Err(_) => "Roadmap unavailable.".to_string(),
         };
         self.system_message(roadmap_text);
         self.clear_input();
@@ -245,11 +243,10 @@ impl App {
                 self.project.show = true;
                 self.input_mode = super::app::InputMode::Project;
             }
-            Err(e) => {
-                self.system_message(format!(
-                    "Board unavailable: {e}\n\
-                     Ensure `gh` CLI is installed and authenticated (`gh auth login`)."
-                ));
+            Err(_) => {
+                self.system_message(
+                    "Board unavailable. Check gh CLI is installed and authenticated.".to_string(),
+                );
             }
         }
         self.clear_input();

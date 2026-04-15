@@ -103,18 +103,14 @@ impl App {
             .cloned();
 
         let Some(source) = source else {
-            self.system_message(
-                "/share: no recent message in the current view to share.".to_string(),
-            );
+            self.system_message("No recent message in the current view.".to_string());
             self.clear_input();
             return None;
         };
 
         // Privacy gate: refuse to propagate /to-scoped private messages.
         if source.explicit_privacy {
-            self.system_message(
-                "/share: cannot share a private message. Paraphrase it in your own words if it needs wider visibility.".to_string(),
-            );
+            self.system_message("Cannot share a private message.".to_string());
             self.clear_input();
             return None;
         }

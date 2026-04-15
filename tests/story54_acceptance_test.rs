@@ -146,7 +146,7 @@ fn ac4_view_nonexistent_channel_shows_error() {
 
     bpmux.type_line("/view fakechannel");
     assert!(
-        bpmux.wait_for_tui("no channel matches", Duration::from_secs(5)),
+        bpmux.wait_for_tui("No channel matches", Duration::from_secs(5)),
         "Should show error for nonexistent channel. Screen:\n{}",
         bpmux.tui()
     );

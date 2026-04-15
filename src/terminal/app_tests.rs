@@ -573,7 +573,7 @@ fn view_unknown_channel_shows_error() {
             .last()
             .unwrap()
             .text
-            .contains("no channel matches")
+            .contains("No channel matches")
     );
 }
 
@@ -1117,7 +1117,7 @@ fn share_form1_refuses_to_propagate_private_to_message() {
     assert!(msg.is_none(), "private message not propagated");
     let last = app.messages.last().unwrap();
     assert!(
-        last.text.contains("cannot share a private message"),
+        last.text.contains("Cannot share a private message"),
         "expected privacy refusal, got: {}",
         last.text
     );
@@ -1132,7 +1132,7 @@ fn share_form1_with_no_recent_message_shows_error() {
     let msg = app.submit_message();
     assert!(msg.is_none());
     let last = app.messages.last().unwrap();
-    assert!(last.text.contains("no recent message"));
+    assert!(last.text.contains("No recent message"));
 }
 
 #[test]

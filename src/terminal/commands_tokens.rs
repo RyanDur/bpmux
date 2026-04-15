@@ -20,8 +20,8 @@ impl App {
     pub(super) fn handle_tokens(&mut self) -> Option<Message> {
         let rows = match default_tokens_log_path().and_then(|p| read_token_rows(&p)) {
             Ok(rows) => rows,
-            Err(e) => {
-                self.system_message(format!("tokens: unable to read log: {e}"));
+            Err(_) => {
+                self.system_message("Unable to read token log.".to_string());
                 self.clear_input();
                 return None;
             }

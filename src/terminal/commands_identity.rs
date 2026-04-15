@@ -21,8 +21,8 @@ impl App {
 
         let base = match default_identity_dir() {
             Ok(b) => b,
-            Err(e) => {
-                self.system_message(format!("identity: {e}"));
+            Err(_) => {
+                self.system_message("Unable to load identity.".to_string());
                 self.clear_input();
                 return None;
             }
@@ -44,8 +44,8 @@ impl App {
     fn show_all_identities(&mut self) {
         let base = match default_identity_dir() {
             Ok(b) => b,
-            Err(e) => {
-                self.system_message(format!("identity: {e}"));
+            Err(_) => {
+                self.system_message("Unable to load identity.".to_string());
                 return;
             }
         };
