@@ -9,8 +9,8 @@
 //! 400-line soft limit, matching the `commands_tokens.rs` /
 //! `commands_help.rs` / `commands_share.rs` precedent.
 
-use super::app::App;
 use crate::session::{Message, MessageType};
+use crate::terminal::app::App;
 
 /// Parsed `/focus` argument shapes. Kept as an enum rather than
 /// direct mutation so the handler can log a clear error for
@@ -72,7 +72,7 @@ pub(super) fn parse_focus_args(args: &str) -> FocusAction {
 ///   their role isn't in your focus set.
 /// - Otherwise, show only if the sender's role (the prefix before
 ///   `:` in `msg.from`) is in the `focused` set.
-pub(super) fn in_focus(msg: &Message, focused: Option<&[String]>, my_role: &str) -> bool {
+pub(crate) fn in_focus(msg: &Message, focused: Option<&[String]>, my_role: &str) -> bool {
     let Some(focused) = focused else {
         return true;
     };

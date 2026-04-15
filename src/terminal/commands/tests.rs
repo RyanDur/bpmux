@@ -4,7 +4,7 @@
 //! that file under the 400-line soft limit — adding #158's
 //! `parse_addressee_prefix` + its test module pushed it over the wall.
 
-use super::commands::parse_addressee_prefix;
+use super::parse_addressee_prefix;
 
 #[test]
 fn plain_text_has_no_addressee() {

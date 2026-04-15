@@ -11,8 +11,8 @@ use crate::session;
 use crate::terminal::app::App;
 use crate::terminal::board_view;
 use crate::terminal::chat;
-use crate::terminal::commands_help::format_command_list;
-use crate::terminal::commands_tokens::{format_tokens_overlay, human};
+use crate::terminal::commands::help::format_command_list;
+use crate::terminal::commands::tokens::{format_tokens_overlay, human};
 use crate::terminal::icons;
 use crate::terminal::sidebar;
 use crate::terminal::status_bar;
@@ -208,7 +208,7 @@ fn render_tokens_overlay(frame: &mut Frame, app: &App, area: Rect) {
         return;
     }
     // #195: append usage table to the token text
-    let usage_text = crate::terminal::commands_tokens::format_usage_table(&app.feature_usage);
+    let usage_text = crate::terminal::commands::tokens::format_usage_table(&app.feature_usage);
 
     // Narrow/short terminal fallback — preserves the simpler text
     // overlay for constrained environments where a chart would be

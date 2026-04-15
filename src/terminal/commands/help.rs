@@ -10,9 +10,9 @@
 //! and overlay forms can never drift — adding a command means adding
 //! one line to that constant and nothing else.
 
-use super::app::App;
-use super::input::SLASH_COMMANDS;
 use crate::session::Message;
+use crate::terminal::app::App;
+use crate::terminal::input::SLASH_COMMANDS;
 
 impl App {
     /// `/help` (#164) — print the slash-command list inline in the chat
@@ -40,7 +40,7 @@ impl App {
 /// surface. This was the load-bearing fix in the #164 re-delivery — the
 /// original shipped `2` form dropped descriptions entirely, which Ryan
 /// correctly rejected as a regression.
-pub(super) fn format_command_list(columns: usize) -> String {
+pub(crate) fn format_command_list(columns: usize) -> String {
     let mut out = String::from("Commands:\n");
     let widest_name = SLASH_COMMANDS
         .iter()

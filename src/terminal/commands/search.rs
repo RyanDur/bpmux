@@ -3,8 +3,8 @@
 //! These live on the same `App` type as the other command handlers but in a
 //! separate file so commands.rs stays under the 400-line quality gate.
 
-use super::app::App;
 use crate::session::Message;
+use crate::terminal::app::App;
 
 impl App {
     pub(super) fn handle_search(&mut self, query: String) -> Option<Message> {

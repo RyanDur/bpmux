@@ -454,7 +454,7 @@ impl App {
                 self.cached_hidden_count += 1;
                 continue;
             }
-            if !super::commands_focus::in_focus(
+            if !super::commands::focus::in_focus(
                 m,
                 self.focused_roles.as_deref(),
                 &self.identity.name,

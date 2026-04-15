@@ -5,8 +5,8 @@
 //! ryan, pm, and designer see each other's messages. dev doesn't
 //! receive them. The topic creator is always a participant.
 
-use super::app::App;
 use crate::session::{Message, MessageType};
+use crate::terminal::app::App;
 use chrono::Utc;
 
 impl App {
@@ -18,7 +18,7 @@ impl App {
             let mut text = String::from("Topics:\n");
             for t in &self.topic.topics {
                 let active = if *t == self.topic.active {
-                    format!(" {}", super::icons::ACTIVE)
+                    format!(" {}", crate::terminal::icons::ACTIVE)
                 } else {
                     String::new()
                 };

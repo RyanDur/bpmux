@@ -1,3 +1,14 @@
+pub(crate) mod focus;
+pub(crate) mod help;
+mod identity;
+mod search;
+mod share;
+pub(crate) mod tokens;
+mod topic;
+
+#[cfg(test)]
+mod tests;
+
 use super::app::App;
 use super::board;
 use crate::session::{Message, MessageType};

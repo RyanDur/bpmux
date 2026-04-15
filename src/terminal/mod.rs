@@ -4,13 +4,6 @@ mod board_view;
 mod chat;
 mod ci;
 mod commands;
-mod commands_focus;
-mod commands_help;
-mod commands_identity;
-mod commands_search;
-mod commands_share;
-mod commands_tokens;
-mod commands_topic;
 pub mod event;
 mod event_dispatch;
 mod icons;
@@ -29,7 +22,5 @@ pub use event::run_tui;
 
 #[cfg(test)]
 mod app_tests;
-#[cfg(test)]
-mod commands_tests;
 #[cfg(test)]
 mod ui_tests;

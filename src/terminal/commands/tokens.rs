@@ -9,9 +9,9 @@
 //! line soft limit (the `commands_help.rs` extraction followed the
 //! same pattern; see #164 rework for the precedent).
 
-use super::app::App;
 use crate::session::Message;
 use crate::session::tokens::{default_tokens_log_path, read_token_rows};
+use crate::terminal::app::App;
 
 impl App {
     /// `/tokens` — show the token-cost overlay. Snapshots the log
@@ -28,7 +28,7 @@ impl App {
         };
         self.tokens.rows = rows;
         self.tokens.show = true;
-        self.input_mode = super::app::InputMode::Tokens;
+        self.input_mode = crate::terminal::app::InputMode::Tokens;
         self.clear_input();
         None
     }
@@ -59,7 +59,7 @@ impl App {
 /// A future commit will upgrade this to a ratatui `Chart` widget for
 /// the line-graph-over-time view Ryan asked for; the text form is the
 /// first working slice so the feature loop closes today.
-pub(super) fn format_tokens_overlay(rows: &[crate::session::tokens::TokenRow]) -> String {
+pub(crate) fn format_tokens_overlay(rows: &[crate::session::tokens::TokenRow]) -> String {
     use crate::session::tokens::totals_by_role;
     let mut out = String::new();
     let row_count = rows.len();
@@ -105,7 +105,7 @@ pub(super) fn format_tokens_overlay(rows: &[crate::session::tokens::TokenRow]) -
 }
 
 /// #195: format the feature usage table appended to the tokens overlay.
-pub(super) fn format_usage_table(
+pub(crate) fn format_usage_table(
     usage: &std::collections::HashMap<String, (usize, chrono::DateTime<chrono::Utc>)>,
 ) -> String {
     let mut out = String::new();
@@ -150,7 +150,7 @@ pub(super) fn format_usage_table(
 ///
 /// Exposed to `super` because `ui::render_tokens_overlay` also uses
 /// it for axis labels and the breakdown table in the chart layout.
-pub(super) fn human(n: u64) -> String {
+pub(crate) fn human(n: u64) -> String {
     if n < 1_000 {
         n.to_string()
     } else if n < 1_000_000 {

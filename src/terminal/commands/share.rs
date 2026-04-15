@@ -9,9 +9,9 @@
 
 use chrono::Utc;
 
-use super::app::App;
-use super::commands::MAX_HISTORY;
+use super::MAX_HISTORY;
 use crate::session::{Message, MessageType};
+use crate::terminal::app::App;
 
 impl App {
     /// `/share <scope> [optional text]` — cross-scope propagation (#160).
@@ -97,7 +97,7 @@ impl App {
                 }
                 match &current_view {
                     None => m.to.is_none(), // broadcast view sees only broadcast
-                    Some(view) => super::app::channel_name(m, &owner) == *view,
+                    Some(view) => crate::terminal::app::channel_name(m, &owner) == *view,
                 }
             })
             .cloned();
@@ -119,7 +119,7 @@ impl App {
         // the original message (or "broadcast" if None).
         let source_scope = match &source.to {
             None => "broadcast".to_string(),
-            Some(_) => super::app::channel_name(&source, &self.identity.name),
+            Some(_) => crate::terminal::app::channel_name(&source, &self.identity.name),
         };
         let marker = format!(
             "[Shared by {} from {source_scope} thread] {}",

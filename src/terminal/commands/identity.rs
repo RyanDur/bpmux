@@ -3,9 +3,9 @@
 //! Shows an agent's identity traits in the chat pane. Reads from
 //! the identity store at `~/.bpmux/identity/{role}.json`.
 
-use super::app::App;
 use crate::session::Message;
 use crate::session::identity::{default_identity_dir, load_identity};
+use crate::terminal::app::App;
 
 impl App {
     pub(super) fn handle_identity(&mut self, args: String) -> Option<Message> {
