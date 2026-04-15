@@ -377,6 +377,10 @@ impl App {
         self.sync_input_from_textarea();
     }
 
+    pub fn from_identity(&self) -> String {
+        format!("{}:human", self.identity.name)
+    }
+
     /// Single entry point for adding a message. Maintains class_cache
     /// and marks the filter index dirty.
     pub(super) fn push_message(&mut self, msg: Message) {

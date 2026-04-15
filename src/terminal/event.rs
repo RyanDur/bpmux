@@ -239,7 +239,7 @@ where
 }
 
 fn handle_broadcast_message(msg: session::Message, app: &mut App) {
-    let self_identity = format!("{}:human", app.identity.name);
+    let self_identity = app.from_identity();
     if msg.from != self_identity {
         let short_name = msg.from.split(':').next().unwrap_or(&msg.from).to_string();
         let preview: String = msg.text.chars().take(NOTIFICATION_PREVIEW_CHARS).collect();

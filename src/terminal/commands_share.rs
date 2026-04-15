@@ -59,7 +59,7 @@ impl App {
         {
             let marker = format!("[Shared by {}] {body}", self.identity.name);
             let msg = Message {
-                from: format!("{}:human", self.identity.name),
+                from: self.from_identity(),
                 text: marker,
                 ts: Utc::now(),
                 message_type: MessageType::Chat,
@@ -131,7 +131,7 @@ impl App {
         // addressee, the receiving agent treats the propagated copy as
         // awareness only.
         let msg = Message {
-            from: format!("{}:human", self.identity.name),
+            from: self.from_identity(),
             text: marker,
             ts: Utc::now(),
             message_type: MessageType::Chat,

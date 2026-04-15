@@ -107,7 +107,7 @@ impl App {
 
     fn handle_status(&mut self, text: String) -> Option<Message> {
         let msg = Message {
-            from: format!("{}:human", self.identity.name),
+            from: self.from_identity(),
             text,
             ts: Utc::now(),
             message_type: MessageType::Activity,
@@ -144,7 +144,7 @@ impl App {
         // `/to` is user-explicit privacy intent. Flag it so /share can
         // refuse to propagate it and preserve the DM guarantee.
         let msg = Message {
-            from: format!("{}:human", self.identity.name),
+            from: self.from_identity(),
             text: body,
             ts: Utc::now(),
             message_type: MessageType::Chat,
@@ -349,7 +349,7 @@ impl App {
             }
         });
         let msg = Message {
-            from: format!("{}:human", self.identity.name),
+            from: self.from_identity(),
             text,
             ts: Utc::now(),
             message_type: MessageType::Chat,
