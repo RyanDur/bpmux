@@ -252,7 +252,8 @@ pub(super) fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
 pub(super) fn render_unread_indicator(frame: &mut Frame, app: &App, area: Rect) {
     if app.scroll.offset > 0 && app.scroll.unread_count > 0 {
         let unread_text = format!(
-            "\u{2193} {} new message{}",
+            "{} {} new message{}",
+            super::icons::DOWN,
             app.scroll.unread_count,
             if app.scroll.unread_count == 1 {
                 ""

@@ -191,7 +191,10 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         let age = now.saturating_duration_since(*last_seen);
         let (dot_color, description) = parse_status_with_age(status, age);
         status_spans.push(Span::raw(" "));
-        status_spans.push(Span::styled("\u{25CF}", Style::default().fg(dot_color)));
+        status_spans.push(Span::styled(
+            super::icons::ACTIVE,
+            Style::default().fg(dot_color),
+        ));
         status_spans.push(Span::styled(
             format!(" {peer}"),
             Style::default().fg(DRACULA_FG),
@@ -208,7 +211,7 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         let names = app.dm_unread_from.join(", ");
         status_spans.push(Span::raw(" | "));
         status_spans.push(Span::styled(
-            format!("\u{2709} DM from {names}"),
+            format!("{} DM from {names}", super::icons::DM),
             Style::default().fg(DRACULA_YELLOW),
         ));
     }

@@ -23,3 +23,12 @@ pub(super) const COLLAPSE: &str = "\u{25BE}";
 
 /// `≡` — menu / toggle (hamburger icon).
 pub(super) const MENU: &str = "\u{2261}";
+
+/// `●` — active / present (topic, peer, channel).
+pub(super) const ACTIVE: &str = "\u{25CF}";
+
+/// `✉` — DM indicator (direct message notification).
+pub(super) const DM: &str = "\u{2709}";
+
+/// `↓` — down arrow (new-message indicator).
+pub(super) const DOWN: &str = "\u{2193}";
