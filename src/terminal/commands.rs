@@ -106,12 +106,11 @@ impl App {
     }
 
     fn handle_status(&mut self, text: String) -> Option<Message> {
-        // Send as a regular message — the convention is parsed by receivers
         let msg = Message {
             from: format!("{}:human", self.identity.name),
             text,
             ts: Utc::now(),
-            message_type: MessageType::Chat,
+            message_type: MessageType::Activity,
             to: None,
             addressee: None,
             explicit_privacy: false,

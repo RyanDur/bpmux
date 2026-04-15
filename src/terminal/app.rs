@@ -485,10 +485,20 @@ impl App {
                 .iter()
                 .map(|(k, (c, t))| (k.clone(), (*c, t.to_rfc3339())))
                 .collect();
-            let _ = std::fs::create_dir_all(path.parent().unwrap_or(&path));
-            let _ = serde_json::to_string_pretty(&serializable)
-                .ok()
-                .and_then(|json| std::fs::write(&path, json).ok());
+            if let Err(e) = std::fs::create_dir_all(path.parent().unwrap_or(&path)) {
+                crate::session::diag::log_diag(&format!("save_usage mkdir failed: {e}"));
+                return;
+            }
+            match serde_json::to_string_pretty(&serializable) {
+                Ok(json) => {
+                    if let Err(e) = std::fs::write(&path, json) {
+                        crate::session::diag::log_diag(&format!("save_usage write failed: {e}"));
+                    }
+                }
+                Err(e) => {
+                    crate::session::diag::log_diag(&format!("save_usage serialize failed: {e}"));
+                }
+            }
         }
     }
 

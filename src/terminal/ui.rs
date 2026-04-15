@@ -623,7 +623,11 @@ fn render_command_palette(frame: &mut Frame, app: &App, area: Rect) {
     lines.push(Line::default());
     for (i, (name, short)) in matches.iter().enumerate() {
         let selected = i == app.palette.selected;
-        let indicator = if selected { "\u{25B8} " } else { "  " };
+        let indicator = if selected {
+            format!("{} ", icons::EXPAND)
+        } else {
+            "  ".to_string()
+        };
         let style = if selected {
             Style::default().fg(DRACULA_CYAN)
         } else {
