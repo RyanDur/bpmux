@@ -172,13 +172,12 @@ pub(super) async fn handle_search_log(
 }
 
 pub(super) fn urlencoding(s: &str) -> String {
-    s.chars()
-        .map(|c| match c {
-            ' ' => "%20".to_string(),
-            '&' => "%26".to_string(),
-            '=' => "%3D".to_string(),
-            '?' => "%3F".to_string(),
-            _ => c.to_string(),
+    s.bytes()
+        .map(|b| match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                String::from(b as char)
+            }
+            _ => format!("%{b:02X}"),
         })
         .collect()
 }

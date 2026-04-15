@@ -157,7 +157,9 @@ pub(super) async fn handle_start_story(
         .ok_or("missing 'number' argument")?;
     let signal =
         serde_json::to_string(&build_start_signal(number)).map_err(|e| format!("signal: {e}"))?;
-    let _ = ws_send(ws_tx, signal).await;
+    if let Err(e) = ws_send(ws_tx, signal).await {
+        eprintln!("Bridge: signal send failed: {e}");
+    }
     let gh_result = gh(&[
         "issue",
         "edit",
@@ -194,7 +196,9 @@ pub(super) async fn handle_deliver_story(
         .unwrap_or_else(|| format!("#{number}"));
     for signal in build_delivery_signals(number, &title) {
         let json = serde_json::to_string(&signal).map_err(|e| format!("signal: {e}"))?;
-        let _ = ws_send(ws_tx, json).await;
+        if let Err(e) = ws_send(ws_tx, json).await {
+            eprintln!("Bridge: signal send failed: {e}");
+        }
     }
     let gh_result = gh(&[
         "issue",
@@ -243,7 +247,9 @@ pub(super) async fn handle_accept_story(
         .ok_or("missing 'number' argument")?;
     let signal =
         serde_json::to_string(&build_accept_signal(number)).map_err(|e| format!("signal: {e}"))?;
-    let _ = ws_send(ws_tx, signal).await;
+    if let Err(e) = ws_send(ws_tx, signal).await {
+        eprintln!("Bridge: signal send failed: {e}");
+    }
     let _ = gh(&[
         "issue",
         "edit",
@@ -276,7 +282,9 @@ pub(super) async fn handle_reject_story(
         .unwrap_or("rejected");
     let signal = serde_json::to_string(&build_reject_signal(number, reason))
         .map_err(|e| format!("signal: {e}"))?;
-    let _ = ws_send(ws_tx, signal).await;
+    if let Err(e) = ws_send(ws_tx, signal).await {
+        eprintln!("Bridge: signal send failed: {e}");
+    }
     let _ = gh(&[
         "issue",
         "edit",
