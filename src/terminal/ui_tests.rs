@@ -910,13 +910,15 @@ fn ci_indicator_fits_80x24_with_full_peer_presence() {
     let mut app = test_app_with(vec![chat_msg("ryan:human", "hi")]);
     // Populate three peer activity entries so the status bar renders
     // the dot cluster at its realistic width.
-    app.peer_activity.insert(
+    app.peers.activity.insert(
         "designer".to_string(),
         ("available".to_string(), Instant::now()),
     );
-    app.peer_activity
+    app.peers
+        .activity
         .insert("dev".to_string(), ("available".to_string(), Instant::now()));
-    app.peer_activity
+    app.peers
+        .activity
         .insert("pm".to_string(), ("available".to_string(), Instant::now()));
     app.ci_state = super::ci::CiState::Red;
     terminal.draw(|frame| render(frame, &mut app)).unwrap();

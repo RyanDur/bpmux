@@ -186,7 +186,8 @@ impl App {
             None => ("", rest.trim()),
         };
         let mut candidates: Vec<String> = self
-            .peer_activity
+            .peers
+            .activity
             .keys()
             .map(|k| k.split(':').next().unwrap_or(k).to_string())
             .filter(|name| name.starts_with(partial) && name != partial)

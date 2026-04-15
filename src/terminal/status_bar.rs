@@ -87,7 +87,7 @@ fn parse_status_raw(status: &str) -> (Color, Option<&str>) {
 }
 
 pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
-    let connection_status = if app.peer_activity.is_empty() {
+    let connection_status = if app.peers.activity.is_empty() {
         Span::styled(" solo", Style::default().fg(DRACULA_ORANGE))
     } else {
         Span::raw("")
@@ -181,7 +181,8 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         ));
     }
     let mut peers: Vec<_> = app
-        .peer_activity
+        .peers
+        .activity
         .iter()
         .filter(|(name, _)| *name != "bpmux")
         .collect();
@@ -207,8 +208,8 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         }
     }
     // DM unread badge with sender names
-    if !app.dm_unread_from.is_empty() {
-        let names = app.dm_unread_from.join(", ");
+    if !app.peers.dm_unread_from.is_empty() {
+        let names = app.peers.dm_unread_from.join(", ");
         status_spans.push(Span::raw(" | "));
         status_spans.push(Span::styled(
             format!("{} DM from {names}", super::icons::DM),

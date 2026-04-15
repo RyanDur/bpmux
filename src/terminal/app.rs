@@ -148,6 +148,14 @@ pub struct TokensViewState {
     pub rows: Vec<crate::session::tokens::TokenRow>,
 }
 
+/// Peer presence state — extracted from App.
+#[derive(Default)]
+pub struct PeerState {
+    pub activity: HashMap<String, (String, Instant)>,
+    pub dm_unread_from: Vec<String>,
+    pub dm_flash_until: Option<Instant>,
+}
+
 /// Display toggle state — extracted from App.
 pub struct DisplayState {
     pub show_timestamps: bool,
@@ -238,9 +246,7 @@ pub struct App {
     pub channel_unread: HashMap<String, usize>,
 
     // ── Peers ──
-    pub peer_activity: HashMap<String, (String, Instant)>,
-    pub dm_unread_from: Vec<String>,
-    pub dm_flash_until: Option<Instant>,
+    pub peers: PeerState,
 
     // ── Sidebar ──
     pub sidebar: SidebarState,
@@ -334,10 +340,11 @@ impl App {
             display: DisplayState::default(),
             input_history: Vec::new(),
             history_index: None,
-            peer_activity,
+            peers: PeerState {
+                activity: peer_activity,
+                ..Default::default()
+            },
             expanded_messages: HashSet::new(),
-            dm_unread_from: Vec::new(),
-            dm_flash_until: None,
             active_channels,
             current_view: None,
             popup_selected: None,
@@ -576,7 +583,7 @@ impl App {
 
     fn rebuild_channels(&mut self) {
         let connected: std::collections::HashSet<&str> =
-            self.peer_activity.keys().map(|s| s.as_str()).collect();
+            self.peers.activity.keys().map(|s| s.as_str()).collect();
         self.active_channels = self
             .messages
             .iter()
@@ -594,7 +601,7 @@ impl App {
     }
 
     pub fn update_activity(&mut self, peer: String, status: String) {
-        self.peer_activity.insert(peer, (status, Instant::now()));
+        self.peers.activity.insert(peer, (status, Instant::now()));
     }
 
     pub fn receive_message(&mut self, msg: Message) {
@@ -625,7 +632,7 @@ impl App {
                     self.active_channels.insert(short);
                     self.rebuild_channels();
                 } else if let Some(peer) = msg.text.strip_suffix(" left") {
-                    self.peer_activity.remove(short_peer_name(peer));
+                    self.peers.activity.remove(short_peer_name(peer));
                     self.rebuild_channels();
                 }
             }
@@ -654,9 +661,9 @@ impl App {
                 if let Some(recipients) = &msg.to {
                     let directed_at_me = recipients.iter().any(|r| r == &self.identity.name)
                         && !recipients.iter().all(|r| r == "all");
-                    if directed_at_me && !self.dm_unread_from.contains(&sender) {
-                        self.dm_unread_from.push(sender);
-                        self.dm_flash_until = Some(Instant::now() + DM_FLASH_DURATION);
+                    if directed_at_me && !self.peers.dm_unread_from.contains(&sender) {
+                        self.peers.dm_unread_from.push(sender);
+                        self.peers.dm_flash_until = Some(Instant::now() + DM_FLASH_DURATION);
                     }
                 }
             }

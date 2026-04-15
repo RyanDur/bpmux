@@ -252,8 +252,8 @@ fn incoming_message_preserves_viewport_when_scrolled_up() {
 fn update_activity_adds_entry() {
     let mut app = test_app();
     app.update_activity("dev".to_string(), "working".to_string());
-    assert!(app.peer_activity.contains_key("dev"));
-    let (status, _) = &app.peer_activity["dev"];
+    assert!(app.peers.activity.contains_key("dev"));
+    let (status, _) = &app.peers.activity["dev"];
     assert_eq!(status, "working");
 }
 
@@ -262,7 +262,7 @@ fn activity_message_does_not_appear_in_messages() {
     let mut app = test_app();
     app.receive_message(activity_msg("dev:claude-code", "working"));
     assert!(app.messages.is_empty());
-    assert!(app.peer_activity.contains_key("dev"));
+    assert!(app.peers.activity.contains_key("dev"));
 }
 
 #[test]
@@ -274,7 +274,7 @@ fn peer_activity_not_rebuilt_from_log() {
     ];
     let app = App::new("ryan".to_string(), "test-session".to_string(), messages);
     assert!(
-        app.peer_activity.is_empty(),
+        app.peers.activity.is_empty(),
         "peer_activity should be empty on startup — only live connections populate it"
     );
 }
@@ -285,21 +285,21 @@ fn live_join_uses_short_name() {
     app.receive_message(system_msg("bpmux", "dev:claude-code joined"));
     app.receive_message(system_msg("bpmux", "dev:ws joined"));
     assert_eq!(
-        app.peer_activity.len(),
+        app.peers.activity.len(),
         1,
         "same role via different transports should dedupe"
     );
-    assert!(app.peer_activity.contains_key("dev"));
+    assert!(app.peers.activity.contains_key("dev"));
 }
 
 #[test]
 fn live_leave_removes_by_short_name() {
     let mut app = test_app();
     app.receive_message(system_msg("bpmux", "dev:claude-code joined"));
-    assert!(app.peer_activity.contains_key("dev"));
+    assert!(app.peers.activity.contains_key("dev"));
     app.receive_message(system_msg("bpmux", "dev:ws left"));
     assert!(
-        !app.peer_activity.contains_key("dev"),
+        !app.peers.activity.contains_key("dev"),
         "leave from any transport should remove"
     );
 }
@@ -420,41 +420,41 @@ fn tab_does_nothing_in_body_portion() {
 fn dm_increments_unread_and_sets_flash() {
     let mut app = test_app();
     app.receive_message(directed_msg("pm:claude-code", "hey ryan", vec!["ryan"]));
-    assert_eq!(app.dm_unread_from.len(), 1);
-    assert!(app.dm_flash_until.is_some());
+    assert_eq!(app.peers.dm_unread_from.len(), 1);
+    assert!(app.peers.dm_flash_until.is_some());
 }
 
 #[test]
 fn broadcast_does_not_increment_dm_unread() {
     let mut app = test_app();
     app.receive_message(chat_msg("pm:claude-code", "hello all"));
-    assert_eq!(app.dm_unread_from.len(), 0);
-    assert!(app.dm_flash_until.is_none());
+    assert_eq!(app.peers.dm_unread_from.len(), 0);
+    assert!(app.peers.dm_flash_until.is_none());
 }
 
 #[test]
 fn to_all_does_not_increment_dm_unread() {
     let mut app = test_app();
     app.receive_message(directed_msg("pm:claude-code", "hello", vec!["all"]));
-    assert_eq!(app.dm_unread_from.len(), 0);
+    assert_eq!(app.peers.dm_unread_from.len(), 0);
 }
 
 #[test]
 fn dm_to_other_does_not_increment_dm_unread() {
     let mut app = test_app();
     app.receive_message(directed_msg("pm:claude-code", "hey dev", vec!["dev"]));
-    assert_eq!(app.dm_unread_from.len(), 0);
+    assert_eq!(app.peers.dm_unread_from.len(), 0);
 }
 
 #[test]
 fn submit_clears_dm_unread() {
     let mut app = test_app();
     app.receive_message(directed_msg("pm:claude-code", "hey", vec!["ryan"]));
-    assert_eq!(app.dm_unread_from.len(), 1);
+    assert_eq!(app.peers.dm_unread_from.len(), 1);
     app.input = "got it".to_string();
     app.submit_message();
-    assert_eq!(app.dm_unread_from.len(), 0);
-    assert!(app.dm_flash_until.is_none());
+    assert_eq!(app.peers.dm_unread_from.len(), 0);
+    assert!(app.peers.dm_flash_until.is_none());
 }
 
 #[test]

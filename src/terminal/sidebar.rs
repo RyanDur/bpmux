@@ -326,7 +326,7 @@ impl App {
 
         // Build channels from connected peers, not message history
         let connected: std::collections::HashSet<&str> =
-            self.peer_activity.keys().map(|s| s.as_str()).collect();
+            self.peers.activity.keys().map(|s| s.as_str()).collect();
 
         // Direct: connected agents + channels with unread messages
         let mut direct_set: std::collections::HashSet<String> = connected

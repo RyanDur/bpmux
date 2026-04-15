@@ -8,8 +8,8 @@ pub(crate) const MAX_HISTORY: usize = 50;
 
 impl App {
     pub fn submit_message(&mut self) -> Option<Message> {
-        self.dm_unread_from.clear();
-        self.dm_flash_until = None;
+        self.peers.dm_unread_from.clear();
+        self.peers.dm_flash_until = None;
         let text = self.input.trim().to_string();
         if text.is_empty() {
             return None;
@@ -73,7 +73,7 @@ impl App {
 
     fn handle_who(&mut self) -> Option<Message> {
         let mut participants = vec![format!("{} (you)", self.identity.name)];
-        for (peer, (status, _)) in &self.peer_activity {
+        for (peer, (status, _)) in &self.peers.activity {
             participants.push(format!("{peer} [{status}]"));
         }
         self.system_message(format!("Participants:\n  {}", participants.join("\n  ")));

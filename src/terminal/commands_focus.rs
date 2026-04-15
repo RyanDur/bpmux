@@ -97,7 +97,7 @@ impl App {
             FocusAction::Set(roles) => {
                 // Known = peers seen in messages + peer_activity + self
                 let mut known: std::collections::HashSet<String> =
-                    self.peer_activity.keys().cloned().collect();
+                    self.peers.activity.keys().cloned().collect();
                 known.insert(self.identity.name.clone());
                 for m in &self.messages {
                     let sender = m.from.split(':').next().unwrap_or(&m.from);
