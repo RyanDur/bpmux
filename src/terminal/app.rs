@@ -109,13 +109,6 @@ pub struct App {
     // ── Display toggles ──
     pub display: DisplayState,
 
-    // ── #161: classifier-driven view filter ──
-    /// When `false` (default), the chat pane hides `MessageClass::Routine`
-    /// messages and bpmux auto-nudges to reduce visual noise. Toggle with
-    /// `/all` or Ctrl+A. Persisted via `UiState`.
-    /// Count of messages suppressed by the class filter on the most
-    /// recent render. Set by `chat::render_chat`, read by
-    /// `status_bar::render` for the `N hidden` counter.
     // ── Layout positions (set by renderer) ──
     pub layout: LayoutState,
 
