@@ -60,6 +60,35 @@ enum Command {
     },
 }
 
+fn resolve_session_base(cli_base: &Option<String>) -> anyhow::Result<std::path::PathBuf> {
+    match cli_base {
+        Some(path) => Ok(std::path::PathBuf::from(path)),
+        None => match std::env::var("BPMUX_SESSION_BASE") {
+            Ok(path) => Ok(std::path::PathBuf::from(path)),
+            Err(_) => Ok(session::default_sessions_base()?),
+        },
+    }
+}
+
+fn run_recall(cli: &Cli, role_arg: &Option<String>) -> anyhow::Result<()> {
+    let role = role_arg
+        .clone()
+        .or_else(|| std::env::var("BPMUX_ROLE").ok())
+        .unwrap_or_default();
+    if role.is_empty() {
+        eprintln!("bpmux recall: no role specified (pass --role or set BPMUX_ROLE)");
+        return Ok(());
+    }
+    let base = resolve_session_base(&cli.session_base)?;
+    let session_dir = match session::resume_or_create_session(&base) {
+        Ok(dir) => dir,
+        Err(_) => return Ok(()),
+    };
+    let lessons = session::recall::surface_for_role(&session_dir, &role);
+    print!("{}", session::recall::format_for_surface(&role, &lessons));
+    Ok(())
+}
+
 pub fn run() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
@@ -69,40 +98,10 @@ pub fn run() -> anyhow::Result<()> {
     }
 
     if let Some(Command::Recall { role }) = &cli.command {
-        let role = role
-            .clone()
-            .or_else(|| std::env::var("BPMUX_ROLE").ok())
-            .unwrap_or_default();
-        if role.is_empty() {
-            eprintln!("bpmux recall: no role specified (pass --role or set BPMUX_ROLE)");
-            return Ok(());
-        }
-        let base = match &cli.session_base {
-            Some(path) => std::path::PathBuf::from(path),
-            None => match std::env::var("BPMUX_SESSION_BASE") {
-                Ok(path) => std::path::PathBuf::from(path),
-                Err(_) => session::default_sessions_base()?,
-            },
-        };
-        // Read-only: don't create a new session just to recall lessons.
-        // If there's no current session, surface nothing — the hook will
-        // just print a "no prior lessons" line.
-        let session_dir = match session::resume_or_create_session(&base) {
-            Ok(dir) => dir,
-            Err(_) => return Ok(()),
-        };
-        let lessons = session::recall::surface_for_role(&session_dir, &role);
-        print!("{}", session::recall::format_for_surface(&role, &lessons));
-        return Ok(());
+        return run_recall(&cli, role);
     }
 
-    let base = match &cli.session_base {
-        Some(path) => std::path::PathBuf::from(path),
-        None => match std::env::var("BPMUX_SESSION_BASE") {
-            Ok(path) => std::path::PathBuf::from(path),
-            Err(_) => session::default_sessions_base()?,
-        },
-    };
+    let base = resolve_session_base(&cli.session_base)?;
     std::fs::create_dir_all(&base)?;
     let session_dir = session::resume_or_create_session(&base)?;
 

@@ -31,6 +31,25 @@ Roadmap unavailable: {e}                         Roadmap unavailable.
 Board unavailable: {e}\n Ensure...               Board unavailable.
 
 P2P error: {e}                                   Connection failed.
+
+focus: {joined}                                  Focus: {joined}.
+
+focus: off (all roles visible)                   Focus cleared.
+
+identity ({role}): no traits defined yet.        No traits defined yet.
+```
+
+## Also applies to: usage/help text
+
+All `/command` usage text should follow the same multi-line format
+(see share-usage.md). Current offenders:
+
+```
+CURRENT                                          TARGET
+─────────────────────────────────────────────────────────────────────
+/to usage: single-line blob                      Multi-line, one form per line
+/share usage: 144-char single line               Multi-line (see share-usage.md)
+/join, /accept: "Usage: /join ..."               Drop "Usage:" prefix
 ```
 
 ## The three rules

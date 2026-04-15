@@ -8,7 +8,7 @@
 Usage: /share <scope> [message]. Forms: `/share all` (propagate last message) or `/share dev "text"` (send fresh). Scope: role name(s) or 'all'.
 ```
 
-157 characters on one line. Wraps at column 80. Hard to scan.
+144 characters on one line. Wraps at column 80. Hard to scan.
 
 ## Target behavior
 
