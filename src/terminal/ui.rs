@@ -18,6 +18,15 @@ use crate::terminal::sidebar;
 use crate::terminal::status_bar;
 
 const MIN_WIDTH_FOR_SIDEBAR: u16 = 60;
+const POPUP_WIDTH: u16 = 40;
+const HELP_OVERLAY_WIDTH: u16 = 52;
+const TOKENS_OVERLAY_WIDTH: u16 = 72;
+const TOKENS_OVERLAY_HEIGHT: u16 = 20;
+const SIDEBAR_WIDTH: u16 = 24;
+const PALETTE_WIDTH: u16 = 24;
+const MAX_INPUT_HEIGHT: u16 = 8;
+const MIN_CHART_WIDTH: u16 = 60;
+const MIN_CHART_HEIGHT: u16 = 16;
 use crate::terminal::markdown::{render_md_message, wrap_line_with_indent};
 use crate::terminal::theme::{
     DRACULA_BG, DRACULA_COMMENT, DRACULA_CYAN, DRACULA_FG, DRACULA_PURPLE, DRACULA_SELECTION,
@@ -108,7 +117,7 @@ fn render_popup(frame: &mut Frame, app: &App, input_area: Rect) {
     let matches = app.popup_matches();
     if !matches.is_empty() {
         let popup_height = matches.len() as u16 + 2; // +2 for borders
-        let popup_width = 40u16.min(input_area.width);
+        let popup_width = POPUP_WIDTH.min(input_area.width);
         // Position popup above the input pane
         let popup_y = input_area.y.saturating_sub(popup_height);
         let popup_area = Rect::new(input_area.x, popup_y, popup_width, popup_height);
@@ -165,7 +174,7 @@ click anywhere or press any key to close",
             .map(|l| Line::from(Span::raw(l.to_string())))
             .collect();
         let help_height = (help_lines.len() as u16 + 2).min(area.height); // +2 for borders
-        let help_width = 52u16.min(area.width);
+        let help_width = HELP_OVERLAY_WIDTH.min(area.width);
         let help_x = area.x + (area.width.saturating_sub(help_width)) / 2;
         let help_y = area.y + (area.height.saturating_sub(help_height)) / 2;
         let help_area = Rect::new(help_x, help_y, help_width, help_height);
@@ -219,7 +228,7 @@ fn render_tokens_overlay(frame: &mut Frame, app: &App, area: Rect) {
     // Narrow/short terminal fallback — preserves the simpler text
     // overlay for constrained environments where a chart would be
     // unreadable.
-    if area.width < 60 || area.height < 16 {
+    if area.width < MIN_CHART_WIDTH || area.height < MIN_CHART_HEIGHT {
         render_tokens_text_fallback(frame, &app.tokens.rows, &usage_text, area);
         return;
     }
@@ -240,7 +249,7 @@ fn render_tokens_text_fallback(
         .map(|l| Line::from(Span::raw(l.to_string())))
         .collect();
     let overlay_height = (lines.len() as u16 + 2).min(area.height);
-    let overlay_width = 52u16.min(area.width);
+    let overlay_width = HELP_OVERLAY_WIDTH.min(area.width);
     let overlay_x = area.x + (area.width.saturating_sub(overlay_width)) / 2;
     let overlay_y = area.y + (area.height.saturating_sub(overlay_height)) / 2;
     let overlay_area = Rect::new(overlay_x, overlay_y, overlay_width, overlay_height);
@@ -271,8 +280,8 @@ fn render_tokens_chart_view(
     // Size the overlay generously but keep it centered and capped so
     // it doesn't fill the whole screen — Ryan can still see chat
     // context hints around the edges even when the overlay is up.
-    let overlay_width = 72u16.min(area.width);
-    let overlay_height = 20u16.min(area.height);
+    let overlay_width = TOKENS_OVERLAY_WIDTH.min(area.width);
+    let overlay_height = TOKENS_OVERLAY_HEIGHT.min(area.height);
     let overlay_x = area.x + area.width.saturating_sub(overlay_width) / 2;
     let overlay_y = area.y + area.height.saturating_sub(overlay_height) / 2;
     let overlay_rect = Rect::new(overlay_x, overlay_y, overlay_width, overlay_height);
@@ -522,7 +531,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     let status_area = v_split[1];
 
     let sidebar_width = if app.sidebar.open && full.width >= MIN_WIDTH_FOR_SIDEBAR {
-        24u16
+        SIDEBAR_WIDTH
     } else {
         0
     };
@@ -538,7 +547,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         let width = main_area.width.saturating_sub(2) as usize;
         app.input.len().max(1).div_ceil(width.max(1))
     };
-    let input_height = (input_lines + 2).min(8) as u16;
+    let input_height = (input_lines + 2).min(MAX_INPUT_HEIGHT as usize) as u16;
 
     let banner_height = broadcast_banner_height(app, main_area.width);
 
@@ -615,7 +624,7 @@ fn render_command_palette(frame: &mut Frame, app: &App, area: Rect) {
     }
     let matches = app.palette_matches();
     let palette_height = (matches.len() as u16 + 4).min(area.height); // +4 for border + input + gap
-    let palette_width = 24u16.min(area.width);
+    let palette_width = PALETTE_WIDTH.min(area.width);
     let palette_y = area.y + (area.height.saturating_sub(palette_height)) / 2;
     let palette_x = area.x;
     let palette_area = Rect::new(palette_x, palette_y, palette_width, palette_height);
