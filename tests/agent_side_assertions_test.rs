@@ -153,18 +153,24 @@ fn deliver_story_signal_routes_desk_check_to_designer_not_dev() {
         // before the signal fires, so the capture windows are stable.
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        // deliver_story fires the signals BEFORE it calls gh to edit
-        // labels. The signal routing is what we're verifying; the gh
-        // edit is an out-of-scope side effect that fails in CI (no
-        // GH_TOKEN) and even locally on stale issue numbers. Accept
-        // both outcomes — what matters is the capture assertions
-        // below.
-        let _ = dev
+        // deliver_story's API returns Err only on signal-send failure
+        // (load-bearing). gh label edits are reported in the Ok
+        // status string, so the test asserts that signals succeeded
+        // (Ok) without masking the gh outcome. This removes the
+        // earlier `let _ =` variance tolerance — the test now takes
+        // one execution path regardless of whether gh is available.
+        let status = dev
             .call_tool(
                 "deliver_story",
                 serde_json::json!({"number": 199, "title": "test api agent assertions"}),
             )
-            .await;
+            .await
+            .expect("deliver_story signals should succeed");
+        let status_str = status.as_str().unwrap_or("");
+        assert!(
+            status_str.contains("signals sent"),
+            "deliver_story Ok status should report signals sent. got: {status_str}"
+        );
 
         // Designer receives the desk-check addressed signal.
         designer

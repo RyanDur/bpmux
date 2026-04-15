@@ -191,8 +191,15 @@ pub(super) async fn handle_start_story(
     }
 }
 
-/// Deliver a story — dev only. Sends workflow signals (#197).
-/// Signals fire on INTENT — team is notified even if gh fails.
+/// Deliver a story — dev only.
+///
+/// Err is reserved for SIGNAL failures — the load-bearing path that
+/// notifies the team a story is ready for desk-check. gh label edits
+/// are a best-effort side effect; their failure is reported in the
+/// Ok status string so callers can observe both outcomes without
+/// conflating them. Before this split (pre-#199 fix), a gh failure
+/// returned Err and test callers used `let _ =` to tolerate it —
+/// which also silently masked real signal failures.
 pub(super) async fn handle_deliver_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
@@ -211,11 +218,11 @@ pub(super) async fn handle_deliver_story(
         .unwrap_or_else(|| format!("#{number}"));
     for signal in build_delivery_signals(number, &title) {
         let json = serde_json::to_string(&signal).map_err(|e| format!("signal: {e}"))?;
-        if let Err(e) = ws_send(ws_tx, json).await {
-            eprintln!("Bridge: signal send failed: {e}");
-        }
+        ws_send(ws_tx, json)
+            .await
+            .map_err(|e| format!("#{number} signal send failed: {e}"))?;
     }
-    let gh_result = gh(&[
+    match gh(&[
         "issue",
         "edit",
         &number.to_string(),
@@ -224,10 +231,12 @@ pub(super) async fn handle_deliver_story(
         "--add-label",
         "delivered",
     ])
-    .await;
-    match gh_result {
-        Ok(_) => Ok(format!("#{number} marked as delivered")),
-        Err(e) => Err(format!("#{number} signal sent but gh failed: {e}")),
+    .await
+    {
+        Ok(_) => Ok(format!("#{number} delivered: signals sent, labels updated")),
+        Err(e) => Ok(format!(
+            "#{number} delivered: signals sent, label update skipped ({e})"
+        )),
     }
 }
 
