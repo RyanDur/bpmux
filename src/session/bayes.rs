@@ -169,7 +169,7 @@ fn count_unique_features(feature_counts: &HashMap<String, HashMap<String, usize>
     all_features.len().max(1)
 }
 
-fn class_label(class: &MessageClass) -> String {
+pub(crate) fn class_label(class: &MessageClass) -> String {
     match class {
         MessageClass::Experience(ExperienceKind::Correction) => "experience:correction".into(),
         MessageClass::Experience(ExperienceKind::Question) => "experience:question".into(),
@@ -181,7 +181,7 @@ fn class_label(class: &MessageClass) -> String {
     }
 }
 
-fn parse_class_label(label: &str) -> MessageClass {
+pub(crate) fn parse_class_label(label: &str) -> MessageClass {
     match label {
         "experience:correction" => MessageClass::Experience(ExperienceKind::Correction),
         "experience:question" => MessageClass::Experience(ExperienceKind::Question),
