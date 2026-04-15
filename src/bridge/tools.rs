@@ -119,32 +119,21 @@ pub(super) async fn handle_read_messages(
     if msgs.is_empty() {
         return Ok("No messages.".into());
     }
-    // Include metadata so agents can implement addressee protocol,
-    // topic filtering, and timestamp-based reasoning.
-    Ok(msgs
+    let curated: Vec<serde_json::Value> = msgs
         .iter()
         .filter_map(|m| {
-            let from = m["from"].as_str()?;
-            let text = m["text"].as_str()?;
-            let ts = m["ts"].as_str().unwrap_or("");
-            let ts_short: String = ts.chars().take(19).collect();
-            let mut meta = String::new();
-            if let Some(addressee) = m["addressee"].as_str() {
-                meta.push_str(&format!(" @{addressee}"));
-            }
-            if let Some(topic) = m["topic"].as_str() {
-                meta.push_str(&format!(" #{topic}"));
-            }
-            if let Some(to) = m["to"].as_array() {
-                let names: Vec<&str> = to.iter().filter_map(|v| v.as_str()).collect();
-                if !names.is_empty() {
-                    meta.push_str(&format!(" to:[{}]", names.join(",")));
-                }
-            }
-            Some(format!("[{ts_short}] [{from}]{meta} {text}"))
+            Some(serde_json::json!({
+                "from": m["from"].as_str()?,
+                "text": m["text"].as_str()?,
+                "ts": m["ts"].as_str().unwrap_or(""),
+                "addressee": m.get("addressee").and_then(|v| v.as_str()),
+                "topic": m.get("topic").and_then(|v| v.as_str()),
+                "to": m.get("to").and_then(|v| v.as_array()),
+                "message_type": m.get("message_type").and_then(|v| v.as_str()),
+            }))
         })
-        .collect::<Vec<_>>()
-        .join("\n"))
+        .collect();
+    serde_json::to_string_pretty(&curated).map_err(|e| format!("format: {e}"))
 }
 
 pub(super) async fn handle_search_log(
