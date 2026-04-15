@@ -12,8 +12,13 @@ use super::theme::{
     DRACULA_SELECTION,
 };
 
-const SECTION_PREFIX_COLLAPSED: &str = "▸ ";
-const SECTION_PREFIX_EXPANDED: &str = "▾ ";
+// Section prefixes use centralized glyphs from icons.rs
+fn section_prefix_collapsed() -> String {
+    format!("{} ", super::icons::EXPAND)
+}
+fn section_prefix_expanded() -> String {
+    format!("{} ", super::icons::COLLAPSE)
+}
 const SIDEBAR_NAME_WIDTH: usize = 16;
 
 pub(super) fn render(frame: &mut Frame, app: &App, area: Rect) {
@@ -73,7 +78,11 @@ fn render_topic_items(topics: &[String], app: &App, area: Rect) -> Vec<Line<'sta
             let is_active = *topic == app.topic.active;
             let unread = app.topic.unreads.get(topic).copied().unwrap_or(0);
 
-            let marker = if is_active { "● " } else { "  " };
+            let marker = if is_active {
+                format!("{} ", super::icons::ACTIVE)
+            } else {
+                "  ".to_string()
+            };
             let badge = if unread > 0 {
                 format!("  ({unread})")
             } else {
@@ -113,7 +122,11 @@ fn render_topic_items(topics: &[String], app: &App, area: Rect) -> Vec<Line<'sta
                 Style::default().fg(DRACULA_COMMENT).bg(bg)
             };
 
-            let select_marker = if selected { "▸ " } else { "  " };
+            let select_marker = if selected {
+                format!("{} ", super::icons::EXPAND)
+            } else {
+                "  ".to_string()
+            };
             let mut spans = vec![
                 Span::styled(select_marker, Style::default().bg(bg).fg(DRACULA_PURPLE)),
                 Span::styled(
@@ -155,9 +168,9 @@ fn render_channel_items(channels: &[String], app: &App, area: Rect) -> Vec<Line<
             // Index 0 = project root node
             if i == 0 {
                 let arrow = if app.sidebar.project_expanded {
-                    "▾ "
+                    format!("{} ", super::icons::COLLAPSE)
                 } else {
-                    "▸ "
+                    format!("{} ", super::icons::EXPAND)
                 };
                 let is_all = app.current_view.is_none();
                 let name_style = if is_all {
@@ -168,7 +181,11 @@ fn render_channel_items(channels: &[String], app: &App, area: Rect) -> Vec<Line<
                 } else {
                     Style::default().fg(DRACULA_FG).bg(bg)
                 };
-                let select_marker = if selected { "▸ " } else { "  " };
+                let select_marker = if selected {
+                    format!("{} ", super::icons::EXPAND)
+                } else {
+                    "  ".to_string()
+                };
                 return Line::from(vec![
                     Span::styled(select_marker, Style::default().bg(bg).fg(DRACULA_PURPLE)),
                     Span::styled(arrow, Style::default().bg(bg).fg(DRACULA_COMMENT)),
@@ -180,7 +197,8 @@ fn render_channel_items(channels: &[String], app: &App, area: Rect) -> Vec<Line<
             }
 
             // Detect section headers vs channel entries
-            let is_section = ch.starts_with("▸ ") || ch.starts_with("▾ ");
+            let is_section = ch.starts_with(&section_prefix_collapsed())
+                || ch.starts_with(&section_prefix_expanded());
             let is_current = !is_section && app.current_view.as_deref() == Some(ch.as_str());
             let unread = if ch == "broadcast" || is_section {
                 0
@@ -188,7 +206,11 @@ fn render_channel_items(channels: &[String], app: &App, area: Rect) -> Vec<Line<
                 app.channel_unread.get(ch).copied().unwrap_or(0)
             };
 
-            let select_marker = if selected { "▸ " } else { "  " };
+            let select_marker = if selected {
+                format!("{} ", super::icons::EXPAND)
+            } else {
+                "  ".to_string()
+            };
             let inner_width = area.width.saturating_sub(2) as usize;
             // Section headers: 2-char indent. Children: 4-char indent.
             let indent = if is_section || ch == "broadcast" {
@@ -256,15 +278,15 @@ fn is_group_channel(channel: &str) -> bool {
 
 fn section_header(name: &str, count: usize, expanded: bool) -> String {
     let prefix = if expanded {
-        SECTION_PREFIX_EXPANDED
+        section_prefix_expanded()
     } else {
-        SECTION_PREFIX_COLLAPSED
+        section_prefix_collapsed()
     };
     format!("{prefix}{name} ({count})")
 }
 
 fn is_section_header(entry: &str) -> bool {
-    entry.starts_with(SECTION_PREFIX_COLLAPSED) || entry.starts_with(SECTION_PREFIX_EXPANDED)
+    entry.starts_with(&section_prefix_collapsed()) || entry.starts_with(&section_prefix_expanded())
 }
 
 impl App {

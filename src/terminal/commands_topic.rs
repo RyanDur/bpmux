@@ -17,7 +17,11 @@ impl App {
             // List topics.
             let mut text = String::from("Topics:\n");
             for t in &self.topic.topics {
-                let active = if *t == self.topic.active { " ●" } else { "" };
+                let active = if *t == self.topic.active {
+                    format!(" {}", super::icons::ACTIVE)
+                } else {
+                    String::new()
+                };
                 let participants = self
                     .topic
                     .participants

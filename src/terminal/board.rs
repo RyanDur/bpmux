@@ -506,7 +506,11 @@ pub(super) fn fetch_board() -> Result<String, String> {
 
     if !active.is_empty() {
         lines.push(String::new());
-        lines.push(format!("### ● Active ({})", active.len()));
+        lines.push(format!(
+            "### {} Active ({})",
+            super::icons::ACTIVE,
+            active.len()
+        ));
         for item in &active {
             let status_tag = item
                 .status
@@ -519,7 +523,11 @@ pub(super) fn fetch_board() -> Result<String, String> {
 
     if !backlog.is_empty() {
         lines.push(String::new());
-        lines.push(format!("### ○ Backlog ({})", backlog.len()));
+        lines.push(format!(
+            "### {} Backlog ({})",
+            super::icons::INACTIVE,
+            backlog.len()
+        ));
         for item in backlog.iter().take(10) {
             lines.push(format!("- **#{}** {}", item.number, item.title));
         }
@@ -530,7 +538,11 @@ pub(super) fn fetch_board() -> Result<String, String> {
 
     if !icebox.is_empty() {
         lines.push(String::new());
-        lines.push(format!("### ◌ Icebox ({})", icebox.len()));
+        lines.push(format!(
+            "### {} Icebox ({})",
+            super::icons::PARKED,
+            icebox.len()
+        ));
         if let Some(first) = icebox.first() {
             lines.push(format!("- **#{}** {}", first.number, first.title));
         }

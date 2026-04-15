@@ -32,3 +32,9 @@ pub(super) const DM: &str = "\u{2709}";
 
 /// `↓` — down arrow (new-message indicator).
 pub(super) const DOWN: &str = "\u{2193}";
+
+/// `○` — inactive / queued (backlog items).
+pub(super) const INACTIVE: &str = "\u{25CB}";
+
+/// `◌` — parked / cold (icebox items).
+pub(super) const PARKED: &str = "\u{25CC}";
