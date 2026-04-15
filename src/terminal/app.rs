@@ -148,6 +148,31 @@ pub struct TokensViewState {
     pub rows: Vec<crate::session::tokens::TokenRow>,
 }
 
+/// Message state — extracted from App.
+pub struct MessageState {
+    pub messages: Vec<Message>,
+    pub class_cache: Vec<Option<crate::session::MessageClass>>,
+    pub filtered_indices: Vec<usize>,
+    pub cached_hidden_count: usize,
+    pub filter_dirty: bool,
+    pub expanded_messages: HashSet<String>,
+    pub truncation_indicators: Vec<(u16, String)>,
+}
+
+impl MessageState {
+    fn new(messages: Vec<Message>) -> Self {
+        Self {
+            messages,
+            class_cache: Vec::new(),
+            filtered_indices: Vec::new(),
+            cached_hidden_count: 0,
+            filter_dirty: true,
+            expanded_messages: HashSet::new(),
+            truncation_indicators: Vec::new(),
+        }
+    }
+}
+
 /// Channel view state — extracted from App.
 #[derive(Default)]
 pub struct ChannelState {
@@ -225,17 +250,7 @@ pub struct App {
     pub identity: SessionIdentity,
 
     // ── Message state ──
-    pub messages: Vec<Message>,
-    /// Cached classification results to avoid re-classifying every
-    /// message on every render frame. Keyed by message index.
-    /// Rebuilt when messages are reloaded (lag recovery).
-    pub class_cache: Vec<Option<crate::session::MessageClass>>,
-    /// Cached indices of visible messages. Rebuilt when filter_dirty is set.
-    pub filtered_indices: Vec<usize>,
-    pub cached_hidden_count: usize,
-    pub filter_dirty: bool,
-    pub expanded_messages: HashSet<String>,
-    pub truncation_indicators: Vec<(u16, String)>,
+    pub msg: MessageState,
 
     // ── Input ──
     pub input: String,
@@ -328,11 +343,7 @@ impl App {
                 name: peer_name.clone(),
                 id: session_id.clone(),
             },
-            class_cache: Vec::new(),
-            filtered_indices: Vec::new(),
-            cached_hidden_count: 0,
-            filter_dirty: true,
-            messages,
+            msg: MessageState::new(messages),
             input: String::new(),
             cursor_pos: 0,
             textarea: {
@@ -350,7 +361,6 @@ impl App {
                 activity: peer_activity,
                 ..Default::default()
             },
-            expanded_messages: HashSet::new(),
             channels: ChannelState {
                 active: active_channels,
                 current_view: None,
@@ -361,7 +371,6 @@ impl App {
             sidebar: SidebarState::default(),
             search: SearchState::default(),
             layout: LayoutState::default(),
-            truncation_indicators: Vec::new(),
             p2p_command: None,
             project: ProjectViewState::default(),
             tokens: TokensViewState::default(),
@@ -404,9 +413,9 @@ impl App {
         } else {
             None
         };
-        self.class_cache.push(class);
-        self.messages.push(msg);
-        self.filter_dirty = true;
+        self.msg.class_cache.push(class);
+        self.msg.messages.push(msg);
+        self.msg.filter_dirty = true;
     }
 
     pub(super) fn system_message(&mut self, text: String) {
@@ -428,19 +437,19 @@ impl App {
     pub fn rebuild_filtered_if_dirty(&mut self) {
         // Also rebuild if indices are empty but messages exist
         // (covers test setups and initial state).
-        if !self.filter_dirty && !self.filtered_indices.is_empty() {
+        if !self.msg.filter_dirty && !self.msg.filtered_indices.is_empty() {
             return;
         }
-        if self.messages.is_empty() {
+        if self.msg.messages.is_empty() {
             return;
         }
-        self.filter_dirty = false;
-        self.filtered_indices.clear();
-        self.cached_hidden_count = 0;
-        for (idx, m) in self.messages.iter().enumerate() {
+        self.msg.filter_dirty = false;
+        self.msg.filtered_indices.clear();
+        self.msg.cached_hidden_count = 0;
+        for (idx, m) in self.msg.messages.iter().enumerate() {
             if !m.is_chat() {
                 if self.display.show_system_messages {
-                    self.filtered_indices.push(idx);
+                    self.msg.filtered_indices.push(idx);
                 }
                 continue;
             }
@@ -459,7 +468,7 @@ impl App {
             if !self.display.show_all_classes
                 && super::chat::should_hide_by_class(m, &self.identity.name)
             {
-                self.cached_hidden_count += 1;
+                self.msg.cached_hidden_count += 1;
                 continue;
             }
             if !super::commands::focus::in_focus(
@@ -474,12 +483,12 @@ impl App {
             {
                 continue;
             }
-            self.filtered_indices.push(idx);
+            self.msg.filtered_indices.push(idx);
         }
     }
 
     pub fn mark_filters_dirty(&mut self) {
-        self.filter_dirty = true;
+        self.msg.filter_dirty = true;
     }
 
     /// #195: record a feature/command invocation for usage statistics.
@@ -570,7 +579,7 @@ impl App {
 
     pub fn toggle_last_truncated(&mut self) {
         let width = 78usize; // approximate inner width
-        for msg in self.messages.iter().rev() {
+        for msg in self.msg.messages.iter().rev() {
             if !msg.is_chat() && !self.display.show_system_messages {
                 continue;
             }
@@ -579,10 +588,10 @@ impl App {
             let wrapped = full_len.max(1).div_ceil(width.max(1));
             if wrapped > TRUNCATE_AFTER_LINES {
                 let key = msg.ts.to_rfc3339();
-                if self.expanded_messages.contains(&key) {
-                    self.expanded_messages.remove(&key);
+                if self.msg.expanded_messages.contains(&key) {
+                    self.msg.expanded_messages.remove(&key);
                 } else {
-                    self.expanded_messages.insert(key);
+                    self.msg.expanded_messages.insert(key);
                 }
                 return;
             }
@@ -593,6 +602,7 @@ impl App {
         let connected: std::collections::HashSet<&str> =
             self.peers.activity.keys().map(|s| s.as_str()).collect();
         self.channels.active = self
+            .msg
             .messages
             .iter()
             .filter(|m| m.is_chat())
@@ -696,6 +706,7 @@ impl App {
             // Add 1 for the blank separator line between different senders.
             // No separator for the first message or when sender matches.
             let separator = self
+                .msg
                 .messages
                 .last()
                 .map(|m| {

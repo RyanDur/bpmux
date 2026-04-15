@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::app::*;
 use crate::session::Message;
@@ -75,7 +75,7 @@ fn submits_message_and_clears_input() {
     assert_eq!(msg.from, "ryan:human");
     assert_eq!(msg.text, "hello world");
     assert!(app.input.is_empty());
-    assert_eq!(app.messages.len(), 1);
+    assert_eq!(app.msg.messages.len(), 1);
 }
 
 #[test]
@@ -157,7 +157,7 @@ fn incoming_message_stays_at_bottom_when_at_bottom() {
     assert_eq!(app.scroll.offset, 0);
     app.receive_message(chat_msg("bot:ws", "hello"));
     assert_eq!(app.scroll.offset, 0);
-    assert_eq!(app.messages.len(), 1);
+    assert_eq!(app.msg.messages.len(), 1);
 }
 
 #[test]
@@ -210,9 +210,9 @@ fn who_command_lists_peer_name_and_returns_none() {
     let msg = app.submit_message();
     assert!(msg.is_none());
     assert!(app.input.is_empty());
-    assert_eq!(app.messages.len(), 1);
-    assert_eq!(app.messages[0].from, "bpmux");
-    assert!(app.messages[0].text.contains("ryan (you)"));
+    assert_eq!(app.msg.messages.len(), 1);
+    assert_eq!(app.msg.messages[0].from, "bpmux");
+    assert!(app.msg.messages[0].text.contains("ryan (you)"));
 }
 
 #[test]
@@ -222,7 +222,7 @@ fn who_command_includes_peer_activity() {
     app.input = "/who".to_string();
     let msg = app.submit_message();
     assert!(msg.is_none());
-    assert!(app.messages[0].text.contains("dev [working]"));
+    assert!(app.msg.messages[0].text.contains("dev [working]"));
 }
 
 #[test]
@@ -232,11 +232,11 @@ fn unrecognized_command_adds_error_message_without_broadcast() {
     let msg = app.submit_message();
     assert!(msg.is_none());
     assert!(app.input.is_empty());
-    assert_eq!(app.messages.len(), 1);
-    assert_eq!(app.messages[0].from, "bpmux");
-    assert!(app.messages[0].text.contains("Unknown command"));
-    assert!(app.messages[0].text.contains("/foo"));
-    assert!(app.messages[0].text.contains("?"));
+    assert_eq!(app.msg.messages.len(), 1);
+    assert_eq!(app.msg.messages[0].from, "bpmux");
+    assert!(app.msg.messages[0].text.contains("Unknown command"));
+    assert!(app.msg.messages[0].text.contains("/foo"));
+    assert!(app.msg.messages[0].text.contains("?"));
 }
 
 #[test]
@@ -245,7 +245,7 @@ fn incoming_message_preserves_viewport_when_scrolled_up() {
     app.scroll.offset = 5;
     app.receive_message(chat_msg("bot:ws", "hello"));
     assert_eq!(app.scroll.offset, 6);
-    assert_eq!(app.messages.len(), 1);
+    assert_eq!(app.msg.messages.len(), 1);
 }
 
 #[test]
@@ -261,7 +261,7 @@ fn update_activity_adds_entry() {
 fn activity_message_does_not_appear_in_messages() {
     let mut app = test_app();
     app.receive_message(activity_msg("dev:claude-code", "working"));
-    assert!(app.messages.is_empty());
+    assert!(app.msg.messages.is_empty());
     assert!(app.peers.activity.contains_key("dev"));
 }
 
@@ -314,17 +314,17 @@ fn debug_toggles_show_system_messages() {
     assert!(msg.is_none());
     assert!(app.display.show_system_messages);
     assert!(app.input.is_empty());
-    assert_eq!(app.messages.len(), 1);
-    assert!(app.messages[0].text.contains("Debug mode on"));
-    assert!(app.messages[0].text.contains("visible"));
+    assert_eq!(app.msg.messages.len(), 1);
+    assert!(app.msg.messages[0].text.contains("Debug mode on"));
+    assert!(app.msg.messages[0].text.contains("visible"));
 
     app.input = "/debug".to_string();
     let msg = app.submit_message();
     assert!(msg.is_none());
     assert!(!app.display.show_system_messages);
-    assert_eq!(app.messages.len(), 2);
-    assert!(app.messages[1].text.contains("Debug mode off"));
-    assert!(app.messages[1].text.contains("hidden"));
+    assert_eq!(app.msg.messages.len(), 2);
+    assert!(app.msg.messages[1].text.contains("Debug mode off"));
+    assert!(app.msg.messages[1].text.contains("hidden"));
 }
 
 #[test]
@@ -355,7 +355,7 @@ fn to_bare_shows_usage() {
     app.input = "/to".to_string();
     let msg = app.submit_message();
     assert!(msg.is_none());
-    assert!(app.messages[0].text.contains("/"));
+    assert!(app.msg.messages[0].text.contains("/"));
 }
 
 #[test]
@@ -364,7 +364,7 @@ fn to_recipient_no_body_shows_usage() {
     app.input = "/to dev".to_string();
     let msg = app.submit_message();
     assert!(msg.is_none());
-    assert!(app.messages[0].text.contains("/"));
+    assert!(app.msg.messages[0].text.contains("/"));
 }
 
 #[test]
@@ -572,7 +572,8 @@ fn view_unknown_channel_shows_error() {
     assert!(msg.is_none());
     assert_eq!(app.channels.current_view, original_view);
     assert!(
-        app.messages
+        app.msg
+            .messages
             .last()
             .unwrap()
             .text
@@ -589,13 +590,14 @@ fn bare_view_lists_channels() {
     let msg = app.submit_message();
     assert!(msg.is_none());
     assert!(
-        app.messages
+        app.msg
+            .messages
             .last()
             .unwrap()
             .text
             .contains("Available channels")
     );
-    assert!(app.messages.last().unwrap().text.contains("broadcast"));
+    assert!(app.msg.messages.last().unwrap().text.contains("broadcast"));
 }
 
 #[test]
@@ -826,7 +828,7 @@ fn roadmap_command_adds_system_message() {
     app.input = "/roadmap".to_string();
     let msg = app.submit_message();
     assert!(msg.is_none());
-    let last = app.messages.last().expect("should have a message");
+    let last = app.msg.messages.last().expect("should have a message");
     assert_eq!(last.from, "bpmux");
     // Either shows roadmap content or an unavailable message
     assert!(last.text.contains("bpmux Roadmap") || last.text.contains("Roadmap unavailable"),);
@@ -845,7 +847,7 @@ fn toggle_expands_long_system_message() {
     let mut app = test_app();
     // Add a long message from "bpmux" (like /roadmap output)
     let long_text = "x".repeat(1000); // ~13 wrapped lines at width 78
-    app.messages.push(Message {
+    app.msg.messages.push(Message {
         from: "bpmux".into(),
         text: long_text,
         ts: chrono::Utc::now(),
@@ -856,19 +858,19 @@ fn toggle_expands_long_system_message() {
         multi_depth: None,
         topic: None,
     });
-    let key = app.messages.last().unwrap().ts.to_rfc3339();
+    let key = app.msg.messages.last().unwrap().ts.to_rfc3339();
     assert!(
-        !app.expanded_messages.contains(&key),
+        !app.msg.expanded_messages.contains(&key),
         "should not be expanded initially"
     );
     app.toggle_last_truncated();
     assert!(
-        app.expanded_messages.contains(&key),
+        app.msg.expanded_messages.contains(&key),
         "should be expanded after toggle"
     );
     app.toggle_last_truncated();
     assert!(
-        !app.expanded_messages.contains(&key),
+        !app.msg.expanded_messages.contains(&key),
         "should collapse after second toggle"
     );
 }
@@ -1009,7 +1011,7 @@ fn join_without_args_shows_usage() {
     let msg = app.submit_message();
     assert!(msg.is_none());
     assert!(app.p2p_command.is_none(), "no command without args");
-    let last = app.messages.last().unwrap();
+    let last = app.msg.messages.last().unwrap();
     assert!(last.text.contains("/"));
 }
 
@@ -1036,7 +1038,7 @@ fn accept_without_args_shows_usage() {
     let msg = app.submit_message();
     assert!(msg.is_none());
     assert!(app.p2p_command.is_none());
-    let last = app.messages.last().unwrap();
+    let last = app.msg.messages.last().unwrap();
     assert!(last.text.contains("/"));
 }
 
@@ -1048,7 +1050,7 @@ fn share_bare_shows_usage() {
     app.input = "/share".to_string();
     let msg = app.submit_message();
     assert!(msg.is_none());
-    let last = app.messages.last().unwrap();
+    let last = app.msg.messages.last().unwrap();
     assert!(last.text.contains("/share"));
 }
 
@@ -1087,8 +1089,11 @@ fn share_form1_propagates_most_recent_from_view() {
     // Form 1: /share all with no body propagates the most recent message
     // in the sender's current view.
     let mut app = test_app();
-    app.messages.push(chat_msg("pm:claude-code", "old message"));
-    app.messages
+    app.msg
+        .messages
+        .push(chat_msg("pm:claude-code", "old message"));
+    app.msg
+        .messages
         .push(chat_msg("pm:claude-code", "the decision to share"));
     app.channels.current_view = None; // broadcast view
     app.input = "/share dev".to_string();
@@ -1113,12 +1118,12 @@ fn share_form1_refuses_to_propagate_private_to_message() {
     let mut private = chat_msg("pm:claude-code", "private thing");
     private.to = Some(vec!["ryan".to_string()]);
     private.explicit_privacy = true;
-    app.messages.push(private);
+    app.msg.messages.push(private);
     app.channels.current_view = Some("pm".to_string());
     app.input = "/share all".to_string();
     let msg = app.submit_message();
     assert!(msg.is_none(), "private message not propagated");
-    let last = app.messages.last().unwrap();
+    let last = app.msg.messages.last().unwrap();
     assert!(
         last.text.contains("Cannot share a private message"),
         "expected privacy refusal, got: {}",
@@ -1134,7 +1139,7 @@ fn share_form1_with_no_recent_message_shows_error() {
     app.input = "/share all".to_string();
     let msg = app.submit_message();
     assert!(msg.is_none());
-    let last = app.messages.last().unwrap();
+    let last = app.msg.messages.last().unwrap();
     assert!(last.text.contains("No recent message"));
 }
 
@@ -1145,7 +1150,7 @@ fn share_does_not_inherit_addressee() {
     let mut app = test_app();
     let mut directed = chat_msg("pm:claude-code", "pm-directed decision");
     directed.addressee = Some("dev".to_string());
-    app.messages.push(directed);
+    app.msg.messages.push(directed);
     app.channels.current_view = None;
     app.input = "/share designer".to_string();
     let msg = app.submit_message().unwrap();
@@ -1166,7 +1171,7 @@ fn share_source_scope_reflects_channel_name() {
     let mut scoped = chat_msg("dev:claude-code", "shipping feature X");
     scoped.to = Some(vec!["pm".to_string(), "designer".to_string()]);
     // Not explicit_privacy — this came from a channel view, not /to
-    app.messages.push(scoped);
+    app.msg.messages.push(scoped);
     app.channels.current_view = Some("designer+dev+pm".to_string());
     app.input = "/share all".to_string();
     let msg = app.submit_message().unwrap();
@@ -1209,11 +1214,11 @@ fn all_command_does_not_post_to_pane() {
     // The /all command now flips state silently. This test guards
     // against regressing the redundant feedback.
     let mut app = test_app();
-    let before = app.messages.len();
+    let before = app.msg.messages.len();
     app.input = "/all".to_string();
     app.submit_message();
     assert_eq!(
-        app.messages.len(),
+        app.msg.messages.len(),
         before,
         "/all should flip state silently (status bar carries the feedback)"
     );
@@ -1261,7 +1266,11 @@ fn help_command_lists_commands() {
     let mut app = test_app();
     app.input = "/help".to_string();
     app.submit_message();
-    let last = app.messages.last().expect("/help should post a message");
+    let last = app
+        .msg
+        .messages
+        .last()
+        .expect("/help should post a message");
     assert!(
         last.text.starts_with("Commands:"),
         "/help output should start with 'Commands:' header, got: {}",
@@ -1284,7 +1293,7 @@ fn help_command_includes_help_itself() {
     let mut app = test_app();
     app.input = "/help".to_string();
     app.submit_message();
-    let last = app.messages.last().unwrap();
+    let last = app.msg.messages.last().unwrap();
     assert!(
         last.text.contains("/help"),
         "/help should list itself (it's in SLASH_COMMANDS)"
@@ -1315,7 +1324,7 @@ fn bare_commands_show_usage_from_single_handler() {
         let mut app = test_app();
         app.input = cmd.to_string();
         app.submit_message();
-        let last = app.messages.last().unwrap();
+        let last = app.msg.messages.last().unwrap();
         assert!(
             last.text.contains(expected_prefix),
             "{cmd} ({} chars) bare invocation should show usage containing '{expected_prefix}', got: {}",
@@ -1333,7 +1342,7 @@ fn view_bare_lists_channels() {
     let mut app = test_app();
     app.input = "/view".to_string();
     app.submit_message();
-    let last = app.messages.last().unwrap();
+    let last = app.msg.messages.last().unwrap();
     // With no active channels, the listing falls through to "No channels yet."
     assert!(
         last.text.contains("channels") || last.text.contains("No channels"),

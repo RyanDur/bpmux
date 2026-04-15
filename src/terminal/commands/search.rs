@@ -41,7 +41,7 @@ impl App {
             insight_only,
             owner_name: self.identity.name.clone(),
         };
-        let results = crate::session::search(&self.messages, &filters);
+        let results = crate::session::search(&self.msg.messages, &filters);
         if results.is_empty() {
             self.system_message(format!("No results for \"{query}\"."));
             self.search.results.clear();
@@ -78,7 +78,8 @@ impl App {
     }
 
     pub(super) fn handle_lessons(&mut self) -> Option<Message> {
-        let mut index = crate::session::lessons::build_index(&self.messages, &self.identity.name);
+        let mut index =
+            crate::session::lessons::build_index(&self.msg.messages, &self.identity.name);
         if let Some(dir) = &self.identity.dir {
             let saved = crate::session::lessons::load_index(dir);
             index.lessons = saved.lessons;

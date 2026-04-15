@@ -85,15 +85,16 @@ fn handle_mouse_click(col: u16, row: u16, app: &mut App) {
 
     // Check if the click hit a "[+N lines]" truncation indicator
     if let Some(key) = app
+        .msg
         .truncation_indicators
         .iter()
         .find(|(y, _)| *y == row)
         .map(|(_, k)| k.clone())
     {
-        if app.expanded_messages.contains(&key) {
-            app.expanded_messages.remove(&key);
+        if app.msg.expanded_messages.contains(&key) {
+            app.msg.expanded_messages.remove(&key);
         } else {
-            app.expanded_messages.insert(key);
+            app.msg.expanded_messages.insert(key);
         }
         return;
     }

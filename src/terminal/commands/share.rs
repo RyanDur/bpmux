@@ -88,6 +88,7 @@ impl App {
         let current_view = self.channels.current_view.clone();
         let owner = self.identity.name.clone();
         let source = self
+            .msg
             .messages
             .iter()
             .rev()

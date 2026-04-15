@@ -57,11 +57,12 @@ pub(super) fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
     // filter change), not every frame.
     app.rebuild_filtered_if_dirty();
     let chat_messages: Vec<&session::Message> = app
+        .msg
         .filtered_indices
         .iter()
-        .filter_map(|&idx| app.messages.get(idx))
+        .filter_map(|&idx| app.msg.messages.get(idx))
         .collect();
-    app.display.hidden_class_count = app.cached_hidden_count;
+    app.display.hidden_class_count = app.msg.cached_hidden_count;
     let chat_inner_width = area.width.saturating_sub(2) as usize;
     let chat_height = area.height.saturating_sub(2) as usize;
 
@@ -124,7 +125,7 @@ pub(super) fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
         }
 
         let is_long = wrapped_lines > TRUNCATE_AFTER_LINES;
-        let is_expanded = app.expanded_messages.contains(&msg_key);
+        let is_expanded = app.msg.expanded_messages.contains(&msg_key);
         let is_truncated = is_long && !is_expanded;
 
         let md_lines = if is_truncated {
@@ -236,12 +237,12 @@ pub(super) fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
 
     let inner_y = area.y + 1;
     let scroll_usize = scroll as usize;
-    app.truncation_indicators.clear();
+    app.msg.truncation_indicators.clear();
     for (line_idx, key) in &truncation_line_indices {
         if *line_idx >= scroll_usize && *line_idx < scroll_usize + chat_height {
             #[allow(clippy::cast_possible_truncation)]
             let screen_y = inner_y + (*line_idx - scroll_usize) as u16;
-            app.truncation_indicators.push((screen_y, key.clone()));
+            app.msg.truncation_indicators.push((screen_y, key.clone()));
         }
     }
 

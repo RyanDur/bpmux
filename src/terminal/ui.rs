@@ -26,7 +26,8 @@ use crate::terminal::theme::{
 const MAX_BANNER_LINES: u16 = 4;
 
 fn latest_broadcast(app: &App) -> Option<&session::Message> {
-    app.messages
+    app.msg
+        .messages
         .iter()
         .rev()
         .find(|m| m.is_chat() && m.to.is_none())

@@ -161,14 +161,14 @@ where
                         match session.read_messages() {
                             Ok(messages) => {
                                 // Rebuild classification cache after lag recovery
-                                app.class_cache = messages.iter().map(|m| {
+                                app.msg.class_cache = messages.iter().map(|m| {
                                     if m.is_chat() {
                                         Some(crate::session::classify(m, &app.identity.name))
                                     } else {
                                         None
                                     }
                                 }).collect();
-                                app.messages = messages;
+                                app.msg.messages = messages;
                                 app.push_message(session::Message {
                                     from: "bpmux".to_string(),
                                     text: format!("Caught up — {n} messages arrived while processing."),

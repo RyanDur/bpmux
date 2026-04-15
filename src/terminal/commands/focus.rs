@@ -99,7 +99,7 @@ impl App {
                 let mut known: std::collections::HashSet<String> =
                     self.peers.activity.keys().cloned().collect();
                 known.insert(self.identity.name.clone());
-                for m in &self.messages {
+                for m in &self.msg.messages {
                     let sender = m.from.split(':').next().unwrap_or(&m.from);
                     if sender != "bpmux" {
                         known.insert(sender.to_string());
