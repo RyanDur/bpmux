@@ -100,7 +100,8 @@ impl Storage for FileStorage {
     }
 
     fn load_state(&self, key: &str) -> Option<String> {
-        let path = self.dir.join(format!("{key}.json"));
+        let safe_key = super::identity::sanitize_name(key);
+        let path = self.dir.join(format!("{safe_key}.json"));
         std::fs::read_to_string(&path).ok()
     }
 

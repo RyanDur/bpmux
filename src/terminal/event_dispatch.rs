@@ -11,6 +11,8 @@ use crate::session;
 use crate::terminal::app::{App, InputMode};
 
 const PAGE_SCROLL_LINES: usize = 10;
+const MOUSE_SCROLL_LINES: usize = 3;
+const MENU_CLICK_WIDTH: u16 = 3;
 
 fn bell() {
     use std::io::Write;
@@ -77,7 +79,7 @@ fn handle_mouse_click(col: u16, row: u16, app: &mut App) {
         // `col < 3 on any row` catch-all, which triggered false
         // positives on any upper-left click. Keeping a 3-column-wide
         // target for Fitts's-law forgiveness.
-        if row == my && col >= mx && col < mx + 3 {
+        if row == my && col >= mx && col < mx + MENU_CLICK_WIDTH {
             app.toggle_sidebar();
             return;
         }
@@ -147,10 +149,10 @@ pub(super) fn handle_terminal_event(
         }
         match mouse.kind {
             MouseEventKind::ScrollUp => {
-                app.scroll_up(3);
+                app.scroll_up(MOUSE_SCROLL_LINES);
             }
             MouseEventKind::ScrollDown => {
-                app.scroll_down(3);
+                app.scroll_down(MOUSE_SCROLL_LINES);
             }
             MouseEventKind::Down(crossterm::event::MouseButton::Left) => {
                 handle_mouse_click(mouse.column, mouse.row, app);

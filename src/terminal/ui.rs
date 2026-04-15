@@ -27,6 +27,7 @@ const PALETTE_WIDTH: u16 = 24;
 const MAX_INPUT_HEIGHT: u16 = 8;
 const MIN_CHART_WIDTH: u16 = 60;
 const MIN_CHART_HEIGHT: u16 = 16;
+const MIN_SPLIT_VIEW_WIDTH: u16 = 60;
 use crate::terminal::markdown::{render_md_message, wrap_line_with_indent};
 use crate::terminal::theme::{
     DRACULA_BG, DRACULA_COMMENT, DRACULA_CYAN, DRACULA_FG, DRACULA_PURPLE, DRACULA_SELECTION,
@@ -574,7 +575,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
 
     render_broadcast_banner(frame, app, chunks[0]);
 
-    if app.project.show && chunks[1].width >= 60 {
+    if app.project.show && chunks[1].width >= MIN_SPLIT_VIEW_WIDTH {
         // Side-by-side: project view (60%) | chat (40%)
         let split = Layout::horizontal([Constraint::Percentage(60), Constraint::Percentage(40)])
             .split(chunks[1]);

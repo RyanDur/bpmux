@@ -7,6 +7,8 @@ use tui_textarea::TextArea;
 pub use super::app_state::*;
 
 pub(super) const TRUNCATE_AFTER_LINES: usize = 10;
+/// Approximate chat pane inner width (80 terminal - 2 borders).
+const CHAT_INNER_WIDTH: usize = 78;
 const DM_FLASH_DURATION: std::time::Duration = std::time::Duration::from_millis(750);
 
 fn short_peer_name(peer: &str) -> &str {
@@ -368,7 +370,7 @@ impl App {
     }
 
     pub fn toggle_last_truncated(&mut self) {
-        let width = 78usize; // approximate inner width
+        let width = CHAT_INNER_WIDTH;
         for msg in self.msg.messages.iter().rev() {
             if !msg.is_chat() && !self.display.show_system_messages {
                 continue;
@@ -488,10 +490,7 @@ impl App {
         let line_estimate = {
             let sender = msg.from.split(':').next().unwrap_or(&msg.from);
             let prefix_len = sender.len() + 15;
-            const INNER_WIDTH: usize = 78;
-            // Content width = inner width minus prefix/indent (both
-            // first and continuation lines use the same indent).
-            let content_width = INNER_WIDTH.saturating_sub(prefix_len).max(1);
+            let content_width = CHAT_INNER_WIDTH.saturating_sub(prefix_len).max(1);
             let wrapped = msg.text.len().max(1).div_ceil(content_width).max(1);
             // Add 1 for the blank separator line between different senders.
             // No separator for the first message or when sender matches.

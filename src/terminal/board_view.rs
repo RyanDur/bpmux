@@ -31,6 +31,7 @@ fn state_color(state: StoryState) -> ratatui::style::Color {
 }
 
 /// Maximum stories shown per column before compressing.
+const BOARD_COLUMNS: usize = 3;
 const MAX_PER_COLUMN: usize = 6;
 
 pub(super) fn render(frame: &mut Frame, app: &App, area: Rect) {
@@ -72,7 +73,7 @@ fn render_columns(frame: &mut Frame, app: &App, area: Rect) {
     // Split vertically first, then each half into 3 columns
     let inner_width = area.width.saturating_sub(2) as usize;
     let inner_height = area.height.saturating_sub(2) as usize;
-    let col_width = inner_width / 3;
+    let col_width = inner_width / BOARD_COLUMNS;
     let half_height = inner_height / 2;
 
     let mut lines: Vec<Line> = Vec::new();

@@ -174,8 +174,9 @@ pub fn save_peer_index(
     peer_name: &str,
     index: &LessonIndex,
 ) -> Result<(), std::io::Error> {
-    let path = session_dir.join(format!("lessons-peer-{peer_name}.json"));
-    let tmp = session_dir.join(format!("lessons-peer-{peer_name}.json.tmp"));
+    let safe_name = super::identity::sanitize_name(peer_name);
+    let path = session_dir.join(format!("lessons-peer-{safe_name}.json"));
+    let tmp = session_dir.join(format!("lessons-peer-{safe_name}.json.tmp"));
     let json = serde_json::to_string_pretty(index)
         .map_err(|e| std::io::Error::other(format!("serialize: {e}")))?;
     std::fs::write(&tmp, &json)?;
@@ -183,7 +184,8 @@ pub fn save_peer_index(
 }
 
 pub fn load_peer_index(session_dir: &Path, peer_name: &str) -> LessonIndex {
-    let path = session_dir.join(format!("lessons-peer-{peer_name}.json"));
+    let safe_name = super::identity::sanitize_name(peer_name);
+    let path = session_dir.join(format!("lessons-peer-{safe_name}.json"));
     if let Ok(data) = std::fs::read_to_string(&path) {
         serde_json::from_str(&data).unwrap_or_default()
     } else {
