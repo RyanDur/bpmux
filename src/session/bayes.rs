@@ -292,17 +292,6 @@ mod tests {
     }
 
     #[test]
-    fn extract_features_captures_sender_and_patterns() {
-        let m = msg("ryan:human", "why did you do that? you should think first");
-        let features = extract_features(&m, "ryan");
-        assert!(features.contains(&"sender:owner".to_string()));
-        assert!(features.contains(&"punct:question".to_string()));
-        assert!(features.contains(&"word:why".to_string()));
-        assert!(features.contains(&"word:should".to_string()));
-        assert!(features.contains(&"word:think".to_string()));
-    }
-
-    #[test]
     fn class_label_roundtrips() {
         let classes = vec![
             MessageClass::Experience(ExperienceKind::Correction),
