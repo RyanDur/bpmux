@@ -64,17 +64,7 @@ async fn run_ws_session(
         },
     )
     .await?;
-    let join_msg = session::Message {
-        from: "bpmux".to_string(),
-        text: format!("{identity} joined"),
-        ts: chrono::Utc::now(),
-        message_type: MessageType::System,
-        to: None,
-        addressee: None,
-        explicit_privacy: false,
-        multi_depth: None,
-        topic: None,
-    };
+    let join_msg = system_announcement(&format!("{identity} joined"));
     session.broadcast(&join_msg)?;
     let result: Result<(), Box<dyn std::error::Error + Send + Sync>> = async {
         loop {
@@ -110,31 +100,9 @@ async fn run_ws_session(
                     match ws_result {
                         Some(Ok(WsMessage::Text(text))) => {
                             if let Some(new_identity) = handle_client_message(&text, &identity, &session, &mut tx).await? {
-                                let leave = session::Message {
-                                    from: "bpmux".to_string(),
-                                    text: format!("{identity} left"),
-                                    ts: chrono::Utc::now(),
-                                    message_type: MessageType::System,
-                                    to: None,
-                                    addressee: None,
-                                    explicit_privacy: false,
-                                    multi_depth: None,
-                                    topic: None,
-                                };
-                                let _ = session.broadcast(&leave);
+                                let _ = session.broadcast(&system_announcement(&format!("{identity} left")));
                                 identity = new_identity;
-                                let join = session::Message {
-                                    from: "bpmux".to_string(),
-                                    text: format!("{identity} joined"),
-                                    ts: chrono::Utc::now(),
-                                    message_type: MessageType::System,
-                                    to: None,
-                                    addressee: None,
-                                    explicit_privacy: false,
-                                    multi_depth: None,
-                                    topic: None,
-                                };
-                                let _ = session.broadcast(&join);
+                                let _ = session.broadcast(&system_announcement(&format!("{identity} joined")));
                             }
                         }
                         Some(Ok(WsMessage::Close(_))) | None => break,
@@ -152,17 +120,7 @@ async fn run_ws_session(
         Ok(())
     }
     .await;
-    let leave_msg = session::Message {
-        from: "bpmux".to_string(),
-        text: format!("{identity} left"),
-        ts: chrono::Utc::now(),
-        message_type: MessageType::System,
-        to: None,
-        addressee: None,
-        explicit_privacy: false,
-        multi_depth: None,
-        topic: None,
-    };
+    let leave_msg = system_announcement(&format!("{identity} left"));
     let _ = session.broadcast(&leave_msg);
     session.peer_disconnected();
     result
@@ -207,6 +165,20 @@ async fn wait_for_identify(
     match timeout {
         Ok(result) => result,
         Err(_) => Err("identify timeout (5s)".into()),
+    }
+}
+
+fn system_announcement(text: &str) -> session::Message {
+    session::Message {
+        from: "bpmux".to_string(),
+        text: text.to_string(),
+        ts: chrono::Utc::now(),
+        message_type: MessageType::System,
+        to: None,
+        addressee: None,
+        explicit_privacy: false,
+        multi_depth: None,
+        topic: None,
     }
 }
 

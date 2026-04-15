@@ -139,6 +139,7 @@ where
                 }
                 if app.should_quit {
                     super::ui_state::UiState::save(app, session);
+                    app.save_usage_to_disk();
                     return Ok(());
                 }
                 // Check for P2P commands after handling input

@@ -433,9 +433,13 @@ impl App {
             .or_insert((0, chrono::Utc::now()));
         entry.0 += 1;
         entry.1 = chrono::Utc::now();
+    }
 
-        // Persist to disk so agents can query via MCP.
-        if let Ok(home) = dirs::home_dir().ok_or(()) {
+    /// Persist usage data to disk. Called at session end or on
+    /// explicit save, not on every command invocation. Separates
+    /// the I/O side effect from the in-memory counter update.
+    pub fn save_usage_to_disk(&self) {
+        if let Some(home) = dirs::home_dir() {
             let path = home.join(".bpmux").join("usage.json");
             let serializable: std::collections::HashMap<String, (usize, String)> = self
                 .feature_usage
