@@ -1,0 +1,211 @@
+//! Sub-state structs extracted from `App` (God Object reduction).
+//!
+//! Each struct groups a cohesive set of fields that were formerly
+//! loose on `App`. They live here to keep `app.rs` focused on the
+//! `App` type definition and its `impl` methods.
+
+use crate::session::Message;
+use std::collections::{HashMap, HashSet};
+use std::path::PathBuf;
+use std::time::Instant;
+
+/// Sidebar navigation state — extracted from App to reduce the God Object.
+/// Methods live in sidebar.rs. Mutated by sidebar key handlers;
+/// read by the sidebar renderer and event dispatch.
+pub struct SidebarState {
+    pub open: bool,
+    pub focused: bool,
+    pub selected: usize,
+    pub filter: String,
+    pub project_expanded: bool,
+    pub direct_expanded: bool,
+    pub groups_expanded: bool,
+    pub system_expanded: bool,
+}
+
+impl Default for SidebarState {
+    fn default() -> Self {
+        Self {
+            open: false,
+            focused: false,
+            selected: 0,
+            filter: String::new(),
+            project_expanded: true,
+            direct_expanded: true,
+            groups_expanded: true,
+            system_expanded: false,
+        }
+    }
+}
+
+/// Which modal overlay is active. Only one can be active at a time.
+/// Replaces the implicit priority chain of boolean flags that
+/// required reading the entire event_dispatch to understand ordering.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum InputMode {
+    /// Normal chat input — no overlay active.
+    #[default]
+    Chat,
+    /// Help overlay (? key).
+    Help,
+    /// Tokens + usage overlay (/tokens).
+    Tokens,
+    /// Command palette (Ctrl+K).
+    Palette,
+    /// Project panel (/board, header click).
+    Project,
+    /// Full-screen board detail.
+    Board,
+    /// Sidebar navigation (Alt+1).
+    Sidebar,
+}
+
+#[derive(Default)]
+pub struct PaletteState {
+    pub show: bool,
+    pub input: String,
+    pub selected: usize,
+}
+
+/// Topic state — extracted from App.
+pub struct TopicState {
+    /// Known topics in this session. "general" always present.
+    pub topics: Vec<String>,
+    /// Which topic the user is currently viewing/typing into.
+    pub active: String,
+    /// Per-topic unread count for sidebar display.
+    pub unreads: HashMap<String, usize>,
+    /// Per-topic participant lists.
+    pub participants: HashMap<String, Vec<String>>,
+}
+
+impl Default for TopicState {
+    fn default() -> Self {
+        Self {
+            topics: vec!["general".to_string()],
+            active: "general".to_string(),
+            unreads: HashMap::new(),
+            participants: HashMap::new(),
+        }
+    }
+}
+
+/// Search state — extracted from App.
+#[derive(Default)]
+pub struct SearchState {
+    pub results: Vec<crate::session::SearchResult>,
+    pub selected: Option<usize>,
+}
+
+/// Project view state — extracted from App.
+#[derive(Default)]
+pub struct ProjectViewState {
+    pub state: Option<super::board::ProjectState>,
+    pub show: bool,
+    pub content: Option<String>,
+}
+
+/// Tokens overlay state — extracted from App.
+#[derive(Default)]
+pub struct TokensViewState {
+    pub show: bool,
+    pub rows: Vec<crate::session::tokens::TokenRow>,
+}
+
+/// Message state — extracted from App.
+pub struct MessageState {
+    pub messages: Vec<Message>,
+    pub class_cache: Vec<Option<crate::session::MessageClass>>,
+    pub filtered_indices: Vec<usize>,
+    pub cached_hidden_count: usize,
+    pub filter_dirty: bool,
+    pub expanded_messages: HashSet<String>,
+    pub truncation_indicators: Vec<(u16, String)>,
+}
+
+impl MessageState {
+    pub(super) fn new(messages: Vec<Message>) -> Self {
+        Self {
+            messages,
+            class_cache: Vec::new(),
+            filtered_indices: Vec::new(),
+            cached_hidden_count: 0,
+            filter_dirty: true,
+            expanded_messages: HashSet::new(),
+            truncation_indicators: Vec::new(),
+        }
+    }
+}
+
+/// Channel view state — extracted from App.
+#[derive(Default)]
+pub struct ChannelState {
+    pub active: HashSet<String>,
+    pub current_view: Option<String>,
+    pub send_target: Option<String>,
+    pub unread: HashMap<String, usize>,
+}
+
+/// Peer presence state — extracted from App.
+#[derive(Default)]
+pub struct PeerState {
+    pub activity: HashMap<String, (String, Instant)>,
+    pub dm_unread_from: Vec<String>,
+    pub dm_flash_until: Option<Instant>,
+}
+
+/// Display toggle state — extracted from App.
+pub struct DisplayState {
+    pub show_timestamps: bool,
+    pub show_system_messages: bool,
+    pub show_help: bool,
+    pub tui_focused: bool,
+    pub show_all_classes: bool,
+    pub hidden_class_count: usize,
+}
+
+impl Default for DisplayState {
+    fn default() -> Self {
+        Self {
+            show_timestamps: false,
+            show_system_messages: false,
+            show_help: false,
+            tui_focused: true,
+            show_all_classes: false,
+            hidden_class_count: 0,
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct LayoutState {
+    pub sidebar_area: Option<(u16, u16, u16, u16)>,
+    pub menu_click_cell: Option<(u16, u16)>,
+    pub status_bar_area: Option<(u16, u16, u16, u16)>,
+    pub chat_area: Option<(u16, u16, u16, u16)>,
+    pub help_hint_col: Option<u16>,
+}
+
+#[derive(Default)]
+pub struct ScrollState {
+    pub offset: usize,
+    pub max: usize,
+    pub at_boundary: bool,
+    pub unread_count: usize,
+}
+
+#[derive(Default)]
+pub struct BoardState {
+    pub show: bool,
+    pub stories: Vec<super::board::BoardStory>,
+    pub selected: usize,
+    pub detail: Option<usize>,
+}
+
+/// Session identity — frozen after construction. These fields
+/// are set once in App::new() and must not change during the session.
+pub struct SessionIdentity {
+    pub dir: Option<PathBuf>,
+    pub name: String,
+    pub id: String,
+}

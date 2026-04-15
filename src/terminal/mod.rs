@@ -1,4 +1,5 @@
 pub mod app;
+mod app_state;
 mod board;
 mod board_view;
 mod chat;
@@ -22,5 +23,7 @@ pub use event::run_tui;
 
 #[cfg(test)]
 mod app_tests;
+#[cfg(test)]
+mod ci_tests;
 #[cfg(test)]
 mod ui_tests;
