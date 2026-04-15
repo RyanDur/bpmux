@@ -87,6 +87,10 @@ async fn run_ws_session(
                             crate::session::diag::log_diag(&format!(
                                 "ws: client {identity} lagged by {n} messages"
                             ));
+                            let lag_notice = ServerMessage::Error {
+                                reason: format!("lagged: {n} messages dropped"),
+                            };
+                            let _ = send_json(&mut tx, &lag_notice).await;
                         }
                         Err(broadcast::error::RecvError::Closed) => break,
                     }
