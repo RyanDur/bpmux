@@ -196,3 +196,137 @@ fn build_meta_mixed_presence_only_includes_present_keys() {
     assert!(!meta.contains_key("topic"), "topic None should be absent");
     assert!(meta.contains_key("message_type"));
 }
+
+// ── curate_message tests (story #200) ────────────────────────
+//
+// curate_message is the read_messages response curator. It preserves
+// addressee/topic/message_type/ts so agents can implement the #158
+// addressee protocol and #191 topic scoping. Broadcast messages are
+// distinguishable from addressed ones via null fields.
+
+use super::tools::curate_message;
+
+#[test]
+fn curate_message_preserves_addressee_when_present() {
+    let raw = serde_json::json!({
+        "from": "dev",
+        "text": "hello pm",
+        "ts": "2026-04-15T21:00:00Z",
+        "addressee": "pm",
+    });
+    let out = curate_message(&raw).expect("should curate");
+    assert_eq!(out.get("addressee").and_then(|v| v.as_str()), Some("pm"));
+    assert_eq!(
+        out.get("ts").and_then(|v| v.as_str()),
+        Some("2026-04-15T21:00:00Z")
+    );
+}
+
+#[test]
+fn curate_message_preserves_topic_when_present() {
+    let raw = serde_json::json!({
+        "from": "dev",
+        "text": "teaching point",
+        "ts": "2026-04-15T21:00:00Z",
+        "topic": "teaching",
+    });
+    let out = curate_message(&raw).expect("should curate");
+    assert_eq!(out.get("topic").and_then(|v| v.as_str()), Some("teaching"));
+}
+
+#[test]
+fn curate_message_preserves_message_type_when_present() {
+    let raw = serde_json::json!({
+        "from": "dev",
+        "text": "reasoning trace",
+        "ts": "2026-04-15T21:00:00Z",
+        "message_type": "insight",
+    });
+    let out = curate_message(&raw).expect("should curate");
+    assert_eq!(
+        out.get("message_type").and_then(|v| v.as_str()),
+        Some("insight")
+    );
+}
+
+#[test]
+fn curate_message_broadcast_has_null_addressee() {
+    // Broadcast (no addressee) must be distinguishable from addressed.
+    let raw = serde_json::json!({
+        "from": "dev",
+        "text": "broadcast",
+        "ts": "2026-04-15T21:00:00Z",
+    });
+    let out = curate_message(&raw).expect("should curate");
+    assert!(out.get("addressee").is_some(), "addressee key must exist");
+    assert!(
+        out["addressee"].is_null(),
+        "broadcast addressee must be null"
+    );
+}
+
+#[test]
+fn curate_message_addressee_visible_across_recipients() {
+    // pm must see a dev-addressed message with addressee: "dev" visible.
+    // Curation does not filter based on viewer — agents decide.
+    let raw = serde_json::json!({
+        "from": "ryan",
+        "text": "work on this dev",
+        "ts": "2026-04-15T21:00:00Z",
+        "addressee": "dev",
+    });
+    let out = curate_message(&raw).expect("should curate");
+    assert_eq!(out.get("addressee").and_then(|v| v.as_str()), Some("dev"));
+}
+
+#[test]
+fn curate_message_returns_none_when_required_fields_missing() {
+    // Malformed message (missing `from`) is skipped entirely.
+    let raw = serde_json::json!({
+        "text": "no sender",
+        "ts": "2026-04-15T21:00:00Z",
+    });
+    assert!(
+        curate_message(&raw).is_none(),
+        "missing `from` must skip the message"
+    );
+
+    let raw = serde_json::json!({
+        "from": "dev",
+        "ts": "2026-04-15T21:00:00Z",
+    });
+    assert!(
+        curate_message(&raw).is_none(),
+        "missing `text` must skip the message"
+    );
+}
+
+#[test]
+fn curate_message_broadcast_distinguishable_from_addressed() {
+    let broadcast = serde_json::json!({
+        "from": "ryan", "text": "hi team", "ts": "t",
+    });
+    let addressed = serde_json::json!({
+        "from": "ryan", "text": "hi dev", "ts": "t", "addressee": "dev",
+    });
+    let broadcast_out = curate_message(&broadcast).expect("should curate");
+    let addressed_out = curate_message(&addressed).expect("should curate");
+    assert!(broadcast_out["addressee"].is_null());
+    assert_eq!(addressed_out["addressee"].as_str(), Some("dev"));
+    assert_ne!(broadcast_out, addressed_out, "outputs must differ in shape");
+}
+
+#[test]
+fn curate_message_preserves_to_array_for_privacy_scoped() {
+    let raw = serde_json::json!({
+        "from": "dev",
+        "text": "private",
+        "ts": "t",
+        "to": ["pm", "designer"],
+    });
+    let out = curate_message(&raw).expect("should curate");
+    let to = out.get("to").and_then(|v| v.as_array()).expect("to array");
+    assert_eq!(to.len(), 2);
+    assert_eq!(to[0].as_str(), Some("pm"));
+    assert_eq!(to[1].as_str(), Some("designer"));
+}

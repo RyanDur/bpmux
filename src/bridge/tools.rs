@@ -99,6 +99,27 @@ pub(super) async fn handle_set_status(
     Ok(format!("status set to {status}"))
 }
 
+/// Curate a raw message JSON value into the shape agents consume via
+/// read_messages. Returns None if required fields (`from`, `text`) are
+/// missing or malformed — those messages are skipped entirely.
+///
+/// Optional fields (addressee, topic, to, message_type) are preserved
+/// as null when absent so agents can distinguish "broadcast" (null) from
+/// "addressed to someone else" (a role name). This is the REST/JSON
+/// convention; the channel-notification path in bridge/mod.rs uses
+/// omit-when-absent because Claude Code v2.1.109+ rejects null meta.
+pub(super) fn curate_message(raw: &serde_json::Value) -> Option<serde_json::Value> {
+    Some(serde_json::json!({
+        "from": raw["from"].as_str()?,
+        "text": raw["text"].as_str()?,
+        "ts": raw["ts"].as_str().unwrap_or(""),
+        "addressee": raw.get("addressee").and_then(|v| v.as_str()),
+        "topic": raw.get("topic").and_then(|v| v.as_str()),
+        "to": raw.get("to").and_then(|v| v.as_array()),
+        "message_type": raw.get("message_type").and_then(|v| v.as_str()),
+    }))
+}
+
 pub(super) async fn handle_read_messages(
     args: &serde_json::Map<String, serde_json::Value>,
     port: u16,
@@ -119,20 +140,7 @@ pub(super) async fn handle_read_messages(
     if msgs.is_empty() {
         return Ok("No messages.".into());
     }
-    let curated: Vec<serde_json::Value> = msgs
-        .iter()
-        .filter_map(|m| {
-            Some(serde_json::json!({
-                "from": m["from"].as_str()?,
-                "text": m["text"].as_str()?,
-                "ts": m["ts"].as_str().unwrap_or(""),
-                "addressee": m.get("addressee").and_then(|v| v.as_str()),
-                "topic": m.get("topic").and_then(|v| v.as_str()),
-                "to": m.get("to").and_then(|v| v.as_array()),
-                "message_type": m.get("message_type").and_then(|v| v.as_str()),
-            }))
-        })
-        .collect();
+    let curated: Vec<serde_json::Value> = msgs.iter().filter_map(curate_message).collect();
     serde_json::to_string_pretty(&curated).map_err(|e| format!("format: {e}"))
 }
 
