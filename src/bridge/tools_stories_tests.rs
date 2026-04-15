@@ -50,6 +50,24 @@ fn require_role_rejects_agents_from_owner_operations() {
     assert!(result.unwrap_err().contains("restricted to ryan"));
 }
 
+#[test]
+fn require_role_allows_designer_for_desk_check_operations() {
+    assert!(require_role("designer:claude-code", &["designer"], "pass desk-check").is_ok());
+    assert!(require_role("designer", &["designer"], "fail desk-check").is_ok());
+}
+
+#[test]
+fn require_role_rejects_non_designer_from_desk_check_operations() {
+    for caller in ["dev:claude-code", "pm:claude-code", "ryan:human"] {
+        let result = require_role(caller, &["designer"], "pass desk-check");
+        assert!(
+            result.is_err(),
+            "{caller} should not pass desk-check; got: {result:?}"
+        );
+        assert!(result.unwrap_err().contains("restricted to designer"));
+    }
+}
+
 // ── Workflow signal tests (#197) ──
 
 #[test]
@@ -126,6 +144,84 @@ fn reject_signal_includes_reason() {
         assert!(
             text.contains("#42"),
             "story number should be in text: {text}"
+        );
+    }
+}
+
+// ── #203 desk-check signal tests ──
+
+#[test]
+fn pass_desk_check_signal_targets_ryan_only() {
+    if let ClientMessage::Send { to, addressee, .. } = build_pass_desk_check_signal(203) {
+        assert_eq!(to.as_ref().unwrap(), &["ryan"]);
+        assert_eq!(addressee.as_deref(), Some("ryan"));
+    } else {
+        panic!("expected Send variant");
+    }
+}
+
+#[test]
+fn pass_desk_check_signal_does_not_target_dev() {
+    if let ClientMessage::Send { to, .. } = build_pass_desk_check_signal(203) {
+        let recipients = to.as_ref().unwrap();
+        assert!(
+            !recipients.contains(&"dev".to_string()),
+            "pass signal should not go to dev, got: {recipients:?}"
+        );
+    }
+}
+
+#[test]
+fn pass_desk_check_signal_announces_ready_for_acceptance() {
+    if let ClientMessage::Send { text, .. } = build_pass_desk_check_signal(203) {
+        assert!(
+            text.contains("#203"),
+            "story number should be in text: {text}"
+        );
+        assert!(
+            text.contains("ready for acceptance"),
+            "pass signal should say 'ready for acceptance': {text}"
+        );
+    }
+}
+
+#[test]
+fn fail_desk_check_signal_targets_dev_only() {
+    if let ClientMessage::Send { to, addressee, .. } = build_fail_desk_check_signal(203, "reason") {
+        assert_eq!(to.as_ref().unwrap(), &["dev"]);
+        assert_eq!(addressee.as_deref(), Some("dev"));
+    } else {
+        panic!("expected Send variant");
+    }
+}
+
+#[test]
+fn fail_desk_check_signal_does_not_target_ryan() {
+    if let ClientMessage::Send { to, .. } = build_fail_desk_check_signal(203, "reason") {
+        let recipients = to.as_ref().unwrap();
+        assert!(
+            !recipients.contains(&"ryan".to_string()),
+            "fail signal should not go to ryan, got: {recipients:?}"
+        );
+    }
+}
+
+#[test]
+fn fail_desk_check_signal_includes_reason() {
+    if let ClientMessage::Send { text, .. } =
+        build_fail_desk_check_signal(203, "missing negative case")
+    {
+        assert!(
+            text.contains("missing negative case"),
+            "reason should be in text: {text}"
+        );
+        assert!(
+            text.contains("#203"),
+            "story number should be in text: {text}"
+        );
+        assert!(
+            text.contains("needs fixes"),
+            "fail signal should say 'needs fixes': {text}"
         );
     }
 }

@@ -414,6 +414,12 @@ impl ServerHandler for BridgeServer {
             crate::mcp::tools::reorder_story_tool(
                 "Reorder a story's priority position within its state column. PM ONLY — other roles are rejected. Position 1 = top of column.",
             ),
+            crate::mcp::tools::pass_desk_check_tool(
+                "Mark a delivered story as passed desk-check. Applies the 'ready for accept' label and signals ryan that acceptance is ready. DESIGNER ONLY.",
+            ),
+            crate::mcp::tools::fail_desk_check_tool(
+                "Mark a delivered story as failed desk-check with a reason. Applies the 'needs fixes' label and signals dev with the reason. DESIGNER ONLY.",
+            ),
             crate::mcp::tools::get_usage_tool(
                 "Get feature usage statistics — invocation counts and last-used timestamps for all commands/features used this session. JSON format.",
             ),
@@ -485,6 +491,14 @@ impl ServerHandler for BridgeServer {
                 "reorder_story" => {
                     let current_name = name.lock().await;
                     tools_stories::handle_reorder_story(&args, &current_name).await
+                }
+                "pass_desk_check" => {
+                    let current_name = name.lock().await;
+                    tools_stories::handle_pass_desk_check(&args, &current_name, &ws_tx).await
+                }
+                "fail_desk_check" => {
+                    let current_name = name.lock().await;
+                    tools_stories::handle_fail_desk_check(&args, &current_name, &ws_tx).await
                 }
                 "get_usage" => tools::handle_get_usage(&args).await,
                 other => Err(format!("unknown tool: {other}")),

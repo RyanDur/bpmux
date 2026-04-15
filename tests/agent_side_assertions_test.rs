@@ -192,3 +192,124 @@ fn deliver_story_signal_routes_desk_check_to_designer_not_dev() {
         designer.close().await;
     });
 }
+
+/// AC (#203): designer calling pass_desk_check fires a signal
+/// addressed to ryan. dev's notification stream does NOT contain
+/// the signal — routing is exact, not broadcast.
+#[test]
+fn pass_desk_check_signal_routes_to_ryan_not_dev() {
+    let bpmux = TestBpmux::start();
+    let rt = tokio::runtime::Runtime::new().expect("rt");
+    rt.block_on(async {
+        let designer = TestBridge::connect(&bpmux, "designer").await;
+        let ryan = TestBridge::connect(&bpmux, "ryan").await;
+        let dev = TestBridge::connect(&bpmux, "dev").await;
+
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        let status = designer
+            .call_tool("pass_desk_check", serde_json::json!({"number": 203}))
+            .await
+            .expect("pass_desk_check signal should succeed");
+        let status_str = status.as_str().unwrap_or("");
+        assert!(
+            status_str.contains("signal sent"),
+            "pass_desk_check Ok status should report signal sent. got: {status_str}"
+        );
+
+        ryan.capture
+            .wait_for("ready for acceptance", Duration::from_secs(5))
+            .await;
+
+        // Negative: dev does not see the pass signal. Wait a beat for
+        // any mis-routed broadcast, then snapshot.
+        tokio::time::sleep(Duration::from_millis(500)).await;
+        let dev_seen = dev.capture.received().join("\n");
+        assert!(
+            !dev_seen.contains("ready for acceptance"),
+            "dev should NOT receive the ryan-addressed pass signal. got:\n{dev_seen}"
+        );
+
+        designer.close().await;
+        ryan.close().await;
+        dev.close().await;
+    });
+}
+
+/// AC (#203): designer calling fail_desk_check fires a signal
+/// addressed to dev with the reason. ryan's notification stream
+/// does NOT contain the signal.
+#[test]
+fn fail_desk_check_signal_routes_to_dev_not_ryan() {
+    let bpmux = TestBpmux::start();
+    let rt = tokio::runtime::Runtime::new().expect("rt");
+    rt.block_on(async {
+        let designer = TestBridge::connect(&bpmux, "designer").await;
+        let ryan = TestBridge::connect(&bpmux, "ryan").await;
+        let dev = TestBridge::connect(&bpmux, "dev").await;
+
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        let status = designer
+            .call_tool(
+                "fail_desk_check",
+                serde_json::json!({"number": 203, "reason": "missing negative test"}),
+            )
+            .await
+            .expect("fail_desk_check signal should succeed");
+        let status_str = status.as_str().unwrap_or("");
+        assert!(
+            status_str.contains("signal sent"),
+            "fail_desk_check Ok status should report signal sent. got: {status_str}"
+        );
+
+        dev.capture
+            .wait_for("missing negative test", Duration::from_secs(5))
+            .await;
+
+        tokio::time::sleep(Duration::from_millis(500)).await;
+        let ryan_seen = ryan.capture.received().join("\n");
+        assert!(
+            !ryan_seen.contains("missing negative test"),
+            "ryan should NOT receive the dev-addressed fail signal. got:\n{ryan_seen}"
+        );
+
+        designer.close().await;
+        ryan.close().await;
+        dev.close().await;
+    });
+}
+
+/// AC (#203): non-designer roles cannot pass_desk_check. The lane
+/// enforcement returns an error with a clear message; no signal is
+/// fired to anyone.
+#[test]
+fn pass_desk_check_rejects_non_designer_callers() {
+    let bpmux = TestBpmux::start();
+    let rt = tokio::runtime::Runtime::new().expect("rt");
+    rt.block_on(async {
+        let dev = TestBridge::connect(&bpmux, "dev").await;
+        let ryan = TestBridge::connect(&bpmux, "ryan").await;
+
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        let err = dev
+            .call_tool("pass_desk_check", serde_json::json!({"number": 203}))
+            .await
+            .expect_err("dev should be rejected from pass_desk_check");
+        assert!(
+            err.contains("restricted to designer"),
+            "rejection message should name the required role. got: {err}"
+        );
+
+        tokio::time::sleep(Duration::from_millis(500)).await;
+        let ryan_seen = ryan.capture.received().join("\n");
+        assert!(
+            !ryan_seen.contains("ready for acceptance"),
+            "rejected pass call should not fire the ryan signal. got:\n{ryan_seen}"
+        );
+
+        dev.close().await;
+        ryan.close().await;
+    });
+}

@@ -13,6 +13,21 @@ use crate::transport::protocol::ClientMessage;
 /// directory regardless of which workspace starts the bridge.
 const REPO_ROOT: &str = env!("CARGO_MANIFEST_DIR");
 
+/// GitHub label vocabulary. Centralized so the read-checks
+/// (handle_view_board) and the write-calls (handle_start/deliver/etc.)
+/// stay in lockstep — a typo in one and not the other would silently
+/// misroute a story in the board view. New labels go here first, call
+/// sites reference the const.
+const LABEL_READY: &str = "ready";
+const LABEL_IN_PROGRESS: &str = "in progress";
+const LABEL_DELIVERED: &str = "delivered";
+const LABEL_DEFERRED: &str = "deferred";
+const LABEL_STARTED: &str = "started";
+const LABEL_FINISHED: &str = "finished";
+const LABEL_REJECTED: &str = "rejected";
+const LABEL_READY_FOR_ACCEPT: &str = "ready for accept";
+const LABEL_NEEDS_FIXES: &str = "needs fixes";
+
 /// Run a gh command and return stdout. Errors include stderr.
 /// Sets the working directory to the bpmux repo so `gh` can find
 /// git remotes even when the bridge runs from an agent workspace.
@@ -110,13 +125,13 @@ pub(super) async fn handle_view_board(
 
         if gh_state == "CLOSED" {
             accepted.push(entry);
-        } else if has("deferred") {
+        } else if has(LABEL_DEFERRED) {
             deferred.push(entry);
-        } else if has("delivered") {
+        } else if has(LABEL_DELIVERED) {
             delivered.push(entry);
-        } else if has("started") || has("finished") {
+        } else if has(LABEL_STARTED) || has(LABEL_FINISHED) {
             in_progress.push(entry);
-        } else if has("ready") {
+        } else if has(LABEL_READY) {
             ready.push(entry);
         } else {
             icebox.push(entry);
@@ -180,9 +195,9 @@ pub(super) async fn handle_start_story(
         "edit",
         &number.to_string(),
         "--remove-label",
-        "ready",
+        LABEL_READY,
         "--add-label",
-        "in progress",
+        LABEL_IN_PROGRESS,
     ])
     .await;
     match gh_result {
@@ -227,9 +242,9 @@ pub(super) async fn handle_deliver_story(
         "edit",
         &number.to_string(),
         "--remove-label",
-        "in progress",
+        LABEL_IN_PROGRESS,
         "--add-label",
-        "delivered",
+        LABEL_DELIVERED,
     ])
     .await
     {
@@ -279,7 +294,7 @@ pub(super) async fn handle_accept_story(
         "edit",
         &number.to_string(),
         "--remove-label",
-        "delivered",
+        LABEL_DELIVERED,
     ])
     .await
     {
@@ -317,9 +332,9 @@ pub(super) async fn handle_reject_story(
         "edit",
         &number.to_string(),
         "--remove-label",
-        "delivered",
+        LABEL_DELIVERED,
         "--add-label",
-        "rejected",
+        LABEL_REJECTED,
     ])
     .await
     {
@@ -329,6 +344,85 @@ pub(super) async fn handle_reject_story(
     match gh_result {
         Ok(_) => Ok(format!("#{number} rejected: {reason}")),
         Err(e) => Err(format!("#{number} signal sent but gh failed: {e}")),
+    }
+}
+
+/// Pass desk-check — designer only. Signals ryan that the story is
+/// ready for acceptance (applies the `ready for accept` label). Err
+/// is reserved for signal-send failure; gh label edit failures are
+/// reported in the Ok status string so callers can observe both
+/// outcomes without conflation. Mirrors handle_deliver_story's split
+/// (see that doc for rationale).
+pub(super) async fn handle_pass_desk_check(
+    args: &serde_json::Map<String, serde_json::Value>,
+    agent_name: &str,
+    ws_tx: &Mutex<Option<WsSink>>,
+) -> Result<String, String> {
+    require_role(agent_name, &["designer"], "pass desk-check")?;
+    let number = args
+        .get("number")
+        .and_then(|v| v.as_u64())
+        .ok_or("missing 'number' argument")?;
+    let signal = serde_json::to_string(&build_pass_desk_check_signal(number))
+        .map_err(|e| format!("signal: {e}"))?;
+    ws_send(ws_tx, signal)
+        .await
+        .map_err(|e| format!("#{number} signal send failed: {e}"))?;
+    match gh(&[
+        "issue",
+        "edit",
+        &number.to_string(),
+        "--add-label",
+        LABEL_READY_FOR_ACCEPT,
+    ])
+    .await
+    {
+        Ok(_) => Ok(format!(
+            "#{number} passed desk-check: signal sent, label applied"
+        )),
+        Err(e) => Ok(format!(
+            "#{number} passed desk-check: signal sent, label update skipped ({e})"
+        )),
+    }
+}
+
+/// Fail desk-check — designer only. Signals dev that the story needs
+/// fixes (applies the `needs fixes` label). Same Err-vs-Ok split as
+/// pass_desk_check: Err on signal send failure, Ok with gh status.
+pub(super) async fn handle_fail_desk_check(
+    args: &serde_json::Map<String, serde_json::Value>,
+    agent_name: &str,
+    ws_tx: &Mutex<Option<WsSink>>,
+) -> Result<String, String> {
+    require_role(agent_name, &["designer"], "fail desk-check")?;
+    let number = args
+        .get("number")
+        .and_then(|v| v.as_u64())
+        .ok_or("missing 'number' argument")?;
+    let reason = args
+        .get("reason")
+        .and_then(|v| v.as_str())
+        .ok_or("missing 'reason' argument")?;
+    let signal = serde_json::to_string(&build_fail_desk_check_signal(number, reason))
+        .map_err(|e| format!("signal: {e}"))?;
+    ws_send(ws_tx, signal)
+        .await
+        .map_err(|e| format!("#{number} signal send failed: {e}"))?;
+    match gh(&[
+        "issue",
+        "edit",
+        &number.to_string(),
+        "--add-label",
+        LABEL_NEEDS_FIXES,
+    ])
+    .await
+    {
+        Ok(_) => Ok(format!(
+            "#{number} failed desk-check: signal sent, label applied"
+        )),
+        Err(e) => Ok(format!(
+            "#{number} failed desk-check: signal sent, label update skipped ({e})"
+        )),
     }
 }
 
@@ -404,6 +498,26 @@ pub(super) fn build_accept_signal(number: u64) -> ClientMessage {
 pub(super) fn build_reject_signal(number: u64, reason: &str) -> ClientMessage {
     ClientMessage::Send {
         text: format!("#{number} rejected: {reason}. fix and re-deliver"),
+        to: Some(vec!["dev".to_string()]),
+        addressee: Some("dev".to_string()),
+        message_type: None,
+        topic: None,
+    }
+}
+
+pub(super) fn build_pass_desk_check_signal(number: u64) -> ClientMessage {
+    ClientMessage::Send {
+        text: format!("#{number} ready for acceptance. passed designer desk-check."),
+        to: Some(vec!["ryan".to_string()]),
+        addressee: Some("ryan".to_string()),
+        message_type: None,
+        topic: None,
+    }
+}
+
+pub(super) fn build_fail_desk_check_signal(number: u64, reason: &str) -> ClientMessage {
+    ClientMessage::Send {
+        text: format!("#{number} failed desk-check: {reason} — needs fixes."),
         to: Some(vec!["dev".to_string()]),
         addressee: Some("dev".to_string()),
         message_type: None,
