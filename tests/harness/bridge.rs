@@ -23,15 +23,29 @@ pub struct TestBridge {
 impl TestBridge {
     /// Spawn a bridge subprocess with `--name` and connect an MCP client.
     pub async fn connect(bpmux: &TestBpmux, name: &str) -> Self {
+        Self::connect_with_env(bpmux, name, &[]).await
+    }
+
+    /// Spawn a bridge subprocess with extra env vars. Useful for
+    /// pointing the bridge's view_board at BPMUX_BOARD_FIXTURE instead
+    /// of the live `gh` CLI in CI (where GH_TOKEN isn't wired).
+    pub async fn connect_with_env(bpmux: &TestBpmux, name: &str, env: &[(&str, &str)]) -> Self {
         let bin = env!("CARGO_BIN_EXE_bpmux");
         let port = bpmux.port();
         let name_owned = name.to_string();
+        let env_owned: Vec<(String, String)> = env
+            .iter()
+            .map(|(k, v)| ((*k).to_string(), (*v).to_string()))
+            .collect();
         let process = TokioChildProcess::new(tokio::process::Command::new(bin).configure(|cmd| {
             cmd.arg("bridge")
                 .arg("--port")
                 .arg(port.to_string())
                 .arg("--name")
                 .arg(&name_owned);
+            for (k, v) in &env_owned {
+                cmd.env(k, v);
+            }
         }))
         .expect("spawn bridge");
         let capture = NotificationCapture::default();

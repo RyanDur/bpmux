@@ -24,32 +24,48 @@ use std::time::Duration;
 /// to seed deterministic stories without a live gh dependency.
 #[test]
 fn view_board_response_exposes_story_fields_for_agent_assertions() {
-    // view_board pulls live from `gh` — the bridge path intentionally
-    // bypasses BPMUX_BOARD_FIXTURE so agents see the same board state
-    // as the human. Assert on the structural shape the agent sees
-    // (state headers, #number entries) rather than fixture content.
+    use std::io::Write;
+    let mut fixture = tempfile::NamedTempFile::new().expect("fixture file");
+    fixture
+        .write_all(
+            br#"[
+              {"number":100,"title":"Ready one","state":"OPEN","labels":[{"name":"ready"}]},
+              {"number":101,"title":"Delivered one","state":"OPEN","labels":[{"name":"delivered"}]}
+            ]"#,
+        )
+        .expect("write fixture");
+    let fixture_path = fixture
+        .path()
+        .to_str()
+        .expect("fixture path utf-8")
+        .to_string();
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let dev = TestBridge::connect(&bpmux, "dev").await;
+        // Point the bridge's view_board at the fixture rather than the
+        // live gh CLI — the MCP tool honors BPMUX_BOARD_FIXTURE the
+        // same way the TUI does. Keeps the test hermetic (no GH_TOKEN
+        // required in CI).
+        let dev =
+            TestBridge::connect_with_env(&bpmux, "dev", &[("BPMUX_BOARD_FIXTURE", &fixture_path)])
+                .await;
         let board = dev
             .call_tool("view_board", serde_json::json!({}))
             .await
             .expect("view_board should succeed");
 
         let rendered = board.as_str().unwrap_or("");
-        // State grouping is the agent-actionable shape: READY /
-        // IN PROGRESS / DELIVERED / ACCEPTED / ICEBOX / DEFERRED.
         assert!(
-            rendered.contains("READY (") && rendered.contains("DELIVERED (")
-                || rendered.contains("ACCEPTED (") && rendered.contains("ICEBOX ("),
-            "view_board should include state headers. got:\n{rendered}"
+            rendered.contains("#100") && rendered.contains("Ready one"),
+            "view_board should expose story 100 fields. got:\n{rendered}"
         );
-        // Every story entry is `#NNN title` — the agent needs both to
-        // navigate the board.
         assert!(
-            rendered.contains('#'),
-            "view_board should render stories as #number entries. got:\n{rendered}"
+            rendered.contains("#101") && rendered.contains("Delivered one"),
+            "view_board should expose story 101 fields. got:\n{rendered}"
+        );
+        assert!(
+            rendered.contains("READY (") && rendered.contains("DELIVERED ("),
+            "view_board should group stories by state. got:\n{rendered}"
         );
         dev.close().await;
     });
@@ -137,12 +153,18 @@ fn deliver_story_signal_routes_desk_check_to_designer_not_dev() {
         // before the signal fires, so the capture windows are stable.
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        dev.call_tool(
-            "deliver_story",
-            serde_json::json!({"number": 199, "title": "test api agent assertions"}),
-        )
-        .await
-        .expect("deliver_story");
+        // deliver_story fires the signals BEFORE it calls gh to edit
+        // labels. The signal routing is what we're verifying; the gh
+        // edit is an out-of-scope side effect that fails in CI (no
+        // GH_TOKEN) and even locally on stale issue numbers. Accept
+        // both outcomes — what matters is the capture assertions
+        // below.
+        let _ = dev
+            .call_tool(
+                "deliver_story",
+                serde_json::json!({"number": 199, "title": "test api agent assertions"}),
+            )
+            .await;
 
         // Designer receives the desk-check addressed signal.
         designer

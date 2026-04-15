@@ -63,17 +63,28 @@ pub(super) fn require_role(
 pub(super) async fn handle_view_board(
     _args: &serde_json::Map<String, serde_json::Value>,
 ) -> Result<String, String> {
-    let json_str = gh(&[
-        "issue",
-        "list",
-        "--state",
-        "all",
-        "--limit",
-        "200",
-        "--json",
-        "number,title,state,labels",
-    ])
-    .await?;
+    // BPMUX_BOARD_FIXTURE lets tests drive view_board with canned issue
+    // JSON instead of shelling out to gh. Same env var the TUI board
+    // view honors (src/terminal/board.rs) so agent- and human-side
+    // tests share the seed. When unset, fall back to the live gh call.
+    let json_str = match std::env::var("BPMUX_BOARD_FIXTURE") {
+        Ok(path) => {
+            std::fs::read_to_string(&path).map_err(|e| format!("read fixture {path}: {e}"))?
+        }
+        Err(_) => {
+            gh(&[
+                "issue",
+                "list",
+                "--state",
+                "all",
+                "--limit",
+                "200",
+                "--json",
+                "number,title,state,labels",
+            ])
+            .await?
+        }
+    };
 
     let issues: Vec<serde_json::Value> =
         serde_json::from_str(&json_str).map_err(|e| format!("parse: {e}"))?;
