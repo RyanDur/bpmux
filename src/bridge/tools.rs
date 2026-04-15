@@ -214,12 +214,17 @@ pub(super) async fn handle_save_lesson(
     });
     let client = reqwest::Client::new();
     let url = format!("http://127.0.0.1:{port}/api/lessons");
-    client
+    let resp = client
         .post(&url)
         .json(&body)
         .send()
         .await
         .map_err(|e| format!("failed to save: {e}"))?;
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let body = resp.text().await.unwrap_or_default();
+        return Err(format!("save failed ({status}): {body}"));
+    }
     Ok(format!("lesson saved: {topic}"))
 }
 
@@ -467,12 +472,17 @@ pub(super) async fn handle_classifier_misfire(
     });
     let client = reqwest::Client::new();
     let url = format!("http://127.0.0.1:{port}/api/classifier-misfire");
-    client
+    let resp = client
         .post(&url)
         .json(&body)
         .send()
         .await
         .map_err(|e| format!("failed to record misfire: {e}"))?;
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let body = resp.text().await.unwrap_or_default();
+        return Err(format!("misfire failed ({status}): {body}"));
+    }
     Ok("misfire recorded".to_string())
 }
 

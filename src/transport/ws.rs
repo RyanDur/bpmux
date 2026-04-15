@@ -122,6 +122,10 @@ async fn run_ws_session(
     .await;
     let leave_msg = system_announcement(&format!("{identity} left"));
     let _ = session.broadcast(&leave_msg);
+    // Clean up topic subscriptions so stale entries don't accumulate
+    if let Ok(mut subs) = session.topic_subs.lock() {
+        subs.remove(short_name(&identity));
+    }
     session.peer_disconnected();
     result
 }

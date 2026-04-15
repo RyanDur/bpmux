@@ -118,9 +118,9 @@ async fn run_ws_connection(
                 text,
                 ts,
                 to,
-                addressee: _,
+                addressee,
                 message_type,
-                topic: _,
+                topic,
                 multi_depth: _,
             }) = msg
             {
@@ -177,7 +177,10 @@ async fn run_ws_connection(
                             "from": from,
                             "ts": ts,
                             "channel": channel,
-                            "source": "bpmux"
+                            "source": "bpmux",
+                            "addressee": addressee,
+                            "topic": topic,
+                            "message_type": message_type
                         }
                     })),
                 );
