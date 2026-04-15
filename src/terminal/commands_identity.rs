@@ -53,10 +53,7 @@ impl App {
         let entries = match std::fs::read_dir(&base) {
             Ok(e) => e,
             Err(_) => {
-                self.system_message(
-                    "identity: no identity files yet. Use /identity <role> to query a specific role."
-                        .to_string(),
-                );
+                self.system_message("No identity files found.".to_string());
                 return;
             }
         };
