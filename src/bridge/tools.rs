@@ -455,6 +455,27 @@ pub(super) async fn handle_get_token_report() -> Result<String, String> {
     serde_json::to_string_pretty(&report).map_err(|e| format!("serialization failed: {e}"))
 }
 
+/// `view_velocity` (#209a) — fetch the recent message log, parse
+/// workflow-signal timestamps, and return velocity metrics as JSON.
+/// Pure computation over the log; every number traces back to a
+/// signal that actually fired (see `session::velocity::compute`).
+pub(super) async fn handle_view_velocity(port: u16) -> Result<String, String> {
+    // Fetch a wide window so the 14-day compute has enough rows; no
+    // `?as=` because workflow signals are broadcasts, not topic-
+    // scoped. Limit is generous but bounded to avoid unbounded reads.
+    let url = format!("http://127.0.0.1:{port}/api/messages?limit=2000");
+    let body = reqwest::get(&url)
+        .await
+        .map_err(|e| format!("failed to fetch: {e}"))?
+        .text()
+        .await
+        .map_err(|e| format!("failed to read response: {e}"))?;
+    let messages: Vec<crate::session::Message> =
+        serde_json::from_str(&body).map_err(|e| format!("parse messages: {e}: {body}"))?;
+    let metrics = crate::session::velocity::compute(&messages, chrono::Utc::now());
+    serde_json::to_string_pretty(&metrics).map_err(|e| format!("serialize: {e}"))
+}
+
 /// Classifier misfire feedback handler (#159).
 ///
 /// Agents call this tool when they observe a classifier nudge firing on a

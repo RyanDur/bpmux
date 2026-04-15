@@ -1,0 +1,194 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
+use super::velocity::{SPARSE_THRESHOLD, VelocityMetrics, WINDOW_DAYS, compute};
+use crate::session::message::{Message, MessageType};
+use chrono::{DateTime, Duration as ChronoDuration, Utc};
+
+fn msg(text: &str, ts: DateTime<Utc>) -> Message {
+    Message {
+        from: "dev:claude-code".to_string(),
+        text: text.to_string(),
+        ts,
+        message_type: MessageType::Chat,
+        to: None,
+        addressee: None,
+        explicit_privacy: false,
+        multi_depth: None,
+        topic: None,
+    }
+}
+
+fn now() -> DateTime<Utc> {
+    // Fixed reference instant for deterministic window math.
+    DateTime::parse_from_rfc3339("2026-04-15T12:00:00Z")
+        .unwrap()
+        .with_timezone(&Utc)
+}
+
+#[test]
+fn empty_messages_returns_zero_metrics_and_sparse_flag() {
+    let m = compute(&[], now());
+    assert_eq!(m.delivered_in_window, 0);
+    assert_eq!(m.delivered_per_day, 0.0);
+    assert!(m.median_pickup_to_deliver_hours.is_none());
+    assert!(m.median_deliver_to_accept_hours.is_none());
+    assert!(m.rework_rate.is_none());
+    assert!(m.sparse);
+    assert!(m.note.as_deref().unwrap_or("").contains("sparse"));
+}
+
+#[test]
+fn one_delivered_story_marked_sparse_below_threshold() {
+    let delivered = vec![msg(
+        "#199 (test) delivered — desk-check needed",
+        now() - ChronoDuration::hours(2),
+    )];
+    let m = compute(&delivered, now());
+    assert_eq!(m.delivered_in_window, 1);
+    assert!(m.sparse);
+    const _: () = assert!(SPARSE_THRESHOLD > 1);
+}
+
+#[test]
+fn three_delivered_stories_crosses_sparse_threshold() {
+    let messages = vec![
+        msg("#1 delivered", now() - ChronoDuration::hours(1)),
+        msg("#2 delivered", now() - ChronoDuration::hours(2)),
+        msg("#3 delivered", now() - ChronoDuration::hours(3)),
+    ];
+    let m = compute(&messages, now());
+    assert_eq!(m.delivered_in_window, 3);
+    assert!(!m.sparse, "3 deliveries should clear the sparse threshold");
+    assert!(m.note.is_none());
+}
+
+#[test]
+fn deliveries_outside_14_day_window_are_excluded() {
+    let messages = vec![
+        msg("#1 delivered", now() - ChronoDuration::days(1)),
+        msg("#2 delivered", now() - ChronoDuration::days(7)),
+        msg("#3 delivered", now() - ChronoDuration::days(20)), // outside window
+        msg("#4 delivered", now() + ChronoDuration::hours(1)), // future
+    ];
+    let m = compute(&messages, now());
+    assert_eq!(m.delivered_in_window, 2);
+}
+
+#[test]
+fn pickup_to_deliver_median_pairs_start_and_deliver_by_issue() {
+    let base = now() - ChronoDuration::days(2);
+    let messages = vec![
+        msg("#10 started. ready queue shrunk", base),
+        msg("#10 (foo) delivered", base + ChronoDuration::hours(3)),
+        msg(
+            "#11 started. ready queue shrunk",
+            base + ChronoDuration::hours(1),
+        ),
+        msg("#11 (bar) delivered", base + ChronoDuration::hours(2)),
+        msg(
+            "#12 started. ready queue shrunk",
+            base + ChronoDuration::hours(4),
+        ),
+        msg("#12 (baz) delivered", base + ChronoDuration::hours(10)),
+    ];
+    let m = compute(&messages, now());
+    // durations: 3, 1, 6 → sorted [1, 3, 6] → median 3
+    assert_eq!(m.median_pickup_to_deliver_hours, Some(3.0));
+}
+
+#[test]
+fn deliver_to_accept_median_pairs_by_issue() {
+    let base = now() - ChronoDuration::days(1);
+    let messages = vec![
+        msg("#20 delivered", base),
+        msg("#20 accepted. pick next", base + ChronoDuration::hours(2)),
+        msg("#21 delivered", base + ChronoDuration::minutes(30)),
+        msg("#21 accepted. pick next", base + ChronoDuration::hours(5)),
+    ];
+    let m = compute(&messages, now());
+    // durations: 2h, 4.5h → median 3.25
+    assert_eq!(m.median_deliver_to_accept_hours, Some(3.25));
+}
+
+#[test]
+fn rework_rate_counts_failed_desk_checks_per_delivery() {
+    let base = now() - ChronoDuration::days(1);
+    let messages = vec![
+        msg("#30 delivered", base),
+        msg(
+            "#30 failed desk-check: needs negative test",
+            base + ChronoDuration::hours(1),
+        ),
+        msg("#30 delivered", base + ChronoDuration::hours(4)),
+        msg("#31 delivered", base + ChronoDuration::hours(2)),
+        msg("#32 delivered", base + ChronoDuration::hours(3)),
+        msg("#33 delivered", base + ChronoDuration::hours(6)),
+    ];
+    let m = compute(&messages, now());
+    // 5 delivered events in window (#30 twice, #31/#32/#33 once each),
+    // 1 fail-desk-check → 1/5 = 0.2
+    assert_eq!(m.delivered_in_window, 5);
+    assert_eq!(m.rework_rate, Some(0.2));
+}
+
+#[test]
+fn out_of_order_events_still_pair_by_issue_number() {
+    let base = now() - ChronoDuration::hours(6);
+    let messages = vec![
+        msg("#40 (foo) delivered", base + ChronoDuration::hours(3)),
+        msg("#40 started. ready queue shrunk", base),
+        msg("#41 (bar) delivered", base + ChronoDuration::hours(1)),
+        msg(
+            "#41 started. ready queue shrunk",
+            base - ChronoDuration::hours(2),
+        ),
+        msg("#42 delivered", base + ChronoDuration::hours(4)),
+    ];
+    let m = compute(&messages, now());
+    assert_eq!(m.delivered_in_window, 3);
+    assert!(m.median_pickup_to_deliver_hours.is_some());
+}
+
+#[test]
+fn non_chat_messages_are_ignored() {
+    let activity = Message {
+        from: "dev:claude-code".to_string(),
+        text: "#99 delivered".to_string(),
+        ts: now() - ChronoDuration::hours(1),
+        message_type: MessageType::Activity, // not Chat
+        to: None,
+        addressee: None,
+        explicit_privacy: false,
+        multi_depth: None,
+        topic: None,
+    };
+    let m = compute(&[activity], now());
+    assert_eq!(m.delivered_in_window, 0);
+}
+
+#[test]
+fn delivered_per_day_divides_by_window() {
+    let mut messages = Vec::new();
+    for i in 0..14 {
+        messages.push(msg(
+            &format!("#{} delivered", 100 + i),
+            now() - ChronoDuration::hours((i as i64) * 4),
+        ));
+    }
+    let m: VelocityMetrics = compute(&messages, now());
+    assert_eq!(m.delivered_in_window, 14);
+    assert_eq!(m.delivered_per_day, 14.0 / WINDOW_DAYS as f64);
+}
+
+#[test]
+fn text_without_number_is_not_parsed_as_lifecycle() {
+    let messages = vec![
+        msg(
+            "hello team, just some broadcast",
+            now() - ChronoDuration::hours(1),
+        ),
+        msg("delivered yesterday", now() - ChronoDuration::hours(2)), // no #N
+    ];
+    let m = compute(&messages, now());
+    assert_eq!(m.delivered_in_window, 0);
+}

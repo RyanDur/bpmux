@@ -13,6 +13,7 @@ pub mod recall;
 pub mod search;
 pub mod storage;
 pub mod tokens;
+pub mod velocity;
 
 pub use classifier::{MessageClass, classify};
 pub use log::{
@@ -36,3 +37,5 @@ mod message_tests;
 mod recall_tests;
 #[cfg(test)]
 mod tokens_tests;
+#[cfg(test)]
+mod velocity_tests;

@@ -368,3 +368,39 @@ fn pass_desk_check_rejects_non_designer_callers() {
         ryan.close().await;
     });
 }
+
+/// AC (#209a): view_velocity returns JSON metrics parsed from the
+/// session log. With a fresh session and no delivered stories, the
+/// metrics are zero/sparse — proves the compute path runs end-to-end
+/// through the bridge, not just the unit tests.
+#[test]
+fn view_velocity_returns_metrics_with_sparse_flag_on_empty_session() {
+    let bpmux = TestBpmux::start();
+    let rt = tokio::runtime::Runtime::new().expect("rt");
+    rt.block_on(async {
+        let dev = TestBridge::connect(&bpmux, "dev").await;
+
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        let metrics = dev
+            .call_tool("view_velocity", serde_json::json!({}))
+            .await
+            .expect("view_velocity should succeed");
+
+        let body = serde_json::to_string(&metrics).expect("serialize");
+        assert!(
+            body.contains("\"delivered_in_window\""),
+            "metrics should expose delivered_in_window. got: {body}"
+        );
+        assert!(
+            body.contains("\"sparse\": true") || body.contains("\"sparse\":true"),
+            "fresh session has no deliveries — sparse should be true. got: {body}"
+        );
+        assert!(
+            body.contains("\"window_days\""),
+            "metrics should expose window_days. got: {body}"
+        );
+
+        dev.close().await;
+    });
+}
