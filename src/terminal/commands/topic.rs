@@ -78,7 +78,7 @@ impl App {
             self.mark_filters_dirty();
 
             let participant_list = participants.join(", ");
-            self.system_message(format!("Created topic '{name}' with: {participant_list}"));
+            self.system_message(format!("Created topic '{name}' with: {participant_list}."));
 
             // Broadcast a topic-created message so agents know
             // to subscribe. The message goes to the participants
