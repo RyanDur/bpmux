@@ -20,7 +20,7 @@ impl App {
     /// overlay can never drift again. Uses the single-column form
     /// because chat-pane width is generous and full descriptions are
     /// the whole point of `/help` (vs. the overlay's compact form).
-    pub(crate) fn handle_help(&mut self) -> Option<Message> {
+    pub(in crate::terminal) fn handle_help(&mut self) -> Option<Message> {
         self.system_message(format_command_list(1));
         self.clear_input();
         None
