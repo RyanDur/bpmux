@@ -1,0 +1,15 @@
+//! Story management tools (#140).
+
+use rmcp::model::Tool;
+
+pub fn view_board_tool(description: &'static str) -> Tool {
+    let schema = serde_json::json!({
+        "type": "object",
+        "properties": {}
+    });
+    Tool::new(
+        "view_board",
+        description,
+        schema.as_object().cloned().unwrap_or_default(),
+    )
+}
