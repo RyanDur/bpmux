@@ -30,6 +30,14 @@ pub trait StoryTracker: Clone + Send + Sync + 'static {
         &self,
         number: u64,
     ) -> impl std::future::Future<Output = Option<String>> + Send;
+    /// #229: fetch labels for story-category routing (pass_desk_check
+    /// signal picks addressee based on honest-plumbing vs vertical).
+    /// Returns empty Vec when the story can't be fetched — caller
+    /// treats empty as "ambiguous category" and defaults up.
+    fn get_story_labels(
+        &self,
+        number: u64,
+    ) -> impl std::future::Future<Output = Vec<String>> + Send;
 }
 
 #[derive(Clone)]
@@ -92,6 +100,21 @@ impl StoryTracker for GhTracker {
             .ok()
             .and_then(|json| serde_json::from_str::<serde_json::Value>(&json).ok())
             .and_then(|v| v["title"].as_str().map(String::from))
+    }
+
+    async fn get_story_labels(&self, number: u64) -> Vec<String> {
+        gh(&["issue", "view", &number.to_string(), "--json", "labels"])
+            .await
+            .ok()
+            .and_then(|json| serde_json::from_str::<serde_json::Value>(&json).ok())
+            .and_then(|v| {
+                v["labels"].as_array().map(|arr| {
+                    arr.iter()
+                        .filter_map(|l| l["name"].as_str().map(String::from))
+                        .collect()
+                })
+            })
+            .unwrap_or_default()
     }
 }
 
@@ -243,6 +266,16 @@ impl StoryTracker for OctocrabStoryTracker {
             .ok()
             .map(|i| i.title)
     }
+
+    async fn get_story_labels(&self, number: u64) -> Vec<String> {
+        self.client
+            .issues(&self.owner, &self.repo)
+            .get(number)
+            .await
+            .ok()
+            .map(|i| i.labels.iter().map(|l| l.name.clone()).collect())
+            .unwrap_or_default()
+    }
 }
 
 #[derive(Clone, Default)]
@@ -280,5 +313,9 @@ impl StoryTracker for FakeTracker {
 
     async fn get_story_title(&self, number: u64) -> Option<String> {
         Some(format!("(fake) story #{number}"))
+    }
+
+    async fn get_story_labels(&self, _number: u64) -> Vec<String> {
+        Vec::new()
     }
 }

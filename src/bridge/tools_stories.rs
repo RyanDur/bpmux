@@ -309,7 +309,12 @@ pub(super) async fn handle_pass_desk_check(
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
-    let signal = serde_json::to_string(&build_pass_desk_check_signal(number))
+    // #229: pick the addressee based on story category. Infrastructure
+    // (honest-plumbing / half-slice) → PM (team-accept lane); feature
+    // (vertical / ambiguous) → Ryan (owner-gate lane).
+    let labels = tracker.get_story_labels(number).await;
+    let addressee = addressee_for_pass_desk_check(&labels);
+    let signal = serde_json::to_string(&build_pass_desk_check_signal(number, addressee))
         .map_err(|e| format!("signal: {e}"))?;
     ws_send(ws_tx, signal)
         .await
@@ -438,11 +443,25 @@ pub(super) fn build_reject_signal(number: u64, reason: &str) -> ClientMessage {
     }
 }
 
-pub(super) fn build_pass_desk_check_signal(number: u64) -> ClientMessage {
+/// #229: classify a story's verdict category from its GitHub labels.
+/// Returns the addressee who should receive the pass_desk_check signal.
+/// Defaults to "ryan" when category is ambiguous — never silently wrong.
+pub(super) fn addressee_for_pass_desk_check(labels: &[String]) -> &'static str {
+    let has = |name: &str| labels.iter().any(|l| l == name);
+    // Infrastructure / debt → PM (team-accept lane).
+    if has("honest-plumbing") || has("half-slice") {
+        return "pm";
+    }
+    // Vertical / stranded-vertical → Ryan (feature-gate lane).
+    // Ambiguous (no verdict label, or labels we don't recognize) → Ryan.
+    "ryan"
+}
+
+pub(super) fn build_pass_desk_check_signal(number: u64, addressee: &str) -> ClientMessage {
     ClientMessage::Send {
         text: format!("#{number} ready for acceptance. passed designer desk-check."),
-        to: Some(vec!["ryan".to_string()]),
-        addressee: Some("ryan".to_string()),
+        to: Some(vec![addressee.to_string()]),
+        addressee: Some(addressee.to_string()),
         message_type: None,
         topic: None,
     }

@@ -165,18 +165,58 @@ fn reject_signal_includes_reason() {
 // ── #203 desk-check signal tests ──
 
 #[test]
-fn pass_desk_check_signal_targets_ryan_only() {
-    if let ClientMessage::Send { to, addressee, .. } = build_pass_desk_check_signal(203) {
+fn pass_desk_check_signal_addresses_ryan_for_feature() {
+    // #229: addressee is parameterized from addressee_for_pass_desk_check.
+    let addressee = addressee_for_pass_desk_check(&["vertical".to_string()]);
+    if let ClientMessage::Send {
+        to, addressee: a, ..
+    } = build_pass_desk_check_signal(203, addressee)
+    {
         assert_eq!(to.as_ref().unwrap(), &["ryan"]);
-        assert_eq!(addressee.as_deref(), Some("ryan"));
+        assert_eq!(a.as_deref(), Some("ryan"));
     } else {
         panic!("expected Send variant");
     }
 }
 
 #[test]
+fn pass_desk_check_signal_addresses_pm_for_honest_plumbing() {
+    // #229: infrastructure stories route to PM (team-accept lane).
+    let addressee = addressee_for_pass_desk_check(&["honest-plumbing".to_string()]);
+    if let ClientMessage::Send {
+        to, addressee: a, ..
+    } = build_pass_desk_check_signal(203, addressee)
+    {
+        assert_eq!(to.as_ref().unwrap(), &["pm"]);
+        assert_eq!(a.as_deref(), Some("pm"));
+    } else {
+        panic!("expected Send variant");
+    }
+}
+
+#[test]
+fn pass_desk_check_signal_addresses_pm_for_half_slice() {
+    let addressee = addressee_for_pass_desk_check(&["half-slice".to_string()]);
+    if let ClientMessage::Send { addressee: a, .. } = build_pass_desk_check_signal(203, addressee) {
+        assert_eq!(a.as_deref(), Some("pm"));
+    } else {
+        panic!("expected Send variant");
+    }
+}
+
+#[test]
+fn pass_desk_check_signal_defaults_ryan_on_ambiguous_labels() {
+    // No recognizable verdict label → default up to Ryan.
+    let addressee = addressee_for_pass_desk_check(&[]);
+    assert_eq!(addressee, "ryan");
+    let addressee = addressee_for_pass_desk_check(&["ready".to_string(), "bug".to_string()]);
+    assert_eq!(addressee, "ryan");
+}
+
+#[test]
 fn pass_desk_check_signal_does_not_target_dev() {
-    if let ClientMessage::Send { to, .. } = build_pass_desk_check_signal(203) {
+    let addressee = addressee_for_pass_desk_check(&[]);
+    if let ClientMessage::Send { to, .. } = build_pass_desk_check_signal(203, addressee) {
         let recipients = to.as_ref().unwrap();
         assert!(
             !recipients.contains(&"dev".to_string()),
@@ -187,7 +227,7 @@ fn pass_desk_check_signal_does_not_target_dev() {
 
 #[test]
 fn pass_desk_check_signal_announces_ready_for_acceptance() {
-    if let ClientMessage::Send { text, .. } = build_pass_desk_check_signal(203) {
+    if let ClientMessage::Send { text, .. } = build_pass_desk_check_signal(203, "ryan") {
         assert!(
             text.contains("#203"),
             "story number should be in text: {text}"
@@ -266,6 +306,9 @@ impl StoryTracker for AlreadyClosedTracker {
     }
     async fn get_story_title(&self, number: u64) -> Option<String> {
         Some(format!("story #{number}"))
+    }
+    async fn get_story_labels(&self, _number: u64) -> Vec<String> {
+        Vec::new()
     }
 }
 
