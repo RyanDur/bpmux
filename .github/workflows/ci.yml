@@ -10,12 +10,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # Install the toolchain pinned in rust-toolchain.toml so CI runs
-      # the same rustc/clippy version developers do locally. Bumping
-      # Rust is a single-file change at the repo root — no workflow
-      # edit required. @master is the action revision that respects
-      # rust-toolchain.toml when no `toolchain:` input is supplied.
+      # Install the pinned rustc so CI runs the same version
+      # developers use locally. Keep this in sync with
+      # `rust-toolchain.toml` at the repo root — rustup respects
+      # the file locally, dtolnay's action needs the version
+      # explicitly. Bumping Rust is a two-line change: this value
+      # and the toml's `channel`.
       - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.95.0"
+          components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
         with:
           # #222: skip caching target/ so the cache stays small enough
