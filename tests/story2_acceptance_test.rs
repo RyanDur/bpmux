@@ -20,14 +20,19 @@ fn human_and_ai_share_a_conversation() {
     assert!(tui.contains(">"), "TUI should show input prompt");
 
     bpmux.type_line("hello from human");
+    // Wait for the POST-SUBMIT rendering specifically ("ryan:" prefix
+    // only appears after Enter has been processed and the message is
+    // in the chat area). Waiting for the raw text matches both the
+    // input box and the chat area, so it can return before submission
+    // completes — racey in CI, stable-ish locally.
     assert!(
-        bpmux.wait_for_tui("hello from human", Duration::from_secs(3)),
-        "Human message should appear in TUI. Screen:\n{}",
+        bpmux.wait_for_tui("ryan:", Duration::from_secs(3)),
+        "Post-submit rendering should show sender. Screen:\n{}",
         bpmux.tui()
     );
     assert!(
-        bpmux.tui().contains("ryan:"),
-        "Sender identity should show. Screen:\n{}",
+        bpmux.tui().contains("hello from human"),
+        "Human message text should be in TUI. Screen:\n{}",
         bpmux.tui()
     );
 
