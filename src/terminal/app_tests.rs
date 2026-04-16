@@ -532,75 +532,6 @@ fn channel_name_owner_sending_matches_channel() {
 }
 
 #[test]
-fn view_broadcast_sets_current_view() {
-    let mut app = test_app();
-    app.input = "/view broadcast".to_string();
-    let msg = app.submit_message();
-    assert!(msg.is_none());
-    assert_eq!(app.channels.current_view, Some("broadcast".to_string()));
-}
-
-#[test]
-fn view_all_clears_current_view() {
-    let mut app = test_app();
-    app.channels.current_view = Some("broadcast".to_string());
-    app.input = "/view all".to_string();
-    let msg = app.submit_message();
-    assert!(msg.is_none());
-    assert_eq!(app.channels.current_view, None);
-}
-
-#[test]
-fn view_known_channel_sets_current_view() {
-    let mut app = test_app();
-    app.channels.active.insert("dev\u{2194}ryan".to_string());
-    app.input = "/view dev\u{2194}ryan".to_string();
-    let msg = app.submit_message();
-    assert!(msg.is_none());
-    assert_eq!(
-        app.channels.current_view,
-        Some("dev\u{2194}ryan".to_string())
-    );
-}
-
-#[test]
-fn view_unknown_channel_shows_error() {
-    let mut app = test_app();
-    let original_view = app.channels.current_view.clone();
-    app.input = "/view fake".to_string();
-    let msg = app.submit_message();
-    assert!(msg.is_none());
-    assert_eq!(app.channels.current_view, original_view);
-    assert!(
-        app.msg
-            .messages
-            .last()
-            .unwrap()
-            .text
-            .contains("No channel matches")
-    );
-}
-
-#[test]
-fn bare_view_lists_channels() {
-    let mut app = test_app();
-    app.channels.active.insert("broadcast".to_string());
-    app.channels.active.insert("dev\u{2194}ryan".to_string());
-    app.input = "/view".to_string();
-    let msg = app.submit_message();
-    assert!(msg.is_none());
-    assert!(
-        app.msg
-            .messages
-            .last()
-            .unwrap()
-            .text
-            .contains("Available channels")
-    );
-    assert!(app.msg.messages.last().unwrap().text.contains("broadcast"));
-}
-
-#[test]
 fn activity_messages_do_not_create_channels() {
     let mut app = test_app();
     app.receive_message(activity_msg("dev:claude-code", "busy"));
@@ -610,10 +541,10 @@ fn activity_messages_do_not_create_channels() {
 #[test]
 fn popup_matches_filters_by_typed_prefix() {
     let mut app = test_app();
-    app.input = "/v".to_string();
+    app.input = "/wh".to_string();
     let m = app.popup_matches();
     assert_eq!(m.len(), 1);
-    assert_eq!(m[0].0, "/view");
+    assert_eq!(m[0].0, "/who");
 }
 
 #[test]
@@ -743,35 +674,28 @@ fn sidebar_select_clears_unread() {
 }
 
 #[test]
-fn click_and_typed_view_produce_equivalent_filter_state() {
-    // #223: both entry points (sidebar click, /view "broadcast")
-    // route through the shared `switch_view_to` helper so filter
-    // state lands identically. If they ever diverge, this test
-    // catches it before the drift becomes two-implementation debt.
-    let mut via_click = test_app();
-    via_click.channels.active.insert("broadcast".to_string());
-    via_click.msg.filter_dirty = false;
-    via_click.sidebar.selected = 1; // broadcast sits at index 1
-    via_click.sidebar_select();
+fn clicking_channel_sets_current_view_and_resets_filter_and_scroll() {
+    // Regression guard for the sidebar-click path that replaces the
+    // deleted `/view` slash command. Asserts every effect the shared
+    // switch_view_to helper must produce so any drift is caught here.
+    let mut app = test_app();
+    app.channels.active.insert("broadcast".to_string());
+    app.msg.filter_dirty = false;
+    app.scroll.offset = 7;
 
-    let mut via_command = test_app();
-    via_command.channels.active.insert("broadcast".to_string());
-    via_command.msg.filter_dirty = false;
-    via_command.input = "/view broadcast".to_string();
-    via_command.submit_message();
+    app.sidebar.selected = 1; // broadcast sits at index 1
+    app.sidebar_select();
 
     assert_eq!(
-        via_click.channels.current_view, via_command.channels.current_view,
-        "click and typed /view should set the same current_view"
+        app.channels.current_view,
+        Some("broadcast".to_string()),
+        "click should set current_view to the clicked channel"
     );
-    assert_eq!(
-        via_click.msg.filter_dirty, via_command.msg.filter_dirty,
-        "both paths should mark filters dirty"
+    assert!(
+        app.msg.filter_dirty,
+        "click should mark message filters dirty"
     );
-    assert_eq!(
-        via_click.scroll.offset, via_command.scroll.offset,
-        "both paths should reset scroll offset"
-    );
+    assert_eq!(app.scroll.offset, 0, "click should reset scroll offset");
 }
 
 #[test]
@@ -1364,21 +1288,4 @@ fn bare_commands_show_usage_from_single_handler() {
             last.text
         );
     }
-}
-
-/// `/view` bare lists channels (its bare form is meaningful, not a
-/// usage stub). The collapse merged the listing logic into the
-/// single-arm handler, so verify the listing behavior survived.
-#[test]
-fn view_bare_lists_channels() {
-    let mut app = test_app();
-    app.input = "/view".to_string();
-    app.submit_message();
-    let last = app.msg.messages.last().unwrap();
-    // With no active channels, the listing falls through to "No channels yet."
-    assert!(
-        last.text.contains("channels") || last.text.contains("No channels"),
-        "/view bare should list channels or report none, got: {}",
-        last.text
-    );
 }

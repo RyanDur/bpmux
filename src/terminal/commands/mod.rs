@@ -60,7 +60,6 @@ impl App {
                 "/debug" => self.handle_debug(),
                 "/status" => self.handle_status(text),
                 "/to" => self.handle_to(args.to_string()),
-                "/view" => self.handle_view(args.to_string()),
                 "/search" => self.handle_search(args.to_string()),
                 "/lessons" if !args.is_empty() => self.handle_peer_lessons(args.trim().to_string()),
                 "/lessons" => self.handle_lessons(),
@@ -193,47 +192,6 @@ impl App {
         self.channels.current_view = channel;
         self.mark_filters_dirty();
         self.scroll.offset = 0;
-    }
-
-    fn handle_view(&mut self, arg: String) -> Option<Message> {
-        let arg = arg.trim();
-        if arg.is_empty() {
-            // List available channels (the bare-form behavior)
-            let mut channel_names: Vec<&str> =
-                self.channels.active.iter().map(|s| s.as_str()).collect();
-            channel_names.sort();
-            let list = if channel_names.is_empty() {
-                "No channels yet.".to_string()
-            } else {
-                format!("Available channels: {}", channel_names.join(", "))
-            };
-            self.system_message(list);
-            self.clear_input();
-            return None;
-        }
-        if arg == crate::session::message::BROADCAST_ALL {
-            self.switch_view_to(None);
-            self.system_message("View set to all channels.".to_string());
-            self.clear_input();
-            return None;
-        }
-        if arg == "broadcast" {
-            self.switch_view_to(Some("broadcast".to_string()));
-            self.system_message("View set to broadcast.".to_string());
-            self.clear_input();
-            return None;
-        }
-        // Check if arg matches a known channel
-        if self.channels.active.contains(arg) {
-            self.switch_view_to(Some(arg.to_string()));
-            self.system_message(format!("View set to {arg}."));
-            self.clear_input();
-            return None;
-        }
-        // No match
-        self.system_message(format!("No channel matches \"{arg}\"."));
-        self.clear_input();
-        None
     }
 
     pub(crate) fn handle_roadmap(&mut self) -> Option<Message> {

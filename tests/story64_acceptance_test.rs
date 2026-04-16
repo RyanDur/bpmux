@@ -30,8 +30,8 @@ fn ac1_slash_shows_command_popup() {
         bpmux.tui()
     );
     assert!(
-        bpmux.wait_for_tui("/view", Duration::from_secs(3)),
-        "Popup should show /view command. Screen:\n{}",
+        bpmux.wait_for_tui("/help", Duration::from_secs(3)),
+        "Popup should show /help command. Screen:\n{}",
         bpmux.tui()
     );
 }

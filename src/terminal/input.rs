@@ -40,7 +40,6 @@ pub(super) const SLASH_COMMANDS: &[(&str, &str, &str)] = &[
         "widen scope",
         "propagate a message to a wider scope",
     ),
-    ("/view", "switch view", "list channels or switch view"),
     (
         "/all",
         "toggle filter",
