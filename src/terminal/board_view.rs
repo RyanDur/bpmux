@@ -35,7 +35,7 @@ const BOARD_COLUMNS: usize = 3;
 const MAX_PER_COLUMN: usize = 6;
 
 pub(super) fn render(frame: &mut Frame, app: &App, area: Rect) {
-    if !app.board.show {
+    if !matches!(app.input_mode, crate::terminal::app::InputMode::Board) {
         return;
     }
     if app.board.detail.is_some() {

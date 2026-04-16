@@ -157,7 +157,7 @@ fn render_popup(frame: &mut Frame, app: &App, input_area: Rect) {
 }
 
 fn render_help_overlay(frame: &mut Frame, app: &App, area: Rect) {
-    if app.display.show_help {
+    if matches!(app.input_mode, crate::terminal::app::InputMode::Help) {
         // Source the command list from `SLASH_COMMANDS` (#164) so the
         // overlay and the `/help` slash command never drift. Two-column
         // form to fit alongside the keys section in the 24-row terminal
@@ -220,7 +220,7 @@ click anywhere or press any key to close",
 /// └──────────────────────────────────────────────────┘
 /// ```
 fn render_tokens_overlay(frame: &mut Frame, app: &App, area: Rect) {
-    if !app.tokens.show {
+    if !matches!(app.input_mode, crate::terminal::app::InputMode::Tokens) {
         return;
     }
     // Append usage table to the token text
@@ -730,7 +730,9 @@ pub fn render(frame: &mut Frame, app: &mut App) {
 
     render_broadcast_banner(frame, app, chunks[0]);
 
-    if app.project.show && chunks[1].width >= MIN_SPLIT_VIEW_WIDTH {
+    if matches!(app.input_mode, crate::terminal::app::InputMode::Project)
+        && chunks[1].width >= MIN_SPLIT_VIEW_WIDTH
+    {
         // Side-by-side: project view (60%) | chat (40%)
         let split = Layout::horizontal([Constraint::Percentage(60), Constraint::Percentage(40)])
             .split(chunks[1]);
@@ -775,7 +777,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
 }
 
 fn render_command_palette(frame: &mut Frame, app: &App, area: Rect) {
-    if !app.palette.show {
+    if !matches!(app.input_mode, crate::terminal::app::InputMode::Palette) {
         return;
     }
     let matches = app.palette_matches();

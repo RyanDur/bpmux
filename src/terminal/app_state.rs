@@ -62,7 +62,6 @@ pub enum InputMode {
 
 #[derive(Default)]
 pub struct PaletteState {
-    pub show: bool,
     pub input: String,
     pub selected: usize,
 }
@@ -97,11 +96,12 @@ pub struct SearchState {
     pub selected: Option<usize>,
 }
 
-/// Project view state — extracted from App.
+/// Project view state — extracted from App. Visibility is driven
+/// by `App::input_mode == InputMode::Project`; this struct holds
+/// only the data the panel renders when it IS visible.
 #[derive(Default)]
 pub struct ProjectViewState {
     pub state: Option<super::board::ProjectState>,
-    pub show: bool,
     pub content: Option<String>,
     /// Cached DORA metrics; populated by the periodic
     /// project-state tick (src/terminal/event.rs). None until the
@@ -109,10 +109,10 @@ pub struct ProjectViewState {
     pub dora: Option<super::board::DoraMetrics>,
 }
 
-/// Tokens overlay state — extracted from App.
+/// Tokens overlay state — extracted from App. Visibility is driven
+/// by `App::input_mode == InputMode::Tokens`.
 #[derive(Default)]
 pub struct TokensViewState {
-    pub show: bool,
     pub rows: Vec<crate::session::tokens::TokenRow>,
 }
 
@@ -158,11 +158,12 @@ pub struct PeerState {
     pub dm_flash_until: Option<Instant>,
 }
 
-/// Display toggle state — extracted from App.
+/// Display toggle state — extracted from App. `show_help` moved
+/// out: help-overlay visibility is driven by
+/// `App::input_mode == InputMode::Help`.
 pub struct DisplayState {
     pub show_timestamps: bool,
     pub show_system_messages: bool,
-    pub show_help: bool,
     pub tui_focused: bool,
     pub show_all_classes: bool,
     pub hidden_class_count: usize,
@@ -173,7 +174,6 @@ impl Default for DisplayState {
         Self {
             show_timestamps: false,
             show_system_messages: false,
-            show_help: false,
             tui_focused: true,
             show_all_classes: false,
             hidden_class_count: 0,
@@ -203,9 +203,10 @@ pub struct ScrollState {
     pub unread_count: usize,
 }
 
+/// Board state — extracted from App. Visibility is driven by
+/// `App::input_mode == InputMode::Board`.
 #[derive(Default)]
 pub struct BoardState {
-    pub show: bool,
     pub stories: Vec<super::board::BoardStory>,
     pub selected: usize,
     pub detail: Option<usize>,

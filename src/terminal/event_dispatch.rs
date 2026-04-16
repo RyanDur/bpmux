@@ -106,13 +106,12 @@ fn handle_mouse_click(col: u16, row: u16, app: &mut App, session: &session::Sess
         && col >= cx
         && col < cx + cw
     {
-        app.project.show = !app.project.show;
-        if app.project.show {
-            app.project.content = Some(build_project_content());
-            app.input_mode = InputMode::Project;
-        } else {
+        if matches!(app.input_mode, InputMode::Project) {
             app.project.content = None;
             app.input_mode = InputMode::Chat;
+        } else {
+            app.project.content = Some(build_project_content());
+            app.input_mode = InputMode::Project;
         }
         return;
     }
@@ -137,7 +136,6 @@ fn handle_mouse_click(col: u16, row: u16, app: &mut App, session: &session::Sess
             .help_hint_col
             .is_some_and(|hint_col| col >= hint_col)
         {
-            app.display.show_help = true;
             app.input_mode = InputMode::Help;
         }
     }
@@ -157,9 +155,9 @@ pub(super) fn handle_terminal_event(
         return Ok(());
     }
     if let Event::Mouse(mouse) = &ev {
-        if app.display.show_help {
+        if matches!(app.input_mode, InputMode::Help) {
             if mouse.kind == MouseEventKind::Down(crossterm::event::MouseButton::Left) {
-                app.display.show_help = false;
+                app.input_mode = InputMode::Chat;
             }
             return Ok(());
         }
@@ -193,12 +191,10 @@ pub(super) fn handle_terminal_event(
     // replacing the old implicit priority chain of boolean flags.
     match app.input_mode {
         InputMode::Help => {
-            app.display.show_help = false;
             app.input_mode = InputMode::Chat;
             return Ok(());
         }
         InputMode::Tokens => {
-            app.tokens.show = false;
             app.tokens.rows.clear();
             app.input_mode = InputMode::Chat;
             return Ok(());
@@ -206,7 +202,6 @@ pub(super) fn handle_terminal_event(
         InputMode::Palette => {
             match key.code {
                 KeyCode::Esc => {
-                    app.palette.show = false;
                     app.palette.input.clear();
                     app.input_mode = InputMode::Chat;
                 }
@@ -214,7 +209,6 @@ pub(super) fn handle_terminal_event(
                     let matches = app.palette_matches();
                     if let Some((cmd, _)) = matches.get(app.palette.selected) {
                         let command = cmd.to_string();
-                        app.palette.show = false;
                         app.palette.input.clear();
                         app.input_mode = InputMode::Chat;
                         app.input = command;
@@ -244,7 +238,6 @@ pub(super) fn handle_terminal_event(
         }
         InputMode::Project => {
             if key.code == KeyCode::Esc {
-                app.project.show = false;
                 app.project.content = None;
                 app.input_mode = InputMode::Chat;
             }
@@ -256,7 +249,6 @@ pub(super) fn handle_terminal_event(
                     if app.board.detail.is_some() {
                         app.board.detail = None;
                     } else {
-                        app.board.show = false;
                         app.board.stories.clear();
                         app.input_mode = InputMode::Chat;
                     }
@@ -281,13 +273,12 @@ pub(super) fn handle_terminal_event(
     }
     // Ctrl+K opens the command palette.
     if key.code == KeyCode::Char('k') && key.modifiers.contains(KeyModifiers::CONTROL) {
-        app.palette.show = !app.palette.show;
         app.palette.input.clear();
         app.palette.selected = 0;
-        app.input_mode = if app.palette.show {
-            InputMode::Palette
-        } else {
+        app.input_mode = if matches!(app.input_mode, InputMode::Palette) {
             InputMode::Chat
+        } else {
+            InputMode::Palette
         };
         return Ok(());
     }
@@ -399,7 +390,6 @@ pub(super) fn handle_terminal_event(
             }
         }
         KeyCode::Char('?') if app.input.is_empty() => {
-            app.display.show_help = true;
             app.input_mode = InputMode::Help;
         }
         KeyCode::Char(c) => {

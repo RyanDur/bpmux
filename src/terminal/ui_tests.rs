@@ -970,7 +970,7 @@ fn fmt_opt_rate_formats_none_as_em_dash() {
 
 fn project_panel_app(with_dora: Option<super::board::DoraMetrics>, auth_invalid: bool) -> App {
     let mut app = test_app_with(Vec::new());
-    app.project.show = true;
+    app.input_mode = crate::terminal::app::InputMode::Project;
     app.project.dora = with_dora;
     if auth_invalid {
         let mut snap = app.board_snapshot.lock().unwrap();

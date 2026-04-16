@@ -27,7 +27,6 @@ impl App {
             }
         };
         self.tokens.rows = rows;
-        self.tokens.show = true;
         self.input_mode = crate::terminal::app::InputMode::Tokens;
         self.clear_input();
         None

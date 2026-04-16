@@ -93,7 +93,7 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         Span::raw("")
     };
     // Board view label, topic mode label.
-    let view_label = if app.board.show {
+    let view_label = if matches!(app.input_mode, crate::terminal::app::InputMode::Board) {
         if app.board.detail.is_some() {
             let visible = super::board_view::visible_stories(&app.board.stories);
             let idx = app.board.detail.unwrap_or(0);
@@ -237,22 +237,23 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     //     from "key only"
     let used: usize = status_spans.iter().map(|s| s.content.chars().count()).sum();
     let bar_width = area.width as usize;
-    let (clickable_hint, keybind_hint) = if app.board.show {
-        if app.board.detail.is_some() {
-            ("", "Esc=back to board")
+    let (clickable_hint, keybind_hint) =
+        if matches!(app.input_mode, crate::terminal::app::InputMode::Board) {
+            if app.board.detail.is_some() {
+                ("", "Esc=back to board")
+            } else {
+                ("", "\u{2191}\u{2193}=nav Enter=detail Esc=close")
+            }
+        } else if app.sidebar.focused {
+            // In sidebar-focus mode, nothing in the hint is clickable —
+            // it's all keybind guidance. Render the whole string in plain
+            // foreground.
+            ("", "Enter=switch \u{2191}\u{2193}=nav Esc=close")
+        } else if app.topic_mode() {
+            ("?=help", " \u{2325}1=topics Enter=send")
         } else {
-            ("", "\u{2191}\u{2193}=nav Enter=detail Esc=close")
-        }
-    } else if app.sidebar.focused {
-        // In sidebar-focus mode, nothing in the hint is clickable —
-        // it's all keybind guidance. Render the whole string in plain
-        // foreground.
-        ("", "Enter=switch \u{2191}\u{2193}=nav Esc=close")
-    } else if app.topic_mode() {
-        ("?=help", " \u{2325}1=topics Enter=send")
-    } else {
-        ("?=help", " \u{2325}1=sidebar Enter=send")
-    };
+            ("?=help", " \u{2325}1=sidebar Enter=send")
+        };
     // Reserve space for the clickable "[⟳ restart (role)]"
     // affordance when an agent has requested a restart. Shows the
     // requester so Ryan knows which teammate flagged the binary.
