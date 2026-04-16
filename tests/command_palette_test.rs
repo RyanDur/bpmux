@@ -25,13 +25,13 @@ fn ctrl_k_opens_command_palette() {
     );
     // Palette should show available commands
     let screen = bpmux.tui();
-    assert!(screen.contains("tokens"), "tokens action missing");
+    assert!(screen.contains("help"), "help action missing");
     assert!(screen.contains("focus"), "focus action missing");
 }
 
 /// GIVEN the palette is open
-/// WHEN the user types "tok"
-/// THEN the list filters to show "tokens" and "new topic"
+/// WHEN the user types a substring
+/// THEN the list filters to matching actions
 #[test]
 fn palette_filters_actions_on_input() {
     let bpmux = TestBpmux::start();
@@ -44,10 +44,16 @@ fn palette_filters_actions_on_input() {
         bpmux.wait_for_tui("actions", Duration::from_secs(3)),
         "palette should open"
     );
-    bpmux.type_chars("tok");
+    bpmux.type_chars("who");
+    // Wait for the filter to take effect — /focus doesn't match "who"
+    // so it should disappear. `wait_for_tui_absent` gives the filter
+    // time to settle rather than racing with the keystrokes.
+    bpmux
+        .wait_for_tui_absent("/focus", Duration::from_secs(5))
+        .expect("non-matching actions should be filtered out");
     assert!(
-        bpmux.wait_for_tui("tokens", Duration::from_secs(5)),
-        "tokens should match 'tok'. screen:\n{}",
+        bpmux.tui().contains("/who"),
+        "/who should match 'who'. screen:\n{}",
         bpmux.tui()
     );
 }

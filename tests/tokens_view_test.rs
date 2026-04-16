@@ -1,21 +1,22 @@
-//! End-to-end test for the `/tokens` TUI overlay (#179).
+//! End-to-end tests for the tokens overlay render (#179 behavior).
 //!
-//! This is the BEHAVIOR layer of the `/tokens` feature. The unit
-//! tests on `format_tokens_overlay` (in `src/terminal/commands_tokens.rs`)
-//! exercise the pure string-building function; this test drives the
-//! real `bpmux` binary in a PTY, pre-populates a fake token log in a
-//! tempdir via `BPMUX_TOKENS_DIR`, types `/tokens`, and asserts on
-//! the rendered screen buffer.
+//! The overlay used to open via a `/tokens` slash command; that was
+//! removed in #232 now that agents trigger it via the `view_tokens`
+//! MCP tool (#225). These tests drive the real `bpmux` binary in a
+//! PTY, pre-populate a fake token log in a tempdir via
+//! `BPMUX_TOKENS_DIR`, invoke `view_tokens` through a `TestBridge`,
+//! and assert the rendered screen buffer.
 //!
-//! Named in behavior terms because the content actually IS behavior —
-//! key press → command dispatch → log read → overlay render → frame —
-//! per the test-name discipline in
-//! `.claude/memory/feedback_test_name_matches_content.md`.
+//! Name stays behavior-oriented: key press → overlay open → log
+//! read → overlay render → frame. The key-press step is now an MCP
+//! call rather than a slash command, but the observable behavior
+//! (what renders) is unchanged.
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 mod harness;
 
+use harness::bridge::TestBridge;
 use harness::pty::TestBpmux;
 use std::time::Duration;
 
@@ -32,17 +33,28 @@ fn write_fake_log(tokens_dir: &std::path::Path) {
     std::fs::write(tokens_dir.join("log.jsonl"), content).unwrap();
 }
 
+fn open_tokens_overlay(bpmux: &TestBpmux) {
+    let rt = tokio::runtime::Runtime::new().expect("rt");
+    rt.block_on(async {
+        let pm = TestBridge::connect(bpmux, "pm").await;
+        tokio::time::sleep(Duration::from_millis(300)).await;
+        pm.call_tool("view_tokens", serde_json::json!({}))
+            .await
+            .expect("view_tokens should succeed");
+        pm.close().await;
+    });
+}
+
 /// GIVEN a token log with rows for multiple roles
-/// WHEN the user types `/tokens` in the TUI
+/// WHEN an agent invokes view_tokens
 /// THEN the overlay renders with role totals and the close hint
 #[test]
-fn tokens_command_renders_overlay_with_role_breakdown() {
+fn view_tokens_renders_overlay_with_role_breakdown() {
     let tmp = tempfile::tempdir().unwrap();
     write_fake_log(tmp.path());
 
-    let bpmux =
-        TestBpmux::start_with_env("human", "BPMUX_TOKENS_DIR", tmp.path().to_str().unwrap());
-    bpmux.type_line("/tokens");
+    let bpmux = TestBpmux::start_with_env("ryan", "BPMUX_TOKENS_DIR", tmp.path().to_str().unwrap());
+    open_tokens_overlay(&bpmux);
 
     assert!(
         bpmux.wait_for_tui("Press any key to close", Duration::from_secs(5)),
@@ -50,7 +62,6 @@ fn tokens_command_renders_overlay_with_role_breakdown() {
         bpmux.tui()
     );
     let screen = bpmux.tui();
-    // Overlay frame and role breakdown.
     assert!(screen.contains("tokens"), "title missing:\n{screen}");
     assert!(
         screen.contains("By role:"),
@@ -61,15 +72,14 @@ fn tokens_command_renders_overlay_with_role_breakdown() {
 }
 
 /// GIVEN no token log exists yet
-/// WHEN the user types `/tokens`
+/// WHEN an agent invokes view_tokens
 /// THEN the overlay shows the empty-state placeholder
 #[test]
-fn tokens_command_shows_empty_state_when_log_is_missing() {
+fn view_tokens_shows_empty_state_when_log_is_missing() {
     let tmp = tempfile::tempdir().unwrap();
     // Note: no file written — the tempdir is empty.
-    let bpmux =
-        TestBpmux::start_with_env("human", "BPMUX_TOKENS_DIR", tmp.path().to_str().unwrap());
-    bpmux.type_line("/tokens");
+    let bpmux = TestBpmux::start_with_env("ryan", "BPMUX_TOKENS_DIR", tmp.path().to_str().unwrap());
+    open_tokens_overlay(&bpmux);
 
     assert!(
         bpmux.wait_for_tui("No token rows yet", Duration::from_secs(5)),
@@ -79,10 +89,10 @@ fn tokens_command_shows_empty_state_when_log_is_missing() {
 }
 
 /// GIVEN a token log with multiple rows
-/// WHEN the user types `/tokens` in a full-sized terminal
+/// WHEN an agent invokes view_tokens in a full-sized terminal
 /// THEN the overlay renders the chart section (labelled "per turn")
 #[test]
-fn tokens_command_renders_chart_section_when_rows_are_present() {
+fn view_tokens_renders_chart_section_when_rows_are_present() {
     let tmp = tempfile::tempdir().unwrap();
     // Seed enough rows so the chart path renders (>= 2 rows).
     std::fs::create_dir_all(tmp.path()).unwrap();
@@ -96,9 +106,8 @@ fn tokens_command_renders_chart_section_when_rows_are_present() {
     }
     std::fs::write(tmp.path().join("log.jsonl"), content).unwrap();
 
-    let bpmux =
-        TestBpmux::start_with_env("human", "BPMUX_TOKENS_DIR", tmp.path().to_str().unwrap());
-    bpmux.type_line("/tokens");
+    let bpmux = TestBpmux::start_with_env("ryan", "BPMUX_TOKENS_DIR", tmp.path().to_str().unwrap());
+    open_tokens_overlay(&bpmux);
 
     assert!(
         bpmux.wait_for_tui("Press any key to close", Duration::from_secs(5)),
@@ -106,24 +115,21 @@ fn tokens_command_renders_chart_section_when_rows_are_present() {
         bpmux.tui()
     );
     let screen = bpmux.tui();
-    // Chart's block title should be visible when the overlay renders
-    // the chart path (>= 2 rows + wide enough terminal).
     assert!(
         screen.contains("per turn"),
         "chart title missing — chart path didn't render. screen:\n{screen}"
     );
 }
 
-/// GIVEN the `/tokens` overlay is visible
+/// GIVEN the tokens overlay is visible
 /// WHEN the user presses any key
 /// THEN the overlay closes
 #[test]
 fn tokens_overlay_dismisses_on_any_key() {
     let tmp = tempfile::tempdir().unwrap();
     write_fake_log(tmp.path());
-    let bpmux =
-        TestBpmux::start_with_env("human", "BPMUX_TOKENS_DIR", tmp.path().to_str().unwrap());
-    bpmux.type_line("/tokens");
+    let bpmux = TestBpmux::start_with_env("ryan", "BPMUX_TOKENS_DIR", tmp.path().to_str().unwrap());
+    open_tokens_overlay(&bpmux);
     assert!(
         bpmux.wait_for_tui("Press any key to close", Duration::from_secs(5)),
         "overlay should be visible. screen:\n{}",

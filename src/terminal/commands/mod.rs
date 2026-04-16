@@ -70,7 +70,6 @@ impl App {
                 "/accept" => self.handle_accept(args.trim().to_string()),
                 "/share" => self.handle_share(args.to_string()),
                 "/all" => self.handle_toggle_all(),
-                "/tokens" => self.handle_tokens(),
                 "/topic" => self.handle_topic(args.to_string()),
                 "/focus" => self.handle_focus(args.to_string()),
                 "/identity" => self.handle_identity(args.to_string()),
