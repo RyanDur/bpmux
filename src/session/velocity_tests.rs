@@ -210,22 +210,20 @@ fn plumbing_stories_filtered_out_of_velocity() {
 }
 
 #[test]
-fn all_features_returns_same_as_unfiltered() {
-    // When every issue qualifies as a feature, the filter is a
-    // no-op — this is the graceful-degradation path callers hit
-    // when labels aren't available.
+fn predicate_drives_what_gets_counted() {
+    // `|_| true` counts every event; a predicate that rejects one
+    // specific issue counts fewer. Demonstrates the filter is the
+    // causal input, not just a pass-through — distinguishes "filter
+    // works" from "filter is silently ignored."
     let messages = vec![
         msg("#1 delivered", now() - ChronoDuration::hours(1)),
         msg("#2 delivered", now() - ChronoDuration::hours(2)),
         msg("#3 delivered", now() - ChronoDuration::hours(3)),
     ];
-    let m_filtered = compute(&messages, now(), |_| true);
-    let m_unfiltered = compute(&messages, now(), |_| true);
-    assert_eq!(m_filtered.delivered_in_window, 3);
-    assert_eq!(
-        m_filtered.delivered_in_window,
-        m_unfiltered.delivered_in_window
-    );
+    let all = compute(&messages, now(), |_| true);
+    let without_one = compute(&messages, now(), |n| n != 1);
+    assert_eq!(all.delivered_in_window, 3);
+    assert_eq!(without_one.delivered_in_window, 2);
 }
 
 #[test]
