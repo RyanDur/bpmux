@@ -384,18 +384,12 @@ fn accept_story_allows_pm_and_broadcasts_role_attribution() {
         let result = pm
             .call_tool("accept_story", serde_json::json!({"number": 213}))
             .await;
-        // Role gate must pass — reject only if it's a role-restriction
-        // error. gh failures (no GH_TOKEN in CI) are expected and don't
-        // indicate a role-gate problem.
-        if let Err(ref e) = result {
-            assert!(
-                !e.contains("restricted to"),
-                "PM should pass the role gate. got: {e}"
-            );
-        }
+        assert!(
+            result.is_ok(),
+            "PM should be allowed to call accept_story. got: {:?}",
+            result
+        );
 
-        // Signal fires on intent before gh — dev should see it even
-        // when gh fails.
         dev.capture
             .wait_for("accepted by pm", Duration::from_secs(5))
             .await;
@@ -434,9 +428,7 @@ fn accept_story_rejects_unknown_roles() {
     });
 }
 
-/// AC (#213): designer and dev pass the role gate (not rejected).
-/// gh may fail on non-existent issue numbers — that's expected in
-/// test; the assertion is that the error is NOT a role-restriction.
+/// AC (#213): designer and dev can call accept_story.
 #[test]
 fn accept_story_allows_designer_and_dev() {
     let bpmux = TestBpmux::start();
@@ -450,22 +442,20 @@ fn accept_story_allows_designer_and_dev() {
         let result = designer
             .call_tool("accept_story", serde_json::json!({"number": 900}))
             .await;
-        if let Err(ref e) = result {
-            assert!(
-                !e.contains("restricted to"),
-                "designer should pass the role gate. got: {e}"
-            );
-        }
+        assert!(
+            result.is_ok(),
+            "designer should be allowed to accept. got: {:?}",
+            result
+        );
 
         let result = dev
             .call_tool("accept_story", serde_json::json!({"number": 901}))
             .await;
-        if let Err(ref e) = result {
-            assert!(
-                !e.contains("restricted to"),
-                "dev should pass the role gate. got: {e}"
-            );
-        }
+        assert!(
+            result.is_ok(),
+            "dev should be allowed to accept. got: {:?}",
+            result
+        );
 
         designer.close().await;
         dev.close().await;
@@ -488,26 +478,20 @@ fn accept_story_is_idempotent_on_already_closed() {
             .call_tool("accept_story", serde_json::json!({"number": 213}))
             .await;
 
-        // Second accept — should be no-op or gh failure, never a
-        // role-restriction. In CI (no GH_TOKEN) both calls fail on
-        // auth, so we can't assert Ok. When gh IS available, the
-        // second call returns "already accepted — no-op".
+        // Second accept — dry-run gh returns Ok both times (no real
+        // close), so the idempotent "already closed" guard doesn't fire.
+        // With dry-run, verify the call still succeeds (no crash, no
+        // role-restriction). True idempotency ("already accepted")
+        // is tested by the unit test on build_accept_signal + the
+        // idempotent guard in handle_accept_story against real gh.
         let result = pm
             .call_tool("accept_story", serde_json::json!({"number": 213}))
             .await;
-        if let Err(ref e) = result {
-            assert!(
-                !e.contains("restricted to"),
-                "double-accept should not be a role-gate failure. got: {e}"
-            );
-        }
-        if let Ok(ref msg) = result {
-            let text = serde_json::to_string(msg).unwrap_or_default();
-            assert!(
-                text.contains("already") || text.contains("accepted"),
-                "idempotent message should say already accepted. got: {text}"
-            );
-        }
+        assert!(
+            result.is_ok(),
+            "double-accept should succeed (dry-run). got: {:?}",
+            result
+        );
 
         pm.close().await;
     });

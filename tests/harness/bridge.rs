@@ -43,6 +43,7 @@ impl TestBridge {
                 .arg(port.to_string())
                 .arg("--name")
                 .arg(&name_owned);
+            cmd.env("BPMUX_GH_DRY_RUN", "1");
             for (k, v) in &env_owned {
                 cmd.env(k, v);
             }

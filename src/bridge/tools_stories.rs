@@ -32,6 +32,9 @@ const LABEL_NEEDS_FIXES: &str = "needs fixes";
 /// Sets the working directory to the bpmux repo so `gh` can find
 /// git remotes even when the bridge runs from an agent workspace.
 pub(super) async fn gh(args: &[&str]) -> Result<String, String> {
+    if std::env::var("BPMUX_GH_DRY_RUN").is_ok() {
+        return Ok(format!("(dry run: gh {})", args.join(" ")));
+    }
     let mut cmd = tokio::process::Command::new("gh");
     cmd.args(args);
     if let Ok(repo) = std::env::var("BPMUX_REPO") {
