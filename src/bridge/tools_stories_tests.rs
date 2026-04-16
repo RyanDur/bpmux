@@ -241,8 +241,9 @@ fn pass_desk_check_signal_announces_ready_for_acceptance() {
 
 #[test]
 fn pass_desk_check_signals_emits_two_for_feature() {
-    // #259: feature PASS co-addresses PM so presentation doesn't
-    // depend on PM scanning chat for designer's PASS message.
+    // Feature PASS emits two signals so PM gets the presentation cue
+    // directly — without this, PM depends on scanning chat for the
+    // designer's PASS message.
     let signals = build_pass_desk_check_signals(210, &["vertical".to_string()]);
     assert_eq!(signals.len(), 2, "feature PASS should emit two signals");
     let addressees: Vec<Option<String>> = signals
