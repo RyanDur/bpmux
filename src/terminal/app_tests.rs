@@ -538,6 +538,125 @@ fn activity_messages_do_not_create_channels() {
     assert_eq!(app.channels.active.len(), 0);
 }
 
+// ── receive_message coverage gates (#261 split safety net) ──
+//
+// Behaviors below were already wired into receive_message but lacked
+// dedicated tests. Codifying them here BEFORE the per-MessageType
+// reducer split per designer's pickup-gate concern: "555 tests pass"
+// is not sufficient proof that each branch's side effects survive
+// extraction. These tests pin down each reducer's contract.
+
+#[test]
+fn system_topic_created_message_registers_topic() {
+    let mut app = test_app();
+    app.receive_message(system_msg("bpmux", "Topic 'teaching' created"));
+    assert!(app.topic.topics.contains(&"teaching".to_string()));
+}
+
+#[test]
+fn system_topic_created_does_not_double_register() {
+    let mut app = test_app();
+    app.receive_message(system_msg("bpmux", "Topic 'teaching' created"));
+    app.receive_message(system_msg("bpmux", "Topic 'teaching' created"));
+    let count = app.topic.topics.iter().filter(|t| *t == "teaching").count();
+    assert_eq!(count, 1);
+}
+
+#[test]
+fn chat_message_auto_discovers_topic() {
+    let mut app = test_app();
+    let mut msg = chat_msg("dev:claude-code", "from a topic");
+    msg.topic = Some("retro".to_string());
+    app.receive_message(msg);
+    assert!(app.topic.topics.contains(&"retro".to_string()));
+}
+
+#[test]
+fn chat_message_increments_topic_unread_when_not_viewing() {
+    let mut app = test_app();
+    // Default active topic is "general" — incoming "retro" message
+    // should bump retro's unread because the user isn't on retro.
+    let mut msg = chat_msg("dev:claude-code", "ping");
+    msg.topic = Some("retro".to_string());
+    app.receive_message(msg);
+    assert_eq!(app.topic.unreads.get("retro").copied().unwrap_or(0), 1);
+}
+
+#[test]
+fn chat_message_does_not_increment_unread_when_viewing_topic() {
+    let mut app = test_app();
+    app.topic.active = "retro".to_string();
+    let mut msg = chat_msg("dev:claude-code", "ping");
+    msg.topic = Some("retro".to_string());
+    app.receive_message(msg);
+    assert_eq!(app.topic.unreads.get("retro").copied().unwrap_or(0), 0);
+}
+
+#[test]
+fn chat_message_with_status_prefix_updates_activity() {
+    let mut app = test_app();
+    app.receive_message(chat_msg("dev:claude-code", "/status hacking on tests"));
+    let (status, _) = app
+        .peers
+        .activity
+        .get("dev")
+        .expect("dev activity should be set");
+    assert_eq!(status, "hacking on tests");
+}
+
+#[test]
+fn insight_message_records_in_log_like_chat() {
+    let mut app = test_app();
+    let msg = Message {
+        from: "dev:claude-code".to_string(),
+        text: "reasoning trace".to_string(),
+        ts: Utc::now(),
+        message_type: MessageType::Insight,
+        to: None,
+        addressee: None,
+        explicit_privacy: false,
+        multi_depth: None,
+        topic: None,
+    };
+    app.receive_message(msg);
+    assert_eq!(app.msg.messages.len(), 1);
+    assert_eq!(app.msg.messages[0].text, "reasoning trace");
+}
+
+#[test]
+fn nudge_message_records_in_log_like_chat() {
+    let mut app = test_app();
+    let msg = Message {
+        from: "bpmux".to_string(),
+        text: "📝 nudge".to_string(),
+        ts: Utc::now(),
+        message_type: MessageType::Nudge,
+        to: None,
+        addressee: None,
+        explicit_privacy: false,
+        multi_depth: None,
+        topic: None,
+    };
+    app.receive_message(msg);
+    assert_eq!(app.msg.messages.len(), 1);
+}
+
+#[test]
+fn directed_chat_message_marks_dm_unread_from_sender() {
+    let mut app = test_app();
+    app.receive_message(directed_msg("dev:claude-code", "hi", vec!["ryan"]));
+    assert!(app.peers.dm_unread_from.contains(&"dev".to_string()));
+    assert!(app.peers.dm_flash_until.is_some());
+}
+
+#[test]
+fn broadcast_to_all_does_not_mark_dm_unread() {
+    let mut app = test_app();
+    app.receive_message(directed_msg("dev:claude-code", "hi", vec!["all"]));
+    assert!(app.peers.dm_unread_from.is_empty());
+    assert!(app.peers.dm_flash_until.is_none());
+}
+
 #[test]
 fn popup_matches_filters_by_typed_prefix() {
     let mut app = test_app();

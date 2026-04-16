@@ -1,4 +1,5 @@
 mod palette;
+mod receive;
 mod scroll;
 
 use crate::session::{Message, MessageType};
@@ -10,8 +11,9 @@ pub use super::app_state::*;
 
 pub(super) const TRUNCATE_AFTER_LINES: usize = 10;
 /// Approximate chat pane inner width (80 terminal - 2 borders).
+/// `receive::compute_line_estimate` mirrors this constant — keep
+/// in sync if the chat pane width changes.
 const CHAT_INNER_WIDTH: usize = 78;
-const DM_FLASH_DURATION: std::time::Duration = std::time::Duration::from_millis(750);
 
 fn short_peer_name(peer: &str) -> &str {
     peer.split(':').next().unwrap_or(peer)
@@ -333,123 +335,18 @@ impl App {
         }
     }
 
-    fn rebuild_channels(&mut self) {
-        let connected: std::collections::HashSet<&str> =
-            self.peers.activity.keys().map(|s| s.as_str()).collect();
-        self.channels.active = self
-            .msg
-            .messages
-            .iter()
-            .filter(|m| m.is_chat())
-            .map(|m| channel_name(m, &self.identity.name))
-            .filter(|ch| {
-                if ch == "broadcast" {
-                    return true;
-                }
-                let has_connected_peer = ch.split('+').any(|name| connected.contains(name));
-                let has_unread = self.channels.unread.get(ch).is_some_and(|&n| n > 0);
-                has_connected_peer || has_unread
-            })
-            .collect();
-    }
-
     pub fn update_activity(&mut self, peer: String, status: String) {
         self.peers.activity.insert(peer, (status, Instant::now()));
     }
 
     pub fn receive_message(&mut self, msg: Message) {
-        let sender = short_peer_name(&msg.from).to_string();
-
-        match msg.message_type {
-            MessageType::Activity => {
-                self.update_activity(sender, msg.text);
-                return;
-            }
-            MessageType::System => {
-                // Auto-register topics from creation notifications.
-                // When a "Topic 'X' created" system message arrives,
-                // add the topic to our list so /topic shows it.
-                if msg.text.starts_with("Topic '")
-                    && msg.text.contains("' created")
-                    && let Some(start) = msg.text.find('\'')
-                    && let Some(end) = msg.text[start + 1..].find('\'')
-                {
-                    let topic_name = msg.text[start + 1..start + 1 + end].to_string();
-                    if !self.topic.topics.contains(&topic_name) {
-                        self.topic.topics.push(topic_name);
-                    }
-                }
-                if let Some(peer) = msg.text.strip_suffix(" joined") {
-                    let short = short_peer_name(peer).to_string();
-                    self.update_activity(short.clone(), "available".into());
-                    self.channels.active.insert(short);
-                    self.rebuild_channels();
-                } else if let Some(peer) = msg.text.strip_suffix(" left") {
-                    self.peers.activity.remove(short_peer_name(peer));
-                    self.rebuild_channels();
-                }
-            }
-            MessageType::Chat | MessageType::Insight | MessageType::Nudge => {
-                // Auto-discover topics from incoming messages.
-                // If a message has a topic we don't know about yet,
-                // register it so /topic list shows it and the sidebar
-                // (future) can display it.
-                if let Some(topic) = &msg.topic {
-                    if !self.topic.topics.contains(topic) {
-                        self.topic.topics.push(topic.clone());
-                    }
-                    // Track unread per topic when not viewing that topic.
-                    if *topic != self.topic.active {
-                        *self.topic.unreads.entry(topic.clone()).or_insert(0) += 1;
-                    }
-                }
-                let ch = channel_name(&msg, &self.identity.name);
-                self.channels.active.insert(ch.clone());
-                if self.channels.current_view.as_ref().is_none_or(|v| v != &ch) {
-                    *self.channels.unread.entry(ch).or_insert(0) += 1;
-                }
-                if let Some(rest) = msg.text.strip_prefix("/status ") {
-                    self.update_activity(sender.clone(), rest.trim().to_string());
-                }
-                if let Some(recipients) = &msg.to {
-                    let directed_at_me = recipients.iter().any(|r| r == &self.identity.name)
-                        && !recipients
-                            .iter()
-                            .all(|r| r == crate::session::message::BROADCAST_ALL);
-                    if directed_at_me && !self.peers.dm_unread_from.contains(&sender) {
-                        self.peers.dm_unread_from.push(sender);
-                        self.peers.dm_flash_until = Some(Instant::now() + DM_FLASH_DURATION);
-                    }
-                }
-            }
+        let needs_push = receive::dispatch(self, &msg);
+        if !needs_push {
+            return;
         }
-
-        // Estimate the number of rendered lines this message
-        // will occupy and compensate scroll_offset by that amount.
-        // The render loop wraps text at ~78 chars (80 - 2 borders).
-        // The prefix is approximately "[channel] sender: " = ~15 + name.
-        // A separator line is added when the sender differs from the
-        // previous message. This estimate is close enough to prevent
-        // perceptible viewport drift — within ±1 line is fine.
+        // Shared tail: System and Chat-family both push + scroll-adjust.
         let was_at_bottom = self.scroll.offset == 0;
-        let line_estimate = {
-            let sender = msg.from.split(':').next().unwrap_or(&msg.from);
-            let prefix_len = sender.len() + 15;
-            let content_width = CHAT_INNER_WIDTH.saturating_sub(prefix_len).max(1);
-            let wrapped = msg.text.len().max(1).div_ceil(content_width).max(1);
-            // Add 1 for the blank separator line between different senders.
-            // No separator for the first message or when sender matches.
-            let separator = self
-                .msg
-                .messages
-                .last()
-                .map(|m| {
-                    let prev = m.from.split(':').next().unwrap_or(&m.from);
-                    if prev != sender { 1 } else { 0 }
-                })
-                .unwrap_or(0);
-            wrapped + separator
-        };
+        let line_estimate = receive::compute_line_estimate(&msg, self.msg.messages.last());
         self.push_message(msg);
         if !was_at_bottom {
             self.scroll.offset = self.scroll.offset.saturating_add(line_estimate);
