@@ -1,0 +1,263 @@
+263,OPEN,[honest-plumbing] Slim toggle_last_truncated — narrow to single sub-state or document coupling,in progress,2026-04-16T22:18:05Z
+262,CLOSED,[honest-plumbing] Decompose rebuild_filtered_if_dirty into FilterContext + predicates,ready for accept,2026-04-16T22:17:57Z
+261,CLOSED,[honest-plumbing] Split receive_message by MessageType into per-type reducers,ready for accept,2026-04-16T22:13:47Z
+260,CLOSED,[honest-plumbing] Extract InputState and LifecycleState from App's loose fields,ready for accept,2026-04-16T22:07:17Z
+259,CLOSED,[honest-plumbing] pass_desk_check on features should co-address PM so PM doesn't scan chat,ready for accept, needs fixes,2026-04-16T21:56:14Z
+258,CLOSED,Bug: handle_tokens and handle_roadmap clear Ryan's in-progress input when agent surfaces the view,ready,2026-04-16T19:37:17Z
+257,CLOSED,[honest-plumbing] Split app.rs narrow — extract scroll + palette methods only,ready for accept,2026-04-16T19:33:52Z
+256,CLOSED,[honest-plumbing] Split ui.rs into 8 render-concern files + metrics helpers,ready for accept,2026-04-16T19:33:45Z
+255,CLOSED,[honest-plumbing] Split commands/mod.rs into per-handler files + group P2P commands,ready for accept,2026-04-16T19:33:37Z
+254,CLOSED,[honest-plumbing] Split event_dispatch.rs into mouse.rs + key.rs + mod.rs,ready for accept,2026-04-16T19:33:30Z
+253,CLOSED,[honest-plumbing] Split board.rs into 5 concern-files (model / stories / project_state / dora / legacy),ready for accept,2026-04-16T19:33:22Z
+252,CLOSED,[honest-plumbing] Split mcp/tools.rs and bridge/tools.rs to one file per tool,ready, ready for accept,2026-04-16T18:53:23Z
+251,OPEN,As the team, I want velocity to count only business-value stories — not tech debt,ready, delivered, ready for accept, needs fixes,2026-04-16T18:27:40Z
+250,CLOSED,[honest-plumbing] Extract authed_post helper to dedupe bearer+host+json POST pattern,ready, ready for accept,2026-04-16T17:44:52Z
+249,CLOSED,[honest-plumbing] Decompose event_dispatch.rs God-Object — InputMode + parallel boolean show fields,ready, ready for accept,2026-04-16T20:39:16Z
+248,CLOSED,[honest-plumbing] sidebar_channel_filter_test flakes under concurrent test execution,ready, ready for accept,2026-04-16T17:09:59Z
+247,CLOSED,[honest-plumbing] Agent-originated DMs should carry explicit_privacy so privacy guards apply equally,ready, ready for accept,2026-04-16T16:45:52Z
+246,CLOSED,Bug: view_roadmap MCP returns empty — agents can't surface roadmap content,ready, ready for accept,2026-04-16T16:36:38Z
+245,CLOSED,[honest-plumbing] Consolidate 3 parallel command catalogs into one source of truth,ready, ready for accept,2026-04-16T16:20:49Z
+244,CLOSED,[honest-plumbing/security] Reject externally-originated message_type="system" and escape classifier_misfire log input,ready, ready for accept,2026-04-16T16:03:37Z
+243,CLOSED,[honest-plumbing] Move screen-shots/ out of the repo — transient artifacts shouldn't be tracked,ready,2026-04-16T15:30:46Z
+242,CLOSED,[honest-plumbing] Classifier test should use synthetic path, not a real screenshot file,ready, ready for accept,2026-04-16T15:36:58Z
+241,CLOSED,[honest-plumbing] Architecture: resolve inverted dependency and remove crossterm leak into transport,ready, ready for accept,2026-04-16T15:53:53Z
+240,CLOSED,[honest-plumbing] Remove ticket-prefix comments and name magic numbers,ready, ready for accept, needs fixes,2026-04-16T15:41:28Z
+239,CLOSED,[honest-plumbing] Strengthen 7 weak test assertions flagged by the audit,ready, ready for accept,2026-04-16T15:22:53Z
+238,CLOSED,[honest-plumbing] Sidebar-click e2e tests to replace /view-driven acceptance coverage,ready, ready for accept,2026-04-16T15:19:29Z
+237,CLOSED,[honest-plumbing] Delete unused session::lessons::merge_indexes,ready, ready for accept,2026-04-16T14:16:20Z
+236,CLOSED,[honest-plumbing] Fail loudly on get_story_labels error so pass_desk_check doesn't misroute silently,ready, ready for accept,2026-04-16T14:26:26Z
+235,CLOSED,[blocker/security] Gate simulate_key and simulate_click REST endpoints,ready, ready for accept,2026-04-16T14:15:20Z
+234,CLOSED,[honest-plumbing] Pin rustc toolchain so local matches CI,ready, ready for accept,2026-04-16T15:07:19Z
+233,CLOSED,[honest-plumbing] Delete /roadmap slash command — replaced by view_roadmap MCP tool (#226),ready, ready for accept,2026-04-16T15:00:32Z
+232,CLOSED,[honest-plumbing] Delete /tokens slash command — replaced by view_tokens MCP tool (#225),ready, ready for accept,2026-04-16T14:56:27Z
+231,CLOSED,[honest-plumbing] Delete /view slash command — replaced by clickable channel names (#223),ready, ready for accept,2026-04-16T14:37:12Z
+230,CLOSED,As the team, I want usage stats that cover MCP tool invocations and persist across sessions — so we can ground judgment in data,ready for accept,2026-04-16T12:59:54Z
+229,CLOSED,As PM, I want to receive pass_desk_check signals on infrastructure stories so team-accept doesn't depend on scanning chat,ready for accept,2026-04-16T12:38:00Z
+228,CLOSED,As a developer, I want bpmux env vars auto-loaded via direnv so I don't export them every session,ready for accept,2026-04-16T12:13:10Z
+227,OPEN,As Ryan, I want the project view to show velocity + DORA + board together, with honest error states,delivered, ready for accept, needs fixes,2026-04-16T13:55:22Z
+226,CLOSED,As Ryan, I want to ask the team about the roadmap and see it surface — instead of typing /roadmap,ready for accept,2026-04-16T12:31:34Z
+225,CLOSED,As Ryan, I want to ask the team about token usage and see a surface open — instead of typing /tokens,ready for accept,2026-04-16T12:28:45Z
+224,OPEN,As Ryan, I want to click a peer name in the sidebar to focus on that role, instead of typing /focus,in progress,2026-04-16T12:14:17Z
+223,CLOSED,As Ryan, I want to click a channel name in the sidebar to switch views, instead of typing /view,ready for accept,2026-04-16T12:13:40Z
+222,CLOSED,[honest-plumbing] Trim rust-cache size to reduce CI disk-full failures,ready for accept,2026-04-16T11:37:53Z
+221,CLOSED,[honest-plumbing] Migrate story tools (accept, deliver, label) from gh CLI to octocrab API,ready for accept,2026-04-16T11:37:29Z
+220,OPEN,As Ryan, I want the team to restart my bpmux when there's a new binary, without me typing commands,delivered, ready for accept, needs fixes,2026-04-16T11:25:08Z
+219,OPEN,As Ryan, I want the board to stay current without me triggering anything,delivered, ready for accept,2026-04-16T03:50:37Z
+218,OPEN,Bug: DORA metrics in project view appear incorrect,delivered, ready for accept,2026-04-16T03:41:25Z
+217,OPEN,Bug: opening the board multiple times locks the input box,delivered, ready for accept,2026-04-16T03:13:40Z
+216,CLOSED,[honest-plumbing] Fix silent mutex failure on ws.rs:79,ready for accept,2026-04-16T03:36:52Z
+215,CLOSED,As dev, I want to be notified when CI fails so I fix it without Ryan telling me,ready for accept,2026-04-16T03:36:45Z
+214,CLOSED,[honest-plumbing] Replace magic 'all' string with a named constant across the codebase,ready for accept,2026-04-16T20:39:23Z
+213,CLOSED,As PM, I want to accept a delivered story so the team can close the loop without a separate owner session,ready for accept, needs fixes,2026-04-16T02:54:13Z
+212,CLOSED,Remove unused /accept P2P handler,,2026-04-16T00:24:18Z
+211,OPEN,Iteration velocity: add 1-point-per-story rate metric alongside existing four,,2026-04-16T00:15:57Z
+210,OPEN,As Ryan, I want to ask an agent to show velocity and have the project panel open,ready, delivered, ready for accept,2026-04-16T19:44:48Z
+209,CLOSED,Velocity metrics: MCP view_velocity tool (slice 1 of 2),ready for accept,2026-04-16T03:01:21Z
+208,CLOSED,Split handle_deliver_story: separate signal-outcome from gh-outcome so tests can assert hermetically,in progress,2026-04-15T22:54:23Z
+207,CLOSED,Tidy: remove WHAT-style comments from bridge source (tools, tools_stories, mod),ready for accept,2026-04-16T03:01:19Z
+206,CLOSED,Convert story69 conditional-test-skip to BPMUX_BOARD_FIXTURE for hermetic CI,ready for accept,2026-04-16T03:01:17Z
+205,CLOSED,Bug: own outbound messages don't echo in sender's Claude Code terminal after bridge reconnect,,2026-04-15T22:30:37Z
+204,CLOSED,read_messages (REST) filters by topic subscription, matching WebSocket push behavior,ready for accept,2026-04-16T03:01:15Z
+203,CLOSED,Desk-check signal: designer marks delivered work pass/fail, fires workflow signal,ready for accept, needs fixes,2026-04-16T03:01:12Z
+202,CLOSED,Replace unmaintained dependencies with maintained alternatives,ready for accept,2026-04-16T03:01:10Z
+201,OPEN,Topic MCP tools: agents can create, list, switch, and leave topics,icebox,2026-04-15T03:30:54Z
+200,CLOSED,Bridge forwards addressee + topic + metadata in read_messages and WebSocket notifications,,2026-04-16T03:01:08Z
+199,CLOSED,Test API: agent-side assertions via MCP tool responses,ready for accept,2026-04-16T03:01:05Z
+198,CLOSED,Test API: replace sleep-based synchronization with wait-for-condition,,2026-04-16T03:00:59Z
+197,CLOSED,Workflow signals: story state transitions notify the right role automatically,,2026-04-16T03:00:51Z
+196,OPEN,Board data in project panel: split view preserving chat,delivered,2026-04-13T03:01:25Z
+195,CLOSED,Usage statistics: feature usage counts visible alongside token data,,2026-04-12T23:32:22Z
+194,CLOSED,Story ordering: PM can reorder stories by priority in the board,,2026-04-12T23:32:20Z
+193,CLOSED,Glanceable board view: project state at a glance via command palette,,2026-04-12T23:29:03Z
+192,CLOSED,Command palette: fuzzy-searchable action launcher replacing slash commands as primary interaction,,2026-04-12T23:32:12Z
+191,OPEN,Context coherence: topic-scoped conversations in the bpmux channel,delivered,2026-04-12T22:57:00Z
+190,CLOSED,Identity layer v1: agent loads identity traits at session start, visible to ryan, persists across sessions,,2026-04-12T23:32:14Z
+189,OPEN,Shaping: teaching protocol — learner-centric adaptive exchange for P2P knowledge transfer,icebox,2026-04-12T17:09:17Z
+188,CLOSED,#184 child 5: CI events as first concrete multi-depth consumer,,2026-04-12T03:15:56Z
+187,CLOSED,#184 child 1: event metadata schema for multi-depth rendering,,2026-04-12T03:15:54Z
+186,CLOSED,Widen #161 filter to all bpmux system messages, not just 📝-prefixed nudges,bug, ready,2026-04-12T03:15:51Z
+185,CLOSED,Bug: incoming bpmux-bridge messages don't render in pm terminal scrollback (but reach conversation context),bug,2026-04-12T03:15:49Z
+184,OPEN,Shaping: progressive disclosure on shared events — per-role default depths + conversational overlays,icebox,2026-04-12T01:16:31Z
+183,CLOSED,Clickable surface affordances — 7 surfaces, 6 currently invisible,,2026-04-12T03:16:00Z
+182,OPEN,Shaping: conversational UI — context-driven views alongside chat,icebox,2026-04-11T23:24:10Z
+181,CLOSED,Focus mode part A — display filter for chat view by role,delivered,2026-04-12T02:58:11Z
+180,CLOSED,Chat scroll: preserve viewport when scrolled up, show new-message indicator,,2026-04-12T22:44:36Z
+179,CLOSED,Dimension 3: agent-neutral token observability via adapter pattern (#175),,2026-04-11T23:02:35Z
+178,OPEN,Shaping: silent-failure visibility audit (dimension 1 of #175),icebox,2026-04-11T22:00:52Z
+177,OPEN,UX shaping — default view to broadcast + [all] on startup,icebox,2026-04-11T21:58:21Z
+176,OPEN,Shaping: command list grouping in /help and ? overlay,icebox,2026-04-11T21:55:11Z
+175,OPEN,Shaping: team observability — silent failures, bug reporting, objective token measurement,icebox,2026-04-11T21:08:45Z
+174,OPEN,share_message MCP bridge tool — give agents the /share affordance,ready, delivered, ready for accept,2026-04-16T17:01:10Z
+173,OPEN,#157 observability: surface user-visible confirmation when SessionStart recall fires,delivered, ready for accept,2026-04-16T00:07:05Z
+172,OPEN,Shaping — CI indicator: migrate from 60s polling to github webhook events,icebox,2026-04-11T19:53:02Z
+171,OPEN,Shaping — default message routing: sticky vs broadcast vs context-sensitive,icebox,2026-04-11T19:40:09Z
+170,CLOSED,Add modifier support to /api/simulate/key handler,,2026-04-12T03:15:48Z
+169,CLOSED,Fix desk-check recipe endpoint paths and missing endpoints,,2026-04-11T23:27:00Z
+168,CLOSED,Bookmark/resume-state pattern for pair exercises and long-running work,enhancement,2026-04-12T23:32:16Z
+167,OPEN,Audit trail in diag log for every send_message attempt,enhancement, icebox,2026-04-11T23:30:42Z
+166,CLOSED,PreCompact hook: emit compacting signal + save bookmark before context compaction,enhancement,2026-04-11T20:51:07Z
+165,CLOSED,bpmux message-send silent-drop bug: send_message vanishes on large messages,bug,2026-04-11T20:49:17Z
+164,CLOSED,Clean up bpmux command UX: consistent syntax, /help discovery, retire bare-handler pattern,,2026-04-11T21:54:56Z
+163,CLOSED,Three nudge-hygiene tunings from interim misfire log analysis,,2026-04-11T20:35:12Z
+162,OPEN,Automatic selective cross-scope propagation via classifier,icebox,2026-04-10T20:33:25Z
+161,CLOSED,Classifier-driven view filter for Ryan's TUI (receive-time),,2026-04-11T23:30:06Z
+160,CLOSED,Sender-explicit /share command for manual cross-scope propagation,,2026-04-11T20:32:40Z
+159,CLOSED,Log classifier decisions + accept misfire feedback from agents,,2026-04-11T20:23:38Z
+158,CLOSED,Turn-aware channel Layer 1: addressee metadata on messages,,2026-04-11T20:20:29Z
+157,CLOSED,Auto-surface each agent's lessons at session start,,2026-04-11T20:11:23Z
+156,OPEN,OS-level sandbox (nono / Seatbelt / Landlock) for hermetic bpmux workspace containment,icebox,2026-04-10T13:14:39Z
+155,OPEN,Admission-nudge: broadcast lesson candidates across roles without merging memory,icebox,2026-04-10T13:13:27Z
+154,OPEN,Claude Code permissions: per-role settings template + history-sync tool,icebox,2026-04-10T13:04:41Z
+153,OPEN,Spike: evaluate Langfuse as observability backend for bpmux multi-agent sessions,icebox,2026-04-10T14:51:43Z
+152,CLOSED,Classifier captures peer-to-peer corrections via admission detection,,2026-04-11T20:02:04Z
+151,CLOSED,Surface CI status in the bpmux TUI,delivered,2026-04-11T19:56:09Z
+150,OPEN,P2P hot-reload resilience: preserve peer connections across binary restart,icebox,2026-04-10T12:05:31Z
+149,OPEN,P2P trust model: authorize data flow between connected peers,icebox,2026-04-10T12:16:39Z
+148,OPEN,P2P connect + presence: two bpmux instances handshake and see each other,delivered,2026-04-11T19:47:29Z
+147,CLOSED,Headless mode (bpmux test) panics on startup — crossterm needs a real tty,bug,2026-04-10T11:44:32Z
+146,CLOSED,Status dot shows green while role is blocked on a permission prompt,bug, delivered,2026-04-11T19:44:55Z
+145,CLOSED,Left-arrow on open subheading collapses parent instead of self,bug, delivered,2026-04-11T19:41:41Z
+144,CLOSED,Storage operations instrumented with timing and pattern logging,ready,2026-04-10T04:08:10Z
+143,CLOSED,Storage trait abstracts all persistence behind a unified interface,ready,2026-04-10T03:57:22Z
+142,CLOSED,Bridge defaults replies to the channel the last message came from,delivered,2026-04-11T19:39:25Z
+141,CLOSED,TUI state persists across restarts and hot reloads,ready,2026-04-10T04:14:51Z
+140,CLOSED,Stories managed through bpmux bridge tools, not GitHub CLI,in progress,2026-04-12T23:34:43Z
+139,CLOSED,Right arrow in sidebar expands sections instead of closing sidebar,ready,2026-04-10T04:02:12Z
+138,CLOSED,Cursor position drifts on wrapped input lines,ready,2026-04-10T00:00:41Z
+137,CLOSED,Left arrow in sidebar navigates up one tree level, not collapses everything,ready,2026-04-09T23:44:04Z
+136,CLOSED,Designer can interact with the live TUI via bridge tools,ready,2026-04-09T23:26:38Z
+135,CLOSED,Connected agents appear as channels in the sidebar by default,ready,2026-04-09T23:17:18Z
+134,CLOSED,Nudge dedup prevents the same topic from surfacing repeatedly in one session,ready,2026-04-09T22:04:15Z
+133,CLOSED,Channel names sorted consistently in sidebar,ready,2026-04-09T22:18:54Z
+132,CLOSED,Headless staging TUI for agent interaction testing,delivered,2026-04-11T18:05:38Z
+131,CLOSED,Designer can capture and inspect the TUI screen via bridge tool,ready,2026-04-09T21:16:49Z
+130,CLOSED,Bridge reconnects automatically after hot reload,ready,2026-04-09T19:08:45Z
+129,CLOSED,Explicit handoff messages are recognized by the system,ready,2026-04-09T19:01:47Z
+128,CLOSED,bpmux detects and signals conversation pile-on,ready,2026-04-09T18:02:53Z
+127,CLOSED,The /recall skill loads only top lessons by weight, not everything,ready,2026-04-09T17:23:46Z
+126,CLOSED,Lesson index shows reinforcement trends over time,ready,2026-04-09T17:10:18Z
+125,CLOSED,Agent status shows current work description, not just busy/available,ready,2026-04-09T17:02:01Z
+124,CLOSED,Agents can share reasoning traces through bpmux as insight messages,ready,2026-04-09T16:49:23Z
+123,CLOSED,Classifier false positives reduced — status reports and coordination messages excluded,ready,2026-04-09T16:25:36Z
+122,CLOSED,Project view shows DORA metrics computed from GitHub issues,ready,2026-04-09T16:23:11Z
+121,CLOSED,Lessons track when they were true, not just when they were saved,ready,2026-04-09T15:07:42Z
+120,CLOSED,Relevant lessons surface mid-work when the agent touches a corrected topic,ready,2026-04-09T14:25:50Z
+119,CLOSED,Side chat visible alongside project view,ready,2026-04-09T14:18:12Z
+118,CLOSED,bpmux updates itself when a new binary is built,ready,2026-04-09T13:12:06Z
+117,CLOSED,Project view is an overlay that preserves chat and input,ready,2026-04-09T12:54:07Z
+116,CLOSED,Title bar shows live project state with click-to-expand detail views,,2026-04-09T12:25:20Z
+115,CLOSED,Broadcast messages leak into individual channel views,delivered,2026-04-09T11:38:05Z
+114,CLOSED,Classifier detects experiences that produce understanding, not just corrections,ready,2026-04-09T12:44:51Z
+113,CLOSED,Channel list shows phantom channels from typos, stale agents, and participant order,ready,2026-04-09T12:07:10Z
+112,CLOSED,Numbered list items stay inline when text wraps,delivered,2026-04-09T11:37:05Z
+111,CLOSED,Real-time correction markers nudge agents to reflect,delivered,2026-04-09T12:07:08Z
+110,CLOSED,Clicking [+N lines] expands truncated messages,delivered,2026-04-09T11:38:59Z
+109,CLOSED,Agents save their own lessons from corrections into the shared context,delivered,2026-04-09T00:00:09Z
+108,CLOSED,Corrections are indexed with topic keywords for fast retrieval,delivered,2026-04-09T00:00:07Z
+107,CLOSED,bpmux classifies messages locally without using agent tokens,delivered,2026-04-09T01:24:30Z
+106,CLOSED,CI build results surface in the bpmux channel,,2026-04-12T03:15:57Z
+105,CLOSED,Bold markers and inline links render properly inside table cells,delivered,2026-04-09T00:00:05Z
+104,CLOSED,An agent or user can search the session log by sender, time, and keyword,delivered,2026-04-09T01:24:28Z
+103,CLOSED,All text colors pass WCAG AA contrast on dark background,ready,2026-04-08T12:46:16Z
+102,CLOSED,Markdown tables and inline links render properly in the TUI,ready,2026-04-08T12:44:58Z
+101,CLOSED,Type-to-filter channels in sidebar,ready,2026-04-08T12:46:14Z
+100,CLOSED,Status bar shows contextual shortcuts for the focused panel,delivered,2026-04-08T11:32:50Z
+99,CLOSED,Escape always returns focus to the input bar,ready,2026-04-08T03:55:33Z
+98,CLOSED,Focused panel has a visual indicator,delivered,2026-04-08T11:30:27Z
+97,CLOSED,Bridge only delivers messages relevant to the receiving agent,delivered,2026-04-08T11:32:52Z
+96,CLOSED,Status bar shows only peer dots, not connected count,delivered,2026-04-08T11:16:18Z
+95,CLOSED,Remove duplicate MCP server endpoint,delivered,2026-04-08T11:16:17Z
+94,CLOSED,Remove pin system (superseded by arcs direction),delivered,2026-04-08T11:16:15Z
+93,CLOSED,Remove handoff system (dead feature),delivered,2026-04-08T11:16:13Z
+92,CLOSED,Agents know which channel the owner is talking to them in,delivered,2026-04-08T04:47:35Z
+91,CLOSED,Latest broadcast message visible at top of channel views,delivered,2026-04-08T11:29:22Z
+90,CLOSED,Message wrapping breaks at word boundaries instead of mid-word,delivered,2026-04-08T11:23:48Z
+89,CLOSED,Mouse cursor indicates clickable elements,icebox,2026-04-08T03:48:07Z
+88,CLOSED,Large markdown messages render as raw text instead of formatted,delivered,2026-04-08T11:22:42Z
+87,CLOSED,A new participant can read session history without activity noise,delivered,2026-04-08T02:41:45Z
+86,CLOSED,Wrapped message lines align with the first line of text, not the left edge,delivered,2026-04-08T02:40:29Z
+85,CLOSED,A user can click sidebar, channels, and help hint with the mouse,delivered,2026-04-08T02:37:57Z
+84,CLOSED,Clean up startup: remove /help, remove connected message, add ? hint in status bar,,2026-04-07T02:38:01Z
+83,CLOSED,A user can view the project roadmap from the TUI,delivered,2026-04-08T02:25:29Z
+82,OPEN,bpmux has a website that explains what it is and how to get it,icebox,2026-04-11T00:05:04Z
+81,CLOSED,Pasting multiline text sends each line as a separate message,delivered,2026-04-08T02:20:30Z
+80,CLOSED,Messages render basic markdown formatting,backlog,2026-04-07T00:47:28Z
+79,CLOSED,Channel view shows messages by participant involvement, not exact addressing,delivered,2026-04-08T02:22:26Z
+78,CLOSED,TUI renders incoming messages instantly without polling,backlog,2026-04-06T22:38:37Z
+77,CLOSED,An agent can pin and unpin decisions via MCP tools,icebox,2026-04-08T12:46:18Z
+76,CLOSED,Two remote bpmux instances can exchange messages over P2P,ready,2026-04-10T12:06:03Z
+75,CLOSED,A developer can validate P2P data channel connectivity between two Rust peers,icebox,2026-04-09T22:23:07Z
+74,CLOSED,Workspace .mcp.json paths should be portable across machines,icebox,2026-04-06T23:10:05Z
+73,CLOSED,A reconnecting agent receives its previous session's handoff summary,,2026-04-06T23:11:52Z
+72,OPEN,A user gets a desktop notification when a bpmux message arrives while the TUI is unfocused,icebox,2026-04-07T01:38:22Z
+71,CLOSED,A user can navigate channels via a sidebar tree view,,2026-04-07T00:39:48Z
+70,CLOSED,A participant can pin decisions so reconnecting agents have theory context,,2026-04-07T01:38:19Z
+69,CLOSED,A human can see project progress at a glance from the TUI,,2026-04-07T00:39:49Z
+68,CLOSED,Status dots survive TUI restart,delivered,2026-04-08T02:21:31Z
+67,CLOSED,A blocked agent's status dot turns red automatically,,2026-04-06T02:02:52Z
+66,CLOSED,The owner can see channels organized under their project in the sidebar,backlog,2026-04-07T00:39:46Z
+65,CLOSED,The owner can see participant status and unread DMs at a glance,delivered,2026-04-08T02:20:59Z
+64,CLOSED,A user can discover available commands and see what they're typing at a glance,backlog,2026-04-06T15:43:29Z
+63,CLOSED,A user can see how many unread messages arrived while scrolled up,backlog,2026-04-06T23:06:05Z
+62,CLOSED,A user notices when a directed message arrives without sound,backlog,2026-04-06T00:55:50Z
+61,CLOSED,A participant can send and read code blocks in the TUI,backlog,2026-04-06T15:44:40Z
+60,CLOSED,A first-time user understands the basics within 60 seconds of starting bpmux,backlog,2026-04-06T22:56:28Z
+59,CLOSED,The owner can see whether each participant is working, connected, or blocked,backlog,2026-04-06T00:48:10Z
+58,CLOSED,A user can scroll the TUI with the mouse wheel,backlog,2026-04-06T13:36:44Z
+57,CLOSED,send_message tool description should tell agents not to self-prefix their name,backlog,2026-04-05T23:54:12Z
+56,CLOSED,A human can cycle TUI channels with Alt-N / Alt-P,backlog,2026-04-06T18:08:00Z
+55,CLOSED,A human's TUI defaults to broadcast view on session start,backlog,2026-04-06T15:44:38Z
+54,CLOSED,A human can switch TUI view with /view [channel],backlog,2026-04-06T15:44:36Z
+53,CLOSED,A human can see which channels have activity from the TUI status bar,backlog,2026-04-06T15:44:34Z
+52,CLOSED,A human can direct a message to specific participants from the TUI input,backlog,2026-04-06T00:15:33Z
+51,CLOSED,A participant can address a message to specific recipients,backlog,2026-04-05T23:46:44Z
+50,CLOSED,HTTP MCP clients show as ':mcp-client' — need set_name tool,backlog,2026-04-06T19:10:40Z
+49,CLOSED,A team discussion flows freely when a human opens a thread,backlog,2026-04-05T22:02:19Z
+48,CLOSED,An AI joining bpmux gets its role and project context from the session,icebox,2026-04-09T22:23:09Z
+47,OPEN,Notifications are macOS-only (osascript),icebox,2026-04-05T23:16:17Z
+46,CLOSED,Scroll offset uses u16 which overflows in long sessions,backlog,2026-04-06T19:10:39Z
+45,CLOSED,Developer sees their own message after sending,backlog,2026-04-05T03:41:08Z
+44,CLOSED,Expanded message indices shift when new messages arrive,icebox,2026-04-06T19:10:37Z
+43,CLOSED,A developer can move the cursor and edit text mid-line,backlog,2026-04-05T03:41:06Z
+42,CLOSED,bpmux-insights: generate session summary table from JSONL logs,ready,2026-04-11T00:38:35Z
+41,CLOSED,Messages render code blocks with visual distinction,backlog,2026-04-05T01:32:19Z
+40,CLOSED,Wrapped lines indent to show where messages start,backlog,2026-04-05T01:17:26Z
+39,CLOSED,Messages respect newlines for readable formatting,backlog,2026-04-05T01:17:25Z
+38,OPEN,bpmux-insights: research analytics app (Tier 1 — pure computation),icebox,2026-04-04T23:18:32Z
+37,CLOSED,TUI slows down with large message buffer,,2026-04-05T02:52:28Z
+36,CLOSED,An AI agent can filter which messages it receives to save tokens,delivered,2026-04-05T01:08:01Z
+35,CLOSED,A developer can expand and collapse long messages,delivered,2026-04-05T01:08:00Z
+34,CLOSED,Participants are identified by name and tool, not hardcoded suffixes,backlog,2026-04-05T02:13:17Z
+33,OPEN,A developer using a local MLX model can participate in a bpmux session,icebox,2026-04-04T19:11:14Z
+32,OPEN,A developer can connect any coding agent to bpmux with one command,icebox,2026-04-04T19:11:11Z
+31,CLOSED,A developer can toggle system message visibility for debugging,delivered,2026-04-05T01:07:59Z
+30,CLOSED,A bridge reconnection recovers missed messages,delivered,2026-04-05T01:07:57Z
+29,CLOSED,An AI tool reads only new messages since its last read,delivered,2026-04-05T01:07:56Z
+28,CLOSED,A developer sees when participants join or leave,delivered,2026-04-05T01:07:55Z
+27,CLOSED,A developer knows who is in the session,delivered,2026-04-05T01:07:53Z
+26,CLOSED,A developer can discover keybindings while using the TUI,delivered,2026-04-05T01:07:52Z
+25,CLOSED,A first-time user knows how to use bpmux,backlog,2026-04-05T00:07:28Z
+24,CLOSED,A developer can recall previously sent messages,,2026-04-05T00:01:34Z
+23,CLOSED,A developer knows what each agent is doing between messages,delivered,2026-04-05T01:07:51Z
+22,CLOSED,A developer can direct a message to a specific participant,delivered,2026-04-05T01:07:49Z
+21,CLOSED,A developer knows new messages arrived while reading history,,2026-04-05T00:01:32Z
+20,CLOSED,A developer knows when a message arrives while working elsewhere,,2026-04-05T00:01:31Z
+19,CLOSED,A developer can tell AI agents apart visually,,2026-04-04T22:27:57Z
+18,CLOSED,A developer can read the chat when AI agents send long messages,,2026-04-04T20:51:06Z
+17,CLOSED,A developer cannot accidentally destroy their session,,2026-04-04T23:29:27Z
+16,CLOSED,A developer always sees the latest message,,2026-04-04T22:27:55Z
+15,CLOSED,A developer can always see what they are typing,backlog,2026-04-05T00:07:26Z
+14,CLOSED,TUI borders render incorrectly when message contains box-drawing characters,backlog,2026-04-05T01:18:45Z
+13,CLOSED,A developer's TUI is not cluttered by system noise,,2026-04-04T16:58:37Z
+12,CLOSED,A participant knows when their connection is alive,,2026-04-04T04:19:33Z
+11,CLOSED,A developer can scroll through chat history in the TUI,,2026-04-04T03:37:54Z
+10,CLOSED,A developer can talk to their AI through bpmux without leaving their coding tool,,2026-04-04T16:58:35Z
+9,OPEN,bpmux deploys reliably,icebox,2026-04-08T02:54:16Z
+8,OPEN,A developer knows who to trust in the chat,icebox,2026-04-08T02:54:15Z
+7,CLOSED,An AI respects the context budget,icebox,2026-04-09T22:24:06Z
+6,OPEN,A developer's conversation is secure,icebox,2026-04-08T02:54:13Z
+5,CLOSED,Two developers can connect and chat in real-time,icebox,2026-04-09T22:23:10Z
+4,CLOSED,An AI can start a session without the developer touching a terminal,icebox,2026-04-09T22:24:08Z
+3,OPEN,A developer can see the chat in their browser,icebox,2026-04-08T02:54:09Z
+2,CLOSED,An AI tool can send and receive messages through bpmux,,2026-04-03T01:28:05Z
+1,CLOSED,A developer can start a solo session and see the chat,,2026-04-02T22:46:13Z

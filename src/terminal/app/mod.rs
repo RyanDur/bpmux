@@ -20,6 +20,31 @@ fn short_peer_name(peer: &str) -> &str {
     peer.split(':').next().unwrap_or(peer)
 }
 
+/// Pure search over the visible-message tail for the key (rfc3339
+/// timestamp) of the most recent message that wraps past
+/// `TRUNCATE_AFTER_LINES`. Pulled out of `toggle_last_truncated`
+/// (#263) so the App method's mutation surface is just
+/// `msg.expanded_messages` and the cross-state read of
+/// `display.show_system_messages` becomes a parameter.
+fn find_last_truncated_key(
+    messages: &[Message],
+    show_system_messages: bool,
+    inner_width: usize,
+) -> Option<String> {
+    for msg in messages.iter().rev() {
+        if !msg.is_chat() && !show_system_messages {
+            continue;
+        }
+        let prefix_len = msg.from.split(':').next().unwrap_or(&msg.from).len() + 2;
+        let full_len = prefix_len + msg.text.len();
+        let wrapped = full_len.max(1).div_ceil(inner_width.max(1));
+        if wrapped > TRUNCATE_AFTER_LINES {
+            return Some(msg.ts.to_rfc3339());
+        }
+    }
+    None
+}
+
 /// Owner is excluded from channel names — they're implicit in every channel.
 pub fn channel_name(msg: &crate::session::Message, owner: &str) -> String {
     // If the message has a topic, use the topic name as the
@@ -297,24 +322,24 @@ impl App {
     /// deleted so hooks that reference it don't break.
     pub fn save_usage_to_disk(&self) {}
 
+    /// Toggle the expanded-state of the most recent visible message
+    /// that's been truncated. Mutation surface is now a single
+    /// sub-state (`msg.expanded_messages`); the search itself is a
+    /// pure function over the visible message list, so the read of
+    /// `display.show_system_messages` becomes a parameter at the
+    /// call boundary instead of an embedded field access (#263).
     pub fn toggle_last_truncated(&mut self) {
-        let width = CHAT_INNER_WIDTH;
-        for msg in self.msg.messages.iter().rev() {
-            if !msg.is_chat() && !self.display.show_system_messages {
-                continue;
-            }
-            let prefix_len = msg.from.split(':').next().unwrap_or(&msg.from).len() + 2;
-            let full_len = prefix_len + msg.text.len();
-            let wrapped = full_len.max(1).div_ceil(width.max(1));
-            if wrapped > TRUNCATE_AFTER_LINES {
-                let key = msg.ts.to_rfc3339();
-                if self.msg.expanded_messages.contains(&key) {
-                    self.msg.expanded_messages.remove(&key);
-                } else {
-                    self.msg.expanded_messages.insert(key);
-                }
-                return;
-            }
+        let Some(key) = find_last_truncated_key(
+            &self.msg.messages,
+            self.display.show_system_messages,
+            CHAT_INNER_WIDTH,
+        ) else {
+            return;
+        };
+        if self.msg.expanded_messages.contains(&key) {
+            self.msg.expanded_messages.remove(&key);
+        } else {
+            self.msg.expanded_messages.insert(key);
         }
     }
 
