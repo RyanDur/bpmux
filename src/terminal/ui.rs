@@ -439,8 +439,24 @@ fn render_tokens_chart_view(
 fn render_project_panel(frame: &mut Frame, app: &App, area: Rect) {
     use crate::terminal::board::{StoryState, stories_by_state};
 
+    // #219: prefer snapshot data (background-polled) over manually
+    // fetched app.board.stories. Snapshot is always-fresh; the legacy
+    // app.board.stories path is the fallback for manual /board invocation.
+    let (snapshot_stories, last_updated, last_error) = {
+        let snap = app.board_snapshot.lock().ok();
+        match snap {
+            Some(s) => (s.stories.clone(), s.last_updated, s.last_error.clone()),
+            None => (Vec::new(), None, None),
+        }
+    };
+    let display_stories = if !snapshot_stories.is_empty() {
+        snapshot_stories
+    } else {
+        app.board.stories.clone()
+    };
+
     // #196: show board data in the project panel when stories are loaded.
-    if !app.board.stories.is_empty() {
+    if !display_stories.is_empty() {
         let block = Block::default()
             .borders(Borders::ALL)
             .title(" project ")
@@ -452,8 +468,27 @@ fn render_project_panel(frame: &mut Frame, app: &App, area: Rect) {
             .border_style(Style::default().fg(DRACULA_SELECTION))
             .style(Style::default().bg(DRACULA_BG).fg(DRACULA_FG));
 
-        let groups = stories_by_state(&app.board.stories);
+        let groups = stories_by_state(&display_stories);
         let mut lines: Vec<Line> = Vec::new();
+
+        // #219: surface freshness — last-updated timestamp and any
+        // fetch error. Keeps Ryan informed about whether the data is
+        // current or we're running on cached state.
+        if let Some(last) = last_updated {
+            lines.push(Line::from(Span::styled(
+                crate::terminal::board_poller::format_last_updated(last, chrono::Utc::now()),
+                Style::default().fg(DRACULA_COMMENT),
+            )));
+        }
+        if let Some(err) = &last_error {
+            lines.push(Line::from(Span::styled(
+                err.user_message(),
+                Style::default().fg(crate::terminal::theme::DRACULA_ORANGE),
+            )));
+        }
+        if last_updated.is_some() || last_error.is_some() {
+            lines.push(Line::from(""));
+        }
 
         for (state, stories) in &groups {
             let color = match state {

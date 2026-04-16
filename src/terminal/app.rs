@@ -108,6 +108,9 @@ pub struct App {
     // ── Board view (#193) ──
     pub board: BoardState,
 
+    // ── Board poller snapshot (#219) — background-refreshed state ──
+    pub board_snapshot: std::sync::Arc<std::sync::Mutex<super::board_poller::BoardSnapshot>>,
+
     // ── Modal state ──
     pub input_mode: InputMode,
 
@@ -177,6 +180,9 @@ impl App {
             palette: PaletteState::default(),
             topic: TopicState::default(),
             board: BoardState::default(),
+            board_snapshot: std::sync::Arc::new(std::sync::Mutex::new(
+                super::board_poller::BoardSnapshot::default(),
+            )),
             input_mode: InputMode::Chat,
             should_reload: false,
             ci_state: super::ci::CiState::Unknown,

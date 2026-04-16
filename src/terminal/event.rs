@@ -97,6 +97,29 @@ where
         super::ci::spawn_poller(ci_tx, Some(Arc::clone(&session_arc)));
     }
 
+    // Background board poller (#219). Polls GitHub REST API for issue
+    // state, writes to the shared snapshot. View reads from the
+    // snapshot — no fetch on open, no loading state.
+    //
+    // Requires BPMUX_REPO ("owner/repo" format) and GH_TOKEN env vars.
+    // Silent no-op in headless mode or when env vars are missing —
+    // the existing gh-based board fallback still works for tests.
+    let board_poller_tx = if !headless {
+        match std::env::var("BPMUX_REPO").ok().and_then(|r| {
+            let (o, rp) = r.split_once('/')?;
+            Some((o.to_string(), rp.to_string()))
+        }) {
+            Some((owner, repo)) => Some(super::board_poller::spawn(
+                Arc::clone(&app.board_snapshot),
+                owner,
+                repo,
+            )),
+            None => None,
+        }
+    } else {
+        None
+    };
+
     // Perf: throttle screen capture in interactive mode to avoid
     // per-keystroke string allocation. In headless mode, always
     // capture so desk-checks via capture_screen get current data.
@@ -155,6 +178,20 @@ where
             result = wake_rx.recv() => {
                 match result {
                     Ok(msg) => {
+                        // #219: workflow signals that change GitHub state
+                        // trigger an immediate board refetch so the view
+                        // reflects the new reality without waiting for
+                        // the next poll cycle. Only fires on signals from
+                        // `bpmux` (our own workflow signals), not general chat.
+                        if msg.from == "bpmux"
+                            && (msg.text.contains(" accepted")
+                                || msg.text.contains(" rejected")
+                                || msg.text.contains(" delivered")
+                                || msg.text.contains(" started"))
+                            && let Some(tx) = &board_poller_tx
+                        {
+                            let _ = tx.try_send(super::board_poller::PollerCommand::RefreshNow);
+                        }
                         handle_broadcast_message(msg, app);
                     }
                     Err(broadcast::error::RecvError::Lagged(n)) => {

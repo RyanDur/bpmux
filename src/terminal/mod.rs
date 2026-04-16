@@ -1,6 +1,7 @@
 pub mod app;
 mod app_state;
 mod board;
+pub(crate) mod board_poller;
 mod board_view;
 mod chat;
 mod ci;
@@ -23,6 +24,8 @@ pub use event::run_tui;
 
 #[cfg(test)]
 mod app_tests;
+#[cfg(test)]
+mod board_poller_tests;
 #[cfg(test)]
 mod board_tests;
 #[cfg(test)]
