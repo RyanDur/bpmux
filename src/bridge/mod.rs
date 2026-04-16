@@ -32,13 +32,13 @@ type WsSink = futures::stream::SplitSink<
 >;
 
 #[derive(Clone)]
-pub struct BridgeServer {
+pub struct BridgeServer<T: tracker::StoryTracker> {
     port: u16,
     name: Arc<Mutex<String>>,
     peer: Arc<Mutex<Option<Peer<RoleServer>>>>,
     ws_tx: Arc<Mutex<Option<WsSink>>>,
     last_channel: Arc<Mutex<Option<Vec<String>>>>,
-    tracker: tracker::StoryTracker,
+    tracker: T,
 }
 
 pub(crate) fn resolve_bridge_name(raw: &str) -> String {
@@ -51,13 +51,8 @@ pub(crate) fn resolve_bridge_name(raw: &str) -> String {
     }
 }
 
-impl BridgeServer {
-    fn new(port: u16, name: String, fake_tracker: bool) -> Self {
-        let tracker = if fake_tracker {
-            tracker::StoryTracker::Fake
-        } else {
-            tracker::StoryTracker::Gh
-        };
+impl<T: tracker::StoryTracker> BridgeServer<T> {
+    fn new(port: u16, name: String, tracker: T) -> Self {
         Self {
             port,
             name: Arc::new(Mutex::new(resolve_bridge_name(&name))),
@@ -302,7 +297,7 @@ async fn run_ws_connection(
     eprintln!("Bridge: disconnected from bpmux");
 }
 
-impl ServerHandler for BridgeServer {
+impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
     fn get_info(&self) -> ServerInfo {
         let mut capabilities = ServerCapabilities::builder().enable_tools().build();
 
@@ -532,13 +527,23 @@ impl ServerHandler for BridgeServer {
 
 pub fn run_bridge(port: u16, name: &str, fake_tracker: bool) -> anyhow::Result<()> {
     let rt = tokio::runtime::Runtime::new()?;
-    rt.block_on(async {
-        let server = BridgeServer::new(port, name.to_string(), fake_tracker);
-        let (stdin, stdout) = rmcp::transport::io::stdio();
-        let service = server.serve((stdin, stdout)).await?;
-        service.waiting().await?;
-        anyhow::Ok(())
-    })
+    if fake_tracker {
+        rt.block_on(async {
+            let server = BridgeServer::new(port, name.to_string(), tracker::FakeTracker);
+            let (stdin, stdout) = rmcp::transport::io::stdio();
+            let service = server.serve((stdin, stdout)).await?;
+            service.waiting().await?;
+            anyhow::Ok(())
+        })
+    } else {
+        rt.block_on(async {
+            let server = BridgeServer::new(port, name.to_string(), tracker::GhTracker);
+            let (stdin, stdout) = rmcp::transport::io::stdio();
+            let service = server.serve((stdin, stdout)).await?;
+            service.waiting().await?;
+            anyhow::Ok(())
+        })
+    }
 }
 
 #[cfg(test)]

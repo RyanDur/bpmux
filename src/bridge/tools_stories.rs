@@ -73,7 +73,7 @@ pub(super) fn require_role(
 
 pub(super) async fn handle_view_board(
     _args: &serde_json::Map<String, serde_json::Value>,
-    tracker: &super::tracker::StoryTracker,
+    tracker: &impl super::tracker::StoryTracker,
 ) -> Result<String, String> {
     let json_str = tracker.list_stories().await?;
 
@@ -133,7 +133,7 @@ pub(super) async fn handle_view_board(
 
 pub(super) async fn handle_create_story(
     args: &serde_json::Map<String, serde_json::Value>,
-    tracker: &super::tracker::StoryTracker,
+    tracker: &impl super::tracker::StoryTracker,
 ) -> Result<String, String> {
     let title = args
         .get("title")
@@ -150,7 +150,7 @@ pub(super) async fn handle_start_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
-    tracker: &super::tracker::StoryTracker,
+    tracker: &impl super::tracker::StoryTracker,
 ) -> Result<String, String> {
     require_role(agent_name, &["dev"], "start")?;
     let number = args
@@ -184,7 +184,7 @@ pub(super) async fn handle_deliver_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
-    tracker: &super::tracker::StoryTracker,
+    tracker: &impl super::tracker::StoryTracker,
 ) -> Result<String, String> {
     require_role(agent_name, &["dev"], "deliver")?;
     let number = args
@@ -215,7 +215,7 @@ pub(super) async fn handle_deliver_story(
 pub(super) async fn handle_label_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    tracker: &super::tracker::StoryTracker,
+    tracker: &impl super::tracker::StoryTracker,
 ) -> Result<String, String> {
     require_role(agent_name, &["pm"], "label")?;
     let number = args
@@ -234,7 +234,7 @@ pub(super) async fn handle_accept_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
-    tracker: &super::tracker::StoryTracker,
+    tracker: &impl super::tracker::StoryTracker,
 ) -> Result<String, String> {
     require_role(agent_name, &["ryan", "pm", "designer", "dev"], "accept")?;
     let number = args
@@ -264,7 +264,7 @@ pub(super) async fn handle_reject_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
-    tracker: &super::tracker::StoryTracker,
+    tracker: &impl super::tracker::StoryTracker,
 ) -> Result<String, String> {
     require_role(agent_name, &["ryan"], "reject")?;
     let number = args
@@ -302,7 +302,7 @@ pub(super) async fn handle_pass_desk_check(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
-    tracker: &super::tracker::StoryTracker,
+    tracker: &impl super::tracker::StoryTracker,
 ) -> Result<String, String> {
     require_role(agent_name, &["designer"], "pass desk-check")?;
     let number = args
@@ -331,7 +331,7 @@ pub(super) async fn handle_fail_desk_check(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
-    tracker: &super::tracker::StoryTracker,
+    tracker: &impl super::tracker::StoryTracker,
 ) -> Result<String, String> {
     require_role(agent_name, &["designer"], "fail desk-check")?;
     let number = args
