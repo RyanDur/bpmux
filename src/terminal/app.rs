@@ -181,7 +181,16 @@ impl App {
             p2p_command: None,
             project: ProjectViewState::default(),
             tokens: TokensViewState::default(),
-            feature_usage: HashMap::new(),
+            // #230: hydrate the in-memory mirror from the persistent
+            // store so the tokens overlay shows cross-session counts.
+            feature_usage: crate::session::usage::load()
+                .into_iter()
+                .filter_map(|(k, rec)| {
+                    let (_src, feature) = crate::session::usage::parse_key(&k)?;
+                    let ts = crate::session::usage::last_used_datetime(&rec)?;
+                    Some((feature.to_string(), (rec.count, ts)))
+                })
+                .collect(),
             focused_roles: None,
             palette: PaletteState::default(),
             topic: TopicState::default(),
@@ -302,9 +311,14 @@ impl App {
         self.msg.filter_dirty = true;
     }
 
-    /// #195: record a feature/command invocation for usage statistics.
-    /// Updates in-memory state and persists to `~/.bpmux/usage.json`.
+    /// #195/#230: record a slash-command invocation for usage
+    /// statistics. Delegates to `session::usage::record` which
+    /// loads-increments-saves the shared `~/.bpmux/usage.json` so
+    /// counts accumulate across sessions (fixing #195's original
+    /// overwrite-on-save loss). Also keeps an in-memory mirror for
+    /// the tokens overlay.
     pub fn record_usage(&mut self, feature: &str) {
+        crate::session::usage::record(crate::session::usage::Source::Slash, feature);
         let entry = self
             .feature_usage
             .entry(feature.to_string())
@@ -313,33 +327,11 @@ impl App {
         entry.1 = chrono::Utc::now();
     }
 
-    /// Persist usage data to disk. Called at session end or on
-    /// explicit save, not on every command invocation. Separates
-    /// the I/O side effect from the in-memory counter update.
-    pub fn save_usage_to_disk(&self) {
-        if let Some(home) = dirs::home_dir() {
-            let path = home.join(".bpmux").join("usage.json");
-            let serializable: std::collections::HashMap<String, (usize, String)> = self
-                .feature_usage
-                .iter()
-                .map(|(k, (c, t))| (k.clone(), (*c, t.to_rfc3339())))
-                .collect();
-            if let Err(e) = std::fs::create_dir_all(path.parent().unwrap_or(&path)) {
-                crate::session::diag::log_diag(&format!("save_usage mkdir failed: {e}"));
-                return;
-            }
-            match serde_json::to_string_pretty(&serializable) {
-                Ok(json) => {
-                    if let Err(e) = std::fs::write(&path, json) {
-                        crate::session::diag::log_diag(&format!("save_usage write failed: {e}"));
-                    }
-                }
-                Err(e) => {
-                    crate::session::diag::log_diag(&format!("save_usage serialize failed: {e}"));
-                }
-            }
-        }
-    }
+    /// #230: in-memory mirror gets persisted via `session::usage::record`
+    /// on each invocation now, so this end-of-session save is a no-op
+    /// kept for call-site compatibility. Left in place rather than
+    /// deleted so hooks that reference it don't break.
+    pub fn save_usage_to_disk(&self) {}
 
     /// #192: return the filtered list of palette actions matching
     /// the current palette_input. Fuzzy match: the input chars must

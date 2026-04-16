@@ -466,6 +466,14 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
 
         async move {
             let args = request.arguments.unwrap_or_default();
+            // #230: record every MCP tool invocation to the shared
+            // usage store so team-judgment questions ("is this tool
+            // used?") have data across agents and sessions. Single
+            // choke-point; no per-handler instrumentation.
+            crate::session::usage::record(
+                crate::session::usage::Source::Mcp,
+                request.name.as_ref(),
+            );
             let result = match request.name.as_ref() {
                 "send_message" => tools::handle_send(&args, &ws_tx, &last_channel).await,
                 "set_name" => tools::handle_set_name(&args, &name, &ws_tx).await,

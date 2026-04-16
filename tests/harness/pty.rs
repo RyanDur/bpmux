@@ -95,6 +95,12 @@ impl TestBpmux {
         // Set BPMUX_ROOT to the actual repo root so /roadmap can find ROADMAP.md
         let manifest_dir = env!("CARGO_MANIFEST_DIR");
         cmd.env("BPMUX_ROOT", manifest_dir);
+        // Isolate the shared usage-counter file so tests don't read from
+        // (or clobber) the developer's real ~/.bpmux/usage.json. Landed
+        // with #230 when cross-session persistence started pulling that
+        // file into App startup — a populated real file overflowed the
+        // /tokens overlay in PTY tests.
+        cmd.env("BPMUX_USAGE_PATH", session_dir.path().join("usage.json"));
         for (k, v) in extra_env {
             cmd.env(*k, *v);
         }
