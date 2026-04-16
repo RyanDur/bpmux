@@ -31,4 +31,6 @@ mod board_tests;
 #[cfg(test)]
 mod ci_tests;
 #[cfg(test)]
+mod restart_affordance_tests;
+#[cfg(test)]
 mod ui_tests;

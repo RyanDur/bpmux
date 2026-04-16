@@ -253,15 +253,15 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     } else {
         ("?=help", " \u{2325}1=sidebar Enter=send")
     };
-    // #220: reserve space for the clickable "[⟳ restart]" affordance
-    // when an agent has requested a restart. The affordance sits
-    // between CI indicator and help hint — underlined cyan to match
-    // the clickable-widget style.
-    let restart_hint = if app.pending_restart.is_some() {
-        "[\u{21BB} restart] "
-    } else {
-        ""
+    // #220: reserve space for the clickable "[⟳ restart (role)]"
+    // affordance when an agent has requested a restart. Shows the
+    // requester so Ryan knows which teammate flagged the binary.
+    // Orange+underlined to match the clickable-widget style.
+    let restart_hint_owned: String = match app.pending_restart.as_deref() {
+        Some(requester) => format!("[\u{21BB} restart ({requester})] "),
+        None => String::new(),
     };
+    let restart_hint: &str = &restart_hint_owned;
     let restart_hint_len = restart_hint.chars().count();
     let hint_len = restart_hint_len + clickable_hint.chars().count() + keybind_hint.chars().count();
     let right_margin = 1;
