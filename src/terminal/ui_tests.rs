@@ -934,3 +934,205 @@ fn ci_indicator_fits_80x24_with_full_peer_presence() {
         "help hint evicted by CI indicator at 80x24:\n{content}"
     );
 }
+
+#[test]
+fn fmt_opt_hours_formats_sub_hour_as_minutes() {
+    assert_eq!(super::ui::fmt_opt_hours(Some(0.5)), "30min");
+    assert_eq!(super::ui::fmt_opt_hours(Some(0.1)), "6min");
+}
+
+#[test]
+fn fmt_opt_hours_formats_hours_with_one_decimal() {
+    assert_eq!(super::ui::fmt_opt_hours(Some(2.15)), "2.1h");
+    assert_eq!(super::ui::fmt_opt_hours(Some(10.0)), "10.0h");
+}
+
+#[test]
+fn fmt_opt_hours_boundary_at_one_hour() {
+    assert_eq!(super::ui::fmt_opt_hours(Some(1.0)), "1.0h");
+}
+
+#[test]
+fn fmt_opt_hours_formats_none_as_em_dash() {
+    assert_eq!(super::ui::fmt_opt_hours(None), "—");
+}
+
+#[test]
+fn fmt_opt_rate_formats_as_percent() {
+    assert_eq!(super::ui::fmt_opt_rate(Some(0.16)), "16%");
+    assert_eq!(super::ui::fmt_opt_rate(Some(1.0)), "100%");
+}
+
+#[test]
+fn fmt_opt_rate_formats_none_as_em_dash() {
+    assert_eq!(super::ui::fmt_opt_rate(None), "—");
+}
+
+fn project_panel_app(with_dora: Option<super::board::DoraMetrics>, auth_invalid: bool) -> App {
+    let mut app = test_app_with(Vec::new());
+    app.project.show = true;
+    app.project.dora = with_dora;
+    if auth_invalid {
+        let mut snap = app.board_snapshot.lock().unwrap();
+        snap.last_error = Some(super::board_poller::BoardFetchError::AuthInvalid);
+    }
+    app
+}
+
+fn render_panel_screen(app: &mut App) -> String {
+    let backend = TestBackend::new(80, 40);
+    let mut terminal = Terminal::new(backend).unwrap();
+    terminal.draw(|frame| render(frame, app)).unwrap();
+    buffer_to_string(terminal.backend().buffer())
+}
+
+fn dora_fixture() -> super::board::DoraMetrics {
+    super::board::DoraMetrics {
+        shipped_this_week: 8,
+        in_progress: 3,
+        rejection_rate: Some(0.09),
+        avg_cycle_hours: Some(3.2),
+        completed_count: 10,
+    }
+}
+
+/// Returns the lines in the screen that contain `needle`. Used for
+/// one-per-row assertions — a metric pair that rendered on the same
+/// line would produce a single match containing both needles.
+fn lines_containing<'a>(screen: &'a str, needle: &str) -> Vec<&'a str> {
+    screen.lines().filter(|l| l.contains(needle)).collect()
+}
+
+#[test]
+fn dora_zone_renders_one_metric_per_row() {
+    let mut app = project_panel_app(Some(dora_fixture()), false);
+    let screen = render_panel_screen(&mut app);
+
+    for (label, value) in [
+        ("shipped this week", "8"),
+        ("in progress", "3"),
+        ("cycle time", "3.2h"),
+        ("rejection rate", "9%"),
+    ] {
+        let hits = lines_containing(&screen, label);
+        assert_eq!(
+            hits.len(),
+            1,
+            "expected exactly one line containing `{label}`. screen:\n{screen}"
+        );
+        assert!(
+            hits[0].contains(value),
+            "`{label}` line missing value `{value}`. line: `{}`",
+            hits[0]
+        );
+    }
+}
+
+#[test]
+fn dora_zone_does_not_render_two_metrics_per_row() {
+    let mut app = project_panel_app(Some(dora_fixture()), false);
+    let screen = render_panel_screen(&mut app);
+
+    for line in screen.lines() {
+        let pairs = [
+            ("shipped this week", "in progress"),
+            ("cycle time", "rejection rate"),
+            ("in progress", "cycle time"),
+        ];
+        for (a, b) in pairs {
+            assert!(
+                !(line.contains(a) && line.contains(b)),
+                "`{a}` and `{b}` share a row:\n`{line}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn dora_zone_renders_initializing_when_none() {
+    let mut app = project_panel_app(None, false);
+    let screen = render_panel_screen(&mut app);
+    let heading_idx = screen
+        .lines()
+        .position(|l| l.contains("DORA"))
+        .expect("DORA heading should render");
+    let next_line = screen.lines().nth(heading_idx + 1).unwrap_or("");
+    assert!(
+        next_line.contains("initializing"),
+        "DORA-None should show `initializing...` below heading; got:\n`{next_line}`"
+    );
+}
+
+#[test]
+fn dora_partial_fields_render_dash_for_none() {
+    let mut app = project_panel_app(
+        Some(super::board::DoraMetrics {
+            shipped_this_week: 2,
+            in_progress: 1,
+            rejection_rate: Some(0.09),
+            avg_cycle_hours: None,
+            completed_count: 5,
+        }),
+        false,
+    );
+    let screen = render_panel_screen(&mut app);
+    let cycle = lines_containing(&screen, "cycle time");
+    assert_eq!(cycle.len(), 1, "cycle time row missing:\n{screen}");
+    assert!(
+        cycle[0].contains("—"),
+        "None avg_cycle_hours should render em-dash; got:\n`{}`",
+        cycle[0]
+    );
+}
+
+#[test]
+fn auth_missing_banner_has_three_lines() {
+    let mut app = project_panel_app(Some(dora_fixture()), true);
+    let screen = render_panel_screen(&mut app);
+    assert!(
+        screen.contains("GITHUB_TOKEN not set"),
+        "banner line 1 missing:\n{screen}"
+    );
+    assert!(
+        screen.contains("limited visibility; falling back to"),
+        "banner line 2 missing:\n{screen}"
+    );
+    assert!(
+        screen.contains("manual board fetch via /board"),
+        "banner line 3 missing:\n{screen}"
+    );
+}
+
+#[test]
+fn auth_missing_board_zone_shows_refresh_hint() {
+    let mut app = project_panel_app(Some(dora_fixture()), true);
+    let screen = render_panel_screen(&mut app);
+    assert!(
+        screen.contains("(use /board to refresh)"),
+        "board refresh hint missing when auth invalid:\n{screen}"
+    );
+}
+
+#[test]
+fn auth_missing_hides_velocity_and_dora_zones() {
+    let mut app = project_panel_app(Some(dora_fixture()), true);
+    let screen = render_panel_screen(&mut app);
+    assert!(
+        !screen.contains("velocity"),
+        "velocity heading should be hidden under auth-missing banner:\n{screen}"
+    );
+    assert!(
+        !screen.contains("DORA"),
+        "DORA heading should be hidden under auth-missing banner:\n{screen}"
+    );
+}
+
+#[test]
+fn normal_state_hides_refresh_hint() {
+    let mut app = project_panel_app(Some(dora_fixture()), false);
+    let screen = render_panel_screen(&mut app);
+    assert!(
+        !screen.contains("(use /board to refresh)"),
+        "refresh hint should only appear on auth-missing:\n{screen}"
+    );
+}

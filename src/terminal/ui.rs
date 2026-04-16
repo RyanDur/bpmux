@@ -29,7 +29,8 @@ const MIN_CHART_WIDTH: u16 = 60;
 const MIN_CHART_HEIGHT: u16 = 16;
 const MIN_SPLIT_VIEW_WIDTH: u16 = 60;
 use crate::terminal::theme::{
-    DRACULA_BG, DRACULA_COMMENT, DRACULA_CYAN, DRACULA_FG, DRACULA_PURPLE, DRACULA_SELECTION,
+    DRACULA_BG, DRACULA_COMMENT, DRACULA_CYAN, DRACULA_FG, DRACULA_GREEN, DRACULA_ORANGE,
+    DRACULA_PURPLE, DRACULA_SELECTION, DRACULA_YELLOW,
 };
 
 const MAX_BANNER_LINES: u16 = 4;
@@ -436,12 +437,6 @@ fn render_tokens_chart_view(
 }
 
 fn render_project_panel(frame: &mut Frame, app: &App, area: Rect) {
-    // #227: three-zone project panel (velocity / DORA / board) plus
-    // footer with freshness timestamp + honest error state. Uses
-    // #219's background-polled snapshot for board data, #209's pure
-    // compute for velocity, #218's accuracy-fixed DORA from cached
-    // project state. No more two-path render (markdown fallback
-    // deleted per the spec in docs/design/project-view/reshape.md).
     let (snapshot_stories, last_updated, last_error) = {
         let snap = app.board_snapshot.lock().ok();
         match snap {
@@ -468,20 +463,15 @@ fn render_project_panel(frame: &mut Frame, app: &App, area: Rect) {
 
     let mut lines: Vec<Line> = Vec::new();
 
-    // #227: auth-missing special case — when BoardFetchError::AuthInvalid
-    // is the reason there's no snapshot, hide velocity + DORA behind a
-    // single banner and defer to the board area for whatever cached
-    // state exists. Matches designer's mockup state D.
+    // When the poller can't authenticate (missing or rejected token),
+    // hide velocity + DORA and point at the manual /board fallback.
     let auth_missing = matches!(
         last_error,
         Some(crate::terminal::board_poller::BoardFetchError::AuthInvalid)
     );
 
     if auth_missing {
-        lines.push(Line::from(Span::styled(
-            "GITHUB_TOKEN not set — limited visibility",
-            Style::default().fg(crate::terminal::theme::DRACULA_ORANGE),
-        )));
+        append_auth_missing_banner(&mut lines);
         lines.push(Line::from(""));
     } else {
         append_velocity_zone(&mut lines, app);
@@ -491,8 +481,13 @@ fn render_project_panel(frame: &mut Frame, app: &App, area: Rect) {
     }
 
     append_board_zone(&mut lines, &display_stories, area.width);
+    if auth_missing {
+        lines.push(Line::from(Span::styled(
+            "  (use /board to refresh)",
+            Style::default().fg(DRACULA_COMMENT),
+        )));
+    }
 
-    // Footer: last-updated + error state.
     lines.push(Line::from(""));
     append_project_footer(&mut lines, last_updated, last_error.as_ref());
 
@@ -500,18 +495,27 @@ fn render_project_panel(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_widget(paragraph, area);
 }
 
-/// #227: velocity zone — delivered/day, medians, rework rate. Pure
-/// render over `App`'s message log via `session::velocity::compute`.
-/// Shows "insufficient data" when below the sparse threshold.
+fn append_auth_missing_banner(lines: &mut Vec<Line<'_>>) {
+    let orange = Style::default().fg(DRACULA_ORANGE);
+    lines.push(Line::from(Span::styled("⚠ GITHUB_TOKEN not set", orange)));
+    lines.push(Line::from(Span::styled(
+        "   — limited visibility; falling back to",
+        orange,
+    )));
+    lines.push(Line::from(Span::styled(
+        "   manual board fetch via /board",
+        orange,
+    )));
+}
+
+/// Velocity zone — delivered/day, medians, rework rate. Pure render
+/// over `App`'s message log via `session::velocity::compute`. Shows
+/// "insufficient data" when below the sparse threshold. One metric
+/// per row — narrow-width panels can't fit two-per-row alignment.
 fn append_velocity_zone(lines: &mut Vec<Line<'_>>, app: &App) {
     use crate::session::velocity::compute;
     let metrics = compute(&app.msg.messages, chrono::Utc::now());
-    lines.push(Line::from(Span::styled(
-        "★ velocity (14d)",
-        Style::default()
-            .fg(DRACULA_PURPLE)
-            .add_modifier(Modifier::BOLD),
-    )));
+    lines.push(purple_bold_heading("★ velocity (14d)"));
     if metrics.sparse {
         lines.push(Line::from(Span::styled(
             format!(
@@ -522,52 +526,35 @@ fn append_velocity_zone(lines: &mut Vec<Line<'_>>, app: &App) {
         )));
         return;
     }
-    lines.push(Line::from(Span::styled(
-        format!(
-            "  {:.1}/day  pickup→deliver {}  deliver→accept {}",
-            metrics.delivered_per_day,
-            fmt_opt_hours(metrics.median_pickup_to_deliver_hours),
-            fmt_opt_hours(metrics.median_deliver_to_accept_hours),
-        ),
-        Style::default().fg(DRACULA_FG),
-    )));
-    lines.push(Line::from(Span::styled(
-        format!("  rework {}", fmt_opt_rate(metrics.rework_rate)),
-        Style::default().fg(DRACULA_FG),
-    )));
+    push_metric(
+        lines,
+        "delivered/day",
+        &format!("{:.1}", metrics.delivered_per_day),
+    );
+    push_metric(
+        lines,
+        "pickup→deliver",
+        &fmt_opt_hours(metrics.median_pickup_to_deliver_hours),
+    );
+    push_metric(
+        lines,
+        "deliver→accept",
+        &fmt_opt_hours(metrics.median_deliver_to_accept_hours),
+    );
+    push_metric(lines, "rework rate", &fmt_opt_rate(metrics.rework_rate));
 }
 
-/// #227: DORA zone — accepted-week, in-progress, rejection rate,
-/// avg cycle. Reads cached metrics from `app.project.dora`.
+/// DORA zone — accepted-week, in-progress, rejection rate, cycle
+/// time. Reads cached metrics from `app.project.dora`. One metric
+/// per row, same as velocity.
 fn append_dora_zone(lines: &mut Vec<Line<'_>>, app: &App) {
-    lines.push(Line::from(Span::styled(
-        "★ DORA",
-        Style::default()
-            .fg(DRACULA_PURPLE)
-            .add_modifier(Modifier::BOLD),
-    )));
+    lines.push(purple_bold_heading("★ DORA (30d)"));
     match &app.project.dora {
         Some(m) => {
-            lines.push(Line::from(Span::styled(
-                format!(
-                    "  shipped/wk {}  in-progress {}",
-                    m.shipped_this_week, m.in_progress
-                ),
-                Style::default().fg(DRACULA_FG),
-            )));
-            let rate = match m.rejection_rate {
-                Some(r) => format!("{r:.1}%"),
-                None => "—".to_string(),
-            };
-            let cycle = match m.avg_cycle_hours {
-                Some(h) if h < 1.0 => format!("{:.0}min", h * 60.0),
-                Some(h) => format!("{h:.1}h"),
-                None => "—".to_string(),
-            };
-            lines.push(Line::from(Span::styled(
-                format!("  rejection {rate}  avg cycle {cycle}"),
-                Style::default().fg(DRACULA_FG),
-            )));
+            push_metric(lines, "shipped this week", &m.shipped_this_week.to_string());
+            push_metric(lines, "in progress", &m.in_progress.to_string());
+            push_metric(lines, "cycle time", &fmt_opt_hours(m.avg_cycle_hours));
+            push_metric(lines, "rejection rate", &fmt_opt_rate(m.rejection_rate));
         }
         None => {
             lines.push(Line::from(Span::styled(
@@ -576,6 +563,29 @@ fn append_dora_zone(lines: &mut Vec<Line<'_>>, app: &App) {
             )));
         }
     }
+}
+
+fn purple_bold_heading(text: &str) -> Line<'static> {
+    Line::from(Span::styled(
+        text.to_string(),
+        Style::default()
+            .fg(DRACULA_PURPLE)
+            .add_modifier(Modifier::BOLD),
+    ))
+}
+
+/// Emit a `  label:   value` row with label padded to a consistent
+/// column so values line up across a zone. Shared by velocity + DORA.
+fn push_metric(lines: &mut Vec<Line<'_>>, label: &str, value: &str) {
+    const LABEL_WIDTH: usize = 18;
+    let mut prefix = format!("  {label}:");
+    while prefix.chars().count() < LABEL_WIDTH + 2 {
+        prefix.push(' ');
+    }
+    lines.push(Line::from(vec![
+        Span::styled(prefix, Style::default().fg(DRACULA_FG)),
+        Span::styled(value.to_string(), Style::default().fg(DRACULA_CYAN)),
+    ]));
 }
 
 /// #227: board zone — story groups with counts + titles. Kept from
@@ -587,12 +597,7 @@ fn append_board_zone(
 ) {
     use crate::terminal::board::{StoryState, stories_by_state};
     if stories.is_empty() {
-        lines.push(Line::from(Span::styled(
-            "★ board",
-            Style::default()
-                .fg(DRACULA_PURPLE)
-                .add_modifier(Modifier::BOLD),
-        )));
+        lines.push(purple_bold_heading("★ board"));
         lines.push(Line::from(Span::styled(
             "  initializing...",
             Style::default().fg(DRACULA_COMMENT),
@@ -600,17 +605,12 @@ fn append_board_zone(
         return;
     }
     let groups = stories_by_state(stories);
-    lines.push(Line::from(Span::styled(
-        "★ board",
-        Style::default()
-            .fg(DRACULA_PURPLE)
-            .add_modifier(Modifier::BOLD),
-    )));
+    lines.push(purple_bold_heading("★ board"));
     for (state, group_stories) in &groups {
         let color = match state {
-            StoryState::Ready => crate::terminal::theme::DRACULA_GREEN,
-            StoryState::InProgress => crate::terminal::theme::DRACULA_ORANGE,
-            StoryState::Delivered => crate::terminal::theme::DRACULA_YELLOW,
+            StoryState::Ready => DRACULA_GREEN,
+            StoryState::InProgress => DRACULA_ORANGE,
+            StoryState::Delivered => DRACULA_YELLOW,
             _ => DRACULA_COMMENT,
         };
         if matches!(state, StoryState::Accepted | StoryState::Icebox) {
@@ -639,8 +639,8 @@ fn append_board_zone(
     }
 }
 
-/// #227: footer line — freshness timestamp + any fetch error from
-/// the board poller's last attempt.
+/// Footer line — freshness timestamp + any fetch error from the
+/// board poller's last attempt.
 fn append_project_footer(
     lines: &mut Vec<Line<'_>>,
     last_updated: Option<chrono::DateTime<chrono::Utc>>,
@@ -656,14 +656,14 @@ fn append_project_footer(
         None => format!("⏱ {freshness}"),
     };
     let color = if last_error.is_some() {
-        crate::terminal::theme::DRACULA_ORANGE
+        DRACULA_ORANGE
     } else {
         DRACULA_COMMENT
     };
     lines.push(Line::from(Span::styled(footer, Style::default().fg(color))));
 }
 
-fn fmt_opt_hours(h: Option<f64>) -> String {
+pub(super) fn fmt_opt_hours(h: Option<f64>) -> String {
     match h {
         Some(v) if v < 1.0 => format!("{:.0}min", v * 60.0),
         Some(v) => format!("{v:.1}h"),
@@ -671,7 +671,7 @@ fn fmt_opt_hours(h: Option<f64>) -> String {
     }
 }
 
-fn fmt_opt_rate(r: Option<f64>) -> String {
+pub(super) fn fmt_opt_rate(r: Option<f64>) -> String {
     match r {
         Some(v) => format!("{:.0}%", v * 100.0),
         None => "—".to_string(),
