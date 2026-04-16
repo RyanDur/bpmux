@@ -12,6 +12,16 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+        with:
+          # #222: skip caching target/ so the cache stays small enough
+          # to save without hitting the runner's ~14GB disk limit.
+          # Two disk-full failures today (runs 24507576081 and
+          # 24490994629) both happened in the rust-cache Post step.
+          # Keeping ~/.cargo/registry + ~/.cargo/git caches preserves
+          # the dep-download speedup while dropping the biggest
+          # artifact directory (webrtc + tokio + octocrab dominate
+          # target/).
+          cache-targets: "false"
       - name: Format check
         run: cargo fmt --check
       - name: Clippy
