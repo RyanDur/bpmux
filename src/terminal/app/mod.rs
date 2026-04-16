@@ -1,3 +1,4 @@
+mod filter;
 mod palette;
 mod receive;
 mod scroll;
@@ -234,7 +235,9 @@ impl App {
     }
 
     /// Rebuild the filtered index if dirty. Called at the start of
-    /// render_chat to avoid per-frame full scans.
+    /// render_chat to avoid per-frame full scans. The filter rules
+    /// live in `app/filter.rs` as pure functions over a per-call
+    /// `FilterContext`; this method is the index-building shell.
     pub fn rebuild_filtered_if_dirty(&mut self) {
         // Also rebuild if indices are empty but messages exist
         // (covers test setups and initial state).
@@ -244,47 +247,27 @@ impl App {
         if self.msg.messages.is_empty() {
             return;
         }
+        // Build the read-only context from disjoint sub-state fields
+        // so the loop below can still take `&mut self.msg`. Inlined
+        // (rather than `FilterContext::from_app(self)`) because that
+        // would borrow all of `self` and block the writes.
+        let ctx = filter::FilterContext {
+            show_system_messages: self.display.show_system_messages,
+            show_all_classes: self.display.show_all_classes,
+            current_view: self.channels.current_view.as_deref(),
+            identity_name: &self.identity.name,
+            focused_roles: self.focused_roles.as_deref(),
+            active_topic: &self.topic.active,
+        };
         self.msg.filter_dirty = false;
         self.msg.filtered_indices.clear();
         self.msg.cached_hidden_count = 0;
         for (idx, m) in self.msg.messages.iter().enumerate() {
-            if !m.is_chat() {
-                if self.display.show_system_messages {
-                    self.msg.filtered_indices.push(idx);
-                }
-                continue;
+            match filter::classify(&ctx, m) {
+                filter::FilterVerdict::Include => self.msg.filtered_indices.push(idx),
+                filter::FilterVerdict::Hidden => self.msg.cached_hidden_count += 1,
+                filter::FilterVerdict::Skip => {}
             }
-            let in_channel = match &self.channels.current_view {
-                None => true,
-                Some(view) if view == "broadcast" => {
-                    channel_name(m, &self.identity.name) == "broadcast"
-                }
-                Some(view) => {
-                    super::markdown::message_matches_channel(m, view, &self.identity.name)
-                }
-            };
-            if !in_channel {
-                continue;
-            }
-            if !self.display.show_all_classes
-                && super::chat::should_hide_by_class(m, &self.identity.name)
-            {
-                self.msg.cached_hidden_count += 1;
-                continue;
-            }
-            if !super::commands::focus::in_focus(
-                m,
-                self.focused_roles.as_deref(),
-                &self.identity.name,
-            ) {
-                continue;
-            }
-            if let Some(msg_topic) = &m.topic
-                && *msg_topic != self.topic.active
-            {
-                continue;
-            }
-            self.msg.filtered_indices.push(idx);
         }
     }
 
