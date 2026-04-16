@@ -27,7 +27,7 @@ fn now() -> DateTime<Utc> {
 
 #[test]
 fn empty_messages_returns_zero_metrics_and_sparse_flag() {
-    let m = compute(&[], now());
+    let m = compute(&[], now(), |_| true);
     assert_eq!(m.delivered_in_window, 0);
     assert_eq!(m.delivered_per_day, 0.0);
     assert!(m.median_pickup_to_deliver_hours.is_none());
@@ -43,7 +43,7 @@ fn one_delivered_story_marked_sparse_below_threshold() {
         "#199 (test) delivered — desk-check needed",
         now() - ChronoDuration::hours(2),
     )];
-    let m = compute(&delivered, now());
+    let m = compute(&delivered, now(), |_| true);
     assert_eq!(m.delivered_in_window, 1);
     assert!(m.sparse);
     const _: () = assert!(SPARSE_THRESHOLD > 1);
@@ -56,7 +56,7 @@ fn three_delivered_stories_crosses_sparse_threshold() {
         msg("#2 delivered", now() - ChronoDuration::hours(2)),
         msg("#3 delivered", now() - ChronoDuration::hours(3)),
     ];
-    let m = compute(&messages, now());
+    let m = compute(&messages, now(), |_| true);
     assert_eq!(m.delivered_in_window, 3);
     assert!(!m.sparse, "3 deliveries should clear the sparse threshold");
     assert!(m.note.is_none());
@@ -70,7 +70,7 @@ fn deliveries_outside_14_day_window_are_excluded() {
         msg("#3 delivered", now() - ChronoDuration::days(20)), // outside window
         msg("#4 delivered", now() + ChronoDuration::hours(1)), // future
     ];
-    let m = compute(&messages, now());
+    let m = compute(&messages, now(), |_| true);
     assert_eq!(m.delivered_in_window, 2);
 }
 
@@ -91,7 +91,7 @@ fn pickup_to_deliver_median_pairs_start_and_deliver_by_issue() {
         ),
         msg("#12 (baz) delivered", base + ChronoDuration::hours(10)),
     ];
-    let m = compute(&messages, now());
+    let m = compute(&messages, now(), |_| true);
     // durations: 3, 1, 6 → sorted [1, 3, 6] → median 3
     assert_eq!(m.median_pickup_to_deliver_hours, Some(3.0));
 }
@@ -105,7 +105,7 @@ fn deliver_to_accept_median_pairs_by_issue() {
         msg("#21 delivered", base + ChronoDuration::minutes(30)),
         msg("#21 accepted. pick next", base + ChronoDuration::hours(5)),
     ];
-    let m = compute(&messages, now());
+    let m = compute(&messages, now(), |_| true);
     // durations: 2h, 4.5h → median 3.25
     assert_eq!(m.median_deliver_to_accept_hours, Some(3.25));
 }
@@ -124,7 +124,7 @@ fn rework_rate_counts_failed_desk_checks_per_delivery() {
         msg("#32 delivered", base + ChronoDuration::hours(3)),
         msg("#33 delivered", base + ChronoDuration::hours(6)),
     ];
-    let m = compute(&messages, now());
+    let m = compute(&messages, now(), |_| true);
     // 5 delivered events in window (#30 twice, #31/#32/#33 once each),
     // 1 fail-desk-check → 1/5 = 0.2
     assert_eq!(m.delivered_in_window, 5);
@@ -144,7 +144,7 @@ fn out_of_order_events_still_pair_by_issue_number() {
         ),
         msg("#42 delivered", base + ChronoDuration::hours(4)),
     ];
-    let m = compute(&messages, now());
+    let m = compute(&messages, now(), |_| true);
     assert_eq!(m.delivered_in_window, 3);
     assert!(m.median_pickup_to_deliver_hours.is_some());
 }
@@ -162,7 +162,7 @@ fn non_chat_messages_are_ignored() {
         multi_depth: None,
         topic: None,
     };
-    let m = compute(&[activity], now());
+    let m = compute(&[activity], now(), |_| true);
     assert_eq!(m.delivered_in_window, 0);
 }
 
@@ -175,7 +175,7 @@ fn delivered_per_day_divides_by_window() {
             now() - ChronoDuration::hours((i as i64) * 4),
         ));
     }
-    let m: VelocityMetrics = compute(&messages, now());
+    let m: VelocityMetrics = compute(&messages, now(), |_| true);
     assert_eq!(m.delivered_in_window, 14);
     assert_eq!(m.delivered_per_day, 14.0 / WINDOW_DAYS as f64);
 }
@@ -189,6 +189,74 @@ fn text_without_number_is_not_parsed_as_lifecycle() {
         ),
         msg("delivered yesterday", now() - ChronoDuration::hours(2)), // no #N
     ];
-    let m = compute(&messages, now());
+    let m = compute(&messages, now(), |_| true);
     assert_eq!(m.delivered_in_window, 0);
+}
+
+#[test]
+fn plumbing_stories_filtered_out_of_velocity() {
+    // Three deliveries in-window, but only #2 is a feature.
+    // Velocity should count 1, not 3 — matching the
+    // "business-value only" rule.
+    let messages = vec![
+        msg("#1 delivered", now() - ChronoDuration::hours(1)),
+        msg("#2 delivered", now() - ChronoDuration::hours(2)),
+        msg("#3 delivered", now() - ChronoDuration::hours(3)),
+    ];
+    let is_feature = |n: u64| n == 2;
+    let m = compute(&messages, now(), is_feature);
+    assert_eq!(m.delivered_in_window, 1);
+    assert!(m.sparse, "1 feature delivery is below the sparse threshold");
+}
+
+#[test]
+fn all_features_returns_same_as_unfiltered() {
+    // When every issue qualifies as a feature, the filter is a
+    // no-op — this is the graceful-degradation path callers hit
+    // when labels aren't available.
+    let messages = vec![
+        msg("#1 delivered", now() - ChronoDuration::hours(1)),
+        msg("#2 delivered", now() - ChronoDuration::hours(2)),
+        msg("#3 delivered", now() - ChronoDuration::hours(3)),
+    ];
+    let m_filtered = compute(&messages, now(), |_| true);
+    let m_unfiltered = compute(&messages, now(), |_| true);
+    assert_eq!(m_filtered.delivered_in_window, 3);
+    assert_eq!(
+        m_filtered.delivered_in_window,
+        m_unfiltered.delivered_in_window
+    );
+}
+
+#[test]
+fn no_features_produces_zero_velocity() {
+    // All plumbing → 0 deliveries counted. Not just sparse —
+    // actually zero. The metric reads honestly low.
+    let messages = vec![
+        msg("#1 delivered", now() - ChronoDuration::hours(1)),
+        msg("#2 delivered", now() - ChronoDuration::hours(2)),
+    ];
+    let m = compute(&messages, now(), |_| false);
+    assert_eq!(m.delivered_in_window, 0);
+    assert_eq!(m.delivered_per_day, 0.0);
+}
+
+#[test]
+fn is_feature_verdict_matches_vertical_labels() {
+    use crate::session::velocity::is_feature_verdict;
+    assert!(is_feature_verdict(&["vertical".to_string()]));
+    assert!(is_feature_verdict(&["stranded-vertical".to_string()]));
+    assert!(is_feature_verdict(&[
+        "ready".to_string(),
+        "vertical".to_string()
+    ]));
+}
+
+#[test]
+fn is_feature_verdict_rejects_plumbing_and_unlabeled() {
+    use crate::session::velocity::is_feature_verdict;
+    assert!(!is_feature_verdict(&["honest-plumbing".to_string()]));
+    assert!(!is_feature_verdict(&["half-slice".to_string()]));
+    assert!(!is_feature_verdict(&["ready".to_string()]));
+    assert!(!is_feature_verdict(&[]));
 }

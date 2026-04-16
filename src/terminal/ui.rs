@@ -513,8 +513,24 @@ fn append_auth_missing_banner(lines: &mut Vec<Line<'_>>) {
 /// "insufficient data" when below the sparse threshold. One metric
 /// per row — narrow-width panels can't fit two-per-row alignment.
 fn append_velocity_zone(lines: &mut Vec<Line<'_>>, app: &App) {
-    use crate::session::velocity::compute;
-    let metrics = compute(&app.msg.messages, chrono::Utc::now());
+    use crate::session::velocity::{compute, is_feature_verdict};
+    // Build a lookup from the board-poller snapshot so velocity
+    // counts only business-value stories. If the snapshot is empty
+    // (auth missing, first poll hasn't completed), every delivered
+    // event falls through the `is_feature` check and the metric
+    // shows "insufficient data" honestly — better than inflating
+    // velocity with unclassified work.
+    let snap = app.board_snapshot.lock().ok();
+    let stories: Vec<crate::terminal::board::BoardStory> =
+        snap.as_ref().map(|s| s.stories.clone()).unwrap_or_default();
+    let is_feature = |number: u64| -> bool {
+        stories
+            .iter()
+            .find(|s| s.number == number)
+            .map(|s| is_feature_verdict(&s.labels))
+            .unwrap_or(false)
+    };
+    let metrics = compute(&app.msg.messages, chrono::Utc::now(), is_feature);
     lines.push(purple_bold_heading("★ velocity (14d)"));
     if metrics.sparse {
         lines.push(Line::from(Span::styled(

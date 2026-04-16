@@ -511,7 +511,7 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                 }
                 "get_token_report" => tools::handle_get_token_report().await,
                 "view_board" => tools_stories::handle_view_board(&args, &tracker).await,
-                "view_velocity" => tools::handle_view_velocity(port).await,
+                "view_velocity" => tools::handle_view_velocity(port, &tracker).await,
                 "create_story" => tools_stories::handle_create_story(&args, &tracker).await,
                 "start_story" => {
                     let current_name = name.lock().await;

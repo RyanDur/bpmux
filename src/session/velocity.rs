@@ -60,6 +60,18 @@ enum Lifecycle {
     FailedDeskCheck,
 }
 
+/// Return true iff the label set marks a story as business-value
+/// (vertical or stranded-vertical). Plumbing stories
+/// (honest-plumbing) and half-slices return false. Empty / unknown
+/// labels return false — we'd rather undercount velocity than
+/// inflate it with unclassified debt. Callers with no tracker
+/// access can pass `|_| true` to disable the filter entirely.
+pub fn is_feature_verdict(labels: &[String]) -> bool {
+    labels
+        .iter()
+        .any(|l| l == "vertical" || l == "stranded-vertical")
+}
+
 #[derive(Serialize, Debug, PartialEq)]
 pub struct VelocityMetrics {
     pub window_days: i64,
@@ -72,15 +84,31 @@ pub struct VelocityMetrics {
     pub note: Option<String>,
 }
 
-/// Compute velocity metrics from the session's message log. Filters
-/// to the last `WINDOW_DAYS` (bounded by `now`) and pairs lifecycle
-/// events by issue number to derive durations.
-pub fn compute(messages: &[Message], now: DateTime<Utc>) -> VelocityMetrics {
+/// Compute velocity metrics from the session's message log.
+///
+/// `is_feature(issue_number)` returns true iff the issue counts
+/// toward business-value velocity. Honest-plumbing stories (tech
+/// debt) return false — their lifecycle events still fire but
+/// don't move the feature-velocity needle, matching Pivotal's
+/// chores-outside-velocity convention and Ryan's 2026-04-16
+/// direction ("the only thing that counts as a story point is
+/// business value"). Callers with no tracker / label access can
+/// pass `|_| true` to disable the filter and count everything.
+///
+/// Filters to the last `WINDOW_DAYS` (bounded by `now`) and pairs
+/// lifecycle events by issue number to derive durations.
+pub fn compute(
+    messages: &[Message],
+    now: DateTime<Utc>,
+    is_feature: impl Fn(u64) -> bool,
+) -> VelocityMetrics {
     let window_start = now - ChronoDuration::days(WINDOW_DAYS);
 
     // Collect events keyed by (issue_number, lifecycle) → timestamps.
     // Multiple instances per issue are possible (e.g. delivered twice
     // after a fail-desk-check) — we keep them all.
+    // Stories that don't count as business-value are filtered at
+    // ingestion so downstream calculations see only feature events.
     let mut events: HashMap<(u64, Lifecycle), Vec<DateTime<Utc>>> = HashMap::new();
     for m in messages {
         if m.message_type != MessageType::Chat {
@@ -90,6 +118,9 @@ pub fn compute(messages: &[Message], now: DateTime<Utc>) -> VelocityMetrics {
             continue;
         }
         if let Some((number, lc)) = parse_lifecycle(&m.text) {
+            if !is_feature(number) {
+                continue;
+            }
             events.entry((number, lc)).or_default().push(m.ts);
         }
     }
