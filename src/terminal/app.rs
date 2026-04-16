@@ -127,6 +127,12 @@ pub struct App {
     pub should_quit: bool,
     pub should_reload: bool,
     pub p2p_command: Option<crate::transport::peer::P2pCommand>,
+
+    /// #220: set when an agent calls request_restart; holds the
+    /// requester's short role name. The status bar shows a
+    /// clickable affordance while this is Some; clicking it
+    /// confirms and triggers reload.
+    pub pending_restart: Option<String>,
 }
 
 impl App {
@@ -186,6 +192,7 @@ impl App {
             input_mode: InputMode::Chat,
             should_reload: false,
             ci_state: super::ci::CiState::Unknown,
+            pending_restart: None,
         }
     }
 

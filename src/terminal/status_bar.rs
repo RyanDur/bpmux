@@ -253,7 +253,17 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     } else {
         ("?=help", " \u{2325}1=sidebar Enter=send")
     };
-    let hint_len = clickable_hint.chars().count() + keybind_hint.chars().count();
+    // #220: reserve space for the clickable "[⟳ restart]" affordance
+    // when an agent has requested a restart. The affordance sits
+    // between CI indicator and help hint — underlined cyan to match
+    // the clickable-widget style.
+    let restart_hint = if app.pending_restart.is_some() {
+        "[\u{21BB} restart] "
+    } else {
+        ""
+    };
+    let restart_hint_len = restart_hint.chars().count();
+    let hint_len = restart_hint_len + clickable_hint.chars().count() + keybind_hint.chars().count();
     let right_margin = 1;
     // Reserve two spaces of breathing room between the CI indicator and
     // the help hint when both are shown, so they don't visually fuse.
@@ -279,7 +289,20 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
             ));
             status_spans.push(Span::raw(" ".repeat(ci_hint_gap.saturating_sub(1))));
         }
-        app.layout.help_hint_col = Some(area.x + (used + pad + ci_width + ci_hint_gap) as u16);
+        let hint_start_col = area.x + (used + pad + ci_width + ci_hint_gap) as u16;
+        if !restart_hint.is_empty() {
+            status_spans.push(Span::styled(
+                restart_hint,
+                Style::default()
+                    .fg(crate::terminal::theme::DRACULA_ORANGE)
+                    .add_modifier(Modifier::UNDERLINED),
+            ));
+            app.layout.restart_hint_cols =
+                Some((hint_start_col, hint_start_col + restart_hint_len as u16));
+        } else {
+            app.layout.restart_hint_cols = None;
+        }
+        app.layout.help_hint_col = Some(hint_start_col + restart_hint_len as u16);
         if !clickable_hint.is_empty() {
             status_spans.push(Span::styled(
                 clickable_hint,
@@ -293,6 +316,7 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         }
     } else {
         app.layout.help_hint_col = None;
+        app.layout.restart_hint_cols = None;
     }
     let status = Paragraph::new(Line::from(status_spans))
         .style(Style::default().bg(DRACULA_SELECTION).fg(DRACULA_FG));

@@ -184,6 +184,11 @@ pub struct LayoutState {
     pub status_bar_area: Option<(u16, u16, u16, u16)>,
     pub chat_area: Option<(u16, u16, u16, u16)>,
     pub help_hint_col: Option<u16>,
+    /// #220: column range of the clickable "[⟳ restart]" affordance
+    /// in the status bar. Some(start, end) when visible, None when
+    /// no pending restart. Click zone is [start, end) on the status
+    /// bar row.
+    pub restart_hint_cols: Option<(u16, u16)>,
 }
 
 #[derive(Default)]

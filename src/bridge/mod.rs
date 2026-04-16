@@ -436,6 +436,9 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
             crate::mcp::tools::fail_desk_check_tool(
                 "Mark a delivered story as failed desk-check with a reason. Applies the 'needs fixes' label and signals dev with the reason. DESIGNER ONLY.",
             ),
+            crate::mcp::tools::request_restart_tool(
+                "#220: Request a clean restart of the bpmux TUI to pick up a new binary. Fires a system signal Ryan sees as a clickable 'restart available' affordance in the status bar. Ryan confirms or ignores — no auto-restart. Use when you know a binary rebuild has happened and want to offer Ryan the chance to apply it without leaving his flow.",
+            ),
             crate::mcp::tools::get_usage_tool(
                 "Get feature usage statistics — invocation counts and last-used timestamps for all commands/features used this session. JSON format.",
             ),
@@ -525,6 +528,7 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                         .await
                 }
                 "get_usage" => tools::handle_get_usage(&args).await,
+                "request_restart" => tools::handle_request_restart(&ws_tx, &name).await,
                 other => Err(format!("unknown tool: {other}")),
             };
             Ok(match result {

@@ -275,7 +275,26 @@ where
     }
 }
 
+/// Marker that bridges inject into a System message when an agent
+/// calls request_restart (#220). Kept in sync with the bridge-side
+/// constant in src/bridge/tools.rs.
+const RESTART_REQUEST_MARKER: &str = "__BPMUX_RESTART_REQUEST__";
+
 fn handle_broadcast_message(msg: session::Message, app: &mut App) {
+    // #220: intercept restart-request signals before the normal chat
+    // path. The message is System-typed so it wouldn't render anyway;
+    // we pull the requester role out of the text and set pending_restart.
+    if msg.message_type == crate::session::MessageType::System
+        && let Some(rest) = msg.text.strip_prefix(RESTART_REQUEST_MARKER)
+    {
+        let requester = rest.trim_start_matches(':').to_string();
+        app.pending_restart = Some(if requester.is_empty() {
+            "agent".to_string()
+        } else {
+            requester
+        });
+        return;
+    }
     let self_identity = app.from_identity();
     if msg.from != self_identity {
         let short_name = msg.from.split(':').next().unwrap_or(&msg.from).to_string();

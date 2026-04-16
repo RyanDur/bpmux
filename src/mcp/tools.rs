@@ -56,6 +56,18 @@ pub fn set_name_tool(description: &'static str) -> Tool {
     )
 }
 
+pub fn request_restart_tool(description: &'static str) -> Tool {
+    let schema = serde_json::json!({
+        "type": "object",
+        "properties": {}
+    });
+    Tool::new(
+        "request_restart",
+        description,
+        schema.as_object().cloned().unwrap_or_default(),
+    )
+}
+
 pub fn set_status_tool(description: &'static str) -> Tool {
     let schema = serde_json::json!({
         "type": "object",

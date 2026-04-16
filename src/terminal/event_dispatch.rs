@@ -56,7 +56,7 @@ fn build_project_content() -> String {
     content
 }
 
-fn handle_mouse_click(col: u16, row: u16, app: &mut App) {
+fn handle_mouse_click(col: u16, row: u16, app: &mut App, session: &session::Session) {
     if let Some((sx, sy, sw, sh)) = app.layout.sidebar_area {
         if col >= sx && col < sx + sw && row >= sy && row < sy + sh {
             if row == sy {
@@ -119,13 +119,27 @@ fn handle_mouse_click(col: u16, row: u16, app: &mut App) {
 
     if let Some((_, sb_y, _, _)) = app.layout.status_bar_area
         && row == sb_y
-        && app
+    {
+        // #220: restart affordance takes precedence — click on the
+        // "[⟳ restart]" span triggers an immediate reload. Checked
+        // before the help-hint zone because the restart zone sits
+        // left of it in the status bar layout.
+        if let Some((start, end)) = app.layout.restart_hint_cols
+            && col >= start
+            && col < end
+        {
+            super::ui_state::UiState::save(app, session);
+            app.should_reload = true;
+            return;
+        }
+        if app
             .layout
             .help_hint_col
             .is_some_and(|hint_col| col >= hint_col)
-    {
-        app.display.show_help = true;
-        app.input_mode = InputMode::Help;
+        {
+            app.display.show_help = true;
+            app.input_mode = InputMode::Help;
+        }
     }
 }
 
@@ -157,7 +171,7 @@ pub(super) fn handle_terminal_event(
                 app.scroll_down(MOUSE_SCROLL_LINES);
             }
             MouseEventKind::Down(crossterm::event::MouseButton::Left) => {
-                handle_mouse_click(mouse.column, mouse.row, app);
+                handle_mouse_click(mouse.column, mouse.row, app, session);
             }
             _ => {}
         }
