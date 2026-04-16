@@ -9,7 +9,6 @@ impl App {
             Err(_) => "Roadmap unavailable.".to_string(),
         };
         self.system_message(roadmap_text);
-        self.clear_input();
         None
     }
 }

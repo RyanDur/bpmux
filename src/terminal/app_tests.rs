@@ -790,6 +790,28 @@ fn roadmap_handler_adds_system_message() {
 }
 
 #[test]
+fn velocity_handler_opens_project_panel() {
+    // handle_velocity is invoked by the event loop when the bridge
+    // emits VIEW_VELOCITY_MARKER (#210 agent-triggered path). The
+    // TUI side-effect is a mode flip to Project — velocity already
+    // renders inside that panel.
+    let mut app = test_app();
+    assert!(!matches!(app.input_mode, super::app::InputMode::Project));
+    app.handle_velocity();
+    assert!(matches!(app.input_mode, super::app::InputMode::Project));
+}
+
+#[test]
+fn velocity_handler_does_not_clear_input() {
+    // Agent-triggered path fires while Ryan may be typing. Wiping
+    // his in-progress input would be a surprise, not a feature.
+    let mut app = test_app();
+    app.input = "typing something".to_string();
+    app.handle_velocity();
+    assert_eq!(app.input, "typing something");
+}
+
+#[test]
 fn toggle_expands_long_system_message() {
     let mut app = test_app();
     // Add a long message from "bpmux" (like roadmap output)

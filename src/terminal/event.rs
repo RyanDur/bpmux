@@ -428,6 +428,10 @@ pub(super) const VIEW_TOKENS_MARKER: &str = "__BPMUX_VIEW_TOKENS__";
 /// Kept in sync with VIEW_ROADMAP_MARKER in src/bridge/tools.rs.
 pub(super) const VIEW_ROADMAP_MARKER: &str = "__BPMUX_VIEW_ROADMAP__";
 
+/// Marker the bridge emits when an agent calls view_velocity (#210).
+/// Kept in sync with VIEW_VELOCITY_MARKER in bridge/tools/view_velocity.rs.
+pub(super) const VIEW_VELOCITY_MARKER: &str = "__BPMUX_VIEW_VELOCITY__";
+
 /// Extract the requester role from a restart-request message text.
 /// Returns `Some(role)` if the text begins with `RESTART_REQUEST_MARKER`;
 /// `None` otherwise. An empty role defaults to "agent" so the UX
@@ -463,6 +467,16 @@ fn handle_broadcast_message(msg: session::Message, app: &mut App) {
     // path /roadmap uses — posts the roadmap text as a system message.
     if msg.message_type == crate::session::MessageType::System && msg.text == VIEW_ROADMAP_MARKER {
         app.handle_roadmap();
+        return;
+    }
+    // Agent-triggered view_velocity opens the project panel where
+    // velocity already lives (#227). No fetch — the board_poller
+    // snapshot and in-memory message log supply the data the zone
+    // renders from.
+    if msg.message_type == crate::session::MessageType::System
+        && msg.text == VIEW_VELOCITY_MARKER
+    {
+        app.handle_velocity();
         return;
     }
     let self_identity = app.from_identity();

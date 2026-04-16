@@ -14,21 +14,19 @@ use crate::session::tokens::{default_tokens_log_path, read_token_rows};
 use crate::terminal::app::App;
 
 impl App {
-    /// `/tokens` — show the token-cost overlay. Snapshots the log
-    /// rows onto `App::tokens_view_rows` so the overlay stays stable
-    /// across frames until dismissed.
+    /// Agent-triggered token-cost overlay (#225 + #232 deleted the
+    /// /tokens slash). Snapshots the log rows onto `App::tokens.rows`
+    /// so the overlay stays stable across frames until dismissed.
     pub(crate) fn handle_tokens(&mut self) -> Option<Message> {
         let rows = match default_tokens_log_path().and_then(|p| read_token_rows(&p)) {
             Ok(rows) => rows,
             Err(_) => {
                 self.system_message("Unable to read token log.".to_string());
-                self.clear_input();
                 return None;
             }
         };
         self.tokens.rows = rows;
         self.input_mode = crate::terminal::app::InputMode::Tokens;
-        self.clear_input();
         None
     }
 }
