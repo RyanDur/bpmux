@@ -341,6 +341,15 @@ async fn handle_client_message(
             if let Some(ref t) = topic {
                 subscribe_peer(&session.topic_subs, identity, t);
             }
+            // When the caller supplies a `to` filter, treat the
+            // message as an explicit DM — same privacy semantic as
+            // the TUI's `/to` path. Without this, agent DMs look
+            // like broadcasts that happen to have `to` set, and
+            // privacy-aware guards (e.g., /share's refusal to widen
+            // explicit-privacy messages) don't trigger. Matches the
+            // AC on #247: agent-originated DMs carry the same
+            // privacy flag as owner DMs.
+            let explicit_privacy = to.is_some();
             let msg = session::Message {
                 from: identity.to_string(),
                 text: msg_text,
@@ -348,7 +357,7 @@ async fn handle_client_message(
                 message_type: MessageType::from(message_type.as_deref()),
                 to,
                 addressee,
-                explicit_privacy: false,
+                explicit_privacy,
                 multi_depth: None,
                 topic,
             };

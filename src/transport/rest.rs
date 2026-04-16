@@ -404,6 +404,12 @@ pub async fn post_message(
             "message_type=\"system\" is reserved for internal callers".to_string(),
         );
     }
+    // A `to` filter on incoming POST means the caller chose a
+    // directed recipient — same privacy semantic as `/to` in the
+    // TUI. Sets explicit_privacy so downstream guards (e.g., /share
+    // refusing to widen private messages) apply uniformly whether
+    // the DM originated from an agent, a hook, or the owner.
+    let explicit_privacy = payload.to.is_some();
     let msg = session::Message {
         from: payload.from,
         text: payload.text,
@@ -411,7 +417,7 @@ pub async fn post_message(
         message_type: session::MessageType::from(payload.message_type.as_deref()),
         to: payload.to,
         addressee: payload.addressee,
-        explicit_privacy: false,
+        explicit_privacy,
         multi_depth: payload.multi_depth,
         topic: payload.topic,
     };

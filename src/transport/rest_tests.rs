@@ -57,6 +57,58 @@ async fn posts_message_and_broadcasts() {
 }
 
 #[tokio::test]
+async fn post_message_with_to_sets_explicit_privacy_true() {
+    // Agent-originated DMs (or any POST /message with `to`) must
+    // carry the same privacy flag as the TUI's /to path. Without
+    // this, /share would silently widen a supposedly-private agent
+    // DM because the explicit-privacy guard doesn't recognize it.
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (app, tx) = test_app(&dir);
+    let mut rx = tx.subscribe();
+    let request = Request::builder()
+        .method("POST")
+        .uri("/api/messages")
+        .header("Content-Type", "application/json")
+        .body(Body::from(
+            r#"{"from":"dev:claude-code","text":"shh","to":["pm"]}"#,
+        ))
+        .expect("build request");
+    let response = app.oneshot(request).await.expect("response");
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let msg = rx.try_recv().expect("broadcast message");
+    assert!(
+        msg.explicit_privacy,
+        "DM with `to` filter must set explicit_privacy=true"
+    );
+    assert_eq!(msg.to.as_deref(), Some(["pm".to_string()].as_slice()));
+}
+
+#[tokio::test]
+async fn post_message_without_to_leaves_explicit_privacy_false() {
+    // Broadcasts (no `to`) are not DMs — explicit_privacy stays
+    // false so /share can widen them as expected.
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (app, tx) = test_app(&dir);
+    let mut rx = tx.subscribe();
+    let request = Request::builder()
+        .method("POST")
+        .uri("/api/messages")
+        .header("Content-Type", "application/json")
+        .body(Body::from(r#"{"from":"dev:claude-code","text":"open"}"#))
+        .expect("build request");
+    let response = app.oneshot(request).await.expect("response");
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let msg = rx.try_recv().expect("broadcast message");
+    assert!(
+        !msg.explicit_privacy,
+        "broadcast must not set explicit_privacy"
+    );
+    assert!(msg.to.is_none(), "broadcast must have no `to` filter");
+}
+
+#[tokio::test]
 async fn rejects_empty_text() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
