@@ -7,7 +7,9 @@
 use tempfile::TempDir;
 
 use super::lessons::{AgentLesson, LessonIndex, save_index};
-use super::recall::{MAX_SURFACED_LESSONS, format_for_surface, surface_for_role};
+use super::recall::{
+    MAX_SURFACED_LESSONS, build_recall_activity_payload, format_for_surface, surface_for_role,
+};
 
 fn lesson(topic: &str, role: &str, established: &str, reinforcements: u32) -> AgentLesson {
     AgentLesson {
@@ -176,4 +178,37 @@ fn format_for_surface_marks_new_vs_reinforced() {
     let out = format_for_surface("dev", &[new_lesson]);
     assert!(out.contains("new"));
     assert!(!out.contains("reinforced 0x"));
+}
+
+#[test]
+fn activity_payload_reports_lesson_count_and_role() {
+    let payload = build_recall_activity_payload("dev", 7);
+    assert_eq!(payload["from"], "dev:claude-code");
+    assert_eq!(payload["message_type"], "activity");
+    let text = payload["text"].as_str().unwrap();
+    assert!(
+        text.contains("7 lessons"),
+        "text should report count: {text}"
+    );
+    assert!(text.contains("dev"), "text should name the role: {text}");
+    assert!(
+        text.contains("session start"),
+        "text should anchor the event: {text}"
+    );
+}
+
+#[test]
+fn activity_payload_uses_singular_for_one_lesson() {
+    let payload = build_recall_activity_payload("pm", 1);
+    let text = payload["text"].as_str().unwrap();
+    assert!(text.contains("1 lesson "), "singular form: {text}");
+    assert!(!text.contains("1 lessons"), "no plural: {text}");
+}
+
+#[test]
+fn activity_payload_reports_zero_as_no_prior_lessons() {
+    let payload = build_recall_activity_payload("designer", 0);
+    let text = payload["text"].as_str().unwrap();
+    assert!(text.contains("no prior lessons"), "zero phrasing: {text}");
+    assert!(text.contains("designer"), "role present: {text}");
 }

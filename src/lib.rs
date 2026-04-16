@@ -86,7 +86,41 @@ fn run_recall(cli: &Cli, role_arg: &Option<String>) -> anyhow::Result<()> {
     };
     let lessons = session::recall::surface_for_role(&session_dir, &role);
     print!("{}", session::recall::format_for_surface(&role, &lessons));
+    // #173: emit a user-visible activity line into the bpmux channel
+    // so Ryan can observe that recall fired without asking the agent
+    // to quote its private system-reminder back. Best-effort — if the
+    // bpmux TUI isn't running, the POST fails silently so the hook
+    // never blocks session start.
+    emit_recall_activity(&role, lessons.len());
     Ok(())
+}
+
+fn resolve_bpmux_port() -> u16 {
+    std::env::var("BPMUX_PORT")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(4117)
+}
+
+fn emit_recall_activity(role: &str, count: usize) {
+    let port = resolve_bpmux_port();
+    let body = session::recall::build_recall_activity_payload(role, count);
+    let url = format!("http://127.0.0.1:{port}/api/messages");
+    // Fire the POST from a one-shot tokio runtime. reqwest is async
+    // and this entry point is sync; the runtime is cheap and local.
+    let Ok(rt) = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+    else {
+        return;
+    };
+    rt.block_on(async {
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_millis(500))
+            .build();
+        let Ok(client) = client else { return };
+        let _ = client.post(&url).json(&body).send().await;
+    });
 }
 
 pub fn run() -> anyhow::Result<()> {

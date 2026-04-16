@@ -95,6 +95,29 @@ fn truncate_for_preview(text: &str) -> String {
     format!("{truncated}…")
 }
 
+/// Build the activity-message payload posted to `/api/messages` when
+/// SessionStart recall fires (#173). The payload is a pure value so
+/// the shape is testable without a running bpmux server — the actual
+/// POST lives in `lib::emit_recall_activity`.
+///
+/// The `from` field uses `{role}:claude-code` to match the
+/// harness-adapter convention on the channel. `message_type` is
+/// `activity` so the line lands in the activity region (quiet, per
+/// #152's chat/activity separation) rather than the chat stream.
+pub fn build_recall_activity_payload(role: &str, count: usize) -> serde_json::Value {
+    let text = if count == 0 {
+        format!("no prior lessons recalled at session start for role '{role}'")
+    } else {
+        let plural = if count == 1 { "lesson" } else { "lessons" };
+        format!("{count} {plural} recalled at session start for role '{role}'")
+    };
+    serde_json::json!({
+        "from": format!("{role}:claude-code"),
+        "text": text,
+        "message_type": "activity",
+    })
+}
+
 fn reinforcement_label(lesson: &AgentLesson) -> String {
     if lesson.reinforcement_count == 0 {
         "new".to_string()
