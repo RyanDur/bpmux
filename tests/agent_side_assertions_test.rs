@@ -384,12 +384,18 @@ fn accept_story_allows_pm_and_broadcasts_role_attribution() {
         let result = pm
             .call_tool("accept_story", serde_json::json!({"number": 213}))
             .await;
-        assert!(
-            result.is_ok(),
-            "PM should be allowed to call accept_story. got: {:?}",
-            result
-        );
+        // Role gate must pass — reject only if it's a role-restriction
+        // error. gh failures (no GH_TOKEN in CI) are expected and don't
+        // indicate a role-gate problem.
+        if let Err(ref e) = result {
+            assert!(
+                !e.contains("restricted to"),
+                "PM should pass the role gate. got: {e}"
+            );
+        }
 
+        // Signal fires on intent before gh — dev should see it even
+        // when gh fails.
         dev.capture
             .wait_for("accepted by pm", Duration::from_secs(5))
             .await;
