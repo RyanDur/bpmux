@@ -62,7 +62,6 @@ fn menu_glyph_is_visible_when_sidebar_is_closed_by_default() {
 #[test]
 fn menu_glyph_disappears_when_sidebar_opens() {
     let bpmux = TestBpmux::start();
-    let port = bpmux.port();
     assert!(
         bpmux.wait_for_tui("solo", Duration::from_secs(5)),
         "TUI should render"
@@ -72,17 +71,14 @@ fn menu_glyph_disappears_when_sidebar_opens() {
 
     // Open sidebar via Alt+1 through the REST endpoint (tests the
     // same path #170's end-to-end tests exercise).
-    let secret = bpmux.simulate_secret();
     let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
     rt.block_on(async {
-        let client = reqwest::Client::new();
-        client
-            .post(format!("http://127.0.0.1:{port}/api/simulate/key"))
-            .bearer_auth(&secret)
-            .json(&serde_json::json!({"key": "1", "modifiers": ["alt"]}))
-            .send()
-            .await
-            .expect("POST /api/simulate/key");
+        bpmux
+            .authed_post(
+                "/api/simulate/key",
+                serde_json::json!({"key": "1", "modifiers": ["alt"]}),
+            )
+            .await;
     });
     bpmux
         .wait_until("sidebar to open", Duration::from_secs(5), || {
@@ -126,23 +122,19 @@ fn chat_title_shows_expand_glyph_when_project_view_is_collapsed() {
 #[test]
 fn sidebar_title_shows_collapse_glyph_when_open() {
     let bpmux = TestBpmux::start();
-    let port = bpmux.port();
     assert!(
         bpmux.wait_for_tui("solo", Duration::from_secs(5)),
         "TUI should render"
     );
 
-    let secret = bpmux.simulate_secret();
     let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
     rt.block_on(async {
-        let client = reqwest::Client::new();
-        client
-            .post(format!("http://127.0.0.1:{port}/api/simulate/key"))
-            .bearer_auth(&secret)
-            .json(&serde_json::json!({"key": "1", "modifiers": ["alt"]}))
-            .send()
-            .await
-            .expect("POST /api/simulate/key");
+        bpmux
+            .authed_post(
+                "/api/simulate/key",
+                serde_json::json!({"key": "1", "modifiers": ["alt"]}),
+            )
+            .await;
     });
     bpmux
         .wait_until("sidebar to open", Duration::from_secs(5), || {

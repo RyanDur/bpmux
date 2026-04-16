@@ -43,7 +43,6 @@ fn sidebar_open(tui: &str) -> bool {
 #[test]
 fn alt_1_via_simulate_key_endpoint_toggles_the_sidebar() {
     let bpmux = TestBpmux::start();
-    let port = bpmux.port();
 
     // Let the initial TUI render settle.
     assert!(
@@ -51,18 +50,15 @@ fn alt_1_via_simulate_key_endpoint_toggles_the_sidebar() {
         "TUI should render"
     );
     let before = sidebar_open(&bpmux.tui());
-    let secret = bpmux.simulate_secret();
 
     let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
     rt.block_on(async {
-        let client = reqwest::Client::new();
-        let resp = client
-            .post(format!("http://127.0.0.1:{port}/api/simulate/key"))
-            .bearer_auth(&secret)
-            .json(&serde_json::json!({"key": "1", "modifiers": ["alt"]}))
-            .send()
-            .await
-            .expect("POST /api/simulate/key");
+        let resp = bpmux
+            .authed_post(
+                "/api/simulate/key",
+                serde_json::json!({"key": "1", "modifiers": ["alt"]}),
+            )
+            .await;
         assert_eq!(
             resp.status(),
             reqwest::StatusCode::OK,
@@ -81,14 +77,12 @@ fn alt_1_via_simulate_key_endpoint_toggles_the_sidebar() {
     // Toggle back — sanity check that the state is symmetric and the
     // first change wasn't a fluke.
     rt.block_on(async {
-        let client = reqwest::Client::new();
-        client
-            .post(format!("http://127.0.0.1:{port}/api/simulate/key"))
-            .bearer_auth(&secret)
-            .json(&serde_json::json!({"key": "1", "modifiers": ["alt"]}))
-            .send()
-            .await
-            .expect("POST /api/simulate/key");
+        bpmux
+            .authed_post(
+                "/api/simulate/key",
+                serde_json::json!({"key": "1", "modifiers": ["alt"]}),
+            )
+            .await;
     });
     bpmux
         .wait_until("sidebar to flip back", Duration::from_secs(5), || {
@@ -109,24 +103,17 @@ fn alt_1_via_simulate_key_endpoint_toggles_the_sidebar() {
 #[test]
 fn plain_1_via_simulate_key_endpoint_does_not_toggle_sidebar() {
     let bpmux = TestBpmux::start();
-    let port = bpmux.port();
     assert!(
         bpmux.wait_for_tui("solo", Duration::from_secs(5)),
         "TUI should render"
     );
     let before = sidebar_open(&bpmux.tui());
-    let secret = bpmux.simulate_secret();
 
     let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
     rt.block_on(async {
-        let client = reqwest::Client::new();
-        let resp = client
-            .post(format!("http://127.0.0.1:{port}/api/simulate/key"))
-            .bearer_auth(&secret)
-            .json(&serde_json::json!({"key": "1"}))
-            .send()
-            .await
-            .expect("POST /api/simulate/key");
+        let resp = bpmux
+            .authed_post("/api/simulate/key", serde_json::json!({"key": "1"}))
+            .await;
         assert_eq!(resp.status(), reqwest::StatusCode::OK);
     });
     // Wait for the '1' keystroke to be typed into the input field —

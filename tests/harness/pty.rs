@@ -150,6 +150,27 @@ impl TestBpmux {
         self.port
     }
 
+    /// POST JSON to a path on the spawned bpmux's REST surface with
+    /// the per-run bearer token and loopback Host pin. Centralizes
+    /// the auth boilerplate that would otherwise repeat across every
+    /// simulate-endpoint test (#250). Returns the raw Response so
+    /// callers can assert on status + body as needed. Rejection-path
+    /// tests (wrong/missing bearer, spoofed host) intentionally
+    /// bypass this helper and build their own request — their whole
+    /// point is to deviate from the happy-path auth shape.
+    pub async fn authed_post(&self, path: &str, body: serde_json::Value) -> reqwest::Response {
+        let secret = self.simulate_secret();
+        let url = format!("http://127.0.0.1:{}{}", self.port, path);
+        reqwest::Client::new()
+            .post(&url)
+            .bearer_auth(&secret)
+            .header(reqwest::header::HOST, format!("127.0.0.1:{}", self.port))
+            .json(&body)
+            .send()
+            .await
+            .expect("POST to bpmux should send")
+    }
+
     /// Per-run auth token the spawned bpmux wrote at startup — tests
     /// that POST to /api/simulate/* need this in the Authorization
     /// header (#235).

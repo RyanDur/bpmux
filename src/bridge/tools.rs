@@ -456,6 +456,25 @@ pub(super) async fn handle_list_peer_lessons(
     Ok(body)
 }
 
+/// POST a JSON body to the bpmux server's simulate endpoint with
+/// the per-run auth token (Bearer) and loopback Host pin. Shared
+/// by handle_simulate_click + handle_simulate_key so the auth
+/// boilerplate lives in one place; adding a new simulate endpoint
+/// (or tightening the auth pattern) only touches this helper.
+async fn post_simulate(port: u16, path: &str, body: &serde_json::Value) -> Result<String, String> {
+    let token = load_auth_token()?;
+    let url = format!("http://127.0.0.1:{port}{path}");
+    let resp = reqwest::Client::new()
+        .post(&url)
+        .bearer_auth(&token)
+        .header(reqwest::header::HOST, format!("127.0.0.1:{port}"))
+        .json(body)
+        .send()
+        .await
+        .map_err(|e| format!("failed: {e}"))?;
+    resp.text().await.map_err(|e| format!("failed: {e}"))
+}
+
 pub(super) async fn handle_simulate_click(
     args: &serde_json::Map<String, serde_json::Value>,
     port: u16,
@@ -468,19 +487,12 @@ pub(super) async fn handle_simulate_click(
         .get("y")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'y'")? as u16;
-    let body = serde_json::json!({"x": x, "y": y});
-    let token = load_auth_token()?;
-    let client = reqwest::Client::new();
-    let url = format!("http://127.0.0.1:{port}/api/simulate/click");
-    let resp = client
-        .post(&url)
-        .bearer_auth(&token)
-        .header(reqwest::header::HOST, format!("127.0.0.1:{port}"))
-        .json(&body)
-        .send()
-        .await
-        .map_err(|e| format!("failed: {e}"))?;
-    resp.text().await.map_err(|e| format!("failed: {e}"))
+    post_simulate(
+        port,
+        "/api/simulate/click",
+        &serde_json::json!({"x": x, "y": y}),
+    )
+    .await
 }
 
 pub(super) async fn handle_simulate_key(
@@ -491,25 +503,14 @@ pub(super) async fn handle_simulate_key(
         .get("key")
         .and_then(|v| v.as_str())
         .ok_or("missing 'key'")?;
-    // Forward `modifiers` if the caller supplied it (#170). Accept an
+    // Forward `modifiers` if the caller supplied it. Accept an
     // array of strings; let the REST endpoint validate names so the
     // bridge doesn't need to know the modifier vocabulary.
     let mut body = serde_json::json!({"key": key});
     if let Some(modifiers) = args.get("modifiers") {
         body["modifiers"] = modifiers.clone();
     }
-    let token = load_auth_token()?;
-    let client = reqwest::Client::new();
-    let url = format!("http://127.0.0.1:{port}/api/simulate/key");
-    let resp = client
-        .post(&url)
-        .bearer_auth(&token)
-        .header(reqwest::header::HOST, format!("127.0.0.1:{port}"))
-        .json(&body)
-        .send()
-        .await
-        .map_err(|e| format!("failed: {e}"))?;
-    resp.text().await.map_err(|e| format!("failed: {e}"))
+    post_simulate(port, "/api/simulate/key", &body).await
 }
 
 /// Read the per-run auth token that the server wrote at startup. Two
