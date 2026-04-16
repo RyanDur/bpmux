@@ -392,6 +392,18 @@ pub async fn post_message(
             ),
         );
     }
+    // Reject externally-originated `system` messages. The auto-
+    // subscribe path in session::log mutates topic_subs based on
+    // system messages; accepting them from the outside lets an
+    // attacker manipulate which peers see which topics. Internal
+    // callers that emit system messages do so through other paths
+    // (session::log::append / emit_system), not this HTTP handler.
+    if payload.message_type.as_deref() == Some("system") {
+        return (
+            StatusCode::FORBIDDEN,
+            "message_type=\"system\" is reserved for internal callers".to_string(),
+        );
+    }
     let msg = session::Message {
         from: payload.from,
         text: payload.text,
@@ -438,8 +450,12 @@ pub async fn post_classifier_misfire(
         .as_deref()
         .map(|r| format!(" reason={r:?}"))
         .unwrap_or_default();
+    // All user-controlled fields use the Debug formatter so newlines,
+    // quotes, format-string artifacts, and NUL bytes get escaped into
+    // the log line — prevents log forging / downstream parser attacks
+    // via crafted `agent` or `nudge_hash` values.
     session::diag::log_diag(&format!(
-        "MISFIRE agent={} nudge_hash={}{reason_field}",
+        "MISFIRE agent={:?} nudge_hash={:?}{reason_field}",
         payload.agent, payload.nudge_hash
     ));
     (StatusCode::CREATED, "misfire recorded".to_string())

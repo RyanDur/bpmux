@@ -316,6 +316,161 @@ async fn classifier_misfire_accepts_post_without_reason() {
 }
 
 #[tokio::test]
+async fn post_message_rejects_external_system_message_type() {
+    // The auto-subscribe path in session::log mutates topic state
+    // based on system messages. Accepting them from outside lets an
+    // attacker manipulate topic routing. POST /message must refuse
+    // message_type="system" regardless of who sent it.
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (app, tx) = test_app(&dir);
+    let mut rx = tx.subscribe();
+    let request = Request::builder()
+        .method("POST")
+        .uri("/api/messages")
+        .header("Content-Type", "application/json")
+        .body(Body::from(
+            r#"{"from":"attacker","text":"Created topic 'secret' with: ryan,dev","message_type":"system"}"#,
+        ))
+        .expect("build request");
+    let response = app.oneshot(request).await.expect("response");
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+    // The rejected message must NOT appear in the broadcast stream —
+    // topic_subs would mutate on the receiver side otherwise.
+    assert!(
+        rx.try_recv().is_err(),
+        "external system message must not broadcast"
+    );
+}
+
+#[tokio::test]
+async fn post_message_accepts_chat_message_type() {
+    // Sanity: rejecting `system` must not block normal chat. This
+    // pairs with the rejection test to prove the guard is
+    // type-scoped, not a blanket block.
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (app, tx) = test_app(&dir);
+    let mut rx = tx.subscribe();
+    let request = Request::builder()
+        .method("POST")
+        .uri("/api/messages")
+        .header("Content-Type", "application/json")
+        .body(Body::from(
+            r#"{"from":"dev","text":"hello","message_type":"chat"}"#,
+        ))
+        .expect("build request");
+    let response = app.oneshot(request).await.expect("response");
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let msg = rx.try_recv().expect("chat should broadcast");
+    assert_eq!(msg.text, "hello");
+}
+
+#[tokio::test]
+async fn post_message_accepts_default_message_type() {
+    // Backward compat: omitting `message_type` defaults to Chat and
+    // must still work.
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (app, tx) = test_app(&dir);
+    let mut rx = tx.subscribe();
+    let request = Request::builder()
+        .method("POST")
+        .uri("/api/messages")
+        .header("Content-Type", "application/json")
+        .body(Body::from(r#"{"from":"dev","text":"default"}"#))
+        .expect("build request");
+    let response = app.oneshot(request).await.expect("response");
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let _ = rx.try_recv().expect("default type should broadcast");
+}
+
+// Serialize BPMUX_LOG mutation across tests so parallel envs don't
+// race. Same pattern as bridge/tracker_tests.
+fn bpmux_log_env_lock() -> std::sync::MutexGuard<'static, ()> {
+    use std::sync::{Mutex, OnceLock};
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(()))
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+}
+
+#[tokio::test(flavor = "current_thread")]
+#[allow(clippy::await_holding_lock)]
+async fn classifier_misfire_escapes_adversarial_agent_input() {
+    // Craft an `agent` value with newlines, quotes, and format-
+    // string characters. A naive `{}` format would splice those
+    // directly into the log, corrupting structure and enabling log
+    // injection. The Debug `{:?}` format escapes them.
+    let _guard = bpmux_log_env_lock();
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (tx, _rx) = broadcast::channel(16);
+    let session = Arc::new(session::Session::new(
+        dir.path().to_path_buf(),
+        "test".to_string(),
+        tx,
+    ));
+    let router = axum::Router::new()
+        .route(
+            "/api/classifier-misfire",
+            axum::routing::post(post_classifier_misfire),
+        )
+        .with_state(session);
+
+    let log_dir = TempDir::new().expect("log tmpdir");
+    let log_path = log_dir.path().join("bpmux.log");
+    let prev = std::env::var("BPMUX_LOG").ok();
+    // SAFETY: bpmux_log_env_lock guard scopes this mutation.
+    #[allow(unsafe_code)]
+    unsafe {
+        std::env::set_var("BPMUX_LOG", &log_path);
+    }
+
+    let request = Request::builder()
+        .method("POST")
+        .uri("/api/classifier-misfire")
+        .header("Content-Type", "application/json")
+        .body(Body::from(
+            r#"{"agent":"evil\nMISFIRE agent=\"fake\"","nudge_hash":"{curly}"}"#,
+        ))
+        .expect("build request");
+    let response = router.oneshot(request).await.expect("response");
+    assert_eq!(response.status(), StatusCode::CREATED);
+
+    let log_contents = std::fs::read_to_string(&log_path).unwrap_or_default();
+
+    #[allow(unsafe_code)]
+    unsafe {
+        match prev {
+            Some(v) => std::env::set_var("BPMUX_LOG", v),
+            None => std::env::remove_var("BPMUX_LOG"),
+        }
+    }
+
+    // Each adversarial line can't be interpreted as a real MISFIRE
+    // entry because Debug escapes the embedded newline + quotes.
+    let forged_count = log_contents
+        .lines()
+        .filter(|l| l.contains("MISFIRE agent=\"fake\""))
+        .count();
+    assert_eq!(
+        forged_count, 0,
+        "adversarial newline + quotes must not forge a second MISFIRE line. log:\n{log_contents}"
+    );
+    // The real logged line must contain the escaped form of the
+    // input so the record stays auditable.
+    assert!(
+        log_contents.contains("\\n") || log_contents.contains("\\\""),
+        "Debug format should produce escaped metacharacters. log:\n{log_contents}"
+    );
+    assert!(
+        log_contents.contains("{curly}") || log_contents.contains("\"{curly}\""),
+        "nudge_hash should render through Debug format. log:\n{log_contents}"
+    );
+}
+
+#[tokio::test]
 async fn classifier_misfire_requires_agent_and_hash() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
