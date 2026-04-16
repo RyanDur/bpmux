@@ -48,6 +48,10 @@ enum Command {
         /// Base identity name for this bridge (a unique suffix is appended)
         #[arg(long, default_value = "claude-code")]
         name: String,
+
+        /// Use fake story tracker (no gh calls). Test infrastructure only.
+        #[arg(long)]
+        fake_tracker: bool,
     },
     /// Run in headless mode for agent testing (no terminal required)
     Test,
@@ -127,8 +131,13 @@ pub fn run() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     let headless = matches!(cli.command, Some(Command::Test));
-    if let Some(Command::Bridge { port, name }) = cli.command {
-        return bridge::run_bridge(port, &name);
+    if let Some(Command::Bridge {
+        port,
+        name,
+        fake_tracker,
+    }) = cli.command
+    {
+        return bridge::run_bridge(port, &name, fake_tracker);
     }
 
     if let Some(Command::Recall { role }) = &cli.command {

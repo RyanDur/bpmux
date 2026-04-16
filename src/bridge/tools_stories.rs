@@ -31,10 +31,7 @@ const LABEL_NEEDS_FIXES: &str = "needs fixes";
 /// Run a gh command and return stdout. Errors include stderr.
 /// Sets the working directory to the bpmux repo so `gh` can find
 /// git remotes even when the bridge runs from an agent workspace.
-pub(super) async fn gh(args: &[&str]) -> Result<String, String> {
-    if std::env::var("BPMUX_GH_DRY_RUN").is_ok() {
-        return Ok(format!("(dry run: gh {})", args.join(" ")));
-    }
+pub(crate) async fn gh(args: &[&str]) -> Result<String, String> {
     let mut cmd = tokio::process::Command::new("gh");
     cmd.args(args);
     if let Ok(repo) = std::env::var("BPMUX_REPO") {
@@ -76,29 +73,9 @@ pub(super) fn require_role(
 
 pub(super) async fn handle_view_board(
     _args: &serde_json::Map<String, serde_json::Value>,
+    tracker: &super::tracker::StoryTracker,
 ) -> Result<String, String> {
-    // BPMUX_BOARD_FIXTURE lets tests drive view_board with canned issue
-    // JSON instead of shelling out to gh. Same env var the TUI board
-    // view honors (src/terminal/board.rs) so agent- and human-side
-    // tests share the seed. When unset, fall back to the live gh call.
-    let json_str = match std::env::var("BPMUX_BOARD_FIXTURE") {
-        Ok(path) => {
-            std::fs::read_to_string(&path).map_err(|e| format!("read fixture {path}: {e}"))?
-        }
-        Err(_) => {
-            gh(&[
-                "issue",
-                "list",
-                "--state",
-                "all",
-                "--limit",
-                "200",
-                "--json",
-                "number,title,state,labels",
-            ])
-            .await?
-        }
-    };
+    let json_str = tracker.list_stories().await?;
 
     let issues: Vec<serde_json::Value> =
         serde_json::from_str(&json_str).map_err(|e| format!("parse: {e}"))?;
@@ -156,18 +133,14 @@ pub(super) async fn handle_view_board(
 
 pub(super) async fn handle_create_story(
     args: &serde_json::Map<String, serde_json::Value>,
+    tracker: &super::tracker::StoryTracker,
 ) -> Result<String, String> {
     let title = args
         .get("title")
         .and_then(|v| v.as_str())
         .ok_or("missing 'title' argument")?;
     let body = args.get("body").and_then(|v| v.as_str()).unwrap_or("");
-
-    let mut cmd_args = vec!["issue", "create", "--title", title];
-    if !body.is_empty() {
-        cmd_args.extend(["--body", body]);
-    }
-    let result = gh(&cmd_args).await?;
+    let result = tracker.create_story(title, body).await?;
     Ok(format!("story created: {}", result.trim()))
 }
 
@@ -177,6 +150,7 @@ pub(super) async fn handle_start_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
+    tracker: &super::tracker::StoryTracker,
 ) -> Result<String, String> {
     require_role(agent_name, &["dev"], "start")?;
     let number = args
@@ -188,19 +162,12 @@ pub(super) async fn handle_start_story(
     if let Err(e) = ws_send(ws_tx, signal).await {
         eprintln!("Bridge: signal send failed: {e}");
     }
-    let gh_result = gh(&[
-        "issue",
-        "edit",
-        &number.to_string(),
-        "--remove-label",
-        LABEL_READY,
-        "--add-label",
-        LABEL_IN_PROGRESS,
-    ])
-    .await;
-    match gh_result {
+    if let Err(e) = tracker.remove_label(number, LABEL_READY).await {
+        eprintln!("Bridge: remove-label ready failed for #{number}: {e}");
+    }
+    match tracker.add_label(number, LABEL_IN_PROGRESS).await {
         Ok(_) => Ok(format!("#{number} marked as in progress")),
-        Err(e) => Err(format!("#{number} signal sent but gh failed: {e}")),
+        Err(e) => Err(format!("#{number} signal sent but label failed: {e}")),
     }
 }
 
@@ -217,17 +184,16 @@ pub(super) async fn handle_deliver_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
+    tracker: &super::tracker::StoryTracker,
 ) -> Result<String, String> {
     require_role(agent_name, &["dev"], "deliver")?;
     let number = args
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
-    let title = gh(&["issue", "view", &number.to_string(), "--json", "title"])
+    let title = tracker
+        .get_story_title(number)
         .await
-        .ok()
-        .and_then(|json| serde_json::from_str::<serde_json::Value>(&json).ok())
-        .and_then(|v| v["title"].as_str().map(String::from))
         .unwrap_or_else(|| format!("#{number}"));
     for signal in build_delivery_signals(number, &title) {
         let json = serde_json::to_string(&signal).map_err(|e| format!("signal: {e}"))?;
@@ -235,17 +201,10 @@ pub(super) async fn handle_deliver_story(
             .await
             .map_err(|e| format!("#{number} signal send failed: {e}"))?;
     }
-    match gh(&[
-        "issue",
-        "edit",
-        &number.to_string(),
-        "--remove-label",
-        LABEL_IN_PROGRESS,
-        "--add-label",
-        LABEL_DELIVERED,
-    ])
-    .await
-    {
+    if let Err(e) = tracker.remove_label(number, LABEL_IN_PROGRESS).await {
+        eprintln!("Bridge: remove-label in-progress failed for #{number}: {e}");
+    }
+    match tracker.add_label(number, LABEL_DELIVERED).await {
         Ok(_) => Ok(format!("#{number} delivered: signals sent, labels updated")),
         Err(e) => Ok(format!(
             "#{number} delivered: signals sent, label update skipped ({e})"
@@ -256,6 +215,7 @@ pub(super) async fn handle_deliver_story(
 pub(super) async fn handle_label_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    tracker: &super::tracker::StoryTracker,
 ) -> Result<String, String> {
     require_role(agent_name, &["pm"], "label")?;
     let number = args
@@ -266,7 +226,7 @@ pub(super) async fn handle_label_story(
         .get("label")
         .and_then(|v| v.as_str())
         .ok_or("missing 'label' argument")?;
-    gh(&["issue", "edit", &number.to_string(), "--add-label", label]).await?;
+    tracker.add_label(number, label).await?;
     Ok(format!("#{number} labeled '{label}'"))
 }
 
@@ -274,6 +234,7 @@ pub(super) async fn handle_accept_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
+    tracker: &super::tracker::StoryTracker,
 ) -> Result<String, String> {
     require_role(agent_name, &["ryan", "pm", "designer", "dev"], "accept")?;
     let number = args
@@ -286,24 +247,16 @@ pub(super) async fn handle_accept_story(
     if let Err(e) = ws_send(ws_tx, signal).await {
         eprintln!("Bridge: signal send failed: {e}");
     }
-    if let Err(e) = gh(&[
-        "issue",
-        "edit",
-        &number.to_string(),
-        "--remove-label",
-        LABEL_DELIVERED,
-    ])
-    .await
-    {
-        eprintln!("Bridge: gh remove-label delivered failed for #{number}: {e}");
+    if let Err(e) = tracker.remove_label(number, LABEL_DELIVERED).await {
+        eprintln!("Bridge: remove-label delivered failed for #{number}: {e}");
     }
-    let gh_result = gh(&["issue", "close", &number.to_string()]).await;
-    match gh_result {
+    let close_result = tracker.close_story(number).await;
+    match close_result {
         Ok(_) => Ok(format!("#{number} accepted and closed")),
         Err(e) if e.contains("already closed") || e.contains("is closed") => {
             Ok(format!("#{number} is already accepted — no-op"))
         }
-        Err(e) => Err(format!("#{number} signal sent but gh failed: {e}")),
+        Err(e) => Err(format!("#{number} signal sent but close failed: {e}")),
     }
 }
 
@@ -311,6 +264,7 @@ pub(super) async fn handle_reject_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
+    tracker: &super::tracker::StoryTracker,
 ) -> Result<String, String> {
     require_role(agent_name, &["ryan"], "reject")?;
     let number = args
@@ -326,23 +280,15 @@ pub(super) async fn handle_reject_story(
     if let Err(e) = ws_send(ws_tx, signal).await {
         eprintln!("Bridge: signal send failed: {e}");
     }
-    if let Err(e) = gh(&[
-        "issue",
-        "edit",
-        &number.to_string(),
-        "--remove-label",
-        LABEL_DELIVERED,
-        "--add-label",
-        LABEL_REJECTED,
-    ])
-    .await
-    {
-        eprintln!("Bridge: gh relabel delivered→rejected failed for #{number}: {e}");
+    if let Err(e) = tracker.remove_label(number, LABEL_DELIVERED).await {
+        eprintln!("Bridge: remove-label delivered failed for #{number}: {e}");
     }
-    let gh_result = gh(&["issue", "comment", &number.to_string(), "--body", reason]).await;
-    match gh_result {
+    if let Err(e) = tracker.add_label(number, LABEL_REJECTED).await {
+        eprintln!("Bridge: add-label rejected failed for #{number}: {e}");
+    }
+    match tracker.comment_on_story(number, reason).await {
         Ok(_) => Ok(format!("#{number} rejected: {reason}")),
-        Err(e) => Err(format!("#{number} signal sent but gh failed: {e}")),
+        Err(e) => Err(format!("#{number} signal sent but comment failed: {e}")),
     }
 }
 
@@ -356,6 +302,7 @@ pub(super) async fn handle_pass_desk_check(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
+    tracker: &super::tracker::StoryTracker,
 ) -> Result<String, String> {
     require_role(agent_name, &["designer"], "pass desk-check")?;
     let number = args
@@ -367,15 +314,7 @@ pub(super) async fn handle_pass_desk_check(
     ws_send(ws_tx, signal)
         .await
         .map_err(|e| format!("#{number} signal send failed: {e}"))?;
-    match gh(&[
-        "issue",
-        "edit",
-        &number.to_string(),
-        "--add-label",
-        LABEL_READY_FOR_ACCEPT,
-    ])
-    .await
-    {
+    match tracker.add_label(number, LABEL_READY_FOR_ACCEPT).await {
         Ok(_) => Ok(format!(
             "#{number} passed desk-check: signal sent, label applied"
         )),
@@ -392,6 +331,7 @@ pub(super) async fn handle_fail_desk_check(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
+    tracker: &super::tracker::StoryTracker,
 ) -> Result<String, String> {
     require_role(agent_name, &["designer"], "fail desk-check")?;
     let number = args
@@ -407,15 +347,7 @@ pub(super) async fn handle_fail_desk_check(
     ws_send(ws_tx, signal)
         .await
         .map_err(|e| format!("#{number} signal send failed: {e}"))?;
-    match gh(&[
-        "issue",
-        "edit",
-        &number.to_string(),
-        "--add-label",
-        LABEL_NEEDS_FIXES,
-    ])
-    .await
-    {
+    match tracker.add_label(number, LABEL_NEEDS_FIXES).await {
         Ok(_) => Ok(format!(
             "#{number} failed desk-check: signal sent, label applied"
         )),

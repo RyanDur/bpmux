@@ -42,8 +42,8 @@ impl TestBridge {
                 .arg("--port")
                 .arg(port.to_string())
                 .arg("--name")
-                .arg(&name_owned);
-            cmd.env("BPMUX_GH_DRY_RUN", "1");
+                .arg(&name_owned)
+                .arg("--fake-tracker");
             for (k, v) in &env_owned {
                 cmd.env(k, v);
             }

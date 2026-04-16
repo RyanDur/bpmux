@@ -21,6 +21,7 @@ use tokio_tungstenite::tungstenite;
 
 mod tools;
 mod tools_stories;
+pub(crate) mod tracker;
 
 use crate::transport::protocol::ServerMessage;
 
@@ -37,6 +38,7 @@ pub struct BridgeServer {
     peer: Arc<Mutex<Option<Peer<RoleServer>>>>,
     ws_tx: Arc<Mutex<Option<WsSink>>>,
     last_channel: Arc<Mutex<Option<Vec<String>>>>,
+    tracker: tracker::StoryTracker,
 }
 
 pub(crate) fn resolve_bridge_name(raw: &str) -> String {
@@ -50,13 +52,19 @@ pub(crate) fn resolve_bridge_name(raw: &str) -> String {
 }
 
 impl BridgeServer {
-    fn new(port: u16, name: String) -> Self {
+    fn new(port: u16, name: String, fake_tracker: bool) -> Self {
+        let tracker = if fake_tracker {
+            tracker::StoryTracker::Fake
+        } else {
+            tracker::StoryTracker::Gh
+        };
         Self {
             port,
             name: Arc::new(Mutex::new(resolve_bridge_name(&name))),
             peer: Arc::new(Mutex::new(None)),
             ws_tx: Arc::new(Mutex::new(None)),
             last_channel: Arc::new(Mutex::new(None)),
+            tracker,
         }
     }
 }
@@ -440,6 +448,7 @@ impl ServerHandler for BridgeServer {
         let ws_tx = self.ws_tx.clone();
         let name = self.name.clone();
         let last_channel = self.last_channel.clone();
+        let tracker = self.tracker.clone();
 
         async move {
             let args = request.arguments.unwrap_or_default();
@@ -472,28 +481,29 @@ impl ServerHandler for BridgeServer {
                     tools::handle_get_identity(&args, &current_name).await
                 }
                 "get_token_report" => tools::handle_get_token_report().await,
-                "view_board" => tools_stories::handle_view_board(&args).await,
+                "view_board" => tools_stories::handle_view_board(&args, &tracker).await,
                 "view_velocity" => tools::handle_view_velocity(port).await,
-                "create_story" => tools_stories::handle_create_story(&args).await,
+                "create_story" => tools_stories::handle_create_story(&args, &tracker).await,
                 "start_story" => {
                     let current_name = name.lock().await;
-                    tools_stories::handle_start_story(&args, &current_name, &ws_tx).await
+                    tools_stories::handle_start_story(&args, &current_name, &ws_tx, &tracker).await
                 }
                 "deliver_story" => {
                     let current_name = name.lock().await;
-                    tools_stories::handle_deliver_story(&args, &current_name, &ws_tx).await
+                    tools_stories::handle_deliver_story(&args, &current_name, &ws_tx, &tracker)
+                        .await
                 }
                 "label_story" => {
                     let current_name = name.lock().await;
-                    tools_stories::handle_label_story(&args, &current_name).await
+                    tools_stories::handle_label_story(&args, &current_name, &tracker).await
                 }
                 "accept_story" => {
                     let current_name = name.lock().await;
-                    tools_stories::handle_accept_story(&args, &current_name, &ws_tx).await
+                    tools_stories::handle_accept_story(&args, &current_name, &ws_tx, &tracker).await
                 }
                 "reject_story" => {
                     let current_name = name.lock().await;
-                    tools_stories::handle_reject_story(&args, &current_name, &ws_tx).await
+                    tools_stories::handle_reject_story(&args, &current_name, &ws_tx, &tracker).await
                 }
                 "reorder_story" => {
                     let current_name = name.lock().await;
@@ -501,11 +511,13 @@ impl ServerHandler for BridgeServer {
                 }
                 "pass_desk_check" => {
                     let current_name = name.lock().await;
-                    tools_stories::handle_pass_desk_check(&args, &current_name, &ws_tx).await
+                    tools_stories::handle_pass_desk_check(&args, &current_name, &ws_tx, &tracker)
+                        .await
                 }
                 "fail_desk_check" => {
                     let current_name = name.lock().await;
-                    tools_stories::handle_fail_desk_check(&args, &current_name, &ws_tx).await
+                    tools_stories::handle_fail_desk_check(&args, &current_name, &ws_tx, &tracker)
+                        .await
                 }
                 "get_usage" => tools::handle_get_usage(&args).await,
                 other => Err(format!("unknown tool: {other}")),
@@ -518,10 +530,10 @@ impl ServerHandler for BridgeServer {
     }
 }
 
-pub fn run_bridge(port: u16, name: &str) -> anyhow::Result<()> {
+pub fn run_bridge(port: u16, name: &str, fake_tracker: bool) -> anyhow::Result<()> {
     let rt = tokio::runtime::Runtime::new()?;
     rt.block_on(async {
-        let server = BridgeServer::new(port, name.to_string());
+        let server = BridgeServer::new(port, name.to_string(), fake_tracker);
         let (stdin, stdout) = rmcp::transport::io::stdio();
         let service = server.serve((stdin, stdout)).await?;
         service.waiting().await?;
