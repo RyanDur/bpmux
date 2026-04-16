@@ -555,6 +555,18 @@ pub fn run_bridge(
             service.waiting().await?;
             anyhow::Ok(())
         })
+    } else if let Some(tracker) = tracker::OctocrabStoryTracker::from_env() {
+        // #221: prefer the octocrab-backed tracker when auth + repo
+        // are configured. Eliminates gh CLI shellouts from the
+        // write path; direct REST API is faster and has cleaner
+        // error shapes. GhTracker remains the fallback below.
+        rt.block_on(async {
+            let server = BridgeServer::new(port, name.to_string(), tracker);
+            let (stdin, stdout) = rmcp::transport::io::stdio();
+            let service = server.serve((stdin, stdout)).await?;
+            service.waiting().await?;
+            anyhow::Ok(())
+        })
     } else {
         let tracker = tracker::GhTracker { board_fixture };
         rt.block_on(async {

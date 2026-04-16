@@ -350,3 +350,50 @@ async fn gh_tracker_get_story_title_returns_known_story() {
     let t = title.unwrap();
     assert!(!t.is_empty(), "title should not be empty. got: '{t}'");
 }
+
+// ── Contract tests for OctocrabStoryTracker (#221) ──
+// Same pattern as GhTracker contract tests: #[ignore] + require auth.
+// Run with `cargo test -- --ignored` locally when GH_TOKEN + BPMUX_REPO
+// are set. CI skips them because CI has neither configured.
+
+#[tokio::test]
+#[ignore]
+async fn octocrab_tracker_from_env_builds_when_auth_configured() {
+    use super::tracker::OctocrabStoryTracker;
+    let tracker = OctocrabStoryTracker::from_env();
+    assert!(
+        tracker.is_some(),
+        "OctocrabStoryTracker should build with GH_TOKEN + BPMUX_REPO set"
+    );
+}
+
+#[tokio::test]
+#[ignore]
+async fn octocrab_tracker_list_stories_returns_parseable_json() {
+    use super::tracker::OctocrabStoryTracker;
+    let tracker = OctocrabStoryTracker::from_env().expect("auth configured");
+    let result = tracker.list_stories().await;
+    assert!(
+        result.is_ok(),
+        "list_stories should succeed with auth. got: {result:?}"
+    );
+    let json_str = result.unwrap();
+    let parsed: Vec<serde_json::Value> =
+        serde_json::from_str(&json_str).expect("list_stories should return valid JSON array");
+    if let Some(first) = parsed.first() {
+        assert!(first.get("number").is_some(), "need 'number' field");
+        assert!(first.get("title").is_some(), "need 'title' field");
+        assert!(first.get("state").is_some(), "need 'state' field");
+        assert!(first.get("labels").is_some(), "need 'labels' field");
+    }
+}
+
+#[tokio::test]
+#[ignore]
+async fn octocrab_tracker_get_story_title_returns_known_story() {
+    use super::tracker::OctocrabStoryTracker;
+    let tracker = OctocrabStoryTracker::from_env().expect("auth configured");
+    let title = tracker.get_story_title(213).await;
+    assert!(title.is_some(), "story #213 should exist");
+    assert!(!title.unwrap().is_empty(), "title non-empty");
+}
