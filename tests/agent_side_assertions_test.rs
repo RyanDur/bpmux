@@ -428,6 +428,80 @@ fn accept_story_rejects_unknown_roles() {
     });
 }
 
+/// AC (#213): designer and dev pass the role gate (not rejected).
+/// gh may fail on non-existent issue numbers — that's expected in
+/// test; the assertion is that the error is NOT a role-restriction.
+#[test]
+fn accept_story_allows_designer_and_dev() {
+    let bpmux = TestBpmux::start();
+    let rt = tokio::runtime::Runtime::new().expect("rt");
+    rt.block_on(async {
+        let designer = TestBridge::connect(&bpmux, "designer").await;
+        let dev = TestBridge::connect(&bpmux, "dev").await;
+
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        let result = designer
+            .call_tool("accept_story", serde_json::json!({"number": 900}))
+            .await;
+        if let Err(ref e) = result {
+            assert!(
+                !e.contains("restricted to"),
+                "designer should pass the role gate. got: {e}"
+            );
+        }
+
+        let result = dev
+            .call_tool("accept_story", serde_json::json!({"number": 901}))
+            .await;
+        if let Err(ref e) = result {
+            assert!(
+                !e.contains("restricted to"),
+                "dev should pass the role gate. got: {e}"
+            );
+        }
+
+        designer.close().await;
+        dev.close().await;
+    });
+}
+
+/// AC (#213): accepting an already-accepted story is a no-op
+/// with a clear message, not a raw gh error.
+#[test]
+fn accept_story_is_idempotent_on_already_closed() {
+    let bpmux = TestBpmux::start();
+    let rt = tokio::runtime::Runtime::new().expect("rt");
+    rt.block_on(async {
+        let pm = TestBridge::connect(&bpmux, "pm").await;
+
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        // First accept
+        let _ = pm
+            .call_tool("accept_story", serde_json::json!({"number": 213}))
+            .await;
+
+        // Second accept — should be no-op, not error
+        let result = pm
+            .call_tool("accept_story", serde_json::json!({"number": 213}))
+            .await;
+        assert!(
+            result.is_ok(),
+            "double-accept should be a no-op, not an error. got: {:?}",
+            result
+        );
+        let msg = result.unwrap();
+        let text = serde_json::to_string(&msg).unwrap_or_default();
+        assert!(
+            text.contains("already") || text.contains("accepted"),
+            "idempotent message should say already accepted. got: {text}"
+        );
+
+        pm.close().await;
+    });
+}
+
 /// AC (#209a): view_velocity returns JSON metrics parsed from the
 /// session log. With a fresh session and no delivered stories, the
 /// metrics are zero/sparse — proves the compute path runs end-to-end

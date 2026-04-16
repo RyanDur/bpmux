@@ -297,6 +297,9 @@ pub(super) async fn handle_accept_story(
     let gh_result = gh(&["issue", "close", &number.to_string()]).await;
     match gh_result {
         Ok(_) => Ok(format!("#{number} accepted and closed")),
+        Err(e) if e.contains("already closed") || e.contains("is closed") => {
+            Ok(format!("#{number} is already accepted — no-op"))
+        }
         Err(e) => Err(format!("#{number} signal sent but gh failed: {e}")),
     }
 }
