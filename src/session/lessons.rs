@@ -210,35 +210,3 @@ pub fn list_peer_names(session_dir: &Path) -> Vec<String> {
     names.sort();
     names
 }
-
-/// Merge a remote lesson index into the local one.
-/// For agent lessons: same topic + same role = keep the one with the newer timestamp.
-/// Experiences are additive (deduplicated by timestamp).
-pub fn merge_indexes(local: &mut LessonIndex, remote: &LessonIndex) {
-    // Merge experiences — deduplicate by timestamp
-    let existing_timestamps: std::collections::HashSet<String> = local
-        .experiences
-        .iter()
-        .map(|c| c.timestamp.clone())
-        .collect();
-    for experience in &remote.experiences {
-        if !existing_timestamps.contains(&experience.timestamp) {
-            local.experiences.push(experience.clone());
-        }
-    }
-
-    // Merge lessons — same topic + same role = keep newer
-    for remote_lesson in &remote.lessons {
-        let existing = local
-            .lessons
-            .iter_mut()
-            .find(|l| l.topic == remote_lesson.topic && l.author_role == remote_lesson.author_role);
-        if let Some(existing) = existing {
-            if remote_lesson.established > existing.established {
-                *existing = remote_lesson.clone();
-            }
-        } else {
-            local.lessons.push(remote_lesson.clone());
-        }
-    }
-}
