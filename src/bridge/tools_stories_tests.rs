@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::tools_stories::*;
+use super::tracker::StoryTracker;
 use crate::transport::protocol::ClientMessage;
 
 #[test]
@@ -237,4 +238,115 @@ fn fail_desk_check_signal_includes_reason() {
             "fail signal should say 'needs fixes': {text}"
         );
     }
+}
+
+// ── Handler unit tests with configurable fakes (#213) ──
+
+#[derive(Clone)]
+struct AlreadyClosedTracker;
+
+impl StoryTracker for AlreadyClosedTracker {
+    async fn close_story(&self, _number: u64) -> Result<String, String> {
+        Err("issue is already closed".to_string())
+    }
+    async fn add_label(&self, number: u64, label: &str) -> Result<String, String> {
+        Ok(format!("#{number} labeled '{label}'"))
+    }
+    async fn remove_label(&self, number: u64, label: &str) -> Result<String, String> {
+        Ok(format!("#{number} unlabeled '{label}'"))
+    }
+    async fn create_story(&self, title: &str, _body: &str) -> Result<String, String> {
+        Ok(format!("created: {title}"))
+    }
+    async fn list_stories(&self) -> Result<String, String> {
+        Ok("[]".to_string())
+    }
+    async fn comment_on_story(&self, _number: u64, _body: &str) -> Result<String, String> {
+        Ok("commented".to_string())
+    }
+    async fn get_story_title(&self, number: u64) -> Option<String> {
+        Some(format!("story #{number}"))
+    }
+}
+
+#[tokio::test]
+async fn accept_returns_noop_when_tracker_reports_already_closed() {
+    let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
+    let args = serde_json::json!({"number": 213});
+    let result = handle_accept_story(
+        args.as_object().unwrap(),
+        "pm:claude-code",
+        &ws_tx,
+        &AlreadyClosedTracker,
+    )
+    .await;
+    assert!(
+        result.is_ok(),
+        "already-closed should be Ok, got: {result:?}"
+    );
+    let msg = result.unwrap();
+    assert!(
+        msg.contains("already accepted"),
+        "should say already accepted. got: {msg}"
+    );
+}
+
+#[tokio::test]
+async fn accept_rejects_unknown_role_via_handler() {
+    let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
+    let args = serde_json::json!({"number": 1});
+    let result = handle_accept_story(
+        args.as_object().unwrap(),
+        "intern:claude-code",
+        &ws_tx,
+        &AlreadyClosedTracker,
+    )
+    .await;
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("restricted to"));
+}
+
+// ── Contract tests for GhTracker (#213) ──
+// These verify the real adapter works against the live gh CLI.
+// Marked #[ignore] because they require gh authentication — run
+// locally with `cargo test -- --ignored` when gh is configured.
+
+#[tokio::test]
+#[ignore]
+async fn gh_tracker_list_stories_returns_parseable_json() {
+    use super::tracker::GhTracker;
+    let tracker = GhTracker {
+        board_fixture: None,
+    };
+    let result = tracker.list_stories().await;
+    assert!(
+        result.is_ok(),
+        "list_stories should succeed with gh auth. got: {result:?}"
+    );
+    let json_str = result.unwrap();
+    let parsed: Vec<serde_json::Value> =
+        serde_json::from_str(&json_str).expect("list_stories should return valid JSON array");
+    if let Some(first) = parsed.first() {
+        assert!(
+            first.get("number").is_some(),
+            "each story should have a 'number' field. got: {first}"
+        );
+        assert!(
+            first.get("title").is_some(),
+            "each story should have a 'title' field. got: {first}"
+        );
+    }
+}
+
+#[tokio::test]
+#[ignore]
+async fn gh_tracker_get_story_title_returns_known_story() {
+    use super::tracker::GhTracker;
+    let tracker = GhTracker {
+        board_fixture: None,
+    };
+    let title = tracker.get_story_title(213).await;
+    assert!(title.is_some(), "story #213 should exist and have a title");
+    let t = title.unwrap();
+    assert!(!t.is_empty(), "title should not be empty. got: '{t}'");
 }
