@@ -4,6 +4,7 @@ pub mod bridge;
 pub mod github;
 pub mod mcp;
 pub mod reload;
+pub mod roadmap;
 pub mod server;
 pub mod session;
 pub mod terminal;
