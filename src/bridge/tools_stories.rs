@@ -319,16 +319,19 @@ pub(super) async fn handle_pass_desk_check(
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
-    // Pick the addressee based on story category. Infrastructure
-    // (honest-plumbing / half-slice) → PM (team-accept lane); feature
-    // (vertical / ambiguous) → Ryan (owner-gate lane).
+    // Pick signal recipients based on story category. Infrastructure
+    // (honest-plumbing / half-slice) → PM alone (team-accept lane).
+    // Feature (vertical / ambiguous) → Ryan AND PM (#259 — Ryan is
+    // the acceptor, PM is the presenter; PM needs a direct signal so
+    // presentation doesn't depend on scanning chat for designer's
+    // PASS message).
     let labels = tracker.get_story_labels(number).await;
-    let addressee = addressee_for_pass_desk_check(&labels);
-    let signal = serde_json::to_string(&build_pass_desk_check_signal(number, addressee))
-        .map_err(|e| format!("signal: {e}"))?;
-    ws_send(ws_tx, signal)
-        .await
-        .map_err(|e| format!("#{number} signal send failed: {e}"))?;
+    for msg in build_pass_desk_check_signals(number, &labels) {
+        let signal = serde_json::to_string(&msg).map_err(|e| format!("signal: {e}"))?;
+        ws_send(ws_tx, signal)
+            .await
+            .map_err(|e| format!("#{number} signal send failed: {e}"))?;
+    }
     match tracker.add_label(number, LABEL_READY_FOR_ACCEPT).await {
         Ok(_) => Ok(format!(
             "#{number} passed desk-check: signal sent, label applied"
@@ -475,6 +478,34 @@ pub(super) fn build_pass_desk_check_signal(number: u64, addressee: &str) -> Clie
         message_type: None,
         topic: None,
     }
+}
+
+/// Companion signal to PM on a feature PASS — cues presentation to
+/// Ryan. Distinct from the Ryan-facing "ready for acceptance" signal:
+/// PM and Ryan have different roles in the accept loop (PM presents,
+/// Ryan decides) and the tailored text tells each what to do next.
+pub(super) fn build_pass_desk_check_pm_present_signal(number: u64) -> ClientMessage {
+    ClientMessage::Send {
+        text: format!("#{number} passed designer desk-check. present to ryan."),
+        to: Some(vec!["pm".to_string()]),
+        addressee: Some("pm".to_string()),
+        message_type: None,
+        topic: None,
+    }
+}
+
+/// Compose the full set of pass_desk_check signals for a story. For
+/// features, emits a Ryan-facing "ready for acceptance" signal AND a
+/// PM-facing "present to ryan" signal (#259 — previously PM had to
+/// scan chat for designer's PASS). For infrastructure, the single
+/// PM-facing signal is sufficient since PM is also the acceptor.
+pub(super) fn build_pass_desk_check_signals(number: u64, labels: &[String]) -> Vec<ClientMessage> {
+    let primary = addressee_for_pass_desk_check(labels);
+    let mut signals = vec![build_pass_desk_check_signal(number, primary)];
+    if primary == "ryan" {
+        signals.push(build_pass_desk_check_pm_present_signal(number));
+    }
+    signals
 }
 
 pub(super) fn build_fail_desk_check_signal(number: u64, reason: &str) -> ClientMessage {

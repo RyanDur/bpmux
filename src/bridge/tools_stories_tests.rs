@@ -240,6 +240,69 @@ fn pass_desk_check_signal_announces_ready_for_acceptance() {
 }
 
 #[test]
+fn pass_desk_check_signals_emits_two_for_feature() {
+    // #259: feature PASS co-addresses PM so presentation doesn't
+    // depend on PM scanning chat for designer's PASS message.
+    let signals = build_pass_desk_check_signals(210, &["vertical".to_string()]);
+    assert_eq!(signals.len(), 2, "feature PASS should emit two signals");
+    let addressees: Vec<Option<String>> = signals
+        .iter()
+        .map(|m| match m {
+            ClientMessage::Send { addressee, .. } => addressee.clone(),
+            _ => None,
+        })
+        .collect();
+    assert!(
+        addressees.contains(&Some("ryan".to_string())),
+        "should address ryan: {addressees:?}"
+    );
+    assert!(
+        addressees.contains(&Some("pm".to_string())),
+        "should address pm: {addressees:?}"
+    );
+}
+
+#[test]
+fn pass_desk_check_signals_emits_one_for_infra() {
+    // Infra (honest-plumbing / half-slice) continues to route to PM
+    // alone — PM is both presenter and acceptor for the team-accept
+    // lane, so no companion signal is needed.
+    let signals = build_pass_desk_check_signals(253, &["honest-plumbing".to_string()]);
+    assert_eq!(signals.len(), 1, "infra PASS should emit one signal");
+    if let ClientMessage::Send { addressee, .. } = &signals[0] {
+        assert_eq!(addressee.as_deref(), Some("pm"));
+    } else {
+        panic!("expected Send variant");
+    }
+}
+
+#[test]
+fn pass_desk_check_signals_ambiguous_routes_to_ryan_and_pm() {
+    // An unlabeled / ambiguously-labeled story defaults to Ryan's
+    // lane (see addressee_for_pass_desk_check). That means the
+    // feature-coroutine also fires — PM gets a presenter signal.
+    let signals = build_pass_desk_check_signals(999, &[]);
+    assert_eq!(signals.len(), 2);
+}
+
+#[test]
+fn pass_desk_check_pm_present_signal_cues_presentation() {
+    // Text distinguishes the PM-facing signal from the Ryan-facing
+    // "ready for acceptance" — each role gets the call-to-action
+    // appropriate to their role in the accept loop.
+    if let ClientMessage::Send { text, to, .. } = build_pass_desk_check_pm_present_signal(210) {
+        assert!(text.contains("#210"), "story number in text: {text}");
+        assert!(
+            text.contains("present to ryan"),
+            "PM signal should cue presentation, got: {text}"
+        );
+        assert_eq!(to.as_ref().unwrap(), &["pm"]);
+    } else {
+        panic!("expected Send variant");
+    }
+}
+
+#[test]
 fn fail_desk_check_signal_targets_dev_only() {
     if let ClientMessage::Send { to, addressee, .. } = build_fail_desk_check_signal(203, "reason") {
         assert_eq!(to.as_ref().unwrap(), &["dev"]);
