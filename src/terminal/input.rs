@@ -52,7 +52,6 @@ pub(super) const SLASH_COMMANDS: &[(&str, &str, &str)] = &[
         "show team lessons (or peer's with arg)",
     ),
     ("/board", "project board", "show project board"),
-    ("/roadmap", "roadmap doc", "show project roadmap"),
     ("/status", "set status", "declare your status"),
     ("/who", "list peers", "list participants"),
     ("/session", "start p2p", "create a P2P session"),

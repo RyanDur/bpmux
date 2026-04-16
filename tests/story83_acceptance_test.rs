@@ -1,43 +1,37 @@
-//! Story 83 Acceptance Test: A user can view the project roadmap from the TUI.
+//! Story 83 Acceptance Test: a user can view the project roadmap
+//! from the TUI.
 //!
-//! AC1: /roadmap displays ROADMAP.md contents
-//! AC2: The roadmap renders with markdown formatting
-//! AC3: The display is scrollable (long message behavior)
+//! AC1 (roadmap text surfaces in the TUI) is covered end-to-end in
+//! tests/view_roadmap_test.rs since the typed `/roadmap` slash was
+//! removed in #233 — agents now trigger it via the `view_roadmap`
+//! MCP tool. This file keeps AC3 (the long-message truncation +
+//! expansion behavior) but drives the surface through the same
+//! MCP path so tests don't depend on a removed slash command.
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 mod harness;
 
+use harness::bridge::TestBridge;
 use harness::pty::TestBpmux;
 use std::time::Duration;
 
-/// AC1: GIVEN the user types /roadmap
-/// WHEN ROADMAP.md exists in the repo
-/// THEN the roadmap content appears in the chat
-#[test]
-fn ac1_roadmap_displays_content() {
-    let bpmux = TestBpmux::start();
-
-    bpmux.type_line("/roadmap");
-
-    // ROADMAP.md heading should appear in the chat area
-    assert!(
-        bpmux.wait_for_tui("bpmux Roadmap", Duration::from_secs(5)),
-        "Roadmap content should appear. Screen:\n{}",
-        bpmux.tui()
-    );
-}
-
-/// AC3: GIVEN /roadmap displays a long document
+/// AC3: GIVEN view_roadmap surfaces a long document
 /// WHEN the content exceeds the viewport
 /// THEN truncation indicator shows and Enter expands it
 #[test]
 fn ac3_roadmap_is_expandable() {
-    let bpmux = TestBpmux::start();
+    let bpmux = TestBpmux::start_named("ryan");
+    let rt = tokio::runtime::Runtime::new().expect("rt");
+    rt.block_on(async {
+        let pm = TestBridge::connect(&bpmux, "pm").await;
+        tokio::time::sleep(Duration::from_millis(300)).await;
+        pm.call_tool("view_roadmap", serde_json::json!({}))
+            .await
+            .expect("view_roadmap should succeed");
+        pm.close().await;
+    });
 
-    bpmux.type_line("/roadmap");
-
-    // Long roadmap should be truncated with a line count indicator
     assert!(
         bpmux.wait_for_tui("lines]", Duration::from_secs(3)),
         "Long roadmap should show truncation indicator. Screen:\n{}",

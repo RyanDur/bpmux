@@ -64,7 +64,6 @@ impl App {
                 "/lessons" if !args.is_empty() => self.handle_peer_lessons(args.trim().to_string()),
                 "/lessons" => self.handle_lessons(),
                 "/board" => self.handle_board(),
-                "/roadmap" => self.handle_roadmap(),
                 "/session" => self.handle_session(),
                 "/join" => self.handle_join(args.to_string()),
                 "/accept" => self.handle_accept(args.trim().to_string()),

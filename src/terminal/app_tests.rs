@@ -778,30 +778,21 @@ fn channel_unread_increments_on_receive() {
 }
 
 #[test]
-fn roadmap_command_adds_system_message() {
-    // fetch_roadmap uses git rev-parse which works when tests run from the repo
+fn roadmap_handler_adds_system_message() {
+    // handle_roadmap is still invoked by the event loop when the
+    // bridge emits VIEW_ROADMAP_MARKER (#226 agent-triggered path).
+    // Call it directly instead of via the removed /roadmap slash.
     let mut app = test_app();
-    app.input = "/roadmap".to_string();
-    let msg = app.submit_message();
-    assert!(msg.is_none());
+    app.handle_roadmap();
     let last = app.msg.messages.last().expect("should have a message");
     assert_eq!(last.from, "bpmux");
-    // Either shows roadmap content or an unavailable message
-    assert!(last.text.contains("bpmux Roadmap") || last.text.contains("Roadmap unavailable"),);
-}
-
-#[test]
-fn roadmap_command_clears_input() {
-    let mut app = test_app();
-    app.input = "/roadmap".to_string();
-    app.submit_message();
-    assert!(app.input.is_empty());
+    assert!(last.text.contains("bpmux Roadmap") || last.text.contains("Roadmap unavailable"));
 }
 
 #[test]
 fn toggle_expands_long_system_message() {
     let mut app = test_app();
-    // Add a long message from "bpmux" (like /roadmap output)
+    // Add a long message from "bpmux" (like roadmap output)
     let long_text = "x".repeat(1000); // ~13 wrapped lines at width 78
     app.msg.messages.push(Message {
         from: "bpmux".into(),
