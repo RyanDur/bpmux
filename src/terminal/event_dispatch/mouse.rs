@@ -94,7 +94,7 @@ fn handle_click(col: u16, row: u16, app: &mut App, session: &session::Session) {
             && col < end
         {
             crate::terminal::ui_state::UiState::save(app, session);
-            app.should_reload = true;
+            app.lifecycle.should_reload = true;
             return;
         }
         if app

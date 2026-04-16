@@ -26,7 +26,7 @@ pub(super) fn render_popup(frame: &mut Frame, app: &App, input_area: Rect) {
             .iter()
             .enumerate()
             .map(|(i, (cmd, desc))| {
-                let selected = app.popup_selected == Some(i);
+                let selected = app.editor.popup_selected == Some(i);
                 let (cmd_style, desc_style) = if selected {
                     (
                         Style::default().fg(DRACULA_FG).bg(DRACULA_SELECTION),

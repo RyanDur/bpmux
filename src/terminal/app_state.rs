@@ -8,6 +8,7 @@ use crate::session::Message;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::time::Instant;
+use tui_textarea::TextArea;
 
 /// Sidebar navigation state — extracted from App to reduce the God Object.
 /// Methods live in sidebar.rs. Mutated by sidebar key handlers;
@@ -218,4 +219,50 @@ pub struct SessionIdentity {
     pub dir: Option<PathBuf>,
     pub name: String,
     pub id: String,
+}
+
+/// Text-input editor state — input buffer, cursor, history, and the
+/// completion popup selection that hangs off the editor. Grouped
+/// from previously-loose App fields so adding a new editor concern
+/// (e.g. selection range) lands in one place.
+pub struct EditorState {
+    pub input: String,
+    pub cursor_pos: usize,
+    pub textarea: TextArea<'static>,
+    pub input_history: Vec<String>,
+    pub history_index: Option<usize>,
+    /// Index into the slash-completion popup; `None` when the
+    /// popup isn't accepting a selection.
+    pub popup_selected: Option<usize>,
+}
+
+impl Default for EditorState {
+    fn default() -> Self {
+        let mut textarea = TextArea::default();
+        textarea.set_hard_tab_indent(false);
+        textarea.set_wrap_mode(tui_textarea::WrapMode::Word);
+        Self {
+            input: String::new(),
+            cursor_pos: 0,
+            textarea,
+            input_history: Vec::new(),
+            history_index: None,
+            popup_selected: None,
+        }
+    }
+}
+
+/// Process-lifecycle flags — quit/reload requests, the queued P2P
+/// command awaiting service, and the pending restart prompt. These
+/// are control-flow signals the event loop polls each tick.
+#[derive(Default)]
+pub struct LifecycleState {
+    pub should_quit: bool,
+    pub should_reload: bool,
+    pub p2p_command: Option<crate::transport::peer::P2pCommand>,
+    /// Set when an agent calls request_restart; holds the
+    /// requester's short role name. The status bar shows a
+    /// clickable affordance while this is Some; clicking it
+    /// confirms and triggers reload.
+    pub pending_restart: Option<String>,
 }

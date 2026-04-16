@@ -30,10 +30,10 @@ pub(super) fn render_input(frame: &mut Frame, app: &mut App, area: Rect) {
         }))
         .style(Style::default().bg(DRACULA_BG).fg(DRACULA_FG));
 
-    app.textarea.set_block(block);
-    app.textarea
+    app.editor.textarea.set_block(block);
+    app.editor.textarea
         .set_style(Style::default().bg(DRACULA_BG).fg(DRACULA_FG));
-    app.textarea
+    app.editor.textarea
         .set_cursor_line_style(Style::default().bg(DRACULA_BG));
-    frame.render_widget(&app.textarea, area);
+    frame.render_widget(&app.editor.textarea, area);
 }

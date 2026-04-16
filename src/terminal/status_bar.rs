@@ -258,7 +258,7 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     // affordance when an agent has requested a restart. Shows the
     // requester so Ryan knows which teammate flagged the binary.
     // Orange+underlined to match the clickable-widget style.
-    let restart_hint_owned: String = match app.pending_restart.as_deref() {
+    let restart_hint_owned: String = match app.lifecycle.pending_restart.as_deref() {
         Some(requester) => format!("[\u{21BB} restart ({requester})] "),
         None => String::new(),
     };

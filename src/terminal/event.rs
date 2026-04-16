@@ -286,13 +286,13 @@ where
                         handle_terminal_event(ev, app, session)?;
                     }
                 }
-                if app.should_quit {
+                if app.lifecycle.should_quit {
                     super::ui_state::UiState::save(app, session);
                     app.save_usage_to_disk();
                     return Ok(());
                 }
                 // Check for P2P commands after handling input
-                if let Some(cmd) = app.p2p_command.take() {
+                if let Some(cmd) = app.lifecycle.p2p_command.take() {
                     p2p::handle_p2p_command(
                         cmd,
                         &p2p_tx,
@@ -371,7 +371,7 @@ where
                 }
             } => {
                 super::ui_state::UiState::save(app, session);
-                app.should_reload = true;
+                app.lifecycle.should_reload = true;
                 return Ok(());
             }
             Some(dora) = dora_rx.recv() => {
@@ -453,7 +453,7 @@ fn handle_broadcast_message(msg: session::Message, app: &mut App) {
     if msg.message_type == crate::session::MessageType::System
         && let Some(requester) = parse_restart_request(&msg.text)
     {
-        app.pending_restart = Some(requester);
+        app.lifecycle.pending_restart = Some(requester);
         return;
     }
     // Agent-triggered view_tokens opens the overlay. Same

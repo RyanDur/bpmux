@@ -276,7 +276,7 @@ fn renders_without_panic_with_long_input() {
     let backend = TestBackend::new(80, 24);
     let mut terminal = Terminal::new(backend).unwrap();
     let mut app = App::new("ryan".to_string(), "test-id".to_string(), vec![]);
-    app.input = "a".repeat(500);
+    app.editor.input = "a".repeat(500);
 
     terminal.draw(|frame| render(frame, &mut app)).unwrap();
 

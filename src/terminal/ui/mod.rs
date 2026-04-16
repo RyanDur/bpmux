@@ -50,11 +50,11 @@ pub fn render(frame: &mut Frame, app: &mut App) {
 
     let main_area = h_chunks[1];
 
-    let input_lines = if app.input.is_empty() {
+    let input_lines = if app.editor.input.is_empty() {
         1
     } else {
         let width = main_area.width.saturating_sub(2) as usize;
-        app.input.len().max(1).div_ceil(width.max(1))
+        app.editor.input.len().max(1).div_ceil(width.max(1))
     };
     let input_height = (input_lines + 2).min(MAX_INPUT_HEIGHT as usize) as u16;
 

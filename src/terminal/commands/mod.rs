@@ -29,7 +29,7 @@ impl App {
     pub fn submit_message(&mut self) -> Option<Message> {
         self.peers.dm_unread_from.clear();
         self.peers.dm_flash_until = None;
-        let text = self.input.trim().to_string();
+        let text = self.editor.input.trim().to_string();
         if text.is_empty() {
             return None;
         }

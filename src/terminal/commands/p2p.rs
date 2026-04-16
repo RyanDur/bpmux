@@ -5,7 +5,7 @@ use crate::transport::peer::P2pCommand;
 impl App {
     pub(in crate::terminal) fn handle_session(&mut self) -> Option<Message> {
         self.system_message("Creating P2P session... (gathering ICE candidates)".to_string());
-        self.p2p_command = Some(P2pCommand::CreateSession);
+        self.lifecycle.p2p_command = Some(P2pCommand::CreateSession);
         self.clear_input();
         None
     }
@@ -23,7 +23,7 @@ impl App {
         self.system_message(
             "Joining session... (decrypting offer, gathering ICE candidates)".to_string(),
         );
-        self.p2p_command = Some(P2pCommand::JoinSession {
+        self.lifecycle.p2p_command = Some(P2pCommand::JoinSession {
             passphrase,
             offer_code,
         });
@@ -39,7 +39,7 @@ impl App {
             return None;
         }
         self.system_message("Accepting answer... (establishing connection)".to_string());
-        self.p2p_command = Some(P2pCommand::AcceptAnswer { answer_code });
+        self.lifecycle.p2p_command = Some(P2pCommand::AcceptAnswer { answer_code });
         self.clear_input();
         None
     }

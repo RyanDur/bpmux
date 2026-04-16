@@ -52,11 +52,11 @@ impl App {
         self.clear_input();
         self.scroll.offset = 0;
         self.scroll.unread_count = 0;
-        if self.input_history.len() >= MAX_HISTORY {
-            self.input_history.remove(0);
+        if self.editor.input_history.len() >= MAX_HISTORY {
+            self.editor.input_history.remove(0);
         }
-        self.input_history.push(msg.text.clone());
-        self.history_index = None;
+        self.editor.input_history.push(msg.text.clone());
+        self.editor.history_index = None;
         Some(msg)
     }
 }

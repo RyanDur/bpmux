@@ -60,7 +60,7 @@ pub(super) fn handle(
                         let command = cmd.to_string();
                         app.palette.input.clear();
                         app.input_mode = InputMode::Chat;
-                        app.input = command;
+                        app.editor.input = command;
                         let _ = app.submit_message();
                     }
                 }
@@ -163,10 +163,10 @@ pub(super) fn handle(
         KeyCode::Down if key.modifiers.is_empty() && popup_open => {
             app.popup_down();
         }
-        KeyCode::Tab if popup_open && app.popup_selected.is_some() => {
+        KeyCode::Tab if popup_open && app.editor.popup_selected.is_some() => {
             app.popup_accept();
         }
-        KeyCode::Enter if popup_open && app.popup_selected.is_some() => {
+        KeyCode::Enter if popup_open && app.editor.popup_selected.is_some() => {
             app.popup_accept();
         }
         KeyCode::Esc if popup_open => {
@@ -174,7 +174,7 @@ pub(super) fn handle(
             app.clear_input();
         }
         KeyCode::Enter => {
-            if app.input.is_empty() {
+            if app.editor.input.is_empty() {
                 app.toggle_last_truncated();
             } else if let Some(msg) = app.submit_message() {
                 session.broadcast(&msg)?;
@@ -190,8 +190,8 @@ pub(super) fn handle(
             scroll_down_with_bell(app, PAGE_SCROLL_LINES);
         }
         KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-            if app.input.is_empty() {
-                app.should_quit = true;
+            if app.editor.input.is_empty() {
+                app.lifecycle.should_quit = true;
                 return Ok(());
             }
             app.clear_input();
@@ -238,7 +238,7 @@ pub(super) fn handle(
                 app.tab_complete();
             }
         }
-        KeyCode::Char('?') if app.input.is_empty() => {
+        KeyCode::Char('?') if app.editor.input.is_empty() => {
             app.input_mode = InputMode::Help;
         }
         KeyCode::Char(c) => {

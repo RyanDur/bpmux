@@ -70,18 +70,18 @@ fn activity_msg(from: &str, text: &str) -> Message {
 #[test]
 fn submits_message_and_clears_input() {
     let mut app = test_app();
-    app.input = "hello world".to_string();
+    app.editor.input = "hello world".to_string();
     let msg = app.submit_message().unwrap();
     assert_eq!(msg.from, "ryan:human");
     assert_eq!(msg.text, "hello world");
-    assert!(app.input.is_empty());
+    assert!(app.editor.input.is_empty());
     assert_eq!(app.msg.messages.len(), 1);
 }
 
 #[test]
 fn ignores_empty_input() {
     let mut app = test_app();
-    app.input = "   ".to_string();
+    app.editor.input = "   ".to_string();
     let msg = app.submit_message();
     assert!(msg.is_none());
 }
@@ -89,10 +89,10 @@ fn ignores_empty_input() {
 #[test]
 fn quit_command_sets_flag() {
     let mut app = test_app();
-    app.input = "/quit".to_string();
+    app.editor.input = "/quit".to_string();
     let msg = app.submit_message();
     assert!(msg.is_none());
-    assert!(app.should_quit);
+    assert!(app.lifecycle.should_quit);
 }
 
 #[test]
@@ -163,53 +163,53 @@ fn incoming_message_stays_at_bottom_when_at_bottom() {
 #[test]
 fn up_arrow_recalls_last_sent_message() {
     let mut app = test_app();
-    app.input = "hello".to_string();
+    app.editor.input = "hello".to_string();
     app.submit_message();
-    app.input = "world".to_string();
+    app.editor.input = "world".to_string();
     app.submit_message();
 
     app.history_up();
-    assert_eq!(app.input, "world");
-    assert_eq!(app.history_index, Some(1));
+    assert_eq!(app.editor.input, "world");
+    assert_eq!(app.editor.history_index, Some(1));
 
     app.history_up();
-    assert_eq!(app.input, "hello");
-    assert_eq!(app.history_index, Some(0));
+    assert_eq!(app.editor.input, "hello");
+    assert_eq!(app.editor.history_index, Some(0));
 }
 
 #[test]
 fn down_arrow_returns_to_empty_after_recalling() {
     let mut app = test_app();
-    app.input = "hello".to_string();
+    app.editor.input = "hello".to_string();
     app.submit_message();
 
     app.history_up();
-    assert_eq!(app.input, "hello");
+    assert_eq!(app.editor.input, "hello");
 
     app.history_down();
-    assert!(app.input.is_empty());
-    assert_eq!(app.history_index, None);
+    assert!(app.editor.input.is_empty());
+    assert_eq!(app.editor.history_index, None);
 }
 
 #[test]
 fn history_caps_at_50_entries() {
     let mut app = test_app();
     for i in 0..60 {
-        app.input = format!("msg {i}");
+        app.editor.input = format!("msg {i}");
         app.submit_message();
     }
-    assert_eq!(app.input_history.len(), MAX_HISTORY);
-    assert_eq!(app.input_history[0], "msg 10");
-    assert_eq!(app.input_history[49], "msg 59");
+    assert_eq!(app.editor.input_history.len(), MAX_HISTORY);
+    assert_eq!(app.editor.input_history[0], "msg 10");
+    assert_eq!(app.editor.input_history[49], "msg 59");
 }
 
 #[test]
 fn who_command_lists_peer_name_and_returns_none() {
     let mut app = test_app();
-    app.input = "/who".to_string();
+    app.editor.input = "/who".to_string();
     let msg = app.submit_message();
     assert!(msg.is_none());
-    assert!(app.input.is_empty());
+    assert!(app.editor.input.is_empty());
     assert_eq!(app.msg.messages.len(), 1);
     assert_eq!(app.msg.messages[0].from, "bpmux");
     assert!(app.msg.messages[0].text.contains("ryan (you)"));
@@ -219,7 +219,7 @@ fn who_command_lists_peer_name_and_returns_none() {
 fn who_command_includes_peer_activity() {
     let mut app = test_app();
     app.update_activity("dev".to_string(), "working".to_string());
-    app.input = "/who".to_string();
+    app.editor.input = "/who".to_string();
     let msg = app.submit_message();
     assert!(msg.is_none());
     assert!(app.msg.messages[0].text.contains("dev [working]"));
@@ -228,10 +228,10 @@ fn who_command_includes_peer_activity() {
 #[test]
 fn unrecognized_command_adds_error_message_without_broadcast() {
     let mut app = test_app();
-    app.input = "/foo".to_string();
+    app.editor.input = "/foo".to_string();
     let msg = app.submit_message();
     assert!(msg.is_none());
-    assert!(app.input.is_empty());
+    assert!(app.editor.input.is_empty());
     assert_eq!(app.msg.messages.len(), 1);
     assert_eq!(app.msg.messages[0].from, "bpmux");
     assert!(app.msg.messages[0].text.contains("Unknown command"));
@@ -309,16 +309,16 @@ fn debug_toggles_show_system_messages() {
     let mut app = test_app();
     assert!(!app.display.show_system_messages);
 
-    app.input = "/debug".to_string();
+    app.editor.input = "/debug".to_string();
     let msg = app.submit_message();
     assert!(msg.is_none());
     assert!(app.display.show_system_messages);
-    assert!(app.input.is_empty());
+    assert!(app.editor.input.is_empty());
     assert_eq!(app.msg.messages.len(), 1);
     assert!(app.msg.messages[0].text.contains("Debug mode on"));
     assert!(app.msg.messages[0].text.contains("visible"));
 
-    app.input = "/debug".to_string();
+    app.editor.input = "/debug".to_string();
     let msg = app.submit_message();
     assert!(msg.is_none());
     assert!(!app.display.show_system_messages);
@@ -330,7 +330,7 @@ fn debug_toggles_show_system_messages() {
 #[test]
 fn to_single_recipient_returns_directed_message() {
     let mut app = test_app();
-    app.input = "/to dev hello there".to_string();
+    app.editor.input = "/to dev hello there".to_string();
     let msg = app.submit_message().unwrap();
     assert_eq!(msg.from, "ryan:human");
     assert_eq!(msg.text, "hello there");
@@ -340,7 +340,7 @@ fn to_single_recipient_returns_directed_message() {
 #[test]
 fn to_csv_recipients_returns_directed_message() {
     let mut app = test_app();
-    app.input = "/to dev,designer check this".to_string();
+    app.editor.input = "/to dev,designer check this".to_string();
     let msg = app.submit_message().unwrap();
     assert_eq!(msg.text, "check this");
     assert_eq!(
@@ -352,7 +352,7 @@ fn to_csv_recipients_returns_directed_message() {
 #[test]
 fn to_bare_shows_usage() {
     let mut app = test_app();
-    app.input = "/to".to_string();
+    app.editor.input = "/to".to_string();
     let msg = app.submit_message();
     assert!(msg.is_none());
     assert!(app.msg.messages[0].text.contains("/"));
@@ -361,7 +361,7 @@ fn to_bare_shows_usage() {
 #[test]
 fn to_recipient_no_body_shows_usage() {
     let mut app = test_app();
-    app.input = "/to dev".to_string();
+    app.editor.input = "/to dev".to_string();
     let msg = app.submit_message();
     assert!(msg.is_none());
     assert!(app.msg.messages[0].text.contains("/"));
@@ -372,17 +372,17 @@ fn tab_completes_participant_name_after_to() {
     let mut app = test_app();
     app.update_activity("dev:claude-code".to_string(), "working".to_string());
     app.update_activity("designer:claude-code".to_string(), "idle".to_string());
-    app.input = "/to de".to_string();
-    app.cursor_pos = app.input.len();
+    app.editor.input = "/to de".to_string();
+    app.editor.cursor_pos = app.editor.input.len();
     assert!(app.tab_complete());
     // Should complete to first alphabetical match
     assert!(
-        app.input.starts_with("/to de"),
+        app.editor.input.starts_with("/to de"),
         "should complete a 'de' prefix, got: {}",
-        app.input
+        app.editor.input
     );
     assert!(
-        app.input.ends_with(' '),
+        app.editor.input.ends_with(' '),
         "should add trailing space for body"
     );
 }
@@ -392,27 +392,27 @@ fn tab_completes_csv_second_recipient() {
     let mut app = test_app();
     app.update_activity("dev:claude-code".to_string(), "working".to_string());
     app.update_activity("pm:claude-code".to_string(), "idle".to_string());
-    app.input = "/to dev,p".to_string();
-    app.cursor_pos = app.input.len();
+    app.editor.input = "/to dev,p".to_string();
+    app.editor.cursor_pos = app.editor.input.len();
     assert!(app.tab_complete());
-    assert_eq!(app.input, "/to dev,pm ");
+    assert_eq!(app.editor.input, "/to dev,pm ");
 }
 
 #[test]
 fn tab_does_nothing_without_to_prefix() {
     let mut app = test_app();
-    app.input = "hello".to_string();
-    app.cursor_pos = app.input.len();
+    app.editor.input = "hello".to_string();
+    app.editor.cursor_pos = app.editor.input.len();
     assert!(!app.tab_complete());
-    assert_eq!(app.input, "hello");
+    assert_eq!(app.editor.input, "hello");
 }
 
 #[test]
 fn tab_does_nothing_in_body_portion() {
     let mut app = test_app();
     app.update_activity("dev:claude-code".to_string(), "working".to_string());
-    app.input = "/to dev hel".to_string();
-    app.cursor_pos = app.input.len();
+    app.editor.input = "/to dev hel".to_string();
+    app.editor.cursor_pos = app.editor.input.len();
     assert!(!app.tab_complete());
 }
 
@@ -451,7 +451,7 @@ fn submit_clears_dm_unread() {
     let mut app = test_app();
     app.receive_message(directed_msg("pm:claude-code", "hey", vec!["ryan"]));
     assert_eq!(app.peers.dm_unread_from.len(), 1);
-    app.input = "got it".to_string();
+    app.editor.input = "got it".to_string();
     app.submit_message();
     assert_eq!(app.peers.dm_unread_from.len(), 0);
     assert!(app.peers.dm_flash_until.is_none());
@@ -541,7 +541,7 @@ fn activity_messages_do_not_create_channels() {
 #[test]
 fn popup_matches_filters_by_typed_prefix() {
     let mut app = test_app();
-    app.input = "/wh".to_string();
+    app.editor.input = "/wh".to_string();
     let m = app.popup_matches();
     assert_eq!(m.len(), 1);
     assert_eq!(m[0].0, "/who");
@@ -550,56 +550,56 @@ fn popup_matches_filters_by_typed_prefix() {
 #[test]
 fn popup_matches_returns_all_on_bare_slash() {
     let mut app = test_app();
-    app.input = "/".to_string();
+    app.editor.input = "/".to_string();
     assert_eq!(app.popup_matches().len(), SLASH_COMMANDS.len());
 }
 
 #[test]
 fn popup_matches_empty_after_space() {
     let mut app = test_app();
-    app.input = "/to dev".to_string();
+    app.editor.input = "/to dev".to_string();
     assert!(app.popup_matches().is_empty());
 }
 
 #[test]
 fn popup_navigation_wraps_around() {
     let mut app = test_app();
-    app.input = "/".to_string();
+    app.editor.input = "/".to_string();
     let count = app.popup_matches().len();
 
     // Down from None starts at 0
     app.popup_down();
-    assert_eq!(app.popup_selected, Some(0));
+    assert_eq!(app.editor.popup_selected, Some(0));
 
     // Up from 0 wraps to last
     app.popup_up();
-    assert_eq!(app.popup_selected, Some(count - 1));
+    assert_eq!(app.editor.popup_selected, Some(count - 1));
 
     // Down from last wraps to 0
     app.popup_down();
-    assert_eq!(app.popup_selected, Some(0));
+    assert_eq!(app.editor.popup_selected, Some(0));
 }
 
 #[test]
 fn popup_accept_fills_input() {
     let mut app = test_app();
-    app.input = "/t".to_string();
+    app.editor.input = "/t".to_string();
     app.popup_down(); // select /to
     assert!(app.popup_accept());
-    assert_eq!(app.input, "/to ");
-    assert_eq!(app.cursor_pos, 4);
-    assert!(app.popup_selected.is_none());
+    assert_eq!(app.editor.input, "/to ");
+    assert_eq!(app.editor.cursor_pos, 4);
+    assert!(app.editor.popup_selected.is_none());
 }
 
 #[test]
 fn popup_selected_resets_on_input_change() {
     let mut app = test_app();
-    app.input = "/".to_string();
-    app.cursor_pos = 1;
+    app.editor.input = "/".to_string();
+    app.editor.cursor_pos = 1;
     app.popup_down();
-    assert!(app.popup_selected.is_some());
+    assert!(app.editor.popup_selected.is_some());
     app.insert_char('t');
-    assert!(app.popup_selected.is_none());
+    assert!(app.editor.popup_selected.is_none());
 }
 
 // Sidebar tests
@@ -754,8 +754,8 @@ fn sidebar_expanded_by_default() {
 fn send_target_directs_outgoing_messages() {
     let mut app = App::new("human".to_string(), "test-session".to_string(), vec![]);
     app.channels.send_target = Some("dev\u{2194}human".to_string());
-    app.input = "hello dev".to_string();
-    app.cursor_pos = app.input.len();
+    app.editor.input = "hello dev".to_string();
+    app.editor.cursor_pos = app.editor.input.len();
     let msg = app.submit_message().unwrap();
     assert_eq!(msg.to, Some(vec!["dev".to_string()]));
 }
@@ -763,8 +763,8 @@ fn send_target_directs_outgoing_messages() {
 #[test]
 fn no_send_target_broadcasts() {
     let mut app = App::new("human".to_string(), "test-session".to_string(), vec![]);
-    app.input = "hello everyone".to_string();
-    app.cursor_pos = app.input.len();
+    app.editor.input = "hello everyone".to_string();
+    app.editor.cursor_pos = app.editor.input.len();
     let msg = app.submit_message().unwrap();
     assert!(msg.to.is_none());
 }
@@ -806,9 +806,9 @@ fn velocity_handler_does_not_clear_input() {
     // Agent-triggered path fires while Ryan may be typing. Wiping
     // his in-progress input would be a surprise, not a feature.
     let mut app = test_app();
-    app.input = "typing something".to_string();
+    app.editor.input = "typing something".to_string();
     app.handle_velocity();
-    assert_eq!(app.input, "typing something");
+    assert_eq!(app.editor.input, "typing something");
 }
 
 #[test]
@@ -937,8 +937,8 @@ fn peer_leave_keeps_channels_with_unread() {
 #[test]
 fn session_command_sets_p2p_command() {
     let mut app = test_app();
-    app.input = "/session".to_string();
-    app.cursor_pos = app.input.len();
+    app.editor.input = "/session".to_string();
+    app.editor.cursor_pos = app.editor.input.len();
     let msg = app.submit_message();
     assert!(
         msg.is_none(),
@@ -946,7 +946,7 @@ fn session_command_sets_p2p_command() {
     );
     assert!(
         matches!(
-            app.p2p_command,
+            app.lifecycle.p2p_command,
             Some(crate::transport::peer::P2pCommand::CreateSession)
         ),
         "should set P2P command"
@@ -956,11 +956,11 @@ fn session_command_sets_p2p_command() {
 #[test]
 fn join_command_sets_p2p_command_with_args() {
     let mut app = test_app();
-    app.input = "/join blue-tiger-42 someOfferCode123".to_string();
-    app.cursor_pos = app.input.len();
+    app.editor.input = "/join blue-tiger-42 someOfferCode123".to_string();
+    app.editor.cursor_pos = app.editor.input.len();
     let msg = app.submit_message();
     assert!(msg.is_none());
-    match &app.p2p_command {
+    match &app.lifecycle.p2p_command {
         Some(crate::transport::peer::P2pCommand::JoinSession {
             passphrase,
             offer_code,
@@ -975,11 +975,11 @@ fn join_command_sets_p2p_command_with_args() {
 #[test]
 fn join_without_args_shows_usage() {
     let mut app = test_app();
-    app.input = "/join".to_string();
-    app.cursor_pos = app.input.len();
+    app.editor.input = "/join".to_string();
+    app.editor.cursor_pos = app.editor.input.len();
     let msg = app.submit_message();
     assert!(msg.is_none());
-    assert!(app.p2p_command.is_none(), "no command without args");
+    assert!(app.lifecycle.p2p_command.is_none(), "no command without args");
     let last = app.msg.messages.last().unwrap();
     assert!(last.text.contains("/"));
 }
@@ -987,11 +987,11 @@ fn join_without_args_shows_usage() {
 #[test]
 fn accept_command_sets_p2p_command() {
     let mut app = test_app();
-    app.input = "/accept someAnswerCode456".to_string();
-    app.cursor_pos = app.input.len();
+    app.editor.input = "/accept someAnswerCode456".to_string();
+    app.editor.cursor_pos = app.editor.input.len();
     let msg = app.submit_message();
     assert!(msg.is_none());
-    match &app.p2p_command {
+    match &app.lifecycle.p2p_command {
         Some(crate::transport::peer::P2pCommand::AcceptAnswer { answer_code }) => {
             assert_eq!(answer_code, "someAnswerCode456");
         }
@@ -1002,11 +1002,11 @@ fn accept_command_sets_p2p_command() {
 #[test]
 fn accept_without_args_shows_usage() {
     let mut app = test_app();
-    app.input = "/accept".to_string();
-    app.cursor_pos = app.input.len();
+    app.editor.input = "/accept".to_string();
+    app.editor.cursor_pos = app.editor.input.len();
     let msg = app.submit_message();
     assert!(msg.is_none());
-    assert!(app.p2p_command.is_none());
+    assert!(app.lifecycle.p2p_command.is_none());
     let last = app.msg.messages.last().unwrap();
     assert!(last.text.contains("/"));
 }
@@ -1016,7 +1016,7 @@ fn accept_without_args_shows_usage() {
 #[test]
 fn share_bare_shows_usage() {
     let mut app = test_app();
-    app.input = "/share".to_string();
+    app.editor.input = "/share".to_string();
     let msg = app.submit_message();
     assert!(msg.is_none());
     let last = app.msg.messages.last().unwrap();
@@ -1028,7 +1028,7 @@ fn share_form2_sends_fresh_message_with_marker() {
     // Form 2: /share all "text" sends a new message with a
     // [Shared by <sender>] marker.
     let mut app = test_app();
-    app.input = "/share all hello team".to_string();
+    app.editor.input = "/share all hello team".to_string();
     let msg = app.submit_message().unwrap();
     assert_eq!(msg.to, None, "all = broadcast");
     assert!(
@@ -1044,7 +1044,7 @@ fn share_form2_sends_fresh_message_with_marker() {
 #[test]
 fn share_form2_with_scoped_target() {
     let mut app = test_app();
-    app.input = "/share dev,designer coordinating on story X".to_string();
+    app.editor.input = "/share dev,designer coordinating on story X".to_string();
     let msg = app.submit_message().unwrap();
     assert_eq!(
         msg.to,
@@ -1065,7 +1065,7 @@ fn share_form1_propagates_most_recent_from_view() {
         .messages
         .push(chat_msg("pm:claude-code", "the decision to share"));
     app.channels.current_view = None; // broadcast view
-    app.input = "/share dev".to_string();
+    app.editor.input = "/share dev".to_string();
     let msg = app.submit_message().unwrap();
     assert_eq!(msg.to, Some(vec!["dev".to_string()]));
     // Marker format: [Shared by ryan from broadcast thread] <original>
@@ -1089,7 +1089,7 @@ fn share_form1_refuses_to_propagate_private_to_message() {
     private.explicit_privacy = true;
     app.msg.messages.push(private);
     app.channels.current_view = Some("pm".to_string());
-    app.input = "/share all".to_string();
+    app.editor.input = "/share all".to_string();
     let msg = app.submit_message();
     assert!(msg.is_none(), "private message not propagated");
     let last = app.msg.messages.last().unwrap();
@@ -1105,7 +1105,7 @@ fn share_form1_with_no_recent_message_shows_error() {
     // No messages in the current view — /share form 1 can't pick a target.
     let mut app = test_app();
     app.channels.current_view = None;
-    app.input = "/share all".to_string();
+    app.editor.input = "/share all".to_string();
     let msg = app.submit_message();
     assert!(msg.is_none());
     let last = app.msg.messages.last().unwrap();
@@ -1121,7 +1121,7 @@ fn share_does_not_inherit_addressee() {
     directed.addressee = Some("dev".to_string());
     app.msg.messages.push(directed);
     app.channels.current_view = None;
-    app.input = "/share designer".to_string();
+    app.editor.input = "/share designer".to_string();
     let msg = app.submit_message().unwrap();
     assert!(
         msg.addressee.is_none(),
@@ -1142,7 +1142,7 @@ fn share_source_scope_reflects_channel_name() {
     // Not explicit_privacy — this came from a channel view, not /to
     app.msg.messages.push(scoped);
     app.channels.current_view = Some("designer+dev+pm".to_string());
-    app.input = "/share all".to_string();
+    app.editor.input = "/share all".to_string();
     let msg = app.submit_message().unwrap();
     // Source scope in the marker should be the channel_name of the source
     assert!(
@@ -1161,13 +1161,13 @@ fn all_command_toggles_filter_state() {
         !app.display.show_all_classes,
         "filter default is ON (show_all_classes false)"
     );
-    app.input = "/all".to_string();
+    app.editor.input = "/all".to_string();
     app.submit_message();
     assert!(
         app.display.show_all_classes,
         "first /all toggles to showing everything"
     );
-    app.input = "/all".to_string();
+    app.editor.input = "/all".to_string();
     app.submit_message();
     assert!(
         !app.display.show_all_classes,
@@ -1184,7 +1184,7 @@ fn all_command_does_not_post_to_pane() {
     // against regressing the redundant feedback.
     let mut app = test_app();
     let before = app.msg.messages.len();
-    app.input = "/all".to_string();
+    app.editor.input = "/all".to_string();
     app.submit_message();
     assert_eq!(
         app.msg.messages.len(),
@@ -1216,7 +1216,7 @@ fn to_command_sets_explicit_privacy_flag() {
     // later refuses to propagate it. Without this flag, channel-scoped
     // messages and /to DMs look identical on the wire.
     let mut app = test_app();
-    app.input = "/to pm private thing".to_string();
+    app.editor.input = "/to pm private thing".to_string();
     let msg = app.submit_message().unwrap();
     assert!(
         msg.explicit_privacy,
@@ -1233,7 +1233,7 @@ fn to_command_sets_explicit_privacy_flag() {
 #[test]
 fn help_command_lists_commands() {
     let mut app = test_app();
-    app.input = "/help".to_string();
+    app.editor.input = "/help".to_string();
     app.submit_message();
     let last = app
         .msg
@@ -1273,7 +1273,7 @@ fn every_registered_slash_command_dispatches_through_the_registry() {
         // bare forms still route through the registry (showing
         // usage or a no-op), which is what we're verifying.
         let mut app = test_app();
-        app.input = entry.name.to_string();
+        app.editor.input = entry.name.to_string();
         // submit_message returning without panic and clearing input
         // is the observable proof that the registry resolved the
         // command — `handle_unknown_command` would have left an
@@ -1296,7 +1296,7 @@ fn every_registered_slash_command_dispatches_through_the_registry() {
 #[test]
 fn help_command_includes_help_itself() {
     let mut app = test_app();
-    app.input = "/help".to_string();
+    app.editor.input = "/help".to_string();
     app.submit_message();
     let last = app.msg.messages.last().unwrap();
     assert!(
@@ -1327,7 +1327,7 @@ fn bare_commands_show_usage_from_single_handler() {
     ];
     for (cmd, expected_prefix) in cases {
         let mut app = test_app();
-        app.input = cmd.to_string();
+        app.editor.input = cmd.to_string();
         app.submit_message();
         let last = app.msg.messages.last().unwrap();
         assert!(

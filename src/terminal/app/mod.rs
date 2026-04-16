@@ -5,7 +5,6 @@ use crate::session::{Message, MessageType};
 use chrono::Utc;
 use std::collections::{HashMap, HashSet};
 use std::time::Instant;
-use tui_textarea::TextArea;
 
 pub use super::app_state::*;
 
@@ -60,13 +59,8 @@ pub struct App {
     // ── Message state ──
     pub msg: MessageState,
 
-    // ── Input ──
-    pub input: String,
-    pub cursor_pos: usize,
-    pub textarea: TextArea<'static>,
-    pub input_history: Vec<String>,
-    pub history_index: Option<usize>,
-    pub popup_selected: Option<usize>,
+    // ── Input editor (#260) ──
+    pub editor: EditorState,
 
     // ── Scroll ──
     pub scroll: ScrollState,
@@ -126,16 +120,8 @@ pub struct App {
     // ── Layout positions (set by renderer) ──
     pub layout: LayoutState,
 
-    // ── Lifecycle ──
-    pub should_quit: bool,
-    pub should_reload: bool,
-    pub p2p_command: Option<crate::transport::peer::P2pCommand>,
-
-    /// Set when an agent calls request_restart; holds the
-    /// requester's short role name. The status bar shows a
-    /// clickable affordance while this is Some; clicking it
-    /// confirms and triggers reload.
-    pub pending_restart: Option<String>,
+    // ── Lifecycle (#260) ──
+    pub lifecycle: LifecycleState,
 }
 
 impl App {
@@ -154,19 +140,9 @@ impl App {
                 id: session_id.clone(),
             },
             msg: MessageState::new(messages),
-            input: String::new(),
-            cursor_pos: 0,
-            textarea: {
-                let mut ta = TextArea::default();
-                ta.set_hard_tab_indent(false);
-                ta.set_wrap_mode(tui_textarea::WrapMode::Word);
-                ta
-            },
+            editor: EditorState::default(),
             scroll: ScrollState::default(),
-            should_quit: false,
             display: DisplayState::default(),
-            input_history: Vec::new(),
-            history_index: None,
             peers: PeerState {
                 activity: peer_activity,
                 ..Default::default()
@@ -177,11 +153,10 @@ impl App {
                 send_target: None,
                 unread: HashMap::new(),
             },
-            popup_selected: None,
             sidebar: SidebarState::default(),
             search: SearchState::default(),
             layout: LayoutState::default(),
-            p2p_command: None,
+            lifecycle: LifecycleState::default(),
             project: ProjectViewState::default(),
             tokens: TokensViewState::default(),
             // Hydrate the in-memory mirror from the persistent
@@ -202,25 +177,26 @@ impl App {
                 super::board_poller::BoardSnapshot::default(),
             )),
             input_mode: InputMode::Chat,
-            should_reload: false,
             ci_state: super::ci::CiState::Unknown,
-            pending_restart: None,
         }
     }
 
     pub(super) fn sync_input_from_textarea(&mut self) {
-        self.input = self.textarea.lines().join("");
-        let (row, col) = self.textarea.cursor();
-        let line_offset: usize = self.textarea.lines()[..row].iter().map(|l| l.len()).sum();
-        self.cursor_pos = line_offset + col;
+        self.editor.input = self.editor.textarea.lines().join("");
+        let (row, col) = self.editor.textarea.cursor();
+        let line_offset: usize = self.editor.textarea.lines()[..row]
+            .iter()
+            .map(|l| l.len())
+            .sum();
+        self.editor.cursor_pos = line_offset + col;
     }
 
     pub(super) fn set_textarea_content(&mut self, text: &str) {
-        let mut ta = TextArea::from([text]);
+        let mut ta = tui_textarea::TextArea::from([text]);
         ta.set_hard_tab_indent(false);
         ta.set_wrap_mode(tui_textarea::WrapMode::Word);
         ta.move_cursor(tui_textarea::CursorMove::End);
-        self.textarea = ta;
+        self.editor.textarea = ta;
         self.sync_input_from_textarea();
     }
 

@@ -44,7 +44,7 @@ impl UiState {
             scroll_offset: app.scroll.offset,
             expanded_messages: app.msg.expanded_messages.clone(),
             show_timestamps: app.display.show_timestamps,
-            input: app.input.clone(),
+            input: app.editor.input.clone(),
             show_all_classes: app.display.show_all_classes,
         }
     }

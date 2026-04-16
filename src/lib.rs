@@ -236,7 +236,7 @@ pub fn run() -> anyhow::Result<()> {
         }
     });
 
-    if app.should_reload {
+    if app.lifecycle.should_reload {
         return reload::relaunch();
     }
 
