@@ -119,7 +119,7 @@ pub(crate) fn format_usage_table(
         .map(|(k, (c, t))| (k.as_str(), *c, t))
         .collect();
     // Sort by count descending
-    entries.sort_by(|a, b| b.1.cmp(&a.1));
+    entries.sort_by_key(|e| std::cmp::Reverse(e.1));
 
     let now = chrono::Utc::now();
     let widest_name = entries.iter().map(|(n, _, _)| n.len()).max().unwrap_or(0);

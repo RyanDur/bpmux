@@ -261,10 +261,8 @@ pub(super) fn handle_terminal_event(
                         app.input_mode = InputMode::Chat;
                     }
                 }
-                KeyCode::Enter => {
-                    if app.board.detail.is_none() {
-                        app.board.detail = Some(app.board.selected);
-                    }
+                KeyCode::Enter if app.board.detail.is_none() => {
+                    app.board.detail = Some(app.board.selected);
                 }
                 KeyCode::Up => {
                     app.board.selected = app.board.selected.saturating_sub(1);

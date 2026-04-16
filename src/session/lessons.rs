@@ -113,7 +113,7 @@ pub fn group_by_topic(index: &LessonIndex) -> Vec<TopicGroup> {
             .push(lesson.clone());
     }
     let mut result: Vec<TopicGroup> = all_topics.into_values().collect();
-    result.sort_by(|a, b| b.experiences.len().cmp(&a.experiences.len()));
+    result.sort_by_key(|g| std::cmp::Reverse(g.experiences.len()));
     result
 }
 
