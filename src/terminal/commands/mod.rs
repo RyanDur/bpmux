@@ -236,7 +236,7 @@ impl App {
         None
     }
 
-    fn handle_roadmap(&mut self) -> Option<Message> {
+    pub(crate) fn handle_roadmap(&mut self) -> Option<Message> {
         let roadmap_text = match board::fetch_roadmap() {
             Ok(text) => text,
             Err(_) => "Roadmap unavailable.".to_string(),

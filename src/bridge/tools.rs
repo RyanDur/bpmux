@@ -541,6 +541,9 @@ pub(super) const RESTART_REQUEST_MARKER: &str = "__BPMUX_RESTART_REQUEST__";
 /// calls the existing `handle_tokens` logic.
 pub(super) const VIEW_TOKENS_MARKER: &str = "__BPMUX_VIEW_TOKENS__";
 
+/// #226: marker for view_roadmap agent-triggered display.
+pub(super) const VIEW_ROADMAP_MARKER: &str = "__BPMUX_VIEW_ROADMAP__";
+
 pub(super) async fn handle_request_restart(
     ws_tx: &Mutex<Option<WsSink>>,
     name: &Mutex<String>,
@@ -584,6 +587,23 @@ pub(super) async fn handle_view_tokens(ws_tx: &Mutex<Option<WsSink>>) -> Result<
         .await
         .map_err(|e| format!("view_tokens send failed: {e}"))?;
     Ok("token view opened".to_string())
+}
+
+/// #226: agent-triggered view_roadmap. Same delegation pattern as
+/// view_tokens — system marker → TUI runs existing handle_roadmap.
+pub(super) async fn handle_view_roadmap(ws_tx: &Mutex<Option<WsSink>>) -> Result<String, String> {
+    let msg = crate::transport::protocol::ClientMessage::Send {
+        text: VIEW_ROADMAP_MARKER.to_string(),
+        to: None,
+        addressee: None,
+        message_type: Some("system".to_string()),
+        topic: None,
+    };
+    let json = serde_json::to_string(&msg).map_err(|e| format!("signal: {e}"))?;
+    ws_send(ws_tx, json)
+        .await
+        .map_err(|e| format!("view_roadmap send failed: {e}"))?;
+    Ok("roadmap view opened".to_string())
 }
 
 // ── Story management tools (#140) ──────────────────────────────

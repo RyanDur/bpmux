@@ -439,6 +439,9 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
             crate::mcp::tools::view_tokens_tool(
                 "#225: open the token-usage overlay in Ryan's TUI. Call when conversation warrants seeing token spend (e.g., 'how's our token usage?', 'are we over budget?'). The TUI shows the same data as the /tokens slash command; agents use this MCP tool instead of typing.",
             ),
+            crate::mcp::tools::view_roadmap_tool(
+                "#226: surface the roadmap in Ryan's TUI. Call when conversation warrants reviewing roadmap state (e.g., 'what's on the roadmap?', 'what are we working on next?'). Same content as the /roadmap slash command; agents use this MCP tool instead of typing.",
+            ),
             crate::mcp::tools::request_restart_tool(
                 "#220: Request a clean restart of the bpmux TUI to pick up a new binary. Fires a system signal Ryan sees as a clickable 'restart available' affordance in the status bar. Ryan confirms or ignores — no auto-restart. Use when you know a binary rebuild has happened and want to offer Ryan the chance to apply it without leaving his flow.",
             ),
@@ -533,6 +536,7 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                 "get_usage" => tools::handle_get_usage(&args).await,
                 "request_restart" => tools::handle_request_restart(&ws_tx, &name).await,
                 "view_tokens" => tools::handle_view_tokens(&ws_tx).await,
+                "view_roadmap" => tools::handle_view_roadmap(&ws_tx).await,
                 other => Err(format!("unknown tool: {other}")),
             };
             Ok(match result {

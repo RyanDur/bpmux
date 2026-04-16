@@ -284,6 +284,10 @@ pub(super) const RESTART_REQUEST_MARKER: &str = "__BPMUX_RESTART_REQUEST__";
 /// Kept in sync with VIEW_TOKENS_MARKER in src/bridge/tools.rs.
 pub(super) const VIEW_TOKENS_MARKER: &str = "__BPMUX_VIEW_TOKENS__";
 
+/// #226: marker the bridge emits when an agent calls view_roadmap.
+/// Kept in sync with VIEW_ROADMAP_MARKER in src/bridge/tools.rs.
+pub(super) const VIEW_ROADMAP_MARKER: &str = "__BPMUX_VIEW_ROADMAP__";
+
 /// Extract the requester role from a restart-request message text.
 /// Returns `Some(role)` if the text begins with `RESTART_REQUEST_MARKER`;
 /// `None` otherwise. An empty role defaults to "agent" so the UX
@@ -313,6 +317,12 @@ fn handle_broadcast_message(msg: session::Message, app: &mut App) {
     // chat rendering, just the side effect.
     if msg.message_type == crate::session::MessageType::System && msg.text == VIEW_TOKENS_MARKER {
         app.handle_tokens();
+        return;
+    }
+    // #226: agent-triggered view_roadmap runs the same handle_roadmap
+    // path /roadmap uses — posts the roadmap text as a system message.
+    if msg.message_type == crate::session::MessageType::System && msg.text == VIEW_ROADMAP_MARKER {
+        app.handle_roadmap();
         return;
     }
     let self_identity = app.from_identity();

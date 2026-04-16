@@ -80,6 +80,18 @@ pub fn view_tokens_tool(description: &'static str) -> Tool {
     )
 }
 
+pub fn view_roadmap_tool(description: &'static str) -> Tool {
+    let schema = serde_json::json!({
+        "type": "object",
+        "properties": {}
+    });
+    Tool::new(
+        "view_roadmap",
+        description,
+        schema.as_object().cloned().unwrap_or_default(),
+    )
+}
+
 pub fn set_status_tool(description: &'static str) -> Tool {
     let schema = serde_json::json!({
         "type": "object",
