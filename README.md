@@ -16,6 +16,22 @@ cd bpmux
 cargo build
 ```
 
+### Env Vars (direnv)
+
+The board poller and story tools need a GitHub token and repo.
+The repo ships a committed `.envrc` that delegates to `gh`'s
+local auth — no secrets in git.
+
+```bash
+# one-time after clone (or after .envrc changes)
+direnv allow .
+```
+
+Requires [direnv](https://direnv.net) and an authenticated `gh` CLI.
+Override locally via `.envrc.local` (gitignored). Without direnv,
+`export GH_TOKEN=$(gh auth token) BPMUX_REPO=RyanDur/bpmux`
+manually before launching bpmux.
+
 ### Run
 
 ```bash

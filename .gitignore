@@ -20,6 +20,9 @@
 # Machine-specific MCP config (contains absolute paths)
 .mcp.json
 
+# direnv local overrides (#228) — keep personal tweaks out of git
+.envrc.local
+
 # OS
 .DS_Store
 
