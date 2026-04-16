@@ -359,6 +359,9 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
             crate::mcp::tools::send_message_tool(
                 "Send a message to the bpmux session. Your message will appear in the shared chat. Do not prefix your name — the session adds the sender automatically.",
             ),
+            crate::mcp::tools::share_message_tool(
+                "Propagate a message to a wider scope with provenance marking. Two forms: (1) call with `scope` only to re-share your most recent visible chat message (adds `[Shared by <you> from <source> thread]` prefix); (2) call with `scope` and `text` to send fresh text with `[Shared by <you>]` prefix. Scope is `\"all\"` for broadcast or a comma-separated role list (e.g. `\"dev,pm\"`). Privacy gate: explicit-privacy messages (DMs) cannot be re-shared — paraphrase in your own words if they need wider visibility.",
+            ),
             crate::mcp::tools::read_messages_tool("Read recent messages from the bpmux session."),
             crate::mcp::tools::search_log_tool(
                 "Search the session log by keyword. Returns message clusters with context. Use to find team experiences, decisions, and discussion arcs.",
@@ -476,6 +479,10 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
             );
             let result = match request.name.as_ref() {
                 "send_message" => tools::handle_send(&args, &ws_tx, &last_channel).await,
+                "share_message" => {
+                    let current_name = name.lock().await;
+                    tools::handle_share_message(&args, port, &current_name, &ws_tx).await
+                }
                 "set_name" => tools::handle_set_name(&args, &name, &ws_tx).await,
                 "set_status" => tools::handle_set_status(&args, &ws_tx).await,
                 "read_messages" => {
