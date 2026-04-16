@@ -292,29 +292,42 @@ pub fn fetch_project_state() -> Option<ProjectState> {
     Some(state)
 }
 
+/// Story-throughput metrics inspired by DORA framing. Each Option
+/// is None when data is too sparse to be load-bearing — honesty over
+/// false confidence, same pattern as `session::velocity`.
 pub struct DoraMetrics {
     pub shipped_this_week: usize,
     pub in_progress: usize,
-    pub rejection_rate: f64,
-    pub avg_cycle_hours: f64,
+    pub rejection_rate: Option<f64>,
+    pub avg_cycle_hours: Option<f64>,
+    pub completed_count: usize,
 }
+
+/// Sparse threshold below which medians/rates aren't load-bearing.
+/// Matches `session::velocity::SPARSE_THRESHOLD`.
+const DORA_SPARSE_THRESHOLD: usize = 3;
 
 impl DoraMetrics {
     pub fn format(&self) -> String {
         let mut lines = vec!["## Metrics (DORA)".to_string(), String::new()];
         lines.push(format!("  Shipped this week:  {}", self.shipped_this_week));
         lines.push(format!("  In progress:        {}", self.in_progress));
-        lines.push(format!("  Rejection rate:     {:.1}%", self.rejection_rate));
-        if self.avg_cycle_hours < 1.0 {
-            lines.push(format!(
-                "  Avg cycle time:     {:.0} min",
-                self.avg_cycle_hours * 60.0
-            ));
-        } else {
-            lines.push(format!(
-                "  Avg cycle time:     {:.1} hrs",
-                self.avg_cycle_hours
-            ));
+        match self.rejection_rate {
+            Some(rate) => lines.push(format!("  Rejection rate:     {rate:.1}%")),
+            None => lines.push(format!(
+                "  Rejection rate:     insufficient data ({}/{} completed)",
+                self.completed_count, DORA_SPARSE_THRESHOLD
+            )),
+        }
+        match self.avg_cycle_hours {
+            Some(hours) if hours < 1.0 => {
+                lines.push(format!("  Avg cycle time:     {:.0} min", hours * 60.0))
+            }
+            Some(hours) => lines.push(format!("  Avg cycle time:     {hours:.1} hrs")),
+            None => lines.push(format!(
+                "  Avg cycle time:     insufficient data ({}/{} accepted)",
+                self.completed_count, DORA_SPARSE_THRESHOLD
+            )),
         }
         lines.join("\n")
     }
@@ -342,17 +355,42 @@ pub(super) fn fetch_dora_metrics() -> Option<DoraMetrics> {
         return None;
     }
     let issues: Vec<serde_json::Value> = serde_json::from_slice(&output.stdout).ok()?;
+    Some(compute_dora_metrics(&issues, chrono::Utc::now()))
+}
 
-    let now = chrono::Utc::now();
+/// Pure compute over fetched gh issue data. Extracted from
+/// `fetch_dora_metrics` so the bug-fixed math is testable without
+/// shelling out. See `DoraMetrics` for the field semantics.
+///
+/// **Accuracy bug-fixes** (#218):
+/// - Cycle time only includes ACCEPTED stories (closed without
+///   `rejected` or `deferred` labels). Previously included every
+///   closed issue — a story that sat in icebox for months before
+///   being deferred was averaged in, inflating cycle time wildly.
+/// - Cycle time is `None` when fewer than `DORA_SPARSE_THRESHOLD`
+///   accepted stories exist. Previously returned `0.0` on empty,
+///   which renders as "0 min" — false signal of fast cycle.
+/// - Rejection rate uses (accepted + rejected) as denominator.
+///   Previously used total_closed, which includes deferred/abandoned
+///   stories — those aren't rejections.
+/// - Rejection rate is `None` when fewer than `DORA_SPARSE_THRESHOLD`
+///   completed stories exist.
+/// - `shipped_this_week` only counts ACCEPTED stories closed in the
+///   last 7 days (not deferred/rejected). Matches the user intuition
+///   for "shipped."
+pub fn compute_dora_metrics(
+    issues: &[serde_json::Value],
+    now: chrono::DateTime<chrono::Utc>,
+) -> DoraMetrics {
     let week_ago = now - chrono::Duration::days(7);
 
     let mut shipped_this_week = 0usize;
     let mut in_progress = 0usize;
-    let mut total_closed = 0usize;
+    let mut accepted = 0usize;
     let mut rejected = 0usize;
     let mut cycle_times: Vec<f64> = Vec::new();
 
-    for issue in &issues {
+    for issue in issues {
         let state = issue["state"].as_str().unwrap_or("OPEN");
         let labels: Vec<&str> = issue["labels"]
             .as_array()
@@ -360,8 +398,14 @@ pub(super) fn fetch_dora_metrics() -> Option<DoraMetrics> {
             .unwrap_or_default();
 
         if state == "CLOSED" {
-            total_closed += 1;
-            if labels.contains(&"rejected") {
+            let is_rejected = labels.contains(&"rejected");
+            let is_deferred = labels.contains(&"deferred");
+            let is_accepted = !is_rejected && !is_deferred;
+
+            if is_accepted {
+                accepted += 1;
+            }
+            if is_rejected {
                 rejected += 1;
             }
 
@@ -373,12 +417,14 @@ pub(super) fn fetch_dora_metrics() -> Option<DoraMetrics> {
                     .as_str()
                     .and_then(|s| s.parse::<chrono::DateTime<chrono::Utc>>().ok()),
             ) {
-                if closed > week_ago {
+                if is_accepted && closed > week_ago {
                     shipped_this_week += 1;
                 }
-                let hours = (closed - created).num_minutes() as f64 / 60.0;
-                if hours >= 0.0 {
-                    cycle_times.push(hours);
+                if is_accepted {
+                    let hours = (closed - created).num_minutes() as f64 / 60.0;
+                    if hours >= 0.0 {
+                        cycle_times.push(hours);
+                    }
                 }
             }
         } else if labels.contains(&"started") || labels.contains(&"finished") {
@@ -386,24 +432,26 @@ pub(super) fn fetch_dora_metrics() -> Option<DoraMetrics> {
         }
     }
 
-    let rejection_rate = if total_closed > 0 {
-        rejected as f64 / total_closed as f64 * 100.0
+    let completed_count = accepted + rejected;
+    let rejection_rate = if completed_count >= DORA_SPARSE_THRESHOLD {
+        Some(rejected as f64 / completed_count as f64 * 100.0)
     } else {
-        0.0
+        None
     };
 
-    let avg_cycle_hours = if cycle_times.is_empty() {
-        0.0
+    let avg_cycle_hours = if cycle_times.len() >= DORA_SPARSE_THRESHOLD {
+        Some(cycle_times.iter().sum::<f64>() / cycle_times.len() as f64)
     } else {
-        cycle_times.iter().sum::<f64>() / cycle_times.len() as f64
+        None
     };
 
-    Some(DoraMetrics {
+    DoraMetrics {
         shipped_this_week,
         in_progress,
         rejection_rate,
         avg_cycle_hours,
-    })
+        completed_count,
+    }
 }
 
 fn repo_root() -> Result<String, String> {
