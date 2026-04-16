@@ -56,18 +56,22 @@ fn switch_to_channel_via_sidebar(bpmux: &TestBpmux, name: &str, under_section: b
 fn clicking_broadcast_in_sidebar_filters_dms_out() {
     let bpmux = TestBpmux::start_named("ryan");
     let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
+    // Send broadcast + DM and wait for the WS round-trip to land.
+    // CI is slower than local; assert observable arrivals rather
+    // than relying on fixed sleeps.
     rt.block_on(async {
         let mut dev = WsPeer::connect(&bpmux, "dev").await;
         dev.send("public hello").await;
-        tokio::time::sleep(Duration::from_millis(200)).await;
         dev.send_to("secret dm", &["ryan"]).await;
-        tokio::time::sleep(Duration::from_millis(400)).await;
     });
-
-    // Default view is [all] — both messages visible.
     assert!(
-        bpmux.wait_for_tui("secret dm", Duration::from_secs(5)),
-        "DM visible in default all-view. screen:\n{}",
+        bpmux.wait_for_tui("public hello", Duration::from_secs(10)),
+        "broadcast should land in default view. screen:\n{}",
+        bpmux.tui()
+    );
+    assert!(
+        bpmux.wait_for_tui("secret dm", Duration::from_secs(10)),
+        "DM should land in default all-view. screen:\n{}",
         bpmux.tui()
     );
 
@@ -97,10 +101,13 @@ fn clicking_dev_channel_shows_owner_dev_dms_not_broadcasts() {
     rt.block_on(async {
         let mut dev = WsPeer::connect(&bpmux, "dev").await;
         dev.send("broadcast from dev").await;
-        tokio::time::sleep(Duration::from_millis(200)).await;
         dev.send_to("dm from dev", &["ryan"]).await;
-        tokio::time::sleep(Duration::from_millis(400)).await;
     });
+    assert!(
+        bpmux.wait_for_tui("dm from dev", Duration::from_secs(10)),
+        "DM should arrive before we switch views. screen:\n{}",
+        bpmux.tui()
+    );
 
     switch_to_channel_via_sidebar(&bpmux, "dev", true);
 
@@ -134,12 +141,17 @@ fn clicking_dev_channel_excludes_other_agents_dms() {
         let mut dev = WsPeer::connect(&bpmux, "dev").await;
         let mut pm = WsPeer::connect(&bpmux, "pm").await;
         dev.send_to("dev says hi", &["ryan"]).await;
-        tokio::time::sleep(Duration::from_millis(200)).await;
         dev.send_to("dev to pm private", &["pm"]).await;
-        tokio::time::sleep(Duration::from_millis(200)).await;
         pm.send_to("pm to dev reply", &["dev"]).await;
-        tokio::time::sleep(Duration::from_millis(400)).await;
     });
+    // "dev says hi" is the only message addressed to ryan — once it
+    // lands, the other two (between dev and pm) must also have been
+    // processed server-side by ordering, so it's safe to proceed.
+    assert!(
+        bpmux.wait_for_tui("dev says hi", Duration::from_secs(10)),
+        "owner↔dev DM should arrive before we switch views. screen:\n{}",
+        bpmux.tui()
+    );
 
     switch_to_channel_via_sidebar(&bpmux, "dev", true);
 
@@ -167,8 +179,12 @@ fn owner_message_appears_in_selected_channel_view() {
     rt.block_on(async {
         let mut dev = WsPeer::connect(&bpmux, "dev").await;
         dev.send_to("ping from dev", &["ryan"]).await;
-        tokio::time::sleep(Duration::from_millis(400)).await;
     });
+    assert!(
+        bpmux.wait_for_tui("ping from dev", Duration::from_secs(10)),
+        "DM should arrive before we switch views. screen:\n{}",
+        bpmux.tui()
+    );
 
     switch_to_channel_via_sidebar(&bpmux, "dev", true);
     bpmux.type_line("owner reply in dev view");

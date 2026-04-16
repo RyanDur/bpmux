@@ -8,7 +8,7 @@ use crate::session::identity::{default_identity_dir, load_identity};
 use crate::terminal::app::App;
 
 impl App {
-    pub(super) fn handle_identity(&mut self, args: String) -> Option<Message> {
+    pub(in crate::terminal) fn handle_identity(&mut self, args: String) -> Option<Message> {
         let role = if args.trim().is_empty() {
             // Default to showing all connected agents' identities.
             // For v1: show the queried role or list available.

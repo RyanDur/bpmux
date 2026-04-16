@@ -343,16 +343,20 @@ impl App {
         if query.is_empty() {
             return SLASH_COMMANDS
                 .iter()
-                .map(|(name, short, _)| (*name, *short))
+                .map(|c| (c.name, c.short_desc))
                 .collect();
         }
         SLASH_COMMANDS
             .iter()
-            .filter_map(|(name, short, _)| {
-                let haystack = name.to_lowercase();
+            .filter_map(|c| {
+                let haystack = c.name.to_lowercase();
                 let mut hay_iter = haystack.chars();
                 let matches = query.chars().all(|qc| hay_iter.any(|hc| hc == qc));
-                if matches { Some((*name, *short)) } else { None }
+                if matches {
+                    Some((c.name, c.short_desc))
+                } else {
+                    None
+                }
             })
             .collect()
     }

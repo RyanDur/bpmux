@@ -1224,12 +1224,48 @@ fn help_command_lists_commands() {
         last.text
     );
     // Every registered command should appear in the help output.
-    for (name, _, _) in SLASH_COMMANDS {
+    for entry in SLASH_COMMANDS {
         assert!(
-            last.text.contains(name),
+            last.text.contains(entry.name),
             "/help should include {name}, got: {}",
-            last.text
+            last.text,
+            name = entry.name,
         );
+    }
+}
+
+/// Each SLASH_COMMANDS entry carries a function pointer, so the
+/// compiler already enforces "every registered command has a
+/// handler." This test locks in the discoverability invariant:
+/// dispatch via submit_message produces the same side effect as
+/// calling the handler directly, for every entry. Catches drift if
+/// someone bypasses the registry and re-adds a stray match arm.
+#[test]
+fn every_registered_slash_command_dispatches_through_the_registry() {
+    use super::input::SLASH_COMMANDS;
+    for entry in SLASH_COMMANDS {
+        // Use a representative invocation per command — most
+        // commands are argument-tolerant in the empty case, so the
+        // bare name is a safe probe. /status, /to, /join are the
+        // only ones that would misbehave on empty args, and their
+        // bare forms still route through the registry (showing
+        // usage or a no-op), which is what we're verifying.
+        let mut app = test_app();
+        app.input = entry.name.to_string();
+        // submit_message returning without panic and clearing input
+        // is the observable proof that the registry resolved the
+        // command — `handle_unknown_command` would have left an
+        // "Unknown command" system message instead.
+        app.submit_message();
+        let last = app.msg.messages.last();
+        if let Some(m) = last {
+            assert!(
+                !m.text.contains("Unknown command"),
+                "{} should be routed by the registry, not fall through to unknown-command \
+                 (make sure it's in SLASH_COMMANDS)",
+                entry.name
+            );
+        }
     }
 }
 

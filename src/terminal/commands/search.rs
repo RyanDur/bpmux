@@ -7,7 +7,7 @@ use crate::session::Message;
 use crate::terminal::app::App;
 
 impl App {
-    pub(super) fn handle_search(&mut self, query: String) -> Option<Message> {
+    pub(in crate::terminal) fn handle_search(&mut self, query: String) -> Option<Message> {
         let query = query.trim().to_string();
         if query.is_empty() {
             self.system_message("/search <query>\nExample: /search role boundaries".to_string());
@@ -77,7 +77,7 @@ impl App {
         None
     }
 
-    pub(super) fn handle_lessons(&mut self) -> Option<Message> {
+    pub(in crate::terminal) fn handle_lessons(&mut self) -> Option<Message> {
         let mut index =
             crate::session::lessons::build_index(&self.msg.messages, &self.identity.name);
         if let Some(dir) = &self.identity.dir {
@@ -129,7 +129,10 @@ impl App {
         None
     }
 
-    pub(super) fn handle_peer_lessons(&mut self, peer_name: String) -> Option<Message> {
+    pub(in crate::terminal) fn handle_peer_lessons(
+        &mut self,
+        peer_name: String,
+    ) -> Option<Message> {
         let Some(dir) = &self.identity.dir else {
             self.system_message("No session directory available.".to_string());
             self.clear_input();

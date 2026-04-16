@@ -10,7 +10,7 @@ use crate::terminal::app::App;
 use chrono::Utc;
 
 impl App {
-    pub(super) fn handle_topic(&mut self, args: String) -> Option<Message> {
+    pub(in crate::terminal) fn handle_topic(&mut self, args: String) -> Option<Message> {
         let args = args.trim();
 
         if args.is_empty() {

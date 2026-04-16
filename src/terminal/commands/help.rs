@@ -20,7 +20,7 @@ impl App {
     /// overlay can never drift again. Uses the single-column form
     /// because chat-pane width is generous and full descriptions are
     /// the whole point of `/help` (vs. the overlay's compact form).
-    pub(super) fn handle_help(&mut self) -> Option<Message> {
+    pub(crate) fn handle_help(&mut self) -> Option<Message> {
         self.system_message(format_command_list(1));
         self.clear_input();
         None
@@ -44,12 +44,14 @@ pub(crate) fn format_command_list(columns: usize) -> String {
     let mut out = String::from("Commands:\n");
     let widest_name = SLASH_COMMANDS
         .iter()
-        .map(|(name, _, _)| name.len())
+        .map(|c| c.name.len())
         .max()
         .unwrap_or(0);
     if columns <= 1 {
         // Single-column chat-pane form: full long descriptions.
-        for (name, _, long) in SLASH_COMMANDS {
+        for c in SLASH_COMMANDS {
+            let name = c.name;
+            let long = c.long_desc;
             out.push_str(&format!("  {name:<widest_name$}  {long}\n"));
         }
     } else {
@@ -63,14 +65,16 @@ pub(crate) fn format_command_list(columns: usize) -> String {
         // leading_indent + inter_col_gaps`.
         let widest_short = SLASH_COMMANDS
             .iter()
-            .map(|(_, short, _)| short.len())
+            .map(|c| c.short_desc.len())
             .max()
             .unwrap_or(0);
         let entry_width = widest_name + 1 + widest_short; // `name short`
         let gap = 2; // spaces between columns
         for chunk in SLASH_COMMANDS.chunks(columns) {
             out.push_str("  ");
-            for (i, (name, short, _)) in chunk.iter().enumerate() {
+            for (i, c) in chunk.iter().enumerate() {
+                let name = c.name;
+                let short = c.short_desc;
                 let entry = format!("{name:<widest_name$} {short:<widest_short$}");
                 if i + 1 < chunk.len() {
                     out.push_str(&format!("{entry:<width$}", width = entry_width + gap));

@@ -53,33 +53,16 @@ impl App {
             };
             // Record command usage before dispatch.
             self.record_usage(cmd);
-            return match cmd {
-                "/who" => self.handle_who(),
-                "/quit" => self.handle_quit(),
-                "/help" => self.handle_help(),
-                "/debug" => self.handle_debug(),
-                "/status" => self.handle_status(text),
-                "/to" => self.handle_to(args.to_string()),
-                "/search" => self.handle_search(args.to_string()),
-                "/lessons" if !args.is_empty() => self.handle_peer_lessons(args.trim().to_string()),
-                "/lessons" => self.handle_lessons(),
-                "/board" => self.handle_board(),
-                "/session" => self.handle_session(),
-                "/join" => self.handle_join(args.to_string()),
-                "/accept" => self.handle_accept(args.trim().to_string()),
-                "/share" => self.handle_share(args.to_string()),
-                "/all" => self.handle_toggle_all(),
-                "/topic" => self.handle_topic(args.to_string()),
-                "/focus" => self.handle_focus(args.to_string()),
-                "/identity" => self.handle_identity(args.to_string()),
-                _ => self.handle_unknown_command(text),
+            return match super::input::find_slash_command(cmd) {
+                Some(entry) => (entry.handler)(self, args),
+                None => self.handle_unknown_command(text),
             };
         }
 
         self.send_chat_message(text)
     }
 
-    fn handle_who(&mut self) -> Option<Message> {
+    pub(in crate::terminal) fn handle_who(&mut self) -> Option<Message> {
         let mut participants = vec![format!("{} (you)", self.identity.name)];
         for (peer, (status, _)) in &self.peers.activity {
             participants.push(format!("{peer} [{status}]"));
@@ -89,12 +72,12 @@ impl App {
         None
     }
 
-    fn handle_quit(&mut self) -> Option<Message> {
+    pub(in crate::terminal) fn handle_quit(&mut self) -> Option<Message> {
         self.should_quit = true;
         None
     }
 
-    fn handle_debug(&mut self) -> Option<Message> {
+    pub(in crate::terminal) fn handle_debug(&mut self) -> Option<Message> {
         self.display.show_system_messages = !self.display.show_system_messages;
         let state = if self.display.show_system_messages {
             "on"
@@ -113,7 +96,7 @@ impl App {
         None
     }
 
-    fn handle_status(&mut self, text: String) -> Option<Message> {
+    pub(in crate::terminal) fn handle_status(&mut self, text: String) -> Option<Message> {
         let msg = Message {
             from: self.from_identity(),
             text,
@@ -132,7 +115,7 @@ impl App {
         Some(msg)
     }
 
-    fn handle_to(&mut self, rest: String) -> Option<Message> {
+    pub(in crate::terminal) fn handle_to(&mut self, rest: String) -> Option<Message> {
         let rest = rest.trim_start();
         let Some((recipients_str, body)) = rest.split_once(' ') else {
             return self.show_to_usage();
@@ -202,7 +185,7 @@ impl App {
         None
     }
 
-    fn handle_board(&mut self) -> Option<Message> {
+    pub(in crate::terminal) fn handle_board(&mut self) -> Option<Message> {
         match board::fetch_board_stories() {
             Ok(stories) => {
                 self.board.stories = stories;
@@ -224,14 +207,14 @@ impl App {
         None
     }
 
-    fn handle_session(&mut self) -> Option<Message> {
+    pub(in crate::terminal) fn handle_session(&mut self) -> Option<Message> {
         self.system_message("Creating P2P session... (gathering ICE candidates)".to_string());
         self.p2p_command = Some(P2pCommand::CreateSession);
         self.clear_input();
         None
     }
 
-    fn handle_join(&mut self, args: String) -> Option<Message> {
+    pub(in crate::terminal) fn handle_join(&mut self, args: String) -> Option<Message> {
         let args = args.trim();
         let parts: Vec<&str> = args.splitn(2, ' ').collect();
         if args.is_empty() || parts.len() < 2 {
@@ -252,7 +235,7 @@ impl App {
         None
     }
 
-    fn handle_accept(&mut self, answer_code: String) -> Option<Message> {
+    pub(in crate::terminal) fn handle_accept(&mut self, answer_code: String) -> Option<Message> {
         let answer_code = answer_code.trim().to_string();
         if answer_code.is_empty() {
             self.system_message("/accept <answer-code>".to_string());
@@ -274,7 +257,7 @@ impl App {
     /// "showing all" so the chat-pane line was redundant feedback (the
     /// "noise about a noise filter" anti-pattern designer flagged on
     /// 2026-04-10). Removing the source beats adding a classifier rule.
-    fn handle_toggle_all(&mut self) -> Option<Message> {
+    pub(in crate::terminal) fn handle_toggle_all(&mut self) -> Option<Message> {
         self.display.show_all_classes = !self.display.show_all_classes;
         self.mark_filters_dirty();
         self.clear_input();

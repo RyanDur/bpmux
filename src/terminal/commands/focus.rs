@@ -94,7 +94,7 @@ pub(crate) fn in_focus(msg: &Message, focused: Option<&[String]>, my_role: &str)
 impl App {
     /// `/focus <args>` handler. Parses args, mutates `App::focused_roles`,
     /// emits a system message describing the new state.
-    pub(super) fn handle_focus(&mut self, args: String) -> Option<Message> {
+    pub(in crate::terminal) fn handle_focus(&mut self, args: String) -> Option<Message> {
         match parse_focus_args(&args) {
             FocusAction::Set(roles) => {
                 // Known = peers seen in messages + peer_activity + self

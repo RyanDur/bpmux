@@ -23,7 +23,7 @@ impl App {
     /// - **Form 2**: `/share <scope> "text"` → send a fresh message to
     ///   `<scope>` with a `[Shared by <sender>]` marker (no source scope
     ///   because there's no thread to reference).
-    pub(super) fn handle_share(&mut self, rest: String) -> Option<Message> {
+    pub(in crate::terminal) fn handle_share(&mut self, rest: String) -> Option<Message> {
         let rest = rest.trim();
         if rest.is_empty() {
             return self.show_share_usage();

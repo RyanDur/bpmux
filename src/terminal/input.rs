@@ -1,85 +1,209 @@
 use super::app::App;
+use crate::session::Message;
 use tui_textarea::CursorMove;
 
-/// Registered slash commands with brief one-line usage descriptions.
-///
-/// **Single source of truth (#164)** — used by:
+/// A slash-command registration. One source of truth for:
 /// - the textarea popup completion (this module)
-/// - the `?` keybind help overlay (`ui.rs::render_help_overlay`)
-/// - the `/help` slash command (`commands.rs::handle_help`)
+/// - the `?` keybind help overlay (`ui::render_help_overlay`)
+/// - the `/help` slash command (`commands::help::handle_help`)
+/// - dispatch from `App::submit_message`
 ///
-/// Adding a new command means adding ONE line here. The popup, overlay,
-/// and `/help` all pick it up automatically — no parallel lists to keep
-/// in sync.
+/// Adding a new command means adding ONE entry here. The compiler
+/// enforces that every registered command has a handler because the
+/// function pointer is mandatory — previously, palette entry and
+/// dispatch lived in parallel lists that could drift silently.
 ///
-/// **Tuple shape**: `(name, short_desc, long_desc)`. The short form fits
-/// in the compact 2-column help overlay (≤14 chars per entry). The long
-/// form carries full detail for the `/help` chat-pane output where width
-/// is generous. Two versions of the same information — each at the right
-/// granularity for its surface. See `commands_help::format_command_list`
-/// for the consumer logic.
-///
-/// **Why two descriptions** (#164 re-delivery): the original #164 shipped
-/// with a single description, and the 2-column overlay branch dropped it
-/// entirely for width reasons — producing an overlay that showed command
-/// names with no hint at what each command did. Ryan correctly flagged
-/// that as a regression. The fix carries short descriptions for the
-/// compact surface and long descriptions for the chat-pane surface.
-///
-/// Convention for short: single verb or verb-phrase, sentence case, no
-/// period, ≤14 chars. Convention for long: full sentence fragment, no
-/// period, fits on one line.
-pub(super) const SLASH_COMMANDS: &[(&str, &str, &str)] = &[
-    (
-        "/to",
-        "send to roles",
-        "send to recipients (comma-separated)",
-    ),
-    (
-        "/share",
-        "widen scope",
-        "propagate a message to a wider scope",
-    ),
-    (
-        "/all",
-        "toggle filter",
-        "toggle classifier-driven view filter",
-    ),
-    ("/search", "find in log", "search the conversation log"),
-    (
-        "/lessons",
-        "team lessons",
-        "show team lessons (or peer's with arg)",
-    ),
-    ("/board", "project board", "show project board"),
-    ("/status", "set status", "declare your status"),
-    ("/who", "list peers", "list participants"),
-    ("/session", "start p2p", "create a P2P session"),
-    ("/join", "join p2p", "join a remote P2P session"),
-    ("/accept", "finish p2p", "complete a P2P handshake"),
-    (
-        "/debug",
-        "sys msg toggle",
-        "toggle system message visibility",
-    ),
-    (
-        "/focus",
-        "role filter",
-        "filter chat view by role (e.g. /focus dev,pm)",
-    ),
-    (
-        "/identity",
-        "agent traits",
-        "show identity traits for a role (e.g. /identity dev)",
-    ),
-    (
-        "/topic",
-        "switch topic",
-        "manage topics (e.g. /topic create scroll-fix)",
-    ),
-    ("/help", "show this", "show this list"),
-    ("/quit", "exit", "exit bpmux"),
+/// Convention for short: single verb or verb-phrase, sentence case,
+/// no period, ≤14 chars. Convention for long: full sentence
+/// fragment, no period, fits on one line.
+#[derive(Clone, Copy)]
+pub(super) struct SlashCommand {
+    pub name: &'static str,
+    pub short_desc: &'static str,
+    pub long_desc: &'static str,
+    pub handler: fn(&mut App, &str) -> Option<Message>,
+}
+
+/// Single source of truth for slash commands. Entry order controls
+/// popup/overlay display order.
+pub(super) const SLASH_COMMANDS: &[SlashCommand] = &[
+    SlashCommand {
+        name: "/to",
+        short_desc: "send to roles",
+        long_desc: "send to recipients (comma-separated)",
+        handler: dispatch_to,
+    },
+    SlashCommand {
+        name: "/share",
+        short_desc: "widen scope",
+        long_desc: "propagate a message to a wider scope",
+        handler: dispatch_share,
+    },
+    SlashCommand {
+        name: "/all",
+        short_desc: "toggle filter",
+        long_desc: "toggle classifier-driven view filter",
+        handler: dispatch_all,
+    },
+    SlashCommand {
+        name: "/search",
+        short_desc: "find in log",
+        long_desc: "search the conversation log",
+        handler: dispatch_search,
+    },
+    SlashCommand {
+        name: "/lessons",
+        short_desc: "team lessons",
+        long_desc: "show team lessons (or peer's with arg)",
+        handler: dispatch_lessons,
+    },
+    SlashCommand {
+        name: "/board",
+        short_desc: "project board",
+        long_desc: "show project board",
+        handler: dispatch_board,
+    },
+    SlashCommand {
+        name: "/status",
+        short_desc: "set status",
+        long_desc: "declare your status",
+        handler: dispatch_status,
+    },
+    SlashCommand {
+        name: "/who",
+        short_desc: "list peers",
+        long_desc: "list participants",
+        handler: dispatch_who,
+    },
+    SlashCommand {
+        name: "/session",
+        short_desc: "start p2p",
+        long_desc: "create a P2P session",
+        handler: dispatch_session,
+    },
+    SlashCommand {
+        name: "/join",
+        short_desc: "join p2p",
+        long_desc: "join a remote P2P session",
+        handler: dispatch_join,
+    },
+    SlashCommand {
+        name: "/accept",
+        short_desc: "finish p2p",
+        long_desc: "complete a P2P handshake",
+        handler: dispatch_accept,
+    },
+    SlashCommand {
+        name: "/debug",
+        short_desc: "sys msg toggle",
+        long_desc: "toggle system message visibility",
+        handler: dispatch_debug,
+    },
+    SlashCommand {
+        name: "/focus",
+        short_desc: "role filter",
+        long_desc: "filter chat view by role (e.g. /focus dev,pm)",
+        handler: dispatch_focus,
+    },
+    SlashCommand {
+        name: "/identity",
+        short_desc: "agent traits",
+        long_desc: "show identity traits for a role (e.g. /identity dev)",
+        handler: dispatch_identity,
+    },
+    SlashCommand {
+        name: "/topic",
+        short_desc: "switch topic",
+        long_desc: "manage topics (e.g. /topic create scroll-fix)",
+        handler: dispatch_topic,
+    },
+    SlashCommand {
+        name: "/help",
+        short_desc: "show this",
+        long_desc: "show this list",
+        handler: dispatch_help,
+    },
+    SlashCommand {
+        name: "/quit",
+        short_desc: "exit",
+        long_desc: "exit bpmux",
+        handler: dispatch_quit,
+    },
 ];
+
+pub(super) fn find_slash_command(name: &str) -> Option<&'static SlashCommand> {
+    SLASH_COMMANDS.iter().find(|c| c.name == name)
+}
+
+// ── Dispatch wrappers ──────────────────────────────────────────────
+// Each wrapper adapts a `fn(&mut App, &str)` signature to the
+// handler's own shape. The registry holds these so the compiler
+// proves every entry has a callable. Handlers themselves keep their
+// original signatures — this is purely the adapter layer.
+
+fn dispatch_to(app: &mut App, args: &str) -> Option<Message> {
+    app.handle_to(args.to_string())
+}
+fn dispatch_share(app: &mut App, args: &str) -> Option<Message> {
+    app.handle_share(args.to_string())
+}
+fn dispatch_all(app: &mut App, _args: &str) -> Option<Message> {
+    app.handle_toggle_all()
+}
+fn dispatch_search(app: &mut App, args: &str) -> Option<Message> {
+    app.handle_search(args.to_string())
+}
+fn dispatch_lessons(app: &mut App, args: &str) -> Option<Message> {
+    if args.is_empty() {
+        app.handle_lessons()
+    } else {
+        app.handle_peer_lessons(args.trim().to_string())
+    }
+}
+fn dispatch_board(app: &mut App, _args: &str) -> Option<Message> {
+    app.handle_board()
+}
+fn dispatch_status(app: &mut App, args: &str) -> Option<Message> {
+    // handle_status expects the full `/status [text]` as the activity
+    // message body so peers see the original slash form in their
+    // activity surface. Rebuild it from cmd + args.
+    let full = if args.is_empty() {
+        "/status".to_string()
+    } else {
+        format!("/status {args}")
+    };
+    app.handle_status(full)
+}
+fn dispatch_who(app: &mut App, _args: &str) -> Option<Message> {
+    app.handle_who()
+}
+fn dispatch_session(app: &mut App, _args: &str) -> Option<Message> {
+    app.handle_session()
+}
+fn dispatch_join(app: &mut App, args: &str) -> Option<Message> {
+    app.handle_join(args.to_string())
+}
+fn dispatch_accept(app: &mut App, args: &str) -> Option<Message> {
+    app.handle_accept(args.trim().to_string())
+}
+fn dispatch_debug(app: &mut App, _args: &str) -> Option<Message> {
+    app.handle_debug()
+}
+fn dispatch_focus(app: &mut App, args: &str) -> Option<Message> {
+    app.handle_focus(args.to_string())
+}
+fn dispatch_identity(app: &mut App, args: &str) -> Option<Message> {
+    app.handle_identity(args.to_string())
+}
+fn dispatch_topic(app: &mut App, args: &str) -> Option<Message> {
+    app.handle_topic(args.to_string())
+}
+fn dispatch_help(app: &mut App, _args: &str) -> Option<Message> {
+    app.handle_help()
+}
+fn dispatch_quit(app: &mut App, _args: &str) -> Option<Message> {
+    app.handle_quit()
+}
 
 impl App {
     pub fn insert_char(&mut self, c: char) {
@@ -210,8 +334,8 @@ impl App {
         let typed = self.input.split_whitespace().next().unwrap_or(&self.input);
         SLASH_COMMANDS
             .iter()
-            .filter(|(cmd, _, _)| cmd.starts_with(typed))
-            .map(|(cmd, short, _)| (*cmd, *short))
+            .filter(|c| c.name.starts_with(typed))
+            .map(|c| (c.name, c.short_desc))
             .collect()
     }
 
