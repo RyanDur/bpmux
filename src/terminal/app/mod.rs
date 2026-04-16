@@ -1,3 +1,6 @@
+mod palette;
+mod scroll;
+
 use crate::session::{Message, MessageType};
 use chrono::Utc;
 use std::collections::{HashMap, HashSet};
@@ -332,57 +335,6 @@ impl App {
     /// kept for call-site compatibility. Left in place rather than
     /// deleted so hooks that reference it don't break.
     pub fn save_usage_to_disk(&self) {}
-
-    /// Return the filtered list of palette actions matching
-    /// the current palette_input. Fuzzy match: the input chars must
-    /// appear in order in the action name, but not necessarily
-    /// adjacent.
-    pub fn palette_matches(&self) -> Vec<(&'static str, &'static str)> {
-        use super::input::SLASH_COMMANDS;
-        let query = self.palette.input.to_lowercase();
-        if query.is_empty() {
-            return SLASH_COMMANDS
-                .iter()
-                .map(|c| (c.name, c.short_desc))
-                .collect();
-        }
-        SLASH_COMMANDS
-            .iter()
-            .filter_map(|c| {
-                let haystack = c.name.to_lowercase();
-                let mut hay_iter = haystack.chars();
-                let matches = query.chars().all(|qc| hay_iter.any(|hc| hc == qc));
-                if matches {
-                    Some((c.name, c.short_desc))
-                } else {
-                    None
-                }
-            })
-            .collect()
-    }
-
-    pub fn scroll_up(&mut self, lines: usize) {
-        let before = self.scroll.offset;
-        self.scroll.offset = self
-            .scroll
-            .offset
-            .saturating_add(lines)
-            .min(self.scroll.max);
-        if self.scroll.offset != before {
-            self.scroll.at_boundary = false;
-        }
-    }
-
-    pub fn scroll_down(&mut self, lines: usize) {
-        let before = self.scroll.offset;
-        self.scroll.offset = self.scroll.offset.saturating_sub(lines);
-        if self.scroll.offset != before {
-            self.scroll.at_boundary = false;
-        }
-        if self.scroll.offset == 0 {
-            self.scroll.unread_count = 0;
-        }
-    }
 
     pub fn toggle_last_truncated(&mut self) {
         let width = CHAT_INNER_WIDTH;
