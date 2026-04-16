@@ -1,18 +1,9 @@
-//! Keyboard and mouse event dispatch extracted from event.rs.
-//!
-//! These functions handle the conversion from crossterm events to App state
-//! mutations (cursor moves, scroll, sidebar toggles, slash-command submission)
-//! and mouse-to-region routing. They live in their own file so event.rs can
-//! stay focused on the tokio::select! event loop.
-
-use crossterm::event::{Event, KeyCode, KeyEventKind, KeyModifiers, MouseEventKind};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use crate::session;
 use crate::terminal::app::{App, InputMode};
 
 const PAGE_SCROLL_LINES: usize = 10;
-const MOUSE_SCROLL_LINES: usize = 3;
-const MENU_CLICK_WIDTH: u16 = 3;
 
 fn bell() {
     use std::io::Write;
@@ -40,153 +31,11 @@ fn scroll_down_with_bell(app: &mut App, amount: usize) {
     }
 }
 
-fn build_project_content() -> String {
-    let mut content = String::new();
-    if let Some(metrics) = super::board::fetch_dora_metrics() {
-        content.push_str(&metrics.format());
-        content.push_str("\n\n---\n\n");
-    }
-    match super::board::fetch_roadmap() {
-        Ok(text) => content.push_str(&text),
-        Err(_) => match super::board::fetch_board() {
-            Ok(text) => content.push_str(&text),
-            Err(e) => content.push_str(&format!("Project info unavailable: {e}")),
-        },
-    }
-    content
-}
-
-fn handle_mouse_click(col: u16, row: u16, app: &mut App, session: &session::Session) {
-    if let Some((sx, sy, sw, sh)) = app.layout.sidebar_area {
-        if col >= sx && col < sx + sw && row >= sy && row < sy + sh {
-            if row == sy {
-                // Click on sidebar header — toggle closed
-                app.toggle_sidebar();
-            } else {
-                let content_row = row.saturating_sub(sy + 1);
-                let channels = app.sidebar_channels();
-                let idx = content_row as usize;
-                if idx < channels.len() {
-                    app.sidebar.selected = idx;
-                    app.sidebar_select();
-                }
-            }
-            return;
-        }
-    } else if let Some((mx, my)) = app.layout.menu_click_cell {
-        // The left-edge click zone is now the visible `≡` glyph
-        // at the top-left of the chat area. Narrowed from the old
-        // `col < 3 on any row` catch-all, which triggered false
-        // positives on any upper-left click. Keeping a 3-column-wide
-        // target for Fitts's-law forgiveness.
-        if row == my && col >= mx && col < mx + MENU_CLICK_WIDTH {
-            app.toggle_sidebar();
-            return;
-        }
-    }
-
-    // Check if the click hit a "[+N lines]" truncation indicator
-    if let Some(key) = app
-        .msg
-        .truncation_indicators
-        .iter()
-        .find(|(y, _)| *y == row)
-        .map(|(_, k)| k.clone())
-    {
-        if app.msg.expanded_messages.contains(&key) {
-            app.msg.expanded_messages.remove(&key);
-        } else {
-            app.msg.expanded_messages.insert(key);
-        }
-        return;
-    }
-
-    if let Some((cx, cy, cw, _)) = app.layout.chat_area
-        && row == cy
-        && col >= cx
-        && col < cx + cw
-    {
-        if matches!(app.input_mode, InputMode::Project) {
-            app.project.content = None;
-            app.input_mode = InputMode::Chat;
-        } else {
-            app.project.content = Some(build_project_content());
-            app.input_mode = InputMode::Project;
-        }
-        return;
-    }
-
-    if let Some((_, sb_y, _, _)) = app.layout.status_bar_area
-        && row == sb_y
-    {
-        // Restart affordance takes precedence — click on the
-        // "[⟳ restart]" span triggers an immediate reload. Checked
-        // before the help-hint zone because the restart zone sits
-        // left of it in the status bar layout.
-        if let Some((start, end)) = app.layout.restart_hint_cols
-            && col >= start
-            && col < end
-        {
-            super::ui_state::UiState::save(app, session);
-            app.should_reload = true;
-            return;
-        }
-        if app
-            .layout
-            .help_hint_col
-            .is_some_and(|hint_col| col >= hint_col)
-        {
-            app.input_mode = InputMode::Help;
-        }
-    }
-}
-
-pub(super) fn handle_terminal_event(
-    ev: Event,
+pub(super) fn handle(
+    key: KeyEvent,
     app: &mut App,
     session: &session::Session,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    if matches!(&ev, Event::FocusGained) {
-        app.display.tui_focused = true;
-        return Ok(());
-    }
-    if matches!(&ev, Event::FocusLost) {
-        app.display.tui_focused = false;
-        return Ok(());
-    }
-    if let Event::Mouse(mouse) = &ev {
-        if matches!(app.input_mode, InputMode::Help) {
-            if mouse.kind == MouseEventKind::Down(crossterm::event::MouseButton::Left) {
-                app.input_mode = InputMode::Chat;
-            }
-            return Ok(());
-        }
-        match mouse.kind {
-            MouseEventKind::ScrollUp => {
-                app.scroll_up(MOUSE_SCROLL_LINES);
-            }
-            MouseEventKind::ScrollDown => {
-                app.scroll_down(MOUSE_SCROLL_LINES);
-            }
-            MouseEventKind::Down(crossterm::event::MouseButton::Left) => {
-                handle_mouse_click(mouse.column, mouse.row, app, session);
-            }
-            _ => {}
-        }
-        return Ok(());
-    }
-    if let Event::Paste(text) = ev {
-        for ch in text.chars() {
-            app.insert_char(ch);
-        }
-        return Ok(());
-    }
-    let Event::Key(key) = ev else {
-        return Ok(());
-    };
-    if key.kind != KeyEventKind::Press {
-        return Ok(());
-    }
     // Modal dispatch via InputMode enum — explicit state machine
     // replacing the old implicit priority chain of boolean flags.
     match app.input_mode {
@@ -260,7 +109,7 @@ pub(super) fn handle_terminal_event(
                     app.board.selected = app.board.selected.saturating_sub(1);
                 }
                 KeyCode::Down => {
-                    let visible = super::board_view::visible_stories(&app.board.stories);
+                    let visible = crate::terminal::board_view::visible_stories(&app.board.stories);
                     if !visible.is_empty() {
                         app.board.selected = (app.board.selected + 1).min(visible.len() - 1);
                     }
@@ -371,7 +220,7 @@ pub(super) fn handle_terminal_event(
         KeyCode::Char('e') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             app.move_cursor_end();
         }
-        // Ctrl+K is handled earlier (opens command palette, line ~258).
+        // Ctrl+K is handled earlier (opens command palette).
         // kill_to_end is unreachable while palette binding exists.
         KeyCode::Char('w') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             app.delete_word_backward();
