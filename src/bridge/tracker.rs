@@ -1,5 +1,24 @@
 use super::tools_stories::gh;
 
+/// Shared fail-soft handler for `get_story_labels`: log the error
+/// through the diag sink so it's observable via `BPMUX_LOG`, then
+/// return an empty Vec. Caller treats empty as "ambiguous category"
+/// and defaults the addressee up to Ryan (classifier fail-safe).
+///
+/// Factored out so both tracker impls emit the same diagnostic text
+/// and unit tests can assert the observable behavior without needing
+/// live gh/octocrab.
+pub(crate) fn log_labels_fetch_failure<E: std::fmt::Display>(
+    backend: &str,
+    number: u64,
+    err: E,
+) -> Vec<String> {
+    crate::session::diag::log_diag(&format!(
+        "get_story_labels ({backend}) #{number} failed: {err}"
+    ));
+    Vec::new()
+}
+
 pub trait StoryTracker: Clone + Send + Sync + 'static {
     fn close_story(
         &self,
@@ -103,18 +122,20 @@ impl StoryTracker for GhTracker {
     }
 
     async fn get_story_labels(&self, number: u64) -> Vec<String> {
-        gh(&["issue", "view", &number.to_string(), "--json", "labels"])
-            .await
-            .ok()
-            .and_then(|json| serde_json::from_str::<serde_json::Value>(&json).ok())
-            .and_then(|v| {
-                v["labels"].as_array().map(|arr| {
-                    arr.iter()
-                        .filter_map(|l| l["name"].as_str().map(String::from))
-                        .collect()
-                })
-            })
-            .unwrap_or_default()
+        match gh(&["issue", "view", &number.to_string(), "--json", "labels"]).await {
+            Ok(json) => match serde_json::from_str::<serde_json::Value>(&json) {
+                Ok(v) => v["labels"]
+                    .as_array()
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|l| l["name"].as_str().map(String::from))
+                            .collect()
+                    })
+                    .unwrap_or_default(),
+                Err(e) => log_labels_fetch_failure("gh parse", number, e),
+            },
+            Err(e) => log_labels_fetch_failure("gh", number, e),
+        }
     }
 }
 
@@ -268,13 +289,15 @@ impl StoryTracker for OctocrabStoryTracker {
     }
 
     async fn get_story_labels(&self, number: u64) -> Vec<String> {
-        self.client
+        match self
+            .client
             .issues(&self.owner, &self.repo)
             .get(number)
             .await
-            .ok()
-            .map(|i| i.labels.iter().map(|l| l.name.clone()).collect())
-            .unwrap_or_default()
+        {
+            Ok(i) => i.labels.iter().map(|l| l.name.clone()).collect(),
+            Err(e) => log_labels_fetch_failure("octocrab", number, Self::classify(e)),
+        }
     }
 }
 

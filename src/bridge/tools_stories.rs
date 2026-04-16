@@ -160,10 +160,12 @@ pub(super) async fn handle_start_story(
     let signal =
         serde_json::to_string(&build_start_signal(number)).map_err(|e| format!("signal: {e}"))?;
     if let Err(e) = ws_send(ws_tx, signal).await {
-        eprintln!("Bridge: signal send failed: {e}");
+        crate::session::diag::log_diag(&format!("bridge: signal send failed: {e}"));
     }
     if let Err(e) = tracker.remove_label(number, LABEL_READY).await {
-        eprintln!("Bridge: remove-label ready failed for #{number}: {e}");
+        crate::session::diag::log_diag(&format!(
+            "bridge: remove-label ready failed for #{number}: {e}"
+        ));
     }
     match tracker.add_label(number, LABEL_IN_PROGRESS).await {
         Ok(_) => Ok(format!("#{number} marked as in progress")),
@@ -202,7 +204,9 @@ pub(super) async fn handle_deliver_story(
             .map_err(|e| format!("#{number} signal send failed: {e}"))?;
     }
     if let Err(e) = tracker.remove_label(number, LABEL_IN_PROGRESS).await {
-        eprintln!("Bridge: remove-label in-progress failed for #{number}: {e}");
+        crate::session::diag::log_diag(&format!(
+            "bridge: remove-label in-progress failed for #{number}: {e}"
+        ));
     }
     match tracker.add_label(number, LABEL_DELIVERED).await {
         Ok(_) => Ok(format!("#{number} delivered: signals sent, labels updated")),
@@ -245,10 +249,12 @@ pub(super) async fn handle_accept_story(
     let signal = serde_json::to_string(&build_accept_signal(number, role))
         .map_err(|e| format!("signal: {e}"))?;
     if let Err(e) = ws_send(ws_tx, signal).await {
-        eprintln!("Bridge: signal send failed: {e}");
+        crate::session::diag::log_diag(&format!("bridge: signal send failed: {e}"));
     }
     if let Err(e) = tracker.remove_label(number, LABEL_DELIVERED).await {
-        eprintln!("Bridge: remove-label delivered failed for #{number}: {e}");
+        crate::session::diag::log_diag(&format!(
+            "bridge: remove-label delivered failed for #{number}: {e}"
+        ));
     }
     let close_result = tracker.close_story(number).await;
     match close_result {
@@ -278,13 +284,17 @@ pub(super) async fn handle_reject_story(
     let signal = serde_json::to_string(&build_reject_signal(number, reason))
         .map_err(|e| format!("signal: {e}"))?;
     if let Err(e) = ws_send(ws_tx, signal).await {
-        eprintln!("Bridge: signal send failed: {e}");
+        crate::session::diag::log_diag(&format!("bridge: signal send failed: {e}"));
     }
     if let Err(e) = tracker.remove_label(number, LABEL_DELIVERED).await {
-        eprintln!("Bridge: remove-label delivered failed for #{number}: {e}");
+        crate::session::diag::log_diag(&format!(
+            "bridge: remove-label delivered failed for #{number}: {e}"
+        ));
     }
     if let Err(e) = tracker.add_label(number, LABEL_REJECTED).await {
-        eprintln!("Bridge: add-label rejected failed for #{number}: {e}");
+        crate::session::diag::log_diag(&format!(
+            "bridge: add-label rejected failed for #{number}: {e}"
+        ));
     }
     match tracker.comment_on_story(number, reason).await {
         Ok(_) => Ok(format!("#{number} rejected: {reason}")),
