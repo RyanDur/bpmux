@@ -244,7 +244,10 @@ fn handle_broadcast_message(msg: session::Message, app: &mut App) {
         let short_name = msg.from.split(':').next().unwrap_or(&msg.from).to_string();
         let preview: String = msg.text.chars().take(NOTIFICATION_PREVIEW_CHARS).collect();
         let is_dm = msg.to.as_ref().is_some_and(|r| {
-            r.iter().any(|n| n == &app.identity.name) && !r.iter().all(|n| n == "all")
+            r.iter().any(|n| n == &app.identity.name)
+                && !r
+                    .iter()
+                    .all(|n| n == crate::session::message::BROADCAST_ALL)
         });
         app.receive_message(msg);
         if !app.display.tui_focused {

@@ -43,7 +43,9 @@ pub(super) fn parse_focus_args(args: &str) -> FocusAction {
     if trimmed.is_empty() || trimmed.eq_ignore_ascii_case("status") {
         return FocusAction::Status;
     }
-    if trimmed.eq_ignore_ascii_case("off") || trimmed.eq_ignore_ascii_case("all") {
+    if trimmed.eq_ignore_ascii_case("off")
+        || trimmed.eq_ignore_ascii_case(crate::session::message::BROADCAST_ALL)
+    {
         return FocusAction::Off;
     }
     let roles: Vec<String> = trimmed

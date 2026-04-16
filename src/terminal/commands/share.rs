@@ -39,7 +39,8 @@ impl App {
 
         // Parse scope into recipient list. "all" is treated as None (full
         // broadcast), matching the existing channel/broadcast conventions.
-        let target_to: Option<Vec<String>> = if scope_str == "all" {
+        let target_to: Option<Vec<String>> = if scope_str == crate::session::message::BROADCAST_ALL
+        {
             None
         } else {
             let recipients: Vec<String> = scope_str

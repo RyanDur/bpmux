@@ -259,7 +259,10 @@ pub(crate) fn should_deliver(
         None => return true,
         Some(r) => r,
     };
-    if recipients.iter().any(|r| r == "all") {
+    if recipients
+        .iter()
+        .any(|r| r == crate::session::message::BROADCAST_ALL)
+    {
         return true;
     }
     let peer_short = short_name(peer_identity);

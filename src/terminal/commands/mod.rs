@@ -199,7 +199,7 @@ impl App {
             self.clear_input();
             return None;
         }
-        if arg == "all" {
+        if arg == crate::session::message::BROADCAST_ALL {
             self.channels.current_view = None;
             self.mark_filters_dirty();
             self.scroll.offset = 0;

@@ -231,12 +231,22 @@ async fn run_ws_connection(
             let current_name = name.lock().await;
             let relevant = match &to {
                 None => true,
-                Some(recipients) if recipients.iter().any(|r| r == "all") => true,
+                Some(recipients)
+                    if recipients
+                        .iter()
+                        .any(|r| r == crate::session::message::BROADCAST_ALL) =>
+                {
+                    true
+                }
                 Some(recipients) => recipients.iter().any(|r| r == current_name.as_str()),
             };
             let channel = match &to {
                 None => "broadcast".to_string(),
-                Some(recipients) if recipients.iter().any(|r| r == "all") => {
+                Some(recipients)
+                    if recipients
+                        .iter()
+                        .any(|r| r == crate::session::message::BROADCAST_ALL) =>
+                {
                     "broadcast".to_string()
                 }
                 Some(recipients) => recipients.join(","),

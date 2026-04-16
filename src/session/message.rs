@@ -135,6 +135,11 @@ pub enum DeepDetail {
     },
 }
 
+/// Broadcast marker for addressee and to-list routing. When a message's
+/// `addressee` or `to` list contains this value, the message reaches
+/// everyone — it's the "addressed to all" / "visible to all" signal.
+pub const BROADCAST_ALL: &str = "all";
+
 fn is_false(b: &bool) -> bool {
     !*b
 }
@@ -186,7 +191,7 @@ impl Message {
     pub fn is_addressed_to(&self, role: &str) -> bool {
         match self.addressee.as_deref() {
             None => true,
-            Some("all") => true,
+            Some(BROADCAST_ALL) => true,
             Some(target) => target == role,
         }
     }

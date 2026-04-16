@@ -25,7 +25,13 @@ pub fn channel_name(msg: &crate::session::Message, owner: &str) -> String {
     }
     match &msg.to {
         None => "broadcast".to_string(),
-        Some(recipients) if recipients.iter().any(|r| r == "all") => "broadcast".to_string(),
+        Some(recipients)
+            if recipients
+                .iter()
+                .any(|r| r == crate::session::message::BROADCAST_ALL) =>
+        {
+            "broadcast".to_string()
+        }
         Some(recipients) => {
             let sender_short = msg.from.split(':').next().unwrap_or(&msg.from);
             let mut names: Vec<&str> = recipients.iter().map(|s| s.as_str()).collect();
@@ -470,7 +476,9 @@ impl App {
                 }
                 if let Some(recipients) = &msg.to {
                     let directed_at_me = recipients.iter().any(|r| r == &self.identity.name)
-                        && !recipients.iter().all(|r| r == "all");
+                        && !recipients
+                            .iter()
+                            .all(|r| r == crate::session::message::BROADCAST_ALL);
                     if directed_at_me && !self.peers.dm_unread_from.contains(&sender) {
                         self.peers.dm_unread_from.push(sender);
                         self.peers.dm_flash_until = Some(Instant::now() + DM_FLASH_DURATION);
