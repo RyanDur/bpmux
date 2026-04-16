@@ -76,6 +76,27 @@ where
         }
     });
 
+    // #227: periodic DORA refresh. Separate channel so project state
+    // and DORA can tick independently. Fires at startup + every 2 min
+    // (DORA changes more slowly than board data).
+    let (dora_tx, mut dora_rx) = mpsc::channel::<super::board::DoraMetrics>(1);
+    if !headless {
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(std::time::Duration::from_secs(120));
+            loop {
+                interval.tick().await;
+                if let Some(metrics) = tokio::task::spawn_blocking(super::board::fetch_dora_metrics)
+                    .await
+                    .ok()
+                    .flatten()
+                    && dora_tx.send(metrics).await.is_err()
+                {
+                    break;
+                }
+            }
+        });
+    }
+
     // Periodic tick so stall-detection in the status bar re-renders even
     // when nothing else is happening. Without this, a peer that goes stale
     // during an idle moment would stay the wrong color until the next
@@ -247,6 +268,9 @@ where
                 super::ui_state::UiState::save(app, session);
                 app.should_reload = true;
                 return Ok(());
+            }
+            Some(dora) = dora_rx.recv() => {
+                app.project.dora = Some(dora);
             }
             Some(state) = project_rx.recv() => {
                 app.project.state = Some(state);

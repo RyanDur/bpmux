@@ -103,6 +103,10 @@ pub struct ProjectViewState {
     pub state: Option<super::board::ProjectState>,
     pub show: bool,
     pub content: Option<String>,
+    /// #227: cached DORA metrics; populated by the periodic
+    /// project-state tick (src/terminal/event.rs). None until the
+    /// first fetch completes — renders as "insufficient data" then.
+    pub dora: Option<super::board::DoraMetrics>,
 }
 
 /// Tokens overlay state — extracted from App.

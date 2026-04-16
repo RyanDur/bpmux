@@ -28,7 +28,6 @@ const MAX_INPUT_HEIGHT: u16 = 8;
 const MIN_CHART_WIDTH: u16 = 60;
 const MIN_CHART_HEIGHT: u16 = 16;
 const MIN_SPLIT_VIEW_WIDTH: u16 = 60;
-use crate::terminal::markdown::{render_md_message, wrap_line_with_indent};
 use crate::terminal::theme::{
     DRACULA_BG, DRACULA_COMMENT, DRACULA_CYAN, DRACULA_FG, DRACULA_PURPLE, DRACULA_SELECTION,
 };
@@ -437,11 +436,12 @@ fn render_tokens_chart_view(
 }
 
 fn render_project_panel(frame: &mut Frame, app: &App, area: Rect) {
-    use crate::terminal::board::{StoryState, stories_by_state};
-
-    // #219: prefer snapshot data (background-polled) over manually
-    // fetched app.board.stories. Snapshot is always-fresh; the legacy
-    // app.board.stories path is the fallback for manual /board invocation.
+    // #227: three-zone project panel (velocity / DORA / board) plus
+    // footer with freshness timestamp + honest error state. Uses
+    // #219's background-polled snapshot for board data, #209's pure
+    // compute for velocity, #218's accuracy-fixed DORA from cached
+    // project state. No more two-path render (markdown fallback
+    // deleted per the spec in docs/design/project-view/reshape.md).
     let (snapshot_stories, last_updated, last_error) = {
         let snap = app.board_snapshot.lock().ok();
         match snap {
@@ -455,83 +455,6 @@ fn render_project_panel(frame: &mut Frame, app: &App, area: Rect) {
         app.board.stories.clone()
     };
 
-    // #196: show board data in the project panel when stories are loaded.
-    if !display_stories.is_empty() {
-        let block = Block::default()
-            .borders(Borders::ALL)
-            .title(" project ")
-            .title_style(
-                Style::default()
-                    .fg(DRACULA_PURPLE)
-                    .add_modifier(Modifier::BOLD),
-            )
-            .border_style(Style::default().fg(DRACULA_SELECTION))
-            .style(Style::default().bg(DRACULA_BG).fg(DRACULA_FG));
-
-        let groups = stories_by_state(&display_stories);
-        let mut lines: Vec<Line> = Vec::new();
-
-        // #219: surface freshness — last-updated timestamp and any
-        // fetch error. Keeps Ryan informed about whether the data is
-        // current or we're running on cached state.
-        if let Some(last) = last_updated {
-            lines.push(Line::from(Span::styled(
-                crate::terminal::board_poller::format_last_updated(last, chrono::Utc::now()),
-                Style::default().fg(DRACULA_COMMENT),
-            )));
-        }
-        if let Some(err) = &last_error {
-            lines.push(Line::from(Span::styled(
-                err.user_message(),
-                Style::default().fg(crate::terminal::theme::DRACULA_ORANGE),
-            )));
-        }
-        if last_updated.is_some() || last_error.is_some() {
-            lines.push(Line::from(""));
-        }
-
-        for (state, stories) in &groups {
-            let color = match state {
-                StoryState::Ready => crate::terminal::theme::DRACULA_GREEN,
-                StoryState::InProgress => crate::terminal::theme::DRACULA_ORANGE,
-                StoryState::Delivered => crate::terminal::theme::DRACULA_YELLOW,
-                _ => DRACULA_COMMENT,
-            };
-
-            // Compressed: accepted + icebox show count only
-            if matches!(state, StoryState::Accepted | StoryState::Icebox) {
-                lines.push(Line::from(Span::styled(
-                    format!("{} ({})", state.label(), stories.len()),
-                    Style::default().fg(DRACULA_COMMENT),
-                )));
-                continue;
-            }
-
-            // Active states: header + stories
-            lines.push(Line::from(Span::styled(
-                format!("{} ({})", state.label(), stories.len()),
-                Style::default().fg(color).add_modifier(Modifier::BOLD),
-            )));
-            for story in stories.iter().take(5) {
-                lines.push(Line::from(Span::styled(
-                    story.short_name(area.width.saturating_sub(4) as usize),
-                    Style::default().fg(DRACULA_FG),
-                )));
-            }
-            if stories.len() > 5 {
-                lines.push(Line::from(Span::styled(
-                    format!("+{} more", stories.len() - 5),
-                    Style::default().fg(DRACULA_COMMENT),
-                )));
-            }
-        }
-
-        let paragraph = Paragraph::new(lines).block(block);
-        frame.render_widget(paragraph, area);
-        return;
-    }
-
-    // Fallback: existing project view content (roadmap/DORA)
     let block = Block::default()
         .borders(Borders::ALL)
         .title(" project ")
@@ -540,22 +463,219 @@ fn render_project_panel(frame: &mut Frame, app: &App, area: Rect) {
                 .fg(DRACULA_PURPLE)
                 .add_modifier(Modifier::BOLD),
         )
-        .border_style(Style::default().fg(DRACULA_PURPLE))
+        .border_style(Style::default().fg(DRACULA_SELECTION))
         .style(Style::default().bg(DRACULA_BG).fg(DRACULA_FG));
 
-    let content = app.project.content.as_deref().unwrap_or("Loading...");
+    let mut lines: Vec<Line> = Vec::new();
 
-    let inner_width = area.width.saturating_sub(2) as usize;
-    let prefix_spans = Vec::new();
-    let indent = Span::raw("");
-    let md_lines = render_md_message(content, prefix_spans, indent.clone(), None, inner_width);
-    let mut wrapped = Vec::new();
-    for line in &md_lines {
-        wrapped.extend(wrap_line_with_indent(line.clone(), &indent, inner_width));
+    // #227: auth-missing special case — when BoardFetchError::AuthInvalid
+    // is the reason there's no snapshot, hide velocity + DORA behind a
+    // single banner and defer to the board area for whatever cached
+    // state exists. Matches designer's mockup state D.
+    let auth_missing = matches!(
+        last_error,
+        Some(crate::terminal::board_poller::BoardFetchError::AuthInvalid)
+    );
+
+    if auth_missing {
+        lines.push(Line::from(Span::styled(
+            "GITHUB_TOKEN not set — limited visibility",
+            Style::default().fg(crate::terminal::theme::DRACULA_ORANGE),
+        )));
+        lines.push(Line::from(""));
+    } else {
+        append_velocity_zone(&mut lines, app);
+        lines.push(Line::from(""));
+        append_dora_zone(&mut lines, app);
+        lines.push(Line::from(""));
     }
 
-    let paragraph = Paragraph::new(wrapped).block(block).scroll((0, 0));
+    append_board_zone(&mut lines, &display_stories, area.width);
+
+    // Footer: last-updated + error state.
+    lines.push(Line::from(""));
+    append_project_footer(&mut lines, last_updated, last_error.as_ref());
+
+    let paragraph = Paragraph::new(lines).block(block);
     frame.render_widget(paragraph, area);
+}
+
+/// #227: velocity zone — delivered/day, medians, rework rate. Pure
+/// render over `App`'s message log via `session::velocity::compute`.
+/// Shows "insufficient data" when below the sparse threshold.
+fn append_velocity_zone(lines: &mut Vec<Line<'_>>, app: &App) {
+    use crate::session::velocity::compute;
+    let metrics = compute(&app.msg.messages, chrono::Utc::now());
+    lines.push(Line::from(Span::styled(
+        "★ velocity (14d)",
+        Style::default()
+            .fg(DRACULA_PURPLE)
+            .add_modifier(Modifier::BOLD),
+    )));
+    if metrics.sparse {
+        lines.push(Line::from(Span::styled(
+            format!(
+                "  insufficient data ({}/3 delivered)",
+                metrics.delivered_in_window
+            ),
+            Style::default().fg(DRACULA_COMMENT),
+        )));
+        return;
+    }
+    lines.push(Line::from(Span::styled(
+        format!(
+            "  {:.1}/day  pickup→deliver {}  deliver→accept {}",
+            metrics.delivered_per_day,
+            fmt_opt_hours(metrics.median_pickup_to_deliver_hours),
+            fmt_opt_hours(metrics.median_deliver_to_accept_hours),
+        ),
+        Style::default().fg(DRACULA_FG),
+    )));
+    lines.push(Line::from(Span::styled(
+        format!("  rework {}", fmt_opt_rate(metrics.rework_rate)),
+        Style::default().fg(DRACULA_FG),
+    )));
+}
+
+/// #227: DORA zone — accepted-week, in-progress, rejection rate,
+/// avg cycle. Reads cached metrics from `app.project.dora`.
+fn append_dora_zone(lines: &mut Vec<Line<'_>>, app: &App) {
+    lines.push(Line::from(Span::styled(
+        "★ DORA",
+        Style::default()
+            .fg(DRACULA_PURPLE)
+            .add_modifier(Modifier::BOLD),
+    )));
+    match &app.project.dora {
+        Some(m) => {
+            lines.push(Line::from(Span::styled(
+                format!(
+                    "  shipped/wk {}  in-progress {}",
+                    m.shipped_this_week, m.in_progress
+                ),
+                Style::default().fg(DRACULA_FG),
+            )));
+            let rate = match m.rejection_rate {
+                Some(r) => format!("{r:.1}%"),
+                None => "—".to_string(),
+            };
+            let cycle = match m.avg_cycle_hours {
+                Some(h) if h < 1.0 => format!("{:.0}min", h * 60.0),
+                Some(h) => format!("{h:.1}h"),
+                None => "—".to_string(),
+            };
+            lines.push(Line::from(Span::styled(
+                format!("  rejection {rate}  avg cycle {cycle}"),
+                Style::default().fg(DRACULA_FG),
+            )));
+        }
+        None => {
+            lines.push(Line::from(Span::styled(
+                "  initializing...",
+                Style::default().fg(DRACULA_COMMENT),
+            )));
+        }
+    }
+}
+
+/// #227: board zone — story groups with counts + titles. Kept from
+/// the old render_project_panel (this logic wasn't broken).
+fn append_board_zone(
+    lines: &mut Vec<Line<'_>>,
+    stories: &[crate::terminal::board::BoardStory],
+    width: u16,
+) {
+    use crate::terminal::board::{StoryState, stories_by_state};
+    if stories.is_empty() {
+        lines.push(Line::from(Span::styled(
+            "★ board",
+            Style::default()
+                .fg(DRACULA_PURPLE)
+                .add_modifier(Modifier::BOLD),
+        )));
+        lines.push(Line::from(Span::styled(
+            "  initializing...",
+            Style::default().fg(DRACULA_COMMENT),
+        )));
+        return;
+    }
+    let groups = stories_by_state(stories);
+    lines.push(Line::from(Span::styled(
+        "★ board",
+        Style::default()
+            .fg(DRACULA_PURPLE)
+            .add_modifier(Modifier::BOLD),
+    )));
+    for (state, group_stories) in &groups {
+        let color = match state {
+            StoryState::Ready => crate::terminal::theme::DRACULA_GREEN,
+            StoryState::InProgress => crate::terminal::theme::DRACULA_ORANGE,
+            StoryState::Delivered => crate::terminal::theme::DRACULA_YELLOW,
+            _ => DRACULA_COMMENT,
+        };
+        if matches!(state, StoryState::Accepted | StoryState::Icebox) {
+            lines.push(Line::from(Span::styled(
+                format!("  {} ({})", state.label(), group_stories.len()),
+                Style::default().fg(DRACULA_COMMENT),
+            )));
+            continue;
+        }
+        lines.push(Line::from(Span::styled(
+            format!("  {} ({})", state.label(), group_stories.len()),
+            Style::default().fg(color).add_modifier(Modifier::BOLD),
+        )));
+        for story in group_stories.iter().take(5) {
+            lines.push(Line::from(Span::styled(
+                format!("    {}", story.short_name(width.saturating_sub(6) as usize)),
+                Style::default().fg(DRACULA_FG),
+            )));
+        }
+        if group_stories.len() > 5 {
+            lines.push(Line::from(Span::styled(
+                format!("    +{} more", group_stories.len() - 5),
+                Style::default().fg(DRACULA_COMMENT),
+            )));
+        }
+    }
+}
+
+/// #227: footer line — freshness timestamp + any fetch error from
+/// the board poller's last attempt.
+fn append_project_footer(
+    lines: &mut Vec<Line<'_>>,
+    last_updated: Option<chrono::DateTime<chrono::Utc>>,
+    last_error: Option<&crate::terminal::board_poller::BoardFetchError>,
+) {
+    let now = chrono::Utc::now();
+    let freshness = match last_updated {
+        Some(ts) => crate::terminal::board_poller::format_last_updated(ts, now),
+        None => "initializing...".to_string(),
+    };
+    let footer = match last_error {
+        Some(err) => format!("⚠ {} — {}", err.user_message(), freshness),
+        None => format!("⏱ {freshness}"),
+    };
+    let color = if last_error.is_some() {
+        crate::terminal::theme::DRACULA_ORANGE
+    } else {
+        DRACULA_COMMENT
+    };
+    lines.push(Line::from(Span::styled(footer, Style::default().fg(color))));
+}
+
+fn fmt_opt_hours(h: Option<f64>) -> String {
+    match h {
+        Some(v) if v < 1.0 => format!("{:.0}min", v * 60.0),
+        Some(v) => format!("{v:.1}h"),
+        None => "—".to_string(),
+    }
+}
+
+fn fmt_opt_rate(r: Option<f64>) -> String {
+    match r {
+        Some(v) => format!("{:.0}%", v * 100.0),
+        None => "—".to_string(),
+    }
 }
 
 pub fn render(frame: &mut Frame, app: &mut App) {
