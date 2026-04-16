@@ -76,9 +76,23 @@ async fn run_ws_session(
                             // Peers not in the map get an empty list (receive
                             // general/broadcast only, no topic messages).
                             let peer_short = short_name(&identity);
-                            let subs: Vec<String> = session.topic_subs.lock().ok()
-                                .and_then(|map| map.get(peer_short).map(|s| s.iter().cloned().collect()))
-                                .unwrap_or_default();
+                            let subs: Vec<String> = match session.topic_subs.lock() {
+                                Ok(map) => map
+                                    .get(peer_short)
+                                    .map(|s| s.iter().cloned().collect())
+                                    .unwrap_or_default(),
+                                Err(e) => {
+                                    // #216: surface mutex failure through diag,
+                                    // not silently swallow it. A poisoned topic_subs
+                                    // mutex would make every peer appear to have
+                                    // no subscriptions — silent topic broadcasts
+                                    // would stop reaching subscribers.
+                                    crate::session::diag::log_diag(&format!(
+                                        "ws: topic_subs mutex poisoned for {identity}: {e}"
+                                    ));
+                                    Vec::new()
+                                }
+                            };
                             if should_deliver(&msg, &identity, Some(&subs)) {
                                 send_json(&mut tx, &ServerMessage::from(msg)).await?;
                             }
