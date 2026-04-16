@@ -183,6 +183,18 @@ impl App {
         None
     }
 
+    /// #223: shared view-switch core. Both `/view` (typed) and
+    /// `sidebar_select` (clicked) route through this so the filter
+    /// state stays in lockstep — no two-implementation drift when we
+    /// later delete the slash command. Context-specific behavior
+    /// (system messages, send_target updates, unread clearing) stays
+    /// in each entry point.
+    pub(crate) fn switch_view_to(&mut self, channel: Option<String>) {
+        self.channels.current_view = channel;
+        self.mark_filters_dirty();
+        self.scroll.offset = 0;
+    }
+
     fn handle_view(&mut self, arg: String) -> Option<Message> {
         let arg = arg.trim();
         if arg.is_empty() {
@@ -200,26 +212,20 @@ impl App {
             return None;
         }
         if arg == crate::session::message::BROADCAST_ALL {
-            self.channels.current_view = None;
-            self.mark_filters_dirty();
-            self.scroll.offset = 0;
+            self.switch_view_to(None);
             self.system_message("View set to all channels.".to_string());
             self.clear_input();
             return None;
         }
         if arg == "broadcast" {
-            self.channels.current_view = Some("broadcast".to_string());
-            self.mark_filters_dirty();
-            self.scroll.offset = 0;
+            self.switch_view_to(Some("broadcast".to_string()));
             self.system_message("View set to broadcast.".to_string());
             self.clear_input();
             return None;
         }
         // Check if arg matches a known channel
         if self.channels.active.contains(arg) {
-            self.channels.current_view = Some(arg.to_string());
-            self.mark_filters_dirty();
-            self.scroll.offset = 0;
+            self.switch_view_to(Some(arg.to_string()));
             self.system_message(format!("View set to {arg}."));
             self.clear_input();
             return None;

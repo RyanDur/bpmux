@@ -475,17 +475,18 @@ impl App {
                 }
                 return;
             }
+            // #223: route the view switch through the shared
+            // `switch_view_to` helper so click and typed `/view`
+            // produce identical filter state. Context additions
+            // (send_target, unread) stay here.
             if self.sidebar.selected == 0 {
-                self.channels.current_view = None;
-                self.mark_filters_dirty();
+                self.switch_view_to(None);
                 self.channels.send_target = None;
             } else {
-                self.channels.current_view = Some(ch.clone());
-                self.mark_filters_dirty();
+                self.switch_view_to(Some(ch.clone()));
                 self.channels.send_target = Some(ch.clone());
                 self.channels.unread.remove(ch);
             }
-            self.scroll.offset = 0;
             self.sidebar.focused = false;
             self.sidebar.filter.clear();
         }

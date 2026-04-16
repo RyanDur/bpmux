@@ -743,6 +743,38 @@ fn sidebar_select_clears_unread() {
 }
 
 #[test]
+fn click_and_typed_view_produce_equivalent_filter_state() {
+    // #223: both entry points (sidebar click, /view "broadcast")
+    // route through the shared `switch_view_to` helper so filter
+    // state lands identically. If they ever diverge, this test
+    // catches it before the drift becomes two-implementation debt.
+    let mut via_click = test_app();
+    via_click.channels.active.insert("broadcast".to_string());
+    via_click.msg.filter_dirty = false;
+    via_click.sidebar.selected = 1; // broadcast sits at index 1
+    via_click.sidebar_select();
+
+    let mut via_command = test_app();
+    via_command.channels.active.insert("broadcast".to_string());
+    via_command.msg.filter_dirty = false;
+    via_command.input = "/view broadcast".to_string();
+    via_command.submit_message();
+
+    assert_eq!(
+        via_click.channels.current_view, via_command.channels.current_view,
+        "click and typed /view should set the same current_view"
+    );
+    assert_eq!(
+        via_click.msg.filter_dirty, via_command.msg.filter_dirty,
+        "both paths should mark filters dirty"
+    );
+    assert_eq!(
+        via_click.scroll.offset, via_command.scroll.offset,
+        "both paths should reset scroll offset"
+    );
+}
+
+#[test]
 fn sidebar_navigation_wraps() {
     let mut app = test_app();
     app.channels.active.insert("broadcast".to_string());
