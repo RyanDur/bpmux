@@ -144,7 +144,7 @@ pub(super) async fn handle_create_story(
     Ok(format!("story created: {}", result.trim()))
 }
 
-/// #197: signal fires on INTENT (before gh) so the team is notified
+/// Signal fires on INTENT (before gh) so the team is notified
 /// even when the gh label edit fails.
 pub(super) async fn handle_start_story(
     args: &serde_json::Map<String, serde_json::Value>,
@@ -319,7 +319,7 @@ pub(super) async fn handle_pass_desk_check(
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
-    // #229: pick the addressee based on story category. Infrastructure
+    // Pick the addressee based on story category. Infrastructure
     // (honest-plumbing / half-slice) → PM (team-accept lane); feature
     // (vertical / ambiguous) → Ryan (owner-gate lane).
     let labels = tracker.get_story_labels(number).await;
@@ -372,7 +372,7 @@ pub(super) async fn handle_fail_desk_check(
     }
 }
 
-/// #194: PM-controlled priority reordering; persists to priority index.
+/// PM-controlled priority reordering; persists to priority index.
 pub(super) async fn handle_reorder_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
@@ -453,7 +453,7 @@ pub(super) fn build_reject_signal(number: u64, reason: &str) -> ClientMessage {
     }
 }
 
-/// #229: classify a story's verdict category from its GitHub labels.
+/// Classify a story's verdict category from its GitHub labels.
 /// Returns the addressee who should receive the pass_desk_check signal.
 /// Defaults to "ryan" when category is ambiguous — never silently wrong.
 pub(super) fn addressee_for_pass_desk_check(labels: &[String]) -> &'static str {

@@ -73,7 +73,7 @@ fn serializes_message_to_json() {
     assert_eq!(parsed, msg);
 }
 
-// ---------- #158: addressee field ----------
+// ---------- Addressee field ----------
 
 #[test]
 fn addressee_omitted_by_default_in_json() {
@@ -158,7 +158,7 @@ fn is_addressed_to_specific_role_excludes_others() {
     assert!(!msg.is_addressed_to("designer"));
 }
 
-// ---------- #187: multi_depth rendering payload ----------
+// ---------- Multi_depth rendering payload ----------
 
 #[test]
 fn message_without_multi_depth_serializes_without_the_field() {

@@ -130,7 +130,7 @@ pub(super) async fn handle_read_messages(
         .get("limit")
         .and_then(|v| v.as_u64())
         .unwrap_or(default_limit);
-    // #204: pass the agent's short name as `?as=` so the REST endpoint
+    // Pass the agent's short name as `?as=` so the REST endpoint
     // applies the topic-subscription filter — matching the WebSocket
     // push path. Without this the agent reads messages it would not
     // see via notifications, silently diverging the two paths.
@@ -379,7 +379,7 @@ pub(super) async fn handle_capture_screen(port: u16) -> Result<String, String> {
     Ok(body)
 }
 
-/// #168: post-compaction recovery — bookmark survives context resets.
+/// Post-compaction recovery — bookmark survives context resets.
 pub(super) async fn handle_save_bookmark(
     args: &serde_json::Map<String, serde_json::Value>,
     _port: u16,
@@ -428,7 +428,7 @@ pub(super) async fn handle_save_bookmark(
     Ok("bookmark saved".to_string())
 }
 
-/// #168: bookmark recovery companion to save_bookmark.
+/// Bookmark recovery companion to save_bookmark.
 pub(super) async fn handle_get_bookmark(
     args: &serde_json::Map<String, serde_json::Value>,
     _port: u16,
@@ -456,7 +456,7 @@ async fn get_session_dir() -> Result<std::path::PathBuf, String> {
     }
 }
 
-/// #190: per-role identity traits loaded at session start.
+/// Per-role identity traits loaded at session start.
 pub(super) async fn handle_get_identity(
     args: &serde_json::Map<String, serde_json::Value>,
     default_role: &str,
@@ -555,7 +555,7 @@ pub(super) async fn handle_classifier_misfire(
     Ok("misfire recorded".to_string())
 }
 
-/// #220: agent-callable restart request. Fires a System-type message
+/// Agent-callable restart request. Fires a System-type message
 /// via session.broadcast with a recognizable marker in the text. The
 /// TUI event loop detects the marker and sets a pending-restart state;
 /// Ryan clicks the resulting status-bar affordance to confirm.
@@ -565,13 +565,13 @@ pub(super) async fn handle_classifier_misfire(
 /// for Ryan is constructed TUI-side from the requester's role.
 pub(super) const RESTART_REQUEST_MARKER: &str = "__BPMUX_RESTART_REQUEST__";
 
-/// #225: marker that tells the TUI to open the tokens overlay. Same
+/// Marker that tells the TUI to open the tokens overlay. Same
 /// delegation pattern as RESTART_REQUEST_MARKER — System-typed
 /// broadcast with an opaque marker; TUI event loop intercepts and
 /// calls the existing `handle_tokens` logic.
 pub(super) const VIEW_TOKENS_MARKER: &str = "__BPMUX_VIEW_TOKENS__";
 
-/// #226: marker for view_roadmap agent-triggered display.
+/// Marker for view_roadmap agent-triggered display.
 pub(super) const VIEW_ROADMAP_MARKER: &str = "__BPMUX_VIEW_ROADMAP__";
 
 pub(super) async fn handle_request_restart(
@@ -601,7 +601,7 @@ pub(super) async fn handle_request_restart(
     Ok(format!("restart requested by {short}"))
 }
 
-/// #225: agent-triggered view_tokens. Sends a system marker to the
+/// Agent-triggered view_tokens. Sends a system marker to the
 /// TUI which opens the existing tokens overlay. Same delegation
 /// pattern as request_restart.
 pub(super) async fn handle_view_tokens(ws_tx: &Mutex<Option<WsSink>>) -> Result<String, String> {
@@ -619,7 +619,7 @@ pub(super) async fn handle_view_tokens(ws_tx: &Mutex<Option<WsSink>>) -> Result<
     Ok("token view opened".to_string())
 }
 
-/// #226: agent-triggered view_roadmap. Same delegation pattern as
+/// Agent-triggered view_roadmap. Same delegation pattern as
 /// view_tokens — system marker → TUI runs existing handle_roadmap.
 pub(super) async fn handle_view_roadmap(ws_tx: &Mutex<Option<WsSink>>) -> Result<String, String> {
     let msg = crate::transport::protocol::ClientMessage::Send {
@@ -639,7 +639,7 @@ pub(super) async fn handle_view_roadmap(ws_tx: &Mutex<Option<WsSink>>) -> Result
 // ── Story management tools (#140) ──────────────────────────────
 // Server-side gh proxy with lane-aware permissions.
 
-/// #195: agent-visible feature usage counts from the local session.
+/// Agent-visible feature usage counts from the local session.
 pub(super) async fn handle_get_usage(
     _args: &serde_json::Map<String, serde_json::Value>,
 ) -> Result<String, String> {

@@ -68,7 +68,7 @@ pub async fn get_messages(
             } else {
                 messages
             };
-            // #191 / #204: per-caller delivery filter. When `?as=role`
+            // Per-caller delivery filter. When `?as=role`
             // is set, apply the same topic-subscription filter the
             // WebSocket push path uses — non-participants of a topic
             // do not see topic-scoped messages via REST either. If

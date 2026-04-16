@@ -94,7 +94,7 @@ fn run_recall(cli: &Cli, role_arg: &Option<String>) -> anyhow::Result<()> {
     };
     let lessons = session::recall::surface_for_role(&session_dir, &role);
     print!("{}", session::recall::format_for_surface(&role, &lessons));
-    // #173: emit a user-visible activity line into the bpmux channel
+    // Emit a user-visible activity line into the bpmux channel
     // so Ryan can observe that recall fired without asking the agent
     // to quote its private system-reminder back. Best-effort — if the
     // bpmux TUI isn't running, the POST fails silently so the hook

@@ -76,7 +76,7 @@ where
         }
     });
 
-    // #227: periodic DORA refresh. Separate channel so project state
+    // Periodic DORA refresh. Separate channel so project state
     // and DORA can tick independently. Fires at startup + every 2 min
     // (DORA changes more slowly than board data).
     let (dora_tx, mut dora_rx) = mpsc::channel::<super::board::DoraMetrics>(1);
@@ -108,7 +108,7 @@ where
     // value in polling `gh` during automated tests, and the subprocess
     // would slow test startup.
     //
-    // #106: pass `session_arc` so the poller can broadcast activity-type
+    // Pass `session_arc` so the poller can broadcast activity-type
     // messages on state transitions (failures always; recoveries after
     // failures). Headless mode skips the poller entirely, so no broadcast
     // pathway runs during tests — transition logic is covered by pure
@@ -199,7 +199,7 @@ where
             result = wake_rx.recv() => {
                 match result {
                     Ok(msg) => {
-                        // #219: workflow signals that change GitHub state
+                        // Workflow signals that change GitHub state
                         // trigger an immediate board refetch so the view
                         // reflects the new reality without waiting for
                         // the next poll cycle. Only fires on signals from
@@ -304,11 +304,11 @@ where
 /// constant in src/bridge/tools.rs.
 pub(super) const RESTART_REQUEST_MARKER: &str = "__BPMUX_RESTART_REQUEST__";
 
-/// #225: marker the bridge emits when an agent calls view_tokens.
+/// Marker the bridge emits when an agent calls view_tokens.
 /// Kept in sync with VIEW_TOKENS_MARKER in src/bridge/tools.rs.
 pub(super) const VIEW_TOKENS_MARKER: &str = "__BPMUX_VIEW_TOKENS__";
 
-/// #226: marker the bridge emits when an agent calls view_roadmap.
+/// Marker the bridge emits when an agent calls view_roadmap.
 /// Kept in sync with VIEW_ROADMAP_MARKER in src/bridge/tools.rs.
 pub(super) const VIEW_ROADMAP_MARKER: &str = "__BPMUX_VIEW_ROADMAP__";
 
@@ -327,7 +327,7 @@ pub(super) fn parse_restart_request(text: &str) -> Option<String> {
 }
 
 fn handle_broadcast_message(msg: session::Message, app: &mut App) {
-    // #220: intercept restart-request signals before the normal chat
+    // Intercept restart-request signals before the normal chat
     // path. The message is System-typed so it wouldn't render anyway;
     // we pull the requester role out of the text and set pending_restart.
     if msg.message_type == crate::session::MessageType::System
@@ -336,14 +336,14 @@ fn handle_broadcast_message(msg: session::Message, app: &mut App) {
         app.pending_restart = Some(requester);
         return;
     }
-    // #225: agent-triggered view_tokens opens the overlay. Same
+    // Agent-triggered view_tokens opens the overlay. Same
     // delegation pattern — System-type message + marker text; no
     // chat rendering, just the side effect.
     if msg.message_type == crate::session::MessageType::System && msg.text == VIEW_TOKENS_MARKER {
         app.handle_tokens();
         return;
     }
-    // #226: agent-triggered view_roadmap runs the same handle_roadmap
+    // Agent-triggered view_roadmap runs the same handle_roadmap
     // path /roadmap uses — posts the roadmap text as a system message.
     if msg.message_type == crate::session::MessageType::System && msg.text == VIEW_ROADMAP_MARKER {
         app.handle_roadmap();

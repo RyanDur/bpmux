@@ -100,11 +100,13 @@ fn owner_restart_question_is_discussion() {
 }
 
 #[test]
-fn owner_screenshot_is_discussion() {
-    let m = msg(
-        "ryan:human",
-        "/Users/ryandurling/IdeaProjects/bpmux/screen-shots/img_5.png",
-    );
+fn owner_path_to_screenshot_is_discussion() {
+    // The classifier contract is "a bare file-path string from the
+    // owner classifies as discussion, not a directive." Exercise the
+    // contract with a synthetic path — binding to a real share
+    // artifact on a developer's disk would make the test machine-
+    // specific and tie the suite to transient files.
+    let m = msg("ryan:human", "/tmp/screenshot.png");
     assert_eq!(classify(&m, "ryan"), MessageClass::Discussion);
 }
 
@@ -230,7 +232,7 @@ fn is_experience_helper() {
     assert!(!MessageClass::Decision.is_experience());
 }
 
-// ---------- #152: admission detection ----------
+// ---------- Admission detection ----------
 //
 // Admissions are short, formulaic acceptances of a correction. They fire
 // regardless of message length and regardless of sender role, because the

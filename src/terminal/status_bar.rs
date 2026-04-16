@@ -92,7 +92,7 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     } else {
         Span::raw("")
     };
-    // #193: board view label, #191: topic mode label.
+    // Board view label, topic mode label.
     let view_label = if app.board.show {
         if app.board.detail.is_some() {
             let visible = super::board_view::visible_stories(&app.board.stories);
@@ -120,7 +120,7 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         Span::raw(" "),
         connection_status,
     ];
-    // #191: cross-topic unread indicators. Show other topics
+    // Cross-topic unread indicators. Show other topics
     // that have unread messages so the user doesn't miss activity.
     if app.topic_mode() {
         for topic in &app.topic.topics {
@@ -137,7 +137,7 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
             }
         }
     }
-    // #181: focus-mode indicator — shows the current focus set
+    // Focus-mode indicator — shows the current focus set
     // alongside the view label when `/focus <roles>` is active.
     // Format: `[focus: dev,pm]`. Silent when the filter is off so
     // the bar stays quiet in the common case.
@@ -162,7 +162,7 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
             Style::default().fg(DRACULA_PINK),
         ));
     }
-    // #161: class-filter indicator. Shows "N hidden" when the filter is
+    // Class-filter indicator. Shows "N hidden" when the filter is
     // on and has suppressed messages; "showing all" when the user has
     // toggled the filter off via `/all`. Silent when the filter is on
     // but nothing is currently hidden (avoids cluttering the status bar
@@ -253,7 +253,7 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     } else {
         ("?=help", " \u{2325}1=sidebar Enter=send")
     };
-    // #220: reserve space for the clickable "[⟳ restart (role)]"
+    // Reserve space for the clickable "[⟳ restart (role)]"
     // affordance when an agent has requested a restart. Shows the
     // requester so Ryan knows which teammate flagged the binary.
     // Orange+underlined to match the clickable-widget style.
@@ -276,7 +276,7 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         status_spans.push(Span::raw(" ".repeat(pad)));
         if let Some((label, color)) = ci {
             status_spans.push(Span::raw(" "));
-            // #183: CI indicator is treated as clickable per designer's
+            // CI indicator is treated as clickable per designer's
             // spec (click handler will eventually open `gh run view`;
             // today it's passive but the affordance is forward-looking),
             // so it gets underlined to match the other interactive

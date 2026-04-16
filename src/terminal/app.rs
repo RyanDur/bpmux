@@ -17,7 +17,7 @@ fn short_peer_name(peer: &str) -> &str {
 
 /// Owner is excluded from channel names — they're implicit in every channel.
 pub fn channel_name(msg: &crate::session::Message, owner: &str) -> String {
-    // #191: if the message has a topic, use the topic name as the
+    // If the message has a topic, use the topic name as the
     // channel display tag. This makes topic messages show as
     // "[teaching]" instead of "[broadcast]" in the chat pane.
     if let Some(topic) = &msg.topic {
@@ -128,7 +128,7 @@ pub struct App {
     pub should_reload: bool,
     pub p2p_command: Option<crate::transport::peer::P2pCommand>,
 
-    /// #220: set when an agent calls request_restart; holds the
+    /// Set when an agent calls request_restart; holds the
     /// requester's short role name. The status bar shows a
     /// clickable affordance while this is Some; clicking it
     /// confirms and triggers reload.
@@ -181,7 +181,7 @@ impl App {
             p2p_command: None,
             project: ProjectViewState::default(),
             tokens: TokensViewState::default(),
-            // #230: hydrate the in-memory mirror from the persistent
+            // Hydrate the in-memory mirror from the persistent
             // store so the tokens overlay shows cross-session counts.
             feature_usage: crate::session::usage::load()
                 .into_iter()
@@ -311,7 +311,7 @@ impl App {
         self.msg.filter_dirty = true;
     }
 
-    /// #195/#230: record a slash-command invocation for usage
+    /// Record a slash-command invocation for usage
     /// statistics. Delegates to `session::usage::record` which
     /// loads-increments-saves the shared `~/.bpmux/usage.json` so
     /// counts accumulate across sessions (fixing #195's original
@@ -327,13 +327,13 @@ impl App {
         entry.1 = chrono::Utc::now();
     }
 
-    /// #230: in-memory mirror gets persisted via `session::usage::record`
+    /// In-memory mirror gets persisted via `session::usage::record`
     /// on each invocation now, so this end-of-session save is a no-op
     /// kept for call-site compatibility. Left in place rather than
     /// deleted so hooks that reference it don't break.
     pub fn save_usage_to_disk(&self) {}
 
-    /// #192: return the filtered list of palette actions matching
+    /// Return the filtered list of palette actions matching
     /// the current palette_input. Fuzzy match: the input chars must
     /// appear in order in the action name, but not necessarily
     /// adjacent.
@@ -434,7 +434,7 @@ impl App {
                 return;
             }
             MessageType::System => {
-                // #191: auto-register topics from creation notifications.
+                // Auto-register topics from creation notifications.
                 // When a "Topic 'X' created" system message arrives,
                 // add the topic to our list so /topic shows it.
                 if msg.text.starts_with("Topic '")
@@ -458,7 +458,7 @@ impl App {
                 }
             }
             MessageType::Chat | MessageType::Insight | MessageType::Nudge => {
-                // #191: auto-discover topics from incoming messages.
+                // Auto-discover topics from incoming messages.
                 // If a message has a topic we don't know about yet,
                 // register it so /topic list shows it and the sidebar
                 // (future) can display it.
@@ -492,7 +492,7 @@ impl App {
             }
         }
 
-        // #180: estimate the number of rendered lines this message
+        // Estimate the number of rendered lines this message
         // will occupy and compensate scroll_offset by that amount.
         // The render loop wraps text at ~78 chars (80 - 2 borders).
         // The prefix is approximately "[channel] sender: " = ~15 + name.

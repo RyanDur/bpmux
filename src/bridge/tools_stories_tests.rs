@@ -166,7 +166,7 @@ fn reject_signal_includes_reason() {
 
 #[test]
 fn pass_desk_check_signal_addresses_ryan_for_feature() {
-    // #229: addressee is parameterized from addressee_for_pass_desk_check.
+    // Addressee is parameterized from addressee_for_pass_desk_check.
     let addressee = addressee_for_pass_desk_check(&["vertical".to_string()]);
     if let ClientMessage::Send {
         to, addressee: a, ..
@@ -181,7 +181,7 @@ fn pass_desk_check_signal_addresses_ryan_for_feature() {
 
 #[test]
 fn pass_desk_check_signal_addresses_pm_for_honest_plumbing() {
-    // #229: infrastructure stories route to PM (team-accept lane).
+    // Infrastructure stories route to PM (team-accept lane).
     let addressee = addressee_for_pass_desk_check(&["honest-plumbing".to_string()]);
     if let ClientMessage::Send {
         to, addressee: a, ..

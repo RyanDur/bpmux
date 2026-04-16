@@ -255,7 +255,7 @@ async fn defaults_to_twenty_messages() {
     assert_eq!(msgs.len(), 20);
 }
 
-// ---------- #159: classifier misfire endpoint ----------
+// ---------- Classifier misfire endpoint ----------
 
 #[tokio::test]
 async fn classifier_misfire_accepts_post_with_reason() {

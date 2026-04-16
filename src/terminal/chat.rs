@@ -137,7 +137,7 @@ pub(super) fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
                 Some(7),
                 chat_inner_width,
             );
-            // #183: `[+N lines]` gets the clickable-accent treatment
+            // `[+N lines]` gets the clickable-accent treatment
             // (cyan + underline) so the weak bracket-affordance becomes
             // an obvious call-to-action. The truncation_indicators
             // registry (populated below) already tracks which row each
@@ -195,7 +195,7 @@ pub(super) fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
     }
 
     let total_lines = messages.len();
-    // #183: prefix the title with a `▸`/`▾` toggle glyph so the
+    // Prefix the title with a `▸`/`▾` toggle glyph so the
     // click-to-expand/collapse affordance is visible. `▸` when the
     // project view is collapsed (click to expand), `▾` when open
     // (click to collapse). Glyph vocabulary shared with the icons

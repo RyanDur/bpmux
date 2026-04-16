@@ -438,7 +438,7 @@ fn build_multi_depth_role_default_has_entries_for_all_three_roles() {
     assert!(payload.role_default.contains_key("dev"));
 }
 
-// ── #215: dev-addressed CI signal ──
+// ── Dev-addressed CI signal ──
 
 #[test]
 fn build_dev_ci_signal_addresses_dev_only() {

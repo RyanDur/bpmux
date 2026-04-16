@@ -104,7 +104,7 @@ pub(crate) fn format_tokens_overlay(rows: &[crate::session::tokens::TokenRow]) -
     out
 }
 
-/// #195: format the feature usage table appended to the tokens overlay.
+/// Format the feature usage table appended to the tokens overlay.
 pub(crate) fn format_usage_table(
     usage: &std::collections::HashMap<String, (usize, chrono::DateTime<chrono::Utc>)>,
 ) -> String {

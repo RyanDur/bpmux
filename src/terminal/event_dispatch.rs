@@ -74,7 +74,7 @@ fn handle_mouse_click(col: u16, row: u16, app: &mut App, session: &session::Sess
             return;
         }
     } else if let Some((mx, my)) = app.layout.menu_click_cell {
-        // #183: the left-edge click zone is now the visible `≡` glyph
+        // The left-edge click zone is now the visible `≡` glyph
         // at the top-left of the chat area. Narrowed from the old
         // `col < 3 on any row` catch-all, which triggered false
         // positives on any upper-left click. Keeping a 3-column-wide
@@ -120,7 +120,7 @@ fn handle_mouse_click(col: u16, row: u16, app: &mut App, session: &session::Sess
     if let Some((_, sb_y, _, _)) = app.layout.status_bar_area
         && row == sb_y
     {
-        // #220: restart affordance takes precedence — click on the
+        // Restart affordance takes precedence — click on the
         // "[⟳ restart]" span triggers an immediate reload. Checked
         // before the help-hint zone because the restart zone sits
         // left of it in the status bar layout.

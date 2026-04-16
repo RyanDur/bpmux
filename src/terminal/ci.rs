@@ -112,7 +112,7 @@ pub(super) fn spawn_poller(tx: mpsc::Sender<CiState>, broadcast_session: Option<
                 if let Err(e) = session.broadcast(&msg) {
                     log_diag(&format!("ci: broadcast error: {e}"));
                 }
-                // #215: also fire a dev-addressed workflow signal so
+                // Also fire a dev-addressed workflow signal so
                 // the dev agent sees CI transitions in their chat
                 // notifications without Ryan having to relay. Same
                 // pattern as deliver_story → designer signals.

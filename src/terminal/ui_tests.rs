@@ -724,7 +724,7 @@ fn raw_help_fresh_stays_red() {
     assert_eq!(color, DRACULA_RED);
 }
 
-// ---------- #151: CI status indicator ----------
+// ---------- CI status indicator ----------
 
 #[test]
 fn ci_unknown_hides_indicator() {
@@ -796,7 +796,7 @@ fn ci_indicator_does_not_evict_help_hint_on_wide_terminal() {
     assert!(content.contains("?=help"));
 }
 
-// ---------- #161: classifier view filter ----------
+// ---------- Classifier view filter ----------
 
 #[test]
 fn class_filter_hides_bpmux_auto_nudges_by_default() {

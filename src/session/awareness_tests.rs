@@ -67,7 +67,7 @@ fn track_agents_no_duplicates() {
     assert_eq!(tracker.connected.len(), 1);
 }
 
-// ---------- #159: classifier decision logging ----------
+// ---------- Classifier decision logging ----------
 //
 // These tests drive the ExperienceDetector with the classify-log flag
 // set directly via a test-only accessor, rather than mutating
@@ -153,7 +153,7 @@ fn classify_log_does_not_affect_classification_behavior() {
     );
 }
 
-// ---------- #163: nudge-hygiene tunings ----------
+// ---------- Nudge-hygiene tunings ----------
 
 use super::Session;
 use super::awareness::handoff::HandoffTracker;

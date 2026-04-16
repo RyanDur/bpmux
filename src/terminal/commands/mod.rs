@@ -51,7 +51,7 @@ impl App {
                 Some(i) => (&text[..i], text[i + 1..].trim()),
                 None => (text.as_str(), ""),
             };
-            // #195: record command usage before dispatch.
+            // Record command usage before dispatch.
             self.record_usage(cmd);
             return match cmd {
                 "/who" => self.handle_who(),
@@ -180,7 +180,7 @@ impl App {
         None
     }
 
-    /// #223: shared view-switch core. Both `/view` (typed) and
+    /// Shared view-switch core. Both `/view` (typed) and
     /// `sidebar_select` (clicked) route through this so the filter
     /// state stays in lockstep — no two-implementation drift when we
     /// later delete the slash command. Context-specific behavior
@@ -208,7 +208,7 @@ impl App {
                 self.board.stories = stories;
                 self.board.selected = 0;
                 self.board.detail = None;
-                // #196: open in project panel (split view) by default.
+                // Open in project panel (split view) by default.
                 // The full-screen board is still accessible via the
                 // board_detail navigation.
                 self.project.show = true;

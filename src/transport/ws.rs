@@ -72,7 +72,7 @@ async fn run_ws_session(
                 broadcast_result = broadcast_rx.recv() => {
                     match broadcast_result {
                         Ok(msg) => {
-                            // #191: read topic subscriptions from shared state.
+                            // Read topic subscriptions from shared state.
                             // Peers not in the map get an empty list (receive
                             // general/broadcast only, no topic messages).
                             let peer_short = short_name(&identity);
@@ -82,7 +82,7 @@ async fn run_ws_session(
                                     .map(|s| s.iter().cloned().collect())
                                     .unwrap_or_default(),
                                 Err(e) => {
-                                    // #216: surface mutex failure through diag,
+                                    // Surface mutex failure through diag,
                                     // not silently swallow it. A poisoned topic_subs
                                     // mutex would make every peer appear to have
                                     // no subscriptions — silent topic broadcasts
@@ -337,7 +337,7 @@ async fn handle_client_message(
             message_type,
             topic,
         }) => {
-            // #191: auto-subscribe sender to the topic on first send.
+            // Auto-subscribe sender to the topic on first send.
             if let Some(ref t) = topic {
                 subscribe_peer(&session.topic_subs, identity, t);
             }
@@ -355,7 +355,7 @@ async fn handle_client_message(
             session.broadcast(&msg)?;
         }
         Ok(ClientMessage::Subscribe { topics }) => {
-            // #191: explicit topic subscription from client.
+            // Explicit topic subscription from client.
             for t in &topics {
                 subscribe_peer(&session.topic_subs, identity, t);
             }

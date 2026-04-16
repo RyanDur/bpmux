@@ -402,7 +402,7 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
             crate::mcp::tools::get_token_report_tool(
                 "Get the token-cost report from bpmux's shared token log (#179). Returns JSON with total tokens, row count, per-role breakdown, and the 10 most recent turns (newest first). The data comes from per-harness adapters reading their own LLM-call recordings — you're seeing objective cost data, not self-reported. Same underlying log the `/tokens` TUI view reads, so you see exactly what Ryan sees. Empty report if the log is empty or missing.",
             ),
-            // #140: story management tools — server-side gh proxy with lane enforcement
+            // Story management tools — server-side gh proxy with lane enforcement
             crate::mcp::tools::view_board_tool(
                 "View the project board — all stories grouped by state (ready, in progress, delivered, accepted, deferred, icebox) with counts. No host permission needed. Same data as the TUI board view.",
             ),
@@ -466,7 +466,7 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
 
         async move {
             let args = request.arguments.unwrap_or_default();
-            // #230: record every MCP tool invocation to the shared
+            // Record every MCP tool invocation to the shared
             // usage store so team-judgment questions ("is this tool
             // used?") have data across agents and sessions. Single
             // choke-point; no per-handler instrumentation.
@@ -572,7 +572,7 @@ pub fn run_bridge(
             anyhow::Ok(())
         })
     } else if let Some(tracker) = tracker::OctocrabStoryTracker::from_env() {
-        // #221: prefer the octocrab-backed tracker when auth + repo
+        // Prefer the octocrab-backed tracker when auth + repo
         // are configured. Eliminates gh CLI shellouts from the
         // write path; direct REST API is faster and has cleaner
         // error shapes. GhTracker remains the fallback below.

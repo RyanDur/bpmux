@@ -15,7 +15,7 @@ pub struct Session {
     pub wake_tx: broadcast::Sender<Message>,
     pub connected_peers: AtomicUsize,
     pub storage: Arc<dyn Storage>,
-    /// #191: per-peer topic subscriptions. Shared across all WS
+    /// Per-peer topic subscriptions. Shared across all WS
     /// connection handlers so topic creation can auto-subscribe
     /// participants. Key: peer short name, Value: subscribed topics.
     pub topic_subs:
@@ -84,7 +84,7 @@ impl Session {
     }
 
     pub fn broadcast(&self, msg: &Message) -> Result<(), LogError> {
-        // #191: auto-subscribe participants when a topic is created.
+        // Auto-subscribe participants when a topic is created.
         if msg.message_type == super::message::MessageType::System
             && msg.text.contains("Created topic '")
             && msg.text.contains("with: ")

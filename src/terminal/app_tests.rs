@@ -989,7 +989,7 @@ fn accept_without_args_shows_usage() {
     assert!(last.text.contains("/"));
 }
 
-// ---------- #160: /share command ----------
+// ---------- /share command ----------
 
 #[test]
 fn share_bare_shows_usage() {
@@ -1130,7 +1130,7 @@ fn share_source_scope_reflects_channel_name() {
     );
 }
 
-// ---------- #161: classifier view filter ----------
+// ---------- Classifier view filter ----------
 
 #[test]
 fn all_command_toggles_filter_state() {

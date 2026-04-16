@@ -22,7 +22,7 @@ pub struct UiState {
     pub expanded_messages: HashSet<String>,
     pub show_timestamps: bool,
     pub input: String,
-    /// #161: persist the classifier-driven view filter state across
+    /// Persist the classifier-driven view filter state across
     /// hot-reloads and session restarts. Default `false` (filter on).
     /// Serde default so pre-#161 saved state loads cleanly without
     /// a migration step.

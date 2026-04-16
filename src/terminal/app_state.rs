@@ -103,7 +103,7 @@ pub struct ProjectViewState {
     pub state: Option<super::board::ProjectState>,
     pub show: bool,
     pub content: Option<String>,
-    /// #227: cached DORA metrics; populated by the periodic
+    /// Cached DORA metrics; populated by the periodic
     /// project-state tick (src/terminal/event.rs). None until the
     /// first fetch completes — renders as "insufficient data" then.
     pub dora: Option<super::board::DoraMetrics>,
@@ -188,7 +188,7 @@ pub struct LayoutState {
     pub status_bar_area: Option<(u16, u16, u16, u16)>,
     pub chat_area: Option<(u16, u16, u16, u16)>,
     pub help_hint_col: Option<u16>,
-    /// #220: column range of the clickable "[⟳ restart]" affordance
+    /// Column range of the clickable "[⟳ restart]" affordance
     /// in the status bar. Some(start, end) when visible, None when
     /// no pending restart. Click zone is [start, end) on the status
     /// bar row.

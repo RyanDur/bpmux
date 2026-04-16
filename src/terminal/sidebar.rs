@@ -24,7 +24,7 @@ const SIDEBAR_NAME_WIDTH: usize = 16;
 pub(super) fn render(frame: &mut Frame, app: &App, area: Rect) {
     let channels = app.sidebar_channels();
 
-    // #191: topic mode uses a flat list with ● active markers.
+    // Topic mode uses a flat list with ● active markers.
     let items: Vec<Line> = if app.topic_mode() {
         render_topic_items(&channels, app, area)
     } else {
@@ -37,7 +37,7 @@ pub(super) fn render(frame: &mut Frame, app: &App, area: Rect) {
         DRACULA_SELECTION
     };
 
-    // #191: title says "topics" when in topic mode.
+    // Title says "topics" when in topic mode.
     let title_text = if !app.sidebar.filter.is_empty() {
         format!(" filter: {} ", app.sidebar.filter)
     } else if app.topic_mode() {
@@ -299,7 +299,7 @@ impl App {
     }
 
     pub fn sidebar_channels(&self) -> Vec<String> {
-        // #191: when topics exist, the sidebar shows topics instead
+        // When topics exist, the sidebar shows topics instead
         // of the channel tree. Flat list, no sections.
         if self.topic_mode() {
             let filter = self.sidebar.filter.to_lowercase();
@@ -452,7 +452,7 @@ impl App {
     pub fn sidebar_select(&mut self) {
         let channels = self.sidebar_channels();
         if let Some(ch) = channels.get(self.sidebar.selected) {
-            // #191: topic mode — selecting a topic switches active_topic.
+            // Topic mode — selecting a topic switches active_topic.
             if self.topic_mode() {
                 self.topic.active = ch.clone();
                 self.mark_filters_dirty();
@@ -475,7 +475,7 @@ impl App {
                 }
                 return;
             }
-            // #223: route the view switch through the shared
+            // Route the view switch through the shared
             // `switch_view_to` helper so click and typed `/view`
             // produce identical filter state. Context additions
             // (send_target, unread) stay here.

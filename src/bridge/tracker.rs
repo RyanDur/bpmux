@@ -49,7 +49,7 @@ pub trait StoryTracker: Clone + Send + Sync + 'static {
         &self,
         number: u64,
     ) -> impl std::future::Future<Output = Option<String>> + Send;
-    /// #229: fetch labels for story-category routing (pass_desk_check
+    /// Fetch labels for story-category routing (pass_desk_check
     /// signal picks addressee based on honest-plumbing vs vertical).
     /// Returns empty Vec when the story can't be fetched — caller
     /// treats empty as "ambiguous category" and defaults up.
@@ -139,7 +139,7 @@ impl StoryTracker for GhTracker {
     }
 }
 
-/// #221: octocrab-backed StoryTracker. Issues HTTP requests directly
+/// Octocrab-backed StoryTracker. Issues HTTP requests directly
 /// to GitHub's REST API instead of shelling out to `gh`. Uses the
 /// same octocrab dependency introduced in #219 for the board poller.
 ///

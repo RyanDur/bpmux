@@ -85,7 +85,7 @@ fn render_broadcast_banner(frame: &mut Frame, app: &App, area: Rect) {
 }
 
 fn render_input(frame: &mut Frame, app: &mut App, area: Rect) {
-    // #191: show active topic in the input prompt so the user knows
+    // Show active topic in the input prompt so the user knows
     // which topic they're typing into.
     let topic_label = if app.topic.active == "general" {
         String::new()
@@ -223,7 +223,7 @@ fn render_tokens_overlay(frame: &mut Frame, app: &App, area: Rect) {
     if !app.tokens.show {
         return;
     }
-    // #195: append usage table to the token text
+    // Append usage table to the token text
     let usage_text = crate::terminal::commands::tokens::format_usage_table(&app.feature_usage);
 
     // Narrow/short terminal fallback — preserves the simpler text
@@ -315,7 +315,7 @@ fn render_tokens_chart_view(
     } else {
         (totals.len() as u16 + 1).min(6) // "By role:" line + entries
     };
-    // #195: footer area grows to fit usage table if present.
+    // Footer area grows to fit usage table if present.
     let usage_line_count = usage_text.lines().count() as u16;
     let footer_height = (1 + usage_line_count).max(1);
     let chunks = Layout::vertical([
@@ -422,7 +422,7 @@ fn render_tokens_chart_view(
     }
 
     // ── Footer: usage table + dismiss hint ──
-    // #195: append usage statistics if any features have been used.
+    // Append usage statistics if any features have been used.
     let mut footer_text = String::new();
     footer_text.push_str(usage_text);
     footer_text.push_str("Press any key to close");
@@ -588,7 +588,7 @@ fn push_metric(lines: &mut Vec<Line<'_>>, label: &str, value: &str) {
     ]));
 }
 
-/// #227: board zone — story groups with counts + titles. Kept from
+/// Board zone — story groups with counts + titles. Kept from
 /// the old render_project_panel (this logic wasn't broken).
 fn append_board_zone(
     lines: &mut Vec<Line<'_>>,
@@ -748,7 +748,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     render_popup(frame, app, chunks[2]);
     status_bar::render(frame, app, status_area);
 
-    // #183: when the sidebar is closed, overlay a `≡` glyph at the
+    // When the sidebar is closed, overlay a `≡` glyph at the
     // top-left of the chat area. This is the "hamburger icon" that
     // replaces the previously invisible left-edge click zone — the
     // biggest discoverability win in the clickable-affordances spec.
@@ -766,7 +766,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         app.layout.menu_click_cell = None;
     }
 
-    // #193: board view replaces chat area when active.
+    // Board view replaces chat area when active.
     board_view::render(frame, app, main_area);
 
     render_help_overlay(frame, app, main_area);
