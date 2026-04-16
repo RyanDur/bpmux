@@ -109,8 +109,10 @@ fn handle_mouse_click(col: u16, row: u16, app: &mut App) {
         app.project.show = !app.project.show;
         if app.project.show {
             app.project.content = Some(build_project_content());
+            app.input_mode = InputMode::Project;
         } else {
             app.project.content = None;
+            app.input_mode = InputMode::Chat;
         }
         return;
     }
