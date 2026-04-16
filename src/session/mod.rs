@@ -1,3 +1,4 @@
+pub mod auth_token;
 pub mod awareness;
 pub mod bayes;
 pub mod bookmark;
@@ -24,6 +25,8 @@ pub use log::{
 pub use message::{Message, MessageType};
 pub use search::{SearchFilters, SearchResult, search};
 
+#[cfg(test)]
+mod auth_token_tests;
 #[cfg(test)]
 mod awareness_tests;
 #[cfg(test)]

@@ -301,10 +301,13 @@ pub(super) async fn handle_simulate_click(
         .and_then(|v| v.as_u64())
         .ok_or("missing 'y'")? as u16;
     let body = serde_json::json!({"x": x, "y": y});
+    let token = load_auth_token()?;
     let client = reqwest::Client::new();
     let url = format!("http://127.0.0.1:{port}/api/simulate/click");
     let resp = client
         .post(&url)
+        .bearer_auth(&token)
+        .header(reqwest::header::HOST, format!("127.0.0.1:{port}"))
         .json(&body)
         .send()
         .await
@@ -327,15 +330,42 @@ pub(super) async fn handle_simulate_key(
     if let Some(modifiers) = args.get("modifiers") {
         body["modifiers"] = modifiers.clone();
     }
+    let token = load_auth_token()?;
     let client = reqwest::Client::new();
     let url = format!("http://127.0.0.1:{port}/api/simulate/key");
     let resp = client
         .post(&url)
+        .bearer_auth(&token)
+        .header(reqwest::header::HOST, format!("127.0.0.1:{port}"))
         .json(&body)
         .send()
         .await
         .map_err(|e| format!("failed: {e}"))?;
     resp.text().await.map_err(|e| format!("failed: {e}"))
+}
+
+/// Read the per-run auth token that the server wrote at startup. Two
+/// distinct failure strings so an agent invoking a simulate tool knows
+/// whether bpmux hasn't started yet vs. the file is there but we can't
+/// read it.
+fn load_auth_token() -> Result<String, String> {
+    let path = crate::session::auth_token::default_auth_token_path()
+        .ok_or_else(|| "auth token path unavailable (no home directory)".to_string())?;
+    match crate::session::auth_token::read(&path) {
+        Ok(t) if !t.is_empty() => Ok(t),
+        Ok(_) => Err(format!(
+            "Auth token not found at {}. Start bpmux first to generate it.",
+            path.display()
+        )),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Err(format!(
+            "Auth token not found at {}. Start bpmux first to generate it.",
+            path.display()
+        )),
+        Err(e) => Err(format!(
+            "Auth token unreadable at {}. Check permissions. ({e})",
+            path.display()
+        )),
+    }
 }
 
 pub(super) async fn handle_capture_screen(port: u16) -> Result<String, String> {

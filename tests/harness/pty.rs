@@ -101,6 +101,14 @@ impl TestBpmux {
         // file into App startup — a populated real file overflowed the
         // /tokens overlay in PTY tests.
         cmd.env("BPMUX_USAGE_PATH", session_dir.path().join("usage.json"));
+        // Isolate the auth token file (#235) so each test gets its own
+        // per-run secret. Without this, tests would either clobber the
+        // developer's real ~/.bpmux/auth_token or inherit it — both
+        // break reproducibility.
+        cmd.env(
+            "BPMUX_AUTH_TOKEN_PATH",
+            session_dir.path().join("auth_token"),
+        );
         for (k, v) in extra_env {
             cmd.env(*k, *v);
         }
@@ -140,6 +148,34 @@ impl TestBpmux {
 
     pub fn port(&self) -> u16 {
         self.port
+    }
+
+    /// Per-run auth token the spawned bpmux wrote at startup — tests
+    /// that POST to /api/simulate/* need this in the Authorization
+    /// header (#235).
+    pub fn simulate_secret(&self) -> String {
+        let dir = self
+            .session_dir
+            .as_ref()
+            .expect("session dir taken before reading secret");
+        let path = dir.path().join("auth_token");
+        // The server generates the token before binding the TCP port.
+        // `start_with_session_and_env` blocks until the TUI renders,
+        // so the file should already exist; poll briefly in case of
+        // timing jitter rather than panicking.
+        let deadline = Instant::now() + Duration::from_secs(2);
+        loop {
+            if let Ok(s) = std::fs::read_to_string(&path) {
+                let trimmed = s.trim().to_string();
+                if !trimmed.is_empty() {
+                    return trimmed;
+                }
+            }
+            if Instant::now() >= deadline {
+                panic!("auth_token never appeared at {}", path.display());
+            }
+            std::thread::sleep(Duration::from_millis(20));
+        }
     }
 
     /// Take the session directory for reuse in a restart test.

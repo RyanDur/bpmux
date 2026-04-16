@@ -53,11 +53,32 @@ The headless instance exposes the same REST API as Ryan's live bpmux — it's no
 - **`GET /api/search?query=...`** — search the session log
 - **`GET /api/lessons`, `POST /api/lessons`** — lesson index access
 - **`GET /api/peer-lessons`** — read another role's lesson index (cross-role visibility for review contexts)
-- **`POST /api/simulate/click`** — simulate a mouse click at `{col, row}`
-- **`POST /api/simulate/key`** — simulate a key press (payload: `{"key": "<name>"}`, see modifier note below)
+- **`POST /api/simulate/click`** — simulate a mouse click at `{col, row}` (**requires auth, see below**)
+- **`POST /api/simulate/key`** — simulate a key press (payload: `{"key": "<name>"}`, see modifier note below) (**requires auth, see below**)
 - **`POST /api/classifier-misfire`** — report a classifier nudge that fired on a non-learning-moment, for tuning data
 
 The `/api/simulate/click` and `/api/simulate/key` endpoints are what make the headless instance a real desk-check platform: you can navigate channels, trigger handlers, and verify the frame updates correctly — all via HTTP. No second bridge, no shared state with Ryan.
+
+### Authenticating simulate requests
+
+Both `/api/simulate/*` endpoints are gated against unauthenticated local processes and DNS-rebinding attackers. Each request must carry:
+
+- **`Authorization: Bearer <token>`** where `<token>` is the content of `~/.bpmux/auth_token`. bpmux writes this file mode-0600 on every launch; it rotates per run.
+- **`Host: 127.0.0.1[:port]`, `localhost[:port]`, or `[::1][:port]`** — bpmux rejects other hosts even with a valid bearer. `curl` sets this correctly by default when the URL uses `127.0.0.1`; you only need to set it explicitly if proxying through another host.
+
+In scripts:
+
+```bash
+TOKEN=$(cat ~/.bpmux/auth_token)
+curl -s -X POST http://127.0.0.1:4118/api/simulate/key \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"key":"enter"}'
+```
+
+If you're running bpmux with a sandboxed auth-token path (tests use `BPMUX_AUTH_TOKEN_PATH`), read from that file instead.
+
+Rejected requests get HTTP 401 with body `{"error":"unauthorized"}` — the response does not tell you whether the bearer, the Host, or both were wrong (no leakage of which check failed).
 
 **Known limitation — key modifiers**: the current `POST /api/simulate/key` handler accepts only `{"key": "<name>"}` and ignores any `modifiers` field. This means key combinations like `Alt+1` (toggle sidebar), `Ctrl+C`, or `Shift+Tab` cannot be simulated via the REST endpoint today. Plain keys (`enter`, `esc`, `tab`, `backspace`, arrows, letters, digits) work. See #170 for the follow-up that will add modifier support.
 
@@ -97,15 +118,20 @@ BPMUX_SESSION_BASE=/tmp/bpmux-desk-check-session \
   target/debug/bpmux --mcp-port 4118 --name peer test &
 sleep 2
 
+# Read the per-run auth token the server wrote at startup.
+TOKEN=$(cat ~/.bpmux/auth_token)
+
 # Type "/help" one character at a time (no modifiers needed)
 for ch in "/" "h" "e" "l" "p"; do
   curl -s -X POST http://127.0.0.1:4118/api/simulate/key \
+    -H "Authorization: Bearer $TOKEN" \
     -H 'Content-Type: application/json' \
     -d "{\"key\":\"$ch\"}"
 done
 
 # Press enter to submit
 curl -s -X POST http://127.0.0.1:4118/api/simulate/key \
+  -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{"key":"enter"}'
 
@@ -152,6 +178,9 @@ kill %1; wait %1 2>/dev/null
 | `POST /api/click` or `POST /api/key` returns 404 | Old endpoint path from an earlier draft of this recipe | Use `/api/simulate/click` and `/api/simulate/key` — the `simulate/` prefix is required |
 | `GET /api/messages/search?q=...` returns 404 | Wrong search path + wrong param name | Use `GET /api/search?query=...` — different path and the param is `query`, not `q` |
 | Key-combination (`Alt+1`, `Ctrl+C`) has no visible effect | The `modifiers` field on `/api/simulate/key` is currently ignored — only plain keys are dispatched | Use plain-key workflows until #170 lands modifier support. See the "Known limitation — key modifiers" note in the endpoints section |
+| `POST /api/simulate/*` returns 401 `{"error":"unauthorized"}` | Missing or wrong `Authorization: Bearer <token>` header | `export TOKEN=$(cat ~/.bpmux/auth_token)` and add `-H "Authorization: Bearer $TOKEN"` to the curl. If you're running a sandboxed instance, use `$BPMUX_AUTH_TOKEN_PATH` instead of the default path |
+| `POST /api/simulate/*` returns 401 even with the right token | `Host` header names a non-loopback address (e.g. a proxy or a public DNS record that resolved to 127.0.0.1) | Hit `http://127.0.0.1:PORT/...` directly, or set `-H "Host: 127.0.0.1:4118"` to override the proxy's host. DNS rebinding defense is the point — don't disable it |
+| `~/.bpmux/auth_token` is missing | bpmux hasn't been started yet, or crashed before it could write the file | Start bpmux. The token file is generated on launch. If bpmux refuses to start with "Unable to write auth token…", fix the `~/.bpmux/` directory permissions |
 
 ## Related
 

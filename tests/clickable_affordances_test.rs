@@ -72,11 +72,13 @@ fn menu_glyph_disappears_when_sidebar_opens() {
 
     // Open sidebar via Alt+1 through the REST endpoint (tests the
     // same path #170's end-to-end tests exercise).
+    let secret = bpmux.simulate_secret();
     let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
     rt.block_on(async {
         let client = reqwest::Client::new();
         client
             .post(format!("http://127.0.0.1:{port}/api/simulate/key"))
+            .bearer_auth(&secret)
             .json(&serde_json::json!({"key": "1", "modifiers": ["alt"]}))
             .send()
             .await
@@ -130,11 +132,13 @@ fn sidebar_title_shows_collapse_glyph_when_open() {
         "TUI should render"
     );
 
+    let secret = bpmux.simulate_secret();
     let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
     rt.block_on(async {
         let client = reqwest::Client::new();
         client
             .post(format!("http://127.0.0.1:{port}/api/simulate/key"))
+            .bearer_auth(&secret)
             .json(&serde_json::json!({"key": "1", "modifiers": ["alt"]}))
             .send()
             .await

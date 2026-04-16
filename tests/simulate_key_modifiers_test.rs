@@ -51,12 +51,14 @@ fn alt_1_via_simulate_key_endpoint_toggles_the_sidebar() {
         "TUI should render"
     );
     let before = sidebar_open(&bpmux.tui());
+    let secret = bpmux.simulate_secret();
 
     let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
     rt.block_on(async {
         let client = reqwest::Client::new();
         let resp = client
             .post(format!("http://127.0.0.1:{port}/api/simulate/key"))
+            .bearer_auth(&secret)
             .json(&serde_json::json!({"key": "1", "modifiers": ["alt"]}))
             .send()
             .await
@@ -82,6 +84,7 @@ fn alt_1_via_simulate_key_endpoint_toggles_the_sidebar() {
         let client = reqwest::Client::new();
         client
             .post(format!("http://127.0.0.1:{port}/api/simulate/key"))
+            .bearer_auth(&secret)
             .json(&serde_json::json!({"key": "1", "modifiers": ["alt"]}))
             .send()
             .await
@@ -112,12 +115,14 @@ fn plain_1_via_simulate_key_endpoint_does_not_toggle_sidebar() {
         "TUI should render"
     );
     let before = sidebar_open(&bpmux.tui());
+    let secret = bpmux.simulate_secret();
 
     let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
     rt.block_on(async {
         let client = reqwest::Client::new();
         let resp = client
             .post(format!("http://127.0.0.1:{port}/api/simulate/key"))
+            .bearer_auth(&secret)
             .json(&serde_json::json!({"key": "1"}))
             .send()
             .await
