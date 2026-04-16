@@ -1,6 +1,7 @@
 #![deny(unsafe_code)]
 
 pub mod bridge;
+pub mod github;
 pub mod mcp;
 pub mod reload;
 pub mod server;
@@ -168,7 +169,8 @@ pub fn run() -> anyhow::Result<()> {
     let ct = CancellationToken::new();
     let server_ct = ct.clone();
     let screen_capture = Arc::new(std::sync::Mutex::new(String::new()));
-    let (inject_tx, inject_rx) = tokio::sync::mpsc::channel::<crossterm::event::Event>(16);
+    let (inject_tx, inject_rx) =
+        tokio::sync::mpsc::channel::<crate::terminal::event::TerminalInjectEvent>(16);
 
     let rt = tokio::runtime::Runtime::new()?;
     let screen_for_server = Arc::clone(&screen_capture);

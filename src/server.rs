@@ -11,7 +11,7 @@ pub async fn run_server(
     port: u16,
     ct: CancellationToken,
     screen_capture: Arc<std::sync::Mutex<String>>,
-    inject_tx: tokio::sync::mpsc::Sender<crossterm::event::Event>,
+    inject_tx: tokio::sync::mpsc::Sender<crate::terminal::event::TerminalInjectEvent>,
 ) -> anyhow::Result<()> {
     // Ensure the per-run auth token exists before binding the port.
     // Failing here is loud and blocks startup — simulate endpoints

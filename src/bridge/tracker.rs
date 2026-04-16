@@ -178,11 +178,10 @@ impl OctocrabStoryTracker {
     }
 
     fn classify(err: octocrab::Error) -> String {
-        // Reuse the board poller's error mapping so both paths produce
-        // the same error language. The returned BoardFetchError has a
-        // user_message() that distinguishes rate-limit/auth/network.
-        use crate::terminal::board_poller::classify_error;
-        classify_error(&err).user_message()
+        // Shared GitHub-error taxonomy lives in `crate::github` so
+        // the bridge and the board poller both depend on it instead
+        // of one reaching across into the other's layer.
+        crate::github::classify_error(&err).user_message()
     }
 }
 

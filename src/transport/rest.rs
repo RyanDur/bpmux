@@ -296,15 +296,15 @@ pub struct ClickPayload {
 }
 
 pub async fn simulate_click(
-    axum::Extension(tx): axum::Extension<tokio::sync::mpsc::Sender<crossterm::event::Event>>,
+    axum::Extension(tx): axum::Extension<
+        tokio::sync::mpsc::Sender<crate::terminal::event::TerminalInjectEvent>,
+    >,
     Json(payload): Json<ClickPayload>,
 ) -> impl IntoResponse {
-    let event = crossterm::event::Event::Mouse(crossterm::event::MouseEvent {
-        kind: crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left),
-        column: payload.x,
-        row: payload.y,
-        modifiers: crossterm::event::KeyModifiers::empty(),
-    });
+    let event = crate::terminal::event::TerminalInjectEvent::Click {
+        x: payload.x,
+        y: payload.y,
+    };
     match tx.send(event).await {
         Ok(()) => (
             StatusCode::OK,
@@ -323,62 +323,31 @@ pub struct KeyPayload {
     /// Modifier names to apply to the key event. Accepted values
     /// (case-insensitive): `ctrl` / `control`, `alt`, `shift`,
     /// `super`. Unknown modifier strings produce a `400 Bad Request`
-    /// rather than being silently dropped — see #170 for why the
-    /// silent behavior was load-bearing.
+    /// rather than being silently dropped — agents need loud
+    /// feedback instead of a silently-ignored keystroke.
     #[serde(default)]
     pub modifiers: Vec<String>,
 }
 
-/// Parse a single modifier string (case-insensitive) into its
-/// `KeyModifiers` bitflag. Returns `Err` on unknown names so the
-/// handler can propagate a 400. Pure function, no side effects —
-/// tested via the handler-level tests in `rest_tests.rs`.
-fn parse_modifier(name: &str) -> Result<crossterm::event::KeyModifiers, String> {
-    match name.to_ascii_lowercase().as_str() {
-        "ctrl" | "control" => Ok(crossterm::event::KeyModifiers::CONTROL),
-        "alt" => Ok(crossterm::event::KeyModifiers::ALT),
-        "shift" => Ok(crossterm::event::KeyModifiers::SHIFT),
-        "super" => Ok(crossterm::event::KeyModifiers::SUPER),
-        other => Err(format!("unknown modifier: {other}")),
-    }
-}
-
 pub async fn simulate_key(
-    axum::Extension(tx): axum::Extension<tokio::sync::mpsc::Sender<crossterm::event::Event>>,
+    axum::Extension(tx): axum::Extension<
+        tokio::sync::mpsc::Sender<crate::terminal::event::TerminalInjectEvent>,
+    >,
     Json(payload): Json<KeyPayload>,
 ) -> impl IntoResponse {
-    let key_code = match payload.key.as_str() {
-        "enter" => crossterm::event::KeyCode::Enter,
-        "escape" | "esc" => crossterm::event::KeyCode::Esc,
-        "tab" => crossterm::event::KeyCode::Tab,
-        "backspace" => crossterm::event::KeyCode::Backspace,
-        "up" => crossterm::event::KeyCode::Up,
-        "down" => crossterm::event::KeyCode::Down,
-        "left" => crossterm::event::KeyCode::Left,
-        "right" => crossterm::event::KeyCode::Right,
-        s if s.len() == 1 => crossterm::event::KeyCode::Char(s.chars().next().unwrap_or(' ')),
-        _ => {
-            return (
-                StatusCode::BAD_REQUEST,
-                format!("unknown key: {}", payload.key),
-            );
-        }
+    let key_display = payload.key.clone();
+    let event = crate::terminal::event::TerminalInjectEvent::Key {
+        key: payload.key,
+        modifiers: payload.modifiers,
     };
-
-    // Fold modifier names into a combined KeyModifiers bitflag. Any
-    // unknown name short-circuits with a 400 so agents get loud
-    // feedback instead of a silently-dropped modifier (#170).
-    let mut modifiers = crossterm::event::KeyModifiers::empty();
-    for name in &payload.modifiers {
-        match parse_modifier(name) {
-            Ok(bit) => modifiers |= bit,
-            Err(e) => return (StatusCode::BAD_REQUEST, e),
-        }
+    // Validate the vocabulary at the transport boundary so a bad
+    // key/modifier name surfaces as a 400 before anything enters
+    // the channel.
+    if let Err(e) = event.validate() {
+        return (StatusCode::BAD_REQUEST, e.message());
     }
-
-    let event = crossterm::event::Event::Key(crossterm::event::KeyEvent::new(key_code, modifiers));
     match tx.send(event).await {
-        Ok(()) => (StatusCode::OK, format!("key: {}", payload.key)),
+        Ok(()) => (StatusCode::OK, format!("key: {key_display}")),
         Err(_) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             "event loop not available".to_string(),

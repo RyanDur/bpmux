@@ -1,6 +1,9 @@
 use std::sync::Arc;
 
-use crossterm::event::{self, Event, EventStream};
+use crossterm::event::{
+    self, Event, EventStream, KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent,
+    MouseEventKind,
+};
 use futures::StreamExt;
 use tokio::sync::{broadcast, mpsc};
 
@@ -14,6 +17,108 @@ use crate::transport::peer::P2pResult;
 use crate::transport::webrtc;
 
 const NOTIFICATION_PREVIEW_CHARS: usize = 50;
+
+/// Transport-neutral inject event. Outside callers (REST simulate
+/// endpoints) send these instead of raw `crossterm::event::Event`
+/// so the transport layer doesn't need to know about crossterm.
+/// Terminal owns the conversion because crossterm is a terminal-
+/// layer concern.
+#[derive(Debug, Clone)]
+pub enum TerminalInjectEvent {
+    /// Mouse click at `(x, y)` — 0-based terminal cell coordinates.
+    /// Always interpreted as a left-button Down event with no
+    /// modifiers; the REST API doesn't expose richer mouse semantics.
+    Click { x: u16, y: u16 },
+    /// Key press by name plus optional modifier-name list. Name
+    /// vocabulary matches the REST API's payload (e.g., `"enter"`,
+    /// `"esc"`, `"a"`); modifiers are `"ctrl" | "alt" | "shift" |
+    /// "super"` (case-insensitive).
+    Key { key: String, modifiers: Vec<String> },
+}
+
+/// Reasons a `TerminalInjectEvent` can fail to convert. Exposed so
+/// transport handlers can surface a 400 without duplicating the
+/// vocabulary-parsing logic.
+#[derive(Debug, Clone)]
+pub enum InjectEventError {
+    UnknownKey(String),
+    UnknownModifier(String),
+}
+
+impl InjectEventError {
+    pub fn message(&self) -> String {
+        match self {
+            Self::UnknownKey(k) => format!("unknown key: {k}"),
+            Self::UnknownModifier(m) => format!("unknown modifier: {m}"),
+        }
+    }
+}
+
+impl TerminalInjectEvent {
+    /// Check that the key + modifier vocabulary is recognized
+    /// without doing the actual conversion. Transport handlers call
+    /// this at request-validation time so bad input surfaces as a
+    /// 400 before anything enters the channel.
+    pub fn validate(&self) -> Result<(), InjectEventError> {
+        match self {
+            Self::Click { .. } => Ok(()),
+            Self::Key { key, modifiers } => {
+                key_code_for(key)?;
+                for name in modifiers {
+                    modifier_for(name)?;
+                }
+                Ok(())
+            }
+        }
+    }
+
+    /// Convert into a crossterm `Event`. Called from the event-loop
+    /// consumer after the transport boundary has already validated;
+    /// errors at this point are bugs, not bad input.
+    pub fn into_crossterm(self) -> Result<Event, InjectEventError> {
+        match self {
+            Self::Click { x, y } => Ok(Event::Mouse(MouseEvent {
+                kind: MouseEventKind::Down(MouseButton::Left),
+                column: x,
+                row: y,
+                modifiers: KeyModifiers::empty(),
+            })),
+            Self::Key { key, modifiers } => {
+                let key_code = key_code_for(&key)?;
+                let mut bits = KeyModifiers::empty();
+                for name in modifiers {
+                    bits |= modifier_for(&name)?;
+                }
+                Ok(Event::Key(KeyEvent::new(key_code, bits)))
+            }
+        }
+    }
+}
+
+fn key_code_for(key: &str) -> Result<KeyCode, InjectEventError> {
+    match key {
+        "enter" => Ok(KeyCode::Enter),
+        "escape" | "esc" => Ok(KeyCode::Esc),
+        "tab" => Ok(KeyCode::Tab),
+        "backspace" => Ok(KeyCode::Backspace),
+        "up" => Ok(KeyCode::Up),
+        "down" => Ok(KeyCode::Down),
+        "left" => Ok(KeyCode::Left),
+        "right" => Ok(KeyCode::Right),
+        s if s.chars().count() == 1 => Ok(KeyCode::Char(s.chars().next().unwrap_or(' '))),
+        _ => Err(InjectEventError::UnknownKey(key.to_string())),
+    }
+}
+
+fn modifier_for(name: &str) -> Result<KeyModifiers, InjectEventError> {
+    match name.to_ascii_lowercase().as_str() {
+        "ctrl" | "control" => Ok(KeyModifiers::CONTROL),
+        "alt" => Ok(KeyModifiers::ALT),
+        "shift" => Ok(KeyModifiers::SHIFT),
+        "super" => Ok(KeyModifiers::SUPER),
+        _ => Err(InjectEventError::UnknownModifier(name.to_string())),
+    }
+}
 
 /// Pull the next terminal event from the real tty reader, or block forever
 /// if the stream is `None` (headless mode). Returning a never-resolving
@@ -35,7 +140,7 @@ pub async fn run_tui<B>(
     session: &session::Session,
     wake_rx: &mut broadcast::Receiver<session::Message>,
     screen_capture: Arc<std::sync::Mutex<String>>,
-    mut injected_rx: mpsc::Receiver<crossterm::event::Event>,
+    mut injected_rx: mpsc::Receiver<TerminalInjectEvent>,
     headless: bool,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>>
 where
@@ -276,7 +381,18 @@ where
                 app.project.state = Some(state);
             }
             Some(injected) = injected_rx.recv() => {
-                handle_terminal_event(injected, app, session)?;
+                // Convert to crossterm at the terminal boundary so
+                // transport layer doesn't need to know crossterm
+                // types. Bad-key/bad-modifier errors are already
+                // filtered out at the REST boundary; reaching this
+                // branch with an Err is a dev-side bug.
+                match injected.into_crossterm() {
+                    Ok(event) => handle_terminal_event(event, app, session)?,
+                    Err(e) => crate::session::diag::log_diag(&format!(
+                        "terminal: dropping inject event: {}",
+                        e.message()
+                    )),
+                }
             }
             Some(result) = p2p_rx.recv() => {
                 p2p::handle_p2p_result(
