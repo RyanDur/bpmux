@@ -535,6 +535,12 @@ pub(super) async fn handle_classifier_misfire(
 /// for Ryan is constructed TUI-side from the requester's role.
 pub(super) const RESTART_REQUEST_MARKER: &str = "__BPMUX_RESTART_REQUEST__";
 
+/// #225: marker that tells the TUI to open the tokens overlay. Same
+/// delegation pattern as RESTART_REQUEST_MARKER — System-typed
+/// broadcast with an opaque marker; TUI event loop intercepts and
+/// calls the existing `handle_tokens` logic.
+pub(super) const VIEW_TOKENS_MARKER: &str = "__BPMUX_VIEW_TOKENS__";
+
 pub(super) async fn handle_request_restart(
     ws_tx: &Mutex<Option<WsSink>>,
     name: &Mutex<String>,
@@ -560,6 +566,24 @@ pub(super) async fn handle_request_restart(
         .await
         .map_err(|e| format!("restart request send failed: {e}"))?;
     Ok(format!("restart requested by {short}"))
+}
+
+/// #225: agent-triggered view_tokens. Sends a system marker to the
+/// TUI which opens the existing tokens overlay. Same delegation
+/// pattern as request_restart.
+pub(super) async fn handle_view_tokens(ws_tx: &Mutex<Option<WsSink>>) -> Result<String, String> {
+    let msg = crate::transport::protocol::ClientMessage::Send {
+        text: VIEW_TOKENS_MARKER.to_string(),
+        to: None,
+        addressee: None,
+        message_type: Some("system".to_string()),
+        topic: None,
+    };
+    let json = serde_json::to_string(&msg).map_err(|e| format!("signal: {e}"))?;
+    ws_send(ws_tx, json)
+        .await
+        .map_err(|e| format!("view_tokens send failed: {e}"))?;
+    Ok("token view opened".to_string())
 }
 
 // ── Story management tools (#140) ──────────────────────────────

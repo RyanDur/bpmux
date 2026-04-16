@@ -17,7 +17,7 @@ impl App {
     /// `/tokens` — show the token-cost overlay. Snapshots the log
     /// rows onto `App::tokens_view_rows` so the overlay stays stable
     /// across frames until dismissed.
-    pub(super) fn handle_tokens(&mut self) -> Option<Message> {
+    pub(crate) fn handle_tokens(&mut self) -> Option<Message> {
         let rows = match default_tokens_log_path().and_then(|p| read_token_rows(&p)) {
             Ok(rows) => rows,
             Err(_) => {

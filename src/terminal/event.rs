@@ -280,6 +280,10 @@ where
 /// constant in src/bridge/tools.rs.
 pub(super) const RESTART_REQUEST_MARKER: &str = "__BPMUX_RESTART_REQUEST__";
 
+/// #225: marker the bridge emits when an agent calls view_tokens.
+/// Kept in sync with VIEW_TOKENS_MARKER in src/bridge/tools.rs.
+pub(super) const VIEW_TOKENS_MARKER: &str = "__BPMUX_VIEW_TOKENS__";
+
 /// Extract the requester role from a restart-request message text.
 /// Returns `Some(role)` if the text begins with `RESTART_REQUEST_MARKER`;
 /// `None` otherwise. An empty role defaults to "agent" so the UX
@@ -302,6 +306,13 @@ fn handle_broadcast_message(msg: session::Message, app: &mut App) {
         && let Some(requester) = parse_restart_request(&msg.text)
     {
         app.pending_restart = Some(requester);
+        return;
+    }
+    // #225: agent-triggered view_tokens opens the overlay. Same
+    // delegation pattern — System-type message + marker text; no
+    // chat rendering, just the side effect.
+    if msg.message_type == crate::session::MessageType::System && msg.text == VIEW_TOKENS_MARKER {
+        app.handle_tokens();
         return;
     }
     let self_identity = app.from_identity();
