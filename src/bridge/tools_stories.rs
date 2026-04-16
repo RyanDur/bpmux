@@ -272,13 +272,14 @@ pub(super) async fn handle_accept_story(
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
 ) -> Result<String, String> {
-    require_role(agent_name, &["ryan"], "accept")?;
+    require_role(agent_name, &["ryan", "pm", "designer", "dev"], "accept")?;
     let number = args
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
-    let signal =
-        serde_json::to_string(&build_accept_signal(number)).map_err(|e| format!("signal: {e}"))?;
+    let role = role_from_name(agent_name);
+    let signal = serde_json::to_string(&build_accept_signal(number, role))
+        .map_err(|e| format!("signal: {e}"))?;
     if let Err(e) = ws_send(ws_tx, signal).await {
         eprintln!("Bridge: signal send failed: {e}");
     }
@@ -477,10 +478,12 @@ pub(super) fn build_start_signal(number: u64) -> ClientMessage {
     }
 }
 
-pub(super) fn build_accept_signal(number: u64) -> ClientMessage {
+pub(super) fn build_accept_signal(number: u64, accepted_by: &str) -> ClientMessage {
     ClientMessage::Send {
-        text: format!("#{number} accepted. pick the next story from the ready queue"),
-        to: Some(vec!["dev".to_string()]),
+        text: format!(
+            "#{number} accepted by {accepted_by}. pick the next story from the ready queue"
+        ),
+        to: None,
         addressee: Some("dev".to_string()),
         message_type: None,
         topic: None,

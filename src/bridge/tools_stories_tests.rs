@@ -40,8 +40,8 @@ fn require_role_rejects_dev_from_pm_operations() {
 }
 
 #[test]
-fn require_role_rejects_agents_from_owner_operations() {
-    let result = require_role("dev:claude-code", &["ryan"], "accept");
+fn require_role_rejects_agents_from_owner_only_operations() {
+    let result = require_role("dev:claude-code", &["ryan"], "reject");
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("restricted to ryan"));
 
@@ -115,10 +115,23 @@ fn start_signal_targets_pm_only() {
 }
 
 #[test]
-fn accept_signal_targets_dev_only() {
-    if let ClientMessage::Send { to, addressee, .. } = build_accept_signal(100) {
-        assert_eq!(to.as_ref().unwrap(), &["dev"]);
+fn accept_signal_broadcasts_with_role_attribution() {
+    if let ClientMessage::Send {
+        to,
+        addressee,
+        text,
+        ..
+    } = build_accept_signal(100, "pm")
+    {
+        assert!(
+            to.is_none(),
+            "accept signal should broadcast (no privacy filter)"
+        );
         assert_eq!(addressee.as_deref(), Some("dev"));
+        assert!(
+            text.contains("accepted by pm"),
+            "signal should include who accepted. got: {text}"
+        );
     } else {
         panic!("expected Send variant");
     }

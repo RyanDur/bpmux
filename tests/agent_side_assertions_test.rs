@@ -369,6 +369,65 @@ fn pass_desk_check_rejects_non_designer_callers() {
     });
 }
 
+/// AC (#213): PM can call accept_story. The signal broadcasts
+/// "accepted by pm" so Ryan sees who closed the story.
+#[test]
+fn accept_story_allows_pm_and_broadcasts_role_attribution() {
+    let bpmux = TestBpmux::start();
+    let rt = tokio::runtime::Runtime::new().expect("rt");
+    rt.block_on(async {
+        let pm = TestBridge::connect(&bpmux, "pm").await;
+        let dev = TestBridge::connect(&bpmux, "dev").await;
+
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        let result = pm
+            .call_tool("accept_story", serde_json::json!({"number": 213}))
+            .await;
+        assert!(
+            result.is_ok(),
+            "PM should be allowed to call accept_story. got: {:?}",
+            result
+        );
+
+        dev.capture
+            .wait_for("accepted by pm", Duration::from_secs(5))
+            .await;
+
+        let dev_seen = dev.capture.received().join("\n");
+        assert!(
+            dev_seen.contains("#213") && dev_seen.contains("accepted by pm"),
+            "signal should include story number and role. got:\n{dev_seen}"
+        );
+
+        pm.close().await;
+        dev.close().await;
+    });
+}
+
+/// AC (#213): unknown roles are rejected with a clear message.
+#[test]
+fn accept_story_rejects_unknown_roles() {
+    let bpmux = TestBpmux::start();
+    let rt = tokio::runtime::Runtime::new().expect("rt");
+    rt.block_on(async {
+        let unknown = TestBridge::connect(&bpmux, "intern").await;
+
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        let err = unknown
+            .call_tool("accept_story", serde_json::json!({"number": 999}))
+            .await
+            .expect_err("unknown role should be rejected");
+        assert!(
+            err.contains("restricted to"),
+            "rejection should name allowed roles. got: {err}"
+        );
+
+        unknown.close().await;
+    });
+}
+
 /// AC (#209a): view_velocity returns JSON metrics parsed from the
 /// session log. With a fresh session and no delivered stories, the
 /// metrics are zero/sparse — proves the compute path runs end-to-end
