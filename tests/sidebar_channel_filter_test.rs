@@ -56,13 +56,14 @@ fn switch_to_channel_via_sidebar(bpmux: &TestBpmux, name: &str, under_section: b
 fn clicking_broadcast_in_sidebar_filters_dms_out() {
     let bpmux = TestBpmux::start_named("ryan");
     let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
-    // Send broadcast + DM and wait for the WS round-trip to land.
-    // CI is slower than local; assert observable arrivals rather
-    // than relying on fixed sleeps.
-    rt.block_on(async {
+    // Keep the WsPeer alive across the assertions — dropping it at
+    // the end of block_on closes the socket, and on slow machines
+    // the last in-flight send can be lost in the close handshake.
+    let mut dev = rt.block_on(async {
         let mut dev = WsPeer::connect(&bpmux, "dev").await;
         dev.send("public hello").await;
         dev.send_to("secret dm", &["ryan"]).await;
+        dev
     });
     assert!(
         bpmux.wait_for_tui("public hello", Duration::from_secs(10)),
@@ -74,6 +75,8 @@ fn clicking_broadcast_in_sidebar_filters_dms_out() {
         "DM should land in default all-view. screen:\n{}",
         bpmux.tui()
     );
+    // Keep `dev` alive during the remaining assertions; drop at end.
+    let _ = &mut dev;
 
     switch_to_channel_via_sidebar(&bpmux, "broadcast", false);
 
@@ -98,10 +101,14 @@ fn clicking_broadcast_in_sidebar_filters_dms_out() {
 fn clicking_dev_channel_shows_owner_dev_dms_not_broadcasts() {
     let bpmux = TestBpmux::start_named("ryan");
     let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
-    rt.block_on(async {
+    // Keep the WsPeer alive while we assert + switch views —
+    // dropping at end of block_on closes the socket and can lose
+    // the last send in the close handshake on slow machines.
+    let mut dev = rt.block_on(async {
         let mut dev = WsPeer::connect(&bpmux, "dev").await;
         dev.send("broadcast from dev").await;
         dev.send_to("dm from dev", &["ryan"]).await;
+        dev
     });
     assert!(
         bpmux.wait_for_tui("dm from dev", Duration::from_secs(10)),
@@ -110,6 +117,7 @@ fn clicking_dev_channel_shows_owner_dev_dms_not_broadcasts() {
     );
 
     switch_to_channel_via_sidebar(&bpmux, "dev", true);
+    let _ = &mut dev;
 
     let screen = bpmux.tui();
     assert!(
@@ -137,12 +145,16 @@ fn clicking_dev_channel_shows_owner_dev_dms_not_broadcasts() {
 fn clicking_dev_channel_excludes_other_agents_dms() {
     let bpmux = TestBpmux::start_named("ryan");
     let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
-    rt.block_on(async {
+    // Keep peers alive across the view switch — see comment in
+    // clicking_broadcast_in_sidebar_filters_dms_out for why dropping
+    // immediately loses the last in-flight send on slow machines.
+    let (mut dev, mut pm) = rt.block_on(async {
         let mut dev = WsPeer::connect(&bpmux, "dev").await;
         let mut pm = WsPeer::connect(&bpmux, "pm").await;
         dev.send_to("dev says hi", &["ryan"]).await;
         dev.send_to("dev to pm private", &["pm"]).await;
         pm.send_to("pm to dev reply", &["dev"]).await;
+        (dev, pm)
     });
     // "dev says hi" is the only message addressed to ryan — once it
     // lands, the other two (between dev and pm) must also have been
@@ -154,6 +166,7 @@ fn clicking_dev_channel_excludes_other_agents_dms() {
     );
 
     switch_to_channel_via_sidebar(&bpmux, "dev", true);
+    let _ = (&mut dev, &mut pm);
 
     let screen = bpmux.tui();
     assert!(
@@ -176,9 +189,10 @@ fn clicking_dev_channel_excludes_other_agents_dms() {
 fn owner_message_appears_in_selected_channel_view() {
     let bpmux = TestBpmux::start_named("ryan");
     let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
-    rt.block_on(async {
+    let mut dev = rt.block_on(async {
         let mut dev = WsPeer::connect(&bpmux, "dev").await;
         dev.send_to("ping from dev", &["ryan"]).await;
+        dev
     });
     assert!(
         bpmux.wait_for_tui("ping from dev", Duration::from_secs(10)),
@@ -188,6 +202,7 @@ fn owner_message_appears_in_selected_channel_view() {
 
     switch_to_channel_via_sidebar(&bpmux, "dev", true);
     bpmux.type_line("owner reply in dev view");
+    let _ = &mut dev;
 
     assert!(
         bpmux.wait_for_tui("owner reply in dev view", Duration::from_secs(5)),
