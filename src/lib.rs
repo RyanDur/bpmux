@@ -52,6 +52,10 @@ enum Command {
         /// Use fake story tracker (no gh calls). Test infrastructure only.
         #[arg(long)]
         fake_tracker: bool,
+
+        /// Path to a JSON fixture file for list_stories. Test infrastructure only.
+        #[arg(long)]
+        board_fixture: Option<String>,
     },
     /// Run in headless mode for agent testing (no terminal required)
     Test,
@@ -135,9 +139,10 @@ pub fn run() -> anyhow::Result<()> {
         port,
         name,
         fake_tracker,
+        board_fixture,
     }) = cli.command
     {
-        return bridge::run_bridge(port, &name, fake_tracker);
+        return bridge::run_bridge(port, &name, fake_tracker, board_fixture);
     }
 
     if let Some(Command::Recall { role }) = &cli.command {

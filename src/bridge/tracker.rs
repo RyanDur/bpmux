@@ -33,7 +33,9 @@ pub trait StoryTracker: Clone + Send + Sync + 'static {
 }
 
 #[derive(Clone)]
-pub struct GhTracker;
+pub struct GhTracker {
+    pub board_fixture: Option<String>,
+}
 
 impl StoryTracker for GhTracker {
     async fn close_story(&self, number: u64) -> Result<String, String> {
@@ -64,8 +66,8 @@ impl StoryTracker for GhTracker {
     }
 
     async fn list_stories(&self) -> Result<String, String> {
-        if let Ok(path) = std::env::var("BPMUX_BOARD_FIXTURE") {
-            return std::fs::read_to_string(&path).map_err(|e| format!("read fixture {path}: {e}"));
+        if let Some(ref path) = self.board_fixture {
+            return std::fs::read_to_string(path).map_err(|e| format!("read fixture {path}: {e}"));
         }
         gh(&[
             "issue",
@@ -94,7 +96,9 @@ impl StoryTracker for GhTracker {
 }
 
 #[derive(Clone, Default)]
-pub struct FakeTracker;
+pub struct FakeTracker {
+    pub board_fixture: Option<String>,
+}
 
 impl StoryTracker for FakeTracker {
     async fn close_story(&self, number: u64) -> Result<String, String> {
@@ -114,8 +118,8 @@ impl StoryTracker for FakeTracker {
     }
 
     async fn list_stories(&self) -> Result<String, String> {
-        if let Ok(path) = std::env::var("BPMUX_BOARD_FIXTURE") {
-            return std::fs::read_to_string(&path).map_err(|e| format!("read fixture {path}: {e}"));
+        if let Some(ref path) = self.board_fixture {
+            return std::fs::read_to_string(path).map_err(|e| format!("read fixture {path}: {e}"));
         }
         Ok("[]".to_string())
     }

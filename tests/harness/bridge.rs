@@ -30,6 +30,23 @@ impl TestBridge {
     /// pointing the bridge's view_board at BPMUX_BOARD_FIXTURE instead
     /// of the live `gh` CLI in CI (where GH_TOKEN isn't wired).
     pub async fn connect_with_env(bpmux: &TestBpmux, name: &str, env: &[(&str, &str)]) -> Self {
+        Self::connect_inner(bpmux, name, env, None).await
+    }
+
+    pub async fn connect_with_board_fixture(
+        bpmux: &TestBpmux,
+        name: &str,
+        fixture_path: &str,
+    ) -> Self {
+        Self::connect_inner(bpmux, name, &[], Some(fixture_path.to_string())).await
+    }
+
+    async fn connect_inner(
+        bpmux: &TestBpmux,
+        name: &str,
+        env: &[(&str, &str)],
+        board_fixture: Option<String>,
+    ) -> Self {
         let bin = env!("CARGO_BIN_EXE_bpmux");
         let port = bpmux.port();
         let name_owned = name.to_string();
@@ -37,6 +54,7 @@ impl TestBridge {
             .iter()
             .map(|(k, v)| ((*k).to_string(), (*v).to_string()))
             .collect();
+        let board_fixture_owned = board_fixture;
         let process = TokioChildProcess::new(tokio::process::Command::new(bin).configure(|cmd| {
             cmd.arg("bridge")
                 .arg("--port")
@@ -44,6 +62,9 @@ impl TestBridge {
                 .arg("--name")
                 .arg(&name_owned)
                 .arg("--fake-tracker");
+            if let Some(ref path) = board_fixture_owned {
+                cmd.arg("--board-fixture").arg(path);
+            }
             for (k, v) in &env_owned {
                 cmd.env(k, v);
             }

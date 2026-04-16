@@ -46,9 +46,7 @@ fn view_board_response_exposes_story_fields_for_agent_assertions() {
         // live gh CLI — the MCP tool honors BPMUX_BOARD_FIXTURE the
         // same way the TUI does. Keeps the test hermetic (no GH_TOKEN
         // required in CI).
-        let dev =
-            TestBridge::connect_with_env(&bpmux, "dev", &[("BPMUX_BOARD_FIXTURE", &fixture_path)])
-                .await;
+        let dev = TestBridge::connect_with_board_fixture(&bpmux, "dev", &fixture_path).await;
         let board = dev
             .call_tool("view_board", serde_json::json!({}))
             .await

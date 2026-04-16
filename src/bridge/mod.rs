@@ -525,19 +525,26 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
     }
 }
 
-pub fn run_bridge(port: u16, name: &str, fake_tracker: bool) -> anyhow::Result<()> {
+pub fn run_bridge(
+    port: u16,
+    name: &str,
+    fake_tracker: bool,
+    board_fixture: Option<String>,
+) -> anyhow::Result<()> {
     let rt = tokio::runtime::Runtime::new()?;
     if fake_tracker {
+        let tracker = tracker::FakeTracker { board_fixture };
         rt.block_on(async {
-            let server = BridgeServer::new(port, name.to_string(), tracker::FakeTracker);
+            let server = BridgeServer::new(port, name.to_string(), tracker);
             let (stdin, stdout) = rmcp::transport::io::stdio();
             let service = server.serve((stdin, stdout)).await?;
             service.waiting().await?;
             anyhow::Ok(())
         })
     } else {
+        let tracker = tracker::GhTracker { board_fixture };
         rt.block_on(async {
-            let server = BridgeServer::new(port, name.to_string(), tracker::GhTracker);
+            let server = BridgeServer::new(port, name.to_string(), tracker);
             let (stdin, stdout) = rmcp::transport::io::stdio();
             let service = server.serve((stdin, stdout)).await?;
             service.waiting().await?;
