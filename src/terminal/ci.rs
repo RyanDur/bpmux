@@ -37,7 +37,7 @@ pub(super) enum CiState {
 }
 
 /// Richer per-poll CI snapshot — state plus the metadata needed for
-/// #106's broadcast message format. Fields beyond `state` are
+/// the broadcast message format. Fields beyond `state` are
 /// optional because `gh run list` may return partial data (e.g., a
 /// run without a display title, or an older gh version without some
 /// fields).

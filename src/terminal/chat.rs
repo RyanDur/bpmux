@@ -304,9 +304,9 @@ mod tests {
 
     #[test]
     fn should_hide_returns_true_for_nudge_type_regardless_of_sender_or_text() {
-        // #186 load-bearing case: the handoff liveness warning that
-        // escaped the pre-#186 filter because it didn't start with
-        // 📝. Under the new type-based filter it's hidden by type.
+        // Regression guard: the handoff liveness warning used to
+        // escape the text-prefix filter because it didn't start with
+        // 📝. Under the type-based filter it's hidden by type.
         let handoff_warning = msg(
             "bpmux",
             "dev hasn't acknowledged the handoff from pm. Waiting for response.",

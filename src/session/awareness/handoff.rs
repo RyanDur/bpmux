@@ -82,13 +82,13 @@ impl HandoffTracker {
         let Some(h) = self.pending.take() else {
             return;
         };
-        // #163 tuning 3: conversation-state check. Before emitting the
-        // "X hasn't acknowledged the handoff" nudge, query the session
-        // log for any messages from `h.to` with a timestamp after the
+        // Conversation-state check. Before emitting the "X hasn't
+        // acknowledged the handoff" nudge, query the session log for
+        // any messages from `h.to` with a timestamp after the
         // handoff. If the recipient has spoken since, suppress the
-        // nudge — the handoff WAS acknowledged, and the in-memory clear
-        // may have been missed due to tokio::select! race timing or
-        // message-routing delay.
+        // nudge — the handoff WAS acknowledged, and the in-memory
+        // clear may have been missed due to tokio::select! race
+        // timing or message-routing delay.
         //
         // This is defense-in-depth against the observed misfire pattern:
         // the in-memory `sender == h.to` clear on line ~60 above already

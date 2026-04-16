@@ -102,8 +102,9 @@ fn truncate_for_preview(text: &str) -> String {
 ///
 /// The `from` field uses `{role}:claude-code` to match the
 /// harness-adapter convention on the channel. `message_type` is
-/// `activity` so the line lands in the activity region (quiet, per
-/// #152's chat/activity separation) rather than the chat stream.
+/// `activity` so the line lands in the activity region (quiet, the
+/// same channel separation used for status pings) rather than the
+/// chat stream.
 pub fn build_recall_activity_payload(role: &str, count: usize) -> serde_json::Value {
     let text = if count == 0 {
         format!("no prior lessons recalled at session start for role '{role}'")

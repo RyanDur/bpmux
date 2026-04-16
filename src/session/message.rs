@@ -17,9 +17,10 @@ pub enum MessageType {
     /// activity is ephemeral state (status dots, presence), whereas
     /// nudges are content the classifier produced.
     ///
-    /// See #186 for the story that introduced this variant. Before
-    /// #186, handoff nudges were emitted as `Chat` and escaped the
-    /// 📝-text-prefix filter because they didn't carry the marker.
+    /// This variant exists so handoff nudges classify reliably.
+    /// Before its introduction, nudges were emitted as `Chat` and
+    /// escaped the 📝-text-prefix filter because they didn't carry
+    /// the marker.
     Nudge,
 }
 
