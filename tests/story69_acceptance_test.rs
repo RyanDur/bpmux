@@ -75,38 +75,83 @@ fn ac2_board_shows_issue_numbers() {
     );
 }
 
-/// AC3: GIVEN the fixture has stories in READY and DELIVERED states
+/// AC3: GIVEN the fixture has stories in READY (#306) and DELIVERED
+///       (#307) states
 /// WHEN the board renders
-/// THEN both state columns appear — the fixture guarantees both are
-///      present, so this is a deterministic two-signal assertion.
+/// THEN #306 appears under the READY header and #307 appears under
+///      the DELIVERED header — line-position assertion so a
+///      regression that swaps the grouping fails this test.
 #[test]
 fn ac3_board_groups_by_status() {
     let fixture = write_fixture();
     let bpmux = start_with_fixture("story69-ac3", &fixture);
     bpmux.type_line("/board");
     assert!(
-        bpmux.wait_for_tui("READY", Duration::from_secs(5)),
-        "Board should show the READY column. Screen:\n{}",
-        bpmux.tui()
-    );
-    assert!(
         bpmux.wait_for_tui("DELIVERED", Duration::from_secs(5)),
         "Board should show the DELIVERED column. Screen:\n{}",
         bpmux.tui()
+    );
+    let screen = bpmux.tui();
+    let lines: Vec<&str> = screen.lines().collect();
+    let ready_idx = lines
+        .iter()
+        .position(|l| l.contains("READY"))
+        .expect("READY header missing");
+    let delivered_idx = lines
+        .iter()
+        .position(|l| l.contains("DELIVERED"))
+        .expect("DELIVERED header missing");
+    let ready_story = lines
+        .iter()
+        .position(|l| l.contains("#306"))
+        .expect("#306 (ready) missing from board");
+    let delivered_story = lines
+        .iter()
+        .position(|l| l.contains("#307"))
+        .expect("#307 (delivered) missing from board");
+    assert!(
+        ready_idx < ready_story && ready_story < delivered_idx,
+        "#306 should appear after READY header and before DELIVERED \
+         (ready_idx={ready_idx}, ready_story={ready_story}, \
+          delivered_idx={delivered_idx}). screen:\n{screen}"
+    );
+    assert!(
+        delivered_idx < delivered_story,
+        "#307 should appear after DELIVERED header \
+         (delivered_idx={delivered_idx}, delivered_story={delivered_story}). \
+         screen:\n{screen}"
     );
 }
 
 /// AC4: GIVEN the board renders with fixture data
 /// WHEN the human reads it
-/// THEN separator lines provide visual structure.
+/// THEN the project panel's vertical separator line has enough
+///      distinct horizontal rules to provide column structure — we
+///      assert a minimum count so a plain one-border render (which
+///      any ratatui Block would produce) fails the test.
 #[test]
 fn ac4_board_has_visual_structure() {
     let fixture = write_fixture();
     let bpmux = start_with_fixture("story69-ac4", &fixture);
     bpmux.type_line("/board");
     assert!(
-        bpmux.wait_for_tui("─", Duration::from_secs(5)),
-        "Board should have separator lines (─). Screen:\n{}",
+        bpmux.wait_for_tui("READY", Duration::from_secs(5)),
+        "Board should render before structure check. Screen:\n{}",
         bpmux.tui()
+    );
+    let screen = bpmux.tui();
+    // The project panel + chat panel are two adjacent bordered
+    // blocks, each contributing a top and bottom border line. Plus
+    // the status bar. A minimum of 4 horizontal-rule lines
+    // distinguishes a real columnar layout from a single generic
+    // ratatui block (which has 2).
+    let rule_lines = screen
+        .lines()
+        .filter(|l| l.contains("─") && l.chars().filter(|c| *c == '─').count() >= 10)
+        .count();
+    assert!(
+        rule_lines >= 4,
+        "Board layout should have at least 4 long horizontal-rule \
+         lines; found {rule_lines}. screen:\n{screen}"
     );
 }

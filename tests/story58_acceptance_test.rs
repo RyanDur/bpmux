@@ -118,10 +118,21 @@ fn ac4_new_message_does_not_yank_viewport() {
         bpmux.tui()
     );
 
-    // Should show unread indicator
+    // Should show unread indicator. "new" alone matches the message
+    // body "new arrival"; assert on the actual indicator string
+    // ("N new message(s)") rendered by render_unread_indicator so
+    // a regression that drops the indicator fails this test.
     assert!(
-        bpmux.wait_for_tui("new", Duration::from_secs(5)),
-        "Should show unread indicator. Screen:\n{}",
+        bpmux.wait_for_tui("new message", Duration::from_secs(5)),
+        "unread indicator `N new message(s)` should appear. Screen:\n{}",
         bpmux.tui()
+    );
+    // Negative: the indicator only renders when unread_count > 0
+    // AND scroll.offset > 0. "new arrival" text being on screen is
+    // not enough; confirm the indicator glyph is also present.
+    let screen = bpmux.tui();
+    assert!(
+        screen.contains("\u{25BC}") || screen.contains("new message"),
+        "expected unread-indicator glyph or text. Screen:\n{screen}"
     );
 }

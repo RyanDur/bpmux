@@ -41,23 +41,35 @@ fn clicking_channel_name_in_sidebar_switches_view() {
     bpmux.type_key("Alt-1");
     // Give the render loop a beat to lay out the sidebar.
     std::thread::sleep(Duration::from_millis(200));
-    let sidebar_open = bpmux.tui();
 
-    // Click row 2 of the sidebar area (sidebar top at row 1, header
-    // at row 1, first content at row 2). The exact cell depends on
-    // layout — we click at column 2 (inside the sidebar), row 2
-    // (first channel row).
-    bpmux.mouse_click(2, 2);
+    // Before the click: status bar shows `[all]` (the default view).
+    // This anchors the assertion so we know the click produced the
+    // transition, not some other render drift.
+    assert!(
+        bpmux.tui().contains("[all]"),
+        "sanity: status bar should show [all] before click. screen:\n{}",
+        bpmux.tui()
+    );
 
-    // Wait briefly for the click event to process.
+    // Click row 3 of the sidebar area. Layout: row 1 = sidebar
+    // block border, row 2 = project header, row 3 = first
+    // selectable channel (broadcast, which is present because the
+    // peer just sent a broadcast message). Column 2 is inside the
+    // sidebar content area.
+    bpmux.mouse_click(3, 3);
     std::thread::sleep(Duration::from_millis(300));
 
-    // After the click, the view should have switched. Successful
-    // switch is visible because the channel name appears in the
-    // status bar as `[channel]` (see status_bar.rs:115).
-    let after = bpmux.tui();
+    // After click: status bar is [broadcast], NOT [all]. This
+    // assertion fails if the click wires to the wrong channel or
+    // doesn't wire at all.
     assert!(
-        after != sidebar_open,
-        "screen should change after click. before:\n{sidebar_open}\nafter:\n{after}"
+        bpmux.wait_for_tui("[broadcast]", Duration::from_secs(3)),
+        "status bar should switch to [broadcast] after click. screen:\n{}",
+        bpmux.tui()
+    );
+    assert!(
+        !bpmux.tui().contains("[all]"),
+        "status bar should no longer show [all] after click. screen:\n{}",
+        bpmux.tui()
     );
 }

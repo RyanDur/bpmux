@@ -98,16 +98,40 @@ fn board_groups_fixture_stories_by_state() {
 
     bpmux.type_line("/board");
     assert!(
-        bpmux.wait_for_tui("READY", Duration::from_secs(5))
-            || bpmux.wait_for_tui("DELIVERED", Duration::from_secs(2)),
-        "board should open"
+        bpmux.wait_for_tui("DELIVERED", Duration::from_secs(5)),
+        "board should open and render DELIVERED header. screen:\n{}",
+        bpmux.tui()
     );
 
+    // Both headers must be present — a `||` assertion would silently
+    // accept a half-rendered board and a regression that dropped one
+    // state group.
     let screen = bpmux.tui();
-
-    // Should show READY and DELIVERED headers (from fixture data)
     assert!(
-        screen.contains("READY") || screen.contains("DELIVERED"),
-        "board should show state headers. screen:\n{screen}"
+        screen.contains("READY") && screen.contains("DELIVERED"),
+        "board should show both state headers. screen:\n{screen}"
     );
+    // Position check: the fixture places #100 under READY and #101
+    // under DELIVERED; grouping is the behavior under test.
+    let lines: Vec<&str> = screen.lines().collect();
+    let ready = lines
+        .iter()
+        .position(|l| l.contains("READY"))
+        .expect("READY header missing");
+    let delivered = lines
+        .iter()
+        .position(|l| l.contains("DELIVERED"))
+        .expect("DELIVERED header missing");
+    let hundred = lines.iter().position(|l| l.contains("#100"));
+    let hundred_one = lines.iter().position(|l| l.contains("#101"));
+    if let (Some(a), Some(b)) = (hundred, hundred_one) {
+        assert!(
+            ready < a && a < delivered,
+            "#100 should live under READY. ready={ready}, a={a}, delivered={delivered}"
+        );
+        assert!(
+            delivered < b,
+            "#101 should live under DELIVERED. delivered={delivered}, b={b}"
+        );
+    }
 }

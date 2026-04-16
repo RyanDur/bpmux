@@ -29,7 +29,30 @@ fn status_bar_shows_peer_dot() {
 
     assert!(
         bpmux.wait_for_tui("test-peer", Duration::from_secs(3)),
-        "Status bar should show peer dot. Screen:\n{}",
+        "peer name should appear in status bar. Screen:\n{}",
         bpmux.tui()
+    );
+
+    // Restrict the check to the status bar region so a match of
+    // "test-peer" in the chat body (e.g., from a system "test-peer
+    // joined" message) can't satisfy the assertion. The status bar
+    // is the last line of the frame per ui.rs layout. The dot glyph
+    // is ACTIVE (U+25CF) from icons.rs and renders immediately
+    // before the peer name.
+    let screen = bpmux.tui();
+    let status_bar = screen.lines().last().unwrap_or("");
+    assert!(
+        status_bar.contains('\u{25CF}'),
+        "status bar should render the ACTIVE dot glyph. status bar: `{status_bar}`"
+    );
+    assert!(
+        status_bar.contains("test-peer"),
+        "peer name should be adjacent to the dot in the status bar. status bar: `{status_bar}`"
+    );
+    // Solo mode indicator must be gone — a peer is connected now.
+    assert!(
+        !status_bar.contains("solo"),
+        "status bar should no longer say `solo` after peer connects. \
+         status bar: `{status_bar}`"
     );
 }
