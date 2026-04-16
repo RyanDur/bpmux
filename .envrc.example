@@ -1,24 +1,17 @@
-# direnv config (#228).
+# direnv template for bpmux (#228).
 #
-# Auto-loads the env vars bpmux needs for octocrab-backed features:
+# First-time setup after clone:
+#   cp .envrc.example .envrc
+#   direnv allow .
+#
+# Auto-loads env vars bpmux needs for octocrab-backed features:
 # - the board poller (src/terminal/board_poller.rs)
 # - the story tracker (src/bridge/tracker.rs::OctocrabStoryTracker)
 #
-# Safe to commit: no secrets live here. `$(gh auth token)` is a
-# command reference — it evaluates against the user's local gh auth
-# store each time direnv loads. If gh isn't authenticated on your
-# machine, GH_TOKEN is empty and bpmux falls back to the gh CLI
-# story tracker (which does its own auth). Either path works.
-#
-# First-time setup after clone:
-#   direnv allow .
-#
-# Override locally without editing this file: create .envrc.local.
-# direnv sources it after this file, so later `export` wins.
+# `$(gh auth token)` is a command reference — it evaluates against
+# your local gh auth store each time direnv loads. If gh isn't
+# authenticated, GH_TOKEN is empty and bpmux falls back to the gh
+# CLI story tracker (which does its own auth). Either path works.
 
 export GH_TOKEN="$(gh auth token 2>/dev/null || true)"
 export BPMUX_REPO="RyanDur/bpmux"
-
-if [ -f .envrc.local ]; then
-    source_env .envrc.local
-fi

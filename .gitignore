@@ -20,7 +20,7 @@
 # Machine-specific MCP config (contains absolute paths)
 .mcp.json
 
-# direnv local overrides (#228) — keep personal tweaks out of git
+# direnv env vars (#228) — local, never committed
 .envrc
 
 # OS
