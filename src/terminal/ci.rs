@@ -100,7 +100,7 @@ pub(super) fn spawn_poller(tx: mpsc::Sender<CiState>, broadcast_session: Option<
                 let multi_depth = build_multi_depth_for_transition(&event, is_recovery);
                 let msg = Message {
                     from: "bpmux".to_string(),
-                    text,
+                    text: text.clone(),
                     ts: chrono::Utc::now(),
                     message_type: MessageType::Activity,
                     to: None,
@@ -111,6 +111,14 @@ pub(super) fn spawn_poller(tx: mpsc::Sender<CiState>, broadcast_session: Option<
                 };
                 if let Err(e) = session.broadcast(&msg) {
                     log_diag(&format!("ci: broadcast error: {e}"));
+                }
+                // #215: also fire a dev-addressed workflow signal so
+                // the dev agent sees CI transitions in their chat
+                // notifications without Ryan having to relay. Same
+                // pattern as deliver_story → designer signals.
+                let dev_signal = build_dev_ci_signal(&text);
+                if let Err(e) = session.broadcast(&dev_signal) {
+                    log_diag(&format!("ci: dev signal error: {e}"));
                 }
                 last_broadcast = Some(event.state);
             }
@@ -208,6 +216,25 @@ pub(super) fn build_multi_depth_for_transition(
         summary,
         role_default,
         deep,
+    }
+}
+
+/// Build the dev-addressed workflow signal for a CI transition (#215).
+/// Pure helper: takes the broadcast text computed by
+/// `compute_broadcast_text` and wraps it as a Chat message addressed
+/// to dev so the bridge pushes it into dev's notifications. Same
+/// addressing pattern as `deliver_story → designer` signals.
+pub(super) fn build_dev_ci_signal(text: &str) -> Message {
+    Message {
+        from: "bpmux".to_string(),
+        text: text.to_string(),
+        ts: chrono::Utc::now(),
+        message_type: MessageType::Chat,
+        to: Some(vec!["dev".to_string()]),
+        addressee: Some("dev".to_string()),
+        explicit_privacy: false,
+        multi_depth: None,
+        topic: None,
     }
 }
 

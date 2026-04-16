@@ -437,3 +437,42 @@ fn build_multi_depth_role_default_has_entries_for_all_three_roles() {
     assert!(payload.role_default.contains_key("designer"));
     assert!(payload.role_default.contains_key("dev"));
 }
+
+// ── #215: dev-addressed CI signal ──
+
+#[test]
+fn build_dev_ci_signal_addresses_dev_only() {
+    let signal = build_dev_ci_signal("CI failed — abc123");
+    assert_eq!(
+        signal.to.as_ref().unwrap(),
+        &vec!["dev".to_string()],
+        "signal should be scoped to dev (privacy filter)"
+    );
+    assert_eq!(
+        signal.addressee.as_deref(),
+        Some("dev"),
+        "signal should call dev's attention"
+    );
+}
+
+#[test]
+fn build_dev_ci_signal_uses_chat_message_type() {
+    // Chat (not Activity) so the bridge pushes it to dev's
+    // notifications. Activity messages are filtered out of agent
+    // chat streams per #152.
+    let signal = build_dev_ci_signal("anything");
+    assert_eq!(signal.message_type, crate::session::MessageType::Chat);
+}
+
+#[test]
+fn build_dev_ci_signal_preserves_text() {
+    let text = "🔴 CI failed — abc1234 \"feat: thing\" → gh run view 999";
+    let signal = build_dev_ci_signal(text);
+    assert_eq!(signal.text, text);
+}
+
+#[test]
+fn build_dev_ci_signal_from_is_bpmux() {
+    let signal = build_dev_ci_signal("any");
+    assert_eq!(signal.from, "bpmux");
+}
