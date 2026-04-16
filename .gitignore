@@ -27,3 +27,6 @@
 .DS_Store
 
 screen-shots
+
+# Transient gh issue dumps from scripts — not meant to be tracked
+issues.csv
