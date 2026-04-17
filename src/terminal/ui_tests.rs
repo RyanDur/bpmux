@@ -1124,6 +1124,61 @@ fn dora_partial_fields_render_dash_for_none() {
     );
 }
 
+// ── #219 re-work: board-zone section visibility ──────────────
+//
+// Every section surfaces its top 5 stories — Accepted + Icebox
+// previously collapsed to count-only, which hid Ryan's recent
+// accepts behind a click-to-expand affordance that didn't exist.
+
+fn story(number: u64, state: super::board::StoryState, title: &str) -> super::board::BoardStory {
+    super::board::BoardStory {
+        number,
+        title: title.to_string(),
+        state,
+        body: String::new(),
+        assignees: Vec::new(),
+        created: "2026-04-01".to_string(),
+        reason: String::new(),
+        labels: Vec::new(),
+    }
+}
+
+#[test]
+fn accepted_section_renders_top_stories_not_just_count() {
+    let mut app = project_panel_app(Some(dora_fixture()), false);
+    app.board.stories = vec![
+        story(270, super::board::StoryState::Accepted, "newer accept"),
+        story(200, super::board::StoryState::Accepted, "older accept"),
+        story(150, super::board::StoryState::Accepted, "oldest accept"),
+    ];
+    let screen = render_panel_screen(&mut app);
+    assert!(
+        screen.contains("newer accept"),
+        "accepted stories must appear, not just count. got:\n{screen}"
+    );
+}
+
+#[test]
+fn accepted_section_sorts_newest_first() {
+    // Issue numbers are monotonic, so highest-number = most-recent
+    // accept. Gives Ryan "I just accepted these" feedback without a
+    // dedicated timestamp sort.
+    let mut app = project_panel_app(Some(dora_fixture()), false);
+    app.board.stories = vec![
+        story(100, super::board::StoryState::Accepted, "old"),
+        story(268, super::board::StoryState::Accepted, "recent"),
+        story(200, super::board::StoryState::Accepted, "middle"),
+    ];
+    let screen = render_panel_screen(&mut app);
+    let recent_line = screen.lines().position(|l| l.contains("#268")).unwrap();
+    let middle_line = screen.lines().position(|l| l.contains("#200")).unwrap();
+    let old_line = screen.lines().position(|l| l.contains("#100")).unwrap();
+    assert!(
+        recent_line < middle_line && middle_line < old_line,
+        "accepted should sort by number DESC (recent first). got:\n{screen}"
+    );
+}
+
 #[test]
 fn auth_missing_banner_has_three_lines() {
     let mut app = project_panel_app(Some(dora_fixture()), true);

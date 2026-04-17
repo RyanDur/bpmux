@@ -227,18 +227,22 @@ fn append_board_zone(
             StoryState::Delivered => DRACULA_YELLOW,
             _ => DRACULA_COMMENT,
         };
+        // Every section (including Accepted + Icebox) surfaces its
+        // top 5 stories so recent accepts stay visible without a
+        // click-to-expand affordance (#219 rework defect 2). Accepted
+        // stories are ordered by priority within the section but get
+        // re-sorted here to newest-number-first so recent accepts
+        // surface to the top; number is a good proxy for recency
+        // since issue numbers are monotonic.
+        let mut display: Vec<&crate::terminal::board::BoardStory> = group_stories.clone();
         if matches!(state, StoryState::Accepted | StoryState::Icebox) {
-            lines.push(Line::from(Span::styled(
-                format!("  {} ({})", state.label(), group_stories.len()),
-                Style::default().fg(DRACULA_COMMENT),
-            )));
-            continue;
+            display.sort_by_key(|s| std::cmp::Reverse(s.number));
         }
         lines.push(Line::from(Span::styled(
             format!("  {} ({})", state.label(), group_stories.len()),
             Style::default().fg(color).add_modifier(Modifier::BOLD),
         )));
-        for story in group_stories.iter().take(5) {
+        for story in display.iter().take(5) {
             lines.push(Line::from(Span::styled(
                 format!("    {}", story.short_name(width.saturating_sub(6) as usize)),
                 Style::default().fg(DRACULA_FG),

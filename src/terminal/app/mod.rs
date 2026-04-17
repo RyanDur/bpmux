@@ -212,22 +212,51 @@ impl App {
         }
     }
 
-    /// Defensive fetch on project-view open (#219). If the snapshot
-    /// has never returned data, signal the poller to fetch now
-    /// instead of waiting for the next cadence tick — "initializing..."
-    /// stops meaning "poller is silent for 60s" and starts meaning
-    /// "actual fetch in flight." No-op when a fetch has already
-    /// succeeded or a fetch is already in flight.
-    pub fn request_board_refresh_if_stale(&self) {
-        let Some(tx) = &self.board_poller_tx else {
-            return;
-        };
-        let needs_refresh = match self.board_snapshot.lock() {
-            Ok(snap) => snap.last_updated.is_none() && snap.last_error.is_none(),
-            Err(_) => return,
-        };
-        if needs_refresh {
+    /// Defensive fetch on project-view open (#219 re-work). Two
+    /// parallel data sources for the panel:
+    /// - `board.stories`: gh-CLI shell-out, always-available fallback,
+    ///   populated by `/board` and on view-open when empty.
+    /// - `board_snapshot`: octocrab poller, needs `BPMUX_REPO` +
+    ///   `GH_TOKEN`. When present, drives the ambient refresh cadence.
+    ///
+    /// Before the re-work, only the poller was nudged on open. If
+    /// the env wasn't set (Ryan's case), the poller never spawned,
+    /// `request_board_refresh` was a no-op, and the panel rendered
+    /// empty until `/board` was typed. Now the gh-CLI path is always
+    /// primed on open — matches `/board`'s behavior without requiring
+    /// the user to type it.
+    pub fn request_board_refresh_if_stale(&mut self) {
+        // Kick the poller when it's idle (poller handles its own
+        // debounce; try_send ignores full channel).
+        if let Some(tx) = &self.board_poller_tx
+            && let Ok(snap) = self.board_snapshot.lock()
+            && snap.last_updated.is_none()
+            && snap.last_error.is_none()
+        {
             let _ = tx.try_send(super::board_poller::PollerCommand::RefreshNow);
+        }
+        // Always populate `board.stories` via the gh-CLI fallback so
+        // the panel has data immediately, regardless of poller state
+        // or env configuration. Silent failure matches the existing
+        // `handle_board` pattern — panel renders whatever's present.
+        if self.board.stories.is_empty()
+            && let Ok(stories) = super::board::fetch_board_stories()
+        {
+            // Mirror into the snapshot so downstream readers (velocity
+            // zone's is_feature lookup, #219 rework defect 3) see the
+            // stories too — velocity was counting zero deliveries
+            // because its is_feature check was reading the empty
+            // snapshot rather than board.stories.
+            if let Ok(mut snap) = self.board_snapshot.lock() {
+                snap.stories = stories.clone();
+                if snap.last_updated.is_none() {
+                    // Stamp the snapshot so the panel footer shows a
+                    // real freshness timestamp instead of the
+                    // "loading..." stuck state (#219 rework defect 4).
+                    snap.last_updated = Some(chrono::Utc::now());
+                }
+            }
+            self.board.stories = stories;
         }
     }
 
