@@ -1,11 +1,14 @@
 //! End-to-end tests for the channel-view filter driven via sidebar
 //! clicks (#238). Restores acceptance coverage that was lost when
 //! #231 deleted `/view`:
-//!   - story54_acceptance_test.rs (whole file) — generic /view
-//!     behavior
-//!   - story79_acceptance_test.rs (all four channel-filter ACs)
 //!   - story55 ac3 (opt-in broadcast filter)
 //!   - story71 ac4 (sidebar-driven view + unread badge)
+//!
+//! Under #224 v2 the direct-peer rows no longer switch the chat
+//! view — they toggle focus. Ryan's direction: scoped 1:1 happens
+//! via groups/threads, not DM-peer view filters. The former peer-
+//! row view-switch tests (story79 ACs) were intentionally retired
+//! with the feature.
 //!
 //! Filter logic itself is still unit-tested in
 //! `src/terminal/ui_tests.rs` against `message_matches_channel`.
@@ -26,57 +29,19 @@ use harness::pty::TestBpmux;
 use std::time::Duration;
 
 /// Open the sidebar and keyboard-navigate to `name`, then press
-/// Enter. `under_section` is true for channels that live under a
-/// section header (direct / groups / system) — under #224, direct-
-/// peer rows need a mouse click on the trailing chevron to switch
-/// view (keyboard Enter + name-click toggle focus, not view). Non-
-/// section rows (broadcast, self) still activate via Enter.
-fn switch_to_channel_via_sidebar(bpmux: &TestBpmux, name: &str, under_section: bool) {
+/// Enter. Only usable for non-peer rows (broadcast, self) — peer
+/// rows toggle focus rather than switch view under #224 v2.
+fn switch_to_channel_via_sidebar(bpmux: &TestBpmux, name: &str) {
     bpmux.type_ctrl('b');
     assert!(
         bpmux.wait_for_tui("channels", Duration::from_secs(5)),
         "sidebar should open. screen:\n{}",
         bpmux.tui()
     );
-    if under_section {
-        click_peer_chevron(bpmux, name);
-    } else {
-        bpmux.type_chars(name);
-        std::thread::sleep(Duration::from_millis(150));
-        bpmux.type_chars("\r");
-    }
+    bpmux.type_chars(name);
+    std::thread::sleep(Duration::from_millis(150));
+    bpmux.type_chars("\r");
     std::thread::sleep(Duration::from_millis(300));
-}
-
-/// Click the trailing chevron on a direct-peer sidebar row (#224).
-/// Scans the current TUI output for the row containing `name`,
-/// then posts an SGR mouse click at the rightmost column of the
-/// sidebar area on that row. Preserves the view-switch path that
-/// was previously reachable via keyboard Enter.
-fn click_peer_chevron(bpmux: &TestBpmux, name: &str) {
-    // Re-render with an empty filter so the peer row is visible.
-    // (The test harness doesn't provide a direct "get sidebar layout"
-    // accessor, so we scrape the screen for the row index and the
-    // sidebar's visible width.)
-    let screen = bpmux.tui();
-    let lines: Vec<&str> = screen.lines().collect();
-    let (row, sidebar_cols) = lines
-        .iter()
-        .enumerate()
-        .find_map(|(i, line)| {
-            // Sidebar rows are prefixed with `│` (the left border) and
-            // the row we want contains the peer name plus the chevron
-            // `›` (direct-peer marker — section headers don't carry it).
-            if !line.starts_with('│') || !line.contains(name) || !line.contains('›') {
-                return None;
-            }
-            // Chevron column = position of `›` in chars, 1-based for
-            // SGR mouse protocol.
-            let chevron_col = line.chars().position(|c| c == '›')? as u16 + 1;
-            Some((i as u16 + 1, chevron_col))
-        })
-        .unwrap_or_else(|| panic!("peer row for {name} not found in sidebar. screen:\n{screen}"));
-    bpmux.mouse_click(sidebar_cols, row);
 }
 
 /// Verify broadcast view opt-in via sidebar filter + Enter. Replaces
@@ -108,7 +73,7 @@ fn clicking_broadcast_in_sidebar_filters_dms_out() {
     // Keep `dev` alive during the remaining assertions; drop at end.
     let _ = &mut dev;
 
-    switch_to_channel_via_sidebar(&bpmux, "broadcast", false);
+    switch_to_channel_via_sidebar(&bpmux, "broadcast");
 
     // After switching to broadcast: public message stays, DM hides.
     assert!(
@@ -125,118 +90,7 @@ fn clicking_broadcast_in_sidebar_filters_dms_out() {
     );
 }
 
-/// Dev channel view shows DMs between owner and dev but excludes
-/// broadcasts. Replaces story79 ac1.
-#[test]
-fn clicking_dev_channel_shows_owner_dev_dms_not_broadcasts() {
-    let bpmux = TestBpmux::start_named("ryan");
-    let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
-    // Keep the WsPeer alive while we assert + switch views —
-    // dropping at end of block_on closes the socket and can lose
-    // the last send in the close handshake on slow machines.
-    let mut dev = rt.block_on(async {
-        let mut dev = WsPeer::connect(&bpmux, "dev").await;
-        dev.send("broadcast from dev").await;
-        dev.send_to("dm from dev", &["ryan"]).await;
-        dev
-    });
-    assert!(
-        bpmux.wait_for_tui("dm from dev", Duration::from_secs(10)),
-        "DM should arrive before we switch views. screen:\n{}",
-        bpmux.tui()
-    );
-
-    switch_to_channel_via_sidebar(&bpmux, "dev", true);
-    let _ = &mut dev;
-
-    let screen = bpmux.tui();
-    assert!(
-        screen.contains("dm from dev"),
-        "DM from dev should appear in dev channel view. screen:\n{screen}"
-    );
-    // The cross-view broadcast banner at the top of the frame always
-    // shows the latest broadcast with a "[broadcast]" prefix — that
-    // line stays regardless of channel view, by design (#91). What
-    // should NOT render is the broadcast inside the main chat block.
-    let chat_only: String = screen
-        .lines()
-        .filter(|l| !l.contains("[broadcast]"))
-        .collect::<Vec<_>>()
-        .join("\n");
-    assert!(
-        !chat_only.contains("broadcast from dev"),
-        "broadcast should not appear in the chat area of dev view. chat:\n{chat_only}"
-    );
-}
-
-/// Dev channel view excludes conversations between other agents.
-/// Replaces story79 ac2.
-#[test]
-fn clicking_dev_channel_excludes_other_agents_dms() {
-    let bpmux = TestBpmux::start_named("ryan");
-    let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
-    // Keep peers alive across the view switch — see comment in
-    // clicking_broadcast_in_sidebar_filters_dms_out for why dropping
-    // immediately loses the last in-flight send on slow machines.
-    let (mut dev, mut pm) = rt.block_on(async {
-        let mut dev = WsPeer::connect(&bpmux, "dev").await;
-        let mut pm = WsPeer::connect(&bpmux, "pm").await;
-        dev.send_to("dev says hi", &["ryan"]).await;
-        dev.send_to("dev to pm private", &["pm"]).await;
-        pm.send_to("pm to dev reply", &["dev"]).await;
-        (dev, pm)
-    });
-    // "dev says hi" is the only message addressed to ryan — once it
-    // lands, the other two (between dev and pm) must also have been
-    // processed server-side by ordering, so it's safe to proceed.
-    assert!(
-        bpmux.wait_for_tui("dev says hi", Duration::from_secs(10)),
-        "owner↔dev DM should arrive before we switch views. screen:\n{}",
-        bpmux.tui()
-    );
-
-    switch_to_channel_via_sidebar(&bpmux, "dev", true);
-    let _ = (&mut dev, &mut pm);
-
-    let screen = bpmux.tui();
-    assert!(
-        screen.contains("dev says hi"),
-        "owner↔dev DM should appear. screen:\n{screen}"
-    );
-    assert!(
-        !screen.contains("dev to pm"),
-        "dev↔pm chatter should not appear. screen:\n{screen}"
-    );
-    assert!(
-        !screen.contains("pm to dev"),
-        "pm↔dev chatter should not appear. screen:\n{screen}"
-    );
-}
-
-/// Owner's typed message appears in the current channel view.
-/// Replaces story79 ac3.
-#[test]
-fn owner_message_appears_in_selected_channel_view() {
-    let bpmux = TestBpmux::start_named("ryan");
-    let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
-    let mut dev = rt.block_on(async {
-        let mut dev = WsPeer::connect(&bpmux, "dev").await;
-        dev.send_to("ping from dev", &["ryan"]).await;
-        dev
-    });
-    assert!(
-        bpmux.wait_for_tui("ping from dev", Duration::from_secs(10)),
-        "DM should arrive before we switch views. screen:\n{}",
-        bpmux.tui()
-    );
-
-    switch_to_channel_via_sidebar(&bpmux, "dev", true);
-    bpmux.type_line("owner reply in dev view");
-    let _ = &mut dev;
-
-    assert!(
-        bpmux.wait_for_tui("owner reply in dev view", Duration::from_secs(5)),
-        "owner's own message should render in the channel view. screen:\n{}",
-        bpmux.tui()
-    );
-}
+// story79's DM-peer view-switch ACs retired under #224 v2 — peer
+// rows now toggle focus, not view. Focus-toggle is unit-tested in
+// src/terminal/app_tests.rs; the broadcast-row click above still
+// exercises the sidebar → view-switch wiring end-to-end.
