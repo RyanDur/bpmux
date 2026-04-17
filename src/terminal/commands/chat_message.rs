@@ -33,12 +33,18 @@ impl App {
                 Some(recipients)
             }
         });
+        // When Ryan is viewing a thread (#268), his own typed messages
+        // must carry that thread_id so the thread filter includes them
+        // — otherwise "i can't see what i'm saying" because the filter
+        // skips thread-less messages in thread view.
+        let thread_id = self.threads.current.clone();
         let msg = Message {
             from: self.from_identity(),
             text,
             ts: Utc::now(),
             to,
             addressee,
+            thread_id,
             ..Message::default()
         };
         self.push_message(msg.clone());

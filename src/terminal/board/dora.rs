@@ -49,7 +49,7 @@ pub(in crate::terminal) fn fetch_dora_metrics() -> Option<DoraMetrics> {
         "--limit",
         "200",
         "--json",
-        "state,labels,createdAt,closedAt",
+        "state,labels,title,createdAt,closedAt",
     ]);
     if let Ok(repo) = std::env::var("BPMUX_REPO") {
         cmd.args(["-R", &repo]);

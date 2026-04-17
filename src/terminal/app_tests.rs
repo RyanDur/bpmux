@@ -61,6 +61,55 @@ fn submits_message_and_clears_input() {
     assert_eq!(app.msg.messages.len(), 1);
 }
 
+// ── #268 re-work: thread-tagged submit ──────────────────────
+//
+// When the viewer is in a thread, typed messages MUST carry the
+// thread_id — otherwise the thread-scope filter skips them and the
+// user's own input "disappears" from their view (Ryan's
+// live-acceptance experience at the feature's first use).
+
+#[test]
+fn submit_in_thread_tags_message_with_thread_id() {
+    let mut app = test_app();
+    app.threads.current = Some("cheese-123".to_string());
+    app.editor.input = "what about brie".to_string();
+    let msg = app.submit_message().expect("message");
+    assert_eq!(
+        msg.thread_id.as_deref(),
+        Some("cheese-123"),
+        "submit in thread must tag the outgoing message"
+    );
+}
+
+#[test]
+fn submit_without_thread_leaves_thread_id_none() {
+    let mut app = test_app();
+    assert!(app.threads.current.is_none());
+    app.editor.input = "broadcast hello".to_string();
+    let msg = app.submit_message().expect("message");
+    assert!(
+        msg.thread_id.is_none(),
+        "submit outside a thread must not tag"
+    );
+}
+
+#[test]
+fn submit_in_thread_renders_in_thread_view() {
+    // End-to-end regression for "i can't see what i'm saying": with
+    // thread_id tagged on the outgoing message, the filter pipeline
+    // must include it in the thread's rendered index.
+    let mut app = test_app();
+    app.threads.current = Some("cheese-123".to_string());
+    app.editor.input = "mine should render".to_string();
+    app.submit_message();
+    app.rebuild_filtered_if_dirty();
+    assert_eq!(
+        app.msg.filtered_indices.len(),
+        1,
+        "own thread message must appear in the thread view"
+    );
+}
+
 #[test]
 fn ignores_empty_input() {
     let mut app = test_app();

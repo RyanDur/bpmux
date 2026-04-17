@@ -105,6 +105,18 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         } else {
             " board view".to_string()
         }
+    } else if let Some(tid) = app.threads.current.as_deref() {
+        // Inside a thread (#268 re-work): the scope label replaces
+        // [all]/[broadcast] rather than rendering alongside them.
+        // Dual-display ("[all] ... thread: name") was confusing in
+        // live acceptance — users couldn't tell which scope applied.
+        let name = app
+            .threads
+            .known
+            .get(tid)
+            .map(|t| t.name.as_str())
+            .unwrap_or(tid);
+        format!(" [thread: {name}]")
     } else {
         match &app.channels.current_view {
             None => " [all]".to_string(),
@@ -196,26 +208,16 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
             Style::default().fg(DRACULA_YELLOW),
         ));
     }
-    // Thread peripheral indicator (#268): when the viewer is inside
-    // a thread, show the active thread name + count of broadcast
-    // messages arriving while away. Keeps cross-thread awareness
-    // without breaking scope.
-    if let Some(tid) = app.threads.current.as_deref() {
-        let name = app
-            .threads
-            .known
-            .get(tid)
-            .map(|t| t.name.as_str())
-            .unwrap_or(tid);
-        status_spans.push(Span::raw(" | "));
-        status_spans.push(Span::styled(
-            format!("thread: {name}"),
-            Style::default().fg(DRACULA_CYAN),
-        ));
+    // Broadcast-unread indicator while threaded (#268): the thread
+    // name itself is rendered in `view_label` above (replacing the
+    // [all] scope label), so here we only surface the peripheral
+    // unread count for cross-thread awareness.
+    if app.threads.current.is_some() {
         let pending = app.threads.broadcast_unread_while_threaded;
         if pending > 0 {
+            status_spans.push(Span::raw(" | "));
             status_spans.push(Span::styled(
-                format!(" ({pending} broadcast unread)"),
+                format!("{pending} broadcast unread"),
                 Style::default().fg(DRACULA_YELLOW),
             ));
         }

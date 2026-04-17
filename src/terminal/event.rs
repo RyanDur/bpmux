@@ -483,7 +483,7 @@ fn handle_broadcast_message(msg: session::Message, app: &mut App) {
             id.clone(),
             super::app::Thread {
                 id: id.clone(),
-                name,
+                name: name.clone(),
                 participants,
             },
         );
@@ -491,6 +491,20 @@ fn handle_broadcast_message(msg: session::Message, app: &mut App) {
             app.threads.current = Some(id);
             app.threads.broadcast_unread_while_threaded = 0;
             app.mark_filters_dirty();
+            // Scope-entry cue (#268 re-work): emit a thread-tagged
+            // system message so the viewer sees a clear transition
+            // into the thread — without this, the view silently
+            // re-scopes and earlier messages "disappear" with no
+            // indication of why.
+            let entry_marker = session::Message {
+                from: "bpmux".to_string(),
+                text: format!("— entered thread: {name} —"),
+                ts: chrono::Utc::now(),
+                message_type: crate::session::MessageType::System,
+                thread_id: app.threads.current.clone(),
+                ..session::Message::default()
+            };
+            app.receive_message(entry_marker);
         }
         return;
     }
