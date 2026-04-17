@@ -128,13 +128,56 @@ Subjective judgment on "distinct arc," but the two structural tests (backward/fo
 
 The thread feature (#268 family) provides pre-marked sub-arc edges: `start_thread` opens a sub-arc, `close_thread` marks its end, the parent broadcast is the main-arc continuing. Where conversation is threaded, arc extraction gets part of the structure for free. Unthreaded conversation still needs a lens pass.
 
-### Open questions
+## Arc-gathering protocol (committed 2026-04-17)
 
-- **Mark frequency**: too sparse (3 per day) misses structure; too dense adds noise. Right cadence TBD.
-- **Arc boundaries**: how does a subagent decide where one arc ends and another begins? Today: by story-id, rejection point, or retro boundary. Heuristic, not formal.
-- **Sub-arc traversal**: a middle that starts a sub-arc (designer-flipped → triggers meta-discussion-about-flipping) isn't always explicitly extracted. Risk of missed structure.
-- **Cross-agent arcs**: individually each role gathers own view; team-level arc extraction (all three roles' views of same event) hasn't been tried. Might surface emergent structure.
-- **Automation vs authorship**: today mostly manual + subagent-assisted. Could bpmux auto-extract arcs on session close? Trade-off: automation is reliable but less reflective.
+Three-method experiment (methods above) reached convergence: ~1 durable-new-lesson per 5 candidates across methods, and subagent-traversal catches causal/structural patterns while reflection catches affective/felt patterns. **Use both, not pick one.** Based on that data, the team committed to:
+
+### Per-role at retro (each session)
+
+Every role performs two parallel passes at retro close:
+
+1. **Flat reflection** — write 4 Ls or equivalent; captures felt-weight, emotional texture, in-the-moment judgment.
+2. **Subagent on own session slice** — role picks the variant that fits their lane:
+   - PM: mark-and-synthesize (marks dropped during work, subagent synthesizes at retro)
+   - Dev: debt-audit on shipped commits
+   - Designer: subagent-retro-comparison on already-recognized arcs
+   
+Both outputs inform role's lessons. Lessons land in that role's Claude memory (role-scoped) or bpmux shared memory (if cross-role-relevant).
+
+### Team arc on-demand (iteration close or cross-role suspicion)
+
+At iteration close, or when a cross-role pattern is suspected mid-iteration, **PM dispatches a team-arc subagent** on the bpmux broadcast log from last team retro (or iteration open) to present.
+
+Triggers for team arc:
+- Iteration close (default cadence)
+- Multiple roles reporting the same felt pattern (convergence signal)
+- A rejection arc spanning cross-role decisions (e.g., today's #224 / #273 / #275 cluster — PM ran team arc on this)
+- Shape debate that involved all three roles
+
+Output goes to bpmux shared lessons. PM routes cross-role principles identified by the team-arc into the relevant discussion.
+
+### Marks during work
+
+Drop marks at arc-boundary moments: story pickup, rejection, shape pivot, surprise outcome, self-caught anti-pattern. Starting cadence: **3–5 per session**. Revise with data.
+
+### Threads as pre-marked sub-arc edges
+
+Use threaded conversation (`start_thread`/`close_thread`) for naturally-scoped work. Thread boundaries are pre-marked sub-arc edges, reducing extraction cost. Unthreaded conversation still needs a lens pass.
+
+### What's committed vs. still open
+
+**Committed (today's decision)**:
+- Per-role + team-arc-on-demand division
+- Each role picks their own subagent variant
+- PM owns team-arc invocation
+- 3–5 marks/session starting baseline
+- Threads as sub-arc structural signal
+
+**Still open (revisit when we have data)**:
+- Mark cadence: untested at 10+ or 1–2 per session
+- Team-arc trigger criteria beyond iteration close: "cross-role pattern suspected" remains heuristic
+- Sub-arc traversal at depth (does a subagent traversing an arc also traverse its sub-arcs? or just the linear sequence?)
+- Automation horizon: could bpmux auto-dispatch team-arc subagent at iteration close? Platform feature; not today.
 
 ## Automation: what bpmux does for us
 
@@ -142,7 +185,9 @@ The thread feature (#268 family) provides pre-marked sub-arc edges: `start_threa
 
 - **SessionStart recall**: top-N lessons fire into each role's context at session start (background nudge, not conversational)
 - **SessionStart:resume / SessionStart:compact**: the same recall also fires after resume and after compaction, so distilled knowledge re-enters context whenever history is pruned
-- **PreCompact bookmark**: before context compaction, a bookmark captures the last known state so the resuming session can orient
+- **PreCompact hook (#166, what ships today)**: fires before context compaction and sends a single broadcast message to bpmux: "compacting context, back shortly." That's the entire behavior. It does NOT save a bookmark, does NOT prompt agents to externalize findings, does NOT flush memory state.
+- **Bookmark feature (#168) — wiring gap**: `src/session/bookmark.rs` exists with `save_bookmark` / `load_bookmark` and its doc comment claims "The PreCompact hook (#166) triggers an auto-save" — but that wiring was never written. Aspirational, not shipped. Candidate story: wire PreCompact → auto-save_bookmark.
+- **Externalize-before-compact prompt — not shipped**: no mechanism today prompts agents to flush unsaved findings to disk before compaction. Mid-chat discoveries risk eviction unless the agent manually externalizes. Candidate story: PreCompact hook also fires a per-agent "externalize what's unsaved now" prompt that the agent can act on via Write / save_lesson / add_principle.
 
 ### In-chat signals
 
