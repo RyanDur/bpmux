@@ -6,9 +6,7 @@
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 #[test]
 fn messages_persist_across_session_resumes() {
-    use bpmux::session::{
-        Message, append_message, read_messages, resume_or_create_session,
-    };
+    use bpmux::session::{Message, append_message, read_messages, resume_or_create_session};
     use chrono::Utc;
     use tempfile::TempDir;
 

@@ -68,7 +68,10 @@ impl std::fmt::Display for IdentityError {
                 write!(f, "principle not found in value '{value}': {principle}")
             }
             Self::PrincipleAlreadyExists { value, principle } => {
-                write!(f, "principle already exists in value '{value}': {principle}")
+                write!(
+                    f,
+                    "principle already exists in value '{value}': {principle}"
+                )
             }
         }
     }
@@ -231,11 +234,7 @@ mod tests {
                     "code does what it claims",
                     &["red test first", "verify before claiming"],
                 ),
-                value(
-                    "honesty",
-                    "say what's true",
-                    &["stay in dev lane"],
-                ),
+                value("honesty", "say what's true", &["stay in dev lane"]),
             ],
         };
         save_identity(dir.path(), "dev", &index).unwrap();
@@ -301,8 +300,7 @@ mod tests {
         let mut idx = IdentityIndex {
             values: vec![value("correctness", "", &["red test first"])],
         };
-        let err =
-            add_principle(&mut idx, "correctness", "red test first").unwrap_err();
+        let err = add_principle(&mut idx, "correctness", "red test first").unwrap_err();
         assert!(matches!(err, IdentityError::PrincipleAlreadyExists { .. }));
     }
 

@@ -8,8 +8,7 @@ use ratatui::{
 
 use super::app::App;
 use super::theme::{
-    DRACULA_BG, DRACULA_COMMENT, DRACULA_CYAN, DRACULA_FG, DRACULA_PURPLE,
-    DRACULA_SELECTION,
+    DRACULA_BG, DRACULA_COMMENT, DRACULA_CYAN, DRACULA_FG, DRACULA_PURPLE, DRACULA_SELECTION,
 };
 
 // Section prefixes use centralized glyphs from icons.rs

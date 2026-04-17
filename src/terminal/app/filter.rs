@@ -63,9 +63,7 @@ pub(super) fn classify(ctx: &FilterContext, m: &Message) -> FilterVerdict {
     if !in_channel(ctx, m) {
         return FilterVerdict::Skip;
     }
-    if !ctx.show_all_classes
-        && crate::terminal::chat::should_hide_by_class(m, ctx.identity_name)
-    {
+    if !ctx.show_all_classes && crate::terminal::chat::should_hide_by_class(m, ctx.identity_name) {
         return FilterVerdict::Hidden;
     }
     if !crate::terminal::commands::focus::in_focus(m, ctx.focused_roles, ctx.identity_name) {
@@ -80,7 +78,9 @@ fn in_channel(ctx: &FilterContext, m: &Message) -> bool {
     match ctx.current_view {
         None => true,
         Some("broadcast") => channel_name(m, ctx.identity_name) == "broadcast",
-        Some(view) => crate::terminal::markdown::message_matches_channel(m, view, ctx.identity_name),
+        Some(view) => {
+            crate::terminal::markdown::message_matches_channel(m, view, ctx.identity_name)
+        }
     }
 }
 

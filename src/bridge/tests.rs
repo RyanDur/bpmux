@@ -127,13 +127,7 @@ fn build_meta_never_contains_null_values() {
 
 #[test]
 fn validate_meta_accepts_payload_with_no_nulls() {
-    let meta = build_notification_meta(
-        "ryan",
-        "t",
-        "broadcast",
-        Some("dev"),
-        Some("chat"),
-    );
+    let meta = build_notification_meta("ryan", "t", "broadcast", Some("dev"), Some("chat"));
     assert!(validate_meta(&meta).is_ok());
 }
 

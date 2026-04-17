@@ -263,7 +263,10 @@ fn is_feature_verdict_supports_legacy_prefixes_during_migration() {
     // Pre-#264 prefixes still parse correctly so backfill can run
     // without racing the filter update.
     assert!(is_feature_verdict(&[], "[vertical] a feature"));
-    assert!(is_feature_verdict(&[], "[stranded-vertical] close path broken"));
+    assert!(is_feature_verdict(
+        &[],
+        "[stranded-vertical] close path broken"
+    ));
     assert!(!is_feature_verdict(&[], "[honest-plumbing] debt fix"));
     assert!(!is_feature_verdict(&[], "[half-slice] partial shape"));
 }
@@ -274,7 +277,10 @@ fn is_feature_verdict_defaults_to_feature_for_untagged() {
     // Default-to-Feature: un-tagged stories don't silently drop from
     // velocity. Better to overcount slightly than undercount silently.
     assert!(is_feature_verdict(&[], ""));
-    assert!(is_feature_verdict(&["ready".to_string()], "Unlabeled story"));
+    assert!(is_feature_verdict(
+        &["ready".to_string()],
+        "Unlabeled story"
+    ));
 }
 
 #[test]

@@ -427,7 +427,12 @@ async fn accept_rejects_unknown_role_via_handler() {
 #[tokio::test]
 async fn reject_allows_pm_designer_dev_owner() {
     let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
-    for caller in ["ryan:human", "pm:claude-code", "designer:claude-code", "dev:claude-code"] {
+    for caller in [
+        "ryan:human",
+        "pm:claude-code",
+        "designer:claude-code",
+        "dev:claude-code",
+    ] {
         let args = serde_json::json!({"number": 1, "reason": "needs rework"});
         let result = handle_reject_story(
             args.as_object().unwrap(),

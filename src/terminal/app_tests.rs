@@ -1142,7 +1142,10 @@ fn join_without_args_shows_usage() {
     app.editor.cursor_pos = app.editor.input.len();
     let msg = app.submit_message();
     assert!(msg.is_none());
-    assert!(app.lifecycle.p2p_command.is_none(), "no command without args");
+    assert!(
+        app.lifecycle.p2p_command.is_none(),
+        "no command without args"
+    );
     let last = app.msg.messages.last().unwrap();
     assert!(last.text.contains("/"));
 }

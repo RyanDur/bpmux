@@ -44,7 +44,9 @@ pub(super) fn handle_system(
 ) {
     if let Some(peer) = text.strip_suffix(" joined") {
         let short = short_peer_name(peer).to_string();
-        peers.activity.insert(short.clone(), ("available".into(), Instant::now()));
+        peers
+            .activity
+            .insert(short.clone(), ("available".into(), Instant::now()));
         channels.active.insert(short);
         rebuild_channels(channels, msg_state, peers, &identity.name);
     } else if let Some(peer) = text.strip_suffix(" left") {

@@ -322,7 +322,12 @@ impl App {
         if !self.editor.input.starts_with('/') || self.editor.input.contains(' ') {
             return vec![];
         }
-        let typed = self.editor.input.split_whitespace().next().unwrap_or(&self.editor.input);
+        let typed = self
+            .editor
+            .input
+            .split_whitespace()
+            .next()
+            .unwrap_or(&self.editor.input);
         SLASH_COMMANDS
             .iter()
             .filter(|c| c.name.starts_with(typed))

@@ -20,10 +20,7 @@ fn broadcast_delivered_to_everyone() {
         &msg("dev:claude-code", None),
         "pm:claude-code",
     ));
-    assert!(should_deliver(
-        &msg("dev:claude-code", None),
-        "ryan:human",
-    ));
+    assert!(should_deliver(&msg("dev:claude-code", None), "ryan:human",));
 }
 
 #[test]

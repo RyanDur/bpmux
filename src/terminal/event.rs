@@ -430,9 +430,7 @@ pub(super) const THREAD_CREATE_MARKER_PREFIX: &str = "__BPMUX_THREAD_CREATE__|";
 
 /// Parse a thread-create marker payload. Returns `(id, name, participants)`
 /// on success. Pure function — tested against real marker text.
-pub(super) fn parse_thread_create(
-    text: &str,
-) -> Option<(String, String, Vec<String>)> {
+pub(super) fn parse_thread_create(text: &str) -> Option<(String, String, Vec<String>)> {
     let rest = text.strip_prefix(THREAD_CREATE_MARKER_PREFIX)?;
     let mut parts = rest.splitn(3, '|');
     let id = parts.next()?.to_string();
@@ -464,9 +462,7 @@ fn handle_broadcast_message(msg: session::Message, app: &mut App) {
     // velocity already lives (#227). No fetch — the board_poller
     // snapshot and in-memory message log supply the data the zone
     // renders from.
-    if msg.message_type == crate::session::MessageType::System
-        && msg.text == VIEW_VELOCITY_MARKER
-    {
+    if msg.message_type == crate::session::MessageType::System && msg.text == VIEW_VELOCITY_MARKER {
         app.handle_velocity();
         return;
     }
