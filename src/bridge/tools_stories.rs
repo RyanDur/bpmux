@@ -319,14 +319,15 @@ pub(super) async fn handle_pass_desk_check(
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
-    // Pick signal recipients based on story category. Infrastructure
-    // (honest-plumbing / half-slice) → PM alone (team-accept lane).
-    // Feature (vertical / ambiguous) → Ryan AND PM (#259 — Ryan is
-    // the acceptor, PM is the presenter; PM needs a direct signal so
+    // Pick signal recipients based on story type (Feature/Bug/Chore
+    // per the 3-type vocabulary, #264). Chore + Bug → PM alone
+    // (team-accept lane). Feature → Ryan AND PM (#259 — Ryan is the
+    // acceptor, PM is the presenter; PM needs a direct signal so
     // presentation doesn't depend on scanning chat for designer's
     // PASS message).
     let labels = tracker.get_story_labels(number).await;
-    for msg in build_pass_desk_check_signals(number, &labels) {
+    let title = tracker.get_story_title(number).await.unwrap_or_default();
+    for msg in build_pass_desk_check_signals(number, &labels, &title) {
         let signal = serde_json::to_string(&msg).map_err(|e| format!("signal: {e}"))?;
         ws_send(ws_tx, signal)
             .await
@@ -456,18 +457,19 @@ pub(super) fn build_reject_signal(number: u64, reason: &str) -> ClientMessage {
     }
 }
 
-/// Classify a story's verdict category from its GitHub labels.
-/// Returns the addressee who should receive the pass_desk_check signal.
-/// Defaults to "ryan" when category is ambiguous — never silently wrong.
-pub(super) fn addressee_for_pass_desk_check(labels: &[String]) -> &'static str {
-    let has = |name: &str| labels.iter().any(|l| l == name);
-    // Infrastructure / debt → PM (team-accept lane).
-    if has("honest-plumbing") || has("half-slice") {
-        return "pm";
+/// Classify a story's type (Feature/Bug/Chore per #264) and return
+/// the addressee who should receive the pass_desk_check signal.
+/// Feature → Ryan (owner-gate lane). Bug + Chore → PM (team-accept
+/// lane; bugs fixed are internal unless they surface user-visible
+/// change, and that's a separate signal decision). Defaults to
+/// Feature under the classifier's default-to-Feature rule.
+pub(super) fn addressee_for_pass_desk_check(labels: &[String], title: &str) -> &'static str {
+    match crate::session::velocity::classify_story(labels, title) {
+        crate::session::velocity::StoryType::Feature => "ryan",
+        crate::session::velocity::StoryType::Bug | crate::session::velocity::StoryType::Chore => {
+            "pm"
+        }
     }
-    // Vertical / stranded-vertical → Ryan (feature-gate lane).
-    // Ambiguous (no verdict label, or labels we don't recognize) → Ryan.
-    "ryan"
 }
 
 pub(super) fn build_pass_desk_check_signal(number: u64, addressee: &str) -> ClientMessage {
@@ -499,8 +501,12 @@ pub(super) fn build_pass_desk_check_pm_present_signal(number: u64) -> ClientMess
 /// PM-facing "present to ryan" signal (#259 — previously PM had to
 /// scan chat for designer's PASS). For infrastructure, the single
 /// PM-facing signal is sufficient since PM is also the acceptor.
-pub(super) fn build_pass_desk_check_signals(number: u64, labels: &[String]) -> Vec<ClientMessage> {
-    let primary = addressee_for_pass_desk_check(labels);
+pub(super) fn build_pass_desk_check_signals(
+    number: u64,
+    labels: &[String],
+    title: &str,
+) -> Vec<ClientMessage> {
+    let primary = addressee_for_pass_desk_check(labels, title);
     let mut signals = vec![build_pass_desk_check_signal(number, primary)];
     if primary == "ryan" {
         signals.push(build_pass_desk_check_pm_present_signal(number));

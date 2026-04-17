@@ -60,16 +60,70 @@ enum Lifecycle {
     FailedDeskCheck,
 }
 
-/// Return true iff the label set marks a story as business-value
-/// (vertical or stranded-vertical). Plumbing stories
-/// (honest-plumbing) and half-slices return false. Empty / unknown
-/// labels return false — we'd rather undercount velocity than
-/// inflate it with unclassified debt. Callers with no tracker
-/// access can pass `|_| true` to disable the filter entirely.
-pub fn is_feature_verdict(labels: &[String]) -> bool {
-    labels
-        .iter()
-        .any(|l| l == "vertical" || l == "stranded-vertical")
+/// Story type per the 3-type vocabulary adopted 2026-04-16 (#264).
+/// Maps 1:1 to Pivotal Tracker's convention and GitHub's native
+/// issue types. The old 4-label invention (vertical / stranded-
+/// vertical / honest-plumbing / half-slice) is retired; stranded-
+/// vertical and half-slice live on only as desk-check rejection
+/// reasons on a Feature, not as distinct types.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StoryType {
+    /// User-facing business value. Counts for velocity; owner-accepted.
+    Feature,
+    /// Defect fix. Zero velocity; accepter depends on surface
+    /// (user-visible → Ryan; internal-only → PM).
+    Bug,
+    /// Tech debt, refactor, infrastructure. Zero velocity; team-accepted.
+    Chore,
+}
+
+/// Classify a story by its GitHub labels first, falling back to the
+/// title prefix if no type label is present. Defaults to Feature for
+/// untagged stories so they don't silently drop from velocity —
+/// "insufficient data" is honest but we shouldn't under-count by
+/// default. Supports legacy title prefixes during the migration
+/// window (honest-plumbing / vertical / stranded-vertical / half-
+/// slice); new filings use the canonical [Feature]/[Bug]/[Chore].
+pub fn classify_story(labels: &[String], title: &str) -> StoryType {
+    for l in labels {
+        // Label matching is case-insensitive so "Bug" / "bug" /
+        // "BUG" all classify the same — GitHub ships with lowercase
+        // "bug" by default and we don't want that mismatching our
+        // canonical "Bug" casing.
+        match l.to_ascii_lowercase().as_str() {
+            "feature" => return StoryType::Feature,
+            "bug" => return StoryType::Bug,
+            "chore" => return StoryType::Chore,
+            _ => {}
+        }
+    }
+    let lower = title.to_lowercase();
+    // Prefix matching strips the closing bracket so compound tags
+    // (e.g., `[honest-plumbing/security]`) still classify — the
+    // first recognized word wins. Ordered most-specific first.
+    if lower.starts_with("[feature")
+        || lower.starts_with("[vertical")
+        || lower.starts_with("[stranded-vertical")
+    {
+        return StoryType::Feature;
+    }
+    if lower.starts_with("[bug") || lower.starts_with("bug:") {
+        return StoryType::Bug;
+    }
+    if lower.starts_with("[chore")
+        || lower.starts_with("[honest-plumbing")
+        || lower.starts_with("[half-slice")
+    {
+        return StoryType::Chore;
+    }
+    StoryType::Feature
+}
+
+/// Return true iff the story counts toward business-value velocity.
+/// Under the 3-type vocabulary that's exactly Feature. Bug and
+/// Chore are zero-velocity by Pivotal convention.
+pub fn is_feature_verdict(labels: &[String], title: &str) -> bool {
+    matches!(classify_story(labels, title), StoryType::Feature)
 }
 
 #[derive(Serialize, Debug, PartialEq)]

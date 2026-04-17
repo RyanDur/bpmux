@@ -52,7 +52,8 @@ pub(in crate::bridge) async fn handle_view_velocity(
     let mut feature_numbers: std::collections::HashSet<u64> = std::collections::HashSet::new();
     for n in unique_numbers {
         let labels = tracker.get_story_labels(n).await;
-        if crate::session::velocity::is_feature_verdict(&labels) {
+        let title = tracker.get_story_title(n).await.unwrap_or_default();
+        if crate::session::velocity::is_feature_verdict(&labels, &title) {
             feature_numbers.insert(n);
         }
     }

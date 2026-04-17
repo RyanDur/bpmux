@@ -104,7 +104,7 @@ fn append_velocity_zone(lines: &mut Vec<Line<'_>>, app: &App) {
         stories
             .iter()
             .find(|s| s.number == number)
-            .map(|s| is_feature_verdict(&s.labels))
+            .map(|s| is_feature_verdict(&s.labels, &s.title))
             .unwrap_or(false)
     };
     let metrics = compute(&app.msg.messages, chrono::Utc::now(), is_feature);

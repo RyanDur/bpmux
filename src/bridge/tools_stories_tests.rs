@@ -165,9 +165,8 @@ fn reject_signal_includes_reason() {
 // ── #203 desk-check signal tests ──
 
 #[test]
-fn pass_desk_check_signal_addresses_ryan_for_feature() {
-    // Addressee is parameterized from addressee_for_pass_desk_check.
-    let addressee = addressee_for_pass_desk_check(&["vertical".to_string()]);
+fn pass_desk_check_signal_addresses_ryan_for_feature_label() {
+    let addressee = addressee_for_pass_desk_check(&["Feature".to_string()], "");
     if let ClientMessage::Send {
         to, addressee: a, ..
     } = build_pass_desk_check_signal(203, addressee)
@@ -180,9 +179,8 @@ fn pass_desk_check_signal_addresses_ryan_for_feature() {
 }
 
 #[test]
-fn pass_desk_check_signal_addresses_pm_for_honest_plumbing() {
-    // Infrastructure stories route to PM (team-accept lane).
-    let addressee = addressee_for_pass_desk_check(&["honest-plumbing".to_string()]);
+fn pass_desk_check_signal_addresses_pm_for_chore_label() {
+    let addressee = addressee_for_pass_desk_check(&["Chore".to_string()], "");
     if let ClientMessage::Send {
         to, addressee: a, ..
     } = build_pass_desk_check_signal(203, addressee)
@@ -195,27 +193,34 @@ fn pass_desk_check_signal_addresses_pm_for_honest_plumbing() {
 }
 
 #[test]
-fn pass_desk_check_signal_addresses_pm_for_half_slice() {
-    let addressee = addressee_for_pass_desk_check(&["half-slice".to_string()]);
-    if let ClientMessage::Send { addressee: a, .. } = build_pass_desk_check_signal(203, addressee) {
-        assert_eq!(a.as_deref(), Some("pm"));
-    } else {
-        panic!("expected Send variant");
-    }
+fn pass_desk_check_signal_addresses_pm_for_bug_label() {
+    // Bugs are team-accepted by default in the 3-type vocabulary.
+    let addressee = addressee_for_pass_desk_check(&["Bug".to_string()], "");
+    assert_eq!(addressee, "pm");
 }
 
 #[test]
-fn pass_desk_check_signal_defaults_ryan_on_ambiguous_labels() {
-    // No recognizable verdict label → default up to Ryan.
-    let addressee = addressee_for_pass_desk_check(&[]);
+fn pass_desk_check_signal_falls_back_to_title_prefix() {
+    // No labels yet — classifier reads the title prefix so the
+    // backfill-lag doesn't misroute Chore stories to Ryan.
+    let addressee = addressee_for_pass_desk_check(&[], "[Chore] split app_state");
+    assert_eq!(addressee, "pm");
+    let addressee = addressee_for_pass_desk_check(&[], "[Feature] new view");
     assert_eq!(addressee, "ryan");
-    let addressee = addressee_for_pass_desk_check(&["ready".to_string(), "bug".to_string()]);
+}
+
+#[test]
+fn pass_desk_check_signal_defaults_ryan_on_empty() {
+    // Default-to-Feature: un-tagged stories route to Ryan.
+    let addressee = addressee_for_pass_desk_check(&[], "");
+    assert_eq!(addressee, "ryan");
+    let addressee = addressee_for_pass_desk_check(&["ready".to_string()], "unlabeled story");
     assert_eq!(addressee, "ryan");
 }
 
 #[test]
 fn pass_desk_check_signal_does_not_target_dev() {
-    let addressee = addressee_for_pass_desk_check(&[]);
+    let addressee = addressee_for_pass_desk_check(&[], "");
     if let ClientMessage::Send { to, .. } = build_pass_desk_check_signal(203, addressee) {
         let recipients = to.as_ref().unwrap();
         assert!(
@@ -244,7 +249,7 @@ fn pass_desk_check_signals_emits_two_for_feature() {
     // Feature PASS emits two signals so PM gets the presentation cue
     // directly — without this, PM depends on scanning chat for the
     // designer's PASS message.
-    let signals = build_pass_desk_check_signals(210, &["vertical".to_string()]);
+    let signals = build_pass_desk_check_signals(210, &["Feature".to_string()], "");
     assert_eq!(signals.len(), 2, "feature PASS should emit two signals");
     let addressees: Vec<Option<String>> = signals
         .iter()
@@ -268,7 +273,7 @@ fn pass_desk_check_signals_emits_one_for_infra() {
     // Infra (honest-plumbing / half-slice) continues to route to PM
     // alone — PM is both presenter and acceptor for the team-accept
     // lane, so no companion signal is needed.
-    let signals = build_pass_desk_check_signals(253, &["honest-plumbing".to_string()]);
+    let signals = build_pass_desk_check_signals(253, &["Chore".to_string()], "");
     assert_eq!(signals.len(), 1, "infra PASS should emit one signal");
     if let ClientMessage::Send { addressee, .. } = &signals[0] {
         assert_eq!(addressee.as_deref(), Some("pm"));
@@ -282,7 +287,7 @@ fn pass_desk_check_signals_ambiguous_routes_to_ryan_and_pm() {
     // An unlabeled / ambiguously-labeled story defaults to Ryan's
     // lane (see addressee_for_pass_desk_check). That means the
     // feature-coroutine also fires — PM gets a presenter signal.
-    let signals = build_pass_desk_check_signals(999, &[]);
+    let signals = build_pass_desk_check_signals(999, &[], "");
     assert_eq!(signals.len(), 2);
 }
 

@@ -240,21 +240,59 @@ fn no_features_produces_zero_velocity() {
 }
 
 #[test]
-fn is_feature_verdict_matches_vertical_labels() {
+fn is_feature_verdict_matches_feature_label() {
     use crate::session::velocity::is_feature_verdict;
-    assert!(is_feature_verdict(&["vertical".to_string()]));
-    assert!(is_feature_verdict(&["stranded-vertical".to_string()]));
-    assert!(is_feature_verdict(&[
-        "ready".to_string(),
-        "vertical".to_string()
-    ]));
+    assert!(is_feature_verdict(&["Feature".to_string()], ""));
+    assert!(is_feature_verdict(
+        &["ready".to_string(), "Feature".to_string()],
+        ""
+    ));
 }
 
 #[test]
-fn is_feature_verdict_rejects_plumbing_and_unlabeled() {
+fn is_feature_verdict_rejects_chore_and_bug_labels() {
     use crate::session::velocity::is_feature_verdict;
-    assert!(!is_feature_verdict(&["honest-plumbing".to_string()]));
-    assert!(!is_feature_verdict(&["half-slice".to_string()]));
-    assert!(!is_feature_verdict(&["ready".to_string()]));
-    assert!(!is_feature_verdict(&[]));
+    assert!(!is_feature_verdict(&["Chore".to_string()], ""));
+    assert!(!is_feature_verdict(&["Bug".to_string()], ""));
+}
+
+#[test]
+fn is_feature_verdict_falls_back_to_title_prefix() {
+    use crate::session::velocity::is_feature_verdict;
+    // New canonical prefixes
+    assert!(is_feature_verdict(&[], "[Feature] ship the thing"));
+    assert!(!is_feature_verdict(&[], "[Chore] refactor the thing"));
+    assert!(!is_feature_verdict(&[], "[Bug] fix the thing"));
+    assert!(!is_feature_verdict(&[], "Bug: fix the thing"));
+}
+
+#[test]
+fn is_feature_verdict_supports_legacy_prefixes_during_migration() {
+    use crate::session::velocity::is_feature_verdict;
+    // Pre-#264 prefixes still parse correctly so backfill can run
+    // without racing the filter update.
+    assert!(is_feature_verdict(&[], "[vertical] a feature"));
+    assert!(is_feature_verdict(&[], "[stranded-vertical] close path broken"));
+    assert!(!is_feature_verdict(&[], "[honest-plumbing] debt fix"));
+    assert!(!is_feature_verdict(&[], "[half-slice] partial shape"));
+}
+
+#[test]
+fn is_feature_verdict_defaults_to_feature_for_untagged() {
+    use crate::session::velocity::is_feature_verdict;
+    // Default-to-Feature: un-tagged stories don't silently drop from
+    // velocity. Better to overcount slightly than undercount silently.
+    assert!(is_feature_verdict(&[], ""));
+    assert!(is_feature_verdict(&["ready".to_string()], "Unlabeled story"));
+}
+
+#[test]
+fn is_feature_verdict_label_beats_title() {
+    use crate::session::velocity::is_feature_verdict;
+    // Label is authoritative when both label and title carry a type.
+    // Label says Chore, title says [Feature] → Chore wins.
+    assert!(!is_feature_verdict(
+        &["Chore".to_string()],
+        "[Feature] misleading prefix"
+    ));
 }
