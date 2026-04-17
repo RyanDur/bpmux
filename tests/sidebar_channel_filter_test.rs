@@ -27,9 +27,10 @@ use std::time::Duration;
 
 /// Open the sidebar and keyboard-navigate to `name`, then press
 /// Enter. `under_section` is true for channels that live under a
-/// section header (direct / groups / system) — the filter auto-
-/// selects the section header at index 1 in that case, so we need
-/// one extra Down press to reach the actual channel.
+/// section header (direct / groups / system) — under #224, direct-
+/// peer rows need a mouse click on the trailing chevron to switch
+/// view (keyboard Enter + name-click toggle focus, not view). Non-
+/// section rows (broadcast, self) still activate via Enter.
 fn switch_to_channel_via_sidebar(bpmux: &TestBpmux, name: &str, under_section: bool) {
     bpmux.type_ctrl('b');
     assert!(
@@ -37,16 +38,45 @@ fn switch_to_channel_via_sidebar(bpmux: &TestBpmux, name: &str, under_section: b
         "sidebar should open. screen:\n{}",
         bpmux.tui()
     );
-    bpmux.type_chars(name);
-    std::thread::sleep(Duration::from_millis(150));
     if under_section {
-        // Skip past the section header that sidebar_filter_char
-        // auto-selects at index 1.
-        bpmux.type_key("Down");
-        std::thread::sleep(Duration::from_millis(100));
+        click_peer_chevron(bpmux, name);
+    } else {
+        bpmux.type_chars(name);
+        std::thread::sleep(Duration::from_millis(150));
+        bpmux.type_chars("\r");
     }
-    bpmux.type_chars("\r"); // Enter activates the selected channel
     std::thread::sleep(Duration::from_millis(300));
+}
+
+/// Click the trailing chevron on a direct-peer sidebar row (#224).
+/// Scans the current TUI output for the row containing `name`,
+/// then posts an SGR mouse click at the rightmost column of the
+/// sidebar area on that row. Preserves the view-switch path that
+/// was previously reachable via keyboard Enter.
+fn click_peer_chevron(bpmux: &TestBpmux, name: &str) {
+    // Re-render with an empty filter so the peer row is visible.
+    // (The test harness doesn't provide a direct "get sidebar layout"
+    // accessor, so we scrape the screen for the row index and the
+    // sidebar's visible width.)
+    let screen = bpmux.tui();
+    let lines: Vec<&str> = screen.lines().collect();
+    let (row, sidebar_cols) = lines
+        .iter()
+        .enumerate()
+        .find_map(|(i, line)| {
+            // Sidebar rows are prefixed with `│` (the left border) and
+            // the row we want contains the peer name plus the chevron
+            // `›` (direct-peer marker — section headers don't carry it).
+            if !line.starts_with('│') || !line.contains(name) || !line.contains('›') {
+                return None;
+            }
+            // Chevron column = position of `›` in chars, 1-based for
+            // SGR mouse protocol.
+            let chevron_col = line.chars().position(|c| c == '›')? as u16 + 1;
+            Some((i as u16 + 1, chevron_col))
+        })
+        .unwrap_or_else(|| panic!("peer row for {name} not found in sidebar. screen:\n{screen}"));
+    bpmux.mouse_click(sidebar_cols, row);
 }
 
 /// Verify broadcast view opt-in via sidebar filter + Enter. Replaces

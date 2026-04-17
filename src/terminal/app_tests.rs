@@ -746,6 +746,142 @@ fn clicking_channel_sets_current_view_and_resets_filter_and_scroll() {
     assert_eq!(app.scroll.offset, 0, "click should reset scroll offset");
 }
 
+// ── #224: clickable peer focus ──────────────────────────────────
+//
+// Direct-peer rows have two click targets: the name toggles focus;
+// the trailing chevron switches view. Keyboard Enter on a peer row
+// maps to the name-click path (focus toggle). Non-peer rows (self,
+// broadcast, groups, system headers) keep the view-switch behavior
+// regardless of click column.
+
+fn sidebar_with_peers(peers: &[&str]) -> App {
+    let mut app = test_app();
+    for p in peers {
+        app.update_activity((*p).to_string(), "idle".to_string());
+    }
+    app
+}
+
+fn peer_row_index(app: &App, peer: &str) -> usize {
+    app.sidebar_channels()
+        .iter()
+        .position(|c| c == peer)
+        .expect("peer row")
+}
+
+#[test]
+fn clicking_peer_name_adds_it_to_focused_roles() {
+    let mut app = sidebar_with_peers(&["dev"]);
+    app.sidebar.selected = peer_row_index(&app, "dev");
+    app.sidebar_select_at(false); // click on name, not chevron
+    assert_eq!(app.focused_roles.as_deref(), Some(&["dev".to_string()][..]));
+}
+
+#[test]
+fn clicking_an_already_focused_peer_removes_it() {
+    let mut app = sidebar_with_peers(&["dev"]);
+    let idx = peer_row_index(&app, "dev");
+    app.sidebar.selected = idx;
+    app.sidebar_select_at(false);
+    app.sidebar.selected = idx;
+    app.sidebar_select_at(false);
+    assert!(app.focused_roles.is_none(), "empty focus collapses to None");
+}
+
+#[test]
+fn clicking_multiple_peer_names_accumulates_focus() {
+    let mut app = sidebar_with_peers(&["dev", "pm"]);
+    app.sidebar.selected = peer_row_index(&app, "dev");
+    app.sidebar_select_at(false);
+    app.sidebar.selected = peer_row_index(&app, "pm");
+    app.sidebar_select_at(false);
+    let focus = app.focused_roles.as_deref().expect("focus set");
+    assert!(focus.contains(&"dev".to_string()));
+    assert!(focus.contains(&"pm".to_string()));
+    assert_eq!(focus.len(), 2);
+}
+
+#[test]
+fn clicking_peer_name_does_not_switch_view_or_send_target() {
+    let mut app = sidebar_with_peers(&["dev"]);
+    app.sidebar.selected = peer_row_index(&app, "dev");
+    app.sidebar_select_at(false);
+    assert!(app.channels.current_view.is_none());
+    assert!(app.channels.send_target.is_none());
+}
+
+#[test]
+fn clicking_peer_chevron_switches_view_and_leaves_focus_alone() {
+    let mut app = sidebar_with_peers(&["dev"]);
+    app.sidebar.selected = peer_row_index(&app, "dev");
+    app.sidebar_select_at(true); // click on chevron
+    assert_eq!(app.channels.current_view.as_deref(), Some("dev"));
+    assert_eq!(app.channels.send_target.as_deref(), Some("dev"));
+    assert!(app.focused_roles.is_none());
+}
+
+#[test]
+fn clicking_peer_chevron_clears_unread() {
+    let mut app = sidebar_with_peers(&["dev"]);
+    app.channels.unread.insert("dev".to_string(), 3);
+    app.sidebar.selected = peer_row_index(&app, "dev");
+    app.sidebar_select_at(true);
+    assert_eq!(app.channels.unread.get("dev"), None);
+}
+
+#[test]
+fn keyboard_enter_on_peer_toggles_focus_not_view() {
+    // sidebar_select (called by Enter) maps to the name-click path
+    // per designer's spec — primary action is focus toggle.
+    let mut app = sidebar_with_peers(&["dev"]);
+    app.sidebar.selected = peer_row_index(&app, "dev");
+    app.sidebar_select();
+    assert_eq!(app.focused_roles.as_deref(), Some(&["dev".to_string()][..]));
+    assert!(app.channels.current_view.is_none());
+}
+
+#[test]
+fn clicking_peer_matches_typed_focus_command_equivalence() {
+    let mut clicked = sidebar_with_peers(&["dev"]);
+    clicked.sidebar.selected = peer_row_index(&clicked, "dev");
+    clicked.sidebar_select_at(false);
+
+    let mut typed = sidebar_with_peers(&["dev"]);
+    typed.editor.input = "/focus dev".to_string();
+    typed.submit_message();
+
+    assert_eq!(clicked.focused_roles, typed.focused_roles);
+}
+
+#[test]
+fn clicking_broadcast_name_still_switches_view_not_focus() {
+    let mut app = test_app();
+    app.channels.active.insert("broadcast".to_string());
+    app.sidebar.selected = peer_row_index(&app, "broadcast");
+    app.sidebar_select_at(false);
+    assert_eq!(app.channels.current_view.as_deref(), Some("broadcast"));
+    assert!(app.focused_roles.is_none());
+}
+
+#[test]
+fn clicking_group_channel_still_switches_view_not_focus() {
+    let mut app = sidebar_with_peers(&["dev", "pm"]);
+    app.channels.active.insert("dev+pm".to_string());
+    app.sidebar.selected = peer_row_index(&app, "dev+pm");
+    app.sidebar_select_at(false);
+    assert_eq!(app.channels.current_view.as_deref(), Some("dev+pm"));
+    assert!(app.focused_roles.is_none());
+}
+
+#[test]
+fn clicking_peer_name_marks_filter_dirty() {
+    let mut app = sidebar_with_peers(&["dev"]);
+    app.msg.filter_dirty = false;
+    app.sidebar.selected = peer_row_index(&app, "dev");
+    app.sidebar_select_at(false);
+    assert!(app.msg.filter_dirty);
+}
+
 #[test]
 fn sidebar_navigation_wraps() {
     let mut app = test_app();

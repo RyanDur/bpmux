@@ -20,6 +20,11 @@ fn section_prefix_expanded() -> String {
     format!("{} ", super::icons::COLLAPSE)
 }
 const SIDEBAR_NAME_WIDTH: usize = 16;
+/// Trailing chevron rendered on direct peer rows (#224). Click on
+/// this column switches view to that peer's DM channel; click on
+/// the name toggles focus. Single-chevron for compactness + the
+/// widely-learned "enter" convention.
+const SIDEBAR_CHEVRON: &str = "›";
 
 pub(super) fn render(frame: &mut Frame, app: &App, area: Rect) {
     let channels = app.sidebar_channels();
@@ -138,7 +143,23 @@ fn render_channel_items(channels: &[String], app: &App, area: Rect) -> Vec<Line<
                 ch.clone()
             };
 
-            let name_style = if is_section {
+            // Focus (#224): direct peer rows render focused-peers in
+            // cyan-bold. The same style matches the status-bar
+            // `[focus: ...]` indicator so the two surfaces read as one
+            // filter state.
+            let is_direct_peer = is_direct_peer_row(ch);
+            let is_focused = is_direct_peer
+                && app
+                    .focused_roles
+                    .as_deref()
+                    .is_some_and(|roles| roles.iter().any(|r| r == ch));
+
+            let name_style = if is_focused {
+                Style::default()
+                    .fg(DRACULA_CYAN)
+                    .bg(bg)
+                    .add_modifier(Modifier::BOLD)
+            } else if is_section {
                 Style::default().fg(DRACULA_CYAN).bg(bg)
             } else if is_current || unread > 0 {
                 Style::default()
@@ -149,6 +170,8 @@ fn render_channel_items(channels: &[String], app: &App, area: Rect) -> Vec<Line<
                 Style::default().fg(DRACULA_COMMENT).bg(bg)
             };
 
+            let name_len = display_name.len();
+            let badge_len = badge.len();
             let mut spans = vec![
                 Span::styled(select_marker, Style::default().bg(bg).fg(DRACULA_PURPLE)),
                 Span::styled(indent, Style::default().bg(bg)),
@@ -161,6 +184,22 @@ fn render_channel_items(channels: &[String], app: &App, area: Rect) -> Vec<Line<
                         .bg(bg)
                         .fg(DRACULA_CYAN)
                         .add_modifier(Modifier::BOLD),
+                ));
+            }
+            // Chevron click-target (#224) — always visible on direct
+            // peer rows so "switch to this peer's DM view" stays
+            // accessible regardless of unread state. Mouse click on
+            // the chevron column routes to `switch_view_to`; clicks
+            // elsewhere on the row toggle focus.
+            if is_direct_peer {
+                let used = prefix_len + name_len + badge_len;
+                let pad = inner_width.saturating_sub(used).saturating_sub(1);
+                if pad > 0 {
+                    spans.push(Span::styled(" ".repeat(pad), Style::default().bg(bg)));
+                }
+                spans.push(Span::styled(
+                    SIDEBAR_CHEVRON,
+                    Style::default().bg(bg).fg(DRACULA_COMMENT),
                 ));
             }
             Line::from(spans)
@@ -187,6 +226,17 @@ fn section_header(name: &str, count: usize, expanded: bool) -> String {
 
 fn is_section_header(entry: &str) -> bool {
     entry.starts_with(&section_prefix_collapsed()) || entry.starts_with(&section_prefix_expanded())
+}
+
+/// A direct-peer sidebar row (#224) — a single-role entry, not a
+/// section header, not a group, not a system channel, not broadcast,
+/// not the self-root. These rows carry the focus-toggle + chevron
+/// affordances; everything else keeps the view-switch behavior.
+fn is_direct_peer_row(entry: &str) -> bool {
+    !is_section_header(entry)
+        && entry != "broadcast"
+        && !is_group_channel(entry)
+        && !is_system_channel(entry)
 }
 
 impl App {
@@ -329,6 +379,20 @@ impl App {
     }
 
     pub fn sidebar_select(&mut self) {
+        self.sidebar_select_inner(false);
+    }
+
+    /// Mouse-click variant: `on_chevron` signals that the click
+    /// landed on the trailing `›` column. For direct peer rows, the
+    /// chevron triggers the view-switch behavior; the rest of the
+    /// row toggles focus (#224). Non-peer rows (section headers,
+    /// self, broadcast, groups, system) ignore `on_chevron` and
+    /// behave identically to `sidebar_select`.
+    pub fn sidebar_select_at(&mut self, on_chevron: bool) {
+        self.sidebar_select_inner(on_chevron);
+    }
+
+    fn sidebar_select_inner(&mut self, on_chevron: bool) {
         let channels = self.sidebar_channels();
         if let Some(ch) = channels.get(self.sidebar.selected) {
             // Toggle section headers
@@ -340,6 +404,22 @@ impl App {
                 } else if ch.contains("system") {
                     self.sidebar.system_expanded = !self.sidebar.system_expanded;
                 }
+                return;
+            }
+            // Direct peer rows have two click zones (#224):
+            // name → toggle focus, chevron → switch view. Keyboard
+            // Enter hits the name path (the primary action per spec).
+            if self.sidebar.selected != 0 && is_direct_peer_row(ch) {
+                let ch = ch.clone();
+                if on_chevron {
+                    self.switch_view_to(Some(ch.clone()));
+                    self.channels.send_target = Some(ch.clone());
+                    self.channels.unread.remove(&ch);
+                } else {
+                    self.toggle_focus_on_peer(&ch);
+                }
+                self.sidebar.focused = false;
+                self.sidebar.filter.clear();
                 return;
             }
             // Route the view switch through the shared
@@ -358,6 +438,29 @@ impl App {
             self.sidebar.filter.clear();
         }
         self.sidebar.focused = false;
+    }
+
+    /// Toggle `peer` in `focused_roles` (#224). If present, remove
+    /// it; if absent, add it. When removing empties the list,
+    /// collapses `focused_roles` to `None` so downstream filters
+    /// match `/focus off` semantics. Mirrors the observable effect
+    /// of typing `/focus <peer>` so keyboard and click paths stay
+    /// equivalent.
+    fn toggle_focus_on_peer(&mut self, peer: &str) {
+        let mut roles = self.focused_roles.take().unwrap_or_default();
+        if let Some(idx) = roles.iter().position(|r| r == peer) {
+            roles.remove(idx);
+        } else {
+            roles.push(peer.to_string());
+        }
+        let message = if roles.is_empty() {
+            "Focus cleared.".to_string()
+        } else {
+            format!("Focus: {}.", roles.join(", "))
+        };
+        self.focused_roles = if roles.is_empty() { None } else { Some(roles) };
+        self.mark_filters_dirty();
+        self.system_message(message);
     }
 
     pub fn sidebar_collapse(&mut self) {

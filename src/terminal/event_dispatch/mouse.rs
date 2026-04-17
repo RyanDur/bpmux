@@ -32,8 +32,13 @@ fn handle_click(col: u16, row: u16, app: &mut App) {
                 let channels = app.sidebar_channels();
                 let idx = content_row as usize;
                 if idx < channels.len() {
+                    // Chevron click-zone (#224): the trailing `›` sits
+                    // in the last column inside the sidebar border. A
+                    // click there on a direct peer row switches view;
+                    // elsewhere on the row (the name) toggles focus.
+                    let on_chevron = col + 2 >= sx + sw;
                     app.sidebar.selected = idx;
-                    app.sidebar_select();
+                    app.sidebar_select_at(on_chevron);
                 }
             }
             return;
