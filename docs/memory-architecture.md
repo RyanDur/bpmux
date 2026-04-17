@@ -185,9 +185,9 @@ Use threaded conversation (`start_thread`/`close_thread`) for naturally-scoped w
 
 - **SessionStart recall**: top-N lessons fire into each role's context at session start (background nudge, not conversational)
 - **SessionStart:resume / SessionStart:compact**: the same recall also fires after resume and after compaction, so distilled knowledge re-enters context whenever history is pruned
-- **PreCompact hook (#166, what ships today)**: fires before context compaction and sends a single broadcast message to bpmux: "compacting context, back shortly." That's the entire behavior. It does NOT save a bookmark, does NOT prompt agents to externalize findings, does NOT flush memory state.
-- **Bookmark feature (#168) — wiring gap**: `src/session/bookmark.rs` exists with `save_bookmark` / `load_bookmark` and its doc comment claims "The PreCompact hook (#166) triggers an auto-save" — but that wiring was never written. Aspirational, not shipped. Candidate story: wire PreCompact → auto-save_bookmark.
-- **Externalize-before-compact prompt — not shipped**: no mechanism today prompts agents to flush unsaved findings to disk before compaction. Mid-chat discoveries risk eviction unless the agent manually externalizes. Candidate story: PreCompact hook also fires a per-agent "externalize what's unsaved now" prompt that the agent can act on via Write / save_lesson / add_principle.
+- **PreCompact hook (#166, what ships today)**: fires before context compaction and sends a single broadcast message to bpmux: "compacting context, back shortly." That's the entire behavior.
+- **Bookmark feature (#168)**: `save_bookmark` / `load_bookmark` are MCP tools the agent calls directly — one-shot writes, no server-side in-memory state. Corrected in #280 (docstring).
+- **Compaction resilience is discipline, not automation** (#281 spike finding, 2026-04-17): Claude Code command hooks **cannot trigger tool calls** per platform contract, so PreCompact-prompts-agent-to-save is not buildable. BUT `SessionStart:compact` matcher re-injects its stdout post-compaction, and our `session-start.sh` already runs `bpmux recall --role $ROLE` there — so **saved-to-disk knowledge survives compaction today**. The gap is catching findings in time to save them, which is per-agent discipline, not infrastructure. Practice: externalize mid-session via Write / save_lesson / add_principle whenever a durable rule surfaces; don't wait for a compaction signal that won't fire as a prompt.
 
 ### In-chat signals
 
