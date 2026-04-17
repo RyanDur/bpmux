@@ -86,11 +86,16 @@ pub(super) fn handle(
             return Ok(());
         }
         InputMode::Project => {
+            // Esc closes the project overlay. Other keys fall through
+            // to the shared Chat dispatcher below (#217): the project
+            // panel is a visual overlay, not a keyboard-capturing
+            // modal, so typing must continue to reach the chat input
+            // while the split view is open.
             if key.code == KeyCode::Esc {
                 app.project.content = None;
                 app.input_mode = InputMode::Chat;
+                return Ok(());
             }
-            return Ok(());
         }
         InputMode::Board => {
             match key.code {
