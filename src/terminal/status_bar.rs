@@ -222,6 +222,20 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
             ));
         }
     }
+    // Suggest-leave banner (#273): non-modal status-bar entry
+    // showing who suggested what. Any keystroke dismisses (see
+    // event_dispatch/key.rs); Esc follows through to leave_thread
+    // because the existing Esc handling runs after the banner-clear.
+    if let Some(sug) = app.threads.pending_suggestion.as_ref() {
+        status_spans.push(Span::raw(" | "));
+        status_spans.push(Span::styled(
+            format!(
+                "{} suggests step out ({}) — Esc leaves, any key dismisses",
+                sug.caller, sug.reason
+            ),
+            Style::default().fg(DRACULA_PINK),
+        ));
+    }
     // CI indicator (#151). Sits between the presence cluster and the
     // right-aligned keyboard hint — repository state is cognitively
     // separate from presence state, so the spec groups them that way.

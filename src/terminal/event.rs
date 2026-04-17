@@ -437,6 +437,11 @@ pub(super) const THREAD_CREATE_MARKER_PREFIX: &str = "__BPMUX_THREAD_CREATE__|";
 /// Format: `__BPMUX_THREAD_CLOSE__|<name>|<by_role>`
 pub(super) const THREAD_CLOSE_MARKER_PREFIX: &str = "__BPMUX_THREAD_CLOSE__|";
 
+/// Marker the bridge emits when an agent calls suggest_leave (#273).
+/// Kept in sync with SUGGEST_LEAVE_MARKER in bridge/tools/suggest_leave.rs.
+/// Format: `__BPMUX_SUGGEST_LEAVE__|<thread>|<target>|<caller>|<reason>`
+pub(super) const SUGGEST_LEAVE_MARKER_PREFIX: &str = "__BPMUX_SUGGEST_LEAVE__|";
+
 /// Parse a thread-create marker payload. Returns `(id, name, participants)`
 /// on success. Pure function — tested against real marker text.
 pub(super) fn parse_thread_create(text: &str) -> Option<(String, String, Vec<String>)> {
@@ -461,6 +466,21 @@ pub(super) fn parse_thread_close(text: &str) -> Option<(String, String)> {
     let name = parts.next()?.to_string();
     let by = parts.next()?.to_string();
     Some((name, by))
+}
+
+/// Parse a suggest-leave marker payload. Returns
+/// `(thread, target_role, caller, reason)` on success. Pure function.
+pub(super) fn parse_suggest_leave(text: &str) -> Option<(String, String, String, String)> {
+    let rest = text.strip_prefix(SUGGEST_LEAVE_MARKER_PREFIX)?;
+    let mut parts = rest.splitn(4, '|');
+    let thread = parts.next()?.to_string();
+    let target = parts.next()?.to_string();
+    let caller = parts.next()?.to_string();
+    let reason = parts.next()?.to_string();
+    if reason.is_empty() {
+        return None;
+    }
+    Some((thread, target, caller, reason))
 }
 
 fn handle_broadcast_message(msg: session::Message, app: &mut App) {
@@ -490,6 +510,42 @@ fn handle_broadcast_message(msg: session::Message, app: &mut App) {
     // thread. Non-participants still render the marker's trailing
     // messages in broadcast (the marker itself is System-typed so
     // it doesn't show as chat).
+    // Suggest-leave marker (#273) — target only. Set pending banner
+    // + emit a thread-scoped system marker so all participants see
+    // the suggestion occurred. Non-target viewers just see the log
+    // entry; the banner doesn't pop for them.
+    if msg.message_type == crate::session::MessageType::System
+        && let Some((thread, target, caller, reason)) = parse_suggest_leave(&msg.text)
+    {
+        let short_self = app.identity.name.clone();
+        if target == short_self {
+            app.threads.pending_suggestion = Some(super::app::PendingSuggestion {
+                thread_name: thread.clone(),
+                caller: caller.clone(),
+                reason: reason.clone(),
+            });
+        }
+        // Thread-scoped log entry: find the thread id by name; if
+        // we know the thread, attach its id so the log lands inside
+        // the thread's render.
+        let thread_id = app.threads.known.iter().find_map(|(id, t)| {
+            if t.name == thread {
+                Some(id.clone())
+            } else {
+                None
+            }
+        });
+        let log_msg = session::Message {
+            from: "bpmux".to_string(),
+            text: format!("{caller} suggested {target} step out: {reason}"),
+            ts: chrono::Utc::now(),
+            message_type: crate::session::MessageType::System,
+            thread_id,
+            ..session::Message::default()
+        };
+        app.receive_message(log_msg);
+        return;
+    }
     // Thread-close marker (#271) — if the viewer is currently inside
     // the named thread, flip back to broadcast view. Non-viewers
     // ignore. Thread entity persists; only view state changes.

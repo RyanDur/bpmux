@@ -242,3 +242,48 @@ fn thread_close_marker_rejects_missing_fields() {
     assert!(parse_thread_close("__BPMUX_THREAD_CLOSE__|name").is_none());
     assert!(parse_thread_close("__BPMUX_THREAD_CLOSE__").is_none());
 }
+
+// ── #273 suggest-leave marker parsing ──
+
+use super::event::parse_suggest_leave;
+
+#[test]
+fn suggest_leave_marker_parses_all_fields() {
+    let text = "__BPMUX_SUGGEST_LEAVE__|cheese|dev|pm|focus on #218";
+    let (thread, target, caller, reason) = parse_suggest_leave(text).unwrap();
+    assert_eq!(thread, "cheese");
+    assert_eq!(target, "dev");
+    assert_eq!(caller, "pm");
+    assert_eq!(reason, "focus on #218");
+}
+
+#[test]
+fn suggest_leave_marker_preserves_pipes_in_reason() {
+    // splitn(4) leaves any trailing pipes in the reason field —
+    // thread names and role names are slugified upstream so this
+    // only matters for reason, which is free-text.
+    let text = "__BPMUX_SUGGEST_LEAVE__|cheese|dev|pm|look at a|b|c";
+    let (_, _, _, reason) = parse_suggest_leave(text).unwrap();
+    assert_eq!(reason, "look at a|b|c");
+}
+
+#[test]
+fn suggest_leave_marker_rejects_empty_reason() {
+    // Empty reason violates the "context is load-bearing" spec; the
+    // bridge enforces non-empty at the tool entry but the parser
+    // should reject too as a defense-in-depth check.
+    let text = "__BPMUX_SUGGEST_LEAVE__|cheese|dev|pm|";
+    assert!(parse_suggest_leave(text).is_none());
+}
+
+#[test]
+fn suggest_leave_marker_rejects_missing_fields() {
+    assert!(parse_suggest_leave("__BPMUX_SUGGEST_LEAVE__|a|b|c").is_none());
+    assert!(parse_suggest_leave("__BPMUX_SUGGEST_LEAVE__").is_none());
+}
+
+#[test]
+fn suggest_leave_marker_rejects_non_marker_text() {
+    assert!(parse_suggest_leave("hello world").is_none());
+    assert!(parse_suggest_leave("__BPMUX_THREAD_CLOSE__|x|y").is_none());
+}

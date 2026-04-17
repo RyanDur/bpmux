@@ -36,6 +36,14 @@ pub(super) fn handle(
     app: &mut App,
     session: &session::Session,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    // Pending suggest_leave banner (#273): any key clears it. Esc
+    // falls through to the thread-leave path below; other keys
+    // dismiss the banner silently and carry on as normal input. The
+    // banner is non-modal — we don't consume the keystroke, we just
+    // drop the pending state so the render stops showing it.
+    if app.threads.pending_suggestion.is_some() {
+        app.threads.pending_suggestion = None;
+    }
     // Modal dispatch via InputMode enum — explicit state machine
     // replacing the old implicit priority chain of boolean flags.
     match app.input_mode {

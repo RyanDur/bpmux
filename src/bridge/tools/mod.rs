@@ -25,6 +25,7 @@ mod share_message;
 mod simulate_click;
 mod simulate_key;
 mod start_thread;
+mod suggest_leave;
 mod update_principle;
 mod view_roadmap;
 mod view_tokens;
@@ -57,6 +58,7 @@ pub(in crate::bridge) use share_message::handle_share_message;
 pub(in crate::bridge) use simulate_click::handle_simulate_click;
 pub(in crate::bridge) use simulate_key::handle_simulate_key;
 pub(in crate::bridge) use start_thread::handle_start_thread;
+pub(in crate::bridge) use suggest_leave::handle_suggest_leave;
 pub(in crate::bridge) use update_principle::handle_update_principle;
 pub(in crate::bridge) use view_roadmap::handle_view_roadmap;
 pub(in crate::bridge) use view_tokens::handle_view_tokens;
@@ -68,6 +70,8 @@ pub(in crate::bridge) use view_velocity::handle_view_velocity;
 pub(in crate::bridge) use close_thread::THREAD_CLOSE_MARKER;
 #[allow(unused_imports)]
 pub(in crate::bridge) use start_thread::THREAD_CREATE_MARKER;
+#[allow(unused_imports)]
+pub(in crate::bridge) use suggest_leave::SUGGEST_LEAVE_MARKER;
 #[allow(unused_imports)]
 pub(in crate::bridge) use view_roadmap::VIEW_ROADMAP_MARKER;
 #[allow(unused_imports)]

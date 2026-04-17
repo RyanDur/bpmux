@@ -255,4 +255,17 @@ pub struct ThreadState {
     pub known: HashMap<String, Thread>,
     pub current: Option<String>,
     pub broadcast_unread_while_threaded: usize,
+    /// Pending suggest_leave targeting this viewer (#273). Populated
+    /// when a marker arrives with target_role matching self; cleared
+    /// when the viewer leaves the thread (Esc) or dismisses (any other
+    /// key). `None` = no banner showing.
+    pub pending_suggestion: Option<PendingSuggestion>,
+}
+
+/// A suggest_leave banner waiting for the viewer's response (#273).
+#[derive(Debug, Clone, PartialEq)]
+pub struct PendingSuggestion {
+    pub thread_name: String,
+    pub caller: String,
+    pub reason: String,
 }

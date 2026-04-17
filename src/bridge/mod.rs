@@ -415,6 +415,9 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
             crate::mcp::tools::close_thread_tool(
                 "Close an active thread view (#271). Symmetric to start_thread: flips any viewer who's inside the named thread back to broadcast without mutating the thread entity (messages stay, participants stay, thread name stays discoverable). Emits a system marker so all participants' TUIs react. No-op when no one is in the thread. Args: name (the thread name passed to start_thread).",
             ),
+            crate::mcp::tools::suggest_leave_tool(
+                "Suggest a thread participant step out (#273). Soft signal, not a command — target sees a non-modal banner with the reason and chooses to leave (Esc) or ignore. Symmetric to start_thread in the participant-lifecycle (in/out); distinct from close_thread (which closes for everyone). Use when a conversation naturally shifts and a participant could free up attention for other work. Args: thread (name), target_role, reason (required context).",
+            ),
             crate::mcp::tools::get_token_report_tool(
                 "Get the token-cost report from bpmux's shared token log (#179). Returns JSON with total tokens, row count, per-role breakdown, and the 10 most recent turns (newest first). The data comes from per-harness adapters reading their own LLM-call recordings — you're seeing objective cost data, not self-reported. Same underlying log the `/tokens` TUI view reads, so you see exactly what Ryan sees. Empty report if the log is empty or missing.",
             ),
@@ -539,6 +542,10 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                 "close_thread" => {
                     let current_name = name.lock().await;
                     tools::handle_close_thread(&args, &current_name, &ws_tx).await
+                }
+                "suggest_leave" => {
+                    let current_name = name.lock().await;
+                    tools::handle_suggest_leave(&args, &current_name, &ws_tx).await
                 }
                 "get_token_report" => tools::handle_get_token_report().await,
                 "view_board" => tools_stories::handle_view_board(&args, &tracker).await,
