@@ -276,3 +276,94 @@ pub(super) fn handle(
     }
     Ok(())
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+mod tests {
+    use super::*;
+    use crate::session;
+    use crossterm::event::KeyEventKind;
+    use tempfile::TempDir;
+    use tokio::sync::broadcast;
+
+    /// Build a minimal Session for dispatch tests. The Session is
+    /// unused unless the test triggers Enter-submit (which broadcasts
+    /// a message), so a temp dir + throwaway broadcast channel is
+    /// enough for typing-only assertions.
+    fn test_session() -> (session::Session, TempDir) {
+        let dir = TempDir::new().unwrap();
+        let (tx, _rx) = broadcast::channel(16);
+        let session = session::Session::new(dir.path().to_path_buf(), "ryan".to_string(), tx);
+        (session, dir)
+    }
+
+    fn char_key(c: char) -> KeyEvent {
+        KeyEvent {
+            code: KeyCode::Char(c),
+            modifiers: KeyModifiers::NONE,
+            kind: KeyEventKind::Press,
+            state: crossterm::event::KeyEventState::NONE,
+        }
+    }
+
+    /// #217: typing while the project panel is open must reach the
+    /// chat input — the panel is a visual overlay, not a modal that
+    /// captures keyboard.
+    #[test]
+    fn project_mode_falls_through_to_chat_for_char_keys() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.input_mode = InputMode::Project;
+        let (session, _dir) = test_session();
+
+        for c in "hello".chars() {
+            handle(char_key(c), &mut app, &session).unwrap();
+        }
+
+        assert_eq!(
+            app.editor.input, "hello",
+            "project mode must not swallow typed chars"
+        );
+        assert!(
+            matches!(app.input_mode, InputMode::Project),
+            "typing should not exit project mode"
+        );
+    }
+
+    /// Esc in project mode still closes the overlay — the fall-
+    /// through must not regress the legitimate modal exit path.
+    #[test]
+    fn project_mode_still_closes_on_esc() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.input_mode = InputMode::Project;
+        app.project.content = Some("board".to_string());
+        let (session, _dir) = test_session();
+
+        let esc = KeyEvent {
+            code: KeyCode::Esc,
+            modifiers: KeyModifiers::NONE,
+            kind: KeyEventKind::Press,
+            state: crossterm::event::KeyEventState::NONE,
+        };
+        handle(esc, &mut app, &session).unwrap();
+
+        assert!(matches!(app.input_mode, InputMode::Chat));
+        assert!(app.project.content.is_none());
+    }
+
+    /// Opening + closing the overlay repeatedly does not accumulate
+    /// stuck state (the original #217 failure mode: input locked
+    /// progressively worse with each re-entry).
+    #[test]
+    fn project_mode_typing_survives_repeated_open_close() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let (session, _dir) = test_session();
+
+        for _ in 0..5 {
+            app.input_mode = InputMode::Project;
+            handle(char_key('a'), &mut app, &session).unwrap();
+            app.input_mode = InputMode::Chat;
+        }
+
+        assert_eq!(app.editor.input, "aaaaa");
+    }
+}
