@@ -24,6 +24,14 @@ const SIDEBAR_NAME_WIDTH: usize = 16;
 /// the name toggles focus. Single-chevron for compactness + the
 /// widely-learned "enter" convention.
 const SIDEBAR_CHEVRON: &str = "›";
+/// Prefix that encodes a thread id in sidebar_channels entries
+/// (#275). Strips to the raw id when we need to look up the Thread.
+/// Uses `:` so it doesn't collide with role names or `+`-group
+/// channels in sidebar_channels.
+const THREAD_ROW_PREFIX: &str = "thread:";
+/// Visual glyph for thread rows — distinguishes them from direct/
+/// group channels at a glance (designer UX call).
+const SIDEBAR_THREAD_GLYPH: &str = "🧵";
 
 pub(super) fn render(frame: &mut Frame, app: &App, area: Rect) {
     let channels = app.sidebar_channels();
@@ -102,10 +110,17 @@ fn render_channel_items(channels: &[String], app: &App, area: Rect) -> Vec<Line<
             // Detect section headers vs channel entries
             let is_section = ch.starts_with(&section_prefix_collapsed())
                 || ch.starts_with(&section_prefix_expanded());
+            // Thread rows encode the thread id after `thread:` —
+            // resolve to the Thread for display + unread (#275).
+            let thread_for_row = ch
+                .strip_prefix(THREAD_ROW_PREFIX)
+                .and_then(|id| app.threads.known.get(id));
             let is_current =
                 !is_section && app.channels.current_view.as_deref() == Some(ch.as_str());
             let unread = if ch == "broadcast" || is_section {
                 0
+            } else if let Some(t) = thread_for_row {
+                t.unread
             } else {
                 app.channels.unread.get(ch).copied().unwrap_or(0)
             };
@@ -131,15 +146,23 @@ fn render_channel_items(channels: &[String], app: &App, area: Rect) -> Vec<Line<
                 String::new()
             };
             let name_budget = available.saturating_sub(badge.len());
-            let display_name: String = if ch.len() > name_budget {
+            // Thread rows substitute the thread name for the id and
+            // prepend a distinguishing glyph (#275); other rows
+            // render the channel string directly.
+            let raw_name = match thread_for_row {
+                Some(t) => format!("{SIDEBAR_THREAD_GLYPH} {}", t.name),
+                None => ch.clone(),
+            };
+            let display_name: String = if raw_name.chars().count() > name_budget {
                 format!(
                     "{}…",
-                    ch.chars()
+                    raw_name
+                        .chars()
                         .take(name_budget.saturating_sub(1))
                         .collect::<String>()
                 )
             } else {
-                ch.clone()
+                raw_name
             };
 
             // Focus (#224): direct peer rows render focused-peers in
@@ -229,13 +252,15 @@ fn is_section_header(entry: &str) -> bool {
 
 /// A direct-peer sidebar row (#224) — a single-role entry, not a
 /// section header, not a group, not a system channel, not broadcast,
-/// not the self-root. These rows carry the focus-toggle + chevron
-/// affordances; everything else keeps the view-switch behavior.
+/// not a thread row (#275), not the self-root. These rows carry the
+/// focus-toggle + chevron affordances; everything else keeps the
+/// view-switch behavior.
 fn is_direct_peer_row(entry: &str) -> bool {
     !is_section_header(entry)
         && entry != "broadcast"
         && !is_group_channel(entry)
         && !is_system_channel(entry)
+        && !entry.starts_with(THREAD_ROW_PREFIX)
 }
 
 impl App {
@@ -302,6 +327,24 @@ impl App {
         groups.sort();
         system.sort();
 
+        // Threads where self is a participant (#275). Rows encode
+        // the thread id with a `thread:` prefix so sidebar_select
+        // can reverse-lookup without colliding on channel names
+        // (colons don't appear in role names or `+`-separated
+        // group channels). Freshest activity first.
+        let mut threads: Vec<&super::app::Thread> = self
+            .threads
+            .known
+            .values()
+            .filter(|t| t.participants.iter().any(|p| p == &self.identity.name))
+            .collect();
+        threads.sort_by_key(|t| std::cmp::Reverse(t.last_activity));
+        let thread_rows: Vec<String> = threads
+            .into_iter()
+            .filter(|t| matches_filter(&t.name))
+            .map(|t| format!("{THREAD_ROW_PREFIX}{}", t.id))
+            .collect();
+
         // Direct section
         if !direct.is_empty() {
             result.push(section_header(
@@ -323,6 +366,18 @@ impl App {
             ));
             if self.sidebar.groups_expanded {
                 result.extend(groups);
+            }
+        }
+
+        // Threads section (#275)
+        if !thread_rows.is_empty() {
+            result.push(section_header(
+                "threads",
+                thread_rows.len(),
+                self.sidebar.threads_expanded,
+            ));
+            if self.sidebar.threads_expanded {
+                result.extend(thread_rows);
             }
         }
 
@@ -400,9 +455,28 @@ impl App {
                     self.sidebar.direct_expanded = !self.sidebar.direct_expanded;
                 } else if ch.contains("groups") {
                     self.sidebar.groups_expanded = !self.sidebar.groups_expanded;
+                } else if ch.contains("threads") {
+                    self.sidebar.threads_expanded = !self.sidebar.threads_expanded;
                 } else if ch.contains("system") {
                     self.sidebar.system_expanded = !self.sidebar.system_expanded;
                 }
+                return;
+            }
+            // Thread rows (#275): click switches view into the thread.
+            // The id is encoded after `thread:`; look up the thread
+            // and flip `threads.current`. Unread resets on entry.
+            if let Some(id) = ch.strip_prefix(THREAD_ROW_PREFIX) {
+                let id = id.to_string();
+                if self.threads.known.contains_key(&id) {
+                    self.threads.current = Some(id.clone());
+                    self.threads.broadcast_unread_while_threaded = 0;
+                    if let Some(t) = self.threads.known.get_mut(&id) {
+                        t.unread = 0;
+                    }
+                    self.mark_filters_dirty();
+                }
+                self.sidebar.focused = false;
+                self.sidebar.filter.clear();
                 return;
             }
             // Direct peer rows have two click zones (#224):

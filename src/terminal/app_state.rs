@@ -21,6 +21,7 @@ pub struct SidebarState {
     pub project_expanded: bool,
     pub direct_expanded: bool,
     pub groups_expanded: bool,
+    pub threads_expanded: bool,
     pub system_expanded: bool,
 }
 
@@ -34,6 +35,7 @@ impl Default for SidebarState {
             project_expanded: true,
             direct_expanded: true,
             groups_expanded: true,
+            threads_expanded: true,
             system_expanded: false,
         }
     }
@@ -237,12 +239,23 @@ pub struct LifecycleState {
 /// One named conversation thread (#268). `id` is the unique handle
 /// messages carry via `Message::thread_id`; `name` is the
 /// human-readable label; `participants` are the roles initially
-/// invited (mid-thread add is a follow-on story).
+/// invited. `last_activity` and `unread` are per-thread tracking
+/// for the sidebar re-entry affordance (#275).
 #[derive(Debug, Clone)]
 pub struct Thread {
     pub id: String,
     pub name: String,
     pub participants: Vec<String>,
+    /// Most-recent activity timestamp — drives sidebar ordering
+    /// (freshest at top). Set to the thread's creation time on
+    /// register and bumped every time a thread-tagged message
+    /// lands. `None` pre-#275 data paths (test setup).
+    pub last_activity: Option<chrono::DateTime<chrono::Utc>>,
+    /// Unread count for this thread, independent of the broadcast
+    /// unread counter. Incremented when a thread-tagged message
+    /// arrives AND the viewer isn't currently in that thread.
+    /// Reset on re-entry.
+    pub unread: usize,
 }
 
 /// Thread state for the TUI viewer. `known` is the local cache of

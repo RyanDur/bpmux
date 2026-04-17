@@ -68,6 +68,104 @@ fn submits_message_and_clears_input() {
 // user's own input "disappears" from their view (Ryan's
 // live-acceptance experience at the feature's first use).
 
+// ── #275: threads section in sidebar ─────────────────────────
+//
+// Self-participant threads appear in the sidebar with per-thread
+// unread counts; clicking switches view. Rows are ordered freshest-
+// activity-first so recent conversations surface.
+
+fn mk_thread(app: &mut App, id: &str, name: &str, participants: &[&str]) {
+    app.threads.known.insert(
+        id.to_string(),
+        super::app::Thread {
+            id: id.to_string(),
+            name: name.to_string(),
+            participants: participants.iter().map(|p| (*p).to_string()).collect(),
+            last_activity: Some(chrono::Utc::now()),
+            unread: 0,
+        },
+    );
+}
+
+#[test]
+fn sidebar_lists_only_threads_where_self_is_participant() {
+    let mut app = test_app();
+    mk_thread(&mut app, "t-in", "in", &["ryan", "dev"]);
+    mk_thread(&mut app, "t-out", "out", &["dev", "pm"]);
+    let channels = app.sidebar_channels();
+    assert!(
+        channels.iter().any(|c| c == "thread:t-in"),
+        "self-participant thread must appear"
+    );
+    assert!(
+        !channels.iter().any(|c| c == "thread:t-out"),
+        "non-participant thread must not appear: {channels:?}"
+    );
+}
+
+#[test]
+fn sidebar_threads_sorted_freshest_first() {
+    use chrono::Duration;
+    let mut app = test_app();
+    let now = chrono::Utc::now();
+    app.threads.known.insert(
+        "t-old".to_string(),
+        super::app::Thread {
+            id: "t-old".to_string(),
+            name: "old".to_string(),
+            participants: vec!["ryan".to_string()],
+            last_activity: Some(now - Duration::minutes(30)),
+            unread: 0,
+        },
+    );
+    app.threads.known.insert(
+        "t-new".to_string(),
+        super::app::Thread {
+            id: "t-new".to_string(),
+            name: "new".to_string(),
+            participants: vec!["ryan".to_string()],
+            last_activity: Some(now),
+            unread: 0,
+        },
+    );
+    let channels = app.sidebar_channels();
+    let new_idx = channels.iter().position(|c| c == "thread:t-new").unwrap();
+    let old_idx = channels.iter().position(|c| c == "thread:t-old").unwrap();
+    assert!(
+        new_idx < old_idx,
+        "freshest activity should surface first. got: {channels:?}"
+    );
+}
+
+#[test]
+fn sidebar_select_thread_switches_view() {
+    let mut app = test_app();
+    mk_thread(&mut app, "t-cheese", "cheese", &["ryan", "dev"]);
+    let idx = app
+        .sidebar_channels()
+        .iter()
+        .position(|c| c == "thread:t-cheese")
+        .expect("thread row");
+    app.sidebar.selected = idx;
+    app.sidebar_select();
+    assert_eq!(app.threads.current.as_deref(), Some("t-cheese"));
+}
+
+#[test]
+fn sidebar_select_thread_resets_unread() {
+    let mut app = test_app();
+    mk_thread(&mut app, "t-cheese", "cheese", &["ryan"]);
+    app.threads.known.get_mut("t-cheese").unwrap().unread = 3;
+    let idx = app
+        .sidebar_channels()
+        .iter()
+        .position(|c| c == "thread:t-cheese")
+        .expect("thread row");
+    app.sidebar.selected = idx;
+    app.sidebar_select();
+    assert_eq!(app.threads.known["t-cheese"].unread, 0);
+}
+
 #[test]
 fn submit_in_thread_tags_message_with_thread_id() {
     let mut app = test_app();

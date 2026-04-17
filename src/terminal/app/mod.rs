@@ -415,6 +415,24 @@ impl App {
         {
             self.threads.broadcast_unread_while_threaded += 1;
         }
+        // Per-thread tracking (#275): bump the thread's unread
+        // counter when a thread-tagged message arrives and the
+        // viewer isn't currently inside that thread. Also stamp
+        // last_activity regardless of view state so the sidebar
+        // sort stays accurate. Only chat-type messages count as
+        // "unread" — system markers don't increment.
+        if let Some(tid) = msg.thread_id.as_deref()
+            && let Some(thread) = self.threads.known.get_mut(tid)
+        {
+            thread.last_activity = Some(msg.ts);
+            let sender_short = short_peer_name(&msg.from);
+            if msg.message_type == MessageType::Chat
+                && self.threads.current.as_deref() != Some(tid)
+                && sender_short != self.identity.name
+            {
+                thread.unread += 1;
+            }
+        }
         let needs_push = receive::dispatch(self, &msg);
         if !needs_push {
             return;

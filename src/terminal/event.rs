@@ -601,9 +601,12 @@ fn handle_broadcast_message(msg: session::Message, app: &mut App) {
         if joiner == app.identity.name
             && let Some(id) = thread_id.clone()
         {
-            app.threads.current = Some(id);
+            app.threads.current = Some(id.clone());
             app.threads.broadcast_unread_while_threaded = 0;
             app.threads.pending_invitation = None;
+            if let Some(t) = app.threads.known.get_mut(&id) {
+                t.unread = 0;
+            }
             app.mark_filters_dirty();
         }
         let log_msg = session::Message {
@@ -684,11 +687,16 @@ fn handle_broadcast_message(msg: session::Message, app: &mut App) {
                 id: id.clone(),
                 name: name.clone(),
                 participants,
+                last_activity: Some(chrono::Utc::now()),
+                unread: 0,
             },
         );
         if is_participant {
-            app.threads.current = Some(id);
+            app.threads.current = Some(id.clone());
             app.threads.broadcast_unread_while_threaded = 0;
+            if let Some(t) = app.threads.known.get_mut(&id) {
+                t.unread = 0;
+            }
             app.mark_filters_dirty();
             // Scope-entry cue (#268 re-work): emit a thread-tagged
             // system message so the viewer sees a clear transition
