@@ -57,7 +57,12 @@ pub(super) fn render_project_panel(frame: &mut Frame, app: &App, area: Rect) {
         lines.push(Line::from(""));
     }
 
-    append_board_zone(&mut lines, &display_stories, area.width);
+    append_board_zone(
+        &mut lines,
+        &display_stories,
+        last_error.as_ref(),
+        area.width,
+    );
     if auth_missing {
         lines.push(Line::from(Span::styled(
             "  (use /board to refresh)",
@@ -150,8 +155,14 @@ fn append_dora_zone(lines: &mut Vec<Line<'_>>, app: &App) {
             push_metric(lines, "rejection rate", &fmt_opt_rate(m.rejection_rate));
         }
         None => {
+            // DORA cache empty — mirror the board zone's three-state
+            // distinction (#219 re-work). Loading vs stuck is the
+            // difference between "poller hasn't responded yet" and
+            // "poller returned an error and we have no data to show."
+            // last_error is surfaced by the footer; keep the cache
+            // row short so the view doesn't double-announce.
             lines.push(Line::from(Span::styled(
-                "  initializing...",
+                "  loading...",
                 Style::default().fg(DRACULA_COMMENT),
             )));
         }
@@ -181,20 +192,30 @@ fn push_metric(lines: &mut Vec<Line<'_>>, label: &str, value: &str) {
     ]));
 }
 
-/// Board zone — story groups with counts + titles. Kept from
-/// the old render_project_panel (this logic wasn't broken).
+/// Board zone — story groups with counts + titles. Three visually
+/// distinguishable empty-state variants (#219 re-work): fetch in
+/// flight ("loading..."), fetch failed ("board unavailable: …" with
+/// actionable error), and the success path (story groups).
 fn append_board_zone(
     lines: &mut Vec<Line<'_>>,
     stories: &[crate::terminal::board::BoardStory],
+    last_error: Option<&crate::terminal::board_poller::BoardFetchError>,
     width: u16,
 ) {
     use crate::terminal::board::{StoryState, stories_by_state};
     if stories.is_empty() {
         lines.push(purple_bold_heading("★ board"));
-        lines.push(Line::from(Span::styled(
-            "  initializing...",
-            Style::default().fg(DRACULA_COMMENT),
-        )));
+        if let Some(err) = last_error {
+            lines.push(Line::from(Span::styled(
+                format!("  board unavailable: {}", err.user_message()),
+                Style::default().fg(DRACULA_ORANGE),
+            )));
+        } else {
+            lines.push(Line::from(Span::styled(
+                "  loading...",
+                Style::default().fg(DRACULA_COMMENT),
+            )));
+        }
         return;
     }
     let groups = stories_by_state(stories);
@@ -242,7 +263,7 @@ fn append_project_footer(
     let now = chrono::Utc::now();
     let freshness = match last_updated {
         Some(ts) => crate::terminal::board_poller::format_last_updated(ts, now),
-        None => "initializing...".to_string(),
+        None => "loading...".to_string(),
     };
     let footer = match last_error {
         Some(err) => format!("⚠ {} — {}", err.user_message(), freshness),

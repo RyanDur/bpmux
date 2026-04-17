@@ -1035,8 +1035,60 @@ fn dora_zone_does_not_render_two_metrics_per_row() {
     }
 }
 
+// ── #219 re-work: three board-zone states ────────────────────
+//
+// Empty snapshot + no error = "loading..." (fetch in flight).
+// Empty snapshot + error    = "board unavailable: <reason>" (stuck).
+// Non-empty snapshot        = story groups (handled by existing tests).
+
 #[test]
-fn dora_zone_renders_initializing_when_none() {
+fn board_zone_renders_loading_when_empty_and_no_error() {
+    let mut app = project_panel_app(None, false);
+    // Snapshot is default-empty, last_error None, last_updated None.
+    let screen = render_panel_screen(&mut app);
+    let heading_idx = screen
+        .lines()
+        .position(|l| l.contains("★ board"))
+        .expect("board heading should render");
+    let next_line = screen.lines().nth(heading_idx + 1).unwrap_or("");
+    assert!(
+        next_line.contains("loading"),
+        "empty+no-error should show `loading...`; got:\n`{next_line}`"
+    );
+    assert!(
+        !next_line.contains("unavailable"),
+        "should not render unavailable state without an error; got:\n`{next_line}`"
+    );
+}
+
+#[test]
+fn board_zone_renders_unavailable_when_empty_and_errored() {
+    let mut app = project_panel_app(None, false);
+    {
+        let mut snap = app.board_snapshot.lock().unwrap();
+        snap.last_error = Some(super::board_poller::BoardFetchError::NetworkUnreachable);
+    }
+    let screen = render_panel_screen(&mut app);
+    let heading_idx = screen
+        .lines()
+        .position(|l| l.contains("★ board"))
+        .expect("board heading should render");
+    let next_line = screen.lines().nth(heading_idx + 1).unwrap_or("");
+    assert!(
+        next_line.contains("board unavailable"),
+        "empty+error should show `board unavailable: …`; got:\n`{next_line}`"
+    );
+    assert!(
+        next_line.contains("offline"),
+        "error message should surface the reason; got:\n`{next_line}`"
+    );
+}
+
+#[test]
+fn dora_zone_renders_loading_when_none() {
+    // #219 re-work: "initializing..." was ambiguous (poller silent for
+    // 60s vs fetch in flight). Renamed to "loading..." to match the
+    // board-zone's transient-state label.
     let mut app = project_panel_app(None, false);
     let screen = render_panel_screen(&mut app);
     let heading_idx = screen
@@ -1045,8 +1097,8 @@ fn dora_zone_renders_initializing_when_none() {
         .expect("DORA heading should render");
     let next_line = screen.lines().nth(heading_idx + 1).unwrap_or("");
     assert!(
-        next_line.contains("initializing"),
-        "DORA-None should show `initializing...` below heading; got:\n`{next_line}`"
+        next_line.contains("loading"),
+        "DORA-None should show `loading...` below heading; got:\n`{next_line}`"
     );
 }
 

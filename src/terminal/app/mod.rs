@@ -130,6 +130,14 @@ pub struct App {
     // ── Board poller snapshot (#219) — background-refreshed state ──
     pub board_snapshot: std::sync::Arc<std::sync::Mutex<super::board_poller::BoardSnapshot>>,
 
+    /// Sender for off-cycle board refetches (#219 re-work). The event
+    /// loop spawns the poller and stashes the tx here so view-open
+    /// paths can fire `RefreshNow` when the snapshot is empty —
+    /// complements the background cadence with a defensive fetch.
+    /// `None` in headless mode or when the poller didn't spawn
+    /// (BPMUX_REPO unset).
+    pub board_poller_tx: Option<tokio::sync::mpsc::Sender<super::board_poller::PollerCommand>>,
+
     // ── Modal state ──
     pub input_mode: InputMode,
 
@@ -198,8 +206,28 @@ impl App {
             board_snapshot: std::sync::Arc::new(std::sync::Mutex::new(
                 super::board_poller::BoardSnapshot::default(),
             )),
+            board_poller_tx: None,
             input_mode: InputMode::Chat,
             ci_state: super::ci::CiState::Unknown,
+        }
+    }
+
+    /// Defensive fetch on project-view open (#219). If the snapshot
+    /// has never returned data, signal the poller to fetch now
+    /// instead of waiting for the next cadence tick — "initializing..."
+    /// stops meaning "poller is silent for 60s" and starts meaning
+    /// "actual fetch in flight." No-op when a fetch has already
+    /// succeeded or a fetch is already in flight.
+    pub fn request_board_refresh_if_stale(&self) {
+        let Some(tx) = &self.board_poller_tx else {
+            return;
+        };
+        let needs_refresh = match self.board_snapshot.lock() {
+            Ok(snap) => snap.last_updated.is_none() && snap.last_error.is_none(),
+            Err(_) => return,
+        };
+        if needs_refresh {
+            let _ = tx.try_send(super::board_poller::PollerCommand::RefreshNow);
         }
     }
 

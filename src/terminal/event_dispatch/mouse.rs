@@ -82,6 +82,7 @@ fn handle_click(col: u16, row: u16, app: &mut App) {
         } else {
             app.project.content = Some(build_project_content());
             app.input_mode = InputMode::Project;
+            app.request_board_refresh_if_stale();
         }
         return;
     }

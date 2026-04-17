@@ -245,6 +245,10 @@ where
     } else {
         None
     };
+    // Mirror onto App so view-open paths can trigger defensive
+    // refetches (#219 re-work). Event loop still owns the primary tx
+    // for signal-driven refresh below.
+    app.board_poller_tx = board_poller_tx.clone();
 
     // Perf: throttle screen capture in interactive mode to avoid
     // per-keystroke string allocation. In headless mode, always

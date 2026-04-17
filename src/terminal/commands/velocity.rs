@@ -9,6 +9,7 @@ impl App {
     /// be a surprise, not a feature.
     pub(in crate::terminal) fn handle_velocity(&mut self) -> Option<Message> {
         self.input_mode = InputMode::Project;
+        self.request_board_refresh_if_stale();
         None
     }
 }

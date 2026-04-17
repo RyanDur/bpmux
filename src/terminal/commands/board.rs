@@ -13,6 +13,7 @@ impl App {
                 // The full-screen board is still accessible via the
                 // board_detail navigation.
                 self.input_mode = InputMode::Project;
+                self.request_board_refresh_if_stale();
             }
             Err(_) => {
                 self.system_message(
