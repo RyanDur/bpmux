@@ -19,11 +19,6 @@ fn section_prefix_expanded() -> String {
     format!("{} ", super::icons::COLLAPSE)
 }
 const SIDEBAR_NAME_WIDTH: usize = 16;
-/// Trailing chevron rendered on direct peer rows (#224). Click on
-/// this column switches view to that peer's DM channel; click on
-/// the name toggles focus. Single-chevron for compactness + the
-/// widely-learned "enter" convention.
-const SIDEBAR_CHEVRON: &str = "›";
 /// Prefix that encodes a thread id in sidebar_channels entries
 /// (#275). Strips to the raw id when we need to look up the Thread.
 /// Uses `:` so it doesn't collide with role names or `+`-group
@@ -165,12 +160,13 @@ fn render_channel_items(channels: &[String], app: &App, area: Rect) -> Vec<Line<
                 raw_name
             };
 
-            // Focus (#224): direct peer rows render focused-peers in
-            // cyan-bold. The same style matches the status-bar
-            // `[focus: ...]` indicator so the two surfaces read as one
-            // filter state.
-            let is_direct_peer = is_direct_peer_row(ch);
-            let is_focused = is_direct_peer
+            // Focus rendering (#224 v2): peer rows in the (renamed)
+            // focus section show cyan-bold when that role is in the
+            // active focus set. v1's trailing chevron + dm-view-switch
+            // are removed — focus is the sole click affordance on
+            // peer rows. Agents use groups/threads for scoped 1:1.
+            let is_focus_row = is_focus_peer_row(ch);
+            let is_focused = is_focus_row
                 && app
                     .focused_roles
                     .as_deref()
@@ -192,8 +188,6 @@ fn render_channel_items(channels: &[String], app: &App, area: Rect) -> Vec<Line<
                 Style::default().fg(DRACULA_COMMENT).bg(bg)
             };
 
-            let name_len = display_name.len();
-            let badge_len = badge.len();
             let mut spans = vec![
                 Span::styled(select_marker, Style::default().bg(bg).fg(DRACULA_PURPLE)),
                 Span::styled(indent, Style::default().bg(bg)),
@@ -206,22 +200,6 @@ fn render_channel_items(channels: &[String], app: &App, area: Rect) -> Vec<Line<
                         .bg(bg)
                         .fg(DRACULA_CYAN)
                         .add_modifier(Modifier::BOLD),
-                ));
-            }
-            // Chevron click-target (#224) — always visible on direct
-            // peer rows so "switch to this peer's DM view" stays
-            // accessible regardless of unread state. Mouse click on
-            // the chevron column routes to `switch_view_to`; clicks
-            // elsewhere on the row toggle focus.
-            if is_direct_peer {
-                let used = prefix_len + name_len + badge_len;
-                let pad = inner_width.saturating_sub(used).saturating_sub(1);
-                if pad > 0 {
-                    spans.push(Span::styled(" ".repeat(pad), Style::default().bg(bg)));
-                }
-                spans.push(Span::styled(
-                    SIDEBAR_CHEVRON,
-                    Style::default().bg(bg).fg(DRACULA_COMMENT),
                 ));
             }
             Line::from(spans)
@@ -250,12 +228,12 @@ fn is_section_header(entry: &str) -> bool {
     entry.starts_with(&section_prefix_collapsed()) || entry.starts_with(&section_prefix_expanded())
 }
 
-/// A direct-peer sidebar row (#224) — a single-role entry, not a
+/// A focus-section peer row (#224 v2) — a single-role entry, not a
 /// section header, not a group, not a system channel, not broadcast,
-/// not a thread row (#275), not the self-root. These rows carry the
-/// focus-toggle + chevron affordances; everything else keeps the
-/// view-switch behavior.
-fn is_direct_peer_row(entry: &str) -> bool {
+/// not a thread row (#275), not the self-root. These rows route
+/// clicks to focus-toggle; everything else keeps the view-switch
+/// behavior. Formerly `is_direct_peer_row` from v1's coexist shape.
+fn is_focus_peer_row(entry: &str) -> bool {
     !is_section_header(entry)
         && entry != "broadcast"
         && !is_group_channel(entry)
@@ -345,10 +323,12 @@ impl App {
             .map(|t| format!("{THREAD_ROW_PREFIX}{}", t.id))
             .collect();
 
-        // Direct section
+        // Focus section (#224 v2). Formerly labeled "direct" — the
+        // peer rows are now focus targets; click toggles focus on
+        // that role. `direct_expanded` field kept for minimal-churn.
         if !direct.is_empty() {
             result.push(section_header(
-                "direct",
+                "focus",
                 direct.len(),
                 self.sidebar.direct_expanded,
             ));
@@ -433,25 +413,26 @@ impl App {
     }
 
     pub fn sidebar_select(&mut self) {
-        self.sidebar_select_inner(false);
+        self.sidebar_select_inner();
     }
 
-    /// Mouse-click variant: `on_chevron` signals that the click
-    /// landed on the trailing `›` column. For direct peer rows, the
-    /// chevron triggers the view-switch behavior; the rest of the
-    /// row toggles focus (#224). Non-peer rows (section headers,
-    /// self, broadcast, groups, system) ignore `on_chevron` and
-    /// behave identically to `sidebar_select`.
-    pub fn sidebar_select_at(&mut self, on_chevron: bool) {
-        self.sidebar_select_inner(on_chevron);
+    /// Mouse-click variant kept for API compat with the pre-#224-v2
+    /// coexist shape; `_on_chevron` is now ignored because peer rows
+    /// no longer render a chevron. All clicks on focus peer rows go
+    /// through the same focus-toggle path as keyboard Enter.
+    pub fn sidebar_select_at(&mut self, _on_chevron: bool) {
+        self.sidebar_select_inner();
     }
 
-    fn sidebar_select_inner(&mut self, on_chevron: bool) {
+    fn sidebar_select_inner(&mut self) {
         let channels = self.sidebar_channels();
         if let Some(ch) = channels.get(self.sidebar.selected) {
-            // Toggle section headers
+            // Toggle section headers. The "focus" header still maps
+            // to the legacy `direct_expanded` field (#224 v2 renamed
+            // the label but kept the internal field to minimize
+            // cross-file churn).
             if is_section_header(ch) {
-                if ch.contains("direct") {
+                if ch.contains("focus") {
                     self.sidebar.direct_expanded = !self.sidebar.direct_expanded;
                 } else if ch.contains("groups") {
                     self.sidebar.groups_expanded = !self.sidebar.groups_expanded;
@@ -479,18 +460,12 @@ impl App {
                 self.sidebar.filter.clear();
                 return;
             }
-            // Direct peer rows have two click zones (#224):
-            // name → toggle focus, chevron → switch view. Keyboard
-            // Enter hits the name path (the primary action per spec).
-            if self.sidebar.selected != 0 && is_direct_peer_row(ch) {
+            // Focus peer rows (#224 v2): click toggles focus on that
+            // role. No chevron, no DM view-switch — agents use groups
+            // or threads for scoped 1:1 per ryan's final shape.
+            if self.sidebar.selected != 0 && is_focus_peer_row(ch) {
                 let ch = ch.clone();
-                if on_chevron {
-                    self.switch_view_to(Some(ch.clone()));
-                    self.channels.send_target = Some(ch.clone());
-                    self.channels.unread.remove(&ch);
-                } else {
-                    self.toggle_focus_on_peer(&ch);
-                }
+                self.toggle_focus_on_peer(&ch);
                 self.sidebar.focused = false;
                 self.sidebar.filter.clear();
                 return;
@@ -543,7 +518,7 @@ impl App {
             if is_section_header(ch) {
                 // On a header: if the section itself is expanded, collapse it.
                 // Otherwise fall through to collapsing the project.
-                if ch.contains("direct") && self.sidebar.direct_expanded {
+                if ch.contains("focus") && self.sidebar.direct_expanded {
                     self.sidebar.direct_expanded = false;
                     return;
                 }
@@ -564,7 +539,7 @@ impl App {
                 if let Some(header) = channels.get(i)
                     && is_section_header(header)
                 {
-                    if header.contains("direct") {
+                    if header.contains("focus") {
                         self.sidebar.direct_expanded = false;
                     } else if header.contains("groups") {
                         self.sidebar.groups_expanded = false;
@@ -588,7 +563,7 @@ impl App {
         if let Some(ch) = channels.get(self.sidebar.selected)
             && is_section_header(ch)
         {
-            if ch.contains("direct") {
+            if ch.contains("focus") {
                 self.sidebar.direct_expanded = true;
             } else if ch.contains("groups") {
                 self.sidebar.groups_expanded = true;

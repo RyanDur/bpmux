@@ -232,6 +232,56 @@ fn app_new_rehydrated_threads_appear_in_sidebar_for_participant() {
     );
 }
 
+// ── #224 v2: focus-as-addressee auto-tagging ─────────────────
+//
+// When focus is active on a single role, outgoing submits auto-set
+// `addressee` to that role (sticky attention signal). Explicit
+// `@role` prefix still wins over focus-sticky (user intent beats
+// the ambient state). Multi-role focus doesn't auto-address because
+// there's no single target.
+
+#[test]
+fn submit_with_single_focus_auto_addresses_focused_role() {
+    let mut app = test_app();
+    app.focused_roles = Some(vec!["dev".to_string()]);
+    app.editor.input = "what do you think".to_string();
+    let msg = app.submit_message().expect("message");
+    assert_eq!(msg.addressee.as_deref(), Some("dev"));
+}
+
+#[test]
+fn submit_without_focus_leaves_addressee_none() {
+    let mut app = test_app();
+    assert!(app.focused_roles.is_none());
+    app.editor.input = "everyone".to_string();
+    let msg = app.submit_message().expect("message");
+    assert!(msg.addressee.is_none());
+}
+
+#[test]
+fn explicit_at_prefix_wins_over_focus_sticky() {
+    // User types `@pm ...` while focused on dev — the explicit
+    // prefix beats the ambient focus, matching #158's user-intent
+    // priority.
+    let mut app = test_app();
+    app.focused_roles = Some(vec!["dev".to_string()]);
+    app.editor.input = "@pm quick question".to_string();
+    let msg = app.submit_message().expect("message");
+    assert_eq!(msg.addressee.as_deref(), Some("pm"));
+    assert_eq!(msg.text, "quick question");
+}
+
+#[test]
+fn multi_role_focus_does_not_auto_address() {
+    // No unambiguous target when multiple roles are focused — fall
+    // back to no addressee rather than guess.
+    let mut app = test_app();
+    app.focused_roles = Some(vec!["dev".to_string(), "pm".to_string()]);
+    app.editor.input = "broadcasting to both".to_string();
+    let msg = app.submit_message().expect("message");
+    assert!(msg.addressee.is_none());
+}
+
 #[test]
 fn submit_in_thread_tags_message_with_thread_id() {
     let mut app = test_app();
@@ -1024,22 +1074,19 @@ fn clicking_peer_name_does_not_switch_view_or_send_target() {
 }
 
 #[test]
-fn clicking_peer_chevron_switches_view_and_leaves_focus_alone() {
+fn clicking_peer_regardless_of_column_toggles_focus_post_v2() {
+    // #224 v2: chevron is gone; peer rows have a single click-zone
+    // (the whole row) that toggles focus. The `on_chevron` bool
+    // is now ignored — both mouse-click variants route through
+    // the same focus-toggle path.
     let mut app = sidebar_with_peers(&["dev"]);
     app.sidebar.selected = peer_row_index(&app, "dev");
-    app.sidebar_select_at(true); // click on chevron
-    assert_eq!(app.channels.current_view.as_deref(), Some("dev"));
-    assert_eq!(app.channels.send_target.as_deref(), Some("dev"));
-    assert!(app.focused_roles.is_none());
-}
-
-#[test]
-fn clicking_peer_chevron_clears_unread() {
-    let mut app = sidebar_with_peers(&["dev"]);
-    app.channels.unread.insert("dev".to_string(), 3);
-    app.sidebar.selected = peer_row_index(&app, "dev");
-    app.sidebar_select_at(true);
-    assert_eq!(app.channels.unread.get("dev"), None);
+    app.sidebar_select_at(true); // "on_chevron" ignored post-v2
+    assert_eq!(app.focused_roles.as_deref(), Some(&["dev".to_string()][..]));
+    assert!(
+        app.channels.current_view.is_none(),
+        "v2 peer-click no longer switches view"
+    );
 }
 
 #[test]
