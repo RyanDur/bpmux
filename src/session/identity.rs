@@ -395,4 +395,94 @@ mod tests {
         assert_eq!(loaded.values[0].name, "correctness");
         assert_eq!(loaded.values[0].principles.len(), 2);
     }
+
+    /// Regression against #269's initial FAIL: designer.json had a
+    /// different old schema (values-as-object + separate principles
+    /// array with `serves` back-refs). The initial PR didn't catch it
+    /// because the unit test used a fixture, not the actual files.
+    /// This test pins FIXTURES SHAPED LIKE EACH AGENT'S CURRENT FILE
+    /// so a future schema drift in any agent's file is caught at
+    /// test time rather than silently at load.
+    #[test]
+    fn all_three_agent_file_shapes_parse() {
+        let dir = tempdir().unwrap();
+
+        // dev.json shape: 4 values, each with 4-5 principles (strings).
+        let dev_fixture = r#"{
+            "values": [
+                { "name": "correctness", "description": "code does what it claims", "principles": ["p1", "p2", "p3", "p4"] },
+                { "name": "honesty", "description": "say what's true", "principles": ["p1", "p2", "p3", "p4", "p5"] },
+                { "name": "simplicity", "description": "minimum code", "principles": ["p1", "p2", "p3", "p4"] },
+                { "name": "discipline", "description": "checks as set", "principles": ["p1", "p2", "p3", "p4", "p5", "p6"] }
+            ]
+        }"#;
+        std::fs::write(dir.path().join("dev.json"), dev_fixture).unwrap();
+
+        // pm.json shape: 4 values, each with 5-6 principles.
+        let pm_fixture = r#"{
+            "values": [
+                { "name": "trust", "description": "foundations", "principles": ["p1", "p2", "p3", "p4", "p5", "p6"] },
+                { "name": "communication", "description": "surface what matters", "principles": ["p1", "p2", "p3"] },
+                { "name": "experience", "description": "user journey", "principles": ["p1", "p2", "p3"] },
+                { "name": "stewardship", "description": "board ownership", "principles": ["p1", "p2"] }
+            ]
+        }"#;
+        std::fs::write(dir.path().join("pm.json"), pm_fixture).unwrap();
+
+        // designer.json shape post-#269 migration: 4 values, each with 2-4 principles.
+        let designer_fixture = r#"{
+            "values": [
+                { "name": "clarity", "description": "user understands", "principles": ["p1", "p2"] },
+                { "name": "honesty", "description": "name the problem", "principles": ["p1", "p2", "p3", "p4"] },
+                { "name": "craft", "description": "detail matters", "principles": ["p1", "p2", "p3", "p4"] },
+                { "name": "individuality", "description": "diversity", "principles": ["p1", "p2"] }
+            ]
+        }"#;
+        std::fs::write(dir.path().join("designer.json"), designer_fixture).unwrap();
+
+        for role in &["dev", "pm", "designer"] {
+            let loaded = load_identity(dir.path(), role);
+            assert!(
+                !loaded.values.is_empty(),
+                "{} identity must load with non-empty values; canonical schema regression if this fails",
+                role
+            );
+            for v in &loaded.values {
+                assert!(
+                    !v.principles.is_empty(),
+                    "{} value '{}' should have principles (canonical schema)",
+                    role,
+                    v.name
+                );
+            }
+        }
+    }
+
+    /// Local-run verification: load the agent's actual ~/.bpmux
+    /// identity files and assert they parse into non-empty values.
+    /// Ignored by default because CI / other dev machines don't have
+    /// these files. Run with `cargo test -- --ignored` during local
+    /// testing of schema changes.
+    #[test]
+    #[ignore = "loads real ~/.bpmux/identity/*.json — run with --ignored on machines that have them"]
+    fn real_identity_files_on_disk_parse_canonical() {
+        let dir = match default_identity_dir() {
+            Ok(d) => d,
+            Err(_) => panic!("no home dir available; can't locate identity files"),
+        };
+        assert!(
+            dir.exists(),
+            "{} does not exist; skip this test or populate identity files",
+            dir.display()
+        );
+        for role in &["dev", "pm", "designer"] {
+            let loaded = load_identity(&dir, role);
+            assert!(
+                !loaded.values.is_empty(),
+                "{}/{}.json parsed to empty — canonical schema regression",
+                dir.display(),
+                role
+            );
+        }
+    }
 }
