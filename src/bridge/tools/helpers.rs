@@ -80,6 +80,24 @@ fn load_auth_token() -> Result<String, String> {
     }
 }
 
+/// Format the post-state identity as JSON for tool success responses
+/// (#269). Returning the full index gives the caller observable
+/// evidence the write landed, per designer's spec.
+pub(super) fn identity_success(index: &crate::session::identity::IdentityIndex) -> String {
+    serde_json::to_string_pretty(index).unwrap_or_else(|_| "{}".to_string())
+}
+
+/// Format an identity CRUD error as structured JSON: `{"error":
+/// "kind", "detail": "..."}`. Tool callers can branch on `error`
+/// without string-matching the detail.
+pub(super) fn identity_error(e: &crate::session::identity::IdentityError) -> String {
+    serde_json::json!({
+        "error": e.kind(),
+        "detail": e.to_string(),
+    })
+    .to_string()
+}
+
 pub(super) async fn get_session_dir() -> Result<std::path::PathBuf, String> {
     use crate::session::log::default_sessions_base;
     let base = default_sessions_base().map_err(|e| format!("sessions base: {e}"))?;

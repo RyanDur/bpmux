@@ -1,4 +1,6 @@
 // Session / identity / status tools
+mod add_principle;
+mod add_value;
 mod capture_screen;
 mod classifier_misfire;
 mod get_bookmark;
@@ -7,6 +9,7 @@ mod get_token_report;
 mod list_lessons;
 mod list_peer_lessons;
 mod read_messages;
+mod remove_principle;
 mod save_bookmark;
 mod save_lesson;
 mod search_log;
@@ -16,6 +19,7 @@ mod set_status;
 mod share_message;
 mod simulate_click;
 mod simulate_key;
+mod update_principle;
 mod view_roadmap;
 mod view_tokens;
 
@@ -33,6 +37,8 @@ mod start_story;
 mod view_board;
 mod view_velocity;
 
+pub use add_principle::add_principle_tool;
+pub use add_value::add_value_tool;
 pub use capture_screen::capture_screen_tool;
 pub use classifier_misfire::classifier_misfire_tool;
 pub use get_bookmark::get_bookmark_tool;
@@ -41,6 +47,7 @@ pub use get_token_report::get_token_report_tool;
 pub use list_lessons::list_lessons_tool;
 pub use list_peer_lessons::list_peer_lessons_tool;
 pub use read_messages::read_messages_tool;
+pub use remove_principle::remove_principle_tool;
 pub use save_bookmark::save_bookmark_tool;
 pub use save_lesson::save_lesson_tool;
 pub use search_log::search_log_tool;
@@ -50,6 +57,7 @@ pub use set_status::set_status_tool;
 pub use share_message::share_message_tool;
 pub use simulate_click::simulate_click_tool;
 pub use simulate_key::simulate_key_tool;
+pub use update_principle::update_principle_tool;
 pub use view_roadmap::view_roadmap_tool;
 pub use view_tokens::view_tokens_tool;
 

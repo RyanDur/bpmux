@@ -400,7 +400,19 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                 "Read a session bookmark — the structured state snapshot saved by an agent. Use after compaction to resume context quickly.",
             ),
             crate::mcp::tools::get_identity_tool(
-                "Get an agent's identity traits — the stable principles and values that persist across sessions. Returns JSON with trait names and descriptions. Omit 'role' to get your own identity; pass a role name to see another agent's.",
+                "Get an agent's identity — the stable values and principles that persist across sessions. Returns JSON with values, each carrying a description and a list of principles. Omit 'role' to get your own identity; pass a role name to see another agent's.",
+            ),
+            crate::mcp::tools::add_value_tool(
+                "Create a new top-level value on your own identity (#269). Args: name + description. Rejects if a value with that name already exists (use update_principle / add_principle to amend rather than overwrite).",
+            ),
+            crate::mcp::tools::add_principle_tool(
+                "Append a principle under one of your own identity values (#269). Role-derived: you can only modify your own identity. Args: value_name (e.g. 'correctness') + principle (the principle text). Rejects duplicates within a value. Returns the full post-state identity on success.",
+            ),
+            crate::mcp::tools::update_principle_tool(
+                "Refine an existing principle's text on your own identity (#269). Args: value_name, old (current text), new (replacement text). Rejects if the old text isn't found exactly.",
+            ),
+            crate::mcp::tools::remove_principle_tool(
+                "Remove a principle from your own identity (#269). Args: value_name + principle (exact text). Use to prune decoration after honest audit per the cost-to-hold discipline.",
             ),
             crate::mcp::tools::get_token_report_tool(
                 "Get the token-cost report from bpmux's shared token log (#179). Returns JSON with total tokens, row count, per-role breakdown, and the 10 most recent turns (newest first). The data comes from per-harness adapters reading their own LLM-call recordings — you're seeing objective cost data, not self-reported. Same underlying log the `/tokens` TUI view reads, so you see exactly what Ryan sees. Empty report if the log is empty or missing.",
@@ -505,6 +517,22 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                 "get_identity" => {
                     let current_name = name.lock().await;
                     tools::handle_get_identity(&args, &current_name).await
+                }
+                "add_value" => {
+                    let current_name = name.lock().await;
+                    tools::handle_add_value(&args, &current_name).await
+                }
+                "add_principle" => {
+                    let current_name = name.lock().await;
+                    tools::handle_add_principle(&args, &current_name).await
+                }
+                "update_principle" => {
+                    let current_name = name.lock().await;
+                    tools::handle_update_principle(&args, &current_name).await
+                }
+                "remove_principle" => {
+                    let current_name = name.lock().await;
+                    tools::handle_remove_principle(&args, &current_name).await
                 }
                 "get_token_report" => tools::handle_get_token_report().await,
                 "view_board" => tools_stories::handle_view_board(&args, &tracker).await,

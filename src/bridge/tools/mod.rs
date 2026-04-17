@@ -2,10 +2,14 @@
 
 mod helpers;
 
+mod add_principle;
+mod add_value;
 mod capture_screen;
 mod classifier_misfire;
 mod get_bookmark;
 mod get_identity;
+mod remove_principle;
+mod update_principle;
 mod get_token_report;
 mod get_usage;
 mod list_lessons;
@@ -28,10 +32,14 @@ mod view_velocity;
 // inside bridge) which needs WsSink + ws_send.
 pub(in crate::bridge) use helpers::{WsSink, ws_send};
 
+pub(in crate::bridge) use add_principle::handle_add_principle;
+pub(in crate::bridge) use add_value::handle_add_value;
 pub(in crate::bridge) use capture_screen::handle_capture_screen;
 pub(in crate::bridge) use classifier_misfire::handle_classifier_misfire;
 pub(in crate::bridge) use get_bookmark::handle_get_bookmark;
 pub(in crate::bridge) use get_identity::handle_get_identity;
+pub(in crate::bridge) use remove_principle::handle_remove_principle;
+pub(in crate::bridge) use update_principle::handle_update_principle;
 pub(in crate::bridge) use get_token_report::handle_get_token_report;
 pub(in crate::bridge) use get_usage::handle_get_usage;
 pub(in crate::bridge) use list_lessons::handle_list_lessons;

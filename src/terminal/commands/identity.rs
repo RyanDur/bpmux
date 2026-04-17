@@ -1,17 +1,16 @@
 //! `/identity` slash command — #190 identity layer view.
 //!
-//! Shows an agent's identity traits in the chat pane. Reads from
-//! the identity store at `~/.bpmux/identity/{role}.json`.
+//! Shows an agent's identity in the chat pane. Reads from the
+//! identity store at `~/.bpmux/identity/{role}.json`. Schema is
+//! values→principles (#269).
 
 use crate::session::Message;
-use crate::session::identity::{default_identity_dir, load_identity};
+use crate::session::identity::{IdentityIndex, default_identity_dir, load_identity};
 use crate::terminal::app::App;
 
 impl App {
     pub(in crate::terminal) fn handle_identity(&mut self, args: String) -> Option<Message> {
         let role = if args.trim().is_empty() {
-            // Default to showing all connected agents' identities.
-            // For v1: show the queried role or list available.
             self.clear_input();
             self.show_all_identities();
             return None;
@@ -28,14 +27,10 @@ impl App {
             }
         };
         let index = load_identity(&base, &role);
-        if index.traits.is_empty() {
-            self.system_message(format!("identity ({role}): no traits defined yet."));
+        if index.values.is_empty() {
+            self.system_message(format!("identity ({role}): no values defined yet."));
         } else {
-            let mut text = format!("identity ({role}):\n");
-            for t in &index.traits {
-                text.push_str(&format!("  {} — {}\n", t.name, t.description));
-            }
-            self.system_message(text);
+            self.system_message(format_identity(&role, &index));
         }
         self.clear_input();
         None
@@ -49,7 +44,6 @@ impl App {
                 return;
             }
         };
-        // List all identity files in the directory.
         let entries = match std::fs::read_dir(&base) {
             Ok(e) => e,
             Err(_) => {
@@ -57,7 +51,7 @@ impl App {
                 return;
             }
         };
-        let mut output = String::from("Identity traits:\n");
+        let mut output = String::from("Identity:\n");
         let mut found = false;
         for entry in entries.flatten() {
             let path = entry.path();
@@ -65,12 +59,10 @@ impl App {
                 && let Some(role) = path.file_stem().and_then(|s| s.to_str())
             {
                 let index = load_identity(&base, role);
-                if !index.traits.is_empty() {
+                if !index.values.is_empty() {
                     found = true;
-                    output.push_str(&format!("\n  {role}:\n"));
-                    for t in &index.traits {
-                        output.push_str(&format!("    {} — {}\n", t.name, t.description));
-                    }
+                    output.push('\n');
+                    output.push_str(&format_identity(role, &index));
                 }
             }
         }
@@ -79,4 +71,15 @@ impl App {
         }
         self.system_message(output);
     }
+}
+
+fn format_identity(role: &str, index: &IdentityIndex) -> String {
+    let mut out = format!("identity ({role}):\n");
+    for value in &index.values {
+        out.push_str(&format!("  {}: {}\n", value.name, value.description));
+        for principle in &value.principles {
+            out.push_str(&format!("    - {principle}\n"));
+        }
+    }
+    out
 }
