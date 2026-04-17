@@ -497,7 +497,10 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                 request.name.as_ref(),
             );
             let result = match request.name.as_ref() {
-                "send_message" => tools::handle_send(&args, &ws_tx, &last_channel).await,
+                "send_message" => {
+                    let current_name = name.lock().await.clone();
+                    tools::handle_send(&args, &current_name, &ws_tx, &last_channel).await
+                }
                 "share_message" => {
                     let current_name = name.lock().await;
                     tools::handle_share_message(&args, port, &current_name, &ws_tx).await
