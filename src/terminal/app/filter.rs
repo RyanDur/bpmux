@@ -42,22 +42,22 @@ pub(super) enum FilterVerdict {
 /// Classify one message against the filter pipeline. Pure function
 /// over (ctx, msg) — testable without an App.
 pub(super) fn classify(ctx: &FilterContext, m: &Message) -> FilterVerdict {
+    // Thread-tagged messages render in their own thread view
+    // regardless of message type — scope-entry markers, intra-thread
+    // nudges, etc. are thread-local by construction and belong in
+    // the thread's log (#268 re-work: "— entered thread: X —" marker
+    // was invisible before this because it was System-typed).
+    if let Some(current) = ctx.current_thread {
+        return match m.thread_id.as_deref() {
+            Some(tid) if tid == current => FilterVerdict::Include,
+            _ => FilterVerdict::Skip,
+        };
+    }
     if !m.is_chat() {
         return if ctx.show_system_messages {
             FilterVerdict::Include
         } else {
             FilterVerdict::Skip
-        };
-    }
-    // Thread scope wins when the viewer is in a thread (#268). Only
-    // messages matching the current thread render; focus stays off
-    // per spec ("focus does NOT apply inside threads"). Cross-thread
-    // and broadcast messages skip (the peripheral counter picks
-    // them up elsewhere).
-    if let Some(current) = ctx.current_thread {
-        return match m.thread_id.as_deref() {
-            Some(tid) if tid == current => FilterVerdict::Include,
-            _ => FilterVerdict::Skip,
         };
     }
     if !in_channel(ctx, m) {
