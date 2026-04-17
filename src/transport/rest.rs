@@ -361,12 +361,11 @@ pub async fn post_message(
             ),
         );
     }
-    // Reject externally-originated `system` messages. The auto-
-    // subscribe path in session::log mutates topic_subs based on
-    // system messages; accepting them from the outside lets an
-    // attacker manipulate which peers see which topics. Internal
-    // callers that emit system messages do so through other paths
-    // (session::log::append / emit_system), not this HTTP handler.
+    // Reject externally-originated `system` messages. System messages
+    // are reserved for internal bridge signals (classifier nudges,
+    // handoff warnings, join/leave) and must not be spoofable by HTTP
+    // callers. Internal callers that emit system messages do so
+    // through session::log::append / emit_system, not this handler.
     if payload.message_type.as_deref() == Some("system") {
         return (
             StatusCode::FORBIDDEN,

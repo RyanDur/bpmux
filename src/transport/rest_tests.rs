@@ -387,8 +387,9 @@ async fn post_message_rejects_external_system_message_type() {
         .expect("build request");
     let response = app.oneshot(request).await.expect("response");
     assert_eq!(response.status(), StatusCode::FORBIDDEN);
-    // The rejected message must NOT appear in the broadcast stream —
-    // topic_subs would mutate on the receiver side otherwise.
+    // The rejected message must NOT reach the broadcast stream —
+    // external callers must not be able to spoof internal system
+    // signals (join/leave, classifier nudges) via HTTP POST.
     assert!(
         rx.try_recv().is_err(),
         "external system message must not broadcast"
