@@ -106,7 +106,7 @@ fn deliver_to_accept_median_pairs_by_issue() {
 }
 
 #[test]
-fn rework_rate_counts_failed_desk_checks_per_delivery() {
+fn rework_rate_counts_failed_desk_checks_per_unique_delivery() {
     let base = now() - ChronoDuration::days(1);
     let messages = vec![
         msg("#30 delivered", base),
@@ -120,10 +120,38 @@ fn rework_rate_counts_failed_desk_checks_per_delivery() {
         msg("#33 delivered", base + ChronoDuration::hours(6)),
     ];
     let m = compute(&messages, now(), |_| true);
-    // 5 delivered events in window (#30 twice, #31/#32/#33 once each),
-    // 1 fail-desk-check → 1/5 = 0.2
-    assert_eq!(m.delivered_in_window, 5);
-    assert_eq!(m.rework_rate, Some(0.2));
+    // 4 unique delivered stories (#30 once even though re-delivered,
+    // plus #31/#32/#33). 1 fail-desk-check event → 1/4 = 0.25.
+    // Before #277: delivered counted all events = 5, rework = 0.2.
+    // Re-deliveries no longer inflate velocity (#277).
+    assert_eq!(m.delivered_in_window, 4);
+    assert_eq!(m.rework_rate, Some(0.25));
+}
+
+#[test]
+fn re_delivered_story_counts_once_in_delivered_in_window() {
+    // Regression guard for the inflation Ryan flagged during
+    // acceptance 2026-04-17. Re-deliveries for FAIL-fix cycles
+    // should not double-count toward velocity.
+    let base = now() - ChronoDuration::days(1);
+    let messages = vec![
+        msg("#50 delivered", base),
+        msg(
+            "#50 failed desk-check: fix prefix",
+            base + ChronoDuration::hours(1),
+        ),
+        msg("#50 delivered", base + ChronoDuration::hours(2)),
+        msg(
+            "#50 failed desk-check: missing test",
+            base + ChronoDuration::hours(3),
+        ),
+        msg("#50 delivered", base + ChronoDuration::hours(4)),
+    ];
+    let m = compute(&messages, now(), |_| true);
+    assert_eq!(
+        m.delivered_in_window, 1,
+        "re-delivered story counts as ONE unique delivery"
+    );
 }
 
 #[test]

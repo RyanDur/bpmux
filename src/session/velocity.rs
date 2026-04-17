@@ -179,12 +179,18 @@ pub fn compute(
         }
     }
 
-    let delivered_events: Vec<DateTime<Utc>> = events
+    // Count unique stories that had ≥1 delivered event in the
+    // window (#277). Re-deliveries after FAIL-fix used to inflate
+    // this — a story delivered twice counted twice, pushing
+    // "delivered/day" above actual business-value throughput.
+    // Durations below still count each event individually because
+    // pickup/deliver latency is per-event, not per-story.
+    let unique_delivered: std::collections::HashSet<u64> = events
         .iter()
         .filter(|((_, lc), _)| *lc == Lifecycle::Delivered)
-        .flat_map(|(_, ts)| ts.clone())
+        .map(|((number, _), _)| *number)
         .collect();
-    let delivered_in_window = delivered_events.len();
+    let delivered_in_window = unique_delivered.len();
 
     let delivered_per_day = delivered_in_window as f64 / WINDOW_DAYS as f64;
 
