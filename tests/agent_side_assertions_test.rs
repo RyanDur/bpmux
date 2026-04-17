@@ -14,6 +14,11 @@ use harness::bridge::TestBridge;
 use harness::pty::TestBpmux;
 use std::time::Duration;
 
+/// Presence-wait timeout for integration tests (#276). See
+/// bridge_acceptance_test.rs for the rationale — GH Actions +
+/// subprocess spawn needs more headroom than 5s.
+const WAIT_PRESENCE_TIMEOUT: Duration = Duration::from_secs(15);
+
 /// AC: "Given a test calls view_board as a specific agent role,
 /// when stories exist in the board, then the response contains
 /// stories with number, title, and state — matching what that agent
@@ -111,7 +116,7 @@ fn deliver_story_signal_routes_desk_check_to_designer_not_dev() {
         // Designer receives the desk-check addressed signal.
         designer
             .capture
-            .wait_for("desk-check needed", Duration::from_secs(5))
+            .wait_for("desk-check needed", WAIT_PRESENCE_TIMEOUT)
             .await;
 
         // Negative: dev does NOT receive the desk-check signal. Give
@@ -154,7 +159,7 @@ fn pass_desk_check_signal_routes_to_ryan_not_dev() {
         );
 
         ryan.capture
-            .wait_for("ready for acceptance", Duration::from_secs(5))
+            .wait_for("ready for acceptance", WAIT_PRESENCE_TIMEOUT)
             .await;
 
         // Negative: dev does not see the pass signal. Wait a beat for
@@ -200,7 +205,7 @@ fn fail_desk_check_signal_routes_to_dev_not_ryan() {
         );
 
         dev.capture
-            .wait_for("missing negative test", Duration::from_secs(5))
+            .wait_for("missing negative test", WAIT_PRESENCE_TIMEOUT)
             .await;
 
         tokio::time::sleep(Duration::from_millis(500)).await;
@@ -272,7 +277,7 @@ fn accept_story_allows_pm_and_broadcasts_role_attribution() {
         );
 
         dev.capture
-            .wait_for("accepted by pm", Duration::from_secs(5))
+            .wait_for("accepted by pm", WAIT_PRESENCE_TIMEOUT)
             .await;
 
         let dev_seen = dev.capture.received().join("\n");

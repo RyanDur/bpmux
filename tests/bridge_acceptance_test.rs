@@ -17,6 +17,12 @@ use harness::bridge::TestBridge;
 use harness::pty::TestBpmux;
 use std::time::Duration;
 
+/// Presence-wait timeout for integration tests (#276). GitHub Actions
+/// runners plus subprocess spawn + WS notification round-trip can
+/// push 5s-tight waits past the edge under load. 15s gives enough
+/// headroom without hiding real stalls.
+const WAIT_PRESENCE_TIMEOUT: Duration = Duration::from_secs(15);
+
 #[test]
 fn messages_flow_through_bridge() {
     let bpmux = TestBpmux::start();
@@ -26,7 +32,7 @@ fn messages_flow_through_bridge() {
 
         bpmux.type_line("hello from human");
         bridge
-            .wait_for_message("hello from human", Duration::from_secs(10))
+            .wait_for_message("hello from human", WAIT_PRESENCE_TIMEOUT)
             .await;
 
         bridge.send("hello from bridge").await;
@@ -35,7 +41,7 @@ fn messages_flow_through_bridge() {
     });
 
     assert!(
-        bpmux.wait_for_tui("hello from bridge", Duration::from_secs(5)),
+        bpmux.wait_for_tui("hello from bridge", WAIT_PRESENCE_TIMEOUT),
         "Bridge message should appear in TUI. Screen:\n{}",
         bpmux.tui()
     );
