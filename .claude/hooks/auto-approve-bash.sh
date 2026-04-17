@@ -91,6 +91,11 @@ deny_patterns=(
     # Privilege escalation
     '(^|[[:space:]])sudo([[:space:]]|$)'
     '(^|[[:space:]])doas([[:space:]]|$)'
+    # `sed` has wrecked files in this repo; Ryan's rule is Edit only.
+    # Denylist here forces a prompt on every sed invocation so stray
+    # uses surface before running. (Team discipline lives in the
+    # `feedback_no_sed_use_edit` memory; this hook is the enforcement.)
+    '(^|[[:space:]])sed([[:space:]]|$)'
     # Piping into an interpreter from a fetch — broad set of shells + scripting
     'curl[^|]*\|[[:space:]]*(sh|bash|zsh|fish|ksh|dash|python|python3|ruby|perl|node|php)([[:space:]]|$)'
     'wget[^|]*\|[[:space:]]*(sh|bash|zsh|fish|ksh|dash|python|python3|ruby|perl|node|php)([[:space:]]|$)'
