@@ -418,6 +418,46 @@ async fn accept_rejects_unknown_role_via_handler() {
     assert!(result.unwrap_err().contains("restricted to"));
 }
 
+// ── #265: reject_story opened to team roles ──────────────────
+//
+// Parallel to #213's accept_story role-gate opening. PM/designer/dev
+// fire rejections on Ryan's behalf when he says "reject," so the tool
+// has a callable path. Unknown roles still error.
+
+#[tokio::test]
+async fn reject_allows_pm_designer_dev_owner() {
+    let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
+    for caller in ["ryan:human", "pm:claude-code", "designer:claude-code", "dev:claude-code"] {
+        let args = serde_json::json!({"number": 1, "reason": "needs rework"});
+        let result = handle_reject_story(
+            args.as_object().unwrap(),
+            caller,
+            &ws_tx,
+            &AlreadyClosedTracker,
+        )
+        .await;
+        assert!(
+            result.is_ok() || !result.as_ref().unwrap_err().contains("restricted to"),
+            "reject must allow {caller}; got: {result:?}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn reject_rejects_unknown_role_via_handler() {
+    let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
+    let args = serde_json::json!({"number": 1, "reason": "test"});
+    let result = handle_reject_story(
+        args.as_object().unwrap(),
+        "intern:claude-code",
+        &ws_tx,
+        &AlreadyClosedTracker,
+    )
+    .await;
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("restricted to"));
+}
+
 // ── Contract tests for GhTracker (#213) ──
 // These verify the real adapter works against the live gh CLI.
 // Marked #[ignore] because they require gh authentication — run

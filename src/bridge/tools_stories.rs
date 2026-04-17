@@ -272,7 +272,7 @@ pub(super) async fn handle_reject_story(
     ws_tx: &Mutex<Option<WsSink>>,
     tracker: &impl super::tracker::StoryTracker,
 ) -> Result<String, String> {
-    require_role(agent_name, &["ryan"], "reject")?;
+    require_role(agent_name, &["ryan", "pm", "designer", "dev"], "reject")?;
     let number = args
         .get("number")
         .and_then(|v| v.as_u64())
