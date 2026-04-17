@@ -13,7 +13,6 @@ mod status;
 mod to;
 mod toggle_all;
 pub(crate) mod tokens;
-mod topic;
 mod velocity;
 mod who;
 

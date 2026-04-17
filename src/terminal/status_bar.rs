@@ -92,7 +92,6 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     } else {
         Span::raw("")
     };
-    // Board view label, topic mode label.
     let view_label = if matches!(app.input_mode, crate::terminal::app::InputMode::Board) {
         if app.board.detail.is_some() {
             let visible = super::board_view::visible_stories(&app.board.stories);
@@ -106,8 +105,6 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         } else {
             " board view".to_string()
         }
-    } else if app.topic_mode() {
-        format!(" {}", app.topic.active)
     } else {
         match &app.channels.current_view {
             None => " [all]".to_string(),
@@ -120,23 +117,6 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         Span::raw(" "),
         connection_status,
     ];
-    // Cross-topic unread indicators. Show other topics
-    // that have unread messages so the user doesn't miss activity.
-    if app.topic_mode() {
-        for topic in &app.topic.topics {
-            if *topic == app.topic.active {
-                continue;
-            }
-            let unread = app.topic.unreads.get(topic).copied().unwrap_or(0);
-            if unread > 0 {
-                status_spans.push(Span::raw(" | "));
-                status_spans.push(Span::styled(
-                    format!("{topic}: {unread} new"),
-                    Style::default().fg(DRACULA_ORANGE),
-                ));
-            }
-        }
-    }
     // Focus-mode indicator — shows the current focus set
     // alongside the view label when `/focus <roles>` is active.
     // Format: `[focus: dev,pm]`. Silent when the filter is off so
@@ -273,8 +253,6 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
             // it's all keybind guidance. Render the whole string in plain
             // foreground.
             ("", "Enter=switch \u{2191}\u{2193}=nav Esc=close")
-        } else if app.topic_mode() {
-            ("?=help", " \u{2325}1=topics Enter=send")
         } else {
             ("?=help", " \u{2325}1=sidebar Enter=send")
         };

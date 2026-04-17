@@ -88,7 +88,6 @@ pub(in crate::bridge) async fn handle_share_message(
             to: target_to.clone(),
             addressee: None,
             message_type: None,
-            topic: None,
             thread_id: None,
         })
         .map_err(|e| format!("failed to serialize: {e}"))?;
@@ -158,7 +157,6 @@ pub(in crate::bridge) async fn handle_share_message(
         to: target_to,
         addressee: None,
         message_type: None,
-        topic: None,
         thread_id: None,
     })
     .map_err(|e| format!("failed to serialize: {e}"))?;

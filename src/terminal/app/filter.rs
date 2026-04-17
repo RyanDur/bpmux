@@ -22,7 +22,6 @@ pub(super) struct FilterContext<'a> {
     pub current_view: Option<&'a str>,
     pub identity_name: &'a str,
     pub focused_roles: Option<&'a [String]>,
-    pub active_topic: &'a str,
     /// Active thread id (#268). When `Some`, the viewer is inside a
     /// thread and the chat pane scopes to messages carrying that
     /// thread_id. When `None`, threads behave as broadcast (all
@@ -72,11 +71,6 @@ pub(super) fn classify(ctx: &FilterContext, m: &Message) -> FilterVerdict {
     if !crate::terminal::commands::focus::in_focus(m, ctx.focused_roles, ctx.identity_name) {
         return FilterVerdict::Skip;
     }
-    if let Some(msg_topic) = &m.topic
-        && msg_topic != ctx.active_topic
-    {
-        return FilterVerdict::Skip;
-    }
     FilterVerdict::Include
 }
 
@@ -104,7 +98,6 @@ mod tests {
             current_view: None,
             identity_name: "ryan",
             focused_roles: None,
-            active_topic: "general",
             current_thread: Some(tid),
         }
     }
@@ -116,7 +109,6 @@ mod tests {
             current_view: None,
             identity_name: "ryan",
             focused_roles: None,
-            active_topic: "general",
             current_thread: None,
         }
     }
@@ -131,7 +123,6 @@ mod tests {
             addressee: None,
             explicit_privacy: false,
             multi_depth: None,
-            topic: None,
             thread_id: thread_id.map(String::from),
         }
     }

@@ -341,7 +341,6 @@ where
                                     addressee: None,
                                     thread_id: None,
                                     multi_depth: None,
-                                    topic: None,
                                     explicit_privacy: false,
                                 });
                                 app.scroll.offset = 0;

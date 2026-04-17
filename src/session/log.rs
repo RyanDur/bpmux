@@ -15,11 +15,6 @@ pub struct Session {
     pub wake_tx: broadcast::Sender<Message>,
     pub connected_peers: AtomicUsize,
     pub storage: Arc<dyn Storage>,
-    /// Per-peer topic subscriptions. Shared across all WS
-    /// connection handlers so topic creation can auto-subscribe
-    /// participants. Key: peer short name, Value: subscribed topics.
-    pub topic_subs:
-        Arc<std::sync::Mutex<std::collections::HashMap<String, std::collections::HashSet<String>>>>,
 }
 
 impl Clone for Session {
@@ -31,7 +26,6 @@ impl Clone for Session {
             wake_tx: self.wake_tx.clone(),
             connected_peers: AtomicUsize::new(self.connected_peers.load(Ordering::Relaxed)),
             storage: self.storage.clone(),
-            topic_subs: self.topic_subs.clone(),
         }
     }
 }
@@ -62,7 +56,6 @@ impl Session {
             wake_tx,
             connected_peers: AtomicUsize::new(0),
             storage,
-            topic_subs: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
         }
     }
 
@@ -84,13 +77,6 @@ impl Session {
     }
 
     pub fn broadcast(&self, msg: &Message) -> Result<(), LogError> {
-        // Auto-subscribe participants when a topic is created.
-        if msg.message_type == super::message::MessageType::System
-            && msg.text.contains("Created topic '")
-            && msg.text.contains("with: ")
-        {
-            crate::transport::ws::auto_subscribe_participants(&self.topic_subs, &msg.text);
-        }
         self.storage.append_message(msg)?;
         let _ = self.wake_tx.send(msg.clone());
         Ok(())

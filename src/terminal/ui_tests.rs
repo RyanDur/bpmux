@@ -30,7 +30,6 @@ fn chat_msg(from: &str, text: &str) -> Message {
         explicit_privacy: false,
         thread_id: None,
         multi_depth: None,
-        topic: None,
     }
 }
 
@@ -45,7 +44,6 @@ fn system_msg(from: &str, text: &str) -> Message {
         explicit_privacy: false,
         thread_id: None,
         multi_depth: None,
-        topic: None,
     }
 }
 
@@ -426,7 +424,6 @@ fn directed_msg(from: &str, text: &str, to: &[&str]) -> Message {
         explicit_privacy: false,
         thread_id: None,
         multi_depth: None,
-        topic: None,
     }
 }
 

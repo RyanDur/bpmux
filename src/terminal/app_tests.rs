@@ -22,7 +22,6 @@ fn chat_msg(from: &str, text: &str) -> Message {
         explicit_privacy: false,
         thread_id: None,
         multi_depth: None,
-        topic: None,
     }
 }
 
@@ -37,7 +36,6 @@ fn directed_msg(from: &str, text: &str, to: Vec<&str>) -> Message {
         explicit_privacy: false,
         thread_id: None,
         multi_depth: None,
-        topic: None,
     }
 }
 
@@ -52,7 +50,6 @@ fn system_msg(from: &str, text: &str) -> Message {
         explicit_privacy: false,
         thread_id: None,
         multi_depth: None,
-        topic: None,
     }
 }
 
@@ -67,7 +64,6 @@ fn activity_msg(from: &str, text: &str) -> Message {
         explicit_privacy: false,
         thread_id: None,
         multi_depth: None,
-        topic: None,
     }
 }
 
@@ -551,52 +547,6 @@ fn activity_messages_do_not_create_channels() {
 // extraction. These tests pin down each reducer's contract.
 
 #[test]
-fn system_topic_created_message_registers_topic() {
-    let mut app = test_app();
-    app.receive_message(system_msg("bpmux", "Topic 'teaching' created"));
-    assert!(app.topic.topics.contains(&"teaching".to_string()));
-}
-
-#[test]
-fn system_topic_created_does_not_double_register() {
-    let mut app = test_app();
-    app.receive_message(system_msg("bpmux", "Topic 'teaching' created"));
-    app.receive_message(system_msg("bpmux", "Topic 'teaching' created"));
-    let count = app.topic.topics.iter().filter(|t| *t == "teaching").count();
-    assert_eq!(count, 1);
-}
-
-#[test]
-fn chat_message_auto_discovers_topic() {
-    let mut app = test_app();
-    let mut msg = chat_msg("dev:claude-code", "from a topic");
-    msg.topic = Some("retro".to_string());
-    app.receive_message(msg);
-    assert!(app.topic.topics.contains(&"retro".to_string()));
-}
-
-#[test]
-fn chat_message_increments_topic_unread_when_not_viewing() {
-    let mut app = test_app();
-    // Default active topic is "general" — incoming "retro" message
-    // should bump retro's unread because the user isn't on retro.
-    let mut msg = chat_msg("dev:claude-code", "ping");
-    msg.topic = Some("retro".to_string());
-    app.receive_message(msg);
-    assert_eq!(app.topic.unreads.get("retro").copied().unwrap_or(0), 1);
-}
-
-#[test]
-fn chat_message_does_not_increment_unread_when_viewing_topic() {
-    let mut app = test_app();
-    app.topic.active = "retro".to_string();
-    let mut msg = chat_msg("dev:claude-code", "ping");
-    msg.topic = Some("retro".to_string());
-    app.receive_message(msg);
-    assert_eq!(app.topic.unreads.get("retro").copied().unwrap_or(0), 0);
-}
-
-#[test]
 fn chat_message_with_status_prefix_updates_activity() {
     let mut app = test_app();
     app.receive_message(chat_msg("dev:claude-code", "/status hacking on tests"));
@@ -621,7 +571,6 @@ fn insight_message_records_in_log_like_chat() {
         explicit_privacy: false,
         thread_id: None,
         multi_depth: None,
-        topic: None,
     };
     app.receive_message(msg);
     assert_eq!(app.msg.messages.len(), 1);
@@ -641,7 +590,6 @@ fn nudge_message_records_in_log_like_chat() {
         explicit_privacy: false,
         thread_id: None,
         multi_depth: None,
-        topic: None,
     };
     app.receive_message(msg);
     assert_eq!(app.msg.messages.len(), 1);
@@ -951,7 +899,6 @@ fn toggle_expands_long_system_message() {
         explicit_privacy: false,
         thread_id: None,
         multi_depth: None,
-        topic: None,
     });
     let key = app.msg.messages.last().unwrap().ts.to_rfc3339();
     assert!(
@@ -986,7 +933,6 @@ fn peer_leave_removes_phantom_channels() {
         explicit_privacy: false,
         thread_id: None,
         multi_depth: None,
-        topic: None,
     });
     // View the channel so the message is "read" (no unread count)
     app.channels.current_view = Some("agent-14c3".to_string());
@@ -1011,7 +957,6 @@ fn peer_leave_removes_phantom_channels() {
         explicit_privacy: false,
         thread_id: None,
         multi_depth: None,
-        topic: None,
     });
     assert!(
         !app.channels.active.contains("agent-14c3"),
@@ -1033,7 +978,6 @@ fn peer_leave_keeps_channels_with_unread() {
         explicit_privacy: false,
         thread_id: None,
         multi_depth: None,
-        topic: None,
     });
     app.channels.current_view = Some("broadcast".to_string());
     app.receive_message(directed_msg(
@@ -1054,7 +998,6 @@ fn peer_leave_keeps_channels_with_unread() {
         explicit_privacy: false,
         thread_id: None,
         multi_depth: None,
-        topic: None,
     });
     assert!(
         app.channels.active.contains("dev"),

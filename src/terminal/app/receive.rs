@@ -25,8 +25,7 @@ use std::time::Instant;
 use crate::session::{Message, MessageType};
 
 use super::{
-    ChannelState, MessageState, PeerState, SessionIdentity, TopicState, channel_name,
-    short_peer_name,
+    ChannelState, MessageState, PeerState, SessionIdentity, channel_name, short_peer_name,
 };
 
 /// Activity message: bump the sender's presence entry. No log push.
@@ -34,29 +33,15 @@ pub(super) fn handle_activity(peers: &mut PeerState, sender: String, text: Strin
     peers.activity.insert(sender, (text, Instant::now()));
 }
 
-/// System message: auto-register topics from creation notices, and
-/// handle peer join/left transitions (which mutate presence + the
-/// channel-list snapshot).
+/// System message: handle peer join/left transitions (which mutate
+/// presence + the channel-list snapshot).
 pub(super) fn handle_system(
-    topic: &mut TopicState,
     channels: &mut ChannelState,
     peers: &mut PeerState,
     msg_state: &MessageState,
     identity: &SessionIdentity,
     text: &str,
 ) {
-    // Auto-register topics from "Topic 'X' created" notifications so
-    // /topic shows them without an extra round-trip.
-    if text.starts_with("Topic '")
-        && text.contains("' created")
-        && let Some(start) = text.find('\'')
-        && let Some(end) = text[start + 1..].find('\'')
-    {
-        let topic_name = text[start + 1..start + 1 + end].to_string();
-        if !topic.topics.contains(&topic_name) {
-            topic.topics.push(topic_name);
-        }
-    }
     if let Some(peer) = text.strip_suffix(" joined") {
         let short = short_peer_name(peer).to_string();
         peers.activity.insert(short.clone(), ("available".into(), Instant::now()));
@@ -68,27 +53,18 @@ pub(super) fn handle_system(
     }
 }
 
-/// Chat-family message (Chat / Insight / Nudge): topic auto-discovery,
-/// channel registration, unread bookkeeping, /status side-effect, and
-/// DM-flash tracking. Does NOT push the message — the caller does
-/// that as part of the shared tail so all non-Activity branches share
-/// scroll-preservation logic.
+/// Chat-family message (Chat / Insight / Nudge): channel registration,
+/// unread bookkeeping, /status side-effect, and DM-flash tracking.
+/// Does NOT push the message — the caller does that as part of the
+/// shared tail so all non-Activity branches share scroll-preservation
+/// logic.
 pub(super) fn handle_chat(
     channels: &mut ChannelState,
     peers: &mut PeerState,
-    topic: &mut TopicState,
     identity: &SessionIdentity,
     msg: &Message,
     sender: String,
 ) {
-    if let Some(topic_name) = &msg.topic {
-        if !topic.topics.contains(topic_name) {
-            topic.topics.push(topic_name.clone());
-        }
-        if *topic_name != topic.active {
-            *topic.unreads.entry(topic_name.clone()).or_insert(0) += 1;
-        }
-    }
     let ch = channel_name(msg, &identity.name);
     channels.active.insert(ch.clone());
     if channels.current_view.as_ref().is_none_or(|v| v != &ch) {
@@ -174,7 +150,6 @@ pub(super) fn dispatch(app: &mut super::App, msg: &Message) -> bool {
         }
         MessageType::System => {
             handle_system(
-                &mut app.topic,
                 &mut app.channels,
                 &mut app.peers,
                 &app.msg,
@@ -187,7 +162,6 @@ pub(super) fn dispatch(app: &mut super::App, msg: &Message) -> bool {
             handle_chat(
                 &mut app.channels,
                 &mut app.peers,
-                &mut app.topic,
                 &app.identity,
                 msg,
                 sender,

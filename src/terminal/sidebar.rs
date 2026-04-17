@@ -8,7 +8,7 @@ use ratatui::{
 
 use super::app::App;
 use super::theme::{
-    DRACULA_BG, DRACULA_COMMENT, DRACULA_CYAN, DRACULA_FG, DRACULA_ORANGE, DRACULA_PURPLE,
+    DRACULA_BG, DRACULA_COMMENT, DRACULA_CYAN, DRACULA_FG, DRACULA_PURPLE,
     DRACULA_SELECTION,
 };
 
@@ -23,13 +23,7 @@ const SIDEBAR_NAME_WIDTH: usize = 16;
 
 pub(super) fn render(frame: &mut Frame, app: &App, area: Rect) {
     let channels = app.sidebar_channels();
-
-    // Topic mode uses a flat list with ● active markers.
-    let items: Vec<Line> = if app.topic_mode() {
-        render_topic_items(&channels, app, area)
-    } else {
-        render_channel_items(&channels, app, area)
-    };
+    let items: Vec<Line> = render_channel_items(&channels, app, area);
 
     let border_color = if app.sidebar.focused {
         DRACULA_PURPLE
@@ -37,11 +31,8 @@ pub(super) fn render(frame: &mut Frame, app: &App, area: Rect) {
         DRACULA_SELECTION
     };
 
-    // Title says "topics" when in topic mode.
     let title_text = if !app.sidebar.filter.is_empty() {
         format!(" filter: {} ", app.sidebar.filter)
-    } else if app.topic_mode() {
-        format!(" {} topics ", super::icons::COLLAPSE)
     } else {
         format!(" {} channels ", super::icons::COLLAPSE)
     };
@@ -61,98 +52,6 @@ pub(super) fn render(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_widget(sidebar, area);
 }
 
-/// Render sidebar items in topic mode: flat list with ● active
-/// marker, (N) unread counts, per-mockup Dracula colors.
-fn render_topic_items(topics: &[String], app: &App, area: Rect) -> Vec<Line<'static>> {
-    let inner_width = area.width.saturating_sub(2) as usize;
-    topics
-        .iter()
-        .enumerate()
-        .map(|(i, topic)| {
-            let selected = i == app.sidebar.selected && app.sidebar.focused;
-            let bg = if selected {
-                DRACULA_SELECTION
-            } else {
-                DRACULA_BG
-            };
-            let is_active = *topic == app.topic.active;
-            let unread = app.topic.unreads.get(topic).copied().unwrap_or(0);
-
-            let marker = if is_active {
-                format!("{} ", super::icons::ACTIVE)
-            } else {
-                "  ".to_string()
-            };
-            let badge = if unread > 0 {
-                format!("  ({unread})")
-            } else {
-                String::new()
-            };
-
-            // Truncate topic name if needed
-            let prefix_len = 2 + marker.len(); // select_marker + marker
-            let available = inner_width.saturating_sub(prefix_len + badge.len());
-            let display_name: String = if topic.len() > available {
-                format!(
-                    "{}…",
-                    topic
-                        .chars()
-                        .take(available.saturating_sub(1))
-                        .collect::<String>()
-                )
-            } else {
-                topic.clone()
-            };
-
-            // Colors per design spec:
-            // - Active: DRACULA_CYAN, bold
-            // - Unreads: DRACULA_FG, bold (name) + DRACULA_ORANGE (count)
-            // - Quiet: DRACULA_COMMENT (dim)
-            let name_style = if is_active {
-                Style::default()
-                    .fg(DRACULA_CYAN)
-                    .bg(bg)
-                    .add_modifier(Modifier::BOLD)
-            } else if unread > 0 {
-                Style::default()
-                    .fg(DRACULA_FG)
-                    .bg(bg)
-                    .add_modifier(Modifier::BOLD)
-            } else {
-                Style::default().fg(DRACULA_COMMENT).bg(bg)
-            };
-
-            let select_marker = if selected {
-                format!("{} ", super::icons::EXPAND)
-            } else {
-                "  ".to_string()
-            };
-            let mut spans = vec![
-                Span::styled(select_marker, Style::default().bg(bg).fg(DRACULA_PURPLE)),
-                Span::styled(
-                    marker,
-                    Style::default()
-                        .bg(bg)
-                        .fg(if is_active { DRACULA_CYAN } else { DRACULA_BG }),
-                ),
-                Span::styled(display_name, name_style),
-            ];
-            if unread > 0 {
-                spans.push(Span::styled(
-                    badge,
-                    Style::default()
-                        .bg(bg)
-                        .fg(DRACULA_ORANGE)
-                        .add_modifier(Modifier::BOLD),
-                ));
-            }
-            Line::from(spans)
-        })
-        .collect()
-}
-
-/// Render sidebar items in channel mode: the existing channel tree
-/// with sections (direct, groups, system).
 fn render_channel_items(channels: &[String], app: &App, area: Rect) -> Vec<Line<'static>> {
     channels
         .iter()
@@ -291,27 +190,7 @@ fn is_section_header(entry: &str) -> bool {
 }
 
 impl App {
-    /// Whether the sidebar is in topic mode — topics exist beyond
-    /// the default "general". When true, the sidebar shows topics
-    /// instead of the channel tree.
-    pub fn topic_mode(&self) -> bool {
-        self.topic.topics.len() > 1
-    }
-
     pub fn sidebar_channels(&self) -> Vec<String> {
-        // When topics exist, the sidebar shows topics instead
-        // of the channel tree. Flat list, no sections.
-        if self.topic_mode() {
-            let filter = self.sidebar.filter.to_lowercase();
-            return self
-                .topic
-                .topics
-                .iter()
-                .filter(|t| filter.is_empty() || t.to_lowercase().contains(&filter))
-                .cloned()
-                .collect();
-        }
-
         let mut result = vec![self.identity.id.clone()];
         if !self.sidebar.project_expanded {
             return result;
@@ -452,18 +331,6 @@ impl App {
     pub fn sidebar_select(&mut self) {
         let channels = self.sidebar_channels();
         if let Some(ch) = channels.get(self.sidebar.selected) {
-            // Topic mode — selecting a topic switches active_topic.
-            if self.topic_mode() {
-                self.topic.active = ch.clone();
-                self.mark_filters_dirty();
-                self.topic.unreads.remove(ch);
-                self.channels.current_view = None;
-                self.scroll.offset = 0;
-                self.sidebar.focused = false;
-                self.sidebar.filter.clear();
-                return;
-            }
-
             // Toggle section headers
             if is_section_header(ch) {
                 if ch.contains("direct") {
@@ -494,10 +361,6 @@ impl App {
     }
 
     pub fn sidebar_collapse(&mut self) {
-        // Topic mode has no sections to collapse.
-        if self.topic_mode() {
-            return;
-        }
         // Collapse the section the selected item belongs to, not the whole tree
         let channels = self.sidebar_channels();
         if let Some(ch) = channels.get(self.sidebar.selected) {
@@ -545,10 +408,6 @@ impl App {
     }
 
     pub fn sidebar_expand(&mut self) {
-        // Topic mode has no sections to expand.
-        if self.topic_mode() {
-            return;
-        }
         let channels = self.sidebar_channels();
         if let Some(ch) = channels.get(self.sidebar.selected)
             && is_section_header(ch)

@@ -26,7 +26,6 @@ fn messages_persist_across_session_resumes() {
         explicit_privacy: false,
         thread_id: None,
         multi_depth: None,
-        topic: None,
     };
     let msg2 = Message {
         from: "ryan:human".to_string(),
@@ -38,7 +37,6 @@ fn messages_persist_across_session_resumes() {
         explicit_privacy: false,
         thread_id: None,
         multi_depth: None,
-        topic: None,
     };
     append_message(&session1, &msg1).expect("append 1");
     append_message(&session1, &msg2).expect("append 2");

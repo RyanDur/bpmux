@@ -72,28 +72,7 @@ async fn run_ws_session(
                 broadcast_result = broadcast_rx.recv() => {
                     match broadcast_result {
                         Ok(msg) => {
-                            // Read topic subscriptions from shared state.
-                            // Peers not in the map get an empty list (receive
-                            // general/broadcast only, no topic messages).
-                            let peer_short = short_name(&identity);
-                            let subs: Vec<String> = match session.topic_subs.lock() {
-                                Ok(map) => map
-                                    .get(peer_short)
-                                    .map(|s| s.iter().cloned().collect())
-                                    .unwrap_or_default(),
-                                Err(e) => {
-                                    // Surface mutex failure through diag,
-                                    // not silently swallow it. A poisoned topic_subs
-                                    // mutex would make every peer appear to have
-                                    // no subscriptions — silent topic broadcasts
-                                    // would stop reaching subscribers.
-                                    crate::session::diag::log_diag(&format!(
-                                        "ws: topic_subs mutex poisoned for {identity}: {e}"
-                                    ));
-                                    Vec::new()
-                                }
-                            };
-                            if should_deliver(&msg, &identity, Some(&subs)) {
+                            if should_deliver(&msg, &identity) {
                                 send_json(&mut tx, &ServerMessage::from(msg)).await?;
                             }
                         }
@@ -140,10 +119,6 @@ async fn run_ws_session(
     .await;
     let leave_msg = system_announcement(&format!("{identity} left"));
     let _ = session.broadcast(&leave_msg);
-    // Clean up topic subscriptions so stale entries don't accumulate
-    if let Ok(mut subs) = session.topic_subs.lock() {
-        subs.remove(short_name(&identity));
-    }
     session.peer_disconnected();
     result
 }
@@ -201,7 +176,6 @@ fn system_announcement(text: &str) -> session::Message {
         explicit_privacy: false,
         thread_id: None,
         multi_depth: None,
-        topic: None,
     }
 }
 
@@ -210,66 +184,10 @@ pub(crate) fn short_name(identity: &str) -> &str {
 }
 
 /// Add a topic to a peer's subscription set (shared state).
-fn subscribe_peer(
-    subs: &std::sync::Mutex<std::collections::HashMap<String, std::collections::HashSet<String>>>,
-    identity: &str,
-    topic: &str,
-) {
-    let peer = short_name(identity).to_string();
-    if let Ok(mut map) = subs.lock() {
-        map.entry(peer).or_default().insert(topic.to_string());
-    }
-}
-
-/// Auto-subscribe all named participants when a topic is created.
-/// Called when the server broadcasts a "Created topic 'X' with: A, B, C"
-/// system message.
-pub(crate) fn auto_subscribe_participants(
-    subs: &std::sync::Mutex<std::collections::HashMap<String, std::collections::HashSet<String>>>,
-    text: &str,
-) {
-    // Parse "Created topic 'X' with: A, B, C"
-    if let Some(start) = text.find('\'')
-        && let Some(end) = text[start + 1..].find('\'')
-    {
-        let topic_name = &text[start + 1..start + 1 + end];
-        if let Some(with_idx) = text.find("with: ") {
-            let participants = &text[with_idx + 6..];
-            for name in participants.split(',') {
-                let name = name.trim();
-                if !name.is_empty() {
-                    subscribe_peer(subs, name, topic_name);
-                }
-            }
-        }
-    }
-}
-
 /// Check whether a message should be delivered to a specific peer.
-/// `peer_topics` is the set of topics the peer is subscribed to.
-/// If None, the peer receives all topics (legacy / unsubscribed).
-pub(crate) fn should_deliver(
-    msg: &session::Message,
-    peer_identity: &str,
-    peer_topics: Option<&[String]>,
-) -> bool {
-    // Topic filter (#191): if the peer has topic subscriptions,
-    // only deliver messages whose topic matches. Messages with no
-    // topic (legacy/general) always deliver. System messages always
-    // deliver regardless of topic.
-    if let Some(subscribed) = peer_topics
-        && let Some(msg_topic) = &msg.topic
-        && !subscribed.iter().any(|t| t == msg_topic)
-    {
-        // Message is in a topic the peer isn't subscribed to.
-        // Still deliver system messages (joins, leaves).
-        if msg.message_type != session::MessageType::System {
-            return false;
-        }
-    }
-    // msg.topic == None (general) always delivers.
-
-    // Existing recipient-based filter (DMs, scoped messages).
+/// DM filtering only — the pre-#270 topic-subscription branch is
+/// gone; threads (#268) scope viewer-side, not delivery-side.
+pub(crate) fn should_deliver(msg: &session::Message, peer_identity: &str) -> bool {
     let recipients = match &msg.to {
         None => return true,
         Some(r) => r,
@@ -336,13 +254,8 @@ async fn handle_client_message(
             to,
             addressee,
             message_type,
-            topic,
             thread_id,
         }) => {
-            // Auto-subscribe sender to the topic on first send.
-            if let Some(ref t) = topic {
-                subscribe_peer(&session.topic_subs, identity, t);
-            }
             // When the caller supplies a `to` filter, treat the
             // message as an explicit DM — same privacy semantic as
             // the TUI's `/to` path. Without this, agent DMs look
@@ -362,15 +275,8 @@ async fn handle_client_message(
                 explicit_privacy,
                 thread_id,
                 multi_depth: None,
-                topic,
             };
             session.broadcast(&msg)?;
-        }
-        Ok(ClientMessage::Subscribe { topics }) => {
-            // Explicit topic subscription from client.
-            for t in &topics {
-                subscribe_peer(&session.topic_subs, identity, t);
-            }
         }
         Ok(ClientMessage::Ping) => {
             send_json(tx, &ServerMessage::Pong).await?;

@@ -33,7 +33,6 @@ impl App {
             explicit_privacy: true,
             thread_id: None,
             multi_depth: None,
-            topic: None,
         };
         self.push_message(msg.clone());
         self.clear_input();

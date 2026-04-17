@@ -16,7 +16,6 @@ pub(in crate::bridge) async fn handle_set_status(
         to: None,
         addressee: None,
         message_type: Some("activity".into()),
-        topic: None,
         thread_id: None,
     })
     .map_err(|e| format!("failed to serialize: {e}"))?;

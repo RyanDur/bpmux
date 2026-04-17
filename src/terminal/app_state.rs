@@ -67,29 +67,6 @@ pub struct PaletteState {
     pub selected: usize,
 }
 
-/// Topic state — extracted from App.
-pub struct TopicState {
-    /// Known topics in this session. "general" always present.
-    pub topics: Vec<String>,
-    /// Which topic the user is currently viewing/typing into.
-    pub active: String,
-    /// Per-topic unread count for sidebar display.
-    pub unreads: HashMap<String, usize>,
-    /// Per-topic participant lists.
-    pub participants: HashMap<String, Vec<String>>,
-}
-
-impl Default for TopicState {
-    fn default() -> Self {
-        Self {
-            topics: vec!["general".to_string()],
-            active: "general".to_string(),
-            unreads: HashMap::new(),
-            participants: HashMap::new(),
-        }
-    }
-}
-
 /// Search state — extracted from App.
 #[derive(Default)]
 pub struct SearchState {

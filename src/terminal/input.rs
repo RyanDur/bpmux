@@ -112,12 +112,6 @@ pub(super) const SLASH_COMMANDS: &[SlashCommand] = &[
         handler: dispatch_identity,
     },
     SlashCommand {
-        name: "/topic",
-        short_desc: "switch topic",
-        long_desc: "manage topics (e.g. /topic create scroll-fix)",
-        handler: dispatch_topic,
-    },
-    SlashCommand {
         name: "/help",
         short_desc: "show this",
         long_desc: "show this list",
@@ -194,9 +188,6 @@ fn dispatch_focus(app: &mut App, args: &str) -> Option<Message> {
 }
 fn dispatch_identity(app: &mut App, args: &str) -> Option<Message> {
     app.handle_identity(args.to_string())
-}
-fn dispatch_topic(app: &mut App, args: &str) -> Option<Message> {
-    app.handle_topic(args.to_string())
 }
 fn dispatch_help(app: &mut App, _args: &str) -> Option<Message> {
     app.handle_help()

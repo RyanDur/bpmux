@@ -57,7 +57,6 @@ fn build_meta_always_includes_core_fields() {
         "broadcast",
         None,
         None,
-        None,
     );
     assert_eq!(
         meta.get("from").and_then(|v| v.as_str()),
@@ -76,14 +75,10 @@ fn build_meta_always_includes_core_fields() {
 
 #[test]
 fn build_meta_omits_optional_keys_when_none() {
-    let meta = build_notification_meta("ryan", "t", "broadcast", None, None, None);
+    let meta = build_notification_meta("ryan", "t", "broadcast", None, None);
     assert!(
         !meta.contains_key("addressee"),
         "addressee must be omitted when None"
-    );
-    assert!(
-        !meta.contains_key("topic"),
-        "topic must be omitted when None"
     );
     assert!(
         !meta.contains_key("message_type"),
@@ -93,22 +88,13 @@ fn build_meta_omits_optional_keys_when_none() {
 
 #[test]
 fn build_meta_includes_addressee_when_present() {
-    let meta = build_notification_meta("ryan", "t", "broadcast", Some("dev"), None, None);
+    let meta = build_notification_meta("ryan", "t", "broadcast", Some("dev"), None);
     assert_eq!(meta.get("addressee").and_then(|v| v.as_str()), Some("dev"));
 }
 
 #[test]
-fn build_meta_includes_topic_when_present() {
-    let meta = build_notification_meta("ryan", "t", "broadcast", None, Some("scroll-fix"), None);
-    assert_eq!(
-        meta.get("topic").and_then(|v| v.as_str()),
-        Some("scroll-fix")
-    );
-}
-
-#[test]
 fn build_meta_includes_message_type_when_present() {
-    let meta = build_notification_meta("ryan", "t", "broadcast", None, None, Some("insight"));
+    let meta = build_notification_meta("ryan", "t", "broadcast", None, Some("insight"));
     assert_eq!(
         meta.get("message_type").and_then(|v| v.as_str()),
         Some("insight")
@@ -120,11 +106,10 @@ fn build_meta_never_contains_null_values() {
     // Contract for Claude Code v2.1.109+: null in meta crashes the
     // MCP stdio pipe. Verify across every combination of present/absent.
     let cases = [
-        build_notification_meta("r", "t", "c", None, None, None),
-        build_notification_meta("r", "t", "c", Some("dev"), None, None),
-        build_notification_meta("r", "t", "c", None, Some("x"), None),
-        build_notification_meta("r", "t", "c", None, None, Some("chat")),
-        build_notification_meta("r", "t", "c", Some("dev"), Some("x"), Some("chat")),
+        build_notification_meta("r", "t", "c", None, None),
+        build_notification_meta("r", "t", "c", Some("dev"), None),
+        build_notification_meta("r", "t", "c", None, Some("chat")),
+        build_notification_meta("r", "t", "c", Some("dev"), Some("chat")),
     ];
     for meta in &cases {
         for (key, value) in meta {
@@ -147,7 +132,6 @@ fn validate_meta_accepts_payload_with_no_nulls() {
         "t",
         "broadcast",
         Some("dev"),
-        Some("topic"),
         Some("chat"),
     );
     assert!(validate_meta(&meta).is_ok());
@@ -191,9 +175,8 @@ fn validate_meta_accepts_empty_map() {
 
 #[test]
 fn build_meta_mixed_presence_only_includes_present_keys() {
-    let meta = build_notification_meta("ryan", "t", "dev", Some("dev"), None, Some("chat"));
+    let meta = build_notification_meta("ryan", "t", "dev", Some("dev"), Some("chat"));
     assert!(meta.contains_key("addressee"));
-    assert!(!meta.contains_key("topic"), "topic None should be absent");
     assert!(meta.contains_key("message_type"));
 }
 

@@ -15,7 +15,6 @@ fn chat_message_is_chat() {
         explicit_privacy: false,
         thread_id: None,
         multi_depth: None,
-        topic: None,
     };
     assert!(msg.is_chat());
 }
@@ -32,7 +31,6 @@ fn system_message_is_not_chat() {
         explicit_privacy: false,
         thread_id: None,
         multi_depth: None,
-        topic: None,
     };
     assert!(!msg.is_chat());
 }
@@ -49,7 +47,6 @@ fn explicit_chat_type_is_chat() {
         explicit_privacy: false,
         thread_id: None,
         multi_depth: None,
-        topic: None,
     };
     assert!(msg.is_chat());
 }
@@ -68,7 +65,6 @@ fn serializes_message_to_json() {
         explicit_privacy: false,
         thread_id: None,
         multi_depth: None,
-        topic: None,
     };
 
     let json = serde_json::to_string(&msg).expect("serialize");
@@ -94,7 +90,6 @@ fn addressee_omitted_by_default_in_json() {
         explicit_privacy: false,
         thread_id: None,
         multi_depth: None,
-        topic: None,
     };
     let json = serde_json::to_string(&msg).expect("serialize");
     assert!(!json.contains("addressee"));
@@ -112,7 +107,6 @@ fn addressee_roundtrips_through_json() {
         explicit_privacy: false,
         thread_id: None,
         multi_depth: None,
-        topic: None,
     };
     let json = serde_json::to_string(&msg).expect("serialize");
     assert!(json.contains(r#""addressee":"pm""#));
@@ -181,7 +175,6 @@ fn message_without_multi_depth_serializes_without_the_field() {
         explicit_privacy: false,
         thread_id: None,
         multi_depth: None,
-        topic: None,
     };
     let json = serde_json::to_string(&msg).expect("serialize");
     assert!(
@@ -224,7 +217,6 @@ fn multi_depth_payload_roundtrips_preloaded_deep_detail() {
         explicit_privacy: false,
         thread_id: None,
         multi_depth: Some(payload.clone()),
-        topic: None,
     };
     let json = serde_json::to_string(&msg).expect("serialize");
     let parsed: Message = serde_json::from_str(&json).expect("deserialize");
@@ -251,7 +243,6 @@ fn multi_depth_payload_roundtrips_on_demand_deep_detail() {
         explicit_privacy: false,
         thread_id: None,
         multi_depth: Some(payload.clone()),
-        topic: None,
     };
     let json = serde_json::to_string(&msg).expect("serialize");
     // The discriminant field from `#[serde(tag = "kind")]` should be

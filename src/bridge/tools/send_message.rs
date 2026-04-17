@@ -32,7 +32,6 @@ pub(in crate::bridge) async fn handle_send(
         .get("message_type")
         .and_then(|v| v.as_str())
         .map(String::from);
-    let topic = args.get("topic").and_then(|v| v.as_str()).map(String::from);
     let thread_id = args
         .get("thread_id")
         .and_then(|v| v.as_str())
@@ -42,7 +41,6 @@ pub(in crate::bridge) async fn handle_send(
         to,
         addressee,
         message_type,
-        topic,
         thread_id,
     })
     .map_err(|e| format!("failed to serialize: {e}"))?;

@@ -15,7 +15,6 @@ fn msg(from: &str, text: &str) -> Message {
         explicit_privacy: false,
         thread_id: None,
         multi_depth: None,
-        topic: None,
     }
 }
 
@@ -147,7 +146,6 @@ fn system_message_is_routine() {
         explicit_privacy: false,
         thread_id: None,
         multi_depth: None,
-        topic: None,
     };
     assert_eq!(classify(&m, "ryan"), MessageClass::Routine);
 }

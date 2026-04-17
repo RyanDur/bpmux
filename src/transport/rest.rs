@@ -43,15 +43,9 @@ pub struct GetMessagesParams {
     pub chat_only: Option<bool>,
     /// Simulate delivery-side filtering as a specific peer (#191).
     /// When set, only returns messages that would be delivered to this
-    /// role via WebSocket — respects topic subscriptions. The peer
-    /// is treated as having no topic subscriptions (receives general
-    /// only, not topic-scoped messages they're not in).
+    /// role via WebSocket.
     #[serde(rename = "as")]
     pub as_peer: Option<String>,
-    /// Topic subscriptions for the simulated peer. Comma-separated.
-    /// Only used when `as` is set. Messages from topics not in this
-    /// list are excluded.
-    pub topics: Option<String>,
 }
 
 pub async fn get_messages(
@@ -68,33 +62,8 @@ pub async fn get_messages(
             } else {
                 messages
             };
-            // Per-caller delivery filter. When `?as=role`
-            // is set, apply the same topic-subscription filter the
-            // WebSocket push path uses — non-participants of a topic
-            // do not see topic-scoped messages via REST either. If
-            // `?topics=<csv>` is also provided, use those as the
-            // subscription set (test simulation path). Otherwise read
-            // the real subscription set from `session.topic_subs` for
-            // that peer — the live-agent path, closing the contract
-            // gap between REST pull and WS push.
             if let Some(ref peer) = params.as_peer {
-                let topic_subs: Vec<String> = if let Some(csv) = params.topics.as_deref() {
-                    csv.split(',')
-                        .map(|s| s.trim().to_string())
-                        .filter(|s| !s.is_empty())
-                        .collect()
-                } else {
-                    session
-                        .topic_subs
-                        .lock()
-                        .ok()
-                        .and_then(|map| {
-                            map.get(peer.as_str())
-                                .map(|set| set.iter().cloned().collect())
-                        })
-                        .unwrap_or_default()
-                };
-                filtered.retain(|m| super::ws::should_deliver(m, peer, Some(&topic_subs)));
+                filtered.retain(|m| super::ws::should_deliver(m, peer));
             }
             filtered.reverse();
             let page: Vec<_> = filtered.into_iter().skip(offset).take(limit).collect();
@@ -420,7 +389,6 @@ pub async fn post_message(
         explicit_privacy,
         thread_id: None,
         multi_depth: payload.multi_depth,
-        topic: payload.topic,
     };
     if let Err(e) = session.broadcast(&msg) {
         return (

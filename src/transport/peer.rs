@@ -163,7 +163,6 @@ pub fn spawn_relay(
                         explicit_privacy: false,
                         thread_id: None,
                         multi_depth: None,
-                        topic: None,
                     };
                     let _ = session_for_inbound.broadcast(&message);
                 }
@@ -179,7 +178,6 @@ pub fn spawn_relay(
                         explicit_privacy: false,
                         thread_id: None,
                         multi_depth: None,
-                        topic: None,
                     };
                     let _ = session_for_inbound.broadcast(&joined);
                 }
@@ -243,7 +241,6 @@ pub fn spawn_relay(
             explicit_privacy: false,
             thread_id: None,
             multi_depth: None,
-            topic: None,
         };
         let _ = session_for_inbound.broadcast(&left);
         connected_relay.store(false, std::sync::atomic::Ordering::Relaxed);

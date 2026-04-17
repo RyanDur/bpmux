@@ -60,13 +60,6 @@ pub struct Message {
     #[serde(default, skip_serializing_if = "is_false")]
     pub explicit_privacy: bool,
 
-    /// **Topic** (#191) — which topic this message belongs to.
-    /// `None` maps to the "general" catch-all topic for legacy
-    /// and unscoped messages. New messages get tagged with the
-    /// sender's active topic.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub topic: Option<String>,
-
     /// **Thread** (#268) — which thread this message belongs to.
     /// `None` means broadcast (not part of any thread). Present
     /// messages belong to the thread whose `id` matches; the

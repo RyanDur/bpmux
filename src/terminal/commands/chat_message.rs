@@ -43,11 +43,6 @@ impl App {
             explicit_privacy: false,
             thread_id: None,
             multi_depth: None,
-            topic: if self.topic.active == "general" {
-                None
-            } else {
-                Some(self.topic.active.clone())
-            },
         };
         self.push_message(msg.clone());
         self.clear_input();

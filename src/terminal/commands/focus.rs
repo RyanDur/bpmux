@@ -170,7 +170,6 @@ mod tests {
             explicit_privacy: false,
             thread_id: None,
             multi_depth: None,
-            topic: None,
         }
     }
 
@@ -185,7 +184,6 @@ mod tests {
             explicit_privacy: false,
             thread_id: None,
             multi_depth: None,
-            topic: None,
         }
     }
 

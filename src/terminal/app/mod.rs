@@ -47,12 +47,6 @@ fn find_last_truncated_key(
 
 /// Owner is excluded from channel names — they're implicit in every channel.
 pub fn channel_name(msg: &crate::session::Message, owner: &str) -> String {
-    // If the message has a topic, use the topic name as the
-    // channel display tag. This makes topic messages show as
-    // "[teaching]" instead of "[broadcast]" in the chat pane.
-    if let Some(topic) = &msg.topic {
-        return topic.clone();
-    }
     match &msg.to {
         None => "broadcast".to_string(),
         Some(recipients)
@@ -127,9 +121,6 @@ pub struct App {
     // ── Command palette (#192) ──
     pub palette: PaletteState,
 
-    // ── Topics (#191) ──
-    pub topic: TopicState,
-
     // ── Threads (#268) ──
     pub threads: ThreadState,
 
@@ -202,7 +193,6 @@ impl App {
                 .collect(),
             focused_roles: None,
             palette: PaletteState::default(),
-            topic: TopicState::default(),
             threads: ThreadState::default(),
             board: BoardState::default(),
             board_snapshot: std::sync::Arc::new(std::sync::Mutex::new(
@@ -260,7 +250,6 @@ impl App {
             explicit_privacy: false,
             thread_id: None,
             multi_depth: None,
-            topic: None,
         });
     }
 
@@ -287,7 +276,6 @@ impl App {
             current_view: self.channels.current_view.as_deref(),
             identity_name: &self.identity.name,
             focused_roles: self.focused_roles.as_deref(),
-            active_topic: &self.topic.active,
             current_thread: self.threads.current.as_deref(),
         };
         self.msg.filter_dirty = false;
