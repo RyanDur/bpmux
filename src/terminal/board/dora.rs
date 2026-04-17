@@ -106,10 +106,9 @@ pub fn compute_dora_metrics(
             })
             .unwrap_or_default();
         let title = issue["title"].as_str().unwrap_or("");
-        // #218: DORA's velocity-like numbers ("shipped this week",
-        // cycle time) must match the #264 Feature/Bug/Chore vocabulary
-        // so Chore accepts don't inflate the count (the "shipped this
-        // week: 100" inflation Ryan caught). Rejection rate and
+        // DORA's velocity-like numbers ("shipped this week", cycle
+        // time) must match the Feature/Bug/Chore vocabulary so Chore
+        // accepts don't inflate the count. Rejection rate and
         // in-progress stay label-only because they're workflow-state
         // counts, not velocity.
         let is_feature = crate::session::velocity::is_feature_verdict(&labels, title);
