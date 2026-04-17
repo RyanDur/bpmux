@@ -158,9 +158,49 @@ impl App {
     pub fn new(peer_name: String, session_id: String, messages: Vec<Message>) -> Self {
         let mut active_channels: HashSet<String> = HashSet::new();
         let peer_activity: HashMap<String, (String, Instant)> = HashMap::new();
+        // Replay thread lifecycle markers from the session log so
+        // threads.known survives TUI restart (#275 rework). Without
+        // this replay, the sidebar "threads" section is empty on
+        // reconnect until a fresh thread event arrives, and thread-
+        // scoped system markers (suggest_leave audit, etc.) drop
+        // silently because their thread_id lookup returns None.
+        let mut known_threads: HashMap<String, Thread> = HashMap::new();
         for msg in &messages {
             if msg.is_chat() {
                 active_channels.insert(channel_name(msg, &peer_name));
+            }
+            if msg.message_type == crate::session::MessageType::System {
+                if let Some((id, name, participants)) = super::event::parse_thread_create(&msg.text)
+                {
+                    known_threads.insert(
+                        id.clone(),
+                        Thread {
+                            id,
+                            name,
+                            participants,
+                            last_activity: Some(msg.ts),
+                            unread: 0,
+                        },
+                    );
+                    continue;
+                }
+                if let Some((thread_name, joiner)) = super::event::parse_thread_join(&msg.text)
+                    && let Some(t) = known_threads.values_mut().find(|t| t.name == thread_name)
+                {
+                    if !t.participants.iter().any(|p| p == &joiner) {
+                        t.participants.push(joiner);
+                    }
+                    t.last_activity = Some(msg.ts);
+                    continue;
+                }
+            }
+            if let Some(tid) = msg.thread_id.as_deref()
+                && let Some(thread) = known_threads.get_mut(tid)
+            {
+                // Any thread-tagged message advances last_activity
+                // so sidebar ordering (freshest first) is accurate
+                // on startup.
+                thread.last_activity = Some(msg.ts);
             }
         }
         Self {
@@ -201,7 +241,10 @@ impl App {
                 .collect(),
             focused_roles: None,
             palette: PaletteState::default(),
-            threads: ThreadState::default(),
+            threads: ThreadState {
+                known: known_threads,
+                ..Default::default()
+            },
             board: BoardState::default(),
             board_snapshot: std::sync::Arc::new(std::sync::Mutex::new(
                 super::board_poller::BoardSnapshot::default(),

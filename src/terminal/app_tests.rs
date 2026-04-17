@@ -166,6 +166,72 @@ fn sidebar_select_thread_resets_unread() {
     assert_eq!(app.threads.known["t-cheese"].unread, 0);
 }
 
+// ── #275 rework: thread state rehydrates from session log ──────
+//
+// Post-restart, App::new replays THREAD_CREATE and THREAD_JOIN
+// markers from the incoming messages so threads.known isn't empty
+// and the sidebar + thread-scoped filters work immediately — no
+// wait for a fresh thread event.
+
+fn system_marker(text: &str) -> Message {
+    Message {
+        from: "bpmux".to_string(),
+        text: text.to_string(),
+        ts: Utc::now(),
+        message_type: MessageType::System,
+        ..Message::default()
+    }
+}
+
+#[test]
+fn app_new_rehydrates_thread_create_markers_from_log() {
+    let messages = vec![system_marker(
+        "__BPMUX_THREAD_CREATE__|cheese-abc|cheese|ryan,dev",
+    )];
+    let app = App::new("ryan".to_string(), "test".to_string(), messages);
+    assert!(
+        app.threads.known.contains_key("cheese-abc"),
+        "thread must be rehydrated from create marker"
+    );
+    let t = &app.threads.known["cheese-abc"];
+    assert_eq!(t.name, "cheese");
+    assert_eq!(t.participants, vec!["ryan".to_string(), "dev".to_string()]);
+}
+
+#[test]
+fn app_new_rehydrates_thread_join_updates_participants() {
+    let messages = vec![
+        system_marker("__BPMUX_THREAD_CREATE__|cheese-abc|cheese|ryan"),
+        system_marker("__BPMUX_THREAD_JOIN__|cheese|designer"),
+    ];
+    let app = App::new("ryan".to_string(), "test".to_string(), messages);
+    let t = &app.threads.known["cheese-abc"];
+    assert!(
+        t.participants.iter().any(|p| p == "designer"),
+        "join marker must add participant; got: {:?}",
+        t.participants
+    );
+}
+
+#[test]
+fn app_new_with_empty_log_has_no_threads() {
+    let app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+    assert!(app.threads.known.is_empty());
+}
+
+#[test]
+fn app_new_rehydrated_threads_appear_in_sidebar_for_participant() {
+    let messages = vec![system_marker(
+        "__BPMUX_THREAD_CREATE__|cheese-abc|cheese|ryan,dev",
+    )];
+    let app = App::new("ryan".to_string(), "test".to_string(), messages);
+    let channels = app.sidebar_channels();
+    assert!(
+        channels.iter().any(|c| c == "thread:cheese-abc"),
+        "rehydrated thread must appear in sidebar"
+    );
+}
+
 #[test]
 fn submit_in_thread_tags_message_with_thread_id() {
     let mut app = test_app();
