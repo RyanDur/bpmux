@@ -2,9 +2,9 @@
 //!
 //! Structured session state that survives compaction. Each agent can
 //! save a "where am I, what's happening, what's next" snapshot at
-//! any time. The PreCompact hook (#166) triggers an auto-save. Post-
-//! compaction, the agent reads the bookmark to resume with high
-//! fidelity instead of reconstructing state from chat history.
+//! any time via the `save_bookmark` MCP tool. Post-compaction, the
+//! agent reads the bookmark to resume with high fidelity instead of
+//! reconstructing state from chat history.
 //!
 //! Storage: `{session-dir}/bookmark-{role}.json` — per-role, per-
 //! session. Overwrites in place (current state, not history).
