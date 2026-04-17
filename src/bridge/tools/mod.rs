@@ -6,6 +6,7 @@ mod add_principle;
 mod add_value;
 mod capture_screen;
 mod classifier_misfire;
+mod close_thread;
 mod get_bookmark;
 mod get_identity;
 mod get_token_report;
@@ -37,6 +38,7 @@ pub(in crate::bridge) use add_principle::handle_add_principle;
 pub(in crate::bridge) use add_value::handle_add_value;
 pub(in crate::bridge) use capture_screen::handle_capture_screen;
 pub(in crate::bridge) use classifier_misfire::handle_classifier_misfire;
+pub(in crate::bridge) use close_thread::handle_close_thread;
 pub(in crate::bridge) use get_bookmark::handle_get_bookmark;
 pub(in crate::bridge) use get_identity::handle_get_identity;
 pub(in crate::bridge) use get_token_report::handle_get_token_report;
@@ -62,6 +64,8 @@ pub(in crate::bridge) use view_velocity::handle_view_velocity;
 
 // Markers — re-exported so crate::bridge::tools::VIEW_*, etc. paths
 // remain available if any caller relies on them.
+#[allow(unused_imports)]
+pub(in crate::bridge) use close_thread::THREAD_CLOSE_MARKER;
 #[allow(unused_imports)]
 pub(in crate::bridge) use start_thread::THREAD_CREATE_MARKER;
 #[allow(unused_imports)]

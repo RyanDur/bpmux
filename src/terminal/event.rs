@@ -432,6 +432,11 @@ pub(super) const VIEW_VELOCITY_MARKER: &str = "__BPMUX_VIEW_VELOCITY__";
 /// Format: `__BPMUX_THREAD_CREATE__|<id>|<name>|<p1,p2,...>`
 pub(super) const THREAD_CREATE_MARKER_PREFIX: &str = "__BPMUX_THREAD_CREATE__|";
 
+/// Marker the bridge emits when an agent calls close_thread (#271).
+/// Kept in sync with THREAD_CLOSE_MARKER in bridge/tools/close_thread.rs.
+/// Format: `__BPMUX_THREAD_CLOSE__|<name>|<by_role>`
+pub(super) const THREAD_CLOSE_MARKER_PREFIX: &str = "__BPMUX_THREAD_CLOSE__|";
+
 /// Parse a thread-create marker payload. Returns `(id, name, participants)`
 /// on success. Pure function — tested against real marker text.
 pub(super) fn parse_thread_create(text: &str) -> Option<(String, String, Vec<String>)> {
@@ -446,6 +451,16 @@ pub(super) fn parse_thread_create(text: &str) -> Option<(String, String, Vec<Str
         .map(String::from)
         .collect();
     Some((id, name, participants))
+}
+
+/// Parse a thread-close marker payload. Returns `(name, by_role)` on
+/// success. Pure function — tested against real marker text.
+pub(super) fn parse_thread_close(text: &str) -> Option<(String, String)> {
+    let rest = text.strip_prefix(THREAD_CLOSE_MARKER_PREFIX)?;
+    let mut parts = rest.splitn(2, '|');
+    let name = parts.next()?.to_string();
+    let by = parts.next()?.to_string();
+    Some((name, by))
 }
 
 fn handle_broadcast_message(msg: session::Message, app: &mut App) {
@@ -475,6 +490,27 @@ fn handle_broadcast_message(msg: session::Message, app: &mut App) {
     // thread. Non-participants still render the marker's trailing
     // messages in broadcast (the marker itself is System-typed so
     // it doesn't show as chat).
+    // Thread-close marker (#271) — if the viewer is currently inside
+    // the named thread, flip back to broadcast view. Non-viewers
+    // ignore. Thread entity persists; only view state changes.
+    if msg.message_type == crate::session::MessageType::System
+        && let Some((name, by)) = parse_thread_close(&msg.text)
+    {
+        let closing_id = app.threads.known.iter().find_map(|(id, t)| {
+            if t.name == name {
+                Some(id.clone())
+            } else {
+                None
+            }
+        });
+        if let Some(id) = closing_id
+            && app.threads.current.as_deref() == Some(&id)
+        {
+            app.leave_thread();
+            app.system_message(format!("thread '{name}' closed by {by}"));
+        }
+        return;
+    }
     if msg.message_type == crate::session::MessageType::System
         && let Some((id, name, participants)) = parse_thread_create(&msg.text)
     {

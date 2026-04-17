@@ -218,3 +218,27 @@ fn thread_create_marker_rejects_missing_fields() {
     // Missing name + participants
     assert!(parse_thread_create("__BPMUX_THREAD_CREATE__|id").is_none());
 }
+
+// ── #271 thread-close marker parsing ──
+
+use super::event::parse_thread_close;
+
+#[test]
+fn thread_close_marker_parses_name_and_by_role() {
+    let text = "__BPMUX_THREAD_CLOSE__|cheese|pm";
+    let (name, by) = parse_thread_close(text).unwrap();
+    assert_eq!(name, "cheese");
+    assert_eq!(by, "pm");
+}
+
+#[test]
+fn thread_close_marker_rejects_non_marker_text() {
+    assert!(parse_thread_close("hello world").is_none());
+    assert!(parse_thread_close("__BPMUX_THREAD_CREATE__|id|name|p").is_none());
+}
+
+#[test]
+fn thread_close_marker_rejects_missing_fields() {
+    assert!(parse_thread_close("__BPMUX_THREAD_CLOSE__|name").is_none());
+    assert!(parse_thread_close("__BPMUX_THREAD_CLOSE__").is_none());
+}
