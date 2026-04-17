@@ -1,6 +1,5 @@
 use crossterm::event::{MouseButton, MouseEvent, MouseEventKind};
 
-use crate::session;
 use crate::terminal::app::{App, InputMode};
 
 const MOUSE_SCROLL_LINES: usize = 3;
@@ -22,7 +21,7 @@ fn build_project_content() -> String {
     content
 }
 
-fn handle_click(col: u16, row: u16, app: &mut App, session: &session::Session) {
+fn handle_click(col: u16, row: u16, app: &mut App) {
     if let Some((sx, sy, sw, sh)) = app.layout.sidebar_area {
         if col >= sx && col < sx + sw && row >= sy && row < sy + sh {
             if row == sy {
@@ -84,33 +83,18 @@ fn handle_click(col: u16, row: u16, app: &mut App, session: &session::Session) {
 
     if let Some((_, sb_y, _, _)) = app.layout.status_bar_area
         && row == sb_y
-    {
-        // Restart affordance takes precedence — click on the
-        // "[⟳ restart]" span triggers an immediate reload. Checked
-        // before the help-hint zone because the restart zone sits
-        // left of it in the status bar layout.
-        if let Some((start, end)) = app.layout.restart_hint_cols
-            && col >= start
-            && col < end
-        {
-            crate::terminal::ui_state::UiState::save(app, session);
-            app.lifecycle.should_reload = true;
-            return;
-        }
-        if app
+        && app
             .layout
             .help_hint_col
             .is_some_and(|hint_col| col >= hint_col)
-        {
-            app.input_mode = InputMode::Help;
-        }
+    {
+        app.input_mode = InputMode::Help;
     }
 }
 
 pub(super) fn handle(
     mouse: &MouseEvent,
     app: &mut App,
-    session: &session::Session,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     if matches!(app.input_mode, InputMode::Help) {
         if mouse.kind == MouseEventKind::Down(MouseButton::Left) {
@@ -126,7 +110,7 @@ pub(super) fn handle(
             app.scroll_down(MOUSE_SCROLL_LINES);
         }
         MouseEventKind::Down(MouseButton::Left) => {
-            handle_click(mouse.column, mouse.row, app, session);
+            handle_click(mouse.column, mouse.row, app);
         }
         _ => {}
     }

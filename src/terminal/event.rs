@@ -415,11 +415,6 @@ where
     }
 }
 
-/// Marker that bridges inject into a System message when an agent
-/// calls request_restart (#220). Kept in sync with the bridge-side
-/// constant in src/bridge/tools.rs.
-pub(super) const RESTART_REQUEST_MARKER: &str = "__BPMUX_RESTART_REQUEST__";
-
 /// Marker the bridge emits when an agent calls view_tokens.
 /// Kept in sync with VIEW_TOKENS_MARKER in src/bridge/tools.rs.
 pub(super) const VIEW_TOKENS_MARKER: &str = "__BPMUX_VIEW_TOKENS__";
@@ -432,30 +427,7 @@ pub(super) const VIEW_ROADMAP_MARKER: &str = "__BPMUX_VIEW_ROADMAP__";
 /// Kept in sync with VIEW_VELOCITY_MARKER in bridge/tools/view_velocity.rs.
 pub(super) const VIEW_VELOCITY_MARKER: &str = "__BPMUX_VIEW_VELOCITY__";
 
-/// Extract the requester role from a restart-request message text.
-/// Returns `Some(role)` if the text begins with `RESTART_REQUEST_MARKER`;
-/// `None` otherwise. An empty role defaults to "agent" so the UX
-/// always shows a meaningful requester identity.
-pub(super) fn parse_restart_request(text: &str) -> Option<String> {
-    let rest = text.strip_prefix(RESTART_REQUEST_MARKER)?;
-    let requester = rest.trim_start_matches(':').trim();
-    Some(if requester.is_empty() {
-        "agent".to_string()
-    } else {
-        requester.to_string()
-    })
-}
-
 fn handle_broadcast_message(msg: session::Message, app: &mut App) {
-    // Intercept restart-request signals before the normal chat
-    // path. The message is System-typed so it wouldn't render anyway;
-    // we pull the requester role out of the text and set pending_restart.
-    if msg.message_type == crate::session::MessageType::System
-        && let Some(requester) = parse_restart_request(&msg.text)
-    {
-        app.lifecycle.pending_restart = Some(requester);
-        return;
-    }
     // Agent-triggered view_tokens opens the overlay. Same
     // delegation pattern — System-type message + marker text; no
     // chat rendering, just the side effect.

@@ -11,7 +11,6 @@ mod get_usage;
 mod list_lessons;
 mod list_peer_lessons;
 mod read_messages;
-mod request_restart;
 mod save_bookmark;
 mod save_lesson;
 mod search_log;
@@ -38,7 +37,6 @@ pub(in crate::bridge) use get_usage::handle_get_usage;
 pub(in crate::bridge) use list_lessons::handle_list_lessons;
 pub(in crate::bridge) use list_peer_lessons::handle_list_peer_lessons;
 pub(in crate::bridge) use read_messages::handle_read_messages;
-pub(in crate::bridge) use request_restart::handle_request_restart;
 pub(in crate::bridge) use save_bookmark::handle_save_bookmark;
 pub(in crate::bridge) use save_lesson::handle_save_lesson;
 pub(in crate::bridge) use search_log::handle_search_log;
@@ -54,8 +52,6 @@ pub(in crate::bridge) use view_velocity::handle_view_velocity;
 
 // Markers — re-exported so crate::bridge::tools::VIEW_*, etc. paths
 // remain available if any caller relies on them.
-#[allow(unused_imports)]
-pub(in crate::bridge) use request_restart::RESTART_REQUEST_MARKER;
 #[allow(unused_imports)]
 pub(in crate::bridge) use view_roadmap::VIEW_ROADMAP_MARKER;
 #[allow(unused_imports)]

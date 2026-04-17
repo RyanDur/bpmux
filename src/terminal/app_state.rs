@@ -189,11 +189,6 @@ pub struct LayoutState {
     pub status_bar_area: Option<(u16, u16, u16, u16)>,
     pub chat_area: Option<(u16, u16, u16, u16)>,
     pub help_hint_col: Option<u16>,
-    /// Column range of the clickable "[⟳ restart]" affordance
-    /// in the status bar. Some(start, end) when visible, None when
-    /// no pending restart. Click zone is [start, end) on the status
-    /// bar row.
-    pub restart_hint_cols: Option<(u16, u16)>,
 }
 
 #[derive(Default)]
@@ -260,9 +255,4 @@ pub struct LifecycleState {
     pub should_quit: bool,
     pub should_reload: bool,
     pub p2p_command: Option<crate::transport::peer::P2pCommand>,
-    /// Set when an agent calls request_restart; holds the
-    /// requester's short role name. The status bar shows a
-    /// clickable affordance while this is Some; clicking it
-    /// confirms and triggers reload.
-    pub pending_restart: Option<String>,
 }

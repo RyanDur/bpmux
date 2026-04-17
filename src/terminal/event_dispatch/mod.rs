@@ -27,7 +27,7 @@ pub(super) fn handle_terminal_event(
         return Ok(());
     }
     if let Event::Mouse(m) = &ev {
-        return mouse::handle(m, app, session);
+        return mouse::handle(m, app);
     }
     if let Event::Paste(text) = ev {
         for ch in text.chars() {

@@ -2,15 +2,13 @@ use tokio::sync::Mutex;
 
 use super::helpers::{WsSink, ws_send};
 
-/// Marker that tells the TUI to open the tokens overlay. Same
-/// delegation pattern as RESTART_REQUEST_MARKER — System-typed
-/// broadcast with an opaque marker; TUI event loop intercepts and
-/// calls the existing `handle_tokens` logic.
+/// Marker that tells the TUI to open the tokens overlay. System-
+/// typed broadcast with an opaque marker; TUI event loop intercepts
+/// and calls the existing `handle_tokens` logic.
 pub(in crate::bridge) const VIEW_TOKENS_MARKER: &str = "__BPMUX_VIEW_TOKENS__";
 
 /// Agent-triggered view_tokens. Sends a system marker to the
-/// TUI which opens the existing tokens overlay. Same delegation
-/// pattern as request_restart.
+/// TUI which opens the existing tokens overlay.
 pub(in crate::bridge) async fn handle_view_tokens(
     ws_tx: &Mutex<Option<WsSink>>,
 ) -> Result<String, String> {
