@@ -154,6 +154,7 @@ fn seed_messages(dir: &TempDir, count: usize) -> Arc<session::Session> {
             to: None,
             addressee: None,
             explicit_privacy: false,
+            thread_id: None,
             multi_depth: None,
             topic: None,
         };
@@ -234,6 +235,7 @@ fn seed_mixed_messages(dir: &TempDir) -> Arc<session::Session> {
             to: None,
             addressee: None,
             explicit_privacy: false,
+            thread_id: None,
             multi_depth: None,
             topic: None,
         };

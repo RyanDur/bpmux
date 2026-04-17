@@ -24,6 +24,7 @@ fn messages_persist_across_session_resumes() {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        thread_id: None,
         multi_depth: None,
         topic: None,
     };
@@ -35,6 +36,7 @@ fn messages_persist_across_session_resumes() {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        thread_id: None,
         multi_depth: None,
         topic: None,
     };

@@ -106,6 +106,7 @@ pub(super) fn spawn_poller(tx: mpsc::Sender<CiState>, broadcast_session: Option<
                     to: None,
                     addressee: None,
                     explicit_privacy: false,
+                    thread_id: None,
                     multi_depth: Some(multi_depth),
                     topic: None,
                 };
@@ -233,6 +234,7 @@ pub(super) fn build_dev_ci_signal(text: &str) -> Message {
         to: Some(vec!["dev".to_string()]),
         addressee: Some("dev".to_string()),
         explicit_privacy: false,
+        thread_id: None,
         multi_depth: None,
         topic: None,
     }

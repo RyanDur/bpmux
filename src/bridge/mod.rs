@@ -212,6 +212,7 @@ async fn run_ws_connection(
             addressee,
             message_type,
             topic,
+            thread_id: _,
             multi_depth: _,
         } = msg
         {
@@ -414,6 +415,9 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
             crate::mcp::tools::remove_principle_tool(
                 "Remove a principle from your own identity (#269). Args: value_name + principle (exact text). Use to prune decoration after honest audit per the cost-to-hold discipline.",
             ),
+            crate::mcp::tools::start_thread_tool(
+                "Create a named conversation thread with a participant list (#268). Participants' TUIs switch to the thread's scoped view; non-participants keep seeing everything in broadcast with the thread name tagged. Args: name (human-readable) + participants (role names, e.g. ['ryan', 'designer']). Returns JSON { thread_id, name, participants }. Subsequent send_message calls can pass thread_id to route into this thread.",
+            ),
             crate::mcp::tools::get_token_report_tool(
                 "Get the token-cost report from bpmux's shared token log (#179). Returns JSON with total tokens, row count, per-role breakdown, and the 10 most recent turns (newest first). The data comes from per-harness adapters reading their own LLM-call recordings — you're seeing objective cost data, not self-reported. Same underlying log the `/tokens` TUI view reads, so you see exactly what Ryan sees. Empty report if the log is empty or missing.",
             ),
@@ -534,6 +538,7 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                     let current_name = name.lock().await;
                     tools::handle_remove_principle(&args, &current_name).await
                 }
+                "start_thread" => tools::handle_start_thread(&args, &ws_tx).await,
                 "get_token_report" => tools::handle_get_token_report().await,
                 "view_board" => tools_stories::handle_view_board(&args, &tracker).await,
                 "view_velocity" => tools::handle_view_velocity(port, &tracker, &ws_tx).await,

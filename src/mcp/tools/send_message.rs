@@ -25,6 +25,10 @@ pub fn send_message_tool(description: &'static str) -> Tool {
             "topic": {
                 "type": "string",
                 "description": "Topic tag (#191). Scopes the message to a named topic — only visible in that topic's view. Omit for broadcast (visible in all topics)."
+            },
+            "thread_id": {
+                "type": "string",
+                "description": "Thread id (#268). Tag the message as belonging to a named thread so participants see it scoped and non-participants see it in broadcast with the thread name. Get the id from start_thread's response. Omit for broadcast."
             }
         },
         "required": ["text"]

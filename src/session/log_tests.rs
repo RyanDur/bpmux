@@ -18,6 +18,7 @@ fn appends_and_reads_messages() {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        thread_id: None,
         multi_depth: None,
         topic: None,
     };
@@ -29,6 +30,7 @@ fn appends_and_reads_messages() {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        thread_id: None,
         multi_depth: None,
         topic: None,
     };
@@ -70,6 +72,7 @@ fn resumes_existing_session() {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        thread_id: None,
         multi_depth: None,
         topic: None,
     };
@@ -94,6 +97,7 @@ fn session_broadcasts_and_reads() {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        thread_id: None,
         multi_depth: None,
         topic: None,
     };

@@ -17,6 +17,7 @@ pub(in crate::bridge) async fn handle_set_status(
         addressee: None,
         message_type: Some("activity".into()),
         topic: None,
+        thread_id: None,
     })
     .map_err(|e| format!("failed to serialize: {e}"))?;
     ws_send(ws_tx, json).await?;

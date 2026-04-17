@@ -16,6 +16,7 @@ mod list_lessons;
 mod list_peer_lessons;
 mod read_messages;
 mod save_bookmark;
+mod start_thread;
 mod save_lesson;
 mod search_log;
 mod send_message;
@@ -47,6 +48,7 @@ pub(in crate::bridge) use list_peer_lessons::handle_list_peer_lessons;
 pub(in crate::bridge) use read_messages::handle_read_messages;
 pub(in crate::bridge) use save_bookmark::handle_save_bookmark;
 pub(in crate::bridge) use save_lesson::handle_save_lesson;
+pub(in crate::bridge) use start_thread::handle_start_thread;
 pub(in crate::bridge) use search_log::handle_search_log;
 pub(in crate::bridge) use send_message::handle_send;
 pub(in crate::bridge) use set_name::handle_set_name;
@@ -66,6 +68,8 @@ pub(in crate::bridge) use view_roadmap::VIEW_ROADMAP_MARKER;
 pub(in crate::bridge) use view_tokens::VIEW_TOKENS_MARKER;
 #[allow(unused_imports)]
 pub(in crate::bridge) use view_velocity::VIEW_VELOCITY_MARKER;
+#[allow(unused_imports)]
+pub(in crate::bridge) use start_thread::THREAD_CREATE_MARKER;
 
 // Re-exports used only by bridge/tests.rs.
 #[cfg(test)]

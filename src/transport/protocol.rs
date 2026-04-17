@@ -27,6 +27,11 @@ pub enum ClientMessage {
         /// Omit for broadcast (visible in all topics).
         #[serde(default, skip_serializing_if = "Option::is_none")]
         topic: Option<String>,
+        /// Thread tag (#268). Messages belonging to a thread carry
+        /// the thread's id; participants see them scoped, non-
+        /// participants see them in broadcast with the thread name.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        thread_id: Option<String>,
     },
     #[serde(rename = "ping")]
     Ping,
@@ -59,6 +64,9 @@ pub enum ServerMessage {
         /// Topic tag (#191) — which topic this message belongs to.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         topic: Option<String>,
+        /// Thread tag (#268) — which thread this message belongs to.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        thread_id: Option<String>,
         /// Multi-depth payload (#187).
         #[serde(default, skip_serializing_if = "Option::is_none")]
         multi_depth: Box<Option<crate::session::message::MultiDepthPayload>>,
@@ -79,6 +87,7 @@ impl From<Message> for ServerMessage {
             addressee: msg.addressee,
             message_type: msg.message_type.to_wire(),
             topic: msg.topic,
+            thread_id: msg.thread_id,
             multi_depth: Box::new(msg.multi_depth),
         }
     }

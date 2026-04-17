@@ -33,12 +33,17 @@ pub(in crate::bridge) async fn handle_send(
         .and_then(|v| v.as_str())
         .map(String::from);
     let topic = args.get("topic").and_then(|v| v.as_str()).map(String::from);
+    let thread_id = args
+        .get("thread_id")
+        .and_then(|v| v.as_str())
+        .map(String::from);
     let json = serde_json::to_string(&ClientMessage::Send {
         text: text.to_string(),
         to,
         addressee,
         message_type,
         topic,
+        thread_id,
     })
     .map_err(|e| format!("failed to serialize: {e}"))?;
     ws_send(ws_tx, json).await?;

@@ -41,6 +41,7 @@ impl App {
             to,
             addressee,
             explicit_privacy: false,
+            thread_id: None,
             multi_depth: None,
             topic: if self.topic.active == "general" {
                 None

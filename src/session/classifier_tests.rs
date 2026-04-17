@@ -13,6 +13,7 @@ fn msg(from: &str, text: &str) -> Message {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        thread_id: None,
         multi_depth: None,
         topic: None,
     }
@@ -144,6 +145,7 @@ fn system_message_is_routine() {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        thread_id: None,
         multi_depth: None,
         topic: None,
     };

@@ -130,6 +130,9 @@ pub struct App {
     // ── Topics (#191) ──
     pub topic: TopicState,
 
+    // ── Threads (#268) ──
+    pub threads: ThreadState,
+
     // ── Board view (#193) ──
     pub board: BoardState,
 
@@ -200,6 +203,7 @@ impl App {
             focused_roles: None,
             palette: PaletteState::default(),
             topic: TopicState::default(),
+            threads: ThreadState::default(),
             board: BoardState::default(),
             board_snapshot: std::sync::Arc::new(std::sync::Mutex::new(
                 super::board_poller::BoardSnapshot::default(),
@@ -254,6 +258,7 @@ impl App {
             to: None,
             addressee: None,
             explicit_privacy: false,
+            thread_id: None,
             multi_depth: None,
             topic: None,
         });
@@ -283,6 +288,7 @@ impl App {
             identity_name: &self.identity.name,
             focused_roles: self.focused_roles.as_deref(),
             active_topic: &self.topic.active,
+            current_thread: self.threads.current.as_deref(),
         };
         self.msg.filter_dirty = false;
         self.msg.filtered_indices.clear();
@@ -347,7 +353,28 @@ impl App {
         self.peers.activity.insert(peer, (status, Instant::now()));
     }
 
+    /// Leave the current thread (#268) — clear the thread view and
+    /// reset the peripheral counter that tracked broadcast activity
+    /// while focused inside. No-op when already in broadcast view.
+    pub fn leave_thread(&mut self) {
+        if self.threads.current.take().is_some() {
+            self.threads.broadcast_unread_while_threaded = 0;
+            self.mark_filters_dirty();
+        }
+    }
+
     pub fn receive_message(&mut self, msg: Message) {
+        // Peripheral counter (#268): while the viewer is inside a
+        // thread, bump the broadcast-unread counter whenever an
+        // incoming message ISN'T part of the current thread. Keeps
+        // cross-thread activity visible without breaking scope.
+        if let Some(current) = self.threads.current.as_deref()
+            && msg.message_type == MessageType::Chat
+            && msg.thread_id.as_deref() != Some(current)
+            && msg.from != self.from_identity()
+        {
+            self.threads.broadcast_unread_while_threaded += 1;
+        }
         let needs_push = receive::dispatch(self, &msg);
         if !needs_push {
             return;

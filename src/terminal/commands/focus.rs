@@ -168,6 +168,7 @@ mod tests {
             to: None,
             addressee: None,
             explicit_privacy: false,
+            thread_id: None,
             multi_depth: None,
             topic: None,
         }
@@ -182,6 +183,7 @@ mod tests {
             to: None,
             addressee: None,
             explicit_privacy: false,
+            thread_id: None,
             multi_depth: None,
             topic: None,
         }

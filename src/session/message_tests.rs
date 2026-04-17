@@ -13,6 +13,7 @@ fn chat_message_is_chat() {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        thread_id: None,
         multi_depth: None,
         topic: None,
     };
@@ -29,6 +30,7 @@ fn system_message_is_not_chat() {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        thread_id: None,
         multi_depth: None,
         topic: None,
     };
@@ -45,6 +47,7 @@ fn explicit_chat_type_is_chat() {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        thread_id: None,
         multi_depth: None,
         topic: None,
     };
@@ -63,6 +66,7 @@ fn serializes_message_to_json() {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        thread_id: None,
         multi_depth: None,
         topic: None,
     };
@@ -88,6 +92,7 @@ fn addressee_omitted_by_default_in_json() {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        thread_id: None,
         multi_depth: None,
         topic: None,
     };
@@ -105,6 +110,7 @@ fn addressee_roundtrips_through_json() {
         to: None,
         addressee: Some("pm".to_string()),
         explicit_privacy: false,
+        thread_id: None,
         multi_depth: None,
         topic: None,
     };
@@ -173,6 +179,7 @@ fn message_without_multi_depth_serializes_without_the_field() {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        thread_id: None,
         multi_depth: None,
         topic: None,
     };
@@ -215,6 +222,7 @@ fn multi_depth_payload_roundtrips_preloaded_deep_detail() {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        thread_id: None,
         multi_depth: Some(payload.clone()),
         topic: None,
     };
@@ -241,6 +249,7 @@ fn multi_depth_payload_roundtrips_on_demand_deep_detail() {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        thread_id: None,
         multi_depth: Some(payload.clone()),
         topic: None,
     };

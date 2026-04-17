@@ -31,6 +31,7 @@ impl App {
             to: Some(recipients),
             addressee: None,
             explicit_privacy: true,
+            thread_id: None,
             multi_depth: None,
             topic: None,
         };

@@ -67,6 +67,15 @@ pub struct Message {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub topic: Option<String>,
 
+    /// **Thread** (#268) — which thread this message belongs to.
+    /// `None` means broadcast (not part of any thread). Present
+    /// messages belong to the thread whose `id` matches; the
+    /// thread's participants see it scoped in their thread view,
+    /// non-participants see it in broadcast with the thread name
+    /// rendered alongside.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub thread_id: Option<String>,
+
     /// **Multi-depth rendering payload** (#184 / #187) — optional
     /// structured data that lets a single event carry multiple
     /// rendering depths so each receiving role can render at its

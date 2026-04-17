@@ -14,6 +14,7 @@ fn system_join(name: &str) -> Message {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        thread_id: None,
         multi_depth: None,
         topic: None,
     }
@@ -28,6 +29,7 @@ fn system_leave(name: &str) -> Message {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        thread_id: None,
         multi_depth: None,
         topic: None,
     }
@@ -84,6 +86,7 @@ fn chat_msg(from: &str, text: &str) -> Message {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        thread_id: None,
         multi_depth: None,
         topic: None,
     }
@@ -376,6 +379,7 @@ fn bayes_classify_returns_routine_for_non_chat_type() {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        thread_id: None,
         multi_depth: None,
         topic: None,
     };
@@ -420,6 +424,7 @@ fn handoff_nudge_suppressed_when_recipient_already_responded() {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        thread_id: None,
         multi_depth: None,
         topic: None,
     };

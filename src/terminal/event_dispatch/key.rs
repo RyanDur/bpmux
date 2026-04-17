@@ -254,7 +254,13 @@ pub(super) fn handle(
             scroll_down_with_bell(app, 5);
         }
         KeyCode::Esc => {
-            if app.scroll.offset > 0 {
+            // Thread view exits first — #268's scope discipline says
+            // Esc means "back to broadcast" when inside a thread.
+            // If scroll is active, scroll-to-bottom wins next. Falls
+            // back to clear_input when neither applies.
+            if app.threads.current.is_some() {
+                app.leave_thread();
+            } else if app.scroll.offset > 0 {
                 app.scroll.offset = 0;
                 app.scroll.unread_count = 0;
             } else {

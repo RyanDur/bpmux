@@ -216,6 +216,30 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
             Style::default().fg(DRACULA_YELLOW),
         ));
     }
+    // Thread peripheral indicator (#268): when the viewer is inside
+    // a thread, show the active thread name + count of broadcast
+    // messages arriving while away. Keeps cross-thread awareness
+    // without breaking scope.
+    if let Some(tid) = app.threads.current.as_deref() {
+        let name = app
+            .threads
+            .known
+            .get(tid)
+            .map(|t| t.name.as_str())
+            .unwrap_or(tid);
+        status_spans.push(Span::raw(" | "));
+        status_spans.push(Span::styled(
+            format!("thread: {name}"),
+            Style::default().fg(DRACULA_CYAN),
+        ));
+        let pending = app.threads.broadcast_unread_while_threaded;
+        if pending > 0 {
+            status_spans.push(Span::styled(
+                format!(" ({pending} broadcast unread)"),
+                Style::default().fg(DRACULA_YELLOW),
+            ));
+        }
+    }
     // CI indicator (#151). Sits between the presence cluster and the
     // right-aligned keyboard hint — repository state is cognitively
     // separate from presence state, so the spec groups them that way.

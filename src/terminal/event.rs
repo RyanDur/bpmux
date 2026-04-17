@@ -339,6 +339,7 @@ where
                                     message_type: crate::session::MessageType::System,
                                     to: None,
                                     addressee: None,
+                                    thread_id: None,
                                     multi_depth: None,
                                     topic: None,
                                     explicit_privacy: false,
@@ -427,6 +428,29 @@ pub(super) const VIEW_ROADMAP_MARKER: &str = "__BPMUX_VIEW_ROADMAP__";
 /// Kept in sync with VIEW_VELOCITY_MARKER in bridge/tools/view_velocity.rs.
 pub(super) const VIEW_VELOCITY_MARKER: &str = "__BPMUX_VIEW_VELOCITY__";
 
+/// Marker the bridge emits when an agent calls start_thread (#268).
+/// Kept in sync with THREAD_CREATE_MARKER in bridge/tools/start_thread.rs.
+/// Format: `__BPMUX_THREAD_CREATE__|<id>|<name>|<p1,p2,...>`
+pub(super) const THREAD_CREATE_MARKER_PREFIX: &str = "__BPMUX_THREAD_CREATE__|";
+
+/// Parse a thread-create marker payload. Returns `(id, name, participants)`
+/// on success. Pure function — tested against real marker text.
+pub(super) fn parse_thread_create(
+    text: &str,
+) -> Option<(String, String, Vec<String>)> {
+    let rest = text.strip_prefix(THREAD_CREATE_MARKER_PREFIX)?;
+    let mut parts = rest.splitn(3, '|');
+    let id = parts.next()?.to_string();
+    let name = parts.next()?.to_string();
+    let participants = parts
+        .next()?
+        .split(',')
+        .filter(|s| !s.is_empty())
+        .map(String::from)
+        .collect();
+    Some((id, name, participants))
+}
+
 fn handle_broadcast_message(msg: session::Message, app: &mut App) {
     // Agent-triggered view_tokens opens the overlay. Same
     // delegation pattern — System-type message + marker text; no
@@ -449,6 +473,30 @@ fn handle_broadcast_message(msg: session::Message, app: &mut App) {
         && msg.text == VIEW_VELOCITY_MARKER
     {
         app.handle_velocity();
+        return;
+    }
+    // Thread-create marker (#268) — register the thread locally; if
+    // self is a participant, switch the TUI's scoped view to the
+    // thread. Non-participants still render the marker's trailing
+    // messages in broadcast (the marker itself is System-typed so
+    // it doesn't show as chat).
+    if msg.message_type == crate::session::MessageType::System
+        && let Some((id, name, participants)) = parse_thread_create(&msg.text)
+    {
+        let is_participant = participants.iter().any(|p| p == &app.identity.name);
+        app.threads.known.insert(
+            id.clone(),
+            super::app::Thread {
+                id: id.clone(),
+                name,
+                participants,
+            },
+        );
+        if is_participant {
+            app.threads.current = Some(id);
+            app.threads.broadcast_unread_while_threaded = 0;
+            app.mark_filters_dirty();
+        }
         return;
     }
     let self_identity = app.from_identity();

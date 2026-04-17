@@ -414,6 +414,7 @@ pub(super) fn build_delivery_signals(number: u64, title: &str) -> Vec<ClientMess
             addressee: Some("designer".to_string()),
             message_type: None,
             topic: None,
+            thread_id: None,
         },
         ClientMessage::Send {
             text: format!("#{number} ({title}) delivered. queue update: check ready count"),
@@ -421,6 +422,7 @@ pub(super) fn build_delivery_signals(number: u64, title: &str) -> Vec<ClientMess
             addressee: Some("pm".to_string()),
             message_type: None,
             topic: None,
+            thread_id: None,
         },
     ]
 }
@@ -432,6 +434,7 @@ pub(super) fn build_start_signal(number: u64) -> ClientMessage {
         addressee: Some("pm".to_string()),
         message_type: None,
         topic: None,
+        thread_id: None,
     }
 }
 
@@ -444,6 +447,7 @@ pub(super) fn build_accept_signal(number: u64, accepted_by: &str) -> ClientMessa
         addressee: Some("dev".to_string()),
         message_type: None,
         topic: None,
+        thread_id: None,
     }
 }
 
@@ -454,6 +458,7 @@ pub(super) fn build_reject_signal(number: u64, reason: &str) -> ClientMessage {
         addressee: Some("dev".to_string()),
         message_type: None,
         topic: None,
+        thread_id: None,
     }
 }
 
@@ -479,6 +484,7 @@ pub(super) fn build_pass_desk_check_signal(number: u64, addressee: &str) -> Clie
         addressee: Some(addressee.to_string()),
         message_type: None,
         topic: None,
+        thread_id: None,
     }
 }
 
@@ -493,6 +499,7 @@ pub(super) fn build_pass_desk_check_pm_present_signal(number: u64) -> ClientMess
         addressee: Some("pm".to_string()),
         message_type: None,
         topic: None,
+        thread_id: None,
     }
 }
 
@@ -521,5 +528,6 @@ pub(super) fn build_fail_desk_check_signal(number: u64, reason: &str) -> ClientM
         addressee: Some("dev".to_string()),
         message_type: None,
         topic: None,
+        thread_id: None,
     }
 }

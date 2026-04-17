@@ -71,6 +71,7 @@ pub(in crate::bridge) async fn handle_view_velocity(
         addressee: None,
         message_type: Some("system".to_string()),
         topic: None,
+        thread_id: None,
     };
     if let Ok(json) = serde_json::to_string(&marker_msg) {
         let _ = ws_send(ws_tx, json).await;

@@ -256,3 +256,26 @@ pub struct LifecycleState {
     pub should_reload: bool,
     pub p2p_command: Option<crate::transport::peer::P2pCommand>,
 }
+
+/// One named conversation thread (#268). `id` is the unique handle
+/// messages carry via `Message::thread_id`; `name` is the
+/// human-readable label; `participants` are the roles initially
+/// invited (mid-thread add is a follow-on story).
+#[derive(Debug, Clone)]
+pub struct Thread {
+    pub id: String,
+    pub name: String,
+    pub participants: Vec<String>,
+}
+
+/// Thread state for the TUI viewer. `known` is the local cache of
+/// threads the bridge has told us about; `current` is the viewer's
+/// active thread (None = broadcast view). `broadcast_unread_while_threaded`
+/// is the peripheral counter that keeps cross-thread activity
+/// visible while Ryan is focused inside a thread.
+#[derive(Default)]
+pub struct ThreadState {
+    pub known: HashMap<String, Thread>,
+    pub current: Option<String>,
+    pub broadcast_unread_while_threaded: usize,
+}

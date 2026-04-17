@@ -199,6 +199,7 @@ fn system_announcement(text: &str) -> session::Message {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        thread_id: None,
         multi_depth: None,
         topic: None,
     }
@@ -336,6 +337,7 @@ async fn handle_client_message(
             addressee,
             message_type,
             topic,
+            thread_id,
         }) => {
             // Auto-subscribe sender to the topic on first send.
             if let Some(ref t) = topic {
@@ -358,6 +360,7 @@ async fn handle_client_message(
                 to,
                 addressee,
                 explicit_privacy,
+                thread_id,
                 multi_depth: None,
                 topic,
             };

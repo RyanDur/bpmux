@@ -20,6 +20,7 @@ fn chat_msg(from: &str, text: &str) -> Message {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        thread_id: None,
         multi_depth: None,
         topic: None,
     }
@@ -34,6 +35,7 @@ fn directed_msg(from: &str, text: &str, to: Vec<&str>) -> Message {
         to: Some(to.into_iter().map(String::from).collect()),
         addressee: None,
         explicit_privacy: false,
+        thread_id: None,
         multi_depth: None,
         topic: None,
     }
@@ -48,6 +50,7 @@ fn system_msg(from: &str, text: &str) -> Message {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        thread_id: None,
         multi_depth: None,
         topic: None,
     }
@@ -62,6 +65,7 @@ fn activity_msg(from: &str, text: &str) -> Message {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        thread_id: None,
         multi_depth: None,
         topic: None,
     }
@@ -615,6 +619,7 @@ fn insight_message_records_in_log_like_chat() {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        thread_id: None,
         multi_depth: None,
         topic: None,
     };
@@ -634,6 +639,7 @@ fn nudge_message_records_in_log_like_chat() {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        thread_id: None,
         multi_depth: None,
         topic: None,
     };
@@ -943,6 +949,7 @@ fn toggle_expands_long_system_message() {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        thread_id: None,
         multi_depth: None,
         topic: None,
     });
@@ -977,6 +984,7 @@ fn peer_leave_removes_phantom_channels() {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        thread_id: None,
         multi_depth: None,
         topic: None,
     });
@@ -1001,6 +1009,7 @@ fn peer_leave_removes_phantom_channels() {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        thread_id: None,
         multi_depth: None,
         topic: None,
     });
@@ -1022,6 +1031,7 @@ fn peer_leave_keeps_channels_with_unread() {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        thread_id: None,
         multi_depth: None,
         topic: None,
     });
@@ -1042,6 +1052,7 @@ fn peer_leave_keeps_channels_with_unread() {
         to: None,
         addressee: None,
         explicit_privacy: false,
+        thread_id: None,
         multi_depth: None,
         topic: None,
     });

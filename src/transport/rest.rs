@@ -418,6 +418,7 @@ pub async fn post_message(
         to: payload.to,
         addressee: payload.addressee,
         explicit_privacy,
+        thread_id: None,
         multi_depth: payload.multi_depth,
         topic: payload.topic,
     };

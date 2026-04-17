@@ -20,6 +20,7 @@ pub(in crate::bridge) async fn handle_view_roadmap(
         addressee: None,
         message_type: Some("system".to_string()),
         topic: None,
+        thread_id: None,
     };
     let json = serde_json::to_string(&msg).map_err(|e| format!("signal: {e}"))?;
     ws_send(ws_tx, json)

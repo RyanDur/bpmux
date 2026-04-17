@@ -173,3 +173,48 @@ fn error_messages_reference_the_offending_name() {
     let bad_mod_msg = InjectEventError::UnknownModifier("hyper".to_string()).message();
     assert!(bad_mod_msg.contains("hyper"));
 }
+
+// ── #268 thread-create marker parsing ──
+
+use super::event::parse_thread_create;
+
+#[test]
+fn thread_create_marker_parses_id_name_participants() {
+    let text = "__BPMUX_THREAD_CREATE__|cheese-123|cheese|ryan,designer";
+    let (id, name, participants) = parse_thread_create(text).unwrap();
+    assert_eq!(id, "cheese-123");
+    assert_eq!(name, "cheese");
+    assert_eq!(participants, vec!["ryan", "designer"]);
+}
+
+#[test]
+fn thread_create_marker_with_single_participant() {
+    let text = "__BPMUX_THREAD_CREATE__|solo-1|solo-review|ryan";
+    let (_id, name, participants) = parse_thread_create(text).unwrap();
+    assert_eq!(name, "solo-review");
+    assert_eq!(participants, vec!["ryan"]);
+}
+
+#[test]
+fn thread_create_marker_handles_name_with_pipes_reserved() {
+    // Name "shouldn't" contain pipes in practice, but splitn(3)
+    // means participants eats any remaining pipes — splits on first
+    // three, so name stays clean if it was slugified.
+    let text = "__BPMUX_THREAD_CREATE__|id-1|some-name|ryan,designer";
+    let (_id, name, _p) = parse_thread_create(text).unwrap();
+    assert_eq!(name, "some-name");
+}
+
+#[test]
+fn thread_create_marker_rejects_non_marker_text() {
+    assert!(parse_thread_create("hello world").is_none());
+    assert!(parse_thread_create("__BPMUX_VIEW_TOKENS__").is_none());
+}
+
+#[test]
+fn thread_create_marker_rejects_missing_fields() {
+    // Missing participants section
+    assert!(parse_thread_create("__BPMUX_THREAD_CREATE__|id|name").is_none());
+    // Missing name + participants
+    assert!(parse_thread_create("__BPMUX_THREAD_CREATE__|id").is_none());
+}

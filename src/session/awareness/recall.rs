@@ -77,6 +77,7 @@ impl RecallSystem {
                 to: Some(vec![sender.to_string()]),
                 addressee: None,
                 explicit_privacy: false,
+                thread_id: None,
                 multi_depth: None,
                 topic: None,
             };
