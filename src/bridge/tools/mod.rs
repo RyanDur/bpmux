@@ -11,8 +11,10 @@ mod get_bookmark;
 mod get_identity;
 mod get_token_report;
 mod get_usage;
+mod join_thread;
 mod list_lessons;
 mod list_peer_lessons;
+mod pull_into_thread;
 mod read_messages;
 mod remove_principle;
 mod save_bookmark;
@@ -44,8 +46,10 @@ pub(in crate::bridge) use get_bookmark::handle_get_bookmark;
 pub(in crate::bridge) use get_identity::handle_get_identity;
 pub(in crate::bridge) use get_token_report::handle_get_token_report;
 pub(in crate::bridge) use get_usage::handle_get_usage;
+pub(in crate::bridge) use join_thread::handle_join_thread;
 pub(in crate::bridge) use list_lessons::handle_list_lessons;
 pub(in crate::bridge) use list_peer_lessons::handle_list_peer_lessons;
+pub(in crate::bridge) use pull_into_thread::handle_pull_into_thread;
 pub(in crate::bridge) use read_messages::handle_read_messages;
 pub(in crate::bridge) use remove_principle::handle_remove_principle;
 pub(in crate::bridge) use save_bookmark::handle_save_bookmark;
@@ -68,6 +72,10 @@ pub(in crate::bridge) use view_velocity::handle_view_velocity;
 // remain available if any caller relies on them.
 #[allow(unused_imports)]
 pub(in crate::bridge) use close_thread::THREAD_CLOSE_MARKER;
+#[allow(unused_imports)]
+pub(in crate::bridge) use join_thread::THREAD_JOIN_MARKER;
+#[allow(unused_imports)]
+pub(in crate::bridge) use pull_into_thread::PULL_INTO_THREAD_MARKER;
 #[allow(unused_imports)]
 pub(in crate::bridge) use start_thread::THREAD_CREATE_MARKER;
 #[allow(unused_imports)]

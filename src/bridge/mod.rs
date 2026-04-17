@@ -418,6 +418,12 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
             crate::mcp::tools::suggest_leave_tool(
                 "Suggest a thread participant step out (#273). Soft signal, not a command — target sees a non-modal banner with the reason and chooses to leave (Esc) or ignore. Symmetric to start_thread in the participant-lifecycle (in/out); distinct from close_thread (which closes for everyone). Use when a conversation naturally shifts and a participant could free up attention for other work. Args: thread (name), target_role, reason (required context).",
             ),
+            crate::mcp::tools::pull_into_thread_tool(
+                "Invite another role into an existing thread (#274). Soft signal, mirror of suggest_leave — target sees a non-modal invitation banner with the reason and chooses to accept via join_thread or ignore. Adds target to the thread's participant set only after they opt in. Use when a conversation in-flight needs a perspective that's currently outside the thread. Args: thread (name), target_role, reason (required context).",
+            ),
+            crate::mcp::tools::join_thread_tool(
+                "Accept a pull_into_thread invitation (#274). Adds you to the thread's participant set, switches your TUI view into the thread, and announces the join to existing participants. The thread's full history renders so you can read what led here (cohesion-over-performance). Args: name (the thread name you were invited to).",
+            ),
             crate::mcp::tools::get_token_report_tool(
                 "Get the token-cost report from bpmux's shared token log (#179). Returns JSON with total tokens, row count, per-role breakdown, and the 10 most recent turns (newest first). The data comes from per-harness adapters reading their own LLM-call recordings — you're seeing objective cost data, not self-reported. Same underlying log the `/tokens` TUI view reads, so you see exactly what Ryan sees. Empty report if the log is empty or missing.",
             ),
@@ -546,6 +552,14 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                 "suggest_leave" => {
                     let current_name = name.lock().await;
                     tools::handle_suggest_leave(&args, &current_name, &ws_tx).await
+                }
+                "pull_into_thread" => {
+                    let current_name = name.lock().await;
+                    tools::handle_pull_into_thread(&args, &current_name, &ws_tx).await
+                }
+                "join_thread" => {
+                    let current_name = name.lock().await;
+                    tools::handle_join_thread(&args, &current_name, &ws_tx).await
                 }
                 "get_token_report" => tools::handle_get_token_report().await,
                 "view_board" => tools_stories::handle_view_board(&args, &tracker).await,

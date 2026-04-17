@@ -260,11 +260,24 @@ pub struct ThreadState {
     /// when the viewer leaves the thread (Esc) or dismisses (any other
     /// key). `None` = no banner showing.
     pub pending_suggestion: Option<PendingSuggestion>,
+    /// Pending pull_into_thread invitation targeting this viewer
+    /// (#274). Populated when a marker arrives with target_role
+    /// matching self; cleared when the viewer accepts (via
+    /// join_thread) or dismisses (any key). `None` = no banner.
+    pub pending_invitation: Option<PendingInvitation>,
 }
 
 /// A suggest_leave banner waiting for the viewer's response (#273).
 #[derive(Debug, Clone, PartialEq)]
 pub struct PendingSuggestion {
+    pub thread_name: String,
+    pub caller: String,
+    pub reason: String,
+}
+
+/// A pull_into_thread invitation banner (#274).
+#[derive(Debug, Clone, PartialEq)]
+pub struct PendingInvitation {
     pub thread_name: String,
     pub caller: String,
     pub reason: String,

@@ -287,3 +287,41 @@ fn suggest_leave_marker_rejects_non_marker_text() {
     assert!(parse_suggest_leave("hello world").is_none());
     assert!(parse_suggest_leave("__BPMUX_THREAD_CLOSE__|x|y").is_none());
 }
+
+// ── #274 pull-into-thread + join marker parsing ──
+
+use super::event::{parse_pull_into_thread, parse_thread_join};
+
+#[test]
+fn pull_into_thread_marker_parses_all_fields() {
+    let text = "__BPMUX_PULL_INTO_THREAD__|cheese|designer|dev|need UX lens";
+    let (thread, target, caller, reason) = parse_pull_into_thread(text).unwrap();
+    assert_eq!(thread, "cheese");
+    assert_eq!(target, "designer");
+    assert_eq!(caller, "dev");
+    assert_eq!(reason, "need UX lens");
+}
+
+#[test]
+fn pull_into_thread_marker_rejects_empty_reason() {
+    assert!(parse_pull_into_thread("__BPMUX_PULL_INTO_THREAD__|t|r|c|").is_none());
+}
+
+#[test]
+fn pull_into_thread_marker_rejects_cross_marker_text() {
+    assert!(parse_pull_into_thread("__BPMUX_SUGGEST_LEAVE__|t|r|c|x").is_none());
+}
+
+#[test]
+fn thread_join_marker_parses_thread_and_joiner() {
+    let text = "__BPMUX_THREAD_JOIN__|cheese|designer";
+    let (thread, joiner) = parse_thread_join(text).unwrap();
+    assert_eq!(thread, "cheese");
+    assert_eq!(joiner, "designer");
+}
+
+#[test]
+fn thread_join_marker_rejects_missing_fields() {
+    assert!(parse_thread_join("__BPMUX_THREAD_JOIN__|cheese").is_none());
+    assert!(parse_thread_join("__BPMUX_THREAD_JOIN__").is_none());
+}

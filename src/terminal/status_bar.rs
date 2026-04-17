@@ -236,6 +236,20 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
             Style::default().fg(DRACULA_PINK),
         ));
     }
+    // Pull-into-thread invitation banner (#274): mirror of the
+    // suggest-leave banner but prompts an opt-in action. Acceptance
+    // is via the `join_thread` MCP tool (agents) — keyboard can't
+    // "accept" directly, just dismiss.
+    if let Some(inv) = app.threads.pending_invitation.as_ref() {
+        status_spans.push(Span::raw(" | "));
+        status_spans.push(Span::styled(
+            format!(
+                "{} invited you into '{}' ({}) — any key dismisses",
+                inv.caller, inv.thread_name, inv.reason
+            ),
+            Style::default().fg(DRACULA_PINK),
+        ));
+    }
     // CI indicator (#151). Sits between the presence cluster and the
     // right-aligned keyboard hint — repository state is cognitively
     // separate from presence state, so the spec groups them that way.

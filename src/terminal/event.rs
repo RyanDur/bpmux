@@ -442,6 +442,16 @@ pub(super) const THREAD_CLOSE_MARKER_PREFIX: &str = "__BPMUX_THREAD_CLOSE__|";
 /// Format: `__BPMUX_SUGGEST_LEAVE__|<thread>|<target>|<caller>|<reason>`
 pub(super) const SUGGEST_LEAVE_MARKER_PREFIX: &str = "__BPMUX_SUGGEST_LEAVE__|";
 
+/// Marker the bridge emits when an agent calls pull_into_thread (#274).
+/// Kept in sync with PULL_INTO_THREAD_MARKER in bridge/tools/pull_into_thread.rs.
+/// Format: `__BPMUX_PULL_INTO_THREAD__|<thread>|<target>|<caller>|<reason>`
+pub(super) const PULL_INTO_THREAD_MARKER_PREFIX: &str = "__BPMUX_PULL_INTO_THREAD__|";
+
+/// Marker the bridge emits when an agent calls join_thread (#274).
+/// Kept in sync with THREAD_JOIN_MARKER in bridge/tools/join_thread.rs.
+/// Format: `__BPMUX_THREAD_JOIN__|<thread>|<joiner_role>`
+pub(super) const THREAD_JOIN_MARKER_PREFIX: &str = "__BPMUX_THREAD_JOIN__|";
+
 /// Parse a thread-create marker payload. Returns `(id, name, participants)`
 /// on success. Pure function — tested against real marker text.
 pub(super) fn parse_thread_create(text: &str) -> Option<(String, String, Vec<String>)> {
@@ -483,6 +493,30 @@ pub(super) fn parse_suggest_leave(text: &str) -> Option<(String, String, String,
     Some((thread, target, caller, reason))
 }
 
+/// Parse a pull-into-thread marker payload. Same shape as
+/// suggest-leave (thread, target, caller, reason).
+pub(super) fn parse_pull_into_thread(text: &str) -> Option<(String, String, String, String)> {
+    let rest = text.strip_prefix(PULL_INTO_THREAD_MARKER_PREFIX)?;
+    let mut parts = rest.splitn(4, '|');
+    let thread = parts.next()?.to_string();
+    let target = parts.next()?.to_string();
+    let caller = parts.next()?.to_string();
+    let reason = parts.next()?.to_string();
+    if reason.is_empty() {
+        return None;
+    }
+    Some((thread, target, caller, reason))
+}
+
+/// Parse a thread-join marker payload. Returns `(thread, joiner_role)`.
+pub(super) fn parse_thread_join(text: &str) -> Option<(String, String)> {
+    let rest = text.strip_prefix(THREAD_JOIN_MARKER_PREFIX)?;
+    let mut parts = rest.splitn(2, '|');
+    let thread = parts.next()?.to_string();
+    let joiner = parts.next()?.to_string();
+    Some((thread, joiner))
+}
+
 fn handle_broadcast_message(msg: session::Message, app: &mut App) {
     // Agent-triggered view_tokens opens the overlay. Same
     // delegation pattern — System-type message + marker text; no
@@ -510,6 +544,79 @@ fn handle_broadcast_message(msg: session::Message, app: &mut App) {
     // thread. Non-participants still render the marker's trailing
     // messages in broadcast (the marker itself is System-typed so
     // it doesn't show as chat).
+    // Pull-into-thread marker (#274) — mirror of suggest_leave.
+    // Target sees an invitation banner; thread-scoped log entry
+    // records the invitation for all participants.
+    if msg.message_type == crate::session::MessageType::System
+        && let Some((thread, target, caller, reason)) = parse_pull_into_thread(&msg.text)
+    {
+        let short_self = app.identity.name.clone();
+        if target == short_self {
+            app.threads.pending_invitation = Some(super::app::PendingInvitation {
+                thread_name: thread.clone(),
+                caller: caller.clone(),
+                reason: reason.clone(),
+            });
+        }
+        let thread_id = app.threads.known.iter().find_map(|(id, t)| {
+            if t.name == thread {
+                Some(id.clone())
+            } else {
+                None
+            }
+        });
+        let log_msg = session::Message {
+            from: "bpmux".to_string(),
+            text: format!("{caller} invited {target} into thread: {reason}"),
+            ts: chrono::Utc::now(),
+            message_type: crate::session::MessageType::System,
+            thread_id,
+            ..session::Message::default()
+        };
+        app.receive_message(log_msg);
+        return;
+    }
+    // Thread-join marker (#274) — update the thread entity's
+    // participant list + switch the joiner's view into the thread.
+    // Non-joiners see the "X joined Y" system message in the thread
+    // log but stay where they are.
+    if msg.message_type == crate::session::MessageType::System
+        && let Some((thread, joiner)) = parse_thread_join(&msg.text)
+    {
+        let thread_id = app.threads.known.iter().find_map(|(id, t)| {
+            if t.name == thread {
+                Some(id.clone())
+            } else {
+                None
+            }
+        });
+        if let Some(id) = thread_id.clone()
+            && let Some(t) = app.threads.known.get_mut(&id)
+            && !t.participants.iter().any(|p| p == &joiner)
+        {
+            t.participants.push(joiner.clone());
+        }
+        // If self is the joiner, switch view into the thread and
+        // clear any pending invitation banner.
+        if joiner == app.identity.name
+            && let Some(id) = thread_id.clone()
+        {
+            app.threads.current = Some(id);
+            app.threads.broadcast_unread_while_threaded = 0;
+            app.threads.pending_invitation = None;
+            app.mark_filters_dirty();
+        }
+        let log_msg = session::Message {
+            from: "bpmux".to_string(),
+            text: format!("{joiner} joined the {thread}"),
+            ts: chrono::Utc::now(),
+            message_type: crate::session::MessageType::System,
+            thread_id,
+            ..session::Message::default()
+        };
+        app.receive_message(log_msg);
+        return;
+    }
     // Suggest-leave marker (#273) — target only. Set pending banner
     // + emit a thread-scoped system marker so all participants see
     // the suggestion occurred. Non-target viewers just see the log
