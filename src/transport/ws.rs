@@ -171,11 +171,7 @@ fn system_announcement(text: &str) -> session::Message {
         text: text.to_string(),
         ts: chrono::Utc::now(),
         message_type: MessageType::System,
-        to: None,
-        addressee: None,
-        explicit_privacy: false,
-        thread_id: None,
-        multi_depth: None,
+        ..session::Message::default()
     }
 }
 
@@ -274,7 +270,7 @@ async fn handle_client_message(
                 addressee,
                 explicit_privacy,
                 thread_id,
-                multi_depth: None,
+                ..session::Message::default()
             };
             session.broadcast(&msg)?;
         }

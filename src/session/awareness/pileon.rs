@@ -5,7 +5,7 @@ use tokio::time::Instant;
 
 use crate::session::Session;
 use crate::session::classifier;
-use crate::session::message::{Message, MessageType};
+use crate::session::message::Message;
 
 use super::agents::AgentTracker;
 
@@ -61,12 +61,8 @@ impl PileonDetector {
                         self.responders.len()
                     ),
                     ts: chrono::Utc::now(),
-                    message_type: MessageType::Chat,
                     to: Some(self.responders.clone()),
-                    addressee: None,
-                    explicit_privacy: false,
-                    thread_id: None,
-                    multi_depth: None,
+                    ..Message::default()
                 };
                 let _ = session.broadcast(&nudge);
                 self.window_start = None;

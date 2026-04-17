@@ -9,12 +9,7 @@ fn msg(text: &str, ts: DateTime<Utc>) -> Message {
         from: "dev:claude-code".to_string(),
         text: text.to_string(),
         ts,
-        message_type: MessageType::Chat,
-        to: None,
-        addressee: None,
-        explicit_privacy: false,
-        thread_id: None,
-        multi_depth: None,
+        ..Message::default()
     }
 }
 
@@ -156,11 +151,7 @@ fn non_chat_messages_are_ignored() {
         text: "#99 delivered".to_string(),
         ts: now() - ChronoDuration::hours(1),
         message_type: MessageType::Activity, // not Chat
-        to: None,
-        addressee: None,
-        explicit_privacy: false,
-        thread_id: None,
-        multi_depth: None,
+        ..Message::default()
     };
     let m = compute(&[activity], now(), |_| true);
     assert_eq!(m.delivered_in_window, 0);

@@ -2,7 +2,6 @@
 
 use super::log::*;
 use crate::session::Message;
-use crate::session::MessageType;
 use chrono::Utc;
 use tempfile::TempDir;
 use tokio::sync::broadcast;
@@ -14,23 +13,13 @@ fn appends_and_reads_messages() {
         from: "ryan:human".to_string(),
         text: "first message".to_string(),
         ts: Utc::now(),
-        message_type: MessageType::Chat,
-        to: None,
-        addressee: None,
-        explicit_privacy: false,
-        thread_id: None,
-        multi_depth: None,
+        ..Message::default()
     };
     let msg2 = Message {
         from: "ryan:human".to_string(),
         text: "second message".to_string(),
         ts: Utc::now(),
-        message_type: MessageType::Chat,
-        to: None,
-        addressee: None,
-        explicit_privacy: false,
-        thread_id: None,
-        multi_depth: None,
+        ..Message::default()
     };
     append_message(dir.path(), &msg1).expect("append 1");
     append_message(dir.path(), &msg2).expect("append 2");
@@ -66,12 +55,7 @@ fn resumes_existing_session() {
         from: "ryan:human".to_string(),
         text: "persisted message".to_string(),
         ts: Utc::now(),
-        message_type: MessageType::Chat,
-        to: None,
-        addressee: None,
-        explicit_privacy: false,
-        thread_id: None,
-        multi_depth: None,
+        ..Message::default()
     };
     append_message(&dir1, &msg).expect("append");
     let dir2 = resume_or_create_session(base.path()).expect("resume");
@@ -90,12 +74,7 @@ fn session_broadcasts_and_reads() {
         from: "ryan:human".to_string(),
         text: "via session".to_string(),
         ts: Utc::now(),
-        message_type: MessageType::Chat,
-        to: None,
-        addressee: None,
-        explicit_privacy: false,
-        thread_id: None,
-        multi_depth: None,
+        ..Message::default()
     };
     session.broadcast(&msg).expect("broadcast");
     let received = rx.try_recv().expect("receive broadcast");

@@ -164,12 +164,7 @@ mod tests {
             from: from.to_string(),
             text: text.to_string(),
             ts: Utc::now(),
-            message_type: MessageType::Chat,
-            to: None,
-            addressee: None,
-            explicit_privacy: false,
-            thread_id: None,
-            multi_depth: None,
+            ..Message::default()
         }
     }
 
@@ -179,11 +174,7 @@ mod tests {
             text: text.to_string(),
             ts: Utc::now(),
             message_type: MessageType::System,
-            to: None,
-            addressee: None,
-            explicit_privacy: false,
-            thread_id: None,
-            multi_depth: None,
+            ..Message::default()
         }
     }
 

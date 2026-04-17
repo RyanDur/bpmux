@@ -2,7 +2,7 @@
 
 use super::classifier::{ExperienceKind, MessageClass};
 use super::lessons::*;
-use super::message::{Message, MessageType};
+use super::message::Message;
 use chrono::Utc;
 use tempfile::TempDir;
 
@@ -11,12 +11,7 @@ fn msg(from: &str, text: &str) -> Message {
         from: from.to_string(),
         text: text.to_string(),
         ts: Utc::now(),
-        message_type: MessageType::Chat,
-        to: None,
-        addressee: None,
-        explicit_privacy: false,
-        thread_id: None,
-        multi_depth: None,
+        ..Message::default()
     }
 }
 

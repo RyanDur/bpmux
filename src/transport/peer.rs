@@ -160,9 +160,7 @@ pub fn spawn_relay(
                         message_type: message_type.as_deref().into(),
                         to,
                         addressee,
-                        explicit_privacy: false,
-                        thread_id: None,
-                        multi_depth: None,
+                        ..Message::default()
                     };
                     let _ = session_for_inbound.broadcast(&message);
                 }
@@ -173,11 +171,7 @@ pub fn spawn_relay(
                         text: format!("{name} joined"),
                         ts: chrono::Utc::now(),
                         message_type: crate::session::MessageType::System,
-                        to: None,
-                        addressee: None,
-                        explicit_privacy: false,
-                        thread_id: None,
-                        multi_depth: None,
+                        ..Message::default()
                     };
                     let _ = session_for_inbound.broadcast(&joined);
                 }
@@ -236,11 +230,7 @@ pub fn spawn_relay(
             text: format!("{current_name} left"),
             ts: chrono::Utc::now(),
             message_type: crate::session::MessageType::System,
-            to: None,
-            addressee: None,
-            explicit_privacy: false,
-            thread_id: None,
-            multi_depth: None,
+            ..Message::default()
         };
         let _ = session_for_inbound.broadcast(&left);
         connected_relay.store(false, std::sync::atomic::Ordering::Relaxed);

@@ -9,11 +9,7 @@ impl App {
             text,
             ts: Utc::now(),
             message_type: MessageType::Activity,
-            to: None,
-            addressee: None,
-            explicit_privacy: false,
-            thread_id: None,
-            multi_depth: None,
+            ..Message::default()
         };
         self.push_message(msg.clone());
         self.clear_input();

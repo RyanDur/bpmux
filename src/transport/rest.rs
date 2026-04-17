@@ -28,11 +28,6 @@ pub struct PostMessage {
     /// When set, only the listed roles receive the message.
     #[serde(default)]
     pub to: Option<Vec<String>>,
-    /// Topic tag (#191). When set, the message is scoped to the
-    /// named topic and only visible in that topic's view. Omit
-    /// for broadcast (visible in all topics).
-    #[serde(default)]
-    pub topic: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -386,8 +381,8 @@ pub async fn post_message(
         to: payload.to,
         addressee: payload.addressee,
         explicit_privacy,
-        thread_id: None,
         multi_depth: payload.multi_depth,
+        ..session::Message::default()
     };
     if let Err(e) = session.broadcast(&msg) {
         return (

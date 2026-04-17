@@ -303,11 +303,7 @@ mod tests {
             text: text.to_string(),
             ts: Utc::now(),
             message_type: ty,
-            to: None,
-            addressee: None,
-            explicit_privacy: false,
-            thread_id: None,
-            multi_depth: None,
+            ..Message::default()
         }
     }
 

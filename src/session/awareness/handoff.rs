@@ -121,10 +121,7 @@ impl HandoffTracker {
             // caught only 📝-marked messages.
             message_type: MessageType::Nudge,
             to: Some(vec![h.to]),
-            addressee: None,
-            explicit_privacy: false,
-            thread_id: None,
-            multi_depth: None,
+            ..Message::default()
         };
         let _ = session.broadcast(&nudge);
     }

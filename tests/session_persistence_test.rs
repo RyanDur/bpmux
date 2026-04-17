@@ -7,7 +7,7 @@
 #[test]
 fn messages_persist_across_session_resumes() {
     use bpmux::session::{
-        Message, MessageType, append_message, read_messages, resume_or_create_session,
+        Message, append_message, read_messages, resume_or_create_session,
     };
     use chrono::Utc;
     use tempfile::TempDir;
@@ -20,23 +20,13 @@ fn messages_persist_across_session_resumes() {
         from: "ryan:human".to_string(),
         text: "first session message".to_string(),
         ts: Utc::now(),
-        message_type: MessageType::Chat,
-        to: None,
-        addressee: None,
-        explicit_privacy: false,
-        thread_id: None,
-        multi_depth: None,
+        ..Message::default()
     };
     let msg2 = Message {
         from: "ryan:human".to_string(),
         text: "second session message".to_string(),
         ts: Utc::now(),
-        message_type: MessageType::Chat,
-        to: None,
-        addressee: None,
-        explicit_privacy: false,
-        thread_id: None,
-        multi_depth: None,
+        ..Message::default()
     };
     append_message(&session1, &msg1).expect("append 1");
     append_message(&session1, &msg2).expect("append 2");

@@ -244,12 +244,7 @@ impl App {
             from: "bpmux".to_string(),
             text,
             ts: Utc::now(),
-            message_type: MessageType::Chat,
-            to: None,
-            addressee: None,
-            explicit_privacy: false,
-            thread_id: None,
-            multi_depth: None,
+            ..Message::default()
         });
     }
 

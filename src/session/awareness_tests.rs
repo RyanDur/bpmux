@@ -11,11 +11,7 @@ fn system_join(name: &str) -> Message {
         text: format!("{name} joined"),
         ts: Utc::now(),
         message_type: MessageType::System,
-        to: None,
-        addressee: None,
-        explicit_privacy: false,
-        thread_id: None,
-        multi_depth: None,
+        ..Message::default()
     }
 }
 
@@ -25,11 +21,7 @@ fn system_leave(name: &str) -> Message {
         text: format!("{name} left"),
         ts: Utc::now(),
         message_type: MessageType::System,
-        to: None,
-        addressee: None,
-        explicit_privacy: false,
-        thread_id: None,
-        multi_depth: None,
+        ..Message::default()
     }
 }
 
@@ -80,12 +72,7 @@ fn chat_msg(from: &str, text: &str) -> Message {
         from: from.to_string(),
         text: text.to_string(),
         ts: Utc::now(),
-        message_type: MessageType::Chat,
-        to: None,
-        addressee: None,
-        explicit_privacy: false,
-        thread_id: None,
-        multi_depth: None,
+        ..Message::default()
     }
 }
 
@@ -373,11 +360,7 @@ fn bayes_classify_returns_routine_for_non_chat_type() {
         text: "dev joined".to_string(),
         ts: Utc::now(),
         message_type: MessageType::System,
-        to: None,
-        addressee: None,
-        explicit_privacy: false,
-        thread_id: None,
-        multi_depth: None,
+        ..Message::default()
     };
     assert_eq!(model.classify(&sys_msg, "ryan"), MessageClass::Routine);
 }
@@ -416,12 +399,7 @@ fn handoff_nudge_suppressed_when_recipient_already_responded() {
         from: "designer:claude-code".to_string(),
         text: "on it, pulling the spec now".to_string(),
         ts: handoff_msg.ts + chrono::Duration::seconds(5),
-        message_type: MessageType::Chat,
-        to: None,
-        addressee: None,
-        explicit_privacy: false,
-        thread_id: None,
-        multi_depth: None,
+        ..Message::default()
     };
     let _ = session.broadcast(&ack_msg);
 

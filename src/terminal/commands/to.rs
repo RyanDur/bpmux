@@ -1,5 +1,5 @@
 use super::MAX_HISTORY;
-use crate::session::{Message, MessageType};
+use crate::session::Message;
 use crate::terminal::app::App;
 use chrono::Utc;
 
@@ -27,12 +27,9 @@ impl App {
             from: self.from_identity(),
             text: body,
             ts: Utc::now(),
-            message_type: MessageType::Chat,
             to: Some(recipients),
-            addressee: None,
             explicit_privacy: true,
-            thread_id: None,
-            multi_depth: None,
+            ..Message::default()
         };
         self.push_message(msg.clone());
         self.clear_input();

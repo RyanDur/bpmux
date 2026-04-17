@@ -88,7 +88,6 @@ fn in_channel(ctx: &FilterContext, m: &Message) -> bool {
 #[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
-    use crate::session::MessageType;
     use chrono::Utc;
 
     fn ctx_in_thread(tid: &'static str) -> FilterContext<'static> {
@@ -118,12 +117,8 @@ mod tests {
             from: "designer:cc".to_string(),
             text: "hi".to_string(),
             ts: Utc::now(),
-            message_type: MessageType::Chat,
-            to: None,
-            addressee: None,
-            explicit_privacy: false,
-            multi_depth: None,
             thread_id: thread_id.map(String::from),
+            ..Message::default()
         }
     }
 

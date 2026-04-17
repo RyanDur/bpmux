@@ -9,12 +9,7 @@ fn chat_message_is_chat() {
         from: "dev:human".to_string(),
         text: "hello".to_string(),
         ts: Utc::now(),
-        message_type: MessageType::Chat,
-        to: None,
-        addressee: None,
-        explicit_privacy: false,
-        thread_id: None,
-        multi_depth: None,
+        ..Message::default()
     };
     assert!(msg.is_chat());
 }
@@ -26,11 +21,7 @@ fn system_message_is_not_chat() {
         text: "[turn complete]".to_string(),
         ts: Utc::now(),
         message_type: MessageType::System,
-        to: None,
-        addressee: None,
-        explicit_privacy: false,
-        thread_id: None,
-        multi_depth: None,
+        ..Message::default()
     };
     assert!(!msg.is_chat());
 }
@@ -42,11 +33,7 @@ fn explicit_chat_type_is_chat() {
         text: "hello".to_string(),
         ts: Utc::now(),
         message_type: MessageType::Chat,
-        to: None,
-        addressee: None,
-        explicit_privacy: false,
-        thread_id: None,
-        multi_depth: None,
+        ..Message::default()
     };
     assert!(msg.is_chat());
 }
@@ -59,12 +46,7 @@ fn serializes_message_to_json() {
         ts: DateTime::parse_from_rfc3339("2026-04-02T12:00:00Z")
             .expect("test timestamp")
             .with_timezone(&Utc),
-        message_type: MessageType::Chat,
-        to: None,
-        addressee: None,
-        explicit_privacy: false,
-        thread_id: None,
-        multi_depth: None,
+        ..Message::default()
     };
 
     let json = serde_json::to_string(&msg).expect("serialize");
@@ -84,12 +66,7 @@ fn addressee_omitted_by_default_in_json() {
         from: "ryan:human".to_string(),
         text: "hi".to_string(),
         ts: Utc::now(),
-        message_type: MessageType::Chat,
-        to: None,
-        addressee: None,
-        explicit_privacy: false,
-        thread_id: None,
-        multi_depth: None,
+        ..Message::default()
     };
     let json = serde_json::to_string(&msg).expect("serialize");
     assert!(!json.contains("addressee"));
@@ -101,12 +78,8 @@ fn addressee_roundtrips_through_json() {
         from: "ryan:human".to_string(),
         text: "what about X?".to_string(),
         ts: Utc::now(),
-        message_type: MessageType::Chat,
-        to: None,
         addressee: Some("pm".to_string()),
-        explicit_privacy: false,
-        thread_id: None,
-        multi_depth: None,
+        ..Message::default()
     };
     let json = serde_json::to_string(&msg).expect("serialize");
     assert!(json.contains(r#""addressee":"pm""#));
@@ -169,12 +142,7 @@ fn message_without_multi_depth_serializes_without_the_field() {
         from: "dev:claude-code".to_string(),
         text: "plain".to_string(),
         ts: Utc::now(),
-        message_type: MessageType::Chat,
-        to: None,
-        addressee: None,
-        explicit_privacy: false,
-        thread_id: None,
-        multi_depth: None,
+        ..Message::default()
     };
     let json = serde_json::to_string(&msg).expect("serialize");
     assert!(
@@ -211,12 +179,8 @@ fn multi_depth_payload_roundtrips_preloaded_deep_detail() {
         from: "bpmux".to_string(),
         text: "CI ✗".to_string(),
         ts: Utc::now(),
-        message_type: MessageType::Chat,
-        to: None,
-        addressee: None,
-        explicit_privacy: false,
-        thread_id: None,
         multi_depth: Some(payload.clone()),
+        ..Message::default()
     };
     let json = serde_json::to_string(&msg).expect("serialize");
     let parsed: Message = serde_json::from_str(&json).expect("deserialize");
@@ -237,12 +201,8 @@ fn multi_depth_payload_roundtrips_on_demand_deep_detail() {
         from: "bpmux".to_string(),
         text: "CI ✗".to_string(),
         ts: Utc::now(),
-        message_type: MessageType::Chat,
-        to: None,
-        addressee: None,
-        explicit_privacy: false,
-        thread_id: None,
         multi_depth: Some(payload.clone()),
+        ..Message::default()
     };
     let json = serde_json::to_string(&msg).expect("serialize");
     // The discriminant field from `#[serde(tag = "kind")]` should be

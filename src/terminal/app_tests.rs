@@ -16,12 +16,7 @@ fn chat_msg(from: &str, text: &str) -> Message {
         from: from.to_string(),
         text: text.to_string(),
         ts: Utc::now(),
-        message_type: MessageType::Chat,
-        to: None,
-        addressee: None,
-        explicit_privacy: false,
-        thread_id: None,
-        multi_depth: None,
+        ..Message::default()
     }
 }
 
@@ -30,12 +25,8 @@ fn directed_msg(from: &str, text: &str, to: Vec<&str>) -> Message {
         from: from.to_string(),
         text: text.to_string(),
         ts: Utc::now(),
-        message_type: MessageType::Chat,
         to: Some(to.into_iter().map(String::from).collect()),
-        addressee: None,
-        explicit_privacy: false,
-        thread_id: None,
-        multi_depth: None,
+        ..Message::default()
     }
 }
 
@@ -45,11 +36,7 @@ fn system_msg(from: &str, text: &str) -> Message {
         text: text.to_string(),
         ts: Utc::now(),
         message_type: MessageType::System,
-        to: None,
-        addressee: None,
-        explicit_privacy: false,
-        thread_id: None,
-        multi_depth: None,
+        ..Message::default()
     }
 }
 
@@ -59,11 +46,7 @@ fn activity_msg(from: &str, text: &str) -> Message {
         text: text.to_string(),
         ts: Utc::now(),
         message_type: MessageType::Activity,
-        to: None,
-        addressee: None,
-        explicit_privacy: false,
-        thread_id: None,
-        multi_depth: None,
+        ..Message::default()
     }
 }
 
@@ -566,11 +549,7 @@ fn insight_message_records_in_log_like_chat() {
         text: "reasoning trace".to_string(),
         ts: Utc::now(),
         message_type: MessageType::Insight,
-        to: None,
-        addressee: None,
-        explicit_privacy: false,
-        thread_id: None,
-        multi_depth: None,
+        ..Message::default()
     };
     app.receive_message(msg);
     assert_eq!(app.msg.messages.len(), 1);
@@ -585,11 +564,7 @@ fn nudge_message_records_in_log_like_chat() {
         text: "📝 nudge".to_string(),
         ts: Utc::now(),
         message_type: MessageType::Nudge,
-        to: None,
-        addressee: None,
-        explicit_privacy: false,
-        thread_id: None,
-        multi_depth: None,
+        ..Message::default()
     };
     app.receive_message(msg);
     assert_eq!(app.msg.messages.len(), 1);
@@ -893,12 +868,7 @@ fn toggle_expands_long_system_message() {
         from: "bpmux".into(),
         text: long_text,
         ts: chrono::Utc::now(),
-        message_type: MessageType::Chat,
-        to: None,
-        addressee: None,
-        explicit_privacy: false,
-        thread_id: None,
-        multi_depth: None,
+        ..Message::default()
     });
     let key = app.msg.messages.last().unwrap().ts.to_rfc3339();
     assert!(
@@ -928,11 +898,7 @@ fn peer_leave_removes_phantom_channels() {
         text: "agent-14c3 joined".to_string(),
         ts: Utc::now(),
         message_type: MessageType::System,
-        to: None,
-        addressee: None,
-        explicit_privacy: false,
-        thread_id: None,
-        multi_depth: None,
+        ..Message::default()
     });
     // View the channel so the message is "read" (no unread count)
     app.channels.current_view = Some("agent-14c3".to_string());
@@ -952,11 +918,7 @@ fn peer_leave_removes_phantom_channels() {
         text: "agent-14c3 left".to_string(),
         ts: Utc::now(),
         message_type: MessageType::System,
-        to: None,
-        addressee: None,
-        explicit_privacy: false,
-        thread_id: None,
-        multi_depth: None,
+        ..Message::default()
     });
     assert!(
         !app.channels.active.contains("agent-14c3"),
@@ -973,11 +935,7 @@ fn peer_leave_keeps_channels_with_unread() {
         text: "dev joined".to_string(),
         ts: Utc::now(),
         message_type: MessageType::System,
-        to: None,
-        addressee: None,
-        explicit_privacy: false,
-        thread_id: None,
-        multi_depth: None,
+        ..Message::default()
     });
     app.channels.current_view = Some("broadcast".to_string());
     app.receive_message(directed_msg(
@@ -993,11 +951,7 @@ fn peer_leave_keeps_channels_with_unread() {
         text: "dev left".to_string(),
         ts: Utc::now(),
         message_type: MessageType::System,
-        to: None,
-        addressee: None,
-        explicit_privacy: false,
-        thread_id: None,
-        multi_depth: None,
+        ..Message::default()
     });
     assert!(
         app.channels.active.contains("dev"),

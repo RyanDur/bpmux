@@ -10,7 +10,7 @@
 use chrono::Utc;
 
 use super::MAX_HISTORY;
-use crate::session::{Message, MessageType};
+use crate::session::Message;
 use crate::terminal::app::App;
 
 impl App {
@@ -63,12 +63,8 @@ impl App {
                 from: self.from_identity(),
                 text: marker,
                 ts: Utc::now(),
-                message_type: MessageType::Chat,
                 to: target_to,
-                addressee: None,
-                explicit_privacy: false,
-                thread_id: None,
-                multi_depth: None,
+                ..Message::default()
             };
             self.push_message(msg.clone());
             self.clear_input();
@@ -136,12 +132,8 @@ impl App {
             from: self.from_identity(),
             text: marker,
             ts: Utc::now(),
-            message_type: MessageType::Chat,
             to: target_to,
-            addressee: None,
-            explicit_privacy: false,
-            thread_id: None,
-            multi_depth: None,
+            ..Message::default()
         };
         self.push_message(msg.clone());
         self.clear_input();

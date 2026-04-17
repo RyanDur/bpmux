@@ -337,11 +337,7 @@ where
                                     text: format!("Caught up — {n} messages arrived while processing."),
                                     ts: chrono::Utc::now(),
                                     message_type: crate::session::MessageType::System,
-                                    to: None,
-                                    addressee: None,
-                                    thread_id: None,
-                                    multi_depth: None,
-                                    explicit_privacy: false,
+                                    ..session::Message::default()
                                 });
                                 app.scroll.offset = 0;
                             }

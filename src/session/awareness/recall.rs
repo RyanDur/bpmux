@@ -5,7 +5,7 @@ use std::path::Path;
 
 use crate::session::Session;
 use crate::session::lessons;
-use crate::session::message::{Message, MessageType};
+use crate::session::message::Message;
 
 const MAX_RECALL_NUDGES: usize = 3;
 
@@ -73,12 +73,8 @@ impl RecallSystem {
                     lesson.topic, lesson.lesson, lesson.topic
                 ),
                 ts: chrono::Utc::now(),
-                message_type: MessageType::Chat,
                 to: Some(vec![sender.to_string()]),
-                addressee: None,
-                explicit_privacy: false,
-                thread_id: None,
-                multi_depth: None,
+                ..Message::default()
             };
             let _ = session.broadcast(&nudge);
             self.surfaced_topics.insert(lesson.topic.clone());

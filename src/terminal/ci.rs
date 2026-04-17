@@ -103,11 +103,8 @@ pub(super) fn spawn_poller(tx: mpsc::Sender<CiState>, broadcast_session: Option<
                     text: text.clone(),
                     ts: chrono::Utc::now(),
                     message_type: MessageType::Activity,
-                    to: None,
-                    addressee: None,
-                    explicit_privacy: false,
-                    thread_id: None,
                     multi_depth: Some(multi_depth),
+                    ..Message::default()
                 };
                 if let Err(e) = session.broadcast(&msg) {
                     log_diag(&format!("ci: broadcast error: {e}"));
@@ -229,12 +226,9 @@ pub(super) fn build_dev_ci_signal(text: &str) -> Message {
         from: "bpmux".to_string(),
         text: text.to_string(),
         ts: chrono::Utc::now(),
-        message_type: MessageType::Chat,
         to: Some(vec!["dev".to_string()]),
         addressee: Some("dev".to_string()),
-        explicit_privacy: false,
-        thread_id: None,
-        multi_depth: None,
+        ..Message::default()
     }
 }
 
