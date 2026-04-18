@@ -28,13 +28,6 @@ pub(super) struct FilterContext<'a> {
     /// messages visible, thread-tagged ones render their thread
     /// name alongside).
     pub current_thread: Option<&'a str>,
-    /// CI-events-only filter (#295). When true, every non-CI message
-    /// Skip-s and only CI-transition broadcasts Include. Intentionally
-    /// overrides thread view, current_view, class filtering, focus —
-    /// the purpose is "find CI events in a long scrollback" + the
-    /// other filters would defeat that. Toggled via the CI events
-    /// sidebar section; state persists in `UiState::ci_filter_active`.
-    pub ci_filter_active: bool,
 }
 
 /// Three-way verdict so the caller can distinguish "this message
@@ -49,19 +42,6 @@ pub(super) enum FilterVerdict {
 /// Classify one message against the filter pipeline. Pure function
 /// over (ctx, msg) — testable without an App.
 pub(super) fn classify(ctx: &FilterContext, m: &Message) -> FilterVerdict {
-    // CI-events-only filter (#295). When active, it OVERRIDES every
-    // other filter: thread scope, current_view, class filter, focus.
-    // Reasoning: the user turned this on to find CI events across
-    // the whole log; applying thread/view on top would defeat that.
-    // Only `Activity` messages with the `🔴 CI` / `🟢 CI` prefix
-    // pass through; everything else Skips.
-    if ctx.ci_filter_active {
-        return if crate::terminal::ci::is_ci_event_message(m) {
-            FilterVerdict::Include
-        } else {
-            FilterVerdict::Skip
-        };
-    }
     // Thread-tagged messages render in their own thread view
     // regardless of message type — scope-entry markers, intra-thread
     // nudges, etc. are thread-local by construction and belong in
@@ -118,7 +98,6 @@ mod tests {
             identity_name: "ryan",
             focused_roles: None,
             current_thread: Some(tid),
-            ci_filter_active: false,
         }
     }
 
@@ -130,7 +109,6 @@ mod tests {
             identity_name: "ryan",
             focused_roles: None,
             current_thread: None,
-            ci_filter_active: false,
         }
     }
 
@@ -183,95 +161,5 @@ mod tests {
         // thread — thread wins, message renders.
         let m = chat_msg(Some("cheese-123"));
         assert!(matches!(classify(&ctx, &m), FilterVerdict::Include));
-    }
-
-    // #295 CI-events-only filter — exercises the early-return override
-    // that makes ci_filter_active hide everything except
-    // Activity-with-CI-prefix. Thread/view/focus all get bypassed
-    // intentionally; the filter's job is "find CI events anywhere."
-
-    fn ci_event(prefix: &str) -> Message {
-        Message {
-            from: "bpmux".to_string(),
-            text: format!("{prefix} CI failed — abc123"),
-            ts: Utc::now(),
-            message_type: crate::session::MessageType::Activity,
-            ..Message::default()
-        }
-    }
-
-    fn ctx_ci_filter_active() -> FilterContext<'static> {
-        FilterContext {
-            ci_filter_active: true,
-            ..ctx_broadcast()
-        }
-    }
-
-    #[test]
-    fn ci_filter_includes_failure_prefix() {
-        let ctx = ctx_ci_filter_active();
-        let m = ci_event("\u{1F534}");
-        assert!(matches!(classify(&ctx, &m), FilterVerdict::Include));
-    }
-
-    #[test]
-    fn ci_filter_includes_recovery_prefix() {
-        let ctx = ctx_ci_filter_active();
-        let m = ci_event("\u{1F7E2}");
-        assert!(matches!(classify(&ctx, &m), FilterVerdict::Include));
-    }
-
-    #[test]
-    fn ci_filter_skips_chat_messages() {
-        // Even from bpmux — only Activity-with-CI-prefix passes.
-        // Regular chat broadcasts would drown out the CI signal
-        // the user turned on the filter to isolate.
-        let ctx = ctx_ci_filter_active();
-        let m = chat_msg(None);
-        assert!(matches!(classify(&ctx, &m), FilterVerdict::Skip));
-    }
-
-    #[test]
-    fn ci_filter_skips_activity_without_ci_prefix() {
-        // Other Activity messages (thread lifecycle, status-bar
-        // broadcasts, non-CI system events) also hide during the
-        // filter — the prefix check keeps the scope tight.
-        let ctx = ctx_ci_filter_active();
-        let m = Message {
-            from: "bpmux".to_string(),
-            text: "\u{1F7E0} merge conflict detected".to_string(),
-            ts: Utc::now(),
-            message_type: crate::session::MessageType::Activity,
-            ..Message::default()
-        };
-        assert!(matches!(classify(&ctx, &m), FilterVerdict::Skip));
-    }
-
-    #[test]
-    fn ci_filter_overrides_thread_view() {
-        // Viewer is inside a thread. Without the filter, only
-        // thread-tagged messages render. With the filter active,
-        // a CI event from outside the thread renders anyway — the
-        // filter's "find CI events" intent overrides the thread
-        // scope.
-        let ctx = FilterContext {
-            ci_filter_active: true,
-            ..ctx_in_thread("cheese-123")
-        };
-        let m = ci_event("\u{1F534}");
-        // CI event has no thread_id — without override it'd Skip.
-        assert!(matches!(classify(&ctx, &m), FilterVerdict::Include));
-    }
-
-    #[test]
-    fn ci_filter_inactive_does_not_disturb_default_path() {
-        // Default ci_filter_active=false — regular classification
-        // applies. Regression guard against "forgot to gate the
-        // early-return on ci_filter_active" style bugs.
-        let ctx = ctx_broadcast();
-        let m = ci_event("\u{1F534}");
-        // Activity messages aren't chat → show_system_messages=false
-        // in this ctx → FilterVerdict::Skip, matching pre-#295 shape.
-        assert!(matches!(classify(&ctx, &m), FilterVerdict::Skip));
     }
 }

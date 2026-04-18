@@ -119,12 +119,21 @@ fn handle_click(col: u16, row: u16, app: &mut App) {
 
     if let Some((_, sb_y, _, _)) = app.layout.status_bar_area
         && row == sb_y
-        && app
+    {
+        if let Some((start, end)) = app.layout.ci_indicator_col_range
+            && col >= start
+            && col <= end
+        {
+            super::super::ci::open_in_browser(super::super::ci::github_actions_url());
+            return;
+        }
+        if app
             .layout
             .help_hint_col
             .is_some_and(|hint_col| col >= hint_col)
-    {
-        app.input_mode = InputMode::Help;
+        {
+            app.input_mode = InputMode::Help;
+        }
     }
 }
 

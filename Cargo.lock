@@ -395,6 +395,7 @@ dependencies = [
  "reqwest",
  "ring",
  "rmcp",
+ "rustls",
  "serde",
  "serde_json",
  "tempfile",

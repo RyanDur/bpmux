@@ -201,14 +201,6 @@ pub struct DisplayState {
     pub tui_focused: bool,
     pub show_all_classes: bool,
     pub hidden_class_count: usize,
-    /// CI-events-only filter (#295). When ACTIVE, the chat pane
-    /// renders only CI-transition broadcasts (Activity messages with
-    /// the `🔴 CI` / `🟢 CI` prefix). Lets Ryan find CI events in a
-    /// long scrollback without scrolling — click CI-events sidebar
-    /// section to toggle. Persists across restart via `UiState` like
-    /// `show_all_classes` does, so a filtered session-close doesn't
-    /// surprise-restore to "all" on reopen.
-    pub ci_filter_active: bool,
 }
 
 impl Default for DisplayState {
@@ -219,7 +211,6 @@ impl Default for DisplayState {
             tui_focused: true,
             show_all_classes: false,
             hidden_class_count: 0,
-            ci_filter_active: false,
         }
     }
 }
@@ -231,6 +222,11 @@ pub struct LayoutState {
     pub status_bar_area: Option<(u16, u16, u16, u16)>,
     pub chat_area: Option<(u16, u16, u16, u16)>,
     pub help_hint_col: Option<u16>,
+    /// Column range (start..=end, inclusive) of the CI indicator in
+    /// the status bar. Mouse handler reads this to route clicks to
+    /// `open_in_browser` on the GitHub Actions URL. `None` when the
+    /// indicator isn't rendered (Unknown state or no space).
+    pub ci_indicator_col_range: Option<(u16, u16)>,
 }
 
 #[derive(Default)]

@@ -588,3 +588,11 @@ fn hydrate_last_broadcast_returns_first_match_in_reverse_order() {
     // Latest is Green; hydration returns Green.
     assert_eq!(hydrate_last_broadcast(&messages), Some(CiState::Green));
 }
+
+#[test]
+fn github_actions_url_points_to_repo_actions_tab() {
+    assert_eq!(
+        github_actions_url(),
+        "https://github.com/RyanDur/bpmux/actions"
+    );
+}

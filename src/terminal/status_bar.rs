@@ -140,17 +140,6 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
             Style::default().fg(DRACULA_CYAN),
         ));
     }
-    // CI-events-only filter indicator (#295). Shows only when the
-    // filter is active — silent default keeps the bar quiet when
-    // Ryan isn't filtering. Format matches the `[focus: ...]`
-    // pattern: `[ci]`.
-    if app.display.ci_filter_active {
-        status_spans.push(Span::raw(" "));
-        status_spans.push(Span::styled(
-            "[ci]".to_string(),
-            Style::default().fg(DRACULA_CYAN),
-        ));
-    }
     if app.scroll.offset > 0 {
         status_spans.push(Span::raw(" | "));
         status_spans.push(Span::styled(
@@ -310,11 +299,9 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         status_spans.push(Span::raw(" ".repeat(pad)));
         if let Some((label, color)) = ci {
             status_spans.push(Span::raw(" "));
-            // CI indicator is treated as clickable per designer's
-            // spec (click handler will eventually open `gh run view`;
-            // today it's passive but the affordance is forward-looking),
-            // so it gets underlined to match the other interactive
-            // status-bar widgets.
+            let ci_start = area.x + (used + pad + 1) as u16;
+            let ci_end = ci_start + (ci_width.saturating_sub(1)) as u16;
+            app.layout.ci_indicator_col_range = Some((ci_start, ci_end));
             status_spans.push(Span::styled(
                 label,
                 Style::default()
@@ -322,6 +309,8 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
                     .add_modifier(Modifier::UNDERLINED),
             ));
             status_spans.push(Span::raw(" ".repeat(ci_hint_gap.saturating_sub(1))));
+        } else {
+            app.layout.ci_indicator_col_range = None;
         }
         let hint_start_col = area.x + (used + pad + ci_width + ci_hint_gap) as u16;
         app.layout.help_hint_col = Some(hint_start_col);
@@ -338,6 +327,7 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         }
     } else {
         app.layout.help_hint_col = None;
+        app.layout.ci_indicator_col_range = None;
     }
     let status = Paragraph::new(Line::from(status_spans))
         .style(Style::default().bg(DRACULA_SELECTION).fg(DRACULA_FG));

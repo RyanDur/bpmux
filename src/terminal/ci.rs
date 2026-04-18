@@ -253,22 +253,32 @@ pub(super) fn build_multi_depth_for_transition(
     }
 }
 
-/// Recognise a message as a CI-transition broadcast. Used by the
-/// sidebar CI-events count (#295) and the CI filter predicate so both
-/// stay in lockstep with the emitter — if the prefix format ever
-/// changes here, update `is_ci_event_message` in the same commit.
-///
-/// Text-prefix based (not a dedicated MessageType variant) per
-/// existing emission convention: poller emits `MessageType::Activity`
-/// messages with `🔴 CI` (failure) or `🟢 CI` (recovery) at the head
-/// of the text. The prefix is stable across the format_failure_line /
-/// format_recovery_line helpers above — any change to them requires
-/// this predicate to match.
-pub fn is_ci_event_message(m: &Message) -> bool {
-    if m.message_type != crate::session::MessageType::Activity {
-        return false;
+/// GitHub Actions URL for this repo. Hardcoded — bpmux lives in one
+/// repo; configurability is speculative.
+pub fn github_actions_url() -> &'static str {
+    "https://github.com/RyanDur/bpmux/actions"
+}
+
+/// Open a URL in the user's default browser. Fire-and-forget: failure
+/// is logged to diag (the user sees nothing happen; better than
+/// panicking the TUI). Platform dispatch uses the conventional
+/// command for each OS.
+pub fn open_in_browser(url: &str) {
+    #[cfg(target_os = "macos")]
+    let program = "open";
+    #[cfg(target_os = "linux")]
+    let program = "xdg-open";
+    #[cfg(target_os = "windows")]
+    let program = "start";
+    #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+    {
+        log_diag(&format!("open_in_browser: unsupported platform; url={url}"));
+        return;
     }
-    m.text.starts_with("\u{1F534} CI") || m.text.starts_with("\u{1F7E2} CI")
+    #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
+    if let Err(e) = std::process::Command::new(program).arg(url).spawn() {
+        log_diag(&format!("open_in_browser: failed to spawn {program}: {e}"));
+    }
 }
 
 /// Build the dev-addressed workflow signal for a CI transition (#215).
