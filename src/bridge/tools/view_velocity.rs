@@ -72,8 +72,21 @@ pub(in crate::bridge) async fn handle_view_velocity(
         message_type: Some("system".to_string()),
         thread_id: None,
     };
-    if let Ok(json) = serde_json::to_string(&marker_msg) {
-        let _ = ws_send(ws_tx, json).await;
+    // Log marker send/serialize failures instead of silently discarding
+    // them (fail-loud-for-dev-tools discipline). The caller still gets
+    // the metrics JSON back even if the TUI marker doesn't land — same
+    // non-blocking intent as before, but failures now leave a trail.
+    match serde_json::to_string(&marker_msg) {
+        Ok(json) => {
+            if let Err(e) = ws_send(ws_tx, json).await {
+                crate::session::diag::log_diag(&format!(
+                    "view_velocity marker send failed: {e}"
+                ));
+            }
+        }
+        Err(e) => crate::session::diag::log_diag(&format!(
+            "view_velocity marker serialize failed: {e}"
+        )),
     }
 
     serde_json::to_string_pretty(&metrics).map_err(|e| format!("serialize: {e}"))
