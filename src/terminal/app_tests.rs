@@ -1636,6 +1636,129 @@ fn ui_state_persists_show_all_classes() {
     );
 }
 
+// #295 CI-events-only filter — end-to-end tests for the
+// sidebar-section / toggle / persistence / count shape. The filter
+// predicate itself is unit-tested in terminal::app::filter::tests.
+
+fn ci_activity_msg(prefix: &str) -> Message {
+    Message {
+        from: "bpmux".to_string(),
+        text: format!("{prefix} CI failed — abc123"),
+        ts: Utc::now(),
+        message_type: MessageType::Activity,
+        ..Message::default()
+    }
+}
+
+#[test]
+fn count_ci_events_counts_failure_and_recovery_prefixes() {
+    let mut app = test_app();
+    app.msg.messages.push(ci_activity_msg("\u{1F534}"));
+    app.msg.messages.push(ci_activity_msg("\u{1F7E2}"));
+    app.msg.messages.push(chat_msg("alice", "not ci"));
+    assert_eq!(app.count_ci_events(), 2);
+}
+
+#[test]
+fn count_ci_events_excludes_non_activity_even_with_ci_prefix() {
+    // A chat message whose text happens to start with 🔴 CI shouldn't
+    // count — the predicate gates on MessageType::Activity first.
+    // Prevents false-positives if someone quotes CI text in chat.
+    let mut app = test_app();
+    app.msg.messages.push(Message {
+        from: "alice".to_string(),
+        text: "\u{1F534} CI quote in chat".to_string(),
+        ts: Utc::now(),
+        message_type: MessageType::Chat,
+        ..Message::default()
+    });
+    assert_eq!(app.count_ci_events(), 0);
+}
+
+#[test]
+fn count_ci_events_returns_zero_on_empty_log() {
+    let app = test_app();
+    assert_eq!(app.count_ci_events(), 0);
+}
+
+#[test]
+fn toggle_ci_filter_flips_state() {
+    let mut app = test_app();
+    assert!(
+        !app.display.ci_filter_active,
+        "default is off — keeps status bar quiet + chat unfiltered"
+    );
+    app.toggle_ci_filter();
+    assert!(app.display.ci_filter_active);
+    app.toggle_ci_filter();
+    assert!(!app.display.ci_filter_active);
+}
+
+#[test]
+fn toggle_ci_filter_dirties_filter_index() {
+    // The filter index is cached for render cost; toggling must
+    // invalidate so the chat pane re-filters on the next tick.
+    // Without this, the filter would flip but chat wouldn't
+    // actually update until some other mutation dirtied the index.
+    let mut app = test_app();
+    app.msg.filter_dirty = false;
+    app.toggle_ci_filter();
+    assert!(app.msg.filter_dirty, "toggle must mark filter dirty");
+}
+
+#[test]
+fn sidebar_hides_ci_section_when_no_ci_events() {
+    // Empty state: section absent per Nielsen #8 minimalism. A
+    // "CI events (0)" row would be noise when there's nothing to
+    // filter to + no way to reach it.
+    let mut app = test_app();
+    app.sidebar.open = true;
+    app.sidebar.project_expanded = true;
+    let channels = app.sidebar_channels();
+    assert!(
+        !channels.iter().any(|c| c.contains("CI events")),
+        "CI events section should be hidden when count is 0; got: {channels:?}"
+    );
+}
+
+#[test]
+fn sidebar_shows_ci_section_with_count_when_events_present() {
+    let mut app = test_app();
+    app.sidebar.open = true;
+    app.sidebar.project_expanded = true;
+    app.msg.messages.push(ci_activity_msg("\u{1F534}"));
+    app.msg.messages.push(ci_activity_msg("\u{1F7E2}"));
+    app.msg.messages.push(ci_activity_msg("\u{1F534}"));
+    let channels = app.sidebar_channels();
+    let ci_row = channels
+        .iter()
+        .find(|c| c.contains("CI events"))
+        .expect("CI events section should be present when count > 0");
+    assert!(
+        ci_row.contains("(3)"),
+        "CI events row should show count; got: `{ci_row}`"
+    );
+}
+
+#[test]
+fn ui_state_persists_ci_filter_active() {
+    // Parallel to show_all_classes persistence — filter state
+    // survives restart so Ryan doesn't lose a filtered view when
+    // the TUI reloads or the session reconnects.
+    use crate::terminal::ui_state::UiState;
+    let mut app = test_app();
+    app.display.ci_filter_active = true;
+    let saved = UiState::capture(&app);
+
+    let mut restored = test_app();
+    assert!(!restored.display.ci_filter_active);
+    saved.restore(&mut restored);
+    assert!(
+        restored.display.ci_filter_active,
+        "ci_filter_active should persist across capture/restore"
+    );
+}
+
 #[test]
 fn to_command_sets_explicit_privacy_flag() {
     // Verifying that /to tags the message as explicit privacy so /share

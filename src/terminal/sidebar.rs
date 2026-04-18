@@ -373,7 +373,46 @@ impl App {
             }
         }
 
+        // CI events section (#295). Empty-state hidden per Nielsen #8
+        // minimalism — a "CI events (0)" row is noise when there's
+        // nothing to filter to. Section has no children in v1; the
+        // `expanded` arg to section_header semantically doubles as
+        // filter-state here (▾ = filter active, ▸ = filter inactive)
+        // so the click-target reads its own on/off state at a glance.
+        // Progressive-disclosure of recent CI events under the header
+        // is a v2 candidate per the filing + designer's UX notes.
+        let ci_count = self.count_ci_events();
+        if ci_count > 0 {
+            result.push(section_header(
+                "CI events",
+                ci_count,
+                self.display.ci_filter_active,
+            ));
+        }
+
         result
+    }
+
+    /// Count CI-transition broadcasts in the session log (#295).
+    /// Pure query over `msg.messages`; delegates prefix-matching to
+    /// `ci::is_ci_event_message` so the count and the filter predicate
+    /// stay in lockstep. O(n) per call — fine for bpmux's log sizes
+    /// (sidebar re-renders at well under 60Hz + message counts sit in
+    /// the low thousands).
+    pub fn count_ci_events(&self) -> usize {
+        self.msg
+            .messages
+            .iter()
+            .filter(|m| crate::terminal::ci::is_ci_event_message(m))
+            .count()
+    }
+
+    /// Toggle the CI-events-only chat filter (#295). Wired to the
+    /// sidebar CI events section click. Dirties the filter index so
+    /// the chat pane re-computes on the next tick.
+    pub fn toggle_ci_filter(&mut self) {
+        self.display.ci_filter_active = !self.display.ci_filter_active;
+        self.mark_filters_dirty();
     }
 
     pub fn toggle_sidebar(&mut self) {
@@ -440,6 +479,11 @@ impl App {
                     self.sidebar.threads_expanded = !self.sidebar.threads_expanded;
                 } else if ch.contains("system") {
                     self.sidebar.system_expanded = !self.sidebar.system_expanded;
+                } else if ch.contains("CI events") {
+                    // CI events section (#295): click toggles the
+                    // chat filter, not expansion. See sidebar_channels
+                    // for the section-header-as-filter-state shape.
+                    self.toggle_ci_filter();
                 }
                 return;
             }

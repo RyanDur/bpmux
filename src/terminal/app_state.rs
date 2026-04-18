@@ -201,6 +201,14 @@ pub struct DisplayState {
     pub tui_focused: bool,
     pub show_all_classes: bool,
     pub hidden_class_count: usize,
+    /// CI-events-only filter (#295). When ACTIVE, the chat pane
+    /// renders only CI-transition broadcasts (Activity messages with
+    /// the `🔴 CI` / `🟢 CI` prefix). Lets Ryan find CI events in a
+    /// long scrollback without scrolling — click CI-events sidebar
+    /// section to toggle. Persists across restart via `UiState` like
+    /// `show_all_classes` does, so a filtered session-close doesn't
+    /// surprise-restore to "all" on reopen.
+    pub ci_filter_active: bool,
 }
 
 impl Default for DisplayState {
@@ -211,6 +219,7 @@ impl Default for DisplayState {
             tui_focused: true,
             show_all_classes: false,
             hidden_class_count: 0,
+            ci_filter_active: false,
         }
     }
 }

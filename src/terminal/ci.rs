@@ -216,6 +216,24 @@ pub(super) fn build_multi_depth_for_transition(
     }
 }
 
+/// Recognise a message as a CI-transition broadcast. Used by the
+/// sidebar CI-events count (#295) and the CI filter predicate so both
+/// stay in lockstep with the emitter — if the prefix format ever
+/// changes here, update `is_ci_event_message` in the same commit.
+///
+/// Text-prefix based (not a dedicated MessageType variant) per
+/// existing emission convention: poller emits `MessageType::Activity`
+/// messages with `🔴 CI` (failure) or `🟢 CI` (recovery) at the head
+/// of the text. The prefix is stable across the format_failure_line /
+/// format_recovery_line helpers above — any change to them requires
+/// this predicate to match.
+pub fn is_ci_event_message(m: &Message) -> bool {
+    if m.message_type != crate::session::MessageType::Activity {
+        return false;
+    }
+    m.text.starts_with("\u{1F534} CI") || m.text.starts_with("\u{1F7E2} CI")
+}
+
 /// Build the dev-addressed workflow signal for a CI transition (#215).
 /// Pure helper: takes the broadcast text computed by
 /// `compute_broadcast_text` and wraps it as a Chat message addressed

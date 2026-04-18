@@ -38,6 +38,14 @@ pub struct UiState {
     /// a migration step.
     #[serde(default)]
     pub show_all_classes: bool,
+    /// Persist the CI-events-only filter state (#295) across
+    /// hot-reloads and session restarts. Default `false` (filter
+    /// off). Matches `show_all_classes` precedent; avoids the
+    /// forgetting-I-filtered surprise when Ryan reopens and sees
+    /// only CI events without clicking anything.
+    /// Serde default so pre-#295 saved state loads cleanly.
+    #[serde(default)]
+    pub ci_filter_active: bool,
 }
 
 impl UiState {
@@ -56,6 +64,7 @@ impl UiState {
             show_timestamps: app.display.show_timestamps,
             input: app.editor.input.clone(),
             show_all_classes: app.display.show_all_classes,
+            ci_filter_active: app.display.ci_filter_active,
         }
     }
 
@@ -71,6 +80,7 @@ impl UiState {
         app.msg.expanded_messages = self.expanded_messages.clone();
         app.display.show_timestamps = self.show_timestamps;
         app.display.show_all_classes = self.show_all_classes;
+        app.display.ci_filter_active = self.ci_filter_active;
         app.mark_filters_dirty();
         if !self.input.is_empty() {
             app.set_textarea_content(&self.input);

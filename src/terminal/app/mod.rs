@@ -376,6 +376,7 @@ impl App {
             identity_name: &self.identity.name,
             focused_roles: self.focused_roles.as_deref(),
             current_thread: self.threads.current.as_deref(),
+            ci_filter_active: self.display.ci_filter_active,
         };
         self.msg.filter_dirty = false;
         self.msg.filtered_indices.clear();

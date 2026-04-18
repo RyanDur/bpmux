@@ -140,6 +140,17 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
             Style::default().fg(DRACULA_CYAN),
         ));
     }
+    // CI-events-only filter indicator (#295). Shows only when the
+    // filter is active — silent default keeps the bar quiet when
+    // Ryan isn't filtering. Format matches the `[focus: ...]`
+    // pattern: `[ci]`.
+    if app.display.ci_filter_active {
+        status_spans.push(Span::raw(" "));
+        status_spans.push(Span::styled(
+            "[ci]".to_string(),
+            Style::default().fg(DRACULA_CYAN),
+        ));
+    }
     if app.scroll.offset > 0 {
         status_spans.push(Span::raw(" | "));
         status_spans.push(Span::styled(
