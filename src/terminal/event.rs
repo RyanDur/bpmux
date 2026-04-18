@@ -250,6 +250,43 @@ where
     // for signal-driven refresh below.
     app.board_poller_tx = board_poller_tx.clone();
 
+    // On-demand gh-CLI board fetcher (#294 freeze-fix). Before this,
+    // `request_board_refresh_if_stale` called `fetch_board_stories`
+    // synchronously on the event loop thread. Under slow gh (Ryan's
+    // prod env) that blocked every `select!` arm — input handling,
+    // wake channel, p2p, the lot — until gh returned. The freeze
+    // shipped latent past the `--fake-tracker` fixture which skipped
+    // the real subprocess entirely.
+    //
+    // Fix: move the sync fetch off the event loop onto the blocking
+    // threadpool, mirroring the `fetch_project_state` + `fetch_dora_metrics`
+    // pattern already established above. view-open paths now fire a
+    // `try_send(())` on `board_fetch_request_tx` and return; the
+    // listener below runs `spawn_blocking(fetch_board_stories)`,
+    // bounded by a timeout so a pathological gh hang can't starve the
+    // listener indefinitely, then pushes the result via
+    // `board_fetch_result_tx` back into the main select!.
+    let (board_fetch_request_tx, mut board_fetch_request_rx) = mpsc::channel::<()>(1);
+    let (board_fetch_result_tx, mut board_fetch_result_rx) =
+        mpsc::channel::<Vec<super::board::BoardStory>>(1);
+    app.board_fetch_request_tx = Some(board_fetch_request_tx);
+    tokio::spawn(async move {
+        while board_fetch_request_rx.recv().await.is_some() {
+            // 10s is generous — gh typically responds in <1s; anything
+            // past 10s is a failure mode (auth hang, network death).
+            // On timeout, we drop the result; the view surface
+            // already renders the stale-or-empty state gracefully.
+            let fetch = tokio::task::spawn_blocking(super::board::fetch_board_stories);
+            let bounded = tokio::time::timeout(std::time::Duration::from_secs(10), fetch).await;
+            if let Ok(Ok(Ok(stories))) = bounded {
+                // try_send (not send): if a previous result is still
+                // sitting in the 1-slot channel, we'd rather drop this
+                // one than block the listener task.
+                let _ = board_fetch_result_tx.try_send(stories);
+            }
+        }
+    });
+
     // Perf: throttle screen capture in interactive mode to avoid
     // per-keystroke string allocation. In headless mode, always
     // capture so desk-checks via capture_screen get current data.
@@ -379,6 +416,21 @@ where
             }
             Some(state) = project_rx.recv() => {
                 app.project.state = Some(state);
+            }
+            Some(stories) = board_fetch_result_rx.recv() => {
+                // On-demand gh-CLI fetch landed (#294). Mirror into
+                // both board.stories (read by handlers + render) and
+                // board_snapshot (read by velocity zone's is_feature
+                // lookup per #219 rework defect 3). Stamp freshness on
+                // the snapshot so the panel footer shows a real
+                // timestamp, matching the shape the old sync path had.
+                if let Ok(mut snap) = app.board_snapshot.lock() {
+                    snap.stories = stories.clone();
+                    if snap.last_updated.is_none() {
+                        snap.last_updated = Some(chrono::Utc::now());
+                    }
+                }
+                app.board.stories = stories;
             }
             Some(injected) = injected_rx.recv() => {
                 // Convert to crossterm at the terminal boundary so

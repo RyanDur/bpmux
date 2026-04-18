@@ -138,6 +138,16 @@ pub struct App {
     /// (BPMUX_REPO unset).
     pub board_poller_tx: Option<tokio::sync::mpsc::Sender<super::board_poller::PollerCommand>>,
 
+    /// Sender for on-demand gh-CLI board fetches (#294 freeze-fix).
+    /// Replaces the sync `fetch_board_stories` call that was
+    /// blocking the tokio event loop under slow gh. On signal, the
+    /// event loop's listener task runs the fetch via
+    /// `spawn_blocking` (off-thread) and delivers the result back
+    /// through `board_fetch_result_rx`, which updates both
+    /// `board.stories` and `board_snapshot` on the main loop.
+    /// `None` in headless mode or before the event loop starts.
+    pub board_fetch_request_tx: Option<tokio::sync::mpsc::Sender<()>>,
+
     // ── Modal state ──
     pub input_mode: InputMode,
 
@@ -250,6 +260,7 @@ impl App {
                 super::board_poller::BoardSnapshot::default(),
             )),
             board_poller_tx: None,
+            board_fetch_request_tx: None,
             input_mode: InputMode::Chat,
             ci_state: super::ci::CiState::Unknown,
         }
@@ -278,28 +289,21 @@ impl App {
         {
             let _ = tx.try_send(super::board_poller::PollerCommand::RefreshNow);
         }
-        // Always populate `board.stories` via the gh-CLI fallback so
-        // the panel has data immediately, regardless of poller state
-        // or env configuration. Silent failure matches the existing
-        // `handle_board` pattern — panel renders whatever's present.
+        // Signal on-demand fetch via the event loop's listener task
+        // when the board is empty (#294 freeze-fix). The listener
+        // runs `fetch_board_stories` in `tokio::task::spawn_blocking`
+        // off the event loop thread, then delivers the result back
+        // through `board_fetch_result_rx` — which the main loop
+        // mirrors into both `board.stories` and `board_snapshot`.
+        // Before #294 this was a sync `fetch_board_stories()` call
+        // here; under slow gh it froze the tokio event loop,
+        // starving all other select! arms (input handling included).
+        // Silent fire-and-forget: failures surface via the
+        // snapshot's last_error path, the same as the poller.
         if self.board.stories.is_empty()
-            && let Ok(stories) = super::board::fetch_board_stories()
+            && let Some(tx) = &self.board_fetch_request_tx
         {
-            // Mirror into the snapshot so downstream readers (velocity
-            // zone's is_feature lookup, #219 rework defect 3) see the
-            // stories too — velocity was counting zero deliveries
-            // because its is_feature check was reading the empty
-            // snapshot rather than board.stories.
-            if let Ok(mut snap) = self.board_snapshot.lock() {
-                snap.stories = stories.clone();
-                if snap.last_updated.is_none() {
-                    // Stamp the snapshot so the panel footer shows a
-                    // real freshness timestamp instead of the
-                    // "loading..." stuck state (#219 rework defect 4).
-                    snap.last_updated = Some(chrono::Utc::now());
-                }
-            }
-            self.board.stories = stories;
+            let _ = tx.try_send(());
         }
     }
 

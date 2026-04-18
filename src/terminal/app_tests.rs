@@ -1764,3 +1764,77 @@ fn bare_commands_show_usage_from_single_handler() {
         );
     }
 }
+
+// #294 freeze-fix: `request_board_refresh_if_stale` must be non-blocking
+// on the event loop thread. Before the fix it called `fetch_board_stories`
+// synchronously, which shelled gh CLI on the tokio runtime's main thread
+// and froze the TUI under slow gh. Post-fix it signals via
+// `board_fetch_request_tx` and returns; the event loop listener runs the
+// fetch off-thread via `spawn_blocking`.
+#[test]
+fn request_board_refresh_if_stale_signals_fetch_when_board_empty() {
+    let mut app = test_app();
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<()>(1);
+    app.board_fetch_request_tx = Some(tx);
+    assert!(
+        app.board.stories.is_empty(),
+        "test precondition: fresh app has no stories"
+    );
+
+    app.request_board_refresh_if_stale();
+
+    // Signal fires on the channel; the caller returns without waiting
+    // for gh. This is the contract: the event-loop thread is never
+    // blocked on a subprocess call here. Previously this method called
+    // `fetch_board_stories()` inline and spent the whole gh latency in
+    // a single sync call.
+    assert!(
+        rx.try_recv().is_ok(),
+        "empty board should trigger a fetch request signal"
+    );
+}
+
+#[test]
+fn request_board_refresh_if_stale_skips_fetch_when_board_populated() {
+    use super::board::{BoardStory, StoryState};
+    let mut app = test_app();
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<()>(1);
+    app.board_fetch_request_tx = Some(tx);
+    // Simulate a populated board — e.g., stories already loaded from
+    // a prior fetch or from the poller snapshot.
+    app.board.stories = vec![BoardStory {
+        number: 1,
+        title: "existing".to_string(),
+        state: StoryState::Ready,
+        body: String::new(),
+        assignees: vec![],
+        created: String::new(),
+        reason: String::new(),
+        labels: vec![],
+    }];
+
+    app.request_board_refresh_if_stale();
+
+    // Already-populated board means no fetch needed. Without this
+    // guard the method would over-fire on every view open; the poller
+    // already owns ambient refresh cadence.
+    assert!(
+        rx.try_recv().is_err(),
+        "populated board should not re-trigger fetch; got signal anyway"
+    );
+}
+
+#[test]
+fn request_board_refresh_if_stale_is_noop_when_no_fetch_sender() {
+    let mut app = test_app();
+    // `board_fetch_request_tx` is None by default — simulates headless
+    // mode or pre-event-loop state. Calling the method must not panic
+    // or block; it silently skips the fetch signal.
+    assert!(app.board_fetch_request_tx.is_none());
+
+    app.request_board_refresh_if_stale();
+    // No assertion needed beyond "didn't panic." The prior code path
+    // would have called `fetch_board_stories()` synchronously here,
+    // potentially shelling gh even without a live event loop — noise
+    // in test runs.
+}
