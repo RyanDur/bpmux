@@ -20,6 +20,16 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "matcher": "mcp__bpmux-bridge__start_story",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/preflight-reminder.sh",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "PermissionRequest": [
