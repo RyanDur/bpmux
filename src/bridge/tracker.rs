@@ -5,7 +5,7 @@ use super::tools_stories::gh;
 /// Install rustls's ring crypto provider once per process.
 /// rustls-0.23 panics on first TLS handshake without an explicit
 /// provider when multiple backends are compiled in.
-fn ensure_crypto_provider_installed() {
+pub(super) fn ensure_crypto_provider_installed() {
     static INSTALLED: OnceLock<()> = OnceLock::new();
     INSTALLED.get_or_init(|| {
         let _ = rustls::crypto::ring::default_provider().install_default();

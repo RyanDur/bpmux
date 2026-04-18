@@ -269,3 +269,24 @@ mod tracker_selection {
         );
     }
 }
+
+mod crypto_provider {
+    use super::super::tracker::ensure_crypto_provider_installed;
+
+    #[test]
+    fn installs_provider_so_default_is_some() {
+        ensure_crypto_provider_installed();
+        assert!(
+            rustls::crypto::CryptoProvider::get_default().is_some(),
+            "crypto provider must be registered before any TLS handshake"
+        );
+    }
+
+    #[test]
+    fn idempotent_across_calls() {
+        ensure_crypto_provider_installed();
+        ensure_crypto_provider_installed();
+        ensure_crypto_provider_installed();
+        assert!(rustls::crypto::CryptoProvider::get_default().is_some());
+    }
+}
