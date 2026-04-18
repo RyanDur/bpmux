@@ -79,14 +79,12 @@ pub(in crate::bridge) async fn handle_view_velocity(
     match serde_json::to_string(&marker_msg) {
         Ok(json) => {
             if let Err(e) = ws_send(ws_tx, json).await {
-                crate::session::diag::log_diag(&format!(
-                    "view_velocity marker send failed: {e}"
-                ));
+                crate::session::diag::log_diag(&format!("view_velocity marker send failed: {e}"));
             }
         }
-        Err(e) => crate::session::diag::log_diag(&format!(
-            "view_velocity marker serialize failed: {e}"
-        )),
+        Err(e) => {
+            crate::session::diag::log_diag(&format!("view_velocity marker serialize failed: {e}"))
+        }
     }
 
     serde_json::to_string_pretty(&metrics).map_err(|e| format!("serialize: {e}"))
