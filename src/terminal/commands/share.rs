@@ -6,12 +6,103 @@
 //! rationale. Refuses to propagate messages whose `explicit_privacy` flag
 //! is set — those came from `/to` and the sender's explicit privacy
 //! intent overrides propagation.
+//!
+//! The shell method `handle_share` owns state mutation (input, scroll,
+//! history); the pure helpers below own logic (scope parsing, message
+//! finding, marker formatting). Extracted in #297 per the
+//! functional-core-imperative-shell discipline — pure cores are unit-
+//! testable without `App`, which the shell previously tangled into a
+//! 120-line `&mut self` method that required the full app fixture to
+//! exercise any single branch.
 
 use chrono::Utc;
 
 use super::MAX_HISTORY;
 use crate::session::Message;
 use crate::terminal::app::App;
+
+/// Parse the scope argument of `/share <scope> [body]` into a
+/// recipient list. Pure fn — no I/O, no `App` dependency.
+///
+/// Returns:
+/// - `Some(None)` — broadcast-to-all (the `BROADCAST_ALL` sentinel)
+/// - `Some(Some(recipients))` — specific recipient list, already
+///   trimmed and de-duplicated of empties
+/// - `None` — invalid input (empty string, or comma-list that
+///   collapses to nothing after trimming). Caller's job to surface
+///   usage.
+pub(crate) fn parse_share_scope(scope_str: &str) -> Option<Option<Vec<String>>> {
+    if scope_str.is_empty() {
+        return None;
+    }
+    if scope_str == crate::session::message::BROADCAST_ALL {
+        return Some(None);
+    }
+    let recipients: Vec<String> = scope_str
+        .split(',')
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+    if recipients.is_empty() {
+        None
+    } else {
+        Some(Some(recipients))
+    }
+}
+
+/// Find the newest chat message visible in the given view. Pure fn
+/// over an owned message slice.
+///
+/// View semantics:
+/// - `None` (broadcast view) → only broadcast messages (`to.is_none()`)
+///   match, not direct-to-X messages
+/// - `Some(view)` → messages whose resolved channel name equals `view`
+///   match (lets /share propagate from a direct channel view back
+///   to broadcast, etc.)
+///
+/// `owner` is the viewer's own identity name — required because
+/// `channel_name` resolves the message's channel from the viewer's
+/// perspective (a direct message from `alice` in `bob`'s session
+/// lives under channel `alice`, not `bob`).
+pub(crate) fn find_shareable_message<'a>(
+    messages: &'a [Message],
+    current_view: &Option<String>,
+    owner: &str,
+) -> Option<&'a Message> {
+    messages.iter().rev().find(|m| {
+        if !m.is_chat() {
+            return false;
+        }
+        match current_view {
+            None => m.to.is_none(),
+            Some(view) => crate::terminal::app::channel_name(m, owner) == *view,
+        }
+    })
+}
+
+/// Resolve the source scope for a Form 1 propagation marker.
+/// `None` recipients → `"broadcast"` sentinel; otherwise the
+/// viewer-perspective channel name. Pure fn over owned data.
+pub(crate) fn build_source_scope(source: &Message, owner: &str) -> String {
+    match &source.to {
+        None => "broadcast".to_string(),
+        Some(_) => crate::terminal::app::channel_name(source, owner),
+    }
+}
+
+/// Build the provenance marker string for a shared message.
+///
+/// - `source_scope: Some(scope)` → Form 1: existing-message
+///   propagation. Output: `"[Shared by {actor} from {scope} thread] {text}"`
+/// - `source_scope: None` → Form 2: fresh-body share. Output:
+///   `"[Shared by {actor}] {text}"` (no source-scope because there's
+///   no thread to reference — the body was typed at /share time)
+pub(crate) fn build_share_marker(actor: &str, source_scope: Option<&str>, text: &str) -> String {
+    match source_scope {
+        None => format!("[Shared by {actor}] {text}"),
+        Some(scope) => format!("[Shared by {actor} from {scope} thread] {text}"),
+    }
+}
 
 impl App {
     /// `/share <scope> [optional text]` — cross-scope propagation (#160).
@@ -33,32 +124,17 @@ impl App {
             Some((s, b)) => (s, Some(b.trim())),
             None => (rest, None),
         };
-        if scope_str.is_empty() {
-            return self.show_share_usage();
-        }
 
-        // Parse scope into recipient list. "all" is treated as None (full
-        // broadcast), matching the existing channel/broadcast conventions.
-        let target_to: Option<Vec<String>> = if scope_str == crate::session::message::BROADCAST_ALL
-        {
-            None
-        } else {
-            let recipients: Vec<String> = scope_str
-                .split(',')
-                .map(|s| s.trim().to_string())
-                .filter(|s| !s.is_empty())
-                .collect();
-            if recipients.is_empty() {
-                return self.show_share_usage();
-            }
-            Some(recipients)
+        let target_to = match parse_share_scope(scope_str) {
+            Some(recipients) => recipients,
+            None => return self.show_share_usage(),
         };
 
         // Form 2: explicit text → fresh message.
         if let Some(body) = body_opt
             && !body.is_empty()
         {
-            let marker = format!("[Shared by {}] {body}", self.identity.name);
+            let marker = build_share_marker(&self.identity.name, None, body);
             let msg = Message {
                 from: self.from_identity(),
                 text: marker,
@@ -79,26 +155,9 @@ impl App {
         }
 
         // Form 1: propagate the most recent in-view message.
-        // Walk messages in reverse, find the newest chat message that's
-        // visible in the sender's current view (matches current_view or is
-        // broadcast if view is None).
         let current_view = self.channels.current_view.clone();
         let owner = self.identity.name.clone();
-        let source = self
-            .msg
-            .messages
-            .iter()
-            .rev()
-            .find(|m| {
-                if !m.is_chat() {
-                    return false;
-                }
-                match &current_view {
-                    None => m.to.is_none(), // broadcast view sees only broadcast
-                    Some(view) => crate::terminal::app::channel_name(m, &owner) == *view,
-                }
-            })
-            .cloned();
+        let source = find_shareable_message(&self.msg.messages, &current_view, &owner).cloned();
 
         let Some(source) = source else {
             self.system_message("No recent message in the current view.".to_string());
@@ -113,16 +172,8 @@ impl App {
             return None;
         }
 
-        // Build the provenance marker. Source-scope is the channel name of
-        // the original message (or "broadcast" if None).
-        let source_scope = match &source.to {
-            None => "broadcast".to_string(),
-            Some(_) => crate::terminal::app::channel_name(&source, &self.identity.name),
-        };
-        let marker = format!(
-            "[Shared by {} from {source_scope} thread] {}",
-            self.identity.name, source.text
-        );
+        let source_scope = build_source_scope(&source, &self.identity.name);
+        let marker = build_share_marker(&self.identity.name, Some(&source_scope), &source.text);
 
         // Addressee is explicitly NOT inherited — propagated messages are
         // substrate updates (FYI), not tasks. If the original had an
