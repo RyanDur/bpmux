@@ -30,6 +30,16 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "matcher": "mcp__bpmux-bridge__deliver_story",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/post-audit-reminder.sh",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "PermissionRequest": [
