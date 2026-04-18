@@ -29,6 +29,7 @@ mod simulate_key;
 mod start_thread;
 mod suggest_leave;
 mod update_principle;
+mod view_backlog;
 mod view_roadmap;
 mod view_tokens;
 mod view_velocity;
@@ -64,6 +65,7 @@ pub(in crate::bridge) use simulate_key::handle_simulate_key;
 pub(in crate::bridge) use start_thread::handle_start_thread;
 pub(in crate::bridge) use suggest_leave::handle_suggest_leave;
 pub(in crate::bridge) use update_principle::handle_update_principle;
+pub(in crate::bridge) use view_backlog::handle_view_backlog;
 pub(in crate::bridge) use view_roadmap::handle_view_roadmap;
 pub(in crate::bridge) use view_tokens::handle_view_tokens;
 pub(in crate::bridge) use view_velocity::handle_view_velocity;
@@ -80,6 +82,8 @@ pub(in crate::bridge) use pull_into_thread::PULL_INTO_THREAD_MARKER;
 pub(in crate::bridge) use start_thread::THREAD_CREATE_MARKER;
 #[allow(unused_imports)]
 pub(in crate::bridge) use suggest_leave::SUGGEST_LEAVE_MARKER;
+#[allow(unused_imports)]
+pub(in crate::bridge) use view_backlog::VIEW_BACKLOG_MARKER;
 #[allow(unused_imports)]
 pub(in crate::bridge) use view_roadmap::VIEW_ROADMAP_MARKER;
 #[allow(unused_imports)]

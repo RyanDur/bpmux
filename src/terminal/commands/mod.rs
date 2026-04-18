@@ -14,6 +14,7 @@ mod to;
 mod toggle_all;
 pub(crate) mod tokens;
 mod velocity;
+mod view_backlog;
 mod who;
 
 #[cfg(test)]

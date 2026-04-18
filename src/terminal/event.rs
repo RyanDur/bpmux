@@ -427,6 +427,10 @@ pub(super) const VIEW_ROADMAP_MARKER: &str = "__BPMUX_VIEW_ROADMAP__";
 /// Kept in sync with VIEW_VELOCITY_MARKER in bridge/tools/view_velocity.rs.
 pub(super) const VIEW_VELOCITY_MARKER: &str = "__BPMUX_VIEW_VELOCITY__";
 
+/// Marker the bridge emits when an agent calls view_backlog (#286).
+/// Kept in sync with VIEW_BACKLOG_MARKER in bridge/tools/view_backlog.rs.
+pub(super) const VIEW_BACKLOG_MARKER: &str = "__BPMUX_VIEW_BACKLOG__";
+
 /// Marker the bridge emits when an agent calls start_thread (#268).
 /// Kept in sync with THREAD_CREATE_MARKER in bridge/tools/start_thread.rs.
 /// Format: `__BPMUX_THREAD_CREATE__|<id>|<name>|<p1,p2,...>`
@@ -537,6 +541,14 @@ fn handle_broadcast_message(msg: session::Message, app: &mut App) {
     // renders from.
     if msg.message_type == crate::session::MessageType::System && msg.text == VIEW_VELOCITY_MARKER {
         app.handle_velocity();
+        return;
+    }
+    // Agent-triggered view_backlog (#286) opens the project panel
+    // scrolled/focused to the board section. Same non-clearing pattern
+    // as view_velocity — the agent emitted this in response to a
+    // prose-mention; Ryan's in-progress input must not be wiped.
+    if msg.message_type == crate::session::MessageType::System && msg.text == VIEW_BACKLOG_MARKER {
+        app.handle_view_backlog();
         return;
     }
     // Thread-create marker (#268) — register the thread locally; if

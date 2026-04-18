@@ -25,6 +25,7 @@ mod simulate_key;
 mod start_thread;
 mod suggest_leave;
 mod update_principle;
+mod view_backlog;
 mod view_roadmap;
 mod view_tokens;
 
@@ -69,6 +70,7 @@ pub use simulate_key::simulate_key_tool;
 pub use start_thread::start_thread_tool;
 pub use suggest_leave::suggest_leave_tool;
 pub use update_principle::update_principle_tool;
+pub use view_backlog::view_backlog_tool;
 pub use view_roadmap::view_roadmap_tool;
 pub use view_tokens::view_tokens_tool;
 

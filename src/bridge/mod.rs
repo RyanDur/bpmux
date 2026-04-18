@@ -470,6 +470,9 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
             crate::mcp::tools::view_roadmap_tool(
                 "#226: surface the roadmap in Ryan's TUI. Call when conversation warrants reviewing roadmap state (e.g., 'what's on the roadmap?', 'what are we working on next?'). Same content as the /roadmap slash command; agents use this MCP tool instead of typing.",
             ),
+            crate::mcp::tools::view_backlog_tool(
+                "#286: surface the board/backlog in Ryan's TUI. Call when conversation warrants reviewing the backlog state (e.g., 'how's the icebox?', 'what's in the ready queue?', 'where are we?'). Returns a JSON summary with counts + ready/delivered samples so the agent can answer inline AND opens the project panel for Ryan.",
+            ),
             crate::mcp::tools::get_usage_tool(
                 "Get feature usage statistics — invocation counts and last-used timestamps for all commands/features used this session. JSON format.",
             ),
@@ -613,6 +616,7 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                 "get_usage" => tools::handle_get_usage(&args).await,
                 "view_tokens" => tools::handle_view_tokens(&ws_tx).await,
                 "view_roadmap" => tools::handle_view_roadmap(&ws_tx).await,
+                "view_backlog" => tools::handle_view_backlog(&ws_tx, &tracker).await,
                 other => Err(format!("unknown tool: {other}")),
             };
             Ok(match result {
