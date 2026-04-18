@@ -40,6 +40,16 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "matcher": "mcp__bpmux-bridge__create_story",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/filing-premise-reminder.sh",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "PermissionRequest": [
