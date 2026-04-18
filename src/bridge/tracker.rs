@@ -1,4 +1,16 @@
+use std::sync::OnceLock;
+
 use super::tools_stories::gh;
+
+/// Install rustls's ring crypto provider once per process.
+/// rustls-0.23 panics on first TLS handshake without an explicit
+/// provider when multiple backends are compiled in.
+fn ensure_crypto_provider_installed() {
+    static INSTALLED: OnceLock<()> = OnceLock::new();
+    INSTALLED.get_or_init(|| {
+        let _ = rustls::crypto::ring::default_provider().install_default();
+    });
+}
 
 /// Shared fail-soft handler for `get_story_labels`: log the error
 /// through the diag sink so it's observable via `BPMUX_LOG`, then
@@ -230,6 +242,7 @@ impl OctocrabStoryTracker {
     pub fn from_env() -> Option<Self> {
         match select_from_env(|k| std::env::var(k).ok()) {
             TrackerSelection::Octocrab { owner, repo, token } => {
+                ensure_crypto_provider_installed();
                 let client = octocrab::OctocrabBuilder::new()
                     .personal_token(token)
                     .build()

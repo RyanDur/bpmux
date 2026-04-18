@@ -31,6 +31,7 @@ base64 = "0.22.1"
 webrtc = "0.17.1"
 tui-textarea-2 = "0.10.2"
 aho-corasick = "1.1.4"
+rustls = { version = "0.23", features = ["ring"] }
 
 [features]
 # Real-substrate contract tests against GitHub's live gh CLI +
