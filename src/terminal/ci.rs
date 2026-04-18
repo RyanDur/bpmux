@@ -51,6 +51,33 @@ pub(super) struct CiEvent {
 
 const POLL_INTERVAL: Duration = Duration::from_secs(60);
 
+/// Hydrate the poller's `last_broadcast` state from the session log
+/// (#300 fix). Scans messages newest→oldest for the most recent CI
+/// transition broadcast (Activity with `🔴 CI` / `🟢 CI` prefix) and
+/// returns its CiState. If no prior CI event exists, returns None —
+/// first-ever poll in a fresh session will then emit honestly.
+///
+/// Without this, `spawn_poller` initializes `last_broadcast = None`
+/// on every spawn; a TUI restart during a Red period re-emits
+/// "🔴 CI failed" because compute_broadcast_text sees `None !=
+/// Some(Red)` and falls into the emission branch. Hydration closes
+/// the gap across the restart boundary so the accepted broadcast
+/// contract ("emit only on genuine transitions") holds.
+pub(super) fn hydrate_last_broadcast(messages: &[Message]) -> Option<CiState> {
+    messages.iter().rev().find_map(|m| {
+        if m.message_type != MessageType::Activity {
+            return None;
+        }
+        if m.text.starts_with("\u{1F534} CI") {
+            Some(CiState::Red)
+        } else if m.text.starts_with("\u{1F7E2} CI") {
+            Some(CiState::Green)
+        } else {
+            None
+        }
+    })
+}
+
 /// Spawn a background task that polls CI every 60 seconds and sends state
 /// updates to `tx`. The task exits cleanly when the receiver is dropped.
 ///
@@ -62,10 +89,20 @@ const POLL_INTERVAL: Duration = Duration::from_secs(60);
 /// transitions: failures always surface, recoveries surface only
 /// when they follow a prior failure. The transition logic is in
 /// `compute_broadcast_text`, which is pure and unit-tested.
-pub(super) fn spawn_poller(tx: mpsc::Sender<CiState>, broadcast_session: Option<Arc<Session>>) {
+///
+/// `initial_last_broadcast` is the hydrated value for `last_broadcast`,
+/// typically computed via `hydrate_last_broadcast(&app.msg.messages)`
+/// at call-site (#300). Pass `None` only for fresh-session cases; on
+/// restart during a known CI state, pass the hydrated value so the
+/// first poll doesn't re-emit a phantom transition.
+pub(super) fn spawn_poller(
+    tx: mpsc::Sender<CiState>,
+    broadcast_session: Option<Arc<Session>>,
+    initial_last_broadcast: Option<CiState>,
+) {
     tokio::spawn(async move {
         let mut last_state = CiState::Unknown;
-        let mut last_broadcast: Option<CiState> = None;
+        let mut last_broadcast: Option<CiState> = initial_last_broadcast;
         let mut interval = tokio::time::interval(POLL_INTERVAL);
         // First tick fires immediately, so we get a state update at startup
         // rather than waiting a full minute for the first paint.

@@ -476,3 +476,115 @@ fn build_dev_ci_signal_from_is_bpmux() {
     let signal = build_dev_ci_signal("any");
     assert_eq!(signal.from, "bpmux");
 }
+
+// #300 hydrate_last_broadcast — tests cover the scan-for-most-recent-CI-
+// transition helper. Hydration closes the gap in `spawn_poller` where
+// `last_broadcast` was hardcoded to `None`, causing phantom re-emits on
+// TUI restart during a Red-CI period. Pure fn over owned message slice;
+// no App dependency.
+
+use crate::session::{Message, MessageType};
+
+fn activity_msg(text: &str) -> Message {
+    Message {
+        from: "bpmux".to_string(),
+        text: text.to_string(),
+        ts: chrono::Utc::now(),
+        message_type: MessageType::Activity,
+        ..Message::default()
+    }
+}
+
+fn chat_msg(text: &str) -> Message {
+    Message {
+        from: "alice".to_string(),
+        text: text.to_string(),
+        ts: chrono::Utc::now(),
+        message_type: MessageType::Chat,
+        ..Message::default()
+    }
+}
+
+#[test]
+fn hydrate_last_broadcast_returns_red_for_most_recent_failed() {
+    // Newest→oldest scan. The most recent CI broadcast determines
+    // the hydrated state; older broadcasts don't matter for the
+    // restart-boundary hydration semantics.
+    let messages = vec![
+        activity_msg("\u{1F7E2} CI recovered — abc123"),
+        activity_msg("\u{1F534} CI failed — def456"),
+    ];
+    assert_eq!(hydrate_last_broadcast(&messages), Some(CiState::Red));
+}
+
+#[test]
+fn hydrate_last_broadcast_returns_green_for_most_recent_recovered() {
+    let messages = vec![
+        activity_msg("\u{1F534} CI failed — abc123"),
+        activity_msg("\u{1F7E2} CI recovered — def456"),
+    ];
+    assert_eq!(hydrate_last_broadcast(&messages), Some(CiState::Green));
+}
+
+#[test]
+fn hydrate_last_broadcast_returns_none_for_empty_log() {
+    let messages: Vec<Message> = vec![];
+    // Fresh session: no prior CI context. `spawn_poller` initializes
+    // with None, first-ever poll emits honestly per the transition
+    // rules. This preserves the pre-#300 fresh-session behavior.
+    assert!(hydrate_last_broadcast(&messages).is_none());
+}
+
+#[test]
+fn hydrate_last_broadcast_returns_none_when_no_ci_events() {
+    // Session has messages but none are CI broadcasts. Same semantics
+    // as empty log: no prior CI context to hydrate from.
+    let messages = vec![chat_msg("hello"), chat_msg("unrelated banter")];
+    assert!(hydrate_last_broadcast(&messages).is_none());
+}
+
+#[test]
+fn hydrate_last_broadcast_ignores_non_activity_messages() {
+    // A Chat message whose text happens to start with 🔴 CI (e.g. a
+    // quoted CI broadcast in conversation) must NOT hydrate to Red.
+    // Only the Activity-type broadcasts from the poller itself count;
+    // otherwise the hydration would over-correct on conversational
+    // mentions of CI.
+    let messages = vec![
+        activity_msg("\u{1F534} CI failed — real-transition"),
+        chat_msg("\u{1F7E2} CI recovered — someone quoting CI"),
+    ];
+    // Newest is the Chat message; it's ignored. Previous Activity Red
+    // wins.
+    assert_eq!(hydrate_last_broadcast(&messages), Some(CiState::Red));
+}
+
+#[test]
+fn hydrate_last_broadcast_ignores_activity_without_ci_prefix() {
+    // Other Activity messages (thread lifecycle, system markers) also
+    // hide. The prefix gate keeps hydration tight to CI broadcasts.
+    let messages = vec![
+        activity_msg("\u{1F534} CI failed — real"),
+        activity_msg("thread lifecycle marker"),
+        activity_msg("\u{1F7E0} some-other-orange-emoji marker"),
+    ];
+    // Newest non-CI Activity messages skip; the CI-failed below
+    // wins.
+    assert_eq!(hydrate_last_broadcast(&messages), Some(CiState::Red));
+}
+
+#[test]
+fn hydrate_last_broadcast_returns_first_match_in_reverse_order() {
+    // Explicit reverse-iteration property: given multiple CI events
+    // across the log, the LATEST one determines the hydrated state.
+    // Critical for restart semantics — the state we left the CI in
+    // is what the poller should re-anchor to.
+    let messages = vec![
+        activity_msg("\u{1F534} CI failed — old"),
+        activity_msg("\u{1F7E2} CI recovered — middle"),
+        activity_msg("\u{1F534} CI failed — recent"),
+        activity_msg("\u{1F7E2} CI recovered — latest"),
+    ];
+    // Latest is Green; hydration returns Green.
+    assert_eq!(hydrate_last_broadcast(&messages), Some(CiState::Green));
+}
