@@ -26,7 +26,11 @@ pub(in crate::bridge) async fn handle_view_backlog(
 ) -> Result<String, String> {
     // Emit the marker first so the TUI opens promptly regardless of
     // how long the tracker fetch takes. Marker-send failure is
-    // non-fatal — the agent still gets the JSON content back.
+    // non-fatal for the agent-callable path — the JSON content is
+    // still useful for Ryan's chat-side answer — but we do NOT swallow
+    // the error silently. Per fail-loud-for-dev-tools discipline,
+    // serialization + send failures are logged to the diag trail so a
+    // missing TUI surface is observable from outside the process.
     let marker_msg = crate::transport::protocol::ClientMessage::Send {
         text: VIEW_BACKLOG_MARKER.to_string(),
         to: None,
@@ -34,8 +38,17 @@ pub(in crate::bridge) async fn handle_view_backlog(
         message_type: Some("system".to_string()),
         thread_id: None,
     };
-    if let Ok(json) = serde_json::to_string(&marker_msg) {
-        let _ = ws_send(ws_tx, json).await;
+    match serde_json::to_string(&marker_msg) {
+        Ok(json) => {
+            if let Err(e) = ws_send(ws_tx, json).await {
+                crate::session::diag::log_diag(&format!(
+                    "view_backlog marker send failed: {e}"
+                ));
+            }
+        }
+        Err(e) => crate::session::diag::log_diag(&format!(
+            "view_backlog marker serialize failed: {e}"
+        )),
     }
 
     let json_str = tracker.list_stories().await?;
