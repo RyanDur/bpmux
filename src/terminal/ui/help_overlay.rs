@@ -19,10 +19,16 @@ pub(super) fn render_help_overlay(frame: &mut Frame, app: &App, area: Rect) {
         // form to fit alongside the keys section in the 24-row terminal
         // budget — full descriptions live in the `/help` chat output.
         let mut help_text = format_command_list(2);
+        // Compact the Keys + footer to keep the overlay within the
+        // 22-line budget (24 rows minus 2 borders). The grouping
+        // (#284) added ~5 lines of headers + an odd-row in Meta; we
+        // claw that back by dropping the blank lines around Keys
+        // and the footer. Keys still visually distinct via the
+        // "Keys:" label itself.
         help_text.push_str(
-            "\n\nKeys:\n  Enter    send / expand    Esc     clear input\n  \
+            "\nKeys:\n  Enter    send / expand    Esc     clear input\n  \
 Ctrl+U   scroll up        Ctrl+D  scroll down\n  \u{2325}1       channel sidebar   \
-Ctrl+T  timestamps\n  Ctrl+C   quit (empty)     ?  this overlay\n\n\
+Ctrl+T  timestamps\n  Ctrl+C   quit (empty)     ?  this overlay\n\
 click anywhere or press any key to close",
         );
 

@@ -16,13 +16,27 @@ use tui_textarea::CursorMove;
 /// Convention for short: single verb or verb-phrase, sentence case,
 /// no period, ≤14 chars. Convention for long: full sentence
 /// fragment, no period, fits on one line.
+///
+/// `domain` groups commands by intent for the `/help` and `?` overlay
+/// renderings (#284). Use one of `HELP_DOMAINS` — the render order
+/// follows the order of that slice, and commands within each domain
+/// sort alphabetically. Domain membership is compile-time checked
+/// only against the `HELP_DOMAINS` slice via `domain_index`; keep the
+/// field in sync when adding a domain.
 #[derive(Clone, Copy)]
 pub(super) struct SlashCommand {
     pub name: &'static str,
     pub short_desc: &'static str,
     pub long_desc: &'static str,
+    pub domain: &'static str,
     pub handler: fn(&mut App, &str) -> Option<Message>,
 }
+
+/// Render order for `/help` + `?` overlay domain groupings (#284).
+/// Commands match on exact string; grouping walks this slice so the
+/// group order is deterministic regardless of `SLASH_COMMANDS` entry
+/// order. Empty groups are skipped at render time.
+pub(super) const HELP_DOMAINS: &[&str] = &["View", "Compose", "Filter", "Team state", "Meta"];
 
 /// Single source of truth for slash commands. Entry order controls
 /// popup/overlay display order.
@@ -31,96 +45,112 @@ pub(super) const SLASH_COMMANDS: &[SlashCommand] = &[
         name: "/to",
         short_desc: "send to roles",
         long_desc: "send to recipients (comma-separated)",
+        domain: "Compose",
         handler: dispatch_to,
     },
     SlashCommand {
         name: "/share",
         short_desc: "widen scope",
         long_desc: "propagate a message to a wider scope",
+        domain: "Compose",
         handler: dispatch_share,
     },
     SlashCommand {
         name: "/all",
         short_desc: "toggle filter",
         long_desc: "toggle classifier-driven view filter",
+        domain: "Filter",
         handler: dispatch_all,
     },
     SlashCommand {
         name: "/search",
         short_desc: "find in log",
         long_desc: "search the conversation log",
+        domain: "Meta",
         handler: dispatch_search,
     },
     SlashCommand {
         name: "/lessons",
         short_desc: "team lessons",
         long_desc: "show team lessons (or peer's with arg)",
+        domain: "Team state",
         handler: dispatch_lessons,
     },
     SlashCommand {
         name: "/board",
         short_desc: "project board",
         long_desc: "show project board",
+        domain: "View",
         handler: dispatch_board,
     },
     SlashCommand {
         name: "/status",
         short_desc: "set status",
         long_desc: "declare your status",
+        domain: "Team state",
         handler: dispatch_status,
     },
     SlashCommand {
         name: "/who",
         short_desc: "list peers",
         long_desc: "list participants",
+        domain: "Team state",
         handler: dispatch_who,
     },
     SlashCommand {
         name: "/session",
         short_desc: "start p2p",
         long_desc: "create a P2P session",
+        domain: "Meta",
         handler: dispatch_session,
     },
     SlashCommand {
         name: "/join",
         short_desc: "join p2p",
         long_desc: "join a remote P2P session",
+        domain: "Meta",
         handler: dispatch_join,
     },
     SlashCommand {
         name: "/accept",
         short_desc: "finish p2p",
         long_desc: "complete a P2P handshake",
+        domain: "Meta",
         handler: dispatch_accept,
     },
     SlashCommand {
         name: "/debug",
         short_desc: "sys msg toggle",
         long_desc: "toggle system message visibility",
+        domain: "Meta",
         handler: dispatch_debug,
     },
     SlashCommand {
         name: "/focus",
         short_desc: "role filter",
         long_desc: "filter chat view by role (e.g. /focus dev,pm)",
+        domain: "Filter",
         handler: dispatch_focus,
     },
     SlashCommand {
         name: "/identity",
         short_desc: "agent traits",
         long_desc: "show identity traits for a role (e.g. /identity dev)",
+        domain: "Team state",
         handler: dispatch_identity,
     },
     SlashCommand {
         name: "/help",
         short_desc: "show this",
         long_desc: "show this list",
+        domain: "Meta",
         handler: dispatch_help,
     },
     SlashCommand {
         name: "/quit",
         short_desc: "exit",
         long_desc: "exit bpmux",
+        domain: "Meta",
         handler: dispatch_quit,
     },
 ];
