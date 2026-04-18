@@ -2,6 +2,7 @@ pub mod auth_token;
 pub mod awareness;
 pub mod bayes;
 pub mod bookmark;
+pub mod briefing;
 pub mod classifier;
 pub mod diag;
 pub mod identity;

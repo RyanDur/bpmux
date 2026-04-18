@@ -394,6 +394,12 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
             crate::mcp::tools::get_bookmark_tool(
                 "Read a session bookmark — the structured state snapshot saved by an agent. Use after compaction to resume context quickly.",
             ),
+            crate::mcp::tools::save_briefing_tool(
+                "#287: write a post-compact briefing that your future post-compact self reads on session-start. Free-form markdown capturing role-continuity — discipline reminders, active-work state, commitments to teammates, things you want to remember about who you are and what you're in the middle of. Distinct from bookmark (session work-state) and lessons (durable cross-session rules): briefings are cross-session but below-lesson-threshold, curated mid-iteration. Replaces any existing briefing for your role (max 1MB).",
+            ),
+            crate::mcp::tools::get_briefing_tool(
+                "#287: read a post-compact briefing. Omit 'role' to read your own; pass a role name to inspect a peer's. Missing briefing returns empty string — not an error.",
+            ),
             crate::mcp::tools::get_identity_tool(
                 "Get an agent's identity — the stable values and principles that persist across sessions. Returns JSON with values, each carrying a description and a list of principles. Omit 'role' to get your own identity; pass a role name to see another agent's.",
             ),
@@ -532,6 +538,14 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                 "get_bookmark" => {
                     let current_name = name.lock().await;
                     tools::handle_get_bookmark(&args, port, &current_name).await
+                }
+                "save_briefing" => {
+                    let current_name = name.lock().await;
+                    tools::handle_save_briefing(&args, &current_name).await
+                }
+                "get_briefing" => {
+                    let current_name = name.lock().await;
+                    tools::handle_get_briefing(&args, &current_name).await
                 }
                 "get_identity" => {
                     let current_name = name.lock().await;
