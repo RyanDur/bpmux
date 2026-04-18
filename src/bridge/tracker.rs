@@ -156,25 +156,97 @@ pub struct OctocrabStoryTracker {
     repo: String,
 }
 
+/// Result of inspecting env vars to pick a tracker backend. Separates
+/// the env-decisioning (pure, testable) from the octocrab client
+/// build (impure, requires network config). Only `Octocrab` is a
+/// successful selection; the `Fallback` variant names WHY we're
+/// falling back to `GhTracker` so the bridge can surface the reason
+/// in diag logs instead of silently swapping backends (#298).
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum TrackerSelection {
+    Octocrab {
+        owner: String,
+        repo: String,
+        token: String,
+    },
+    Fallback(FallbackReason),
+}
+
+/// Named reasons for falling back from `OctocrabStoryTracker` to
+/// `GhTracker`. Naming them as an enum (instead of a None return)
+/// makes the dispatch decision observable — diag logs can cite the
+/// specific reason, and unit tests can assert exact variants rather
+/// than an opaque "it fell back."
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum FallbackReason {
+    /// `BPMUX_REPO` env var missing entirely.
+    NoRepo,
+    /// `BPMUX_REPO` present but doesn't match "owner/name" format
+    /// (no `/` separator or empty segments).
+    MalformedRepo,
+    /// Neither `GH_TOKEN` nor `GITHUB_TOKEN` set. Octocrab can't
+    /// auth without one.
+    NoToken,
+}
+
+/// Pure env-decisioning. Accepts a closure reader so tests can
+/// inject arbitrary env-var maps without mutating the process env
+/// (which would require a global lock for parallel test safety —
+/// existing `tracker_tests.rs` uses that pattern for log-diag,
+/// but for pure selection-logic a closure is lighter).
+pub(crate) fn select_from_env<F>(get: F) -> TrackerSelection
+where
+    F: Fn(&str) -> Option<String>,
+{
+    let Some(repo_spec) = get("BPMUX_REPO") else {
+        return TrackerSelection::Fallback(FallbackReason::NoRepo);
+    };
+    let Some((owner, repo)) = repo_spec.split_once('/') else {
+        return TrackerSelection::Fallback(FallbackReason::MalformedRepo);
+    };
+    if owner.is_empty() || repo.is_empty() {
+        return TrackerSelection::Fallback(FallbackReason::MalformedRepo);
+    }
+    let Some(token) = get("GH_TOKEN").or_else(|| get("GITHUB_TOKEN")) else {
+        return TrackerSelection::Fallback(FallbackReason::NoToken);
+    };
+    TrackerSelection::Octocrab {
+        owner: owner.to_string(),
+        repo: repo.to_string(),
+        token,
+    }
+}
+
 impl OctocrabStoryTracker {
     /// Build from env vars. Returns None when required auth/repo
     /// config is missing — caller falls back to GhTracker in that
     /// case so the bridge stays functional without API access.
+    ///
+    /// Logs the fallback reason to diag on None — previously this
+    /// was a silent swap, invisible to developers debugging why
+    /// their real-gh calls went through the gh CLI instead of
+    /// octocrab. Named reasons (NoRepo / MalformedRepo / NoToken)
+    /// make the dispatch decision auditable (#298).
     pub fn from_env() -> Option<Self> {
-        let repo_spec = std::env::var("BPMUX_REPO").ok()?;
-        let (owner, repo) = repo_spec.split_once('/')?;
-        let token = std::env::var("GH_TOKEN")
-            .or_else(|_| std::env::var("GITHUB_TOKEN"))
-            .ok()?;
-        let client = octocrab::OctocrabBuilder::new()
-            .personal_token(token)
-            .build()
-            .ok()?;
-        Some(Self {
-            client,
-            owner: owner.to_string(),
-            repo: repo.to_string(),
-        })
+        match select_from_env(|k| std::env::var(k).ok()) {
+            TrackerSelection::Octocrab { owner, repo, token } => {
+                let client = octocrab::OctocrabBuilder::new()
+                    .personal_token(token)
+                    .build()
+                    .ok()?;
+                Some(Self {
+                    client,
+                    owner,
+                    repo,
+                })
+            }
+            TrackerSelection::Fallback(reason) => {
+                crate::session::diag::log_diag(&format!(
+                    "OctocrabStoryTracker::from_env: falling back to GhTracker ({reason:?})"
+                ));
+                None
+            }
+        }
     }
 
     fn classify(err: octocrab::Error) -> String {

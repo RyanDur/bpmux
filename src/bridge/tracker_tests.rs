@@ -132,3 +132,140 @@ fn log_labels_fetch_failure_distinguishes_backends() {
     assert!(contents.contains("(octocrab)") && contents.contains("#2"));
     assert!(contents.contains("(gh parse)") && contents.contains("#3"));
 }
+
+// #298 tracker-selection tests — exercise env-var permutations via
+// closure-injected env reader (no process env mutation, no env_lock
+// serialization needed). Catches the silent Octocrab→Gh fallback
+// class by asserting the exact FallbackReason variant for each
+// degenerate env state.
+
+mod tracker_selection {
+    use super::super::tracker::{FallbackReason, TrackerSelection, select_from_env};
+    use std::collections::HashMap;
+
+    /// Build a reader closure over an owned env map. Tests construct
+    /// a fresh map per case so no cross-test state leaks. Closure
+    /// matches `Fn(&str) -> Option<String>` so `select_from_env`
+    /// accepts it directly.
+    fn reader(env: HashMap<&str, &str>) -> impl Fn(&str) -> Option<String> {
+        let owned: HashMap<String, String> = env
+            .into_iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect();
+        move |key: &str| owned.get(key).cloned()
+    }
+
+    #[test]
+    fn returns_octocrab_when_repo_and_gh_token_set() {
+        let r = reader(HashMap::from([
+            ("BPMUX_REPO", "ryan/bpmux"),
+            ("GH_TOKEN", "t"),
+        ]));
+        assert_eq!(
+            select_from_env(r),
+            TrackerSelection::Octocrab {
+                owner: "ryan".to_string(),
+                repo: "bpmux".to_string(),
+                token: "t".to_string(),
+            }
+        );
+    }
+
+    #[test]
+    fn returns_octocrab_when_repo_and_github_token_set() {
+        // GITHUB_TOKEN is the documented Actions-runtime variant;
+        // bridge treats it as an alias for GH_TOKEN so repo owners
+        // with either convention work without re-configuring.
+        let r = reader(HashMap::from([
+            ("BPMUX_REPO", "ryan/bpmux"),
+            ("GITHUB_TOKEN", "gh-actions-token"),
+        ]));
+        assert!(matches!(
+            select_from_env(r),
+            TrackerSelection::Octocrab { .. }
+        ));
+    }
+
+    #[test]
+    fn gh_token_wins_when_both_tokens_set() {
+        // Preference order: GH_TOKEN first, GITHUB_TOKEN fallback.
+        // Matches gh CLI's precedence; avoids surprise when someone
+        // sets both expecting the user-convention one to win.
+        let r = reader(HashMap::from([
+            ("BPMUX_REPO", "o/r"),
+            ("GH_TOKEN", "primary"),
+            ("GITHUB_TOKEN", "secondary"),
+        ]));
+        match select_from_env(r) {
+            TrackerSelection::Octocrab { token, .. } => assert_eq!(token, "primary"),
+            other => panic!("expected Octocrab, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn fallback_no_repo_when_bpmux_repo_missing() {
+        // Most common failure mode: user sets GH_TOKEN thinking it's
+        // enough but hasn't set BPMUX_REPO. Caller logs this reason;
+        // user gets a diag hit telling them what's missing.
+        let r = reader(HashMap::from([("GH_TOKEN", "t")]));
+        assert_eq!(
+            select_from_env(r),
+            TrackerSelection::Fallback(FallbackReason::NoRepo)
+        );
+    }
+
+    #[test]
+    fn fallback_malformed_repo_when_no_slash() {
+        // BPMUX_REPO must be "owner/name"; a bare token (no slash)
+        // is malformed. Distinguished from NoRepo so the diag line
+        // points the user at the format issue, not a missing var.
+        let r = reader(HashMap::from([
+            ("BPMUX_REPO", "justname"),
+            ("GH_TOKEN", "t"),
+        ]));
+        assert_eq!(
+            select_from_env(r),
+            TrackerSelection::Fallback(FallbackReason::MalformedRepo)
+        );
+    }
+
+    #[test]
+    fn fallback_malformed_repo_when_owner_empty() {
+        let r = reader(HashMap::from([("BPMUX_REPO", "/bpmux"), ("GH_TOKEN", "t")]));
+        assert_eq!(
+            select_from_env(r),
+            TrackerSelection::Fallback(FallbackReason::MalformedRepo)
+        );
+    }
+
+    #[test]
+    fn fallback_malformed_repo_when_name_empty() {
+        let r = reader(HashMap::from([("BPMUX_REPO", "ryan/"), ("GH_TOKEN", "t")]));
+        assert_eq!(
+            select_from_env(r),
+            TrackerSelection::Fallback(FallbackReason::MalformedRepo)
+        );
+    }
+
+    #[test]
+    fn fallback_no_token_when_neither_token_set() {
+        let r = reader(HashMap::from([("BPMUX_REPO", "o/r")]));
+        assert_eq!(
+            select_from_env(r),
+            TrackerSelection::Fallback(FallbackReason::NoToken)
+        );
+    }
+
+    #[test]
+    fn fallback_when_env_is_completely_empty() {
+        // NoRepo wins (checked first in the resolution order).
+        // Deterministic ordering matters because a diag reader
+        // that sees NoRepo knows it's not a token issue; if
+        // ordering flipped they'd chase the wrong fix.
+        let r = reader(HashMap::new());
+        assert_eq!(
+            select_from_env(r),
+            TrackerSelection::Fallback(FallbackReason::NoRepo)
+        );
+    }
+}
