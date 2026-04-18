@@ -1268,17 +1268,17 @@ fn toggle_expands_long_system_message() {
     });
     let key = app.msg.messages.last().unwrap().ts.to_rfc3339();
     assert!(
-        !app.msg.expanded_messages.contains(&key),
+        !app.msg.expanded_messages.contains_key(&key),
         "should not be expanded initially"
     );
     app.toggle_last_truncated();
     assert!(
-        app.msg.expanded_messages.contains(&key),
+        app.msg.expanded_messages.contains_key(&key),
         "should be expanded after toggle"
     );
     app.toggle_last_truncated();
     assert!(
-        !app.msg.expanded_messages.contains(&key),
+        !app.msg.expanded_messages.contains_key(&key),
         "should collapse after second toggle"
     );
 }

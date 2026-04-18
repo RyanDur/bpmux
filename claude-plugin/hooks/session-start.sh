@@ -34,4 +34,30 @@ if [ -n "$BPMUX_BIN" ] && [ -n "${BPMUX_ROLE:-}" ]; then
     "$BPMUX_BIN" recall --role "$BPMUX_ROLE" 2>/dev/null || true
 fi
 
+# Post-compact briefing experiment (2026-04-17 iteration).
+# Agent-authored continuity note at ~/.bpmux/briefings/{role}.md; read
+# on every session start and emitted alongside lesson recall. Missing/
+# empty briefing is a silent no-op. mtime-derived relative age gives
+# the post-compact self a "when was I last active on this" signal.
+# If the experiment validates, productized via the shaped story (#287
+# or equivalent) with MCP save_briefing / get_briefing / view_briefings
+# tools replacing manual file authoring.
+if [ -n "${BPMUX_ROLE:-}" ]; then
+    briefing_file="$HOME/.bpmux/briefings/${BPMUX_ROLE}.md"
+    if [ -s "$briefing_file" ]; then
+        # macOS uses `stat -f %m`, Linux uses `stat -c %Y`. Try macOS
+        # first and fall back so the hook works on either platform.
+        mtime=$(stat -f %m "$briefing_file" 2>/dev/null || stat -c %Y "$briefing_file" 2>/dev/null || echo 0)
+        now=$(date +%s)
+        age=$((now - mtime))
+        if [ "$age" -lt 60 ]; then rel="just now"
+        elif [ "$age" -lt 3600 ]; then rel="$((age / 60)) minutes ago"
+        elif [ "$age" -lt 86400 ]; then rel="$((age / 3600)) hours ago"
+        else rel="$((age / 86400)) days ago"
+        fi
+        printf '\n## briefing for %s (last written: %s)\n\n' "$BPMUX_ROLE" "$rel"
+        cat "$briefing_file"
+    fi
+fi
+
 exit 0

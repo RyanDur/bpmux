@@ -55,7 +55,9 @@ fn handle_click(col: u16, row: u16, app: &mut App) {
         }
     }
 
-    // Check if the click hit a "[+N lines]" truncation indicator
+    // Check if the click hit a "[+N lines]" truncation indicator (#110).
+    // Reuses the truncation_indicators/expanded_messages pair; DepthLevel
+    // sentinel value on the map is unused by truncation-expand rendering.
     if let Some(key) = app
         .msg
         .truncation_indicators
@@ -63,11 +65,39 @@ fn handle_click(col: u16, row: u16, app: &mut App) {
         .find(|(y, _)| *y == row)
         .map(|(_, k)| k.clone())
     {
-        if app.msg.expanded_messages.contains(&key) {
-            app.msg.expanded_messages.remove(&key);
-        } else {
-            app.msg.expanded_messages.insert(key);
+        use crate::terminal::app_state::DepthLevel;
+        use std::collections::hash_map::Entry;
+        match app.msg.expanded_messages.entry(key) {
+            Entry::Occupied(e) => {
+                e.remove();
+            }
+            Entry::Vacant(e) => {
+                e.insert(DepthLevel::RoleDefault);
+            }
         }
+        return;
+    }
+
+    // Check if the click hit a multi-depth cycle affordance (#285).
+    // Depth state lives in the same expanded_messages map; absence
+    // means "use initial_for_role." Click advances one step per the
+    // Summary → RoleDefault → Deep → Summary cycle.
+    if let Some(key) = app
+        .msg
+        .depth_indicators
+        .iter()
+        .find(|(y, _)| *y == row)
+        .map(|(_, k)| k.clone())
+    {
+        use crate::terminal::app_state::DepthLevel;
+        let role = app.identity.name.as_str();
+        let current = app
+            .msg
+            .expanded_messages
+            .get(&key)
+            .copied()
+            .unwrap_or_else(|| DepthLevel::initial_for_role(role));
+        app.msg.expanded_messages.insert(key, current.next());
         return;
     }
 

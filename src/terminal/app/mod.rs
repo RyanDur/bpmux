@@ -425,10 +425,23 @@ impl App {
         ) else {
             return;
         };
-        if self.msg.expanded_messages.contains(&key) {
-            self.msg.expanded_messages.remove(&key);
-        } else {
-            self.msg.expanded_messages.insert(key);
+        // For truncation (#110) the DepthLevel value doesn't matter —
+        // presence in the map = "expanded past truncation threshold."
+        // Reusing `DepthLevel::RoleDefault` as the sentinel so any
+        // renderer checking depth sees a consistent mid-state rather
+        // than a surprising Summary/Deep. Multi-depth messages don't
+        // reach this path because AC #285 suppresses msg.text when
+        // multi_depth is present — so there's no long-text truncation
+        // to toggle.
+        use crate::terminal::app_state::DepthLevel;
+        use std::collections::hash_map::Entry;
+        match self.msg.expanded_messages.entry(key) {
+            Entry::Occupied(e) => {
+                e.remove();
+            }
+            Entry::Vacant(e) => {
+                e.insert(DepthLevel::RoleDefault);
+            }
         }
     }
 

@@ -96,6 +96,45 @@ pub struct TokensViewState {
     pub rows: Vec<crate::session::tokens::TokenRow>,
 }
 
+/// Depth at which a multi-depth message is currently rendered in the
+/// chat pane (#285). `Summary` is the shallowest (one-line); `RoleDefault`
+/// is the role-tuned variant from `MultiDepthPayload.role_default`; `Deep`
+/// is the full detail. Click on a multi-depth message cycles through the
+/// levels: Summary → RoleDefault → Deep → Summary.
+///
+/// Distinct from `MultiDepthPayload` (wire schema) — this is per-viewer
+/// TUI state, stored ephemerally in `ui-state.json` alongside
+/// `expanded_messages`. Post-compact collapses to the role-default
+/// initial state by design (TUI-layer re-render, not work-state).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum DepthLevel {
+    Summary,
+    RoleDefault,
+    Deep,
+}
+
+impl DepthLevel {
+    /// Default depth for a role seeing a multi-depth message before
+    /// any click. AC #285: dev sees role_default (full stage detail);
+    /// pm/designer see summary. Other roles fall back to Summary.
+    pub fn initial_for_role(role: &str) -> Self {
+        if role == "dev" {
+            Self::RoleDefault
+        } else {
+            Self::Summary
+        }
+    }
+
+    /// Advance one step in the cycle: Summary → RoleDefault → Deep → Summary.
+    pub fn next(self) -> Self {
+        match self {
+            Self::Summary => Self::RoleDefault,
+            Self::RoleDefault => Self::Deep,
+            Self::Deep => Self::Summary,
+        }
+    }
+}
+
 /// Message state — extracted from App.
 pub struct MessageState {
     pub messages: Vec<Message>,
@@ -103,8 +142,22 @@ pub struct MessageState {
     pub filtered_indices: Vec<usize>,
     pub cached_hidden_count: usize,
     pub filter_dirty: bool,
-    pub expanded_messages: HashSet<String>,
+    /// Truncation expansion state (#110) AND multi-depth cycle state
+    /// (#285) keyed by `msg.ts.to_rfc3339()`. For long-text messages,
+    /// presence in the map (at any depth) means "expanded past the
+    /// truncation threshold." For multi-depth messages, the stored
+    /// `DepthLevel` is the current cycle position; absence means
+    /// "use `DepthLevel::initial_for_role(role)`." The two uses never
+    /// collide because a message is either long-text-truncated OR
+    /// multi-depth-rendered (AC #285: msg.text is suppressed when
+    /// multi_depth is present).
+    pub expanded_messages: HashMap<String, DepthLevel>,
     pub truncation_indicators: Vec<(u16, String)>,
+    /// Multi-depth click-zone indicators (#285) — `(screen_row, msg_key)`
+    /// so the mouse handler can route a click on a depth affordance to
+    /// the right message. Separate from `truncation_indicators` so
+    /// layer routing stays unambiguous.
+    pub depth_indicators: Vec<(u16, String)>,
 }
 
 impl MessageState {
@@ -115,8 +168,9 @@ impl MessageState {
             filtered_indices: Vec::new(),
             cached_hidden_count: 0,
             filter_dirty: true,
-            expanded_messages: HashSet::new(),
+            expanded_messages: HashMap::new(),
             truncation_indicators: Vec::new(),
+            depth_indicators: Vec::new(),
         }
     }
 }
@@ -294,4 +348,86 @@ pub struct PendingInvitation {
     pub thread_name: String,
     pub caller: String,
     pub reason: String,
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+mod depth_level_tests {
+    use super::*;
+
+    #[test]
+    fn dev_starts_at_role_default() {
+        // AC #285: "dev sees payload.role_default['dev'] (full stage detail)"
+        assert_eq!(DepthLevel::initial_for_role("dev"), DepthLevel::RoleDefault);
+    }
+
+    #[test]
+    fn pm_starts_at_summary() {
+        // AC #285: "pm / designer see payload.summary (one-liner)"
+        assert_eq!(DepthLevel::initial_for_role("pm"), DepthLevel::Summary);
+    }
+
+    #[test]
+    fn designer_starts_at_summary() {
+        assert_eq!(
+            DepthLevel::initial_for_role("designer"),
+            DepthLevel::Summary
+        );
+    }
+
+    #[test]
+    fn unknown_role_falls_back_to_summary() {
+        // Shape: "viewer's role comes from identity_name" — any role we
+        // don't special-case defaults to the shallowest view (Summary).
+        assert_eq!(DepthLevel::initial_for_role("ryan"), DepthLevel::Summary);
+        assert_eq!(DepthLevel::initial_for_role(""), DepthLevel::Summary);
+        assert_eq!(DepthLevel::initial_for_role("unknown"), DepthLevel::Summary);
+    }
+
+    #[test]
+    fn cycle_summary_to_role_default() {
+        // AC #285: "Click cycles depth for that message: Summary →
+        // RoleDefault → Deep → Summary". Each step independently.
+        assert_eq!(DepthLevel::Summary.next(), DepthLevel::RoleDefault);
+    }
+
+    #[test]
+    fn cycle_role_default_to_deep() {
+        assert_eq!(DepthLevel::RoleDefault.next(), DepthLevel::Deep);
+    }
+
+    #[test]
+    fn cycle_deep_back_to_summary() {
+        // Deep cycles back to Summary, closing the loop.
+        assert_eq!(DepthLevel::Deep.next(), DepthLevel::Summary);
+    }
+
+    #[test]
+    fn three_cycles_returns_to_start() {
+        // Full loop invariant: three .next() calls bring us back
+        // regardless of starting position.
+        for start in [
+            DepthLevel::Summary,
+            DepthLevel::RoleDefault,
+            DepthLevel::Deep,
+        ] {
+            assert_eq!(start.next().next().next(), start);
+        }
+    }
+
+    #[test]
+    fn depth_level_serde_round_trips() {
+        // UiState persists DepthLevel in ui-state.json; confirm all
+        // three variants round-trip through serde_json.
+        for variant in [
+            DepthLevel::Summary,
+            DepthLevel::RoleDefault,
+            DepthLevel::Deep,
+        ] {
+            let json = serde_json::to_string(&variant).expect("serde_json::to_string");
+            let back: DepthLevel =
+                serde_json::from_str(&json).expect("serde_json::from_str round-trip");
+            assert_eq!(back, variant);
+        }
+    }
 }

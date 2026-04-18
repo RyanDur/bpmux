@@ -8,8 +8,9 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
 };
 
-use crate::session;
+use crate::session::{self, message::DeepDetail};
 use crate::terminal::app::{self, App, TRUNCATE_AFTER_LINES};
+use crate::terminal::app_state::DepthLevel;
 use crate::terminal::markdown::{render_md_message, wrap_line_with_indent};
 use crate::terminal::theme::{
     DRACULA_BG, DRACULA_COMMENT, DRACULA_CYAN, DRACULA_FG, DRACULA_PURPLE, DRACULA_SELECTION,
@@ -73,7 +74,18 @@ pub(super) fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
     let start_idx = total_msgs.saturating_sub(needed);
 
     let mut truncation_line_indices: Vec<(usize, String)> = Vec::new();
+    let mut depth_line_indices: Vec<(usize, String)> = Vec::new();
     let mut messages: Vec<Line> = Vec::new();
+    // Short role name for multi-depth role-lookup (#285). `identity.name`
+    // may include a `:agent` suffix (e.g. `dev:claude-code`); strip so
+    // the role key matches `MultiDepthPayload.role_default` entries.
+    let viewer_role: String = app
+        .identity
+        .name
+        .split(':')
+        .next()
+        .unwrap_or(&app.identity.name)
+        .to_string();
 
     for (i, msg) in chat_messages.iter().enumerate().skip(start_idx) {
         let short_name = msg.from.split(':').next().unwrap_or(&msg.from);
@@ -133,8 +145,98 @@ pub(super) fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
             prefix_spans.push(Span::styled(format!("{short_name}: "), name_style));
         }
 
+        // Multi-depth branch (#285): when a message carries a
+        // MultiDepthPayload, render the depth-appropriate variant
+        // instead of msg.text (AC: msg.text is suppressed when
+        // multi_depth is present, prevent double-render). A cyan-
+        // underlined cycle affordance at the end is registered in
+        // `depth_line_indices` so the click handler can cycle depth.
+        if let Some(payload) = msg.multi_depth.as_ref() {
+            let current_depth = app
+                .msg
+                .expanded_messages
+                .get(&msg_key)
+                .copied()
+                .unwrap_or_else(|| DepthLevel::initial_for_role(&viewer_role));
+            let content: String = match current_depth {
+                DepthLevel::Summary => payload.summary.clone(),
+                DepthLevel::RoleDefault => payload
+                    .role_default
+                    .get(&viewer_role)
+                    .cloned()
+                    .unwrap_or_else(|| payload.summary.clone()),
+                DepthLevel::Deep => match &payload.deep {
+                    DeepDetail::Preloaded { text } => text.clone(),
+                    // OnDemand fetch is not wired in v1 (#285 scope
+                    // per 2026-04-17 shape converge — deferred to a
+                    // follow-up). Render a non-clickable placeholder
+                    // so the affordance is visible without invoking
+                    // a fetch mechanism that doesn't exist yet.
+                    DeepDetail::OnDemand {
+                        command,
+                        description,
+                    } => format!("[deep detail: {description} — run `{command}`]"),
+                },
+            };
+            // Build owned Lines directly (bypassing render_md_message's
+            // 'a-bound-to-text lifetime so we can store local `content`
+            // in the render output). Multi-depth content is already the
+            // final text — no markdown re-parse needed. The first line
+            // carries the prefix spans; subsequent lines are indented.
+            let content_lines: Vec<String> = content
+                .lines()
+                .map(std::string::ToString::to_string)
+                .collect();
+            if let Some((first, rest)) = content_lines.split_first() {
+                let mut first_spans = prefix_spans;
+                first_spans.push(Span::raw(first.clone()));
+                messages.extend(wrap_line_with_indent(
+                    Line::from(first_spans),
+                    &indent,
+                    chat_inner_width,
+                ));
+                for line_text in rest {
+                    messages.extend(wrap_line_with_indent(
+                        Line::from(vec![indent.clone(), Span::raw(line_text.clone())]),
+                        &indent,
+                        chat_inner_width,
+                    ));
+                }
+            } else {
+                // Empty content (summary/role_default empty) — still
+                // emit the prefix so the message row renders.
+                messages.extend(wrap_line_with_indent(
+                    Line::from(prefix_spans),
+                    &indent,
+                    chat_inner_width,
+                ));
+            }
+            // Cycle affordance label — at Summary/RoleDefault a click
+            // advances deeper; at Deep a click wraps back to Summary.
+            // Dim-prefix + cyan-underlined pattern consistent with
+            // #110's `[+N lines]` so users recognize click-to-toggle.
+            let affordance_label = match current_depth {
+                DepthLevel::Summary | DepthLevel::RoleDefault => "[↓ detail]",
+                DepthLevel::Deep => "[↻ summary]",
+            };
+            depth_line_indices.push((messages.len(), msg_key.clone()));
+            messages.push(Line::from(Span::styled(
+                format!("  {affordance_label}"),
+                Style::default()
+                    .fg(DRACULA_CYAN)
+                    .add_modifier(Modifier::UNDERLINED),
+            )));
+            let next_is_different = chat_messages
+                .get(i + 1)
+                .is_some_and(|next| next.from != msg.from);
+            if next_is_different {
+                messages.push(Line::default());
+            }
+            continue;
+        }
+
         let is_long = wrapped_lines > TRUNCATE_AFTER_LINES;
-        let is_expanded = app.msg.expanded_messages.contains(&msg_key);
+        let is_expanded = app.msg.expanded_messages.contains_key(&msg_key);
         let is_truncated = is_long && !is_expanded;
 
         let md_lines = if is_truncated {
@@ -252,6 +354,14 @@ pub(super) fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
             #[allow(clippy::cast_possible_truncation)]
             let screen_y = inner_y + (*line_idx - scroll_usize) as u16;
             app.msg.truncation_indicators.push((screen_y, key.clone()));
+        }
+    }
+    app.msg.depth_indicators.clear();
+    for (line_idx, key) in &depth_line_indices {
+        if *line_idx >= scroll_usize && *line_idx < scroll_usize + chat_height {
+            #[allow(clippy::cast_possible_truncation)]
+            let screen_y = inner_y + (*line_idx - scroll_usize) as u16;
+            app.msg.depth_indicators.push((screen_y, key.clone()));
         }
     }
 

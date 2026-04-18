@@ -3,9 +3,10 @@
 //! Captures and restores App view state across restarts.
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+use std::collections::HashMap;
 
 use super::app::App;
+use super::app_state::DepthLevel;
 use crate::session::Session;
 
 #[derive(Serialize, Deserialize, Default)]
@@ -19,7 +20,16 @@ pub struct UiState {
     pub groups_expanded: bool,
     pub system_expanded: bool,
     pub scroll_offset: usize,
-    pub expanded_messages: HashSet<String>,
+    /// Message expansion state (#110 truncation + #285 multi-depth
+    /// cycle). Keys are `msg.ts.to_rfc3339()`; values carry the
+    /// current DepthLevel for multi-depth messages, or a sentinel
+    /// (`RoleDefault`) for long-text truncation-expansion where
+    /// only presence matters. Serde default so pre-#285 saved state
+    /// lacking this field loads cleanly; old HashSet<String> state
+    /// won't round-trip and is silently dropped on next save —
+    /// acceptable cost for one migration.
+    #[serde(default)]
+    pub expanded_messages: HashMap<String, DepthLevel>,
     pub show_timestamps: bool,
     pub input: String,
     /// Persist the classifier-driven view filter state across

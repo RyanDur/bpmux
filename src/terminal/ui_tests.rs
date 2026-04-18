@@ -1230,3 +1230,165 @@ fn normal_state_hides_refresh_hint() {
         "refresh hint should only appear on auth-missing:\n{screen}"
     );
 }
+
+// ─────────────────────────────────────────────────────────────────
+// Multi-depth chat rendering (#285).
+// ─────────────────────────────────────────────────────────────────
+
+fn multi_depth_msg(from: &str, summary: &str, dev_detail: &str, deep: &str) -> Message {
+    use crate::session::message::{DeepDetail, MultiDepthPayload};
+    use std::collections::HashMap;
+    let mut role_default = HashMap::new();
+    role_default.insert("dev".to_string(), dev_detail.to_string());
+    Message {
+        from: from.to_string(),
+        text: "PLAIN_TEXT_SHOULD_BE_SUPPRESSED".to_string(),
+        ts: Utc::now(),
+        multi_depth: Some(MultiDepthPayload {
+            summary: summary.to_string(),
+            role_default,
+            deep: DeepDetail::Preloaded {
+                text: deep.to_string(),
+            },
+        }),
+        ..Message::default()
+    }
+}
+
+fn render_chat_screen(app: &mut App) -> String {
+    let backend = TestBackend::new(80, 15);
+    let mut terminal = Terminal::new(backend).unwrap();
+    terminal.draw(|frame| render(frame, app)).unwrap();
+    buffer_to_string(terminal.backend().buffer())
+}
+
+#[test]
+fn multi_depth_dev_sees_role_default_by_default() {
+    // AC: dev sees payload.role_default["dev"] (full stage detail)
+    // initial-state without any click.
+    let msg = multi_depth_msg("ci:bot", "CI \u{2717}", "DEV_STAGE_DETAIL", "DEEP_LOG");
+    let mut app = App::new("dev".to_string(), "test-id".to_string(), vec![msg]);
+    let screen = render_chat_screen(&mut app);
+    assert!(
+        screen.contains("DEV_STAGE_DETAIL"),
+        "dev should see role_default variant initially. screen:\n{screen}"
+    );
+}
+
+#[test]
+fn multi_depth_pm_sees_summary_by_default() {
+    // AC: pm / designer see payload.summary (one-liner) initially.
+    let msg = multi_depth_msg("ci:bot", "CI_SUMMARY_LINE", "DEV_STAGE_DETAIL", "DEEP_LOG");
+    let mut app = App::new("pm".to_string(), "test-id".to_string(), vec![msg]);
+    let screen = render_chat_screen(&mut app);
+    assert!(
+        screen.contains("CI_SUMMARY_LINE"),
+        "pm should see summary variant initially. screen:\n{screen}"
+    );
+    assert!(
+        !screen.contains("DEV_STAGE_DETAIL"),
+        "pm should NOT see the dev-specific role_default variant. screen:\n{screen}"
+    );
+}
+
+#[test]
+fn multi_depth_designer_sees_summary_by_default() {
+    let msg = multi_depth_msg("ci:bot", "CI_SUM", "DEV_STAGE_DETAIL", "DEEP_LOG");
+    let mut app = App::new("designer".to_string(), "test-id".to_string(), vec![msg]);
+    let screen = render_chat_screen(&mut app);
+    assert!(
+        screen.contains("CI_SUM"),
+        "designer should see summary variant. screen:\n{screen}"
+    );
+    assert!(
+        !screen.contains("DEV_STAGE_DETAIL"),
+        "designer should NOT see dev role_default. screen:\n{screen}"
+    );
+}
+
+#[test]
+fn multi_depth_msg_text_is_suppressed() {
+    // AC: msg.text is SUPPRESSED when multi_depth is present (prevent
+    // double-render). The fixture's msg.text is the distinctive string
+    // "PLAIN_TEXT_SHOULD_BE_SUPPRESSED" so we can assert its absence.
+    let msg = multi_depth_msg("ci:bot", "summary", "detail", "deep");
+    let mut app = App::new("dev".to_string(), "test-id".to_string(), vec![msg]);
+    let screen = render_chat_screen(&mut app);
+    assert!(
+        !screen.contains("PLAIN_TEXT_SHOULD_BE_SUPPRESSED"),
+        "msg.text should not render when multi_depth is present. screen:\n{screen}"
+    );
+}
+
+#[test]
+fn multi_depth_cycle_advances_to_deep_then_wraps() {
+    use crate::terminal::app_state::DepthLevel;
+    let msg = multi_depth_msg(
+        "ci:bot",
+        "SUMMARY_LINE",
+        "DEV_STAGE_DETAIL",
+        "DEEP_LOG_TEXT",
+    );
+    let mut app = App::new("dev".to_string(), "test-id".to_string(), vec![msg.clone()]);
+    let key = msg.ts.to_rfc3339();
+
+    // Render once at initial depth (dev starts at RoleDefault).
+    let screen = render_chat_screen(&mut app);
+    assert!(screen.contains("DEV_STAGE_DETAIL"));
+
+    // Simulate one cycle step: RoleDefault → Deep.
+    app.msg
+        .expanded_messages
+        .insert(key.clone(), DepthLevel::Deep);
+    let screen = render_chat_screen(&mut app);
+    assert!(
+        screen.contains("DEEP_LOG_TEXT"),
+        "after cycling to Deep, deep text should render. screen:\n{screen}"
+    );
+
+    // Cycle wraps: Deep.next() = Summary.
+    app.msg
+        .expanded_messages
+        .insert(key.clone(), DepthLevel::Deep.next());
+    let screen = render_chat_screen(&mut app);
+    assert!(
+        screen.contains("SUMMARY_LINE"),
+        "Deep.next() should wrap to Summary. screen:\n{screen}"
+    );
+}
+
+#[test]
+fn multi_depth_ondemand_renders_placeholder_at_deep() {
+    // Designer's revision: v1 handles Preloaded only. OnDemand at Deep
+    // renders a non-clickable placeholder describing the deep-fetch
+    // command so the affordance is visible without wiring the fetch.
+    use crate::session::message::{DeepDetail, MultiDepthPayload};
+    use crate::terminal::app_state::DepthLevel;
+    use std::collections::HashMap;
+    let msg = Message {
+        from: "ci:bot".to_string(),
+        text: "whatever".to_string(),
+        ts: Utc::now(),
+        multi_depth: Some(MultiDepthPayload {
+            summary: "SUM".to_string(),
+            role_default: HashMap::new(),
+            deep: DeepDetail::OnDemand {
+                command: "gh run view 42".to_string(),
+                description: "build log".to_string(),
+            },
+        }),
+        ..Message::default()
+    };
+    let key = msg.ts.to_rfc3339();
+    let mut app = App::new("dev".to_string(), "test-id".to_string(), vec![msg]);
+    app.msg.expanded_messages.insert(key, DepthLevel::Deep);
+    let screen = render_chat_screen(&mut app);
+    assert!(
+        screen.contains("gh run view 42"),
+        "OnDemand placeholder should show the fetch command. screen:\n{screen}"
+    );
+    assert!(
+        screen.contains("build log"),
+        "OnDemand placeholder should show the description. screen:\n{screen}"
+    );
+}
