@@ -517,11 +517,17 @@ async fn reject_rejects_unknown_role_via_handler() {
 
 // ── Contract tests for GhTracker (#213) ──
 // These verify the real adapter works against the live gh CLI.
-// Marked #[ignore] because they require gh authentication — run
-// locally with `cargo test -- --ignored` when gh is configured.
+// Gated behind `#[cfg(feature = "integration_tests")]` (#299 rework of
+// earlier `#[ignore]` mechanism). Default `cargo test` skips them
+// entirely — the tests don't compile without the feature, so there's
+// no silent-runtime-skip and no "they exist but didn't run" confusion.
+// Run locally with `cargo test --features integration_tests` when
+// `GH_TOKEN` + `BPMUX_REPO` are set; CI runs them in a dedicated
+// integration job when repo secrets make gh auth available (see
+// `.github/workflows/integration.yml`).
 
+#[cfg(feature = "integration_tests")]
 #[tokio::test]
-#[ignore]
 async fn gh_tracker_list_stories_returns_parseable_json() {
     use super::tracker::GhTracker;
     let tracker = GhTracker {
@@ -547,8 +553,8 @@ async fn gh_tracker_list_stories_returns_parseable_json() {
     }
 }
 
+#[cfg(feature = "integration_tests")]
 #[tokio::test]
-#[ignore]
 async fn gh_tracker_get_story_title_returns_known_story() {
     use super::tracker::GhTracker;
     let tracker = GhTracker {
@@ -561,12 +567,13 @@ async fn gh_tracker_get_story_title_returns_known_story() {
 }
 
 // ── Contract tests for OctocrabStoryTracker (#221) ──
-// Same pattern as GhTracker contract tests: #[ignore] + require auth.
-// Run with `cargo test -- --ignored` locally when GH_TOKEN + BPMUX_REPO
-// are set. CI skips them because CI has neither configured.
+// Same pattern as GhTracker contract tests: feature-gated (#299 rework)
+// instead of `#[ignore]` + require auth. Run with
+// `cargo test --features integration_tests` when GH_TOKEN + BPMUX_REPO
+// are set. Default CI skips because the feature isn't enabled there.
 
+#[cfg(feature = "integration_tests")]
 #[tokio::test]
-#[ignore]
 async fn octocrab_tracker_from_env_builds_when_auth_configured() {
     use super::tracker::OctocrabStoryTracker;
     let tracker = OctocrabStoryTracker::from_env();
@@ -576,8 +583,8 @@ async fn octocrab_tracker_from_env_builds_when_auth_configured() {
     );
 }
 
+#[cfg(feature = "integration_tests")]
 #[tokio::test]
-#[ignore]
 async fn octocrab_tracker_list_stories_returns_parseable_json() {
     use super::tracker::OctocrabStoryTracker;
     let tracker = OctocrabStoryTracker::from_env().expect("auth configured");
@@ -597,8 +604,8 @@ async fn octocrab_tracker_list_stories_returns_parseable_json() {
     }
 }
 
+#[cfg(feature = "integration_tests")]
 #[tokio::test]
-#[ignore]
 async fn octocrab_tracker_get_story_title_returns_known_story() {
     use super::tracker::OctocrabStoryTracker;
     let tracker = OctocrabStoryTracker::from_env().expect("auth configured");

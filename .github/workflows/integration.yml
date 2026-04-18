@@ -1,0 +1,76 @@
+name: Integration
+
+# Real-substrate contract tests against GitHub's live gh CLI + octocrab
+# REST API (#299). Separate from the main `CI` workflow because these
+# tests require `GH_TOKEN` + `BPMUX_REPO` secrets. If either secret is
+# missing the job exits cleanly with an explanatory message — NOT a
+# silent skip. The tests themselves are feature-gated (`cargo test
+# --features integration_tests`) so they don't compile by default;
+# this workflow is the authorized trigger.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    env:
+      # Secrets referenced via env: per GitHub Actions security guidance
+      # (avoid ${{ secrets.X }} inline in run: blocks). Empty if the
+      # secret isn't configured in the repo.
+      GH_TOKEN_INTEGRATION: ${{ secrets.GH_TOKEN_INTEGRATION }}
+      BPMUX_REPO_INTEGRATION: ${{ secrets.BPMUX_REPO_INTEGRATION }}
+    steps:
+      - name: Check secret availability
+        id: secrets_available
+        run: |
+          if [ -z "$GH_TOKEN_INTEGRATION" ]; then
+            echo "GH_TOKEN_INTEGRATION secret not set; integration tests require live gh auth."
+            echo "To enable: add GH_TOKEN_INTEGRATION repo secret with a token scoped to read issues + runs."
+            echo "Add BPMUX_REPO_INTEGRATION (owner/name format) alongside."
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ -z "$BPMUX_REPO_INTEGRATION" ]; then
+            echo "BPMUX_REPO_INTEGRATION secret not set; integration tests require repo target."
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "available=true" >> "$GITHUB_OUTPUT"
+      - name: Check out
+        if: steps.secrets_available.outputs.available == 'true'
+        uses: actions/checkout@v4
+      - name: Install Rust toolchain
+        if: steps.secrets_available.outputs.available == 'true'
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.95.0"
+      - name: Cache cargo registry
+        if: steps.secrets_available.outputs.available == 'true'
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-targets: "false"
+      - name: Install gh CLI
+        if: steps.secrets_available.outputs.available == 'true'
+        run: |
+          # gh CLI is preinstalled on ubuntu-latest runners as of 2023,
+          # but guard in case the baseline image shifts.
+          if ! command -v gh >/dev/null; then
+            curl -sS https://webi.sh/gh | sh
+            echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          fi
+      - name: Authenticate gh CLI
+        if: steps.secrets_available.outputs.available == 'true'
+        run: printf '%s' "$GH_TOKEN_INTEGRATION" | gh auth login --with-token
+      - name: Run integration tests
+        if: steps.secrets_available.outputs.available == 'true'
+        env:
+          # Test code reads standard `GH_TOKEN` and `BPMUX_REPO` names.
+          # Map from the scoped *_INTEGRATION secrets to keep the test
+          # code unchanged across local + CI invocation.
+          GH_TOKEN: ${{ secrets.GH_TOKEN_INTEGRATION }}
+          BPMUX_REPO: ${{ secrets.BPMUX_REPO_INTEGRATION }}
+          BPMUX_SESSION_BASE: ${{ runner.temp }}/bpmux-sessions
+        run: cargo test --features integration_tests -- --nocapture

@@ -32,6 +32,16 @@ webrtc = "0.17.1"
 tui-textarea-2 = "0.10.2"
 aho-corasick = "1.1.4"
 
+[features]
+# Real-substrate contract tests against GitHub's live gh CLI +
+# octocrab REST API (#299). Gated behind a feature so default
+# `cargo test` stays reproducible offline. Enable with
+# `cargo test --features integration_tests` when `GH_TOKEN` and
+# `BPMUX_REPO` env vars are set. CI runs these in a separate
+# `integration` job conditional on repo secrets being configured;
+# see `.github/workflows/integration.yml`.
+integration_tests = []
+
 [dev-dependencies]
 ratatui-testlib = "0.1.0"
 tempfile = "3"
