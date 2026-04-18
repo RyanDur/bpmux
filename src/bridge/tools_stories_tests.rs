@@ -515,6 +515,23 @@ async fn reject_rejects_unknown_role_via_handler() {
     assert!(result.unwrap_err().contains("restricted to"));
 }
 
+// Awareness signal for feature-gated integration tests (#299 rework
+// feedback from desk-check). `#[cfg(feature = ...)]` removes the tests
+// from default `cargo test` output entirely — AC3 originally asked for
+// a "skipped X real-substrate tests" message so devs know they exist.
+// This always-compiled test carries the signal in its NAME so the
+// default cargo-test listing surfaces it. Passes trivially; the
+// signal is the name appearing in the output.
+#[test]
+fn integration_tests_are_feature_gated_enable_with_features_integration_tests() {
+    // See `Cargo.toml` [features] + the `#[cfg(feature = "integration_tests")]`
+    // gates in this file. Run with:
+    //   cargo test --features integration_tests
+    // Requires `GH_TOKEN` + `BPMUX_REPO` env vars.
+    // 5 real-substrate contract tests: 2 against gh CLI + 3 against
+    // octocrab REST.
+}
+
 // ── Contract tests for GhTracker (#213) ──
 // These verify the real adapter works against the live gh CLI.
 // Gated behind `#[cfg(feature = "integration_tests")]` (#299 rework of
