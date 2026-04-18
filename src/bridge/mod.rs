@@ -443,6 +443,9 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
             crate::mcp::tools::deliver_story_tool(
                 "Mark a story as delivered. DEV ONLY — other roles are rejected.",
             ),
+            crate::mcp::tools::close_iteration_tool(
+                "Broadcast the iteration-close externalize-prompt (#282) so every agent flushes unsaved findings (via Write / save_lesson / add_principle / doc edit) before context compaction can evict them. PM ONLY — other roles are rejected. Fail-soft: tool returns after broadcast; iteration closes regardless of agent response.",
+            ),
             crate::mcp::tools::label_story_tool(
                 "Add a label to a story (ready, blocked, icebox, deferred). PM ONLY — other roles are rejected.",
             ),
@@ -576,6 +579,10 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                     let current_name = name.lock().await;
                     tools_stories::handle_deliver_story(&args, &current_name, &ws_tx, &tracker)
                         .await
+                }
+                "close_iteration" => {
+                    let current_name = name.lock().await;
+                    tools_stories::handle_close_iteration(&current_name, &ws_tx).await
                 }
                 "label_story" => {
                     let current_name = name.lock().await;

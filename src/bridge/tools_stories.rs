@@ -404,6 +404,24 @@ pub(super) async fn handle_reorder_story(
     Ok(format!("#{number} moved to position {position} in {state}"))
 }
 
+/// Fire the iteration-close externalize-prompt (#282). PM-gated.
+///
+/// Fail-soft: the MCP tool returns after the broadcast ws_send
+/// completes. Iteration closes regardless of whether any agent
+/// responds to the prompt — the tool is a reminder, not a barrier.
+pub(super) async fn handle_close_iteration(
+    agent_name: &str,
+    ws_tx: &Mutex<Option<WsSink>>,
+) -> Result<String, String> {
+    require_role(agent_name, &["pm"], "close iteration")?;
+    let signal = build_iteration_close_signal();
+    let json = serde_json::to_string(&signal).map_err(|e| format!("signal: {e}"))?;
+    ws_send(ws_tx, json)
+        .await
+        .map_err(|e| format!("iteration-close signal send failed: {e}"))?;
+    Ok("iteration-close signal broadcast — agents prompted to flush unsaved findings".to_string())
+}
+
 // ── Workflow signal builders (#197) ──────────────────────────
 
 pub(super) fn build_delivery_signals(number: u64, title: &str) -> Vec<ClientMessage> {
@@ -519,6 +537,25 @@ pub(super) fn build_fail_desk_check_signal(number: u64, reason: &str) -> ClientM
         text: format!("#{number} failed desk-check: {reason} — needs fixes."),
         to: Some(vec!["dev".to_string()]),
         addressee: Some("dev".to_string()),
+        message_type: None,
+        thread_id: None,
+    }
+}
+
+/// Iteration-close externalize-flush prompt (#282). Fires a broadcast
+/// signal with addressee="all" so every agent sees it as their turn
+/// to externalize unsaved findings before the iteration closes and
+/// mid-chat discoveries risk eviction by compaction. Narrow v1 per
+/// the 2026-04-17 team converge — externalize-only, no compound retro
+/// or promotion audit. Agents decide what to save through own lens.
+pub(super) fn build_iteration_close_signal() -> ClientMessage {
+    ClientMessage::Send {
+        text: "[iteration-close] iteration closing — flush unsaved findings now via \
+               Write / save_lesson / add_principle / doc edit. pre-close context is \
+               still available."
+            .to_string(),
+        to: None,
+        addressee: Some("all".to_string()),
         message_type: None,
         thread_id: None,
     }

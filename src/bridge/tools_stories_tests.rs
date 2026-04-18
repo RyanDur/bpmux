@@ -58,6 +58,58 @@ fn require_role_allows_designer_for_desk_check_operations() {
 }
 
 #[test]
+fn require_role_rejects_dev_from_close_iteration() {
+    let result = require_role("dev:claude-code", &["pm"], "close iteration");
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("restricted to pm"));
+}
+
+#[test]
+fn require_role_rejects_designer_from_close_iteration() {
+    let result = require_role("designer:claude-code", &["pm"], "close iteration");
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("restricted to pm"));
+}
+
+#[test]
+fn require_role_rejects_ryan_from_close_iteration() {
+    let result = require_role("ryan:human", &["pm"], "close iteration");
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("restricted to pm"));
+}
+
+#[test]
+fn build_iteration_close_signal_broadcasts_to_all() {
+    let signal = build_iteration_close_signal();
+    let ClientMessage::Send {
+        to,
+        addressee,
+        text,
+        message_type,
+        thread_id,
+    } = signal
+    else {
+        panic!("expected Send variant");
+    };
+    assert!(to.is_none(), "to should be None for full broadcast");
+    assert_eq!(
+        addressee.as_deref(),
+        Some("all"),
+        "addressee must be 'all' so every agent treats it as their turn"
+    );
+    assert!(
+        text.contains("[iteration-close]"),
+        "text must carry the [iteration-close] marker so agents can recognize the signal: got {text}"
+    );
+    assert!(
+        text.contains("flush unsaved findings"),
+        "text must name the externalize action: got {text}"
+    );
+    assert!(message_type.is_none());
+    assert!(thread_id.is_none());
+}
+
+#[test]
 fn require_role_rejects_non_designer_from_desk_check_operations() {
     for caller in ["dev:claude-code", "pm:claude-code", "ryan:human"] {
         let result = require_role(caller, &["designer"], "pass desk-check");

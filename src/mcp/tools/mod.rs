@@ -30,6 +30,7 @@ mod view_tokens;
 
 // Story management tools (#140)
 mod accept_story;
+mod close_iteration;
 mod create_story;
 mod deliver_story;
 mod fail_desk_check;
@@ -72,6 +73,7 @@ pub use view_roadmap::view_roadmap_tool;
 pub use view_tokens::view_tokens_tool;
 
 pub use accept_story::accept_story_tool;
+pub use close_iteration::close_iteration_tool;
 pub use create_story::create_story_tool;
 pub use deliver_story::deliver_story_tool;
 pub use fail_desk_check::fail_desk_check_tool;
