@@ -41,17 +41,6 @@ jobs:
         run: cargo fmt --check
       - name: Clippy
         run: cargo clippy -- -D warnings
-      - name: Install gh CLI
-        run: |
-          # gh CLI is preinstalled on ubuntu-latest runners, but guard
-          # in case the baseline image shifts. Installed once here so
-          # both the offline suite (which exercises FakeTracker paths
-          # that don't need gh) and the feature-gated integration
-          # suite (which hits real gh + octocrab) share the same job.
-          if ! command -v gh >/dev/null; then
-            curl -sS https://webi.sh/gh | sh
-            echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          fi
       - name: Test (offline + contract drift against live GitHub)
         env:
           # `integration_tests` feature adds the real-substrate drift
