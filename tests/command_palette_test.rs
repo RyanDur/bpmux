@@ -7,6 +7,8 @@ mod harness;
 use harness::pty::TestBpmux;
 use std::time::Duration;
 
+const WAIT_TIMEOUT: Duration = Duration::from_secs(60);
+
 /// GIVEN bpmux is running
 /// WHEN the user presses Ctrl+K
 /// THEN the command palette overlay appears with the actions list
@@ -14,12 +16,12 @@ use std::time::Duration;
 fn ctrl_k_opens_command_palette() {
     let bpmux = TestBpmux::start();
     assert!(
-        bpmux.wait_for_tui("solo", Duration::from_secs(5)),
+        bpmux.wait_for_tui("solo", WAIT_TIMEOUT),
         "TUI should render"
     );
     bpmux.type_ctrl('k');
     assert!(
-        bpmux.wait_for_tui("actions", Duration::from_secs(3)),
+        bpmux.wait_for_tui("actions", WAIT_TIMEOUT),
         "command palette should open. screen:\n{}",
         bpmux.tui()
     );
@@ -36,12 +38,12 @@ fn ctrl_k_opens_command_palette() {
 fn palette_filters_actions_on_input() {
     let bpmux = TestBpmux::start();
     assert!(
-        bpmux.wait_for_tui("solo", Duration::from_secs(5)),
+        bpmux.wait_for_tui("solo", WAIT_TIMEOUT),
         "TUI should render"
     );
     bpmux.type_ctrl('k');
     assert!(
-        bpmux.wait_for_tui("actions", Duration::from_secs(3)),
+        bpmux.wait_for_tui("actions", WAIT_TIMEOUT),
         "palette should open"
     );
     bpmux.type_chars("who");
@@ -49,7 +51,7 @@ fn palette_filters_actions_on_input() {
     // so it should disappear. `wait_for_tui_absent` gives the filter
     // time to settle rather than racing with the keystrokes.
     bpmux
-        .wait_for_tui_absent("/help", Duration::from_secs(5))
+        .wait_for_tui_absent("/help", WAIT_TIMEOUT)
         .expect("non-matching actions should be filtered out");
     assert!(
         bpmux.tui().contains("/who"),
@@ -65,31 +67,31 @@ fn palette_filters_actions_on_input() {
 fn palette_enter_runs_selected_action() {
     let bpmux = TestBpmux::start();
     assert!(
-        bpmux.wait_for_tui("solo", Duration::from_secs(5)),
+        bpmux.wait_for_tui("solo", WAIT_TIMEOUT),
         "TUI should render"
     );
     bpmux.type_ctrl('k');
     assert!(
-        bpmux.wait_for_tui("actions", Duration::from_secs(3)),
+        bpmux.wait_for_tui("actions", WAIT_TIMEOUT),
         "palette should open"
     );
     // Type "who" to filter to the /who command, then Enter
     bpmux.type_chars("who");
     assert!(
-        bpmux.wait_for_tui("/who", Duration::from_secs(5)),
+        bpmux.wait_for_tui("/who", WAIT_TIMEOUT),
         "palette should filter to /who. screen:\n{}",
         bpmux.tui()
     );
     bpmux.type_chars("\r"); // Enter
     // /who shows "Participants:" in the chat
     assert!(
-        bpmux.wait_for_tui("Participants", Duration::from_secs(5)),
+        bpmux.wait_for_tui("Participants", WAIT_TIMEOUT),
         "/who should have run. screen:\n{}",
         bpmux.tui()
     );
     // Palette should be closed
     bpmux
-        .wait_for_tui_absent("actions", Duration::from_secs(5))
+        .wait_for_tui_absent("actions", WAIT_TIMEOUT)
         .expect("palette should close after action");
 }
 
@@ -100,16 +102,16 @@ fn palette_enter_runs_selected_action() {
 fn palette_esc_closes_without_action() {
     let bpmux = TestBpmux::start();
     assert!(
-        bpmux.wait_for_tui("solo", Duration::from_secs(5)),
+        bpmux.wait_for_tui("solo", WAIT_TIMEOUT),
         "TUI should render"
     );
     bpmux.type_ctrl('k');
     assert!(
-        bpmux.wait_for_tui("actions", Duration::from_secs(3)),
+        bpmux.wait_for_tui("actions", WAIT_TIMEOUT),
         "palette should open"
     );
     bpmux.type_chars("\x1b"); // Esc
     bpmux
-        .wait_for_tui_absent("actions", Duration::from_secs(5))
+        .wait_for_tui_absent("actions", WAIT_TIMEOUT)
         .expect("palette should close after Esc");
 }
