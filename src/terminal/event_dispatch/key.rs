@@ -146,7 +146,10 @@ pub(super) fn handle(
         app.toggle_sidebar();
         return Ok(());
     }
-    if key.code == KeyCode::Char('2') && key.modifiers.contains(KeyModifiers::ALT) {
+    if key.code == KeyCode::Char('2')
+        && (key.modifiers.contains(KeyModifiers::ALT)
+            || key.modifiers.contains(KeyModifiers::CONTROL))
+    {
         app.toggle_board_panel();
         return Ok(());
     }
@@ -421,6 +424,23 @@ mod tests {
         }
 
         assert_eq!(app.editor.input, "aaaaa");
+    }
+
+    #[test]
+    fn ctrl_2_toggles_board_panel_for_iterm_compat() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let (session, _dir) = test_session();
+        let before = app.board.panel_open;
+
+        let ctrl_2 = KeyEvent {
+            code: KeyCode::Char('2'),
+            modifiers: KeyModifiers::CONTROL,
+            kind: KeyEventKind::Press,
+            state: crossterm::event::KeyEventState::NONE,
+        };
+        handle(ctrl_2, &mut app, &session).unwrap();
+
+        assert_ne!(app.board.panel_open, before);
     }
 
     #[test]
