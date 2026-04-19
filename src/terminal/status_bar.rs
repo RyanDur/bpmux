@@ -105,18 +105,6 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         } else {
             " board view".to_string()
         }
-    } else if let Some(tid) = app.threads.current.as_deref() {
-        // Inside a thread (#268 re-work): the scope label replaces
-        // [all]/[broadcast] rather than rendering alongside them.
-        // Dual-display ("[all] ... thread: name") was confusing in
-        // live acceptance — users couldn't tell which scope applied.
-        let name = app
-            .threads
-            .known
-            .get(tid)
-            .map(|t| t.name.as_str())
-            .unwrap_or(tid);
-        format!(" [thread: {name}]")
     } else {
         match &app.channels.current_view {
             None => " [all]".to_string(),
@@ -206,48 +194,6 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         status_spans.push(Span::styled(
             format!("{} DM from {names}", super::icons::DM),
             Style::default().fg(DRACULA_YELLOW),
-        ));
-    }
-    // Broadcast-unread indicator while threaded (#268): the thread
-    // name itself is rendered in `view_label` above (replacing the
-    // [all] scope label), so here we only surface the peripheral
-    // unread count for cross-thread awareness.
-    if app.threads.current.is_some() {
-        let pending = app.threads.broadcast_unread_while_threaded;
-        if pending > 0 {
-            status_spans.push(Span::raw(" | "));
-            status_spans.push(Span::styled(
-                format!("{pending} broadcast unread"),
-                Style::default().fg(DRACULA_YELLOW),
-            ));
-        }
-    }
-    // Suggest-leave banner (#273): non-modal status-bar entry
-    // showing who suggested what. Any keystroke dismisses (see
-    // event_dispatch/key.rs); Esc follows through to leave_thread
-    // because the existing Esc handling runs after the banner-clear.
-    if let Some(sug) = app.threads.pending_suggestion.as_ref() {
-        status_spans.push(Span::raw(" | "));
-        status_spans.push(Span::styled(
-            format!(
-                "{} suggests step out ({}) — Esc leaves, any key dismisses",
-                sug.caller, sug.reason
-            ),
-            Style::default().fg(DRACULA_PINK),
-        ));
-    }
-    // Pull-into-thread invitation banner (#274): mirror of the
-    // suggest-leave banner but prompts an opt-in action. Acceptance
-    // is via the `join_thread` MCP tool (agents) — keyboard can't
-    // "accept" directly, just dismiss.
-    if let Some(inv) = app.threads.pending_invitation.as_ref() {
-        status_spans.push(Span::raw(" | "));
-        status_spans.push(Span::styled(
-            format!(
-                "{} invited you into '{}' ({}) — any key dismisses",
-                inv.caller, inv.thread_name, inv.reason
-            ),
-            Style::default().fg(DRACULA_PINK),
         ));
     }
     // CI indicator (#151). Sits between the presence cluster and the

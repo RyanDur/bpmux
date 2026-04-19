@@ -124,10 +124,6 @@ Subjective judgment on "distinct arc," but the two structural tests (backward/fo
 - **Use both**, not pick one — they're complementary lenses
 - Token cost is non-trivial (~10–25K per subagent dispatch); arc views are rare operations (retros, principle-justification queries), so aggregate cost is acceptable
 
-### Threads as structural signal
-
-The thread feature (#268 family) provides pre-marked sub-arc edges: `start_thread` opens a sub-arc, `close_thread` marks its end, the parent broadcast is the main-arc continuing. Where conversation is threaded, arc extraction gets part of the structure for free. Unthreaded conversation still needs a lens pass.
-
 ## Arc-gathering protocol (committed 2026-04-17)
 
 Three-method experiment (methods above) reached convergence: ~1 durable-new-lesson per 5 candidates across methods, and subagent-traversal catches causal/structural patterns while reflection catches affective/felt patterns. **Use both, not pick one.** Based on that data, the team committed to:
@@ -160,10 +156,6 @@ Output goes to bpmux shared lessons. PM routes cross-role principles identified 
 
 Drop marks at arc-boundary moments: story pickup, rejection, shape pivot, surprise outcome, self-caught anti-pattern. Starting cadence: **3–5 per session**. Revise with data.
 
-### Threads as pre-marked sub-arc edges
-
-Use threaded conversation (`start_thread`/`close_thread`) for naturally-scoped work. Thread boundaries are pre-marked sub-arc edges, reducing extraction cost. Unthreaded conversation still needs a lens pass.
-
 ### What's committed vs. still open
 
 **Committed (today's decision)**:
@@ -171,7 +163,6 @@ Use threaded conversation (`start_thread`/`close_thread`) for naturally-scoped w
 - Each role picks their own subagent variant
 - PM owns team-arc invocation
 - 3–5 marks/session starting baseline
-- Threads as sub-arc structural signal
 
 **Still open (revisit when we have data)**:
 - Mark cadence: untested at 10+ or 1–2 per session

@@ -91,16 +91,7 @@ pub(super) fn render_chat(frame: &mut Frame, app: &mut App, area: Rect) {
         let short_name = msg.from.split(':').next().unwrap_or(&msg.from);
         let is_human = msg.from.ends_with(":human");
         let name_color = sender_color(short_name);
-        // Thread-tagged messages (#268) show the thread name in
-        // brackets so non-participants viewing broadcast can see
-        // which conversation a message belongs to. Falls back to
-        // channel_name for messages not in a thread.
-        let ch_name = msg
-            .thread_id
-            .as_deref()
-            .and_then(|tid| app.threads.known.get(tid))
-            .map(|t| format!("thread: {}", t.name))
-            .unwrap_or_else(|| app::channel_name(msg, &app.identity.name));
+        let ch_name = app::channel_name(msg, &app.identity.name);
         let is_broadcast = ch_name == "broadcast";
         let channel_tag = format!("[{ch_name}] ");
 

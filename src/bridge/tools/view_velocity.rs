@@ -70,7 +70,6 @@ pub(in crate::bridge) async fn handle_view_velocity(
         to: None,
         addressee: None,
         message_type: Some("system".to_string()),
-        thread_id: None,
     };
     // Log marker send/serialize failures instead of silently discarding
     // them (fail-loud-for-dev-tools discipline). The caller still gets

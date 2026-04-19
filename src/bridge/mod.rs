@@ -207,7 +207,6 @@ async fn run_ws_connection(
             to,
             addressee,
             message_type,
-            thread_id: _,
             multi_depth: _,
         } = msg
         {
@@ -415,21 +414,6 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
             crate::mcp::tools::remove_principle_tool(
                 "Remove a principle from your own identity (#269). Args: value_name + principle (exact text). Use to prune decoration after honest audit per the cost-to-hold discipline.",
             ),
-            crate::mcp::tools::start_thread_tool(
-                "Create a named conversation thread with a participant list (#268). Participants' TUIs switch to the thread's scoped view; non-participants keep seeing everything in broadcast with the thread name tagged. Args: name (human-readable) + participants (role names, e.g. ['ryan', 'designer']). Returns JSON { thread_id, name, participants }. Subsequent send_message calls can pass thread_id to route into this thread.",
-            ),
-            crate::mcp::tools::close_thread_tool(
-                "Close an active thread view (#271). Symmetric to start_thread: flips any viewer who's inside the named thread back to broadcast without mutating the thread entity (messages stay, participants stay, thread name stays discoverable). Emits a system marker so all participants' TUIs react. No-op when no one is in the thread. Args: name (the thread name passed to start_thread).",
-            ),
-            crate::mcp::tools::suggest_leave_tool(
-                "Suggest a thread participant step out (#273). Soft signal, not a command — target sees a non-modal banner with the reason and chooses to leave (Esc) or ignore. Symmetric to start_thread in the participant-lifecycle (in/out); distinct from close_thread (which closes for everyone). Use when a conversation naturally shifts and a participant could free up attention for other work. Args: thread (name), target_role, reason (required context).",
-            ),
-            crate::mcp::tools::pull_into_thread_tool(
-                "Invite another role into an existing thread (#274). Soft signal, mirror of suggest_leave — target sees a non-modal invitation banner with the reason and chooses to accept via join_thread or ignore. Adds target to the thread's participant set only after they opt in. Use when a conversation in-flight needs a perspective that's currently outside the thread. Args: thread (name), target_role, reason (required context).",
-            ),
-            crate::mcp::tools::join_thread_tool(
-                "Accept a pull_into_thread invitation (#274). Adds you to the thread's participant set, switches your TUI view into the thread, and announces the join to existing participants. The thread's full history renders so you can read what led here (cohesion-over-performance). Args: name (the thread name you were invited to).",
-            ),
             crate::mcp::tools::get_token_report_tool(
                 "Get the token-cost report from bpmux's shared token log (#179). Returns JSON with total tokens, row count, per-role breakdown, and the 10 most recent turns (newest first). The data comes from per-harness adapters reading their own LLM-call recordings — you're seeing objective cost data, not self-reported. Same underlying log the `/tokens` TUI view reads, so you see exactly what Ryan sees. Empty report if the log is empty or missing.",
             ),
@@ -569,23 +553,6 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                 "remove_principle" => {
                     let current_name = name.lock().await;
                     tools::handle_remove_principle(&args, &current_name).await
-                }
-                "start_thread" => tools::handle_start_thread(&args, &ws_tx).await,
-                "close_thread" => {
-                    let current_name = name.lock().await;
-                    tools::handle_close_thread(&args, &current_name, &ws_tx).await
-                }
-                "suggest_leave" => {
-                    let current_name = name.lock().await;
-                    tools::handle_suggest_leave(&args, &current_name, &ws_tx).await
-                }
-                "pull_into_thread" => {
-                    let current_name = name.lock().await;
-                    tools::handle_pull_into_thread(&args, &current_name, &ws_tx).await
-                }
-                "join_thread" => {
-                    let current_name = name.lock().await;
-                    tools::handle_join_thread(&args, &current_name, &ws_tx).await
                 }
                 "get_token_report" => tools::handle_get_token_report().await,
                 "get_ci_state" => tools::handle_get_ci_state(&args).await,

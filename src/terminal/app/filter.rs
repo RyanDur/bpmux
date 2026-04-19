@@ -22,12 +22,6 @@ pub(super) struct FilterContext<'a> {
     pub current_view: Option<&'a str>,
     pub identity_name: &'a str,
     pub focused_roles: Option<&'a [String]>,
-    /// Active thread id (#268). When `Some`, the viewer is inside a
-    /// thread and the chat pane scopes to messages carrying that
-    /// thread_id. When `None`, threads behave as broadcast (all
-    /// messages visible, thread-tagged ones render their thread
-    /// name alongside).
-    pub current_thread: Option<&'a str>,
 }
 
 /// Three-way verdict so the caller can distinguish "this message
@@ -42,17 +36,6 @@ pub(super) enum FilterVerdict {
 /// Classify one message against the filter pipeline. Pure function
 /// over (ctx, msg) — testable without an App.
 pub(super) fn classify(ctx: &FilterContext, m: &Message) -> FilterVerdict {
-    // Thread-tagged messages render in their own thread view
-    // regardless of message type — scope-entry markers, intra-thread
-    // nudges, etc. are thread-local by construction and belong in
-    // the thread's log (#268 re-work: "— entered thread: X —" marker
-    // was invisible before this because it was System-typed).
-    if let Some(current) = ctx.current_thread {
-        return match m.thread_id.as_deref() {
-            Some(tid) if tid == current => FilterVerdict::Include,
-            _ => FilterVerdict::Skip,
-        };
-    }
     if !m.is_chat() {
         return if ctx.show_system_messages {
             FilterVerdict::Include
@@ -81,85 +64,5 @@ fn in_channel(ctx: &FilterContext, m: &Message) -> bool {
         Some(view) => {
             crate::terminal::markdown::message_matches_channel(m, view, ctx.identity_name)
         }
-    }
-}
-
-#[cfg(test)]
-#[allow(clippy::unwrap_used)]
-mod tests {
-    use super::*;
-    use chrono::Utc;
-
-    fn ctx_in_thread(tid: &'static str) -> FilterContext<'static> {
-        FilterContext {
-            show_system_messages: false,
-            show_all_classes: true,
-            current_view: None,
-            identity_name: "ryan",
-            focused_roles: None,
-            current_thread: Some(tid),
-        }
-    }
-
-    fn ctx_broadcast() -> FilterContext<'static> {
-        FilterContext {
-            show_system_messages: false,
-            show_all_classes: true,
-            current_view: None,
-            identity_name: "ryan",
-            focused_roles: None,
-            current_thread: None,
-        }
-    }
-
-    fn chat_msg(thread_id: Option<&str>) -> Message {
-        Message {
-            from: "designer:cc".to_string(),
-            text: "hi".to_string(),
-            ts: Utc::now(),
-            thread_id: thread_id.map(String::from),
-            ..Message::default()
-        }
-    }
-
-    #[test]
-    fn thread_view_includes_matching_thread_id() {
-        let ctx = ctx_in_thread("cheese-123");
-        let m = chat_msg(Some("cheese-123"));
-        assert!(matches!(classify(&ctx, &m), FilterVerdict::Include));
-    }
-
-    #[test]
-    fn thread_view_skips_broadcast_messages() {
-        let ctx = ctx_in_thread("cheese-123");
-        let m = chat_msg(None);
-        assert!(matches!(classify(&ctx, &m), FilterVerdict::Skip));
-    }
-
-    #[test]
-    fn thread_view_skips_other_thread_messages() {
-        let ctx = ctx_in_thread("cheese-123");
-        let m = chat_msg(Some("wine-456"));
-        assert!(matches!(classify(&ctx, &m), FilterVerdict::Skip));
-    }
-
-    #[test]
-    fn broadcast_view_includes_thread_messages() {
-        let ctx = ctx_broadcast();
-        let m = chat_msg(Some("cheese-123"));
-        assert!(matches!(classify(&ctx, &m), FilterVerdict::Include));
-    }
-
-    #[test]
-    fn thread_view_overrides_focus() {
-        let roles = vec!["pm".to_string()];
-        let ctx = FilterContext {
-            focused_roles: Some(&roles),
-            ..ctx_in_thread("cheese-123")
-        };
-        // Message from designer (not in focused_roles) but in current
-        // thread — thread wins, message renders.
-        let m = chat_msg(Some("cheese-123"));
-        assert!(matches!(classify(&ctx, &m), FilterVerdict::Include));
     }
 }

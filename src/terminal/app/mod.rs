@@ -3,7 +3,7 @@ mod palette;
 mod receive;
 mod scroll;
 
-use crate::session::{Message, MessageType};
+use crate::session::Message;
 use chrono::Utc;
 use std::collections::{HashMap, HashSet};
 use std::time::Instant;
@@ -121,9 +121,6 @@ pub struct App {
     // ── Command palette (#192) ──
     pub palette: PaletteState,
 
-    // ── Threads (#268) ──
-    pub threads: ThreadState,
-
     // ── Board view (#193) ──
     pub board: BoardState,
 
@@ -168,49 +165,9 @@ impl App {
     pub fn new(peer_name: String, session_id: String, messages: Vec<Message>) -> Self {
         let mut active_channels: HashSet<String> = HashSet::new();
         let peer_activity: HashMap<String, (String, Instant)> = HashMap::new();
-        // Replay thread lifecycle markers from the session log so
-        // threads.known survives TUI restart (#275 rework). Without
-        // this replay, the sidebar "threads" section is empty on
-        // reconnect until a fresh thread event arrives, and thread-
-        // scoped system markers (suggest_leave audit, etc.) drop
-        // silently because their thread_id lookup returns None.
-        let mut known_threads: HashMap<String, Thread> = HashMap::new();
         for msg in &messages {
             if msg.is_chat() {
                 active_channels.insert(channel_name(msg, &peer_name));
-            }
-            if msg.message_type == crate::session::MessageType::System {
-                if let Some((id, name, participants)) = super::event::parse_thread_create(&msg.text)
-                {
-                    known_threads.insert(
-                        id.clone(),
-                        Thread {
-                            id,
-                            name,
-                            participants,
-                            last_activity: Some(msg.ts),
-                            unread: 0,
-                        },
-                    );
-                    continue;
-                }
-                if let Some((thread_name, joiner)) = super::event::parse_thread_join(&msg.text)
-                    && let Some(t) = known_threads.values_mut().find(|t| t.name == thread_name)
-                {
-                    if !t.participants.iter().any(|p| p == &joiner) {
-                        t.participants.push(joiner);
-                    }
-                    t.last_activity = Some(msg.ts);
-                    continue;
-                }
-            }
-            if let Some(tid) = msg.thread_id.as_deref()
-                && let Some(thread) = known_threads.get_mut(tid)
-            {
-                // Any thread-tagged message advances last_activity
-                // so sidebar ordering (freshest first) is accurate
-                // on startup.
-                thread.last_activity = Some(msg.ts);
             }
         }
         Self {
@@ -251,10 +208,6 @@ impl App {
                 .collect(),
             focused_roles: None,
             palette: PaletteState::default(),
-            threads: ThreadState {
-                known: known_threads,
-                ..Default::default()
-            },
             board: BoardState::default(),
             board_snapshot: std::sync::Arc::new(std::sync::Mutex::new(
                 super::board_poller::BoardSnapshot::default(),
@@ -375,7 +328,6 @@ impl App {
             current_view: self.channels.current_view.as_deref(),
             identity_name: &self.identity.name,
             focused_roles: self.focused_roles.as_deref(),
-            current_thread: self.threads.current.as_deref(),
         };
         self.msg.filter_dirty = false;
         self.msg.filtered_indices.clear();
@@ -453,46 +405,7 @@ impl App {
         self.peers.activity.insert(peer, (status, Instant::now()));
     }
 
-    /// Leave the current thread (#268) — clear the thread view and
-    /// reset the peripheral counter that tracked broadcast activity
-    /// while focused inside. No-op when already in broadcast view.
-    pub fn leave_thread(&mut self) {
-        if self.threads.current.take().is_some() {
-            self.threads.broadcast_unread_while_threaded = 0;
-            self.mark_filters_dirty();
-        }
-    }
-
     pub fn receive_message(&mut self, msg: Message) {
-        // Peripheral counter (#268): while the viewer is inside a
-        // thread, bump the broadcast-unread counter whenever an
-        // incoming message ISN'T part of the current thread. Keeps
-        // cross-thread activity visible without breaking scope.
-        if let Some(current) = self.threads.current.as_deref()
-            && msg.message_type == MessageType::Chat
-            && msg.thread_id.as_deref() != Some(current)
-            && msg.from != self.from_identity()
-        {
-            self.threads.broadcast_unread_while_threaded += 1;
-        }
-        // Per-thread tracking (#275): bump the thread's unread
-        // counter when a thread-tagged message arrives and the
-        // viewer isn't currently inside that thread. Also stamp
-        // last_activity regardless of view state so the sidebar
-        // sort stays accurate. Only chat-type messages count as
-        // "unread" — system markers don't increment.
-        if let Some(tid) = msg.thread_id.as_deref()
-            && let Some(thread) = self.threads.known.get_mut(tid)
-        {
-            thread.last_activity = Some(msg.ts);
-            let sender_short = short_peer_name(&msg.from);
-            if msg.message_type == MessageType::Chat
-                && self.threads.current.as_deref() != Some(tid)
-                && sender_short != self.identity.name
-            {
-                thread.unread += 1;
-            }
-        }
         let needs_push = receive::dispatch(self, &msg);
         if !needs_push {
             return;

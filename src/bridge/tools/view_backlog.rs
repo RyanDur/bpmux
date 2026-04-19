@@ -36,7 +36,6 @@ pub(in crate::bridge) async fn handle_view_backlog(
         to: None,
         addressee: None,
         message_type: Some("system".to_string()),
-        thread_id: None,
     };
     match serde_json::to_string(&marker_msg) {
         Ok(json) => {

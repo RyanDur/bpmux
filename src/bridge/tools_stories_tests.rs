@@ -86,7 +86,6 @@ fn build_iteration_close_signal_broadcasts_to_all() {
         addressee,
         text,
         message_type,
-        thread_id,
     } = signal
     else {
         panic!("expected Send variant");
@@ -106,7 +105,6 @@ fn build_iteration_close_signal_broadcasts_to_all() {
         "text must name the externalize action: got {text}"
     );
     assert!(message_type.is_none());
-    assert!(thread_id.is_none());
 }
 
 #[test]

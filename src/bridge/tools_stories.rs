@@ -431,14 +431,12 @@ pub(super) fn build_delivery_signals(number: u64, title: &str) -> Vec<ClientMess
             to: Some(vec!["designer".to_string()]),
             addressee: Some("designer".to_string()),
             message_type: None,
-            thread_id: None,
         },
         ClientMessage::Send {
             text: format!("#{number} ({title}) delivered. queue update: check ready count"),
             to: Some(vec!["pm".to_string()]),
             addressee: Some("pm".to_string()),
             message_type: None,
-            thread_id: None,
         },
     ]
 }
@@ -449,7 +447,6 @@ pub(super) fn build_start_signal(number: u64) -> ClientMessage {
         to: Some(vec!["pm".to_string()]),
         addressee: Some("pm".to_string()),
         message_type: None,
-        thread_id: None,
     }
 }
 
@@ -461,7 +458,6 @@ pub(super) fn build_accept_signal(number: u64, accepted_by: &str) -> ClientMessa
         to: None,
         addressee: Some("dev".to_string()),
         message_type: None,
-        thread_id: None,
     }
 }
 
@@ -471,7 +467,6 @@ pub(super) fn build_reject_signal(number: u64, reason: &str) -> ClientMessage {
         to: Some(vec!["dev".to_string()]),
         addressee: Some("dev".to_string()),
         message_type: None,
-        thread_id: None,
     }
 }
 
@@ -496,7 +491,6 @@ pub(super) fn build_pass_desk_check_signal(number: u64, addressee: &str) -> Clie
         to: Some(vec![addressee.to_string()]),
         addressee: Some(addressee.to_string()),
         message_type: None,
-        thread_id: None,
     }
 }
 
@@ -510,7 +504,6 @@ pub(super) fn build_pass_desk_check_pm_present_signal(number: u64) -> ClientMess
         to: Some(vec!["pm".to_string()]),
         addressee: Some("pm".to_string()),
         message_type: None,
-        thread_id: None,
     }
 }
 
@@ -538,7 +531,6 @@ pub(super) fn build_fail_desk_check_signal(number: u64, reason: &str) -> ClientM
         to: Some(vec!["dev".to_string()]),
         addressee: Some("dev".to_string()),
         message_type: None,
-        thread_id: None,
     }
 }
 
@@ -557,6 +549,5 @@ pub(super) fn build_iteration_close_signal() -> ClientMessage {
         to: None,
         addressee: Some("all".to_string()),
         message_type: None,
-        thread_id: None,
     }
 }

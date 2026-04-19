@@ -21,10 +21,6 @@ pub fn send_message_tool(description: &'static str) -> Tool {
                 "type": "string",
                 "enum": ["chat", "insight"],
                 "description": "Message type. Use 'insight' for reasoning traces and architectural decisions. Omit for normal chat."
-            },
-            "thread_id": {
-                "type": "string",
-                "description": "Thread id (#268). Tag the message as belonging to a named thread so participants see it scoped and non-participants see it in broadcast with the thread name. Get the id from start_thread's response. Omit for broadcast."
             }
         },
         "required": ["text"]

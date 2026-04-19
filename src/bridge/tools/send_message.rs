@@ -34,10 +34,6 @@ pub(in crate::bridge) async fn handle_send(
         .get("message_type")
         .and_then(|v| v.as_str())
         .map(String::from);
-    let thread_id = args
-        .get("thread_id")
-        .and_then(|v| v.as_str())
-        .map(String::from);
     // Audit trail (#167): log pending BEFORE the ws_send so a drop
     // at any layer below leaves a durable "this was attempted" record
     // in diag. Paired with a status=acked / status=failed line after,
@@ -48,10 +44,9 @@ pub(in crate::bridge) async fn handle_send(
         None => "broadcast".to_string(),
     };
     let addressee_desc = addressee.as_deref().unwrap_or("-");
-    let thread_desc = thread_id.as_deref().unwrap_or("-");
     log_diag(&format!(
         "SEND status=pending sender={sender_role} to={recipient_desc} \
-         addressee={addressee_desc} thread={thread_desc} size={}",
+         addressee={addressee_desc} size={}",
         text.len()
     ));
     let json = serde_json::to_string(&ClientMessage::Send {
@@ -59,7 +54,6 @@ pub(in crate::bridge) async fn handle_send(
         to,
         addressee,
         message_type,
-        thread_id,
     })
     .map_err(|e| format!("failed to serialize: {e}"))?;
     match ws_send(ws_tx, json).await {

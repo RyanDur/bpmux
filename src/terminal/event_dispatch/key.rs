@@ -36,17 +36,6 @@ pub(super) fn handle(
     app: &mut App,
     session: &session::Session,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    // Pending banner dismissal (#273 / #274): any key clears pending
-    // suggestion or invitation. Esc falls through to the thread-leave
-    // path below; other keys dismiss silently and carry on as normal
-    // input. Banners are non-modal — we drop the state so the render
-    // stops showing them without consuming the keystroke.
-    if app.threads.pending_suggestion.is_some() {
-        app.threads.pending_suggestion = None;
-    }
-    if app.threads.pending_invitation.is_some() {
-        app.threads.pending_invitation = None;
-    }
     // Modal dispatch via InputMode enum — explicit state machine
     // replacing the old implicit priority chain of boolean flags.
     match app.input_mode {
@@ -270,13 +259,7 @@ pub(super) fn handle(
             scroll_down_with_bell(app, 5);
         }
         KeyCode::Esc => {
-            // Thread view exits first — #268's scope discipline says
-            // Esc means "back to broadcast" when inside a thread.
-            // If scroll is active, scroll-to-bottom wins next. Falls
-            // back to clear_input when neither applies.
-            if app.threads.current.is_some() {
-                app.leave_thread();
-            } else if app.scroll.offset > 0 {
+            if app.scroll.offset > 0 {
                 app.scroll.offset = 0;
                 app.scroll.unread_count = 0;
             } else {

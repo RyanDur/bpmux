@@ -21,7 +21,6 @@ pub struct SidebarState {
     pub project_expanded: bool,
     pub direct_expanded: bool,
     pub groups_expanded: bool,
-    pub threads_expanded: bool,
     pub system_expanded: bool,
 }
 
@@ -35,7 +34,6 @@ impl Default for SidebarState {
             project_expanded: true,
             direct_expanded: true,
             groups_expanded: true,
-            threads_expanded: true,
             system_expanded: false,
         }
     }
@@ -293,66 +291,6 @@ pub struct LifecycleState {
     pub should_quit: bool,
     pub should_reload: bool,
     pub p2p_command: Option<crate::transport::peer::P2pCommand>,
-}
-
-/// One named conversation thread (#268). `id` is the unique handle
-/// messages carry via `Message::thread_id`; `name` is the
-/// human-readable label; `participants` are the roles initially
-/// invited. `last_activity` and `unread` are per-thread tracking
-/// for the sidebar re-entry affordance (#275).
-#[derive(Debug, Clone)]
-pub struct Thread {
-    pub id: String,
-    pub name: String,
-    pub participants: Vec<String>,
-    /// Most-recent activity timestamp — drives sidebar ordering
-    /// (freshest at top). Set to the thread's creation time on
-    /// register and bumped every time a thread-tagged message
-    /// lands. `None` pre-#275 data paths (test setup).
-    pub last_activity: Option<chrono::DateTime<chrono::Utc>>,
-    /// Unread count for this thread, independent of the broadcast
-    /// unread counter. Incremented when a thread-tagged message
-    /// arrives AND the viewer isn't currently in that thread.
-    /// Reset on re-entry.
-    pub unread: usize,
-}
-
-/// Thread state for the TUI viewer. `known` is the local cache of
-/// threads the bridge has told us about; `current` is the viewer's
-/// active thread (None = broadcast view). `broadcast_unread_while_threaded`
-/// is the peripheral counter that keeps cross-thread activity
-/// visible while Ryan is focused inside a thread.
-#[derive(Default)]
-pub struct ThreadState {
-    pub known: HashMap<String, Thread>,
-    pub current: Option<String>,
-    pub broadcast_unread_while_threaded: usize,
-    /// Pending suggest_leave targeting this viewer (#273). Populated
-    /// when a marker arrives with target_role matching self; cleared
-    /// when the viewer leaves the thread (Esc) or dismisses (any other
-    /// key). `None` = no banner showing.
-    pub pending_suggestion: Option<PendingSuggestion>,
-    /// Pending pull_into_thread invitation targeting this viewer
-    /// (#274). Populated when a marker arrives with target_role
-    /// matching self; cleared when the viewer accepts (via
-    /// join_thread) or dismisses (any key). `None` = no banner.
-    pub pending_invitation: Option<PendingInvitation>,
-}
-
-/// A suggest_leave banner waiting for the viewer's response (#273).
-#[derive(Debug, Clone, PartialEq)]
-pub struct PendingSuggestion {
-    pub thread_name: String,
-    pub caller: String,
-    pub reason: String,
-}
-
-/// A pull_into_thread invitation banner (#274).
-#[derive(Debug, Clone, PartialEq)]
-pub struct PendingInvitation {
-    pub thread_name: String,
-    pub caller: String,
-    pub reason: String,
 }
 
 #[cfg(test)]

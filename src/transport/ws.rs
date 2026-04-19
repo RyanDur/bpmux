@@ -250,7 +250,6 @@ async fn handle_client_message(
             to,
             addressee,
             message_type,
-            thread_id,
         }) => {
             // When the caller supplies a `to` filter, treat the
             // message as an explicit DM — same privacy semantic as
@@ -269,7 +268,6 @@ async fn handle_client_message(
                 to,
                 addressee,
                 explicit_privacy,
-                thread_id,
                 ..session::Message::default()
             };
             session.broadcast(&msg)?;
