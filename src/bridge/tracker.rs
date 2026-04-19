@@ -101,12 +101,11 @@ pub struct OctocrabStoryTracker {
     repo: String,
 }
 
-/// Result of inspecting env vars to pick a tracker backend. Separates
-/// the env-decisioning (pure, testable) from the octocrab client
-/// build (impure, requires network config). Only `Octocrab` is a
-/// successful selection; the `Fallback` variant names WHY we're
-/// falling back to `GhTracker` so the bridge can surface the reason
-/// in diag logs instead of silently swapping backends (#298).
+/// Result of inspecting env vars to decide whether we can build an
+/// `OctocrabStoryTracker`. Separates env-decisioning (pure, testable)
+/// from the octocrab client build (impure, requires network config).
+/// `Octocrab` is a successful selection; `Fallback` names WHY the
+/// bridge startup will fail-loud (#320: no more subprocess fallback).
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum TrackerSelection {
     Octocrab {
@@ -117,11 +116,12 @@ pub(crate) enum TrackerSelection {
     Fallback(FallbackReason),
 }
 
-/// Named reasons for falling back from `OctocrabStoryTracker` to
-/// `GhTracker`. Naming them as an enum (instead of a None return)
-/// makes the dispatch decision observable — diag logs can cite the
-/// specific reason, and unit tests can assert exact variants rather
-/// than an opaque "it fell back."
+/// Named reasons `OctocrabStoryTracker::from_env` returns `None`.
+/// Pre-#320 these were "fall back to gh CLI" branches; post-#320
+/// they're "fail-loud the bridge can't start" — the enum name +
+/// variant names stuck for diff continuity with #298. Diag logs
+/// cite the specific reason so the user sees WHICH env var is
+/// missing.
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum FallbackReason {
     /// `BPMUX_REPO` env var missing entirely.
@@ -164,14 +164,12 @@ where
 
 impl OctocrabStoryTracker {
     /// Build from env vars. Returns None when required auth/repo
-    /// config is missing — caller falls back to GhTracker in that
-    /// case so the bridge stays functional without API access.
+    /// config is missing — bridge startup (run_bridge) fails loud in
+    /// that case (#320; pre-#320 this was a fallback path).
     ///
-    /// Logs the fallback reason to diag on None — previously this
-    /// was a silent swap, invisible to developers debugging why
-    /// their real-gh calls went through the gh CLI instead of
-    /// octocrab. Named reasons (NoRepo / MalformedRepo / NoToken)
-    /// make the dispatch decision auditable (#298).
+    /// Logs the specific missing-env reason to diag on None so the
+    /// user sees WHICH var needs setting (NoRepo / MalformedRepo /
+    /// NoToken). Pattern preserved from #298's silent-swap diagnosis.
     pub fn from_env() -> Option<Self> {
         match select_from_env(|k| std::env::var(k).ok()) {
             TrackerSelection::Octocrab { owner, repo, token } => {
@@ -188,7 +186,7 @@ impl OctocrabStoryTracker {
             }
             TrackerSelection::Fallback(reason) => {
                 crate::session::diag::log_diag(&format!(
-                    "OctocrabStoryTracker::from_env: falling back to GhTracker ({reason:?})"
+                    "OctocrabStoryTracker::from_env: missing env config ({reason:?})"
                 ));
                 None
             }
