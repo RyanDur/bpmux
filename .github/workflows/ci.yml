@@ -8,6 +8,12 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      # Integration tests hit gh CLI + GitHub REST via the built-in
+      # GITHUB_TOKEN; read-only scoping per Actions least-privilege.
+      contents: read
+      issues: read
+      actions: read
     steps:
       - uses: actions/checkout@v4
       # Install the pinned rustc so CI runs the same version
@@ -35,54 +41,28 @@ jobs:
         run: cargo fmt --check
       - name: Clippy
         run: cargo clippy -- -D warnings
-      - name: Test
-        run: cargo test
-        env:
-          BPMUX_SESSION_BASE: ${{ runner.temp }}/bpmux-sessions
-      - name: Audit
-        run: |
-          cargo install cargo-audit
-          cargo audit
-
-  # Contract drift check — runs the feature-gated integration suite
-  # against live gh CLI + octocrab REST API. `needs: test` gates this
-  # on the offline suite passing so we don't burn rate-limit budget on
-  # already-broken code. Trunk-based development: every push to main
-  # verifies contracts haven't drifted.
-  #
-  # Uses the built-in `GITHUB_TOKEN` that Actions provides on every run
-  # (documented at docs.github.com/en/actions/security-guides/automatic-token-authentication).
-  # `BPMUX_REPO` is the repo identifier itself — hardcoded here, not a
-  # secret. No setup required per-repo; the job runs on every push.
-  integration:
-    runs-on: ubuntu-latest
-    needs: test
-    permissions:
-      # Read-only access to the current repo's issues + runs is enough
-      # for the contract suite; explicit per-job scoping per Actions
-      # least-privilege guidance.
-      contents: read
-      issues: read
-      actions: read
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: "1.95.0"
-      - uses: Swatinem/rust-cache@v2
-        with:
-          cache-targets: "false"
       - name: Install gh CLI
         run: |
-          # gh CLI is preinstalled on ubuntu-latest runners as of 2023,
-          # but guard in case the baseline image shifts.
+          # gh CLI is preinstalled on ubuntu-latest runners, but guard
+          # in case the baseline image shifts. Installed once here so
+          # both the offline suite (which exercises FakeTracker paths
+          # that don't need gh) and the feature-gated integration
+          # suite (which hits real gh + octocrab) share the same job.
           if ! command -v gh >/dev/null; then
             curl -sS https://webi.sh/gh | sh
             echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           fi
-      - name: Run integration tests
+      - name: Test (offline + contract drift against live GitHub)
         env:
+          # `integration_tests` feature adds the real-substrate drift
+          # suite on top of the offline run. One `cargo test` invocation
+          # covers both — same target dir, no second compile cost per
+          # Ryan's flag 2026-04-19 02:40.
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BPMUX_REPO: ${{ github.repository }}
           BPMUX_SESSION_BASE: ${{ runner.temp }}/bpmux-sessions
-        run: cargo test --features integration_tests -- --nocapture
+        run: cargo test --features integration_tests
+      - name: Audit
+        run: |
+          cargo install cargo-audit
+          cargo audit
