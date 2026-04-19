@@ -1,7 +1,6 @@
 mod board;
 mod chat_message;
 mod debug;
-pub(crate) mod focus;
 pub(crate) mod help;
 mod identity;
 mod p2p;

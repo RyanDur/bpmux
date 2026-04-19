@@ -139,24 +139,7 @@ fn render_channel_items(channels: &[String], app: &App, area: Rect) -> Vec<Line<
                 raw_name
             };
 
-            // Focus rendering (#224 v2): peer rows in the (renamed)
-            // focus section show cyan-bold when that role is in the
-            // active focus set. v1's trailing chevron + dm-view-switch
-            // are removed — focus is the sole click affordance on
-            // peer rows. Agents use groups for scoped 1:1.
-            let is_focus_row = is_focus_peer_row(ch);
-            let is_focused = is_focus_row
-                && app
-                    .focused_roles
-                    .as_deref()
-                    .is_some_and(|roles| roles.iter().any(|r| r == ch));
-
-            let name_style = if is_focused {
-                Style::default()
-                    .fg(DRACULA_CYAN)
-                    .bg(bg)
-                    .add_modifier(Modifier::BOLD)
-            } else if is_section {
+            let name_style = if is_section {
                 Style::default().fg(DRACULA_CYAN).bg(bg)
             } else if is_current || unread > 0 {
                 Style::default()
@@ -205,17 +188,6 @@ fn section_header(name: &str, count: usize, expanded: bool) -> String {
 
 fn is_section_header(entry: &str) -> bool {
     entry.starts_with(&section_prefix_collapsed()) || entry.starts_with(&section_prefix_expanded())
-}
-
-/// A focus-section peer row (#224 v2) — a single-role entry, not a
-/// section header, not a group, not a system channel, not broadcast,
-/// not the self-root. These rows route clicks to focus-toggle;
-/// everything else keeps the view-switch behavior.
-fn is_focus_peer_row(entry: &str) -> bool {
-    !is_section_header(entry)
-        && entry != "broadcast"
-        && !is_group_channel(entry)
-        && !is_system_channel(entry)
 }
 
 impl App {
@@ -282,12 +254,10 @@ impl App {
         groups.sort();
         system.sort();
 
-        // Focus section (#224 v2). Formerly labeled "direct" — the
-        // peer rows are now focus targets; click toggles focus on
-        // that role. `direct_expanded` field kept for minimal-churn.
+        // Direct section — connected peer rows.
         if !direct.is_empty() {
             result.push(section_header(
-                "focus",
+                "direct",
                 direct.len(),
                 self.sidebar.direct_expanded,
             ));
@@ -363,10 +333,6 @@ impl App {
         self.sidebar_select_inner();
     }
 
-    /// Mouse-click variant kept for API compat with the pre-#224-v2
-    /// coexist shape; `_on_chevron` is now ignored because peer rows
-    /// no longer render a chevron. All clicks on focus peer rows go
-    /// through the same focus-toggle path as keyboard Enter.
     pub fn sidebar_select_at(&mut self, _on_chevron: bool) {
         self.sidebar_select_inner();
     }
@@ -374,28 +340,14 @@ impl App {
     fn sidebar_select_inner(&mut self) {
         let channels = self.sidebar_channels();
         if let Some(ch) = channels.get(self.sidebar.selected) {
-            // Toggle section headers. The "focus" header still maps
-            // to the legacy `direct_expanded` field (#224 v2 renamed
-            // the label but kept the internal field to minimize
-            // cross-file churn).
             if is_section_header(ch) {
-                if ch.contains("focus") {
+                if ch.contains("direct") {
                     self.sidebar.direct_expanded = !self.sidebar.direct_expanded;
                 } else if ch.contains("groups") {
                     self.sidebar.groups_expanded = !self.sidebar.groups_expanded;
                 } else if ch.contains("system") {
                     self.sidebar.system_expanded = !self.sidebar.system_expanded;
                 }
-                return;
-            }
-            // Focus peer rows (#224 v2): click toggles focus on that
-            // role. No chevron, no DM view-switch — agents use groups
-            // for scoped 1:1 per ryan's final shape.
-            if self.sidebar.selected != 0 && is_focus_peer_row(ch) {
-                let ch = ch.clone();
-                self.toggle_focus_on_peer(&ch);
-                self.sidebar.focused = false;
-                self.sidebar.filter.clear();
                 return;
             }
             // Route the view switch through the shared
@@ -414,29 +366,6 @@ impl App {
             self.sidebar.filter.clear();
         }
         self.sidebar.focused = false;
-    }
-
-    /// Toggle `peer` in `focused_roles` (#224). If present, remove
-    /// it; if absent, add it. When removing empties the list,
-    /// collapses `focused_roles` to `None` so downstream filters
-    /// match `/focus off` semantics. Mirrors the observable effect
-    /// of typing `/focus <peer>` so keyboard and click paths stay
-    /// equivalent.
-    fn toggle_focus_on_peer(&mut self, peer: &str) {
-        let mut roles = self.focused_roles.take().unwrap_or_default();
-        if let Some(idx) = roles.iter().position(|r| r == peer) {
-            roles.remove(idx);
-        } else {
-            roles.push(peer.to_string());
-        }
-        let message = if roles.is_empty() {
-            "Focus cleared.".to_string()
-        } else {
-            format!("Focus: {}.", roles.join(", "))
-        };
-        self.focused_roles = if roles.is_empty() { None } else { Some(roles) };
-        self.mark_filters_dirty();
-        self.system_message(message);
     }
 
     pub fn sidebar_collapse(&mut self) {

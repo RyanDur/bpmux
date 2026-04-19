@@ -117,17 +117,6 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         Span::raw(" "),
         connection_status,
     ];
-    // Focus-mode indicator — shows the current focus set
-    // alongside the view label when `/focus <roles>` is active.
-    // Format: `[focus: dev,pm]`. Silent when the filter is off so
-    // the bar stays quiet in the common case.
-    if let Some(roles) = app.focused_roles.as_ref() {
-        status_spans.push(Span::raw(" "));
-        status_spans.push(Span::styled(
-            format!("[focus: {}]", roles.join(",")),
-            Style::default().fg(DRACULA_CYAN),
-        ));
-    }
     if app.scroll.offset > 0 {
         status_spans.push(Span::raw(" | "));
         status_spans.push(Span::styled(

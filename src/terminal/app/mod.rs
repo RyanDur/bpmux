@@ -110,14 +110,6 @@ pub struct App {
     /// Incremented at dispatch time in submit_message() and palette.
     pub feature_usage: HashMap<String, (usize, chrono::DateTime<chrono::Utc>)>,
 
-    // ── Focus mode part A (#181) ──
-    /// When `Some(roles)`, the chat view filter narrows to messages
-    /// from the listed roles. Transient per-session (resets on
-    /// restart) — per story decision. `None` = no filter.
-    /// See `commands_focus::in_focus` for the override rules
-    /// (own messages, system messages, addressee=my_role bypass).
-    pub focused_roles: Option<Vec<String>>,
-
     // ── Command palette (#192) ──
     pub palette: PaletteState,
 
@@ -206,7 +198,6 @@ impl App {
                     Some((feature.to_string(), (rec.count, ts)))
                 })
                 .collect(),
-            focused_roles: None,
             palette: PaletteState::default(),
             board: BoardState::default(),
             board_snapshot: std::sync::Arc::new(std::sync::Mutex::new(
@@ -327,7 +318,6 @@ impl App {
             show_all_classes: self.display.show_all_classes,
             current_view: self.channels.current_view.as_deref(),
             identity_name: &self.identity.name,
-            focused_roles: self.focused_roles.as_deref(),
         };
         self.msg.filter_dirty = false;
         self.msg.filtered_indices.clear();

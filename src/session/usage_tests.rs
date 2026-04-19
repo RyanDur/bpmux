@@ -14,15 +14,15 @@ fn tmp_path() -> (TempDir, std::path::PathBuf) {
 
 #[test]
 fn key_for_prefixes_source() {
-    assert_eq!(key_for(Source::Slash, "/focus"), "slash:/focus");
+    assert_eq!(key_for(Source::Slash, "/board"), "slash:/board");
     assert_eq!(key_for(Source::Mcp, "accept_story"), "mcp:accept_story");
 }
 
 #[test]
 fn parse_key_extracts_source_and_feature() {
-    let (source, feature) = parse_key("slash:/focus").expect("parse slash");
+    let (source, feature) = parse_key("slash:/board").expect("parse slash");
     assert_eq!(source, Source::Slash);
-    assert_eq!(feature, "/focus");
+    assert_eq!(feature, "/board");
     let (source, feature) = parse_key("mcp:accept_story").expect("parse mcp");
     assert_eq!(source, Source::Mcp);
     assert_eq!(feature, "accept_story");
@@ -30,7 +30,7 @@ fn parse_key_extracts_source_and_feature() {
 
 #[test]
 fn parse_key_returns_none_for_unknown_prefix() {
-    assert!(parse_key("unknown:/focus").is_none());
+    assert!(parse_key("unknown:/board").is_none());
     assert!(parse_key("no-colon").is_none());
 }
 
@@ -72,11 +72,11 @@ fn load_from_legacy_format_survives() {
     // New format is HashMap<String, Record>. Legacy files should
     // still load so counts aren't lost on upgrade.
     let (_dir, path) = tmp_path();
-    let legacy = r#"{"slash:/focus": [3, "2026-04-10T10:00:00+00:00"]}"#;
+    let legacy = r#"{"slash:/board": [3, "2026-04-10T10:00:00+00:00"]}"#;
     std::fs::write(&path, legacy).unwrap();
     let loaded = load_from(&path);
     assert_eq!(loaded.len(), 1);
-    let rec = loaded.get("slash:/focus").expect("legacy key loaded");
+    let rec = loaded.get("slash:/board").expect("legacy key loaded");
     assert_eq!(rec.count, 3);
     assert!(rec.last_used.contains("2026-04-10"));
 }

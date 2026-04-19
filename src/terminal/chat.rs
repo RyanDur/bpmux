@@ -441,7 +441,7 @@ mod tests {
     #[test]
     fn should_hide_returns_false_for_bpmux_tool_output_without_pencil_prefix() {
         // AC #6: the filter must NOT hide tool output. `/board`,
-        // `/roadmap`, `/who`, `/debug`, and `/focus` all go through
+        // `/roadmap`, `/who`, `/debug` all go through
         // `App::system_message` which creates bpmux-sender chat
         // messages. Hiding these would break the user-facing tool
         // response loop.
@@ -450,9 +450,6 @@ mod tests {
 
         let who_output = msg("bpmux", "Participants:\n  ryan (you)", MessageType::Chat);
         assert!(!should_hide_by_class(&who_output, "ryan"));
-
-        let focus_output = msg("bpmux", "focus: off (all roles visible)", MessageType::Chat);
-        assert!(!should_hide_by_class(&focus_output, "ryan"));
     }
 
     #[test]

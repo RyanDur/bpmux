@@ -21,7 +21,6 @@ pub(super) struct FilterContext<'a> {
     pub show_all_classes: bool,
     pub current_view: Option<&'a str>,
     pub identity_name: &'a str,
-    pub focused_roles: Option<&'a [String]>,
 }
 
 /// Three-way verdict so the caller can distinguish "this message
@@ -48,9 +47,6 @@ pub(super) fn classify(ctx: &FilterContext, m: &Message) -> FilterVerdict {
     }
     if !ctx.show_all_classes && crate::terminal::chat::should_hide_by_class(m, ctx.identity_name) {
         return FilterVerdict::Hidden;
-    }
-    if !crate::terminal::commands::focus::in_focus(m, ctx.focused_roles, ctx.identity_name) {
-        return FilterVerdict::Skip;
     }
     FilterVerdict::Include
 }

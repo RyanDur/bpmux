@@ -126,13 +126,6 @@ pub(super) const SLASH_COMMANDS: &[SlashCommand] = &[
         handler: dispatch_debug,
     },
     SlashCommand {
-        name: "/focus",
-        short_desc: "role filter",
-        long_desc: "filter chat view by role (e.g. /focus dev,pm)",
-        domain: "Filter",
-        handler: dispatch_focus,
-    },
-    SlashCommand {
         name: "/identity",
         short_desc: "agent traits",
         long_desc: "show identity traits for a role (e.g. /identity dev)",
@@ -212,9 +205,6 @@ fn dispatch_accept(app: &mut App, args: &str) -> Option<Message> {
 }
 fn dispatch_debug(app: &mut App, _args: &str) -> Option<Message> {
     app.handle_debug()
-}
-fn dispatch_focus(app: &mut App, args: &str) -> Option<Message> {
-    app.handle_focus(args.to_string())
 }
 fn dispatch_identity(app: &mut App, args: &str) -> Option<Message> {
     app.handle_identity(args.to_string())

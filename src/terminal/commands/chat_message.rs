@@ -9,18 +9,7 @@ impl App {
         // `@pm what about X?` sets addressee="pm" and strips the prefix.
         // Distinct from `/to pm "..."` which sets the privacy filter — the
         // `@role` prefix is advisory addressing on broadcast messages.
-        let (explicit_addressee, text) = parse_addressee_prefix(&text);
-        // Focus-as-addressee (#224 v2): when focus is active on a
-        // single role, outgoing messages auto-set `addressee` to
-        // that role — other agents receive (shared sight) but the
-        // focused role knows it's their turn per #158. An explicit
-        // `@role` prefix still wins (user's direct intent beats the
-        // sticky focus state). Multi-role focus doesn't auto-
-        // address — no unambiguous target.
-        let addressee = explicit_addressee.or_else(|| match self.focused_roles.as_deref() {
-            Some([single]) => Some(single.clone()),
-            _ => None,
-        });
+        let (addressee, text) = parse_addressee_prefix(&text);
         // Derive `to` from send_target if set (sidebar selection)
         let to = self.channels.send_target.as_ref().and_then(|ch| {
             if ch == "broadcast" {

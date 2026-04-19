@@ -174,9 +174,11 @@ IdeaProjects/
    ```markdown
    # bpmux-{role} workspace
    Read these first:
-   1. `../bpmux/welcome.md` — team values and norms
-   2. `../bpmux/roles/{role}.md` — your role contract
-   3. `../bpmux/AGENT_WORKFLOW.md` — how we work
+   1. `../bpmux/docs/memory-architecture.md` — team's knowledge chain (arcs → lessons → principles → values)
+   2. `kb/index.md` — your role's knowledge base, topic-scoped
+   
+   Your role contract + team norms live in the bpmux identity
+   (`~/.bpmux/identity/{role}.json`), visible via MCP `get_identity`.
    ```
 
 4. Launch Claude Code in the workspace with the bridge:
@@ -278,7 +280,7 @@ cargo clippy -- -D warnings  # Lint (warnings are errors)
 cargo fmt --check        # Check formatting
 ```
 
-See [CLAUDE.md](CLAUDE.md) for code style and conventions. See [AGENT_WORKFLOW.md](AGENT_WORKFLOW.md) for how the team collaborates.
+See [CLAUDE.md](CLAUDE.md) for code style and conventions. See [docs/memory-architecture.md](docs/memory-architecture.md) for how the team's knowledge chain (arcs → lessons → principles → values) is structured.
 
 ## Why bpmux?
 
