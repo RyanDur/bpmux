@@ -217,7 +217,7 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
             // foreground.
             ("", "Enter=switch \u{2191}\u{2193}=nav Esc=close")
         } else {
-            ("?=help", " \u{2325}1=sidebar \u{2325}2=board Enter=send")
+            ("?=help", " ^B=sidebar ^P=board Enter=send")
         };
     let hint_len = clickable_hint.chars().count() + keybind_hint.chars().count();
     let right_margin = 1;

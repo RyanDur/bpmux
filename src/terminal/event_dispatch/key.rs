@@ -146,10 +146,13 @@ pub(super) fn handle(
         app.toggle_sidebar();
         return Ok(());
     }
-    if key.code == KeyCode::Char('2')
-        && (key.modifiers.contains(KeyModifiers::ALT)
-            || key.modifiers.contains(KeyModifiers::CONTROL))
+    if (key.code == KeyCode::Char('p') || key.code == KeyCode::Char('2'))
+        && key.modifiers.contains(KeyModifiers::ALT)
     {
+        app.toggle_board_panel();
+        return Ok(());
+    }
+    if key.code == KeyCode::Char('p') && key.modifiers.contains(KeyModifiers::CONTROL) {
         app.toggle_board_panel();
         return Ok(());
     }
@@ -427,18 +430,35 @@ mod tests {
     }
 
     #[test]
-    fn ctrl_2_toggles_board_panel_for_iterm_compat() {
+    fn ctrl_p_toggles_board_panel() {
         let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
         let (session, _dir) = test_session();
         let before = app.board.panel_open;
 
-        let ctrl_2 = KeyEvent {
-            code: KeyCode::Char('2'),
+        let ctrl_p = KeyEvent {
+            code: KeyCode::Char('p'),
             modifiers: KeyModifiers::CONTROL,
             kind: KeyEventKind::Press,
             state: crossterm::event::KeyEventState::NONE,
         };
-        handle(ctrl_2, &mut app, &session).unwrap();
+        handle(ctrl_p, &mut app, &session).unwrap();
+
+        assert_ne!(app.board.panel_open, before);
+    }
+
+    #[test]
+    fn alt_p_toggles_board_panel() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let (session, _dir) = test_session();
+        let before = app.board.panel_open;
+
+        let alt_p = KeyEvent {
+            code: KeyCode::Char('p'),
+            modifiers: KeyModifiers::ALT,
+            kind: KeyEventKind::Press,
+            state: crossterm::event::KeyEventState::NONE,
+        };
+        handle(alt_p, &mut app, &session).unwrap();
 
         assert_ne!(app.board.panel_open, before);
     }
