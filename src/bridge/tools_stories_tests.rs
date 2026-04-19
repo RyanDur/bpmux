@@ -528,6 +528,11 @@ impl StoryTracker for AlreadyClosedTracker {
     async fn get_story_labels(&self, _number: u64) -> Vec<String> {
         Vec::new()
     }
+    async fn list_latest_run_on_main(
+        &self,
+    ) -> Result<Option<super::tracker::WorkflowRunEntry>, String> {
+        Ok(None)
+    }
 }
 
 #[tokio::test]
@@ -629,56 +634,8 @@ fn integration_tests_are_feature_gated_enable_with_features_integration_tests() 
     // octocrab REST.
 }
 
-// ── Contract tests for GhTracker (#213) ──
-// These verify the real adapter works against the live gh CLI.
-// Gated behind `#[cfg(feature = "integration_tests")]` (#299 rework of
-// earlier `#[ignore]` mechanism). Default `cargo test` skips them
-// entirely — the tests don't compile without the feature, so there's
-// no silent-runtime-skip and no "they exist but didn't run" confusion.
-// Run locally with `cargo test --features integration_tests` when
-// `GH_TOKEN` + `BPMUX_REPO` are set; CI runs them in a dedicated
-// integration job when repo secrets make gh auth available (see
-// `.github/workflows/integration.yml`).
-
-#[cfg(feature = "integration_tests")]
-#[tokio::test]
-async fn gh_tracker_list_stories_returns_parseable_json() {
-    use super::tracker::GhTracker;
-    let tracker = GhTracker {
-        board_fixture: None,
-    };
-    let result = tracker.list_stories().await;
-    assert!(
-        result.is_ok(),
-        "list_stories should succeed with gh auth. got: {result:?}"
-    );
-    let json_str = result.unwrap();
-    let parsed: Vec<serde_json::Value> =
-        serde_json::from_str(&json_str).expect("list_stories should return valid JSON array");
-    if let Some(first) = parsed.first() {
-        assert!(
-            first.get("number").is_some(),
-            "each story should have a 'number' field. got: {first}"
-        );
-        assert!(
-            first.get("title").is_some(),
-            "each story should have a 'title' field. got: {first}"
-        );
-    }
-}
-
-#[cfg(feature = "integration_tests")]
-#[tokio::test]
-async fn gh_tracker_get_story_title_returns_known_story() {
-    use super::tracker::GhTracker;
-    let tracker = GhTracker {
-        board_fixture: None,
-    };
-    let title = tracker.get_story_title(213).await;
-    assert!(title.is_some(), "story #213 should exist and have a title");
-    let t = title.unwrap();
-    assert!(!t.is_empty(), "title should not be empty. got: '{t}'");
-}
+// GhTracker contract tests retired in #320 (gh CLI fallback deleted).
+// Octocrab is the sole production path; tests below exercise it.
 
 // ── Contract tests for OctocrabStoryTracker (#221) ──
 // Same pattern as GhTracker contract tests: feature-gated (#299 rework)

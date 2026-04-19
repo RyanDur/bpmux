@@ -4,45 +4,59 @@ use super::model::{BoardStory, StoryState};
 /// board columns. Returns stories sorted by state priority.
 ///
 /// When `BPMUX_BOARD_FIXTURE` env var is set, reads from that file
-/// instead of calling gh. This lets e2e tests exercise the full
-/// board rendering pipeline with controlled data.
-pub fn fetch_board_stories() -> Result<Vec<BoardStory>, String> {
-    // Test fixture support: read from file instead of gh
+/// instead of calling the API. This lets e2e tests exercise the
+/// full board rendering pipeline with controlled data.
+///
+/// #320: ported from `gh issue list` to octocrab. Async because
+/// octocrab's client is async; callers in `event.rs` now
+/// `tokio::spawn` instead of `spawn_blocking`. Auth via
+/// `BPMUX_REPO` + `GH_TOKEN`/`GITHUB_TOKEN` (same env as the
+/// background poller).
+pub async fn fetch_board_stories() -> Result<Vec<BoardStory>, String> {
+    // Test fixture support: read from file instead of GitHub.
     if let Ok(fixture_path) = std::env::var("BPMUX_BOARD_FIXTURE") {
         let contents =
             std::fs::read_to_string(&fixture_path).map_err(|e| format!("fixture read: {e}"))?;
         let json: Vec<serde_json::Value> =
             serde_json::from_str(&contents).map_err(|e| format!("fixture parse: {e}"))?;
-        return parse_gh_issues(&json);
+        return parse_issue_values(&json);
     }
-    let mut cmd = std::process::Command::new("gh");
-    cmd.args([
-        "issue",
-        "list",
-        "--state",
-        "all",
-        "--limit",
-        "200",
-        "--json",
-        "number,title,state,labels,body,assignees,createdAt",
-    ]);
-    if let Ok(repo) = std::env::var("BPMUX_REPO") {
-        cmd.args(["-R", &repo]);
-    } else {
-        cmd.current_dir(env!("CARGO_MANIFEST_DIR"));
-    }
-    let output = cmd.output().map_err(|e| format!("failed to run gh: {e}"))?;
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("gh failed: {stderr}"));
-    }
-    let json: Vec<serde_json::Value> =
-        serde_json::from_slice(&output.stdout).map_err(|e| format!("parse error: {e}"))?;
-    parse_gh_issues(&json)
+    let (client, owner, repo) = crate::github::octocrab_client()?;
+    let page = client
+        .issues(&owner, &repo)
+        .list()
+        .state(octocrab::params::State::All)
+        .per_page(100)
+        .send()
+        .await
+        .map_err(|e| crate::github::classify_error(&e).user_message())?;
+    let mut stories: Vec<BoardStory> = page
+        .items
+        .iter()
+        .map(crate::terminal::board_poller::issue_to_story)
+        .collect();
+    sort_stories(&mut stories);
+    Ok(stories)
 }
 
-/// Parse GitHub issue JSON into BoardStory structs.
-fn parse_gh_issues(json: &[serde_json::Value]) -> Result<Vec<BoardStory>, String> {
+/// Sort by column priority: active work (Ready, InProgress, Delivered)
+/// first, then Accepted, Deferred, Icebox. The column order matches
+/// what `stories_by_state` returns.
+fn sort_stories(stories: &mut [BoardStory]) {
+    stories.sort_by_key(|s| match s.state {
+        StoryState::Ready => 0,
+        StoryState::InProgress => 1,
+        StoryState::Delivered => 2,
+        StoryState::Deferred => 3,
+        StoryState::Accepted => 4,
+        StoryState::Icebox => 5,
+    });
+}
+
+/// Parse a fixture's serde_json array (the legacy gh `--json` format)
+/// into BoardStory structs. Kept for `BPMUX_BOARD_FIXTURE` test
+/// support — the live path now goes through octocrab's typed Issue.
+fn parse_issue_values(json: &[serde_json::Value]) -> Result<Vec<BoardStory>, String> {
     let mut stories = Vec::new();
     for issue in json {
         let num = issue["number"].as_u64().unwrap_or(0);
@@ -114,16 +128,7 @@ fn parse_gh_issues(json: &[serde_json::Value]) -> Result<Vec<BoardStory>, String
         });
     }
 
-    // Sort: Ready, InProgress, Delivered first (active work), then Accepted, Deferred, Icebox
-    stories.sort_by_key(|s| match s.state {
-        StoryState::Ready => 0,
-        StoryState::InProgress => 1,
-        StoryState::Delivered => 2,
-        StoryState::Deferred => 3,
-        StoryState::Accepted => 4,
-        StoryState::Icebox => 5,
-    });
-
+    sort_stories(&mut stories);
     Ok(stories)
 }
 

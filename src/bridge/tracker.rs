@@ -1,16 +1,8 @@
-use std::sync::OnceLock;
-
-use super::tools_stories::gh;
-
-/// Install rustls's ring crypto provider once per process.
-/// rustls-0.23 panics on first TLS handshake without an explicit
-/// provider when multiple backends are compiled in.
-pub(super) fn ensure_crypto_provider_installed() {
-    static INSTALLED: OnceLock<()> = OnceLock::new();
-    INSTALLED.get_or_init(|| {
-        let _ = rustls::crypto::ring::default_provider().install_default();
-    });
-}
+/// Re-export so existing `super::tracker::ensure_crypto_provider_installed`
+/// imports from sibling modules keep resolving. The real implementation
+/// moved to `crate::github::client` during #320 so terminal-side fetchers
+/// could reuse the same idempotent install without reaching across layers.
+pub(super) use crate::github::ensure_crypto_provider_installed;
 
 /// Shared fail-soft handler for `get_story_labels`: log the error
 /// through the diag sink so it's observable via `BPMUX_LOG`, then
@@ -29,6 +21,22 @@ pub(crate) fn log_labels_fetch_failure<E: std::fmt::Display>(
         "get_story_labels ({backend}) #{number} failed: {err}"
     ));
     Vec::new()
+}
+
+/// Lightweight representation of a single workflow run on GitHub
+/// Actions — what `get_ci_state` returns and what `terminal::ci`
+/// classifies. Single source of truth so the TUI poller + the MCP
+/// tool share the same vocabulary (#320).
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Deserialize)]
+pub struct WorkflowRunEntry {
+    pub status: String,
+    pub conclusion: Option<String>,
+    #[serde(rename = "head_sha", alias = "headSha", default)]
+    pub head_sha: Option<String>,
+    #[serde(rename = "display_title", alias = "displayTitle", default)]
+    pub display_title: Option<String>,
+    #[serde(rename = "id", alias = "databaseId", default)]
+    pub database_id: Option<u64>,
 }
 
 pub trait StoryTracker: Clone + Send + Sync + 'static {
@@ -69,98 +77,23 @@ pub trait StoryTracker: Clone + Send + Sync + 'static {
         &self,
         number: u64,
     ) -> impl std::future::Future<Output = Vec<String>> + Send;
-}
-
-#[derive(Clone)]
-pub struct GhTracker {
-    pub board_fixture: Option<String>,
-}
-
-impl StoryTracker for GhTracker {
-    async fn close_story(&self, number: u64) -> Result<String, String> {
-        gh(&["issue", "close", &number.to_string()]).await
-    }
-
-    async fn add_label(&self, number: u64, label: &str) -> Result<String, String> {
-        gh(&["issue", "edit", &number.to_string(), "--add-label", label]).await
-    }
-
-    async fn remove_label(&self, number: u64, label: &str) -> Result<String, String> {
-        gh(&[
-            "issue",
-            "edit",
-            &number.to_string(),
-            "--remove-label",
-            label,
-        ])
-        .await
-    }
-
-    async fn create_story(&self, title: &str, body: &str) -> Result<String, String> {
-        let mut args = vec!["issue", "create", "--title", title];
-        if !body.is_empty() {
-            args.extend(["--body", body]);
-        }
-        gh(&args).await
-    }
-
-    async fn list_stories(&self) -> Result<String, String> {
-        if let Some(ref path) = self.board_fixture {
-            return std::fs::read_to_string(path).map_err(|e| format!("read fixture {path}: {e}"));
-        }
-        gh(&[
-            "issue",
-            "list",
-            "--state",
-            "all",
-            "--limit",
-            "200",
-            "--json",
-            "number,title,state,labels",
-        ])
-        .await
-    }
-
-    async fn comment_on_story(&self, number: u64, body: &str) -> Result<String, String> {
-        gh(&["issue", "comment", &number.to_string(), "--body", body]).await
-    }
-
-    async fn get_story_title(&self, number: u64) -> Option<String> {
-        gh(&["issue", "view", &number.to_string(), "--json", "title"])
-            .await
-            .ok()
-            .and_then(|json| serde_json::from_str::<serde_json::Value>(&json).ok())
-            .and_then(|v| v["title"].as_str().map(String::from))
-    }
-
-    async fn get_story_labels(&self, number: u64) -> Vec<String> {
-        match gh(&["issue", "view", &number.to_string(), "--json", "labels"]).await {
-            Ok(json) => match serde_json::from_str::<serde_json::Value>(&json) {
-                Ok(v) => v["labels"]
-                    .as_array()
-                    .map(|arr| {
-                        arr.iter()
-                            .filter_map(|l| l["name"].as_str().map(String::from))
-                            .collect()
-                    })
-                    .unwrap_or_default(),
-                Err(e) => log_labels_fetch_failure("gh parse", number, e),
-            },
-            Err(e) => log_labels_fetch_failure("gh", number, e),
-        }
-    }
+    /// Fetch the most recent workflow run on main (#302 / #320).
+    /// Returns `Ok(None)` when the repo has no runs yet. Errors
+    /// surface as `Err(String)` to match the rest of the trait's
+    /// Result-convention.
+    fn list_latest_run_on_main(
+        &self,
+    ) -> impl std::future::Future<Output = Result<Option<WorkflowRunEntry>, String>> + Send;
 }
 
 /// Octocrab-backed StoryTracker. Issues HTTP requests directly
-/// to GitHub's REST API instead of shelling out to `gh`. Uses the
-/// same octocrab dependency introduced in #219 for the board poller.
+/// to GitHub's REST API. Sole production tracker — the former
+/// `GhTracker` subprocess fallback was retired in #320 to unify
+/// on a single backend + drop gh CLI runtime dependency.
 ///
 /// Constructed from an authenticated `Octocrab` client + owner/repo
 /// strings. Production path builds it from `GH_TOKEN`/`GITHUB_TOKEN`
 /// + `BPMUX_REPO` env vars; see `OctocrabStoryTracker::from_env`.
-///
-/// Keeps `GhTracker` available as fallback for environments where
-/// direct API access isn't configured (no token, no repo env var).
 #[derive(Clone)]
 pub struct OctocrabStoryTracker {
     client: octocrab::Octocrab,
@@ -407,6 +340,23 @@ impl StoryTracker for OctocrabStoryTracker {
             Err(e) => log_labels_fetch_failure("octocrab", number, Self::classify(e)),
         }
     }
+
+    async fn list_latest_run_on_main(&self) -> Result<Option<WorkflowRunEntry>, String> {
+        #[derive(serde::Deserialize)]
+        struct RunsResponse {
+            workflow_runs: Vec<WorkflowRunEntry>,
+        }
+        let path = format!(
+            "/repos/{}/{}/actions/runs?branch=main&per_page=1",
+            self.owner, self.repo
+        );
+        let response: RunsResponse = self
+            .client
+            .get(path, None::<&()>)
+            .await
+            .map_err(Self::classify)?;
+        Ok(response.workflow_runs.into_iter().next())
+    }
 }
 
 #[derive(Clone, Default)]
@@ -448,5 +398,9 @@ impl StoryTracker for FakeTracker {
 
     async fn get_story_labels(&self, _number: u64) -> Vec<String> {
         Vec::new()
+    }
+
+    async fn list_latest_run_on_main(&self) -> Result<Option<WorkflowRunEntry>, String> {
+        Ok(None)
     }
 }

@@ -561,7 +561,7 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                     tools::handle_remove_principle(&args, &current_name).await
                 }
                 "get_token_report" => tools::handle_get_token_report().await,
-                "get_ci_state" => tools::handle_get_ci_state(&args).await,
+                "get_ci_state" => tools::handle_get_ci_state(&args, &tracker).await,
                 "view_board" => tools_stories::handle_view_board(&args, &tracker).await,
                 "view_velocity" => tools::handle_view_velocity(port, &tracker, &ws_tx).await,
                 "create_story" => tools_stories::handle_create_story(&args, &ws_tx, &tracker).await,
@@ -636,35 +636,31 @@ pub fn run_bridge(
     let rt = tokio::runtime::Runtime::new()?;
     if fake_tracker {
         let tracker = tracker::FakeTracker { board_fixture };
-        rt.block_on(async {
+        return rt.block_on(async {
             let server = BridgeServer::new(port, name.to_string(), tracker);
             let (stdin, stdout) = rmcp::transport::io::stdio();
             let service = server.serve((stdin, stdout)).await?;
             service.waiting().await?;
             anyhow::Ok(())
-        })
-    } else if let Some(tracker) = tracker::OctocrabStoryTracker::from_env() {
-        // Prefer the octocrab-backed tracker when auth + repo
-        // are configured. Eliminates gh CLI shellouts from the
-        // write path; direct REST API is faster and has cleaner
-        // error shapes. GhTracker remains the fallback below.
-        rt.block_on(async {
-            let server = BridgeServer::new(port, name.to_string(), tracker);
-            let (stdin, stdout) = rmcp::transport::io::stdio();
-            let service = server.serve((stdin, stdout)).await?;
-            service.waiting().await?;
-            anyhow::Ok(())
-        })
-    } else {
-        let tracker = tracker::GhTracker { board_fixture };
-        rt.block_on(async {
-            let server = BridgeServer::new(port, name.to_string(), tracker);
-            let (stdin, stdout) = rmcp::transport::io::stdio();
-            let service = server.serve((stdin, stdout)).await?;
-            service.waiting().await?;
-            anyhow::Ok(())
-        })
+        });
     }
+    // Production path: octocrab is the sole backend (#320 unification).
+    // Fail loud if GH_TOKEN + BPMUX_REPO aren't set — silent-fallback
+    // was removed with GhTracker; trying to run without creds is a
+    // misconfiguration the user needs to see, not paper over.
+    let tracker = tracker::OctocrabStoryTracker::from_env().ok_or_else(|| {
+        anyhow::anyhow!(
+            "bpmux bridge requires GH_TOKEN (or GITHUB_TOKEN) + BPMUX_REPO \
+             env vars. Set both and retry. See diag log for which var was missing."
+        )
+    })?;
+    rt.block_on(async {
+        let server = BridgeServer::new(port, name.to_string(), tracker);
+        let (stdin, stdout) = rmcp::transport::io::stdio();
+        let service = server.serve((stdin, stdout)).await?;
+        service.waiting().await?;
+        anyhow::Ok(())
+    })
 }
 
 #[cfg(test)]

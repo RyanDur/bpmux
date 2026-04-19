@@ -39,28 +39,45 @@ impl DoraMetrics {
     }
 }
 
-pub(in crate::terminal) fn fetch_dora_metrics() -> Option<DoraMetrics> {
-    let mut cmd = std::process::Command::new("gh");
-    cmd.args([
-        "issue",
-        "list",
-        "--state",
-        "all",
-        "--limit",
-        "200",
-        "--json",
-        "state,labels,title,createdAt,closedAt",
-    ]);
-    if let Ok(repo) = std::env::var("BPMUX_REPO") {
-        cmd.args(["-R", &repo]);
-    } else {
-        cmd.current_dir(env!("CARGO_MANIFEST_DIR"));
-    }
-    let output = cmd.output().ok()?;
-    if !output.status.success() {
-        return None;
-    }
-    let issues: Vec<serde_json::Value> = serde_json::from_slice(&output.stdout).ok()?;
+/// Fetch all open + recently closed issues and compute DORA-style
+/// throughput metrics over them. Returns `None` when the live fetch
+/// can't run (missing env, network) so the caller keeps the last
+/// known metrics rather than rendering a zero-valued panel.
+///
+/// #320: ported from `gh issue list --json state,labels,title,createdAt,closedAt`
+/// to octocrab. The pure `compute_dora_metrics` core stays unchanged
+/// — the live-fetch wrapper translates octocrab's typed `Issue` into
+/// the `serde_json::Value` shape the core already consumes. Kept the
+/// Value shape rather than refactoring the core so the bug-fixed
+/// DORA math tests in this file continue exercising the same input
+/// type.
+pub(in crate::terminal) async fn fetch_dora_metrics() -> Option<DoraMetrics> {
+    let (client, owner, repo) = crate::github::octocrab_client().ok()?;
+    let page = client
+        .issues(&owner, &repo)
+        .list()
+        .state(octocrab::params::State::All)
+        .per_page(100)
+        .send()
+        .await
+        .ok()?;
+    let issues: Vec<serde_json::Value> = page
+        .items
+        .iter()
+        .map(|i| {
+            serde_json::json!({
+                "state": match i.state {
+                    octocrab::models::IssueState::Open => "OPEN",
+                    octocrab::models::IssueState::Closed => "CLOSED",
+                    _ => "OPEN",
+                },
+                "labels": i.labels.iter().map(|l| serde_json::json!({"name": l.name})).collect::<Vec<_>>(),
+                "title": i.title,
+                "createdAt": i.created_at.to_rfc3339(),
+                "closedAt": i.closed_at.map(|t| t.to_rfc3339()),
+            })
+        })
+        .collect();
     Some(compute_dora_metrics(&issues, chrono::Utc::now()))
 }
 

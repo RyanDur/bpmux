@@ -1,17 +1,14 @@
 //! Story management tool handlers (#140, #194, #197).
 //!
-//! Lane-aware operations on GitHub issues via server-side `gh` proxy.
-//! Workflow signals fire on INTENT (before gh) so the team is notified
-//! even when gh fails.
+//! Lane-aware operations on GitHub issues via the tracker trait
+//! (octocrab-backed per #320). Workflow signals fire on INTENT (before
+//! the tracker call) so the team is notified even when the mutation
+//! fails.
 
 use tokio::sync::Mutex;
 
 use super::tools::{WsSink, ws_send};
 use crate::transport::protocol::ClientMessage;
-
-/// Compile-time repo root — guaranteed to be the bpmux source
-/// directory regardless of which workspace starts the bridge.
-const REPO_ROOT: &str = env!("CARGO_MANIFEST_DIR");
 
 /// GitHub label vocabulary. Centralized so the read-checks
 /// (handle_view_board) and the write-calls (handle_start/deliver/etc.)
@@ -69,28 +66,6 @@ pub(super) async fn broadcast_board_invalidate(ws_tx: &Mutex<Option<WsSink>>) {
             "bridge: board-invalidate serialize failed: {e}"
         )),
     }
-}
-
-/// Run a gh command and return stdout. Errors include stderr.
-/// Sets the working directory to the bpmux repo so `gh` can find
-/// git remotes even when the bridge runs from an agent workspace.
-pub(crate) async fn gh(args: &[&str]) -> Result<String, String> {
-    let mut cmd = tokio::process::Command::new("gh");
-    cmd.args(args);
-    if let Ok(repo) = std::env::var("BPMUX_REPO") {
-        cmd.args(["-R", &repo]);
-    } else {
-        cmd.current_dir(REPO_ROOT);
-    }
-    let output = tokio::time::timeout(std::time::Duration::from_secs(30), cmd.output())
-        .await
-        .map_err(|_| "gh command timed out after 30s".to_string())?
-        .map_err(|e| format!("gh: {e}"))?;
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("gh failed: {stderr}"));
-    }
-    Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
 pub(super) fn role_from_name(name: &str) -> &str {

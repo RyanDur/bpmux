@@ -7,6 +7,10 @@
 //! each depend only on this module instead of importing across
 //! sibling layers.
 
+pub mod client;
+
+pub use client::{ensure_crypto_provider_installed, octocrab_client};
+
 use octocrab::Error;
 
 /// Distinguishable error classes for specific UX surfaces. Each

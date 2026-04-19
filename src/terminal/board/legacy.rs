@@ -2,30 +2,22 @@
 /// so `bridge` and `terminal` share a single source.
 pub(in crate::terminal) use crate::roadmap::fetch_roadmap;
 
-pub(in crate::terminal) fn fetch_board() -> Result<String, String> {
-    let mut cmd = std::process::Command::new("gh");
-    cmd.args([
-        "issue",
-        "list",
-        "--state",
-        "all",
-        "--limit",
-        "50",
-        "--json",
-        "number,title,state,labels",
-    ]);
-    if let Ok(repo) = std::env::var("BPMUX_REPO") {
-        cmd.args(["-R", &repo]);
-    } else {
-        cmd.current_dir(env!("CARGO_MANIFEST_DIR"));
-    }
-    let output = cmd.output().map_err(|e| format!("failed to run gh: {e}"))?;
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("gh failed: {stderr}"));
-    }
-    let json: Vec<serde_json::Value> =
-        serde_json::from_slice(&output.stdout).map_err(|e| format!("parse error: {e}"))?;
+/// Legacy project-panel fallback: renders a markdown summary of the
+/// current board when the roadmap file can't be read.
+///
+/// #320: ported from `gh issue list` to octocrab. Async because it
+/// talks to octocrab; callers in sync contexts bridge via
+/// `Handle::current().block_on(...)` (see `event_dispatch::mouse`).
+pub(in crate::terminal) async fn fetch_board() -> Result<String, String> {
+    let (client, owner, repo) = crate::github::octocrab_client()?;
+    let page = client
+        .issues(&owner, &repo)
+        .list()
+        .state(octocrab::params::State::Open)
+        .per_page(50)
+        .send()
+        .await
+        .map_err(|e| crate::github::classify_error(&e).user_message())?;
 
     struct BoardItem {
         number: u64,
@@ -37,18 +29,9 @@ pub(in crate::terminal) fn fetch_board() -> Result<String, String> {
     let mut backlog: Vec<BoardItem> = Vec::new();
     let mut icebox: Vec<BoardItem> = Vec::new();
 
-    for issue in &json {
-        let num = issue["number"].as_u64().unwrap_or(0);
-        let title = issue["title"].as_str().unwrap_or("?").to_string();
-        let state = issue["state"].as_str().unwrap_or("OPEN");
-        let labels: Vec<&str> = issue["labels"]
-            .as_array()
-            .map(|arr| arr.iter().filter_map(|l| l["name"].as_str()).collect())
-            .unwrap_or_default();
-
-        if state == "CLOSED" {
-            continue;
-        }
+    for issue in &page.items {
+        // Only open issues were requested; no CLOSED filter needed.
+        let labels: Vec<&str> = issue.labels.iter().map(|l| l.name.as_str()).collect();
 
         let status = if labels.contains(&"delivered") {
             Some("delivered".to_string())
@@ -63,8 +46,8 @@ pub(in crate::terminal) fn fetch_board() -> Result<String, String> {
         };
 
         let item = BoardItem {
-            number: num,
-            title,
+            number: issue.number,
+            title: issue.title.clone(),
             status,
         };
 

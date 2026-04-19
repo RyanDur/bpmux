@@ -1,11 +1,11 @@
-//! Pull-based CI state for agents. Calls `gh run list --branch main
-//! -L 1` via the bridge's existing `gh` helper and returns a
-//! structured report. Pure `build_ci_state_report` is separated from
-//! the fetch so unit tests cover shape without network.
+//! Pull-based CI state for agents. Fetches the most recent workflow
+//! run on main via the tracker's octocrab client (#320 unified; was
+//! `gh run list` subprocess pre-#320) and returns a structured
+//! report. Pure `build_ci_state_report` is separated from the fetch
+//! so unit tests cover shape without network.
 
+use crate::bridge::tracker::{StoryTracker, WorkflowRunEntry};
 use crate::terminal::ci::{CiState, RunEntry, classify_runs, github_actions_url};
-
-use super::super::tools_stories::gh;
 
 #[derive(Debug, serde::Serialize, PartialEq, Eq)]
 pub(crate) struct CiStateReport {
@@ -39,22 +39,27 @@ pub(crate) fn build_ci_state_report(runs: &[RunEntry]) -> CiStateReport {
     }
 }
 
+/// Convert the tracker's generic `WorkflowRunEntry` shape into the
+/// `RunEntry` shape `terminal::ci::classify_runs` consumes. The two
+/// structs differ only in field visibility (tracker struct is public
+/// for cross-module reuse; RunEntry is crate-internal classification
+/// type). One-to-one field copy.
+fn run_entry_from_tracker(w: &WorkflowRunEntry) -> RunEntry {
+    RunEntry {
+        status: w.status.clone(),
+        conclusion: w.conclusion.clone(),
+        head_sha: w.head_sha.clone(),
+        display_title: w.display_title.clone(),
+        database_id: w.database_id,
+    }
+}
+
 pub(in crate::bridge) async fn handle_get_ci_state(
     _args: &serde_json::Map<String, serde_json::Value>,
+    tracker: &impl StoryTracker,
 ) -> Result<String, String> {
-    let stdout = gh(&[
-        "run",
-        "list",
-        "-L",
-        "1",
-        "--branch",
-        "main",
-        "--json",
-        "status,conclusion,headSha,displayTitle,databaseId",
-    ])
-    .await?;
-    let runs: Vec<RunEntry> =
-        serde_json::from_str(&stdout).map_err(|e| format!("parse gh output: {e}"))?;
+    let latest = tracker.list_latest_run_on_main().await?;
+    let runs: Vec<RunEntry> = latest.iter().map(run_entry_from_tracker).collect();
     let report = build_ci_state_report(&runs);
     serde_json::to_string_pretty(&report).map_err(|e| format!("serialize: {e}"))
 }
@@ -142,30 +147,20 @@ mod tests {
         assert!(parsed["url"].as_str().unwrap().contains("/runs/1"));
     }
 
-    // Real-substrate boundary test — exercises gh subprocess + JSON
-    // parse end-to-end. Feature-gated so default CI stays offline.
-    // Run with `cargo test --features integration_tests`.
-    #[cfg(feature = "integration_tests")]
-    #[tokio::test]
-    async fn handle_returns_structured_ci_state() {
-        let args = serde_json::Map::new();
-        let result = handle_get_ci_state(&args).await;
-        assert!(
-            result.is_ok(),
-            "handle_get_ci_state should succeed with gh auth. got: {result:?}"
-        );
-        let json_str = result.unwrap();
-        let parsed: serde_json::Value =
-            serde_json::from_str(&json_str).expect("handler should return valid JSON");
-        let conclusion = parsed["conclusion"].as_str().expect("conclusion field");
-        assert!(
-            matches!(
-                conclusion,
-                "success" | "failure" | "in_progress" | "unknown"
-            ),
-            "conclusion should be one of the four known values, got: {conclusion}"
-        );
-        assert_eq!(parsed["branch"], "main");
-        assert!(parsed["url"].as_str().unwrap().starts_with("https://"));
+    #[test]
+    fn run_entry_from_tracker_preserves_fields() {
+        let w = WorkflowRunEntry {
+            status: "completed".to_string(),
+            conclusion: Some("success".to_string()),
+            head_sha: Some("abc123".to_string()),
+            display_title: Some("CI: fix bug".to_string()),
+            database_id: Some(99),
+        };
+        let r = run_entry_from_tracker(&w);
+        assert_eq!(r.status, "completed");
+        assert_eq!(r.conclusion.as_deref(), Some("success"));
+        assert_eq!(r.head_sha.as_deref(), Some("abc123"));
+        assert_eq!(r.display_title.as_deref(), Some("CI: fix bug"));
+        assert_eq!(r.database_id, Some(99));
     }
 }

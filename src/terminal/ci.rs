@@ -341,34 +341,31 @@ fn append_meta(line: &mut String, event: &CiEvent) {
 pub struct RunEntry {
     pub status: String,
     pub conclusion: Option<String>,
-    #[serde(rename = "headSha", default)]
+    // REST API uses `head_sha` / `display_title` / `id`; retain aliases
+    // for the legacy `gh --json headSha,displayTitle,databaseId` format
+    // so any persisted-JSON or fixture data from before #320 still parses.
+    #[serde(alias = "headSha", default)]
     pub head_sha: Option<String>,
-    #[serde(rename = "displayTitle", default)]
+    #[serde(alias = "displayTitle", default)]
     pub display_title: Option<String>,
-    #[serde(rename = "databaseId", default)]
+    #[serde(rename = "id", alias = "databaseId", default)]
     pub database_id: Option<u64>,
 }
 
 async fn poll_once() -> Result<CiEvent, Box<dyn std::error::Error + Send + Sync>> {
-    let output = tokio::process::Command::new("gh")
-        .args([
-            "run",
-            "list",
-            "-L",
-            "1",
-            "--branch",
-            "main",
-            "--json",
-            "status,conclusion,headSha,displayTitle,databaseId",
-        ])
-        .output()
-        .await?;
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("gh exited non-zero: {}", stderr.trim()).into());
+    // #320: was `gh run list --branch main -L 1 --json ...`. Now calls the
+    // Actions REST API directly via octocrab so bpmux has no runtime
+    // dependency on the gh CLI. Env missing → error bubbles up and
+    // `spawn_poller`'s existing error handling absorbs it (diag log,
+    // keep-last-state).
+    let (client, owner, repo) = crate::github::octocrab_client()?;
+    #[derive(serde::Deserialize)]
+    struct RunsResponse {
+        workflow_runs: Vec<RunEntry>,
     }
-    let runs: Vec<RunEntry> = serde_json::from_slice(&output.stdout)?;
-    Ok(classify_runs(&runs))
+    let path = format!("/repos/{owner}/{repo}/actions/runs?branch=main&per_page=1");
+    let response: RunsResponse = client.get(path, None::<&()>).await?;
+    Ok(classify_runs(&response.workflow_runs))
 }
 
 pub fn classify_runs(runs: &[RunEntry]) -> CiEvent {

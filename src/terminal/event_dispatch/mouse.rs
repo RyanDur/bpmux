@@ -6,17 +6,39 @@ const MOUSE_SCROLL_LINES: usize = 3;
 const MENU_CLICK_WIDTH: u16 = 3;
 
 fn build_project_content() -> String {
+    // #320: both `fetch_dora_metrics` and `fetch_board` went async when
+    // they moved from `gh` subprocess to octocrab. This callsite is the
+    // synchronous mouse-click handler in the main event loop (via
+    // `handle_terminal_event`). We bridge to async with
+    // `block_in_place` + `Handle::current().block_on`, which lets the
+    // tokio multi-thread runtime park this worker while the other
+    // workers continue to drive the rest of the select! arms.
+    //
+    // Pre-#320 the same handler already blocked the event loop on a
+    // synchronous `gh` subprocess, so this preserves (rather than
+    // regresses) the current latency shape. The right fix is to defer
+    // content-building off the click path entirely — tracked as
+    // follow-up; out of #320's scope.
+    let handle = tokio::runtime::Handle::current();
     let mut content = String::new();
-    if let Some(metrics) = crate::terminal::board::fetch_dora_metrics() {
+    let metrics = tokio::task::block_in_place(|| {
+        handle.block_on(crate::terminal::board::fetch_dora_metrics())
+    });
+    if let Some(metrics) = metrics {
         content.push_str(&metrics.format());
         content.push_str("\n\n---\n\n");
     }
     match crate::terminal::board::fetch_roadmap() {
         Ok(text) => content.push_str(&text),
-        Err(_) => match crate::terminal::board::fetch_board() {
-            Ok(text) => content.push_str(&text),
-            Err(e) => content.push_str(&format!("Project info unavailable: {e}")),
-        },
+        Err(_) => {
+            let board = tokio::task::block_in_place(|| {
+                handle.block_on(crate::terminal::board::fetch_board())
+            });
+            match board {
+                Ok(text) => content.push_str(&text),
+                Err(e) => content.push_str(&format!("Project info unavailable: {e}")),
+            }
+        }
     }
     content
 }

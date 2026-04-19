@@ -170,10 +170,10 @@ where
         let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));
         loop {
             interval.tick().await;
-            if let Some(state) = tokio::task::spawn_blocking(super::board::fetch_project_state)
-                .await
-                .ok()
-                .flatten()
+            // #320: was `spawn_blocking(fetch_project_state)` back when
+            // the fetcher shelled out to gh. Now it's async over
+            // octocrab and runs directly on the current task.
+            if let Some(state) = super::board::fetch_project_state().await
                 && project_tx.send(state).await.is_err()
             {
                 break;
@@ -190,10 +190,9 @@ where
             let mut interval = tokio::time::interval(std::time::Duration::from_secs(120));
             loop {
                 interval.tick().await;
-                if let Some(metrics) = tokio::task::spawn_blocking(super::board::fetch_dora_metrics)
-                    .await
-                    .ok()
-                    .flatten()
+                // #320: was `spawn_blocking(fetch_dora_metrics)` when the
+                // fetcher was sync-gh. Now async over octocrab.
+                if let Some(metrics) = super::board::fetch_dora_metrics().await
                     && dora_tx.send(metrics).await.is_err()
                 {
                     break;
@@ -255,35 +254,25 @@ where
     // for signal-driven refresh below.
     app.board_poller_tx = board_poller_tx.clone();
 
-    // On-demand gh-CLI board fetcher (#294 freeze-fix). Before this,
-    // `request_board_refresh_if_stale` called `fetch_board_stories`
-    // synchronously on the event loop thread. Under slow gh (Ryan's
-    // prod env) that blocked every `select!` arm — input handling,
-    // wake channel, p2p, the lot — until gh returned. The freeze
-    // shipped latent past the `--fake-tracker` fixture which skipped
-    // the real subprocess entirely.
-    //
-    // Fix: move the sync fetch off the event loop onto the blocking
-    // threadpool, mirroring the `fetch_project_state` + `fetch_dora_metrics`
-    // pattern already established above. view-open paths now fire a
-    // `try_send(())` on `board_fetch_request_tx` and return; the
-    // listener below runs `spawn_blocking(fetch_board_stories)`,
-    // bounded by a timeout so a pathological gh hang can't starve the
-    // listener indefinitely, then pushes the result via
-    // `board_fetch_result_tx` back into the main select!.
+    // On-demand board fetcher (#294 freeze-fix, #320 gh→octocrab).
+    // Before #294, `request_board_refresh_if_stale` called
+    // `fetch_board_stories` synchronously on the event loop thread;
+    // under slow gh that blocked every `select!` arm. The fix moved
+    // the fetch behind a signal channel so the listener task owns
+    // the await. #320 then swapped the subprocess for octocrab —
+    // async-native, so this task no longer needs `spawn_blocking`,
+    // but the signal shape + 10s timeout stay for the same starve-
+    // prevention guarantee (a hung HTTPS connection could otherwise
+    // stall refetches indefinitely).
     let (board_fetch_request_tx, mut board_fetch_request_rx) = mpsc::channel::<()>(1);
     let (board_fetch_result_tx, mut board_fetch_result_rx) =
         mpsc::channel::<Vec<super::board::BoardStory>>(1);
     app.board_fetch_request_tx = Some(board_fetch_request_tx);
     tokio::spawn(async move {
         while board_fetch_request_rx.recv().await.is_some() {
-            // 10s is generous — gh typically responds in <1s; anything
-            // past 10s is a failure mode (auth hang, network death).
-            // On timeout, we drop the result; the view surface
-            // already renders the stale-or-empty state gracefully.
-            let fetch = tokio::task::spawn_blocking(super::board::fetch_board_stories);
+            let fetch = super::board::fetch_board_stories();
             let bounded = tokio::time::timeout(std::time::Duration::from_secs(10), fetch).await;
-            if let Ok(Ok(Ok(stories))) = bounded {
+            if let Ok(Ok(stories)) = bounded {
                 // try_send (not send): if a previous result is still
                 // sitting in the 1-slot channel, we'd rather drop this
                 // one than block the listener task.
