@@ -138,6 +138,27 @@ fn build_board_invalidate_signal_is_system_typed_broadcast() {
     );
 }
 
+// #316 close_story MCP tool — PM-only wrapper over existing tracker
+// close + comment methods. Permission-gate tests here; behavior is
+// exercised via the FakeTracker path for test hermeticity.
+
+#[test]
+fn close_story_is_pm_only_gate() {
+    for caller in ["dev:claude-code", "designer:claude-code", "ryan:human"] {
+        let result = require_role(caller, &["pm"], "close");
+        assert!(
+            result.is_err(),
+            "{caller} should not pass close_story permission gate"
+        );
+        assert!(result.unwrap_err().contains("restricted to pm"));
+    }
+}
+
+#[test]
+fn close_story_allows_pm() {
+    assert!(require_role("pm:claude-code", &["pm"], "close").is_ok());
+}
+
 #[test]
 fn require_role_rejects_non_designer_from_desk_check_operations() {
     for caller in ["dev:claude-code", "pm:claude-code", "ryan:human"] {

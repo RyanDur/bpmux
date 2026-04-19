@@ -442,6 +442,9 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
             crate::mcp::tools::label_story_tool(
                 "Add a label to a story (ready, blocked, icebox, deferred). PM ONLY — other roles are rejected.",
             ),
+            crate::mcp::tools::close_story_tool(
+                "Close a story with a reason (superseded / duplicate / won't-fix). Adds the reason as a comment on the issue + closes it. PM ONLY — accept/reject are separate paths for delivered stories. Use this for pre-delivery closures that don't route through the ship chain. Args: number + reason (required).",
+            ),
             crate::mcp::tools::accept_story_tool(
                 "Accept a delivered story and close it. OWNER (ryan) ONLY.",
             ),
@@ -575,6 +578,10 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                 "label_story" => {
                     let current_name = name.lock().await;
                     tools_stories::handle_label_story(&args, &current_name, &ws_tx, &tracker).await
+                }
+                "close_story" => {
+                    let current_name = name.lock().await;
+                    tools_stories::handle_close_story(&args, &current_name, &ws_tx, &tracker).await
                 }
                 "accept_story" => {
                     let current_name = name.lock().await;

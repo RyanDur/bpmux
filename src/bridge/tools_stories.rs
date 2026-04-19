@@ -464,6 +464,46 @@ pub(super) async fn handle_reorder_story(
     Ok(format!("#{number} moved to position {position} in {state}"))
 }
 
+/// Close a story with a reason — PM-only. Adds the reason as a
+/// comment on the issue, then closes it. Thin wrapper on existing
+/// `tracker.comment_on_story` + `tracker.close_story` — capability
+/// is pre-existing (accept_story uses the same close path), this
+/// generalizes the invocation for superseded / duplicate / won't-fix
+/// closures.
+pub(super) async fn handle_close_story(
+    args: &serde_json::Map<String, serde_json::Value>,
+    agent_name: &str,
+    ws_tx: &Mutex<Option<WsSink>>,
+    tracker: &impl super::tracker::StoryTracker,
+) -> Result<String, String> {
+    require_role(agent_name, &["pm"], "close")?;
+    let number = args
+        .get("number")
+        .and_then(|v| v.as_u64())
+        .ok_or("missing 'number' argument")?;
+    let reason = args
+        .get("reason")
+        .and_then(|v| v.as_str())
+        .ok_or("missing 'reason' argument")?;
+    if reason.trim().is_empty() {
+        return Err("'reason' must not be empty — audit trail for closure".to_string());
+    }
+    if let Err(e) = tracker.comment_on_story(number, reason).await {
+        crate::session::diag::log_diag(&format!(
+            "bridge: close_story comment failed for #{number}: {e}"
+        ));
+    }
+    let close_result = tracker.close_story(number).await;
+    broadcast_board_invalidate(ws_tx).await;
+    match close_result {
+        Ok(_) => Ok(format!("#{number} closed: {reason}")),
+        Err(e) if e.contains("already closed") || e.contains("is closed") => {
+            Ok(format!("#{number} was already closed — comment added"))
+        }
+        Err(e) => Err(format!("#{number} close failed: {e}")),
+    }
+}
+
 /// Fire the iteration-close externalize-prompt (#282). PM-gated.
 ///
 /// Fail-soft: the MCP tool returns after the broadcast ws_send
