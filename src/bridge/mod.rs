@@ -657,4 +657,6 @@ mod tests;
 #[cfg(test)]
 mod tools_stories_tests;
 #[cfg(test)]
+mod tracker_contract_tests;
+#[cfg(test)]
 mod tracker_tests;

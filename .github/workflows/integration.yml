@@ -1,12 +1,20 @@
 name: Integration
 
-# Real-substrate contract tests against GitHub's live gh CLI + octocrab
-# REST API (#299). Separate from the main `CI` workflow because these
-# tests require `GH_TOKEN` + `BPMUX_REPO` secrets. If either secret is
-# missing the job exits cleanly with an explanatory message — NOT a
-# silent skip. The tests themselves are feature-gated (`cargo test
-# --features integration_tests`) so they don't compile by default;
-# this workflow is the authorized trigger.
+# Real-substrate drift oracle (#299 origin; #304 demoted from primary
+# path). The primary contract-verification path is now the offline
+# suite in `src/bridge/tracker_contract_tests.rs` (httpmock) +
+# `tests/gh_fixture_contract_test.rs` (JSON fixtures), which runs on
+# every `cargo test` — pre-push + main CI cover it without secrets.
+#
+# This workflow's role: run the feature-gated integration tests
+# (`cargo test --features integration_tests`) against the LIVE gh CLI
+# + octocrab REST API so drift between bpmux's recorded contracts and
+# real GitHub surfaces before it hits a user. When drift fires, the
+# fix path is `scripts/rerecord-fixtures.sh`.
+#
+# Requires `GH_TOKEN_INTEGRATION` + `BPMUX_REPO_INTEGRATION` secrets.
+# If either is missing the job exits cleanly with an explanatory
+# message — NOT a silent skip.
 
 on:
   push:

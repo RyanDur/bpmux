@@ -1,0 +1,9 @@
+[
+  {
+    "status": "completed",
+    "conclusion": "success",
+    "headSha": "abc1234567890abcdef1234567890abcdef1234",
+    "displayTitle": "CI: main branch passing",
+    "databaseId": 99887766
+  }
+]

@@ -53,6 +53,7 @@ tokio-tungstenite = "0.26"
 futures-util = "0.3"
 tower = { version = "0.5", features = ["util"] }
 http-body-util = "0.1"
+httpmock = "0.8"
 
 [lints.clippy]
 unwrap_used = "deny"

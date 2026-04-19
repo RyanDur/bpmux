@@ -1,0 +1,9 @@
+[
+  {
+    "status": "completed",
+    "conclusion": "failure",
+    "headSha": "def9876543210fedcba9876543210fedcba9876",
+    "displayTitle": "CI: main branch failed",
+    "databaseId": 11223344
+  }
+]

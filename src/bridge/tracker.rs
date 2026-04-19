@@ -262,6 +262,30 @@ impl OctocrabStoryTracker {
         }
     }
 
+    /// Build a tracker pointed at an arbitrary base URL instead of
+    /// `https://api.github.com`. Contract tests spin up an httpmock
+    /// server and pass its URL here so the tracker's HTTP calls hit
+    /// the mock without any real-network side effects. Not used at
+    /// runtime — the production path always goes through `from_env`.
+    #[cfg(test)]
+    pub(crate) fn with_base_url(
+        base_url: &str,
+        owner: String,
+        repo: String,
+    ) -> Result<Self, String> {
+        ensure_crypto_provider_installed();
+        let client = octocrab::OctocrabBuilder::new()
+            .base_uri(base_url)
+            .map_err(|e| format!("base_uri: {e}"))?
+            .build()
+            .map_err(|e| format!("build: {e}"))?;
+        Ok(Self {
+            client,
+            owner,
+            repo,
+        })
+    }
+
     fn classify(err: octocrab::Error) -> String {
         // Shared GitHub-error taxonomy lives in `crate::github` so
         // the bridge and the board poller both depend on it instead

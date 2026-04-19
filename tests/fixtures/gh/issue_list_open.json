@@ -1,0 +1,20 @@
+[
+  {
+    "number": 42,
+    "title": "Sample open story",
+    "state": "OPEN",
+    "labels": [
+      { "name": "Feature" },
+      { "name": "ready" }
+    ]
+  },
+  {
+    "number": 17,
+    "title": "In-progress work",
+    "state": "OPEN",
+    "labels": [
+      { "name": "Bug" },
+      { "name": "in progress" }
+    ]
+  }
+]
