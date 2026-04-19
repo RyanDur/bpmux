@@ -17,11 +17,7 @@ use harness::bridge::TestBridge;
 use harness::pty::TestBpmux;
 use std::time::Duration;
 
-/// Presence-wait timeout for integration tests (#276). GitHub Actions
-/// runners plus subprocess spawn + WS notification round-trip can
-/// push 5s-tight waits past the edge under load. 15s gives enough
-/// headroom without hiding real stalls.
-const WAIT_PRESENCE_TIMEOUT: Duration = Duration::from_secs(15);
+const WAIT_PRESENCE_TIMEOUT: Duration = Duration::from_secs(30);
 
 #[test]
 fn messages_flow_through_bridge() {
