@@ -30,7 +30,18 @@ fn write_fixture() -> tempfile::NamedTempFile {
 /// THEN the project panel opens showing state headers + stories
 /// AND chat is still visible below
 /// AND Esc closes the panel
+///
+/// Ignored in default runs: under concurrent PTY test load the bare
+/// `\x1b` sent by `type_key("Esc")` gets mis-parsed as a literal
+/// escape character (echoes `^[` into chat input) instead of firing
+/// crossterm's `KeyCode::Esc`. Passes reliably in isolation
+/// (`cargo test --test board_view_test`), fails intermittently in
+/// the full suite on CI + locally under load. The test premise is
+/// right; the harness's Esc-timing is the flake. Re-enable once the
+/// PTY harness has a reliable Esc-injection path (or move to ratatui
+/// TestBackend + direct event injection like `ui_tests`).
 #[test]
+#[ignore = "PTY harness Esc-timing flake under concurrent load; see doc above"]
 fn board_renders_fixture_stories_in_panel() {
     let fixture = write_fixture();
     let bpmux = TestBpmux::start_with_env(

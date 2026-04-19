@@ -249,6 +249,21 @@ pub struct BoardState {
     /// sidebar's Alt+1. Independent of InputMode::Board (which is
     /// the full-screen overlay).
     pub panel_open: bool,
+    /// Selected-story index in the side-panel row list (#319). Drives
+    /// highlight + drill-in open target. Wraps at list boundaries.
+    pub panel_selected: usize,
+    /// Drill-in target (#319). `Some(i)` means the panel renders the
+    /// full detail view for `stories[i]`; `None` means row-list view.
+    /// Scroll offset is tracked separately so Esc preserves the
+    /// row-list scroll.
+    pub panel_detail: Option<usize>,
+    /// Vertical scroll offset for the drill-in body (#319). Ctrl+U / D
+    /// move this by N lines. Reset on drill-in open.
+    pub panel_detail_scroll: u16,
+    /// Panel keyboard focus (#319). When true, arrow keys + Enter +
+    /// Esc route to panel navigation instead of chat input. Parallel
+    /// to `sidebar.focused`.
+    pub panel_focused: bool,
 }
 
 /// Session identity — frozen after construction. These fields

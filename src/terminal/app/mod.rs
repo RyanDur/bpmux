@@ -255,11 +255,71 @@ impl App {
     /// full-screen `InputMode::Board` path — `panel_open` coexists
     /// with chat. On open, trigger a board refetch so the panel shows
     /// current state immediately rather than the empty default.
+    ///
+    /// Focus cycles parallel to sidebar: closed→open+focused; focused
+    /// but unfocused→focused; focused→closed.
     pub fn toggle_board_panel(&mut self) {
-        self.board.panel_open = !self.board.panel_open;
-        if self.board.panel_open {
+        if !self.board.panel_open {
+            self.board.panel_open = true;
+            self.board.panel_focused = true;
             self.request_board_refresh_if_stale();
+        } else if !self.board.panel_focused {
+            self.board.panel_focused = true;
+        } else {
+            self.board.panel_open = false;
+            self.board.panel_focused = false;
+            self.panel_close_detail();
         }
+    }
+
+    /// Move the board panel's row-list selection up (#319). Wraps at
+    /// the top. No-op when the panel isn't open or the stories list
+    /// is empty.
+    pub fn panel_select_up(&mut self) {
+        let count = self.board.stories.len();
+        if count == 0 {
+            return;
+        }
+        self.board.panel_selected = if self.board.panel_selected == 0 {
+            count - 1
+        } else {
+            self.board.panel_selected - 1
+        };
+    }
+
+    /// Move the board panel's row-list selection down (#319). Wraps
+    /// at the bottom.
+    pub fn panel_select_down(&mut self) {
+        let count = self.board.stories.len();
+        if count == 0 {
+            return;
+        }
+        self.board.panel_selected = (self.board.panel_selected + 1) % count;
+    }
+
+    /// Open drill-in for the currently-selected panel row (#319).
+    /// Resets scroll so the body starts at the top.
+    pub fn panel_open_detail(&mut self) {
+        if self.board.stories.is_empty() {
+            return;
+        }
+        self.board.panel_detail = Some(self.board.panel_selected);
+        self.board.panel_detail_scroll = 0;
+    }
+
+    /// Close drill-in, return to row-list view (#319). Preserves
+    /// panel_selected so the list opens at the same row.
+    pub fn panel_close_detail(&mut self) {
+        self.board.panel_detail = None;
+        self.board.panel_detail_scroll = 0;
+    }
+
+    pub fn panel_detail_scroll_up(&mut self, lines: u16) {
+        self.board.panel_detail_scroll = self.board.panel_detail_scroll.saturating_sub(lines);
+    }
+
+    pub fn panel_detail_scroll_down(&mut self, lines: u16) {
+        self.board.panel_detail_scroll = self.board.panel_detail_scroll.saturating_add(lines);
     }
 
     pub(super) fn sync_input_from_textarea(&mut self) {

@@ -1483,3 +1483,116 @@ fn toggle_board_panel_independent_of_full_screen_board() {
         "input_mode unchanged by panel toggle"
     );
 }
+
+// #319 panel drill-in navigation
+
+fn panel_app_with_stories(n: usize) -> App {
+    use crate::terminal::board::{BoardStory, StoryState};
+    let mut app = test_app();
+    app.board.stories = (0..n)
+        .map(|i| BoardStory {
+            number: (100 + i) as u64,
+            title: format!("story {i}"),
+            state: StoryState::Ready,
+            body: format!("body for story {i}"),
+            assignees: vec![],
+            created: "2026-04-19".to_string(),
+            reason: String::new(),
+            labels: vec!["ready".to_string()],
+        })
+        .collect();
+    app
+}
+
+#[test]
+fn panel_select_down_advances_and_wraps() {
+    let mut app = panel_app_with_stories(3);
+    assert_eq!(app.board.panel_selected, 0);
+    app.panel_select_down();
+    assert_eq!(app.board.panel_selected, 1);
+    app.panel_select_down();
+    assert_eq!(app.board.panel_selected, 2);
+    app.panel_select_down();
+    assert_eq!(app.board.panel_selected, 0, "wraps at end");
+}
+
+#[test]
+fn panel_select_up_wraps_from_top() {
+    let mut app = panel_app_with_stories(3);
+    assert_eq!(app.board.panel_selected, 0);
+    app.panel_select_up();
+    assert_eq!(app.board.panel_selected, 2, "wraps to last");
+}
+
+#[test]
+fn panel_select_noop_on_empty_stories() {
+    let mut app = test_app();
+    assert!(app.board.stories.is_empty());
+    app.panel_select_down();
+    app.panel_select_up();
+    assert_eq!(app.board.panel_selected, 0);
+}
+
+#[test]
+fn panel_open_detail_sets_detail_and_resets_scroll() {
+    let mut app = panel_app_with_stories(3);
+    app.board.panel_selected = 2;
+    app.board.panel_detail_scroll = 42;
+    app.panel_open_detail();
+    assert_eq!(app.board.panel_detail, Some(2));
+    assert_eq!(app.board.panel_detail_scroll, 0, "scroll resets on open");
+}
+
+#[test]
+fn panel_close_detail_clears_detail_preserves_selected() {
+    let mut app = panel_app_with_stories(3);
+    app.board.panel_selected = 2;
+    app.panel_open_detail();
+    assert_eq!(app.board.panel_detail, Some(2));
+    app.panel_close_detail();
+    assert_eq!(app.board.panel_detail, None);
+    assert_eq!(
+        app.board.panel_selected, 2,
+        "selected preserved so list opens at same row"
+    );
+}
+
+#[test]
+fn panel_detail_scroll_saturates_at_zero() {
+    let mut app = panel_app_with_stories(1);
+    app.panel_open_detail();
+    app.panel_detail_scroll_up(100);
+    assert_eq!(app.board.panel_detail_scroll, 0, "saturates at 0");
+    app.panel_detail_scroll_down(5);
+    assert_eq!(app.board.panel_detail_scroll, 5);
+    app.panel_detail_scroll_up(3);
+    assert_eq!(app.board.panel_detail_scroll, 2);
+}
+
+#[test]
+fn toggle_board_panel_focus_cycle() {
+    let mut app = test_app();
+    assert!(!app.board.panel_open);
+    assert!(!app.board.panel_focused);
+    // First toggle: opens + focuses
+    app.toggle_board_panel();
+    assert!(app.board.panel_open);
+    assert!(app.board.panel_focused);
+    // Second toggle (from focused): closes
+    app.toggle_board_panel();
+    assert!(!app.board.panel_open);
+    assert!(!app.board.panel_focused);
+}
+
+#[test]
+fn toggle_closes_panel_also_closes_any_open_detail() {
+    let mut app = panel_app_with_stories(3);
+    app.toggle_board_panel(); // open + focus
+    app.panel_open_detail();
+    assert!(app.board.panel_detail.is_some());
+    app.toggle_board_panel(); // close
+    assert!(
+        app.board.panel_detail.is_none(),
+        "closing panel should also clear drill-in state"
+    );
+}

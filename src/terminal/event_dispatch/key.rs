@@ -150,6 +150,48 @@ pub(super) fn handle(
         app.toggle_board_panel();
         return Ok(());
     }
+    // #319 board panel keyboard nav. Arrows / Enter / Esc capture
+    // while panel is focused; otherwise fall through to chat handling.
+    if app.board.panel_focused {
+        match key.code {
+            KeyCode::Up if app.board.panel_detail.is_some() => {
+                app.panel_detail_scroll_up(1);
+            }
+            KeyCode::Down if app.board.panel_detail.is_some() => {
+                app.panel_detail_scroll_down(1);
+            }
+            KeyCode::PageUp if app.board.panel_detail.is_some() => {
+                app.panel_detail_scroll_up(PAGE_SCROLL_LINES as u16);
+            }
+            KeyCode::PageDown if app.board.panel_detail.is_some() => {
+                app.panel_detail_scroll_down(PAGE_SCROLL_LINES as u16);
+            }
+            KeyCode::Char('u')
+                if key.modifiers.contains(KeyModifiers::CONTROL)
+                    && app.board.panel_detail.is_some() =>
+            {
+                app.panel_detail_scroll_up(PAGE_SCROLL_LINES as u16);
+            }
+            KeyCode::Char('d')
+                if key.modifiers.contains(KeyModifiers::CONTROL)
+                    && app.board.panel_detail.is_some() =>
+            {
+                app.panel_detail_scroll_down(PAGE_SCROLL_LINES as u16);
+            }
+            KeyCode::Up => app.panel_select_up(),
+            KeyCode::Down => app.panel_select_down(),
+            KeyCode::Enter => app.panel_open_detail(),
+            KeyCode::Esc => {
+                if app.board.panel_detail.is_some() {
+                    app.panel_close_detail();
+                } else {
+                    app.board.panel_focused = false;
+                }
+            }
+            _ => {}
+        }
+        return Ok(());
+    }
     if app.sidebar.focused {
         match key.code {
             KeyCode::Up => app.sidebar_up(),
