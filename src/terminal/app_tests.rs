@@ -1442,3 +1442,44 @@ fn request_board_refresh_if_stale_is_noop_when_no_fetch_sender() {
     // potentially shelling gh even without a live event loop — noise
     // in test runs.
 }
+
+// #318 side-by-side board panel — Alt+2 toggle, coexists with chat.
+
+#[test]
+fn toggle_board_panel_flips_open_state() {
+    let mut app = test_app();
+    assert!(!app.board.panel_open, "panel starts closed");
+    app.toggle_board_panel();
+    assert!(app.board.panel_open, "first toggle opens");
+    app.toggle_board_panel();
+    assert!(!app.board.panel_open, "second toggle closes");
+    app.toggle_board_panel();
+    assert!(app.board.panel_open, "third toggle reopens");
+}
+
+#[test]
+fn toggle_board_panel_independent_of_sidebar() {
+    let mut app = test_app();
+    app.toggle_sidebar();
+    let sidebar_state_before = app.sidebar.open;
+    app.toggle_board_panel();
+    assert_eq!(
+        app.sidebar.open, sidebar_state_before,
+        "toggling board panel must not touch sidebar state"
+    );
+}
+
+#[test]
+fn toggle_board_panel_independent_of_full_screen_board() {
+    // InputMode::Board is the full-screen overlay (/board slash
+    // command or Ctrl+K → /board); the side-panel is a separate
+    // coexist-with-chat state. Toggling one must not flip the other.
+    let mut app = test_app();
+    app.input_mode = InputMode::Chat;
+    app.toggle_board_panel();
+    assert!(app.board.panel_open);
+    assert!(
+        matches!(app.input_mode, InputMode::Chat),
+        "input_mode unchanged by panel toggle"
+    );
+}

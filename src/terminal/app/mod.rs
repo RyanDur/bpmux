@@ -251,6 +251,17 @@ impl App {
         }
     }
 
+    /// Toggle the side-by-side board panel (#318). Independent of the
+    /// full-screen `InputMode::Board` path — `panel_open` coexists
+    /// with chat. On open, trigger a board refetch so the panel shows
+    /// current state immediately rather than the empty default.
+    pub fn toggle_board_panel(&mut self) {
+        self.board.panel_open = !self.board.panel_open;
+        if self.board.panel_open {
+            self.request_board_refresh_if_stale();
+        }
+    }
+
     pub(super) fn sync_input_from_textarea(&mut self) {
         self.editor.input = self.editor.textarea.lines().join("");
         let (row, col) = self.editor.textarea.cursor();

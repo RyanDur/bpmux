@@ -1,3 +1,4 @@
+mod board_panel;
 mod broadcast;
 mod help_overlay;
 mod input_box;
@@ -30,6 +31,16 @@ const MIN_WIDTH_FOR_SIDEBAR: u16 = 60;
 const SIDEBAR_WIDTH: u16 = 24;
 const MAX_INPUT_HEIGHT: u16 = 8;
 const MIN_SPLIT_VIEW_WIDTH: u16 = 60;
+/// Side-by-side board panel (#318) — width reserved on the right
+/// when `app.board.panel_open` is true and the terminal is wide
+/// enough to fit chat + panel. At narrower terminals the panel
+/// falls back to hidden so chat doesn't get compressed below its
+/// legibility floor.
+const BOARD_PANEL_WIDTH: u16 = 30;
+/// Minimum terminal width required for chat + board panel to
+/// coexist. At <80 cols chat compresses below ~45 cols which breaks
+/// readability; honest degrade is "chat-only until you resize."
+const MIN_WIDTH_FOR_BOARD_PANEL: u16 = 80;
 
 pub fn render(frame: &mut Frame, app: &mut App) {
     let full = frame.area();
@@ -44,11 +55,21 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     } else {
         0
     };
+    let board_panel_width = if app.board.panel_open && full.width >= MIN_WIDTH_FOR_BOARD_PANEL {
+        BOARD_PANEL_WIDTH
+    } else {
+        0
+    };
 
-    let h_chunks = Layout::horizontal([Constraint::Length(sidebar_width), Constraint::Min(1)])
-        .split(content_area);
+    let h_chunks = Layout::horizontal([
+        Constraint::Length(sidebar_width),
+        Constraint::Min(1),
+        Constraint::Length(board_panel_width),
+    ])
+    .split(content_area);
 
     let main_area = h_chunks[1];
+    let board_panel_area = h_chunks[2];
 
     let input_lines = if app.editor.input.is_empty() {
         1
@@ -119,6 +140,13 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         app.layout.menu_click_cell = Some((menu_x, menu_y));
     } else {
         app.layout.menu_click_cell = None;
+    }
+
+    // Side-by-side board panel (#318) — coexists with chat when
+    // `panel_open` and the terminal fits both. Rendered outside the
+    // `main_area` used by chat / project overlays.
+    if board_panel_width > 0 {
+        board_panel::render(frame, app, board_panel_area);
     }
 
     // Board view replaces chat area when active.

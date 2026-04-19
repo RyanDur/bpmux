@@ -1392,3 +1392,69 @@ fn multi_depth_ondemand_renders_placeholder_at_deep() {
         "OnDemand placeholder should show the description. screen:\n{screen}"
     );
 }
+
+// #318 side-by-side board panel — layout math at 80 / 100 / 60 cols.
+
+#[test]
+fn board_panel_visible_when_open_at_80_cols() {
+    let backend = TestBackend::new(80, 24);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = test_app_with(vec![chat_msg("ryan:human", "hi")]);
+    app.board.panel_open = true;
+    terminal.draw(|frame| render(frame, &mut app)).unwrap();
+    let content = buffer_to_string(terminal.backend().buffer());
+    // " board " is the panel's title block; only rendered when the
+    // right-panel is allocated.
+    assert!(
+        content.contains(" board "),
+        "board panel title must render at 80 cols with panel_open. screen:\n{content}"
+    );
+}
+
+#[test]
+fn board_panel_hidden_at_narrow_terminal_even_when_open() {
+    // Below MIN_WIDTH_FOR_BOARD_PANEL (80), the panel degrades —
+    // chat keeps full width rather than compress below readable.
+    let backend = TestBackend::new(60, 24);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = test_app_with(vec![chat_msg("ryan:human", "hi")]);
+    app.board.panel_open = true;
+    terminal.draw(|frame| render(frame, &mut app)).unwrap();
+    let content = buffer_to_string(terminal.backend().buffer());
+    assert!(
+        !content.contains(" board "),
+        "board panel must hide at <80 cols. screen:\n{content}"
+    );
+}
+
+#[test]
+fn board_panel_hidden_when_closed() {
+    let backend = TestBackend::new(100, 24);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = test_app_with(vec![chat_msg("ryan:human", "hi")]);
+    app.board.panel_open = false;
+    terminal.draw(|frame| render(frame, &mut app)).unwrap();
+    let content = buffer_to_string(terminal.backend().buffer());
+    assert!(
+        !content.contains(" board "),
+        "board panel must not render when panel_open is false. screen:\n{content}"
+    );
+}
+
+#[test]
+fn board_panel_and_chat_coexist_at_wide_terminal() {
+    let backend = TestBackend::new(100, 24);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = test_app_with(vec![chat_msg("ryan:human", "my-test-message")]);
+    app.board.panel_open = true;
+    terminal.draw(|frame| render(frame, &mut app)).unwrap();
+    let content = buffer_to_string(terminal.backend().buffer());
+    assert!(
+        content.contains("my-test-message"),
+        "chat must still render alongside the panel. screen:\n{content}"
+    );
+    assert!(
+        content.contains(" board "),
+        "board panel must render alongside chat. screen:\n{content}"
+    );
+}

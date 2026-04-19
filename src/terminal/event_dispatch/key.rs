@@ -146,6 +146,10 @@ pub(super) fn handle(
         app.toggle_sidebar();
         return Ok(());
     }
+    if key.code == KeyCode::Char('2') && key.modifiers.contains(KeyModifiers::ALT) {
+        app.toggle_board_panel();
+        return Ok(());
+    }
     if app.sidebar.focused {
         match key.code {
             KeyCode::Up => app.sidebar_up(),

@@ -235,13 +235,20 @@ pub struct ScrollState {
     pub unread_count: usize,
 }
 
-/// Board state — extracted from App. Visibility is driven by
-/// `App::input_mode == InputMode::Board`.
+/// Board state — extracted from App. The full-screen board is driven
+/// by `App::input_mode == InputMode::Board`; the side-by-side board
+/// panel (#318) is driven by `panel_open` and coexists with chat.
 #[derive(Default)]
 pub struct BoardState {
     pub stories: Vec<super::board::BoardStory>,
     pub selected: usize,
     pub detail: Option<usize>,
+    /// Right-panel board visibility (#318). When true + terminal is
+    /// wide enough, the layout splits main_area into chat (left) +
+    /// board panel (right). Toggled via Alt+2, parallel to the
+    /// sidebar's Alt+1. Independent of InputMode::Board (which is
+    /// the full-screen overlay).
+    pub panel_open: bool,
 }
 
 /// Session identity — frozen after construction. These fields
