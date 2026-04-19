@@ -159,6 +159,53 @@ fn close_story_allows_pm() {
     assert!(require_role("pm:claude-code", &["pm"], "close").is_ok());
 }
 
+// #317 comment_on_story — any-agent; handler rejects empty-body so
+// issue comments can't be silent. ws_tx Mutex<None> exercises the
+// fail-fast-before-broadcast path (no ws connection needed).
+
+#[tokio::test]
+async fn comment_on_story_rejects_empty_body() {
+    let ws_tx = tokio::sync::Mutex::new(None);
+    let tracker = super::tracker::FakeTracker::default();
+    let mut args = serde_json::Map::new();
+    args.insert("number".to_string(), serde_json::json!(42));
+    args.insert("body".to_string(), serde_json::json!(""));
+    let result = handle_comment_on_story(&args, "dev:claude-code", &ws_tx, &tracker).await;
+    assert!(
+        result.is_err(),
+        "empty body must be rejected: got {result:?}"
+    );
+    assert!(result.unwrap_err().contains("must not be empty"));
+}
+
+#[tokio::test]
+async fn comment_on_story_rejects_whitespace_only_body() {
+    let ws_tx = tokio::sync::Mutex::new(None);
+    let tracker = super::tracker::FakeTracker::default();
+    let mut args = serde_json::Map::new();
+    args.insert("number".to_string(), serde_json::json!(42));
+    args.insert("body".to_string(), serde_json::json!("   \n  "));
+    let result = handle_comment_on_story(&args, "dev:claude-code", &ws_tx, &tracker).await;
+    assert!(result.is_err(), "whitespace-only body must be rejected");
+}
+
+#[tokio::test]
+async fn comment_on_story_accepts_non_empty_body_any_role() {
+    let ws_tx = tokio::sync::Mutex::new(None);
+    let tracker = super::tracker::FakeTracker::default();
+    for caller in ["dev:claude-code", "pm:claude-code", "designer:claude-code"] {
+        let mut args = serde_json::Map::new();
+        args.insert("number".to_string(), serde_json::json!(42));
+        args.insert("body".to_string(), serde_json::json!("a real comment"));
+        let result = handle_comment_on_story(&args, caller, &ws_tx, &tracker).await;
+        assert!(
+            result.is_ok(),
+            "caller={caller} should be allowed (any-role); got {result:?}"
+        );
+        assert!(result.unwrap().contains("#42 commented"));
+    }
+}
+
 #[test]
 fn require_role_rejects_non_designer_from_desk_check_operations() {
     for caller in ["dev:claude-code", "pm:claude-code", "ryan:human"] {
