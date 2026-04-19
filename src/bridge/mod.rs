@@ -433,6 +433,9 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
             crate::mcp::tools::get_token_report_tool(
                 "Get the token-cost report from bpmux's shared token log (#179). Returns JSON with total tokens, row count, per-role breakdown, and the 10 most recent turns (newest first). The data comes from per-harness adapters reading their own LLM-call recordings — you're seeing objective cost data, not self-reported. Same underlying log the `/tokens` TUI view reads, so you see exactly what Ryan sees. Empty report if the log is empty or missing.",
             ),
+            crate::mcp::tools::get_ci_state_tool(
+                "Returns the current CI conclusion for bpmux main branch. Queries `gh run list --branch main -L 1` and returns a JSON object: { conclusion: 'success'|'failure'|'in_progress'|'unknown', last_run_id, branch: 'main', url, head_sha, display_title }. Pull-based — agents call this on-demand to make CI-aware decisions (ship gating, handoff signaling, pickup timing) without asking Ryan to relay. No permission gates; any role can call.",
+            ),
             // Story management tools — server-side gh proxy with lane enforcement
             crate::mcp::tools::view_board_tool(
                 "View the project board — all stories grouped by state (ready, in progress, delivered, accepted, deferred, icebox) with counts. No host permission needed. Same data as the TUI board view.",
@@ -585,6 +588,7 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                     tools::handle_join_thread(&args, &current_name, &ws_tx).await
                 }
                 "get_token_report" => tools::handle_get_token_report().await,
+                "get_ci_state" => tools::handle_get_ci_state(&args).await,
                 "view_board" => tools_stories::handle_view_board(&args, &tracker).await,
                 "view_velocity" => tools::handle_view_velocity(port, &tracker, &ws_tx).await,
                 "create_story" => tools_stories::handle_create_story(&args, &tracker).await,

@@ -28,7 +28,7 @@ use crate::session::{Message, MessageType, Session};
 /// a fourth glyph per Phase 1 scope. `render_indicator` returns `None`
 /// for `Unknown`, keeping the indicator hidden until we have real data.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub(super) enum CiState {
+pub enum CiState {
     #[default]
     Unknown,
     Green,
@@ -42,7 +42,7 @@ pub(super) enum CiState {
 /// run without a display title, or an older gh version without some
 /// fields).
 #[derive(Debug, Clone, Default)]
-pub(super) struct CiEvent {
+pub struct CiEvent {
     pub state: CiState,
     pub sha: Option<String>,
     pub title: Option<String>,
@@ -338,15 +338,15 @@ fn append_meta(line: &mut String, event: &CiEvent) {
 }
 
 #[derive(Debug, Deserialize, Default)]
-pub(super) struct RunEntry {
-    pub(super) status: String,
-    pub(super) conclusion: Option<String>,
+pub struct RunEntry {
+    pub status: String,
+    pub conclusion: Option<String>,
     #[serde(rename = "headSha", default)]
-    pub(super) head_sha: Option<String>,
+    pub head_sha: Option<String>,
     #[serde(rename = "displayTitle", default)]
-    pub(super) display_title: Option<String>,
+    pub display_title: Option<String>,
     #[serde(rename = "databaseId", default)]
-    pub(super) database_id: Option<u64>,
+    pub database_id: Option<u64>,
 }
 
 async fn poll_once() -> Result<CiEvent, Box<dyn std::error::Error + Send + Sync>> {
@@ -371,7 +371,7 @@ async fn poll_once() -> Result<CiEvent, Box<dyn std::error::Error + Send + Sync>
     Ok(classify_runs(&runs))
 }
 
-pub(super) fn classify_runs(runs: &[RunEntry]) -> CiEvent {
+pub fn classify_runs(runs: &[RunEntry]) -> CiEvent {
     let Some(latest) = runs.first() else {
         return CiEvent::default();
     };

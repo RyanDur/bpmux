@@ -4,7 +4,7 @@ mod board;
 pub(crate) mod board_poller;
 mod board_view;
 mod chat;
-mod ci;
+pub(crate) mod ci;
 mod commands;
 pub mod event;
 mod event_dispatch;
