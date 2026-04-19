@@ -28,6 +28,49 @@ const LABEL_REJECTED: &str = "rejected";
 const LABEL_READY_FOR_ACCEPT: &str = "ready for accept";
 const LABEL_NEEDS_FIXES: &str = "needs fixes";
 
+/// Marker broadcast from every story-mutating MCP handler. Every
+/// connected TUI receives it (broadcast — no `to=` filter) and fires
+/// a board refetch, so internal-mutation state lands on the board
+/// within ~2s instead of waiting up to 60s for the next poll tick.
+///
+/// Distinct from the existing agent-addressed workflow signals
+/// (`#N delivered — desk-check needed`, etc.) which carry semantic
+/// payload to specific roles. This marker is system-typed so it
+/// doesn't clutter chat and is structurally identifiable without
+/// substring matching on signal text.
+pub(super) const BOARD_INVALIDATE_MARKER: &str = "__BPMUX_BOARD_INVALIDATE__";
+
+/// Build the board-invalidate broadcast signal. System-typed so the
+/// TUI recognizes it as an internal marker rather than a chat line.
+/// No `to=` set — every agent's TUI receives + refreshes.
+pub(super) fn build_board_invalidate_signal() -> ClientMessage {
+    ClientMessage::Send {
+        text: BOARD_INVALIDATE_MARKER.to_string(),
+        to: None,
+        addressee: None,
+        message_type: Some("system".to_string()),
+    }
+}
+
+/// Fire-and-log: emit the board-invalidate broadcast, diag-log on
+/// failure. Called by every story-mutating handler alongside their
+/// existing semantic signals.
+pub(super) async fn broadcast_board_invalidate(ws_tx: &Mutex<Option<WsSink>>) {
+    let msg = build_board_invalidate_signal();
+    match serde_json::to_string(&msg) {
+        Ok(json) => {
+            if let Err(e) = ws_send(ws_tx, json).await {
+                crate::session::diag::log_diag(&format!(
+                    "bridge: board-invalidate signal failed: {e}"
+                ));
+            }
+        }
+        Err(e) => crate::session::diag::log_diag(&format!(
+            "bridge: board-invalidate serialize failed: {e}"
+        )),
+    }
+}
+
 /// Run a gh command and return stdout. Errors include stderr.
 /// Sets the working directory to the bpmux repo so `gh` can find
 /// git remotes even when the bridge runs from an agent workspace.
@@ -133,6 +176,7 @@ pub(super) async fn handle_view_board(
 
 pub(super) async fn handle_create_story(
     args: &serde_json::Map<String, serde_json::Value>,
+    ws_tx: &Mutex<Option<WsSink>>,
     tracker: &impl super::tracker::StoryTracker,
 ) -> Result<String, String> {
     let title = args
@@ -141,6 +185,7 @@ pub(super) async fn handle_create_story(
         .ok_or("missing 'title' argument")?;
     let body = args.get("body").and_then(|v| v.as_str()).unwrap_or("");
     let result = tracker.create_story(title, body).await?;
+    broadcast_board_invalidate(ws_tx).await;
     Ok(format!("story created: {}", result.trim()))
 }
 
@@ -167,7 +212,9 @@ pub(super) async fn handle_start_story(
             "bridge: remove-label ready failed for #{number}: {e}"
         ));
     }
-    match tracker.add_label(number, LABEL_IN_PROGRESS).await {
+    let result = tracker.add_label(number, LABEL_IN_PROGRESS).await;
+    broadcast_board_invalidate(ws_tx).await;
+    match result {
         Ok(_) => Ok(format!("#{number} marked as in progress")),
         Err(e) => Err(format!("#{number} signal sent but label failed: {e}")),
     }
@@ -208,7 +255,9 @@ pub(super) async fn handle_deliver_story(
             "bridge: remove-label in-progress failed for #{number}: {e}"
         ));
     }
-    match tracker.add_label(number, LABEL_DELIVERED).await {
+    let result = tracker.add_label(number, LABEL_DELIVERED).await;
+    broadcast_board_invalidate(ws_tx).await;
+    match result {
         Ok(_) => Ok(format!("#{number} delivered: signals sent, labels updated")),
         Err(e) => Ok(format!(
             "#{number} delivered: signals sent, label update skipped ({e})"
@@ -219,6 +268,7 @@ pub(super) async fn handle_deliver_story(
 pub(super) async fn handle_label_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    ws_tx: &Mutex<Option<WsSink>>,
     tracker: &impl super::tracker::StoryTracker,
 ) -> Result<String, String> {
     require_role(agent_name, &["pm"], "label")?;
@@ -231,6 +281,7 @@ pub(super) async fn handle_label_story(
         .and_then(|v| v.as_str())
         .ok_or("missing 'label' argument")?;
     tracker.add_label(number, label).await?;
+    broadcast_board_invalidate(ws_tx).await;
     Ok(format!("#{number} labeled '{label}'"))
 }
 
@@ -257,6 +308,7 @@ pub(super) async fn handle_accept_story(
         ));
     }
     let close_result = tracker.close_story(number).await;
+    broadcast_board_invalidate(ws_tx).await;
     match close_result {
         Ok(_) => Ok(format!("#{number} accepted and closed")),
         Err(e) if e.contains("already closed") || e.contains("is closed") => {
@@ -296,7 +348,9 @@ pub(super) async fn handle_reject_story(
             "bridge: add-label rejected failed for #{number}: {e}"
         ));
     }
-    match tracker.comment_on_story(number, reason).await {
+    let result = tracker.comment_on_story(number, reason).await;
+    broadcast_board_invalidate(ws_tx).await;
+    match result {
         Ok(_) => Ok(format!("#{number} rejected: {reason}")),
         Err(e) => Err(format!("#{number} signal sent but comment failed: {e}")),
     }
@@ -333,7 +387,9 @@ pub(super) async fn handle_pass_desk_check(
             .await
             .map_err(|e| format!("#{number} signal send failed: {e}"))?;
     }
-    match tracker.add_label(number, LABEL_READY_FOR_ACCEPT).await {
+    let result = tracker.add_label(number, LABEL_READY_FOR_ACCEPT).await;
+    broadcast_board_invalidate(ws_tx).await;
+    match result {
         Ok(_) => Ok(format!(
             "#{number} passed desk-check: signal sent, label applied"
         )),
@@ -366,7 +422,9 @@ pub(super) async fn handle_fail_desk_check(
     ws_send(ws_tx, signal)
         .await
         .map_err(|e| format!("#{number} signal send failed: {e}"))?;
-    match tracker.add_label(number, LABEL_NEEDS_FIXES).await {
+    let result = tracker.add_label(number, LABEL_NEEDS_FIXES).await;
+    broadcast_board_invalidate(ws_tx).await;
+    match result {
         Ok(_) => Ok(format!(
             "#{number} failed desk-check: signal sent, label applied"
         )),
@@ -380,6 +438,7 @@ pub(super) async fn handle_fail_desk_check(
 pub(super) async fn handle_reorder_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    ws_tx: &Mutex<Option<WsSink>>,
 ) -> Result<String, String> {
     require_role(agent_name, &["pm"], "reorder")?;
     let number = args
@@ -401,6 +460,7 @@ pub(super) async fn handle_reorder_story(
     crate::session::priority::reorder(&mut index, state, number, position);
     crate::session::priority::save_priority(&path, &index)
         .map_err(|e| format!("save priority: {e}"))?;
+    broadcast_board_invalidate(ws_tx).await;
     Ok(format!("#{number} moved to position {position} in {state}"))
 }
 

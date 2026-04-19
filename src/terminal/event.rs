@@ -350,19 +350,24 @@ where
             result = wake_rx.recv() => {
                 match result {
                     Ok(msg) => {
-                        // Workflow signals that change GitHub state
-                        // trigger an immediate board refetch so the view
-                        // reflects the new reality without waiting for
-                        // the next poll cycle. Only fires on signals from
-                        // `bpmux` (our own workflow signals), not general chat.
-                        if msg.from == "bpmux"
-                            && (msg.text.contains(" accepted")
-                                || msg.text.contains(" rejected")
-                                || msg.text.contains(" delivered")
-                                || msg.text.contains(" started"))
-                            && let Some(tx) = &board_poller_tx
+                        // Board-invalidate marker (#313) — every MCP
+                        // mutation handler broadcasts this so connected
+                        // TUIs refetch within ~2s instead of waiting up
+                        // to 60s for the next poll tick. System-typed
+                        // so it doesn't render as chat; consumed here
+                        // and short-circuits before `handle_broadcast_message`.
+                        if msg.message_type == crate::session::MessageType::System
+                            && msg.text == BOARD_INVALIDATE_MARKER
                         {
-                            let _ = tx.try_send(super::board_poller::PollerCommand::RefreshNow);
+                            if let Some(tx) = &board_poller_tx {
+                                let _ = tx.try_send(
+                                    super::board_poller::PollerCommand::RefreshNow,
+                                );
+                            }
+                            if let Some(tx) = &app.board_fetch_request_tx {
+                                let _ = tx.try_send(());
+                            }
+                            continue;
                         }
                         handle_broadcast_message(msg, app);
                     }
@@ -487,6 +492,12 @@ pub(super) const VIEW_VELOCITY_MARKER: &str = "__BPMUX_VIEW_VELOCITY__";
 /// Marker the bridge emits when an agent calls view_backlog (#286).
 /// Kept in sync with VIEW_BACKLOG_MARKER in bridge/tools/view_backlog.rs.
 pub(super) const VIEW_BACKLOG_MARKER: &str = "__BPMUX_VIEW_BACKLOG__";
+
+/// Marker the bridge emits after every story-mutating MCP call so
+/// every connected TUI triggers an immediate board refetch (#313).
+/// Kept in sync with `BOARD_INVALIDATE_MARKER` in
+/// `bridge/tools_stories.rs`.
+pub(super) const BOARD_INVALIDATE_MARKER: &str = "__BPMUX_BOARD_INVALIDATE__";
 
 fn handle_broadcast_message(msg: session::Message, app: &mut App) {
     // Agent-triggered view_tokens opens the overlay. Same

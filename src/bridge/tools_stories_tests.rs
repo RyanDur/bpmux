@@ -108,6 +108,37 @@ fn build_iteration_close_signal_broadcasts_to_all() {
 }
 
 #[test]
+fn build_board_invalidate_signal_is_system_typed_broadcast() {
+    let signal = build_board_invalidate_signal();
+    let ClientMessage::Send {
+        to,
+        addressee,
+        text,
+        message_type,
+    } = signal
+    else {
+        panic!("expected Send variant");
+    };
+    assert!(
+        to.is_none(),
+        "to must be None so every connected TUI refreshes, not just one"
+    );
+    assert!(
+        addressee.is_none(),
+        "addressee must be None — not an attention signal, just a state-change nudge"
+    );
+    assert_eq!(
+        text, BOARD_INVALIDATE_MARKER,
+        "text must be the exact marker constant so event.rs can structurally match it"
+    );
+    assert_eq!(
+        message_type.as_deref(),
+        Some("system"),
+        "message_type must be 'system' so the TUI suppresses chat rendering"
+    );
+}
+
+#[test]
 fn require_role_rejects_non_designer_from_desk_check_operations() {
     for caller in ["dev:claude-code", "pm:claude-code", "ryan:human"] {
         let result = require_role(caller, &["designer"], "pass desk-check");
