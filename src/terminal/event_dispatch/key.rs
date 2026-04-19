@@ -196,7 +196,7 @@ pub(super) fn handle(
                 app.panel_select_down();
                 true
             }
-            KeyCode::Enter => {
+            KeyCode::Enter if app.editor.input.is_empty() => {
                 app.panel_open_detail();
                 true
             }
@@ -494,6 +494,66 @@ mod tests {
         assert!(
             app.editor.input.is_empty(),
             "Down must not reach chat input"
+        );
+    }
+
+    #[test]
+    fn board_panel_focused_enter_falls_through_when_input_nonempty() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.board.panel_focused = true;
+        let (session, _dir) = test_session();
+
+        for c in "hi".chars() {
+            handle(char_key(c), &mut app, &session).unwrap();
+        }
+        assert_eq!(app.editor.input, "hi");
+
+        let enter = KeyEvent {
+            code: KeyCode::Enter,
+            modifiers: KeyModifiers::NONE,
+            kind: KeyEventKind::Press,
+            state: crossterm::event::KeyEventState::NONE,
+        };
+        handle(enter, &mut app, &session).unwrap();
+
+        assert!(
+            app.board.panel_detail.is_none(),
+            "Enter with input must not drill in"
+        );
+        assert!(
+            app.editor.input.is_empty(),
+            "Enter with input must submit + clear"
+        );
+    }
+
+    #[test]
+    fn board_panel_focused_enter_opens_detail_when_input_empty() {
+        use crate::terminal::board::{BoardStory, StoryState};
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.board.panel_focused = true;
+        app.board.stories = vec![BoardStory {
+            number: 1,
+            title: "test".to_string(),
+            state: StoryState::Ready,
+            body: "body".to_string(),
+            assignees: vec![],
+            created: "2026-04-19".to_string(),
+            reason: String::new(),
+            labels: vec!["ready".to_string()],
+        }];
+        let (session, _dir) = test_session();
+
+        let enter = KeyEvent {
+            code: KeyCode::Enter,
+            modifiers: KeyModifiers::NONE,
+            kind: KeyEventKind::Press,
+            state: crossterm::event::KeyEventState::NONE,
+        };
+        handle(enter, &mut app, &session).unwrap();
+
+        assert!(
+            app.board.panel_detail.is_some(),
+            "Enter with empty input must drill in"
         );
     }
 
