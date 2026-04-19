@@ -397,14 +397,16 @@ pub fn classify_runs(runs: &[RunEntry]) -> CiEvent {
     }
 }
 
-/// Return the (glyph, color-hint) pair for the status bar, or None if the
-/// indicator should not be shown (e.g. Unknown / startup).
-pub(super) fn render_indicator(state: CiState) -> Option<(&'static str, CiGlyphColor)> {
+/// Return the (glyph, color-hint) pair for the status bar. Unknown
+/// renders a dim `CI ?` placeholder so the affordance is visible at
+/// TUI boot — silent absence during the first-poll window reads as
+/// "indicator broken," which it isn't.
+pub(super) fn render_indicator(state: CiState) -> (&'static str, CiGlyphColor) {
     match state {
-        CiState::Green => Some(("CI \u{2713}", CiGlyphColor::Green)), // ✓
-        CiState::Red => Some(("CI \u{2717}", CiGlyphColor::Red)),     // ✗
-        CiState::Running => Some(("CI \u{25CB}", CiGlyphColor::Yellow)), // ◌
-        CiState::Unknown => None,
+        CiState::Green => ("CI \u{2713}", CiGlyphColor::Green), // ✓
+        CiState::Red => ("CI \u{2717}", CiGlyphColor::Red),     // ✗
+        CiState::Running => ("CI \u{25CB}", CiGlyphColor::Yellow), // ◌
+        CiState::Unknown => ("CI ?", CiGlyphColor::Dim),
     }
 }
 
@@ -416,4 +418,7 @@ pub(super) enum CiGlyphColor {
     Green,
     Red,
     Yellow,
+    /// Dim / de-emphasized — used for the Unknown placeholder so the
+    /// glyph is visible-but-quiet while waiting for the first poll.
+    Dim,
 }

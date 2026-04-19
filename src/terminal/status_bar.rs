@@ -55,6 +55,7 @@ fn ci_color_to_ratatui(color: CiGlyphColor) -> Color {
         CiGlyphColor::Green => DRACULA_GREEN,
         CiGlyphColor::Red => DRACULA_RED,
         CiGlyphColor::Yellow => DRACULA_YELLOW,
+        CiGlyphColor::Dim => DRACULA_COMMENT,
     }
 }
 
@@ -185,18 +186,15 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
             Style::default().fg(DRACULA_YELLOW),
         ));
     }
-    // CI indicator (#151). Sits between the presence cluster and the
-    // right-aligned keyboard hint — repository state is cognitively
-    // separate from presence state, so the spec groups them that way.
-    // Hidden when state is Unknown (no indicator at startup until the
-    // first poll lands).
-    let ci = render_ci(app.ci_state);
+    // CI indicator (#151, #307). Sits between the presence cluster
+    // and the right-aligned keyboard hint — repository state is
+    // cognitively separate from presence state. Always rendered:
+    // Unknown state shows a dim `CI ?` placeholder so the affordance
+    // stays visible during the first-poll startup window.
+    let (ci_label, ci_color) = render_ci(app.ci_state);
     // Width budget includes a leading " " separator to keep it visually
     // distinct from the presence cluster on its left.
-    let ci_width = ci
-        .as_ref()
-        .map(|(label, _)| 1 + label.chars().count())
-        .unwrap_or(0);
+    let ci_width = 1 + ci_label.chars().count();
 
     // Right-aligned hint region. #183 splits the hint into two
     // visual groups:
@@ -224,29 +222,25 @@ pub(super) fn render(frame: &mut Frame, app: &mut App, area: Rect) {
     let hint_len = clickable_hint.chars().count() + keybind_hint.chars().count();
     let right_margin = 1;
     // Reserve two spaces of breathing room between the CI indicator and
-    // the help hint when both are shown, so they don't visually fuse.
-    let ci_hint_gap = if ci_width > 0 { 2 } else { 0 };
+    // the help hint so they don't visually fuse.
+    let ci_hint_gap = 2;
     if used + ci_width + ci_hint_gap + hint_len + right_margin + 1 < bar_width {
         let pad = bar_width.saturating_sub(used + ci_width + ci_hint_gap + hint_len + right_margin);
         // Pad first, then CI indicator, then gap, then hint — the CI
         // glyph floats next to the hint rather than anchoring to the left
         // content. That's what the spec mockup shows.
         status_spans.push(Span::raw(" ".repeat(pad)));
-        if let Some((label, color)) = ci {
-            status_spans.push(Span::raw(" "));
-            let ci_start = area.x + (used + pad + 1) as u16;
-            let ci_end = ci_start + (ci_width.saturating_sub(1)) as u16;
-            app.layout.ci_indicator_col_range = Some((ci_start, ci_end));
-            status_spans.push(Span::styled(
-                label,
-                Style::default()
-                    .fg(ci_color_to_ratatui(color))
-                    .add_modifier(Modifier::UNDERLINED),
-            ));
-            status_spans.push(Span::raw(" ".repeat(ci_hint_gap.saturating_sub(1))));
-        } else {
-            app.layout.ci_indicator_col_range = None;
-        }
+        status_spans.push(Span::raw(" "));
+        let ci_start = area.x + (used + pad + 1) as u16;
+        let ci_end = ci_start + (ci_width.saturating_sub(1)) as u16;
+        app.layout.ci_indicator_col_range = Some((ci_start, ci_end));
+        status_spans.push(Span::styled(
+            ci_label,
+            Style::default()
+                .fg(ci_color_to_ratatui(ci_color))
+                .add_modifier(Modifier::UNDERLINED),
+        ));
+        status_spans.push(Span::raw(" ".repeat(ci_hint_gap.saturating_sub(1))));
         let hint_start_col = area.x + (used + pad + ci_width + ci_hint_gap) as u16;
         app.layout.help_hint_col = Some(hint_start_col);
         if !clickable_hint.is_empty() {

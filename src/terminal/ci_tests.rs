@@ -127,27 +127,29 @@ fn classify_runs_preserves_metadata_fields_into_ci_event() {
 }
 
 #[test]
-fn unknown_has_no_indicator() {
-    assert!(render_indicator(CiState::Unknown).is_none());
+fn unknown_renders_dim_placeholder() {
+    let (label, color) = render_indicator(CiState::Unknown);
+    assert_eq!(label, "CI ?");
+    assert_eq!(color, CiGlyphColor::Dim);
 }
 
 #[test]
 fn green_renders_check_glyph() {
-    let (label, color) = render_indicator(CiState::Green).unwrap();
+    let (label, color) = render_indicator(CiState::Green);
     assert_eq!(label, "CI \u{2713}");
     assert_eq!(color, CiGlyphColor::Green);
 }
 
 #[test]
 fn red_renders_cross_glyph() {
-    let (label, color) = render_indicator(CiState::Red).unwrap();
+    let (label, color) = render_indicator(CiState::Red);
     assert_eq!(label, "CI \u{2717}");
     assert_eq!(color, CiGlyphColor::Red);
 }
 
 #[test]
 fn running_renders_circle_glyph() {
-    let (label, color) = render_indicator(CiState::Running).unwrap();
+    let (label, color) = render_indicator(CiState::Running);
     assert_eq!(label, "CI \u{25CB}");
     assert_eq!(color, CiGlyphColor::Yellow);
 }
@@ -156,12 +158,15 @@ fn running_renders_circle_glyph() {
 fn glyphs_are_distinct_per_state() {
     // Accessibility: color alone is insufficient, the spec requires
     // glyph differences as redundant meaning.
-    let green = render_indicator(CiState::Green).unwrap().0;
-    let red = render_indicator(CiState::Red).unwrap().0;
-    let running = render_indicator(CiState::Running).unwrap().0;
+    let green = render_indicator(CiState::Green).0;
+    let red = render_indicator(CiState::Red).0;
+    let running = render_indicator(CiState::Running).0;
+    let unknown = render_indicator(CiState::Unknown).0;
     assert_ne!(green, red);
     assert_ne!(green, running);
     assert_ne!(red, running);
+    assert_ne!(green, unknown);
+    assert_ne!(unknown, running);
 }
 
 // ─────────────────────────────────────────────────────────────────
