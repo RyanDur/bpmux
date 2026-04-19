@@ -21,8 +21,8 @@ All files in `foundations/`, `architecture/`, `risks/`, `landscape/`, `implement
 
 | File | What it says |
 |---|---|
-| `synthesis/product-direction-v1.md` (line 37, 303) | "Arawjo et al. (2024)" |
-| `synthesis/product-direction-v2.md` (line 375) | "Arawjo et al., 2024" |
+| `synthesis/archive/product-direction-v1.md` (line 37, 303) | "Arawjo et al. (2024)" — file archived 2026-04-19; v1 fix no longer required |
+| `synthesis/product-direction-v2.md` (line 375) | "Arawjo et al., 2024" — still current, fix pending |
 
 ### The error
 
@@ -317,7 +317,7 @@ This is directly relevant to bpmux: if a channel starts with low safety, more tr
 
 ### Must fix (high severity)
 
-1. **ChatCollab authorship:** Change "Arawjo et al." to "Klieger et al." in product-direction-v1.md (lines 37, 303) and product-direction-v2.md (line 375).
+1. **ChatCollab authorship:** Change "Arawjo et al." to "Klieger et al." in product-direction-v2.md (line 375). The v1 file has been archived (2026-04-19) to `synthesis/archive/product-direction-v1.md`; no fix required there.
 
 2. **Edmondson causal direction:** Revise collaboration-first.md and developer-psychology.md to state that safety enables transparent behavior, not that transparency creates safety. The relationship is: context support (including transparency infrastructure) is positively associated with safety, and safety enables learning behaviors (including transparent sharing). The tool provides context support; it does not create safety directly.
 

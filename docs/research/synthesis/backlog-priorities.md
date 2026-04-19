@@ -4,6 +4,8 @@ Ordered by: daily-use impact x effort to build x research backing strength. Posi
 
 April 4, 2026.
 
+> **Note (2026-04-19)**: This document references "product direction v1" Tier/item numbering. v1 has been archived at `docs/research/synthesis/archive/product-direction-v1.md` per synthesis-dir curation. Current product direction is `product-direction-v2.md` (different numbering scheme). Source citations below remain anchored to v1 for historical provenance; rebinding to v2 numbering is a future refresh.
+
 ---
 
 ## Sources
@@ -12,7 +14,7 @@ April 4, 2026.
 - **Designer top 5:** Truncate long messages, per-agent colors, activity indicator, @-mention, terminal bell
 - **Design review gap stories:** 14 proposed from completed-story analysis
 - **Research:** Gutwin & Greenberg (8 gaps), Clark & Brennan (acceptance phase), Edmondson (first interactions)
-- **Product direction v1:** Tier 1-4 build plan
+- **Product direction v1 (archived):** Tier 1-4 build plan — see `archive/product-direction-v1.md`
 
 ---
 
