@@ -656,17 +656,13 @@ pub fn run_bridge(
             anyhow::Ok(())
         });
     }
-    // Production path: octocrab is the sole backend (#320 unification).
-    // Fail loud if GH_TOKEN + BPMUX_REPO aren't set — silent-fallback
-    // was removed with GhTracker; trying to run without creds is a
-    // misconfiguration the user needs to see, not paper over.
-    let tracker = tracker::OctocrabStoryTracker::from_env().ok_or_else(|| {
-        anyhow::anyhow!(
-            "bpmux bridge requires GH_TOKEN (or GITHUB_TOKEN) + BPMUX_REPO \
-             env vars. Set both and retry. See diag log for which var was missing."
-        )
-    })?;
     rt.block_on(async {
+        let tracker = tracker::OctocrabStoryTracker::from_env().ok_or_else(|| {
+            anyhow::anyhow!(
+                "bpmux bridge requires GH_TOKEN (or GITHUB_TOKEN) + BPMUX_REPO \
+                 env vars. Set both and retry. See diag log for which var was missing."
+            )
+        })?;
         let server = BridgeServer::new(port, name.to_string(), tracker);
         let (stdin, stdout) = rmcp::transport::io::stdio();
         let service = server.serve((stdin, stdout)).await?;
