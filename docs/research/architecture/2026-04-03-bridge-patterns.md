@@ -542,7 +542,7 @@ The acceptance test (`tests/story3_acceptance_test.rs`) already demonstrates the
 - bpmux WebSocket implementation: `src/mcp/ws.rs`, `src/mcp/protocol.rs`
 - bpmux MCP server: `src/mcp/server.rs`
 - bpmux session log: `src/session/log.rs`
-- Prior research: `docs/research/2026-04-02-external-peer-model.md`, `docs/research/2026-04-02-websocket-protocol.md`
+- Prior research: `docs/research/architecture/2026-04-02-external-peer-model.md`, `docs/research/architecture/2026-04-02-websocket-protocol.md`
 - Story 3 acceptance test: `tests/story3_acceptance_test.rs`
 - websocat: https://github.com/vi/websocat
 - websocketd: https://github.com/joewalnes/websocketd

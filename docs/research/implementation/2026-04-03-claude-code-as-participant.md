@@ -364,9 +364,9 @@ A hook that reminds Claude Code about bpmux at the start of each session:
 - `src/terminal/event.rs` -- TUI event loop and message handling
 - `~/.claude/settings.json` -- Claude Code hook configuration (PreToolUse example)
 - `~/.claude/hooks/rtk-rewrite.sh` -- Hook implementation example
-- `docs/research/2026-04-03-bot-or-room-design.md` -- Built-in bot analysis
-- `docs/research/2026-04-03-anthropic-sdk-bot-experience.md` -- SDK and bot experience research
-- `docs/research/2026-04-02-external-peer-model.md` -- WebSocket peer model
-- `docs/research/2026-04-02-ai-participant-design.md` -- AI participant architecture
-- `docs/research/2026-04-03-replaceable-bot-architecture.md` -- Bot replacement patterns
-- `AGENT_WORKFLOW.md` -- Working agreement and agent workflow
+- `docs/research/architecture/2026-04-03-bot-or-room-design.md` -- Built-in bot analysis
+- `docs/research/implementation/2026-04-03-anthropic-sdk-bot-experience.md` -- SDK and bot experience research
+- `docs/research/architecture/2026-04-02-external-peer-model.md` -- WebSocket peer model
+- `docs/research/architecture/2026-04-02-ai-participant-design.md` -- AI participant architecture
+- `docs/research/architecture/2026-04-03-replaceable-bot-architecture.md` -- Bot replacement patterns
+- `docs/memory-architecture.md` -- Team working agreement + arc-to-lesson knowledge chain

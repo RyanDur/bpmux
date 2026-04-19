@@ -204,7 +204,7 @@ The research orientation is toward pair programming on complex client engagement
 
 ### 4.10 Memory architecture is already addressed by tiered design
 
-Prior distillations treated the JSONL log as the entire memory solution and criticized it for not supporting structured retrieval. This was wrong on two counts. First, the log is the source of truth (like a write-ahead log), not the query interface. Criticizing the log for being bad at retrieval is criticizing the wrong layer. Second, the memory architecture research (docs/research/2026-04-02-memory-architecture.md) already designed a tiered memory system borrowing from MemGPT (Packer et al., ICLR 2024) and OpenClaw:
+Prior distillations treated the JSONL log as the entire memory solution and criticized it for not supporting structured retrieval. This was wrong on two counts. First, the log is the source of truth (like a write-ahead log), not the query interface. Criticizing the log for being bad at retrieval is criticizing the wrong layer. Second, the memory architecture research (docs/research/architecture/2026-04-02-memory-architecture.md) already designed a tiered memory system borrowing from MemGPT (Packer et al., ICLR 2024) and OpenClaw:
 
 - Tier 1: essential decisions, always loaded
 - Tier 2: recent messages (read_messages, bounded window) -- what v1 has

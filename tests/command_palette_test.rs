@@ -26,7 +26,7 @@ fn ctrl_k_opens_command_palette() {
     // Palette should show available commands
     let screen = bpmux.tui();
     assert!(screen.contains("help"), "help action missing");
-    assert!(screen.contains("focus"), "focus action missing");
+    assert!(screen.contains("who"), "who action missing");
 }
 
 /// GIVEN the palette is open
@@ -45,11 +45,11 @@ fn palette_filters_actions_on_input() {
         "palette should open"
     );
     bpmux.type_chars("who");
-    // Wait for the filter to take effect — /focus doesn't match "who"
+    // Wait for the filter to take effect — /help doesn't match "who"
     // so it should disappear. `wait_for_tui_absent` gives the filter
     // time to settle rather than racing with the keystrokes.
     bpmux
-        .wait_for_tui_absent("/focus", Duration::from_secs(5))
+        .wait_for_tui_absent("/help", Duration::from_secs(5))
         .expect("non-matching actions should be filtered out");
     assert!(
         bpmux.tui().contains("/who"),
