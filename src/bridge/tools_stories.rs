@@ -464,6 +464,37 @@ pub(super) async fn handle_reorder_story(
     Ok(format!("#{number} moved to position {position} in {state}"))
 }
 
+/// Add a comment to a story — any agent. Durable issue-audit-trail
+/// (visible to any future reader of the issue; distinct from bpmux
+/// chat which is session-scoped). Thin wrapper on existing
+/// `tracker.comment_on_story`; capability is pre-existing
+/// (reject_story invokes the same path), this generalizes for
+/// standalone commenting.
+pub(super) async fn handle_comment_on_story(
+    args: &serde_json::Map<String, serde_json::Value>,
+    _agent_name: &str,
+    ws_tx: &Mutex<Option<WsSink>>,
+    tracker: &impl super::tracker::StoryTracker,
+) -> Result<String, String> {
+    let number = args
+        .get("number")
+        .and_then(|v| v.as_u64())
+        .ok_or("missing 'number' argument")?;
+    let body = args
+        .get("body")
+        .and_then(|v| v.as_str())
+        .ok_or("missing 'body' argument")?;
+    if body.trim().is_empty() {
+        return Err("'body' must not be empty".to_string());
+    }
+    let result = tracker.comment_on_story(number, body).await;
+    broadcast_board_invalidate(ws_tx).await;
+    match result {
+        Ok(_) => Ok(format!("#{number} commented")),
+        Err(e) => Err(format!("#{number} comment failed: {e}")),
+    }
+}
+
 /// Close a story with a reason — PM-only. Adds the reason as a
 /// comment on the issue, then closes it. Thin wrapper on existing
 /// `tracker.comment_on_story` + `tracker.close_story` — capability

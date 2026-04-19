@@ -445,6 +445,9 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
             crate::mcp::tools::close_story_tool(
                 "Close a story with a reason (superseded / duplicate / won't-fix). Adds the reason as a comment on the issue + closes it. PM ONLY — accept/reject are separate paths for delivered stories. Use this for pre-delivery closures that don't route through the ship chain. Args: number + reason (required).",
             ),
+            crate::mcp::tools::comment_on_story_tool(
+                "Add a comment to a story. Durable issue-audit-trail — visible to any future reader of the issue. Distinct from bpmux chat (session-scoped). Use for post-filing context (reconsider-notes, cross-refs, pickup-gate observations) you want persistent. Any agent role. Args: number + body (required; markdown supported).",
+            ),
             crate::mcp::tools::accept_story_tool(
                 "Accept a delivered story and close it. OWNER (ryan) ONLY.",
             ),
@@ -582,6 +585,11 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                 "close_story" => {
                     let current_name = name.lock().await;
                     tools_stories::handle_close_story(&args, &current_name, &ws_tx, &tracker).await
+                }
+                "comment_on_story" => {
+                    let current_name = name.lock().await;
+                    tools_stories::handle_comment_on_story(&args, &current_name, &ws_tx, &tracker)
+                        .await
                 }
                 "accept_story" => {
                     let current_name = name.lock().await;
