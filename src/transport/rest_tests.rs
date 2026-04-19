@@ -646,3 +646,95 @@ async fn simulate_key_passes_modifier_casing_through_unchanged() {
     assert_eq!(key, "a");
     assert_eq!(modifiers, vec!["ALT".to_string(), "Shift".to_string()]);
 }
+
+fn test_app_with_simulate_injector(
+    route: &str,
+    handler: axum::routing::MethodRouter<()>,
+) -> (
+    axum::Router,
+    tokio::sync::mpsc::Receiver<TerminalInjectEvent>,
+) {
+    let (inject_tx, inject_rx) = tokio::sync::mpsc::channel::<TerminalInjectEvent>(16);
+    let router = axum::Router::new()
+        .route(route, handler)
+        .layer(axum::Extension(inject_tx));
+    (router, inject_rx)
+}
+
+async fn post_empty(router: axum::Router, uri: &str) -> axum::http::Response<Body> {
+    let request = Request::builder()
+        .method("POST")
+        .uri(uri)
+        .header("Content-Type", "application/json")
+        .body(Body::from("{}"))
+        .expect("build request");
+    router.oneshot(request).await.expect("response")
+}
+
+#[tokio::test]
+async fn simulate_type_enqueues_type_event_preserving_text() {
+    let (router, mut rx) = test_app_with_simulate_injector(
+        "/api/simulate/type",
+        axum::routing::post(crate::transport::rest::simulate_type),
+    );
+    let request = Request::builder()
+        .method("POST")
+        .uri("/api/simulate/type")
+        .header("Content-Type", "application/json")
+        .body(Body::from(r#"{"text":"/board"}"#))
+        .expect("build request");
+    let response = router.oneshot(request).await.expect("response");
+    assert_eq!(response.status(), StatusCode::OK);
+    match rx.recv().await.expect("receive event") {
+        TerminalInjectEvent::Type { text } => assert_eq!(text, "/board"),
+        other => panic!("expected Type inject, got {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn simulate_type_preserves_spaces_and_special_chars() {
+    let (router, mut rx) = test_app_with_simulate_injector(
+        "/api/simulate/type",
+        axum::routing::post(crate::transport::rest::simulate_type),
+    );
+    let request = Request::builder()
+        .method("POST")
+        .uri("/api/simulate/type")
+        .header("Content-Type", "application/json")
+        .body(Body::from(r#"{"text":"/to dev hello world!"}"#))
+        .expect("build request");
+    let response = router.oneshot(request).await.expect("response");
+    assert_eq!(response.status(), StatusCode::OK);
+    match rx.recv().await.expect("receive event") {
+        TerminalInjectEvent::Type { text } => assert_eq!(text, "/to dev hello world!"),
+        other => panic!("expected Type, got {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn simulate_input_clear_enqueues_clear_event() {
+    let (router, mut rx) = test_app_with_simulate_injector(
+        "/api/simulate/input_clear",
+        axum::routing::post(crate::transport::rest::simulate_input_clear),
+    );
+    let response = post_empty(router, "/api/simulate/input_clear").await;
+    assert_eq!(response.status(), StatusCode::OK);
+    assert!(matches!(
+        rx.recv().await.expect("receive event"),
+        TerminalInjectEvent::Clear
+    ));
+}
+
+#[tokio::test]
+async fn simulate_input_submit_enqueues_submit_event() {
+    let (router, mut rx) = test_app_with_simulate_injector(
+        "/api/simulate/input_submit",
+        axum::routing::post(crate::transport::rest::simulate_input_submit),
+    );
+    let response = post_empty(router, "/api/simulate/input_submit").await;
+    assert_eq!(response.status(), StatusCode::OK);
+    assert!(matches!(
+        rx.recv().await.expect("receive event"),
+        TerminalInjectEvent::Submit
+    ));
+}

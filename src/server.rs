@@ -39,6 +39,18 @@ pub async fn run_server(
             "/api/simulate/key",
             axum::routing::post(transport::rest::simulate_key),
         )
+        .route(
+            "/api/simulate/type",
+            axum::routing::post(transport::rest::simulate_type),
+        )
+        .route(
+            "/api/simulate/input_clear",
+            axum::routing::post(transport::rest::simulate_input_clear),
+        )
+        .route(
+            "/api/simulate/input_submit",
+            axum::routing::post(transport::rest::simulate_input_submit),
+        )
         .layer(axum::middleware::from_fn_with_state(
             auth_state,
             transport::auth::gate,

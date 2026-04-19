@@ -378,6 +378,15 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
             crate::mcp::tools::simulate_key_tool(
                 "Simulate a key press on the TUI. Use with capture_screen for interactive testing.",
             ),
+            crate::mcp::tools::simulate_type_tool(
+                "Simulate multi-char typing into the current input buffer (e.g. slash commands like `/board` or DM text like `/to dev hello`). Same observable effect as Ryan typing each character. Pairs with simulate_input_submit to fire the Enter path.",
+            ),
+            crate::mcp::tools::simulate_input_clear_tool(
+                "Clear the current input buffer. Use between simulate_type / simulate_key calls to reset state between audit scenarios. Takes no arguments.",
+            ),
+            crate::mcp::tools::simulate_input_submit_tool(
+                "Submit the current input buffer — same effect as Ryan pressing Enter in Chat mode. Fires the command-or-send path (slash commands run, prose sends). Takes no arguments.",
+            ),
             crate::mcp::tools::set_name_tool(
                 "Set your display name in the bpmux session. Call this once at the start to identify yourself (e.g., 'dev', 'pm').",
             ),
@@ -523,6 +532,9 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                 "capture_screen" => tools::handle_capture_screen(port).await,
                 "simulate_click" => tools::handle_simulate_click(&args, port).await,
                 "simulate_key" => tools::handle_simulate_key(&args, port).await,
+                "simulate_type" => tools::handle_simulate_type(&args, port).await,
+                "simulate_input_clear" => tools::handle_simulate_input_clear(port).await,
+                "simulate_input_submit" => tools::handle_simulate_input_submit(port).await,
                 "classifier_misfire" => tools::handle_classifier_misfire(&args, port, &name).await,
                 "save_bookmark" => {
                     let current_name = name.lock().await;

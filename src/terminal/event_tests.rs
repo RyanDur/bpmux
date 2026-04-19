@@ -9,6 +9,38 @@ use super::event::{InjectEventError, TerminalInjectEvent};
 use crossterm::event::{Event, KeyCode, KeyModifiers, MouseButton, MouseEventKind};
 
 #[test]
+fn type_converts_to_paste_event_preserving_text() {
+    let event = TerminalInjectEvent::Type {
+        text: "/to dev hello world".to_string(),
+    }
+    .into_crossterm()
+    .expect("type should convert");
+    match event {
+        Event::Paste(s) => assert_eq!(s, "/to dev hello world"),
+        other => panic!("expected Paste, got {other:?}"),
+    }
+}
+
+#[test]
+fn clear_and_submit_are_not_crossterm_events() {
+    assert!(TerminalInjectEvent::Clear.into_crossterm().is_err());
+    assert!(TerminalInjectEvent::Submit.into_crossterm().is_err());
+}
+
+#[test]
+fn type_clear_submit_all_validate_ok() {
+    assert!(
+        TerminalInjectEvent::Type {
+            text: "anything".to_string()
+        }
+        .validate()
+        .is_ok()
+    );
+    assert!(TerminalInjectEvent::Clear.validate().is_ok());
+    assert!(TerminalInjectEvent::Submit.validate().is_ok());
+}
+
+#[test]
 fn click_converts_to_left_button_down_with_no_modifiers() {
     let event = TerminalInjectEvent::Click { x: 4, y: 2 }
         .into_crossterm()

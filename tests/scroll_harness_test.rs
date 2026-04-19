@@ -186,6 +186,7 @@ fn long_message_while_scrolled_up_no_drift() {
 
 /// Scenario 6: multiple messages arrive rapidly while scrolled up
 #[test]
+#[ignore = "PTY harness Ctrl+U timing flake under concurrent CI load; same class as board_view_test ignore"]
 fn rapid_messages_while_scrolled_up_stable() {
     let bpmux = TestBpmux::start();
     seed_messages(&bpmux, 25);

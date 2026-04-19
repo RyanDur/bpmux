@@ -34,6 +34,13 @@ pub enum TerminalInjectEvent {
     /// `"esc"`, `"a"`); modifiers are `"ctrl" | "alt" | "shift" |
     /// "super"` (case-insensitive).
     Key { key: String, modifiers: Vec<String> },
+    /// Multi-char text → crossterm `Event::Paste`.
+    Type { text: String },
+    /// Direct `app.clear_input()` — no key sequence covers it universally
+    /// (Ctrl+U scrolls; Esc only clears at bottom-scroll).
+    Clear,
+    /// Direct `app.submit_message()`.
+    Submit,
 }
 
 /// Reasons a `TerminalInjectEvent` can fail to convert. Exposed so
@@ -61,7 +68,7 @@ impl TerminalInjectEvent {
     /// 400 before anything enters the channel.
     pub fn validate(&self) -> Result<(), InjectEventError> {
         match self {
-            Self::Click { .. } => Ok(()),
+            Self::Click { .. } | Self::Type { .. } | Self::Clear | Self::Submit => Ok(()),
             Self::Key { key, modifiers } => {
                 key_code_for(key)?;
                 for name in modifiers {
@@ -75,6 +82,8 @@ impl TerminalInjectEvent {
     /// Convert into a crossterm `Event`. Called from the event-loop
     /// consumer after the transport boundary has already validated;
     /// errors at this point are bugs, not bad input.
+    /// Convert to a crossterm `Event`. `Clear`/`Submit` are errors —
+    /// event loop must dispatch them directly before calling this.
     pub fn into_crossterm(self) -> Result<Event, InjectEventError> {
         match self {
             Self::Click { x, y } => Ok(Event::Mouse(MouseEvent {
@@ -91,6 +100,11 @@ impl TerminalInjectEvent {
                 }
                 Ok(Event::Key(KeyEvent::new(key_code, bits)))
             }
+            Self::Type { text } => Ok(Event::Paste(text)),
+            Self::Clear | Self::Submit => Err(InjectEventError::UnknownKey(
+                "Clear/Submit are bpmux actions, not keystrokes — dispatch before into_crossterm"
+                    .to_string(),
+            )),
         }
     }
 }
@@ -432,17 +446,16 @@ where
                 app.board.stories = stories;
             }
             Some(injected) = injected_rx.recv() => {
-                // Convert to crossterm at the terminal boundary so
-                // transport layer doesn't need to know crossterm
-                // types. Bad-key/bad-modifier errors are already
-                // filtered out at the REST boundary; reaching this
-                // branch with an Err is a dev-side bug.
-                match injected.into_crossterm() {
-                    Ok(event) => handle_terminal_event(event, app, session)?,
-                    Err(e) => crate::session::diag::log_diag(&format!(
-                        "terminal: dropping inject event: {}",
-                        e.message()
-                    )),
+                match injected {
+                    TerminalInjectEvent::Clear => app.clear_input(),
+                    TerminalInjectEvent::Submit => { let _ = app.submit_message(); }
+                    other => match other.into_crossterm() {
+                        Ok(event) => handle_terminal_event(event, app, session)?,
+                        Err(e) => crate::session::diag::log_diag(&format!(
+                            "terminal: dropping inject event: {}",
+                            e.message()
+                        )),
+                    },
                 }
             }
             Some(result) = p2p_rx.recv() => {

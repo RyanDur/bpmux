@@ -319,6 +319,62 @@ pub async fn simulate_key(
     }
 }
 
+#[derive(Deserialize)]
+pub struct TypePayload {
+    pub text: String,
+}
+
+pub async fn simulate_type(
+    axum::Extension(tx): axum::Extension<
+        tokio::sync::mpsc::Sender<crate::terminal::event::TerminalInjectEvent>,
+    >,
+    Json(payload): Json<TypePayload>,
+) -> impl IntoResponse {
+    let len = payload.text.chars().count();
+    let event = crate::terminal::event::TerminalInjectEvent::Type { text: payload.text };
+    match tx.send(event).await {
+        Ok(()) => (StatusCode::OK, format!("typed {len} chars")),
+        Err(_) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "event loop not available".to_string(),
+        ),
+    }
+}
+
+pub async fn simulate_input_clear(
+    axum::Extension(tx): axum::Extension<
+        tokio::sync::mpsc::Sender<crate::terminal::event::TerminalInjectEvent>,
+    >,
+) -> impl IntoResponse {
+    match tx
+        .send(crate::terminal::event::TerminalInjectEvent::Clear)
+        .await
+    {
+        Ok(()) => (StatusCode::OK, "input cleared".to_string()),
+        Err(_) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "event loop not available".to_string(),
+        ),
+    }
+}
+
+pub async fn simulate_input_submit(
+    axum::Extension(tx): axum::Extension<
+        tokio::sync::mpsc::Sender<crate::terminal::event::TerminalInjectEvent>,
+    >,
+) -> impl IntoResponse {
+    match tx
+        .send(crate::terminal::event::TerminalInjectEvent::Submit)
+        .await
+    {
+        Ok(()) => (StatusCode::OK, "submit dispatched".to_string()),
+        Err(_) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "event loop not available".to_string(),
+        ),
+    }
+}
+
 pub async fn post_lesson(
     State(session): State<Arc<session::Session>>,
     Json(payload): Json<SaveLessonPayload>,
