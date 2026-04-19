@@ -150,47 +150,63 @@ pub(super) fn handle(
         app.toggle_board_panel();
         return Ok(());
     }
-    // #319 board panel keyboard nav. Arrows / Enter / Esc capture
-    // while panel is focused; otherwise fall through to chat handling.
     if app.board.panel_focused {
-        match key.code {
+        let handled = match key.code {
             KeyCode::Up if app.board.panel_detail.is_some() => {
                 app.panel_detail_scroll_up(1);
+                true
             }
             KeyCode::Down if app.board.panel_detail.is_some() => {
                 app.panel_detail_scroll_down(1);
+                true
             }
             KeyCode::PageUp if app.board.panel_detail.is_some() => {
                 app.panel_detail_scroll_up(PAGE_SCROLL_LINES as u16);
+                true
             }
             KeyCode::PageDown if app.board.panel_detail.is_some() => {
                 app.panel_detail_scroll_down(PAGE_SCROLL_LINES as u16);
+                true
             }
             KeyCode::Char('u')
                 if key.modifiers.contains(KeyModifiers::CONTROL)
                     && app.board.panel_detail.is_some() =>
             {
                 app.panel_detail_scroll_up(PAGE_SCROLL_LINES as u16);
+                true
             }
             KeyCode::Char('d')
                 if key.modifiers.contains(KeyModifiers::CONTROL)
                     && app.board.panel_detail.is_some() =>
             {
                 app.panel_detail_scroll_down(PAGE_SCROLL_LINES as u16);
+                true
             }
-            KeyCode::Up => app.panel_select_up(),
-            KeyCode::Down => app.panel_select_down(),
-            KeyCode::Enter => app.panel_open_detail(),
+            KeyCode::Up => {
+                app.panel_select_up();
+                true
+            }
+            KeyCode::Down => {
+                app.panel_select_down();
+                true
+            }
+            KeyCode::Enter => {
+                app.panel_open_detail();
+                true
+            }
             KeyCode::Esc => {
                 if app.board.panel_detail.is_some() {
                     app.panel_close_detail();
                 } else {
                     app.board.panel_focused = false;
                 }
+                true
             }
-            _ => {}
+            _ => false,
+        };
+        if handled {
+            return Ok(());
         }
-        return Ok(());
     }
     if app.sidebar.focused {
         match key.code {
@@ -405,5 +421,56 @@ mod tests {
         }
 
         assert_eq!(app.editor.input, "aaaaa");
+    }
+
+    #[test]
+    fn board_panel_focused_char_keys_fall_through_to_chat() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.board.panel_focused = true;
+        let (session, _dir) = test_session();
+
+        for c in "hello".chars() {
+            handle(char_key(c), &mut app, &session).unwrap();
+        }
+
+        assert_eq!(app.editor.input, "hello");
+        assert!(app.board.panel_focused);
+    }
+
+    #[test]
+    fn board_panel_focused_arrow_keys_navigate() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.board.panel_focused = true;
+        let (session, _dir) = test_session();
+
+        let down = KeyEvent {
+            code: KeyCode::Down,
+            modifiers: KeyModifiers::NONE,
+            kind: KeyEventKind::Press,
+            state: crossterm::event::KeyEventState::NONE,
+        };
+        handle(down, &mut app, &session).unwrap();
+
+        assert!(
+            app.editor.input.is_empty(),
+            "Down must not reach chat input"
+        );
+    }
+
+    #[test]
+    fn board_panel_focused_esc_unfocuses() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.board.panel_focused = true;
+        let (session, _dir) = test_session();
+
+        let esc = KeyEvent {
+            code: KeyCode::Esc,
+            modifiers: KeyModifiers::NONE,
+            kind: KeyEventKind::Press,
+            state: crossterm::event::KeyEventState::NONE,
+        };
+        handle(esc, &mut app, &session).unwrap();
+
+        assert!(!app.board.panel_focused);
     }
 }
