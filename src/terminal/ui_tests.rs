@@ -520,6 +520,37 @@ fn channel_view_excludes_broadcasts() {
 }
 
 #[test]
+fn broadcast_view_excludes_dms() {
+    let backend = TestBackend::new(80, 24);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = test_app_with(vec![
+        chat_msg("dev:claude-code", "public hello"),
+        directed_msg("dev:claude-code", "secret dm", &["ryan"]),
+    ]);
+    app.channels.current_view = Some("broadcast".to_string());
+    app.msg.filter_dirty = true;
+
+    terminal.draw(|frame| render(frame, &mut app)).unwrap();
+    let screen = buffer_to_string(terminal.backend().buffer());
+    let chat_lines: Vec<&str> = screen
+        .lines()
+        .skip_while(|l| !l.contains("bpmux"))
+        .skip(1)
+        .take_while(|l| !l.starts_with('└'))
+        .collect();
+    let chat_text = chat_lines.join("\n");
+
+    assert!(
+        chat_text.contains("public hello"),
+        "broadcast should appear in broadcast view. chat:\n{chat_text}"
+    );
+    assert!(
+        !chat_text.contains("secret dm"),
+        "DM should NOT appear in broadcast view. chat:\n{chat_text}"
+    );
+}
+
+#[test]
 fn wrap_line_short_line_unchanged() {
     let line = Line::from("short");
     let indent = Span::raw("   ");
