@@ -558,6 +558,70 @@ mod tests {
     }
 
     #[test]
+    fn question_mark_opens_help_when_input_empty() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let (session, _dir) = test_session();
+        handle(char_key('?'), &mut app, &session).unwrap();
+        assert!(matches!(app.input_mode, InputMode::Help));
+    }
+
+    #[test]
+    fn question_mark_inserts_char_when_input_nonempty() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.insert_char('h');
+        app.insert_char('i');
+        let (session, _dir) = test_session();
+        handle(char_key('?'), &mut app, &session).unwrap();
+        assert_eq!(app.editor.input, "hi?");
+        assert!(matches!(app.input_mode, InputMode::Chat));
+    }
+
+    #[test]
+    fn ctrl_b_toggles_sidebar() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let (session, _dir) = test_session();
+        let before = app.sidebar.open;
+        let ctrl_b = KeyEvent {
+            code: KeyCode::Char('b'),
+            modifiers: KeyModifiers::CONTROL,
+            kind: KeyEventKind::Press,
+            state: crossterm::event::KeyEventState::NONE,
+        };
+        handle(ctrl_b, &mut app, &session).unwrap();
+        assert_ne!(app.sidebar.open, before);
+    }
+
+    #[test]
+    fn ctrl_1_toggles_sidebar() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let (session, _dir) = test_session();
+        let before = app.sidebar.open;
+        let ctrl_1 = KeyEvent {
+            code: KeyCode::Char('1'),
+            modifiers: KeyModifiers::CONTROL,
+            kind: KeyEventKind::Press,
+            state: crossterm::event::KeyEventState::NONE,
+        };
+        handle(ctrl_1, &mut app, &session).unwrap();
+        assert_ne!(app.sidebar.open, before);
+    }
+
+    #[test]
+    fn esc_in_help_mode_returns_to_chat() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.input_mode = InputMode::Help;
+        let (session, _dir) = test_session();
+        let esc = KeyEvent {
+            code: KeyCode::Esc,
+            modifiers: KeyModifiers::NONE,
+            kind: KeyEventKind::Press,
+            state: crossterm::event::KeyEventState::NONE,
+        };
+        handle(esc, &mut app, &session).unwrap();
+        assert!(matches!(app.input_mode, InputMode::Chat));
+    }
+
+    #[test]
     fn ctrl_k_enters_palette_mode() {
         let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
         let (session, _dir) = test_session();
