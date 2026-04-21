@@ -232,6 +232,39 @@ fn incoming_message_preserves_viewport_when_scrolled_up() {
 }
 
 #[test]
+fn long_message_while_scrolled_up_preserves_viewport_proportionally() {
+    let mut app = test_app();
+    app.scroll.offset = 5;
+    let long = "word ".repeat(100);
+    app.receive_message(chat_msg("bot:ws", &long));
+    assert!(
+        app.scroll.offset > 6,
+        "long message should increment offset by more than 1 line; got {}",
+        app.scroll.offset
+    );
+    assert_eq!(app.msg.messages.len(), 1);
+}
+
+#[test]
+fn scroll_to_bottom_after_unread_preserves_message_in_buffer() {
+    let mut app = test_app();
+    for i in 0..25 {
+        app.receive_message(chat_msg("bot:ws", &format!("msg-{i:03}")));
+    }
+    app.scroll.offset = 5;
+    app.receive_message(chat_msg("bot:ws", "BOTTOM-MSG"));
+    assert_eq!(app.scroll.unread_count, 1);
+    let hidden_before = app.msg.messages.iter().any(|m| m.text == "BOTTOM-MSG");
+    assert!(
+        hidden_before,
+        "message should be in buffer even while scrolled up"
+    );
+    app.scroll_down(app.scroll.offset);
+    assert_eq!(app.scroll.offset, 0);
+    assert_eq!(app.scroll.unread_count, 0);
+}
+
+#[test]
 fn update_activity_adds_entry() {
     let mut app = test_app();
     app.update_activity("dev".to_string(), "working".to_string());
