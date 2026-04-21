@@ -577,6 +577,31 @@ mod tests {
     }
 
     #[test]
+    fn alt_1_toggles_sidebar() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let (session, _dir) = test_session();
+        let before = app.sidebar.open;
+        let alt_1 = KeyEvent {
+            code: KeyCode::Char('1'),
+            modifiers: KeyModifiers::ALT,
+            kind: KeyEventKind::Press,
+            state: crossterm::event::KeyEventState::NONE,
+        };
+        handle(alt_1, &mut app, &session).unwrap();
+        assert_ne!(app.sidebar.open, before);
+    }
+
+    #[test]
+    fn plain_1_routes_to_input_not_sidebar() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let (session, _dir) = test_session();
+        let before = app.sidebar.open;
+        handle(char_key('1'), &mut app, &session).unwrap();
+        assert_eq!(app.sidebar.open, before);
+        assert_eq!(app.editor.input, "1");
+    }
+
+    #[test]
     fn ctrl_b_toggles_sidebar() {
         let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
         let (session, _dir) = test_session();
