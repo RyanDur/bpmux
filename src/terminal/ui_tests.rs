@@ -1458,3 +1458,73 @@ fn board_panel_and_chat_coexist_at_wide_terminal() {
         "board panel must render alongside chat. screen:\n{content}"
     );
 }
+
+#[test]
+fn menu_glyph_visible_when_sidebar_closed() {
+    let backend = TestBackend::new(80, 24);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = test_app_with(vec![]);
+    terminal.draw(|frame| render(frame, &mut app)).unwrap();
+    let content = buffer_to_string(terminal.backend().buffer());
+    assert!(
+        content.contains('\u{2261}'),
+        "≡ glyph missing. screen:\n{content}"
+    );
+}
+
+#[test]
+fn menu_glyph_hidden_when_sidebar_open() {
+    let backend = TestBackend::new(80, 24);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = test_app_with(vec![]);
+    app.toggle_sidebar();
+    terminal.draw(|frame| render(frame, &mut app)).unwrap();
+    let content = buffer_to_string(terminal.backend().buffer());
+    let first_row = content.lines().next().unwrap_or("");
+    assert!(
+        !first_row.contains('\u{2261}'),
+        "≡ glyph should not appear on row 0 when sidebar is open. row 0:\n{first_row}"
+    );
+}
+
+#[test]
+fn chat_title_shows_expand_glyph_when_sidebar_closed() {
+    let backend = TestBackend::new(80, 24);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = test_app_with(vec![]);
+    terminal.draw(|frame| render(frame, &mut app)).unwrap();
+    let content = buffer_to_string(terminal.backend().buffer());
+    assert!(
+        content.contains('\u{25B8}'),
+        "▸ expand glyph missing. screen:\n{content}"
+    );
+}
+
+#[test]
+fn help_overlay_shows_click_or_keypress_dismiss_hint() {
+    let backend = TestBackend::new(80, 24);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = test_app_with(vec![]);
+    app.input_mode = crate::terminal::app::InputMode::Help;
+    terminal.draw(|frame| render(frame, &mut app)).unwrap();
+    let content = buffer_to_string(terminal.backend().buffer());
+    assert!(
+        content.contains("click anywhere or press any key to close"),
+        "help overlay missing dismiss hint. screen:\n{content}"
+    );
+}
+
+#[test]
+fn sidebar_title_shows_collapse_glyph_when_open() {
+    let backend = TestBackend::new(80, 24);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = test_app_with(vec![]);
+    app.toggle_sidebar();
+    terminal.draw(|frame| render(frame, &mut app)).unwrap();
+    let content = buffer_to_string(terminal.backend().buffer());
+    let first_lines: String = content.lines().take(3).collect::<Vec<_>>().join("\n");
+    assert!(
+        first_lines.contains('\u{25BE}'),
+        "▾ collapse glyph missing in sidebar title. first lines:\n{first_lines}"
+    );
+}
