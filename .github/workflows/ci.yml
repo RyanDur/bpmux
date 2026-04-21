@@ -50,7 +50,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BPMUX_REPO: ${{ github.repository }}
           BPMUX_SESSION_BASE: ${{ runner.temp }}/bpmux-sessions
-        run: cargo test --features integration_tests -- --test-threads=1
+        run: cargo test --jobs 1 --features integration_tests -- --test-threads=1
       - name: Audit
         run: |
           cargo install cargo-audit
