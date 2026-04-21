@@ -558,6 +558,107 @@ mod tests {
     }
 
     #[test]
+    fn ctrl_k_enters_palette_mode() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        let (session, _dir) = test_session();
+        let ctrl_k = KeyEvent {
+            code: KeyCode::Char('k'),
+            modifiers: KeyModifiers::CONTROL,
+            kind: KeyEventKind::Press,
+            state: crossterm::event::KeyEventState::NONE,
+        };
+        handle(ctrl_k, &mut app, &session).unwrap();
+        assert!(matches!(app.input_mode, InputMode::Palette));
+    }
+
+    #[test]
+    fn palette_char_input_filters_matches() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.input_mode = InputMode::Palette;
+        let (session, _dir) = test_session();
+        for c in "who".chars() {
+            handle(char_key(c), &mut app, &session).unwrap();
+        }
+        assert_eq!(app.palette.input, "who");
+        let names: Vec<&str> = app.palette_matches().iter().map(|(n, _)| *n).collect();
+        assert!(names.contains(&"/who"));
+        assert!(!names.contains(&"/help"));
+    }
+
+    #[test]
+    fn palette_esc_clears_and_exits_to_chat() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.input_mode = InputMode::Palette;
+        app.palette.input = "who".to_string();
+        let (session, _dir) = test_session();
+        let esc = KeyEvent {
+            code: KeyCode::Esc,
+            modifiers: KeyModifiers::NONE,
+            kind: KeyEventKind::Press,
+            state: crossterm::event::KeyEventState::NONE,
+        };
+        handle(esc, &mut app, &session).unwrap();
+        assert!(matches!(app.input_mode, InputMode::Chat));
+        assert!(app.palette.input.is_empty());
+    }
+
+    #[test]
+    fn palette_up_down_moves_selection() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.input_mode = InputMode::Palette;
+        let (session, _dir) = test_session();
+        let down = KeyEvent {
+            code: KeyCode::Down,
+            modifiers: KeyModifiers::NONE,
+            kind: KeyEventKind::Press,
+            state: crossterm::event::KeyEventState::NONE,
+        };
+        handle(down, &mut app, &session).unwrap();
+        assert_eq!(app.palette.selected, 1);
+        let up = KeyEvent {
+            code: KeyCode::Up,
+            modifiers: KeyModifiers::NONE,
+            kind: KeyEventKind::Press,
+            state: crossterm::event::KeyEventState::NONE,
+        };
+        handle(up, &mut app, &session).unwrap();
+        assert_eq!(app.palette.selected, 0);
+    }
+
+    #[test]
+    fn palette_enter_exits_and_runs_selected() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.input_mode = InputMode::Palette;
+        app.palette.input = "who".to_string();
+        let (session, _dir) = test_session();
+        let enter = KeyEvent {
+            code: KeyCode::Enter,
+            modifiers: KeyModifiers::NONE,
+            kind: KeyEventKind::Press,
+            state: crossterm::event::KeyEventState::NONE,
+        };
+        handle(enter, &mut app, &session).unwrap();
+        assert!(matches!(app.input_mode, InputMode::Chat));
+        assert!(app.palette.input.is_empty());
+    }
+
+    #[test]
+    fn palette_backspace_removes_char() {
+        let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
+        app.input_mode = InputMode::Palette;
+        app.palette.input = "who".to_string();
+        let (session, _dir) = test_session();
+        let bs = KeyEvent {
+            code: KeyCode::Backspace,
+            modifiers: KeyModifiers::NONE,
+            kind: KeyEventKind::Press,
+            state: crossterm::event::KeyEventState::NONE,
+        };
+        handle(bs, &mut app, &session).unwrap();
+        assert_eq!(app.palette.input, "wh");
+    }
+
+    #[test]
     fn board_panel_focused_esc_unfocuses() {
         let mut app = App::new("ryan".to_string(), "test".to_string(), vec![]);
         app.board.panel_focused = true;
