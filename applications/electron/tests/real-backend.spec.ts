@@ -223,4 +223,116 @@ test.describe('real-backend', () => {
 
     await app.close()
   })
+
+  // #349 richer filter — hide-by-class + persistence across reload +
+  // class gutter glyphs. Uses the same narrow /api/messages mock
+  // pattern: CORS + network substrate are proved by the first
+  // real-backend test; here we test filter rendering logic with a
+  // controlled multi-class fixture.
+  test('richer filter: toggles hide/show a class, persists across reload, insight renders ◊ glyph', async () => {
+    const base = new Date('2026-04-22T13:00:00Z').getTime()
+    const fixture = [
+      {
+        from: 'dev:claude-code',
+        text: 'chat message',
+        ts: new Date(base).toISOString(),
+        message_type: 'chat'
+      },
+      {
+        from: 'dev:claude-code',
+        text: 'insight reasoning trace',
+        ts: new Date(base + 60_000).toISOString(),
+        message_type: 'insight'
+      },
+      {
+        from: 'bpmux:system',
+        text: 'activity line 1',
+        ts: new Date(base + 120_000).toISOString(),
+        message_type: 'activity'
+      }
+    ]
+
+    // First launch: default filter is chat+insight. Assert defaults,
+    // verify insight glyph, toggle activity on, then toggle insight
+    // off to create a non-default state that the second launch will
+    // assert persisted.
+    {
+      const { app } = await launchWithIsolatedSession()
+      const win = await app.firstWindow()
+      await win.route('**/api/messages**', async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify([...fixture].reverse())
+        })
+      })
+      await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+      await expect(win.locator('[data-test="filter-pills"]')).toBeVisible()
+
+      // Default: chat+insight visible, activity+system hidden. WS is
+      // live (not mocked), so additional messages may arrive alongside
+      // the /api/messages fixture — assertions match patterns rather
+      // than exact counts. What matters is the FILTER behavior, not
+      // the absolute message count.
+      await expect(win.locator('[data-test="filter-hidden-count"]')).toContainText(
+        /activity hidden|activity, .* hidden/,
+        { timeout: 5_000 }
+      )
+
+      // AC6: insight message renders with ◊ gutter glyph. At least
+      // one insight glyph exists because the fixture includes one
+      // insight message.
+      const insightGlyph = win.locator(
+        '[data-test="message-class-glyph"][data-class="insight"]'
+      )
+      await expect(insightGlyph.first()).toHaveText('◊')
+
+      // AC1: click [activity] pill → activity messages become visible.
+      // Count rises after toggle. Track via a before/after snapshot.
+      const rowsBefore = await win.locator('[data-test="message-row"]').count()
+      await win.locator('[data-test="filter-pill-activity"]').click()
+      await expect(async () => {
+        const after = await win.locator('[data-test="message-row"]').count()
+        expect(after).toBeGreaterThan(rowsBefore)
+      }).toPass({ timeout: 3_000 })
+
+      // Create non-default state: hide insight. Assert the hidden-count
+      // mentions insight regardless of exact number.
+      await win.locator('[data-test="filter-pill-insight"]').click()
+      await expect(win.locator('[data-test="filter-hidden-count"]')).toContainText(
+        /insight/
+      )
+
+      await app.close()
+    }
+
+    // Second launch: AC5 — localStorage persistence survives reload.
+    // Electron's default partition persists localStorage across app
+    // launches (same user-data-dir), so this launch should read the
+    // state the first launch wrote.
+    {
+      const { app } = await launchWithIsolatedSession()
+      const win = await app.firstWindow()
+      await win.route('**/api/messages**', async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify([...fixture].reverse())
+        })
+      })
+      await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+      await expect(win.locator('[data-test="filter-pill-insight"]')).toHaveAttribute(
+        'aria-pressed',
+        'false'
+      )
+      await expect(win.locator('[data-test="filter-pill-activity"]')).toHaveAttribute(
+        'aria-pressed',
+        'true'
+      )
+      await expect(win.locator('[data-test="filter-hidden-count"]')).toContainText(
+        /insight/
+      )
+      await app.close()
+    }
+  })
 })

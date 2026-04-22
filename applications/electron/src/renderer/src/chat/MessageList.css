@@ -171,6 +171,20 @@
     background: color-mix(in srgb, var(--accent-brand) 14%, transparent);
   }
 
+  /* Per-class gutter glyph. Inline before the body (not a separate
+   * grid column) so chat messages — the majority — don't carry a
+   * trailing empty gutter. aria-hidden in JSX: the message class is
+   * already announced via the addressee/scope chips in the header;
+   * the glyph is a pure visual anchor for sighted users skimming. */
+  & .message-class-glyph {
+    display: inline-block;
+    margin-right: var(--space-6);
+    color: var(--fg-dim);
+    font-size: 0.75rem;
+    vertical-align: baseline;
+    user-select: none;
+  }
+
   & .message-body {
     color: var(--fg-primary);
     font-size: 0.875rem;

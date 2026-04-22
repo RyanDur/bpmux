@@ -1,12 +1,28 @@
 import { format } from 'date-fns'
 import { useEffect, useRef } from 'react'
 import type { ChatMessage } from '../transport/types'
+import { classOf, type MessageClass } from '../hooks/useMessageFilter'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import MessageBody from './MessageBody'
 import './MessageList.css'
 
 interface Props {
   messages: ChatMessage[]
+  // Classes the user wants to see. Messages outside the set are
+  // filtered from the render. Passed as a Set (not a flat array) so
+  // membership check is O(1) per message — MessageList can be hot on
+  // large logs.
+  visibleClasses: ReadonlySet<MessageClass>
+}
+
+// Per-class gutter glyph (AC6). Chat = no glyph (majority case, zero
+// visual noise). Other classes get a small inline prefix so the
+// reader can scan message class without relying on the filter alone.
+const CLASS_GLYPHS: Record<MessageClass, string | null> = {
+  chat: null,
+  insight: '◊',
+  activity: '•',
+  system: '⚙'
 }
 
 // Grouping threshold — consecutive messages from the same sender
@@ -66,16 +82,14 @@ function avatarClasses(sender: string): string {
   return `message-avatar message-avatar--${roleKey} ${shape}`
 }
 
-function MessageList({ messages }: Props): React.JSX.Element {
+function MessageList({ messages, visibleClasses }: Props): React.JSX.Element {
   const endRef = useRef<HTMLLIElement>(null)
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'end' })
   }, [messages.length])
 
-  const visible = messages.filter(
-    (m) => m.messageType !== 'activity' && m.messageType !== 'system'
-  )
+  const visible = messages.filter((m) => visibleClasses.has(classOf(m.messageType)))
 
   const regionProps = {
     className: 'message-list',
@@ -162,6 +176,16 @@ function MessageList({ messages }: Props): React.JSX.Element {
                 </time>
               )}
               <section className="message-body">
+                {CLASS_GLYPHS[classOf(m.messageType)] && (
+                  <span
+                    className="message-class-glyph"
+                    data-test="message-class-glyph"
+                    data-class={classOf(m.messageType)}
+                    aria-hidden="true"
+                  >
+                    {CLASS_GLYPHS[classOf(m.messageType)]}
+                  </span>
+                )}
                 <MessageBody text={m.text} />
               </section>
             </article>

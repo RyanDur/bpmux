@@ -1,0 +1,54 @@
+.filter-pills {
+  padding: var(--space-6) var(--space-16);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-base);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+
+  & .filter-pills-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-6);
+  }
+
+  & .filter-pill {
+    padding: var(--space-2) var(--space-8);
+    font-size: 0.75rem;
+    color: var(--fg-secondary);
+    background: transparent;
+    border: 1px solid var(--border-subtle);
+    border-radius: 999px;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--bg-highlighted);
+    }
+
+    /* aria-pressed=true is the canonical toggle-state signal per WAI-
+     * ARIA; matching on the attribute means our styling tracks the
+     * accessibility state by construction (no separate --active class
+     * drift from aria-pressed drift). */
+    &.filter-pill--active,
+    &[aria-pressed='true'] {
+      color: var(--fg-primary);
+      background: var(--bg-highlighted);
+      border-color: var(--border-strong);
+      font-weight: 600;
+    }
+
+    /* Focus ring: visible keyboard-focus (AC7 requires keyboard
+     * reachability). Outline over box-shadow so it survives the
+     * rounded-pill border-radius cleanly. */
+    &:focus-visible {
+      outline: 2px solid var(--accent-brand);
+      outline-offset: 2px;
+    }
+  }
+
+  & .filter-pills-summary {
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--fg-dim);
+  }
+}
