@@ -1058,6 +1058,34 @@ pub async fn get_story_comments(
     }
 }
 
+/// GET /api/stories/:number/timeline — issue creation + event history
+/// for the story's drill-in timeline section (#367). Returns condensed
+/// event records the renderer classifies into lifecycle gates.
+pub async fn get_story_timeline(
+    axum::Extension(tracker): axum::Extension<TrackerHandle>,
+    axum::extract::Path(number): axum::extract::Path<u64>,
+) -> impl IntoResponse {
+    let Some(tracker) = tracker else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            json_headers(),
+            err_body("tracker not configured"),
+        );
+    };
+    match tracker.list_story_timeline(number).await {
+        Ok(events) => (
+            StatusCode::OK,
+            json_headers(),
+            serde_json::to_string(&events).unwrap_or_else(|_| "[]".to_string()),
+        ),
+        Err(e) => (
+            StatusCode::BAD_GATEWAY,
+            json_headers(),
+            err_body(&format!("list timeline failed: {e}")),
+        ),
+    }
+}
+
 /// POST /api/stories/:number/comments — add a comment.
 pub async fn post_story_comment(
     State(session): State<Arc<session::Session>>,

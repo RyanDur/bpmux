@@ -364,6 +364,91 @@ impl OctocrabStoryTracker {
         Ok(condensed)
     }
 
+    /// Fetch the issue's timeline: creation (as a "filed" event) plus
+    /// every GitHub issue event (labeled / unlabeled / closed / reopened
+    /// / commented / ...) in chronological order. Returns a condensed
+    /// JSON array — the renderer classifies events into lifecycle gates
+    /// (started, delivered, accepted, rejected, closed) from the raw
+    /// event + label combination. Serialisable through serde_json so
+    /// the REST handler can forward without re-deriving.
+    pub async fn list_story_timeline(&self, number: u64) -> Result<Vec<serde_json::Value>, String> {
+        // First: the issue itself, for the "filed" anchor event.
+        let issue = self
+            .client
+            .issues(&self.owner, &self.repo)
+            .get(number)
+            .await
+            .map_err(Self::classify)?;
+        let mut out: Vec<serde_json::Value> = vec![serde_json::json!({
+            "event": "filed",
+            "actor": issue.user.login,
+            "ts": issue.created_at.to_rfc3339(),
+        })];
+
+        // Timeline events: labels, closed, reopened, commented, etc.
+        let timeline = self
+            .client
+            .issues(&self.owner, &self.repo)
+            .list_timeline_events(number)
+            .per_page(100)
+            .send()
+            .await
+            .map_err(Self::classify)?;
+        for e in timeline.items {
+            // Not every timeline entry has a created_at (committed-
+            // event-only variants expose `submitted_at` / commit SHA
+            // instead). Skip anything we can't time-order — those
+            // aren't lifecycle-relevant for the chat-tool timeline
+            // anyway.
+            let Some(ts) = e.created_at else { continue };
+            let actor = e
+                .actor
+                .as_ref()
+                .map(|a| a.login.clone())
+                .unwrap_or_default();
+            let event = serde_json::to_value(&e.event)
+                .ok()
+                .and_then(|v| v.as_str().map(|s| s.to_string()))
+                .unwrap_or_else(|| "unknown".to_string());
+            let mut entry = serde_json::json!({
+                "event": event,
+                "actor": actor,
+                "ts": ts.to_rfc3339(),
+            });
+            // Label payload comes through as { name, color } — the
+            // renderer keys lifecycle classification off the label
+            // name, so surface just the name rather than the full
+            // label object.
+            if let Some(label) = &e.label
+                && let Some(entry_obj) = entry.as_object_mut()
+            {
+                entry_obj.insert(
+                    "label".into(),
+                    serde_json::Value::String(label.name.clone()),
+                );
+            }
+            // Commented events carry the comment body so the timeline
+            // can show a short excerpt inline (spec's "optional note"
+            // column).
+            if let Some(body) = &e.body
+                && let Some(entry_obj) = entry.as_object_mut()
+            {
+                entry_obj.insert("body".into(), serde_json::Value::String(body.clone()));
+            }
+            out.push(entry);
+        }
+        // Timeline API returns chronologically already; sorting
+        // defensively so the "filed" synthetic entry always leads
+        // the array even if issue.created_at matches an event ts
+        // (unlikely but safer than trusting API ordering).
+        out.sort_by(|a, b| {
+            let sa = a.get("ts").and_then(|v| v.as_str()).unwrap_or("");
+            let sb = b.get("ts").and_then(|v| v.as_str()).unwrap_or("");
+            sa.cmp(sb)
+        });
+        Ok(out)
+    }
+
     /// Post a comment on a story. Thin wrapper around the trait method
     /// for the REST handler's convenience (keeps the REST layer off
     /// the StoryTracker trait so the FakeTracker doesn't need to stub

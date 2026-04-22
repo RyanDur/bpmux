@@ -2,10 +2,135 @@ import { format } from 'date-fns'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import MessageBody from '../chat/MessageBody'
 import { useAnimatedUnmount } from '../hooks/useAnimatedUnmount'
+import {
+  useTimeline,
+  type ClassifiedEvent,
+  type TimelineGate
+} from '../hooks/useTimeline'
 import { BOARD_INVALIDATE_MARKER, type ChatMessage } from '../transport/types'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import { storyTypeFromLabels, type BoardStory } from './types'
 import './DrillIn.css'
+
+// Human-readable label per lifecycle gate. Keeps the rendering code
+// in DrillIn concise — map lives at module scope so the object
+// doesn't re-create per render.
+const GATE_LABEL: Record<TimelineGate, string> = {
+  filed: 'Filed',
+  started: 'Started',
+  delivered: 'Delivered',
+  'desk-check-fail': 'Desk-check failed',
+  accepted: 'Accepted',
+  rejected: 'Rejected',
+  closed: 'Closed',
+  reopened: 'Reopened'
+}
+
+// "Major gates" set — timeline default-filter. Matches the AC's
+// filing / started / delivered / desk-check pass|fail / accepted |
+// rejected / closed list. (desk-check-pass isn't a distinct label in
+// our current workflow — successful desk-check flows straight into
+// accepted; the `accepted` gate stands in.)
+const MAJOR_GATES: ReadonlySet<TimelineGate> = new Set([
+  'filed',
+  'started',
+  'delivered',
+  'desk-check-fail',
+  'accepted',
+  'rejected',
+  'closed',
+  'reopened'
+])
+
+// Stories filed before this date pre-date the bpmux lifecycle-label
+// vocabulary being in force. We footer-note them so the reader
+// understands why their timeline is sparse compared to newer stories.
+// Mirrors the AC's "pre-event-log" framing. Concrete cutoff chosen
+// as 2026-04-01 per the workflow rollout window.
+const EVENT_LOG_START = Date.parse('2026-04-01T00:00:00Z')
+
+function labelFor(e: ClassifiedEvent): string {
+  if (e.gate) return GATE_LABEL[e.gate]
+  if (e.raw.event === 'labeled') return `Labeled: ${e.raw.label ?? '?'}`
+  if (e.raw.event === 'unlabeled') return `Unlabeled: ${e.raw.label ?? '?'}`
+  if (e.raw.event === 'commented') return 'Commented'
+  if (e.raw.event === 'renamed') return 'Renamed'
+  if (e.raw.event === 'assigned') return 'Assigned'
+  if (e.raw.event === 'unassigned') return 'Unassigned'
+  return e.raw.event
+}
+
+function truncate(body: string, max = 120): string {
+  const collapsed = body.replace(/\s+/g, ' ').trim()
+  if (collapsed.length <= max) return collapsed
+  return `${collapsed.slice(0, max - 1)}…`
+}
+
+// Render the filtered-and-grouped timeline. Extracted to a helper so
+// DrillIn's main return stays a thin JSX tree — the filter/grouping
+// logic has enough branches that inlining would hurt readability.
+function renderTimelineList(
+  events: ClassifiedEvent[],
+  showAll: boolean,
+  story: BoardStory
+): React.JSX.Element {
+  const visible = showAll
+    ? events
+    : events.filter((e) => e.gate !== null && MAJOR_GATES.has(e.gate))
+  const createdMs = Date.parse(story.created_at ?? '')
+  const preEventLog =
+    Number.isFinite(createdMs) && createdMs < EVENT_LOG_START
+  return (
+    <>
+      <ol className="drill-in-timeline-list" data-test="drill-in-timeline-list">
+        {visible.map((e, i) => {
+          const classes = [
+            'drill-in-timeline-item',
+            e.gate ? `drill-in-timeline-item--${e.gate}` : '',
+            e.reworkGroup !== undefined
+              ? 'drill-in-timeline-item--rework'
+              : ''
+          ]
+            .filter(Boolean)
+            .join(' ')
+          return (
+            <li
+              key={`${e.raw.ts}-${i}`}
+              className={classes}
+              data-test="drill-in-timeline-item"
+              data-gate={e.gate ?? e.raw.event}
+              data-rework-group={e.reworkGroup ?? undefined}
+            >
+              <span className="drill-in-timeline-kind">{labelFor(e)}</span>
+              <time
+                className="drill-in-timeline-ts"
+                dateTime={e.raw.ts}
+              >
+                {format(new Date(e.raw.ts), 'MMM d · h:mm a')}
+              </time>
+              {e.raw.actor && (
+                <cite className="drill-in-timeline-actor">{e.raw.actor}</cite>
+              )}
+              {e.raw.body && (
+                <small className="drill-in-timeline-note">
+                  {truncate(e.raw.body)}
+                </small>
+              )}
+            </li>
+          )
+        })}
+      </ol>
+      {preEventLog && (
+        <p
+          className="drill-in-timeline-footer"
+          data-test="drill-in-timeline-prelog"
+        >
+          history pre-dates event log
+        </p>
+      )}
+    </>
+  )
+}
 
 interface Comment {
   id: number
@@ -96,6 +221,17 @@ function DrillIn({
   const [optimistic, setOptimistic] = useState<Comment[]>([])
   const [commentDraft, setCommentDraft] = useState<string>('')
   const [commentBusy, setCommentBusy] = useState<boolean>(false)
+  // #367 timeline filter state. Default: major gates only, matching
+  // the spec's "don't overwhelm" framing. Toggled via the "show all"
+  // button below the timeline header — persistent across re-renders
+  // of the same drill-in instance.
+  const [timelineShowAll, setTimelineShowAll] = useState<boolean>(false)
+  const timeline = useTimeline({
+    apiBase,
+    authToken,
+    storyNumber: story.number,
+    messages
+  })
   const articleRef = useRef<HTMLElement | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const commentTextareaRef = useRef<HTMLTextAreaElement | null>(null)
@@ -612,6 +748,36 @@ function DrillIn({
           </menu>
         </form>
       </section>
+
+      <details className="drill-in-timeline" data-test="drill-in-timeline">
+        <summary className="drill-in-timeline-summary">
+          <h4>Timeline{timeline.events ? ` (${timeline.events.length})` : ''}</h4>
+        </summary>
+        {timeline.loading && timeline.events === null ? (
+          <p className="drill-in-timeline-empty">loading…</p>
+        ) : timeline.error && timeline.events === null ? (
+          <p className="drill-in-timeline-empty">
+            failed to load: {timeline.error}
+          </p>
+        ) : timeline.events && timeline.events.length > 0 ? (
+          <>
+            <div className="drill-in-timeline-controls">
+              <button
+                type="button"
+                className="drill-in-timeline-toggle"
+                data-test="drill-in-timeline-toggle"
+                aria-pressed={timelineShowAll}
+                onClick={() => setTimelineShowAll((v) => !v)}
+              >
+                {timelineShowAll ? 'Show major gates only' : 'Show all events'}
+              </button>
+            </div>
+            {renderTimelineList(timeline.events, timelineShowAll, story)}
+          </>
+        ) : (
+          <p className="drill-in-timeline-empty">no events yet</p>
+        )}
+      </details>
 
       {canAct ? (
         <footer className="drill-in-actions">

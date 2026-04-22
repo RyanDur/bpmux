@@ -87,6 +87,10 @@ pub async fn run_server(
                 .post(transport::rest::post_story_comment),
         )
         .route(
+            "/api/stories/{number}/timeline",
+            axum::routing::get(transport::rest::get_story_timeline),
+        )
+        .route(
             "/api/metrics",
             axum::routing::get(transport::rest::get_metrics),
         )

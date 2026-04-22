@@ -481,4 +481,157 @@
       }
     }
   }
+
+  /* #367 timeline. Native <details> + <summary> collapse — no JS
+   * toggle state. Default-closed via the open attribute omission in
+   * JSX. Summary is a flow-content heading so the clickable area is
+   * the full "Timeline (N)" line. */
+  & .drill-in-timeline {
+    border-top: 1px solid var(--border-subtle);
+    padding: var(--space-8) var(--space-16);
+    background: var(--bg-base);
+
+    & > summary {
+      list-style: none;
+      cursor: pointer;
+      user-select: none;
+      padding: var(--space-2) 0;
+
+      /* Remove the default disclosure triangle; we render our own
+       * so it follows motion + color tokens consistently. */
+      &::-webkit-details-marker {
+        display: none;
+      }
+
+      & h4 {
+        margin: 0;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: var(--fg-primary);
+      }
+
+      /* Rotating chevron — ► when closed, ▼ when open. Uses the
+       * details' [open] attribute as the state selector, no JS. */
+      &::before {
+        content: '▸';
+        display: inline-block;
+        margin-right: var(--space-4);
+        color: var(--fg-secondary);
+        transition: transform var(--motion-duration-fast) var(--motion-ease-out);
+      }
+    }
+
+    &[open] > summary::before {
+      transform: rotate(90deg);
+    }
+  }
+
+  & .drill-in-timeline-empty {
+    color: var(--fg-dim);
+    font-size: 0.75rem;
+    padding: var(--space-8) 0;
+  }
+
+  & .drill-in-timeline-controls {
+    margin-top: var(--space-8);
+    margin-bottom: var(--space-8);
+  }
+
+  & .drill-in-timeline-toggle {
+    background: transparent;
+    border: 1px solid var(--border-subtle);
+    border-radius: 4px;
+    color: var(--fg-secondary);
+    cursor: pointer;
+    font-size: 0.75rem;
+    padding: var(--space-2) var(--space-8);
+
+    &:hover {
+      background: var(--bg-highlighted);
+      color: var(--fg-primary);
+    }
+
+    &:focus-visible {
+      border-color: var(--accent-brand);
+      outline: none;
+    }
+  }
+
+  & .drill-in-timeline-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  & .drill-in-timeline-item {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    column-gap: var(--space-8);
+    row-gap: var(--space-2);
+    align-items: baseline;
+    padding: var(--space-4) var(--space-8);
+    border-left: 2px solid var(--border-subtle);
+    font-size: 0.75rem;
+    color: var(--fg-secondary);
+
+    & .drill-in-timeline-kind {
+      font-weight: 600;
+      color: var(--fg-primary);
+    }
+
+    & .drill-in-timeline-ts {
+      color: var(--fg-dim);
+      justify-self: end;
+    }
+
+    & .drill-in-timeline-actor {
+      color: var(--fg-secondary);
+      font-style: normal;
+      grid-column: 1 / span 2;
+    }
+
+    & .drill-in-timeline-note {
+      color: var(--fg-dim);
+      font-size: 0.75rem;
+      grid-column: 1 / span 2;
+    }
+
+    /* Gate-specific left-border colors to cue lifecycle progression
+     * at a glance. Filed + started are neutral; delivered = warning
+     * (mid-review); accepted/closed = success; fail/reject = error. */
+    &.drill-in-timeline-item--delivered {
+      border-left-color: var(--accent-warning);
+    }
+
+    &.drill-in-timeline-item--accepted,
+    &.drill-in-timeline-item--closed {
+      border-left-color: var(--accent-success);
+    }
+
+    &.drill-in-timeline-item--desk-check-fail,
+    &.drill-in-timeline-item--rejected {
+      border-left-color: var(--accent-error);
+    }
+
+    /* Rework-cycle items get a subtle inset so a run of events
+     * reads as a grouped iteration rather than a flat list. The
+     * group-id attribute is available for future enhancement
+     * (e.g., per-cycle accent color) without changing the data
+     * flow. */
+    &.drill-in-timeline-item--rework {
+      margin-left: var(--space-16);
+    }
+  }
+
+  & .drill-in-timeline-footer {
+    margin-top: var(--space-8);
+    padding: var(--space-4) var(--space-8);
+    font-size: 0.75rem;
+    color: var(--fg-dim);
+    font-style: italic;
+    border-top: 1px dashed var(--border-subtle);
+  }
 }
