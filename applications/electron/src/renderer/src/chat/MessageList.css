@@ -22,6 +22,41 @@
     flex-direction: column;
     gap: var(--space-2);
 
+    /* Arrival animation (#352 AC4): new message rows slide up from
+     * a few px below + fade in. @starting-style fires once per mount
+     * — React keyed by m.id keeps the element stable after hydration
+     * so the transition only plays when a genuinely new row mounts
+     * (WS arrival) rather than on every re-render. Reduced-motion
+     * users get 0ms on duration + no transform via the nested @media
+     * block below.
+     *
+     * Note: the 70K-message hydration backfill will animate every
+     * row on initial load; since all rows are inserted in a single
+     * frame they fade/rise together — reads as a pleasant arrival
+     * rather than noisy. If that ever feels off, a "seen at hydration"
+     * flag can be threaded from useWebSocket to skip the animation
+     * on backfill; not needed per current UX observation. */
+    transition:
+      transform var(--motion-duration-fast) var(--motion-ease-out),
+      opacity var(--motion-duration-fast) var(--motion-ease-out);
+    transform: translateY(0);
+    opacity: 1;
+
+    @starting-style {
+      transform: translateY(6px);
+      opacity: 0;
+    }
+
+    /* Reduced-motion: kill the transform (motion-inducing); keep
+     * opacity so the arrival still feels like something appeared. */
+    @media (prefers-reduced-motion: reduce) {
+      transform: none;
+
+      @starting-style {
+        transform: none;
+      }
+    }
+
     /* First-of-group gets the full avatar-anchored layout: a 28px
      * avatar column on the left, header + body occupying the right
      * column. Body lines up under the header, NOT under the avatar,
@@ -96,7 +131,12 @@
   /* Avatar: 28px square (AI roles) or circle (Ryan). Role-color
    * background from --role-* tokens. Bold first-initial centered.
    * aria-hidden in JSX — sender is announced via .sr-only prefix
-   * and/or visible <cite>, so the avatar is pure visual anchor. */
+   * and/or visible <cite>, so the avatar is pure visual anchor.
+   * Fade-in on first mount only (#352 AC3): the avatar is rendered
+   * inside a `.message-row--first` article, which itself only renders
+   * when grouping breaks. So @starting-style fires exactly when a
+   * new first-of-group avatar mounts — not on every scroll rerender.
+   * */
   & .message-avatar {
     display: inline-flex;
     align-items: center;
@@ -107,6 +147,12 @@
     font-weight: 700;
     color: var(--bg-base);
     user-select: none;
+    transition: opacity var(--motion-duration-fast) var(--motion-ease-out);
+    opacity: 1;
+
+    @starting-style {
+      opacity: 0;
+    }
   }
 
   & .message-avatar--square {

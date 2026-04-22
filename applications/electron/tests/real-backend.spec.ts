@@ -624,4 +624,65 @@ test.describe('real-backend', () => {
 
     await app.close()
   })
+
+  // #352 micro-interactions — filter pill transition + message-arrival
+  // transform. Asserts that the pill declares a token-driven transition
+  // on background-color (AC8a) and that .message-row declares a
+  // transform transition at fast duration for arrival animation (AC8b).
+  test('micro-interactions: filter pill transitions bg-color, message-row transitions transform', async () => {
+    const { app } = await launchWithIsolatedSession()
+    const win = await app.firstWindow()
+    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+
+    // Filter pill: transition-duration on background-color should match
+    // --motion-duration-instant (80ms). Reading the shorthand
+    // transition computed style + parsing is fragile; assert the
+    // longhand transition-property includes background-color instead.
+    const pillTransition = await win.evaluate(() => {
+      const el = document.querySelector('[data-test="filter-pill-chat"]')
+      if (!el) return null
+      const s = window.getComputedStyle(el)
+      return {
+        property: s.transitionProperty,
+        duration: s.transitionDuration
+      }
+    })
+    expect(pillTransition?.property).toContain('background-color')
+    // 80ms = 0.08s
+    expect(pillTransition?.duration).toContain('0.08s')
+
+    // Message-row: seed a chat message, check transform transition is
+    // declared. Uses the grouping fixture from the #348 test — simpler
+    // to mock one row and assert its computed style than to trigger
+    // a live WS arrival.
+    await win.route('**/api/messages**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          {
+            from: 'dev:claude-code',
+            text: 'arrival',
+            ts: '2026-04-22T17:00:00Z',
+            message_type: 'chat'
+          }
+        ])
+      })
+    })
+    // Wait for hydration to land a row. Grouping uses data-test on
+    // the li, not any intermediate wrapper.
+    const row = win.locator('[data-test="message-row"]').first()
+    await expect(row).toBeVisible({ timeout: 5_000 })
+    const rowTransition = await row.evaluate((el) => {
+      const s = window.getComputedStyle(el)
+      return {
+        property: s.transitionProperty,
+        duration: s.transitionDuration
+      }
+    })
+    expect(rowTransition.property).toContain('transform')
+    expect(rowTransition.duration).toContain('0.15s')
+
+    await app.close()
+  })
 })

@@ -21,6 +21,15 @@
     border-radius: 999px;
     cursor: pointer;
 
+    /* Toggle state animates (#352 AC1). bg + color + border all
+     * interpolate over the instant tier — the fastest token —
+     * because toggling is an immediate confirm-not-distract signal,
+     * not a focal state change. Reduced-motion resolves to 0ms. */
+    transition:
+      background-color var(--motion-duration-instant) var(--motion-ease-out),
+      color var(--motion-duration-instant) var(--motion-ease-out),
+      border-color var(--motion-duration-instant) var(--motion-ease-out);
+
     &:hover {
       background: var(--bg-highlighted);
     }

@@ -86,7 +86,10 @@ function MessageList({ messages, visibleClasses }: Props): React.JSX.Element {
   const endRef = useRef<HTMLLIElement>(null)
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ block: 'end' })
+    // Smooth scroll on new arrival (#352 AC5). Chromium respects
+    // prefers-reduced-motion for behavior='smooth' and falls back
+    // to instant automatically. No explicit media-query check.
+    endRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' })
   }, [messages.length])
 
   const visible = messages.filter((m) => visibleClasses.has(classOf(m.messageType)))

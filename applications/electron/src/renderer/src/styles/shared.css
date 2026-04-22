@@ -66,6 +66,14 @@ button {
   border: none;
   padding: 0;
   cursor: pointer;
+  /* Default hover/active transition for every button (#352 AC2).
+   * Per-component overrides can extend (adding transform or other
+   * properties) but bg + color cover the majority case. Duration
+   * token auto-zeros under reduced-motion. */
+  transition:
+    background-color var(--motion-duration-instant) var(--motion-ease-out),
+    color var(--motion-duration-instant) var(--motion-ease-out),
+    border-color var(--motion-duration-instant) var(--motion-ease-out);
 }
 
 textarea {
