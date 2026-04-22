@@ -76,6 +76,11 @@ pub async fn run_server(
             "/api/stories/{number}/reorder",
             axum::routing::post(transport::rest::post_reorder_story),
         )
+        .route(
+            "/api/stories/{number}/comments",
+            axum::routing::get(transport::rest::get_story_comments)
+                .post(transport::rest::post_story_comment),
+        )
         .layer(axum::middleware::from_fn_with_state(
             auth_state,
             transport::auth::gate,

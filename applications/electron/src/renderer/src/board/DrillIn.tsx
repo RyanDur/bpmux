@@ -1,8 +1,16 @@
+import { format } from 'date-fns'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import MessageBody from '../chat/MessageBody'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import { storyTypeFromLabels, type BoardStory } from './types'
 import './DrillIn.css'
+
+interface Comment {
+  id: number
+  author: string
+  body: string
+  created_at: string
+}
 
 interface Props {
   story: BoardStory
@@ -32,8 +40,12 @@ function DrillIn({
   const [busy, setBusy] = useState<BusyKind>(null)
   const [note, setNote] = useState<string>('')
   const [toast, setToast] = useState<string | null>(null)
+  const [comments, setComments] = useState<Comment[] | null>(null)
+  const [commentDraft, setCommentDraft] = useState<string>('')
+  const [commentBusy, setCommentBusy] = useState<boolean>(false)
   const articleRef = useRef<HTMLElement | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+  const commentTextareaRef = useRef<HTMLTextAreaElement | null>(null)
 
   // Focus the article on mount so Esc falls to our handler before
   // anything upstream intercepts.
@@ -54,6 +66,80 @@ function DrillIn({
     const id = setTimeout(() => setToast(null), TOAST_MS)
     return () => clearTimeout(id)
   }, [toast])
+
+  const fetchComments = useCallback(
+    async (signal?: AbortSignal): Promise<void> => {
+      if (usingMock || !apiBase) {
+        setComments([])
+        return
+      }
+      try {
+        const res = await fetch(
+          `${apiBase}/api/stories/${story.number}/comments`,
+          {
+            headers: { Authorization: `Bearer ${authToken ?? ''}` },
+            signal
+          }
+        )
+        if (!res.ok) {
+          setComments([])
+          return
+        }
+        const json = (await res.json()) as Comment[]
+        setComments(json)
+      } catch (err) {
+        if ((err as Error)?.name === 'AbortError') return
+        setComments([])
+      }
+    },
+    [apiBase, authToken, story.number, usingMock]
+  )
+
+  useEffect(() => {
+    const controller = new AbortController()
+    void fetchComments(controller.signal)
+    return () => controller.abort()
+  }, [fetchComments])
+
+  const handleCommentSubmit = useCallback(async () => {
+    const trimmed = commentDraft.trim()
+    if (!trimmed || commentBusy) return
+    setCommentBusy(true)
+    if (usingMock || !apiBase) {
+      setComments((prev) => [
+        ...(prev ?? []),
+        {
+          id: Date.now(),
+          author: 'ryan',
+          body: trimmed,
+          created_at: new Date().toISOString()
+        }
+      ])
+      setCommentDraft('')
+      setCommentBusy(false)
+      return
+    }
+    try {
+      const res = await fetch(`${apiBase}/api/stories/${story.number}/comments`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${authToken ?? ''}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ body: trimmed })
+      })
+      if (!res.ok) {
+        setToast(`Comment failed: HTTP ${res.status}`)
+        return
+      }
+      setCommentDraft('')
+      await fetchComments()
+    } catch (err) {
+      setToast(`Comment failed: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setCommentBusy(false)
+    }
+  }, [apiBase, authToken, commentBusy, commentDraft, fetchComments, story.number, usingMock])
 
   const canAct = isOwner && (story.state === 'delivered' || story.state === 'awaiting-accept')
 
@@ -224,6 +310,66 @@ function DrillIn({
         ) : (
           <p className="drill-in-body-empty">(no body)</p>
         )}
+      </section>
+
+      <section className="drill-in-comments" aria-label="Comments">
+        <header className="drill-in-comments-header">
+          <h4>Comments{comments !== null ? ` (${comments.length})` : ''}</h4>
+        </header>
+        {comments === null ? (
+          <p className="drill-in-comments-empty">loading…</p>
+        ) : comments.length === 0 ? (
+          <p className="drill-in-comments-empty">no comments yet</p>
+        ) : (
+          <ul className="drill-in-comments-list">
+            {comments.map((c) => (
+              <li key={c.id} className="drill-in-comment">
+                <article>
+                  <header className="drill-in-comment-meta">
+                    <cite>{c.author}</cite>
+                    <time dateTime={c.created_at}>
+                      {format(new Date(c.created_at), 'MMM d · h:mm a zzz')}
+                    </time>
+                  </header>
+                  <section className="drill-in-comment-body">
+                    <MessageBody text={c.body} />
+                  </section>
+                </article>
+              </li>
+            ))}
+          </ul>
+        )}
+        <form
+          className="drill-in-comment-form"
+          onSubmit={(event) => {
+            event.preventDefault()
+            void handleCommentSubmit()
+          }}
+        >
+          <label className="drill-in-comment-label">
+            <small>Add a comment</small>
+            <textarea
+              ref={commentTextareaRef}
+              value={commentDraft}
+              onChange={(e) => setCommentDraft(e.target.value)}
+              placeholder="Markdown supported"
+              rows={3}
+              data-test="drill-in-comment-input"
+            />
+          </label>
+          <menu className="drill-in-action-row">
+            <li>
+              <button
+                type="submit"
+                className="drill-in-btn drill-in-btn--primary"
+                disabled={commentBusy || commentDraft.trim().length === 0}
+                data-test="drill-in-comment-send"
+              >
+                {commentBusy ? 'Sending…' : 'Comment'}
+              </button>
+            </li>
+          </menu>
+        </form>
       </section>
 
       {canAct ? (

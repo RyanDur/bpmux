@@ -335,6 +335,47 @@ impl OctocrabStoryTracker {
             .map(|_| ())
             .map_err(Self::classify)
     }
+
+    /// List comments for a story. Returns condensed JSON matching the
+    /// Electron renderer's needs (author/body/created_at) so the
+    /// frontend doesn't have to know the full octocrab::models::Comment
+    /// schema.
+    pub async fn list_story_comments(&self, number: u64) -> Result<Vec<serde_json::Value>, String> {
+        let page = self
+            .client
+            .issues(&self.owner, &self.repo)
+            .list_comments(number)
+            .per_page(100)
+            .send()
+            .await
+            .map_err(Self::classify)?;
+        let condensed: Vec<serde_json::Value> = page
+            .items
+            .into_iter()
+            .map(|c| {
+                serde_json::json!({
+                    "id": c.id.into_inner(),
+                    "author": c.user.login,
+                    "body": c.body.unwrap_or_default(),
+                    "created_at": c.created_at.to_rfc3339(),
+                })
+            })
+            .collect();
+        Ok(condensed)
+    }
+
+    /// Post a comment on a story. Thin wrapper around the trait method
+    /// for the REST handler's convenience (keeps the REST layer off
+    /// the StoryTracker trait so the FakeTracker doesn't need to stub
+    /// a new method).
+    pub async fn post_story_comment(&self, number: u64, body: &str) -> Result<(), String> {
+        self.client
+            .issues(&self.owner, &self.repo)
+            .create_comment(number, body)
+            .await
+            .map(|_| ())
+            .map_err(Self::classify)
+    }
 }
 
 /// Shape a single octocrab Issue into the board JSON envelope the

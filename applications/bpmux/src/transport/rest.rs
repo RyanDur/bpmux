@@ -663,6 +663,75 @@ pub async fn post_reject_story(
 }
 
 #[derive(Deserialize)]
+pub struct CommentPayload {
+    pub body: String,
+}
+
+/// GET /api/stories/:number/comments — list comments for a story.
+pub async fn get_story_comments(
+    axum::Extension(tracker): axum::Extension<TrackerHandle>,
+    axum::extract::Path(number): axum::extract::Path<u64>,
+) -> impl IntoResponse {
+    let Some(tracker) = tracker else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            json_headers(),
+            err_body("tracker not configured"),
+        );
+    };
+    match tracker.list_story_comments(number).await {
+        Ok(comments) => (
+            StatusCode::OK,
+            json_headers(),
+            serde_json::to_string(&comments).unwrap_or_else(|_| "[]".to_string()),
+        ),
+        Err(e) => (
+            StatusCode::BAD_GATEWAY,
+            json_headers(),
+            err_body(&format!("list comments failed: {e}")),
+        ),
+    }
+}
+
+/// POST /api/stories/:number/comments — add a comment.
+pub async fn post_story_comment(
+    State(session): State<Arc<session::Session>>,
+    axum::Extension(tracker): axum::Extension<TrackerHandle>,
+    axum::extract::Path(number): axum::extract::Path<u64>,
+    Json(payload): Json<CommentPayload>,
+) -> impl IntoResponse {
+    let Some(tracker) = tracker else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            json_headers(),
+            err_body("tracker not configured"),
+        );
+    };
+    if payload.body.trim().is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            json_headers(),
+            err_body("body must not be empty"),
+        );
+    }
+    match tracker.post_story_comment(number, &payload.body).await {
+        Ok(()) => {
+            broadcast_board_invalidate(&session);
+            (
+                StatusCode::OK,
+                json_headers(),
+                serde_json::json!({ "ok": true }).to_string(),
+            )
+        }
+        Err(e) => (
+            StatusCode::BAD_GATEWAY,
+            json_headers(),
+            err_body(&format!("comment failed: {e}")),
+        ),
+    }
+}
+
+#[derive(Deserialize)]
 pub struct ReorderPayload {
     pub state: String,
     pub position: usize,
