@@ -4,12 +4,13 @@ import Chat from './chat/Chat'
 import CiGlyph from './ci/CiGlyph'
 import Sidebar from './sidebar/Sidebar'
 import type { ChatMessage, ConnectionStatus } from './transport/types'
+import type { SendOptions } from './transport/useWebSocket'
 import './AppShell.css'
 
 interface Props {
   status: ConnectionStatus
   messages: ChatMessage[]
-  onSend: (text: string, addressee?: string | null) => void
+  onSend: (text: string, opts?: SendOptions) => void
 }
 
 // Phase-1a window chrome: titlebar (app name, connection dot, CI
@@ -21,6 +22,7 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
     status === 'connected' ? 'connected' : status === 'connecting' ? 'connecting' : 'disconnected'
 
   const [boardOpen, setBoardOpen] = useState<boolean>(true)
+  const [recipient, setRecipient] = useState<string | null>(null)
 
   useEffect(() => {
     const handler = (event: KeyboardEvent): void => {
@@ -53,8 +55,13 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
         <CiGlyph />
       </header>
       <section className="app-body">
-        <Sidebar />
-        <Chat messages={messages} status={status} onSend={onSend} />
+        <Sidebar recipient={recipient} onSelectRecipient={setRecipient} />
+        <Chat
+          messages={messages}
+          status={status}
+          recipient={recipient}
+          onSend={onSend}
+        />
         {boardOpen ? <Board /> : null}
       </section>
     </main>

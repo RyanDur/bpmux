@@ -13,4 +13,12 @@
     font-size: 0.75rem;
     border-bottom: 1px solid var(--border-subtle);
   }
+
+  & .chat-scope {
+    padding: var(--space-4) var(--space-16);
+    background: color-mix(in srgb, var(--accent-brand) 12%, transparent);
+    color: var(--accent-brand);
+    font-size: 0.75rem;
+    border-bottom: 1px solid var(--border-subtle);
+  }
 }

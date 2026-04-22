@@ -2,8 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import './Input.css'
 
 interface Props {
-  onSend: (text: string, addressee?: string | null) => void
+  onSend: (text: string, addressee: string | null) => void
   disabled?: boolean
+  placeholder?: string
 }
 
 const VALID_ADDRESSEES = new Set(['ryan', 'dev', 'pm', 'designer'])
@@ -46,7 +47,7 @@ function lineEnd(value: string, from: number): number {
 
 const MAX_HISTORY = 50
 
-function Input({ onSend, disabled }: Props): React.JSX.Element {
+function Input({ onSend, disabled, placeholder }: Props): React.JSX.Element {
   const [value, setValue] = useState('')
   const taRef = useRef<HTMLTextAreaElement>(null)
   const yankRef = useRef<string>('')
@@ -293,7 +294,7 @@ function Input({ onSend, disabled }: Props): React.JSX.Element {
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="type here — Enter to send, Shift+Enter for newline"
+        placeholder={placeholder ?? 'type here — Enter to send, Shift+Enter for newline'}
         rows={1}
         aria-label="chat message"
         data-test="chat-input-textarea"

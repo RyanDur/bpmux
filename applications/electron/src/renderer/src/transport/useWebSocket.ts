@@ -25,11 +25,16 @@ const RENDERER_TOOL = 'electron'
 const INITIAL_BACKOFF_MS = 1000
 const MAX_BACKOFF_MS = 8000
 
+export interface SendOptions {
+  addressee?: string | null
+  to?: string[] | null
+}
+
 export interface UseWebSocketResult {
   status: ConnectionStatus
   messages: ChatMessage[]
   sessionId: string | null
-  sendChat: (text: string, addressee?: string | null) => void
+  sendChat: (text: string, opts?: SendOptions) => void
 }
 
 interface HistoryMessage {
@@ -74,11 +79,12 @@ export function useWebSocket(
   }, [])
 
   const sendChat = useCallback(
-    (text: string, addressee?: string | null) => {
+    (text: string, opts?: SendOptions) => {
       const trimmed = text.trim()
       if (!trimmed) return
       const frame: ClientMessage = { type: 'send', text: trimmed }
-      if (addressee) frame.addressee = addressee
+      if (opts?.addressee) frame.addressee = opts.addressee
+      if (opts?.to && opts.to.length > 0) frame.to = opts.to
       sendJson(frame)
     },
     [sendJson]
