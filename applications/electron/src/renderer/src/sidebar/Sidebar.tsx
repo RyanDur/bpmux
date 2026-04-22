@@ -1,3 +1,5 @@
+import './Sidebar.css'
+
 // Phase-1a sidebar: static channel scaffold. Broadcast is selected;
 // direct / groups / system are placeholders (no routing yet — all
 // messages stream into the one chat region). Selectable channels are

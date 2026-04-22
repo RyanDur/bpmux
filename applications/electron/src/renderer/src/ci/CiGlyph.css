@@ -1,0 +1,7 @@
+.ci-glyph {
+  font-size: 0.75rem;
+  color: var(--fg-secondary);
+  /* Escape the titlebar's drag region so the glyph is hoverable /
+   * clickable when the CI hook lands. */
+  -webkit-app-region: no-drag;
+}

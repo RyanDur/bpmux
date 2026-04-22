@@ -1,0 +1,36 @@
+.board {
+  flex: 0 0 360px;
+  min-width: 260px;
+  max-width: 480px;
+  border-left: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  display: flex;
+  flex-direction: column;
+  font-size: 0.8125rem;
+
+  & .board-header {
+    padding: var(--space-3);
+    border-bottom: 1px solid var(--border-subtle);
+    color: var(--fg-dim);
+    text-transform: uppercase;
+    font-size: 0.6875rem;
+    letter-spacing: 0.05em;
+  }
+
+  & .board-body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: var(--space-4);
+  }
+
+  & .board-placeholder {
+    color: var(--fg-dim);
+  }
+}
+
+/* Narrow window: hide board below 800px wide (per spec). */
+@media (max-width: 800px) {
+  .board {
+    display: none;
+  }
+}

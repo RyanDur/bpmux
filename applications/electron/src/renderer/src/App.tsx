@@ -1,8 +1,5 @@
-import BoardRegion from './components/BoardRegion'
-import ChatRegion from './components/ChatRegion'
-import Sidebar from './components/Sidebar'
-import Titlebar from './components/Titlebar'
-import { useWebSocket } from './useWebSocket'
+import AppShell from './AppShell'
+import { useWebSocket } from './transport/useWebSocket'
 
 function App(): React.JSX.Element {
   // `window.bpmux` is injected by the preload script owned by the
@@ -19,16 +16,7 @@ function App(): React.JSX.Element {
 
   const { status, messages, sendBroadcast } = useWebSocket(bridge?.wsUrl)
 
-  return (
-    <div className="app" data-test="app-root">
-      <Titlebar status={status} />
-      <div className="app-body">
-        <Sidebar />
-        <ChatRegion messages={messages} status={status} onSend={sendBroadcast} />
-        <BoardRegion />
-      </div>
-    </div>
-  )
+  return <AppShell status={status} messages={messages} onSend={sendBroadcast} />
 }
 
 export default App

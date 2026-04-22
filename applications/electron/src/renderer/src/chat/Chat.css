@@ -1,0 +1,16 @@
+.chat {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--bg-base);
+
+  & .chat-warning {
+    padding: 6px var(--space-3);
+    background: #3a2f1a;
+    color: var(--accent-warning);
+    font-size: 0.75rem;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+}

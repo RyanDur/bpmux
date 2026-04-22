@@ -1,0 +1,47 @@
+/* Titlebar (window chrome). App.css owns the `.app` / `.app-body`
+ * geometry (shared across shell + future modal layers); this file
+ * styles just the titlebar strip itself.
+ */
+
+.titlebar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: 36px;
+  padding: 0 var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  /* Frameless-friendly; ignored when the window is framed. */
+  -webkit-app-region: drag;
+
+  & .titlebar-app {
+    color: var(--fg-primary);
+  }
+
+  & .titlebar-spacer {
+    flex: 1 1 auto;
+  }
+
+  & .titlebar-status {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--fg-dim);
+    -webkit-app-region: no-drag;
+
+    &.titlebar-status--connected {
+      background: var(--accent-success);
+    }
+
+    &.titlebar-status--connecting {
+      background: var(--accent-warning);
+    }
+
+    &.titlebar-status--disconnected {
+      background: var(--accent-error);
+    }
+  }
+}

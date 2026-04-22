@@ -1,0 +1,49 @@
+/* Design tokens for the bpmux Electron renderer.
+ *
+ * `:root` ships the dark-mode defaults (phase-1a).
+ * `[data-theme="light"]` is reserved for phase-1b (left empty intentionally).
+ *
+ * Every component reads via `var(--token-name)`; never hard-code colors.
+ * See docs/design/electron/phase-1a/10-css-architecture.md.
+ */
+
+:root {
+  /* backgrounds */
+  --bg-base: #1a1a1a;
+  --bg-elevated: #252525;
+  --bg-highlighted: #333;
+
+  /* foregrounds */
+  --fg-primary: #e8e8e8;
+  --fg-secondary: #b0b0b0;
+  --fg-dim: #808080;
+
+  /* accents */
+  --accent-brand: #6aa0ff;
+  --accent-success: #3fb950;
+  --accent-warning: #d4a13c;
+  --accent-error: #ff6b6b;
+  --accent-info: #4fc3f7;
+
+  /* borders */
+  --border-subtle: #333;
+  --border-strong: #555;
+
+  /* role colors (for messages) */
+  --role-ryan: #ffd54f;
+  --role-designer: #b368e9;
+  --role-dev: #4fc3f7;
+  --role-pm: #81c784;
+
+  /* spacing ladder */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+}
+
+[data-theme="light"] {
+  /* phase-1b override block */
+}

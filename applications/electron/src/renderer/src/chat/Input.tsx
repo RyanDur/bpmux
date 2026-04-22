@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import './Input.css'
 
 interface Props {
   onSend: (text: string) => void
@@ -8,7 +9,7 @@ interface Props {
 // Phase-1a chat input: textarea with Enter-submits / Shift+Enter-
 // newline. Auto-grows as text overflows (up to ~6 lines) before
 // scrolling internally. Emacs/readline bindings are phase-1b.
-function ChatInput({ onSend, disabled }: Props): React.JSX.Element {
+function Input({ onSend, disabled }: Props): React.JSX.Element {
   const [value, setValue] = useState('')
   const taRef = useRef<HTMLTextAreaElement>(null)
 
@@ -60,4 +61,4 @@ function ChatInput({ onSend, disabled }: Props): React.JSX.Element {
   )
 }
 
-export default ChatInput
+export default Input

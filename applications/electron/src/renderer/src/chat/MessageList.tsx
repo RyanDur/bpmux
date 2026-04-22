@@ -1,6 +1,7 @@
 import { format } from 'date-fns'
 import { useEffect, useRef } from 'react'
-import type { ChatMessage } from '../types'
+import type { ChatMessage } from '../transport/types'
+import './MessageList.css'
 
 interface Props {
   messages: ChatMessage[]

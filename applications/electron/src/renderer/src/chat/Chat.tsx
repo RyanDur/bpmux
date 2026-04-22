@@ -1,6 +1,7 @@
-import type { ChatMessage, ConnectionStatus } from '../types'
-import ChatInput from './ChatInput'
+import type { ChatMessage, ConnectionStatus } from '../transport/types'
+import Input from './Input'
 import MessageList from './MessageList'
+import './Chat.css'
 
 interface Props {
   messages: ChatMessage[]
@@ -8,7 +9,7 @@ interface Props {
   onSend: (text: string) => void
 }
 
-function ChatRegion({ messages, status, onSend }: Props): React.JSX.Element {
+function Chat({ messages, status, onSend }: Props): React.JSX.Element {
   const showReconnect = status !== 'connected'
   return (
     <section className="chat" data-test="chat-region">
@@ -18,9 +19,9 @@ function ChatRegion({ messages, status, onSend }: Props): React.JSX.Element {
         </div>
       )}
       <MessageList messages={messages} />
-      <ChatInput onSend={onSend} />
+      <Input onSend={onSend} />
     </section>
   )
 }
 
-export default ChatRegion
+export default Chat
