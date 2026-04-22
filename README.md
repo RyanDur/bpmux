@@ -16,21 +16,31 @@ cd bpmux
 cargo build
 ```
 
-### Env Vars (direnv)
+### Env Vars (required)
 
-The board poller and story tools need a GitHub token and repo.
+bpmux requires `GH_TOKEN` + `BPMUX_REPO` at startup. bpmux uses
+these directly via the octocrab HTTPS client — no `gh` CLI
+subprocess at runtime. Startup fails loud if either is missing.
+
 The repo ships `.envrc.example` that delegates to `gh`'s local
-auth — no secrets in git. Copy it into place, then allow:
+auth to GENERATE the token — no secrets in git. Copy it into
+place, then allow:
 
 ```bash
 cp .envrc.example .envrc
 direnv allow .
 ```
 
-Requires [direnv](https://direnv.net) and an authenticated `gh` CLI.
-`.envrc` is gitignored so your token stays local. Without direnv,
-`export GH_TOKEN=$(gh auth token) BPMUX_REPO=RyanDur/bpmux`
-manually before launching bpmux.
+Requires [direnv](https://direnv.net). `gh` CLI is useful
+once for generating a token (`gh auth token`) but is not a
+runtime dependency of bpmux. `.envrc` is gitignored so your
+token stays local. Without direnv, set the vars manually
+before launching bpmux:
+
+```bash
+export GH_TOKEN=$(gh auth token)   # or any PAT with repo scope
+export BPMUX_REPO=RyanDur/bpmux
+```
 
 ### Run
 
