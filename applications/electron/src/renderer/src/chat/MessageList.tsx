@@ -4,6 +4,7 @@ import type { ChatMessage } from '../transport/types'
 import { classOf, type MessageClass } from '../hooks/useMessageFilter'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import MessageBody from './MessageBody'
+import Reactions, { ReactionAddButton } from './Reactions'
 import './MessageList.css'
 
 interface Props {
@@ -19,6 +20,13 @@ interface Props {
   // (e.g., tests) can render without wiring pins.
   pinnedKeys?: ReadonlySet<string>
   onTogglePin?: (m: ChatMessage) => void
+  // Reactions integration (#340). reactionsByMessage lookup by
+  // message_key returns the per-emoji pills for the row (or
+  // undefined if none). onToggleReaction fires add/remove intent
+  // from a pill or picker click.
+  reactionsByMessage?: Map<string, import('../hooks/useReactions').AggregatedReaction[]>
+  onToggleReaction?: (messageKey: string, emoji: string) => void
+  viewer?: string
 }
 
 // Per-class gutter glyph (AC6). Chat = no glyph (majority case, zero
@@ -98,7 +106,10 @@ function MessageList({
   messages,
   visibleClasses,
   pinnedKeys,
-  onTogglePin
+  onTogglePin,
+  reactionsByMessage,
+  onToggleReaction,
+  viewer
 }: Props): React.JSX.Element {
   const endRef = useRef<HTMLLIElement>(null)
 
@@ -231,6 +242,27 @@ function MessageList({
                   </span>
                 )}
                 <MessageBody text={m.text} />
+                {(() => {
+                  if (!onToggleReaction || !viewer) return null
+                  const mKey = pinKey(m)
+                  const rxns = reactionsByMessage?.get(mKey)
+                  if (rxns && rxns.length > 0) {
+                    return (
+                      <Reactions
+                        reactions={rxns}
+                        viewer={viewer}
+                        onToggle={(emoji) => onToggleReaction(mKey, emoji)}
+                      />
+                    )
+                  }
+                  // No existing reactions — show compact add-only
+                  // affordance that hover-reveals on the row.
+                  return (
+                    <ReactionAddButton
+                      onToggle={(emoji) => onToggleReaction(mKey, emoji)}
+                    />
+                  )
+                })()}
               </section>
             </article>
           </li>

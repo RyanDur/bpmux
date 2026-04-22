@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { classOf, useMessageFilter, type MessageClass } from '../hooks/useMessageFilter'
 import { channelKey, messageKey, usePins } from '../hooks/usePins'
+import { useReactions } from '../hooks/useReactions'
 import { useAnimatedUnmount } from '../hooks/useAnimatedUnmount'
 import Metrics from '../metrics/Metrics'
 import Search from '../search/Search'
@@ -53,6 +54,12 @@ function Chat({
   const [pinnedListOpen, setPinnedListOpen] = useState<boolean>(false)
   const pinsChannel = channelKey(recipient)
   const pins = usePins({ apiBase, authToken, channel: pinsChannel, messages })
+  const reactions = useReactions({
+    apiBase,
+    authToken,
+    channel: pinsChannel,
+    messages
+  })
   const search = useAnimatedUnmount(searchOpen, OVERLAY_EXIT_MS)
   const metrics = useAnimatedUnmount(metricsOpen, OVERLAY_EXIT_MS)
   const pinnedList = useAnimatedUnmount(pinnedListOpen, OVERLAY_EXIT_MS)
@@ -132,6 +139,11 @@ function Chat({
         visibleClasses={filter.visible}
         pinnedKeys={pins.pinnedKeys}
         onTogglePin={togglePin}
+        reactionsByMessage={reactions.byMessage}
+        onToggleReaction={(key, emoji) => {
+          void reactions.toggle(key, emoji, RENDERER_IDENTITY)
+        }}
+        viewer={RENDERER_IDENTITY}
       />
       {metrics.mounted && (
         <Metrics

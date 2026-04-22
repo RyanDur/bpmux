@@ -889,6 +889,79 @@ fn broadcast_pins_update(session: &session::Session) {
     }
 }
 
+/// Reactions REST (#340) — GET/POST /api/reactions.
+///
+/// POST toggles: if the (user, emoji, message_key) triple exists,
+/// it's removed; otherwise added. Single endpoint for add + remove
+/// keeps the renderer's click-handler path trivial.
+#[derive(Deserialize)]
+pub struct ReactionsChannelQuery {
+    pub channel: String,
+}
+
+#[derive(Deserialize)]
+pub struct ReactionToggle {
+    pub channel: String,
+    pub message_key: String,
+    pub emoji: String,
+    pub user: String,
+}
+
+pub async fn get_reactions(
+    State(session): State<Arc<session::Session>>,
+    Query(params): Query<ReactionsChannelQuery>,
+) -> impl IntoResponse {
+    let store = session::reactions::load(&session.dir);
+    let agg = session::reactions::aggregate_for_channel(&store, &params.channel);
+    (
+        StatusCode::OK,
+        json_headers(),
+        serde_json::to_string(&agg).unwrap_or_else(|_| "[]".to_string()),
+    )
+}
+
+pub async fn post_reaction(
+    State(session): State<Arc<session::Session>>,
+    axum::Json(body): axum::Json<ReactionToggle>,
+) -> impl IntoResponse {
+    let mut store = session::reactions::load(&session.dir);
+    let now = chrono::Utc::now().to_rfc3339();
+    let present = session::reactions::toggle_reaction(
+        &mut store,
+        &body.channel,
+        &body.message_key,
+        &body.emoji,
+        &body.user,
+        &now,
+    );
+    if let Err(e) = session::reactions::save(&session.dir, &store) {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json_headers(),
+            err_body(&format!("save reactions: {e}")),
+        );
+    }
+    broadcast_reactions_update(&session);
+    (
+        StatusCode::OK,
+        json_headers(),
+        serde_json::json!({ "present": present }).to_string(),
+    )
+}
+
+fn broadcast_reactions_update(session: &session::Session) {
+    let msg = session::Message {
+        from: "bpmux".to_string(),
+        text: crate::bridge::REACTIONS_UPDATE_MARKER.to_string(),
+        ts: chrono::Utc::now(),
+        message_type: session::MessageType::System,
+        ..session::Message::default()
+    };
+    if let Err(e) = session.broadcast(&msg) {
+        session::diag::log_diag(&format!("rest: reactions-update broadcast failed: {e}"));
+    }
+}
+
 pub async fn get_ci(axum::Extension(tracker): axum::Extension<TrackerHandle>) -> impl IntoResponse {
     let Some(tracker) = tracker else {
         return (

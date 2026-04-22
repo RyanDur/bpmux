@@ -43,6 +43,11 @@ pub const BOARD_INVALIDATE_MARKER: &str = "__BPMUX_BOARD_INVALIDATE__";
 /// within WS latency.
 pub const PINS_UPDATE_MARKER: &str = "__BPMUX_PINS_UPDATE__";
 
+/// Reactions-update broadcast marker (#340). Same pattern as
+/// PINS_UPDATE_MARKER but for emoji reactions — peer renderers
+/// refetch the channel's aggregated reactions on receipt.
+pub const REACTIONS_UPDATE_MARKER: &str = "__BPMUX_REACTIONS_UPDATE__";
+
 /// Build the board-invalidate broadcast signal. System-typed so the
 /// TUI recognizes it as an internal marker rather than a chat line.
 /// No `to=` set — every agent's TUI receives + refreshes.

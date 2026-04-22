@@ -11,6 +11,7 @@ pub mod lessons;
 pub mod log;
 pub mod message;
 pub mod pins;
+pub mod reactions;
 pub mod priority;
 pub mod recall;
 pub mod search;

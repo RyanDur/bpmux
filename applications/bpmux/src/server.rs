@@ -92,6 +92,11 @@ pub async fn run_server(
                 .post(transport::rest::post_pin)
                 .delete(transport::rest::delete_pin),
         )
+        .route(
+            "/api/reactions",
+            axum::routing::get(transport::rest::get_reactions)
+                .post(transport::rest::post_reaction),
+        )
         .layer(axum::middleware::from_fn_with_state(
             auth_state,
             transport::auth::gate,

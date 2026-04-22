@@ -1,0 +1,148 @@
+.message-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+  align-items: center;
+  position: relative;
+
+  & .reaction-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-2) var(--space-6);
+    font-size: 0.75rem;
+    color: var(--fg-secondary);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: 999px;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--bg-highlighted);
+      color: var(--fg-primary);
+    }
+
+    /* Viewer-reacted state: accent-brand tint + border so the viewer
+     * can scan their own reactions at a glance. aria-pressed=true on
+     * the same condition keeps the screen-reader semantics aligned. */
+    &.reaction-pill--reacted,
+    &[aria-pressed='true'] {
+      background: color-mix(in srgb, var(--accent-brand) 18%, var(--bg-elevated));
+      border-color: var(--accent-brand);
+      color: var(--fg-primary);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--accent-brand);
+      outline-offset: 1px;
+    }
+  }
+
+  & .reaction-add-container {
+    position: relative;
+    display: inline-flex;
+  }
+
+  & .reaction-add {
+    padding: var(--space-2) var(--space-6);
+    font-size: 0.75rem;
+    color: var(--fg-dim);
+    border: 1px solid var(--border-subtle);
+    border-radius: 999px;
+
+    &:hover {
+      background: var(--bg-highlighted);
+      color: var(--fg-primary);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--accent-brand);
+      outline-offset: 1px;
+    }
+  }
+
+  & .reaction-picker {
+    position: absolute;
+    bottom: calc(100% + var(--space-4));
+    left: 0;
+    display: flex;
+    gap: var(--space-2);
+    padding: var(--space-4) var(--space-6);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    z-index: 5;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  & .reaction-picker-item {
+    padding: var(--space-2) var(--space-4);
+    font-size: 1rem;
+    border-radius: 4px;
+
+    &:hover {
+      background: var(--bg-highlighted);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--accent-brand);
+      outline-offset: 1px;
+    }
+  }
+}
+
+/* Add-only variant: compact button + picker popup for messages that
+ * have no existing reactions. Reveal via :hover of parent
+ * .message-row + keyboard focus. */
+.reaction-add-container {
+  position: relative;
+  display: inline-flex;
+  opacity: 0;
+  transition: opacity var(--motion-duration-instant) var(--motion-ease-out);
+
+  & .reaction-add {
+    padding: 0 var(--space-4);
+    font-size: 0.75rem;
+    color: var(--fg-dim);
+    border: none;
+
+    &:hover {
+      color: var(--fg-primary);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--accent-brand);
+      outline-offset: 1px;
+    }
+  }
+
+  & .reaction-picker {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    display: flex;
+    gap: var(--space-2);
+    padding: var(--space-4) var(--space-6);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    z-index: 5;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  & .reaction-picker-item {
+    padding: var(--space-2) var(--space-4);
+    font-size: 1rem;
+    border-radius: 4px;
+
+    &:hover {
+      background: var(--bg-highlighted);
+    }
+  }
+}
+
+.message-row:hover .reaction-add-container,
+.message-row:focus-within .reaction-add-container {
+  opacity: 1;
+}

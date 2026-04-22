@@ -755,4 +755,57 @@ test.describe('real-backend', () => {
 
     await app.close()
   })
+
+  // #340 reactions — end-to-end: POST /api/reactions from test
+  // process → broadcast fires REACTIONS_UPDATE → renderer refetches,
+  // reaction-pill appears with count + aria-label listing reactors.
+  test('reactions: POST toggles on → pill appears with count + users in aria-label', async () => {
+    const seedMessages = [
+      {
+        from: 'dev:claude-code',
+        text: 'react to me',
+        ts: '2026-04-22T18:00:00Z',
+        message_type: 'chat'
+      }
+    ]
+    const { app, backendPort } = await launchWithIsolatedSession({
+      backendPort: 4132,
+      seedMessages
+    })
+    const win = await app.firstWindow()
+    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+
+    const fs = await import('fs')
+    const authToken = fs.readFileSync(
+      `${process.env.HOME}/.bpmux/auth_token`,
+      'utf8'
+    ).trim()
+    // Toggle on a 👍 from 'dev' via the backend REST. The WS broadcast
+    // should refetch the renderer within latency.
+    const res = await fetch(`http://127.0.0.1:${backendPort}/api/reactions`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        channel: 'broadcast',
+        message_key: '2026-04-22T18:00:00Z|dev:claude-code',
+        emoji: '👍',
+        user: 'dev'
+      })
+    })
+    expect(res.ok).toBe(true)
+
+    // Pill appears on the message with count=1 + users='dev' in
+    // the aria-label.
+    const pill = win.locator('[data-test="reaction-pill-👍"]').first()
+    await expect(pill).toBeVisible({ timeout: 10_000 })
+    await expect(pill).toHaveAttribute(
+      'aria-label',
+      /👍 1 reactions from dev/
+    )
+
+    await app.close()
+  })
 })
