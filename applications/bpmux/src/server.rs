@@ -34,6 +34,11 @@ pub async fn run_server(
     let tracker: transport::rest::TrackerHandle =
         crate::bridge::tracker::OctocrabStoryTracker::from_env().map(std::sync::Arc::new);
 
+    // Unfurl cache (#343). One instance for the server lifetime so
+    // all concurrent /api/unfurl requests share the memoized results.
+    let unfurl_cache: transport::unfurl::UnfurlCacheHandle =
+        std::sync::Arc::new(transport::unfurl::UnfurlCache::new());
+
     // Auth-gated sub-router: simulate_* (existing) + the owner-gate
     // board/story mutations (new). All routes here sit behind the
     // bearer+loopback middleware — a single token check covers both
@@ -95,6 +100,10 @@ pub async fn run_server(
         .route(
             "/api/reactions",
             axum::routing::get(transport::rest::get_reactions).post(transport::rest::post_reaction),
+        )
+        .route(
+            "/api/unfurl",
+            axum::routing::get(transport::unfurl::get_unfurl).with_state(unfurl_cache),
         )
         .layer(axum::middleware::from_fn_with_state(
             auth_state,

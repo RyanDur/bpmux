@@ -5,6 +5,7 @@ import { classOf, type MessageClass } from '../hooks/useMessageFilter'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import MessageBody from './MessageBody'
 import Reactions, { ReactionAddButton } from './Reactions'
+import UnfurlCards from './UnfurlCards'
 import './MessageList.css'
 
 interface Props {
@@ -27,6 +28,12 @@ interface Props {
   reactionsByMessage?: Map<string, import('../hooks/useReactions').AggregatedReaction[]>
   onToggleReaction?: (messageKey: string, emoji: string) => void
   viewer?: string
+  // Unfurl integration (#343). UnfurlCards fetches its own data
+  // server-side; MessageList just forwards the apiBase/authToken
+  // so each row's URL set gets resolved. Optional — callers that
+  // don't care (tests) omit.
+  apiBase?: string
+  authToken?: string
 }
 
 // Per-class gutter glyph (AC6). Chat = no glyph (majority case, zero
@@ -109,7 +116,9 @@ function MessageList({
   onTogglePin,
   reactionsByMessage,
   onToggleReaction,
-  viewer
+  viewer,
+  apiBase,
+  authToken
 }: Props): React.JSX.Element {
   const endRef = useRef<HTMLLIElement>(null)
 
@@ -242,6 +251,7 @@ function MessageList({
                   </span>
                 )}
                 <MessageBody text={m.text} />
+                <UnfurlCards text={m.text} apiBase={apiBase} authToken={authToken} />
                 {(() => {
                   if (!onToggleReaction || !viewer) return null
                   const mKey = pinKey(m)

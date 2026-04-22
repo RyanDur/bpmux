@@ -621,7 +621,7 @@ fn err_body(message: &str) -> String {
     serde_json::json!({ "error": message }).to_string()
 }
 
-fn json_headers() -> [(axum::http::HeaderName, &'static str); 1] {
+pub(super) fn json_headers() -> [(axum::http::HeaderName, &'static str); 1] {
     [(axum::http::header::CONTENT_TYPE, "application/json")]
 }
 

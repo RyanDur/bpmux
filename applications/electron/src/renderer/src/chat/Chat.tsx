@@ -144,6 +144,8 @@ function Chat({
           void reactions.toggle(key, emoji, RENDERER_IDENTITY)
         }}
         viewer={RENDERER_IDENTITY}
+        apiBase={apiBase}
+        authToken={authToken}
       />
       {metrics.mounted && (
         <Metrics

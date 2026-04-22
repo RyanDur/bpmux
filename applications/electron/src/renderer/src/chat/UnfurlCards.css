@@ -1,0 +1,104 @@
+.unfurl-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  margin-top: var(--space-6);
+}
+
+.unfurl-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-8);
+  padding: var(--space-8);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  text-decoration: none;
+  color: inherit;
+  transition:
+    background-color var(--motion-duration-fast) var(--motion-ease-out),
+    border-color var(--motion-duration-fast) var(--motion-ease-out);
+
+  &:hover {
+    background: var(--bg-highlighted);
+    border-color: var(--border-strong);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--accent-brand);
+    outline-offset: 1px;
+  }
+
+  /* Loading skeleton: no image/body, just the URL on a tinted pill. */
+  &.unfurl-card--loading {
+    grid-template-columns: 1fr;
+    color: var(--fg-dim);
+    font-size: 0.75rem;
+  }
+}
+
+.unfurl-card-image {
+  grid-row: 1 / span 2;
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 4px;
+  background: var(--bg-highlighted);
+}
+
+.unfurl-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.unfurl-card-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+}
+
+.unfurl-card-favicon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.unfurl-card-site {
+  font-size: 0.75rem;
+  color: var(--fg-dim);
+}
+
+.unfurl-card-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--fg-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.unfurl-card-description {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--fg-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.unfurl-card-url {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+  color: var(--fg-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+}
