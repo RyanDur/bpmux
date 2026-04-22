@@ -2,6 +2,29 @@ import { test, expect, _electron as electron } from '@playwright/test'
 import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
+import * as net from 'net'
+
+// Acquire a random ephemeral port by binding + immediately releasing.
+// Used by launchWithIsolatedSession so every test spawns bpmux on a
+// unique port — no collision with the dev's live bpmux on 4117, no
+// collision between parallel test processes. Critical isolation step
+// after the 2026-04-22 incident where `pkill -f "Electron.app"` in
+// test prep was killing Ryan's live app on every run.
+async function getFreePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer()
+    server.on('error', reject)
+    server.listen(0, () => {
+      const addr = server.address()
+      if (typeof addr === 'object' && addr !== null) {
+        const port = addr.port
+        server.close(() => resolve(port))
+      } else {
+        reject(new Error('failed to bind ephemeral port'))
+      }
+    })
+  })
+}
 
 // Real-backend test harness — launches Electron without `win.route`
 // stubs, so the renderer exercises the actual network layer:
@@ -41,9 +64,12 @@ async function launchWithIsolatedSession(opts?: {
   // explicit userDataDir to reuse it across the pair.
   const userDataDir =
     opts?.userDataDir ?? mkdtempSync(join(tmpdir(), 'bpmux-playwright-userdata-'))
-  // Default port 4117 matches production; tests that need to avoid
-  // adopting the dev's live bpmux (or each other) pin a unique port.
-  const backendPort = opts?.backendPort ?? 4117
+  // Default: random ephemeral port per launch, so every test-spawned
+  // bpmux runs on its own port — no collision with the dev's live
+  // bpmux on 4117, no collision between parallel tests. Callers can
+  // pin a specific port via opts.backendPort if a test needs a
+  // predictable one (e.g., when POSTing back from the test process).
+  const backendPort = opts?.backendPort ?? (await getFreePort())
   // Seed real session jsonl before launch — Electron spawns bpmux,
   // bpmux's resume_or_create_session honours a pre-existing `current`
   // symlink, so the server serves our seeded messages via /api/messages
