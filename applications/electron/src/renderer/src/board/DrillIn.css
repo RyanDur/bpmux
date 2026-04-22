@@ -101,7 +101,7 @@
     border-radius: 12px;
     background: var(--bg-base);
     color: var(--fg-secondary);
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
   }
 
   & .drill-in-body {
@@ -231,7 +231,7 @@
 
     & small {
       color: var(--fg-dim);
-      font-size: 0.6875rem;
+      font-size: 0.75rem;
       text-transform: uppercase;
       letter-spacing: 0.04em;
     }

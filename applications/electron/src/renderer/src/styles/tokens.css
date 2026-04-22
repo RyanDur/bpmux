@@ -13,10 +13,15 @@
   --bg-elevated: #252525;
   --bg-highlighted: #333;
 
-  /* foregrounds */
+  /* foregrounds — contrast-tiered so every body-text usage of --fg-dim
+   * clears WCAG AA (4.5:1) on --bg-base automatically. --fg-dimmer is
+   * the UI-component tier (3:1) for supporting metadata like grouped-
+   * continuation timestamps where a full-contrast tone would fight the
+   * focal message body. */
   --fg-primary: #e8e8e8;
   --fg-secondary: #b0b0b0;
-  --fg-dim: #808080;
+  --fg-dim: #989898;
+  --fg-dimmer: #808080;
 
   /* accents */
   --accent-brand: #6aa0ff;
@@ -57,10 +62,13 @@
   --bg-elevated: #f5f5f5;
   --bg-highlighted: #e5e8ef;
 
-  /* foregrounds */
+  /* foregrounds — contrast-tiered parallel to dark theme. --fg-dim
+   * clears WCAG AA (4.5:1) on #ffffff; --fg-dimmer is UI-component
+   * tier (3:1) for grouped-continuation metadata. */
   --fg-primary: #1a1a1a;
   --fg-secondary: #4a5568;
-  --fg-dim: #718096;
+  --fg-dim: #5a6578;
+  --fg-dimmer: #718096;
 
   /* accents — tuned for AA contrast on light bg */
   --accent-brand: #2563eb;

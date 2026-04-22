@@ -1,4 +1,7 @@
 import { test, expect, _electron as electron } from '@playwright/test'
+import { mkdtempSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
 
 // Real-backend test harness — launches Electron without `win.route`
 // stubs, so the renderer exercises the actual network layer:
@@ -12,10 +15,27 @@ import { test, expect, _electron as electron } from '@playwright/test'
 // using env vars already present in the test shell. If the backend
 // binary isn't built, these tests fail with the spawn dialog error;
 // run `cargo build --bin bpmux` from the repo root first.
+//
+// Session isolation: each test gets a fresh BPMUX_SESSION_BASE
+// under the OS temp dir so sent messages + state don't leak into
+// the user's live ~/.bpmux log. Without this, a test that exercises
+// the send path writes into the dev's real chat history (the
+// 2026-04-22 seed-message-leak-into-team-chat incident).
+async function launchWithIsolatedSession(): Promise<{
+  app: Awaited<ReturnType<typeof electron.launch>>
+  sessionBase: string
+}> {
+  const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-playwright-'))
+  const app = await electron.launch({
+    args: ['out/main/index.js'],
+    env: { ...process.env, BPMUX_SESSION_BASE: sessionBase }
+  })
+  return { app, sessionBase }
+}
 
 test.describe('real-backend', () => {
   test('CORS + WS roundtrip: chat region visible, no board error banner when tracker is configured', async () => {
-    const app = await electron.launch({ args: ['out/main/index.js'] })
+    const { app } = await launchWithIsolatedSession()
     const win = await app.firstWindow()
 
     await expect(win.locator('[data-test="app-root"]')).toBeVisible()
@@ -47,6 +67,55 @@ test.describe('real-backend', () => {
           'GH_TOKEN/BPMUX_REPO not set; skipping tracker-configured assertions. Board will show MOCK fallback.'
       })
     }
+
+    await app.close()
+  })
+
+  // #347 a11y substrate — real-backend assertions. Tracker-independent:
+  // chat-region role, sidebar chip font-size, and i-search failing
+  // glyph are all renderer-intrinsic, so this test runs in CI whether
+  // or not GH_TOKEN is configured.
+  test('a11y substrate: chat role=log, sidebar chip ≥12px, i-search failing ✗ glyph', async () => {
+    const { app } = await launchWithIsolatedSession()
+    const win = await app.firstWindow()
+
+    // AC9(a): chat-region is a live log region.
+    const chatRegion = win.locator('[data-test="chat-region"]')
+    await expect(chatRegion).toBeVisible()
+    const messageList = win.locator('[data-test="message-list"]')
+    await expect(messageList).toHaveAttribute('role', 'log')
+    await expect(messageList).toHaveAttribute('aria-live', 'polite')
+
+    // AC9(b): every sidebar channel chip computes to ≥12px. The chip
+    // inherits font-size from `.sidebar` (13px / 0.8125rem); if any
+    // future override dips below 12px, this catches it. Reading
+    // getComputedStyle for authoritative browser-layer value rather
+    // than asserting a specific class/attribute, so the test survives
+    // styling refactors as long as the observable outcome (text large
+    // enough to read) holds.
+    const chips = win.locator('[data-test="sidebar"] .sidebar-item')
+    const chipCount = await chips.count()
+    expect(chipCount).toBeGreaterThan(0)
+    for (let i = 0; i < chipCount; i++) {
+      const pxString = await chips.nth(i).evaluate(
+        (el) => window.getComputedStyle(el as Element).fontSize
+      )
+      const px = parseFloat(pxString)
+      expect(px, `sidebar chip #${i} font-size (${pxString})`).toBeGreaterThanOrEqual(12)
+    }
+
+    // AC9(c): i-search failing state contains the ✗ glyph. Ctrl+R
+    // opens the strip regardless of history state (post-347 product
+    // behavior), so the test stays self-contained — no need to seed
+    // a sent message first. A uuid-tagged query guarantees no match.
+    const textarea = win.locator('[data-test="chat-input-textarea"]')
+    await textarea.focus()
+    await textarea.press('Control+r')
+    const noMatchQuery = 'zzznevermatchesxyzzy-' + Date.now()
+    await win.keyboard.type(noMatchQuery)
+    const isearchStrip = win.locator('[data-test="chat-input-isearch"]')
+    await expect(isearchStrip).toBeVisible({ timeout: 3_000 })
+    await expect(isearchStrip).toContainText('✗')
 
     await app.close()
   })

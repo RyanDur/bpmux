@@ -36,9 +36,22 @@ function MessageList({ messages }: Props): React.JSX.Element {
     (m) => m.messageType !== 'activity' && m.messageType !== 'system'
   )
 
+  // role="log" + aria-live="polite" turns the message list into a
+  // live region that screen readers announce as new messages arrive,
+  // matching the SR-user expectation for a chat feed. Per WAI-ARIA,
+  // `log` pairs with `aria-live="polite"` so announcements queue
+  // rather than interrupt the user.
+  const regionProps = {
+    className: 'message-list',
+    'data-test': 'message-list',
+    role: 'log' as const,
+    'aria-label': 'Chat messages',
+    'aria-live': 'polite' as const
+  }
+
   if (visible.length === 0) {
     return (
-      <ul className="message-list message-list--empty" data-test="message-list">
+      <ul {...regionProps} className="message-list message-list--empty">
         <li className="message-empty">no messages yet</li>
         <li ref={endRef} aria-hidden="true" />
       </ul>
@@ -46,15 +59,24 @@ function MessageList({ messages }: Props): React.JSX.Element {
   }
 
   return (
-    <ul className="message-list" data-test="message-list">
+    <ul {...regionProps}>
       {visible.map((m) => {
         const scope = scopeLabel(m)
         const addressee = m.addressee ?? null
+        const sender = shortName(m.from)
         return (
           <li key={m.id} className="message-row" data-test="message-row">
             <article>
+              {/* Screen-reader sender prefix. The visible <cite> below
+                * is aria-hidden so AT reads the sender exactly once,
+                * at the top of the article, before the timestamp and
+                * body — matching the reading order sighted users
+                * perceive visually. */}
+              <span className="sr-only">{sender}:</span>
               <header className="message-meta">
-                <cite className="message-from">{shortName(m.from)}</cite>
+                <cite className="message-from" aria-hidden="true">
+                  {sender}
+                </cite>
                 <time className="message-ts" dateTime={m.ts}>
                   {formatTime(m.ts)}
                 </time>

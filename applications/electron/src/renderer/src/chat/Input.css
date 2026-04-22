@@ -17,6 +17,10 @@
       color: var(--accent-error);
       background: color-mix(in srgb, var(--accent-error) 12%, transparent);
     }
+
+    & .chat-input-search-fail-glyph {
+      font-weight: 700;
+    }
   }
 
   & textarea {

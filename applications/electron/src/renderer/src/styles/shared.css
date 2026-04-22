@@ -14,8 +14,12 @@ body,
 body {
   color: var(--fg-primary);
   background: var(--bg-base);
+  /* Platform defaults only — Inter dropped (not self-hosted, so
+   * loading from Google Fonts added a network round-trip and FOUC
+   * risk for zero guaranteed benefit). The -apple-system / Segoe UI
+   * cascade picks the native system UI font on every platform we
+   * ship to, which already has excellent screen-rendered hinting. */
   font-family:
-    Inter,
     -apple-system,
     BlinkMacSystemFont,
     'Segoe UI',
@@ -76,4 +80,22 @@ textarea {
   flex-direction: row;
   flex: 1 1 auto;
   min-height: 0;
+}
+
+/* Accessible hiding utility — element is removed from visual layout
+ * but remains in the accessibility tree. Canonical "visually hidden"
+ * pattern (clip-path variant; preferred over display:none which hides
+ * from AT, and over 0/0 sizing which some AT skip). Used for
+ * screen-reader-only prefixes like the sender name in each message
+ * row. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

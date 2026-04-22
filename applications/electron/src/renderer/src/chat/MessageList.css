@@ -48,12 +48,12 @@
 
   & .message-scope {
     color: var(--fg-secondary);
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
   }
 
   & .message-addressee {
     color: var(--accent-brand);
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
     font-weight: 600;
     padding: 0 var(--space-4);
     border-radius: 4px;

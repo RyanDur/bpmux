@@ -29,14 +29,14 @@
   & .board-title {
     color: var(--fg-dim);
     text-transform: uppercase;
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
     letter-spacing: 0.05em;
     font-weight: 600;
   }
 
   & .board-mock-flag {
     color: var(--accent-warning);
-    font-size: 0.625rem;
+    font-size: 0.75rem;
     padding: var(--space-2) var(--space-6);
     border: 1px solid var(--accent-warning);
     border-radius: 4px;
@@ -126,7 +126,7 @@
 
   & .board-group-count {
     color: var(--fg-dim);
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
   }
 
   & .board-group-empty {
@@ -158,12 +158,46 @@
       cursor: grabbing;
     }
 
+    /* Drop-target indicators distinguish via SHAPE (dashed stroke +
+     * dot glyph), not color alone — so colorblind users and low-
+     * vision users who can't resolve the accent-brand hue still see
+     * the drop target as visually different from a normal row. The
+     * ::before dot is a geometric anchor the dashed line alone could
+     * miss at small scroll offsets. Pure box-shadow was color-only. */
     &.board-story-row--drop-before {
+      position: relative;
       box-shadow: inset 0 2px 0 var(--accent-brand);
+      border-top: 1px dashed var(--accent-brand);
+
+      &::before {
+        content: '●';
+        position: absolute;
+        top: -0.5em;
+        left: var(--space-8);
+        color: var(--accent-brand);
+        font-size: 0.75rem;
+        line-height: 1;
+        background: var(--bg-elevated);
+        padding: 0 var(--space-2);
+      }
     }
 
     &.board-story-row--drop-after {
+      position: relative;
       box-shadow: inset 0 -2px 0 var(--accent-brand);
+      border-bottom: 1px dashed var(--accent-brand);
+
+      &::after {
+        content: '●';
+        position: absolute;
+        bottom: -0.5em;
+        left: var(--space-8);
+        color: var(--accent-brand);
+        font-size: 0.75rem;
+        line-height: 1;
+        background: var(--bg-elevated);
+        padding: 0 var(--space-2);
+      }
     }
   }
 

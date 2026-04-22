@@ -158,14 +158,18 @@ function MetricTile({
   value: string
   bar?: React.JSX.Element
 }): React.JSX.Element {
+  // HTML5 spec restricts <dl>'s permitted content to <dt>, <dd>, and
+  // <div> grouping wrappers — <section> inside <dl> is invalid and
+  // causes assistive tech to mispair term/definition in some readers
+  // (#338 follow-up).
   return (
-    <section className="metrics-tile">
+    <div className="metrics-tile">
       <dt>{label}</dt>
       <dd>
         <strong className="metrics-value">{value}</strong>
         {bar}
       </dd>
-    </section>
+    </div>
   )
 }
 

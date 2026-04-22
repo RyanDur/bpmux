@@ -178,8 +178,6 @@ function Input({ onSend, disabled, placeholder }: Props): React.JSX.Element {
 
       if (ctrlKey && !altKey && !metaKey && key.toLowerCase() === 'r') {
         e.preventDefault()
-        const history = historyRef.current
-        if (history.length === 0) return
         setSearch({ query: '', matchIndex: null, priorValue: value })
         return
       }
@@ -381,9 +379,22 @@ function Input({ onSend, disabled, placeholder }: Props): React.JSX.Element {
           data-test="chat-input-isearch"
         >
           <small>
-            {search.matchIndex === null && search.query
-              ? `failing i-search: ${search.query}`
-              : `i-search: ${search.query}`}
+            {search.matchIndex === null && search.query ? (
+              <>
+                {/* Shape-not-color fallback: the ✗ glyph signals the
+                 * failing state even when the nomatch-color cue is
+                 * imperceptible (colorblind users, low-contrast
+                 * displays). aria-hidden keeps SR reading the
+                 * surrounding text naturally ("failing i-search:
+                 * foo") without announcing "multiplication sign". */}
+                <span className="chat-input-search-fail-glyph" aria-hidden="true">
+                  ✗
+                </span>{' '}
+                failing i-search: {search.query}
+              </>
+            ) : (
+              `i-search: ${search.query}`
+            )}
           </small>
         </aside>
       )}
