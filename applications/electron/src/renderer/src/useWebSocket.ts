@@ -123,6 +123,7 @@ export function useWebSocket(url: string | undefined): UseWebSocketResult {
       socketRef.current = sock
 
       sock.onopen = () => {
+        if (socketRef.current !== sock) return
         backoffRef.current = INITIAL_BACKOFF_MS
         setStatus('connected')
         sendJson({
@@ -133,16 +134,19 @@ export function useWebSocket(url: string | undefined): UseWebSocketResult {
       }
 
       sock.onmessage = (ev) => {
+        if (socketRef.current !== sock) return
         if (typeof ev.data === 'string') {
           handleServerMessage(ev.data)
         }
       }
 
       sock.onerror = (ev) => {
+        if (socketRef.current !== sock) return
         console.error('bpmux ws: socket error', ev)
       }
 
       sock.onclose = (ev) => {
+        if (socketRef.current !== sock) return
         console.error('bpmux ws: closed', ev.code, ev.reason)
         socketRef.current = null
         setStatus('disconnected')
@@ -167,10 +171,14 @@ export function useWebSocket(url: string | undefined): UseWebSocketResult {
       }
       const sock = socketRef.current
       socketRef.current = null
-      if (sock && sock.readyState === WebSocket.OPEN) {
-        sock.close(1000, 'renderer unmounting')
-      } else if (sock) {
-        sock.close()
+      if (sock) {
+        sock.onopen = null
+        sock.onmessage = null
+        sock.onerror = null
+        sock.onclose = null
+        if (sock.readyState === WebSocket.OPEN || sock.readyState === WebSocket.CONNECTING) {
+          sock.close(1000, 'renderer unmounting')
+        }
       }
     }
   }, [url, sendJson, handleServerMessage])
