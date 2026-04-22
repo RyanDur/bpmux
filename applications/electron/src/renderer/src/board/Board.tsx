@@ -90,6 +90,11 @@ function Board({ messages, drillRequest, onDrillClosed, hidden }: BoardProps): R
   const [usingMock, setUsingMock] = useState<boolean>(false)
   const [selectedNumber, setSelectedNumber] = useState<number | null>(null)
   const [drilledNumber, setDrilledNumber] = useState<number | null>(null)
+  // Reorder announcement (#357 AC5). Updated on each keyboard-driven
+  // reorder so screen readers narrate "moved to position N".
+  // aria-live="polite" queues the announcement without interrupting
+  // what the user is currently reading.
+  const [reorderAnnounce, setReorderAnnounce] = useState<string>('')
 
   // TODO(phase-1a-2): drag-reorder (reorder_story) + BOARD_INVALIDATE_MARKER
   // subscription. 30s polling is the phase-1a-1 guarantee.
@@ -257,6 +262,8 @@ function Board({ messages, drillRequest, onDrillClosed, hidden }: BoardProps): R
   const handleReorder = useCallback(
     (state: StoryState, moved: number, insertAt: number): void => {
       const prevData = data
+      let newPosition = 0
+      let groupSize = 0
       setData((prev) => {
         if (!prev) return prev
         const inGroup = prev.stories.filter((s) => s.state === state)
@@ -266,8 +273,14 @@ function Board({ messages, drillRequest, onDrillClosed, hidden }: BoardProps): R
         const [movedStory] = inGroup.splice(fromIdx, 1)
         const clampedInsert = Math.max(0, Math.min(insertAt - (insertAt > fromIdx ? 1 : 0), inGroup.length))
         inGroup.splice(clampedInsert, 0, movedStory)
+        newPosition = clampedInsert + 1
+        groupSize = inGroup.length
         return { ...prev, stories: [...others, ...inGroup] }
       })
+      if (groupSize > 0) {
+        // Live-region announcement for SR users (#357 AC5).
+        setReorderAnnounce(`Moved to position ${newPosition} of ${groupSize}`)
+      }
       if (usingMock || !bridge?.apiBase) return
       const targetPosition = Math.max(0, insertAt)
       fetch(`${bridge.apiBase}/api/stories/${moved}/reorder`, {
@@ -347,6 +360,19 @@ function Board({ messages, drillRequest, onDrillClosed, hidden }: BoardProps): R
           </small>
         ) : null}
       </header>
+      {/* Reorder live-region (#357 AC5). Visually hidden; SR users
+        * hear the new position after each keyboard reorder. aria-live
+        * polite queues without interrupting the current announcement
+        * (e.g., the aria-label the focused story button just
+        * updated to). */}
+      <div
+        className="sr-only"
+        role="status"
+        aria-live="polite"
+        data-test="board-reorder-announce"
+      >
+        {reorderAnnounce}
+      </div>
 
       {error !== null && (
         <section className="board-error" role="alert" data-test="board-error">
@@ -491,6 +517,29 @@ function BoardGroup({
               draggable={draggable}
               dropBefore={dropAt === i}
               dropAfterLast={dropAt === stories.length && i === stories.length - 1}
+              position={i + 1}
+              total={stories.length}
+              onKeyboardReorder={
+                draggable && onReorder !== undefined
+                  ? (direction) => {
+                      // Compute insertAt for the handleReorder
+                      // contract: passed index is the insertion
+                      // point in the PRE-removal list.
+                      //   up: insertAt = fromIdx - 1 (clamp >=0)
+                      //   down: insertAt = fromIdx + 2 (clamp <=len)
+                      // clampedInsert in handleReorder further
+                      // normalises once the moved item is removed,
+                      // so this matches the drag-drop semantics.
+                      if (direction === 'up' && i === 0) return
+                      if (direction === 'down' && i === stories.length - 1) return
+                      const insertAt =
+                        direction === 'up'
+                          ? Math.max(0, i - 1)
+                          : Math.min(stories.length, i + 2)
+                      onReorder(group.state, story.number, insertAt)
+                    }
+                  : undefined
+              }
               onOpen={onOpen}
               onSelect={onSelect}
               onRowDragOver={handleRowDragOver(i)}
@@ -508,6 +557,13 @@ interface RowProps {
   draggable: boolean
   dropBefore: boolean
   dropAfterLast: boolean
+  // Keyboard-reorder metadata (#357). position is 1-based within
+  // the current group; total is the group's size. Both flow into the
+  // aria-label so screen readers announce where the story sits.
+  // onKeyboardReorder fires Ctrl+Shift+ArrowUp / ArrowDown intents.
+  position: number
+  total: number
+  onKeyboardReorder?: (direction: 'up' | 'down') => void
   onOpen: (n: number) => void
   onSelect: (n: number) => void
   onRowDragOver: (event: React.DragEvent<HTMLLIElement>) => void
@@ -519,6 +575,9 @@ function StoryRow({
   draggable,
   dropBefore,
   dropAfterLast,
+  position,
+  total,
+  onKeyboardReorder,
   onOpen,
   onSelect,
   onRowDragOver
@@ -527,6 +586,14 @@ function StoryRow({
   const classes = ['board-story-row']
   if (dropBefore) classes.push('board-story-row--drop-before')
   if (dropAfterLast) classes.push('board-story-row--drop-after')
+  // aria-label describes position + reorder affordance for screen-
+  // reader users; keyboard-only users read the same hint in the
+  // button's tooltip on focus.
+  const reorderHint =
+    onKeyboardReorder !== undefined
+      ? ' — press Ctrl+Shift+Up to move up, Ctrl+Shift+Down to move down'
+      : ''
+  const ariaLabel = `Story #${story.number} ${story.title}, position ${position} of ${total}${reorderHint}`
   return (
     <li
       className={classes.join(' ')}
@@ -546,7 +613,19 @@ function StoryRow({
         onClick={() => onOpen(story.number)}
         onFocus={() => onSelect(story.number)}
         onMouseEnter={() => onSelect(story.number)}
+        onKeyDown={(event) => {
+          if (onKeyboardReorder === undefined) return
+          if (!event.ctrlKey || !event.shiftKey) return
+          if (event.key === 'ArrowUp') {
+            event.preventDefault()
+            onKeyboardReorder('up')
+          } else if (event.key === 'ArrowDown') {
+            event.preventDefault()
+            onKeyboardReorder('down')
+          }
+        }}
         title={story.title}
+        aria-label={ariaLabel}
       >
         <small className="board-story-number">#{story.number}</small>
         <StoryTypeGlyph type={type} />

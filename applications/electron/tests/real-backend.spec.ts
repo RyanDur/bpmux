@@ -879,6 +879,60 @@ test.describe('real-backend', () => {
     await app.close()
   })
 
+  // #357 keyboard-accessible drag-reorder — Ctrl+Shift+ArrowDown
+  // twice moves a Ready row two positions. Mocks /api/board (initial
+  // state) + /api/stories/:n/reorder (to observe the POST). No WS
+  // broadcast needed to validate the AC — the renderer optimistically
+  // reorders + fires the POST, which is what the AC asserts.
+  test('keyboard drag-reorder: Ctrl+Shift+Down twice shifts story by 2', async () => {
+    const board = {
+      fetched_at: '2026-04-22T19:00:00Z',
+      stories: [
+        { number: 701, title: 'Story one', state: 'ready', labels: ['ready'], assignees: [], created_at: '2026-04-22T00:00:00Z', body: '' },
+        { number: 702, title: 'Story two', state: 'ready', labels: ['ready'], assignees: [], created_at: '2026-04-22T00:01:00Z', body: '' },
+        { number: 703, title: 'Story three', state: 'ready', labels: ['ready'], assignees: [], created_at: '2026-04-22T00:02:00Z', body: '' }
+      ]
+    }
+    const { app } = await launchWithIsolatedSession()
+    const win = await app.firstWindow()
+    await win.route('**/api/board', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(board)
+      })
+    })
+    const reorderCalls: Array<{ number: number; position: number }> = []
+    await win.route('**/api/stories/*/reorder', async (route) => {
+      const req = route.request()
+      const urlParts = req.url().split('/')
+      const numberStr = urlParts[urlParts.length - 2] ?? ''
+      const body = req.postDataJSON() as { position: number }
+      reorderCalls.push({ number: Number.parseInt(numberStr, 10), position: body.position })
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: '{}'
+      })
+    })
+
+    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+    await expect(win.locator('[data-test="board-story-701"]')).toBeVisible()
+
+    // Focus the first Ready row's button and fire Ctrl+Shift+Down twice.
+    const firstRow = win.locator('[data-test="board-story-701"] button')
+    await firstRow.focus()
+    await firstRow.press('Control+Shift+ArrowDown')
+    await firstRow.press('Control+Shift+ArrowDown')
+
+    // Two reorder POSTs fired for story 701 with increasing insertAt.
+    await expect.poll(() => reorderCalls.length).toBeGreaterThanOrEqual(2)
+    expect(reorderCalls[0].number).toBe(701)
+    expect(reorderCalls[1].number).toBe(701)
+
+    await app.close()
+  })
+
   // #360 presence signals — activity-class broadcast updates sidebar
   // dot color + text within latency. Uses the multi-party peer-post
   // pattern (POST from test process → WS broadcast → renderer
