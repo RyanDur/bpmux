@@ -5,15 +5,16 @@ interface Props {
   messages: ChatMessage[]
 }
 
-// Format the wire timestamp (ISO-8601 / RFC3339) as HH:MM in the
-// user's local time. If parsing fails (malformed ts), fall back to
-// the raw string so the message still renders.
+const TIME_FORMAT = new Intl.DateTimeFormat('en-US', {
+  hour: 'numeric',
+  minute: '2-digit',
+  timeZoneName: 'short'
+})
+
 function formatTime(ts: string): string {
   const d = new Date(ts)
   if (Number.isNaN(d.getTime())) return ts
-  const hh = String(d.getHours()).padStart(2, '0')
-  const mm = String(d.getMinutes()).padStart(2, '0')
-  return `${hh}:${mm}`
+  return TIME_FORMAT.format(d)
 }
 
 // Strip the `:tool` suffix the server adds to identities so the UI
