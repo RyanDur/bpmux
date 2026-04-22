@@ -65,7 +65,10 @@
       }
       & .message-ts--grouped {
         grid-column: 2;
-        font-size: 0.6875rem;
+        /* De-emphasis carried by the --fg-dimmer tier alone; font
+         * stays at inherited 0.75rem so every text element clears
+         * the #347 AC2 12px floor. Compounding size + color would
+         * over-dim and breach the a11y substrate. */
         color: var(--fg-dimmer);
       }
       & .message-body {

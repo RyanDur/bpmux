@@ -75,7 +75,7 @@ test.describe('real-backend', () => {
   // chat-region role, sidebar chip font-size, and i-search failing
   // glyph are all renderer-intrinsic, so this test runs in CI whether
   // or not GH_TOKEN is configured.
-  test('a11y substrate: chat role=log, sidebar chip ≥12px, i-search failing ✗ glyph', async () => {
+  test('a11y substrate: chat role=log, every text element ≥12px, i-search failing ✗ glyph', async () => {
     const { app } = await launchWithIsolatedSession()
     const win = await app.firstWindow()
 
@@ -86,22 +86,49 @@ test.describe('real-backend', () => {
     await expect(messageList).toHaveAttribute('role', 'log')
     await expect(messageList).toHaveAttribute('aria-live', 'polite')
 
-    // AC9(b): every sidebar channel chip computes to ≥12px. The chip
-    // inherits font-size from `.sidebar` (13px / 0.8125rem); if any
-    // future override dips below 12px, this catches it. Reading
-    // getComputedStyle for authoritative browser-layer value rather
-    // than asserting a specific class/attribute, so the test survives
-    // styling refactors as long as the observable outcome (text large
-    // enough to read) holds.
-    const chips = win.locator('[data-test="sidebar"] .sidebar-item')
-    const chipCount = await chips.count()
-    expect(chipCount).toBeGreaterThan(0)
-    for (let i = 0; i < chipCount; i++) {
-      const pxString = await chips.nth(i).evaluate(
-        (el) => window.getComputedStyle(el as Element).fontSize
+    // AC9(b): every text-bearing element in the rendered UI has
+    // computed font-size ≥ 12px. Walks every non-whitespace text
+    // node via TreeWalker — a sample-one-selector approach would
+    // let later stories slip sub-12px text past the floor (a #348
+    // grouped-timestamp regression did exactly that before this
+    // broader check was added). The walker returns a list of
+    // { tag, fontSize, snippet } tuples so the failure message
+    // pinpoints which element + what text violates the floor.
+    const textNodes = await win.evaluate(() => {
+      const walker = document.createTreeWalker(
+        document.body,
+        NodeFilter.SHOW_TEXT,
+        {
+          acceptNode: (n) =>
+            n.textContent?.trim()
+              ? NodeFilter.FILTER_ACCEPT
+              : NodeFilter.FILTER_REJECT
+        }
       )
-      const px = parseFloat(pxString)
-      expect(px, `sidebar chip #${i} font-size (${pxString})`).toBeGreaterThanOrEqual(12)
+      const results: Array<{ tag: string; fontSize: number; snippet: string }> = []
+      const seen = new Set<Element>()
+      while (walker.nextNode()) {
+        const el = walker.currentNode.parentElement
+        if (!el || seen.has(el)) continue
+        seen.add(el)
+        // Skip .sr-only utility: visually hidden, not visible text
+        // and not subject to the 12px floor (screen-reader-only).
+        if (el.classList.contains('sr-only')) continue
+        const fontSize = parseFloat(window.getComputedStyle(el).fontSize)
+        results.push({
+          tag: el.tagName.toLowerCase(),
+          fontSize,
+          snippet: (el.textContent ?? '').trim().slice(0, 40)
+        })
+      }
+      return results
+    })
+    expect(textNodes.length).toBeGreaterThan(0)
+    for (const n of textNodes) {
+      expect(
+        n.fontSize,
+        `<${n.tag}> "${n.snippet}" computed ${n.fontSize}px (floor 12px)`
+      ).toBeGreaterThanOrEqual(12)
     }
 
     // AC9(c): i-search failing state contains the ✗ glyph. Ctrl+R
