@@ -32,8 +32,14 @@ fn fake_transcript(uuid: &str, input: u64, cache_read: u64, output: u64) -> Stri
 }
 
 fn adapter_path() -> std::path::PathBuf {
-    let manifest = env!("CARGO_MANIFEST_DIR");
-    std::path::PathBuf::from(manifest)
+    // Workspace root is two parents up from applications/bpmux, where
+    // this crate's Cargo.toml sits; claude-plugin lives at the root.
+    let workspace_root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .ancestors()
+        .nth(2)
+        .unwrap()
+        .to_path_buf();
+    workspace_root
         .join("claude-plugin")
         .join("hooks")
         .join("token-adapter.sh")
