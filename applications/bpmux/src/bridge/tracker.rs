@@ -398,7 +398,12 @@ fn derive_renderer_state(
     let has = |name: &str| labels.iter().any(|l| l == name);
     if has("delivered") {
         "delivered"
-    } else if has("started") || has("finished") {
+    } else if has("in progress") || has("started") || has("finished") {
+        // LABEL_IN_PROGRESS ("in progress" with a space) is what
+        // start_story applies; "started"/"finished" are legacy TUI
+        // labels. Matching all three keeps cross-tool compatibility
+        // — TUI-originated + Electron-originated + MCP-originated
+        // transitions all land in the In Progress column.
         "in-progress"
     } else if has("ready") {
         "ready"
@@ -640,6 +645,18 @@ mod derive_renderer_state_tests {
         );
         assert_eq!(
             derive_renderer_state(&IssueState::Open, &labels(&["finished"])),
+            "in-progress"
+        );
+    }
+
+    // Regression guard: start_story applies LABEL_IN_PROGRESS ("in
+    // progress" with a space); the renderer's column grouping keys
+    // off the derived "in-progress" state. Mismatch drops the story
+    // out of every column (2026-04-22 live incident).
+    #[test]
+    fn in_progress_label_with_space_yields_in_progress_state() {
+        assert_eq!(
+            derive_renderer_state(&IssueState::Open, &labels(&["in progress"])),
             "in-progress"
         );
     }
