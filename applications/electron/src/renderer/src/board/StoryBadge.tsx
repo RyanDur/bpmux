@@ -34,6 +34,25 @@ export function deriveBadge(story: BoardStory): BadgeKind | null {
   return 'accepted'
 }
 
+// State-aware label text. Kind identifies the lane (owner vs team
+// accept lane; rework override). State disambiguates the tense:
+// "awaiting <lane>" while still in Delivered vs "<lane>-accepted"
+// once closed. Designer's 2026-04-22 observation: Ryan saw the
+// Delivered column displaying "✓ accepted" badges and read it as
+// already-accepted. Lane-label in English past tense was the
+// ambiguity — this function fixes the reading by splitting tense
+// into delivered-state ("awaiting …") vs accepted-state ("… -
+// accepted"). Rework is a transient tag surviving only while the
+// desk-check-fail label is present, so it doesn't split by state.
+export function labelFor(kind: BadgeKind, state: BoardStory['state']): string {
+  if (kind === 'rework') return 'rework'
+  if (state === 'accepted') {
+    return kind === 'team-accepted' ? 'team-accepted' : 'owner-accepted'
+  }
+  // state === 'delivered'
+  return kind === 'team-accepted' ? 'awaiting team' : 'awaiting owner'
+}
+
 // Human-readable tooltip + aria-label per kind and current state.
 // Stays short so the badge remains visually unobtrusive; the
 // drill-in timeline (#367) carries the full audit trail.
@@ -58,12 +77,6 @@ const KIND_GLYPH: Record<BadgeKind, string> = {
   rework: '↻'
 }
 
-const KIND_LABEL: Record<BadgeKind, string> = {
-  'team-accepted': 'team-accepted',
-  accepted: 'accepted',
-  rework: 'rework'
-}
-
 interface Props {
   story: BoardStory
   // When set, clicking the badge asks the board to open the drill-in
@@ -76,7 +89,10 @@ function StoryBadge({ story, onOpenTimeline }: Props): React.JSX.Element | null 
   const kind = deriveBadge(story)
   if (kind === null) return null
   const tooltip = tooltipFor(kind, story.state)
-  const label = KIND_LABEL[kind]
+  // #375: visible label is state-aware — "awaiting owner" / "owner-
+  // accepted" instead of the prior lane-label-only "accepted" that
+  // read as already-accepted on delivered rows.
+  const label = labelFor(kind, story.state)
   const glyph = KIND_GLYPH[kind]
   const classes = `story-badge story-badge--${kind}`
   // If the row provides an onOpenTimeline handler, render as a button

@@ -103,14 +103,22 @@ test.describe('desk-check #368 team-accept badge', () => {
       'data-badge-kind',
       'team-accepted'
     )
+    // #375 state-aware label: delivered + team lane reads
+    // "awaiting team" (tense-correct for pre-accept state).
     await expect(chore.locator('[data-test="story-badge"]')).toContainText(
-      'team-accepted'
+      'awaiting team'
     )
 
     const feature = win.locator('[data-test="board-story-801"]')
     await expect(feature.locator('[data-test="story-badge"]')).toHaveAttribute(
       'data-badge-kind',
       'accepted'
+    )
+    // #375 state-aware label: delivered + owner lane reads
+    // "awaiting owner" (not "accepted" — that's past-tense wrong
+    // for a row the owner hasn't accepted yet).
+    await expect(feature.locator('[data-test="story-badge"]')).toContainText(
+      'awaiting owner'
     )
 
     const rework = win.locator('[data-test="board-story-802"]')
