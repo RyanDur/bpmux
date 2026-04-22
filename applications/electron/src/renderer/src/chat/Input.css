@@ -2,6 +2,22 @@
   border-top: 1px solid var(--border-subtle);
   padding: var(--space-8);
   background: var(--bg-elevated);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+
+  & .chat-input-search {
+    font-size: 0.75rem;
+    color: var(--accent-brand);
+    padding: var(--space-4) var(--space-8);
+    background: color-mix(in srgb, var(--accent-brand) 12%, transparent);
+    border-radius: 4px;
+
+    &.chat-input-search--nomatch {
+      color: var(--accent-error);
+      background: color-mix(in srgb, var(--accent-error) 12%, transparent);
+    }
+  }
 
   & textarea {
     width: 100%;

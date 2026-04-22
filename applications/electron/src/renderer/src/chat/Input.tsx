@@ -47,13 +47,50 @@ function lineEnd(value: string, from: number): number {
 
 const MAX_HISTORY = 50
 
+interface SearchState {
+  query: string
+  matchIndex: number | null
+  priorValue: string
+}
+
 function Input({ onSend, disabled, placeholder }: Props): React.JSX.Element {
   const [value, setValue] = useState('')
+  const [search, setSearch] = useState<SearchState | null>(null)
   const taRef = useRef<HTMLTextAreaElement>(null)
   const yankRef = useRef<string>('')
   const historyRef = useRef<string[]>([])
   const historyIndexRef = useRef<number | null>(null)
   const draftRef = useRef<string>('')
+
+  const findMatch = useCallback(
+    (query: string, startFrom: number): number | null => {
+      if (!query) return null
+      const history = historyRef.current
+      for (let i = startFrom; i >= 0; i -= 1) {
+        if (history[i].includes(query)) return i
+      }
+      return null
+    },
+    []
+  )
+
+  const applySearchMatch = useCallback((idx: number | null): void => {
+    if (idx === null) return
+    const history = historyRef.current
+    setValue(history[idx])
+  }, [])
+
+  const exitSearch = useCallback((commit: boolean): void => {
+    setSearch((prev) => {
+      if (!prev) return prev
+      if (!commit) {
+        setValue(prev.priorValue)
+      } else if (prev.matchIndex !== null) {
+        historyIndexRef.current = prev.matchIndex
+      }
+      return null
+    })
+  }, [])
 
   useEffect(() => {
     if (!disabled) taRef.current?.focus()
@@ -99,6 +136,53 @@ function Input({ onSend, disabled, placeholder }: Props): React.JSX.Element {
       const selEnd = ta.selectionEnd
       const hasSelection = pos !== selEnd
       const { ctrlKey, altKey, metaKey, shiftKey, key } = e
+
+      if (search !== null) {
+        if (key === 'Escape') {
+          e.preventDefault()
+          exitSearch(false)
+          return
+        }
+        if (key === 'Enter') {
+          e.preventDefault()
+          exitSearch(true)
+          return
+        }
+        if (ctrlKey && !altKey && !metaKey && key.toLowerCase() === 'r') {
+          e.preventDefault()
+          const nextIdx = search.matchIndex === null ? null : findMatch(search.query, search.matchIndex - 1)
+          setSearch({ ...search, matchIndex: nextIdx ?? search.matchIndex })
+          if (nextIdx !== null) applySearchMatch(nextIdx)
+          return
+        }
+        if (key === 'Backspace') {
+          e.preventDefault()
+          const q = search.query.slice(0, -1)
+          const history = historyRef.current
+          const idx = q ? findMatch(q, history.length - 1) : null
+          setSearch({ ...search, query: q, matchIndex: idx })
+          if (idx !== null) applySearchMatch(idx)
+          else setValue(search.priorValue)
+          return
+        }
+        if (!ctrlKey && !altKey && !metaKey && key.length === 1) {
+          e.preventDefault()
+          const q = search.query + key
+          const history = historyRef.current
+          const idx = findMatch(q, history.length - 1)
+          setSearch({ ...search, query: q, matchIndex: idx })
+          if (idx !== null) applySearchMatch(idx)
+          return
+        }
+      }
+
+      if (ctrlKey && !altKey && !metaKey && key.toLowerCase() === 'r') {
+        e.preventDefault()
+        const history = historyRef.current
+        if (history.length === 0) return
+        setSearch({ query: '', matchIndex: null, priorValue: value })
+        return
+      }
 
 
       if (key === 'Enter' && !shiftKey) {
@@ -280,7 +364,7 @@ function Input({ onSend, disabled, placeholder }: Props): React.JSX.Element {
         }
       }
     },
-    [value, onSend, applyEdit, moveCaret]
+    [value, onSend, applyEdit, moveCaret, search, findMatch, applySearchMatch, exitSearch]
   )
 
   return (
@@ -289,6 +373,20 @@ function Input({ onSend, disabled, placeholder }: Props): React.JSX.Element {
       data-test="chat-input"
       onSubmit={(e) => e.preventDefault()}
     >
+      {search !== null && (
+        <aside
+          className={`chat-input-search${search.matchIndex === null && search.query ? ' chat-input-search--nomatch' : ''}`}
+          role="status"
+          aria-live="polite"
+          data-test="chat-input-isearch"
+        >
+          <small>
+            {search.matchIndex === null && search.query
+              ? `failing i-search: ${search.query}`
+              : `i-search: ${search.query}`}
+          </small>
+        </aside>
+      )}
       <textarea
         ref={taRef}
         value={value}
