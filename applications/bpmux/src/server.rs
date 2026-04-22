@@ -121,7 +121,20 @@ pub async fn run_server(
         .with_state(session)
         .layer(axum::Extension(screen_capture))
         .layer(axum::Extension(inject_tx))
-        .layer(axum::Extension(tracker));
+        .layer(axum::Extension(tracker))
+        // The Electron renderer loads from Vite's dev URL or file://
+        // and fetches this backend at 127.0.0.1:4117 — a cross-origin
+        // request that the browser preflight-checks. Without this
+        // layer, every /api/* call fails with "Failed to fetch" while
+        // the WebSocket (not subject to CORS) works fine. Server binds
+        // to loopback only (see listener below), so permissive CORS
+        // doesn't widen the network attack surface.
+        .layer(
+            tower_http::cors::CorsLayer::new()
+                .allow_origin(tower_http::cors::Any)
+                .allow_methods(tower_http::cors::Any)
+                .allow_headers(tower_http::cors::Any),
+        );
     let listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{port}")).await?;
     axum::serve(listener, router)
         .with_graceful_shutdown(async move { ct.cancelled_owned().await })

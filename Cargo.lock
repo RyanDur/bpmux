@@ -436,6 +436,7 @@ dependencies = [
  "tokio-tungstenite 0.26.2",
  "tokio-util",
  "tower",
+ "tower-http",
  "tui-markdown",
  "tui-textarea-2",
  "uuid",
