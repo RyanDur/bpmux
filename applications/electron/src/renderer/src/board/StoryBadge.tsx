@@ -99,6 +99,11 @@ function StoryBadge({ story, onOpenTimeline }: Props): React.JSX.Element | null 
   // so keyboard + screen reader users can activate it; otherwise
   // render as a plain span — decorative only. Either way the
   // tooltip / aria-label communicates the accept lane.
+  // #376 data-state: CSS branches the color family off this attribute
+  // so awaiting rows read gray (parked) and accepted rows read green
+  // (done). The kind class still encodes lane via solid/outlined
+  // shape; color + shape together = 3-axis differentiation (with
+  // label text as the third axis).
   if (onOpenTimeline) {
     return (
       <button
@@ -106,6 +111,7 @@ function StoryBadge({ story, onOpenTimeline }: Props): React.JSX.Element | null 
         className={classes}
         data-test="story-badge"
         data-badge-kind={kind}
+        data-state={story.state}
         title={tooltip}
         aria-label={`${label}: ${tooltip} — open timeline`}
         onClick={(e) => {
@@ -125,6 +131,7 @@ function StoryBadge({ story, onOpenTimeline }: Props): React.JSX.Element | null 
       className={classes}
       data-test="story-badge"
       data-badge-kind={kind}
+      data-state={story.state}
       title={tooltip}
       aria-label={`${label}: ${tooltip}`}
     >

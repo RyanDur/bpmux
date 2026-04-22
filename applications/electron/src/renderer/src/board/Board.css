@@ -393,27 +393,74 @@ button.story-badge {
   }
 }
 
-/* Solid green — team-accept lane (bug/chore). Contrast: white text
- * on accent-success clears AA at the 11px size per #347 a11y
- * substrate (font-weight: 600 helps). */
+/* #376 3-axis differentiation for glance-speed reading:
+ *   COLOR = state  (amber = awaiting, green = accepted, red = rework)
+ *   SHAPE = lane   (outlined = owner, solid = team)
+ *   TEXT  = both   (disambiguates SR users + reinforces scan)
+ *
+ * Before #376, awaiting-vs-accepted differed only on text + fill
+ * pattern; Ryan's 2026-04-22 observation ("same color, confusing at
+ * a glance") was the shared-region-indicators multi-axis lesson
+ * firing — color was silent on the state axis.
+ *
+ * Color palette rationale (Ryan's preference at #376 review):
+ *   - Amber (awaiting): delivered rows carry a mild "needs your
+ *     attention next" tint. Not alarming — amber, not red — but
+ *     visually distinct from the completion-green so a glance
+ *     tells you "these are queued for you" vs "these are done."
+ *   - Green (accepted): reserved as the ONLY positive-completion
+ *     signal. Seeing green = this is done, full stop.
+ *   - Red (rework): active fix-and-redeliver cycle. Distinct from
+ *     awaiting-amber so the ↻ glyph + red reads as "something
+ *     went wrong here" vs amber's "this is queued."
+ *
+ * Base color + fill pattern come from the kind class (team-accepted
+ * = solid, accepted = outlined). Data-state="delivered" overrides
+ * the color family to amber so awaiting rows read as
+ * queued-for-attention rather than already-done. */
+
+/* Solid — team-accept lane (bug/chore). Contrast: white text on
+ * the filled accent clears AA at 11px per #347 a11y substrate
+ * (font-weight: 600 helps). Default color is success-green for the
+ * accepted state; delivered-state override below flips it amber. */
 .story-badge--team-accepted {
   background: var(--accent-success);
   color: var(--bg-base);
   border-color: var(--accent-success);
 }
 
-/* Outlined green — owner-accept lane (feature). Shape distinction
- * from solid team badge so the two lanes read instantly. */
+/* Outlined — owner-accept lane (feature). Shape distinction from
+ * solid team badge so the two lanes read instantly, even before
+ * the color-by-state override applies. */
 .story-badge--accepted {
   color: var(--accent-success);
   border-color: var(--accent-success);
   background: transparent;
 }
 
-/* Amber — active rework cycle. Distinct from the two green variants
- * by color AND glyph (↻ vs ✓), double-encoded for a11y. */
-.story-badge--rework {
+/* Delivered (awaiting) state: flip success-green to warning-amber.
+ * Same shape (solid / outlined) still encodes lane; the color
+ * shift lets "done?" read at a glance without parsing the label
+ * text. Amber signals "queued for your attention" without the
+ * intensity of red. */
+.story-badge--team-accepted[data-state='delivered'] {
+  background: var(--accent-warning);
+  border-color: var(--accent-warning);
+}
+
+.story-badge--accepted[data-state='delivered'] {
   color: var(--accent-warning);
   border-color: var(--accent-warning);
-  background: transparent;
+}
+
+/* Red — active rework cycle. Reserves the highest-urgency tier
+ * for "something went wrong, needs fix" — visually distinct from
+ * the awaiting amber (both signal attention, but rework is more
+ * urgent). The ↻ glyph (vs ✓) provides a second axis so
+ * colorblind readers still differentiate rework from the accept
+ * variants. */
+.story-badge--rework {
+  background: var(--accent-error);
+  color: var(--bg-base);
+  border-color: var(--accent-error);
 }
