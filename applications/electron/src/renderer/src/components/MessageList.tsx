@@ -42,9 +42,22 @@ function MessageList({ messages }: Props): React.JSX.Element {
     )
   }
 
+  const visible = messages.filter(
+    (m) => m.messageType !== 'activity' && m.messageType !== 'system'
+  )
+
+  if (visible.length === 0) {
+    return (
+      <div className="message-list message-list--empty" data-test="message-list">
+        <div className="message-empty">no messages yet</div>
+        <div ref={endRef} />
+      </div>
+    )
+  }
+
   return (
     <div className="message-list" data-test="message-list">
-      {messages.map((m) => {
+      {visible.map((m) => {
         const scope = scopeLabel(m)
         return (
           <div key={m.id} className="message-row" data-test="message-row">
