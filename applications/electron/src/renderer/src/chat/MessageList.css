@@ -30,6 +30,13 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
+    /* Flex children default to min-width: auto (intrinsic content
+     * width) which lets a long unbreakable string push the row past
+     * the container, triggering a horizontal scrollbar on .message-
+     * list (#365). Forcing min-width: 0 lets the row shrink to the
+     * column's width; the body's overflow-wrap below handles the
+     * actual text break. */
+    min-width: 0;
 
     /* Arrival animation (#352 AC4): new message rows slide up from
      * a few px below + fade in. @starting-style fires once per mount
@@ -79,7 +86,12 @@
     &.message-row--grouped {
       & article {
         display: grid;
-        grid-template-columns: 28px 1fr;
+        /* minmax(0, 1fr) — the explicit shrinkable form. `1fr`
+         * alone has an implicit min-content floor so long code /
+         * URLs in the body would widen the grid track past the
+         * container. minmax(0, 1fr) lets the column shrink to 0
+         * so the body respects container width (#365). */
+        grid-template-columns: 28px minmax(0, 1fr);
         column-gap: var(--space-8);
         row-gap: var(--space-2);
         align-items: start;
@@ -275,7 +287,15 @@
     color: var(--fg-primary);
     font-size: 0.875rem;
     line-height: 1.5;
-    word-wrap: break-word;
+    /* `overflow-wrap: anywhere` (vs the legacy `word-wrap:
+     * break-word`) makes wrap points participate in min-content
+     * sizing, which is what lets minmax(0, 1fr) on the article
+     * grid actually shrink to 0 for long unbroken tokens (#365).
+     * break-word alone wraps visually but reports its min-size as
+     * the longest unbreakable word — so the grid track stays wide
+     * and the row overflows. `anywhere` reports min-size as the
+     * shortest grapheme cluster. */
+    overflow-wrap: anywhere;
 
     & p {
       white-space: pre-wrap;
