@@ -1,3 +1,4 @@
+import { format } from 'date-fns'
 import { useEffect, useRef } from 'react'
 import type { ChatMessage } from '../types'
 
@@ -5,16 +6,10 @@ interface Props {
   messages: ChatMessage[]
 }
 
-const TIME_FORMAT = new Intl.DateTimeFormat('en-US', {
-  hour: 'numeric',
-  minute: '2-digit',
-  timeZoneName: 'short'
-})
-
 function formatTime(ts: string): string {
   const d = new Date(ts)
   if (Number.isNaN(d.getTime())) return ts
-  return TIME_FORMAT.format(d)
+  return format(d, 'h:mm a zzz')
 }
 
 // Strip the `:tool` suffix the server adds to identities so the UI
