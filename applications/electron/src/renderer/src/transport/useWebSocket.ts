@@ -32,7 +32,24 @@ export interface UseWebSocketResult {
   sendBroadcast: (text: string) => void
 }
 
-export function useWebSocket(url: string | undefined): UseWebSocketResult {
+interface HistoryMessage {
+  from: string
+  text: string
+  ts: string
+  to?: string[] | null
+  addressee?: string | null
+  message_type?: string | null
+}
+
+function messageKey(m: { from: string; text: string; ts: string }): string {
+  return `${m.ts}|${m.from}|${m.text}`
+}
+
+export function useWebSocket(
+  url: string | undefined,
+  apiBase?: string,
+  authToken?: string
+): UseWebSocketResult {
   // When no URL is provided (preload missing), start disconnected
   // rather than connecting — avoids a setState-in-effect cascade and
   // correctly represents the state.
@@ -45,6 +62,7 @@ export function useWebSocket(url: string | undefined): UseWebSocketResult {
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const unmountedRef = useRef<boolean>(false)
   const msgCounterRef = useRef<number>(0)
+  const historyLoadedRef = useRef<boolean>(false)
 
   const sendJson = useCallback((msg: ClientMessage) => {
     const sock = socketRef.current
@@ -88,7 +106,11 @@ export function useWebSocket(url: string | undefined): UseWebSocketResult {
           addressee: parsed.addressee ?? null,
           messageType: parsed.message_type ?? null
         }
-        setMessages((prev) => [...prev, chat])
+        const key = messageKey(chat)
+        setMessages((prev) => {
+          if (prev.some((m) => messageKey(m) === key)) return prev
+          return [...prev, chat]
+        })
         break
       }
       case 'error':
@@ -108,6 +130,54 @@ export function useWebSocket(url: string | undefined): UseWebSocketResult {
     }
 
     unmountedRef.current = false
+
+    if (!historyLoadedRef.current && apiBase && authToken) {
+      historyLoadedRef.current = true
+      const controller = new AbortController()
+      fetch(`${apiBase}/api/messages?chat_only=true&limit=200`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+        signal: controller.signal
+      })
+        .then(async (res) => {
+          if (!res.ok) throw new Error(`history fetch: ${res.status}`)
+          return (await res.json()) as HistoryMessage[]
+        })
+        .then((history) => {
+          if (unmountedRef.current) return
+          const chronological = [...history].reverse()
+          setMessages((live) => {
+            const seen = new Set<string>()
+            const merged: ChatMessage[] = []
+            for (const h of chronological) {
+              const chat: ChatMessage = {
+                id: `hist-${h.ts}-${merged.length}`,
+                from: h.from,
+                text: h.text,
+                ts: h.ts,
+                to: h.to ?? null,
+                addressee: h.addressee ?? null,
+                messageType: h.message_type ?? null
+              }
+              const k = messageKey(chat)
+              if (seen.has(k)) continue
+              seen.add(k)
+              merged.push(chat)
+            }
+            for (const m of live) {
+              const k = messageKey(m)
+              if (seen.has(k)) continue
+              seen.add(k)
+              merged.push(m)
+            }
+            return merged
+          })
+        })
+        .catch((err) => {
+          if (err?.name === 'AbortError') return
+          console.error('bpmux ws: history fetch failed', err)
+          historyLoadedRef.current = false
+        })
+    }
 
     const connect = (): void => {
       if (unmountedRef.current) return

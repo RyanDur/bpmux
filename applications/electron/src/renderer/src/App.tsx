@@ -14,7 +14,11 @@ function App(): React.JSX.Element {
     )
   }
 
-  const { status, messages, sendBroadcast } = useWebSocket(bridge?.wsUrl)
+  const { status, messages, sendBroadcast } = useWebSocket(
+    bridge?.wsUrl,
+    bridge?.apiBase,
+    bridge?.authToken
+  )
 
   return <AppShell status={status} messages={messages} onSend={sendBroadcast} />
 }
