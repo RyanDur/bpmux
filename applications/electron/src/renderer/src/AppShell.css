@@ -24,13 +24,32 @@
     flex: 1 1 auto;
   }
 
+  /* Connection indicator (dot + visible label, #362). Label makes
+   * the connection-vs-CI distinction obvious at glance without
+   * relying on hover tooltips that aren't visible until the user
+   * pauses there. */
+  & .titlebar-connection {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-4);
+    color: var(--fg-secondary);
+    font-size: 0.75rem;
+    font-weight: 400;
+    padding: 0 var(--space-6);
+    -webkit-app-region: no-drag;
+  }
+
+  & .titlebar-connection-label {
+    color: var(--fg-secondary);
+  }
+
   & .titlebar-status {
     display: inline-block;
-    width: 10px;
-    height: 10px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
     background: var(--fg-dim);
-    -webkit-app-region: no-drag;
+    transition: background-color var(--motion-duration-fast) var(--motion-ease-out);
 
     &.titlebar-status--connected {
       background: var(--accent-success);
@@ -43,6 +62,17 @@
     &.titlebar-status--disconnected {
       background: var(--accent-error);
     }
+  }
+
+  /* Vertical divider between connection + right-side titlebar items
+   * (theme toggle, CI glyph). Visual separation reinforces the
+   * semantic-region boundary so users don't lump the indicators
+   * together. */
+  & .titlebar-divider {
+    width: 1px;
+    height: 18px;
+    background: var(--border-subtle);
+    display: inline-block;
   }
 
   & .titlebar-theme-toggle {

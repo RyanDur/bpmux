@@ -81,11 +81,26 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
       <header className="titlebar" data-test="titlebar">
         <strong className="titlebar-app">bpmux</strong>
         <i className="titlebar-spacer" aria-hidden="true" />
-        <i
-          className={`titlebar-status titlebar-status--${status}`}
-          title={statusLabel}
-          aria-label={`connection ${statusLabel}`}
-        />
+        {/* Connection indicator — dot + visible text label (#362).
+          * Text was previously implicit (dot-only), which was
+          * indistinguishable from CI glyph at glance-speed and led
+          * to "the dot never changes" confusion. Explicit
+          * "connection: connected" text removes ambiguity. */}
+        <span
+          className={`titlebar-connection titlebar-connection--${status}`}
+          title={`WebSocket connection: ${statusLabel}`}
+          aria-label={`WebSocket connection ${statusLabel}`}
+          data-test="titlebar-connection"
+        >
+          <i
+            className={`titlebar-status titlebar-status--${status}`}
+            aria-hidden="true"
+          />
+          <small className="titlebar-connection-label" data-test="titlebar-connection-label">
+            {status === 'connected' ? 'online' : status === 'connecting' ? 'connecting…' : 'offline'}
+          </small>
+        </span>
+        <i className="titlebar-divider" aria-hidden="true" />
         <button
           type="button"
           className="titlebar-theme-toggle"

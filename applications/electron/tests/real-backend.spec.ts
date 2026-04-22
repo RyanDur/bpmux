@@ -879,6 +879,39 @@ test.describe('real-backend', () => {
     await app.close()
   })
 
+  // #362 titlebar indicator disambiguation — WS connection dot and
+  // CI glyph render in visually-distinct regions with distinct
+  // aria-labels.
+  test('titlebar disambiguation: connection + CI indicators are distinct', async () => {
+    const { app } = await launchWithIsolatedSession()
+    const win = await app.firstWindow()
+    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+
+    // Both indicators rendered, with distinct data-test + aria-label.
+    const connection = win.locator('[data-test="titlebar-connection"]')
+    const ciGlyph = win.locator('[data-test="ci-glyph"]')
+    await expect(connection).toBeVisible()
+    await expect(ciGlyph).toBeVisible()
+
+    // AC2: aria-labels name the semantic unambiguously.
+    const connAria = await connection.getAttribute('aria-label')
+    const ciAria = await ciGlyph.getAttribute('aria-label')
+    expect(connAria).toMatch(/WebSocket connection/)
+    expect(ciAria).toMatch(/^CI /)
+
+    // AC1: visible text labels differentiate at glance-speed.
+    // Connection shows "online"/"connecting…"/"offline"; CI shows
+    // "CI ✓"/"CI ✗"/"CI ◌"/"CI ?". The CI indicator always starts
+    // with "CI "; connection label never does.
+    const connLabel = await win
+      .locator('[data-test="titlebar-connection-label"]')
+      .textContent()
+    expect(connLabel).not.toBeNull()
+    expect(connLabel?.startsWith('CI ')).toBe(false)
+
+    await app.close()
+  })
+
   // #357 keyboard-accessible drag-reorder — Ctrl+Shift+ArrowDown
   // twice moves a Ready row two positions. Mocks /api/board (initial
   // state) + /api/stories/:n/reorder (to observe the POST). No WS
