@@ -256,23 +256,26 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-8);
-
-    /* Reveal (#351 AC5). The form is conditionally rendered when
-     * mode === 'rejecting', so it enters on mount. @starting-style
-     * collapses the initial block-size + opacity; transition to rest
-     * values interpolates over fast duration. Height interpolation
-     * requires interpolate-size: allow-keywords at :root (set in
-     * tokens.css). Close is unmount → instant (deferred). */
-    transition:
-      opacity var(--motion-duration-fast) var(--motion-ease-out),
-      block-size var(--motion-duration-medium) var(--motion-ease-out);
-    block-size: auto;
-    opacity: 1;
     overflow: hidden;
 
-    @starting-style {
-      block-size: 0;
-      opacity: 0;
+    /* Reveal + dismiss (#351 AC5 + #358 close-direction): data-visible
+     * toggle drives both enter + exit. Default state = closed/exiting
+     * (block-size 0, opacity 0). [data-visible] = entered (block-size
+     * auto, opacity 1). Chat's useAnimatedUnmount keeps the form
+     * mounted for 150ms post-close so the exit transition plays.
+     * Ease-in on exit so the collapse feels settled. */
+    transition:
+      opacity var(--motion-duration-fast) var(--motion-ease-in),
+      block-size var(--motion-duration-fast) var(--motion-ease-in);
+    block-size: 0;
+    opacity: 0;
+
+    &[data-visible] {
+      block-size: auto;
+      opacity: 1;
+      transition:
+        opacity var(--motion-duration-fast) var(--motion-ease-out),
+        block-size var(--motion-duration-medium) var(--motion-ease-out);
     }
   }
 

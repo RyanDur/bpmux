@@ -652,9 +652,10 @@ test.describe('real-backend', () => {
     expect(pillTransition?.duration).toContain('0.08s')
 
     // Message-row: seed a chat message, check transform transition is
-    // declared. Uses the grouping fixture from the #348 test — simpler
-    // to mock one row and assert its computed style than to trigger
-    // a live WS arrival.
+    // declared. Register the mock + reload so hydration runs with the
+    // mocked response (otherwise the renderer's initial /api/messages
+    // fetch has already landed with the empty isolated-session log,
+    // and historyLoadedRef guards against a second fetch).
     await win.route('**/api/messages**', async (route) => {
       await route.fulfill({
         status: 200,
@@ -669,8 +670,7 @@ test.describe('real-backend', () => {
         ])
       })
     })
-    // Wait for hydration to land a row. Grouping uses data-test on
-    // the li, not any intermediate wrapper.
+    await win.reload()
     const row = win.locator('[data-test="message-row"]').first()
     await expect(row).toBeVisible({ timeout: 5_000 })
     const rowTransition = await row.evaluate((el) => {

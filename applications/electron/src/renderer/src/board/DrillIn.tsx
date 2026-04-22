@@ -1,6 +1,7 @@
 import { format } from 'date-fns'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import MessageBody from '../chat/MessageBody'
+import { useAnimatedUnmount } from '../hooks/useAnimatedUnmount'
 import { BOARD_INVALIDATE_MARKER, type ChatMessage } from '../transport/types'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import { storyTypeFromLabels, type BoardStory } from './types'
@@ -111,6 +112,13 @@ function DrillIn({
   const wasAtBottomRef = useRef<boolean>(true)
 
   const comments = serverComments === null ? null : mergeComments(serverComments, optimistic)
+
+  // Reject-form close animation (#358). Keep the form mounted for
+  // 150ms after the user dismisses so the grid-row height +
+  // opacity can animate out. CSS-side switches to [data-visible]
+  // for enter vs exit; default state = closed/exiting, visible
+  // = entered.
+  const rejectForm = useAnimatedUnmount(mode === 'rejecting', 150)
 
   // Focus the article on mount so Esc falls to our handler before
   // anything upstream intercepts.
@@ -545,7 +553,7 @@ function DrillIn({
 
       {canAct ? (
         <footer className="drill-in-actions">
-          {mode === 'idle' ? (
+          {mode === 'idle' && !rejectForm.mounted ? (
             <menu className="drill-in-action-row" data-test="drill-in-actions">
               <li>
                 <button
@@ -572,9 +580,10 @@ function DrillIn({
                 </button>
               </li>
             </menu>
-          ) : (
+          ) : rejectForm.mounted ? (
             <form
               className="drill-in-reject-form"
+              data-visible={rejectForm.visible || undefined}
               onSubmit={(event) => {
                 event.preventDefault()
                 void handleRejectSend()
@@ -615,7 +624,7 @@ function DrillIn({
                 </li>
               </menu>
             </form>
-          )}
+          ) : null}
         </footer>
       ) : null}
 
