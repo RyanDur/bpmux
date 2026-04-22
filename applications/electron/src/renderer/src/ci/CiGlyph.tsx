@@ -1,3 +1,4 @@
+import { format } from 'date-fns'
 import { useEffect, useState } from 'react'
 import './CiGlyph.css'
 
@@ -10,7 +11,12 @@ interface CiStateReport {
   display_title: string | null
 }
 
-const POLL_MS = 60_000
+// Poll cadence for /api/ci. #361: 60s was too slow — a typical fast
+// CI run (<60s) could start + finish between polls so the user never
+// saw the in_progress / failure color. 15s catches every transient
+// state with substantial headroom and stays well under GitHub's
+// 5000/hr authenticated rate limit (240 polls/hr vs limit/83 per min).
+const POLL_MS = 15_000
 
 function conclusionGlyph(conclusion: string): string {
   switch (conclusion) {
@@ -29,6 +35,13 @@ function CiGlyph(): React.JSX.Element {
   const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
   const [state, setState] = useState<CiStateReport | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // #361: surface the last-successful-fetch timestamp in the tooltip
+  // so the user can confirm the poll is alive even when CI is stably
+  // green. "it never changes color" was ambiguous between "color
+  // IS stuck" and "I never happen to observe a transition"; a visible
+  // timestamp answers the second case without the user having to push
+  // a commit to see the indicator move.
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
   useEffect(() => {
     if (!bridge?.apiBase) {
@@ -51,6 +64,7 @@ function CiGlyph(): React.JSX.Element {
         if (!cancelled) {
           setState(json)
           setError(null)
+          setLastUpdated(new Date())
         }
       } catch (err) {
         if ((err as Error)?.name === 'AbortError') return
@@ -71,7 +85,7 @@ function CiGlyph(): React.JSX.Element {
   const conclusion = state?.conclusion ?? 'unknown'
   const glyph = conclusionGlyph(conclusion)
   const url = state?.url ?? 'https://github.com'
-  const tooltip = buildTooltip(state, error)
+  const tooltip = buildTooltip(state, error, lastUpdated)
 
   return (
     <a
@@ -92,12 +106,17 @@ function CiGlyph(): React.JSX.Element {
   )
 }
 
-function buildTooltip(state: CiStateReport | null, error: string | null): string {
+function buildTooltip(
+  state: CiStateReport | null,
+  error: string | null,
+  lastUpdated: Date | null
+): string {
   if (error) return `CI error: ${error}`
   if (!state) return 'CI state loading…'
   const lines = [`CI · ${state.branch} · ${state.conclusion}`]
   if (state.display_title) lines.push(state.display_title)
   if (state.head_sha) lines.push(state.head_sha.slice(0, 7))
+  if (lastUpdated) lines.push(`checked ${format(lastUpdated, 'h:mm:ss a')}`)
   lines.push('(click to open on GitHub)')
   return lines.join('\n')
 }
