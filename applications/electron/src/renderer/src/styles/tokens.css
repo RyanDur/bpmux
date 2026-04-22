@@ -63,6 +63,19 @@
   --space-56: 56px;
   --space-64: 64px;
 
+  /* #369 density tokens. Default (comfortable) matches pre-#369
+   * values so the toggle is a pure opt-in — users who don't change
+   * density see zero visual difference. The `[data-density="compact"]`
+   * override below tightens the same knobs. Consumers reach for
+   * these tokens instead of the raw --space-* / px values so the
+   * two modes can evolve in lockstep without touching feature CSS. */
+  --chat-avatar-size: 28px;
+  --chat-row-gap: var(--space-2);
+  --chat-group-gap: var(--space-8);
+  --chat-row-pad-y: var(--space-8);
+  --chat-row-pad-x: var(--space-16);
+  --chat-ts-font-weight: 400;
+
   /* Motion — durations + easings for transitions/animations across
    * the app. Instant is for confirm-not-distract micro-interactions
    * (pill toggle state); fast for hover/focus feedback; medium for
@@ -159,4 +172,20 @@
   --role-designer: #7e22ce;
   --role-dev: #0369a1;
   --role-pm: #15803d;
+}
+
+/* #369 compact density. Tighter spacing + smaller avatar for users
+ * who prefer information density over visual breathing room. Message
+ * body font-size is intentionally NOT overridden — the #347 a11y
+ * floor (12px minimum on any text element) stays in force regardless
+ * of density. Timestamp font-weight bumps slightly to compensate for
+ * the reduced row padding — otherwise the metadata row bleeds into
+ * the body line at the tight spacing. */
+[data-density="compact"] {
+  --chat-avatar-size: 20px;
+  --chat-row-gap: 0;
+  --chat-group-gap: var(--space-4);
+  --chat-row-pad-y: var(--space-4);
+  --chat-row-pad-x: var(--space-8);
+  --chat-ts-font-weight: 500;
 }

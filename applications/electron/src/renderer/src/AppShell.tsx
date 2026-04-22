@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import Board from './board/Board'
 import Chat from './chat/Chat'
 import CiGlyph from './ci/CiGlyph'
+import { useDensity } from './hooks/useDensity'
 import { useMessageFilter } from './hooks/useMessageFilter'
 import { useTheme } from './hooks/useTheme'
 import Sidebar from './sidebar/Sidebar'
@@ -37,6 +38,7 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
     { storyNumber: number; commentId?: number } | null
   >(null)
   const { theme, toggle: toggleTheme } = useTheme()
+  const { density, toggle: toggleDensity } = useDensity()
   // Filter state is lifted from Chat to AppShell because Sidebar also
   // reads/writes it (SYSTEM click narrows to system-only; DM/group
   // click resets to default). Lifting here avoids duplicating the
@@ -110,6 +112,26 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
         >
           {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
         </button>
+        <button
+          type="button"
+          className="titlebar-density-toggle"
+          onClick={toggleDensity}
+          aria-pressed={density === 'compact'}
+          aria-label={
+            density === 'compact'
+              ? 'Switch to comfortable density'
+              : 'Switch to compact density'
+          }
+          title={
+            density === 'compact'
+              ? 'Switch to comfortable density'
+              : 'Switch to compact density'
+          }
+          data-test="titlebar-density-toggle"
+          data-density={density}
+        >
+          {density === 'compact' ? <RowsCompactIcon /> : <RowsComfortableIcon />}
+        </button>
         <CiGlyph messages={messages} />
       </header>
       <section className="app-body">
@@ -180,6 +202,36 @@ function MoonIcon(): React.JSX.Element {
         d="M11.5 8.5a4.5 4.5 0 0 1-6-6 5 5 0 1 0 6 6z"
         fill="currentColor"
       />
+    </svg>
+  )
+}
+
+// #369 density toggle glyphs. Comfortable shows 3 widely-spaced
+// rows; compact shows 4 tightly-spaced rows. Shape distinction at
+// glance — the icon's row count + spacing visually encode the
+// current state, so colorblind / mono-theme users read the density
+// through geometry, not just a label.
+function RowsComfortableIcon(): React.JSX.Element {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" focusable="false">
+      <g stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+        <line x1="2" y1="3" x2="12" y2="3" />
+        <line x1="2" y1="7" x2="12" y2="7" />
+        <line x1="2" y1="11" x2="12" y2="11" />
+      </g>
+    </svg>
+  )
+}
+
+function RowsCompactIcon(): React.JSX.Element {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" focusable="false">
+      <g stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
+        <line x1="2" y1="3" x2="12" y2="3" />
+        <line x1="2" y1="5.5" x2="12" y2="5.5" />
+        <line x1="2" y1="8.5" x2="12" y2="8.5" />
+        <line x1="2" y1="11" x2="12" y2="11" />
+      </g>
     </svg>
   )
 }

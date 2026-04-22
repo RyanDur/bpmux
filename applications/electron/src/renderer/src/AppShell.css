@@ -75,7 +75,8 @@
     display: inline-block;
   }
 
-  & .titlebar-theme-toggle {
+  & .titlebar-theme-toggle,
+  & .titlebar-density-toggle {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -97,5 +98,14 @@
       border-color: var(--border-strong);
       outline: none;
     }
+  }
+
+  /* #369 density toggle: pressed state (compact active) gets a
+   * subtle inset + accent tint so the active mode is visually
+   * distinguishable from the inactive. Parallels the SYSTEM filter
+   * selected state in sidebar for pattern consistency. */
+  & .titlebar-density-toggle[aria-pressed='true'] {
+    background: color-mix(in srgb, var(--accent-brand) 12%, transparent);
+    color: var(--accent-brand);
   }
 }

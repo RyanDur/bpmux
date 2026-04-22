@@ -1,7 +1,11 @@
 .message-list {
   flex: 1 1 auto;
   overflow-y: auto;
-  padding: var(--space-8) var(--space-16);
+  /* #369 density tokens — default to comfortable; [data-density=
+   * "compact"] on :root tightens the same knobs. Reaching for the
+   * tokens (not raw --space-*) lets the two modes evolve without
+   * touching this file. */
+  padding: var(--chat-row-pad-y) var(--chat-row-pad-x);
   display: flex;
   /* #363 scroll preservation: column-reverse means the flex
    * container's "start" is visually at the bottom. Rows are
@@ -13,7 +17,7 @@
    * at bottom (scrollTop=0 under column-reverse) follows new
    * messages naturally; scrolled-up user stays put. */
   flex-direction: column-reverse;
-  gap: var(--space-8);
+  gap: var(--chat-group-gap);
   list-style: none;
 
   &.message-list--empty {
@@ -29,7 +33,7 @@
   & .message-row {
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
+    gap: var(--chat-row-gap);
     /* Flex children default to min-width: auto (intrinsic content
      * width) which lets a long unbreakable string push the row past
      * the container, triggering a horizontal scrollbar on .message-
@@ -90,10 +94,12 @@
          * alone has an implicit min-content floor so long code /
          * URLs in the body would widen the grid track past the
          * container. minmax(0, 1fr) lets the column shrink to 0
-         * so the body respects container width (#365). */
-        grid-template-columns: 28px minmax(0, 1fr);
+         * so the body respects container width (#365). First
+         * column tracks --chat-avatar-size so compact mode's 20px
+         * avatar doesn't leave an 8px gap between avatar + body. */
+        grid-template-columns: var(--chat-avatar-size) minmax(0, 1fr);
         column-gap: var(--space-8);
-        row-gap: var(--space-2);
+        row-gap: var(--chat-row-gap);
         align-items: start;
       }
     }
@@ -162,8 +168,11 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
+    /* #369 density: --chat-avatar-size is 28px in comfortable,
+     * 20px in compact. Font-size scales proportionally so the
+     * initial stays centered + legible at either size. */
+    width: var(--chat-avatar-size);
+    height: var(--chat-avatar-size);
     font-size: 0.75rem;
     font-weight: 700;
     color: var(--bg-base);
@@ -222,6 +231,10 @@
 
   & .message-ts {
     color: var(--fg-dim);
+    /* #369: bumps to 500 in compact mode so the dim-tier metadata
+     * stays legible against the tighter row padding; stays at 400
+     * (inherited) in comfortable. */
+    font-weight: var(--chat-ts-font-weight);
   }
 
   & .message-scope {
