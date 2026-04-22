@@ -10,6 +10,18 @@ declare global {
       wsUrl: string
       authToken: string
       apiBase: string
+      // #371: main-process-fired IPC for "Quote in reply" context-menu
+      // clicks. DrillIn subscribes on mount; unsubscribe on unmount.
+      // Optional — renderers running outside Electron (unit tests,
+      // future web surface) omit the handler and fall back to the
+      // Cmd+E keyboard path from #366.
+      onQuoteComment?: (
+        callback: (payload: {
+          commentId: string
+          author: string
+          text: string
+        }) => void
+      ) => () => void
     }
   }
 }

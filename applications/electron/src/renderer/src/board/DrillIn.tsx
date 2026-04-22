@@ -535,16 +535,42 @@ function DrillIn({
     }
   }, [apiBase, authToken, busy, note, onBack, onStoryMutated, story, usingMock])
 
-  // #366 quote-excerpt: Cmd/Ctrl+E with a text selection inside any
-  // rendered comment body prepends a markdown blockquote of the
-  // selection to the comment draft, then focuses the textarea so the
-  // author can continue composing. The anchor in the blockquote links
-  // back to the source comment via `#comment-<id>`, rendered by
-  // MessageBody as a clickable scroll-to-origin link. Rationale:
-  // concurrent-write pain — Ryan observed that mid-compose, new
-  // comments arrive and his reply's antecedent becomes ambiguous. An
-  // explicit quote-of-text + author marker removes the ambiguity
-  // without requiring full threaded-reply substrate.
+  // #366 quote-excerpt: shared insertion logic. Either the keyboard
+  // shortcut (Cmd/Ctrl+E) or the native right-click "Quote in reply"
+  // context-menu item (#371) calls this with the selection's
+  // comment id + author + text. Prepends a markdown blockquote to
+  // the comment draft, then focuses the textarea with the cursor
+  // placed AFTER the blank line that follows the quote block so
+  // the author can type their reply immediately. The anchor in the
+  // blockquote links back to the source comment via `#comment-<id>`;
+  // MessageBody renders this as a clickable scroll-to-origin link.
+  // Rationale: concurrent-write pain (Ryan 2026-04-22) — mid-compose,
+  // new comments arrive and the reply's antecedent becomes ambiguous.
+  const insertQuote = useCallback(
+    (id: string, author: string, text: string) => {
+      const selected = text.trim()
+      if (!selected) return
+      const quoted = selected
+        .split('\n')
+        .map((line) => `> ${line}`)
+        .join('\n')
+      const header = `> [@${author}](#comment-${id}):`
+      const prefix = `${header}\n${quoted}\n\n`
+      setCommentDraft((prev) => prefix + prev)
+      const caret = prefix.length
+      window.requestAnimationFrame(() => {
+        const ta = commentTextareaRef.current
+        if (!ta) return
+        ta.focus()
+        ta.setSelectionRange(caret, caret)
+      })
+    },
+    []
+  )
+
+  // Keyboard path (#366): Cmd/Ctrl+E with a selection inside a
+  // comment body fires the same `insertQuote` path as the native
+  // right-click menu below.
   const handleQuoteShortcut = useCallback(
     (event: React.KeyboardEvent<HTMLElement>) => {
       if (event.key !== 'e' && event.key !== 'E') return
@@ -554,9 +580,6 @@ function DrillIn({
       if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return
       const anchor = sel.anchorNode
       if (!anchor) return
-      // Walk up from the selection anchor until we find the comment
-      // <li> (bearing data-comment-id). If the selection started
-      // outside a comment body, we don't quote.
       let node: Node | null = anchor
       while (node && !(node instanceof HTMLElement && node.dataset.commentId)) {
         node = node.parentNode
@@ -568,29 +591,24 @@ function DrillIn({
       const selected = sel.toString().trim()
       if (!selected) return
       event.preventDefault()
-      const quoted = selected
-        .split('\n')
-        .map((line) => `> ${line}`)
-        .join('\n')
-      const header = `> [@${author}](#comment-${id}):`
-      const prefix = `${header}\n${quoted}\n\n`
-      setCommentDraft((prev) => prefix + prev)
-      // Defer focus + cursor placement to the next frame so React has
-      // applied the state update and the textarea's value reflects the
-      // new prefix. Cursor lands at prefix.length so the user types
-      // AFTER the blank line that follows the quote block, matching
-      // the AC's "<cursor here>" placement between quote + existing
-      // draft content.
-      const caret = prefix.length
-      window.requestAnimationFrame(() => {
-        const ta = commentTextareaRef.current
-        if (!ta) return
-        ta.focus()
-        ta.setSelectionRange(caret, caret)
-      })
+      insertQuote(id, author, selected)
     },
-    []
+    [insertQuote]
   )
+
+  // Native-menu path (#371): preload exposes `onQuoteComment`, which
+  // main triggers when the user clicks "Quote in reply" in the
+  // native right-click context menu. Same insertQuote path as the
+  // keyboard shortcut — single source of truth for the quote
+  // format so the two trigger surfaces can't drift apart.
+  useEffect(() => {
+    const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
+    if (!bridge?.onQuoteComment) return
+    const unsubscribe = bridge.onQuoteComment(({ commentId, author, text }) => {
+      insertQuote(commentId, author, text)
+    })
+    return unsubscribe
+  }, [insertQuote])
 
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLElement>) => {

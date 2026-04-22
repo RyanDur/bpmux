@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, dialog, Menu, type MenuItemConstructorOptions } from 'electron'
 import { join } from 'path'
 import { homedir } from 'os'
 import { readFileSync } from 'fs'
@@ -212,6 +212,69 @@ function createWindow(): void {
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }
+  })
+
+  // #371: right-click context menu integration for the quote-
+  // excerpt feature. Builds a native Menu so Copy / Paste / Inspect
+  // Element remain available alongside the custom "Quote in reply"
+  // item (the Cmd+E keyboard path shipped in #366). Main builds the
+  // menu because only main has access to Electron's Menu API; the
+  // renderer signals quote-readiness by setting a data attribute on
+  // the selected comment's <li>, which main reads via a short
+  // executeJavaScript probe at context-menu time.
+  mainWindow.webContents.on('context-menu', (event, params) => {
+    if (!params.selectionText) return
+    // Probe: is the selection inside a comment? If so, return its
+    // id + author so the click handler has the metadata it needs to
+    // dispatch the quote to the renderer.
+    mainWindow.webContents
+      .executeJavaScript(
+        `(() => {
+           const sel = window.getSelection();
+           if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return null;
+           let node = sel.anchorNode;
+           while (node && !(node instanceof HTMLElement && node.dataset.commentId)) {
+             node = node.parentNode;
+           }
+           if (!(node instanceof HTMLElement)) return null;
+           return {
+             commentId: node.dataset.commentId,
+             author: node.dataset.commentAuthor || 'unknown',
+             text: sel.toString()
+           };
+         })()`
+      )
+      .then((ctx: { commentId: string; author: string; text: string } | null) => {
+        const template: MenuItemConstructorOptions[] = [
+          { role: 'copy' },
+          { role: 'paste' },
+          { type: 'separator' },
+          { role: 'selectAll' }
+        ]
+        if (ctx && ctx.commentId) {
+          // Prepend the quote item so it's visually prominent (above
+          // the standard clipboard items). Matches macOS context-menu
+          // conventions where contextual-first actions lead.
+          template.unshift(
+            {
+              label: 'Quote in reply',
+              click: () => {
+                mainWindow.webContents.send('bpmux:quote-comment', ctx)
+              }
+            },
+            { type: 'separator' }
+          )
+        }
+        if (is.dev) {
+          template.push({ type: 'separator' }, { role: 'toggleDevTools' })
+        }
+        const menu = Menu.buildFromTemplate(template)
+        menu.popup({ window: mainWindow, x: params.x, y: params.y })
+      })
+      .catch((err: unknown) => {
+        console.error('[bpmux] context-menu probe failed:', err)
+      })
+    event.preventDefault()
   })
 
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
