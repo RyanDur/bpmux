@@ -61,6 +61,8 @@ enum Command {
     },
     /// Run in headless mode for agent testing (no terminal required)
     Test,
+    /// Run the WS server + session without a TUI (Electron shell spawns this).
+    Server,
     /// Print an agent's recent lessons to stdout for session-start auto-surface (#157)
     Recall {
         /// Role to surface lessons for (e.g. dev, pm, designer).
@@ -133,6 +135,30 @@ fn emit_recall_activity(role: &str, count: usize) {
     });
 }
 
+fn run_server_only(cli: &Cli) -> anyhow::Result<()> {
+    let base = resolve_session_base(&cli.session_base)?;
+    std::fs::create_dir_all(&base)?;
+    let session_dir = session::resume_or_create_session(&base)?;
+    let (wake_tx, _wake_rx) = broadcast::channel::<session::Message>(256);
+    let session = Arc::new(session::Session::new(
+        session_dir,
+        cli.name.clone(),
+        wake_tx,
+    ));
+    let port = cli.mcp_port;
+    let ct = CancellationToken::new();
+    let screen_capture = Arc::new(std::sync::Mutex::new(String::new()));
+    let (inject_tx, _inject_rx) =
+        tokio::sync::mpsc::channel::<crate::terminal::event::TerminalInjectEvent>(16);
+    let rt = tokio::runtime::Runtime::new()?;
+    rt.block_on(async move {
+        session::awareness::spawn(Arc::clone(&session), session.owner_name.clone());
+        server::run_server(session, port, ct, screen_capture, inject_tx)
+            .await
+            .map_err(|e| anyhow::anyhow!("{e}"))
+    })
+}
+
 pub fn run() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
@@ -149,6 +175,10 @@ pub fn run() -> anyhow::Result<()> {
 
     if let Some(Command::Recall { role }) = &cli.command {
         return run_recall(&cli, role);
+    }
+
+    if matches!(cli.command, Some(Command::Server)) {
+        return run_server_only(&cli);
     }
 
     let base = resolve_session_base(&cli.session_base)?;
