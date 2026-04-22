@@ -17,6 +17,7 @@ function isRelevant(msg: ChatMessage, self: string): boolean {
 
 export function useNotifications(messages: ChatMessage[]): void {
   const lastSeenRef = useRef<number>(messages.length)
+  const firstRunRef = useRef<boolean>(true)
   const focusedRef = useRef<boolean>(typeof document !== 'undefined' ? document.hasFocus() : true)
 
   useEffect(() => {
@@ -42,6 +43,11 @@ export function useNotifications(messages: ChatMessage[]): void {
   }, [])
 
   useEffect(() => {
+    if (firstRunRef.current) {
+      firstRunRef.current = false
+      lastSeenRef.current = messages.length
+      return
+    }
     const from = lastSeenRef.current
     lastSeenRef.current = messages.length
     if (messages.length <= from) return

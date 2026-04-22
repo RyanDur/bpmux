@@ -3,6 +3,7 @@ import Board from './board/Board'
 import Chat from './chat/Chat'
 import CiGlyph from './ci/CiGlyph'
 import { useTheme } from './hooks/useTheme'
+import Search from './search/Search'
 import Sidebar from './sidebar/Sidebar'
 import type { ChatMessage, ConnectionStatus } from './transport/types'
 import type { SendOptions } from './transport/useWebSocket'
@@ -24,21 +25,31 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
 
   const [boardOpen, setBoardOpen] = useState<boolean>(true)
   const [recipient, setRecipient] = useState<string | null>(null)
+  const [searchOpen, setSearchOpen] = useState<boolean>(false)
   const { theme, toggle: toggleTheme } = useTheme()
+  const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
 
   useEffect(() => {
     const handler = (event: KeyboardEvent): void => {
       const ctrl = event.ctrlKey || event.metaKey
       if (!ctrl) return
-      if (event.key !== 'p' && event.key !== 'P') return
       const target = event.target as HTMLElement | null
       const inEditable =
         target instanceof HTMLTextAreaElement ||
         target instanceof HTMLInputElement ||
         target?.isContentEditable === true
-      if (inEditable) return
-      event.preventDefault()
-      setBoardOpen((prev) => !prev)
+
+      if ((event.key === 'f' || event.key === 'F') && !event.altKey && !event.shiftKey) {
+        event.preventDefault()
+        setSearchOpen(true)
+        return
+      }
+
+      if (event.key === 'p' || event.key === 'P') {
+        if (inEditable) return
+        event.preventDefault()
+        setBoardOpen((prev) => !prev)
+      }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
@@ -67,12 +78,20 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
       </header>
       <section className="app-body">
         <Sidebar recipient={recipient} onSelectRecipient={setRecipient} />
-        <Chat
-          messages={messages}
-          status={status}
-          recipient={recipient}
-          onSend={onSend}
-        />
+        {searchOpen ? (
+          <Search
+            apiBase={bridge?.apiBase}
+            authToken={bridge?.authToken}
+            onClose={() => setSearchOpen(false)}
+          />
+        ) : (
+          <Chat
+            messages={messages}
+            status={status}
+            recipient={recipient}
+            onSend={onSend}
+          />
+        )}
         {boardOpen ? <Board /> : null}
       </section>
     </main>

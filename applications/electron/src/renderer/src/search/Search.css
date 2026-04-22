@@ -1,0 +1,107 @@
+.search {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  background: var(--bg-base);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-subtle);
+
+  & .search-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    padding: var(--space-8) var(--space-16);
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--bg-elevated);
+  }
+
+  & .search-input {
+    flex: 1 1 auto;
+    background: var(--bg-base);
+    border: 1px solid var(--border-subtle);
+    border-radius: 4px;
+    padding: var(--space-6) var(--space-8);
+    color: var(--fg-primary);
+    font-size: 0.875rem;
+
+    &:focus-visible {
+      border-color: var(--accent-brand);
+      outline: none;
+    }
+  }
+
+  & .search-close {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--fg-secondary);
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+
+    &:hover {
+      background: var(--bg-highlighted);
+      color: var(--fg-primary);
+    }
+  }
+
+  & .search-hint,
+  & .search-error {
+    margin: 0;
+    padding: var(--space-8) var(--space-16);
+    font-size: 0.8125rem;
+    color: var(--fg-dim);
+  }
+
+  & .search-error {
+    color: var(--accent-error);
+  }
+
+  & .search-results {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    flex: 1 1 auto;
+  }
+
+  & .search-result {
+    padding: var(--space-8) var(--space-16);
+    border-bottom: 1px solid var(--border-subtle);
+
+    &:hover {
+      background: var(--bg-elevated);
+    }
+  }
+
+  & .search-result-meta {
+    display: flex;
+    gap: var(--space-8);
+    align-items: baseline;
+    font-size: 0.75rem;
+    padding: 0;
+    margin: 0 0 var(--space-4) 0;
+  }
+
+  & .search-result-from {
+    font-weight: 600;
+    color: var(--fg-primary);
+    font-style: normal;
+  }
+
+  & .search-result-ts {
+    color: var(--fg-dim);
+  }
+
+  & .search-result-text {
+    margin: 0;
+    color: var(--fg-primary);
+    font-size: 0.875rem;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+}
