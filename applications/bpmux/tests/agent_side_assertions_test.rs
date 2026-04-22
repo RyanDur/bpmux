@@ -17,7 +17,7 @@ use std::time::Duration;
 /// Presence-wait timeout for integration tests (#276). See
 /// bridge_acceptance_test.rs for the rationale — GH Actions +
 /// subprocess spawn needs more headroom than 5s.
-const WAIT_PRESENCE_TIMEOUT: Duration = Duration::from_secs(15);
+const WAIT_PRESENCE_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// AC: "Given a test calls view_board as a specific agent role,
 /// when stories exist in the board, then the response contains

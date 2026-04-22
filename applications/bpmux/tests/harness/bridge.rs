@@ -76,13 +76,38 @@ impl TestBridge {
             .serve(process)
             .await
             .expect("MCP handshake with bridge");
-        Self { client, capture }
+        let bridge = Self { client, capture };
+        bridge.wait_until_ws_ready(name).await;
+        bridge
+    }
+
+    /// Probe set_name with the connect-time identity until it stops
+    /// returning the "not connected to bpmux" error. set_name's
+    /// handler calls ws_send, so a successful set_name proves the
+    /// bridge→bpmux WebSocket handshake is complete. Re-using the
+    /// caller's own name means this probe doesn't mutate the role the
+    /// bridge identifies as (it just re-sets it to itself).
+    async fn wait_until_ws_ready(&self, name: &str) {
+        let _ = tokio::time::timeout(Duration::from_secs(30), async {
+            loop {
+                let mut params = rmcp::model::CallToolRequestParams::new("set_name");
+                params.arguments = serde_json::json!({ "name": name }).as_object().cloned();
+                let result = self.client.peer().call_tool(params).await;
+                if let Ok(ref tool_result) = result
+                    && !tool_result.is_error.unwrap_or(false)
+                {
+                    return;
+                }
+                tokio::time::sleep(Duration::from_millis(100)).await;
+            }
+        })
+        .await;
     }
 
     /// Send a message through `send_message`, retrying until the bridge's
     /// WebSocket to bpmux is connected.
     pub async fn send(&self, text: &str) {
-        tokio::time::timeout(Duration::from_secs(5), async {
+        tokio::time::timeout(Duration::from_secs(30), async {
             loop {
                 let mut params = rmcp::model::CallToolRequestParams::new("send_message");
                 params.arguments = serde_json::json!({"text": text}).as_object().cloned();
@@ -144,27 +169,42 @@ impl TestBridge {
         tool: &str,
         args: serde_json::Value,
     ) -> Result<serde_json::Value, String> {
-        let mut params = rmcp::model::CallToolRequestParams::new(tool.to_string());
-        params.arguments = args.as_object().cloned();
-        let result = tokio::time::timeout(
-            Duration::from_secs(10),
-            self.client.peer().call_tool(params),
-        )
-        .await
-        .map_err(|_| format!("call_tool({tool}) timed out"))?
-        .map_err(|e| format!("call_tool({tool}) transport error: {e}"))?;
-        let text = result
-            .content
-            .first()
-            .and_then(|c| c.as_text().map(|t| t.text.clone()))
-            .unwrap_or_default();
-        if result.is_error.unwrap_or(false) {
-            return Err(text);
+        // The bridge-to-bpmux WebSocket handshake races the first
+        // tool call under CI load. When ws_send fires before the
+        // socket is up, the handler returns
+        // "not connected to bpmux — reconnecting, try again in a
+        // few seconds". Retry that specific error for up to 30s so
+        // tests don't need to know the handshake timing.
+        let mut params_template = rmcp::model::CallToolRequestParams::new(tool.to_string());
+        params_template.arguments = args.as_object().cloned();
+        let deadline = std::time::Instant::now() + Duration::from_secs(30);
+        loop {
+            let mut params = rmcp::model::CallToolRequestParams::new(tool.to_string());
+            params.arguments = params_template.arguments.clone();
+            let result = tokio::time::timeout(
+                Duration::from_secs(10),
+                self.client.peer().call_tool(params),
+            )
+            .await
+            .map_err(|_| format!("call_tool({tool}) timed out"))?
+            .map_err(|e| format!("call_tool({tool}) transport error: {e}"))?;
+            let text = result
+                .content
+                .first()
+                .and_then(|c| c.as_text().map(|t| t.text.clone()))
+                .unwrap_or_default();
+            if result.is_error.unwrap_or(false) {
+                if text.contains("not connected to bpmux") && std::time::Instant::now() < deadline {
+                    tokio::time::sleep(Duration::from_millis(100)).await;
+                    continue;
+                }
+                return Err(text);
+            }
+            // Many tools return pretty-printed JSON; parse when possible,
+            // but fall through to a string Value for plain-text responses
+            // (e.g. status confirmations like "#200 accepted and closed").
+            return Ok(serde_json::from_str(&text).unwrap_or(serde_json::Value::String(text)));
         }
-        // Many tools return pretty-printed JSON; parse when possible,
-        // but fall through to a string Value for plain-text responses
-        // (e.g. status confirmations like "#200 accepted and closed").
-        Ok(serde_json::from_str(&text).unwrap_or(serde_json::Value::String(text)))
     }
 
     /// Cancel the MCP client, bounded so cleanup can't hang.
