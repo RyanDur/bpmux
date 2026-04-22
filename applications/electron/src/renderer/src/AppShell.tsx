@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import Board from './board/Board'
 import Chat from './chat/Chat'
 import CiGlyph from './ci/CiGlyph'
+import { useTheme } from './hooks/useTheme'
 import Sidebar from './sidebar/Sidebar'
 import type { ChatMessage, ConnectionStatus } from './transport/types'
 import type { SendOptions } from './transport/useWebSocket'
@@ -23,6 +24,7 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
 
   const [boardOpen, setBoardOpen] = useState<boolean>(true)
   const [recipient, setRecipient] = useState<string | null>(null)
+  const { theme, toggle: toggleTheme } = useTheme()
 
   useEffect(() => {
     const handler = (event: KeyboardEvent): void => {
@@ -52,6 +54,15 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
           title={statusLabel}
           aria-label={`connection ${statusLabel}`}
         />
+        <button
+          type="button"
+          className="titlebar-theme-toggle"
+          onClick={toggleTheme}
+          aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+          title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+        >
+          {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+        </button>
         <CiGlyph />
       </header>
       <section className="app-body">
@@ -65,6 +76,35 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
         {boardOpen ? <Board /> : null}
       </section>
     </main>
+  )
+}
+
+function SunIcon(): React.JSX.Element {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" focusable="false">
+      <circle cx="7" cy="7" r="3" fill="currentColor" />
+      <g stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
+        <line x1="7" y1="1" x2="7" y2="2.5" />
+        <line x1="7" y1="11.5" x2="7" y2="13" />
+        <line x1="1" y1="7" x2="2.5" y2="7" />
+        <line x1="11.5" y1="7" x2="13" y2="7" />
+        <line x1="2.5" y1="2.5" x2="3.5" y2="3.5" />
+        <line x1="10.5" y1="10.5" x2="11.5" y2="11.5" />
+        <line x1="2.5" y1="11.5" x2="3.5" y2="10.5" />
+        <line x1="10.5" y1="3.5" x2="11.5" y2="2.5" />
+      </g>
+    </svg>
+  )
+}
+
+function MoonIcon(): React.JSX.Element {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" focusable="false">
+      <path
+        d="M11.5 8.5a4.5 4.5 0 0 1-6-6 5 5 0 1 0 6 6z"
+        fill="currentColor"
+      />
+    </svg>
   )
 }
 

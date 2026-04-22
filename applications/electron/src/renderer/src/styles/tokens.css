@@ -52,5 +52,30 @@
 }
 
 [data-theme="light"] {
-  /* phase-1b override block */
+  /* backgrounds */
+  --bg-base: #ffffff;
+  --bg-elevated: #f5f5f5;
+  --bg-highlighted: #e5e8ef;
+
+  /* foregrounds */
+  --fg-primary: #1a1a1a;
+  --fg-secondary: #4a5568;
+  --fg-dim: #718096;
+
+  /* accents — tuned for AA contrast on light bg */
+  --accent-brand: #2563eb;
+  --accent-success: #16a34a;
+  --accent-warning: #b45309;
+  --accent-error: #dc2626;
+  --accent-info: #0284c7;
+
+  /* borders */
+  --border-subtle: #e2e8f0;
+  --border-strong: #cbd5e0;
+
+  /* role colors — slightly darker versions for light-mode contrast */
+  --role-ryan: #a16207;
+  --role-designer: #7e22ce;
+  --role-dev: #0369a1;
+  --role-pm: #15803d;
 }
