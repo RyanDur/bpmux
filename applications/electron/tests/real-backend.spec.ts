@@ -119,4 +119,81 @@ test.describe('real-backend', () => {
 
     await app.close()
   })
+
+  // #348 visual differentiation — grouping + Ryan-shape avatar.
+  //
+  // This test narrowly mocks `/api/messages` (hydration payload) via
+  // win.route to seed a deterministic fixture. That's a scoped
+  // fixture for a rendering-logic test (given messages X, what does
+  // the DOM render?) — CORS and network substrate are exercised by
+  // the earlier real-backend tests, so this narrow mock doesn't
+  // short-circuit the substrate-verification we care about.
+  test('grouping + Ryan-circle: 3 designer-in-5min render one avatar; Ryan renders as filled circle', async () => {
+    const { app } = await launchWithIsolatedSession()
+    const win = await app.firstWindow()
+
+    const base = new Date('2026-04-22T12:00:00Z').getTime()
+    const fixture = [
+      {
+        from: 'designer:claude-code',
+        text: 'first of the group',
+        ts: new Date(base).toISOString(),
+        message_type: 'chat'
+      },
+      {
+        from: 'designer:claude-code',
+        text: 'second, 10s later',
+        ts: new Date(base + 10_000).toISOString(),
+        message_type: 'chat'
+      },
+      {
+        from: 'designer:claude-code',
+        text: 'third, 20s later',
+        ts: new Date(base + 20_000).toISOString(),
+        message_type: 'chat'
+      },
+      {
+        from: 'ryan:human',
+        text: 'ryan breaking the group',
+        ts: new Date(base + 30_000).toISOString(),
+        message_type: 'chat'
+      }
+    ]
+    // Hydration endpoint returns reverse-chronological per server
+    // convention (newest first) — see useWebSocket.ts:155 where the
+    // renderer reverses it back to chronological before rendering.
+    await win.route('**/api/messages**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([...fixture].reverse())
+      })
+    })
+
+    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+    const messageList = win.locator('[data-test="message-list"]')
+    await expect(messageList).toBeVisible()
+
+    // AC9(a): three consecutive designer messages + one ryan message
+    // render four rows total, but only TWO avatars — the first
+    // designer row anchors the 3-message group, the ryan row anchors
+    // its own single-row group. Avatars 2 and 3 (grouped
+    // continuations) are hidden.
+    const avatars = win.locator('[data-test="message-avatar"]')
+    await expect(avatars).toHaveCount(2, { timeout: 5_000 })
+    await expect(avatars.nth(0)).toHaveAttribute('data-role', 'designer')
+    await expect(avatars.nth(1)).toHaveAttribute('data-role', 'ryan')
+
+    // AC9(b): Ryan's avatar is a filled circle (shape class
+    // `message-avatar--circle` → border-radius: 50% in CSS). AI
+    // avatars are rounded-squares (`message-avatar--square` →
+    // border-radius: 4px). The shape class maps 1:1 to the rendered
+    // geometry per MessageList.css; asserting on the class is a
+    // boundary-level check that stays stable across CSS refactors
+    // so long as the shape-per-role contract is intact.
+    await expect(avatars.nth(1)).toHaveClass(/message-avatar--circle/)
+    await expect(avatars.nth(0)).toHaveClass(/message-avatar--square/)
+
+    await app.close()
+  })
 })

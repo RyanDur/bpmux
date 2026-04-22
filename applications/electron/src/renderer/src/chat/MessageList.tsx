@@ -1,12 +1,26 @@
 import { format } from 'date-fns'
 import { useEffect, useRef } from 'react'
 import type { ChatMessage } from '../transport/types'
+import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import MessageBody from './MessageBody'
 import './MessageList.css'
 
 interface Props {
   messages: ChatMessage[]
 }
+
+// Grouping threshold — consecutive messages from the same sender
+// within this window collapse into a single visual group (one avatar
+// + one role-name header, subsequent bodies indent under it). Spec's
+// default; tunable as a "revisit after live-use" per #348's story
+// body. Kept as a named constant so the value is greppable when
+// calibration feedback arrives.
+const GROUP_THRESHOLD_MS = 5 * 60 * 1000
+
+// Role keys we recognise for avatar coloring + shape differentiation.
+// Anything else falls through to 'unknown' (no role-color, neutral
+// avatar). Matches --role-* tokens in tokens.css.
+const KNOWN_ROLES = new Set(['ryan', 'designer', 'dev', 'pm'])
 
 function formatTime(ts: string): string {
   const d = new Date(ts)
@@ -25,6 +39,33 @@ function scopeLabel(m: ChatMessage): string | null {
   return `→ ${m.to.join(', ')}`
 }
 
+// Grouping predicate — all four conditions must hold to collapse
+// `curr` into the previous message's group: same sender, same
+// message-class, same addressee, and within the 5-minute threshold.
+// Any mismatch breaks the group so the viewer sees a fresh avatar +
+// header (ACs 3, 4 explicitly gate on class and addressee).
+function isGroupedWithPrev(curr: ChatMessage, prev: ChatMessage | null): boolean {
+  if (!prev) return false
+  if (shortName(curr.from) !== shortName(prev.from)) return false
+  if ((curr.messageType ?? 'chat') !== (prev.messageType ?? 'chat')) return false
+  if ((curr.addressee ?? null) !== (prev.addressee ?? null)) return false
+  const currMs = new Date(curr.ts).getTime()
+  const prevMs = new Date(prev.ts).getTime()
+  if (Number.isNaN(currMs) || Number.isNaN(prevMs)) return false
+  return currMs - prevMs <= GROUP_THRESHOLD_MS
+}
+
+function avatarClasses(sender: string): string {
+  const roleKey = KNOWN_ROLES.has(sender) ? sender : 'unknown'
+  // Ryan-as-human-anchor: filled circle (preattentive shape) vs
+  // rounded-square for AI roles. Designers with colorblindness or
+  // mono-theme displays can still differentiate Ryan from AI at a
+  // glance via shape alone.
+  const shape =
+    sender === 'ryan' ? 'message-avatar--circle' : 'message-avatar--square'
+  return `message-avatar message-avatar--${roleKey} ${shape}`
+}
+
 function MessageList({ messages }: Props): React.JSX.Element {
   const endRef = useRef<HTMLLIElement>(null)
 
@@ -36,11 +77,6 @@ function MessageList({ messages }: Props): React.JSX.Element {
     (m) => m.messageType !== 'activity' && m.messageType !== 'system'
   )
 
-  // role="log" + aria-live="polite" turns the message list into a
-  // live region that screen readers announce as new messages arrive,
-  // matching the SR-user expectation for a chat feed. Per WAI-ARIA,
-  // `log` pairs with `aria-live="polite"` so announcements queue
-  // rather than interrupt the user.
   const regionProps = {
     className: 'message-list',
     'data-test': 'message-list',
@@ -60,33 +96,71 @@ function MessageList({ messages }: Props): React.JSX.Element {
 
   return (
     <ul {...regionProps}>
-      {visible.map((m) => {
+      {visible.map((m, i) => {
+        const prev = i > 0 ? visible[i - 1] : null
+        const grouped = isGroupedWithPrev(m, prev)
+        const sender = shortName(m.from)
         const scope = scopeLabel(m)
         const addressee = m.addressee ?? null
-        const sender = shortName(m.from)
+        const addressedToViewer = addressee === RENDERER_IDENTITY
+        const addressedToOther = addressee !== null && !addressedToViewer
+
+        // Row classes carry the per-message modifiers that CSS keys
+        // off: --grouped hides the avatar + role row and dims the
+        // timestamp; --to-me paints the left-border accent; --to-other
+        // dims the body color via --msg-fg-muted.
+        const rowClasses = [
+          'message-row',
+          grouped ? 'message-row--grouped' : 'message-row--first',
+          addressedToViewer ? 'message-row--to-me' : '',
+          addressedToOther ? 'message-row--to-other' : ''
+        ]
+          .filter(Boolean)
+          .join(' ')
+
         return (
-          <li key={m.id} className="message-row" data-test="message-row">
+          <li key={m.id} className={rowClasses} data-test="message-row">
             <article>
-              {/* Screen-reader sender prefix. The visible <cite> below
-                * is aria-hidden so AT reads the sender exactly once,
-                * at the top of the article, before the timestamp and
-                * body — matching the reading order sighted users
-                * perceive visually. */}
+              {/* Screen-reader sender prefix. Every article carries
+                * this so SR users navigating message-by-message always
+                * hear who's speaking, even in grouped continuations
+                * where sighted users see the sender only at the group
+                * head. */}
               <span className="sr-only">{sender}:</span>
-              <header className="message-meta">
-                <cite className="message-from" aria-hidden="true">
-                  {sender}
-                </cite>
-                <time className="message-ts" dateTime={m.ts}>
+              {!grouped && (
+                <span
+                  className={avatarClasses(sender)}
+                  data-test="message-avatar"
+                  data-role={KNOWN_ROLES.has(sender) ? sender : 'unknown'}
+                  aria-hidden="true"
+                >
+                  {sender.charAt(0).toUpperCase()}
+                </span>
+              )}
+              {!grouped && (
+                <header className="message-meta">
+                  <cite className="message-from" aria-hidden="true">
+                    {sender}
+                  </cite>
+                  <time className="message-ts" dateTime={m.ts}>
+                    {formatTime(m.ts)}
+                  </time>
+                  {scope && <small className="message-scope">{scope}</small>}
+                  {addressee && (
+                    <small
+                      className="message-addressee"
+                      title={`attention: @${addressee}`}
+                    >
+                      @{addressee}
+                    </small>
+                  )}
+                </header>
+              )}
+              {grouped && (
+                <time className="message-ts message-ts--grouped" dateTime={m.ts}>
                   {formatTime(m.ts)}
                 </time>
-                {scope && <small className="message-scope">{scope}</small>}
-                {addressee && (
-                  <small className="message-addressee" title={`attention: @${addressee}`}>
-                    @{addressee}
-                  </small>
-                )}
-              </header>
+              )}
               <section className="message-body">
                 <MessageBody text={m.text} />
               </section>
