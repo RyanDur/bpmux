@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import MessageBody from '../chat/MessageBody'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import { storyTypeFromLabels, type BoardStory } from './types'
 import './DrillIn.css'
@@ -218,7 +219,11 @@ function DrillIn({
       </section>
 
       <section className="drill-in-body" aria-label="Story body">
-        <pre className="drill-in-body-text">{story.body || '(no body)'}</pre>
+        {story.body ? (
+          <MessageBody text={story.body} />
+        ) : (
+          <p className="drill-in-body-empty">(no body)</p>
+        )}
       </section>
 
       {canAct ? (
