@@ -13,7 +13,13 @@ use std::path::PathBuf;
 use std::process::Command;
 
 fn project_dir() -> PathBuf {
+    // Workspace root: claude-plugin lives at the repo root, one level
+    // above applications/bpmux where this crate's Cargo.toml sits.
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .ancestors()
+        .nth(2)
+        .unwrap()
+        .to_path_buf()
 }
 
 fn check_bpmux_script() -> PathBuf {
