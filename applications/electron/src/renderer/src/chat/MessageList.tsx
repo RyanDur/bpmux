@@ -1,5 +1,4 @@
 import { format } from 'date-fns'
-import { useRef } from 'react'
 import type { ChatMessage } from '../transport/types'
 import { classOf, type MessageClass } from '../hooks/useMessageFilter'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
@@ -120,12 +119,6 @@ function MessageList({
   apiBase,
   authToken
 }: Props): React.JSX.Element {
-  // Hidden sentinel kept so the zero-message empty-state render path
-  // below still compiles without structural change. The auto-scroll
-  // behaviour itself is handled by CSS column-reverse (#363) — no JS
-  // scrolling needed.
-  const endRef = useRef<HTMLLIElement>(null)
-
   const visible = messages.filter((m) => visibleClasses.has(classOf(m.messageType)))
 
   const regionProps = {
@@ -140,7 +133,6 @@ function MessageList({
     return (
       <ul {...regionProps} className="message-list message-list--empty">
         <li className="message-empty">no messages yet</li>
-        <li ref={endRef} aria-hidden="true" />
       </ul>
     )
   }
@@ -289,7 +281,6 @@ function MessageList({
           </li>
         )
       })}
-        <li ref={endRef} aria-hidden="true" />
       </ul>
     </>
   )
