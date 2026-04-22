@@ -22,15 +22,17 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
 
   const [boardOpen, setBoardOpen] = useState<boolean>(true)
 
-  // Global Ctrl+P / Cmd+P toggles the board panel (per phase-1a spec).
-  // We capture on window so focused inputs (chat textarea, reject
-  // note) don't swallow it. preventDefault to avoid the browser print
-  // dialog sneaking through.
   useEffect(() => {
     const handler = (event: KeyboardEvent): void => {
       const ctrl = event.ctrlKey || event.metaKey
       if (!ctrl) return
       if (event.key !== 'p' && event.key !== 'P') return
+      const target = event.target as HTMLElement | null
+      const inEditable =
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLInputElement ||
+        target?.isContentEditable === true
+      if (inEditable) return
       event.preventDefault()
       setBoardOpen((prev) => !prev)
     }

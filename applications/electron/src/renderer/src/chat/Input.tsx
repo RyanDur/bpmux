@@ -44,10 +44,15 @@ function lineEnd(value: string, from: number): number {
   return nl === -1 ? value.length : nl
 }
 
+const MAX_HISTORY = 50
+
 function Input({ onSend, disabled }: Props): React.JSX.Element {
   const [value, setValue] = useState('')
   const taRef = useRef<HTMLTextAreaElement>(null)
   const yankRef = useRef<string>('')
+  const historyRef = useRef<string[]>([])
+  const historyIndexRef = useRef<number | null>(null)
+  const draftRef = useRef<string>('')
 
   useEffect(() => {
     if (!disabled) taRef.current?.focus()
@@ -94,13 +99,55 @@ function Input({ onSend, disabled }: Props): React.JSX.Element {
       const hasSelection = pos !== selEnd
       const { ctrlKey, altKey, metaKey, shiftKey, key } = e
 
+
       if (key === 'Enter' && !shiftKey) {
         e.preventDefault()
         const text = value.trim()
         if (!text) return
         onSend(text, parseAddressee(text))
+        const history = historyRef.current
+        if (history[history.length - 1] !== text) {
+          history.push(text)
+          if (history.length > MAX_HISTORY) history.shift()
+        }
+        historyIndexRef.current = null
+        draftRef.current = ''
         setValue('')
         return
+      }
+
+      const historyPrev = (): void => {
+        const history = historyRef.current
+        if (history.length === 0) return
+        const idx = historyIndexRef.current
+        if (idx === null) {
+          draftRef.current = value
+          historyIndexRef.current = history.length - 1
+        } else if (idx > 0) {
+          historyIndexRef.current = idx - 1
+        } else {
+          return
+        }
+        const recalled = history[historyIndexRef.current]
+        setValue(recalled)
+        moveCaret(recalled.length)
+      }
+
+      const historyNext = (): void => {
+        const idx = historyIndexRef.current
+        if (idx === null) return
+        const history = historyRef.current
+        if (idx < history.length - 1) {
+          historyIndexRef.current = idx + 1
+          const recalled = history[historyIndexRef.current]
+          setValue(recalled)
+          moveCaret(recalled.length)
+        } else {
+          historyIndexRef.current = null
+          const draft = draftRef.current
+          setValue(draft)
+          moveCaret(draft.length)
+        }
       }
 
       if (metaKey && !ctrlKey && !altKey && key.toLowerCase() === 'k') {
@@ -109,8 +156,36 @@ function Input({ onSend, disabled }: Props): React.JSX.Element {
         return
       }
 
+      if (key === 'ArrowUp' && !ctrlKey && !altKey && !metaKey && !shiftKey) {
+        const firstLine = !value.slice(0, pos).includes('\n')
+        if (firstLine) {
+          e.preventDefault()
+          historyPrev()
+          return
+        }
+      }
+
+      if (key === 'ArrowDown' && !ctrlKey && !altKey && !metaKey && !shiftKey) {
+        const lastLine = !value.slice(pos).includes('\n')
+        if (lastLine) {
+          e.preventDefault()
+          historyNext()
+          return
+        }
+      }
+
       if (ctrlKey && !altKey && !metaKey) {
         switch (key.toLowerCase()) {
+          case 'p': {
+            e.preventDefault()
+            historyPrev()
+            return
+          }
+          case 'n': {
+            e.preventDefault()
+            historyNext()
+            return
+          }
           case 'a': {
             e.preventDefault()
             moveCaret(lineStart(value, pos))
