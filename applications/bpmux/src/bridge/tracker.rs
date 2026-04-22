@@ -378,20 +378,48 @@ impl OctocrabStoryTracker {
     }
 }
 
+/// Derive the renderer's board-bucket state string from a GitHub
+/// issue's raw state + labels. Mirrors the label-precedence logic in
+/// `terminal::board::stories::parse_issue_values` (same order, same
+/// fallbacks) but emits the kebab-case strings the Electron board
+/// grouper expects — see `applications/electron/src/renderer/src/board/types.ts`.
+///
+/// Duplication flag: this label→state mapping also lives in
+/// `terminal/board/stories.rs`. They must stay in sync; diverging
+/// produces the exact silent-drop bug that stalled #xxx acceptance
+/// walk (empty buckets on live data, no error).
+fn derive_renderer_state(
+    gh_state: &octocrab::models::IssueState,
+    labels: &[String],
+) -> &'static str {
+    if matches!(gh_state, octocrab::models::IssueState::Closed) {
+        return "accepted";
+    }
+    let has = |name: &str| labels.iter().any(|l| l == name);
+    if has("delivered") {
+        "delivered"
+    } else if has("started") || has("finished") {
+        "in-progress"
+    } else if has("ready") {
+        "ready"
+    } else {
+        // unlabeled open issues + "deferred"/"icebox" labels → icebox
+        "icebox"
+    }
+}
+
 /// Shape a single octocrab Issue into the board JSON envelope the
 /// Electron renderer expects. Lifted out as a free function so
 /// `fetch_board_stories` and `get_story` emit identical shapes — the
 /// renderer can reuse the same parser for both endpoints.
 fn issue_to_board_json(issue: &octocrab::models::issues::Issue) -> serde_json::Value {
+    let labels: Vec<String> = issue.labels.iter().map(|l| l.name.clone()).collect();
+    let state = derive_renderer_state(&issue.state, &labels);
     serde_json::json!({
         "number": issue.number,
         "title": issue.title,
-        "state": match issue.state {
-            octocrab::models::IssueState::Open => "OPEN",
-            octocrab::models::IssueState::Closed => "CLOSED",
-            _ => "OPEN",
-        },
-        "labels": issue.labels.iter().map(|l| l.name.clone()).collect::<Vec<_>>(),
+        "state": state,
+        "labels": labels,
         "assignees": issue.assignees.iter().map(|a| a.login.clone()).collect::<Vec<_>>(),
         "created_at": issue.created_at.to_rfc3339(),
         "body": issue.body.clone().unwrap_or_default(),
@@ -573,5 +601,62 @@ impl StoryTracker for FakeTracker {
 
     async fn list_latest_run_on_main(&self) -> Result<Option<WorkflowRunEntry>, String> {
         Ok(None)
+    }
+}
+
+#[cfg(test)]
+mod derive_renderer_state_tests {
+    use super::*;
+    use octocrab::models::IssueState;
+
+    fn labels(ns: &[&str]) -> Vec<String> {
+        ns.iter().map(|s| (*s).to_string()).collect()
+    }
+
+    #[test]
+    fn closed_issues_map_to_accepted() {
+        assert_eq!(
+            derive_renderer_state(&IssueState::Closed, &labels(&["ready"])),
+            "accepted"
+        );
+    }
+
+    #[test]
+    fn delivered_wins_over_ready_and_started() {
+        assert_eq!(
+            derive_renderer_state(
+                &IssueState::Open,
+                &labels(&["ready", "started", "delivered"])
+            ),
+            "delivered"
+        );
+    }
+
+    #[test]
+    fn started_or_finished_yield_in_progress() {
+        assert_eq!(
+            derive_renderer_state(&IssueState::Open, &labels(&["started"])),
+            "in-progress"
+        );
+        assert_eq!(
+            derive_renderer_state(&IssueState::Open, &labels(&["finished"])),
+            "in-progress"
+        );
+    }
+
+    #[test]
+    fn ready_label_yields_ready() {
+        assert_eq!(
+            derive_renderer_state(&IssueState::Open, &labels(&["Feature", "ready"])),
+            "ready"
+        );
+    }
+
+    #[test]
+    fn unlabeled_open_issues_fall_through_to_icebox() {
+        assert_eq!(
+            derive_renderer_state(&IssueState::Open, &labels(&[])),
+            "icebox"
+        );
     }
 }

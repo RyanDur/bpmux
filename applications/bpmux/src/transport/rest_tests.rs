@@ -930,12 +930,14 @@ async fn get_board_returns_stories_with_fetched_at() {
     assert_eq!(stories.len(), 2);
     assert_eq!(stories[0]["number"], 1);
     assert_eq!(stories[0]["title"], "first");
-    assert_eq!(stories[0]["state"], "OPEN");
+    // State derivation: open issue with no workflow labels → icebox;
+    // closed issue → accepted. Mirrors the renderer's bucket vocabulary.
+    assert_eq!(stories[0]["state"], "icebox");
     assert_eq!(stories[0]["body"], "hello");
     // Missing body falls back to "" — renderer gets a stable string,
     // not a null surprise.
     assert_eq!(stories[1]["body"], "");
-    assert_eq!(stories[1]["state"], "CLOSED");
+    assert_eq!(stories[1]["state"], "accepted");
     // Required shape fields per spec.
     assert!(stories[0]["labels"].is_array());
     assert!(stories[0]["assignees"].is_array());
