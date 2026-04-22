@@ -373,8 +373,69 @@ function DrillIn({
     }
   }, [apiBase, authToken, busy, note, onBack, onStoryMutated, story, usingMock])
 
+  // #366 quote-excerpt: Cmd/Ctrl+E with a text selection inside any
+  // rendered comment body prepends a markdown blockquote of the
+  // selection to the comment draft, then focuses the textarea so the
+  // author can continue composing. The anchor in the blockquote links
+  // back to the source comment via `#comment-<id>`, rendered by
+  // MessageBody as a clickable scroll-to-origin link. Rationale:
+  // concurrent-write pain — Ryan observed that mid-compose, new
+  // comments arrive and his reply's antecedent becomes ambiguous. An
+  // explicit quote-of-text + author marker removes the ambiguity
+  // without requiring full threaded-reply substrate.
+  const handleQuoteShortcut = useCallback(
+    (event: React.KeyboardEvent<HTMLElement>) => {
+      if (event.key !== 'e' && event.key !== 'E') return
+      if (!(event.metaKey || event.ctrlKey)) return
+      if (event.altKey || event.shiftKey) return
+      const sel = window.getSelection()
+      if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return
+      const anchor = sel.anchorNode
+      if (!anchor) return
+      // Walk up from the selection anchor until we find the comment
+      // <li> (bearing data-comment-id). If the selection started
+      // outside a comment body, we don't quote.
+      let node: Node | null = anchor
+      while (node && !(node instanceof HTMLElement && node.dataset.commentId)) {
+        node = node.parentNode
+      }
+      if (!(node instanceof HTMLElement)) return
+      const id = node.dataset.commentId
+      const author = node.dataset.commentAuthor ?? 'unknown'
+      if (!id) return
+      const selected = sel.toString().trim()
+      if (!selected) return
+      event.preventDefault()
+      const quoted = selected
+        .split('\n')
+        .map((line) => `> ${line}`)
+        .join('\n')
+      const header = `> [@${author}](#comment-${id}):`
+      const prefix = `${header}\n${quoted}\n\n`
+      setCommentDraft((prev) => prefix + prev)
+      // Defer focus + cursor placement to the next frame so React has
+      // applied the state update and the textarea's value reflects the
+      // new prefix. Cursor lands at prefix.length so the user types
+      // AFTER the blank line that follows the quote block, matching
+      // the AC's "<cursor here>" placement between quote + existing
+      // draft content.
+      const caret = prefix.length
+      window.requestAnimationFrame(() => {
+        const ta = commentTextareaRef.current
+        if (!ta) return
+        ta.focus()
+        ta.setSelectionRange(caret, caret)
+      })
+    },
+    []
+  )
+
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLElement>) => {
+      // Quote-shortcut runs first — if it consumes the event
+      // (selection inside a comment + Cmd/Ctrl+E), we stop here.
+      handleQuoteShortcut(event)
+      if (event.defaultPrevented) return
       if (event.key === 'Escape') {
         event.preventDefault()
         if (mode === 'rejecting') {
@@ -385,7 +446,7 @@ function DrillIn({
         onBack()
       }
     },
-    [mode, onBack]
+    [handleQuoteShortcut, mode, onBack]
   )
 
   const handleTextareaKeyDown = useCallback(
@@ -501,6 +562,7 @@ function DrillIn({
                 className="drill-in-comment"
                 data-test="drill-in-comment"
                 data-comment-id={c.id}
+                data-comment-author={c.author}
               >
                 <article>
                   <header className="drill-in-comment-meta">
