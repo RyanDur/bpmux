@@ -1,6 +1,7 @@
 import { format } from 'date-fns'
 import { useEffect, useRef } from 'react'
 import type { ChatMessage } from '../transport/types'
+import MessageBody from './MessageBody'
 import './MessageList.css'
 
 interface Props {
@@ -64,7 +65,9 @@ function MessageList({ messages }: Props): React.JSX.Element {
                   </small>
                 )}
               </header>
-              <p className="message-body">{m.text}</p>
+              <section className="message-body">
+                <MessageBody text={m.text} />
+              </section>
             </article>
           </li>
         )
