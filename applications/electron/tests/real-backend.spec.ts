@@ -446,4 +446,107 @@ test.describe('real-backend', () => {
 
     await app.close()
   })
+
+  // #344 grouped search response — renderer handles three sections +
+  // counts + click-to-navigate. The /api/search endpoint is mocked
+  // here (not substrate-level) because the tracker-driven story +
+  // comment search needs GH_TOKEN to exercise end-to-end; the mock
+  // pins the contract (shape + click wiring) which is the rendering-
+  // logic part under test.
+  test('search: Messages / Stories / Comments sections render + story click opens drill-in', async () => {
+    const fixture = {
+      messages: [
+        {
+          from: 'dev:claude-code',
+          text: 'some chat containing the needle',
+          ts: '2026-04-22T16:00:00Z'
+        }
+      ],
+      stories: [
+        {
+          number: 111,
+          title: 'Story hit title',
+          snippet: 'title match: the needle is in here',
+          matched_in: 'title'
+        }
+      ],
+      comments: [
+        {
+          story_number: 111,
+          comment_id: 77,
+          author: 'designer',
+          snippet: '…needle landed in this comment…'
+        }
+      ]
+    }
+    const board = {
+      fetched_at: '2026-04-22T16:00:00Z',
+      stories: [
+        {
+          number: 111,
+          title: 'Story hit title',
+          state: 'ready',
+          labels: ['Feature'],
+          assignees: [],
+          created_at: '2026-04-22T15:00:00Z',
+          body: 'story body'
+        }
+      ]
+    }
+
+    const { app } = await launchWithIsolatedSession()
+    const win = await app.firstWindow()
+    // Mock both the board fetch (so the story exists in the list) and
+    // the search endpoint (grouped shape). Comments endpoint returns
+    // empty so drill-in doesn't block on its own fetch.
+    await win.route('**/api/board', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(board)
+      })
+    })
+    await win.route('**/api/search**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(fixture)
+      })
+    })
+    await win.route('**/api/stories/111/comments', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: '[]'
+      })
+    })
+
+    // Open search via Cmd+F (AppShell keybinding handler).
+    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+    await win.keyboard.press('Meta+f')
+    await expect(win.locator('[data-test="search-overlay"]')).toBeVisible()
+
+    // Type a query; search debounces 180ms internally.
+    await win.locator('[data-test="search-input"]').fill('needle')
+
+    // AC2: three sections render with expected counts.
+    const msgSection = win.locator('[data-test="search-messages-section"]')
+    const storySection = win.locator('[data-test="search-stories-section"]')
+    const commentSection = win.locator('[data-test="search-comments-section"]')
+    await expect(msgSection).toBeVisible({ timeout: 3_000 })
+    await expect(storySection).toBeVisible()
+    await expect(commentSection).toBeVisible()
+    await expect(msgSection).toContainText('Messages')
+    await expect(storySection).toContainText('Stories')
+    await expect(commentSection).toContainText('Comments')
+
+    // AC3: click story result → search closes + drill-in opens.
+    await win.locator('[data-test="search-story-111"] button').click()
+    await expect(win.locator('[data-test="search-overlay"]')).toHaveCount(0)
+    await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible({
+      timeout: 3_000
+    })
+
+    await app.close()
+  })
 })

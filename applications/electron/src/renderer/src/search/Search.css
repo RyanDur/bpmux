@@ -60,11 +60,47 @@
     color: var(--accent-error);
   }
 
+  /* Sectioned results (Messages / Stories / Comments) — each group
+   * owns its own count badge + list. Scroll lives at the outer
+   * container so multi-section results scroll as one panel, not
+   * three independent ones. */
+  & .search-section {
+    padding: 0;
+
+    & + .search-section {
+      border-top: 1px solid var(--border-subtle);
+    }
+  }
+
+  & .search-section-heading {
+    margin: 0;
+    padding: var(--space-6) var(--space-16);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--fg-dim);
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--border-subtle);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+
+  & .search-section-count {
+    margin-left: var(--space-6);
+    color: var(--fg-dimmer);
+    font-weight: 400;
+  }
+
   & .search-results {
     list-style: none;
     margin: 0;
     padding: 0;
-    overflow-y: auto;
+  }
+
+  /* Outer container scrolls; sections stay sticky-headed inside. */
+  & .search-section:last-child {
     flex: 1 1 auto;
   }
 
@@ -103,5 +139,39 @@
     line-height: 1.4;
     white-space: pre-wrap;
     word-wrap: break-word;
+  }
+
+  /* Clickable story / comment results get full-width button children.
+   * Reset button chrome so the visual is identical to non-clickable
+   * message rows — the affordance is the cursor + hover state, not a
+   * button-looking button. Keyboard focus-visible keeps a11y
+   * reachability explicit. */
+  & .search-result--clickable {
+    padding: 0;
+
+    & .search-result-link {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: var(--space-8) var(--space-16);
+      color: inherit;
+      background: none;
+      border: none;
+      cursor: pointer;
+
+      &:focus-visible {
+        outline: 2px solid var(--accent-brand);
+        outline-offset: -2px;
+      }
+    }
+  }
+
+  & .search-result-story-num {
+    color: var(--accent-brand);
+    font-weight: 700;
+  }
+
+  & .search-result-story-title {
+    color: var(--fg-primary);
   }
 }

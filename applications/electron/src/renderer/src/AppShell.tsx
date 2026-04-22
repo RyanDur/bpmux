@@ -30,6 +30,12 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
   const [recipient, setRecipient] = useState<string[] | null>(null)
   const [searchOpen, setSearchOpen] = useState<boolean>(false)
   const [metricsOpen, setMetricsOpen] = useState<boolean>(false)
+  // Drill-in request from non-Board sources (search-result click).
+  // Board consumes this prop to open its drill-in for the requested
+  // story; onDrillClosed clears it so a repeat click re-fires.
+  const [drillRequest, setDrillRequest] = useState<
+    { storyNumber: number; commentId?: number } | null
+  >(null)
   const { theme, toggle: toggleTheme } = useTheme()
   // Filter state is lifted from Chat to AppShell because Sidebar also
   // reads/writes it (SYSTEM click narrows to system-only; DM/group
@@ -107,11 +113,24 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
           metricsOpen={metricsOpen}
           onCloseSearch={() => setSearchOpen(false)}
           onCloseMetrics={() => setMetricsOpen(false)}
+          onOpenStory={(storyNumber, commentId) => {
+            // Force board open so the drill-in surface is visible,
+            // then ask Board to open the drill-in for the requested
+            // story (+ optional comment anchor from comment-result).
+            setBoardOpen(true)
+            setDrillRequest({ storyNumber, commentId })
+          }}
           apiBase={bridge?.apiBase}
           authToken={bridge?.authToken}
           onSend={onSend}
         />
-        {boardOpen ? <Board messages={messages} /> : null}
+        {boardOpen ? (
+          <Board
+            messages={messages}
+            drillRequest={drillRequest}
+            onDrillClosed={() => setDrillRequest(null)}
+          />
+        ) : null}
       </section>
     </main>
   )

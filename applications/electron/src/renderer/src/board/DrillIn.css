@@ -354,6 +354,17 @@
     border-radius: 4px;
     padding: var(--space-8) var(--space-16);
     background: var(--bg-elevated);
+    transition: background-color 1.5s ease-out;
+
+    /* Highlight for search-navigated comment (#344 AC4): briefly
+     * paint an accent-brand tinted background, then fade back to the
+     * elevated tone. Duration is ~1.5s — long enough to notice, short
+     * enough not to linger. transition handles the fade-out; class
+     * removal in the React effect retriggers the rest state. */
+    &.drill-in-comment--highlight {
+      background: color-mix(in srgb, var(--accent-brand) 18%, var(--bg-elevated));
+      transition: background-color 100ms ease-in;
+    }
   }
 
   & .drill-in-comment-meta {

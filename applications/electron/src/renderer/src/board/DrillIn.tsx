@@ -31,6 +31,11 @@ interface Props {
   // a comment, accepts/rejects, etc.) and refetches comments live —
   // the viewer sees peer activity without having to exit + re-drill.
   messages: ChatMessage[]
+  // When set, drill-in scrolls the comments list to this id after the
+  // fetch resolves and briefly highlights the matched row. Drives
+  // the "click comment-search-result → see the comment" path from
+  // #344.
+  scrollToCommentId?: number | null
   onBack: () => void
   onStoryMutated: (story: BoardStory) => void
 }
@@ -74,6 +79,7 @@ function DrillIn({
   authToken,
   usingMock,
   messages,
+  scrollToCommentId,
   onBack,
   onStoryMutated
 }: Props): React.JSX.Element {
@@ -196,6 +202,36 @@ function DrillIn({
     if (!el) return
     el.scrollTop = el.scrollHeight
   }, [comments])
+
+  // Search-result navigation (#344 AC4): when DrillIn opens with a
+  // scrollToCommentId, find the matching row after the fetch lands
+  // and scroll it into view. Runs whenever the target comment id
+  // changes or the comments list becomes available. Takes precedence
+  // over the at-bottom autoscroll above because the user explicitly
+  // asked to jump to a specific hit.
+  useEffect(() => {
+    if (scrollToCommentId === null || scrollToCommentId === undefined) return
+    if (comments === null) return
+    const el = commentsListRef.current
+    if (!el) return
+    const target = el.querySelector<HTMLLIElement>(
+      `[data-comment-id="${scrollToCommentId}"]`
+    )
+    if (target) {
+      target.scrollIntoView({ block: 'center', behavior: 'auto' })
+      target.classList.add('drill-in-comment--highlight')
+      // Highlight fades via CSS transition; class remains on the
+      // element so a re-scroll to the same comment re-triggers the
+      // CSS animation via React removing/reapplying it won't happen
+      // in practice since scrollToCommentId only changes on
+      // navigation. Clean up by removing after the animation window.
+      const id = setTimeout(() => {
+        target.classList.remove('drill-in-comment--highlight')
+      }, 2_000)
+      return () => clearTimeout(id)
+    }
+    return
+  }, [scrollToCommentId, comments])
 
   const handleCommentSubmit = useCallback(async () => {
     const trimmed = commentDraft.trim()
@@ -431,7 +467,12 @@ function DrillIn({
         ) : (
           <ul className="drill-in-comments-list" ref={commentsListRef} data-test="drill-in-comments-list">
             {comments.map((c) => (
-              <li key={c.id} className="drill-in-comment" data-test="drill-in-comment">
+              <li
+                key={c.id}
+                className="drill-in-comment"
+                data-test="drill-in-comment"
+                data-comment-id={c.id}
+              >
                 <article>
                   <header className="drill-in-comment-meta">
                     <cite>{c.author}</cite>

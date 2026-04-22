@@ -18,6 +18,9 @@ interface Props {
   metricsOpen: boolean
   onCloseSearch: () => void
   onCloseMetrics: () => void
+  // Request Board to open drill-in for a story (optionally with a
+  // specific comment highlighted). Forwards from search-result clicks.
+  onOpenStory: (storyNumber: number, commentId?: number) => void
   apiBase: string | undefined
   authToken: string | undefined
   onSend: (text: string, opts?: SendOptions) => void
@@ -32,6 +35,7 @@ function Chat({
   metricsOpen,
   onCloseSearch,
   onCloseMetrics,
+  onOpenStory,
   apiBase,
   authToken,
   onSend
@@ -76,7 +80,12 @@ function Chat({
       {metricsOpen ? (
         <Metrics apiBase={apiBase} authToken={authToken} onClose={onCloseMetrics} />
       ) : searchOpen ? (
-        <Search apiBase={apiBase} authToken={authToken} onClose={onCloseSearch} />
+        <Search
+          apiBase={apiBase}
+          authToken={authToken}
+          onClose={onCloseSearch}
+          onOpenStory={onOpenStory}
+        />
       ) : (
         <MessageList messages={messages} visibleClasses={filter.visible} />
       )}
