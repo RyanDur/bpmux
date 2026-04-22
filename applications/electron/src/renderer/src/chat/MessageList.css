@@ -105,9 +105,14 @@
     }
 
     &.message-row--first article {
-      & .message-avatar {
+      & .message-avatar-wrap {
         grid-column: 1;
         grid-row: 1 / span 2;
+        /* Wrap sits in the grid cell the avatar previously occupied.
+         * #370: position: relative so the absolutely-positioned
+         * tooltip child anchors to this avatar and not to the grid
+         * cell or the message row. */
+        position: relative;
       }
       & .message-meta {
         grid-column: 2;
@@ -208,6 +213,105 @@
   & .message-avatar--unknown {
     background: var(--border-strong);
     color: var(--fg-primary);
+  }
+
+  /* #370 avatar tooltip. Positioned below the avatar with a small
+   * gap. Pure CSS reveal via :hover / :focus-within on the wrap; no
+   * JS state. 150ms show-delay matches Nielsen timing (avoids
+   * flashing on drag-through); hide is immediate (removing delay)
+   * so the tooltip dismisses cleanly as the cursor leaves. */
+  & .message-avatar-wrap {
+    display: inline-flex;
+    position: relative;
+  }
+
+  & .avatar-tooltip {
+    position: absolute;
+    top: calc(100% + var(--space-4));
+    left: 0;
+    min-width: 180px;
+    max-width: 260px;
+    padding: var(--space-6) var(--space-8);
+    border-radius: 6px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    color: var(--fg-primary);
+    box-shadow: 0 4px 16px color-mix(in srgb, #000 35%, transparent);
+    font-size: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    /* Hidden by default; revealed on hover / focus. pointer-events:
+     * none when hidden so the invisible tooltip doesn't intercept
+     * hover on whatever it overlaps with. z-index lifts it above
+     * the avatar column so it doesn't clip under sibling rows. */
+    opacity: 0;
+    pointer-events: none;
+    z-index: 10;
+    transform: translateY(-2px);
+    transition:
+      opacity var(--motion-duration-medium) var(--motion-ease-out) 150ms,
+      transform var(--motion-duration-medium) var(--motion-ease-out) 150ms;
+  }
+
+  & .message-avatar-wrap:hover .avatar-tooltip,
+  & .message-avatar-wrap:focus-within .avatar-tooltip {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+    /* Show delay is already in the main transition; override
+     * transition-delay to 0 on the hide side so dismiss is
+     * immediate (feels snappy instead of laggy). */
+    transition-delay: 150ms;
+  }
+
+  /* Small tail pointing up toward the avatar — draws the eye back to
+   * the trigger + reinforces the tooltip-belongs-to-this-avatar
+   * semantic. Absolute-positioned ::before pseudo-element keeps the
+   * DOM clean. */
+  & .avatar-tooltip::before {
+    content: '';
+    position: absolute;
+    top: -5px;
+    left: 10px;
+    width: 10px;
+    height: 10px;
+    background: var(--bg-elevated);
+    border-left: 1px solid var(--border-subtle);
+    border-top: 1px solid var(--border-subtle);
+    transform: rotate(45deg);
+  }
+
+  & .avatar-tooltip-label {
+    font-weight: 600;
+    color: var(--fg-primary);
+  }
+
+  & .avatar-tooltip-desc {
+    color: var(--fg-secondary);
+    font-style: normal;
+    line-height: 1.4;
+  }
+
+  & .avatar-tooltip-status {
+    color: var(--fg-dim);
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+
+    /* Status-specific tint — same vocabulary as sidebar dots
+     * (#360). Keeps the presence signal visible WITHOUT duplicating
+     * the sidebar's dot affordance on the avatar itself. */
+    &.avatar-tooltip-status--available {
+      color: var(--accent-success);
+    }
+    &.avatar-tooltip-status--busy {
+      color: var(--accent-warning);
+    }
+    &.avatar-tooltip-status--blocked,
+    &.avatar-tooltip-status--help {
+      color: var(--accent-error);
+    }
   }
 
   & .message-row article {

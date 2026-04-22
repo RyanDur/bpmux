@@ -1,6 +1,8 @@
 import { format } from 'date-fns'
+import { roleInfoFor } from '../constants/roleInfo'
 import type { ChatMessage } from '../transport/types'
 import { classOf, type MessageClass } from '../hooks/useMessageFilter'
+import { usePresence } from '../hooks/usePresence'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import MessageBody from './MessageBody'
 import Reactions, { ReactionAddButton } from './Reactions'
@@ -57,6 +59,7 @@ const GROUP_THRESHOLD_MS = 5 * 60 * 1000
 // Anything else falls through to 'unknown' (no role-color, neutral
 // avatar). Matches --role-* tokens in tokens.css.
 const KNOWN_ROLES = new Set(['ryan', 'designer', 'dev', 'pm'])
+const PRESENCE_ROLES: readonly string[] = ['ryan', 'designer', 'dev', 'pm']
 
 function formatTime(ts: string): string {
   const d = new Date(ts)
@@ -120,6 +123,12 @@ function MessageList({
   authToken
 }: Props): React.JSX.Element {
   const visible = messages.filter((m) => visibleClasses.has(classOf(m.messageType)))
+  // #370 avatar-hover tooltip: derive current presence per role from
+  // the full message stream (not just the filtered visible set) so
+  // activity broadcasts that fall outside the user's current class
+  // filter still feed the status indicator. Reused from the sidebar
+  // presence derivation path.
+  const presence = usePresence(messages, PRESENCE_ROLES)
 
   const regionProps = {
     className: 'message-list',
@@ -186,16 +195,48 @@ function MessageList({
                 * where sighted users see the sender only at the group
                 * head. */}
               <span className="sr-only">{sender}:</span>
-              {!grouped && (
-                <span
-                  className={avatarClasses(sender)}
-                  data-test="message-avatar"
-                  data-role={KNOWN_ROLES.has(sender) ? sender : 'unknown'}
-                  aria-hidden="true"
-                >
-                  {sender.charAt(0).toUpperCase()}
-                </span>
-              )}
+              {!grouped && (() => {
+                // #370 sender-info tooltip. Avatar becomes a button so
+                // keyboard users can focus + reveal via focus-within;
+                // sighted pointer users trigger via :hover with a
+                // 150ms transition-delay (Nielsen-timing). Tooltip
+                // text = role label + description (static) + current
+                // presence (derived from activity broadcasts). Unique
+                // per-message id for aria-describedby so duplicate
+                // avatars don't collide.
+                const info = roleInfoFor(sender)
+                const status = presence.get(sender) ?? 'offline'
+                const tooltipId = `avatar-info-${m.id}`
+                return (
+                  <span className="message-avatar-wrap">
+                    <button
+                      type="button"
+                      className={avatarClasses(sender)}
+                      data-test="message-avatar"
+                      data-role={KNOWN_ROLES.has(sender) ? sender : 'unknown'}
+                      aria-describedby={tooltipId}
+                      aria-label={`${info.label} — ${status}`}
+                    >
+                      {sender.charAt(0).toUpperCase()}
+                    </button>
+                    <span
+                      id={tooltipId}
+                      role="tooltip"
+                      className="avatar-tooltip"
+                      data-test="avatar-tooltip"
+                    >
+                      <strong className="avatar-tooltip-label">{info.label}</strong>
+                      <em className="avatar-tooltip-desc">{info.description}</em>
+                      <small
+                        className={`avatar-tooltip-status avatar-tooltip-status--${status}`}
+                        data-test="avatar-tooltip-status"
+                      >
+                        {status}
+                      </small>
+                    </span>
+                  </span>
+                )
+              })()}
               {!grouped && (
                 <header className="message-meta">
                   <cite className="message-from" aria-hidden="true">
