@@ -48,6 +48,15 @@ pub const PINS_UPDATE_MARKER: &str = "__BPMUX_PINS_UPDATE__";
 /// refetch the channel's aggregated reactions on receipt.
 pub const REACTIONS_UPDATE_MARKER: &str = "__BPMUX_REACTIONS_UPDATE__";
 
+/// CI-state-change broadcast marker (#372). Emitted by the server's
+/// background CI poller when the current conclusion on main differs
+/// from the last-seen conclusion. The renderer's CiGlyph subscribes
+/// and refetches `/api/ci` immediately, so the user sees state
+/// transitions within WS latency instead of waiting for the 15s
+/// client-side poll tick (#361). The 15s poll stays as a safety net
+/// for the disconnected-then-reconnected window.
+pub const CI_STATE_UPDATE_MARKER: &str = "__BPMUX_CI_STATE_UPDATE__";
+
 /// Build the board-invalidate broadcast signal. System-typed so the
 /// TUI recognizes it as an internal marker rather than a chat line.
 /// No `to=` set — every agent's TUI receives + refreshes.

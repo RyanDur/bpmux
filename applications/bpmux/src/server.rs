@@ -34,6 +34,17 @@ pub async fn run_server(
     let tracker: transport::rest::TrackerHandle =
         crate::bridge::tracker::OctocrabStoryTracker::from_env().map(std::sync::Arc::new);
 
+    // #372: spawn the push-based CI state watcher. Polls GitHub at
+    // its own cadence (independent of the 15s frontend poll), emits
+    // CI_STATE_UPDATE_MARKER on detected conclusion change so the
+    // renderer's CiGlyph can refetch /api/ci immediately instead of
+    // waiting for its next local tick. Only spawns when we actually
+    // have a tracker — without one `/api/ci` returns 503 and polling
+    // would just log errors.
+    if let Some(tracker_arc) = tracker.as_ref().cloned() {
+        crate::transport::ci_watcher::spawn(session.clone(), tracker_arc, ct.clone());
+    }
+
     // Unfurl cache (#343). One instance for the server lifetime so
     // all concurrent /api/unfurl requests share the memoized results.
     let unfurl_cache: transport::unfurl::UnfurlCacheHandle =

@@ -75,3 +75,10 @@ export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected'
 // match. Must exactly mirror `BOARD_INVALIDATE_MARKER` in
 // applications/bpmux/src/bridge/tools_stories.rs.
 export const BOARD_INVALIDATE_MARKER = '__BPMUX_BOARD_INVALIDATE__'
+
+// CI-state-change marker (#372). Broadcast by the backend's CI
+// watcher task when the main-branch run conclusion changes. CiGlyph
+// subscribes and refetches /api/ci immediately; the 15s client-side
+// poll stays as the safety net. Must mirror `CI_STATE_UPDATE_MARKER`
+// in applications/bpmux/src/bridge/tools_stories.rs.
+export const CI_STATE_UPDATE_MARKER = '__BPMUX_CI_STATE_UPDATE__'

@@ -110,7 +110,7 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
         >
           {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
         </button>
-        <CiGlyph />
+        <CiGlyph messages={messages} />
       </header>
       <section className="app-body">
         <Sidebar

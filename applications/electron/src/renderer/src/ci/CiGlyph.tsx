@@ -1,5 +1,6 @@
 import { format } from 'date-fns'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { CI_STATE_UPDATE_MARKER, type ChatMessage } from '../transport/types'
 import './CiGlyph.css'
 
 interface CiStateReport {
@@ -11,11 +12,16 @@ interface CiStateReport {
   display_title: string | null
 }
 
-// Poll cadence for /api/ci. #361: 60s was too slow — a typical fast
-// CI run (<60s) could start + finish between polls so the user never
-// saw the in_progress / failure color. 15s catches every transient
-// state with substantial headroom and stays well under GitHub's
-// 5000/hr authenticated rate limit (240 polls/hr vs limit/83 per min).
+// Safety-net poll cadence. #361: 60s was too slow — a typical fast
+// CI run (<60s) could start + finish between polls. 15s catches
+// transient states with substantial headroom and stays well under
+// GitHub's 5000/hr authenticated rate limit (240 polls/hr).
+//
+// #372: primary refresh is now the CI_STATE_UPDATE_MARKER broadcast
+// from the backend watcher — state changes land within WS latency,
+// not up to 15s. The poll stays as a safety net so a disconnect-
+// then-reconnect window can't strand the glyph on a conclusion that
+// changed while WS was down.
 const POLL_MS = 15_000
 
 function conclusionGlyph(conclusion: string): string {
@@ -31,17 +37,55 @@ function conclusionGlyph(conclusion: string): string {
   }
 }
 
-function CiGlyph(): React.JSX.Element {
+interface Props {
+  // WS message stream forwarded from useWebSocket. CiGlyph watches
+  // for CI_STATE_UPDATE_MARKER and refetches on receipt. Omit
+  // (undefined) when the caller doesn't have a stream — the glyph
+  // falls back to poll-only.
+  messages?: ChatMessage[]
+}
+
+function CiGlyph({ messages }: Props): React.JSX.Element {
   const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
   const [state, setState] = useState<CiStateReport | null>(null)
   const [error, setError] = useState<string | null>(null)
   // #361: surface the last-successful-fetch timestamp in the tooltip
   // so the user can confirm the poll is alive even when CI is stably
-  // green. "it never changes color" was ambiguous between "color
-  // IS stuck" and "I never happen to observe a transition"; a visible
-  // timestamp answers the second case without the user having to push
-  // a commit to see the indicator move.
+  // green.
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  // #372: only react to NEW marker arrivals, not the hydration
+  // backfill on mount. Same seenMessageCountRef pattern as pins /
+  // reactions / timeline.
+  const seenMessageCountRef = useRef<number>(messages?.length ?? 0)
+  // Keep a stable reference to the fetch fn so the marker-watch
+  // effect can call it without re-running when messages mutate.
+  const fetchOnceRef = useRef<() => Promise<void>>(async () => {})
+
+  const buildFetch = useCallback(
+    (signal: AbortSignal, cancelledCheck: () => boolean) => async (): Promise<void> => {
+      if (!bridge?.apiBase) return
+      try {
+        const res = await fetch(`${bridge.apiBase}/api/ci`, {
+          headers: { Authorization: `Bearer ${bridge.authToken ?? ''}` },
+          signal
+        })
+        if (!res.ok) {
+          if (!cancelledCheck()) setError(`HTTP ${res.status}`)
+          return
+        }
+        const json = (await res.json()) as CiStateReport
+        if (!cancelledCheck()) {
+          setState(json)
+          setError(null)
+          setLastUpdated(new Date())
+        }
+      } catch (err) {
+        if ((err as Error)?.name === 'AbortError') return
+        if (!cancelledCheck()) setError(err instanceof Error ? err.message : String(err))
+      }
+    },
+    [bridge?.apiBase, bridge?.authToken]
+  )
 
   useEffect(() => {
     if (!bridge?.apiBase) {
@@ -50,27 +94,8 @@ function CiGlyph(): React.JSX.Element {
     }
     let cancelled = false
     const controller = new AbortController()
-    const fetchOnce = async (): Promise<void> => {
-      try {
-        const res = await fetch(`${bridge.apiBase}/api/ci`, {
-          headers: { Authorization: `Bearer ${bridge.authToken ?? ''}` },
-          signal: controller.signal
-        })
-        if (!res.ok) {
-          if (!cancelled) setError(`HTTP ${res.status}`)
-          return
-        }
-        const json = (await res.json()) as CiStateReport
-        if (!cancelled) {
-          setState(json)
-          setError(null)
-          setLastUpdated(new Date())
-        }
-      } catch (err) {
-        if ((err as Error)?.name === 'AbortError') return
-        if (!cancelled) setError(err instanceof Error ? err.message : String(err))
-      }
-    }
+    const fetchOnce = buildFetch(controller.signal, () => cancelled)
+    fetchOnceRef.current = fetchOnce
     void fetchOnce()
     const id = setInterval(() => {
       void fetchOnce()
@@ -80,7 +105,20 @@ function CiGlyph(): React.JSX.Element {
       controller.abort()
       clearInterval(id)
     }
-  }, [bridge?.apiBase, bridge?.authToken])
+  }, [bridge?.apiBase, buildFetch])
+
+  // #372 push-based update: on each new message batch, check for
+  // CI_STATE_UPDATE_MARKER and refetch. seenMessageCountRef ensures
+  // we ignore the hydration backfill.
+  useEffect(() => {
+    if (!messages) return
+    const prev = seenMessageCountRef.current
+    seenMessageCountRef.current = messages.length
+    if (messages.length <= prev) return
+    const newMessages = messages.slice(prev)
+    const hasCiUpdate = newMessages.some((m) => m.text === CI_STATE_UPDATE_MARKER)
+    if (hasCiUpdate) void fetchOnceRef.current()
+  }, [messages])
 
   const conclusion = state?.conclusion ?? 'unknown'
   const glyph = conclusionGlyph(conclusion)

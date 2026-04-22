@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod ci_watcher;
 pub mod crypto;
 pub mod peer;
 pub mod protocol;
@@ -9,6 +10,8 @@ pub mod ws;
 
 #[cfg(test)]
 mod auth_tests;
+#[cfg(test)]
+mod ci_watcher_tests;
 #[cfg(test)]
 mod crypto_tests;
 #[cfg(test)]
