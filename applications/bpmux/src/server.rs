@@ -94,8 +94,7 @@ pub async fn run_server(
         )
         .route(
             "/api/reactions",
-            axum::routing::get(transport::rest::get_reactions)
-                .post(transport::rest::post_reaction),
+            axum::routing::get(transport::rest::get_reactions).post(transport::rest::post_reaction),
         )
         .layer(axum::middleware::from_fn_with_state(
             auth_state,
