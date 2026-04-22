@@ -783,6 +783,112 @@ pub struct CommentPayload {
 /// GET /api/ci — current CI state for the main branch + last-run metadata.
 /// Reuses the MCP bridge's CI report builder so the Electron CI glyph +
 /// MCP get_ci_state always agree by construction.
+/// Pins REST (#342) — GET/POST/DELETE /api/pins.
+///
+/// State is per-session at `<session-dir>/pins.json` via
+/// `session::pins`. Writes broadcast `PINS_UPDATE_MARKER` so peer
+/// renderers refetch without polling.
+#[derive(Deserialize)]
+pub struct PinsChannelQuery {
+    pub channel: String,
+}
+
+#[derive(Deserialize)]
+pub struct PinCreate {
+    pub channel: String,
+    pub message_key: String,
+    pub from: String,
+    pub ts: String,
+    pub text: String,
+    pub pinned_by: String,
+}
+
+#[derive(Deserialize)]
+pub struct PinDelete {
+    pub channel: String,
+    pub message_key: String,
+}
+
+pub async fn get_pins(
+    State(session): State<Arc<session::Session>>,
+    Query(params): Query<PinsChannelQuery>,
+) -> impl IntoResponse {
+    let store = session::pins::load(&session.dir);
+    let pins = session::pins::list_pins(&store, &params.channel);
+    (
+        StatusCode::OK,
+        json_headers(),
+        serde_json::to_string(&pins).unwrap_or_else(|_| "[]".to_string()),
+    )
+}
+
+pub async fn post_pin(
+    State(session): State<Arc<session::Session>>,
+    axum::Json(body): axum::Json<PinCreate>,
+) -> impl IntoResponse {
+    let mut store = session::pins::load(&session.dir);
+    let pin = session::pins::Pin {
+        message_key: body.message_key,
+        from: body.from,
+        ts: body.ts,
+        text: body.text,
+        pinned_by: body.pinned_by,
+        pinned_at: chrono::Utc::now().to_rfc3339(),
+    };
+    let added = session::pins::add_pin(&mut store, &body.channel, pin);
+    if added {
+        if let Err(e) = session::pins::save(&session.dir, &store) {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                json_headers(),
+                err_body(&format!("save pins: {e}")),
+            );
+        }
+        broadcast_pins_update(&session);
+    }
+    (
+        StatusCode::OK,
+        json_headers(),
+        serde_json::json!({ "added": added }).to_string(),
+    )
+}
+
+pub async fn delete_pin(
+    State(session): State<Arc<session::Session>>,
+    axum::Json(body): axum::Json<PinDelete>,
+) -> impl IntoResponse {
+    let mut store = session::pins::load(&session.dir);
+    let removed = session::pins::remove_pin(&mut store, &body.channel, &body.message_key);
+    if removed {
+        if let Err(e) = session::pins::save(&session.dir, &store) {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                json_headers(),
+                err_body(&format!("save pins: {e}")),
+            );
+        }
+        broadcast_pins_update(&session);
+    }
+    (
+        StatusCode::OK,
+        json_headers(),
+        serde_json::json!({ "removed": removed }).to_string(),
+    )
+}
+
+fn broadcast_pins_update(session: &session::Session) {
+    let msg = session::Message {
+        from: "bpmux".to_string(),
+        text: crate::bridge::PINS_UPDATE_MARKER.to_string(),
+        ts: chrono::Utc::now(),
+        message_type: session::MessageType::System,
+        ..session::Message::default()
+    };
+    if let Err(e) = session.broadcast(&msg) {
+        session::diag::log_diag(&format!("rest: pins-update broadcast failed: {e}"));
+    }
+}
+
 pub async fn get_ci(axum::Extension(tracker): axum::Extension<TrackerHandle>) -> impl IntoResponse {
     let Some(tracker) = tracker else {
         return (

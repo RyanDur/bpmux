@@ -1,0 +1,133 @@
+.pinned-list {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  background: var(--bg-base);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-subtle);
+  outline: none;
+
+  /* Enter transition — same pattern as search/metrics overlays. */
+  transition:
+    transform var(--motion-duration-medium) var(--motion-ease-out),
+    opacity var(--motion-duration-fast) var(--motion-ease-out);
+  transform: translateY(0);
+  opacity: 1;
+
+  @starting-style {
+    transform: translateY(-16px);
+    opacity: 0;
+  }
+
+  & .pinned-list-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-8) var(--space-16);
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--bg-elevated);
+  }
+
+  & .pinned-list-title {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--fg-primary);
+  }
+
+  & .pinned-list-count {
+    margin-left: var(--space-6);
+    color: var(--fg-dim);
+    font-weight: 400;
+  }
+
+  & .pinned-list-close {
+    background: transparent;
+    color: var(--fg-secondary);
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+
+    &:hover {
+      background: var(--bg-highlighted);
+      color: var(--fg-primary);
+    }
+  }
+
+  & .pinned-list-empty {
+    margin: 0;
+    padding: var(--space-16);
+    font-size: 0.875rem;
+    color: var(--fg-dim);
+  }
+
+  & .pinned-list-items {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    flex: 1 1 auto;
+  }
+
+  & .pinned-item {
+    padding: var(--space-8) var(--space-16);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  & .pinned-item-meta {
+    display: flex;
+    gap: var(--space-8);
+    align-items: baseline;
+    font-size: 0.75rem;
+    margin-bottom: var(--space-4);
+  }
+
+  & .pinned-item-from {
+    font-weight: 600;
+    color: var(--fg-primary);
+    font-style: normal;
+  }
+
+  & .pinned-item-meta time {
+    color: var(--fg-dim);
+  }
+
+  & .pinned-item-by {
+    color: var(--fg-dimmer);
+  }
+
+  & .pinned-item-body {
+    color: var(--fg-primary);
+    font-size: 0.875rem;
+    line-height: 1.4;
+    word-wrap: break-word;
+
+    & p {
+      margin: 0;
+      white-space: pre-wrap;
+    }
+  }
+
+  & .pinned-item-actions {
+    margin-top: var(--space-6);
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  & .pinned-item-unpin {
+    font-size: 0.75rem;
+    padding: var(--space-2) var(--space-8);
+    border: 1px solid var(--border-subtle);
+    border-radius: 4px;
+    color: var(--fg-secondary);
+
+    &:hover {
+      background: var(--bg-highlighted);
+      color: var(--fg-primary);
+    }
+  }
+}

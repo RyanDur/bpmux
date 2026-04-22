@@ -217,6 +217,37 @@
     background: color-mix(in srgb, var(--accent-brand) 14%, transparent);
   }
 
+  /* Pin indicator — always visible on pinned rows so the reader can
+   * scan which messages are pinned without opening the pinned-list
+   * overlay. aria-label + title for a11y. */
+  & .message-pinned-indicator {
+    font-size: 0.75rem;
+    color: var(--fg-secondary);
+  }
+
+  /* Pin toggle — hidden by default, revealed on row hover so the
+   * affordance doesn't visually clutter the feed. Keyboard users get
+   * it when focus lands on the row (focus-within). Size matches the
+   * meta row's 0.75rem line-height so it doesn't reflow. */
+  & .message-pin-toggle {
+    opacity: 0;
+    font-size: 0.75rem;
+    padding: 0 var(--space-4);
+    color: var(--fg-dim);
+    transition: opacity var(--motion-duration-instant) var(--motion-ease-out),
+                color var(--motion-duration-instant) var(--motion-ease-out);
+
+    &:hover,
+    &:focus-visible {
+      color: var(--fg-primary);
+    }
+  }
+
+  & .message-row:hover .message-pin-toggle,
+  & .message-row:focus-within .message-pin-toggle {
+    opacity: 1;
+  }
+
   /* Per-class gutter glyph. Inline before the body (not a separate
    * grid column) so chat messages — the majority — don't carry a
    * trailing empty gutter. aria-hidden in JSX: the message class is

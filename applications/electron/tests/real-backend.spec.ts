@@ -685,4 +685,74 @@ test.describe('real-backend', () => {
 
     await app.close()
   })
+
+  // #342 pins — end-to-end: POST /api/pins → pin count surfaces in
+  // header → click opens overlay → unpin via overlay button updates
+  // the list. Uses real backend (unique port, no win.route) so the
+  // server-side pins.json + broadcast path is exercised too.
+  test('pins: POST → count visible → overlay lists → unpin clears', async () => {
+    const seedMessages = [
+      {
+        from: 'dev:claude-code',
+        text: 'message to pin',
+        ts: '2026-04-22T17:00:00Z',
+        message_type: 'chat'
+      }
+    ]
+    const { app, backendPort } = await launchWithIsolatedSession({
+      backendPort: 4131,
+      seedMessages
+    })
+    const win = await app.firstWindow()
+    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+
+    // Seed a pin directly via the backend, so the WS subscription
+    // should refetch + update the chat-pin-count without any UI
+    // interaction. This exercises the AC7 live-broadcast path: peer
+    // (= our test process) pins, viewer (= renderer) sees update.
+    const fs = await import('fs')
+    const authToken = fs.readFileSync(
+      `${process.env.HOME}/.bpmux/auth_token`,
+      'utf8'
+    ).trim()
+    const pinRes = await fetch(`http://127.0.0.1:${backendPort}/api/pins`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        channel: 'broadcast',
+        message_key: '2026-04-22T17:00:00Z|dev:claude-code',
+        from: 'dev:claude-code',
+        ts: '2026-04-22T17:00:00Z',
+        text: 'message to pin',
+        pinned_by: 'ryan'
+      })
+    })
+    expect(pinRes.ok).toBe(true)
+
+    // Pin count button reflects the new pin count (1) within WS
+    // subscription latency. Enabled state == count > 0.
+    const pinCountBtn = win.locator('[data-test="chat-pin-count"]')
+    await expect(pinCountBtn).toContainText('1', { timeout: 10_000 })
+    await expect(pinCountBtn).toBeEnabled()
+
+    // Click opens the pinned-list overlay with the item visible.
+    await pinCountBtn.click()
+    await expect(win.locator('[data-test="pinned-list-overlay"]')).toBeVisible()
+    await expect(
+      win.locator('[data-test="pinned-item-2026-04-22T17:00:00Z|dev:claude-code"]')
+    ).toBeVisible()
+
+    // Click unpin → list empties + count returns to 0.
+    await win
+      .locator('[data-test="pinned-item-unpin-2026-04-22T17:00:00Z|dev:claude-code"]')
+      .click()
+    await expect(
+      win.locator('[data-test="pinned-item-2026-04-22T17:00:00Z|dev:claude-code"]')
+    ).toHaveCount(0)
+
+    await app.close()
+  })
 })

@@ -13,6 +13,12 @@ interface Props {
   // membership check is O(1) per message — MessageList can be hot on
   // large logs.
   visibleClasses: ReadonlySet<MessageClass>
+  // Pin integration (#342). pinnedKeys tells each row whether to show
+  // the pinned indicator; onTogglePin fires the pin/unpin intent for
+  // the click handler. Both optional so callers that don't care
+  // (e.g., tests) can render without wiring pins.
+  pinnedKeys?: ReadonlySet<string>
+  onTogglePin?: (m: ChatMessage) => void
 }
 
 // Per-class gutter glyph (AC6). Chat = no glyph (majority case, zero
@@ -82,7 +88,18 @@ function avatarClasses(sender: string): string {
   return `message-avatar message-avatar--${roleKey} ${shape}`
 }
 
-function MessageList({ messages, visibleClasses }: Props): React.JSX.Element {
+// Stable per-message key for pin lookup. Mirrors the Rust server's
+// session::pins::{ts}|{from} key and the usePins hook's messageKey().
+function pinKey(m: ChatMessage): string {
+  return `${m.ts}|${m.from}`
+}
+
+function MessageList({
+  messages,
+  visibleClasses,
+  pinnedKeys,
+  onTogglePin
+}: Props): React.JSX.Element {
   const endRef = useRef<HTMLLIElement>(null)
 
   useEffect(() => {
@@ -126,11 +143,13 @@ function MessageList({ messages, visibleClasses }: Props): React.JSX.Element {
         // off: --grouped hides the avatar + role row and dims the
         // timestamp; --to-me paints the left-border accent; --to-other
         // dims the body color via --msg-fg-muted.
+        const pinned = pinnedKeys?.has(pinKey(m)) ?? false
         const rowClasses = [
           'message-row',
           grouped ? 'message-row--grouped' : 'message-row--first',
           addressedToViewer ? 'message-row--to-me' : '',
-          addressedToOther ? 'message-row--to-other' : ''
+          addressedToOther ? 'message-row--to-other' : '',
+          pinned ? 'message-row--pinned' : ''
         ]
           .filter(Boolean)
           .join(' ')
@@ -170,6 +189,28 @@ function MessageList({ messages, visibleClasses }: Props): React.JSX.Element {
                     >
                       @{addressee}
                     </small>
+                  )}
+                  {pinned && (
+                    <span
+                      className="message-pinned-indicator"
+                      data-test="message-pinned-indicator"
+                      aria-label="pinned"
+                      title="pinned in this channel"
+                    >
+                      📌
+                    </span>
+                  )}
+                  {onTogglePin && (
+                    <button
+                      type="button"
+                      className="message-pin-toggle"
+                      data-test="message-pin-toggle"
+                      aria-label={pinned ? 'Unpin message' : 'Pin message'}
+                      title={pinned ? 'Unpin' : 'Pin'}
+                      onClick={() => onTogglePin(m)}
+                    >
+                      {pinned ? '✖' : '📌'}
+                    </button>
                   )}
                 </header>
               )}

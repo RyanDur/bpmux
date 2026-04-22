@@ -29,6 +29,7 @@ pub(crate) mod tracker;
 /// separate matching paths for MCP-originated vs REST-originated
 /// invalidates.
 pub use tools_stories::BOARD_INVALIDATE_MARKER;
+pub use tools_stories::PINS_UPDATE_MARKER;
 
 use crate::transport::protocol::ServerMessage;
 

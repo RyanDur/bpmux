@@ -37,6 +37,12 @@ const LABEL_NEEDS_FIXES: &str = "needs fixes";
 /// substring matching on signal text.
 pub const BOARD_INVALIDATE_MARKER: &str = "__BPMUX_BOARD_INVALIDATE__";
 
+/// Pins-update broadcast marker (#342). Emitted when a viewer pins
+/// or unpins a message; peer renderers subscribe and refetch pins
+/// for the affected channel so everyone sees the same pin state
+/// within WS latency.
+pub const PINS_UPDATE_MARKER: &str = "__BPMUX_PINS_UPDATE__";
+
 /// Build the board-invalidate broadcast signal. System-typed so the
 /// TUI recognizes it as an internal marker rather than a chat line.
 /// No `to=` set — every agent's TUI receives + refreshes.

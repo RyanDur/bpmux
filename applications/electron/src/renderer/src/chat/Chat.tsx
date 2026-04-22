@@ -1,12 +1,14 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { classOf, useMessageFilter, type MessageClass } from '../hooks/useMessageFilter'
+import { channelKey, messageKey, usePins } from '../hooks/usePins'
 import Metrics from '../metrics/Metrics'
 import Search from '../search/Search'
+import { RENDERER_IDENTITY, type SendOptions } from '../transport/useWebSocket'
 import type { ChatMessage, ConnectionStatus } from '../transport/types'
-import type { SendOptions } from '../transport/useWebSocket'
 import FilterPills from './FilterPills'
 import Input from './Input'
 import MessageList from './MessageList'
+import PinnedList from './PinnedList'
 import './Chat.css'
 
 interface Props {
@@ -41,6 +43,20 @@ function Chat({
   onSend
 }: Props): React.JSX.Element {
   const showReconnect = status !== 'connected'
+  const [pinnedListOpen, setPinnedListOpen] = useState<boolean>(false)
+  const pinsChannel = channelKey(recipient)
+  const pins = usePins({ apiBase, authToken, channel: pinsChannel, messages })
+
+  // Pin handler for MessageList. Given an already-rendered message,
+  // toggle pin status — either pin (if not already pinned) or unpin.
+  const togglePin = (m: ChatMessage): void => {
+    const key = messageKey(m)
+    if (pins.pinnedKeys.has(key)) {
+      void pins.unpin(key)
+    } else {
+      void pins.pin({ from: m.from, ts: m.ts, text: m.text }, RENDERER_IDENTITY)
+    }
+  }
 
   // Hidden-count: for each filtered-out class, how many messages are
   // being kept out of the stream right now. Computed once per render
@@ -76,6 +92,23 @@ function Chat({
           </small>
         </aside>
       )}
+      <aside
+        className="chat-channel-header"
+        data-test="chat-channel-header"
+        aria-label="Channel actions"
+      >
+        <button
+          type="button"
+          className="chat-pin-count"
+          data-test="chat-pin-count"
+          onClick={() => setPinnedListOpen(true)}
+          disabled={pins.pins.length === 0}
+          aria-label={`${pins.pins.length} pinned messages — open list`}
+          title="View pinned messages"
+        >
+          📌 <span>{pins.pins.length}</span>
+        </button>
+      </aside>
       <FilterPills filter={filter} hiddenCounts={hiddenCounts} />
       {metricsOpen ? (
         <Metrics apiBase={apiBase} authToken={authToken} onClose={onCloseMetrics} />
@@ -86,8 +119,21 @@ function Chat({
           onClose={onCloseSearch}
           onOpenStory={onOpenStory}
         />
+      ) : pinnedListOpen ? (
+        <PinnedList
+          pins={pins.pins}
+          onUnpin={(key) => {
+            void pins.unpin(key)
+          }}
+          onClose={() => setPinnedListOpen(false)}
+        />
       ) : (
-        <MessageList messages={messages} visibleClasses={filter.visible} />
+        <MessageList
+          messages={messages}
+          visibleClasses={filter.visible}
+          pinnedKeys={pins.pinnedKeys}
+          onTogglePin={togglePin}
+        />
       )}
       <Input
         onSend={handleSend}

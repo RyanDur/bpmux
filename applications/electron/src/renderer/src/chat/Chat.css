@@ -21,4 +21,36 @@
     font-size: 0.75rem;
     border-bottom: 1px solid var(--border-subtle);
   }
+
+  /* Channel header — tiny action bar above the filter pills.
+   * Currently only hosts the pinned-count button; can grow to
+   * channel-settings affordances later. */
+  & .chat-channel-header {
+    display: flex;
+    justify-content: flex-end;
+    padding: var(--space-2) var(--space-16);
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--bg-base);
+  }
+
+  & .chat-pin-count {
+    font-size: 0.75rem;
+    color: var(--fg-secondary);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-2) var(--space-6);
+    border: 1px solid var(--border-subtle);
+    border-radius: 999px;
+
+    &:hover:not(:disabled) {
+      background: var(--bg-highlighted);
+      color: var(--fg-primary);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+  }
 }
