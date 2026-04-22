@@ -390,6 +390,21 @@ function DrillIn({
     [handleRejectSend]
   )
 
+  // Cmd/Ctrl+Enter on the comment textarea submits the comment —
+  // parity with the reject-form textarea above (#356). Shift+Enter
+  // still inserts a newline (standard textarea; we don't intercept
+  // that case). Matches the reject-form's handler exactly so the
+  // user's muscle memory transfers between the two inputs.
+  const handleCommentKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault()
+        void handleCommentSubmit()
+      }
+    },
+    [handleCommentSubmit]
+  )
+
   const type = storyTypeFromLabels(story.labels)
 
   return (
@@ -507,7 +522,8 @@ function DrillIn({
               ref={commentTextareaRef}
               value={commentDraft}
               onChange={(e) => setCommentDraft(e.target.value)}
-              placeholder="Markdown supported"
+              onKeyDown={handleCommentKeyDown}
+              placeholder="Markdown supported — Cmd+Enter to send"
               rows={3}
               data-test="drill-in-comment-input"
             />

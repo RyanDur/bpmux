@@ -852,4 +852,61 @@ test.describe('real-backend', () => {
 
     await app.close()
   })
+
+  // #356 comment Cmd+Enter submit — match reject-form's shortcut.
+  test('comment Cmd+Enter: keystroke in comment textarea triggers POST', async () => {
+    const { app } = await launchWithIsolatedSession()
+    const win = await app.firstWindow()
+
+    // Mock board + drill-in story + empty initial comments.
+    const story = {
+      number: 356,
+      title: 'Test story',
+      state: 'ready',
+      labels: ['Feature'],
+      assignees: [],
+      created_at: '2026-04-22T18:00:00Z',
+      body: 'body'
+    }
+    await win.route('**/api/board', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ fetched_at: '2026-04-22T18:00:00Z', stories: [story] })
+      })
+    })
+    // Track POST /api/stories/:n/comments calls so the test can
+    // assert the Cmd+Enter keystroke actually fires the submit.
+    let postCount = 0
+    await win.route('**/api/stories/356/comments', async (route) => {
+      if (route.request().method() === 'POST') {
+        postCount++
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: '{}'
+        })
+      } else {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: '[]'
+        })
+      }
+    })
+
+    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+    // Open drill-in via board row click.
+    await win.locator('[data-test="board-story-356"] button').click()
+    await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
+
+    // Type a comment + Cmd+Enter. Playwright's 'Meta+Enter' maps to
+    // metaKey+Enter which our handler catches.
+    const textarea = win.locator('[data-test="drill-in-comment-input"]')
+    await textarea.fill('hello from Cmd+Enter')
+    await textarea.press('Meta+Enter')
+    await expect.poll(() => postCount, { timeout: 3_000 }).toBeGreaterThan(0)
+
+    await app.close()
+  })
 })
