@@ -5,6 +5,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-8);
+  list-style: none;
 
   &.message-list--empty {
     align-items: center;
@@ -22,6 +23,12 @@
     gap: var(--space-2);
   }
 
+  & .message-row article {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
   & .message-meta {
     display: flex;
     gap: var(--space-8);
@@ -32,6 +39,7 @@
   & .message-from {
     font-weight: 600;
     color: var(--fg-primary);
+    font-style: normal;
   }
 
   & .message-ts {
@@ -41,6 +49,15 @@
   & .message-scope {
     color: var(--fg-secondary);
     font-size: 0.6875rem;
+  }
+
+  & .message-addressee {
+    color: var(--accent-brand);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    padding: 0 var(--space-4);
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--accent-brand) 14%, transparent);
   }
 
   & .message-body {

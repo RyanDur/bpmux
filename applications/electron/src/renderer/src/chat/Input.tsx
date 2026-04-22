@@ -2,8 +2,17 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import './Input.css'
 
 interface Props {
-  onSend: (text: string) => void
+  onSend: (text: string, addressee?: string | null) => void
   disabled?: boolean
+}
+
+const VALID_ADDRESSEES = new Set(['ryan', 'dev', 'pm', 'designer'])
+
+function parseAddressee(text: string): string | null {
+  const match = text.match(/^@(\w+)\b/)
+  if (!match) return null
+  const role = match[1].toLowerCase()
+  return VALID_ADDRESSEES.has(role) ? role : null
 }
 
 function isWordChar(ch: string | undefined): boolean {
@@ -89,7 +98,7 @@ function Input({ onSend, disabled }: Props): React.JSX.Element {
         e.preventDefault()
         const text = value.trim()
         if (!text) return
-        onSend(text)
+        onSend(text, parseAddressee(text))
         setValue('')
         return
       }

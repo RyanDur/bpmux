@@ -29,7 +29,7 @@ export interface UseWebSocketResult {
   status: ConnectionStatus
   messages: ChatMessage[]
   sessionId: string | null
-  sendBroadcast: (text: string) => void
+  sendChat: (text: string, addressee?: string | null) => void
 }
 
 interface HistoryMessage {
@@ -73,11 +73,13 @@ export function useWebSocket(
     sock.send(JSON.stringify(msg))
   }, [])
 
-  const sendBroadcast = useCallback(
-    (text: string) => {
+  const sendChat = useCallback(
+    (text: string, addressee?: string | null) => {
       const trimmed = text.trim()
       if (!trimmed) return
-      sendJson({ type: 'send', text: trimmed })
+      const frame: ClientMessage = { type: 'send', text: trimmed }
+      if (addressee) frame.addressee = addressee
+      sendJson(frame)
     },
     [sendJson]
   )
@@ -253,5 +255,5 @@ export function useWebSocket(
     }
   }, [url, sendJson, handleServerMessage])
 
-  return { status, messages, sessionId, sendBroadcast }
+  return { status, messages, sessionId, sendChat }
 }

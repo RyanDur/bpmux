@@ -6,7 +6,7 @@ import './Chat.css'
 interface Props {
   messages: ChatMessage[]
   status: ConnectionStatus
-  onSend: (text: string) => void
+  onSend: (text: string, addressee?: string | null) => void
 }
 
 function Chat({ messages, status, onSend }: Props): React.JSX.Element {
@@ -14,9 +14,9 @@ function Chat({ messages, status, onSend }: Props): React.JSX.Element {
   return (
     <section className="chat" data-test="chat-region">
       {showReconnect && (
-        <div className="chat-warning" data-test="chat-warning">
+        <aside className="chat-warning" role="status" aria-live="polite" data-test="chat-warning">
           {status === 'connecting' ? 'connecting…' : 'reconnecting…'}
-        </div>
+        </aside>
       )}
       <MessageList messages={messages} />
       <Input onSend={onSend} />

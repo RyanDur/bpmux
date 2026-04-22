@@ -9,7 +9,7 @@ import './AppShell.css'
 interface Props {
   status: ConnectionStatus
   messages: ChatMessage[]
-  onSend: (text: string) => void
+  onSend: (text: string, addressee?: string | null) => void
 }
 
 // Phase-1a window chrome: titlebar (app name, connection dot, CI
