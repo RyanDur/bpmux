@@ -39,7 +39,10 @@
     }
   }
 
-  & .reaction-add-container {
+  /* Anchor wrapper: creates a positioning context for the Picker
+   * popover so above/below placement is relative to the + button,
+   * not the whole reactions row. */
+  & .reaction-add-anchor {
     position: relative;
     display: inline-flex;
   }
@@ -60,20 +63,6 @@
       outline: 2px solid var(--accent-brand);
       outline-offset: 1px;
     }
-  }
-
-  & .reaction-picker {
-    position: absolute;
-    bottom: calc(100% + var(--space-4));
-    left: 0;
-    display: flex;
-    gap: var(--space-2);
-    padding: var(--space-4) var(--space-6);
-    background: var(--bg-elevated);
-    border: 1px solid var(--border-subtle);
-    border-radius: 8px;
-    z-index: 5;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   }
 
   & .reaction-picker-item {
@@ -117,20 +106,6 @@
     }
   }
 
-  & .reaction-picker {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    display: flex;
-    gap: var(--space-2);
-    padding: var(--space-4) var(--space-6);
-    background: var(--bg-elevated);
-    border: 1px solid var(--border-subtle);
-    border-radius: 8px;
-    z-index: 5;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  }
-
   & .reaction-picker-item {
     padding: var(--space-2) var(--space-4);
     font-size: 1rem;
@@ -145,4 +120,54 @@
 .message-row:hover .reaction-add-container,
 .message-row:focus-within .reaction-add-container {
   opacity: 1;
+}
+
+/* Picker popover (#355). Positions above or below the anchor based
+ * on available space; directional tail points at the trigger so the
+ * spatial relationship is obvious. Absolute-positioned relative to
+ * the .reaction-add-anchor / .reaction-add-container wrapper, so it
+ * doesn't shift the flow of the message or overlap body text. */
+.reaction-picker {
+  position: absolute;
+  left: 0;
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-6);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  z-index: 20;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  /* Directional tail via pseudo-element. Square rotated 45deg gives
+   * a clean 12px caret; positioned on the side facing the anchor. */
+  &::before {
+    content: '';
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    transform: rotate(45deg);
+    left: var(--space-8);
+  }
+
+  &.reaction-picker--above {
+    bottom: calc(100% + var(--space-8));
+
+    &::before {
+      bottom: -6px;
+      border-top: 0;
+      border-left: 0;
+    }
+  }
+
+  &.reaction-picker--below {
+    top: calc(100% + var(--space-8));
+
+    &::before {
+      top: -6px;
+      border-bottom: 0;
+      border-right: 0;
+    }
+  }
 }

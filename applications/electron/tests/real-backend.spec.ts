@@ -879,6 +879,59 @@ test.describe('real-backend', () => {
     await app.close()
   })
 
+  // #355 reaction picker positioning — above/below with tail, not
+  // inline-over the message. Asserts the picker's bounding-box
+  // doesn't overlap the target message's text region when opened.
+  test('reaction picker: positions above/below message, no body overlap', async () => {
+    const seedMessages = [
+      {
+        from: 'dev:claude-code',
+        text: 'message to react to',
+        ts: '2026-04-22T19:00:00Z',
+        message_type: 'chat'
+      }
+    ]
+    const { app } = await launchWithIsolatedSession({ seedMessages })
+    const win = await app.firstWindow()
+    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+
+    // Hover the message row to reveal the +😊 button, then click to
+    // open the picker.
+    const row = win.locator('[data-test="message-row"]').first()
+    await row.hover()
+    const addBtn = win.locator('[data-test="reaction-add-first"]').first()
+    await addBtn.click()
+
+    const picker = win.locator('[data-test="reaction-picker"]')
+    await expect(picker).toBeVisible({ timeout: 3_000 })
+
+    // AC1/AC4: picker has data-position set to above or below.
+    const position = await picker.getAttribute('data-position')
+    expect(position === 'above' || position === 'below').toBe(true)
+
+    // AC3: picker's bounding-box doesn't overlap the message body.
+    // "Overlap" = vertical range intersection; horizontal is
+    // intentionally allowed (the picker visually is beside / above
+    // the body column, but vertical separation is the readability
+    // invariant).
+    const pickerRect = await picker.boundingBox()
+    const bodyRect = await row
+      .locator('.message-body')
+      .first()
+      .boundingBox()
+    expect(pickerRect).not.toBeNull()
+    expect(bodyRect).not.toBeNull()
+    if (pickerRect && bodyRect) {
+      const pickerBottom = pickerRect.y + pickerRect.height
+      const bodyBottom = bodyRect.y + bodyRect.height
+      const overlaps =
+        pickerRect.y < bodyBottom && pickerBottom > bodyRect.y
+      expect(overlaps, `picker (${pickerRect.y}-${pickerBottom}) overlapped body (${bodyRect.y}-${bodyBottom})`).toBe(false)
+    }
+
+    await app.close()
+  })
+
   // #356 comment Cmd+Enter submit — match reject-form's shortcut.
   test('comment Cmd+Enter: keystroke in comment textarea triggers POST', async () => {
     const { app } = await launchWithIsolatedSession()
