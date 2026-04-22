@@ -10,7 +10,6 @@ export type StoryState =
   | 'ready'
   | 'in-progress'
   | 'delivered'
-  | 'awaiting-accept'
   | 'accepted'
 
 export type StoryType = 'feature' | 'bug' | 'chore' | 'unknown'
@@ -40,11 +39,17 @@ export interface GroupSpec {
   collapsed: boolean
 }
 
+// AWAITING-ACCEPT removed (#359): phantom column — no backend label
+// distinguishes "delivered awaiting team accept" from plain "delivered"
+// yet. Reserving the column pre-populated user expectation as a bug
+// when it stayed empty in every session. Reintroduce when phase-2's
+// team-accept-badge (held story #D) lands with real semantics; at
+// that point the column can be renamed based on observed behavior,
+// not pre-reserved vocabulary.
 export const GROUP_ORDER: GroupSpec[] = [
   { state: 'ready', label: 'Ready', collapsed: false },
   { state: 'in-progress', label: 'In Progress', collapsed: false },
   { state: 'delivered', label: 'Delivered', collapsed: false },
-  { state: 'awaiting-accept', label: 'Awaiting Accept', collapsed: false },
   { state: 'accepted', label: 'Accepted', collapsed: true },
   { state: 'icebox', label: 'Icebox', collapsed: true }
 ]

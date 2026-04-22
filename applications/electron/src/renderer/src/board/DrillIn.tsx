@@ -297,7 +297,7 @@ function DrillIn({
     }
   }, [apiBase, authToken, commentBusy, commentDraft, story.number, usingMock])
 
-  const canAct = isOwner && (story.state === 'delivered' || story.state === 'awaiting-accept')
+  const canAct = isOwner && story.state === 'delivered'
 
   const handleAccept = useCallback(async () => {
     if (busy !== null) return
