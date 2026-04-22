@@ -111,7 +111,7 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
           authToken={bridge?.authToken}
           onSend={onSend}
         />
-        {boardOpen ? <Board /> : null}
+        {boardOpen ? <Board messages={messages} /> : null}
       </section>
     </main>
   )

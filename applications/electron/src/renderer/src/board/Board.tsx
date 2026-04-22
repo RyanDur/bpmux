@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { ChatMessage } from '../transport/types'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import DrillIn from './DrillIn'
 import StoryTypeGlyph from './StoryTypeGlyph'
@@ -52,7 +53,15 @@ const MOCK_RESPONSE: BoardResponse = {
   ]
 }
 
-function Board(): React.JSX.Element {
+interface BoardProps {
+  // Chat message stream — forwarded to DrillIn so it can subscribe to
+  // BOARD_INVALIDATE_MARKER broadcasts for live comment refresh.
+  // Board itself doesn't observe messages; Board polls /api/board on
+  // a 30s interval for story list changes, which is orthogonal.
+  messages: ChatMessage[]
+}
+
+function Board({ messages }: BoardProps): React.JSX.Element {
   const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
   const [data, setData] = useState<BoardResponse | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
@@ -289,6 +298,7 @@ function Board(): React.JSX.Element {
           apiBase={bridge?.apiBase}
           authToken={bridge?.authToken}
           usingMock={usingMock}
+          messages={messages}
           onBack={handleBack}
           onStoryMutated={handleStoryMutated}
         />

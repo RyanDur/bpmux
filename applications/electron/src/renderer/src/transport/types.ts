@@ -67,3 +67,11 @@ export interface ChatMessage {
 }
 
 export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected'
+
+// Board-invalidate marker — broadcast by the backend when board
+// state changes (accept/reject/reorder/comment). Renderer components
+// that cache data (board list, drill-in comments) subscribe by
+// watching the message stream for this marker text and refetch on
+// match. Must exactly mirror `BOARD_INVALIDATE_MARKER` in
+// applications/bpmux/src/bridge/tools_stories.rs.
+export const BOARD_INVALIDATE_MARKER = '__BPMUX_BOARD_INVALIDATE__'

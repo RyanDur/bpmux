@@ -1,6 +1,7 @@
 import { format } from 'date-fns'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import MessageBody from '../chat/MessageBody'
+import { BOARD_INVALIDATE_MARKER, type ChatMessage } from '../transport/types'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import { storyTypeFromLabels, type BoardStory } from './types'
 import './DrillIn.css'
@@ -12,14 +13,53 @@ interface Comment {
   created_at: string
 }
 
+// Optimistic comments have a placeholder id in this range so the dedup
+// step can tell them apart from server-assigned ids (which are GitHub
+// issue comment ids, always positive). When the refetch (after the
+// invalidate broadcast) returns the real comment with a real id, the
+// optimistic one is dropped by the merge in mergeComments().
+const OPTIMISTIC_ID_BASE = -1_000_000_000
+
 interface Props {
   story: BoardStory
   isOwner: boolean
   apiBase: string | undefined
   authToken: string | undefined
   usingMock: boolean
+  // Chat message stream from the WS. DrillIn watches this for
+  // BOARD_INVALIDATE_MARKER messages (published when any peer posts
+  // a comment, accepts/rejects, etc.) and refetches comments live —
+  // the viewer sees peer activity without having to exit + re-drill.
+  messages: ChatMessage[]
   onBack: () => void
   onStoryMutated: (story: BoardStory) => void
+}
+
+function isInvalidateMarker(m: ChatMessage): boolean {
+  return m.text === BOARD_INVALIDATE_MARKER
+}
+
+// Merge the server-authoritative list with any lingering optimistic
+// comments. We trust the server for its ids; an optimistic comment
+// whose body matches a server comment (by the same author, within a
+// 10-second window) is assumed replaced by the server version and
+// dropped. Anything else optimistic stays — covers the "POST pending,
+// refetch fired anyway" window.
+function mergeComments(
+  server: readonly Comment[],
+  optimistic: readonly Comment[]
+): Comment[] {
+  if (optimistic.length === 0) return [...server]
+  const survivors = optimistic.filter((opt) => {
+    const optMs = new Date(opt.created_at).getTime()
+    return !server.some((s) => {
+      if (s.author !== opt.author) return false
+      if (s.body !== opt.body) return false
+      const sMs = new Date(s.created_at).getTime()
+      return Math.abs(sMs - optMs) < 10_000
+    })
+  })
+  return [...server, ...survivors]
 }
 
 type ActionMode = 'idle' | 'rejecting'
@@ -33,6 +73,7 @@ function DrillIn({
   apiBase,
   authToken,
   usingMock,
+  messages,
   onBack,
   onStoryMutated
 }: Props): React.JSX.Element {
@@ -40,12 +81,26 @@ function DrillIn({
   const [busy, setBusy] = useState<BusyKind>(null)
   const [note, setNote] = useState<string>('')
   const [toast, setToast] = useState<string | null>(null)
-  const [comments, setComments] = useState<Comment[] | null>(null)
+  const [serverComments, setServerComments] = useState<Comment[] | null>(null)
+  const [optimistic, setOptimistic] = useState<Comment[]>([])
   const [commentDraft, setCommentDraft] = useState<string>('')
   const [commentBusy, setCommentBusy] = useState<boolean>(false)
   const articleRef = useRef<HTMLElement | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const commentTextareaRef = useRef<HTMLTextAreaElement | null>(null)
+  // Invalidate subscription: remember how many messages we've seen so
+  // we only react to NEW marker messages (not the backfill hydration
+  // on mount). Tracked as a ref so the effect doesn't depend on
+  // previous message counts (which would re-trigger needlessly).
+  const seenMessageCountRef = useRef<number>(messages.length)
+  // Scroll preservation: track whether the comments list was scrolled
+  // to bottom BEFORE a refetch; after rerender, if so, auto-scroll to
+  // new bottom. If not, preserve scroll position so the reader isn't
+  // yanked away from mid-thread content.
+  const commentsListRef = useRef<HTMLUListElement | null>(null)
+  const wasAtBottomRef = useRef<boolean>(true)
+
+  const comments = serverComments === null ? null : mergeComments(serverComments, optimistic)
 
   // Focus the article on mount so Esc falls to our handler before
   // anything upstream intercepts.
@@ -67,10 +122,21 @@ function DrillIn({
     return () => clearTimeout(id)
   }, [toast])
 
+  // Capture scroll state BEFORE the fetch so post-render can restore.
+  const captureScroll = useCallback((): void => {
+    const el = commentsListRef.current
+    if (!el) return
+    // "At bottom" tolerance: treat within 4px of the max scrollTop as
+    // "at bottom" — scroll rounding in Chromium can leave 1-2px gap.
+    const max = el.scrollHeight - el.clientHeight
+    wasAtBottomRef.current = max <= 0 || el.scrollTop >= max - 4
+  }, [])
+
   const fetchComments = useCallback(
     async (signal?: AbortSignal): Promise<void> => {
+      captureScroll()
       if (usingMock || !apiBase) {
-        setComments([])
+        setServerComments([])
         return
       }
       try {
@@ -82,17 +148,17 @@ function DrillIn({
           }
         )
         if (!res.ok) {
-          setComments([])
+          setServerComments([])
           return
         }
         const json = (await res.json()) as Comment[]
-        setComments(json)
+        setServerComments(json)
       } catch (err) {
         if ((err as Error)?.name === 'AbortError') return
-        setComments([])
+        setServerComments([])
       }
     },
-    [apiBase, authToken, story.number, usingMock]
+    [apiBase, authToken, captureScroll, story.number, usingMock]
   )
 
   useEffect(() => {
@@ -101,21 +167,55 @@ function DrillIn({
     return () => controller.abort()
   }, [fetchComments])
 
+  // Live-refresh: watch for new BOARD_INVALIDATE_MARKER messages on
+  // the chat stream. On a new marker, refetch comments. The ref tracks
+  // last-seen message count so we only react to freshly arrived
+  // markers, not the backfill on initial mount (which often contains
+  // old invalidate markers from earlier in the session).
+  useEffect(() => {
+    const prev = seenMessageCountRef.current
+    if (messages.length <= prev) {
+      seenMessageCountRef.current = messages.length
+      return
+    }
+    const fresh = messages.slice(prev)
+    seenMessageCountRef.current = messages.length
+    if (fresh.some(isInvalidateMarker)) {
+      void fetchComments()
+    }
+  }, [messages, fetchComments])
+
+  // Post-render scroll restoration: if viewer was at bottom before
+  // the refetch, auto-scroll to bottom so they see the new entries.
+  // Otherwise the browser preserves scrollTop naturally (React keeps
+  // the scroll container in place across a list re-render with stable
+  // keys), so there's nothing to restore — they stay where they were.
+  useEffect(() => {
+    if (!wasAtBottomRef.current) return
+    const el = commentsListRef.current
+    if (!el) return
+    el.scrollTop = el.scrollHeight
+  }, [comments])
+
   const handleCommentSubmit = useCallback(async () => {
     const trimmed = commentDraft.trim()
     if (!trimmed || commentBusy) return
     setCommentBusy(true)
+    // Optimistic: show the comment immediately so the user sees their
+    // message land without waiting for the POST roundtrip + invalidate
+    // refetch cycle. Negative id marks it as optimistic for the merge
+    // dedup. If the POST fails we roll it back via the catch below.
+    const optimisticEntry: Comment = {
+      id: OPTIMISTIC_ID_BASE - Date.now(),
+      author: 'ryan',
+      body: trimmed,
+      created_at: new Date().toISOString()
+    }
+    setOptimistic((prev) => [...prev, optimisticEntry])
+    setCommentDraft('')
     if (usingMock || !apiBase) {
-      setComments((prev) => [
-        ...(prev ?? []),
-        {
-          id: Date.now(),
-          author: 'ryan',
-          body: trimmed,
-          created_at: new Date().toISOString()
-        }
-      ])
-      setCommentDraft('')
+      // Mock path: no server, no invalidate — the optimistic entry
+      // just stays (it's the only record of the comment).
       setCommentBusy(false)
       return
     }
@@ -129,17 +229,25 @@ function DrillIn({
         body: JSON.stringify({ body: trimmed })
       })
       if (!res.ok) {
+        // Roll back the optimistic entry + restore the draft so the
+        // user can retry. Otherwise the comment silently disappears
+        // and they have to retype.
+        setOptimistic((prev) => prev.filter((c) => c.id !== optimisticEntry.id))
+        setCommentDraft(trimmed)
         setToast(`Comment failed: HTTP ${res.status}`)
-        return
       }
-      setCommentDraft('')
-      await fetchComments()
+      // Success: the server will broadcast BOARD_INVALIDATE_MARKER.
+      // The invalidate-watcher effect above refetches, mergeComments
+      // replaces the optimistic entry with the server-authoritative
+      // one (matched by body + author + ≤10s created_at).
     } catch (err) {
+      setOptimistic((prev) => prev.filter((c) => c.id !== optimisticEntry.id))
+      setCommentDraft(trimmed)
       setToast(`Comment failed: ${err instanceof Error ? err.message : String(err)}`)
     } finally {
       setCommentBusy(false)
     }
-  }, [apiBase, authToken, commentBusy, commentDraft, fetchComments, story.number, usingMock])
+  }, [apiBase, authToken, commentBusy, commentDraft, story.number, usingMock])
 
   const canAct = isOwner && (story.state === 'delivered' || story.state === 'awaiting-accept')
 
@@ -321,9 +429,9 @@ function DrillIn({
         ) : comments.length === 0 ? (
           <p className="drill-in-comments-empty">no comments yet</p>
         ) : (
-          <ul className="drill-in-comments-list">
+          <ul className="drill-in-comments-list" ref={commentsListRef} data-test="drill-in-comments-list">
             {comments.map((c) => (
-              <li key={c.id} className="drill-in-comment">
+              <li key={c.id} className="drill-in-comment" data-test="drill-in-comment">
                 <article>
                   <header className="drill-in-comment-meta">
                     <cite>{c.author}</cite>
