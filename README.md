@@ -272,13 +272,13 @@ Organized by bounded context (App Continuum). Each directory owns one concern �
 **Why bounded contexts?** bpmux is a message bus with multiple integration surfaces (TUI, HTTP/MCP, WebSocket, stdio bridge). Organizing by technical layer (models/, views/, controllers/) would scatter each integration across the entire tree. Bounded contexts keep each integration self-contained, so changes to the MCP interface don't touch the TUI.
 
 ```
-src/session/    — Session state, message log, JSONL persistence
-src/terminal/   — TUI rendering, input handling, chat display
-src/mcp/        — MCP tool handler (send/read messages via MCP protocol)
-src/transport/  — HTTP/WebSocket transport layer (REST API, WebSocket protocol)
-src/bridge/     — Channel bridge: stdio MCP server connecting AI tools to bpmux
-src/server.rs   — HTTP server startup, router assembly
-src/lib.rs      — CLI parsing + orchestration
+applications/bpmux/src/session/    — Session state, message log, JSONL persistence
+applications/bpmux/src/terminal/   — TUI rendering, input handling, chat display
+applications/bpmux/src/mcp/        — MCP tool handler (send/read messages via MCP protocol)
+applications/bpmux/src/transport/  — HTTP/WebSocket transport layer (REST API, WebSocket protocol)
+applications/bpmux/src/bridge/     — Channel bridge: stdio MCP server connecting AI tools to bpmux
+applications/bpmux/src/server.rs   — HTTP server startup, router assembly
+applications/bpmux/src/lib.rs      — CLI parsing + orchestration
 ```
 
 ## Development

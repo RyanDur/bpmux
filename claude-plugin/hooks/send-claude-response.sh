@@ -20,7 +20,7 @@
 #
 # **Testing**: set `BPMUX_MESSAGES_STDIN=1` and pipe a messages
 # JSON array on stdin instead of curling the live API. See
-# `tests/send_claude_response_hook_test.rs` for the integration
+# `applications/bpmux/tests/send_claude_response_hook_test.rs` for the integration
 # test that exercises the formatting logic against known inputs.
 
 BPMUX_PORT="${BPMUX_PORT:-4117}"

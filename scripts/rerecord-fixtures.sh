@@ -8,13 +8,13 @@
 # - GitHub changes a response field name or adds required fields
 #
 # Requires GH_TOKEN + BPMUX_REPO env vars to be set. Writes to:
-# - tests/fixtures/gh/*.json  (gh CLI subprocess output)
+# - applications/bpmux/tests/fixtures/gh/*.json  (gh CLI subprocess output)
 #
 # The httpmock-based octocrab suite does NOT record to disk — it
 # builds responses inline from typed helpers. Re-recording that
 # path means updating the `issue()` / `comment()` / `label()` helpers
-# in src/bridge/tracker_contract_tests.rs if octocrab's model
-# definitions change (rare; bump on octocrab upgrades).
+# in applications/bpmux/src/bridge/tracker_contract_tests.rs if
+# octocrab's model definitions change (rare; bump on octocrab upgrades).
 #
 # Exits non-zero if prerequisites are missing so CI doesn't silently
 # no-op when the operator intended a refresh.
@@ -35,7 +35,7 @@ if ! gh auth status >/dev/null 2>&1; then
 fi
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-FIXTURE_DIR="$REPO_ROOT/tests/fixtures/gh"
+FIXTURE_DIR="$REPO_ROOT/applications/bpmux/tests/fixtures/gh"
 mkdir -p "$FIXTURE_DIR"
 
 echo "Re-recording gh fixtures against $BPMUX_REPO..."
