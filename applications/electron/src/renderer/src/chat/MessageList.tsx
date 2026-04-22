@@ -1,5 +1,5 @@
 import { format } from 'date-fns'
-import { useEffect, useRef } from 'react'
+import { useRef } from 'react'
 import type { ChatMessage } from '../transport/types'
 import { classOf, type MessageClass } from '../hooks/useMessageFilter'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
@@ -120,14 +120,11 @@ function MessageList({
   apiBase,
   authToken
 }: Props): React.JSX.Element {
+  // Hidden sentinel kept so the zero-message empty-state render path
+  // below still compiles without structural change. The auto-scroll
+  // behaviour itself is handled by CSS column-reverse (#363) — no JS
+  // scrolling needed.
   const endRef = useRef<HTMLLIElement>(null)
-
-  useEffect(() => {
-    // Smooth scroll on new arrival (#352 AC5). Chromium respects
-    // prefers-reduced-motion for behavior='smooth' and falls back
-    // to instant automatically. No explicit media-query check.
-    endRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' })
-  }, [messages.length])
 
   const visible = messages.filter((m) => visibleClasses.has(classOf(m.messageType)))
 
@@ -148,16 +145,30 @@ function MessageList({
     )
   }
 
+  // #363 scroll preservation: rendered reverse-chronological (newest
+  // first in DOM) with CSS `flex-direction: column-reverse` flipping
+  // the visual order back to chronological (oldest top, newest
+  // bottom). The browser's natural scroll behavior under column-
+  // reverse keeps the user anchored to their current scroll position
+  // when new messages arrive — no JS scrollIntoView needed. Grouping
+  // logic still needs chronological iteration to detect
+  // "consecutive-same-sender," so we compute group flags in
+  // chronological order first, then reverse the result.
+  const withGrouping = visible.map((m, i) => ({
+    m,
+    grouped: isGroupedWithPrev(m, i > 0 ? visible[i - 1] : null)
+  }))
+  const reversed = [...withGrouping].reverse()
+
   return (
-    <ul {...regionProps}>
-      {visible.map((m, i) => {
-        const prev = i > 0 ? visible[i - 1] : null
-        const grouped = isGroupedWithPrev(m, prev)
-        const sender = shortName(m.from)
-        const scope = scopeLabel(m)
-        const addressee = m.addressee ?? null
-        const addressedToViewer = addressee === RENDERER_IDENTITY
-        const addressedToOther = addressee !== null && !addressedToViewer
+    <>
+      <ul {...regionProps}>
+        {reversed.map(({ m, grouped }) => {
+          const sender = shortName(m.from)
+          const scope = scopeLabel(m)
+          const addressee = m.addressee ?? null
+          const addressedToViewer = addressee === RENDERER_IDENTITY
+          const addressedToOther = addressee !== null && !addressedToViewer
 
         // Row classes carry the per-message modifiers that CSS keys
         // off: --grouped hides the avatar + role row and dims the
@@ -278,8 +289,9 @@ function MessageList({
           </li>
         )
       })}
-      <li ref={endRef} aria-hidden="true" />
-    </ul>
+        <li ref={endRef} aria-hidden="true" />
+      </ul>
+    </>
   )
 }
 

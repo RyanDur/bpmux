@@ -3,7 +3,16 @@
   overflow-y: auto;
   padding: var(--space-8) var(--space-16);
   display: flex;
-  flex-direction: column;
+  /* #363 scroll preservation: column-reverse means the flex
+   * container's "start" is visually at the bottom. Rows are
+   * rendered in reverse-chronological DOM order (newest first) +
+   * column-reverse flips them back to visual chronological (oldest
+   * top, newest bottom). When new messages are prepended to DOM,
+   * the user's scroll position stays anchored to their current
+   * content — browser-native behavior; no JS scrollIntoView. User
+   * at bottom (scrollTop=0 under column-reverse) follows new
+   * messages naturally; scrolled-up user stays put. */
+  flex-direction: column-reverse;
   gap: var(--space-8);
   list-style: none;
 
