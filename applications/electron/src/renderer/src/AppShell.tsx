@@ -3,7 +3,6 @@ import Board from './board/Board'
 import Chat from './chat/Chat'
 import CiGlyph from './ci/CiGlyph'
 import { useTheme } from './hooks/useTheme'
-import Search from './search/Search'
 import Sidebar from './sidebar/Sidebar'
 import type { ChatMessage, ConnectionStatus } from './transport/types'
 import type { SendOptions } from './transport/useWebSocket'
@@ -78,20 +77,16 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
       </header>
       <section className="app-body">
         <Sidebar recipient={recipient} onSelectRecipient={setRecipient} />
-        {searchOpen ? (
-          <Search
-            apiBase={bridge?.apiBase}
-            authToken={bridge?.authToken}
-            onClose={() => setSearchOpen(false)}
-          />
-        ) : (
-          <Chat
-            messages={messages}
-            status={status}
-            recipient={recipient}
-            onSend={onSend}
-          />
-        )}
+        <Chat
+          messages={messages}
+          status={status}
+          recipient={recipient}
+          searchOpen={searchOpen}
+          onCloseSearch={() => setSearchOpen(false)}
+          apiBase={bridge?.apiBase}
+          authToken={bridge?.authToken}
+          onSend={onSend}
+        />
         {boardOpen ? <Board /> : null}
       </section>
     </main>

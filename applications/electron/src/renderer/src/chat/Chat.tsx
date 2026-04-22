@@ -1,3 +1,4 @@
+import Search from '../search/Search'
 import type { ChatMessage, ConnectionStatus } from '../transport/types'
 import type { SendOptions } from '../transport/useWebSocket'
 import Input from './Input'
@@ -8,10 +9,23 @@ interface Props {
   messages: ChatMessage[]
   status: ConnectionStatus
   recipient: string | null
+  searchOpen: boolean
+  onCloseSearch: () => void
+  apiBase: string | undefined
+  authToken: string | undefined
   onSend: (text: string, opts?: SendOptions) => void
 }
 
-function Chat({ messages, status, recipient, onSend }: Props): React.JSX.Element {
+function Chat({
+  messages,
+  status,
+  recipient,
+  searchOpen,
+  onCloseSearch,
+  apiBase,
+  authToken,
+  onSend
+}: Props): React.JSX.Element {
   const showReconnect = status !== 'connected'
 
   const handleSend = (text: string, addressee: string | null): void => {
@@ -32,7 +46,11 @@ function Chat({ messages, status, recipient, onSend }: Props): React.JSX.Element
           <small>DM → {recipient}</small>
         </aside>
       )}
-      <MessageList messages={messages} />
+      {searchOpen ? (
+        <Search apiBase={apiBase} authToken={authToken} onClose={onCloseSearch} />
+      ) : (
+        <MessageList messages={messages} />
+      )}
       <Input onSend={handleSend} placeholder={recipient ? `message @${recipient}` : undefined} />
     </section>
   )
