@@ -4,6 +4,7 @@ import type { ChatMessage } from '../transport/types'
 import { classOf, type MessageClass } from '../hooks/useMessageFilter'
 import { usePresence } from '../hooks/usePresence'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
+import ClassGlyph from './ClassGlyph'
 import MessageBody from './MessageBody'
 import Reactions, { ReactionAddButton } from './Reactions'
 import UnfurlCards from './UnfurlCards'
@@ -37,15 +38,10 @@ interface Props {
   authToken?: string
 }
 
-// Per-class gutter glyph (AC6). Chat = no glyph (majority case, zero
-// visual noise). Other classes get a small inline prefix so the
-// reader can scan message class without relying on the filter alone.
-const CLASS_GLYPHS: Record<MessageClass, string | null> = {
-  chat: null,
-  insight: '◊',
-  activity: '•',
-  system: '⚙'
-}
+// Per-class gutter glyphs moved to `./ClassGlyph` (#373 — custom
+// SVG replaces the unicode ◊/•/⚙ so rendering is consistent across
+// OS font stacks). Chat stays null (majority case, zero visual
+// noise); ClassGlyph returns null for that case too.
 
 // Grouping threshold — consecutive messages from the same sender
 // within this window collapse into a single visual group (one avatar
@@ -284,16 +280,7 @@ function MessageList({
                 </time>
               )}
               <section className="message-body">
-                {CLASS_GLYPHS[classOf(m.messageType)] && (
-                  <span
-                    className="message-class-glyph"
-                    data-test="message-class-glyph"
-                    data-class={classOf(m.messageType)}
-                    aria-hidden="true"
-                  >
-                    {CLASS_GLYPHS[classOf(m.messageType)]}
-                  </span>
-                )}
+                <ClassGlyph cls={classOf(m.messageType)} />
                 <MessageBody text={m.text} />
                 <UnfurlCards text={m.text} apiBase={apiBase} authToken={authToken} />
                 {(() => {

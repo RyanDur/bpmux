@@ -388,16 +388,24 @@
 
   /* Per-class gutter glyph. Inline before the body (not a separate
    * grid column) so chat messages — the majority — don't carry a
-   * trailing empty gutter. aria-hidden in JSX: the message class is
-   * already announced via the addressee/scope chips in the header;
-   * the glyph is a pure visual anchor for sighted users skimming. */
+   * trailing empty gutter. #373 carries role="img" + aria-label so
+   * SR users hear the class when landing on the glyph; sighted
+   * users read the SVG shape at the --fg-dim tier. inline-flex +
+   * align-items: center centers the 12px SVG against the body text
+   * baseline cleanly — inline-block + vertical-align was drifting
+   * the unicode version off the cap-line on some OS font stacks. */
   & .message-class-glyph {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     margin-right: var(--space-6);
     color: var(--fg-dim);
-    font-size: 0.75rem;
-    vertical-align: baseline;
+    vertical-align: text-bottom;
     user-select: none;
+    /* Sized by the inline SVG's width/height attributes; don't let
+     * the default font-size leak into the svg's em-relative values
+     * (safari/chromium differ on this). */
+    line-height: 1;
   }
 
   & .message-body {
