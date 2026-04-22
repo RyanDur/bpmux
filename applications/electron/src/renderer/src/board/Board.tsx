@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useAnimatedUnmount } from '../hooks/useAnimatedUnmount'
 import { BOARD_INVALIDATE_MARKER, type ChatMessage } from '../transport/types'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import DrillIn from './DrillIn'
@@ -206,6 +207,18 @@ function Board({ messages, drillRequest, onDrillClosed, hidden }: BoardProps): R
     [drilledNumber, stories]
   )
 
+  // Close-direction animation (#354 AC1): when drilledStory flips
+  // null, keep DrillIn mounted for the exit transition using the
+  // last-known story, then unmount. Snapshot the story in a ref so
+  // the fade-out has a stable object to render while drilledStory
+  // itself is null.
+  const lastDrilledStoryRef = useRef<typeof drilledStory>(null)
+  if (drilledStory !== null) {
+    lastDrilledStoryRef.current = drilledStory
+  }
+  const drillAnim = useAnimatedUnmount(drilledStory !== null, 250)
+  const renderedDrill = drilledStory ?? lastDrilledStoryRef.current
+
   const handleOpen = useCallback((number: number) => {
     setSelectedNumber(number)
     setDrilledNumber(number)
@@ -350,16 +363,17 @@ function Board({ messages, drillRequest, onDrillClosed, hidden }: BoardProps): R
         </section>
       )}
 
-      {drilledStory !== null ? (
+      {drillAnim.mounted && renderedDrill !== null ? (
         <DrillIn
-          story={drilledStory}
+          story={renderedDrill}
           isOwner={isOwner}
           apiBase={bridge?.apiBase}
           authToken={bridge?.authToken}
           usingMock={usingMock}
           messages={messages}
+          visible={drillAnim.visible}
           scrollToCommentId={
-            drillRequest?.storyNumber === drilledStory.number
+            drillRequest?.storyNumber === renderedDrill.number
               ? drillRequest.commentId ?? null
               : null
           }

@@ -7,6 +7,10 @@ interface Props {
   authToken: string | undefined
   onClose: () => void
   onOpenStory: (storyNumber: number, commentId?: number) => void
+  // Passed by Chat via useAnimatedUnmount (#354). true = entering /
+  // entered; false = exiting. CSS reads [data-visible] to switch
+  // between enter and exit transition styles.
+  visible: boolean
 }
 
 interface MessageResult {
@@ -45,7 +49,7 @@ function shortName(identity: string): string {
   return idx === -1 ? identity : identity.slice(0, idx)
 }
 
-function Search({ apiBase, authToken, onClose, onOpenStory }: Props): React.JSX.Element {
+function Search({ apiBase, authToken, onClose, onOpenStory, visible }: Props): React.JSX.Element {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResponse | null>(null)
   const [busy, setBusy] = useState(false)
@@ -142,7 +146,9 @@ function Search({ apiBase, authToken, onClose, onOpenStory }: Props): React.JSX.
     <section
       className="search"
       data-test="search-overlay"
+      data-visible={visible || undefined}
       aria-label="Search messages, stories, and comments"
+      aria-hidden={!visible || undefined}
       onKeyDown={handleKeyDown}
     >
       <header className="search-header">

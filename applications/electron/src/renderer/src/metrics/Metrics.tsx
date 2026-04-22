@@ -5,6 +5,9 @@ interface Props {
   apiBase: string | undefined
   authToken: string | undefined
   onClose: () => void
+  // #354 close-direction: Chat's useAnimatedUnmount flips this to
+  // false to trigger the exit transition before unmount.
+  visible: boolean
 }
 
 interface VelocityPayload {
@@ -40,7 +43,7 @@ function Bar({ value, max, color }: { value: number; max: number; color: string 
   )
 }
 
-function Metrics({ apiBase, authToken, onClose }: Props): React.JSX.Element {
+function Metrics({ apiBase, authToken, onClose, visible }: Props): React.JSX.Element {
   const [data, setData] = useState<VelocityPayload | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -76,7 +79,9 @@ function Metrics({ apiBase, authToken, onClose }: Props): React.JSX.Element {
   return (
     <section
       className="metrics"
+      data-visible={visible || undefined}
       aria-label="Metrics"
+      aria-hidden={!visible || undefined}
       tabIndex={0}
       onKeyDown={handleKeyDown}
       data-test="metrics-overlay"

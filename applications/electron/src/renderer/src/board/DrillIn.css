@@ -10,38 +10,37 @@
   outline: none;
   position: relative;
 
-  /* Enter transition (#351 AC1): slide in from the right + fade in on
-   * mount. Uses @starting-style so the browser picks up the starting
-   * transform/opacity on element insertion and interpolates to rest.
-   * Duration token auto-zeroes under prefers-reduced-motion, and the
-   * transform-only line is guarded by motion-safe-transform suppression
-   * semantics inherited from tokens.css. Close is currently an instant
-   * unmount — keep-mounted-to-animate-close is deferred to a follow-up
-   * when a react-transition-group-equivalent is worth the complexity. */
+  /* Enter + exit transitions (#351 AC1 + #354 close-direction):
+   * default state is closed/exiting (translateX 24px, opacity 0);
+   * [data-visible] flips to entered (translateX 0, opacity 1). Board
+   * drives this via useAnimatedUnmount so the exit transition plays
+   * before the component unmounts. Ease-out arriving, ease-in
+   * leaving per the motion conventions from #350. */
   transition:
-    transform var(--motion-duration-medium) var(--motion-ease-out),
-    opacity var(--motion-duration-fast) var(--motion-ease-out);
-  transform: translateX(0);
-  opacity: 1;
+    transform var(--motion-duration-medium) var(--motion-ease-in),
+    opacity var(--motion-duration-fast) var(--motion-ease-in);
+  transform: translateX(24px);
+  opacity: 0;
 
-  @starting-style {
-    transform: translateX(24px);
-    opacity: 0;
+  &[data-visible] {
+    transform: translateX(0);
+    opacity: 1;
+    transition:
+      transform var(--motion-duration-medium) var(--motion-ease-out),
+      opacity var(--motion-duration-fast) var(--motion-ease-out);
   }
 }
 
 /* Reduced-motion: kill the transform (motion-inducing) but keep the
  * opacity fade so the element still feels like it "appeared" — just
  * without the slide. Duration tokens already resolve to 0ms under
- * reduced-motion, so opacity also effectively flashes in.
- * (Intentionally outside the selector above because nested @media
- * can't modify @starting-style blocks as of Chromium 117-120.) */
+ * reduced-motion so the fade is effectively instant too. */
 @media (prefers-reduced-motion: reduce) {
   .drill-in {
     transform: none !important;
 
-    @starting-style {
-      transform: none;
+    &[data-visible] {
+      transform: none !important;
     }
   }
 

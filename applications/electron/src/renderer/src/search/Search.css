@@ -10,19 +10,26 @@
   flex-direction: column;
   border: 1px solid var(--border-subtle);
 
-  /* Enter (#351 AC4): slide-down from top + fade-in. Same pattern as
-   * drill-in — @starting-style for on-mount animation. The overlay
-   * covers the chat region so the slide-down reads as "coming from
-   * the chat header" spatially. */
+  /* Enter + exit (#351 AC4 + #354 close-direction): data-visible
+   * toggles between entered (translateY 0, opacity 1) and
+   * closed/exiting (translateY(-16px), opacity 0) states. Chat
+   * mounts the overlay with data-visible=false, useAnimatedUnmount
+   * flips it to true on next frame, and the transition plays.
+   * Reverse happens on close before unmount. Ease-in for the exit
+   * so the leaving motion feels settled rather than springing back.
+   */
   transition:
-    transform var(--motion-duration-medium) var(--motion-ease-out),
-    opacity var(--motion-duration-fast) var(--motion-ease-out);
-  transform: translateY(0);
-  opacity: 1;
+    transform var(--motion-duration-medium) var(--motion-ease-in),
+    opacity var(--motion-duration-fast) var(--motion-ease-in);
+  transform: translateY(-16px);
+  opacity: 0;
 
-  @starting-style {
-    transform: translateY(-16px);
-    opacity: 0;
+  &[data-visible] {
+    transform: translateY(0);
+    opacity: 1;
+    transition:
+      transform var(--motion-duration-medium) var(--motion-ease-out),
+      opacity var(--motion-duration-fast) var(--motion-ease-out);
   }
 
   & .search-header {

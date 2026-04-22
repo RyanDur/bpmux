@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { classOf, useMessageFilter, type MessageClass } from '../hooks/useMessageFilter'
 import { channelKey, messageKey, usePins } from '../hooks/usePins'
+import { useAnimatedUnmount } from '../hooks/useAnimatedUnmount'
 import Metrics from '../metrics/Metrics'
 import Search from '../search/Search'
 import { RENDERER_IDENTITY, type SendOptions } from '../transport/useWebSocket'
@@ -10,6 +11,12 @@ import Input from './Input'
 import MessageList from './MessageList'
 import PinnedList from './PinnedList'
 import './Chat.css'
+
+// CSS transition durations that match the overlay CSS. Kept here
+// (rather than read from computed style) so the JS-side mount-delay
+// doesn't pull from the renderer at every open/close. Must stay in
+// sync with --motion-duration-medium in tokens.css.
+const OVERLAY_EXIT_MS = 250
 
 interface Props {
   messages: ChatMessage[]
@@ -46,6 +53,9 @@ function Chat({
   const [pinnedListOpen, setPinnedListOpen] = useState<boolean>(false)
   const pinsChannel = channelKey(recipient)
   const pins = usePins({ apiBase, authToken, channel: pinsChannel, messages })
+  const search = useAnimatedUnmount(searchOpen, OVERLAY_EXIT_MS)
+  const metrics = useAnimatedUnmount(metricsOpen, OVERLAY_EXIT_MS)
+  const pinnedList = useAnimatedUnmount(pinnedListOpen, OVERLAY_EXIT_MS)
 
   // Pin handler for MessageList. Given an already-rendered message,
   // toggle pin status — either pin (if not already pinned) or unpin.
@@ -110,29 +120,44 @@ function Chat({
         </button>
       </aside>
       <FilterPills filter={filter} hiddenCounts={hiddenCounts} />
-      {metricsOpen ? (
-        <Metrics apiBase={apiBase} authToken={authToken} onClose={onCloseMetrics} />
-      ) : searchOpen ? (
+      {/* MessageList stays mounted; overlays stack on top when open,
+        * using useAnimatedUnmount for close-direction transitions
+        * (#354). Each overlay's CSS reads `[data-visible]` to decide
+        * between enter-state (visible) and exit-state (closing).
+        * Absolute positioning means they share the viewport space
+        * with MessageList without layout shift.
+        */}
+      <MessageList
+        messages={messages}
+        visibleClasses={filter.visible}
+        pinnedKeys={pins.pinnedKeys}
+        onTogglePin={togglePin}
+      />
+      {metrics.mounted && (
+        <Metrics
+          apiBase={apiBase}
+          authToken={authToken}
+          onClose={onCloseMetrics}
+          visible={metrics.visible}
+        />
+      )}
+      {search.mounted && (
         <Search
           apiBase={apiBase}
           authToken={authToken}
           onClose={onCloseSearch}
           onOpenStory={onOpenStory}
+          visible={search.visible}
         />
-      ) : pinnedListOpen ? (
+      )}
+      {pinnedList.mounted && (
         <PinnedList
           pins={pins.pins}
           onUnpin={(key) => {
             void pins.unpin(key)
           }}
           onClose={() => setPinnedListOpen(false)}
-        />
-      ) : (
-        <MessageList
-          messages={messages}
-          visibleClasses={filter.visible}
-          pinnedKeys={pins.pinnedKeys}
-          onTogglePin={togglePin}
+          visible={pinnedList.visible}
         />
       )}
       <Input

@@ -8,6 +8,9 @@ interface Props {
   pins: Pin[]
   onUnpin: (messageKey: string) => void
   onClose: () => void
+  // #354 close-direction: Chat's useAnimatedUnmount flips this to
+  // false to trigger the exit transition before unmount.
+  visible: boolean
 }
 
 function shortName(identity: string): string {
@@ -15,7 +18,7 @@ function shortName(identity: string): string {
   return idx === -1 ? identity : identity.slice(0, idx)
 }
 
-function PinnedList({ pins, onUnpin, onClose }: Props): React.JSX.Element {
+function PinnedList({ pins, onUnpin, onClose, visible }: Props): React.JSX.Element {
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLElement>): void => {
       if (event.key === 'Escape') {
@@ -30,7 +33,9 @@ function PinnedList({ pins, onUnpin, onClose }: Props): React.JSX.Element {
     <section
       className="pinned-list"
       data-test="pinned-list-overlay"
+      data-visible={visible || undefined}
       aria-label="Pinned messages"
+      aria-hidden={!visible || undefined}
       onKeyDown={handleKeyDown}
       tabIndex={-1}
     >

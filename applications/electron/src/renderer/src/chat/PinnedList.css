@@ -11,16 +11,20 @@
   border: 1px solid var(--border-subtle);
   outline: none;
 
-  /* Enter transition — same pattern as search/metrics overlays. */
+  /* Enter + exit (#354): same pattern as search/metrics. Default
+   * closed/exiting; [data-visible] = entered. */
   transition:
-    transform var(--motion-duration-medium) var(--motion-ease-out),
-    opacity var(--motion-duration-fast) var(--motion-ease-out);
-  transform: translateY(0);
-  opacity: 1;
+    transform var(--motion-duration-medium) var(--motion-ease-in),
+    opacity var(--motion-duration-fast) var(--motion-ease-in);
+  transform: translateY(-16px);
+  opacity: 0;
 
-  @starting-style {
-    transform: translateY(-16px);
-    opacity: 0;
+  &[data-visible] {
+    transform: translateY(0);
+    opacity: 1;
+    transition:
+      transform var(--motion-duration-medium) var(--motion-ease-out),
+      opacity var(--motion-duration-fast) var(--motion-ease-out);
   }
 
   & .pinned-list-header {

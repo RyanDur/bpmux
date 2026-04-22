@@ -36,6 +36,9 @@ interface Props {
   // the "click comment-search-result → see the comment" path from
   // #344.
   scrollToCommentId?: number | null
+  // #354 close-direction: Board's useAnimatedUnmount flips this to
+  // false to trigger the exit transition before unmount.
+  visible: boolean
   onBack: () => void
   onStoryMutated: (story: BoardStory) => void
 }
@@ -80,6 +83,7 @@ function DrillIn({
   usingMock,
   messages,
   scrollToCommentId,
+  visible,
   onBack,
   onStoryMutated
 }: Props): React.JSX.Element {
@@ -391,6 +395,8 @@ function DrillIn({
   return (
     <article
       className="drill-in"
+      data-visible={visible || undefined}
+      aria-hidden={!visible || undefined}
       ref={articleRef}
       tabIndex={-1}
       data-test="board-drill-in"

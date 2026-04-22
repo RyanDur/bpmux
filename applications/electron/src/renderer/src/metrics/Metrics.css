@@ -8,16 +8,21 @@
   gap: var(--space-16);
   outline: none;
 
-  /* Enter (#351 AC4): same slide-down + fade pattern as search. */
+  /* Enter + exit (#351 AC4 + #354 close-direction): same pattern as
+   * search. Default = closed/exiting; [data-visible] = entered.
+   * Chat controls via useAnimatedUnmount. */
   transition:
-    transform var(--motion-duration-medium) var(--motion-ease-out),
-    opacity var(--motion-duration-fast) var(--motion-ease-out);
-  transform: translateY(0);
-  opacity: 1;
+    transform var(--motion-duration-medium) var(--motion-ease-in),
+    opacity var(--motion-duration-fast) var(--motion-ease-in);
+  transform: translateY(-16px);
+  opacity: 0;
 
-  @starting-style {
-    transform: translateY(-16px);
-    opacity: 0;
+  &[data-visible] {
+    transform: translateY(0);
+    opacity: 1;
+    transition:
+      transform var(--motion-duration-medium) var(--motion-ease-out),
+      opacity var(--motion-duration-fast) var(--motion-ease-out);
   }
 
   & .metrics-header {
