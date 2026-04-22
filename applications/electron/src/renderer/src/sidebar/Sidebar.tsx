@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import type { ChatMessage } from '../transport/types'
 import { classOf, type MessageFilter } from '../hooks/useMessageFilter'
+import { usePresence, type Presence } from '../hooks/usePresence'
 import './Sidebar.css'
 
 interface Props {
@@ -11,6 +12,19 @@ interface Props {
 }
 
 const DIRECT_ROLES = ['designer', 'dev', 'pm'] as const
+const DIRECT_ROLES_ARRAY: readonly string[] = DIRECT_ROLES
+
+// Human label for each presence state. Mapping + ordering kept here
+// (not in the hook) so the UI can iterate without committing the
+// derivation module to rendering concerns.
+const PRESENCE_LABEL: Record<Presence, string> = {
+  available: 'available',
+  busy: 'busy',
+  blocked: 'blocked',
+  idle: 'idle',
+  help: 'needs help',
+  offline: 'offline'
+}
 
 // Stable string key for a group's recipient set. Sorted so the
 // same group (regardless of order the message was addressed) renders
@@ -59,6 +73,7 @@ function Sidebar({
 }: Props): React.JSX.Element {
   const groups = useMemo(() => deriveGroups(messages), [messages])
   const systemCount = useMemo(() => countSystemMessages(messages), [messages])
+  const presence = usePresence(messages, DIRECT_ROLES_ARRAY)
   // Broadcast is "selected" whenever recipient is null. SYSTEM is
   // "selected" specifically when the filter is narrowed to system-only
   // (the state goSystem puts us in). Both share recipient===null but
@@ -108,6 +123,8 @@ function Sidebar({
         <h3 className="sidebar-heading">direct</h3>
         {DIRECT_ROLES.map((role) => {
           const active = recipient !== null && recipient.length === 1 && recipient[0] === role
+          const status = presence.get(role) ?? 'offline'
+          const statusLabel = PRESENCE_LABEL[status]
           return (
             <button
               key={role}
@@ -117,7 +134,19 @@ function Sidebar({
               data-test={`sidebar-direct-${role}`}
               onClick={() => goDirect(role)}
             >
-              {role}
+              <span
+                className={`presence-dot presence-dot--${status}`}
+                data-test={`presence-dot-${role}`}
+                data-presence={status}
+                aria-label={`${role} ${statusLabel}`}
+                title={`${role} — ${statusLabel}`}
+              />
+              <span className="sidebar-item-label">{role}</span>
+              {status !== 'offline' && status !== 'available' && (
+                <small className="sidebar-item-status" data-test={`presence-label-${role}`}>
+                  {statusLabel}
+                </small>
+              )}
             </button>
           )
         })}

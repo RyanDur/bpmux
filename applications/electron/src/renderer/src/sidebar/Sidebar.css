@@ -21,12 +21,28 @@
   }
 
   & .sidebar-item {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: var(--space-6);
     width: 100%;
     text-align: left;
     padding: var(--space-6) var(--space-8);
     border-radius: 4px;
     color: var(--fg-primary);
+
+    & .sidebar-item-label {
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    & .sidebar-item-status {
+      color: var(--fg-dim);
+      font-size: 0.75rem;
+      text-transform: lowercase;
+    }
 
     &:hover:not(:disabled) {
       background: var(--bg-highlighted);
@@ -53,5 +69,37 @@
     padding: var(--space-4) var(--space-8);
     color: var(--fg-dim);
     font-size: 0.75rem;
+  }
+
+  /* Per-role presence indicator (#360). Small colored dot next to
+   * each DIRECT role in the sidebar, color matches the status:
+   * green=available, amber=busy, red=blocked/help, dim=idle/offline.
+   * Status derived by usePresence from activity-class broadcasts
+   * set_status fires. Transitions smoothly when the role's status
+   * changes mid-session via the broadcast + effect pipeline. */
+  & .presence-dot {
+    flex: 0 0 auto;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--fg-dimmer);
+    transition: background-color var(--motion-duration-fast) var(--motion-ease-out);
+
+    &.presence-dot--available {
+      background: var(--accent-success);
+    }
+    &.presence-dot--busy {
+      background: var(--accent-warning);
+    }
+    &.presence-dot--blocked,
+    &.presence-dot--help {
+      background: var(--accent-error);
+    }
+    &.presence-dot--idle {
+      background: var(--fg-dim);
+    }
+    &.presence-dot--offline {
+      background: var(--fg-dimmer);
+    }
   }
 }

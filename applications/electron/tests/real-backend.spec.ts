@@ -879,6 +879,55 @@ test.describe('real-backend', () => {
     await app.close()
   })
 
+  // #360 presence signals — activity-class broadcast updates sidebar
+  // dot color + text within latency. Uses the multi-party peer-post
+  // pattern (POST from test process → WS broadcast → renderer
+  // derives + renders).
+  test('presence: activity-class broadcast updates sidebar dot', async () => {
+    const { app, backendPort } = await launchWithIsolatedSession()
+    const win = await app.firstWindow()
+    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+
+    // Initial state: every role defaults to offline (no activity
+    // messages seeded). Dot data-presence='offline'.
+    const devDot = win.locator('[data-test="presence-dot-dev"]')
+    await expect(devDot).toHaveAttribute('data-presence', 'offline', {
+      timeout: 5_000
+    })
+
+    // Simulate dev going busy. POST an activity-class message as
+    // `dev:claude-code` — same shape the set_status hook broadcasts
+    // from the bridge.
+    const fs = await import('fs')
+    const authToken = fs
+      .readFileSync(`${process.env.HOME}/.bpmux/auth_token`, 'utf8')
+      .trim()
+    const res = await fetch(`http://127.0.0.1:${backendPort}/api/messages`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: 'dev:claude-code',
+        text: 'busy',
+        message_type: 'activity'
+      })
+    })
+    expect(res.ok).toBe(true)
+
+    // Dot updates to busy within WS latency.
+    await expect(devDot).toHaveAttribute('data-presence', 'busy', {
+      timeout: 10_000
+    })
+    // Status suffix renders for non-available/offline states.
+    await expect(
+      win.locator('[data-test="presence-label-dev"]')
+    ).toContainText('busy')
+
+    await app.close()
+  })
+
   // #355 reaction picker positioning — above/below with tail, not
   // inline-over the message. Asserts the picker's bounding-box
   // doesn't overlap the target message's text region when opened.
