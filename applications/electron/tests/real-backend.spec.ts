@@ -549,4 +549,31 @@ test.describe('real-backend', () => {
 
     await app.close()
   })
+
+  // #350 motion substrate — duration tokens resolve to 150ms under
+  // default media and 0ms under prefers-reduced-motion:reduce.
+  // Tokens are defined at :root; test reads them via getComputedStyle
+  // on the html element (CSS custom properties inherit).
+  test('motion substrate: --motion-duration-fast resolves to 150ms / 0ms under reduced-motion', async () => {
+    const { app } = await launchWithIsolatedSession()
+    const win = await app.firstWindow()
+    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+
+    // Default media: token resolves to the declared 150ms.
+    const defaultDuration = await win.evaluate(() =>
+      window.getComputedStyle(document.documentElement).getPropertyValue('--motion-duration-fast').trim()
+    )
+    expect(defaultDuration).toBe('150ms')
+
+    // Emulate reduced-motion: the :root override in the media query
+    // zeros the token. Any transition that consumed this token for
+    // its duration therefore fires at 0ms, suppressing motion.
+    await win.emulateMedia({ reducedMotion: 'reduce' })
+    const reducedDuration = await win.evaluate(() =>
+      window.getComputedStyle(document.documentElement).getPropertyValue('--motion-duration-fast').trim()
+    )
+    expect(reducedDuration).toBe('0ms')
+
+    await app.close()
+  })
 })

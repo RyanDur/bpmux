@@ -57,6 +57,69 @@
   --space-48: 48px;
   --space-56: 56px;
   --space-64: 64px;
+
+  /* Motion — durations + easings for transitions/animations across
+   * the app. Instant is for confirm-not-distract micro-interactions
+   * (pill toggle state); fast for hover/focus feedback; medium for
+   * panel open/close + overlay reveal. Tokens are overridden to 0ms
+   * under prefers-reduced-motion:reduce (see media query below), so
+   * every CSS transition declared as `transition: ... var(--motion-
+   * duration-*)` automatically respects the user's motion preference.
+   * Easings follow the "arriving = ease-out, leaving = ease-in,
+   * reversible = ease-in-out" convention from Material + a11y
+   * guidance. */
+  --motion-duration-instant: 80ms;
+  --motion-duration-fast: 150ms;
+  --motion-duration-medium: 250ms;
+
+  --motion-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --motion-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --motion-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* WCAG 2.3.3 — users who opted into reduced motion (vestibular
+ * disorders, migraines, stillness preference) get zero-duration
+ * transitions for every token-backed transition. Opacity-only
+ * transitions should still declare these tokens (they're typically
+ * acceptable under reduced-motion); transform-based transitions
+ * that could induce motion sickness should additionally guard via
+ * the .motion-safe-transform pattern below so the transform itself
+ * doesn't apply. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-duration-instant: 0ms;
+    --motion-duration-fast: 0ms;
+    --motion-duration-medium: 0ms;
+  }
+}
+
+/* Utility: opt transform-based animation into reduced-motion
+ * suppression. Default (no-preference users) gets the transform +
+ * the token-driven transition. Reduced-motion users see neither
+ * — transform is reset to none so there's no implicit motion even
+ * if the transition duration were >0ms at keyframe boundaries.
+ *
+ * Usage pattern:
+ *   .my-widget {
+ *     transition: opacity var(--motion-duration-fast) var(--motion-ease-out);
+ *   }
+ *   .my-widget.is-entering {
+ *     opacity: 0;
+ *   }
+ *   .my-widget.motion-safe-transform {
+ *     transform: translateY(8px);
+ *     transition: transform var(--motion-duration-medium) var(--motion-ease-out),
+ *                 opacity var(--motion-duration-fast) var(--motion-ease-out);
+ *   }
+ *
+ * Opacity + token-zero'd duration keeps reduced-motion users
+ * receiving the feedback (thing appeared) without the motion.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .motion-safe-transform {
+    transform: none !important;
+    transition-property: opacity !important;
+  }
 }
 
 [data-theme="light"] {
