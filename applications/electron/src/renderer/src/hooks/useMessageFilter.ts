@@ -37,6 +37,12 @@ export interface MessageFilter {
   visible: Set<MessageClass>
   toggle: (cls: MessageClass) => void
   setAll: () => void
+  // Restore the default filter (chat + insight). Used when sidebar
+  // navigates back to broadcast / DM / group — callers want the
+  // normal view, not whatever narrow filter the user last set.
+  reset: () => void
+  // Narrow the filter to exactly one class (sidebar SYSTEM click).
+  setOnly: (cls: MessageClass) => void
   isAllActive: boolean
 }
 
@@ -76,7 +82,15 @@ export function useMessageFilter(): MessageFilter {
     setVisible(new Set(MESSAGE_CLASSES))
   }, [])
 
+  const reset = useCallback((): void => {
+    setVisible(new Set(DEFAULT_VISIBLE))
+  }, [])
+
+  const setOnly = useCallback((cls: MessageClass): void => {
+    setVisible(new Set([cls]))
+  }, [])
+
   const isAllActive = visible.size === MESSAGE_CLASSES.length
 
-  return { visible, toggle, setAll, isAllActive }
+  return { visible, toggle, setAll, reset, setOnly, isAllActive }
 }

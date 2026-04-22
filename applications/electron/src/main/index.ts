@@ -8,7 +8,17 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 
 const BACKEND_HOST = '127.0.0.1'
-const BACKEND_PORT = 4117
+// BACKEND_PORT is overridable via env for test isolation — Playwright
+// real-backend tests can pin a per-test port so they don't adopt
+// whatever bpmux is already running on 4117 (e.g., the dev's live
+// session). Production + default dev run on 4117.
+const BACKEND_PORT = (() => {
+  const raw = process.env['BPMUX_BACKEND_PORT']
+  if (!raw) return 4117
+  const n = Number.parseInt(raw, 10)
+  if (!Number.isFinite(n) || n <= 0 || n > 65535) return 4117
+  return n
+})()
 const API_BASE = `http://${BACKEND_HOST}:${BACKEND_PORT}`
 const WS_URL = `ws://${BACKEND_HOST}:${BACKEND_PORT}/ws`
 const READY_POLL_INTERVAL_MS = 100

@@ -12,7 +12,8 @@ import './Chat.css'
 interface Props {
   messages: ChatMessage[]
   status: ConnectionStatus
-  recipient: string | null
+  recipient: string[] | null
+  filter: ReturnType<typeof useMessageFilter>
   searchOpen: boolean
   metricsOpen: boolean
   onCloseSearch: () => void
@@ -26,6 +27,7 @@ function Chat({
   messages,
   status,
   recipient,
+  filter,
   searchOpen,
   metricsOpen,
   onCloseSearch,
@@ -35,7 +37,6 @@ function Chat({
   onSend
 }: Props): React.JSX.Element {
   const showReconnect = status !== 'connected'
-  const filter = useMessageFilter()
 
   // Hidden-count: for each filtered-out class, how many messages are
   // being kept out of the stream right now. Computed once per render
@@ -53,7 +54,7 @@ function Chat({
 
   const handleSend = (text: string, addressee: string | null): void => {
     const opts: SendOptions = { addressee }
-    if (recipient) opts.to = [recipient]
+    if (recipient && recipient.length > 0) opts.to = [...recipient]
     onSend(text, opts)
   }
 
@@ -64,9 +65,11 @@ function Chat({
           {status === 'connecting' ? 'connecting…' : 'reconnecting…'}
         </aside>
       )}
-      {recipient && (
+      {recipient && recipient.length > 0 && (
         <aside className="chat-scope" aria-live="polite">
-          <small>DM → {recipient}</small>
+          <small>
+            {recipient.length === 1 ? 'DM' : 'GROUP'} → {recipient.join(' + ')}
+          </small>
         </aside>
       )}
       <FilterPills filter={filter} hiddenCounts={hiddenCounts} />
@@ -77,7 +80,14 @@ function Chat({
       ) : (
         <MessageList messages={messages} visibleClasses={filter.visible} />
       )}
-      <Input onSend={handleSend} placeholder={recipient ? `message @${recipient}` : undefined} />
+      <Input
+        onSend={handleSend}
+        placeholder={
+          recipient && recipient.length > 0
+            ? `message ${recipient.join(' + ')}`
+            : undefined
+        }
+      />
     </section>
   )
 }

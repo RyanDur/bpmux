@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import Board from './board/Board'
 import Chat from './chat/Chat'
 import CiGlyph from './ci/CiGlyph'
+import { useMessageFilter } from './hooks/useMessageFilter'
 import { useTheme } from './hooks/useTheme'
 import Sidebar from './sidebar/Sidebar'
 import type { ChatMessage, ConnectionStatus } from './transport/types'
@@ -23,10 +24,18 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
     status === 'connected' ? 'connected' : status === 'connecting' ? 'connecting' : 'disconnected'
 
   const [boardOpen, setBoardOpen] = useState<boolean>(true)
-  const [recipient, setRecipient] = useState<string | null>(null)
+  // Recipient is an ARRAY of role names: null = broadcast, single =
+  // DM, 2+ = group. Unified shape so DM + group share the scoping
+  // codepath in Chat.tsx and useWebSocket send-options.
+  const [recipient, setRecipient] = useState<string[] | null>(null)
   const [searchOpen, setSearchOpen] = useState<boolean>(false)
   const [metricsOpen, setMetricsOpen] = useState<boolean>(false)
   const { theme, toggle: toggleTheme } = useTheme()
+  // Filter state is lifted from Chat to AppShell because Sidebar also
+  // reads/writes it (SYSTEM click narrows to system-only; DM/group
+  // click resets to default). Lifting here avoids duplicating the
+  // hook or threading callbacks both directions.
+  const filter = useMessageFilter()
   const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
 
   useEffect(() => {
@@ -83,11 +92,17 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
         <CiGlyph />
       </header>
       <section className="app-body">
-        <Sidebar recipient={recipient} onSelectRecipient={setRecipient} />
+        <Sidebar
+          recipient={recipient}
+          onSelectRecipient={setRecipient}
+          messages={messages}
+          filter={filter}
+        />
         <Chat
           messages={messages}
           status={status}
           recipient={recipient}
+          filter={filter}
           searchOpen={searchOpen}
           metricsOpen={metricsOpen}
           onCloseSearch={() => setSearchOpen(false)}

@@ -1,5 +1,5 @@
 import { test, expect, _electron as electron } from '@playwright/test'
-import { mkdtempSync } from 'fs'
+import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
@@ -21,16 +21,50 @@ import { join } from 'path'
 // the user's live ~/.bpmux log. Without this, a test that exercises
 // the send path writes into the dev's real chat history (the
 // 2026-04-22 seed-message-leak-into-team-chat incident).
-async function launchWithIsolatedSession(): Promise<{
+async function launchWithIsolatedSession(opts?: {
+  userDataDir?: string
+  sessionBase?: string
+  backendPort?: number
+  seedMessages?: ReadonlyArray<Record<string, unknown>>
+}): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
   sessionBase: string
+  userDataDir: string
+  backendPort: number
 }> {
-  const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-playwright-'))
+  const sessionBase = opts?.sessionBase ?? mkdtempSync(join(tmpdir(), 'bpmux-playwright-'))
+  // Also isolate Electron's user-data-dir per launch by default so
+  // renderer state (localStorage, cookies, indexedDB) starts fresh.
+  // Without this, filter preferences + other localStorage-backed
+  // state leak between tests. Persistence tests (that want the
+  // SECOND launch to read the FIRST launch's writes) pass an
+  // explicit userDataDir to reuse it across the pair.
+  const userDataDir =
+    opts?.userDataDir ?? mkdtempSync(join(tmpdir(), 'bpmux-playwright-userdata-'))
+  // Default port 4117 matches production; tests that need to avoid
+  // adopting the dev's live bpmux (or each other) pin a unique port.
+  const backendPort = opts?.backendPort ?? 4117
+  // Seed real session jsonl before launch — Electron spawns bpmux,
+  // bpmux's resume_or_create_session honours a pre-existing `current`
+  // symlink, so the server serves our seeded messages via /api/messages
+  // with no mocking. Requires a fresh sessionBase (no prior `current`).
+  if (opts?.seedMessages && opts.seedMessages.length > 0) {
+    const sessionId = 'playwright-seed-' + Date.now().toString(36)
+    const sessionDir = join(sessionBase, sessionId)
+    mkdirSync(sessionDir, { recursive: true })
+    const jsonl = opts.seedMessages.map((m) => JSON.stringify(m)).join('\n') + '\n'
+    writeFileSync(join(sessionDir, 'messages-current.jsonl'), jsonl)
+    symlinkSync(sessionDir, join(sessionBase, 'current'))
+  }
   const app = await electron.launch({
-    args: ['out/main/index.js'],
-    env: { ...process.env, BPMUX_SESSION_BASE: sessionBase }
+    args: ['out/main/index.js', `--user-data-dir=${userDataDir}`],
+    env: {
+      ...process.env,
+      BPMUX_SESSION_BASE: sessionBase,
+      BPMUX_BACKEND_PORT: String(backendPort)
+    }
   })
-  return { app, sessionBase }
+  return { app, sessionBase, userDataDir, backendPort }
 }
 
 test.describe('real-backend', () => {
@@ -252,12 +286,19 @@ test.describe('real-backend', () => {
       }
     ]
 
+    // Persistence spans two launches. Both share the same
+    // user-data-dir so the second launch reads the first launch's
+    // localStorage writes. launchWithIsolatedSession defaults to a
+    // fresh user-data-dir per launch (so unrelated tests don't leak
+    // state); the persistence pair explicitly opts in to reuse.
+    const sharedUserDataDir = mkdtempSync(join(tmpdir(), 'bpmux-playwright-userdata-'))
+
     // First launch: default filter is chat+insight. Assert defaults,
     // verify insight glyph, toggle activity on, then toggle insight
     // off to create a non-default state that the second launch will
     // assert persisted.
     {
-      const { app } = await launchWithIsolatedSession()
+      const { app } = await launchWithIsolatedSession({ userDataDir: sharedUserDataDir })
       const win = await app.firstWindow()
       await win.route('**/api/messages**', async (route) => {
         await route.fulfill({
@@ -307,11 +348,10 @@ test.describe('real-backend', () => {
     }
 
     // Second launch: AC5 — localStorage persistence survives reload.
-    // Electron's default partition persists localStorage across app
-    // launches (same user-data-dir), so this launch should read the
-    // state the first launch wrote.
+    // Same user-data-dir as launch 1, so this launch reads what the
+    // first launch wrote.
     {
-      const { app } = await launchWithIsolatedSession()
+      const { app } = await launchWithIsolatedSession({ userDataDir: sharedUserDataDir })
       const win = await app.firstWindow()
       await win.route('**/api/messages**', async (route) => {
         await route.fulfill({
@@ -334,5 +374,76 @@ test.describe('real-backend', () => {
       )
       await app.close()
     }
+  })
+
+  // #346 sidebar groups derive from message history. AC7 explicitly
+  // requires real-backend (no win.route) — so we seed a messages-
+  // current.jsonl under an isolated BPMUX_SESSION_BASE + pin a unique
+  // BPMUX_BACKEND_PORT (so Electron spawns its own bpmux instead of
+  // adopting the dev's live one on 4117). The renderer hydrates via
+  // /api/messages against the real backend reading our seeded session.
+  test('sidebar groups: unique `to` arrays from message history render as sidebar items', async () => {
+    const seedMessages = [
+      {
+        from: 'ryan:human',
+        text: 'hello dev + designer',
+        ts: '2026-04-22T16:00:00Z',
+        to: ['dev', 'designer'],
+        message_type: 'chat'
+      },
+      {
+        from: 'dev:claude-code',
+        text: 'another to dev + designer',
+        ts: '2026-04-22T16:01:00Z',
+        to: ['dev', 'designer'],
+        message_type: 'chat'
+      },
+      {
+        from: 'ryan:human',
+        text: 'to pm + designer + dev',
+        ts: '2026-04-22T16:02:00Z',
+        to: ['pm', 'designer', 'dev'],
+        message_type: 'chat'
+      },
+      {
+        from: 'bpmux:system',
+        text: 'ryan:electron joined',
+        ts: '2026-04-22T16:03:00Z',
+        message_type: 'system'
+      }
+    ]
+    // Pick a non-default port so we don't adopt the live session.
+    // 4127 chosen arbitrarily; any unused loopback port would work.
+    const { app } = await launchWithIsolatedSession({
+      backendPort: 4127,
+      seedMessages
+    })
+    const win = await app.firstWindow()
+    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+
+    // AC1 + AC2: two unique group recipient-sets in history
+    // (['dev','designer'] and ['dev','designer','pm']) → two group
+    // items, labels sorted alphabetically internally so the rendered
+    // item keys are deterministic.
+    const group1 = win.locator('[data-test="sidebar-group-designer+dev"]')
+    const group2 = win.locator('[data-test="sidebar-group-designer+dev+pm"]')
+    await expect(group1).toBeVisible({ timeout: 10_000 })
+    await expect(group2).toBeVisible()
+    await expect(group1).toHaveText('designer + dev')
+    await expect(group2).toHaveText('designer + dev + pm')
+
+    // AC6: SYSTEM section counts system-class messages. One system
+    // message seeded → "system (1)" button renders.
+    const systemItem = win.locator('[data-test="sidebar-system"]')
+    await expect(systemItem).toBeVisible()
+    await expect(systemItem).toContainText('system (1)')
+
+    // AC3: clicking a group scopes the chat — scope bar renders
+    // 'GROUP → designer + dev' after click.
+    await group1.click()
+    const scopeBar = win.locator('.chat-scope small')
+    await expect(scopeBar).toContainText('GROUP → designer + dev')
+
+    await app.close()
   })
 })
