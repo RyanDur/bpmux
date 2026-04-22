@@ -1,4 +1,5 @@
 import AppShell from './AppShell'
+import { useNotifications } from './hooks/useNotifications'
 import { useWebSocket } from './transport/useWebSocket'
 
 function App(): React.JSX.Element {
@@ -19,6 +20,8 @@ function App(): React.JSX.Element {
     bridge?.apiBase,
     bridge?.authToken
   )
+
+  useNotifications(messages)
 
   return <AppShell status={status} messages={messages} onSend={sendChat} />
 }
