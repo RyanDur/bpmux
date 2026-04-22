@@ -14,6 +14,24 @@
   container-type: inline-size;
   outline: none;
 
+  /* Ctrl+P toggle (#351 AC3): width collapses to 0 over fast duration
+   * when .board--hidden. min-width override + border removal so the
+   * collapsed panel truly vanishes without a stub. Under reduced
+   * motion, duration is 0ms → instant show/hide. */
+  transition:
+    flex-basis var(--motion-duration-fast) var(--motion-ease-in-out),
+    min-width var(--motion-duration-fast) var(--motion-ease-in-out),
+    max-width var(--motion-duration-fast) var(--motion-ease-in-out),
+    border-left-width var(--motion-duration-fast) var(--motion-ease-in-out);
+
+  &.board--hidden {
+    flex-basis: 0;
+    min-width: 0;
+    max-width: 0;
+    border-left-width: 0;
+    overflow: hidden;
+  }
+
   &:focus-visible {
     box-shadow: inset 2px 0 0 var(--accent-brand);
   }
@@ -90,6 +108,35 @@
 
     &[open] > .board-group-summary {
       color: var(--fg-primary);
+    }
+
+    /* Animated open/close (#351 AC7). Modern CSS lets <details>
+     * interpolate its content height from 0 → auto when
+     * interpolate-size: allow-keywords is set + the ::details-content
+     * part transitions block-size + opacity + content-visibility.
+     * transition-behavior: allow-discrete is required so the
+     * content-visibility: hidden → visible step animates. Chromium
+     * 131+ has the full combo; bpmux ships on Electron current so
+     * we're in the safe window.
+     *
+     * interpolate-size is set at :root below (scoped globally because
+     * it's a generally-useful capability once opted in). Reduced-
+     * motion users get 0ms via the token so the UX is just snap-open
+     * like before.
+     */
+    &::details-content {
+      transition:
+        block-size var(--motion-duration-medium) var(--motion-ease-in-out),
+        content-visibility var(--motion-duration-medium) allow-discrete,
+        opacity var(--motion-duration-fast) var(--motion-ease-out);
+      block-size: 0;
+      opacity: 0;
+      overflow: clip;
+    }
+
+    &[open]::details-content {
+      block-size: auto;
+      opacity: 1;
     }
   }
 

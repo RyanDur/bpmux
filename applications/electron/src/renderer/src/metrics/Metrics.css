@@ -8,6 +8,18 @@
   gap: var(--space-16);
   outline: none;
 
+  /* Enter (#351 AC4): same slide-down + fade pattern as search. */
+  transition:
+    transform var(--motion-duration-medium) var(--motion-ease-out),
+    opacity var(--motion-duration-fast) var(--motion-ease-out);
+  transform: translateY(0);
+  opacity: 1;
+
+  @starting-style {
+    transform: translateY(-16px);
+    opacity: 0;
+  }
+
   & .metrics-header {
     display: flex;
     align-items: center;

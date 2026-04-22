@@ -8,6 +8,11 @@
  */
 
 :root {
+  /* Opt in to keyword-size interpolation globally — required by
+   * #351 AC7's <details> height animation + any future auto↔0
+   * transitions. Has no effect on explicit-size transitions. */
+  interpolate-size: allow-keywords;
+
   /* backgrounds */
   --bg-base: #1a1a1a;
   --bg-elevated: #252525;

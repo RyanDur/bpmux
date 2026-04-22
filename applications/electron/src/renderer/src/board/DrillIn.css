@@ -10,6 +10,41 @@
   outline: none;
   position: relative;
 
+  /* Enter transition (#351 AC1): slide in from the right + fade in on
+   * mount. Uses @starting-style so the browser picks up the starting
+   * transform/opacity on element insertion and interpolates to rest.
+   * Duration token auto-zeroes under prefers-reduced-motion, and the
+   * transform-only line is guarded by motion-safe-transform suppression
+   * semantics inherited from tokens.css. Close is currently an instant
+   * unmount — keep-mounted-to-animate-close is deferred to a follow-up
+   * when a react-transition-group-equivalent is worth the complexity. */
+  transition:
+    transform var(--motion-duration-medium) var(--motion-ease-out),
+    opacity var(--motion-duration-fast) var(--motion-ease-out);
+  transform: translateX(0);
+  opacity: 1;
+
+  @starting-style {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+}
+
+/* Reduced-motion: kill the transform (motion-inducing) but keep the
+ * opacity fade so the element still feels like it "appeared" — just
+ * without the slide. Duration tokens already resolve to 0ms under
+ * reduced-motion, so opacity also effectively flashes in.
+ * (Intentionally outside the selector above because nested @media
+ * can't modify @starting-style blocks as of Chromium 117-120.) */
+@media (prefers-reduced-motion: reduce) {
+  .drill-in {
+    transform: none !important;
+
+    @starting-style {
+      transform: none;
+    }
+  }
+
   & .drill-in-header {
     padding: var(--space-8) var(--space-16);
     border-bottom: 1px solid var(--border-subtle);
@@ -222,6 +257,24 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-8);
+
+    /* Reveal (#351 AC5). The form is conditionally rendered when
+     * mode === 'rejecting', so it enters on mount. @starting-style
+     * collapses the initial block-size + opacity; transition to rest
+     * values interpolates over fast duration. Height interpolation
+     * requires interpolate-size: allow-keywords at :root (set in
+     * tokens.css). Close is unmount → instant (deferred). */
+    transition:
+      opacity var(--motion-duration-fast) var(--motion-ease-out),
+      block-size var(--motion-duration-medium) var(--motion-ease-out);
+    block-size: auto;
+    opacity: 1;
+    overflow: hidden;
+
+    @starting-style {
+      block-size: 0;
+      opacity: 0;
+    }
   }
 
   & .drill-in-reject-label {

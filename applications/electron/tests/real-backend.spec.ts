@@ -521,8 +521,12 @@ test.describe('real-backend', () => {
       })
     })
 
-    // Open search via Cmd+F (AppShell keybinding handler).
+    // Open search via Cmd+F (AppShell keybinding handler). Focus the
+    // app-root first so the window-level keydown listener picks up the
+    // combo — Electron's Playwright launch sometimes starts with
+    // no focused element in the renderer.
     await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+    await win.locator('[data-test="app-root"]').click()
     await win.keyboard.press('Meta+f')
     await expect(win.locator('[data-test="search-overlay"]')).toBeVisible()
 
@@ -573,6 +577,50 @@ test.describe('real-backend', () => {
       window.getComputedStyle(document.documentElement).getPropertyValue('--motion-duration-fast').trim()
     )
     expect(reducedDuration).toBe('0ms')
+
+    await app.close()
+  })
+
+  // #351 high-signal transitions — key consumers of #350's motion
+  // tokens. Asserts:
+  //   (a) body color transition resolves to the fast duration (theme
+  //       toggle smoothness)
+  //   (b) board-region declares a transition on flex-basis (Ctrl+P
+  //       panel-toggle animation)
+  // Reduced-motion emulation zeros the duration token at :root, which
+  // cascades into every token-driven transition. Doesn't assert each
+  // transition individually — the token assertion + cascade guarantee
+  // coverage for any element that consumes the token correctly.
+  test('high-signal transitions: theme + board-toggle use motion tokens; reduced-motion zeros them', async () => {
+    const { app } = await launchWithIsolatedSession()
+    const win = await app.firstWindow()
+    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+
+    // Theme toggle lives on body → color + background-color transition.
+    const bodyDuration = await win.evaluate(() =>
+      window.getComputedStyle(document.body).transitionDuration
+    )
+    expect(bodyDuration).toContain('0.15s')
+
+    // Board panel declares a multi-property transition including
+    // flex-basis. Match that computed transition includes flex-basis
+    // and a duration that matches --motion-duration-fast.
+    const boardTransition = await win.evaluate(() =>
+      window.getComputedStyle(
+        document.querySelector('[data-test="board-region"]') as Element
+      ).transition
+    )
+    expect(boardTransition).toContain('flex-basis')
+    expect(boardTransition).toContain('0.15s')
+
+    // Reduced-motion: transition-duration on the same elements should
+    // go to 0s because the token at :root now resolves to 0ms.
+    await win.emulateMedia({ reducedMotion: 'reduce' })
+    const bodyDurationReduced = await win.evaluate(() =>
+      window.getComputedStyle(document.body).transitionDuration
+    )
+    // Chromium reports '0s' for zero-duration transitions.
+    expect(bodyDurationReduced).toMatch(/^0s|, 0s|0s,/)
 
     await app.close()
   })

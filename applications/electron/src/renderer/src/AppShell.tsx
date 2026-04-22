@@ -124,13 +124,17 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
           authToken={bridge?.authToken}
           onSend={onSend}
         />
-        {boardOpen ? (
-          <Board
-            messages={messages}
-            drillRequest={drillRequest}
-            onDrillClosed={() => setDrillRequest(null)}
-          />
-        ) : null}
+        {/* Board stays mounted so its width can CSS-transition open/
+          * close (#351 AC3). The hidden-class variant collapses width
+          * to 0 + overflow:hidden + removes border. Mounting stays
+          * stable so scroll position + internal selection state
+          * survive toggles, a product nicety as well. */}
+        <Board
+          messages={messages}
+          drillRequest={drillRequest}
+          onDrillClosed={() => setDrillRequest(null)}
+          hidden={!boardOpen}
+        />
       </section>
     </main>
   )

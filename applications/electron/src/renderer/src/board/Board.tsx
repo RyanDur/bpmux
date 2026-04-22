@@ -68,9 +68,14 @@ interface BoardProps {
   // Callback fired when Board's drill-in closes (internal or external).
   // AppShell clears its drillRequest so a future re-click re-triggers.
   onDrillClosed?: () => void
+  // Collapsed state for Ctrl+P toggle. When true, the aside stays
+  // mounted (state preserved) but animates to 0 width via CSS. When
+  // false, the aside is visible at its normal width. See Board.css
+  // for the transition declaration (#351 AC3).
+  hidden?: boolean
 }
 
-function Board({ messages, drillRequest, onDrillClosed }: BoardProps): React.JSX.Element {
+function Board({ messages, drillRequest, onDrillClosed, hidden }: BoardProps): React.JSX.Element {
   const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
   const [data, setData] = useState<BoardResponse | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
@@ -280,12 +285,16 @@ function Board({ messages, drillRequest, onDrillClosed }: BoardProps): React.JSX
 
   return (
     <aside
-      className="board"
+      className={`board${hidden ? ' board--hidden' : ''}`}
       data-test="board-region"
       tabIndex={0}
       ref={asideRef}
       onKeyDown={handleKeyDown}
       aria-label="Board"
+      aria-hidden={hidden ? true : undefined}
+      // inert removes the element from focus + pointer events when
+      // animating out; aria-hidden keeps AT from traversing.
+      inert={hidden ? true : undefined}
     >
       <header className="board-header">
         <h2 className="board-title">Board</h2>

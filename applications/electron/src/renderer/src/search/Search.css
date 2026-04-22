@@ -10,6 +10,21 @@
   flex-direction: column;
   border: 1px solid var(--border-subtle);
 
+  /* Enter (#351 AC4): slide-down from top + fade-in. Same pattern as
+   * drill-in — @starting-style for on-mount animation. The overlay
+   * covers the chat region so the slide-down reads as "coming from
+   * the chat header" spatially. */
+  transition:
+    transform var(--motion-duration-medium) var(--motion-ease-out),
+    opacity var(--motion-duration-fast) var(--motion-ease-out);
+  transform: translateY(0);
+  opacity: 1;
+
+  @starting-style {
+    transform: translateY(-16px);
+    opacity: 0;
+  }
+
   & .search-header {
     display: flex;
     align-items: center;
