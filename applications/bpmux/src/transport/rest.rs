@@ -661,3 +661,46 @@ pub async fn post_reject_story(
         ),
     }
 }
+
+#[derive(Deserialize)]
+pub struct ReorderPayload {
+    pub state: String,
+    pub position: usize,
+}
+
+/// POST /api/stories/:number/reorder — persist a story's queue
+/// position within a state column. Writes through the existing
+/// `session::priority` index (same durability path as the MCP
+/// `reorder_story` tool); broadcasts board-invalidate so other
+/// surfaces refresh.
+pub async fn post_reorder_story(
+    State(session): State<Arc<session::Session>>,
+    axum::extract::Path(number): axum::extract::Path<u64>,
+    Json(payload): Json<ReorderPayload>,
+) -> impl IntoResponse {
+    let path = match crate::session::priority::default_priority_path() {
+        Ok(p) => p,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                json_headers(),
+                err_body(&format!("priority path: {e}")),
+            );
+        }
+    };
+    let mut index = crate::session::priority::load_priority(&path);
+    crate::session::priority::reorder(&mut index, &payload.state, number, payload.position);
+    if let Err(e) = crate::session::priority::save_priority(&path, &index) {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json_headers(),
+            err_body(&format!("save priority: {e}")),
+        );
+    }
+    broadcast_board_invalidate(&session);
+    (
+        StatusCode::OK,
+        json_headers(),
+        serde_json::json!({ "ok": true }).to_string(),
+    )
+}

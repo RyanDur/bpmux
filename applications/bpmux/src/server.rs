@@ -72,6 +72,10 @@ pub async fn run_server(
             "/api/stories/{number}/reject",
             axum::routing::post(transport::rest::post_reject_story),
         )
+        .route(
+            "/api/stories/{number}/reorder",
+            axum::routing::post(transport::rest::post_reorder_story),
+        )
         .layer(axum::middleware::from_fn_with_state(
             auth_state,
             transport::auth::gate,

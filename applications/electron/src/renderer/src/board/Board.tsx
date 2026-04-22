@@ -177,6 +177,44 @@ function Board(): React.JSX.Element {
     [setData]
   )
 
+  const handleReorder = useCallback(
+    (state: StoryState, moved: number, insertAt: number): void => {
+      const prevData = data
+      setData((prev) => {
+        if (!prev) return prev
+        const inGroup = prev.stories.filter((s) => s.state === state)
+        const others = prev.stories.filter((s) => s.state !== state)
+        const fromIdx = inGroup.findIndex((s) => s.number === moved)
+        if (fromIdx === -1) return prev
+        const [movedStory] = inGroup.splice(fromIdx, 1)
+        const clampedInsert = Math.max(0, Math.min(insertAt - (insertAt > fromIdx ? 1 : 0), inGroup.length))
+        inGroup.splice(clampedInsert, 0, movedStory)
+        return { ...prev, stories: [...others, ...inGroup] }
+      })
+      if (usingMock || !bridge?.apiBase) return
+      const targetPosition = Math.max(0, insertAt)
+      fetch(`${bridge.apiBase}/api/stories/${moved}/reorder`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${bridge.authToken ?? ''}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ state, position: targetPosition })
+      })
+        .then((res) => {
+          if (!res.ok) {
+            setData(prevData)
+            setError(`Reorder failed: HTTP ${res.status}`)
+          }
+        })
+        .catch((err) => {
+          setData(prevData)
+          setError(`Reorder failed: ${err instanceof Error ? err.message : String(err)}`)
+        })
+    },
+    [bridge?.apiBase, bridge?.authToken, data, usingMock]
+  )
+
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLElement>) => {
       // Drill-in owns its own key handling; don't double-dispatch.
@@ -265,6 +303,7 @@ function Board(): React.JSX.Element {
               selectedNumber={effectiveSelected}
               onOpen={handleOpen}
               onSelect={setSelectedNumber}
+              onReorder={handleReorder}
             />
           ))}
         </section>
@@ -290,6 +329,7 @@ interface GroupProps {
   selectedNumber: number | null
   onOpen: (n: number) => void
   onSelect: (n: number) => void
+  onReorder?: (state: StoryState, moved: number, insertAt: number) => void
 }
 
 function BoardGroup({
@@ -298,9 +338,40 @@ function BoardGroup({
   loading,
   selectedNumber,
   onOpen,
-  onSelect
+  onSelect,
+  onReorder
 }: GroupProps): React.JSX.Element {
   const defaultOpen = !group.collapsed
+  const draggable = group.state === 'ready' && onReorder !== undefined
+  const [dropAt, setDropAt] = useState<number | null>(null)
+
+  const handleListDragOver = (event: React.DragEvent<HTMLUListElement>): void => {
+    if (!draggable) return
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'move'
+  }
+
+  const handleRowDragOver = (index: number) => (event: React.DragEvent<HTMLLIElement>): void => {
+    if (!draggable) return
+    event.preventDefault()
+    const rect = event.currentTarget.getBoundingClientRect()
+    const mid = rect.top + rect.height / 2
+    setDropAt(event.clientY < mid ? index : index + 1)
+  }
+
+  const handleDrop = (event: React.DragEvent<HTMLUListElement>): void => {
+    if (!draggable || onReorder === undefined) return
+    event.preventDefault()
+    const raw = event.dataTransfer.getData('text/bpmux-story')
+    const moved = Number.parseInt(raw, 10)
+    if (Number.isNaN(moved) || dropAt === null) {
+      setDropAt(null)
+      return
+    }
+    onReorder(group.state, moved, dropAt)
+    setDropAt(null)
+  }
+
   return (
     <details className="board-group" open={defaultOpen} data-test={`board-group-${group.state}`}>
       <summary className="board-group-summary">
@@ -318,14 +389,23 @@ function BoardGroup({
       ) : stories.length === 0 ? (
         <p className="board-group-empty">none</p>
       ) : (
-        <ul className="board-story-list">
-          {stories.map((story) => (
+        <ul
+          className="board-story-list"
+          onDragOver={handleListDragOver}
+          onDrop={handleDrop}
+          onDragLeave={() => setDropAt(null)}
+        >
+          {stories.map((story, i) => (
             <StoryRow
               key={story.number}
               story={story}
               selected={story.number === selectedNumber}
+              draggable={draggable}
+              dropBefore={dropAt === i}
+              dropAfterLast={dropAt === stories.length && i === stories.length - 1}
               onOpen={onOpen}
               onSelect={onSelect}
+              onRowDragOver={handleRowDragOver(i)}
             />
           ))}
         </ul>
@@ -337,17 +417,40 @@ function BoardGroup({
 interface RowProps {
   story: BoardStory
   selected: boolean
+  draggable: boolean
+  dropBefore: boolean
+  dropAfterLast: boolean
   onOpen: (n: number) => void
   onSelect: (n: number) => void
+  onRowDragOver: (event: React.DragEvent<HTMLLIElement>) => void
 }
 
-function StoryRow({ story, selected, onOpen, onSelect }: RowProps): React.JSX.Element {
+function StoryRow({
+  story,
+  selected,
+  draggable,
+  dropBefore,
+  dropAfterLast,
+  onOpen,
+  onSelect,
+  onRowDragOver
+}: RowProps): React.JSX.Element {
   const type = storyTypeFromLabels(story.labels)
+  const classes = ['board-story-row']
+  if (dropBefore) classes.push('board-story-row--drop-before')
+  if (dropAfterLast) classes.push('board-story-row--drop-after')
   return (
     <li
-      className="board-story-row"
+      className={classes.join(' ')}
       aria-current={selected ? 'true' : undefined}
       data-test={`board-story-${story.number}`}
+      draggable={draggable}
+      onDragStart={(event) => {
+        if (!draggable) return
+        event.dataTransfer.setData('text/bpmux-story', String(story.number))
+        event.dataTransfer.effectAllowed = 'move'
+      }}
+      onDragOver={onRowDragOver}
     >
       <button
         type="button"

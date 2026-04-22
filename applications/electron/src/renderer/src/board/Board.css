@@ -149,6 +149,22 @@
       box-shadow: inset 2px 0 0 var(--accent-brand);
       color: var(--fg-primary);
     }
+
+    &[draggable="true"] {
+      cursor: grab;
+    }
+
+    &[draggable="true"]:active {
+      cursor: grabbing;
+    }
+
+    &.board-story-row--drop-before {
+      box-shadow: inset 0 2px 0 var(--accent-brand);
+    }
+
+    &.board-story-row--drop-after {
+      box-shadow: inset 0 -2px 0 var(--accent-brand);
+    }
   }
 
   & .board-story-button {
