@@ -3,6 +3,7 @@ import { useAnimatedUnmount } from '../hooks/useAnimatedUnmount'
 import { BOARD_INVALIDATE_MARKER, type ChatMessage } from '../transport/types'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import DrillIn from './DrillIn'
+import StoryBadge from './StoryBadge'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import {
   GROUP_ORDER,
@@ -90,6 +91,11 @@ function Board({ messages, drillRequest, onDrillClosed, hidden }: BoardProps): R
   const [usingMock, setUsingMock] = useState<boolean>(false)
   const [selectedNumber, setSelectedNumber] = useState<number | null>(null)
   const [drilledNumber, setDrilledNumber] = useState<number | null>(null)
+  // #368: when a team-accept badge is clicked, open the drill-in AND
+  // auto-expand + scroll the timeline. Tracked as a story number (so
+  // subsequent re-clicks on the same story re-fire even when that
+  // story's drill-in is already open). Cleared on drill close.
+  const [focusTimelineFor, setFocusTimelineFor] = useState<number | null>(null)
   // Reorder announcement (#357 AC5). Updated on each keyboard-driven
   // reorder so screen readers narrate "moved to position N".
   // aria-live="polite" queues the announcement without interrupting
@@ -227,10 +233,18 @@ function Board({ messages, drillRequest, onDrillClosed, hidden }: BoardProps): R
   const handleOpen = useCallback((number: number) => {
     setSelectedNumber(number)
     setDrilledNumber(number)
+    setFocusTimelineFor(null)
+  }, [])
+
+  const handleOpenTimeline = useCallback((number: number) => {
+    setSelectedNumber(number)
+    setDrilledNumber(number)
+    setFocusTimelineFor(number)
   }, [])
 
   const handleBack = useCallback(() => {
     setDrilledNumber(null)
+    setFocusTimelineFor(null)
     onDrillClosed?.()
     // Refocus the board so arrow nav resumes immediately.
     requestAnimationFrame(() => asideRef.current?.focus())
@@ -403,6 +417,7 @@ function Board({ messages, drillRequest, onDrillClosed, hidden }: BoardProps): R
               ? drillRequest.commentId ?? null
               : null
           }
+          focusTimeline={focusTimelineFor === renderedDrill.number}
           onBack={handleBack}
           onStoryMutated={handleStoryMutated}
         />
@@ -416,6 +431,7 @@ function Board({ messages, drillRequest, onDrillClosed, hidden }: BoardProps): R
               loading={loading && !data}
               selectedNumber={effectiveSelected}
               onOpen={handleOpen}
+              onOpenTimeline={handleOpenTimeline}
               onSelect={setSelectedNumber}
               onReorder={handleReorder}
             />
@@ -442,6 +458,10 @@ interface GroupProps {
   loading: boolean
   selectedNumber: number | null
   onOpen: (n: number) => void
+  // #368: badge click path. Separate from onOpen so the row handler
+  // can distinguish a plain-open from a timeline-focused-open and
+  // pass the state through to DrillIn.
+  onOpenTimeline?: (n: number) => void
   onSelect: (n: number) => void
   onReorder?: (state: StoryState, moved: number, insertAt: number) => void
 }
@@ -452,6 +472,7 @@ function BoardGroup({
   loading,
   selectedNumber,
   onOpen,
+  onOpenTimeline,
   onSelect,
   onReorder
 }: GroupProps): React.JSX.Element {
@@ -541,6 +562,7 @@ function BoardGroup({
                   : undefined
               }
               onOpen={onOpen}
+              onOpenTimeline={onOpenTimeline}
               onSelect={onSelect}
               onRowDragOver={handleRowDragOver(i)}
             />
@@ -565,6 +587,7 @@ interface RowProps {
   total: number
   onKeyboardReorder?: (direction: 'up' | 'down') => void
   onOpen: (n: number) => void
+  onOpenTimeline?: (n: number) => void
   onSelect: (n: number) => void
   onRowDragOver: (event: React.DragEvent<HTMLLIElement>) => void
 }
@@ -579,6 +602,7 @@ function StoryRow({
   total,
   onKeyboardReorder,
   onOpen,
+  onOpenTimeline,
   onSelect,
   onRowDragOver
 }: RowProps): React.JSX.Element {
@@ -629,6 +653,7 @@ function StoryRow({
       >
         <small className="board-story-number">#{story.number}</small>
         <StoryTypeGlyph type={type} />
+        <StoryBadge story={story} onOpenTimeline={onOpenTimeline} />
         <b className="board-story-title">{story.title}</b>
       </button>
     </li>

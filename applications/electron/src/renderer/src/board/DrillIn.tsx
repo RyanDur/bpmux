@@ -165,6 +165,10 @@ interface Props {
   // #354 close-direction: Board's useAnimatedUnmount flips this to
   // false to trigger the exit transition before unmount.
   visible: boolean
+  // #368: when true, DrillIn auto-expands the timeline section + scrolls
+  // it into view on mount. Used by the team-accept badge click path so
+  // opening a drill-in via the badge lands directly on the audit trail.
+  focusTimeline?: boolean
   onBack: () => void
   onStoryMutated: (story: BoardStory) => void
 }
@@ -210,6 +214,7 @@ function DrillIn({
   messages,
   scrollToCommentId,
   visible,
+  focusTimeline,
   onBack,
   onStoryMutated
 }: Props): React.JSX.Element {
@@ -234,6 +239,12 @@ function DrillIn({
   })
   const articleRef = useRef<HTMLElement | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+  // #368 badge-click → focus the timeline section. Ref instead of
+  // a controlled `open` prop so the user can still toggle the
+  // details closed after the initial focus without losing the state
+  // to a re-render pulse. The effect below flips open + scrolls only
+  // when `focusTimeline` transitions to true.
+  const timelineDetailsRef = useRef<HTMLDetailsElement | null>(null)
   const commentTextareaRef = useRef<HTMLTextAreaElement | null>(null)
   // Invalidate subscription: remember how many messages we've seen so
   // we only react to NEW marker messages (not the backfill hydration
@@ -269,6 +280,21 @@ function DrillIn({
       textareaRef.current?.focus()
     }
   }, [mode])
+
+  // #368: when the drill-in is opened via a team-accept badge click,
+  // auto-expand the timeline details + scroll the section into view
+  // so the user lands directly on the audit trail. RAF defers the
+  // DOM mutation past the mount commit so the scroll measurement
+  // picks up the now-open layout.
+  useEffect(() => {
+    if (!focusTimeline) return
+    const el = timelineDetailsRef.current
+    if (!el) return
+    el.open = true
+    window.requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
+  }, [focusTimeline])
 
   useEffect(() => {
     if (!toast) return
@@ -749,7 +775,11 @@ function DrillIn({
         </form>
       </section>
 
-      <details className="drill-in-timeline" data-test="drill-in-timeline">
+      <details
+        className="drill-in-timeline"
+        data-test="drill-in-timeline"
+        ref={timelineDetailsRef}
+      >
         <summary className="drill-in-timeline-summary">
           <h4>Timeline{timeline.events ? ` (${timeline.events.length})` : ''}</h4>
         </summary>

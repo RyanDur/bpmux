@@ -249,11 +249,17 @@
   }
 
   & .board-story-button {
-    display: grid;
-    grid-template-columns: auto auto 1fr;
+    /* Flex (not grid) because #368 added a conditional StoryBadge
+     * sibling — the badge only renders for delivered / accepted /
+     * rework rows. Grid's fixed column count would leave an empty
+     * cell on rows without a badge, misaligning titles. Flex + min-
+     * width: 0 on the title lets the row lay out correctly whether
+     * the badge is present or not. */
+    display: flex;
     align-items: center;
     gap: var(--space-8);
     width: 100%;
+    min-width: 0;
     text-align: left;
     padding: var(--space-6) var(--space-16);
     color: var(--fg-primary);
@@ -266,6 +272,14 @@
     &:focus-visible {
       outline: 2px solid var(--accent-brand);
       outline-offset: -2px;
+    }
+
+    & .board-story-title {
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
   }
 
@@ -339,4 +353,67 @@
   .board {
     display: none;
   }
+}
+
+/* #368 team-accept audit badge. Inline next to story number + type
+ * glyph, left of the title. Shape + color vary by kind so color-
+ * blind + monochrome-theme readers differentiate via the glyph ↻ vs
+ * ✓ and the fill vs outline treatment, not just hue. */
+.story-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 0 0 auto;
+  padding: 0 var(--space-6);
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  font-weight: 600;
+  /* Base is plain text color; variants override. */
+  color: var(--fg-primary);
+  background: transparent;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* Button-variant badges (clickable → drill-in timeline). Keep the
+ * hover / focus affordances subtle so the badge reads as an inline
+ * label by default, actionable on reach. */
+button.story-badge {
+  cursor: pointer;
+
+  &:hover {
+    filter: brightness(1.1);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--accent-brand);
+    outline-offset: 1px;
+  }
+}
+
+/* Solid green — team-accept lane (bug/chore). Contrast: white text
+ * on accent-success clears AA at the 11px size per #347 a11y
+ * substrate (font-weight: 600 helps). */
+.story-badge--team-accepted {
+  background: var(--accent-success);
+  color: var(--bg-base);
+  border-color: var(--accent-success);
+}
+
+/* Outlined green — owner-accept lane (feature). Shape distinction
+ * from solid team badge so the two lanes read instantly. */
+.story-badge--accepted {
+  color: var(--accent-success);
+  border-color: var(--accent-success);
+  background: transparent;
+}
+
+/* Amber — active rework cycle. Distinct from the two green variants
+ * by color AND glyph (↻ vs ✓), double-encoded for a11y. */
+.story-badge--rework {
+  color: var(--accent-warning);
+  border-color: var(--accent-warning);
+  background: transparent;
 }
