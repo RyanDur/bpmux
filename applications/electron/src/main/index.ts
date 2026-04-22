@@ -40,19 +40,21 @@ function resolveAuthTokenPath(): string {
 
 function checkBackendReady(): Promise<boolean> {
   return new Promise((resolve) => {
+    // Use the dedicated /healthz liveness route (unauth, constant-size)
+    // instead of /api/messages, which returns the full session log and
+    // gets slower than the readiness timeout once the log grows past
+    // a few hundred KB. See `applications/bpmux/src/server.rs`.
     const req = http.request(
       {
         host: BACKEND_HOST,
         port: BACKEND_PORT,
-        path: '/api/messages',
+        path: '/healthz',
         method: 'GET',
         timeout: READY_POLL_INTERVAL_MS
       },
       (res) => {
-        // 401 means listening + auth-gated; 200 would also mean up.
-        // Drain and release the socket.
         res.resume()
-        resolve(res.statusCode === 401 || res.statusCode === 200)
+        resolve(res.statusCode === 200)
       }
     )
     req.on('error', () => resolve(false))

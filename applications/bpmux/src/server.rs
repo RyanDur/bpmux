@@ -92,6 +92,13 @@ pub async fn run_server(
         ));
 
     let router = axum::Router::new()
+        // Liveness probe: tiny, no auth, no data. Electron's
+        // spawn-or-adopt flow polls this to decide when the backend
+        // is ready to accept requests. Kept separate from
+        // `/api/messages` — which is auth-free by design but also
+        // returns the full log and gets slower as the session
+        // grows, eventually exceeding Electron's readiness timeout.
+        .route("/healthz", axum::routing::get(|| async { "ok" }))
         .route("/ws", axum::routing::any(transport::ws::ws_handler))
         .route(
             "/api/messages",
