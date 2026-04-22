@@ -142,21 +142,49 @@ export function useWebSocket(
     if (!historyLoadedRef.current && apiBase && authToken) {
       historyLoadedRef.current = true
       const controller = new AbortController()
-      fetch(`${apiBase}/api/messages?chat_only=true&limit=200`, {
-        headers: { Authorization: `Bearer ${authToken}` },
-        signal: controller.signal
-      })
-        .then(async (res) => {
-          if (!res.ok) throw new Error(`history fetch: ${res.status}`)
+      const headers = { Authorization: `Bearer ${authToken}` }
+      // Two parallel hydrations (#364):
+      //   1. chat_only=true — regular chat + insight history for the
+      //      MessageList; unchanged behavior.
+      //   2. message_type=activity — small activity seed so the
+      //      sidebar presence dots derive sensibly on first render.
+      //      Without this, usePresence saw zero activity messages in
+      //      the initial state (chat_only=true filters them out) and
+      //      every role displayed as 'offline' until a NEW tool-call
+      //      broadcast arrived over WS. That left pm + designer stuck
+      //      at offline mid-session even while they were actively
+      //      messaging, because chat messages don't update presence.
+      //   The activity seed is small (50 events covers each role's
+      //   latest state with wide margin) and activity events are
+      //   single-word payloads, so the extra RTT is negligible.
+      Promise.all([
+        fetch(`${apiBase}/api/messages?chat_only=true&limit=200`, {
+          headers,
+          signal: controller.signal
+        }).then(async (res) => {
+          if (!res.ok) throw new Error(`chat history fetch: ${res.status}`)
+          return (await res.json()) as HistoryMessage[]
+        }),
+        fetch(`${apiBase}/api/messages?message_type=activity&limit=50`, {
+          headers,
+          signal: controller.signal
+        }).then(async (res) => {
+          if (!res.ok) throw new Error(`activity history fetch: ${res.status}`)
           return (await res.json()) as HistoryMessage[]
         })
-        .then((history) => {
+      ])
+        .then(([chat, activity]) => {
           if (unmountedRef.current) return
-          const chronological = [...history].reverse()
+          // Both responses are newest-first from the server; combine
+          // and chronological-sort before merging so the resulting
+          // state stays ts-ordered regardless of fetch arrival order.
+          const combined = [...chat, ...activity].sort((a, b) =>
+            a.ts.localeCompare(b.ts)
+          )
           setMessages((live) => {
             const seen = new Set<string>()
             const merged: ChatMessage[] = []
-            for (const h of chronological) {
+            for (const h of combined) {
               const chat: ChatMessage = {
                 id: `hist-${h.ts}-${merged.length}`,
                 from: h.from,

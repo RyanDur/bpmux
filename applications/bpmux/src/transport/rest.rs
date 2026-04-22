@@ -41,6 +41,11 @@ pub struct GetMessagesParams {
     /// role via WebSocket.
     #[serde(rename = "as")]
     pub as_peer: Option<String>,
+    /// Filter to exactly this message_type (#364). When set, overrides
+    /// `chat_only`'s default exclusion so callers can hydrate presence
+    /// (`message_type=activity`) without bumping `chat_only=false` and
+    /// pulling unrelated message classes.
+    pub message_type: Option<String>,
 }
 
 pub async fn get_messages(
@@ -52,7 +57,13 @@ pub async fn get_messages(
             let chat_only = params.chat_only.unwrap_or(true);
             let offset = params.offset.unwrap_or(0);
             let limit = params.limit.unwrap_or(DEFAULT_MESSAGE_LIMIT);
-            let mut filtered: Vec<_> = if chat_only {
+            let mut filtered: Vec<_> = if let Some(ref mt) = params.message_type {
+                let wanted = session::MessageType::from(Some(mt.as_str()));
+                messages
+                    .into_iter()
+                    .filter(|m| m.message_type == wanted)
+                    .collect()
+            } else if chat_only {
                 messages.into_iter().filter(|m| m.is_chat()).collect()
             } else {
                 messages

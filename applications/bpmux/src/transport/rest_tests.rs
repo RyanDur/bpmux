@@ -277,6 +277,31 @@ async fn chat_only_false_returns_all() {
 }
 
 #[tokio::test]
+async fn message_type_filter_returns_only_matching_type() {
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let session = seed_mixed_messages(&dir);
+    let router = axum::Router::new()
+        .route("/api/messages", axum::routing::get(get_messages))
+        .with_state(session);
+    let request = Request::builder()
+        .method("GET")
+        .uri("/api/messages?limit=50&message_type=activity")
+        .body(Body::empty())
+        .expect("build request");
+    let response = router.oneshot(request).await.expect("response");
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .expect("read body");
+    let msgs: Vec<serde_json::Value> = serde_json::from_slice(&body).expect("parse json");
+    assert_eq!(msgs.len(), 2, "should return only activity messages");
+    assert!(
+        msgs.iter().all(|m| m["message_type"] == "activity"),
+        "every returned message should be activity-typed"
+    );
+}
+
+#[tokio::test]
 async fn defaults_to_twenty_messages() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
