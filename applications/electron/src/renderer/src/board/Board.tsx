@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { ChatMessage } from '../transport/types'
+import { BOARD_INVALIDATE_MARKER, type ChatMessage } from '../transport/types'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import DrillIn from './DrillIn'
 import StoryTypeGlyph from './StoryTypeGlyph'
@@ -13,7 +13,13 @@ import {
 } from './types'
 import './Board.css'
 
-const POLL_INTERVAL_MS = 30_000
+// Safety-net fallback refetch interval. Primary refresh is the WS
+// BOARD_INVALIDATE_MARKER subscription (#353); polling survives as a
+// cross-check in case a broadcast is missed (WS reconnect window, a
+// backend mutation that skipped the invalidate emit, etc). 5 minutes
+// is slow enough to not feel like primary polling but fast enough to
+// self-heal within a single work rhythm.
+const POLL_INTERVAL_MS = 5 * 60_000
 
 // Mock stories used when `window.bpmux.apiBase` is absent or the real
 // endpoint 404s during parallel backend bring-up. The shape must match
@@ -130,11 +136,19 @@ function Board({ messages, drillRequest, onDrillClosed, hidden }: BoardProps): R
     [bridge?.apiBase, bridge?.authToken]
   )
 
+  // Live-refresh (#353): Board subscribes to BOARD_INVALIDATE_MARKER
+  // broadcasts on the chat stream — same pattern as DrillIn's comment
+  // refresh (#345). Ref tracks last-seen count so backfill markers on
+  // mount don't trigger a refetch (the initial fetch below handles
+  // first load).
+  const seenMessageCountRef = useRef<number>(messages.length)
+
   useEffect(() => {
     const controller = new AbortController()
-    // Initial fetch + 30s polling is external-data sync (the React-
-    // recommended effect use); fetchBoard resolves asynchronously so
-    // any setState happens after the effect body returns.
+    // Initial fetch + safety-net polling (slow interval, primary
+    // refresh is the invalidate subscription below). fetchBoard
+    // resolves async so any setState happens after the effect body
+    // returns, per React's external-data-sync pattern.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchBoard(controller.signal)
     const id = setInterval(() => {
@@ -145,6 +159,22 @@ function Board({ messages, drillRequest, onDrillClosed, hidden }: BoardProps): R
       clearInterval(id)
     }
   }, [fetchBoard])
+
+  // Invalidate subscription: any new BOARD_INVALIDATE_MARKER on the
+  // chat stream triggers a refetch. Same ref-tracked last-seen-count
+  // gating as DrillIn so backfill on initial hydration doesn't thrash.
+  useEffect(() => {
+    const prev = seenMessageCountRef.current
+    if (messages.length <= prev) {
+      seenMessageCountRef.current = messages.length
+      return
+    }
+    const fresh = messages.slice(prev)
+    seenMessageCountRef.current = messages.length
+    if (fresh.some((m) => m.text === BOARD_INVALIDATE_MARKER)) {
+      void fetchBoard()
+    }
+  }, [messages, fetchBoard])
 
   const stories = useMemo(() => data?.stories ?? [], [data])
   const grouped = useMemo(() => groupStories(stories), [stories])
