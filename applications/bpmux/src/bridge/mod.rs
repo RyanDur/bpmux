@@ -19,7 +19,7 @@ use serde_json::json;
 use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite;
 
-mod tools;
+pub(crate) mod tools;
 mod tools_stories;
 pub(crate) mod tracker;
 

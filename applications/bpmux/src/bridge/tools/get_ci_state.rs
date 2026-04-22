@@ -8,7 +8,7 @@ use crate::bridge::tracker::{StoryTracker, WorkflowRunEntry};
 use crate::terminal::ci::{CiState, RunEntry, classify_runs, github_actions_url};
 
 #[derive(Debug, serde::Serialize, PartialEq, Eq)]
-pub(crate) struct CiStateReport {
+pub struct CiStateReport {
     pub conclusion: &'static str,
     pub last_run_id: Option<u64>,
     pub branch: &'static str,
@@ -17,7 +17,7 @@ pub(crate) struct CiStateReport {
     pub display_title: Option<String>,
 }
 
-pub(crate) fn build_ci_state_report(runs: &[RunEntry]) -> CiStateReport {
+pub fn build_ci_state_report(runs: &[RunEntry]) -> CiStateReport {
     let event = classify_runs(runs);
     let conclusion = match event.state {
         CiState::Green => "success",

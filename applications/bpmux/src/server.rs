@@ -85,6 +85,7 @@ pub async fn run_server(
             "/api/metrics",
             axum::routing::get(transport::rest::get_metrics),
         )
+        .route("/api/ci", axum::routing::get(transport::rest::get_ci))
         .layer(axum::middleware::from_fn_with_state(
             auth_state,
             transport::auth::gate,

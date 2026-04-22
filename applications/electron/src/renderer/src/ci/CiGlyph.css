@@ -1,7 +1,29 @@
 .ci-glyph {
   font-size: 0.75rem;
   color: var(--fg-secondary);
-  /* Escape the titlebar's drag region so the glyph is hoverable /
-   * clickable when the CI hook lands. */
+  text-decoration: none;
+  padding: var(--space-2) var(--space-8);
+  border-radius: 4px;
   -webkit-app-region: no-drag;
+
+  &:hover {
+    background: var(--bg-highlighted);
+    color: var(--fg-primary);
+  }
+
+  &.ci-glyph--success {
+    color: var(--accent-success);
+  }
+
+  &.ci-glyph--failure {
+    color: var(--accent-error);
+  }
+
+  &.ci-glyph--in_progress {
+    color: var(--accent-warning);
+  }
+
+  &.ci-glyph--unknown {
+    color: var(--fg-dim);
+  }
 }

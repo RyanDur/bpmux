@@ -667,6 +667,45 @@ pub struct CommentPayload {
     pub body: String,
 }
 
+/// GET /api/ci — current CI state for the main branch + last-run metadata.
+/// Reuses the MCP bridge's CI report builder so the Electron CI glyph +
+/// MCP get_ci_state always agree by construction.
+pub async fn get_ci(axum::Extension(tracker): axum::Extension<TrackerHandle>) -> impl IntoResponse {
+    let Some(tracker) = tracker else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            json_headers(),
+            err_body("tracker not configured"),
+        );
+    };
+    use crate::bridge::tracker::StoryTracker;
+    match tracker.list_latest_run_on_main().await {
+        Ok(latest) => {
+            let runs: Vec<crate::terminal::ci::RunEntry> = latest
+                .iter()
+                .map(|w| crate::terminal::ci::RunEntry {
+                    status: w.status.clone(),
+                    conclusion: w.conclusion.clone(),
+                    head_sha: w.head_sha.clone(),
+                    display_title: w.display_title.clone(),
+                    database_id: w.database_id,
+                })
+                .collect();
+            let report = crate::bridge::tools::build_ci_state_report(&runs);
+            (
+                StatusCode::OK,
+                json_headers(),
+                serde_json::to_string(&report).unwrap_or_else(|_| "{}".to_string()),
+            )
+        }
+        Err(e) => (
+            StatusCode::BAD_GATEWAY,
+            json_headers(),
+            err_body(&format!("ci state failed: {e}")),
+        ),
+    }
+}
+
 /// GET /api/metrics — velocity + DORA computed from the session log.
 /// Returns JSON mirroring `session::velocity::VelocityMetrics` so the
 /// Electron renderer can display without re-deriving.

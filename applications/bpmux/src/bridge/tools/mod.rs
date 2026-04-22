@@ -45,6 +45,7 @@ pub(in crate::bridge) use capture_screen::handle_capture_screen;
 pub(in crate::bridge) use classifier_misfire::handle_classifier_misfire;
 pub(in crate::bridge) use get_bookmark::handle_get_bookmark;
 pub(in crate::bridge) use get_briefing::handle_get_briefing;
+pub(crate) use get_ci_state::build_ci_state_report;
 pub(in crate::bridge) use get_ci_state::handle_get_ci_state;
 pub(in crate::bridge) use get_identity::handle_get_identity;
 pub(in crate::bridge) use get_token_report::handle_get_token_report;
