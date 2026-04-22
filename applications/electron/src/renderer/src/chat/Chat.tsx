@@ -1,3 +1,4 @@
+import Metrics from '../metrics/Metrics'
 import Search from '../search/Search'
 import type { ChatMessage, ConnectionStatus } from '../transport/types'
 import type { SendOptions } from '../transport/useWebSocket'
@@ -10,7 +11,9 @@ interface Props {
   status: ConnectionStatus
   recipient: string | null
   searchOpen: boolean
+  metricsOpen: boolean
   onCloseSearch: () => void
+  onCloseMetrics: () => void
   apiBase: string | undefined
   authToken: string | undefined
   onSend: (text: string, opts?: SendOptions) => void
@@ -21,7 +24,9 @@ function Chat({
   status,
   recipient,
   searchOpen,
+  metricsOpen,
   onCloseSearch,
+  onCloseMetrics,
   apiBase,
   authToken,
   onSend
@@ -46,7 +51,9 @@ function Chat({
           <small>DM → {recipient}</small>
         </aside>
       )}
-      {searchOpen ? (
+      {metricsOpen ? (
+        <Metrics apiBase={apiBase} authToken={authToken} onClose={onCloseMetrics} />
+      ) : searchOpen ? (
         <Search apiBase={apiBase} authToken={authToken} onClose={onCloseSearch} />
       ) : (
         <MessageList messages={messages} />

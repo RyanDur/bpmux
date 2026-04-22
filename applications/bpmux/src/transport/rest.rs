@@ -667,6 +667,29 @@ pub struct CommentPayload {
     pub body: String,
 }
 
+/// GET /api/metrics — velocity + DORA computed from the session log.
+/// Returns JSON mirroring `session::velocity::VelocityMetrics` so the
+/// Electron renderer can display without re-deriving.
+pub async fn get_metrics(State(session): State<Arc<session::Session>>) -> impl IntoResponse {
+    let messages = match session.read_messages() {
+        Ok(m) => m,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                json_headers(),
+                err_body(&format!("read failed: {e}")),
+            );
+        }
+    };
+    let now = chrono::Utc::now();
+    let metrics = crate::session::velocity::compute(&messages, now, |_| true);
+    (
+        StatusCode::OK,
+        json_headers(),
+        serde_json::to_string(&metrics).unwrap_or_else(|_| "{}".to_string()),
+    )
+}
+
 /// GET /api/stories/:number/comments — list comments for a story.
 pub async fn get_story_comments(
     axum::Extension(tracker): axum::Extension<TrackerHandle>,

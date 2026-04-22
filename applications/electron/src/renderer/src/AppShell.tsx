@@ -25,6 +25,7 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
   const [boardOpen, setBoardOpen] = useState<boolean>(true)
   const [recipient, setRecipient] = useState<string | null>(null)
   const [searchOpen, setSearchOpen] = useState<boolean>(false)
+  const [metricsOpen, setMetricsOpen] = useState<boolean>(false)
   const { theme, toggle: toggleTheme } = useTheme()
   const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
 
@@ -41,6 +42,12 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
       if ((event.key === 'f' || event.key === 'F') && !event.altKey && !event.shiftKey) {
         event.preventDefault()
         setSearchOpen(true)
+        return
+      }
+
+      if ((event.key === 'm' || event.key === 'M') && !event.altKey && event.shiftKey) {
+        event.preventDefault()
+        setMetricsOpen((prev) => !prev)
         return
       }
 
@@ -82,7 +89,9 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
           status={status}
           recipient={recipient}
           searchOpen={searchOpen}
+          metricsOpen={metricsOpen}
           onCloseSearch={() => setSearchOpen(false)}
+          onCloseMetrics={() => setMetricsOpen(false)}
           apiBase={bridge?.apiBase}
           authToken={bridge?.authToken}
           onSend={onSend}
