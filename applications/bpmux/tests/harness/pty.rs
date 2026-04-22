@@ -92,9 +92,16 @@ impl TestBpmux {
         if let Ok(repo) = std::env::var("BPMUX_REPO") {
             cmd.env("BPMUX_REPO", repo);
         }
-        // Set BPMUX_ROOT to the actual repo root so /roadmap can find ROADMAP.md
-        let manifest_dir = env!("CARGO_MANIFEST_DIR");
-        cmd.env("BPMUX_ROOT", manifest_dir);
+        // Set BPMUX_ROOT to the actual repo root so view_roadmap can find
+        // ROADMAP.md. CARGO_MANIFEST_DIR points at applications/bpmux/
+        // post-workspace-refactor, and ROADMAP.md sits at the repo root
+        // two parents up.
+        let workspace_root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .ancestors()
+            .nth(2)
+            .expect("workspace root two parents up from CARGO_MANIFEST_DIR")
+            .to_path_buf();
+        cmd.env("BPMUX_ROOT", &workspace_root);
         // Isolate the shared usage-counter file so tests don't read from
         // (or clobber) the developer's real ~/.bpmux/usage.json. Landed
         // with #230 when cross-session persistence started pulling that
