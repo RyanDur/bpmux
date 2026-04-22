@@ -1,0 +1,241 @@
+/* Drill-in view — replaces the list inside the board <aside> when a
+ * story is opened. Shares the parent's width; scrolls inside its own
+ * body region so the header + action bar stay pinned. */
+
+.drill-in {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  outline: none;
+  position: relative;
+
+  & .drill-in-header {
+    padding: var(--space-8) var(--space-16);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  & .drill-in-back {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-6);
+    padding: var(--space-4) var(--space-6);
+    color: var(--fg-secondary);
+    border-radius: 4px;
+
+    &:hover {
+      background: var(--bg-highlighted);
+      color: var(--fg-primary);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--accent-brand);
+      outline-offset: 2px;
+    }
+  }
+
+  & .drill-in-back-arrow {
+    color: var(--fg-secondary);
+  }
+
+  & .drill-in-crumb {
+    font-size: 0.75rem;
+    letter-spacing: 0.02em;
+  }
+
+  & .drill-in-meta {
+    padding: var(--space-16);
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+  }
+
+  & .drill-in-title {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-8);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--fg-primary);
+    line-height: 1.35;
+  }
+
+  & .drill-in-title-text {
+    font-weight: 600;
+  }
+
+  & .drill-in-meta-list {
+    display: grid;
+    grid-template-columns: 88px 1fr;
+    row-gap: var(--space-4);
+    column-gap: var(--space-8);
+    font-size: 0.75rem;
+
+    & dt {
+      color: var(--fg-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    & dd {
+      color: var(--fg-primary);
+      min-width: 0;
+    }
+
+    & em {
+      color: var(--fg-dim);
+      font-style: italic;
+    }
+  }
+
+  & .drill-in-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+  }
+
+  & .drill-in-chip {
+    padding: var(--space-2) var(--space-6);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    background: var(--bg-base);
+    color: var(--fg-secondary);
+    font-size: 0.6875rem;
+  }
+
+  & .drill-in-body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: var(--space-16);
+    min-height: 0;
+  }
+
+  & .drill-in-body-text {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-family: inherit;
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    color: var(--fg-primary);
+    margin: 0;
+  }
+
+  & .drill-in-actions {
+    padding: var(--space-8) var(--space-16) var(--space-16);
+    border-top: 1px solid var(--border-subtle);
+    background: var(--bg-elevated);
+  }
+
+  & .drill-in-action-row {
+    display: flex;
+    gap: var(--space-8);
+    padding: 0;
+    margin: 0;
+    list-style: none;
+
+    & li {
+      list-style: none;
+    }
+  }
+
+  & .drill-in-reject-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+  }
+
+  & .drill-in-reject-label {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+
+    & small {
+      color: var(--fg-dim);
+      font-size: 0.6875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    & textarea {
+      resize: vertical;
+      min-height: 64px;
+      max-height: 160px;
+      background: var(--bg-highlighted);
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
+      padding: var(--space-6) var(--space-8);
+      font-size: 0.8125rem;
+      line-height: 1.5;
+      color: var(--fg-primary);
+      outline: none;
+
+      &:focus {
+        border-color: var(--border-strong);
+      }
+    }
+  }
+
+  & .drill-in-btn {
+    padding: var(--space-6) var(--space-16);
+    border-radius: 4px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--accent-brand);
+      outline-offset: 2px;
+    }
+
+    &.drill-in-btn--primary {
+      background: var(--accent-brand);
+      color: #0a0a0a;
+
+      &:hover:not(:disabled) {
+        filter: brightness(1.1);
+      }
+    }
+
+    &.drill-in-btn--secondary {
+      background: transparent;
+      border-color: var(--accent-warning);
+      color: var(--accent-warning);
+
+      &:hover:not(:disabled) {
+        background: rgba(212, 161, 60, 0.15);
+      }
+    }
+
+    &.drill-in-btn--ghost {
+      background: transparent;
+      color: var(--fg-secondary);
+
+      &:hover:not(:disabled) {
+        background: var(--bg-highlighted);
+        color: var(--fg-primary);
+      }
+    }
+  }
+
+  & .drill-in-toast {
+    position: absolute;
+    left: var(--space-16);
+    right: var(--space-16);
+    bottom: var(--space-16);
+    padding: var(--space-8) var(--space-16);
+    background: #3a1f1f;
+    color: var(--accent-error);
+    border: 1px solid var(--accent-error);
+    border-radius: 4px;
+    font-size: 0.75rem;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  }
+}

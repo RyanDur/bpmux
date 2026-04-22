@@ -1,6 +1,6 @@
 .chat-input {
   border-top: 1px solid var(--border-subtle);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-8);
   background: var(--bg-elevated);
 
   & textarea {
@@ -9,12 +9,12 @@
     background: var(--bg-highlighted);
     border: 1px solid var(--border-subtle);
     border-radius: 4px;
-    padding: var(--space-2) 10px;
+    padding: var(--space-8);
     font-size: 0.875rem;
     line-height: 1.5;
     outline: none;
     color: var(--fg-primary);
-    min-height: 36px;
+    min-height: 40px;
     max-height: 144px;
     overflow-y: auto;
 

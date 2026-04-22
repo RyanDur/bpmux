@@ -35,7 +35,7 @@ const LABEL_NEEDS_FIXES: &str = "needs fixes";
 /// payload to specific roles. This marker is system-typed so it
 /// doesn't clutter chat and is structurally identifiable without
 /// substring matching on signal text.
-pub(super) const BOARD_INVALIDATE_MARKER: &str = "__BPMUX_BOARD_INVALIDATE__";
+pub const BOARD_INVALIDATE_MARKER: &str = "__BPMUX_BOARD_INVALIDATE__";
 
 /// Build the board-invalidate broadcast signal. System-typed so the
 /// TUI recognizes it as an internal marker rather than a chat line.

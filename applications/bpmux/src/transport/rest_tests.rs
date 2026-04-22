@@ -738,3 +738,421 @@ async fn simulate_input_submit_enqueues_submit_event() {
         TerminalInjectEvent::Submit
     ));
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// Board + story REST endpoint tests
+//
+// Two axes: (a) tracker-absent path — handlers must return 503 with
+// `{"error": "tracker not configured"}` so the renderer can show a
+// banner rather than a blank board; (b) tracker-present path — an
+// httpmock-backed OctocrabStoryTracker simulates the GitHub REST
+// surface so we exercise the real HTTP client + JSON shaping.
+// ─────────────────────────────────────────────────────────────────────
+
+use crate::bridge::tracker::OctocrabStoryTracker;
+use crate::transport::rest::TrackerHandle;
+use httpmock::{Method, MockServer};
+use serde_json::{Value, json};
+
+fn board_test_session(
+    dir: &TempDir,
+) -> (Arc<session::Session>, broadcast::Sender<session::Message>) {
+    let (tx, _rx) = broadcast::channel(16);
+    let session = Arc::new(session::Session::new(
+        dir.path().to_path_buf(),
+        "ryan".to_string(),
+        tx.clone(),
+    ));
+    (session, tx)
+}
+
+/// Mirrors `tracker_contract_tests::author`. Octocrab's Issue requires
+/// a fully-populated Author; this keeps the board REST tests self-
+/// contained — duplicating ~20 lines of JSON is cheaper than exposing
+/// the bridge test helpers cross-module.
+fn board_author() -> Value {
+    json!({
+        "login": "ryan",
+        "id": 1,
+        "node_id": "MDQ6VXNlcjE=",
+        "avatar_url": "https://example.test/avatar.png",
+        "gravatar_id": "",
+        "url": "https://example.test/users/ryan",
+        "html_url": "https://example.test/ryan",
+        "followers_url": "https://example.test/ryan/followers",
+        "following_url": "https://example.test/ryan/following{/other_user}",
+        "gists_url": "https://example.test/ryan/gists{/gist_id}",
+        "starred_url": "https://example.test/ryan/starred{/owner}{/repo}",
+        "subscriptions_url": "https://example.test/ryan/subscriptions",
+        "organizations_url": "https://example.test/ryan/orgs",
+        "repos_url": "https://example.test/ryan/repos",
+        "events_url": "https://example.test/ryan/events{/privacy}",
+        "received_events_url": "https://example.test/ryan/received_events",
+        "type": "User",
+        "site_admin": false
+    })
+}
+
+fn board_issue(number: u64, title: &str, state: &str, body: Option<&str>) -> Value {
+    json!({
+        "id": number,
+        "node_id": "MDU6SXNzdWUx",
+        "url": format!("https://example.test/issues/{number}"),
+        "repository_url": "https://example.test/repo",
+        "labels_url": format!("https://example.test/issues/{number}/labels{{/name}}"),
+        "comments_url": format!("https://example.test/issues/{number}/comments"),
+        "events_url": format!("https://example.test/issues/{number}/events"),
+        "html_url": format!("https://example.test/web/{number}"),
+        "number": number,
+        "state": state,
+        "state_reason": null,
+        "title": title,
+        "body": body,
+        "user": board_author(),
+        "labels": [],
+        "assignees": [],
+        "author_association": "OWNER",
+        "locked": false,
+        "comments": 0,
+        "created_at": "2026-04-18T12:34:56Z",
+        "updated_at": "2026-04-18T12:34:56Z"
+    })
+}
+
+fn board_comment(body: &str) -> Value {
+    json!({
+        "id": 1,
+        "node_id": "MDEyOklzc3VlQ29tbWVudDE=",
+        "url": "https://example.test/comments/1",
+        "html_url": "https://example.test/web/comment/1",
+        "body": body,
+        "author_association": "OWNER",
+        "user": board_author(),
+        "created_at": "2026-04-18T00:00:00Z"
+    })
+}
+
+fn tracker_for(server: &MockServer) -> OctocrabStoryTracker {
+    OctocrabStoryTracker::with_base_url(
+        &format!("{}/", server.base_url()),
+        "acme".to_string(),
+        "bpmux".to_string(),
+    )
+    .expect("build tracker against mock")
+}
+
+fn board_router(session: Arc<session::Session>, tracker: TrackerHandle) -> axum::Router {
+    use axum::routing::{get, post};
+    axum::Router::new()
+        .route("/api/board", get(crate::transport::rest::get_board))
+        .route(
+            "/api/stories/{number}",
+            get(crate::transport::rest::get_story),
+        )
+        .route(
+            "/api/stories/{number}/accept",
+            post(crate::transport::rest::post_accept_story),
+        )
+        .route(
+            "/api/stories/{number}/reject",
+            post(crate::transport::rest::post_reject_story),
+        )
+        .with_state(session)
+        .layer(axum::Extension(tracker))
+}
+
+async fn get_json(router: axum::Router, uri: &str) -> axum::http::Response<Body> {
+    let request = Request::builder()
+        .method("GET")
+        .uri(uri)
+        .body(Body::empty())
+        .expect("build request");
+    router.oneshot(request).await.expect("response")
+}
+
+async fn post_json(router: axum::Router, uri: &str, body: &str) -> axum::http::Response<Body> {
+    let request = Request::builder()
+        .method("POST")
+        .uri(uri)
+        .header("Content-Type", "application/json")
+        .body(Body::from(body.to_string()))
+        .expect("build request");
+    router.oneshot(request).await.expect("response")
+}
+
+async fn response_json(response: axum::http::Response<Body>) -> Value {
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .expect("read body");
+    serde_json::from_slice(&body).expect("parse json")
+}
+
+#[tokio::test]
+async fn get_board_returns_503_when_tracker_missing() {
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (session, _tx) = board_test_session(&dir);
+    let router = board_router(session, None);
+
+    let response = get_json(router, "/api/board").await;
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+    let body = response_json(response).await;
+    assert_eq!(body["error"], "tracker not configured");
+}
+
+#[tokio::test]
+async fn get_board_returns_stories_with_fetched_at() {
+    let server = MockServer::start();
+    let m = server.mock(|when, then| {
+        when.method(Method::GET).path("/repos/acme/bpmux/issues");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                Value::Array(vec![
+                    board_issue(1, "first", "open", Some("hello")),
+                    board_issue(2, "second", "closed", None),
+                ])
+                .to_string(),
+            );
+    });
+
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (session, _tx) = board_test_session(&dir);
+    let tracker = Some(Arc::new(tracker_for(&server)));
+    let router = board_router(session, tracker);
+
+    let response = get_json(router, "/api/board").await;
+    m.assert();
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = response_json(response).await;
+    let stories = body["stories"].as_array().expect("stories array");
+    assert_eq!(stories.len(), 2);
+    assert_eq!(stories[0]["number"], 1);
+    assert_eq!(stories[0]["title"], "first");
+    assert_eq!(stories[0]["state"], "OPEN");
+    assert_eq!(stories[0]["body"], "hello");
+    // Missing body falls back to "" — renderer gets a stable string,
+    // not a null surprise.
+    assert_eq!(stories[1]["body"], "");
+    assert_eq!(stories[1]["state"], "CLOSED");
+    // Required shape fields per spec.
+    assert!(stories[0]["labels"].is_array());
+    assert!(stories[0]["assignees"].is_array());
+    assert!(stories[0]["created_at"].is_string());
+    assert!(
+        body["fetched_at"].is_string(),
+        "fetched_at timestamp required"
+    );
+}
+
+#[tokio::test]
+async fn get_story_returns_single_issue_with_body() {
+    let server = MockServer::start();
+    let m = server.mock(|when, then| {
+        when.method(Method::GET).path("/repos/acme/bpmux/issues/42");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(board_issue(42, "answer", "open", Some("full body text")).to_string());
+    });
+
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (session, _tx) = board_test_session(&dir);
+    let tracker = Some(Arc::new(tracker_for(&server)));
+    let router = board_router(session, tracker);
+
+    let response = get_json(router, "/api/stories/42").await;
+    m.assert();
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = response_json(response).await;
+    assert_eq!(body["number"], 42);
+    assert_eq!(body["title"], "answer");
+    assert_eq!(body["body"], "full body text");
+}
+
+#[tokio::test]
+async fn get_story_returns_404_when_github_returns_404() {
+    let server = MockServer::start();
+    let m = server.mock(|when, then| {
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/issues/9999");
+        then.status(404)
+            .header("content-type", "application/json")
+            .body(r#"{"message":"Not Found","documentation_url":"https://docs"}"#);
+    });
+
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (session, _tx) = board_test_session(&dir);
+    let tracker = Some(Arc::new(tracker_for(&server)));
+    let router = board_router(session, tracker);
+
+    let response = get_json(router, "/api/stories/9999").await;
+    m.assert();
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    let body = response_json(response).await;
+    assert!(body["error"].as_str().unwrap().contains("#9999 not found"));
+}
+
+#[tokio::test]
+async fn get_story_returns_503_when_tracker_missing() {
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (session, _tx) = board_test_session(&dir);
+    let router = board_router(session, None);
+
+    let response = get_json(router, "/api/stories/1").await;
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+}
+
+#[tokio::test]
+async fn post_accept_story_closes_issue_and_broadcasts_invalidate() {
+    let server = MockServer::start();
+    let remove_label = server.mock(|when, then| {
+        when.method(Method::DELETE)
+            .path("/repos/acme/bpmux/issues/42/labels/delivered");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body("[]");
+    });
+    let close = server.mock(|when, then| {
+        when.method(Method::PATCH)
+            .path("/repos/acme/bpmux/issues/42")
+            .body_includes("\"state\":\"closed\"");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(board_issue(42, "t", "closed", None).to_string());
+    });
+
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (session, tx) = board_test_session(&dir);
+    let mut rx = tx.subscribe();
+    let tracker = Some(Arc::new(tracker_for(&server)));
+    let router = board_router(session, tracker);
+
+    let response = post_json(router, "/api/stories/42/accept", "{}").await;
+    remove_label.assert();
+    close.assert();
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = response_json(response).await;
+    assert_eq!(body["ok"], true);
+
+    // The board-invalidate broadcast must actually fire — without
+    // it, the TUI wouldn't refresh for ~60s after an HTTP-originated
+    // accept.
+    let msg = rx.try_recv().expect("board-invalidate broadcast");
+    assert_eq!(msg.message_type, session::MessageType::System);
+    assert_eq!(msg.text, crate::bridge::BOARD_INVALIDATE_MARKER);
+}
+
+#[tokio::test]
+async fn post_accept_story_returns_503_when_tracker_missing() {
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (session, _tx) = board_test_session(&dir);
+    let router = board_router(session, None);
+
+    let response = post_json(router, "/api/stories/42/accept", "{}").await;
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+}
+
+#[tokio::test]
+async fn post_reject_story_adds_label_and_posts_comment_and_broadcasts() {
+    let server = MockServer::start();
+    let remove_delivered = server.mock(|when, then| {
+        when.method(Method::DELETE)
+            .path("/repos/acme/bpmux/issues/7/labels/delivered");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body("[]");
+    });
+    let add_rejected = server.mock(|when, then| {
+        when.method(Method::POST)
+            .path("/repos/acme/bpmux/issues/7/labels")
+            .body_includes("\"rejected\"");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(Value::Array(vec![]).to_string());
+    });
+    let comment = server.mock(|when, then| {
+        when.method(Method::POST)
+            .path("/repos/acme/bpmux/issues/7/comments")
+            .body_includes("needs more ACs");
+        then.status(201)
+            .header("content-type", "application/json")
+            .body(board_comment("needs more ACs").to_string());
+    });
+
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (session, tx) = board_test_session(&dir);
+    let mut rx = tx.subscribe();
+    let tracker = Some(Arc::new(tracker_for(&server)));
+    let router = board_router(session, tracker);
+
+    let response = post_json(
+        router,
+        "/api/stories/7/reject",
+        r#"{"note":"needs more ACs"}"#,
+    )
+    .await;
+    remove_delivered.assert();
+    add_rejected.assert();
+    comment.assert();
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = response_json(response).await;
+    assert_eq!(body["ok"], true);
+
+    let msg = rx.try_recv().expect("board-invalidate broadcast");
+    assert_eq!(msg.text, crate::bridge::BOARD_INVALIDATE_MARKER);
+}
+
+#[tokio::test]
+async fn post_reject_story_400_on_empty_note() {
+    // The note field is load-bearing: it's what Ryan writes back to
+    // dev on a rejection. Empty note means the rejection has no
+    // actionable context — fail loud at the boundary rather than
+    // posting an empty comment.
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (session, _tx) = board_test_session(&dir);
+    // Tracker present so we know the 400 comes from validation, not
+    // the 503 path.
+    let server = MockServer::start();
+    let tracker = Some(Arc::new(tracker_for(&server)));
+    let router = board_router(session, tracker);
+
+    let response = post_json(router, "/api/stories/7/reject", r#"{"note":""}"#).await;
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    let body = response_json(response).await;
+    assert_eq!(body["error"], "note must not be empty");
+}
+
+#[tokio::test]
+async fn post_reject_story_400_on_whitespace_note() {
+    // Whitespace-only notes are the same trap as empty — the comment
+    // posted to GitHub would be a blank line. Trim-check at the
+    // transport boundary so the renderer can't trivially bypass.
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (session, _tx) = board_test_session(&dir);
+    let server = MockServer::start();
+    let tracker = Some(Arc::new(tracker_for(&server)));
+    let router = board_router(session, tracker);
+
+    let response = post_json(router, "/api/stories/7/reject", r#"{"note":"   \n\t "}"#).await;
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn post_reject_story_returns_503_when_tracker_missing() {
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (session, _tx) = board_test_session(&dir);
+    let router = board_router(session, None);
+
+    let response = post_json(router, "/api/stories/7/reject", r#"{"note":"x"}"#).await;
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+}

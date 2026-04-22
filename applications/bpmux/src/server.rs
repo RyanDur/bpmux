@@ -26,11 +26,19 @@ pub async fn run_server(
     })?;
     let auth_state = AuthState::new(token);
 
-    // Simulate routes live on a sub-router with the auth middleware
-    // applied. Other endpoints (messages, search, screen, lessons)
-    // stay open — they're read-mostly and were never identified as
-    // inject vectors.
-    let simulate_routes = axum::Router::new()
+    // Board + story REST endpoints require a live tracker. Build once
+    // at startup so each request doesn't re-auth with GitHub. None on
+    // missing env — the handlers surface 503 "tracker not configured"
+    // so the renderer can show a tracker-missing banner instead of a
+    // blank board.
+    let tracker: transport::rest::TrackerHandle =
+        crate::bridge::tracker::OctocrabStoryTracker::from_env().map(std::sync::Arc::new);
+
+    // Auth-gated sub-router: simulate_* (existing) + the owner-gate
+    // board/story mutations (new). All routes here sit behind the
+    // bearer+loopback middleware — a single token check covers both
+    // the TUI-injection surface and the issue-mutation surface.
+    let gated_routes = axum::Router::new()
         .route(
             "/api/simulate/click",
             axum::routing::post(transport::rest::simulate_click),
@@ -50,6 +58,19 @@ pub async fn run_server(
         .route(
             "/api/simulate/input_submit",
             axum::routing::post(transport::rest::simulate_input_submit),
+        )
+        .route("/api/board", axum::routing::get(transport::rest::get_board))
+        .route(
+            "/api/stories/{number}",
+            axum::routing::get(transport::rest::get_story),
+        )
+        .route(
+            "/api/stories/{number}/accept",
+            axum::routing::post(transport::rest::post_accept_story),
+        )
+        .route(
+            "/api/stories/{number}/reject",
+            axum::routing::post(transport::rest::post_reject_story),
         )
         .layer(axum::middleware::from_fn_with_state(
             auth_state,
@@ -82,10 +103,11 @@ pub async fn run_server(
             "/api/classifier-misfire",
             axum::routing::post(transport::rest::post_classifier_misfire),
         )
-        .merge(simulate_routes)
+        .merge(gated_routes)
         .with_state(session)
         .layer(axum::Extension(screen_capture))
-        .layer(axum::Extension(inject_tx));
+        .layer(axum::Extension(inject_tx))
+        .layer(axum::Extension(tracker));
     let listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{port}")).await?;
     axum::serve(listener, router)
         .with_graceful_shutdown(async move { ct.cancelled_owned().await })

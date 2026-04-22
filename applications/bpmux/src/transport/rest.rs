@@ -484,3 +484,180 @@ pub async fn post_classifier_misfire(
     ));
     (StatusCode::CREATED, "misfire recorded".to_string())
 }
+
+// ── Board + story REST endpoints (owner-gate) ──────────────────────
+//
+// The Electron renderer fetches board state and performs owner-gate
+// actions (accept / reject) through these endpoints. Every route in
+// this section sits behind the bearer+loopback auth middleware that
+// already guards `simulate_*`. On a single-token loopback deployment,
+// an authorized caller is implicitly the local owner — there is no
+// per-role gate beyond authentication. If the deployment model ever
+// grows multi-user auth, a sender-identity check would go here.
+
+/// Optional shared tracker handle, injected via axum Extension at
+/// server startup. `None` when GitHub env config is missing — the
+/// handlers then return 503 so the renderer can surface "tracker not
+/// configured" instead of a silent empty board.
+pub type TrackerHandle = Option<Arc<crate::bridge::tracker::OctocrabStoryTracker>>;
+
+/// Structured error body. All handlers in this section reply with
+/// this shape on failure so the renderer can branch on the `error`
+/// key without string-matching response text.
+fn err_body(message: &str) -> String {
+    serde_json::json!({ "error": message }).to_string()
+}
+
+fn json_headers() -> [(axum::http::HeaderName, &'static str); 1] {
+    [(axum::http::header::CONTENT_TYPE, "application/json")]
+}
+
+/// Broadcast a board-invalidate marker through the session. Mirrors
+/// the MCP bridge's `broadcast_board_invalidate` — same marker text,
+/// same system message_type — so the TUI's event loop picks it up
+/// and triggers an immediate board refetch regardless of which path
+/// (MCP tool or HTTP REST) caused the mutation.
+fn broadcast_board_invalidate(session: &session::Session) {
+    let msg = session::Message {
+        from: "bpmux".to_string(),
+        text: crate::bridge::BOARD_INVALIDATE_MARKER.to_string(),
+        ts: chrono::Utc::now(),
+        message_type: session::MessageType::System,
+        ..session::Message::default()
+    };
+    if let Err(e) = session.broadcast(&msg) {
+        session::diag::log_diag(&format!("rest: board-invalidate broadcast failed: {e}"));
+    }
+}
+
+/// GET /api/board — return the whole board as `{ stories, fetched_at }`.
+pub async fn get_board(
+    axum::Extension(tracker): axum::Extension<TrackerHandle>,
+) -> impl IntoResponse {
+    let Some(tracker) = tracker else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            json_headers(),
+            err_body("tracker not configured"),
+        );
+    };
+    match tracker.fetch_board_stories().await {
+        Ok(stories) => {
+            let body = serde_json::json!({
+                "stories": stories,
+                "fetched_at": chrono::Utc::now().to_rfc3339(),
+            });
+            (StatusCode::OK, json_headers(), body.to_string())
+        }
+        Err(e) => (
+            StatusCode::BAD_GATEWAY,
+            json_headers(),
+            err_body(&format!("board fetch failed: {e}")),
+        ),
+    }
+}
+
+/// GET /api/stories/:number — return one story with full body.
+pub async fn get_story(
+    axum::Extension(tracker): axum::Extension<TrackerHandle>,
+    axum::extract::Path(number): axum::extract::Path<u64>,
+) -> impl IntoResponse {
+    let Some(tracker) = tracker else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            json_headers(),
+            err_body("tracker not configured"),
+        );
+    };
+    match tracker.get_story(number).await {
+        Ok(Some(story)) => (StatusCode::OK, json_headers(), story.to_string()),
+        Ok(None) => (
+            StatusCode::NOT_FOUND,
+            json_headers(),
+            err_body(&format!("story #{number} not found")),
+        ),
+        Err(e) => (
+            StatusCode::BAD_GATEWAY,
+            json_headers(),
+            err_body(&format!("story fetch failed: {e}")),
+        ),
+    }
+}
+
+/// POST /api/stories/:number/accept — accept a delivered story.
+pub async fn post_accept_story(
+    State(session): State<Arc<session::Session>>,
+    axum::Extension(tracker): axum::Extension<TrackerHandle>,
+    axum::extract::Path(number): axum::extract::Path<u64>,
+) -> impl IntoResponse {
+    let Some(tracker) = tracker else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            json_headers(),
+            err_body("tracker not configured"),
+        );
+    };
+    match tracker.accept_story(number).await {
+        Ok(()) => {
+            broadcast_board_invalidate(&session);
+            (
+                StatusCode::OK,
+                json_headers(),
+                serde_json::json!({ "ok": true }).to_string(),
+            )
+        }
+        Err(e) => (
+            StatusCode::BAD_GATEWAY,
+            json_headers(),
+            err_body(&format!("accept failed: {e}")),
+        ),
+    }
+}
+
+#[derive(Deserialize)]
+pub struct RejectPayload {
+    pub note: String,
+}
+
+/// POST /api/stories/:number/reject — reject a delivered story with
+/// a required non-empty note.
+///
+/// Note: extractor ordering matters for axum — body-consuming
+/// extractors (Json) must come LAST. Path is keyed-arg, Extension +
+/// State are shared, Json is body.
+pub async fn post_reject_story(
+    State(session): State<Arc<session::Session>>,
+    axum::Extension(tracker): axum::Extension<TrackerHandle>,
+    axum::extract::Path(number): axum::extract::Path<u64>,
+    Json(payload): Json<RejectPayload>,
+) -> impl IntoResponse {
+    let Some(tracker) = tracker else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            json_headers(),
+            err_body("tracker not configured"),
+        );
+    };
+    if payload.note.trim().is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            json_headers(),
+            err_body("note must not be empty"),
+        );
+    }
+    match tracker.reject_story(number, &payload.note).await {
+        Ok(()) => {
+            broadcast_board_invalidate(&session);
+            (
+                StatusCode::OK,
+                json_headers(),
+                serde_json::json!({ "ok": true }).to_string(),
+            )
+        }
+        Err(e) => (
+            StatusCode::BAD_GATEWAY,
+            json_headers(),
+            err_body(&format!("reject failed: {e}")),
+        ),
+    }
+}

@@ -23,6 +23,13 @@ mod tools;
 mod tools_stories;
 pub(crate) mod tracker;
 
+/// Public re-export so the transport layer can fire the same board-
+/// invalidate marker that MCP bridge tools use (#313). Keeping one
+/// constant means the TUI event handler stays a single branch — no
+/// separate matching paths for MCP-originated vs REST-originated
+/// invalidates.
+pub use tools_stories::BOARD_INVALIDATE_MARKER;
+
 use crate::transport::protocol::ServerMessage;
 
 type McpError = ErrorData;

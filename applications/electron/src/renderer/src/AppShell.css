@@ -6,9 +6,9 @@
 .titlebar {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  height: 36px;
-  padding: 0 var(--space-3);
+  gap: var(--space-8);
+  height: 40px;
+  padding: 0 var(--space-8);
   border-bottom: 1px solid var(--border-subtle);
   background: var(--bg-elevated);
   font-size: 0.8125rem;

@@ -39,9 +39,7 @@ function MessageList({ messages }: Props): React.JSX.Element {
     )
   }
 
-  const visible = messages.filter(
-    (m) => m.messageType !== 'activity' && m.messageType !== 'system'
-  )
+  const visible = messages.filter((m) => m.messageType !== 'activity' && m.messageType !== 'system')
 
   if (visible.length === 0) {
     return (

@@ -223,6 +223,138 @@ impl OctocrabStoryTracker {
         // of one reaching across into the other's layer.
         crate::github::classify_error(&err).user_message()
     }
+
+    /// Fetch the full board: all stories with the fields the Electron
+    /// renderer needs (number, title, state, labels, assignees,
+    /// created_at, body). Wraps the same underlying octocrab `list`
+    /// call `list_stories` uses, but returns a richer serde_json
+    /// payload. Used by the HTTP `/api/board` endpoint.
+    pub async fn fetch_board_stories(&self) -> Result<Vec<serde_json::Value>, String> {
+        let page = self
+            .client
+            .issues(&self.owner, &self.repo)
+            .list()
+            .state(octocrab::params::State::All)
+            .per_page(100)
+            .send()
+            .await
+            .map_err(Self::classify)?;
+        Ok(page.items.iter().map(issue_to_board_json).collect())
+    }
+
+    /// Fetch a single story with full body text. Returns `Ok(None)`
+    /// when the issue doesn't exist (GitHub 404); `Err` for any other
+    /// failure so the REST handler can map to 503.
+    pub async fn get_story(&self, number: u64) -> Result<Option<serde_json::Value>, String> {
+        match self
+            .client
+            .issues(&self.owner, &self.repo)
+            .get(number)
+            .await
+        {
+            Ok(issue) => Ok(Some(issue_to_board_json(&issue))),
+            Err(octocrab::Error::GitHub { source, .. }) if source.status_code.as_u16() == 404 => {
+                Ok(None)
+            }
+            Err(e) => Err(Self::classify(e)),
+        }
+    }
+
+    /// Accept a delivered story: remove the `delivered` label, close
+    /// the issue. Mirrors the label/close sequence in
+    /// `tools_stories::handle_accept_story` but without the ws signal
+    /// side effects — the REST handler fires the board-invalidate
+    /// broadcast itself via the session.
+    pub async fn accept_story(&self, number: u64) -> Result<(), String> {
+        // Best-effort label removal: a 404 means the label wasn't
+        // attached, matching the MCP path's tolerance.
+        if let Err(e) = self
+            .client
+            .issues(&self.owner, &self.repo)
+            .remove_label(number, "delivered")
+            .await
+        {
+            match e {
+                octocrab::Error::GitHub { ref source, .. }
+                    if source.status_code.as_u16() == 404 => {}
+                other => {
+                    crate::session::diag::log_diag(&format!(
+                        "rest: accept_story remove-label delivered failed for #{number}: {}",
+                        Self::classify(other)
+                    ));
+                }
+            }
+        }
+        self.client
+            .issues(&self.owner, &self.repo)
+            .update(number)
+            .state(octocrab::models::IssueState::Closed)
+            .send()
+            .await
+            .map(|_| ())
+            .map_err(Self::classify)
+    }
+
+    /// Reject a delivered story: remove `delivered`, add `rejected`,
+    /// post the rejection note as a comment. Returns Err only when the
+    /// load-bearing comment post fails — label updates are best-effort
+    /// so a stale label doesn't hide a real rejection from the team.
+    pub async fn reject_story(&self, number: u64, note: &str) -> Result<(), String> {
+        if let Err(e) = self
+            .client
+            .issues(&self.owner, &self.repo)
+            .remove_label(number, "delivered")
+            .await
+        {
+            match e {
+                octocrab::Error::GitHub { ref source, .. }
+                    if source.status_code.as_u16() == 404 => {}
+                other => {
+                    crate::session::diag::log_diag(&format!(
+                        "rest: reject_story remove-label delivered failed for #{number}: {}",
+                        Self::classify(other)
+                    ));
+                }
+            }
+        }
+        if let Err(e) = self
+            .client
+            .issues(&self.owner, &self.repo)
+            .add_labels(number, &["rejected".to_string()])
+            .await
+        {
+            crate::session::diag::log_diag(&format!(
+                "rest: reject_story add-label rejected failed for #{number}: {}",
+                Self::classify(e)
+            ));
+        }
+        self.client
+            .issues(&self.owner, &self.repo)
+            .create_comment(number, note)
+            .await
+            .map(|_| ())
+            .map_err(Self::classify)
+    }
+}
+
+/// Shape a single octocrab Issue into the board JSON envelope the
+/// Electron renderer expects. Lifted out as a free function so
+/// `fetch_board_stories` and `get_story` emit identical shapes — the
+/// renderer can reuse the same parser for both endpoints.
+fn issue_to_board_json(issue: &octocrab::models::issues::Issue) -> serde_json::Value {
+    serde_json::json!({
+        "number": issue.number,
+        "title": issue.title,
+        "state": match issue.state {
+            octocrab::models::IssueState::Open => "OPEN",
+            octocrab::models::IssueState::Closed => "CLOSED",
+            _ => "OPEN",
+        },
+        "labels": issue.labels.iter().map(|l| l.name.clone()).collect::<Vec<_>>(),
+        "assignees": issue.assignees.iter().map(|a| a.login.clone()).collect::<Vec<_>>(),
+        "created_at": issue.created_at.to_rfc3339(),
+        "body": issue.body.clone().unwrap_or_default(),
+    })
 }
 
 impl StoryTracker for OctocrabStoryTracker {

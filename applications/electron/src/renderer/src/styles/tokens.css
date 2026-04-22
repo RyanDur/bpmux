@@ -35,13 +35,20 @@
   --role-dev: #4fc3f7;
   --role-pm: #81c784;
 
-  /* spacing ladder */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 24px;
-  --space-6: 32px;
+  /* spacing — base 8 (values named after their px size).
+   * Fractional steps 2/4/6 only between 0 and 8 (¼/½/¾ of base).
+   * Above base, always multiples of 8. */
+  --space-2: 2px;
+  --space-4: 4px;
+  --space-6: 6px;
+  --space-8: 8px;
+  --space-16: 16px;
+  --space-24: 24px;
+  --space-32: 32px;
+  --space-40: 40px;
+  --space-48: 48px;
+  --space-56: 56px;
+  --space-64: 64px;
 }
 
 [data-theme="light"] {

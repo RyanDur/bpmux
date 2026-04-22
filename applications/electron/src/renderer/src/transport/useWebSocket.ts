@@ -19,7 +19,7 @@ import type { ChatMessage, ClientMessage, ConnectionStatus, ServerMessage } from
 // the WS. Ryan's ownership model keeps the WS a loopback-only local
 // channel with identify-by-name.
 
-const RENDERER_IDENTITY = 'ryan'
+export const RENDERER_IDENTITY = 'ryan'
 const RENDERER_TOOL = 'electron'
 
 const INITIAL_BACKOFF_MS = 1000

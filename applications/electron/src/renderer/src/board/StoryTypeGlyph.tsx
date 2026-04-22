@@ -1,0 +1,82 @@
+import type { StoryType } from './types'
+
+interface Props {
+  type: StoryType
+}
+
+// Inline SVG glyphs for the three story types. Hand-drawn rather than
+// pulled from an icon library (per Ryan's no-deps rule). Each glyph is
+// a single-path sketch in a 16x16 box so it renders crisp at the row
+// heights we use.
+//
+// colors are read from CSS via `currentColor` — parents set `color:
+// var(--accent-…)` and the glyph inherits. Keeps theming centralised
+// with the tokens file.
+function StoryTypeGlyph({ type }: Props): React.JSX.Element {
+  const label = typeLabel(type)
+  return (
+    <svg
+      className={`story-glyph story-glyph--${type}`}
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      aria-label={label}
+      role="img"
+      focusable="false"
+    >
+      {renderPath(type)}
+    </svg>
+  )
+}
+
+function typeLabel(type: StoryType): string {
+  switch (type) {
+    case 'feature':
+      return 'Feature'
+    case 'bug':
+      return 'Bug'
+    case 'chore':
+      return 'Chore'
+    default:
+      return 'Story'
+  }
+}
+
+function renderPath(type: StoryType): React.JSX.Element {
+  switch (type) {
+    case 'feature':
+      // 4-point star (sparkle-ish).
+      return (
+        <path
+          d="M8 1.5l1.4 4.1 4.1 1.4-4.1 1.4L8 12.5 6.6 8.4 2.5 7l4.1-1.4z"
+          fill="currentColor"
+        />
+      )
+    case 'bug':
+      // Rounded bug body with two antennae.
+      return (
+        <g fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+          <path d="M5.5 3.2l1.2 1.6M10.5 3.2l-1.2 1.6" />
+          <path
+            d="M4.5 8.5a3.5 3.5 0 0 1 7 0v2.5a3.5 3.5 0 0 1-7 0z"
+            fill="currentColor"
+            stroke="currentColor"
+          />
+          <path d="M2 8h2.5M11.5 8H14M2.5 11.5l2-1M13.5 11.5l-2-1" />
+        </g>
+      )
+    case 'chore':
+      // 8-tooth gear outline.
+      return (
+        <g fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round">
+          <path d="M8 2.3v1.8M8 11.9v1.8M2.3 8h1.8M11.9 8h1.8M4.2 4.2l1.3 1.3M10.5 10.5l1.3 1.3M4.2 11.8l1.3-1.3M10.5 5.5l1.3-1.3" />
+          <circle cx="8" cy="8" r="2.6" fill="currentColor" stroke="currentColor" />
+        </g>
+      )
+    default:
+      // Dim dot.
+      return <circle cx="8" cy="8" r="2" fill="currentColor" />
+  }
+}
+
+export default StoryTypeGlyph
