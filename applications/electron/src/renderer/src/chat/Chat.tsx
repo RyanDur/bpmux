@@ -33,6 +33,11 @@ interface Props {
   onOpenStory: (storyNumber: number, commentId?: number) => void
   apiBase: string | undefined
   authToken: string | undefined
+  // #374 lane-separation mode, threaded from AppShell. 'on' =
+  // class-grouped sections; 'off' = interleaved (default). Threaded
+  // rather than hook-called-twice so AppShell's toggle is the sole
+  // source of truth and MessageList re-renders on the same tick.
+  lanes?: 'on' | 'off'
   onSend: (text: string, opts?: SendOptions) => void
 }
 
@@ -48,6 +53,7 @@ function Chat({
   onOpenStory,
   apiBase,
   authToken,
+  lanes = 'off',
   onSend
 }: Props): React.JSX.Element {
   const showReconnect = status !== 'connected'
@@ -146,6 +152,7 @@ function Chat({
         viewer={RENDERER_IDENTITY}
         apiBase={apiBase}
         authToken={authToken}
+        lanes={lanes}
       />
       {metrics.mounted && (
         <Metrics

@@ -522,3 +522,86 @@
     }
   }
 }
+
+/* #374 lane-separation mode. Stacked vertical sections (not
+ * columns) — the chat area is typically narrower than the board,
+ * columns don't fit; sections read cleanly top-down. Chat lane
+ * takes the bulk of the available space; insight / activity /
+ * system lanes get capped heights so the reader sees a digest of
+ * each without losing the primary chat focus. Each lane's <ul>
+ * reuses .message-list so the column-reverse + scroll semantics
+ * from the default render apply unchanged. */
+.message-lanes {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-16);
+  overflow-y: auto;
+}
+
+.message-lane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg-base);
+}
+
+.message-lane-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-8);
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border-subtle);
+  /* Sticky so the class label stays visible while the user scrolls
+   * within a lane's list. */
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.message-lane-title {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--fg-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.message-lane-count {
+  color: var(--fg-dim);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The chat lane takes most vertical space; non-chat lanes are
+ * capped so a flood of activity messages doesn't push chat out
+ * of the viewport. The cap turns each non-chat lane into a
+ * scroll-in-place digest — users can still scroll through the
+ * full class stream within its own lane. */
+.message-lane--chat {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.message-lane--insight,
+.message-lane--activity,
+.message-lane--system {
+  flex: 0 1 auto;
+  max-height: 200px;
+}
+
+/* Reset .message-list's flex-grow inside a lane — the lane
+ * itself is the flex child now; the inner <ul> takes whatever
+ * height the lane gives it and scrolls internally. */
+.message-list--lane {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: var(--space-4) var(--space-8);
+}

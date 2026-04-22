@@ -3,6 +3,7 @@ import Board from './board/Board'
 import Chat from './chat/Chat'
 import CiGlyph from './ci/CiGlyph'
 import { useDensity } from './hooks/useDensity'
+import { useLaneSeparation } from './hooks/useLaneSeparation'
 import { useMessageFilter } from './hooks/useMessageFilter'
 import { useTheme } from './hooks/useTheme'
 import Sidebar from './sidebar/Sidebar'
@@ -39,6 +40,7 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
   >(null)
   const { theme, toggle: toggleTheme } = useTheme()
   const { density, toggle: toggleDensity } = useDensity()
+  const { lanes, toggle: toggleLanes } = useLaneSeparation()
   // Filter state is lifted from Chat to AppShell because Sidebar also
   // reads/writes it (SYSTEM click narrows to system-only; DM/group
   // click resets to default). Lifting here avoids duplicating the
@@ -132,6 +134,26 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
         >
           {density === 'compact' ? <RowsCompactIcon /> : <RowsComfortableIcon />}
         </button>
+        <button
+          type="button"
+          className="titlebar-lanes-toggle"
+          onClick={toggleLanes}
+          aria-pressed={lanes === 'on'}
+          aria-label={
+            lanes === 'on'
+              ? 'Switch to interleaved messages'
+              : 'Switch to lane-separated messages'
+          }
+          title={
+            lanes === 'on'
+              ? 'Switch to interleaved messages'
+              : 'Switch to lane-separated messages'
+          }
+          data-test="titlebar-lanes-toggle"
+          data-lanes={lanes}
+        >
+          {lanes === 'on' ? <LanesIcon /> : <StreamIcon />}
+        </button>
         <CiGlyph messages={messages} />
       </header>
       <section className="app-body">
@@ -159,6 +181,7 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
           }}
           apiBase={bridge?.apiBase}
           authToken={bridge?.authToken}
+          lanes={lanes}
           onSend={onSend}
         />
         {/* Board stays mounted so its width can CSS-transition open/
@@ -231,6 +254,37 @@ function RowsCompactIcon(): React.JSX.Element {
         <line x1="2" y1="5.5" x2="12" y2="5.5" />
         <line x1="2" y1="8.5" x2="12" y2="8.5" />
         <line x1="2" y1="11" x2="12" y2="11" />
+      </g>
+    </svg>
+  )
+}
+
+// #374 lane-separation toggle glyphs. Stream = three staggered
+// rows (current interleaved mode). Lanes = two parallel columns
+// with their own content (separated mode). Shape difference
+// encodes mode alongside aria-pressed.
+function StreamIcon(): React.JSX.Element {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" focusable="false">
+      <g stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
+        <line x1="3" y1="3" x2="11" y2="3" />
+        <line x1="2" y1="7" x2="10" y2="7" />
+        <line x1="4" y1="11" x2="12" y2="11" />
+      </g>
+    </svg>
+  )
+}
+
+function LanesIcon(): React.JSX.Element {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" focusable="false">
+      <g stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
+        <rect x="2" y="2.5" width="4.5" height="9" rx="1" fill="none" />
+        <rect x="7.5" y="2.5" width="4.5" height="9" rx="1" fill="none" />
+        <line x1="3" y1="5" x2="5.5" y2="5" />
+        <line x1="3" y1="7" x2="5.5" y2="7" />
+        <line x1="8.5" y1="5" x2="11" y2="5" />
+        <line x1="8.5" y1="7" x2="11" y2="7" />
       </g>
     </svg>
   )

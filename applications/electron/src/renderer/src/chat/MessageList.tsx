@@ -36,6 +36,9 @@ interface Props {
   // don't care (tests) omit.
   apiBase?: string
   authToken?: string
+  // #374 lane separation mode. 'on' = class-grouped <section>s with
+  // sticky headers; 'off' (default) = current interleaved render.
+  lanes?: 'on' | 'off'
 }
 
 // Per-class gutter glyphs moved to `./ClassGlyph` (#373 — custom
@@ -116,7 +119,8 @@ function MessageList({
   onToggleReaction,
   viewer,
   apiBase,
-  authToken
+  authToken,
+  lanes = 'off'
 }: Props): React.JSX.Element {
   const visible = messages.filter((m) => visibleClasses.has(classOf(m.messageType)))
   // #370 avatar-hover tooltip: derive current presence per role from
@@ -151,16 +155,11 @@ function MessageList({
   // logic still needs chronological iteration to detect
   // "consecutive-same-sender," so we compute group flags in
   // chronological order first, then reverse the result.
-  const withGrouping = visible.map((m, i) => ({
-    m,
-    grouped: isGroupedWithPrev(m, i > 0 ? visible[i - 1] : null)
-  }))
-  const reversed = [...withGrouping].reverse()
-
-  return (
-    <>
-      <ul {...regionProps}>
-        {reversed.map(({ m, grouped }) => {
+  // Shared row-render: takes a list of messages (assumed already
+  // chronological within its lane), computes grouping flags, then
+  // reverses for the column-reverse layout. Used by both the
+  // interleaved single-ul path and the lane-separated multi-ul path.
+  const renderRow = ({ m, grouped }: { m: ChatMessage; grouped: boolean }): React.JSX.Element => {
           const sender = shortName(m.from)
           const scope = scopeLabel(m)
           const addressee = m.addressee ?? null
@@ -308,8 +307,72 @@ function MessageList({
             </article>
           </li>
         )
-      })}
-      </ul>
+  }
+
+  // Build a reversed (newest-first DOM) row list for a chronological
+  // slice. Grouping recomputed per slice so a class split doesn't
+  // inherit a cross-class "grouped" flag from the interleaved order.
+  const buildReversed = (slice: ChatMessage[]): { m: ChatMessage; grouped: boolean }[] => {
+    const withGrouping = slice.map((m, i) => ({
+      m,
+      grouped: isGroupedWithPrev(m, i > 0 ? slice[i - 1] : null)
+    }))
+    return [...withGrouping].reverse()
+  }
+
+  if (lanes === 'on') {
+    // Lane mode (#374): bucket by message class, render each
+    // non-empty class as its own <section> with a sticky header.
+    // Order: chat first (primary reader focus + largest section),
+    // then insight / activity / system below. System lives last
+    // because it's typically the lowest-volume + least reader-
+    // priority class.
+    const LANE_ORDER: MessageClass[] = ['chat', 'insight', 'activity', 'system']
+    const byClass = new Map<MessageClass, ChatMessage[]>()
+    for (const cls of LANE_ORDER) byClass.set(cls, [])
+    for (const m of visible) {
+      const cls = classOf(m.messageType)
+      byClass.get(cls)?.push(m)
+    }
+    return (
+      <div className="message-lanes" data-test="message-lanes">
+        {LANE_ORDER.map((cls) => {
+          const slice = byClass.get(cls) ?? []
+          if (slice.length === 0) return null
+          const rows = buildReversed(slice)
+          return (
+            <section
+              key={cls}
+              className={`message-lane message-lane--${cls}`}
+              data-test="message-lane"
+              data-lane-class={cls}
+              aria-label={`${cls} messages`}
+            >
+              <header className="message-lane-header">
+                <h3 className="message-lane-title">{cls}</h3>
+                <small className="message-lane-count">{slice.length}</small>
+              </header>
+              <ul
+                className="message-list message-list--lane"
+                role="log"
+                aria-live="polite"
+              >
+                {rows.map(renderRow)}
+              </ul>
+            </section>
+          )
+        })}
+      </div>
+    )
+  }
+
+  // Default interleaved render. Single <ul> with chronological
+  // grouping computed across all visible messages, then reversed
+  // for column-reverse layout.
+  const reversed = buildReversed(visible)
+  return (
+    <>
+      <ul {...regionProps}>{reversed.map(renderRow)}</ul>
     </>
   )
 }
