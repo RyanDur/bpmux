@@ -1137,6 +1137,38 @@ fn broadcast_reaction_event(
     }
 }
 
+/// #402: serialized roster entry. Mirrors the frontend's
+/// `RosterEntry` shape in `useTeamRoster.ts` — identity + derived
+/// short-role. No system senders here (bpmux broadcasts system
+/// messages but never holds a WS connection, so it can't enter
+/// the roster via the peer-join path); frontend relies on this
+/// invariant to skip the isSystem filter.
+#[derive(serde::Serialize)]
+pub struct RosterEntry {
+    pub identity: String,
+    pub role: String,
+}
+
+/// #402: snapshot of currently-connected WS peers. Source of truth
+/// for the sidebar's directs + combinatorial-groups membership.
+/// Empty array when no peers are connected (e.g., fresh start
+/// before Electron's own WS handshake completes).
+pub async fn get_roster(State(session): State<Arc<session::Session>>) -> impl IntoResponse {
+    let roster: Vec<RosterEntry> = session
+        .roster_snapshot()
+        .into_iter()
+        .map(|identity| {
+            let role = identity.split(':').next().unwrap_or(&identity).to_string();
+            RosterEntry { identity, role }
+        })
+        .collect();
+    let body = serde_json::json!({
+        "roster": roster,
+        "fetched_at": chrono::Utc::now().to_rfc3339(),
+    });
+    (StatusCode::OK, json_headers(), body.to_string())
+}
+
 pub async fn get_ci(axum::Extension(tracker): axum::Extension<TrackerHandle>) -> impl IntoResponse {
     let Some(tracker) = tracker else {
         return (

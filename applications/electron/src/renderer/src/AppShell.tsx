@@ -171,6 +171,8 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
           onSelectRecipient={setRecipient}
           messages={messages}
           filter={filter}
+          apiBase={bridge?.apiBase}
+          authToken={bridge?.authToken}
         />
         <Chat
           messages={messages}

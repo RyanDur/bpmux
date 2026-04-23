@@ -107,6 +107,10 @@ pub async fn run_server(
         )
         .route("/api/ci", axum::routing::get(transport::rest::get_ci))
         .route(
+            "/api/roster",
+            axum::routing::get(transport::rest::get_roster),
+        )
+        .route(
             "/api/pins",
             axum::routing::get(transport::rest::get_pins)
                 .post(transport::rest::post_pin)

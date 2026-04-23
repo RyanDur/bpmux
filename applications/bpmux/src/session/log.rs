@@ -1,5 +1,7 @@
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::sync::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use thiserror::Error;
 use tokio::sync::broadcast;
@@ -15,6 +17,10 @@ pub struct Session {
     pub wake_tx: broadcast::Sender<Message>,
     pub connected_peers: AtomicUsize,
     pub storage: Arc<dyn Storage>,
+    /// #402: set of currently-connected WS peer identities (e.g.,
+    /// `"dev:claude-code"`). Source of truth for sidebar membership
+    /// (directs + combinatorial groups). Updated on WS join/leave.
+    pub roster: Mutex<HashSet<String>>,
 }
 
 impl Clone for Session {
@@ -26,6 +32,11 @@ impl Clone for Session {
             wake_tx: self.wake_tx.clone(),
             connected_peers: AtomicUsize::new(self.connected_peers.load(Ordering::Relaxed)),
             storage: self.storage.clone(),
+            // Roster is per-runtime state; cloning a session shouldn't
+            // inherit live WS connections. Start fresh; the cloned
+            // session represents a snapshot of the log, not the live
+            // peers.
+            roster: Mutex::new(HashSet::new()),
         }
     }
 }
@@ -56,6 +67,7 @@ impl Session {
             wake_tx,
             connected_peers: AtomicUsize::new(0),
             storage,
+            roster: Mutex::new(HashSet::new()),
         }
     }
 
@@ -74,6 +86,34 @@ impl Session {
 
     pub fn peer_count(&self) -> usize {
         self.connected_peers.load(Ordering::Relaxed)
+    }
+
+    /// #402: register an identity as connected. Duplicate inserts are
+    /// idempotent (HashSet semantics). Returns the roster size after
+    /// insertion so callers can gate side-effects (e.g., broadcast
+    /// only when the set actually changed — though the current call
+    /// site broadcasts on every ws-lifecycle event regardless).
+    pub fn roster_join(&self, identity: &str) -> usize {
+        let mut r = self.roster.lock().unwrap_or_else(|e| e.into_inner());
+        r.insert(identity.to_string());
+        r.len()
+    }
+
+    /// #402: unregister an identity. Idempotent on already-absent
+    /// entries.
+    pub fn roster_leave(&self, identity: &str) -> usize {
+        let mut r = self.roster.lock().unwrap_or_else(|e| e.into_inner());
+        r.remove(identity);
+        r.len()
+    }
+
+    /// #402: snapshot of currently-connected identities. Sorted for
+    /// stable iteration + deterministic test output.
+    pub fn roster_snapshot(&self) -> Vec<String> {
+        let r = self.roster.lock().unwrap_or_else(|e| e.into_inner());
+        let mut out: Vec<String> = r.iter().cloned().collect();
+        out.sort();
+        out
     }
 
     pub fn broadcast(&self, msg: &Message) -> Result<(), LogError> {

@@ -57,6 +57,12 @@ pub const REACTIONS_UPDATE_MARKER: &str = "__BPMUX_REACTIONS_UPDATE__";
 /// for the disconnected-then-reconnected window.
 pub const CI_STATE_UPDATE_MARKER: &str = "__BPMUX_CI_STATE_UPDATE__";
 
+/// #402 team-roster substrate. Broadcast when a WS peer joins /
+/// leaves / renames so the frontend's `useTeamRoster` hook refetches
+/// `/api/roster`. Push-based membership updates; same pattern as the
+/// board-invalidate + ci-state markers.
+pub const ROSTER_UPDATE_MARKER: &str = "__BPMUX_ROSTER_UPDATE__";
+
 /// Build the board-invalidate broadcast signal. System-typed so the
 /// TUI recognizes it as an internal marker rather than a chat line.
 /// No `to=` set — every agent's TUI receives + refreshes.

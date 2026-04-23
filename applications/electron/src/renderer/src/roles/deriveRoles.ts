@@ -1,4 +1,5 @@
 import type { ChatMessage } from '../transport/types'
+import type { RosterEntry } from '../hooks/useTeamRoster'
 
 // #393 team-shape audit (AC1).
 //
@@ -181,4 +182,59 @@ export function deriveCombinatorialGroups(
 ): string[][] {
   if (roles.length < 2) return []
   return combinations(roles, 2, roles.length)
+}
+
+// ── #402 roster-based derivations ────────────────────────────────
+//
+// Membership authority switches from observed message senders to the
+// connected-agent roster (fetched via `/api/roster`, refreshed on
+// `ROSTER_UPDATE_MARKER`). The helpers below mirror the message-
+// based ones in signature but read from the roster snapshot instead.
+// The SAME filter rules apply — viewer exclusion + system-sender
+// exclusion — only the input axis changes. This preserves #393 AC1
+// team-shape-independence + #386's category detection + #399's
+// no-DM-to-the-medium semantic.
+
+/**
+ * The full roster-derived team role set. Includes the viewer if
+ * present in the roster (which it typically is, since Electron's
+ * renderer holds a WS connection). Sorted for stable iteration.
+ */
+export function deriveTeamRolesFromRoster(
+  roster: readonly RosterEntry[]
+): readonly string[] {
+  const set = new Set<string>()
+  for (const entry of roster) set.add(entry.role)
+  return Array.from(set).sort()
+}
+
+/**
+ * Direct-DM candidates = roster minus viewer. No message-history
+ * dependence, so a teammate stays visible across hydration-window
+ * changes as long as their WS session stays up. System senders
+ * (bpmux) aren't in the roster at all — bpmux emits system
+ * messages but never holds a WS connection — so no isSystem filter
+ * is needed at this layer.
+ */
+export function deriveDirectRolesFromRoster(
+  roster: readonly RosterEntry[],
+  viewer?: string
+): readonly string[] {
+  const all = deriveTeamRolesFromRoster(roster)
+  const self = viewer !== undefined ? shortName(viewer) : null
+  return all.filter((r) => r !== self)
+}
+
+/**
+ * Combinable set for the groups-enumeration path. Identical to the
+ * directs set today (roster excludes bpmux; viewer is filtered).
+ * Kept as a distinct export so future divergence (e.g., a role
+ * that's DM-able but not group-addressable) has a clean extension
+ * point.
+ */
+export function deriveCombinableRolesFromRoster(
+  roster: readonly RosterEntry[],
+  viewer?: string
+): readonly string[] {
+  return deriveDirectRolesFromRoster(roster, viewer)
 }

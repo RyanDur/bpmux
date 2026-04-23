@@ -2,10 +2,13 @@ import { useMemo } from 'react'
 import type { ChatMessage } from '../transport/types'
 import { classOf, type MessageFilter } from '../hooks/useMessageFilter'
 import { usePresence, type Presence } from '../hooks/usePresence'
+import { useTeamRoster } from '../hooks/useTeamRoster'
 import {
   deriveCombinableRoles,
+  deriveCombinableRolesFromRoster,
   deriveCombinatorialGroups,
-  deriveDirectRoles
+  deriveDirectRoles,
+  deriveDirectRolesFromRoster
 } from '../roles/deriveRoles'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import './Sidebar.css'
@@ -15,6 +18,13 @@ interface Props {
   onSelectRecipient: (r: string[] | null) => void
   messages: ChatMessage[]
   filter: MessageFilter
+  // #402: roster-backed membership. Optional while the backend-
+  // restart substrate lands; when apiBase is absent OR the roster
+  // is empty (initial fetch racing the first render), the sidebar
+  // falls back to message-derived membership so there's never a
+  // flash-of-empty-sidebar. Post-restart, roster is authoritative.
+  apiBase?: string
+  authToken?: string
 }
 
 // Human label for each presence state. Mapping + ordering kept here
@@ -65,32 +75,39 @@ function Sidebar({
   recipient,
   onSelectRecipient,
   messages,
-  filter
+  filter,
+  apiBase,
+  authToken
 }: Props): React.JSX.Element {
   const systemCount = useMemo(() => countSystemMessages(messages), [messages])
-  // #393: direct-DM roles are every role present in the session
-  // except the viewer's own. Any agent that joins becomes a
-  // first-class sidebar entry without a code change.
-  const directRoles = useMemo(
-    () => deriveDirectRoles(messages, RENDERER_IDENTITY),
-    [messages]
-  )
-  // #386 + Ryan 2026-04-23 11:47 UTC: combinatorial groups enumerate
-  // 2+ subsets over the "combinable" role set — observed team minus
-  // the owner (viewer) and system senders. Ryan: "my name should not
-  // be part of the list of combinations, nor should bpmux. we are
-  // constants." Detection is structural (viewer via RENDERER_IDENTITY,
-  // system senders via messageType==='system') so a fork with
-  // different owner/system names works without code edit — no literal
-  // role-name strings in the helper (preserves #393 AC1).
-  const combinableRoles = useMemo(
-    () => deriveCombinableRoles(messages, RENDERER_IDENTITY),
-    [messages]
-  )
+  // #402: membership comes from the connected-agent roster, not
+  // observed message senders. Ryan 2026-04-23 12:08 UTC "keep
+  // losing the groups and directs" — message-derived membership
+  // fluctuated with hydration-window state. Roster is a stable
+  // authority sourced from WS connection lifecycle.
+  const roster = useTeamRoster({ apiBase, authToken, messages })
+  // Fallback to message-based derivation while the roster fetch
+  // is in flight (first mount, pre-#402-restart bridge). Keeps
+  // the sidebar populated during the brief race; post-restart
+  // the roster path takes over.
+  const directRoles = useMemo(() => {
+    if (roster.length > 0) {
+      return deriveDirectRolesFromRoster(roster, RENDERER_IDENTITY)
+    }
+    return deriveDirectRoles(messages, RENDERER_IDENTITY)
+  }, [roster, messages])
+  const combinableRoles = useMemo(() => {
+    if (roster.length > 0) {
+      return deriveCombinableRolesFromRoster(roster, RENDERER_IDENTITY)
+    }
+    return deriveCombinableRoles(messages, RENDERER_IDENTITY)
+  }, [roster, messages])
   const groups = useMemo(
     () => deriveCombinatorialGroups(combinableRoles),
     [combinableRoles]
   )
+  // #402: usePresence stays on observed messages — it drives
+  // activity/busy dot color, not membership. Separate axis.
   const presence = usePresence(messages, directRoles)
   // Broadcast is "selected" whenever recipient is null. SYSTEM is
   // "selected" specifically when the filter is narrowed to system-only

@@ -32,6 +32,7 @@ pub use tools_stories::BOARD_INVALIDATE_MARKER;
 pub use tools_stories::CI_STATE_UPDATE_MARKER;
 pub use tools_stories::PINS_UPDATE_MARKER;
 pub use tools_stories::REACTIONS_UPDATE_MARKER;
+pub use tools_stories::ROSTER_UPDATE_MARKER;
 
 use crate::transport::protocol::ServerMessage;
 

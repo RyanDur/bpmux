@@ -54,6 +54,12 @@ async fn run_ws_session(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut identity = wait_for_identify(&mut tx, &mut rx).await?;
     session.peer_connected();
+    // #402: register in the session roster so `GET /api/roster` +
+    // sidebar membership reflect the live connection. The
+    // broadcast below signals the frontend to refetch roster via
+    // ROSTER_UPDATE_MARKER.
+    session.roster_join(&identity);
+    broadcast_roster_update(&session);
     let mut broadcast_rx = session.subscribe();
     let mut heartbeat = tokio::time::interval(HEARTBEAT_INTERVAL);
     heartbeat.tick().await;
@@ -98,7 +104,14 @@ async fn run_ws_session(
                         Some(Ok(WsMessage::Text(text))) => {
                             if let Some(new_identity) = handle_client_message(&text, &identity, &session, &mut tx).await? {
                                 let _ = session.broadcast(&system_announcement(&format!("{identity} left")));
+                                // #402: roster churn on rename —
+                                // drop the old identity + add the
+                                // new one so subscribers see the
+                                // name change reflected.
+                                session.roster_leave(&identity);
                                 identity = new_identity;
+                                session.roster_join(&identity);
+                                broadcast_roster_update(&session);
                                 let _ = session.broadcast(&system_announcement(&format!("{identity} joined")));
                             }
                         }
@@ -120,7 +133,28 @@ async fn run_ws_session(
     let leave_msg = system_announcement(&format!("{identity} left"));
     let _ = session.broadcast(&leave_msg);
     session.peer_disconnected();
+    // #402: remove from roster + broadcast so the frontend sidebar
+    // prunes the departed peer within heartbeat latency.
+    session.roster_leave(&identity);
+    broadcast_roster_update(&session);
     result
+}
+
+/// #402: fire-and-log ROSTER_UPDATE_MARKER broadcast. Subscribers
+/// (Electron's `useTeamRoster`) react by refetching `/api/roster`.
+/// Marker text is the system-typed opaque constant; the canonical
+/// state lives in the REST endpoint.
+fn broadcast_roster_update(session: &session::Session) {
+    let msg = session::Message {
+        from: "bpmux".to_string(),
+        text: crate::bridge::ROSTER_UPDATE_MARKER.to_string(),
+        ts: chrono::Utc::now(),
+        message_type: MessageType::System,
+        ..session::Message::default()
+    };
+    if let Err(e) = session.broadcast(&msg) {
+        session::diag::log_diag(&format!("ws: roster-update broadcast failed: {e}"));
+    }
 }
 
 async fn wait_for_identify(
