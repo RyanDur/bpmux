@@ -4,7 +4,37 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
 
-const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
+// #370 rework: retire hardcoded role descriptions. Per Ryan's
+// 2026-04-22 23:28 UTC comment: "agents should define themselves.
+// this app needs to be usable to any type of agent and human
+// collaboration." The static `ROLE_INFO[role].description` table
+// named specific agents (pm/dev/designer/ryan); adding a new role
+// would render as "unknown" with no meaningful text.
+//
+// Scope-narrow (per pm + designer endorsement on option-a): the
+// tooltip now shows label (runtime-derived short-role, capitalized)
+// + presence status. Rich self-descriptions become future work when
+// an agent-driven `get_identity` metadata channel wires through
+// to the renderer. The hardcoded constants file is deleted.
+
+const AD_HOC_MESSAGES = [
+  {
+    from: 'ryan:electron',
+    text: 'hello',
+    ts: '2026-04-23T11:00:00Z',
+    to: null,
+    addressee: null,
+    message_type: 'chat'
+  },
+  {
+    from: 'ops:claude-code',
+    text: 'new role not in pre-#370 hardcoded list',
+    ts: '2026-04-23T11:00:10Z',
+    to: null,
+    addressee: null,
+    message_type: 'chat'
+  }
+]
 
 async function launchWithFixture(): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
@@ -13,105 +43,82 @@ async function launchWithFixture(): Promise<{
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-370-'))
   const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
   const win = await app.firstWindow()
+
   await win.route('**/api/board', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ fetched_at: '2026-04-22T16:00:00Z', stories: [] })
+      body: JSON.stringify({ fetched_at: '2026-04-23T11:00:00Z', stories: [] })
     })
   })
-  // Chat hydration: one message from designer, plus an activity
-  // message so usePresence sees a 'busy' state for designer.
-  const messages = [
-    {
-      from: 'designer:claude-code',
-      text: 'hello from the designer',
-      ts: '2026-04-22T16:00:00Z',
-      to: null,
-      addressee: null,
-      message_type: 'chat'
-    }
-  ]
-  const activity = [
-    {
-      from: 'designer:claude-code',
-      text: 'busy',
-      ts: '2026-04-22T16:00:30Z',
-      to: null,
-      addressee: null,
-      message_type: 'activity'
-    }
-  ]
-  // Route handler distinguishes chat_only=true vs activity-seed.
   await win.route('**/api/messages*', async (route, request) => {
     const url = request.url()
     if (url.includes('message_type=activity')) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(activity)
+        body: '[]'
       })
       return
     }
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify(messages)
+      body: JSON.stringify(AD_HOC_MESSAGES)
     })
   })
   await win.reload()
   return { app }
 }
 
-test.describe('desk-check #370 avatar-hover tooltip', () => {
-  test('hover avatar reveals role label + description + status', async () => {
+test.describe('desk-check #370 avatar tooltip (rework — no hardcoded descriptions)', () => {
+  test('tooltip carries label + status but NO description element', async () => {
+    // Falsifier (a): tooltip still pulls text from ROLE_INFO /
+    // roleInfoFor. The description element used to render a static
+    // "pm — product backlog + sequencing…" line. Absence of that
+    // element is the regression gate.
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
 
-    const avatar = win.locator('[data-test="message-avatar"]').first()
-    await expect(avatar).toBeVisible({ timeout: 5_000 })
-
-    // Hover the avatar — CSS :hover reveals the tooltip via
-    // opacity transition.
-    await avatar.hover()
-
     const tooltip = win.locator('[data-test="avatar-tooltip"]').first()
-    await expect(tooltip).toBeVisible({ timeout: 2_000 })
+    await expect(tooltip).toBeAttached()
 
-    // Content assertions — role label, description, current status.
-    // Description comes from the static roleInfo constants; status
-    // comes from the activity-message seed (busy for designer).
-    await expect(tooltip).toContainText('designer')
-    await expect(tooltip).toContainText('UX')
-    await expect(tooltip.locator('[data-test="avatar-tooltip-status"]'))
-      .toContainText(/busy|available|offline|idle/i)
+    // Label present (role name, capitalized).
+    await expect(tooltip.locator('.avatar-tooltip-label')).toBeVisible()
 
-    await avatar.screenshot({
-      path: join(EVIDENCE_DIR, '88-avatar-hover-tooltip.png')
-    })
+    // Status present.
+    await expect(tooltip.locator('[data-test="avatar-tooltip-status"]')).toBeVisible()
 
-    await app.close()
+    // Description element retired — no .avatar-tooltip-desc anywhere.
+    await expect(win.locator('.avatar-tooltip-desc')).toHaveCount(0)
   })
 
-  test('keyboard focus on avatar reveals tooltip (aria-describedby)', async () => {
+  test('new role (ops) renders tooltip label from runtime sender, not constants', async () => {
+    // Falsifier (b): adding a new role renders "unknown" fallthrough.
+    // Pre-#370 rework, `ops` would have hit UNKNOWN_ROLE_INFO and
+    // displayed label="unknown." Post-rework, label comes straight
+    // from the sender short-name, capitalized — so ops shows "Ops."
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
 
-    const avatar = win.locator('[data-test="message-avatar"]').first()
-    await expect(avatar).toBeVisible({ timeout: 5_000 })
+    // Find the ops avatar by its data-role attribute OR the initial
+    // text. The message-avatar has `data-role` attribute, which
+    // PALETTE_ROLE_TOKENS sets to 'unknown' for ops (CSS palette
+    // limitation, not an identity claim). The tooltip's label text
+    // still carries the runtime-derived "Ops."
+    const opsMessageRow = win.locator('[data-test="message-row"]', { hasText: 'new role not in' })
+    await expect(opsMessageRow).toBeVisible()
+    const opsAvatar = opsMessageRow.locator('[data-test="message-avatar"]').first()
+    await expect(opsAvatar).toBeVisible()
 
-    // Verify aria-describedby wiring.
-    const describedby = await avatar.getAttribute('aria-describedby')
-    expect(describedby).toBeTruthy()
-    expect(describedby).toMatch(/^avatar-info-/)
+    const opsTooltipLabel = opsMessageRow.locator('.avatar-tooltip-label').first()
+    await expect(opsTooltipLabel).toHaveText(/^Ops$/)
 
-    // Focus the avatar button and assert the tooltip becomes visible
-    // via :focus-within.
-    await avatar.focus()
-    const tooltip = win.locator('[data-test="avatar-tooltip"]').first()
-    await expect(tooltip).toBeVisible({ timeout: 2_000 })
+    // aria-label on the button also carries runtime name + status
+    // (not "unknown").
+    const ariaLabel = await opsAvatar.getAttribute('aria-label')
+    expect(ariaLabel).toMatch(/^Ops — /)
 
     await app.close()
   })

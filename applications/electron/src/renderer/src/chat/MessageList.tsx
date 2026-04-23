@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
 import { format } from 'date-fns'
-import { roleInfoFor } from '../constants/roleInfo'
 import type { ChatMessage } from '../transport/types'
 import { classOf, type MessageClass } from '../hooks/useMessageFilter'
 import { usePresence } from '../hooks/usePresence'
@@ -272,12 +271,19 @@ function MessageList({
                 // #370 sender-info tooltip. Avatar becomes a button so
                 // keyboard users can focus + reveal via focus-within;
                 // sighted pointer users trigger via :hover with a
-                // 150ms transition-delay (Nielsen-timing). Tooltip
-                // text = role label + description (static) + current
-                // presence (derived from activity broadcasts). Unique
+                // 150ms transition-delay (Nielsen-timing). Unique
                 // per-message id for aria-describedby so duplicate
                 // avatars don't collide.
-                const info = roleInfoFor(sender)
+                //
+                // #370 rework: tooltip no longer carries a static
+                // role-description (previous hardcoded "pm — product
+                // backlog…" etc baked the current team composition
+                // into the renderer). Shape is now runtime-derived
+                // label (sender's short-role, capitalized) + current
+                // presence status. Richer self-descriptions become
+                // future-work once an agent-driven `get_identity`
+                // metadata channel lands.
+                const label = sender.charAt(0).toUpperCase() + sender.slice(1)
                 const status = presence.get(sender) ?? 'offline'
                 const tooltipId = `avatar-info-${m.id}`
                 return (
@@ -288,7 +294,7 @@ function MessageList({
                       data-test="message-avatar"
                       data-role={PALETTE_ROLE_TOKENS.has(sender) ? sender : 'unknown'}
                       aria-describedby={tooltipId}
-                      aria-label={`${info.label} — ${status}`}
+                      aria-label={`${label} — ${status}`}
                     >
                       {sender.charAt(0).toUpperCase()}
                     </button>
@@ -298,8 +304,7 @@ function MessageList({
                       className="avatar-tooltip"
                       data-test="avatar-tooltip"
                     >
-                      <strong className="avatar-tooltip-label">{info.label}</strong>
-                      <em className="avatar-tooltip-desc">{info.description}</em>
+                      <strong className="avatar-tooltip-label">{label}</strong>
                       <small
                         className={`avatar-tooltip-status avatar-tooltip-status--${status}`}
                         data-test="avatar-tooltip-status"

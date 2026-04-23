@@ -300,12 +300,6 @@
     color: var(--fg-primary);
   }
 
-  & .avatar-tooltip-desc {
-    color: var(--fg-secondary);
-    font-style: normal;
-    line-height: 1.4;
-  }
-
   & .avatar-tooltip-status {
     color: var(--fg-dim);
     font-size: 0.6875rem;
