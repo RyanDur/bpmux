@@ -479,6 +479,12 @@ function BoardGroup({
   const defaultOpen = !group.collapsed
   const draggable = group.state === 'ready' && onReorder !== undefined
   const [dropAt, setDropAt] = useState<number | null>(null)
+  // #333: track the row being dragged so we can hide it via CSS
+  // (opacity: 0) for the duration of the gesture. Ryan 2026-04-22
+  // ~22:32 UTC: "hide the dragged item. Until not being dragged." —
+  // the original ghost + insertion indicator overlap was confusing;
+  // hiding the origin row makes the drop target read unambiguously.
+  const [draggingNumber, setDraggingNumber] = useState<number | null>(null)
 
   const handleListDragOver = (event: React.DragEvent<HTMLUListElement>): void => {
     if (!draggable) return
@@ -501,10 +507,12 @@ function BoardGroup({
     const moved = Number.parseInt(raw, 10)
     if (Number.isNaN(moved) || dropAt === null) {
       setDropAt(null)
+      setDraggingNumber(null)
       return
     }
     onReorder(group.state, moved, dropAt)
     setDropAt(null)
+    setDraggingNumber(null)
   }
 
   return (
@@ -536,6 +544,7 @@ function BoardGroup({
               story={story}
               selected={story.number === selectedNumber}
               draggable={draggable}
+              dragging={draggingNumber === story.number}
               dropBefore={dropAt === i}
               dropAfterLast={dropAt === stories.length && i === stories.length - 1}
               position={i + 1}
@@ -565,6 +574,11 @@ function BoardGroup({
               onOpenTimeline={onOpenTimeline}
               onSelect={onSelect}
               onRowDragOver={handleRowDragOver(i)}
+              onDragStartRow={() => setDraggingNumber(story.number)}
+              onDragEndRow={() => {
+                setDraggingNumber(null)
+                setDropAt(null)
+              }}
             />
           ))}
         </ul>
@@ -577,6 +591,11 @@ interface RowProps {
   story: BoardStory
   selected: boolean
   draggable: boolean
+  // #333: parent tracks which row is being dragged; the matching
+  // row hides via [data-dragging="true"] CSS for the duration of
+  // the gesture. Reappears at the drop position when React re-
+  // renders with the new order.
+  dragging: boolean
   dropBefore: boolean
   dropAfterLast: boolean
   // Keyboard-reorder metadata (#357). position is 1-based within
@@ -590,12 +609,18 @@ interface RowProps {
   onOpenTimeline?: (n: number) => void
   onSelect: (n: number) => void
   onRowDragOver: (event: React.DragEvent<HTMLLIElement>) => void
+  // #333: signal to the parent that this row has started / ended a
+  // drag gesture. Parent uses the signal to set + clear the
+  // hide-while-dragging state.
+  onDragStartRow?: () => void
+  onDragEndRow?: () => void
 }
 
 function StoryRow({
   story,
   selected,
   draggable,
+  dragging,
   dropBefore,
   dropAfterLast,
   position,
@@ -604,7 +629,9 @@ function StoryRow({
   onOpen,
   onOpenTimeline,
   onSelect,
-  onRowDragOver
+  onRowDragOver,
+  onDragStartRow,
+  onDragEndRow
 }: RowProps): React.JSX.Element {
   const type = storyTypeFromLabels(story.labels)
   const classes = ['board-story-row']
@@ -629,12 +656,15 @@ function StoryRow({
       className={classes.join(' ')}
       aria-current={selected ? 'true' : undefined}
       data-test={`board-story-${story.number}`}
+      data-dragging={dragging ? 'true' : undefined}
       draggable={draggable}
       onDragStart={(event) => {
         if (!draggable) return
         event.dataTransfer.setData('text/bpmux-story', String(story.number))
         event.dataTransfer.effectAllowed = 'move'
+        onDragStartRow?.()
       }}
+      onDragEnd={() => onDragEndRow?.()}
       onDragOver={onRowDragOver}
     >
       <button

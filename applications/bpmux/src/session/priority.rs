@@ -73,6 +73,44 @@ pub fn sort_by_priority(numbers: &[u64], priority: &[u64]) -> Vec<u64> {
     ordered
 }
 
+/// #333: apply the priority index to a board-stories array (as returned
+/// by `tracker.fetch_board_stories`). Stories are grouped by their
+/// `state` field in encounter order; within each state, order follows
+/// the priority index (missing entries fall to the end in original
+/// order). Without this, drag-to-reorder on the frontend persists via
+/// POST /api/stories/:n/reorder but the very next /api/board refetch
+/// returns GitHub's native order, snapping the UI back.
+pub fn apply_priority_to_board(
+    stories: Vec<serde_json::Value>,
+    priority: &PriorityIndex,
+) -> Vec<serde_json::Value> {
+    // Preserve inter-state encounter order via a Vec of (state, list);
+    // a HashMap would reorder states alphabetically which is fine for
+    // the frontend (re-groups by state) but harder to reason about in
+    // tests.
+    let mut by_state: Vec<(String, Vec<serde_json::Value>)> = Vec::new();
+    for s in stories {
+        let state = s
+            .get("state")
+            .and_then(|v| v.as_str())
+            .unwrap_or("unknown")
+            .to_string();
+        match by_state.iter_mut().find(|(k, _)| k == &state) {
+            Some((_, list)) => list.push(s),
+            None => by_state.push((state, vec![s])),
+        }
+    }
+    for (state, list) in by_state.iter_mut() {
+        if let Some(pri) = priority.columns.get(state) {
+            list.sort_by_cached_key(|s| {
+                let number = s.get("number").and_then(|v| v.as_u64()).unwrap_or(0);
+                pri.iter().position(|&p| p == number).unwrap_or(usize::MAX)
+            });
+        }
+    }
+    by_state.into_iter().flat_map(|(_, list)| list).collect()
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
@@ -132,5 +170,100 @@ mod tests {
         save_priority(&path, &index).unwrap();
         let loaded = load_priority(&path);
         assert_eq!(loaded.columns["ready"], vec![100, 200]);
+    }
+
+    // ── #333 apply_priority_to_board tests ──
+
+    fn story(number: u64, state: &str) -> serde_json::Value {
+        serde_json::json!({ "number": number, "state": state, "title": "s" })
+    }
+
+    fn numbers_of(stories: &[serde_json::Value]) -> Vec<u64> {
+        stories
+            .iter()
+            .filter_map(|s| s.get("number").and_then(|v| v.as_u64()))
+            .collect()
+    }
+
+    #[test]
+    fn apply_priority_reorders_within_ready_column() {
+        // Baseline falsifier: priority [300, 100] within ready must
+        // reorder [100, 200, 300] → [300, 100, 200]. Without this
+        // fix, the frontend's drag-reorder would snap back after the
+        // first /api/board refetch.
+        let mut index = PriorityIndex::default();
+        index.columns.insert("ready".to_string(), vec![300, 100]);
+        let stories = vec![
+            story(100, "ready"),
+            story(200, "ready"),
+            story(300, "ready"),
+        ];
+        let sorted = apply_priority_to_board(stories, &index);
+        assert_eq!(numbers_of(&sorted), vec![300, 100, 200]);
+    }
+
+    #[test]
+    fn apply_priority_leaves_other_states_untouched() {
+        // Only the column with a priority entry sorts; other columns
+        // pass through in their original order.
+        let mut index = PriorityIndex::default();
+        index.columns.insert("ready".to_string(), vec![200, 100]);
+        let stories = vec![
+            story(100, "ready"),
+            story(200, "ready"),
+            story(500, "delivered"),
+            story(400, "delivered"),
+        ];
+        let sorted = apply_priority_to_board(stories, &index);
+        assert_eq!(numbers_of(&sorted), vec![200, 100, 500, 400]);
+    }
+
+    #[test]
+    fn apply_priority_preserves_inter_state_encounter_order() {
+        // States appear in the output in the order they first appear
+        // in the input. Frontend re-groups by state anyway, but
+        // stable ordering makes the function easier to reason about.
+        let mut index = PriorityIndex::default();
+        index.columns.insert("ready".to_string(), vec![100]);
+        let stories = vec![
+            story(500, "delivered"),
+            story(100, "ready"),
+            story(600, "delivered"),
+        ];
+        let sorted = apply_priority_to_board(stories, &index);
+        // Delivered appears first (encounter order), then ready; within
+        // delivered, original order preserved; ready has only one item.
+        assert_eq!(numbers_of(&sorted), vec![500, 600, 100]);
+    }
+
+    #[test]
+    fn apply_priority_with_empty_index_is_identity() {
+        // No priority entries anywhere → input order preserved.
+        let index = PriorityIndex::default();
+        let stories = vec![
+            story(100, "ready"),
+            story(200, "ready"),
+            story(300, "ready"),
+        ];
+        let sorted = apply_priority_to_board(stories.clone(), &index);
+        assert_eq!(numbers_of(&sorted), numbers_of(&stories));
+    }
+
+    #[test]
+    fn apply_priority_entries_for_absent_numbers_ignored() {
+        // Priority list references story 999 which isn't in the
+        // current fetch — that entry is ignored; remaining priority
+        // entries still reorder the present stories.
+        let mut index = PriorityIndex::default();
+        index
+            .columns
+            .insert("ready".to_string(), vec![999, 200, 100]);
+        let stories = vec![
+            story(100, "ready"),
+            story(200, "ready"),
+            story(300, "ready"),
+        ];
+        let sorted = apply_priority_to_board(stories, &index);
+        assert_eq!(numbers_of(&sorted), vec![200, 100, 300]);
     }
 }

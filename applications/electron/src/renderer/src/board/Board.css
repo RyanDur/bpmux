@@ -246,6 +246,15 @@
         padding: 0 var(--space-2);
       }
     }
+
+    /* #333: hide the dragged row while the drag gesture is active so
+     * the insertion-point indicator + the browser's ghost image
+     * aren't competing for visual attention with the origin row.
+     * Reappears naturally when React re-renders with the new order
+     * after drop (or when dragging cancels and state clears). */
+    &[data-dragging='true'] {
+      opacity: 0;
+    }
   }
 
   & .board-story-button {

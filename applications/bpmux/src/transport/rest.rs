@@ -667,8 +667,19 @@ pub async fn get_board(
     };
     match tracker.fetch_board_stories().await {
         Ok(stories) => {
+            // #333: apply the persisted priority index so drag-reorder
+            // survives refetch. Without this, the frontend's
+            // optimistic reorder gets overwritten on the very next
+            // /api/board call with GitHub's native order.
+            let ordered = match crate::session::priority::default_priority_path() {
+                Ok(path) => {
+                    let index = crate::session::priority::load_priority(&path);
+                    crate::session::priority::apply_priority_to_board(stories, &index)
+                }
+                Err(_) => stories,
+            };
             let body = serde_json::json!({
-                "stories": stories,
+                "stories": ordered,
                 "fetched_at": chrono::Utc::now().to_rfc3339(),
             });
             (StatusCode::OK, json_headers(), body.to_string())
