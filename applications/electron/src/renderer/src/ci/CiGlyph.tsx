@@ -3,8 +3,20 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { CI_STATE_UPDATE_MARKER, type ChatMessage } from '../transport/types'
 import './CiGlyph.css'
 
+// #397 + #361 bundled: `quota_exhausted` is a distinct backend
+// conclusion (not a kind of failure) so team-gate code can branch
+// between hard-block and pass-with-citation. The glyph renders it
+// with ⏸ + amber so the owner can see "infra unavailable" at a
+// glance instead of reading it as a code-failure red.
+type CiConclusion =
+  | 'success'
+  | 'failure'
+  | 'in_progress'
+  | 'quota_exhausted'
+  | 'unknown'
+
 interface CiStateReport {
-  conclusion: 'success' | 'failure' | 'in_progress' | 'unknown'
+  conclusion: CiConclusion
   last_run_id: number | null
   branch: string
   url: string
@@ -32,8 +44,26 @@ function conclusionGlyph(conclusion: string): string {
       return '✗'
     case 'in_progress':
       return '◌'
+    case 'quota_exhausted':
+      // #397 + #361: distinct from ✗ so owner reads "infra paused"
+      // not "code failed." Shape carries the signal for color-blind
+      // readers; color (amber) reinforces.
+      return '⏸'
     default:
       return '?'
+  }
+}
+
+// Human-readable conclusion for aria-label. Extends the glyph
+// vocabulary with accessibility text — `quota_exhausted` needs a
+// spelled-out reason so screen-reader users aren't left guessing
+// what ⏸ means.
+function conclusionAriaLabel(conclusion: string): string {
+  switch (conclusion) {
+    case 'quota_exhausted':
+      return 'CI unavailable — GitHub Actions quota exhausted'
+    default:
+      return `CI ${conclusion}`
   }
 }
 
@@ -136,8 +166,9 @@ function CiGlyph({ messages }: Props): React.JSX.Element {
         if (url) window.open(url, '_blank', 'noopener,noreferrer')
       }}
       title={tooltip}
-      aria-label={`CI ${conclusion}`}
+      aria-label={conclusionAriaLabel(conclusion)}
       data-test="ci-glyph"
+      data-conclusion={conclusion}
     >
       CI {glyph}
     </a>
