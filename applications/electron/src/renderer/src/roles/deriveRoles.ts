@@ -66,18 +66,26 @@ export function deriveTeamRoles(
 
 /**
  * Subset of derived roles that are "direct-DM-able" from the
- * viewer's perspective — every role except the viewer's own.
- * Sidebar's "direct" section renders these; messaging yourself
- * isn't a meaningful DM target.
+ * viewer's perspective — every role except the viewer's own AND
+ * system senders. Sidebar's "direct" section renders these.
+ *
+ * #399 + Ryan 2026-04-23 11:51 UTC: "bpmux is not something we
+ * have conversations with. it is the medium in which we
+ * communicate." System-typed senders are the transport layer;
+ * treating them as DM targets invites users to address the
+ * channel-substrate itself. Detection is structural (via
+ * `messageType === 'system'`) — no literal name strings —
+ * mirroring the same category filter #386's
+ * `deriveCombinableRoles` uses for group enumeration.
  */
 export function deriveDirectRoles(
   messages: readonly ChatMessage[],
   viewer?: string
 ): readonly string[] {
   const all = deriveTeamRoles(messages, viewer)
-  if (viewer === undefined) return all
-  const self = shortName(viewer)
-  return all.filter((r) => r !== self)
+  const systemSenders = deriveSystemSenders(messages)
+  const self = viewer !== undefined ? shortName(viewer) : null
+  return all.filter((r) => r !== self && !systemSenders.has(r))
 }
 
 /**
