@@ -1183,3 +1183,83 @@ async fn post_reject_story_returns_503_when_tracker_missing() {
     let response = post_json(router, "/api/stories/7/reject", r#"{"note":"x"}"#).await;
     assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
 }
+
+// ── #387 reaction-event synthesis tests ──────────────────────────
+
+fn reaction_toggle(user: &str, emoji: &str, message_key: &str) -> ReactionToggle {
+    ReactionToggle {
+        channel: "broadcast".to_string(),
+        message_key: message_key.to_string(),
+        emoji: emoji.to_string(),
+        user: user.to_string(),
+    }
+}
+
+#[test]
+fn build_reaction_event_text_names_sender_from_message_key() {
+    // message_key shape is "{ts}|{from}"; parsing extracts the
+    // original sender's short-role so the synthesized event text
+    // reads "X reacted 👍 to Y's message" with Y = the role the
+    // message originated from. Agents can respond contextually
+    // (Ryan AC4).
+    let body = reaction_toggle("ryan", "👍", "2026-04-23T11:30:00Z|dev:claude-code");
+    let text = build_reaction_event_text(&body, true);
+    assert!(
+        text.contains("ryan") && text.contains("👍") && text.contains("dev"),
+        "text should name reactor + emoji + sender: {text}"
+    );
+    assert!(
+        text.contains("reacted") && !text.contains("unreacted"),
+        "present=true should use 'reacted' verb: {text}"
+    );
+}
+
+#[test]
+fn build_reaction_event_text_unreact_uses_unreacted_verb() {
+    // Designer 2026-04-23 11:58 UTC: "removed {emoji}" reads as
+    // ambiguous ("{user} removed my reaction"). "unreacted" keeps
+    // the "who did what" structure — user removes THEIR OWN
+    // reaction, not someone else's.
+    let body = reaction_toggle("dev", "🎉", "2026-04-23T11:30:00Z|pm:claude-code");
+    let text = build_reaction_event_text(&body, false);
+    // "unreacted" naturally contains "reacted" as substring, so the
+    // negative assertion checks there's no standalone "reacted"
+    // word (bounded by non-letter on the left side).
+    assert!(
+        text.contains("unreacted"),
+        "should use 'unreacted' verb: {text}"
+    );
+    let starts_with_reacted = text.starts_with("reacted ") || text.contains(" reacted ");
+    assert!(
+        !starts_with_reacted,
+        "present=false must not include standalone 'reacted' word: {text}"
+    );
+    assert!(text.contains("dev") && text.contains("🎉") && text.contains("pm"));
+}
+
+#[test]
+fn build_reaction_event_text_falls_back_without_message_key_shape() {
+    // If message_key lacks the "ts|from" format, the synthesized
+    // text still carries user + emoji + verb. Agents lose only
+    // the "whose message" context — partial fallback, not panic.
+    let body = reaction_toggle("ryan", "✨", "malformed-key");
+    let text = build_reaction_event_text(&body, true);
+    assert!(text.contains("ryan") && text.contains("✨"));
+    assert!(
+        !text.contains("'s message"),
+        "no sender context when key is malformed: {text}"
+    );
+}
+
+#[test]
+fn build_reaction_event_text_strips_transport_suffix_from_sender() {
+    // Sender short-name = role part before `:` in "dev:claude-code".
+    // The synthesized text names "dev" not "dev:claude-code" so
+    // agents read the canonical role, not the transport identity.
+    let body = reaction_toggle("ryan", "👍", "2026-04-23T11:30:00Z|designer:claude-code");
+    let text = build_reaction_event_text(&body, true);
+    assert!(
+        text.contains("designer") && !text.contains(":claude-code"),
+        "sender should render as short-role: {text}"
+    );
+}

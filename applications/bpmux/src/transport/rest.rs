@@ -964,6 +964,12 @@ pub async fn post_reaction(
         );
     }
     broadcast_reactions_update(&session);
+    // #387: broadcast an insight-class synthesized message so MCP-
+    // bridged agents see the reaction event in their stream. The
+    // system-class REACTIONS_UPDATE_MARKER above is for Electron
+    // UI's refetch path (agents can't see it because the bridge
+    // filters system + activity). Insight bridges through cleanly.
+    broadcast_reaction_event(&session, &body, present);
     (
         StatusCode::OK,
         json_headers(),
@@ -981,6 +987,59 @@ fn broadcast_reactions_update(session: &session::Session) {
     };
     if let Err(e) = session.broadcast(&msg) {
         session::diag::log_diag(&format!("rest: reactions-update broadcast failed: {e}"));
+    }
+}
+
+/// #387 cross-agent reaction visibility. The system-class
+/// REACTIONS_UPDATE_MARKER is filtered by the bridge before reaching
+/// MCP-bridged agents, so reactions were Electron-UI-only pre-#387.
+/// This synthesizes a human-readable insight-class chat entry so
+/// agents see "{user} reacted {emoji} to {sender}'s message" (or
+/// "removed {emoji} from…" on a toggle-off) in their stream.
+///
+/// Message-key shape is `{ts}|{from}` (mirrors session::pins /
+/// usePins / pinKey); we parse the `from` out to name the original
+/// sender by short-role. If parsing fails, the synthesized text
+/// still carries user + emoji; agents lose only the "whose message"
+/// context.
+pub(crate) fn build_reaction_event_text(body: &ReactionToggle, present: bool) -> String {
+    let original_sender_short = body
+        .message_key
+        .split_once('|')
+        .map(|(_ts, from)| from.split(':').next().unwrap_or(from).to_string());
+    // Designer 2026-04-23 11:58 UTC: "removed {emoji}" reads as
+    // ambiguous ("{user} removed my reaction"). "unreacted" keeps
+    // the "who did what to what" structure clear — the user is
+    // removing their own reaction, not someone else's.
+    match (present, original_sender_short) {
+        (true, Some(sender)) if !sender.is_empty() => {
+            format!(
+                "{} reacted {} to {}'s message",
+                body.user, body.emoji, sender
+            )
+        }
+        (true, _) => format!("{} reacted {}", body.user, body.emoji),
+        (false, Some(sender)) if !sender.is_empty() => {
+            format!(
+                "{} unreacted {} from {}'s message",
+                body.user, body.emoji, sender
+            )
+        }
+        (false, _) => format!("{} unreacted {}", body.user, body.emoji),
+    }
+}
+
+fn broadcast_reaction_event(session: &session::Session, body: &ReactionToggle, present: bool) {
+    let text = build_reaction_event_text(body, present);
+    let msg = session::Message {
+        from: "bpmux".to_string(),
+        text,
+        ts: chrono::Utc::now(),
+        message_type: session::MessageType::Insight,
+        ..session::Message::default()
+    };
+    if let Err(e) = session.broadcast(&msg) {
+        session::diag::log_diag(&format!("rest: reaction-event broadcast failed: {e}"));
     }
 }
 
