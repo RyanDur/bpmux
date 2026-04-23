@@ -1,3 +1,73 @@
+/* #388 wrapper around the message-list ul — positioning context
+ * for the "new messages ↓" indicator pill. Flex child in Chat's
+ * layout; the ul inside owns the scroll. */
+.message-list-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  display: flex;
+  /* column means the ul stretches to fill the wrap height; pill is
+   * an absolutely-positioned sibling so it doesn't affect layout. */
+  flex-direction: column;
+  min-height: 0;
+}
+
+.message-list-wrap > .message-list {
+  /* Wrap owns the flex sizing; ul fills. */
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* #388 "N new messages ↓" indicator pill. Appears bottom-right of
+ * the chat region when the user is scrolled up from the bottom +
+ * new messages have arrived. Clicking scrolls to bottom +
+ * dismisses. role=status + aria-live=polite on the element itself
+ * so SR users hear the count update without interrupting focus. */
+.new-messages-pill {
+  position: absolute;
+  right: var(--space-12);
+  bottom: var(--space-12);
+  padding: var(--space-6) var(--space-12);
+  border: 1px solid var(--accent-brand);
+  border-radius: 999px;
+  background: var(--accent-brand);
+  color: var(--bg-base);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  /* Slide up a touch on entry; reduced-motion drops the animation
+   * in the matching @media block below. */
+  animation: new-messages-pill-enter var(--motion-duration-fast)
+    var(--motion-ease-out);
+  z-index: 5;
+
+  &:hover {
+    filter: brightness(1.1);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--accent-brand);
+    outline-offset: 2px;
+  }
+}
+
+@keyframes new-messages-pill-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .new-messages-pill {
+    animation: none;
+  }
+}
+
 .message-list {
   flex: 1 1 auto;
   overflow-y: auto;

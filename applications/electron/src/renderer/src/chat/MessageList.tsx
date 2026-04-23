@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { format } from 'date-fns'
 import type { ChatMessage } from '../transport/types'
 import { classOf, type MessageClass } from '../hooks/useMessageFilter'
@@ -213,6 +213,54 @@ function MessageList({
     },
     [onSelectRecipient]
   )
+
+  // #388 "new messages ↓" indicator. When the user has scrolled up
+  // from the bottom (scrollTop !== 0 under column-reverse layout
+  // from #363) and new messages arrive, count how many have
+  // accumulated since the scroll-away. Click on the pill scrolls
+  // back to bottom + resets the count. Bottom-detection uses a
+  // small threshold (8px) so sub-pixel scroll noise doesn't flap
+  // the indicator on and off.
+  const BOTTOM_THRESHOLD_PX = 8
+  const listRef = useRef<HTMLUListElement | null>(null)
+  const atBottomRef = useRef<boolean>(true)
+  const lastLengthRef = useRef<number>(visible.length)
+  const [newCount, setNewCount] = useState<number>(0)
+
+  const handleScroll = useCallback((): void => {
+    const ul = listRef.current
+    if (!ul) return
+    // column-reverse: visual bottom is scrollTop === 0. Negative
+    // scrollTop can occur on some browsers; abs keeps the math
+    // honest for both engines.
+    const atBottom = Math.abs(ul.scrollTop) <= BOTTOM_THRESHOLD_PX
+    atBottomRef.current = atBottom
+    if (atBottom && newCount !== 0) setNewCount(0)
+  }, [newCount])
+
+  useEffect(() => {
+    const prev = lastLengthRef.current
+    const curr = visible.length
+    lastLengthRef.current = curr
+    if (curr <= prev) return
+    // New messages arrived. If the user is at the bottom, the
+    // column-reverse layout scrolls automatically and there's
+    // nothing to notify about — the new messages are visible.
+    // Otherwise, accumulate the count of arrivals since the last
+    // scroll-away.
+    if (atBottomRef.current) return
+    setNewCount((n) => n + (curr - prev))
+  }, [visible.length])
+
+  const scrollToBottom = useCallback((): void => {
+    const ul = listRef.current
+    if (!ul) return
+    // scrollTo(0) lands at visual bottom under column-reverse; the
+    // scroll event handler will reset the count once
+    // atBottomRef lands true.
+    ul.scrollTo({ top: 0, behavior: 'smooth' })
+    setNewCount(0)
+  }, [])
 
   const regionProps = {
     className: 'message-list',
@@ -474,9 +522,23 @@ function MessageList({
   // for column-reverse layout.
   const reversed = buildReversed(visible)
   return (
-    <>
-      <ul {...regionProps}>{reversed.map(renderRow)}</ul>
-    </>
+    <div className="message-list-wrap" data-test="message-list-wrap">
+      <ul {...regionProps} ref={listRef} onScroll={handleScroll}>
+        {reversed.map(renderRow)}
+      </ul>
+      {newCount > 0 && (
+        <button
+          type="button"
+          className="new-messages-pill"
+          data-test="new-messages-pill"
+          onClick={scrollToBottom}
+          role="status"
+          aria-live="polite"
+        >
+          {newCount === 1 ? '1 new message ↓' : `${newCount} new messages ↓`}
+        </button>
+      )}
+    </div>
   )
 }
 
