@@ -1052,3 +1052,139 @@ async fn label_story_still_pm_gated_with_operation_param() {
         );
     }
 }
+
+// ── #398 start_story pickup-gate completeness tests ───────────────
+
+#[tokio::test]
+async fn start_story_rejects_missing_pickup_paraphrase() {
+    // Schema requires it; handler also validates so pre-MCP callers
+    // (tests) fail-fast with a descriptive message.
+    let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
+    let args = serde_json::json!({
+        "number": 398,
+        "falsifier_reframing": "I would reject if the pickup signal is invisible."
+    });
+    let result = handle_start_story(
+        args.as_object().unwrap(),
+        "dev:claude-code",
+        &ws_tx,
+        &AlreadyClosedTracker,
+    )
+    .await;
+    assert!(
+        result.is_err(),
+        "missing pickup_paraphrase must fail: {result:?}"
+    );
+    let err = result.unwrap_err();
+    assert!(
+        err.contains("pickup_paraphrase"),
+        "error should name the field: {err}"
+    );
+    assert!(
+        err.contains("retro") || err.contains("pickup time"),
+        "error should cite retro framing so agents know the why: {err}"
+    );
+}
+
+#[tokio::test]
+async fn start_story_rejects_empty_pickup_paraphrase() {
+    // Whitespace-only must also fail — matches create_story + deliver
+    // validation semantics (trim + empty-check).
+    let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
+    let args = serde_json::json!({
+        "number": 398,
+        "pickup_paraphrase": "   \n  ",
+        "falsifier_reframing": "I would reject if..."
+    });
+    let result = handle_start_story(
+        args.as_object().unwrap(),
+        "dev:claude-code",
+        &ws_tx,
+        &AlreadyClosedTracker,
+    )
+    .await;
+    assert!(
+        result.is_err(),
+        "whitespace-only pickup_paraphrase must fail"
+    );
+    assert!(result.unwrap_err().contains("pickup_paraphrase"));
+}
+
+#[tokio::test]
+async fn start_story_rejects_missing_falsifier_reframing() {
+    let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
+    let args = serde_json::json!({
+        "number": 398,
+        "pickup_paraphrase": "As a dev, I restate the user-job..."
+    });
+    let result = handle_start_story(
+        args.as_object().unwrap(),
+        "dev:claude-code",
+        &ws_tx,
+        &AlreadyClosedTracker,
+    )
+    .await;
+    assert!(
+        result.is_err(),
+        "missing falsifier_reframing must fail: {result:?}"
+    );
+    let err = result.unwrap_err();
+    assert!(
+        err.contains("falsifier_reframing"),
+        "error should name the field: {err}"
+    );
+}
+
+#[tokio::test]
+async fn start_story_accepts_both_fields_populated() {
+    // Happy path: both required strings present + non-empty → success.
+    // The handler returns the labeled-as-in-progress confirmation.
+    let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
+    let args = serde_json::json!({
+        "number": 398,
+        "pickup_paraphrase": "User-job: dev articulates their read of the story at pickup so the team knows work is in flight.",
+        "falsifier_reframing": "I would reject if start_story without the new fields still succeeds."
+    });
+    let result = handle_start_story(
+        args.as_object().unwrap(),
+        "dev:claude-code",
+        &ws_tx,
+        &AlreadyClosedTracker,
+    )
+    .await;
+    assert!(
+        result.is_ok(),
+        "populated fields should succeed: {result:?}"
+    );
+    assert!(result.unwrap().contains("in progress"));
+}
+
+#[tokio::test]
+async fn start_story_still_dev_only_with_new_params() {
+    // Role gate fires before param parsing — a pm / designer / ryan
+    // call with both new fields populated must still be rejected as
+    // "restricted to dev." #398 doesn't relax the existing scope.
+    let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
+    let args = serde_json::json!({
+        "number": 398,
+        "pickup_paraphrase": "any text",
+        "falsifier_reframing": "any text"
+    });
+    for caller in ["pm:claude-code", "designer:claude-code", "ryan:human"] {
+        let result = handle_start_story(
+            args.as_object().unwrap(),
+            caller,
+            &ws_tx,
+            &AlreadyClosedTracker,
+        )
+        .await;
+        assert!(
+            result.is_err(),
+            "{caller} must be rejected by dev-only gate"
+        );
+        assert!(
+            result.unwrap_err().contains("restricted to dev"),
+            "{caller} rejection should cite role restriction"
+        );
+    }
+}

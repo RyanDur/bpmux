@@ -233,6 +233,13 @@ fn compose_story_body(user_job: &str, observation_falsifier: &str, author_body: 
 
 /// Signal fires on INTENT (before gh) so the team is notified
 /// even when the gh label edit fails.
+///
+/// #398 pickup-gate: dev must articulate a pickup paraphrase +
+/// falsifier reframing BEFORE the in-progress label fires. Missing
+/// or empty values fail fast before any signal or label mutation
+/// so the board doesn't transition to in-progress on a bypassed
+/// gate. The paraphrase lands as an issue comment for audit-trail
+/// parity with deliver_story's verified_observation.
 pub(super) async fn handle_start_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
@@ -244,10 +251,32 @@ pub(super) async fn handle_start_story(
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
+    let pickup_paraphrase = require_nonempty_string(
+        args,
+        "pickup_paraphrase",
+        "pickup_paraphrase is required (2026-04-23 retro): restate the user-job as you understand it at pickup time. This broadcast is what separates 'dev is working' from 'dev is silent' to the rest of the team.",
+    )?;
+    let falsifier_reframing = require_nonempty_string(
+        args,
+        "falsifier_reframing",
+        "falsifier_reframing is required (2026-04-23 retro): restate the observation-falsifier — either verbatim from filing or your sharpening. Forces engagement with the rejection criteria before code.",
+    )?;
     let signal =
         serde_json::to_string(&build_start_signal(number)).map_err(|e| format!("signal: {e}"))?;
     if let Err(e) = ws_send(ws_tx, signal).await {
         crate::session::diag::log_diag(&format!("bridge: signal send failed: {e}"));
+    }
+    // #398: persist the pickup paraphrase + falsifier reframing as
+    // an issue comment so designer + pm see dev's interpretation at
+    // pickup time (not just at delivery). Mirrors the deliver-gate
+    // verified_observation comment pattern (#391).
+    let pickup_comment = format!(
+        "**pickup_paraphrase** (dev pickup-gate):\n\n{pickup_paraphrase}\n\n---\n\n**falsifier_reframing**:\n\n{falsifier_reframing}"
+    );
+    if let Err(e) = tracker.comment_on_story(number, &pickup_comment).await {
+        crate::session::diag::log_diag(&format!(
+            "bridge: pickup_paraphrase comment failed for #{number}: {e}"
+        ));
     }
     if let Err(e) = tracker.remove_label(number, LABEL_READY).await {
         crate::session::diag::log_diag(&format!(
