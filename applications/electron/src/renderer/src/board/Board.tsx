@@ -276,8 +276,28 @@ function Board({ messages, drillRequest, onDrillClosed, hidden }: BoardProps): R
   const handleReorder = useCallback(
     (state: StoryState, moved: number, insertAt: number): void => {
       const prevData = data
+      // #357 rework: compute newPosition + groupSize synchronously
+      // from the current `data` snapshot instead of mutating locals
+      // inside the setData updater. The updater runs during React's
+      // commit phase, not during the event handler — so the prior
+      // code's `if (groupSize > 0)` check ran against 0 and the
+      // announce never fired. Keep the optimistic reorder inside
+      // setData (pure derivation from prev state), but derive the
+      // announce-values up front.
       let newPosition = 0
       let groupSize = 0
+      if (prevData) {
+        const inGroup = prevData.stories.filter((s) => s.state === state)
+        const fromIdx = inGroup.findIndex((s) => s.number === moved)
+        if (fromIdx !== -1) {
+          const clampedInsert = Math.max(
+            0,
+            Math.min(insertAt - (insertAt > fromIdx ? 1 : 0), inGroup.length - 1)
+          )
+          newPosition = clampedInsert + 1
+          groupSize = inGroup.length
+        }
+      }
       setData((prev) => {
         if (!prev) return prev
         const inGroup = prev.stories.filter((s) => s.state === state)
@@ -285,10 +305,11 @@ function Board({ messages, drillRequest, onDrillClosed, hidden }: BoardProps): R
         const fromIdx = inGroup.findIndex((s) => s.number === moved)
         if (fromIdx === -1) return prev
         const [movedStory] = inGroup.splice(fromIdx, 1)
-        const clampedInsert = Math.max(0, Math.min(insertAt - (insertAt > fromIdx ? 1 : 0), inGroup.length))
+        const clampedInsert = Math.max(
+          0,
+          Math.min(insertAt - (insertAt > fromIdx ? 1 : 0), inGroup.length)
+        )
         inGroup.splice(clampedInsert, 0, movedStory)
-        newPosition = clampedInsert + 1
-        groupSize = inGroup.length
         return { ...prev, stories: [...others, ...inGroup] }
       })
       if (groupSize > 0) {
