@@ -1,8 +1,10 @@
+import { useMemo } from 'react'
 import { format } from 'date-fns'
 import { roleInfoFor } from '../constants/roleInfo'
 import type { ChatMessage } from '../transport/types'
 import { classOf, type MessageClass } from '../hooks/useMessageFilter'
 import { usePresence } from '../hooks/usePresence'
+import { deriveTeamRoles } from '../roles/deriveRoles'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import ClassGlyph from './ClassGlyph'
 import MessageBody from './MessageBody'
@@ -99,11 +101,25 @@ export function scopeAttributeFor(
 // calibration feedback arrives.
 const GROUP_THRESHOLD_MS = 5 * 60 * 1000
 
-// Role keys we recognise for avatar coloring + shape differentiation.
-// Anything else falls through to 'unknown' (no role-color, neutral
-// avatar). Matches --role-* tokens in tokens.css.
-const KNOWN_ROLES = new Set(['ryan', 'designer', 'dev', 'pm'])
-const PRESENCE_ROLES: readonly string[] = ['ryan', 'designer', 'dev', 'pm']
+// #393 team-shape audit: role set derives from the observed message
+// stream (plus viewer) at runtime — no hardcoded team composition.
+// Avatar coloring still falls back to the 'unknown' --role-* token
+// for senders that lack a CSS palette entry, but any discovered role
+// is first-class for role-key assignment + presence tracking.
+//
+// The palette-inventory list below is NOT a team composition claim
+// — it's a bridge to the static `--role-{name}` CSS tokens defined
+// in `styles/tokens.css`. When AC2 ships (dynamic palette via hash-
+// to-hue function), this list retires entirely; until then any
+// role outside the list gets the neutral `--role-unknown` color.
+// Named `PALETTE_ROLE_TOKENS` to make the CSS-file-dependency
+// explicit in the source.
+const PALETTE_ROLE_TOKENS: ReadonlySet<string> = new Set([
+  'ryan',
+  'designer',
+  'dev',
+  'pm'
+])
 
 function formatTime(ts: string): string {
   const d = new Date(ts)
@@ -139,7 +155,7 @@ function isGroupedWithPrev(curr: ChatMessage, prev: ChatMessage | null): boolean
 }
 
 function avatarClasses(sender: string): string {
-  const roleKey = KNOWN_ROLES.has(sender) ? sender : 'unknown'
+  const roleKey = PALETTE_ROLE_TOKENS.has(sender) ? sender : 'unknown'
   // Ryan-as-human-anchor: filled circle (preattentive shape) vs
   // rounded-square for AI roles. Designers with colorblindness or
   // mono-theme displays can still differentiate Ryan from AI at a
@@ -174,7 +190,14 @@ function MessageList({
   // activity broadcasts that fall outside the user's current class
   // filter still feed the status indicator. Reused from the sidebar
   // presence derivation path.
-  const presence = usePresence(messages, PRESENCE_ROLES)
+  // #393: role set comes from runtime derivation — every agent that
+  // has spoken in the session (or the viewer) gets a presence entry.
+  // No hardcoded team composition.
+  const presenceRoles = useMemo(
+    () => deriveTeamRoles(messages, viewer ?? RENDERER_IDENTITY),
+    [messages, viewer]
+  )
+  const presence = usePresence(messages, presenceRoles)
 
   const regionProps = {
     className: 'message-list',
@@ -263,7 +286,7 @@ function MessageList({
                       type="button"
                       className={avatarClasses(sender)}
                       data-test="message-avatar"
-                      data-role={KNOWN_ROLES.has(sender) ? sender : 'unknown'}
+                      data-role={PALETTE_ROLE_TOKENS.has(sender) ? sender : 'unknown'}
                       aria-describedby={tooltipId}
                       aria-label={`${info.label} — ${status}`}
                     >

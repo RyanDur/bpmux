@@ -2,6 +2,8 @@ import { useMemo } from 'react'
 import type { ChatMessage } from '../transport/types'
 import { classOf, type MessageFilter } from '../hooks/useMessageFilter'
 import { usePresence, type Presence } from '../hooks/usePresence'
+import { deriveDirectRoles } from '../roles/deriveRoles'
+import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import './Sidebar.css'
 
 interface Props {
@@ -10,9 +12,6 @@ interface Props {
   messages: ChatMessage[]
   filter: MessageFilter
 }
-
-const DIRECT_ROLES = ['designer', 'dev', 'pm'] as const
-const DIRECT_ROLES_ARRAY: readonly string[] = DIRECT_ROLES
 
 // Human label for each presence state. Mapping + ordering kept here
 // (not in the hook) so the UI can iterate without committing the
@@ -37,7 +36,8 @@ function groupKey(names: readonly string[]): string {
 // Derive the set of unique group recipient sets from message history.
 // A "group" is a `to` array with 2+ recipients that doesn't include
 // 'all' (the broadcast sentinel). Single-recipient `to` is a DM —
-// those are covered by the hardcoded DIRECT_ROLES list.
+// those are covered by `deriveDirectRoles` (#393 team-shape audit
+// retired the former hardcoded DIRECT_ROLES list).
 function deriveGroups(messages: readonly ChatMessage[]): string[][] {
   const seen = new Map<string, string[]>()
   for (const m of messages) {
@@ -73,7 +73,15 @@ function Sidebar({
 }: Props): React.JSX.Element {
   const groups = useMemo(() => deriveGroups(messages), [messages])
   const systemCount = useMemo(() => countSystemMessages(messages), [messages])
-  const presence = usePresence(messages, DIRECT_ROLES_ARRAY)
+  // #393: direct-DM roles are every role present in the session
+  // except the viewer's own. Derives from the observed message
+  // stream so any agent that joins becomes a first-class sidebar
+  // entry without a code change.
+  const directRoles = useMemo(
+    () => deriveDirectRoles(messages, RENDERER_IDENTITY),
+    [messages]
+  )
+  const presence = usePresence(messages, directRoles)
   // Broadcast is "selected" whenever recipient is null. SYSTEM is
   // "selected" specifically when the filter is narrowed to system-only
   // (the state goSystem puts us in). Both share recipient===null but
@@ -121,7 +129,7 @@ function Sidebar({
       </section>
       <section className="sidebar-section">
         <h3 className="sidebar-heading">direct</h3>
-        {DIRECT_ROLES.map((role) => {
+        {directRoles.map((role) => {
           const active = recipient !== null && recipient.length === 1 && recipient[0] === role
           const status = presence.get(role) ?? 'offline'
           const statusLabel = PRESENCE_LABEL[status]
