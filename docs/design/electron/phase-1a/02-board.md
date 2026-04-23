@@ -23,7 +23,7 @@
 └──────────────────────────────────┘
 ```
 
-- **state groups**: Ready / In Progress / Delivered / Awaiting Accept / Accepted (collapsed) / Icebox (collapsed)
+- **state groups**: Ready / In Progress / Delivered / Accepted (collapsed) / Icebox (collapsed). Awaiting-Accept retired per #359 until phase-2 team-accept-badge (#D) lands with real semantics — reintroduce renamed per observed behavior at that point, not pre-reserved vocabulary.
 - **per row**: `#NNN` (dim) + type glyph (✨/🐛/🔧 Feature/Bug/Chore) + title (truncate with ellipsis; full title on hover)
 - **selection**: arrow keys move highlight; Enter opens drill-in; Esc closes panel (if no drill-in open)
 - **drag-reorder**: within Ready, drag to reposition; emits reorder_story to backend

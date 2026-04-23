@@ -440,6 +440,12 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
             crate::mcp::tools::get_ci_state_tool(
                 "Returns the current CI conclusion for bpmux main branch. Queries `gh run list --branch main -L 1` and returns a JSON object: { conclusion: 'success'|'failure'|'in_progress'|'unknown', last_run_id, branch: 'main', url, head_sha, display_title }. Pull-based — agents call this on-demand to make CI-aware decisions (ship gating, handoff signaling, pickup timing) without asking Ryan to relay. No permission gates; any role can call.",
             ),
+            crate::mcp::tools::get_story_tool(
+                "Fetch full detail for a single story by issue number. Returns JSON `{number, title, body, state, labels[]}`. Any role can call. USE THIS INSTEAD OF `gh issue view <N>` — raw gh calls bypass the shared chat so teammates can't observe the read (#403 closes that bypass). Required read before pickup-gate paraphrasing a story.",
+            ),
+            crate::mcp::tools::list_ready_tool(
+                "Enumerate the full ready queue. Returns JSON array of `{number, title, labels[]}` for every story labeled `ready`. Any role can call. USE THIS INSTEAD OF `gh issue list --label ready` — view_backlog surfaces counts + a sample, list_ready returns the complete queue for full pickup-gate visibility.",
+            ),
             // Story management tools — server-side gh proxy with lane enforcement
             crate::mcp::tools::view_board_tool(
                 "View the project board — all stories grouped by state (ready, in progress, delivered, accepted, deferred, icebox) with counts. No host permission needed. Same data as the TUI board view.",
@@ -585,6 +591,8 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                 }
                 "get_token_report" => tools::handle_get_token_report().await,
                 "get_ci_state" => tools::handle_get_ci_state(&args, &tracker).await,
+                "get_story" => tools::handle_get_story(&args, &tracker).await,
+                "list_ready" => tools::handle_list_ready(&tracker).await,
                 "view_board" => tools_stories::handle_view_board(&args, &tracker).await,
                 "view_velocity" => tools::handle_view_velocity(port, &tracker, &ws_tx).await,
                 "create_story" => tools_stories::handle_create_story(&args, &ws_tx, &tracker).await,

@@ -6,6 +6,7 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use serde::Deserialize;
 
+use crate::bridge::tracker::StoryTracker;
 use crate::session;
 
 pub const DEFAULT_MESSAGE_LIMIT: usize = 20;

@@ -68,6 +68,21 @@ pub trait StoryTracker: Clone + Send + Sync + 'static {
         body: &str,
     ) -> impl std::future::Future<Output = Result<String, String>> + Send;
     fn list_stories(&self) -> impl std::future::Future<Output = Result<String, String>> + Send;
+    /// #403: full board as typed JSON Values — used by `list_ready`
+    /// and other filtered enumerations. Counterpart to
+    /// `list_stories` (which returns the pre-serialized string);
+    /// keeping both so callers that want the raw string (TUI's
+    /// view_board) don't pay a re-serialize round-trip.
+    fn fetch_board_stories(
+        &self,
+    ) -> impl std::future::Future<Output = Result<Vec<serde_json::Value>, String>> + Send;
+    /// #403: full detail for one story. Returns `Ok(None)` when the
+    /// issue doesn't exist so handlers can map to a typed "not
+    /// found" response instead of erroring on an expected absence.
+    fn get_story(
+        &self,
+        number: u64,
+    ) -> impl std::future::Future<Output = Result<Option<serde_json::Value>, String>> + Send;
     fn comment_on_story(
         &self,
         number: u64,
@@ -232,41 +247,11 @@ impl OctocrabStoryTracker {
         crate::github::classify_error(&err).user_message()
     }
 
-    /// Fetch the full board: all stories with the fields the Electron
-    /// renderer needs (number, title, state, labels, assignees,
-    /// created_at, body). Wraps the same underlying octocrab `list`
-    /// call `list_stories` uses, but returns a richer serde_json
-    /// payload. Used by the HTTP `/api/board` endpoint.
-    pub async fn fetch_board_stories(&self) -> Result<Vec<serde_json::Value>, String> {
-        let page = self
-            .client
-            .issues(&self.owner, &self.repo)
-            .list()
-            .state(octocrab::params::State::All)
-            .per_page(100)
-            .send()
-            .await
-            .map_err(Self::classify)?;
-        Ok(page.items.iter().map(issue_to_board_json).collect())
-    }
-
-    /// Fetch a single story with full body text. Returns `Ok(None)`
-    /// when the issue doesn't exist (GitHub 404); `Err` for any other
-    /// failure so the REST handler can map to 503.
-    pub async fn get_story(&self, number: u64) -> Result<Option<serde_json::Value>, String> {
-        match self
-            .client
-            .issues(&self.owner, &self.repo)
-            .get(number)
-            .await
-        {
-            Ok(issue) => Ok(Some(issue_to_board_json(&issue))),
-            Err(octocrab::Error::GitHub { source, .. }) if source.status_code.as_u16() == 404 => {
-                Ok(None)
-            }
-            Err(e) => Err(Self::classify(e)),
-        }
-    }
+    // `fetch_board_stories` + `get_story` moved to the
+    // `StoryTracker` trait impl for this type (#403 — list_ready
+    // + get_story MCP handlers take `&impl StoryTracker` so they
+    // need the methods trait-visible). The impls themselves are
+    // unchanged; they just live inside the trait block now.
 
     /// Accept a delivered story: remove the `delivered` label, close
     /// the issue. Mirrors the label/close sequence in
@@ -576,6 +561,42 @@ impl StoryTracker for OctocrabStoryTracker {
             .map_err(Self::classify)
     }
 
+    /// #403: full board as typed JSON Values. Same underlying
+    /// octocrab call as `list_stories` but returns the richer
+    /// issue_to_board_json payload (includes body + state + labels
+    /// + assignees + created_at). REST /api/board endpoint +
+    ///   list_ready MCP handler both consume this.
+    async fn fetch_board_stories(&self) -> Result<Vec<serde_json::Value>, String> {
+        let page = self
+            .client
+            .issues(&self.owner, &self.repo)
+            .list()
+            .state(octocrab::params::State::All)
+            .per_page(100)
+            .send()
+            .await
+            .map_err(Self::classify)?;
+        Ok(page.items.iter().map(issue_to_board_json).collect())
+    }
+
+    /// #403: fetch one story's full detail. Returns `Ok(None)` when
+    /// the issue doesn't exist (GitHub 404) so handlers can map to
+    /// a typed not-found response; `Err` for any other failure.
+    async fn get_story(&self, number: u64) -> Result<Option<serde_json::Value>, String> {
+        match self
+            .client
+            .issues(&self.owner, &self.repo)
+            .get(number)
+            .await
+        {
+            Ok(issue) => Ok(Some(issue_to_board_json(&issue))),
+            Err(octocrab::Error::GitHub { source, .. }) if source.status_code.as_u16() == 404 => {
+                Ok(None)
+            }
+            Err(e) => Err(Self::classify(e)),
+        }
+    }
+
     async fn list_stories(&self) -> Result<String, String> {
         let page = self
             .client
@@ -775,6 +796,25 @@ impl StoryTracker for FakeTracker {
             return std::fs::read_to_string(path).map_err(|e| format!("read fixture {path}: {e}"));
         }
         Ok("[]".to_string())
+    }
+
+    async fn fetch_board_stories(&self) -> Result<Vec<serde_json::Value>, String> {
+        if let Some(ref path) = self.board_fixture {
+            let s =
+                std::fs::read_to_string(path).map_err(|e| format!("read fixture {path}: {e}"))?;
+            return serde_json::from_str(&s).map_err(|e| format!("parse fixture: {e}"));
+        }
+        Ok(Vec::new())
+    }
+
+    async fn get_story(&self, number: u64) -> Result<Option<serde_json::Value>, String> {
+        Ok(Some(serde_json::json!({
+            "number": number,
+            "title": format!("(fake) story #{number}"),
+            "body": "",
+            "state": "ready",
+            "labels": [],
+        })))
     }
 
     async fn comment_on_story(&self, number: u64, _body: &str) -> Result<String, String> {
