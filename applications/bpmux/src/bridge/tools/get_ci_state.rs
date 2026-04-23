@@ -28,10 +28,15 @@ pub fn build_ci_state_report(runs: &[RunEntry]) -> CiStateReport {
         CiState::QuotaExhausted => "quota_exhausted",
         CiState::Unknown => "unknown",
     };
-    let url = match event.run_id {
-        Some(id) => format!("{}/runs/{id}", github_actions_url()),
-        None => github_actions_url().to_string(),
-    };
+    // #341 rework: the click-through URL is always the repo's top-level
+    // Actions page, never the run-specific URL. Ryan 2026-04-22 ~22:52
+    // UTC: "CI used to take me to all the actions." The run-specific
+    // URL cost him the overview context when he was triaging state
+    // transitions; the all-actions page gives him run history + the
+    // latest run at the top. `last_run_id` stays in the payload so
+    // future callers that want the run-specific URL can synthesize
+    // it themselves.
+    let url = github_actions_url().to_string();
     CiStateReport {
         conclusion,
         last_run_id: event.run_id,
@@ -98,10 +103,10 @@ mod tests {
         let report = build_ci_state_report(&[run("completed", Some("success"), Some(42))]);
         assert_eq!(report.conclusion, "success");
         assert_eq!(report.last_run_id, Some(42));
-        assert_eq!(
-            report.url,
-            "https://github.com/RyanDur/bpmux/actions/runs/42"
-        );
+        // #341 rework: URL is always the all-actions page, not
+        // /runs/{id}. `last_run_id` stays in the payload for callers
+        // that want to synthesize the run-specific URL themselves.
+        assert_eq!(report.url, "https://github.com/RyanDur/bpmux/actions");
     }
 
     #[test]
@@ -142,6 +147,21 @@ mod tests {
         assert_eq!(report.url, "https://github.com/RyanDur/bpmux/actions");
     }
 
+    // #341 rework falsifier guard: URL must be the all-actions page
+    // regardless of run_id presence. If a future refactor re-introduces
+    // the run-specific URL, this test fails with a clear diff on the
+    // expected URL shape.
+    #[test]
+    fn url_is_always_all_actions_page_even_with_run_id() {
+        let report = build_ci_state_report(&[run("completed", Some("failure"), Some(9999))]);
+        assert_eq!(
+            report.url, "https://github.com/RyanDur/bpmux/actions",
+            "#341 rework: URL must not embed the run_id"
+        );
+        // last_run_id preserved for callers that want the run-specific URL
+        assert_eq!(report.last_run_id, Some(9999));
+    }
+
     #[test]
     fn report_serializes_as_json_object() {
         let report = build_ci_state_report(&[run("completed", Some("success"), Some(1))]);
@@ -150,7 +170,11 @@ mod tests {
         assert_eq!(parsed["conclusion"], "success");
         assert_eq!(parsed["last_run_id"], 1);
         assert_eq!(parsed["branch"], "main");
-        assert!(parsed["url"].as_str().unwrap().contains("/runs/1"));
+        // #341 rework: URL field carries the all-actions page even
+        // when a run_id is present. last_run_id stays in the payload
+        // separately so it can be used elsewhere.
+        assert!(parsed["url"].as_str().unwrap().ends_with("/actions"));
+        assert!(!parsed["url"].as_str().unwrap().contains("/runs/"));
     }
 
     #[test]
