@@ -1,30 +1,8 @@
-import { test, expect, _electron as electron } from '@playwright/test'
-import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync } from 'fs'
+import { test, expect } from '@playwright/test'
+import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import * as net from 'net'
-
-// Acquire a random ephemeral port by binding + immediately releasing.
-// Used by launchWithIsolatedSession so every test spawns bpmux on a
-// unique port — no collision with the dev's live bpmux on 4117, no
-// collision between parallel test processes. Critical isolation step
-// after the 2026-04-22 incident where `pkill -f "Electron.app"` in
-// test prep was killing Ryan's live app on every run.
-async function getFreePort(): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const server = net.createServer()
-    server.on('error', reject)
-    server.listen(0, () => {
-      const addr = server.address()
-      if (typeof addr === 'object' && addr !== null) {
-        const port = addr.port
-        server.close(() => resolve(port))
-      } else {
-        reject(new Error('failed to bind ephemeral port'))
-      }
-    })
-  })
-}
+import { launchIsolatedElectron as launchWithIsolatedSession } from './helpers/launch'
 
 // Real-backend test harness — launches Electron without `win.route`
 // stubs, so the renderer exercises the actual network layer:
@@ -34,64 +12,9 @@ async function getFreePort(): Promise<number> {
 // but break end-to-end (CORS block, empty buckets on shape
 // mismatch, etc.)
 //
-// Electron's main process spawns `bpmux server` on localhost:4117
-// using env vars already present in the test shell. If the backend
-// binary isn't built, these tests fail with the spawn dialog error;
-// run `cargo build --bin bpmux` from the repo root first.
-//
-// Session isolation: each test gets a fresh BPMUX_SESSION_BASE
-// under the OS temp dir so sent messages + state don't leak into
-// the user's live ~/.bpmux log. Without this, a test that exercises
-// the send path writes into the dev's real chat history (the
-// 2026-04-22 seed-message-leak-into-team-chat incident).
-async function launchWithIsolatedSession(opts?: {
-  userDataDir?: string
-  sessionBase?: string
-  backendPort?: number
-  seedMessages?: ReadonlyArray<Record<string, unknown>>
-}): Promise<{
-  app: Awaited<ReturnType<typeof electron.launch>>
-  sessionBase: string
-  userDataDir: string
-  backendPort: number
-}> {
-  const sessionBase = opts?.sessionBase ?? mkdtempSync(join(tmpdir(), 'bpmux-playwright-'))
-  // Also isolate Electron's user-data-dir per launch by default so
-  // renderer state (localStorage, cookies, indexedDB) starts fresh.
-  // Without this, filter preferences + other localStorage-backed
-  // state leak between tests. Persistence tests (that want the
-  // SECOND launch to read the FIRST launch's writes) pass an
-  // explicit userDataDir to reuse it across the pair.
-  const userDataDir =
-    opts?.userDataDir ?? mkdtempSync(join(tmpdir(), 'bpmux-playwright-userdata-'))
-  // Default: random ephemeral port per launch, so every test-spawned
-  // bpmux runs on its own port — no collision with the dev's live
-  // bpmux on 4117, no collision between parallel tests. Callers can
-  // pin a specific port via opts.backendPort if a test needs a
-  // predictable one (e.g., when POSTing back from the test process).
-  const backendPort = opts?.backendPort ?? (await getFreePort())
-  // Seed real session jsonl before launch — Electron spawns bpmux,
-  // bpmux's resume_or_create_session honours a pre-existing `current`
-  // symlink, so the server serves our seeded messages via /api/messages
-  // with no mocking. Requires a fresh sessionBase (no prior `current`).
-  if (opts?.seedMessages && opts.seedMessages.length > 0) {
-    const sessionId = 'playwright-seed-' + Date.now().toString(36)
-    const sessionDir = join(sessionBase, sessionId)
-    mkdirSync(sessionDir, { recursive: true })
-    const jsonl = opts.seedMessages.map((m) => JSON.stringify(m)).join('\n') + '\n'
-    writeFileSync(join(sessionDir, 'messages-current.jsonl'), jsonl)
-    symlinkSync(sessionDir, join(sessionBase, 'current'))
-  }
-  const app = await electron.launch({
-    args: ['out/main/index.js', `--user-data-dir=${userDataDir}`],
-    env: {
-      ...process.env,
-      BPMUX_SESSION_BASE: sessionBase,
-      BPMUX_BACKEND_PORT: String(backendPort)
-    }
-  })
-  return { app, sessionBase, userDataDir, backendPort }
-}
+// Session + port + user-data-dir isolation now lives in the shared
+// helper at tests/helpers/launch.ts (#394). The alias above keeps
+// the existing `launchWithIsolatedSession` call sites unchanged.
 
 test.describe('real-backend', () => {
   test('CORS + WS roundtrip: chat region visible, no board error banner when tracker is configured', async () => {

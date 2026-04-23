@@ -2,6 +2,7 @@ import { test, expect, _electron as electron } from '@playwright/test'
 import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
+import { launchIsolatedElectron } from './helpers/launch'
 
 // Playwright can't interact with native Electron Menus — menu.popup()
 // is an OS-level affordance that lives outside the browser DOM. So
@@ -39,10 +40,7 @@ async function launchWithFixture(): Promise<{
 }> {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-371-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-371-'))
-  const app = await electron.launch({
-    args: ['out/main/index.js', `--user-data-dir=${udd}`],
-    env: { ...process.env, BPMUX_SESSION_BASE: sessionBase }
-  })
+  const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
   const win = await app.firstWindow()
   await win.route('**/api/board', async (route) => {
     await route.fulfill({

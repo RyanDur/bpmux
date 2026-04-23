@@ -2,6 +2,7 @@ import { test, expect, _electron as electron } from '@playwright/test'
 import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
+import { launchIsolatedElectron } from './helpers/launch'
 
 // #385: channel selection shifts scope + emphasis, never visibility.
 // "Nothing hidden from owner" principle (Ryan 2026-04-22 ~22:48
@@ -67,10 +68,7 @@ async function launchWithFixture(): Promise<{
   // conflict risk is documented via #394.
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-385-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-385-'))
-  const app = await electron.launch({
-    args: ['out/main/index.js', `--user-data-dir=${udd}`],
-    env: { ...process.env, BPMUX_SESSION_BASE: sessionBase }
-  })
+  const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
   const win = await app.firstWindow()
   await win.route('**/api/board', async (route) => {
     await route.fulfill({

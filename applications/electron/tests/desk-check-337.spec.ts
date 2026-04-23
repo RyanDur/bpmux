@@ -2,6 +2,7 @@ import { test, expect, _electron as electron } from '@playwright/test'
 import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
+import { launchIsolatedElectron } from './helpers/launch'
 
 // #337 rework regression: the observation-falsifier from the pickup-
 // gate paraphrase: "I would reject if, after opening any drill-in
@@ -56,10 +57,7 @@ async function launchWithFixture(): Promise<{
 }> {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-337-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-337-'))
-  const app = await electron.launch({
-    args: ['out/main/index.js', `--user-data-dir=${udd}`],
-    env: { ...process.env, BPMUX_SESSION_BASE: sessionBase }
-  })
+  const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
   const win = await app.firstWindow()
   await win.route('**/api/board', async (route) => {
     await route.fulfill({
