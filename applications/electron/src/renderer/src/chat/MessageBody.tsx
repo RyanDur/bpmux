@@ -2,6 +2,7 @@ import ReactMarkdown from 'react-markdown'
 import rehypeHighlight from 'rehype-highlight'
 import remarkGfm from 'remark-gfm'
 import 'highlight.js/styles/github-dark.css'
+import './MessageBody.css'
 
 interface Props {
   text: string
@@ -29,31 +30,38 @@ function handleCommentAnchor(id: string): void {
 
 function MessageBody({ text }: Props): React.JSX.Element {
   return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      rehypePlugins={[rehypeHighlight]}
-      components={{
-        a: ({ href, children }) => (
-          <a
-            href={href}
-            onClick={(e) => {
-              e.preventDefault()
-              if (!href) return
-              const match = COMMENT_ANCHOR_RE.exec(href)
-              if (match) {
-                handleCommentAnchor(match[1])
-                return
-              }
-              window.open(href, '_blank', 'noopener,noreferrer')
-            }}
-          >
-            {children}
-          </a>
-        )
-      }}
-    >
-      {text}
-    </ReactMarkdown>
+    // #381: `.markdown-body` scope restores Meyer-reset-stripped
+    // defaults on inline (strong / em / code) + block (h1-h6, ul, ol,
+    // blockquote) elements via `revert`. Applied via MessageBody.css
+    // so every consumer (chat message, drill-in story body, drill-
+    // in comment body) inherits the restoration uniformly.
+    <div className="markdown-body">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeHighlight]}
+        components={{
+          a: ({ href, children }) => (
+            <a
+              href={href}
+              onClick={(e) => {
+                e.preventDefault()
+                if (!href) return
+                const match = COMMENT_ANCHOR_RE.exec(href)
+                if (match) {
+                  handleCommentAnchor(match[1])
+                  return
+                }
+                window.open(href, '_blank', 'noopener,noreferrer')
+              }}
+            >
+              {children}
+            </a>
+          )
+        }}
+      >
+        {text}
+      </ReactMarkdown>
+    </div>
   )
 }
 
