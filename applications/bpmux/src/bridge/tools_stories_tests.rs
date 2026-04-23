@@ -802,3 +802,253 @@ async fn deliver_story_rejects_empty_verified_observation() {
     assert!(result.is_err(), "empty verified_observation should fail");
     assert!(result.unwrap_err().contains("verified_observation"));
 }
+
+// ── #392 label_story add/remove tests ──────────────────────────────
+
+// Tracker that fails label mutations so error paths can be observed.
+// Every other method mirrors FakeTracker so the handler reaches the
+// label call — errors must come from add_label / remove_label, not
+// from some other step, so the test signal stays clean.
+#[derive(Clone)]
+struct FailingLabelTracker;
+
+impl StoryTracker for FailingLabelTracker {
+    async fn close_story(&self, number: u64) -> Result<String, String> {
+        Ok(format!("(fake) #{number} closed"))
+    }
+    async fn add_label(&self, _number: u64, _label: &str) -> Result<String, String> {
+        Err("GitHub API error: 500 Internal Server Error".to_string())
+    }
+    async fn remove_label(&self, _number: u64, _label: &str) -> Result<String, String> {
+        Err("GitHub API error: 500 Internal Server Error".to_string())
+    }
+    async fn create_story(&self, title: &str, _body: &str) -> Result<String, String> {
+        Ok(format!("created: {title}"))
+    }
+    async fn list_stories(&self) -> Result<String, String> {
+        Ok("[]".to_string())
+    }
+    async fn comment_on_story(&self, _number: u64, _body: &str) -> Result<String, String> {
+        Ok("commented".to_string())
+    }
+    async fn get_story_title(&self, number: u64) -> Option<String> {
+        Some(format!("story #{number}"))
+    }
+    async fn get_story_labels(&self, _number: u64) -> Vec<String> {
+        Vec::new()
+    }
+    async fn list_latest_run_on_main(
+        &self,
+    ) -> Result<Option<super::tracker::WorkflowRunEntry>, String> {
+        Ok(None)
+    }
+}
+
+#[tokio::test]
+async fn label_story_defaults_to_add_when_operation_missing() {
+    // Backward-compat: pre-#392 callers omit `operation`. Must still
+    // add + broadcast + return the labeled confirmation.
+    let ws_tx = tokio::sync::Mutex::new(None);
+    let tracker = super::tracker::FakeTracker::default();
+    let args = serde_json::json!({
+        "number": 42,
+        "label": "ready"
+    });
+    let result = handle_label_story(
+        args.as_object().unwrap(),
+        "pm:claude-code",
+        &ws_tx,
+        &tracker,
+    )
+    .await
+    .expect("default-to-add must succeed");
+    assert!(
+        result.contains("labeled") && result.contains("ready"),
+        "result should confirm add path: {result}"
+    );
+}
+
+#[tokio::test]
+async fn label_story_add_operation_succeeds_and_confirms_add() {
+    let ws_tx = tokio::sync::Mutex::new(None);
+    let tracker = super::tracker::FakeTracker::default();
+    let args = serde_json::json!({
+        "number": 42,
+        "label": "blocked",
+        "operation": "add"
+    });
+    let result = handle_label_story(
+        args.as_object().unwrap(),
+        "pm:claude-code",
+        &ws_tx,
+        &tracker,
+    )
+    .await
+    .expect("explicit add must succeed");
+    assert!(
+        result.contains("labeled") && result.contains("blocked"),
+        "add path confirmation: {result}"
+    );
+}
+
+#[tokio::test]
+async fn label_story_remove_operation_succeeds_and_confirms_remove() {
+    // #392 core: remove path returns without bypassing the handler's
+    // broadcast call. The confirmation message carries "unlabeled"
+    // so callers can distinguish add from remove in the Ok payload.
+    let ws_tx = tokio::sync::Mutex::new(None);
+    let tracker = super::tracker::FakeTracker::default();
+    let args = serde_json::json!({
+        "number": 42,
+        "label": "in progress",
+        "operation": "remove"
+    });
+    let result = handle_label_story(
+        args.as_object().unwrap(),
+        "pm:claude-code",
+        &ws_tx,
+        &tracker,
+    )
+    .await
+    .expect("remove must succeed");
+    assert!(
+        result.contains("unlabeled") && result.contains("in progress"),
+        "remove path confirmation: {result}"
+    );
+}
+
+#[tokio::test]
+async fn label_story_remove_is_idempotent_when_label_absent() {
+    // Idempotency is handled in the tracker's remove_label impl
+    // (404 → Ok). Here we verify the handler doesn't introduce its
+    // own error on success-result from tracker (FakeTracker always-
+    // succeeds mirrors the 404-Ok-branch). Matches accept_story's
+    // remove-label-tolerance contract.
+    let ws_tx = tokio::sync::Mutex::new(None);
+    let tracker = super::tracker::FakeTracker::default();
+    let args = serde_json::json!({
+        "number": 99,
+        "label": "never-attached-label",
+        "operation": "remove"
+    });
+    let result = handle_label_story(
+        args.as_object().unwrap(),
+        "pm:claude-code",
+        &ws_tx,
+        &tracker,
+    )
+    .await;
+    assert!(
+        result.is_ok(),
+        "idempotent remove must not surface error from tracker's silent-success path: got {result:?}"
+    );
+}
+
+#[tokio::test]
+async fn label_story_rejects_invalid_operation() {
+    // Operations outside {"add", "remove"} must error — don't silently
+    // fall through to the add path. Broadcast must NOT fire on an
+    // invalid-op rejection; the handler's Err-return bails before
+    // broadcast_board_invalidate is reached.
+    let ws_tx = tokio::sync::Mutex::new(None);
+    let tracker = super::tracker::FakeTracker::default();
+    let args = serde_json::json!({
+        "number": 42,
+        "label": "ready",
+        "operation": "nuke"
+    });
+    let result = handle_label_story(
+        args.as_object().unwrap(),
+        "pm:claude-code",
+        &ws_tx,
+        &tracker,
+    )
+    .await;
+    assert!(
+        result.is_err(),
+        "invalid operation must error, got: {result:?}"
+    );
+    let err = result.unwrap_err();
+    assert!(
+        err.contains("operation"),
+        "error should name the field: {err}"
+    );
+    assert!(
+        err.contains("add") && err.contains("remove"),
+        "error should cite the valid values: {err}"
+    );
+}
+
+#[tokio::test]
+async fn label_story_add_propagates_tracker_error_without_broadcast() {
+    // Falsifier guard: when the GitHub API errors on add, the
+    // handler must return the error and NOT fire BOARD_INVALIDATE
+    // — peers shouldn't refresh against a no-op change. The Err
+    // return path structurally short-circuits before broadcast.
+    let ws_tx = tokio::sync::Mutex::new(None);
+    let args = serde_json::json!({
+        "number": 42,
+        "label": "ready",
+        "operation": "add"
+    });
+    let result = handle_label_story(
+        args.as_object().unwrap(),
+        "pm:claude-code",
+        &ws_tx,
+        &FailingLabelTracker,
+    )
+    .await;
+    assert!(
+        result.is_err(),
+        "add-with-API-error must surface error: {result:?}"
+    );
+}
+
+#[tokio::test]
+async fn label_story_remove_propagates_tracker_error_without_broadcast() {
+    // Same falsifier guard on remove path — a genuine API error
+    // (500, network, auth) must return Err and skip broadcast. The
+    // 404-label-not-attached case is distinct: tracker maps that to
+    // Ok, so the handler proceeds to broadcast (idempotent-success
+    // contract, #392 AC3).
+    let ws_tx = tokio::sync::Mutex::new(None);
+    let args = serde_json::json!({
+        "number": 42,
+        "label": "ready",
+        "operation": "remove"
+    });
+    let result = handle_label_story(
+        args.as_object().unwrap(),
+        "pm:claude-code",
+        &ws_tx,
+        &FailingLabelTracker,
+    )
+    .await;
+    assert!(
+        result.is_err(),
+        "remove-with-API-error must surface error: {result:?}"
+    );
+}
+
+#[tokio::test]
+async fn label_story_still_pm_gated_with_operation_param() {
+    // Permission gate must fire before operation parsing — a dev /
+    // designer / ryan call with operation="remove" should fail with
+    // a role rejection, not with an operation rejection. #392
+    // doesn't relax the existing PM-only scope.
+    let ws_tx = tokio::sync::Mutex::new(None);
+    let tracker = super::tracker::FakeTracker::default();
+    let args = serde_json::json!({
+        "number": 42,
+        "label": "ready",
+        "operation": "remove"
+    });
+    for caller in ["dev:claude-code", "designer:claude-code", "ryan:human"] {
+        let result = handle_label_story(args.as_object().unwrap(), caller, &ws_tx, &tracker).await;
+        assert!(result.is_err(), "{caller} must be rejected by PM-only gate");
+        assert!(
+            result.unwrap_err().contains("restricted to pm"),
+            "{caller} rejection should cite role restriction"
+        );
+    }
+}

@@ -326,6 +326,15 @@ pub(super) async fn handle_deliver_story(
     }
 }
 
+// #392: accepts an `operation` arg of "add" (default) or "remove".
+// The remove path closes the earlier bypass — before this story,
+// label removal required raw `gh issue edit --remove-label`, which
+// mutated GitHub without firing the bridge's BOARD_INVALIDATE
+// broadcast and stranded peer boards on stale state. Both paths
+// now broadcast on success; errors bubble up without broadcasting
+// so peers aren't asked to refresh against a no-op. Remove is
+// idempotent — the tracker maps GitHub's 404 ("label not attached")
+// to Ok so callers can safely remove-without-checking.
 pub(super) async fn handle_label_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
@@ -341,9 +350,25 @@ pub(super) async fn handle_label_story(
         .get("label")
         .and_then(|v| v.as_str())
         .ok_or("missing 'label' argument")?;
-    tracker.add_label(number, label).await?;
-    broadcast_board_invalidate(ws_tx).await;
-    Ok(format!("#{number} labeled '{label}'"))
+    let operation = args
+        .get("operation")
+        .and_then(|v| v.as_str())
+        .unwrap_or("add");
+    match operation {
+        "add" => {
+            tracker.add_label(number, label).await?;
+            broadcast_board_invalidate(ws_tx).await;
+            Ok(format!("#{number} labeled '{label}'"))
+        }
+        "remove" => {
+            tracker.remove_label(number, label).await?;
+            broadcast_board_invalidate(ws_tx).await;
+            Ok(format!("#{number} unlabeled '{label}'"))
+        }
+        other => Err(format!(
+            "invalid 'operation' argument '{other}': must be 'add' or 'remove'"
+        )),
+    }
 }
 
 pub(super) async fn handle_accept_story(
