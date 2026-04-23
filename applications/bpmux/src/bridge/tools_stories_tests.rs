@@ -684,3 +684,121 @@ async fn octocrab_tracker_get_story_title_returns_known_story() {
     assert!(title.is_some(), "story #213 should exist");
     assert!(!title.unwrap().is_empty(), "title non-empty");
 }
+
+// ── #391: observation-falsifier gate tests ──
+
+#[tokio::test]
+async fn create_story_rejects_missing_user_job() {
+    let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
+    let args = serde_json::json!({
+        "title": "a story",
+        "body": "body text",
+        "observation_falsifier": "I would reject if X"
+        // user_job missing
+    });
+    let result =
+        handle_create_story(args.as_object().unwrap(), &ws_tx, &AlreadyClosedTracker).await;
+    assert!(result.is_err(), "missing user_job should fail");
+    let err = result.unwrap_err();
+    assert!(
+        err.contains("user_job"),
+        "error should name the field. got: {err}"
+    );
+    assert!(
+        err.contains("retro") || err.contains("user-job"),
+        "error should cite the retro framing. got: {err}"
+    );
+}
+
+#[tokio::test]
+async fn create_story_rejects_empty_user_job() {
+    let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
+    let args = serde_json::json!({
+        "title": "a story",
+        "user_job": "   ",
+        "observation_falsifier": "I would reject if X"
+    });
+    let result =
+        handle_create_story(args.as_object().unwrap(), &ws_tx, &AlreadyClosedTracker).await;
+    assert!(result.is_err(), "whitespace-only user_job should fail");
+    assert!(result.unwrap_err().contains("user_job"));
+}
+
+#[tokio::test]
+async fn create_story_rejects_missing_observation_falsifier() {
+    let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
+    let args = serde_json::json!({
+        "title": "a story",
+        "user_job": "When I X, I need Y because Z"
+        // observation_falsifier missing
+    });
+    let result =
+        handle_create_story(args.as_object().unwrap(), &ws_tx, &AlreadyClosedTracker).await;
+    assert!(result.is_err(), "missing observation_falsifier should fail");
+    let err = result.unwrap_err();
+    assert!(
+        err.contains("observation_falsifier"),
+        "error should name the field. got: {err}"
+    );
+}
+
+#[tokio::test]
+async fn create_story_succeeds_when_both_fields_provided() {
+    let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
+    let args = serde_json::json!({
+        "title": "a story",
+        "body": "author body",
+        "user_job": "When I X, I need Y because Z",
+        "observation_falsifier": "I would reject if I observed W"
+    });
+    let result =
+        handle_create_story(args.as_object().unwrap(), &ws_tx, &AlreadyClosedTracker).await;
+    assert!(
+        result.is_ok(),
+        "populated fields should pass. got: {result:?}"
+    );
+}
+
+#[tokio::test]
+async fn deliver_story_rejects_missing_verified_observation() {
+    let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
+    let args = serde_json::json!({
+        "number": 391
+        // verified_observation missing
+    });
+    let result = handle_deliver_story(
+        args.as_object().unwrap(),
+        "dev:claude-code",
+        &ws_tx,
+        &AlreadyClosedTracker,
+    )
+    .await;
+    assert!(result.is_err(), "missing verified_observation should fail");
+    let err = result.unwrap_err();
+    assert!(
+        err.contains("verified_observation"),
+        "error should name the field. got: {err}"
+    );
+    assert!(
+        err.contains("retro") || err.contains("drove"),
+        "error should cite retro framing / drove-end-to-end. got: {err}"
+    );
+}
+
+#[tokio::test]
+async fn deliver_story_rejects_empty_verified_observation() {
+    let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
+    let args = serde_json::json!({
+        "number": 391,
+        "verified_observation": ""
+    });
+    let result = handle_deliver_story(
+        args.as_object().unwrap(),
+        "dev:claude-code",
+        &ws_tx,
+        &AlreadyClosedTracker,
+    )
+    .await;
+    assert!(result.is_err(), "empty verified_observation should fail");
+    assert!(result.unwrap_err().contains("verified_observation"));
+}

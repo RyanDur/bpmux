@@ -178,10 +178,57 @@ pub(super) async fn handle_create_story(
         .get("title")
         .and_then(|v| v.as_str())
         .ok_or("missing 'title' argument")?;
-    let body = args.get("body").and_then(|v| v.as_str()).unwrap_or("");
-    let result = tracker.create_story(title, body).await?;
+    // #391: user_job + observation_falsifier are required per the
+    // 2026-04-22 retro's 4-gate externalization model. Validation
+    // errors name the missing field AND surface a retro-framing
+    // pointer so the caller understands WHY the field is required
+    // (discoverable-error requirement per pickup-gate falsifier).
+    let user_job = require_nonempty_string(
+        args,
+        "user_job",
+        "user_job is required (2026-04-22 retro): 'When <situation>, <role> needs <affordance> because <constraint/goal>.' Cannot file a story without articulating the user-job it answers.",
+    )?;
+    let observation_falsifier = require_nonempty_string(
+        args,
+        "observation_falsifier",
+        "observation_falsifier is required (2026-04-22 retro): 'I would reject this story if I observed X.' Frames acceptance as observation-that-fails rather than mechanism-that-passes.",
+    )?;
+    // Assemble the final body with structured header sections so the
+    // user_job + falsifier land in the GitHub issue as first-class
+    // content (renderable at filing-gate; auditable afterward).
+    // Author-supplied `body` appends below the structured header.
+    let author_body = args.get("body").and_then(|v| v.as_str()).unwrap_or("");
+    let composed_body = compose_story_body(user_job, observation_falsifier, author_body);
+    let result = tracker.create_story(title, &composed_body).await?;
     broadcast_board_invalidate(ws_tx).await;
     Ok(format!("story created: {}", result.trim()))
+}
+
+fn require_nonempty_string<'a>(
+    args: &'a serde_json::Map<String, serde_json::Value>,
+    key: &str,
+    error_doc: &str,
+) -> Result<&'a str, String> {
+    let val = args.get(key).and_then(|v| v.as_str()).unwrap_or("").trim();
+    if val.is_empty() {
+        return Err(error_doc.to_string());
+    }
+    // Return the original untrimmed slice so downstream formatting
+    // preserves intentional leading/trailing newlines in multi-line
+    // field values.
+    let raw = args.get(key).and_then(|v| v.as_str()).unwrap_or_default();
+    Ok(raw)
+}
+
+fn compose_story_body(user_job: &str, observation_falsifier: &str, author_body: &str) -> String {
+    let mut out = String::new();
+    out.push_str("## User job\n\n");
+    out.push_str(user_job.trim());
+    out.push_str("\n\n## Observation falsifier\n\n");
+    out.push_str(observation_falsifier.trim());
+    out.push_str("\n\n---\n\n");
+    out.push_str(author_body);
+    out
 }
 
 /// Signal fires on INTENT (before gh) so the team is notified
@@ -235,6 +282,15 @@ pub(super) async fn handle_deliver_story(
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
+    // #391 deliver-gate: dev must articulate what they drove end-to-
+    // end before delivery. Becomes the diff-point designer checks at
+    // desk-check (claim-vs-reality). Missing/empty → validation
+    // failure + error message names the field + the retro framing.
+    let verified_observation = require_nonempty_string(
+        args,
+        "verified_observation",
+        "verified_observation is required (2026-04-22 retro): articulate what you DROVE end-to-end in the running app, not 'tests pass'. Describe the falsifier scenario you exercised + what you observed. Becomes the diff-point at desk-check.",
+    )?;
     let title = tracker
         .get_story_title(number)
         .await
@@ -244,6 +300,16 @@ pub(super) async fn handle_deliver_story(
         ws_send(ws_tx, json)
             .await
             .map_err(|e| format!("#{number} signal send failed: {e}"))?;
+    }
+    // #391: persist the verified_observation as a comment on the
+    // story so designer + pm see it at desk-check + accept gates.
+    // Comment is auditable; fits the existing comment substrate.
+    let obs_comment =
+        format!("**verified_observation** (dev deliver-gate):\n\n{verified_observation}");
+    if let Err(e) = tracker.comment_on_story(number, &obs_comment).await {
+        crate::session::diag::log_diag(&format!(
+            "bridge: verified_observation comment failed for #{number}: {e}"
+        ));
     }
     if let Err(e) = tracker.remove_label(number, LABEL_IN_PROGRESS).await {
         crate::session::diag::log_diag(&format!(
