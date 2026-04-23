@@ -1203,7 +1203,7 @@ fn build_reaction_event_text_names_sender_from_message_key() {
     // message originated from. Agents can respond contextually
     // (Ryan AC4).
     let body = reaction_toggle("ryan", "👍", "2026-04-23T11:30:00Z|dev:claude-code");
-    let text = build_reaction_event_text(&body, true);
+    let text = build_reaction_event_text_with_excerpt(&body, true, None);
     assert!(
         text.contains("ryan") && text.contains("👍") && text.contains("dev"),
         "text should name reactor + emoji + sender: {text}"
@@ -1221,7 +1221,7 @@ fn build_reaction_event_text_unreact_uses_unreacted_verb() {
     // the "who did what" structure — user removes THEIR OWN
     // reaction, not someone else's.
     let body = reaction_toggle("dev", "🎉", "2026-04-23T11:30:00Z|pm:claude-code");
-    let text = build_reaction_event_text(&body, false);
+    let text = build_reaction_event_text_with_excerpt(&body, false, None);
     // "unreacted" naturally contains "reacted" as substring, so the
     // negative assertion checks there's no standalone "reacted"
     // word (bounded by non-letter on the left side).
@@ -1243,7 +1243,7 @@ fn build_reaction_event_text_falls_back_without_message_key_shape() {
     // text still carries user + emoji + verb. Agents lose only
     // the "whose message" context — partial fallback, not panic.
     let body = reaction_toggle("ryan", "✨", "malformed-key");
-    let text = build_reaction_event_text(&body, true);
+    let text = build_reaction_event_text_with_excerpt(&body, true, None);
     assert!(text.contains("ryan") && text.contains("✨"));
     assert!(
         !text.contains("'s message"),
@@ -1257,9 +1257,115 @@ fn build_reaction_event_text_strips_transport_suffix_from_sender() {
     // The synthesized text names "dev" not "dev:claude-code" so
     // agents read the canonical role, not the transport identity.
     let body = reaction_toggle("ryan", "👍", "2026-04-23T11:30:00Z|designer:claude-code");
-    let text = build_reaction_event_text(&body, true);
+    let text = build_reaction_event_text_with_excerpt(&body, true, None);
     assert!(
         text.contains("designer") && !text.contains(":claude-code"),
         "sender should render as short-role: {text}"
     );
+}
+
+// ── #400 excerpt-enrichment tests ────────────────────────────────
+
+#[test]
+fn truncate_excerpt_returns_body_unchanged_when_short() {
+    // Designer 12:08 UTC: skip the ellipsis when the full text fits.
+    // Under max_len → no truncation + no trailing `…`.
+    let out = truncate_excerpt("thanks!", 40);
+    assert_eq!(out, "thanks!");
+    assert!(!out.contains('…'));
+}
+
+#[test]
+fn truncate_excerpt_cuts_on_word_boundary_and_appends_ellipsis() {
+    // Long body truncates at the last whitespace ≤ max_len so the
+    // excerpt ends on a complete word, not mid-word. The `…`
+    // suffix signals truncation.
+    let long = "this is a fairly long message that definitely exceeds forty chars for sure";
+    let out = truncate_excerpt(long, 40);
+    assert!(
+        out.ends_with('…'),
+        "truncated excerpt must carry the ellipsis marker: {out}"
+    );
+    // Assert the output doesn't end mid-word: the char before the
+    // `…` is either a full word's last char or end-of-content.
+    let before = out.trim_end_matches('…');
+    assert!(
+        !before.ends_with(' '),
+        "trim_end strips trailing spaces before ellipsis: {out}"
+    );
+    assert!(
+        out.chars().count() <= 41,
+        "output stays near max_len after truncation: {out} ({})",
+        out.chars().count()
+    );
+}
+
+#[test]
+fn truncate_excerpt_collapses_newlines_to_single_line() {
+    let out = truncate_excerpt("line one\nline two", 40);
+    assert!(
+        !out.contains('\n'),
+        "newlines must collapse so the synthesized insight stays single-line: {out}"
+    );
+    assert!(out.contains("line one") && out.contains("line two"));
+}
+
+#[test]
+fn find_message_excerpt_matches_by_ts_and_from() {
+    use chrono::TimeZone;
+    let ts = chrono::Utc
+        .with_ymd_and_hms(2026, 4, 23, 11, 30, 0)
+        .unwrap();
+    let msgs = vec![
+        session::Message {
+            from: "dev:claude-code".to_string(),
+            text: "merged #377".to_string(),
+            ts,
+            ..session::Message::default()
+        },
+        session::Message {
+            from: "pm:claude-code".to_string(),
+            text: "nice".to_string(),
+            ts: ts + chrono::Duration::seconds(1),
+            ..session::Message::default()
+        },
+    ];
+    let key = format!("{}|dev:claude-code", ts.to_rfc3339());
+    let excerpt = find_message_excerpt(&msgs, &key, 40);
+    assert_eq!(excerpt.as_deref(), Some("merged #377"));
+}
+
+#[test]
+fn find_message_excerpt_returns_none_on_lookup_failure() {
+    // Empty message set + malformed keys + non-matching ts all
+    // return None — the broadcast path falls back to the no-excerpt
+    // shape (designer 12:02 UTC: fallback preserves working path).
+    assert!(find_message_excerpt(&[], "2026-04-23T00:00:00Z|dev", 40).is_none());
+    assert!(find_message_excerpt(&[], "malformed-key", 40).is_none());
+    assert!(find_message_excerpt(&[], "|", 40).is_none());
+}
+
+#[test]
+fn build_reaction_event_text_with_excerpt_wraps_in_typographic_quotes() {
+    // Excerpt wrapped in `"…"` (U+201C / U+201D) avoids collision
+    // with any `"` chars inside the body text — the falsifier (c)
+    // quote-safety case.
+    let body = reaction_toggle("ryan", "👍", "2026-04-23T11:30:00Z|dev:claude-code");
+    let text = build_reaction_event_text_with_excerpt(&body, true, Some("merged #377"));
+    assert!(
+        text.contains("\u{201C}merged #377\u{201D}"),
+        "excerpt must wrap in typographic quotes: {text}"
+    );
+    assert!(text.contains("dev") && text.contains("👍"));
+}
+
+#[test]
+fn build_reaction_event_text_with_excerpt_falls_back_when_excerpt_none() {
+    // None passthrough keeps the #387 pre-excerpt shape — no
+    // typographic quote, just the base synthesis. Guards the
+    // falsifier (b) "lookup failure doesn't break working path."
+    let body = reaction_toggle("ryan", "👍", "2026-04-23T11:30:00Z|dev:claude-code");
+    let with_none = build_reaction_event_text_with_excerpt(&body, true, None);
+    assert_eq!(with_none, "ryan reacted 👍 to dev's message");
+    assert!(!with_none.contains('\u{201C}'));
 }

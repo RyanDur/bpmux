@@ -965,11 +965,16 @@ pub async fn post_reaction(
     }
     broadcast_reactions_update(&session);
     // #387: broadcast an insight-class synthesized message so MCP-
-    // bridged agents see the reaction event in their stream. The
-    // system-class REACTIONS_UPDATE_MARKER above is for Electron
-    // UI's refetch path (agents can't see it because the bridge
-    // filters system + activity). Insight bridges through cleanly.
-    broadcast_reaction_event(&session, &body, present);
+    // bridged agents see the reaction event in their stream.
+    // #400: enrich with a first-~40-chars excerpt of the target
+    // message body so agents can disambiguate which message among
+    // recent-from-same-sender was reacted to. Lookup failures fall
+    // through to the no-excerpt shape (graceful degradation).
+    let excerpt = session
+        .read_messages()
+        .ok()
+        .and_then(|msgs| find_message_excerpt(&msgs, &body.message_key, EXCERPT_MAX_LEN));
+    broadcast_reaction_event(&session, &body, present, excerpt.as_deref());
     (
         StatusCode::OK,
         json_headers(),
@@ -1002,7 +1007,83 @@ fn broadcast_reactions_update(session: &session::Session) {
 /// sender by short-role. If parsing fails, the synthesized text
 /// still carries user + emoji; agents lose only the "whose message"
 /// context.
-pub(crate) fn build_reaction_event_text(body: &ReactionToggle, present: bool) -> String {
+/// Maximum excerpt length before truncation kicks in. Designer-spec'd
+/// ~40 chars; slight padding for readable word-boundary snips.
+pub(crate) const EXCERPT_MAX_LEN: usize = 40;
+
+/// #400: truncate a message body to a readable excerpt for the
+/// reaction event text. Returns the body unchanged when ≤ max_len
+/// (designer 12:08 UTC: skip the ellipsis when the full text fits).
+/// Otherwise truncates on the last whitespace boundary ≤ max_len
+/// when possible, falling back to hard-char truncation if no
+/// boundary is in range. Replaces newlines with spaces to keep
+/// the synthesized text single-line.
+pub(crate) fn truncate_excerpt(text: &str, max_len: usize) -> String {
+    let flat: String = text
+        .chars()
+        .map(|c| if c == '\n' || c == '\r' { ' ' } else { c })
+        .collect();
+    let flat = flat.trim();
+    if flat.chars().count() <= max_len {
+        return flat.to_string();
+    }
+    // Walk to the char boundary at max_len + rewind to last
+    // whitespace if any exists in that window. char_indices gives
+    // us a safe byte cut point.
+    let mut last_space: Option<usize> = None;
+    let mut cut: usize = flat.len();
+    for (i, (byte_idx, ch)) in flat.char_indices().enumerate() {
+        if i == max_len {
+            cut = byte_idx;
+            break;
+        }
+        if ch.is_whitespace() {
+            last_space = Some(byte_idx);
+        }
+    }
+    let snip_end = last_space.unwrap_or(cut);
+    let mut out = flat[..snip_end].trim_end().to_string();
+    out.push('…');
+    out
+}
+
+/// #400 lookup: find the target message's text by the reaction
+/// toggle's message_key (`{ts}|{from}`). Returns Some(excerpt) on
+/// match, None on parse failure / message-not-found / empty body.
+/// The excerpt is already truncated per `truncate_excerpt`.
+pub(crate) fn find_message_excerpt(
+    messages: &[session::Message],
+    message_key: &str,
+    max_len: usize,
+) -> Option<String> {
+    let (ts_str, from) = message_key.split_once('|')?;
+    if ts_str.is_empty() || from.is_empty() {
+        return None;
+    }
+    for m in messages {
+        if m.from != from {
+            continue;
+        }
+        if m.ts.to_rfc3339() != ts_str {
+            continue;
+        }
+        if m.text.is_empty() {
+            return None;
+        }
+        return Some(truncate_excerpt(&m.text, max_len));
+    }
+    None
+}
+
+/// Core synthesis; #400 threads the optional excerpt through. The
+/// no-excerpt path matches #387's original shape exactly so the
+/// fallback behavior when lookup fails is byte-identical to
+/// pre-#400 output.
+pub(crate) fn build_reaction_event_text_with_excerpt(
+    body: &ReactionToggle,
+    present: bool,
+    excerpt: Option<&str>,
+) -> String {
     let original_sender_short = body
         .message_key
         .split_once('|')
@@ -1011,7 +1092,7 @@ pub(crate) fn build_reaction_event_text(body: &ReactionToggle, present: bool) ->
     // ambiguous ("{user} removed my reaction"). "unreacted" keeps
     // the "who did what to what" structure clear — the user is
     // removing their own reaction, not someone else's.
-    match (present, original_sender_short) {
+    let base = match (present, original_sender_short) {
         (true, Some(sender)) if !sender.is_empty() => {
             format!(
                 "{} reacted {} to {}'s message",
@@ -1026,11 +1107,24 @@ pub(crate) fn build_reaction_event_text(body: &ReactionToggle, present: bool) ->
             )
         }
         (false, _) => format!("{} unreacted {}", body.user, body.emoji),
+    };
+    // #400: wrap the excerpt in typographic quotes to avoid
+    // nested-quote ambiguity with any " chars inside the body
+    // text. Falling through without an excerpt keeps #387's
+    // shape verbatim.
+    match excerpt {
+        Some(e) if !e.is_empty() => format!("{base}: “{e}”"),
+        _ => base,
     }
 }
 
-fn broadcast_reaction_event(session: &session::Session, body: &ReactionToggle, present: bool) {
-    let text = build_reaction_event_text(body, present);
+fn broadcast_reaction_event(
+    session: &session::Session,
+    body: &ReactionToggle,
+    present: bool,
+    excerpt: Option<&str>,
+) {
+    let text = build_reaction_event_text_with_excerpt(body, present, excerpt);
     let msg = session::Message {
         from: "bpmux".to_string(),
         text,
