@@ -59,6 +59,15 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
         target?.isContentEditable === true
 
       if ((event.key === 'f' || event.key === 'F') && !event.altKey && !event.shiftKey) {
+        // #377: split-by-tradition for Ctrl+F vs Cmd+F.
+        //   - Ctrl+F in editable → emacs forward-char (pass-through;
+        //     the #331 guard pattern). Ryan's 2026-04-22 22:14 UTC
+        //     reject was specifically "ctrl-f does a find instead
+        //     of forward" — emacs tradition.
+        //   - Cmd+F anywhere → platform-convention search-overlay
+        //     (Mac users reflexively Cmd+F to search everywhere,
+        //     even inside input fields). No guard.
+        if (inEditable && event.ctrlKey && !event.metaKey) return
         event.preventDefault()
         setSearchOpen(true)
         return
