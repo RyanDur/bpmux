@@ -57,10 +57,29 @@ function Input({ onSend, disabled, placeholder }: Props): React.JSX.Element {
   const [value, setValue] = useState('')
   const [search, setSearch] = useState<SearchState | null>(null)
   const taRef = useRef<HTMLTextAreaElement>(null)
-  const yankRef = useRef<string>('')
   const historyRef = useRef<string[]>([])
   const historyIndexRef = useRef<number | null>(null)
   const draftRef = useRef<string>('')
+
+  // #378: kill-ops (Ctrl+W/K/U + Alt+D) pipe killed text to the
+  // system clipboard so users can restore via the platform-native
+  // Cmd+V. Retires the internal `yankRef` + `Ctrl+Y` binding —
+  // emacs-strict yank didn't match typical Mac/Electron muscle
+  // memory, and routing to the clipboard gives one consistent
+  // "paste" story (OS clipboard for everything). Fire-and-forget
+  // because failures aren't user-actionable and the event loop
+  // must keep going; user-initiated event satisfies Clipboard-API
+  // permission semantics.
+  const copyToClipboard = useCallback((text: string): void => {
+    if (!text) return
+    if (typeof navigator === 'undefined' || !navigator.clipboard) return
+    void navigator.clipboard.writeText(text).catch(() => {
+      // Permission denied / navigator.clipboard unavailable under
+      // the test harness. The kill-op still succeeds (text was
+      // removed from the textarea); clipboard-write is a best-
+      // effort upgrade from the old yank-into-oblivion path.
+    })
+  }, [])
 
   const findMatch = useCallback(
     (query: string, startFrom: number): number | null => {
@@ -104,19 +123,15 @@ function Input({ onSend, disabled, placeholder }: Props): React.JSX.Element {
     ta.style.height = `${Math.min(ta.scrollHeight, maxHeight)}px`
   }, [value])
 
-  const applyEdit = useCallback(
-    (next: string, caret: number, yank?: string): void => {
-      setValue(next)
-      if (typeof yank === 'string') yankRef.current = yank
-      requestAnimationFrame(() => {
-        const ta = taRef.current
-        if (!ta) return
-        ta.selectionStart = caret
-        ta.selectionEnd = caret
-      })
-    },
-    []
-  )
+  const applyEdit = useCallback((next: string, caret: number): void => {
+    setValue(next)
+    requestAnimationFrame(() => {
+      const ta = taRef.current
+      if (!ta) return
+      ta.selectionStart = caret
+      ta.selectionEnd = caret
+    })
+  }, [])
 
   const moveCaret = useCallback((pos: number): void => {
     requestAnimationFrame(() => {
@@ -305,7 +320,8 @@ function Input({ onSend, disabled, placeholder }: Props): React.JSX.Element {
             const end = lineEnd(value, pos)
             const killed = value.slice(pos, end === pos ? end + 1 : end)
             const next = value.slice(0, pos) + value.slice(end === pos ? end + 1 : end)
-            applyEdit(next, pos, killed)
+            copyToClipboard(killed)
+            applyEdit(next, pos)
             return
           }
           case 'u': {
@@ -313,7 +329,8 @@ function Input({ onSend, disabled, placeholder }: Props): React.JSX.Element {
             const start = lineStart(value, pos)
             const killed = value.slice(start, pos)
             const next = value.slice(0, start) + value.slice(pos)
-            applyEdit(next, start, killed)
+            copyToClipboard(killed)
+            applyEdit(next, start)
             return
           }
           case 'w': {
@@ -321,17 +338,14 @@ function Input({ onSend, disabled, placeholder }: Props): React.JSX.Element {
             const wordStart = prevWordBoundary(value, pos)
             const killed = value.slice(wordStart, pos)
             const next = value.slice(0, wordStart) + value.slice(pos)
-            applyEdit(next, wordStart, killed)
+            copyToClipboard(killed)
+            applyEdit(next, wordStart)
             return
           }
-          case 'y': {
-            e.preventDefault()
-            const yanked = yankRef.current
-            if (!yanked) return
-            const next = value.slice(0, pos) + yanked + value.slice(selEnd)
-            applyEdit(next, pos + yanked.length)
-            return
-          }
+          // #378: Ctrl+Y yank retired. Users reach for Cmd+V for
+          // paste (standard OS clipboard), which is also where our
+          // Ctrl+W/K/U kills now land via copyToClipboard above.
+          // One-clipboard story, no internal yank-ref.
           default:
             break
         }
@@ -354,7 +368,8 @@ function Input({ onSend, disabled, placeholder }: Props): React.JSX.Element {
             const wordEnd = nextWordBoundary(value, pos)
             const killed = value.slice(pos, wordEnd)
             const next = value.slice(0, pos) + value.slice(wordEnd)
-            applyEdit(next, pos, killed)
+            copyToClipboard(killed)
+            applyEdit(next, pos)
             return
           }
           default:
@@ -362,7 +377,7 @@ function Input({ onSend, disabled, placeholder }: Props): React.JSX.Element {
         }
       }
     },
-    [value, onSend, applyEdit, moveCaret, search, findMatch, applySearchMatch, exitSearch]
+    [value, onSend, applyEdit, copyToClipboard, moveCaret, search, findMatch, applySearchMatch, exitSearch]
   )
 
   return (
