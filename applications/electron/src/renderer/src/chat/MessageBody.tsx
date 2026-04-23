@@ -1,11 +1,23 @@
+import { useId } from 'react'
 import ReactMarkdown from 'react-markdown'
 import rehypeHighlight from 'rehype-highlight'
 import remarkGfm from 'remark-gfm'
 import 'highlight.js/styles/github-dark.css'
+import { replaceMentionsInChildren } from './renderMentions'
 import './MessageBody.css'
 
 interface Props {
   text: string
+  // #380: when provided, inline @role strings matching any entry
+  // of `knownRoles` render as `.message-mention` pills. Omit (or
+  // pass an empty set) to get plain-text rendering — the default
+  // for surfaces like the drill-in story body + comments where
+  // @-pill treatment isn't part of the feature.
+  knownRoles?: ReadonlySet<string>
+  // Click handler for a mention pill. When provided, the pill
+  // renders as a button (role/tab-index/Enter+Space activation).
+  // Omit to render pill as decorative-only.
+  onMention?: (role: string) => void
 }
 
 // #366: a `#comment-<id>` fragment inside a quote-block anchor
@@ -28,7 +40,14 @@ function handleCommentAnchor(id: string): void {
   window.setTimeout(() => el.classList.remove(FLASH_CLASS), FLASH_MS)
 }
 
-function MessageBody({ text }: Props): React.JSX.Element {
+function MessageBody({ text, knownRoles, onMention }: Props): React.JSX.Element {
+  // Stable per-render key prefix so mention spans within a given
+  // message don't collide with their siblings across re-renders.
+  const mentionKeyPrefix = useId()
+  const mentionRoles = knownRoles ?? new Set<string>()
+  const withMentions = (children: React.ReactNode): React.ReactNode =>
+    replaceMentionsInChildren(children, mentionRoles, onMention, mentionKeyPrefix)
+
   return (
     // #381: `.markdown-body` scope restores Meyer-reset-stripped
     // defaults on inline (strong / em / code) + block (h1-h6, ul, ol,
@@ -40,6 +59,13 @@ function MessageBody({ text }: Props): React.JSX.Element {
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeHighlight]}
         components={{
+          // #380: override text-containing inline + block elements
+          // so their string children get scanned for @-mentions.
+          // Unknown-role @-tokens pass through unchanged (AC2).
+          p: ({ children }) => <p>{withMentions(children)}</p>,
+          li: ({ children }) => <li>{withMentions(children)}</li>,
+          strong: ({ children }) => <strong>{withMentions(children)}</strong>,
+          em: ({ children }) => <em>{withMentions(children)}</em>,
           a: ({ href, children }) => (
             <a
               href={href}

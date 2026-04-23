@@ -176,6 +176,7 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
           messages={messages}
           status={status}
           recipient={recipient}
+          onSelectRecipient={setRecipient}
           filter={filter}
           searchOpen={searchOpen}
           metricsOpen={metricsOpen}

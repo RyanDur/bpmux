@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import { format } from 'date-fns'
 import type { ChatMessage } from '../transport/types'
 import { classOf, type MessageClass } from '../hooks/useMessageFilter'
@@ -46,6 +46,10 @@ interface Props {
   // When null, only non-broadcast messages not addressed to viewer
   // get dimmed — broadcasts stay primary.
   recipient?: string[] | null
+  // #380: click-to-scope on inline @mention pills. Threaded to
+  // MessageBody so a pill click shifts chat scope the same way
+  // sidebar click does (#332).
+  onSelectRecipient?: (r: string[] | null) => void
 }
 
 // Per-class gutter glyphs moved to `./ClassGlyph` (#373 — custom
@@ -181,7 +185,8 @@ function MessageList({
   apiBase,
   authToken,
   lanes = 'off',
-  recipient = null
+  recipient = null,
+  onSelectRecipient
 }: Props): React.JSX.Element {
   const visible = messages.filter((m) => visibleClasses.has(classOf(m.messageType)))
   // #370 avatar-hover tooltip: derive current presence per role from
@@ -197,6 +202,17 @@ function MessageList({
     [messages, viewer]
   )
   const presence = usePresence(messages, presenceRoles)
+  // #380: @mention pills. The set of valid @-roles is the same
+  // runtime-derived team set used for presence — consistent with
+  // #393 AC1's "no hardcoded team composition." Wrapped in a Set
+  // so MessageBody's per-string O(1) membership check is cheap.
+  const mentionRoles = useMemo(() => new Set(presenceRoles), [presenceRoles])
+  const handleMention = useCallback(
+    (role: string): void => {
+      onSelectRecipient?.([role])
+    },
+    [onSelectRecipient]
+  )
 
   const regionProps = {
     className: 'message-list',
@@ -363,7 +379,11 @@ function MessageList({
               )}
               <section className="message-body">
                 <ClassGlyph cls={classOf(m.messageType)} />
-                <MessageBody text={m.text} />
+                <MessageBody
+                  text={m.text}
+                  knownRoles={mentionRoles}
+                  onMention={handleMention}
+                />
                 <UnfurlCards text={m.text} apiBase={apiBase} authToken={authToken} />
                 {(() => {
                   if (!onToggleReaction || !viewer) return null

@@ -101,3 +101,56 @@
   padding-left: var(--space-8);
   border-left: 2px solid var(--border-strong);
 }
+
+/* #380 inline @mention pills. Color comes from the role-token
+ * palette (--role-{ryan,dev,pm,designer} when available, else
+ * --role-unknown). A subtle tinted background signals the pill
+ * identity without overwhelming the surrounding text; font-weight
+ * 600 gives a second axis of differentiation for monochrome or
+ * low-contrast viewers. Rendered inline (no layout shift from the
+ * text it replaces). */
+.markdown-body .message-mention {
+  display: inline-block;
+  padding: 0 var(--space-4);
+  border-radius: 4px;
+  font-weight: 600;
+  color: var(--role-unknown, var(--fg-primary));
+  background: color-mix(
+    in srgb,
+    var(--role-unknown, var(--fg-primary)) 15%,
+    transparent
+  );
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+.markdown-body .message-mention[data-role='ryan'] {
+  color: var(--role-ryan);
+  background: color-mix(in srgb, var(--role-ryan) 15%, transparent);
+}
+
+.markdown-body .message-mention[data-role='dev'] {
+  color: var(--role-dev);
+  background: color-mix(in srgb, var(--role-dev) 15%, transparent);
+}
+
+.markdown-body .message-mention[data-role='pm'] {
+  color: var(--role-pm);
+  background: color-mix(in srgb, var(--role-pm) 15%, transparent);
+}
+
+.markdown-body .message-mention[data-role='designer'] {
+  color: var(--role-designer);
+  background: color-mix(in srgb, var(--role-designer) 15%, transparent);
+}
+
+/* Clickable variant — cursor pointer + focus ring when rendered as
+ * a button per #332 click-to-scope parity with sidebar. */
+.markdown-body .message-mention[role='button'] {
+  cursor: pointer;
+}
+
+.markdown-body .message-mention[role='button']:focus-visible {
+  outline: 2px solid var(--accent-brand);
+  outline-offset: 1px;
+}

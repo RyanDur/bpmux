@@ -24,6 +24,10 @@ interface Props {
   messages: ChatMessage[]
   status: ConnectionStatus
   recipient: string[] | null
+  // #380: click-to-scope on inline @mention pills routes through
+  // this setter (same shape as the sidebar's recipient selector
+  // per #332 click-parity AC).
+  onSelectRecipient?: (r: string[] | null) => void
   filter: ReturnType<typeof useMessageFilter>
   searchOpen: boolean
   metricsOpen: boolean
@@ -46,6 +50,7 @@ function Chat({
   messages,
   status,
   recipient,
+  onSelectRecipient,
   filter,
   searchOpen,
   metricsOpen,
@@ -153,6 +158,7 @@ function Chat({
         }}
         viewer={RENDERER_IDENTITY}
         recipient={recipient}
+        onSelectRecipient={onSelectRecipient}
         apiBase={apiBase}
         authToken={authToken}
         lanes={lanes}
