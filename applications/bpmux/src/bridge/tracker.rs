@@ -37,6 +37,14 @@ pub struct WorkflowRunEntry {
     pub display_title: Option<String>,
     #[serde(rename = "id", alias = "databaseId", default)]
     pub database_id: Option<u64>,
+    /// #397: annotation message from the check-run surfaced on
+    /// failed runs so classification can distinguish quota-
+    /// exhausted / billing-blocked (pass-with-citation) from genuine
+    /// test/build failures (hard-block). Populated by
+    /// `list_latest_run_on_main` for failed runs; `None` for
+    /// successful runs (annotation fetch skipped).
+    #[serde(default, skip)]
+    pub annotation_message: Option<String>,
 }
 
 pub trait StoryTracker: Clone + Send + Sync + 'static {
@@ -644,7 +652,99 @@ impl StoryTracker for OctocrabStoryTracker {
             .get(path, None::<&()>)
             .await
             .map_err(Self::classify)?;
-        Ok(response.workflow_runs.into_iter().next())
+        let Some(mut latest) = response.workflow_runs.into_iter().next() else {
+            return Ok(None);
+        };
+        // #397: on failed runs, fetch the first annotation message so
+        // `classify_runs` can distinguish quota-exhausted (pass-with-
+        // citation at team gates) from code-failure (hard-block).
+        // Skipped for successful runs — no distinction needed, avoids
+        // the extra API calls on the happy path.
+        if latest.conclusion.as_deref() == Some("failure")
+            && let Some(run_id) = latest.database_id
+        {
+            latest.annotation_message = self.fetch_first_failure_annotation(run_id).await;
+        }
+        Ok(Some(latest))
+    }
+}
+
+// Inherent impl for OctocrabStoryTracker (separate from the trait
+// impl above) — houses helper methods that aren't part of the
+// StoryTracker trait surface but are internal to the octocrab-
+// backed tracker.
+impl OctocrabStoryTracker {
+    /// Fetch the first annotation message for the primary check-run
+    /// of a failed workflow run. Returns None on any error path
+    /// (logged via diag) — annotations are advisory for
+    /// classification, not load-bearing for functionality. Worst-
+    /// case: we miss the quota-exhausted distinction and classify
+    /// as generic Red, which is the pre-#397 behavior.
+    ///
+    /// Two HTTP calls per failed run:
+    ///   1. /actions/runs/{id}/jobs → primary job's check_run_url
+    ///   2. GET that check_run_url → output.annotations_url → fetch
+    ///      first annotation message
+    ///
+    /// Cost budget: only fires on failure path, which is transient
+    /// in healthy state; GitHub rate limit (5000/hr authed) has
+    /// substantial headroom for realistic polling cadences.
+    async fn fetch_first_failure_annotation(&self, run_id: u64) -> Option<String> {
+        #[derive(serde::Deserialize)]
+        struct Job {
+            check_run_url: Option<String>,
+        }
+        #[derive(serde::Deserialize)]
+        struct JobsResponse {
+            jobs: Vec<Job>,
+        }
+        let jobs_path = format!(
+            "/repos/{}/{}/actions/runs/{run_id}/jobs",
+            self.owner, self.repo
+        );
+        let jobs: JobsResponse = match self.client.get(jobs_path, None::<&()>).await {
+            Ok(r) => r,
+            Err(e) => {
+                crate::session::diag::log_diag(&format!(
+                    "tracker: fetch jobs for run {run_id} failed: {e}"
+                ));
+                return None;
+            }
+        };
+        let check_run_url = jobs.jobs.into_iter().find_map(|j| j.check_run_url)?;
+        #[derive(serde::Deserialize)]
+        struct CheckRun {
+            output: Option<CheckRunOutput>,
+        }
+        #[derive(serde::Deserialize)]
+        struct CheckRunOutput {
+            annotations_url: Option<String>,
+        }
+        let check_run: CheckRun = match self.client.get(check_run_url.as_str(), None::<&()>).await {
+            Ok(r) => r,
+            Err(e) => {
+                crate::session::diag::log_diag(&format!(
+                    "tracker: fetch check-run failed for run {run_id}: {e}"
+                ));
+                return None;
+            }
+        };
+        let annotations_url = check_run.output.and_then(|o| o.annotations_url)?;
+        #[derive(serde::Deserialize)]
+        struct Annotation {
+            message: Option<String>,
+        }
+        let annotations: Vec<Annotation> =
+            match self.client.get(annotations_url.as_str(), None::<&()>).await {
+                Ok(r) => r,
+                Err(e) => {
+                    crate::session::diag::log_diag(&format!(
+                        "tracker: fetch annotations failed for run {run_id}: {e}"
+                    ));
+                    return None;
+                }
+            };
+        annotations.into_iter().find_map(|a| a.message)
     }
 }
 

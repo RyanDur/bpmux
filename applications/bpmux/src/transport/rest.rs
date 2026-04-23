@@ -992,6 +992,7 @@ pub async fn get_ci(axum::Extension(tracker): axum::Extension<TrackerHandle>) ->
                     head_sha: w.head_sha.clone(),
                     display_title: w.display_title.clone(),
                     database_id: w.database_id,
+                    annotation_message: w.annotation_message.clone(),
                 })
                 .collect();
             let report = crate::bridge::tools::build_ci_state_report(&runs);

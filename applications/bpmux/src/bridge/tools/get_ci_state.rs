@@ -23,6 +23,9 @@ pub fn build_ci_state_report(runs: &[RunEntry]) -> CiStateReport {
         CiState::Green => "success",
         CiState::Red => "failure",
         CiState::Running => "in_progress",
+        // #397 new value — distinct from "failure" so team-gate
+        // code can branch: pass-with-citation vs hard-block.
+        CiState::QuotaExhausted => "quota_exhausted",
         CiState::Unknown => "unknown",
     };
     let url = match event.run_id {
@@ -43,7 +46,8 @@ pub fn build_ci_state_report(runs: &[RunEntry]) -> CiStateReport {
 /// `RunEntry` shape `terminal::ci::classify_runs` consumes. The two
 /// structs differ only in field visibility (tracker struct is public
 /// for cross-module reuse; RunEntry is crate-internal classification
-/// type). One-to-one field copy.
+/// type). One-to-one field copy including #397's annotation_message
+/// so quota-exhaustion classification sees the reason from GitHub.
 fn run_entry_from_tracker(w: &WorkflowRunEntry) -> RunEntry {
     RunEntry {
         status: w.status.clone(),
@@ -51,6 +55,7 @@ fn run_entry_from_tracker(w: &WorkflowRunEntry) -> RunEntry {
         head_sha: w.head_sha.clone(),
         display_title: w.display_title.clone(),
         database_id: w.database_id,
+        annotation_message: w.annotation_message.clone(),
     }
 }
 
@@ -76,6 +81,7 @@ mod tests {
             head_sha: None,
             display_title: None,
             database_id: id,
+            annotation_message: None,
         }
     }
 
@@ -155,6 +161,7 @@ mod tests {
             head_sha: Some("abc123".to_string()),
             display_title: Some("CI: fix bug".to_string()),
             database_id: Some(99),
+            annotation_message: None,
         };
         let r = run_entry_from_tracker(&w);
         assert_eq!(r.status, "completed");
@@ -162,5 +169,69 @@ mod tests {
         assert_eq!(r.head_sha.as_deref(), Some("abc123"));
         assert_eq!(r.display_title.as_deref(), Some("CI: fix bug"));
         assert_eq!(r.database_id, Some(99));
+        assert_eq!(r.annotation_message, None);
+    }
+
+    // ── #397 quota-exhausted classifier tests ──
+
+    fn run_with_annotation(conclusion: &str, msg: &str) -> RunEntry {
+        RunEntry {
+            status: "completed".to_string(),
+            conclusion: Some(conclusion.to_string()),
+            head_sha: None,
+            display_title: None,
+            database_id: Some(1),
+            annotation_message: Some(msg.to_string()),
+        }
+    }
+
+    #[test]
+    fn quota_exhausted_annotation_maps_to_quota_exhausted_conclusion() {
+        let r = run_with_annotation(
+            "failure",
+            "The job was not started because recent account payments have failed or your spending limit needs to be increased.",
+        );
+        let report = build_ci_state_report(&[r]);
+        assert_eq!(
+            report.conclusion, "quota_exhausted",
+            "quota-exhaustion annotation must classify as quota_exhausted, not failure"
+        );
+    }
+
+    #[test]
+    fn regular_test_failure_stays_failure_not_quota_exhausted() {
+        // A genuine test-failure annotation (e.g., an assertion
+        // error) should NOT trip the quota classifier.
+        let r = run_with_annotation(
+            "failure",
+            "assertion failed: left != right at tests/foo.rs:42",
+        );
+        let report = build_ci_state_report(&[r]);
+        assert_eq!(
+            report.conclusion, "failure",
+            "genuine test-failure must classify as failure, not quota_exhausted"
+        );
+    }
+
+    #[test]
+    fn failure_with_no_annotation_stays_failure() {
+        // Failed run without any annotation = legacy path; treat as
+        // failure (pre-#397 behavior preserved when annotation
+        // fetch returns nothing).
+        let r = run("completed", Some("failure"), Some(7));
+        let report = build_ci_state_report(&[r]);
+        assert_eq!(report.conclusion, "failure");
+    }
+
+    #[test]
+    fn spending_limit_phrase_alone_also_triggers_quota() {
+        // Symmetric coverage: the annotation's other canonical
+        // phrases should also match.
+        let r = run_with_annotation(
+            "failure",
+            "This repository's workflow runs are paused: spending limit reached.",
+        );
+        let report = build_ci_state_report(&[r]);
+        assert_eq!(report.conclusion, "quota_exhausted");
     }
 }

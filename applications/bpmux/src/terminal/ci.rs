@@ -23,10 +23,16 @@ use crate::session::diag::log_diag;
 use crate::session::message::{DeepDetail, MultiDepthPayload};
 use crate::session::{Message, MessageType, Session};
 
-/// Three-state CI indicator shown in the status bar. `Unknown` is the
-/// internal startup state before the first poll — it is NOT rendered as
-/// a fourth glyph per Phase 1 scope. `render_indicator` returns `None`
-/// for `Unknown`, keeping the indicator hidden until we have real data.
+/// CI indicator state. `Unknown` is the internal startup state
+/// before the first poll — rendered as a dim placeholder.
+///
+/// `QuotaExhausted` (#397): distinct from `Red` (code-failure) to
+/// name the infrastructure-blocked case where the Actions runner
+/// never started due to account spending-limit / billing. Team-
+/// layer gates (dev pre-deliver / designer pre-PASS / pm pre-accept)
+/// accept `quota_exhausted` as pass-with-citation rather than
+/// hard-block — owner's lane to resolve; time-boxed by billing
+/// reset.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum CiState {
     #[default]
@@ -34,6 +40,7 @@ pub enum CiState {
     Green,
     Red,
     Running,
+    QuotaExhausted,
 }
 
 /// Richer per-poll CI snapshot — state plus the metadata needed for
@@ -350,6 +357,30 @@ pub struct RunEntry {
     pub display_title: Option<String>,
     #[serde(rename = "id", alias = "databaseId", default)]
     pub database_id: Option<u64>,
+    /// #397: annotation message from the check-run, surfaced when
+    /// conclusion=failure so `classify_runs` can distinguish
+    /// infrastructure-blocked runs (quota-exhausted / billing) from
+    /// code-failure runs. Populated by the tracker's annotation
+    /// fetch on failed runs; `None` for successful runs (annotation
+    /// fetch skipped — no distinction needed).
+    #[serde(default, skip)]
+    pub annotation_message: Option<String>,
+}
+
+/// Pattern recognizing GitHub Actions' quota / billing exhaustion
+/// annotation. Text comes verbatim from the Actions API on a failed-
+/// to-start run when the owner's spending limit is reached:
+///   "The job was not started because recent account payments have
+///    failed or your spending limit needs to be increased..."
+/// Match on the canonical prefix "job was not started because" —
+/// GitHub uses this for any runner-unavailable reason (billing,
+/// disabled workflow, insufficient minutes). All of those map to
+/// `QuotaExhausted` (team's gate semantics: infra-unavailable,
+/// owner's lane to resolve).
+pub(crate) fn annotation_indicates_quota_exhaustion(msg: &str) -> bool {
+    msg.contains("job was not started because")
+        || msg.contains("spending limit")
+        || msg.contains("billing")
 }
 
 async fn poll_once() -> Result<CiEvent, Box<dyn std::error::Error + Send + Sync>> {
@@ -379,10 +410,17 @@ pub fn classify_runs(runs: &[RunEntry]) -> CiEvent {
     } else {
         match latest.conclusion.as_deref() {
             Some("success") => CiState::Green,
-            // All non-success completed states render red — the spec
-            // explicitly does not distinguish failed / cancelled / timed_out
-            // at the indicator level. Details belong in `gh run view`.
-            Some(_) => CiState::Red,
+            // #397: distinguish quota-exhausted / infrastructure-
+            // blocked failures from genuine code failures. The
+            // annotation message (populated upstream by the tracker
+            // for failed runs) carries GitHub's reason; if it matches
+            // the quota-exhaustion pattern, map to QuotaExhausted
+            // (team-gate pass-with-citation). Otherwise map to Red
+            // (genuine failure — block gates).
+            Some(_) => match latest.annotation_message.as_deref() {
+                Some(msg) if annotation_indicates_quota_exhaustion(msg) => CiState::QuotaExhausted,
+                _ => CiState::Red,
+            },
             None => CiState::Unknown,
         }
     };
@@ -403,6 +441,10 @@ pub(super) fn render_indicator(state: CiState) -> (&'static str, CiGlyphColor) {
         CiState::Green => ("CI \u{2713}", CiGlyphColor::Green), // ✓
         CiState::Red => ("CI \u{2717}", CiGlyphColor::Red),     // ✗
         CiState::Running => ("CI \u{25CB}", CiGlyphColor::Yellow), // ◌
+        // #397 quota-exhausted: pause-glyph ⏸ + amber (Yellow).
+        // Distinct shape from the in-progress ring so readers see
+        // "paused for infrastructure" vs "running, waiting."
+        CiState::QuotaExhausted => ("CI \u{23F8}", CiGlyphColor::Yellow), // ⏸
         CiState::Unknown => ("CI ?", CiGlyphColor::Dim),
     }
 }

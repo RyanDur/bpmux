@@ -10,6 +10,7 @@ fn run(status: &str, conclusion: Option<&str>) -> RunEntry {
         head_sha: None,
         display_title: None,
         database_id: None,
+        annotation_message: None,
     }
 }
 
@@ -26,6 +27,7 @@ fn run_with_meta(
         head_sha: Some(sha.to_string()),
         display_title: Some(title.to_string()),
         database_id: Some(id),
+        annotation_message: None,
     }
 }
 

@@ -90,12 +90,17 @@ pub fn spawn<T: StoryTracker>(
                 head_sha: report.head_sha,
                 display_title: report.display_title,
                 database_id: report.database_id,
+                // #397: annotation_message flows from tracker's
+                // list_latest_run_on_main when conclusion=failure,
+                // enabling QuotaExhausted classification.
+                annotation_message: report.annotation_message,
             }];
             let classified = crate::terminal::ci::classify_runs(&runs);
             let current: &'static str = match classified.state {
                 crate::terminal::ci::CiState::Green => "success",
                 crate::terminal::ci::CiState::Red => "failure",
                 crate::terminal::ci::CiState::Running => "in_progress",
+                crate::terminal::ci::CiState::QuotaExhausted => "quota_exhausted",
                 crate::terminal::ci::CiState::Unknown => "unknown",
             };
             if first {
