@@ -464,3 +464,32 @@ button.story-badge {
   color: var(--bg-base);
   border-color: var(--accent-error);
 }
+
+/* #390 blocked — "not actionable for you right now." Amber-family
+ * color pairs with the awaiting-lane palette (same attention tier)
+ * but the inline BlockerGlyph shape + "blocked" label provide the
+ * primary differentiation. Outlined so it reads as "parked" rather
+ * than "solid done," and distinct from rework-red to avoid reading
+ * as an urgent fix cycle — blocked is waiting, not broken. */
+.story-badge--blocked {
+  color: var(--accent-warning);
+  border-color: var(--accent-warning);
+  background: transparent;
+}
+
+/* Blocked row body dim. Opacity preserves readability (text still
+ * meets AA contrast against the row background) while visually
+ * parking the row against its neighbors — owner can skim past
+ * blocked rows during an acceptance walk without hiding them. The
+ * badge itself opts out of the dim via opacity:1 so the block
+ * signal remains the anchor.
+ *
+ * Selected + drop indicators override the dim so interaction
+ * affordances remain fully legible. */
+.board-story-row--blocked .board-story-button {
+  opacity: 0.7;
+}
+
+.board-story-row--blocked .story-badge--blocked {
+  opacity: 1;
+}

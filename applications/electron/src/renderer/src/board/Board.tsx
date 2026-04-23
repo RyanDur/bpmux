@@ -3,7 +3,7 @@ import { useAnimatedUnmount } from '../hooks/useAnimatedUnmount'
 import { BOARD_INVALIDATE_MARKER, type ChatMessage } from '../transport/types'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import DrillIn from './DrillIn'
-import StoryBadge from './StoryBadge'
+import StoryBadge, { deriveBadge } from './StoryBadge'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import {
   GROUP_ORDER,
@@ -610,6 +610,12 @@ function StoryRow({
   const classes = ['board-story-row']
   if (dropBefore) classes.push('board-story-row--drop-before')
   if (dropAfterLast) classes.push('board-story-row--drop-after')
+  // #390: dim the row body on blocked-in-delivered so the
+  // acceptance walk reads blocked stories as "not in your queue
+  // right now" at a glance. Row stays visible + readable (nothing-
+  // hidden); opacity is the secondary axis, the badge + glyph carry
+  // the primary signal.
+  if (deriveBadge(story) === 'blocked') classes.push('board-story-row--blocked')
   // aria-label describes position + reorder affordance for screen-
   // reader users; keyboard-only users read the same hint in the
   // button's tooltip on focus.
@@ -653,7 +659,7 @@ function StoryRow({
       >
         <small className="board-story-number">#{story.number}</small>
         <StoryTypeGlyph type={type} />
-        <StoryBadge story={story} onOpenTimeline={onOpenTimeline} />
+        <StoryBadge story={story} onOpenTimeline={onOpenTimeline} onOpenBlocker={onOpen} />
         <b className="board-story-title">{story.title}</b>
       </button>
     </li>
