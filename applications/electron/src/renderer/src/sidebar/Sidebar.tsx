@@ -2,7 +2,11 @@ import { useMemo } from 'react'
 import type { ChatMessage } from '../transport/types'
 import { classOf, type MessageFilter } from '../hooks/useMessageFilter'
 import { usePresence, type Presence } from '../hooks/usePresence'
-import { deriveDirectRoles } from '../roles/deriveRoles'
+import {
+  deriveCombinableRoles,
+  deriveCombinatorialGroups,
+  deriveDirectRoles
+} from '../roles/deriveRoles'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import './Sidebar.css'
 
@@ -33,23 +37,15 @@ function groupKey(names: readonly string[]): string {
   return [...names].sort().join('+')
 }
 
-// Derive the set of unique group recipient sets from message history.
-// A "group" is a `to` array with 2+ recipients that doesn't include
-// 'all' (the broadcast sentinel). Single-recipient `to` is a DM —
-// those are covered by `deriveDirectRoles` (#393 team-shape audit
-// retired the former hardcoded DIRECT_ROLES list).
-function deriveGroups(messages: readonly ChatMessage[]): string[][] {
-  const seen = new Map<string, string[]>()
-  for (const m of messages) {
-    if (!m.to || m.to.length < 2) continue
-    if (m.to.includes('all')) continue
-    const sorted = [...m.to].sort()
-    seen.set(groupKey(sorted), sorted)
-  }
-  return Array.from(seen.values()).sort((a, b) =>
-    groupKey(a).localeCompare(groupKey(b))
-  )
-}
+// #386 (supersedes #346): groups are combinatorial over the observed
+// team, NOT derived from message history. History-derived groups
+// create phantom-group ghosts from stale message-routing; Ryan
+// 2026-04-22 22:55 UTC: "groups are a need. but if we use history,
+// we will create ghosts." All 2+ subsets of the team (excluding the
+// all-team subset which is redundant with broadcast) render as
+// first-class groups the owner can pick + scope to. Derivation is
+// pure function of deriveTeamRoles output, so a 5th role joining
+// via message stream automatically expands the group list.
 
 function countSystemMessages(messages: readonly ChatMessage[]): number {
   let n = 0
@@ -71,15 +67,29 @@ function Sidebar({
   messages,
   filter
 }: Props): React.JSX.Element {
-  const groups = useMemo(() => deriveGroups(messages), [messages])
   const systemCount = useMemo(() => countSystemMessages(messages), [messages])
   // #393: direct-DM roles are every role present in the session
-  // except the viewer's own. Derives from the observed message
-  // stream so any agent that joins becomes a first-class sidebar
-  // entry without a code change.
+  // except the viewer's own. Any agent that joins becomes a
+  // first-class sidebar entry without a code change.
   const directRoles = useMemo(
     () => deriveDirectRoles(messages, RENDERER_IDENTITY),
     [messages]
+  )
+  // #386 + Ryan 2026-04-23 11:47 UTC: combinatorial groups enumerate
+  // 2+ subsets over the "combinable" role set — observed team minus
+  // the owner (viewer) and system senders. Ryan: "my name should not
+  // be part of the list of combinations, nor should bpmux. we are
+  // constants." Detection is structural (viewer via RENDERER_IDENTITY,
+  // system senders via messageType==='system') so a fork with
+  // different owner/system names works without code edit — no literal
+  // role-name strings in the helper (preserves #393 AC1).
+  const combinableRoles = useMemo(
+    () => deriveCombinableRoles(messages, RENDERER_IDENTITY),
+    [messages]
+  )
+  const groups = useMemo(
+    () => deriveCombinatorialGroups(combinableRoles),
+    [combinableRoles]
   )
   const presence = usePresence(messages, directRoles)
   // Broadcast is "selected" whenever recipient is null. SYSTEM is

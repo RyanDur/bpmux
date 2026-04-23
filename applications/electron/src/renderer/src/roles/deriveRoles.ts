@@ -79,3 +79,98 @@ export function deriveDirectRoles(
   const self = shortName(viewer)
   return all.filter((r) => r !== self)
 }
+
+/**
+ * Enumerate all combinatorial subsets of `roles` with size in
+ * `[minSize, maxSize]` inclusive. Output is sorted canonically
+ * — each subset's role list is alphabetical, and the outer list
+ * is ordered by size ascending then lexicographic. Pure function;
+ * stable across re-renders given the same input.
+ */
+export function combinations(
+  roles: readonly string[],
+  minSize: number,
+  maxSize: number
+): string[][] {
+  const sorted = [...roles].sort()
+  const out: string[][] = []
+  const n = sorted.length
+  const clampedMin = Math.max(1, minSize)
+  const clampedMax = Math.min(n, maxSize)
+  if (clampedMin > clampedMax) return out
+  for (let size = clampedMin; size <= clampedMax; size++) {
+    const acc: string[] = []
+    const walk = (start: number): void => {
+      if (acc.length === size) {
+        out.push([...acc])
+        return
+      }
+      const remaining = size - acc.length
+      for (let i = start; i <= n - remaining; i++) {
+        acc.push(sorted[i])
+        walk(i + 1)
+        acc.pop()
+      }
+    }
+    walk(0)
+  }
+  return out
+}
+
+/**
+ * #386 + Ryan 2026-04-23 11:47 UTC: the owner (viewer) and any
+ * system senders are architectural CONSTANTS — always present in
+ * every conversation — not combinatorial variables. They vary
+ * over zero bits. Sidebar group enumeration must skip them.
+ *
+ * Identification is structural, not by hardcoded name:
+ *   - viewer: caller-provided (already pluggable per #393 AC1).
+ *     The renderer's current identity, whoever that is.
+ *   - system senders: any `from` that has emitted at least one
+ *     message with `messageType === 'system'`. In bpmux this is
+ *     the `bpmux` bridge sender; the detector scales to any
+ *     future system-typed emitter without a name-literal.
+ */
+function deriveSystemSenders(
+  messages: readonly ChatMessage[]
+): ReadonlySet<string> {
+  const set = new Set<string>()
+  for (const m of messages) {
+    if (m.messageType === 'system' && m.from) {
+      set.add(shortName(m.from))
+    }
+  }
+  return set
+}
+
+/**
+ * The "combinable" role set — observed team minus the viewer
+ * (always-present owner) and system senders (always-present
+ * bridge). This is the alphabet the sidebar's group enumeration
+ * iterates over.
+ */
+export function deriveCombinableRoles(
+  messages: readonly ChatMessage[],
+  viewer?: string
+): readonly string[] {
+  const all = deriveTeamRoles(messages, viewer)
+  const systemSenders = deriveSystemSenders(messages)
+  const self = viewer !== undefined ? shortName(viewer) : null
+  return all.filter((r) => r !== self && !systemSenders.has(r))
+}
+
+/**
+ * Convenience for the #386 sidebar case: enumerate all size ≥ 2
+ * subsets of the combinable-role set (team-minus-constants).
+ * Single-role subsets are the Direct-DM section; this is the
+ * multi-role Groups section.
+ *
+ * 3 combinable roles → C(3,2) + C(3,3) = 4 subsets.
+ * 4 combinable roles → C(4,2) + C(4,3) + C(4,4) = 11 subsets.
+ */
+export function deriveCombinatorialGroups(
+  roles: readonly string[]
+): string[][] {
+  if (roles.length < 2) return []
+  return combinations(roles, 2, roles.length)
+}
