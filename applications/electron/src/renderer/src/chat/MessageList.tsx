@@ -4,6 +4,7 @@ import type { ChatMessage } from '../transport/types'
 import { classOf, type MessageClass } from '../hooks/useMessageFilter'
 import { usePresence } from '../hooks/usePresence'
 import { deriveTeamRoles } from '../roles/deriveRoles'
+import { roleColorFor } from '../roles/roleColor'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import ClassGlyph from './ClassGlyph'
 import MessageBody from './MessageBody'
@@ -104,25 +105,11 @@ export function scopeAttributeFor(
 // calibration feedback arrives.
 const GROUP_THRESHOLD_MS = 5 * 60 * 1000
 
-// #393 team-shape audit: role set derives from the observed message
-// stream (plus viewer) at runtime — no hardcoded team composition.
-// Avatar coloring still falls back to the 'unknown' --role-* token
-// for senders that lack a CSS palette entry, but any discovered role
-// is first-class for role-key assignment + presence tracking.
-//
-// The palette-inventory list below is NOT a team composition claim
-// — it's a bridge to the static `--role-{name}` CSS tokens defined
-// in `styles/tokens.css`. When AC2 ships (dynamic palette via hash-
-// to-hue function), this list retires entirely; until then any
-// role outside the list gets the neutral `--role-unknown` color.
-// Named `PALETTE_ROLE_TOKENS` to make the CSS-file-dependency
-// explicit in the source.
-const PALETTE_ROLE_TOKENS: ReadonlySet<string> = new Set([
-  'ryan',
-  'designer',
-  'dev',
-  'pm'
-])
+// #401 (#393 AC2): role coloring is computed at render time via
+// `roleColorFor(role)` — stable hash-to-hue for any role short-name.
+// Retires the prior `PALETTE_ROLE_TOKENS` bridge + the static
+// `--role-*` CSS tokens in `styles/tokens.css`. A new agent joining
+// via MCP now gets a distinct color immediately, no code edit.
 
 function formatTime(ts: string): string {
   const d = new Date(ts)
@@ -158,14 +145,16 @@ function isGroupedWithPrev(curr: ChatMessage, prev: ChatMessage | null): boolean
 }
 
 function avatarClasses(sender: string): string {
-  const roleKey = PALETTE_ROLE_TOKENS.has(sender) ? sender : 'unknown'
-  // Ryan-as-human-anchor: filled circle (preattentive shape) vs
-  // rounded-square for AI roles. Designers with colorblindness or
-  // mono-theme displays can still differentiate Ryan from AI at a
-  // glance via shape alone.
+  // #401: role-color now flows via inline style from `roleColorFor`
+  // instead of a per-role CSS token class. The shape modifier (
+  // circle vs square) stays — it's the human-anchor affordance per
+  // #348 (circle for human, square for AI). Ryan-as-human-anchor
+  // remains hardcoded because "which identity is the human" is a
+  // per-instance architectural constant (same discipline #402 /
+  // #393 owners-as-constants lands structurally).
   const shape =
     sender === 'ryan' ? 'message-avatar--circle' : 'message-avatar--square'
-  return `message-avatar message-avatar--${roleKey} ${shape}`
+  return `message-avatar ${shape}`
 }
 
 // Stable per-message key for pin lookup. Mirrors the Rust server's
@@ -350,13 +339,21 @@ function MessageList({
                 const label = sender.charAt(0).toUpperCase() + sender.slice(1)
                 const status = presence.get(sender) ?? 'offline'
                 const tooltipId = `avatar-info-${m.id}`
+                // #401: color comes from the runtime palette; inline
+                // style applies per-render so any discovered role
+                // gets a distinct color without a CSS token for it.
+                const roleColor = roleColorFor(sender)
                 return (
                   <span className="message-avatar-wrap">
                     <button
                       type="button"
                       className={avatarClasses(sender)}
                       data-test="message-avatar"
-                      data-role={PALETTE_ROLE_TOKENS.has(sender) ? sender : 'unknown'}
+                      data-role={sender}
+                      style={{
+                        background: roleColor.background,
+                        color: roleColor.color
+                      }}
                       aria-describedby={tooltipId}
                       aria-label={`${label} — ${status}`}
                     >
