@@ -13,6 +13,7 @@ import MessageList from './MessageList'
 import PinnedList from './PinnedList'
 import './Chat.css'
 
+
 // CSS transition durations that match the overlay CSS. Kept here
 // (rather than read from computed style) so the JS-side mount-delay
 // doesn't pull from the renderer at every open/close. Must stay in
@@ -69,6 +70,7 @@ function Chat({
   const search = useAnimatedUnmount(searchOpen, OVERLAY_EXIT_MS)
   const metrics = useAnimatedUnmount(metricsOpen, OVERLAY_EXIT_MS)
   const pinnedList = useAnimatedUnmount(pinnedListOpen, OVERLAY_EXIT_MS)
+
 
   // Pin handler for MessageList. Given an already-rendered message,
   // toggle pin status — either pin (if not already pinned) or unpin.
@@ -150,6 +152,7 @@ function Chat({
           void reactions.toggle(key, emoji, RENDERER_IDENTITY)
         }}
         viewer={RENDERER_IDENTITY}
+        recipient={recipient}
         apiBase={apiBase}
         authToken={authToken}
         lanes={lanes}

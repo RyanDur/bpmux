@@ -158,6 +158,19 @@
     &.message-row--to-other .message-body {
       color: var(--msg-fg-muted);
     }
+
+    /* #385 channel scope: messages out-of-scope for the current
+     * channel view (not addressed to viewer, not broadcast-in-
+     * broadcast-view, not matching current-channel-id) dim to
+     * 0.82 opacity. Uses the same floor as message-row--to-other's
+     * body-color de-emphasis — one "secondary" vocabulary. Per
+     * designer's spec (phase-1b/04-channel-scope-visual.md):
+     * no double-stacking (single data-attribute flips the class;
+     * addressed-to-other body-color stays independent since
+     * addressed-to-viewer is always primary per rule 1). */
+    &[data-scope='dim'] {
+      opacity: 0.82;
+    }
   }
 
   /* Avatar: 28px square (AI roles) or circle (Ryan). Role-color

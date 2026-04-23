@@ -39,12 +39,57 @@ interface Props {
   // #374 lane separation mode. 'on' = class-grouped <section>s with
   // sticky headers; 'off' (default) = current interleaved render.
   lanes?: 'on' | 'off'
+  // #385 channel scope: drives the per-row data-scope attribute for
+  // dim-not-hide rendering. `null` = broadcast view (no DM-scope
+  // active); `[role]` = DM view; `[role, role, ...]` = group view.
+  // When null, only non-broadcast messages not addressed to viewer
+  // get dimmed — broadcasts stay primary.
+  recipient?: string[] | null
 }
 
 // Per-class gutter glyphs moved to `./ClassGlyph` (#373 — custom
 // SVG replaces the unicode ◊/•/⚙ so rendering is consistent across
 // OS font stacks). Chat stays null (majority case, zero visual
 // noise); ClassGlyph returns null for that case too.
+
+// #385: per-message scope-attribute calculator per designer's spec
+// (phase-1b/04-channel-scope-visual.md). Returns 'dim' when the
+// message is out-of-scope for the current channel view; null when
+// primary (default full opacity). Channel selection shifts scope +
+// emphasis, never visibility — "nothing hidden from owner" principle.
+//
+// Primary when any of:
+//   1. message addresses the viewer (`to` includes viewer short-name)
+//   2. broadcast message AND viewer is in broadcast view
+//   3. message's channel id matches the current view channel id
+// else → dim.
+function computeMessageChannelId(m: ChatMessage): string {
+  const to = m.to
+  if (!to || to.length === 0 || to.includes('all')) return 'broadcast'
+  const sender = shortName(m.from)
+  const participants = new Set<string>([sender, ...to])
+  return [...participants].sort().join('+')
+}
+
+function computeViewChannelId(recipient: string[] | null, viewer: string): string {
+  if (!recipient || recipient.length === 0) return 'broadcast'
+  return [viewer, ...recipient].sort().join('+')
+}
+
+export function scopeAttributeFor(
+  m: ChatMessage,
+  recipient: string[] | null | undefined,
+  viewer: string | undefined
+): 'dim' | null {
+  const v = viewer ?? ''
+  const r = recipient ?? null
+  const to = m.to
+  if (to && v && to.includes(v)) return null
+  const isBroadcast = !to || to.length === 0 || to.includes('all')
+  if (isBroadcast && (r === null || r.length === 0)) return null
+  if (computeMessageChannelId(m) === computeViewChannelId(r, v)) return null
+  return 'dim'
+}
 
 // Grouping threshold — consecutive messages from the same sender
 // within this window collapse into a single visual group (one avatar
@@ -120,7 +165,8 @@ function MessageList({
   viewer,
   apiBase,
   authToken,
-  lanes = 'off'
+  lanes = 'off',
+  recipient = null
 }: Props): React.JSX.Element {
   const visible = messages.filter((m) => visibleClasses.has(classOf(m.messageType)))
   // #370 avatar-hover tooltip: derive current presence per role from
@@ -171,6 +217,10 @@ function MessageList({
         // timestamp; --to-me paints the left-border accent; --to-other
         // dims the body color via --msg-fg-muted.
         const pinned = pinnedKeys?.has(pinKey(m)) ?? false
+        // #385 scope: 'dim' if out-of-current-channel, null if primary.
+        // data-attribute pattern mirrors theme / density / lanes —
+        // CSS branches off `[data-scope="dim"]` without JSX conditional.
+        const channelScope = scopeAttributeFor(m, recipient, viewer)
         const rowClasses = [
           'message-row',
           grouped ? 'message-row--grouped' : 'message-row--first',
@@ -182,7 +232,12 @@ function MessageList({
           .join(' ')
 
         return (
-          <li key={m.id} className={rowClasses} data-test="message-row">
+          <li
+            key={m.id}
+            className={rowClasses}
+            data-test="message-row"
+            data-scope={channelScope ?? undefined}
+          >
             <article>
               {/* Screen-reader sender prefix. Every article carries
                 * this so SR users navigating message-by-message always
