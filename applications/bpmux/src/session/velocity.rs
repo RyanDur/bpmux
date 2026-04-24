@@ -60,22 +60,7 @@ enum Lifecycle {
     FailedDeskCheck,
 }
 
-/// Story type per the 3-type vocabulary adopted 2026-04-16 (#264).
-/// Maps 1:1 to Pivotal Tracker's convention and GitHub's native
-/// issue types. The old 4-label invention (vertical / stranded-
-/// vertical / honest-plumbing / half-slice) is retired; stranded-
-/// vertical and half-slice live on only as desk-check rejection
-/// reasons on a Feature, not as distinct types.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum StoryType {
-    /// User-facing business value. Counts for velocity; owner-accepted.
-    Feature,
-    /// Defect fix. Zero velocity; accepter depends on surface
-    /// (user-visible → Ryan; internal-only → PM).
-    Bug,
-    /// Tech debt, refactor, infrastructure. Zero velocity; team-accepted.
-    Chore,
-}
+pub use crate::board::domain::StoryType;
 
 /// Classify a story by its GitHub labels first, falling back to the
 /// title prefix if no type label is present. Defaults to Feature for

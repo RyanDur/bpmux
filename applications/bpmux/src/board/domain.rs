@@ -29,6 +29,13 @@ impl StoryState {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum StoryType {
+    Feature,
+    Bug,
+    Chore,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Gate {
     Filed,
     Pickup,
