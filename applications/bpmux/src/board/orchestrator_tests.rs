@@ -5,7 +5,7 @@ use std::sync::Arc;
 use chrono::{TimeZone, Utc};
 
 use super::adapters::in_memory::InMemorySourceAdapter;
-use super::domain::{Story, StoryState};
+use super::domain::{Story, StoryState, StoryType};
 use super::events::{BoardEvent, EventMeta};
 use super::orchestrator::SyncOrchestrator;
 use super::peer::PeerId;
@@ -70,6 +70,7 @@ async fn mutate_applies_event_locally_and_enqueues_for_push() {
             title: "test".to_string(),
             body: "b".to_string(),
             initial_state: StoryState::Ready,
+            story_type: StoryType::Feature,
         })
         .unwrap();
     assert_eq!(store.len(), 1);

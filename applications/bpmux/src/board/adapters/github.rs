@@ -110,6 +110,20 @@ impl SourceAdapter for GitHubSourceAdapter {
                     .map_err(SyncError::Other)?;
                 Ok(())
             }
+            BoardEvent::TagAdded { number, label, .. } => {
+                self.inner
+                    .add_label(*number, label)
+                    .await
+                    .map_err(SyncError::Other)?;
+                Ok(())
+            }
+            BoardEvent::TagRemoved { number, label, .. } => {
+                self.inner
+                    .remove_label(*number, label)
+                    .await
+                    .map_err(SyncError::Other)?;
+                Ok(())
+            }
             BoardEvent::BodyFetched { .. }
             | BoardEvent::FreeCommentsFetched { .. }
             | BoardEvent::GateCommentsFetched { .. } => Ok(()),

@@ -2,7 +2,7 @@
 
 use chrono::{TimeZone, Utc};
 
-use super::domain::{FreeComment, Gate, Story, StoryState};
+use super::domain::{FreeComment, Gate, Story, StoryState, StoryType, Tag};
 use super::events::{BoardEvent, EventMeta, event_wins};
 use super::peer::PeerId;
 use super::store::BoardStore;
@@ -47,6 +47,7 @@ fn story_created_event_populates_store() {
         title: "new story".to_string(),
         body: "body text".to_string(),
         initial_state: StoryState::Ready,
+        story_type: StoryType::Feature,
     };
     store.apply(&event);
     let story = store.story(500).expect("story exists");
@@ -65,6 +66,7 @@ fn state_transitioned_event_updates_existing_story() {
         title: "t".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
+        story_type: StoryType::Feature,
     });
     store.apply(&BoardEvent::StateTransitioned {
         meta: meta("dev", 2026, "local"),
@@ -94,6 +96,7 @@ fn gate_comment_appended_event_accumulates() {
         title: "t".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
+        story_type: StoryType::Feature,
     });
     store.apply(&BoardEvent::GateCommentAppended {
         meta: meta("dev", 2026, "local"),
@@ -123,6 +126,7 @@ fn free_comment_appended_event_accumulates() {
         title: "t".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
+        story_type: StoryType::Feature,
     });
     store.apply(&BoardEvent::FreeCommentAppended {
         meta: meta("designer", 2026, "local"),
@@ -254,6 +258,7 @@ async fn subscribe_delivers_applied_events_to_listeners() {
         title: "sub".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
+        story_type: StoryType::Feature,
     };
     store.apply(&event);
     let received = rx.recv().await.expect("receive");
@@ -305,7 +310,132 @@ async fn apply_succeeds_when_no_subscribers_are_attached() {
         title: "no-subs".to_string(),
         body: "b".to_string(),
         initial_state: StoryState::Ready,
+        story_type: StoryType::Feature,
     };
     store.apply(&event);
     assert!(store.story(99).is_some());
+}
+
+#[test]
+fn tag_added_event_appends_to_story_tags() {
+    let store = BoardStore::new();
+    store.apply(&BoardEvent::StoryCreated {
+        meta: meta("pm", 2026, "local"),
+        number: 1,
+        title: "t".to_string(),
+        body: "b".to_string(),
+        initial_state: StoryState::Ready,
+        story_type: StoryType::Feature,
+    });
+    store.apply(&BoardEvent::TagAdded {
+        meta: meta("pm", 2026, "local"),
+        number: 1,
+        label: "blocked".to_string(),
+    });
+    assert_eq!(store.story(1).unwrap().tags, vec![Tag::Blocked]);
+}
+
+#[test]
+fn tag_added_unknown_label_is_dropped() {
+    let store = BoardStore::new();
+    store.apply(&BoardEvent::StoryCreated {
+        meta: meta("pm", 2026, "local"),
+        number: 1,
+        title: "t".to_string(),
+        body: "b".to_string(),
+        initial_state: StoryState::Ready,
+        story_type: StoryType::Feature,
+    });
+    store.apply(&BoardEvent::TagAdded {
+        meta: meta("pm", 2026, "local"),
+        number: 1,
+        label: "high-priority".to_string(),
+    });
+    assert!(store.story(1).unwrap().tags.is_empty());
+}
+
+#[test]
+fn tag_added_is_idempotent() {
+    let store = BoardStore::new();
+    store.apply(&BoardEvent::StoryCreated {
+        meta: meta("pm", 2026, "local"),
+        number: 1,
+        title: "t".to_string(),
+        body: "b".to_string(),
+        initial_state: StoryState::Ready,
+        story_type: StoryType::Feature,
+    });
+    store.apply(&BoardEvent::TagAdded {
+        meta: meta("pm", 2026, "local"),
+        number: 1,
+        label: "blocked".to_string(),
+    });
+    store.apply(&BoardEvent::TagAdded {
+        meta: meta("pm", 2026, "local"),
+        number: 1,
+        label: "blocked".to_string(),
+    });
+    assert_eq!(store.story(1).unwrap().tags, vec![Tag::Blocked]);
+}
+
+#[test]
+fn tag_removed_event_strips_tag() {
+    let store = BoardStore::new();
+    store.apply(&BoardEvent::StoryCreated {
+        meta: meta("pm", 2026, "local"),
+        number: 1,
+        title: "t".to_string(),
+        body: "b".to_string(),
+        initial_state: StoryState::Ready,
+        story_type: StoryType::Feature,
+    });
+    store.apply(&BoardEvent::TagAdded {
+        meta: meta("pm", 2026, "local"),
+        number: 1,
+        label: "blocked".to_string(),
+    });
+    store.apply(&BoardEvent::TagRemoved {
+        meta: meta("pm", 2026, "local"),
+        number: 1,
+        label: "blocked".to_string(),
+    });
+    assert!(store.story(1).unwrap().tags.is_empty());
+}
+
+#[test]
+fn tag_removed_unknown_label_is_noop() {
+    let store = BoardStore::new();
+    store.apply(&BoardEvent::StoryCreated {
+        meta: meta("pm", 2026, "local"),
+        number: 1,
+        title: "t".to_string(),
+        body: "b".to_string(),
+        initial_state: StoryState::Ready,
+        story_type: StoryType::Feature,
+    });
+    store.apply(&BoardEvent::TagAdded {
+        meta: meta("pm", 2026, "local"),
+        number: 1,
+        label: "blocked".to_string(),
+    });
+    store.apply(&BoardEvent::TagRemoved {
+        meta: meta("pm", 2026, "local"),
+        number: 1,
+        label: "high-priority".to_string(),
+    });
+    assert_eq!(store.story(1).unwrap().tags, vec![Tag::Blocked]);
+}
+
+#[test]
+fn story_created_event_carries_story_type() {
+    let store = BoardStore::new();
+    store.apply(&BoardEvent::StoryCreated {
+        meta: meta("pm", 2026, "local"),
+        number: 1,
+        title: "t".to_string(),
+        body: "b".to_string(),
+        initial_state: StoryState::Ready,
+        story_type: StoryType::Bug,
+    });
+    assert_eq!(store.story(1).unwrap().story_type, StoryType::Bug);
 }

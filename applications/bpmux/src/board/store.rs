@@ -3,8 +3,16 @@ use std::sync::RwLock;
 
 use tokio::sync::broadcast;
 
-use super::domain::{FreeComment, GateComment, Story, StoryState};
+use super::domain::{FreeComment, GateComment, Story, StoryState, Tag};
 use super::events::BoardEvent;
+
+fn tag_from_label_string(s: &str) -> Option<Tag> {
+    if s.eq_ignore_ascii_case("blocked") {
+        Some(Tag::Blocked)
+    } else {
+        None
+    }
+}
 
 const SUBSCRIBE_BUFFER: usize = 1_000;
 
@@ -47,12 +55,13 @@ impl BoardStore {
                 title,
                 body,
                 initial_state,
+                story_type,
             } => {
                 let story = Story {
                     number: *n,
                     title: title.clone(),
                     state: *initial_state,
-                    story_type: crate::board::domain::StoryType::Feature,
+                    story_type: *story_type,
                     tags: Vec::new(),
                     filed_at: meta.ts,
                     filed_by: meta.actor.clone(),
@@ -65,6 +74,21 @@ impl BoardStore {
             BoardEvent::StateTransitioned { new_state, .. } => {
                 if let Some(story) = w.get_mut(&number) {
                     story.state = *new_state;
+                }
+            }
+            BoardEvent::TagAdded { label, .. } => {
+                if let Some(tag) = tag_from_label_string(label)
+                    && let Some(story) = w.get_mut(&number)
+                    && !story.tags.contains(&tag)
+                {
+                    story.tags.push(tag);
+                }
+            }
+            BoardEvent::TagRemoved { label, .. } => {
+                if let Some(tag) = tag_from_label_string(label)
+                    && let Some(story) = w.get_mut(&number)
+                {
+                    story.tags.retain(|t| *t != tag);
                 }
             }
             BoardEvent::GateCommentAppended {

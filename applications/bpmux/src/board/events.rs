@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use super::domain::{FreeComment, Gate, GateComment, StoryState};
+use super::domain::{FreeComment, Gate, GateComment, StoryState, StoryType};
 use super::peer::PeerId;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -19,11 +19,22 @@ pub enum BoardEvent {
         title: String,
         body: String,
         initial_state: StoryState,
+        story_type: StoryType,
     },
     StateTransitioned {
         meta: EventMeta,
         number: u64,
         new_state: StoryState,
+    },
+    TagAdded {
+        meta: EventMeta,
+        number: u64,
+        label: String,
+    },
+    TagRemoved {
+        meta: EventMeta,
+        number: u64,
+        label: String,
     },
     GateCommentAppended {
         meta: EventMeta,
@@ -62,7 +73,9 @@ impl BoardEvent {
             | BoardEvent::FreeCommentAppended { meta, .. }
             | BoardEvent::BodyFetched { meta, .. }
             | BoardEvent::FreeCommentsFetched { meta, .. }
-            | BoardEvent::GateCommentsFetched { meta, .. } => meta,
+            | BoardEvent::GateCommentsFetched { meta, .. }
+            | BoardEvent::TagAdded { meta, .. }
+            | BoardEvent::TagRemoved { meta, .. } => meta,
         }
     }
 
@@ -74,7 +87,9 @@ impl BoardEvent {
             | BoardEvent::FreeCommentAppended { number, .. }
             | BoardEvent::BodyFetched { number, .. }
             | BoardEvent::FreeCommentsFetched { number, .. }
-            | BoardEvent::GateCommentsFetched { number, .. } => *number,
+            | BoardEvent::GateCommentsFetched { number, .. }
+            | BoardEvent::TagAdded { number, .. }
+            | BoardEvent::TagRemoved { number, .. } => *number,
         }
     }
 }
