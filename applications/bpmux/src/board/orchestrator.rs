@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use chrono::{DateTime, Utc};
+use serde::Serialize;
 use tokio::sync::mpsc;
 
 use super::domain::Story;
@@ -20,7 +21,7 @@ pub trait RefreshDriver: Send + Sync {
     fn snapshot_status(&self) -> SyncStatus;
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize)]
 pub struct SyncStatus {
     pub last_ingest_at: Option<DateTime<Utc>>,
     pub last_push_at: Option<DateTime<Utc>>,

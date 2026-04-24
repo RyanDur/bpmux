@@ -14,6 +14,7 @@ mod get_identity;
 mod get_story;
 #[cfg(test)]
 mod get_story_tests;
+mod get_sync_status;
 mod get_token_report;
 mod get_usage;
 mod git_repo;
@@ -73,6 +74,7 @@ pub(crate) use get_ci_state::build_ci_state_report;
 pub(in crate::bridge) use get_ci_state::handle_get_ci_state;
 pub(in crate::bridge) use get_identity::handle_get_identity;
 pub(in crate::bridge) use get_story::handle_get_story;
+pub(in crate::bridge) use get_sync_status::handle_get_sync_status;
 pub(in crate::bridge) use get_token_report::handle_get_token_report;
 pub(in crate::bridge) use get_usage::handle_get_usage;
 pub(in crate::bridge) use list_lessons::handle_list_lessons;

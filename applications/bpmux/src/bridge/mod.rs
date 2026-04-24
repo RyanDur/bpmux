@@ -432,6 +432,9 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
             crate::mcp::tools::get_ci_state_tool(
                 "Returns the current CI conclusion for bpmux main branch. Queries `gh run list --branch main -L 1` and returns a JSON object: { conclusion: 'success'|'failure'|'in_progress'|'unknown', last_run_id, branch: 'main', url, head_sha, display_title }. Pull-based — agents call this on-demand to make CI-aware decisions (ship gating, handoff signaling, pickup timing) without asking Ryan to relay. No permission gates; any role can call.",
             ),
+            crate::mcp::tools::get_sync_status_tool(
+                "#451: inspect the board-sync orchestrator's current state. Returns JSON `{last_ingest_at, last_push_at, pending_events, last_error}` — the same observability surface the Electron app reads to show a source-down indicator. Use to diagnose why a mutation failed (refresh-before-write reports `source unreachable`), confirm a background ingest ran, or check the pending-push buffer depth. Any role can call.",
+            ),
             crate::mcp::tools::get_story_tool(
                 "Fetch full detail for a single story by issue number. Returns JSON `{number, title, body, state, labels[]}`. Any role can call. USE THIS INSTEAD OF `gh issue view <N>` — raw gh calls bypass the shared chat so teammates can't observe the read (#403 closes that bypass). Required read before pickup-gate paraphrasing a story.",
             ),
@@ -599,6 +602,7 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                 }
                 "get_token_report" => tools::handle_get_token_report().await,
                 "get_ci_state" => tools::handle_get_ci_state(&args, &tracker).await,
+                "get_sync_status" => tools::handle_get_sync_status(refresh.as_ref()).await,
                 "get_story" => tools::handle_get_story(&args, &tracker).await,
                 "view_story_timeline" => tools::handle_view_story_timeline(&args, &tracker).await,
                 "view_story_commits" => tools::handle_view_story_commits(&args).await,
