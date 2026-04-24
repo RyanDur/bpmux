@@ -436,15 +436,6 @@ pub(super) async fn handle_accept_story(
             "bridge: remove-label delivered failed for #{number}: {e}"
         ));
     }
-    // #418: structured audit-trail comment so the gate-timeline view
-    // has a timestamp + actor for acceptance. No body payload — the
-    // signal IS the transition.
-    let accept_comment = format!("**accepted** (accept-gate by {agent_name})");
-    if let Err(e) = tracker.comment_on_story(number, &accept_comment).await {
-        crate::session::diag::log_diag(&format!(
-            "bridge: accept audit comment failed for #{number}: {e}"
-        ));
-    }
     let close_result = tracker.close_story(number).await;
     broadcast_board_invalidate(ws_tx).await;
     match close_result {
@@ -526,16 +517,6 @@ pub(super) async fn handle_pass_desk_check(
         ws_send(ws_tx, signal)
             .await
             .map_err(|e| format!("#{number} signal send failed: {e}"))?;
-    }
-    // #418: structured audit-trail comment parallels the
-    // **rejection_reason** pattern on fail_desk_check. PASS is a
-    // transition without reasoning-payload — the marker+actor+ts
-    // is the signal.
-    let pass_comment = format!("**pass_desk_check** (desk-check-pass by {agent_name})");
-    if let Err(e) = tracker.comment_on_story(number, &pass_comment).await {
-        crate::session::diag::log_diag(&format!(
-            "bridge: pass_desk_check audit comment failed for #{number}: {e}"
-        ));
     }
     let result = tracker.add_label(number, LABEL_READY_FOR_ACCEPT).await;
     broadcast_board_invalidate(ws_tx).await;
