@@ -1,0 +1,6 @@
+.collapsible-section-chevron {
+  flex: 0 0 auto;
+  font-size: 0.625rem;
+  display: inline-block;
+  width: 0.75rem;
+}

@@ -105,39 +105,6 @@
 
   & .board-group {
     border-bottom: 1px solid var(--border-subtle);
-
-    &[open] > .board-group-summary {
-      color: var(--fg-primary);
-    }
-
-    /* Animated open/close (#351 AC7). Modern CSS lets <details>
-     * interpolate its content height from 0 → auto when
-     * interpolate-size: allow-keywords is set + the ::details-content
-     * part transitions block-size + opacity + content-visibility.
-     * transition-behavior: allow-discrete is required so the
-     * content-visibility: hidden → visible step animates. Chromium
-     * 131+ has the full combo; bpmux ships on Electron current so
-     * we're in the safe window.
-     *
-     * interpolate-size is set at :root below (scoped globally because
-     * it's a generally-useful capability once opted in). Reduced-
-     * motion users get 0ms via the token so the UX is just snap-open
-     * like before.
-     */
-    &::details-content {
-      transition:
-        block-size var(--motion-duration-medium) var(--motion-ease-in-out),
-        content-visibility var(--motion-duration-medium) allow-discrete,
-        opacity var(--motion-duration-fast) var(--motion-ease-out);
-      block-size: 0;
-      opacity: 0;
-      overflow: clip;
-    }
-
-    &[open]::details-content {
-      block-size: auto;
-      opacity: 1;
-    }
   }
 
   & .board-group-summary {
@@ -145,13 +112,17 @@
     align-items: baseline;
     gap: var(--space-8);
     padding: var(--space-8) var(--space-16);
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: none;
     cursor: pointer;
     user-select: none;
-    list-style: none;
     color: var(--fg-secondary);
+    font: inherit;
 
-    &::-webkit-details-marker {
-      display: none;
+    &[aria-expanded='true'] {
+      color: var(--fg-primary);
     }
 
     &:hover {

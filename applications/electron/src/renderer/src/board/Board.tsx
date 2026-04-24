@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAnimatedUnmount } from '../hooks/useAnimatedUnmount'
+import CollapsibleSection from '../lib/CollapsibleSection'
 import { BOARD_INVALIDATE_MARKER, type ChatMessage } from '../transport/types'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import DrillIn from './DrillIn'
@@ -14,6 +15,16 @@ import {
   type StoryState
 } from './types'
 import './Board.css'
+
+type CollapseState = Record<StoryState, boolean>
+
+const initialCollapseState = (): CollapseState => {
+  const result: Record<string, boolean> = {}
+  for (const group of GROUP_ORDER) {
+    result[group.state] = group.collapsed
+  }
+  return result as CollapseState
+}
 
 // Safety-net fallback refetch interval. Primary refresh is the WS
 // BOARD_INVALIDATE_MARKER subscription (#353); polling survives as a
@@ -92,6 +103,10 @@ function Board({ messages, hidden }: BoardProps): React.JSX.Element {
   // aria-live="polite" queues the announcement without interrupting
   // what the user is currently reading.
   const [reorderAnnounce, setReorderAnnounce] = useState<string>('')
+  const [collapsed, setCollapsed] = useState<CollapseState>(initialCollapseState)
+  const toggleCollapsed = useCallback((state: StoryState): void => {
+    setCollapsed((prev) => ({ ...prev, [state]: !prev[state] }))
+  }, [])
 
   // TODO(phase-1a-2): drag-reorder (reorder_story) + BOARD_INVALIDATE_MARKER
   // subscription. 30s polling is the phase-1a-1 guarantee.
@@ -430,6 +445,8 @@ function Board({ messages, hidden }: BoardProps): React.JSX.Element {
               onOpenTimeline={handleOpenTimeline}
               onSelect={setSelectedNumber}
               onReorder={handleReorder}
+              collapsed={collapsed[group.state]}
+              onToggleCollapse={() => toggleCollapsed(group.state)}
             />
           ))}
         </section>
@@ -460,6 +477,8 @@ interface GroupProps {
   onOpenTimeline?: (n: number) => void
   onSelect: (n: number) => void
   onReorder?: (state: StoryState, moved: number, insertAt: number) => void
+  collapsed: boolean
+  onToggleCollapse: () => void
 }
 
 function BoardGroup({
@@ -470,9 +489,10 @@ function BoardGroup({
   onOpen,
   onOpenTimeline,
   onSelect,
-  onReorder
+  onReorder,
+  collapsed,
+  onToggleCollapse
 }: GroupProps): React.JSX.Element {
-  const defaultOpen = !group.collapsed
   const draggable = group.state === 'ready' && onReorder !== undefined
   const [dropAt, setDropAt] = useState<number | null>(null)
   // #333: track the row being dragged so we can hide it via CSS
@@ -511,12 +531,21 @@ function BoardGroup({
     setDraggingNumber(null)
   }
 
+  const title = (
+    <>
+      <b className="board-group-label">{group.label}</b>
+      <small className="board-group-count">{stories.length}</small>
+    </>
+  )
   return (
-    <details className="board-group" open={defaultOpen} data-test={`board-group-${group.state}`}>
-      <summary className="board-group-summary">
-        <b className="board-group-label">{group.label}</b>
-        <small className="board-group-count">{stories.length}</small>
-      </summary>
+    <CollapsibleSection
+      testId={`board-group-${group.state}`}
+      title={title}
+      collapsed={collapsed}
+      onToggle={onToggleCollapse}
+      className="board-group"
+      toggleClassName="board-group-summary"
+    >
       {loading ? (
         <ul className="board-story-list board-story-list--skeleton" aria-hidden="true">
           {[0, 1, 2].map((i) => (
@@ -548,14 +577,6 @@ function BoardGroup({
               onKeyboardReorder={
                 draggable && onReorder !== undefined
                   ? (direction) => {
-                      // Compute insertAt for the handleReorder
-                      // contract: passed index is the insertion
-                      // point in the PRE-removal list.
-                      //   up: insertAt = fromIdx - 1 (clamp >=0)
-                      //   down: insertAt = fromIdx + 2 (clamp <=len)
-                      // clampedInsert in handleReorder further
-                      // normalises once the moved item is removed,
-                      // so this matches the drag-drop semantics.
                       if (direction === 'up' && i === 0) return
                       if (direction === 'down' && i === stories.length - 1) return
                       const insertAt =
@@ -579,7 +600,7 @@ function BoardGroup({
           ))}
         </ul>
       )}
-    </details>
+    </CollapsibleSection>
   )
 }
 

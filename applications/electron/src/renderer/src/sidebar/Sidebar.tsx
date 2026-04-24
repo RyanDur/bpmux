@@ -11,19 +11,7 @@ import {
   deriveDirectRolesFromRoster
 } from '../roles/deriveRoles'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
-import CollapsibleSection from './CollapsibleSection'
-import { useCollapsibleSectionsStorage } from './useCollapsibleSectionsStorage'
 import './Sidebar.css'
-
-type SectionId = 'direct' | 'groups' | 'system'
-
-type CollapseState = Record<SectionId, boolean>
-
-const INITIAL_COLLAPSE: CollapseState = {
-  direct: false,
-  groups: false,
-  system: false
-}
 
 interface Props {
   recipient: string[] | null
@@ -71,14 +59,6 @@ const Sidebar = ({
   apiBase,
   authToken
 }: Props): React.JSX.Element => {
-  const collapseStorage = useCollapsibleSectionsStorage<SectionId>(
-    RENDERER_IDENTITY,
-    INITIAL_COLLAPSE
-  )
-  const collapsed = collapseStorage.state
-  const toggleSection = (id: SectionId): void => {
-    collapseStorage.setState({ ...collapsed, [id]: !collapsed[id] })
-  }
   const systemCount = useMemo(() => countSystemMessages(messages), [messages])
   const roster = useTeamRoster({ apiBase, authToken, messages })
   const directRoles = useMemo(() => {
@@ -143,12 +123,8 @@ const Sidebar = ({
           broadcast
         </button>
       </section>
-      <CollapsibleSection
-        id="direct"
-        title="direct"
-        collapsed={collapsed.direct}
-        onToggle={() => toggleSection('direct')}
-      >
+      <section className="sidebar-section">
+        <h3 className="sidebar-heading">direct</h3>
         {directRoles.map((role) => {
           const active =
             !allView && recipient !== null && recipient.length === 1 && recipient[0] === role
@@ -179,13 +155,9 @@ const Sidebar = ({
             </button>
           )
         })}
-      </CollapsibleSection>
-      <CollapsibleSection
-        id="groups"
-        title="groups"
-        collapsed={collapsed.groups}
-        onToggle={() => toggleSection('groups')}
-      >
+      </section>
+      <section className="sidebar-section">
+        <h3 className="sidebar-heading">groups</h3>
         {groups.length === 0 ? (
           <p className="sidebar-empty" data-test="sidebar-groups-empty">
             none yet
@@ -209,13 +181,9 @@ const Sidebar = ({
             )
           })
         )}
-      </CollapsibleSection>
-      <CollapsibleSection
-        id="system"
-        title="system"
-        collapsed={collapsed.system}
-        onToggle={() => toggleSection('system')}
-      >
+      </section>
+      <section className="sidebar-section">
+        <h3 className="sidebar-heading">system</h3>
         {systemCount === 0 ? (
           <p className="sidebar-empty" data-test="sidebar-system-empty">
             none yet
@@ -231,7 +199,7 @@ const Sidebar = ({
             system ({systemCount})
           </button>
         )}
-      </CollapsibleSection>
+      </section>
     </nav>
   )
 }
