@@ -670,6 +670,7 @@ pub(super) async fn handle_close_story(
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
     tracker: &impl super::tracker::StoryTracker,
+    refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     require_role(agent_name, &["pm"], "close")?;
     let number = args
@@ -682,6 +683,11 @@ pub(super) async fn handle_close_story(
         .ok_or("missing 'reason' argument")?;
     if reason.trim().is_empty() {
         return Err("'reason' must not be empty — audit trail for closure".to_string());
+    }
+    if let Some(r) = refresh {
+        r.refresh_story(number)
+            .await
+            .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?;
     }
     if let Err(e) = tracker.comment_on_story(number, reason).await {
         crate::session::diag::log_diag(&format!(

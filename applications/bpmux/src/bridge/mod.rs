@@ -638,7 +638,14 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                 }
                 "close_story" => {
                     let current_name = name.lock().await;
-                    tools_stories::handle_close_story(&args, &current_name, &ws_tx, &tracker).await
+                    tools_stories::handle_close_story(
+                        &args,
+                        &current_name,
+                        &ws_tx,
+                        &tracker,
+                        refresh.as_ref(),
+                    )
+                    .await
                 }
                 "comment_on_story" => {
                     let current_name = name.lock().await;
