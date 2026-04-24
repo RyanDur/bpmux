@@ -1918,3 +1918,78 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
         }
     ));
 }
+
+#[tokio::test]
+async fn accept_story_migrated_path_emits_tag_remove_gate_and_state_events() {
+    use crate::board::BoardEvent;
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Gate, Story, StoryState};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let seeded = Story::new_minimal(
+        205,
+        "t".into(),
+        StoryState::ReadyForAccept,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "dev".into(),
+    );
+    adapter.seed_stories(vec![seeded]);
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orchestrator.refresh_all().await.unwrap();
+
+    let ws_tx = connected_ws_sink_for_test().await;
+    let tracker = super::tracker::FakeTracker::default();
+    let mut args = serde_json::Map::new();
+    args.insert("number".into(), serde_json::json!(205));
+    let result =
+        handle_accept_story(&args, "ryan:human", &ws_tx, &tracker, Some(&orchestrator)).await;
+    assert!(result.is_ok(), "migrated path should succeed: {result:?}");
+
+    let story = store.story(205).unwrap();
+    assert_eq!(story.state, StoryState::Accepted);
+    let gates = story.gate_comments.as_ref().expect("gate_comments seeded");
+    assert!(
+        gates
+            .iter()
+            .any(|g| g.gate == Gate::Accepted && g.payload.is_none()),
+        "gate_comments should contain Accepted with no payload: {gates:?}"
+    );
+
+    let drained = orchestrator.drain_pending().await.unwrap();
+    assert_eq!(
+        drained, 3,
+        "all three events must reach the adapter via drain"
+    );
+    let pushed = adapter.pushed_events();
+    assert_eq!(pushed.len(), 3);
+    assert!(matches!(
+        &pushed[0],
+        BoardEvent::TagRemoved { number: 205, label, .. } if label == "delivered"
+    ));
+    assert!(matches!(
+        &pushed[1],
+        BoardEvent::GateCommentAppended {
+            number: 205,
+            gate: Gate::Accepted,
+            payload: None,
+            ..
+        }
+    ));
+    assert!(matches!(
+        &pushed[2],
+        BoardEvent::StateTransitioned {
+            number: 205,
+            new_state: StoryState::Accepted,
+            ..
+        }
+    ));
+}
