@@ -32,6 +32,7 @@ mod update_principle;
 mod view_backlog;
 mod view_comments;
 mod view_roadmap;
+mod view_story_commits;
 mod view_story_timeline;
 mod view_tokens;
 
@@ -85,6 +86,7 @@ pub use update_principle::update_principle_tool;
 pub use view_backlog::view_backlog_tool;
 pub use view_comments::view_comments_tool;
 pub use view_roadmap::view_roadmap_tool;
+pub use view_story_commits::view_story_commits_tool;
 pub use view_story_timeline::view_story_timeline_tool;
 pub use view_tokens::view_tokens_tool;
 

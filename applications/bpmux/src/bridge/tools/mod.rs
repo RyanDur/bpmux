@@ -41,6 +41,9 @@ mod update_principle;
 mod view_backlog;
 mod view_comments;
 mod view_roadmap;
+mod view_story_commits;
+#[cfg(test)]
+mod view_story_commits_tests;
 mod view_story_timeline;
 #[cfg(test)]
 mod view_story_timeline_tests;
@@ -87,6 +90,7 @@ pub(in crate::bridge) use update_principle::handle_update_principle;
 pub(in crate::bridge) use view_backlog::handle_view_backlog;
 pub(in crate::bridge) use view_comments::handle_view_comments;
 pub(in crate::bridge) use view_roadmap::handle_view_roadmap;
+pub(in crate::bridge) use view_story_commits::handle_view_story_commits;
 pub(in crate::bridge) use view_story_timeline::{
     ACCEPT_GATE, ACCEPTED_MARKER, DESK_CHECK_PASS_GATE, PASS_DESK_CHECK_MARKER,
     format_gate_transition_comment, handle_view_story_timeline,

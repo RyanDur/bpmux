@@ -510,6 +510,9 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
             crate::mcp::tools::view_story_timeline_tool(
                 "#418: fetch a story's complete gate-transition timeline — filed, pickup, delivered, desk-check PASS/FAIL (with reason), rejected (with reason), accepted — in one call. Each event carries timestamp + actor + payload. Sourced from structured marker comments (#391/#398/#419 gates) + story metadata. Any role can call. Use instead of scrolling chat or chaining view_comments + view_board to reconstruct a story's journey.",
             ),
+            crate::mcp::tools::view_story_commits_tool(
+                "#411: fetch the authoritative commit-set that landed a story. Returns JSON array of `{sha, short_sha, subject, author, committed_at}` for every commit on main whose subject references `#<N>` with a word boundary. Safer than `git log --grep` (body matches + number-prefix collisions). Any role can call. Use at desk-check to pin down what to code-review, at rework-pickup to find the prior-delivery baseline.",
+            ),
         ];
 
         std::future::ready(Ok(ListToolsResult::with_all_items(tools)))
@@ -602,6 +605,7 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                 "get_ci_state" => tools::handle_get_ci_state(&args, &tracker).await,
                 "get_story" => tools::handle_get_story(&args, &tracker).await,
                 "view_story_timeline" => tools::handle_view_story_timeline(&args, &tracker).await,
+                "view_story_commits" => tools::handle_view_story_commits(&args).await,
                 "view_comments" => tools::handle_view_comments(&args, &tracker).await,
                 "dev_in_flight" => tools::handle_dev_in_flight(&tracker).await,
                 "list_ready" => tools::handle_list_ready(&tracker).await,
