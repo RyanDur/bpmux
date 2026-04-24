@@ -52,6 +52,8 @@ impl BoardStore {
                     number: *n,
                     title: title.clone(),
                     state: *initial_state,
+                    story_type: crate::board::domain::StoryType::Feature,
+                    tags: Vec::new(),
                     filed_at: meta.ts,
                     filed_by: meta.actor.clone(),
                     body: Some(body.clone()),

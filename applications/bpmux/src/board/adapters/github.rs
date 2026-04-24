@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 
-use crate::board::domain::{FreeComment, Gate, GateComment, Story, StoryState};
+use crate::board::domain::{FreeComment, Gate, GateComment, Story, StoryState, StoryType, Tag};
 use crate::board::events::{BoardEvent, EventMeta};
 use crate::board::peer::PeerId;
 use crate::board::sync::{SourceAdapter, SyncError};
@@ -124,7 +124,12 @@ pub fn decode_story_metadata(v: &serde_json::Value) -> Option<Story> {
         .and_then(|x| x.as_str())
         .unwrap_or("")
         .to_string();
-    let state = decode_state(v).unwrap_or(StoryState::Icebox);
+    let labels = extract_label_names(v);
+    let is_closed = matches!(
+        v.get("state").and_then(|x| x.as_str()),
+        Some("closed" | "CLOSED")
+    );
+    let state = state_from_labels(&labels, is_closed);
     let filed_at = v
         .get("created_at")
         .and_then(|x| x.as_str())
@@ -137,11 +142,16 @@ pub fn decode_story_metadata(v: &serde_json::Value) -> Option<Story> {
         .and_then(|x| x.as_str())
         .map(ToString::to_string)
         .unwrap_or_else(|| "unknown".to_string());
-    Some(Story::new_minimal(number, title, state, filed_at, filed_by))
+    let mut story = Story::new_minimal(number, title.clone(), state, filed_at, filed_by);
+    story.story_type = story_type_from_labels_or_title(&labels, &title);
+    story.tags = tags_from_labels(&labels);
+    Some(story)
 }
 
-fn decode_state(v: &serde_json::Value) -> Option<StoryState> {
-    let labels = v.get("labels").and_then(|x| x.as_array())?;
+fn extract_label_names(v: &serde_json::Value) -> Vec<String> {
+    let Some(labels) = v.get("labels").and_then(|x| x.as_array()) else {
+        return Vec::new();
+    };
     let mut names: Vec<String> = Vec::with_capacity(labels.len());
     for label in labels {
         if let Some(s) = label.as_str() {
@@ -150,11 +160,39 @@ fn decode_state(v: &serde_json::Value) -> Option<StoryState> {
             names.push(n.to_string());
         }
     }
-    let is_closed = matches!(
-        v.get("state").and_then(|x| x.as_str()),
-        Some("closed" | "CLOSED")
-    );
-    Some(state_from_labels(&names, is_closed))
+    names
+}
+
+pub fn story_type_from_labels_or_title(labels: &[String], title: &str) -> StoryType {
+    for l in labels {
+        match l.to_ascii_lowercase().as_str() {
+            "feature" => return StoryType::Feature,
+            "bug" => return StoryType::Bug,
+            "chore" => return StoryType::Chore,
+            _ => {}
+        }
+    }
+    let lower = title.to_lowercase();
+    if lower.starts_with("[bug") || lower.starts_with("bug:") {
+        return StoryType::Bug;
+    }
+    if lower.starts_with("[chore")
+        || lower.starts_with("[honest-plumbing")
+        || lower.starts_with("[half-slice")
+    {
+        return StoryType::Chore;
+    }
+    StoryType::Feature
+}
+
+pub fn tags_from_labels(labels: &[String]) -> Vec<Tag> {
+    let mut out = Vec::new();
+    for l in labels {
+        if l.eq_ignore_ascii_case("blocked") && !out.contains(&Tag::Blocked) {
+            out.push(Tag::Blocked);
+        }
+    }
+    out
 }
 
 pub fn state_from_labels(labels: &[String], is_closed: bool) -> StoryState {

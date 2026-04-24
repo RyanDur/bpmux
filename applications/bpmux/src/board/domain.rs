@@ -36,6 +36,11 @@ pub enum StoryType {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum Tag {
+    Blocked,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Gate {
     Filed,
     Pickup,
@@ -66,6 +71,8 @@ pub struct Story {
     pub number: u64,
     pub title: String,
     pub state: StoryState,
+    pub story_type: StoryType,
+    pub tags: Vec<Tag>,
     pub filed_at: DateTime<Utc>,
     pub filed_by: String,
     pub body: Option<String>,
@@ -85,6 +92,8 @@ impl Story {
             number,
             title,
             state,
+            story_type: StoryType::Feature,
+            tags: Vec::new(),
             filed_at,
             filed_by,
             body: None,

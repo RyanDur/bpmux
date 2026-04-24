@@ -4,8 +4,9 @@ use chrono::{TimeZone, Utc};
 
 use crate::board::adapters::github::{
     classify_gate, decode_gate_comments, decode_story_metadata, state_from_labels, state_to_label,
+    story_type_from_labels_or_title, tags_from_labels,
 };
-use crate::board::domain::{Gate, StoryState};
+use crate::board::domain::{Gate, StoryState, StoryType, Tag};
 
 #[test]
 fn state_from_labels_accepted_wins_regardless_of_other_labels() {
@@ -211,4 +212,71 @@ fn decode_gate_comments_preserves_timestamps_from_source() {
         gates[0].ts,
         Utc.with_ymd_and_hms(2026, 4, 22, 14, 30, 0).unwrap()
     );
+}
+
+#[test]
+fn story_type_label_takes_precedence_over_title() {
+    let labels = vec!["bug".to_string()];
+    assert_eq!(
+        story_type_from_labels_or_title(&labels, "[Feature] something"),
+        StoryType::Bug
+    );
+}
+
+#[test]
+fn story_type_falls_back_to_title_prefix_when_no_label() {
+    assert_eq!(
+        story_type_from_labels_or_title(&[], "[Chore] cleanup"),
+        StoryType::Chore
+    );
+    assert_eq!(
+        story_type_from_labels_or_title(&[], "[Bug] broken"),
+        StoryType::Bug
+    );
+    assert_eq!(
+        story_type_from_labels_or_title(&[], "just a title"),
+        StoryType::Feature
+    );
+}
+
+#[test]
+fn story_type_label_matching_is_case_insensitive() {
+    let labels = vec!["CHORE".to_string()];
+    assert_eq!(
+        story_type_from_labels_or_title(&labels, "anything"),
+        StoryType::Chore
+    );
+}
+
+#[test]
+fn tags_from_labels_picks_up_blocked() {
+    let labels = vec!["ready".to_string(), "blocked".to_string()];
+    assert_eq!(tags_from_labels(&labels), vec![Tag::Blocked]);
+}
+
+#[test]
+fn tags_from_labels_ignores_unknown() {
+    let labels = vec!["ready".to_string(), "high-priority".to_string()];
+    assert!(tags_from_labels(&labels).is_empty());
+}
+
+#[test]
+fn tags_from_labels_deduplicates_blocked() {
+    let labels = vec!["blocked".to_string(), "Blocked".to_string()];
+    assert_eq!(tags_from_labels(&labels), vec![Tag::Blocked]);
+}
+
+#[test]
+fn decode_story_metadata_populates_story_type_and_tags_from_labels() {
+    let v = serde_json::json!({
+        "number": 1,
+        "title": "some story",
+        "state": "open",
+        "created_at": "2026-04-20T00:00:00Z",
+        "user": {"login": "pm"},
+        "labels": [{"name": "bug"}, {"name": "blocked"}],
+    });
+    let story = decode_story_metadata(&v).unwrap();
+    assert_eq!(story.story_type, StoryType::Bug);
+    assert_eq!(story.tags, vec![Tag::Blocked]);
 }
