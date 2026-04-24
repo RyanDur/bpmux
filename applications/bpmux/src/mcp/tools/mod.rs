@@ -29,6 +29,7 @@ mod simulate_key;
 mod simulate_type;
 mod update_principle;
 mod view_backlog;
+mod view_comments;
 mod view_roadmap;
 mod view_tokens;
 
@@ -79,6 +80,7 @@ pub use simulate_key::simulate_key_tool;
 pub use simulate_type::simulate_type_tool;
 pub use update_principle::update_principle_tool;
 pub use view_backlog::view_backlog_tool;
+pub use view_comments::view_comments_tool;
 pub use view_roadmap::view_roadmap_tool;
 pub use view_tokens::view_tokens_tool;
 

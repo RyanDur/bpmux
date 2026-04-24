@@ -534,6 +534,9 @@ impl StoryTracker for AlreadyClosedTracker {
     async fn comment_on_story(&self, _number: u64, _body: &str) -> Result<String, String> {
         Ok("commented".to_string())
     }
+    async fn list_story_comments(&self, _number: u64) -> Result<Vec<serde_json::Value>, String> {
+        Ok(Vec::new())
+    }
     async fn get_story_title(&self, number: u64) -> Option<String> {
         Some(format!("story #{number}"))
     }
@@ -854,6 +857,9 @@ impl StoryTracker for FailingLabelTracker {
     }
     async fn comment_on_story(&self, _number: u64, _body: &str) -> Result<String, String> {
         Ok("commented".to_string())
+    }
+    async fn list_story_comments(&self, _number: u64) -> Result<Vec<serde_json::Value>, String> {
+        Ok(Vec::new())
     }
     async fn get_story_title(&self, number: u64) -> Option<String> {
         Some(format!("story #{number}"))

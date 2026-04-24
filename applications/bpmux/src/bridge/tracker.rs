@@ -88,6 +88,10 @@ pub trait StoryTracker: Clone + Send + Sync + 'static {
         number: u64,
         body: &str,
     ) -> impl std::future::Future<Output = Result<String, String>> + Send;
+    fn list_story_comments(
+        &self,
+        number: u64,
+    ) -> impl std::future::Future<Output = Result<Vec<serde_json::Value>, String>> + Send;
     fn get_story_title(
         &self,
         number: u64,
@@ -327,34 +331,6 @@ impl OctocrabStoryTracker {
             .await
             .map(|_| ())
             .map_err(Self::classify)
-    }
-
-    /// List comments for a story. Returns condensed JSON matching the
-    /// Electron renderer's needs (author/body/created_at) so the
-    /// frontend doesn't have to know the full octocrab::models::Comment
-    /// schema.
-    pub async fn list_story_comments(&self, number: u64) -> Result<Vec<serde_json::Value>, String> {
-        let page = self
-            .client
-            .issues(&self.owner, &self.repo)
-            .list_comments(number)
-            .per_page(100)
-            .send()
-            .await
-            .map_err(Self::classify)?;
-        let condensed: Vec<serde_json::Value> = page
-            .items
-            .into_iter()
-            .map(|c| {
-                serde_json::json!({
-                    "id": c.id.into_inner(),
-                    "author": c.user.login,
-                    "body": c.body.unwrap_or_default(),
-                    "created_at": c.created_at.to_rfc3339(),
-                })
-            })
-            .collect();
-        Ok(condensed)
     }
 
     /// Fetch the issue's timeline: creation (as a "filed" event) plus
@@ -638,6 +614,35 @@ impl StoryTracker for OctocrabStoryTracker {
             .map_err(Self::classify)
     }
 
+    async fn list_story_comments(&self, number: u64) -> Result<Vec<serde_json::Value>, String> {
+        let page = self
+            .client
+            .issues(&self.owner, &self.repo)
+            .list_comments(number)
+            .per_page(100)
+            .send()
+            .await
+            .map_err(Self::classify)?;
+        let mut condensed: Vec<serde_json::Value> = page
+            .items
+            .into_iter()
+            .map(|c| {
+                serde_json::json!({
+                    "id": c.id.into_inner(),
+                    "author": c.user.login,
+                    "body": c.body.unwrap_or_default(),
+                    "created_at": c.created_at.to_rfc3339(),
+                })
+            })
+            .collect();
+        condensed.sort_by(|a, b| {
+            let ak = a.get("created_at").and_then(|v| v.as_str()).unwrap_or("");
+            let bk = b.get("created_at").and_then(|v| v.as_str()).unwrap_or("");
+            ak.cmp(bk)
+        });
+        Ok(condensed)
+    }
+
     async fn get_story_title(&self, number: u64) -> Option<String> {
         self.client
             .issues(&self.owner, &self.repo)
@@ -819,6 +824,10 @@ impl StoryTracker for FakeTracker {
 
     async fn comment_on_story(&self, number: u64, _body: &str) -> Result<String, String> {
         Ok(format!("(fake) #{number} commented"))
+    }
+
+    async fn list_story_comments(&self, _number: u64) -> Result<Vec<serde_json::Value>, String> {
+        Ok(Vec::new())
     }
 
     async fn get_story_title(&self, number: u64) -> Option<String> {
