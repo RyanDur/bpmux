@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAnimatedUnmount } from '../hooks/useAnimatedUnmount'
 import CollapsibleSection from '../lib/CollapsibleSection'
+import { useCollapsibleSectionsStorage } from '../lib/useCollapsibleSectionsStorage'
 import { BOARD_INVALIDATE_MARKER, type ChatMessage } from '../transport/types'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import DrillIn from './DrillIn'
@@ -18,13 +19,15 @@ import './Board.css'
 
 type CollapseState = Record<StoryState, boolean>
 
-const initialCollapseState = (): CollapseState => {
+const BOARD_COLLAPSE_STORAGE_PREFIX = 'bpmux-board-collapse'
+
+const initialCollapseState: CollapseState = (() => {
   const result: Record<string, boolean> = {}
   for (const group of GROUP_ORDER) {
     result[group.state] = group.collapsed
   }
   return result as CollapseState
-}
+})()
 
 // Safety-net fallback refetch interval. Primary refresh is the WS
 // BOARD_INVALIDATE_MARKER subscription (#353); polling survives as a
@@ -103,10 +106,18 @@ function Board({ messages, hidden }: BoardProps): React.JSX.Element {
   // aria-live="polite" queues the announcement without interrupting
   // what the user is currently reading.
   const [reorderAnnounce, setReorderAnnounce] = useState<string>('')
-  const [collapsed, setCollapsed] = useState<CollapseState>(initialCollapseState)
-  const toggleCollapsed = useCallback((state: StoryState): void => {
-    setCollapsed((prev) => ({ ...prev, [state]: !prev[state] }))
-  }, [])
+  const collapseStorage = useCollapsibleSectionsStorage<StoryState>(
+    BOARD_COLLAPSE_STORAGE_PREFIX,
+    RENDERER_IDENTITY,
+    initialCollapseState
+  )
+  const collapsed = collapseStorage.state
+  const toggleCollapsed = useCallback(
+    (state: StoryState): void => {
+      collapseStorage.setState({ ...collapseStorage.state, [state]: !collapseStorage.state[state] })
+    },
+    [collapseStorage]
+  )
 
   // TODO(phase-1a-2): drag-reorder (reorder_story) + BOARD_INVALIDATE_MARKER
   // subscription. 30s polling is the phase-1a-1 guarantee.

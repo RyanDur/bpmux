@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react'
 
-const STORAGE_PREFIX = 'bpmux-sidebar-collapse:'
-
-const storageKey = (viewerIdentity: string): string => `${STORAGE_PREFIX}${viewerIdentity}`
+const storageKey = (prefix: string, viewerIdentity: string): string =>
+  `${prefix}:${viewerIdentity}`
 
 const readState = <K extends string>(
+  prefix: string,
   viewerIdentity: string,
   defaults: Record<K, boolean>
 ): Record<K, boolean> => {
   if (typeof window === 'undefined') return { ...defaults }
   try {
-    const raw = window.localStorage.getItem(storageKey(viewerIdentity))
+    const raw = window.localStorage.getItem(storageKey(prefix, viewerIdentity))
     if (!raw) return { ...defaults }
     const parsed: unknown = JSON.parse(raw)
     if (typeof parsed !== 'object' || parsed === null) return { ...defaults }
@@ -28,10 +28,14 @@ const readState = <K extends string>(
   }
 }
 
-const writeState = (viewerIdentity: string, state: Record<string, boolean>): void => {
+const writeState = (
+  prefix: string,
+  viewerIdentity: string,
+  state: Record<string, boolean>
+): void => {
   if (typeof window === 'undefined') return
   try {
-    window.localStorage.setItem(storageKey(viewerIdentity), JSON.stringify(state))
+    window.localStorage.setItem(storageKey(prefix, viewerIdentity), JSON.stringify(state))
   } catch {
     return
   }
@@ -43,12 +47,15 @@ export interface CollapsibleSectionsStorage<K extends string> {
 }
 
 export const useCollapsibleSectionsStorage = <K extends string>(
+  storagePrefix: string,
   viewerIdentity: string,
   defaults: Record<K, boolean>
 ): CollapsibleSectionsStorage<K> => {
-  const [state, setState] = useState<Record<K, boolean>>(() => readState(viewerIdentity, defaults))
+  const [state, setState] = useState<Record<K, boolean>>(() =>
+    readState(storagePrefix, viewerIdentity, defaults)
+  )
   useEffect(() => {
-    writeState(viewerIdentity, state)
-  }, [viewerIdentity, state])
+    writeState(storagePrefix, viewerIdentity, state)
+  }, [storagePrefix, viewerIdentity, state])
   return { state, setState }
 }
