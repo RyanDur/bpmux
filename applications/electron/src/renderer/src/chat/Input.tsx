@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useState } from 'react'
+import { useDraftStorage } from './useDraftStorage'
+import { useInputHistory } from './useInputHistory'
 import './Input.css'
 
 interface Props {
@@ -6,30 +8,6 @@ interface Props {
   disabled?: boolean
   placeholder?: string
   channelKey: string
-}
-
-const DRAFT_STORAGE_PREFIX = 'bpmux-draft:'
-
-const readDraft = (channelKey: string): string => {
-  if (typeof window === 'undefined') return ''
-  try {
-    return window.localStorage.getItem(`${DRAFT_STORAGE_PREFIX}${channelKey}`) ?? ''
-  } catch {
-    return ''
-  }
-}
-
-const writeDraft = (channelKey: string, value: string): void => {
-  if (typeof window === 'undefined') return
-  try {
-    if (value.length === 0) {
-      window.localStorage.removeItem(`${DRAFT_STORAGE_PREFIX}${channelKey}`)
-    } else {
-      window.localStorage.setItem(`${DRAFT_STORAGE_PREFIX}${channelKey}`, value)
-    }
-  } catch {
-    return
-  }
 }
 
 const VALID_ADDRESSEES = new Set(['ryan', 'dev', 'pm', 'designer'])
@@ -70,7 +48,18 @@ const lineEnd = (value: string, from: number): number => {
   return nl === -1 ? value.length : nl
 }
 
-const MAX_HISTORY = 50
+const setCaret = (ta: HTMLTextAreaElement, pos: number): void => {
+  ta.selectionStart = pos
+  ta.selectionEnd = pos
+}
+
+const copyToClipboard = (text: string): void => {
+  if (!text) return
+  if (typeof navigator === 'undefined' || !navigator.clipboard) return
+  void navigator.clipboard.writeText(text).catch(() => {
+    return
+  })
+}
 
 interface SearchState {
   query: string
@@ -79,105 +68,33 @@ interface SearchState {
 }
 
 const Input = ({ onSend, disabled, placeholder, channelKey }: Props): React.JSX.Element => {
-  const [value, setValue] = useState(() => readDraft(channelKey))
+  const { value, setValue } = useDraftStorage(channelKey)
+  const history = useInputHistory()
   const [search, setSearch] = useState<SearchState | null>(null)
-  const channelKeyRef = useRef(channelKey)
 
-  useEffect(() => {
-    if (channelKeyRef.current === channelKey) return
-    writeDraft(channelKeyRef.current, value)
-    channelKeyRef.current = channelKey
-    setValue(readDraft(channelKey))
-  }, [channelKey, value])
-
-  useEffect(() => {
-    writeDraft(channelKey, value)
-  }, [channelKey, value])
-  const taRef = useRef<HTMLTextAreaElement>(null)
-  const historyRef = useRef<string[]>([])
-  const historyIndexRef = useRef<number | null>(null)
-  const draftRef = useRef<string>('')
-
-  // #378: kill-ops (Ctrl+W/K/U + Alt+D) pipe killed text to the
-  // system clipboard so users can restore via the platform-native
-  // Cmd+V. Retires the internal `yankRef` + `Ctrl+Y` binding —
-  // emacs-strict yank didn't match typical Mac/Electron muscle
-  // memory, and routing to the clipboard gives one consistent
-  // "paste" story (OS clipboard for everything). Fire-and-forget
-  // because failures aren't user-actionable and the event loop
-  // must keep going; user-initiated event satisfies Clipboard-API
-  // permission semantics.
-  const copyToClipboard = useCallback((text: string): void => {
-    if (!text) return
-    if (typeof navigator === 'undefined' || !navigator.clipboard) return
-    void navigator.clipboard.writeText(text).catch(() => {
-      // Permission denied / navigator.clipboard unavailable under
-      // the test harness. The kill-op still succeeds (text was
-      // removed from the textarea); clipboard-write is a best-
-      // effort upgrade from the old yank-into-oblivion path.
-    })
-  }, [])
-
-  const findMatch = useCallback(
-    (query: string, startFrom: number): number | null => {
-      if (!query) return null
-      const history = historyRef.current
-      for (let i = startFrom; i >= 0; i -= 1) {
-        if (history[i].includes(query)) return i
-      }
-      return null
+  const applySearchMatch = useCallback(
+    (idx: number | null): void => {
+      if (idx === null) return
+      const recalled = history.valueAt(idx)
+      if (recalled !== undefined) setValue(recalled)
     },
-    []
+    [history, setValue]
   )
 
-  const applySearchMatch = useCallback((idx: number | null): void => {
-    if (idx === null) return
-    const history = historyRef.current
-    setValue(history[idx])
-  }, [])
-
-  const exitSearch = useCallback((commit: boolean): void => {
-    setSearch((prev) => {
-      if (!prev) return prev
-      if (!commit) {
-        setValue(prev.priorValue)
-      } else if (prev.matchIndex !== null) {
-        historyIndexRef.current = prev.matchIndex
-      }
-      return null
-    })
-  }, [])
-
-  useEffect(() => {
-    if (!disabled) taRef.current?.focus()
-  }, [disabled])
-
-  useEffect(() => {
-    const ta = taRef.current
-    if (!ta) return
-    ta.style.height = 'auto'
-    const maxHeight = 144
-    ta.style.height = `${Math.min(ta.scrollHeight, maxHeight)}px`
-  }, [value])
-
-  const applyEdit = useCallback((next: string, caret: number): void => {
-    setValue(next)
-    requestAnimationFrame(() => {
-      const ta = taRef.current
-      if (!ta) return
-      ta.selectionStart = caret
-      ta.selectionEnd = caret
-    })
-  }, [])
-
-  const moveCaret = useCallback((pos: number): void => {
-    requestAnimationFrame(() => {
-      const ta = taRef.current
-      if (!ta) return
-      ta.selectionStart = pos
-      ta.selectionEnd = pos
-    })
-  }, [])
+  const exitSearch = useCallback(
+    (commit: boolean): void => {
+      setSearch((prev) => {
+        if (!prev) return prev
+        if (!commit) {
+          setValue(prev.priorValue)
+        } else if (prev.matchIndex !== null) {
+          history.commitIndex(prev.matchIndex)
+        }
+        return null
+      })
+    },
+    [history, setValue]
+  )
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
@@ -188,6 +105,11 @@ const Input = ({ onSend, disabled, placeholder, channelKey }: Props): React.JSX.
       const selEnd = ta.selectionEnd
       const hasSelection = pos !== selEnd
       const { ctrlKey, altKey, metaKey, shiftKey, key } = e
+
+      const applyEdit = (next: string, caret: number): void => {
+        setValue(next)
+        setCaret(ta, caret)
+      }
 
       if (search !== null) {
         if (key === 'Escape') {
@@ -202,7 +124,10 @@ const Input = ({ onSend, disabled, placeholder, channelKey }: Props): React.JSX.
         }
         if (ctrlKey && !altKey && !metaKey && key.toLowerCase() === 'r') {
           e.preventDefault()
-          const nextIdx = search.matchIndex === null ? null : findMatch(search.query, search.matchIndex - 1)
+          const nextIdx =
+            search.matchIndex === null
+              ? null
+              : history.findMatch(search.query, search.matchIndex - 1)
           setSearch({ ...search, matchIndex: nextIdx ?? search.matchIndex })
           if (nextIdx !== null) applySearchMatch(nextIdx)
           return
@@ -210,8 +135,7 @@ const Input = ({ onSend, disabled, placeholder, channelKey }: Props): React.JSX.
         if (key === 'Backspace') {
           e.preventDefault()
           const q = search.query.slice(0, -1)
-          const history = historyRef.current
-          const idx = q ? findMatch(q, history.length - 1) : null
+          const idx = q ? history.findMatch(q) : null
           setSearch({ ...search, query: q, matchIndex: idx })
           if (idx !== null) applySearchMatch(idx)
           else setValue(search.priorValue)
@@ -220,8 +144,7 @@ const Input = ({ onSend, disabled, placeholder, channelKey }: Props): React.JSX.
         if (!ctrlKey && !altKey && !metaKey && key.length === 1) {
           e.preventDefault()
           const q = search.query + key
-          const history = historyRef.current
-          const idx = findMatch(q, history.length - 1)
+          const idx = history.findMatch(q)
           setSearch({ ...search, query: q, matchIndex: idx })
           if (idx !== null) applySearchMatch(idx)
           return
@@ -234,55 +157,28 @@ const Input = ({ onSend, disabled, placeholder, channelKey }: Props): React.JSX.
         return
       }
 
-
       if (key === 'Enter' && !shiftKey) {
         e.preventDefault()
         const text = value.trim()
         if (!text) return
         onSend(text, parseAddressee(text))
-        const history = historyRef.current
-        if (history[history.length - 1] !== text) {
-          history.push(text)
-          if (history.length > MAX_HISTORY) history.shift()
-        }
-        historyIndexRef.current = null
-        draftRef.current = ''
+        history.record(text)
         setValue('')
         return
       }
 
-      const historyPrev = (): void => {
-        const history = historyRef.current
-        if (history.length === 0) return
-        const idx = historyIndexRef.current
-        if (idx === null) {
-          draftRef.current = value
-          historyIndexRef.current = history.length - 1
-        } else if (idx > 0) {
-          historyIndexRef.current = idx - 1
-        } else {
-          return
-        }
-        const recalled = history[historyIndexRef.current]
+      const recallPrev = (): void => {
+        const recalled = history.prev(value)
+        if (recalled === null) return
         setValue(recalled)
-        moveCaret(recalled.length)
+        setCaret(ta, recalled.length)
       }
 
-      const historyNext = (): void => {
-        const idx = historyIndexRef.current
-        if (idx === null) return
-        const history = historyRef.current
-        if (idx < history.length - 1) {
-          historyIndexRef.current = idx + 1
-          const recalled = history[historyIndexRef.current]
-          setValue(recalled)
-          moveCaret(recalled.length)
-        } else {
-          historyIndexRef.current = null
-          const draft = draftRef.current
-          setValue(draft)
-          moveCaret(draft.length)
-        }
+      const recallNext = (): void => {
+        const recalled = history.next()
+        if (recalled === null) return
+        setValue(recalled)
+        setCaret(ta, recalled.length)
       }
 
       if (metaKey && !ctrlKey && !altKey && key.toLowerCase() === 'k') {
@@ -295,7 +191,7 @@ const Input = ({ onSend, disabled, placeholder, channelKey }: Props): React.JSX.
         const firstLine = !value.slice(0, pos).includes('\n')
         if (firstLine) {
           e.preventDefault()
-          historyPrev()
+          recallPrev()
           return
         }
       }
@@ -304,7 +200,7 @@ const Input = ({ onSend, disabled, placeholder, channelKey }: Props): React.JSX.
         const lastLine = !value.slice(pos).includes('\n')
         if (lastLine) {
           e.preventDefault()
-          historyNext()
+          recallNext()
           return
         }
       }
@@ -313,76 +209,65 @@ const Input = ({ onSend, disabled, placeholder, channelKey }: Props): React.JSX.
         switch (key.toLowerCase()) {
           case 'p': {
             e.preventDefault()
-            historyPrev()
+            recallPrev()
             return
           }
           case 'n': {
             e.preventDefault()
-            historyNext()
+            recallNext()
             return
           }
           case 'a': {
             e.preventDefault()
-            moveCaret(lineStart(value, pos))
+            setCaret(ta, lineStart(value, pos))
             return
           }
           case 'e': {
             e.preventDefault()
-            moveCaret(lineEnd(value, pos))
+            setCaret(ta, lineEnd(value, pos))
             return
           }
           case 'b': {
             e.preventDefault()
-            moveCaret(Math.max(0, pos - 1))
+            setCaret(ta, Math.max(0, pos - 1))
             return
           }
           case 'f': {
             e.preventDefault()
-            moveCaret(Math.min(value.length, pos + 1))
+            setCaret(ta, Math.min(value.length, pos + 1))
             return
           }
           case 'd': {
             e.preventDefault()
             if (hasSelection) {
-              const next = value.slice(0, pos) + value.slice(selEnd)
-              applyEdit(next, pos)
+              applyEdit(value.slice(0, pos) + value.slice(selEnd), pos)
             } else if (pos < value.length) {
-              const next = value.slice(0, pos) + value.slice(pos + 1)
-              applyEdit(next, pos)
+              applyEdit(value.slice(0, pos) + value.slice(pos + 1), pos)
             }
             return
           }
           case 'k': {
             e.preventDefault()
             const end = lineEnd(value, pos)
-            const killed = value.slice(pos, end === pos ? end + 1 : end)
-            const next = value.slice(0, pos) + value.slice(end === pos ? end + 1 : end)
-            copyToClipboard(killed)
-            applyEdit(next, pos)
+            const killEnd = end === pos ? end + 1 : end
+            copyToClipboard(value.slice(pos, killEnd))
+            applyEdit(value.slice(0, pos) + value.slice(killEnd), pos)
             return
           }
           case 'u': {
             e.preventDefault()
             const start = lineStart(value, pos)
-            const killed = value.slice(start, pos)
-            const next = value.slice(0, start) + value.slice(pos)
-            copyToClipboard(killed)
-            applyEdit(next, start)
+            copyToClipboard(value.slice(start, pos))
+            applyEdit(value.slice(0, start) + value.slice(pos), start)
             return
           }
           case 'w': {
             e.preventDefault()
             const wordStart = prevWordBoundary(value, pos)
-            const killed = value.slice(wordStart, pos)
-            const next = value.slice(0, wordStart) + value.slice(pos)
-            copyToClipboard(killed)
-            applyEdit(next, wordStart)
+            copyToClipboard(value.slice(wordStart, pos))
+            applyEdit(value.slice(0, wordStart) + value.slice(pos), wordStart)
             return
           }
-          // #378: Ctrl+Y yank retired. Users reach for Cmd+V for
-          // paste (standard OS clipboard), which is also where our
-          // Ctrl+W/K/U kills now land via copyToClipboard above.
-          // One-clipboard story, no internal yank-ref.
           default:
             break
         }
@@ -392,21 +277,19 @@ const Input = ({ onSend, disabled, placeholder, channelKey }: Props): React.JSX.
         switch (key.toLowerCase()) {
           case 'b': {
             e.preventDefault()
-            moveCaret(prevWordBoundary(value, pos))
+            setCaret(ta, prevWordBoundary(value, pos))
             return
           }
           case 'f': {
             e.preventDefault()
-            moveCaret(nextWordBoundary(value, pos))
+            setCaret(ta, nextWordBoundary(value, pos))
             return
           }
           case 'd': {
             e.preventDefault()
             const wordEnd = nextWordBoundary(value, pos)
-            const killed = value.slice(pos, wordEnd)
-            const next = value.slice(0, pos) + value.slice(wordEnd)
-            copyToClipboard(killed)
-            applyEdit(next, pos)
+            copyToClipboard(value.slice(pos, wordEnd))
+            applyEdit(value.slice(0, pos) + value.slice(wordEnd), pos)
             return
           }
           default:
@@ -414,15 +297,11 @@ const Input = ({ onSend, disabled, placeholder, channelKey }: Props): React.JSX.
         }
       }
     },
-    [value, onSend, applyEdit, copyToClipboard, moveCaret, search, findMatch, applySearchMatch, exitSearch]
+    [value, onSend, search, history, applySearchMatch, exitSearch, setValue]
   )
 
   return (
-    <form
-      className="chat-input"
-      data-test="chat-input"
-      onSubmit={(e) => e.preventDefault()}
-    >
+    <form className="chat-input" data-test="chat-input" onSubmit={(e) => e.preventDefault()}>
       {search !== null && (
         <aside
           className={`chat-input-search${search.matchIndex === null && search.query ? ' chat-input-search--nomatch' : ''}`}
@@ -433,12 +312,6 @@ const Input = ({ onSend, disabled, placeholder, channelKey }: Props): React.JSX.
           <small>
             {search.matchIndex === null && search.query ? (
               <>
-                {/* Shape-not-color fallback: the ✗ glyph signals the
-                 * failing state even when the nomatch-color cue is
-                 * imperceptible (colorblind users, low-contrast
-                 * displays). aria-hidden keeps SR reading the
-                 * surrounding text naturally ("failing i-search:
-                 * foo") without announcing "multiplication sign". */}
                 <span className="chat-input-search-fail-glyph" aria-hidden="true">
                   ✗
                 </span>{' '}
@@ -451,7 +324,8 @@ const Input = ({ onSend, disabled, placeholder, channelKey }: Props): React.JSX.
         </aside>
       )}
       <textarea
-        ref={taRef}
+        key={disabled ? 'disabled' : 'enabled'}
+        autoFocus={!disabled}
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
@@ -459,6 +333,7 @@ const Input = ({ onSend, disabled, placeholder, channelKey }: Props): React.JSX.
         rows={1}
         aria-label="chat message"
         data-test="chat-input-textarea"
+        disabled={disabled}
       />
     </form>
   )

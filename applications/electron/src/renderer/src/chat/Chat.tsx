@@ -148,6 +148,7 @@ const Chat = ({
         />
       )}
       <Input
+        key={allView ? 'all' : pinsChannel}
         onSend={handleSend}
         channelKey={allView ? 'all' : pinsChannel}
         placeholder={
