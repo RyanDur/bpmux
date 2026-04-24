@@ -25,6 +25,7 @@ interface Props {
   authToken?: string
   lanes?: 'on' | 'off'
   recipient?: string[] | null
+  allView?: boolean
   onSelectRecipient?: (r: string[] | null) => void
 }
 
@@ -77,10 +78,13 @@ const MessageList = ({
   authToken,
   lanes = 'off',
   recipient = null,
+  allView = false,
   onSelectRecipient
 }: Props): React.JSX.Element => {
   const visible = messages.filter(
-    (m) => visibleClasses.has(classOf(m.messageType)) && isMessageInScope(m, recipient, viewer)
+    (m) =>
+      visibleClasses.has(classOf(m.messageType)) &&
+      isMessageInScope(m, recipient, viewer, allView)
   )
   // #370 avatar-hover tooltip: derive current presence per role from
   // the full message stream (not just the filtered visible set) so

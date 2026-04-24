@@ -21,8 +21,10 @@ const computeViewChannelId = (recipient: string[] | null, viewer: string): strin
 export const isMessageInScope = (
   m: ChatMessage,
   recipient: string[] | null | undefined,
-  viewer: string | undefined
+  viewer: string | undefined,
+  allView: boolean = false
 ): boolean => {
+  if (allView) return true
   const v = viewer ?? ''
   const r = recipient ?? null
   const to = m.to

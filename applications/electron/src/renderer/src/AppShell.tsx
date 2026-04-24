@@ -6,6 +6,14 @@ import { useDensity } from './hooks/useDensity'
 import { useLaneSeparation } from './hooks/useLaneSeparation'
 import { useMessageFilter } from './hooks/useMessageFilter'
 import { useTheme } from './hooks/useTheme'
+import {
+  LanesIcon,
+  MoonIcon,
+  RowsComfortableIcon,
+  RowsCompactIcon,
+  StreamIcon,
+  SunIcon
+} from './icons/TitlebarIcons'
 import Sidebar from './sidebar/Sidebar'
 import type { ChatMessage, ConnectionStatus } from './transport/types'
 import type { SendOptions } from './transport/useWebSocket'
@@ -17,29 +25,29 @@ interface Props {
   onSend: (text: string, opts?: SendOptions) => void
 }
 
-// Phase-1a window chrome: titlebar (app name, connection dot, CI
-// glyph) on top; sidebar / chat / board regions below. Connection
-// status surfaces as a small dot so a backend drop is visible without
-// having to read the chat warning strip.
-function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
+const AppShell = ({ status, messages, onSend }: Props): React.JSX.Element => {
   const statusLabel =
     status === 'connected' ? 'connected' : status === 'connecting' ? 'connecting' : 'disconnected'
 
   const [boardOpen, setBoardOpen] = useState<boolean>(true)
-  // Recipient is an ARRAY of role names: null = broadcast, single =
-  // DM, 2+ = group. Unified shape so DM + group share the scoping
-  // codepath in Chat.tsx and useWebSocket send-options.
   const [recipient, setRecipient] = useState<string[] | null>(null)
+  const [allView, setAllView] = useState<boolean>(false)
   const [metricsOpen, setMetricsOpen] = useState<boolean>(false)
   const { theme, toggle: toggleTheme } = useTheme()
   const { density, toggle: toggleDensity } = useDensity()
   const { lanes, toggle: toggleLanes } = useLaneSeparation()
-  // Filter state is lifted from Chat to AppShell because Sidebar also
-  // reads/writes it (SYSTEM click narrows to system-only; DM/group
-  // click resets to default). Lifting here avoids duplicating the
-  // hook or threading callbacks both directions.
   const filter = useMessageFilter()
   const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
+
+  const selectRecipient = (r: string[] | null): void => {
+    setAllView(false)
+    setRecipient(r)
+  }
+
+  const selectAllView = (): void => {
+    setAllView(true)
+    setRecipient(null)
+  }
 
   useEffect(() => {
     const handler = (event: KeyboardEvent): void => {
@@ -72,21 +80,13 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
       <header className="titlebar" data-test="titlebar">
         <strong className="titlebar-app">bpmux</strong>
         <i className="titlebar-spacer" aria-hidden="true" />
-        {/* Connection indicator — dot + visible text label (#362).
-          * Text was previously implicit (dot-only), which was
-          * indistinguishable from CI glyph at glance-speed and led
-          * to "the dot never changes" confusion. Explicit
-          * "connection: connected" text removes ambiguity. */}
         <span
           className={`titlebar-connection titlebar-connection--${status}`}
           title={`WebSocket connection: ${statusLabel}`}
           aria-label={`WebSocket connection ${statusLabel}`}
           data-test="titlebar-connection"
         >
-          <i
-            className={`titlebar-status titlebar-status--${status}`}
-            aria-hidden="true"
-          />
+          <i className={`titlebar-status titlebar-status--${status}`} aria-hidden="true" />
           <small className="titlebar-connection-label" data-test="titlebar-connection-label">
             {status === 'connected' ? 'online' : status === 'connecting' ? 'connecting…' : 'offline'}
           </small>
@@ -107,14 +107,10 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
           onClick={toggleDensity}
           aria-pressed={density === 'compact'}
           aria-label={
-            density === 'compact'
-              ? 'Switch to comfortable density'
-              : 'Switch to compact density'
+            density === 'compact' ? 'Switch to comfortable density' : 'Switch to compact density'
           }
           title={
-            density === 'compact'
-              ? 'Switch to comfortable density'
-              : 'Switch to compact density'
+            density === 'compact' ? 'Switch to comfortable density' : 'Switch to compact density'
           }
           data-test="titlebar-density-toggle"
           data-density={density}
@@ -127,14 +123,10 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
           onClick={toggleLanes}
           aria-pressed={lanes === 'on'}
           aria-label={
-            lanes === 'on'
-              ? 'Switch to interleaved messages'
-              : 'Switch to lane-separated messages'
+            lanes === 'on' ? 'Switch to interleaved messages' : 'Switch to lane-separated messages'
           }
           title={
-            lanes === 'on'
-              ? 'Switch to interleaved messages'
-              : 'Switch to lane-separated messages'
+            lanes === 'on' ? 'Switch to interleaved messages' : 'Switch to lane-separated messages'
           }
           data-test="titlebar-lanes-toggle"
           data-lanes={lanes}
@@ -146,7 +138,9 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
       <section className="app-body">
         <Sidebar
           recipient={recipient}
-          onSelectRecipient={setRecipient}
+          allView={allView}
+          onSelectRecipient={selectRecipient}
+          onSelectAllView={selectAllView}
           messages={messages}
           filter={filter}
           apiBase={bridge?.apiBase}
@@ -156,7 +150,8 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
           messages={messages}
           status={status}
           recipient={recipient}
-          onSelectRecipient={setRecipient}
+          allView={allView}
+          onSelectRecipient={selectRecipient}
           filter={filter}
           metricsOpen={metricsOpen}
           onCloseMetrics={() => setMetricsOpen(false)}
@@ -165,104 +160,9 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
           lanes={lanes}
           onSend={onSend}
         />
-        {/* Board stays mounted so its width can CSS-transition open/
-          * close (#351 AC3). The hidden-class variant collapses width
-          * to 0 + overflow:hidden + removes border. Mounting stays
-          * stable so scroll position + internal selection state
-          * survive toggles, a product nicety as well. */}
         <Board messages={messages} hidden={!boardOpen} />
       </section>
     </main>
-  )
-}
-
-function SunIcon(): React.JSX.Element {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" focusable="false">
-      <circle cx="7" cy="7" r="3" fill="currentColor" />
-      <g stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
-        <line x1="7" y1="1" x2="7" y2="2.5" />
-        <line x1="7" y1="11.5" x2="7" y2="13" />
-        <line x1="1" y1="7" x2="2.5" y2="7" />
-        <line x1="11.5" y1="7" x2="13" y2="7" />
-        <line x1="2.5" y1="2.5" x2="3.5" y2="3.5" />
-        <line x1="10.5" y1="10.5" x2="11.5" y2="11.5" />
-        <line x1="2.5" y1="11.5" x2="3.5" y2="10.5" />
-        <line x1="10.5" y1="3.5" x2="11.5" y2="2.5" />
-      </g>
-    </svg>
-  )
-}
-
-function MoonIcon(): React.JSX.Element {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" focusable="false">
-      <path
-        d="M11.5 8.5a4.5 4.5 0 0 1-6-6 5 5 0 1 0 6 6z"
-        fill="currentColor"
-      />
-    </svg>
-  )
-}
-
-// #369 density toggle glyphs. Comfortable shows 3 widely-spaced
-// rows; compact shows 4 tightly-spaced rows. Shape distinction at
-// glance — the icon's row count + spacing visually encode the
-// current state, so colorblind / mono-theme users read the density
-// through geometry, not just a label.
-function RowsComfortableIcon(): React.JSX.Element {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" focusable="false">
-      <g stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
-        <line x1="2" y1="3" x2="12" y2="3" />
-        <line x1="2" y1="7" x2="12" y2="7" />
-        <line x1="2" y1="11" x2="12" y2="11" />
-      </g>
-    </svg>
-  )
-}
-
-function RowsCompactIcon(): React.JSX.Element {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" focusable="false">
-      <g stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
-        <line x1="2" y1="3" x2="12" y2="3" />
-        <line x1="2" y1="5.5" x2="12" y2="5.5" />
-        <line x1="2" y1="8.5" x2="12" y2="8.5" />
-        <line x1="2" y1="11" x2="12" y2="11" />
-      </g>
-    </svg>
-  )
-}
-
-// #374 lane-separation toggle glyphs. Stream = three staggered
-// rows (current interleaved mode). Lanes = two parallel columns
-// with their own content (separated mode). Shape difference
-// encodes mode alongside aria-pressed.
-function StreamIcon(): React.JSX.Element {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" focusable="false">
-      <g stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
-        <line x1="3" y1="3" x2="11" y2="3" />
-        <line x1="2" y1="7" x2="10" y2="7" />
-        <line x1="4" y1="11" x2="12" y2="11" />
-      </g>
-    </svg>
-  )
-}
-
-function LanesIcon(): React.JSX.Element {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" focusable="false">
-      <g stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
-        <rect x="2" y="2.5" width="4.5" height="9" rx="1" fill="none" />
-        <rect x="7.5" y="2.5" width="4.5" height="9" rx="1" fill="none" />
-        <line x1="3" y1="5" x2="5.5" y2="5" />
-        <line x1="3" y1="7" x2="5.5" y2="7" />
-        <line x1="8.5" y1="5" x2="11" y2="5" />
-        <line x1="8.5" y1="7" x2="11" y2="7" />
-      </g>
-    </svg>
   )
 }
 
