@@ -603,11 +603,24 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                 "get_token_report" => tools::handle_get_token_report().await,
                 "get_ci_state" => tools::handle_get_ci_state(&args, &tracker).await,
                 "get_sync_status" => tools::handle_get_sync_status(refresh.as_ref()).await,
-                "get_story" => tools::handle_get_story(&args, &tracker).await,
-                "view_story_timeline" => tools::handle_view_story_timeline(&args, &tracker).await,
+                "get_story" => {
+                    tools::handle_get_story(&args, &tracker, Some(&board), refresh.as_ref()).await
+                }
+                "view_story_timeline" => {
+                    tools::handle_view_story_timeline(
+                        &args,
+                        &tracker,
+                        Some(&board),
+                        refresh.as_ref(),
+                    )
+                    .await
+                }
                 "view_story_commits" => tools::handle_view_story_commits(&args).await,
                 "view_commit_diff" => tools::handle_view_commit_diff(&args).await,
-                "view_comments" => tools::handle_view_comments(&args, &tracker).await,
+                "view_comments" => {
+                    tools::handle_view_comments(&args, &tracker, Some(&board), refresh.as_ref())
+                        .await
+                }
                 "dev_in_flight" => tools::handle_dev_in_flight(&board).await,
                 "list_ready" => tools::handle_list_ready(&board).await,
                 "view_board" => tools_stories::handle_view_board(&args, &tracker).await,

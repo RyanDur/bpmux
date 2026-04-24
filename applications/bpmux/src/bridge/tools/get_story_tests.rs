@@ -70,7 +70,7 @@ async fn enriches_body_for_rejected_story() {
         ],
     };
     let args = serde_json::json!({"number": 443});
-    let result = handle_get_story(args.as_object().unwrap(), &tracker)
+    let result = handle_get_story(args.as_object().unwrap(), &tracker, None, None)
         .await
         .expect("should succeed");
     let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
@@ -109,7 +109,7 @@ async fn enriches_body_for_needs_fixes_story() {
         })],
     };
     let args = serde_json::json!({"number": 200});
-    let result = handle_get_story(args.as_object().unwrap(), &tracker)
+    let result = handle_get_story(args.as_object().unwrap(), &tracker, None, None)
         .await
         .expect("should succeed");
     let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
@@ -134,7 +134,7 @@ async fn does_not_enrich_body_for_non_rework_story() {
         })],
     };
     let args = serde_json::json!({"number": 100});
-    let result = handle_get_story(args.as_object().unwrap(), &tracker)
+    let result = handle_get_story(args.as_object().unwrap(), &tracker, None, None)
         .await
         .expect("should succeed");
     let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
@@ -158,7 +158,7 @@ async fn skips_enrichment_when_no_markers_in_comments() {
         comments: vec![serde_json::json!({"body": "just a casual comment"})],
     };
     let args = serde_json::json!({"number": 50});
-    let result = handle_get_story(args.as_object().unwrap(), &tracker)
+    let result = handle_get_story(args.as_object().unwrap(), &tracker, None, None)
         .await
         .expect("should succeed");
     let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
