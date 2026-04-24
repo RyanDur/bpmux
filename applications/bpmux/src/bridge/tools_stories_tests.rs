@@ -1758,3 +1758,86 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
         }
     ));
 }
+
+#[tokio::test]
+async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
+    use crate::board::BoardEvent;
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Gate, Story, StoryState};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let seeded = Story::new_minimal(
+        203,
+        "t".into(),
+        StoryState::Ready,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "dev".into(),
+    );
+    adapter.seed_stories(vec![seeded]);
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orchestrator.refresh_all().await.unwrap();
+
+    let ws_tx = connected_ws_sink_for_test().await;
+    let tracker = super::tracker::FakeTracker::default();
+    let mut args = serde_json::Map::new();
+    args.insert("number".into(), serde_json::json!(203));
+    args.insert(
+        "pickup_paraphrase".into(),
+        serde_json::json!("paraphrase content"),
+    );
+    args.insert(
+        "falsifier_reframing".into(),
+        serde_json::json!("reframing content"),
+    );
+    let result = handle_start_story(
+        &args,
+        "dev:claude-code",
+        &ws_tx,
+        &tracker,
+        Some(&orchestrator),
+    )
+    .await;
+    assert!(result.is_ok(), "migrated path should succeed: {result:?}");
+
+    let story = store.story(203).unwrap();
+    assert_eq!(story.state, StoryState::InProgress);
+    let gates = story.gate_comments.as_ref().expect("gate_comments seeded");
+    assert!(
+        gates.iter().any(|g| g.gate == Gate::Pickup
+            && g.payload.as_deref().is_some_and(
+                |p| p.contains("paraphrase content") && p.contains("reframing content")
+            )),
+        "gate_comments should contain Pickup with both payload sections: {gates:?}"
+    );
+
+    let drained = orchestrator.drain_pending().await.unwrap();
+    assert_eq!(drained, 2, "both events must reach the adapter via drain");
+    let pushed = adapter.pushed_events();
+    assert_eq!(pushed.len(), 2);
+    assert!(matches!(
+        &pushed[0],
+        BoardEvent::GateCommentAppended {
+            number: 203,
+            gate: Gate::Pickup,
+            payload: Some(p),
+            ..
+        } if p.contains("paraphrase content") && p.contains("reframing content")
+    ));
+    assert!(matches!(
+        &pushed[1],
+        BoardEvent::StateTransitioned {
+            number: 203,
+            new_state: StoryState::InProgress,
+            ..
+        }
+    ));
+}

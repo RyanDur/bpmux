@@ -290,9 +290,31 @@ pub(super) async fn handle_start_story(
     // an issue comment so designer + pm see dev's interpretation at
     // pickup time (not just at delivery). Mirrors the deliver-gate
     // verified_observation comment pattern (#391).
-    let pickup_comment = format!(
-        "**pickup_paraphrase** (dev pickup-gate):\n\n{pickup_paraphrase}\n\n---\n\n**falsifier_reframing**:\n\n{falsifier_reframing}"
-    );
+    let pickup_payload =
+        format!("{pickup_paraphrase}\n\n---\n\n**falsifier_reframing**:\n\n{falsifier_reframing}");
+    if let Some(r) = refresh {
+        let meta = crate::board::events::EventMeta {
+            actor: crate::transport::ws::short_name(agent_name).to_string(),
+            ts: chrono::Utc::now(),
+            peer_id: crate::board::PeerId::local(),
+        };
+        r.mutate_sync(crate::board::BoardEvent::GateCommentAppended {
+            meta: meta.clone(),
+            number,
+            gate: crate::board::domain::Gate::Pickup,
+            payload: Some(pickup_payload.clone()),
+        })
+        .map_err(|e| format!("#{number} gate enqueue failed: {e}"))?;
+        r.mutate_sync(crate::board::BoardEvent::StateTransitioned {
+            meta,
+            number,
+            new_state: crate::board::domain::StoryState::InProgress,
+        })
+        .map_err(|e| format!("#{number} state enqueue failed: {e}"))?;
+        broadcast_board_invalidate(ws_tx).await;
+        return Ok(format!("#{number} marked as in progress"));
+    }
+    let pickup_comment = format!("**pickup_paraphrase** (dev pickup-gate):\n\n{pickup_payload}");
     if let Err(e) = tracker.comment_on_story(number, &pickup_comment).await {
         crate::session::diag::log_diag(&format!(
             "bridge: pickup_paraphrase comment failed for #{number}: {e}"
