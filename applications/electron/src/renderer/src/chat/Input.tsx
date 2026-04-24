@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { useDraftStorage } from './useDraftStorage'
 import { useInputHistory } from './useInputHistory'
 import './Input.css'
@@ -107,7 +108,7 @@ const Input = ({ onSend, disabled, placeholder, channelKey }: Props): React.JSX.
       const { ctrlKey, altKey, metaKey, shiftKey, key } = e
 
       const applyEdit = (next: string, caret: number): void => {
-        setValue(next)
+        flushSync(() => setValue(next))
         setCaret(ta, caret)
       }
 
