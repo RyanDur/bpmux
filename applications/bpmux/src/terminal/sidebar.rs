@@ -177,6 +177,34 @@ fn is_group_channel(channel: &str) -> bool {
     channel.contains('+')
 }
 
+pub(super) fn combinatorial_groups(combinable: &[String]) -> Vec<String> {
+    let n = combinable.len();
+    if n < 2 {
+        return Vec::new();
+    }
+    let mut sorted: Vec<String> = combinable.to_vec();
+    sorted.sort();
+    let mut out: Vec<String> = Vec::new();
+    for mask in 1u32..(1u32 << n) {
+        if mask.count_ones() < 2 {
+            continue;
+        }
+        let mut names: Vec<String> = Vec::new();
+        for (i, name) in sorted.iter().enumerate() {
+            if mask & (1 << i) != 0 {
+                names.push(name.clone());
+            }
+        }
+        out.push(names.join("+"));
+    }
+    out.sort_by(|a, b| {
+        let a_len = a.matches('+').count();
+        let b_len = b.matches('+').count();
+        a_len.cmp(&b_len).then_with(|| a.cmp(b))
+    });
+    out
+}
+
 fn section_header(name: &str, count: usize, expanded: bool) -> String {
     let prefix = if expanded {
         section_prefix_expanded()
@@ -227,18 +255,15 @@ impl App {
         }
         let mut direct: Vec<String> = direct_set.into_iter().collect();
 
-        // Groups: from active_channels, but only where all participants are connected
-        let mut groups: Vec<String> = self
-            .channels
-            .active
+        let owner = self.identity.id.as_str();
+        let combinable: Vec<String> = connected
             .iter()
-            .filter(|ch| {
-                is_group_channel(ch)
-                    && !is_system_channel(ch)
-                    && matches_filter(ch)
-                    && ch.split('+').all(|name| connected.contains(name))
-            })
-            .cloned()
+            .filter(|name| **name != owner && **name != "bpmux")
+            .map(|s| s.to_string())
+            .collect();
+        let mut groups: Vec<String> = combinatorial_groups(&combinable)
+            .into_iter()
+            .filter(|ch| matches_filter(ch))
             .collect();
 
         // System: bpmux channels from active_channels
