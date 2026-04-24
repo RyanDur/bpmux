@@ -651,7 +651,7 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                 "get_usage" => tools::handle_get_usage(&args).await,
                 "view_tokens" => tools::handle_view_tokens(&ws_tx).await,
                 "view_roadmap" => tools::handle_view_roadmap(&ws_tx).await,
-                "view_backlog" => tools::handle_view_backlog(&ws_tx, &tracker).await,
+                "view_backlog" => tools::handle_view_backlog(&ws_tx, &board).await,
                 other => Err(format!("unknown tool: {other}")),
             };
             Ok(match result {
