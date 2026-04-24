@@ -1,31 +1,57 @@
-//! #403 MCP list_ready — full ready-queue enumeration. Pairs with
-//! `get_story` (read-side bypass closure). `view_backlog` returns
-//! counts + samples; when the queue runs longer than the sample
-//! window, agents fell back to `gh issue list --label ready`. This
-//! closes that fallback.
-
 use crate::bridge::tracker::StoryTracker;
+use crate::session::priority::{PriorityIndex, load_priority};
 
-pub(in crate::bridge) async fn handle_list_ready(
-    tracker: &impl StoryTracker,
-) -> Result<String, String> {
-    let stories = tracker.fetch_board_stories().await?;
-    // Filter to state == "ready". The state field is computed at
-    // tracker.fetch time via `derive_renderer_state`, which maps
-    // the "ready" label to state="ready". Return only the fields
-    // pickup-gate paraphrase needs — number, title, labels — so
-    // body doesn't bloat the enumeration payload (agents call
-    // get_story(N) for body when they pick a specific story).
+const READY_STATE: &str = "ready";
+
+pub fn build_ready_queue(
+    stories: Vec<serde_json::Value>,
+    priority: &PriorityIndex,
+) -> Vec<serde_json::Value> {
     let ready: Vec<serde_json::Value> = stories
         .into_iter()
-        .filter(|s| s.get("state").and_then(|v| v.as_str()) == Some("ready"))
-        .map(|s| {
+        .filter(|s| s.get("state").and_then(|v| v.as_str()) == Some(READY_STATE))
+        .collect();
+    let ordered = sort_ready_by_priority(ready, priority);
+    assign_positions(ordered)
+}
+
+fn sort_ready_by_priority(
+    mut stories: Vec<serde_json::Value>,
+    priority: &PriorityIndex,
+) -> Vec<serde_json::Value> {
+    let ready_priority = priority.columns.get(READY_STATE);
+    if let Some(pri) = ready_priority {
+        stories.sort_by_cached_key(|s| {
+            let number = s.get("number").and_then(|v| v.as_u64()).unwrap_or(0);
+            pri.iter().position(|&p| p == number).unwrap_or(usize::MAX)
+        });
+    }
+    stories
+}
+
+fn assign_positions(stories: Vec<serde_json::Value>) -> Vec<serde_json::Value> {
+    stories
+        .into_iter()
+        .enumerate()
+        .map(|(idx, s)| {
             serde_json::json!({
+                "position": idx + 1,
                 "number": s.get("number"),
                 "title": s.get("title"),
                 "labels": s.get("labels"),
             })
         })
-        .collect();
-    serde_json::to_string_pretty(&ready).map_err(|e| format!("serialize: {e}"))
+        .collect()
+}
+
+pub(in crate::bridge) async fn handle_list_ready(
+    tracker: &impl StoryTracker,
+) -> Result<String, String> {
+    let stories = tracker.fetch_board_stories().await?;
+    let priority = match crate::session::priority::default_priority_path() {
+        Ok(path) => load_priority(&path),
+        Err(_) => PriorityIndex::default(),
+    };
+    let queue = build_ready_queue(stories, &priority);
+    serde_json::to_string_pretty(&queue).map_err(|e| format!("serialize: {e}"))
 }

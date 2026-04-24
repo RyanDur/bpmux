@@ -19,6 +19,8 @@ mod get_usage;
 mod list_lessons;
 mod list_peer_lessons;
 mod list_ready;
+#[cfg(test)]
+mod list_ready_tests;
 mod read_messages;
 mod remove_principle;
 mod rework_context;
