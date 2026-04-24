@@ -596,6 +596,30 @@ pub(super) async fn handle_pass_desk_check(
             .await
             .map_err(|e| format!("#{number} signal send failed: {e}"))?;
     }
+    if let Some(r) = refresh {
+        let meta = crate::board::events::EventMeta {
+            actor: crate::transport::ws::short_name(agent_name).to_string(),
+            ts: chrono::Utc::now(),
+            peer_id: crate::board::PeerId::local(),
+        };
+        r.mutate_sync(crate::board::BoardEvent::GateCommentAppended {
+            meta: meta.clone(),
+            number,
+            gate: crate::board::domain::Gate::PassDeskCheck,
+            payload: None,
+        })
+        .map_err(|e| format!("#{number} gate enqueue failed: {e}"))?;
+        r.mutate_sync(crate::board::BoardEvent::StateTransitioned {
+            meta,
+            number,
+            new_state: crate::board::domain::StoryState::ReadyForAccept,
+        })
+        .map_err(|e| format!("#{number} state enqueue failed: {e}"))?;
+        broadcast_board_invalidate(ws_tx).await;
+        return Ok(format!(
+            "#{number} passed desk-check: signal sent, label applied"
+        ));
+    }
     let pass_comment = super::tools::format_gate_transition_comment(
         super::tools::PASS_DESK_CHECK_MARKER,
         super::tools::DESK_CHECK_PASS_GATE,
@@ -647,6 +671,30 @@ pub(super) async fn handle_fail_desk_check(
     ws_send(ws_tx, signal)
         .await
         .map_err(|e| format!("#{number} signal send failed: {e}"))?;
+    if let Some(r) = refresh {
+        let meta = crate::board::events::EventMeta {
+            actor: crate::transport::ws::short_name(agent_name).to_string(),
+            ts: chrono::Utc::now(),
+            peer_id: crate::board::PeerId::local(),
+        };
+        r.mutate_sync(crate::board::BoardEvent::GateCommentAppended {
+            meta: meta.clone(),
+            number,
+            gate: crate::board::domain::Gate::FailDeskCheck,
+            payload: Some(reason.to_string()),
+        })
+        .map_err(|e| format!("#{number} gate enqueue failed: {e}"))?;
+        r.mutate_sync(crate::board::BoardEvent::StateTransitioned {
+            meta,
+            number,
+            new_state: crate::board::domain::StoryState::NeedsFixes,
+        })
+        .map_err(|e| format!("#{number} state enqueue failed: {e}"))?;
+        broadcast_board_invalidate(ws_tx).await;
+        return Ok(format!(
+            "#{number} failed desk-check: signal sent, label applied"
+        ));
+    }
     let fail_comment =
         super::tools::format_rejection_comment("desk-check-fail", agent_name, reason);
     if let Err(e) = tracker.comment_on_story(number, &fail_comment).await {

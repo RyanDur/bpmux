@@ -1588,3 +1588,173 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
         BoardEvent::TagRemoved { number: 200, label, .. } if label == "blocked"
     ));
 }
+
+async fn connected_ws_sink_for_test() -> tokio::sync::Mutex<Option<super::tools::WsSink>> {
+    use futures::StreamExt;
+    use tokio::net::TcpListener;
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    tokio::spawn(async move {
+        if let Ok((stream, _)) = listener.accept().await
+            && let Ok(ws) = tokio_tungstenite::accept_async(stream).await
+        {
+            let (_srv_sink, mut srv_stream) = ws.split();
+            while srv_stream.next().await.is_some() {}
+        }
+    });
+    let url = format!("ws://{}/", addr);
+    let (ws, _) = tokio_tungstenite::connect_async(&url).await.unwrap();
+    let (sink, stream) = ws.split();
+    tokio::spawn(async move {
+        let mut stream = stream;
+        while stream.next().await.is_some() {}
+    });
+    tokio::sync::Mutex::new(Some(sink))
+}
+
+#[tokio::test]
+async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
+    use crate::board::BoardEvent;
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Gate, Story, StoryState};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let seeded = Story::new_minimal(
+        201,
+        "t".into(),
+        StoryState::Delivered,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "dev".into(),
+    );
+    adapter.seed_stories(vec![seeded]);
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orchestrator.refresh_all().await.unwrap();
+
+    let ws_tx = connected_ws_sink_for_test().await;
+    let tracker = super::tracker::FakeTracker::default();
+    let mut args = serde_json::Map::new();
+    args.insert("number".into(), serde_json::json!(201));
+    let result = handle_pass_desk_check(
+        &args,
+        "designer:claude-code",
+        &ws_tx,
+        &tracker,
+        Some(&orchestrator),
+    )
+    .await;
+    assert!(result.is_ok(), "migrated path should succeed: {result:?}");
+
+    let story = store.story(201).unwrap();
+    assert_eq!(story.state, StoryState::ReadyForAccept);
+    let gates = story.gate_comments.as_ref().expect("gate_comments seeded");
+    assert!(
+        gates.iter().any(|g| g.gate == Gate::PassDeskCheck),
+        "gate_comments should contain PassDeskCheck entry: {gates:?}"
+    );
+
+    let drained = orchestrator.drain_pending().await.unwrap();
+    assert_eq!(drained, 2, "both events must reach the adapter via drain");
+    let pushed = adapter.pushed_events();
+    assert_eq!(pushed.len(), 2);
+    assert!(matches!(
+        &pushed[0],
+        BoardEvent::GateCommentAppended {
+            number: 201,
+            gate: Gate::PassDeskCheck,
+            payload: None,
+            ..
+        }
+    ));
+    assert!(matches!(
+        &pushed[1],
+        BoardEvent::StateTransitioned {
+            number: 201,
+            new_state: StoryState::ReadyForAccept,
+            ..
+        }
+    ));
+}
+
+#[tokio::test]
+async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events() {
+    use crate::board::BoardEvent;
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Gate, Story, StoryState};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let seeded = Story::new_minimal(
+        202,
+        "t".into(),
+        StoryState::Delivered,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "dev".into(),
+    );
+    adapter.seed_stories(vec![seeded]);
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orchestrator.refresh_all().await.unwrap();
+
+    let ws_tx = connected_ws_sink_for_test().await;
+    let tracker = super::tracker::FakeTracker::default();
+    let mut args = serde_json::Map::new();
+    args.insert("number".into(), serde_json::json!(202));
+    args.insert("reason".into(), serde_json::json!("test failure"));
+    let result = handle_fail_desk_check(
+        &args,
+        "designer:claude-code",
+        &ws_tx,
+        &tracker,
+        Some(&orchestrator),
+    )
+    .await;
+    assert!(result.is_ok(), "migrated path should succeed: {result:?}");
+
+    let story = store.story(202).unwrap();
+    assert_eq!(story.state, StoryState::NeedsFixes);
+    let gates = story.gate_comments.as_ref().expect("gate_comments seeded");
+    assert!(
+        gates
+            .iter()
+            .any(|g| g.gate == Gate::FailDeskCheck && g.payload.as_deref() == Some("test failure")),
+        "gate_comments should contain FailDeskCheck with payload: {gates:?}"
+    );
+
+    let drained = orchestrator.drain_pending().await.unwrap();
+    assert_eq!(drained, 2, "both events must reach the adapter via drain");
+    let pushed = adapter.pushed_events();
+    assert_eq!(pushed.len(), 2);
+    assert!(matches!(
+        &pushed[0],
+        BoardEvent::GateCommentAppended {
+            number: 202,
+            gate: Gate::FailDeskCheck,
+            payload: Some(p),
+            ..
+        } if p == "test failure"
+    ));
+    assert!(matches!(
+        &pushed[1],
+        BoardEvent::StateTransitioned {
+            number: 202,
+            new_state: StoryState::NeedsFixes,
+            ..
+        }
+    ));
+}
