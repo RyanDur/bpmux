@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { ChatMessage } from '../transport/types'
 import { classOf, type MessageFilter } from '../hooks/useMessageFilter'
 import { usePresence, type Presence } from '../hooks/usePresence'
@@ -11,7 +11,18 @@ import {
   deriveDirectRolesFromRoster
 } from '../roles/deriveRoles'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
+import CollapsibleSection from './CollapsibleSection'
 import './Sidebar.css'
+
+type SectionId = 'direct' | 'groups' | 'system'
+
+type CollapseState = Record<SectionId, boolean>
+
+const INITIAL_COLLAPSE: CollapseState = {
+  direct: false,
+  groups: false,
+  system: false
+}
 
 interface Props {
   recipient: string[] | null
@@ -59,6 +70,10 @@ const Sidebar = ({
   apiBase,
   authToken
 }: Props): React.JSX.Element => {
+  const [collapsed, setCollapsed] = useState<CollapseState>(INITIAL_COLLAPSE)
+  const toggleSection = (id: SectionId): void => {
+    setCollapsed((prev) => ({ ...prev, [id]: !prev[id] }))
+  }
   const systemCount = useMemo(() => countSystemMessages(messages), [messages])
   const roster = useTeamRoster({ apiBase, authToken, messages })
   const directRoles = useMemo(() => {
@@ -123,8 +138,12 @@ const Sidebar = ({
           broadcast
         </button>
       </section>
-      <section className="sidebar-section">
-        <h3 className="sidebar-heading">direct</h3>
+      <CollapsibleSection
+        id="direct"
+        title="direct"
+        collapsed={collapsed.direct}
+        onToggle={() => toggleSection('direct')}
+      >
         {directRoles.map((role) => {
           const active =
             !allView && recipient !== null && recipient.length === 1 && recipient[0] === role
@@ -155,9 +174,13 @@ const Sidebar = ({
             </button>
           )
         })}
-      </section>
-      <section className="sidebar-section">
-        <h3 className="sidebar-heading">groups</h3>
+      </CollapsibleSection>
+      <CollapsibleSection
+        id="groups"
+        title="groups"
+        collapsed={collapsed.groups}
+        onToggle={() => toggleSection('groups')}
+      >
         {groups.length === 0 ? (
           <p className="sidebar-empty" data-test="sidebar-groups-empty">
             none yet
@@ -181,9 +204,13 @@ const Sidebar = ({
             )
           })
         )}
-      </section>
-      <section className="sidebar-section">
-        <h3 className="sidebar-heading">system</h3>
+      </CollapsibleSection>
+      <CollapsibleSection
+        id="system"
+        title="system"
+        collapsed={collapsed.system}
+        onToggle={() => toggleSection('system')}
+      >
         {systemCount === 0 ? (
           <p className="sidebar-empty" data-test="sidebar-system-empty">
             none yet
@@ -199,7 +226,7 @@ const Sidebar = ({
             system ({systemCount})
           </button>
         )}
-      </section>
+      </CollapsibleSection>
     </nav>
   )
 }
