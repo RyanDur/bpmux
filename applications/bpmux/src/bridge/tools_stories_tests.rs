@@ -1993,3 +1993,79 @@ async fn accept_story_migrated_path_emits_tag_remove_gate_and_state_events() {
         }
     ));
 }
+
+#[tokio::test]
+async fn reject_story_migrated_path_emits_tag_remove_gate_with_reason_and_state_events() {
+    use crate::board::BoardEvent;
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Gate, Story, StoryState};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let seeded = Story::new_minimal(
+        206,
+        "t".into(),
+        StoryState::Delivered,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "dev".into(),
+    );
+    adapter.seed_stories(vec![seeded]);
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orchestrator.refresh_all().await.unwrap();
+
+    let ws_tx = connected_ws_sink_for_test().await;
+    let tracker = super::tracker::FakeTracker::default();
+    let mut args = serde_json::Map::new();
+    args.insert("number".into(), serde_json::json!(206));
+    args.insert("reason".into(), serde_json::json!("scope mismatch"));
+    let result =
+        handle_reject_story(&args, "ryan:human", &ws_tx, &tracker, Some(&orchestrator)).await;
+    assert!(result.is_ok(), "migrated path should succeed: {result:?}");
+
+    let story = store.story(206).unwrap();
+    assert_eq!(story.state, StoryState::Rejected);
+    let gates = story.gate_comments.as_ref().expect("gate_comments seeded");
+    assert!(
+        gates
+            .iter()
+            .any(|g| g.gate == Gate::Rejected && g.payload.as_deref() == Some("scope mismatch")),
+        "gate_comments should contain Rejected with reason payload: {gates:?}"
+    );
+
+    let drained = orchestrator.drain_pending().await.unwrap();
+    assert_eq!(
+        drained, 3,
+        "all three events must reach the adapter via drain"
+    );
+    let pushed = adapter.pushed_events();
+    assert_eq!(pushed.len(), 3);
+    assert!(matches!(
+        &pushed[0],
+        BoardEvent::TagRemoved { number: 206, label, .. } if label == "delivered"
+    ));
+    assert!(matches!(
+        &pushed[1],
+        BoardEvent::GateCommentAppended {
+            number: 206,
+            gate: Gate::Rejected,
+            payload: Some(p),
+            ..
+        } if p == "scope mismatch"
+    ));
+    assert!(matches!(
+        &pushed[2],
+        BoardEvent::StateTransitioned {
+            number: 206,
+            new_state: StoryState::Rejected,
+            ..
+        }
+    ));
+}

@@ -611,6 +611,34 @@ pub(super) async fn handle_reject_story(
     if let Err(e) = ws_send(ws_tx, signal).await {
         crate::session::diag::log_diag(&format!("bridge: signal send failed: {e}"));
     }
+    if let Some(r) = refresh {
+        let meta = crate::board::events::EventMeta {
+            actor: crate::transport::ws::short_name(agent_name).to_string(),
+            ts: chrono::Utc::now(),
+            peer_id: crate::board::PeerId::local(),
+        };
+        r.mutate_sync(crate::board::BoardEvent::TagRemoved {
+            meta: meta.clone(),
+            number,
+            label: LABEL_DELIVERED.to_string(),
+        })
+        .map_err(|e| format!("#{number} delivered-tag-remove enqueue failed: {e}"))?;
+        r.mutate_sync(crate::board::BoardEvent::GateCommentAppended {
+            meta: meta.clone(),
+            number,
+            gate: crate::board::domain::Gate::Rejected,
+            payload: Some(reason.to_string()),
+        })
+        .map_err(|e| format!("#{number} gate enqueue failed: {e}"))?;
+        r.mutate_sync(crate::board::BoardEvent::StateTransitioned {
+            meta,
+            number,
+            new_state: crate::board::domain::StoryState::Rejected,
+        })
+        .map_err(|e| format!("#{number} state enqueue failed: {e}"))?;
+        broadcast_board_invalidate(ws_tx).await;
+        return Ok(format!("#{number} rejected: {reason}"));
+    }
     if let Err(e) = tracker.remove_label(number, LABEL_DELIVERED).await {
         crate::session::diag::log_diag(&format!(
             "bridge: remove-label delivered failed for #{number}: {e}"
