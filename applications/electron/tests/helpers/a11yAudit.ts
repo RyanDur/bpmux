@@ -26,7 +26,7 @@ export interface A11yAuditResult {
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']
 
 export const runA11yAudit = async (page: Page): Promise<A11yAuditResult> => {
-  const builder = new AxeBuilder({ page }).withTags(AXE_TAGS)
+  const builder = new AxeBuilder({ page }).withTags(AXE_TAGS).setLegacyMode(true)
   const raw = await builder.analyze()
   return {
     violations: raw.violations.map((v) => ({

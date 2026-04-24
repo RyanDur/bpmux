@@ -163,9 +163,15 @@ const MessageList = ({
 
   if (visible.length === 0) {
     return (
-      <ul {...regionProps} className="message-list message-list--empty">
-        <li className="message-empty">no messages yet</li>
-      </ul>
+      <section
+        className="message-list message-list--empty"
+        data-test="message-list"
+        role="log"
+        aria-label="Chat messages"
+        aria-live="polite"
+      >
+        <p className="message-empty">no messages yet</p>
+      </section>
     )
   }
 

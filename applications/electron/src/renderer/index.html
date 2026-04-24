@@ -1,11 +1,8 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <title>bpmux</title>
-    <!-- CSP: allow loopback WS + HTTP connections to the Rust backend
-         (see window.bpmux.{wsUrl, apiBase}). Styles are 'unsafe-inline'
-         to cover React-injected styles; scripts stay 'self'. -->
     <meta
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws://127.0.0.1:* ws://localhost:* http://127.0.0.1:* http://localhost:*"
