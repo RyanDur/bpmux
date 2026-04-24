@@ -511,6 +511,7 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
         let ws_tx = self.ws_tx.clone();
         let name = self.name.clone();
         let tracker = self.tracker.clone();
+        let board = self.board.clone();
 
         async move {
             let args = request.arguments.unwrap_or_default();
@@ -592,7 +593,7 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                 "view_commit_diff" => tools::handle_view_commit_diff(&args).await,
                 "view_comments" => tools::handle_view_comments(&args, &tracker).await,
                 "dev_in_flight" => tools::handle_dev_in_flight(&tracker).await,
-                "list_ready" => tools::handle_list_ready(&tracker).await,
+                "list_ready" => tools::handle_list_ready(&board).await,
                 "view_board" => tools_stories::handle_view_board(&args, &tracker).await,
                 "view_velocity" => tools::handle_view_velocity(port, &tracker, &ws_tx).await,
                 "create_story" => {
@@ -672,6 +673,7 @@ pub fn run_bridge(
         let tracker = tracker::FakeTracker { board_fixture };
         return rt.block_on(async {
             let server = BridgeServer::new(port, name.to_string(), tracker);
+            seed_board_from_tracker(&server).await;
             let (stdin, stdout) = rmcp::transport::io::stdio();
             let service = server.serve((stdin, stdout)).await?;
             service.waiting().await?;
@@ -686,11 +688,30 @@ pub fn run_bridge(
             )
         })?;
         let server = BridgeServer::new(port, name.to_string(), tracker);
+        seed_board_from_tracker(&server).await;
         let (stdin, stdout) = rmcp::transport::io::stdio();
         let service = server.serve((stdin, stdout)).await?;
         service.waiting().await?;
         anyhow::Ok(())
     })
+}
+
+async fn seed_board_from_tracker<T: tracker::StoryTracker>(server: &BridgeServer<T>) {
+    let Ok(raw) = server.tracker.fetch_board_stories().await else {
+        crate::session::diag::log_diag(
+            "bridge: initial board ingest skipped — fetch_board_stories failed",
+        );
+        return;
+    };
+    let stories: Vec<crate::board::Story> = raw
+        .iter()
+        .filter_map(crate::board::adapters::github::decode_story_metadata)
+        .collect();
+    let count = stories.len();
+    server.board.seed_all(stories);
+    crate::session::diag::log_diag(&format!(
+        "bridge: initial board ingest populated {count} stories"
+    ));
 }
 
 #[cfg(test)]

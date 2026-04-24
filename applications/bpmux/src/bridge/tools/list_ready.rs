@@ -1,4 +1,6 @@
-use crate::bridge::tracker::StoryTracker;
+use std::sync::Arc;
+
+use crate::board::{BoardStore, StoryState};
 use crate::session::priority::{PriorityIndex, load_priority};
 
 const READY_STATE: &str = "ready";
@@ -45,13 +47,24 @@ fn assign_positions(stories: Vec<serde_json::Value>) -> Vec<serde_json::Value> {
 }
 
 pub(in crate::bridge) async fn handle_list_ready(
-    tracker: &impl StoryTracker,
+    store: &Arc<BoardStore>,
 ) -> Result<String, String> {
-    let stories = tracker.fetch_board_stories().await?;
+    let ready_stories = store.stories_in_state(StoryState::Ready);
+    let json_stories: Vec<serde_json::Value> = ready_stories
+        .iter()
+        .map(|s| {
+            serde_json::json!({
+                "number": s.number,
+                "title": s.title,
+                "state": "ready",
+                "labels": [{"name": "ready"}],
+            })
+        })
+        .collect();
     let priority = match crate::session::priority::default_priority_path() {
         Ok(path) => load_priority(&path),
         Err(_) => PriorityIndex::default(),
     };
-    let queue = build_ready_queue(stories, &priority);
+    let queue = build_ready_queue(json_stories, &priority);
     serde_json::to_string_pretty(&queue).map_err(|e| format!("serialize: {e}"))
 }
