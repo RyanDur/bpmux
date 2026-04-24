@@ -25,7 +25,15 @@ export default defineConfig(
     },
     rules: {
       ...eslintPluginReactHooks.configs.recommended.rules,
-      ...eslintPluginReactRefresh.configs.vite.rules
+      ...eslintPluginReactRefresh.configs.vite.rules,
+      'func-style': ['error', 'expression', { allowArrowFunctions: true }],
+      'prefer-arrow-callback': 'error'
+    }
+  },
+  {
+    files: ['**/ErrorBoundary.tsx'],
+    rules: {
+      'func-style': 'off'
     }
   },
   eslintConfigPrettier
