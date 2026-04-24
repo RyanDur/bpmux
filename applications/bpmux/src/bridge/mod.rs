@@ -446,6 +446,9 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
             crate::mcp::tools::view_comments_tool(
                 "Fetch the full comment audit-trail for a story by issue number. Returns JSON array `[{id, author, body, created_at}, ...]` in chronological order. Any role can call. USE THIS INSTEAD OF `gh issue view <N> --json comments` — surfaces rejection-reason + filing-discussion + retro-scenarios for rework-pickup, desk-check context, and audit-trail re-audit without reaching outside bpmux.",
             ),
+            crate::mcp::tools::dev_in_flight_tool(
+                "Query whether dev currently has a story in the in-progress state. Returns JSON `{dev_in_flight: bool}` — a minimal yes/no read with no story identifiers so consumers (pm skills, interrupt-discipline checks) can't accidentally leak what dev is working on. Derived from server-side labels (in progress / started / finished) so the answer is authoritative even across bridge restarts. Any role can call.",
+            ),
             crate::mcp::tools::list_ready_tool(
                 "Enumerate the full ready queue. Returns JSON array of `{number, title, labels[]}` for every story labeled `ready`. Any role can call. USE THIS INSTEAD OF `gh issue list --label ready` — view_backlog surfaces counts + a sample, list_ready returns the complete queue for full pickup-gate visibility.",
             ),
@@ -596,6 +599,7 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                 "get_ci_state" => tools::handle_get_ci_state(&args, &tracker).await,
                 "get_story" => tools::handle_get_story(&args, &tracker).await,
                 "view_comments" => tools::handle_view_comments(&args, &tracker).await,
+                "dev_in_flight" => tools::handle_dev_in_flight(&tracker).await,
                 "list_ready" => tools::handle_list_ready(&tracker).await,
                 "view_board" => tools_stories::handle_view_board(&args, &tracker).await,
                 "view_velocity" => tools::handle_view_velocity(port, &tracker, &ws_tx).await,
