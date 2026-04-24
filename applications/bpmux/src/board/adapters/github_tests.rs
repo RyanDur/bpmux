@@ -3,8 +3,8 @@
 use chrono::{TimeZone, Utc};
 
 use crate::board::adapters::github::{
-    classify_gate, decode_gate_comments, decode_story_metadata, state_from_labels, state_to_label,
-    story_type_from_labels_or_title, tags_from_labels,
+    classify_gate, decode_gate_comments, decode_story_metadata, is_already_closed_error,
+    state_from_labels, state_to_label, story_type_from_labels_or_title, tags_from_labels,
 };
 use crate::board::domain::{Gate, StoryState, StoryType, Tag};
 
@@ -279,4 +279,19 @@ fn decode_story_metadata_populates_story_type_and_tags_from_labels() {
     let story = decode_story_metadata(&v).unwrap();
     assert_eq!(story.story_type, StoryType::Bug);
     assert_eq!(story.tags, vec![Tag::Blocked]);
+}
+
+#[test]
+fn is_already_closed_error_recognizes_octocrab_phrasings() {
+    assert!(is_already_closed_error("Issue #42 is already closed"));
+    assert!(is_already_closed_error(
+        "the issue is closed and cannot be edited"
+    ));
+}
+
+#[test]
+fn is_already_closed_error_rejects_unrelated_errors() {
+    assert!(!is_already_closed_error("404 Not Found"));
+    assert!(!is_already_closed_error("rate limit exceeded"));
+    assert!(!is_already_closed_error(""));
 }
