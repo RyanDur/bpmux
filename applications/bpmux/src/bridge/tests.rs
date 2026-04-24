@@ -404,3 +404,89 @@ fn pick_most_recent_visible_chat_treats_null_message_type_as_chat() {
         Some("broadcast hello")
     );
 }
+
+mod ingest_poll_loop_tests {
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::time::Duration;
+
+    use crate::board::RefreshDriver;
+    use crate::board::events::BoardEvent;
+    use crate::board::orchestrator::{BoxedFuture, SyncStatus};
+    use crate::board::sync::SyncError;
+    use crate::bridge::run_ingest_poll_loop;
+
+    struct CountingDriver {
+        refresh_all: AtomicUsize,
+        fail_after: Option<usize>,
+    }
+
+    impl CountingDriver {
+        fn new() -> Self {
+            Self {
+                refresh_all: AtomicUsize::new(0),
+                fail_after: None,
+            }
+        }
+        fn failing_after(n: usize) -> Self {
+            Self {
+                refresh_all: AtomicUsize::new(0),
+                fail_after: Some(n),
+            }
+        }
+    }
+
+    impl RefreshDriver for CountingDriver {
+        fn refresh_story(
+            &self,
+            _n: u64,
+        ) -> BoxedFuture<'_, Result<Option<crate::board::Story>, SyncError>> {
+            Box::pin(async { Ok(None) })
+        }
+        fn refresh_all(&self) -> BoxedFuture<'_, Result<(), SyncError>> {
+            let prev = self.refresh_all.fetch_add(1, Ordering::SeqCst);
+            let should_fail = self.fail_after.is_some_and(|n| prev >= n);
+            Box::pin(async move {
+                if should_fail {
+                    Err(SyncError::Other("simulated".into()))
+                } else {
+                    Ok(())
+                }
+            })
+        }
+        fn mutate_sync(&self, _e: BoardEvent) -> Result<(), SyncError> {
+            Ok(())
+        }
+        fn snapshot_status(&self) -> SyncStatus {
+            SyncStatus::default()
+        }
+    }
+
+    #[tokio::test]
+    async fn refresh_all_fires_on_each_interval_tick() {
+        let driver = Arc::new(CountingDriver::new());
+        let driver_dyn: Arc<dyn RefreshDriver> = driver.clone();
+        let handle = tokio::spawn(run_ingest_poll_loop(driver_dyn, Duration::from_millis(50)));
+        tokio::time::sleep(Duration::from_millis(25)).await;
+        assert_eq!(driver.refresh_all.load(Ordering::SeqCst), 0);
+        tokio::time::sleep(Duration::from_millis(250)).await;
+        let count = driver.refresh_all.load(Ordering::SeqCst);
+        assert!(count >= 3, "expected >=3 ticks in ~275ms, saw {count}");
+        handle.abort();
+    }
+
+    #[tokio::test]
+    async fn loop_survives_refresh_errors() {
+        let driver = Arc::new(CountingDriver::failing_after(1));
+        let driver_dyn: Arc<dyn RefreshDriver> = driver.clone();
+        let handle = tokio::spawn(run_ingest_poll_loop(driver_dyn, Duration::from_millis(30)));
+        tokio::time::sleep(Duration::from_millis(200)).await;
+        let count = driver.refresh_all.load(Ordering::SeqCst);
+        assert!(
+            count >= 3,
+            "loop must keep ticking across errors, saw {count}"
+        );
+        assert!(!handle.is_finished(), "task must not terminate on error");
+        handle.abort();
+    }
+}

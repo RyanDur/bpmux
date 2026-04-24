@@ -771,12 +771,40 @@ pub fn run_bridge(
             Arc::clone(&server.board),
             adapter,
         ));
-        let server = server.with_refresh(orchestrator);
+        let refresh_driver: Arc<dyn crate::board::RefreshDriver> = orchestrator.clone();
+        let server = server.with_refresh(refresh_driver.clone());
+        tokio::spawn(run_ingest_poll_loop(
+            refresh_driver,
+            poll_interval_from_env(),
+        ));
         let (stdin, stdout) = rmcp::transport::io::stdio();
         let service = server.serve((stdin, stdout)).await?;
         service.waiting().await?;
         anyhow::Ok(())
     })
+}
+
+pub(in crate::bridge) async fn run_ingest_poll_loop(
+    refresh: Arc<dyn crate::board::RefreshDriver>,
+    interval: std::time::Duration,
+) {
+    let start = tokio::time::Instant::now() + interval;
+    let mut ticker = tokio::time::interval_at(start, interval);
+    ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+    loop {
+        ticker.tick().await;
+        if let Err(e) = refresh.refresh_all().await {
+            crate::session::diag::log_diag(&format!("bridge: background ingest poll failed: {e}"));
+        }
+    }
+}
+
+fn poll_interval_from_env() -> std::time::Duration {
+    let secs = std::env::var("BPMUX_POLL_INTERVAL_SECS")
+        .ok()
+        .and_then(|s| s.parse::<u64>().ok())
+        .unwrap_or(60);
+    std::time::Duration::from_secs(secs.max(1))
 }
 
 async fn seed_board_from_tracker<T: tracker::StoryTracker>(server: &BridgeServer<T>) {
