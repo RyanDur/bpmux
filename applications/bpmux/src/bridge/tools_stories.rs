@@ -381,6 +381,28 @@ pub(super) async fn handle_deliver_story(
     // #391: persist the verified_observation as a comment on the
     // story so designer + pm see it at desk-check + accept gates.
     // Comment is auditable; fits the existing comment substrate.
+    if let Some(r) = refresh {
+        let meta = crate::board::events::EventMeta {
+            actor: crate::transport::ws::short_name(agent_name).to_string(),
+            ts: chrono::Utc::now(),
+            peer_id: crate::board::PeerId::local(),
+        };
+        r.mutate_sync(crate::board::BoardEvent::GateCommentAppended {
+            meta: meta.clone(),
+            number,
+            gate: crate::board::domain::Gate::Delivered,
+            payload: Some(verified_observation.to_string()),
+        })
+        .map_err(|e| format!("#{number} gate enqueue failed: {e}"))?;
+        r.mutate_sync(crate::board::BoardEvent::StateTransitioned {
+            meta,
+            number,
+            new_state: crate::board::domain::StoryState::Delivered,
+        })
+        .map_err(|e| format!("#{number} state enqueue failed: {e}"))?;
+        broadcast_board_invalidate(ws_tx).await;
+        return Ok(format!("#{number} delivered: signals sent, labels updated"));
+    }
     let obs_comment =
         format!("**verified_observation** (dev deliver-gate):\n\n{verified_observation}");
     if let Err(e) = tracker.comment_on_story(number, &obs_comment).await {

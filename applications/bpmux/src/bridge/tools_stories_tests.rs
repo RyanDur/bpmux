@@ -1841,3 +1841,80 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
         }
     ));
 }
+
+#[tokio::test]
+async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_state_events() {
+    use crate::board::BoardEvent;
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Gate, Story, StoryState};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let seeded = Story::new_minimal(
+        204,
+        "t".into(),
+        StoryState::InProgress,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "dev".into(),
+    );
+    adapter.seed_stories(vec![seeded]);
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orchestrator.refresh_all().await.unwrap();
+
+    let ws_tx = connected_ws_sink_for_test().await;
+    let tracker = super::tracker::FakeTracker::default();
+    let mut args = serde_json::Map::new();
+    args.insert("number".into(), serde_json::json!(204));
+    args.insert(
+        "verified_observation".into(),
+        serde_json::json!("drove the falsifier scenario end-to-end"),
+    );
+    let result = handle_deliver_story(
+        &args,
+        "dev:claude-code",
+        &ws_tx,
+        &tracker,
+        Some(&orchestrator),
+    )
+    .await;
+    assert!(result.is_ok(), "migrated path should succeed: {result:?}");
+
+    let story = store.story(204).unwrap();
+    assert_eq!(story.state, StoryState::Delivered);
+    let gates = story.gate_comments.as_ref().expect("gate_comments seeded");
+    assert!(
+        gates.iter().any(|g| g.gate == Gate::Delivered
+            && g.payload.as_deref() == Some("drove the falsifier scenario end-to-end")),
+        "gate_comments should contain Delivered with the observation payload: {gates:?}"
+    );
+
+    let drained = orchestrator.drain_pending().await.unwrap();
+    assert_eq!(drained, 2, "both events must reach the adapter via drain");
+    let pushed = adapter.pushed_events();
+    assert_eq!(pushed.len(), 2);
+    assert!(matches!(
+        &pushed[0],
+        BoardEvent::GateCommentAppended {
+            number: 204,
+            gate: Gate::Delivered,
+            payload: Some(p),
+            ..
+        } if p == "drove the falsifier scenario end-to-end"
+    ));
+    assert!(matches!(
+        &pushed[1],
+        BoardEvent::StateTransitioned {
+            number: 204,
+            new_state: StoryState::Delivered,
+            ..
+        }
+    ));
+}
