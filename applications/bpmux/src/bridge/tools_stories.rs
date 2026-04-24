@@ -436,6 +436,15 @@ pub(super) async fn handle_accept_story(
             "bridge: remove-label delivered failed for #{number}: {e}"
         ));
     }
+    // #418: structured audit-trail comment so the gate-timeline view
+    // has a timestamp + actor for acceptance. No body payload — the
+    // signal IS the transition.
+    let accept_comment = format!("**accepted** (accept-gate by {agent_name})");
+    if let Err(e) = tracker.comment_on_story(number, &accept_comment).await {
+        crate::session::diag::log_diag(&format!(
+            "bridge: accept audit comment failed for #{number}: {e}"
+        ));
+    }
     let close_result = tracker.close_story(number).await;
     broadcast_board_invalidate(ws_tx).await;
     match close_result {
@@ -477,12 +486,8 @@ pub(super) async fn handle_reject_story(
             "bridge: add-label rejected failed for #{number}: {e}"
         ));
     }
-    // #419: structured prefix lets get_story's rework-context enricher
-    // identify this comment as the rejection-reason when the rework
-    // cycle picks up. Raw `reason` made it indistinguishable from any
-    // other free-form comment.
     let rejection_comment =
-        format!("**rejection_reason** (reject-gate by {agent_name}):\n\n{reason}");
+        super::tools::format_rejection_comment("reject-gate", agent_name, reason);
     let result = tracker.comment_on_story(number, &rejection_comment).await;
     broadcast_board_invalidate(ws_tx).await;
     match result {
@@ -522,6 +527,16 @@ pub(super) async fn handle_pass_desk_check(
             .await
             .map_err(|e| format!("#{number} signal send failed: {e}"))?;
     }
+    // #418: structured audit-trail comment parallels the
+    // **rejection_reason** pattern on fail_desk_check. PASS is a
+    // transition without reasoning-payload — the marker+actor+ts
+    // is the signal.
+    let pass_comment = format!("**pass_desk_check** (desk-check-pass by {agent_name})");
+    if let Err(e) = tracker.comment_on_story(number, &pass_comment).await {
+        crate::session::diag::log_diag(&format!(
+            "bridge: pass_desk_check audit comment failed for #{number}: {e}"
+        ));
+    }
     let result = tracker.add_label(number, LABEL_READY_FOR_ACCEPT).await;
     broadcast_board_invalidate(ws_tx).await;
     match result {
@@ -557,12 +572,8 @@ pub(super) async fn handle_fail_desk_check(
     ws_send(ws_tx, signal)
         .await
         .map_err(|e| format!("#{number} signal send failed: {e}"))?;
-    // #419: persist the failure reason as a structured comment so
-    // pickup of the rework cycle can surface WHY without scrolling
-    // chat. Previously only lived in the chat signal, which decays
-    // past the next restart.
     let fail_comment =
-        format!("**rejection_reason** (desk-check-fail by {agent_name}):\n\n{reason}");
+        super::tools::format_rejection_comment("desk-check-fail", agent_name, reason);
     if let Err(e) = tracker.comment_on_story(number, &fail_comment).await {
         crate::session::diag::log_diag(&format!(
             "bridge: desk-check-fail comment failed for #{number}: {e}"

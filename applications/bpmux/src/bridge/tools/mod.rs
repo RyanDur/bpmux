@@ -66,6 +66,7 @@ pub(in crate::bridge) use list_peer_lessons::handle_list_peer_lessons;
 pub(in crate::bridge) use list_ready::handle_list_ready;
 pub(in crate::bridge) use read_messages::handle_read_messages;
 pub(in crate::bridge) use remove_principle::handle_remove_principle;
+pub(in crate::bridge) use rework_context::format_rejection_comment;
 pub(in crate::bridge) use save_bookmark::handle_save_bookmark;
 pub(in crate::bridge) use save_briefing::handle_save_briefing;
 pub(in crate::bridge) use save_lesson::handle_save_lesson;
