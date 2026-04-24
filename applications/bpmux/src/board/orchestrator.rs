@@ -7,7 +7,7 @@ use chrono::{DateTime, Utc};
 use serde::Serialize;
 use tokio::sync::mpsc;
 
-use super::domain::{FreeComment, Story};
+use super::domain::{FreeComment, GateComment, Story};
 use super::events::{BoardEvent, EventMeta};
 use super::peer::PeerId;
 use super::store::BoardStore;
@@ -26,6 +26,10 @@ pub trait RefreshDriver: Send + Sync {
         &self,
         number: u64,
     ) -> BoxedFuture<'_, Result<Vec<FreeComment>, SyncError>>;
+    fn fetch_gate_comments(
+        &self,
+        number: u64,
+    ) -> BoxedFuture<'_, Result<Vec<GateComment>, SyncError>>;
 }
 
 #[derive(Debug, Clone, Default, Serialize)]
@@ -150,6 +154,25 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         }
     }
 
+    pub async fn fetch_gate_comments(&self, number: u64) -> Result<Vec<GateComment>, SyncError> {
+        match self.adapter.fetch_gate_comments(number).await {
+            Ok(comments) => {
+                let event = BoardEvent::GateCommentsFetched {
+                    meta: cache_fill_meta(),
+                    number,
+                    comments: comments.clone(),
+                };
+                self.store.apply(&event);
+                record_ingest_success(&self.status);
+                Ok(comments)
+            }
+            Err(e) => {
+                record_error(&self.status, &format!("fetch_gate_comments({number}): {e}"));
+                Err(e)
+            }
+        }
+    }
+
     pub async fn drain_once(&self) -> Result<usize, SyncError> {
         let mut rx = self
             .pending_rx
@@ -220,6 +243,13 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         number: u64,
     ) -> BoxedFuture<'_, Result<Vec<FreeComment>, SyncError>> {
         Box::pin(self.fetch_free_comments(number))
+    }
+
+    fn fetch_gate_comments(
+        &self,
+        number: u64,
+    ) -> BoxedFuture<'_, Result<Vec<GateComment>, SyncError>> {
+        Box::pin(self.fetch_gate_comments(number))
     }
 }
 

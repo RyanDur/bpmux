@@ -46,6 +46,11 @@ pub enum BoardEvent {
         number: u64,
         comments: Vec<FreeComment>,
     },
+    GateCommentsFetched {
+        meta: EventMeta,
+        number: u64,
+        comments: Vec<GateComment>,
+    },
 }
 
 impl BoardEvent {
@@ -56,7 +61,8 @@ impl BoardEvent {
             | BoardEvent::GateCommentAppended { meta, .. }
             | BoardEvent::FreeCommentAppended { meta, .. }
             | BoardEvent::BodyFetched { meta, .. }
-            | BoardEvent::FreeCommentsFetched { meta, .. } => meta,
+            | BoardEvent::FreeCommentsFetched { meta, .. }
+            | BoardEvent::GateCommentsFetched { meta, .. } => meta,
         }
     }
 
@@ -67,7 +73,8 @@ impl BoardEvent {
             | BoardEvent::GateCommentAppended { number, .. }
             | BoardEvent::FreeCommentAppended { number, .. }
             | BoardEvent::BodyFetched { number, .. }
-            | BoardEvent::FreeCommentsFetched { number, .. } => *number,
+            | BoardEvent::FreeCommentsFetched { number, .. }
+            | BoardEvent::GateCommentsFetched { number, .. } => *number,
         }
     }
 }

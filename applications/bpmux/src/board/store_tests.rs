@@ -108,9 +108,10 @@ fn gate_comment_appended_event_accumulates() {
         payload: Some("observation".to_string()),
     });
     let story = store.story(1).unwrap();
-    assert_eq!(story.gate_comments.len(), 2);
-    assert_eq!(story.gate_comments[0].gate, Gate::Pickup);
-    assert_eq!(story.gate_comments[1].gate, Gate::Delivered);
+    let gates = story.gate_comments.as_ref().unwrap();
+    assert_eq!(gates.len(), 2);
+    assert_eq!(gates[0].gate, Gate::Pickup);
+    assert_eq!(gates[1].gate, Gate::Delivered);
 }
 
 #[test]

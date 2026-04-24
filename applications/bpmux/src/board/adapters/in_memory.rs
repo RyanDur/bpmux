@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Mutex;
 
-use crate::board::domain::{FreeComment, Story};
+use crate::board::domain::{FreeComment, GateComment, Story};
 use crate::board::events::BoardEvent;
 use crate::board::sync::{SourceAdapter, SyncError};
 
@@ -15,6 +15,7 @@ struct InnerState {
     stories: HashMap<u64, Story>,
     bodies: HashMap<u64, String>,
     free_comments: HashMap<u64, Vec<FreeComment>>,
+    gate_comments: HashMap<u64, Vec<GateComment>>,
     pushed_events: Vec<BoardEvent>,
     failures_on_push: bool,
     failures_on_ingest: bool,
@@ -40,6 +41,11 @@ impl InMemorySourceAdapter {
     pub fn seed_free_comments(&self, number: u64, comments: Vec<FreeComment>) {
         let mut s = self.state.lock().unwrap_or_else(|e| e.into_inner());
         s.free_comments.insert(number, comments);
+    }
+
+    pub fn seed_gate_comments(&self, number: u64, comments: Vec<GateComment>) {
+        let mut s = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        s.gate_comments.insert(number, comments);
     }
 
     pub fn pushed_events(&self) -> Vec<BoardEvent> {
@@ -107,6 +113,16 @@ impl SourceAdapter for InMemorySourceAdapter {
             ));
         }
         Ok(s.free_comments.get(&number).cloned().unwrap_or_default())
+    }
+
+    async fn fetch_gate_comments(&self, number: u64) -> Result<Vec<GateComment>, SyncError> {
+        let s = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        if s.failures_on_ingest {
+            return Err(SyncError::SourceUnreachable(
+                "in-memory test failure".into(),
+            ));
+        }
+        Ok(s.gate_comments.get(&number).cloned().unwrap_or_default())
     }
 
     async fn push_event(&self, event: &BoardEvent) -> Result<(), SyncError> {

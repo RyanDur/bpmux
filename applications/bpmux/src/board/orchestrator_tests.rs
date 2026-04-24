@@ -303,6 +303,52 @@ async fn fetch_free_comments_caches_comments_and_fires_event() {
 }
 
 #[tokio::test]
+async fn fetch_gate_comments_caches_comments_and_fires_event() {
+    use crate::board::domain::{Gate, GateComment};
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    adapter.seed_stories(vec![seed_story(11, StoryState::Ready)]);
+    let seeded = vec![GateComment {
+        gate: Gate::Pickup,
+        ts: Utc.with_ymd_and_hms(2026, 4, 20, 10, 0, 0).unwrap(),
+        actor: "dev".into(),
+        payload: Some("paraphrase".into()),
+    }];
+    adapter.seed_gate_comments(11, seeded.clone());
+    let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+    orchestrator.ingest_once().await.unwrap();
+    assert_eq!(store.story(11).unwrap().gate_comments, None);
+
+    let mut rx = store.subscribe();
+    let returned = orchestrator.fetch_gate_comments(11).await.unwrap();
+    assert_eq!(returned, seeded);
+    assert_eq!(store.story(11).unwrap().gate_comments.unwrap(), seeded);
+    let event = rx.recv().await.unwrap();
+    assert!(matches!(
+        event,
+        BoardEvent::GateCommentsFetched { number: 11, .. }
+    ));
+}
+
+#[tokio::test]
+async fn fetch_gate_comments_records_error_when_source_fails() {
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    adapter.seed_stories(vec![seed_story(11, StoryState::Ready)]);
+    adapter.set_ingest_failures(true);
+    let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+    let err = orchestrator.fetch_gate_comments(11).await.unwrap_err();
+    assert!(matches!(err, crate::board::SyncError::SourceUnreachable(_)));
+    assert!(
+        orchestrator
+            .snapshot_status()
+            .last_error
+            .unwrap()
+            .contains("fetch_gate_comments")
+    );
+}
+
+#[tokio::test]
 async fn drain_pending_via_refresh_driver_is_equivalent_to_drain_once() {
     use crate::board::RefreshDriver;
     let store = Arc::new(BoardStore::new());

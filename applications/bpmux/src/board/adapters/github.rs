@@ -65,6 +65,15 @@ impl SourceAdapter for GitHubSourceAdapter {
         Ok(raw.iter().filter_map(decode_free_comment).collect())
     }
 
+    async fn fetch_gate_comments(&self, number: u64) -> Result<Vec<GateComment>, SyncError> {
+        let raw = self
+            .inner
+            .list_story_comments(number)
+            .await
+            .map_err(SyncError::Other)?;
+        Ok(decode_gate_comments(&raw))
+    }
+
     async fn push_event(&self, event: &BoardEvent) -> Result<(), SyncError> {
         match event {
             BoardEvent::StoryCreated { .. } => Err(SyncError::Other(
@@ -101,7 +110,9 @@ impl SourceAdapter for GitHubSourceAdapter {
                     .map_err(SyncError::Other)?;
                 Ok(())
             }
-            BoardEvent::BodyFetched { .. } | BoardEvent::FreeCommentsFetched { .. } => Ok(()),
+            BoardEvent::BodyFetched { .. }
+            | BoardEvent::FreeCommentsFetched { .. }
+            | BoardEvent::GateCommentsFetched { .. } => Ok(()),
         }
     }
 }

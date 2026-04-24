@@ -63,7 +63,7 @@ pub struct Story {
     pub filed_by: String,
     pub body: Option<String>,
     pub free_comments: Option<Vec<FreeComment>>,
-    pub gate_comments: Vec<GateComment>,
+    pub gate_comments: Option<Vec<GateComment>>,
 }
 
 impl Story {
@@ -82,7 +82,7 @@ impl Story {
             filed_by,
             body: None,
             free_comments: None,
-            gate_comments: Vec::new(),
+            gate_comments: None,
         }
     }
 }

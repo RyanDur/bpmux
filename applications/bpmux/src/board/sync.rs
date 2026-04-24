@@ -44,6 +44,11 @@ pub trait SourceAdapter: Send + Sync {
         number: u64,
     ) -> impl std::future::Future<Output = Result<Vec<super::domain::FreeComment>, SyncError>> + Send;
 
+    fn fetch_gate_comments(
+        &self,
+        number: u64,
+    ) -> impl std::future::Future<Output = Result<Vec<super::domain::GateComment>, SyncError>> + Send;
+
     fn push_event(
         &self,
         event: &BoardEvent,

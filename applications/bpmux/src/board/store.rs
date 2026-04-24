@@ -56,7 +56,7 @@ impl BoardStore {
                     filed_by: meta.actor.clone(),
                     body: Some(body.clone()),
                     free_comments: Some(Vec::new()),
-                    gate_comments: Vec::new(),
+                    gate_comments: Some(Vec::new()),
                 };
                 w.insert(*n, story);
             }
@@ -72,9 +72,11 @@ impl BoardStore {
                 ..
             } => {
                 if let Some(story) = w.get_mut(&number) {
-                    story
-                        .gate_comments
-                        .push(GateComment::from_event(*gate, meta, payload.clone()));
+                    let entry = GateComment::from_event(*gate, meta, payload.clone());
+                    match &mut story.gate_comments {
+                        Some(list) => list.push(entry),
+                        None => story.gate_comments = Some(vec![entry]),
+                    }
                 }
             }
             BoardEvent::FreeCommentAppended { meta, body, .. } => {
@@ -94,6 +96,11 @@ impl BoardStore {
             BoardEvent::FreeCommentsFetched { comments, .. } => {
                 if let Some(story) = w.get_mut(&number) {
                     story.free_comments = Some(comments.clone());
+                }
+            }
+            BoardEvent::GateCommentsFetched { comments, .. } => {
+                if let Some(story) = w.get_mut(&number) {
+                    story.gate_comments = Some(comments.clone());
                 }
             }
         }

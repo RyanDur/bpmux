@@ -476,6 +476,12 @@ mod ingest_poll_loop_tests {
         ) -> BoxedFuture<'_, Result<Vec<crate::board::FreeComment>, SyncError>> {
             Box::pin(async { Ok(Vec::new()) })
         }
+        fn fetch_gate_comments(
+            &self,
+            _n: u64,
+        ) -> BoxedFuture<'_, Result<Vec<crate::board::GateComment>, SyncError>> {
+            Box::pin(async { Ok(Vec::new()) })
+        }
     }
 
     #[tokio::test]
