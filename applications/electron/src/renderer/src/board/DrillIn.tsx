@@ -8,9 +8,25 @@ import {
   type TimelineGate
 } from '../hooks/useTimeline'
 import { BOARD_INVALIDATE_MARKER, type ChatMessage } from '../transport/types'
+import StoryBadge from './StoryBadge'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import { storyTypeFromLabels, type BoardStory } from './types'
 import './DrillIn.css'
+
+const LIFECYCLE_LABELS: ReadonlySet<string> = new Set([
+  'delivered',
+  'ready for accept',
+  'ready-for-accept',
+  'desk-check-fail',
+  'desk-check-pass',
+  'blocked',
+  'rework',
+  'rejected',
+  'ready'
+])
+
+const isLifecycleLabel = (label: string): boolean =>
+  LIFECYCLE_LABELS.has(label) || label.startsWith('blocked-by:')
 
 // Human-readable label per lifecycle gate. Keeps the rendering code
 // in DrillIn concise — map lives at module scope so the object
@@ -49,7 +65,7 @@ const MAJOR_GATES: ReadonlySet<TimelineGate> = new Set([
 // as 2026-04-01 per the workflow rollout window.
 const EVENT_LOG_START = Date.parse('2026-04-01T00:00:00Z')
 
-function labelFor(e: ClassifiedEvent): string {
+const labelFor = (e: ClassifiedEvent): string => {
   if (e.gate) return GATE_LABEL[e.gate]
   if (e.raw.event === 'labeled') return `Labeled: ${e.raw.label ?? '?'}`
   if (e.raw.event === 'unlabeled') return `Unlabeled: ${e.raw.label ?? '?'}`
@@ -60,20 +76,17 @@ function labelFor(e: ClassifiedEvent): string {
   return e.raw.event
 }
 
-function truncate(body: string, max = 120): string {
+const truncate = (body: string, max = 120): string => {
   const collapsed = body.replace(/\s+/g, ' ').trim()
   if (collapsed.length <= max) return collapsed
   return `${collapsed.slice(0, max - 1)}…`
 }
 
-// Render the filtered-and-grouped timeline. Extracted to a helper so
-// DrillIn's main return stays a thin JSX tree — the filter/grouping
-// logic has enough branches that inlining would hurt readability.
-function renderTimelineList(
+const renderTimelineList = (
   events: ClassifiedEvent[],
   showAll: boolean,
   story: BoardStory
-): React.JSX.Element {
+): React.JSX.Element => {
   const visible = showAll
     ? events
     : events.filter((e) => e.gate !== null && MAJOR_GATES.has(e.gate))
@@ -168,20 +181,12 @@ interface Props {
   onStoryMutated: (story: BoardStory) => void
 }
 
-function isInvalidateMarker(m: ChatMessage): boolean {
-  return m.text === BOARD_INVALIDATE_MARKER
-}
+const isInvalidateMarker = (m: ChatMessage): boolean => m.text === BOARD_INVALIDATE_MARKER
 
-// Merge the server-authoritative list with any lingering optimistic
-// comments. We trust the server for its ids; an optimistic comment
-// whose body matches a server comment (by the same author, within a
-// 10-second window) is assumed replaced by the server version and
-// dropped. Anything else optimistic stays — covers the "POST pending,
-// refetch fired anyway" window.
-function mergeComments(
+const mergeComments = (
   server: readonly Comment[],
   optimistic: readonly Comment[]
-): Comment[] {
+): Comment[] => {
   if (optimistic.length === 0) return [...server]
   const survivors = optimistic.filter((opt) => {
     const optMs = new Date(opt.created_at).getTime()
@@ -200,7 +205,7 @@ type BusyKind = 'accept' | 'reject' | null
 
 const TOAST_MS = 4000
 
-function DrillIn({
+const DrillIn = ({
   story,
   isOwner,
   apiBase,
@@ -211,7 +216,7 @@ function DrillIn({
   focusTimeline,
   onBack,
   onStoryMutated
-}: Props): React.JSX.Element {
+}: Props): React.JSX.Element => {
   const [mode, setMode] = useState<ActionMode>('idle')
   const [busy, setBusy] = useState<BusyKind>(null)
   const [note, setNote] = useState<string>('')
@@ -648,38 +653,29 @@ function DrillIn({
           <StoryTypeGlyph type={type} />
           <b className="drill-in-title-text">{story.title}</b>
         </h3>
-        <dl className="drill-in-meta-list">
-          <dt>state</dt>
-          <dd>{story.state}</dd>
-          <dt>labels</dt>
-          <dd>
-            {story.labels.length === 0 ? (
-              <em>(none)</em>
-            ) : (
-              <ul className="drill-in-chips">
-                {story.labels.map((label) => (
-                  <li key={label} className="drill-in-chip">
-                    {label}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </dd>
-          <dt>assignees</dt>
-          <dd>
-            {story.assignees.length === 0 ? (
-              <em>(none)</em>
-            ) : (
-              <ul className="drill-in-chips">
-                {story.assignees.map((a) => (
-                  <li key={a} className="drill-in-chip">
-                    {a}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </dd>
-        </dl>
+        <StoryBadge story={story} />
+        {(() => {
+          const meaningfulLabels = story.labels.filter((label) => !isLifecycleLabel(label))
+          if (meaningfulLabels.length === 0) return null
+          return (
+            <ul className="drill-in-chips" data-test="drill-in-labels">
+              {meaningfulLabels.map((label) => (
+                <li key={label} className="drill-in-chip">
+                  {label}
+                </li>
+              ))}
+            </ul>
+          )
+        })()}
+        {story.assignees.length > 0 && (
+          <ul className="drill-in-chips" data-test="drill-in-assignees">
+            {story.assignees.map((a) => (
+              <li key={a} className="drill-in-chip">
+                {a}
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section className="drill-in-body" aria-label="Story body">
@@ -877,8 +873,7 @@ function DrillIn({
   )
 }
 
-function BackArrow(): React.JSX.Element {
-  return (
+const BackArrow = (): React.JSX.Element => (
     <svg
       width="12"
       height="12"
@@ -897,6 +892,5 @@ function BackArrow(): React.JSX.Element {
       />
     </svg>
   )
-}
 
 export default DrillIn
