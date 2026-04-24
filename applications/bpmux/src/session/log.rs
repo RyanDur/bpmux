@@ -10,6 +10,8 @@ use crate::session::instrumented_storage::InstrumentedStorage;
 use crate::session::message::Message;
 use crate::session::storage::{FileStorage, Storage};
 
+pub const BROADCAST_CHANNEL_CAPACITY: usize = 10_000;
+
 pub struct Session {
     pub dir: PathBuf,
     pub id: String,

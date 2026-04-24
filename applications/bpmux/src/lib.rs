@@ -171,7 +171,8 @@ fn run_server_only(cli: &Cli) -> anyhow::Result<()> {
     let base = resolve_session_base(&cli.session_base)?;
     std::fs::create_dir_all(&base)?;
     let session_dir = session::resume_or_create_session(&base)?;
-    let (wake_tx, _wake_rx) = broadcast::channel::<session::Message>(256);
+    let (wake_tx, _wake_rx) =
+        broadcast::channel::<session::Message>(session::BROADCAST_CHANNEL_CAPACITY);
     let session = Arc::new(session::Session::new(
         session_dir,
         cli.name.clone(),
@@ -221,7 +222,8 @@ pub fn run() -> anyhow::Result<()> {
     std::fs::create_dir_all(&base)?;
     let session_dir = session::resume_or_create_session(&base)?;
 
-    let (wake_tx, mut wake_rx) = broadcast::channel::<session::Message>(256);
+    let (wake_tx, mut wake_rx) =
+        broadcast::channel::<session::Message>(session::BROADCAST_CHANNEL_CAPACITY);
     let session = Arc::new(session::Session::new(
         session_dir,
         cli.name.clone(),

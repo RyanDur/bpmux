@@ -119,3 +119,81 @@ fn peer_count_shared_through_arc() {
     server_session.peer_disconnected();
     assert_eq!(session.peer_count(), 0);
 }
+
+fn burst_message(i: usize) -> Message {
+    Message {
+        from: "burst-producer".to_string(),
+        text: format!("msg {i}"),
+        ts: Utc::now(),
+        ..Message::default()
+    }
+}
+
+async fn run_burst_and_count_lag(capacity: usize, burst_size: usize) -> u64 {
+    let (tx, mut rx) = broadcast::channel::<Message>(capacity);
+    for i in 0..burst_size {
+        tx.send(burst_message(i)).expect("send");
+    }
+    let mut lagged = 0u64;
+    for _ in 0..burst_size {
+        match rx.try_recv() {
+            Ok(_) => {}
+            Err(tokio::sync::broadcast::error::TryRecvError::Lagged(n)) => lagged += n,
+            Err(tokio::sync::broadcast::error::TryRecvError::Empty) => break,
+            Err(tokio::sync::broadcast::error::TryRecvError::Closed) => break,
+        }
+    }
+    lagged
+}
+
+#[tokio::test]
+async fn broadcast_capacity_old_size_drops_under_large_burst() {
+    let lagged = run_burst_and_count_lag(256, 500).await;
+    assert!(
+        lagged > 0,
+        "baseline: 256-slot buffer should lag on a 500-message burst (got {lagged}); this test proves the capacity increase to {BROADCAST_CHANNEL_CAPACITY} is load-bearing"
+    );
+}
+
+#[tokio::test]
+async fn broadcast_capacity_new_size_survives_large_burst() {
+    let lagged = run_burst_and_count_lag(BROADCAST_CHANNEL_CAPACITY, 500).await;
+    assert_eq!(
+        lagged, 0,
+        "{BROADCAST_CHANNEL_CAPACITY}-slot buffer should not lag on a 500-message burst"
+    );
+}
+
+#[tokio::test]
+async fn broadcast_capacity_tolerates_burst_under_deliberating_subscriber() {
+    let (tx, mut rx) = broadcast::channel::<Message>(BROADCAST_CHANNEL_CAPACITY);
+    let producer = tokio::spawn({
+        let tx = tx.clone();
+        async move {
+            for i in 0..50 {
+                tx.send(burst_message(i)).expect("send");
+                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            }
+        }
+    });
+    let mut received = 0usize;
+    let mut lagged = 0u64;
+    for _ in 0..50 {
+        match rx.recv().await {
+            Ok(_) => {
+                received += 1;
+                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+            }
+            Err(broadcast::error::RecvError::Lagged(n)) => {
+                lagged += n;
+            }
+            Err(broadcast::error::RecvError::Closed) => break,
+        }
+    }
+    producer.await.expect("producer join");
+    assert_eq!(
+        lagged, 0,
+        "subscriber deliberating 500ms/msg through a 50-msg burst should not lag at capacity {BROADCAST_CHANNEL_CAPACITY}"
+    );
+    assert_eq!(received, 50, "should receive all 50 messages");
+}
