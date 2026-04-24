@@ -457,7 +457,7 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                 "View team velocity metrics (#209a) computed from workflow-signal timestamps over a rolling 14-day window. Returns JSON with delivered count, delivered-per-day, median pickup→deliver hours, median deliver→accept hours, rework rate, and a `sparse` flag when under-3-deliveries makes the medians indicative only. Objective data — no self-report. Also opens the velocity view in Ryan's TUI (project panel) so he can see it alongside your response — call this when he asks about velocity, not proactively.",
             ),
             crate::mcp::tools::create_story_tool(
-                "Create a new story (GitHub issue). No host permission needed. Story starts unlabeled in the icebox.",
+                "Create a new story (GitHub issue). PM ONLY — dev/designer/ryan/other roles are rejected with a message redirecting to broadcast: surface the pain in chat and pm files the story. Story starts unlabeled in the icebox.",
             ),
             crate::mcp::tools::start_story_tool(
                 "Mark a story as started. DEV ONLY — other roles are rejected with a clear message.",
@@ -599,7 +599,10 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                 "list_ready" => tools::handle_list_ready(&tracker).await,
                 "view_board" => tools_stories::handle_view_board(&args, &tracker).await,
                 "view_velocity" => tools::handle_view_velocity(port, &tracker, &ws_tx).await,
-                "create_story" => tools_stories::handle_create_story(&args, &ws_tx, &tracker).await,
+                "create_story" => {
+                    let current_name = name.lock().await;
+                    tools_stories::handle_create_story(&args, &current_name, &ws_tx, &tracker).await
+                }
                 "start_story" => {
                     let current_name = name.lock().await;
                     tools_stories::handle_start_story(&args, &current_name, &ws_tx, &tracker).await

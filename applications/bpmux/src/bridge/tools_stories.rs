@@ -177,9 +177,17 @@ pub(super) async fn handle_view_board(
 
 pub(super) async fn handle_create_story(
     args: &serde_json::Map<String, serde_json::Value>,
+    agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
     tracker: &impl super::tracker::StoryTracker,
 ) -> Result<String, String> {
+    if role_from_name(agent_name) != "pm" {
+        return Err(
+            "create_story is pm-lane. If you have a pain to file, surface it in broadcast chat \
+             and pm will file the story."
+                .to_string(),
+        );
+    }
     let title = args
         .get("title")
         .and_then(|v| v.as_str())

@@ -703,6 +703,80 @@ async fn octocrab_tracker_get_story_title_returns_known_story() {
 // ── #391: observation-falsifier gate tests ──
 
 #[tokio::test]
+async fn create_story_rejects_non_pm_role() {
+    let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
+    let args = serde_json::json!({
+        "title": "dev-filed story",
+        "user_job": "as dev, I want X",
+        "observation_falsifier": "reject if X"
+    });
+    for role in ["dev", "designer", "ryan", "unknown"].iter() {
+        let result = handle_create_story(
+            args.as_object().unwrap(),
+            role,
+            &ws_tx,
+            &AlreadyClosedTracker,
+        )
+        .await;
+        assert!(
+            result.is_err(),
+            "create_story should reject {role} calls; got: {result:?}"
+        );
+        let err = result.unwrap_err();
+        assert!(
+            err.contains("pm-lane"),
+            "error should name pm-lane. role={role}, err={err}"
+        );
+        assert!(
+            err.contains("broadcast"),
+            "error should redirect to broadcast. role={role}, err={err}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn create_story_accepts_pm_role() {
+    let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
+    let args = serde_json::json!({
+        "title": "pm-filed story",
+        "user_job": "as pm, I want X",
+        "observation_falsifier": "reject if X"
+    });
+    let result = handle_create_story(
+        args.as_object().unwrap(),
+        "pm",
+        &ws_tx,
+        &AlreadyClosedTracker,
+    )
+    .await;
+    assert!(
+        result.is_ok(),
+        "create_story should accept pm call; got: {result:?}"
+    );
+}
+
+#[tokio::test]
+async fn create_story_accepts_pm_role_with_tool_suffix() {
+    let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
+    let args = serde_json::json!({
+        "title": "pm-filed story",
+        "user_job": "as pm, I want X",
+        "observation_falsifier": "reject if X"
+    });
+    let result = handle_create_story(
+        args.as_object().unwrap(),
+        "pm:claude-code",
+        &ws_tx,
+        &AlreadyClosedTracker,
+    )
+    .await;
+    assert!(
+        result.is_ok(),
+        "create_story should accept pm:claude-code; got: {result:?}"
+    );
+}
+
+#[tokio::test]
 async fn create_story_rejects_missing_user_job() {
     let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
     let args = serde_json::json!({
@@ -711,8 +785,13 @@ async fn create_story_rejects_missing_user_job() {
         "observation_falsifier": "I would reject if X"
         // user_job missing
     });
-    let result =
-        handle_create_story(args.as_object().unwrap(), &ws_tx, &AlreadyClosedTracker).await;
+    let result = handle_create_story(
+        args.as_object().unwrap(),
+        "pm",
+        &ws_tx,
+        &AlreadyClosedTracker,
+    )
+    .await;
     assert!(result.is_err(), "missing user_job should fail");
     let err = result.unwrap_err();
     assert!(
@@ -733,8 +812,13 @@ async fn create_story_rejects_empty_user_job() {
         "user_job": "   ",
         "observation_falsifier": "I would reject if X"
     });
-    let result =
-        handle_create_story(args.as_object().unwrap(), &ws_tx, &AlreadyClosedTracker).await;
+    let result = handle_create_story(
+        args.as_object().unwrap(),
+        "pm",
+        &ws_tx,
+        &AlreadyClosedTracker,
+    )
+    .await;
     assert!(result.is_err(), "whitespace-only user_job should fail");
     assert!(result.unwrap_err().contains("user_job"));
 }
@@ -747,8 +831,13 @@ async fn create_story_rejects_missing_observation_falsifier() {
         "user_job": "When I X, I need Y because Z"
         // observation_falsifier missing
     });
-    let result =
-        handle_create_story(args.as_object().unwrap(), &ws_tx, &AlreadyClosedTracker).await;
+    let result = handle_create_story(
+        args.as_object().unwrap(),
+        "pm",
+        &ws_tx,
+        &AlreadyClosedTracker,
+    )
+    .await;
     assert!(result.is_err(), "missing observation_falsifier should fail");
     let err = result.unwrap_err();
     assert!(
@@ -766,8 +855,13 @@ async fn create_story_succeeds_when_both_fields_provided() {
         "user_job": "When I X, I need Y because Z",
         "observation_falsifier": "I would reject if I observed W"
     });
-    let result =
-        handle_create_story(args.as_object().unwrap(), &ws_tx, &AlreadyClosedTracker).await;
+    let result = handle_create_story(
+        args.as_object().unwrap(),
+        "pm",
+        &ws_tx,
+        &AlreadyClosedTracker,
+    )
+    .await;
     assert!(
         result.is_ok(),
         "populated fields should pass. got: {result:?}"
