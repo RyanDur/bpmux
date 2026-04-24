@@ -240,3 +240,87 @@ async fn end_to_end_seeded_adapter_through_mutate_and_drain() {
         other => panic!("unexpected event: {other:?}"),
     }
 }
+
+#[tokio::test]
+async fn fetch_body_caches_the_body_on_the_story_and_fires_event() {
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    adapter.seed_stories(vec![seed_story(7, StoryState::Ready)]);
+    adapter.seed_body(7, "the body text".into());
+    let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+    orchestrator.ingest_once().await.unwrap();
+    assert_eq!(store.story(7).unwrap().body, None);
+
+    let mut rx = store.subscribe();
+    let returned = orchestrator.fetch_body(7).await.unwrap();
+    assert_eq!(returned, "the body text");
+    assert_eq!(
+        store.story(7).unwrap().body.as_deref(),
+        Some("the body text")
+    );
+    let event = rx.recv().await.unwrap();
+    assert!(matches!(event, BoardEvent::BodyFetched { number: 7, .. }));
+}
+
+#[tokio::test]
+async fn fetch_body_records_error_when_source_fails() {
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    adapter.seed_stories(vec![seed_story(7, StoryState::Ready)]);
+    adapter.set_ingest_failures(true);
+    let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+    let err = orchestrator.fetch_body(7).await.unwrap_err();
+    assert!(matches!(err, crate::board::SyncError::SourceUnreachable(_)));
+    let status = orchestrator.snapshot_status();
+    assert!(status.last_error.unwrap().contains("fetch_body"));
+}
+
+#[tokio::test]
+async fn fetch_free_comments_caches_comments_and_fires_event() {
+    use crate::board::domain::FreeComment;
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    adapter.seed_stories(vec![seed_story(9, StoryState::Ready)]);
+    let seeded = vec![FreeComment {
+        body: "hi".into(),
+        author: "ryan".into(),
+        ts: Utc.with_ymd_and_hms(2026, 4, 20, 10, 0, 0).unwrap(),
+    }];
+    adapter.seed_free_comments(9, seeded.clone());
+    let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+    orchestrator.ingest_once().await.unwrap();
+    assert_eq!(store.story(9).unwrap().free_comments, None);
+
+    let mut rx = store.subscribe();
+    let returned = orchestrator.fetch_free_comments(9).await.unwrap();
+    assert_eq!(returned, seeded);
+    assert_eq!(store.story(9).unwrap().free_comments.unwrap(), seeded);
+    let event = rx.recv().await.unwrap();
+    assert!(matches!(
+        event,
+        BoardEvent::FreeCommentsFetched { number: 9, .. }
+    ));
+}
+
+#[tokio::test]
+async fn drain_pending_via_refresh_driver_is_equivalent_to_drain_once() {
+    use crate::board::RefreshDriver;
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    adapter.seed_stories(vec![seed_story(1, StoryState::Ready)]);
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orchestrator.refresh_all().await.unwrap();
+    orchestrator
+        .mutate_sync(BoardEvent::StateTransitioned {
+            meta: meta(),
+            number: 1,
+            new_state: StoryState::Delivered,
+        })
+        .unwrap();
+    let drained = orchestrator.drain_pending().await.unwrap();
+    assert_eq!(drained, 1);
+    assert_eq!(adapter.pushed_events().len(), 1);
+}

@@ -460,6 +460,18 @@ mod ingest_poll_loop_tests {
         fn snapshot_status(&self) -> SyncStatus {
             SyncStatus::default()
         }
+        fn drain_pending(&self) -> BoxedFuture<'_, Result<usize, SyncError>> {
+            Box::pin(async { Ok(0) })
+        }
+        fn fetch_body(&self, _n: u64) -> BoxedFuture<'_, Result<String, SyncError>> {
+            Box::pin(async { Ok(String::new()) })
+        }
+        fn fetch_free_comments(
+            &self,
+            _n: u64,
+        ) -> BoxedFuture<'_, Result<Vec<crate::board::FreeComment>, SyncError>> {
+            Box::pin(async { Ok(Vec::new()) })
+        }
     }
 
     #[tokio::test]

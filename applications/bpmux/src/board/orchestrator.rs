@@ -7,8 +7,9 @@ use chrono::{DateTime, Utc};
 use serde::Serialize;
 use tokio::sync::mpsc;
 
-use super::domain::Story;
-use super::events::BoardEvent;
+use super::domain::{FreeComment, Story};
+use super::events::{BoardEvent, EventMeta};
+use super::peer::PeerId;
 use super::store::BoardStore;
 use super::sync::{SourceAdapter, SyncError};
 
@@ -19,6 +20,12 @@ pub trait RefreshDriver: Send + Sync {
     fn refresh_all(&self) -> BoxedFuture<'_, Result<(), SyncError>>;
     fn mutate_sync(&self, event: BoardEvent) -> Result<(), SyncError>;
     fn snapshot_status(&self) -> SyncStatus;
+    fn drain_pending(&self) -> BoxedFuture<'_, Result<usize, SyncError>>;
+    fn fetch_body(&self, number: u64) -> BoxedFuture<'_, Result<String, SyncError>>;
+    fn fetch_free_comments(
+        &self,
+        number: u64,
+    ) -> BoxedFuture<'_, Result<Vec<FreeComment>, SyncError>>;
 }
 
 #[derive(Debug, Clone, Default, Serialize)]
@@ -105,6 +112,44 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         self.ingest_once().await
     }
 
+    pub async fn fetch_body(&self, number: u64) -> Result<String, SyncError> {
+        match self.adapter.fetch_story_body(number).await {
+            Ok(body) => {
+                let event = BoardEvent::BodyFetched {
+                    meta: cache_fill_meta(),
+                    number,
+                    body: body.clone(),
+                };
+                self.store.apply(&event);
+                record_ingest_success(&self.status);
+                Ok(body)
+            }
+            Err(e) => {
+                record_error(&self.status, &format!("fetch_body({number}): {e}"));
+                Err(e)
+            }
+        }
+    }
+
+    pub async fn fetch_free_comments(&self, number: u64) -> Result<Vec<FreeComment>, SyncError> {
+        match self.adapter.fetch_free_comments(number).await {
+            Ok(comments) => {
+                let event = BoardEvent::FreeCommentsFetched {
+                    meta: cache_fill_meta(),
+                    number,
+                    comments: comments.clone(),
+                };
+                self.store.apply(&event);
+                record_ingest_success(&self.status);
+                Ok(comments)
+            }
+            Err(e) => {
+                record_error(&self.status, &format!("fetch_free_comments({number}): {e}"));
+                Err(e)
+            }
+        }
+    }
+
     pub async fn drain_once(&self) -> Result<usize, SyncError> {
         let mut rx = self
             .pending_rx
@@ -160,6 +205,29 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
 
     fn snapshot_status(&self) -> SyncStatus {
         self.snapshot_status()
+    }
+
+    fn drain_pending(&self) -> BoxedFuture<'_, Result<usize, SyncError>> {
+        Box::pin(self.drain_once())
+    }
+
+    fn fetch_body(&self, number: u64) -> BoxedFuture<'_, Result<String, SyncError>> {
+        Box::pin(self.fetch_body(number))
+    }
+
+    fn fetch_free_comments(
+        &self,
+        number: u64,
+    ) -> BoxedFuture<'_, Result<Vec<FreeComment>, SyncError>> {
+        Box::pin(self.fetch_free_comments(number))
+    }
+}
+
+fn cache_fill_meta() -> EventMeta {
+    EventMeta {
+        actor: "source-ingest".to_string(),
+        ts: Utc::now(),
+        peer_id: PeerId::local(),
     }
 }
 
