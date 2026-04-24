@@ -5,42 +5,67 @@ interface Props {
   onSend: (text: string, addressee: string | null) => void
   disabled?: boolean
   placeholder?: string
+  channelKey: string
+}
+
+const DRAFT_STORAGE_PREFIX = 'bpmux-draft:'
+
+const readDraft = (channelKey: string): string => {
+  if (typeof window === 'undefined') return ''
+  try {
+    return window.localStorage.getItem(`${DRAFT_STORAGE_PREFIX}${channelKey}`) ?? ''
+  } catch {
+    return ''
+  }
+}
+
+const writeDraft = (channelKey: string, value: string): void => {
+  if (typeof window === 'undefined') return
+  try {
+    if (value.length === 0) {
+      window.localStorage.removeItem(`${DRAFT_STORAGE_PREFIX}${channelKey}`)
+    } else {
+      window.localStorage.setItem(`${DRAFT_STORAGE_PREFIX}${channelKey}`, value)
+    }
+  } catch {
+    return
+  }
 }
 
 const VALID_ADDRESSEES = new Set(['ryan', 'dev', 'pm', 'designer'])
 
-function parseAddressee(text: string): string | null {
+const parseAddressee = (text: string): string | null => {
   const match = text.match(/^@(\w+)\b/)
   if (!match) return null
   const role = match[1].toLowerCase()
   return VALID_ADDRESSEES.has(role) ? role : null
 }
 
-function isWordChar(ch: string | undefined): boolean {
+const isWordChar = (ch: string | undefined): boolean => {
   if (!ch) return false
   return /[\w]/.test(ch)
 }
 
-function prevWordBoundary(value: string, from: number): number {
+const prevWordBoundary = (value: string, from: number): number => {
   let i = from
   while (i > 0 && !isWordChar(value[i - 1])) i -= 1
   while (i > 0 && isWordChar(value[i - 1])) i -= 1
   return i
 }
 
-function nextWordBoundary(value: string, from: number): number {
+const nextWordBoundary = (value: string, from: number): number => {
   let i = from
   while (i < value.length && !isWordChar(value[i])) i += 1
   while (i < value.length && isWordChar(value[i])) i += 1
   return i
 }
 
-function lineStart(value: string, from: number): number {
+const lineStart = (value: string, from: number): number => {
   const nl = value.lastIndexOf('\n', from - 1)
   return nl === -1 ? 0 : nl + 1
 }
 
-function lineEnd(value: string, from: number): number {
+const lineEnd = (value: string, from: number): number => {
   const nl = value.indexOf('\n', from)
   return nl === -1 ? value.length : nl
 }
@@ -53,9 +78,21 @@ interface SearchState {
   priorValue: string
 }
 
-function Input({ onSend, disabled, placeholder }: Props): React.JSX.Element {
-  const [value, setValue] = useState('')
+const Input = ({ onSend, disabled, placeholder, channelKey }: Props): React.JSX.Element => {
+  const [value, setValue] = useState(() => readDraft(channelKey))
   const [search, setSearch] = useState<SearchState | null>(null)
+  const channelKeyRef = useRef(channelKey)
+
+  useEffect(() => {
+    if (channelKeyRef.current === channelKey) return
+    writeDraft(channelKeyRef.current, value)
+    channelKeyRef.current = channelKey
+    setValue(readDraft(channelKey))
+  }, [channelKey, value])
+
+  useEffect(() => {
+    writeDraft(channelKey, value)
+  }, [channelKey, value])
   const taRef = useRef<HTMLTextAreaElement>(null)
   const historyRef = useRef<string[]>([])
   const historyIndexRef = useRef<number | null>(null)

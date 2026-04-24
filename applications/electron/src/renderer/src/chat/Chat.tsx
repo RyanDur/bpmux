@@ -149,6 +149,7 @@ const Chat = ({
       )}
       <Input
         onSend={handleSend}
+        channelKey={allView ? 'all' : pinsChannel}
         placeholder={
           recipient && recipient.length > 0 ? `message ${recipient.join(' + ')}` : undefined
         }
