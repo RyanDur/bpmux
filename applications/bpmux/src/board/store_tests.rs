@@ -242,3 +242,69 @@ fn peer_id_local_is_the_default_for_mvp() {
     let p = PeerId::local();
     assert_eq!(p.as_str(), "local");
 }
+
+#[tokio::test]
+async fn subscribe_delivers_applied_events_to_listeners() {
+    let store = BoardStore::new();
+    let mut rx = store.subscribe();
+    let event = BoardEvent::StoryCreated {
+        meta: meta("pm", 2026, "local"),
+        number: 1,
+        title: "sub".to_string(),
+        body: "b".to_string(),
+        initial_state: StoryState::Ready,
+    };
+    store.apply(&event);
+    let received = rx.recv().await.expect("receive");
+    assert_eq!(received, event);
+}
+
+#[tokio::test]
+async fn subscribe_fans_out_to_multiple_listeners() {
+    let store = BoardStore::new();
+    let mut a = store.subscribe();
+    let mut b = store.subscribe();
+    let event = BoardEvent::StateTransitioned {
+        meta: meta("dev", 2026, "local"),
+        number: 7,
+        new_state: StoryState::Delivered,
+    };
+    store.seed_all(vec![Story::new_minimal(
+        7,
+        "t".to_string(),
+        StoryState::Ready,
+        chrono::Utc::now(),
+        "pm".to_string(),
+    )]);
+    store.apply(&event);
+    let a_event = a.recv().await.expect("a recv");
+    let b_event = b.recv().await.expect("b recv");
+    assert_eq!(a_event, event);
+    assert_eq!(b_event, event);
+}
+
+#[tokio::test]
+async fn receiver_count_tracks_live_subscribers() {
+    let store = BoardStore::new();
+    assert_eq!(store.receiver_count(), 0);
+    let _rx = store.subscribe();
+    assert_eq!(store.receiver_count(), 1);
+    let _rx2 = store.subscribe();
+    assert_eq!(store.receiver_count(), 2);
+    drop(_rx);
+    assert_eq!(store.receiver_count(), 1);
+}
+
+#[tokio::test]
+async fn apply_succeeds_when_no_subscribers_are_attached() {
+    let store = BoardStore::new();
+    let event = BoardEvent::StoryCreated {
+        meta: meta("pm", 2026, "local"),
+        number: 99,
+        title: "no-subs".to_string(),
+        body: "b".to_string(),
+        initial_state: StoryState::Ready,
+    };
+    store.apply(&event);
+    assert!(store.story(99).is_some());
+}

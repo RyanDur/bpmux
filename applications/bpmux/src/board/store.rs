@@ -1,17 +1,24 @@
 use std::collections::HashMap;
 use std::sync::RwLock;
 
+use tokio::sync::broadcast;
+
 use super::domain::{FreeComment, GateComment, Story, StoryState};
 use super::events::BoardEvent;
 
+const SUBSCRIBE_BUFFER: usize = 1_000;
+
 pub struct BoardStore {
     stories: RwLock<HashMap<u64, Story>>,
+    event_tx: broadcast::Sender<BoardEvent>,
 }
 
 impl BoardStore {
     pub fn new() -> Self {
+        let (event_tx, _rx) = broadcast::channel(SUBSCRIBE_BUFFER);
         Self {
             stories: RwLock::new(HashMap::new()),
+            event_tx,
         }
     }
 
@@ -20,6 +27,14 @@ impl BoardStore {
         for story in stories {
             w.insert(story.number, story);
         }
+    }
+
+    pub fn subscribe(&self) -> broadcast::Receiver<BoardEvent> {
+        self.event_tx.subscribe()
+    }
+
+    pub fn receiver_count(&self) -> usize {
+        self.event_tx.receiver_count()
     }
 
     pub fn apply(&self, event: &BoardEvent) {
@@ -82,6 +97,8 @@ impl BoardStore {
                 }
             }
         }
+        drop(w);
+        let _ = self.event_tx.send(event.clone());
     }
 
     pub fn story(&self, number: u64) -> Option<Story> {
