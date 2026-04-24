@@ -436,6 +436,16 @@ pub(super) async fn handle_accept_story(
             "bridge: remove-label delivered failed for #{number}: {e}"
         ));
     }
+    let accept_comment = super::tools::format_gate_transition_comment(
+        super::tools::ACCEPTED_MARKER,
+        super::tools::ACCEPT_GATE,
+        agent_name,
+    );
+    if let Err(e) = tracker.comment_on_story(number, &accept_comment).await {
+        crate::session::diag::log_diag(&format!(
+            "bridge: accept audit comment failed for #{number}: {e}"
+        ));
+    }
     let close_result = tracker.close_story(number).await;
     broadcast_board_invalidate(ws_tx).await;
     match close_result {
@@ -517,6 +527,16 @@ pub(super) async fn handle_pass_desk_check(
         ws_send(ws_tx, signal)
             .await
             .map_err(|e| format!("#{number} signal send failed: {e}"))?;
+    }
+    let pass_comment = super::tools::format_gate_transition_comment(
+        super::tools::PASS_DESK_CHECK_MARKER,
+        super::tools::DESK_CHECK_PASS_GATE,
+        agent_name,
+    );
+    if let Err(e) = tracker.comment_on_story(number, &pass_comment).await {
+        crate::session::diag::log_diag(&format!(
+            "bridge: pass_desk_check audit comment failed for #{number}: {e}"
+        ));
     }
     let result = tracker.add_label(number, LABEL_READY_FOR_ACCEPT).await;
     broadcast_board_invalidate(ws_tx).await;
