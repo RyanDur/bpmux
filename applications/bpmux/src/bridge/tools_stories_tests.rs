@@ -1393,3 +1393,64 @@ async fn start_story_still_dev_only_with_new_params() {
         );
     }
 }
+
+#[tokio::test]
+async fn comment_on_story_migrated_path_enqueues_event_via_orchestrator() {
+    use crate::board::BoardEvent;
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let seeded = Story::new_minimal(
+        123,
+        "t".into(),
+        StoryState::Ready,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "pm".into(),
+    );
+    adapter.seed_stories(vec![seeded]);
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orchestrator.refresh_all().await.unwrap();
+
+    let ws_tx = tokio::sync::Mutex::new(None);
+    let tracker = super::tracker::FakeTracker::default();
+    let mut args = serde_json::Map::new();
+    args.insert("number".into(), serde_json::json!(123));
+    args.insert(
+        "body".into(),
+        serde_json::json!("new comment via orchestrator"),
+    );
+    let result = handle_comment_on_story(
+        &args,
+        "dev:claude-code",
+        &ws_tx,
+        &tracker,
+        Some(&orchestrator),
+    )
+    .await;
+    assert!(result.is_ok(), "migrated path should succeed: {result:?}");
+
+    let story = store.story(123).unwrap();
+    let comments = story.free_comments.expect("FreeCommentAppended applied");
+    assert_eq!(comments.len(), 1);
+    assert_eq!(comments[0].body, "new comment via orchestrator");
+    assert_eq!(comments[0].author, "dev");
+
+    let drained = orchestrator.drain_pending().await.unwrap();
+    assert_eq!(drained, 1, "event must reach the adapter via drain");
+    let pushed = adapter.pushed_events();
+    assert_eq!(pushed.len(), 1);
+    assert!(matches!(
+        &pushed[0],
+        BoardEvent::FreeCommentAppended { number: 123, .. }
+    ));
+}

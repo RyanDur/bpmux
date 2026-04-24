@@ -418,6 +418,7 @@ mod ingest_poll_loop_tests {
 
     struct CountingDriver {
         refresh_all: AtomicUsize,
+        drain_pending: AtomicUsize,
         fail_after: Option<usize>,
     }
 
@@ -425,12 +426,14 @@ mod ingest_poll_loop_tests {
         fn new() -> Self {
             Self {
                 refresh_all: AtomicUsize::new(0),
+                drain_pending: AtomicUsize::new(0),
                 fail_after: None,
             }
         }
         fn failing_after(n: usize) -> Self {
             Self {
                 refresh_all: AtomicUsize::new(0),
+                drain_pending: AtomicUsize::new(0),
                 fail_after: Some(n),
             }
         }
@@ -461,6 +464,7 @@ mod ingest_poll_loop_tests {
             SyncStatus::default()
         }
         fn drain_pending(&self) -> BoxedFuture<'_, Result<usize, SyncError>> {
+            self.drain_pending.fetch_add(1, Ordering::SeqCst);
             Box::pin(async { Ok(0) })
         }
         fn fetch_body(&self, _n: u64) -> BoxedFuture<'_, Result<String, SyncError>> {
@@ -499,6 +503,23 @@ mod ingest_poll_loop_tests {
             "loop must keep ticking across errors, saw {count}"
         );
         assert!(!handle.is_finished(), "task must not terminate on error");
+        handle.abort();
+    }
+
+    #[tokio::test]
+    async fn drain_loop_fires_drain_pending_on_each_tick() {
+        use crate::bridge::run_drain_loop;
+        let driver = Arc::new(CountingDriver::new());
+        let driver_dyn: Arc<dyn RefreshDriver> = driver.clone();
+        let handle = tokio::spawn(run_drain_loop(driver_dyn, Duration::from_millis(50)));
+        tokio::time::sleep(Duration::from_millis(25)).await;
+        assert_eq!(driver.drain_pending.load(Ordering::SeqCst), 0);
+        tokio::time::sleep(Duration::from_millis(250)).await;
+        let count = driver.drain_pending.load(Ordering::SeqCst);
+        assert!(
+            count >= 3,
+            "expected >=3 drain ticks in ~275ms, saw {count}"
+        );
         handle.abort();
     }
 }

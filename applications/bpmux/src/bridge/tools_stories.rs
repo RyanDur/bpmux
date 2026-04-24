@@ -672,7 +672,7 @@ pub(super) async fn handle_reorder_story(
 /// standalone commenting.
 pub(super) async fn handle_comment_on_story(
     args: &serde_json::Map<String, serde_json::Value>,
-    _agent_name: &str,
+    agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
     tracker: &impl super::tracker::StoryTracker,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
@@ -692,6 +692,19 @@ pub(super) async fn handle_comment_on_story(
         r.refresh_story(number)
             .await
             .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?;
+        let event = crate::board::BoardEvent::FreeCommentAppended {
+            meta: crate::board::events::EventMeta {
+                actor: crate::transport::ws::short_name(agent_name).to_string(),
+                ts: chrono::Utc::now(),
+                peer_id: crate::board::PeerId::local(),
+            },
+            number,
+            body: body.to_string(),
+        };
+        r.mutate_sync(event)
+            .map_err(|e| format!("#{number} enqueue failed: {e}"))?;
+        broadcast_board_invalidate(ws_tx).await;
+        return Ok(format!("#{number} commented"));
     }
     let result = tracker.comment_on_story(number, body).await;
     broadcast_board_invalidate(ws_tx).await;

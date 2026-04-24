@@ -774,9 +774,10 @@ pub fn run_bridge(
         let refresh_driver: Arc<dyn crate::board::RefreshDriver> = orchestrator.clone();
         let server = server.with_refresh(refresh_driver.clone());
         tokio::spawn(run_ingest_poll_loop(
-            refresh_driver,
+            refresh_driver.clone(),
             poll_interval_from_env(),
         ));
+        tokio::spawn(run_drain_loop(refresh_driver, drain_interval_from_env()));
         let (stdin, stdout) = rmcp::transport::io::stdio();
         let service = server.serve((stdin, stdout)).await?;
         service.waiting().await?;
@@ -804,6 +805,33 @@ fn poll_interval_from_env() -> std::time::Duration {
         .ok()
         .and_then(|s| s.parse::<u64>().ok())
         .unwrap_or(60);
+    std::time::Duration::from_secs(secs.max(1))
+}
+
+pub(in crate::bridge) async fn run_drain_loop(
+    refresh: Arc<dyn crate::board::RefreshDriver>,
+    interval: std::time::Duration,
+) {
+    let start = tokio::time::Instant::now() + interval;
+    let mut ticker = tokio::time::interval_at(start, interval);
+    ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+    loop {
+        ticker.tick().await;
+        match refresh.drain_pending().await {
+            Ok(0) => {}
+            Ok(n) => crate::session::diag::log_diag(&format!(
+                "bridge: background drain pushed {n} event(s)"
+            )),
+            Err(e) => crate::session::diag::log_diag(&format!("bridge: background drain: {e}")),
+        }
+    }
+}
+
+fn drain_interval_from_env() -> std::time::Duration {
+    let secs = std::env::var("BPMUX_DRAIN_INTERVAL_SECS")
+        .ok()
+        .and_then(|s| s.parse::<u64>().ok())
+        .unwrap_or(5);
     std::time::Duration::from_secs(secs.max(1))
 }
 
