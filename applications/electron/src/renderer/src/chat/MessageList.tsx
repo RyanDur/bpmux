@@ -10,7 +10,7 @@ import ClassGlyph from './ClassGlyph'
 import MessageBody from './MessageBody'
 import Reactions, { ReactionAddButton } from './Reactions'
 import UnfurlCards from './UnfurlCards'
-import { isMessageInScope } from './scope'
+import { channelLabelOf, isMessageInScope } from './scope'
 import './MessageList.css'
 
 interface Props {
@@ -40,12 +40,6 @@ const formatTime = (ts: string): string => {
 const shortName = (identity: string): string => {
   const idx = identity.indexOf(':')
   return idx === -1 ? identity : identity.slice(0, idx)
-}
-
-const scopeLabel = (m: ChatMessage): string | null => {
-  if (!m.to || m.to.length === 0) return null
-  if (m.to.includes('all')) return null
-  return `→ ${m.to.join(', ')}`
 }
 
 const isGroupedWithPrev = (curr: ChatMessage, prev: ChatMessage | null): boolean => {
@@ -190,7 +184,7 @@ const MessageList = ({
   // interleaved single-ul path and the lane-separated multi-ul path.
   const renderRow = ({ m, grouped }: { m: ChatMessage; grouped: boolean }): React.JSX.Element => {
           const sender = shortName(m.from)
-          const scope = scopeLabel(m)
+          const channel = channelLabelOf(m, viewer)
           const addressee = m.addressee ?? null
           const addressedToViewer = addressee === RENDERER_IDENTITY
           const addressedToOther = addressee !== null && !addressedToViewer
@@ -279,7 +273,9 @@ const MessageList = ({
                   <time className="message-ts" dateTime={m.ts}>
                     {formatTime(m.ts)}
                   </time>
-                  {scope && <small className="message-scope">{scope}</small>}
+                  <small className="message-channel" data-test="message-channel">
+                    [{channel}]
+                  </small>
                   {addressee && (
                     <small
                       className="message-addressee"

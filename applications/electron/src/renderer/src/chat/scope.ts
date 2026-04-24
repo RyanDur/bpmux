@@ -32,3 +32,13 @@ export const isMessageInScope = (
   if (isBroadcast && (r === null || r.length === 0)) return true
   return computeMessageChannelId(m) === computeViewChannelId(r, v)
 }
+
+export const channelLabelOf = (m: ChatMessage, viewer: string | undefined): string => {
+  const to = m.to
+  if (!to || to.length === 0 || to.includes('all')) return 'broadcast'
+  const v = shortNameOf(viewer ?? '')
+  const sender = shortNameOf(m.from)
+  const participants = new Set<string>([sender, ...to])
+  participants.delete(v)
+  return [...participants].sort().join('+')
+}

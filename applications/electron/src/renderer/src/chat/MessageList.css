@@ -406,9 +406,10 @@
     font-weight: var(--chat-ts-font-weight);
   }
 
-  & .message-scope {
-    color: var(--fg-secondary);
+  & .message-channel {
+    color: var(--fg-dim);
     font-size: 0.75rem;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
   }
 
   & .message-addressee {
