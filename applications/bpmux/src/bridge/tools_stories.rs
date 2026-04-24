@@ -425,12 +425,18 @@ pub(super) async fn handle_accept_story(
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
     tracker: &impl super::tracker::StoryTracker,
+    refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     require_role(agent_name, &["ryan", "pm", "designer", "dev"], "accept")?;
     let number = args
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
+    if let Some(r) = refresh {
+        r.refresh_story(number)
+            .await
+            .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?;
+    }
     let role = role_from_name(agent_name);
     let signal = serde_json::to_string(&build_accept_signal(number, role))
         .map_err(|e| format!("signal: {e}"))?;

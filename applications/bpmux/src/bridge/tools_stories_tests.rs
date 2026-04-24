@@ -559,6 +559,7 @@ async fn accept_returns_noop_when_tracker_reports_already_closed() {
         "pm:claude-code",
         &ws_tx,
         &AlreadyClosedTracker,
+        None,
     )
     .await;
     assert!(
@@ -581,6 +582,7 @@ async fn accept_rejects_unknown_role_via_handler() {
         "intern:claude-code",
         &ws_tx,
         &AlreadyClosedTracker,
+        None,
     )
     .await;
     assert!(result.is_err());
