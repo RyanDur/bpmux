@@ -76,6 +76,16 @@ impl SourceAdapter for InMemorySourceAdapter {
         Ok(s.stories.values().cloned().collect())
     }
 
+    async fn fetch_story_metadata(&self, number: u64) -> Result<Option<Story>, SyncError> {
+        let s = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        if s.failures_on_ingest {
+            return Err(SyncError::SourceUnreachable(
+                "in-memory test failure".into(),
+            ));
+        }
+        Ok(s.stories.get(&number).cloned())
+    }
+
     async fn fetch_story_body(&self, number: u64) -> Result<String, SyncError> {
         let s = self.state.lock().unwrap_or_else(|e| e.into_inner());
         if s.failures_on_ingest {

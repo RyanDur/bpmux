@@ -67,6 +67,31 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         }
     }
 
+    pub async fn refresh_story(
+        &self,
+        number: u64,
+    ) -> Result<Option<super::domain::Story>, SyncError> {
+        match self.adapter.fetch_story_metadata(number).await {
+            Ok(Some(story)) => {
+                self.store.seed_all(vec![story.clone()]);
+                record_ingest_success(&self.status);
+                Ok(Some(story))
+            }
+            Ok(None) => {
+                record_ingest_success(&self.status);
+                Ok(None)
+            }
+            Err(e) => {
+                record_error(&self.status, &format!("refresh_story({number}): {e}"));
+                Err(e)
+            }
+        }
+    }
+
+    pub async fn refresh_all(&self) -> Result<(), SyncError> {
+        self.ingest_once().await
+    }
+
     pub async fn drain_once(&self) -> Result<usize, SyncError> {
         let mut rx = self
             .pending_rx

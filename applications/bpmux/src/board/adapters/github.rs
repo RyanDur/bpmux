@@ -36,6 +36,14 @@ impl SourceAdapter for GitHubSourceAdapter {
         Ok(out)
     }
 
+    async fn fetch_story_metadata(&self, number: u64) -> Result<Option<Story>, SyncError> {
+        match self.inner.get_story(number).await {
+            Ok(Some(v)) => Ok(decode_story_metadata(&v)),
+            Ok(None) => Ok(None),
+            Err(e) => Err(SyncError::Other(e)),
+        }
+    }
+
     async fn fetch_story_body(&self, number: u64) -> Result<String, SyncError> {
         match self.inner.get_story(number).await {
             Ok(Some(v)) => Ok(v

@@ -164,6 +164,57 @@ async fn drain_once_handles_multiple_events_in_order() {
 }
 
 #[tokio::test]
+async fn refresh_story_pulls_single_story_from_adapter_into_store() {
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    adapter.seed_stories(vec![seed_story(42, StoryState::Ready)]);
+    let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+    assert!(store.story(42).is_none(), "store starts empty");
+    let result = orchestrator.refresh_story(42).await.unwrap();
+    assert!(result.is_some());
+    assert_eq!(store.story(42).unwrap().state, StoryState::Ready);
+    assert!(orchestrator.snapshot_status().last_ingest_at.is_some());
+}
+
+#[tokio::test]
+async fn refresh_story_returns_none_when_story_missing_at_source() {
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+    let result = orchestrator.refresh_story(999).await.unwrap();
+    assert!(result.is_none());
+    assert!(store.story(999).is_none());
+}
+
+#[tokio::test]
+async fn refresh_story_fails_fast_when_source_unreachable() {
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    adapter.seed_stories(vec![seed_story(1, StoryState::Ready)]);
+    adapter.set_ingest_failures(true);
+    let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+    let result = orchestrator.refresh_story(1).await;
+    assert!(result.is_err());
+    assert!(
+        orchestrator.snapshot_status().last_error.is_some(),
+        "source-unreachable records error"
+    );
+}
+
+#[tokio::test]
+async fn refresh_all_is_alias_for_ingest_once() {
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    adapter.seed_stories(vec![
+        seed_story(1, StoryState::Ready),
+        seed_story(2, StoryState::Delivered),
+    ]);
+    let orchestrator = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+    orchestrator.refresh_all().await.unwrap();
+    assert_eq!(store.len(), 2);
+}
+
+#[tokio::test]
 async fn end_to_end_seeded_adapter_through_mutate_and_drain() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
