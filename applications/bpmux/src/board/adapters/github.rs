@@ -1,0 +1,272 @@
+use chrono::{DateTime, Utc};
+
+use crate::board::domain::{FreeComment, Gate, GateComment, Story, StoryState};
+use crate::board::events::{BoardEvent, EventMeta};
+use crate::board::peer::PeerId;
+use crate::board::sync::{SourceAdapter, SyncError};
+use crate::bridge::tracker::{OctocrabStoryTracker, StoryTracker};
+
+pub struct GitHubSourceAdapter {
+    inner: OctocrabStoryTracker,
+}
+
+impl GitHubSourceAdapter {
+    pub fn new(inner: OctocrabStoryTracker) -> Self {
+        Self { inner }
+    }
+
+    pub fn from_env() -> Option<Self> {
+        OctocrabStoryTracker::from_env().map(Self::new)
+    }
+}
+
+impl SourceAdapter for GitHubSourceAdapter {
+    async fn ingest_metadata(&self) -> Result<Vec<Story>, SyncError> {
+        let values = self
+            .inner
+            .fetch_board_stories()
+            .await
+            .map_err(SyncError::Other)?;
+        let mut out = Vec::with_capacity(values.len());
+        for v in values.iter() {
+            if let Some(story) = decode_story_metadata(v) {
+                out.push(story);
+            }
+        }
+        Ok(out)
+    }
+
+    async fn fetch_story_body(&self, number: u64) -> Result<String, SyncError> {
+        match self.inner.get_story(number).await {
+            Ok(Some(v)) => Ok(v
+                .get("body")
+                .and_then(|x| x.as_str())
+                .unwrap_or("")
+                .to_string()),
+            Ok(None) => Err(SyncError::Other(format!("story #{number} not found"))),
+            Err(e) => Err(SyncError::Other(e)),
+        }
+    }
+
+    async fn fetch_free_comments(&self, number: u64) -> Result<Vec<FreeComment>, SyncError> {
+        let raw = self
+            .inner
+            .list_story_comments(number)
+            .await
+            .map_err(SyncError::Other)?;
+        Ok(raw.iter().filter_map(decode_free_comment).collect())
+    }
+
+    async fn push_event(&self, event: &BoardEvent) -> Result<(), SyncError> {
+        match event {
+            BoardEvent::StoryCreated { .. } => Err(SyncError::Other(
+                "StoryCreated push not wired in phase 2b; create_story still uses tracker path"
+                    .into(),
+            )),
+            BoardEvent::StateTransitioned {
+                number, new_state, ..
+            } => {
+                let label = state_to_label(*new_state);
+                self.inner
+                    .add_label(*number, label)
+                    .await
+                    .map_err(SyncError::Other)?;
+                Ok(())
+            }
+            BoardEvent::GateCommentAppended {
+                meta,
+                number,
+                gate,
+                payload,
+            } => {
+                let body = encode_gate_comment(*gate, meta, payload.as_deref());
+                self.inner
+                    .comment_on_story(*number, &body)
+                    .await
+                    .map_err(SyncError::Other)?;
+                Ok(())
+            }
+            BoardEvent::FreeCommentAppended { number, body, .. } => {
+                self.inner
+                    .comment_on_story(*number, body)
+                    .await
+                    .map_err(SyncError::Other)?;
+                Ok(())
+            }
+            BoardEvent::BodyFetched { .. } | BoardEvent::FreeCommentsFetched { .. } => Ok(()),
+        }
+    }
+}
+
+pub fn decode_story_metadata(v: &serde_json::Value) -> Option<Story> {
+    let number = v.get("number").and_then(|x| x.as_u64())?;
+    let title = v
+        .get("title")
+        .and_then(|x| x.as_str())
+        .unwrap_or("")
+        .to_string();
+    let state = decode_state(v).unwrap_or(StoryState::Icebox);
+    let filed_at = v
+        .get("created_at")
+        .and_then(|x| x.as_str())
+        .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+        .map(|dt| dt.with_timezone(&Utc))
+        .unwrap_or_else(Utc::now);
+    let filed_by = v
+        .get("user")
+        .and_then(|u| u.get("login"))
+        .and_then(|x| x.as_str())
+        .map(ToString::to_string)
+        .unwrap_or_else(|| "unknown".to_string());
+    Some(Story::new_minimal(number, title, state, filed_at, filed_by))
+}
+
+fn decode_state(v: &serde_json::Value) -> Option<StoryState> {
+    let labels = v.get("labels").and_then(|x| x.as_array())?;
+    let mut names: Vec<String> = Vec::with_capacity(labels.len());
+    for label in labels {
+        if let Some(s) = label.as_str() {
+            names.push(s.to_string());
+        } else if let Some(n) = label.get("name").and_then(|x| x.as_str()) {
+            names.push(n.to_string());
+        }
+    }
+    let is_closed = matches!(
+        v.get("state").and_then(|x| x.as_str()),
+        Some("closed" | "CLOSED")
+    );
+    Some(state_from_labels(&names, is_closed))
+}
+
+pub fn state_from_labels(labels: &[String], is_closed: bool) -> StoryState {
+    let has = |needle: &str| labels.iter().any(|l| l.eq_ignore_ascii_case(needle));
+    if is_closed || has("accepted") {
+        return StoryState::Accepted;
+    }
+    if has("rejected") {
+        return StoryState::Rejected;
+    }
+    if has("needs fixes") {
+        return StoryState::NeedsFixes;
+    }
+    if has("ready for accept") {
+        return StoryState::ReadyForAccept;
+    }
+    if has("delivered") {
+        return StoryState::Delivered;
+    }
+    if has("in progress") {
+        return StoryState::InProgress;
+    }
+    if has("ready") {
+        return StoryState::Ready;
+    }
+    StoryState::Icebox
+}
+
+pub fn state_to_label(state: StoryState) -> &'static str {
+    match state {
+        StoryState::Icebox => "icebox",
+        StoryState::Ready => "ready",
+        StoryState::InProgress => "in progress",
+        StoryState::Delivered => "delivered",
+        StoryState::ReadyForAccept => "ready for accept",
+        StoryState::NeedsFixes => "needs fixes",
+        StoryState::Rejected => "rejected",
+        StoryState::Accepted => "accepted",
+    }
+}
+
+fn decode_free_comment(v: &serde_json::Value) -> Option<FreeComment> {
+    let body = v.get("body").and_then(|x| x.as_str())?.to_string();
+    let author = v
+        .get("author")
+        .and_then(|x| x.as_str())
+        .unwrap_or("unknown")
+        .to_string();
+    let ts = v
+        .get("created_at")
+        .and_then(|x| x.as_str())
+        .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+        .map(|dt| dt.with_timezone(&Utc))
+        .unwrap_or_else(Utc::now);
+    Some(FreeComment { body, author, ts })
+}
+
+fn encode_gate_comment(gate: Gate, meta: &EventMeta, payload: Option<&str>) -> String {
+    let (marker, tag) = match gate {
+        Gate::Pickup => ("pickup_paraphrase", "dev pickup-gate"),
+        Gate::Delivered => ("verified_observation", "dev deliver-gate"),
+        Gate::PassDeskCheck => ("pass_desk_check", "desk-check-pass"),
+        Gate::FailDeskCheck => ("rejection_reason", "desk-check-fail"),
+        Gate::Rejected => ("rejection_reason", "reject-gate"),
+        Gate::Accepted => ("accepted", "accept-gate"),
+        Gate::Filed => ("filed", "file-gate"),
+    };
+    match payload {
+        Some(body) => format!("**{marker}** ({tag} by {}):\n\n{body}", meta.actor),
+        None => format!("**{marker}** ({tag} by {})", meta.actor),
+    }
+}
+
+pub fn decode_gate_comments(comments: &[serde_json::Value]) -> Vec<GateComment> {
+    comments
+        .iter()
+        .filter_map(|c| {
+            let body = c.get("body").and_then(|x| x.as_str())?;
+            let author = c
+                .get("author")
+                .and_then(|x| x.as_str())
+                .unwrap_or("unknown")
+                .to_string();
+            let ts = c
+                .get("created_at")
+                .and_then(|x| x.as_str())
+                .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+                .map(|dt| dt.with_timezone(&Utc))?;
+            classify_gate(body).map(|(gate, payload)| GateComment {
+                gate,
+                ts,
+                actor: author,
+                payload,
+            })
+        })
+        .collect()
+}
+
+pub fn classify_gate(body: &str) -> Option<(Gate, Option<String>)> {
+    if body.contains("**pickup_paraphrase**") {
+        return Some((Gate::Pickup, extract_marker_payload(body)));
+    }
+    if body.contains("**verified_observation**") {
+        return Some((Gate::Delivered, extract_marker_payload(body)));
+    }
+    if body.contains("**pass_desk_check**") {
+        return Some((Gate::PassDeskCheck, None));
+    }
+    if body.contains("**accepted**") {
+        return Some((Gate::Accepted, None));
+    }
+    if body.contains("**rejection_reason**") {
+        let gate = if body.contains("desk-check-fail") {
+            Gate::FailDeskCheck
+        } else {
+            Gate::Rejected
+        };
+        return Some((gate, extract_marker_payload(body)));
+    }
+    None
+}
+
+fn extract_marker_payload(body: &str) -> Option<String> {
+    body.split_once(":\n\n").map(|(_, rest)| rest.to_string())
+}
+
+#[allow(dead_code)]
+pub fn local_meta(actor: &str, ts: DateTime<Utc>) -> EventMeta {
+    EventMeta {
+        actor: actor.to_string(),
+        ts,
+        peer_id: PeerId::local(),
+    }
+}
