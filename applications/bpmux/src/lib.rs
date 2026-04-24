@@ -1,5 +1,6 @@
 #![deny(unsafe_code)]
 
+pub mod board;
 pub mod bridge;
 pub mod github;
 pub mod mcp;

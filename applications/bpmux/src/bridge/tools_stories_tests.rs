@@ -700,6 +700,68 @@ async fn octocrab_tracker_get_story_title_returns_known_story() {
     assert!(!title.unwrap().is_empty(), "title non-empty");
 }
 
+#[cfg(feature = "integration_tests")]
+#[tokio::test]
+async fn spike_451_ingest_latency_benchmark() {
+    use super::tracker::OctocrabStoryTracker;
+    use std::time::Instant;
+    let tracker = OctocrabStoryTracker::from_env().expect("auth configured");
+    eprintln!("\n=== Spike 1 (#451): ingest-all latency ===");
+    let t0 = Instant::now();
+    let stories = tracker.fetch_board_stories().await.expect("board fetch");
+    let fetch = t0.elapsed();
+    let n = stories.len();
+    let bytes: usize = stories.iter().map(|s| s.to_string().len()).sum();
+    eprintln!(
+        "fetch_board_stories: {n} stories in {fetch:?}  —  {} KB serialized",
+        bytes / 1024
+    );
+    let active: Vec<u64> = stories
+        .iter()
+        .filter_map(|s| {
+            let state = s.get("state").and_then(|v| v.as_str())?;
+            if matches!(state, "ready" | "in-progress" | "delivered" | "accepted") {
+                s.get("number").and_then(|v| v.as_u64())
+            } else {
+                None
+            }
+        })
+        .collect();
+    let sample = active.len().min(30);
+    let t1 = Instant::now();
+    let mut total_c = 0usize;
+    let mut total_cb = 0usize;
+    for n in active.iter().take(sample) {
+        if let Ok(cs) = tracker.list_story_comments(*n).await {
+            total_c += cs.len();
+            total_cb += cs.iter().map(|c| c.to_string().len()).sum::<usize>();
+        }
+    }
+    let comments_elapsed = t1.elapsed();
+    eprintln!(
+        "list_story_comments sample: {} comments across {} stories in {comments_elapsed:?}  —  {} KB",
+        total_c,
+        sample,
+        total_cb / 1024
+    );
+    let projected = if sample > 0 {
+        let per_story = comments_elapsed.as_millis() / sample as u128;
+        per_story * active.len() as u128
+    } else {
+        0
+    };
+    eprintln!(
+        "projected comments-for-all-active: ~{}ms wall-clock, {} active stories",
+        projected,
+        active.len()
+    );
+    eprintln!(
+        "=== total eager-ingest estimate: ~{}ms, ~{} KB memory (JSON) ===\n",
+        fetch.as_millis() + projected,
+        (bytes + total_cb * active.len() / sample.max(1)) / 1024
+    );
+}
+
 // ── #391: observation-falsifier gate tests ──
 
 #[tokio::test]
