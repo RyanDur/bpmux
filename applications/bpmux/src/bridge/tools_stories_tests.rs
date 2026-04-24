@@ -1454,3 +1454,137 @@ async fn comment_on_story_migrated_path_enqueues_event_via_orchestrator() {
         BoardEvent::FreeCommentAppended { number: 123, .. }
     ));
 }
+
+#[tokio::test]
+async fn label_story_migrated_path_enqueues_tag_added_event() {
+    use crate::board::BoardEvent;
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState, Tag};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let seeded = Story::new_minimal(
+        200,
+        "t".into(),
+        StoryState::Ready,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "pm".into(),
+    );
+    adapter.seed_stories(vec![seeded]);
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orchestrator.refresh_all().await.unwrap();
+
+    let ws_tx = tokio::sync::Mutex::new(None);
+    let tracker = super::tracker::FakeTracker::default();
+    let mut args = serde_json::Map::new();
+    args.insert("number".into(), serde_json::json!(200));
+    args.insert("label".into(), serde_json::json!("blocked"));
+    args.insert("operation".into(), serde_json::json!("add"));
+    let result = handle_label_story(
+        &args,
+        "pm:claude-code",
+        &ws_tx,
+        &tracker,
+        Some(&orchestrator),
+    )
+    .await;
+    assert!(result.is_ok(), "migrated path should succeed: {result:?}");
+
+    let story = store.story(200).unwrap();
+    assert_eq!(story.tags, vec![Tag::Blocked]);
+
+    let drained = orchestrator.drain_pending().await.unwrap();
+    assert_eq!(drained, 1, "event must reach the adapter via drain");
+    let pushed = adapter.pushed_events();
+    assert_eq!(pushed.len(), 1);
+    assert!(matches!(
+        &pushed[0],
+        BoardEvent::TagAdded { number: 200, label, .. } if label == "blocked"
+    ));
+}
+
+#[tokio::test]
+async fn label_story_migrated_path_enqueues_tag_removed_event() {
+    use crate::board::BoardEvent;
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let seeded = Story::new_minimal(
+        200,
+        "t".into(),
+        StoryState::Ready,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "pm".into(),
+    );
+    adapter.seed_stories(vec![seeded]);
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orchestrator.refresh_all().await.unwrap();
+
+    let ws_tx = tokio::sync::Mutex::new(None);
+    let tracker = super::tracker::FakeTracker::default();
+
+    let mut add_args = serde_json::Map::new();
+    add_args.insert("number".into(), serde_json::json!(200));
+    add_args.insert("label".into(), serde_json::json!("blocked"));
+    add_args.insert("operation".into(), serde_json::json!("add"));
+    handle_label_story(
+        &add_args,
+        "pm:claude-code",
+        &ws_tx,
+        &tracker,
+        Some(&orchestrator),
+    )
+    .await
+    .unwrap();
+
+    let mut remove_args = serde_json::Map::new();
+    remove_args.insert("number".into(), serde_json::json!(200));
+    remove_args.insert("label".into(), serde_json::json!("blocked"));
+    remove_args.insert("operation".into(), serde_json::json!("remove"));
+    let result = handle_label_story(
+        &remove_args,
+        "pm:claude-code",
+        &ws_tx,
+        &tracker,
+        Some(&orchestrator),
+    )
+    .await;
+    assert!(
+        result.is_ok(),
+        "migrated remove path should succeed: {result:?}"
+    );
+
+    let story = store.story(200).unwrap();
+    assert!(story.tags.is_empty(), "tags should be empty after remove");
+
+    let drained = orchestrator.drain_pending().await.unwrap();
+    assert_eq!(drained, 2, "both events must reach the adapter via drain");
+    let pushed = adapter.pushed_events();
+    assert_eq!(pushed.len(), 2);
+    assert!(matches!(
+        &pushed[0],
+        BoardEvent::TagAdded { number: 200, label, .. } if label == "blocked"
+    ));
+    assert!(matches!(
+        &pushed[1],
+        BoardEvent::TagRemoved { number: 200, label, .. } if label == "blocked"
+    ));
+}

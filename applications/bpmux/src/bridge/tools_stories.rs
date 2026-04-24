@@ -414,6 +414,38 @@ pub(super) async fn handle_label_story(
         r.refresh_story(number)
             .await
             .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?;
+        let meta = crate::board::events::EventMeta {
+            actor: crate::transport::ws::short_name(agent_name).to_string(),
+            ts: chrono::Utc::now(),
+            peer_id: crate::board::PeerId::local(),
+        };
+        let (event, ok_msg) = match operation {
+            "add" => (
+                crate::board::BoardEvent::TagAdded {
+                    meta,
+                    number,
+                    label: label.to_string(),
+                },
+                format!("#{number} labeled '{label}'"),
+            ),
+            "remove" => (
+                crate::board::BoardEvent::TagRemoved {
+                    meta,
+                    number,
+                    label: label.to_string(),
+                },
+                format!("#{number} unlabeled '{label}'"),
+            ),
+            other => {
+                return Err(format!(
+                    "invalid 'operation' argument '{other}': must be 'add' or 'remove'"
+                ));
+            }
+        };
+        r.mutate_sync(event)
+            .map_err(|e| format!("#{number} enqueue failed: {e}"))?;
+        broadcast_board_invalidate(ws_tx).await;
+        return Ok(ok_msg);
     }
     match operation {
         "add" => {
