@@ -592,7 +592,7 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                 "view_story_commits" => tools::handle_view_story_commits(&args).await,
                 "view_commit_diff" => tools::handle_view_commit_diff(&args).await,
                 "view_comments" => tools::handle_view_comments(&args, &tracker).await,
-                "dev_in_flight" => tools::handle_dev_in_flight(&tracker).await,
+                "dev_in_flight" => tools::handle_dev_in_flight(&board).await,
                 "list_ready" => tools::handle_list_ready(&board).await,
                 "view_board" => tools_stories::handle_view_board(&args, &tracker).await,
                 "view_velocity" => tools::handle_view_velocity(port, &tracker, &ws_tx).await,
