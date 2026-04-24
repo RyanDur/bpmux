@@ -48,7 +48,6 @@ pub struct BridgeServer<T: tracker::StoryTracker> {
     name: Arc<Mutex<String>>,
     peer: Arc<Mutex<Option<Peer<RoleServer>>>>,
     ws_tx: Arc<Mutex<Option<WsSink>>>,
-    last_channel: Arc<Mutex<Option<Vec<String>>>>,
     tracker: T,
 }
 
@@ -69,7 +68,6 @@ impl<T: tracker::StoryTracker> BridgeServer<T> {
             name: Arc::new(Mutex::new(resolve_bridge_name(&name))),
             peer: Arc::new(Mutex::new(None)),
             ws_tx: Arc::new(Mutex::new(None)),
-            last_channel: Arc::new(Mutex::new(None)),
             tracker,
         }
     }
@@ -132,7 +130,6 @@ async fn run_ws_connection(
     name: Arc<Mutex<String>>,
     peer: Peer<RoleServer>,
     ws_tx_store: Arc<Mutex<Option<WsSink>>>,
-    last_channel: Arc<Mutex<Option<Vec<String>>>>,
 ) {
     let ws_url = format!("ws://127.0.0.1:{port}/ws");
     let (ws_stream, _) = match tokio_tungstenite::connect_async(&ws_url).await {
@@ -262,20 +259,6 @@ async fn run_ws_connection(
                 continue;
             }
 
-            // Store channel for reply-to-channel default
-            if let Some(recipients) = &to {
-                let mut reply_to: Vec<String> = recipients.clone();
-                if !reply_to.contains(&from_short.to_string()) {
-                    reply_to.push(from_short.to_string());
-                }
-                let current_name = name.lock().await;
-                reply_to.retain(|r| r != current_name.as_str());
-                drop(current_name);
-                *last_channel.lock().await = Some(reply_to);
-            } else {
-                *last_channel.lock().await = None;
-            }
-
             let meta = build_notification_meta(
                 &from,
                 &ts,
@@ -333,21 +316,13 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
         let name = self.name.clone();
         let peer_store = self.peer.clone();
         let ws_tx_store = self.ws_tx.clone();
-        let last_channel = self.last_channel.clone();
 
         async move {
             *peer_store.lock().await = Some(peer.clone());
 
             tokio::spawn(async move {
                 loop {
-                    run_ws_connection(
-                        port,
-                        name.clone(),
-                        peer.clone(),
-                        ws_tx_store.clone(),
-                        last_channel.clone(),
-                    )
-                    .await;
+                    run_ws_connection(port, name.clone(), peer.clone(), ws_tx_store.clone()).await;
                     eprintln!("Bridge: reconnecting in 3 seconds...");
                     tokio::time::sleep(std::time::Duration::from_secs(3)).await;
                 }
@@ -529,7 +504,6 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
         let port = self.port;
         let ws_tx = self.ws_tx.clone();
         let name = self.name.clone();
-        let last_channel = self.last_channel.clone();
         let tracker = self.tracker.clone();
 
         async move {
@@ -545,7 +519,7 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
             let result = match request.name.as_ref() {
                 "send_message" => {
                     let current_name = name.lock().await.clone();
-                    tools::handle_send(&args, &current_name, &ws_tx, &last_channel).await
+                    tools::handle_send(&args, &current_name, &ws_tx).await
                 }
                 "share_message" => {
                     let current_name = name.lock().await;

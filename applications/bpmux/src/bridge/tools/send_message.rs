@@ -18,14 +18,23 @@ enum DeliveredTo {
 struct DeliveryEcho {
     status: &'static str,
     delivered_to: DeliveredTo,
-    visible_to_owner: bool,
+}
+
+pub fn ensure_owner_included(to: Option<Vec<String>>) -> Option<Vec<String>> {
+    let mut list = to?;
+    if list.is_empty() || list.iter().any(|r| r == "all") {
+        return Some(list);
+    }
+    if !list.iter().any(|r| r == OWNER_ROLE) {
+        list.push(OWNER_ROLE.to_string());
+    }
+    Some(list)
 }
 
 pub(in crate::bridge) async fn handle_send(
     args: &serde_json::Map<String, serde_json::Value>,
     sender_role: &str,
     ws_tx: &Mutex<Option<WsSink>>,
-    last_channel: &Mutex<Option<Vec<String>>>,
 ) -> Result<String, String> {
     let text = args
         .get("text")
@@ -36,10 +45,7 @@ pub(in crate::bridge) async fn handle_send(
             .filter_map(|v| v.as_str().map(String::from))
             .collect::<Vec<String>>()
     });
-    let to = match explicit_to {
-        Some(t) => Some(t),
-        None => last_channel.lock().await.clone(),
-    };
+    let to = ensure_owner_included(explicit_to);
     let addressee = args
         .get("addressee")
         .and_then(|v| v.as_str())
@@ -89,32 +95,26 @@ fn delivery_echo(to: Option<&[String]>) -> DeliveryEcho {
         None => DeliveryEcho {
             status: "sent",
             delivered_to: DeliveredTo::Broadcast("broadcast"),
-            visible_to_owner: true,
         },
         Some(list) if list.is_empty() || list.iter().any(|r| r == "all") => DeliveryEcho {
             status: "sent",
             delivered_to: DeliveredTo::Broadcast("broadcast"),
-            visible_to_owner: true,
         },
-        Some(list) => {
-            let visible_to_owner = list.iter().any(|r| r == OWNER_ROLE);
-            DeliveryEcho {
-                status: "sent",
-                delivered_to: DeliveredTo::Scoped(list.to_vec()),
-                visible_to_owner,
-            }
-        }
+        Some(list) => DeliveryEcho {
+            status: "sent",
+            delivered_to: DeliveredTo::Scoped(list.to_vec()),
+        },
     }
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
 
     #[test]
     fn broadcast_when_to_is_none() {
         let echo = delivery_echo(None);
-        assert!(echo.visible_to_owner);
         assert!(matches!(echo.delivered_to, DeliveredTo::Broadcast(_)));
     }
 
@@ -122,18 +122,40 @@ mod tests {
     fn broadcast_when_to_contains_all() {
         let to = vec!["all".to_string()];
         let echo = delivery_echo(Some(&to));
-        assert!(echo.visible_to_owner);
         assert!(matches!(echo.delivered_to, DeliveredTo::Broadcast(_)));
     }
 
     #[test]
-    fn scoped_excludes_owner_when_owner_not_in_to() -> Result<(), serde_json::Error> {
-        let to = vec!["dev".to_string(), "pm".to_string()];
-        let echo = delivery_echo(Some(&to));
-        assert!(!echo.visible_to_owner);
-        let serialized = serde_json::to_value(&echo)?;
-        assert_eq!(serialized["delivered_to"], serde_json::json!(["dev", "pm"]));
-        Ok(())
+    fn owner_auto_included_when_absent_from_to() {
+        let to = Some(vec!["dev".to_string(), "pm".to_string()]);
+        let adjusted = ensure_owner_included(to).expect("scoped");
+        assert!(adjusted.iter().any(|r| r == OWNER_ROLE));
+    }
+
+    #[test]
+    fn owner_not_duplicated_when_already_in_to() {
+        let to = Some(vec!["ryan".to_string(), "dev".to_string()]);
+        let adjusted = ensure_owner_included(to).expect("scoped");
+        assert_eq!(adjusted.iter().filter(|r| *r == OWNER_ROLE).count(), 1);
+    }
+
+    #[test]
+    fn broadcast_passes_through_unchanged() {
+        assert!(ensure_owner_included(None).is_none());
+    }
+
+    #[test]
+    fn all_keyword_passes_through_unchanged() {
+        let to = Some(vec!["all".to_string()]);
+        let adjusted = ensure_owner_included(to).expect("scoped");
+        assert_eq!(adjusted, vec!["all".to_string()]);
+    }
+
+    #[test]
+    fn empty_scope_passes_through_unchanged() {
+        let to = Some(vec![]);
+        let adjusted = ensure_owner_included(to).expect("scoped");
+        assert!(adjusted.is_empty());
     }
 
     #[test]
@@ -141,15 +163,34 @@ mod tests {
         let echo = delivery_echo(None);
         let serialized = serde_json::to_value(&echo)?;
         assert_eq!(serialized["delivered_to"], serde_json::json!("broadcast"));
-        assert_eq!(serialized["visible_to_owner"], serde_json::json!(true));
         assert_eq!(serialized["status"], serde_json::json!("sent"));
         Ok(())
     }
 
     #[test]
-    fn scoped_includes_owner_when_owner_in_to() {
-        let to = vec!["ryan".to_string(), "dev".to_string()];
-        let echo = delivery_echo(Some(&to));
-        assert!(echo.visible_to_owner);
+    fn echo_has_no_visible_to_owner_field() -> Result<(), serde_json::Error> {
+        let echo = delivery_echo(Some(&["dev".to_string()]));
+        let serialized = serde_json::to_value(&echo)?;
+        assert!(
+            serialized.get("visible_to_owner").is_none(),
+            "visible_to_owner field must be absent: {serialized}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn scoped_echo_surfaces_list_with_owner_auto_added() -> Result<(), serde_json::Error> {
+        let adjusted = ensure_owner_included(Some(vec!["dev".to_string()])).expect("scoped");
+        let echo = delivery_echo(Some(&adjusted));
+        let serialized = serde_json::to_value(&echo)?;
+        let list = serialized["delivered_to"]
+            .as_array()
+            .expect("array")
+            .iter()
+            .filter_map(|v| v.as_str())
+            .collect::<Vec<_>>();
+        assert!(list.contains(&"dev"));
+        assert!(list.contains(&OWNER_ROLE));
+        Ok(())
     }
 }
