@@ -10,130 +10,44 @@ import ClassGlyph from './ClassGlyph'
 import MessageBody from './MessageBody'
 import Reactions, { ReactionAddButton } from './Reactions'
 import UnfurlCards from './UnfurlCards'
+import { isMessageInScope } from './scope'
 import './MessageList.css'
 
 interface Props {
   messages: ChatMessage[]
-  // Classes the user wants to see. Messages outside the set are
-  // filtered from the render. Passed as a Set (not a flat array) so
-  // membership check is O(1) per message — MessageList can be hot on
-  // large logs.
   visibleClasses: ReadonlySet<MessageClass>
-  // Pin integration (#342). pinnedKeys tells each row whether to show
-  // the pinned indicator; onTogglePin fires the pin/unpin intent for
-  // the click handler. Both optional so callers that don't care
-  // (e.g., tests) can render without wiring pins.
   pinnedKeys?: ReadonlySet<string>
   onTogglePin?: (m: ChatMessage) => void
-  // Reactions integration (#340). reactionsByMessage lookup by
-  // message_key returns the per-emoji pills for the row (or
-  // undefined if none). onToggleReaction fires add/remove intent
-  // from a pill or picker click.
   reactionsByMessage?: Map<string, import('../hooks/useReactions').AggregatedReaction[]>
   onToggleReaction?: (messageKey: string, emoji: string) => void
   viewer?: string
-  // Unfurl integration (#343). UnfurlCards fetches its own data
-  // server-side; MessageList just forwards the apiBase/authToken
-  // so each row's URL set gets resolved. Optional — callers that
-  // don't care (tests) omit.
   apiBase?: string
   authToken?: string
-  // #374 lane separation mode. 'on' = class-grouped <section>s with
-  // sticky headers; 'off' (default) = current interleaved render.
   lanes?: 'on' | 'off'
-  // #385 channel scope: drives the per-row data-scope attribute for
-  // dim-not-hide rendering. `null` = broadcast view (no DM-scope
-  // active); `[role]` = DM view; `[role, role, ...]` = group view.
-  // When null, only non-broadcast messages not addressed to viewer
-  // get dimmed — broadcasts stay primary.
   recipient?: string[] | null
-  // #380: click-to-scope on inline @mention pills. Threaded to
-  // MessageBody so a pill click shifts chat scope the same way
-  // sidebar click does (#332).
   onSelectRecipient?: (r: string[] | null) => void
 }
 
-// Per-class gutter glyphs moved to `./ClassGlyph` (#373 — custom
-// SVG replaces the unicode ◊/•/⚙ so rendering is consistent across
-// OS font stacks). Chat stays null (majority case, zero visual
-// noise); ClassGlyph returns null for that case too.
-
-// #385: per-message scope-attribute calculator per designer's spec
-// (phase-1b/04-channel-scope-visual.md). Returns 'dim' when the
-// message is out-of-scope for the current channel view; null when
-// primary (default full opacity). Channel selection shifts scope +
-// emphasis, never visibility — "nothing hidden from owner" principle.
-//
-// Primary when any of:
-//   1. message addresses the viewer (`to` includes viewer short-name)
-//   2. broadcast message AND viewer is in broadcast view
-//   3. message's channel id matches the current view channel id
-// else → dim.
-function computeMessageChannelId(m: ChatMessage): string {
-  const to = m.to
-  if (!to || to.length === 0 || to.includes('all')) return 'broadcast'
-  const sender = shortName(m.from)
-  const participants = new Set<string>([sender, ...to])
-  return [...participants].sort().join('+')
-}
-
-function computeViewChannelId(recipient: string[] | null, viewer: string): string {
-  if (!recipient || recipient.length === 0) return 'broadcast'
-  return [viewer, ...recipient].sort().join('+')
-}
-
-export function scopeAttributeFor(
-  m: ChatMessage,
-  recipient: string[] | null | undefined,
-  viewer: string | undefined
-): 'dim' | null {
-  const v = viewer ?? ''
-  const r = recipient ?? null
-  const to = m.to
-  if (to && v && to.includes(v)) return null
-  const isBroadcast = !to || to.length === 0 || to.includes('all')
-  if (isBroadcast && (r === null || r.length === 0)) return null
-  if (computeMessageChannelId(m) === computeViewChannelId(r, v)) return null
-  return 'dim'
-}
-
-// Grouping threshold — consecutive messages from the same sender
-// within this window collapse into a single visual group (one avatar
-// + one role-name header, subsequent bodies indent under it). Spec's
-// default; tunable as a "revisit after live-use" per #348's story
-// body. Kept as a named constant so the value is greppable when
-// calibration feedback arrives.
 const GROUP_THRESHOLD_MS = 5 * 60 * 1000
 
-// #401 (#393 AC2): role coloring is computed at render time via
-// `roleColorFor(role)` — stable hash-to-hue for any role short-name.
-// Retires the prior `PALETTE_ROLE_TOKENS` bridge + the static
-// `--role-*` CSS tokens in `styles/tokens.css`. A new agent joining
-// via MCP now gets a distinct color immediately, no code edit.
-
-function formatTime(ts: string): string {
+const formatTime = (ts: string): string => {
   const d = new Date(ts)
   if (Number.isNaN(d.getTime())) return ts
   return format(d, 'h:mm a zzz')
 }
 
-function shortName(identity: string): string {
+const shortName = (identity: string): string => {
   const idx = identity.indexOf(':')
   return idx === -1 ? identity : identity.slice(0, idx)
 }
 
-function scopeLabel(m: ChatMessage): string | null {
+const scopeLabel = (m: ChatMessage): string | null => {
   if (!m.to || m.to.length === 0) return null
   if (m.to.includes('all')) return null
   return `→ ${m.to.join(', ')}`
 }
 
-// Grouping predicate — all four conditions must hold to collapse
-// `curr` into the previous message's group: same sender, same
-// message-class, same addressee, and within the 5-minute threshold.
-// Any mismatch breaks the group so the viewer sees a fresh avatar +
-// header (ACs 3, 4 explicitly gate on class and addressee).
-function isGroupedWithPrev(curr: ChatMessage, prev: ChatMessage | null): boolean {
+const isGroupedWithPrev = (curr: ChatMessage, prev: ChatMessage | null): boolean => {
   if (!prev) return false
   if (shortName(curr.from) !== shortName(prev.from)) return false
   if ((curr.messageType ?? 'chat') !== (prev.messageType ?? 'chat')) return false
@@ -144,26 +58,14 @@ function isGroupedWithPrev(curr: ChatMessage, prev: ChatMessage | null): boolean
   return currMs - prevMs <= GROUP_THRESHOLD_MS
 }
 
-function avatarClasses(sender: string): string {
-  // #401: role-color now flows via inline style from `roleColorFor`
-  // instead of a per-role CSS token class. The shape modifier (
-  // circle vs square) stays — it's the human-anchor affordance per
-  // #348 (circle for human, square for AI). Ryan-as-human-anchor
-  // remains hardcoded because "which identity is the human" is a
-  // per-instance architectural constant (same discipline #402 /
-  // #393 owners-as-constants lands structurally).
-  const shape =
-    sender === 'ryan' ? 'message-avatar--circle' : 'message-avatar--square'
+const avatarClasses = (sender: string): string => {
+  const shape = sender === 'ryan' ? 'message-avatar--circle' : 'message-avatar--square'
   return `message-avatar ${shape}`
 }
 
-// Stable per-message key for pin lookup. Mirrors the Rust server's
-// session::pins::{ts}|{from} key and the usePins hook's messageKey().
-function pinKey(m: ChatMessage): string {
-  return `${m.ts}|${m.from}`
-}
+const pinKey = (m: ChatMessage): string => `${m.ts}|${m.from}`
 
-function MessageList({
+const MessageList = ({
   messages,
   visibleClasses,
   pinnedKeys,
@@ -176,8 +78,10 @@ function MessageList({
   lanes = 'off',
   recipient = null,
   onSelectRecipient
-}: Props): React.JSX.Element {
-  const visible = messages.filter((m) => visibleClasses.has(classOf(m.messageType)))
+}: Props): React.JSX.Element => {
+  const visible = messages.filter(
+    (m) => visibleClasses.has(classOf(m.messageType)) && isMessageInScope(m, recipient, viewer)
+  )
   // #370 avatar-hover tooltip: derive current presence per role from
   // the full message stream (not just the filtered visible set) so
   // activity broadcasts that fall outside the user's current class
@@ -287,15 +191,7 @@ function MessageList({
           const addressedToViewer = addressee === RENDERER_IDENTITY
           const addressedToOther = addressee !== null && !addressedToViewer
 
-        // Row classes carry the per-message modifiers that CSS keys
-        // off: --grouped hides the avatar + role row and dims the
-        // timestamp; --to-me paints the left-border accent; --to-other
-        // dims the body color via --msg-fg-muted.
         const pinned = pinnedKeys?.has(pinKey(m)) ?? false
-        // #385 scope: 'dim' if out-of-current-channel, null if primary.
-        // data-attribute pattern mirrors theme / density / lanes —
-        // CSS branches off `[data-scope="dim"]` without JSX conditional.
-        const channelScope = scopeAttributeFor(m, recipient, viewer)
         const rowClasses = [
           'message-row',
           grouped ? 'message-row--grouped' : 'message-row--first',
@@ -307,12 +203,7 @@ function MessageList({
           .join(' ')
 
         return (
-          <li
-            key={m.id}
-            className={rowClasses}
-            data-test="message-row"
-            data-scope={channelScope ?? undefined}
-          >
+          <li key={m.id} className={rowClasses} data-test="message-row">
             <article>
               {/* Screen-reader sender prefix. Every article carries
                 * this so SR users navigating message-by-message always
