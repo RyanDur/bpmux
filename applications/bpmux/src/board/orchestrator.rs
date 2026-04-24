@@ -1,12 +1,24 @@
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::sync::Mutex;
 
 use chrono::{DateTime, Utc};
 use tokio::sync::mpsc;
 
+use super::domain::Story;
 use super::events::BoardEvent;
 use super::store::BoardStore;
 use super::sync::{SourceAdapter, SyncError};
+
+pub type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
+
+pub trait RefreshDriver: Send + Sync {
+    fn refresh_story(&self, number: u64) -> BoxedFuture<'_, Result<Option<Story>, SyncError>>;
+    fn refresh_all(&self) -> BoxedFuture<'_, Result<(), SyncError>>;
+    fn mutate_sync(&self, event: BoardEvent) -> Result<(), SyncError>;
+    fn snapshot_status(&self) -> SyncStatus;
+}
 
 #[derive(Debug, Clone, Default)]
 pub struct SyncStatus {
@@ -129,6 +141,24 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             .lock()
             .unwrap_or_else(|e| e.into_inner())
             .clone()
+    }
+}
+
+impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
+    fn refresh_story(&self, number: u64) -> BoxedFuture<'_, Result<Option<Story>, SyncError>> {
+        Box::pin(self.refresh_story(number))
+    }
+
+    fn refresh_all(&self) -> BoxedFuture<'_, Result<(), SyncError>> {
+        Box::pin(self.refresh_all())
+    }
+
+    fn mutate_sync(&self, event: BoardEvent) -> Result<(), SyncError> {
+        self.mutate(event)
+    }
+
+    fn snapshot_status(&self) -> SyncStatus {
+        self.snapshot_status()
     }
 }
 

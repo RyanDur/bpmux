@@ -50,6 +50,7 @@ pub struct BridgeServer<T: tracker::StoryTracker> {
     ws_tx: Arc<Mutex<Option<WsSink>>>,
     tracker: T,
     board: Arc<crate::board::BoardStore>,
+    refresh: Option<Arc<dyn crate::board::RefreshDriver>>,
 }
 
 pub(crate) fn resolve_bridge_name(raw: &str) -> String {
@@ -71,11 +72,21 @@ impl<T: tracker::StoryTracker> BridgeServer<T> {
             ws_tx: Arc::new(Mutex::new(None)),
             tracker,
             board: Arc::new(crate::board::BoardStore::new()),
+            refresh: None,
         }
+    }
+
+    fn with_refresh(mut self, refresh: Arc<dyn crate::board::RefreshDriver>) -> Self {
+        self.refresh = Some(refresh);
+        self
     }
 
     pub fn board(&self) -> &Arc<crate::board::BoardStore> {
         &self.board
+    }
+
+    pub fn refresh_driver(&self) -> Option<&Arc<dyn crate::board::RefreshDriver>> {
+        self.refresh.as_ref()
     }
 }
 
@@ -687,8 +698,16 @@ pub fn run_bridge(
                  env vars. Set both and retry. See diag log for which var was missing."
             )
         })?;
-        let server = BridgeServer::new(port, name.to_string(), tracker);
+        let server = BridgeServer::new(port, name.to_string(), tracker.clone());
         seed_board_from_tracker(&server).await;
+        let adapter = Arc::new(crate::board::adapters::github::GitHubSourceAdapter::new(
+            tracker,
+        ));
+        let orchestrator = Arc::new(crate::board::SyncOrchestrator::new(
+            Arc::clone(&server.board),
+            adapter,
+        ));
+        let server = server.with_refresh(orchestrator);
         let (stdin, stdout) = rmcp::transport::io::stdio();
         let service = server.serve((stdin, stdout)).await?;
         service.waiting().await?;
