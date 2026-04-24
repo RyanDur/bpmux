@@ -1,0 +1,132 @@
+use std::sync::Arc;
+use std::sync::Mutex;
+
+use chrono::{DateTime, Utc};
+use tokio::sync::mpsc;
+
+use super::events::BoardEvent;
+use super::store::BoardStore;
+use super::sync::{SourceAdapter, SyncError};
+
+#[derive(Debug, Clone, Default)]
+pub struct SyncStatus {
+    pub last_ingest_at: Option<DateTime<Utc>>,
+    pub last_push_at: Option<DateTime<Utc>>,
+    pub pending_events: usize,
+    pub last_error: Option<String>,
+}
+
+pub struct SyncOrchestrator<A: SourceAdapter + 'static> {
+    store: Arc<BoardStore>,
+    adapter: Arc<A>,
+    status: Arc<Mutex<SyncStatus>>,
+    pending_tx: mpsc::UnboundedSender<BoardEvent>,
+    pending_rx: Mutex<Option<mpsc::UnboundedReceiver<BoardEvent>>>,
+}
+
+impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
+    pub fn new(store: Arc<BoardStore>, adapter: Arc<A>) -> Self {
+        let (pending_tx, pending_rx) = mpsc::unbounded_channel();
+        Self {
+            store,
+            adapter,
+            status: Arc::new(Mutex::new(SyncStatus::default())),
+            pending_tx,
+            pending_rx: Mutex::new(Some(pending_rx)),
+        }
+    }
+
+    pub fn status_handle(&self) -> Arc<Mutex<SyncStatus>> {
+        Arc::clone(&self.status)
+    }
+
+    pub fn store(&self) -> Arc<BoardStore> {
+        Arc::clone(&self.store)
+    }
+
+    pub fn mutate(&self, event: BoardEvent) -> Result<(), SyncError> {
+        self.store.apply(&event);
+        self.pending_tx
+            .send(event)
+            .map_err(|e| SyncError::Other(format!("pending-buffer closed: {e}")))?;
+        bump_pending(&self.status, 1);
+        Ok(())
+    }
+
+    pub async fn ingest_once(&self) -> Result<(), SyncError> {
+        match self.adapter.ingest_metadata().await {
+            Ok(stories) => {
+                self.store.seed_all(stories);
+                record_ingest_success(&self.status);
+                Ok(())
+            }
+            Err(e) => {
+                record_error(&self.status, &format!("ingest: {e}"));
+                Err(e)
+            }
+        }
+    }
+
+    pub async fn drain_once(&self) -> Result<usize, SyncError> {
+        let mut rx = self
+            .pending_rx
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .take()
+            .ok_or_else(|| SyncError::Other("pending-receiver already taken".into()))?;
+        let mut drained = 0usize;
+        let mut failures = 0usize;
+        while let Ok(event) = rx.try_recv() {
+            match self.adapter.push_event(&event).await {
+                Ok(()) => {
+                    drained += 1;
+                    record_push_success(&self.status);
+                }
+                Err(e) => {
+                    failures += 1;
+                    record_error(&self.status, &format!("push: {e}"));
+                    let _ = self.pending_tx.send(event);
+                    break;
+                }
+            }
+        }
+        *self.pending_rx.lock().unwrap_or_else(|e| e.into_inner()) = Some(rx);
+        if failures > 0 {
+            return Err(SyncError::Other(format!(
+                "{failures} push failures; {drained} pushes succeeded"
+            )));
+        }
+        Ok(drained)
+    }
+
+    pub fn snapshot_status(&self) -> SyncStatus {
+        self.status
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
+    }
+}
+
+fn record_ingest_success(status: &Arc<Mutex<SyncStatus>>) {
+    let mut s = status.lock().unwrap_or_else(|e| e.into_inner());
+    s.last_ingest_at = Some(Utc::now());
+    s.last_error = None;
+}
+
+fn record_push_success(status: &Arc<Mutex<SyncStatus>>) {
+    let mut s = status.lock().unwrap_or_else(|e| e.into_inner());
+    s.last_push_at = Some(Utc::now());
+    if s.pending_events > 0 {
+        s.pending_events -= 1;
+    }
+}
+
+fn record_error(status: &Arc<Mutex<SyncStatus>>, msg: &str) {
+    let mut s = status.lock().unwrap_or_else(|e| e.into_inner());
+    s.last_error = Some(msg.to_string());
+}
+
+fn bump_pending(status: &Arc<Mutex<SyncStatus>>, by: usize) {
+    let mut s = status.lock().unwrap_or_else(|e| e.into_inner());
+    s.pending_events += by;
+}
