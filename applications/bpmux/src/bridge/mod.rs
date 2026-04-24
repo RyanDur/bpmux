@@ -614,12 +614,25 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                 }
                 "start_story" => {
                     let current_name = name.lock().await;
-                    tools_stories::handle_start_story(&args, &current_name, &ws_tx, &tracker).await
+                    tools_stories::handle_start_story(
+                        &args,
+                        &current_name,
+                        &ws_tx,
+                        &tracker,
+                        refresh.as_ref(),
+                    )
+                    .await
                 }
                 "deliver_story" => {
                     let current_name = name.lock().await;
-                    tools_stories::handle_deliver_story(&args, &current_name, &ws_tx, &tracker)
-                        .await
+                    tools_stories::handle_deliver_story(
+                        &args,
+                        &current_name,
+                        &ws_tx,
+                        &tracker,
+                        refresh.as_ref(),
+                    )
+                    .await
                 }
                 "close_iteration" => {
                     let current_name = name.lock().await;
@@ -649,8 +662,14 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                 }
                 "comment_on_story" => {
                     let current_name = name.lock().await;
-                    tools_stories::handle_comment_on_story(&args, &current_name, &ws_tx, &tracker)
-                        .await
+                    tools_stories::handle_comment_on_story(
+                        &args,
+                        &current_name,
+                        &ws_tx,
+                        &tracker,
+                        refresh.as_ref(),
+                    )
+                    .await
                 }
                 "accept_story" => {
                     let current_name = name.lock().await;
@@ -665,7 +684,14 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                 }
                 "reject_story" => {
                     let current_name = name.lock().await;
-                    tools_stories::handle_reject_story(&args, &current_name, &ws_tx, &tracker).await
+                    tools_stories::handle_reject_story(
+                        &args,
+                        &current_name,
+                        &ws_tx,
+                        &tracker,
+                        refresh.as_ref(),
+                    )
+                    .await
                 }
                 "reorder_story" => {
                     let current_name = name.lock().await;
@@ -673,13 +699,25 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                 }
                 "pass_desk_check" => {
                     let current_name = name.lock().await;
-                    tools_stories::handle_pass_desk_check(&args, &current_name, &ws_tx, &tracker)
-                        .await
+                    tools_stories::handle_pass_desk_check(
+                        &args,
+                        &current_name,
+                        &ws_tx,
+                        &tracker,
+                        refresh.as_ref(),
+                    )
+                    .await
                 }
                 "fail_desk_check" => {
                     let current_name = name.lock().await;
-                    tools_stories::handle_fail_desk_check(&args, &current_name, &ws_tx, &tracker)
-                        .await
+                    tools_stories::handle_fail_desk_check(
+                        &args,
+                        &current_name,
+                        &ws_tx,
+                        &tracker,
+                        refresh.as_ref(),
+                    )
+                    .await
                 }
                 "get_usage" => tools::handle_get_usage(&args).await,
                 "view_tokens" => tools::handle_view_tokens(&ws_tx).await,

@@ -259,12 +259,18 @@ pub(super) async fn handle_start_story(
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
     tracker: &impl super::tracker::StoryTracker,
+    refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     require_role(agent_name, &["dev"], "start")?;
     let number = args
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
+    if let Some(r) = refresh {
+        r.refresh_story(number)
+            .await
+            .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?;
+    }
     let pickup_paraphrase = require_nonempty_string(
         args,
         "pickup_paraphrase",
@@ -319,12 +325,18 @@ pub(super) async fn handle_deliver_story(
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
     tracker: &impl super::tracker::StoryTracker,
+    refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     require_role(agent_name, &["dev"], "deliver")?;
     let number = args
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
+    if let Some(r) = refresh {
+        r.refresh_story(number)
+            .await
+            .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?;
+    }
     // #391 deliver-gate: dev must articulate what they drove end-to-
     // end before delivery. Becomes the diff-point designer checks at
     // desk-check (claim-vs-reality). Missing/empty → validation
@@ -474,12 +486,18 @@ pub(super) async fn handle_reject_story(
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
     tracker: &impl super::tracker::StoryTracker,
+    refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     require_role(agent_name, &["ryan", "pm", "designer", "dev"], "reject")?;
     let number = args
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
+    if let Some(r) = refresh {
+        r.refresh_story(number)
+            .await
+            .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?;
+    }
     let reason = args
         .get("reason")
         .and_then(|v| v.as_str())
@@ -520,12 +538,18 @@ pub(super) async fn handle_pass_desk_check(
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
     tracker: &impl super::tracker::StoryTracker,
+    refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     require_role(agent_name, &["designer"], "pass desk-check")?;
     let number = args
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
+    if let Some(r) = refresh {
+        r.refresh_story(number)
+            .await
+            .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?;
+    }
     // Pick signal recipients based on story type (Feature/Bug/Chore
     // per the 3-type vocabulary, #264). Chore + Bug → PM alone
     // (team-accept lane). Feature → Ryan AND PM (#259 — Ryan is the
@@ -570,12 +594,18 @@ pub(super) async fn handle_fail_desk_check(
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
     tracker: &impl super::tracker::StoryTracker,
+    refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     require_role(agent_name, &["designer"], "fail desk-check")?;
     let number = args
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
+    if let Some(r) = refresh {
+        r.refresh_story(number)
+            .await
+            .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?;
+    }
     let reason = args
         .get("reason")
         .and_then(|v| v.as_str())
@@ -645,6 +675,7 @@ pub(super) async fn handle_comment_on_story(
     _agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
     tracker: &impl super::tracker::StoryTracker,
+    refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     let number = args
         .get("number")
@@ -656,6 +687,11 @@ pub(super) async fn handle_comment_on_story(
         .ok_or("missing 'body' argument")?;
     if body.trim().is_empty() {
         return Err("'body' must not be empty".to_string());
+    }
+    if let Some(r) = refresh {
+        r.refresh_story(number)
+            .await
+            .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?;
     }
     let result = tracker.comment_on_story(number, body).await;
     broadcast_board_invalidate(ws_tx).await;

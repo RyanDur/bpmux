@@ -170,7 +170,7 @@ async fn comment_on_story_rejects_empty_body() {
     let mut args = serde_json::Map::new();
     args.insert("number".to_string(), serde_json::json!(42));
     args.insert("body".to_string(), serde_json::json!(""));
-    let result = handle_comment_on_story(&args, "dev:claude-code", &ws_tx, &tracker).await;
+    let result = handle_comment_on_story(&args, "dev:claude-code", &ws_tx, &tracker, None).await;
     assert!(
         result.is_err(),
         "empty body must be rejected: got {result:?}"
@@ -185,7 +185,7 @@ async fn comment_on_story_rejects_whitespace_only_body() {
     let mut args = serde_json::Map::new();
     args.insert("number".to_string(), serde_json::json!(42));
     args.insert("body".to_string(), serde_json::json!("   \n  "));
-    let result = handle_comment_on_story(&args, "dev:claude-code", &ws_tx, &tracker).await;
+    let result = handle_comment_on_story(&args, "dev:claude-code", &ws_tx, &tracker, None).await;
     assert!(result.is_err(), "whitespace-only body must be rejected");
 }
 
@@ -197,7 +197,7 @@ async fn comment_on_story_accepts_non_empty_body_any_role() {
         let mut args = serde_json::Map::new();
         args.insert("number".to_string(), serde_json::json!(42));
         args.insert("body".to_string(), serde_json::json!("a real comment"));
-        let result = handle_comment_on_story(&args, caller, &ws_tx, &tracker).await;
+        let result = handle_comment_on_story(&args, caller, &ws_tx, &tracker, None).await;
         assert!(
             result.is_ok(),
             "caller={caller} should be allowed (any-role); got {result:?}"
@@ -610,6 +610,7 @@ async fn reject_allows_pm_designer_dev_owner() {
             caller,
             &ws_tx,
             &AlreadyClosedTracker,
+            None,
         )
         .await;
         assert!(
@@ -628,6 +629,7 @@ async fn reject_rejects_unknown_role_via_handler() {
         "intern:claude-code",
         &ws_tx,
         &AlreadyClosedTracker,
+        None,
     )
     .await;
     assert!(result.is_err());
@@ -944,6 +946,7 @@ async fn deliver_story_rejects_missing_verified_observation() {
         "dev:claude-code",
         &ws_tx,
         &AlreadyClosedTracker,
+        None,
     )
     .await;
     assert!(result.is_err(), "missing verified_observation should fail");
@@ -970,6 +973,7 @@ async fn deliver_story_rejects_empty_verified_observation() {
         "dev:claude-code",
         &ws_tx,
         &AlreadyClosedTracker,
+        None,
     )
     .await;
     assert!(result.is_err(), "empty verified_observation should fail");
@@ -1265,6 +1269,7 @@ async fn start_story_rejects_missing_pickup_paraphrase() {
         "dev:claude-code",
         &ws_tx,
         &AlreadyClosedTracker,
+        None,
     )
     .await;
     assert!(
@@ -1297,6 +1302,7 @@ async fn start_story_rejects_empty_pickup_paraphrase() {
         "dev:claude-code",
         &ws_tx,
         &AlreadyClosedTracker,
+        None,
     )
     .await;
     assert!(
@@ -1318,6 +1324,7 @@ async fn start_story_rejects_missing_falsifier_reframing() {
         "dev:claude-code",
         &ws_tx,
         &AlreadyClosedTracker,
+        None,
     )
     .await;
     assert!(
@@ -1346,6 +1353,7 @@ async fn start_story_accepts_both_fields_populated() {
         "dev:claude-code",
         &ws_tx,
         &AlreadyClosedTracker,
+        None,
     )
     .await;
     assert!(
@@ -1372,6 +1380,7 @@ async fn start_story_still_dev_only_with_new_params() {
             caller,
             &ws_tx,
             &AlreadyClosedTracker,
+            None,
         )
         .await;
         assert!(
