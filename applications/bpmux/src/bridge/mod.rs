@@ -49,6 +49,7 @@ pub struct BridgeServer<T: tracker::StoryTracker> {
     peer: Arc<Mutex<Option<Peer<RoleServer>>>>,
     ws_tx: Arc<Mutex<Option<WsSink>>>,
     tracker: T,
+    board: Arc<crate::board::BoardStore>,
 }
 
 pub(crate) fn resolve_bridge_name(raw: &str) -> String {
@@ -69,7 +70,12 @@ impl<T: tracker::StoryTracker> BridgeServer<T> {
             peer: Arc::new(Mutex::new(None)),
             ws_tx: Arc::new(Mutex::new(None)),
             tracker,
+            board: Arc::new(crate::board::BoardStore::new()),
         }
+    }
+
+    pub fn board(&self) -> &Arc<crate::board::BoardStore> {
+        &self.board
     }
 }
 
