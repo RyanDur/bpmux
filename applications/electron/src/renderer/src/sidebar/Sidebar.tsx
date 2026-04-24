@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import type { ChatMessage } from '../transport/types'
 import { classOf, type MessageFilter } from '../hooks/useMessageFilter'
 import { usePresence, type Presence } from '../hooks/usePresence'
@@ -12,6 +12,7 @@ import {
 } from '../roles/deriveRoles'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import CollapsibleSection from './CollapsibleSection'
+import { useCollapsibleSectionsStorage } from './useCollapsibleSectionsStorage'
 import './Sidebar.css'
 
 type SectionId = 'direct' | 'groups' | 'system'
@@ -70,9 +71,13 @@ const Sidebar = ({
   apiBase,
   authToken
 }: Props): React.JSX.Element => {
-  const [collapsed, setCollapsed] = useState<CollapseState>(INITIAL_COLLAPSE)
+  const collapseStorage = useCollapsibleSectionsStorage<SectionId>(
+    RENDERER_IDENTITY,
+    INITIAL_COLLAPSE
+  )
+  const collapsed = collapseStorage.state
   const toggleSection = (id: SectionId): void => {
-    setCollapsed((prev) => ({ ...prev, [id]: !prev[id] }))
+    collapseStorage.setState({ ...collapsed, [id]: !collapsed[id] })
   }
   const systemCount = useMemo(() => countSystemMessages(messages), [messages])
   const roster = useTeamRoster({ apiBase, authToken, messages })
