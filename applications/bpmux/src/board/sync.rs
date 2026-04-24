@@ -1,0 +1,46 @@
+use super::domain::Story;
+use super::events::BoardEvent;
+
+#[derive(Debug, Clone)]
+pub enum SyncError {
+    SourceUnreachable(String),
+    RateLimited { retry_after_seconds: u64 },
+    ValidationRejected(String),
+    Other(String),
+}
+
+impl std::fmt::Display for SyncError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SyncError::SourceUnreachable(s) => write!(f, "source unreachable: {s}"),
+            SyncError::RateLimited {
+                retry_after_seconds,
+            } => write!(f, "rate-limited; retry after {retry_after_seconds}s"),
+            SyncError::ValidationRejected(s) => write!(f, "validation rejected: {s}"),
+            SyncError::Other(s) => write!(f, "{s}"),
+        }
+    }
+}
+
+impl std::error::Error for SyncError {}
+
+pub trait SourceAdapter: Send + Sync {
+    fn ingest_metadata(
+        &self,
+    ) -> impl std::future::Future<Output = Result<Vec<Story>, SyncError>> + Send;
+
+    fn fetch_story_body(
+        &self,
+        number: u64,
+    ) -> impl std::future::Future<Output = Result<String, SyncError>> + Send;
+
+    fn fetch_free_comments(
+        &self,
+        number: u64,
+    ) -> impl std::future::Future<Output = Result<Vec<super::domain::FreeComment>, SyncError>> + Send;
+
+    fn push_event(
+        &self,
+        event: &BoardEvent,
+    ) -> impl std::future::Future<Output = Result<(), SyncError>> + Send;
+}
