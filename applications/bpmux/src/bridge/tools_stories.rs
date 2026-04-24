@@ -383,6 +383,7 @@ pub(super) async fn handle_label_story(
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
     tracker: &impl super::tracker::StoryTracker,
+    refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     require_role(agent_name, &["pm"], "label")?;
     let number = args
@@ -397,6 +398,11 @@ pub(super) async fn handle_label_story(
         .get("operation")
         .and_then(|v| v.as_str())
         .unwrap_or("add");
+    if let Some(r) = refresh {
+        r.refresh_story(number)
+            .await
+            .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?;
+    }
     match operation {
         "add" => {
             tracker.add_label(number, label).await?;

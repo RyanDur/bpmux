@@ -1045,6 +1045,7 @@ async fn label_story_defaults_to_add_when_operation_missing() {
         "pm:claude-code",
         &ws_tx,
         &tracker,
+        None,
     )
     .await
     .expect("default-to-add must succeed");
@@ -1068,6 +1069,7 @@ async fn label_story_add_operation_succeeds_and_confirms_add() {
         "pm:claude-code",
         &ws_tx,
         &tracker,
+        None,
     )
     .await
     .expect("explicit add must succeed");
@@ -1094,6 +1096,7 @@ async fn label_story_remove_operation_succeeds_and_confirms_remove() {
         "pm:claude-code",
         &ws_tx,
         &tracker,
+        None,
     )
     .await
     .expect("remove must succeed");
@@ -1122,6 +1125,7 @@ async fn label_story_remove_is_idempotent_when_label_absent() {
         "pm:claude-code",
         &ws_tx,
         &tracker,
+        None,
     )
     .await;
     assert!(
@@ -1148,6 +1152,7 @@ async fn label_story_rejects_invalid_operation() {
         "pm:claude-code",
         &ws_tx,
         &tracker,
+        None,
     )
     .await;
     assert!(
@@ -1182,6 +1187,7 @@ async fn label_story_add_propagates_tracker_error_without_broadcast() {
         "pm:claude-code",
         &ws_tx,
         &FailingLabelTracker,
+        None,
     )
     .await;
     assert!(
@@ -1208,6 +1214,7 @@ async fn label_story_remove_propagates_tracker_error_without_broadcast() {
         "pm:claude-code",
         &ws_tx,
         &FailingLabelTracker,
+        None,
     )
     .await;
     assert!(
@@ -1230,7 +1237,8 @@ async fn label_story_still_pm_gated_with_operation_param() {
         "operation": "remove"
     });
     for caller in ["dev:claude-code", "designer:claude-code", "ryan:human"] {
-        let result = handle_label_story(args.as_object().unwrap(), caller, &ws_tx, &tracker).await;
+        let result =
+            handle_label_story(args.as_object().unwrap(), caller, &ws_tx, &tracker, None).await;
         assert!(result.is_err(), "{caller} must be rejected by PM-only gate");
         assert!(
             result.unwrap_err().contains("restricted to pm"),

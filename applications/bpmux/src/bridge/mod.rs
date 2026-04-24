@@ -523,6 +523,7 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
         let name = self.name.clone();
         let tracker = self.tracker.clone();
         let board = self.board.clone();
+        let refresh = self.refresh.clone();
 
         async move {
             let args = request.arguments.unwrap_or_default();
@@ -626,7 +627,14 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                 }
                 "label_story" => {
                     let current_name = name.lock().await;
-                    tools_stories::handle_label_story(&args, &current_name, &ws_tx, &tracker).await
+                    tools_stories::handle_label_story(
+                        &args,
+                        &current_name,
+                        &ws_tx,
+                        &tracker,
+                        refresh.as_ref(),
+                    )
+                    .await
                 }
                 "close_story" => {
                     let current_name = name.lock().await;
