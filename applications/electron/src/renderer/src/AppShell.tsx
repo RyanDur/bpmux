@@ -16,8 +16,44 @@ import {
 } from './icons/TitlebarIcons'
 import Sidebar from './sidebar/Sidebar'
 import type { ChatMessage, ConnectionStatus } from './transport/types'
-import type { SendOptions } from './transport/useWebSocket'
+import { RENDERER_IDENTITY, type SendOptions } from './transport/useWebSocket'
 import './AppShell.css'
+
+type PersistedScope =
+  | { kind: 'all' }
+  | { kind: 'broadcast' }
+  | { kind: 'scoped'; value: string[] }
+
+const SCOPE_STORAGE_KEY = `bpmux-scope:${RENDERER_IDENTITY}`
+
+const readScope = (): PersistedScope | null => {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(SCOPE_STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as unknown
+    if (!parsed || typeof parsed !== 'object') return null
+    const obj = parsed as Record<string, unknown>
+    if (obj.kind === 'all') return { kind: 'all' }
+    if (obj.kind === 'broadcast') return { kind: 'broadcast' }
+    if (obj.kind === 'scoped' && Array.isArray(obj.value)) {
+      const value = obj.value.filter((v): v is string => typeof v === 'string')
+      if (value.length > 0) return { kind: 'scoped', value }
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
+const writeScope = (scope: PersistedScope): void => {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(SCOPE_STORAGE_KEY, JSON.stringify(scope))
+  } catch {
+    return
+  }
+}
 
 interface Props {
   status: ConnectionStatus
@@ -30,8 +66,11 @@ const AppShell = ({ status, messages, onSend }: Props): React.JSX.Element => {
     status === 'connected' ? 'connected' : status === 'connecting' ? 'connecting' : 'disconnected'
 
   const [boardOpen, setBoardOpen] = useState<boolean>(true)
-  const [recipient, setRecipient] = useState<string[] | null>(null)
-  const [allView, setAllView] = useState<boolean>(false)
+  const initialScope = readScope()
+  const [recipient, setRecipient] = useState<string[] | null>(
+    initialScope?.kind === 'scoped' ? initialScope.value : null
+  )
+  const [allView, setAllView] = useState<boolean>(initialScope?.kind === 'all')
   const [metricsOpen, setMetricsOpen] = useState<boolean>(false)
   const { theme, toggle: toggleTheme } = useTheme()
   const { density, toggle: toggleDensity } = useDensity()
@@ -42,11 +81,13 @@ const AppShell = ({ status, messages, onSend }: Props): React.JSX.Element => {
   const selectRecipient = (r: string[] | null): void => {
     setAllView(false)
     setRecipient(r)
+    writeScope(r && r.length > 0 ? { kind: 'scoped', value: r } : { kind: 'broadcast' })
   }
 
   const selectAllView = (): void => {
     setAllView(true)
     setRecipient(null)
+    writeScope({ kind: 'all' })
   }
 
   useEffect(() => {
