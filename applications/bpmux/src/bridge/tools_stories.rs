@@ -477,7 +477,13 @@ pub(super) async fn handle_reject_story(
             "bridge: add-label rejected failed for #{number}: {e}"
         ));
     }
-    let result = tracker.comment_on_story(number, reason).await;
+    // #419: structured prefix lets get_story's rework-context enricher
+    // identify this comment as the rejection-reason when the rework
+    // cycle picks up. Raw `reason` made it indistinguishable from any
+    // other free-form comment.
+    let rejection_comment =
+        format!("**rejection_reason** (reject-gate by {agent_name}):\n\n{reason}");
+    let result = tracker.comment_on_story(number, &rejection_comment).await;
     broadcast_board_invalidate(ws_tx).await;
     match result {
         Ok(_) => Ok(format!("#{number} rejected: {reason}")),
@@ -551,6 +557,17 @@ pub(super) async fn handle_fail_desk_check(
     ws_send(ws_tx, signal)
         .await
         .map_err(|e| format!("#{number} signal send failed: {e}"))?;
+    // #419: persist the failure reason as a structured comment so
+    // pickup of the rework cycle can surface WHY without scrolling
+    // chat. Previously only lived in the chat signal, which decays
+    // past the next restart.
+    let fail_comment =
+        format!("**rejection_reason** (desk-check-fail by {agent_name}):\n\n{reason}");
+    if let Err(e) = tracker.comment_on_story(number, &fail_comment).await {
+        crate::session::diag::log_diag(&format!(
+            "bridge: desk-check-fail comment failed for #{number}: {e}"
+        ));
+    }
     let result = tracker.add_label(number, LABEL_NEEDS_FIXES).await;
     broadcast_board_invalidate(ws_tx).await;
     match result {

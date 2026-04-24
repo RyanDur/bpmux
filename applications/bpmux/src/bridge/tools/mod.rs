@@ -12,6 +12,8 @@ mod get_briefing;
 mod get_ci_state;
 mod get_identity;
 mod get_story;
+#[cfg(test)]
+mod get_story_tests;
 mod get_token_report;
 mod get_usage;
 mod list_lessons;
@@ -19,6 +21,9 @@ mod list_peer_lessons;
 mod list_ready;
 mod read_messages;
 mod remove_principle;
+mod rework_context;
+#[cfg(test)]
+mod rework_context_tests;
 mod save_bookmark;
 mod save_briefing;
 mod save_lesson;
