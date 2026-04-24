@@ -35,8 +35,7 @@ interface CacheEntry {
 
 // Module-scope cache so the fetch for a URL happens once per app
 // lifetime, shared across every message that renders the same URL.
-// Keyed by URL. Survives component remounts (e.g., when the user
-// toggles between MessageList and Search overlays + back).
+// Keyed by URL. Survives component remounts.
 const cache = new Map<string, CacheEntry>()
 
 interface UseUnfurlArgs {

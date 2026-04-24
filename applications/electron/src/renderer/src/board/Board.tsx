@@ -67,15 +67,6 @@ interface BoardProps {
   // Board itself doesn't observe messages; Board polls /api/board on
   // a 30s interval for story list changes, which is orthogonal.
   messages: ChatMessage[]
-  // External drill-in request (e.g., click on a search result). When
-  // set, Board opens the drill-in for that story number. Null = no
-  // external request; Board uses its internal selection state. The
-  // commentId field (optional) is forwarded to DrillIn for scroll-to-
-  // comment after the hit from the Comments search section.
-  drillRequest?: { storyNumber: number; commentId?: number } | null
-  // Callback fired when Board's drill-in closes (internal or external).
-  // AppShell clears its drillRequest so a future re-click re-triggers.
-  onDrillClosed?: () => void
   // Collapsed state for Ctrl+P toggle. When true, the aside stays
   // mounted (state preserved) but animates to 0 width via CSS. When
   // false, the aside is visible at its normal width. See Board.css
@@ -83,7 +74,7 @@ interface BoardProps {
   hidden?: boolean
 }
 
-function Board({ messages, drillRequest, onDrillClosed, hidden }: BoardProps): React.JSX.Element {
+function Board({ messages, hidden }: BoardProps): React.JSX.Element {
   const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
   const [data, setData] = useState<BoardResponse | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
@@ -245,20 +236,9 @@ function Board({ messages, drillRequest, onDrillClosed, hidden }: BoardProps): R
   const handleBack = useCallback(() => {
     setDrilledNumber(null)
     setFocusTimelineFor(null)
-    onDrillClosed?.()
     // Refocus the board so arrow nav resumes immediately.
     requestAnimationFrame(() => asideRef.current?.focus())
-  }, [onDrillClosed])
-
-  // External drill-request (from search result click). When the
-  // prop changes to a non-null value, open drill-in. Clearing is
-  // driven by the close handler above.
-  useEffect(() => {
-    if (drillRequest !== null && drillRequest !== undefined) {
-      setSelectedNumber(drillRequest.storyNumber)
-      setDrilledNumber(drillRequest.storyNumber)
-    }
-  }, [drillRequest])
+  }, [])
 
   const handleStoryMutated = useCallback(
     (updated: BoardStory) => {
@@ -433,11 +413,6 @@ function Board({ messages, drillRequest, onDrillClosed, hidden }: BoardProps): R
           usingMock={usingMock}
           messages={messages}
           visible={drillAnim.visible}
-          scrollToCommentId={
-            drillRequest?.storyNumber === renderedDrill.number
-              ? drillRequest.commentId ?? null
-              : null
-          }
           focusTimeline={focusTimelineFor === renderedDrill.number}
           onBack={handleBack}
           onStoryMutated={handleStoryMutated}

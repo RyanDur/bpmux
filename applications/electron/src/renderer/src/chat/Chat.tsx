@@ -4,7 +4,6 @@ import { channelKey, messageKey, usePins } from '../hooks/usePins'
 import { useReactions } from '../hooks/useReactions'
 import { useAnimatedUnmount } from '../hooks/useAnimatedUnmount'
 import Metrics from '../metrics/Metrics'
-import Search from '../search/Search'
 import { RENDERER_IDENTITY, type SendOptions } from '../transport/useWebSocket'
 import type { ChatMessage, ConnectionStatus } from '../transport/types'
 import FilterPills from './FilterPills'
@@ -29,13 +28,8 @@ interface Props {
   // per #332 click-parity AC).
   onSelectRecipient?: (r: string[] | null) => void
   filter: ReturnType<typeof useMessageFilter>
-  searchOpen: boolean
   metricsOpen: boolean
-  onCloseSearch: () => void
   onCloseMetrics: () => void
-  // Request Board to open drill-in for a story (optionally with a
-  // specific comment highlighted). Forwards from search-result clicks.
-  onOpenStory: (storyNumber: number, commentId?: number) => void
   apiBase: string | undefined
   authToken: string | undefined
   // #374 lane-separation mode, threaded from AppShell. 'on' =
@@ -52,11 +46,8 @@ function Chat({
   recipient,
   onSelectRecipient,
   filter,
-  searchOpen,
   metricsOpen,
-  onCloseSearch,
   onCloseMetrics,
-  onOpenStory,
   apiBase,
   authToken,
   lanes = 'off',
@@ -72,7 +63,6 @@ function Chat({
     channel: pinsChannel,
     messages
   })
-  const search = useAnimatedUnmount(searchOpen, OVERLAY_EXIT_MS)
   const metrics = useAnimatedUnmount(metricsOpen, OVERLAY_EXIT_MS)
   const pinnedList = useAnimatedUnmount(pinnedListOpen, OVERLAY_EXIT_MS)
 
@@ -169,15 +159,6 @@ function Chat({
           authToken={authToken}
           onClose={onCloseMetrics}
           visible={metrics.visible}
-        />
-      )}
-      {search.mounted && (
-        <Search
-          apiBase={apiBase}
-          authToken={authToken}
-          onClose={onCloseSearch}
-          onOpenStory={onOpenStory}
-          visible={search.visible}
         />
       )}
       {pinnedList.mounted && (

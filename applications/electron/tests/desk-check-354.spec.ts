@@ -4,8 +4,6 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
 
-const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
-
 const MOCK_BOARD = {
   fetched_at: '2026-04-22T16:00:00Z',
   stories: [
@@ -73,39 +71,6 @@ test.describe('desk-check #354 close-direction animations', () => {
       document.querySelector('[data-test="board-drill-in"]')
     )
     console.log(`#354 drill-in DOM after full exit: ${afterExit === null ? 'unmounted ✓' : 'still present'}`)
-
-    await app.close()
-  })
-
-  test('search overlay exit keeps element mounted with data-visible=false briefly', async () => {
-    const { app } = await launchWithBoard()
-    const win = await app.firstWindow()
-    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
-    await win.waitForTimeout(300)
-
-    // Open search.
-    await win.keyboard.press(process.platform === 'darwin' ? 'Meta+f' : 'Control+f')
-    await expect(win.locator('[data-test="search-overlay"]')).toBeVisible()
-    await win.waitForTimeout(300)
-
-    const enteredAttr = await win.evaluate(() =>
-      document.querySelector('[data-test="search-overlay"]')?.getAttribute('data-visible')
-    )
-    console.log(`#354 search-overlay data-visible while entered: ${enteredAttr}`)
-
-    // Close via Esc.
-    await win.keyboard.press('Escape')
-    await win.waitForTimeout(50)
-    const exitingAttr = await win.evaluate(() =>
-      document.querySelector('[data-test="search-overlay"]')?.getAttribute('data-visible')
-    )
-    console.log(`#354 search-overlay data-visible right after Esc: ${exitingAttr}`)
-
-    await win.waitForTimeout(400)
-    const afterExit = await win.evaluate(() =>
-      document.querySelector('[data-test="search-overlay"]')
-    )
-    console.log(`#354 search-overlay after full exit: ${afterExit === null ? 'unmounted ✓' : 'still present'}`)
 
     await app.close()
   })

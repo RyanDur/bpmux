@@ -30,14 +30,7 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
   // DM, 2+ = group. Unified shape so DM + group share the scoping
   // codepath in Chat.tsx and useWebSocket send-options.
   const [recipient, setRecipient] = useState<string[] | null>(null)
-  const [searchOpen, setSearchOpen] = useState<boolean>(false)
   const [metricsOpen, setMetricsOpen] = useState<boolean>(false)
-  // Drill-in request from non-Board sources (search-result click).
-  // Board consumes this prop to open its drill-in for the requested
-  // story; onDrillClosed clears it so a repeat click re-fires.
-  const [drillRequest, setDrillRequest] = useState<
-    { storyNumber: number; commentId?: number } | null
-  >(null)
   const { theme, toggle: toggleTheme } = useTheme()
   const { density, toggle: toggleDensity } = useDensity()
   const { lanes, toggle: toggleLanes } = useLaneSeparation()
@@ -57,21 +50,6 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
         target instanceof HTMLTextAreaElement ||
         target instanceof HTMLInputElement ||
         target?.isContentEditable === true
-
-      if ((event.key === 'f' || event.key === 'F') && !event.altKey && !event.shiftKey) {
-        // #377: split-by-tradition for Ctrl+F vs Cmd+F.
-        //   - Ctrl+F in editable → emacs forward-char (pass-through;
-        //     the #331 guard pattern). Ryan's 2026-04-22 22:14 UTC
-        //     reject was specifically "ctrl-f does a find instead
-        //     of forward" — emacs tradition.
-        //   - Cmd+F anywhere → platform-convention search-overlay
-        //     (Mac users reflexively Cmd+F to search everywhere,
-        //     even inside input fields). No guard.
-        if (inEditable && event.ctrlKey && !event.metaKey) return
-        event.preventDefault()
-        setSearchOpen(true)
-        return
-      }
 
       if ((event.key === 'm' || event.key === 'M') && !event.altKey && event.shiftKey) {
         event.preventDefault()
@@ -180,17 +158,8 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
           recipient={recipient}
           onSelectRecipient={setRecipient}
           filter={filter}
-          searchOpen={searchOpen}
           metricsOpen={metricsOpen}
-          onCloseSearch={() => setSearchOpen(false)}
           onCloseMetrics={() => setMetricsOpen(false)}
-          onOpenStory={(storyNumber, commentId) => {
-            // Force board open so the drill-in surface is visible,
-            // then ask Board to open the drill-in for the requested
-            // story (+ optional comment anchor from comment-result).
-            setBoardOpen(true)
-            setDrillRequest({ storyNumber, commentId })
-          }}
           apiBase={bridge?.apiBase}
           authToken={bridge?.authToken}
           lanes={lanes}
@@ -201,12 +170,7 @@ function AppShell({ status, messages, onSend }: Props): React.JSX.Element {
           * to 0 + overflow:hidden + removes border. Mounting stays
           * stable so scroll position + internal selection state
           * survive toggles, a product nicety as well. */}
-        <Board
-          messages={messages}
-          drillRequest={drillRequest}
-          onDrillClosed={() => setDrillRequest(null)}
-          hidden={!boardOpen}
-        />
+        <Board messages={messages} hidden={!boardOpen} />
       </section>
     </main>
   )
