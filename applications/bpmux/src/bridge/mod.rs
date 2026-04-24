@@ -513,6 +513,9 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
             crate::mcp::tools::view_story_commits_tool(
                 "#411: fetch the authoritative commit-set that landed a story. Returns JSON array of `{sha, short_sha, subject, author, committed_at}` for every commit on main whose subject references `#<N>` with a word boundary. Safer than `git log --grep` (body matches + number-prefix collisions). Any role can call. Use at desk-check to pin down what to code-review, at rework-pickup to find the prior-delivery baseline.",
             ),
+            crate::mcp::tools::view_commit_diff_tool(
+                "#412: read a commit's line-level diff inside bpmux. Accepts a sha/ref (or any git ref). Returns the output of `git show --format=fuller --patch <sha>` with an optional `max_bytes` cap (default 100000) — oversized diffs are truncated with a trailing marker citing shown/total bytes so the consumer knows to narrow the view. Any role can call. Use at desk-check to review implementation against spec without context-switching to terminal git-show.",
+            ),
         ];
 
         std::future::ready(Ok(ListToolsResult::with_all_items(tools)))
@@ -606,6 +609,7 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                 "get_story" => tools::handle_get_story(&args, &tracker).await,
                 "view_story_timeline" => tools::handle_view_story_timeline(&args, &tracker).await,
                 "view_story_commits" => tools::handle_view_story_commits(&args).await,
+                "view_commit_diff" => tools::handle_view_commit_diff(&args).await,
                 "view_comments" => tools::handle_view_comments(&args, &tracker).await,
                 "dev_in_flight" => tools::handle_dev_in_flight(&tracker).await,
                 "list_ready" => tools::handle_list_ready(&tracker).await,

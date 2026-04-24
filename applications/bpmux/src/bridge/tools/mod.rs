@@ -40,6 +40,9 @@ mod simulate_type;
 mod update_principle;
 mod view_backlog;
 mod view_comments;
+mod view_commit_diff;
+#[cfg(test)]
+mod view_commit_diff_tests;
 mod view_roadmap;
 mod view_story_commits;
 #[cfg(test)]
@@ -89,6 +92,7 @@ pub(in crate::bridge) use simulate_type::handle_simulate_type;
 pub(in crate::bridge) use update_principle::handle_update_principle;
 pub(in crate::bridge) use view_backlog::handle_view_backlog;
 pub(in crate::bridge) use view_comments::handle_view_comments;
+pub(in crate::bridge) use view_commit_diff::handle_view_commit_diff;
 pub(in crate::bridge) use view_roadmap::handle_view_roadmap;
 pub(in crate::bridge) use view_story_commits::handle_view_story_commits;
 pub(in crate::bridge) use view_story_timeline::{
