@@ -1,3 +1,5 @@
+use super::git_repo::run_git;
+
 const FIELD_DELIMITER: &str = "\x1f";
 const GIT_FORMAT: &str = "%H\x1f%h\x1f%s\x1f%an\x1f%aI";
 
@@ -52,22 +54,8 @@ pub(in crate::bridge) async fn handle_view_story_commits(
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
-    let output = run_git_log(&format!("--format={GIT_FORMAT}"))?;
+    let format_arg = format!("--format={GIT_FORMAT}");
+    let output = run_git(&["log", "main", &format_arg])?;
     let commits = parse_git_log_output(&output, number);
     serde_json::to_string_pretty(&commits).map_err(|e| format!("serialize commits: {e}"))
-}
-
-fn run_git_log(format_flag: &str) -> Result<String, String> {
-    let output = std::process::Command::new("git")
-        .args(["log", "main", format_flag])
-        .output()
-        .map_err(|e| format!("git log: {e}"))?;
-    if !output.status.success() {
-        return Err(format!(
-            "git log exited {}: {}",
-            output.status,
-            String::from_utf8_lossy(&output.stderr)
-        ));
-    }
-    String::from_utf8(output.stdout).map_err(|e| format!("git log non-utf8: {e}"))
 }

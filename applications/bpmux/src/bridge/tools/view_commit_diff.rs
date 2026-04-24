@@ -1,3 +1,5 @@
+use super::git_repo::run_git;
+
 const DEFAULT_MAX_BYTES: usize = 100_000;
 const TRUNCATION_MARKER_TEMPLATE: &str =
     "\n\n--- diff truncated ({shown} of {total} bytes) — request a narrower view ---\n";
@@ -46,21 +48,6 @@ pub(in crate::bridge) async fn handle_view_commit_diff(
         .and_then(|v| v.as_u64())
         .map(|v| v as usize)
         .unwrap_or(DEFAULT_MAX_BYTES);
-    let raw = run_git_show(sha)?;
+    let raw = run_git(&["show", "--format=fuller", "--patch", sha])?;
     Ok(truncate_diff(&raw, max_bytes))
-}
-
-fn run_git_show(sha: &str) -> Result<String, String> {
-    let output = std::process::Command::new("git")
-        .args(["show", "--format=fuller", "--patch", sha])
-        .output()
-        .map_err(|e| format!("git show: {e}"))?;
-    if !output.status.success() {
-        return Err(format!(
-            "git show exited {}: {}",
-            output.status,
-            String::from_utf8_lossy(&output.stderr).trim()
-        ));
-    }
-    String::from_utf8(output.stdout).map_err(|e| format!("git show non-utf8: {e}"))
 }

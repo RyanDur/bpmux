@@ -16,6 +16,9 @@ mod get_story;
 mod get_story_tests;
 mod get_token_report;
 mod get_usage;
+mod git_repo;
+#[cfg(test)]
+mod git_repo_tests;
 mod list_lessons;
 mod list_peer_lessons;
 mod list_ready;
