@@ -70,6 +70,19 @@ enum Command {
         #[arg(long)]
         role: Option<String>,
     },
+    /// Emit a pre-commit-gates-passed activity broadcast (#424). Invoked
+    /// by the git post-commit hook with the SHA of the just-created
+    /// commit. Fires only on gate-passed state because the commit
+    /// wouldn't exist if pre-commit had failed.
+    EmitPrecommitPassed {
+        /// SHA of the commit whose pre-commit gates just passed.
+        #[arg(long)]
+        sha: String,
+        /// Role to attribute the broadcast to. Defaults to BPMUX_ROLE
+        /// env var; falls back to "dev".
+        #[arg(long)]
+        role: Option<String>,
+    },
 }
 
 fn resolve_session_base(cli_base: &Option<String>) -> anyhow::Result<std::path::PathBuf> {
@@ -115,8 +128,27 @@ fn resolve_bpmux_port() -> u16 {
 }
 
 fn emit_recall_activity(role: &str, count: usize) {
-    let port = resolve_bpmux_port();
     let body = session::recall::build_recall_activity_payload(role, count);
+    post_activity(&body);
+}
+
+fn resolve_role(role_arg: &Option<String>) -> String {
+    role_arg
+        .clone()
+        .or_else(|| std::env::var("BPMUX_ROLE").ok())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "dev".to_string())
+}
+
+fn run_emit_precommit_passed(sha: &str, role_arg: &Option<String>) -> anyhow::Result<()> {
+    let role = resolve_role(role_arg);
+    let body = session::precommit::build_precommit_activity_payload(&role, sha);
+    post_activity(&body);
+    Ok(())
+}
+
+fn post_activity(body: &serde_json::Value) {
+    let port = resolve_bpmux_port();
     let url = format!("http://127.0.0.1:{port}/api/messages");
     // Fire the POST from a one-shot tokio runtime. reqwest is async
     // and this entry point is sync; the runtime is cheap and local.
@@ -175,6 +207,10 @@ pub fn run() -> anyhow::Result<()> {
 
     if let Some(Command::Recall { role }) = &cli.command {
         return run_recall(&cli, role);
+    }
+
+    if let Some(Command::EmitPrecommitPassed { sha, role }) = &cli.command {
+        return run_emit_precommit_passed(sha, role);
     }
 
     if matches!(cli.command, Some(Command::Server)) {

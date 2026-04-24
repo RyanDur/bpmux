@@ -1,0 +1,31 @@
+#!/bin/bash
+# Post-commit hook (#424): broadcast a pre-commit-gates-passed activity
+# message to the bpmux session after each successful commit. Only fires
+# on gate-passed state because the commit wouldn't exist if pre-commit
+# had failed.
+#
+# Install: symlink or copy this file to .git/hooks/post-commit and make
+# it executable. Out of scope for this story is automated installation.
+#
+# The POST is best-effort: a 500ms timeout, failures are swallowed. If
+# the bpmux server isn't running, teammates simply won't see the
+# broadcast for that commit.
+set -euo pipefail
+
+SHA="$(git rev-parse HEAD 2>/dev/null || echo "")"
+[ -z "$SHA" ] && exit 0
+
+# Resolve the bpmux binary. Prefer release > debug > PATH; skip silently
+# if none found so the hook never blocks a commit.
+BPMUX_BIN=""
+if [ -x "target/release/bpmux" ]; then
+    BPMUX_BIN="target/release/bpmux"
+elif [ -x "target/debug/bpmux" ]; then
+    BPMUX_BIN="target/debug/bpmux"
+elif command -v bpmux &>/dev/null; then
+    BPMUX_BIN="bpmux"
+else
+    exit 0
+fi
+
+"$BPMUX_BIN" emit-precommit-passed --sha "$SHA" 2>/dev/null || true

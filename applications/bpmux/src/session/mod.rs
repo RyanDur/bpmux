@@ -11,6 +11,7 @@ pub mod lessons;
 pub mod log;
 pub mod message;
 pub mod pins;
+pub mod precommit;
 pub mod priority;
 pub mod reactions;
 pub mod recall;
@@ -40,6 +41,8 @@ mod lessons_tests;
 mod log_tests;
 #[cfg(test)]
 mod message_tests;
+#[cfg(test)]
+mod precommit_tests;
 #[cfg(test)]
 mod recall_tests;
 #[cfg(test)]
