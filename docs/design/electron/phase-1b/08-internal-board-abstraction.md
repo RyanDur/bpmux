@@ -601,6 +601,34 @@ Single-peer (#451 scope) has only `PeerId::local()` — the check is
 vacuous. But the field is present + #452's loop-break logic has a
 stable hook to attach to without reshaping events.
 
+**Invariant 4 — `mutate_sync` is sequential, not atomic.**
+Multi-event handlers (accept_story emits 4 events; reject_story emits
+3; close_story emits 1; etc.) call `mutate_sync` sequentially. If
+event N fails (e.g., pending-buffer closed at shutdown) after events
+1..N-1 succeeded, the local store is in a partial-mutated
+intermediate state.
+
+Recovery paths:
+- (a) refresh-before-write on next mutation re-syncs from source —
+  AC 11 already enforces this for every mutation handler
+- (b) full reingest on restart re-syncs the store from source-of-
+  truth via `decode_story_metadata` + `is_closed` durability
+
+Bounded today: single-peer scope; pending-buffer close is shutdown-
+only; recovery paths absorb the partial-mutation case before any
+user-visible consequence.
+
+Promotion to atomic-batch primitive (e.g., `mutate_batch` /
+`atomic_mutate_sync`) when EITHER:
+- (i) a real partial-mutation incident occurs in production with
+  user-visible consequence, OR
+- (ii) a new consumer surfaces that needs atomic-multi-event-
+  semantics (P2P/CRDT replay; cross-peer event-frame batching;
+  similar)
+
+Until either trigger fires, the sequential-not-atomic shape is
+documented and accepted.
+
 **Adjacent migration tax on these invariants**: small. MVP stamps
 events with `PeerId::local()` at enqueue; the tiebreak rule is a
 3-line function. Dev's proposal 2026-04-24 14:10 UTC frames these as
