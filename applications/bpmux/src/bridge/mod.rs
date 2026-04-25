@@ -44,12 +44,11 @@ type WsSink = futures::stream::SplitSink<
 >;
 
 #[derive(Clone)]
-pub struct BridgeServer<T: tracker::StoryTracker> {
+pub struct BridgeServer {
     port: u16,
     name: Arc<Mutex<String>>,
     peer: Arc<Mutex<Option<Peer<RoleServer>>>>,
     ws_tx: Arc<Mutex<Option<WsSink>>>,
-    tracker: T,
     board: Arc<crate::board::BoardStore>,
     refresh: Option<Arc<dyn crate::board::RefreshDriver>>,
     github_api: Option<Arc<github_api::GitHubApi>>,
@@ -65,14 +64,13 @@ pub(crate) fn resolve_bridge_name(raw: &str) -> String {
     }
 }
 
-impl<T: tracker::StoryTracker> BridgeServer<T> {
-    fn new(port: u16, name: String, tracker: T) -> Self {
+impl BridgeServer {
+    fn new(port: u16, name: String) -> Self {
         Self {
             port,
             name: Arc::new(Mutex::new(resolve_bridge_name(&name))),
             peer: Arc::new(Mutex::new(None)),
             ws_tx: Arc::new(Mutex::new(None)),
-            tracker,
             board: Arc::new(crate::board::BoardStore::new()),
             refresh: None,
             github_api: None,
@@ -320,7 +318,7 @@ async fn run_ws_connection(
     eprintln!("Bridge: disconnected from bpmux");
 }
 
-impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
+impl ServerHandler for BridgeServer {
     fn get_info(&self) -> ServerInfo {
         let mut capabilities = ServerCapabilities::builder().enable_tools().build();
 
@@ -754,12 +752,11 @@ pub fn run_bridge(
     fake_tracker: bool,
     board_fixture: Option<String>,
 ) -> anyhow::Result<()> {
+    let _ = board_fixture;
     let rt = tokio::runtime::Runtime::new()?;
     if fake_tracker {
-        let tracker = tracker::FakeTracker { board_fixture };
         return rt.block_on(async {
-            let server = BridgeServer::new(port, name.to_string(), tracker);
-            seed_board_from_tracker(&server).await;
+            let server = BridgeServer::new(port, name.to_string());
             let (stdin, stdout) = rmcp::transport::io::stdio();
             let service = server.serve((stdin, stdout)).await?;
             service.waiting().await?;
@@ -773,8 +770,7 @@ pub fn run_bridge(
                  env vars. Set both and retry. See diag log for which var was missing."
             )
         })?;
-        let server = BridgeServer::new(port, name.to_string(), tracker.clone());
-        seed_board_from_tracker(&server).await;
+        let server = BridgeServer::new(port, name.to_string());
         let adapter = Arc::new(crate::board::adapters::github::GitHubSourceAdapter::new(
             tracker,
         ));
@@ -782,6 +778,9 @@ pub fn run_bridge(
             Arc::clone(&server.board),
             adapter,
         ));
+        if let Err(e) = orchestrator.ingest_once().await {
+            crate::session::diag::log_diag(&format!("bridge: initial board ingest skipped — {e}"));
+        }
         let refresh_driver: Arc<dyn crate::board::RefreshDriver> = orchestrator.clone();
         let server = server.with_refresh(refresh_driver.clone());
         let server = match github_api::GitHubApi::from_env() {
@@ -848,24 +847,6 @@ fn drain_interval_from_env() -> std::time::Duration {
         .and_then(|s| s.parse::<u64>().ok())
         .unwrap_or(5);
     std::time::Duration::from_secs(secs.max(1))
-}
-
-async fn seed_board_from_tracker<T: tracker::StoryTracker>(server: &BridgeServer<T>) {
-    let Ok(raw) = server.tracker.fetch_board_stories().await else {
-        crate::session::diag::log_diag(
-            "bridge: initial board ingest skipped — fetch_board_stories failed",
-        );
-        return;
-    };
-    let stories: Vec<crate::board::Story> = raw
-        .iter()
-        .filter_map(crate::board::adapters::github::decode_story_metadata)
-        .collect();
-    let count = stories.len();
-    server.board.seed_all(stories);
-    crate::session::diag::log_diag(&format!(
-        "bridge: initial board ingest populated {count} stories"
-    ));
 }
 
 #[cfg(test)]
