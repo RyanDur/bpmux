@@ -2430,6 +2430,60 @@ async fn view_board_buckets_stories_by_story_state() {
 }
 
 #[tokio::test]
+async fn view_board_hides_is_closed_stories_from_non_accepted_buckets() {
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let ts = Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap();
+    let mut closed_in_progress = Story::new_minimal(
+        201,
+        "abandoned-mid-flight".into(),
+        StoryState::InProgress,
+        ts,
+        "pm".into(),
+    );
+    closed_in_progress.is_closed = true;
+    let mut accepted_closed = Story::new_minimal(
+        202,
+        "accepted-closed".into(),
+        StoryState::Accepted,
+        ts,
+        "pm".into(),
+    );
+    accepted_closed.is_closed = true;
+    adapter.seed_stories(vec![closed_in_progress, accepted_closed]);
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orch.refresh_all().await.unwrap();
+
+    let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
+        .await
+        .unwrap();
+
+    assert!(
+        out.contains("IN PROGRESS (0)"),
+        "is_closed InProgress story must NOT appear in IN PROGRESS bucket: {out}"
+    );
+    assert!(
+        !out.contains("#201"),
+        "story #201 should be hidden across all buckets when is_closed and state != Accepted: {out}"
+    );
+    assert!(
+        out.contains("ACCEPTED (1)") && out.contains("#202 accepted-closed"),
+        "is_closed + state=Accepted story remains in ACCEPTED bucket: {out}"
+    );
+}
+
+#[tokio::test]
 async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
     use crate::board::BoardEvent;
     use crate::board::BoardStore;

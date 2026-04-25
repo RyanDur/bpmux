@@ -119,6 +119,7 @@ pub(super) async fn handle_view_board(
         let mut entries: Vec<(u64, String)> = stories
             .iter()
             .filter(|s| s.state == state)
+            .filter(|s| !s.is_closed || s.state == crate::board::domain::StoryState::Accepted)
             .map(|s| (s.number, format!("#{} {}", s.number, s.title)))
             .collect();
         entries.sort_by_key(|(n, _)| *n);
