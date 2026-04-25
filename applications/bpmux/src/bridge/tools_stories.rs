@@ -715,7 +715,8 @@ pub(super) async fn handle_pass_desk_check(
     // PASS message).
     let labels = tracker.get_story_labels(number).await;
     let title = tracker.get_story_title(number).await.unwrap_or_default();
-    for msg in build_pass_desk_check_signals(number, &labels, &title) {
+    let story_type = crate::session::velocity::classify_story(&labels, &title);
+    for msg in build_pass_desk_check_signals(number, story_type) {
         let signal = serde_json::to_string(&msg).map_err(|e| format!("signal: {e}"))?;
         ws_send(ws_tx, signal)
             .await
@@ -1037,12 +1038,12 @@ pub(super) fn build_reject_signal(number: u64, reason: &str) -> ClientMessage {
 /// lane; bugs fixed are internal unless they surface user-visible
 /// change, and that's a separate signal decision). Defaults to
 /// Feature under the classifier's default-to-Feature rule.
-pub(super) fn addressee_for_pass_desk_check(labels: &[String], title: &str) -> &'static str {
-    match crate::session::velocity::classify_story(labels, title) {
-        crate::session::velocity::StoryType::Feature => "ryan",
-        crate::session::velocity::StoryType::Bug | crate::session::velocity::StoryType::Chore => {
-            "pm"
-        }
+pub(super) fn addressee_for_pass_desk_check(
+    story_type: crate::board::domain::StoryType,
+) -> &'static str {
+    match story_type {
+        crate::board::domain::StoryType::Feature => "ryan",
+        crate::board::domain::StoryType::Bug | crate::board::domain::StoryType::Chore => "pm",
     }
 }
 
@@ -1075,10 +1076,9 @@ pub(super) fn build_pass_desk_check_pm_present_signal(number: u64) -> ClientMess
 /// PM-facing signal is sufficient since PM is also the acceptor.
 pub(super) fn build_pass_desk_check_signals(
     number: u64,
-    labels: &[String],
-    title: &str,
+    story_type: crate::board::domain::StoryType,
 ) -> Vec<ClientMessage> {
-    let primary = addressee_for_pass_desk_check(labels, title);
+    let primary = addressee_for_pass_desk_check(story_type);
     let mut signals = vec![build_pass_desk_check_signal(number, primary)];
     if primary == "ryan" {
         signals.push(build_pass_desk_check_pm_present_signal(number));
