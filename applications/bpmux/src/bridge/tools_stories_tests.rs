@@ -1,5 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+#[cfg(feature = "integration_tests")]
+use super::tracker::StoryTracker;
+
 use super::tools_stories::*;
 use crate::board::domain::StoryType;
 use crate::session::velocity::classify_story;
