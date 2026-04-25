@@ -1,11 +1,9 @@
 use std::sync::Arc;
 
 use crate::board::{BoardStore, RefreshDriver};
-use crate::bridge::tracker::StoryTracker;
 
 pub(in crate::bridge) async fn handle_view_comments(
     args: &serde_json::Map<String, serde_json::Value>,
-    _tracker: &impl StoryTracker,
     board: Option<&Arc<BoardStore>>,
     refresh: Option<&Arc<dyn RefreshDriver>>,
 ) -> Result<String, String> {

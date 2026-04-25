@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use crate::board::domain::{Gate, GateComment, Story};
 use crate::board::{BoardStore, RefreshDriver};
-use crate::bridge::tracker::StoryTracker;
 
 pub fn gate_as_str(gate: Gate) -> &'static str {
     match gate {
@@ -42,7 +41,6 @@ pub fn build_timeline_from_board(story: &Story, gates: &[GateComment]) -> Vec<se
 
 pub(in crate::bridge) async fn handle_view_story_timeline(
     args: &serde_json::Map<String, serde_json::Value>,
-    _tracker: &impl StoryTracker,
     board: Option<&Arc<BoardStore>>,
     refresh: Option<&Arc<dyn RefreshDriver>>,
 ) -> Result<String, String> {

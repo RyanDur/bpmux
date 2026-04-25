@@ -1,7 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::tools_stories::*;
-use super::tracker::StoryTracker;
 use crate::board::domain::StoryType;
 use crate::session::velocity::classify_story;
 use crate::transport::protocol::ClientMessage;
@@ -168,11 +167,10 @@ fn close_story_allows_pm() {
 #[tokio::test]
 async fn comment_on_story_rejects_empty_body() {
     let ws_tx = tokio::sync::Mutex::new(None);
-    let tracker = super::tracker::FakeTracker::default();
     let mut args = serde_json::Map::new();
     args.insert("number".to_string(), serde_json::json!(42));
     args.insert("body".to_string(), serde_json::json!(""));
-    let result = handle_comment_on_story(&args, "dev:claude-code", &ws_tx, &tracker, None).await;
+    let result = handle_comment_on_story(&args, "dev:claude-code", &ws_tx, None).await;
     assert!(
         result.is_err(),
         "empty body must be rejected: got {result:?}"
@@ -183,23 +181,21 @@ async fn comment_on_story_rejects_empty_body() {
 #[tokio::test]
 async fn comment_on_story_rejects_whitespace_only_body() {
     let ws_tx = tokio::sync::Mutex::new(None);
-    let tracker = super::tracker::FakeTracker::default();
     let mut args = serde_json::Map::new();
     args.insert("number".to_string(), serde_json::json!(42));
     args.insert("body".to_string(), serde_json::json!("   \n  "));
-    let result = handle_comment_on_story(&args, "dev:claude-code", &ws_tx, &tracker, None).await;
+    let result = handle_comment_on_story(&args, "dev:claude-code", &ws_tx, None).await;
     assert!(result.is_err(), "whitespace-only body must be rejected");
 }
 
 #[tokio::test]
 async fn comment_on_story_rejects_when_refresh_absent() {
     let ws_tx = tokio::sync::Mutex::new(None);
-    let tracker = super::tracker::FakeTracker::default();
     for caller in ["dev:claude-code", "pm:claude-code", "designer:claude-code"] {
         let mut args = serde_json::Map::new();
         args.insert("number".to_string(), serde_json::json!(42));
         args.insert("body".to_string(), serde_json::json!("a real comment"));
-        let result = handle_comment_on_story(&args, caller, &ws_tx, &tracker, None).await;
+        let result = handle_comment_on_story(&args, caller, &ws_tx, None).await;
         assert!(
             result.is_err(),
             "caller={caller} expected Err, got {result:?}"
@@ -506,68 +502,12 @@ fn fail_desk_check_signal_includes_reason() {
 
 // ── Handler unit tests with configurable fakes (#213) ──
 
-#[derive(Clone)]
-struct AlreadyClosedTracker;
-
-impl StoryTracker for AlreadyClosedTracker {
-    async fn close_story(&self, _number: u64) -> Result<String, String> {
-        Err("issue is already closed".to_string())
-    }
-    async fn add_label(&self, number: u64, label: &str) -> Result<String, String> {
-        Ok(format!("#{number} labeled '{label}'"))
-    }
-    async fn remove_label(&self, number: u64, label: &str) -> Result<String, String> {
-        Ok(format!("#{number} unlabeled '{label}'"))
-    }
-    async fn create_story(&self, title: &str, _body: &str) -> Result<String, String> {
-        Ok(format!("created: {title}"))
-    }
-    async fn list_stories(&self) -> Result<String, String> {
-        Ok("[]".to_string())
-    }
-    async fn fetch_board_stories(&self) -> Result<Vec<serde_json::Value>, String> {
-        Ok(Vec::new())
-    }
-    async fn get_story(&self, number: u64) -> Result<Option<serde_json::Value>, String> {
-        Ok(Some(serde_json::json!({
-            "number": number,
-            "title": "fake",
-            "body": "",
-            "state": "ready",
-            "labels": [],
-        })))
-    }
-    async fn comment_on_story(&self, _number: u64, _body: &str) -> Result<String, String> {
-        Ok("commented".to_string())
-    }
-    async fn list_story_comments(&self, _number: u64) -> Result<Vec<serde_json::Value>, String> {
-        Ok(Vec::new())
-    }
-    async fn get_story_title(&self, number: u64) -> Option<String> {
-        Some(format!("story #{number}"))
-    }
-    async fn get_story_labels(&self, _number: u64) -> Vec<String> {
-        Vec::new()
-    }
-    async fn list_latest_run_on_main(
-        &self,
-    ) -> Result<Option<super::tracker::WorkflowRunEntry>, String> {
-        Ok(None)
-    }
-}
-
 #[tokio::test]
 async fn accept_requires_refresh_after_5n_fallback_retirement() {
     let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
     let args = serde_json::json!({"number": 213});
-    let result = handle_accept_story(
-        args.as_object().unwrap(),
-        "pm:claude-code",
-        &ws_tx,
-        &AlreadyClosedTracker,
-        None,
-    )
-    .await;
+    let result =
+        handle_accept_story(args.as_object().unwrap(), "pm:claude-code", &ws_tx, None).await;
     assert!(
         result.is_err(),
         "expected refresh-required Err, got {result:?}"
@@ -583,7 +523,6 @@ async fn accept_rejects_unknown_role_via_handler() {
         args.as_object().unwrap(),
         "intern:claude-code",
         &ws_tx,
-        &AlreadyClosedTracker,
         None,
     )
     .await;
@@ -607,14 +546,7 @@ async fn reject_allows_pm_designer_dev_owner() {
         "dev:claude-code",
     ] {
         let args = serde_json::json!({"number": 1, "reason": "needs rework"});
-        let result = handle_reject_story(
-            args.as_object().unwrap(),
-            caller,
-            &ws_tx,
-            &AlreadyClosedTracker,
-            None,
-        )
-        .await;
+        let result = handle_reject_story(args.as_object().unwrap(), caller, &ws_tx, None).await;
         assert!(
             result.is_ok() || !result.as_ref().unwrap_err().contains("restricted to"),
             "reject must allow {caller}; got: {result:?}"
@@ -630,7 +562,6 @@ async fn reject_rejects_unknown_role_via_handler() {
         args.as_object().unwrap(),
         "intern:claude-code",
         &ws_tx,
-        &AlreadyClosedTracker,
         None,
     )
     .await;
@@ -779,14 +710,7 @@ async fn create_story_rejects_non_pm_role() {
         "observation_falsifier": "reject if X"
     });
     for role in ["dev", "designer", "ryan", "unknown"].iter() {
-        let result = handle_create_story(
-            args.as_object().unwrap(),
-            role,
-            &ws_tx,
-            &AlreadyClosedTracker,
-            None,
-        )
-        .await;
+        let result = handle_create_story(args.as_object().unwrap(), role, &ws_tx, None).await;
         assert!(
             result.is_err(),
             "create_story should reject {role} calls; got: {result:?}"
@@ -811,14 +735,7 @@ async fn create_story_pm_role_passes_role_gate_then_hits_refresh_required() {
         "user_job": "as pm, I want X",
         "observation_falsifier": "reject if X"
     });
-    let result = handle_create_story(
-        args.as_object().unwrap(),
-        "pm",
-        &ws_tx,
-        &AlreadyClosedTracker,
-        None,
-    )
-    .await;
+    let result = handle_create_story(args.as_object().unwrap(), "pm", &ws_tx, None).await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("requires refresh"));
 }
@@ -831,14 +748,8 @@ async fn create_story_pm_with_tool_suffix_role_gate_passes_then_refresh_required
         "user_job": "as pm, I want X",
         "observation_falsifier": "reject if X"
     });
-    let result = handle_create_story(
-        args.as_object().unwrap(),
-        "pm:claude-code",
-        &ws_tx,
-        &AlreadyClosedTracker,
-        None,
-    )
-    .await;
+    let result =
+        handle_create_story(args.as_object().unwrap(), "pm:claude-code", &ws_tx, None).await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("requires refresh"));
 }
@@ -852,14 +763,7 @@ async fn create_story_rejects_missing_user_job() {
         "observation_falsifier": "I would reject if X"
         // user_job missing
     });
-    let result = handle_create_story(
-        args.as_object().unwrap(),
-        "pm",
-        &ws_tx,
-        &AlreadyClosedTracker,
-        None,
-    )
-    .await;
+    let result = handle_create_story(args.as_object().unwrap(), "pm", &ws_tx, None).await;
     assert!(result.is_err(), "missing user_job should fail");
     let err = result.unwrap_err();
     assert!(
@@ -880,14 +784,7 @@ async fn create_story_rejects_empty_user_job() {
         "user_job": "   ",
         "observation_falsifier": "I would reject if X"
     });
-    let result = handle_create_story(
-        args.as_object().unwrap(),
-        "pm",
-        &ws_tx,
-        &AlreadyClosedTracker,
-        None,
-    )
-    .await;
+    let result = handle_create_story(args.as_object().unwrap(), "pm", &ws_tx, None).await;
     assert!(result.is_err(), "whitespace-only user_job should fail");
     assert!(result.unwrap_err().contains("user_job"));
 }
@@ -900,14 +797,7 @@ async fn create_story_rejects_missing_observation_falsifier() {
         "user_job": "When I X, I need Y because Z"
         // observation_falsifier missing
     });
-    let result = handle_create_story(
-        args.as_object().unwrap(),
-        "pm",
-        &ws_tx,
-        &AlreadyClosedTracker,
-        None,
-    )
-    .await;
+    let result = handle_create_story(args.as_object().unwrap(), "pm", &ws_tx, None).await;
     assert!(result.is_err(), "missing observation_falsifier should fail");
     let err = result.unwrap_err();
     assert!(
@@ -925,14 +815,7 @@ async fn create_story_validation_passes_then_refresh_required_after_5n() {
         "user_job": "When I X, I need Y because Z",
         "observation_falsifier": "I would reject if I observed W"
     });
-    let result = handle_create_story(
-        args.as_object().unwrap(),
-        "pm",
-        &ws_tx,
-        &AlreadyClosedTracker,
-        None,
-    )
-    .await;
+    let result = handle_create_story(args.as_object().unwrap(), "pm", &ws_tx, None).await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("requires refresh"));
 }
@@ -944,14 +827,8 @@ async fn deliver_story_rejects_missing_verified_observation() {
         "number": 391
         // verified_observation missing
     });
-    let result = handle_deliver_story(
-        args.as_object().unwrap(),
-        "dev:claude-code",
-        &ws_tx,
-        &AlreadyClosedTracker,
-        None,
-    )
-    .await;
+    let result =
+        handle_deliver_story(args.as_object().unwrap(), "dev:claude-code", &ws_tx, None).await;
     assert!(result.is_err(), "missing verified_observation should fail");
     let err = result.unwrap_err();
     assert!(
@@ -971,90 +848,21 @@ async fn deliver_story_rejects_empty_verified_observation() {
         "number": 391,
         "verified_observation": ""
     });
-    let result = handle_deliver_story(
-        args.as_object().unwrap(),
-        "dev:claude-code",
-        &ws_tx,
-        &AlreadyClosedTracker,
-        None,
-    )
-    .await;
+    let result =
+        handle_deliver_story(args.as_object().unwrap(), "dev:claude-code", &ws_tx, None).await;
     assert!(result.is_err(), "empty verified_observation should fail");
     assert!(result.unwrap_err().contains("verified_observation"));
-}
-
-// ── #392 label_story add/remove tests ──────────────────────────────
-
-// Tracker that fails label mutations so error paths can be observed.
-// Every other method mirrors FakeTracker so the handler reaches the
-// label call — errors must come from add_label / remove_label, not
-// from some other step, so the test signal stays clean.
-#[derive(Clone)]
-struct FailingLabelTracker;
-
-impl StoryTracker for FailingLabelTracker {
-    async fn close_story(&self, number: u64) -> Result<String, String> {
-        Ok(format!("(fake) #{number} closed"))
-    }
-    async fn add_label(&self, _number: u64, _label: &str) -> Result<String, String> {
-        Err("GitHub API error: 500 Internal Server Error".to_string())
-    }
-    async fn remove_label(&self, _number: u64, _label: &str) -> Result<String, String> {
-        Err("GitHub API error: 500 Internal Server Error".to_string())
-    }
-    async fn create_story(&self, title: &str, _body: &str) -> Result<String, String> {
-        Ok(format!("created: {title}"))
-    }
-    async fn list_stories(&self) -> Result<String, String> {
-        Ok("[]".to_string())
-    }
-    async fn fetch_board_stories(&self) -> Result<Vec<serde_json::Value>, String> {
-        Ok(Vec::new())
-    }
-    async fn get_story(&self, number: u64) -> Result<Option<serde_json::Value>, String> {
-        Ok(Some(serde_json::json!({
-            "number": number,
-            "title": "fake",
-            "body": "",
-            "state": "ready",
-            "labels": [],
-        })))
-    }
-    async fn comment_on_story(&self, _number: u64, _body: &str) -> Result<String, String> {
-        Ok("commented".to_string())
-    }
-    async fn list_story_comments(&self, _number: u64) -> Result<Vec<serde_json::Value>, String> {
-        Ok(Vec::new())
-    }
-    async fn get_story_title(&self, number: u64) -> Option<String> {
-        Some(format!("story #{number}"))
-    }
-    async fn get_story_labels(&self, _number: u64) -> Vec<String> {
-        Vec::new()
-    }
-    async fn list_latest_run_on_main(
-        &self,
-    ) -> Result<Option<super::tracker::WorkflowRunEntry>, String> {
-        Ok(None)
-    }
 }
 
 #[tokio::test]
 async fn label_story_default_op_requires_refresh_after_5n() {
     let ws_tx = tokio::sync::Mutex::new(None);
-    let tracker = super::tracker::FakeTracker::default();
     let args = serde_json::json!({
         "number": 42,
         "label": "ready"
     });
-    let result = handle_label_story(
-        args.as_object().unwrap(),
-        "pm:claude-code",
-        &ws_tx,
-        &tracker,
-        None,
-    )
-    .await;
+    let result =
+        handle_label_story(args.as_object().unwrap(), "pm:claude-code", &ws_tx, None).await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("requires refresh"));
 }
@@ -1062,20 +870,13 @@ async fn label_story_default_op_requires_refresh_after_5n() {
 #[tokio::test]
 async fn label_story_add_op_requires_refresh_after_5n() {
     let ws_tx = tokio::sync::Mutex::new(None);
-    let tracker = super::tracker::FakeTracker::default();
     let args = serde_json::json!({
         "number": 42,
         "label": "blocked",
         "operation": "add"
     });
-    let result = handle_label_story(
-        args.as_object().unwrap(),
-        "pm:claude-code",
-        &ws_tx,
-        &tracker,
-        None,
-    )
-    .await;
+    let result =
+        handle_label_story(args.as_object().unwrap(), "pm:claude-code", &ws_tx, None).await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("requires refresh"));
 }
@@ -1083,20 +884,13 @@ async fn label_story_add_op_requires_refresh_after_5n() {
 #[tokio::test]
 async fn label_story_remove_op_requires_refresh_after_5n() {
     let ws_tx = tokio::sync::Mutex::new(None);
-    let tracker = super::tracker::FakeTracker::default();
     let args = serde_json::json!({
         "number": 42,
         "label": "in progress",
         "operation": "remove"
     });
-    let result = handle_label_story(
-        args.as_object().unwrap(),
-        "pm:claude-code",
-        &ws_tx,
-        &tracker,
-        None,
-    )
-    .await;
+    let result =
+        handle_label_story(args.as_object().unwrap(), "pm:claude-code", &ws_tx, None).await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("requires refresh"));
 }
@@ -1104,20 +898,13 @@ async fn label_story_remove_op_requires_refresh_after_5n() {
 #[tokio::test]
 async fn label_story_remove_idempotent_call_requires_refresh_after_5n() {
     let ws_tx = tokio::sync::Mutex::new(None);
-    let tracker = super::tracker::FakeTracker::default();
     let args = serde_json::json!({
         "number": 99,
         "label": "never-attached-label",
         "operation": "remove"
     });
-    let result = handle_label_story(
-        args.as_object().unwrap(),
-        "pm:claude-code",
-        &ws_tx,
-        &tracker,
-        None,
-    )
-    .await;
+    let result =
+        handle_label_story(args.as_object().unwrap(), "pm:claude-code", &ws_tx, None).await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("requires refresh"));
 }
@@ -1149,7 +936,6 @@ async fn label_story_rejects_invalid_operation_in_migrated_path() {
     orchestrator.refresh_all().await.unwrap();
 
     let ws_tx = tokio::sync::Mutex::new(None);
-    let tracker = super::tracker::FakeTracker::default();
     let args = serde_json::json!({
         "number": 42,
         "label": "ready",
@@ -1159,7 +945,6 @@ async fn label_story_rejects_invalid_operation_in_migrated_path() {
         args.as_object().unwrap(),
         "pm:claude-code",
         &ws_tx,
-        &tracker,
         Some(&orchestrator),
     )
     .await;
@@ -1181,14 +966,8 @@ async fn label_story_add_propagates_tracker_error_without_broadcast() {
         "label": "ready",
         "operation": "add"
     });
-    let result = handle_label_story(
-        args.as_object().unwrap(),
-        "pm:claude-code",
-        &ws_tx,
-        &FailingLabelTracker,
-        None,
-    )
-    .await;
+    let result =
+        handle_label_story(args.as_object().unwrap(), "pm:claude-code", &ws_tx, None).await;
     assert!(
         result.is_err(),
         "add-with-API-error must surface error: {result:?}"
@@ -1208,14 +987,8 @@ async fn label_story_remove_propagates_tracker_error_without_broadcast() {
         "label": "ready",
         "operation": "remove"
     });
-    let result = handle_label_story(
-        args.as_object().unwrap(),
-        "pm:claude-code",
-        &ws_tx,
-        &FailingLabelTracker,
-        None,
-    )
-    .await;
+    let result =
+        handle_label_story(args.as_object().unwrap(), "pm:claude-code", &ws_tx, None).await;
     assert!(
         result.is_err(),
         "remove-with-API-error must surface error: {result:?}"
@@ -1229,15 +1002,13 @@ async fn label_story_still_pm_gated_with_operation_param() {
     // a role rejection, not with an operation rejection. #392
     // doesn't relax the existing PM-only scope.
     let ws_tx = tokio::sync::Mutex::new(None);
-    let tracker = super::tracker::FakeTracker::default();
     let args = serde_json::json!({
         "number": 42,
         "label": "ready",
         "operation": "remove"
     });
     for caller in ["dev:claude-code", "designer:claude-code", "ryan:human"] {
-        let result =
-            handle_label_story(args.as_object().unwrap(), caller, &ws_tx, &tracker, None).await;
+        let result = handle_label_story(args.as_object().unwrap(), caller, &ws_tx, None).await;
         assert!(result.is_err(), "{caller} must be rejected by PM-only gate");
         assert!(
             result.unwrap_err().contains("restricted to pm"),
@@ -1257,14 +1028,8 @@ async fn start_story_rejects_missing_pickup_paraphrase() {
         "number": 398,
         "falsifier_reframing": "I would reject if the pickup signal is invisible."
     });
-    let result = handle_start_story(
-        args.as_object().unwrap(),
-        "dev:claude-code",
-        &ws_tx,
-        &AlreadyClosedTracker,
-        None,
-    )
-    .await;
+    let result =
+        handle_start_story(args.as_object().unwrap(), "dev:claude-code", &ws_tx, None).await;
     assert!(
         result.is_err(),
         "missing pickup_paraphrase must fail: {result:?}"
@@ -1290,14 +1055,8 @@ async fn start_story_rejects_empty_pickup_paraphrase() {
         "pickup_paraphrase": "   \n  ",
         "falsifier_reframing": "I would reject if..."
     });
-    let result = handle_start_story(
-        args.as_object().unwrap(),
-        "dev:claude-code",
-        &ws_tx,
-        &AlreadyClosedTracker,
-        None,
-    )
-    .await;
+    let result =
+        handle_start_story(args.as_object().unwrap(), "dev:claude-code", &ws_tx, None).await;
     assert!(
         result.is_err(),
         "whitespace-only pickup_paraphrase must fail"
@@ -1312,14 +1071,8 @@ async fn start_story_rejects_missing_falsifier_reframing() {
         "number": 398,
         "pickup_paraphrase": "As a dev, I restate the user-job..."
     });
-    let result = handle_start_story(
-        args.as_object().unwrap(),
-        "dev:claude-code",
-        &ws_tx,
-        &AlreadyClosedTracker,
-        None,
-    )
-    .await;
+    let result =
+        handle_start_story(args.as_object().unwrap(), "dev:claude-code", &ws_tx, None).await;
     assert!(
         result.is_err(),
         "missing falsifier_reframing must fail: {result:?}"
@@ -1339,14 +1092,8 @@ async fn start_story_validation_passes_then_refresh_required_after_5n() {
         "pickup_paraphrase": "User-job: dev articulates their read of the story at pickup so the team knows work is in flight.",
         "falsifier_reframing": "I would reject if start_story without the new fields still succeeds."
     });
-    let result = handle_start_story(
-        args.as_object().unwrap(),
-        "dev:claude-code",
-        &ws_tx,
-        &AlreadyClosedTracker,
-        None,
-    )
-    .await;
+    let result =
+        handle_start_story(args.as_object().unwrap(), "dev:claude-code", &ws_tx, None).await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("requires refresh"));
 }
@@ -1363,14 +1110,7 @@ async fn start_story_still_dev_only_with_new_params() {
         "falsifier_reframing": "any text"
     });
     for caller in ["pm:claude-code", "designer:claude-code", "ryan:human"] {
-        let result = handle_start_story(
-            args.as_object().unwrap(),
-            caller,
-            &ws_tx,
-            &AlreadyClosedTracker,
-            None,
-        )
-        .await;
+        let result = handle_start_story(args.as_object().unwrap(), caller, &ws_tx, None).await;
         assert!(
             result.is_err(),
             "{caller} must be rejected by dev-only gate"
@@ -1410,21 +1150,14 @@ async fn comment_on_story_migrated_path_enqueues_event_via_orchestrator() {
     orchestrator.refresh_all().await.unwrap();
 
     let ws_tx = tokio::sync::Mutex::new(None);
-    let tracker = super::tracker::FakeTracker::default();
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(123));
     args.insert(
         "body".into(),
         serde_json::json!("new comment via orchestrator"),
     );
-    let result = handle_comment_on_story(
-        &args,
-        "dev:claude-code",
-        &ws_tx,
-        &tracker,
-        Some(&orchestrator),
-    )
-    .await;
+    let result =
+        handle_comment_on_story(&args, "dev:claude-code", &ws_tx, Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = store.story(123).unwrap();
@@ -1471,19 +1204,11 @@ async fn label_story_migrated_path_enqueues_tag_added_event() {
     orchestrator.refresh_all().await.unwrap();
 
     let ws_tx = tokio::sync::Mutex::new(None);
-    let tracker = super::tracker::FakeTracker::default();
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(200));
     args.insert("label".into(), serde_json::json!("blocked"));
     args.insert("operation".into(), serde_json::json!("add"));
-    let result = handle_label_story(
-        &args,
-        "pm:claude-code",
-        &ws_tx,
-        &tracker,
-        Some(&orchestrator),
-    )
-    .await;
+    let result = handle_label_story(&args, "pm:claude-code", &ws_tx, Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = store.story(200).unwrap();
@@ -1527,34 +1252,21 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
     orchestrator.refresh_all().await.unwrap();
 
     let ws_tx = tokio::sync::Mutex::new(None);
-    let tracker = super::tracker::FakeTracker::default();
 
     let mut add_args = serde_json::Map::new();
     add_args.insert("number".into(), serde_json::json!(200));
     add_args.insert("label".into(), serde_json::json!("blocked"));
     add_args.insert("operation".into(), serde_json::json!("add"));
-    handle_label_story(
-        &add_args,
-        "pm:claude-code",
-        &ws_tx,
-        &tracker,
-        Some(&orchestrator),
-    )
-    .await
-    .unwrap();
+    handle_label_story(&add_args, "pm:claude-code", &ws_tx, Some(&orchestrator))
+        .await
+        .unwrap();
 
     let mut remove_args = serde_json::Map::new();
     remove_args.insert("number".into(), serde_json::json!(200));
     remove_args.insert("label".into(), serde_json::json!("blocked"));
     remove_args.insert("operation".into(), serde_json::json!("remove"));
-    let result = handle_label_story(
-        &remove_args,
-        "pm:claude-code",
-        &ws_tx,
-        &tracker,
-        Some(&orchestrator),
-    )
-    .await;
+    let result =
+        handle_label_story(&remove_args, "pm:claude-code", &ws_tx, Some(&orchestrator)).await;
     assert!(
         result.is_ok(),
         "migrated remove path should succeed: {result:?}"
@@ -1661,17 +1373,10 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
     orchestrator.refresh_all().await.unwrap();
 
     let ws_tx = connected_ws_sink_for_test().await;
-    let tracker = super::tracker::FakeTracker::default();
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(201));
-    let result = handle_pass_desk_check(
-        &args,
-        "designer:claude-code",
-        &ws_tx,
-        &tracker,
-        Some(&orchestrator),
-    )
-    .await;
+    let result =
+        handle_pass_desk_check(&args, "designer:claude-code", &ws_tx, Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = store.story(201).unwrap();
@@ -1733,18 +1438,11 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
     orchestrator.refresh_all().await.unwrap();
 
     let ws_tx = connected_ws_sink_for_test().await;
-    let tracker = super::tracker::FakeTracker::default();
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(202));
     args.insert("reason".into(), serde_json::json!("test failure"));
-    let result = handle_fail_desk_check(
-        &args,
-        "designer:claude-code",
-        &ws_tx,
-        &tracker,
-        Some(&orchestrator),
-    )
-    .await;
+    let result =
+        handle_fail_desk_check(&args, "designer:claude-code", &ws_tx, Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = store.story(202).unwrap();
@@ -1808,7 +1506,6 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
     orchestrator.refresh_all().await.unwrap();
 
     let ws_tx = connected_ws_sink_for_test().await;
-    let tracker = super::tracker::FakeTracker::default();
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(203));
     args.insert(
@@ -1819,14 +1516,7 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
         "falsifier_reframing".into(),
         serde_json::json!("reframing content"),
     );
-    let result = handle_start_story(
-        &args,
-        "dev:claude-code",
-        &ws_tx,
-        &tracker,
-        Some(&orchestrator),
-    )
-    .await;
+    let result = handle_start_story(&args, "dev:claude-code", &ws_tx, Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = store.story(203).unwrap();
@@ -1891,21 +1581,13 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
     orchestrator.refresh_all().await.unwrap();
 
     let ws_tx = connected_ws_sink_for_test().await;
-    let tracker = super::tracker::FakeTracker::default();
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(204));
     args.insert(
         "verified_observation".into(),
         serde_json::json!("drove the falsifier scenario end-to-end"),
     );
-    let result = handle_deliver_story(
-        &args,
-        "dev:claude-code",
-        &ws_tx,
-        &tracker,
-        Some(&orchestrator),
-    )
-    .await;
+    let result = handle_deliver_story(&args, "dev:claude-code", &ws_tx, Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = store.story(204).unwrap();
@@ -1968,11 +1650,9 @@ async fn accept_story_migrated_path_emits_tag_remove_gate_and_state_events() {
     orchestrator.refresh_all().await.unwrap();
 
     let ws_tx = connected_ws_sink_for_test().await;
-    let tracker = super::tracker::FakeTracker::default();
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(205));
-    let result =
-        handle_accept_story(&args, "ryan:human", &ws_tx, &tracker, Some(&orchestrator)).await;
+    let result = handle_accept_story(&args, "ryan:human", &ws_tx, Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = store.story(205).unwrap();
@@ -2055,12 +1735,10 @@ async fn reject_story_migrated_path_emits_tag_remove_gate_with_reason_and_state_
     orchestrator.refresh_all().await.unwrap();
 
     let ws_tx = connected_ws_sink_for_test().await;
-    let tracker = super::tracker::FakeTracker::default();
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(206));
     args.insert("reason".into(), serde_json::json!("scope mismatch"));
-    let result =
-        handle_reject_story(&args, "ryan:human", &ws_tx, &tracker, Some(&orchestrator)).await;
+    let result = handle_reject_story(&args, "ryan:human", &ws_tx, Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = store.story(206).unwrap();
@@ -2130,7 +1808,6 @@ async fn create_story_migrated_path_assigns_number_and_emits_story_created_event
     orchestrator.refresh_all().await.unwrap();
 
     let ws_tx = connected_ws_sink_for_test().await;
-    let tracker = super::tracker::FakeTracker::default();
     let mut args = serde_json::Map::new();
     args.insert(
         "title".into(),
@@ -2146,14 +1823,7 @@ async fn create_story_migrated_path_assigns_number_and_emits_story_created_event
     );
     args.insert("body".into(), serde_json::json!("author note"));
 
-    let result = handle_create_story(
-        &args,
-        "pm:claude-code",
-        &ws_tx,
-        &tracker,
-        Some(&orchestrator),
-    )
-    .await;
+    let result = handle_create_story(&args, "pm:claude-code", &ws_tx, Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
     let response = result.unwrap();
     assert!(
@@ -2214,21 +1884,13 @@ async fn deliver_story_migrated_path_uses_store_title_not_tracker() {
     orchestrator.refresh_all().await.unwrap();
 
     let (ws_tx, captured) = connected_ws_sink_with_capture().await;
-    let tracker = super::tracker::FakeTracker::default();
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(207));
     args.insert(
         "verified_observation".into(),
         serde_json::json!("ran end-to-end"),
     );
-    let result = handle_deliver_story(
-        &args,
-        "dev:claude-code",
-        &ws_tx,
-        &tracker,
-        Some(&orchestrator),
-    )
-    .await;
+    let result = handle_deliver_story(&args, "dev:claude-code", &ws_tx, Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -2511,21 +2173,13 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
     orchestrator.refresh_all().await.unwrap();
 
     let ws_tx = connected_ws_sink_for_test().await;
-    let tracker = super::tracker::FakeTracker::default();
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(301));
     args.insert(
         "reason".into(),
         serde_json::json!("superseded by #999 — won't ship"),
     );
-    let result = handle_close_story(
-        &args,
-        "pm:claude-code",
-        &ws_tx,
-        &tracker,
-        Some(&orchestrator),
-    )
-    .await;
+    let result = handle_close_story(&args, "pm:claude-code", &ws_tx, Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = store.story(301).expect("story exists");

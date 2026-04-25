@@ -532,7 +532,6 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
         let port = self.port;
         let ws_tx = self.ws_tx.clone();
         let name = self.name.clone();
-        let tracker = self.tracker.clone();
         let board = self.board.clone();
         let refresh = self.refresh.clone();
         let github_api = self.github_api.clone();
@@ -612,23 +611,14 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                 "get_token_report" => tools::handle_get_token_report().await,
                 "get_ci_state" => tools::handle_get_ci_state(&args, github_api.as_deref()).await,
                 "get_sync_status" => tools::handle_get_sync_status(refresh.as_ref()).await,
-                "get_story" => {
-                    tools::handle_get_story(&args, &tracker, Some(&board), refresh.as_ref()).await
-                }
+                "get_story" => tools::handle_get_story(&args, Some(&board), refresh.as_ref()).await,
                 "view_story_timeline" => {
-                    tools::handle_view_story_timeline(
-                        &args,
-                        &tracker,
-                        Some(&board),
-                        refresh.as_ref(),
-                    )
-                    .await
+                    tools::handle_view_story_timeline(&args, Some(&board), refresh.as_ref()).await
                 }
                 "view_story_commits" => tools::handle_view_story_commits(&args).await,
                 "view_commit_diff" => tools::handle_view_commit_diff(&args).await,
                 "view_comments" => {
-                    tools::handle_view_comments(&args, &tracker, Some(&board), refresh.as_ref())
-                        .await
+                    tools::handle_view_comments(&args, Some(&board), refresh.as_ref()).await
                 }
                 "dev_in_flight" => tools::handle_dev_in_flight(&board).await,
                 "list_ready" => tools::handle_list_ready(&board).await,
@@ -642,7 +632,6 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                         &args,
                         &current_name,
                         &ws_tx,
-                        &tracker,
                         refresh.as_ref(),
                     )
                     .await
@@ -653,7 +642,6 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                         &args,
                         &current_name,
                         &ws_tx,
-                        &tracker,
                         refresh.as_ref(),
                     )
                     .await
@@ -664,7 +652,6 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                         &args,
                         &current_name,
                         &ws_tx,
-                        &tracker,
                         refresh.as_ref(),
                     )
                     .await
@@ -679,7 +666,6 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                         &args,
                         &current_name,
                         &ws_tx,
-                        &tracker,
                         refresh.as_ref(),
                     )
                     .await
@@ -690,7 +676,6 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                         &args,
                         &current_name,
                         &ws_tx,
-                        &tracker,
                         refresh.as_ref(),
                     )
                     .await
@@ -701,7 +686,6 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                         &args,
                         &current_name,
                         &ws_tx,
-                        &tracker,
                         refresh.as_ref(),
                     )
                     .await
@@ -712,7 +696,6 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                         &args,
                         &current_name,
                         &ws_tx,
-                        &tracker,
                         refresh.as_ref(),
                     )
                     .await
@@ -723,7 +706,6 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                         &args,
                         &current_name,
                         &ws_tx,
-                        &tracker,
                         refresh.as_ref(),
                     )
                     .await
@@ -738,7 +720,6 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                         &args,
                         &current_name,
                         &ws_tx,
-                        &tracker,
                         refresh.as_ref(),
                     )
                     .await
@@ -749,7 +730,6 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                         &args,
                         &current_name,
                         &ws_tx,
-                        &tracker,
                         refresh.as_ref(),
                     )
                     .await

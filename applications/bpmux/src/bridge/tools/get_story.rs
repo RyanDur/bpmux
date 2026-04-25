@@ -1,19 +1,7 @@
-//! #403 MCP get_story — read-side bypass closure. Before this
-//! shipped, agents read story bodies via raw `gh issue view <N>`,
-//! invisible to the bridge + teammates. Now the same read goes
-//! through the tracker + lands in the shared chat stream.
-//!
-//! #419 extends this with rework-context enrichment: when the
-//! story is in a rework state (rejected / needs fixes), the latest
-//! rejection_reason + prior verified_observation are prepended to
-//! the body so pickup + desk-check + re-audit all start with
-//! context-in-hand, not comment-archaeology.
-
 use std::sync::Arc;
 
 use crate::board::domain::{Gate, StoryState};
 use crate::board::{BoardStore, RefreshDriver};
-use crate::bridge::tracker::StoryTracker;
 
 use super::rework_context::enrich_body;
 
@@ -57,7 +45,6 @@ fn rework_context_from_gates(gates: &[crate::board::domain::GateComment]) -> Opt
 
 pub(in crate::bridge) async fn handle_get_story(
     args: &serde_json::Map<String, serde_json::Value>,
-    _tracker: &impl StoryTracker,
     board: Option<&Arc<BoardStore>>,
     refresh: Option<&Arc<dyn RefreshDriver>>,
 ) -> Result<String, String> {

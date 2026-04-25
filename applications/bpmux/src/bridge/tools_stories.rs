@@ -156,7 +156,6 @@ pub(super) async fn handle_create_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
-    _tracker: &impl super::tracker::StoryTracker,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     if role_from_name(agent_name) != "pm" {
@@ -260,7 +259,6 @@ pub(super) async fn handle_start_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
-    _tracker: &impl super::tracker::StoryTracker,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     require_role(agent_name, &["dev"], "start")?;
@@ -335,7 +333,6 @@ pub(super) async fn handle_deliver_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
-    _tracker: &impl super::tracker::StoryTracker,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     require_role(agent_name, &["dev"], "deliver")?;
@@ -415,7 +412,6 @@ pub(super) async fn handle_label_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
-    _tracker: &impl super::tracker::StoryTracker,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     require_role(agent_name, &["pm"], "label")?;
@@ -478,7 +474,6 @@ pub(super) async fn handle_accept_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
-    _tracker: &impl super::tracker::StoryTracker,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     require_role(agent_name, &["ryan", "pm", "designer", "dev"], "accept")?;
@@ -541,7 +536,6 @@ pub(super) async fn handle_reject_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
-    _tracker: &impl super::tracker::StoryTracker,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     require_role(agent_name, &["ryan", "pm", "designer", "dev"], "reject")?;
@@ -607,7 +601,6 @@ pub(super) async fn handle_pass_desk_check(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
-    _tracker: &impl super::tracker::StoryTracker,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     require_role(agent_name, &["designer"], "pass desk-check")?;
@@ -670,7 +663,6 @@ pub(super) async fn handle_fail_desk_check(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
-    _tracker: &impl super::tracker::StoryTracker,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     require_role(agent_name, &["designer"], "fail desk-check")?;
@@ -762,7 +754,6 @@ pub(super) async fn handle_comment_on_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
-    _tracker: &impl super::tracker::StoryTracker,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     let number = args
@@ -810,7 +801,6 @@ pub(super) async fn handle_close_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
-    _tracker: &impl super::tracker::StoryTracker,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     require_role(agent_name, &["pm"], "close")?;
