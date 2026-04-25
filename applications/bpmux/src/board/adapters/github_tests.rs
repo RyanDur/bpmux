@@ -147,6 +147,69 @@ fn decode_story_metadata_sets_is_closed_from_gh_state() {
 }
 
 #[test]
+fn decode_story_metadata_prefers_gh_state_over_legacy_state_field() {
+    let json = serde_json::json!({
+        "number": 99,
+        "title": "previously accepted via old code path; closed on GH but no explicit accepted label",
+        "state": "accepted",
+        "gh_state": "closed",
+        "labels": ["ready for accept", "delivered"],
+        "created_at": "2026-04-20T00:00:00Z",
+        "user": {"login": "ryan"},
+    });
+    let story = decode_story_metadata(&json).unwrap();
+    assert!(
+        story.is_closed,
+        "gh_state=closed must drive is_closed=true even when state field is renderer-translated"
+    );
+    assert_eq!(
+        story.state,
+        StoryState::Accepted,
+        "is_closed=true must override label-priority decoder to Accepted"
+    );
+}
+
+#[test]
+fn decode_story_metadata_falls_back_to_state_field_when_gh_state_absent() {
+    let json = serde_json::json!({
+        "number": 100,
+        "title": "raw GH shape, no gh_state field present (legacy / test-fixture envelope)",
+        "state": "closed",
+        "labels": [],
+        "created_at": "2026-04-20T00:00:00Z",
+        "user": {"login": "pm"},
+    });
+    let story = decode_story_metadata(&json).unwrap();
+    assert!(
+        story.is_closed,
+        "decode must fall back to state field for envelopes without gh_state (raw octocrab JSON shape)"
+    );
+}
+
+#[test]
+fn decode_story_metadata_gh_state_open_does_not_force_closed() {
+    let json = serde_json::json!({
+        "number": 101,
+        "title": "open issue with renderer-state delivered",
+        "state": "delivered",
+        "gh_state": "open",
+        "labels": ["delivered"],
+        "created_at": "2026-04-20T00:00:00Z",
+        "user": {"login": "dev"},
+    });
+    let story = decode_story_metadata(&json).unwrap();
+    assert!(
+        !story.is_closed,
+        "gh_state=open must drive is_closed=false; renderer-state delivered must NOT trigger is_closed"
+    );
+    assert_eq!(
+        story.state,
+        StoryState::Delivered,
+        "state_from_labels with is_closed=false should decode delivered label as Delivered"
+    );
+}
+
+#[test]
 fn classify_gate_pickup() {
     let body = "**pickup_paraphrase** (dev pickup-gate):\n\nscope statement";
     let result = classify_gate(body).unwrap();

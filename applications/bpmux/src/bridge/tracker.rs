@@ -471,13 +471,23 @@ fn derive_renderer_state(
 /// Electron renderer expects. Lifted out as a free function so
 /// `fetch_board_stories` and `get_story` emit identical shapes — the
 /// renderer can reuse the same parser for both endpoints.
+fn gh_state_label(state: &octocrab::models::IssueState) -> &'static str {
+    match state {
+        octocrab::models::IssueState::Open => "open",
+        octocrab::models::IssueState::Closed => "closed",
+        _ => "unknown",
+    }
+}
+
 fn issue_to_board_json(issue: &octocrab::models::issues::Issue) -> serde_json::Value {
     let labels: Vec<String> = issue.labels.iter().map(|l| l.name.clone()).collect();
     let state = derive_renderer_state(&issue.state, &labels);
+    let gh_state = gh_state_label(&issue.state);
     serde_json::json!({
         "number": issue.number,
         "title": issue.title,
         "state": state,
+        "gh_state": gh_state,
         "labels": labels,
         "assignees": issue.assignees.iter().map(|a| a.login.clone()).collect::<Vec<_>>(),
         "created_at": issue.created_at.to_rfc3339(),
@@ -840,5 +850,11 @@ mod derive_renderer_state_tests {
             derive_renderer_state(&IssueState::Open, &labels(&[])),
             "icebox"
         );
+    }
+
+    #[test]
+    fn gh_state_label_maps_open_and_closed() {
+        assert_eq!(gh_state_label(&IssueState::Open), "open");
+        assert_eq!(gh_state_label(&IssueState::Closed), "closed");
     }
 }

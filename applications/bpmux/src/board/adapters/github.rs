@@ -171,10 +171,13 @@ pub fn decode_story_metadata(v: &serde_json::Value) -> Option<Story> {
         .unwrap_or("")
         .to_string();
     let labels = extract_label_names(v);
-    let is_closed = matches!(
-        v.get("state").and_then(|x| x.as_str()),
-        Some("closed" | "CLOSED")
-    );
+    let is_closed = match v.get("gh_state").and_then(|x| x.as_str()) {
+        Some(s) => matches!(s, "closed" | "CLOSED"),
+        None => matches!(
+            v.get("state").and_then(|x| x.as_str()),
+            Some("closed" | "CLOSED")
+        ),
+    };
     let state = state_from_labels(&labels, is_closed);
     let filed_at = v
         .get("created_at")
