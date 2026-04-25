@@ -379,7 +379,7 @@ pub(super) async fn handle_deliver_story(
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
-    let _refreshed: Option<Option<crate::board::domain::Story>> = match refresh {
+    let refreshed: Option<Option<crate::board::domain::Story>> = match refresh {
         Some(r) => Some(
             r.refresh_story(number)
                 .await
@@ -396,10 +396,13 @@ pub(super) async fn handle_deliver_story(
         "verified_observation",
         "verified_observation is required (2026-04-22 retro): articulate what you DROVE end-to-end in the running app, not 'tests pass'. Describe the falsifier scenario you exercised + what you observed. Becomes the diff-point at desk-check.",
     )?;
-    let title = tracker
-        .get_story_title(number)
-        .await
-        .unwrap_or_else(|| format!("#{number}"));
+    let title = match refreshed.as_ref().and_then(|s| s.as_ref()) {
+        Some(story) => story.title.clone(),
+        None => tracker
+            .get_story_title(number)
+            .await
+            .unwrap_or_else(|| format!("#{number}")),
+    };
     for signal in build_delivery_signals(number, &title) {
         let json = serde_json::to_string(&signal).map_err(|e| format!("signal: {e}"))?;
         ws_send(ws_tx, json)

@@ -1599,6 +1599,39 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
     ));
 }
 
+async fn connected_ws_sink_with_capture() -> (
+    tokio::sync::Mutex<Option<super::tools::WsSink>>,
+    std::sync::Arc<tokio::sync::Mutex<Vec<String>>>,
+) {
+    use futures::StreamExt;
+    use tokio::net::TcpListener;
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let captured: std::sync::Arc<tokio::sync::Mutex<Vec<String>>> =
+        std::sync::Arc::new(tokio::sync::Mutex::new(Vec::new()));
+    let captured_for_task = std::sync::Arc::clone(&captured);
+    tokio::spawn(async move {
+        if let Ok((stream, _)) = listener.accept().await
+            && let Ok(ws) = tokio_tungstenite::accept_async(stream).await
+        {
+            let (_srv_sink, mut srv_stream) = ws.split();
+            while let Some(Ok(msg)) = srv_stream.next().await {
+                if let Ok(text) = msg.into_text() {
+                    captured_for_task.lock().await.push(text.to_string());
+                }
+            }
+        }
+    });
+    let url = format!("ws://{}/", addr);
+    let (ws, _) = tokio_tungstenite::connect_async(&url).await.unwrap();
+    let (sink, stream) = ws.split();
+    tokio::spawn(async move {
+        let mut stream = stream;
+        while stream.next().await.is_some() {}
+    });
+    (tokio::sync::Mutex::new(Some(sink)), captured)
+}
+
 async fn connected_ws_sink_for_test() -> tokio::sync::Mutex<Option<super::tools::WsSink>> {
     use futures::StreamExt;
     use tokio::net::TcpListener;
@@ -2162,4 +2195,61 @@ async fn create_story_migrated_path_assigns_number_and_emits_story_created_event
             ..
         }
     ));
+}
+
+#[tokio::test]
+async fn deliver_story_migrated_path_uses_store_title_not_tracker() {
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let seeded = Story::new_minimal(
+        207,
+        "store-titled-207".into(),
+        StoryState::InProgress,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "dev".into(),
+    );
+    adapter.seed_stories(vec![seeded]);
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orchestrator.refresh_all().await.unwrap();
+
+    let (ws_tx, captured) = connected_ws_sink_with_capture().await;
+    let tracker = super::tracker::FakeTracker::default();
+    let mut args = serde_json::Map::new();
+    args.insert("number".into(), serde_json::json!(207));
+    args.insert(
+        "verified_observation".into(),
+        serde_json::json!("ran end-to-end"),
+    );
+    let result = handle_deliver_story(
+        &args,
+        "dev:claude-code",
+        &ws_tx,
+        &tracker,
+        Some(&orchestrator),
+    )
+    .await;
+    assert!(result.is_ok(), "migrated path should succeed: {result:?}");
+
+    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    let messages = captured.lock().await;
+    let signal_text_combined = messages.join("\n");
+    assert!(
+        signal_text_combined.contains("store-titled-207"),
+        "migrated deliver path must use store-side title; expected `store-titled-207` in WS signals: {signal_text_combined}"
+    );
+    assert!(
+        !signal_text_combined.contains("(fake) story #207"),
+        "migrated deliver path must NOT fall back to FakeTracker title; FakeTracker text leaked: {signal_text_combined}"
+    );
 }
