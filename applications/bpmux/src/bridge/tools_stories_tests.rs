@@ -2253,3 +2253,78 @@ async fn deliver_story_migrated_path_uses_store_title_not_tracker() {
         "migrated deliver path must NOT fall back to FakeTracker title; FakeTracker text leaked: {signal_text_combined}"
     );
 }
+
+#[cfg(test)]
+mod classify_for_pass_desk_check_tests {
+    use super::*;
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    async fn orchestrator_with_seed(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
+        let store = Arc::new(BoardStore::new());
+        let adapter = Arc::new(InMemorySourceAdapter::new());
+        adapter.seed_stories(stories);
+        let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+            Arc::clone(&store),
+            Arc::clone(&adapter),
+        ));
+        orch.refresh_all().await.unwrap();
+        orch
+    }
+
+    fn make_story(number: u64, story_type: StoryType) -> Story {
+        let mut s = Story::new_minimal(
+            number,
+            format!("story-{number}"),
+            StoryState::Delivered,
+            Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+            "dev".into(),
+        );
+        s.story_type = story_type;
+        s
+    }
+
+    #[tokio::test]
+    async fn refreshed_path_returns_feature_via_typed_story_type() {
+        let orch = orchestrator_with_seed(vec![make_story(910, StoryType::Feature)]).await;
+        let tracker = super::super::tracker::FakeTracker::default();
+        let result = classify_for_pass_desk_check(910, Some(&orch), &tracker).await;
+        assert_eq!(result, StoryType::Feature);
+    }
+
+    #[tokio::test]
+    async fn refreshed_path_returns_bug_via_typed_story_type() {
+        let orch = orchestrator_with_seed(vec![make_story(911, StoryType::Bug)]).await;
+        let tracker = super::super::tracker::FakeTracker::default();
+        let result = classify_for_pass_desk_check(911, Some(&orch), &tracker).await;
+        assert_eq!(result, StoryType::Bug);
+    }
+
+    #[tokio::test]
+    async fn refreshed_path_returns_chore_via_typed_story_type() {
+        let orch = orchestrator_with_seed(vec![make_story(912, StoryType::Chore)]).await;
+        let tracker = super::super::tracker::FakeTracker::default();
+        let result = classify_for_pass_desk_check(912, Some(&orch), &tracker).await;
+        assert_eq!(result, StoryType::Chore);
+    }
+
+    #[tokio::test]
+    async fn falls_back_to_tracker_when_refresh_absent() {
+        let tracker = super::super::tracker::FakeTracker::default();
+        let result = classify_for_pass_desk_check(913, None, &tracker).await;
+        assert_eq!(result, StoryType::Feature);
+    }
+
+    #[tokio::test]
+    async fn falls_back_to_tracker_when_story_not_in_cache() {
+        let orch = orchestrator_with_seed(vec![]).await;
+        let tracker = super::super::tracker::FakeTracker::default();
+        let result = classify_for_pass_desk_check(914, Some(&orch), &tracker).await;
+        assert_eq!(result, StoryType::Feature);
+    }
+}

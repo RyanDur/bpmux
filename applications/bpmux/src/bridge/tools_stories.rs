@@ -719,9 +719,7 @@ pub(super) async fn handle_pass_desk_check(
     // acceptor, PM is the presenter; PM needs a direct signal so
     // presentation doesn't depend on scanning chat for designer's
     // PASS message).
-    let labels = tracker.get_story_labels(number).await;
-    let title = tracker.get_story_title(number).await.unwrap_or_default();
-    let story_type = crate::session::velocity::classify_story(&labels, &title);
+    let story_type = classify_for_pass_desk_check(number, refresh, tracker).await;
     for msg in build_pass_desk_check_signals(number, story_type) {
         let signal = serde_json::to_string(&msg).map_err(|e| format!("signal: {e}"))?;
         ws_send(ws_tx, signal)
@@ -1044,6 +1042,21 @@ pub(super) fn build_reject_signal(number: u64, reason: &str) -> ClientMessage {
 /// lane; bugs fixed are internal unless they surface user-visible
 /// change, and that's a separate signal decision). Defaults to
 /// Feature under the classifier's default-to-Feature rule.
+pub(super) async fn classify_for_pass_desk_check(
+    number: u64,
+    refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
+    tracker: &impl super::tracker::StoryTracker,
+) -> crate::board::domain::StoryType {
+    if let Some(r) = refresh
+        && let Some(story) = r.story(number)
+    {
+        return story.story_type;
+    }
+    let labels = tracker.get_story_labels(number).await;
+    let title = tracker.get_story_title(number).await.unwrap_or_default();
+    crate::session::velocity::classify_story(&labels, &title)
+}
+
 pub(super) fn addressee_for_pass_desk_check(
     story_type: crate::board::domain::StoryType,
 ) -> &'static str {
