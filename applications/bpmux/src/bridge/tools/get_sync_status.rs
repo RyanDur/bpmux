@@ -67,6 +67,9 @@ mod tests {
         fn story(&self, _number: u64) -> Option<crate::board::Story> {
             None
         }
+        fn all_stories(&self) -> Vec<crate::board::Story> {
+            Vec::new()
+        }
     }
 
     #[tokio::test]

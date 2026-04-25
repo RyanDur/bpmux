@@ -32,6 +32,7 @@ pub trait RefreshDriver: Send + Sync {
     ) -> BoxedFuture<'_, Result<Vec<GateComment>, SyncError>>;
     fn create_story(&self, title: String, body: String) -> BoxedFuture<'_, Result<u64, SyncError>>;
     fn story(&self, number: u64) -> Option<Story>;
+    fn all_stories(&self) -> Vec<Story>;
 }
 
 #[derive(Debug, Clone, Default, Serialize)]
@@ -273,6 +274,10 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
 
     fn story(&self, number: u64) -> Option<Story> {
         self.store.story(number)
+    }
+
+    fn all_stories(&self) -> Vec<Story> {
+        self.store.all_stories()
     }
 }
 
