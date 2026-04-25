@@ -19,6 +19,7 @@ use serde_json::json;
 use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite;
 
+pub(crate) mod github_api;
 pub(crate) mod tools;
 mod tools_stories;
 pub(crate) mod tracker;
@@ -51,6 +52,7 @@ pub struct BridgeServer<T: tracker::StoryTracker> {
     tracker: T,
     board: Arc<crate::board::BoardStore>,
     refresh: Option<Arc<dyn crate::board::RefreshDriver>>,
+    github_api: Option<Arc<github_api::GitHubApi>>,
 }
 
 pub(crate) fn resolve_bridge_name(raw: &str) -> String {
@@ -73,11 +75,17 @@ impl<T: tracker::StoryTracker> BridgeServer<T> {
             tracker,
             board: Arc::new(crate::board::BoardStore::new()),
             refresh: None,
+            github_api: None,
         }
     }
 
     fn with_refresh(mut self, refresh: Arc<dyn crate::board::RefreshDriver>) -> Self {
         self.refresh = Some(refresh);
+        self
+    }
+
+    fn with_github_api(mut self, api: Arc<github_api::GitHubApi>) -> Self {
+        self.github_api = Some(api);
         self
     }
 
@@ -527,6 +535,7 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
         let tracker = self.tracker.clone();
         let board = self.board.clone();
         let refresh = self.refresh.clone();
+        let github_api = self.github_api.clone();
 
         async move {
             let args = request.arguments.unwrap_or_default();
@@ -601,7 +610,7 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                     tools::handle_remove_principle(&args, &current_name).await
                 }
                 "get_token_report" => tools::handle_get_token_report().await,
-                "get_ci_state" => tools::handle_get_ci_state(&args, &tracker).await,
+                "get_ci_state" => tools::handle_get_ci_state(&args, github_api.as_deref()).await,
                 "get_sync_status" => tools::handle_get_sync_status(refresh.as_ref()).await,
                 "get_story" => {
                     tools::handle_get_story(&args, &tracker, Some(&board), refresh.as_ref()).await
@@ -795,6 +804,10 @@ pub fn run_bridge(
         ));
         let refresh_driver: Arc<dyn crate::board::RefreshDriver> = orchestrator.clone();
         let server = server.with_refresh(refresh_driver.clone());
+        let server = match github_api::GitHubApi::from_env() {
+            Some(api) => server.with_github_api(Arc::new(api)),
+            None => server,
+        };
         tokio::spawn(run_ingest_poll_loop(
             refresh_driver.clone(),
             poll_interval_from_env(),

@@ -4,7 +4,8 @@
 //! report. Pure `build_ci_state_report` is separated from the fetch
 //! so unit tests cover shape without network.
 
-use crate::bridge::tracker::{StoryTracker, WorkflowRunEntry};
+use crate::bridge::github_api::GitHubApi;
+use crate::bridge::tracker::WorkflowRunEntry;
 use crate::terminal::ci::{CiState, RunEntry, classify_runs, github_actions_url};
 
 #[derive(Debug, serde::Serialize, PartialEq, Eq)]
@@ -66,9 +67,12 @@ fn run_entry_from_tracker(w: &WorkflowRunEntry) -> RunEntry {
 
 pub(in crate::bridge) async fn handle_get_ci_state(
     _args: &serde_json::Map<String, serde_json::Value>,
-    tracker: &impl StoryTracker,
+    api: Option<&GitHubApi>,
 ) -> Result<String, String> {
-    let latest = tracker.list_latest_run_on_main().await?;
+    let latest = match api {
+        Some(a) => a.list_latest_run_on_main().await?,
+        None => None,
+    };
     let runs: Vec<RunEntry> = latest.iter().map(run_entry_from_tracker).collect();
     let report = build_ci_state_report(&runs);
     serde_json::to_string_pretty(&report).map_err(|e| format!("serialize: {e}"))
