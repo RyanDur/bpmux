@@ -581,11 +581,17 @@ pub(super) async fn handle_accept_story(
         })
         .map_err(|e| format!("#{number} gate enqueue failed: {e}"))?;
         r.mutate_sync(crate::board::BoardEvent::StateTransitioned {
-            meta,
+            meta: meta.clone(),
             number,
             new_state: crate::board::domain::StoryState::Accepted,
         })
         .map_err(|e| format!("#{number} state enqueue failed: {e}"))?;
+        r.mutate_sync(crate::board::BoardEvent::StoryClosed {
+            meta,
+            number,
+            reason: None,
+        })
+        .map_err(|e| format!("#{number} close enqueue failed: {e}"))?;
         broadcast_board_invalidate(ws_tx).await;
         return Ok(format!("#{number} accepted and closed"));
     }
@@ -952,6 +958,19 @@ pub(super) async fn handle_close_story(
         r.refresh_story(number)
             .await
             .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?;
+        let meta = crate::board::events::EventMeta {
+            actor: crate::transport::ws::short_name(agent_name).to_string(),
+            ts: chrono::Utc::now(),
+            peer_id: crate::board::PeerId::local(),
+        };
+        r.mutate_sync(crate::board::BoardEvent::StoryClosed {
+            meta,
+            number,
+            reason: Some(reason.to_string()),
+        })
+        .map_err(|e| format!("#{number} close enqueue failed: {e}"))?;
+        broadcast_board_invalidate(ws_tx).await;
+        return Ok(format!("#{number} closed: {reason}"));
     }
     if let Err(e) = tracker.comment_on_story(number, reason).await {
         crate::session::diag::log_diag(&format!(
@@ -962,7 +981,7 @@ pub(super) async fn handle_close_story(
     broadcast_board_invalidate(ws_tx).await;
     match close_result {
         Ok(_) => Ok(format!("#{number} closed: {reason}")),
-        Err(e) if e.contains("already closed") || e.contains("is closed") => {
+        Err(e) if crate::board::sync::is_already_closed_error(&e) => {
             Ok(format!("#{number} was already closed — comment added"))
         }
         Err(e) => Err(format!("#{number} close failed: {e}")),

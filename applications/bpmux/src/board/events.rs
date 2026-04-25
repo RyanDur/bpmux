@@ -62,6 +62,11 @@ pub enum BoardEvent {
         number: u64,
         comments: Vec<GateComment>,
     },
+    StoryClosed {
+        meta: EventMeta,
+        number: u64,
+        reason: Option<String>,
+    },
 }
 
 impl BoardEvent {
@@ -75,7 +80,8 @@ impl BoardEvent {
             | BoardEvent::FreeCommentsFetched { meta, .. }
             | BoardEvent::GateCommentsFetched { meta, .. }
             | BoardEvent::TagAdded { meta, .. }
-            | BoardEvent::TagRemoved { meta, .. } => meta,
+            | BoardEvent::TagRemoved { meta, .. }
+            | BoardEvent::StoryClosed { meta, .. } => meta,
         }
     }
 
@@ -89,7 +95,8 @@ impl BoardEvent {
             | BoardEvent::FreeCommentsFetched { number, .. }
             | BoardEvent::GateCommentsFetched { number, .. }
             | BoardEvent::TagAdded { number, .. }
-            | BoardEvent::TagRemoved { number, .. } => *number,
+            | BoardEvent::TagRemoved { number, .. }
+            | BoardEvent::StoryClosed { number, .. } => *number,
         }
     }
 }

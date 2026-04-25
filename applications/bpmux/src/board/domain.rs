@@ -100,6 +100,7 @@ pub struct Story {
     pub body: Option<String>,
     pub free_comments: Option<Vec<FreeComment>>,
     pub gate_comments: Option<Vec<GateComment>>,
+    pub is_closed: bool,
 }
 
 impl Story {
@@ -121,6 +122,7 @@ impl Story {
             body: None,
             free_comments: None,
             gate_comments: None,
+            is_closed: false,
         }
     }
 }

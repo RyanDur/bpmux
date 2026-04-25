@@ -68,6 +68,7 @@ impl BoardStore {
                     body: Some(body.clone()),
                     free_comments: Some(Vec::new()),
                     gate_comments: Some(Vec::new()),
+                    is_closed: false,
                 };
                 w.insert(*n, story);
             }
@@ -127,6 +128,11 @@ impl BoardStore {
             BoardEvent::GateCommentsFetched { comments, .. } => {
                 if let Some(story) = w.get_mut(&number) {
                     story.gate_comments = Some(comments.clone());
+                }
+            }
+            BoardEvent::StoryClosed { .. } => {
+                if let Some(story) = w.get_mut(&number) {
+                    story.is_closed = true;
                 }
             }
         }

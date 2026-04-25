@@ -85,14 +85,20 @@ impl SourceAdapter for GitHubSourceAdapter {
                     .add_label(*number, label)
                     .await
                     .map_err(SyncError::Other)?;
-                if matches!(new_state, StoryState::Accepted) {
-                    match self.inner.close_story(*number).await {
-                        Ok(_) => {}
-                        Err(e) if crate::board::sync::is_already_closed_error(&e) => {}
-                        Err(e) => return Err(SyncError::Other(e)),
-                    }
-                }
                 Ok(())
+            }
+            BoardEvent::StoryClosed { number, reason, .. } => {
+                if let Some(reason_text) = reason.as_deref() {
+                    self.inner
+                        .comment_on_story(*number, reason_text)
+                        .await
+                        .map_err(SyncError::Other)?;
+                }
+                match self.inner.close_story(*number).await {
+                    Ok(_) => Ok(()),
+                    Err(e) if crate::board::sync::is_already_closed_error(&e) => Ok(()),
+                    Err(e) => Err(SyncError::Other(e)),
+                }
             }
             BoardEvent::GateCommentAppended {
                 meta,

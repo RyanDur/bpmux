@@ -2009,11 +2009,11 @@ async fn accept_story_migrated_path_emits_tag_remove_gate_and_state_events() {
 
     let drained = orchestrator.drain_pending().await.unwrap();
     assert_eq!(
-        drained, 3,
-        "all three events must reach the adapter via drain"
+        drained, 4,
+        "all four events must reach the adapter via drain (TagRemoved + GateCommentAppended + StateTransitioned + StoryClosed)"
     );
     let pushed = adapter.pushed_events();
-    assert_eq!(pushed.len(), 3);
+    assert_eq!(pushed.len(), 4);
     assert!(matches!(
         &pushed[0],
         BoardEvent::TagRemoved { number: 205, label, .. } if label == "delivered"
@@ -2035,6 +2035,18 @@ async fn accept_story_migrated_path_emits_tag_remove_gate_and_state_events() {
             ..
         }
     ));
+    assert!(matches!(
+        &pushed[3],
+        BoardEvent::StoryClosed {
+            number: 205,
+            reason: None,
+            ..
+        }
+    ));
+    assert!(
+        store.story(205).expect("story exists").is_closed,
+        "is_closed flag must be set after StoryClosed event applies"
+    );
 }
 
 #[tokio::test]
@@ -2327,4 +2339,71 @@ mod classify_for_pass_desk_check_tests {
         let result = classify_for_pass_desk_check(914, Some(&orch), &tracker).await;
         assert_eq!(result, StoryType::Feature);
     }
+}
+
+#[tokio::test]
+async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
+    use crate::board::BoardEvent;
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let seeded = Story::new_minimal(
+        301,
+        "won't fix story".into(),
+        StoryState::Delivered,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "pm".into(),
+    );
+    adapter.seed_stories(vec![seeded]);
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orchestrator.refresh_all().await.unwrap();
+
+    let ws_tx = connected_ws_sink_for_test().await;
+    let tracker = super::tracker::FakeTracker::default();
+    let mut args = serde_json::Map::new();
+    args.insert("number".into(), serde_json::json!(301));
+    args.insert(
+        "reason".into(),
+        serde_json::json!("superseded by #999 — won't ship"),
+    );
+    let result = handle_close_story(
+        &args,
+        "pm:claude-code",
+        &ws_tx,
+        &tracker,
+        Some(&orchestrator),
+    )
+    .await;
+    assert!(result.is_ok(), "migrated path should succeed: {result:?}");
+
+    let story = store.story(301).expect("story exists");
+    assert!(story.is_closed, "is_closed flag must be set");
+    assert_eq!(
+        story.state,
+        StoryState::Delivered,
+        "state preserved at last domain state — close is action-overlay, not state-transition"
+    );
+
+    let drained = orchestrator.drain_pending().await.unwrap();
+    assert_eq!(drained, 1, "exactly one StoryClosed event must drain");
+    let pushed = adapter.pushed_events();
+    assert_eq!(pushed.len(), 1);
+    assert!(matches!(
+        &pushed[0],
+        BoardEvent::StoryClosed {
+            number: 301,
+            reason: Some(r),
+            ..
+        } if r == "superseded by #999 — won't ship"
+    ));
 }
