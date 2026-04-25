@@ -224,8 +224,7 @@ pub(super) async fn handle_create_story(
             ts: chrono::Utc::now(),
             peer_id: crate::board::PeerId::local(),
         };
-        let story_type =
-            crate::board::adapters::github::story_type_from_labels_or_title(&[], title);
+        let story_type = crate::board::domain::story_type_from_labels_or_title(&[], title);
         r.mutate_sync(crate::board::BoardEvent::StoryCreated {
             meta,
             number,
