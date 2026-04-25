@@ -3,11 +3,11 @@
 use chrono::{TimeZone, Utc};
 
 use crate::board::adapters::github::{
-    classify_gate, decode_gate_comments, decode_story_metadata, is_already_closed_error,
-    parse_created_issue_number, state_from_labels, state_to_label, story_type_from_labels_or_title,
-    tags_from_labels,
+    classify_gate, decode_gate_comments, decode_story_metadata, parse_created_issue_number,
+    state_from_labels, state_to_label, story_type_from_labels_or_title, tags_from_labels,
 };
 use crate::board::domain::{Gate, StoryState, StoryType, Tag};
+use crate::board::sync::is_already_closed_error;
 
 #[test]
 fn state_from_labels_accepted_wins_regardless_of_other_labels() {

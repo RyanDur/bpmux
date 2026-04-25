@@ -24,6 +24,10 @@ impl std::fmt::Display for SyncError {
 
 impl std::error::Error for SyncError {}
 
+pub fn is_already_closed_error(msg: &str) -> bool {
+    msg.contains("already closed") || msg.contains("is closed")
+}
+
 pub trait SourceAdapter: Send + Sync {
     fn ingest_metadata(
         &self,

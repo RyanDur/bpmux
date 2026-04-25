@@ -88,7 +88,7 @@ impl SourceAdapter for GitHubSourceAdapter {
                 if matches!(new_state, StoryState::Accepted) {
                     match self.inner.close_story(*number).await {
                         Ok(_) => {}
-                        Err(e) if is_already_closed_error(&e) => {}
+                        Err(e) if crate::board::sync::is_already_closed_error(&e) => {}
                         Err(e) => return Err(SyncError::Other(e)),
                     }
                 }
@@ -272,10 +272,6 @@ pub fn state_to_label(state: StoryState) -> &'static str {
         StoryState::Rejected => "rejected",
         StoryState::Accepted => "accepted",
     }
-}
-
-pub fn is_already_closed_error(msg: &str) -> bool {
-    msg.contains("already closed") || msg.contains("is closed")
 }
 
 fn decode_free_comment(v: &serde_json::Value) -> Option<FreeComment> {
