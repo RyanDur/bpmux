@@ -624,7 +624,9 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                 "dev_in_flight" => tools::handle_dev_in_flight(&board).await,
                 "list_ready" => tools::handle_list_ready(&board).await,
                 "view_board" => tools_stories::handle_view_board(&args, &tracker).await,
-                "view_velocity" => tools::handle_view_velocity(port, &tracker, &ws_tx).await,
+                "view_velocity" => {
+                    tools::handle_view_velocity(port, &tracker, &ws_tx, refresh.as_ref()).await
+                }
                 "create_story" => {
                     let current_name = name.lock().await;
                     tools_stories::handle_create_story(
