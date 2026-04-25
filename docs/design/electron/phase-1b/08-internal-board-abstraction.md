@@ -728,9 +728,25 @@ closing GH on Rejected would break that semantic.
    calls `create_story` / `label_story` / `close_story` via the MCP
    handlers, asserts (a) the store reflects the mutations, (b) the
    adapter observes the pushed events.
-8. The existing `StoryTracker` trait + callsites are deleted in the
-   same story (per `feedback_replace_story_includes_delete`). No
-   dual-layer lingering.
+8. **`StoryTracker` references are deleted from the bridge handler
+   layer** (`bridge/tools/`, `bridge/tools_stories.rs`, `BridgeServer`)
+   per `feedback_replace_story_includes_delete`. No dual-layer
+   lingering at the bridge boundary — handlers read/write through
+   `BoardStore` + `SyncOrchestrator` only.
+
+   **Intentionally retained scope** (per migration-path step 2):
+   `GitHubSourceAdapter` wraps `OctocrabStoryTracker` as its source-
+   adapter implementation; `transport/rest.rs` and
+   `transport/ci_watcher.rs` retain `StoryTracker` for their own
+   concerns. The trait + `OctocrabStoryTracker` impl survive #451 as
+   adapter-internal scaffolding and non-bridge consumers. Migration
+   of those non-bridge callers (if ever needed) is a separate
+   follow-up story, not in #451's scope.
+
+   Per Ryan 2026-04-25 03:24 UTC + downstream team-convergence: the
+   bridge-board abstraction goal is "MCP tool handlers don't talk
+   to GitHub directly," not "delete every line of tracker code in
+   the repo." This AC closes the former, not the latter.
 10. `BoardStore` exposes a `subscribe() -> broadcast::Receiver<BoardEvent>`
     method. Every `apply()` publishes to the channel post-commit.
     At least one subscriber exists at startup (the SyncOrchestrator's

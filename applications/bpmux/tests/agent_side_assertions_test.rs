@@ -103,7 +103,11 @@ fn deliver_story_signal_routes_desk_check_to_designer_not_dev() {
         let status = dev
             .call_tool(
                 "deliver_story",
-                serde_json::json!({"number": 199, "title": "test api agent assertions"}),
+                serde_json::json!({
+                    "number": 199,
+                    "title": "test api agent assertions",
+                    "verified_observation": "drove agent_side_assertions test end-to-end; designer received desk-check signal, dev did not"
+                }),
             )
             .await
             .expect("deliver_story signals should succeed");
