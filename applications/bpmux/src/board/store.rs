@@ -136,6 +136,16 @@ impl BoardStore {
                     story.is_closed = true;
                 }
             }
+            BoardEvent::ParentEpicSet { epic_number, .. } => {
+                if let Some(story) = w.get_mut(&number) {
+                    story.parent_epic = Some(*epic_number);
+                }
+            }
+            BoardEvent::ParentEpicUnset { .. } => {
+                if let Some(story) = w.get_mut(&number) {
+                    story.parent_epic = None;
+                }
+            }
         }
         drop(w);
         let _ = self.event_tx.send(event.clone());

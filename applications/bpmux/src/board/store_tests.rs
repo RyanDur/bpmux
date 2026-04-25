@@ -439,3 +439,60 @@ fn story_created_event_carries_story_type() {
     });
     assert_eq!(store.story(1).unwrap().story_type, StoryType::Bug);
 }
+
+#[test]
+fn parent_epic_set_event_assigns_parent_epic_field() {
+    let store = BoardStore::new();
+    store.apply(&BoardEvent::StoryCreated {
+        meta: meta("pm", 2026, "local"),
+        number: 100,
+        title: "child".to_string(),
+        body: "".to_string(),
+        initial_state: StoryState::Ready,
+        story_type: StoryType::Feature,
+    });
+    store.apply(&BoardEvent::ParentEpicSet {
+        meta: meta("pm", 2026, "local"),
+        number: 100,
+        epic_number: 50,
+    });
+    assert_eq!(store.story(100).unwrap().parent_epic, Some(50));
+}
+
+#[test]
+fn parent_epic_unset_event_clears_parent_epic_field() {
+    let store = BoardStore::new();
+    store.apply(&BoardEvent::StoryCreated {
+        meta: meta("pm", 2026, "local"),
+        number: 101,
+        title: "child".to_string(),
+        body: "".to_string(),
+        initial_state: StoryState::Ready,
+        story_type: StoryType::Feature,
+    });
+    store.apply(&BoardEvent::ParentEpicSet {
+        meta: meta("pm", 2026, "local"),
+        number: 101,
+        epic_number: 51,
+    });
+    store.apply(&BoardEvent::ParentEpicUnset {
+        meta: meta("pm", 2026, "local"),
+        number: 101,
+    });
+    assert_eq!(store.story(101).unwrap().parent_epic, None);
+}
+
+#[test]
+fn parent_epic_events_no_op_on_missing_story() {
+    let store = BoardStore::new();
+    store.apply(&BoardEvent::ParentEpicSet {
+        meta: meta("pm", 2026, "local"),
+        number: 999,
+        epic_number: 888,
+    });
+    store.apply(&BoardEvent::ParentEpicUnset {
+        meta: meta("pm", 2026, "local"),
+        number: 999,
+    });
+    assert!(store.story(999).is_none());
+}

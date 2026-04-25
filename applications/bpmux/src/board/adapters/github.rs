@@ -134,6 +134,28 @@ impl SourceAdapter for GitHubSourceAdapter {
                     .map_err(SyncError::Other)?;
                 Ok(())
             }
+            BoardEvent::ParentEpicSet {
+                number,
+                epic_number,
+                ..
+            } => {
+                let label = format!("parent-epic-#{epic_number}");
+                self.inner
+                    .add_label(*number, &label)
+                    .await
+                    .map_err(SyncError::Other)?;
+                Ok(())
+            }
+            BoardEvent::ParentEpicUnset { number, .. } => {
+                let labels = self.inner.get_story_labels(*number).await;
+                for l in labels.iter().filter(|l| l.starts_with("parent-epic-#")) {
+                    self.inner
+                        .remove_label(*number, l)
+                        .await
+                        .map_err(SyncError::Other)?;
+                }
+                Ok(())
+            }
             BoardEvent::BodyFetched { .. }
             | BoardEvent::FreeCommentsFetched { .. }
             | BoardEvent::GateCommentsFetched { .. } => Ok(()),

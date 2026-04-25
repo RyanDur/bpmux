@@ -67,6 +67,15 @@ pub enum BoardEvent {
         number: u64,
         reason: Option<String>,
     },
+    ParentEpicSet {
+        meta: EventMeta,
+        number: u64,
+        epic_number: u64,
+    },
+    ParentEpicUnset {
+        meta: EventMeta,
+        number: u64,
+    },
 }
 
 impl BoardEvent {
@@ -81,7 +90,9 @@ impl BoardEvent {
             | BoardEvent::GateCommentsFetched { meta, .. }
             | BoardEvent::TagAdded { meta, .. }
             | BoardEvent::TagRemoved { meta, .. }
-            | BoardEvent::StoryClosed { meta, .. } => meta,
+            | BoardEvent::StoryClosed { meta, .. }
+            | BoardEvent::ParentEpicSet { meta, .. }
+            | BoardEvent::ParentEpicUnset { meta, .. } => meta,
         }
     }
 
@@ -96,7 +107,9 @@ impl BoardEvent {
             | BoardEvent::GateCommentsFetched { number, .. }
             | BoardEvent::TagAdded { number, .. }
             | BoardEvent::TagRemoved { number, .. }
-            | BoardEvent::StoryClosed { number, .. } => *number,
+            | BoardEvent::StoryClosed { number, .. }
+            | BoardEvent::ParentEpicSet { number, .. }
+            | BoardEvent::ParentEpicUnset { number, .. } => *number,
         }
     }
 }
