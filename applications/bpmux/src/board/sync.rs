@@ -53,4 +53,10 @@ pub trait SourceAdapter: Send + Sync {
         &self,
         event: &BoardEvent,
     ) -> impl std::future::Future<Output = Result<(), SyncError>> + Send;
+
+    fn create_story(
+        &self,
+        title: &str,
+        body: &str,
+    ) -> impl std::future::Future<Output = Result<u64, SyncError>> + Send;
 }

@@ -133,4 +133,24 @@ impl SourceAdapter for InMemorySourceAdapter {
         s.pushed_events.push(event.clone());
         Ok(())
     }
+
+    async fn create_story(&self, title: &str, body: &str) -> Result<u64, SyncError> {
+        let mut s = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        if s.failures_on_push {
+            return Err(SyncError::SourceUnreachable("push test failure".into()));
+        }
+        let number = s.stories.keys().max().map(|n| n + 1).unwrap_or(1);
+        let story = Story::new_minimal(
+            number,
+            title.to_string(),
+            crate::board::domain::StoryState::Icebox,
+            chrono::Utc::now(),
+            "in-memory".to_string(),
+        );
+        s.stories.insert(number, story);
+        if !body.is_empty() {
+            s.bodies.insert(number, body.to_string());
+        }
+        Ok(number)
+    }
 }

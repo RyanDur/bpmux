@@ -4,7 +4,8 @@ use chrono::{TimeZone, Utc};
 
 use crate::board::adapters::github::{
     classify_gate, decode_gate_comments, decode_story_metadata, is_already_closed_error,
-    state_from_labels, state_to_label, story_type_from_labels_or_title, tags_from_labels,
+    parse_created_issue_number, state_from_labels, state_to_label, story_type_from_labels_or_title,
+    tags_from_labels,
 };
 use crate::board::domain::{Gate, StoryState, StoryType, Tag};
 
@@ -294,4 +295,21 @@ fn is_already_closed_error_rejects_unrelated_errors() {
     assert!(!is_already_closed_error("404 Not Found"));
     assert!(!is_already_closed_error("rate limit exceeded"));
     assert!(!is_already_closed_error(""));
+}
+
+#[test]
+fn parse_created_issue_number_extracts_number_from_tracker_format() {
+    assert_eq!(
+        parse_created_issue_number("#451 Internal board abstraction"),
+        Some(451)
+    );
+    assert_eq!(parse_created_issue_number("#1 t"), Some(1));
+}
+
+#[test]
+fn parse_created_issue_number_returns_none_when_unparseable() {
+    assert!(parse_created_issue_number("issue created").is_none());
+    assert!(parse_created_issue_number("#abc title").is_none());
+    assert!(parse_created_issue_number("").is_none());
+    assert!(parse_created_issue_number("#").is_none());
 }

@@ -482,6 +482,13 @@ mod ingest_poll_loop_tests {
         ) -> BoxedFuture<'_, Result<Vec<crate::board::GateComment>, SyncError>> {
             Box::pin(async { Ok(Vec::new()) })
         }
+        fn create_story(
+            &self,
+            _title: String,
+            _body: String,
+        ) -> BoxedFuture<'_, Result<u64, SyncError>> {
+            Box::pin(async { Ok(0) })
+        }
     }
 
     #[tokio::test]

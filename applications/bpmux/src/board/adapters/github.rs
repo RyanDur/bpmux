@@ -76,10 +76,7 @@ impl SourceAdapter for GitHubSourceAdapter {
 
     async fn push_event(&self, event: &BoardEvent) -> Result<(), SyncError> {
         match event {
-            BoardEvent::StoryCreated { .. } => Err(SyncError::Other(
-                "StoryCreated push not wired in phase 2b; create_story still uses tracker path"
-                    .into(),
-            )),
+            BoardEvent::StoryCreated { .. } => Ok(()),
             BoardEvent::StateTransitioned {
                 number, new_state, ..
             } => {
@@ -136,6 +133,28 @@ impl SourceAdapter for GitHubSourceAdapter {
             | BoardEvent::GateCommentsFetched { .. } => Ok(()),
         }
     }
+
+    async fn create_story(&self, title: &str, body: &str) -> Result<u64, SyncError> {
+        let formatted = self
+            .inner
+            .create_story(title, body)
+            .await
+            .map_err(SyncError::Other)?;
+        parse_created_issue_number(&formatted).ok_or_else(|| {
+            SyncError::Other(format!(
+                "create_story succeeded but issue number unparseable from: {formatted}"
+            ))
+        })
+    }
+}
+
+pub fn parse_created_issue_number(formatted: &str) -> Option<u64> {
+    formatted
+        .strip_prefix('#')?
+        .split_whitespace()
+        .next()?
+        .parse()
+        .ok()
 }
 
 pub fn decode_story_metadata(v: &serde_json::Value) -> Option<Story> {

@@ -132,3 +132,50 @@ async fn multiple_pushed_events_preserve_order() {
     assert_eq!(pushed[0].story_number(), 1);
     assert_eq!(pushed[1].story_number(), 2);
 }
+
+#[tokio::test]
+async fn create_story_auto_assigns_first_number_when_empty() {
+    let adapter = InMemorySourceAdapter::new();
+    let number = adapter.create_story("first ever", "body").await.unwrap();
+    assert_eq!(number, 1, "first story in empty adapter should be #1");
+    let stories = adapter.ingest_metadata().await.unwrap();
+    assert_eq!(stories.len(), 1);
+    assert_eq!(stories[0].number, 1);
+    assert_eq!(stories[0].title, "first ever");
+    assert_eq!(adapter.fetch_story_body(1).await.unwrap(), "body");
+}
+
+#[tokio::test]
+async fn create_story_auto_assigns_max_plus_one_when_seeded() {
+    let adapter = InMemorySourceAdapter::new();
+    adapter.seed_stories(vec![seed_story(7, "seed-a"), seed_story(11, "seed-b")]);
+    let number = adapter.create_story("after-seed", "").await.unwrap();
+    assert_eq!(
+        number, 12,
+        "next number must be (max-existing)+1, not gap-fill"
+    );
+}
+
+#[tokio::test]
+async fn create_story_propagates_failure_when_push_failures_set() {
+    let adapter = InMemorySourceAdapter::new();
+    adapter.set_push_failures(true);
+    let result = adapter.create_story("blocked", "").await;
+    assert!(matches!(result, Err(SyncError::SourceUnreachable(_))));
+}
+
+#[tokio::test]
+async fn push_event_for_story_created_is_idempotent_no_op() {
+    let adapter = InMemorySourceAdapter::new();
+    let event = BoardEvent::StoryCreated {
+        meta: meta(),
+        number: 99,
+        title: "t".to_string(),
+        body: "b".to_string(),
+        initial_state: StoryState::Icebox,
+        story_type: crate::board::domain::StoryType::Feature,
+    };
+    adapter.push_event(&event).await.unwrap();
+    let pushed = adapter.pushed_events();
+    assert_eq!(pushed.len(), 1);
+}
