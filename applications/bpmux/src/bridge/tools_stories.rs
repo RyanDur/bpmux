@@ -15,11 +15,7 @@ use crate::transport::protocol::ClientMessage;
 /// stay in lockstep — a typo in one and not the other would silently
 /// misroute a story in the board view. New labels go here first, call
 /// sites reference the const.
-const LABEL_READY: &str = "ready";
 const LABEL_DELIVERED: &str = "delivered";
-const LABEL_DEFERRED: &str = "deferred";
-const LABEL_STARTED: &str = "started";
-const LABEL_FINISHED: &str = "finished";
 
 /// Marker broadcast from every story-mutating MCP handler. Every
 /// connected TUI receives it (broadcast — no `to=` filter) and fires
@@ -113,47 +109,29 @@ pub(super) fn require_role(
 
 pub(super) async fn handle_view_board(
     _args: &serde_json::Map<String, serde_json::Value>,
-    tracker: &impl super::tracker::StoryTracker,
+    refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
-    let json_str = tracker.list_stories().await?;
-
-    let issues: Vec<serde_json::Value> =
-        serde_json::from_str(&json_str).map_err(|e| format!("parse: {e}"))?;
-
-    let mut ready = Vec::new();
-    let mut in_progress = Vec::new();
-    let mut delivered = Vec::new();
-    let mut accepted = Vec::new();
-    let mut deferred = Vec::new();
-    let mut icebox = Vec::new();
-
-    for issue in &issues {
-        let num = issue["number"].as_u64().unwrap_or(0);
-        let title = issue["title"].as_str().unwrap_or("?");
-        let gh_state = issue["state"].as_str().unwrap_or("OPEN");
-        let labels: Vec<&str> = issue["labels"]
-            .as_array()
-            .map(|arr| arr.iter().filter_map(|l| l["name"].as_str()).collect())
-            .unwrap_or_default();
-
-        let entry = format!("#{num} {title}");
-        let has = |name: &str| labels.contains(&name);
-
-        if gh_state == "CLOSED" {
-            accepted.push(entry);
-        } else if has(LABEL_DEFERRED) {
-            deferred.push(entry);
-        } else if has(LABEL_DELIVERED) {
-            delivered.push(entry);
-        } else if has(LABEL_STARTED) || has(LABEL_FINISHED) {
-            in_progress.push(entry);
-        } else if has(LABEL_READY) {
-            ready.push(entry);
-        } else {
-            icebox.push(entry);
-        }
-    }
-
+    let r = refresh.ok_or(
+        "view_board requires refresh (RefreshDriver) — tracker fallback retired in slice 5l",
+    )?;
+    let stories = r.all_stories();
+    let bucket_for = |state: crate::board::domain::StoryState| -> Vec<String> {
+        let mut entries: Vec<(u64, String)> = stories
+            .iter()
+            .filter(|s| s.state == state)
+            .map(|s| (s.number, format!("#{} {}", s.number, s.title)))
+            .collect();
+        entries.sort_by_key(|(n, _)| *n);
+        entries.into_iter().map(|(_, e)| e).collect()
+    };
+    let icebox = bucket_for(crate::board::domain::StoryState::Icebox);
+    let ready = bucket_for(crate::board::domain::StoryState::Ready);
+    let in_progress = bucket_for(crate::board::domain::StoryState::InProgress);
+    let delivered = bucket_for(crate::board::domain::StoryState::Delivered);
+    let ready_for_accept = bucket_for(crate::board::domain::StoryState::ReadyForAccept);
+    let needs_fixes = bucket_for(crate::board::domain::StoryState::NeedsFixes);
+    let rejected = bucket_for(crate::board::domain::StoryState::Rejected);
+    let accepted = bucket_for(crate::board::domain::StoryState::Accepted);
     let mut out = String::new();
     let section = |name: &str, items: &[String], out: &mut String| {
         out.push_str(&format!("{name} ({})\n", items.len()));
@@ -162,12 +140,14 @@ pub(super) async fn handle_view_board(
         }
         out.push('\n');
     };
+    section("ICEBOX", &icebox, &mut out);
     section("READY", &ready, &mut out);
     section("IN PROGRESS", &in_progress, &mut out);
     section("DELIVERED", &delivered, &mut out);
+    section("READY FOR ACCEPT", &ready_for_accept, &mut out);
+    section("NEEDS FIXES", &needs_fixes, &mut out);
+    section("REJECTED", &rejected, &mut out);
     section("ACCEPTED", &accepted, &mut out);
-    section("DEFERRED", &deferred, &mut out);
-    section("ICEBOX", &icebox, &mut out);
     Ok(out)
 }
 
@@ -626,7 +606,7 @@ pub(super) async fn handle_pass_desk_check(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
-    tracker: &impl super::tracker::StoryTracker,
+    _tracker: &impl super::tracker::StoryTracker,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     require_role(agent_name, &["designer"], "pass desk-check")?;
@@ -645,7 +625,7 @@ pub(super) async fn handle_pass_desk_check(
     // acceptor, PM is the presenter; PM needs a direct signal so
     // presentation doesn't depend on scanning chat for designer's
     // PASS message).
-    let story_type = classify_for_pass_desk_check(number, refresh, tracker).await;
+    let story_type = classify_for_pass_desk_check(number, refresh);
     for msg in build_pass_desk_check_signals(number, story_type) {
         let signal = serde_json::to_string(&msg).map_err(|e| format!("signal: {e}"))?;
         ws_send(ws_tx, signal)
@@ -940,19 +920,14 @@ pub(super) fn build_reject_signal(number: u64, reason: &str) -> ClientMessage {
 /// lane; bugs fixed are internal unless they surface user-visible
 /// change, and that's a separate signal decision). Defaults to
 /// Feature under the classifier's default-to-Feature rule.
-pub(super) async fn classify_for_pass_desk_check(
+pub(super) fn classify_for_pass_desk_check(
     number: u64,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
-    tracker: &impl super::tracker::StoryTracker,
 ) -> crate::board::domain::StoryType {
-    if let Some(r) = refresh
-        && let Some(story) = r.story(number)
-    {
-        return story.story_type;
-    }
-    let labels = tracker.get_story_labels(number).await;
-    let title = tracker.get_story_title(number).await.unwrap_or_default();
-    crate::session::velocity::classify_story(&labels, &title)
+    refresh
+        .and_then(|r| r.story(number))
+        .map(|s| s.story_type)
+        .unwrap_or(crate::board::domain::StoryType::Feature)
 }
 
 pub(super) fn addressee_for_pass_desk_check(

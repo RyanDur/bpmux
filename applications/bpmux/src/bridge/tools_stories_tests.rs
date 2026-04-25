@@ -2282,41 +2282,151 @@ mod classify_for_pass_desk_check_tests {
     #[tokio::test]
     async fn refreshed_path_returns_feature_via_typed_story_type() {
         let orch = orchestrator_with_seed(vec![make_story(910, StoryType::Feature)]).await;
-        let tracker = super::super::tracker::FakeTracker::default();
-        let result = classify_for_pass_desk_check(910, Some(&orch), &tracker).await;
-        assert_eq!(result, StoryType::Feature);
+        assert_eq!(
+            classify_for_pass_desk_check(910, Some(&orch)),
+            StoryType::Feature
+        );
     }
 
     #[tokio::test]
     async fn refreshed_path_returns_bug_via_typed_story_type() {
         let orch = orchestrator_with_seed(vec![make_story(911, StoryType::Bug)]).await;
-        let tracker = super::super::tracker::FakeTracker::default();
-        let result = classify_for_pass_desk_check(911, Some(&orch), &tracker).await;
-        assert_eq!(result, StoryType::Bug);
+        assert_eq!(
+            classify_for_pass_desk_check(911, Some(&orch)),
+            StoryType::Bug
+        );
     }
 
     #[tokio::test]
     async fn refreshed_path_returns_chore_via_typed_story_type() {
         let orch = orchestrator_with_seed(vec![make_story(912, StoryType::Chore)]).await;
-        let tracker = super::super::tracker::FakeTracker::default();
-        let result = classify_for_pass_desk_check(912, Some(&orch), &tracker).await;
-        assert_eq!(result, StoryType::Chore);
+        assert_eq!(
+            classify_for_pass_desk_check(912, Some(&orch)),
+            StoryType::Chore
+        );
     }
 
     #[tokio::test]
-    async fn falls_back_to_tracker_when_refresh_absent() {
-        let tracker = super::super::tracker::FakeTracker::default();
-        let result = classify_for_pass_desk_check(913, None, &tracker).await;
-        assert_eq!(result, StoryType::Feature);
+    async fn defaults_to_feature_when_refresh_absent() {
+        assert_eq!(classify_for_pass_desk_check(913, None), StoryType::Feature);
     }
 
     #[tokio::test]
-    async fn falls_back_to_tracker_when_story_not_in_cache() {
+    async fn defaults_to_feature_when_story_not_in_cache() {
         let orch = orchestrator_with_seed(vec![]).await;
-        let tracker = super::super::tracker::FakeTracker::default();
-        let result = classify_for_pass_desk_check(914, Some(&orch), &tracker).await;
-        assert_eq!(result, StoryType::Feature);
+        assert_eq!(
+            classify_for_pass_desk_check(914, Some(&orch)),
+            StoryType::Feature
+        );
     }
+}
+
+#[tokio::test]
+async fn view_board_requires_refresh_after_5l_fallback_retirement() {
+    let result = handle_view_board(&serde_json::Map::new(), None).await;
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("requires refresh"));
+}
+
+#[tokio::test]
+async fn view_board_buckets_stories_by_story_state() {
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let ts = Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap();
+    let stories = vec![
+        Story::new_minimal(
+            101,
+            "icebox-story".into(),
+            StoryState::Icebox,
+            ts,
+            "pm".into(),
+        ),
+        Story::new_minimal(
+            102,
+            "ready-story".into(),
+            StoryState::Ready,
+            ts,
+            "pm".into(),
+        ),
+        Story::new_minimal(
+            103,
+            "in-progress-story".into(),
+            StoryState::InProgress,
+            ts,
+            "dev".into(),
+        ),
+        Story::new_minimal(
+            104,
+            "delivered-story".into(),
+            StoryState::Delivered,
+            ts,
+            "dev".into(),
+        ),
+        Story::new_minimal(
+            105,
+            "ready-for-accept-story".into(),
+            StoryState::ReadyForAccept,
+            ts,
+            "designer".into(),
+        ),
+        Story::new_minimal(
+            106,
+            "needs-fixes-story".into(),
+            StoryState::NeedsFixes,
+            ts,
+            "designer".into(),
+        ),
+        Story::new_minimal(
+            107,
+            "rejected-story".into(),
+            StoryState::Rejected,
+            ts,
+            "ryan".into(),
+        ),
+        Story::new_minimal(
+            108,
+            "accepted-story".into(),
+            StoryState::Accepted,
+            ts,
+            "ryan".into(),
+        ),
+    ];
+    adapter.seed_stories(stories);
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orch.refresh_all().await.unwrap();
+
+    let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
+        .await
+        .unwrap();
+
+    for header in [
+        "ICEBOX (1)",
+        "READY (1)",
+        "IN PROGRESS (1)",
+        "DELIVERED (1)",
+        "READY FOR ACCEPT (1)",
+        "NEEDS FIXES (1)",
+        "REJECTED (1)",
+        "ACCEPTED (1)",
+    ] {
+        assert!(
+            out.contains(header),
+            "expected section header {header:?} in output:\n{out}"
+        );
+    }
+    assert!(out.contains("#101 icebox-story"));
+    assert!(out.contains("#108 accepted-story"));
 }
 
 #[tokio::test]

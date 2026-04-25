@@ -18,7 +18,6 @@ pub(in crate::bridge) const VIEW_VELOCITY_MARKER: &str = "__BPMUX_VIEW_VELOCITY_
 /// marker side-effect is for Ryan.
 pub(in crate::bridge) async fn handle_view_velocity(
     port: u16,
-    tracker: &impl crate::bridge::tracker::StoryTracker,
     ws_tx: &Mutex<Option<WsSink>>,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
@@ -52,7 +51,7 @@ pub(in crate::bridge) async fn handle_view_velocity(
     }
     let mut feature_numbers: std::collections::HashSet<u64> = std::collections::HashSet::new();
     for n in unique_numbers {
-        if is_feature_for_velocity(n, refresh, tracker).await {
+        if is_feature_for_velocity(n, refresh) {
             feature_numbers.insert(n);
         }
     }
@@ -88,19 +87,13 @@ pub(in crate::bridge) async fn handle_view_velocity(
     serde_json::to_string_pretty(&metrics).map_err(|e| format!("serialize: {e}"))
 }
 
-pub(in crate::bridge) async fn is_feature_for_velocity(
+pub(in crate::bridge) fn is_feature_for_velocity(
     n: u64,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
-    tracker: &impl crate::bridge::tracker::StoryTracker,
 ) -> bool {
-    if let Some(r) = refresh
-        && let Some(story) = r.story(n)
-    {
-        return matches!(story.story_type, crate::board::domain::StoryType::Feature);
-    }
-    let labels = tracker.get_story_labels(n).await;
-    let title = tracker.get_story_title(n).await.unwrap_or_default();
-    crate::session::velocity::is_feature_verdict(&labels, &title)
+    refresh
+        .and_then(|r| r.story(n))
+        .is_some_and(|s| matches!(s.story_type, crate::board::domain::StoryType::Feature))
 }
 
 #[cfg(test)]
@@ -113,7 +106,6 @@ mod tests {
     use crate::board::SyncOrchestrator;
     use crate::board::adapters::in_memory::InMemorySourceAdapter;
     use crate::board::domain::{Story, StoryState, StoryType};
-    use crate::bridge::tracker::FakeTracker;
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -144,40 +136,29 @@ mod tests {
     #[tokio::test]
     async fn refreshed_path_classifies_feature_via_typed_story_type() {
         let orch = orchestrator_with_seed(vec![make_story(901, StoryType::Feature)]).await;
-        let tracker = FakeTracker::default();
-        assert!(is_feature_for_velocity(901, Some(&orch), &tracker).await);
+        assert!(is_feature_for_velocity(901, Some(&orch)));
     }
 
     #[tokio::test]
     async fn refreshed_path_rejects_bug_via_typed_story_type() {
         let orch = orchestrator_with_seed(vec![make_story(902, StoryType::Bug)]).await;
-        let tracker = FakeTracker::default();
-        assert!(!is_feature_for_velocity(902, Some(&orch), &tracker).await);
+        assert!(!is_feature_for_velocity(902, Some(&orch)));
     }
 
     #[tokio::test]
     async fn refreshed_path_rejects_chore_via_typed_story_type() {
         let orch = orchestrator_with_seed(vec![make_story(903, StoryType::Chore)]).await;
-        let tracker = FakeTracker::default();
-        assert!(!is_feature_for_velocity(903, Some(&orch), &tracker).await);
+        assert!(!is_feature_for_velocity(903, Some(&orch)));
     }
 
     #[tokio::test]
-    async fn falls_back_to_tracker_when_refresh_absent() {
-        let tracker = FakeTracker::default();
-        assert!(
-            is_feature_for_velocity(904, None, &tracker).await,
-            "default-to-Feature classification on empty labels+title (FakeTracker default)"
-        );
+    async fn returns_false_when_refresh_absent() {
+        assert!(!is_feature_for_velocity(904, None));
     }
 
     #[tokio::test]
-    async fn falls_back_to_tracker_when_story_not_in_cache() {
+    async fn returns_false_when_story_not_in_cache() {
         let orch = orchestrator_with_seed(vec![]).await;
-        let tracker = FakeTracker::default();
-        assert!(
-            is_feature_for_velocity(905, Some(&orch), &tracker).await,
-            "absent from store → fallback to tracker; FakeTracker default classifies as Feature"
-        );
+        assert!(!is_feature_for_velocity(905, Some(&orch)));
     }
 }

@@ -457,7 +457,7 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
             ),
             // Story management tools — server-side gh proxy with lane enforcement
             crate::mcp::tools::view_board_tool(
-                "View the project board — all stories grouped by state (ready, in progress, delivered, accepted, deferred, icebox) with counts. No host permission needed. Same data as the TUI board view.",
+                "View the project board — all stories grouped by state (icebox, ready, in progress, delivered, ready for accept, needs fixes, rejected, accepted) with counts. No host permission needed. Same data as the TUI board view.",
             ),
             crate::mcp::tools::view_velocity_tool(
                 "View team velocity metrics (#209a) computed from workflow-signal timestamps over a rolling 14-day window. Returns JSON with delivered count, delivered-per-day, median pickup→deliver hours, median deliver→accept hours, rework rate, and a `sparse` flag when under-3-deliveries makes the medians indicative only. Objective data — no self-report. Also opens the velocity view in Ryan's TUI (project panel) so he can see it alongside your response — call this when he asks about velocity, not proactively.",
@@ -632,9 +632,9 @@ impl<T: tracker::StoryTracker> ServerHandler for BridgeServer<T> {
                 }
                 "dev_in_flight" => tools::handle_dev_in_flight(&board).await,
                 "list_ready" => tools::handle_list_ready(&board).await,
-                "view_board" => tools_stories::handle_view_board(&args, &tracker).await,
+                "view_board" => tools_stories::handle_view_board(&args, refresh.as_ref()).await,
                 "view_velocity" => {
-                    tools::handle_view_velocity(port, &tracker, &ws_tx, refresh.as_ref()).await
+                    tools::handle_view_velocity(port, &ws_tx, refresh.as_ref()).await
                 }
                 "create_story" => {
                     let current_name = name.lock().await;
