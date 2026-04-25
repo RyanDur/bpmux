@@ -379,11 +379,14 @@ pub(super) async fn handle_deliver_story(
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
-    if let Some(r) = refresh {
-        r.refresh_story(number)
-            .await
-            .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?;
-    }
+    let _refreshed: Option<Option<crate::board::domain::Story>> = match refresh {
+        Some(r) => Some(
+            r.refresh_story(number)
+                .await
+                .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?,
+        ),
+        None => None,
+    };
     // #391 deliver-gate: dev must articulate what they drove end-to-
     // end before delivery. Becomes the diff-point designer checks at
     // desk-check (claim-vs-reality). Missing/empty → validation
