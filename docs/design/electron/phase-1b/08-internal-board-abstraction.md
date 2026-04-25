@@ -785,6 +785,12 @@ closing GH on Rejected would break that semantic.
     - View-layer filter: closed-not-accepted stories
       (`is_closed && state != Accepted`) hide from active board
       buckets; surface in archive view if requested.
+    - **Ingest durability**: `decode_story_metadata` sets
+      `story.is_closed = (gh_state == "closed")` so the flag survives
+      reingest / restart / refresh_all. Without this, stories closed
+      via close_story would re-appear in active buckets after a
+      reingest cycle (the StoryClosed event log is not replayed on
+      ingest; the source-of-truth derivation closes that gap).
 
 ## Open questions (designer-flag for sharpening)
 
