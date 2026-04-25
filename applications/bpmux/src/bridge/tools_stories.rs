@@ -16,14 +16,10 @@ use crate::transport::protocol::ClientMessage;
 /// misroute a story in the board view. New labels go here first, call
 /// sites reference the const.
 const LABEL_READY: &str = "ready";
-const LABEL_IN_PROGRESS: &str = "in progress";
 const LABEL_DELIVERED: &str = "delivered";
 const LABEL_DEFERRED: &str = "deferred";
 const LABEL_STARTED: &str = "started";
 const LABEL_FINISHED: &str = "finished";
-const LABEL_REJECTED: &str = "rejected";
-const LABEL_READY_FOR_ACCEPT: &str = "ready for accept";
-const LABEL_NEEDS_FIXES: &str = "needs fixes";
 
 /// Marker broadcast from every story-mutating MCP handler. Every
 /// connected TUI receives it (broadcast — no `to=` filter) and fires
@@ -179,7 +175,7 @@ pub(super) async fn handle_create_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
-    tracker: &impl super::tracker::StoryTracker,
+    _tracker: &impl super::tracker::StoryTracker,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     if role_from_name(agent_name) != "pm" {
@@ -237,9 +233,10 @@ pub(super) async fn handle_create_story(
         broadcast_board_invalidate(ws_tx).await;
         return Ok(format!("story created: #{number} {title}"));
     }
-    let result = tracker.create_story(title, &composed_body).await?;
-    broadcast_board_invalidate(ws_tx).await;
-    Ok(format!("story created: {}", result.trim()))
+    Err(
+        "create_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n"
+            .into(),
+    )
 }
 
 fn require_nonempty_string<'a>(
@@ -282,7 +279,7 @@ pub(super) async fn handle_start_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
-    tracker: &impl super::tracker::StoryTracker,
+    _tracker: &impl super::tracker::StoryTracker,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     require_role(agent_name, &["dev"], "start")?;
@@ -338,23 +335,10 @@ pub(super) async fn handle_start_story(
         broadcast_board_invalidate(ws_tx).await;
         return Ok(format!("#{number} marked as in progress"));
     }
-    let pickup_comment = format!("**pickup_paraphrase** (dev pickup-gate):\n\n{pickup_payload}");
-    if let Err(e) = tracker.comment_on_story(number, &pickup_comment).await {
-        crate::session::diag::log_diag(&format!(
-            "bridge: pickup_paraphrase comment failed for #{number}: {e}"
-        ));
-    }
-    if let Err(e) = tracker.remove_label(number, LABEL_READY).await {
-        crate::session::diag::log_diag(&format!(
-            "bridge: remove-label ready failed for #{number}: {e}"
-        ));
-    }
-    let result = tracker.add_label(number, LABEL_IN_PROGRESS).await;
-    broadcast_board_invalidate(ws_tx).await;
-    match result {
-        Ok(_) => Ok(format!("#{number} marked as in progress")),
-        Err(e) => Err(format!("#{number} signal sent but label failed: {e}")),
-    }
+    Err(
+        "start_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n"
+            .into(),
+    )
 }
 
 /// Deliver a story — dev only.
@@ -370,7 +354,7 @@ pub(super) async fn handle_deliver_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
-    tracker: &impl super::tracker::StoryTracker,
+    _tracker: &impl super::tracker::StoryTracker,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     require_role(agent_name, &["dev"], "deliver")?;
@@ -395,13 +379,11 @@ pub(super) async fn handle_deliver_story(
         "verified_observation",
         "verified_observation is required (2026-04-22 retro): articulate what you DROVE end-to-end in the running app, not 'tests pass'. Describe the falsifier scenario you exercised + what you observed. Becomes the diff-point at desk-check.",
     )?;
-    let title = match refreshed.as_ref().and_then(|s| s.as_ref()) {
-        Some(story) => story.title.clone(),
-        None => tracker
-            .get_story_title(number)
-            .await
-            .unwrap_or_else(|| format!("#{number}")),
-    };
+    let title = refreshed
+        .as_ref()
+        .and_then(|s| s.as_ref())
+        .map(|story| story.title.clone())
+        .unwrap_or_else(|| format!("#{number}"));
     for signal in build_delivery_signals(number, &title) {
         let json = serde_json::to_string(&signal).map_err(|e| format!("signal: {e}"))?;
         ws_send(ws_tx, json)
@@ -433,26 +415,10 @@ pub(super) async fn handle_deliver_story(
         broadcast_board_invalidate(ws_tx).await;
         return Ok(format!("#{number} delivered: signals sent, labels updated"));
     }
-    let obs_comment =
-        format!("**verified_observation** (dev deliver-gate):\n\n{verified_observation}");
-    if let Err(e) = tracker.comment_on_story(number, &obs_comment).await {
-        crate::session::diag::log_diag(&format!(
-            "bridge: verified_observation comment failed for #{number}: {e}"
-        ));
-    }
-    if let Err(e) = tracker.remove_label(number, LABEL_IN_PROGRESS).await {
-        crate::session::diag::log_diag(&format!(
-            "bridge: remove-label in-progress failed for #{number}: {e}"
-        ));
-    }
-    let result = tracker.add_label(number, LABEL_DELIVERED).await;
-    broadcast_board_invalidate(ws_tx).await;
-    match result {
-        Ok(_) => Ok(format!("#{number} delivered: signals sent, labels updated")),
-        Err(e) => Ok(format!(
-            "#{number} delivered: signals sent, label update skipped ({e})"
-        )),
-    }
+    Err(
+        "deliver_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n"
+            .into(),
+    )
 }
 
 // #392: accepts an `operation` arg of "add" (default) or "remove".
@@ -468,7 +434,7 @@ pub(super) async fn handle_label_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
-    tracker: &impl super::tracker::StoryTracker,
+    _tracker: &impl super::tracker::StoryTracker,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     require_role(agent_name, &["pm"], "label")?;
@@ -521,28 +487,17 @@ pub(super) async fn handle_label_story(
         broadcast_board_invalidate(ws_tx).await;
         return Ok(ok_msg);
     }
-    match operation {
-        "add" => {
-            tracker.add_label(number, label).await?;
-            broadcast_board_invalidate(ws_tx).await;
-            Ok(format!("#{number} labeled '{label}'"))
-        }
-        "remove" => {
-            tracker.remove_label(number, label).await?;
-            broadcast_board_invalidate(ws_tx).await;
-            Ok(format!("#{number} unlabeled '{label}'"))
-        }
-        other => Err(format!(
-            "invalid 'operation' argument '{other}': must be 'add' or 'remove'"
-        )),
-    }
+    Err(
+        "label_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n"
+            .into(),
+    )
 }
 
 pub(super) async fn handle_accept_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
-    tracker: &impl super::tracker::StoryTracker,
+    _tracker: &impl super::tracker::StoryTracker,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     require_role(agent_name, &["ryan", "pm", "designer", "dev"], "accept")?;
@@ -595,37 +550,17 @@ pub(super) async fn handle_accept_story(
         broadcast_board_invalidate(ws_tx).await;
         return Ok(format!("#{number} accepted and closed"));
     }
-    if let Err(e) = tracker.remove_label(number, LABEL_DELIVERED).await {
-        crate::session::diag::log_diag(&format!(
-            "bridge: remove-label delivered failed for #{number}: {e}"
-        ));
-    }
-    let accept_comment = super::tools::format_gate_transition_comment(
-        super::tools::ACCEPTED_MARKER,
-        super::tools::ACCEPT_GATE,
-        agent_name,
-    );
-    if let Err(e) = tracker.comment_on_story(number, &accept_comment).await {
-        crate::session::diag::log_diag(&format!(
-            "bridge: accept audit comment failed for #{number}: {e}"
-        ));
-    }
-    let close_result = tracker.close_story(number).await;
-    broadcast_board_invalidate(ws_tx).await;
-    match close_result {
-        Ok(_) => Ok(format!("#{number} accepted and closed")),
-        Err(e) if e.contains("already closed") || e.contains("is closed") => {
-            Ok(format!("#{number} is already accepted — no-op"))
-        }
-        Err(e) => Err(format!("#{number} signal sent but close failed: {e}")),
-    }
+    Err(
+        "accept_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n"
+            .into(),
+    )
 }
 
 pub(super) async fn handle_reject_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
-    tracker: &impl super::tracker::StoryTracker,
+    _tracker: &impl super::tracker::StoryTracker,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     require_role(agent_name, &["ryan", "pm", "designer", "dev"], "reject")?;
@@ -675,24 +610,10 @@ pub(super) async fn handle_reject_story(
         broadcast_board_invalidate(ws_tx).await;
         return Ok(format!("#{number} rejected: {reason}"));
     }
-    if let Err(e) = tracker.remove_label(number, LABEL_DELIVERED).await {
-        crate::session::diag::log_diag(&format!(
-            "bridge: remove-label delivered failed for #{number}: {e}"
-        ));
-    }
-    if let Err(e) = tracker.add_label(number, LABEL_REJECTED).await {
-        crate::session::diag::log_diag(&format!(
-            "bridge: add-label rejected failed for #{number}: {e}"
-        ));
-    }
-    let rejection_comment =
-        super::tools::format_rejection_comment("reject-gate", agent_name, reason);
-    let result = tracker.comment_on_story(number, &rejection_comment).await;
-    broadcast_board_invalidate(ws_tx).await;
-    match result {
-        Ok(_) => Ok(format!("#{number} rejected: {reason}")),
-        Err(e) => Err(format!("#{number} signal sent but comment failed: {e}")),
-    }
+    Err(
+        "reject_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n"
+            .into(),
+    )
 }
 
 /// Pass desk-check — designer only. Signals ryan that the story is
@@ -755,26 +676,10 @@ pub(super) async fn handle_pass_desk_check(
             "#{number} passed desk-check: signal sent, label applied"
         ));
     }
-    let pass_comment = super::tools::format_gate_transition_comment(
-        super::tools::PASS_DESK_CHECK_MARKER,
-        super::tools::DESK_CHECK_PASS_GATE,
-        agent_name,
-    );
-    if let Err(e) = tracker.comment_on_story(number, &pass_comment).await {
-        crate::session::diag::log_diag(&format!(
-            "bridge: pass_desk_check audit comment failed for #{number}: {e}"
-        ));
-    }
-    let result = tracker.add_label(number, LABEL_READY_FOR_ACCEPT).await;
-    broadcast_board_invalidate(ws_tx).await;
-    match result {
-        Ok(_) => Ok(format!(
-            "#{number} passed desk-check: signal sent, label applied"
-        )),
-        Err(e) => Ok(format!(
-            "#{number} passed desk-check: signal sent, label update skipped ({e})"
-        )),
-    }
+    Err(
+        "pass_desk_check requires refresh (RefreshDriver) — tracker fallback retired in slice 5n"
+            .into(),
+    )
 }
 
 /// Fail desk-check — designer only. Signals dev that the story needs
@@ -784,7 +689,7 @@ pub(super) async fn handle_fail_desk_check(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
-    tracker: &impl super::tracker::StoryTracker,
+    _tracker: &impl super::tracker::StoryTracker,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     require_role(agent_name, &["designer"], "fail desk-check")?;
@@ -830,23 +735,10 @@ pub(super) async fn handle_fail_desk_check(
             "#{number} failed desk-check: signal sent, label applied"
         ));
     }
-    let fail_comment =
-        super::tools::format_rejection_comment("desk-check-fail", agent_name, reason);
-    if let Err(e) = tracker.comment_on_story(number, &fail_comment).await {
-        crate::session::diag::log_diag(&format!(
-            "bridge: desk-check-fail comment failed for #{number}: {e}"
-        ));
-    }
-    let result = tracker.add_label(number, LABEL_NEEDS_FIXES).await;
-    broadcast_board_invalidate(ws_tx).await;
-    match result {
-        Ok(_) => Ok(format!(
-            "#{number} failed desk-check: signal sent, label applied"
-        )),
-        Err(e) => Ok(format!(
-            "#{number} failed desk-check: signal sent, label update skipped ({e})"
-        )),
-    }
+    Err(
+        "fail_desk_check requires refresh (RefreshDriver) — tracker fallback retired in slice 5n"
+            .into(),
+    )
 }
 
 /// PM-controlled priority reordering; persists to priority index.
@@ -889,7 +781,7 @@ pub(super) async fn handle_comment_on_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
-    tracker: &impl super::tracker::StoryTracker,
+    _tracker: &impl super::tracker::StoryTracker,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     let number = args
@@ -921,12 +813,10 @@ pub(super) async fn handle_comment_on_story(
         broadcast_board_invalidate(ws_tx).await;
         return Ok(format!("#{number} commented"));
     }
-    let result = tracker.comment_on_story(number, body).await;
-    broadcast_board_invalidate(ws_tx).await;
-    match result {
-        Ok(_) => Ok(format!("#{number} commented")),
-        Err(e) => Err(format!("#{number} comment failed: {e}")),
-    }
+    Err(
+        "comment_on_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n"
+            .into(),
+    )
 }
 
 /// Close a story with a reason — PM-only. Adds the reason as a
@@ -939,7 +829,7 @@ pub(super) async fn handle_close_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
-    tracker: &impl super::tracker::StoryTracker,
+    _tracker: &impl super::tracker::StoryTracker,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     require_role(agent_name, &["pm"], "close")?;
@@ -972,20 +862,10 @@ pub(super) async fn handle_close_story(
         broadcast_board_invalidate(ws_tx).await;
         return Ok(format!("#{number} closed: {reason}"));
     }
-    if let Err(e) = tracker.comment_on_story(number, reason).await {
-        crate::session::diag::log_diag(&format!(
-            "bridge: close_story comment failed for #{number}: {e}"
-        ));
-    }
-    let close_result = tracker.close_story(number).await;
-    broadcast_board_invalidate(ws_tx).await;
-    match close_result {
-        Ok(_) => Ok(format!("#{number} closed: {reason}")),
-        Err(e) if crate::board::sync::is_already_closed_error(&e) => {
-            Ok(format!("#{number} was already closed — comment added"))
-        }
-        Err(e) => Err(format!("#{number} close failed: {e}")),
-    }
+    Err(
+        "close_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n"
+            .into(),
+    )
 }
 
 /// Fire the iteration-close externalize-prompt (#282). PM-gated.

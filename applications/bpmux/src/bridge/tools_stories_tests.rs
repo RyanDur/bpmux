@@ -192,7 +192,7 @@ async fn comment_on_story_rejects_whitespace_only_body() {
 }
 
 #[tokio::test]
-async fn comment_on_story_accepts_non_empty_body_any_role() {
+async fn comment_on_story_rejects_when_refresh_absent() {
     let ws_tx = tokio::sync::Mutex::new(None);
     let tracker = super::tracker::FakeTracker::default();
     for caller in ["dev:claude-code", "pm:claude-code", "designer:claude-code"] {
@@ -201,10 +201,13 @@ async fn comment_on_story_accepts_non_empty_body_any_role() {
         args.insert("body".to_string(), serde_json::json!("a real comment"));
         let result = handle_comment_on_story(&args, caller, &ws_tx, &tracker, None).await;
         assert!(
-            result.is_ok(),
-            "caller={caller} should be allowed (any-role); got {result:?}"
+            result.is_err(),
+            "caller={caller} expected Err, got {result:?}"
         );
-        assert!(result.unwrap().contains("#42 commented"));
+        assert!(
+            result.unwrap_err().contains("requires refresh"),
+            "expected refresh-required error for caller={caller}"
+        );
     }
 }
 
@@ -554,7 +557,7 @@ impl StoryTracker for AlreadyClosedTracker {
 }
 
 #[tokio::test]
-async fn accept_returns_noop_when_tracker_reports_already_closed() {
+async fn accept_requires_refresh_after_5n_fallback_retirement() {
     let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
     let args = serde_json::json!({"number": 213});
     let result = handle_accept_story(
@@ -566,14 +569,10 @@ async fn accept_returns_noop_when_tracker_reports_already_closed() {
     )
     .await;
     assert!(
-        result.is_ok(),
-        "already-closed should be Ok, got: {result:?}"
+        result.is_err(),
+        "expected refresh-required Err, got {result:?}"
     );
-    let msg = result.unwrap();
-    assert!(
-        msg.contains("already accepted"),
-        "should say already accepted. got: {msg}"
-    );
+    assert!(result.unwrap_err().contains("requires refresh"));
 }
 
 #[tokio::test]
@@ -805,7 +804,7 @@ async fn create_story_rejects_non_pm_role() {
 }
 
 #[tokio::test]
-async fn create_story_accepts_pm_role() {
+async fn create_story_pm_role_passes_role_gate_then_hits_refresh_required() {
     let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
     let args = serde_json::json!({
         "title": "pm-filed story",
@@ -820,14 +819,12 @@ async fn create_story_accepts_pm_role() {
         None,
     )
     .await;
-    assert!(
-        result.is_ok(),
-        "create_story should accept pm call; got: {result:?}"
-    );
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("requires refresh"));
 }
 
 #[tokio::test]
-async fn create_story_accepts_pm_role_with_tool_suffix() {
+async fn create_story_pm_with_tool_suffix_role_gate_passes_then_refresh_required() {
     let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
     let args = serde_json::json!({
         "title": "pm-filed story",
@@ -842,10 +839,8 @@ async fn create_story_accepts_pm_role_with_tool_suffix() {
         None,
     )
     .await;
-    assert!(
-        result.is_ok(),
-        "create_story should accept pm:claude-code; got: {result:?}"
-    );
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("requires refresh"));
 }
 
 #[tokio::test]
@@ -922,7 +917,7 @@ async fn create_story_rejects_missing_observation_falsifier() {
 }
 
 #[tokio::test]
-async fn create_story_succeeds_when_both_fields_provided() {
+async fn create_story_validation_passes_then_refresh_required_after_5n() {
     let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
     let args = serde_json::json!({
         "title": "a story",
@@ -938,10 +933,8 @@ async fn create_story_succeeds_when_both_fields_provided() {
         None,
     )
     .await;
-    assert!(
-        result.is_ok(),
-        "populated fields should pass. got: {result:?}"
-    );
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("requires refresh"));
 }
 
 #[tokio::test]
@@ -1047,9 +1040,7 @@ impl StoryTracker for FailingLabelTracker {
 }
 
 #[tokio::test]
-async fn label_story_defaults_to_add_when_operation_missing() {
-    // Backward-compat: pre-#392 callers omit `operation`. Must still
-    // add + broadcast + return the labeled confirmation.
+async fn label_story_default_op_requires_refresh_after_5n() {
     let ws_tx = tokio::sync::Mutex::new(None);
     let tracker = super::tracker::FakeTracker::default();
     let args = serde_json::json!({
@@ -1063,16 +1054,13 @@ async fn label_story_defaults_to_add_when_operation_missing() {
         &tracker,
         None,
     )
-    .await
-    .expect("default-to-add must succeed");
-    assert!(
-        result.contains("labeled") && result.contains("ready"),
-        "result should confirm add path: {result}"
-    );
+    .await;
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("requires refresh"));
 }
 
 #[tokio::test]
-async fn label_story_add_operation_succeeds_and_confirms_add() {
+async fn label_story_add_op_requires_refresh_after_5n() {
     let ws_tx = tokio::sync::Mutex::new(None);
     let tracker = super::tracker::FakeTracker::default();
     let args = serde_json::json!({
@@ -1087,19 +1075,13 @@ async fn label_story_add_operation_succeeds_and_confirms_add() {
         &tracker,
         None,
     )
-    .await
-    .expect("explicit add must succeed");
-    assert!(
-        result.contains("labeled") && result.contains("blocked"),
-        "add path confirmation: {result}"
-    );
+    .await;
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("requires refresh"));
 }
 
 #[tokio::test]
-async fn label_story_remove_operation_succeeds_and_confirms_remove() {
-    // #392 core: remove path returns without bypassing the handler's
-    // broadcast call. The confirmation message carries "unlabeled"
-    // so callers can distinguish add from remove in the Ok payload.
+async fn label_story_remove_op_requires_refresh_after_5n() {
     let ws_tx = tokio::sync::Mutex::new(None);
     let tracker = super::tracker::FakeTracker::default();
     let args = serde_json::json!({
@@ -1114,21 +1096,13 @@ async fn label_story_remove_operation_succeeds_and_confirms_remove() {
         &tracker,
         None,
     )
-    .await
-    .expect("remove must succeed");
-    assert!(
-        result.contains("unlabeled") && result.contains("in progress"),
-        "remove path confirmation: {result}"
-    );
+    .await;
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("requires refresh"));
 }
 
 #[tokio::test]
-async fn label_story_remove_is_idempotent_when_label_absent() {
-    // Idempotency is handled in the tracker's remove_label impl
-    // (404 → Ok). Here we verify the handler doesn't introduce its
-    // own error on success-result from tracker (FakeTracker always-
-    // succeeds mirrors the 404-Ok-branch). Matches accept_story's
-    // remove-label-tolerance contract.
+async fn label_story_remove_idempotent_call_requires_refresh_after_5n() {
     let ws_tx = tokio::sync::Mutex::new(None);
     let tracker = super::tracker::FakeTracker::default();
     let args = serde_json::json!({
@@ -1144,18 +1118,36 @@ async fn label_story_remove_is_idempotent_when_label_absent() {
         None,
     )
     .await;
-    assert!(
-        result.is_ok(),
-        "idempotent remove must not surface error from tracker's silent-success path: got {result:?}"
-    );
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("requires refresh"));
 }
 
 #[tokio::test]
-async fn label_story_rejects_invalid_operation() {
-    // Operations outside {"add", "remove"} must error — don't silently
-    // fall through to the add path. Broadcast must NOT fire on an
-    // invalid-op rejection; the handler's Err-return bails before
-    // broadcast_board_invalidate is reached.
+async fn label_story_rejects_invalid_operation_in_migrated_path() {
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let seeded = Story::new_minimal(
+        42,
+        "t".into(),
+        StoryState::Ready,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "pm".into(),
+    );
+    adapter.seed_stories(vec![seeded]);
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orchestrator.refresh_all().await.unwrap();
+
     let ws_tx = tokio::sync::Mutex::new(None);
     let tracker = super::tracker::FakeTracker::default();
     let args = serde_json::json!({
@@ -1168,22 +1160,13 @@ async fn label_story_rejects_invalid_operation() {
         "pm:claude-code",
         &ws_tx,
         &tracker,
-        None,
+        Some(&orchestrator),
     )
     .await;
-    assert!(
-        result.is_err(),
-        "invalid operation must error, got: {result:?}"
-    );
+    assert!(result.is_err());
     let err = result.unwrap_err();
-    assert!(
-        err.contains("operation"),
-        "error should name the field: {err}"
-    );
-    assert!(
-        err.contains("add") && err.contains("remove"),
-        "error should cite the valid values: {err}"
-    );
+    assert!(err.contains("operation"));
+    assert!(err.contains("add") && err.contains("remove"));
 }
 
 #[tokio::test]
@@ -1349,9 +1332,7 @@ async fn start_story_rejects_missing_falsifier_reframing() {
 }
 
 #[tokio::test]
-async fn start_story_accepts_both_fields_populated() {
-    // Happy path: both required strings present + non-empty → success.
-    // The handler returns the labeled-as-in-progress confirmation.
+async fn start_story_validation_passes_then_refresh_required_after_5n() {
     let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
     let args = serde_json::json!({
         "number": 398,
@@ -1366,11 +1347,8 @@ async fn start_story_accepts_both_fields_populated() {
         None,
     )
     .await;
-    assert!(
-        result.is_ok(),
-        "populated fields should succeed: {result:?}"
-    );
-    assert!(result.unwrap().contains("in progress"));
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("requires refresh"));
 }
 
 #[tokio::test]

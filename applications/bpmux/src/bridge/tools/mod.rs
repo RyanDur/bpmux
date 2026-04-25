@@ -82,7 +82,6 @@ pub(in crate::bridge) use list_peer_lessons::handle_list_peer_lessons;
 pub(in crate::bridge) use list_ready::handle_list_ready;
 pub(in crate::bridge) use read_messages::handle_read_messages;
 pub(in crate::bridge) use remove_principle::handle_remove_principle;
-pub(in crate::bridge) use rework_context::format_rejection_comment;
 pub(in crate::bridge) use save_bookmark::handle_save_bookmark;
 pub(in crate::bridge) use save_briefing::handle_save_briefing;
 pub(in crate::bridge) use save_lesson::handle_save_lesson;
@@ -102,10 +101,7 @@ pub(in crate::bridge) use view_comments::handle_view_comments;
 pub(in crate::bridge) use view_commit_diff::handle_view_commit_diff;
 pub(in crate::bridge) use view_roadmap::handle_view_roadmap;
 pub(in crate::bridge) use view_story_commits::handle_view_story_commits;
-pub(in crate::bridge) use view_story_timeline::{
-    ACCEPT_GATE, ACCEPTED_MARKER, DESK_CHECK_PASS_GATE, PASS_DESK_CHECK_MARKER,
-    format_gate_transition_comment, handle_view_story_timeline,
-};
+pub(in crate::bridge) use view_story_timeline::handle_view_story_timeline;
 pub(in crate::bridge) use view_tokens::handle_view_tokens;
 pub(in crate::bridge) use view_velocity::handle_view_velocity;
 

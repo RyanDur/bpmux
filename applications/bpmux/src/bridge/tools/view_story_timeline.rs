@@ -7,20 +7,10 @@ use crate::bridge::tracker::StoryTracker;
 pub(in crate::bridge) const PICKUP_MARKER: &str = "pickup_paraphrase";
 pub(in crate::bridge) const DELIVERED_MARKER: &str = "verified_observation";
 pub(in crate::bridge) const REJECTION_MARKER: &str = "rejection_reason";
-pub(in crate::bridge) const PASS_DESK_CHECK_MARKER: &str = "pass_desk_check";
-pub(in crate::bridge) const ACCEPTED_MARKER: &str = "accepted";
+const PASS_DESK_CHECK_MARKER: &str = "pass_desk_check";
+const ACCEPTED_MARKER: &str = "accepted";
 
-pub(in crate::bridge) const ACCEPT_GATE: &str = "accept-gate";
-pub(in crate::bridge) const DESK_CHECK_PASS_GATE: &str = "desk-check-pass";
-pub(in crate::bridge) const DESK_CHECK_FAIL_GATE: &str = "desk-check-fail";
-
-pub(in crate::bridge) fn format_gate_transition_comment(
-    marker: &str,
-    gate: &str,
-    agent: &str,
-) -> String {
-    format!("**{marker}** ({gate} by {agent})")
-}
+const DESK_CHECK_FAIL_GATE: &str = "desk-check-fail";
 
 pub fn build_timeline(
     story: &serde_json::Value,

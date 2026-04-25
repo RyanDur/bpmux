@@ -83,7 +83,3 @@ pub fn build_rework_context(comments: &[serde_json::Value]) -> Option<String> {
 pub fn enrich_body(original_body: &str, context: &str) -> String {
     format!("{context}\n{original_body}")
 }
-
-pub fn format_rejection_comment(gate: &str, agent: &str, reason: &str) -> String {
-    format!("{REJECTION_MARKER} ({gate} by {agent}):\n\n{reason}")
-}
