@@ -1,166 +1,167 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use super::get_story::handle_get_story;
-use crate::bridge::tracker::{StoryTracker, WorkflowRunEntry};
+use std::sync::Arc;
 
-#[derive(Clone)]
-struct ReworkTracker {
-    story: serde_json::Value,
-    comments: Vec<serde_json::Value>,
+use chrono::{TimeZone, Utc};
+
+use super::get_story::handle_get_story;
+use crate::board::adapters::in_memory::InMemorySourceAdapter;
+use crate::board::domain::{Gate, GateComment, Story, StoryState};
+use crate::board::{BoardStore, RefreshDriver, SyncOrchestrator};
+use crate::bridge::tracker::FakeTracker;
+
+async fn seeded_orchestrator(
+    stories: Vec<Story>,
+    gates: Vec<(u64, Vec<GateComment>)>,
+) -> (Arc<BoardStore>, Arc<dyn RefreshDriver>) {
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    adapter.seed_stories(stories);
+    for (n, gs) in gates {
+        adapter.seed_gate_comments(n, gs);
+    }
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orchestrator.refresh_all().await.unwrap();
+    (store, orchestrator)
 }
 
-impl StoryTracker for ReworkTracker {
-    async fn close_story(&self, number: u64) -> Result<String, String> {
-        Ok(format!("#{number} closed"))
+fn make_story(number: u64, state: StoryState, body: Option<&str>) -> Story {
+    let mut s = Story::new_minimal(
+        number,
+        "title".into(),
+        state,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "pm".into(),
+    );
+    if let Some(b) = body {
+        s.body = Some(b.to_string());
     }
-    async fn add_label(&self, number: u64, label: &str) -> Result<String, String> {
-        Ok(format!("#{number} labeled '{label}'"))
-    }
-    async fn remove_label(&self, number: u64, label: &str) -> Result<String, String> {
-        Ok(format!("#{number} unlabeled '{label}'"))
-    }
-    async fn create_story(&self, title: &str, _body: &str) -> Result<String, String> {
-        Ok(format!("created: {title}"))
-    }
-    async fn list_stories(&self) -> Result<String, String> {
-        Ok("[]".to_string())
-    }
-    async fn fetch_board_stories(&self) -> Result<Vec<serde_json::Value>, String> {
-        Ok(Vec::new())
-    }
-    async fn get_story(&self, _number: u64) -> Result<Option<serde_json::Value>, String> {
-        Ok(Some(self.story.clone()))
-    }
-    async fn comment_on_story(&self, _number: u64, _body: &str) -> Result<String, String> {
-        Ok("commented".to_string())
-    }
-    async fn list_story_comments(&self, _number: u64) -> Result<Vec<serde_json::Value>, String> {
-        Ok(self.comments.clone())
-    }
-    async fn get_story_title(&self, number: u64) -> Option<String> {
-        Some(format!("story #{number}"))
-    }
-    async fn get_story_labels(&self, _number: u64) -> Vec<String> {
-        Vec::new()
-    }
-    async fn list_latest_run_on_main(&self) -> Result<Option<WorkflowRunEntry>, String> {
-        Ok(None)
-    }
+    s
 }
 
 #[tokio::test]
-async fn enriches_body_for_rejected_story() {
-    let tracker = ReworkTracker {
-        story: serde_json::json!({
-            "number": 443,
-            "title": "Input ref rework",
-            "body": "original story body text",
-            "state": "open",
-            "labels": [{"name": "rejected"}],
-        }),
-        comments: vec![
-            serde_json::json!({
-                "body": "**verified_observation** (dev deliver-gate):\n\nprior delivery ran end-to-end",
-                "created_at": "2026-04-23T00:00:00Z",
-            }),
-            serde_json::json!({
-                "body": "**rejection_reason** (reject-gate by ryan):\n\nchannelKeyRef is not legitimate",
-                "created_at": "2026-04-23T01:00:00Z",
-            }),
-        ],
-    };
+async fn handler_requires_board_and_refresh_after_5l_fallback_retirement() {
+    let tracker = FakeTracker::default();
     let args = serde_json::json!({"number": 443});
-    let result = handle_get_story(args.as_object().unwrap(), &tracker, None, None)
-        .await
-        .expect("should succeed");
+    let result = handle_get_story(args.as_object().unwrap(), &tracker, None, None).await;
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("requires board + refresh"));
+}
+
+#[tokio::test]
+async fn handler_errors_when_story_not_in_board() {
+    let (store, orch) = seeded_orchestrator(vec![], vec![]).await;
+    let tracker = FakeTracker::default();
+    let args = serde_json::json!({"number": 9999});
+    let result = handle_get_story(
+        args.as_object().unwrap(),
+        &tracker,
+        Some(&store),
+        Some(&orch),
+    )
+    .await;
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("not found in board"));
+}
+
+#[tokio::test]
+async fn enriches_body_for_rejected_story_via_typed_gates() {
+    let story = make_story(443, StoryState::Rejected, Some("original story body text"));
+    let gates = vec![
+        GateComment {
+            gate: Gate::Delivered,
+            ts: Utc.with_ymd_and_hms(2026, 4, 23, 0, 0, 0).unwrap(),
+            actor: "dev".into(),
+            payload: Some("prior delivery ran end-to-end".into()),
+        },
+        GateComment {
+            gate: Gate::Rejected,
+            ts: Utc.with_ymd_and_hms(2026, 4, 23, 1, 0, 0).unwrap(),
+            actor: "ryan".into(),
+            payload: Some("channelKeyRef is not legitimate".into()),
+        },
+    ];
+    let (store, orch) = seeded_orchestrator(vec![story], vec![(443, gates)]).await;
+    let tracker = FakeTracker::default();
+    let args = serde_json::json!({"number": 443});
+    let result = handle_get_story(
+        args.as_object().unwrap(),
+        &tracker,
+        Some(&store),
+        Some(&orch),
+    )
+    .await
+    .expect("should succeed");
     let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
     let body = parsed["body"].as_str().expect("body is string");
-    assert!(
-        body.starts_with("## Rework context"),
-        "body should open with rework context: {body}"
-    );
-    assert!(
-        body.contains("channelKeyRef is not legitimate"),
-        "body should surface rejection reason: {body}"
-    );
-    assert!(
-        body.contains("prior delivery ran end-to-end"),
-        "body should surface verified_observation: {body}"
-    );
-    assert!(
-        body.ends_with("original story body text"),
-        "original body should be preserved at end: {body}"
-    );
+    assert!(body.starts_with("## Rework context"));
+    assert!(body.contains("channelKeyRef is not legitimate"));
+    assert!(body.contains("prior delivery ran end-to-end"));
+    assert!(body.ends_with("original story body text"));
 }
 
 #[tokio::test]
-async fn enriches_body_for_needs_fixes_story() {
-    let tracker = ReworkTracker {
-        story: serde_json::json!({
-            "number": 200,
-            "title": "Foo feature",
-            "body": "original body",
-            "state": "open",
-            "labels": [{"name": "needs fixes"}],
-        }),
-        comments: vec![serde_json::json!({
-            "body": "**rejection_reason** (desk-check-fail by designer):\n\nfailed spec",
-            "created_at": "2026-04-23T01:00:00Z",
-        })],
-    };
+async fn enriches_body_for_needs_fixes_story_via_typed_gates() {
+    let story = make_story(200, StoryState::NeedsFixes, Some("original body"));
+    let gates = vec![GateComment {
+        gate: Gate::FailDeskCheck,
+        ts: Utc.with_ymd_and_hms(2026, 4, 23, 1, 0, 0).unwrap(),
+        actor: "designer".into(),
+        payload: Some("failed spec".into()),
+    }];
+    let (store, orch) = seeded_orchestrator(vec![story], vec![(200, gates)]).await;
+    let tracker = FakeTracker::default();
     let args = serde_json::json!({"number": 200});
-    let result = handle_get_story(args.as_object().unwrap(), &tracker, None, None)
-        .await
-        .expect("should succeed");
+    let result = handle_get_story(
+        args.as_object().unwrap(),
+        &tracker,
+        Some(&store),
+        Some(&orch),
+    )
+    .await
+    .expect("should succeed");
     let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
     let body = parsed["body"].as_str().expect("body is string");
     assert!(body.contains("## Rework context"));
     assert!(body.contains("failed spec"));
-    assert!(body.contains("desk-check-fail by designer"));
 }
 
 #[tokio::test]
 async fn does_not_enrich_body_for_non_rework_story() {
-    let tracker = ReworkTracker {
-        story: serde_json::json!({
-            "number": 100,
-            "title": "Fresh feature",
-            "body": "original body",
-            "state": "open",
-            "labels": [{"name": "ready"}],
-        }),
-        comments: vec![serde_json::json!({
-            "body": "**rejection_reason** (reject-gate by ryan):\n\nstale reject",
-        })],
-    };
+    let story = make_story(100, StoryState::Ready, Some("original body"));
+    let (store, orch) = seeded_orchestrator(vec![story], vec![]).await;
+    let tracker = FakeTracker::default();
     let args = serde_json::json!({"number": 100});
-    let result = handle_get_story(args.as_object().unwrap(), &tracker, None, None)
-        .await
-        .expect("should succeed");
+    let result = handle_get_story(
+        args.as_object().unwrap(),
+        &tracker,
+        Some(&store),
+        Some(&orch),
+    )
+    .await
+    .expect("should succeed");
     let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
     let body = parsed["body"].as_str().expect("body is string");
-    assert_eq!(
-        body, "original body",
-        "non-rework stories should not be enriched: {body}"
-    );
+    assert_eq!(body, "original body");
 }
 
 #[tokio::test]
-async fn skips_enrichment_when_no_markers_in_comments() {
-    let tracker = ReworkTracker {
-        story: serde_json::json!({
-            "number": 50,
-            "title": "Reworked item",
-            "body": "plain body",
-            "state": "open",
-            "labels": [{"name": "rejected"}],
-        }),
-        comments: vec![serde_json::json!({"body": "just a casual comment"})],
-    };
+async fn skips_enrichment_when_no_rework_gate_comments() {
+    let story = make_story(50, StoryState::Rejected, Some("plain body"));
+    let (store, orch) = seeded_orchestrator(vec![story], vec![(50, vec![])]).await;
+    let tracker = FakeTracker::default();
     let args = serde_json::json!({"number": 50});
-    let result = handle_get_story(args.as_object().unwrap(), &tracker, None, None)
-        .await
-        .expect("should succeed");
+    let result = handle_get_story(
+        args.as_object().unwrap(),
+        &tracker,
+        Some(&store),
+        Some(&orch),
+    )
+    .await
+    .expect("should succeed");
     let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
     let body = parsed["body"].as_str().expect("body is string");
     assert_eq!(body, "plain body");

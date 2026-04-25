@@ -28,8 +28,6 @@ mod list_ready_tests;
 mod read_messages;
 mod remove_principle;
 mod rework_context;
-#[cfg(test)]
-mod rework_context_tests;
 mod save_bookmark;
 mod save_briefing;
 mod save_lesson;

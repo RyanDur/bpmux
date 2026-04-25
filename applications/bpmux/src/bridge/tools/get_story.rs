@@ -15,9 +15,7 @@ use crate::board::domain::{Gate, StoryState};
 use crate::board::{BoardStore, RefreshDriver};
 use crate::bridge::tracker::StoryTracker;
 
-use super::rework_context::{
-    build_rework_context, enrich_body, is_rework_labeled, labels_from_story_json,
-};
+use super::rework_context::enrich_body;
 
 fn state_label(state: StoryState) -> &'static str {
     match state {
@@ -59,7 +57,7 @@ fn rework_context_from_gates(gates: &[crate::board::domain::GateComment]) -> Opt
 
 pub(in crate::bridge) async fn handle_get_story(
     args: &serde_json::Map<String, serde_json::Value>,
-    tracker: &impl StoryTracker,
+    _tracker: &impl StoryTracker,
     board: Option<&Arc<BoardStore>>,
     refresh: Option<&Arc<dyn RefreshDriver>>,
 ) -> Result<String, String> {
@@ -67,53 +65,38 @@ pub(in crate::bridge) async fn handle_get_story(
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
-    if let (Some(b), Some(r)) = (board, refresh)
-        && let Some(mut story) = b.story(number)
-    {
-        if story.body.is_none() {
-            let body = r
-                .fetch_body(number)
+    let (b, r) = board
+        .zip(refresh)
+        .ok_or("get_story requires board + refresh — tracker fallback retired in slice 5l")?;
+    let mut story = b
+        .story(number)
+        .ok_or_else(|| format!("story #{number} not found in board"))?;
+    if story.body.is_none() {
+        let body = r
+            .fetch_body(number)
+            .await
+            .map_err(|e| format!("fetch body: {e}"))?;
+        story.body = Some(body);
+    }
+    let mut body_out = story.body.clone().unwrap_or_default();
+    if matches!(story.state, StoryState::Rejected | StoryState::NeedsFixes) {
+        let gates = match story.gate_comments.clone() {
+            Some(g) => g,
+            None => r
+                .fetch_gate_comments(number)
                 .await
-                .map_err(|e| format!("fetch body: {e}"))?;
-            story.body = Some(body);
+                .map_err(|e| format!("fetch gates: {e}"))?,
+        };
+        if let Some(ctx) = rework_context_from_gates(&gates) {
+            body_out = enrich_body(&body_out, &ctx);
         }
-        let mut body_out = story.body.clone().unwrap_or_default();
-        if matches!(story.state, StoryState::Rejected | StoryState::NeedsFixes) {
-            let gates = match story.gate_comments.clone() {
-                Some(g) => g,
-                None => r
-                    .fetch_gate_comments(number)
-                    .await
-                    .map_err(|e| format!("fetch gates: {e}"))?,
-            };
-            if let Some(ctx) = rework_context_from_gates(&gates) {
-                body_out = enrich_body(&body_out, &ctx);
-            }
-        }
-        let out = serde_json::json!({
-            "number": story.number,
-            "title": story.title,
-            "body": body_out,
-            "state": if story.state == StoryState::Accepted { "closed" } else { "open" },
-            "labels": [{"name": state_label(story.state)}],
-        });
-        return serde_json::to_string_pretty(&out).map_err(|e| format!("serialize story: {e}"));
     }
-    match tracker.get_story(number).await? {
-        Some(mut story) => {
-            if is_rework_labeled(&labels_from_story_json(&story))
-                && let Ok(comments) = tracker.list_story_comments(number).await
-                && let Some(ctx) = build_rework_context(&comments)
-            {
-                let original = story
-                    .get("body")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                story["body"] = serde_json::Value::String(enrich_body(&original, &ctx));
-            }
-            serde_json::to_string_pretty(&story).map_err(|e| format!("serialize story: {e}"))
-        }
-        None => Err(format!("story #{number} not found")),
-    }
+    let out = serde_json::json!({
+        "number": story.number,
+        "title": story.title,
+        "body": body_out,
+        "state": if story.state == StoryState::Accepted { "closed" } else { "open" },
+        "labels": [{"name": state_label(story.state)}],
+    });
+    serde_json::to_string_pretty(&out).map_err(|e| format!("serialize story: {e}"))
 }
