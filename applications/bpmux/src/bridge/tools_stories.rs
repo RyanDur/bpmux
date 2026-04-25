@@ -180,6 +180,7 @@ pub(super) async fn handle_create_story(
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
     tracker: &impl super::tracker::StoryTracker,
+    refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     if role_from_name(agent_name) != "pm" {
         return Err(
@@ -213,6 +214,30 @@ pub(super) async fn handle_create_story(
     // Author-supplied `body` appends below the structured header.
     let author_body = args.get("body").and_then(|v| v.as_str()).unwrap_or("");
     let composed_body = compose_story_body(user_job, observation_falsifier, author_body);
+    if let Some(r) = refresh {
+        let number = r
+            .create_story(title.to_string(), composed_body.clone())
+            .await
+            .map_err(|e| format!("create_story failed: {e}"))?;
+        let meta = crate::board::events::EventMeta {
+            actor: crate::transport::ws::short_name(agent_name).to_string(),
+            ts: chrono::Utc::now(),
+            peer_id: crate::board::PeerId::local(),
+        };
+        let story_type =
+            crate::board::adapters::github::story_type_from_labels_or_title(&[], title);
+        r.mutate_sync(crate::board::BoardEvent::StoryCreated {
+            meta,
+            number,
+            title: title.to_string(),
+            body: composed_body,
+            initial_state: crate::board::domain::StoryState::Icebox,
+            story_type,
+        })
+        .map_err(|e| format!("#{number} created but enqueue failed: {e}"))?;
+        broadcast_board_invalidate(ws_tx).await;
+        return Ok(format!("story created: #{number} {title}"));
+    }
     let result = tracker.create_story(title, &composed_body).await?;
     broadcast_board_invalidate(ws_tx).await;
     Ok(format!("story created: {}", result.trim()))

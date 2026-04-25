@@ -782,6 +782,7 @@ async fn create_story_rejects_non_pm_role() {
             role,
             &ws_tx,
             &AlreadyClosedTracker,
+            None,
         )
         .await;
         assert!(
@@ -813,6 +814,7 @@ async fn create_story_accepts_pm_role() {
         "pm",
         &ws_tx,
         &AlreadyClosedTracker,
+        None,
     )
     .await;
     assert!(
@@ -834,6 +836,7 @@ async fn create_story_accepts_pm_role_with_tool_suffix() {
         "pm:claude-code",
         &ws_tx,
         &AlreadyClosedTracker,
+        None,
     )
     .await;
     assert!(
@@ -856,6 +859,7 @@ async fn create_story_rejects_missing_user_job() {
         "pm",
         &ws_tx,
         &AlreadyClosedTracker,
+        None,
     )
     .await;
     assert!(result.is_err(), "missing user_job should fail");
@@ -883,6 +887,7 @@ async fn create_story_rejects_empty_user_job() {
         "pm",
         &ws_tx,
         &AlreadyClosedTracker,
+        None,
     )
     .await;
     assert!(result.is_err(), "whitespace-only user_job should fail");
@@ -902,6 +907,7 @@ async fn create_story_rejects_missing_observation_falsifier() {
         "pm",
         &ws_tx,
         &AlreadyClosedTracker,
+        None,
     )
     .await;
     assert!(result.is_err(), "missing observation_falsifier should fail");
@@ -926,6 +932,7 @@ async fn create_story_succeeds_when_both_fields_provided() {
         "pm",
         &ws_tx,
         &AlreadyClosedTracker,
+        None,
     )
     .await;
     assert!(
@@ -2065,6 +2072,90 @@ async fn reject_story_migrated_path_emits_tag_remove_gate_with_reason_and_state_
         BoardEvent::StateTransitioned {
             number: 206,
             new_state: StoryState::Rejected,
+            ..
+        }
+    ));
+}
+
+#[tokio::test]
+async fn create_story_migrated_path_assigns_number_and_emits_story_created_event() {
+    use crate::board::BoardEvent;
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState, StoryType};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    adapter.seed_stories(vec![Story::new_minimal(
+        50,
+        "seed".into(),
+        StoryState::Ready,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "pm".into(),
+    )]);
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orchestrator.refresh_all().await.unwrap();
+
+    let ws_tx = connected_ws_sink_for_test().await;
+    let tracker = super::tracker::FakeTracker::default();
+    let mut args = serde_json::Map::new();
+    args.insert(
+        "title".into(),
+        serde_json::json!("[Bug] live-verify failure"),
+    );
+    args.insert(
+        "user_job".into(),
+        serde_json::json!("When pm files, dev needs..."),
+    );
+    args.insert(
+        "observation_falsifier".into(),
+        serde_json::json!("I would reject if..."),
+    );
+    args.insert("body".into(), serde_json::json!("author note"));
+
+    let result = handle_create_story(
+        &args,
+        "pm:claude-code",
+        &ws_tx,
+        &tracker,
+        Some(&orchestrator),
+    )
+    .await;
+    assert!(result.is_ok(), "migrated path should succeed: {result:?}");
+    let response = result.unwrap();
+    assert!(
+        response.contains("#51"),
+        "response should carry the source-assigned number 51 (max+1 over seed 50): {response}"
+    );
+
+    let story = store
+        .story(51)
+        .expect("StoryCreated event applied to store");
+    assert_eq!(story.title, "[Bug] live-verify failure");
+    assert_eq!(story.state, StoryState::Icebox);
+    assert_eq!(
+        story.story_type,
+        StoryType::Bug,
+        "story_type derived from title prefix [Bug]"
+    );
+
+    let drained = orchestrator.drain_pending().await.unwrap();
+    assert_eq!(drained, 1, "exactly one event (StoryCreated) drained");
+    let pushed = adapter.pushed_events();
+    assert_eq!(pushed.len(), 1);
+    assert!(matches!(
+        &pushed[0],
+        BoardEvent::StoryCreated {
+            number: 51,
+            initial_state: StoryState::Icebox,
+            story_type: StoryType::Bug,
             ..
         }
     ));
