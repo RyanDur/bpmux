@@ -351,8 +351,9 @@ pub struct Story {
     pub number: u64,
     pub title: String,
     pub state: StoryState,
+    pub is_closed: bool,                   // archived at source; orthogonal to state (see Close-as-action shape below)
     pub filed_at: chrono::DateTime<chrono::Utc>,
-    pub filed_by: String,  // short-form, no full GH profile
+    pub filed_by: String,                  // short-form, no full GH profile
     pub body: Option<String>,              // lazy-populated on first get_story
     pub free_comments: Option<Vec<FreeComment>>,  // lazy-populated on first view_comments
     pub gate_comments: Vec<GateComment>,   // eager-ingested (small, timeline-load-bearing)
@@ -387,6 +388,7 @@ pub enum BoardEvent {
     GateCommentAppend { story_number: u64, gate: Gate, actor: String, payload: Option<String>, ts: chrono::DateTime<chrono::Utc> },
     FreeCommentAppend { story_number: u64, body: String, author: String, ts: chrono::DateTime<chrono::Utc> },
     StoryCreate { title: String, body: String, author: String, ts: chrono::DateTime<chrono::Utc> },
+    StoryClosed { story_number: u64, reason: Option<String>, actor: String, ts: chrono::DateTime<chrono::Utc> },
 }
 ```
 
@@ -617,6 +619,51 @@ story still does the peer-sync work itself.
 
 These become the follow-up story's scope once single-peer lands.
 
+## Close-as-action shape (close_story migration)
+
+`Rejected` is a team-deliberation-pending state per Ryan 2026-04-25:
+"rejected means the team will decide what they need to do with it"
+(rework / close-as-won't-fix / defer). Rejected stories stay open at
+the source so the team can act on them.
+
+Owner-driven `close_story` is semantically distinct: "owner says this
+story is finalized; team won't act further." That's an
+**archive action**, not a state transition — the story preserves its
+last domain state (Delivered / InProgress / etc) while the source
+issue closes. This matches the operator's PT mental model where
+won't-fix = delete/archive (an action), not a state.
+
+Mechanism:
+
+- **`BoardEvent::StoryClosed { story_number, reason, actor, ts }`** —
+  the archive event. Carries optional reason text for the
+  "why we're closing" comment at the source.
+- **`Story.is_closed: bool`** — set to true by
+  `BoardStore::apply(StoryClosed { .. })`. Story state is preserved.
+  View-layer combines `state` + `is_closed` to filter
+  closed-not-accepted stories from active buckets.
+- **`accept_story` emits StoryClosed alongside StateTransitioned{Accepted}**
+  (4 events: TagRemoved + GateCommentAppended + StateTransitioned + StoryClosed).
+  Adapter drains StateTransitioned{Accepted} as label-add only;
+  StoryClosed closes GH issue. Decouples close-from-state-transition.
+- **`close_story` emits StoryClosed only** (no state transition).
+  Story preserves last domain state in BoardStore; `is_closed = true`
+  signals archive.
+- **Adapter drain on StoryClosed**: optionally appends `reason` as a
+  free comment (when Some), then calls `inner.close_story` —
+  idempotent via `is_already_closed_error`.
+
+Why not a 9th `StoryState::Closed` variant: the StoryState enum is
+locked at 8. Adding Closed as a state would conflate actor-finality
+(owner-closed terminal) with team-deliberation-pending (Rejected) at
+the same axis; treating close as an orthogonal action keeps the
+state-machine size unchanged and the actor-finality distinction
+derivable from `(state, is_closed)`.
+
+Why not reuse `StateTransitioned{Rejected}`: Rejected is
+team-deliberation-pending and intentionally stays open at source;
+closing GH on Rejected would break that semantic.
+
 ## Acceptance criteria
 
 1. A new `BoardStore` type exposes the canonical read + mutate API;
@@ -711,6 +758,33 @@ These become the follow-up story's scope once single-peer lands.
    - MCP tool dispatch can begin AFTER metadata-ingest completes
      (<1s wait). Body-lazy calls amortize the full-ingest cost
      across natural usage.
+
+12. **Close-as-action shape** (per Ryan 2026-04-25 03:24 UTC clarifying
+    that Rejected = "team will decide what they need to do with it",
+    distinct from owner-driven won't-fix).
+    - `Story.is_closed: bool` field added; defaults false; set true by
+      `BoardStore::apply(StoryClosed { .. })`. Story state is preserved
+      (no state mutation on StoryClosed).
+    - `BoardEvent::StoryClosed { story_number, reason: Option<String>,
+      actor, ts }` represents the archive event.
+    - `handle_close_story` migrates: refresh-before-write → emit
+      StoryClosed { reason } → drain. No state transition, no tracker
+      direct call on the migrated path.
+    - `handle_accept_story` grows from 3 events to 4: the existing
+      TagRemoved + GateCommentAppended + StateTransitioned{Accepted}
+      sequence appends a StoryClosed { reason: None } event. Adapter
+      drain on StateTransitioned{Accepted} no longer closes the GH
+      issue (decoupled); StoryClosed arm closes it.
+    - GitHub adapter drain on StoryClosed: when reason is Some,
+      append it as a free comment via `comment_on_story`, then call
+      `inner.close_story` — idempotent via `is_already_closed_error`
+      (already lifted to `board::sync` per slice 5j retro-tidy).
+    - Rejected stays open at source intentionally — team-deliberation
+      semantic preserved. `StateTransitioned{Rejected}` adapter arm
+      remains label-only.
+    - View-layer filter: closed-not-accepted stories
+      (`is_closed && state != Accepted`) hide from active board
+      buckets; surface in archive view if requested.
 
 ## Open questions (designer-flag for sharpening)
 
