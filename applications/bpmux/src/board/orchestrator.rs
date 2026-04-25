@@ -31,6 +31,7 @@ pub trait RefreshDriver: Send + Sync {
         number: u64,
     ) -> BoxedFuture<'_, Result<Vec<GateComment>, SyncError>>;
     fn create_story(&self, title: String, body: String) -> BoxedFuture<'_, Result<u64, SyncError>>;
+    fn story(&self, number: u64) -> Option<Story>;
 }
 
 #[derive(Debug, Clone, Default, Serialize)]
@@ -268,6 +269,10 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
 
     fn create_story(&self, title: String, body: String) -> BoxedFuture<'_, Result<u64, SyncError>> {
         Box::pin(async move { self.create_story(&title, &body).await })
+    }
+
+    fn story(&self, number: u64) -> Option<Story> {
+        self.store.story(number)
     }
 }
 

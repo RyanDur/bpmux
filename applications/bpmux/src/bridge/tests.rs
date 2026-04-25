@@ -489,6 +489,9 @@ mod ingest_poll_loop_tests {
         ) -> BoxedFuture<'_, Result<u64, SyncError>> {
             Box::pin(async { Ok(0) })
         }
+        fn story(&self, _number: u64) -> Option<crate::board::Story> {
+            None
+        }
     }
 
     #[tokio::test]
