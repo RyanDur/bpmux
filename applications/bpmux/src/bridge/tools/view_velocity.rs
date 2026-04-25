@@ -88,11 +88,6 @@ pub(in crate::bridge) async fn handle_view_velocity(
     serde_json::to_string_pretty(&metrics).map_err(|e| format!("serialize: {e}"))
 }
 
-/// Classify a single story number as feature-or-not for velocity
-/// counting. Prefers BoardStore via the RefreshDriver when wired —
-/// O(1) memory lookup of the typed `Story.story_type`. Falls back to
-/// tracker labels+title classification when refresh is absent OR when
-/// the story is not yet in the cache (e.g., out-of-window references).
 pub(in crate::bridge) async fn is_feature_for_velocity(
     n: u64,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
