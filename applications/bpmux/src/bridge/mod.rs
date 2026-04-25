@@ -752,11 +752,41 @@ pub fn run_bridge(
     fake_tracker: bool,
     board_fixture: Option<String>,
 ) -> anyhow::Result<()> {
-    let _ = board_fixture;
     let rt = tokio::runtime::Runtime::new()?;
     if fake_tracker {
         return rt.block_on(async {
             let server = BridgeServer::new(port, name.to_string());
+            let adapter = Arc::new(crate::board::adapters::in_memory::InMemorySourceAdapter::new());
+            if let Some(path) = board_fixture {
+                match std::fs::read_to_string(&path) {
+                    Ok(s) => match serde_json::from_str::<Vec<serde_json::Value>>(&s) {
+                        Ok(values) => {
+                            let stories: Vec<crate::board::Story> = values
+                                .iter()
+                                .filter_map(crate::board::adapters::github::decode_story_metadata)
+                                .collect();
+                            adapter.seed_stories(stories);
+                        }
+                        Err(e) => crate::session::diag::log_diag(&format!(
+                            "bridge: --board-fixture {path} parse failed: {e}"
+                        )),
+                    },
+                    Err(e) => crate::session::diag::log_diag(&format!(
+                        "bridge: --board-fixture {path} read failed: {e}"
+                    )),
+                }
+            }
+            let orchestrator = Arc::new(crate::board::SyncOrchestrator::new(
+                Arc::clone(&server.board),
+                adapter,
+            ));
+            if let Err(e) = orchestrator.ingest_once().await {
+                crate::session::diag::log_diag(&format!(
+                    "bridge: initial board ingest skipped — {e}"
+                ));
+            }
+            let refresh_driver: Arc<dyn crate::board::RefreshDriver> = orchestrator;
+            let server = server.with_refresh(refresh_driver);
             let (stdin, stdout) = rmcp::transport::io::stdio();
             let service = server.serve((stdin, stdout)).await?;
             service.waiting().await?;
