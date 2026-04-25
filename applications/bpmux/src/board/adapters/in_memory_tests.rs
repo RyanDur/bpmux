@@ -165,7 +165,7 @@ async fn create_story_propagates_failure_when_push_failures_set() {
 }
 
 #[tokio::test]
-async fn push_event_for_story_created_is_idempotent_no_op() {
+async fn push_event_accepts_story_created_variant() {
     let adapter = InMemorySourceAdapter::new();
     let event = BoardEvent::StoryCreated {
         meta: meta(),
