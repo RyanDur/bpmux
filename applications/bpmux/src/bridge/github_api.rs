@@ -1,11 +1,3 @@
-//! Thin wrapper around the octocrab client for non-board-state
-//! GitHub queries (CI state today; future expansion sites named at
-//! consumer-introduction time, not speculatively). Distinct from
-//! `OctocrabStoryTracker` (board-mutation seam) and from
-//! `GitHubSourceAdapter` (BoardEvent push/pull seam) — this is the
-//! seam for bridge-tool features that read GitHub but don't drive
-//! board state.
-
 use crate::bridge::tracker::WorkflowRunEntry;
 use crate::github;
 
