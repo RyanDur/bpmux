@@ -3,8 +3,8 @@
 use chrono::{TimeZone, Utc};
 
 use crate::board::adapters::github::{
-    classify_gate, decode_gate_comments, decode_story_metadata, parse_created_issue_number,
-    state_from_labels, state_to_label, tags_from_labels,
+    classify_gate, decode_gate_comments, decode_story_metadata, parent_epic_from_labels,
+    parse_created_issue_number, state_from_labels, state_to_label, tags_from_labels,
 };
 use crate::board::domain::story_type_from_labels_or_title;
 use crate::board::domain::{Gate, StoryState, StoryType, Tag};
@@ -398,4 +398,66 @@ fn parse_created_issue_number_returns_none_when_unparseable() {
     assert!(parse_created_issue_number("#abc title").is_none());
     assert!(parse_created_issue_number("").is_none());
     assert!(parse_created_issue_number("#").is_none());
+}
+
+#[test]
+fn parent_epic_from_labels_extracts_number_from_well_formed_label() {
+    let labels = vec!["ready".to_string(), "parent-epic-#457".to_string()];
+    assert_eq!(parent_epic_from_labels(&labels), Some(457));
+}
+
+#[test]
+fn parent_epic_from_labels_returns_none_when_label_absent() {
+    let labels = vec!["ready".to_string(), "delivered".to_string()];
+    assert_eq!(parent_epic_from_labels(&labels), None);
+}
+
+#[test]
+fn parent_epic_from_labels_returns_none_when_number_missing() {
+    let labels = vec!["parent-epic-#".to_string()];
+    assert_eq!(parent_epic_from_labels(&labels), None);
+}
+
+#[test]
+fn parent_epic_from_labels_returns_none_when_number_unparseable() {
+    let labels = vec!["parent-epic-#abc".to_string()];
+    assert_eq!(parent_epic_from_labels(&labels), None);
+}
+
+#[test]
+fn parent_epic_from_labels_picks_first_well_formed_match() {
+    let labels = vec![
+        "parent-epic-#abc".to_string(),
+        "parent-epic-#100".to_string(),
+        "parent-epic-#200".to_string(),
+    ];
+    assert_eq!(parent_epic_from_labels(&labels), Some(100));
+}
+
+#[test]
+fn decode_story_metadata_populates_parent_epic_from_label() {
+    let json = serde_json::json!({
+        "number": 1000,
+        "title": "child story",
+        "state": "open",
+        "labels": [{"name": "ready"}, {"name": "parent-epic-#457"}],
+        "created_at": "2026-04-25T00:00:00Z",
+        "user": {"login": "pm"},
+    });
+    let story = decode_story_metadata(&json).unwrap();
+    assert_eq!(story.parent_epic, Some(457));
+}
+
+#[test]
+fn decode_story_metadata_parent_epic_none_when_label_absent() {
+    let json = serde_json::json!({
+        "number": 1001,
+        "title": "regular story",
+        "state": "open",
+        "labels": [{"name": "ready"}],
+        "created_at": "2026-04-25T00:00:00Z",
+        "user": {"login": "pm"},
+    });
+    let story = decode_story_metadata(&json).unwrap();
+    assert_eq!(story.parent_epic, None);
 }

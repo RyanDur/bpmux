@@ -217,7 +217,14 @@ pub fn decode_story_metadata(v: &serde_json::Value) -> Option<Story> {
     story.story_type = crate::board::domain::story_type_from_labels_or_title(&labels, &title);
     story.tags = tags_from_labels(&labels);
     story.is_closed = is_closed;
+    story.parent_epic = parent_epic_from_labels(&labels);
     Some(story)
+}
+
+pub fn parent_epic_from_labels(labels: &[String]) -> Option<u64> {
+    labels
+        .iter()
+        .find_map(|l| l.strip_prefix("parent-epic-#").and_then(|n| n.parse().ok()))
 }
 
 fn extract_label_names(v: &serde_json::Value) -> Vec<String> {
