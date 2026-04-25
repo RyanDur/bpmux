@@ -102,6 +102,7 @@ pub struct Story {
     pub free_comments: Option<Vec<FreeComment>>,
     pub gate_comments: Option<Vec<GateComment>>,
     pub is_closed: bool,
+    pub parent_epic: Option<u64>,
 }
 
 impl Story {
@@ -124,6 +125,7 @@ impl Story {
             free_comments: None,
             gate_comments: None,
             is_closed: false,
+            parent_epic: None,
         }
     }
 }

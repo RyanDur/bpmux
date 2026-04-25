@@ -69,6 +69,7 @@ impl BoardStore {
                     free_comments: Some(Vec::new()),
                     gate_comments: Some(Vec::new()),
                     is_closed: false,
+                    parent_epic: None,
                 };
                 w.insert(*n, story);
             }
