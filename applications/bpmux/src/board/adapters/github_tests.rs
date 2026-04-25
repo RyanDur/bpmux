@@ -125,6 +125,28 @@ fn decode_story_metadata_returns_none_when_number_missing() {
 }
 
 #[test]
+fn decode_story_metadata_sets_is_closed_from_gh_state() {
+    let open = serde_json::json!({
+        "number": 10,
+        "title": "open",
+        "state": "open",
+        "labels": [],
+        "created_at": "2026-04-20T00:00:00Z",
+        "user": {"login": "pm"},
+    });
+    let closed = serde_json::json!({
+        "number": 11,
+        "title": "closed-non-accepted",
+        "state": "closed",
+        "labels": [],
+        "created_at": "2026-04-20T00:00:00Z",
+        "user": {"login": "pm"},
+    });
+    assert!(!decode_story_metadata(&open).unwrap().is_closed);
+    assert!(decode_story_metadata(&closed).unwrap().is_closed);
+}
+
+#[test]
 fn classify_gate_pickup() {
     let body = "**pickup_paraphrase** (dev pickup-gate):\n\nscope statement";
     let result = classify_gate(body).unwrap();

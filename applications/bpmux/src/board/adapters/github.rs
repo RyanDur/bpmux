@@ -191,6 +191,7 @@ pub fn decode_story_metadata(v: &serde_json::Value) -> Option<Story> {
     let mut story = Story::new_minimal(number, title.clone(), state, filed_at, filed_by);
     story.story_type = crate::board::domain::story_type_from_labels_or_title(&labels, &title);
     story.tags = tags_from_labels(&labels);
+    story.is_closed = is_closed;
     Some(story)
 }
 
