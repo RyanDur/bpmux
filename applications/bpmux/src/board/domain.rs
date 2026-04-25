@@ -33,6 +33,7 @@ pub enum StoryType {
     Feature,
     Bug,
     Chore,
+    Epic,
 }
 
 pub fn story_type_from_labels_or_title(labels: &[String], title: &str) -> StoryType {

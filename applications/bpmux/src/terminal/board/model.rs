@@ -67,12 +67,13 @@ impl BoardStory {
         let has_type_label = self
             .labels
             .iter()
-            .any(|l| matches!(l.as_str(), "Feature" | "Bug" | "Chore"));
+            .any(|l| matches!(l.as_str(), "Feature" | "Bug" | "Chore" | "Epic"));
         let display_title = if !title_has_type_prefix && has_type_label {
             let type_tag = match classify_story(&self.labels, &self.title) {
                 StoryType::Feature => "[Feature] ",
                 StoryType::Bug => "[Bug] ",
                 StoryType::Chore => "[Chore] ",
+                StoryType::Epic => "[Epic] ",
             };
             format!("{type_tag}{}", self.title)
         } else {

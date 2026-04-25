@@ -925,7 +925,7 @@ pub(super) fn addressee_for_pass_desk_check(
     story_type: crate::board::domain::StoryType,
 ) -> &'static str {
     match story_type {
-        crate::board::domain::StoryType::Feature => "ryan",
+        crate::board::domain::StoryType::Feature | crate::board::domain::StoryType::Epic => "ryan",
         crate::board::domain::StoryType::Bug | crate::board::domain::StoryType::Chore => "pm",
     }
 }
