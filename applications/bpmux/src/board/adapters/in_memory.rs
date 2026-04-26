@@ -89,7 +89,19 @@ impl SourceAdapter for InMemorySourceAdapter {
                 "in-memory test failure".into(),
             ));
         }
-        Ok(s.stories.get(&number).cloned())
+        let Some(mut story) = s.stories.get(&number).cloned() else {
+            return Ok(None);
+        };
+        if let Some(comments) = s.free_comments.get(&number) {
+            story.free_comments = Some(comments.clone());
+        }
+        if let Some(comments) = s.gate_comments.get(&number) {
+            story.gate_comments = Some(comments.clone());
+        }
+        if let Some(body) = s.bodies.get(&number) {
+            story.body = Some(body.clone());
+        }
+        Ok(Some(story))
     }
 
     async fn fetch_story_body(&self, number: u64) -> Result<String, SyncError> {
@@ -131,6 +143,34 @@ impl SourceAdapter for InMemorySourceAdapter {
             return Err(SyncError::SourceUnreachable("push test failure".into()));
         }
         s.pushed_events.push(event.clone());
+        match event {
+            BoardEvent::FreeCommentAppended { number, body, meta } => {
+                let entry = FreeComment {
+                    body: body.clone(),
+                    author: meta.actor.clone(),
+                    ts: meta.ts,
+                };
+                s.free_comments.entry(*number).or_default().push(entry);
+            }
+            BoardEvent::GateCommentAppended {
+                number,
+                gate,
+                payload,
+                meta,
+            } => {
+                let entry = GateComment {
+                    gate: *gate,
+                    ts: meta.ts,
+                    actor: meta.actor.clone(),
+                    payload: payload.clone(),
+                };
+                s.gate_comments.entry(*number).or_default().push(entry);
+            }
+            BoardEvent::BodyFetched { number, body, .. } => {
+                s.bodies.insert(*number, body.clone());
+            }
+            _ => {}
+        }
         Ok(())
     }
 
