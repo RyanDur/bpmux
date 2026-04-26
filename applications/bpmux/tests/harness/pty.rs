@@ -157,6 +157,22 @@ impl TestBpmux {
         self.port
     }
 
+    /// Path to the per-run auth_token file the spawned bpmux wrote at
+    /// startup. Bridge subprocesses driving auth-gated affordances
+    /// (simulate_*) need to read the SAME token file as the bpmux
+    /// server; pass this path via `BPMUX_AUTH_TOKEN_PATH` env-var on
+    /// `TestBridge::connect_with_env` so bridge's `load_auth_token()`
+    /// reads from the test's tempdir instead of the developer's real
+    /// `~/.bpmux/auth_token`. Closes the auth-token-cross-process gap
+    /// (#487) for simulate-class agent-side E2E.
+    pub fn auth_token_path(&self) -> std::path::PathBuf {
+        self.session_dir
+            .as_ref()
+            .expect("session dir taken before reading auth_token_path")
+            .path()
+            .join("auth_token")
+    }
+
     /// POST JSON to a path on the spawned bpmux's REST surface with
     /// the per-run bearer token and loopback Host pin. Centralizes
     /// the auth boilerplate that would otherwise repeat across every
