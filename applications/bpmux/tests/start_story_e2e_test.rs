@@ -1,21 +1,17 @@
 //! Agent-side E2E test for `start_story` MCP tool (#476 Phase 1
 //! backfill — state-transition archetype). Uses the existing
-//! `tests/harness/bridge.rs` substrate.
+//! `tests/harness/bridge.rs` substrate + `--board-fixture` seeding
+//! pattern (#481).
 //!
 //! Per the 3-class framing — start_story applicability =
 //! {agent: yes, human: no (no human-side start affordance — agent-only),
 //! external: no}. Single-class agent-only coverage.
 //!
-//! **Deferred falsifier — view_board roundtrip-coherence**: each
-//! `TestBridge` subprocess has its own RefreshDriver+BoardStore (the
-//! `--fake-tracker` InMemorySourceAdapter is per-bridge). Stories
-//! created on pm's bridge are not visible on dev's bridge without
-//! real-GH propagation. For affordances split across roles (pm
-//! creates, dev starts), the cross-bridge state-share gap blocks
-//! the view_board roundtrip-coherence falsifier. Substrate options
-//! (board-fixture seed / shared-adapter fixture / per-bridge intra-role
-//! roundtrips only) deferred per
-//! `feedback_yagni_with_premise_discipline` until a shape-decision lands.
+//! Roundtrip-via-view_board falsifier: closed via `--board-fixture`
+//! pre-seeded story (#481 substrate-pattern). The fixture seeds the
+//! adapter's InMemorySourceAdapter at bridge startup so dev's bridge
+//! has the story in its own adapter (no cross-bridge propagation
+//! needed; state IS pre-seeded identically per bridge).
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
@@ -24,6 +20,7 @@ mod harness;
 use harness::bridge::TestBridge;
 use harness::pty::TestBpmux;
 use harness::story_helpers::create_target_story;
+use std::io::Write;
 use std::time::Duration;
 
 const PICKUP: &str =
@@ -144,6 +141,45 @@ fn start_story_rejects_missing_pickup_paraphrase() {
 
         pm.close().await;
         dev.close().await;
+    });
+}
+
+#[test]
+fn start_story_view_board_reflects_in_progress_via_board_fixture_seed() {
+    let mut fixture = tempfile::NamedTempFile::new().expect("fixture file");
+    fixture
+        .write_all(
+            br#"[{"number":200,"title":"Pre-seeded ready story","state":"OPEN","labels":[{"name":"ready"}]}]"#,
+        )
+        .expect("write fixture");
+    let fixture_path = fixture.path().to_str().expect("utf-8 path").to_string();
+
+    let bpmux = TestBpmux::start();
+    let rt = tokio::runtime::Runtime::new().expect("rt");
+    rt.block_on(async {
+        let dev = TestBridge::connect_with_board_fixture(&bpmux, "dev", &fixture_path).await;
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        dev.call_tool(
+            "start_story",
+            serde_json::json!({
+                "number": 200,
+                "pickup_paraphrase": PICKUP,
+                "falsifier_reframing": FALSIFIER_REFRAMING
+            }),
+        )
+        .await
+        .expect("start_story should succeed against seeded story");
+
+        let view = dev
+            .call_tool("view_board", serde_json::json!({}))
+            .await
+            .expect("view_board should succeed");
+        let view_text = view.as_str().map(String::from).unwrap_or_else(|| view.to_string());
+        assert!(
+            view_text.contains("#200") && view_text.contains("IN PROGRESS"),
+            "view_board reflects in-progress state for seeded story #200 post-start_story; got:\n{view_text}"
+        );
     });
 }
 
