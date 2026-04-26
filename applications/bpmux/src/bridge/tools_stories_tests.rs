@@ -2418,3 +2418,103 @@ async fn set_parent_epic_rejects_self_parent() {
             .contains("cannot be its own parent epic")
     );
 }
+
+#[tokio::test]
+async fn create_story_with_parent_epic_emits_story_created_then_parent_epic_set() {
+    use crate::board::BoardEvent;
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState, StoryType};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let mut epic = Story::new_minimal(
+        500,
+        "epic story".into(),
+        StoryState::Ready,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "pm".into(),
+    );
+    epic.story_type = StoryType::Epic;
+    adapter.seed_stories(vec![epic]);
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orchestrator.refresh_all().await.unwrap();
+
+    let ws_tx = connected_ws_sink_for_test().await;
+    let mut args = serde_json::Map::new();
+    args.insert("title".into(), serde_json::json!("child of epic"));
+    args.insert("user_job".into(), serde_json::json!("user job here"));
+    args.insert(
+        "observation_falsifier".into(),
+        serde_json::json!("would reject if X"),
+    );
+    args.insert("parent_epic".into(), serde_json::json!(500));
+    let result = handle_create_story(&args, "pm:claude-code", &ws_tx, Some(&orchestrator)).await;
+    assert!(
+        result.is_ok(),
+        "create-with-parent should succeed: {result:?}"
+    );
+    assert!(result.unwrap().contains("under epic #500"));
+
+    let drained = orchestrator.drain_pending().await.unwrap();
+    assert_eq!(drained, 2, "StoryCreated + ParentEpicSet both drain");
+    let pushed = adapter.pushed_events();
+    assert!(matches!(pushed[0], BoardEvent::StoryCreated { .. }));
+    assert!(matches!(
+        pushed[1],
+        BoardEvent::ParentEpicSet {
+            epic_number: 500,
+            ..
+        }
+    ));
+}
+
+#[tokio::test]
+async fn create_story_with_non_epic_parent_rejects_before_create() {
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState, StoryType};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let mut not_epic = Story::new_minimal(
+        501,
+        "not epic".into(),
+        StoryState::Ready,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "pm".into(),
+    );
+    not_epic.story_type = StoryType::Feature;
+    adapter.seed_stories(vec![not_epic]);
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orchestrator.refresh_all().await.unwrap();
+
+    let ws_tx = connected_ws_sink_for_test().await;
+    let mut args = serde_json::Map::new();
+    args.insert("title".into(), serde_json::json!("orphan"));
+    args.insert("user_job".into(), serde_json::json!("user job here"));
+    args.insert(
+        "observation_falsifier".into(),
+        serde_json::json!("would reject if X"),
+    );
+    args.insert("parent_epic".into(), serde_json::json!(501));
+    let result = handle_create_story(&args, "pm:claude-code", &ws_tx, Some(&orchestrator)).await;
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("not an Epic"));
+    let drained = orchestrator.drain_pending().await.unwrap();
+    assert_eq!(drained, 0, "no events emitted on parent-validation reject");
+}

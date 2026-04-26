@@ -190,7 +190,22 @@ pub(super) async fn handle_create_story(
     // Author-supplied `body` appends below the structured header.
     let author_body = args.get("body").and_then(|v| v.as_str()).unwrap_or("");
     let composed_body = compose_story_body(user_job, observation_falsifier, author_body);
+    let parent_epic = args.get("parent_epic").and_then(|v| v.as_u64());
     if let Some(r) = refresh {
+        if let Some(epic_number) = parent_epic {
+            r.refresh_story(epic_number)
+                .await
+                .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?;
+            let parent = r.story(epic_number).ok_or_else(|| {
+                format!("epic #{epic_number} not found — cannot set as parent at filing")
+            })?;
+            if parent.story_type != crate::board::domain::StoryType::Epic {
+                return Err(format!(
+                    "story #{epic_number} is not an Epic (story_type={:?}); only Epic stories can be parents",
+                    parent.story_type
+                ));
+            }
+        }
         let number = r
             .create_story(title.to_string(), composed_body.clone())
             .await
@@ -202,7 +217,7 @@ pub(super) async fn handle_create_story(
         };
         let story_type = crate::board::domain::story_type_from_labels_or_title(&[], title);
         r.mutate_sync(crate::board::BoardEvent::StoryCreated {
-            meta,
+            meta: meta.clone(),
             number,
             title: title.to_string(),
             body: composed_body,
@@ -210,8 +225,21 @@ pub(super) async fn handle_create_story(
             story_type,
         })
         .map_err(|e| format!("#{number} created but enqueue failed: {e}"))?;
+        if let Some(epic_number) = parent_epic {
+            r.mutate_sync(crate::board::BoardEvent::ParentEpicSet {
+                meta,
+                number,
+                epic_number,
+            })
+            .map_err(|e| format!("#{number} parent_epic enqueue failed: {e}"))?;
+        }
         broadcast_board_invalidate(ws_tx).await;
-        return Ok(format!("story created: #{number} {title}"));
+        return match parent_epic {
+            Some(epic_number) => Ok(format!(
+                "story created: #{number} {title} (under epic #{epic_number})"
+            )),
+            None => Ok(format!("story created: #{number} {title}")),
+        };
     }
     Err(
         "create_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n"

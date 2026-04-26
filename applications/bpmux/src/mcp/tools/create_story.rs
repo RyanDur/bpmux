@@ -26,6 +26,10 @@ pub fn create_story_tool(description: &'static str) -> Tool {
             "observation_falsifier": {
                 "type": "string",
                 "description": "REQUIRED: 'I would reject this story if I observed X.' The falsifier frames acceptance as observation-that-fails rather than mechanism-that-passes. Without it, mechanical-pass + user-story-fail slips through (see 2026-04-22 retro)."
+            },
+            "parent_epic": {
+                "type": "integer",
+                "description": "OPTIONAL: issue number of the Epic this story belongs to. If set, the new story is grouped under that Epic at filing time (no separate set_parent_epic call needed). Parent must exist and be StoryType::Epic; otherwise the create fires with a structured error. Leave unset for standalone stories."
             }
         },
         "required": ["title", "user_job", "observation_falsifier"]
