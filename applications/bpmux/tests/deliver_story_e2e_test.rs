@@ -13,6 +13,7 @@ mod harness;
 use harness::bridge::TestBridge;
 use harness::pty::TestBpmux;
 use harness::story_helpers::create_target_story;
+use std::io::Write;
 use std::time::Duration;
 
 const VERIFIED_OBSERVATION: &str = "Drove the new affordance via real bridge → real handler → real /api/board roundtrip; observed expected falsifier outcome.";
@@ -121,6 +122,44 @@ fn deliver_story_rejects_missing_verified_observation() {
 
         pm.close().await;
         dev.close().await;
+    });
+}
+
+#[test]
+fn deliver_story_view_board_reflects_delivered_state_via_fixture_seed() {
+    let mut fixture = tempfile::NamedTempFile::new().expect("fixture file");
+    fixture
+        .write_all(
+            br#"[{"number":300,"title":"Pre-seeded in-progress","state":"OPEN","labels":[{"name":"in progress"}]}]"#,
+        )
+        .expect("write fixture");
+    let fixture_path = fixture.path().to_str().expect("utf-8 path").to_string();
+
+    let bpmux = TestBpmux::start();
+    let rt = tokio::runtime::Runtime::new().expect("rt");
+    rt.block_on(async {
+        let dev = TestBridge::connect_with_board_fixture(&bpmux, "dev", &fixture_path).await;
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        dev.call_tool(
+            "deliver_story",
+            serde_json::json!({
+                "number": 300,
+                "verified_observation": VERIFIED_OBSERVATION
+            }),
+        )
+        .await
+        .expect("deliver_story should succeed against seeded story");
+
+        let view = dev
+            .call_tool("view_board", serde_json::json!({}))
+            .await
+            .expect("view_board should succeed");
+        let view_text = view.as_str().map(String::from).unwrap_or_else(|| view.to_string());
+        assert!(
+            view_text.contains("#300") && view_text.contains("DELIVERED"),
+            "view_board reflects delivered state for seeded story #300 post-deliver_story; got:\n{view_text}"
+        );
     });
 }
 
