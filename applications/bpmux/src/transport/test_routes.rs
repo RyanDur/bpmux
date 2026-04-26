@@ -1,13 +1,39 @@
 use std::sync::Arc;
 
 use axum::Json;
+use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
+use chrono::Utc;
 use serde::Deserialize;
 
 use crate::board::RefreshDriver;
 use crate::bridge;
 use crate::server::TestRefreshHandle;
+use crate::session::{self, Message, MessageType};
+
+/// Fire BOARD_INVALIDATE_MARKER through the session's broadcast
+/// channel so connected WS clients (the Electron renderer in
+/// Playwright tests) refetch their board state without manual
+/// reload (#490). Mirrors the production path where bridge
+/// subprocess mutations broadcast the marker as a system-typed
+/// chat message; test-routes don't go through the bridge subprocess
+/// (axum-direct path uses an empty WsSink), so this restores the
+/// live-update semantic for Playwright observation-class specs.
+fn fire_board_invalidate(session: &Arc<session::Session>) {
+    let msg = Message {
+        from: "bpmux:test".to_string(),
+        text: crate::bridge::BOARD_INVALIDATE_MARKER.to_string(),
+        ts: Utc::now(),
+        message_type: MessageType::System,
+        ..Default::default()
+    };
+    if let Err(e) = session.broadcast(&msg) {
+        crate::session::diag::log_diag(&format!(
+            "test-route: BOARD_INVALIDATE broadcast failed: {e}"
+        ));
+    }
+}
 
 #[derive(Debug, Deserialize)]
 pub struct CreateStoryReq {
@@ -20,6 +46,7 @@ pub struct CreateStoryReq {
 }
 
 pub async fn post_test_create_story(
+    State(session): State<Arc<session::Session>>,
     axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
     Json(req): Json<CreateStoryReq>,
 ) -> impl IntoResponse {
@@ -53,10 +80,13 @@ pub async fn post_test_create_story(
     let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
     let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;
     match bridge::dispatch_test_create_story(args, &agent, Some(refresh_ref)).await {
-        Ok(message) => (
-            StatusCode::OK,
-            Json(serde_json::json!({ "message": message })),
-        ),
+        Ok(message) => {
+            fire_board_invalidate(&session);
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({ "message": message })),
+            )
+        }
         Err(e) => (
             StatusCode::BAD_REQUEST,
             Json(serde_json::json!({ "error": e })),
@@ -72,6 +102,7 @@ pub struct CommentOnStoryReq {
 }
 
 pub async fn post_test_comment_on_story(
+    State(session): State<Arc<session::Session>>,
     axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
     Json(req): Json<CommentOnStoryReq>,
 ) -> impl IntoResponse {
@@ -92,10 +123,13 @@ pub async fn post_test_comment_on_story(
     let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
     let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;
     match bridge::dispatch_test_comment_on_story(args, &agent, Some(refresh_ref)).await {
-        Ok(message) => (
-            StatusCode::OK,
-            Json(serde_json::json!({ "message": message })),
-        ),
+        Ok(message) => {
+            fire_board_invalidate(&session);
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({ "message": message })),
+            )
+        }
         Err(e) => (
             StatusCode::BAD_REQUEST,
             Json(serde_json::json!({ "error": e })),
@@ -112,6 +146,7 @@ pub struct StartStoryReq {
 }
 
 pub async fn post_test_start_story(
+    State(session): State<Arc<session::Session>>,
     axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
     Json(req): Json<StartStoryReq>,
 ) -> impl IntoResponse {
@@ -139,10 +174,13 @@ pub async fn post_test_start_story(
     let agent = req.agent.unwrap_or_else(|| "dev:test".to_string());
     let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;
     match bridge::dispatch_test_start_story(args, &agent, Some(refresh_ref)).await {
-        Ok(message) => (
-            StatusCode::OK,
-            Json(serde_json::json!({ "message": message })),
-        ),
+        Ok(message) => {
+            fire_board_invalidate(&session);
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({ "message": message })),
+            )
+        }
         Err(e) => (
             StatusCode::BAD_REQUEST,
             Json(serde_json::json!({ "error": e })),
@@ -158,6 +196,7 @@ pub struct FailDeskCheckReq {
 }
 
 pub async fn post_test_fail_desk_check(
+    State(session): State<Arc<session::Session>>,
     axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
     Json(req): Json<FailDeskCheckReq>,
 ) -> impl IntoResponse {
@@ -178,10 +217,13 @@ pub async fn post_test_fail_desk_check(
     let agent = req.agent.unwrap_or_else(|| "designer:test".to_string());
     let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;
     match bridge::dispatch_test_fail_desk_check(args, &agent, Some(refresh_ref)).await {
-        Ok(message) => (
-            StatusCode::OK,
-            Json(serde_json::json!({ "message": message })),
-        ),
+        Ok(message) => {
+            fire_board_invalidate(&session);
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({ "message": message })),
+            )
+        }
         Err(e) => (
             StatusCode::BAD_REQUEST,
             Json(serde_json::json!({ "error": e })),
@@ -196,6 +238,7 @@ pub struct AcceptStoryReq {
 }
 
 pub async fn post_test_accept_story(
+    State(session): State<Arc<session::Session>>,
     axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
     Json(req): Json<AcceptStoryReq>,
 ) -> impl IntoResponse {
@@ -215,10 +258,13 @@ pub async fn post_test_accept_story(
     let agent = req.agent.unwrap_or_else(|| "ryan:test".to_string());
     let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;
     match bridge::dispatch_test_accept_story(args, &agent, Some(refresh_ref)).await {
-        Ok(message) => (
-            StatusCode::OK,
-            Json(serde_json::json!({ "message": message })),
-        ),
+        Ok(message) => {
+            fire_board_invalidate(&session);
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({ "message": message })),
+            )
+        }
         Err(e) => (
             StatusCode::BAD_REQUEST,
             Json(serde_json::json!({ "error": e })),
@@ -234,6 +280,7 @@ pub struct DeliverStoryReq {
 }
 
 pub async fn post_test_deliver_story(
+    State(session): State<Arc<session::Session>>,
     axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
     Json(req): Json<DeliverStoryReq>,
 ) -> impl IntoResponse {
@@ -257,10 +304,13 @@ pub async fn post_test_deliver_story(
     let agent = req.agent.unwrap_or_else(|| "dev:test".to_string());
     let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;
     match bridge::dispatch_test_deliver_story(args, &agent, Some(refresh_ref)).await {
-        Ok(message) => (
-            StatusCode::OK,
-            Json(serde_json::json!({ "message": message })),
-        ),
+        Ok(message) => {
+            fire_board_invalidate(&session);
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({ "message": message })),
+            )
+        }
         Err(e) => (
             StatusCode::BAD_REQUEST,
             Json(serde_json::json!({ "error": e })),
@@ -276,6 +326,7 @@ pub struct CloseStoryReq {
 }
 
 pub async fn post_test_close_story(
+    State(session): State<Arc<session::Session>>,
     axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
     Json(req): Json<CloseStoryReq>,
 ) -> impl IntoResponse {
@@ -296,10 +347,13 @@ pub async fn post_test_close_story(
     let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
     let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;
     match bridge::dispatch_test_close_story(args, &agent, Some(refresh_ref)).await {
-        Ok(message) => (
-            StatusCode::OK,
-            Json(serde_json::json!({ "message": message })),
-        ),
+        Ok(message) => {
+            fire_board_invalidate(&session);
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({ "message": message })),
+            )
+        }
         Err(e) => (
             StatusCode::BAD_REQUEST,
             Json(serde_json::json!({ "error": e })),

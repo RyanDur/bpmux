@@ -30,6 +30,17 @@ use crate::board::{BoardStore, RefreshDriver, SyncOrchestrator};
 use crate::bridge::test_fixtures::issue;
 use crate::bridge::tracker::OctocrabStoryTracker;
 use crate::server::TestRefreshHandle;
+use crate::session::{self, BROADCAST_CHANNEL_CAPACITY};
+
+fn fresh_test_session() -> Arc<session::Session> {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let (wake_tx, _wake_rx) = tokio::sync::broadcast::channel(BROADCAST_CHANNEL_CAPACITY);
+    Arc::new(session::Session::new(
+        dir.keep(),
+        "test:owner".to_string(),
+        wake_tx,
+    ))
+}
 
 async fn fixture_mock_octocrab(server: &MockServer) -> (axum::Router, Arc<dyn RefreshDriver>) {
     let tracker = OctocrabStoryTracker::with_base_url(
@@ -54,6 +65,7 @@ async fn fixture_mock_octocrab(server: &MockServer) -> (axum::Router, Arc<dyn Re
             axum::routing::post(super::test_routes::post_test_create_story),
         )
         .route("/api/board", axum::routing::get(super::rest::get_board))
+        .with_state(fresh_test_session())
         .layer(axum::Extension(test_refresh))
         .layer(axum::Extension(none_tracker));
     (router, orch)
