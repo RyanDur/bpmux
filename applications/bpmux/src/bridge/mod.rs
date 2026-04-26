@@ -109,6 +109,14 @@ pub(crate) async fn dispatch_test_fail_desk_check(
     tools_stories::handle_fail_desk_check(&args, agent_name, &empty_ws, refresh).await
 }
 
+pub(crate) async fn dispatch_test_view_velocity(
+    messages: Vec<crate::session::Message>,
+    refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
+) -> Result<String, String> {
+    let empty_ws: tokio::sync::Mutex<Option<WsSink>> = tokio::sync::Mutex::new(None);
+    tools::handle_view_velocity(|| async move { Ok(messages) }, &empty_ws, refresh).await
+}
+
 #[cfg(test)]
 pub(crate) async fn dispatch_test_view_board(
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
@@ -710,7 +718,12 @@ impl ServerHandler for BridgeServer {
                 "list_ready" => tools::handle_list_ready(&board).await,
                 "view_board" => tools_stories::handle_view_board(&args, refresh.as_ref()).await,
                 "view_velocity" => {
-                    tools::handle_view_velocity(port, &ws_tx, refresh.as_ref()).await
+                    tools::handle_view_velocity(
+                        || tools::fetch_messages_via_http(port),
+                        &ws_tx,
+                        refresh.as_ref(),
+                    )
+                    .await
                 }
                 "create_story" => {
                     let current_name = name.lock().await;

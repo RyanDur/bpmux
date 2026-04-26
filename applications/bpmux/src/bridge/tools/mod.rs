@@ -101,7 +101,7 @@ pub(in crate::bridge) use view_roadmap::handle_view_roadmap;
 pub(in crate::bridge) use view_story_commits::handle_view_story_commits;
 pub(in crate::bridge) use view_story_timeline::handle_view_story_timeline;
 pub(in crate::bridge) use view_tokens::handle_view_tokens;
-pub(in crate::bridge) use view_velocity::handle_view_velocity;
+pub(in crate::bridge) use view_velocity::{fetch_messages_via_http, handle_view_velocity};
 
 // Markers — re-exported so crate::bridge::tools::VIEW_*, etc. paths
 // remain available if any caller relies on them.

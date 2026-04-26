@@ -1,3 +1,5 @@
+use std::future::Future;
+
 use tokio::sync::Mutex;
 
 use super::helpers::{WsSink, ws_send};
@@ -5,6 +7,23 @@ use super::helpers::{WsSink, ws_send};
 /// Marker the bridge emits when an agent calls view_velocity (#210).
 /// Kept in sync with VIEW_VELOCITY_MARKER in terminal/event.rs.
 pub(in crate::bridge) const VIEW_VELOCITY_MARKER: &str = "__BPMUX_VIEW_VELOCITY__";
+
+/// Production messages-fetcher: the existing self-fetch over the
+/// in-process HTTP server's /api/messages endpoint. Tests inject a
+/// closure that bypasses HTTP so handle_view_velocity is reachable
+/// from in-process axum-direct tests.
+pub(in crate::bridge) async fn fetch_messages_via_http(
+    port: u16,
+) -> Result<Vec<crate::session::Message>, String> {
+    let url = format!("http://127.0.0.1:{port}/api/messages?limit=2000");
+    let body = reqwest::get(&url)
+        .await
+        .map_err(|e| format!("failed to fetch: {e}"))?
+        .text()
+        .await
+        .map_err(|e| format!("failed to read response: {e}"))?;
+    serde_json::from_str(&body).map_err(|e| format!("parse messages: {e}: {body}"))
+}
 
 /// `view_velocity` — fetch the recent message log, parse workflow-
 /// signal timestamps, and return velocity metrics as JSON. Counts
@@ -16,23 +35,21 @@ pub(in crate::bridge) const VIEW_VELOCITY_MARKER: &str = "__BPMUX_VIEW_VELOCITY_
 /// panel (#210 — agent-triggered surface). Same two-audience pattern
 /// as view_roadmap: the JSON return is for the calling agent, the
 /// marker side-effect is for Ryan.
-pub(in crate::bridge) async fn handle_view_velocity(
-    port: u16,
+///
+/// `fetch_messages` is the messages-source abstraction (#480): the
+/// production callsite passes `|| fetch_messages_via_http(port)`;
+/// in-process tests pass `|| async move { Ok(mock_messages) }` so
+/// the handler is reachable without spinning up a live HTTP server.
+pub(in crate::bridge) async fn handle_view_velocity<F, Fut>(
+    fetch_messages: F,
     ws_tx: &Mutex<Option<WsSink>>,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
-) -> Result<String, String> {
-    // Fetch a wide window so the 14-day compute has enough rows; no
-    // `?as=` because workflow signals are broadcasts, not topic-
-    // scoped. Limit is generous but bounded to avoid unbounded reads.
-    let url = format!("http://127.0.0.1:{port}/api/messages?limit=2000");
-    let body = reqwest::get(&url)
-        .await
-        .map_err(|e| format!("failed to fetch: {e}"))?
-        .text()
-        .await
-        .map_err(|e| format!("failed to read response: {e}"))?;
-    let messages: Vec<crate::session::Message> =
-        serde_json::from_str(&body).map_err(|e| format!("parse messages: {e}: {body}"))?;
+) -> Result<String, String>
+where
+    F: FnOnce() -> Fut,
+    Fut: Future<Output = Result<Vec<crate::session::Message>, String>>,
+{
+    let messages = fetch_messages().await?;
 
     // Pre-fetch labels for every issue number mentioned in a
     // lifecycle signal so compute can synchronously classify each

@@ -61,6 +61,10 @@ async fn fixture_test_mode_on() -> (axum::Router, Arc<dyn RefreshDriver>, Arc<Bo
             "/api/test/close_story",
             axum::routing::post(super::test_routes::post_test_close_story),
         )
+        .route(
+            "/api/test/view_velocity",
+            axum::routing::post(super::test_routes::post_test_view_velocity),
+        )
         .route("/api/board", axum::routing::get(super::rest::get_board))
         .with_state(fresh_test_session())
         .layer(axum::Extension(test_refresh))
@@ -513,4 +517,94 @@ async fn close_story_roundtrip_api_board_reflects_closed_state() {
         "is_closed=true maps to renderer state=accepted per story_to_board_json"
     );
     assert_eq!(stories[0]["gh_state"].as_str(), Some("closed"));
+}
+
+async fn post_view_velocity(router: axum::Router, body: &str) -> axum::http::Response<Body> {
+    let req = Request::builder()
+        .method("POST")
+        .uri("/api/test/view_velocity")
+        .header("Content-Type", "application/json")
+        .body(Body::from(body.to_string()))
+        .expect("build req");
+    router.oneshot(req).await.expect("response")
+}
+
+#[tokio::test]
+async fn view_velocity_response_correctness_empty_corpus_returns_metrics_shape() {
+    let (router, _refresh, _store) = fixture_test_mode_on().await;
+    let resp = post_view_velocity(router, r#"{"messages":[]}"#).await;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let json = read_json(resp).await;
+    let metrics = &json["metrics"];
+    assert!(metrics.is_object(), "metrics is JSON object; got {metrics}");
+    assert!(metrics.get("delivered_per_day").is_some());
+    assert!(metrics.get("sparse").is_some());
+    assert_eq!(
+        metrics["sparse"].as_bool(),
+        Some(true),
+        "empty corpus is sparse"
+    );
+}
+
+#[tokio::test]
+async fn view_velocity_response_correctness_returns_503_when_test_mode_disabled() {
+    let none_refresh: TestRefreshHandle = None;
+    let router = axum::Router::new()
+        .route(
+            "/api/test/view_velocity",
+            axum::routing::post(super::test_routes::post_test_view_velocity),
+        )
+        .with_state(fresh_test_session())
+        .layer(axum::Extension(none_refresh));
+    let resp = post_view_velocity(router, r#"{"messages":[]}"#).await;
+    assert_eq!(resp.status(), StatusCode::SERVICE_UNAVAILABLE);
+    let json = read_json(resp).await;
+    let err = json["error"].as_str().expect("error string");
+    assert!(
+        err.contains("BPMUX_TEST_MODE"),
+        "503 explains test-mode requirement; got {err}"
+    );
+}
+
+#[tokio::test]
+async fn view_velocity_roundtrip_coherence_lifecycle_corpus_yields_delivered_count() {
+    let (router, _refresh, _store) = fixture_test_mode_on().await;
+    let create = r#"{
+        "title":"[Feature] velocity-target",
+        "user_job":"When testing view_velocity roundtrip, dev needs a delivered feature.",
+        "observation_falsifier":"reject if view_velocity does not see the delivered event"
+    }"#;
+    let resp = post_create_story(router.clone(), create).await;
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let now = chrono::Utc::now();
+    let started_ts = now - chrono::Duration::hours(2);
+    let delivered_ts = now - chrono::Duration::hours(1);
+    let corpus = serde_json::json!({
+        "messages": [
+            {
+                "from": "dev:test",
+                "text": "#1 started by dev",
+                "ts": started_ts.to_rfc3339(),
+                "message_type": "chat"
+            },
+            {
+                "from": "dev:test",
+                "text": "#1 delivered: verified observation",
+                "ts": delivered_ts.to_rfc3339(),
+                "message_type": "chat"
+            }
+        ]
+    });
+    let resp = post_view_velocity(router, &corpus.to_string()).await;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let json = read_json(resp).await;
+    let metrics = &json["metrics"];
+    let dpd = metrics["delivered_per_day"]
+        .as_f64()
+        .expect("delivered_per_day numeric");
+    assert!(
+        dpd > 0.0,
+        "delivered lifecycle event yields non-zero delivered_per_day; got {dpd}"
+    );
 }

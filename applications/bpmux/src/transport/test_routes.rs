@@ -360,3 +360,37 @@ pub async fn post_test_close_story(
         ),
     }
 }
+
+#[derive(Debug, Deserialize)]
+pub struct ViewVelocityReq {
+    pub messages: Vec<Message>,
+}
+
+pub async fn post_test_view_velocity(
+    axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
+    Json(req): Json<ViewVelocityReq>,
+) -> impl IntoResponse {
+    let Some(refresh) = refresh else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(serde_json::json!({
+                "error": "BPMUX_TEST_MODE not enabled — test routes inactive"
+            })),
+        );
+    };
+    let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;
+    match bridge::dispatch_test_view_velocity(req.messages, Some(refresh_ref)).await {
+        Ok(metrics_json) => {
+            let parsed: serde_json::Value = serde_json::from_str(&metrics_json)
+                .unwrap_or(serde_json::Value::String(metrics_json));
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({ "metrics": parsed })),
+            )
+        }
+        Err(e) => (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "error": e })),
+        ),
+    }
+}
