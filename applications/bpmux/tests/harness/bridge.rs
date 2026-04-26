@@ -71,9 +71,13 @@ impl TestBridge {
         name: &str,
         mock_gh_base_url: &str,
     ) -> Self {
+        // Fast poll so cross-bridge mutation propagation lands within
+        // the test's tolerable wait window (~2s instead of the
+        // production default 60s).
         let env: &[(&str, &str)] = &[
             ("BPMUX_GH_BASE_URL", mock_gh_base_url),
             ("BPMUX_REPO", "acme/bpmux"),
+            ("BPMUX_POLL_INTERVAL_SECS", "1"),
         ];
         Self::connect_inner(bpmux, name, env, None, TrackerMode::RealAgainstMockGh).await
     }
