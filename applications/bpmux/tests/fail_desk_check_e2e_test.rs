@@ -12,6 +12,7 @@ mod harness;
 use harness::bridge::TestBridge;
 use harness::pty::TestBpmux;
 use harness::story_helpers::create_target_story;
+use std::io::Write;
 use std::time::Duration;
 
 #[test]
@@ -124,6 +125,45 @@ fn fail_desk_check_rejects_missing_reason() {
 
         pm.close().await;
         designer.close().await;
+    });
+}
+
+#[test]
+fn fail_desk_check_view_board_reflects_needs_fixes_via_fixture_seed() {
+    let mut fixture = tempfile::NamedTempFile::new().expect("fixture file");
+    fixture
+        .write_all(
+            br#"[{"number":400,"title":"Pre-seeded delivered","state":"OPEN","labels":[{"name":"delivered"}]}]"#,
+        )
+        .expect("write fixture");
+    let fixture_path = fixture.path().to_str().expect("utf-8 path").to_string();
+
+    let bpmux = TestBpmux::start();
+    let rt = tokio::runtime::Runtime::new().expect("rt");
+    rt.block_on(async {
+        let designer = TestBridge::connect_with_board_fixture(&bpmux, "designer", &fixture_path).await;
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        designer
+            .call_tool(
+                "fail_desk_check",
+                serde_json::json!({
+                    "number": 400,
+                    "reason": "test rework needed"
+                }),
+            )
+            .await
+            .expect("fail_desk_check should succeed against seeded story");
+
+        let view = designer
+            .call_tool("view_board", serde_json::json!({}))
+            .await
+            .expect("view_board should succeed");
+        let view_text = view.as_str().map(String::from).unwrap_or_else(|| view.to_string());
+        assert!(
+            view_text.contains("#400") && view_text.contains("NEEDS FIXES"),
+            "view_board reflects needs-fixes state for seeded story #400 post-fail_desk_check; got:\n{view_text}"
+        );
     });
 }
 
