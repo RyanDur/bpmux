@@ -127,6 +127,12 @@ async fn read_json(resp: axum::http::Response<Body>) -> Value {
     serde_json::from_slice(&bytes).expect("json")
 }
 
+fn issue_with_body(number: u64, title: &str, body: &str) -> Value {
+    let mut v = issue(number, title, "open", vec![]);
+    v["body"] = Value::String(body.to_string());
+    v
+}
+
 #[tokio::test]
 async fn roundtrip_coherence_create_story_through_real_github_decode_path() {
     let server = MockServer::start();
@@ -185,4 +191,72 @@ async fn roundtrip_coherence_create_story_through_real_github_decode_path() {
     );
     assert_eq!(stories[0]["state"].as_str(), Some("icebox"));
     assert_eq!(stories[0]["gh_state"].as_str(), Some("open"));
+}
+
+#[tokio::test]
+async fn roundtrip_coherence_user_job_and_falsifier_preserved_through_real_github_decode_path() {
+    let server = MockServer::start();
+
+    let composed_body =
+        "## User job\n\nUSER_JOB_MARKER_43\n\n## Observation falsifier\n\nFALSIFIER_MARKER_43\n";
+
+    let list_mock = server.mock(|when, then| {
+        when.method(Method::GET).path("/repos/acme/bpmux/issues");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(Value::Array(vec![]).to_string());
+    });
+
+    let create_mock = server.mock(|when, then| {
+        when.method(Method::POST)
+            .path("/repos/acme/bpmux/issues")
+            .body_includes("USER_JOB_MARKER_43")
+            .body_includes("FALSIFIER_MARKER_43");
+        then.status(201)
+            .header("content-type", "application/json")
+            .body(
+                issue_with_body(43, "[Feature] body-preservation-marker", composed_body)
+                    .to_string(),
+            );
+    });
+
+    let get_story_mock = server.mock(|when, then| {
+        when.method(Method::GET).path("/repos/acme/bpmux/issues/43");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                issue_with_body(43, "[Feature] body-preservation-marker", composed_body)
+                    .to_string(),
+            );
+    });
+
+    let (router, refresh) = fixture_mock_octocrab(&server).await;
+
+    let body = r#"{
+        "title":"[Feature] body-preservation-marker",
+        "user_job":"USER_JOB_MARKER_43",
+        "observation_falsifier":"FALSIFIER_MARKER_43"
+    }"#;
+    let req = Request::builder()
+        .method("POST")
+        .uri("/api/test/create_story")
+        .header("Content-Type", "application/json")
+        .body(Body::from(body.to_string()))
+        .expect("build req");
+    let resp = router.oneshot(req).await.expect("response");
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    list_mock.assert();
+    create_mock.assert();
+
+    let stored_body = refresh.fetch_body(43).await.expect("fetch_body");
+    get_story_mock.assert();
+    assert!(
+        stored_body.contains("USER_JOB_MARKER_43"),
+        "user_job preserved verbatim through real github.rs decode path; got:\n{stored_body}"
+    );
+    assert!(
+        stored_body.contains("FALSIFIER_MARKER_43"),
+        "observation_falsifier preserved verbatim through real github.rs decode path; got:\n{stored_body}"
+    );
 }
