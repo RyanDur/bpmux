@@ -55,11 +55,29 @@ pub(crate) async fn dispatch_test_create_story(
     tools_stories::handle_create_story(&args, agent_name, &empty_ws, refresh).await
 }
 
+pub(crate) async fn dispatch_test_comment_on_story(
+    args: serde_json::Map<String, serde_json::Value>,
+    agent_name: &str,
+    refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
+) -> Result<String, String> {
+    let empty_ws: tokio::sync::Mutex<Option<WsSink>> = tokio::sync::Mutex::new(None);
+    tools_stories::handle_comment_on_story(&args, agent_name, &empty_ws, refresh).await
+}
+
 #[cfg(test)]
 pub(crate) async fn dispatch_test_view_board(
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     tools_stories::handle_view_board(&serde_json::Map::new(), refresh).await
+}
+
+#[cfg(test)]
+pub(crate) async fn dispatch_test_view_comments(
+    args: serde_json::Map<String, serde_json::Value>,
+    board: Option<&Arc<crate::board::BoardStore>>,
+    refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
+) -> Result<String, String> {
+    tools::handle_view_comments(&args, board, refresh).await
 }
 
 #[derive(Clone)]

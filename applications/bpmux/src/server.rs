@@ -161,10 +161,15 @@ pub async fn run_server(
         ));
 
     let test_routes = if test_refresh.is_some() {
-        axum::Router::new().route(
-            "/api/test/create_story",
-            axum::routing::post(transport::test_routes::post_test_create_story),
-        )
+        axum::Router::new()
+            .route(
+                "/api/test/create_story",
+                axum::routing::post(transport::test_routes::post_test_create_story),
+            )
+            .route(
+                "/api/test/comment_on_story",
+                axum::routing::post(transport::test_routes::post_test_comment_on_story),
+            )
     } else {
         axum::Router::new()
     };

@@ -26,10 +26,10 @@ use crate::board::{BoardStore, RefreshDriver, SyncOrchestrator};
 use crate::bridge;
 use crate::server::TestRefreshHandle;
 
-async fn fixture_test_mode_on() -> (axum::Router, Arc<dyn RefreshDriver>) {
+async fn fixture_test_mode_on() -> (axum::Router, Arc<dyn RefreshDriver>, Arc<BoardStore>) {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orch_concrete = SyncOrchestrator::new(store, adapter);
+    let orch_concrete = SyncOrchestrator::new(store.clone(), adapter);
     orch_concrete
         .ingest_once()
         .await
@@ -42,10 +42,14 @@ async fn fixture_test_mode_on() -> (axum::Router, Arc<dyn RefreshDriver>) {
             "/api/test/create_story",
             axum::routing::post(super::test_routes::post_test_create_story),
         )
+        .route(
+            "/api/test/comment_on_story",
+            axum::routing::post(super::test_routes::post_test_comment_on_story),
+        )
         .route("/api/board", axum::routing::get(super::rest::get_board))
         .layer(axum::Extension(test_refresh))
         .layer(axum::Extension(none_tracker));
-    (router, orch)
+    (router, orch, store)
 }
 
 fn fixture_test_mode_off() -> axum::Router {
@@ -77,7 +81,7 @@ async fn read_json(resp: axum::http::Response<Body>) -> Value {
 
 #[tokio::test]
 async fn response_correctness_happy_path_returns_message_with_assigned_number() {
-    let (router, _refresh) = fixture_test_mode_on().await;
+    let (router, _refresh, _store) = fixture_test_mode_on().await;
     let body = r#"{
         "title":"[Feature] response-correctness-happy",
         "user_job":"When testing, dev needs response-shape verification.",
@@ -99,7 +103,7 @@ async fn response_correctness_happy_path_returns_message_with_assigned_number() 
 
 #[tokio::test]
 async fn response_correctness_rejects_empty_observation_falsifier() {
-    let (router, _refresh) = fixture_test_mode_on().await;
+    let (router, _refresh, _store) = fixture_test_mode_on().await;
     let body = r#"{
         "title":"[Feature] x",
         "user_job":"When testing, ...",
@@ -117,7 +121,7 @@ async fn response_correctness_rejects_empty_observation_falsifier() {
 
 #[tokio::test]
 async fn response_correctness_rejects_empty_user_job() {
-    let (router, _refresh) = fixture_test_mode_on().await;
+    let (router, _refresh, _store) = fixture_test_mode_on().await;
     let body = r#"{
         "title":"[Feature] x",
         "user_job":"",
@@ -153,7 +157,7 @@ async fn response_correctness_returns_503_when_test_mode_disabled() {
 
 #[tokio::test]
 async fn roundtrip_coherence_view_board_reflects_new_story() {
-    let (router, refresh) = fixture_test_mode_on().await;
+    let (router, refresh, _store) = fixture_test_mode_on().await;
     let body = r#"{
         "title":"[Feature] roundtrip-marker-A",
         "user_job":"When testing, dev needs roundtrip verification.",
@@ -177,7 +181,7 @@ async fn roundtrip_coherence_view_board_reflects_new_story() {
 
 #[tokio::test]
 async fn roundtrip_coherence_user_job_and_falsifier_preserved_in_body() {
-    let (router, refresh) = fixture_test_mode_on().await;
+    let (router, refresh, _store) = fixture_test_mode_on().await;
     let body = r#"{
         "title":"[Feature] roundtrip-body-marker",
         "user_job":"USER_JOB_MARKER_42",
@@ -205,7 +209,7 @@ async fn roundtrip_coherence_user_job_and_falsifier_preserved_in_body() {
 
 #[tokio::test]
 async fn roundtrip_coherence_api_board_reflects_new_story_in_test_mode() {
-    let (router, _refresh) = fixture_test_mode_on().await;
+    let (router, _refresh, _store) = fixture_test_mode_on().await;
     let body = r#"{
         "title":"[Feature] http-roundtrip-marker",
         "user_job":"When testing, dev needs HTTP /api/board to reflect mutations in test mode.",
@@ -237,7 +241,7 @@ async fn roundtrip_coherence_api_board_reflects_new_story_in_test_mode() {
 
 #[tokio::test]
 async fn roundtrip_coherence_rejects_parent_epic_referencing_non_epic() {
-    let (router, refresh) = fixture_test_mode_on().await;
+    let (router, refresh, _store) = fixture_test_mode_on().await;
     let feature = r#"{
         "title":"[Feature] not-an-epic",
         "user_job":"When testing, dev needs negative-path coverage.",
@@ -268,5 +272,111 @@ async fn roundtrip_coherence_rejects_parent_epic_referencing_non_epic() {
         refresh.all_stories().len(),
         1,
         "rejected request did not create a child"
+    );
+}
+
+async fn post_comment_on_story(router: axum::Router, body: &str) -> axum::http::Response<Body> {
+    let req = Request::builder()
+        .method("POST")
+        .uri("/api/test/comment_on_story")
+        .header("Content-Type", "application/json")
+        .body(Body::from(body.to_string()))
+        .expect("build req");
+    router.oneshot(req).await.expect("response")
+}
+
+#[tokio::test]
+async fn comment_on_story_response_correctness_happy_path_returns_message() {
+    let (router, refresh, _store) = fixture_test_mode_on().await;
+    let create = r#"{
+        "title":"[Feature] comment-target",
+        "user_job":"When testing comment_on_story, dev needs a target story.",
+        "observation_falsifier":"reject if comment-on-non-existent-story silently succeeds"
+    }"#;
+    let resp = post_create_story(router.clone(), create).await;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let target_number = refresh.all_stories()[0].number;
+
+    let comment = format!(
+        r#"{{
+            "number":{target_number},
+            "body":"first comment marker"
+        }}"#
+    );
+    let resp = post_comment_on_story(router, &comment).await;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let json = read_json(resp).await;
+    let msg = json["message"].as_str().expect("message string");
+    assert!(
+        msg.contains(&format!("#{target_number}")),
+        "message names target story number; got {msg}"
+    );
+    assert!(
+        msg.contains("commented"),
+        "happy-path message names the commented affordance; got {msg}"
+    );
+}
+
+#[tokio::test]
+async fn comment_on_story_response_correctness_rejects_empty_body() {
+    let (router, refresh, _store) = fixture_test_mode_on().await;
+    let create = r#"{
+        "title":"[Feature] comment-target",
+        "user_job":"When testing empty-body validation, dev needs a target story.",
+        "observation_falsifier":"reject if empty-body comment is silently accepted"
+    }"#;
+    let resp = post_create_story(router.clone(), create).await;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let target_number = refresh.all_stories()[0].number;
+
+    let comment = format!(
+        r#"{{
+            "number":{target_number},
+            "body":""
+        }}"#
+    );
+    let resp = post_comment_on_story(router, &comment).await;
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    let json = read_json(resp).await;
+    let err = json["error"].as_str().expect("error string");
+    assert!(
+        err.contains("body"),
+        "rejection names the missing field; got {err}"
+    );
+}
+
+#[tokio::test]
+async fn comment_on_story_roundtrip_view_comments_reflects_new_comment() {
+    let (router, refresh, store) = fixture_test_mode_on().await;
+    let create = r#"{
+        "title":"[Feature] comment-roundtrip",
+        "user_job":"When testing comment roundtrip, dev needs a target story.",
+        "observation_falsifier":"reject if view_comments doesn't reflect appended comment"
+    }"#;
+    let resp = post_create_story(router.clone(), create).await;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let target_number = refresh.all_stories()[0].number;
+
+    let marker = "ROUNDTRIP_MARKER_C1";
+    let comment = format!(
+        r#"{{
+            "number":{target_number},
+            "body":"{marker}"
+        }}"#
+    );
+    let resp = post_comment_on_story(router, &comment).await;
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let mut args = serde_json::Map::new();
+    args.insert(
+        "number".to_string(),
+        serde_json::Value::Number(target_number.into()),
+    );
+    let view = bridge::dispatch_test_view_comments(args, Some(&store), Some(&refresh))
+        .await
+        .expect("view_comments returns Ok");
+    assert!(
+        view.contains(marker),
+        "view_comments output reflects new comment; got:\n{view}"
     );
 }
