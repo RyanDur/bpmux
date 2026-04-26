@@ -24,6 +24,9 @@ pub(crate) mod tools;
 mod tools_stories;
 pub(crate) mod tracker;
 
+#[cfg(test)]
+pub(crate) mod test_fixtures;
+
 /// Public re-export so the transport layer can fire the same board-
 /// invalidate marker that MCP bridge tools use (#313). Keeping one
 /// constant means the TUI event handler stays a single branch — no
