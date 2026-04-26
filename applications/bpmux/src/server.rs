@@ -174,6 +174,10 @@ pub async fn run_server(
                 "/api/test/close_story",
                 axum::routing::post(transport::test_routes::post_test_close_story),
             )
+            .route(
+                "/api/test/deliver_story",
+                axum::routing::post(transport::test_routes::post_test_deliver_story),
+            )
     } else {
         axum::Router::new()
     };
