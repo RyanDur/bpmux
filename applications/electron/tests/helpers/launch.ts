@@ -72,7 +72,22 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
       ...(opts.extraEnv ?? {})
     }
   })
+  await waitForHealthz(backendPort)
   return { app, sessionBase, userDataDir, backendPort }
+}
+
+const waitForHealthz = async (port: number): Promise<void> => {
+  const deadline = Date.now() + 15_000
+  while (Date.now() < deadline) {
+    try {
+      const res = await fetch(`http://127.0.0.1:${port}/healthz`)
+      if (res.ok) return
+    } catch {
+      // backend not yet listening — retry
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100))
+  }
+  throw new Error(`backend on port ${port} did not become healthy within 15s`)
 }
 
 export const launchIsolatedWithWindow = async (
