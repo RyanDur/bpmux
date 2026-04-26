@@ -29,7 +29,7 @@ pub struct Message {
     pub from: String,
     pub text: String,
     pub ts: DateTime<Utc>,
-    #[serde(default, skip_serializing_if = "MessageType::is_chat")]
+    #[serde(default, skip_serializing_if = "MessageType::is_default_chat")]
     pub message_type: MessageType,
 
     /// **Privacy filter** — recipients who can see this message. `None` or
@@ -141,6 +141,16 @@ fn is_false(b: &bool) -> bool {
 impl MessageType {
     pub fn is_chat(&self) -> bool {
         matches!(self, MessageType::Chat | MessageType::Insight)
+    }
+
+    /// Skip-serialization predicate for the wire `message_type` field.
+    /// Only the actual default (Chat) is omitted; Insight / Activity /
+    /// System / Nudge round-trip explicitly so the renderer can
+    /// distinguish them at the message-class layer (#492 — without
+    /// this, Insight messages reached the renderer with no type
+    /// discriminator and rendered as Chat with no class-glyph).
+    fn is_default_chat(&self) -> bool {
+        matches!(self, MessageType::Chat)
     }
 
     pub fn is_insight(&self) -> bool {
