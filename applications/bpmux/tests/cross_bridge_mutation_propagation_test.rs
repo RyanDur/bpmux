@@ -10,9 +10,13 @@
 //! observers. Per-bridge background ingest poll (1s in test mode
 //! per `connect_with_mock_gh`) drives convergence.
 //!
-//! First spec: external state mutated mid-session → both bridges
-//! observe via their next poll. Subsequent specs (deferred) extend
-//! to bridge-A-mutation → bridge-B-observation roundtrips.
+//! Two specs:
+//!   1. external state mutated mid-session → both bridges observe
+//!      via their next poll
+//!   2. bridge-A-mutation → bridge-B-observation roundtrip — bridge A
+//!      creates a story via MCP create_story; the test process keeps
+//!      MockServer's GET in sync; bridge B's poll observes the new
+//!      story without ever hitting bridge A directly
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
@@ -139,6 +143,139 @@ fn external_state_change_propagates_to_two_bridges_via_shared_mock_gh() {
             after_b_text.contains("#999")
                 && after_b_text.contains("cross-bridge-shared-state-marker"),
             "bridge B poll picked up the same externally-added story (cross-bridge convergence); got:\n{after_b_text}"
+        );
+
+        bridge_a.close().await;
+        bridge_b.close().await;
+    });
+}
+
+fn issue_json(number: u64, title: &str) -> Value {
+    serde_json::json!({
+        "id": number,
+        "node_id": "MDU6SXNzdWUx",
+        "url": format!("https://example.test/issues/{number}"),
+        "repository_url": "https://example.test/repo",
+        "labels_url": format!("https://example.test/issues/{number}/labels{{/name}}"),
+        "comments_url": format!("https://example.test/issues/{number}/comments"),
+        "events_url": format!("https://example.test/issues/{number}/events"),
+        "html_url": format!("https://example.test/web/{number}"),
+        "number": number,
+        "state": "open",
+        "state_reason": null,
+        "title": title,
+        "body": null,
+        "user": {
+            "login": "actor",
+            "id": 1,
+            "node_id": "MDQ6VXNlcjE=",
+            "avatar_url": "https://example.test/avatar.png",
+            "gravatar_id": "",
+            "url": "https://example.test/users/actor",
+            "html_url": "https://example.test/actor",
+            "followers_url": "https://example.test/actor/followers",
+            "following_url": "https://example.test/actor/following{/other_user}",
+            "gists_url": "https://example.test/actor/gists{/gist_id}",
+            "starred_url": "https://example.test/actor/starred{/owner}{/repo}",
+            "subscriptions_url": "https://example.test/actor/subscriptions",
+            "organizations_url": "https://example.test/actor/orgs",
+            "repos_url": "https://example.test/actor/repos",
+            "events_url": "https://example.test/actor/events{/privacy}",
+            "received_events_url": "https://example.test/actor/received_events",
+            "type": "User",
+            "site_admin": false
+        },
+        "labels": [],
+        "assignees": [],
+        "author_association": "OWNER",
+        "comments": 0,
+        "created_at": "2026-04-26T19:30:00Z",
+        "updated_at": "2026-04-26T19:30:00Z",
+        "closed_at": null,
+        "milestone": null,
+        "pull_request": null,
+        "active_lock_reason": null,
+        "locked": false
+    })
+}
+
+#[test]
+fn bridge_a_create_story_propagates_to_bridge_b_via_shared_mock_gh() {
+    let server = MockServer::start();
+    let base_url = format!("{}/", server.base_url());
+
+    let mut empty_list_mock = server.mock(|when, then| {
+        when.method(Method::GET).path("/repos/acme/bpmux/issues");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(Value::Array(vec![]).to_string());
+    });
+
+    let bridge_a_create_marker = "CROSS_BRIDGE_CREATE_MARKER_BRA";
+    let create_mock = server.mock(|when, then| {
+        when.method(Method::POST).path("/repos/acme/bpmux/issues");
+        then.status(201)
+            .header("content-type", "application/json")
+            .body(issue_json(1, &format!("[Feature] {bridge_a_create_marker}")).to_string());
+    });
+
+    let bpmux = TestBpmux::start();
+    let rt = tokio::runtime::Runtime::new().expect("rt");
+    rt.block_on(async {
+        let bridge_a = TestBridge::connect_with_mock_gh(&bpmux, "pm", &base_url).await;
+        let bridge_b = TestBridge::connect_with_mock_gh(&bpmux, "dev", &base_url).await;
+
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        let create_result = bridge_a
+            .call_tool(
+                "create_story",
+                serde_json::json!({
+                    "title": format!("[Feature] {bridge_a_create_marker}"),
+                    "user_job": "When pm files via bridge A, dev's bridge B should observe the new story through the shared mock-GitHub on next poll.",
+                    "observation_falsifier": "reject if bridge B does not observe the story bridge A created within the poll window"
+                }),
+            )
+            .await
+            .expect("bridge A create_story succeeds against the shared mock");
+
+        let create_text = create_result
+            .as_str()
+            .map(String::from)
+            .unwrap_or_else(|| create_result.to_string());
+        assert!(
+            create_text.contains("#1") || create_text.contains("created"),
+            "bridge A create_story returned the new-story ack; got `{create_text}`"
+        );
+        create_mock.assert();
+
+        empty_list_mock.delete();
+        server.mock(|when, then| {
+            when.method(Method::GET).path("/repos/acme/bpmux/issues");
+            then.status(200)
+                .header("content-type", "application/json")
+                .body(
+                    Value::Array(vec![issue_json(
+                        1,
+                        &format!("[Feature] {bridge_a_create_marker}"),
+                    )])
+                    .to_string(),
+                );
+        });
+
+        tokio::time::sleep(Duration::from_millis(2500)).await;
+
+        let bridge_b_view = bridge_b
+            .call_tool("view_board", serde_json::json!({}))
+            .await
+            .expect("bridge B view_board succeeds post-poll");
+        let bridge_b_text = bridge_b_view
+            .as_str()
+            .map(String::from)
+            .unwrap_or_else(|| bridge_b_view.to_string());
+        assert!(
+            bridge_b_text.contains("#1") && bridge_b_text.contains(bridge_a_create_marker),
+            "bridge B observes bridge A's created story through the shared mock GH; got:\n{bridge_b_text}"
         );
 
         bridge_a.close().await;
