@@ -157,21 +157,36 @@ export function useWebSocket(
       //   The activity seed is small (50 events covers each role's
       //   latest state with wide margin) and activity events are
       //   single-word payloads, so the extra RTT is negligible.
+      // Retry with backoff so the renderer tolerates a brief cold-
+      // start window where the bpmux backend isn't yet listening
+      // (Electron + bpmux backend launch in parallel; backend bind
+      // can lag the renderer's first fetch by a few hundred ms).
+      // Mirrors fetchBoard's retry pattern. Only the FINAL failure
+      // logs to console.error so transient warmup blips don't
+      // pollute the dev/test signal.
+      const fetchHistoryWithRetry = async (url: string): Promise<HistoryMessage[]> => {
+        const delays = [0, 200, 500]
+        let lastErr: unknown = null
+        for (const delay of delays) {
+          if (controller.signal.aborted) throw new Error('aborted')
+          if (delay > 0) {
+            await new Promise<void>((resolve) => setTimeout(resolve, delay))
+            if (controller.signal.aborted) throw new Error('aborted')
+          }
+          try {
+            const res = await fetch(url, { headers, signal: controller.signal })
+            if (!res.ok) throw new Error(`history fetch: ${res.status}`)
+            return (await res.json()) as HistoryMessage[]
+          } catch (err) {
+            if ((err as { name?: string })?.name === 'AbortError') throw err
+            lastErr = err
+          }
+        }
+        throw lastErr instanceof Error ? lastErr : new Error(String(lastErr))
+      }
       Promise.all([
-        fetch(`${apiBase}/api/messages?chat_only=true&limit=200`, {
-          headers,
-          signal: controller.signal
-        }).then(async (res) => {
-          if (!res.ok) throw new Error(`chat history fetch: ${res.status}`)
-          return (await res.json()) as HistoryMessage[]
-        }),
-        fetch(`${apiBase}/api/messages?message_type=activity&limit=50`, {
-          headers,
-          signal: controller.signal
-        }).then(async (res) => {
-          if (!res.ok) throw new Error(`activity history fetch: ${res.status}`)
-          return (await res.json()) as HistoryMessage[]
-        })
+        fetchHistoryWithRetry(`${apiBase}/api/messages?chat_only=true&limit=200`),
+        fetchHistoryWithRetry(`${apiBase}/api/messages?message_type=activity&limit=50`)
       ])
         .then(([chat, activity]) => {
           if (unmountedRef.current) return
