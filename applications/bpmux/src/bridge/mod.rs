@@ -82,6 +82,15 @@ pub(crate) async fn dispatch_test_deliver_story(
     tools_stories::handle_deliver_story(&args, agent_name, &empty_ws, refresh).await
 }
 
+pub(crate) async fn dispatch_test_start_story(
+    args: serde_json::Map<String, serde_json::Value>,
+    agent_name: &str,
+    refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
+) -> Result<String, String> {
+    let empty_ws: tokio::sync::Mutex<Option<WsSink>> = tokio::sync::Mutex::new(None);
+    tools_stories::handle_start_story(&args, agent_name, &empty_ws, refresh).await
+}
+
 #[cfg(test)]
 pub(crate) async fn dispatch_test_view_board(
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
