@@ -151,6 +151,45 @@ pub async fn post_test_start_story(
 }
 
 #[derive(Debug, Deserialize)]
+pub struct FailDeskCheckReq {
+    pub number: u64,
+    pub reason: String,
+    pub agent: Option<String>,
+}
+
+pub async fn post_test_fail_desk_check(
+    axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
+    Json(req): Json<FailDeskCheckReq>,
+) -> impl IntoResponse {
+    let Some(refresh) = refresh else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(serde_json::json!({
+                "error": "BPMUX_TEST_MODE not enabled — test routes inactive"
+            })),
+        );
+    };
+    let mut args = serde_json::Map::new();
+    args.insert(
+        "number".to_string(),
+        serde_json::Value::Number(req.number.into()),
+    );
+    args.insert("reason".to_string(), serde_json::Value::String(req.reason));
+    let agent = req.agent.unwrap_or_else(|| "designer:test".to_string());
+    let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;
+    match bridge::dispatch_test_fail_desk_check(args, &agent, Some(refresh_ref)).await {
+        Ok(message) => (
+            StatusCode::OK,
+            Json(serde_json::json!({ "message": message })),
+        ),
+        Err(e) => (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "error": e })),
+        ),
+    }
+}
+
+#[derive(Debug, Deserialize)]
 pub struct AcceptStoryReq {
     pub number: u64,
     pub agent: Option<String>,

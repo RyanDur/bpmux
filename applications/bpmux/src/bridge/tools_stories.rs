@@ -805,8 +805,10 @@ pub(super) async fn handle_pass_desk_check(
 }
 
 /// Fail desk-check — designer only. Signals dev that the story needs
-/// fixes (applies the `needs fixes` label). Same Err-vs-Ok split as
-/// pass_desk_check: Err on signal send failure, Ok with gh status.
+/// fixes (applies the `needs fixes` label). Signal-send failure is
+/// fail-soft per the start_story / accept_story / deliver_story
+/// precedent — state-transition mutate_sync is load-bearing, signal
+/// is auxiliary.
 pub(super) async fn handle_fail_desk_check(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
@@ -829,9 +831,9 @@ pub(super) async fn handle_fail_desk_check(
         .ok_or("missing 'reason' argument")?;
     let signal = serde_json::to_string(&build_fail_desk_check_signal(number, reason))
         .map_err(|e| format!("signal: {e}"))?;
-    ws_send(ws_tx, signal)
-        .await
-        .map_err(|e| format!("#{number} signal send failed: {e}"))?;
+    if let Err(e) = ws_send(ws_tx, signal).await {
+        crate::session::diag::log_diag(&format!("bridge: signal send failed: {e}"));
+    }
     if let Some(r) = refresh {
         let meta = crate::board::events::EventMeta {
             actor: crate::transport::ws::short_name(agent_name).to_string(),
