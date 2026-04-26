@@ -7,19 +7,16 @@
 //! external: no}. This test covers ONLY agent-side; human-side
 //! follows per applicable-class backfill.
 //!
-//! **Deferred falsifier — multi-comment chronological ordering**:
-//! `handle_comment_on_story` calls `refresh_story` BEFORE `mutate_sync`.
-//! `refresh_story` calls `store.seed_all` which REPLACES the story in
-//! BoardStore with the adapter's version. Adapter
-//! (InMemorySourceAdapter via `--fake-tracker`) doesn't store
-//! comments, so each refresh wipes prior `free_comments`. Multi-comment
-//! tests against `--fake-tracker` only see the most-recent comment.
-//! In production with real GitHubSourceAdapter, comments persist on GH
-//! and `view_comments` fetches them via `fetch_free_comments` — the
-//! chronological-ordering falsifier fires correctly there. Substrate
-//! options (refresh-preserve-comments / no-refresh-before-comment /
-//! MockOctocrab-mode) deferred per
-//! `feedback_yagni_with_premise_discipline`.
+//! Multi-comment chronological-ordering falsifier remains deferred:
+//! #485 closed the comment-persistence-asymmetry (adapter now stores
+//! comments + populates them in fetch_story_metadata). But there's a
+//! second substrate-race: `push_event` (which writes to adapter)
+//! fires async via `drain_pending` background task; rapid back-to-back
+//! comment_on_story calls may refresh from the adapter BEFORE drain
+//! has propagated the prior comment. Closing the multi-comment-
+//! ordering falsifier requires either synchronous-push-on-mutate OR
+//! mutate-before-refresh in handle_comment_on_story OR a test-only
+//! force-drain primitive. Tracked for follow-up substrate-Chore.
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
