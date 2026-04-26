@@ -14,31 +14,8 @@ mod harness;
 
 use harness::bridge::TestBridge;
 use harness::pty::TestBpmux;
+use harness::story_helpers::create_target_story;
 use std::time::Duration;
-
-fn extract_story_number(create_msg: &str) -> u64 {
-    let tail = &create_msg[create_msg.find('#').expect("create message names #N") + 1..];
-    let end = tail
-        .find(|c: char| !c.is_ascii_digit())
-        .unwrap_or(tail.len());
-    tail[..end].parse().expect("parse story number")
-}
-
-async fn create_target_story(pm: &TestBridge, title: &str, falsifier: &str) -> u64 {
-    let create = pm
-        .call_tool(
-            "create_story",
-            serde_json::json!({
-                "title": title,
-                "user_job": "When testing comment_on_story E2E, dev needs a target story.",
-                "observation_falsifier": falsifier
-            }),
-        )
-        .await
-        .expect("create_story should succeed");
-    let create_msg = create.as_str().unwrap_or("").to_string();
-    extract_story_number(&create_msg)
-}
 
 #[test]
 fn comment_on_story_returns_message_naming_target() {
