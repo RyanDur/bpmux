@@ -46,6 +46,10 @@ async fn fixture_test_mode_on() -> (axum::Router, Arc<dyn RefreshDriver>, Arc<Bo
             "/api/test/comment_on_story",
             axum::routing::post(super::test_routes::post_test_comment_on_story),
         )
+        .route(
+            "/api/test/close_story",
+            axum::routing::post(super::test_routes::post_test_close_story),
+        )
         .route("/api/board", axum::routing::get(super::rest::get_board))
         .layer(axum::Extension(test_refresh))
         .layer(axum::Extension(none_tracker));
@@ -379,4 +383,121 @@ async fn comment_on_story_roundtrip_view_comments_reflects_new_comment() {
         view.contains(marker),
         "view_comments output reflects new comment; got:\n{view}"
     );
+}
+
+async fn post_close_story(router: axum::Router, body: &str) -> axum::http::Response<Body> {
+    let req = Request::builder()
+        .method("POST")
+        .uri("/api/test/close_story")
+        .header("Content-Type", "application/json")
+        .body(Body::from(body.to_string()))
+        .expect("build req");
+    router.oneshot(req).await.expect("response")
+}
+
+#[tokio::test]
+async fn close_story_response_correctness_happy_path_returns_message() {
+    let (router, refresh, _store) = fixture_test_mode_on().await;
+    let create = r#"{
+        "title":"[Feature] close-target",
+        "user_job":"When testing close_story, dev needs a target story.",
+        "observation_falsifier":"reject if close on non-existent story silently succeeds"
+    }"#;
+    let resp = post_create_story(router.clone(), create).await;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let target_number = refresh.all_stories()[0].number;
+
+    let close = format!(
+        r#"{{
+            "number":{target_number},
+            "reason":"superseded by alternate path"
+        }}"#
+    );
+    let resp = post_close_story(router, &close).await;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let json = read_json(resp).await;
+    let msg = json["message"].as_str().expect("message string");
+    assert!(
+        msg.contains(&format!("#{target_number}")),
+        "message names target story; got {msg}"
+    );
+    assert!(
+        msg.contains("closed"),
+        "happy-path message names the closed affordance; got {msg}"
+    );
+    assert!(
+        msg.contains("superseded by alternate path"),
+        "message includes the close-reason for audit trail; got {msg}"
+    );
+}
+
+#[tokio::test]
+async fn close_story_response_correctness_rejects_empty_reason() {
+    let (router, refresh, _store) = fixture_test_mode_on().await;
+    let create = r#"{
+        "title":"[Feature] close-target",
+        "user_job":"When testing empty-reason validation, dev needs a target story.",
+        "observation_falsifier":"reject if empty-reason close is silently accepted"
+    }"#;
+    let resp = post_create_story(router.clone(), create).await;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let target_number = refresh.all_stories()[0].number;
+
+    let close = format!(
+        r#"{{
+            "number":{target_number},
+            "reason":""
+        }}"#
+    );
+    let resp = post_close_story(router, &close).await;
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    let json = read_json(resp).await;
+    let err = json["error"].as_str().expect("error string");
+    assert!(
+        err.contains("reason"),
+        "rejection names the missing field; got {err}"
+    );
+    assert!(
+        err.contains("audit"),
+        "rejection cites audit-trail rationale per close discipline; got {err}"
+    );
+}
+
+#[tokio::test]
+async fn close_story_roundtrip_api_board_reflects_closed_state() {
+    let (router, refresh, _store) = fixture_test_mode_on().await;
+    let create = r#"{
+        "title":"[Feature] close-roundtrip",
+        "user_job":"When testing close_story roundtrip, dev needs a target story.",
+        "observation_falsifier":"reject if /api/board does not reflect closed state after close_story"
+    }"#;
+    let resp = post_create_story(router.clone(), create).await;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let target_number = refresh.all_stories()[0].number;
+
+    let close = format!(
+        r#"{{
+            "number":{target_number},
+            "reason":"close-roundtrip-marker"
+        }}"#
+    );
+    let resp = post_close_story(router.clone(), &close).await;
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let req = Request::builder()
+        .method("GET")
+        .uri("/api/board")
+        .body(Body::empty())
+        .expect("build req");
+    let resp = router.oneshot(req).await.expect("response");
+    assert_eq!(resp.status(), StatusCode::OK);
+    let board = read_json(resp).await;
+    let stories = board["stories"].as_array().expect("stories array");
+    assert_eq!(stories.len(), 1);
+    assert_eq!(
+        stories[0]["state"].as_str(),
+        Some("accepted"),
+        "is_closed=true maps to renderer state=accepted per story_to_board_json"
+    );
+    assert_eq!(stories[0]["gh_state"].as_str(), Some("closed"));
 }

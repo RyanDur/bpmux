@@ -102,3 +102,42 @@ pub async fn post_test_comment_on_story(
         ),
     }
 }
+
+#[derive(Debug, Deserialize)]
+pub struct CloseStoryReq {
+    pub number: u64,
+    pub reason: String,
+    pub agent: Option<String>,
+}
+
+pub async fn post_test_close_story(
+    axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
+    Json(req): Json<CloseStoryReq>,
+) -> impl IntoResponse {
+    let Some(refresh) = refresh else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(serde_json::json!({
+                "error": "BPMUX_TEST_MODE not enabled — test routes inactive"
+            })),
+        );
+    };
+    let mut args = serde_json::Map::new();
+    args.insert(
+        "number".to_string(),
+        serde_json::Value::Number(req.number.into()),
+    );
+    args.insert("reason".to_string(), serde_json::Value::String(req.reason));
+    let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
+    let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;
+    match bridge::dispatch_test_close_story(args, &agent, Some(refresh_ref)).await {
+        Ok(message) => (
+            StatusCode::OK,
+            Json(serde_json::json!({ "message": message })),
+        ),
+        Err(e) => (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "error": e })),
+        ),
+    }
+}

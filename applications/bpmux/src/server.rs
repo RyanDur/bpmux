@@ -170,6 +170,10 @@ pub async fn run_server(
                 "/api/test/comment_on_story",
                 axum::routing::post(transport::test_routes::post_test_comment_on_story),
             )
+            .route(
+                "/api/test/close_story",
+                axum::routing::post(transport::test_routes::post_test_close_story),
+            )
     } else {
         axum::Router::new()
     };
