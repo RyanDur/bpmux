@@ -260,3 +260,50 @@ async fn roundtrip_coherence_user_job_and_falsifier_preserved_through_real_githu
         "observation_falsifier preserved verbatim through real github.rs decode path; got:\n{stored_body}"
     );
 }
+
+#[tokio::test]
+async fn roundtrip_coherence_rejects_parent_epic_referencing_non_epic_through_real_github_decode_path()
+ {
+    let server = MockServer::start();
+
+    let list_mock = server.mock(|when, then| {
+        when.method(Method::GET).path("/repos/acme/bpmux/issues");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(Value::Array(vec![]).to_string());
+    });
+
+    let refresh_parent_mock = server.mock(|when, then| {
+        when.method(Method::GET).path("/repos/acme/bpmux/issues/99");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(issue(99, "[Feature] not-an-epic", "open", vec![]).to_string());
+    });
+
+    let (router, _refresh) = fixture_mock_octocrab(&server).await;
+
+    let body = r#"{
+        "title":"[Feature] child-of-non-epic",
+        "user_job":"When testing parent_epic validation, dev needs negative-path coverage via real decode path.",
+        "observation_falsifier":"reject if non-Epic parent is silently accepted through MockOctocrab",
+        "parent_epic":99
+    }"#;
+    let req = Request::builder()
+        .method("POST")
+        .uri("/api/test/create_story")
+        .header("Content-Type", "application/json")
+        .body(Body::from(body.to_string()))
+        .expect("build req");
+    let resp = router.oneshot(req).await.expect("response");
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+
+    list_mock.assert();
+    refresh_parent_mock.assert();
+
+    let json = read_json(resp).await;
+    let err = json["error"].as_str().expect("error string");
+    assert!(
+        err.contains("not an Epic"),
+        "rejection names the type-mismatch reason; got {err}"
+    );
+}
