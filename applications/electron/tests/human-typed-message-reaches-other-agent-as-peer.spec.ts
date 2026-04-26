@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { launchIsolatedWithWindow } from './helpers/launch'
+import { launchIsolatedWithWindow, waitForMessagesLoaded } from './helpers/launch'
 
 test.describe('human-side E2E #476 — cross-process — typed message reaches other agent', () => {
   test('human-typed broadcast appears in /api/messages?as=<peer-role> visibility-filter', async () => {
@@ -68,6 +68,7 @@ test.describe('human-side E2E #476 — cross-process — typed message reaches o
 
     const textarea = win.locator('[data-test="chat-input-textarea"]')
     await expect(textarea).toBeVisible()
+    await waitForMessagesLoaded(win, 'seed dev as direct-role')
 
     const devButton = win.locator('[data-test="sidebar-direct-dev"]')
     await expect(devButton).toBeVisible({ timeout: 10000 })

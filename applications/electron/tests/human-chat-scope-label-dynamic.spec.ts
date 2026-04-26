@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { launchIsolatedWithWindow } from './helpers/launch'
+import { launchIsolatedWithWindow, waitForMessagesLoaded } from './helpers/launch'
 
 test.describe('human-side E2E #476 — read-class — chat scope label', () => {
   test('scope label updates dynamically when recipient changes', async () => {
@@ -24,6 +24,7 @@ test.describe('human-side E2E #476 — read-class — chat scope label', () => {
 
     const chatRegion = win.locator('[data-test="chat-region"]')
     await expect(chatRegion).toBeVisible()
+    await waitForMessagesLoaded(win, 'seed dev as direct-role')
 
     consoleErrors.length = 0
     pageErrors.length = 0

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { launchIsolatedWithWindow } from './helpers/launch'
+import { launchIsolatedWithWindow, waitForMessagesLoaded } from './helpers/launch'
 
 const SEED_MULTI_ROLE_MESSAGES = [
   {
@@ -45,6 +45,7 @@ test.describe('human-side E2E #476 — channel routing matrix', () => {
 
     const sidebar = win.locator('[data-test="sidebar"]')
     await expect(sidebar).toBeVisible()
+    await waitForMessagesLoaded(win, 'designer broadcast to derive direct-role')
 
     consoleErrors.length = 0
     pageErrors.length = 0

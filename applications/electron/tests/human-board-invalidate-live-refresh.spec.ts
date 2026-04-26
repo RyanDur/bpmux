@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { launchIsolatedWithWindow } from './helpers/launch'
+import { launchIsolatedWithWindow, waitForBoardLoaded } from './helpers/launch'
 
 test.describe('human-side E2E #476 — live-update class — BOARD_INVALIDATE refresh', () => {
   test('story created via test-route appears WITHOUT manual reload (live WS-driven refetch)', async () => {
@@ -24,7 +24,7 @@ test.describe('human-side E2E #476 — live-update class — BOARD_INVALIDATE re
     })
     win.on('pageerror', (e) => pageErrors.push(e))
 
-    await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+    await waitForBoardLoaded(win)
 
     consoleErrors.length = 0
     pageErrors.length = 0

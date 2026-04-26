@@ -139,29 +139,38 @@ function Board({ messages, hidden }: BoardProps): React.JSX.Element {
         setLoading(false)
         return
       }
-      try {
-        const res = await fetch(`${bridge.apiBase}/api/board`, {
-          headers: { Authorization: `Bearer ${bridge.authToken}` },
-          signal
-        })
-        if (!res.ok) {
-          throw new Error(`board fetch ${res.status}`)
-        }
-        const json = (await res.json()) as BoardResponse
-        setData(json)
-        setUsingMock(false)
-        setError(null)
-      } catch (err) {
+      const delays = [0, 200, 500]
+      let lastErr: unknown = null
+      for (const delay of delays) {
         if (signal?.aborted) return
-        console.error('bpmux board: fetch failed, falling back to mock', err)
-        // Keep last known data if we had any; otherwise show mock so
-        // the panel isn't empty while the user retries.
-        setData((prev) => prev ?? MOCK_RESPONSE)
-        setUsingMock((prev) => prev || !prev)
-        setError(err instanceof Error ? err.message : String(err))
-      } finally {
-        setLoading(false)
+        if (delay > 0) {
+          await new Promise<void>((resolve) => setTimeout(resolve, delay))
+          if (signal?.aborted) return
+        }
+        try {
+          const res = await fetch(`${bridge.apiBase}/api/board`, {
+            headers: { Authorization: `Bearer ${bridge.authToken}` },
+            signal
+          })
+          if (!res.ok) {
+            throw new Error(`board fetch ${res.status}`)
+          }
+          const json = (await res.json()) as BoardResponse
+          setData(json)
+          setUsingMock(false)
+          setError(null)
+          setLoading(false)
+          return
+        } catch (err) {
+          if (signal?.aborted) return
+          lastErr = err
+        }
       }
+      console.error('bpmux board: fetch failed, falling back to mock', lastErr)
+      setData((prev) => prev ?? MOCK_RESPONSE)
+      setUsingMock((prev) => prev || !prev)
+      setError(lastErr instanceof Error ? lastErr.message : String(lastErr))
+      setLoading(false)
     },
     [bridge?.apiBase, bridge?.authToken]
   )
@@ -405,7 +414,11 @@ function Board({ messages, hidden }: BoardProps): React.JSX.Element {
       <header className="board-header">
         <h2 className="board-title">Board</h2>
         {usingMock ? (
-          <small className="board-mock-flag" aria-label="showing mock data">
+          <small
+            className="board-mock-flag"
+            aria-label="showing mock data"
+            data-test="board-mock-flag"
+          >
             mock
           </small>
         ) : null}

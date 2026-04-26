@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { launchIsolatedWithWindow } from './helpers/launch'
+import { launchIsolatedWithWindow, waitForBoardLoaded } from './helpers/launch'
 
 test.describe('human-side E2E #476 — direct-action — board keyboard navigation', () => {
   test('ArrowDown selects first story; Enter opens drill-in', async () => {
@@ -24,7 +24,7 @@ test.describe('human-side E2E #476 — direct-action — board keyboard navigati
     })
     win.on('pageerror', (e) => pageErrors.push(e))
 
-    await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+    await waitForBoardLoaded(win)
 
     consoleErrors.length = 0
     pageErrors.length = 0
@@ -41,7 +41,7 @@ test.describe('human-side E2E #476 — direct-action — board keyboard navigati
     }).then((r) => expect(r.status).toBe(200))
 
     await win.reload()
-    await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+    await waitForBoardLoaded(win)
 
     await win.locator('[data-test="board-group-icebox"]').click()
     const storyRow = win.locator(

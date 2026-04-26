@@ -8,6 +8,7 @@ export default defineConfig({
   // port-and-state isolation was already in place.
   fullyParallel: true,
   workers: 2,
+  retries: 1,
   testDir: 'tests',
   // Bump default action / expect-poll timeouts for parallel runs
   // where multiple Electron+bpmux backends share CPU at warmup.

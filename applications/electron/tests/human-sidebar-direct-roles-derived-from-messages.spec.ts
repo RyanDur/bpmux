@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { launchIsolatedWithWindow } from './helpers/launch'
+import { launchIsolatedWithWindow, waitForMessagesLoaded } from './helpers/launch'
 
 test.describe('human-side E2E #476 — direct-action — sidebar direct-roles', () => {
   test('seeded messages from multiple roles populate sidebar direct-role buttons', async () => {
@@ -35,6 +35,7 @@ test.describe('human-side E2E #476 — direct-action — sidebar direct-roles', 
     win.on('pageerror', (e) => pageErrors.push(e))
 
     await expect(win.locator('[data-test="sidebar"]')).toBeVisible()
+    await waitForMessagesLoaded(win, 'pm broadcasts to seed direct-role')
 
     consoleErrors.length = 0
     pageErrors.length = 0
@@ -78,6 +79,7 @@ test.describe('human-side E2E #476 — direct-action — sidebar direct-roles', 
     win.on('pageerror', (e) => pageErrors.push(e))
 
     await expect(win.locator('[data-test="sidebar"]')).toBeVisible()
+    await waitForMessagesLoaded(win, 'pm broadcast')
 
     const broadcastButton = win.locator('[data-test="sidebar-broadcast"]')
     await expect(broadcastButton).toHaveAttribute('aria-current', 'true')

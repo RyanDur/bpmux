@@ -1,4 +1,4 @@
-import { _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
+import { _electron as electron, expect, type ElectronApplication, type Page } from '@playwright/test'
 import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
@@ -108,3 +108,23 @@ export const launchIsolatedWithWindow = async (
   const win = await result.app.firstWindow()
   return { ...result, win }
 }
+
+export const waitForBoardLoaded = async (win: Page): Promise<void> => {
+  await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+  await expect(win.locator('[data-test="board-list"]')).toBeVisible()
+  await expect(win.locator('[data-test="board-mock-flag"]')).toHaveCount(0)
+}
+
+// `anchorText` gates downstream derived-state assertions on WS
+// history actually arriving — message-list visibility alone races
+// against hydration under workers=2 contention.
+export const waitForMessagesLoaded = async (
+  win: Page,
+  anchorText?: string
+): Promise<void> => {
+  await expect(win.locator('[data-test="message-list"]')).toBeVisible()
+  if (anchorText) {
+    await expect(win.locator('[data-test="message-list"]')).toContainText(anchorText)
+  }
+}
+
