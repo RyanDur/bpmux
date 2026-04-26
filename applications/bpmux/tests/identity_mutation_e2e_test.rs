@@ -212,6 +212,69 @@ fn remove_principle_drops_principle_from_identity_payload() {
 }
 
 #[test]
+fn update_principle_replaces_old_text_with_new() {
+    let bpmux = TestBpmux::start();
+    let rt = tokio::runtime::Runtime::new().expect("rt");
+    rt.block_on(async {
+        let role = "identity-update-principle-role";
+        let agent = TestBridge::connect(&bpmux, role).await;
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        let value_name = format!("UPDATE_HOST_VALUE_{}", unique_suffix());
+        agent
+            .call_tool(
+                "add_value",
+                serde_json::json!({
+                    "name": value_name.clone(),
+                    "description": "host value for update-principle test"
+                }),
+            )
+            .await
+            .expect("add_value should succeed");
+
+        let old_marker = format!("OLD_PRINCIPLE_{}", unique_suffix());
+        agent
+            .call_tool(
+                "add_principle",
+                serde_json::json!({
+                    "value_name": value_name.clone(),
+                    "principle": old_marker.clone()
+                }),
+            )
+            .await
+            .expect("add_principle should succeed");
+
+        let new_marker = format!("NEW_PRINCIPLE_{}", unique_suffix());
+        let result = agent
+            .call_tool(
+                "update_principle",
+                serde_json::json!({
+                    "value_name": value_name.clone(),
+                    "old": old_marker.clone(),
+                    "new": new_marker.clone()
+                }),
+            )
+            .await
+            .expect("update_principle should succeed");
+
+        let text = result
+            .as_str()
+            .map(String::from)
+            .unwrap_or_else(|| result.to_string());
+        assert!(
+            text.contains(&new_marker),
+            "updated principle text present in identity payload; got:\n{text}"
+        );
+        assert!(
+            !text.contains(&old_marker),
+            "old principle text removed from identity payload; got:\n{text}"
+        );
+
+        agent.close().await;
+    });
+}
+
+#[test]
 fn remove_principle_rejects_missing_value_name() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
