@@ -16,6 +16,8 @@ mod ci_watcher_tests;
 #[cfg(test)]
 mod crypto_tests;
 #[cfg(test)]
+mod external_mutation_tests;
+#[cfg(test)]
 mod peer_tests;
 #[cfg(test)]
 mod protocol_tests;
