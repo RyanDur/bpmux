@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import { launchIsolatedWithWindow } from './helpers/launch'
 
 test.describe('human-side E2E #476 — direct-action — message reaction picker', () => {
-  test('reaction-add button opens picker; clicking emoji closes it', async () => {
+  test('reaction-add → pick emoji → pill renders on the message (full cycle)', async () => {
     const { app, win } = await launchIsolatedWithWindow({
       extraEnv: { BPMUX_TEST_MODE: '1' },
       seedMessages: [
@@ -46,6 +46,9 @@ test.describe('human-side E2E #476 — direct-action — message reaction picker
     await thumbsUp.click()
 
     await expect(picker).toHaveCount(0)
+
+    const pill = win.locator('[data-test="reaction-pill-👍"]')
+    await expect(pill).toBeVisible({ timeout: 10000 })
 
     expect(consoleErrors).toEqual([])
     expect(pageErrors).toEqual([])
