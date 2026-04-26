@@ -51,7 +51,9 @@ mod label_story;
 mod pass_desk_check;
 mod reject_story;
 mod reorder_story;
+mod set_parent_epic;
 mod start_story;
+mod unset_parent_epic;
 mod view_board;
 mod view_velocity;
 
@@ -106,6 +108,8 @@ pub use label_story::label_story_tool;
 pub use pass_desk_check::pass_desk_check_tool;
 pub use reject_story::reject_story_tool;
 pub use reorder_story::reorder_story_tool;
+pub use set_parent_epic::set_parent_epic_tool;
 pub use start_story::start_story_tool;
+pub use unset_parent_epic::unset_parent_epic_tool;
 pub use view_board::view_board_tool;
 pub use view_velocity::view_velocity_tool;

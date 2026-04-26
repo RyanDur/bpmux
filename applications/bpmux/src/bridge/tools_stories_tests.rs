@@ -2206,3 +2206,128 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
         } if r == "superseded by #999 — won't ship"
     ));
 }
+
+#[tokio::test]
+async fn set_parent_epic_migrated_path_emits_parent_epic_set_event() {
+    use crate::board::BoardEvent;
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let seeded = Story::new_minimal(
+        300,
+        "child".into(),
+        StoryState::Ready,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "pm".into(),
+    );
+    adapter.seed_stories(vec![seeded]);
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orchestrator.refresh_all().await.unwrap();
+
+    let ws_tx = connected_ws_sink_for_test().await;
+    let mut args = serde_json::Map::new();
+    args.insert("number".into(), serde_json::json!(300));
+    args.insert("epic_number".into(), serde_json::json!(457));
+    let result = handle_set_parent_epic(&args, "pm:claude-code", &ws_tx, Some(&orchestrator)).await;
+    assert!(result.is_ok(), "migrated path should succeed: {result:?}");
+
+    let story = store.story(300).unwrap();
+    assert_eq!(story.parent_epic, Some(457));
+
+    let drained = orchestrator.drain_pending().await.unwrap();
+    assert_eq!(drained, 1);
+    let pushed = adapter.pushed_events();
+    assert_eq!(pushed.len(), 1);
+    assert!(matches!(
+        &pushed[0],
+        BoardEvent::ParentEpicSet {
+            number: 300,
+            epic_number: 457,
+            ..
+        }
+    ));
+}
+
+#[tokio::test]
+async fn unset_parent_epic_migrated_path_emits_parent_epic_unset_event() {
+    use crate::board::BoardEvent;
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let mut seeded = Story::new_minimal(
+        301,
+        "child".into(),
+        StoryState::Ready,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "pm".into(),
+    );
+    seeded.parent_epic = Some(457);
+    adapter.seed_stories(vec![seeded]);
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orchestrator.refresh_all().await.unwrap();
+
+    let ws_tx = connected_ws_sink_for_test().await;
+    let mut args = serde_json::Map::new();
+    args.insert("number".into(), serde_json::json!(301));
+    let result =
+        handle_unset_parent_epic(&args, "pm:claude-code", &ws_tx, Some(&orchestrator)).await;
+    assert!(result.is_ok(), "migrated path should succeed: {result:?}");
+
+    let story = store.story(301).unwrap();
+    assert_eq!(story.parent_epic, None);
+
+    let drained = orchestrator.drain_pending().await.unwrap();
+    assert_eq!(drained, 1);
+    let pushed = adapter.pushed_events();
+    assert_eq!(pushed.len(), 1);
+    assert!(matches!(
+        &pushed[0],
+        BoardEvent::ParentEpicUnset { number: 301, .. }
+    ));
+}
+
+#[tokio::test]
+async fn set_parent_epic_rejects_non_pm_role() {
+    let ws_tx = connected_ws_sink_for_test().await;
+    let mut args = serde_json::Map::new();
+    args.insert("number".into(), serde_json::json!(1));
+    args.insert("epic_number".into(), serde_json::json!(2));
+    let result = handle_set_parent_epic(&args, "dev:claude-code", &ws_tx, None).await;
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("restricted to pm"));
+}
+
+#[tokio::test]
+async fn set_parent_epic_rejects_self_parent() {
+    let ws_tx = connected_ws_sink_for_test().await;
+    let mut args = serde_json::Map::new();
+    args.insert("number".into(), serde_json::json!(42));
+    args.insert("epic_number".into(), serde_json::json!(42));
+    let result = handle_set_parent_epic(&args, "pm:claude-code", &ws_tx, None).await;
+    assert!(result.is_err());
+    assert!(
+        result
+            .unwrap_err()
+            .contains("cannot be its own parent epic")
+    );
+}

@@ -475,6 +475,12 @@ impl ServerHandler for BridgeServer {
             crate::mcp::tools::label_story_tool(
                 "Add a label to a story (ready, blocked, icebox, deferred). PM ONLY — other roles are rejected.",
             ),
+            crate::mcp::tools::set_parent_epic_tool(
+                "Group a story under an Epic by setting its parent_epic. PM ONLY. Args: number (child) + epic_number (parent Epic). The Epic story-type is checked at filing-time on the parent; this tool only records the membership relationship. Self-parent rejected.",
+            ),
+            crate::mcp::tools::unset_parent_epic_tool(
+                "Ungroup a story from its current Epic by clearing parent_epic. PM ONLY. Args: number (child). Idempotent — calling on a story not currently grouped succeeds silently.",
+            ),
             crate::mcp::tools::close_story_tool(
                 "Close a story with a reason (superseded / duplicate / won't-fix). Adds the reason as a comment on the issue + closes it. PM ONLY — accept/reject are separate paths for delivered stories. Use this for pre-delivery closures that don't route through the ship chain. Args: number + reason (required).",
             ),
@@ -661,6 +667,26 @@ impl ServerHandler for BridgeServer {
                 "label_story" => {
                     let current_name = name.lock().await;
                     tools_stories::handle_label_story(
+                        &args,
+                        &current_name,
+                        &ws_tx,
+                        refresh.as_ref(),
+                    )
+                    .await
+                }
+                "set_parent_epic" => {
+                    let current_name = name.lock().await;
+                    tools_stories::handle_set_parent_epic(
+                        &args,
+                        &current_name,
+                        &ws_tx,
+                        refresh.as_ref(),
+                    )
+                    .await
+                }
+                "unset_parent_epic" => {
+                    let current_name = name.lock().await;
+                    tools_stories::handle_unset_parent_epic(
                         &args,
                         &current_name,
                         &ws_tx,
