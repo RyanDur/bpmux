@@ -133,12 +133,24 @@ pub struct OctocrabStoryTracker {
 /// from the octocrab client build (impure, requires network config).
 /// `Octocrab` is a successful selection; `Fallback` names WHY the
 /// bridge startup will fail-loud (#320: no more subprocess fallback).
+///
+/// `OctocrabWithBaseUrl` (#482) is the cross-bridge-substrate path:
+/// when `BPMUX_GH_BASE_URL` is set the bridge subprocess points at
+/// a test-controlled MockServer instead of api.github.com, enabling
+/// multiple bridges to share a single mock GitHub source-of-truth
+/// for cross-bridge mutation-propagation tests. No GH_TOKEN required
+/// since httpmock doesn't validate auth.
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum TrackerSelection {
     Octocrab {
         owner: String,
         repo: String,
         token: String,
+    },
+    OctocrabWithBaseUrl {
+        owner: String,
+        repo: String,
+        base_url: String,
     },
     Fallback(FallbackReason),
 }
@@ -179,6 +191,13 @@ where
     if owner.is_empty() || repo.is_empty() {
         return TrackerSelection::Fallback(FallbackReason::MalformedRepo);
     }
+    if let Some(base_url) = get("BPMUX_GH_BASE_URL") {
+        return TrackerSelection::OctocrabWithBaseUrl {
+            owner: owner.to_string(),
+            repo: repo.to_string(),
+            base_url,
+        };
+    }
     let Some(token) = get("GH_TOKEN").or_else(|| get("GITHUB_TOKEN")) else {
         return TrackerSelection::Fallback(FallbackReason::NoToken);
     };
@@ -211,6 +230,19 @@ impl OctocrabStoryTracker {
                     repo,
                 })
             }
+            TrackerSelection::OctocrabWithBaseUrl {
+                owner,
+                repo,
+                base_url,
+            } => match Self::with_base_url(&base_url, owner, repo) {
+                Ok(tracker) => Some(tracker),
+                Err(e) => {
+                    crate::session::diag::log_diag(&format!(
+                        "OctocrabStoryTracker::from_env: BPMUX_GH_BASE_URL build failed: {e}"
+                    ));
+                    None
+                }
+            },
             TrackerSelection::Fallback(reason) => {
                 crate::session::diag::log_diag(&format!(
                     "OctocrabStoryTracker::from_env: missing env config ({reason:?})"
@@ -223,9 +255,10 @@ impl OctocrabStoryTracker {
     /// Build a tracker pointed at an arbitrary base URL instead of
     /// `https://api.github.com`. Contract tests spin up an httpmock
     /// server and pass its URL here so the tracker's HTTP calls hit
-    /// the mock without any real-network side effects. Not used at
-    /// runtime — the production path always goes through `from_env`.
-    #[cfg(test)]
+    /// the mock without any real-network side effects. Also reachable
+    /// from production via `from_env` when `BPMUX_GH_BASE_URL` is set
+    /// (#482 cross-bridge substrate); the runtime path stays
+    /// api.github.com when the env var is absent.
     pub(crate) fn with_base_url(
         base_url: &str,
         owner: String,

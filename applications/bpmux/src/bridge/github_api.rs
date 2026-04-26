@@ -22,6 +22,23 @@ impl GitHubApi {
                     repo,
                 })
             }
+            crate::bridge::tracker::TrackerSelection::OctocrabWithBaseUrl {
+                owner,
+                repo,
+                base_url,
+            } => {
+                github::ensure_crypto_provider_installed();
+                let client = octocrab::OctocrabBuilder::new()
+                    .base_uri(&base_url)
+                    .ok()?
+                    .build()
+                    .ok()?;
+                Some(Self {
+                    client,
+                    owner,
+                    repo,
+                })
+            }
             crate::bridge::tracker::TrackerSelection::Fallback(reason) => {
                 crate::session::diag::log_diag(&format!(
                     "GitHubApi::from_env: missing env config ({reason:?})"
