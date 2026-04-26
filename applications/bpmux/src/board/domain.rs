@@ -42,10 +42,14 @@ pub fn story_type_from_labels_or_title(labels: &[String], title: &str) -> StoryT
             "feature" => return StoryType::Feature,
             "bug" => return StoryType::Bug,
             "chore" => return StoryType::Chore,
+            "epic" => return StoryType::Epic,
             _ => {}
         }
     }
     let lower = title.to_lowercase();
+    if lower.starts_with("[epic") {
+        return StoryType::Epic;
+    }
     if lower.starts_with("[bug") || lower.starts_with("bug:") {
         return StoryType::Bug;
     }

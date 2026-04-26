@@ -79,6 +79,7 @@ pub fn classify_story(labels: &[String], title: &str) -> StoryType {
             "feature" => return StoryType::Feature,
             "bug" => return StoryType::Bug,
             "chore" => return StoryType::Chore,
+            "epic" => return StoryType::Epic,
             _ => {}
         }
     }
@@ -86,6 +87,9 @@ pub fn classify_story(labels: &[String], title: &str) -> StoryType {
     // Prefix matching strips the closing bracket so compound tags
     // (e.g., `[honest-plumbing/security]`) still classify — the
     // first recognized word wins. Ordered most-specific first.
+    if lower.starts_with("[epic") {
+        return StoryType::Epic;
+    }
     if lower.starts_with("[feature")
         || lower.starts_with("[vertical")
         || lower.starts_with("[stranded-vertical")

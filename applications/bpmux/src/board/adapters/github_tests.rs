@@ -336,6 +336,27 @@ fn story_type_label_matching_is_case_insensitive() {
 }
 
 #[test]
+fn story_type_decodes_epic_from_title_prefix() {
+    assert_eq!(
+        story_type_from_labels_or_title(&[], "[Epic] foo"),
+        StoryType::Epic
+    );
+    assert_eq!(
+        story_type_from_labels_or_title(&[], "[epic] lowercase"),
+        StoryType::Epic
+    );
+}
+
+#[test]
+fn story_type_decodes_epic_from_label() {
+    let labels = vec!["epic".to_string()];
+    assert_eq!(
+        story_type_from_labels_or_title(&labels, "[Feature] mismatched"),
+        StoryType::Epic
+    );
+}
+
+#[test]
 fn tags_from_labels_picks_up_blocked() {
     let labels = vec!["ready".to_string(), "blocked".to_string()];
     assert_eq!(tags_from_labels(&labels), vec![Tag::Blocked]);

@@ -321,3 +321,25 @@ fn is_feature_verdict_label_beats_title() {
         "[Feature] misleading prefix"
     ));
 }
+
+#[test]
+fn classify_story_decodes_epic_from_title_prefix() {
+    use crate::board::domain::StoryType;
+    use crate::session::velocity::classify_story;
+    assert_eq!(classify_story(&[], "[Epic] big arc"), StoryType::Epic);
+    assert_eq!(
+        classify_story(&[], "[epic] case-insensitive"),
+        StoryType::Epic
+    );
+}
+
+#[test]
+fn classify_story_decodes_epic_from_label() {
+    use crate::board::domain::StoryType;
+    use crate::session::velocity::classify_story;
+    let labels = vec!["epic".to_string()];
+    assert_eq!(
+        classify_story(&labels, "[Feature] mismatched"),
+        StoryType::Epic
+    );
+}
