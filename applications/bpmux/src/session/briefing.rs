@@ -28,11 +28,15 @@ use std::path::PathBuf;
 /// bloating the on-disk file.
 pub const MAX_BRIEFING_BYTES: usize = 1024 * 1024;
 
-/// Root directory for per-role briefings. Resolved from `$HOME` so
-/// briefings live in the user's home even when bpmux is invoked from
-/// a workspace directory. The `.bpmux/briefings/` subpath is kept
-/// parallel to other bpmux state dirs (`.bpmux/sessions/`, etc.).
+/// Root directory for per-role briefings. Resolved from
+/// `BPMUX_BRIEFINGS_DIR` env-var when set, else `$HOME/.bpmux/briefings/`.
+/// The env-var override (#484) lets tests isolate to a tempdir without
+/// racing on the developer's real briefings; production-default
+/// preserved when env-var unset.
 pub fn briefings_dir() -> PathBuf {
+    if let Some(override_path) = std::env::var_os("BPMUX_BRIEFINGS_DIR") {
+        return PathBuf::from(override_path);
+    }
     let home = std::env::var_os("HOME")
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("/tmp"));

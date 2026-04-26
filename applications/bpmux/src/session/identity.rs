@@ -79,8 +79,14 @@ impl std::fmt::Display for IdentityError {
 
 impl std::error::Error for IdentityError {}
 
-/// Default identity directory: `~/.bpmux/identity/`.
+/// Default identity directory: `BPMUX_IDENTITY_DIR` env-var when set,
+/// else `~/.bpmux/identity/`. The env-var override (#484) lets tests
+/// isolate to a tempdir without racing on the developer's real
+/// identity files; production-default preserved when env-var unset.
 pub fn default_identity_dir() -> Result<PathBuf, std::io::Error> {
+    if let Some(override_path) = std::env::var_os("BPMUX_IDENTITY_DIR") {
+        return Ok(PathBuf::from(override_path));
+    }
     let home = dirs::home_dir().ok_or_else(|| {
         std::io::Error::new(std::io::ErrorKind::NotFound, "home directory not found")
     })?;
@@ -279,6 +285,9 @@ mod tests {
 
     #[test]
     fn default_identity_dir_is_under_bpmux() {
+        if std::env::var_os("BPMUX_IDENTITY_DIR").is_some() {
+            return;
+        }
         let dir = default_identity_dir().unwrap();
         let s = dir.to_string_lossy();
         assert!(s.contains(".bpmux"), "expected .bpmux in path, got {s}");
