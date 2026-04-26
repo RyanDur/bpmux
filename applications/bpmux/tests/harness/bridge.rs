@@ -20,6 +20,17 @@ pub struct TestBridge {
     pub capture: NotificationCapture,
 }
 
+/// Selects the bridge subprocess's source-of-truth.
+///
+/// `Fake` (default) passes `--fake-tracker` so the bridge uses
+/// `InMemorySourceAdapter`. `RealAgainstMockGh` (#482) skips the
+/// flag so the bridge builds a real `GitHubSourceAdapter` and reads
+/// `BPMUX_GH_BASE_URL` from env to point at a test MockServer.
+enum TrackerMode {
+    Fake,
+    RealAgainstMockGh,
+}
+
 impl TestBridge {
     /// Spawn a bridge subprocess with `--name` and connect an MCP client.
     pub async fn connect(bpmux: &TestBpmux, name: &str) -> Self {
@@ -30,7 +41,7 @@ impl TestBridge {
     /// pointing the bridge's view_board at BPMUX_BOARD_FIXTURE instead
     /// of the live `gh` CLI in CI (where GH_TOKEN isn't wired).
     pub async fn connect_with_env(bpmux: &TestBpmux, name: &str, env: &[(&str, &str)]) -> Self {
-        Self::connect_inner(bpmux, name, env, None).await
+        Self::connect_inner(bpmux, name, env, None, TrackerMode::Fake).await
     }
 
     pub async fn connect_with_board_fixture(
@@ -38,7 +49,33 @@ impl TestBridge {
         name: &str,
         fixture_path: &str,
     ) -> Self {
-        Self::connect_inner(bpmux, name, &[], Some(fixture_path.to_string())).await
+        Self::connect_inner(
+            bpmux,
+            name,
+            &[],
+            Some(fixture_path.to_string()),
+            TrackerMode::Fake,
+        )
+        .await
+    }
+
+    /// Spawn a bridge subprocess WITHOUT `--fake-tracker`, pointed at
+    /// a test-controlled GitHub MockServer via `BPMUX_GH_BASE_URL`
+    /// (#482 cross-bridge substrate). All bridges launched against
+    /// the same `mock_gh_base_url` share a single mock GitHub
+    /// source-of-truth, enabling cross-bridge mutation-propagation
+    /// tests where bridge A's writes are observable by bridge B's
+    /// refresh path.
+    pub async fn connect_with_mock_gh(
+        bpmux: &TestBpmux,
+        name: &str,
+        mock_gh_base_url: &str,
+    ) -> Self {
+        let env: &[(&str, &str)] = &[
+            ("BPMUX_GH_BASE_URL", mock_gh_base_url),
+            ("BPMUX_REPO", "acme/bpmux"),
+        ];
+        Self::connect_inner(bpmux, name, env, None, TrackerMode::RealAgainstMockGh).await
     }
 
     async fn connect_inner(
@@ -46,6 +83,7 @@ impl TestBridge {
         name: &str,
         env: &[(&str, &str)],
         board_fixture: Option<String>,
+        tracker_mode: TrackerMode,
     ) -> Self {
         let bin = env!("CARGO_BIN_EXE_bpmux");
         let port = bpmux.port();
@@ -60,8 +98,10 @@ impl TestBridge {
                 .arg("--port")
                 .arg(port.to_string())
                 .arg("--name")
-                .arg(&name_owned)
-                .arg("--fake-tracker");
+                .arg(&name_owned);
+            if matches!(tracker_mode, TrackerMode::Fake) {
+                cmd.arg("--fake-tracker");
+            }
             if let Some(ref path) = board_fixture_owned {
                 cmd.arg("--board-fixture").arg(path);
             }
