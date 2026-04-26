@@ -7,6 +7,8 @@ pub mod store;
 pub mod sync;
 
 #[cfg(test)]
+mod domain_tests;
+#[cfg(test)]
 mod orchestrator_tests;
 #[cfg(test)]
 mod store_tests;

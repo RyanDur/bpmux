@@ -658,7 +658,27 @@ fn broadcast_board_invalidate(session: &session::Session) {
 /// GET /api/board — return the whole board as `{ stories, fetched_at }`.
 pub async fn get_board(
     axum::Extension(tracker): axum::Extension<TrackerHandle>,
+    axum::Extension(test_refresh): axum::Extension<crate::server::TestRefreshHandle>,
 ) -> impl IntoResponse {
+    if let Some(refresh) = test_refresh.as_ref() {
+        let stories: Vec<serde_json::Value> = refresh
+            .all_stories()
+            .iter()
+            .map(crate::board::domain::story_to_board_json)
+            .collect();
+        let ordered = match crate::session::priority::default_priority_path() {
+            Ok(path) => {
+                let index = crate::session::priority::load_priority(&path);
+                crate::session::priority::apply_priority_to_board(stories, &index)
+            }
+            Err(_) => stories,
+        };
+        let body = serde_json::json!({
+            "stories": ordered,
+            "fetched_at": chrono::Utc::now().to_rfc3339(),
+        });
+        return (StatusCode::OK, json_headers(), body.to_string());
+    }
     let Some(tracker) = tracker else {
         return (
             StatusCode::SERVICE_UNAVAILABLE,

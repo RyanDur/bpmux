@@ -36,12 +36,15 @@ async fn fixture_test_mode_on() -> (axum::Router, Arc<dyn RefreshDriver>) {
         .expect("seed-empty ingest");
     let orch: Arc<dyn RefreshDriver> = Arc::new(orch_concrete);
     let test_refresh: TestRefreshHandle = Some(orch.clone());
+    let none_tracker: super::rest::TrackerHandle = None;
     let router = axum::Router::new()
         .route(
             "/api/test/create_story",
             axum::routing::post(super::test_routes::post_test_create_story),
         )
-        .layer(axum::Extension(test_refresh));
+        .route("/api/board", axum::routing::get(super::rest::get_board))
+        .layer(axum::Extension(test_refresh))
+        .layer(axum::Extension(none_tracker));
     (router, orch)
 }
 
@@ -198,6 +201,38 @@ async fn roundtrip_coherence_user_job_and_falsifier_preserved_in_body() {
         stored_body.contains("FALSIFIER_MARKER_42"),
         "observation_falsifier preserved verbatim in stored body; got:\n{stored_body}"
     );
+}
+
+#[tokio::test]
+async fn roundtrip_coherence_api_board_reflects_new_story_in_test_mode() {
+    let (router, _refresh) = fixture_test_mode_on().await;
+    let body = r#"{
+        "title":"[Feature] http-roundtrip-marker",
+        "user_job":"When testing, dev needs HTTP /api/board to reflect mutations in test mode.",
+        "observation_falsifier":"reject if /api/board does not show new story when BPMUX_TEST_MODE=1"
+    }"#;
+    let resp = post_create_story(router.clone(), body).await;
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let req = Request::builder()
+        .method("GET")
+        .uri("/api/board")
+        .body(Body::empty())
+        .expect("build req");
+    let resp = router.oneshot(req).await.expect("response");
+    assert_eq!(resp.status(), StatusCode::OK);
+    let json = read_json(resp).await;
+
+    let stories = json["stories"].as_array().expect("stories array");
+    assert_eq!(stories.len(), 1);
+    assert_eq!(stories[0]["number"].as_u64(), Some(1));
+    assert_eq!(
+        stories[0]["title"].as_str(),
+        Some("[Feature] http-roundtrip-marker")
+    );
+    assert_eq!(stories[0]["state"].as_str(), Some("icebox"));
+    assert_eq!(stories[0]["gh_state"].as_str(), Some("open"));
+    assert!(json["fetched_at"].is_string());
 }
 
 #[tokio::test]

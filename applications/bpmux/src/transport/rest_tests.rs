@@ -868,6 +868,7 @@ fn tracker_for(server: &MockServer) -> OctocrabStoryTracker {
 
 fn board_router(session: Arc<session::Session>, tracker: TrackerHandle) -> axum::Router {
     use axum::routing::{get, post};
+    let none_refresh: crate::server::TestRefreshHandle = None;
     axum::Router::new()
         .route("/api/board", get(crate::transport::rest::get_board))
         .route(
@@ -884,6 +885,7 @@ fn board_router(session: Arc<session::Session>, tracker: TrackerHandle) -> axum:
         )
         .with_state(session)
         .layer(axum::Extension(tracker))
+        .layer(axum::Extension(none_refresh))
 }
 
 async fn get_json(router: axum::Router, uri: &str) -> axum::http::Response<Body> {
