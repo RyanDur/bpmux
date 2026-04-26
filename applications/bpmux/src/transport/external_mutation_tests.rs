@@ -27,12 +27,44 @@
 use std::sync::Arc;
 
 use httpmock::{Method, MockServer};
-use serde_json::Value;
+use serde_json::{Value, json};
 
 use crate::board::adapters::github::GitHubSourceAdapter;
 use crate::board::{BoardStore, RefreshDriver, SyncOrchestrator};
 use crate::bridge::test_fixtures::issue;
 use crate::bridge::tracker::OctocrabStoryTracker;
+
+fn comment(body: &str) -> Value {
+    json!({
+        "id": 1,
+        "node_id": "MDEyOklzc3VlQ29tbWVudDE=",
+        "url": "https://example.test/comments/1",
+        "html_url": "https://example.test/web/comment/1",
+        "body": body,
+        "author_association": "OWNER",
+        "user": {
+            "login": "external-actor",
+            "id": 1,
+            "node_id": "MDQ6VXNlcjE=",
+            "avatar_url": "https://example.test/avatar.png",
+            "gravatar_id": "",
+            "url": "https://example.test/users/external-actor",
+            "html_url": "https://example.test/external-actor",
+            "followers_url": "https://example.test/external-actor/followers",
+            "following_url": "https://example.test/external-actor/following{/other_user}",
+            "gists_url": "https://example.test/external-actor/gists{/gist_id}",
+            "starred_url": "https://example.test/external-actor/starred{/owner}{/repo}",
+            "subscriptions_url": "https://example.test/external-actor/subscriptions",
+            "organizations_url": "https://example.test/external-actor/orgs",
+            "repos_url": "https://example.test/external-actor/repos",
+            "events_url": "https://example.test/external-actor/events{/privacy}",
+            "received_events_url": "https://example.test/external-actor/received_events",
+            "type": "User",
+            "site_admin": false
+        },
+        "created_at": "2026-04-26T19:30:00Z"
+    })
+}
 
 async fn fixture_orchestrator(server: &MockServer) -> Arc<dyn RefreshDriver> {
     let tracker = OctocrabStoryTracker::with_base_url(
@@ -139,6 +171,108 @@ async fn external_label_change_propagates_to_bpmux_state_after_refresh() {
         updated.state,
         crate::board::domain::StoryState::InProgress,
         "post-refresh, bpmux state reflects externally-added 'in progress' label"
+    );
+}
+
+#[tokio::test]
+async fn external_comment_appears_via_fetch_free_comments_after_refresh() {
+    let server = MockServer::start();
+
+    server.mock(|when, then| {
+        when.method(Method::GET).path("/repos/acme/bpmux/issues");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(Value::Array(vec![]).to_string());
+    });
+
+    let refresh = fixture_orchestrator(&server).await;
+
+    let mut empty_comments_mock = server.mock(|when, then| {
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/issues/404/comments");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(Value::Array(vec![]).to_string());
+    });
+
+    let initial = refresh
+        .fetch_free_comments(404)
+        .await
+        .expect("fetch_free_comments empty");
+    assert!(initial.is_empty(), "no external comments yet");
+
+    empty_comments_mock.delete();
+    server.mock(|when, then| {
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/issues/404/comments");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                Value::Array(vec![comment(
+                    "external commenter dropped a note via gh CLI",
+                )])
+                .to_string(),
+            );
+    });
+
+    let updated = refresh
+        .fetch_free_comments(404)
+        .await
+        .expect("fetch_free_comments after external add");
+    assert_eq!(
+        updated.len(),
+        1,
+        "post-refresh, bpmux observes the externally-added comment"
+    );
+    assert!(
+        updated[0].body.contains("external commenter"),
+        "comment body round-trips verbatim; got {:?}",
+        updated[0].body
+    );
+}
+
+#[tokio::test]
+async fn external_re_open_clears_is_closed_after_refresh() {
+    let server = MockServer::start();
+
+    server.mock(|when, then| {
+        when.method(Method::GET).path("/repos/acme/bpmux/issues");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(Value::Array(vec![]).to_string());
+    });
+
+    let refresh = fixture_orchestrator(&server).await;
+
+    let mut closed_mock = server.mock(|when, then| {
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/issues/505");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(issue(505, "[Feature] external-re-open", "closed", vec![]).to_string());
+    });
+
+    refresh.refresh_story(505).await.expect("first refresh");
+    let initial = refresh.story(505).expect("seeded story");
+    assert!(initial.is_closed, "starts closed");
+
+    closed_mock.delete();
+    server.mock(|when, then| {
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/issues/505");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(issue(505, "[Feature] external-re-open", "open", vec![]).to_string());
+    });
+
+    refresh
+        .refresh_story(505)
+        .await
+        .expect("second refresh after external re-open");
+    let updated = refresh.story(505).expect("story still present");
+    assert!(
+        !updated.is_closed,
+        "post-refresh, bpmux observes externally-reopened issue"
     );
 }
 
