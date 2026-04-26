@@ -2518,3 +2518,105 @@ async fn create_story_with_non_epic_parent_rejects_before_create() {
     let drained = orchestrator.drain_pending().await.unwrap();
     assert_eq!(drained, 0, "no events emitted on parent-validation reject");
 }
+
+#[tokio::test]
+async fn view_board_renders_epic_summary_section_with_child_progress() {
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState, StoryType};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let ts = Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap();
+    let mut epic = Story::new_minimal(
+        700,
+        "umbrella story".into(),
+        StoryState::Ready,
+        ts,
+        "pm".into(),
+    );
+    epic.story_type = StoryType::Epic;
+    let mut child_a =
+        Story::new_minimal(701, "child a".into(), StoryState::Accepted, ts, "pm".into());
+    child_a.parent_epic = Some(700);
+    child_a.is_closed = true;
+    let mut child_b = Story::new_minimal(
+        702,
+        "child b".into(),
+        StoryState::Delivered,
+        ts,
+        "pm".into(),
+    );
+    child_b.parent_epic = Some(700);
+    let mut child_c = Story::new_minimal(
+        703,
+        "child c".into(),
+        StoryState::InProgress,
+        ts,
+        "pm".into(),
+    );
+    child_c.parent_epic = Some(700);
+    adapter.seed_stories(vec![epic, child_a, child_b, child_c]);
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orch.refresh_all().await.unwrap();
+    let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
+        .await
+        .unwrap();
+    assert!(
+        out.contains("EPICS (1)"),
+        "expected EPICS section header in:\n{out}"
+    );
+    assert!(
+        out.contains("#700 umbrella story (3 children: 1 accepted, 1 delivered, 1 in-progress)"),
+        "expected Epic-summary line with progress in:\n{out}"
+    );
+    assert!(
+        out.contains("↳ #702 child b (epic #700)"),
+        "expected child glyph + epic-membership tag in:\n{out}"
+    );
+    assert!(
+        out.contains("↳ #703 child c (epic #700)"),
+        "expected in-progress child glyph in:\n{out}"
+    );
+}
+
+#[tokio::test]
+async fn view_board_omits_epic_section_when_no_epics_present() {
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let plain = Story::new_minimal(
+        800,
+        "plain feature".into(),
+        StoryState::Ready,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "pm".into(),
+    );
+    adapter.seed_stories(vec![plain]);
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orch.refresh_all().await.unwrap();
+    let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
+        .await
+        .unwrap();
+    assert!(
+        !out.contains("EPICS"),
+        "EPICS section must NOT appear when no Epics: {out}"
+    );
+}

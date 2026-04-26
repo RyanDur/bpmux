@@ -115,12 +115,23 @@ pub(super) async fn handle_view_board(
         "view_board requires refresh (RefreshDriver) — tracker fallback retired in slice 5l",
     )?;
     let stories = r.all_stories();
+    let format_entry = |s: &crate::board::domain::Story| -> (u64, String) {
+        let prefix = if s.parent_epic.is_some() { "↳ " } else { "" };
+        let suffix = match s.parent_epic {
+            Some(n) => format!(" (epic #{n})"),
+            None => String::new(),
+        };
+        (
+            s.number,
+            format!("{prefix}#{} {}{}", s.number, s.title, suffix),
+        )
+    };
     let bucket_for = |state: crate::board::domain::StoryState| -> Vec<String> {
         let mut entries: Vec<(u64, String)> = stories
             .iter()
             .filter(|s| s.state == state)
             .filter(|s| !s.is_closed || s.state == crate::board::domain::StoryState::Accepted)
-            .map(|s| (s.number, format!("#{} {}", s.number, s.title)))
+            .map(format_entry)
             .collect();
         entries.sort_by_key(|(n, _)| *n);
         entries.into_iter().map(|(_, e)| e).collect()
@@ -133,7 +144,39 @@ pub(super) async fn handle_view_board(
     let needs_fixes = bucket_for(crate::board::domain::StoryState::NeedsFixes);
     let rejected = bucket_for(crate::board::domain::StoryState::Rejected);
     let accepted = bucket_for(crate::board::domain::StoryState::Accepted);
+    let mut epics: Vec<&crate::board::domain::Story> = stories
+        .iter()
+        .filter(|s| s.story_type == crate::board::domain::StoryType::Epic)
+        .collect();
+    epics.sort_by_key(|s| s.number);
     let mut out = String::new();
+    if !epics.is_empty() {
+        out.push_str(&format!("EPICS ({})\n", epics.len()));
+        for epic in &epics {
+            let children: Vec<&crate::board::domain::Story> = stories
+                .iter()
+                .filter(|c| c.parent_epic == Some(epic.number))
+                .collect();
+            let total = children.len();
+            let accepted_count = children
+                .iter()
+                .filter(|c| c.state == crate::board::domain::StoryState::Accepted)
+                .count();
+            let delivered_count = children
+                .iter()
+                .filter(|c| c.state == crate::board::domain::StoryState::Delivered)
+                .count();
+            let in_progress_count = children
+                .iter()
+                .filter(|c| c.state == crate::board::domain::StoryState::InProgress)
+                .count();
+            out.push_str(&format!(
+                "  #{} {} ({total} children: {accepted_count} accepted, {delivered_count} delivered, {in_progress_count} in-progress)\n",
+                epic.number, epic.title
+            ));
+        }
+        out.push('\n');
+    }
     let section = |name: &str, items: &[String], out: &mut String| {
         out.push_str(&format!("{name} ({})\n", items.len()));
         for item in items {
