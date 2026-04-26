@@ -277,6 +277,119 @@ async fn external_re_open_clears_is_closed_after_refresh() {
 }
 
 #[tokio::test]
+async fn external_label_remove_clears_state_back_to_icebox_after_refresh() {
+    let server = MockServer::start();
+
+    server.mock(|when, then| {
+        when.method(Method::GET).path("/repos/acme/bpmux/issues");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(Value::Array(vec![]).to_string());
+    });
+
+    let refresh = fixture_orchestrator(&server).await;
+
+    let mut labeled_mock = server.mock(|when, then| {
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/issues/606");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                issue(
+                    606,
+                    "[Feature] external-label-remove",
+                    "open",
+                    vec!["in progress"],
+                )
+                .to_string(),
+            );
+    });
+
+    refresh.refresh_story(606).await.expect("first refresh");
+    let initial = refresh.story(606).expect("seeded story");
+    assert_eq!(
+        initial.state,
+        crate::board::domain::StoryState::InProgress,
+        "fixture seeds in-progress state"
+    );
+
+    labeled_mock.delete();
+    server.mock(|when, then| {
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/issues/606");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(issue(606, "[Feature] external-label-remove", "open", vec![]).to_string());
+    });
+
+    refresh
+        .refresh_story(606)
+        .await
+        .expect("second refresh after external label remove");
+    let updated = refresh.story(606).expect("story still present");
+    assert_eq!(
+        updated.state,
+        crate::board::domain::StoryState::Icebox,
+        "post-refresh, bpmux state clears back to Icebox after externally-removed label"
+    );
+}
+
+#[tokio::test]
+async fn external_body_change_propagates_via_fetch_body_after_refresh() {
+    let server = MockServer::start();
+
+    server.mock(|when, then| {
+        when.method(Method::GET).path("/repos/acme/bpmux/issues");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(Value::Array(vec![]).to_string());
+    });
+
+    let refresh = fixture_orchestrator(&server).await;
+
+    let mut original_mock = server.mock(|when, then| {
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/issues/707");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body({
+                let mut v = issue(707, "[Feature] external-body-change", "open", vec![]);
+                v["body"] = Value::String("ORIGINAL_BODY_MARKER".to_string());
+                v.to_string()
+            });
+    });
+
+    let initial = refresh.fetch_body(707).await.expect("first fetch_body");
+    assert!(
+        initial.contains("ORIGINAL_BODY_MARKER"),
+        "first fetch returns original body verbatim; got {initial:?}"
+    );
+
+    original_mock.delete();
+    server.mock(|when, then| {
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/issues/707");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body({
+                let mut v = issue(707, "[Feature] external-body-change", "open", vec![]);
+                v["body"] = Value::String("EDITED_BODY_MARKER".to_string());
+                v.to_string()
+            });
+    });
+
+    let updated = refresh.fetch_body(707).await.expect("second fetch_body");
+    assert!(
+        updated.contains("EDITED_BODY_MARKER"),
+        "post-edit fetch returns the externally-edited body; got {updated:?}"
+    );
+    assert!(
+        !updated.contains("ORIGINAL_BODY_MARKER"),
+        "edited body fully replaces the original; got {updated:?}"
+    );
+}
+
+#[tokio::test]
 async fn external_close_propagates_to_bpmux_accepted_state_after_refresh() {
     let server = MockServer::start();
 
