@@ -24,6 +24,13 @@ export interface LaunchOpts {
   sessionBase?: string
   backendPort?: number
   seedMessages?: ReadonlyArray<Record<string, unknown>>
+  /**
+   * Pre-seed `<session-dir>/pins.json` so the Electron renderer's
+   * `usePins` hook hydrates a non-empty pins state on mount (#489).
+   * Map shape: channel key → ordered Pin records (matches
+   * `session::pins::PinsStore` Rust shape on the wire).
+   */
+  seedPins?: Record<string, ReadonlyArray<Record<string, unknown>>>
   extraEnv?: Record<string, string>
 }
 
@@ -39,12 +46,21 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
   const userDataDir =
     opts.userDataDir ?? mkdtempSync(join(tmpdir(), 'bpmux-playwright-userdata-'))
   const backendPort = opts.backendPort ?? (await getFreePort())
-  if (opts.seedMessages && opts.seedMessages.length > 0) {
+  const wantsSeed =
+    (opts.seedMessages && opts.seedMessages.length > 0) ||
+    (opts.seedPins && Object.keys(opts.seedPins).length > 0)
+  if (wantsSeed) {
     const sessionId = 'playwright-seed-' + Date.now().toString(36)
     const sessionDir = join(sessionBase, sessionId)
     mkdirSync(sessionDir, { recursive: true })
-    const jsonl = opts.seedMessages.map((m) => JSON.stringify(m)).join('\n') + '\n'
-    writeFileSync(join(sessionDir, 'messages-current.jsonl'), jsonl)
+    if (opts.seedMessages && opts.seedMessages.length > 0) {
+      const jsonl = opts.seedMessages.map((m) => JSON.stringify(m)).join('\n') + '\n'
+      writeFileSync(join(sessionDir, 'messages-current.jsonl'), jsonl)
+    }
+    if (opts.seedPins && Object.keys(opts.seedPins).length > 0) {
+      const store = { channels: opts.seedPins }
+      writeFileSync(join(sessionDir, 'pins.json'), JSON.stringify(store))
+    }
     symlinkSync(sessionDir, join(sessionBase, 'current'))
   }
   const app = await electron.launch({
