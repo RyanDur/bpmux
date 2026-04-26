@@ -356,6 +356,32 @@
     content: '▾';
   }
 
+  & .board-epic-state {
+    flex: 0 0 auto;
+    color: var(--fg-dim);
+    font-size: 0.625rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0 var(--space-4);
+    border: 1px solid var(--border-subtle);
+    border-radius: 3px;
+  }
+
+  & .board-epic-state[data-state='in-progress'] {
+    color: var(--accent-info);
+    border-color: var(--accent-info);
+  }
+
+  & .board-epic-state[data-state='delivered'] {
+    color: var(--accent-warning);
+    border-color: var(--accent-warning);
+  }
+
+  & .board-epic-state[data-state='accepted'] {
+    color: var(--accent-success);
+    border-color: var(--accent-success);
+  }
+
   & .board-epic-title {
     flex: 1 1 auto;
     min-width: 0;

@@ -129,6 +129,7 @@ pub(super) async fn handle_view_board(
     let bucket_for = |state: crate::board::domain::StoryState| -> Vec<String> {
         let mut entries: Vec<(u64, String)> = stories
             .iter()
+            .filter(|s| s.story_type != crate::board::domain::StoryType::Epic)
             .filter(|s| s.state == state)
             .filter(|s| !s.is_closed || s.state == crate::board::domain::StoryState::Accepted)
             .map(format_entry)
@@ -170,9 +171,10 @@ pub(super) async fn handle_view_board(
                 .iter()
                 .filter(|c| c.state == crate::board::domain::StoryState::InProgress)
                 .count();
+            let derived = crate::board::domain::derive_epic_state(epic.state, &children);
             out.push_str(&format!(
-                "  #{} {} ({total} children: {accepted_count} accepted, {delivered_count} delivered, {in_progress_count} in-progress)\n",
-                epic.number, epic.title
+                "  #{} [{}] {} ({total} children: {accepted_count} accepted, {delivered_count} delivered, {in_progress_count} in-progress)\n",
+                epic.number, derived.as_str(), epic.title
             ));
         }
         out.push('\n');

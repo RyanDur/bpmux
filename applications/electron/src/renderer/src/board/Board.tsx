@@ -207,11 +207,15 @@ function Board({ messages, hidden }: BoardProps): React.JSX.Element {
   }, [messages, fetchBoard])
 
   const stories = useMemo(() => data?.stories ?? [], [data])
-  const grouped = useMemo(() => groupStories(stories), [stories])
   const epics = useMemo(
     () => stories.filter((s) => storyTypeFromLabels(s.labels) === 'epic'),
     [stories]
   )
+  const nonEpicStories = useMemo(
+    () => stories.filter((s) => storyTypeFromLabels(s.labels) !== 'epic'),
+    [stories]
+  )
+  const grouped = useMemo(() => groupStories(nonEpicStories), [nonEpicStories])
 
   // Flat navigation order matches the visible list order: for each
   // group in GROUP_ORDER, the group's stories in array order. We use

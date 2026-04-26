@@ -66,3 +66,16 @@ export function storyTypeFromLabels(labels: string[]): StoryType {
   if (normalized.includes('chore')) return 'chore'
   return 'unknown'
 }
+
+export const deriveEpicState = (
+  epicExplicitState: StoryState,
+  children: BoardStory[]
+): StoryState => {
+  if (epicExplicitState === 'accepted') return 'accepted'
+  if (children.length === 0) return epicExplicitState
+  if (children.some((c) => c.state === 'in-progress')) return 'in-progress'
+  if (children.every((c) => c.state === 'delivered' || c.state === 'accepted')) {
+    return 'delivered'
+  }
+  return epicExplicitState
+}

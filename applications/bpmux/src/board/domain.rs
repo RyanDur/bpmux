@@ -129,3 +129,31 @@ impl Story {
         }
     }
 }
+
+pub fn derive_epic_state(epic_explicit_state: StoryState, children: &[&Story]) -> StoryState {
+    if epic_explicit_state == StoryState::Accepted {
+        return StoryState::Accepted;
+    }
+    if children.is_empty() {
+        return epic_explicit_state;
+    }
+    if children
+        .iter()
+        .any(|c| c.state == StoryState::NeedsFixes || c.state == StoryState::Rejected)
+    {
+        return StoryState::NeedsFixes;
+    }
+    if children.iter().any(|c| c.state == StoryState::InProgress) {
+        return StoryState::InProgress;
+    }
+    let all_delivered_or_beyond = children.iter().all(|c| {
+        matches!(
+            c.state,
+            StoryState::Delivered | StoryState::ReadyForAccept | StoryState::Accepted
+        )
+    });
+    if all_delivered_or_beyond {
+        return StoryState::Delivered;
+    }
+    epic_explicit_state
+}

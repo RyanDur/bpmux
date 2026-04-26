@@ -2574,8 +2574,10 @@ async fn view_board_renders_epic_summary_section_with_child_progress() {
         "expected EPICS section header in:\n{out}"
     );
     assert!(
-        out.contains("#700 umbrella story (3 children: 1 accepted, 1 delivered, 1 in-progress)"),
-        "expected Epic-summary line with progress in:\n{out}"
+        out.contains(
+            "#700 [in-progress] umbrella story (3 children: 1 accepted, 1 delivered, 1 in-progress)"
+        ),
+        "expected Epic-summary line with derived state + progress in:\n{out}"
     );
     assert!(
         out.contains("↳ #702 child b (epic #700)"),
@@ -2618,5 +2620,139 @@ async fn view_board_omits_epic_section_when_no_epics_present() {
     assert!(
         !out.contains("EPICS"),
         "EPICS section must NOT appear when no Epics: {out}"
+    );
+}
+
+#[tokio::test]
+async fn view_board_filters_epic_stories_out_of_state_lanes() {
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState, StoryType};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let ts = Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap();
+    let mut epic = Story::new_minimal(
+        710,
+        "another umbrella".into(),
+        StoryState::Ready,
+        ts,
+        "pm".into(),
+    );
+    epic.story_type = StoryType::Epic;
+    adapter.seed_stories(vec![epic]);
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orch.refresh_all().await.unwrap();
+    let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
+        .await
+        .unwrap();
+    assert!(
+        out.contains("EPICS (1)") && out.contains("#710"),
+        "Epic must appear in EPICS section: {out}"
+    );
+    assert!(
+        !out.contains("  #710 another umbrella")
+            || out
+                .lines()
+                .filter(|line| line.contains("another umbrella"))
+                .count()
+                == 1,
+        "Epic story must appear once (in EPICS only), not in state-lane: {out}"
+    );
+    let ready_section = out
+        .split("READY (")
+        .nth(1)
+        .unwrap_or("")
+        .split("\n\n")
+        .next()
+        .unwrap_or("");
+    assert!(
+        !ready_section.contains("710"),
+        "Epic must be filtered OUT of READY lane: ready_section={ready_section}"
+    );
+}
+
+#[tokio::test]
+async fn view_board_epic_derived_state_reflects_all_delivered_children() {
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState, StoryType};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let ts = Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap();
+    let mut epic = Story::new_minimal(
+        720,
+        "delivered umbrella".into(),
+        StoryState::Ready,
+        ts,
+        "pm".into(),
+    );
+    epic.story_type = StoryType::Epic;
+    let mut a = Story::new_minimal(721, "a".into(), StoryState::Delivered, ts, "pm".into());
+    a.parent_epic = Some(720);
+    let mut b = Story::new_minimal(722, "b".into(), StoryState::Delivered, ts, "pm".into());
+    b.parent_epic = Some(720);
+    adapter.seed_stories(vec![epic, a, b]);
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orch.refresh_all().await.unwrap();
+    let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
+        .await
+        .unwrap();
+    assert!(
+        out.contains("#720 [delivered] delivered umbrella"),
+        "Epic with all-delivered children should derive 'delivered' state: {out}"
+    );
+}
+
+#[tokio::test]
+async fn view_board_epic_explicit_accepted_overrides_derivation() {
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState, StoryType};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let ts = Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap();
+    let mut epic = Story::new_minimal(
+        730,
+        "owner-accepted umbrella".into(),
+        StoryState::Accepted,
+        ts,
+        "pm".into(),
+    );
+    epic.story_type = StoryType::Epic;
+    let mut a = Story::new_minimal(731, "a".into(), StoryState::InProgress, ts, "pm".into());
+    a.parent_epic = Some(730);
+    adapter.seed_stories(vec![epic, a]);
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orch.refresh_all().await.unwrap();
+    let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
+        .await
+        .unwrap();
+    assert!(
+        out.contains("#730 [accepted] owner-accepted umbrella"),
+        "Epic with explicit Accepted state should NOT derive from in-progress child: {out}"
     );
 }

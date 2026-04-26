@@ -1,5 +1,5 @@
 import StoryTypeGlyph from './StoryTypeGlyph'
-import type { BoardStory } from './types'
+import { deriveEpicState, type BoardStory } from './types'
 
 interface Props {
   epics: BoardStory[]
@@ -36,12 +36,20 @@ const EpicSummary = ({ epics, stories, onOpen }: Props): React.JSX.Element | nul
         {epics.map((epic) => {
           const counts = countChildren(epic, stories)
           const children = stories.filter((s) => s.parent_epic === epic.number)
+          const derived = deriveEpicState(epic.state, children)
           return (
             <li key={epic.number} className="board-epic-item">
               <details className="board-epic-details" data-test={`board-epic-${epic.number}`}>
                 <summary className="board-epic-summary">
                   <StoryTypeGlyph type="epic" />
                   <small className="board-story-number">#{epic.number}</small>
+                  <span
+                    className="board-epic-state"
+                    data-state={derived}
+                    data-test={`board-epic-${epic.number}-state`}
+                  >
+                    {derived}
+                  </span>
                   <b className="board-epic-title">{epic.title}</b>
                   <small className="board-epic-counts" aria-label={epicCountsAriaLabel(counts)}>
                     {counts.total} children · {counts.accepted}✓ {counts.delivered}↻{' '}

@@ -2,7 +2,7 @@
 
 use chrono::{TimeZone, Utc};
 
-use super::domain::{FreeComment, Gate, Story, StoryState, StoryType, Tag};
+use super::domain::{FreeComment, Gate, Story, StoryState, StoryType, Tag, derive_epic_state};
 use super::events::{BoardEvent, EventMeta, event_wins};
 use super::peer::PeerId;
 use super::store::BoardStore;
@@ -495,4 +495,128 @@ fn parent_epic_events_no_op_on_missing_story() {
         number: 999,
     });
     assert!(store.story(999).is_none());
+}
+
+fn child(number: u64, state: StoryState) -> Story {
+    let mut s = Story::new_minimal(
+        number,
+        format!("child {number}"),
+        state,
+        Utc.with_ymd_and_hms(2026, 4, 26, 0, 0, 0).unwrap(),
+        "dev".to_string(),
+    );
+    s.parent_epic = Some(999);
+    s
+}
+
+#[test]
+fn derive_epic_state_no_children_returns_explicit() {
+    assert_eq!(
+        derive_epic_state(StoryState::Icebox, &[]),
+        StoryState::Icebox
+    );
+    assert_eq!(derive_epic_state(StoryState::Ready, &[]), StoryState::Ready);
+}
+
+#[test]
+fn derive_epic_state_accepted_is_terminal_overrides_children() {
+    let kids = [
+        child(1, StoryState::InProgress),
+        child(2, StoryState::Ready),
+    ];
+    let refs: Vec<&Story> = kids.iter().collect();
+    assert_eq!(
+        derive_epic_state(StoryState::Accepted, &refs),
+        StoryState::Accepted
+    );
+}
+
+#[test]
+fn derive_epic_state_any_in_progress_child_makes_epic_in_progress() {
+    let kids = [
+        child(1, StoryState::Ready),
+        child(2, StoryState::InProgress),
+        child(3, StoryState::Delivered),
+    ];
+    let refs: Vec<&Story> = kids.iter().collect();
+    assert_eq!(
+        derive_epic_state(StoryState::Icebox, &refs),
+        StoryState::InProgress
+    );
+}
+
+#[test]
+fn derive_epic_state_all_delivered_makes_epic_delivered() {
+    let kids = [
+        child(1, StoryState::Delivered),
+        child(2, StoryState::Delivered),
+    ];
+    let refs: Vec<&Story> = kids.iter().collect();
+    assert_eq!(
+        derive_epic_state(StoryState::Icebox, &refs),
+        StoryState::Delivered
+    );
+}
+
+#[test]
+fn derive_epic_state_mixed_delivered_and_accepted_still_delivered() {
+    let kids = [
+        child(1, StoryState::Delivered),
+        child(2, StoryState::Accepted),
+        child(3, StoryState::ReadyForAccept),
+    ];
+    let refs: Vec<&Story> = kids.iter().collect();
+    assert_eq!(
+        derive_epic_state(StoryState::Icebox, &refs),
+        StoryState::Delivered
+    );
+}
+
+#[test]
+fn derive_epic_state_all_accepted_does_not_auto_accept_epic() {
+    let kids = [
+        child(1, StoryState::Accepted),
+        child(2, StoryState::Accepted),
+    ];
+    let refs: Vec<&Story> = kids.iter().collect();
+    assert_eq!(
+        derive_epic_state(StoryState::Delivered, &refs),
+        StoryState::Delivered
+    );
+}
+
+#[test]
+fn derive_epic_state_needs_fixes_child_makes_epic_needs_fixes() {
+    let kids = [
+        child(1, StoryState::Delivered),
+        child(2, StoryState::NeedsFixes),
+    ];
+    let refs: Vec<&Story> = kids.iter().collect();
+    assert_eq!(
+        derive_epic_state(StoryState::InProgress, &refs),
+        StoryState::NeedsFixes
+    );
+}
+
+#[test]
+fn derive_epic_state_rejected_child_makes_epic_needs_fixes() {
+    let kids = [
+        child(1, StoryState::Delivered),
+        child(2, StoryState::Rejected),
+    ];
+    let refs: Vec<&Story> = kids.iter().collect();
+    assert_eq!(
+        derive_epic_state(StoryState::InProgress, &refs),
+        StoryState::NeedsFixes
+    );
+}
+
+#[test]
+fn derive_epic_state_all_ready_returns_explicit() {
+    let kids = [child(1, StoryState::Ready), child(2, StoryState::Ready)];
+    let refs: Vec<&Story> = kids.iter().collect();
+    assert_eq!(
+        derive_epic_state(StoryState::Icebox, &refs),
+        StoryState::Icebox
+    );
 }
