@@ -37,6 +37,8 @@ function typeLabel(type: StoryType): string {
       return 'Bug'
     case 'chore':
       return 'Chore'
+    case 'epic':
+      return 'Epic'
     default:
       return 'Story'
   }
@@ -71,6 +73,15 @@ function renderPath(type: StoryType): React.JSX.Element {
         <g fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round">
           <path d="M8 2.3v1.8M8 11.9v1.8M2.3 8h1.8M11.9 8h1.8M4.2 4.2l1.3 1.3M10.5 10.5l1.3 1.3M4.2 11.8l1.3-1.3M10.5 5.5l1.3-1.3" />
           <circle cx="8" cy="8" r="2.6" fill="currentColor" stroke="currentColor" />
+        </g>
+      )
+    case 'epic':
+      return (
+        <g fill="currentColor">
+          <rect x="3" y="11.5" width="10" height="2" rx="0.5" />
+          <rect x="4.5" y="8" width="7" height="2" rx="0.5" />
+          <rect x="6" y="4.5" width="4" height="2" rx="0.5" />
+          <rect x="7.25" y="1.5" width="1.5" height="2" rx="0.5" />
         </g>
       )
     default:

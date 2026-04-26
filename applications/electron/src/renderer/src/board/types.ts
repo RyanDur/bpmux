@@ -12,7 +12,7 @@ export type StoryState =
   | 'delivered'
   | 'accepted'
 
-export type StoryType = 'feature' | 'bug' | 'chore' | 'unknown'
+export type StoryType = 'feature' | 'bug' | 'chore' | 'epic' | 'unknown'
 
 export interface BoardStory {
   number: number
@@ -22,6 +22,7 @@ export interface BoardStory {
   assignees: string[]
   created_at: string
   body: string
+  parent_epic?: number
 }
 
 export interface BoardResponse {
@@ -59,6 +60,7 @@ export const GROUP_ORDER: GroupSpec[] = [
 // predictable instead of guessing.
 export function storyTypeFromLabels(labels: string[]): StoryType {
   const normalized = labels.map((l) => l.toLowerCase())
+  if (normalized.includes('epic')) return 'epic'
   if (normalized.includes('feature')) return 'feature'
   if (normalized.includes('bug')) return 'bug'
   if (normalized.includes('chore')) return 'chore'

@@ -5,6 +5,7 @@ import { useCollapsibleSectionsStorage } from '../lib/useCollapsibleSectionsStor
 import { BOARD_INVALIDATE_MARKER, type ChatMessage } from '../transport/types'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import DrillIn from './DrillIn'
+import EpicSummary from './EpicSummary'
 import StoryBadge, { deriveBadge } from './StoryBadge'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import {
@@ -207,6 +208,10 @@ function Board({ messages, hidden }: BoardProps): React.JSX.Element {
 
   const stories = useMemo(() => data?.stories ?? [], [data])
   const grouped = useMemo(() => groupStories(stories), [stories])
+  const epics = useMemo(
+    () => stories.filter((s) => storyTypeFromLabels(s.labels) === 'epic'),
+    [stories]
+  )
 
   // Flat navigation order matches the visible list order: for each
   // group in GROUP_ORDER, the group's stories in array order. We use
@@ -445,6 +450,7 @@ function Board({ messages, hidden }: BoardProps): React.JSX.Element {
         />
       ) : (
         <section className="board-body" data-test="board-list">
+          <EpicSummary epics={epics} stories={stories} onOpen={handleOpen} />
           {GROUP_ORDER.map((group) => (
             <BoardGroup
               key={group.state}
@@ -719,6 +725,14 @@ function StoryRow({
         <StoryTypeGlyph type={type} />
         <StoryBadge story={story} onOpenTimeline={onOpenTimeline} onOpenBlocker={onOpen} />
         <b className="board-story-title">{story.title}</b>
+        {story.parent_epic !== undefined ? (
+          <small
+            className="board-story-epic-ref"
+            aria-label={`child of epic #${story.parent_epic}`}
+          >
+            ↳ #{story.parent_epic}
+          </small>
+        ) : null}
       </button>
     </li>
   )

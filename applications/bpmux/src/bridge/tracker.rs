@@ -483,12 +483,14 @@ fn issue_to_board_json(issue: &octocrab::models::issues::Issue) -> serde_json::V
     let labels: Vec<String> = issue.labels.iter().map(|l| l.name.clone()).collect();
     let state = derive_renderer_state(&issue.state, &labels);
     let gh_state = gh_state_label(&issue.state);
+    let parent_epic = crate::board::adapters::github::parent_epic_from_labels(&labels);
     serde_json::json!({
         "number": issue.number,
         "title": issue.title,
         "state": state,
         "gh_state": gh_state,
         "labels": labels,
+        "parent_epic": parent_epic,
         "assignees": issue.assignees.iter().map(|a| a.login.clone()).collect::<Vec<_>>(),
         "created_at": issue.created_at.to_rfc3339(),
         "body": issue.body.clone().unwrap_or_default(),

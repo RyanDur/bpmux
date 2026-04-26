@@ -284,9 +284,110 @@
       color: var(--fg-secondary);
     }
 
+    &.story-glyph--epic {
+      color: var(--accent-brand);
+    }
+
     &.story-glyph--unknown {
       color: var(--fg-dim);
     }
+  }
+
+  & .board-story-epic-ref {
+    flex: 0 0 auto;
+    color: var(--fg-dim);
+    font-variant-numeric: tabular-nums;
+    font-size: 0.6875rem;
+    margin-left: var(--space-4);
+  }
+
+  & .board-epics {
+    border-bottom: 1px solid var(--border-subtle);
+    padding: var(--space-4) 0 var(--space-8);
+  }
+
+  & .board-epics-header {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-8);
+    padding: var(--space-8) var(--space-16);
+  }
+
+  & .board-epics-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  & .board-epic-details {
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  & .board-epic-summary {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    padding: var(--space-6) var(--space-16);
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    &::before {
+      content: '▸';
+      color: var(--fg-dim);
+      font-size: 0.625rem;
+      flex: 0 0 auto;
+    }
+
+    &:hover {
+      background: var(--bg-highlighted);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--accent-brand);
+      outline-offset: -2px;
+    }
+  }
+
+  & .board-epic-details[open] > .board-epic-summary::before {
+    content: '▾';
+  }
+
+  & .board-epic-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 500;
+  }
+
+  & .board-epic-counts {
+    flex: 0 0 auto;
+    color: var(--fg-dim);
+    font-size: 0.6875rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  & .board-epic-children {
+    display: flex;
+    flex-direction: column;
+    padding-left: var(--space-24);
+  }
+
+  & .board-epic-child .board-story-button {
+    padding: var(--space-4) var(--space-16);
+  }
+
+  & .board-epic-child-state {
+    flex: 0 0 auto;
+    color: var(--fg-dim);
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
   }
 
   & .board-story-title {
