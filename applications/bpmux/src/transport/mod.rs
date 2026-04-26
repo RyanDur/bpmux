@@ -4,6 +4,7 @@ pub mod crypto;
 pub mod peer;
 pub mod protocol;
 pub mod rest;
+pub mod test_routes;
 pub mod unfurl;
 pub mod webrtc;
 pub mod ws;

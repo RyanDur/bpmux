@@ -43,6 +43,15 @@ type WsSink = futures::stream::SplitSink<
     tungstenite::Message,
 >;
 
+pub(crate) async fn dispatch_test_create_story(
+    args: serde_json::Map<String, serde_json::Value>,
+    agent_name: &str,
+    refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
+) -> Result<String, String> {
+    let empty_ws: tokio::sync::Mutex<Option<WsSink>> = tokio::sync::Mutex::new(None);
+    tools_stories::handle_create_story(&args, agent_name, &empty_ws, refresh).await
+}
+
 #[derive(Clone)]
 pub struct BridgeServer {
     port: u16,

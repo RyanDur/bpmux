@@ -160,6 +160,15 @@ pub async fn run_server(
             transport::auth::gate,
         ));
 
+    let test_routes = if test_refresh.is_some() {
+        axum::Router::new().route(
+            "/api/test/create_story",
+            axum::routing::post(transport::test_routes::post_test_create_story),
+        )
+    } else {
+        axum::Router::new()
+    };
+
     let router = axum::Router::new()
         // Liveness probe: tiny, no auth, no data. Electron's
         // spawn-or-adopt flow polls this to decide when the backend
@@ -194,6 +203,7 @@ pub async fn run_server(
             axum::routing::post(transport::rest::post_classifier_misfire),
         )
         .merge(gated_routes)
+        .merge(test_routes)
         .with_state(session)
         .layer(axum::Extension(screen_capture))
         .layer(axum::Extension(inject_tx))
