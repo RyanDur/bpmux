@@ -63,12 +63,23 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
     }
     symlinkSync(sessionDir, join(sessionBase, 'current'))
   }
+  // Per-test auth-token isolation. Without this, parallel workers
+  // collide on $HOME/.bpmux/auth_token — bpmux's default location —
+  // causing race-class flakes where one worker's token write reaches
+  // another worker's reader. Each test gets its own tempdir-backed
+  // path; callers that pass an explicit BPMUX_AUTH_TOKEN_PATH in
+  // extraEnv override this default.
+  const defaultAuthTokenPath = join(
+    mkdtempSync(join(tmpdir(), 'bpmux-playwright-auth-')),
+    'auth_token'
+  )
   const app = await electron.launch({
     args: ['out/main/index.js', `--user-data-dir=${userDataDir}`],
     env: {
       ...process.env,
       BPMUX_SESSION_BASE: sessionBase,
       BPMUX_BACKEND_PORT: String(backendPort),
+      BPMUX_AUTH_TOKEN_PATH: defaultAuthTokenPath,
       ...(opts.extraEnv ?? {})
     }
   })
