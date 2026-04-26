@@ -2,9 +2,31 @@ use std::sync::Arc;
 
 use tokio_util::sync::CancellationToken;
 
+use crate::board::{BoardStore, RefreshDriver, SyncOrchestrator};
 use crate::session;
 use crate::transport;
 use crate::transport::auth::AuthState;
+
+pub type TestRefreshHandle = Option<Arc<dyn RefreshDriver>>;
+
+fn test_mode_enabled() -> bool {
+    std::env::var("BPMUX_TEST_MODE")
+        .map(|v| !v.is_empty() && v != "0")
+        .unwrap_or(false)
+}
+
+async fn build_test_orchestrator(session: Arc<session::Session>) -> Arc<dyn RefreshDriver> {
+    let _ = session;
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(crate::board::adapters::in_memory::InMemorySourceAdapter::new());
+    let orch = Arc::new(SyncOrchestrator::new(store, adapter));
+    if let Err(e) = orch.ingest_once().await {
+        crate::session::diag::log_diag(&format!(
+            "server: BPMUX_TEST_MODE initial ingest skipped — {e}"
+        ));
+    }
+    orch
+}
 
 pub async fn run_server(
     session: Arc<session::Session>,
@@ -33,6 +55,15 @@ pub async fn run_server(
     // blank board.
     let tracker: transport::rest::TrackerHandle =
         crate::bridge::tracker::OctocrabStoryTracker::from_env().map(std::sync::Arc::new);
+
+    let test_refresh: TestRefreshHandle = if test_mode_enabled() {
+        eprintln!(
+            "[bpmux server] BPMUX_TEST_MODE=1 — instantiating in-memory orchestrator for acceptance tests"
+        );
+        Some(build_test_orchestrator(session.clone()).await)
+    } else {
+        None
+    };
 
     // #372: spawn the push-based CI state watcher. Polls GitHub at
     // its own cadence (independent of the 15s frontend poll), emits
@@ -167,6 +198,7 @@ pub async fn run_server(
         .layer(axum::Extension(screen_capture))
         .layer(axum::Extension(inject_tx))
         .layer(axum::Extension(tracker))
+        .layer(axum::Extension(test_refresh))
         // The Electron renderer loads from Vite's dev URL or file://
         // and fetches this backend at 127.0.0.1:4117 — a cross-origin
         // request that the browser preflight-checks. Without this
