@@ -437,9 +437,9 @@ pub(super) async fn handle_deliver_story(
         .unwrap_or_else(|| format!("#{number}"));
     for signal in build_delivery_signals(number, &title) {
         let json = serde_json::to_string(&signal).map_err(|e| format!("signal: {e}"))?;
-        ws_send(ws_tx, json)
-            .await
-            .map_err(|e| format!("#{number} signal send failed: {e}"))?;
+        if let Err(e) = ws_send(ws_tx, json).await {
+            crate::session::diag::log_diag(&format!("bridge: signal send failed: {e}"));
+        }
     }
     // #391: persist the verified_observation as a comment on the
     // story so designer + pm see it at desk-check + accept gates.
