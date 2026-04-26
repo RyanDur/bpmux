@@ -1,0 +1,237 @@
+//! Integration tests for the `/api/test/*` HTTP surface (#476).
+//!
+//! Three sections per the designer-authored template (broadcast 02:18 UTC):
+//!
+//! 1. response-correctness: the HTTP route's request/response shape is
+//!    what callers expect (status codes + error-message naming).
+//! 2. roundtrip-coherence: a write through the route is observable via
+//!    the production read path (`handle_view_board` / `RefreshDriver`).
+//! 3. contract-equality: identical assertions must pass against every
+//!    adapter mode (InMemorySourceAdapter, MockOctocrab, GitHubSourceAdapter-VCR).
+//!    First-pass commit covers InMemorySourceAdapter only; subsequent
+//!    commits add MockOctocrab + GH-VCR runners that re-execute these
+//!    same assertions.
+
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
+use std::sync::Arc;
+
+use axum::body::Body;
+use axum::http::{Request, StatusCode};
+use serde_json::Value;
+use tower::ServiceExt;
+
+use crate::board::adapters::in_memory::InMemorySourceAdapter;
+use crate::board::{BoardStore, RefreshDriver, SyncOrchestrator};
+use crate::bridge;
+use crate::server::TestRefreshHandle;
+
+async fn fixture_test_mode_on() -> (axum::Router, Arc<dyn RefreshDriver>) {
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let orch_concrete = SyncOrchestrator::new(store, adapter);
+    orch_concrete
+        .ingest_once()
+        .await
+        .expect("seed-empty ingest");
+    let orch: Arc<dyn RefreshDriver> = Arc::new(orch_concrete);
+    let test_refresh: TestRefreshHandle = Some(orch.clone());
+    let router = axum::Router::new()
+        .route(
+            "/api/test/create_story",
+            axum::routing::post(super::test_routes::post_test_create_story),
+        )
+        .layer(axum::Extension(test_refresh));
+    (router, orch)
+}
+
+fn fixture_test_mode_off() -> axum::Router {
+    let none_refresh: TestRefreshHandle = None;
+    axum::Router::new()
+        .route(
+            "/api/test/create_story",
+            axum::routing::post(super::test_routes::post_test_create_story),
+        )
+        .layer(axum::Extension(none_refresh))
+}
+
+async fn post_create_story(router: axum::Router, body: &str) -> axum::http::Response<Body> {
+    let req = Request::builder()
+        .method("POST")
+        .uri("/api/test/create_story")
+        .header("Content-Type", "application/json")
+        .body(Body::from(body.to_string()))
+        .expect("build req");
+    router.oneshot(req).await.expect("response")
+}
+
+async fn read_json(resp: axum::http::Response<Body>) -> Value {
+    let bytes = axum::body::to_bytes(resp.into_body(), usize::MAX)
+        .await
+        .expect("body");
+    serde_json::from_slice(&bytes).expect("json")
+}
+
+#[tokio::test]
+async fn response_correctness_happy_path_returns_message_with_assigned_number() {
+    let (router, _refresh) = fixture_test_mode_on().await;
+    let body = r#"{
+        "title":"[Feature] response-correctness-happy",
+        "user_job":"When testing, dev needs response-shape verification.",
+        "observation_falsifier":"reject if message omits the assigned number"
+    }"#;
+    let resp = post_create_story(router, body).await;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let json = read_json(resp).await;
+    let msg = json["message"].as_str().expect("message string");
+    assert!(
+        msg.contains("story created:"),
+        "happy-path message names creation; got {msg}"
+    );
+    assert!(
+        msg.contains("#1"),
+        "first story in fresh fixture is #1; got {msg}"
+    );
+}
+
+#[tokio::test]
+async fn response_correctness_rejects_empty_observation_falsifier() {
+    let (router, _refresh) = fixture_test_mode_on().await;
+    let body = r#"{
+        "title":"[Feature] x",
+        "user_job":"When testing, ...",
+        "observation_falsifier":""
+    }"#;
+    let resp = post_create_story(router, body).await;
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    let json = read_json(resp).await;
+    let err = json["error"].as_str().expect("error string");
+    assert!(
+        err.contains("observation_falsifier"),
+        "rejection names the missing field; got {err}"
+    );
+}
+
+#[tokio::test]
+async fn response_correctness_rejects_empty_user_job() {
+    let (router, _refresh) = fixture_test_mode_on().await;
+    let body = r#"{
+        "title":"[Feature] x",
+        "user_job":"",
+        "observation_falsifier":"reject if user_job is unspecified"
+    }"#;
+    let resp = post_create_story(router, body).await;
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    let json = read_json(resp).await;
+    let err = json["error"].as_str().expect("error string");
+    assert!(
+        err.contains("user_job"),
+        "rejection names the missing field; got {err}"
+    );
+}
+
+#[tokio::test]
+async fn response_correctness_returns_503_when_test_mode_disabled() {
+    let router = fixture_test_mode_off();
+    let body = r#"{
+        "title":"[Feature] x",
+        "user_job":"y",
+        "observation_falsifier":"z"
+    }"#;
+    let resp = post_create_story(router, body).await;
+    assert_eq!(resp.status(), StatusCode::SERVICE_UNAVAILABLE);
+    let json = read_json(resp).await;
+    let err = json["error"].as_str().expect("error string");
+    assert!(
+        err.contains("BPMUX_TEST_MODE"),
+        "503 explains test-mode requirement; got {err}"
+    );
+}
+
+#[tokio::test]
+async fn roundtrip_coherence_view_board_reflects_new_story() {
+    let (router, refresh) = fixture_test_mode_on().await;
+    let body = r#"{
+        "title":"[Feature] roundtrip-marker-A",
+        "user_job":"When testing, dev needs roundtrip verification.",
+        "observation_falsifier":"reject if view_board does not reflect new story"
+    }"#;
+    let resp = post_create_story(router, body).await;
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let view = bridge::dispatch_test_view_board(Some(&refresh))
+        .await
+        .expect("view_board returns Ok");
+    assert!(
+        view.contains("roundtrip-marker-A"),
+        "view_board output reflects new story title; got:\n{view}"
+    );
+    assert!(
+        view.contains("#1"),
+        "view_board output names the assigned number; got:\n{view}"
+    );
+}
+
+#[tokio::test]
+async fn roundtrip_coherence_user_job_and_falsifier_preserved_in_body() {
+    let (router, refresh) = fixture_test_mode_on().await;
+    let body = r#"{
+        "title":"[Feature] roundtrip-body-marker",
+        "user_job":"USER_JOB_MARKER_42",
+        "observation_falsifier":"FALSIFIER_MARKER_42"
+    }"#;
+    let resp = post_create_story(router, body).await;
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let stories = refresh.all_stories();
+    assert_eq!(stories.len(), 1, "exactly one story present");
+
+    let stored_body = refresh
+        .fetch_body(stories[0].number)
+        .await
+        .expect("fetch_body");
+    assert!(
+        stored_body.contains("USER_JOB_MARKER_42"),
+        "user_job preserved verbatim in stored body; got:\n{stored_body}"
+    );
+    assert!(
+        stored_body.contains("FALSIFIER_MARKER_42"),
+        "observation_falsifier preserved verbatim in stored body; got:\n{stored_body}"
+    );
+}
+
+#[tokio::test]
+async fn roundtrip_coherence_rejects_parent_epic_referencing_non_epic() {
+    let (router, refresh) = fixture_test_mode_on().await;
+    let feature = r#"{
+        "title":"[Feature] not-an-epic",
+        "user_job":"When testing, dev needs negative-path coverage.",
+        "observation_falsifier":"reject if non-Epic parent is accepted silently"
+    }"#;
+    let resp = post_create_story(router.clone(), feature).await;
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let parent_number = refresh.all_stories()[0].number;
+
+    let child = format!(
+        r#"{{
+            "title":"[Feature] child-of-feature",
+            "user_job":"When testing, dev needs ...",
+            "observation_falsifier":"reject ...",
+            "parent_epic":{parent_number}
+        }}"#
+    );
+    let resp = post_create_story(router, &child).await;
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    let json = read_json(resp).await;
+    let err = json["error"].as_str().expect("error string");
+    assert!(
+        err.contains("not an Epic"),
+        "rejection names the type-mismatch reason; got {err}"
+    );
+    assert_eq!(
+        refresh.all_stories().len(),
+        1,
+        "rejected request did not create a child"
+    );
+}

@@ -22,4 +22,6 @@ mod protocol_tests;
 #[cfg(test)]
 mod rest_tests;
 #[cfg(test)]
+mod test_routes_tests;
+#[cfg(test)]
 mod ws_tests;

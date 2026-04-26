@@ -52,6 +52,13 @@ pub(crate) async fn dispatch_test_create_story(
     tools_stories::handle_create_story(&args, agent_name, &empty_ws, refresh).await
 }
 
+#[cfg(test)]
+pub(crate) async fn dispatch_test_view_board(
+    refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
+) -> Result<String, String> {
+    tools_stories::handle_view_board(&serde_json::Map::new(), refresh).await
+}
+
 #[derive(Clone)]
 pub struct BridgeServer {
     port: u16,
