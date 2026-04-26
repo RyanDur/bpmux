@@ -770,9 +770,9 @@ pub(super) async fn handle_pass_desk_check(
     let story_type = classify_for_pass_desk_check(number, refresh);
     for msg in build_pass_desk_check_signals(number, story_type) {
         let signal = serde_json::to_string(&msg).map_err(|e| format!("signal: {e}"))?;
-        ws_send(ws_tx, signal)
-            .await
-            .map_err(|e| format!("#{number} signal send failed: {e}"))?;
+        if let Err(e) = ws_send(ws_tx, signal).await {
+            crate::session::diag::log_diag(&format!("bridge: signal send failed: {e}"));
+        }
     }
     if let Some(r) = refresh {
         let meta = crate::board::events::EventMeta {
@@ -1001,9 +1001,9 @@ pub(super) async fn handle_close_iteration(
     require_role(agent_name, &["pm"], "close iteration")?;
     let signal = build_iteration_close_signal();
     let json = serde_json::to_string(&signal).map_err(|e| format!("signal: {e}"))?;
-    ws_send(ws_tx, json)
-        .await
-        .map_err(|e| format!("iteration-close signal send failed: {e}"))?;
+    if let Err(e) = ws_send(ws_tx, json).await {
+        crate::session::diag::log_diag(&format!("bridge: iteration-close signal send failed: {e}"));
+    }
     Ok("iteration-close signal broadcast — agents prompted to flush unsaved findings".to_string())
 }
 
