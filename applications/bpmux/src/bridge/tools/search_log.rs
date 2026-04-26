@@ -21,7 +21,16 @@ pub(in crate::bridge) async fn handle_search_log(
         .text()
         .await
         .map_err(|e| format!("failed to read response: {e}"))?;
-    let results: Vec<serde_json::Value> = serde_json::from_str(&body).map_err(|_| body.clone())?;
+    // /api/search returns the consolidated shape
+    // `{"messages": [SearchResult,..], "stories": [...], "comments": [...]}`
+    // (see transport::rest::search_messages). search_log surfaces only
+    // the message-thread hits today; story/comment hits are
+    // agent-readable via get_story / view_comments.
+    let parsed: serde_json::Value = serde_json::from_str(&body)
+        .map_err(|e| format!("failed to parse response: {e}: {body}"))?;
+    let results = parsed["messages"]
+        .as_array()
+        .ok_or_else(|| format!("unexpected response shape: {body}"))?;
     if results.is_empty() {
         return Ok(format!("No results for \"{query}\"."));
     }
