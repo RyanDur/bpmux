@@ -2214,20 +2214,28 @@ async fn set_parent_epic_migrated_path_emits_parent_epic_set_event() {
     use crate::board::RefreshDriver;
     use crate::board::SyncOrchestrator;
     use crate::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::board::domain::{Story, StoryState};
+    use crate::board::domain::{Story, StoryState, StoryType};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let seeded = Story::new_minimal(
+    let child = Story::new_minimal(
         300,
         "child".into(),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    adapter.seed_stories(vec![seeded]);
+    let mut epic = Story::new_minimal(
+        457,
+        "epic story".into(),
+        StoryState::Ready,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "pm".into(),
+    );
+    epic.story_type = StoryType::Epic;
+    adapter.seed_stories(vec![child, epic]);
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
         Arc::clone(&adapter),
@@ -2256,6 +2264,85 @@ async fn set_parent_epic_migrated_path_emits_parent_epic_set_event() {
             ..
         }
     ));
+}
+
+#[tokio::test]
+async fn set_parent_epic_rejects_non_existent_epic() {
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let child = Story::new_minimal(
+        310,
+        "orphan".into(),
+        StoryState::Ready,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "pm".into(),
+    );
+    adapter.seed_stories(vec![child]);
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orchestrator.refresh_all().await.unwrap();
+
+    let ws_tx = connected_ws_sink_for_test().await;
+    let mut args = serde_json::Map::new();
+    args.insert("number".into(), serde_json::json!(310));
+    args.insert("epic_number".into(), serde_json::json!(9999));
+    let result = handle_set_parent_epic(&args, "pm:claude-code", &ws_tx, Some(&orchestrator)).await;
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("not found"));
+}
+
+#[tokio::test]
+async fn set_parent_epic_rejects_non_epic_parent() {
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState, StoryType};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let child = Story::new_minimal(
+        311,
+        "child".into(),
+        StoryState::Ready,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "pm".into(),
+    );
+    let mut not_epic = Story::new_minimal(
+        458,
+        "ordinary feature".into(),
+        StoryState::Ready,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "pm".into(),
+    );
+    not_epic.story_type = StoryType::Feature;
+    adapter.seed_stories(vec![child, not_epic]);
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orchestrator.refresh_all().await.unwrap();
+
+    let ws_tx = connected_ws_sink_for_test().await;
+    let mut args = serde_json::Map::new();
+    args.insert("number".into(), serde_json::json!(311));
+    args.insert("epic_number".into(), serde_json::json!(458));
+    let result = handle_set_parent_epic(&args, "pm:claude-code", &ws_tx, Some(&orchestrator)).await;
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(err.contains("not an Epic"));
 }
 
 #[tokio::test]

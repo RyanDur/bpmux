@@ -492,6 +492,18 @@ pub(super) async fn handle_set_parent_epic(
     r.refresh_story(number)
         .await
         .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?;
+    r.refresh_story(epic_number)
+        .await
+        .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?;
+    let parent = r.story(epic_number).ok_or_else(|| {
+        format!("epic #{epic_number} not found — cannot set as parent of #{number}")
+    })?;
+    if parent.story_type != crate::board::domain::StoryType::Epic {
+        return Err(format!(
+            "story #{epic_number} is not an Epic (story_type={:?}); only Epic stories can be parents",
+            parent.story_type
+        ));
+    }
     let meta = crate::board::events::EventMeta {
         actor: crate::transport::ws::short_name(agent_name).to_string(),
         ts: chrono::Utc::now(),
