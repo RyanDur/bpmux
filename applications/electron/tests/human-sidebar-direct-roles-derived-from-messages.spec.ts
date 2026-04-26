@@ -1,0 +1,99 @@
+import { test, expect } from '@playwright/test'
+import { launchIsolatedWithWindow } from './helpers/launch'
+
+test.describe('human-side E2E #476 — direct-action — sidebar direct-roles', () => {
+  test('seeded messages from multiple roles populate sidebar direct-role buttons', async () => {
+    const { app, win } = await launchIsolatedWithWindow({
+      extraEnv: { BPMUX_TEST_MODE: '1' },
+      seedMessages: [
+        {
+          from: 'pm:claude-code',
+          text: 'pm broadcasts to seed direct-role',
+          ts: '2026-04-22T16:00:00Z',
+          message_type: 'chat'
+        },
+        {
+          from: 'dev:claude-code',
+          text: 'dev broadcasts to seed direct-role',
+          ts: '2026-04-22T16:01:00Z',
+          message_type: 'chat'
+        },
+        {
+          from: 'designer:claude-code',
+          text: 'designer broadcasts to seed direct-role',
+          ts: '2026-04-22T16:02:00Z',
+          message_type: 'chat'
+        }
+      ]
+    })
+
+    const consoleErrors: string[] = []
+    const pageErrors: Error[] = []
+    win.on('console', (m) => {
+      if (m.type() === 'error') consoleErrors.push(m.text())
+    })
+    win.on('pageerror', (e) => pageErrors.push(e))
+
+    await expect(win.locator('[data-test="sidebar"]')).toBeVisible()
+
+    consoleErrors.length = 0
+    pageErrors.length = 0
+
+    for (const role of ['pm', 'dev', 'designer']) {
+      const button = win.locator(`[data-test="sidebar-direct-${role}"]`)
+      await expect(button).toBeVisible({ timeout: 10000 })
+      await expect(button).toContainText(role)
+    }
+
+    expect(consoleErrors).toEqual([])
+    expect(pageErrors).toEqual([])
+
+    await app.close()
+  })
+
+  test('clicking a direct-role button scopes the sidebar to that role', async () => {
+    const { app, win } = await launchIsolatedWithWindow({
+      extraEnv: { BPMUX_TEST_MODE: '1' },
+      seedMessages: [
+        {
+          from: 'pm:claude-code',
+          text: 'pm broadcast',
+          ts: '2026-04-22T16:00:00Z',
+          message_type: 'chat'
+        },
+        {
+          from: 'dev:claude-code',
+          text: 'dev broadcast',
+          ts: '2026-04-22T16:01:00Z',
+          message_type: 'chat'
+        }
+      ]
+    })
+
+    const consoleErrors: string[] = []
+    const pageErrors: Error[] = []
+    win.on('console', (m) => {
+      if (m.type() === 'error') consoleErrors.push(m.text())
+    })
+    win.on('pageerror', (e) => pageErrors.push(e))
+
+    await expect(win.locator('[data-test="sidebar"]')).toBeVisible()
+
+    const broadcastButton = win.locator('[data-test="sidebar-broadcast"]')
+    await expect(broadcastButton).toHaveAttribute('aria-current', 'true')
+
+    consoleErrors.length = 0
+    pageErrors.length = 0
+
+    const devButton = win.locator('[data-test="sidebar-direct-dev"]')
+    await expect(devButton).toBeVisible({ timeout: 10000 })
+    await devButton.click()
+    await expect(devButton).toHaveAttribute('aria-current', 'true')
+    await expect(broadcastButton).not.toHaveAttribute('aria-current', 'true')
+
+    expect(consoleErrors).toEqual([])
+    expect(pageErrors).toEqual([])
+
+    await app.close()
+  })
+})
