@@ -151,28 +151,12 @@ pub(super) async fn handle_view_board(
             format!("{prefix}#{} {}{}", s.number, s.title, suffix),
         )
     };
-    use crate::board::domain::StoryState;
-    let column_for = |s: &crate::board::domain::Story| -> ColumnBucket {
-        if s.is_closed {
-            return match s.state {
-                StoryState::Icebox => ColumnBucket::Icebox,
-                _ => ColumnBucket::Accepted,
-            };
-        }
-        match s.state {
-            StoryState::Icebox => ColumnBucket::Icebox,
-            StoryState::Ready | StoryState::Rejected => ColumnBucket::Ready,
-            StoryState::InProgress | StoryState::NeedsFixes => ColumnBucket::InProgress,
-            StoryState::DeskCheck => ColumnBucket::DeskCheck,
-            StoryState::Delivered | StoryState::ReadyForAccept => ColumnBucket::Delivered,
-            StoryState::Accepted => ColumnBucket::Accepted,
-        }
-    };
+    use crate::board::column::{ColumnBucket, column_for};
     let bucket_for = |bucket: ColumnBucket| -> Vec<String> {
         let mut entries: Vec<(u64, String)> = stories
             .iter()
             .filter(|s| s.story_type != crate::board::domain::StoryType::Epic)
-            .filter(|s| column_for(s) == bucket)
+            .filter(|s| column_for(s.state, s.is_closed) == bucket)
             .map(format_entry)
             .collect();
         entries.sort_by_key(|(n, _)| *n);
@@ -225,23 +209,13 @@ pub(super) async fn handle_view_board(
         }
         out.push('\n');
     };
-    section("ICEBOX", &icebox, &mut out);
-    section("READY", &ready, &mut out);
-    section("IN PROGRESS", &in_progress, &mut out);
-    section("DESK CHECK", &desk_check, &mut out);
-    section("DELIVERED", &delivered, &mut out);
-    section("ACCEPTED", &accepted, &mut out);
+    section(ColumnBucket::Icebox.header(), &icebox, &mut out);
+    section(ColumnBucket::Ready.header(), &ready, &mut out);
+    section(ColumnBucket::InProgress.header(), &in_progress, &mut out);
+    section(ColumnBucket::DeskCheck.header(), &desk_check, &mut out);
+    section(ColumnBucket::Delivered.header(), &delivered, &mut out);
+    section(ColumnBucket::Accepted.header(), &accepted, &mut out);
     Ok(out)
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum ColumnBucket {
-    Icebox,
-    Ready,
-    InProgress,
-    DeskCheck,
-    Delivered,
-    Accepted,
 }
 
 pub(super) async fn handle_create_story(

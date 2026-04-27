@@ -1,4 +1,5 @@
 pub mod adapters;
+pub mod column;
 pub mod domain;
 pub mod events;
 pub mod orchestrator;
