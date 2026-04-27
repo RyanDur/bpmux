@@ -227,6 +227,7 @@ pub fn warn_on_inconsistent_state_labels(labels: &[String]) {
     const STATE_LABELS: &[&str] = &[
         "ready",
         "in progress",
+        "desk-check",
         "delivered",
         "ready for accept",
         "needs fixes",
@@ -339,6 +340,9 @@ pub fn state_from_labels(labels: &[String], is_closed: bool) -> StoryState {
     if has("delivered") {
         return StoryState::Delivered;
     }
+    if has("desk-check") {
+        return StoryState::DeskCheck;
+    }
     if has("in progress") {
         return StoryState::InProgress;
     }
@@ -356,6 +360,7 @@ pub fn state_to_label(state: StoryState) -> &'static str {
         StoryState::Icebox => "icebox",
         StoryState::Ready => "ready",
         StoryState::InProgress => "in progress",
+        StoryState::DeskCheck => "desk-check",
         StoryState::Delivered => "delivered",
         StoryState::ReadyForAccept => "ready for accept",
         StoryState::NeedsFixes => "needs fixes",

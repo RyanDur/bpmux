@@ -10,6 +10,7 @@ fn state_label(state: StoryState) -> &'static str {
         StoryState::Icebox => "icebox",
         StoryState::Ready => "ready",
         StoryState::InProgress => "in progress",
+        StoryState::DeskCheck => "desk-check",
         StoryState::Delivered => "delivered",
         StoryState::ReadyForAccept => "ready for accept",
         StoryState::NeedsFixes => "needs fixes",

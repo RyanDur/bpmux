@@ -46,9 +46,10 @@ pub fn build_backlog_summary(stories: &[Story]) -> serde_json::Value {
         let entry = format!("#{} {}", story.number, story.title);
         match story.state {
             StoryState::Accepted => accepted.push(entry),
-            StoryState::Delivered | StoryState::ReadyForAccept | StoryState::NeedsFixes => {
-                delivered.push(entry)
-            }
+            StoryState::Delivered
+            | StoryState::ReadyForAccept
+            | StoryState::DeskCheck
+            | StoryState::NeedsFixes => delivered.push(entry),
             StoryState::InProgress => in_progress.push(entry),
             StoryState::Ready => ready.push(entry),
             StoryState::Rejected | StoryState::Icebox => icebox.push(entry),
