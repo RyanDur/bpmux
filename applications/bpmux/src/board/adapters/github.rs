@@ -189,6 +189,28 @@ impl SourceAdapter for GitHubSourceAdapter {
     }
 }
 
+pub fn warn_on_inconsistent_state_labels(labels: &[String]) {
+    const STATE_LABELS: &[&str] = &[
+        "ready",
+        "in progress",
+        "delivered",
+        "ready for accept",
+        "needs fixes",
+        "rejected",
+        "accepted",
+    ];
+    let present: Vec<&str> = STATE_LABELS
+        .iter()
+        .copied()
+        .filter(|needle| labels.iter().any(|l| l.eq_ignore_ascii_case(needle)))
+        .collect();
+    if present.len() >= 2 {
+        crate::session::diag::log_diag(&format!(
+            "decoder: inconsistent state-labels present {present:?} — priority decoder picks first per spec; expected: only one state-label per story"
+        ));
+    }
+}
+
 pub fn parse_created_issue_number(formatted: &str) -> Option<u64> {
     formatted
         .strip_prefix('#')?
@@ -267,6 +289,7 @@ pub fn tags_from_labels(labels: &[String]) -> Vec<Tag> {
 
 pub fn state_from_labels(labels: &[String], is_closed: bool) -> StoryState {
     let has = |needle: &str| labels.iter().any(|l| l.eq_ignore_ascii_case(needle));
+    warn_on_inconsistent_state_labels(labels);
     if is_closed || has("accepted") {
         return StoryState::Accepted;
     }

@@ -5,6 +5,7 @@ use chrono::{TimeZone, Utc};
 use crate::board::adapters::github::{
     classify_gate, decode_gate_comments, decode_story_metadata, parent_epic_from_labels,
     parse_created_issue_number, state_from_labels, state_to_label, tags_from_labels,
+    warn_on_inconsistent_state_labels,
 };
 use crate::board::domain::story_type_from_labels_or_title;
 use crate::board::domain::{Gate, StoryState, StoryType, Tag};
@@ -15,6 +16,23 @@ fn state_from_labels_accepted_wins_regardless_of_other_labels() {
     let labels = vec!["ready".to_string(), "accepted".to_string()];
     assert_eq!(state_from_labels(&labels, true), StoryState::Accepted);
     assert_eq!(state_from_labels(&labels, false), StoryState::Accepted);
+}
+
+#[test]
+fn warn_on_inconsistent_state_labels_does_not_panic() {
+    // #469 defense-in-depth: state-label inconsistency emits a
+    // log_diag warning. Test verifies callable shape across the
+    // boundary cases: zero state-labels (no warn), one state-label
+    // (no warn), two-or-more state-labels (warn fires; observable
+    // via BPMUX_LOG when configured).
+    warn_on_inconsistent_state_labels(&[]);
+    warn_on_inconsistent_state_labels(&["ready".to_string()]);
+    warn_on_inconsistent_state_labels(&["accepted".to_string(), "rejected".to_string()]);
+    warn_on_inconsistent_state_labels(&[
+        "delivered".to_string(),
+        "in progress".to_string(),
+        "feature".to_string(),
+    ]);
 }
 
 #[test]
