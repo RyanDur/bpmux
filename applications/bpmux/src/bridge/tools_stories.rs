@@ -831,24 +831,26 @@ pub(super) async fn handle_accept_story(
             ts: chrono::Utc::now(),
             peer_id: crate::board::PeerId::local(),
         };
-        r.mutate_sync(crate::board::BoardEvent::TagRemoved {
-            meta: meta.clone(),
-            number,
-            label: LABEL_DELIVERED.to_string(),
-        })
-        .map_err(|e| format!("#{number} delivered-tag-remove enqueue failed: {e}"))?;
-        r.mutate_sync(crate::board::BoardEvent::TagRemoved {
-            meta: meta.clone(),
-            number,
-            label: LABEL_READY_FOR_ACCEPT.to_string(),
-        })
-        .map_err(|e| format!("#{number} ready-for-accept-tag-remove enqueue failed: {e}"))?;
-        r.mutate_sync(crate::board::BoardEvent::TagRemoved {
-            meta: meta.clone(),
-            number,
-            label: "desk-check".to_string(),
-        })
-        .map_err(|e| format!("#{number} desk-check-tag-remove enqueue failed: {e}"))?;
+        // #519 universal-reap (symmetric with reject_story): strip every
+        // workflow-state label so post-accept label-set carries only
+        // "accepted". TagRemoved is idempotent (404 = already-absent =
+        // Ok), so listing labels not currently present is safe no-op.
+        for stale in [
+            LABEL_DELIVERED,
+            LABEL_READY_FOR_ACCEPT,
+            "desk-check",
+            LABEL_IN_PROGRESS,
+            "ready",
+            "needs fixes",
+            "rejected",
+        ] {
+            r.mutate_sync(crate::board::BoardEvent::TagRemoved {
+                meta: meta.clone(),
+                number,
+                label: stale.to_string(),
+            })
+            .map_err(|e| format!("#{number} {stale}-tag-remove enqueue failed: {e}"))?;
+        }
         r.mutate_sync(crate::board::BoardEvent::GateCommentAppended {
             meta: meta.clone(),
             number,
@@ -916,12 +918,26 @@ pub(super) async fn handle_reject_story(
             ts: chrono::Utc::now(),
             peer_id: crate::board::PeerId::local(),
         };
-        r.mutate_sync(crate::board::BoardEvent::TagRemoved {
-            meta: meta.clone(),
-            number,
-            label: LABEL_DELIVERED.to_string(),
-        })
-        .map_err(|e| format!("#{number} delivered-tag-remove enqueue failed: {e}"))?;
+        // #519 universal-reap: strip every workflow-state label so the
+        // post-reject label-set carries only "rejected". Symmetric to
+        // #507's accept_story reap. TagRemoved is idempotent at the
+        // adapter (404 = already-absent = Ok), so listing labels not
+        // currently present is a safe no-op.
+        for stale in [
+            LABEL_DELIVERED,
+            LABEL_READY_FOR_ACCEPT,
+            "desk-check",
+            LABEL_IN_PROGRESS,
+            "ready",
+            "needs fixes",
+        ] {
+            r.mutate_sync(crate::board::BoardEvent::TagRemoved {
+                meta: meta.clone(),
+                number,
+                label: stale.to_string(),
+            })
+            .map_err(|e| format!("#{number} {stale}-tag-remove enqueue failed: {e}"))?;
+        }
         if was_accepted {
             r.mutate_sync(crate::board::BoardEvent::TagRemoved {
                 meta: meta.clone(),
