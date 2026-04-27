@@ -61,12 +61,20 @@ impl SourceAdapter for GitHubSourceAdapter {
             .fetch_board_stories()
             .await
             .map_err(SyncError::Other)?;
-        let mut out = Vec::with_capacity(values.len());
+        let received = values.len();
+        let mut out = Vec::with_capacity(received);
+        let mut dropped = 0usize;
         for v in values.iter() {
             if let Some(story) = decode_story_metadata(v) {
                 out.push(story);
+            } else {
+                dropped += 1;
             }
         }
+        crate::session::diag::log_diag(&format!(
+            "github ingest_metadata: received {received} values, decoded {} stories, dropped {dropped} (no number field)",
+            out.len()
+        ));
         Ok(out)
     }
 

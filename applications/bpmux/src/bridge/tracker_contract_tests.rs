@@ -249,6 +249,81 @@ async fn get_story_title_returns_title_on_200() {
 }
 
 #[tokio::test]
+async fn fetch_board_stories_concatenates_six_pages_full_repo_scale() {
+    // #522: the canonical store had ~285 fewer stories than gh CLI
+    // ground-truth post-#511 pagination shipped. To rule out a multi-
+    // page concat regression at the chain boundary, this test pins the
+    // 6-page case (525 issues across pages of 100 + last partial 25).
+    // If the chain holds end-to-end on the mocked side, the gap lives
+    // somewhere outside fetch_board_stories — at GH-side, ingest
+    // scheduling, or further downstream — and the diagnostic count-log
+    // added in this slice will surface the actual point of loss in the
+    // running canonical store.
+    use super::tracker::StoryTracker;
+
+    let server = MockServer::start();
+
+    let make_page = |start: u64, count: usize| {
+        Value::Array(
+            (0..count)
+                .map(|i| issue(start + i as u64, "fixture", "open", vec!["ready"]))
+                .collect::<Vec<_>>(),
+        )
+        .to_string()
+    };
+
+    for page in 1..=5u64 {
+        let next_url = format!(
+            "{}/repos/acme/bpmux/issues?page={}",
+            server.base_url(),
+            page + 1
+        );
+        let path_query = if page == 1 { None } else { Some(page) };
+        let body = make_page((page - 1) * 100 + 1, 100);
+        server.mock(|when, then| {
+            let when = when.method(Method::GET).path("/repos/acme/bpmux/issues");
+            let _when = match path_query {
+                Some(p) => when.query_param("page", p.to_string()),
+                None => when.query_param_missing("page"),
+            };
+            then.status(200)
+                .header("content-type", "application/json")
+                .header("Link", format!("<{next_url}>; rel=\"next\""))
+                .body(body);
+        });
+    }
+
+    let last_body = make_page(501, 25);
+    server.mock(|when, then| {
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/issues")
+            .query_param("page", "6");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(last_body);
+    });
+
+    let tracker = mock_tracker(&server);
+    let stories = tracker
+        .fetch_board_stories()
+        .await
+        .expect("fetch_board_stories ok");
+
+    assert_eq!(
+        stories.len(),
+        525,
+        "all 6 pages must concatenate; first-page-only would return 100"
+    );
+    let numbers: std::collections::HashSet<u64> = stories
+        .iter()
+        .filter_map(|s| s.get("number").and_then(|n| n.as_u64()))
+        .collect();
+    assert_eq!(numbers.len(), 525, "all numbers should be unique");
+    assert!(numbers.contains(&1), "first issue must be present");
+    assert!(numbers.contains(&525), "last issue must be present");
+}
+
+#[tokio::test]
 async fn fetch_board_stories_follows_next_link_until_exhaustion() {
     // #511: GitHub returns issues in pages of up to 100 ordered by
     // updated_at desc. Without next-link follow-through, the renderer

@@ -151,25 +151,39 @@ pub(super) async fn handle_view_board(
             format!("{prefix}#{} {}{}", s.number, s.title, suffix),
         )
     };
-    let bucket_for = |state: crate::board::domain::StoryState| -> Vec<String> {
+    use crate::board::domain::StoryState;
+    let column_for = |s: &crate::board::domain::Story| -> ColumnBucket {
+        if s.is_closed {
+            return match s.state {
+                StoryState::Icebox => ColumnBucket::Icebox,
+                _ => ColumnBucket::Accepted,
+            };
+        }
+        match s.state {
+            StoryState::Icebox => ColumnBucket::Icebox,
+            StoryState::Ready | StoryState::Rejected => ColumnBucket::Ready,
+            StoryState::InProgress | StoryState::NeedsFixes => ColumnBucket::InProgress,
+            StoryState::DeskCheck => ColumnBucket::DeskCheck,
+            StoryState::Delivered | StoryState::ReadyForAccept => ColumnBucket::Delivered,
+            StoryState::Accepted => ColumnBucket::Accepted,
+        }
+    };
+    let bucket_for = |bucket: ColumnBucket| -> Vec<String> {
         let mut entries: Vec<(u64, String)> = stories
             .iter()
             .filter(|s| s.story_type != crate::board::domain::StoryType::Epic)
-            .filter(|s| s.state == state)
-            .filter(|s| !s.is_closed || s.state == crate::board::domain::StoryState::Accepted)
+            .filter(|s| column_for(s) == bucket)
             .map(format_entry)
             .collect();
         entries.sort_by_key(|(n, _)| *n);
         entries.into_iter().map(|(_, e)| e).collect()
     };
-    let icebox = bucket_for(crate::board::domain::StoryState::Icebox);
-    let ready = bucket_for(crate::board::domain::StoryState::Ready);
-    let in_progress = bucket_for(crate::board::domain::StoryState::InProgress);
-    let delivered = bucket_for(crate::board::domain::StoryState::Delivered);
-    let ready_for_accept = bucket_for(crate::board::domain::StoryState::ReadyForAccept);
-    let needs_fixes = bucket_for(crate::board::domain::StoryState::NeedsFixes);
-    let rejected = bucket_for(crate::board::domain::StoryState::Rejected);
-    let accepted = bucket_for(crate::board::domain::StoryState::Accepted);
+    let icebox = bucket_for(ColumnBucket::Icebox);
+    let ready = bucket_for(ColumnBucket::Ready);
+    let in_progress = bucket_for(ColumnBucket::InProgress);
+    let desk_check = bucket_for(ColumnBucket::DeskCheck);
+    let delivered = bucket_for(ColumnBucket::Delivered);
+    let accepted = bucket_for(ColumnBucket::Accepted);
     let mut epics: Vec<&crate::board::domain::Story> = stories
         .iter()
         .filter(|s| s.story_type == crate::board::domain::StoryType::Epic)
@@ -214,12 +228,20 @@ pub(super) async fn handle_view_board(
     section("ICEBOX", &icebox, &mut out);
     section("READY", &ready, &mut out);
     section("IN PROGRESS", &in_progress, &mut out);
+    section("DESK CHECK", &desk_check, &mut out);
     section("DELIVERED", &delivered, &mut out);
-    section("READY FOR ACCEPT", &ready_for_accept, &mut out);
-    section("NEEDS FIXES", &needs_fixes, &mut out);
-    section("REJECTED", &rejected, &mut out);
     section("ACCEPTED", &accepted, &mut out);
     Ok(out)
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ColumnBucket {
+    Icebox,
+    Ready,
+    InProgress,
+    DeskCheck,
+    Delivered,
+    Accepted,
 }
 
 pub(super) async fn handle_create_story(

@@ -2280,14 +2280,16 @@ async fn view_board_buckets_stories_by_story_state() {
         .await
         .unwrap();
 
+    // #522 / #520: view_board now buckets through the same projection
+    // the renderer's columnFor uses (6 columns, not 8 substrate-state
+    // buckets). NeedsFixes joins IN PROGRESS, Rejected joins READY,
+    // ReadyForAccept joins DELIVERED.
     for header in [
         "ICEBOX (1)",
-        "READY (1)",
-        "IN PROGRESS (1)",
-        "DELIVERED (1)",
-        "READY FOR ACCEPT (1)",
-        "NEEDS FIXES (1)",
-        "REJECTED (1)",
+        "READY (2)",       // ready + rejected
+        "IN PROGRESS (2)", // in-progress + needs-fixes
+        "DESK CHECK (0)",
+        "DELIVERED (2)", // delivered + ready-for-accept
         "ACCEPTED (1)",
     ] {
         assert!(
@@ -2296,11 +2298,13 @@ async fn view_board_buckets_stories_by_story_state() {
         );
     }
     assert!(out.contains("#101 icebox-story"));
+    assert!(out.contains("#102 ready-story"));
+    assert!(out.contains("#107 rejected-story"));
     assert!(out.contains("#108 accepted-story"));
 }
 
 #[tokio::test]
-async fn view_board_hides_is_closed_stories_from_non_accepted_buckets() {
+async fn view_board_buckets_closed_stories_into_accepted_column() {
     use crate::board::BoardStore;
     use crate::board::RefreshDriver;
     use crate::board::SyncOrchestrator;
@@ -2339,17 +2343,25 @@ async fn view_board_hides_is_closed_stories_from_non_accepted_buckets() {
         .await
         .unwrap();
 
+    // #522: closed-non-Icebox stories used to be silently hidden from
+    // view_board. They now bucket to ACCEPTED visually (matching the
+    // renderer's slice-1 columnFor closure-as-acceptance rule), which
+    // prevents the silent ~285-story drop the canonical store had.
     assert!(
         out.contains("IN PROGRESS (0)"),
         "is_closed InProgress story must NOT appear in IN PROGRESS bucket: {out}"
     );
     assert!(
-        !out.contains("#201"),
-        "story #201 should be hidden across all buckets when is_closed and state != Accepted: {out}"
+        out.contains("ACCEPTED (2)"),
+        "both closed stories collapse to ACCEPTED visually: {out}"
     );
     assert!(
-        out.contains("ACCEPTED (1)") && out.contains("#202 accepted-closed"),
-        "is_closed + state=Accepted story remains in ACCEPTED bucket: {out}"
+        out.contains("#201 abandoned-mid-flight"),
+        "closed-non-accepted story now visible under ACCEPTED: {out}"
+    );
+    assert!(
+        out.contains("#202 accepted-closed"),
+        "explicit-accept story still in ACCEPTED: {out}"
     );
 }
 

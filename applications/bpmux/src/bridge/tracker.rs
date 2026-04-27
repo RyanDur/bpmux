@@ -621,7 +621,12 @@ impl StoryTracker for OctocrabStoryTracker {
             .send()
             .await
             .map_err(Self::classify)?;
+        let first_count = first.items.len();
         let issues = self.client.all_pages(first).await.map_err(Self::classify)?;
+        crate::session::diag::log_diag(&format!(
+            "github fetch_board_stories: first page {first_count}, all_pages total {}",
+            issues.len()
+        ));
         Ok(issues.iter().map(issue_to_board_json).collect())
     }
 
