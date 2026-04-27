@@ -111,6 +111,59 @@ pub(crate) async fn dispatch_test_fail_desk_check(
     tools_stories::handle_fail_desk_check(&args, agent_name, &empty_ws, refresh).await
 }
 
+pub(crate) async fn dispatch_test_pass_desk_check(
+    args: serde_json::Map<String, serde_json::Value>,
+    agent_name: &str,
+    refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
+) -> Result<String, String> {
+    let empty_ws: tokio::sync::Mutex<Option<WsSink>> = tokio::sync::Mutex::new(None);
+    tools_stories::handle_pass_desk_check(&args, agent_name, &empty_ws, refresh).await
+}
+
+pub(crate) async fn dispatch_test_reject_story(
+    args: serde_json::Map<String, serde_json::Value>,
+    agent_name: &str,
+    refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
+) -> Result<String, String> {
+    let empty_ws: tokio::sync::Mutex<Option<WsSink>> = tokio::sync::Mutex::new(None);
+    tools_stories::handle_reject_story(&args, agent_name, &empty_ws, refresh).await
+}
+
+pub(crate) async fn dispatch_test_label_story(
+    args: serde_json::Map<String, serde_json::Value>,
+    agent_name: &str,
+    refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
+) -> Result<String, String> {
+    let empty_ws: tokio::sync::Mutex<Option<WsSink>> = tokio::sync::Mutex::new(None);
+    tools_stories::handle_label_story(&args, agent_name, &empty_ws, refresh).await
+}
+
+pub(crate) async fn dispatch_test_set_parent_epic(
+    args: serde_json::Map<String, serde_json::Value>,
+    agent_name: &str,
+    refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
+) -> Result<String, String> {
+    let empty_ws: tokio::sync::Mutex<Option<WsSink>> = tokio::sync::Mutex::new(None);
+    tools_stories::handle_set_parent_epic(&args, agent_name, &empty_ws, refresh).await
+}
+
+pub(crate) async fn dispatch_test_unset_parent_epic(
+    args: serde_json::Map<String, serde_json::Value>,
+    agent_name: &str,
+    refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
+) -> Result<String, String> {
+    let empty_ws: tokio::sync::Mutex<Option<WsSink>> = tokio::sync::Mutex::new(None);
+    tools_stories::handle_unset_parent_epic(&args, agent_name, &empty_ws, refresh).await
+}
+
+pub(crate) async fn dispatch_test_reorder_story(
+    args: serde_json::Map<String, serde_json::Value>,
+    agent_name: &str,
+) -> Result<String, String> {
+    let empty_ws: tokio::sync::Mutex<Option<WsSink>> = tokio::sync::Mutex::new(None);
+    tools_stories::handle_reorder_story(&args, agent_name, &empty_ws).await
+}
+
 pub(crate) async fn dispatch_test_view_velocity(
     messages: Vec<crate::session::Message>,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
@@ -727,133 +780,24 @@ impl ServerHandler for BridgeServer {
                     )
                     .await
                 }
-                "create_story" => {
-                    let current_name = name.lock().await;
-                    tools_stories::handle_create_story(
-                        &args,
-                        &current_name,
-                        &ws_tx,
-                        refresh.as_ref(),
-                    )
-                    .await
-                }
-                "start_story" => {
-                    // #516 slice 2: bridge dispatches start_story through
-                    // electron-server's canonical SyncOrchestrator via RPC
-                    // instead of running the handler against its own local
-                    // store. The bridge keeps its store for read tools
-                    // until slice 3+4 migrate those too; this is the
-                    // archetype-validation slice.
+                // #516 slices 1-3: every mutation tool routes through
+                // electron-server's canonical SyncOrchestrator via the
+                // generic /api/rpc/{tool} endpoint. Bridges no longer
+                // run mutation handlers against their own local store.
+                // Read tools (view_board / get_story / list_ready /
+                // view_story_timeline / view_comments) still use the
+                // bridge's local board until slice 4 cuts them over.
+                "start_story" | "deliver_story" | "pass_desk_check" | "fail_desk_check"
+                | "accept_story" | "reject_story" | "close_story" | "create_story"
+                | "comment_on_story" | "label_story" | "set_parent_epic" | "unset_parent_epic"
+                | "reorder_story" => {
                     let current_name = name.lock().await.clone();
-                    rpc_client::start_story_via_rpc(port, &current_name, &args).await
-                }
-                "deliver_story" => {
-                    let current_name = name.lock().await;
-                    tools_stories::handle_deliver_story(
-                        &args,
-                        &current_name,
-                        &ws_tx,
-                        refresh.as_ref(),
-                    )
-                    .await
+                    rpc_client::dispatch_via_rpc(port, request.name.as_ref(), &current_name, &args)
+                        .await
                 }
                 "close_iteration" => {
                     let current_name = name.lock().await;
                     tools_stories::handle_close_iteration(&current_name, &ws_tx).await
-                }
-                "label_story" => {
-                    let current_name = name.lock().await;
-                    tools_stories::handle_label_story(
-                        &args,
-                        &current_name,
-                        &ws_tx,
-                        refresh.as_ref(),
-                    )
-                    .await
-                }
-                "set_parent_epic" => {
-                    let current_name = name.lock().await;
-                    tools_stories::handle_set_parent_epic(
-                        &args,
-                        &current_name,
-                        &ws_tx,
-                        refresh.as_ref(),
-                    )
-                    .await
-                }
-                "unset_parent_epic" => {
-                    let current_name = name.lock().await;
-                    tools_stories::handle_unset_parent_epic(
-                        &args,
-                        &current_name,
-                        &ws_tx,
-                        refresh.as_ref(),
-                    )
-                    .await
-                }
-                "close_story" => {
-                    let current_name = name.lock().await;
-                    tools_stories::handle_close_story(
-                        &args,
-                        &current_name,
-                        &ws_tx,
-                        refresh.as_ref(),
-                    )
-                    .await
-                }
-                "comment_on_story" => {
-                    let current_name = name.lock().await;
-                    tools_stories::handle_comment_on_story(
-                        &args,
-                        &current_name,
-                        &ws_tx,
-                        refresh.as_ref(),
-                    )
-                    .await
-                }
-                "accept_story" => {
-                    let current_name = name.lock().await;
-                    tools_stories::handle_accept_story(
-                        &args,
-                        &current_name,
-                        &ws_tx,
-                        refresh.as_ref(),
-                    )
-                    .await
-                }
-                "reject_story" => {
-                    let current_name = name.lock().await;
-                    tools_stories::handle_reject_story(
-                        &args,
-                        &current_name,
-                        &ws_tx,
-                        refresh.as_ref(),
-                    )
-                    .await
-                }
-                "reorder_story" => {
-                    let current_name = name.lock().await;
-                    tools_stories::handle_reorder_story(&args, &current_name, &ws_tx).await
-                }
-                "pass_desk_check" => {
-                    let current_name = name.lock().await;
-                    tools_stories::handle_pass_desk_check(
-                        &args,
-                        &current_name,
-                        &ws_tx,
-                        refresh.as_ref(),
-                    )
-                    .await
-                }
-                "fail_desk_check" => {
-                    let current_name = name.lock().await;
-                    tools_stories::handle_fail_desk_check(
-                        &args,
-                        &current_name,
-                        &ws_tx,
-                        refresh.as_ref(),
-                    )
-                    .await
                 }
                 "get_usage" => tools::handle_get_usage(&args).await,
                 "view_tokens" => tools::handle_view_tokens(&ws_tx).await,

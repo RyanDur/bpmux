@@ -192,13 +192,13 @@ pub async fn run_server(
             "/api/unfurl",
             axum::routing::get(transport::unfurl::get_unfurl).with_state(unfurl_cache),
         )
-        // #516 slice 1: cross-process RPC dispatch from team-bridges to
-        // electron-server's canonical SyncOrchestrator. Additive — bridges
-        // still run their own handler against their own store today;
-        // slice 2 migrates the first bridge tool to call this endpoint.
+        // #516 slices 1-3: generic RPC dispatch from team-bridges to
+        // electron-server's canonical SyncOrchestrator. Path param names
+        // the tool; body is the MCP args object. Mutation tools route
+        // here; read tools migrate alongside the slice 4 cutover.
         .route(
-            "/api/rpc/start_story",
-            axum::routing::post(transport::rpc_routes::post_rpc_start_story),
+            "/api/rpc/{tool}",
+            axum::routing::post(transport::rpc_routes::post_rpc_tool),
         )
         .layer(axum::middleware::from_fn_with_state(
             auth_state,

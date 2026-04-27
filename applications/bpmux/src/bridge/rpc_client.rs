@@ -5,7 +5,8 @@
 //! local BoardStore + adapter and instead POST to
 //! `/api/rpc/<tool>` on `http://127.0.0.1:{port}` (the electron-server
 //! they're already WS-connected to). Slice 1 added the receiving
-//! endpoint; this module is the calling side.
+//! endpoint; this module is the calling side. Slice 3 generalizes the
+//! protocol so every mutation tool routes through one client function.
 //!
 //! Auth-token discovery: same source the electron-server's `auth::gate`
 //! middleware verifies against — `BPMUX_AUTH_TOKEN_PATH` override, else
@@ -66,7 +67,11 @@ async fn post_rpc(
             .get("message")
             .and_then(|v| v.as_str())
             .map(str::to_string)
-            .ok_or_else(|| format!("rpc {tool}: success status {status} but response missing 'message' field: {text}"))
+            .ok_or_else(|| {
+                format!(
+                    "rpc {tool}: success status {status} but response missing 'message' field: {text}"
+                )
+            })
     } else {
         let err = parsed
             .get("error")
@@ -77,34 +82,19 @@ async fn post_rpc(
     }
 }
 
-/// Bridge-side dispatch for `start_story`: forwards the MCP args to
-/// the electron-server's canonical SyncOrchestrator. Replaces
-/// `tools_stories::handle_start_story` at the bridge dispatch site
-/// (#516 slice 2 archetype-validation).
-pub(super) async fn start_story_via_rpc(
+/// Bridge-side generic dispatch: forwards an MCP-tool args map to the
+/// electron-server's canonical SyncOrchestrator via the
+/// `/api/rpc/{tool}` endpoint. Bridge dispatch sites collapse to a
+/// single one-liner per tool (#516 slice 3 template-replication).
+pub(super) async fn dispatch_via_rpc(
     port: u16,
+    tool: &str,
     agent: &str,
     args: &Map<String, Value>,
 ) -> Result<String, String> {
-    let number = args
-        .get("number")
-        .and_then(|v| v.as_u64())
-        .ok_or_else(|| "missing 'number' argument".to_string())?;
-    let pickup_paraphrase = args
-        .get("pickup_paraphrase")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| "missing 'pickup_paraphrase' argument".to_string())?;
-    let falsifier_reframing = args
-        .get("falsifier_reframing")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| "missing 'falsifier_reframing' argument".to_string())?;
-    let body = serde_json::json!({
-        "number": number,
-        "pickup_paraphrase": pickup_paraphrase,
-        "falsifier_reframing": falsifier_reframing,
-    });
+    let body = Value::Object(args.clone());
     let token = load_auth_token()?;
-    post_rpc(port, "start_story", agent, &body, &token).await
+    post_rpc(port, tool, agent, &body, &token).await
 }
 
 #[cfg(test)]
@@ -145,8 +135,6 @@ mod tests {
 
     #[tokio::test]
     async fn post_rpc_surfaces_named_error_on_offline_server() {
-        // Port 1 is reserved + nothing's listening — the connect should
-        // fail at the TCP layer + we surface the "unreachable" framing.
         let result = post_rpc(1, "start_story", "dev", &body(42), "tk").await;
         let err = result.expect_err("offline server must fail-loud");
         assert!(
@@ -196,23 +184,21 @@ mod tests {
         );
     }
 
-    #[test]
-    fn start_story_via_rpc_validates_required_args() {
-        // Argument-validation fires before the HTTP round-trip — verify
-        // that missing fields produce a structured error without us
-        // needing to spin a mock server.
-        let mut args = Map::new();
-        args.insert("number".to_string(), Value::Number(1.into()));
-        // Missing pickup_paraphrase + falsifier_reframing
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .build()
-            .expect("rt");
-        let err = rt
-            .block_on(async { start_story_via_rpc(0, "dev", &args).await })
-            .expect_err("missing required args");
-        assert!(
-            err.contains("pickup_paraphrase"),
-            "expected pickup_paraphrase in error, got {err}"
-        );
+    #[tokio::test]
+    async fn post_rpc_routes_path_param_for_arbitrary_tools() {
+        // Generic dispatcher handles any tool name — verify a tool other
+        // than start_story round-trips through the same client.
+        let server = MockServer::start();
+        let m = server.mock(|when, then| {
+            when.method(Method::POST).path("/api/rpc/accept_story");
+            then.status(200)
+                .header("content-type", "application/json")
+                .body(r##"{"message":"#9 accepted"}"##);
+        });
+        let port: u16 = server.port();
+
+        let result = post_rpc(port, "accept_story", "owner", &body(9), "tk").await;
+        m.assert();
+        assert_eq!(result, Ok("#9 accepted".to_string()));
     }
 }
