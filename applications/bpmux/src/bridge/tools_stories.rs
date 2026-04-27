@@ -794,6 +794,12 @@ pub(super) async fn handle_accept_story(
             label: LABEL_READY_FOR_ACCEPT.to_string(),
         })
         .map_err(|e| format!("#{number} ready-for-accept-tag-remove enqueue failed: {e}"))?;
+        r.mutate_sync(crate::board::BoardEvent::TagRemoved {
+            meta: meta.clone(),
+            number,
+            label: "desk-check".to_string(),
+        })
+        .map_err(|e| format!("#{number} desk-check-tag-remove enqueue failed: {e}"))?;
         r.mutate_sync(crate::board::BoardEvent::GateCommentAppended {
             meta: meta.clone(),
             number,

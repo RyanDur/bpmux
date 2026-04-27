@@ -1687,12 +1687,13 @@ async fn accept_story_migrated_path_emits_tag_remove_gate_and_state_events() {
         "gate_comments should contain Accepted with no payload: {gates:?}"
     );
 
-    // #450: accept_story now drains internally + emits an additional
-    // TagRemoved{ready-for-accept} alongside TagRemoved{delivered}.
-    // 5 events expected: 2x TagRemoved + GateCommentAppended +
-    // StateTransitioned + StoryClosed.
+    // #507: accept_story now reaps "desk-check" too (post-slice-5b
+    // workflow: dev deliver → DeskCheck; designer pass → Delivered;
+    // pre-state can be Delivered, ReadyForAccept legacy, or DeskCheck
+    // edge-case. Universal-reap covers all three. 6 events expected:
+    // 3x TagRemoved + GateCommentAppended + StateTransitioned + StoryClosed.
     let pushed = adapter.pushed_events();
-    assert_eq!(pushed.len(), 5, "5 events expected: {pushed:?}");
+    assert_eq!(pushed.len(), 6, "6 events expected: {pushed:?}");
     assert!(matches!(
         &pushed[0],
         BoardEvent::TagRemoved { number: 205, label, .. } if label == "delivered"
@@ -1703,6 +1704,10 @@ async fn accept_story_migrated_path_emits_tag_remove_gate_and_state_events() {
     ));
     assert!(matches!(
         &pushed[2],
+        BoardEvent::TagRemoved { number: 205, label, .. } if label == "desk-check"
+    ));
+    assert!(matches!(
+        &pushed[3],
         BoardEvent::GateCommentAppended {
             number: 205,
             gate: Gate::Accepted,
@@ -1711,7 +1716,7 @@ async fn accept_story_migrated_path_emits_tag_remove_gate_and_state_events() {
         }
     ));
     assert!(matches!(
-        &pushed[3],
+        &pushed[4],
         BoardEvent::StateTransitioned {
             number: 205,
             new_state: StoryState::Accepted,
@@ -1719,7 +1724,7 @@ async fn accept_story_migrated_path_emits_tag_remove_gate_and_state_events() {
         }
     ));
     assert!(matches!(
-        &pushed[4],
+        &pushed[5],
         BoardEvent::StoryClosed {
             number: 205,
             reason: None,
@@ -1729,6 +1734,80 @@ async fn accept_story_migrated_path_emits_tag_remove_gate_and_state_events() {
     assert!(
         store.story(205).expect("story exists").is_closed,
         "is_closed flag must be set after StoryClosed event applies"
+    );
+}
+
+#[tokio::test]
+async fn accept_story_on_delivered_story_post_slice_5b_drains_full_cascade() {
+    use crate::board::BoardEvent;
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let seeded = Story::new_minimal(
+        5070,
+        "[Bug] post-slice-5b accept-on-delivered cascade".into(),
+        StoryState::Delivered,
+        Utc.with_ymd_and_hms(2026, 4, 27, 0, 0, 0).unwrap(),
+        "ryan".into(),
+    );
+    adapter.seed_stories(vec![seeded]);
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orch.refresh_all().await.unwrap();
+
+    let ws_tx = connected_ws_sink_for_test().await;
+    let mut args = serde_json::Map::new();
+    args.insert("number".into(), serde_json::json!(5070));
+    handle_accept_story(&args, "ryan:human", &ws_tx, Some(&orch))
+        .await
+        .unwrap();
+
+    let pushed = adapter.pushed_events();
+    assert_eq!(
+        pushed.len(),
+        6,
+        "post-slice-5b accept_story emits 6 events (3x TagRemoved + GateCommentAppended + StateTransitioned + StoryClosed): {pushed:?}"
+    );
+    assert!(
+        pushed.iter().any(|e| matches!(
+            e,
+            BoardEvent::TagRemoved { number: 5070, label, .. } if label == "delivered"
+        )),
+        "must reap 'delivered' label (post-slice-5b: pass_desk_check sets this)"
+    );
+    assert!(
+        pushed.iter().any(|e| matches!(
+            e,
+            BoardEvent::TagRemoved { number: 5070, label, .. } if label == "ready for accept"
+        )),
+        "must reap 'ready for accept' label (legacy back-compat for pre-slice-5b stories)"
+    );
+    assert!(
+        pushed.iter().any(|e| matches!(
+            e,
+            BoardEvent::TagRemoved { number: 5070, label, .. } if label == "desk-check"
+        )),
+        "must reap 'desk-check' label (#507 fix: covers DeskCheck pre-state class post-slice-5b)"
+    );
+    assert!(
+        pushed.iter().any(|e| matches!(
+            e,
+            BoardEvent::StateTransitioned {
+                number: 5070,
+                new_state: StoryState::Accepted,
+                ..
+            }
+        )),
+        "must emit StateTransitioned(Accepted) → adapter add_label('accepted')"
     );
 }
 
