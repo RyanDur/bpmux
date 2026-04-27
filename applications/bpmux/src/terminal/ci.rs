@@ -79,6 +79,8 @@ pub(super) fn hydrate_last_broadcast(messages: &[Message]) -> Option<CiState> {
             Some(CiState::Red)
         } else if m.text.starts_with("\u{1F7E2} CI") {
             Some(CiState::Green)
+        } else if m.text.starts_with("\u{23F8} CI") {
+            Some(CiState::QuotaExhausted)
         } else {
             None
         }
@@ -185,7 +187,17 @@ pub(super) fn compute_broadcast_text(
 ) -> Option<String> {
     match next.state {
         CiState::Red if last_broadcast != Some(CiState::Red) => Some(format_failure_line(next)),
-        CiState::Green if last_broadcast == Some(CiState::Red) => Some(format_recovery_line(next)),
+        CiState::Green
+            if matches!(
+                last_broadcast,
+                Some(CiState::Red) | Some(CiState::QuotaExhausted)
+            ) =>
+        {
+            Some(format_recovery_line(next))
+        }
+        CiState::QuotaExhausted if last_broadcast != Some(CiState::QuotaExhausted) => {
+            Some(format_paused_line(next))
+        }
         _ => None,
     }
 }
@@ -312,6 +324,12 @@ fn format_failure_line(event: &CiEvent) -> String {
 
 fn format_recovery_line(event: &CiEvent) -> String {
     let mut line = String::from("\u{1F7E2} CI recovered");
+    append_meta(&mut line, event);
+    line
+}
+
+fn format_paused_line(event: &CiEvent) -> String {
+    let mut line = String::from("\u{23F8} CI paused (quota exhausted)");
     append_meta(&mut line, event);
     line
 }

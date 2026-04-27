@@ -261,6 +261,54 @@ fn compute_broadcast_is_silent_on_transition_from_running_to_green() {
 }
 
 #[test]
+fn compute_broadcast_emits_paused_on_first_quota_exhausted_from_startup() {
+    let text = compute_broadcast_text(None, &event(CiState::QuotaExhausted));
+    assert!(text.is_some(), "startup-into-quota-exhausted should emit");
+    assert!(text.unwrap().contains("CI paused"));
+}
+
+#[test]
+fn compute_broadcast_emits_paused_on_green_to_quota_exhausted() {
+    let text = compute_broadcast_text(Some(CiState::Green), &event(CiState::QuotaExhausted));
+    assert!(text.is_some());
+    assert!(text.unwrap().contains("CI paused"));
+}
+
+#[test]
+fn compute_broadcast_emits_paused_on_red_to_quota_exhausted() {
+    let text = compute_broadcast_text(Some(CiState::Red), &event(CiState::QuotaExhausted));
+    assert!(text.is_some());
+    assert!(text.unwrap().contains("CI paused"));
+}
+
+#[test]
+fn compute_broadcast_emits_recovery_on_quota_exhausted_to_green() {
+    // Billing reset / spending limit raised — back to passing.
+    // Same recovery semantic as red-to-green so the team sees the
+    // gate re-open without ambiguity.
+    let text = compute_broadcast_text(Some(CiState::QuotaExhausted), &event(CiState::Green));
+    assert!(text.is_some());
+    assert!(text.unwrap().contains("CI recovered"));
+}
+
+#[test]
+fn compute_broadcast_emits_failure_on_quota_exhausted_to_red() {
+    // Billing reset reveals a code-failure — pre-existing red surfaces.
+    let text = compute_broadcast_text(Some(CiState::QuotaExhausted), &event(CiState::Red));
+    assert!(text.is_some());
+    assert!(text.unwrap().contains("CI failed"));
+}
+
+#[test]
+fn compute_broadcast_is_silent_on_quota_exhausted_to_quota_exhausted() {
+    let text = compute_broadcast_text(
+        Some(CiState::QuotaExhausted),
+        &event(CiState::QuotaExhausted),
+    );
+    assert!(text.is_none());
+}
+
+#[test]
 fn failure_message_includes_sha_title_and_run_link_when_metadata_present() {
     let ev = event_with_meta(
         CiState::Red,
@@ -531,6 +579,18 @@ fn hydrate_last_broadcast_returns_green_for_most_recent_recovered() {
         activity_msg("\u{1F7E2} CI recovered — def456"),
     ];
     assert_eq!(hydrate_last_broadcast(&messages), Some(CiState::Green));
+}
+
+#[test]
+fn hydrate_last_broadcast_returns_quota_exhausted_for_most_recent_paused() {
+    let messages = vec![
+        activity_msg("\u{1F7E2} CI recovered — abc123"),
+        activity_msg("\u{23F8} CI paused (quota exhausted) — def456"),
+    ];
+    assert_eq!(
+        hydrate_last_broadcast(&messages),
+        Some(CiState::QuotaExhausted)
+    );
 }
 
 #[test]
