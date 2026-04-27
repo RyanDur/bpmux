@@ -6,6 +6,7 @@ pub enum SyncError {
     SourceUnreachable(String),
     RateLimited { retry_after_seconds: u64 },
     ValidationRejected(String),
+    AlreadyClosed,
     Other(String),
 }
 
@@ -17,6 +18,7 @@ impl std::fmt::Display for SyncError {
                 retry_after_seconds,
             } => write!(f, "rate-limited; retry after {retry_after_seconds}s"),
             SyncError::ValidationRejected(s) => write!(f, "validation rejected: {s}"),
+            SyncError::AlreadyClosed => write!(f, "issue already closed"),
             SyncError::Other(s) => write!(f, "{s}"),
         }
     }
@@ -24,8 +26,12 @@ impl std::fmt::Display for SyncError {
 
 impl std::error::Error for SyncError {}
 
-pub fn is_already_closed_error(msg: &str) -> bool {
-    msg.contains("already closed") || msg.contains("is closed")
+pub fn classify_close_error(msg: String) -> SyncError {
+    if msg.contains("already closed") || msg.contains("is closed") {
+        SyncError::AlreadyClosed
+    } else {
+        SyncError::Other(msg)
+    }
 }
 
 pub trait SourceAdapter: Send + Sync {

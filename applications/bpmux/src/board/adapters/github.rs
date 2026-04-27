@@ -96,8 +96,10 @@ impl SourceAdapter for GitHubSourceAdapter {
                 }
                 match self.inner.close_story(*number).await {
                     Ok(_) => Ok(()),
-                    Err(e) if crate::board::sync::is_already_closed_error(&e) => Ok(()),
-                    Err(e) => Err(SyncError::Other(e)),
+                    Err(e) => match crate::board::sync::classify_close_error(e) {
+                        SyncError::AlreadyClosed => Ok(()),
+                        other => Err(other),
+                    },
                 }
             }
             BoardEvent::GateCommentAppended {

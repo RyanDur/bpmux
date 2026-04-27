@@ -8,7 +8,7 @@ use crate::board::adapters::github::{
 };
 use crate::board::domain::story_type_from_labels_or_title;
 use crate::board::domain::{Gate, StoryState, StoryType, Tag};
-use crate::board::sync::is_already_closed_error;
+use crate::board::sync::{SyncError, classify_close_error};
 
 #[test]
 fn state_from_labels_accepted_wins_regardless_of_other_labels() {
@@ -390,18 +390,31 @@ fn decode_story_metadata_populates_story_type_and_tags_from_labels() {
 }
 
 #[test]
-fn is_already_closed_error_recognizes_octocrab_phrasings() {
-    assert!(is_already_closed_error("Issue #42 is already closed"));
-    assert!(is_already_closed_error(
-        "the issue is closed and cannot be edited"
+fn classify_close_error_recognizes_octocrab_phrasings() {
+    assert!(matches!(
+        classify_close_error("Issue #42 is already closed".to_string()),
+        SyncError::AlreadyClosed
+    ));
+    assert!(matches!(
+        classify_close_error("the issue is closed and cannot be edited".to_string()),
+        SyncError::AlreadyClosed
     ));
 }
 
 #[test]
-fn is_already_closed_error_rejects_unrelated_errors() {
-    assert!(!is_already_closed_error("404 Not Found"));
-    assert!(!is_already_closed_error("rate limit exceeded"));
-    assert!(!is_already_closed_error(""));
+fn classify_close_error_wraps_unrelated_errors_as_other() {
+    assert!(matches!(
+        classify_close_error("404 Not Found".to_string()),
+        SyncError::Other(_)
+    ));
+    assert!(matches!(
+        classify_close_error("rate limit exceeded".to_string()),
+        SyncError::Other(_)
+    ));
+    assert!(matches!(
+        classify_close_error(String::new()),
+        SyncError::Other(_)
+    ));
 }
 
 #[test]
