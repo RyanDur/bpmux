@@ -167,8 +167,18 @@
   }
 
   & .board-group-count {
-    color: var(--fg-dim);
     font-size: 0.75rem;
+    color: var(--fg-dim);
+  }
+
+  & .board-group > summary > .board-group-count {
+    flex: 0 0 auto;
+    font-variant-numeric: tabular-nums;
+    color: inherit;
+
+    &[data-empty='true'] {
+      color: var(--fg-dim);
+    }
   }
 
   & .board-group-empty {

@@ -578,8 +578,14 @@ function BoardGroup({
         aria-controls={contentId}
       >
         <span className="board-group-chevron" aria-hidden="true" />
+        <small
+          className="board-group-count"
+          data-test={`board-group-${group.state}-count`}
+          data-empty={stories.length === 0 ? 'true' : undefined}
+        >
+          ({stories.length})
+        </small>
         <b className="board-group-label">{group.label}</b>
-        <small className="board-group-count">{stories.length}</small>
       </summary>
       <div id={contentId}>
         {loading ? (
