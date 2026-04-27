@@ -6,7 +6,6 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use serde::Deserialize;
 
-use crate::bridge::tracker::StoryTracker;
 use crate::session;
 
 pub const DEFAULT_MESSAGE_LIMIT: usize = 20;
@@ -624,7 +623,7 @@ pub async fn post_classifier_misfire(
 /// server startup. `None` when GitHub env config is missing — the
 /// handlers then return 503 so the renderer can surface "tracker not
 /// configured" instead of a silent empty board.
-pub type TrackerHandle = Option<Arc<crate::bridge::tracker::OctocrabStoryTracker>>;
+pub type TrackerHandle = Option<Arc<crate::board::adapters::github::GitHubSourceAdapter>>;
 
 /// Structured error body. All handlers in this section reply with
 /// this shape on failure so the renderer can branch on the `error`
@@ -1198,7 +1197,6 @@ pub async fn get_ci(axum::Extension(tracker): axum::Extension<TrackerHandle>) ->
             err_body("tracker not configured"),
         );
     };
-    use crate::bridge::tracker::StoryTracker;
     match tracker.list_latest_run_on_main().await {
         Ok(latest) => {
             let runs: Vec<crate::terminal::ci::RunEntry> = latest

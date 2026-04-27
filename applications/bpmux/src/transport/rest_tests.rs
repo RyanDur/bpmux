@@ -857,13 +857,14 @@ fn board_comment(body: &str) -> Value {
     })
 }
 
-fn tracker_for(server: &MockServer) -> OctocrabStoryTracker {
-    OctocrabStoryTracker::with_base_url(
+fn tracker_for(server: &MockServer) -> crate::board::adapters::github::GitHubSourceAdapter {
+    let inner = OctocrabStoryTracker::with_base_url(
         &format!("{}/", server.base_url()),
         "acme".to_string(),
         "bpmux".to_string(),
     )
-    .expect("build tracker against mock")
+    .expect("build tracker against mock");
+    crate::board::adapters::github::GitHubSourceAdapter::new(inner)
 }
 
 fn board_router(session: Arc<session::Session>, tracker: TrackerHandle) -> axum::Router {

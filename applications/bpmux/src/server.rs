@@ -54,7 +54,7 @@ pub async fn run_server(
     // so the renderer can show a tracker-missing banner instead of a
     // blank board.
     let tracker: transport::rest::TrackerHandle =
-        crate::bridge::tracker::OctocrabStoryTracker::from_env().map(std::sync::Arc::new);
+        crate::board::adapters::github::GitHubSourceAdapter::from_env().map(std::sync::Arc::new);
 
     let test_refresh: TestRefreshHandle = if test_mode_enabled() {
         eprintln!(

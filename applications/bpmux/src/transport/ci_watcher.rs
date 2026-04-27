@@ -31,7 +31,7 @@ use std::time::Duration;
 
 use tokio_util::sync::CancellationToken;
 
-use crate::bridge::tracker::StoryTracker;
+use crate::board::adapters::github::GitHubSourceAdapter;
 use crate::session;
 
 pub const POLL_INTERVAL: Duration = Duration::from_secs(10);
@@ -72,9 +72,9 @@ pub fn classify_transition(prev: Option<Observation>, current: Observation) -> T
 /// until the cancellation token fires. Silent on tracker / API
 /// errors beyond a diag-log entry — the frontend's 15s poll catches
 /// up next tick regardless.
-pub fn spawn<T: StoryTracker>(
+pub fn spawn(
     session: Arc<session::Session>,
-    tracker: Arc<T>,
+    tracker: Arc<GitHubSourceAdapter>,
     ct: CancellationToken,
 ) {
     tokio::spawn(async move {
