@@ -1389,12 +1389,16 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
         "gate_comments should contain PassDeskCheck entry: {gates:?}"
     );
 
-    let drained = orchestrator.drain_pending().await.unwrap();
-    assert_eq!(drained, 2, "both events must reach the adapter via drain");
+    // #450: pass_desk_check now drains internally + emits TagRemoved
+    // {delivered} alongside the gate + state events. 3 events expected.
     let pushed = adapter.pushed_events();
-    assert_eq!(pushed.len(), 2);
+    assert_eq!(pushed.len(), 3, "3 events expected: {pushed:?}");
     assert!(matches!(
         &pushed[0],
+        BoardEvent::TagRemoved { number: 201, label, .. } if label == "delivered"
+    ));
+    assert!(matches!(
+        &pushed[1],
         BoardEvent::GateCommentAppended {
             number: 201,
             gate: Gate::PassDeskCheck,
@@ -1403,7 +1407,7 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
         }
     ));
     assert!(matches!(
-        &pushed[1],
+        &pushed[2],
         BoardEvent::StateTransitioned {
             number: 201,
             new_state: StoryState::ReadyForAccept,
@@ -1603,12 +1607,21 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
         "gate_comments should contain Delivered with the observation payload: {gates:?}"
     );
 
-    let drained = orchestrator.drain_pending().await.unwrap();
-    assert_eq!(drained, 2, "both events must reach the adapter via drain");
+    // #450: deliver_story now drains pending internally so label-remove
+    // failures surface load-bearing. Test asserts the 3 events landed at
+    // the adapter (TagRemoved + GateCommentAppended + StateTransitioned).
     let pushed = adapter.pushed_events();
-    assert_eq!(pushed.len(), 2);
+    assert_eq!(pushed.len(), 3, "3 events expected: {pushed:?}");
     assert!(matches!(
         &pushed[0],
+        BoardEvent::TagRemoved {
+            number: 204,
+            label,
+            ..
+        } if label == "in progress"
+    ));
+    assert!(matches!(
+        &pushed[1],
         BoardEvent::GateCommentAppended {
             number: 204,
             gate: Gate::Delivered,
@@ -1617,7 +1630,7 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
         } if p == "drove the falsifier scenario end-to-end"
     ));
     assert!(matches!(
-        &pushed[1],
+        &pushed[2],
         BoardEvent::StateTransitioned {
             number: 204,
             new_state: StoryState::Delivered,
@@ -1669,19 +1682,22 @@ async fn accept_story_migrated_path_emits_tag_remove_gate_and_state_events() {
         "gate_comments should contain Accepted with no payload: {gates:?}"
     );
 
-    let drained = orchestrator.drain_pending().await.unwrap();
-    assert_eq!(
-        drained, 4,
-        "all four events must reach the adapter via drain (TagRemoved + GateCommentAppended + StateTransitioned + StoryClosed)"
-    );
+    // #450: accept_story now drains internally + emits an additional
+    // TagRemoved{ready-for-accept} alongside TagRemoved{delivered}.
+    // 5 events expected: 2x TagRemoved + GateCommentAppended +
+    // StateTransitioned + StoryClosed.
     let pushed = adapter.pushed_events();
-    assert_eq!(pushed.len(), 4);
+    assert_eq!(pushed.len(), 5, "5 events expected: {pushed:?}");
     assert!(matches!(
         &pushed[0],
         BoardEvent::TagRemoved { number: 205, label, .. } if label == "delivered"
     ));
     assert!(matches!(
         &pushed[1],
+        BoardEvent::TagRemoved { number: 205, label, .. } if label == "ready for accept"
+    ));
+    assert!(matches!(
+        &pushed[2],
         BoardEvent::GateCommentAppended {
             number: 205,
             gate: Gate::Accepted,
@@ -1690,7 +1706,7 @@ async fn accept_story_migrated_path_emits_tag_remove_gate_and_state_events() {
         }
     ));
     assert!(matches!(
-        &pushed[2],
+        &pushed[3],
         BoardEvent::StateTransitioned {
             number: 205,
             new_state: StoryState::Accepted,
@@ -1698,7 +1714,7 @@ async fn accept_story_migrated_path_emits_tag_remove_gate_and_state_events() {
         }
     ));
     assert!(matches!(
-        &pushed[3],
+        &pushed[4],
         BoardEvent::StoryClosed {
             number: 205,
             reason: None,
@@ -2935,4 +2951,52 @@ async fn deliver_story_blocks_feature_without_acceptance_test_path() {
         "Feature without path must block at deliver: {result:?}"
     );
     assert!(result.unwrap_err().contains("acceptance_test_path missing"));
+}
+
+#[tokio::test]
+async fn deliver_story_propagates_drain_failure_at_label_remove() {
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState, StoryType};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let mut seeded = Story::new_minimal(
+        450,
+        "[Chore] label-leak repro".into(),
+        StoryState::InProgress,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "dev".into(),
+    );
+    seeded.story_type = StoryType::Chore;
+    adapter.seed_stories(vec![seeded]);
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orch.refresh_all().await.unwrap();
+
+    adapter.set_push_failures(true);
+
+    let ws_tx = connected_ws_sink_for_test().await;
+    let mut args = serde_json::Map::new();
+    args.insert("number".into(), serde_json::json!(450));
+    args.insert(
+        "verified_observation".into(),
+        serde_json::json!("drove the label-leak failure-injection scenario"),
+    );
+    let result = handle_deliver_story(&args, "dev:claude-code", &ws_tx, Some(&orch)).await;
+    assert!(
+        result.is_err(),
+        "deliver_story must surface drain failure load-bearing: {result:?}"
+    );
+    let err = result.unwrap_err();
+    assert!(
+        err.contains("drain after deliver failed"),
+        "error must name the deliver-drain stage: {err}"
+    );
 }

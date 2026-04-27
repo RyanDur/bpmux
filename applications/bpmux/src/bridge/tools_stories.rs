@@ -16,6 +16,8 @@ use crate::transport::protocol::ClientMessage;
 /// misroute a story in the board view. New labels go here first, call
 /// sites reference the const.
 const LABEL_DELIVERED: &str = "delivered";
+const LABEL_IN_PROGRESS: &str = "in progress";
+const LABEL_READY_FOR_ACCEPT: &str = "ready for accept";
 
 /// Marker broadcast from every story-mutating MCP handler. Every
 /// connected TUI receives it (broadcast — no `to=` filter) and fires
@@ -552,6 +554,12 @@ pub(super) async fn handle_deliver_story(
             ts: chrono::Utc::now(),
             peer_id: crate::board::PeerId::local(),
         };
+        r.mutate_sync(crate::board::BoardEvent::TagRemoved {
+            meta: meta.clone(),
+            number,
+            label: LABEL_IN_PROGRESS.to_string(),
+        })
+        .map_err(|e| format!("#{number} in-progress-tag-remove enqueue failed: {e}"))?;
         r.mutate_sync(crate::board::BoardEvent::GateCommentAppended {
             meta: meta.clone(),
             number,
@@ -565,6 +573,9 @@ pub(super) async fn handle_deliver_story(
             new_state: crate::board::domain::StoryState::Delivered,
         })
         .map_err(|e| format!("#{number} state enqueue failed: {e}"))?;
+        r.drain_pending()
+            .await
+            .map_err(|e| format!("#{number} drain after deliver failed: {e}"))?;
         broadcast_board_invalidate(ws_tx).await;
         return Ok(format!("#{number} delivered: signals sent, labels updated"));
     }
@@ -754,6 +765,12 @@ pub(super) async fn handle_accept_story(
             label: LABEL_DELIVERED.to_string(),
         })
         .map_err(|e| format!("#{number} delivered-tag-remove enqueue failed: {e}"))?;
+        r.mutate_sync(crate::board::BoardEvent::TagRemoved {
+            meta: meta.clone(),
+            number,
+            label: LABEL_READY_FOR_ACCEPT.to_string(),
+        })
+        .map_err(|e| format!("#{number} ready-for-accept-tag-remove enqueue failed: {e}"))?;
         r.mutate_sync(crate::board::BoardEvent::GateCommentAppended {
             meta: meta.clone(),
             number,
@@ -773,6 +790,9 @@ pub(super) async fn handle_accept_story(
             reason: None,
         })
         .map_err(|e| format!("#{number} close enqueue failed: {e}"))?;
+        r.drain_pending()
+            .await
+            .map_err(|e| format!("#{number} drain after accept failed: {e}"))?;
         broadcast_board_invalidate(ws_tx).await;
         return Ok(format!("#{number} accepted and closed"));
     }
@@ -882,6 +902,12 @@ pub(super) async fn handle_pass_desk_check(
             ts: chrono::Utc::now(),
             peer_id: crate::board::PeerId::local(),
         };
+        r.mutate_sync(crate::board::BoardEvent::TagRemoved {
+            meta: meta.clone(),
+            number,
+            label: LABEL_DELIVERED.to_string(),
+        })
+        .map_err(|e| format!("#{number} delivered-tag-remove enqueue failed: {e}"))?;
         r.mutate_sync(crate::board::BoardEvent::GateCommentAppended {
             meta: meta.clone(),
             number,
@@ -895,6 +921,9 @@ pub(super) async fn handle_pass_desk_check(
             new_state: crate::board::domain::StoryState::ReadyForAccept,
         })
         .map_err(|e| format!("#{number} state enqueue failed: {e}"))?;
+        r.drain_pending()
+            .await
+            .map_err(|e| format!("#{number} drain after pass_desk_check failed: {e}"))?;
         broadcast_board_invalidate(ws_tx).await;
         return Ok(format!(
             "#{number} passed desk-check: signal sent, label applied"
