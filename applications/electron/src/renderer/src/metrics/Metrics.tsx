@@ -47,6 +47,12 @@ function Metrics({ apiBase, authToken, onClose, open }: Props): React.JSX.Elemen
   const dialogRef = useRef<HTMLDialogElement | null>(null)
 
   useEffect(() => {
+    // #497 slice 2: re-fetch on every open so reopens see fresh
+    // velocity/DORA data. Pre-fix the dialog was conditionally
+    // mounted via useAnimatedUnmount, so each open caused a fresh
+    // mount + fresh fetch. Native <dialog> stays mounted; gate the
+    // fetch on `open` instead.
+    if (!open) return
     if (!apiBase) {
       setError('backend not reachable')
       return
@@ -66,7 +72,7 @@ function Metrics({ apiBase, authToken, onClose, open }: Props): React.JSX.Elemen
         setError(err instanceof Error ? err.message : String(err))
       })
     return () => controller.abort()
-  }, [apiBase, authToken])
+  }, [open, apiBase, authToken])
 
   useEffect(() => {
     const dialog = dialogRef.current
