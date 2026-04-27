@@ -71,12 +71,11 @@ pub trait StoryTracker: Clone + Send + Sync + 'static {
         title: &str,
         body: &str,
     ) -> impl std::future::Future<Output = Result<String, String>> + Send;
-    fn list_stories(&self) -> impl std::future::Future<Output = Result<String, String>> + Send;
     /// #403: full board as typed JSON Values — used by `list_ready`
-    /// and other filtered enumerations. Counterpart to
-    /// `list_stories` (which returns the pre-serialized string);
-    /// keeping both so callers that want the raw string (TUI's
-    /// view_board) don't pay a re-serialize round-trip.
+    /// and other filtered enumerations. Counterpart to the inherent
+    /// `OctocrabStoryTracker::list_stories` (returns pre-serialized
+    /// string); keeping both so callers that want the raw string
+    /// (legacy contract tests) don't pay a re-serialize round-trip.
     fn fetch_board_stories(
         &self,
     ) -> impl std::future::Future<Output = Result<Vec<serde_json::Value>, String>> + Send;
@@ -96,10 +95,6 @@ pub trait StoryTracker: Clone + Send + Sync + 'static {
         &self,
         number: u64,
     ) -> impl std::future::Future<Output = Result<Vec<serde_json::Value>, String>> + Send;
-    fn get_story_title(
-        &self,
-        number: u64,
-    ) -> impl std::future::Future<Output = Option<String>> + Send;
     /// Fetch labels for story-category routing (pass_desk_check
     /// signal picks addressee based on honest-plumbing vs vertical).
     /// Returns empty Vec when the story can't be fetched — caller
@@ -467,6 +462,44 @@ impl OctocrabStoryTracker {
             .map(|_| ())
             .map_err(Self::classify)
     }
+
+    pub async fn list_stories(&self) -> Result<String, String> {
+        let page = self
+            .client
+            .issues(&self.owner, &self.repo)
+            .list()
+            .state(octocrab::params::State::All)
+            .per_page(100)
+            .send()
+            .await
+            .map_err(Self::classify)?;
+        let condensed: Vec<serde_json::Value> = page
+            .items
+            .iter()
+            .map(|i| {
+                serde_json::json!({
+                    "number": i.number,
+                    "title": i.title,
+                    "state": match i.state {
+                        octocrab::models::IssueState::Open => "OPEN",
+                        octocrab::models::IssueState::Closed => "CLOSED",
+                        _ => "OPEN",
+                    },
+                    "labels": i.labels.iter().map(|l| serde_json::json!({"name": l.name})).collect::<Vec<_>>(),
+                })
+            })
+            .collect();
+        serde_json::to_string(&condensed).map_err(|e| format!("serialize: {e}"))
+    }
+
+    pub async fn get_story_title(&self, number: u64) -> Option<String> {
+        self.client
+            .issues(&self.owner, &self.repo)
+            .get(number)
+            .await
+            .ok()
+            .map(|i| i.title)
+    }
 }
 
 /// Derive the renderer's board-bucket state string from a GitHub
@@ -633,38 +666,6 @@ impl StoryTracker for OctocrabStoryTracker {
         }
     }
 
-    async fn list_stories(&self) -> Result<String, String> {
-        let page = self
-            .client
-            .issues(&self.owner, &self.repo)
-            .list()
-            .state(octocrab::params::State::All)
-            .per_page(100)
-            .send()
-            .await
-            .map_err(Self::classify)?;
-        // Shape matches what the existing callers parse via serde_json::Value
-        // (fields: number, title, state, labels). Emit as a JSON array so the
-        // caller's serde_json::from_str continues to work unchanged.
-        let condensed: Vec<serde_json::Value> = page
-            .items
-            .iter()
-            .map(|i| {
-                serde_json::json!({
-                    "number": i.number,
-                    "title": i.title,
-                    "state": match i.state {
-                        octocrab::models::IssueState::Open => "OPEN",
-                        octocrab::models::IssueState::Closed => "CLOSED",
-                        _ => "OPEN",
-                    },
-                    "labels": i.labels.iter().map(|l| serde_json::json!({"name": l.name})).collect::<Vec<_>>(),
-                })
-            })
-            .collect();
-        serde_json::to_string(&condensed).map_err(|e| format!("serialize: {e}"))
-    }
-
     async fn comment_on_story(&self, number: u64, body: &str) -> Result<String, String> {
         self.client
             .issues(&self.owner, &self.repo)
@@ -701,15 +702,6 @@ impl StoryTracker for OctocrabStoryTracker {
             ak.cmp(bk)
         });
         Ok(condensed)
-    }
-
-    async fn get_story_title(&self, number: u64) -> Option<String> {
-        self.client
-            .issues(&self.owner, &self.repo)
-            .get(number)
-            .await
-            .ok()
-            .map(|i| i.title)
     }
 
     async fn get_story_labels(&self, number: u64) -> Vec<String> {
