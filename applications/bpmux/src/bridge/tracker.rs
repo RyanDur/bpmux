@@ -502,45 +502,13 @@ impl OctocrabStoryTracker {
     }
 }
 
-/// Derive the renderer's board-bucket state string from a GitHub
-/// issue's raw state + labels. Mirrors the label-precedence logic in
-/// `terminal::board::stories::parse_issue_values` (same order, same
-/// fallbacks) but emits the kebab-case strings the Electron board
-/// grouper expects — see `applications/electron/src/renderer/src/board/types.ts`.
-///
-/// Duplication flag: this label→state mapping also lives in
-/// `terminal/board/stories.rs`. They must stay in sync; diverging
-/// produces the exact silent-drop bug that stalled #xxx acceptance
-/// walk (empty buckets on live data, no error).
-fn derive_renderer_state(
-    gh_state: &octocrab::models::IssueState,
-    labels: &[String],
-) -> &'static str {
-    if matches!(gh_state, octocrab::models::IssueState::Closed) {
-        return "accepted";
-    }
-    let has = |name: &str| labels.iter().any(|l| l == name);
-    if has("delivered") {
-        "delivered"
-    } else if has("in progress") || has("started") || has("finished") {
-        // LABEL_IN_PROGRESS ("in progress" with a space) is what
-        // start_story applies; "started"/"finished" are legacy TUI
-        // labels. Matching all three keeps cross-tool compatibility
-        // — TUI-originated + Electron-originated + MCP-originated
-        // transitions all land in the In Progress column.
-        "in-progress"
-    } else if has("ready") {
-        "ready"
-    } else {
-        // unlabeled open issues + "deferred"/"icebox" labels → icebox
-        "icebox"
-    }
-}
-
-/// Shape a single octocrab Issue into the board JSON envelope the
-/// Electron renderer expects. Lifted out as a free function so
-/// `fetch_board_stories` and `get_story` emit identical shapes — the
-/// renderer can reuse the same parser for both endpoints.
+/// Shape a single octocrab Issue into a raw-JSON envelope used by
+/// `fetch_board_stories` + `get_story` for adapter ingest. The decoder
+/// `board::adapters::github::decode_story_metadata` reads `gh_state`
+/// and `labels` and derives canonical `Story.state` via the single
+/// classifier `state_from_labels` per Ryan's 2026-04-27 boundary
+/// principle ruling. This function is the boundary OUT — it serializes
+/// raw GH issue facts; no state classification happens here.
 fn gh_state_label(state: &octocrab::models::IssueState) -> &'static str {
     match state {
         octocrab::models::IssueState::Open => "open",
@@ -551,7 +519,8 @@ fn gh_state_label(state: &octocrab::models::IssueState) -> &'static str {
 
 fn issue_to_board_json(issue: &octocrab::models::issues::Issue) -> serde_json::Value {
     let labels: Vec<String> = issue.labels.iter().map(|l| l.name.clone()).collect();
-    let state = derive_renderer_state(&issue.state, &labels);
+    let is_closed = matches!(issue.state, octocrab::models::IssueState::Closed);
+    let state = crate::board::adapters::github::state_from_labels(&labels, is_closed).as_str();
     let gh_state = gh_state_label(&issue.state);
     let parent_epic = crate::board::adapters::github::parent_epic_from_labels(&labels);
     serde_json::json!({
@@ -827,72 +796,9 @@ impl OctocrabStoryTracker {
 }
 
 #[cfg(test)]
-mod derive_renderer_state_tests {
+mod gh_state_label_tests {
     use super::*;
     use octocrab::models::IssueState;
-
-    fn labels(ns: &[&str]) -> Vec<String> {
-        ns.iter().map(|s| (*s).to_string()).collect()
-    }
-
-    #[test]
-    fn closed_issues_map_to_accepted() {
-        assert_eq!(
-            derive_renderer_state(&IssueState::Closed, &labels(&["ready"])),
-            "accepted"
-        );
-    }
-
-    #[test]
-    fn delivered_wins_over_ready_and_started() {
-        assert_eq!(
-            derive_renderer_state(
-                &IssueState::Open,
-                &labels(&["ready", "started", "delivered"])
-            ),
-            "delivered"
-        );
-    }
-
-    #[test]
-    fn started_or_finished_yield_in_progress() {
-        assert_eq!(
-            derive_renderer_state(&IssueState::Open, &labels(&["started"])),
-            "in-progress"
-        );
-        assert_eq!(
-            derive_renderer_state(&IssueState::Open, &labels(&["finished"])),
-            "in-progress"
-        );
-    }
-
-    // Regression guard: start_story applies LABEL_IN_PROGRESS ("in
-    // progress" with a space); the renderer's column grouping keys
-    // off the derived "in-progress" state. Mismatch drops the story
-    // out of every column (2026-04-22 live incident).
-    #[test]
-    fn in_progress_label_with_space_yields_in_progress_state() {
-        assert_eq!(
-            derive_renderer_state(&IssueState::Open, &labels(&["in progress"])),
-            "in-progress"
-        );
-    }
-
-    #[test]
-    fn ready_label_yields_ready() {
-        assert_eq!(
-            derive_renderer_state(&IssueState::Open, &labels(&["Feature", "ready"])),
-            "ready"
-        );
-    }
-
-    #[test]
-    fn unlabeled_open_issues_fall_through_to_icebox() {
-        assert_eq!(
-            derive_renderer_state(&IssueState::Open, &labels(&[])),
-            "icebox"
-        );
-    }
 
     #[test]
     fn gh_state_label_maps_open_and_closed() {
