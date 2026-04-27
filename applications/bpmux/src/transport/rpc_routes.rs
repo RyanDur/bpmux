@@ -44,7 +44,6 @@ const KNOWN_AGENTS: &[&str] = &["dev", "pm", "designer", "owner"];
 /// through the canonical store so all readers see the same data.
 fn known_tools() -> &'static [&'static str] {
     &[
-        // Mutations
         "start_story",
         "deliver_story",
         "pass_desk_check",
@@ -58,7 +57,6 @@ fn known_tools() -> &'static [&'static str] {
         "set_parent_epic",
         "unset_parent_epic",
         "reorder_story",
-        // Reads
         "view_board",
         "get_story",
         "list_ready",
@@ -238,13 +236,8 @@ pub async fn post_rpc_tool(
     };
     match dispatch(&refresh, &tool, &agent, args).await {
         Ok(message) => {
-            // Reads don't mutate state — broadcasting BOARD_INVALIDATE
-            // on every read would create a feedback loop where every
-            // refresh provokes another refresh. Only fire invalidate
-            // when the tool actually changed something. view_backlog
-            // is a special read: it asks the renderer to switch view,
-            // which the bridge used to signal via its WS sink. Under
-            // canonical-store routing the server emits that marker.
+            // Firing BOARD_INVALIDATE on a read would re-trigger the
+            // very read that just ran (feedback loop).
             if tool == "view_backlog" {
                 fire_view_backlog_marker(&session);
             } else if !is_read_only_tool(&tool) {

@@ -224,12 +224,6 @@ pub(crate) async fn dispatch_test_view_comments(
 pub(crate) async fn dispatch_test_view_backlog(
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
-    // The MCP handler fires a marker via the bridge's local WS sink so
-    // the renderer flips into backlog-display mode. RPC dispatch runs
-    // server-side where there is no bridge WS sink — the marker is
-    // fired on the server's `Session` directly inside the RPC route
-    // handler instead. Here we just compute the summary off the
-    // canonical store.
     let store = refresh
         .map(|r| r.store())
         .ok_or_else(|| "view_backlog requires canonical store".to_string())?;
@@ -801,12 +795,6 @@ impl ServerHandler for BridgeServer {
                     )
                     .await
                 }
-                // #516 slices 1-4: every state-touching tool — mutations
-                // and reads alike — routes through electron-server's
-                // canonical SyncOrchestrator via the generic
-                // /api/rpc/{tool} endpoint. The bridge no longer holds
-                // its own BoardStore: there's a single board, on the
-                // server, and every observer sees the same data.
                 "start_story"
                 | "deliver_story"
                 | "pass_desk_check"
@@ -851,18 +839,9 @@ impl ServerHandler for BridgeServer {
 pub fn run_bridge(
     port: u16,
     name: &str,
-    fake_tracker: bool,
-    board_fixture: Option<String>,
+    _fake_tracker: bool,
+    _board_fixture: Option<String>,
 ) -> anyhow::Result<()> {
-    // Post-#516: bridges no longer maintain their own BoardStore /
-    // SyncOrchestrator. State-touching MCP tools route through
-    // electron-server's canonical store via /api/rpc/{tool}, so the
-    // bridge has nothing to ingest, drain, or reconcile. The
-    // fake_tracker + board_fixture flags are accepted for backward
-    // compatibility with launchers that still pass them but no longer
-    // do anything; remove from the CLI surface in a follow-up tidy.
-    let _ = fake_tracker;
-    let _ = board_fixture;
     let rt = tokio::runtime::Runtime::new()?;
     rt.block_on(async {
         let server = BridgeServer::new(port, name.to_string());
