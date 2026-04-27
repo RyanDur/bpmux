@@ -1363,7 +1363,7 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
     let seeded = Story::new_minimal(
         201,
         "t".into(),
-        StoryState::Delivered,
+        StoryState::DeskCheck,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
@@ -1382,20 +1382,22 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = store.story(201).unwrap();
-    assert_eq!(story.state, StoryState::ReadyForAccept);
+    assert_eq!(story.state, StoryState::Delivered);
     let gates = story.gate_comments.as_ref().expect("gate_comments seeded");
     assert!(
         gates.iter().any(|g| g.gate == Gate::PassDeskCheck),
         "gate_comments should contain PassDeskCheck entry: {gates:?}"
     );
 
-    // #450: pass_desk_check now drains internally + emits TagRemoved
-    // {delivered} alongside the gate + state events. 3 events expected.
+    // #505 slice 5b: pass_desk_check now reaps "desk-check" label + emits
+    // StateTransitioned(Delivered). Workflow: dev deliver_story → DeskCheck;
+    // designer pass_desk_check → Delivered (Ryan-walk-ready) per Ryan's
+    // 16:18 UTC proposal. 3 events expected.
     let pushed = adapter.pushed_events();
     assert_eq!(pushed.len(), 3, "3 events expected: {pushed:?}");
     assert!(matches!(
         &pushed[0],
-        BoardEvent::TagRemoved { number: 201, label, .. } if label == "delivered"
+        BoardEvent::TagRemoved { number: 201, label, .. } if label == "desk-check"
     ));
     assert!(matches!(
         &pushed[1],
@@ -1410,7 +1412,7 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
         &pushed[2],
         BoardEvent::StateTransitioned {
             number: 201,
-            new_state: StoryState::ReadyForAccept,
+            new_state: StoryState::Delivered,
             ..
         }
     ));
@@ -1601,7 +1603,7 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = store.story(204).unwrap();
-    assert_eq!(story.state, StoryState::Delivered);
+    assert_eq!(story.state, StoryState::DeskCheck);
     let gates = story.gate_comments.as_ref().expect("gate_comments seeded");
     assert!(
         gates.iter().any(|g| g.gate == Gate::Delivered
@@ -1609,9 +1611,10 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
         "gate_comments should contain Delivered with the observation payload: {gates:?}"
     );
 
-    // #450: deliver_story now drains pending internally so label-remove
-    // failures surface load-bearing. Test asserts the 3 events landed at
-    // the adapter (TagRemoved + GateCommentAppended + StateTransitioned).
+    // #505 slice 5b: deliver_story now transitions to DeskCheck (was
+    // Delivered). Workflow: dev deliver_story → DeskCheck (designer-
+    // review-pending); designer pass_desk_check → Delivered (Ryan-walk-
+    // ready) per Ryan's 16:18 UTC proposal. 3 events expected.
     let pushed = adapter.pushed_events();
     assert_eq!(pushed.len(), 3, "3 events expected: {pushed:?}");
     assert!(matches!(
@@ -1635,7 +1638,7 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
         &pushed[2],
         BoardEvent::StateTransitioned {
             number: 204,
-            new_state: StoryState::Delivered,
+            new_state: StoryState::DeskCheck,
             ..
         }
     ));

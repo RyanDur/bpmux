@@ -578,7 +578,7 @@ pub(super) async fn handle_deliver_story(
         r.mutate_sync(crate::board::BoardEvent::StateTransitioned {
             meta,
             number,
-            new_state: crate::board::domain::StoryState::Delivered,
+            new_state: crate::board::domain::StoryState::DeskCheck,
         })
         .map_err(|e| format!("#{number} state enqueue failed: {e}"))?;
         r.drain_pending()
@@ -934,9 +934,9 @@ pub(super) async fn handle_pass_desk_check(
         r.mutate_sync(crate::board::BoardEvent::TagRemoved {
             meta: meta.clone(),
             number,
-            label: LABEL_DELIVERED.to_string(),
+            label: "desk-check".to_string(),
         })
-        .map_err(|e| format!("#{number} delivered-tag-remove enqueue failed: {e}"))?;
+        .map_err(|e| format!("#{number} desk-check-tag-remove enqueue failed: {e}"))?;
         r.mutate_sync(crate::board::BoardEvent::GateCommentAppended {
             meta: meta.clone(),
             number,
@@ -947,7 +947,7 @@ pub(super) async fn handle_pass_desk_check(
         r.mutate_sync(crate::board::BoardEvent::StateTransitioned {
             meta,
             number,
-            new_state: crate::board::domain::StoryState::ReadyForAccept,
+            new_state: crate::board::domain::StoryState::Delivered,
         })
         .map_err(|e| format!("#{number} state enqueue failed: {e}"))?;
         r.drain_pending()
