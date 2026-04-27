@@ -99,6 +99,14 @@ impl WsPeer {
         let _ = self.tx.send(WsMessage::Close(None)).await;
     }
 
+    pub async fn rename(&mut self, new_name: &str) {
+        let msg = serde_json::json!({"type": "rename", "name": new_name}).to_string();
+        self.tx
+            .send(WsMessage::Text(msg.into()))
+            .await
+            .expect("send rename");
+    }
+
     /// Next text frame, stripped of non-text frames. Returns None on close.
     pub async fn next_text(&mut self) -> Option<String> {
         while let Some(Ok(frame)) = self.rx.next().await {
