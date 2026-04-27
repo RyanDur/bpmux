@@ -383,12 +383,25 @@ pub struct FreeComment {
     pub ts: chrono::DateTime<chrono::Utc>,
 }
 
+pub struct EventMeta {
+    pub actor: String,
+    pub ts: chrono::DateTime<chrono::Utc>,
+    pub peer_id: PeerId,
+}
+
 pub enum BoardEvent {
-    StateTransition { story_number: u64, new_state: StoryState, actor: String, ts: chrono::DateTime<chrono::Utc> },
-    GateCommentAppend { story_number: u64, gate: Gate, actor: String, payload: Option<String>, ts: chrono::DateTime<chrono::Utc> },
-    FreeCommentAppend { story_number: u64, body: String, author: String, ts: chrono::DateTime<chrono::Utc> },
-    StoryCreate { title: String, body: String, author: String, ts: chrono::DateTime<chrono::Utc> },
-    StoryClosed { story_number: u64, reason: Option<String>, actor: String, ts: chrono::DateTime<chrono::Utc> },
+    StoryCreated { meta: EventMeta, number: u64, title: String, body: String, initial_state: StoryState, story_type: StoryType },
+    StateTransitioned { meta: EventMeta, number: u64, new_state: StoryState },
+    TagAdded { meta: EventMeta, number: u64, label: String },
+    TagRemoved { meta: EventMeta, number: u64, label: String },
+    GateCommentAppended { meta: EventMeta, number: u64, gate: Gate, payload: Option<String> },
+    FreeCommentAppended { meta: EventMeta, number: u64, body: String },
+    BodyFetched { meta: EventMeta, number: u64, body: String },
+    FreeCommentsFetched { meta: EventMeta, number: u64, comments: Vec<FreeComment> },
+    GateCommentsFetched { meta: EventMeta, number: u64, comments: Vec<GateComment> },
+    StoryClosed { meta: EventMeta, number: u64, reason: Option<String> },
+    ParentEpicSet { meta: EventMeta, number: u64, epic_number: u64 },
+    ParentEpicUnset { meta: EventMeta, number: u64 },
 }
 ```
 
@@ -663,7 +676,7 @@ won't-fix = delete/archive (an action), not a state.
 
 Mechanism:
 
-- **`BoardEvent::StoryClosed { story_number, reason, actor, ts }`** —
+- **`BoardEvent::StoryClosed { meta, number, reason }`** —
   the archive event. Carries optional reason text for the
   "why we're closing" comment at the source.
 - **`Story.is_closed: bool`** — set to true by
@@ -679,7 +692,7 @@ Mechanism:
   signals archive.
 - **Adapter drain on StoryClosed**: optionally appends `reason` as a
   free comment (when Some), then calls `inner.close_story` —
-  idempotent via `is_already_closed_error`.
+  idempotent via the typed `SyncError::AlreadyClosed` variant.
 
 Why not a 9th `StoryState::Closed` variant: the StoryState enum is
 locked at 8. Adding Closed as a state would conflate actor-finality
@@ -809,8 +822,8 @@ closing GH on Rejected would break that semantic.
     - `Story.is_closed: bool` field added; defaults false; set true by
       `BoardStore::apply(StoryClosed { .. })`. Story state is preserved
       (no state mutation on StoryClosed).
-    - `BoardEvent::StoryClosed { story_number, reason: Option<String>,
-      actor, ts }` represents the archive event.
+    - `BoardEvent::StoryClosed { meta, number, reason: Option<String> }`
+      represents the archive event (meta carries actor/ts/peer_id).
     - `handle_close_story` migrates: refresh-before-write → emit
       StoryClosed { reason } → drain. No state transition, no tracker
       direct call on the migrated path.
