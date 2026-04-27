@@ -20,6 +20,7 @@ use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite;
 
 pub(crate) mod github_api;
+mod rpc_client;
 pub(crate) mod tools;
 mod tools_stories;
 pub(crate) mod tracker;
@@ -737,14 +738,14 @@ impl ServerHandler for BridgeServer {
                     .await
                 }
                 "start_story" => {
-                    let current_name = name.lock().await;
-                    tools_stories::handle_start_story(
-                        &args,
-                        &current_name,
-                        &ws_tx,
-                        refresh.as_ref(),
-                    )
-                    .await
+                    // #516 slice 2: bridge dispatches start_story through
+                    // electron-server's canonical SyncOrchestrator via RPC
+                    // instead of running the handler against its own local
+                    // store. The bridge keeps its store for read tools
+                    // until slice 3+4 migrate those too; this is the
+                    // archetype-validation slice.
+                    let current_name = name.lock().await.clone();
+                    rpc_client::start_story_via_rpc(port, &current_name, &args).await
                 }
                 "deliver_story" => {
                     let current_name = name.lock().await;
