@@ -18,6 +18,7 @@ fn sample_story(state: StoryState, story_type: StoryType, is_closed: bool) -> St
         gate_comments: Some(Vec::new()),
         is_closed,
         parent_epic: None,
+        acceptance_test_path: None,
     }
 }
 

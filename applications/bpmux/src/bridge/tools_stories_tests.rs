@@ -2756,3 +2756,24 @@ async fn view_board_epic_explicit_accepted_overrides_derivation() {
         "Epic with explicit Accepted state should NOT derive from in-progress child: {out}"
     );
 }
+
+#[test]
+fn parse_acceptance_test_path_extracts_section_value() {
+    let body = "## User job\n\nfoo\n\n## Observation falsifier\n\nbar\n\n## Acceptance test path\n\napplications/electron/tests/foo.spec.ts\n\n---\n\nauthor body";
+    assert_eq!(
+        parse_acceptance_test_path(body),
+        Some("applications/electron/tests/foo.spec.ts".to_string())
+    );
+}
+
+#[test]
+fn parse_acceptance_test_path_returns_none_when_section_absent() {
+    let body = "## User job\n\nfoo\n\n## Observation falsifier\n\nbar\n\n---\n\nauthor body";
+    assert_eq!(parse_acceptance_test_path(body), None);
+}
+
+#[test]
+fn parse_acceptance_test_path_returns_none_when_section_empty() {
+    let body = "## User job\n\nfoo\n\n## Acceptance test path\n\n   \n\n---\n\n";
+    assert_eq!(parse_acceptance_test_path(body), None);
+}

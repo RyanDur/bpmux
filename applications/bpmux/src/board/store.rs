@@ -70,6 +70,7 @@ impl BoardStore {
                     gate_comments: Some(Vec::new()),
                     is_closed: false,
                     parent_epic: None,
+                    acceptance_test_path: crate::bridge::parse_acceptance_test_path(body),
                 };
                 w.insert(*n, story);
             }
@@ -119,6 +120,7 @@ impl BoardStore {
             BoardEvent::BodyFetched { body, .. } => {
                 if let Some(story) = w.get_mut(&number) {
                     story.body = Some(body.clone());
+                    story.acceptance_test_path = crate::bridge::parse_acceptance_test_path(body);
                 }
             }
             BoardEvent::FreeCommentsFetched { comments, .. } => {

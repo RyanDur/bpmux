@@ -229,12 +229,18 @@ pub(super) async fn handle_create_story(
         "observation_falsifier",
         "observation_falsifier is required (2026-04-22 retro): 'I would reject this story if I observed X.' Frames acceptance as observation-that-fails rather than mechanism-that-passes.",
     )?;
-    // Assemble the final body with structured header sections so the
-    // user_job + falsifier land in the GitHub issue as first-class
-    // content (renderable at filing-gate; auditable afterward).
-    // Author-supplied `body` appends below the structured header.
+    let acceptance_test_path = args
+        .get("acceptance_test_path")
+        .and_then(|v| v.as_str())
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
     let author_body = args.get("body").and_then(|v| v.as_str()).unwrap_or("");
-    let composed_body = compose_story_body(user_job, observation_falsifier, author_body);
+    let composed_body = compose_story_body(
+        user_job,
+        observation_falsifier,
+        acceptance_test_path,
+        author_body,
+    );
     let parent_epic = args.get("parent_epic").and_then(|v| v.as_u64());
     if let Some(r) = refresh {
         if let Some(epic_number) = parent_epic {
@@ -308,15 +314,37 @@ fn require_nonempty_string<'a>(
     Ok(raw)
 }
 
-fn compose_story_body(user_job: &str, observation_falsifier: &str, author_body: &str) -> String {
+fn compose_story_body(
+    user_job: &str,
+    observation_falsifier: &str,
+    acceptance_test_path: Option<&str>,
+    author_body: &str,
+) -> String {
     let mut out = String::new();
     out.push_str("## User job\n\n");
     out.push_str(user_job.trim());
     out.push_str("\n\n## Observation falsifier\n\n");
     out.push_str(observation_falsifier.trim());
+    if let Some(path) = acceptance_test_path {
+        out.push_str("\n\n## Acceptance test path\n\n");
+        out.push_str(path);
+    }
     out.push_str("\n\n---\n\n");
     out.push_str(author_body);
     out
+}
+
+pub fn parse_acceptance_test_path(body: &str) -> Option<String> {
+    let marker = "## Acceptance test path\n\n";
+    let start = body.find(marker)? + marker.len();
+    let rest = &body[start..];
+    let end = rest.find("\n\n").unwrap_or(rest.len());
+    let path = rest[..end].trim();
+    if path.is_empty() {
+        None
+    } else {
+        Some(path.to_string())
+    }
 }
 
 /// Signal fires on INTENT (before gh) so the team is notified
