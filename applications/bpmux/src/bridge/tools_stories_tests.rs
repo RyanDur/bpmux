@@ -1389,18 +1389,35 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
         "gate_comments should contain PassDeskCheck entry: {gates:?}"
     );
 
-    // #505 slice 5b: pass_desk_check now reaps "desk-check" label + emits
-    // StateTransitioned(Delivered). Workflow: dev deliver_story → DeskCheck;
-    // designer pass_desk_check → Delivered (Ryan-walk-ready) per Ryan's
-    // 16:18 UTC proposal. 3 events expected.
+    // #503/#519 universal-reap: pass_desk_check strips every workflow-
+    // state label except "delivered" (added via StateTransitioned).
+    // 7x TagRemoved + GateCommentAppended + StateTransitioned = 9.
     let pushed = adapter.pushed_events();
-    assert_eq!(pushed.len(), 3, "3 events expected: {pushed:?}");
+    assert_eq!(pushed.len(), 9, "9 events expected: {pushed:?}");
+    let reap_labels: Vec<&str> = pushed[..7]
+        .iter()
+        .filter_map(|e| match e {
+            BoardEvent::TagRemoved {
+                number: 201, label, ..
+            } => Some(label.as_str()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        reap_labels,
+        vec![
+            "desk-check",
+            "in progress",
+            "ready",
+            "needs fixes",
+            "ready for accept",
+            "rejected",
+            "accepted",
+        ],
+        "universal-reap label set + order"
+    );
     assert!(matches!(
-        &pushed[0],
-        BoardEvent::TagRemoved { number: 201, label, .. } if label == "desk-check"
-    ));
-    assert!(matches!(
-        &pushed[1],
+        &pushed[7],
         BoardEvent::GateCommentAppended {
             number: 201,
             gate: Gate::PassDeskCheck,
@@ -1409,7 +1426,7 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
         }
     ));
     assert!(matches!(
-        &pushed[2],
+        &pushed[8],
         BoardEvent::StateTransitioned {
             number: 201,
             new_state: StoryState::Delivered,
@@ -1463,14 +1480,35 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
         "gate_comments should contain FailDeskCheck with payload: {gates:?}"
     );
 
+    // #503/#519 universal-reap: fail_desk_check strips every workflow-
+    // state label except "needs fixes" (added via StateTransitioned).
+    // 7x TagRemoved + GateCommentAppended + StateTransitioned = 9.
     let pushed = adapter.pushed_events();
+    assert_eq!(pushed.len(), 9, "9 events expected: {pushed:?}");
+    let reap_labels: Vec<&str> = pushed[..7]
+        .iter()
+        .filter_map(|e| match e {
+            BoardEvent::TagRemoved {
+                number: 202, label, ..
+            } => Some(label.as_str()),
+            _ => None,
+        })
+        .collect();
     assert_eq!(
-        pushed.len(),
-        2,
-        "post-#505 slice 2: handler drains internally so both events reach adapter before return; pushed: {pushed:?}"
+        reap_labels,
+        vec![
+            "desk-check",
+            "in progress",
+            "ready",
+            "ready for accept",
+            "delivered",
+            "rejected",
+            "accepted",
+        ],
+        "universal-reap label set + order"
     );
     assert!(matches!(
-        &pushed[0],
+        &pushed[7],
         BoardEvent::GateCommentAppended {
             number: 202,
             gate: Gate::FailDeskCheck,
@@ -1479,7 +1517,7 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
         } if p == "test failure"
     ));
     assert!(matches!(
-        &pushed[1],
+        &pushed[8],
         BoardEvent::StateTransitioned {
             number: 202,
             new_state: StoryState::NeedsFixes,

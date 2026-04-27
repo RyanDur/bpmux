@@ -1017,12 +1017,26 @@ pub(super) async fn handle_pass_desk_check(
             ts: chrono::Utc::now(),
             peer_id: crate::board::PeerId::local(),
         };
-        r.mutate_sync(crate::board::BoardEvent::TagRemoved {
-            meta: meta.clone(),
-            number,
-            label: "desk-check".to_string(),
-        })
-        .map_err(|e| format!("#{number} desk-check-tag-remove enqueue failed: {e}"))?;
+        // #503/#519 universal-reap: strip every workflow-state label
+        // except "delivered" (which we add via StateTransitioned).
+        // Symmetric to accept_story / reject_story; closes the
+        // fail→PASS rework-cycle stale-label class.
+        for stale in [
+            "desk-check",
+            LABEL_IN_PROGRESS,
+            "ready",
+            "needs fixes",
+            LABEL_READY_FOR_ACCEPT,
+            "rejected",
+            "accepted",
+        ] {
+            r.mutate_sync(crate::board::BoardEvent::TagRemoved {
+                meta: meta.clone(),
+                number,
+                label: stale.to_string(),
+            })
+            .map_err(|e| format!("#{number} {stale}-tag-remove enqueue failed: {e}"))?;
+        }
         r.mutate_sync(crate::board::BoardEvent::GateCommentAppended {
             meta: meta.clone(),
             number,
@@ -1092,17 +1106,31 @@ pub(super) async fn handle_fail_desk_check(
             peer_id: crate::board::PeerId::local(),
         };
         if was_accepted {
-            r.mutate_sync(crate::board::BoardEvent::TagRemoved {
-                meta: meta.clone(),
-                number,
-                label: "accepted".to_string(),
-            })
-            .map_err(|e| format!("#{number} accepted-tag-remove enqueue failed: {e}"))?;
             r.mutate_sync(crate::board::BoardEvent::StoryReopened {
                 meta: meta.clone(),
                 number,
             })
             .map_err(|e| format!("#{number} reopen enqueue failed: {e}"))?;
+        }
+        // #503/#519 universal-reap: strip every workflow-state label
+        // except "needs fixes" (which we add via StateTransitioned).
+        // Same archetype as accept/reject/pass_desk_check. Includes
+        // "accepted" so the was_accepted re-pickup case lands clean.
+        for stale in [
+            "desk-check",
+            LABEL_IN_PROGRESS,
+            "ready",
+            LABEL_READY_FOR_ACCEPT,
+            LABEL_DELIVERED,
+            "rejected",
+            "accepted",
+        ] {
+            r.mutate_sync(crate::board::BoardEvent::TagRemoved {
+                meta: meta.clone(),
+                number,
+                label: stale.to_string(),
+            })
+            .map_err(|e| format!("#{number} {stale}-tag-remove enqueue failed: {e}"))?;
         }
         r.mutate_sync(crate::board::BoardEvent::GateCommentAppended {
             meta: meta.clone(),
