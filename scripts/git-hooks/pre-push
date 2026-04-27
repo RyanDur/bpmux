@@ -50,6 +50,10 @@ if command -v cargo-audit &> /dev/null; then
     cargo audit --deny warnings
 fi
 
+if [ -d applications/electron/node_modules ]; then
+    (cd applications/electron && npm run test:unit)
+fi
+
 MAX_LINES=400
 echo "Checking file sizes..."
 oversized=""
