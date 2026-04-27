@@ -49,7 +49,6 @@ const Chat = ({
   const pins = usePins({ apiBase, authToken, channel: pinsChannel, messages })
   const reactions = useReactions({ apiBase, authToken, channel: pinsChannel, messages })
   const metrics = useAnimatedUnmount(metricsOpen, OVERLAY_EXIT_MS)
-  const pinnedList = useAnimatedUnmount(pinnedListOpen, OVERLAY_EXIT_MS)
 
   const togglePin = (m: ChatMessage): void => {
     const key = messageKey(m)
@@ -137,16 +136,14 @@ const Chat = ({
           visible={metrics.visible}
         />
       )}
-      {pinnedList.mounted && (
-        <PinnedList
-          pins={pins.pins}
-          onUnpin={(key) => {
-            void pins.unpin(key)
-          }}
-          onClose={() => setPinnedListOpen(false)}
-          visible={pinnedList.visible}
-        />
-      )}
+      <PinnedList
+        pins={pins.pins}
+        onUnpin={(key) => {
+          void pins.unpin(key)
+        }}
+        onClose={() => setPinnedListOpen(false)}
+        open={pinnedListOpen}
+      />
       <Input
         key={allView ? 'all' : pinsChannel}
         onSend={handleSend}

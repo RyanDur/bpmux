@@ -1,5 +1,5 @@
 import { format } from 'date-fns'
-import { useCallback } from 'react'
+import { useEffect, useRef } from 'react'
 import type { Pin } from '../hooks/usePins'
 import MessageBody from './MessageBody'
 import './PinnedList.css'
@@ -8,9 +8,7 @@ interface Props {
   pins: Pin[]
   onUnpin: (messageKey: string) => void
   onClose: () => void
-  // #354 close-direction: Chat's useAnimatedUnmount flips this to
-  // false to trigger the exit transition before unmount.
-  visible: boolean
+  open: boolean
 }
 
 function shortName(identity: string): string {
@@ -18,26 +16,32 @@ function shortName(identity: string): string {
   return idx === -1 ? identity : identity.slice(0, idx)
 }
 
-function PinnedList({ pins, onUnpin, onClose, visible }: Props): React.JSX.Element {
-  const handleKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLElement>): void => {
-      if (event.key === 'Escape') {
-        event.preventDefault()
-        onClose()
-      }
-    },
-    [onClose]
-  )
+function PinnedList({ pins, onUnpin, onClose, open }: Props): React.JSX.Element {
+  const dialogRef = useRef<HTMLDialogElement | null>(null)
+
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (!dialog) return
+    if (open && !dialog.open) {
+      dialog.show()
+    } else if (!open && dialog.open) {
+      dialog.close()
+    }
+  }, [open])
 
   return (
-    <section
+    <dialog
+      ref={dialogRef}
       className="pinned-list"
       data-test="pinned-list-overlay"
-      data-visible={visible || undefined}
       aria-label="Pinned messages"
-      aria-hidden={!visible || undefined}
-      onKeyDown={handleKeyDown}
-      tabIndex={-1}
+      onClose={onClose}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') {
+          event.preventDefault()
+          onClose()
+        }
+      }}
     >
       <header className="pinned-list-header">
         <h2 className="pinned-list-title">
@@ -57,16 +61,16 @@ function PinnedList({ pins, onUnpin, onClose, visible }: Props): React.JSX.Eleme
       ) : (
         <ul className="pinned-list-items" data-test="pinned-list-items">
           {pins.map((p) => (
-            <li key={p.message_key} className="pinned-item" data-test={`pinned-item-${p.message_key}`}>
+            <li
+              key={p.message_key}
+              className="pinned-item"
+              data-test={`pinned-item-${p.message_key}`}
+            >
               <article>
                 <header className="pinned-item-meta">
                   <cite className="pinned-item-from">{shortName(p.from)}</cite>
-                  <time dateTime={p.ts}>
-                    {format(new Date(p.ts), 'MMM d · h:mm a zzz')}
-                  </time>
-                  <small className="pinned-item-by">
-                    pinned by {p.pinned_by}
-                  </small>
+                  <time dateTime={p.ts}>{format(new Date(p.ts), 'MMM d · h:mm a zzz')}</time>
+                  <small className="pinned-item-by">pinned by {p.pinned_by}</small>
                 </header>
                 <section className="pinned-item-body">
                   <MessageBody text={p.text} />
@@ -86,7 +90,7 @@ function PinnedList({ pins, onUnpin, onClose, visible }: Props): React.JSX.Eleme
           ))}
         </ul>
       )}
-    </section>
+    </dialog>
   )
 }
 

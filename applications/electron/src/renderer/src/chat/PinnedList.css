@@ -6,26 +6,38 @@
   bottom: 0;
   z-index: 20;
   background: var(--bg-base);
-  display: flex;
-  flex-direction: column;
   border: 1px solid var(--border-subtle);
   outline: none;
+  margin: 0;
+  padding: 0;
+  max-width: none;
+  max-height: none;
+}
 
-  /* Enter + exit (#354): same pattern as search/metrics. Default
-   * closed/exiting; [data-visible] = entered. */
+.pinned-list[open] {
+  display: flex;
+  flex-direction: column;
+  transform: translateY(0);
+  opacity: 1;
+  transition:
+    transform var(--motion-duration-medium) var(--motion-ease-out),
+    opacity var(--motion-duration-fast) var(--motion-ease-out);
+
+  @starting-style {
+    transform: translateY(-16px);
+    opacity: 0;
+  }
+}
+
+.pinned-list:not([open]) {
+  transform: translateY(-16px);
+  opacity: 0;
   transition:
     transform var(--motion-duration-medium) var(--motion-ease-in),
     opacity var(--motion-duration-fast) var(--motion-ease-in);
-  transform: translateY(-16px);
-  opacity: 0;
+}
 
-  &[data-visible] {
-    transform: translateY(0);
-    opacity: 1;
-    transition:
-      transform var(--motion-duration-medium) var(--motion-ease-out),
-      opacity var(--motion-duration-fast) var(--motion-ease-out);
-  }
+.pinned-list {
 
   & .pinned-list-header {
     display: flex;
