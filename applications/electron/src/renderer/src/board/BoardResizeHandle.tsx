@@ -50,25 +50,29 @@ const BoardResizeHandle = ({ width, setWidth, controlsId }: Props): React.JSX.El
       e.preventDefault()
       const startX = e.clientX
       const startWidth = width
-      const target = e.currentTarget
-      target.setPointerCapture(e.pointerId)
+      const handle = e.currentTarget
+      const aside = document.getElementById(controlsId)
+      handle.setPointerCapture(e.pointerId)
+      let latest = startWidth
 
       const onMove = (ev: PointerEvent): void => {
         const dx = startX - ev.clientX
-        const next = clampBoardWidth(startWidth + dx, window.innerWidth)
-        setWidth(next)
+        latest = clampBoardWidth(startWidth + dx, window.innerWidth)
+        if (aside) aside.style.flex = `0 0 ${latest}px`
+        handle.setAttribute('aria-valuenow', String(widthPercent(latest, window.innerWidth)))
       }
       const onUp = (ev: PointerEvent): void => {
-        target.releasePointerCapture(ev.pointerId)
-        target.removeEventListener('pointermove', onMove)
-        target.removeEventListener('pointerup', onUp)
-        target.removeEventListener('pointercancel', onUp)
+        handle.releasePointerCapture(ev.pointerId)
+        handle.removeEventListener('pointermove', onMove)
+        handle.removeEventListener('pointerup', onUp)
+        handle.removeEventListener('pointercancel', onUp)
+        setWidth(latest)
       }
-      target.addEventListener('pointermove', onMove)
-      target.addEventListener('pointerup', onUp)
-      target.addEventListener('pointercancel', onUp)
+      handle.addEventListener('pointermove', onMove)
+      handle.addEventListener('pointerup', onUp)
+      handle.addEventListener('pointercancel', onUp)
     },
-    [setWidth, width]
+    [controlsId, setWidth, width]
   )
 
   const onKeyDown = useCallback(

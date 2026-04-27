@@ -126,6 +126,66 @@ test.describe('#458 board panel — drag-resize + persistence', () => {
     await second.app.close()
   })
 
+  test('rapid drag does not lag main thread (DOM-direct, no React per-move)', async () => {
+    const { app, win } = await launchIsolatedWithWindow()
+    await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+
+    const result = await win.evaluate(async () => {
+      const handle = document.querySelector<HTMLElement>('[data-test="board-resize-handle"]')
+      const aside = document.getElementById('board-region')
+      if (!handle || !aside) return { ok: false, reason: 'no-elements' }
+
+      const rect = handle.getBoundingClientRect()
+      const startX = rect.left + rect.width / 2
+      const startY = rect.top + rect.height / 2
+
+      handle.dispatchEvent(
+        new PointerEvent('pointerdown', {
+          pointerId: 1,
+          bubbles: true,
+          clientX: startX,
+          clientY: startY
+        })
+      )
+
+      const t0 = performance.now()
+      for (let i = 1; i <= 60; i++) {
+        handle.dispatchEvent(
+          new PointerEvent('pointermove', {
+            pointerId: 1,
+            bubbles: true,
+            clientX: startX - i,
+            clientY: startY
+          })
+        )
+      }
+      const tEnd = performance.now()
+
+      const flexAfterMoves = aside.style.flex
+
+      handle.dispatchEvent(
+        new PointerEvent('pointerup', {
+          pointerId: 1,
+          bubbles: true,
+          clientX: startX - 60,
+          clientY: startY
+        })
+      )
+
+      return {
+        ok: true,
+        elapsedMs: tEnd - t0,
+        flexAfterMoves
+      }
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.elapsedMs).toBeLessThan(100)
+    expect(result.flexAfterMoves).toMatch(/^0 0 \d+px$/)
+
+    await app.close()
+  })
+
   test('no console errors during resize cycle', async () => {
     const { app, win } = await launchIsolatedWithWindow()
     const consoleErrors: string[] = []
