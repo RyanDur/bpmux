@@ -116,7 +116,15 @@ pub(super) async fn handle_view_board(
     let r = refresh.ok_or(
         "view_board requires refresh (RefreshDriver) — tracker fallback retired in slice 5l",
     )?;
-    let stories = r.all_stories();
+    let mut stories = r.all_stories();
+    if stories.is_empty() {
+        if let Err(e) = r.refresh_all().await {
+            crate::session::diag::log_diag(&format!(
+                "view_board: empty store; refresh_all failed: {e}"
+            ));
+        }
+        stories = r.all_stories();
+    }
     let format_entry = |s: &crate::board::domain::Story| -> (u64, String) {
         let prefix = if s.parent_epic.is_some() { "↳ " } else { "" };
         let suffix = match s.parent_epic {

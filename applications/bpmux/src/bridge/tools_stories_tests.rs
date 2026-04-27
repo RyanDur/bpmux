@@ -2012,6 +2012,48 @@ async fn view_board_requires_refresh_after_5l_fallback_retirement() {
 }
 
 #[tokio::test]
+async fn view_board_auto_reingests_when_store_is_empty() {
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let ts = Utc.with_ymd_and_hms(2026, 4, 27, 0, 0, 0).unwrap();
+    adapter.seed_stories(vec![Story::new_minimal(
+        505,
+        "post-restart-recovery".into(),
+        StoryState::Accepted,
+        ts,
+        "dev".into(),
+    )]);
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    assert!(
+        orch.all_stories().is_empty(),
+        "store must start empty (simulates post-restart cache-loss); got: {:?}",
+        orch.all_stories()
+    );
+    let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
+        .await
+        .unwrap();
+    assert!(
+        out.contains("#505 post-restart-recovery"),
+        "view_board should have triggered re-ingest from adapter; output:\n{out}"
+    );
+    assert!(
+        !orch.all_stories().is_empty(),
+        "post-call store should be populated; auto-recovery completed"
+    );
+}
+
+#[tokio::test]
 async fn view_board_buckets_stories_by_story_state() {
     use crate::board::BoardStore;
     use crate::board::RefreshDriver;
