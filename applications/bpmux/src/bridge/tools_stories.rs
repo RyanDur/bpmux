@@ -1,9 +1,9 @@
-//! Story management tool handlers (#140, #194, #197).
+//! Story management tool handlers.
 //!
-//! Lane-aware operations on GitHub issues via the tracker trait
-//! (octocrab-backed per #320). Workflow signals fire on INTENT (before
-//! the tracker call) so the team is notified even when the mutation
-//! fails.
+//! Lane-aware operations against the RefreshDriver-backed BoardStore
+//! (#451 retired the standalone tracker abstraction). Workflow
+//! signals fire on INTENT (before the source-of-truth mutation) so
+//! the team is notified even when the mutation fails.
 
 use tokio::sync::Mutex;
 
@@ -998,10 +998,8 @@ pub(super) async fn handle_reorder_story(
 
 /// Add a comment to a story — any agent. Durable issue-audit-trail
 /// (visible to any future reader of the issue; distinct from bpmux
-/// chat which is session-scoped). Thin wrapper on existing
-/// `tracker.comment_on_story`; capability is pre-existing
-/// (reject_story invokes the same path), this generalizes for
-/// standalone commenting.
+/// chat which is session-scoped). Routes through the RefreshDriver
+/// per #451; reject_story invokes the same path.
 pub(super) async fn handle_comment_on_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
@@ -1043,11 +1041,10 @@ pub(super) async fn handle_comment_on_story(
     )
 }
 
-/// Close a story with a reason — PM-only. Adds the reason as a
-/// comment on the issue, then closes it. Thin wrapper on existing
-/// `tracker.comment_on_story` + `tracker.close_story` — capability
-/// is pre-existing (accept_story uses the same close path), this
-/// generalizes the invocation for superseded / duplicate / won't-fix
+/// Close a story with a reason — PM-only. Routes through the
+/// RefreshDriver per #451 to append the reason as a comment, then
+/// fire StoryClosed; accept_story uses the same close path.
+/// Generalizes the invocation for superseded / duplicate / won't-fix
 /// closures.
 pub(super) async fn handle_close_story(
     args: &serde_json::Map<String, serde_json::Value>,

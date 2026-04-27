@@ -142,9 +142,8 @@ fn build_board_invalidate_signal_is_system_typed_broadcast() {
     );
 }
 
-// #316 close_story MCP tool — PM-only wrapper over existing tracker
-// close + comment methods. Permission-gate tests here; behavior is
-// exercised via the FakeTracker path for test hermeticity.
+// #316 close_story MCP tool — PM-only. Permission-gate tests here;
+// behavior is exercised via the migrated RefreshDriver path tests.
 
 #[test]
 fn close_story_is_pm_only_gate() {

@@ -2,9 +2,7 @@
 //!
 //! Live `gh` and `octocrab` aren't available in CI, so we test the
 //! extracted helper `log_labels_fetch_failure` directly — it owns
-//! the fail-soft + log_diag semantics both tracker impls delegate to.
-//! Success-path coverage flows through `addressee_for_pass_desk_check`
-//! and the existing `FakeTracker` (empty-labels → default-to-ryan).
+//! the fail-soft + log_diag semantics tracker callers delegate to.
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
