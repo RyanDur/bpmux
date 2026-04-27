@@ -2954,6 +2954,129 @@ async fn deliver_story_blocks_feature_without_acceptance_test_path() {
 }
 
 #[tokio::test]
+async fn reject_after_accept_emits_tag_remove_accepted_and_story_reopened() {
+    use crate::board::BoardEvent;
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState, StoryType};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let mut seeded = Story::new_minimal(
+        469,
+        "[Bug] rework-after-accept".into(),
+        StoryState::Accepted,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "ryan".into(),
+    );
+    seeded.story_type = StoryType::Bug;
+    seeded.is_closed = true;
+    adapter.seed_stories(vec![seeded]);
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orch.refresh_all().await.unwrap();
+
+    let ws_tx = connected_ws_sink_for_test().await;
+    let mut args = serde_json::Map::new();
+    args.insert("number".into(), serde_json::json!(469));
+    args.insert("reason".into(), serde_json::json!("rework needed"));
+    let result = handle_reject_story(&args, "ryan:human", &ws_tx, Some(&orch)).await;
+    assert!(result.is_ok(), "reject should succeed: {result:?}");
+
+    orch.drain_pending().await.unwrap();
+    let pushed = adapter.pushed_events();
+
+    let tag_removed_accepted = pushed.iter().any(|e| {
+        matches!(
+            e,
+            BoardEvent::TagRemoved { number: 469, label, .. } if label == "accepted"
+        )
+    });
+    assert!(
+        tag_removed_accepted,
+        "reject_story on previously-Accepted must emit TagRemoved(accepted): {pushed:?}"
+    );
+
+    let story_reopened = pushed
+        .iter()
+        .any(|e| matches!(e, BoardEvent::StoryReopened { number: 469, .. }));
+    assert!(
+        story_reopened,
+        "reject_story on previously-Accepted must emit StoryReopened: {pushed:?}"
+    );
+
+    let story = store.story(469).unwrap();
+    assert!(
+        !story.is_closed,
+        "store must reflect re-opened state post-reject"
+    );
+    assert_eq!(story.state, StoryState::Rejected);
+}
+
+#[tokio::test]
+async fn reject_on_non_accepted_skips_tag_remove_accepted_and_story_reopened() {
+    use crate::board::BoardEvent;
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState, StoryType};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let mut seeded = Story::new_minimal(
+        470,
+        "[Bug] reject-from-delivered".into(),
+        StoryState::Delivered,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "ryan".into(),
+    );
+    seeded.story_type = StoryType::Bug;
+    adapter.seed_stories(vec![seeded]);
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orch.refresh_all().await.unwrap();
+
+    let ws_tx = connected_ws_sink_for_test().await;
+    let mut args = serde_json::Map::new();
+    args.insert("number".into(), serde_json::json!(470));
+    args.insert("reason".into(), serde_json::json!("not done"));
+    handle_reject_story(&args, "ryan:human", &ws_tx, Some(&orch))
+        .await
+        .unwrap();
+
+    orch.drain_pending().await.unwrap();
+    let pushed = adapter.pushed_events();
+    let any_accepted_remove = pushed.iter().any(|e| {
+        matches!(
+            e,
+            BoardEvent::TagRemoved { number: 470, label, .. } if label == "accepted"
+        )
+    });
+    assert!(
+        !any_accepted_remove,
+        "reject on non-Accepted must NOT emit TagRemoved(accepted): {pushed:?}"
+    );
+    let any_reopen = pushed
+        .iter()
+        .any(|e| matches!(e, BoardEvent::StoryReopened { number: 470, .. }));
+    assert!(
+        !any_reopen,
+        "reject on non-Accepted must NOT emit StoryReopened: {pushed:?}"
+    );
+}
+
+#[tokio::test]
 async fn deliver_story_propagates_drain_failure_at_label_remove() {
     use crate::board::BoardStore;
     use crate::board::RefreshDriver;

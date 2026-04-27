@@ -52,6 +52,10 @@ pub trait StoryTracker: Clone + Send + Sync + 'static {
         &self,
         number: u64,
     ) -> impl std::future::Future<Output = Result<String, String>> + Send;
+    fn reopen_story(
+        &self,
+        number: u64,
+    ) -> impl std::future::Future<Output = Result<String, String>> + Send;
     fn add_label(
         &self,
         number: u64,
@@ -539,6 +543,17 @@ impl StoryTracker for OctocrabStoryTracker {
             .send()
             .await
             .map(|_| format!("#{number} closed"))
+            .map_err(Self::classify)
+    }
+
+    async fn reopen_story(&self, number: u64) -> Result<String, String> {
+        self.client
+            .issues(&self.owner, &self.repo)
+            .update(number)
+            .state(octocrab::models::IssueState::Open)
+            .send()
+            .await
+            .map(|_| format!("#{number} reopened"))
             .map_err(Self::classify)
     }
 

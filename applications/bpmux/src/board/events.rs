@@ -67,6 +67,10 @@ pub enum BoardEvent {
         number: u64,
         reason: Option<String>,
     },
+    StoryReopened {
+        meta: EventMeta,
+        number: u64,
+    },
     ParentEpicSet {
         meta: EventMeta,
         number: u64,
@@ -91,6 +95,7 @@ impl BoardEvent {
             | BoardEvent::TagAdded { meta, .. }
             | BoardEvent::TagRemoved { meta, .. }
             | BoardEvent::StoryClosed { meta, .. }
+            | BoardEvent::StoryReopened { meta, .. }
             | BoardEvent::ParentEpicSet { meta, .. }
             | BoardEvent::ParentEpicUnset { meta, .. } => meta,
         }
@@ -108,6 +113,7 @@ impl BoardEvent {
             | BoardEvent::TagAdded { number, .. }
             | BoardEvent::TagRemoved { number, .. }
             | BoardEvent::StoryClosed { number, .. }
+            | BoardEvent::StoryReopened { number, .. }
             | BoardEvent::ParentEpicSet { number, .. }
             | BoardEvent::ParentEpicUnset { number, .. } => *number,
         }

@@ -106,6 +106,13 @@ impl SourceAdapter for GitHubSourceAdapter {
                     },
                 }
             }
+            BoardEvent::StoryReopened { number, .. } => {
+                self.inner
+                    .reopen_story(*number)
+                    .await
+                    .map_err(SyncError::Other)?;
+                Ok(())
+            }
             BoardEvent::GateCommentAppended {
                 meta,
                 number,

@@ -138,6 +138,11 @@ impl BoardStore {
                     story.is_closed = true;
                 }
             }
+            BoardEvent::StoryReopened { .. } => {
+                if let Some(story) = w.get_mut(&number) {
+                    story.is_closed = false;
+                }
+            }
             BoardEvent::ParentEpicSet { epic_number, .. } => {
                 if let Some(story) = w.get_mut(&number) {
                     story.parent_epic = Some(*epic_number);

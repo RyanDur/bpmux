@@ -813,11 +813,16 @@ pub(super) async fn handle_reject_story(
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
-    if let Some(r) = refresh {
+    let was_accepted = if let Some(r) = refresh {
         r.refresh_story(number)
             .await
             .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?;
-    }
+        r.story(number)
+            .map(|s| s.is_closed || s.state == crate::board::domain::StoryState::Accepted)
+            .unwrap_or(false)
+    } else {
+        false
+    };
     let reason = args
         .get("reason")
         .and_then(|v| v.as_str())
@@ -839,6 +844,19 @@ pub(super) async fn handle_reject_story(
             label: LABEL_DELIVERED.to_string(),
         })
         .map_err(|e| format!("#{number} delivered-tag-remove enqueue failed: {e}"))?;
+        if was_accepted {
+            r.mutate_sync(crate::board::BoardEvent::TagRemoved {
+                meta: meta.clone(),
+                number,
+                label: "accepted".to_string(),
+            })
+            .map_err(|e| format!("#{number} accepted-tag-remove enqueue failed: {e}"))?;
+            r.mutate_sync(crate::board::BoardEvent::StoryReopened {
+                meta: meta.clone(),
+                number,
+            })
+            .map_err(|e| format!("#{number} reopen enqueue failed: {e}"))?;
+        }
         r.mutate_sync(crate::board::BoardEvent::GateCommentAppended {
             meta: meta.clone(),
             number,
@@ -951,11 +969,16 @@ pub(super) async fn handle_fail_desk_check(
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
-    if let Some(r) = refresh {
+    let was_accepted = if let Some(r) = refresh {
         r.refresh_story(number)
             .await
             .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?;
-    }
+        r.story(number)
+            .map(|s| s.is_closed || s.state == crate::board::domain::StoryState::Accepted)
+            .unwrap_or(false)
+    } else {
+        false
+    };
     let reason = args
         .get("reason")
         .and_then(|v| v.as_str())
@@ -971,6 +994,19 @@ pub(super) async fn handle_fail_desk_check(
             ts: chrono::Utc::now(),
             peer_id: crate::board::PeerId::local(),
         };
+        if was_accepted {
+            r.mutate_sync(crate::board::BoardEvent::TagRemoved {
+                meta: meta.clone(),
+                number,
+                label: "accepted".to_string(),
+            })
+            .map_err(|e| format!("#{number} accepted-tag-remove enqueue failed: {e}"))?;
+            r.mutate_sync(crate::board::BoardEvent::StoryReopened {
+                meta: meta.clone(),
+                number,
+            })
+            .map_err(|e| format!("#{number} reopen enqueue failed: {e}"))?;
+        }
         r.mutate_sync(crate::board::BoardEvent::GateCommentAppended {
             meta: meta.clone(),
             number,
