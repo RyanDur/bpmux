@@ -718,21 +718,29 @@ function StoryRow({
       onDragEnd={() => onDragEndRow?.()}
       onDragOver={onRowDragOver}
     >
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         className="board-story-button"
         onClick={() => onOpen(story.number)}
         onFocus={() => onSelect(story.number)}
         onMouseEnter={() => onSelect(story.number)}
         onKeyDown={(event) => {
-          if (onKeyboardReorder === undefined) return
-          if (!event.ctrlKey || !event.shiftKey) return
-          if (event.key === 'ArrowUp') {
+          if (event.ctrlKey && event.shiftKey && onKeyboardReorder !== undefined) {
+            if (event.key === 'ArrowUp') {
+              event.preventDefault()
+              onKeyboardReorder('up')
+              return
+            }
+            if (event.key === 'ArrowDown') {
+              event.preventDefault()
+              onKeyboardReorder('down')
+              return
+            }
+          }
+          if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault()
-            onKeyboardReorder('up')
-          } else if (event.key === 'ArrowDown') {
-            event.preventDefault()
-            onKeyboardReorder('down')
+            onOpen(story.number)
           }
         }}
         title={story.title}
@@ -750,7 +758,7 @@ function StoryRow({
             ↳ #{story.parent_epic}
           </small>
         ) : null}
-      </button>
+      </div>
     </li>
   )
 }
