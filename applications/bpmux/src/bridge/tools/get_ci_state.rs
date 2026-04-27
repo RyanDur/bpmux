@@ -4,8 +4,6 @@
 //! report. Pure `build_ci_state_report` is separated from the fetch
 //! so unit tests cover shape without network.
 
-use crate::bridge::github_api::GitHubApi;
-use crate::bridge::tracker::WorkflowRunEntry;
 use crate::terminal::ci::{CiState, RunEntry, classify_runs, github_actions_url};
 
 #[derive(Debug, serde::Serialize, PartialEq, Eq)]
@@ -48,34 +46,35 @@ pub fn build_ci_state_report(runs: &[RunEntry]) -> CiStateReport {
     }
 }
 
-/// Convert the tracker's generic `WorkflowRunEntry` shape into the
-/// `RunEntry` shape `terminal::ci::classify_runs` consumes. The two
-/// structs differ only in field visibility (tracker struct is public
-/// for cross-module reuse; RunEntry is crate-internal classification
-/// type). One-to-one field copy including #397's annotation_message
-/// so quota-exhaustion classification sees the reason from GitHub.
-fn run_entry_from_tracker(w: &WorkflowRunEntry) -> RunEntry {
-    RunEntry {
-        status: w.status.clone(),
-        conclusion: w.conclusion.clone(),
-        head_sha: w.head_sha.clone(),
-        display_title: w.display_title.clone(),
-        database_id: w.database_id,
-        annotation_message: w.annotation_message.clone(),
-    }
-}
-
+/// #526: bridges read CI state from the electron-server's canonical
+/// `/api/ci` endpoint instead of holding their own GitHubApi handle.
+/// One ci_watcher on the server fetches GH; every bridge renders the
+/// same report via this RPC. No more per-bridge rate-limit accounting
+/// or momentary cross-bridge divergence during fetch windows.
 pub(in crate::bridge) async fn handle_get_ci_state(
     _args: &serde_json::Map<String, serde_json::Value>,
-    api: Option<&GitHubApi>,
+    port: u16,
 ) -> Result<String, String> {
-    let latest = match api {
-        Some(a) => a.list_latest_run_on_main().await?,
-        None => None,
-    };
-    let runs: Vec<RunEntry> = latest.iter().map(run_entry_from_tracker).collect();
-    let report = build_ci_state_report(&runs);
-    serde_json::to_string_pretty(&report).map_err(|e| format!("serialize: {e}"))
+    let token_path = crate::session::auth_token::default_auth_token_path()
+        .ok_or_else(|| "cannot resolve auth-token path (HOME unset?)".to_string())?;
+    let token = crate::session::auth_token::read(&token_path)
+        .map_err(|e| format!("read auth-token from {}: {e}", token_path.display()))?;
+    let url = format!("http://127.0.0.1:{port}/api/ci");
+    let res = reqwest::Client::new()
+        .get(&url)
+        .header(reqwest::header::AUTHORIZATION, format!("Bearer {token}"))
+        .send()
+        .await
+        .map_err(|e| format!("get_ci_state: electron-server unreachable at {url}: {e}"))?;
+    let status = res.status();
+    let body = res
+        .text()
+        .await
+        .map_err(|e| format!("get_ci_state: read body: {e}"))?;
+    if !status.is_success() {
+        return Err(format!("get_ci_state: {status} — {body}"));
+    }
+    Ok(body)
 }
 
 #[cfg(test)]
@@ -179,25 +178,6 @@ mod tests {
         // separately so it can be used elsewhere.
         assert!(parsed["url"].as_str().unwrap().ends_with("/actions"));
         assert!(!parsed["url"].as_str().unwrap().contains("/runs/"));
-    }
-
-    #[test]
-    fn run_entry_from_tracker_preserves_fields() {
-        let w = WorkflowRunEntry {
-            status: "completed".to_string(),
-            conclusion: Some("success".to_string()),
-            head_sha: Some("abc123".to_string()),
-            display_title: Some("CI: fix bug".to_string()),
-            database_id: Some(99),
-            annotation_message: None,
-        };
-        let r = run_entry_from_tracker(&w);
-        assert_eq!(r.status, "completed");
-        assert_eq!(r.conclusion.as_deref(), Some("success"));
-        assert_eq!(r.head_sha.as_deref(), Some("abc123"));
-        assert_eq!(r.display_title.as_deref(), Some("CI: fix bug"));
-        assert_eq!(r.database_id, Some(99));
-        assert_eq!(r.annotation_message, None);
     }
 
     // ── #397 quota-exhausted classifier tests ──

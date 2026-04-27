@@ -19,7 +19,6 @@ use serde_json::json;
 use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite;
 
-pub(crate) mod github_api;
 mod rpc_client;
 pub(crate) mod tools;
 mod tools_stories;
@@ -238,7 +237,6 @@ pub struct BridgeServer {
     name: Arc<Mutex<String>>,
     peer: Arc<Mutex<Option<Peer<RoleServer>>>>,
     ws_tx: Arc<Mutex<Option<WsSink>>>,
-    github_api: Option<Arc<github_api::GitHubApi>>,
 }
 
 pub(crate) fn resolve_bridge_name(raw: &str) -> String {
@@ -258,13 +256,7 @@ impl BridgeServer {
             name: Arc::new(Mutex::new(resolve_bridge_name(&name))),
             peer: Arc::new(Mutex::new(None)),
             ws_tx: Arc::new(Mutex::new(None)),
-            github_api: None,
         }
-    }
-
-    fn with_github_api(mut self, api: Arc<github_api::GitHubApi>) -> Self {
-        self.github_api = Some(api);
-        self
     }
 }
 
@@ -708,7 +700,6 @@ impl ServerHandler for BridgeServer {
         let port = self.port;
         let ws_tx = self.ws_tx.clone();
         let name = self.name.clone();
-        let github_api = self.github_api.clone();
 
         async move {
             let args = request.arguments.unwrap_or_default();
@@ -783,7 +774,7 @@ impl ServerHandler for BridgeServer {
                     tools::handle_remove_principle(&args, &current_name).await
                 }
                 "get_token_report" => tools::handle_get_token_report().await,
-                "get_ci_state" => tools::handle_get_ci_state(&args, github_api.as_deref()).await,
+                "get_ci_state" => tools::handle_get_ci_state(&args, port).await,
                 "get_sync_status" => tools::handle_get_sync_status(None).await,
                 "view_story_commits" => tools::handle_view_story_commits(&args).await,
                 "view_commit_diff" => tools::handle_view_commit_diff(&args).await,
@@ -845,10 +836,6 @@ pub fn run_bridge(
     let rt = tokio::runtime::Runtime::new()?;
     rt.block_on(async {
         let server = BridgeServer::new(port, name.to_string());
-        let server = match github_api::GitHubApi::from_env() {
-            Some(api) => server.with_github_api(Arc::new(api)),
-            None => server,
-        };
         let (stdin, stdout) = rmcp::transport::io::stdio();
         let service = server.serve((stdin, stdout)).await?;
         service.waiting().await?;
