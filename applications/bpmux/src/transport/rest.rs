@@ -662,12 +662,27 @@ pub async fn get_board(
     if let Some(refresh) = test_refresh.as_ref() {
         let mut all = refresh.all_stories();
         if all.is_empty() {
-            if let Err(e) = refresh.refresh_all().await {
-                crate::session::diag::log_diag(&format!(
-                    "rest get_board: empty store; refresh_all failed: {e}"
-                ));
+            match refresh.refresh_all().await {
+                Ok(()) => {
+                    all = refresh.all_stories();
+                    if all.is_empty() {
+                        crate::session::diag::log_diag(
+                            "rest get_board: empty store; refresh_all returned Ok with 0 stories — ingest succeeded but source-of-truth empty OR decode dropped all rows",
+                        );
+                    } else {
+                        crate::session::diag::log_diag(&format!(
+                            "rest get_board: empty store; refresh_all recovered {} stories",
+                            all.len()
+                        ));
+                    }
+                }
+                Err(e) => {
+                    crate::session::diag::log_diag(&format!(
+                        "rest get_board: empty store; refresh_all failed: {e}"
+                    ));
+                    all = refresh.all_stories();
+                }
             }
-            all = refresh.all_stories();
         }
         let stories: Vec<serde_json::Value> = all
             .iter()

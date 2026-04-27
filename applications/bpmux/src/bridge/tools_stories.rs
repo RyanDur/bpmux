@@ -118,12 +118,27 @@ pub(super) async fn handle_view_board(
     )?;
     let mut stories = r.all_stories();
     if stories.is_empty() {
-        if let Err(e) = r.refresh_all().await {
-            crate::session::diag::log_diag(&format!(
-                "view_board: empty store; refresh_all failed: {e}"
-            ));
+        match r.refresh_all().await {
+            Ok(()) => {
+                stories = r.all_stories();
+                if stories.is_empty() {
+                    crate::session::diag::log_diag(
+                        "view_board: empty store; refresh_all returned Ok with 0 stories — ingest succeeded but source-of-truth empty OR decode dropped all rows",
+                    );
+                } else {
+                    crate::session::diag::log_diag(&format!(
+                        "view_board: empty store; refresh_all recovered {} stories",
+                        stories.len()
+                    ));
+                }
+            }
+            Err(e) => {
+                crate::session::diag::log_diag(&format!(
+                    "view_board: empty store; refresh_all failed: {e}"
+                ));
+                stories = r.all_stories();
+            }
         }
-        stories = r.all_stories();
     }
     let format_entry = |s: &crate::board::domain::Story| -> (u64, String) {
         let prefix = if s.parent_epic.is_some() { "↳ " } else { "" };

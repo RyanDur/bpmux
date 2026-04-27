@@ -2058,6 +2058,68 @@ async fn view_board_auto_reingests_when_store_is_empty() {
 }
 
 #[tokio::test]
+async fn view_board_handles_refresh_succeeding_with_empty_result_without_errors() {
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+
+    let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
+        .await
+        .expect(
+            "view_board must return Ok even when adapter source-of-truth has 0 stories — \
+             empty-result must be honest, not error",
+        );
+
+    assert!(
+        out.contains("ICEBOX (0)"),
+        "view_board returns honest-empty when source has no stories; output:\n{out}"
+    );
+    assert!(
+        orch.all_stories().is_empty(),
+        "post-call store remains empty when source-of-truth is empty (silently-empty case logged via diag per #506 observability fix)"
+    );
+}
+
+#[tokio::test]
+async fn view_board_handles_refresh_failing_returns_honest_empty_with_diag_log() {
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    adapter.set_ingest_failures(true);
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+
+    let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
+        .await
+        .expect("view_board must return Ok even when adapter ingest fails — fail-soft");
+
+    assert!(
+        out.contains("ICEBOX (0)"),
+        "view_board returns honest-empty when ingest fails; output:\n{out}"
+    );
+    assert!(
+        orch.all_stories().is_empty(),
+        "store stays empty when ingest fails; diag log captures the failure for #506 observability"
+    );
+}
+
+#[tokio::test]
 async fn view_board_buckets_stories_by_story_state() {
     use crate::board::BoardStore;
     use crate::board::RefreshDriver;
