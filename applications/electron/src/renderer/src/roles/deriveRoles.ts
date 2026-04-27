@@ -216,13 +216,42 @@ export function deriveTeamRolesFromRoster(
  * messages but never holds a WS connection — so no isSystem filter
  * is needed at this layer.
  */
+// #495: when a bridge connection auto-identifies as "agent-XXXX"
+// then renames via set_name, the prior identity should disappear
+// from the sidebar. ws.rs:140-148 reaps the prior identity in the
+// same connection (verified via #472 substrate-audit + reproducer
+// test), but the heartbeat-cleanup-race on bridge restart can
+// leave a stale agent-XXXX entry in the roster up to 30s while
+// the new bridge instance also identifies. Within that window
+// the roster legitimately contains BOTH agent-XXXX:tool (stale)
+// and dev:tool (fresh). Surface-side dedup: filter the
+// agent-XXXX entry when another entry with the same tool suffix
+// is already named (i.e., not an "agent-" auto-identity). Per
+// spec falsifier #5, truly-distinct unnamed agents (no named
+// counterpart on the same tool) remain visible.
+const toolSuffixOf = (identity: string): string => {
+  const idx = identity.indexOf(':')
+  return idx === -1 ? '' : identity.slice(idx + 1)
+}
+
+const isAutoIdentity = (role: string): boolean => role.startsWith('agent-')
+
 export function deriveDirectRolesFromRoster(
   roster: readonly RosterEntry[],
   viewer?: string
 ): readonly string[] {
-  const all = deriveTeamRolesFromRoster(roster)
   const self = viewer !== undefined ? shortName(viewer) : null
-  return all.filter((r) => r !== self)
+  const namedTools = new Set<string>()
+  for (const e of roster) {
+    if (!isAutoIdentity(e.role)) namedTools.add(toolSuffixOf(e.identity))
+  }
+  const set = new Set<string>()
+  for (const e of roster) {
+    if (e.role === self) continue
+    if (isAutoIdentity(e.role) && namedTools.has(toolSuffixOf(e.identity))) continue
+    set.add(e.role)
+  }
+  return Array.from(set).sort()
 }
 
 /**
