@@ -290,7 +290,7 @@ pub fn tags_from_labels(labels: &[String]) -> Vec<Tag> {
 pub fn state_from_labels(labels: &[String], is_closed: bool) -> StoryState {
     let has = |needle: &str| labels.iter().any(|l| l.eq_ignore_ascii_case(needle));
     warn_on_inconsistent_state_labels(labels);
-    if is_closed || has("accepted") {
+    if has("accepted") {
         return StoryState::Accepted;
     }
     if has("rejected") {
@@ -310,6 +310,9 @@ pub fn state_from_labels(labels: &[String], is_closed: bool) -> StoryState {
     }
     if has("ready") {
         return StoryState::Ready;
+    }
+    if is_closed {
+        return StoryState::Accepted;
     }
     StoryState::Icebox
 }

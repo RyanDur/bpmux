@@ -165,10 +165,16 @@ fn decode_story_metadata_sets_is_closed_from_gh_state() {
 }
 
 #[test]
-fn decode_story_metadata_prefers_gh_state_over_legacy_state_field() {
+fn decode_story_metadata_preserves_last_domain_state_for_closed_non_accepted() {
+    // #464: GH-closed alone no longer forces Accepted. Closed-without-
+    // an "accepted" label preserves the last domain state per labels
+    // (close-as-archive vs team-Accepted distinction). Story.is_closed
+    // remains true to flag the archive shape; the renderer combines
+    // state + is_closed to filter closed-non-Accepted from active
+    // buckets.
     let json = serde_json::json!({
         "number": 99,
-        "title": "previously accepted via old code path; closed on GH but no explicit accepted label",
+        "title": "close_story-fired on a Delivered story; no accepted label present",
         "state": "accepted",
         "gh_state": "closed",
         "labels": ["ready for accept", "delivered"],
@@ -178,12 +184,13 @@ fn decode_story_metadata_prefers_gh_state_over_legacy_state_field() {
     let story = decode_story_metadata(&json).unwrap();
     assert!(
         story.is_closed,
-        "gh_state=closed must drive is_closed=true even when state field is renderer-translated"
+        "gh_state=closed still drives is_closed=true regardless of label priority"
     );
     assert_eq!(
         story.state,
-        StoryState::Accepted,
-        "is_closed=true must override label-priority decoder to Accepted"
+        StoryState::ReadyForAccept,
+        "without 'accepted' label, decoder preserves the last-domain state per label priority \
+         instead of forcing Accepted (#464)"
     );
 }
 
