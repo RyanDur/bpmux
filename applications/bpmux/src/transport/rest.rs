@@ -660,8 +660,16 @@ pub async fn get_board(
     axum::Extension(test_refresh): axum::Extension<crate::server::TestRefreshHandle>,
 ) -> impl IntoResponse {
     if let Some(refresh) = test_refresh.as_ref() {
-        let stories: Vec<serde_json::Value> = refresh
-            .all_stories()
+        let mut all = refresh.all_stories();
+        if all.is_empty() {
+            if let Err(e) = refresh.refresh_all().await {
+                crate::session::diag::log_diag(&format!(
+                    "rest get_board: empty store; refresh_all failed: {e}"
+                ));
+            }
+            all = refresh.all_stories();
+        }
+        let stories: Vec<serde_json::Value> = all
             .iter()
             .map(crate::board::domain::story_to_board_json)
             .collect();

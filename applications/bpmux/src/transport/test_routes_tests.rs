@@ -229,6 +229,58 @@ async fn roundtrip_coherence_user_job_and_falsifier_preserved_in_body() {
 }
 
 #[tokio::test]
+async fn rest_get_board_auto_reingests_when_orchestrator_store_is_empty() {
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState};
+    use chrono::{TimeZone, Utc};
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let ts = Utc.with_ymd_and_hms(2026, 4, 27, 0, 0, 0).unwrap();
+    adapter.seed_stories(vec![Story::new_minimal(
+        5050,
+        "post-restart-rest-recovery".into(),
+        StoryState::Accepted,
+        ts,
+        "dev".into(),
+    )]);
+    let orch_concrete = SyncOrchestrator::new(store.clone(), adapter);
+    let orch: Arc<dyn RefreshDriver> = Arc::new(orch_concrete);
+    let test_refresh: TestRefreshHandle = Some(orch.clone());
+    let none_tracker: super::rest::TrackerHandle = None;
+    let router = axum::Router::new()
+        .route("/api/board", axum::routing::get(super::rest::get_board))
+        .with_state(fresh_test_session())
+        .layer(axum::Extension(test_refresh))
+        .layer(axum::Extension(none_tracker));
+
+    assert!(
+        orch.all_stories().is_empty(),
+        "store starts empty (simulates startup-ingest-failed or post-restart cache-loss)"
+    );
+
+    let req = Request::builder()
+        .method("GET")
+        .uri("/api/board")
+        .body(Body::empty())
+        .expect("build req");
+    let resp = router.oneshot(req).await.expect("response");
+    assert_eq!(resp.status(), StatusCode::OK);
+    let json = read_json(resp).await;
+    let stories = json["stories"].as_array().expect("stories array");
+    assert_eq!(
+        stories.len(),
+        1,
+        "rest get_board should have triggered re-ingest from adapter; got body: {json}"
+    );
+    assert_eq!(stories[0]["number"].as_u64(), Some(5050));
+    assert!(
+        !orch.all_stories().is_empty(),
+        "post-call store populated; recovery completed"
+    );
+}
+
+#[tokio::test]
 async fn roundtrip_coherence_api_board_reflects_new_story_in_test_mode() {
     let (router, _refresh, _store) = fixture_test_mode_on().await;
     let body = r#"{
