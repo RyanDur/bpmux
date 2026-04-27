@@ -44,7 +44,7 @@ test.describe('#458 board panel — drag-resize + persistence', () => {
     await app.close()
   })
 
-  test('Left arrow grows, Right arrow shrinks, aria-valuenow updates', async () => {
+  test('Left arrow shrinks, Right arrow grows, aria-valuenow updates (WAI-ARIA APG)', async () => {
     const { app, win } = await launchIsolatedWithWindow()
     const handle = win.locator('[data-test="board-resize-handle"]')
 
@@ -52,9 +52,12 @@ test.describe('#458 board panel — drag-resize + persistence', () => {
     const beforeAriaNow = await handle.getAttribute('aria-valuenow')
 
     await win.keyboard.press('ArrowLeft')
-    await waitForFlexBasis(win, 384)
-    const afterGrowAriaNow = await handle.getAttribute('aria-valuenow')
-    expect(afterGrowAriaNow).not.toBe(beforeAriaNow)
+    await waitForFlexBasis(win, 336)
+    const afterShrinkAriaNow = await handle.getAttribute('aria-valuenow')
+    expect(afterShrinkAriaNow).not.toBe(beforeAriaNow)
+    expect(Number.parseInt(afterShrinkAriaNow!, 10)).toBeLessThan(
+      Number.parseInt(beforeAriaNow!, 10)
+    )
 
     await win.keyboard.press('ArrowRight')
     await waitForFlexBasis(win, 360)
@@ -66,7 +69,7 @@ test.describe('#458 board panel — drag-resize + persistence', () => {
     const { app, win } = await launchIsolatedWithWindow()
     const handle = win.locator('[data-test="board-resize-handle"]')
     await handle.focus()
-    for (let i = 0; i < 100; i++) await win.keyboard.press('ArrowRight')
+    for (let i = 0; i < 100; i++) await win.keyboard.press('ArrowLeft')
     await waitForFlexBasis(win, 260)
     await app.close()
   })
@@ -107,8 +110,8 @@ test.describe('#458 board panel — drag-resize + persistence', () => {
     const first = await launchIsolatedWithWindow()
     const handle = first.win.locator('[data-test="board-resize-handle"]')
     await handle.focus()
-    await first.win.keyboard.press('ArrowLeft')
-    await first.win.keyboard.press('ArrowLeft')
+    await first.win.keyboard.press('ArrowRight')
+    await first.win.keyboard.press('ArrowRight')
     await waitForFlexBasis(first.win, 408)
 
     const userDataDir = first.userDataDir

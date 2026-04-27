@@ -76,12 +76,12 @@ const BoardResizeHandle = ({ width, setWidth, controlsId }: Props): React.JSX.El
       const max = computeMaxWidth(viewportWidth)
       if (e.key === 'ArrowLeft') {
         e.preventDefault()
-        setWidth(clampBoardWidth(width + BOARD_RESIZE_KEYBOARD_STEP, viewportWidth))
+        setWidth(clampBoardWidth(width - BOARD_RESIZE_KEYBOARD_STEP, viewportWidth))
         return
       }
       if (e.key === 'ArrowRight') {
         e.preventDefault()
-        setWidth(clampBoardWidth(width - BOARD_RESIZE_KEYBOARD_STEP, viewportWidth))
+        setWidth(clampBoardWidth(width + BOARD_RESIZE_KEYBOARD_STEP, viewportWidth))
         return
       }
       if (e.key === 'Home') {
