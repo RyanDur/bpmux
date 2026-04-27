@@ -54,7 +54,7 @@ test.describe('#448 board column collapse affordance — dev smoke', () => {
     const content = win.locator('#board-group-ready-content')
     await expect(content).toBeVisible()
     await toggle.click()
-    await expect(content).toHaveCount(0)
+    await expect(content).not.toBeVisible()
     await app.close()
   })
 
@@ -62,10 +62,12 @@ test.describe('#448 board column collapse affordance — dev smoke', () => {
     const { app, win } = await launchIsolatedWithWindow()
     const chevron = win
       .locator('[data-test="board-group-ready"]')
-      .locator('.collapsible-section-chevron')
-    await expect(chevron).toHaveText('▾')
+      .locator('.board-group-chevron')
+    const before = (): Promise<string> =>
+      chevron.evaluate((el) => getComputedStyle(el, '::before').content)
+    expect(await before()).toBe('"▾"')
     await win.locator('[data-test="board-group-ready"]').click()
-    await expect(chevron).toHaveText('▸')
+    expect(await before()).toBe('"▸"')
     await app.close()
   })
 

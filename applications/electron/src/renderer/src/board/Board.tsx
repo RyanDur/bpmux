@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAnimatedUnmount } from '../hooks/useAnimatedUnmount'
-import CollapsibleSection from '../lib/CollapsibleSection'
 import { useCollapsibleSectionsStorage } from '../lib/useCollapsibleSectionsStorage'
 import { BOARD_INVALIDATE_MARKER, type ChatMessage } from '../transport/types'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
@@ -424,16 +423,11 @@ function Board({ messages, hidden }: BoardProps): React.JSX.Element {
         ) : null}
       </header>
       {/* Reorder live-region (#357 AC5). Visually hidden; SR users
-        * hear the new position after each keyboard reorder. aria-live
-        * polite queues without interrupting the current announcement
-        * (e.g., the aria-label the focused story button just
-        * updated to). */}
-      <div
-        className="sr-only"
-        role="status"
-        aria-live="polite"
-        data-test="board-reorder-announce"
-      >
+       * hear the new position after each keyboard reorder. aria-live
+       * polite queues without interrupting the current announcement
+       * (e.g., the aria-label the focused story button just
+       * updated to). */}
+      <div className="sr-only" role="status" aria-live="polite" data-test="board-reorder-announce">
         {reorderAnnounce}
       </div>
 
@@ -542,13 +536,15 @@ function BoardGroup({
     event.dataTransfer.dropEffect = 'move'
   }
 
-  const handleRowDragOver = (index: number) => (event: React.DragEvent<HTMLLIElement>): void => {
-    if (!draggable) return
-    event.preventDefault()
-    const rect = event.currentTarget.getBoundingClientRect()
-    const mid = rect.top + rect.height / 2
-    setDropAt(event.clientY < mid ? index : index + 1)
-  }
+  const handleRowDragOver =
+    (index: number) =>
+    (event: React.DragEvent<HTMLLIElement>): void => {
+      if (!draggable) return
+      event.preventDefault()
+      const rect = event.currentTarget.getBoundingClientRect()
+      const mid = rect.top + rect.height / 2
+      setDropAt(event.clientY < mid ? index : index + 1)
+    }
 
   const handleDrop = (event: React.DragEvent<HTMLUListElement>): void => {
     if (!draggable || onReorder === undefined) return
@@ -565,76 +561,81 @@ function BoardGroup({
     setDraggingNumber(null)
   }
 
-  const title = (
-    <>
-      <b className="board-group-label">{group.label}</b>
-      <small className="board-group-count">{stories.length}</small>
-    </>
-  )
+  const contentId = `board-group-${group.state}-content`
   return (
-    <CollapsibleSection
-      testId={`board-group-${group.state}`}
-      title={title}
-      collapsed={collapsed}
-      onToggle={onToggleCollapse}
+    <details
       className="board-group"
-      toggleClassName="board-group-summary"
+      open={!collapsed}
+      onToggle={(e) => {
+        const nextOpen = (e.currentTarget as HTMLDetailsElement).open
+        if (nextOpen === collapsed) onToggleCollapse()
+      }}
     >
-      {loading ? (
-        <ul className="board-story-list board-story-list--skeleton" aria-hidden="true">
-          {[0, 1, 2].map((i) => (
-            <li key={i} className="board-story-row board-story-row--skeleton">
-              <i className="skeleton-bar" />
-            </li>
-          ))}
-        </ul>
-      ) : stories.length === 0 ? (
-        <p className="board-group-empty">none</p>
-      ) : (
-        <ul
-          className="board-story-list"
-          onDragOver={handleListDragOver}
-          onDrop={handleDrop}
-          onDragLeave={() => setDropAt(null)}
-        >
-          {stories.map((story, i) => (
-            <StoryRow
-              key={story.number}
-              story={story}
-              selected={story.number === selectedNumber}
-              draggable={draggable}
-              dragging={draggingNumber === story.number}
-              dropBefore={dropAt === i}
-              dropAfterLast={dropAt === stories.length && i === stories.length - 1}
-              position={i + 1}
-              total={stories.length}
-              onKeyboardReorder={
-                draggable && onReorder !== undefined
-                  ? (direction) => {
-                      if (direction === 'up' && i === 0) return
-                      if (direction === 'down' && i === stories.length - 1) return
-                      const insertAt =
-                        direction === 'up'
-                          ? Math.max(0, i - 1)
-                          : Math.min(stories.length, i + 2)
-                      onReorder(group.state, story.number, insertAt)
-                    }
-                  : undefined
-              }
-              onOpen={onOpen}
-              onOpenTimeline={onOpenTimeline}
-              onSelect={onSelect}
-              onRowDragOver={handleRowDragOver(i)}
-              onDragStartRow={() => setDraggingNumber(story.number)}
-              onDragEndRow={() => {
-                setDraggingNumber(null)
-                setDropAt(null)
-              }}
-            />
-          ))}
-        </ul>
-      )}
-    </CollapsibleSection>
+      <summary
+        className="board-group-summary"
+        data-test={`board-group-${group.state}`}
+        aria-expanded={!collapsed}
+        aria-controls={contentId}
+      >
+        <span className="board-group-chevron" aria-hidden="true" />
+        <b className="board-group-label">{group.label}</b>
+        <small className="board-group-count">{stories.length}</small>
+      </summary>
+      <div id={contentId}>
+        {loading ? (
+          <ul className="board-story-list board-story-list--skeleton" aria-hidden="true">
+            {[0, 1, 2].map((i) => (
+              <li key={i} className="board-story-row board-story-row--skeleton">
+                <i className="skeleton-bar" />
+              </li>
+            ))}
+          </ul>
+        ) : stories.length === 0 ? (
+          <p className="board-group-empty">none</p>
+        ) : (
+          <ul
+            className="board-story-list"
+            onDragOver={handleListDragOver}
+            onDrop={handleDrop}
+            onDragLeave={() => setDropAt(null)}
+          >
+            {stories.map((story, i) => (
+              <StoryRow
+                key={story.number}
+                story={story}
+                selected={story.number === selectedNumber}
+                draggable={draggable}
+                dragging={draggingNumber === story.number}
+                dropBefore={dropAt === i}
+                dropAfterLast={dropAt === stories.length && i === stories.length - 1}
+                position={i + 1}
+                total={stories.length}
+                onKeyboardReorder={
+                  draggable && onReorder !== undefined
+                    ? (direction) => {
+                        if (direction === 'up' && i === 0) return
+                        if (direction === 'down' && i === stories.length - 1) return
+                        const insertAt =
+                          direction === 'up' ? Math.max(0, i - 1) : Math.min(stories.length, i + 2)
+                        onReorder(group.state, story.number, insertAt)
+                      }
+                    : undefined
+                }
+                onOpen={onOpen}
+                onOpenTimeline={onOpenTimeline}
+                onSelect={onSelect}
+                onRowDragOver={handleRowDragOver(i)}
+                onDragStartRow={() => setDraggingNumber(story.number)}
+                onDragEndRow={() => {
+                  setDraggingNumber(null)
+                  setDropAt(null)
+                }}
+              />
+            ))}
+          </ul>
+        )}
+      </div>
+    </details>
   )
 }
 

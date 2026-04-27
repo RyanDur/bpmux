@@ -96,6 +96,7 @@
 
   & .board-body {
     flex: 1 1 auto;
+    min-height: 0;
     overflow-y: auto;
     padding: var(--space-8) 0 var(--space-16);
     display: flex;
@@ -114,12 +115,20 @@
     padding: var(--space-8) var(--space-16);
     width: 100%;
     text-align: left;
-    background: transparent;
+    background: var(--bg-elevated);
     border: none;
     cursor: pointer;
     user-select: none;
     color: var(--fg-secondary);
     font: inherit;
+    list-style: none;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
 
     &[aria-expanded='true'] {
       color: var(--fg-primary);
@@ -133,6 +142,21 @@
       outline: 2px solid var(--accent-brand);
       outline-offset: -2px;
     }
+  }
+
+  & .board-group-chevron {
+    flex: 0 0 auto;
+    width: 0.75rem;
+    font-size: 0.625rem;
+    display: inline-block;
+
+    &::before {
+      content: '\25B8';
+    }
+  }
+
+  & details[open] > .board-group-summary > .board-group-chevron::before {
+    content: '\25BE';
   }
 
   & .board-group-label {
@@ -162,17 +186,17 @@
   & .board-story-row {
     display: block;
 
-    &[aria-current="true"] > .board-story-button {
+    &[aria-current='true'] > .board-story-button {
       background: var(--bg-highlighted);
       box-shadow: inset 2px 0 0 var(--accent-brand);
       color: var(--fg-primary);
     }
 
-    &[draggable="true"] {
+    &[draggable='true'] {
       cursor: grab;
     }
 
-    &[draggable="true"]:active {
+    &[draggable='true']:active {
       cursor: grabbing;
     }
 
