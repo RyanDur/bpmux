@@ -30,6 +30,22 @@ export const isMessageInScope = (
   const to = m.to
   const isBroadcast = !to || to.length === 0 || to.includes('all')
   if (isBroadcast && (r === null || r.length === 0)) return true
+  if (isBroadcast || r === null || r.length === 0) return false
+  // #463: group views (recipient ≥ 2) include agent-only conversations
+  // among the group — Ryan-as-viewer wants to observe team coordination
+  // even when he wasn't a participant. Strict equality (the pre-#463
+  // semantic) hid those conversations because their channelId omits
+  // viewer. New rule: every group recipient must appear in the
+  // message's participants AND no participant outside {viewer, group}.
+  // DM (recipient = 1) keeps the strict equality semantic per #429.
+  const senderShort = shortNameOf(m.from)
+  const participants = new Set<string>([senderShort, ...(to ?? [])])
+  if (r.length >= 2) {
+    const allowed = new Set<string>([shortNameOf(v), ...r])
+    const withinAllowed = [...participants].every((p) => allowed.has(p))
+    const groupFullyPresent = r.every((rcp) => participants.has(rcp))
+    return withinAllowed && groupFullyPresent
+  }
   return computeMessageChannelId(m) === computeViewChannelId(r, v)
 }
 
