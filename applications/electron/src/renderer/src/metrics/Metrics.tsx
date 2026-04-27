@@ -1,13 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import './Metrics.css'
 
 interface Props {
   apiBase: string | undefined
   authToken: string | undefined
   onClose: () => void
-  // #354 close-direction: Chat's useAnimatedUnmount flips this to
-  // false to trigger the exit transition before unmount.
-  visible: boolean
+  open: boolean
 }
 
 interface VelocityPayload {
@@ -43,9 +41,10 @@ function Bar({ value, max, color }: { value: number; max: number; color: string 
   )
 }
 
-function Metrics({ apiBase, authToken, onClose, visible }: Props): React.JSX.Element {
+function Metrics({ apiBase, authToken, onClose, open }: Props): React.JSX.Element {
   const [data, setData] = useState<VelocityPayload | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const dialogRef = useRef<HTMLDialogElement | null>(null)
 
   useEffect(() => {
     if (!apiBase) {
@@ -69,22 +68,29 @@ function Metrics({ apiBase, authToken, onClose, visible }: Props): React.JSX.Ele
     return () => controller.abort()
   }, [apiBase, authToken])
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>): void => {
-    if (event.key === 'Escape') {
-      event.preventDefault()
-      onClose()
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (!dialog) return
+    if (open && !dialog.open) {
+      dialog.show()
+    } else if (!open && dialog.open) {
+      dialog.close()
     }
-  }
+  }, [open])
 
   return (
-    <section
+    <dialog
+      ref={dialogRef}
       className="metrics"
-      data-visible={visible || undefined}
       aria-label="Metrics"
-      aria-hidden={!visible || undefined}
-      tabIndex={0}
-      onKeyDown={handleKeyDown}
       data-test="metrics-overlay"
+      onClose={onClose}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') {
+          event.preventDefault()
+          onClose()
+        }
+      }}
     >
       <header className="metrics-header">
         <h2>Velocity + DORA</h2>
@@ -150,7 +156,7 @@ function Metrics({ apiBase, authToken, onClose, visible }: Props): React.JSX.Ele
           )}
         </dl>
       )}
-    </section>
+    </dialog>
   )
 }
 

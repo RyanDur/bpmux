@@ -37,7 +37,10 @@ test.describe('human-side E2E #476 — read-class — metrics overlay content', 
 
     const closeButton = overlay.locator('button.metrics-close')
     await closeButton.click()
-    await expect(overlay).toHaveCount(0)
+    // #497: Metrics is now a native <dialog> (always mounted; open
+    // state toggled via show()/close()). Closed-state assertion shifts
+    // from element-unmount to el.open === false.
+    await expect.poll(() => overlay.evaluate((el: HTMLDialogElement) => el.open)).toBe(false)
 
     expect(consoleErrors).toEqual([])
     expect(pageErrors).toEqual([])

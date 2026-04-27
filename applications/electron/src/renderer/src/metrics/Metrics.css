@@ -3,27 +3,38 @@
   overflow-y: auto;
   background: var(--bg-base);
   padding: var(--space-16);
-  display: flex;
-  flex-direction: column;
   gap: var(--space-16);
   outline: none;
+  border: 1px solid var(--border-subtle);
+  margin: 0;
+  max-width: none;
+  max-height: none;
+}
 
-  /* Enter + exit (#351 AC4 + #354 close-direction): same pattern as
-   * search. Default = closed/exiting; [data-visible] = entered.
-   * Chat controls via useAnimatedUnmount. */
+.metrics[open] {
+  display: flex;
+  flex-direction: column;
+  transform: translateY(0);
+  opacity: 1;
+  transition:
+    transform var(--motion-duration-medium) var(--motion-ease-out),
+    opacity var(--motion-duration-fast) var(--motion-ease-out);
+
+  @starting-style {
+    transform: translateY(-16px);
+    opacity: 0;
+  }
+}
+
+.metrics:not([open]) {
+  transform: translateY(-16px);
+  opacity: 0;
   transition:
     transform var(--motion-duration-medium) var(--motion-ease-in),
     opacity var(--motion-duration-fast) var(--motion-ease-in);
-  transform: translateY(-16px);
-  opacity: 0;
+}
 
-  &[data-visible] {
-    transform: translateY(0);
-    opacity: 1;
-    transition:
-      transform var(--motion-duration-medium) var(--motion-ease-out),
-      opacity var(--motion-duration-fast) var(--motion-ease-out);
-  }
+.metrics {
 
   & .metrics-header {
     display: flex;

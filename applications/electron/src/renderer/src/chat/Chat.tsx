@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import { classOf, useMessageFilter, type MessageClass } from '../hooks/useMessageFilter'
 import { channelKey, messageKey, usePins } from '../hooks/usePins'
 import { useReactions } from '../hooks/useReactions'
-import { useAnimatedUnmount } from '../hooks/useAnimatedUnmount'
 import Metrics from '../metrics/Metrics'
 import { RENDERER_IDENTITY, type SendOptions } from '../transport/useWebSocket'
 import type { ChatMessage, ConnectionStatus } from '../transport/types'
@@ -11,8 +10,6 @@ import Input from './Input'
 import MessageList from './MessageList'
 import PinnedList from './PinnedList'
 import './Chat.css'
-
-const OVERLAY_EXIT_MS = 250
 
 interface Props {
   messages: ChatMessage[]
@@ -48,7 +45,6 @@ const Chat = ({
   const pinsChannel = channelKey(recipient)
   const pins = usePins({ apiBase, authToken, channel: pinsChannel, messages })
   const reactions = useReactions({ apiBase, authToken, channel: pinsChannel, messages })
-  const metrics = useAnimatedUnmount(metricsOpen, OVERLAY_EXIT_MS)
 
   const togglePin = (m: ChatMessage): void => {
     const key = messageKey(m)
@@ -128,14 +124,12 @@ const Chat = ({
         authToken={authToken}
         lanes={lanes}
       />
-      {metrics.mounted && (
-        <Metrics
-          apiBase={apiBase}
-          authToken={authToken}
-          onClose={onCloseMetrics}
-          visible={metrics.visible}
-        />
-      )}
+      <Metrics
+        apiBase={apiBase}
+        authToken={authToken}
+        onClose={onCloseMetrics}
+        open={metricsOpen}
+      />
       <PinnedList
         pins={pins.pins}
         onUnpin={(key) => {
