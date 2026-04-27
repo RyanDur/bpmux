@@ -186,7 +186,7 @@ pub fn story_to_board_json(story: &Story) -> serde_json::Value {
     serde_json::json!({
         "number": story.number,
         "title": story.title,
-        "state": renderer_state(story.state, story.is_closed),
+        "state": story.state.as_str(),
         "gh_state": if story.is_closed { "closed" } else { "open" },
         "labels": labels,
         "parent_epic": story.parent_epic,
@@ -194,17 +194,4 @@ pub fn story_to_board_json(story: &Story) -> serde_json::Value {
         "created_at": story.filed_at.to_rfc3339(),
         "body": story.body.clone().unwrap_or_default(),
     })
-}
-
-fn renderer_state(state: StoryState, is_closed: bool) -> &'static str {
-    if is_closed {
-        return "accepted";
-    }
-    match state {
-        StoryState::Icebox => "icebox",
-        StoryState::Ready => "ready",
-        StoryState::InProgress | StoryState::NeedsFixes | StoryState::Rejected => "in-progress",
-        StoryState::Delivered | StoryState::ReadyForAccept => "delivered",
-        StoryState::Accepted => "accepted",
-    }
 }

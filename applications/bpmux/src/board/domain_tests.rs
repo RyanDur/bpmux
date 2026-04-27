@@ -49,30 +49,34 @@ fn story_to_board_json_emits_renderer_wire_format_field_list() {
 }
 
 #[test]
-fn story_to_board_json_renderer_state_maps_5_vocabulary() {
+fn story_to_board_json_emits_canonical_8_state_vocabulary() {
     for (state, expected) in &[
         (StoryState::Icebox, "icebox"),
         (StoryState::Ready, "ready"),
         (StoryState::InProgress, "in-progress"),
         (StoryState::Delivered, "delivered"),
         (StoryState::Accepted, "accepted"),
-        (StoryState::ReadyForAccept, "delivered"),
-        (StoryState::NeedsFixes, "in-progress"),
-        (StoryState::Rejected, "in-progress"),
+        (StoryState::ReadyForAccept, "ready-for-accept"),
+        (StoryState::NeedsFixes, "needs-fixes"),
+        (StoryState::Rejected, "rejected"),
     ] {
         let s = sample_story(*state, StoryType::Feature, false);
         assert_eq!(
             json_str(&story_to_board_json(&s), "state"),
             *expected,
-            "{state:?} maps to renderer-vocab `{expected}`"
+            "{state:?} serializes to canonical wire-vocab `{expected}` per #505 boundary-principle"
         );
     }
 }
 
 #[test]
-fn story_to_board_json_is_closed_overrides_state_to_accepted() {
+fn story_to_board_json_is_closed_emits_gh_state_closed_independent_of_state() {
     let s = sample_story(StoryState::Icebox, StoryType::Feature, true);
-    assert_eq!(json_str(&story_to_board_json(&s), "state"), "accepted");
+    assert_eq!(
+        json_str(&story_to_board_json(&s), "state"),
+        "icebox",
+        "Story.state stays canonical regardless of gh-side is_closed; the GH-adapter is_closed→Accepted translation happens at INGEST not at serialization"
+    );
     assert_eq!(json_str(&story_to_board_json(&s), "gh_state"), "closed");
 }
 

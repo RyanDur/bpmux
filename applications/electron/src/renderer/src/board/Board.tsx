@@ -8,10 +8,12 @@ import EpicSummary from './EpicSummary'
 import StoryBadge, { deriveBadge } from './StoryBadge'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import {
+  columnFor,
   GROUP_ORDER,
   storyTypeFromLabels,
   type BoardResponse,
   type BoardStory,
+  type ColumnState,
   type GroupSpec,
   type StoryState
 } from './types'
@@ -298,7 +300,7 @@ function Board({ messages, hidden, width }: BoardProps): React.JSX.Element {
   )
 
   const handleReorder = useCallback(
-    (state: StoryState, moved: number, insertAt: number): void => {
+    (state: ColumnState, moved: number, insertAt: number): void => {
       const prevData = data
       // #357 rework: compute newPosition + groupSize synchronously
       // from the current `data` snapshot instead of mutating locals
@@ -311,7 +313,7 @@ function Board({ messages, hidden, width }: BoardProps): React.JSX.Element {
       let newPosition = 0
       let groupSize = 0
       if (prevData) {
-        const inGroup = prevData.stories.filter((s) => s.state === state)
+        const inGroup = prevData.stories.filter((s) => columnFor(s.state) === state)
         const fromIdx = inGroup.findIndex((s) => s.number === moved)
         if (fromIdx !== -1) {
           const clampedInsert = Math.max(
@@ -324,8 +326,8 @@ function Board({ messages, hidden, width }: BoardProps): React.JSX.Element {
       }
       setData((prev) => {
         if (!prev) return prev
-        const inGroup = prev.stories.filter((s) => s.state === state)
-        const others = prev.stories.filter((s) => s.state !== state)
+        const inGroup = prev.stories.filter((s) => columnFor(s.state) === state)
+        const others = prev.stories.filter((s) => columnFor(s.state) !== state)
         const fromIdx = inGroup.findIndex((s) => s.number === moved)
         if (fromIdx === -1) return prev
         const [movedStory] = inGroup.splice(fromIdx, 1)
@@ -486,11 +488,11 @@ function Board({ messages, hidden, width }: BoardProps): React.JSX.Element {
   )
 }
 
-function groupStories(stories: BoardStory[]): Map<StoryState, BoardStory[]> {
-  const out = new Map<StoryState, BoardStory[]>()
+function groupStories(stories: BoardStory[]): Map<ColumnState, BoardStory[]> {
+  const out = new Map<ColumnState, BoardStory[]>()
   for (const group of GROUP_ORDER) out.set(group.state, [])
   for (const story of stories) {
-    const list = out.get(story.state)
+    const list = out.get(columnFor(story.state))
     if (list) list.push(story)
   }
   return out
@@ -507,7 +509,7 @@ interface GroupProps {
   // pass the state through to DrillIn.
   onOpenTimeline?: (n: number) => void
   onSelect: (n: number) => void
-  onReorder?: (state: StoryState, moved: number, insertAt: number) => void
+  onReorder?: (state: ColumnState, moved: number, insertAt: number) => void
   collapsed: boolean
   onToggleCollapse: () => void
 }

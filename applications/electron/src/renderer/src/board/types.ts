@@ -10,7 +10,24 @@ export type StoryState =
   | 'ready'
   | 'in-progress'
   | 'delivered'
+  | 'ready-for-accept'
+  | 'needs-fixes'
+  | 'rejected'
   | 'accepted'
+
+export type ColumnState = 'icebox' | 'ready' | 'in-progress' | 'delivered' | 'accepted'
+
+export const columnFor = (state: StoryState): ColumnState => {
+  switch (state) {
+    case 'ready-for-accept':
+      return 'delivered'
+    case 'needs-fixes':
+    case 'rejected':
+      return 'ready'
+    default:
+      return state
+  }
+}
 
 export type StoryType = 'feature' | 'bug' | 'chore' | 'epic' | 'unknown'
 
@@ -32,7 +49,7 @@ export interface BoardResponse {
 
 // Display order for state groups + human-readable label.
 export interface GroupSpec {
-  state: StoryState
+  state: ColumnState
   label: string
   // Collapsed by default (still visible, opened on click). `<details>`
   // needs the open attribute to default to expanded, so defaultOpen =
@@ -54,6 +71,14 @@ export const GROUP_ORDER: GroupSpec[] = [
   { state: 'accepted', label: 'Accepted', collapsed: true },
   { state: 'icebox', label: 'Icebox', collapsed: true }
 ]
+
+export const STATES_IN_COLUMN: Record<ColumnState, StoryState[]> = {
+  icebox: ['icebox'],
+  ready: ['ready', 'needs-fixes', 'rejected'],
+  'in-progress': ['in-progress'],
+  delivered: ['delivered', 'ready-for-accept'],
+  accepted: ['accepted']
+}
 
 // Derive story type from labels (case-insensitive). Defaults to
 // 'unknown' when no type label is present — keeps the row glyph

@@ -513,8 +513,8 @@ async fn close_story_roundtrip_api_board_reflects_closed_state() {
     assert_eq!(stories.len(), 1);
     assert_eq!(
         stories[0]["state"].as_str(),
-        Some("accepted"),
-        "is_closed=true maps to renderer state=accepted per story_to_board_json"
+        Some("icebox"),
+        "post-#505 boundary-principle: close_story sets is_closed=true but preserves Story.state; the GH-side close → state=Accepted translation now happens at INGEST not at serialization (or via explicit state-transition tools like accept_story)"
     );
     assert_eq!(stories[0]["gh_state"].as_str(), Some("closed"));
 }

@@ -28,6 +28,19 @@ async fn build_test_orchestrator(session: Arc<session::Session>) -> Arc<dyn Refr
     orch
 }
 
+async fn build_prod_orchestrator(
+    adapter: Arc<crate::board::adapters::github::GitHubSourceAdapter>,
+) -> Arc<dyn RefreshDriver> {
+    let store = Arc::new(BoardStore::new());
+    let orch = Arc::new(SyncOrchestrator::new(store, adapter));
+    if let Err(e) = orch.ingest_once().await {
+        crate::session::diag::log_diag(&format!(
+            "server: production orchestrator initial ingest skipped — {e}"
+        ));
+    }
+    orch
+}
+
 pub async fn run_server(
     session: Arc<session::Session>,
     port: u16,
@@ -61,6 +74,8 @@ pub async fn run_server(
             "[bpmux server] BPMUX_TEST_MODE=1 — instantiating in-memory orchestrator for acceptance tests"
         );
         Some(build_test_orchestrator(session.clone()).await)
+    } else if let Some(tracker_arc) = tracker.as_ref().cloned() {
+        Some(build_prod_orchestrator(tracker_arc).await)
     } else {
         None
     };
