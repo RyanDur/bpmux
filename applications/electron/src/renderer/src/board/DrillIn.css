@@ -251,30 +251,32 @@
   }
 
   & .drill-in-reject-form {
+    /* #498: native <dialog>.showModal() drives open/close; CSS
+     * handles enter via @starting-style + [open] and exit via
+     * :not([open]) per the same pattern as #496/#497. */
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-base);
+    padding: var(--space-12);
+    margin: 0;
+    max-width: 32rem;
+    max-height: none;
+  }
+
+  & .drill-in-reject-form[open] {
     display: flex;
     flex-direction: column;
     gap: var(--space-8);
-    overflow: hidden;
+    opacity: 1;
+    transition: opacity var(--motion-duration-fast) var(--motion-ease-out);
 
-    /* Reveal + dismiss (#351 AC5 + #358 close-direction): data-visible
-     * toggle drives both enter + exit. Default state = closed/exiting
-     * (block-size 0, opacity 0). [data-visible] = entered (block-size
-     * auto, opacity 1). Chat's useAnimatedUnmount keeps the form
-     * mounted for 150ms post-close so the exit transition plays.
-     * Ease-in on exit so the collapse feels settled. */
-    transition:
-      opacity var(--motion-duration-fast) var(--motion-ease-in),
-      block-size var(--motion-duration-fast) var(--motion-ease-in);
-    block-size: 0;
-    opacity: 0;
-
-    &[data-visible] {
-      block-size: auto;
-      opacity: 1;
-      transition:
-        opacity var(--motion-duration-fast) var(--motion-ease-out),
-        block-size var(--motion-duration-medium) var(--motion-ease-out);
+    @starting-style {
+      opacity: 0;
     }
+  }
+
+  & .drill-in-reject-form:not([open]) {
+    opacity: 0;
+    transition: opacity var(--motion-duration-fast) var(--motion-ease-in);
   }
 
   & .drill-in-reject-label {

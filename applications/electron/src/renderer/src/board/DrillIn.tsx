@@ -1,7 +1,6 @@
 import { format } from 'date-fns'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import MessageBody from '../chat/MessageBody'
-import { useAnimatedUnmount } from '../hooks/useAnimatedUnmount'
 import {
   useTimeline,
   type ClassifiedEvent,
@@ -259,12 +258,12 @@ const DrillIn = ({
 
   const comments = serverComments === null ? null : mergeComments(serverComments, optimistic)
 
-  // Reject-form close animation (#358). Keep the form mounted for
-  // 150ms after the user dismisses so the grid-row height +
-  // opacity can animate out. CSS-side switches to [data-visible]
-  // for enter vs exit; default state = closed/exiting, visible
-  // = entered.
-  const rejectForm = useAnimatedUnmount(mode === 'rejecting', 150)
+  // #498: reject-form is now a native modal `<dialog>` driven by
+  // `mode === 'rejecting'` via showModal()/close() in useEffect.
+  // Native focus-trap + Escape-to-close + restore-on-close;
+  // CSS handles enter ([open] + @starting-style) + exit
+  // (:not([open])) animations.
+  const rejectDialogRef = useRef<HTMLDialogElement | null>(null)
 
   // Focus the article on mount so Esc falls to our handler before
   // anything upstream intercepts.
@@ -277,6 +276,16 @@ const DrillIn = ({
   useEffect(() => {
     if (mode === 'rejecting') {
       textareaRef.current?.focus()
+    }
+  }, [mode])
+
+  useEffect(() => {
+    const dialog = rejectDialogRef.current
+    if (!dialog) return
+    if (mode === 'rejecting' && !dialog.open) {
+      dialog.showModal()
+    } else if (mode !== 'rejecting' && dialog.open) {
+      dialog.close()
     }
   }, [mode])
 
@@ -789,7 +798,7 @@ const DrillIn = ({
 
       {canAct ? (
         <footer className="drill-in-actions">
-          {mode === 'idle' && !rejectForm.mounted ? (
+          {mode === 'idle' ? (
             <menu className="drill-in-action-row" data-test="drill-in-actions">
               <li>
                 <button
@@ -816,10 +825,14 @@ const DrillIn = ({
                 </button>
               </li>
             </menu>
-          ) : rejectForm.mounted ? (
+          ) : null}
+          <dialog
+            ref={rejectDialogRef}
+            className="drill-in-reject-form"
+            aria-label="Reject story"
+            onClose={() => setMode('idle')}
+          >
             <form
-              className="drill-in-reject-form"
-              data-visible={rejectForm.visible || undefined}
               onSubmit={(event) => {
                 event.preventDefault()
                 void handleRejectSend()
@@ -860,7 +873,7 @@ const DrillIn = ({
                 </li>
               </menu>
             </form>
-          ) : null}
+          </dialog>
         </footer>
       ) : null}
 
