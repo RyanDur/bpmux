@@ -14,6 +14,7 @@ pub struct InMemorySourceAdapter {
 struct InnerState {
     stories: HashMap<u64, Story>,
     bodies: HashMap<u64, String>,
+    labels: HashMap<u64, Vec<String>>,
     free_comments: HashMap<u64, Vec<FreeComment>>,
     gate_comments: HashMap<u64, Vec<GateComment>>,
     pushed_events: Vec<BoardEvent>,
@@ -36,6 +37,11 @@ impl InMemorySourceAdapter {
     pub fn seed_body(&self, number: u64, body: String) {
         let mut s = self.state.lock().unwrap_or_else(|e| e.into_inner());
         s.bodies.insert(number, body);
+    }
+
+    pub fn seed_labels(&self, number: u64, labels: Vec<String>) {
+        let mut s = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        s.labels.insert(number, labels);
     }
 
     pub fn seed_free_comments(&self, number: u64, comments: Vec<FreeComment>) {
@@ -115,6 +121,16 @@ impl SourceAdapter for InMemorySourceAdapter {
             .get(&number)
             .cloned()
             .ok_or_else(|| SyncError::Other(format!("no body for #{number}")))
+    }
+
+    async fn fetch_story_labels(&self, number: u64) -> Result<Vec<String>, SyncError> {
+        let s = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        if s.failures_on_ingest {
+            return Err(SyncError::SourceUnreachable(
+                "in-memory test failure".into(),
+            ));
+        }
+        Ok(s.labels.get(&number).cloned().unwrap_or_default())
     }
 
     async fn fetch_free_comments(&self, number: u64) -> Result<Vec<FreeComment>, SyncError> {

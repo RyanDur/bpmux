@@ -933,6 +933,15 @@ pub fn run_bridge(
         if let Err(e) = orchestrator.ingest_once().await {
             crate::session::diag::log_diag(&format!("bridge: initial board ingest skipped — {e}"));
         }
+        match orchestrator.reconcile_dual_state_labels().await {
+            Ok(0) => {}
+            Ok(repairs) => crate::session::diag::log_diag(&format!(
+                "bridge: reconcile_dual_state_labels repaired {repairs} stale label(s)"
+            )),
+            Err(e) => crate::session::diag::log_diag(&format!(
+                "bridge: reconcile_dual_state_labels skipped — {e}"
+            )),
+        }
         let refresh_driver: Arc<dyn crate::board::RefreshDriver> = orchestrator.clone();
         let server = server.with_refresh(refresh_driver.clone());
         let server = match github_api::GitHubApi::from_env() {

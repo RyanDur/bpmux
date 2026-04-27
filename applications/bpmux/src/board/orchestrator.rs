@@ -21,6 +21,7 @@ pub trait RefreshDriver: Send + Sync {
     fn mutate_sync(&self, event: BoardEvent) -> Result<(), SyncError>;
     fn snapshot_status(&self) -> SyncStatus;
     fn drain_pending(&self) -> BoxedFuture<'_, Result<usize, SyncError>>;
+    fn reconcile_dual_state_labels(&self) -> BoxedFuture<'_, Result<usize, SyncError>>;
     fn fetch_body(&self, number: u64) -> BoxedFuture<'_, Result<String, SyncError>>;
     fn fetch_free_comments(
         &self,
@@ -227,6 +228,65 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             }
         }
     }
+
+    pub async fn reconcile_dual_state_labels(&self) -> Result<usize, SyncError> {
+        let stories = self.store.all_stories();
+        let mut repairs = 0usize;
+        for story in stories {
+            let labels = match self.adapter.fetch_story_labels(story.number).await {
+                Ok(l) => l,
+                Err(_) => continue,
+            };
+            let stale = stale_state_labels_for(&story, &labels);
+            for stale_label in stale {
+                let meta = super::events::EventMeta {
+                    actor: "bpmux:reconcile".to_string(),
+                    ts: Utc::now(),
+                    peer_id: super::peer::PeerId::local(),
+                };
+                self.mutate(BoardEvent::TagRemoved {
+                    meta,
+                    number: story.number,
+                    label: stale_label,
+                })?;
+                repairs += 1;
+            }
+        }
+        if repairs > 0 {
+            self.drain_once().await?;
+        }
+        Ok(repairs)
+    }
+}
+
+fn stale_state_labels_for(story: &Story, raw_labels: &[String]) -> Vec<String> {
+    let expected = match story.state {
+        super::domain::StoryState::Icebox => "",
+        super::domain::StoryState::Ready => "ready",
+        super::domain::StoryState::InProgress => "in progress",
+        super::domain::StoryState::Delivered => "delivered",
+        super::domain::StoryState::ReadyForAccept => "ready for accept",
+        super::domain::StoryState::NeedsFixes => "needs fixes",
+        super::domain::StoryState::Rejected => "rejected",
+        super::domain::StoryState::Accepted => "accepted",
+    };
+    let all_state_labels = [
+        "ready",
+        "in progress",
+        "delivered",
+        "ready for accept",
+        "needs fixes",
+        "rejected",
+        "accepted",
+    ];
+    raw_labels
+        .iter()
+        .filter(|l| {
+            let lower = l.to_ascii_lowercase();
+            all_state_labels.contains(&lower.as_str()) && lower != expected
+        })
+        .cloned()
+        .collect()
 }
 
 impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
@@ -248,6 +308,10 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
 
     fn drain_pending(&self) -> BoxedFuture<'_, Result<usize, SyncError>> {
         Box::pin(self.drain_once())
+    }
+
+    fn reconcile_dual_state_labels(&self) -> BoxedFuture<'_, Result<usize, SyncError>> {
+        Box::pin(self.reconcile_dual_state_labels())
     }
 
     fn fetch_body(&self, number: u64) -> BoxedFuture<'_, Result<String, SyncError>> {

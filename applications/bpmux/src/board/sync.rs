@@ -49,6 +49,11 @@ pub trait SourceAdapter: Send + Sync {
         number: u64,
     ) -> impl std::future::Future<Output = Result<String, SyncError>> + Send;
 
+    fn fetch_story_labels(
+        &self,
+        number: u64,
+    ) -> impl std::future::Future<Output = Result<Vec<String>, SyncError>> + Send;
+
     fn fetch_free_comments(
         &self,
         number: u64,

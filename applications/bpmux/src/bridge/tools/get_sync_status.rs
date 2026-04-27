@@ -42,6 +42,9 @@ mod tests {
         fn drain_pending(&self) -> BoxedFuture<'_, Result<usize, SyncError>> {
             Box::pin(async { Ok(0) })
         }
+        fn reconcile_dual_state_labels(&self) -> BoxedFuture<'_, Result<usize, SyncError>> {
+            Box::pin(async { Ok(0) })
+        }
         fn fetch_body(&self, _number: u64) -> BoxedFuture<'_, Result<String, SyncError>> {
             Box::pin(async { Ok(String::new()) })
         }

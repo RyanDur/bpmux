@@ -56,6 +56,10 @@ impl SourceAdapter for GitHubSourceAdapter {
         }
     }
 
+    async fn fetch_story_labels(&self, number: u64) -> Result<Vec<String>, SyncError> {
+        Ok(self.inner.get_story_labels(number).await)
+    }
+
     async fn fetch_free_comments(&self, number: u64) -> Result<Vec<FreeComment>, SyncError> {
         let raw = self
             .inner
