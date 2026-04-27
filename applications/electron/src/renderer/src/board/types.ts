@@ -40,6 +40,7 @@ export const columnFor = (state: StoryState, isClosed: boolean = false): ColumnS
     case 'ready-for-accept':
       return 'delivered'
     case 'needs-fixes':
+      return 'in-progress'
     case 'rejected':
       return 'ready'
     default:
