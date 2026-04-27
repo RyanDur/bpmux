@@ -360,11 +360,49 @@ pub fn parse_acceptance_test_path(body: &str) -> Option<String> {
     let start = body.find(marker)? + marker.len();
     let rest = &body[start..];
     let end = rest.find("\n\n").unwrap_or(rest.len());
-    let path = rest[..end].trim();
-    if path.is_empty() {
-        None
+    let section = &rest[..end];
+    for line in section.lines() {
+        if let Some(path) = extract_path_from_line(line) {
+            return Some(path);
+        }
+    }
+    None
+}
+
+/// Tolerate the common prose shapes PM uses around the path: bullets
+/// ("- Primary: tests/foo.rs"), labels ("Path: tests/foo.rs"),
+/// parentheticals ("tests/foo.rs (per gate-3 contract)"). Returns the
+/// first plausibly-path-shaped token on the line, or None when the
+/// line carries no recognizable path.
+fn extract_path_from_line(line: &str) -> Option<String> {
+    let line = line.trim();
+    if line.is_empty() {
+        return None;
+    }
+    let stripped = line
+        .trim_start_matches(|c: char| c == '-' || c == '*' || c == '•' || c.is_whitespace())
+        .trim();
+    let after_label = match stripped.find(": ") {
+        Some(idx) => &stripped[idx + 2..],
+        None => stripped,
+    };
+    let trimmed = after_label.trim();
+    let token = match trimmed.find([' ', '\t', '(']) {
+        Some(idx) => &trimmed[..idx],
+        None => trimmed,
+    };
+    let candidate = token.trim_end_matches(['.', ',', ';']).trim();
+    if candidate.contains('/')
+        && [
+            ".rs", ".ts", ".tsx", ".js", ".jsx", ".py", ".go", ".rb", ".java", ".kt", ".cs",
+            ".cpp", ".c", ".h", ".hpp", ".swift", ".m",
+        ]
+        .iter()
+        .any(|ext| candidate.ends_with(ext))
+    {
+        Some(candidate.to_string())
     } else {
-        Some(path.to_string())
+        None
     }
 }
 
@@ -376,14 +414,29 @@ fn user_facing_story_type(t: crate::board::domain::StoryType) -> bool {
 }
 
 fn check_path_exists(path: &str) -> Result<(), String> {
-    if std::path::Path::new(path).exists() {
+    if resolve_acceptance_test_path(path).is_some() {
         Ok(())
     } else {
         Err(format!(
-            "acceptance_test_path '{path}' does not exist (cwd: {:?}). Create the test file before pickup OR run from repo root.",
+            "acceptance_test_path '{path}' does not exist (cwd: {:?}, also tried repo-relative shapes). Create the test file before pickup OR fix the path.",
             std::env::current_dir().ok()
         ))
     }
+}
+
+/// Resolve `path` against several reasonable cwd shapes the
+/// electron-server vs bridge subcommand may run with. PM filings
+/// usually use repo-root-relative paths; the validator's cwd may be
+/// `applications/electron`, `applications/bpmux`, or repo root
+/// depending on how the process was launched. Try each candidate
+/// rather than forcing PM to encode the validator-internal shape.
+fn resolve_acceptance_test_path(path: &str) -> Option<std::path::PathBuf> {
+    let candidates = [
+        std::path::PathBuf::from(path),
+        std::path::PathBuf::from("..").join(path),
+        std::path::PathBuf::from("../..").join(path),
+    ];
+    candidates.into_iter().find(|p| p.exists())
 }
 
 fn validate_acceptance_test_path_at_pickup(

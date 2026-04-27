@@ -2995,6 +2995,52 @@ fn parse_acceptance_test_path_returns_none_when_section_empty() {
     assert_eq!(parse_acceptance_test_path(body), None);
 }
 
+#[test]
+fn parse_acceptance_test_path_extracts_path_from_bulleted_section() {
+    // PM often files multi-line ATP sections with bullets / labels;
+    // the parser tolerates them by picking the first path-shaped
+    // token rather than greedy-reading the whole section as one
+    // path string (#521).
+    let body = "## Acceptance test path\n\n- Primary: tests/foo.rs (per gate-3 contract)\n- Secondary: existing renderer tests preserve open-state behavior\n\n";
+    assert_eq!(
+        parse_acceptance_test_path(body),
+        Some("tests/foo.rs".to_string())
+    );
+}
+
+#[test]
+fn parse_acceptance_test_path_strips_trailing_parenthetical_annotation() {
+    let body = "## Acceptance test path\n\napplications/bpmux/tests/foo.rs (file new if absent; cross-product test)\n\n";
+    assert_eq!(
+        parse_acceptance_test_path(body),
+        Some("applications/bpmux/tests/foo.rs".to_string())
+    );
+}
+
+#[test]
+fn parse_acceptance_test_path_handles_label_prefix() {
+    let body = "## Acceptance test path\n\nPath: src/foo/bar.ts\n\n";
+    assert_eq!(
+        parse_acceptance_test_path(body),
+        Some("src/foo/bar.ts".to_string())
+    );
+}
+
+#[test]
+fn parse_acceptance_test_path_returns_none_when_no_path_shaped_line() {
+    let body = "## Acceptance test path\n\n- Just prose\n- More prose\n\n";
+    assert_eq!(parse_acceptance_test_path(body), None);
+}
+
+#[test]
+fn parse_acceptance_test_path_finds_path_among_prose() {
+    let body = "## Acceptance test path\n\nThe acceptance test lives at\ntests/important.rs\n(bullet form available too)\n\n";
+    assert_eq!(
+        parse_acceptance_test_path(body),
+        Some("tests/important.rs".to_string())
+    );
+}
+
 #[tokio::test]
 async fn start_story_blocks_feature_without_acceptance_test_path() {
     use crate::board::BoardStore;
