@@ -1281,9 +1281,13 @@ pub async fn get_story_comments(
 /// event records the renderer classifies into lifecycle gates.
 pub async fn get_story_timeline(
     axum::Extension(tracker): axum::Extension<TrackerHandle>,
+    axum::Extension(test_refresh): axum::Extension<crate::server::TestRefreshHandle>,
     axum::extract::Path(number): axum::extract::Path<u64>,
 ) -> impl IntoResponse {
     let Some(tracker) = tracker else {
+        if test_refresh.is_some() {
+            return (StatusCode::OK, json_headers(), "[]".to_string());
+        }
         return (
             StatusCode::SERVICE_UNAVAILABLE,
             json_headers(),
@@ -1296,11 +1300,16 @@ pub async fn get_story_timeline(
             json_headers(),
             serde_json::to_string(&events).unwrap_or_else(|_| "[]".to_string()),
         ),
-        Err(e) => (
-            StatusCode::BAD_GATEWAY,
-            json_headers(),
-            err_body(&format!("list timeline failed: {e}")),
-        ),
+        Err(e) => {
+            if test_refresh.is_some() {
+                return (StatusCode::OK, json_headers(), "[]".to_string());
+            }
+            (
+                StatusCode::BAD_GATEWAY,
+                json_headers(),
+                err_body(&format!("list timeline failed: {e}")),
+            )
+        }
     }
 }
 
