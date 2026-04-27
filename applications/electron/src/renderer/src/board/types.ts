@@ -9,13 +9,20 @@ export type StoryState =
   | 'icebox'
   | 'ready'
   | 'in-progress'
+  | 'desk-check'
   | 'delivered'
   | 'ready-for-accept'
   | 'needs-fixes'
   | 'rejected'
   | 'accepted'
 
-export type ColumnState = 'icebox' | 'ready' | 'in-progress' | 'delivered' | 'accepted'
+export type ColumnState =
+  | 'icebox'
+  | 'ready'
+  | 'in-progress'
+  | 'desk-check'
+  | 'delivered'
+  | 'accepted'
 
 export const columnFor = (state: StoryState): ColumnState => {
   switch (state) {
@@ -67,6 +74,7 @@ export interface GroupSpec {
 export const GROUP_ORDER: GroupSpec[] = [
   { state: 'ready', label: 'Ready', collapsed: false },
   { state: 'in-progress', label: 'In Progress', collapsed: false },
+  { state: 'desk-check', label: 'Desk Check', collapsed: false },
   { state: 'delivered', label: 'Delivered', collapsed: false },
   { state: 'accepted', label: 'Accepted', collapsed: true },
   { state: 'icebox', label: 'Icebox', collapsed: true }
@@ -76,6 +84,7 @@ export const STATES_IN_COLUMN: Record<ColumnState, StoryState[]> = {
   icebox: ['icebox'],
   ready: ['ready', 'needs-fixes', 'rejected'],
   'in-progress': ['in-progress'],
+  'desk-check': ['desk-check'],
   delivered: ['delivered', 'ready-for-accept'],
   accepted: ['accepted']
 }
