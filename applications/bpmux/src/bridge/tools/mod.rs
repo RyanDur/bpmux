@@ -94,7 +94,7 @@ pub(in crate::bridge) use simulate_input_submit::handle_simulate_input_submit;
 pub(in crate::bridge) use simulate_key::handle_simulate_key;
 pub(in crate::bridge) use simulate_type::handle_simulate_type;
 pub(in crate::bridge) use update_principle::handle_update_principle;
-pub(in crate::bridge) use view_backlog::handle_view_backlog;
+pub(in crate::bridge) use view_backlog::build_backlog_summary;
 pub(in crate::bridge) use view_comments::handle_view_comments;
 pub(in crate::bridge) use view_commit_diff::handle_view_commit_diff;
 pub(in crate::bridge) use view_roadmap::handle_view_roadmap;
@@ -105,8 +105,7 @@ pub(in crate::bridge) use view_velocity::{fetch_messages_via_http, handle_view_v
 
 // Markers — re-exported so crate::bridge::tools::VIEW_*, etc. paths
 // remain available if any caller relies on them.
-#[allow(unused_imports)]
-pub(in crate::bridge) use view_backlog::VIEW_BACKLOG_MARKER;
+pub use view_backlog::VIEW_BACKLOG_MARKER;
 #[allow(unused_imports)]
 pub(in crate::bridge) use view_roadmap::VIEW_ROADMAP_MARKER;
 #[allow(unused_imports)]

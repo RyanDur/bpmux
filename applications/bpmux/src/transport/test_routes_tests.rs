@@ -445,7 +445,8 @@ async fn comment_on_story_roundtrip_view_comments_reflects_new_comment() {
         "number".to_string(),
         serde_json::Value::Number(target_number.into()),
     );
-    let view = bridge::dispatch_test_view_comments(args, Some(&store), Some(&refresh))
+    let _ = store;
+    let view = bridge::dispatch_test_view_comments(args, Some(&refresh))
         .await
         .expect("view_comments returns Ok");
     assert!(

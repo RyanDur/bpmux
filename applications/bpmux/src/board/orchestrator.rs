@@ -34,6 +34,12 @@ pub trait RefreshDriver: Send + Sync {
     fn create_story(&self, title: String, body: String) -> BoxedFuture<'_, Result<u64, SyncError>>;
     fn story(&self, number: u64) -> Option<Story>;
     fn all_stories(&self) -> Vec<Story>;
+    /// Hand back the canonical BoardStore so handlers that need
+    /// `&Arc<BoardStore>` (the read tools predating the trait) can
+    /// share the same storage the orchestrator mutates. Added in #516
+    /// slice 4 so server-side RPC dispatch can reuse the existing
+    /// read handlers without forking them.
+    fn store(&self) -> Arc<BoardStore>;
 }
 
 #[derive(Debug, Clone, Default, Serialize)]
@@ -344,6 +350,10 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
 
     fn all_stories(&self) -> Vec<Story> {
         self.store.all_stories()
+    }
+
+    fn store(&self) -> Arc<BoardStore> {
+        Arc::clone(&self.store)
     }
 }
 

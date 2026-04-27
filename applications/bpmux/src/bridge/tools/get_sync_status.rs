@@ -73,6 +73,9 @@ mod tests {
         fn all_stories(&self) -> Vec<crate::board::Story> {
             Vec::new()
         }
+        fn store(&self) -> std::sync::Arc<crate::board::BoardStore> {
+            std::sync::Arc::new(crate::board::BoardStore::new())
+        }
     }
 
     #[tokio::test]

@@ -102,6 +102,24 @@ pub async fn run_server(
         None
     };
 
+    // #516 slice 4: the canonical SyncOrchestrator now lives here on
+    // the electron-server. Mutations queued by RPC handlers (e.g.
+    // start_story) need a drain loop to push to GitHub; the canonical
+    // store also needs to re-ingest periodically so external mutations
+    // (anything outside the team's bridge tools) become visible. Both
+    // loops migrated from the bridge subcommand, where they used to
+    // service the per-bridge BoardStore that #516 retired.
+    if let Some(refresh) = test_refresh.as_ref().cloned() {
+        tokio::spawn(crate::bridge::run_drain_loop(
+            refresh.clone(),
+            crate::bridge::drain_interval_from_env(),
+        ));
+        tokio::spawn(crate::bridge::run_ingest_poll_loop(
+            refresh,
+            crate::bridge::poll_interval_from_env(),
+        ));
+    }
+
     // #372: spawn the push-based CI state watcher. Polls GitHub at
     // its own cadence (independent of the 15s frontend poll), emits
     // CI_STATE_UPDATE_MARKER on detected conclusion change so the

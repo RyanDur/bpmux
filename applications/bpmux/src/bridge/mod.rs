@@ -33,6 +33,7 @@ pub(crate) mod test_fixtures;
 /// constant means the TUI event handler stays a single branch — no
 /// separate matching paths for MCP-originated vs REST-originated
 /// invalidates.
+pub use tools::VIEW_BACKLOG_MARKER;
 pub use tools_stories::BOARD_INVALIDATE_MARKER;
 pub use tools_stories::CI_STATE_UPDATE_MARKER;
 pub use tools_stories::PINS_UPDATE_MARKER;
@@ -172,20 +173,69 @@ pub(crate) async fn dispatch_test_view_velocity(
     tools::handle_view_velocity(|| async move { Ok(messages) }, &empty_ws, refresh).await
 }
 
-#[cfg(test)]
 pub(crate) async fn dispatch_test_view_board(
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     tools_stories::handle_view_board(&serde_json::Map::new(), refresh).await
 }
 
-#[cfg(test)]
-pub(crate) async fn dispatch_test_view_comments(
+pub(crate) async fn dispatch_test_get_story(
     args: serde_json::Map<String, serde_json::Value>,
-    board: Option<&Arc<crate::board::BoardStore>>,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
-    tools::handle_view_comments(&args, board, refresh).await
+    let store = refresh.map(|r| r.store());
+    tools::handle_get_story(&args, store.as_ref(), refresh).await
+}
+
+pub(crate) async fn dispatch_test_list_ready(
+    refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
+) -> Result<String, String> {
+    let store = refresh
+        .map(|r| r.store())
+        .ok_or_else(|| "list_ready requires canonical store".to_string())?;
+    tools::handle_list_ready(&store).await
+}
+
+pub(crate) async fn dispatch_test_dev_in_flight(
+    refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
+) -> Result<String, String> {
+    let store = refresh
+        .map(|r| r.store())
+        .ok_or_else(|| "dev_in_flight requires canonical store".to_string())?;
+    tools::handle_dev_in_flight(&store).await
+}
+
+pub(crate) async fn dispatch_test_view_story_timeline(
+    args: serde_json::Map<String, serde_json::Value>,
+    refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
+) -> Result<String, String> {
+    let store = refresh.map(|r| r.store());
+    tools::handle_view_story_timeline(&args, store.as_ref(), refresh).await
+}
+
+pub(crate) async fn dispatch_test_view_comments(
+    args: serde_json::Map<String, serde_json::Value>,
+    refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
+) -> Result<String, String> {
+    let store = refresh.map(|r| r.store());
+    tools::handle_view_comments(&args, store.as_ref(), refresh).await
+}
+
+pub(crate) async fn dispatch_test_view_backlog(
+    refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
+) -> Result<String, String> {
+    // The MCP handler fires a marker via the bridge's local WS sink so
+    // the renderer flips into backlog-display mode. RPC dispatch runs
+    // server-side where there is no bridge WS sink — the marker is
+    // fired on the server's `Session` directly inside the RPC route
+    // handler instead. Here we just compute the summary off the
+    // canonical store.
+    let store = refresh
+        .map(|r| r.store())
+        .ok_or_else(|| "view_backlog requires canonical store".to_string())?;
+    let stories = store.all_stories();
+    let summary = tools::build_backlog_summary(&stories);
+    serde_json::to_string(&summary).map_err(|e| format!("serialize summary: {e}"))
 }
 
 #[derive(Clone)]
@@ -194,8 +244,6 @@ pub struct BridgeServer {
     name: Arc<Mutex<String>>,
     peer: Arc<Mutex<Option<Peer<RoleServer>>>>,
     ws_tx: Arc<Mutex<Option<WsSink>>>,
-    board: Arc<crate::board::BoardStore>,
-    refresh: Option<Arc<dyn crate::board::RefreshDriver>>,
     github_api: Option<Arc<github_api::GitHubApi>>,
 }
 
@@ -216,28 +264,13 @@ impl BridgeServer {
             name: Arc::new(Mutex::new(resolve_bridge_name(&name))),
             peer: Arc::new(Mutex::new(None)),
             ws_tx: Arc::new(Mutex::new(None)),
-            board: Arc::new(crate::board::BoardStore::new()),
-            refresh: None,
             github_api: None,
         }
-    }
-
-    fn with_refresh(mut self, refresh: Arc<dyn crate::board::RefreshDriver>) -> Self {
-        self.refresh = Some(refresh);
-        self
     }
 
     fn with_github_api(mut self, api: Arc<github_api::GitHubApi>) -> Self {
         self.github_api = Some(api);
         self
-    }
-
-    pub fn board(&self) -> &Arc<crate::board::BoardStore> {
-        &self.board
-    }
-
-    pub fn refresh_driver(&self) -> Option<&Arc<dyn crate::board::RefreshDriver>> {
-        self.refresh.as_ref()
     }
 }
 
@@ -681,8 +714,6 @@ impl ServerHandler for BridgeServer {
         let port = self.port;
         let ws_tx = self.ws_tx.clone();
         let name = self.name.clone();
-        let board = self.board.clone();
-        let refresh = self.refresh.clone();
         let github_api = self.github_api.clone();
 
         async move {
@@ -759,38 +790,43 @@ impl ServerHandler for BridgeServer {
                 }
                 "get_token_report" => tools::handle_get_token_report().await,
                 "get_ci_state" => tools::handle_get_ci_state(&args, github_api.as_deref()).await,
-                "get_sync_status" => tools::handle_get_sync_status(refresh.as_ref()).await,
-                "get_story" => tools::handle_get_story(&args, Some(&board), refresh.as_ref()).await,
-                "view_story_timeline" => {
-                    tools::handle_view_story_timeline(&args, Some(&board), refresh.as_ref()).await
-                }
+                "get_sync_status" => tools::handle_get_sync_status(None).await,
                 "view_story_commits" => tools::handle_view_story_commits(&args).await,
                 "view_commit_diff" => tools::handle_view_commit_diff(&args).await,
-                "view_comments" => {
-                    tools::handle_view_comments(&args, Some(&board), refresh.as_ref()).await
-                }
-                "dev_in_flight" => tools::handle_dev_in_flight(&board).await,
-                "list_ready" => tools::handle_list_ready(&board).await,
-                "view_board" => tools_stories::handle_view_board(&args, refresh.as_ref()).await,
                 "view_velocity" => {
                     tools::handle_view_velocity(
                         || tools::fetch_messages_via_http(port),
                         &ws_tx,
-                        refresh.as_ref(),
+                        None,
                     )
                     .await
                 }
-                // #516 slices 1-3: every mutation tool routes through
-                // electron-server's canonical SyncOrchestrator via the
-                // generic /api/rpc/{tool} endpoint. Bridges no longer
-                // run mutation handlers against their own local store.
-                // Read tools (view_board / get_story / list_ready /
-                // view_story_timeline / view_comments) still use the
-                // bridge's local board until slice 4 cuts them over.
-                "start_story" | "deliver_story" | "pass_desk_check" | "fail_desk_check"
-                | "accept_story" | "reject_story" | "close_story" | "create_story"
-                | "comment_on_story" | "label_story" | "set_parent_epic" | "unset_parent_epic"
-                | "reorder_story" => {
+                // #516 slices 1-4: every state-touching tool — mutations
+                // and reads alike — routes through electron-server's
+                // canonical SyncOrchestrator via the generic
+                // /api/rpc/{tool} endpoint. The bridge no longer holds
+                // its own BoardStore: there's a single board, on the
+                // server, and every observer sees the same data.
+                "start_story"
+                | "deliver_story"
+                | "pass_desk_check"
+                | "fail_desk_check"
+                | "accept_story"
+                | "reject_story"
+                | "close_story"
+                | "create_story"
+                | "comment_on_story"
+                | "label_story"
+                | "set_parent_epic"
+                | "unset_parent_epic"
+                | "reorder_story"
+                | "view_board"
+                | "get_story"
+                | "list_ready"
+                | "dev_in_flight"
+                | "view_story_timeline"
+                | "view_comments"
+                | "view_backlog" => {
                     let current_name = name.lock().await.clone();
                     rpc_client::dispatch_via_rpc(port, request.name.as_ref(), &current_name, &args)
                         .await
@@ -802,7 +838,6 @@ impl ServerHandler for BridgeServer {
                 "get_usage" => tools::handle_get_usage(&args).await,
                 "view_tokens" => tools::handle_view_tokens(&ws_tx).await,
                 "view_roadmap" => tools::handle_view_roadmap(&ws_tx).await,
-                "view_backlog" => tools::handle_view_backlog(&ws_tx, &board).await,
                 other => Err(format!("unknown tool: {other}")),
             };
             Ok(match result {
@@ -819,85 +854,22 @@ pub fn run_bridge(
     fake_tracker: bool,
     board_fixture: Option<String>,
 ) -> anyhow::Result<()> {
+    // Post-#516: bridges no longer maintain their own BoardStore /
+    // SyncOrchestrator. State-touching MCP tools route through
+    // electron-server's canonical store via /api/rpc/{tool}, so the
+    // bridge has nothing to ingest, drain, or reconcile. The
+    // fake_tracker + board_fixture flags are accepted for backward
+    // compatibility with launchers that still pass them but no longer
+    // do anything; remove from the CLI surface in a follow-up tidy.
+    let _ = fake_tracker;
+    let _ = board_fixture;
     let rt = tokio::runtime::Runtime::new()?;
-    if fake_tracker {
-        return rt.block_on(async {
-            let server = BridgeServer::new(port, name.to_string());
-            let adapter = Arc::new(crate::board::adapters::in_memory::InMemorySourceAdapter::new());
-            if let Some(path) = board_fixture {
-                match std::fs::read_to_string(&path) {
-                    Ok(s) => match serde_json::from_str::<Vec<serde_json::Value>>(&s) {
-                        Ok(values) => {
-                            let stories: Vec<crate::board::Story> = values
-                                .iter()
-                                .filter_map(crate::board::adapters::github::decode_story_metadata)
-                                .collect();
-                            adapter.seed_stories(stories);
-                        }
-                        Err(e) => crate::session::diag::log_diag(&format!(
-                            "bridge: --board-fixture {path} parse failed: {e}"
-                        )),
-                    },
-                    Err(e) => crate::session::diag::log_diag(&format!(
-                        "bridge: --board-fixture {path} read failed: {e}"
-                    )),
-                }
-            }
-            let orchestrator = Arc::new(crate::board::SyncOrchestrator::new(
-                Arc::clone(&server.board),
-                adapter,
-            ));
-            if let Err(e) = orchestrator.ingest_once().await {
-                crate::session::diag::log_diag(&format!(
-                    "bridge: initial board ingest skipped — {e}"
-                ));
-            }
-            let refresh_driver: Arc<dyn crate::board::RefreshDriver> = orchestrator;
-            let server = server.with_refresh(refresh_driver);
-            let (stdin, stdout) = rmcp::transport::io::stdio();
-            let service = server.serve((stdin, stdout)).await?;
-            service.waiting().await?;
-            anyhow::Ok(())
-        });
-    }
     rt.block_on(async {
-        let tracker = tracker::OctocrabStoryTracker::from_env().ok_or_else(|| {
-            anyhow::anyhow!(
-                "bpmux bridge requires GH_TOKEN (or GITHUB_TOKEN) + BPMUX_REPO \
-                 env vars. Set both and retry. See diag log for which var was missing."
-            )
-        })?;
         let server = BridgeServer::new(port, name.to_string());
-        let adapter = Arc::new(crate::board::adapters::github::GitHubSourceAdapter::new(
-            tracker,
-        ));
-        let orchestrator = Arc::new(crate::board::SyncOrchestrator::new(
-            Arc::clone(&server.board),
-            adapter,
-        ));
-        if let Err(e) = orchestrator.ingest_once().await {
-            crate::session::diag::log_diag(&format!("bridge: initial board ingest skipped — {e}"));
-        }
-        match orchestrator.reconcile_dual_state_labels().await {
-            Ok(0) => {}
-            Ok(repairs) => crate::session::diag::log_diag(&format!(
-                "bridge: reconcile_dual_state_labels repaired {repairs} stale label(s)"
-            )),
-            Err(e) => crate::session::diag::log_diag(&format!(
-                "bridge: reconcile_dual_state_labels skipped — {e}"
-            )),
-        }
-        let refresh_driver: Arc<dyn crate::board::RefreshDriver> = orchestrator.clone();
-        let server = server.with_refresh(refresh_driver.clone());
         let server = match github_api::GitHubApi::from_env() {
             Some(api) => server.with_github_api(Arc::new(api)),
             None => server,
         };
-        tokio::spawn(run_ingest_poll_loop(
-            refresh_driver.clone(),
-            poll_interval_from_env(),
-        ));
-        tokio::spawn(run_drain_loop(refresh_driver, drain_interval_from_env()));
         let (stdin, stdout) = rmcp::transport::io::stdio();
         let service = server.serve((stdin, stdout)).await?;
         service.waiting().await?;
@@ -905,7 +877,7 @@ pub fn run_bridge(
     })
 }
 
-pub(in crate::bridge) async fn run_ingest_poll_loop(
+pub(crate) async fn run_ingest_poll_loop(
     refresh: Arc<dyn crate::board::RefreshDriver>,
     interval: std::time::Duration,
 ) {
@@ -920,7 +892,7 @@ pub(in crate::bridge) async fn run_ingest_poll_loop(
     }
 }
 
-fn poll_interval_from_env() -> std::time::Duration {
+pub(crate) fn poll_interval_from_env() -> std::time::Duration {
     let secs = std::env::var("BPMUX_POLL_INTERVAL_SECS")
         .ok()
         .and_then(|s| s.parse::<u64>().ok())
@@ -928,7 +900,7 @@ fn poll_interval_from_env() -> std::time::Duration {
     std::time::Duration::from_secs(secs.max(1))
 }
 
-pub(in crate::bridge) async fn run_drain_loop(
+pub(crate) async fn run_drain_loop(
     refresh: Arc<dyn crate::board::RefreshDriver>,
     interval: std::time::Duration,
 ) {
@@ -947,7 +919,7 @@ pub(in crate::bridge) async fn run_drain_loop(
     }
 }
 
-fn drain_interval_from_env() -> std::time::Duration {
+pub(crate) fn drain_interval_from_env() -> std::time::Duration {
     let secs = std::env::var("BPMUX_DRAIN_INTERVAL_SECS")
         .ok()
         .and_then(|s| s.parse::<u64>().ok())

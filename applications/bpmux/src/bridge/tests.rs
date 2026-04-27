@@ -498,6 +498,9 @@ mod ingest_poll_loop_tests {
         fn all_stories(&self) -> Vec<crate::board::Story> {
             Vec::new()
         }
+        fn store(&self) -> Arc<crate::board::BoardStore> {
+            Arc::new(crate::board::BoardStore::new())
+        }
     }
 
     #[tokio::test]

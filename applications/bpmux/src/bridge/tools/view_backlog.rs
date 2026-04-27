@@ -5,10 +5,11 @@ use tokio::sync::Mutex;
 use super::helpers::{WsSink, ws_send};
 use crate::board::{BoardStore, Story, StoryState};
 
-pub(in crate::bridge) const VIEW_BACKLOG_MARKER: &str = "__BPMUX_VIEW_BACKLOG__";
+pub const VIEW_BACKLOG_MARKER: &str = "__BPMUX_VIEW_BACKLOG__";
 
 const SAMPLE_LIMIT: usize = 5;
 
+#[allow(dead_code)]
 pub(in crate::bridge) async fn handle_view_backlog(
     ws_tx: &Mutex<Option<WsSink>>,
     store: &Arc<BoardStore>,
@@ -35,7 +36,7 @@ pub(in crate::bridge) async fn handle_view_backlog(
     serde_json::to_string(&summary).map_err(|e| format!("serialize summary: {e}"))
 }
 
-pub fn build_backlog_summary(stories: &[Story]) -> serde_json::Value {
+pub(in crate::bridge) fn build_backlog_summary(stories: &[Story]) -> serde_json::Value {
     let mut ready: Vec<String> = Vec::new();
     let mut in_progress: Vec<String> = Vec::new();
     let mut delivered: Vec<String> = Vec::new();
