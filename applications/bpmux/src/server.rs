@@ -33,10 +33,32 @@ async fn build_prod_orchestrator(
 ) -> Arc<dyn RefreshDriver> {
     let store = Arc::new(BoardStore::new());
     let orch = Arc::new(SyncOrchestrator::new(store, adapter));
-    if let Err(e) = orch.ingest_once().await {
-        crate::session::diag::log_diag(&format!(
-            "server: production orchestrator initial ingest skipped — {e}"
-        ));
+    let backoffs = [0u64, 500, 1500, 4000];
+    for (attempt, delay_ms) in backoffs.iter().enumerate() {
+        if *delay_ms > 0 {
+            tokio::time::sleep(std::time::Duration::from_millis(*delay_ms)).await;
+        }
+        match orch.ingest_once().await {
+            Ok(()) => {
+                let count = orch.all_stories().len();
+                crate::session::diag::log_diag(&format!(
+                    "server: production orchestrator ingest succeeded on attempt {} ({count} stories)",
+                    attempt + 1
+                ));
+                return orch;
+            }
+            Err(e) if attempt + 1 < backoffs.len() => {
+                crate::session::diag::log_diag(&format!(
+                    "server: production orchestrator ingest attempt {} failed: {e}; retrying with backoff",
+                    attempt + 1
+                ));
+            }
+            Err(e) => {
+                crate::session::diag::log_diag(&format!(
+                    "server: production orchestrator ingest exhausted retries; last error: {e}; BoardStore stays empty until view_board / get_board auto-recovery fires"
+                ));
+            }
+        }
     }
     orch
 }
