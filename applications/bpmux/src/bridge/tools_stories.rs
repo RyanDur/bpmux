@@ -347,6 +347,70 @@ pub fn parse_acceptance_test_path(body: &str) -> Option<String> {
     }
 }
 
+fn user_facing_story_type(t: crate::board::domain::StoryType) -> bool {
+    matches!(
+        t,
+        crate::board::domain::StoryType::Feature | crate::board::domain::StoryType::Bug
+    )
+}
+
+fn check_path_exists(path: &str) -> Result<(), String> {
+    if std::path::Path::new(path).exists() {
+        Ok(())
+    } else {
+        Err(format!(
+            "acceptance_test_path '{path}' does not exist (cwd: {:?}). Create the test file before pickup OR run from repo root.",
+            std::env::current_dir().ok()
+        ))
+    }
+}
+
+fn validate_acceptance_test_path_at_pickup(
+    args: &serde_json::Map<String, serde_json::Value>,
+    number: u64,
+    refresh: &dyn crate::board::RefreshDriver,
+) -> Result<(), String> {
+    let Some(story) = refresh.story(number) else {
+        return Ok(());
+    };
+    if !user_facing_story_type(story.story_type) {
+        return Ok(());
+    }
+    let arg_path = args
+        .get("acceptance_test_path")
+        .and_then(|v| v.as_str())
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
+    let path = arg_path.or(story.acceptance_test_path.as_deref()).ok_or_else(|| {
+        format!(
+            "acceptance_test_path required at start_story for #{number} (Feature/Bug per #476). \
+             Provide via 'acceptance_test_path' arg OR add a '## Acceptance test path' section \
+             to the issue body. Existing stories not yet backfilled: name the test file path now."
+        )
+    })?;
+    check_path_exists(path)
+}
+
+fn validate_acceptance_test_path_at_deliver(
+    number: u64,
+    refresh: &dyn crate::board::RefreshDriver,
+) -> Result<(), String> {
+    let Some(story) = refresh.story(number) else {
+        return Ok(());
+    };
+    if !user_facing_story_type(story.story_type) {
+        return Ok(());
+    }
+    let path = story.acceptance_test_path.as_deref().ok_or_else(|| {
+        format!(
+            "acceptance_test_path missing for #{number} at deliver_story (Feature/Bug per #476). \
+             The test file is the deliver-gate evidence; name it in the issue body's \
+             '## Acceptance test path' section before re-firing deliver_story."
+        )
+    })?;
+    check_path_exists(path)
+}
+
 /// Signal fires on INTENT (before gh) so the team is notified
 /// even when the gh label edit fails.
 ///
@@ -371,6 +435,7 @@ pub(super) async fn handle_start_story(
         r.refresh_story(number)
             .await
             .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?;
+        let _ = r.fetch_body(number).await;
     }
     let pickup_paraphrase = require_nonempty_string(
         args,
@@ -382,6 +447,9 @@ pub(super) async fn handle_start_story(
         "falsifier_reframing",
         "falsifier_reframing is required (2026-04-23 retro): restate the observation-falsifier — either verbatim from filing or your sharpening. Forces engagement with the rejection criteria before code.",
     )?;
+    if let Some(r) = refresh {
+        validate_acceptance_test_path_at_pickup(args, number, r.as_ref())?;
+    }
     let signal =
         serde_json::to_string(&build_start_signal(number)).map_err(|e| format!("signal: {e}"))?;
     if let Err(e) = ws_send(ws_tx, signal).await {
@@ -442,13 +510,19 @@ pub(super) async fn handle_deliver_story(
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
     let refreshed: Option<Option<crate::board::domain::Story>> = match refresh {
-        Some(r) => Some(
-            r.refresh_story(number)
+        Some(r) => {
+            let s = r
+                .refresh_story(number)
                 .await
-                .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?,
-        ),
+                .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?;
+            let _ = r.fetch_body(number).await;
+            Some(s)
+        }
         None => None,
     };
+    if let Some(r) = refresh {
+        validate_acceptance_test_path_at_deliver(number, r.as_ref())?;
+    }
     // #391 deliver-gate: dev must articulate what they drove end-to-
     // end before delivery. Becomes the diff-point designer checks at
     // desk-check (claim-vs-reality). Missing/empty → validation

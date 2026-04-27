@@ -1494,13 +1494,14 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
 
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let seeded = Story::new_minimal(
+    let mut seeded = Story::new_minimal(
         203,
         "t".into(),
         StoryState::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
+    seeded.story_type = crate::board::domain::StoryType::Chore;
     adapter.seed_stories(vec![seeded]);
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
@@ -1569,13 +1570,14 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
 
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let seeded = Story::new_minimal(
+    let mut seeded = Story::new_minimal(
         204,
         "t".into(),
         StoryState::InProgress,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
+    seeded.story_type = crate::board::domain::StoryType::Chore;
     adapter.seed_stories(vec![seeded]);
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
@@ -1872,13 +1874,14 @@ async fn deliver_story_migrated_path_uses_store_title_not_tracker() {
 
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let seeded = Story::new_minimal(
+    let mut seeded = Story::new_minimal(
         207,
         "store-titled-207".into(),
         StoryState::InProgress,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
+    seeded.story_type = crate::board::domain::StoryType::Chore;
     adapter.seed_stories(vec![seeded]);
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
@@ -2776,4 +2779,161 @@ fn parse_acceptance_test_path_returns_none_when_section_absent() {
 fn parse_acceptance_test_path_returns_none_when_section_empty() {
     let body = "## User job\n\nfoo\n\n## Acceptance test path\n\n   \n\n---\n\n";
     assert_eq!(parse_acceptance_test_path(body), None);
+}
+
+#[tokio::test]
+async fn start_story_blocks_feature_without_acceptance_test_path() {
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState, StoryType};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let mut seeded = Story::new_minimal(
+        881,
+        "[Feature] needs path".into(),
+        StoryState::Ready,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "dev".into(),
+    );
+    seeded.story_type = StoryType::Feature;
+    adapter.seed_stories(vec![seeded]);
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orch.refresh_all().await.unwrap();
+
+    let ws_tx = connected_ws_sink_for_test().await;
+    let mut args = serde_json::Map::new();
+    args.insert("number".into(), serde_json::json!(881));
+    args.insert("pickup_paraphrase".into(), serde_json::json!("p"));
+    args.insert("falsifier_reframing".into(), serde_json::json!("f"));
+    let result = handle_start_story(&args, "dev:claude-code", &ws_tx, Some(&orch)).await;
+    assert!(
+        result.is_err(),
+        "Feature without path must block: {result:?}"
+    );
+    let err = result.unwrap_err();
+    assert!(err.contains("acceptance_test_path required"), "{err}");
+}
+
+#[tokio::test]
+async fn start_story_blocks_when_acceptance_test_path_does_not_exist() {
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState, StoryType};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let mut seeded = Story::new_minimal(
+        882,
+        "[Feature] missing-test-file".into(),
+        StoryState::Ready,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "dev".into(),
+    );
+    seeded.story_type = StoryType::Feature;
+    adapter.seed_stories(vec![seeded]);
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orch.refresh_all().await.unwrap();
+
+    let ws_tx = connected_ws_sink_for_test().await;
+    let mut args = serde_json::Map::new();
+    args.insert("number".into(), serde_json::json!(882));
+    args.insert("pickup_paraphrase".into(), serde_json::json!("p"));
+    args.insert("falsifier_reframing".into(), serde_json::json!("f"));
+    args.insert(
+        "acceptance_test_path".into(),
+        serde_json::json!("does/not/exist.spec.ts"),
+    );
+    let result = handle_start_story(&args, "dev:claude-code", &ws_tx, Some(&orch)).await;
+    assert!(result.is_err(), "missing path must block: {result:?}");
+    assert!(result.unwrap_err().contains("does not exist"));
+}
+
+#[tokio::test]
+async fn start_story_passes_chore_without_acceptance_test_path() {
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState, StoryType};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let mut seeded = Story::new_minimal(
+        883,
+        "[Chore] no test required".into(),
+        StoryState::Ready,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "dev".into(),
+    );
+    seeded.story_type = StoryType::Chore;
+    adapter.seed_stories(vec![seeded]);
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orch.refresh_all().await.unwrap();
+
+    let ws_tx = connected_ws_sink_for_test().await;
+    let mut args = serde_json::Map::new();
+    args.insert("number".into(), serde_json::json!(883));
+    args.insert("pickup_paraphrase".into(), serde_json::json!("p"));
+    args.insert("falsifier_reframing".into(), serde_json::json!("f"));
+    let result = handle_start_story(&args, "dev:claude-code", &ws_tx, Some(&orch)).await;
+    assert!(result.is_ok(), "Chore exempt: {result:?}");
+}
+
+#[tokio::test]
+async fn deliver_story_blocks_feature_without_acceptance_test_path() {
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState, StoryType};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let mut seeded = Story::new_minimal(
+        884,
+        "[Feature] no path".into(),
+        StoryState::InProgress,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "dev".into(),
+    );
+    seeded.story_type = StoryType::Feature;
+    adapter.seed_stories(vec![seeded]);
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orch.refresh_all().await.unwrap();
+
+    let ws_tx = connected_ws_sink_for_test().await;
+    let mut args = serde_json::Map::new();
+    args.insert("number".into(), serde_json::json!(884));
+    args.insert("verified_observation".into(), serde_json::json!("drove it"));
+    let result = handle_deliver_story(&args, "dev:claude-code", &ws_tx, Some(&orch)).await;
+    assert!(
+        result.is_err(),
+        "Feature without path must block at deliver: {result:?}"
+    );
+    assert!(result.unwrap_err().contains("acceptance_test_path missing"));
 }
