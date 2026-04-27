@@ -1,0 +1,19 @@
+.board-resize-handle {
+  flex: 0 0 4px;
+  background: transparent;
+  cursor: col-resize;
+  user-select: none;
+  border-left: 1px solid var(--border-subtle);
+  outline: none;
+  transition: background var(--motion-duration-fast) var(--motion-ease-in-out);
+}
+
+.board-resize-handle:hover {
+  background: var(--accent-brand);
+  opacity: 0.4;
+}
+
+.board-resize-handle:focus-visible {
+  background: var(--accent-brand);
+  opacity: 0.6;
+}

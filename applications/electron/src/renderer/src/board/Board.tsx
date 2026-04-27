@@ -86,9 +86,10 @@ interface BoardProps {
   // false, the aside is visible at its normal width. See Board.css
   // for the transition declaration (#351 AC3).
   hidden?: boolean
+  width?: number
 }
 
-function Board({ messages, hidden }: BoardProps): React.JSX.Element {
+function Board({ messages, hidden, width }: BoardProps): React.JSX.Element {
   const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
   const [data, setData] = useState<BoardResponse | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
@@ -399,6 +400,7 @@ function Board({ messages, hidden }: BoardProps): React.JSX.Element {
 
   return (
     <aside
+      id="board-region"
       className={`board${hidden ? ' board--hidden' : ''}`}
       data-test="board-region"
       tabIndex={0}
@@ -406,6 +408,7 @@ function Board({ messages, hidden }: BoardProps): React.JSX.Element {
       onKeyDown={handleKeyDown}
       aria-label="Board"
       aria-hidden={hidden ? true : undefined}
+      style={width !== undefined && !hidden ? { flex: `0 0 ${width}px` } : undefined}
       // inert removes the element from focus + pointer events when
       // animating out; aria-hidden keeps AT from traversing.
       inert={hidden ? true : undefined}

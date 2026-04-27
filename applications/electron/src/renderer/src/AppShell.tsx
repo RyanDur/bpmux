@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import Board from './board/Board'
+import BoardResizeHandle, { BOARD_DEFAULT_WIDTH, clampBoardWidth } from './board/BoardResizeHandle'
 import Chat from './chat/Chat'
 import CiGlyph from './ci/CiGlyph'
 import { useDensity } from './hooks/useDensity'
@@ -14,15 +15,13 @@ import {
   StreamIcon,
   SunIcon
 } from './icons/TitlebarIcons'
+import { useBoardWidthStorage } from './lib/useBoardWidthStorage'
 import Sidebar from './sidebar/Sidebar'
 import type { ChatMessage, ConnectionStatus } from './transport/types'
 import { RENDERER_IDENTITY, type SendOptions } from './transport/useWebSocket'
 import './AppShell.css'
 
-type PersistedScope =
-  | { kind: 'all' }
-  | { kind: 'broadcast' }
-  | { kind: 'scoped'; value: string[] }
+type PersistedScope = { kind: 'all' } | { kind: 'broadcast' } | { kind: 'scoped'; value: string[] }
 
 const SCOPE_STORAGE_KEY = `bpmux-scope:${RENDERER_IDENTITY}`
 
@@ -66,6 +65,18 @@ const AppShell = ({ status, messages, onSend }: Props): React.JSX.Element => {
     status === 'connected' ? 'connected' : status === 'connecting' ? 'connecting' : 'disconnected'
 
   const [boardOpen, setBoardOpen] = useState<boolean>(true)
+  const boardWidthStorage = useBoardWidthStorage(
+    'bpmux-board-width',
+    RENDERER_IDENTITY,
+    BOARD_DEFAULT_WIDTH
+  )
+  const setBoardWidth = (next: number): void => {
+    if (typeof window === 'undefined') {
+      boardWidthStorage.setWidth(next)
+      return
+    }
+    boardWidthStorage.setWidth(clampBoardWidth(next, window.innerWidth))
+  }
   const initialScope = readScope()
   const [recipient, setRecipient] = useState<string[] | null>(
     initialScope?.kind === 'scoped' ? initialScope.value : null
@@ -129,7 +140,11 @@ const AppShell = ({ status, messages, onSend }: Props): React.JSX.Element => {
         >
           <i className={`titlebar-status titlebar-status--${status}`} aria-hidden="true" />
           <small className="titlebar-connection-label" data-test="titlebar-connection-label">
-            {status === 'connected' ? 'online' : status === 'connecting' ? 'connecting…' : 'offline'}
+            {status === 'connected'
+              ? 'online'
+              : status === 'connecting'
+                ? 'connecting…'
+                : 'offline'}
           </small>
         </span>
         <i className="titlebar-divider" aria-hidden="true" />
@@ -201,7 +216,14 @@ const AppShell = ({ status, messages, onSend }: Props): React.JSX.Element => {
           lanes={lanes}
           onSend={onSend}
         />
-        <Board messages={messages} hidden={!boardOpen} />
+        {boardOpen ? (
+          <BoardResizeHandle
+            width={boardWidthStorage.width}
+            setWidth={setBoardWidth}
+            controlsId="board-region"
+          />
+        ) : null}
+        <Board messages={messages} hidden={!boardOpen} width={boardWidthStorage.width} />
       </section>
     </main>
   )

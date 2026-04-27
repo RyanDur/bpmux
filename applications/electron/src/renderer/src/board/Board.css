@@ -4,8 +4,6 @@
 
 .board {
   flex: 0 0 360px;
-  min-width: 260px;
-  max-width: 480px;
   border-left: 1px solid var(--border-subtle);
   background: var(--bg-elevated);
   display: flex;
@@ -14,22 +12,17 @@
   container-type: inline-size;
   outline: none;
 
-  /* Ctrl+P toggle (#351 AC3): width collapses to 0 over fast duration
-   * when .board--hidden. min-width override + border removal so the
-   * collapsed panel truly vanishes without a stub. Under reduced
-   * motion, duration is 0ms → instant show/hide. */
-  transition:
-    flex-basis var(--motion-duration-fast) var(--motion-ease-in-out),
-    min-width var(--motion-duration-fast) var(--motion-ease-in-out),
-    max-width var(--motion-duration-fast) var(--motion-ease-in-out),
-    border-left-width var(--motion-duration-fast) var(--motion-ease-in-out);
-
   &.board--hidden {
     flex-basis: 0;
     min-width: 0;
     max-width: 0;
     border-left-width: 0;
     overflow: hidden;
+    transition:
+      flex-basis var(--motion-duration-fast) var(--motion-ease-in-out),
+      min-width var(--motion-duration-fast) var(--motion-ease-in-out),
+      max-width var(--motion-duration-fast) var(--motion-ease-in-out),
+      border-left-width var(--motion-duration-fast) var(--motion-ease-in-out);
   }
 
   &:focus-visible {
