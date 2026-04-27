@@ -313,7 +313,9 @@ function Board({ messages, hidden, width }: BoardProps): React.JSX.Element {
       let newPosition = 0
       let groupSize = 0
       if (prevData) {
-        const inGroup = prevData.stories.filter((s) => columnFor(s.state) === state)
+        const inGroup = prevData.stories.filter(
+          (s) => columnFor(s.state, s.gh_state === 'closed') === state
+        )
         const fromIdx = inGroup.findIndex((s) => s.number === moved)
         if (fromIdx !== -1) {
           const clampedInsert = Math.max(
@@ -326,8 +328,12 @@ function Board({ messages, hidden, width }: BoardProps): React.JSX.Element {
       }
       setData((prev) => {
         if (!prev) return prev
-        const inGroup = prev.stories.filter((s) => columnFor(s.state) === state)
-        const others = prev.stories.filter((s) => columnFor(s.state) !== state)
+        const inGroup = prev.stories.filter(
+          (s) => columnFor(s.state, s.gh_state === 'closed') === state
+        )
+        const others = prev.stories.filter(
+          (s) => columnFor(s.state, s.gh_state === 'closed') !== state
+        )
         const fromIdx = inGroup.findIndex((s) => s.number === moved)
         if (fromIdx === -1) return prev
         const [movedStory] = inGroup.splice(fromIdx, 1)
@@ -492,7 +498,7 @@ function groupStories(stories: BoardStory[]): Map<ColumnState, BoardStory[]> {
   const out = new Map<ColumnState, BoardStory[]>()
   for (const group of GROUP_ORDER) out.set(group.state, [])
   for (const story of stories) {
-    const list = out.get(columnFor(story.state))
+    const list = out.get(columnFor(story.state, story.gh_state === 'closed'))
     if (list) list.push(story)
   }
   return out

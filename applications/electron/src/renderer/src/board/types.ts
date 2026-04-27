@@ -24,7 +24,18 @@ export type ColumnState =
   | 'delivered'
   | 'accepted'
 
-export const columnFor = (state: StoryState): ColumnState => {
+// Closed issues are not in the active pipeline regardless of their
+// last-domain-state (preserved per #464's substrate decoder for audit
+// trail). They route to ACCEPTED for visual classification — the only
+// exception is closed+icebox which stays in ICEBOX (legitimately
+// historical). #514 separates substrate (state-decoder) from visual
+// (column-bucketing): #464 owns "what state was this last in"; this
+// function owns "which active-work bucket should the user see this
+// story in right now."
+export const columnFor = (state: StoryState, isClosed: boolean = false): ColumnState => {
+  if (isClosed) {
+    return state === 'icebox' ? 'icebox' : 'accepted'
+  }
   switch (state) {
     case 'ready-for-accept':
       return 'delivered'
@@ -42,6 +53,12 @@ export interface BoardStory {
   number: number
   title: string
   state: StoryState
+  // GitHub issue state: "open" or "closed". Distinct from `state`,
+  // which is the bpmux workflow-state derived per #464 (preserves
+  // last domain state on closed-without-explicit-accept). columnFor
+  // reads this to keep closed stories out of active-work columns
+  // regardless of preserved last-state (#514).
+  gh_state?: 'open' | 'closed'
   labels: string[]
   assignees: string[]
   created_at: string
