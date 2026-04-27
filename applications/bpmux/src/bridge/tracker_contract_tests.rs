@@ -247,3 +247,60 @@ async fn get_story_title_returns_title_on_200() {
     m.assert();
     assert_eq!(title.as_deref(), Some("the title"));
 }
+
+#[tokio::test]
+async fn fetch_board_stories_follows_next_link_until_exhaustion() {
+    // #511: GitHub returns issues in pages of up to 100 ordered by
+    // updated_at desc. Without next-link follow-through, the renderer
+    // sees only the first page; after a heavy iteration crowds the
+    // first page with recently-touched-but-old stories, today's just-
+    // filed items disappear from the board until something else
+    // updates them. This test pins the multi-page contract: serve two
+    // pages, assert the implementation collects items from both.
+    use super::tracker::StoryTracker;
+
+    let server = MockServer::start();
+    let next_url = format!("{}/repos/acme/bpmux/issues?page=2", server.base_url());
+
+    let p1 = server.mock(|when, then| {
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/issues")
+            .query_param_missing("page");
+        then.status(200)
+            .header("content-type", "application/json")
+            .header("Link", format!("<{next_url}>; rel=\"next\""))
+            .body(
+                Value::Array(vec![
+                    issue(101, "page-one-a", "open", vec!["ready"]),
+                    issue(102, "page-one-b", "open", vec!["in progress"]),
+                ])
+                .to_string(),
+            );
+    });
+    let p2 = server.mock(|when, then| {
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/issues")
+            .query_param("page", "2");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(Value::Array(vec![issue(103, "page-two", "open", vec!["ready"])]).to_string());
+    });
+
+    let tracker = mock_tracker(&server);
+    let stories = tracker
+        .fetch_board_stories()
+        .await
+        .expect("fetch_board_stories ok");
+    p1.assert();
+    p2.assert();
+
+    let numbers: Vec<u64> = stories
+        .iter()
+        .filter_map(|s| s.get("number").and_then(|n| n.as_u64()))
+        .collect();
+    assert_eq!(
+        numbers,
+        vec![101, 102, 103],
+        "must concat across pages in order; first-page-only would drop #103"
+    );
+}

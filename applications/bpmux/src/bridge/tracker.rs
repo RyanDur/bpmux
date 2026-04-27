@@ -464,7 +464,7 @@ impl OctocrabStoryTracker {
     }
 
     pub async fn list_stories(&self) -> Result<String, String> {
-        let page = self
+        let first = self
             .client
             .issues(&self.owner, &self.repo)
             .list()
@@ -473,8 +473,8 @@ impl OctocrabStoryTracker {
             .send()
             .await
             .map_err(Self::classify)?;
-        let condensed: Vec<serde_json::Value> = page
-            .items
+        let issues = self.client.all_pages(first).await.map_err(Self::classify)?;
+        let condensed: Vec<serde_json::Value> = issues
             .iter()
             .map(|i| {
                 serde_json::json!({
@@ -599,13 +599,20 @@ impl StoryTracker for OctocrabStoryTracker {
             .map_err(Self::classify)
     }
 
-    /// #403: full board as typed JSON Values. Same underlying
-    /// octocrab call as `list_stories` but returns the richer
-    /// issue_to_board_json payload (includes body + state + labels
-    /// + assignees + created_at). REST /api/board endpoint +
-    ///   list_ready MCP handler both consume this.
+    /// Full board as typed JSON Values, consumed by the REST /api/board
+    /// endpoint and the list_ready MCP handler. Same underlying octocrab
+    /// call as `list_stories` but returns the richer issue_to_board_json
+    /// payload (body, state, labels, assignees, created_at) (#403).
+    ///
+    /// Pagination follows next-link until exhaustion (#511). Without it
+    /// GitHub caps the response at the first page (100 issues by
+    /// default) ordered by updated_at desc — the moment the repo has
+    /// more than 100 touched issues, recently-edited acceptances crowd
+    /// out today's just-filed stories and they vanish from the board
+    /// until something else updates them. Today's renderer showed 100
+    /// stories with #511/#512/#509 missing for exactly this reason.
     async fn fetch_board_stories(&self) -> Result<Vec<serde_json::Value>, String> {
-        let page = self
+        let first = self
             .client
             .issues(&self.owner, &self.repo)
             .list()
@@ -614,7 +621,8 @@ impl StoryTracker for OctocrabStoryTracker {
             .send()
             .await
             .map_err(Self::classify)?;
-        Ok(page.items.iter().map(issue_to_board_json).collect())
+        let issues = self.client.all_pages(first).await.map_err(Self::classify)?;
+        Ok(issues.iter().map(issue_to_board_json).collect())
     }
 
     /// #403: fetch one story's full detail. Returns `Ok(None)` when
