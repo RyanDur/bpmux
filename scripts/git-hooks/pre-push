@@ -1,0 +1,68 @@
+#!/bin/bash
+# Pre-push hook: cargo test + contract drift + audit + file-size gate.
+#
+# Install: symlink or copy this file to .git/hooks/pre-push and make
+# it executable. Out of scope for this story is automated installation.
+#
+# The file-size gate (#455) scans the Cargo workspace member crates
+# under `applications/*/src/`. The pre-#455 hook scanned a top-level
+# `src/` that no longer exists (removed in ed5e3c8 "Convert to Cargo
+# workspace") — `find` errored, zero files scanned, gate silently
+# passed regardless of size.
+set -euo pipefail
+
+if [ -f "$HOME/.cargo/env" ]; then
+    source "$HOME/.cargo/env"
+fi
+
+if ! command -v cargo &> /dev/null; then
+    echo "ERROR: cargo not found. Install Rust: https://rustup.rs" >&2
+    exit 1
+fi
+
+echo "Running pre-push quality gates..."
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+TEMP_WORKTREE="$(mktemp -d -t bpmux-prepush.XXXXXX)"
+cleanup() {
+    cd "$REPO_ROOT" 2>/dev/null || true
+    git worktree remove --force "$TEMP_WORKTREE" 2>/dev/null || true
+    rm -rf "$TEMP_WORKTREE" 2>/dev/null || true
+}
+trap cleanup EXIT
+
+git worktree add --detach "$TEMP_WORKTREE" HEAD >/dev/null
+cd "$TEMP_WORKTREE"
+
+export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$REPO_ROOT/target}"
+
+cargo test --lib
+
+if [ -z "${GH_TOKEN:-}" ] || [ -z "${BPMUX_REPO:-}" ]; then
+    echo "ERROR: GH_TOKEN + BPMUX_REPO required for contract drift check." >&2
+    echo "Set them in your shell and retry. See scripts/rerecord-fixtures.sh" >&2
+    echo "for the same env contract used when re-recording fixtures." >&2
+    exit 1
+fi
+cargo test --lib --features integration_tests
+
+if command -v cargo-audit &> /dev/null; then
+    cargo audit --deny warnings
+fi
+
+MAX_LINES=400
+echo "Checking file sizes..."
+oversized=""
+while IFS= read -r f; do
+    lines=$(wc -l < "$f")
+    if [ "$lines" -gt "$MAX_LINES" ]; then
+        oversized="${oversized}  ${f}: ${lines} lines (max ${MAX_LINES})\n"
+    fi
+done < <(find applications/*/src -name "*.rs" -not -name "*test*" -not -path "*/target/*" -not -path "*/node_modules/*")
+if [ -n "$oversized" ]; then
+    echo "WARNING: Files exceed ${MAX_LINES}-line limit:"
+    echo -e "$oversized"
+    echo "Consider splitting before the next push."
+fi
+
+echo "All checks passed."
