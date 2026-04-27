@@ -106,6 +106,7 @@ impl SourceAdapter for InMemorySourceAdapter {
         }
         if let Some(body) = s.bodies.get(&number) {
             story.body = Some(body.clone());
+            story.acceptance_test_path = crate::bridge::parse_acceptance_test_path(body);
         }
         Ok(Some(story))
     }

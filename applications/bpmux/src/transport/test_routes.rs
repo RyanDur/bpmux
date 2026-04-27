@@ -43,6 +43,7 @@ pub struct CreateStoryReq {
     pub body: Option<String>,
     pub parent_epic: Option<u64>,
     pub agent: Option<String>,
+    pub acceptance_test_path: Option<String>,
 }
 
 pub async fn post_test_create_story(
@@ -77,6 +78,13 @@ pub async fn post_test_create_story(
             serde_json::Value::Number(epic.into()),
         );
     }
+    let path = req
+        .acceptance_test_path
+        .unwrap_or_else(|| concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml").to_string());
+    args.insert(
+        "acceptance_test_path".to_string(),
+        serde_json::Value::String(path),
+    );
     let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
     let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;
     match bridge::dispatch_test_create_story(args, &agent, Some(refresh_ref)).await {
