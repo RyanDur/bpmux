@@ -1461,10 +1461,12 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
         "gate_comments should contain FailDeskCheck with payload: {gates:?}"
     );
 
-    let drained = orchestrator.drain_pending().await.unwrap();
-    assert_eq!(drained, 2, "both events must reach the adapter via drain");
     let pushed = adapter.pushed_events();
-    assert_eq!(pushed.len(), 2);
+    assert_eq!(
+        pushed.len(),
+        2,
+        "post-#505 slice 2: handler drains internally so both events reach adapter before return; pushed: {pushed:?}"
+    );
     assert!(matches!(
         &pushed[0],
         BoardEvent::GateCommentAppended {
@@ -1771,13 +1773,12 @@ async fn reject_story_migrated_path_emits_tag_remove_gate_with_reason_and_state_
         "gate_comments should contain Rejected with reason payload: {gates:?}"
     );
 
-    let drained = orchestrator.drain_pending().await.unwrap();
-    assert_eq!(
-        drained, 3,
-        "all three events must reach the adapter via drain"
-    );
     let pushed = adapter.pushed_events();
-    assert_eq!(pushed.len(), 3);
+    assert_eq!(
+        pushed.len(),
+        3,
+        "post-#505 slice 2: handler drains internally so all three events reach adapter before return; pushed: {pushed:?}"
+    );
     assert!(matches!(
         &pushed[0],
         BoardEvent::TagRemoved { number: 206, label, .. } if label == "delivered"
@@ -2993,6 +2994,105 @@ async fn deliver_story_blocks_feature_without_acceptance_test_path() {
         "Feature without path must block at deliver: {result:?}"
     );
     assert!(result.unwrap_err().contains("acceptance_test_path missing"));
+}
+
+#[tokio::test]
+async fn reject_story_drains_synchronously_so_gh_side_propagates_before_return() {
+    use crate::board::BoardEvent;
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState, StoryType};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let mut seeded = Story::new_minimal(
+        4690,
+        "[Bug] cascade-drain-on-reject".into(),
+        StoryState::Accepted,
+        Utc.with_ymd_and_hms(2026, 4, 27, 0, 0, 0).unwrap(),
+        "ryan".into(),
+    );
+    seeded.story_type = StoryType::Bug;
+    seeded.is_closed = true;
+    adapter.seed_stories(vec![seeded]);
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orch.refresh_all().await.unwrap();
+
+    let ws_tx = connected_ws_sink_for_test().await;
+    let mut args = serde_json::Map::new();
+    args.insert("number".into(), serde_json::json!(4690));
+    args.insert("reason".into(), serde_json::json!("cascade drain test"));
+    handle_reject_story(&args, "ryan:human", &ws_tx, Some(&orch))
+        .await
+        .unwrap();
+
+    let pushed = adapter.pushed_events();
+    assert!(
+        pushed
+            .iter()
+            .any(|e| matches!(e, BoardEvent::StoryReopened { number: 4690, .. })),
+        "reject_story must drain StoryReopened to adapter BEFORE returning (#469 cascade-fix). Without internal drain, the GH-side reopen does not propagate until next handler triggers drain. Pushed: {pushed:?}"
+    );
+    assert!(
+        pushed.iter().any(|e| matches!(
+            e,
+            BoardEvent::TagRemoved { number: 4690, label, .. } if label == "accepted"
+        )),
+        "reject_story must drain TagRemoved(accepted) to adapter BEFORE returning. Pushed: {pushed:?}"
+    );
+}
+
+#[tokio::test]
+async fn fail_desk_check_drains_synchronously_so_gh_side_propagates_before_return() {
+    use crate::board::BoardEvent;
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState, StoryType};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let mut seeded = Story::new_minimal(
+        4691,
+        "[Bug] cascade-drain-on-fail-desk-check".into(),
+        StoryState::ReadyForAccept,
+        Utc.with_ymd_and_hms(2026, 4, 27, 0, 0, 0).unwrap(),
+        "ryan".into(),
+    );
+    seeded.story_type = StoryType::Bug;
+    adapter.seed_stories(vec![seeded]);
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orch.refresh_all().await.unwrap();
+
+    let ws_tx = connected_ws_sink_for_test().await;
+    let mut args = serde_json::Map::new();
+    args.insert("number".into(), serde_json::json!(4691));
+    args.insert("reason".into(), serde_json::json!("cascade drain test"));
+    handle_fail_desk_check(&args, "designer:test", &ws_tx, Some(&orch))
+        .await
+        .unwrap();
+
+    let pushed = adapter.pushed_events();
+    assert!(
+        pushed.iter().any(|e| matches!(
+            e,
+            BoardEvent::StateTransitioned { number: 4691, new_state, .. } if *new_state == StoryState::NeedsFixes
+        )),
+        "fail_desk_check must drain StateTransitioned(NeedsFixes) to adapter BEFORE returning. Pushed: {pushed:?}"
+    );
 }
 
 #[tokio::test]

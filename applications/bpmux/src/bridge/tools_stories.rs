@@ -878,6 +878,9 @@ pub(super) async fn handle_reject_story(
             new_state: crate::board::domain::StoryState::Rejected,
         })
         .map_err(|e| format!("#{number} state enqueue failed: {e}"))?;
+        r.drain_pending()
+            .await
+            .map_err(|e| format!("#{number} drain after reject failed: {e}"))?;
         broadcast_board_invalidate(ws_tx).await;
         return Ok(format!("#{number} rejected: {reason}"));
     }
@@ -1028,6 +1031,9 @@ pub(super) async fn handle_fail_desk_check(
             new_state: crate::board::domain::StoryState::NeedsFixes,
         })
         .map_err(|e| format!("#{number} state enqueue failed: {e}"))?;
+        r.drain_pending()
+            .await
+            .map_err(|e| format!("#{number} drain after fail_desk_check failed: {e}"))?;
         broadcast_board_invalidate(ws_tx).await;
         return Ok(format!(
             "#{number} failed desk-check: signal sent, label applied"
