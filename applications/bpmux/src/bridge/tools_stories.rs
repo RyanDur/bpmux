@@ -541,6 +541,30 @@ pub(super) async fn handle_start_story(
             ts: chrono::Utc::now(),
             peer_id: crate::board::PeerId::local(),
         };
+        // #533 universal-reap (forward-direction symmetric with #519
+        // + #503): strip every prior workflow-state label so the
+        // post-pickup label-set carries only "in progress" once
+        // StateTransitioned fires. Closes the rework-pickup-from-
+        // Rejected state-machine-stuck class observed during #514.
+        // TagRemoved is idempotent (404 = already-absent = Ok), so
+        // listing labels not currently present is a safe no-op.
+        for stale in [
+            "icebox",
+            "ready",
+            "desk-check",
+            LABEL_DELIVERED,
+            LABEL_READY_FOR_ACCEPT,
+            "needs fixes",
+            "rejected",
+            "accepted",
+        ] {
+            r.mutate_sync(crate::board::BoardEvent::TagRemoved {
+                meta: meta.clone(),
+                number,
+                label: stale.to_string(),
+            })
+            .map_err(|e| format!("#{number} {stale}-tag-remove enqueue failed: {e}"))?;
+        }
         r.mutate_sync(crate::board::BoardEvent::GateCommentAppended {
             meta: meta.clone(),
             number,
@@ -626,12 +650,29 @@ pub(super) async fn handle_deliver_story(
             ts: chrono::Utc::now(),
             peer_id: crate::board::PeerId::local(),
         };
-        r.mutate_sync(crate::board::BoardEvent::TagRemoved {
-            meta: meta.clone(),
-            number,
-            label: LABEL_IN_PROGRESS.to_string(),
-        })
-        .map_err(|e| format!("#{number} in-progress-tag-remove enqueue failed: {e}"))?;
+        // #533 universal-reap (forward-direction symmetric with #519
+        // + #503): strip every prior workflow-state label so the
+        // post-deliver label-set carries only "desk-check" once
+        // StateTransitioned fires. Replaces the old single-label
+        // strip ("in progress" only) which left "rejected" / other
+        // residue stacked when delivering rework.
+        for stale in [
+            "icebox",
+            "ready",
+            LABEL_IN_PROGRESS,
+            LABEL_DELIVERED,
+            LABEL_READY_FOR_ACCEPT,
+            "needs fixes",
+            "rejected",
+            "accepted",
+        ] {
+            r.mutate_sync(crate::board::BoardEvent::TagRemoved {
+                meta: meta.clone(),
+                number,
+                label: stale.to_string(),
+            })
+            .map_err(|e| format!("#{number} {stale}-tag-remove enqueue failed: {e}"))?;
+        }
         r.mutate_sync(crate::board::BoardEvent::GateCommentAppended {
             meta: meta.clone(),
             number,

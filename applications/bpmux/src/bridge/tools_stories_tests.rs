@@ -1579,12 +1579,24 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
         "gate_comments should contain Pickup with both payload sections: {gates:?}"
     );
 
+    // #533 universal-reap on start_story: 8 TagRemoved (icebox / ready /
+    // desk-check / delivered / ready for accept / needs fixes / rejected /
+    // accepted) + GateCommentAppended(Pickup) + StateTransitioned(InProgress)
+    // = 10 events.
     let drained = orchestrator.drain_pending().await.unwrap();
-    assert_eq!(drained, 2, "both events must reach the adapter via drain");
+    assert_eq!(drained, 10, "10 events expected post-#533 universal-reap");
     let pushed = adapter.pushed_events();
-    assert_eq!(pushed.len(), 2);
+    assert_eq!(pushed.len(), 10);
+    let reap_count = pushed
+        .iter()
+        .filter(|e| matches!(e, BoardEvent::TagRemoved { number: 203, .. }))
+        .count();
+    assert_eq!(
+        reap_count, 8,
+        "8 TagRemoved events expected for universal-reap"
+    );
     assert!(matches!(
-        &pushed[0],
+        &pushed[8],
         BoardEvent::GateCommentAppended {
             number: 203,
             gate: Gate::Pickup,
@@ -1593,7 +1605,7 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
         } if p.contains("paraphrase content") && p.contains("reframing content")
     ));
     assert!(matches!(
-        &pushed[1],
+        &pushed[9],
         BoardEvent::StateTransitioned {
             number: 203,
             new_state: StoryState::InProgress,
@@ -1649,22 +1661,22 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
         "gate_comments should contain Delivered with the observation payload: {gates:?}"
     );
 
-    // #505 slice 5b: deliver_story now transitions to DeskCheck (was
-    // Delivered). Workflow: dev deliver_story → DeskCheck (designer-
-    // review-pending); designer pass_desk_check → Delivered (Ryan-walk-
-    // ready) per Ryan's 16:18 UTC proposal. 3 events expected.
+    // #533 universal-reap on deliver_story: 8 TagRemoved (icebox / ready /
+    // in progress / delivered / ready for accept / needs fixes / rejected /
+    // accepted) + GateCommentAppended(Delivered) + StateTransitioned(DeskCheck)
+    // = 10 events.
     let pushed = adapter.pushed_events();
-    assert_eq!(pushed.len(), 3, "3 events expected: {pushed:?}");
+    assert_eq!(pushed.len(), 10, "10 events expected post-#533: {pushed:?}");
+    let reap_count = pushed
+        .iter()
+        .filter(|e| matches!(e, BoardEvent::TagRemoved { number: 204, .. }))
+        .count();
+    assert_eq!(
+        reap_count, 8,
+        "8 TagRemoved events expected for universal-reap"
+    );
     assert!(matches!(
-        &pushed[0],
-        BoardEvent::TagRemoved {
-            number: 204,
-            label,
-            ..
-        } if label == "in progress"
-    ));
-    assert!(matches!(
-        &pushed[1],
+        &pushed[8],
         BoardEvent::GateCommentAppended {
             number: 204,
             gate: Gate::Delivered,
@@ -1673,7 +1685,7 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
         } if p == "drove the falsifier scenario end-to-end"
     ));
     assert!(matches!(
-        &pushed[2],
+        &pushed[9],
         BoardEvent::StateTransitioned {
             number: 204,
             new_state: StoryState::DeskCheck,
