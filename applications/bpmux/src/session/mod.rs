@@ -36,6 +36,8 @@ mod awareness_tests;
 #[cfg(test)]
 mod classifier_tests;
 #[cfg(test)]
+mod diag_tests;
+#[cfg(test)]
 mod lessons_tests;
 #[cfg(test)]
 mod log_tests;
