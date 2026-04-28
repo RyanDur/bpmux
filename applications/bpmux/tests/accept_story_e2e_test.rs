@@ -101,8 +101,8 @@ fn accept_story_rejects_unknown_role() {
             .expect_err("unknown role should be rejected");
 
         assert!(
-            err.contains("restricted") || err.contains("only"),
-            "rejection cites allowed roles; got {err}"
+            err.contains("not a known role") || err.contains("expected one of"),
+            "rejection cites the role-vocabulary; got {err}"
         );
 
         unknown.close().await;
@@ -119,10 +119,11 @@ fn accept_story_view_board_reflects_accepted_via_fixture_seed() {
         .expect("write fixture");
     let fixture_path = fixture.path().to_str().expect("utf-8 path").to_string();
 
-    let bpmux = TestBpmux::start();
+    // #551: fixture-loading happens server-side via BPMUX_BOARD_FIXTURE
+    let bpmux = TestBpmux::start_with_fixture(&fixture_path);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let pm = TestBridge::connect_with_board_fixture(&bpmux, "pm", &fixture_path).await;
+        let pm = TestBridge::connect(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
         pm.call_tool(

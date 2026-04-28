@@ -44,14 +44,13 @@ fn view_board_response_exposes_story_fields_for_agent_assertions() {
         .to_str()
         .expect("fixture path utf-8")
         .to_string();
-    let bpmux = TestBpmux::start();
+    // #551: fixture-loading server-side via BPMUX_BOARD_FIXTURE on
+    // canonical store; bridge's pre-#516 --board-fixture flag was
+    // a no-op post canonical-store unification.
+    let bpmux = TestBpmux::start_with_fixture(&fixture_path);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        // Point the bridge's view_board at the fixture rather than the
-        // live gh CLI — the MCP tool honors BPMUX_BOARD_FIXTURE the
-        // same way the TUI does. Keeps the test hermetic (no GH_TOKEN
-        // required in CI).
-        let dev = TestBridge::connect_with_board_fixture(&bpmux, "dev", &fixture_path).await;
+        let dev = TestBridge::connect(&bpmux, "dev").await;
         let board = dev
             .call_tool("view_board", serde_json::json!({}))
             .await
@@ -84,7 +83,19 @@ fn view_board_response_exposes_story_fields_for_agent_assertions() {
 /// harness gap that motivated #199.
 #[test]
 fn deliver_story_signal_routes_desk_check_to_designer_not_dev() {
-    let bpmux = TestBpmux::start();
+    use std::io::Write as _;
+    let mut fixture = tempfile::NamedTempFile::new().expect("fixture file");
+    fixture
+        .write_all(
+            format!(
+                r###"[{{"number":199,"title":"deliver-target","state":"OPEN","labels":[{{"name":"in progress"}}],"body":"## Acceptance test path\n\n{}/tests/harness/story_helpers.rs\n"}}]"###,
+                env!("CARGO_MANIFEST_DIR")
+            )
+            .as_bytes(),
+        )
+        .expect("write fixture");
+    let fixture_path = fixture.path().to_str().expect("utf-8 path").to_string();
+    let bpmux = TestBpmux::start_with_fixture(&fixture_path);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
         let dev = TestBridge::connect(&bpmux, "dev").await;
@@ -143,7 +154,15 @@ fn deliver_story_signal_routes_desk_check_to_designer_not_dev() {
 /// the signal — routing is exact, not broadcast.
 #[test]
 fn pass_desk_check_signal_routes_to_ryan_not_dev() {
-    let bpmux = TestBpmux::start();
+    use std::io::Write as _;
+    let mut fixture = tempfile::NamedTempFile::new().expect("fixture file");
+    fixture
+        .write_all(
+            br#"[{"number":203,"title":"pass-desk-check-target","state":"OPEN","labels":[{"name":"desk-check"}],"body":""}]"#,
+        )
+        .expect("write fixture");
+    let fixture_path = fixture.path().to_str().expect("utf-8 path").to_string();
+    let bpmux = TestBpmux::start_with_fixture(&fixture_path);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
         let designer = TestBridge::connect(&bpmux, "designer").await;
@@ -186,7 +205,15 @@ fn pass_desk_check_signal_routes_to_ryan_not_dev() {
 /// does NOT contain the signal.
 #[test]
 fn fail_desk_check_signal_routes_to_dev_not_ryan() {
-    let bpmux = TestBpmux::start();
+    use std::io::Write as _;
+    let mut fixture = tempfile::NamedTempFile::new().expect("fixture file");
+    fixture
+        .write_all(
+            br#"[{"number":203,"title":"fail-desk-check-target","state":"OPEN","labels":[{"name":"desk-check"}],"body":""}]"#,
+        )
+        .expect("write fixture");
+    let fixture_path = fixture.path().to_str().expect("utf-8 path").to_string();
+    let bpmux = TestBpmux::start_with_fixture(&fixture_path);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
         let designer = TestBridge::connect(&bpmux, "designer").await;
@@ -263,7 +290,15 @@ fn pass_desk_check_rejects_non_designer_callers() {
 /// "accepted by pm" so Ryan sees who closed the story.
 #[test]
 fn accept_story_allows_pm_and_broadcasts_role_attribution() {
-    let bpmux = TestBpmux::start();
+    use std::io::Write as _;
+    let mut fixture = tempfile::NamedTempFile::new().expect("fixture file");
+    fixture
+        .write_all(
+            br#"[{"number":213,"title":"pm-accept-target","state":"OPEN","labels":[{"name":"delivered"}],"body":""}]"#,
+        )
+        .expect("write fixture");
+    let fixture_path = fixture.path().to_str().expect("utf-8 path").to_string();
+    let bpmux = TestBpmux::start_with_fixture(&fixture_path);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
         let pm = TestBridge::connect(&bpmux, "pm").await;
@@ -310,8 +345,8 @@ fn accept_story_rejects_unknown_roles() {
             .await
             .expect_err("unknown role should be rejected");
         assert!(
-            err.contains("restricted to"),
-            "rejection should name allowed roles. got: {err}"
+            err.contains("not a known role") || err.contains("expected one of"),
+            "rejection should cite role-vocabulary. got: {err}"
         );
 
         unknown.close().await;
@@ -321,7 +356,15 @@ fn accept_story_rejects_unknown_roles() {
 /// AC (#213): designer and dev can call accept_story.
 #[test]
 fn accept_story_allows_designer_and_dev() {
-    let bpmux = TestBpmux::start();
+    use std::io::Write as _;
+    let mut fixture = tempfile::NamedTempFile::new().expect("fixture file");
+    fixture
+        .write_all(
+            br#"[{"number":900,"title":"accept-target-1","state":"OPEN","labels":[{"name":"delivered"}],"body":""},{"number":901,"title":"accept-target-2","state":"OPEN","labels":[{"name":"delivered"}],"body":""}]"#,
+        )
+        .expect("write fixture");
+    let fixture_path = fixture.path().to_str().expect("utf-8 path").to_string();
+    let bpmux = TestBpmux::start_with_fixture(&fixture_path);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
         let designer = TestBridge::connect(&bpmux, "designer").await;
