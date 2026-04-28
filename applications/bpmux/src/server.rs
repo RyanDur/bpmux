@@ -19,6 +19,45 @@ async fn build_test_orchestrator(session: Arc<session::Session>) -> Arc<dyn Refr
     let _ = session;
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(crate::board::adapters::in_memory::InMemorySourceAdapter::new());
+    // #551: load BPMUX_BOARD_FIXTURE if set so test-side fixture-seed
+    // pattern works post-#516 canonical-store architecture. Bridge's
+    // pre-#516 `--board-fixture` flag became a no-op when the source-
+    // of-truth moved to the electron-server side; this env var is the
+    // canonical replacement. Fixture is JSON array of `{number, title,
+    // state, labels, body}`; we seed both metadata + body so #521's
+    // ATP-from-body parsing works against fixture-seeded stories.
+    if let Ok(path) = std::env::var("BPMUX_BOARD_FIXTURE")
+        && !path.is_empty()
+    {
+        match std::fs::read_to_string(&path) {
+            Ok(raw) => match serde_json::from_str::<Vec<serde_json::Value>>(&raw) {
+                Ok(entries) => {
+                    let mut stories: Vec<crate::board::domain::Story> = Vec::new();
+                    let mut bodies: Vec<(u64, String)> = Vec::new();
+                    for entry in &entries {
+                        if let Some(story) =
+                            crate::board::adapters::github::decode_story_metadata(entry)
+                        {
+                            if let Some(body) = entry.get("body").and_then(|b| b.as_str()) {
+                                bodies.push((story.number, body.to_string()));
+                            }
+                            stories.push(story);
+                        }
+                    }
+                    adapter.seed_stories(stories);
+                    for (number, body) in bodies {
+                        adapter.seed_body(number, body);
+                    }
+                }
+                Err(e) => crate::session::diag::log_diag(&format!(
+                    "server: BPMUX_BOARD_FIXTURE parse failed at {path}: {e}"
+                )),
+            },
+            Err(e) => crate::session::diag::log_diag(&format!(
+                "server: BPMUX_BOARD_FIXTURE read failed at {path}: {e}"
+            )),
+        }
+    }
     let orch = Arc::new(SyncOrchestrator::new(store, adapter));
     if let Err(e) = orch.ingest_once().await {
         crate::session::diag::log_diag(&format!(

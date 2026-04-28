@@ -51,6 +51,23 @@ impl TestBpmux {
         Self::start_with_session_and_env(name, session_dir, &[(key, value)])
     }
 
+    /// #551: spawn bpmux with `BPMUX_BOARD_FIXTURE` pointing at a
+    /// JSON fixture so the canonical store seeds InMemorySourceAdapter
+    /// stories + bodies at startup. Replaces the pre-#516 pattern of
+    /// passing `--board-fixture` to the bridge subprocess (which became
+    /// a no-op when the source-of-truth moved server-side).
+    pub fn start_with_fixture(fixture_path: &str) -> Self {
+        let session_dir = tempfile::TempDir::new().expect("temp dir");
+        Self::start_with_session_and_env(
+            "human",
+            session_dir,
+            &[
+                ("BPMUX_TEST_MODE", "1"),
+                ("BPMUX_BOARD_FIXTURE", fixture_path),
+            ],
+        )
+    }
+
     /// Spawn bpmux reusing an existing session base directory.
     /// Useful for testing restart scenarios where persisted state matters.
     pub fn start_with_session(name: &str, session_dir: tempfile::TempDir) -> Self {

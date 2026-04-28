@@ -158,10 +158,14 @@ fn start_story_view_board_reflects_in_progress_via_board_fixture_seed() {
         .expect("write fixture");
     let fixture_path = fixture.path().to_str().expect("utf-8 path").to_string();
 
-    let bpmux = TestBpmux::start();
+    // #551: fixture-loading happens server-side via BPMUX_BOARD_FIXTURE
+    // env var (post-#516 canonical-store architecture). Bridge's
+    // pre-#516 `--board-fixture` flag was a no-op; TestBpmux::start_
+    // with_fixture is the canonical replacement.
+    let bpmux = TestBpmux::start_with_fixture(&fixture_path);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let dev = TestBridge::connect_with_board_fixture(&bpmux, "dev", &fixture_path).await;
+        let dev = TestBridge::connect(&bpmux, "dev").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
         dev.call_tool(
