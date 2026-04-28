@@ -164,6 +164,15 @@ pub(crate) async fn dispatch_test_reorder_story(
     tools_stories::handle_reorder_story(&args, agent_name, &empty_ws).await
 }
 
+pub(crate) async fn dispatch_test_edit_story(
+    args: serde_json::Map<String, serde_json::Value>,
+    agent_name: &str,
+    refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
+) -> Result<String, String> {
+    let empty_ws: tokio::sync::Mutex<Option<WsSink>> = tokio::sync::Mutex::new(None);
+    tools_stories::handle_edit_story(&args, agent_name, &empty_ws, refresh).await
+}
+
 pub(crate) async fn dispatch_test_view_velocity(
     messages: Vec<crate::session::Message>,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
@@ -799,6 +808,7 @@ impl ServerHandler for BridgeServer {
                 | "set_parent_epic"
                 | "unset_parent_epic"
                 | "reorder_story"
+                | "edit_story"
                 | "view_board"
                 | "get_story"
                 | "list_ready"

@@ -501,6 +501,13 @@ mod ingest_poll_loop_tests {
         fn store(&self) -> Arc<crate::board::BoardStore> {
             Arc::new(crate::board::BoardStore::new())
         }
+        fn update_body(
+            &self,
+            _number: u64,
+            _body: String,
+        ) -> BoxedFuture<'_, Result<(), SyncError>> {
+            Box::pin(async { Ok(()) })
+        }
     }
 
     #[tokio::test]

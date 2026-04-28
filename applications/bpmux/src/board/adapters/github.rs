@@ -229,6 +229,14 @@ impl SourceAdapter for GitHubSourceAdapter {
             ))
         })
     }
+
+    async fn update_body(&self, number: u64, body: &str) -> Result<(), SyncError> {
+        self.inner
+            .update_body(number, body)
+            .await
+            .map(|_| ())
+            .map_err(SyncError::Other)
+    }
 }
 
 pub fn warn_on_inconsistent_state_labels(labels: &[String]) {

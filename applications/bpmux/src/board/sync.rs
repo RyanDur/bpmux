@@ -74,4 +74,15 @@ pub trait SourceAdapter: Send + Sync {
         title: &str,
         body: &str,
     ) -> impl std::future::Future<Output = Result<u64, SyncError>> + Send;
+
+    /// Replace an existing story's body. The implementation pushes the
+    /// new body to the source-of-truth (GitHub for production, the
+    /// in-memory cache for tests). Callers re-fetch the story after
+    /// to observe the new body in their local BoardStore (#530 closes
+    /// the gh-bypass class for body-edits).
+    fn update_body(
+        &self,
+        number: u64,
+        body: &str,
+    ) -> impl std::future::Future<Output = Result<(), SyncError>> + Send;
 }

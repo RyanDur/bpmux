@@ -210,4 +210,13 @@ impl SourceAdapter for InMemorySourceAdapter {
         }
         Ok(number)
     }
+
+    async fn update_body(&self, number: u64, body: &str) -> Result<(), SyncError> {
+        let mut s = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        if s.failures_on_push {
+            return Err(SyncError::SourceUnreachable("push test failure".into()));
+        }
+        s.bodies.insert(number, body.to_string());
+        Ok(())
+    }
 }

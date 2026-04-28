@@ -1281,6 +1281,37 @@ pub(super) async fn handle_close_story(
     )
 }
 
+/// #530: replace a story's body via the canonical store. Closes the
+/// gh-bypass class today's session repeatedly hit on ATP-corrections —
+/// edits surface in the BoardStore + WS broadcast so every observer
+/// sees the change without a separate refresh cycle.
+pub(super) async fn handle_edit_story(
+    args: &serde_json::Map<String, serde_json::Value>,
+    agent_name: &str,
+    ws_tx: &Mutex<Option<WsSink>>,
+    refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
+) -> Result<String, String> {
+    require_role(agent_name, &["pm", "ryan"], "edit story")?;
+    let number = args
+        .get("number")
+        .and_then(|v| v.as_u64())
+        .ok_or("missing 'number' argument")?;
+    let body = args
+        .get("body")
+        .and_then(|v| v.as_str())
+        .ok_or("missing 'body' argument")?;
+    let r = refresh
+        .ok_or("edit_story requires refresh (RefreshDriver) — no canonical store available")?;
+    r.update_body(number, body.to_string())
+        .await
+        .map_err(|e| format!("#{number} body update failed: {e}"))?;
+    r.refresh_story(number)
+        .await
+        .map_err(|e| format!("#{number} refresh after edit failed: {e}"))?;
+    broadcast_board_invalidate(ws_tx).await;
+    Ok(format!("#{number} body updated"))
+}
+
 /// Fire the iteration-close externalize-prompt (#282). PM-gated.
 ///
 /// Fail-soft: the MCP tool returns after the broadcast ws_send

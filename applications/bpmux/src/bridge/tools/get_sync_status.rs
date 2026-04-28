@@ -76,6 +76,13 @@ mod tests {
         fn store(&self) -> std::sync::Arc<crate::board::BoardStore> {
             std::sync::Arc::new(crate::board::BoardStore::new())
         }
+        fn update_body(
+            &self,
+            _number: u64,
+            _body: String,
+        ) -> crate::board::orchestrator::BoxedFuture<'_, Result<(), SyncError>> {
+            Box::pin(async { Ok(()) })
+        }
     }
 
     #[tokio::test]

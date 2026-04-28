@@ -71,6 +71,11 @@ pub trait StoryTracker: Clone + Send + Sync + 'static {
         title: &str,
         body: &str,
     ) -> impl std::future::Future<Output = Result<String, String>> + Send;
+    fn update_body(
+        &self,
+        number: u64,
+        body: &str,
+    ) -> impl std::future::Future<Output = Result<String, String>> + Send;
     /// #403: full board as typed JSON Values — used by `list_ready`
     /// and other filtered enumerations. Counterpart to the inherent
     /// `OctocrabStoryTracker::list_stories` (returns pre-serialized
@@ -596,6 +601,17 @@ impl StoryTracker for OctocrabStoryTracker {
             .send()
             .await
             .map(|issue| format!("#{} {}", issue.number, issue.title))
+            .map_err(Self::classify)
+    }
+
+    async fn update_body(&self, number: u64, body: &str) -> Result<String, String> {
+        self.client
+            .issues(&self.owner, &self.repo)
+            .update(number)
+            .body(body)
+            .send()
+            .await
+            .map(|_| format!("#{number} body updated"))
             .map_err(Self::classify)
     }
 

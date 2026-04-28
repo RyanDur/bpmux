@@ -40,6 +40,11 @@ pub trait RefreshDriver: Send + Sync {
     /// slice 4 so server-side RPC dispatch can reuse the existing
     /// read handlers without forking them.
     fn store(&self) -> Arc<BoardStore>;
+    /// Replace a story's body at the source-of-truth (#530). Bridges
+    /// route body-edits through this trait method instead of using
+    /// `gh issue edit` directly so the edit is observable to bpmux's
+    /// BoardStore + WS broadcast cycle.
+    fn update_body(&self, number: u64, body: String) -> BoxedFuture<'_, Result<(), SyncError>>;
 }
 
 #[derive(Debug, Clone, Default, Serialize)]
@@ -354,6 +359,11 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
 
     fn store(&self) -> Arc<BoardStore> {
         Arc::clone(&self.store)
+    }
+
+    fn update_body(&self, number: u64, body: String) -> BoxedFuture<'_, Result<(), SyncError>> {
+        let adapter = Arc::clone(&self.adapter);
+        Box::pin(async move { adapter.update_body(number, &body).await })
     }
 }
 
