@@ -19,13 +19,26 @@ pub fn extract_story_number(create_msg: &str) -> u64 {
 }
 
 pub async fn create_target_story(pm: &TestBridge, title: &str, falsifier: &str) -> u64 {
+    // #537 default-include `acceptance_test_path` pointing to this
+    // harness file (always exists in the workspace tree) so #521's
+    // start_story ATP-validator doesn't 400 on E2E targets created
+    // via this helper. Use an absolute path resolved from
+    // CARGO_MANIFEST_DIR so the validator's cwd-resolution succeeds
+    // regardless of where the bridge subprocess inherits its cwd
+    // from (PTY-spawned bpmux may run from a different cwd than the
+    // cargo test binary).
+    let atp = format!(
+        "{}/tests/harness/story_helpers.rs",
+        env!("CARGO_MANIFEST_DIR")
+    );
     let create = pm
         .call_tool(
             "create_story",
             serde_json::json!({
                 "title": title,
                 "user_job": "When testing affordance E2E, dev needs a target story.",
-                "observation_falsifier": falsifier
+                "observation_falsifier": falsifier,
+                "acceptance_test_path": atp
             }),
         )
         .await

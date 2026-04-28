@@ -149,7 +149,11 @@ fn start_story_view_board_reflects_in_progress_via_board_fixture_seed() {
     let mut fixture = tempfile::NamedTempFile::new().expect("fixture file");
     fixture
         .write_all(
-            br#"[{"number":200,"title":"Pre-seeded ready story","state":"OPEN","labels":[{"name":"ready"}]}]"#,
+            format!(
+                r###"[{{"number":200,"title":"Pre-seeded ready story","state":"OPEN","labels":[{{"name":"ready"}}],"body":"## Acceptance test path\n\n{}/tests/harness/story_helpers.rs\n"}}]"###,
+                env!("CARGO_MANIFEST_DIR")
+            )
+            .as_bytes(),
         )
         .expect("write fixture");
     let fixture_path = fixture.path().to_str().expect("utf-8 path").to_string();

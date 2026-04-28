@@ -92,10 +92,23 @@ impl TestBridge {
         let bin = env!("CARGO_BIN_EXE_bpmux");
         let port = bpmux.port();
         let name_owned = name.to_string();
-        let env_owned: Vec<(String, String)> = env
+        let mut env_owned: Vec<(String, String)> = env
             .iter()
             .map(|(k, v)| ((*k).to_string(), (*v).to_string()))
             .collect();
+        // #537 default-propagate the per-test auth_token path so bridge
+        // subprocess `load_auth_token()` reads the SAME file `TestBpmux`
+        // wrote at startup. Without this, bridge falls back to the
+        // developer's real `~/.bpmux/auth_token` (or 401s in CI), which
+        // mismatches the per-test bpmux server's secret and every
+        // auth-gated /api/rpc/* call returns 401. Existing explicit env
+        // entries take precedence — caller can still override.
+        if !env_owned.iter().any(|(k, _)| k == "BPMUX_AUTH_TOKEN_PATH") {
+            env_owned.push((
+                "BPMUX_AUTH_TOKEN_PATH".to_string(),
+                bpmux.auth_token_path().to_string_lossy().into_owned(),
+            ));
+        }
         let board_fixture_owned = board_fixture;
         let process = TokioChildProcess::new(tokio::process::Command::new(bin).configure(|cmd| {
             cmd.arg("bridge")
