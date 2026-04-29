@@ -57,6 +57,12 @@ fi
 
 if [ -d applications/electron/node_modules ]; then
     (cd applications/electron && npm run test:unit)
+    # #534 slice 2: Playwright e2e — Ryan 2026-04-28: "you need to run
+    # your e2e acceptance tests in your pre-push." Skips loud-and-late
+    # if browser-env unavailable (per spec falsifier #6: error-loud not
+    # silent-skip), but the npm script returns non-zero on any test
+    # failure so pre-push gates correctly.
+    (cd applications/electron && npm run test:e2e)
 fi
 
 MAX_LINES=400
