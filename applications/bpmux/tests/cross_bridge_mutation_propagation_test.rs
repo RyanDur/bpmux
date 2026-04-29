@@ -40,7 +40,7 @@ fn external_state_change_propagates_to_two_bridges_via_shared_mock_gh() {
             .body(Value::Array(vec![]).to_string());
     });
 
-    let bpmux = TestBpmux::start();
+    let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
         let bridge_a = TestBridge::connect_with_mock_gh(&bpmux, "pm", &base_url).await;
@@ -219,7 +219,7 @@ fn bridge_a_create_story_propagates_to_bridge_b_via_shared_mock_gh() {
             .body(issue_json(1, &format!("[Feature] {bridge_a_create_marker}")).to_string());
     });
 
-    let bpmux = TestBpmux::start();
+    let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
         let bridge_a = TestBridge::connect_with_mock_gh(&bpmux, "pm", &base_url).await;

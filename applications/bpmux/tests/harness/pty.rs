@@ -68,6 +68,27 @@ impl TestBpmux {
         )
     }
 
+    /// #599: spawn bpmux with the SERVER's `GitHubSourceAdapter` aimed
+    /// at a test MockServer via `BPMUX_GH_BASE_URL`. Required for the
+    /// cross_bridge_mutation_propagation suite post-#516 canonical-
+    /// store unification — view_board + create_story now dispatch
+    /// through the server's tracker, so setting `BPMUX_GH_BASE_URL`
+    /// on the BRIDGE subprocess (the pre-#516 #482 pattern) became a
+    /// no-op. `BPMUX_POLL_INTERVAL_SECS=1` so the server's ingest
+    /// poll lands within the test's 2.5s wait window.
+    pub fn start_with_mock_gh(mock_gh_base_url: &str) -> Self {
+        let session_dir = tempfile::TempDir::new().expect("temp dir");
+        Self::start_with_session_and_env(
+            "human",
+            session_dir,
+            &[
+                ("BPMUX_GH_BASE_URL", mock_gh_base_url),
+                ("BPMUX_REPO", "acme/bpmux"),
+                ("BPMUX_POLL_INTERVAL_SECS", "1"),
+            ],
+        )
+    }
+
     /// Spawn bpmux reusing an existing session base directory.
     /// Useful for testing restart scenarios where persisted state matters.
     pub fn start_with_session(name: &str, session_dir: tempfile::TempDir) -> Self {
