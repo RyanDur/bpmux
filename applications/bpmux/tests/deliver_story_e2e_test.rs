@@ -128,17 +128,21 @@ fn deliver_story_rejects_missing_verified_observation() {
 #[test]
 fn deliver_story_view_board_reflects_delivered_state_via_fixture_seed() {
     let mut fixture = tempfile::NamedTempFile::new().expect("fixture file");
-    fixture
-        .write_all(
-            br#"[{"number":300,"title":"Pre-seeded in-progress","state":"OPEN","labels":[{"name":"in progress"}]}]"#,
-        )
-        .expect("write fixture");
+    let atp = format!(
+        "{}/tests/deliver_story_e2e_test.rs",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let body = format!("## Acceptance test path\\n\\n{atp}\\n");
+    let json = format!(
+        "[{{\"number\":300,\"title\":\"Pre-seeded in-progress\",\"state\":\"OPEN\",\"labels\":[{{\"name\":\"in progress\"}}],\"body\":\"{body}\"}}]"
+    );
+    fixture.write_all(json.as_bytes()).expect("write fixture");
     let fixture_path = fixture.path().to_str().expect("utf-8 path").to_string();
 
-    let bpmux = TestBpmux::start();
+    let bpmux = TestBpmux::start_with_fixture(&fixture_path);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let dev = TestBridge::connect_with_board_fixture(&bpmux, "dev", &fixture_path).await;
+        let dev = TestBridge::connect(&bpmux, "dev").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
         dev.call_tool(
