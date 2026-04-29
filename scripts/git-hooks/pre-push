@@ -36,7 +36,12 @@ cd "$TEMP_WORKTREE"
 
 export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$REPO_ROOT/target}"
 
-cargo test --lib
+# Run lib + integration tests. Prior gate ran `--lib` only, missing
+# tests/*.rs failures (parity tests, cross-process integration, e2e
+# acceptance). Per Ryan 2026-04-28: pre-push must run all the tests.
+# Forcing-function: until #568's notification-routing cluster closes,
+# subsequent pushes block on those 4 known failures.
+cargo test
 
 if [ -z "${GH_TOKEN:-}" ] || [ -z "${BPMUX_REPO:-}" ]; then
     echo "ERROR: GH_TOKEN + BPMUX_REPO required for contract drift check." >&2
