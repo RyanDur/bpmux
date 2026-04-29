@@ -165,15 +165,26 @@ async fn dispatch(
     tool: &str,
     agent: &str,
     args: serde_json::Map<String, Value>,
+    session: &Arc<session::Session>,
 ) -> Result<String, String> {
     let refresh_ref: Option<&Arc<dyn RefreshDriver>> = Some(refresh);
     match tool {
-        "start_story" => bridge::dispatch_test_start_story(args, agent, refresh_ref).await,
-        "deliver_story" => bridge::dispatch_test_deliver_story(args, agent, refresh_ref).await,
-        "pass_desk_check" => bridge::dispatch_test_pass_desk_check(args, agent, refresh_ref).await,
-        "fail_desk_check" => bridge::dispatch_test_fail_desk_check(args, agent, refresh_ref).await,
-        "accept_story" => bridge::dispatch_test_accept_story(args, agent, refresh_ref).await,
-        "reject_story" => bridge::dispatch_test_reject_story(args, agent, refresh_ref).await,
+        "start_story" => bridge::dispatch_test_start_story(args, agent, refresh_ref, session).await,
+        "deliver_story" => {
+            bridge::dispatch_test_deliver_story(args, agent, refresh_ref, session).await
+        }
+        "pass_desk_check" => {
+            bridge::dispatch_test_pass_desk_check(args, agent, refresh_ref, session).await
+        }
+        "fail_desk_check" => {
+            bridge::dispatch_test_fail_desk_check(args, agent, refresh_ref, session).await
+        }
+        "accept_story" => {
+            bridge::dispatch_test_accept_story(args, agent, refresh_ref, session).await
+        }
+        "reject_story" => {
+            bridge::dispatch_test_reject_story(args, agent, refresh_ref, session).await
+        }
         "close_story" => bridge::dispatch_test_close_story(args, agent, refresh_ref).await,
         "create_story" => bridge::dispatch_test_create_story(args, agent, refresh_ref).await,
         "comment_on_story" => {
@@ -236,7 +247,7 @@ pub async fn post_rpc_tool(
             );
         }
     };
-    match dispatch(&refresh, &tool, &agent, args).await {
+    match dispatch(&refresh, &tool, &agent, args, &session).await {
         Ok(message) => {
             // Firing BOARD_INVALIDATE on a read would re-trigger the
             // very read that just ran (feedback loop).

@@ -48,6 +48,41 @@ type WsSink = futures::stream::SplitSink<
     tungstenite::Message,
 >;
 
+/// #570 helper: broadcast a `ClientMessage::Send` workflow signal via
+/// `session.broadcast` (canonical-store-side path). Used by dispatch_
+/// test_* after handlers — handler-internal `ws_send(empty_ws_tx, ...)`
+/// is silent post-#516 because RPC dispatch passes None ws_tx; this
+/// helper restores the chat-side workflow-signal observation surface.
+fn broadcast_client_msg_via_session(
+    session: &Arc<crate::session::Session>,
+    agent_name: &str,
+    msg: crate::transport::protocol::ClientMessage,
+) {
+    if let crate::transport::protocol::ClientMessage::Send {
+        text,
+        to,
+        addressee,
+        message_type,
+    } = msg
+    {
+        let explicit_privacy = to.is_some();
+        let from_short = crate::transport::ws::short_name(agent_name);
+        let session_msg = crate::session::Message {
+            from: format!("{from_short}:claude-code"),
+            text,
+            ts: chrono::Utc::now(),
+            message_type: crate::session::message::MessageType::from(message_type.as_deref()),
+            to,
+            addressee,
+            explicit_privacy,
+            ..crate::session::Message::default()
+        };
+        if let Err(e) = session.broadcast(&session_msg) {
+            crate::session::diag::log_diag(&format!("rpc: workflow-signal broadcast failed: {e}"));
+        }
+    }
+}
+
 pub(crate) async fn dispatch_test_create_story(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
@@ -79,54 +114,128 @@ pub(crate) async fn dispatch_test_deliver_story(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
+    session: &Arc<crate::session::Session>,
 ) -> Result<String, String> {
     let empty_ws: tokio::sync::Mutex<Option<WsSink>> = tokio::sync::Mutex::new(None);
-    tools_stories::handle_deliver_story(&args, agent_name, &empty_ws, refresh).await
+    let result = tools_stories::handle_deliver_story(&args, agent_name, &empty_ws, refresh).await?;
+    // #570: fire deliver_story workflow signals via session.
+    if let Some(number) = args.get("number").and_then(|v| v.as_u64()) {
+        let title = refresh
+            .and_then(|r| r.story(number))
+            .map(|s| s.title)
+            .unwrap_or_else(|| format!("#{number}"));
+        for msg in tools_stories::build_delivery_signals(number, &title) {
+            broadcast_client_msg_via_session(session, agent_name, msg);
+        }
+    }
+    Ok(result)
 }
 
 pub(crate) async fn dispatch_test_start_story(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
+    session: &Arc<crate::session::Session>,
 ) -> Result<String, String> {
     let empty_ws: tokio::sync::Mutex<Option<WsSink>> = tokio::sync::Mutex::new(None);
-    tools_stories::handle_start_story(&args, agent_name, &empty_ws, refresh).await
+    let result = tools_stories::handle_start_story(&args, agent_name, &empty_ws, refresh).await?;
+    // #570: fire start_story workflow signal via session.
+    if let Some(number) = args.get("number").and_then(|v| v.as_u64()) {
+        broadcast_client_msg_via_session(
+            session,
+            agent_name,
+            tools_stories::build_start_signal(number),
+        );
+    }
+    Ok(result)
 }
 
 pub(crate) async fn dispatch_test_accept_story(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
+    session: &Arc<crate::session::Session>,
 ) -> Result<String, String> {
     let empty_ws: tokio::sync::Mutex<Option<WsSink>> = tokio::sync::Mutex::new(None);
-    tools_stories::handle_accept_story(&args, agent_name, &empty_ws, refresh).await
+    let result = tools_stories::handle_accept_story(&args, agent_name, &empty_ws, refresh).await?;
+    // #570: fire accept_story workflow signals via session.
+    if let Some(number) = args.get("number").and_then(|v| v.as_u64()) {
+        let role = tools_stories::role_from_name(agent_name);
+        broadcast_client_msg_via_session(
+            session,
+            agent_name,
+            tools_stories::build_accept_signal(number, role),
+        );
+    }
+    Ok(result)
 }
 
 pub(crate) async fn dispatch_test_fail_desk_check(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
+    session: &Arc<crate::session::Session>,
 ) -> Result<String, String> {
     let empty_ws: tokio::sync::Mutex<Option<WsSink>> = tokio::sync::Mutex::new(None);
-    tools_stories::handle_fail_desk_check(&args, agent_name, &empty_ws, refresh).await
+    let result =
+        tools_stories::handle_fail_desk_check(&args, agent_name, &empty_ws, refresh).await?;
+    // #570: fire fail_desk_check workflow signals via session.
+    if let Some(number) = args.get("number").and_then(|v| v.as_u64()) {
+        let reason = args
+            .get("reason")
+            .and_then(|v| v.as_str())
+            .unwrap_or("needs fixes");
+        broadcast_client_msg_via_session(
+            session,
+            agent_name,
+            tools_stories::build_fail_desk_check_signal(number, reason),
+        );
+    }
+    Ok(result)
 }
 
 pub(crate) async fn dispatch_test_pass_desk_check(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
+    session: &Arc<crate::session::Session>,
 ) -> Result<String, String> {
     let empty_ws: tokio::sync::Mutex<Option<WsSink>> = tokio::sync::Mutex::new(None);
-    tools_stories::handle_pass_desk_check(&args, agent_name, &empty_ws, refresh).await
+    let result =
+        tools_stories::handle_pass_desk_check(&args, agent_name, &empty_ws, refresh).await?;
+    // #570: handler's ws_send fired against empty ws_tx (silent
+    // no-op post-#516); fire workflow signals via session.broadcast
+    // here so observers actually see "ready for acceptance" in chat.
+    if let Some(number) = args.get("number").and_then(|v| v.as_u64()) {
+        let story_type = tools_stories::classify_for_pass_desk_check(number, refresh);
+        for msg in tools_stories::build_pass_desk_check_signals(number, story_type) {
+            broadcast_client_msg_via_session(session, agent_name, msg);
+        }
+    }
+    Ok(result)
 }
 
 pub(crate) async fn dispatch_test_reject_story(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
+    session: &Arc<crate::session::Session>,
 ) -> Result<String, String> {
     let empty_ws: tokio::sync::Mutex<Option<WsSink>> = tokio::sync::Mutex::new(None);
-    tools_stories::handle_reject_story(&args, agent_name, &empty_ws, refresh).await
+    let result = tools_stories::handle_reject_story(&args, agent_name, &empty_ws, refresh).await?;
+    // #570: fire reject_story workflow signal via session.
+    if let Some(number) = args.get("number").and_then(|v| v.as_u64()) {
+        let reason = args
+            .get("reason")
+            .and_then(|v| v.as_str())
+            .unwrap_or("rejected");
+        broadcast_client_msg_via_session(
+            session,
+            agent_name,
+            tools_stories::build_reject_signal(number, reason),
+        );
+    }
+    Ok(result)
 }
 
 pub(crate) async fn dispatch_test_label_story(

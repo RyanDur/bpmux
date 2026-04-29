@@ -181,7 +181,7 @@ pub async fn post_test_start_story(
     );
     let agent = req.agent.unwrap_or_else(|| "dev:test".to_string());
     let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;
-    match bridge::dispatch_test_start_story(args, &agent, Some(refresh_ref)).await {
+    match bridge::dispatch_test_start_story(args, &agent, Some(refresh_ref), &session).await {
         Ok(message) => {
             fire_board_invalidate(&session);
             (
@@ -224,7 +224,7 @@ pub async fn post_test_fail_desk_check(
     args.insert("reason".to_string(), serde_json::Value::String(req.reason));
     let agent = req.agent.unwrap_or_else(|| "designer:test".to_string());
     let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;
-    match bridge::dispatch_test_fail_desk_check(args, &agent, Some(refresh_ref)).await {
+    match bridge::dispatch_test_fail_desk_check(args, &agent, Some(refresh_ref), &session).await {
         Ok(message) => {
             fire_board_invalidate(&session);
             (
@@ -265,7 +265,7 @@ pub async fn post_test_accept_story(
     );
     let agent = req.agent.unwrap_or_else(|| "ryan:test".to_string());
     let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;
-    match bridge::dispatch_test_accept_story(args, &agent, Some(refresh_ref)).await {
+    match bridge::dispatch_test_accept_story(args, &agent, Some(refresh_ref), &session).await {
         Ok(message) => {
             fire_board_invalidate(&session);
             (
@@ -311,7 +311,7 @@ pub async fn post_test_deliver_story(
     );
     let agent = req.agent.unwrap_or_else(|| "dev:test".to_string());
     let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;
-    match bridge::dispatch_test_deliver_story(args, &agent, Some(refresh_ref)).await {
+    match bridge::dispatch_test_deliver_story(args, &agent, Some(refresh_ref), &session).await {
         Ok(message) => {
             fire_board_invalidate(&session);
             (
