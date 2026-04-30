@@ -21,25 +21,8 @@ fn recall_emits_activity_message_visible_via_rest() {
     let bpmux = TestBpmux::start();
     let port = bpmux.port();
 
-    // Wait for the bpmux HTTP server to bind its listener before
-    // running `bpmux recall`. The server's listener bind happens after
-    // build_prod_orchestrator's ingest-with-retries (≈ 6 s worst-case
-    // under the post-#534 gate); recall's POST is best-effort and
-    // silently drops if the server isn't up, leaving no activity for
-    // the polling loop below to find.
-    let rt = tokio::runtime::Runtime::new().expect("rt");
-    rt.block_on(async {
-        let url = format!("http://127.0.0.1:{port}/healthz");
-        let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
-        let client = reqwest::Client::new();
-        while tokio::time::Instant::now() < deadline {
-            if client.get(&url).send().await.is_ok() {
-                return;
-            }
-            tokio::time::sleep(Duration::from_millis(100)).await;
-        }
-        panic!("bpmux HTTP server never became ready at {url}");
-    });
+    // (TestBpmux::start now waits for the HTTP listener bind before
+    // returning — slice 14 — so we can launch `bpmux recall` directly.)
 
     // Fresh session base for recall. Decoupled from the TUI's session
     // dir — recall POSTs to the server via port, it doesn't need the
