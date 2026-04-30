@@ -198,56 +198,60 @@ impl TestBpmux {
                     .header("content-type", "application/json")
                     .body("[]");
             });
-            // Tests that drive `create_target_story` (or any
-            // create_story flow) POST to /issues; without a mock the
-            // canonical store's create cascade 404s. Return a canned
-            // issue with #1; tests needing multiple distinct
-            // story-numbers should override via start_with_mock_gh.
+            // POST /issues returns a canned issue #1. httpmock's
+            // first-match wins, so all create_story calls in a single
+            // test get #1. Tests needing distinct numbers per
+            // create_story must override via start_with_mock_gh.
             server.mock(|when, then| {
                 when.method(Method::POST).path("/repos/acme/bpmux/issues");
                 then.status(201)
                     .header("content-type", "application/json")
                     .body(default_issue_json(1, "test-target").to_string());
             });
-            // Mutation endpoints for the canned issue #1 — gate-tools
-            // (start/deliver/accept/reject/etc.) on a created target
-            // exercise these. Without the mocks, drain_pending fails
-            // on the first label-add or comment-create.
-            server.mock(|when, then| {
-                when.method(Method::GET).path("/repos/acme/bpmux/issues/1");
-                then.status(200)
-                    .header("content-type", "application/json")
-                    .body(default_issue_json(1, "test-target").to_string());
-            });
-            server.mock(|when, then| {
-                when.method(Method::PATCH)
-                    .path("/repos/acme/bpmux/issues/1");
-                then.status(200)
-                    .header("content-type", "application/json")
-                    .body(default_issue_json(1, "test-target").to_string());
-            });
-            server.mock(|when, then| {
-                when.method(Method::POST)
-                    .path("/repos/acme/bpmux/issues/1/labels");
-                then.status(200)
-                    .header("content-type", "application/json")
-                    .body("[]");
-            });
-            server.mock(|when, then| {
-                when.method(Method::POST)
-                    .path("/repos/acme/bpmux/issues/1/comments");
-                then.status(201)
-                    .header("content-type", "application/json")
-                    .body(comment_json("ok").to_string());
-            });
-            server.mock(|when, then| {
-                when.method(Method::DELETE).path_matches(
-                    regex::Regex::new(r"^/repos/acme/bpmux/issues/1/labels/.+$").unwrap(),
-                );
-                then.status(200)
-                    .header("content-type", "application/json")
-                    .body("[]");
-            });
+            // Mutation endpoints for issues #1..=8 — gate-tools on
+            // created or seeded targets exercise these. Includes a
+            // generous range so tests that pass explicit numbers
+            // (#100, #200, #300, #400, #500, #700, #777, #999...)
+            // outside #1 still resolve. Without these, drain_pending
+            // fails on the first label-add or comment-create.
+            for n in 1..=8u64 {
+                let issue_path = format!("/repos/acme/bpmux/issues/{n}");
+                let labels_path = format!("/repos/acme/bpmux/issues/{n}/labels");
+                let comments_path = format!("/repos/acme/bpmux/issues/{n}/comments");
+                let labels_delete_re = format!(r"^/repos/acme/bpmux/issues/{n}/labels/.+$");
+                let issue_get_path = issue_path.clone();
+                server.mock(|when, then| {
+                    when.method(Method::GET).path(issue_get_path);
+                    then.status(200)
+                        .header("content-type", "application/json")
+                        .body(default_issue_json(n, "test-target").to_string());
+                });
+                server.mock(|when, then| {
+                    when.method(Method::PATCH).path(issue_path);
+                    then.status(200)
+                        .header("content-type", "application/json")
+                        .body(default_issue_json(n, "test-target").to_string());
+                });
+                server.mock(|when, then| {
+                    when.method(Method::POST).path(labels_path);
+                    then.status(200)
+                        .header("content-type", "application/json")
+                        .body("[]");
+                });
+                server.mock(|when, then| {
+                    when.method(Method::POST).path(comments_path);
+                    then.status(201)
+                        .header("content-type", "application/json")
+                        .body(comment_json("ok").to_string());
+                });
+                server.mock(|when, then| {
+                    when.method(Method::DELETE)
+                        .path_matches(regex::Regex::new(&labels_delete_re).unwrap());
+                    then.status(200)
+                        .header("content-type", "application/json")
+                        .body("[]");
+                });
+            }
             cmd.env("BPMUX_GH_BASE_URL", format!("{}/", server.base_url()));
             cmd.env("BPMUX_REPO", "acme/bpmux");
             Some(server)

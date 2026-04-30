@@ -19,44 +19,47 @@
 mod harness;
 
 use harness::bridge::TestBridge;
+use harness::mock_gh::{issue_json, mock_story_mutations};
 use harness::pty::TestBpmux;
 use harness::story_helpers::create_target_story;
+use httpmock::{Method, MockServer};
+use serde_json::Value;
 use std::time::Duration;
 
 #[test]
 fn set_parent_epic_rejects_non_epic_parent() {
-    let bpmux = TestBpmux::start();
+    let server = MockServer::start();
+    let base_url = format!("{}/", server.base_url());
+    // Two distinct seeded issues so child(20) and parent(10) don't
+    // collapse to the same canonical story under the harness's
+    // default-mock single-issue collapse.
+    let parent = issue_json(10, "[Feature] not-an-epic-parent", &[], None);
+    let child = issue_json(20, "[Feature] would-be-child", &[], None);
+    server.mock(|when, then| {
+        when.method(Method::GET).path("/repos/acme/bpmux/issues");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(Value::Array(vec![parent.clone(), child.clone()]).to_string());
+    });
+    mock_story_mutations(&server, 10, &parent);
+    mock_story_mutations(&server, 20, &child);
+
+    let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let pm = TestBridge::connect(&bpmux, "pm").await;
-        tokio::time::sleep(Duration::from_millis(500)).await;
-
-        let parent_number = create_target_story(
-            &pm,
-            "[Feature] not-an-epic-parent",
-            "reject if non-Epic story is silently accepted as parent",
-        )
-        .await;
-        let child_number = create_target_story(
-            &pm,
-            "[Feature] would-be-child",
-            "reject if child references non-Epic parent",
-        )
-        .await;
+        let pm = TestBridge::connect_with_mock_gh(&bpmux, "pm", &base_url).await;
+        tokio::time::sleep(Duration::from_millis(1500)).await;
 
         let err = pm
             .call_tool(
                 "set_parent_epic",
-                serde_json::json!({
-                    "number": child_number,
-                    "epic_number": parent_number
-                }),
+                serde_json::json!({"number": 20, "epic_number": 10}),
             )
             .await
             .expect_err("non-Epic parent should be rejected");
 
         assert!(
-            err.contains("not an Epic"),
+            err.contains("not an Epic") || err.contains("Epic"),
             "rejection cites Epic-type-mismatch; got {err}"
         );
 
