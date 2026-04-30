@@ -29,28 +29,31 @@ const WAIT_PRESENCE_TIMEOUT: Duration = Duration::from_secs(30);
 /// to seed deterministic stories without a live gh dependency.
 #[test]
 fn view_board_response_exposes_story_fields_for_agent_assertions() {
-    use std::io::Write;
-    let mut fixture = tempfile::NamedTempFile::new().expect("fixture file");
-    fixture
-        .write_all(
-            br#"[
-              {"number":100,"title":"Ready one","state":"OPEN","labels":[{"name":"ready"}]},
-              {"number":101,"title":"Delivered one","state":"OPEN","labels":[{"name":"delivered"}]}
-            ]"#,
-        )
-        .expect("write fixture");
-    let fixture_path = fixture
-        .path()
-        .to_str()
-        .expect("fixture path utf-8")
-        .to_string();
-    // #551: fixture-loading server-side via BPMUX_BOARD_FIXTURE on
-    // canonical store; bridge's pre-#516 --board-fixture flag was
-    // a no-op post canonical-store unification.
-    let bpmux = TestBpmux::start_with_fixture(&fixture_path);
+    use harness::mock_gh::issue_json;
+    use httpmock::{Method, MockServer};
+    use serde_json::Value;
+
+    let server = MockServer::start();
+    let base_url = format!("{}/", server.base_url());
+    server.mock(|when, then| {
+        when.method(Method::GET).path("/repos/acme/bpmux/issues");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                Value::Array(vec![
+                    issue_json(100, "Ready one", &["ready"], None),
+                    issue_json(101, "Delivered one", &["delivered"], None),
+                ])
+                .to_string(),
+            );
+    });
+
+    let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let dev = TestBridge::connect(&bpmux, "dev").await;
+        let dev = TestBridge::connect_with_mock_gh(&bpmux, "dev", &base_url).await;
+        tokio::time::sleep(Duration::from_millis(1500)).await;
+
         let board = dev
             .call_tool("view_board", serde_json::json!({}))
             .await
@@ -83,23 +86,30 @@ fn view_board_response_exposes_story_fields_for_agent_assertions() {
 /// harness gap that motivated #199.
 #[test]
 fn deliver_story_signal_routes_desk_check_to_designer_not_dev() {
-    use std::io::Write as _;
-    let mut fixture = tempfile::NamedTempFile::new().expect("fixture file");
-    fixture
-        .write_all(
-            format!(
-                r###"[{{"number":199,"title":"deliver-target","state":"OPEN","labels":[{{"name":"in progress"}}],"body":"## Acceptance test path\n\n{}/tests/harness/story_helpers.rs\n"}}]"###,
-                env!("CARGO_MANIFEST_DIR")
-            )
-            .as_bytes(),
-        )
-        .expect("write fixture");
-    let fixture_path = fixture.path().to_str().expect("utf-8 path").to_string();
-    let bpmux = TestBpmux::start_with_fixture(&fixture_path);
+    use harness::mock_gh::{issue_json, mock_story_mutations};
+    use httpmock::{Method, MockServer};
+    use serde_json::Value;
+
+    let server = MockServer::start();
+    let base_url = format!("{}/", server.base_url());
+    let body = format!(
+        "## Acceptance test path\n\n{}/tests/harness/story_helpers.rs\n",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let issue = issue_json(199, "deliver-target", &["in progress"], Some(&body));
+    server.mock(|when, then| {
+        when.method(Method::GET).path("/repos/acme/bpmux/issues");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(Value::Array(vec![issue.clone()]).to_string());
+    });
+    mock_story_mutations(&server, 199, &issue);
+
+    let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let dev = TestBridge::connect(&bpmux, "dev").await;
-        let designer = TestBridge::connect(&bpmux, "designer").await;
+        let dev = TestBridge::connect_with_mock_gh(&bpmux, "dev", &base_url).await;
+        let designer = TestBridge::connect_with_mock_gh(&bpmux, "designer", &base_url).await;
 
         // Wait for both bridges to finish their join announcements
         // before the signal fires, so the capture windows are stable.
@@ -154,20 +164,27 @@ fn deliver_story_signal_routes_desk_check_to_designer_not_dev() {
 /// the signal — routing is exact, not broadcast.
 #[test]
 fn pass_desk_check_signal_routes_to_ryan_not_dev() {
-    use std::io::Write as _;
-    let mut fixture = tempfile::NamedTempFile::new().expect("fixture file");
-    fixture
-        .write_all(
-            br#"[{"number":203,"title":"pass-desk-check-target","state":"OPEN","labels":[{"name":"desk-check"}],"body":""}]"#,
-        )
-        .expect("write fixture");
-    let fixture_path = fixture.path().to_str().expect("utf-8 path").to_string();
-    let bpmux = TestBpmux::start_with_fixture(&fixture_path);
+    use harness::mock_gh::{issue_json, mock_story_mutations};
+    use httpmock::{Method, MockServer};
+    use serde_json::Value;
+
+    let server = MockServer::start();
+    let base_url = format!("{}/", server.base_url());
+    let issue = issue_json(203, "pass-desk-check-target", &["desk-check"], None);
+    server.mock(|when, then| {
+        when.method(Method::GET).path("/repos/acme/bpmux/issues");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(Value::Array(vec![issue.clone()]).to_string());
+    });
+    mock_story_mutations(&server, 203, &issue);
+
+    let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let designer = TestBridge::connect(&bpmux, "designer").await;
-        let ryan = TestBridge::connect(&bpmux, "ryan").await;
-        let dev = TestBridge::connect(&bpmux, "dev").await;
+        let designer = TestBridge::connect_with_mock_gh(&bpmux, "designer", &base_url).await;
+        let ryan = TestBridge::connect_with_mock_gh(&bpmux, "ryan", &base_url).await;
+        let dev = TestBridge::connect_with_mock_gh(&bpmux, "dev", &base_url).await;
 
         tokio::time::sleep(Duration::from_millis(500)).await;
 
@@ -205,20 +222,27 @@ fn pass_desk_check_signal_routes_to_ryan_not_dev() {
 /// does NOT contain the signal.
 #[test]
 fn fail_desk_check_signal_routes_to_dev_not_ryan() {
-    use std::io::Write as _;
-    let mut fixture = tempfile::NamedTempFile::new().expect("fixture file");
-    fixture
-        .write_all(
-            br#"[{"number":203,"title":"fail-desk-check-target","state":"OPEN","labels":[{"name":"desk-check"}],"body":""}]"#,
-        )
-        .expect("write fixture");
-    let fixture_path = fixture.path().to_str().expect("utf-8 path").to_string();
-    let bpmux = TestBpmux::start_with_fixture(&fixture_path);
+    use harness::mock_gh::{issue_json, mock_story_mutations};
+    use httpmock::{Method, MockServer};
+    use serde_json::Value;
+
+    let server = MockServer::start();
+    let base_url = format!("{}/", server.base_url());
+    let issue = issue_json(203, "fail-desk-check-target", &["desk-check"], None);
+    server.mock(|when, then| {
+        when.method(Method::GET).path("/repos/acme/bpmux/issues");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(Value::Array(vec![issue.clone()]).to_string());
+    });
+    mock_story_mutations(&server, 203, &issue);
+
+    let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let designer = TestBridge::connect(&bpmux, "designer").await;
-        let ryan = TestBridge::connect(&bpmux, "ryan").await;
-        let dev = TestBridge::connect(&bpmux, "dev").await;
+        let designer = TestBridge::connect_with_mock_gh(&bpmux, "designer", &base_url).await;
+        let ryan = TestBridge::connect_with_mock_gh(&bpmux, "ryan", &base_url).await;
+        let dev = TestBridge::connect_with_mock_gh(&bpmux, "dev", &base_url).await;
 
         tokio::time::sleep(Duration::from_millis(500)).await;
 
@@ -290,19 +314,26 @@ fn pass_desk_check_rejects_non_designer_callers() {
 /// "accepted by pm" so Ryan sees who closed the story.
 #[test]
 fn accept_story_allows_pm_and_broadcasts_role_attribution() {
-    use std::io::Write as _;
-    let mut fixture = tempfile::NamedTempFile::new().expect("fixture file");
-    fixture
-        .write_all(
-            br#"[{"number":213,"title":"pm-accept-target","state":"OPEN","labels":[{"name":"delivered"}],"body":""}]"#,
-        )
-        .expect("write fixture");
-    let fixture_path = fixture.path().to_str().expect("utf-8 path").to_string();
-    let bpmux = TestBpmux::start_with_fixture(&fixture_path);
+    use harness::mock_gh::{issue_json, mock_story_mutations};
+    use httpmock::{Method, MockServer};
+    use serde_json::Value;
+
+    let server = MockServer::start();
+    let base_url = format!("{}/", server.base_url());
+    let issue = issue_json(213, "pm-accept-target", &["delivered"], None);
+    server.mock(|when, then| {
+        when.method(Method::GET).path("/repos/acme/bpmux/issues");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(Value::Array(vec![issue.clone()]).to_string());
+    });
+    mock_story_mutations(&server, 213, &issue);
+
+    let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let pm = TestBridge::connect(&bpmux, "pm").await;
-        let dev = TestBridge::connect(&bpmux, "dev").await;
+        let pm = TestBridge::connect_with_mock_gh(&bpmux, "pm", &base_url).await;
+        let dev = TestBridge::connect_with_mock_gh(&bpmux, "dev", &base_url).await;
 
         tokio::time::sleep(Duration::from_millis(500)).await;
 
@@ -356,19 +387,28 @@ fn accept_story_rejects_unknown_roles() {
 /// AC (#213): designer and dev can call accept_story.
 #[test]
 fn accept_story_allows_designer_and_dev() {
-    use std::io::Write as _;
-    let mut fixture = tempfile::NamedTempFile::new().expect("fixture file");
-    fixture
-        .write_all(
-            br#"[{"number":900,"title":"accept-target-1","state":"OPEN","labels":[{"name":"delivered"}],"body":""},{"number":901,"title":"accept-target-2","state":"OPEN","labels":[{"name":"delivered"}],"body":""}]"#,
-        )
-        .expect("write fixture");
-    let fixture_path = fixture.path().to_str().expect("utf-8 path").to_string();
-    let bpmux = TestBpmux::start_with_fixture(&fixture_path);
+    use harness::mock_gh::{issue_json, mock_story_mutations};
+    use httpmock::{Method, MockServer};
+    use serde_json::Value;
+
+    let server = MockServer::start();
+    let base_url = format!("{}/", server.base_url());
+    let issue_900 = issue_json(900, "accept-target-1", &["delivered"], None);
+    let issue_901 = issue_json(901, "accept-target-2", &["delivered"], None);
+    server.mock(|when, then| {
+        when.method(Method::GET).path("/repos/acme/bpmux/issues");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(Value::Array(vec![issue_900.clone(), issue_901.clone()]).to_string());
+    });
+    mock_story_mutations(&server, 900, &issue_900);
+    mock_story_mutations(&server, 901, &issue_901);
+
+    let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let designer = TestBridge::connect(&bpmux, "designer").await;
-        let dev = TestBridge::connect(&bpmux, "dev").await;
+        let designer = TestBridge::connect_with_mock_gh(&bpmux, "designer", &base_url).await;
+        let dev = TestBridge::connect_with_mock_gh(&bpmux, "dev", &base_url).await;
 
         tokio::time::sleep(Duration::from_millis(500)).await;
 
@@ -399,30 +439,38 @@ fn accept_story_allows_designer_and_dev() {
 /// with a clear message, not a raw gh error.
 #[test]
 fn accept_story_is_idempotent_on_already_closed() {
-    let bpmux = TestBpmux::start();
+    use harness::mock_gh::{issue_json, mock_story_mutations};
+    use httpmock::{Method, MockServer};
+    use serde_json::Value;
+
+    let server = MockServer::start();
+    let base_url = format!("{}/", server.base_url());
+    let issue = issue_json(213, "accept-idempotent-target", &["delivered"], None);
+    server.mock(|when, then| {
+        when.method(Method::GET).path("/repos/acme/bpmux/issues");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(Value::Array(vec![issue.clone()]).to_string());
+    });
+    mock_story_mutations(&server, 213, &issue);
+
+    let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let pm = TestBridge::connect(&bpmux, "pm").await;
+        let pm = TestBridge::connect_with_mock_gh(&bpmux, "pm", &base_url).await;
 
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        // First accept
         let _ = pm
             .call_tool("accept_story", serde_json::json!({"number": 213}))
             .await;
 
-        // Second accept — dry-run gh returns Ok both times (no real
-        // close), so the idempotent "already closed" guard doesn't fire.
-        // With dry-run, verify the call still succeeds (no crash, no
-        // role-restriction). True idempotency ("already accepted")
-        // is tested by the unit test on build_accept_signal + the
-        // idempotent guard in handle_accept_story against real gh.
         let result = pm
             .call_tool("accept_story", serde_json::json!({"number": 213}))
             .await;
         assert!(
             result.is_ok(),
-            "double-accept should succeed (dry-run). got: {:?}",
+            "double-accept should succeed against mocked GH. got: {:?}",
             result
         );
 
