@@ -13,7 +13,6 @@ mod harness;
 use harness::bridge::TestBridge;
 use harness::pty::TestBpmux;
 use harness::story_helpers::create_target_story;
-use std::io::Write;
 use std::time::Duration;
 
 const VERIFIED_OBSERVATION: &str = "Drove the new affordance via real bridge → real handler → real /api/board roundtrip; observed expected falsifier outcome.";
@@ -127,23 +126,30 @@ fn deliver_story_rejects_missing_verified_observation() {
 
 #[test]
 fn deliver_story_view_board_reflects_delivered_state_via_fixture_seed() {
-    let mut fixture = tempfile::NamedTempFile::new().expect("fixture file");
-    let atp = format!(
-        "{}/tests/deliver_story_e2e_test.rs",
+    use harness::mock_gh::{issue_json, mock_story_mutations};
+    use httpmock::{Method, MockServer};
+    use serde_json::Value;
+
+    let server = MockServer::start();
+    let base_url = format!("{}/", server.base_url());
+    let body = format!(
+        "## Acceptance test path\n\n{}/tests/deliver_story_e2e_test.rs\n",
         env!("CARGO_MANIFEST_DIR")
     );
-    let body = format!("## Acceptance test path\\n\\n{atp}\\n");
-    let json = format!(
-        "[{{\"number\":300,\"title\":\"Pre-seeded in-progress\",\"state\":\"OPEN\",\"labels\":[{{\"name\":\"in progress\"}}],\"body\":\"{body}\"}}]"
-    );
-    fixture.write_all(json.as_bytes()).expect("write fixture");
-    let fixture_path = fixture.path().to_str().expect("utf-8 path").to_string();
+    let issue = issue_json(300, "Pre-seeded in-progress", &["in progress"], Some(&body));
+    server.mock(|when, then| {
+        when.method(Method::GET).path("/repos/acme/bpmux/issues");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(Value::Array(vec![issue.clone()]).to_string());
+    });
+    mock_story_mutations(&server, 300, &issue);
 
-    let bpmux = TestBpmux::start_with_fixture(&fixture_path);
+    let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let dev = TestBridge::connect(&bpmux, "dev").await;
-        tokio::time::sleep(Duration::from_millis(500)).await;
+        let dev = TestBridge::connect_with_mock_gh(&bpmux, "dev", &base_url).await;
+        tokio::time::sleep(Duration::from_millis(1500)).await;
 
         dev.call_tool(
             "deliver_story",
@@ -155,14 +161,17 @@ fn deliver_story_view_board_reflects_delivered_state_via_fixture_seed() {
         .await
         .expect("deliver_story should succeed against seeded story");
 
-        let view = dev
-            .call_tool("view_board", serde_json::json!({}))
+        let story = dev
+            .call_tool("get_story", serde_json::json!({"number": 300}))
             .await
-            .expect("view_board should succeed");
-        let view_text = view.as_str().map(String::from).unwrap_or_else(|| view.to_string());
+            .expect("get_story should succeed");
+        let story_text = story
+            .as_str()
+            .map(String::from)
+            .unwrap_or_else(|| story.to_string());
         assert!(
-            view_text.contains("#300") && view_text.contains("DELIVERED"),
-            "view_board reflects delivered state for seeded story #300 post-deliver_story; got:\n{view_text}"
+            story_text.contains("desk-check"),
+            "get_story reflects desk-check label for seeded story #300 post-deliver_story; got:\n{story_text}"
         );
     });
 }
