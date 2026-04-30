@@ -49,7 +49,14 @@ if [ -z "${GH_TOKEN:-}" ] || [ -z "${BPMUX_REPO:-}" ]; then
     echo "for the same env contract used when re-recording fixtures." >&2
     exit 1
 fi
-cargo test --lib --features integration_tests
+# Contract tests hit real GitHub at default parallelism (≥ num_cpus
+# concurrent requests). GitHub rate-limits at 5000/hr personal-token
+# but burst-limits per second too, so 8+ concurrent contract tests
+# trip 401/429 silently and the integration_tests gate flakes red.
+# Keep concurrency at 2 so contract tests proceed sequentially-pair
+# enough to stay under the burst limit while finishing within a
+# couple minutes.
+cargo test --lib --features integration_tests -- --test-threads=2
 
 if command -v cargo-audit &> /dev/null; then
     cargo audit --deny warnings
