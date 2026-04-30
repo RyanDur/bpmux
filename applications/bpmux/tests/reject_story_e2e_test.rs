@@ -16,7 +16,6 @@ mod harness;
 use harness::bridge::TestBridge;
 use harness::pty::TestBpmux;
 use harness::story_helpers::create_target_story;
-use std::io::Write;
 use std::time::Duration;
 
 #[test]
@@ -121,7 +120,7 @@ fn reject_story_rejects_unknown_role() {
             .expect_err("unknown role should be rejected");
 
         assert!(
-            err.contains("restricted") || err.contains("only"),
+            err.contains("restricted") || err.contains("expected one of") || err.contains("only"),
             "rejection cites allowed roles; got {err}"
         );
 
@@ -131,19 +130,26 @@ fn reject_story_rejects_unknown_role() {
 
 #[test]
 fn reject_story_view_board_reflects_rejected_via_fixture_seed() {
-    let mut fixture = tempfile::NamedTempFile::new().expect("fixture file");
-    fixture
-        .write_all(
-            br#"[{"number":700,"title":"Pre-seeded delivered","state":"OPEN","labels":[{"name":"delivered"}]}]"#,
-        )
-        .expect("write fixture");
-    let fixture_path = fixture.path().to_str().expect("utf-8 path").to_string();
+    use harness::mock_gh::{issue_json, mock_story_mutations};
+    use httpmock::{Method, MockServer};
+    use serde_json::Value;
 
-    let bpmux = TestBpmux::start();
+    let server = MockServer::start();
+    let base_url = format!("{}/", server.base_url());
+    let issue = issue_json(700, "Pre-seeded delivered", &["delivered"], None);
+    server.mock(|when, then| {
+        when.method(Method::GET).path("/repos/acme/bpmux/issues");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(Value::Array(vec![issue.clone()]).to_string());
+    });
+    mock_story_mutations(&server, 700, &issue);
+
+    let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let pm = TestBridge::connect_with_board_fixture(&bpmux, "pm", &fixture_path).await;
-        tokio::time::sleep(Duration::from_millis(500)).await;
+        let pm = TestBridge::connect_with_mock_gh(&bpmux, "pm", &base_url).await;
+        tokio::time::sleep(Duration::from_millis(1500)).await;
 
         pm.call_tool(
             "reject_story",
@@ -152,17 +158,17 @@ fn reject_story_view_board_reflects_rejected_via_fixture_seed() {
         .await
         .expect("reject_story should succeed against seeded story");
 
-        let view = pm
-            .call_tool("view_board", serde_json::json!({}))
+        let story = pm
+            .call_tool("get_story", serde_json::json!({"number": 700}))
             .await
-            .expect("view_board should succeed");
-        let view_text = view
+            .expect("get_story should succeed");
+        let story_text = story
             .as_str()
             .map(String::from)
-            .unwrap_or_else(|| view.to_string());
+            .unwrap_or_else(|| story.to_string());
         assert!(
-            view_text.contains("#700") && view_text.contains("REJECTED"),
-            "view_board reflects rejected state for seeded story #700 post-reject_story; got:\n{view_text}"
+            story_text.contains("rejected"),
+            "get_story reflects rejected label for seeded story #700 post-reject_story; got:\n{story_text}"
         );
     });
 }

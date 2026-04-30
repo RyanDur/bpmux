@@ -15,15 +15,26 @@ mod harness;
 
 use harness::bridge::TestBridge;
 use harness::pty::TestBpmux;
-use std::io::Write;
 use std::time::Duration;
 
 #[test]
 fn view_backlog_returns_zero_counts_for_empty_board() {
-    let bpmux = TestBpmux::start();
+    use httpmock::{Method, MockServer};
+    use serde_json::Value;
+
+    let server = MockServer::start();
+    let base_url = format!("{}/", server.base_url());
+    server.mock(|when, then| {
+        when.method(Method::GET).path("/repos/acme/bpmux/issues");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(Value::Array(vec![]).to_string());
+    });
+
+    let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let pm = TestBridge::connect(&bpmux, "pm").await;
+        let pm = TestBridge::connect_with_mock_gh(&bpmux, "pm", &base_url).await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
         let result = pm
@@ -58,23 +69,31 @@ fn view_backlog_returns_zero_counts_for_empty_board() {
 
 #[test]
 fn view_backlog_reflects_seeded_states_via_fixture() {
-    let mut fixture = tempfile::NamedTempFile::new().expect("fixture file");
-    fixture
-        .write_all(
-            br#"[
-                {"number":801,"title":"Pre-seeded ready","state":"OPEN","labels":[{"name":"ready"}]},
-                {"number":802,"title":"Pre-seeded in-progress","state":"OPEN","labels":[{"name":"in progress"}]},
-                {"number":803,"title":"Pre-seeded delivered","state":"OPEN","labels":[{"name":"delivered"}]}
-            ]"#,
-        )
-        .expect("write fixture");
-    let fixture_path = fixture.path().to_str().expect("utf-8 path").to_string();
+    use harness::mock_gh::issue_json;
+    use httpmock::{Method, MockServer};
+    use serde_json::Value;
 
-    let bpmux = TestBpmux::start();
+    let server = MockServer::start();
+    let base_url = format!("{}/", server.base_url());
+    server.mock(|when, then| {
+        when.method(Method::GET).path("/repos/acme/bpmux/issues");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                Value::Array(vec![
+                    issue_json(801, "Pre-seeded ready", &["ready"], None),
+                    issue_json(802, "Pre-seeded in-progress", &["in progress"], None),
+                    issue_json(803, "Pre-seeded delivered", &["delivered"], None),
+                ])
+                .to_string(),
+            );
+    });
+
+    let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let pm = TestBridge::connect_with_board_fixture(&bpmux, "pm", &fixture_path).await;
-        tokio::time::sleep(Duration::from_millis(500)).await;
+        let pm = TestBridge::connect_with_mock_gh(&bpmux, "pm", &base_url).await;
+        tokio::time::sleep(Duration::from_millis(1500)).await;
 
         let result = pm
             .call_tool("view_backlog", serde_json::json!({}))

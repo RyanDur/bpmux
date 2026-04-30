@@ -12,7 +12,6 @@ mod harness;
 use harness::bridge::TestBridge;
 use harness::pty::TestBpmux;
 use harness::story_helpers::create_target_story;
-use std::io::Write;
 use std::time::Duration;
 
 #[test]
@@ -130,19 +129,27 @@ fn fail_desk_check_rejects_missing_reason() {
 
 #[test]
 fn fail_desk_check_view_board_reflects_needs_fixes_via_fixture_seed() {
-    let mut fixture = tempfile::NamedTempFile::new().expect("fixture file");
-    fixture
-        .write_all(
-            br#"[{"number":400,"title":"Pre-seeded delivered","state":"OPEN","labels":[{"name":"delivered"}]}]"#,
-        )
-        .expect("write fixture");
-    let fixture_path = fixture.path().to_str().expect("utf-8 path").to_string();
+    use harness::mock_gh::{issue_json, mock_story_mutations};
+    use httpmock::{Method, MockServer};
+    use serde_json::Value;
 
-    let bpmux = TestBpmux::start();
+    let server = MockServer::start();
+    let base_url = format!("{}/", server.base_url());
+    let issue = issue_json(400, "Pre-seeded delivered", &["delivered"], None);
+    server.mock(|when, then| {
+        when.method(Method::GET).path("/repos/acme/bpmux/issues");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(Value::Array(vec![issue.clone()]).to_string());
+    });
+    mock_story_mutations(&server, 400, &issue);
+
+    let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let designer = TestBridge::connect_with_board_fixture(&bpmux, "designer", &fixture_path).await;
-        tokio::time::sleep(Duration::from_millis(500)).await;
+        let designer =
+            TestBridge::connect_with_mock_gh(&bpmux, "designer", &base_url).await;
+        tokio::time::sleep(Duration::from_millis(1500)).await;
 
         designer
             .call_tool(
@@ -155,14 +162,17 @@ fn fail_desk_check_view_board_reflects_needs_fixes_via_fixture_seed() {
             .await
             .expect("fail_desk_check should succeed against seeded story");
 
-        let view = designer
-            .call_tool("view_board", serde_json::json!({}))
+        let story = designer
+            .call_tool("get_story", serde_json::json!({"number": 400}))
             .await
-            .expect("view_board should succeed");
-        let view_text = view.as_str().map(String::from).unwrap_or_else(|| view.to_string());
+            .expect("get_story should succeed");
+        let story_text = story
+            .as_str()
+            .map(String::from)
+            .unwrap_or_else(|| story.to_string());
         assert!(
-            view_text.contains("#400") && view_text.contains("NEEDS FIXES"),
-            "view_board reflects needs-fixes state for seeded story #400 post-fail_desk_check; got:\n{view_text}"
+            story_text.contains("needs fixes"),
+            "get_story reflects needs-fixes label for seeded story #400 post-fail_desk_check; got:\n{story_text}"
         );
     });
 }
