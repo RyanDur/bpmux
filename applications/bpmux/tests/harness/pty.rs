@@ -14,7 +14,11 @@ use super::port::free_port;
 use super::screen::Screen;
 
 fn default_issue_json(number: u64, title: &str) -> Value {
-    issue_json(number, title, &[], None)
+    let body = format!(
+        "## Acceptance test path\n\n{}/tests/harness/story_helpers.rs\n",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    issue_json(number, title, &[], Some(&body))
 }
 
 /// A running bpmux instance in a PTY.
