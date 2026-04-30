@@ -19,24 +19,9 @@ mod harness;
 use harness::pty::TestBpmux;
 use std::time::Duration;
 
-/// Poll `/healthz` until the bpmux HTTP server is accepting requests.
-/// `wait_for_tui("solo")` only confirms the TUI rendered — the HTTP
-/// server is spawned on a separate task and binds its TCP listener
-/// AFTER `build_prod_orchestrator` finishes its ingest-with-retries
-/// (0/500/1500/4000 ms backoffs ≈ 6 s worst case), so an immediate
-/// POST race-fails with connection-refused. Polls for up to 15 s.
-async fn wait_for_http_ready(port: u16) {
-    let url = format!("http://127.0.0.1:{port}/healthz");
-    let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
-    let client = reqwest::Client::new();
-    while tokio::time::Instant::now() < deadline {
-        if client.get(&url).send().await.is_ok() {
-            return;
-        }
-        tokio::time::sleep(Duration::from_millis(100)).await;
-    }
-    panic!("bpmux HTTP server never became ready at {url}");
-}
+// (TestBpmux::start now waits for the HTTP listener bind itself —
+// slice 14 + 19 — so per-test inline polls aren't needed; the
+// earlier slice-7 helper was retired in slice 21.)
 
 #[test]
 fn multi_depth_payload_roundtrips_through_bridge_rest_path() {
@@ -49,7 +34,6 @@ fn multi_depth_payload_roundtrips_through_bridge_rest_path() {
 
     let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
     rt.block_on(async {
-        wait_for_http_ready(port).await;
         let client = reqwest::Client::new();
         // Post a message with a structured multi_depth payload — the
         // shape a future CI broadcast might use per #184's per-role
@@ -128,7 +112,6 @@ fn message_without_multi_depth_still_roundtrips_unchanged() {
 
     let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
     rt.block_on(async {
-        wait_for_http_ready(port).await;
         let client = reqwest::Client::new();
         let payload = serde_json::json!({
             "from": "dev:claude-code",
