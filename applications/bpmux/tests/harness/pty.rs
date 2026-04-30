@@ -304,23 +304,22 @@ impl TestBpmux {
     /// POSTs immediately after `start*` race-fails with
     /// connection-refused. 15 s timeout covers the worst-case retry
     /// schedule with headroom.
+    ///
+    /// Sync TCP-connect probe rather than reqwest — `#[tokio::test]`
+    /// callers (share_message_test.rs etc.) are already inside a
+    /// tokio runtime, so spinning up a nested runtime panics.
     fn wait_for_http_ready(&self) {
-        let url = format!("http://127.0.0.1:{}/healthz", self.port);
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .expect("tokio rt for healthz poll");
-        rt.block_on(async {
-            let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
-            let client = reqwest::Client::new();
-            while tokio::time::Instant::now() < deadline {
-                if client.get(&url).send().await.is_ok() {
-                    return;
-                }
-                tokio::time::sleep(Duration::from_millis(100)).await;
+        let addr = format!("127.0.0.1:{}", self.port)
+            .parse::<std::net::SocketAddr>()
+            .expect("loopback addr parses");
+        let deadline = Instant::now() + Duration::from_secs(15);
+        while Instant::now() < deadline {
+            if std::net::TcpStream::connect_timeout(&addr, Duration::from_millis(200)).is_ok() {
+                return;
             }
-            panic!("bpmux HTTP server never became ready at {url}");
-        });
+            std::thread::sleep(Duration::from_millis(100));
+        }
+        panic!("bpmux HTTP server never became ready at {addr}");
     }
 
     pub fn port(&self) -> u16 {
