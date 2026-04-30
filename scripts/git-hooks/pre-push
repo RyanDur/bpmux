@@ -43,20 +43,13 @@ export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$REPO_ROOT/target}"
 # subsequent pushes block on those 4 known failures.
 cargo test
 
-if [ -z "${GH_TOKEN:-}" ] || [ -z "${BPMUX_REPO:-}" ]; then
-    echo "ERROR: GH_TOKEN + BPMUX_REPO required for contract drift check." >&2
-    echo "Set them in your shell and retry. See scripts/rerecord-fixtures.sh" >&2
-    echo "for the same env contract used when re-recording fixtures." >&2
-    exit 1
-fi
-# Contract tests hit real GitHub at default parallelism (≥ num_cpus
-# concurrent requests). GitHub rate-limits at 5000/hr personal-token
-# but burst-limits per second too, so 8+ concurrent contract tests
-# trip 401/429 silently and the integration_tests gate flakes red.
-# Keep concurrency at 2 so contract tests proceed sequentially-pair
-# enough to stay under the burst limit while finishing within a
-# couple minutes.
-cargo test --lib --features integration_tests -- --test-threads=2
+# Per Ryan's 2026-04-30 strict directive ("only octocrab gets
+# test-doubled; tests must NEVER hit real GitHub"), the
+# `--features integration_tests` gate that ran 4 real-GH contract
+# tests in pre-push is dropped. Those tests remain in
+# `bridge::tools_stories_tests` behind their feature flag for
+# manual contract-drift checks; pre-push no longer depends on
+# GitHub being up + rate-limit-friendly.
 
 if command -v cargo-audit &> /dev/null; then
     cargo audit --deny warnings
