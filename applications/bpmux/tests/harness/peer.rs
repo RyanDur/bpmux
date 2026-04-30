@@ -26,9 +26,16 @@ pub struct WsPeer {
 
 impl WsPeer {
     /// Connect, identify, and consume the welcome frame.
+    ///
+    /// 15 s timeout: the bpmux HTTP/WS server binds AFTER
+    /// `build_prod_orchestrator` finishes its ingest-with-retries
+    /// (0/500/1500/4000 ms backoffs ≈ 6 s worst-case when GH_TOKEN+
+    /// BPMUX_REPO target real GitHub). 5 s was tight enough that
+    /// peer-side tests raced and failed under the post-#534 pre-push
+    /// gate where those env vars are mandatory.
     pub async fn connect(bpmux: &TestBpmux, name: &str) -> Self {
         let ws_url = format!("ws://127.0.0.1:{}/ws", bpmux.port());
-        let ws_stream = tokio::time::timeout(Duration::from_secs(5), async {
+        let ws_stream = tokio::time::timeout(Duration::from_secs(15), async {
             loop {
                 match connect_async(&ws_url).await {
                     Ok((stream, _)) => return stream,
