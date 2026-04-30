@@ -154,6 +154,14 @@ impl TestBpmux {
             "BPMUX_AUTH_TOKEN_PATH",
             session_dir.path().join("auth_token"),
         );
+        // #662: isolate the sessions-base directory so spawned bridge
+        // subprocesses (which call `default_sessions_base()` for
+        // bookmark + get_session_dir) read the per-test tempdir
+        // instead of the developer's real `~/.bpmux/sessions/`.
+        // Without this, parallel tests cross-contaminate via shared
+        // bookmark / session-dir / current-symlink state. Mirrors
+        // BPMUX_AUTH_TOKEN_PATH (#537) and BPMUX_USAGE_PATH (#230).
+        cmd.env("BPMUX_SESSIONS_BASE", session_dir.path());
         for (k, v) in extra_env {
             cmd.env(*k, *v);
         }
@@ -209,6 +217,19 @@ impl TestBpmux {
             .expect("session dir taken before reading auth_token_path")
             .path()
             .join("auth_token")
+    }
+
+    /// #662: per-run sessions-base path. Bridge subprocesses pass this
+    /// via `BPMUX_SESSIONS_BASE` so their `default_sessions_base()`
+    /// resolves to the test's tempdir, not the developer's real
+    /// `~/.bpmux/sessions/`. Closes the bridge-side cross-process
+    /// session-state-leak under parallel-load.
+    pub fn sessions_base_path(&self) -> std::path::PathBuf {
+        self.session_dir
+            .as_ref()
+            .expect("session dir taken before reading sessions_base_path")
+            .path()
+            .to_path_buf()
     }
 
     /// POST JSON to a path on the spawned bpmux's REST surface with

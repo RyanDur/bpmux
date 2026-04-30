@@ -138,6 +138,11 @@ impl Session {
 }
 
 pub fn default_sessions_base() -> Result<PathBuf, LogError> {
+    if let Ok(override_path) = std::env::var("BPMUX_SESSIONS_BASE")
+        && !override_path.is_empty()
+    {
+        return Ok(PathBuf::from(override_path));
+    }
     let base = dirs::home_dir()
         .ok_or_else(|| {
             LogError::Io(std::io::Error::new(

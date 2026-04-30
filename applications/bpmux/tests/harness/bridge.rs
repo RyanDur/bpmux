@@ -109,6 +109,18 @@ impl TestBridge {
                 bpmux.auth_token_path().to_string_lossy().into_owned(),
             ));
         }
+        // #662 default-propagate the per-test sessions-base so bridge
+        // subprocess `default_sessions_base()` reads the same tempdir
+        // the server wrote its session into. Without this, every
+        // parallel test's bridges write/read the developer's real
+        // `~/.bpmux/sessions/current` and cross-contaminate via
+        // bookmark + session-dir state. Mirrors auth_token above.
+        if !env_owned.iter().any(|(k, _)| k == "BPMUX_SESSIONS_BASE") {
+            env_owned.push((
+                "BPMUX_SESSIONS_BASE".to_string(),
+                bpmux.sessions_base_path().to_string_lossy().into_owned(),
+            ));
+        }
         let board_fixture_owned = board_fixture;
         let process = TokioChildProcess::new(tokio::process::Command::new(bin).configure(|cmd| {
             cmd.arg("bridge")
