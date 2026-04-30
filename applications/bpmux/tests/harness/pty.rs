@@ -196,7 +196,36 @@ impl TestBpmux {
             bpmux.wait_for_tui("solo", Duration::from_secs(5)),
             "TUI should render"
         );
+        bpmux.wait_for_http_ready();
         bpmux
+    }
+
+    /// Block until the bpmux HTTP listener is accepting requests.
+    /// `wait_for_tui("solo")` confirms only the TUI rendered; the
+    /// server's TCP listener bind happens AFTER
+    /// `build_prod_orchestrator`'s ingest-with-retries (≈ 6 s
+    /// worst-case under the post-#534 pre-push gate where GH_TOKEN +
+    /// BPMUX_REPO are mandatory). Without this poll, every test that
+    /// POSTs immediately after `start*` race-fails with
+    /// connection-refused. 15 s timeout covers the worst-case retry
+    /// schedule with headroom.
+    fn wait_for_http_ready(&self) {
+        let url = format!("http://127.0.0.1:{}/healthz", self.port);
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("tokio rt for healthz poll");
+        rt.block_on(async {
+            let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
+            let client = reqwest::Client::new();
+            while tokio::time::Instant::now() < deadline {
+                if client.get(&url).send().await.is_ok() {
+                    return;
+                }
+                tokio::time::sleep(Duration::from_millis(100)).await;
+            }
+            panic!("bpmux HTTP server never became ready at {url}");
+        });
     }
 
     pub fn port(&self) -> u16 {
