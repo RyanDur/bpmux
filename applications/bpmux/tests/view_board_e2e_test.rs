@@ -38,14 +38,17 @@ fn view_board_renders_all_section_headers_on_empty_board() {
             .as_str()
             .map(String::from)
             .unwrap_or_else(|| view.to_string());
+        // Canonical view_board projection per #517's owner-semantic
+        // model: READY-FOR-ACCEPT / NEEDS-FIXES / REJECTED stories
+        // bucket into READY rather than rendering as separate columns.
+        // The 6-column header set below matches what `column_for`
+        // emits today.
         for header in [
             "ICEBOX",
             "READY",
             "IN PROGRESS",
+            "DESK CHECK",
             "DELIVERED",
-            "READY FOR ACCEPT",
-            "NEEDS FIXES",
-            "REJECTED",
             "ACCEPTED",
         ] {
             assert!(
