@@ -5,10 +5,17 @@ use std::io::{Read, Write};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+use httpmock::{Method, MockServer};
 use portable_pty::{CommandBuilder, PtySize, native_pty_system};
+use serde_json::Value;
 
+use super::mock_gh::issue_json;
 use super::port::free_port;
 use super::screen::Screen;
+
+fn default_issue_json(number: u64, title: &str) -> Value {
+    issue_json(number, title, &[], None)
+}
 
 /// A running bpmux instance in a PTY.
 ///
@@ -26,6 +33,11 @@ pub struct TestBpmux {
     writer: Arc<Mutex<Box<dyn Write + Send>>>,
     screen: Arc<Mutex<Screen>>,
     port: u16,
+    /// Default httpmock pointed at the spawned bpmux's GH boundary
+    /// (BPMUX_GH_BASE_URL). `None` when the caller supplied their own
+    /// mock URL via `start_with_mock_gh` or extra env. Holding the
+    /// MockServer here keeps it alive for the test's full duration.
+    _default_mock_gh: Option<MockServer>,
 }
 
 impl TestBpmux {
@@ -162,6 +174,41 @@ impl TestBpmux {
         // bookmark / session-dir / current-symlink state. Mirrors
         // BPMUX_AUTH_TOKEN_PATH (#537) and BPMUX_USAGE_PATH (#230).
         cmd.env("BPMUX_SESSIONS_BASE", session_dir.path());
+        // #724: when no caller-supplied mock URL is in extra_env,
+        // point the spawned bpmux at a private empty-issues httpmock
+        // by default. Without this, every `TestBpmux::start()` call
+        // under the post-#534 pre-push gate (GH_TOKEN+BPMUX_REPO
+        // mandatory) polls real github.com — production state floods
+        // the TUI within seconds, breaking every "solo"-mode
+        // assertion. Per Ryan's 2026-04-30 directive: only octocrab
+        // gets test-doubled. Caller-side `start_with_mock_gh` still
+        // wins because extra_env's BPMUX_GH_BASE_URL is applied AFTER
+        // this default.
+        let default_mock = if extra_env.iter().any(|(k, _)| *k == "BPMUX_GH_BASE_URL") {
+            None
+        } else {
+            let server = MockServer::start();
+            server.mock(|when, then| {
+                when.method(Method::GET).path("/repos/acme/bpmux/issues");
+                then.status(200)
+                    .header("content-type", "application/json")
+                    .body("[]");
+            });
+            // Tests that drive `create_target_story` (or any
+            // create_story flow) POST to /issues; without a mock the
+            // canonical store's create cascade 404s. Return a canned
+            // issue with #1; tests needing multiple distinct
+            // story-numbers should override via start_with_mock_gh.
+            server.mock(|when, then| {
+                when.method(Method::POST).path("/repos/acme/bpmux/issues");
+                then.status(201)
+                    .header("content-type", "application/json")
+                    .body(default_issue_json(1, "test-target").to_string());
+            });
+            cmd.env("BPMUX_GH_BASE_URL", format!("{}/", server.base_url()));
+            cmd.env("BPMUX_REPO", "acme/bpmux");
+            Some(server)
+        };
         for (k, v) in extra_env {
             cmd.env(*k, *v);
         }
@@ -191,6 +238,7 @@ impl TestBpmux {
             writer: Arc::new(Mutex::new(writer)),
             screen,
             port,
+            _default_mock_gh: default_mock,
         };
         assert!(
             bpmux.wait_for_tui("solo", Duration::from_secs(5)),
