@@ -9,7 +9,7 @@ use httpmock::{Method, MockServer};
 use portable_pty::{CommandBuilder, PtySize, native_pty_system};
 use serde_json::Value;
 
-use super::mock_gh::issue_json;
+use super::mock_gh::{comment_json, issue_json};
 use super::port::free_port;
 use super::screen::Screen;
 
@@ -204,6 +204,45 @@ impl TestBpmux {
                 then.status(201)
                     .header("content-type", "application/json")
                     .body(default_issue_json(1, "test-target").to_string());
+            });
+            // Mutation endpoints for the canned issue #1 — gate-tools
+            // (start/deliver/accept/reject/etc.) on a created target
+            // exercise these. Without the mocks, drain_pending fails
+            // on the first label-add or comment-create.
+            server.mock(|when, then| {
+                when.method(Method::GET).path("/repos/acme/bpmux/issues/1");
+                then.status(200)
+                    .header("content-type", "application/json")
+                    .body(default_issue_json(1, "test-target").to_string());
+            });
+            server.mock(|when, then| {
+                when.method(Method::PATCH)
+                    .path("/repos/acme/bpmux/issues/1");
+                then.status(200)
+                    .header("content-type", "application/json")
+                    .body(default_issue_json(1, "test-target").to_string());
+            });
+            server.mock(|when, then| {
+                when.method(Method::POST)
+                    .path("/repos/acme/bpmux/issues/1/labels");
+                then.status(200)
+                    .header("content-type", "application/json")
+                    .body("[]");
+            });
+            server.mock(|when, then| {
+                when.method(Method::POST)
+                    .path("/repos/acme/bpmux/issues/1/comments");
+                then.status(201)
+                    .header("content-type", "application/json")
+                    .body(comment_json("ok").to_string());
+            });
+            server.mock(|when, then| {
+                when.method(Method::DELETE).path_matches(
+                    regex::Regex::new(r"^/repos/acme/bpmux/issues/1/labels/.+$").unwrap(),
+                );
+                then.status(200)
+                    .header("content-type", "application/json")
+                    .body("[]");
             });
             cmd.env("BPMUX_GH_BASE_URL", format!("{}/", server.base_url()));
             cmd.env("BPMUX_REPO", "acme/bpmux");
