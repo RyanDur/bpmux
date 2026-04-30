@@ -13,6 +13,23 @@ mod harness;
 use harness::pty::TestBpmux;
 use std::time::Duration;
 
+/// Wait for the bpmux HTTP listener to bind. `wait_for_tui("solo")`
+/// only confirms the TUI rendered — the server's listener bind happens
+/// AFTER build_prod_orchestrator's ingest-with-retries (≈ 6 s
+/// worst-case under the post-#534 pre-push gate).
+async fn wait_for_http_ready(port: u16) {
+    let url = format!("http://127.0.0.1:{port}/healthz");
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
+    let client = reqwest::Client::new();
+    while tokio::time::Instant::now() < deadline {
+        if client.get(&url).send().await.is_ok() {
+            return;
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    panic!("bpmux HTTP server never became ready at {url}");
+}
+
 #[test]
 fn simulate_key_rejects_without_bearer_header() {
     let bpmux = TestBpmux::start();
@@ -24,6 +41,7 @@ fn simulate_key_rejects_without_bearer_header() {
 
     let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
     let status = rt.block_on(async {
+        wait_for_http_ready(port).await;
         reqwest::Client::new()
             .post(format!("http://127.0.0.1:{port}/api/simulate/key"))
             .json(&serde_json::json!({"key": "1", "modifiers": ["alt"]}))
@@ -51,6 +69,7 @@ fn simulate_key_rejects_wrong_bearer() {
 
     let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
     let status = rt.block_on(async {
+        wait_for_http_ready(port).await;
         reqwest::Client::new()
             .post(format!("http://127.0.0.1:{port}/api/simulate/key"))
             .bearer_auth("definitely-not-the-real-token")
@@ -75,6 +94,7 @@ fn simulate_click_rejects_without_bearer_header() {
 
     let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
     let status = rt.block_on(async {
+        wait_for_http_ready(port).await;
         reqwest::Client::new()
             .post(format!("http://127.0.0.1:{port}/api/simulate/click"))
             .json(&serde_json::json!({"x": 0_u16, "y": 0_u16}))
@@ -99,6 +119,7 @@ fn simulate_key_rejects_external_host_header_even_with_correct_secret() {
 
     let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
     let status = rt.block_on(async {
+        wait_for_http_ready(port).await;
         reqwest::Client::new()
             .post(format!("http://127.0.0.1:{port}/api/simulate/key"))
             .bearer_auth(&secret)
@@ -134,6 +155,7 @@ fn open_endpoints_unaffected_by_the_simulate_gate() {
 
     let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
     let status = rt.block_on(async {
+        wait_for_http_ready(port).await;
         reqwest::Client::new()
             .get(format!("http://127.0.0.1:{port}/api/messages"))
             .send()
