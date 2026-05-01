@@ -72,9 +72,16 @@ async function openGroup(
   win: Awaited<ReturnType<Awaited<ReturnType<typeof electron.launch>>['firstWindow']>>,
   state: 'delivered' | 'accepted'
 ): Promise<void> {
-  const group = win.locator(`[data-test="board-group-${state}"]`)
-  if (!(await group.evaluate((el: Element) => (el as HTMLDetailsElement).open))) {
-    await group.locator('summary').first().click()
+  // Post-#516: data-test on summary, not details. See desk-check-375
+  // for full diagnosis. Click summary directly to fire <details>
+  // toggle.
+  const summary = win.locator(`[data-test="board-group-${state}"]`).first()
+  const isOpen = await summary.evaluate((el: Element) => {
+    const details = el.closest('details')
+    return details ? (details as HTMLDetailsElement).open : false
+  })
+  if (!isOpen) {
+    await summary.click()
   }
 }
 

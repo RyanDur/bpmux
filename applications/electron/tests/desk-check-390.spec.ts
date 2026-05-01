@@ -98,9 +98,14 @@ async function launchWithFixture(): Promise<{
 async function openDelivered(
   win: Awaited<ReturnType<Awaited<ReturnType<typeof electron.launch>>['firstWindow']>>
 ): Promise<void> {
-  const group = win.locator('[data-test="board-group-delivered"]')
-  if (!(await group.evaluate((el: Element) => (el as HTMLDetailsElement).open))) {
-    await group.locator('summary').first().click()
+  // Post-#516: data-test on summary, not details. See desk-check-375.
+  const summary = win.locator('[data-test="board-group-delivered"]').first()
+  const isOpen = await summary.evaluate((el: Element) => {
+    const details = el.closest('details')
+    return details ? (details as HTMLDetailsElement).open : false
+  })
+  if (!isOpen) {
+    await summary.click()
   }
 }
 
