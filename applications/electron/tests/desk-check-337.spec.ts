@@ -131,18 +131,7 @@ test.describe('desk-check #337 rework: drill-in scroll reaches comments', () => 
     await app.close()
   })
 
-  // #1128: scroll-container reshape post-#516 — the drill-in article
-  // is the documented scroll container (DrillIn.css:15 `overflow-y:
-  // auto`) and `.drill-in-header` is `position: sticky; top: 0`, but
-  // Playwright's `toBeInViewport` reports ratio 0 for the back-button
-  // after scrollTop=scrollHeight. Walking up to find the actual
-  // scrollable ancestor didn't unblock either. Likely a layout-class
-  // issue (drill-in panel positioning vs window viewport, or
-  // sticky-vs-scroll behavior in the test environment) that needs
-  // deeper investigation than #1128's selector-fidelity scope. Skip
-  // pending designer call on whether this is a real product
-  // regression (file separate) or test-shape issue.
-  test.skip('back-crumb header stays sticky during scroll', async () => {
+  test('back-crumb header stays sticky during scroll', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
     // Click the post-#499 div-class trigger directly; clicking the
@@ -153,35 +142,10 @@ test.describe('desk-check #337 rework: drill-in scroll reaches comments', () => 
     const backButton = win.locator('.drill-in-back')
     await expect(backButton).toBeInViewport()
 
-    // Scroll the drill-in's actual scroll container all the way down.
-    // Post-#516 the scrollable element is `.drill-in` itself (per
-    // DrillIn.css:15 `overflow-y: auto`), which IS the article carrying
-    // `data-test="board-drill-in"`. Walk up from the back-button to
-    // find the nearest scrollable ancestor and use that — robust to
-    // future scroll-container reshapes.
+    await expect(drillIn).toHaveAttribute('data-visible', /.*/)
+
     await drillIn.evaluate((el: HTMLElement) => {
-      let scrollable: HTMLElement = el
-      // If the article isn't the scroll container, find the first
-      // descendant that is. Otherwise just use the article.
-      const cs = window.getComputedStyle(scrollable)
-      if (cs.overflowY !== 'auto' && cs.overflowY !== 'scroll') {
-        const found = scrollable.querySelector<HTMLElement>(
-          ':scope *'
-        )
-        if (found) {
-          for (const cand of Array.from(scrollable.querySelectorAll<HTMLElement>('*'))) {
-            const cc = window.getComputedStyle(cand)
-            if (
-              (cc.overflowY === 'auto' || cc.overflowY === 'scroll') &&
-              cand.scrollHeight > cand.clientHeight
-            ) {
-              scrollable = cand
-              break
-            }
-          }
-        }
-      }
-      scrollable.scrollTop = scrollable.scrollHeight
+      el.scrollTop = el.scrollHeight
     })
 
     await expect(backButton).toBeInViewport({ timeout: 3_000 })

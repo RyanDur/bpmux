@@ -49,7 +49,9 @@
       transform: none !important;
     }
   }
+}
 
+.drill-in {
   & .drill-in-header {
     padding: var(--space-8) var(--space-16);
     border-bottom: 1px solid var(--border-subtle);
