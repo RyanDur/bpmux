@@ -104,7 +104,7 @@ test.describe('desk-check #333 drag-to-reorder (rework)', () => {
     const { app } = await launchWithFixture({ postReorderBody: MOCK_BOARD_BEFORE })
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
-    await expect(win.locator('[data-test="board-group-ready"]')).toBeVisible()
+    await expect(win.locator('[data-test="board-group-ready"]').first()).toBeVisible()
 
     const row = win.locator('[data-test="board-story-701"]')
     await expect(row).toBeVisible()
@@ -140,7 +140,10 @@ test.describe('desk-check #333 drag-to-reorder (rework)', () => {
     await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
 
     // Before reorder: rows render in filed order 701/702/703.
-    const rows = win.locator('[data-test="board-group-ready"] [data-test^="board-story-"]')
+    // #1128: stories live in `<details id="board-group-{state}-content">`,
+    // not as descendants of `<summary data-test="board-group-{state}">`.
+    // Pre-#1128 selector matched 0 elements (post-#516 details/summary).
+    const rows = win.locator('#board-group-ready-content [data-test^="board-story-"]')
     await expect(rows).toHaveCount(3)
     const initialOrder = await rows.evaluateAll((els) =>
       els.map((el) => el.getAttribute('data-test'))
@@ -154,7 +157,10 @@ test.describe('desk-check #333 drag-to-reorder (rework)', () => {
     // Simulate keyboard reorder — the same handleReorder path fires
     // the POST. Ctrl+Shift+Down on the first row bumps it past the
     // second, matching the existing keyboard-reorder contract (#357).
-    const firstRow = win.locator('[data-test="board-story-701"] button.board-story-button')
+    // #1128: post-#499 the clickable row surface is `<div role="button"
+    // class="board-story-button">`, not `<button class="…">` — drop the
+    // tag prefix so the selector matches.
+    const firstRow = win.locator('[data-test="board-story-701"] .board-story-button')
     await firstRow.focus()
     await firstRow.press('Control+Shift+ArrowDown')
 
