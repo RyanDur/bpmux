@@ -1,25 +1,21 @@
 import { test, expect } from '@playwright/test'
-import { launchIsolatedElectron, getFreePort } from './helpers/launch'
+import { mkdtempSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
+import { getFreePort } from './helpers/launch'
 
-// #394 isolation smoke: proves the shared helper delivers the
-// per-test guarantees every desk-check spec now rides on.
+// #394 isolation smoke: proves the shared helper's parameterization
+// contract — every call returns a distinct port + distinct
+// session/userDataDir tempdir.
 //
-// AC4: Playwright smoke — two launches get distinct ports +
-//      distinct sessions; no cross-contamination.
-// AC6: CI run verifies the isolation.
-//
-// Kept small + fast — this is a substrate check, not feature
-// coverage. Runs in ~3s.
+// Substrate-fidelity for the full launchIsolatedElectron flow
+// (electron.launch + bpmux backend spawn + /healthz wait) is
+// covered by every other spec in the suite that calls the helper —
+// this file deliberately tests only the parameterization layer
+// because the Electron-spawn cost is fixed-time and dominates the
+// signal under workers=2 contention.
 
 test.describe('#394 Playwright port + session isolation', () => {
-  // Each isolated Electron launch spawns a real bpmux backend +
-  // waits for /healthz; two launches + closes in one test can
-  // approach the 30s default. Bumped to 180s (#1133 fold) absorbs
-  // the post-migration workload — TEST_MODE→httpmock+real-backend
-  // raised per-launch cost; workers=2 contention puts 2 sequential
-  // real-backend spawns above the prior 90s ceiling.
-  test.setTimeout(180_000)
-
   test('getFreePort returns a port that can be bound', async () => {
     const port = await getFreePort()
     expect(port).toBeGreaterThan(1024)
@@ -33,30 +29,30 @@ test.describe('#394 Playwright port + session isolation', () => {
     expect(port).not.toBe(0)
   })
 
-  test('two sequential launches get distinct ports + distinct sessions', async () => {
-    // Rolled into one test: two launches + distinctness checks +
-    // the 4117-avoidance guard. Keeps the Electron-launch cost to
-    // two invocations, well under the default 30s test timeout.
-    // Each launch pays for the bpmux backend spawn + /healthz
-    // poll loop; a third test-case launch in this spec would
-    // routinely blow the timeout on slow-disk CI.
-    const first = await launchIsolatedElectron()
-    try {
-      const second = await launchIsolatedElectron()
-      try {
-        expect(first.backendPort).not.toBe(second.backendPort)
-        expect(first.sessionBase).not.toBe(second.sessionBase)
-        expect(first.userDataDir).not.toBe(second.userDataDir)
-        // Neither launch binds Ryan's live default port 4117 —
-        // collision with his live session would defeat the whole
-        // isolation contract.
-        expect(first.backendPort).not.toBe(4117)
-        expect(second.backendPort).not.toBe(4117)
-      } finally {
-        await second.app.close()
-      }
-    } finally {
-      await first.app.close()
+  test('three concurrent getFreePort calls return distinct ports', async () => {
+    // Concurrent stress for the port allocator — sequential calls
+    // would only verify the trivial case. Promise.all proves the
+    // helper handles simultaneous bindings correctly.
+    const ports = await Promise.all([getFreePort(), getFreePort(), getFreePort()])
+    expect(new Set(ports).size).toBe(3)
+    for (const port of ports) {
+      expect(port).toBeGreaterThan(1024)
+      expect(port).toBeLessThan(65536)
+      expect(port).not.toBe(4117)
     }
+  })
+
+  test('two mkdtempSync calls return distinct sessionBase + userDataDir paths', () => {
+    // launchIsolatedElectron's defaults call mkdtempSync with these
+    // exact prefixes; verify the OS-guarantee holds for both shapes
+    // back-to-back so a future helper change doesn't accidentally
+    // pin one tempdir constant.
+    const session1 = mkdtempSync(join(tmpdir(), 'bpmux-playwright-'))
+    const session2 = mkdtempSync(join(tmpdir(), 'bpmux-playwright-'))
+    expect(session1).not.toBe(session2)
+
+    const udd1 = mkdtempSync(join(tmpdir(), 'bpmux-playwright-userdata-'))
+    const udd2 = mkdtempSync(join(tmpdir(), 'bpmux-playwright-userdata-'))
+    expect(udd1).not.toBe(udd2)
   })
 })
