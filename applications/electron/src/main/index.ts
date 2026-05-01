@@ -1,7 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain, dialog, Menu, type MenuItemConstructorOptions } from 'electron'
 import { join } from 'path'
 import { homedir } from 'os'
-import { readFileSync } from 'fs'
+import { existsSync, readFileSync, statSync } from 'fs'
 import { spawn, ChildProcess } from 'child_process'
 import * as http from 'http'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -22,7 +22,13 @@ const BACKEND_PORT = (() => {
 const API_BASE = `http://${BACKEND_HOST}:${BACKEND_PORT}`
 const WS_URL = `ws://${BACKEND_HOST}:${BACKEND_PORT}/ws`
 const READY_POLL_INTERVAL_MS = 100
-const READY_TIMEOUT_MS = 10_000
+// 30 s readiness budget. The bpmux server's HTTP listener binds
+// after `build_prod_orchestrator` completes its ingest-with-retries
+// (0/500/1500/4000 ms backoffs ≈ 6 s minimum), and the initial GH
+// ingest of a 500+ story canonical store can add several seconds
+// of paginated fetch on top. The previous 10 s budget left no
+// headroom and tripped on cold starts.
+const READY_TIMEOUT_MS = 30_000
 const SIGKILL_FALLBACK_MS = 2_000
 
 let backendProcess: ChildProcess | null = null
@@ -36,8 +42,24 @@ function resolveBinaryPath(): string {
     return join(process.resourcesPath, 'bpmux')
   }
   // __dirname during dev = <repo>/applications/electron/out/main.
-  // Workspace root is four levels up; Cargo puts the binary in target/debug.
-  return join(__dirname, '../../../../target/debug/bpmux')
+  // Workspace root is four levels up. Prefer the freshest of
+  // target/release vs target/debug — startup latency on a 500+ story
+  // canonical-store ingest can blow the 10 s electron readiness
+  // timeout on a debug binary, so when both are present we pick the
+  // newer one. `cargo build [--release]` updates the relevant
+  // mtime; whichever build the developer just ran wins.
+  const workspace = join(__dirname, '../../../..')
+  const releasePath = join(workspace, 'target/release/bpmux')
+  const debugPath = join(workspace, 'target/debug/bpmux')
+  const releaseExists = existsSync(releasePath)
+  const debugExists = existsSync(debugPath)
+  if (releaseExists && debugExists) {
+    return statSync(releasePath).mtimeMs >= statSync(debugPath).mtimeMs
+      ? releasePath
+      : debugPath
+  }
+  if (releaseExists) return releasePath
+  return debugPath
 }
 
 function resolveAuthTokenPath(): string {

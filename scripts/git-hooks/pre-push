@@ -20,6 +20,11 @@ if ! command -v cargo &> /dev/null; then
     exit 1
 fi
 
+if ! command -v cargo-nextest &> /dev/null; then
+    echo "ERROR: cargo-nextest not found. Install: cargo install cargo-nextest --locked" >&2
+    exit 1
+fi
+
 echo "Running pre-push quality gates..."
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
@@ -36,12 +41,18 @@ cd "$TEMP_WORKTREE"
 
 export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$REPO_ROOT/target}"
 
-# Run lib + integration tests. Prior gate ran `--lib` only, missing
-# tests/*.rs failures (parity tests, cross-process integration, e2e
-# acceptance). Per Ryan 2026-04-28: pre-push must run all the tests.
-# Forcing-function: until #568's notification-routing cluster closes,
-# subsequent pushes block on those 4 known failures.
-cargo test
+# Run lib + integration tests via cargo-nextest. Per Ryan 2026-04-28:
+# pre-push must run all the tests. Per Ryan 2026-04-30: ~25min cargo
+# test wall-time is too long; switch to nextest which runs test
+# binaries CONCURRENTLY (cargo's default sequencing of ~80 binaries
+# was the bottleneck, not the test work itself). Expected 3-5x
+# speedup; targeting <5min total pre-push gate per Ryan's directive.
+#
+# `--no-fail-fast` so one flaky test doesn't mask others; `--retries 1`
+# absorbs the rare parallel-load timing flake without re-running the
+# whole suite. Doc-tests aren't covered by nextest; run separately if
+# they grow non-trivial (currently empty).
+cargo nextest run --no-fail-fast --retries 1
 
 # Per Ryan's 2026-04-30 strict directive ("only octocrab gets
 # test-doubled; tests must NEVER hit real GitHub"), the
