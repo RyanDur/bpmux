@@ -191,8 +191,12 @@ test.describe('real-backend', () => {
     // continuations) are hidden.
     const avatars = win.locator('[data-test="message-avatar"]')
     await expect(avatars).toHaveCount(2, { timeout: 5_000 })
-    await expect(avatars.nth(0)).toHaveAttribute('data-role', 'designer')
-    await expect(avatars.nth(1)).toHaveAttribute('data-role', 'ryan')
+    // MessageList renders newest-first via `buildReversed` (column-
+    // reverse style DOM order — see MessageList.tsx:360). DOM order
+    // is therefore [ryan-anchor, designer-anchor]. Pre-#1128 the spec
+    // expected chronological-first DOM; current shape is reverse.
+    await expect(avatars.nth(0)).toHaveAttribute('data-role', 'ryan')
+    await expect(avatars.nth(1)).toHaveAttribute('data-role', 'designer')
 
     // AC9(b): Ryan's avatar is a filled circle (shape class
     // `message-avatar--circle` → border-radius: 50% in CSS). AI
@@ -201,8 +205,8 @@ test.describe('real-backend', () => {
     // geometry per MessageList.css; asserting on the class is a
     // boundary-level check that stays stable across CSS refactors
     // so long as the shape-per-role contract is intact.
-    await expect(avatars.nth(1)).toHaveClass(/message-avatar--circle/)
-    await expect(avatars.nth(0)).toHaveClass(/message-avatar--square/)
+    await expect(avatars.nth(0)).toHaveClass(/message-avatar--circle/)
+    await expect(avatars.nth(1)).toHaveClass(/message-avatar--square/)
 
     await app.close()
   })
