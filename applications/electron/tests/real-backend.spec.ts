@@ -564,9 +564,20 @@ test.describe('real-backend', () => {
         message_type: 'chat'
       }
     ]
+    // Per-test auth-token isolation (#235) means
+    // `~/.bpmux/auth_token` is no longer the path bpmux writes to —
+    // each spawn writes to BPMUX_AUTH_TOKEN_PATH (set by the helper
+    // to a tempdir). Pin a deterministic location so the test can
+    // read the token bpmux just wrote.
+    const fs = await import('fs')
+    const os = await import('os')
+    const path = await import('path')
+    const authTokenDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bpmux-pin-auth-'))
+    const authTokenPath = path.join(authTokenDir, 'auth_token')
     const { app, backendPort } = await launchWithIsolatedSession({
       backendPort: 4131,
-      seedMessages
+      seedMessages,
+      extraEnv: { BPMUX_AUTH_TOKEN_PATH: authTokenPath }
     })
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="app-root"]')).toBeVisible()
@@ -575,11 +586,7 @@ test.describe('real-backend', () => {
     // should refetch + update the chat-pin-count without any UI
     // interaction. This exercises the AC7 live-broadcast path: peer
     // (= our test process) pins, viewer (= renderer) sees update.
-    const fs = await import('fs')
-    const authToken = fs.readFileSync(
-      `${process.env.HOME}/.bpmux/auth_token`,
-      'utf8'
-    ).trim()
+    const authToken = fs.readFileSync(authTokenPath, 'utf8').trim()
     const pinRes = await fetch(`http://127.0.0.1:${backendPort}/api/pins`, {
       method: 'POST',
       headers: {
@@ -633,18 +640,22 @@ test.describe('real-backend', () => {
         message_type: 'chat'
       }
     ]
+    // #235 per-test auth-token isolation — pin a deterministic path
+    // so the test reads the token bpmux just wrote.
+    const fs = await import('fs')
+    const os = await import('os')
+    const path = await import('path')
+    const authTokenDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bpmux-react-auth-'))
+    const authTokenPath = path.join(authTokenDir, 'auth_token')
     const { app, backendPort } = await launchWithIsolatedSession({
       backendPort: 4132,
-      seedMessages
+      seedMessages,
+      extraEnv: { BPMUX_AUTH_TOKEN_PATH: authTokenPath }
     })
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="app-root"]')).toBeVisible()
 
-    const fs = await import('fs')
-    const authToken = fs.readFileSync(
-      `${process.env.HOME}/.bpmux/auth_token`,
-      'utf8'
-    ).trim()
+    const authToken = fs.readFileSync(authTokenPath, 'utf8').trim()
     // Toggle on a 👍 from 'dev' via the backend REST. The WS broadcast
     // should refetch the renderer within latency.
     const res = await fetch(`http://127.0.0.1:${backendPort}/api/reactions`, {
@@ -810,12 +821,32 @@ test.describe('real-backend', () => {
   // pattern (POST from test process → WS broadcast → renderer
   // derives + renders).
   test('presence: activity-class broadcast updates sidebar dot', async () => {
-    const { app, backendPort } = await launchWithIsolatedSession()
+    // #235 per-test auth-token isolation.
+    const fs = await import('fs')
+    const os = await import('os')
+    const path = await import('path')
+    const authTokenDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bpmux-presence-auth-'))
+    const authTokenPath = path.join(authTokenDir, 'auth_token')
+    // Per `feedback_substrate_audit_current_team_shape`, sidebar
+    // presence dots derive from message senders — empty seed = no
+    // dots rendered. Seed a chat message from dev so the dot renders
+    // before we exercise the busy transition.
+    const { app, backendPort } = await launchWithIsolatedSession({
+      extraEnv: { BPMUX_AUTH_TOKEN_PATH: authTokenPath },
+      seedMessages: [
+        {
+          from: 'dev:claude-code',
+          text: 'seed for sidebar presence dot',
+          ts: '2026-04-22T18:00:00Z',
+          message_type: 'chat'
+        }
+      ]
+    })
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="app-root"]')).toBeVisible()
 
-    // Initial state: every role defaults to offline (no activity
-    // messages seeded). Dot data-presence='offline'.
+    // Initial state: dev dot is offline (no activity messages, only
+    // the seed chat). data-presence='offline'.
     const devDot = win.locator('[data-test="presence-dot-dev"]')
     await expect(devDot).toHaveAttribute('data-presence', 'offline', {
       timeout: 5_000
@@ -824,10 +855,7 @@ test.describe('real-backend', () => {
     // Simulate dev going busy. POST an activity-class message as
     // `dev:claude-code` — same shape the set_status hook broadcasts
     // from the bridge.
-    const fs = await import('fs')
-    const authToken = fs
-      .readFileSync(`${process.env.HOME}/.bpmux/auth_token`, 'utf8')
-      .trim()
+    const authToken = fs.readFileSync(authTokenPath, 'utf8').trim()
     const res = await fetch(`http://127.0.0.1:${backendPort}/api/messages`, {
       method: 'POST',
       headers: {
