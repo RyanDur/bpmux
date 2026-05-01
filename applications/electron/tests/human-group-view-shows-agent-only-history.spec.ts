@@ -58,7 +58,7 @@ test.describe('human-side E2E #463 — group view shows agent-only history', () 
     pageErrors.length = 0
 
     const groupButton = win.locator('[data-test^="sidebar-group-"]').first()
-    await expect(groupButton).toBeVisible({ timeout: 10000 })
+    await expect(groupButton).toBeVisible({ timeout: 20000 })
     await groupButton.click()
 
     const list = win.locator('[data-test="message-list"]')

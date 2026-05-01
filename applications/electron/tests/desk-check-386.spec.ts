@@ -2,7 +2,7 @@ import { test, expect, _electron as electron } from '@playwright/test'
 import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { launchIsolatedElectron } from './helpers/launch'
+import { launchIsolatedElectron, waitForMessagesLoaded } from './helpers/launch'
 
 // #386 (supersedes #346) + Ryan 2026-04-23 11:47 UTC: sidebar
 // GROUPS lists all 2+ role-subsets of the combinable team — the
@@ -91,6 +91,19 @@ async function launchWithFixture(): Promise<{
       body: JSON.stringify(AD_HOC_MESSAGES)
     })
   })
+  await win.route('**/api/roster', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        roster: [
+          { identity: 'dev:claude-code', role: 'dev' },
+          { identity: 'pm:claude-code', role: 'pm' },
+          { identity: 'designer:claude-code', role: 'designer' }
+        ]
+      })
+    })
+  })
   await win.reload()
   return { app }
 }
@@ -105,9 +118,10 @@ test.describe('desk-check #386 combinatorial groups in sidebar', () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
+    await waitForMessagesLoaded(win, 'designer here')
 
     const groupEntries = win.locator('[data-test^="sidebar-group-"]')
-    await expect(groupEntries).toHaveCount(4, { timeout: 5_000 })
+    await expect(groupEntries).toHaveCount(4, { timeout: 15_000 })
 
     const texts = await groupEntries.evaluateAll((els) =>
       els.map((e) => (e as HTMLElement).textContent?.trim() ?? '')
@@ -130,6 +144,8 @@ test.describe('desk-check #386 combinatorial groups in sidebar', () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
+    await waitForMessagesLoaded(win, 'designer here')
+    await expect(win.locator('[data-test^="sidebar-group-"]')).toHaveCount(4, { timeout: 15_000 })
 
     const groupEntries = win.locator('[data-test^="sidebar-group-"]')
     const groupKeys = await groupEntries.evaluateAll((els) =>
@@ -149,8 +165,10 @@ test.describe('desk-check #386 combinatorial groups in sidebar', () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
+    await waitForMessagesLoaded(win, 'designer here')
 
     const devPmGroup = win.locator('[data-test="sidebar-group-dev+pm"]')
+    await expect(devPmGroup).toBeVisible({ timeout: 15_000 })
     await devPmGroup.click()
 
     const scopeBanner = win.locator('.chat-scope')

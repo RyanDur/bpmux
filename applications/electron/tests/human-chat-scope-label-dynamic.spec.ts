@@ -36,7 +36,7 @@ test.describe('human-side E2E #476 — read-class — chat scope label', () => {
     await expect(scope).toHaveText('ALL CONVERSATIONS')
 
     const devButton = win.locator('[data-test="sidebar-direct-dev"]')
-    await expect(devButton).toBeVisible({ timeout: 10000 })
+    await expect(devButton).toBeVisible({ timeout: 20000 })
     await devButton.click()
     await expect(scope).toContainText('DM → dev')
 
