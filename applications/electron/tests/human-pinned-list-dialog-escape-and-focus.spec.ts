@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { launchIsolatedWithWindow } from './helpers/launch'
+import { launchWithMockGh } from './helpers/launch'
 
 test.describe('human-side E2E #496 — pinned-list native dialog', () => {
   test('open via show, escape closes via native dialog, no console errors', async () => {
@@ -10,8 +10,7 @@ test.describe('human-side E2E #496 — pinned-list native dialog', () => {
       message_type: 'chat'
     }
     const messageKey = `${seeded.ts}|${seeded.from}`
-    const { app, win } = await launchIsolatedWithWindow({
-      extraEnv: { BPMUX_TEST_MODE: '1' },
+    const { app, win, mockGh } = await launchWithMockGh({
       seedMessages: [seeded],
       seedPins: {
         broadcast: [
@@ -26,36 +25,38 @@ test.describe('human-side E2E #496 — pinned-list native dialog', () => {
         ]
       }
     })
+    try {
+      const consoleErrors: string[] = []
+      const pageErrors: Error[] = []
+      win.on('console', (m) => {
+        if (m.type() === 'error') consoleErrors.push(m.text())
+      })
+      win.on('pageerror', (e) => pageErrors.push(e))
 
-    const consoleErrors: string[] = []
-    const pageErrors: Error[] = []
-    win.on('console', (m) => {
-      if (m.type() === 'error') consoleErrors.push(m.text())
-    })
-    win.on('pageerror', (e) => pageErrors.push(e))
+      const pinButton = win.locator('[data-test="chat-pin-count"]')
+      await expect(pinButton).toBeVisible()
 
-    const pinButton = win.locator('[data-test="chat-pin-count"]')
-    await expect(pinButton).toBeVisible()
+      consoleErrors.length = 0
+      pageErrors.length = 0
 
-    consoleErrors.length = 0
-    pageErrors.length = 0
+      await expect(pinButton).toBeEnabled()
+      await pinButton.click()
 
-    await expect(pinButton).toBeEnabled()
-    await pinButton.click()
+      const overlay = win.locator('[data-test="pinned-list-overlay"]')
+      await expect
+        .poll(() => overlay.evaluate((el: HTMLDialogElement) => el.tagName))
+        .toBe('DIALOG')
+      await expect.poll(() => overlay.evaluate((el: HTMLDialogElement) => el.open)).toBe(true)
+      await expect(overlay).toContainText(seeded.text)
 
-    const overlay = win.locator('[data-test="pinned-list-overlay"]')
-    await expect
-      .poll(() => overlay.evaluate((el: HTMLDialogElement) => el.tagName))
-      .toBe('DIALOG')
-    await expect.poll(() => overlay.evaluate((el: HTMLDialogElement) => el.open)).toBe(true)
-    await expect(overlay).toContainText(seeded.text)
+      await overlay.press('Escape')
+      await expect.poll(() => overlay.evaluate((el: HTMLDialogElement) => el.open)).toBe(false)
 
-    await overlay.press('Escape')
-    await expect.poll(() => overlay.evaluate((el: HTMLDialogElement) => el.open)).toBe(false)
-
-    expect(consoleErrors).toEqual([])
-    expect(pageErrors).toEqual([])
-
-    await app.close()
+      expect(consoleErrors).toEqual([])
+      expect(pageErrors).toEqual([])
+    } finally {
+      await app.close()
+      await mockGh.close()
+    }
   })
 })

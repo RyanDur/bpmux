@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { launchIsolatedWithWindow } from './helpers/launch'
+import { launchWithMockGh } from './helpers/launch'
 
 // #497 slice 2 regression-guard: the native <dialog> migration moved
 // Metrics from conditionally-mounted (each open = fresh component =
@@ -10,48 +10,48 @@ import { launchIsolatedWithWindow } from './helpers/launch'
 
 test.describe('human-side E2E #497 — metrics dialog fetches on reopen', () => {
   test('reopening metrics overlay fires a fresh /api/metrics fetch', async () => {
-    const { app, win } = await launchIsolatedWithWindow({
-      extraEnv: { BPMUX_TEST_MODE: '1' }
-    })
+    const { app, win, mockGh } = await launchWithMockGh()
+    try {
+      const consoleErrors: string[] = []
+      const pageErrors: Error[] = []
+      const metricsRequests: string[] = []
+      win.on('console', (m) => {
+        if (m.type() === 'error') consoleErrors.push(m.text())
+      })
+      win.on('pageerror', (e) => pageErrors.push(e))
+      win.on('request', (req) => {
+        if (req.url().includes('/api/metrics')) {
+          metricsRequests.push(`${req.method()} ${req.url()}`)
+        }
+      })
 
-    const consoleErrors: string[] = []
-    const pageErrors: Error[] = []
-    const metricsRequests: string[] = []
-    win.on('console', (m) => {
-      if (m.type() === 'error') consoleErrors.push(m.text())
-    })
-    win.on('pageerror', (e) => pageErrors.push(e))
-    win.on('request', (req) => {
-      if (req.url().includes('/api/metrics')) {
-        metricsRequests.push(`${req.method()} ${req.url()}`)
-      }
-    })
+      await expect(win.locator('[data-test="app-root"]')).toBeVisible()
 
-    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+      consoleErrors.length = 0
+      pageErrors.length = 0
+      metricsRequests.length = 0
 
-    consoleErrors.length = 0
-    pageErrors.length = 0
-    metricsRequests.length = 0
+      await win.keyboard.press('Control+Shift+M')
+      const overlay = win.locator('[data-test="metrics-overlay"]')
+      await expect.poll(() => overlay.evaluate((el: HTMLDialogElement) => el.open)).toBe(true)
+      await expect.poll(() => metricsRequests.length).toBeGreaterThanOrEqual(1)
+      const firstFetchCount = metricsRequests.length
 
-    await win.keyboard.press('Control+Shift+M')
-    const overlay = win.locator('[data-test="metrics-overlay"]')
-    await expect.poll(() => overlay.evaluate((el: HTMLDialogElement) => el.open)).toBe(true)
-    await expect.poll(() => metricsRequests.length).toBeGreaterThanOrEqual(1)
-    const firstFetchCount = metricsRequests.length
+      const closeButton = overlay.locator('button.metrics-close')
+      await closeButton.click()
+      await expect.poll(() => overlay.evaluate((el: HTMLDialogElement) => el.open)).toBe(false)
 
-    const closeButton = overlay.locator('button.metrics-close')
-    await closeButton.click()
-    await expect.poll(() => overlay.evaluate((el: HTMLDialogElement) => el.open)).toBe(false)
+      await win.keyboard.press('Control+Shift+M')
+      await expect.poll(() => overlay.evaluate((el: HTMLDialogElement) => el.open)).toBe(true)
+      await expect
+        .poll(() => metricsRequests.length, { timeout: 5000 })
+        .toBeGreaterThan(firstFetchCount)
 
-    await win.keyboard.press('Control+Shift+M')
-    await expect.poll(() => overlay.evaluate((el: HTMLDialogElement) => el.open)).toBe(true)
-    await expect
-      .poll(() => metricsRequests.length, { timeout: 5000 })
-      .toBeGreaterThan(firstFetchCount)
-
-    expect(consoleErrors).toEqual([])
-    expect(pageErrors).toEqual([])
-
-    await app.close()
+      expect(consoleErrors).toEqual([])
+      expect(pageErrors).toEqual([])
+    } finally {
+      await app.close()
+      await mockGh.close()
+    }
   })
 })

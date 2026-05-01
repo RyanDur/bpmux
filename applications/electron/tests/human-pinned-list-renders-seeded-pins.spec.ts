@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { launchIsolatedWithWindow } from './helpers/launch'
+import { launchWithMockGh } from './helpers/launch'
 
 test.describe('human-side E2E #476 — direct-action — pinned list', () => {
   test('seeded pins enable the pin-count button + clicking opens the pinned list', async () => {
@@ -10,8 +10,7 @@ test.describe('human-side E2E #476 — direct-action — pinned list', () => {
       message_type: 'chat'
     }
     const messageKey = `${seededMessage.ts}|${seededMessage.from}`
-    const { app, win } = await launchIsolatedWithWindow({
-      extraEnv: { BPMUX_TEST_MODE: '1' },
+    const { app, win, mockGh } = await launchWithMockGh({
       seedMessages: [seededMessage],
       seedPins: {
         broadcast: [
@@ -26,32 +25,34 @@ test.describe('human-side E2E #476 — direct-action — pinned list', () => {
         ]
       }
     })
+    try {
+      const consoleErrors: string[] = []
+      const pageErrors: Error[] = []
+      win.on('console', (m) => {
+        if (m.type() === 'error') consoleErrors.push(m.text())
+      })
+      win.on('pageerror', (e) => pageErrors.push(e))
 
-    const consoleErrors: string[] = []
-    const pageErrors: Error[] = []
-    win.on('console', (m) => {
-      if (m.type() === 'error') consoleErrors.push(m.text())
-    })
-    win.on('pageerror', (e) => pageErrors.push(e))
+      await expect(win.locator('[data-test="message-list"]')).toBeVisible()
 
-    await expect(win.locator('[data-test="message-list"]')).toBeVisible()
+      consoleErrors.length = 0
+      pageErrors.length = 0
 
-    consoleErrors.length = 0
-    pageErrors.length = 0
+      const pinCount = win.locator('[data-test="chat-pin-count"]')
+      await expect(pinCount).toBeVisible()
+      await expect(pinCount).toBeEnabled({ timeout: 10000 })
+      await expect(pinCount).toContainText('1')
 
-    const pinCount = win.locator('[data-test="chat-pin-count"]')
-    await expect(pinCount).toBeVisible()
-    await expect(pinCount).toBeEnabled({ timeout: 10000 })
-    await expect(pinCount).toContainText('1')
+      await pinCount.click()
+      const overlay = win.locator('[data-test="pinned-list-overlay"]')
+      await expect(overlay).toBeVisible()
+      await expect(overlay).toContainText(seededMessage.text)
 
-    await pinCount.click()
-    const overlay = win.locator('[data-test="pinned-list-overlay"]')
-    await expect(overlay).toBeVisible()
-    await expect(overlay).toContainText(seededMessage.text)
-
-    expect(consoleErrors).toEqual([])
-    expect(pageErrors).toEqual([])
-
-    await app.close()
+      expect(consoleErrors).toEqual([])
+      expect(pageErrors).toEqual([])
+    } finally {
+      await app.close()
+      await mockGh.close()
+    }
   })
 })
