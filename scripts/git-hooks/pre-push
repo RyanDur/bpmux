@@ -28,18 +28,23 @@ fi
 echo "Running pre-push quality gates..."
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
-TEMP_WORKTREE="$(mktemp -d -t bpmux-prepush.XXXXXX)"
-cleanup() {
-    cd "$REPO_ROOT" 2>/dev/null || true
-    git worktree remove --force "$TEMP_WORKTREE" 2>/dev/null || true
-    rm -rf "$TEMP_WORKTREE" 2>/dev/null || true
-}
-trap cleanup EXIT
+cd "$REPO_ROOT"
 
-git worktree add --detach "$TEMP_WORKTREE" HEAD >/dev/null
-cd "$TEMP_WORKTREE"
-
-export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$REPO_ROOT/target}"
+# Pre-2026-05-01 the hook ran cargo from a temporary `git worktree`
+# at /var/folders/.../bpmux-prepush.XXX with CARGO_TARGET_DIR pointing
+# back at $REPO_ROOT/target. Tests using `env!("CARGO_MANIFEST_DIR")`
+# (e.g. `claude-plugin/.claude-plugin/plugin.json` in
+# plugin_acceptance_test) ended up with the worktree path baked into
+# the binary; the trap deleted the worktree on exit, so the next push
+# (or any subsequent local cargo run that reused a not-yet-rebuilt
+# fingerprint hash) panicked with `NotFound` on the dead path. The
+# diagnosis showed three orphan binaries cached in target/debug/deps
+# from successive pushes, each pointing at a vanished tempdir.
+# Running from $REPO_ROOT keeps every build's CARGO_MANIFEST_DIR
+# stable, so cargo's incremental cache stays correct across pushes.
+# The npm path was migrated to $REPO_ROOT in slice 28 for an
+# orthogonal reason (worktree lacks node_modules) — cargo now
+# matches.
 
 # Run lib + integration tests via cargo-nextest. Per Ryan 2026-04-28:
 # pre-push must run all the tests. Per Ryan 2026-04-30: ~25min cargo
