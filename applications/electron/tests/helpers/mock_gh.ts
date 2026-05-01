@@ -281,6 +281,22 @@ export async function startMockGhServer(): Promise<MockGhServer> {
         send(res, 200, { total_count: 0, workflow_runs: [] })
         return
       }
+      // Drill-in opens fetch comments + timeline. Default empty so
+      // open-on-row-click doesn't 502.
+      if (
+        method === 'GET' &&
+        /^\/repos\/acme\/bpmux\/issues\/\d+\/comments(\?.*)?$/.test(url)
+      ) {
+        send(res, 200, [])
+        return
+      }
+      if (
+        method === 'GET' &&
+        /^\/repos\/acme\/bpmux\/issues\/\d+\/timeline(\?.*)?$/.test(url)
+      ) {
+        send(res, 200, [])
+        return
+      }
       // Fallback: 404 with a body that won't crash octocrab if it
       // tries to deserialize. Tests should add explicit overrides for
       // any missing route; an unmatched call is a test-setup smell.
