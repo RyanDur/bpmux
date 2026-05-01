@@ -1,8 +1,9 @@
 import { _electron as electron, expect, type ElectronApplication, type Page } from '@playwright/test'
-import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync } from 'fs'
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, symlinkSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import * as net from 'net'
+import { startMockGhServer, type MockGhServer } from './mock_gh'
 
 export const getFreePort = async (): Promise<number> =>
   new Promise((resolve, reject) => {
@@ -107,6 +108,66 @@ export const launchIsolatedWithWindow = async (
   const result = await launchIsolatedElectron(opts)
   const win = await result.app.firstWindow()
   return { ...result, win }
+}
+
+// #1127: Playwright counterpart to #724's `TestBpmux::start_with_mock_gh`.
+// Spawns an in-process httpmock-style GH server and points the spawned
+// bpmux's GitHubSourceAdapter at it via BPMUX_GH_BASE_URL. Drops
+// BPMUX_TEST_MODE entirely — server uses the prod orchestrator with
+// the real adapter against the mock boundary. Tests drive mutations
+// via /api/rpc/{tool} (auth-gated), not /api/test/* (deprecated as
+// the InMemoryAdapter substrate retires).
+export interface MockGhLaunchResult extends LaunchResult {
+  win: Page
+  mockGh: MockGhServer
+  // Pre-read auth token so callers don't race the renderer's read.
+  authToken: string
+  // Bound `rpc(tool, body)` helper. Adds the bearer + agent-role +
+  // host headers the gated /api/rpc/{tool} endpoint requires. Default
+  // role 'dev'; pass `agent` in opts.callRole to override per-call.
+  rpc: (tool: string, body: unknown, agent?: string) => Promise<Response>
+}
+
+export const launchWithMockGh = async (
+  opts: LaunchOpts = {}
+): Promise<MockGhLaunchResult> => {
+  const mockGh = await startMockGhServer()
+  // Per-test auth token — same isolation pattern as the default
+  // launch helper, but we capture the path so we can read the
+  // generated token after spawn.
+  const authTokenPath = join(
+    mkdtempSync(join(tmpdir(), 'bpmux-mockgh-auth-')),
+    'auth_token'
+  )
+  const result = await launchIsolatedElectron({
+    ...opts,
+    extraEnv: {
+      // Real GitHubSourceAdapter aimed at the in-process mock.
+      // BPMUX_REPO + GH_TOKEN are required by `from_env()` even
+      // though the mock ignores credentials.
+      BPMUX_GH_BASE_URL: mockGh.baseUrl,
+      BPMUX_REPO: 'acme/bpmux',
+      GH_TOKEN: 'mock-gh-token',
+      BPMUX_AUTH_TOKEN_PATH: authTokenPath,
+      ...(opts.extraEnv ?? {})
+    }
+  })
+  const win = await result.app.firstWindow()
+  // Token file is written by the bpmux server on startup; healthz
+  // already gates that. Read it once so RPC callers can authenticate.
+  const authToken = readFileSync(authTokenPath, 'utf-8').trim()
+  const rpc = async (tool: string, body: unknown, agent = 'dev'): Promise<Response> => {
+    return fetch(`http://127.0.0.1:${result.backendPort}/api/rpc/${tool}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${authToken}`,
+        'X-BPMUX-Agent': agent
+      },
+      body: JSON.stringify(body ?? {})
+    })
+  }
+  return { ...result, win, mockGh, authToken, rpc }
 }
 
 export const waitForBoardLoaded = async (win: Page): Promise<void> => {
