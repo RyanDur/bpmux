@@ -140,7 +140,9 @@
   & .board-group-chevron {
     flex: 0 0 auto;
     width: 0.75rem;
-    font-size: 0.625rem;
+    /* #1134: raised from 0.625rem (10px) to meet the team's 12px
+     * a11y floor (real-backend.spec.ts a11y substrate test). */
+    font-size: 0.75rem;
     display: inline-block;
 
     &::before {
@@ -370,7 +372,8 @@
     &::before {
       content: '▸';
       color: var(--fg-dim);
-      font-size: 0.625rem;
+      /* #1134: raised from 0.625rem (10px) to meet 12px a11y floor. */
+      font-size: 0.75rem;
       flex: 0 0 auto;
     }
 
@@ -391,7 +394,8 @@
   & .board-epic-state {
     flex: 0 0 auto;
     color: var(--fg-dim);
-    font-size: 0.625rem;
+    /* #1134: raised from 0.625rem (10px) to meet 12px a11y floor. */
+    font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     padding: 0 var(--space-4);
@@ -426,7 +430,8 @@
   & .board-epic-counts {
     flex: 0 0 auto;
     color: var(--fg-dim);
-    font-size: 0.6875rem;
+    /* #1134: raised from 0.6875rem (11px) to meet 12px a11y floor. */
+    font-size: 0.75rem;
     font-variant-numeric: tabular-nums;
   }
 
@@ -443,7 +448,8 @@
   & .board-epic-child-state {
     flex: 0 0 auto;
     color: var(--fg-dim);
-    font-size: 0.6875rem;
+    /* #1134: raised from 0.6875rem (11px) to meet 12px a11y floor. */
+    font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.04em;
   }
@@ -505,7 +511,8 @@
   flex: 0 0 auto;
   padding: 0 var(--space-6);
   border-radius: 999px;
-  font-size: 0.6875rem;
+  /* #1134: raised from 0.6875rem (11px) to meet 12px a11y floor. */
+  font-size: 0.75rem;
   line-height: 1.4;
   font-weight: 600;
   /* Base is plain text color; variants override. */
