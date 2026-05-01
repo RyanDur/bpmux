@@ -78,7 +78,7 @@ test.describe('desk-check #357 keyboard-accessible drag-reorder', () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
-    await expect(win.locator('[data-test="board-group-ready"]')).toBeVisible()
+    await expect(win.locator('[data-test="board-group-ready"]').first()).toBeVisible()
 
     const firstRow = win.locator('[data-test="board-story-811"] .board-story-button')
     await firstRow.focus()
@@ -95,7 +95,7 @@ test.describe('desk-check #357 keyboard-accessible drag-reorder', () => {
     await expect(announce).toContainText(/Moved to position \d+ of 3/, { timeout: 3_000 })
 
     // Row order changes (811 moves past 812 in DOM).
-    const rows = win.locator('[data-test="board-group-ready"] [data-test^="board-story-"]')
+    const rows = win.locator('#board-group-ready-content [data-test^="board-story-"]')
     await expect(async () => {
       const order = await rows.evaluateAll((els) =>
         els.map((el) => el.getAttribute('data-test'))
@@ -119,7 +119,7 @@ test.describe('desk-check #357 keyboard-accessible drag-reorder', () => {
     await firstRow.press('Control+Shift+ArrowUp')
 
     // Order unchanged.
-    const rows = win.locator('[data-test="board-group-ready"] [data-test^="board-story-"]')
+    const rows = win.locator('#board-group-ready-content [data-test^="board-story-"]')
     const order = await rows.evaluateAll((els) => els.map((el) => el.getAttribute('data-test')))
     expect(order).toEqual([
       'board-story-811',
@@ -144,7 +144,7 @@ test.describe('desk-check #357 keyboard-accessible drag-reorder', () => {
 
     await lastRow.press('Control+Shift+ArrowDown')
 
-    const rows = win.locator('[data-test="board-group-ready"] [data-test^="board-story-"]')
+    const rows = win.locator('#board-group-ready-content [data-test^="board-story-"]')
     const order = await rows.evaluateAll((els) => els.map((el) => el.getAttribute('data-test')))
     expect(order).toEqual([
       'board-story-811',
