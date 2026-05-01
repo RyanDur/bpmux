@@ -197,21 +197,70 @@ export async function startMockGhServer(): Promise<MockGhServer> {
           return
         }
         if (method === 'PATCH') {
-          send(res, 200, found ?? issueJson(n, 'mock', [], null))
+          // Merge incoming PATCH body into stored issue. close_story
+          // PATCHes `{state: "closed"}` via octocrab; without the
+          // merge, refresh_story parses the issue's `state` as "open"
+          // forever and the renderer never sees the closed transition.
+          const target = found as
+            | (Record<string, unknown> & { state?: string; labels?: unknown[] })
+            | undefined
+          if (target) {
+            const patch = body ? (JSON.parse(body) as Record<string, unknown>) : {}
+            for (const [k, v] of Object.entries(patch)) {
+              if (k === 'labels' && Array.isArray(v)) {
+                target.labels = (v as string[]).map(labelJson)
+              } else {
+                target[k] = v
+              }
+            }
+            send(res, 200, target)
+          } else {
+            send(res, 200, issueJson(n, 'mock', [], null))
+          }
           return
         }
       }
-      if (
-        method === 'POST' &&
-        /^\/repos\/acme\/bpmux\/issues\/\d+\/labels(\?.*)?$/.test(url)
-      ) {
+      // Label add: parse body's `labels: [name, ...]` and merge into
+      // the issue's stored `labels`. octocrab returns the post-update
+      // label set; refresh_story re-parses the issue's labels to
+      // derive `state`, so persisting the additions is what makes
+      // start/deliver/pass/accept transitions visible to the next
+      // refresh (real GH does this; mock had been silently dropping
+      // mutations and returning the original label set).
+      const addLabels = url.match(/^\/repos\/acme\/bpmux\/issues\/(\d+)\/labels(?:\?.*)?$/)
+      if (method === 'POST' && addLabels) {
+        const n = Number(addLabels[1])
+        const target = issues.find((i) => i['number'] === n) as
+          | { labels?: Array<{ name?: string }>; title?: string; body?: string | null }
+          | undefined
+        if (target) {
+          const parsed = body ? (JSON.parse(body) as { labels?: string[] }) : {}
+          const adds = parsed.labels ?? []
+          const existing = (target.labels ?? []).map((l) => l.name ?? '').filter(Boolean)
+          const merged = Array.from(new Set([...existing, ...adds]))
+          target.labels = merged.map(labelJson)
+          send(res, 200, target.labels)
+          return
+        }
         send(res, 200, [])
         return
       }
-      if (
-        method === 'DELETE' &&
-        /^\/repos\/acme\/bpmux\/issues\/\d+\/labels\/.+$/.test(url)
-      ) {
+      const removeLabel = url.match(
+        /^\/repos\/acme\/bpmux\/issues\/(\d+)\/labels\/(.+?)(?:\?.*)?$/
+      )
+      if (method === 'DELETE' && removeLabel) {
+        const n = Number(removeLabel[1])
+        const labelName = decodeURIComponent(removeLabel[2])
+        const target = issues.find((i) => i['number'] === n) as
+          | { labels?: Array<{ name?: string }> }
+          | undefined
+        if (target) {
+          target.labels = (target.labels ?? []).filter(
+            (l) => (l.name ?? '').toLowerCase() !== labelName.toLowerCase()
+          )
+          send(res, 200, target.labels)
+          return
+        }
         send(res, 200, [])
         return
       }
