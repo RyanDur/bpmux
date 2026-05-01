@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { launchIsolatedWithWindow, waitForMessagesLoaded } from './helpers/launch'
+import { launchWithMockGh, waitForMessagesLoaded } from './helpers/launch'
 
 const SEED_DIRECT_ROLES = [
   {
@@ -45,47 +45,48 @@ const dmCases = [
 test.describe('human-side E2E #476 — channel routing matrix — DMs per role', () => {
   for (const { target, marker, other } of dmCases) {
     test(`DM scoped to ${target} is visible to ${target} but NOT to ${other}`, async () => {
-      const { app, win, backendPort } = await launchIsolatedWithWindow({
-        extraEnv: { BPMUX_TEST_MODE: '1' },
+      const { app, win, mockGh, backendPort } = await launchWithMockGh({
         seedMessages: SEED_DIRECT_ROLES
       })
+      try {
+        const consoleErrors: string[] = []
+        const pageErrors: Error[] = []
+        win.on('console', (m) => {
+          if (m.type() === 'error') consoleErrors.push(m.text())
+        })
+        win.on('pageerror', (e) => pageErrors.push(e))
 
-      const consoleErrors: string[] = []
-      const pageErrors: Error[] = []
-      win.on('console', (m) => {
-        if (m.type() === 'error') consoleErrors.push(m.text())
-      })
-      win.on('pageerror', (e) => pageErrors.push(e))
+        const sidebar = win.locator('[data-test="sidebar"]')
+        await expect(sidebar).toBeVisible()
+        await waitForMessagesLoaded(win, 'pm broadcast')
 
-      const sidebar = win.locator('[data-test="sidebar"]')
-      await expect(sidebar).toBeVisible()
-      await waitForMessagesLoaded(win, 'pm broadcast')
+        const directButton = win.locator(`[data-test="sidebar-direct-${target}"]`)
+        await expect(directButton).toBeVisible({ timeout: 20000 })
+        await directButton.click()
 
-      const directButton = win.locator(`[data-test="sidebar-direct-${target}"]`)
-      await expect(directButton).toBeVisible({ timeout: 10000 })
-      await directButton.click()
+        consoleErrors.length = 0
+        pageErrors.length = 0
 
-      consoleErrors.length = 0
-      pageErrors.length = 0
+        const textarea = win.locator('[data-test="chat-input-textarea"]')
+        await textarea.fill(marker)
+        await textarea.press('Enter')
+        await expect(textarea).toHaveValue('')
 
-      const textarea = win.locator('[data-test="chat-input-textarea"]')
-      await textarea.fill(marker)
-      await textarea.press('Enter')
-      await expect(textarea).toHaveValue('')
+        const list = win.locator('[data-test="message-list"]')
+        await expect(list).toContainText(marker, { timeout: 10000 })
 
-      const list = win.locator('[data-test="message-list"]')
-      await expect(list).toContainText(marker, { timeout: 10000 })
+        const targetMessages = await fetchAs(backendPort, target)
+        const otherMessages = await fetchAs(backendPort, other)
 
-      const targetMessages = await fetchAs(backendPort, target)
-      const otherMessages = await fetchAs(backendPort, other)
+        expect(targetMessages.some((m) => m.text === marker)).toBe(true)
+        expect(otherMessages.some((m) => m.text === marker)).toBe(false)
 
-      expect(targetMessages.some((m) => m.text === marker)).toBe(true)
-      expect(otherMessages.some((m) => m.text === marker)).toBe(false)
-
-      expect(consoleErrors).toEqual([])
-      expect(pageErrors).toEqual([])
-
-      await app.close()
+        expect(consoleErrors).toEqual([])
+        expect(pageErrors).toEqual([])
+      } finally {
+        await app.close()
+        await mockGh.close()
+      }
     })
   }
 })
