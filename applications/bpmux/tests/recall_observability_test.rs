@@ -37,6 +37,10 @@ fn recall_emits_activity_message_visible_via_rest() {
         .arg("--role")
         .arg("dev")
         .env("BPMUX_PORT", port.to_string())
+        .env(
+            "BPMUX_LOG",
+            std::env::temp_dir().join("bpmux-test-diag.log"),
+        )
         .output()
         .expect("run bpmux recall");
     assert!(

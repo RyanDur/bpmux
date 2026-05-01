@@ -121,6 +121,24 @@ impl TestBridge {
                 bpmux.sessions_base_path().to_string_lossy().into_owned(),
             ));
         }
+        // #724 slice 30: bridge subprocesses run from `target/debug/bpmux`
+        // (no `deps` segment), so `session::diag` routes their `log_diag`
+        // to `~/.bpmux/diag.log` unless an explicit signal overrides.
+        // Use BPMUX_LOG (precedence-1, log-only) instead of
+        // BPMUX_TEST_MODE — the latter also switches `run_server` to
+        // the InMemorySourceAdapter, breaking every httpmock-based test.
+        // Mirrors the server-spawn fix in `pty.rs`; together they close
+        // the last shared-prod-file leak that flaked diag_routing_test
+        // under nextest's binary-level concurrency.
+        if !env_owned.iter().any(|(k, _)| k == "BPMUX_LOG") {
+            env_owned.push((
+                "BPMUX_LOG".to_string(),
+                std::env::temp_dir()
+                    .join("bpmux-test-diag.log")
+                    .to_string_lossy()
+                    .into_owned(),
+            ));
+        }
         let board_fixture_owned = board_fixture;
         let process = TokioChildProcess::new(tokio::process::Command::new(bin).configure(|cmd| {
             cmd.arg("bridge")

@@ -178,6 +178,29 @@ impl TestBpmux {
         // bookmark / session-dir / current-symlink state. Mirrors
         // BPMUX_AUTH_TOKEN_PATH (#537) and BPMUX_USAGE_PATH (#230).
         cmd.env("BPMUX_SESSIONS_BASE", session_dir.path());
+        // #724 slice 30: route the spawned bpmux's `log_diag` to the
+        // canonical test-diag path instead of the developer's
+        // `~/.bpmux/diag.log`. `session::diag::resolve_diag_path` walks
+        // BPMUX_LOG → BPMUX_TEST_MODE → exe-has-deps → prod-default.
+        // Subprocesses run from `target/debug/bpmux` (no `deps` segment)
+        // so without an explicit signal they fall through to prod.
+        // BPMUX_TEST_MODE *would* fix the diag route — but it ALSO
+        // switches `run_server` to the InMemorySourceAdapter, breaking
+        // every httpmock-based test that exercises the real
+        // GitHubSourceAdapter. BPMUX_LOG is the orthogonal signal:
+        // precedence-1, log-only, no other behavior change. Path matches
+        // what `session::diag` resolves under exe-has-deps so the
+        // diag_routing_test sees the same file. Mirrors
+        // BPMUX_AUTH_TOKEN_PATH / BPMUX_USAGE_PATH / BPMUX_SESSIONS_BASE
+        // — the default-isolation pattern. Pre-nextest cargo-test
+        // serialized binaries so subprocess prod pollution never raced
+        // `diag_routing_test`'s "prod untouched" assertion; nextest's
+        // binary-level concurrency surfaced the gap (TRY 2 FAIL on the
+        // slice-29 push).
+        cmd.env(
+            "BPMUX_LOG",
+            std::env::temp_dir().join("bpmux-test-diag.log"),
+        );
         // #724: when no caller-supplied mock URL is in extra_env,
         // point the spawned bpmux at a private empty-issues httpmock
         // by default. Without this, every `TestBpmux::start()` call

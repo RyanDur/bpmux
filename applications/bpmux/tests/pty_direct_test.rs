@@ -98,6 +98,10 @@ fn spawn_and_read_bpmux(
     cmd.env("TERM", "xterm-256color");
     cmd.env("BPMUX_GH_BASE_URL", &base_url);
     cmd.env("BPMUX_REPO", "acme/bpmux");
+    cmd.env(
+        "BPMUX_LOG",
+        std::env::temp_dir().join("bpmux-test-diag.log"),
+    );
 
     let child = pair.slave.spawn_command(cmd).expect("spawn bpmux");
     drop(pair.slave);
