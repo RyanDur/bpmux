@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { launchIsolatedWithWindow } from './helpers/launch'
+import { launchWithMockGh } from './helpers/launch'
 
 const SEED_MESSAGES = [
   {
@@ -18,33 +18,34 @@ const SEED_MESSAGES = [
 
 test.describe('human-side E2E #476 — read-class — message list', () => {
   test('seeded chat messages render with from + text in the message list', async () => {
-    const { app, win } = await launchIsolatedWithWindow({
-      extraEnv: { BPMUX_TEST_MODE: '1' },
+    const { app, win, mockGh } = await launchWithMockGh({
       seedMessages: SEED_MESSAGES
     })
+    try {
+      const consoleErrors: string[] = []
+      const pageErrors: Error[] = []
+      win.on('console', (m) => {
+        if (m.type() === 'error') consoleErrors.push(m.text())
+      })
+      win.on('pageerror', (e) => pageErrors.push(e))
 
-    const consoleErrors: string[] = []
-    const pageErrors: Error[] = []
-    win.on('console', (m) => {
-      if (m.type() === 'error') consoleErrors.push(m.text())
-    })
-    win.on('pageerror', (e) => pageErrors.push(e))
+      const list = win.locator('[data-test="message-list"]')
+      await expect(list).toBeVisible()
 
-    const list = win.locator('[data-test="message-list"]')
-    await expect(list).toBeVisible()
+      consoleErrors.length = 0
+      pageErrors.length = 0
 
-    consoleErrors.length = 0
-    pageErrors.length = 0
+      await expect(list).toContainText('SEED_CHAT_MARKER_BPF13_FIRST', { timeout: 10000 })
+      await expect(list).toContainText('SEED_CHAT_MARKER_BPF13_SECOND')
 
-    await expect(list).toContainText('SEED_CHAT_MARKER_BPF13_FIRST', { timeout: 10000 })
-    await expect(list).toContainText('SEED_CHAT_MARKER_BPF13_SECOND')
+      const rows = win.locator('[data-test="message-row"]')
+      expect(await rows.count()).toBeGreaterThanOrEqual(2)
 
-    const rows = win.locator('[data-test="message-row"]')
-    expect(await rows.count()).toBeGreaterThanOrEqual(2)
-
-    expect(consoleErrors).toEqual([])
-    expect(pageErrors).toEqual([])
-
-    await app.close()
+      expect(consoleErrors).toEqual([])
+      expect(pageErrors).toEqual([])
+    } finally {
+      await app.close()
+      await mockGh.close()
+    }
   })
 })
