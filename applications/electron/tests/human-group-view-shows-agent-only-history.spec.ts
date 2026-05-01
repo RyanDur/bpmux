@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { launchIsolatedWithWindow, waitForMessagesLoaded } from './helpers/launch'
+import { launchWithMockGh, waitForMessagesLoaded } from './helpers/launch'
 
 // #463: when Ryan-as-viewer selects a group view (e.g., dev+designer),
 // agent-only conversations within that group must be visible — Ryan
@@ -39,36 +39,37 @@ const SEED_GROUP_HISTORY = [
 
 test.describe('human-side E2E #463 — group view shows agent-only history', () => {
   test('agent-only group conversation visible when owner selects the group view', async () => {
-    const { app, win } = await launchIsolatedWithWindow({
-      extraEnv: { BPMUX_TEST_MODE: '1' },
+    const { app, win, mockGh } = await launchWithMockGh({
       seedMessages: SEED_GROUP_HISTORY
     })
+    try {
+      const consoleErrors: string[] = []
+      const pageErrors: Error[] = []
+      win.on('console', (m) => {
+        if (m.type() === 'error') consoleErrors.push(m.text())
+      })
+      win.on('pageerror', (e) => pageErrors.push(e))
 
-    const consoleErrors: string[] = []
-    const pageErrors: Error[] = []
-    win.on('console', (m) => {
-      if (m.type() === 'error') consoleErrors.push(m.text())
-    })
-    win.on('pageerror', (e) => pageErrors.push(e))
+      await expect(win.locator('[data-test="sidebar"]')).toBeVisible()
+      await waitForMessagesLoaded(win, 'designer broadcast to seed direct-role')
 
-    await expect(win.locator('[data-test="sidebar"]')).toBeVisible()
-    await waitForMessagesLoaded(win, 'designer broadcast to seed direct-role')
+      consoleErrors.length = 0
+      pageErrors.length = 0
 
-    consoleErrors.length = 0
-    pageErrors.length = 0
+      const groupButton = win.locator('[data-test^="sidebar-group-"]').first()
+      await expect(groupButton).toBeVisible({ timeout: 20000 })
+      await groupButton.click()
 
-    const groupButton = win.locator('[data-test^="sidebar-group-"]').first()
-    await expect(groupButton).toBeVisible({ timeout: 20000 })
-    await groupButton.click()
+      const list = win.locator('[data-test="message-list"]')
+      await expect(list).toContainText('AGENT_ONLY_GROUP_HISTORY_BPF463', {
+        timeout: 10000
+      })
 
-    const list = win.locator('[data-test="message-list"]')
-    await expect(list).toContainText('AGENT_ONLY_GROUP_HISTORY_BPF463', {
-      timeout: 10000
-    })
-
-    expect(consoleErrors).toEqual([])
-    expect(pageErrors).toEqual([])
-
-    await app.close()
+      expect(consoleErrors).toEqual([])
+      expect(pageErrors).toEqual([])
+    } finally {
+      await app.close()
+      await mockGh.close()
+    }
   })
 })
