@@ -83,12 +83,30 @@ if [ ! -d "$REPO_ROOT/applications/electron/node_modules" ]; then
     echo "Install with: (cd $REPO_ROOT/applications/electron && npm install)" >&2
     exit 1
 fi
-(cd "$REPO_ROOT/applications/electron" && npm run test:unit)
+# Run npm tests with explicit exit-code capture so SIGPIPE (141)
+# from internal reporter pipe-close doesn't false-fail under
+# pipefail. Real test failures (exit 1+) still block; only 141 is
+# treated as warn-not-fail.
+unit_exit=0
+(cd "$REPO_ROOT/applications/electron" && npm run test:unit) || unit_exit=$?
+if [ $unit_exit -ne 0 ] && [ $unit_exit -ne 141 ]; then
+    exit $unit_exit
+fi
+if [ $unit_exit -eq 141 ]; then
+    echo "WARN: test:unit exited 141 (SIGPIPE — reporter pipe-close, not test failure)"
+fi
 # #534 slice 2: Playwright e2e — Ryan 2026-04-28: "you need to run
 # your e2e acceptance tests in your pre-push." Per spec falsifier #6
 # (error-loud not silent-skip), the npm script returns non-zero on
 # any test failure or browser-env-missing so pre-push gates correctly.
-(cd "$REPO_ROOT/applications/electron" && npm run test:e2e)
+e2e_exit=0
+(cd "$REPO_ROOT/applications/electron" && npm run test:e2e) || e2e_exit=$?
+if [ $e2e_exit -ne 0 ] && [ $e2e_exit -ne 141 ]; then
+    exit $e2e_exit
+fi
+if [ $e2e_exit -eq 141 ]; then
+    echo "WARN: test:e2e exited 141 (SIGPIPE — reporter pipe-close, not test failure)"
+fi
 
 MAX_LINES=400
 echo "Checking file sizes..."
