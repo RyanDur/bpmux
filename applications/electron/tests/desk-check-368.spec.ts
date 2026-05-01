@@ -89,10 +89,15 @@ test.describe('desk-check #368 team-accept badge', () => {
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
 
-    // Open the delivered group so those rows render.
-    const deliveredGroup = win.locator('[data-test="board-group-delivered"]')
-    if (!(await deliveredGroup.evaluate((el: Element) => (el as HTMLDetailsElement).open))) {
-      await deliveredGroup.locator('summary').first().click()
+    // Post-#516: data-test on summary, not details. Click summary
+    // directly to fire native <details> toggle. See desk-check-375.
+    const deliveredSummary = win.locator('[data-test="board-group-delivered"]').first()
+    const isOpen = await deliveredSummary.evaluate((el: Element) => {
+      const details = el.closest('details')
+      return details ? (details as HTMLDetailsElement).open : false
+    })
+    if (!isOpen) {
+      await deliveredSummary.click()
     }
 
     const chore = win.locator('[data-test="board-story-800"]')
@@ -143,9 +148,13 @@ test.describe('desk-check #368 team-accept badge', () => {
   test('clicking badge opens drill-in and auto-expands timeline', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    const deliveredGroup = win.locator('[data-test="board-group-delivered"]')
-    if (!(await deliveredGroup.evaluate((el: Element) => (el as HTMLDetailsElement).open))) {
-      await deliveredGroup.locator('summary').first().click()
+    const deliveredSummary = win.locator('[data-test="board-group-delivered"]').first()
+    const isOpen = await deliveredSummary.evaluate((el: Element) => {
+      const details = el.closest('details')
+      return details ? (details as HTMLDetailsElement).open : false
+    })
+    if (!isOpen) {
+      await deliveredSummary.click()
     }
 
     const badge = win

@@ -63,10 +63,14 @@ async function launchWithFixture(): Promise<{
 
 async function openStoryDrillIn(win: Awaited<ReturnType<Awaited<ReturnType<typeof electron.launch>>['firstWindow']>>): Promise<void> {
   await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
-  const storyCard = win.locator('[data-test="board-story-card"]', {
-    hasText: 'Comment quote-excerpt'
-  })
-  await storyCard.first().click()
+  // Pre-#1128 used `[data-test="board-story-card"]` which never
+  // existed in the renderer. Fixture seeds story #366 in `ready`
+  // state; click `.board-story-button` (post-#499 div-class) under
+  // the canonical row test-id to open the drill-in.
+  const storyButton = win.locator(
+    '[data-test="board-story-366"] .board-story-button'
+  )
+  await storyButton.click()
   await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
   await expect(
     win.locator('[data-test="drill-in-comment"]').first()

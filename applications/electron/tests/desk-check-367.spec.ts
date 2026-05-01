@@ -114,10 +114,10 @@ test.describe('desk-check #367 timeline audit-trail', () => {
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
 
-    const storyCard = win.locator('[data-test="board-story-card"]', {
-      hasText: 'Timeline audit-trail'
-    })
-    await storyCard.first().click()
+    // Pre-#1128: `board-story-card` test-id never existed in renderer.
+    // Click the canonical row's div-class trigger.
+    const storyButton = win.locator('[data-test="board-story-367"] .board-story-button')
+    await storyButton.click()
     await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
 
     const timeline = win.locator('[data-test="drill-in-timeline"]')
@@ -164,10 +164,10 @@ test.describe('desk-check #367 timeline audit-trail', () => {
   test('show-all toggle reveals non-gate events', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    const storyCard = win.locator('[data-test="board-story-card"]', {
-      hasText: 'Timeline audit-trail'
-    })
-    await storyCard.first().click()
+    // Pre-#1128: `board-story-card` test-id never existed in renderer.
+    // Click the canonical row's div-class trigger.
+    const storyButton = win.locator('[data-test="board-story-367"] .board-story-button')
+    await storyButton.click()
     const timeline = win.locator('[data-test="drill-in-timeline"]')
     await timeline.locator('summary').click()
 

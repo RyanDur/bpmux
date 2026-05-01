@@ -134,8 +134,9 @@ test.describe('desk-check #337 rework: drill-in scroll reaches comments', () => 
   test('back-crumb header stays sticky during scroll', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    const card = win.locator('[data-test="board-story-337"]')
-    await card.first().click()
+    // Click the post-#499 div-class trigger directly; clicking the
+    // outer <li> doesn't fire the open-drill-in handler.
+    await win.locator('[data-test="board-story-337"] .board-story-button').click()
     const drillIn = win.locator('[data-test="board-drill-in"]')
 
     const backButton = win.locator('.drill-in-back')
