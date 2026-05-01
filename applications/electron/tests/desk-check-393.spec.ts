@@ -2,7 +2,7 @@ import { test, expect, _electron as electron } from '@playwright/test'
 import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { launchIsolatedElectron } from './helpers/launch'
+import { launchIsolatedElectron, waitForMessagesLoaded } from './helpers/launch'
 
 // #393 team-shape audit (AC1): role set derives from runtime
 // message stream, not hardcoded constants. Adding a new role
@@ -72,6 +72,16 @@ async function launchWithFixture(): Promise<{
       body: JSON.stringify(AD_HOC_MESSAGES)
     })
   })
+  // Empty /api/roster forces fallback to message-derivation (the
+  // substrate this test verifies). Without this, useTeamRoster waits
+  // on the real backend's /api/roster which races under workers=2.
+  await win.route('**/api/roster', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ roster: [] })
+    })
+  })
   await win.reload()
   return { app }
 }
@@ -81,16 +91,17 @@ test.describe('desk-check #393 team-shape audit (AC1 — role set derives from m
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
+    await waitForMessagesLoaded(win, 'ops says hi')
 
     // Positive: dev (observed) + ops (observed, not in pre-#393
     // hardcoded list) both render as sidebar entries. Viewer (ryan)
     // is excluded from the direct section.
     await expect(
       win.locator('[data-test="sidebar-direct-dev"]')
-    ).toBeVisible({ timeout: 5_000 })
+    ).toBeVisible({ timeout: 20_000 })
     await expect(
       win.locator('[data-test="sidebar-direct-ops"]')
-    ).toBeVisible({ timeout: 5_000 })
+    ).toBeVisible({ timeout: 20_000 })
 
     // Negative: designer + pm weren't in the observed stream, so
     // they must NOT render. Pre-#393 would have shown them from
@@ -105,12 +116,13 @@ test.describe('desk-check #393 team-shape audit (AC1 — role set derives from m
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
+    await waitForMessagesLoaded(win, 'ops says hi')
 
     // RENDERER_IDENTITY is "ryan:electron" per the useWebSocket
     // constant; shortName → "ryan". ryan shouldn't appear in the
     // direct-DM list even though their messages are in the stream.
     await expect(win.locator('[data-test="sidebar-direct-ryan"]')).toHaveCount(0, {
-      timeout: 3_000
+      timeout: 10_000
     })
 
     await app.close()

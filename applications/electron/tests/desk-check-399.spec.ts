@@ -2,7 +2,7 @@ import { test, expect, _electron as electron } from '@playwright/test'
 import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { launchIsolatedElectron } from './helpers/launch'
+import { launchIsolatedElectron, waitForMessagesLoaded } from './helpers/launch'
 
 // #399 follow-up to #386: `deriveDirectRoles` now filters system
 // senders in addition to the viewer. Ryan 2026-04-23 11:51 UTC:
@@ -76,6 +76,13 @@ async function launchWithFixture(): Promise<{
       body: JSON.stringify(MESSAGES)
     })
   })
+  await win.route('**/api/roster', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ roster: [] })
+    })
+  })
   await win.reload()
   return { app }
 }
@@ -90,13 +97,14 @@ test.describe('desk-check #399 deriveDirectRoles excludes system senders', () =>
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
+    await waitForMessagesLoaded(win, 'pm here')
 
     await expect(win.locator('[data-test="sidebar-direct-bpmux"]')).toHaveCount(0)
 
     // Sanity: the other agents that spoke non-system messages
     // still render as first-class DM entries.
-    await expect(win.locator('[data-test="sidebar-direct-dev"]')).toBeVisible()
-    await expect(win.locator('[data-test="sidebar-direct-pm"]')).toBeVisible()
+    await expect(win.locator('[data-test="sidebar-direct-dev"]')).toBeVisible({ timeout: 20_000 })
+    await expect(win.locator('[data-test="sidebar-direct-pm"]')).toBeVisible({ timeout: 20_000 })
 
     await app.close()
   })
@@ -108,8 +116,11 @@ test.describe('desk-check #399 deriveDirectRoles excludes system senders', () =>
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
+    await waitForMessagesLoaded(win, 'pm here')
 
-    await expect(win.locator('[data-test="sidebar-direct-ryan"]')).toHaveCount(0)
+    await expect(win.locator('[data-test="sidebar-direct-ryan"]')).toHaveCount(0, {
+      timeout: 10_000
+    })
 
     await app.close()
   })
