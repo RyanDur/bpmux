@@ -14,9 +14,11 @@ import { launchIsolatedElectron, getFreePort } from './helpers/launch'
 test.describe('#394 Playwright port + session isolation', () => {
   // Each isolated Electron launch spawns a real bpmux backend +
   // waits for /healthz; two launches + closes in one test can
-  // approach the 30s default. Bump to 90s for headroom on slow
-  // CI / cold-cache runs.
-  test.setTimeout(90_000)
+  // approach the 30s default. Bumped to 180s (#1133 fold) absorbs
+  // the post-migration workload — TEST_MODE→httpmock+real-backend
+  // raised per-launch cost; workers=2 contention puts 2 sequential
+  // real-backend spawns above the prior 90s ceiling.
+  test.setTimeout(180_000)
 
   test('getFreePort returns a port that can be bound', async () => {
     const port = await getFreePort()
