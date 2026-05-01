@@ -116,7 +116,7 @@ test.describe('desk-check #351 high-signal transitions', () => {
   test('drill-in surface has transition declared on enter state', async () => {
     const { app } = await launchWithBoard()
     const win = await app.firstWindow()
-    await win.locator('[data-test="board-story-351"] button').click()
+    await win.locator('[data-test="board-story-351"] .board-story-button').click()
     await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
     await win.waitForTimeout(400)
 

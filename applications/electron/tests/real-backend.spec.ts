@@ -769,7 +769,7 @@ test.describe('real-backend', () => {
     await expect(win.locator('[data-test="board-story-701"]')).toBeVisible()
 
     // Focus the first Ready row's button and fire Ctrl+Shift+Down twice.
-    const firstRow = win.locator('[data-test="board-story-701"] button')
+    const firstRow = win.locator('[data-test="board-story-701"] .board-story-button')
     await firstRow.focus()
     await firstRow.press('Control+Shift+ArrowDown')
     await firstRow.press('Control+Shift+ArrowDown')
@@ -928,7 +928,7 @@ test.describe('real-backend', () => {
 
     await expect(win.locator('[data-test="app-root"]')).toBeVisible()
     // Open drill-in via board row click.
-    await win.locator('[data-test="board-story-356"] button').click()
+    await win.locator('[data-test="board-story-356"] .board-story-button').click()
     await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
 
     // Type a comment + Cmd+Enter. Playwright's 'Meta+Enter' maps to
