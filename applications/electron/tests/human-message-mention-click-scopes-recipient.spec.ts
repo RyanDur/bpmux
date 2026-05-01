@@ -1,10 +1,9 @@
 import { test, expect } from '@playwright/test'
-import { launchIsolatedWithWindow } from './helpers/launch'
+import { launchWithMockGh } from './helpers/launch'
 
 test.describe('human-side E2E #476 — direct-action — message @mention click', () => {
   test('clicking an @<role> pill scopes the chat recipient to that role', async () => {
-    const { app, win } = await launchIsolatedWithWindow({
-      extraEnv: { BPMUX_TEST_MODE: '1' },
+    const { app, win, mockGh } = await launchWithMockGh({
       seedMessages: [
         {
           from: 'dev:claude-code',
@@ -20,35 +19,37 @@ test.describe('human-side E2E #476 — direct-action — message @mention click'
         }
       ]
     })
+    try {
+      const consoleErrors: string[] = []
+      const pageErrors: Error[] = []
+      win.on('console', (m) => {
+        if (m.type() === 'error') consoleErrors.push(m.text())
+      })
+      win.on('pageerror', (e) => pageErrors.push(e))
 
-    const consoleErrors: string[] = []
-    const pageErrors: Error[] = []
-    win.on('console', (m) => {
-      if (m.type() === 'error') consoleErrors.push(m.text())
-    })
-    win.on('pageerror', (e) => pageErrors.push(e))
+      const list = win.locator('[data-test="message-list"]')
+      await expect(list).toBeVisible()
+      await expect(list).toContainText('please look at this', { timeout: 10000 })
 
-    const list = win.locator('[data-test="message-list"]')
-    await expect(list).toBeVisible()
-    await expect(list).toContainText('please look at this', { timeout: 10000 })
+      const broadcastButton = win.locator('[data-test="sidebar-broadcast"]')
+      await expect(broadcastButton).toHaveAttribute('aria-current', 'true')
 
-    const broadcastButton = win.locator('[data-test="sidebar-broadcast"]')
-    await expect(broadcastButton).toHaveAttribute('aria-current', 'true')
+      consoleErrors.length = 0
+      pageErrors.length = 0
 
-    consoleErrors.length = 0
-    pageErrors.length = 0
+      const mention = win.locator('[data-test="message-mention"]').first()
+      await expect(mention).toBeVisible()
+      await mention.click()
 
-    const mention = win.locator('[data-test="message-mention"]').first()
-    await expect(mention).toBeVisible()
-    await mention.click()
+      const devButton = win.locator('[data-test="sidebar-direct-dev"]')
+      await expect(devButton).toHaveAttribute('aria-current', 'true')
+      await expect(broadcastButton).not.toHaveAttribute('aria-current', 'true')
 
-    const devButton = win.locator('[data-test="sidebar-direct-dev"]')
-    await expect(devButton).toHaveAttribute('aria-current', 'true')
-    await expect(broadcastButton).not.toHaveAttribute('aria-current', 'true')
-
-    expect(consoleErrors).toEqual([])
-    expect(pageErrors).toEqual([])
-
-    await app.close()
+      expect(consoleErrors).toEqual([])
+      expect(pageErrors).toEqual([])
+    } finally {
+      await app.close()
+      await mockGh.close()
+    }
   })
 })
