@@ -276,10 +276,16 @@ test.describe('real-backend', () => {
       // AC6: insight message renders with ◊ gutter glyph. At least
       // one insight glyph exists because the fixture includes one
       // insight message.
+      // Post-#373 the message-class glyphs render as inline SVGs
+      // (replacing the pre-#373 unicode `◊/•/⚙`). The element still
+      // carries data-test="message-class-glyph" + aria-label="insight",
+      // but textContent is empty — assert the SVG presence + the
+      // aria-label instead.
       const insightGlyph = win.locator(
         '[data-test="message-class-glyph"][data-class="insight"]'
-      )
-      await expect(insightGlyph.first()).toHaveText('◊')
+      ).first()
+      await expect(insightGlyph).toHaveAttribute('aria-label', 'insight')
+      await expect(insightGlyph.locator('svg')).toBeVisible()
 
       // AC1: click [activity] pill → activity messages become visible.
       // Count rises after toggle. Track via a before/after snapshot.
