@@ -287,8 +287,15 @@ impl TestBpmux {
             port,
             _default_mock_gh: default_mock,
         };
+        // 15 s wait_for_tui: when 5+ TestBpmux subprocesses start
+        // concurrently within a single test binary (story61, story65,
+        // peer_count, sidebar_click etc. each have multiple #[test]
+        // functions running in cargo's default num_cpus pool), the
+        // "solo" render can stall past 5 s under load. The previous
+        // 5 s budget was tight enough that ac4_inline_code_renders +
+        // similar flaked one-in-N pre-push runs.
         assert!(
-            bpmux.wait_for_tui("solo", Duration::from_secs(5)),
+            bpmux.wait_for_tui("solo", Duration::from_secs(15)),
             "TUI should render"
         );
         bpmux.wait_for_http_ready();
