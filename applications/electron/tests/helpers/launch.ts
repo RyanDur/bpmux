@@ -165,6 +165,20 @@ export const launchWithMockGh = async (
     }
   })
   const win = await result.app.firstWindow()
+  // Mock /api/roster as empty so the sidebar's useTeamRoster hook
+  // falls back to message-derivation immediately. Without this,
+  // useTeamRoster waits on the real bpmux backend's /api/roster
+  // which races against message hydration under workers=2 contention.
+  // Specs that need a populated roster can `win.route` over this
+  // default.
+  await win.route('**/api/roster', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ roster: [] })
+    })
+  })
+  await win.reload()
   // Token file is written by the bpmux server on startup; healthz
   // already gates that. Read it once so RPC callers can authenticate.
   const authToken = readFileSync(authTokenPath, 'utf-8').trim()
