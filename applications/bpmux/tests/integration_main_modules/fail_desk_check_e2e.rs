@@ -128,7 +128,7 @@ fn fail_desk_check_rejects_missing_reason() {
 }
 
 #[test]
-fn fail_desk_check_view_board_reflects_needs_fixes_via_fixture_seed() {
+fn fail_desk_check_view_board_reflects_in_progress_via_fixture_seed() {
     use harness::mock_gh::{issue_json, mock_story_mutations};
     use httpmock::{Method, MockServer};
     use serde_json::Value;
@@ -170,9 +170,12 @@ fn fail_desk_check_view_board_reflects_needs_fixes_via_fixture_seed() {
             .as_str()
             .map(String::from)
             .unwrap_or_else(|| story.to_string());
+        // #1146 slice 1: fail_desk_check transitions DeskCheck → InProgress
+        // (back-edge); rework-context lives in transition history (gate-
+        // comment log), not a "needs fixes" label.
         assert!(
-            story_text.contains("needs fixes"),
-            "get_story reflects needs-fixes label for seeded story #400 post-fail_desk_check; got:\n{story_text}"
+            story_text.contains("in progress"),
+            "get_story reflects in-progress label for seeded story #400 post-fail_desk_check; got:\n{story_text}"
         );
     });
 }

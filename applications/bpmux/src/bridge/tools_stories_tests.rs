@@ -1479,7 +1479,7 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = store.story(202).unwrap();
-    assert_eq!(story.state, StoryState::NeedsFixes);
+    assert_eq!(story.state, StoryState::InProgress);
     let gates = story.gate_comments.as_ref().expect("gate_comments seeded");
     assert!(
         gates
@@ -1488,10 +1488,11 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
         "gate_comments should contain FailDeskCheck with payload: {gates:?}"
     );
 
-    // #1139 universal-reap-via-helper: fail_desk_check strips every
-    // workflow-state label in ALL_STATE_LABELS (9) except "needs fixes"
-    // (added via StateTransitioned). 8x TagRemoved + GateCommentAppended
-    // + StateTransitioned = 10.
+    // #1146 slice 1: fail_desk_check transitions DeskCheck → InProgress
+    // (back-edge); reap keeps "in progress" so post-fail label-set
+    // carries only the new-state label. ALL_STATE_LABELS has 9 entries;
+    // 8x TagRemoved (everything except "in progress") + GateCommentAppended
+    // + StateTransitioned = 10 events.
     let pushed = adapter.pushed_events();
     assert_eq!(pushed.len(), 10, "10 events expected: {pushed:?}");
     let reap_labels: Vec<&str> = pushed[..8]
@@ -1508,14 +1509,14 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
         vec![
             "icebox",
             "ready",
-            "in progress",
             "desk-check",
             "delivered",
             "ready for accept",
+            "needs fixes",
             "rejected",
             "accepted",
         ],
-        "#1139 universal-reap iterates ALL_STATE_LABELS minus 'needs fixes'"
+        "#1146 slice 1: universal-reap iterates ALL_STATE_LABELS minus 'in progress'"
     );
     assert!(matches!(
         &pushed[8],
@@ -1530,7 +1531,7 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
         &pushed[9],
         BoardEvent::StateTransitioned {
             number: 202,
-            new_state: StoryState::NeedsFixes,
+            new_state: StoryState::InProgress,
             ..
         }
     ));
@@ -1917,7 +1918,7 @@ async fn reject_story_migrated_path_emits_tag_remove_gate_with_reason_and_state_
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = store.story(206).unwrap();
-    assert_eq!(story.state, StoryState::Rejected);
+    assert_eq!(story.state, StoryState::Ready);
     let gates = story.gate_comments.as_ref().expect("gate_comments seeded");
     assert!(
         gates
@@ -1926,15 +1927,17 @@ async fn reject_story_migrated_path_emits_tag_remove_gate_with_reason_and_state_
         "gate_comments should contain Rejected with reason payload: {gates:?}"
     );
 
-    // #1139 universal-reap-via-helper on reject_story: 8x TagRemoved
-    // (ALL_STATE_LABELS minus "rejected") + GateCommentAppended +
-    // StateTransitioned = 10 events. Cascade drains synchronously per
-    // #505 slice 2 so all events reach the adapter before return.
+    // #1146 slice 1: reject_story transitions Delivered → Ready
+    // (back-edge); reap keeps "ready" so post-reject label-set carries
+    // only the new-state label. 8x TagRemoved (ALL_STATE_LABELS minus
+    // "ready") + GateCommentAppended + StateTransitioned = 10 events.
+    // Cascade drains synchronously per #505 slice 2 so all events reach
+    // the adapter before return.
     let pushed = adapter.pushed_events();
     assert_eq!(
         pushed.len(),
         10,
-        "post-#1139 universal-reap-via-helper: 8x TagRemoved + Gate + State; pushed: {pushed:?}"
+        "#1146 slice 1: 8x TagRemoved + Gate + State; pushed: {pushed:?}"
     );
     let reap_labels: Vec<&str> = pushed[..8]
         .iter()
@@ -1949,15 +1952,15 @@ async fn reject_story_migrated_path_emits_tag_remove_gate_with_reason_and_state_
         reap_labels,
         vec![
             "icebox",
-            "ready",
             "in progress",
             "desk-check",
             "delivered",
             "ready for accept",
             "needs fixes",
+            "rejected",
             "accepted",
         ],
-        "#1139 universal-reap iterates ALL_STATE_LABELS minus 'rejected'"
+        "#1146 slice 1: universal-reap iterates ALL_STATE_LABELS minus 'ready'"
     );
     assert!(matches!(
         &pushed[8],
@@ -1972,7 +1975,7 @@ async fn reject_story_migrated_path_emits_tag_remove_gate_with_reason_and_state_
         &pushed[9],
         BoardEvent::StateTransitioned {
             number: 206,
-            new_state: StoryState::Rejected,
+            new_state: StoryState::Ready,
             ..
         }
     ));
@@ -3394,9 +3397,9 @@ async fn fail_desk_check_drains_synchronously_so_gh_side_propagates_before_retur
     assert!(
         pushed.iter().any(|e| matches!(
             e,
-            BoardEvent::StateTransitioned { number: 4691, new_state, .. } if *new_state == StoryState::NeedsFixes
+            BoardEvent::StateTransitioned { number: 4691, new_state, .. } if *new_state == StoryState::InProgress
         )),
-        "fail_desk_check must drain StateTransitioned(NeedsFixes) to adapter BEFORE returning. Pushed: {pushed:?}"
+        "fail_desk_check must drain StateTransitioned(InProgress) to adapter BEFORE returning. Pushed: {pushed:?}"
     );
 }
 
@@ -3463,7 +3466,7 @@ async fn reject_after_accept_emits_tag_remove_accepted_and_story_reopened() {
         !story.is_closed,
         "store must reflect re-opened state post-reject"
     );
-    assert_eq!(story.state, StoryState::Rejected);
+    assert_eq!(story.state, StoryState::Ready);
 }
 
 #[tokio::test]

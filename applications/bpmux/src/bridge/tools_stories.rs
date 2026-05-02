@@ -17,6 +17,7 @@ use crate::transport::protocol::ClientMessage;
 /// sites reference the const.
 const LABEL_DELIVERED: &str = "delivered";
 const LABEL_IN_PROGRESS: &str = "in progress";
+const LABEL_READY: &str = "ready";
 const LABEL_READY_FOR_ACCEPT: &str = "ready for accept";
 
 /// Canonical workflow-state label set — every gate-tool's universal-
@@ -27,7 +28,7 @@ const LABEL_READY_FOR_ACCEPT: &str = "ready for accept";
 /// desk-check to share the same set.
 pub(super) const ALL_STATE_LABELS: &[&str] = &[
     "icebox",
-    "ready",
+    LABEL_READY,
     LABEL_IN_PROGRESS,
     "desk-check",
     LABEL_DELIVERED,
@@ -956,13 +957,14 @@ pub(super) async fn handle_reject_story(
             ts: chrono::Utc::now(),
             peer_id: crate::board::PeerId::local(),
         };
-        // #1139 universal-reap via canonical helper: strip every
-        // workflow-state label except "rejected" so post-reject label-set
-        // carries only "rejected". Migrated from inline list per
-        // ALL_STATE_LABELS single-source-of-truth; the was_accepted
-        // re-pickup case still strips "accepted" explicitly below
-        // alongside firing StoryReopened.
-        reap_workflow_labels(r.as_ref(), number, &meta, "rejected")?;
+        // #1146 slice 1: reject transitions Delivered → Ready (back-edge);
+        // rework-context lives in transition history (backward-edge
+        // predicate over the gate-comment log), not in a separate Rejected
+        // state or a "rejected" label. Reap keeps "ready" so the post-
+        // reject label-set carries only the new-state label. The
+        // was_accepted re-pickup case still fires StoryReopened below
+        // since closed→open isn't a label operation.
+        reap_workflow_labels(r.as_ref(), number, &meta, LABEL_READY)?;
         if was_accepted {
             // reap above already stripped "accepted"; this branch only
             // fires the GH-state reopen since closed→open isn't a label
@@ -985,7 +987,7 @@ pub(super) async fn handle_reject_story(
         r.mutate_sync(crate::board::BoardEvent::StateTransitioned {
             meta,
             number,
-            new_state: crate::board::domain::StoryState::Rejected,
+            new_state: crate::board::domain::StoryState::Ready,
         })
         .map_err(|e| format!("#{number} state enqueue failed: {e}"))?;
         r.drain_pending()
@@ -1073,11 +1075,11 @@ pub(super) async fn handle_pass_desk_check(
     )
 }
 
-/// Fail desk-check — designer only. Signals dev that the story needs
-/// fixes (applies the `needs fixes` label). Signal-send failure is
-/// fail-soft per the start_story / accept_story / deliver_story
-/// precedent — state-transition mutate_sync is load-bearing, signal
-/// is auxiliary.
+/// Fail desk-check — designer only. Transitions DeskCheck → InProgress
+/// (back-edge); rework-context lives in the gate-comment history, not
+/// a separate state or label. Signal-send failure is fail-soft per the
+/// start_story / accept_story / deliver_story precedent — state-
+/// transition mutate_sync is load-bearing, signal is auxiliary.
 pub(super) async fn handle_fail_desk_check(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
@@ -1121,13 +1123,13 @@ pub(super) async fn handle_fail_desk_check(
             })
             .map_err(|e| format!("#{number} reopen enqueue failed: {e}"))?;
         }
-        // #1139 universal-reap via canonical helper: strip every
-        // workflow-state label except "needs fixes" (added via the
-        // StateTransitioned event below). Migrated from inline list
-        // per ALL_STATE_LABELS single-source-of-truth. Was-accepted
-        // re-pickup case lands clean because the helper iterates the
-        // canonical set including "accepted".
-        reap_workflow_labels(r.as_ref(), number, &meta, "needs fixes")?;
+        // #1146 slice 1: fail_desk_check transitions DeskCheck → InProgress
+        // (back-edge); rework-context lives in transition history
+        // (backward-edge predicate over the gate-comment log), not in a
+        // separate NeedsFixes state or a "needs fixes" label. Reap keeps
+        // "in progress" so the post-fail label-set carries only the new-
+        // state label.
+        reap_workflow_labels(r.as_ref(), number, &meta, LABEL_IN_PROGRESS)?;
         r.mutate_sync(crate::board::BoardEvent::GateCommentAppended {
             meta: meta.clone(),
             number,
@@ -1138,7 +1140,7 @@ pub(super) async fn handle_fail_desk_check(
         r.mutate_sync(crate::board::BoardEvent::StateTransitioned {
             meta,
             number,
-            new_state: crate::board::domain::StoryState::NeedsFixes,
+            new_state: crate::board::domain::StoryState::InProgress,
         })
         .map_err(|e| format!("#{number} state enqueue failed: {e}"))?;
         r.drain_pending()

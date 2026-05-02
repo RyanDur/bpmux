@@ -129,7 +129,7 @@ fn reject_story_rejects_unknown_role() {
 }
 
 #[test]
-fn reject_story_view_board_reflects_rejected_via_fixture_seed() {
+fn reject_story_view_board_reflects_ready_via_fixture_seed() {
     use harness::mock_gh::{issue_json, mock_story_mutations};
     use httpmock::{Method, MockServer};
     use serde_json::Value;
@@ -166,9 +166,12 @@ fn reject_story_view_board_reflects_rejected_via_fixture_seed() {
             .as_str()
             .map(String::from)
             .unwrap_or_else(|| story.to_string());
+        // #1146 slice 1: reject_story transitions Delivered → Ready
+        // (back-edge); rework-context lives in transition history (gate-
+        // comment log), not a "rejected" label.
         assert!(
-            story_text.contains("rejected"),
-            "get_story reflects rejected label for seeded story #700 post-reject_story; got:\n{story_text}"
+            story_text.contains("ready"),
+            "get_story reflects ready label for seeded story #700 post-reject_story; got:\n{story_text}"
         );
     });
 }
