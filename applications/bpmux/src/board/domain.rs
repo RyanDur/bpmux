@@ -88,6 +88,73 @@ pub struct GateComment {
     pub payload: Option<String>,
 }
 
+/// One step in a story's state-transition history. Audit substrate is
+/// derived from `gate_comments` via [`replay_transitions`]; there is
+/// no dedicated GH persistence layer for transitions.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StateTransition {
+    pub from: StoryState,
+    pub to: StoryState,
+    pub ts: DateTime<Utc>,
+    pub actor: String,
+    pub comment: Option<String>,
+}
+
+/// Replay a story's state-transitions from its gate-comment history.
+/// Each `Gate` variant maps to a fixed (from, to) tuple, so the
+/// gate-name is recoverable from the edge alone. Gate::Filed is the
+/// creation event, not a transition, and is filtered out.
+pub fn replay_transitions(gate_comments: &[GateComment]) -> Vec<StateTransition> {
+    gate_comments
+        .iter()
+        .filter_map(|gc| {
+            let (from, to) = match gc.gate {
+                Gate::Filed => return None,
+                Gate::Pickup => (StoryState::Ready, StoryState::InProgress),
+                Gate::Delivered => (StoryState::InProgress, StoryState::DeskCheck),
+                Gate::PassDeskCheck => (StoryState::DeskCheck, StoryState::Delivered),
+                Gate::FailDeskCheck => (StoryState::DeskCheck, StoryState::InProgress),
+                Gate::Rejected => (StoryState::Delivered, StoryState::Ready),
+                Gate::Accepted => (StoryState::Delivered, StoryState::Accepted),
+            };
+            Some(StateTransition {
+                from,
+                to,
+                ts: gc.ts,
+                actor: gc.actor.clone(),
+                comment: gc.payload.clone(),
+            })
+        })
+        .collect()
+}
+
+/// Linear ordinal over the 6 final column-aligned states. Vestigial
+/// states fold to their display-equivalent ordinal so backward-edge
+/// detection works uniformly while the variants are still in the enum.
+fn state_ordinal(s: StoryState) -> u8 {
+    match s {
+        StoryState::Icebox => 0,
+        StoryState::Ready | StoryState::Rejected => 1,
+        StoryState::InProgress | StoryState::NeedsFixes => 2,
+        StoryState::DeskCheck => 3,
+        StoryState::Delivered | StoryState::ReadyForAccept => 4,
+        StoryState::Accepted => 5,
+    }
+}
+
+pub fn is_backward(t: &StateTransition) -> bool {
+    state_ordinal(t.to) < state_ordinal(t.from)
+}
+
+/// Returns the most-recent transition only if it's backward. Once a
+/// later forward transition lands, this returns None — rework-context
+/// stops surfacing as soon as the story moves forward again.
+pub fn most_recent_backward_transition(
+    transitions: &[StateTransition],
+) -> Option<&StateTransition> {
+    transitions.last().filter(|t| is_backward(t))
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FreeComment {
     pub body: String,

@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
-use crate::board::domain::{Gate, StoryState};
+use crate::board::domain::{
+    Gate, GateComment, StoryState, most_recent_backward_transition, replay_transitions,
+};
 use crate::board::{BoardStore, RefreshDriver};
 
 use super::rework_context::enrich_body;
@@ -19,13 +21,14 @@ fn state_label(state: StoryState) -> &'static str {
     }
 }
 
-fn rework_context_from_gates(gates: &[crate::board::domain::GateComment]) -> Option<String> {
-    let rejection = gates
-        .iter()
-        .rev()
-        .find(|g| matches!(g.gate, Gate::Rejected | Gate::FailDeskCheck))?
-        .payload
-        .clone();
+/// Build the "## Rework context" body section when the story's most-
+/// recent transition is backward. The rejection reason is the backward
+/// transition's comment; the verified-observation is the most-recent
+/// Gate::Delivered comment (which describes what's being reworked).
+fn rework_context_from_gates(gates: &[GateComment]) -> Option<String> {
+    let transitions = replay_transitions(gates);
+    let backward = most_recent_backward_transition(&transitions)?;
+    let rejection = backward.comment.clone();
     let prior_delivery = gates
         .iter()
         .rev()
@@ -67,7 +70,11 @@ pub(in crate::bridge) async fn handle_get_story(
         story.body = Some(body);
     }
     let mut body_out = story.body.clone().unwrap_or_default();
-    if matches!(story.state, StoryState::Rejected | StoryState::NeedsFixes) {
+    let needs_gates = matches!(
+        story.state,
+        StoryState::Ready | StoryState::InProgress | StoryState::Rejected | StoryState::NeedsFixes
+    );
+    if needs_gates {
         let gates = match story.gate_comments.clone() {
             Some(g) => g,
             None => r
