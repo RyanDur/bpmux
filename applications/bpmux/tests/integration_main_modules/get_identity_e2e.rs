@@ -40,7 +40,27 @@ fn get_identity_default_role_returns_calling_bridges_identity() {
 
 #[test]
 fn get_identity_role_arg_overrides_default() {
-    let bpmux = TestBpmux::start();
+    // Seed BPMUX_IDENTITY_DIR with role-distinct identity files so
+    // the role-override semantic is observable. Without this, dev's
+    // local ~/.bpmux/identity supplies dev's data and CI's empty dir
+    // returns equal-empty payloads — masking the actual override
+    // semantic. Per Ryan's "no git/GH/local-state in tests" 2026-05-02.
+    let identity_dir = tempfile::TempDir::new().expect("identity dir");
+    std::fs::write(
+        identity_dir.path().join("dev.json"),
+        r#"{"values":[{"name":"dev value","description":"dev-specific","principles":[]}]}"#,
+    )
+    .expect("write dev.json");
+    std::fs::write(
+        identity_dir.path().join("pm.json"),
+        r#"{"values":[{"name":"pm value","description":"pm-specific","principles":[]}]}"#,
+    )
+    .expect("write pm.json");
+    let bpmux = TestBpmux::start_with_env(
+        "human",
+        "BPMUX_IDENTITY_DIR",
+        identity_dir.path().to_str().expect("identity dir path"),
+    );
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
         let dev = TestBridge::connect(&bpmux, "dev").await;

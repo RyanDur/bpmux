@@ -47,10 +47,14 @@ jobs:
           # suite on top of the offline run. One `cargo test` invocation
           # covers both — same target dir, no second compile cost per
           # Ryan's flag 2026-04-19 02:40.
+          # Post-#1136 consolidation: 103 test binaries → 3, so build
+          # and test parallelism are safe to relax. cargo defaults
+          # both to num CPUs; removing the --jobs 1 / --test-threads=1
+          # constraint reduces wall-clock significantly.
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BPMUX_REPO: ${{ github.repository }}
           BPMUX_SESSION_BASE: ${{ runner.temp }}/bpmux-sessions
-        run: cargo test --jobs 1 --features integration_tests -- --test-threads=1
+        run: cargo test --features integration_tests
       - name: Audit
         run: |
           cargo install cargo-audit
