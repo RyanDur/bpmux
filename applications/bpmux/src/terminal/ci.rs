@@ -181,7 +181,7 @@ pub(super) fn spawn_poller(
 ///
 /// Hydration backward-compat: `hydrate_last_broadcast` matches the
 /// "🔴 CI" / "🟢 CI" / "⏸ CI" prefixes; this still satisfies that.
-pub(super) fn compute_broadcast_text(next: &CiEvent) -> Option<String> {
+pub(crate) fn compute_broadcast_text(next: &CiEvent) -> Option<String> {
     match next.state {
         CiState::Red => Some(format_failure_line(next)),
         CiState::Green => Some(format_success_line(next)),
@@ -223,7 +223,7 @@ pub(super) fn compute_broadcast_text(next: &CiEvent) -> Option<String> {
 /// back to `summary` if missing. Roles not in the map (e.g., `ryan`
 /// itself) fall through to `summary`, which is correct — Ryan's
 /// default CI view should be the binary state, same as pm/designer.
-pub(super) fn build_multi_depth_for_transition(event: &CiEvent) -> MultiDepthPayload {
+pub(crate) fn build_multi_depth_for_transition(event: &CiEvent) -> MultiDepthPayload {
     let (summary, dev_detail) = match event.state {
         CiState::Green => ("\u{1F7E2} CI green".to_string(), format_success_line(event)),
         CiState::Red => (
@@ -292,7 +292,7 @@ pub fn open_in_browser(url: &str) {
 /// `compute_broadcast_text` and wraps it as a Chat message addressed
 /// to dev so the bridge pushes it into dev's notifications. Same
 /// addressing pattern as `deliver_story → designer` signals.
-pub(super) fn build_dev_ci_signal(text: &str) -> Message {
+pub(crate) fn build_dev_ci_signal(text: &str) -> Message {
     Message {
         from: "bpmux".to_string(),
         text: text.to_string(),

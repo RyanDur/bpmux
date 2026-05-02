@@ -167,7 +167,13 @@ pub fn spawn(
             match classify_transition(last_seen, observation) {
                 Transition::Changed { .. } => {
                     last_seen = Some(observation);
-                    broadcast(&session);
+                    let event = crate::terminal::ci::CiEvent {
+                        state: classified.state,
+                        sha: runs[0].head_sha.clone(),
+                        title: runs[0].display_title.clone(),
+                        run_id,
+                    };
+                    broadcast(&session, &event);
                 }
                 Transition::Same | Transition::NoData => {}
             }
@@ -175,15 +181,45 @@ pub fn spawn(
     });
 }
 
-fn broadcast(session: &session::Session) {
-    let msg = session::Message {
+/// Per-completion broadcast (#1140 rework):
+/// - Fires the existing `CI_STATE_UPDATE_MARKER` (System-class, filtered by
+///   the bridge before reaching agents) so the renderer's CiGlyph
+///   re-fetches `/api/ci`.
+/// - ALSO fires the agent-visible Activity broadcast + dev-addressed
+///   workflow signal via `terminal::ci`'s pure builders. Same shape as
+///   the TUI poller emits, so an agent receives one signal regardless
+///   of which poller observes the completion. Closes #1140's
+///   silent-hold-loop class at the SERVER's runtime path (this watcher
+///   is what `server.rs:163` spawns; the TUI's `terminal::ci::spawn_poller`
+///   is a separate poller that doesn't run in Electron-spawned bpmux).
+fn broadcast(session: &session::Session, event: &crate::terminal::ci::CiEvent) {
+    let marker_msg = session::Message {
         from: "bpmux".to_string(),
         text: crate::bridge::CI_STATE_UPDATE_MARKER.to_string(),
         ts: chrono::Utc::now(),
         message_type: session::MessageType::System,
         ..session::Message::default()
     };
-    if let Err(e) = session.broadcast(&msg) {
-        session::diag::log_diag(&format!("ci_watcher: broadcast failed: {e}"));
+    if let Err(e) = session.broadcast(&marker_msg) {
+        session::diag::log_diag(&format!("ci_watcher: marker broadcast failed: {e}"));
+    }
+    let Some(text) = crate::terminal::ci::compute_broadcast_text(event) else {
+        return;
+    };
+    let multi_depth = crate::terminal::ci::build_multi_depth_for_transition(event);
+    let activity_msg = session::Message {
+        from: "bpmux".to_string(),
+        text: text.clone(),
+        ts: chrono::Utc::now(),
+        message_type: session::MessageType::Activity,
+        multi_depth: Some(multi_depth),
+        ..session::Message::default()
+    };
+    if let Err(e) = session.broadcast(&activity_msg) {
+        session::diag::log_diag(&format!("ci_watcher: activity broadcast failed: {e}"));
+    }
+    let dev_signal = crate::terminal::ci::build_dev_ci_signal(&text);
+    if let Err(e) = session.broadcast(&dev_signal) {
+        session::diag::log_diag(&format!("ci_watcher: dev signal failed: {e}"));
     }
 }
