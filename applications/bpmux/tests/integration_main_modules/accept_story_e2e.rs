@@ -18,7 +18,6 @@ use crate::harness;
 use harness::bridge::TestBridge;
 use harness::pty::TestBpmux;
 use harness::story_helpers::create_target_story;
-use std::io::Write;
 use std::time::Duration;
 
 #[test]
@@ -110,38 +109,46 @@ fn accept_story_rejects_unknown_role() {
 }
 
 #[test]
-fn accept_story_view_board_reflects_accepted_via_fixture_seed() {
-    let mut fixture = tempfile::NamedTempFile::new().expect("fixture file");
-    fixture
-        .write_all(
-            br#"[{"number":600,"title":"Pre-seeded delivered","state":"OPEN","labels":[{"name":"delivered"}]}]"#,
-        )
-        .expect("write fixture");
-    let fixture_path = fixture.path().to_str().expect("utf-8 path").to_string();
+fn accept_story_view_board_reflects_accepted_via_mocked_seed() {
+    use harness::mock_gh::{issue_json, mock_story_mutations};
+    use httpmock::{Method, MockServer};
+    use serde_json::Value;
 
-    // #551: fixture-loading happens server-side via BPMUX_BOARD_FIXTURE
-    let bpmux = TestBpmux::start_with_fixture(&fixture_path);
+    let server = MockServer::start();
+    let base_url = format!("{}/", server.base_url());
+    let issue = issue_json(600, "Pre-seeded delivered", &["delivered"], None);
+    server.mock(|when, then| {
+        when.method(Method::GET).path("/repos/acme/bpmux/issues");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(Value::Array(vec![issue.clone()]).to_string());
+    });
+    mock_story_mutations(&server, 600, &issue);
+
+    let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let pm = TestBridge::connect(&bpmux, "pm").await;
+        let pm = TestBridge::connect_with_mock_gh(&bpmux, "pm", &base_url).await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        pm.call_tool(
-            "accept_story",
-            serde_json::json!({"number": 600}),
-        )
-        .await
-        .expect("accept_story should succeed against seeded story");
+        pm.call_tool("accept_story", serde_json::json!({"number": 600}))
+            .await
+            .expect("accept_story should succeed against mocked story");
 
         let view = pm
             .call_tool("view_board", serde_json::json!({}))
             .await
             .expect("view_board should succeed");
-        let view_text = view.as_str().map(String::from).unwrap_or_else(|| view.to_string());
+        let view_text = view
+            .as_str()
+            .map(String::from)
+            .unwrap_or_else(|| view.to_string());
         assert!(
             view_text.contains("#600") && view_text.contains("ACCEPTED"),
-            "view_board reflects accepted state for seeded story #600 post-accept_story; got:\n{view_text}"
+            "view_board reflects accepted state for mocked story #600 post-accept_story; got:\n{view_text}"
         );
+
+        pm.close().await;
     });
 }
 

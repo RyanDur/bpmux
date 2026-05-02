@@ -3,24 +3,15 @@ use super::model::{BoardStory, StoryState};
 /// Fetch all open + recently closed issues and categorize them into
 /// board columns. Returns stories sorted by state priority.
 ///
-/// When `BPMUX_BOARD_FIXTURE` env var is set, reads from that file
-/// instead of calling the API. This lets e2e tests exercise the
-/// full board rendering pipeline with controlled data.
-///
 /// #320: ported from `gh issue list` to octocrab. Async because
 /// octocrab's client is async; callers in `event.rs` now
 /// `tokio::spawn` instead of `spawn_blocking`. Auth via
 /// `BPMUX_REPO` + `GH_TOKEN`/`GITHUB_TOKEN` (same env as the
-/// background poller).
+/// background poller). Test fixture support via the env-var
+/// BPMUX_BOARD_FIXTURE was retired in #724 — tests use httpmock
+/// against the real GitHubSourceAdapter cascade instead, per
+/// "only octocrab as test-double" directive.
 pub async fn fetch_board_stories() -> Result<Vec<BoardStory>, String> {
-    // Test fixture support: read from file instead of GitHub.
-    if let Ok(fixture_path) = std::env::var("BPMUX_BOARD_FIXTURE") {
-        let contents =
-            std::fs::read_to_string(&fixture_path).map_err(|e| format!("fixture read: {e}"))?;
-        let json: Vec<serde_json::Value> =
-            serde_json::from_str(&contents).map_err(|e| format!("fixture parse: {e}"))?;
-        return parse_issue_values(&json);
-    }
     let (client, owner, repo) = crate::github::octocrab_client()?;
     let page = client
         .issues(&owner, &repo)
@@ -51,85 +42,6 @@ fn sort_stories(stories: &mut [BoardStory]) {
         StoryState::Accepted => 4,
         StoryState::Icebox => 5,
     });
-}
-
-/// Parse a fixture's serde_json array (the legacy gh `--json` format)
-/// into BoardStory structs. Kept for `BPMUX_BOARD_FIXTURE` test
-/// support — the live path now goes through octocrab's typed Issue.
-fn parse_issue_values(json: &[serde_json::Value]) -> Result<Vec<BoardStory>, String> {
-    let mut stories = Vec::new();
-    for issue in json {
-        let num = issue["number"].as_u64().unwrap_or(0);
-        let title = issue["title"].as_str().unwrap_or("?").to_string();
-        let gh_state = issue["state"].as_str().unwrap_or("OPEN");
-        let body = issue["body"].as_str().unwrap_or("").to_string();
-        let assignees: Vec<String> = issue["assignees"]
-            .as_array()
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|a| a["login"].as_str().map(String::from))
-                    .collect()
-            })
-            .unwrap_or_default();
-        let created = issue["createdAt"]
-            .as_str()
-            .unwrap_or("")
-            .chars()
-            .take(10) // YYYY-MM-DD
-            .collect::<String>();
-        let labels: Vec<String> = issue["labels"]
-            .as_array()
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|l| l["name"].as_str().map(String::from))
-                    .collect()
-            })
-            .unwrap_or_default();
-
-        let has = |name: &str| labels.iter().any(|l| l == name);
-
-        let state = if gh_state == "CLOSED" {
-            StoryState::Accepted
-        } else if has("deferred") {
-            StoryState::Deferred
-        } else if has("delivered") {
-            StoryState::Delivered
-        } else if has("started") || has("finished") {
-            StoryState::InProgress
-        } else if has("ready") {
-            StoryState::Ready
-        } else if has("icebox") {
-            StoryState::Icebox
-        } else {
-            // Unlabeled open issues go to icebox
-            StoryState::Icebox
-        };
-
-        // Extract deferred reason from labels or body first line
-        let reason = if state == StoryState::Deferred {
-            labels
-                .iter()
-                .find(|l| l.starts_with("deferred:"))
-                .map(|l| l.strip_prefix("deferred:").unwrap_or(l).trim().to_string())
-                .unwrap_or_default()
-        } else {
-            String::new()
-        };
-
-        stories.push(BoardStory {
-            number: num,
-            title,
-            state,
-            body,
-            assignees,
-            created,
-            reason,
-            labels,
-        });
-    }
-
-    sort_stories(&mut stories);
-    Ok(stories)
 }
 
 /// Group stories by state for the column layout, sorted by
