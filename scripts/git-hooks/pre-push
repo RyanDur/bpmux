@@ -21,20 +21,47 @@ fi
 
 echo "Running pre-push quality gates..."
 
-# #534 slice 2: Playwright e2e — Ryan 2026-04-28: "you need to run
-# your e2e acceptance tests in your pre-push." Per spec falsifier #6
-# (error-loud not silent-skip), the npm script returns non-zero on
-# any test failure or browser-env-missing so pre-push gates correctly.
-# `--reporter=dot` keeps stdout volume low (one char per test) on
-# green runs; failures still print full context. Reduces hook stdout
-# from ~277 per-test lines to ~3 dot-rows + summary.
-e2e_exit=0
-(cd "$REPO_ROOT/applications/electron" && npm run test:e2e -- --reporter=dot) || e2e_exit=$?
-if [ $e2e_exit -ne 0 ] && [ $e2e_exit -ne 141 ]; then
-    exit $e2e_exit
+# #534 slice 2 + 2026-05-02 Bash-tool 10-min-cap workaround: split
+# Playwright e2e into two parallel invocations to halve wall-clock.
+# Each invocation runs Playwright's default workers=2; total concurrent
+# Electrons across the hook = 4. 104 spec files split into:
+#   group-A: 43 desk-check-* + 5 other (~48 specs)
+#   group-B: 56 human-*       (~56 specs)
+# Both write to their own log; logs concatenated post-wait.
+# `--reporter=dot` keeps stdout volume low (one char per test).
+e2e_a_log=$(mktemp); e2e_a_exit=0
+e2e_b_log=$(mktemp); e2e_b_exit=0
+
+(cd "$REPO_ROOT/applications/electron" \
+  && npx playwright test --reporter=dot tests/desk-check-* tests/app.spec.ts tests/dev-smoke-* tests/port-isolation.spec.ts tests/real-backend.spec.ts) \
+  >"$e2e_a_log" 2>&1 &
+e2e_a_pid=$!
+
+(cd "$REPO_ROOT/applications/electron" \
+  && npx playwright test --reporter=dot tests/human-*) \
+  >"$e2e_b_log" 2>&1 &
+e2e_b_pid=$!
+
+wait $e2e_a_pid || e2e_a_exit=$?
+wait $e2e_b_pid || e2e_b_exit=$?
+
+echo "--- group A (desk-check + smoke + app + port-isolation + real-backend) ---"
+cat "$e2e_a_log"
+echo "--- group B (human) ---"
+cat "$e2e_b_log"
+rm -f "$e2e_a_log" "$e2e_b_log"
+
+if [ $e2e_a_exit -ne 0 ] && [ $e2e_a_exit -ne 141 ]; then
+    exit $e2e_a_exit
 fi
-if [ $e2e_exit -eq 141 ]; then
-    echo "WARN: test:e2e exited 141 (SIGPIPE — reporter pipe-close, not test failure)"
+if [ $e2e_a_exit -eq 141 ]; then
+    echo "WARN: e2e group A exited 141 (SIGPIPE — reporter pipe-close, not test failure)"
+fi
+if [ $e2e_b_exit -ne 0 ] && [ $e2e_b_exit -ne 141 ]; then
+    exit $e2e_b_exit
+fi
+if [ $e2e_b_exit -eq 141 ]; then
+    echo "WARN: e2e group B exited 141 (SIGPIPE — reporter pipe-close, not test failure)"
 fi
 
 MAX_LINES=400
