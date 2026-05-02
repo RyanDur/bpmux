@@ -2401,7 +2401,7 @@ async fn view_board_buckets_stories_by_story_state() {
 }
 
 #[tokio::test]
-async fn view_board_buckets_closed_stories_into_accepted_column() {
+async fn view_board_buckets_closed_stories_into_retired_or_accepted_column() {
     use crate::board::BoardStore;
     use crate::board::RefreshDriver;
     use crate::board::SyncOrchestrator;
@@ -2440,25 +2440,29 @@ async fn view_board_buckets_closed_stories_into_accepted_column() {
         .await
         .unwrap();
 
-    // #522: closed-non-Icebox stories used to be silently hidden from
-    // view_board. They now bucket to ACCEPTED visually (matching the
-    // renderer's slice-1 columnFor closure-as-acceptance rule), which
-    // prevents the silent ~285-story drop the canonical store had.
+    // #1146 slice 2b: closed-non-Accepted stories project to RETIRED
+    // (close_story for retire/dedupe/won't-fix); closed-Accepted stays
+    // in ACCEPTED so the success-narrative isn't polluted by
+    // decision-not-to-pursue closures.
     assert!(
         out.contains("IN PROGRESS (0)"),
         "is_closed InProgress story must NOT appear in IN PROGRESS bucket: {out}"
     );
     assert!(
-        out.contains("ACCEPTED (2)"),
-        "both closed stories collapse to ACCEPTED visually: {out}"
+        out.contains("RETIRED (1)"),
+        "closed-non-Accepted story projects to RETIRED bucket: {out}"
+    );
+    assert!(
+        out.contains("ACCEPTED (1)"),
+        "only Accepted story stays in ACCEPTED bucket: {out}"
     );
     assert!(
         out.contains("#201 abandoned-mid-flight"),
-        "closed-non-accepted story now visible under ACCEPTED: {out}"
+        "closed-non-Accepted story visible under RETIRED: {out}"
     );
     assert!(
         out.contains("#202 accepted-closed"),
-        "explicit-accept story still in ACCEPTED: {out}"
+        "Accepted story stays in ACCEPTED: {out}"
     );
 }
 

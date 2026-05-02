@@ -26,11 +26,8 @@ use bpmux::board::domain::StoryState;
 /// Encoded by hand from the TS source so this test catches drift on
 /// either side. Update both when the projection legitimately changes.
 fn renderer_column_for(state: StoryState, is_closed: bool) -> ColumnBucket {
-    if is_closed {
-        return match state {
-            StoryState::Icebox => ColumnBucket::Icebox,
-            _ => ColumnBucket::Accepted,
-        };
+    if is_closed && state != StoryState::Accepted {
+        return ColumnBucket::Retired;
     }
     match state {
         StoryState::ReadyForAccept => ColumnBucket::Delivered,
@@ -72,8 +69,13 @@ fn column_for_agrees_across_full_cross_product() {
 }
 
 #[test]
-fn closed_non_icebox_stories_collapse_to_accepted() {
+fn closed_non_accepted_stories_project_to_retired() {
+    // #1146 slice 2b: close_story for retire/dedupe/won't-fix lands in
+    // the Retired column rather than polluting Accepted's success-
+    // narrative. Closed + Accepted stays in Accepted (user-story
+    // satisfied + closed = legitimate completion).
     for state in [
+        StoryState::Icebox,
         StoryState::Ready,
         StoryState::InProgress,
         StoryState::DeskCheck,
@@ -81,22 +83,21 @@ fn closed_non_icebox_stories_collapse_to_accepted() {
         StoryState::ReadyForAccept,
         StoryState::NeedsFixes,
         StoryState::Rejected,
-        StoryState::Accepted,
     ] {
         assert_eq!(
             column_for(state, true),
-            ColumnBucket::Accepted,
-            "closed + state={state:?} must collapse to ACCEPTED (closure-as-acceptance)"
+            ColumnBucket::Retired,
+            "closed + state={state:?} (non-Accepted) must project to RETIRED"
         );
     }
 }
 
 #[test]
-fn closed_icebox_stays_icebox() {
+fn closed_accepted_stays_accepted() {
     assert_eq!(
-        column_for(StoryState::Icebox, true),
-        ColumnBucket::Icebox,
-        "closed-Icebox is the legitimate-historical exception and stays in ICEBOX"
+        column_for(StoryState::Accepted, true),
+        ColumnBucket::Accepted,
+        "closed + Accepted stays in ACCEPTED (user-story satisfied + closed = success-narrative)"
     );
 }
 

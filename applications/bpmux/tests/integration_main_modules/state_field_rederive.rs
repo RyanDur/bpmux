@@ -72,12 +72,12 @@ fn needs_fixes_state_buckets_to_in_progress_column() {
 }
 
 #[test]
-fn closed_rejected_buckets_to_accepted_column() {
+fn closed_rejected_buckets_to_retired_column() {
     let bucket = column_for(StoryState::Rejected, true);
     assert_eq!(
         bucket,
-        ColumnBucket::Accepted,
-        "Closed-rejected = closure-as-acceptance per #514 architectural ruling"
+        ColumnBucket::Retired,
+        "Closed-non-Accepted projects to RETIRED so success-narrative stays in ACCEPTED"
     );
 }
 

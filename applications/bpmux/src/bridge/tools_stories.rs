@@ -214,6 +214,7 @@ pub(super) async fn handle_view_board(
     let desk_check = bucket_for(ColumnBucket::DeskCheck);
     let delivered = bucket_for(ColumnBucket::Delivered);
     let accepted = bucket_for(ColumnBucket::Accepted);
+    let retired = bucket_for(ColumnBucket::Retired);
     let mut epics: Vec<&crate::board::domain::Story> = stories
         .iter()
         .filter(|s| s.story_type == crate::board::domain::StoryType::Epic)
@@ -261,6 +262,7 @@ pub(super) async fn handle_view_board(
     section(ColumnBucket::DeskCheck.header(), &desk_check, &mut out);
     section(ColumnBucket::Delivered.header(), &delivered, &mut out);
     section(ColumnBucket::Accepted.header(), &accepted, &mut out);
+    section(ColumnBucket::Retired.header(), &retired, &mut out);
     Ok(out)
 }
 

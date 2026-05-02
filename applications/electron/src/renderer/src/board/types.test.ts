@@ -18,22 +18,25 @@ describe('#514 columnFor — closed-state-aware bucketing', () => {
     })
   })
 
-  describe('closed issues route out of active-pipeline regardless of last-domain-state (#464 preserved internally)', () => {
+  describe('#1146 slice 2b — closed-non-Accepted projects to RETIRED column', () => {
     test.each<[StoryState, ReturnType<typeof columnFor>]>([
-      ['ready', 'accepted'],
-      ['in-progress', 'accepted'],
-      ['desk-check', 'accepted'],
-      ['delivered', 'accepted'],
-      ['ready-for-accept', 'accepted'],
-      ['needs-fixes', 'accepted'],
-      ['rejected', 'accepted'],
-      ['accepted', 'accepted']
-    ])('closed + state=%s → ACCEPTED column (visual closure)', (state, column) => {
-      expect(columnFor(state, true)).toBe(column)
-    })
+      ['icebox', 'retired'],
+      ['ready', 'retired'],
+      ['in-progress', 'retired'],
+      ['desk-check', 'retired'],
+      ['delivered', 'retired'],
+      ['ready-for-accept', 'retired'],
+      ['needs-fixes', 'retired'],
+      ['rejected', 'retired']
+    ])(
+      'closed + state=%s (non-Accepted) → RETIRED (decision-not-to-pursue)',
+      (state, column) => {
+        expect(columnFor(state, true)).toBe(column)
+      }
+    )
 
-    test('closed + state=icebox → ICEBOX (legitimate historical, not closure-as-acceptance)', () => {
-      expect(columnFor('icebox', true)).toBe('icebox')
+    test('closed + state=accepted stays in ACCEPTED (success-narrative preserved)', () => {
+      expect(columnFor('accepted', true)).toBe('accepted')
     })
   })
 
@@ -53,12 +56,6 @@ describe('#514 columnFor — closed-state-aware bucketing', () => {
     })
     test('OPEN + rejected stays in READY (owner-reject = re-pickup-able)', () => {
       expect(columnFor('rejected', false)).toBe('ready')
-    })
-    test('CLOSED + needs-fixes still routes to ACCEPTED (closure-as-acceptance)', () => {
-      expect(columnFor('needs-fixes', true)).toBe('accepted')
-    })
-    test('CLOSED + rejected still routes to ACCEPTED (closure-as-acceptance)', () => {
-      expect(columnFor('rejected', true)).toBe('accepted')
     })
   })
 })

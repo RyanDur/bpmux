@@ -23,18 +23,18 @@ export type ColumnState =
   | 'desk-check'
   | 'delivered'
   | 'accepted'
+  | 'retired'
 
-// Closed issues are not in the active pipeline regardless of their
-// last-domain-state (preserved per #464's substrate decoder for audit
-// trail). They route to ACCEPTED for visual classification — the only
-// exception is closed+icebox which stays in ICEBOX (legitimately
-// historical). #514 separates substrate (state-decoder) from visual
+// Closed-non-Accepted stories project to RETIRED (close_story for
+// retire / dedupe / won't-fix); closed-Accepted stays in ACCEPTED so
+// the success-narrative isn't polluted by decision-not-to-pursue
+// closures. #514 separates substrate (state-decoder) from visual
 // (column-bucketing): #464 owns "what state was this last in"; this
 // function owns "which active-work bucket should the user see this
 // story in right now."
 export const columnFor = (state: StoryState, isClosed: boolean = false): ColumnState => {
-  if (isClosed) {
-    return state === 'icebox' ? 'icebox' : 'accepted'
+  if (isClosed && state !== 'accepted') {
+    return 'retired'
   }
   switch (state) {
     case 'ready-for-accept':
@@ -95,16 +95,22 @@ export const GROUP_ORDER: GroupSpec[] = [
   { state: 'desk-check', label: 'Desk Check', collapsed: false },
   { state: 'delivered', label: 'Delivered', collapsed: false },
   { state: 'accepted', label: 'Accepted', collapsed: true },
+  { state: 'retired', label: 'Retired', collapsed: true },
   { state: 'icebox', label: 'Icebox', collapsed: true }
 ]
 
+// Inverse mapping is partial — closed-non-Accepted projects to Retired
+// from any non-Accepted StoryState, so the Retired column is keyed on
+// is_closed rather than on a specific state. Listed empty here to keep
+// the Record exhaustive; columnFor is the source of truth.
 export const STATES_IN_COLUMN: Record<ColumnState, StoryState[]> = {
   icebox: ['icebox'],
-  ready: ['ready', 'needs-fixes', 'rejected'],
-  'in-progress': ['in-progress'],
+  ready: ['ready', 'rejected'],
+  'in-progress': ['in-progress', 'needs-fixes'],
   'desk-check': ['desk-check'],
   delivered: ['delivered', 'ready-for-accept'],
-  accepted: ['accepted']
+  accepted: ['accepted'],
+  retired: []
 }
 
 // Derive story type from labels (case-insensitive). Defaults to

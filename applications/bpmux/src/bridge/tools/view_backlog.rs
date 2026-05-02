@@ -3,7 +3,8 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use super::helpers::{WsSink, ws_send};
-use crate::board::{BoardStore, Story, StoryState};
+use crate::board::column::{ColumnBucket, column_for};
+use crate::board::{BoardStore, Story};
 
 pub const VIEW_BACKLOG_MARKER: &str = "__BPMUX_VIEW_BACKLOG__";
 
@@ -42,18 +43,17 @@ pub(in crate::bridge) fn build_backlog_summary(stories: &[Story]) -> serde_json:
     let mut delivered: Vec<String> = Vec::new();
     let mut accepted: Vec<String> = Vec::new();
     let mut icebox: Vec<String> = Vec::new();
+    let mut retired: Vec<String> = Vec::new();
 
     for story in stories {
         let entry = format!("#{} {}", story.number, story.title);
-        match story.state {
-            StoryState::Accepted => accepted.push(entry),
-            StoryState::Delivered
-            | StoryState::ReadyForAccept
-            | StoryState::DeskCheck
-            | StoryState::NeedsFixes => delivered.push(entry),
-            StoryState::InProgress => in_progress.push(entry),
-            StoryState::Ready => ready.push(entry),
-            StoryState::Rejected | StoryState::Icebox => icebox.push(entry),
+        match column_for(story.state, story.is_closed) {
+            ColumnBucket::Icebox => icebox.push(entry),
+            ColumnBucket::Ready => ready.push(entry),
+            ColumnBucket::InProgress => in_progress.push(entry),
+            ColumnBucket::DeskCheck | ColumnBucket::Delivered => delivered.push(entry),
+            ColumnBucket::Accepted => accepted.push(entry),
+            ColumnBucket::Retired => retired.push(entry),
         }
     }
 
@@ -66,6 +66,7 @@ pub(in crate::bridge) fn build_backlog_summary(stories: &[Story]) -> serde_json:
         "delivered_count": delivered.len(),
         "accepted_count": accepted.len(),
         "icebox_count": icebox.len(),
+        "retired_count": retired.len(),
         "ready_samples": ready_samples,
         "delivered_samples": delivered_samples,
     })
@@ -75,6 +76,7 @@ pub(in crate::bridge) fn build_backlog_summary(stories: &[Story]) -> serde_json:
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
     use super::*;
+    use crate::board::StoryState;
     use chrono::{TimeZone, Utc};
 
     fn story(num: u64, title: &str, state: StoryState) -> Story {
@@ -121,13 +123,27 @@ mod tests {
     }
 
     #[test]
-    fn delivered_readyforaccept_needsfixes_collapse_into_delivered_count() {
+    fn delivered_and_readyforaccept_collapse_into_delivered_count() {
+        // #1146 slice 2b: bucketing flows through column_for, which puts
+        // Delivered + ReadyForAccept (display-equivalent) into Delivered;
+        // DeskCheck folds with Delivered in view_backlog's narrower
+        // 5-bucket output shape.
         let stories = vec![
             story(104, "d", StoryState::Delivered),
             story(105, "r", StoryState::ReadyForAccept),
-            story(106, "n", StoryState::NeedsFixes),
+            story(106, "dc", StoryState::DeskCheck),
         ];
         assert_eq!(build_backlog_summary(&stories)["delivered_count"], 3);
+    }
+
+    #[test]
+    fn needsfixes_folds_into_in_progress_count() {
+        // #1146 slice 2b: NeedsFixes is display-equivalent to InProgress
+        // per column_for. Aligning view_backlog with column.rs heals the
+        // pre-collapse divergence where view_backlog put NeedsFixes into
+        // delivered_count.
+        let stories = vec![story(106, "n", StoryState::NeedsFixes)];
+        assert_eq!(build_backlog_summary(&stories)["in_progress_count"], 1);
     }
 
     #[test]
@@ -137,9 +153,26 @@ mod tests {
     }
 
     #[test]
-    fn rejected_state_folds_into_icebox() {
+    fn rejected_state_folds_into_ready_count() {
+        // #1146 slice 2b: Rejected is display-equivalent to Ready per
+        // column_for. Aligning view_backlog heals the pre-collapse
+        // divergence where view_backlog put Rejected into icebox_count.
         let stories = vec![story(108, "rej", StoryState::Rejected)];
-        assert_eq!(build_backlog_summary(&stories)["icebox_count"], 1);
+        assert_eq!(build_backlog_summary(&stories)["ready_count"], 1);
+    }
+
+    #[test]
+    fn closed_non_accepted_story_lands_in_retired_count() {
+        // #1146 slice 2b: Retired is the new 7th bucket — closed stories
+        // whose preserved workflow state isn't Accepted (close_story
+        // for retire / dedupe / won't-fix) display separately so the
+        // Accepted column's success-narrative isn't polluted.
+        let mut s = story(109, "retired", StoryState::Ready);
+        s.is_closed = true;
+        let summary = build_backlog_summary(&[s]);
+        assert_eq!(summary["retired_count"], 1);
+        assert_eq!(summary["ready_count"], 0);
+        assert_eq!(summary["accepted_count"], 0);
     }
 
     #[test]

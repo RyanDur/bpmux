@@ -25,6 +25,7 @@ pub enum ColumnBucket {
     DeskCheck,
     Delivered,
     Accepted,
+    Retired,
 }
 
 impl ColumnBucket {
@@ -36,16 +37,14 @@ impl ColumnBucket {
             ColumnBucket::DeskCheck => "DESK CHECK",
             ColumnBucket::Delivered => "DELIVERED",
             ColumnBucket::Accepted => "ACCEPTED",
+            ColumnBucket::Retired => "RETIRED",
         }
     }
 }
 
 pub fn column_for(state: StoryState, is_closed: bool) -> ColumnBucket {
-    if is_closed {
-        return match state {
-            StoryState::Icebox => ColumnBucket::Icebox,
-            _ => ColumnBucket::Accepted,
-        };
+    if is_closed && state != StoryState::Accepted {
+        return ColumnBucket::Retired;
     }
     match state {
         StoryState::Icebox => ColumnBucket::Icebox,
