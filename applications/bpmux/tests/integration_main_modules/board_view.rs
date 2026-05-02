@@ -1,31 +1,79 @@
 //! End-to-end test for #193/#196 board view.
 //!
-//! Board rendering is tested with fixture data — no gh dependency.
-//! The BPMUX_BOARD_FIXTURE env var points to a JSON file with test
-//! stories, exercising the full rendering pipeline with controlled
-//! input.
+//! Board rendering is tested with httpmock-served GitHub issues —
+//! exercises the full real-substrate cascade (octocrab fetch →
+//! GitHubSourceAdapter → canonical store → state-decode → renderer)
+//! per Ryan's 2026-04-30 "only octocrab as test-double" directive.
+//! BPMUX_BOARD_FIXTURE substrate retired here as part of #724.
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;
 
+use harness::mock_gh::{issue_json, label_json};
 use harness::pty::TestBpmux;
+use httpmock::{Method, MockServer};
+use serde_json::{Value, json};
 use std::time::Duration;
 
-const FIXTURE_DATA: &str = r##"[
-  {"number":100,"title":"Test story ready","state":"OPEN","labels":[{"name":"ready"}],"body":"test body","assignees":[],"createdAt":"2026-04-14"},
-  {"number":101,"title":"Test story delivered","state":"OPEN","labels":[{"name":"delivered"}],"body":"delivered story","assignees":[],"createdAt":"2026-04-14"},
-  {"number":102,"title":"Test story accepted","state":"CLOSED","labels":[],"body":"done","assignees":[],"createdAt":"2026-04-13"}
-]"##;
-
-fn write_fixture() -> tempfile::NamedTempFile {
-    let mut f = tempfile::NamedTempFile::new().expect("create fixture");
-    use std::io::Write;
-    f.write_all(FIXTURE_DATA.as_bytes()).expect("write fixture");
-    f
+fn closed_issue_json(number: u64, title: &str) -> Value {
+    let mut issue = issue_json(number, title, &[], None);
+    issue["state"] = json!("closed");
+    issue["closed_at"] = json!("2026-04-13T00:00:00Z");
+    issue
 }
 
-/// GIVEN the TUI is running with fixture board data
+fn board_fixture_issues() -> Value {
+    Value::Array(vec![
+        issue_json(100, "Test story ready", &["ready"], Some("test body")),
+        issue_json(
+            101,
+            "Test story delivered",
+            &["delivered"],
+            Some("delivered story"),
+        ),
+        closed_issue_json(102, "Test story accepted"),
+    ])
+}
+
+fn mock_board_endpoints(server: &MockServer, issues: &Value) {
+    server.mock(|when, then| {
+        when.method(Method::GET).path("/repos/acme/bpmux/issues");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(issues.to_string());
+    });
+    server.mock(|when, then| {
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/actions/runs");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(json!({"workflow_runs": []}).to_string());
+    });
+    if let Value::Array(arr) = issues {
+        for issue in arr {
+            let number = issue["number"].as_u64().expect("issue number");
+            let issue_path = format!("/repos/acme/bpmux/issues/{number}");
+            let comments_path = format!("/repos/acme/bpmux/issues/{number}/comments");
+            let issue_clone = issue.clone();
+            server.mock(|when, then| {
+                when.method(Method::GET).path(issue_path);
+                then.status(200)
+                    .header("content-type", "application/json")
+                    .body(issue_clone.to_string());
+            });
+            server.mock(|when, then| {
+                when.method(Method::GET).path(comments_path);
+                then.status(200)
+                    .header("content-type", "application/json")
+                    .body(Value::Array(vec![]).to_string());
+            });
+        }
+    }
+    let _ = label_json;
+}
+
+/// GIVEN the TUI is running with httpmock-served board data
 /// WHEN /board is typed
 /// THEN the project panel opens showing state headers + stories
 /// AND chat is still visible below
@@ -35,20 +83,20 @@ fn write_fixture() -> tempfile::NamedTempFile {
 /// `\x1b` sent by `type_key("Esc")` gets mis-parsed as a literal
 /// escape character (echoes `^[` into chat input) instead of firing
 /// crossterm's `KeyCode::Esc`. Passes reliably in isolation
-/// (`cargo test --test board_view_test`), fails intermittently in
-/// the full suite on CI + locally under load. The test premise is
-/// right; the harness's Esc-timing is the flake. Re-enable once the
-/// PTY harness has a reliable Esc-injection path (or move to ratatui
-/// TestBackend + direct event injection like `ui_tests`).
+/// (`cargo test --test integration_main board_view`), fails
+/// intermittently in the full suite on CI + locally under load.
+/// The test premise is right; the harness's Esc-timing is the flake.
+/// Re-enable once the PTY harness has a reliable Esc-injection path
+/// (or move to ratatui TestBackend + direct event injection like
+/// `ui_tests`).
 #[test]
 #[ignore = "PTY harness Esc-timing flake under concurrent load; see doc above"]
-fn board_renders_fixture_stories_in_panel() {
-    let fixture = write_fixture();
-    let bpmux = TestBpmux::start_with_env(
-        "board-test",
-        "BPMUX_BOARD_FIXTURE",
-        fixture.path().to_str().unwrap(),
-    );
+fn board_renders_mocked_stories_in_panel() {
+    let server = MockServer::start();
+    let base_url = format!("{}/", server.base_url());
+    mock_board_endpoints(&server, &board_fixture_issues());
+
+    let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     assert!(
         bpmux.wait_for_tui("solo", Duration::from_secs(5)),
         "TUI should render"
@@ -60,28 +108,23 @@ fn board_renders_fixture_stories_in_panel() {
         || bpmux.wait_for_tui("DELIVERED", Duration::from_secs(2));
     let screen = bpmux.tui();
 
-    // Board should show state headers from fixture data
     assert!(
         has_board,
         "board should open in project panel. screen:\n{screen}"
     );
 
-    // Should show fixture story titles
     let has_stories =
         screen.contains("Test story") || screen.contains("#100") || screen.contains("#101");
     assert!(
         has_stories,
-        "board should show fixture story data. screen:\n{screen}"
+        "board should show mocked story data. screen:\n{screen}"
     );
 
-    // Chat input should still be visible (split view)
     assert!(
         screen.contains(">"),
         "input prompt should be visible alongside board. screen:\n{screen}"
     );
 
-    // Esc closes the panel — verify via the observable signal (panel
-    // headers gone, input prompt visible) rather than a fixed sleep.
     bpmux.type_key("Esc");
     bpmux
         .wait_until("board panel to close", Duration::from_secs(5), || {
@@ -91,17 +134,16 @@ fn board_renders_fixture_stories_in_panel() {
         .expect("Esc should close the board panel");
 }
 
-/// GIVEN fixture data has stories in different states
+/// GIVEN httpmock-served stories in different states
 /// WHEN the board renders
 /// THEN stories appear under the correct state headers
 #[test]
-fn board_groups_fixture_stories_by_state() {
-    let fixture = write_fixture();
-    let bpmux = TestBpmux::start_with_env(
-        "board-group",
-        "BPMUX_BOARD_FIXTURE",
-        fixture.path().to_str().unwrap(),
-    );
+fn board_groups_mocked_stories_by_state() {
+    let server = MockServer::start();
+    let base_url = format!("{}/", server.base_url());
+    mock_board_endpoints(&server, &board_fixture_issues());
+
+    let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     assert!(
         bpmux.wait_for_tui("solo", Duration::from_secs(5)),
         "TUI should render"
@@ -114,16 +156,11 @@ fn board_groups_fixture_stories_by_state() {
         bpmux.tui()
     );
 
-    // Both headers must be present — a `||` assertion would silently
-    // accept a half-rendered board and a regression that dropped one
-    // state group.
     let screen = bpmux.tui();
     assert!(
         screen.contains("READY") && screen.contains("DELIVERED"),
         "board should show both state headers. screen:\n{screen}"
     );
-    // Position check: the fixture places #100 under READY and #101
-    // under DELIVERED; grouping is the behavior under test.
     let lines: Vec<&str> = screen.lines().collect();
     let ready = lines
         .iter()

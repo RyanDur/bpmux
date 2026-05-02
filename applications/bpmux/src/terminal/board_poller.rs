@@ -154,6 +154,15 @@ pub fn spawn(
 }
 
 fn build_client() -> Result<octocrab::Octocrab, BoardFetchError> {
+    if let Ok(base_url) = std::env::var("BPMUX_GH_BASE_URL")
+        && !base_url.is_empty()
+    {
+        return octocrab::OctocrabBuilder::new()
+            .base_uri(base_url)
+            .map_err(|e| classify_error(&e))?
+            .build()
+            .map_err(|e| classify_error(&e));
+    }
     let token = std::env::var("GH_TOKEN")
         .or_else(|_| std::env::var("GITHUB_TOKEN"))
         .map_err(|_| BoardFetchError::AuthInvalid)?;
