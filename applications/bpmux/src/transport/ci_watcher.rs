@@ -88,6 +88,16 @@ pub fn spawn(
     tokio::spawn(async move {
         let mut last_seen: Option<Observation> = None;
         let mut interval = tokio::time::interval(POLL_INTERVAL);
+        // #1140: when fetch fails with rate-limit class, fall back from
+        // POLL_INTERVAL cadence to exponential backoff so we stop
+        // bot-pattern polling that GitHub's secondary rate-limit
+        // detector hates. 60s → 120 → 240 → 480 → 960 → 1800 → 3600 cap.
+        // Reset to 60s on first successful poll. Without this, a
+        // rate-limited window kept hitting the same endpoint at exact
+        // POLL_INTERVAL — re-triggering secondary cooldown.
+        let base_backoff = Duration::from_secs(60);
+        let max_backoff = Duration::from_secs(3600);
+        let mut backoff = base_backoff;
         // First tick fires immediately — seeds last_seen with the
         // current observation without broadcasting. Subsequent ticks
         // are the real transition detectors.
@@ -98,13 +108,29 @@ pub fn spawn(
                 _ = interval.tick() => {}
             }
             let report = match tracker.list_latest_run_on_main().await {
-                Ok(Some(run)) => run,
+                Ok(Some(run)) => {
+                    backoff = base_backoff;
+                    run
+                }
                 Ok(None) => {
-                    // Repo has no runs yet — nothing to watch.
+                    backoff = base_backoff;
                     continue;
                 }
                 Err(e) => {
-                    session::diag::log_diag(&format!("ci_watcher: fetch failed: {e}"));
+                    let lower = e.to_lowercase();
+                    if lower.contains("rate limit") || lower.contains("rate-limit") {
+                        session::diag::log_diag(&format!(
+                            "ci_watcher: rate-limited; backing off {}s before next poll",
+                            backoff.as_secs()
+                        ));
+                        tokio::select! {
+                            _ = ct.cancelled() => break,
+                            _ = tokio::time::sleep(backoff) => {}
+                        }
+                        backoff = (backoff * 2).min(max_backoff);
+                    } else {
+                        session::diag::log_diag(&format!("ci_watcher: fetch failed: {e}"));
+                    }
                     continue;
                 }
             };
