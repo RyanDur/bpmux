@@ -25,8 +25,10 @@ const WAIT_PRESENCE_TIMEOUT: Duration = Duration::from_secs(30);
 /// would see via MCP."
 ///
 /// Verifies that `call_tool` parses the JSON response and exposes
-/// typed fields for assertion. Uses the BPMUX_BOARD_FIXTURE env var
-/// to seed deterministic stories without a live gh dependency.
+/// typed fields for assertion. Seeds deterministic stories via
+/// httpmock-backed GitHubSourceAdapter so the test runs without a
+/// live gh dependency yet exercises the real-substrate cascade per
+/// "only octocrab as test-double" directive.
 #[test]
 fn view_board_response_exposes_story_fields_for_agent_assertions() {
     use harness::mock_gh::issue_json;

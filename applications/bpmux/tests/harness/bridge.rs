@@ -38,25 +38,13 @@ impl TestBridge {
     }
 
     /// Spawn a bridge subprocess with extra env vars. Useful for
-    /// pointing the bridge's view_board at BPMUX_BOARD_FIXTURE instead
-    /// of the live `gh` CLI in CI (where GH_TOKEN isn't wired).
+    /// passing test-controlled env (e.g., `BPMUX_GIT_STUB_DIR` or
+    /// `BPMUX_IDENTITY_DIR` per #1138) to the bridge subprocess that
+    /// executes the corresponding stubbed function. Env-var stub
+    /// injection isn't transitive across subprocess boundaries; the
+    /// var must reach the SUBPROCESS that runs the stubbed code path.
     pub async fn connect_with_env(bpmux: &TestBpmux, name: &str, env: &[(&str, &str)]) -> Self {
-        Self::connect_inner(bpmux, name, env, None, TrackerMode::Fake).await
-    }
-
-    pub async fn connect_with_board_fixture(
-        bpmux: &TestBpmux,
-        name: &str,
-        fixture_path: &str,
-    ) -> Self {
-        Self::connect_inner(
-            bpmux,
-            name,
-            &[],
-            Some(fixture_path.to_string()),
-            TrackerMode::Fake,
-        )
-        .await
+        Self::connect_inner(bpmux, name, env, TrackerMode::Fake).await
     }
 
     /// Spawn a bridge subprocess WITHOUT `--fake-tracker`, pointed at
@@ -79,14 +67,13 @@ impl TestBridge {
             ("BPMUX_REPO", "acme/bpmux"),
             ("BPMUX_POLL_INTERVAL_SECS", "1"),
         ];
-        Self::connect_inner(bpmux, name, env, None, TrackerMode::RealAgainstMockGh).await
+        Self::connect_inner(bpmux, name, env, TrackerMode::RealAgainstMockGh).await
     }
 
     async fn connect_inner(
         bpmux: &TestBpmux,
         name: &str,
         env: &[(&str, &str)],
-        board_fixture: Option<String>,
         tracker_mode: TrackerMode,
     ) -> Self {
         let bin = env!("CARGO_BIN_EXE_bpmux");
@@ -139,7 +126,6 @@ impl TestBridge {
                     .into_owned(),
             ));
         }
-        let board_fixture_owned = board_fixture;
         let process = TokioChildProcess::new(tokio::process::Command::new(bin).configure(|cmd| {
             cmd.arg("bridge")
                 .arg("--port")
@@ -148,9 +134,6 @@ impl TestBridge {
                 .arg(&name_owned);
             if matches!(tracker_mode, TrackerMode::Fake) {
                 cmd.arg("--fake-tracker");
-            }
-            if let Some(ref path) = board_fixture_owned {
-                cmd.arg("--board-fixture").arg(path);
             }
             for (k, v) in &env_owned {
                 cmd.env(k, v);
