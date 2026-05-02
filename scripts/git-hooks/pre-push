@@ -1,105 +1,26 @@
 #!/bin/bash
-# Pre-push hook: cargo test + contract drift + audit + file-size gate.
+# Pre-push hook: Playwright e2e + file-size gate.
 #
 # Install: symlink or copy this file to .git/hooks/pre-push and make
-# it executable. Out of scope for this story is automated installation.
+# it executable.
 #
-# The file-size gate (#455) scans the Cargo workspace member crates
-# under `applications/*/src/`. The pre-#455 hook scanned a top-level
-# `src/` that no longer exists (removed in ed5e3c8 "Convert to Cargo
-# workspace") — `find` errored, zero files scanned, gate silently
-# passed regardless of size.
+# Restructure 2026-05-01: cargo nextest + npm test:unit + cargo
+# audit moved to pre-commit (fast-feedback). Pre-push now runs ONLY
+# npm test:e2e (the 12-min surface). Catches unit-class regressions
+# at commit-time instead of push-time.
 set -euo pipefail
-
-if [ -f "$HOME/.cargo/env" ]; then
-    source "$HOME/.cargo/env"
-fi
-
-if ! command -v cargo &> /dev/null; then
-    echo "ERROR: cargo not found. Install Rust: https://rustup.rs" >&2
-    exit 1
-fi
-
-if ! command -v cargo-nextest &> /dev/null; then
-    echo "ERROR: cargo-nextest not found. Install: cargo install cargo-nextest --locked" >&2
-    exit 1
-fi
-
-echo "Running pre-push quality gates..."
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "$REPO_ROOT"
 
-# Pre-2026-05-01 the hook ran cargo from a temporary `git worktree`
-# at /var/folders/.../bpmux-prepush.XXX with CARGO_TARGET_DIR pointing
-# back at $REPO_ROOT/target. Tests using `env!("CARGO_MANIFEST_DIR")`
-# (e.g. `claude-plugin/.claude-plugin/plugin.json` in
-# plugin_acceptance_test) ended up with the worktree path baked into
-# the binary; the trap deleted the worktree on exit, so the next push
-# (or any subsequent local cargo run that reused a not-yet-rebuilt
-# fingerprint hash) panicked with `NotFound` on the dead path. The
-# diagnosis showed three orphan binaries cached in target/debug/deps
-# from successive pushes, each pointing at a vanished tempdir.
-# Running from $REPO_ROOT keeps every build's CARGO_MANIFEST_DIR
-# stable, so cargo's incremental cache stays correct across pushes.
-# The npm path was migrated to $REPO_ROOT in slice 28 for an
-# orthogonal reason (worktree lacks node_modules) — cargo now
-# matches.
-
-# Run lib + integration tests via cargo-nextest. Per Ryan 2026-04-28:
-# pre-push must run all the tests. Per Ryan 2026-04-30: ~25min cargo
-# test wall-time is too long; switch to nextest which runs test
-# binaries CONCURRENTLY (cargo's default sequencing of ~80 binaries
-# was the bottleneck, not the test work itself). Expected 3-5x
-# speedup; targeting <5min total pre-push gate per Ryan's directive.
-#
-# `--no-fail-fast` so one flaky test doesn't mask others; `--retries 1`
-# absorbs the rare parallel-load timing flake without re-running the
-# whole suite. Doc-tests aren't covered by nextest; run separately if
-# they grow non-trivial (currently empty).
-# --status-level fail keeps stdout volume low (only failed tests print);
-# --hide-progress-bar avoids progress-bar redraws in non-tty piped
-# contexts. Reduces hook stdout from ~2640 PASS lines to ~0 lines on
-# green runs, which mitigates pipe-buffer SIGPIPE 141 false-fails when
-# git push captures the hook through long-running output handlers.
-cargo nextest run --no-fail-fast --retries 1 --status-level fail --hide-progress-bar
-
-# Per Ryan's 2026-04-30 strict directive ("only octocrab gets
-# test-doubled; tests must NEVER hit real GitHub"), the
-# `--features integration_tests` gate that ran 4 real-GH contract
-# tests in pre-push is dropped. Those tests remain in
-# `bridge::tools_stories_tests` behind their feature flag for
-# manual contract-drift checks; pre-push no longer depends on
-# GitHub being up + rate-limit-friendly.
-
-if command -v cargo-audit &> /dev/null; then
-    cargo audit --deny warnings
-fi
-
-# npm tests must use $REPO_ROOT, NOT the temporary worktree. The
-# worktree only contains tracked files; node_modules is gitignored
-# so the worktree's `applications/electron` has no installed deps.
-# Pre-2026-05-01 the gate's `[ -d applications/electron/node_modules ]`
-# check ran against the worktree path — silent-skip on every push.
-# Ryan caught this via direct observation 2026-05-01 02:02 UTC. Fail
-# loud if node_modules is missing in the developer's repo too.
 if [ ! -d "$REPO_ROOT/applications/electron/node_modules" ]; then
     echo "ERROR: applications/electron/node_modules not found at $REPO_ROOT." >&2
     echo "Install with: (cd $REPO_ROOT/applications/electron && npm install)" >&2
     exit 1
 fi
-# Run npm tests with explicit exit-code capture so SIGPIPE (141)
-# from internal reporter pipe-close doesn't false-fail under
-# pipefail. Real test failures (exit 1+) still block; only 141 is
-# treated as warn-not-fail.
-unit_exit=0
-(cd "$REPO_ROOT/applications/electron" && npm run test:unit) || unit_exit=$?
-if [ $unit_exit -ne 0 ] && [ $unit_exit -ne 141 ]; then
-    exit $unit_exit
-fi
-if [ $unit_exit -eq 141 ]; then
-    echo "WARN: test:unit exited 141 (SIGPIPE — reporter pipe-close, not test failure)"
-fi
+
+echo "Running pre-push quality gates..."
+
 # #534 slice 2: Playwright e2e — Ryan 2026-04-28: "you need to run
 # your e2e acceptance tests in your pre-push." Per spec falsifier #6
 # (error-loud not silent-skip), the npm script returns non-zero on

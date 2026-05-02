@@ -1,0 +1,92 @@
+#!/bin/bash
+# Pre-commit hook: fast-feedback structural + unit-test gates.
+#
+# Install: symlink or copy this file to .git/hooks/pre-commit and
+# make it executable.
+#
+# Restructure 2026-05-01: cargo nextest + npm test:unit + cargo
+# audit moved here from pre-push. Pre-push now runs ONLY npm
+# test:e2e (the 12-min surface). Catches unit-class regressions at
+# commit-time instead of push-time, saving a 12-min round trip when
+# a unit test breaks.
+#
+# Wall-clock target: <60s on green runs (parallel execution of
+# fmt + clippy + nextest + npm test:unit; cargo audit serial after).
+set -euo pipefail
+
+if [ -f "$HOME/.cargo/env" ]; then
+    source "$HOME/.cargo/env"
+fi
+
+if ! command -v cargo &> /dev/null; then
+    echo "ERROR: cargo not found. Install Rust: https://rustup.rs" >&2
+    exit 1
+fi
+
+if ! command -v cargo-nextest &> /dev/null; then
+    echo "ERROR: cargo-nextest not found. Install: cargo install cargo-nextest --locked" >&2
+    exit 1
+fi
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+if [ ! -d "$REPO_ROOT/applications/electron/node_modules" ]; then
+    echo "ERROR: applications/electron/node_modules not found at $REPO_ROOT." >&2
+    echo "Install with: (cd $REPO_ROOT/applications/electron && npm install)" >&2
+    exit 1
+fi
+
+echo "Running pre-commit quality gates (parallel)..."
+
+fmt_log=$(mktemp); fmt_exit=0
+clippy_log=$(mktemp); clippy_exit=0
+nextest_log=$(mktemp); nextest_exit=0
+unit_log=$(mktemp); unit_exit=0
+
+cargo fmt --check >"$fmt_log" 2>&1 &
+fmt_pid=$!
+
+cargo clippy --lib --tests -- -D warnings >"$clippy_log" 2>&1 &
+clippy_pid=$!
+
+cargo nextest run --no-fail-fast --retries 1 --status-level fail --hide-progress-bar >"$nextest_log" 2>&1 &
+nextest_pid=$!
+
+(cd "$REPO_ROOT/applications/electron" && npm run test:unit) >"$unit_log" 2>&1 &
+unit_pid=$!
+
+wait $fmt_pid || fmt_exit=$?
+wait $clippy_pid || clippy_exit=$?
+wait $nextest_pid || nextest_exit=$?
+wait $unit_pid || unit_exit=$?
+
+# Print logs in deterministic order so failure context is easy to
+# scan regardless of which finished first.
+echo "--- cargo fmt ---"; cat "$fmt_log"
+echo "--- cargo clippy ---"; cat "$clippy_log"
+echo "--- cargo nextest ---"; cat "$nextest_log"
+echo "--- npm test:unit ---"; cat "$unit_log"
+rm -f "$fmt_log" "$clippy_log" "$nextest_log" "$unit_log"
+
+# Treat 141 (SIGPIPE) as warn-not-fail per #1135 — Playwright's
+# vitest reporter can SIGPIPE on stdout pipe-close even when all
+# tests pass.
+[ $fmt_exit -ne 0 ] && exit $fmt_exit
+[ $clippy_exit -ne 0 ] && exit $clippy_exit
+[ $nextest_exit -ne 0 ] && [ $nextest_exit -ne 141 ] && exit $nextest_exit
+if [ $nextest_exit -eq 141 ]; then
+    echo "WARN: cargo nextest exited 141 (SIGPIPE — reporter pipe-close, not test failure)"
+fi
+[ $unit_exit -ne 0 ] && [ $unit_exit -ne 141 ] && exit $unit_exit
+if [ $unit_exit -eq 141 ]; then
+    echo "WARN: npm test:unit exited 141 (SIGPIPE — reporter pipe-close, not test failure)"
+fi
+
+# cargo audit runs sequentially after parallel block — it locks the
+# Cargo registry index briefly and parallel-cargo can deadlock.
+if command -v cargo-audit &> /dev/null; then
+    cargo audit --deny warnings
+fi
+
+echo "pre-commit: clean."
