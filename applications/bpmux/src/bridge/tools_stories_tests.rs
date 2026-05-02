@@ -1217,7 +1217,10 @@ async fn label_story_migrated_path_enqueues_tag_added_event() {
     assert_eq!(story.tags, vec![Tag::Blocked]);
 
     let drained = orchestrator.drain_pending().await.unwrap();
-    assert_eq!(drained, 1, "event must reach the adapter via drain");
+    assert_eq!(
+        drained, 0,
+        "#1142: handler drains internally; nothing left to drain"
+    );
     let pushed = adapter.pushed_events();
     assert_eq!(pushed.len(), 1);
     assert!(matches!(
@@ -1278,7 +1281,10 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
     assert!(story.tags.is_empty(), "tags should be empty after remove");
 
     let drained = orchestrator.drain_pending().await.unwrap();
-    assert_eq!(drained, 2, "both events must reach the adapter via drain");
+    assert_eq!(
+        drained, 0,
+        "#1142: handler drains internally per add + remove; nothing left to drain"
+    );
     let pushed = adapter.pushed_events();
     assert_eq!(pushed.len(), 2);
     assert!(matches!(
@@ -2492,7 +2498,10 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
     );
 
     let drained = orchestrator.drain_pending().await.unwrap();
-    assert_eq!(drained, 1, "exactly one StoryClosed event must drain");
+    assert_eq!(
+        drained, 0,
+        "#1142: handler drains internally; nothing left to drain"
+    );
     let pushed = adapter.pushed_events();
     assert_eq!(pushed.len(), 1);
     assert!(matches!(

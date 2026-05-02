@@ -765,6 +765,12 @@ pub(super) async fn handle_label_story(
         };
         r.mutate_sync(event)
             .map_err(|e| format!("#{number} enqueue failed: {e}"))?;
+        r.drain_pending()
+            .await
+            .map_err(|e| format!("#{number} label push failed: {e}"))?;
+        r.refresh_story(number)
+            .await
+            .map_err(|e| format!("#{number} refresh after label failed: {e}"))?;
         broadcast_board_invalidate(ws_tx).await;
         return Ok(ok_msg);
     }
@@ -1318,6 +1324,12 @@ pub(super) async fn handle_close_story(
             reason: Some(reason.to_string()),
         })
         .map_err(|e| format!("#{number} close enqueue failed: {e}"))?;
+        r.drain_pending()
+            .await
+            .map_err(|e| format!("#{number} close push failed: {e}"))?;
+        r.refresh_story(number)
+            .await
+            .map_err(|e| format!("#{number} refresh after close failed: {e}"))?;
         broadcast_board_invalidate(ws_tx).await;
         return Ok(format!("#{number} closed: {reason}"));
     }

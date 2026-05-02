@@ -186,6 +186,33 @@ impl SourceAdapter for InMemorySourceAdapter {
             BoardEvent::BodyFetched { number, body, .. } => {
                 s.bodies.insert(*number, body.clone());
             }
+            BoardEvent::TagAdded { number, label, .. } => {
+                if label.eq_ignore_ascii_case("blocked")
+                    && let Some(story) = s.stories.get_mut(number)
+                    && !story.tags.contains(&crate::board::domain::Tag::Blocked)
+                {
+                    story.tags.push(crate::board::domain::Tag::Blocked);
+                }
+            }
+            BoardEvent::TagRemoved { number, label, .. } => {
+                if label.eq_ignore_ascii_case("blocked")
+                    && let Some(story) = s.stories.get_mut(number)
+                {
+                    story
+                        .tags
+                        .retain(|t| *t != crate::board::domain::Tag::Blocked);
+                }
+            }
+            BoardEvent::StoryClosed { number, .. } => {
+                if let Some(story) = s.stories.get_mut(number) {
+                    story.is_closed = true;
+                }
+            }
+            BoardEvent::StoryReopened { number, .. } => {
+                if let Some(story) = s.stories.get_mut(number) {
+                    story.is_closed = false;
+                }
+            }
             _ => {}
         }
         Ok(())
