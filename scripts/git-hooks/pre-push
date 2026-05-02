@@ -57,7 +57,12 @@ cd "$REPO_ROOT"
 # absorbs the rare parallel-load timing flake without re-running the
 # whole suite. Doc-tests aren't covered by nextest; run separately if
 # they grow non-trivial (currently empty).
-cargo nextest run --no-fail-fast --retries 1
+# --status-level fail keeps stdout volume low (only failed tests print);
+# --hide-progress-bar avoids progress-bar redraws in non-tty piped
+# contexts. Reduces hook stdout from ~2640 PASS lines to ~0 lines on
+# green runs, which mitigates pipe-buffer SIGPIPE 141 false-fails when
+# git push captures the hook through long-running output handlers.
+cargo nextest run --no-fail-fast --retries 1 --status-level fail --hide-progress-bar
 
 # Per Ryan's 2026-04-30 strict directive ("only octocrab gets
 # test-doubled; tests must NEVER hit real GitHub"), the
@@ -99,8 +104,11 @@ fi
 # your e2e acceptance tests in your pre-push." Per spec falsifier #6
 # (error-loud not silent-skip), the npm script returns non-zero on
 # any test failure or browser-env-missing so pre-push gates correctly.
+# `--reporter=dot` keeps stdout volume low (one char per test) on
+# green runs; failures still print full context. Reduces hook stdout
+# from ~277 per-test lines to ~3 dot-rows + summary.
 e2e_exit=0
-(cd "$REPO_ROOT/applications/electron" && npm run test:e2e) || e2e_exit=$?
+(cd "$REPO_ROOT/applications/electron" && npm run test:e2e -- --reporter=dot) || e2e_exit=$?
 if [ $e2e_exit -ne 0 ] && [ $e2e_exit -ne 141 ]; then
     exit $e2e_exit
 fi
