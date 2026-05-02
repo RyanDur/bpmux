@@ -1372,3 +1372,118 @@ fn build_reaction_event_text_with_excerpt_falls_back_when_excerpt_none() {
     assert_eq!(with_none, "ryan reacted 👍 to dev's message");
     assert!(!with_none.contains('\u{201C}'));
 }
+
+#[tokio::test]
+async fn post_reaction_cascade_threads_excerpt_into_broadcast_event_text() {
+    use chrono::TimeZone;
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (tx, _rx) = broadcast::channel(16);
+    let session = Arc::new(session::Session::new(
+        dir.path().to_path_buf(),
+        "test".to_string(),
+        tx.clone(),
+    ));
+
+    let target_ts = chrono::Utc
+        .with_ymd_and_hms(2026, 4, 23, 11, 30, 0)
+        .unwrap();
+    let target_msg = session::Message {
+        from: "dev:claude-code".to_string(),
+        text: "merged #377 into main with the auth-cookie fix".to_string(),
+        ts: target_ts,
+        ..session::Message::default()
+    };
+    session.broadcast(&target_msg).expect("seed target message");
+
+    let router = axum::Router::new()
+        .route("/api/reactions", axum::routing::post(post_reaction))
+        .with_state(session.clone());
+
+    let message_key = format!("{}|dev:claude-code", target_ts.to_rfc3339());
+    let toggle_body = format!(
+        r#"{{"channel":"broadcast","message_key":"{message_key}","emoji":"👍","user":"ryan"}}"#
+    );
+    let request = Request::builder()
+        .method("POST")
+        .uri("/api/reactions")
+        .header("Content-Type", "application/json")
+        .body(Body::from(toggle_body))
+        .expect("build request");
+    let response = router.oneshot(request).await.expect("response");
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let messages = session.read_messages().expect("read messages");
+    let reaction_event = messages
+        .iter()
+        .find(|m| {
+            m.from == "bpmux"
+                && m.message_type == MessageType::Insight
+                && m.text.contains("reacted")
+        })
+        .expect("synthesized reaction event must broadcast to session log");
+
+    assert!(
+        reaction_event
+            .text
+            .contains("ryan reacted 👍 to dev's message"),
+        "#387 base shape preserved end-to-end: {}",
+        reaction_event.text
+    );
+    assert!(
+        reaction_event.text.contains("\u{201C}merged #377"),
+        "#400 excerpt threaded through cascade in typographic quotes: {}",
+        reaction_event.text
+    );
+    assert!(
+        reaction_event.text.ends_with('\u{201D}'),
+        "closing typographic quote terminates the excerpt: {}",
+        reaction_event.text
+    );
+}
+
+#[tokio::test]
+async fn post_reaction_cascade_falls_back_to_no_excerpt_when_target_absent() {
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (tx, _rx) = broadcast::channel(16);
+    let session = Arc::new(session::Session::new(
+        dir.path().to_path_buf(),
+        "test".to_string(),
+        tx.clone(),
+    ));
+
+    let router = axum::Router::new()
+        .route("/api/reactions", axum::routing::post(post_reaction))
+        .with_state(session.clone());
+
+    let toggle_body = r#"{"channel":"broadcast","message_key":"2026-04-23T11:30:00+00:00|dev:claude-code","emoji":"👍","user":"ryan"}"#;
+    let request = Request::builder()
+        .method("POST")
+        .uri("/api/reactions")
+        .header("Content-Type", "application/json")
+        .body(Body::from(toggle_body))
+        .expect("build request");
+    let response = router.oneshot(request).await.expect("response");
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let messages = session.read_messages().expect("read messages");
+    let reaction_event = messages
+        .iter()
+        .find(|m| {
+            m.from == "bpmux"
+                && m.message_type == MessageType::Insight
+                && m.text.contains("reacted")
+        })
+        .expect("reaction event broadcasts even when lookup fails");
+
+    assert_eq!(
+        reaction_event.text, "ryan reacted 👍 to dev's message",
+        "lookup-fail cascade preserves #387 pre-excerpt shape byte-for-byte"
+    );
+    assert!(
+        !reaction_event.text.contains('\u{201C}'),
+        "no typographic quote when excerpt absent: {}",
+        reaction_event.text
+    );
+}
