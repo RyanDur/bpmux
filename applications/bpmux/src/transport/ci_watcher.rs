@@ -16,11 +16,19 @@
 //! run_id fires regardless of whether its conclusion matches the
 //! prior run's.
 //!
-//! Poll cadence is 10s — faster than the frontend's 15s so a
-//! transition is more likely to be caught server-side (where every
-//! connected renderer benefits from the broadcast) than per-client
-//! poll-side. 360 polls/hr well under GitHub's 5000/hr authenticated
-//! rate limit.
+//! Poll cadence is 60s — push-on-transition still keeps the glyph
+//! tight via WS broadcast; the poll itself only matters as a safety
+//! net for reconnect windows + secondary-visibility (the frontend's
+//! own 15s poll covers per-client refresh). 60 polls/hr leaves
+//! ample headroom under GitHub's 5000/hr authenticated rate limit
+//! AND avoids triggering secondary rate-limit (burst-pattern
+//! detection) which the prior 10s cadence kept self-perpetuating —
+//! once tripped, every 10s tick re-tripped it indefinitely.
+//! 2026-05-02 retro: cross-role convergence on cadence-reduction
+//! after empirically observing the self-perpetuating-loop class
+//! across yesterday + today's debugging arcs. Structural close via
+//! #1140 (push-substrate via webhook) when shipped; this is the
+//! immediate mitigation.
 //!
 //! Pure classification via `classify_transition` lets unit tests
 //! cover the "emit exactly when conclusion changes, not on every
@@ -34,7 +42,7 @@ use tokio_util::sync::CancellationToken;
 use crate::board::adapters::github::GitHubSourceAdapter;
 use crate::session;
 
-pub const POLL_INTERVAL: Duration = Duration::from_secs(10);
+pub const POLL_INTERVAL: Duration = Duration::from_secs(60);
 
 /// Classification of a tick result vs prior state. `Changed` triggers
 /// the broadcast; `Same` is a no-op. `NoData` (empty runs list) leaves
