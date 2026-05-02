@@ -56,14 +56,23 @@ fn get_identity_role_arg_overrides_default() {
         r#"{"values":[{"name":"pm value","description":"pm-specific","principles":[]}]}"#,
     )
     .expect("write pm.json");
-    let bpmux = TestBpmux::start_with_env(
-        "human",
-        "BPMUX_IDENTITY_DIR",
-        identity_dir.path().to_str().expect("identity dir path"),
-    );
+    let identity_dir_str = identity_dir
+        .path()
+        .to_str()
+        .expect("identity dir path")
+        .to_string();
+    let bpmux = TestBpmux::start_with_env("human", "BPMUX_IDENTITY_DIR", &identity_dir_str);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let dev = TestBridge::connect(&bpmux, "dev").await;
+        // handle_get_identity runs in the BRIDGE subprocess, not the
+        // TestBpmux subprocess — the env var must be passed to the
+        // bridge spawn explicitly via connect_with_env.
+        let dev = TestBridge::connect_with_env(
+            &bpmux,
+            "dev",
+            &[("BPMUX_IDENTITY_DIR", identity_dir_str.as_str())],
+        )
+        .await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
         let dev_default = dev

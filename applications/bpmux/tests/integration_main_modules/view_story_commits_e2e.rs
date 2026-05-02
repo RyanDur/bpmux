@@ -27,14 +27,19 @@ fn view_story_commits_returns_array_for_known_story() {
     let stub_dir = tempfile::TempDir::new().expect("stub dir");
     let log_fixture = "abc1234567890abcdef1234567890abcdef1234\u{1f}abc1234\u{1f}Fix #476 substrate work\u{1f}dev\u{1f}2026-05-01T00:00:00+00:00\n";
     std::fs::write(stub_dir.path().join("log.txt"), log_fixture).expect("write fixture");
-    let bpmux = TestBpmux::start_with_env(
-        "human",
-        "BPMUX_GIT_STUB_DIR",
-        stub_dir.path().to_str().expect("stub dir path"),
-    );
+    let stub_dir_str = stub_dir.path().to_str().expect("stub dir path").to_string();
+    let bpmux = TestBpmux::start_with_env("human", "BPMUX_GIT_STUB_DIR", &stub_dir_str);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let dev = TestBridge::connect(&bpmux, "dev").await;
+        // handle_view_story_commits runs in the BRIDGE subprocess,
+        // not the TestBpmux subprocess — the env var must reach the
+        // bridge via connect_with_env.
+        let dev = TestBridge::connect_with_env(
+            &bpmux,
+            "dev",
+            &[("BPMUX_GIT_STUB_DIR", stub_dir_str.as_str())],
+        )
+        .await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
         let result = dev
