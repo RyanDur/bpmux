@@ -883,26 +883,12 @@ pub(super) async fn handle_accept_story(
             ts: chrono::Utc::now(),
             peer_id: crate::board::PeerId::local(),
         };
-        // #519 universal-reap (symmetric with reject_story): strip every
-        // workflow-state label so post-accept label-set carries only
-        // "accepted". TagRemoved is idempotent (404 = already-absent =
-        // Ok), so listing labels not currently present is safe no-op.
-        for stale in [
-            LABEL_DELIVERED,
-            LABEL_READY_FOR_ACCEPT,
-            "desk-check",
-            LABEL_IN_PROGRESS,
-            "ready",
-            "needs fixes",
-            "rejected",
-        ] {
-            r.mutate_sync(crate::board::BoardEvent::TagRemoved {
-                meta: meta.clone(),
-                number,
-                label: stale.to_string(),
-            })
-            .map_err(|e| format!("#{number} {stale}-tag-remove enqueue failed: {e}"))?;
-        }
+        // #1139 universal-reap via canonical helper: strip every
+        // workflow-state label except "accepted" so post-accept label-set
+        // carries only "accepted". Migrated from inline list to the
+        // shared reap_workflow_labels helper backed by ALL_STATE_LABELS
+        // — single source of truth across all gate-tools.
+        reap_workflow_labels(r.as_ref(), number, &meta, "accepted")?;
         r.mutate_sync(crate::board::BoardEvent::GateCommentAppended {
             meta: meta.clone(),
             number,
@@ -970,33 +956,19 @@ pub(super) async fn handle_reject_story(
             ts: chrono::Utc::now(),
             peer_id: crate::board::PeerId::local(),
         };
-        // #519 universal-reap: strip every workflow-state label so the
-        // post-reject label-set carries only "rejected". Symmetric to
-        // #507's accept_story reap. TagRemoved is idempotent at the
-        // adapter (404 = already-absent = Ok), so listing labels not
-        // currently present is a safe no-op.
-        for stale in [
-            LABEL_DELIVERED,
-            LABEL_READY_FOR_ACCEPT,
-            "desk-check",
-            LABEL_IN_PROGRESS,
-            "ready",
-            "needs fixes",
-        ] {
-            r.mutate_sync(crate::board::BoardEvent::TagRemoved {
-                meta: meta.clone(),
-                number,
-                label: stale.to_string(),
-            })
-            .map_err(|e| format!("#{number} {stale}-tag-remove enqueue failed: {e}"))?;
-        }
+        // #1139 universal-reap via canonical helper: strip every
+        // workflow-state label except "rejected" so post-reject label-set
+        // carries only "rejected". Migrated from inline list per
+        // ALL_STATE_LABELS single-source-of-truth; the was_accepted
+        // re-pickup case still strips "accepted" explicitly below
+        // alongside firing StoryReopened.
+        reap_workflow_labels(r.as_ref(), number, &meta, "rejected")?;
         if was_accepted {
-            r.mutate_sync(crate::board::BoardEvent::TagRemoved {
-                meta: meta.clone(),
-                number,
-                label: "accepted".to_string(),
-            })
-            .map_err(|e| format!("#{number} accepted-tag-remove enqueue failed: {e}"))?;
+            // reap above already stripped "accepted"; this branch only
+            // fires the GH-state reopen since closed→open isn't a label
+            // operation. The was_accepted check stays load-bearing
+            // because StoryReopened on a never-closed story is a
+            // wrong-shape event.
             r.mutate_sync(crate::board::BoardEvent::StoryReopened {
                 meta: meta.clone(),
                 number,
@@ -1069,26 +1041,11 @@ pub(super) async fn handle_pass_desk_check(
             ts: chrono::Utc::now(),
             peer_id: crate::board::PeerId::local(),
         };
-        // #503/#519 universal-reap: strip every workflow-state label
-        // except "delivered" (which we add via StateTransitioned).
-        // Symmetric to accept_story / reject_story; closes the
-        // fail→PASS rework-cycle stale-label class.
-        for stale in [
-            "desk-check",
-            LABEL_IN_PROGRESS,
-            "ready",
-            "needs fixes",
-            LABEL_READY_FOR_ACCEPT,
-            "rejected",
-            "accepted",
-        ] {
-            r.mutate_sync(crate::board::BoardEvent::TagRemoved {
-                meta: meta.clone(),
-                number,
-                label: stale.to_string(),
-            })
-            .map_err(|e| format!("#{number} {stale}-tag-remove enqueue failed: {e}"))?;
-        }
+        // #1139 universal-reap via canonical helper: strip every
+        // workflow-state label except "delivered" (added via the
+        // StateTransitioned event below). Migrated from inline list
+        // per ALL_STATE_LABELS single-source-of-truth.
+        reap_workflow_labels(r.as_ref(), number, &meta, LABEL_DELIVERED)?;
         r.mutate_sync(crate::board::BoardEvent::GateCommentAppended {
             meta: meta.clone(),
             number,
@@ -1164,26 +1121,13 @@ pub(super) async fn handle_fail_desk_check(
             })
             .map_err(|e| format!("#{number} reopen enqueue failed: {e}"))?;
         }
-        // #503/#519 universal-reap: strip every workflow-state label
-        // except "needs fixes" (which we add via StateTransitioned).
-        // Same archetype as accept/reject/pass_desk_check. Includes
-        // "accepted" so the was_accepted re-pickup case lands clean.
-        for stale in [
-            "desk-check",
-            LABEL_IN_PROGRESS,
-            "ready",
-            LABEL_READY_FOR_ACCEPT,
-            LABEL_DELIVERED,
-            "rejected",
-            "accepted",
-        ] {
-            r.mutate_sync(crate::board::BoardEvent::TagRemoved {
-                meta: meta.clone(),
-                number,
-                label: stale.to_string(),
-            })
-            .map_err(|e| format!("#{number} {stale}-tag-remove enqueue failed: {e}"))?;
-        }
+        // #1139 universal-reap via canonical helper: strip every
+        // workflow-state label except "needs fixes" (added via the
+        // StateTransitioned event below). Migrated from inline list
+        // per ALL_STATE_LABELS single-source-of-truth. Was-accepted
+        // re-pickup case lands clean because the helper iterates the
+        // canonical set including "accepted".
+        reap_workflow_labels(r.as_ref(), number, &meta, "needs fixes")?;
         r.mutate_sync(crate::board::BoardEvent::GateCommentAppended {
             meta: meta.clone(),
             number,
@@ -1318,6 +1262,12 @@ pub(super) async fn handle_close_story(
             ts: chrono::Utc::now(),
             peer_id: crate::board::PeerId::local(),
         };
+        // #1139: strip every workflow-state label at close-time.
+        // Closing a story removes its workflow context (the close-reason
+        // comment carries the audit trail). Empty `keep` means strip all
+        // ALL_STATE_LABELS entries — none match `""`, so the helper
+        // iterates the full set.
+        reap_workflow_labels(r.as_ref(), number, &meta, "")?;
         r.mutate_sync(crate::board::BoardEvent::StoryClosed {
             meta,
             number,
