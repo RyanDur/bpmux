@@ -6,52 +6,82 @@
 //! AC3: Board groups by status (READY, DELIVERED, ICEBOX, ...)
 //! AC4: Column headers and separators provide visual structure
 //!
-//! Tests drive the TUI through a fixture (`BPMUX_BOARD_FIXTURE`) rather
-//! than shelling out to `gh`. The fixture path is already wired into
-//! `src/terminal/board.rs`; the same env var is used by the agent-side
-//! bridge (`handle_view_board`) so both audiences read from the same
-//! shape. Hermetic by construction — no silent skips when gh or auth
-//! is unavailable.
+//! Tests drive the TUI through httpmock-served GitHub issues — exercises
+//! the full real-substrate cascade (octocrab → GitHubSourceAdapter →
+//! canonical store → state-decode → renderer) per Ryan's 2026-04-30
+//! "only octocrab as test-double" directive. BPMUX_BOARD_FIXTURE retired
+//! here as part of #724 sub-slice 2.
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;
 
+use harness::mock_gh::issue_json;
 use harness::pty::TestBpmux;
-use std::io::Write;
+use httpmock::{Method, MockServer};
+use serde_json::Value;
 use std::time::Duration;
 
-/// Shared fixture: one story per state category so every AC has a
-/// deterministic signal to assert on (no `||` alternates, no
-/// probing). The JSON shape matches what `gh issue list --json
-/// number,title,state,labels,...` produces in production, so the
-/// same parsing path exercises the fixture and live data.
-const BOARD_FIXTURE: &str = r#"[
-  {"number":306,"title":"Ready story","state":"OPEN","labels":[{"name":"ready"}],"body":"","assignees":[],"createdAt":"2026-04-14"},
-  {"number":307,"title":"Delivered story","state":"OPEN","labels":[{"name":"delivered"}],"body":"","assignees":[],"createdAt":"2026-04-14"},
-  {"number":308,"title":"Icebox story","state":"OPEN","labels":[],"body":"","assignees":[],"createdAt":"2026-04-13"}
-]"#;
-
-fn write_fixture() -> tempfile::NamedTempFile {
-    let mut f = tempfile::NamedTempFile::new().expect("fixture file");
-    f.write_all(BOARD_FIXTURE.as_bytes())
-        .expect("write fixture");
-    f
+fn board_fixture_issues() -> Value {
+    Value::Array(vec![
+        issue_json(306, "Ready story", &["ready"], Some("")),
+        issue_json(307, "Delivered story", &["delivered"], Some("")),
+        issue_json(308, "Icebox story", &[], Some("")),
+    ])
 }
 
-fn start_with_fixture(name: &str, fixture: &tempfile::NamedTempFile) -> TestBpmux {
-    let path = fixture.path().to_str().expect("fixture path utf-8");
-    TestBpmux::start_with_env(name, "BPMUX_BOARD_FIXTURE", path)
+fn mock_board_endpoints(server: &MockServer, issues: &Value) {
+    server.mock(|when, then| {
+        when.method(Method::GET).path("/repos/acme/bpmux/issues");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(issues.to_string());
+    });
+    server.mock(|when, then| {
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/actions/runs");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(serde_json::json!({"workflow_runs": []}).to_string());
+    });
+    if let Value::Array(arr) = issues {
+        for issue in arr {
+            let number = issue["number"].as_u64().expect("issue number");
+            let issue_path = format!("/repos/acme/bpmux/issues/{number}");
+            let comments_path = format!("/repos/acme/bpmux/issues/{number}/comments");
+            let issue_clone = issue.clone();
+            server.mock(|when, then| {
+                when.method(Method::GET).path(issue_path);
+                then.status(200)
+                    .header("content-type", "application/json")
+                    .body(issue_clone.to_string());
+            });
+            server.mock(|when, then| {
+                when.method(Method::GET).path(comments_path);
+                then.status(200)
+                    .header("content-type", "application/json")
+                    .body(Value::Array(vec![]).to_string());
+            });
+        }
+    }
 }
 
-/// AC1: GIVEN the board has fixture stories
+fn start_with_mocked_board() -> TestBpmux {
+    let server = MockServer::start();
+    let base_url = format!("{}/", server.base_url());
+    mock_board_endpoints(&server, &board_fixture_issues());
+    let bpmux = TestBpmux::start_with_mock_gh(&base_url);
+    std::mem::forget(server);
+    bpmux
+}
+
+/// AC1: GIVEN the board has mocked stories
 /// WHEN the human types `/board`
 /// THEN the READY column header renders — the observable signal that
 ///      the board view is live.
 #[test]
 fn ac1_board_renders_in_chat() {
-    let fixture = write_fixture();
-    let bpmux = start_with_fixture("story69-ac1", &fixture);
+    let bpmux = start_with_mocked_board();
     bpmux.type_line("/board");
     assert!(
         bpmux.wait_for_tui("READY", Duration::from_secs(5)),
@@ -60,22 +90,21 @@ fn ac1_board_renders_in_chat() {
     );
 }
 
-/// AC2: GIVEN the board renders a story from the fixture
+/// AC2: GIVEN the board renders a story from the mock
 /// WHEN the human reads it
 /// THEN the issue number is visible next to the title.
 #[test]
 fn ac2_board_shows_issue_numbers() {
-    let fixture = write_fixture();
-    let bpmux = start_with_fixture("story69-ac2", &fixture);
+    let bpmux = start_with_mocked_board();
     bpmux.type_line("/board");
     assert!(
         bpmux.wait_for_tui("#306", Duration::from_secs(5)),
-        "Board should show the fixture's #306 issue number. Screen:\n{}",
+        "Board should show the mock's #306 issue number. Screen:\n{}",
         bpmux.tui()
     );
 }
 
-/// AC3: GIVEN the fixture has stories in READY (#306) and DELIVERED
+/// AC3: GIVEN the mock has stories in READY (#306) and DELIVERED
 ///       (#307) states
 /// WHEN the board renders
 /// THEN #306 appears under the READY header and #307 appears under
@@ -83,8 +112,7 @@ fn ac2_board_shows_issue_numbers() {
 ///      regression that swaps the grouping fails this test.
 #[test]
 fn ac3_board_groups_by_status() {
-    let fixture = write_fixture();
-    let bpmux = start_with_fixture("story69-ac3", &fixture);
+    let bpmux = start_with_mocked_board();
     bpmux.type_line("/board");
     assert!(
         bpmux.wait_for_tui("DELIVERED", Duration::from_secs(5)),
@@ -123,7 +151,7 @@ fn ac3_board_groups_by_status() {
     );
 }
 
-/// AC4: GIVEN the board renders with fixture data
+/// AC4: GIVEN the board renders with mock data
 /// WHEN the human reads it
 /// THEN the project panel's vertical separator line has enough
 ///      distinct horizontal rules to provide column structure — we
@@ -131,8 +159,7 @@ fn ac3_board_groups_by_status() {
 ///      any ratatui Block would produce) fails the test.
 #[test]
 fn ac4_board_has_visual_structure() {
-    let fixture = write_fixture();
-    let bpmux = start_with_fixture("story69-ac4", &fixture);
+    let bpmux = start_with_mocked_board();
     bpmux.type_line("/board");
     assert!(
         bpmux.wait_for_tui("READY", Duration::from_secs(5)),
@@ -140,11 +167,6 @@ fn ac4_board_has_visual_structure() {
         bpmux.tui()
     );
     let screen = bpmux.tui();
-    // The project panel + chat panel are two adjacent bordered
-    // blocks, each contributing a top and bottom border line. Plus
-    // the status bar. A minimum of 4 horizontal-rule lines
-    // distinguishes a real columnar layout from a single generic
-    // ratatui block (which has 2).
     let rule_lines = screen
         .lines()
         .filter(|l| l.contains("─") && l.chars().filter(|c| *c == '─').count() >= 10)
