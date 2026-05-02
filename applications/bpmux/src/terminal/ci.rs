@@ -87,23 +87,30 @@ pub(super) fn hydrate_last_broadcast(messages: &[Message]) -> Option<CiState> {
     })
 }
 
-/// Spawn a background task that polls CI every 60 seconds and sends state
-/// updates to `tx`. The task exits cleanly when the receiver is dropped.
+/// Spawn a background task that polls CI every POLL_INTERVAL and
+/// sends state updates to `tx`. The task exits cleanly when the
+/// receiver is dropped.
 ///
-/// Only sends an update when the state CHANGES. The startup transition
-/// from `Unknown` → first known state always fires.
+/// Only sends a state update when the CiState CHANGES. The startup
+/// transition from `Unknown` → first known state always fires.
 ///
-/// When `broadcast_session` is `Some`, this function also posts an
-/// activity-type broadcast message (#106) on meaningful state
-/// transitions: failures always surface, recoveries surface only
-/// when they follow a prior failure. The transition logic is in
-/// `compute_broadcast_text`, which is pure and unit-tested.
+/// Broadcast policy (#1140 — per-completion shape):
+/// When `broadcast_session` is `Some`, posts an activity-type
+/// broadcast message + dev-addressed signal on every NEW
+/// `(run_id, state)` tuple where the state is terminal (Green / Red
+/// / QuotaExhausted). Same `(run_id, state)` as last broadcast =
+/// silent (dedup). New `run_id` with same state = fires (covers the
+/// canonical "my push went green" case that the prior transition-
+/// only logic dropped). New state on same `run_id` = fires (covers
+/// in-progress→completed within a single run).
 ///
-/// `initial_last_broadcast` is the hydrated value for `last_broadcast`,
-/// typically computed via `hydrate_last_broadcast(&app.msg.messages)`
-/// at call-site (#300). Pass `None` only for fresh-session cases; on
-/// restart during a known CI state, pass the hydrated value so the
-/// first poll doesn't re-emit a phantom transition.
+/// `initial_last_broadcast` is the hydrated state from prior session
+/// log (typically via `hydrate_last_broadcast(&app.msg.messages)`).
+/// Pass `None` for fresh-session cases. The hydrated value carries
+/// state but not `run_id`; on first-poll-post-restart the tuple-
+/// equality check sees `(None, S)` vs `(Some(N), S)` and fires once
+/// — small re-broadcast cost in exchange for the silent-hold-loop
+/// fix. Acceptable per #1140's premise.
 pub(super) fn spawn_poller(
     tx: mpsc::Sender<CiState>,
     broadcast_session: Option<Arc<Session>>,
@@ -111,19 +118,15 @@ pub(super) fn spawn_poller(
 ) {
     tokio::spawn(async move {
         let mut last_state = CiState::Unknown;
-        let mut last_broadcast: Option<CiState> = initial_last_broadcast;
+        let mut last_observation: Option<(Option<u64>, CiState)> =
+            initial_last_broadcast.map(|s| (None, s));
         let mut interval = tokio::time::interval(POLL_INTERVAL);
-        // First tick fires immediately, so we get a state update at startup
-        // rather than waiting a full minute for the first paint.
         loop {
             interval.tick().await;
             let event = match poll_once().await {
                 Ok(ev) => ev,
                 Err(e) => {
                     log_diag(&format!("ci: poll error: {e}"));
-                    // Keep the last known state on error — spec says Phase 1
-                    // does not render an error glyph. The diag log captures
-                    // the failure for later inspection.
                     continue;
                 }
             };
@@ -133,17 +136,12 @@ pub(super) fn spawn_poller(
                     break;
                 }
             }
-            // Broadcast hook (#106 / #188). Pure transition logic in
-            // `compute_broadcast_text`; this branch is just IO. The
-            // multi-depth payload (#188) comes from the paired pure
-            // helper `build_multi_depth_for_transition`, which
-            // populates the per-role default depths and the OnDemand
-            // deep-detail pointer at `gh run view <run_id>`.
-            if let Some(session) = broadcast_session.as_ref()
-                && let Some(text) = compute_broadcast_text(last_broadcast, &event)
+            let current_observation = (event.run_id, event.state);
+            if last_observation != Some(current_observation)
+                && let Some(session) = broadcast_session.as_ref()
+                && let Some(text) = compute_broadcast_text(&event)
             {
-                let is_recovery = event.state == CiState::Green;
-                let multi_depth = build_multi_depth_for_transition(&event, is_recovery);
+                let multi_depth = build_multi_depth_for_transition(&event);
                 let msg = Message {
                     from: "bpmux".to_string(),
                     text: text.clone(),
@@ -155,50 +153,40 @@ pub(super) fn spawn_poller(
                 if let Err(e) = session.broadcast(&msg) {
                     log_diag(&format!("ci: broadcast error: {e}"));
                 }
-                // Also fire a dev-addressed workflow signal so
-                // the dev agent sees CI transitions in their chat
-                // notifications without Ryan having to relay. Same
-                // pattern as deliver_story → designer signals.
                 let dev_signal = build_dev_ci_signal(&text);
                 if let Err(e) = session.broadcast(&dev_signal) {
                     log_diag(&format!("ci: dev signal error: {e}"));
                 }
-                last_broadcast = Some(event.state);
+                last_observation = Some(current_observation);
             }
         }
     });
 }
 
-/// Decide whether a state change warrants a broadcast message, and
-/// return the formatted text if so. Pure function, no IO — tested
-/// exhaustively over the transition table below.
+/// Format the broadcast text for a CI poll event. Pure function, no IO
+/// — caller (`spawn_poller`) is responsible for tuple-dedup before
+/// firing the broadcast.
 ///
-/// Rules (per PM shape for #106):
-/// - Emit "CI failed" whenever `next.state` is Red AND
-///   `last_broadcast` was not Red. Covers unknown→red, green→red,
-///   running→red. The first known state being red fires on startup.
-/// - Emit "CI recovered" whenever `next.state` is Green AND
-///   `last_broadcast` was Red. The "recoveries after failures only"
-///   rule — a healthy pipeline never broadcasts green.
-/// - Everything else: silent. Running/Unknown are ignored.
-pub(super) fn compute_broadcast_text(
-    last_broadcast: Option<CiState>,
-    next: &CiEvent,
-) -> Option<String> {
+/// #1140 reshape: the prior transition-only signature
+/// `(Option<CiState>, &CiEvent) -> Option<String>` dropped
+/// GREEN-to-GREEN with new run_id, the canonical "my push went green"
+/// case. Dedup responsibility moved to `spawn_poller` (compares
+/// `(run_id, state)` tuple); this function decides only how to render
+/// terminal-state completions.
+///
+/// - `Red` → "🔴 CI failed on …"
+/// - `Green` → "🟢 CI green on …"
+/// - `QuotaExhausted` → "⏸ CI paused (quota exhausted) on …"
+/// - `Running` / `Unknown` → silent (None)
+///
+/// Hydration backward-compat: `hydrate_last_broadcast` matches the
+/// "🔴 CI" / "🟢 CI" / "⏸ CI" prefixes; this still satisfies that.
+pub(super) fn compute_broadcast_text(next: &CiEvent) -> Option<String> {
     match next.state {
-        CiState::Red if last_broadcast != Some(CiState::Red) => Some(format_failure_line(next)),
-        CiState::Green
-            if matches!(
-                last_broadcast,
-                Some(CiState::Red) | Some(CiState::QuotaExhausted)
-            ) =>
-        {
-            Some(format_recovery_line(next))
-        }
-        CiState::QuotaExhausted if last_broadcast != Some(CiState::QuotaExhausted) => {
-            Some(format_paused_line(next))
-        }
-        _ => None,
+        CiState::Red => Some(format_failure_line(next)),
+        CiState::Green => Some(format_success_line(next)),
+        CiState::QuotaExhausted => Some(format_paused_line(next)),
+        CiState::Running | CiState::Unknown => None,
     }
 }
 
@@ -235,19 +223,18 @@ pub(super) fn compute_broadcast_text(
 /// back to `summary` if missing. Roles not in the map (e.g., `ryan`
 /// itself) fall through to `summary`, which is correct — Ryan's
 /// default CI view should be the binary state, same as pm/designer.
-pub(super) fn build_multi_depth_for_transition(
-    event: &CiEvent,
-    is_recovery: bool,
-) -> MultiDepthPayload {
-    let summary = if is_recovery {
-        "\u{1F7E2} CI recovered".to_string()
-    } else {
-        "\u{1F534} CI failed".to_string()
-    };
-    let dev_detail = if is_recovery {
-        format_recovery_line(event)
-    } else {
-        format_failure_line(event)
+pub(super) fn build_multi_depth_for_transition(event: &CiEvent) -> MultiDepthPayload {
+    let (summary, dev_detail) = match event.state {
+        CiState::Green => ("\u{1F7E2} CI green".to_string(), format_success_line(event)),
+        CiState::Red => (
+            "\u{1F534} CI failed".to_string(),
+            format_failure_line(event),
+        ),
+        CiState::QuotaExhausted => ("\u{23F8} CI paused".to_string(), format_paused_line(event)),
+        CiState::Running | CiState::Unknown => (
+            "CI \u{2026}".to_string(),
+            "CI in progress or unknown".to_string(),
+        ),
     };
 
     let mut role_default: HashMap<String, String> = HashMap::new();
@@ -322,8 +309,8 @@ fn format_failure_line(event: &CiEvent) -> String {
     line
 }
 
-fn format_recovery_line(event: &CiEvent) -> String {
-    let mut line = String::from("\u{1F7E2} CI recovered");
+fn format_success_line(event: &CiEvent) -> String {
+    let mut line = String::from("\u{1F7E2} CI green");
     append_meta(&mut line, event);
     line
 }

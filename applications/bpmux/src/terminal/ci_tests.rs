@@ -197,115 +197,39 @@ fn event_with_meta(state: CiState, sha: &str, title: &str, id: u64) -> CiEvent {
 }
 
 #[test]
-fn compute_broadcast_emits_failure_on_first_red_from_startup() {
-    // last_broadcast = None (startup), next = Red → should emit.
-    // Failures always surface, even on the first known state.
-    let text = compute_broadcast_text(None, &event(CiState::Red));
-    assert!(text.is_some(), "startup-into-red should emit");
-    let text = text.unwrap();
-    assert!(text.contains("CI failed"), "got: {text}");
-}
-
-#[test]
-fn compute_broadcast_is_silent_on_first_green_from_startup() {
-    // last_broadcast = None (startup), next = Green → silent.
-    // "Successes only after failures" — a healthy pipeline is
-    // quiet, not constantly announcing green.
-    let text = compute_broadcast_text(None, &event(CiState::Green));
-    assert!(text.is_none(), "startup-into-green should be silent");
-}
-
-#[test]
-fn compute_broadcast_emits_failure_on_green_to_red_transition() {
-    let text = compute_broadcast_text(Some(CiState::Green), &event(CiState::Red));
-    assert!(text.is_some());
+fn compute_broadcast_emits_failure_on_red_state() {
+    let text = compute_broadcast_text(&event(CiState::Red));
+    assert!(text.is_some(), "Red terminal state should emit");
     assert!(text.unwrap().contains("CI failed"));
 }
 
 #[test]
-fn compute_broadcast_emits_recovery_on_red_to_green_transition() {
-    let text = compute_broadcast_text(Some(CiState::Red), &event(CiState::Green));
-    assert!(text.is_some());
-    let text = text.unwrap();
-    assert!(text.contains("CI recovered"), "got: {text}");
+fn compute_broadcast_emits_green_on_green_state() {
+    // #1140: per-completion shape — Green ALWAYS emits a broadcast
+    // text. Caller (`spawn_poller`) is responsible for tuple-dedup
+    // before firing. The prior transition-only semantics dropped
+    // GREEN→GREEN-with-new-run_id (the canonical "my push went green"
+    // case); pure render now always returns Some on terminal states.
+    let text = compute_broadcast_text(&event(CiState::Green));
+    assert!(text.is_some(), "Green terminal state should emit");
+    assert!(text.unwrap().contains("CI green"));
 }
 
 #[test]
-fn compute_broadcast_is_silent_on_red_to_red() {
-    // Already-broadcast red stays silent on the next red poll.
-    // Prevents flapping between two red states from double-broadcasting.
-    let text = compute_broadcast_text(Some(CiState::Red), &event(CiState::Red));
-    assert!(text.is_none());
-}
-
-#[test]
-fn compute_broadcast_is_silent_on_green_to_green() {
-    let text = compute_broadcast_text(Some(CiState::Green), &event(CiState::Green));
-    assert!(text.is_none());
-}
-
-#[test]
-fn compute_broadcast_is_silent_on_transition_to_running() {
-    // Running is an intermediate state, not an event. No broadcast.
-    assert!(compute_broadcast_text(None, &event(CiState::Running)).is_none());
-    assert!(compute_broadcast_text(Some(CiState::Green), &event(CiState::Running)).is_none());
-    assert!(compute_broadcast_text(Some(CiState::Red), &event(CiState::Running)).is_none());
-}
-
-#[test]
-fn compute_broadcast_is_silent_on_transition_from_running_to_green() {
-    // A passing build after running — same green as before the build.
-    // Only broadcast if last_broadcast was Red. Running doesn't count.
-    let text = compute_broadcast_text(Some(CiState::Running), &event(CiState::Green));
-    assert!(text.is_none());
-}
-
-#[test]
-fn compute_broadcast_emits_paused_on_first_quota_exhausted_from_startup() {
-    let text = compute_broadcast_text(None, &event(CiState::QuotaExhausted));
-    assert!(text.is_some(), "startup-into-quota-exhausted should emit");
-    assert!(text.unwrap().contains("CI paused"));
-}
-
-#[test]
-fn compute_broadcast_emits_paused_on_green_to_quota_exhausted() {
-    let text = compute_broadcast_text(Some(CiState::Green), &event(CiState::QuotaExhausted));
+fn compute_broadcast_emits_paused_on_quota_exhausted_state() {
+    let text = compute_broadcast_text(&event(CiState::QuotaExhausted));
     assert!(text.is_some());
     assert!(text.unwrap().contains("CI paused"));
 }
 
 #[test]
-fn compute_broadcast_emits_paused_on_red_to_quota_exhausted() {
-    let text = compute_broadcast_text(Some(CiState::Red), &event(CiState::QuotaExhausted));
-    assert!(text.is_some());
-    assert!(text.unwrap().contains("CI paused"));
+fn compute_broadcast_is_silent_on_running() {
+    assert!(compute_broadcast_text(&event(CiState::Running)).is_none());
 }
 
 #[test]
-fn compute_broadcast_emits_recovery_on_quota_exhausted_to_green() {
-    // Billing reset / spending limit raised — back to passing.
-    // Same recovery semantic as red-to-green so the team sees the
-    // gate re-open without ambiguity.
-    let text = compute_broadcast_text(Some(CiState::QuotaExhausted), &event(CiState::Green));
-    assert!(text.is_some());
-    assert!(text.unwrap().contains("CI recovered"));
-}
-
-#[test]
-fn compute_broadcast_emits_failure_on_quota_exhausted_to_red() {
-    // Billing reset reveals a code-failure — pre-existing red surfaces.
-    let text = compute_broadcast_text(Some(CiState::QuotaExhausted), &event(CiState::Red));
-    assert!(text.is_some());
-    assert!(text.unwrap().contains("CI failed"));
-}
-
-#[test]
-fn compute_broadcast_is_silent_on_quota_exhausted_to_quota_exhausted() {
-    let text = compute_broadcast_text(
-        Some(CiState::QuotaExhausted),
-        &event(CiState::QuotaExhausted),
-    );
-    assert!(text.is_none());
+fn compute_broadcast_is_silent_on_unknown() {
+    assert!(compute_broadcast_text(&event(CiState::Unknown)).is_none());
 }
 
 #[test]
@@ -316,7 +240,7 @@ fn failure_message_includes_sha_title_and_run_link_when_metadata_present() {
         "fix: prevent silent drop",
         54321,
     );
-    let text = compute_broadcast_text(None, &ev).unwrap();
+    let text = compute_broadcast_text(&ev).unwrap();
     assert!(text.contains("CI failed"));
     assert!(text.contains("abcdef1"), "short SHA missing: {text}");
     assert!(
@@ -333,8 +257,7 @@ fn failure_message_includes_sha_title_and_run_link_when_metadata_present() {
 fn failure_message_truncates_long_titles() {
     let long_title = "a".repeat(100);
     let ev = event_with_meta(CiState::Red, "abcdef1234", &long_title, 999);
-    let text = compute_broadcast_text(None, &ev).unwrap();
-    // Should contain ellipsis, not the full 100-char title.
+    let text = compute_broadcast_text(&ev).unwrap();
     assert!(text.contains('\u{2026}'), "expected ellipsis in: {text}");
     assert!(
         !text.contains(&long_title),
@@ -344,17 +267,16 @@ fn failure_message_truncates_long_titles() {
 
 #[test]
 fn failure_message_without_metadata_still_has_core_signal() {
-    let text = compute_broadcast_text(None, &event(CiState::Red)).unwrap();
+    let text = compute_broadcast_text(&event(CiState::Red)).unwrap();
     assert!(text.contains("CI failed"));
-    // No sha / title / run link, but the core signal remains.
     assert!(!text.contains("gh run view"));
 }
 
 #[test]
-fn recovery_message_includes_sha_and_run_link() {
+fn green_message_includes_sha_and_run_link() {
     let ev = event_with_meta(CiState::Green, "cafebab", "fix ci", 999);
-    let text = compute_broadcast_text(Some(CiState::Red), &ev).unwrap();
-    assert!(text.contains("CI recovered"));
+    let text = compute_broadcast_text(&ev).unwrap();
+    assert!(text.contains("CI green"));
     assert!(text.contains("cafebab"));
     assert!(text.contains("gh run view 999"));
 }
@@ -368,7 +290,7 @@ fn recovery_message_includes_sha_and_run_link() {
 #[test]
 fn build_multi_depth_for_failure_uses_red_glyph_summary() {
     let ev = event_with_meta(CiState::Red, "abcdef1", "fix: x", 42);
-    let payload = build_multi_depth_for_transition(&ev, false);
+    let payload = build_multi_depth_for_transition(&ev);
     assert!(
         payload.summary.contains("CI failed"),
         "summary should describe failure, got: {}",
@@ -378,12 +300,12 @@ fn build_multi_depth_for_failure_uses_red_glyph_summary() {
 }
 
 #[test]
-fn build_multi_depth_for_recovery_uses_green_glyph_summary() {
+fn build_multi_depth_for_green_uses_green_glyph_summary() {
     let ev = event_with_meta(CiState::Green, "abcdef1", "fix: x", 42);
-    let payload = build_multi_depth_for_transition(&ev, true);
+    let payload = build_multi_depth_for_transition(&ev);
     assert!(
-        payload.summary.contains("CI recovered"),
-        "summary should describe recovery, got: {}",
+        payload.summary.contains("CI green"),
+        "summary should describe green completion, got: {}",
         payload.summary
     );
     assert!(
@@ -395,7 +317,7 @@ fn build_multi_depth_for_recovery_uses_green_glyph_summary() {
 #[test]
 fn build_multi_depth_sets_pm_and_designer_defaults_to_summary() {
     let ev = event_with_meta(CiState::Red, "abcdef1", "fix: x", 42);
-    let payload = build_multi_depth_for_transition(&ev, false);
+    let payload = build_multi_depth_for_transition(&ev);
     // pm and designer default to the summary — binary-state
     // is all they need to make routing decisions.
     assert_eq!(payload.role_default.get("pm"), Some(&payload.summary));
@@ -412,7 +334,7 @@ fn build_multi_depth_sets_dev_default_to_detail_line_with_sha_and_run_link() {
         "fix: prevent silent drop",
         54321,
     );
-    let payload = build_multi_depth_for_transition(&ev, false);
+    let payload = build_multi_depth_for_transition(&ev);
     let dev = payload.role_default.get("dev").expect("dev entry");
     assert!(dev.contains("CI failed"));
     assert!(dev.contains("abcdef1"), "short SHA missing: {dev}");
@@ -425,7 +347,7 @@ fn build_multi_depth_sets_dev_default_to_detail_line_with_sha_and_run_link() {
 #[test]
 fn build_multi_depth_deep_detail_is_on_demand_when_run_id_present() {
     let ev = event_with_meta(CiState::Red, "abcdef1", "fix", 12345);
-    let payload = build_multi_depth_for_transition(&ev, false);
+    let payload = build_multi_depth_for_transition(&ev);
     match payload.deep {
         DeepDetail::OnDemand {
             command,
@@ -452,7 +374,7 @@ fn build_multi_depth_deep_detail_is_preloaded_fallback_when_run_id_missing() {
     // still produce a valid payload, falling back to a
     // Preloaded placeholder rather than panicking.
     let ev = event(CiState::Red); // defaults: all metadata None
-    let payload = build_multi_depth_for_transition(&ev, false);
+    let payload = build_multi_depth_for_transition(&ev);
     match payload.deep {
         DeepDetail::Preloaded { text } => {
             assert!(!text.is_empty());
@@ -464,14 +386,14 @@ fn build_multi_depth_deep_detail_is_preloaded_fallback_when_run_id_missing() {
 }
 
 #[test]
-fn build_multi_depth_recovery_dev_default_describes_recovery_not_failure() {
-    // Guard against a copy-paste bug where recovery rendering
-    // leaks the failure template. Dev's recovery default should
-    // say "CI recovered", not "CI failed".
+fn build_multi_depth_green_dev_default_describes_green_not_failure() {
+    // Guard against a copy-paste bug where green-completion rendering
+    // leaks the failure template. Dev's green default should say
+    // "CI green", not "CI failed".
     let ev = event_with_meta(CiState::Green, "abcdef1", "fix", 42);
-    let payload = build_multi_depth_for_transition(&ev, true);
+    let payload = build_multi_depth_for_transition(&ev);
     let dev = payload.role_default.get("dev").expect("dev entry");
-    assert!(dev.contains("CI recovered"));
+    assert!(dev.contains("CI green"));
     assert!(!dev.contains("CI failed"));
 }
 
@@ -481,7 +403,7 @@ fn build_multi_depth_role_default_has_entries_for_all_three_roles() {
     // accident, this test fires. Three agent roles + optional
     // ryan (absent, falls back to summary).
     let ev = event_with_meta(CiState::Red, "abcdef1", "fix", 42);
-    let payload = build_multi_depth_for_transition(&ev, false);
+    let payload = build_multi_depth_for_transition(&ev);
     assert_eq!(
         payload.role_default.len(),
         3,
