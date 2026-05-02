@@ -1331,9 +1331,14 @@ pub(super) async fn handle_close_story(
         crate::session::diag::log_diag(&format!(
             "close_story #{number}: drain_pending pushed {drained} event(s)"
         ));
-        r.refresh_story(number)
+        let post = r
+            .refresh_story(number)
             .await
             .map_err(|e| format!("#{number} refresh after close failed: {e}"))?;
+        let post_state = post.as_ref().map(|s| (s.state, s.is_closed));
+        crate::session::diag::log_diag(&format!(
+            "close_story #{number}: post-refresh story={post_state:?}"
+        ));
         broadcast_board_invalidate(ws_tx).await;
         return Ok(format!("#{number} closed: {reason}"));
     }

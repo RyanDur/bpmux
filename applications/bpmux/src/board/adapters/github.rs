@@ -140,7 +140,11 @@ impl SourceAdapter for GitHubSourceAdapter {
                         .await
                         .map_err(SyncError::Other)?;
                 }
-                match self.inner.close_story(*number).await {
+                let close_result = self.inner.close_story(*number).await;
+                crate::session::diag::log_diag(&format!(
+                    "github push_event StoryClosed #{number}: inner.close_story → {close_result:?}"
+                ));
+                match close_result {
                     Ok(_) => Ok(()),
                     Err(e) => match crate::board::sync::classify_close_error(e) {
                         SyncError::AlreadyClosed => Ok(()),
