@@ -57,11 +57,10 @@ const Chat = ({
   const pinsChannel = channelKey(recipient)
   const pins = usePins({ apiBase, authToken, channel: pinsChannel, messages })
 
-  // Notify App so the cap-decision in useWebSocket can exempt
-  // currently-pinned messages from drop-tail eviction.
   useEffect(() => {
     onPinnedKeysChange?.(pins.pinnedKeys)
   }, [pins.pinnedKeys, onPinnedKeysChange])
+
   const reactions = useReactions({ apiBase, authToken, channel: pinsChannel, messages })
 
   const togglePin = (m: ChatMessage): void => {
