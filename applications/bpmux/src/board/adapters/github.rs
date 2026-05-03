@@ -213,7 +213,8 @@ impl SourceAdapter for GitHubSourceAdapter {
             }
             BoardEvent::BodyFetched { .. }
             | BoardEvent::FreeCommentsFetched { .. }
-            | BoardEvent::GateCommentsFetched { .. } => Ok(()),
+            | BoardEvent::GateCommentsFetched { .. }
+            | BoardEvent::StoryRefreshed { .. } => Ok(()),
         }
     }
 

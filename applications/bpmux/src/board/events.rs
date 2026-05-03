@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use super::domain::{FreeComment, Gate, GateComment, StoryState, StoryType};
+use super::domain::{FreeComment, Gate, GateComment, Story, StoryState, StoryType};
 use super::peer::PeerId;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -80,6 +80,16 @@ pub enum BoardEvent {
         meta: EventMeta,
         number: u64,
     },
+    /// #1151: GH-API mutation response captured. The tracker's
+    /// underlying GH endpoint returned the post-mutation Issue; the
+    /// adapter parsed it into a `Story`; the orchestrator dispatches
+    /// this event so the canonical store reflects the GH-side truth
+    /// without a follow-up `refresh_story(N)` call.
+    StoryRefreshed {
+        meta: EventMeta,
+        number: u64,
+        story: Story,
+    },
 }
 
 impl BoardEvent {
@@ -97,7 +107,8 @@ impl BoardEvent {
             | BoardEvent::StoryClosed { meta, .. }
             | BoardEvent::StoryReopened { meta, .. }
             | BoardEvent::ParentEpicSet { meta, .. }
-            | BoardEvent::ParentEpicUnset { meta, .. } => meta,
+            | BoardEvent::ParentEpicUnset { meta, .. }
+            | BoardEvent::StoryRefreshed { meta, .. } => meta,
         }
     }
 
@@ -115,7 +126,8 @@ impl BoardEvent {
             | BoardEvent::StoryClosed { number, .. }
             | BoardEvent::StoryReopened { number, .. }
             | BoardEvent::ParentEpicSet { number, .. }
-            | BoardEvent::ParentEpicUnset { number, .. } => *number,
+            | BoardEvent::ParentEpicUnset { number, .. }
+            | BoardEvent::StoryRefreshed { number, .. } => *number,
         }
     }
 }

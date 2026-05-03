@@ -153,6 +153,27 @@ impl BoardStore {
                     story.parent_epic = None;
                 }
             }
+            // #1151: GH-API mutation response captured. Field-by-
+            // field merge preserves gate_comments / free_comments
+            // which the mutation response doesn't carry separately.
+            // Body replaces only when the response includes one
+            // (label-only mutations don't).
+            BoardEvent::StoryRefreshed { story, .. } => {
+                if let Some(existing) = w.get_mut(&number) {
+                    existing.title = story.title.clone();
+                    existing.state = story.state;
+                    existing.story_type = story.story_type;
+                    existing.tags = story.tags.clone();
+                    existing.is_closed = story.is_closed;
+                    existing.parent_epic = story.parent_epic;
+                    if story.body.is_some() {
+                        existing.body = story.body.clone();
+                        existing.acceptance_test_path = story.acceptance_test_path.clone();
+                    }
+                } else {
+                    w.insert(number, story.clone());
+                }
+            }
         }
         drop(w);
         let _ = self.event_tx.send(event.clone());
