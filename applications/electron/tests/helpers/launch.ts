@@ -74,6 +74,10 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
     mkdtempSync(join(tmpdir(), 'bpmux-playwright-auth-')),
     'auth_token'
   )
+  const defaultBoardStorePath = join(
+    mkdtempSync(join(tmpdir(), 'bpmux-playwright-store-')),
+    'board-store.json'
+  )
   const app = await electron.launch({
     args: ['out/main/index.js', `--user-data-dir=${userDataDir}`],
     env: {
@@ -81,6 +85,7 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
       BPMUX_SESSION_BASE: sessionBase,
       BPMUX_BACKEND_PORT: String(backendPort),
       BPMUX_AUTH_TOKEN_PATH: defaultAuthTokenPath,
+      BPMUX_BOARD_STORE_PATH: defaultBoardStorePath,
       ...(opts.extraEnv ?? {})
     }
   })
