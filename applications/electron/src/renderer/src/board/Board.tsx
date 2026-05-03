@@ -395,6 +395,8 @@ function Board({ messages, hidden, width }: BoardProps): React.JSX.Element {
         const next = navOrder[Math.max(idx - 1, 0)]
         setSelectedNumber(next)
       } else if (event.key === 'Enter') {
+        const target = event.target as HTMLElement
+        if (target.closest('summary')) return
         if (current !== null) {
           event.preventDefault()
           handleOpen(current)
