@@ -36,7 +36,10 @@ fn accept_story_pm_succeeds() {
         .await;
 
         let result = pm
-            .call_tool("accept_story", serde_json::json!({"number": target_number}))
+            .call_tool(
+                "accept_story",
+                serde_json::json!({"number": target_number, "would_file_bug": false}),
+            )
             .await
             .expect("accept_story should succeed");
 
@@ -71,7 +74,10 @@ fn accept_story_designer_can_call() {
         .await;
 
         let result = designer
-            .call_tool("accept_story", serde_json::json!({"number": target_number}))
+            .call_tool(
+                "accept_story",
+                serde_json::json!({"number": target_number, "would_file_bug": false}),
+            )
             .await
             .expect("designer should be allowed to call accept_story");
 
@@ -95,7 +101,10 @@ fn accept_story_rejects_unknown_role() {
         tokio::time::sleep(Duration::from_millis(500)).await;
 
         let err = unknown
-            .call_tool("accept_story", serde_json::json!({"number": 100}))
+            .call_tool(
+                "accept_story",
+                serde_json::json!({"number": 100, "would_file_bug": false}),
+            )
             .await
             .expect_err("unknown role should be rejected");
 
@@ -131,9 +140,12 @@ fn accept_story_view_board_reflects_accepted_via_mocked_seed() {
         let pm = TestBridge::connect_with_mock_gh(&bpmux, "pm", &base_url).await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        pm.call_tool("accept_story", serde_json::json!({"number": 600}))
-            .await
-            .expect("accept_story should succeed against mocked story");
+        pm.call_tool(
+            "accept_story",
+            serde_json::json!({"number": 600, "would_file_bug": false}),
+        )
+        .await
+        .expect("accept_story should succeed against mocked story");
 
         let view = pm
             .call_tool("view_board", serde_json::json!({}))

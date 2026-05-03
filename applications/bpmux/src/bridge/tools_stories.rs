@@ -877,6 +877,7 @@ pub(super) async fn handle_accept_story(
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
+    let bypass = verify_bug_question_or_bypass(args, BugGate::Accept)?;
     if let Some(r) = refresh {
         r.refresh_story(number)
             .await
@@ -899,7 +900,7 @@ pub(super) async fn handle_accept_story(
             meta: meta.clone(),
             number,
             gate: crate::board::domain::Gate::Accepted,
-            payload: None,
+            payload: bypass.clone().map(format_bypass_payload),
         })
         .map_err(|e| format!("#{number} gate enqueue failed: {e}"))?;
         r.mutate_sync(crate::board::BoardEvent::StateTransitioned {
@@ -1012,6 +1013,7 @@ pub(super) async fn handle_pass_desk_check(
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
+    let bypass = verify_bug_question_or_bypass(args, BugGate::PassDeskCheck)?;
     if let Some(r) = refresh {
         r.refresh_story(number)
             .await
@@ -1041,7 +1043,7 @@ pub(super) async fn handle_pass_desk_check(
             meta: meta.clone(),
             number,
             gate: crate::board::domain::Gate::PassDeskCheck,
-            payload: None,
+            payload: bypass.clone().map(format_bypass_payload),
         })
         .map_err(|e| format!("#{number} gate enqueue failed: {e}"))?;
         r.mutate_sync(crate::board::BoardEvent::StateTransitioned {
@@ -1456,4 +1458,73 @@ pub(super) fn build_iteration_close_signal() -> ClientMessage {
         addressee: Some("all".to_string()),
         message_type: None,
     }
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum BugGate {
+    Accept,
+    PassDeskCheck,
+}
+
+impl BugGate {
+    fn name(self) -> &'static str {
+        match self {
+            BugGate::Accept => "accept",
+            BugGate::PassDeskCheck => "pass desk-check",
+        }
+    }
+
+    fn alt_gate(self) -> &'static str {
+        match self {
+            BugGate::Accept => "reject_story",
+            BugGate::PassDeskCheck => "fail_desk_check",
+        }
+    }
+
+    fn past_tense(self) -> &'static str {
+        match self {
+            BugGate::Accept => "accepted",
+            BugGate::PassDeskCheck => "passed",
+        }
+    }
+}
+
+pub(super) fn verify_bug_question_or_bypass(
+    args: &serde_json::Map<String, serde_json::Value>,
+    gate: BugGate,
+) -> Result<Option<String>, String> {
+    let would_file_bug = args.get("would_file_bug").and_then(|v| v.as_bool()).ok_or_else(|| {
+        format!(
+            "{} requires 'would_file_bug: bool' argument. Bug-question test: would you file a bug about this if you {} it as-is? If yes -> use {} instead (per `feedback_bug_question_test_at_desk_check`).",
+            gate.name(),
+            gate.past_tense(),
+            gate.alt_gate(),
+        )
+    })?;
+    if !would_file_bug {
+        return Ok(None);
+    }
+    let force = args.get("force").and_then(|v| v.as_bool()).unwrap_or(false);
+    if !force {
+        return Err(format!(
+            "Cannot {}: would_file_bug=true. Use {} instead -- accept-and-file-bug-as-deferral is the anti-pattern this gate closes (per `feedback_bug_question_test_at_desk_check`). To override with explicit justification, pass force=true and bypass_reason: \"<reason>\".",
+            gate.name(),
+            gate.alt_gate(),
+        ));
+    }
+    let reason = args
+        .get("bypass_reason")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.trim().is_empty())
+        .ok_or_else(|| {
+            format!(
+                "{} bypass requires 'bypass_reason: String' (non-empty) -- recorded in gate-comment audit trail per `feedback_external_catch_over_self_catch`.",
+                gate.name(),
+            )
+        })?;
+    Ok(Some(reason.to_string()))
+}
+
+pub(super) fn format_bypass_payload(reason: String) -> String {
+    format!("[bug-question bypass] {reason}")
 }

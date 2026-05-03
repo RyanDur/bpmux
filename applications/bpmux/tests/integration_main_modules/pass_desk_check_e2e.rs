@@ -37,7 +37,7 @@ fn pass_desk_check_designer_succeeds() {
         let result = designer
             .call_tool(
                 "pass_desk_check",
-                serde_json::json!({"number": target_number}),
+                serde_json::json!({"number": target_number, "would_file_bug": false}),
             )
             .await
             .expect("pass_desk_check should succeed");
@@ -76,7 +76,7 @@ fn pass_desk_check_rejects_dev_caller_per_designer_lane_gate() {
         let err = dev
             .call_tool(
                 "pass_desk_check",
-                serde_json::json!({"number": target_number}),
+                serde_json::json!({"number": target_number, "would_file_bug": false}),
             )
             .await
             .expect_err("dev should be rejected by pass_desk_check designer-lane gate");
@@ -116,7 +116,10 @@ fn pass_desk_check_view_board_reflects_ready_for_accept_via_fixture_seed() {
         tokio::time::sleep(Duration::from_millis(1500)).await;
 
         designer
-            .call_tool("pass_desk_check", serde_json::json!({"number": 500}))
+            .call_tool(
+                "pass_desk_check",
+                serde_json::json!({"number": 500, "would_file_bug": false}),
+            )
             .await
             .expect("pass_desk_check should succeed against seeded story");
 

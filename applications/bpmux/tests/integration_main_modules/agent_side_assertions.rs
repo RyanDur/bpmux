@@ -191,7 +191,10 @@ fn pass_desk_check_signal_routes_to_ryan_not_dev() {
         tokio::time::sleep(Duration::from_millis(500)).await;
 
         let status = designer
-            .call_tool("pass_desk_check", serde_json::json!({"number": 203}))
+            .call_tool(
+                "pass_desk_check",
+                serde_json::json!({"number": 203, "would_file_bug": false}),
+            )
             .await
             .expect("pass_desk_check signal should succeed");
         let status_str = status.as_str().unwrap_or("");
@@ -292,7 +295,10 @@ fn pass_desk_check_rejects_non_designer_callers() {
         tokio::time::sleep(Duration::from_millis(500)).await;
 
         let err = dev
-            .call_tool("pass_desk_check", serde_json::json!({"number": 203}))
+            .call_tool(
+                "pass_desk_check",
+                serde_json::json!({"number": 203, "would_file_bug": false}),
+            )
             .await
             .expect_err("dev should be rejected from pass_desk_check");
         assert!(
@@ -340,7 +346,10 @@ fn accept_story_allows_pm_and_broadcasts_role_attribution() {
         tokio::time::sleep(Duration::from_millis(500)).await;
 
         let result = pm
-            .call_tool("accept_story", serde_json::json!({"number": 213}))
+            .call_tool(
+                "accept_story",
+                serde_json::json!({"number": 213, "would_file_bug": false}),
+            )
             .await;
         assert!(
             result.is_ok(),
@@ -374,7 +383,10 @@ fn accept_story_rejects_unknown_roles() {
         tokio::time::sleep(Duration::from_millis(500)).await;
 
         let err = unknown
-            .call_tool("accept_story", serde_json::json!({"number": 999}))
+            .call_tool(
+                "accept_story",
+                serde_json::json!({"number": 999, "would_file_bug": false}),
+            )
             .await
             .expect_err("unknown role should be rejected");
         assert!(
@@ -415,7 +427,10 @@ fn accept_story_allows_designer_and_dev() {
         tokio::time::sleep(Duration::from_millis(500)).await;
 
         let result = designer
-            .call_tool("accept_story", serde_json::json!({"number": 900}))
+            .call_tool(
+                "accept_story",
+                serde_json::json!({"number": 900, "would_file_bug": false}),
+            )
             .await;
         assert!(
             result.is_ok(),
@@ -424,7 +439,10 @@ fn accept_story_allows_designer_and_dev() {
         );
 
         let result = dev
-            .call_tool("accept_story", serde_json::json!({"number": 901}))
+            .call_tool(
+                "accept_story",
+                serde_json::json!({"number": 901, "would_file_bug": false}),
+            )
             .await;
         assert!(
             result.is_ok(),
@@ -464,11 +482,17 @@ fn accept_story_is_idempotent_on_already_closed() {
         tokio::time::sleep(Duration::from_millis(500)).await;
 
         let _ = pm
-            .call_tool("accept_story", serde_json::json!({"number": 213}))
+            .call_tool(
+                "accept_story",
+                serde_json::json!({"number": 213, "would_file_bug": false}),
+            )
             .await;
 
         let result = pm
-            .call_tool("accept_story", serde_json::json!({"number": 213}))
+            .call_tool(
+                "accept_story",
+                serde_json::json!({"number": 213, "would_file_bug": false}),
+            )
             .await;
         assert!(
             result.is_ok(),
