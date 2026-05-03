@@ -62,7 +62,7 @@ test.describe('human-side E2E #476 — observation-class — accept_story', () =
       // require_role; we send as 'pm' to mirror the production path
       // (Ryan + PM are the canonical accept-authority per
       // `project_infra_gate_delegation`).
-      const acceptResp = await rpc('accept_story', { number: 1 }, 'pm')
+      const acceptResp = await rpc('accept_story', { number: 1, would_file_bug: false }, 'pm')
       expect(acceptResp.status).toBe(200)
 
       await win.reload()

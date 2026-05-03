@@ -50,7 +50,7 @@ test.describe('human-side E2E #476 — read-class — story badge', () => {
       })
       expect(deliverResp.status).toBe(200)
 
-      const passResp = await rpc('pass_desk_check', { number: 1 }, 'designer')
+      const passResp = await rpc('pass_desk_check', { number: 1, would_file_bug: false }, 'designer')
       expect(passResp.status).toBe(200)
 
       await win.reload()
