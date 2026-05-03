@@ -25,12 +25,6 @@ const RENDERER_TOOL = 'electron'
 const INITIAL_BACKOFF_MS = 1000
 const MAX_BACKOFF_MS = 8000
 
-// 500 is an empirical default: viewport rarely shows ~50 messages at
-// 1080p / 12px font, 500 gives 10x headroom for light scroll-up before
-// paged-fetch kicks in. Cap fires when length exceeds 2 * MAX_MESSAGES
-// (1000) AND user is at-bottom — mid-scroll-up the array is left
-// alone to preserve the user's reading position, per #1153 AC
-// "Drop-tail when array exceeds 2L AND user is near-bottom".
 export const MAX_MESSAGES = 500
 export const CAP_TRIGGER_THRESHOLD = MAX_MESSAGES * 2
 
@@ -42,15 +36,6 @@ export interface SendOptions {
 export interface UseWebSocketOptions {
   apiBase?: string
   authToken?: string
-  // True when MessageList's scroll position is at-or-near the visual
-  // bottom (column-reverse: |scrollTop| <= 8px). The cap suspends
-  // while false so trimming doesn't disrupt a user reading older
-  // messages. Default true (empty list = at bottom).
-  atBottom?: boolean
-  // Pin keys exempt from drop-tail eviction. Format `${ts}|${from}` —
-  // matches Chat's pinKey. Pinned messages outside the most-recent
-  // window are preserved when the cap fires.
-  pinnedKeys?: ReadonlySet<string>
 }
 
 export interface UseWebSocketResult {
@@ -69,25 +54,19 @@ interface HistoryMessage {
   message_type?: string | null
 }
 
-function messageKey(m: { from: string; text: string; ts: string }): string {
-  return `${m.ts}|${m.from}|${m.text}`
-}
+const messageKey = (m: { from: string; text: string; ts: string }): string =>
+  `${m.ts}|${m.from}|${m.text}`
 
-export function capMessages(messages: ChatMessage[], max: number): ChatMessage[] {
-  return messages.length > max ? messages.slice(messages.length - max) : messages
-}
+export const capMessages = (messages: ChatMessage[], max: number): ChatMessage[] =>
+  messages.length > max ? messages.slice(messages.length - max) : messages
 
 const pinKey = (m: ChatMessage): string => `${m.ts}|${m.from}`
 
-// Drop-tail cap that preserves pinned messages outside the most-recent
-// window. Pin-rendering relies on the message being in the array, so
-// trimming pinned messages would break pin glyphs and the pinned-list
-// drawer. Pinned-but-old messages re-prepend in chronological order.
-export function capMessagesPreservingPinned(
+export const capMessagesPreservingPinned = (
   messages: ChatMessage[],
   max: number,
   pinnedKeys: ReadonlySet<string>
-): ChatMessage[] {
+): ChatMessage[] => {
   if (messages.length <= max) return messages
   const recentN = messages.slice(messages.length - max)
   const recentKeys = new Set(recentN.map(pinKey))
@@ -99,24 +78,21 @@ export function capMessagesPreservingPinned(
   return olderPinned.length === 0 ? recentN : [...olderPinned, ...recentN]
 }
 
-// Per-push cap with UX-guard: only fires when at-bottom (preserves
-// scroll-position for users reading older history) AND length exceeds
-// the trigger threshold (2L per AC). Pinned messages exempt.
-export function capPerPush(
+export const capPerPush = (
   next: ChatMessage[],
   atBottom: boolean,
   pinnedKeys: ReadonlySet<string>
-): ChatMessage[] {
+): ChatMessage[] => {
   if (!atBottom) return next
   if (next.length <= CAP_TRIGGER_THRESHOLD) return next
   return capMessagesPreservingPinned(next, MAX_MESSAGES, pinnedKeys)
 }
 
-export function useWebSocket(
+export const useWebSocket = (
   url: string | undefined,
   opts: UseWebSocketOptions = {}
-): UseWebSocketResult {
-  const { apiBase, authToken, atBottom = true, pinnedKeys } = opts
+): UseWebSocketResult => {
+  const { apiBase, authToken } = opts
   // When no URL is provided (preload missing), start disconnected
   // rather than connecting — avoids a setState-in-effect cascade and
   // correctly represents the state.
@@ -130,19 +106,6 @@ export function useWebSocket(
   const unmountedRef = useRef<boolean>(false)
   const msgCounterRef = useRef<number>(0)
   const historyLoadedRef = useRef<boolean>(false)
-
-  // Mirror atBottom + pinnedKeys into refs so handleServerMessage's
-  // closure sees the latest values without re-binding the WS handler
-  // on every render. Reading state directly would freeze the values
-  // at the time the callback was created.
-  const atBottomRef = useRef<boolean>(atBottom)
-  const pinnedKeysRef = useRef<ReadonlySet<string>>(pinnedKeys ?? new Set())
-  useEffect(() => {
-    atBottomRef.current = atBottom
-  }, [atBottom])
-  useEffect(() => {
-    pinnedKeysRef.current = pinnedKeys ?? new Set()
-  }, [pinnedKeys])
 
   const sendJson = useCallback((msg: ClientMessage) => {
     const sock = socketRef.current
@@ -192,7 +155,7 @@ export function useWebSocket(
         const key = messageKey(chat)
         setMessages((prev) => {
           if (prev.some((m) => messageKey(m) === key)) return prev
-          return capPerPush([...prev, chat], atBottomRef.current, pinnedKeysRef.current)
+          return [...prev, chat]
         })
         break
       }
@@ -295,9 +258,7 @@ export function useWebSocket(
               seen.add(k)
               merged.push(m)
             }
-            // #1153: same MAX_MESSAGES cap as the per-push path so
-            // initial-load + history-fetch can't overshoot the bound.
-            return capMessages(merged, MAX_MESSAGES)
+            return merged
           })
         })
         .catch((err) => {

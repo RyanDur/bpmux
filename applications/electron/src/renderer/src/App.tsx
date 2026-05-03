@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import AppShell from './AppShell'
 import { useMessageHistory } from './hooks/useMessageHistory'
 import { useNotifications } from './hooks/useNotifications'
-import { useWebSocket } from './transport/useWebSocket'
+import { capPerPush, useWebSocket } from './transport/useWebSocket'
 
-function App(): React.JSX.Element {
+const App = (): React.JSX.Element => {
   // `window.bpmux` is injected by the preload script owned by the
   // parallel main-process agent. If it's missing (e.g., renderer
   // loaded without preload during dev), we still render the shell
@@ -17,20 +17,18 @@ function App(): React.JSX.Element {
     )
   }
 
-  // atBottom + pinnedKeys flow up from MessageList + Chat (where
-  // they're naturally sourced) to the cap-decision in useWebSocket.
-  // Callback-up rather than lifting usePins, so Chat keeps owning its
-  // pin/recipient state. Defaults: atBottom=true (empty list IS at
-  // bottom), pinnedKeys=empty.
   const [atBottom, setAtBottom] = useState<boolean>(true)
   const [pinnedKeys, setPinnedKeys] = useState<ReadonlySet<string>>(() => new Set())
 
-  const { status, messages: liveMessages, sendChat } = useWebSocket(bridge?.wsUrl, {
+  const { status, messages: liveRaw, sendChat } = useWebSocket(bridge?.wsUrl, {
     apiBase: bridge?.apiBase,
-    authToken: bridge?.authToken,
-    atBottom,
-    pinnedKeys
+    authToken: bridge?.authToken
   })
+
+  const liveMessages = useMemo(
+    () => capPerPush(liveRaw, atBottom, pinnedKeys),
+    [liveRaw, atBottom, pinnedKeys]
+  )
 
   const { combinedMessages, loadOlder, isLoadingOlder, hasMoreOlder, hasError } =
     useMessageHistory({
