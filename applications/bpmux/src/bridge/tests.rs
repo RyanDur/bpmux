@@ -514,7 +514,11 @@ mod ingest_poll_loop_tests {
     async fn refresh_all_fires_on_each_interval_tick() {
         let driver = Arc::new(CountingDriver::new());
         let driver_dyn: Arc<dyn RefreshDriver> = driver.clone();
-        let handle = tokio::spawn(run_ingest_poll_loop(driver_dyn, Duration::from_millis(50)));
+        let handle = tokio::spawn(run_ingest_poll_loop(
+            driver_dyn,
+            Duration::from_millis(50),
+            None,
+        ));
         tokio::time::sleep(Duration::from_millis(25)).await;
         assert_eq!(driver.refresh_all.load(Ordering::SeqCst), 0);
         tokio::time::sleep(Duration::from_millis(250)).await;
@@ -527,7 +531,11 @@ mod ingest_poll_loop_tests {
     async fn loop_survives_refresh_errors() {
         let driver = Arc::new(CountingDriver::failing_after(1));
         let driver_dyn: Arc<dyn RefreshDriver> = driver.clone();
-        let handle = tokio::spawn(run_ingest_poll_loop(driver_dyn, Duration::from_millis(30)));
+        let handle = tokio::spawn(run_ingest_poll_loop(
+            driver_dyn,
+            Duration::from_millis(30),
+            None,
+        ));
         tokio::time::sleep(Duration::from_millis(200)).await;
         let count = driver.refresh_all.load(Ordering::SeqCst);
         assert!(

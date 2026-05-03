@@ -1042,17 +1042,11 @@ pub fn run_bridge(
 pub(crate) async fn run_ingest_poll_loop(
     refresh: Arc<dyn crate::board::RefreshDriver>,
     interval: std::time::Duration,
+    observer: Option<crate::github::RateLimitObserver>,
 ) {
     let start = tokio::time::Instant::now() + interval;
     let mut ticker = tokio::time::interval_at(start, interval);
     ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
-    // #1140: rate-limit-aware backoff. When refresh_all fails with a
-    // rate-limit class error, exponential-backoff the next poll
-    // (60s → 120 → 240 → 480 → 960 → 1800 → 3600 cap). Reset to
-    // base on first successful poll. Without this, a rate-limited
-    // window kept hitting the same paginated fetch_board_stories at
-    // POLL_INTERVAL, re-triggering GitHub's secondary cooldown via
-    // exact-pattern bot-detection.
     let base_backoff = std::time::Duration::from_secs(60);
     let max_backoff = std::time::Duration::from_secs(3600);
     let mut backoff = base_backoff;
@@ -1066,11 +1060,18 @@ pub(crate) async fn run_ingest_poll_loop(
                 let msg = e.to_string();
                 let lower = msg.to_lowercase();
                 if lower.contains("rate limit") || lower.contains("rate-limit") {
+                    let snapshot = observer.as_ref().map(|o| o.snapshot()).unwrap_or_default();
+                    let decision = crate::github::decide_backoff(
+                        snapshot,
+                        backoff,
+                        std::time::SystemTime::now(),
+                    );
                     crate::session::diag::log_diag(&format!(
-                        "bridge: ingest rate-limited; backing off {}s",
-                        backoff.as_secs()
+                        "bridge: ingest rate-limited; backoff signal={} wait={}s",
+                        crate::github::signal_label(decision.signal),
+                        decision.wait.as_secs()
                     ));
-                    tokio::time::sleep(backoff).await;
+                    tokio::time::sleep(decision.wait).await;
                     backoff = (backoff * 2).min(max_backoff);
                 } else {
                     crate::session::diag::log_diag(&format!(

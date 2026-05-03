@@ -41,6 +41,10 @@ impl GitHubSourceAdapter {
         self.inner.list_latest_run_on_main().await
     }
 
+    pub fn rate_limit_observer(&self) -> crate::github::RateLimitObserver {
+        self.inner.rate_limit_observer()
+    }
+
     pub async fn get_story(&self, number: u64) -> Result<Option<serde_json::Value>, String> {
         self.inner.get_story(number).await
     }

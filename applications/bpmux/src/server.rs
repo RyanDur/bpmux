@@ -110,6 +110,7 @@ pub async fn run_server(
         tokio::spawn(crate::bridge::run_ingest_poll_loop(
             refresh,
             crate::bridge::poll_interval_from_env(),
+            tracker.as_ref().map(|t| t.rate_limit_observer()),
         ));
     }
 

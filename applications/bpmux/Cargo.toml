@@ -45,6 +45,8 @@ tower-http = { version = "0.6", features = ["cors"] }
 regex = "1"
 url = "2"
 once_cell = "1"
+http = "1"
+http-body-util = "0.1"
 
 [features]
 # Real-substrate contract tests against GitHub's live gh CLI +

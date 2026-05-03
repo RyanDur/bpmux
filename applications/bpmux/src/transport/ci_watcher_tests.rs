@@ -146,3 +146,97 @@ fn run_id_none_degrades_to_conclusion_only_dedup() {
     let t = classify_transition(Some((None, "success")), (None, "success"));
     assert_eq!(t, Transition::Same);
 }
+
+mod backoff_decisions {
+    use crate::github::{
+        BackoffSignal, CLOCK_SKEW_GRACE_SECS, ObservedWakes, RateLimitObserver, decide_backoff,
+    };
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+    fn at_epoch(secs: u64) -> SystemTime {
+        UNIX_EPOCH + Duration::from_secs(secs)
+    }
+
+    #[test]
+    fn no_headers_preserves_exponential_floor() {
+        let now = at_epoch(1_700_000_000);
+        let decision = decide_backoff(ObservedWakes::default(), Duration::from_secs(120), now);
+        assert_eq!(decision.signal, BackoffSignal::Exponential);
+        assert_eq!(decision.wait, Duration::from_secs(120));
+    }
+
+    #[test]
+    fn retry_after_dominates_when_higher_than_exponential() {
+        let now = at_epoch(1_700_000_000);
+        let observed = ObservedWakes {
+            retry_after_wake_epoch: 1_700_000_300,
+            ratelimit_reset_epoch: 0,
+        };
+        let decision = decide_backoff(observed, Duration::from_secs(60), now);
+        assert_eq!(decision.signal, BackoffSignal::RetryAfterHeader);
+        assert_eq!(decision.wait, Duration::from_secs(300));
+    }
+
+    #[test]
+    fn exponential_dominates_when_higher_than_retry_after() {
+        let now = at_epoch(1_700_000_000);
+        let observed = ObservedWakes {
+            retry_after_wake_epoch: 1_700_000_030,
+            ratelimit_reset_epoch: 0,
+        };
+        let decision = decide_backoff(observed, Duration::from_secs(1800), now);
+        assert_eq!(decision.signal, BackoffSignal::Exponential);
+        assert_eq!(decision.wait, Duration::from_secs(1800));
+    }
+
+    #[test]
+    fn ratelimit_reset_includes_clock_skew_grace() {
+        let now = at_epoch(1_700_000_000);
+        let observed = ObservedWakes {
+            retry_after_wake_epoch: 0,
+            ratelimit_reset_epoch: 1_700_000_600,
+        };
+        let decision = decide_backoff(observed, Duration::from_secs(60), now);
+        assert_eq!(decision.signal, BackoffSignal::RatelimitResetHeader);
+        assert_eq!(
+            decision.wait,
+            Duration::from_secs(600 + CLOCK_SKEW_GRACE_SECS)
+        );
+    }
+
+    #[test]
+    fn both_headers_present_max_wins() {
+        let now = at_epoch(1_700_000_000);
+        let observed = ObservedWakes {
+            retry_after_wake_epoch: 1_700_000_300,
+            ratelimit_reset_epoch: 1_700_000_900,
+        };
+        let decision = decide_backoff(observed, Duration::from_secs(60), now);
+        assert_eq!(decision.signal, BackoffSignal::RatelimitResetHeader);
+        assert_eq!(
+            decision.wait,
+            Duration::from_secs(900 + CLOCK_SKEW_GRACE_SECS)
+        );
+    }
+
+    #[test]
+    fn observer_records_retry_after_and_decides_correctly() {
+        let observer = RateLimitObserver::new();
+        let now = at_epoch(1_700_000_000);
+        observer.observe_retry_after_secs(45, now);
+        let decision = decide_backoff(observer.snapshot(), Duration::from_secs(10), now);
+        assert_eq!(decision.signal, BackoffSignal::RetryAfterHeader);
+        assert_eq!(decision.wait, Duration::from_secs(45));
+    }
+
+    #[test]
+    fn ratelimit_reset_in_past_yields_zero_wait() {
+        let now = at_epoch(1_700_000_500);
+        let observed = ObservedWakes {
+            retry_after_wake_epoch: 0,
+            ratelimit_reset_epoch: 1_700_000_000,
+        };
+        let decision = decide_backoff(observed, Duration::from_secs(0), now);
+        assert_eq!(decision.wait, Duration::from_secs(0));
+    }
+}

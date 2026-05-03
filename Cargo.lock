@@ -418,6 +418,7 @@ dependencies = [
  "expectrl",
  "futures",
  "futures-util",
+ "http",
  "http-body-util",
  "httpmock",
  "octocrab",

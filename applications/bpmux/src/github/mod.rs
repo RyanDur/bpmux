@@ -8,8 +8,13 @@
 //! sibling layers.
 
 pub mod client;
+pub mod rate_limit;
 
 pub use client::{ensure_crypto_provider_installed, octocrab_client};
+pub use rate_limit::{
+    BackoffDecision, BackoffSignal, CLOCK_SKEW_GRACE_SECS, ObservedWakes, RateLimitObserver,
+    decide_backoff, signal_label,
+};
 
 use octocrab::Error;
 

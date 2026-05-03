@@ -149,6 +149,13 @@ pub struct OctocrabStoryTracker {
     client: octocrab::Octocrab,
     owner: String,
     repo: String,
+    rate_limit_observer: crate::github::RateLimitObserver,
+}
+
+impl OctocrabStoryTracker {
+    pub fn rate_limit_observer(&self) -> crate::github::RateLimitObserver {
+        self.rate_limit_observer.clone()
+    }
 }
 
 /// Result of inspecting env vars to decide whether we can build an
@@ -251,6 +258,7 @@ impl OctocrabStoryTracker {
                     client,
                     owner,
                     repo,
+                    rate_limit_observer: crate::github::RateLimitObserver::new(),
                 })
             }
             TrackerSelection::OctocrabWithBaseUrl {
@@ -297,6 +305,7 @@ impl OctocrabStoryTracker {
             client,
             owner,
             repo,
+            rate_limit_observer: crate::github::RateLimitObserver::new(),
         })
     }
 
@@ -305,6 +314,33 @@ impl OctocrabStoryTracker {
         // the bridge and the board poller both depend on it instead
         // of one reaching across into the other's layer.
         crate::github::classify_error(&err).user_message()
+    }
+
+    async fn get_with_capture<R: serde::de::DeserializeOwned>(
+        &self,
+        path: String,
+    ) -> Result<R, String> {
+        use http_body_util::BodyExt;
+        let response = self.client._get(path).await.map_err(Self::classify)?;
+        crate::github::rate_limit::capture_headers(
+            response.headers(),
+            &self.rate_limit_observer,
+            std::time::SystemTime::now(),
+        );
+        let status = response.status();
+        let body = response
+            .into_body()
+            .collect()
+            .await
+            .map_err(|e| format!("body collect: {e}"))?
+            .to_bytes();
+        if !status.is_success() {
+            return Err(format!(
+                "github error {status}: {}",
+                String::from_utf8_lossy(&body)
+            ));
+        }
+        serde_json::from_slice(&body).map_err(|e| format!("json parse: {e}"))
     }
 
     // `fetch_board_stories` + `get_story` moved to the
@@ -744,11 +780,7 @@ impl StoryTracker for OctocrabStoryTracker {
             "/repos/{}/{}/actions/runs?branch=main&per_page=1",
             self.owner, self.repo
         );
-        let response: RunsResponse = self
-            .client
-            .get(path, None::<&()>)
-            .await
-            .map_err(Self::classify)?;
+        let response: RunsResponse = self.get_with_capture(path).await?;
         let Some(mut latest) = response.workflow_runs.into_iter().next() else {
             return Ok(None);
         };
