@@ -58,13 +58,41 @@ async fn build_prod_orchestrator(
         },
         None => Arc::new(BoardStore::new()),
     };
-    let orch = Arc::new(SyncOrchestrator::new(store.clone(), adapter));
+    let outbox_path = match crate::board::default_outbox_path() {
+        Ok(p) => Some(p),
+        Err(e) => {
+            crate::session::diag::log_diag(&format!(
+                "server: board-outbox path resolve failed: {e}; running without outbox persistence"
+            ));
+            None
+        }
+    };
+    let orch: Arc<dyn RefreshDriver> = match outbox_path.as_ref() {
+        Some(path) => {
+            match SyncOrchestrator::with_outbox_path(store.clone(), adapter.clone(), path.clone()) {
+                Ok(o) => {
+                    let pending_count = o.snapshot_status().pending_events;
+                    crate::session::diag::log_diag(&format!(
+                        "server: board-outbox hydrated from disk ({pending_count} pending events at {path:?})"
+                    ));
+                    Arc::new(o)
+                }
+                Err(e) => {
+                    crate::session::diag::log_diag(&format!(
+                        "server: board-outbox disk-load failed ({e}); starting with empty outbox"
+                    ));
+                    Arc::new(SyncOrchestrator::new(store.clone(), adapter.clone()))
+                }
+            }
+        }
+        None => Arc::new(SyncOrchestrator::new(store.clone(), adapter.clone())),
+    };
     let backoffs = [0u64, 500, 1500, 4000];
     for (attempt, delay_ms) in backoffs.iter().enumerate() {
         if *delay_ms > 0 {
             tokio::time::sleep(std::time::Duration::from_millis(*delay_ms)).await;
         }
-        match orch.ingest_once().await {
+        match orch.refresh_all().await {
             Ok(()) => {
                 let count = orch.all_stories().len();
                 crate::session::diag::log_diag(&format!(

@@ -1,17 +1,30 @@
+use std::collections::VecDeque;
 use std::future::Future;
+use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::sync::Arc;
 use std::sync::Mutex;
 
 use chrono::{DateTime, Utc};
 use serde::Serialize;
-use tokio::sync::mpsc;
 
 use super::domain::{FreeComment, GateComment, Story};
 use super::events::{BoardEvent, EventMeta};
 use super::peer::PeerId;
-use super::store::BoardStore;
+use super::store::{BoardStore, PersistError};
 use super::sync::{SourceAdapter, SyncError};
+
+pub fn default_outbox_path() -> Result<PathBuf, std::io::Error> {
+    if let Ok(p) = std::env::var("BPMUX_BOARD_OUTBOX_PATH")
+        && !p.is_empty()
+    {
+        return Ok(PathBuf::from(p));
+    }
+    let base = dirs::home_dir().ok_or_else(|| {
+        std::io::Error::new(std::io::ErrorKind::NotFound, "home directory not found")
+    })?;
+    Ok(base.join(".bpmux").join("board-outbox.json"))
+}
 
 pub type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
@@ -59,19 +72,49 @@ pub struct SyncOrchestrator<A: SourceAdapter + 'static> {
     store: Arc<BoardStore>,
     adapter: Arc<A>,
     status: Arc<Mutex<SyncStatus>>,
-    pending_tx: mpsc::UnboundedSender<BoardEvent>,
-    pending_rx: Mutex<Option<mpsc::UnboundedReceiver<BoardEvent>>>,
+    pending: Arc<Mutex<VecDeque<BoardEvent>>>,
+    outbox_path: Option<PathBuf>,
 }
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     pub fn new(store: Arc<BoardStore>, adapter: Arc<A>) -> Self {
-        let (pending_tx, pending_rx) = mpsc::unbounded_channel();
         Self {
             store,
             adapter,
             status: Arc::new(Mutex::new(SyncStatus::default())),
-            pending_tx,
-            pending_rx: Mutex::new(Some(pending_rx)),
+            pending: Arc::new(Mutex::new(VecDeque::new())),
+            outbox_path: None,
+        }
+    }
+
+    pub fn with_outbox_path(
+        store: Arc<BoardStore>,
+        adapter: Arc<A>,
+        path: PathBuf,
+    ) -> Result<Self, PersistError> {
+        let pending = load_outbox_from_disk(&path)?;
+        Ok(Self {
+            store,
+            adapter,
+            status: Arc::new(Mutex::new(SyncStatus {
+                pending_events: pending.len(),
+                ..SyncStatus::default()
+            })),
+            pending: Arc::new(Mutex::new(pending)),
+            outbox_path: Some(path),
+        })
+    }
+
+    fn persist_outbox(&self) {
+        let Some(path) = self.outbox_path.as_ref() else {
+            return;
+        };
+        let snapshot: Vec<BoardEvent> = {
+            let p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
+            p.iter().cloned().collect()
+        };
+        if let Err(e) = persist_outbox_to_disk(path, &snapshot) {
+            crate::session::diag::log_diag(&format!("orchestrator: outbox persist failed: {e}"));
         }
     }
 
@@ -85,9 +128,11 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
 
     pub fn mutate(&self, event: BoardEvent) -> Result<(), SyncError> {
         self.store.apply(&event);
-        self.pending_tx
-            .send(event)
-            .map_err(|e| SyncError::Other(format!("pending-buffer closed: {e}")))?;
+        {
+            let mut p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
+            p.push_back(event);
+        }
+        self.persist_outbox();
         bump_pending(&self.status, 1);
         Ok(())
     }
@@ -189,26 +234,25 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     }
 
     pub async fn drain_once(&self) -> Result<usize, SyncError> {
-        let mut rx = self
-            .pending_rx
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .take()
-            .ok_or_else(|| SyncError::Other("pending-receiver already taken".into()))?;
         let mut drained = 0usize;
         let mut failures = 0usize;
-        while let Ok(event) = rx.try_recv() {
+        loop {
+            let event_opt = {
+                let p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
+                p.front().cloned()
+            };
+            let Some(event) = event_opt else {
+                break;
+            };
             match self.adapter.push_event(&event).await {
                 Ok(follow_up) => {
+                    {
+                        let mut p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
+                        p.pop_front();
+                    }
+                    self.persist_outbox();
                     drained += 1;
                     record_push_success(&self.status);
-                    // #1151: the adapter captured GH's mutation
-                    // response and surfaced it as a follow-up
-                    // BoardEvent (StoryRefreshed for Issue-returning
-                    // mutations; LabelsRefreshed for label-mutation
-                    // responses). Dispatch via the reducer so the
-                    // local store reflects post-mutation state
-                    // without a follow-up `refresh_story(N)` call.
                     if let Some(refresh_event) = follow_up {
                         self.store.apply(&refresh_event);
                     }
@@ -216,12 +260,10 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                 Err(e) => {
                     failures += 1;
                     record_error(&self.status, &format!("push: {e}"));
-                    let _ = self.pending_tx.send(event);
                     break;
                 }
             }
         }
-        *self.pending_rx.lock().unwrap_or_else(|e| e.into_inner()) = Some(rx);
         if failures > 0 {
             return Err(SyncError::Other(format!(
                 "{failures} push failures; {drained} pushes succeeded"
@@ -416,4 +458,27 @@ fn record_error(status: &Arc<Mutex<SyncStatus>>, msg: &str) {
 fn bump_pending(status: &Arc<Mutex<SyncStatus>>, by: usize) {
     let mut s = status.lock().unwrap_or_else(|e| e.into_inner());
     s.pending_events += by;
+}
+
+pub fn load_outbox_from_disk(path: &Path) -> Result<VecDeque<BoardEvent>, PersistError> {
+    if !path.exists() {
+        return Ok(VecDeque::new());
+    }
+    let bytes = std::fs::read(path)?;
+    if bytes.is_empty() {
+        return Ok(VecDeque::new());
+    }
+    let events: Vec<BoardEvent> = serde_json::from_slice(&bytes)?;
+    Ok(events.into_iter().collect())
+}
+
+fn persist_outbox_to_disk(path: &Path, events: &[BoardEvent]) -> Result<(), PersistError> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let bytes = serde_json::to_vec(events)?;
+    let tmp = path.with_extension("tmp");
+    std::fs::write(&tmp, &bytes)?;
+    std::fs::rename(&tmp, path)?;
+    Ok(())
 }

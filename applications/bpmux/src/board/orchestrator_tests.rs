@@ -417,3 +417,174 @@ async fn reconcile_dual_state_labels_is_no_op_when_labels_match_state() {
     assert_eq!(repairs, 0, "clean labels should fire 0 repairs");
     assert_eq!(adapter.pushed_events().len(), 0);
 }
+
+mod outbox_persistence {
+    use super::*;
+
+    fn outbox_path(dir: &tempfile::TempDir) -> std::path::PathBuf {
+        dir.path().join("board-outbox.json")
+    }
+
+    #[tokio::test]
+    async fn with_outbox_path_starts_empty_when_file_missing() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = outbox_path(&dir);
+        let store = Arc::new(BoardStore::new());
+        let adapter = Arc::new(InMemorySourceAdapter::new());
+        let orch =
+            SyncOrchestrator::with_outbox_path(Arc::clone(&store), Arc::clone(&adapter), path)
+                .unwrap();
+        assert_eq!(orch.snapshot_status().pending_events, 0);
+    }
+
+    #[tokio::test]
+    async fn mutate_persists_event_to_disk_outbox() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = outbox_path(&dir);
+        let store = Arc::new(BoardStore::new());
+        let adapter = Arc::new(InMemorySourceAdapter::new());
+        store.seed_all(vec![seed_story(10, StoryState::Ready)]);
+        let orch = SyncOrchestrator::with_outbox_path(
+            Arc::clone(&store),
+            Arc::clone(&adapter),
+            path.clone(),
+        )
+        .unwrap();
+        orch.mutate(BoardEvent::StateTransitioned {
+            meta: meta(),
+            number: 10,
+            new_state: StoryState::InProgress,
+        })
+        .unwrap();
+        assert!(path.exists(), "outbox file must exist after mutate");
+        let bytes = std::fs::read(&path).unwrap();
+        let events: Vec<BoardEvent> = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(events.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn drain_once_removes_pushed_event_from_disk_outbox() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = outbox_path(&dir);
+        let store = Arc::new(BoardStore::new());
+        let adapter = Arc::new(InMemorySourceAdapter::new());
+        store.seed_all(vec![seed_story(20, StoryState::Ready)]);
+        let orch = SyncOrchestrator::with_outbox_path(
+            Arc::clone(&store),
+            Arc::clone(&adapter),
+            path.clone(),
+        )
+        .unwrap();
+        orch.mutate(BoardEvent::StateTransitioned {
+            meta: meta(),
+            number: 20,
+            new_state: StoryState::Delivered,
+        })
+        .unwrap();
+        let drained = orch.drain_once().await.unwrap();
+        assert_eq!(drained, 1);
+        let bytes = std::fs::read(&path).unwrap();
+        let events: Vec<BoardEvent> = serde_json::from_slice(&bytes).unwrap();
+        assert!(events.is_empty(), "outbox empty after successful drain");
+    }
+
+    #[tokio::test]
+    async fn drain_once_keeps_event_on_disk_when_push_fails() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = outbox_path(&dir);
+        let store = Arc::new(BoardStore::new());
+        let adapter = Arc::new(InMemorySourceAdapter::new());
+        store.seed_all(vec![seed_story(30, StoryState::Ready)]);
+        let orch = SyncOrchestrator::with_outbox_path(
+            Arc::clone(&store),
+            Arc::clone(&adapter),
+            path.clone(),
+        )
+        .unwrap();
+        orch.mutate(BoardEvent::StateTransitioned {
+            meta: meta(),
+            number: 30,
+            new_state: StoryState::Delivered,
+        })
+        .unwrap();
+        adapter.set_push_failures(true);
+        let _ = orch.drain_once().await;
+        let bytes = std::fs::read(&path).unwrap();
+        let events: Vec<BoardEvent> = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(events.len(), 1, "failed event stays in outbox");
+    }
+
+    #[tokio::test]
+    async fn outbox_survives_restart_simulated_via_fresh_orchestrator() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = outbox_path(&dir);
+        let store_a = Arc::new(BoardStore::new());
+        let adapter_a = Arc::new(InMemorySourceAdapter::new());
+        store_a.seed_all(vec![seed_story(40, StoryState::Ready)]);
+        let orch_a = SyncOrchestrator::with_outbox_path(
+            Arc::clone(&store_a),
+            Arc::clone(&adapter_a),
+            path.clone(),
+        )
+        .unwrap();
+        orch_a
+            .mutate(BoardEvent::StateTransitioned {
+                meta: meta(),
+                number: 40,
+                new_state: StoryState::Delivered,
+            })
+            .unwrap();
+        drop(orch_a);
+        let store_b = Arc::new(BoardStore::new());
+        let adapter_b = Arc::new(InMemorySourceAdapter::new());
+        let orch_b = SyncOrchestrator::with_outbox_path(
+            Arc::clone(&store_b),
+            Arc::clone(&adapter_b),
+            path.clone(),
+        )
+        .unwrap();
+        assert_eq!(orch_b.snapshot_status().pending_events, 1);
+        let drained = orch_b.drain_once().await.unwrap();
+        assert_eq!(drained, 1, "rehydrated event drains on fresh orchestrator");
+        assert_eq!(adapter_b.pushed_events().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn outbox_preserves_fifo_order_across_restart() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = outbox_path(&dir);
+        let store_a = Arc::new(BoardStore::new());
+        let adapter_a = Arc::new(InMemorySourceAdapter::new());
+        store_a.seed_all(vec![
+            seed_story(50, StoryState::Ready),
+            seed_story(51, StoryState::Ready),
+            seed_story(52, StoryState::Ready),
+        ]);
+        let orch_a = SyncOrchestrator::with_outbox_path(
+            Arc::clone(&store_a),
+            Arc::clone(&adapter_a),
+            path.clone(),
+        )
+        .unwrap();
+        for n in [50u64, 51, 52] {
+            orch_a
+                .mutate(BoardEvent::StateTransitioned {
+                    meta: meta(),
+                    number: n,
+                    new_state: StoryState::InProgress,
+                })
+                .unwrap();
+        }
+        drop(orch_a);
+        let store_b = Arc::new(BoardStore::new());
+        let adapter_b = Arc::new(InMemorySourceAdapter::new());
+        let orch_b =
+            SyncOrchestrator::with_outbox_path(Arc::clone(&store_b), Arc::clone(&adapter_b), path)
+                .unwrap();
+        orch_b.drain_once().await.unwrap();
+        let pushed = adapter_b.pushed_events();
+        assert_eq!(pushed[0].story_number(), 50);
+        assert_eq!(pushed[1].story_number(), 51);
+        assert_eq!(pushed[2].story_number(), 52);
+    }
+}
