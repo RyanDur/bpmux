@@ -510,3 +510,46 @@ fn decode_story_metadata_parent_epic_none_when_label_absent() {
     let story = decode_story_metadata(&json).unwrap();
     assert_eq!(story.parent_epic, None);
 }
+
+#[test]
+fn decode_story_metadata_populates_raw_labels_for_reap_pre_filter() {
+    let json = serde_json::json!({
+        "number": 1156,
+        "title": "[Bug] reap-pre-filter substrate",
+        "state": "open",
+        "labels": [
+            {"name": "ready"},
+            {"name": "Feature"},
+            {"name": "blocked"},
+        ],
+        "created_at": "2026-05-03T00:00:00Z",
+        "user": {"login": "pm"},
+    });
+    let story = decode_story_metadata(&json).unwrap();
+    assert_eq!(
+        story.raw_labels,
+        vec![
+            "ready".to_string(),
+            "Feature".to_string(),
+            "blocked".to_string()
+        ],
+        "raw_labels must mirror GH labels list verbatim — this is what reap_workflow_labels pre-filters against; if decode drops the field, every gate-fire silently no-ops"
+    );
+}
+
+#[test]
+fn decode_story_metadata_raw_labels_empty_when_gh_returns_no_labels() {
+    let json = serde_json::json!({
+        "number": 2002,
+        "title": "story with no labels",
+        "state": "open",
+        "labels": [],
+        "created_at": "2026-05-03T00:00:00Z",
+        "user": {"login": "pm"},
+    });
+    let story = decode_story_metadata(&json).unwrap();
+    assert!(
+        story.raw_labels.is_empty(),
+        "raw_labels empty when GH returns []; pre-filter sees []; reap is no-op (correct since no labels to strip)"
+    );
+}
