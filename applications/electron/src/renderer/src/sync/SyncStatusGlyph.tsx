@@ -13,6 +13,7 @@ interface SyncStatusReport {
   pending_events: number
   last_error: string | null
   dropped_events: DroppedEvent[]
+  recovering_from_corruption: boolean
 }
 
 type FetchOk<T> = { ok: true; data: T }
@@ -21,11 +22,17 @@ type FetchResult<T> = FetchOk<T> | FetchErr
 
 const POLL_MS = 5_000
 
-type SyncState = 'connected' | 'syncing' | 'offline-queued' | 'drained-permanent-failure'
+type SyncState =
+  | 'connected'
+  | 'syncing'
+  | 'offline-queued'
+  | 'drained-permanent-failure'
+  | 'recovering'
 
 const deriveState = (report: SyncStatusReport | null): SyncState => {
   if (!report) return 'connected'
   if (report.dropped_events.length > 0) return 'drained-permanent-failure'
+  if (report.recovering_from_corruption) return 'recovering'
   if (report.pending_events > 0 && report.last_error !== null) return 'offline-queued'
   if (report.pending_events > 0) return 'syncing'
   return 'connected'
@@ -41,6 +48,8 @@ const stateGlyph = (state: SyncState): string => {
       return '⚠'
     case 'drained-permanent-failure':
       return '✗'
+    case 'recovering':
+      return '↻'
   }
 }
 
@@ -54,6 +63,8 @@ const stateAriaLabel = (state: SyncState, count: number): string => {
       return `Sync state: offline, ${count} mutations queued`
     case 'drained-permanent-failure':
       return `Sync state: ${count} mutations dropped on permanent failure`
+    case 'recovering':
+      return 'Sync state: recovering from local-cache corruption; rehydrating from GitHub'
   }
 }
 
@@ -79,6 +90,10 @@ const buildTooltip = (state: SyncState, report: SyncStatusReport | null): string
         lines.push(`#${d.story_number}: ${d.error}`)
       }
       lines.push('(click to acknowledge)')
+      break
+    case 'recovering':
+      lines.push('Sync · recovering from local-cache corruption')
+      lines.push('rehydrating board state from GitHub...')
       break
   }
   return lines.join('\n')

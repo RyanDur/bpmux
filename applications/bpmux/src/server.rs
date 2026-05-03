@@ -17,7 +17,22 @@ fn test_mode_enabled() -> bool {
 
 async fn build_test_orchestrator(session: Arc<session::Session>) -> Arc<dyn RefreshDriver> {
     let _ = session;
-    let store = Arc::new(BoardStore::new());
+    let mut corruption_detected = false;
+    let store = match crate::board::default_store_path() {
+        Ok(path) => match BoardStore::load_from_disk(&path) {
+            Ok(s) => Arc::new(s),
+            Err(e) => {
+                if matches!(e, crate::board::PersistError::Serde(_)) {
+                    corruption_detected = true;
+                }
+                crate::session::diag::log_diag(&format!(
+                    "server: BPMUX_TEST_MODE board-store disk-load failed ({e}); starting empty"
+                ));
+                Arc::new(BoardStore::new())
+            }
+        },
+        Err(_) => Arc::new(BoardStore::new()),
+    };
     let adapter = Arc::new(crate::board::adapters::in_memory::InMemorySourceAdapter::new());
     let orch: Arc<dyn RefreshDriver> = match crate::board::default_outbox_path() {
         Ok(path) => {
@@ -28,6 +43,9 @@ async fn build_test_orchestrator(session: Arc<session::Session>) -> Arc<dyn Refr
         }
         Err(_) => Arc::new(SyncOrchestrator::new(store, adapter)),
     };
+    if corruption_detected {
+        orch.mark_recovering_from_corruption();
+    }
     if let Err(e) = orch.refresh_all().await {
         crate::session::diag::log_diag(&format!(
             "server: BPMUX_TEST_MODE initial ingest skipped — {e}"
@@ -48,6 +66,7 @@ async fn build_prod_orchestrator(
             None
         }
     };
+    let mut corruption_detected = false;
     let store = match store_path.as_deref() {
         Some(path) => match BoardStore::load_from_disk(path) {
             Ok(s) => {
@@ -58,6 +77,9 @@ async fn build_prod_orchestrator(
                 Arc::new(s)
             }
             Err(e) => {
+                if matches!(e, crate::board::PersistError::Serde(_)) {
+                    corruption_detected = true;
+                }
                 crate::session::diag::log_diag(&format!(
                     "server: board-store disk-load failed ({e}); starting empty"
                 ));
@@ -95,6 +117,12 @@ async fn build_prod_orchestrator(
         }
         None => Arc::new(SyncOrchestrator::new(store.clone(), adapter.clone())),
     };
+    if corruption_detected {
+        orch.mark_recovering_from_corruption();
+        crate::session::diag::log_diag(
+            "server: corruption-detected on board-store load; sync-status flagged recovering until first ingest succeeds",
+        );
+    }
     let backoffs = [0u64, 500, 1500, 4000];
     for (attempt, delay_ms) in backoffs.iter().enumerate() {
         if *delay_ms > 0 {

@@ -30,6 +30,43 @@ fn seed_story(number: u64, state: StoryState) -> Story {
 }
 
 #[tokio::test]
+async fn ingest_clears_recovering_from_corruption_flag() {
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let orchestrator: Arc<dyn crate::board::RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orchestrator.mark_recovering_from_corruption();
+    assert!(
+        orchestrator.snapshot_status().recovering_from_corruption,
+        "flag set after mark_recovering_from_corruption"
+    );
+    orchestrator.refresh_all().await.unwrap();
+    assert!(
+        !orchestrator.snapshot_status().recovering_from_corruption,
+        "successful ingest clears recovering flag"
+    );
+}
+
+#[tokio::test]
+async fn failed_ingest_keeps_recovering_from_corruption_flag() {
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    adapter.set_ingest_failures(true);
+    let orchestrator: Arc<dyn crate::board::RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orchestrator.mark_recovering_from_corruption();
+    let _ = orchestrator.refresh_all().await;
+    assert!(
+        orchestrator.snapshot_status().recovering_from_corruption,
+        "failed ingest preserves recovering flag for next attempt"
+    );
+}
+
+#[tokio::test]
 async fn ingest_once_populates_store_from_adapter() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());

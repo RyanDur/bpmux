@@ -34,6 +34,7 @@ pub trait RefreshDriver: Send + Sync {
     fn mutate_sync(&self, event: BoardEvent) -> Result<(), SyncError>;
     fn snapshot_status(&self) -> SyncStatus;
     fn acknowledge_dropped(&self) -> usize;
+    fn mark_recovering_from_corruption(&self);
     fn drain_pending(&self) -> BoxedFuture<'_, Result<usize, SyncError>>;
     fn reconcile_dual_state_labels(&self) -> BoxedFuture<'_, Result<usize, SyncError>>;
     fn fetch_body(&self, number: u64) -> BoxedFuture<'_, Result<String, SyncError>>;
@@ -68,6 +69,7 @@ pub struct SyncStatus {
     pub pending_events: usize,
     pub last_error: Option<String>,
     pub dropped_events: Vec<DroppedEvent>,
+    pub recovering_from_corruption: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -395,6 +397,10 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         acknowledge_dropped(&self.status)
     }
 
+    fn mark_recovering_from_corruption(&self) {
+        mark_recovering_from_corruption(&self.status);
+    }
+
     fn drain_pending(&self) -> BoxedFuture<'_, Result<usize, SyncError>> {
         Box::pin(self.drain_once())
     }
@@ -467,6 +473,12 @@ fn record_ingest_success(status: &Arc<Mutex<SyncStatus>>) {
     let mut s = status.lock().unwrap_or_else(|e| e.into_inner());
     s.last_ingest_at = Some(Utc::now());
     s.last_error = None;
+    s.recovering_from_corruption = false;
+}
+
+pub fn mark_recovering_from_corruption(status: &Arc<Mutex<SyncStatus>>) {
+    let mut s = status.lock().unwrap_or_else(|e| e.into_inner());
+    s.recovering_from_corruption = true;
 }
 
 fn record_push_success(status: &Arc<Mutex<SyncStatus>>) {

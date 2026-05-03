@@ -36,6 +36,10 @@
   &.sync-status-glyph--drained-permanent-failure {
     color: var(--accent-error);
   }
+
+  &.sync-status-glyph--recovering {
+    color: var(--accent-warning);
+  }
 }
 
 .sync-status-glyph__count {

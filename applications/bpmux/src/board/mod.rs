@@ -18,7 +18,7 @@ pub use domain::{FreeComment, Gate, GateComment, Story, StoryState};
 pub use events::BoardEvent;
 pub use orchestrator::{
     DroppedEvent, RefreshDriver, SyncOrchestrator, SyncStatus, acknowledge_dropped,
-    default_outbox_path,
+    default_outbox_path, mark_recovering_from_corruption,
 };
 pub use peer::PeerId;
 pub use store::{BoardStore, PersistError, default_store_path};

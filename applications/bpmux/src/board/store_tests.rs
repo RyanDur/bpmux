@@ -700,4 +700,56 @@ mod disk_persistence {
             "read paths must serve from disk-hydrate without GH"
         );
     }
+
+    #[test]
+    fn corrupted_json_surfaces_serde_error_not_silent_empty() {
+        let tmp = TempDir::new().unwrap();
+        let path = tmp.path().join("corrupted.json");
+        std::fs::write(&path, b"{not valid json at all").unwrap();
+        let err = BoardStore::load_from_disk(&path)
+            .err()
+            .expect("corruption must return Err, not silent empty Ok");
+        assert!(
+            matches!(err, crate::board::PersistError::Serde(_)),
+            "corruption returns Serde-class Err so callers can distinguish from missing/empty"
+        );
+    }
+
+    #[test]
+    fn truncated_json_surfaces_serde_error() {
+        let tmp = TempDir::new().unwrap();
+        let path = tmp.path().join("truncated.json");
+        let well_formed_then_truncated = br#"{"42":{"number":42,"title":"valid","state":"#;
+        std::fs::write(&path, well_formed_then_truncated).unwrap();
+        let err = BoardStore::load_from_disk(&path)
+            .err()
+            .expect("mid-write truncation must return Err");
+        assert!(
+            matches!(err, crate::board::PersistError::Serde(_)),
+            "mid-write truncation returns Serde Err"
+        );
+    }
+
+    #[test]
+    fn missing_file_returns_ok_empty_distinguished_from_corruption() {
+        let tmp = TempDir::new().unwrap();
+        let path = tmp.path().join("does-not-exist.json");
+        let store = BoardStore::load_from_disk(&path).unwrap();
+        assert!(
+            store.is_empty(),
+            "missing file is healthy startup, not corruption"
+        );
+    }
+
+    #[test]
+    fn empty_file_returns_ok_empty_distinguished_from_corruption() {
+        let tmp = TempDir::new().unwrap();
+        let path = tmp.path().join("empty.json");
+        std::fs::write(&path, b"").unwrap();
+        let store = BoardStore::load_from_disk(&path).unwrap();
+        assert!(
+            store.is_empty(),
+            "empty file is healthy startup, not corruption"
+        );
+    }
 }

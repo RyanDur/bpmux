@@ -42,6 +42,7 @@ mod tests {
         fn acknowledge_dropped(&self) -> usize {
             0
         }
+        fn mark_recovering_from_corruption(&self) {}
         fn drain_pending(&self) -> BoxedFuture<'_, Result<usize, SyncError>> {
             Box::pin(async { Ok(0) })
         }
@@ -107,6 +108,7 @@ mod tests {
             pending_events: 3,
             last_error: Some("source unreachable".into()),
             dropped_events: Vec::new(),
+            recovering_from_corruption: false,
         };
         let driver: Arc<dyn RefreshDriver> = Arc::new(StubDriver(status));
         let out = handle_get_sync_status(Some(&driver)).await.unwrap();
