@@ -20,9 +20,6 @@ const LABEL_IN_PROGRESS: &str = "in progress";
 const LABEL_READY: &str = "ready";
 const LABEL_READY_FOR_ACCEPT: &str = "ready for accept";
 
-/// Canonical workflow-state label set — every gate-tool's universal-
-/// reap iterates this set and strips all entries except the target
-/// state's label.
 pub(super) const ALL_STATE_LABELS: &[&str] = &[
     "icebox",
     LABEL_READY,
@@ -35,18 +32,8 @@ pub(super) const ALL_STATE_LABELS: &[&str] = &[
     "accepted",
 ];
 
-/// Sentinel for `reap_workflow_labels` callers that want to strip every
-/// label in `ALL_STATE_LABELS` (close_story uses this — closing a story
-/// removes its workflow context entirely; the close-reason comment
-/// carries the audit trail).
 pub(super) const KEEP_NONE: &str = "";
 
-/// #518 slice 1: extract the universal-reap pattern shared by every
-/// state-mutation gate-tool. Strips all labels in `ALL_STATE_LABELS`
-/// except `keep` (the target state's label that the caller's
-/// StateTransitioned event will add via the adapter). TagRemoved is
-/// idempotent at the GitHub adapter (404 = already-absent = Ok), so
-/// listing labels not currently present is a safe no-op.
 pub(super) fn reap_workflow_labels(
     refresh: &dyn crate::board::RefreshDriver,
     number: u64,
