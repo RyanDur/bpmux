@@ -108,13 +108,12 @@ pub fn spawn(
                     continue;
                 }
                 Err(e) => {
-                    let lower = e.to_lowercase();
-                    if lower.contains("rate limit") || lower.contains("rate-limit") {
-                        let decision = crate::github::decide_backoff(
-                            observer.snapshot(),
-                            backoff,
-                            std::time::SystemTime::now(),
-                        );
+                    if let Some(decision) = crate::github::classify_and_decide(
+                        &e,
+                        observer.snapshot(),
+                        backoff,
+                        std::time::SystemTime::now(),
+                    ) {
                         session::diag::log_diag(&format!(
                             "ci_watcher: rate-limited; backoff signal={} wait={}s",
                             crate::github::signal_label(decision.signal),

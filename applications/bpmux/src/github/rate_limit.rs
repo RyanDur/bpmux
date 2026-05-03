@@ -126,3 +126,20 @@ pub fn signal_label(signal: BackoffSignal) -> &'static str {
         BackoffSignal::Exponential => "exponential",
     }
 }
+
+pub fn is_rate_limit_error(err_msg: &str) -> bool {
+    let lower = err_msg.to_lowercase();
+    lower.contains("rate limit") || lower.contains("rate-limit")
+}
+
+pub fn classify_and_decide(
+    err_msg: &str,
+    snapshot: ObservedWakes,
+    exponential: Duration,
+    now: SystemTime,
+) -> Option<BackoffDecision> {
+    if !is_rate_limit_error(err_msg) {
+        return None;
+    }
+    Some(decide_backoff(snapshot, exponential, now))
+}

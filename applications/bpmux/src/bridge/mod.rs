@@ -1058,14 +1058,13 @@ pub(crate) async fn run_ingest_poll_loop(
             }
             Err(e) => {
                 let msg = e.to_string();
-                let lower = msg.to_lowercase();
-                if lower.contains("rate limit") || lower.contains("rate-limit") {
-                    let snapshot = observer.as_ref().map(|o| o.snapshot()).unwrap_or_default();
-                    let decision = crate::github::decide_backoff(
-                        snapshot,
-                        backoff,
-                        std::time::SystemTime::now(),
-                    );
+                let snapshot = observer.as_ref().map(|o| o.snapshot()).unwrap_or_default();
+                if let Some(decision) = crate::github::classify_and_decide(
+                    &msg,
+                    snapshot,
+                    backoff,
+                    std::time::SystemTime::now(),
+                ) {
                     crate::session::diag::log_diag(&format!(
                         "bridge: ingest rate-limited; backoff signal={} wait={}s",
                         crate::github::signal_label(decision.signal),

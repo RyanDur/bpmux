@@ -240,3 +240,98 @@ mod backoff_decisions {
         assert_eq!(decision.wait, Duration::from_secs(0));
     }
 }
+
+mod cascade_integration {
+    use crate::github::{
+        BackoffSignal, RateLimitObserver, classify_and_decide, is_rate_limit_error,
+    };
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+    fn at_epoch(secs: u64) -> SystemTime {
+        UNIX_EPOCH + Duration::from_secs(secs)
+    }
+
+    #[test]
+    fn rate_limited_error_consults_observer_snapshot() {
+        let observer = RateLimitObserver::new();
+        let now = at_epoch(1_700_000_000);
+        observer.observe_retry_after_secs(300, now);
+        let result = classify_and_decide(
+            "rate limited — retrying",
+            observer.snapshot(),
+            Duration::from_secs(60),
+            now,
+        );
+        assert_eq!(
+            result,
+            Some(crate::github::BackoffDecision {
+                wait: Duration::from_secs(300),
+                signal: BackoffSignal::RetryAfterHeader,
+            })
+        );
+    }
+
+    #[test]
+    fn non_rate_limit_error_returns_none() {
+        let observer = RateLimitObserver::new();
+        let now = at_epoch(1_700_000_000);
+        observer.observe_retry_after_secs(300, now);
+        let result = classify_and_decide(
+            "network unreachable",
+            observer.snapshot(),
+            Duration::from_secs(60),
+            now,
+        );
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn rate_limit_string_variants_all_classify_as_rate_limited() {
+        assert!(is_rate_limit_error("rate limited — retrying"));
+        assert!(is_rate_limit_error("Rate Limit exceeded"));
+        assert!(is_rate_limit_error("api rate-limit hit"));
+        assert!(is_rate_limit_error("RATE LIMITED"));
+        assert!(!is_rate_limit_error("offline"));
+        assert!(!is_rate_limit_error("auth invalid"));
+        assert!(!is_rate_limit_error("github error 500"));
+    }
+
+    #[test]
+    fn cascade_falls_back_to_exponential_when_observer_empty() {
+        let observer = RateLimitObserver::new();
+        let now = at_epoch(1_700_000_000);
+        let result = classify_and_decide(
+            "rate limited",
+            observer.snapshot(),
+            Duration::from_secs(120),
+            now,
+        );
+        assert_eq!(
+            result,
+            Some(crate::github::BackoffDecision {
+                wait: Duration::from_secs(120),
+                signal: BackoffSignal::Exponential,
+            })
+        );
+    }
+
+    #[test]
+    fn cascade_uses_max_when_observer_lower_than_exponential() {
+        let observer = RateLimitObserver::new();
+        let now = at_epoch(1_700_000_000);
+        observer.observe_retry_after_secs(30, now);
+        let result = classify_and_decide(
+            "rate limited",
+            observer.snapshot(),
+            Duration::from_secs(1800),
+            now,
+        );
+        assert_eq!(
+            result,
+            Some(crate::github::BackoffDecision {
+                wait: Duration::from_secs(1800),
+                signal: BackoffSignal::Exponential,
+            })
+        );
+    }
+}
