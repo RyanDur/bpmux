@@ -550,6 +550,101 @@ mod outbox_persistence {
     }
 
     #[tokio::test]
+    async fn drain_drops_event_on_permanent_push_failure() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = outbox_path(&dir);
+        let store = Arc::new(BoardStore::new());
+        let adapter = Arc::new(InMemorySourceAdapter::new());
+        store.seed_all(vec![seed_story(60, StoryState::Ready)]);
+        let orch = SyncOrchestrator::with_outbox_path(
+            Arc::clone(&store),
+            Arc::clone(&adapter),
+            path.clone(),
+        )
+        .unwrap();
+        orch.mutate(BoardEvent::StateTransitioned {
+            meta: meta(),
+            number: 60,
+            new_state: StoryState::Delivered,
+        })
+        .unwrap();
+        adapter.set_permanent_push_failures(true);
+        let _ = orch.drain_once().await;
+        let bytes = std::fs::read(&path).unwrap();
+        let events: Vec<BoardEvent> = serde_json::from_slice(&bytes).unwrap();
+        assert!(
+            events.is_empty(),
+            "permanent failure drops event from outbox"
+        );
+        assert_eq!(orch.snapshot_status().pending_events, 0);
+    }
+
+    #[tokio::test]
+    async fn drain_continues_past_permanent_failure_to_next_event() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = outbox_path(&dir);
+        let store = Arc::new(BoardStore::new());
+        let adapter = Arc::new(InMemorySourceAdapter::new());
+        store.seed_all(vec![
+            seed_story(70, StoryState::Ready),
+            seed_story(71, StoryState::Ready),
+        ]);
+        let orch = SyncOrchestrator::with_outbox_path(
+            Arc::clone(&store),
+            Arc::clone(&adapter),
+            path.clone(),
+        )
+        .unwrap();
+        for n in [70u64, 71] {
+            orch.mutate(BoardEvent::StateTransitioned {
+                meta: meta(),
+                number: n,
+                new_state: StoryState::Delivered,
+            })
+            .unwrap();
+        }
+        adapter.set_permanent_push_failures(true);
+        let _ = orch.drain_once().await;
+        let bytes = std::fs::read(&path).unwrap();
+        let events: Vec<BoardEvent> = serde_json::from_slice(&bytes).unwrap();
+        assert!(
+            events.is_empty(),
+            "drain continues past each permanent failure"
+        );
+    }
+
+    #[tokio::test]
+    async fn drain_keeps_event_on_transient_failure() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = outbox_path(&dir);
+        let store = Arc::new(BoardStore::new());
+        let adapter = Arc::new(InMemorySourceAdapter::new());
+        store.seed_all(vec![seed_story(80, StoryState::Ready)]);
+        let orch = SyncOrchestrator::with_outbox_path(
+            Arc::clone(&store),
+            Arc::clone(&adapter),
+            path.clone(),
+        )
+        .unwrap();
+        orch.mutate(BoardEvent::StateTransitioned {
+            meta: meta(),
+            number: 80,
+            new_state: StoryState::Delivered,
+        })
+        .unwrap();
+        adapter.set_push_failures(true);
+        let _ = orch.drain_once().await;
+        let bytes = std::fs::read(&path).unwrap();
+        let events: Vec<BoardEvent> = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(events.len(), 1, "transient failure keeps event for retry");
+        adapter.set_push_failures(false);
+        orch.drain_once().await.unwrap();
+        let bytes = std::fs::read(&path).unwrap();
+        let events: Vec<BoardEvent> = serde_json::from_slice(&bytes).unwrap();
+        assert!(events.is_empty(), "event drains on retry post-recovery");
+    }
+
+    #[tokio::test]
     async fn outbox_preserves_fifo_order_across_restart() {
         let dir = tempfile::tempdir().unwrap();
         let path = outbox_path(&dir);

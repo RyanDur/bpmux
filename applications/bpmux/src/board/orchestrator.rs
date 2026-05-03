@@ -12,7 +12,7 @@ use super::domain::{FreeComment, GateComment, Story};
 use super::events::{BoardEvent, EventMeta};
 use super::peer::PeerId;
 use super::store::{BoardStore, PersistError};
-use super::sync::{SourceAdapter, SyncError};
+use super::sync::{SourceAdapter, SyncError, is_permanent_push_failure};
 
 pub fn default_outbox_path() -> Result<PathBuf, std::io::Error> {
     if let Ok(p) = std::env::var("BPMUX_BOARD_OUTBOX_PATH")
@@ -260,6 +260,19 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                 Err(e) => {
                     failures += 1;
                     record_error(&self.status, &format!("push: {e}"));
+                    if is_permanent_push_failure(&e) {
+                        {
+                            let mut p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
+                            p.pop_front();
+                        }
+                        self.persist_outbox();
+                        decrement_pending(&self.status);
+                        crate::session::diag::log_diag(&format!(
+                            "orchestrator: dropped event after permanent push failure ({e}); event #{}",
+                            event.story_number()
+                        ));
+                        continue;
+                    }
                     break;
                 }
             }
@@ -458,6 +471,13 @@ fn record_error(status: &Arc<Mutex<SyncStatus>>, msg: &str) {
 fn bump_pending(status: &Arc<Mutex<SyncStatus>>, by: usize) {
     let mut s = status.lock().unwrap_or_else(|e| e.into_inner());
     s.pending_events += by;
+}
+
+fn decrement_pending(status: &Arc<Mutex<SyncStatus>>) {
+    let mut s = status.lock().unwrap_or_else(|e| e.into_inner());
+    if s.pending_events > 0 {
+        s.pending_events -= 1;
+    }
 }
 
 pub fn load_outbox_from_disk(path: &Path) -> Result<VecDeque<BoardEvent>, PersistError> {

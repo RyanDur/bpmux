@@ -34,6 +34,13 @@ pub fn classify_close_error(msg: String) -> SyncError {
     }
 }
 
+pub fn is_permanent_push_failure(err: &SyncError) -> bool {
+    matches!(
+        err,
+        SyncError::ValidationRejected(_) | SyncError::AlreadyClosed
+    )
+}
+
 pub trait SourceAdapter: Send + Sync {
     fn ingest_metadata(
         &self,

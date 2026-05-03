@@ -19,6 +19,7 @@ struct InnerState {
     gate_comments: HashMap<u64, Vec<GateComment>>,
     pushed_events: Vec<BoardEvent>,
     failures_on_push: bool,
+    permanent_push_failures: bool,
     failures_on_ingest: bool,
 }
 
@@ -67,6 +68,13 @@ impl InMemorySourceAdapter {
             .lock()
             .unwrap_or_else(|e| e.into_inner())
             .failures_on_push = fail;
+    }
+
+    pub fn set_permanent_push_failures(&self, fail: bool) {
+        self.state
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .permanent_push_failures = fail;
     }
 
     pub fn set_ingest_failures(&self, fail: bool) {
@@ -168,6 +176,11 @@ impl SourceAdapter for InMemorySourceAdapter {
 
     async fn push_event(&self, event: &BoardEvent) -> Result<Option<BoardEvent>, SyncError> {
         let mut s = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        if s.permanent_push_failures {
+            return Err(SyncError::ValidationRejected(
+                "permanent test failure".into(),
+            ));
+        }
         if s.failures_on_push {
             return Err(SyncError::SourceUnreachable("push test failure".into()));
         }
