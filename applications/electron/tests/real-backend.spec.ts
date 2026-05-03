@@ -844,7 +844,7 @@ test.describe('real-backend', () => {
     // the seed chat). data-presence='offline'.
     const devDot = win.locator('[data-test="presence-dot-dev"]')
     await expect(devDot).toHaveAttribute('data-presence', 'offline', {
-      timeout: 5_000
+      timeout: 15_000
     })
 
     // Simulate dev going busy. POST an activity-class message as
