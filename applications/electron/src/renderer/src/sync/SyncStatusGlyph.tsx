@@ -98,6 +98,35 @@ const fetchSyncStatus = async (
   return { ok: true, data }
 }
 
+const postForceSync = async (
+  apiBase: string,
+  authToken: string
+): Promise<FetchResult<null>> => {
+  const res = await fetch(`${apiBase}/api/sync-status/force-sync`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${authToken}` }
+  })
+  if (!res.ok) return { ok: false, error: `HTTP ${res.status}` }
+  return { ok: true, data: null }
+}
+
+const postAcknowledge = async (
+  apiBase: string,
+  authToken: string
+): Promise<FetchResult<null>> => {
+  const res = await fetch(`${apiBase}/api/sync-status/acknowledge`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${authToken}` }
+  })
+  if (!res.ok) return { ok: false, error: `HTTP ${res.status}` }
+  return { ok: true, data: null }
+}
+
+const networkErrorToResult = (err: unknown): FetchErr => ({
+  ok: false,
+  error: (err as Error)?.name === 'AbortError' ? '' : String(err)
+})
+
 interface Props {
   apiBase?: string
   authToken?: string
@@ -111,10 +140,7 @@ const SyncStatusGlyph = ({ apiBase, authToken }: Props): React.JSX.Element => {
     async (signal?: AbortSignal): Promise<void> => {
       if (!apiBase) return
       const result = await fetchSyncStatus(apiBase, authToken ?? '', signal).catch(
-        (err): FetchErr => ({
-          ok: false,
-          error: (err as Error)?.name === 'AbortError' ? '' : String(err)
-        })
+        networkErrorToResult
       )
       if (result.ok) {
         setReport(result.data)
@@ -150,16 +176,15 @@ const SyncStatusGlyph = ({ apiBase, authToken }: Props): React.JSX.Element => {
 
   const handleClick = useCallback(async () => {
     if (!apiBase) return
+    const token = authToken ?? ''
+    let result: FetchResult<null> | null = null
     if (state === 'drained-permanent-failure') {
-      await fetch(`${apiBase}/api/sync-status/acknowledge`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${authToken ?? ''}` }
-      }).catch(() => undefined)
+      result = await postAcknowledge(apiBase, token).catch(networkErrorToResult)
     } else if (state === 'offline-queued' || state === 'syncing') {
-      await fetch(`${apiBase}/api/sync-status/force-sync`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${authToken ?? ''}` }
-      }).catch(() => undefined)
+      result = await postForceSync(apiBase, token).catch(networkErrorToResult)
+    }
+    if (result && !result.ok && result.error.length > 0) {
+      setError(result.error)
     }
     await fetchOnce()
   }, [apiBase, authToken, fetchOnce, state])
