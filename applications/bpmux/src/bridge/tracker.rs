@@ -672,18 +672,6 @@ impl StoryTracker for OctocrabStoryTracker {
             .map_err(Self::classify)
     }
 
-    /// Full board as typed JSON Values, consumed by the REST /api/board
-    /// endpoint and the list_ready MCP handler. Same underlying octocrab
-    /// call as `list_stories` but returns the richer issue_to_board_json
-    /// payload (body, state, labels, assignees, created_at) (#403).
-    ///
-    /// Pagination follows next-link until exhaustion (#511). Without it
-    /// GitHub caps the response at the first page (100 issues by
-    /// default) ordered by updated_at desc — the moment the repo has
-    /// more than 100 touched issues, recently-edited acceptances crowd
-    /// out today's just-filed stories and they vanish from the board
-    /// until something else updates them. Today's renderer showed 100
-    /// stories with #511/#512/#509 missing for exactly this reason.
     async fn fetch_board_stories(&self) -> Result<Vec<serde_json::Value>, String> {
         let mut all_issues: Vec<octocrab::models::issues::Issue> = Vec::new();
         let mut page = 1u32;
