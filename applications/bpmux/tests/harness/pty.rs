@@ -502,6 +502,16 @@ impl TestBpmux {
     }
 
     /// Send a special key escape sequence (e.g. "Left", "Right", "Up", "Down").
+    ///
+    /// Each call flushes immediately + parks briefly so crossterm's
+    /// escape-sequence decoder in the child process has time to fully
+    /// decode the sequence before any subsequent write arrives. Without
+    /// the park, under concurrent test load the bare `\x1b` lead byte
+    /// gets mis-parsed as a standalone Esc keypress while the trailing
+    /// `[A` / `[<...M` / etc bytes echo as literal characters in the
+    /// chat input field. Closes the flake-class previously documented
+    /// at `tests/integration_main_modules/board_view.rs:93` and
+    /// `story63_acceptance::ac1_unread_indicator_when_scrolled_up`.
     pub fn type_key(&self, key: &str) {
         let seq = match key {
             "Up" => "\x1b[A",
@@ -516,6 +526,8 @@ impl TestBpmux {
         let mut w = self.writer.lock().expect("writer lock");
         w.write_all(seq.as_bytes()).expect("type key");
         w.flush().expect("flush");
+        drop(w);
+        std::thread::sleep(std::time::Duration::from_millis(20));
     }
 
     /// Simulate a bracketed paste: wraps text in paste-start/paste-end
@@ -530,13 +542,20 @@ impl TestBpmux {
 
     /// Send mouse scroll-up events through the PTY (SGR mouse protocol).
     /// Each call sends `count` scroll-up events at position (col=10, row=10).
+    ///
+    /// Each event flushes immediately + parks briefly so crossterm's
+    /// escape-sequence decoder has time to fully decode the SGR
+    /// sequence before the next event arrives (see `type_key` doc for
+    /// the underlying flake-class).
     pub fn mouse_scroll_up(&self, count: usize) {
-        let mut w = self.writer.lock().expect("writer lock");
         for _ in 0..count {
+            let mut w = self.writer.lock().expect("writer lock");
             // SGR: \x1b[<64;col;rowM = scroll up (button 64)
             w.write_all(b"\x1b[<64;10;10M").expect("scroll up");
+            w.flush().expect("flush");
+            drop(w);
+            std::thread::sleep(std::time::Duration::from_millis(20));
         }
-        w.flush().expect("flush");
     }
 
     /// Send a mouse click at the given (col, row) position (1-based, SGR protocol).
@@ -546,18 +565,27 @@ impl TestBpmux {
         let press = format!("\x1b[<0;{col};{row}M");
         let release = format!("\x1b[<0;{col};{row}m");
         w.write_all(press.as_bytes()).expect("mouse press");
+        w.flush().expect("flush");
+        drop(w);
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        let mut w = self.writer.lock().expect("writer lock");
         w.write_all(release.as_bytes()).expect("mouse release");
         w.flush().expect("flush");
+        drop(w);
+        std::thread::sleep(std::time::Duration::from_millis(20));
     }
 
     /// Send mouse scroll-down events through the PTY (SGR mouse protocol).
+    /// Same per-event flush+park as `mouse_scroll_up`.
     pub fn mouse_scroll_down(&self, count: usize) {
-        let mut w = self.writer.lock().expect("writer lock");
         for _ in 0..count {
+            let mut w = self.writer.lock().expect("writer lock");
             // SGR: \x1b[<65;col;rowM = scroll down (button 65)
             w.write_all(b"\x1b[<65;10;10M").expect("scroll down");
+            w.flush().expect("flush");
+            drop(w);
+            std::thread::sleep(std::time::Duration::from_millis(20));
         }
-        w.flush().expect("flush");
     }
 }
 
