@@ -46,6 +46,10 @@ pub struct GetMessagesParams {
     /// (`message_type=activity`) without bumping `chat_only=false` and
     /// pulling unrelated message classes.
     pub message_type: Option<String>,
+    /// #1153: paged-history support. When set, returns only messages
+    /// with `ts < before`. Pairs with `limit` to page older history
+    /// on client-side scroll-up. Format: RFC3339 timestamp string.
+    pub before: Option<String>,
 }
 
 pub async fn get_messages(
@@ -70,6 +74,16 @@ pub async fn get_messages(
             };
             if let Some(ref peer) = params.as_peer {
                 filtered.retain(|m| super::ws::should_deliver(m, peer));
+            }
+            // #1153: paged-history. When `before=<rfc3339>` is set,
+            // strict-less-than filter on message timestamp so callers
+            // can fetch older windows by passing the oldest-currently-
+            // rendered timestamp. Strict-less-than avoids duplicates at
+            // the boundary; client-side dedup handles any race.
+            if let Some(ref before_str) = params.before
+                && let Ok(before_ts) = before_str.parse::<chrono::DateTime<chrono::Utc>>()
+            {
+                filtered.retain(|m| m.ts < before_ts);
             }
             filtered.reverse();
             let page: Vec<_> = filtered.into_iter().skip(offset).take(limit).collect();
