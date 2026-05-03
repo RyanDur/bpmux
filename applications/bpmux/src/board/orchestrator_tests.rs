@@ -580,6 +580,60 @@ mod outbox_persistence {
     }
 
     #[tokio::test]
+    async fn permanent_failure_records_dropped_event_in_status() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = outbox_path(&dir);
+        let store = Arc::new(BoardStore::new());
+        let adapter = Arc::new(InMemorySourceAdapter::new());
+        store.seed_all(vec![seed_story(65, StoryState::Ready)]);
+        let orch = SyncOrchestrator::with_outbox_path(
+            Arc::clone(&store),
+            Arc::clone(&adapter),
+            path.clone(),
+        )
+        .unwrap();
+        orch.mutate(BoardEvent::StateTransitioned {
+            meta: meta(),
+            number: 65,
+            new_state: StoryState::Delivered,
+        })
+        .unwrap();
+        adapter.set_permanent_push_failures(true);
+        let _ = orch.drain_once().await;
+        let status = orch.snapshot_status();
+        assert_eq!(status.dropped_events.len(), 1);
+        assert_eq!(status.dropped_events[0].story_number, 65);
+    }
+
+    #[tokio::test]
+    async fn acknowledge_dropped_clears_dropped_events() {
+        use crate::board::orchestrator::acknowledge_dropped;
+        let dir = tempfile::tempdir().unwrap();
+        let path = outbox_path(&dir);
+        let store = Arc::new(BoardStore::new());
+        let adapter = Arc::new(InMemorySourceAdapter::new());
+        store.seed_all(vec![seed_story(66, StoryState::Ready)]);
+        let orch = SyncOrchestrator::with_outbox_path(
+            Arc::clone(&store),
+            Arc::clone(&adapter),
+            path.clone(),
+        )
+        .unwrap();
+        orch.mutate(BoardEvent::StateTransitioned {
+            meta: meta(),
+            number: 66,
+            new_state: StoryState::Delivered,
+        })
+        .unwrap();
+        adapter.set_permanent_push_failures(true);
+        let _ = orch.drain_once().await;
+        assert_eq!(orch.snapshot_status().dropped_events.len(), 1);
+        let cleared = acknowledge_dropped(&orch.status_handle());
+        assert_eq!(cleared, 1);
+        assert!(orch.snapshot_status().dropped_events.is_empty());
+    }
+
+    #[tokio::test]
     async fn drain_continues_past_permanent_failure_to_next_event() {
         let dir = tempfile::tempdir().unwrap();
         let path = outbox_path(&dir);

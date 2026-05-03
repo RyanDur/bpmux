@@ -1,0 +1,39 @@
+.sync-status-glyph {
+  font-size: 0.75rem;
+  color: var(--fg-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: var(--space-2) var(--space-8);
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  -webkit-app-region: no-drag;
+
+  &:hover {
+    background: var(--bg-highlighted);
+    color: var(--fg-primary);
+  }
+
+  &.sync-status-glyph--connected {
+    color: var(--accent-success);
+  }
+
+  &.sync-status-glyph--syncing {
+    color: var(--fg-secondary);
+  }
+
+  &.sync-status-glyph--offline-queued {
+    color: var(--accent-warning);
+  }
+
+  &.sync-status-glyph--drained-permanent-failure {
+    color: var(--accent-error);
+  }
+}
+
+.sync-status-glyph__count {
+  font-size: 0.65rem;
+  font-variant-numeric: tabular-nums;
+}

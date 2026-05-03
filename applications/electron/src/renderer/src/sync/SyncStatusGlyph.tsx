@@ -1,0 +1,176 @@
+import { useCallback, useEffect, useState } from 'react'
+import './SyncStatusGlyph.css'
+
+interface DroppedEvent {
+  story_number: number
+  error: string
+  ts: string
+}
+
+interface SyncStatusReport {
+  last_ingest_at: string | null
+  last_push_at: string | null
+  pending_events: number
+  last_error: string | null
+  dropped_events: DroppedEvent[]
+}
+
+const POLL_MS = 5_000
+
+type SyncState = 'connected' | 'syncing' | 'offline-queued' | 'drained-permanent-failure'
+
+function deriveState(report: SyncStatusReport | null): SyncState {
+  if (!report) return 'connected'
+  if (report.dropped_events.length > 0) return 'drained-permanent-failure'
+  if (report.pending_events > 0 && report.last_error !== null) return 'offline-queued'
+  if (report.pending_events > 0) return 'syncing'
+  return 'connected'
+}
+
+function stateGlyph(state: SyncState): string {
+  switch (state) {
+    case 'connected':
+      return '●'
+    case 'syncing':
+      return '◌'
+    case 'offline-queued':
+      return '⚠'
+    case 'drained-permanent-failure':
+      return '✗'
+  }
+}
+
+function stateAriaLabel(state: SyncState, count: number): string {
+  switch (state) {
+    case 'connected':
+      return 'Sync state: connected'
+    case 'syncing':
+      return `Sync state: syncing ${count} pending`
+    case 'offline-queued':
+      return `Sync state: offline, ${count} mutations queued`
+    case 'drained-permanent-failure':
+      return `Sync state: ${count} mutations dropped on permanent failure`
+  }
+}
+
+function buildTooltip(state: SyncState, report: SyncStatusReport | null): string {
+  if (!report) return 'Sync status loading…'
+  const lines: string[] = []
+  switch (state) {
+    case 'connected':
+      lines.push('Sync · connected')
+      if (report.last_push_at) lines.push(`last push ${report.last_push_at}`)
+      break
+    case 'syncing':
+      lines.push(`Sync · syncing ${report.pending_events} pending`)
+      break
+    case 'offline-queued':
+      lines.push(`Sync · offline, ${report.pending_events} queued`)
+      if (report.last_error) lines.push(`error: ${report.last_error}`)
+      lines.push('(click to force-sync now)')
+      break
+    case 'drained-permanent-failure':
+      lines.push(`Sync · ${report.dropped_events.length} dropped on permanent failure`)
+      for (const d of report.dropped_events.slice(0, 3)) {
+        lines.push(`#${d.story_number}: ${d.error}`)
+      }
+      lines.push('(click to acknowledge)')
+      break
+  }
+  return lines.join('\n')
+}
+
+interface Props {
+  apiBase?: string
+  authToken?: string
+}
+
+function SyncStatusGlyph({ apiBase, authToken }: Props): React.JSX.Element {
+  const [report, setReport] = useState<SyncStatusReport | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchOnce = useCallback(
+    async (signal?: AbortSignal): Promise<void> => {
+      if (!apiBase) return
+      try {
+        const res = await fetch(`${apiBase}/api/sync-status`, {
+          headers: { Authorization: `Bearer ${authToken ?? ''}` },
+          signal
+        })
+        if (!res.ok) {
+          setError(`HTTP ${res.status}`)
+          return
+        }
+        const json = (await res.json()) as SyncStatusReport
+        setReport(json)
+        setError(null)
+      } catch (err) {
+        if ((err as Error)?.name === 'AbortError') return
+        setError(err instanceof Error ? err.message : String(err))
+      }
+    },
+    [apiBase, authToken]
+  )
+
+  useEffect(() => {
+    if (!apiBase) {
+      setError('no backend')
+      return
+    }
+    const controller = new AbortController()
+    void fetchOnce(controller.signal)
+    const id = setInterval(() => {
+      void fetchOnce(controller.signal)
+    }, POLL_MS)
+    return () => {
+      controller.abort()
+      clearInterval(id)
+    }
+  }, [apiBase, fetchOnce])
+
+  const state = deriveState(report)
+  const count =
+    state === 'drained-permanent-failure'
+      ? (report?.dropped_events.length ?? 0)
+      : (report?.pending_events ?? 0)
+
+  const handleClick = useCallback(async () => {
+    if (!apiBase) return
+    if (state === 'drained-permanent-failure') {
+      await fetch(`${apiBase}/api/sync-status/acknowledge`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${authToken ?? ''}` }
+      })
+    } else if (state === 'offline-queued' || state === 'syncing') {
+      await fetch(`${apiBase}/api/sync-status/force-sync`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${authToken ?? ''}` }
+      })
+    }
+    await fetchOnce()
+  }, [apiBase, authToken, fetchOnce, state])
+
+  const glyph = stateGlyph(state)
+  const ariaLabel = stateAriaLabel(state, count)
+  const tooltip = error ? `Sync error: ${error}` : buildTooltip(state, report)
+  const showCount = state !== 'connected' && count > 0
+
+  return (
+    <button
+      type="button"
+      className={`sync-status-glyph sync-status-glyph--${state}`}
+      onClick={handleClick}
+      title={tooltip}
+      aria-label={ariaLabel}
+      aria-live="polite"
+      data-test="sync-status-glyph"
+      data-state={state}
+      data-count={count}
+    >
+      <span aria-hidden="true">{glyph}</span>
+      {showCount && <small className="sync-status-glyph__count">{count}</small>}
+    </button>
+  )
+}
+
+export default SyncStatusGlyph

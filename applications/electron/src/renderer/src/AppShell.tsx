@@ -3,6 +3,7 @@ import Board from './board/Board'
 import BoardResizeHandle, { BOARD_DEFAULT_WIDTH, clampBoardWidth } from './board/BoardResizeHandle'
 import Chat from './chat/Chat'
 import CiGlyph from './ci/CiGlyph'
+import SyncStatusGlyph from './sync/SyncStatusGlyph'
 import { useDensity } from './hooks/useDensity'
 import { useLaneSeparation } from './hooks/useLaneSeparation'
 import { useMessageFilter } from './hooks/useMessageFilter'
@@ -206,6 +207,7 @@ const AppShell = ({
           {lanes === 'on' ? <LanesIcon /> : <StreamIcon />}
         </button>
         <CiGlyph messages={messages} />
+        <SyncStatusGlyph apiBase={bridge?.apiBase} authToken={bridge?.authToken} />
       </header>
       <section className="app-body">
         <Sidebar

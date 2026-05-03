@@ -19,8 +19,16 @@ async fn build_test_orchestrator(session: Arc<session::Session>) -> Arc<dyn Refr
     let _ = session;
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(crate::board::adapters::in_memory::InMemorySourceAdapter::new());
-    let orch = Arc::new(SyncOrchestrator::new(store, adapter));
-    if let Err(e) = orch.ingest_once().await {
+    let orch: Arc<dyn RefreshDriver> = match crate::board::default_outbox_path() {
+        Ok(path) => {
+            match SyncOrchestrator::with_outbox_path(store.clone(), adapter.clone(), path) {
+                Ok(o) => Arc::new(o),
+                Err(_) => Arc::new(SyncOrchestrator::new(store, adapter)),
+            }
+        }
+        Err(_) => Arc::new(SyncOrchestrator::new(store, adapter)),
+    };
+    if let Err(e) = orch.refresh_all().await {
         crate::session::diag::log_diag(&format!(
             "server: BPMUX_TEST_MODE initial ingest skipped — {e}"
         ));
@@ -270,6 +278,18 @@ pub async fn run_server(
             axum::routing::get(transport::rest::get_metrics),
         )
         .route("/api/ci", axum::routing::get(transport::rest::get_ci))
+        .route(
+            "/api/sync-status",
+            axum::routing::get(transport::rest::get_sync_status),
+        )
+        .route(
+            "/api/sync-status/force-sync",
+            axum::routing::post(transport::rest::post_force_sync),
+        )
+        .route(
+            "/api/sync-status/acknowledge",
+            axum::routing::post(transport::rest::post_acknowledge_dropped),
+        )
         .route(
             "/api/roster",
             axum::routing::get(transport::rest::get_roster),

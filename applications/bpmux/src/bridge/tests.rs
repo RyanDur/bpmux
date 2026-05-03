@@ -463,6 +463,9 @@ mod ingest_poll_loop_tests {
         fn snapshot_status(&self) -> SyncStatus {
             SyncStatus::default()
         }
+        fn acknowledge_dropped(&self) -> usize {
+            0
+        }
         fn drain_pending(&self) -> BoxedFuture<'_, Result<usize, SyncError>> {
             self.drain_pending.fetch_add(1, Ordering::SeqCst);
             Box::pin(async { Ok(0) })

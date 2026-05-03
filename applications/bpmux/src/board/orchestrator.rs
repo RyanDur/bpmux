@@ -33,6 +33,7 @@ pub trait RefreshDriver: Send + Sync {
     fn refresh_all(&self) -> BoxedFuture<'_, Result<(), SyncError>>;
     fn mutate_sync(&self, event: BoardEvent) -> Result<(), SyncError>;
     fn snapshot_status(&self) -> SyncStatus;
+    fn acknowledge_dropped(&self) -> usize;
     fn drain_pending(&self) -> BoxedFuture<'_, Result<usize, SyncError>>;
     fn reconcile_dual_state_labels(&self) -> BoxedFuture<'_, Result<usize, SyncError>>;
     fn fetch_body(&self, number: u64) -> BoxedFuture<'_, Result<String, SyncError>>;
@@ -66,6 +67,14 @@ pub struct SyncStatus {
     pub last_push_at: Option<DateTime<Utc>>,
     pub pending_events: usize,
     pub last_error: Option<String>,
+    pub dropped_events: Vec<DroppedEvent>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct DroppedEvent {
+    pub story_number: u64,
+    pub error: String,
+    pub ts: DateTime<Utc>,
 }
 
 pub struct SyncOrchestrator<A: SourceAdapter + 'static> {
@@ -267,6 +276,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                         }
                         self.persist_outbox();
                         decrement_pending(&self.status);
+                        record_dropped(&self.status, event.story_number(), format!("{e}"));
                         crate::session::diag::log_diag(&format!(
                             "orchestrator: dropped event after permanent push failure ({e}); event #{}",
                             event.story_number()
@@ -381,6 +391,10 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         self.snapshot_status()
     }
 
+    fn acknowledge_dropped(&self) -> usize {
+        acknowledge_dropped(&self.status)
+    }
+
     fn drain_pending(&self) -> BoxedFuture<'_, Result<usize, SyncError>> {
         Box::pin(self.drain_once())
     }
@@ -478,6 +492,22 @@ fn decrement_pending(status: &Arc<Mutex<SyncStatus>>) {
     if s.pending_events > 0 {
         s.pending_events -= 1;
     }
+}
+
+fn record_dropped(status: &Arc<Mutex<SyncStatus>>, story_number: u64, error: String) {
+    let mut s = status.lock().unwrap_or_else(|e| e.into_inner());
+    s.dropped_events.push(DroppedEvent {
+        story_number,
+        error,
+        ts: Utc::now(),
+    });
+}
+
+pub fn acknowledge_dropped(status: &Arc<Mutex<SyncStatus>>) -> usize {
+    let mut s = status.lock().unwrap_or_else(|e| e.into_inner());
+    let cleared = s.dropped_events.len();
+    s.dropped_events.clear();
+    cleared
 }
 
 pub fn load_outbox_from_disk(path: &Path) -> Result<VecDeque<BoardEvent>, PersistError> {

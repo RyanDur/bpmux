@@ -16,7 +16,10 @@ mod store_tests;
 
 pub use domain::{FreeComment, Gate, GateComment, Story, StoryState};
 pub use events::BoardEvent;
-pub use orchestrator::{RefreshDriver, SyncOrchestrator, SyncStatus, default_outbox_path};
+pub use orchestrator::{
+    DroppedEvent, RefreshDriver, SyncOrchestrator, SyncStatus, acknowledge_dropped,
+    default_outbox_path,
+};
 pub use peer::PeerId;
 pub use store::{BoardStore, PersistError, default_store_path};
 pub use sync::{SourceAdapter, SyncError};
