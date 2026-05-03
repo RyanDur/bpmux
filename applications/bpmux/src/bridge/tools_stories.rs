@@ -1278,12 +1278,12 @@ pub(super) async fn handle_close_story(
             reason: Some(reason.to_string()),
         })
         .map_err(|e| format!("#{number} close enqueue failed: {e}"))?;
+        // #1151: drain dispatches StoryRefreshed from the close_story
+        // tracker response, so the local store reflects post-close
+        // state without a follow-up refresh_story round-trip.
         r.drain_pending()
             .await
             .map_err(|e| format!("#{number} close push failed: {e}"))?;
-        r.refresh_story(number)
-            .await
-            .map_err(|e| format!("#{number} refresh after close failed: {e}"))?;
         broadcast_board_invalidate(ws_tx).await;
         return Ok(format!("#{number} closed: {reason}"));
     }
