@@ -30,9 +30,6 @@ fn renderer_column_for(state: StoryState, is_closed: bool) -> ColumnBucket {
         return ColumnBucket::Retired;
     }
     match state {
-        StoryState::ReadyForAccept => ColumnBucket::Delivered,
-        StoryState::NeedsFixes => ColumnBucket::InProgress,
-        StoryState::Rejected => ColumnBucket::Ready,
         StoryState::Icebox => ColumnBucket::Icebox,
         StoryState::Ready => ColumnBucket::Ready,
         StoryState::InProgress => ColumnBucket::InProgress,
@@ -50,9 +47,6 @@ fn column_for_agrees_across_full_cross_product() {
         StoryState::InProgress,
         StoryState::DeskCheck,
         StoryState::Delivered,
-        StoryState::ReadyForAccept,
-        StoryState::NeedsFixes,
-        StoryState::Rejected,
         StoryState::Accepted,
     ];
     for state in states {
@@ -80,9 +74,6 @@ fn closed_non_accepted_stories_project_to_retired() {
         StoryState::InProgress,
         StoryState::DeskCheck,
         StoryState::Delivered,
-        StoryState::ReadyForAccept,
-        StoryState::NeedsFixes,
-        StoryState::Rejected,
     ] {
         assert_eq!(
             column_for(state, true),
@@ -102,21 +93,15 @@ fn closed_accepted_stays_accepted() {
 }
 
 #[test]
-fn open_workflow_states_bucket_per_renderer_grouping() {
+fn open_workflow_states_bucket_one_to_one() {
+    // #1146 slice 3: post-collapse, the 6 enum states map 1:1 to
+    // their display columns. Rework lives in transition history,
+    // not in separate Rejected/NeedsFixes/ReadyForAccept variants.
+    assert_eq!(column_for(StoryState::Icebox, false), ColumnBucket::Icebox);
     assert_eq!(column_for(StoryState::Ready, false), ColumnBucket::Ready);
-    assert_eq!(
-        column_for(StoryState::Rejected, false),
-        ColumnBucket::Ready,
-        "open + rejected → READY (re-pickup-able per Ryan's 15:19 proposal)"
-    );
     assert_eq!(
         column_for(StoryState::InProgress, false),
         ColumnBucket::InProgress
-    );
-    assert_eq!(
-        column_for(StoryState::NeedsFixes, false),
-        ColumnBucket::InProgress,
-        "open + needs-fixes → IN PROGRESS (designer-fail; dev iterating per #514 slice 2)"
     );
     assert_eq!(
         column_for(StoryState::DeskCheck, false),
@@ -124,10 +109,6 @@ fn open_workflow_states_bucket_per_renderer_grouping() {
     );
     assert_eq!(
         column_for(StoryState::Delivered, false),
-        ColumnBucket::Delivered
-    );
-    assert_eq!(
-        column_for(StoryState::ReadyForAccept, false),
         ColumnBucket::Delivered
     );
     assert_eq!(

@@ -344,14 +344,19 @@ pub fn state_from_labels(labels: &[String], is_closed: bool) -> StoryState {
     if has("accepted") {
         return StoryState::Accepted;
     }
+    // Stale labels from pre-#1146 stories project to their column-
+    // equivalent state. Slice 1 stopped writers from producing these
+    // labels; slice 3 retired the enum variants. Existing GH stories
+    // may still carry them until the next reap cycle, so the parser
+    // continues to recognize them but maps to the surviving 6 states.
     if has("rejected") {
-        return StoryState::Rejected;
+        return StoryState::Ready;
     }
     if has("needs fixes") {
-        return StoryState::NeedsFixes;
+        return StoryState::InProgress;
     }
     if has("ready for accept") {
-        return StoryState::ReadyForAccept;
+        return StoryState::Delivered;
     }
     if has("delivered") {
         return StoryState::Delivered;
@@ -378,9 +383,6 @@ pub fn state_to_label(state: StoryState) -> &'static str {
         StoryState::InProgress => "in progress",
         StoryState::DeskCheck => "desk-check",
         StoryState::Delivered => "delivered",
-        StoryState::ReadyForAccept => "ready for accept",
-        StoryState::NeedsFixes => "needs fixes",
-        StoryState::Rejected => "rejected",
         StoryState::Accepted => "accepted",
     }
 }

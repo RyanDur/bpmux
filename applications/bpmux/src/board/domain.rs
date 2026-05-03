@@ -8,9 +8,6 @@ pub enum StoryState {
     InProgress,
     DeskCheck,
     Delivered,
-    ReadyForAccept,
-    NeedsFixes,
-    Rejected,
     Accepted,
 }
 
@@ -22,9 +19,6 @@ impl StoryState {
             StoryState::InProgress => "in-progress",
             StoryState::DeskCheck => "desk-check",
             StoryState::Delivered => "delivered",
-            StoryState::ReadyForAccept => "ready-for-accept",
-            StoryState::NeedsFixes => "needs-fixes",
-            StoryState::Rejected => "rejected",
             StoryState::Accepted => "accepted",
         }
     }
@@ -128,16 +122,15 @@ pub fn replay_transitions(gate_comments: &[GateComment]) -> Vec<StateTransition>
         .collect()
 }
 
-/// Linear ordinal over the 6 final column-aligned states. Vestigial
-/// states fold to their display-equivalent ordinal so backward-edge
-/// detection works uniformly while the variants are still in the enum.
+/// Linear ordinal over the 6 column-aligned states; backward-edge
+/// detection compares to-state's ordinal against from-state's.
 fn state_ordinal(s: StoryState) -> u8 {
     match s {
         StoryState::Icebox => 0,
-        StoryState::Ready | StoryState::Rejected => 1,
-        StoryState::InProgress | StoryState::NeedsFixes => 2,
+        StoryState::Ready => 1,
+        StoryState::InProgress => 2,
         StoryState::DeskCheck => 3,
-        StoryState::Delivered | StoryState::ReadyForAccept => 4,
+        StoryState::Delivered => 4,
         StoryState::Accepted => 5,
     }
 }
@@ -212,21 +205,12 @@ pub fn derive_epic_state(epic_explicit_state: StoryState, children: &[&Story]) -
     if children.is_empty() {
         return epic_explicit_state;
     }
-    if children
-        .iter()
-        .any(|c| c.state == StoryState::NeedsFixes || c.state == StoryState::Rejected)
-    {
-        return StoryState::NeedsFixes;
-    }
     if children.iter().any(|c| c.state == StoryState::InProgress) {
         return StoryState::InProgress;
     }
-    let all_delivered_or_beyond = children.iter().all(|c| {
-        matches!(
-            c.state,
-            StoryState::Delivered | StoryState::ReadyForAccept | StoryState::Accepted
-        )
-    });
+    let all_delivered_or_beyond = children
+        .iter()
+        .all(|c| matches!(c.state, StoryState::Delivered | StoryState::Accepted));
     if all_delivered_or_beyond {
         return StoryState::Delivered;
     }

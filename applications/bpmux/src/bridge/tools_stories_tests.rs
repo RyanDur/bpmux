@@ -1721,7 +1721,7 @@ async fn accept_story_migrated_path_emits_tag_remove_gate_and_state_events() {
     let seeded = Story::new_minimal(
         205,
         "t".into(),
-        StoryState::ReadyForAccept,
+        StoryState::Delivered,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
@@ -2338,27 +2338,6 @@ async fn view_board_buckets_stories_by_story_state() {
             "dev".into(),
         ),
         Story::new_minimal(
-            105,
-            "ready-for-accept-story".into(),
-            StoryState::ReadyForAccept,
-            ts,
-            "designer".into(),
-        ),
-        Story::new_minimal(
-            106,
-            "needs-fixes-story".into(),
-            StoryState::NeedsFixes,
-            ts,
-            "designer".into(),
-        ),
-        Story::new_minimal(
-            107,
-            "rejected-story".into(),
-            StoryState::Rejected,
-            ts,
-            "ryan".into(),
-        ),
-        Story::new_minimal(
             108,
             "accepted-story".into(),
             StoryState::Accepted,
@@ -2377,16 +2356,14 @@ async fn view_board_buckets_stories_by_story_state() {
         .await
         .unwrap();
 
-    // #522 / #520: view_board now buckets through the same projection
-    // the renderer's columnFor uses (6 columns, not 8 substrate-state
-    // buckets). NeedsFixes joins IN PROGRESS, Rejected joins READY,
-    // ReadyForAccept joins DELIVERED.
+    // #1146 slice 3: enum collapsed to 6 column-aligned states; each
+    // state buckets 1:1 to its display column via column_for.
     for header in [
         "ICEBOX (1)",
-        "READY (2)",       // ready + rejected
-        "IN PROGRESS (2)", // in-progress + needs-fixes
+        "READY (1)",
+        "IN PROGRESS (1)",
         "DESK CHECK (0)",
-        "DELIVERED (2)", // delivered + ready-for-accept
+        "DELIVERED (1)",
         "ACCEPTED (1)",
     ] {
         assert!(
@@ -2396,7 +2373,6 @@ async fn view_board_buckets_stories_by_story_state() {
     }
     assert!(out.contains("#101 icebox-story"));
     assert!(out.contains("#102 ready-story"));
-    assert!(out.contains("#107 rejected-story"));
     assert!(out.contains("#108 accepted-story"));
 }
 
@@ -3377,7 +3353,7 @@ async fn fail_desk_check_drains_synchronously_so_gh_side_propagates_before_retur
     let mut seeded = Story::new_minimal(
         4691,
         "[Bug] cascade-drain-on-fail-desk-check".into(),
-        StoryState::ReadyForAccept,
+        StoryState::DeskCheck,
         Utc.with_ymd_and_hms(2026, 4, 27, 0, 0, 0).unwrap(),
         "ryan".into(),
     );

@@ -49,16 +49,15 @@ fn story_to_board_json_emits_renderer_wire_format_field_list() {
 }
 
 #[test]
-fn story_to_board_json_emits_canonical_8_state_vocabulary() {
+fn story_to_board_json_emits_canonical_6_state_vocabulary() {
+    // #1146 slice 3: collapsed enum to 6 column-aligned values.
     for (state, expected) in &[
         (StoryState::Icebox, "icebox"),
         (StoryState::Ready, "ready"),
         (StoryState::InProgress, "in-progress"),
+        (StoryState::DeskCheck, "desk-check"),
         (StoryState::Delivered, "delivered"),
         (StoryState::Accepted, "accepted"),
-        (StoryState::ReadyForAccept, "ready-for-accept"),
-        (StoryState::NeedsFixes, "needs-fixes"),
-        (StoryState::Rejected, "rejected"),
     ] {
         let s = sample_story(*state, StoryType::Feature, false);
         assert_eq!(

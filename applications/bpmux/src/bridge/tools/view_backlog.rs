@@ -123,42 +123,22 @@ mod tests {
     }
 
     #[test]
-    fn delivered_and_readyforaccept_collapse_into_delivered_count() {
-        // #1146 slice 2b: bucketing flows through column_for, which puts
-        // Delivered + ReadyForAccept (display-equivalent) into Delivered;
-        // DeskCheck folds with Delivered in view_backlog's narrower
-        // 5-bucket output shape.
+    fn delivered_and_desk_check_collapse_into_delivered_count() {
+        // #1146 slice 3: post-collapse, Delivered and DeskCheck fold
+        // into delivered_count via view_backlog's narrower 5-bucket
+        // output shape (which folds DeskCheck with Delivered through
+        // column_for + bucketing).
         let stories = vec![
             story(104, "d", StoryState::Delivered),
-            story(105, "r", StoryState::ReadyForAccept),
-            story(106, "dc", StoryState::DeskCheck),
+            story(105, "dc", StoryState::DeskCheck),
         ];
-        assert_eq!(build_backlog_summary(&stories)["delivered_count"], 3);
-    }
-
-    #[test]
-    fn needsfixes_folds_into_in_progress_count() {
-        // #1146 slice 2b: NeedsFixes is display-equivalent to InProgress
-        // per column_for. Aligning view_backlog with column.rs heals the
-        // pre-collapse divergence where view_backlog put NeedsFixes into
-        // delivered_count.
-        let stories = vec![story(106, "n", StoryState::NeedsFixes)];
-        assert_eq!(build_backlog_summary(&stories)["in_progress_count"], 1);
+        assert_eq!(build_backlog_summary(&stories)["delivered_count"], 2);
     }
 
     #[test]
     fn icebox_state_counted_as_icebox() {
         let stories = vec![story(107, "icy", StoryState::Icebox)];
         assert_eq!(build_backlog_summary(&stories)["icebox_count"], 1);
-    }
-
-    #[test]
-    fn rejected_state_folds_into_ready_count() {
-        // #1146 slice 2b: Rejected is display-equivalent to Ready per
-        // column_for. Aligning view_backlog heals the pre-collapse
-        // divergence where view_backlog put Rejected into icebox_count.
-        let stories = vec![story(108, "rej", StoryState::Rejected)];
-        assert_eq!(build_backlog_summary(&stories)["ready_count"], 1);
     }
 
     #[test]

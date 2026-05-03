@@ -60,7 +60,7 @@ async fn handler_errors_when_story_not_in_board() {
 
 #[tokio::test]
 async fn enriches_body_for_rejected_story_via_typed_gates() {
-    let story = make_story(443, StoryState::Rejected, Some("original story body text"));
+    let story = make_story(443, StoryState::Ready, Some("original story body text"));
     let gates = vec![
         GateComment {
             gate: Gate::Delivered,
@@ -90,7 +90,7 @@ async fn enriches_body_for_rejected_story_via_typed_gates() {
 
 #[tokio::test]
 async fn enriches_body_for_needs_fixes_story_via_typed_gates() {
-    let story = make_story(200, StoryState::NeedsFixes, Some("original body"));
+    let story = make_story(200, StoryState::InProgress, Some("original body"));
     let gates = vec![GateComment {
         gate: Gate::FailDeskCheck,
         ts: Utc.with_ymd_and_hms(2026, 4, 23, 1, 0, 0).unwrap(),
@@ -225,7 +225,7 @@ async fn does_not_enrich_body_when_most_recent_transition_is_forward() {
 
 #[tokio::test]
 async fn skips_enrichment_when_no_rework_gate_comments() {
-    let story = make_story(50, StoryState::Rejected, Some("plain body"));
+    let story = make_story(50, StoryState::Ready, Some("plain body"));
     let (store, orch) = seeded_orchestrator(vec![story], vec![(50, vec![])]).await;
     let args = serde_json::json!({"number": 50});
     let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orch))

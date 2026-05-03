@@ -42,24 +42,28 @@ fn state_from_labels_closed_issue_is_accepted_even_without_label() {
 }
 
 #[test]
-fn state_from_labels_rejected_beats_delivered() {
+fn state_from_labels_rejected_label_projects_to_ready() {
+    // #1146 slice 3: stale "rejected" label from pre-collapse stories
+    // projects to Ready (where reject_story now transitions to per
+    // slice 1). Parser preserves recognition until next reap clears.
     let labels = vec!["delivered".to_string(), "rejected".to_string()];
-    assert_eq!(state_from_labels(&labels, false), StoryState::Rejected);
+    assert_eq!(state_from_labels(&labels, false), StoryState::Ready);
 }
 
 #[test]
-fn state_from_labels_needs_fixes_beats_delivered() {
+fn state_from_labels_needs_fixes_label_projects_to_in_progress() {
+    // #1146 slice 3: stale "needs fixes" label projects to InProgress
+    // (where fail_desk_check transitions to per slice 1).
     let labels = vec!["delivered".to_string(), "needs fixes".to_string()];
-    assert_eq!(state_from_labels(&labels, false), StoryState::NeedsFixes);
+    assert_eq!(state_from_labels(&labels, false), StoryState::InProgress);
 }
 
 #[test]
-fn state_from_labels_ready_for_accept_beats_delivered() {
+fn state_from_labels_ready_for_accept_label_projects_to_delivered() {
+    // #1146 slice 3: stale "ready for accept" label projects to
+    // Delivered (display-equivalent per pre-collapse column.rs bucket).
     let labels = vec!["delivered".to_string(), "ready for accept".to_string()];
-    assert_eq!(
-        state_from_labels(&labels, false),
-        StoryState::ReadyForAccept
-    );
+    assert_eq!(state_from_labels(&labels, false), StoryState::Delivered);
 }
 
 #[test]
@@ -99,9 +103,12 @@ fn state_to_label_roundtrips_ready() {
 }
 
 #[test]
-fn state_to_label_roundtrips_needs_fixes_space() {
-    let labels = vec![state_to_label(StoryState::NeedsFixes).to_string()];
-    assert_eq!(state_from_labels(&labels, false), StoryState::NeedsFixes);
+fn state_to_label_roundtrips_in_progress_space() {
+    // #1146 slice 3: post-collapse, fail_desk_check transitions land
+    // at InProgress; the round-trip via the "in progress" label is
+    // the analog of the retired NeedsFixes round-trip.
+    let labels = vec![state_to_label(StoryState::InProgress).to_string()];
+    assert_eq!(state_from_labels(&labels, false), StoryState::InProgress);
 }
 
 #[test]
@@ -188,9 +195,10 @@ fn decode_story_metadata_preserves_last_domain_state_for_closed_non_accepted() {
     );
     assert_eq!(
         story.state,
-        StoryState::ReadyForAccept,
+        StoryState::Delivered,
         "without 'accepted' label, decoder preserves the last-domain state per label priority \
-         instead of forcing Accepted (#464)"
+         instead of forcing Accepted (#464); post-#1146 collapse, 'ready for accept' label \
+         projects to Delivered (display-equivalent in the pre-collapse bucketing)"
     );
 }
 

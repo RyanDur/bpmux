@@ -48,10 +48,10 @@ pub fn column_for(state: StoryState, is_closed: bool) -> ColumnBucket {
     }
     match state {
         StoryState::Icebox => ColumnBucket::Icebox,
-        StoryState::Ready | StoryState::Rejected => ColumnBucket::Ready,
-        StoryState::InProgress | StoryState::NeedsFixes => ColumnBucket::InProgress,
+        StoryState::Ready => ColumnBucket::Ready,
+        StoryState::InProgress => ColumnBucket::InProgress,
         StoryState::DeskCheck => ColumnBucket::DeskCheck,
-        StoryState::Delivered | StoryState::ReadyForAccept => ColumnBucket::Delivered,
+        StoryState::Delivered => ColumnBucket::Delivered,
         StoryState::Accepted => ColumnBucket::Accepted,
     }
 }

@@ -563,7 +563,7 @@ fn derive_epic_state_mixed_delivered_and_accepted_still_delivered() {
     let kids = [
         child(1, StoryState::Delivered),
         child(2, StoryState::Accepted),
-        child(3, StoryState::ReadyForAccept),
+        child(3, StoryState::Delivered),
     ];
     let refs: Vec<&Story> = kids.iter().collect();
     assert_eq!(
@@ -586,28 +586,19 @@ fn derive_epic_state_all_accepted_does_not_auto_accept_epic() {
 }
 
 #[test]
-fn derive_epic_state_needs_fixes_child_makes_epic_needs_fixes() {
+fn derive_epic_state_in_progress_child_makes_epic_in_progress() {
+    // #1146 slice 3: post-collapse, rework lives in transition history,
+    // not in the state field. fail_desk_check now leaves the child in
+    // InProgress; reject_story returns it to Ready. Either way, the
+    // epic's derived state reflects active work via InProgress.
     let kids = [
         child(1, StoryState::Delivered),
-        child(2, StoryState::NeedsFixes),
+        child(2, StoryState::InProgress),
     ];
     let refs: Vec<&Story> = kids.iter().collect();
     assert_eq!(
         derive_epic_state(StoryState::InProgress, &refs),
-        StoryState::NeedsFixes
-    );
-}
-
-#[test]
-fn derive_epic_state_rejected_child_makes_epic_needs_fixes() {
-    let kids = [
-        child(1, StoryState::Delivered),
-        child(2, StoryState::Rejected),
-    ];
-    let refs: Vec<&Story> = kids.iter().collect();
-    assert_eq!(
-        derive_epic_state(StoryState::InProgress, &refs),
-        StoryState::NeedsFixes
+        StoryState::InProgress
     );
 }
 

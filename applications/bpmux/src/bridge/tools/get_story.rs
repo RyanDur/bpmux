@@ -14,9 +14,6 @@ fn state_label(state: StoryState) -> &'static str {
         StoryState::InProgress => "in progress",
         StoryState::DeskCheck => "desk-check",
         StoryState::Delivered => "delivered",
-        StoryState::ReadyForAccept => "ready for accept",
-        StoryState::NeedsFixes => "needs fixes",
-        StoryState::Rejected => "rejected",
         StoryState::Accepted => "accepted",
     }
 }
@@ -70,10 +67,7 @@ pub(in crate::bridge) async fn handle_get_story(
         story.body = Some(body);
     }
     let mut body_out = story.body.clone().unwrap_or_default();
-    let needs_gates = matches!(
-        story.state,
-        StoryState::Ready | StoryState::InProgress | StoryState::Rejected | StoryState::NeedsFixes
-    );
+    let needs_gates = matches!(story.state, StoryState::Ready | StoryState::InProgress);
     if needs_gates {
         let gates = match story.gate_comments.clone() {
             Some(g) => g,
