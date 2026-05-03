@@ -1,4 +1,5 @@
 import AppShell from './AppShell'
+import { useMessageHistory } from './hooks/useMessageHistory'
 import { useNotifications } from './hooks/useNotifications'
 import { useWebSocket } from './transport/useWebSocket'
 
@@ -15,15 +16,31 @@ function App(): React.JSX.Element {
     )
   }
 
-  const { status, messages, sendChat } = useWebSocket(
+  const { status, messages: liveMessages, sendChat } = useWebSocket(
     bridge?.wsUrl,
     bridge?.apiBase,
     bridge?.authToken
   )
 
-  useNotifications(messages)
+  const { combinedMessages, loadOlder, isLoadingOlder, hasMoreOlder } =
+    useMessageHistory({
+      liveMessages,
+      apiBase: bridge?.apiBase,
+      authToken: bridge?.authToken
+    })
 
-  return <AppShell status={status} messages={messages} onSend={sendChat} />
+  useNotifications(combinedMessages)
+
+  return (
+    <AppShell
+      status={status}
+      messages={combinedMessages}
+      onSend={sendChat}
+      loadOlder={loadOlder}
+      isLoadingOlder={isLoadingOlder}
+      hasMoreOlder={hasMoreOlder}
+    />
+  )
 }
 
 export default App

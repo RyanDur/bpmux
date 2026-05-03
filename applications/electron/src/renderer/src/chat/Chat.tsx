@@ -24,6 +24,9 @@ interface Props {
   authToken: string | undefined
   lanes?: 'on' | 'off'
   onSend: (text: string, opts?: SendOptions) => void
+  loadOlder?: () => Promise<void>
+  isLoadingOlder?: boolean
+  hasMoreOlder?: boolean
 }
 
 const Chat = ({
@@ -38,7 +41,10 @@ const Chat = ({
   apiBase,
   authToken,
   lanes = 'off',
-  onSend
+  onSend,
+  loadOlder,
+  isLoadingOlder,
+  hasMoreOlder
 }: Props): React.JSX.Element => {
   const showReconnect = status !== 'connected'
   const [pinnedListOpen, setPinnedListOpen] = useState<boolean>(false)
@@ -123,6 +129,9 @@ const Chat = ({
         apiBase={apiBase}
         authToken={authToken}
         lanes={lanes}
+        loadOlder={loadOlder}
+        isLoadingOlder={isLoadingOlder}
+        hasMoreOlder={hasMoreOlder}
       />
       <Metrics
         apiBase={apiBase}

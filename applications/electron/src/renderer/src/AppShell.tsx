@@ -58,9 +58,19 @@ interface Props {
   status: ConnectionStatus
   messages: ChatMessage[]
   onSend: (text: string, opts?: SendOptions) => void
+  loadOlder?: () => Promise<void>
+  isLoadingOlder?: boolean
+  hasMoreOlder?: boolean
 }
 
-const AppShell = ({ status, messages, onSend }: Props): React.JSX.Element => {
+const AppShell = ({
+  status,
+  messages,
+  onSend,
+  loadOlder,
+  isLoadingOlder,
+  hasMoreOlder
+}: Props): React.JSX.Element => {
   const statusLabel =
     status === 'connected' ? 'connected' : status === 'connecting' ? 'connecting' : 'disconnected'
 
@@ -215,6 +225,9 @@ const AppShell = ({ status, messages, onSend }: Props): React.JSX.Element => {
           authToken={bridge?.authToken}
           lanes={lanes}
           onSend={onSend}
+          loadOlder={loadOlder}
+          isLoadingOlder={isLoadingOlder}
+          hasMoreOlder={hasMoreOlder}
         />
         {boardOpen ? (
           <BoardResizeHandle

@@ -17,6 +17,25 @@
   min-height: 0;
 }
 
+/* #1153 slice 4: "loading older messages…" pill at the visual top
+ * of the message list. Absolutely-positioned sibling to the ul so
+ * it overlays without disturbing scroll-anchoring (which preserves
+ * the user's reading position when older rows prepend). z-index
+ * matches the new-messages-pill so they layer consistently. */
+.loading-older-pill {
+  position: absolute;
+  top: var(--space-12);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: var(--space-6) var(--space-12);
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
+  font-size: 0.75rem;
+  z-index: 5;
+}
+
 /* #388 "N new messages ↓" indicator pill. Appears bottom-right of
  * the chat region when the user is scrolled up from the bottom +
  * new messages have arrived. Clicking scrolls to bottom +
