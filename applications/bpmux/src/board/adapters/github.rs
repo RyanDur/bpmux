@@ -120,9 +120,9 @@ impl SourceAdapter for GitHubSourceAdapter {
         Ok(decode_gate_comments(&raw))
     }
 
-    async fn push_event(&self, event: &BoardEvent) -> Result<(), SyncError> {
+    async fn push_event(&self, event: &BoardEvent) -> Result<Option<Story>, SyncError> {
         match event {
-            BoardEvent::StoryCreated { .. } => Ok(()),
+            BoardEvent::StoryCreated { .. } => Ok(None),
             BoardEvent::StateTransitioned {
                 number, new_state, ..
             } => {
@@ -131,7 +131,7 @@ impl SourceAdapter for GitHubSourceAdapter {
                     .add_label(*number, label)
                     .await
                     .map_err(SyncError::Other)?;
-                Ok(())
+                Ok(None)
             }
             BoardEvent::StoryClosed { number, reason, .. } => {
                 if let Some(reason_text) = reason.as_deref() {
@@ -141,9 +141,9 @@ impl SourceAdapter for GitHubSourceAdapter {
                         .map_err(SyncError::Other)?;
                 }
                 match self.inner.close_story(*number).await {
-                    Ok(_) => Ok(()),
+                    Ok(_) => Ok(None),
                     Err(e) => match crate::board::sync::classify_close_error(e) {
-                        SyncError::AlreadyClosed => Ok(()),
+                        SyncError::AlreadyClosed => Ok(None),
                         other => Err(other),
                     },
                 }
@@ -153,7 +153,7 @@ impl SourceAdapter for GitHubSourceAdapter {
                     .reopen_story(*number)
                     .await
                     .map_err(SyncError::Other)?;
-                Ok(())
+                Ok(None)
             }
             BoardEvent::GateCommentAppended {
                 meta,
@@ -166,28 +166,28 @@ impl SourceAdapter for GitHubSourceAdapter {
                     .comment_on_story(*number, &body)
                     .await
                     .map_err(SyncError::Other)?;
-                Ok(())
+                Ok(None)
             }
             BoardEvent::FreeCommentAppended { number, body, .. } => {
                 self.inner
                     .comment_on_story(*number, body)
                     .await
                     .map_err(SyncError::Other)?;
-                Ok(())
+                Ok(None)
             }
             BoardEvent::TagAdded { number, label, .. } => {
                 self.inner
                     .add_label(*number, label)
                     .await
                     .map_err(SyncError::Other)?;
-                Ok(())
+                Ok(None)
             }
             BoardEvent::TagRemoved { number, label, .. } => {
                 self.inner
                     .remove_label(*number, label)
                     .await
                     .map_err(SyncError::Other)?;
-                Ok(())
+                Ok(None)
             }
             BoardEvent::ParentEpicSet {
                 number,
@@ -199,7 +199,7 @@ impl SourceAdapter for GitHubSourceAdapter {
                     .add_label(*number, &label)
                     .await
                     .map_err(SyncError::Other)?;
-                Ok(())
+                Ok(None)
             }
             BoardEvent::ParentEpicUnset { number, .. } => {
                 let labels = self.inner.get_story_labels(*number).await;
@@ -209,12 +209,12 @@ impl SourceAdapter for GitHubSourceAdapter {
                         .await
                         .map_err(SyncError::Other)?;
                 }
-                Ok(())
+                Ok(None)
             }
             BoardEvent::BodyFetched { .. }
             | BoardEvent::FreeCommentsFetched { .. }
             | BoardEvent::GateCommentsFetched { .. }
-            | BoardEvent::StoryRefreshed { .. } => Ok(()),
+            | BoardEvent::StoryRefreshed { .. } => Ok(None),
         }
     }
 

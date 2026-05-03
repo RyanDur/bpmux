@@ -199,9 +199,22 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         let mut failures = 0usize;
         while let Ok(event) = rx.try_recv() {
             match self.adapter.push_event(&event).await {
-                Ok(()) => {
+                Ok(refreshed) => {
                     drained += 1;
                     record_push_success(&self.status);
+                    // #1151: the adapter captured GH's mutation
+                    // response. Apply it to the canonical store via
+                    // a synthesized StoryRefreshed event so the local
+                    // model reflects post-mutation state without a
+                    // follow-up `refresh_story(N)` call.
+                    if let Some(story) = refreshed {
+                        let refresh_event = BoardEvent::StoryRefreshed {
+                            meta: cache_fill_meta(),
+                            number: story.number,
+                            story,
+                        };
+                        self.store.apply(&refresh_event);
+                    }
                 }
                 Err(e) => {
                     failures += 1;

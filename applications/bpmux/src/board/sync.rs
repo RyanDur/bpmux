@@ -64,10 +64,18 @@ pub trait SourceAdapter: Send + Sync {
         number: u64,
     ) -> impl std::future::Future<Output = Result<Vec<super::domain::GateComment>, SyncError>> + Send;
 
+    /// #1151: returns `Some(Story)` when GH's mutation response payload
+    /// was captured + parsed; orchestrator drain dispatches a
+    /// `BoardEvent::StoryRefreshed` so the canonical store reflects
+    /// the post-mutation state without a follow-up `refresh_story(N)`
+    /// call. `None` when the event has no useful response (no-op
+    /// substrate side-effect, e.g., `BodyFetched` reducer-only event)
+    /// or when the adapter chose not to capture (e.g., test
+    /// in-memory adapter).
     fn push_event(
         &self,
         event: &BoardEvent,
-    ) -> impl std::future::Future<Output = Result<(), SyncError>> + Send;
+    ) -> impl std::future::Future<Output = Result<Option<super::domain::Story>, SyncError>> + Send;
 
     fn create_story(
         &self,

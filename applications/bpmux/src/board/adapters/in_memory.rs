@@ -154,7 +154,7 @@ impl SourceAdapter for InMemorySourceAdapter {
         Ok(s.gate_comments.get(&number).cloned().unwrap_or_default())
     }
 
-    async fn push_event(&self, event: &BoardEvent) -> Result<(), SyncError> {
+    async fn push_event(&self, event: &BoardEvent) -> Result<Option<Story>, SyncError> {
         let mut s = self.state.lock().unwrap_or_else(|e| e.into_inner());
         if s.failures_on_push {
             return Err(SyncError::SourceUnreachable("push test failure".into()));
@@ -215,7 +215,11 @@ impl SourceAdapter for InMemorySourceAdapter {
             }
             _ => {}
         }
-        Ok(())
+        // #1151: in-memory adapter doesn't have a GH-side response to
+        // capture; the test substrate updates its own state via the
+        // pushed_events log. Production github adapter will return
+        // Some(Story) after the response-capture wiring lands.
+        Ok(None)
     }
 
     async fn create_story(&self, title: &str, body: &str) -> Result<u64, SyncError> {
