@@ -48,14 +48,22 @@ pub struct WorkflowRunEntry {
 }
 
 pub trait StoryTracker: Clone + Send + Sync + 'static {
+    /// #1151: returns the post-mutation Issue JSON so the adapter can
+    /// parse it into a `Story` and dispatch `BoardEvent::StoryRefreshed`
+    /// without a follow-up `refresh_story(N)` call. octocrab's
+    /// `issues().update(N).state(Closed).send()` returns the updated
+    /// Issue; we capture it here instead of discarding via `.map(|_|
+    /// String)`.
     fn close_story(
         &self,
         number: u64,
-    ) -> impl std::future::Future<Output = Result<String, String>> + Send;
+    ) -> impl std::future::Future<Output = Result<serde_json::Value, String>> + Send;
+    /// #1151: returns the post-mutation Issue JSON (parallel to
+    /// `close_story`).
     fn reopen_story(
         &self,
         number: u64,
-    ) -> impl std::future::Future<Output = Result<String, String>> + Send;
+    ) -> impl std::future::Future<Output = Result<serde_json::Value, String>> + Send;
     fn add_label(
         &self,
         number: u64,
@@ -66,16 +74,21 @@ pub trait StoryTracker: Clone + Send + Sync + 'static {
         number: u64,
         label: &str,
     ) -> impl std::future::Future<Output = Result<String, String>> + Send;
+    /// #1151: returns the freshly-created Issue JSON. Includes the
+    /// auto-assigned issue number; callers that previously parsed
+    /// the format-string `"#{number} {title}"` should read
+    /// `value["number"]` directly.
     fn create_story(
         &self,
         title: &str,
         body: &str,
-    ) -> impl std::future::Future<Output = Result<String, String>> + Send;
+    ) -> impl std::future::Future<Output = Result<serde_json::Value, String>> + Send;
+    /// #1151: returns the post-update Issue JSON.
     fn update_body(
         &self,
         number: u64,
         body: &str,
-    ) -> impl std::future::Future<Output = Result<String, String>> + Send;
+    ) -> impl std::future::Future<Output = Result<serde_json::Value, String>> + Send;
     /// #403: full board as typed JSON Values — used by `list_ready`
     /// and other filtered enumerations. Counterpart to the inherent
     /// `OctocrabStoryTracker::list_stories` (returns pre-serialized
@@ -542,25 +555,25 @@ fn issue_to_board_json(issue: &octocrab::models::issues::Issue) -> serde_json::V
 }
 
 impl StoryTracker for OctocrabStoryTracker {
-    async fn close_story(&self, number: u64) -> Result<String, String> {
+    async fn close_story(&self, number: u64) -> Result<serde_json::Value, String> {
         self.client
             .issues(&self.owner, &self.repo)
             .update(number)
             .state(octocrab::models::IssueState::Closed)
             .send()
             .await
-            .map(|_| format!("#{number} closed"))
+            .map(|issue| issue_to_board_json(&issue))
             .map_err(Self::classify)
     }
 
-    async fn reopen_story(&self, number: u64) -> Result<String, String> {
+    async fn reopen_story(&self, number: u64) -> Result<serde_json::Value, String> {
         self.client
             .issues(&self.owner, &self.repo)
             .update(number)
             .state(octocrab::models::IssueState::Open)
             .send()
             .await
-            .map(|_| format!("#{number} reopened"))
+            .map(|issue| issue_to_board_json(&issue))
             .map_err(Self::classify)
     }
 
@@ -591,7 +604,7 @@ impl StoryTracker for OctocrabStoryTracker {
         }
     }
 
-    async fn create_story(&self, title: &str, body: &str) -> Result<String, String> {
+    async fn create_story(&self, title: &str, body: &str) -> Result<serde_json::Value, String> {
         let issues = self.client.issues(&self.owner, &self.repo);
         let mut builder = issues.create(title);
         if !body.is_empty() {
@@ -600,18 +613,18 @@ impl StoryTracker for OctocrabStoryTracker {
         builder
             .send()
             .await
-            .map(|issue| format!("#{} {}", issue.number, issue.title))
+            .map(|issue| issue_to_board_json(&issue))
             .map_err(Self::classify)
     }
 
-    async fn update_body(&self, number: u64, body: &str) -> Result<String, String> {
+    async fn update_body(&self, number: u64, body: &str) -> Result<serde_json::Value, String> {
         self.client
             .issues(&self.owner, &self.repo)
             .update(number)
             .body(body)
             .send()
             .await
-            .map(|_| format!("#{number} body updated"))
+            .map(|issue| issue_to_board_json(&issue))
             .map_err(Self::classify)
     }
 

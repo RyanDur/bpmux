@@ -140,8 +140,16 @@ impl SourceAdapter for GitHubSourceAdapter {
                         .await
                         .map_err(SyncError::Other)?;
                 }
+                // #1151: capture the GH-API close-mutation response.
+                // octocrab's `update().state(Closed).send()` returns
+                // the post-close Issue; the tracker serializes it via
+                // `issue_to_board_json` and we parse here. Returning
+                // `Some(Story)` triggers a `StoryRefreshed` dispatch
+                // in the orchestrator drain so the local store
+                // reflects `is_closed=true` without a follow-up
+                // `refresh_story(N)`.
                 match self.inner.close_story(*number).await {
-                    Ok(_) => Ok(None),
+                    Ok(value) => Ok(decode_story_metadata(&value)),
                     Err(e) => match crate::board::sync::classify_close_error(e) {
                         SyncError::AlreadyClosed => Ok(None),
                         other => Err(other),
@@ -149,11 +157,13 @@ impl SourceAdapter for GitHubSourceAdapter {
                 }
             }
             BoardEvent::StoryReopened { number, .. } => {
-                self.inner
+                // #1151: capture the post-reopen Issue payload.
+                let value = self
+                    .inner
                     .reopen_story(*number)
                     .await
                     .map_err(SyncError::Other)?;
-                Ok(None)
+                Ok(decode_story_metadata(&value))
             }
             BoardEvent::GateCommentAppended {
                 meta,
@@ -219,14 +229,17 @@ impl SourceAdapter for GitHubSourceAdapter {
     }
 
     async fn create_story(&self, title: &str, body: &str) -> Result<u64, SyncError> {
-        let formatted = self
+        // #1151: tracker now returns the freshly-created Issue JSON;
+        // pull `number` directly instead of parsing the legacy
+        // `"#{number} {title}"` format-string.
+        let issue = self
             .inner
             .create_story(title, body)
             .await
             .map_err(SyncError::Other)?;
-        parse_created_issue_number(&formatted).ok_or_else(|| {
+        issue.get("number").and_then(|v| v.as_u64()).ok_or_else(|| {
             SyncError::Other(format!(
-                "create_story succeeded but issue number unparseable from: {formatted}"
+                "create_story succeeded but issue number missing from response: {issue}"
             ))
         })
     }

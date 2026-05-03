@@ -67,7 +67,11 @@ async fn close_story_issues_patch_with_closed_state() {
     let tracker = mock_tracker(&server);
     let result = tracker.close_story(42).await;
     m.assert();
-    assert_eq!(result, Ok("#42 closed".to_string()));
+    // #1151: close_story now returns the post-close Issue JSON so the
+    // adapter can parse it into a Story and dispatch StoryRefreshed.
+    let value = result.expect("close_story should succeed");
+    assert_eq!(value["number"].as_u64(), Some(42));
+    assert_eq!(value["gh_state"].as_str(), Some("closed"));
 }
 
 #[tokio::test]
@@ -153,7 +157,10 @@ async fn create_story_posts_to_issues_with_title_and_body() {
     let tracker = mock_tracker(&server);
     let result = tracker.create_story("new story", "body-text").await;
     m.assert();
-    assert_eq!(result, Ok("#501 new story".to_string()));
+    // #1151: create_story now returns the freshly-created Issue JSON.
+    let value = result.expect("create_story should succeed");
+    assert_eq!(value["number"].as_u64(), Some(501));
+    assert_eq!(value["title"].as_str(), Some("new story"));
 }
 
 #[tokio::test]
