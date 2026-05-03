@@ -5,6 +5,7 @@ import { BOARD_INVALIDATE_MARKER, type ChatMessage } from '../transport/types'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import DrillIn from './DrillIn'
 import EpicSummary from './EpicSummary'
+import { ReworkGlyph } from './ReworkGlyph'
 import StoryBadge, { deriveBadge } from './StoryBadge'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import {
@@ -768,15 +769,7 @@ function StoryRow({
         <StoryTypeGlyph type={type} />
         <StoryBadge story={story} onOpenTimeline={onOpenTimeline} onOpenBlocker={onOpen} />
         <b className="board-story-title">{story.title}</b>
-        {story.rework_comment ? (
-          <span
-            className="board-story-rework-glyph"
-            title={story.rework_comment}
-            aria-label={`Rework: ${story.rework_comment}`}
-          >
-            ↩
-          </span>
-        ) : null}
+        <ReworkGlyph reworkComment={story.rework_comment} />
         {story.parent_epic !== undefined ? (
           <small
             className="board-story-epic-ref"
