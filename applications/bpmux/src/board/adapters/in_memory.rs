@@ -25,7 +25,18 @@ struct InnerState {
 
 impl InMemorySourceAdapter {
     pub fn new() -> Self {
-        Self::default()
+        let env_fail = std::env::var("BPMUX_TEST_INGEST_FAIL")
+            .map(|v| !v.is_empty() && v != "0")
+            .unwrap_or(false);
+        let mut adapter = Self::default();
+        if env_fail {
+            adapter
+                .state
+                .get_mut()
+                .unwrap_or_else(|e| e.into_inner())
+                .failures_on_ingest = true;
+        }
+        adapter
     }
 
     pub fn seed_stories(&self, stories: Vec<Story>) {

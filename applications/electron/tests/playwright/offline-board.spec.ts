@@ -16,7 +16,7 @@ test.describe('#1158 — offline-first board', () => {
       await expect(indicator).toBeVisible()
       await expect(indicator).toHaveAttribute(
         'data-state',
-        /^(connected|syncing|offline-queued|drained-permanent-failure)$/
+        /^(connected|syncing|offline-queued|drained-permanent-failure|recovering)$/
       )
     } finally {
       await app.close()
@@ -38,6 +38,8 @@ test.describe('#1158 — offline-first board', () => {
       expect(json).toHaveProperty('last_error')
       expect(json).toHaveProperty('dropped_events')
       expect(Array.isArray(json.dropped_events)).toBe(true)
+      expect(json).toHaveProperty('recovering_from_corruption')
+      expect(typeof json.recovering_from_corruption).toBe('boolean')
     } finally {
       await app.close()
     }
