@@ -283,22 +283,14 @@ async fn fetch_board_stories_concatenates_six_pages_full_repo_scale() {
     };
 
     for page in 1..=5u64 {
-        let next_url = format!(
-            "{}/repos/acme/bpmux/issues?page={}",
-            server.base_url(),
-            page + 1
-        );
-        let path_query = if page == 1 { None } else { Some(page) };
         let body = make_page((page - 1) * 100 + 1, 100);
         server.mock(|when, then| {
-            let when = when.method(Method::GET).path("/repos/acme/bpmux/issues");
-            let _when = match path_query {
-                Some(p) => when.query_param("page", p.to_string()),
-                None => when.query_param_missing("page"),
-            };
+            when.method(Method::GET)
+                .path("/repos/acme/bpmux/issues")
+                .query_param("state", "open")
+                .query_param("page", page.to_string());
             then.status(200)
                 .header("content-type", "application/json")
-                .header("Link", format!("<{next_url}>; rel=\"next\""))
                 .body(body);
         });
     }
@@ -307,10 +299,20 @@ async fn fetch_board_stories_concatenates_six_pages_full_repo_scale() {
     server.mock(|when, then| {
         when.method(Method::GET)
             .path("/repos/acme/bpmux/issues")
+            .query_param("state", "open")
             .query_param("page", "6");
         then.status(200)
             .header("content-type", "application/json")
             .body(last_body);
+    });
+
+    server.mock(|when, then| {
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/issues")
+            .query_param("state", "closed");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(Value::Array(vec![]).to_string());
     });
 
     let tracker = mock_tracker(&server);
@@ -345,30 +347,37 @@ async fn fetch_board_stories_follows_next_link_until_exhaustion() {
     use super::tracker::StoryTracker;
 
     let server = MockServer::start();
-    let next_url = format!("{}/repos/acme/bpmux/issues?page=2", server.base_url());
+
+    let full_page: Vec<Value> = (0..100)
+        .map(|i| issue(101 + i as u64, "open-fixture", "open", vec!["ready"]))
+        .collect();
 
     let p1 = server.mock(|when, then| {
         when.method(Method::GET)
             .path("/repos/acme/bpmux/issues")
-            .query_param_missing("page");
+            .query_param("state", "open")
+            .query_param("page", "1");
         then.status(200)
             .header("content-type", "application/json")
-            .header("Link", format!("<{next_url}>; rel=\"next\""))
-            .body(
-                Value::Array(vec![
-                    issue(101, "page-one-a", "open", vec!["ready"]),
-                    issue(102, "page-one-b", "open", vec!["in progress"]),
-                ])
-                .to_string(),
-            );
+            .body(Value::Array(full_page.clone()).to_string());
     });
     let p2 = server.mock(|when, then| {
         when.method(Method::GET)
             .path("/repos/acme/bpmux/issues")
+            .query_param("state", "open")
             .query_param("page", "2");
         then.status(200)
             .header("content-type", "application/json")
-            .body(Value::Array(vec![issue(103, "page-two", "open", vec!["ready"])]).to_string());
+            .body(Value::Array(vec![issue(201, "page-two", "open", vec!["ready"])]).to_string());
+    });
+
+    server.mock(|when, then| {
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/issues")
+            .query_param("state", "closed");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(Value::Array(vec![]).to_string());
     });
 
     let tracker = mock_tracker(&server);
@@ -379,13 +388,96 @@ async fn fetch_board_stories_follows_next_link_until_exhaustion() {
     p1.assert();
     p2.assert();
 
+    let last_open_number = stories
+        .iter()
+        .filter_map(|s| s.get("number").and_then(|n| n.as_u64()))
+        .next_back();
+    assert_eq!(
+        last_open_number,
+        Some(201),
+        "must concat across pages; first-page-only would drop #201 from page 2"
+    );
+    assert_eq!(
+        stories.len(),
+        101,
+        "100 from page 1 + 1 from page 2 = 101 total open"
+    );
+}
+
+#[tokio::test]
+async fn fetch_board_stories_seeds_rate_limit_observer_on_retry_after_header() {
+    use super::tracker::StoryTracker;
+    use std::time::SystemTime;
+
+    let server = MockServer::start();
+    server.mock(|when, then| {
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/issues")
+            .query_param("state", "open");
+        then.status(429)
+            .header("content-type", "application/json")
+            .header("Retry-After", "300")
+            .body(json!({"message": "rate limited"}).to_string());
+    });
+
+    let tracker = mock_tracker(&server);
+    let observer = tracker.rate_limit_observer();
+    let before = SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let result = tracker.fetch_board_stories().await;
+    assert!(result.is_err(), "rate-limit response must surface as Err");
+    let snapshot = observer.snapshot();
+    assert!(
+        snapshot.retry_after_wake_epoch >= before + 300,
+        "Retry-After: 300 must seed observer; got retry_after_wake_epoch={} before={}",
+        snapshot.retry_after_wake_epoch,
+        before
+    );
+}
+
+#[tokio::test]
+async fn fetch_board_stories_state_open_query_volume_reduction() {
+    use super::tracker::StoryTracker;
+
+    let server = MockServer::start();
+    let open_mock = server.mock(|when, then| {
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/issues")
+            .query_param("state", "open")
+            .query_param("page", "1");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(Value::Array(vec![issue(1, "open one", "open", vec!["ready"])]).to_string());
+    });
+    let closed_mock = server.mock(|when, then| {
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/issues")
+            .query_param("state", "closed");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                Value::Array(vec![issue(2, "accepted one", "closed", vec!["accepted"])])
+                    .to_string(),
+            );
+    });
+
+    let tracker = mock_tracker(&server);
+    let stories = tracker
+        .fetch_board_stories()
+        .await
+        .expect("fetch_board_stories ok");
+    open_mock.assert();
+    closed_mock.assert();
+
     let numbers: Vec<u64> = stories
         .iter()
         .filter_map(|s| s.get("number").and_then(|n| n.as_u64()))
         .collect();
     assert_eq!(
         numbers,
-        vec![101, 102, 103],
-        "must concat across pages in order; first-page-only would drop #103"
+        vec![1, 2],
+        "open + closed paths both contribute; Accepted column hydrates from closed fetch"
     );
 }

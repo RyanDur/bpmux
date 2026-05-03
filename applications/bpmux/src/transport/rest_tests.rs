@@ -1013,17 +1013,21 @@ async fn get_board_returns_503_when_tracker_missing() {
 #[tokio::test]
 async fn get_board_returns_stories_with_fetched_at() {
     let server = MockServer::start();
-    let m = server.mock(|when, then| {
-        when.method(Method::GET).path("/repos/acme/bpmux/issues");
+    let open_mock = server.mock(|when, then| {
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/issues")
+            .query_param("state", "open");
         then.status(200)
             .header("content-type", "application/json")
-            .body(
-                Value::Array(vec![
-                    board_issue(1, "first", "open", Some("hello")),
-                    board_issue(2, "second", "closed", None),
-                ])
-                .to_string(),
-            );
+            .body(Value::Array(vec![board_issue(1, "first", "open", Some("hello"))]).to_string());
+    });
+    let closed_mock = server.mock(|when, then| {
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/issues")
+            .query_param("state", "closed");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(Value::Array(vec![board_issue(2, "second", "closed", None)]).to_string());
     });
 
     let dir = TempDir::new().expect("tmpdir");
@@ -1033,7 +1037,8 @@ async fn get_board_returns_stories_with_fetched_at() {
     let router = board_router(session, tracker);
 
     let response = get_json(router, "/api/board").await;
-    m.assert();
+    open_mock.assert();
+    closed_mock.assert();
     assert_eq!(response.status(), StatusCode::OK);
     let body = response_json(response).await;
     let stories = body["stories"].as_array().expect("stories array");

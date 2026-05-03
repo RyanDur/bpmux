@@ -685,22 +685,35 @@ impl StoryTracker for OctocrabStoryTracker {
     /// until something else updates them. Today's renderer showed 100
     /// stories with #511/#512/#509 missing for exactly this reason.
     async fn fetch_board_stories(&self) -> Result<Vec<serde_json::Value>, String> {
-        let first = self
-            .client
-            .issues(&self.owner, &self.repo)
-            .list()
-            .state(octocrab::params::State::All)
-            .per_page(100)
-            .send()
-            .await
-            .map_err(Self::classify)?;
-        let first_count = first.items.len();
-        let issues = self.client.all_pages(first).await.map_err(Self::classify)?;
+        let mut all_issues: Vec<octocrab::models::issues::Issue> = Vec::new();
+        let mut page = 1u32;
+        loop {
+            let path = format!(
+                "/repos/{}/{}/issues?state=open&per_page=100&page={}",
+                self.owner, self.repo, page
+            );
+            let issues: Vec<octocrab::models::issues::Issue> = self.get_with_capture(path).await?;
+            let count = issues.len();
+            all_issues.extend(issues);
+            if count < 100 {
+                break;
+            }
+            page += 1;
+        }
+        let open_count = all_issues.len();
+        let closed_path = format!(
+            "/repos/{}/{}/issues?state=closed&per_page=100&sort=updated&direction=desc",
+            self.owner, self.repo
+        );
+        let closed: Vec<octocrab::models::issues::Issue> =
+            self.get_with_capture(closed_path).await?;
+        let closed_count = closed.len();
+        all_issues.extend(closed);
         crate::session::diag::log_diag(&format!(
-            "github fetch_board_stories: first page {first_count}, all_pages total {}",
-            issues.len()
+            "github fetch_board_stories: {open_count} open (paginated) + {closed_count} closed (1-page most-recent) = {} total",
+            all_issues.len()
         ));
-        Ok(issues.iter().map(issue_to_board_json).collect())
+        Ok(all_issues.iter().map(issue_to_board_json).collect())
     }
 
     /// #403: fetch one story's full detail. Returns `Ok(None)` when

@@ -89,7 +89,17 @@ async fn roundtrip_coherence_create_story_through_real_github_decode_path() {
     let server = MockServer::start();
 
     let list_mock = server.mock(|when, then| {
-        when.method(Method::GET).path("/repos/acme/bpmux/issues");
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/issues")
+            .query_param("state", "open");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(Value::Array(vec![]).to_string());
+    });
+    server.mock(|when, then| {
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/issues")
+            .query_param("state", "closed");
         then.status(200)
             .header("content-type", "application/json")
             .body(Value::Array(vec![]).to_string());
@@ -152,7 +162,17 @@ async fn roundtrip_coherence_user_job_and_falsifier_preserved_through_real_githu
         "## User job\n\nUSER_JOB_MARKER_43\n\n## Observation falsifier\n\nFALSIFIER_MARKER_43\n";
 
     let list_mock = server.mock(|when, then| {
-        when.method(Method::GET).path("/repos/acme/bpmux/issues");
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/issues")
+            .query_param("state", "open");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(Value::Array(vec![]).to_string());
+    });
+    server.mock(|when, then| {
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/issues")
+            .query_param("state", "closed");
         then.status(200)
             .header("content-type", "application/json")
             .body(Value::Array(vec![]).to_string());
@@ -218,7 +238,17 @@ async fn roundtrip_coherence_rejects_parent_epic_referencing_non_epic_through_re
     let server = MockServer::start();
 
     let list_mock = server.mock(|when, then| {
-        when.method(Method::GET).path("/repos/acme/bpmux/issues");
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/issues")
+            .query_param("state", "open");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(Value::Array(vec![]).to_string());
+    });
+    server.mock(|when, then| {
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/issues")
+            .query_param("state", "closed");
         then.status(200)
             .header("content-type", "application/json")
             .body(Value::Array(vec![]).to_string());
