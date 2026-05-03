@@ -153,6 +153,10 @@ impl TestBpmux {
             "BPMUX_AUTH_TOKEN_PATH",
             session_dir.path().join("auth_token"),
         );
+        cmd.env(
+            "BPMUX_BOARD_STORE_PATH",
+            session_dir.path().join("board-store.json"),
+        );
         // #662: isolate the sessions-base directory so spawned bridge
         // subprocesses (which call `default_sessions_base()` for
         // bookmark + get_session_dir) read the per-test tempdir

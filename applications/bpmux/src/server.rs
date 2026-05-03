@@ -31,8 +31,34 @@ async fn build_test_orchestrator(session: Arc<session::Session>) -> Arc<dyn Refr
 async fn build_prod_orchestrator(
     adapter: Arc<crate::board::adapters::github::GitHubSourceAdapter>,
 ) -> Arc<dyn RefreshDriver> {
-    let store = Arc::new(BoardStore::new());
-    let orch = Arc::new(SyncOrchestrator::new(store, adapter));
+    let store_path = match crate::board::default_store_path() {
+        Ok(p) => Some(p),
+        Err(e) => {
+            crate::session::diag::log_diag(&format!(
+                "server: board-store path resolve failed: {e}; running without disk persistence"
+            ));
+            None
+        }
+    };
+    let store = match store_path.as_deref() {
+        Some(path) => match BoardStore::load_from_disk(path) {
+            Ok(s) => {
+                let count = s.all_stories().len();
+                crate::session::diag::log_diag(&format!(
+                    "server: board-store hydrated from disk ({count} stories at {path:?})"
+                ));
+                Arc::new(s)
+            }
+            Err(e) => {
+                crate::session::diag::log_diag(&format!(
+                    "server: board-store disk-load failed ({e}); starting empty"
+                ));
+                Arc::new(BoardStore::new())
+            }
+        },
+        None => Arc::new(BoardStore::new()),
+    };
+    let orch = Arc::new(SyncOrchestrator::new(store.clone(), adapter));
     let backoffs = [0u64, 500, 1500, 4000];
     for (attempt, delay_ms) in backoffs.iter().enumerate() {
         if *delay_ms > 0 {
@@ -45,6 +71,14 @@ async fn build_prod_orchestrator(
                     "server: production orchestrator ingest succeeded on attempt {} ({count} stories)",
                     attempt + 1
                 ));
+                if let Some(path) = store_path.as_deref() {
+                    if let Err(e) = store.persist_to_disk(path) {
+                        crate::session::diag::log_diag(&format!(
+                            "server: post-ingest snapshot to disk failed: {e}"
+                        ));
+                    }
+                    spawn_periodic_snapshot(store.clone(), path.to_path_buf());
+                }
                 return orch;
             }
             Err(e) if attempt + 1 < backoffs.len() => {
@@ -54,13 +88,35 @@ async fn build_prod_orchestrator(
                 ));
             }
             Err(e) => {
+                let count = orch.all_stories().len();
                 crate::session::diag::log_diag(&format!(
-                    "server: production orchestrator ingest exhausted retries; last error: {e}; BoardStore stays empty until view_board / get_board auto-recovery fires"
+                    "server: production orchestrator ingest exhausted retries; last error: {e}; BoardStore has {count} stories from disk-hydrate (read paths offline-capable)"
                 ));
+                if let Some(path) = store_path.as_deref() {
+                    spawn_periodic_snapshot(store.clone(), path.to_path_buf());
+                }
             }
         }
     }
     orch
+}
+
+fn spawn_periodic_snapshot(store: Arc<BoardStore>, path: std::path::PathBuf) {
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(10));
+        interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+        loop {
+            interval.tick().await;
+            if !store.is_dirty() {
+                continue;
+            }
+            if let Err(e) = store.persist_to_disk(&path) {
+                crate::session::diag::log_diag(&format!(
+                    "server: periodic board-store snapshot failed: {e}"
+                ));
+            }
+        }
+    });
 }
 
 pub async fn run_server(

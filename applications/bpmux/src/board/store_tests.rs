@@ -611,3 +611,93 @@ fn derive_epic_state_all_ready_returns_explicit() {
         StoryState::Icebox
     );
 }
+
+mod disk_persistence {
+    use super::*;
+    use tempfile::TempDir;
+
+    fn sample_story(number: u64) -> Story {
+        Story::new_minimal(
+            number,
+            format!("story #{number}"),
+            StoryState::Ready,
+            Utc.with_ymd_and_hms(2026, 5, 3, 0, 0, 0).unwrap(),
+            "pm:test".into(),
+        )
+    }
+
+    #[test]
+    fn load_from_disk_returns_empty_when_path_missing() {
+        let tmp = TempDir::new().unwrap();
+        let path = tmp.path().join("missing.json");
+        let store = BoardStore::load_from_disk(&path).unwrap();
+        assert!(store.is_empty());
+    }
+
+    #[test]
+    fn persist_then_load_round_trips_stories() {
+        let tmp = TempDir::new().unwrap();
+        let path = tmp.path().join("snap.json");
+
+        let store = BoardStore::new();
+        store.seed_all(vec![sample_story(101), sample_story(202)]);
+        assert!(store.is_dirty());
+        store.persist_to_disk(&path).unwrap();
+        assert!(!store.is_dirty());
+        assert!(path.exists());
+
+        let restored = BoardStore::load_from_disk(&path).unwrap();
+        assert_eq!(restored.len(), 2);
+        assert_eq!(restored.story(101).unwrap().title, "story #101");
+        assert_eq!(restored.story(202).unwrap().title, "story #202");
+    }
+
+    #[test]
+    fn persist_creates_parent_directory_atomically() {
+        let tmp = TempDir::new().unwrap();
+        let nested = tmp.path().join("a/b/c/board.json");
+        let store = BoardStore::new();
+        store.seed_all(vec![sample_story(1)]);
+        store.persist_to_disk(&nested).unwrap();
+        assert!(nested.exists());
+        assert!(!nested.with_extension("tmp").exists());
+    }
+
+    #[test]
+    fn apply_marks_dirty_so_periodic_snapshot_fires() {
+        let store = BoardStore::new();
+        assert!(!store.is_dirty());
+        store.apply(&BoardEvent::TagRemoved {
+            meta: meta("test", 2026, "p"),
+            number: 7,
+            label: "ready".into(),
+        });
+        assert!(store.is_dirty());
+    }
+
+    #[test]
+    fn load_tolerates_empty_file_returns_empty_store() {
+        let tmp = TempDir::new().unwrap();
+        let path = tmp.path().join("empty.json");
+        std::fs::write(&path, b"").unwrap();
+        let store = BoardStore::load_from_disk(&path).unwrap();
+        assert!(store.is_empty());
+    }
+
+    #[test]
+    fn restart_simulation_hydrates_without_gh_call() {
+        let tmp = TempDir::new().unwrap();
+        let path = tmp.path().join("session.json");
+
+        let online_store = BoardStore::new();
+        online_store.seed_all(vec![sample_story(42), sample_story(99)]);
+        online_store.persist_to_disk(&path).unwrap();
+
+        let offline_store = BoardStore::load_from_disk(&path).unwrap();
+        assert_eq!(offline_store.len(), 2);
+        assert!(
+            offline_store.story(42).is_some(),
+            "read paths must serve from disk-hydrate without GH"
+        );
+    }
+}
