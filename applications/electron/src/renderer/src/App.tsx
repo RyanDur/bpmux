@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import AppShell from './AppShell'
 import { useMessageHistory } from './hooks/useMessageHistory'
 import { useNotifications } from './hooks/useNotifications'
@@ -16,13 +17,22 @@ function App(): React.JSX.Element {
     )
   }
 
-  const { status, messages: liveMessages, sendChat } = useWebSocket(
-    bridge?.wsUrl,
-    bridge?.apiBase,
-    bridge?.authToken
-  )
+  // atBottom + pinnedKeys flow up from MessageList + Chat (where
+  // they're naturally sourced) to the cap-decision in useWebSocket.
+  // Callback-up rather than lifting usePins, so Chat keeps owning its
+  // pin/recipient state. Defaults: atBottom=true (empty list IS at
+  // bottom), pinnedKeys=empty.
+  const [atBottom, setAtBottom] = useState<boolean>(true)
+  const [pinnedKeys, setPinnedKeys] = useState<ReadonlySet<string>>(() => new Set())
 
-  const { combinedMessages, loadOlder, isLoadingOlder, hasMoreOlder } =
+  const { status, messages: liveMessages, sendChat } = useWebSocket(bridge?.wsUrl, {
+    apiBase: bridge?.apiBase,
+    authToken: bridge?.authToken,
+    atBottom,
+    pinnedKeys
+  })
+
+  const { combinedMessages, loadOlder, isLoadingOlder, hasMoreOlder, hasError } =
     useMessageHistory({
       liveMessages,
       apiBase: bridge?.apiBase,
@@ -39,6 +49,9 @@ function App(): React.JSX.Element {
       loadOlder={loadOlder}
       isLoadingOlder={isLoadingOlder}
       hasMoreOlder={hasMoreOlder}
+      hasError={hasError}
+      onAtBottomChange={setAtBottom}
+      onPinnedKeysChange={setPinnedKeys}
     />
   )
 }

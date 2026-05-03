@@ -31,6 +31,8 @@ interface Props {
   loadOlder?: () => Promise<void>
   isLoadingOlder?: boolean
   hasMoreOlder?: boolean
+  hasError?: boolean
+  onAtBottomChange?: (atBottom: boolean) => void
 }
 
 const GROUP_THRESHOLD_MS = 5 * 60 * 1000
@@ -80,7 +82,9 @@ const MessageList = ({
   onSelectRecipient,
   loadOlder,
   isLoadingOlder = false,
-  hasMoreOlder = true
+  hasMoreOlder = true,
+  hasError = false,
+  onAtBottomChange
 }: Props): React.JSX.Element => {
   const visible = messages.filter(
     (m) =>
@@ -135,7 +139,10 @@ const MessageList = ({
     // scrollTop can occur on some browsers; abs keeps the math
     // honest for both engines.
     const atBottom = Math.abs(ul.scrollTop) <= BOTTOM_THRESHOLD_PX
-    atBottomRef.current = atBottom
+    if (atBottom !== atBottomRef.current) {
+      atBottomRef.current = atBottom
+      onAtBottomChange?.(atBottom)
+    }
     if (atBottom && newCount !== 0) setNewCount(0)
 
     if (
@@ -144,7 +151,7 @@ const MessageList = ({
     ) {
       void triggerableLoadOlder()
     }
-  }, [newCount, triggerableLoadOlder])
+  }, [newCount, triggerableLoadOlder, onAtBottomChange])
 
   useEffect(() => {
     const prev = lastLengthRef.current
@@ -443,6 +450,19 @@ const MessageList = ({
         >
           loading older messages…
         </aside>
+      )}
+      {!isLoadingOlder && hasError && loadOlder && (
+        <button
+          type="button"
+          className="loading-older-pill loading-older-pill--error"
+          data-test="loading-older-error"
+          onClick={() => {
+            void loadOlder()
+          }}
+          aria-label="retry loading older messages"
+        >
+          couldn’t load older messages — retry
+        </button>
       )}
       <ul {...regionProps} ref={listRef} onScroll={handleScroll}>
         {reversed.map(renderRow)}

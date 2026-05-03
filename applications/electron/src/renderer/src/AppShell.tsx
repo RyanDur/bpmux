@@ -61,6 +61,9 @@ interface Props {
   loadOlder?: () => Promise<void>
   isLoadingOlder?: boolean
   hasMoreOlder?: boolean
+  hasError?: boolean
+  onAtBottomChange?: (atBottom: boolean) => void
+  onPinnedKeysChange?: (keys: ReadonlySet<string>) => void
 }
 
 const AppShell = ({
@@ -69,7 +72,10 @@ const AppShell = ({
   onSend,
   loadOlder,
   isLoadingOlder,
-  hasMoreOlder
+  hasMoreOlder,
+  hasError,
+  onAtBottomChange,
+  onPinnedKeysChange
 }: Props): React.JSX.Element => {
   const statusLabel =
     status === 'connected' ? 'connected' : status === 'connecting' ? 'connecting' : 'disconnected'
@@ -228,6 +234,9 @@ const AppShell = ({
           loadOlder={loadOlder}
           isLoadingOlder={isLoadingOlder}
           hasMoreOlder={hasMoreOlder}
+          hasError={hasError}
+          onAtBottomChange={onAtBottomChange}
+          onPinnedKeysChange={onPinnedKeysChange}
         />
         {boardOpen ? (
           <BoardResizeHandle

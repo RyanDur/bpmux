@@ -63,6 +63,10 @@ export interface UseMessageHistoryResult {
   /// (i.e., we've reached the start of available history). Caller
   /// can hide the "load older" affordance.
   hasMoreOlder: boolean
+  /// Set after a loadOlder fetch failed; cleared when a subsequent
+  /// fetch succeeds. Caller can render a retry affordance instead of
+  /// silently masking the failure.
+  hasError: boolean
 }
 
 function messageKey(m: { from: string; text: string; ts: string }): string {
@@ -118,6 +122,7 @@ export function useMessageHistory({
   const [prependedHistory, setPrependedHistory] = useState<ChatMessage[]>([])
   const [isLoadingOlder, setIsLoadingOlder] = useState(false)
   const [hasMoreOlder, setHasMoreOlder] = useState(true)
+  const [hasError, setHasError] = useState(false)
   const inFlightRef = useRef(false)
 
   const combinedMessages = useMemo(
@@ -150,6 +155,7 @@ export function useMessageHistory({
         throw new Error(`paged history fetch: ${res.status}`)
       }
       const page = (await res.json()) as HistoryMessage[]
+      setHasError(false)
       if (page.length === 0) {
         setHasMoreOlder(false)
         return
@@ -157,6 +163,7 @@ export function useMessageHistory({
       setPrependedHistory((prev) => mergeOlderHistory(prev, page, liveMessages))
     } catch (err) {
       console.error('bpmux: loadOlder failed', err)
+      setHasError(true)
     } finally {
       inFlightRef.current = false
       setIsLoadingOlder(false)
@@ -167,6 +174,7 @@ export function useMessageHistory({
     combinedMessages,
     loadOlder,
     isLoadingOlder,
-    hasMoreOlder
+    hasMoreOlder,
+    hasError
   }
 }

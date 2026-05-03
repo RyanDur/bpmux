@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { classOf, useMessageFilter, type MessageClass } from '../hooks/useMessageFilter'
 import { channelKey, messageKey, usePins } from '../hooks/usePins'
 import { useReactions } from '../hooks/useReactions'
@@ -27,6 +27,9 @@ interface Props {
   loadOlder?: () => Promise<void>
   isLoadingOlder?: boolean
   hasMoreOlder?: boolean
+  hasError?: boolean
+  onAtBottomChange?: (atBottom: boolean) => void
+  onPinnedKeysChange?: (keys: ReadonlySet<string>) => void
 }
 
 const Chat = ({
@@ -44,12 +47,21 @@ const Chat = ({
   onSend,
   loadOlder,
   isLoadingOlder,
-  hasMoreOlder
+  hasMoreOlder,
+  hasError,
+  onAtBottomChange,
+  onPinnedKeysChange
 }: Props): React.JSX.Element => {
   const showReconnect = status !== 'connected'
   const [pinnedListOpen, setPinnedListOpen] = useState<boolean>(false)
   const pinsChannel = channelKey(recipient)
   const pins = usePins({ apiBase, authToken, channel: pinsChannel, messages })
+
+  // Notify App so the cap-decision in useWebSocket can exempt
+  // currently-pinned messages from drop-tail eviction.
+  useEffect(() => {
+    onPinnedKeysChange?.(pins.pinnedKeys)
+  }, [pins.pinnedKeys, onPinnedKeysChange])
   const reactions = useReactions({ apiBase, authToken, channel: pinsChannel, messages })
 
   const togglePin = (m: ChatMessage): void => {
@@ -132,6 +144,8 @@ const Chat = ({
         loadOlder={loadOlder}
         isLoadingOlder={isLoadingOlder}
         hasMoreOlder={hasMoreOlder}
+        hasError={hasError}
+        onAtBottomChange={onAtBottomChange}
       />
       <Metrics
         apiBase={apiBase}

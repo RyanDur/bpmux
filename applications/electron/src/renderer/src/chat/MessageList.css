@@ -36,6 +36,16 @@
   z-index: 5;
 }
 
+.loading-older-pill--error {
+  cursor: pointer;
+  color: var(--text-base);
+  border-color: var(--accent-warn, var(--border-subtle));
+}
+
+.loading-older-pill--error:hover {
+  filter: brightness(1.05);
+}
+
 /* #388 "N new messages ↓" indicator pill. Appears bottom-right of
  * the chat region when the user is scrolled up from the bottom +
  * new messages have arrived. Clicking scrolls to bottom +
