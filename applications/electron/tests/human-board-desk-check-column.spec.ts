@@ -13,6 +13,7 @@ test.describe('#505 slice 5c — Board panel DESK-CHECK column', () => {
         'board-group-desk-check',
         'board-group-delivered',
         'board-group-accepted',
+        'board-group-retired',
         'board-group-icebox'
       ]
 

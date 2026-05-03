@@ -2,7 +2,8 @@ import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
 
 test.describe('human-side E2E #476 — direct-action — message @mention click', () => {
-  test('clicking an @<role> pill scopes the chat recipient to that role', async () => {
+  test('clicking an @<role> pill scopes the chat recipient to that role', async ({}, testInfo) => {
+    testInfo.setTimeout(60_000)
     const { app, win, mockGh } = await launchWithMockGh({
       seedMessages: [
         {

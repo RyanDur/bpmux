@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BOARD_INVALIDATE_MARKER, type ChatMessage } from '../transport/types'
 
 // Must mirror applications/bpmux/src/session/pins.rs's PINS_UPDATE_MARKER.
@@ -162,6 +162,6 @@ export function usePins({ apiBase, authToken, channel, messages }: UsePinsArgs):
     [apiBase, authToken, channel, pins]
   )
 
-  const pinnedKeys = new Set(pins.map((p) => p.message_key))
+  const pinnedKeys = useMemo(() => new Set(pins.map((p) => p.message_key)), [pins])
   return { pins, pinnedKeys, pin, unpin, refetch: fetchPins }
 }
