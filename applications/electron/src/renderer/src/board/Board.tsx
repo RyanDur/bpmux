@@ -14,12 +14,11 @@ import {
   type BoardResponse,
   type BoardStory,
   type ColumnState,
-  type GroupSpec,
-  type StoryState
+  type GroupSpec
 } from './types'
 import './Board.css'
 
-type CollapseState = Record<StoryState, boolean>
+type CollapseState = Record<ColumnState, boolean>
 
 const BOARD_COLLAPSE_STORAGE_PREFIX = 'bpmux-board-collapse'
 
@@ -109,14 +108,14 @@ function Board({ messages, hidden, width }: BoardProps): React.JSX.Element {
   // aria-live="polite" queues the announcement without interrupting
   // what the user is currently reading.
   const [reorderAnnounce, setReorderAnnounce] = useState<string>('')
-  const collapseStorage = useCollapsibleSectionsStorage<StoryState>(
+  const collapseStorage = useCollapsibleSectionsStorage<ColumnState>(
     BOARD_COLLAPSE_STORAGE_PREFIX,
     RENDERER_IDENTITY,
     initialCollapseState
   )
   const collapsed = collapseStorage.state
   const toggleCollapsed = useCallback(
-    (state: StoryState): void => {
+    (state: ColumnState): void => {
       collapseStorage.setState({ ...collapseStorage.state, [state]: !collapseStorage.state[state] })
     },
     [collapseStorage]
@@ -763,11 +762,21 @@ function StoryRow({
         }}
         title={story.title}
         aria-label={ariaLabel}
+        data-rework={story.rework_comment ? 'true' : undefined}
       >
         <small className="board-story-number">#{story.number}</small>
         <StoryTypeGlyph type={type} />
         <StoryBadge story={story} onOpenTimeline={onOpenTimeline} onOpenBlocker={onOpen} />
         <b className="board-story-title">{story.title}</b>
+        {story.rework_comment ? (
+          <span
+            className="board-story-rework-glyph"
+            title={story.rework_comment}
+            aria-label={`Rework: ${story.rework_comment}`}
+          >
+            ↩
+          </span>
+        ) : null}
         {story.parent_epic !== undefined ? (
           <small
             className="board-story-epic-ref"

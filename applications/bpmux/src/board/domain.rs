@@ -236,6 +236,17 @@ pub fn story_to_board_json(story: &Story) -> serde_json::Value {
     if let Some(epic) = story.parent_epic {
         labels.push(format!("parent-epic-#{epic}"));
     }
+    // Derive rework-context from transition history so the renderer can
+    // surface the ↩ glyph + tooltip without a per-story round-trip to
+    // /api/stories/:n. Most stories have no backward edge; for those,
+    // the field is absent from the payload (small wire cost).
+    let rework_comment: Option<String> = story
+        .gate_comments
+        .as_ref()
+        .map(|gates| replay_transitions(gates))
+        .as_deref()
+        .and_then(|ts| most_recent_backward_transition(ts).cloned())
+        .and_then(|t| t.comment);
     serde_json::json!({
         "number": story.number,
         "title": story.title,
@@ -246,5 +257,6 @@ pub fn story_to_board_json(story: &Story) -> serde_json::Value {
         "assignees": Vec::<String>::new(),
         "created_at": story.filed_at.to_rfc3339(),
         "body": story.body.clone().unwrap_or_default(),
+        "rework_comment": rework_comment,
     })
 }

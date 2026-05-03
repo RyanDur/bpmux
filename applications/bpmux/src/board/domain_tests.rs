@@ -39,13 +39,111 @@ fn story_to_board_json_emits_renderer_wire_format_field_list() {
         "assignees",
         "created_at",
         "body",
+        "rework_comment",
     ] {
         assert!(
             keys.iter().any(|k| k.as_str() == *required),
             "wire-format must include `{required}` (drift catches #451-class regression); keys present: {keys:?}"
         );
     }
-    assert_eq!(obj.len(), 9, "no spurious keys; keys present: {keys:?}");
+    assert_eq!(obj.len(), 10, "no spurious keys; keys present: {keys:?}");
+}
+
+#[test]
+fn story_to_board_json_rework_comment_null_when_no_backward_edge() {
+    // #1146 slice 4: stories without a backward-edge transition emit
+    // rework_comment as JSON null. Renderer reads this as "no ↩ glyph".
+    let s = sample_story(StoryState::Ready, StoryType::Feature, false);
+    let json = story_to_board_json(&s);
+    assert!(json["rework_comment"].is_null());
+}
+
+#[test]
+fn story_to_board_json_rework_comment_carries_backward_edge_payload() {
+    // #1146 slice 4: when the most-recent transition is backward
+    // (e.g., reject_story Delivered → Ready), the gate-comment payload
+    // surfaces in rework_comment so the renderer can show it as the
+    // ↩ glyph's tooltip without a per-story round-trip.
+    use crate::board::domain::{Gate, GateComment};
+    let mut s = sample_story(StoryState::Ready, StoryType::Feature, false);
+    s.gate_comments = Some(vec![
+        GateComment {
+            gate: Gate::Pickup,
+            ts: chrono::Utc::now(),
+            actor: "dev".into(),
+            payload: None,
+        },
+        GateComment {
+            gate: Gate::Delivered,
+            ts: chrono::Utc::now(),
+            actor: "dev".into(),
+            payload: Some("ATP green; user-job verified".into()),
+        },
+        GateComment {
+            gate: Gate::PassDeskCheck,
+            ts: chrono::Utc::now(),
+            actor: "designer".into(),
+            payload: None,
+        },
+        GateComment {
+            gate: Gate::Rejected,
+            ts: chrono::Utc::now(),
+            actor: "ryan".into(),
+            payload: Some("user-story not satisfied".into()),
+        },
+    ]);
+    let json = story_to_board_json(&s);
+    assert_eq!(
+        json["rework_comment"].as_str(),
+        Some("user-story not satisfied"),
+        "rework_comment carries the backward transition's comment"
+    );
+}
+
+#[test]
+fn story_to_board_json_rework_comment_clears_after_forward_edge() {
+    // #1146 slice 4: once the story moves forward again (e.g., dev
+    // claims start_story after rejection), the most-recent transition
+    // is forward and rework_comment becomes null again.
+    use crate::board::domain::{Gate, GateComment};
+    let mut s = sample_story(StoryState::InProgress, StoryType::Feature, false);
+    s.gate_comments = Some(vec![
+        GateComment {
+            gate: Gate::Pickup,
+            ts: chrono::Utc::now(),
+            actor: "dev".into(),
+            payload: None,
+        },
+        GateComment {
+            gate: Gate::Delivered,
+            ts: chrono::Utc::now(),
+            actor: "dev".into(),
+            payload: None,
+        },
+        GateComment {
+            gate: Gate::PassDeskCheck,
+            ts: chrono::Utc::now(),
+            actor: "designer".into(),
+            payload: None,
+        },
+        GateComment {
+            gate: Gate::Rejected,
+            ts: chrono::Utc::now(),
+            actor: "ryan".into(),
+            payload: Some("rework needed".into()),
+        },
+        GateComment {
+            gate: Gate::Pickup,
+            ts: chrono::Utc::now(),
+            actor: "dev".into(),
+            payload: None,
+        },
+    ]);
+    let json = story_to_board_json(&s);
+    assert!(
+        json["rework_comment"].is_null(),
+        "forward transition (Pickup after Rejected) suppresses rework_comment"
+    );
 }
 
 #[test]

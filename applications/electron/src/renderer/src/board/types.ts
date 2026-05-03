@@ -65,6 +65,13 @@ export interface BoardStory {
   created_at: string
   body: string
   parent_epic?: number
+  // #1146: server-derived rework-context. When the most-recent state
+  // transition is backward (reject_story Delivered→Ready or
+  // fail_desk_check DeskCheck→InProgress), the gate-comment's payload
+  // surfaces here so the renderer can show ↩ glyph + tooltip without
+  // a per-story round-trip. Null when no backward edge or when a
+  // later forward transition has superseded.
+  rework_comment?: string | null
 }
 
 export interface BoardResponse {

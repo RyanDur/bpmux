@@ -335,6 +335,20 @@
     margin-left: var(--space-4);
   }
 
+  /* #1146: rework glyph appears on stories whose most-recent state
+   * transition is backward (reject_story Delivered→Ready or
+   * fail_desk_check DeskCheck→InProgress). The hover/focus tooltip
+   * carries the backward-edge comment so dev sees the rework reason
+   * directly at the column-surface without opening the story.
+   */
+  & .board-story-rework-glyph {
+    flex: 0 0 auto;
+    color: var(--fg-dim);
+    font-size: 1rem;
+    margin-left: var(--space-4);
+    cursor: help;
+  }
+
   & .board-epics {
     border-bottom: 1px solid var(--border-subtle);
     padding: var(--space-4) 0 var(--space-8);
