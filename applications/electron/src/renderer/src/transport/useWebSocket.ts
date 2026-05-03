@@ -25,6 +25,19 @@ const RENDERER_TOOL = 'electron'
 const INITIAL_BACKOFF_MS = 1000
 const MAX_BACKOFF_MS = 8000
 
+// #1153: cap the in-memory live messages array at MAX_MESSAGES so
+// long-running sessions don't accumulate unbounded heap. Cap is
+// applied on every WS push by slicing to the most-recent N. Drop-
+// tail removes oldest first; older history beyond the cap is
+// re-fetchable via the paged-history endpoint
+// (`useMessageHistory` — slice 3).
+//
+// 500 is an empirical default: viewport rarely shows more than ~50
+// messages even at 1080p / 12px font; 500 gives 10x headroom for
+// light scroll-up before paged-fetch kicks in. Configurable in case
+// product wants a wider native window.
+export const MAX_MESSAGES = 500
+
 export interface SendOptions {
   addressee?: string | null
   to?: string[] | null
@@ -48,6 +61,15 @@ interface HistoryMessage {
 
 function messageKey(m: { from: string; text: string; ts: string }): string {
   return `${m.ts}|${m.from}|${m.text}`
+}
+
+// #1153: bounded-array cap helper. Returns `messages` unchanged when
+// already at-or-below `max`; otherwise slices to the most-recent N
+// (drop-tail; oldest first). Pure for testability — same shape used
+// by the per-push and history-merge paths in useWebSocket so both
+// honor the bound consistently.
+export function capMessages(messages: ChatMessage[], max: number): ChatMessage[] {
+  return messages.length > max ? messages.slice(messages.length - max) : messages
 }
 
 export function useWebSocket(
@@ -117,7 +139,12 @@ export function useWebSocket(
         const key = messageKey(chat)
         setMessages((prev) => {
           if (prev.some((m) => messageKey(m) === key)) return prev
-          return [...prev, chat]
+          // #1153: cap in-memory array at MAX_MESSAGES. Drop-tail
+          // (oldest first) when the next push would exceed the cap.
+          // UX-aware variants (preserve-scroll-when-reading-older,
+          // pinned-message exemption) layer on top of this primitive
+          // in `useMessageHistory` (slice 3).
+          return capMessages([...prev, chat], MAX_MESSAGES)
         })
         break
       }
@@ -220,7 +247,9 @@ export function useWebSocket(
               seen.add(k)
               merged.push(m)
             }
-            return merged
+            // #1153: same MAX_MESSAGES cap as the per-push path so
+            // initial-load + history-fetch can't overshoot the bound.
+            return capMessages(merged, MAX_MESSAGES)
           })
         })
         .catch((err) => {
