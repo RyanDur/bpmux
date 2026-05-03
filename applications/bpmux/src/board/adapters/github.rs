@@ -120,18 +120,27 @@ impl SourceAdapter for GitHubSourceAdapter {
         Ok(decode_gate_comments(&raw))
     }
 
-    async fn push_event(&self, event: &BoardEvent) -> Result<Option<Story>, SyncError> {
+    async fn push_event(&self, event: &BoardEvent) -> Result<Option<BoardEvent>, SyncError> {
         match event {
             BoardEvent::StoryCreated { .. } => Ok(None),
             BoardEvent::StateTransitioned {
                 number, new_state, ..
             } => {
+                // #1151: state-label add returns the post-mutation
+                // labels list; surface it as LabelsRefreshed so the
+                // reducer re-derives `state` via `state_from_labels`
+                // and refreshes `tags` without a follow-up fetch.
                 let label = state_to_label(*new_state);
-                self.inner
+                let labels = self
+                    .inner
                     .add_label(*number, label)
                     .await
                     .map_err(SyncError::Other)?;
-                Ok(None)
+                Ok(Some(BoardEvent::LabelsRefreshed {
+                    meta: crate::board::orchestrator::cache_fill_meta(),
+                    number: *number,
+                    labels,
+                }))
             }
             BoardEvent::StoryClosed { number, reason, .. } => {
                 if let Some(reason_text) = reason.as_deref() {
@@ -144,12 +153,20 @@ impl SourceAdapter for GitHubSourceAdapter {
                 // octocrab's `update().state(Closed).send()` returns
                 // the post-close Issue; the tracker serializes it via
                 // `issue_to_board_json` and we parse here. Returning
-                // `Some(Story)` triggers a `StoryRefreshed` dispatch
-                // in the orchestrator drain so the local store
-                // reflects `is_closed=true` without a follow-up
+                // a `StoryRefreshed` event triggers the orchestrator
+                // drain to apply it via the reducer so the local
+                // store reflects `is_closed=true` without a follow-up
                 // `refresh_story(N)`.
                 match self.inner.close_story(*number).await {
-                    Ok(value) => Ok(decode_story_metadata(&value)),
+                    Ok(value) => {
+                        Ok(
+                            decode_story_metadata(&value).map(|story| BoardEvent::StoryRefreshed {
+                                meta: crate::board::orchestrator::cache_fill_meta(),
+                                number: *number,
+                                story,
+                            }),
+                        )
+                    }
                     Err(e) => match crate::board::sync::classify_close_error(e) {
                         SyncError::AlreadyClosed => Ok(None),
                         other => Err(other),
@@ -163,7 +180,13 @@ impl SourceAdapter for GitHubSourceAdapter {
                     .reopen_story(*number)
                     .await
                     .map_err(SyncError::Other)?;
-                Ok(decode_story_metadata(&value))
+                Ok(
+                    decode_story_metadata(&value).map(|story| BoardEvent::StoryRefreshed {
+                        meta: crate::board::orchestrator::cache_fill_meta(),
+                        number: *number,
+                        story,
+                    }),
+                )
             }
             BoardEvent::GateCommentAppended {
                 meta,
@@ -186,18 +209,33 @@ impl SourceAdapter for GitHubSourceAdapter {
                 Ok(None)
             }
             BoardEvent::TagAdded { number, label, .. } => {
-                self.inner
+                // #1151: add_label returns the post-mutation labels
+                // list; LabelsRefreshed lets the reducer re-derive
+                // state without a follow-up fetch.
+                let labels = self
+                    .inner
                     .add_label(*number, label)
                     .await
                     .map_err(SyncError::Other)?;
-                Ok(None)
+                Ok(Some(BoardEvent::LabelsRefreshed {
+                    meta: crate::board::orchestrator::cache_fill_meta(),
+                    number: *number,
+                    labels,
+                }))
             }
             BoardEvent::TagRemoved { number, label, .. } => {
-                self.inner
+                // #1151: remove_label returns the post-mutation labels
+                // list (or empty Vec on the 404-idempotent path).
+                let labels = self
+                    .inner
                     .remove_label(*number, label)
                     .await
                     .map_err(SyncError::Other)?;
-                Ok(None)
+                Ok(Some(BoardEvent::LabelsRefreshed {
+                    meta: crate::board::orchestrator::cache_fill_meta(),
+                    number: *number,
+                    labels,
+                }))
             }
             BoardEvent::ParentEpicSet {
                 number,
@@ -205,26 +243,43 @@ impl SourceAdapter for GitHubSourceAdapter {
                 ..
             } => {
                 let label = format!("parent-epic-#{epic_number}");
-                self.inner
+                let labels = self
+                    .inner
                     .add_label(*number, &label)
                     .await
                     .map_err(SyncError::Other)?;
-                Ok(None)
+                Ok(Some(BoardEvent::LabelsRefreshed {
+                    meta: crate::board::orchestrator::cache_fill_meta(),
+                    number: *number,
+                    labels,
+                }))
             }
             BoardEvent::ParentEpicUnset { number, .. } => {
-                let labels = self.inner.get_story_labels(*number).await;
-                for l in labels.iter().filter(|l| l.starts_with("parent-epic-#")) {
-                    self.inner
+                // Multi-step: fetch current labels, remove all
+                // parent-epic-* entries. Captures the LAST
+                // remove_label response as the post-state so the
+                // reducer sees the final labels list.
+                let current = self.inner.get_story_labels(*number).await;
+                let mut last_response: Option<Vec<String>> = None;
+                for l in current.iter().filter(|l| l.starts_with("parent-epic-#")) {
+                    let labels = self
+                        .inner
                         .remove_label(*number, l)
                         .await
                         .map_err(SyncError::Other)?;
+                    last_response = Some(labels);
                 }
-                Ok(None)
+                Ok(last_response.map(|labels| BoardEvent::LabelsRefreshed {
+                    meta: crate::board::orchestrator::cache_fill_meta(),
+                    number: *number,
+                    labels,
+                }))
             }
             BoardEvent::BodyFetched { .. }
             | BoardEvent::FreeCommentsFetched { .. }
             | BoardEvent::GateCommentsFetched { .. }
-            | BoardEvent::StoryRefreshed { .. } => Ok(None),
+            | BoardEvent::StoryRefreshed { .. }
+            | BoardEvent::LabelsRefreshed { .. } => Ok(None),
         }
     }
 
@@ -244,12 +299,21 @@ impl SourceAdapter for GitHubSourceAdapter {
         })
     }
 
-    async fn update_body(&self, number: u64, body: &str) -> Result<(), SyncError> {
-        self.inner
+    async fn update_body(&self, number: u64, body: &str) -> Result<Story, SyncError> {
+        // #1151: capture the post-update Issue (octocrab returns the
+        // freshly-updated Issue from `update().body(body).send()`) so
+        // the orchestrator can apply it to the canonical store
+        // without a follow-up `refresh_story(N)` call.
+        let value = self
+            .inner
             .update_body(number, body)
             .await
-            .map(|_| ())
-            .map_err(SyncError::Other)
+            .map_err(SyncError::Other)?;
+        decode_story_metadata(&value).ok_or_else(|| {
+            SyncError::Other(format!(
+                "update_body succeeded but response unparseable as Story: {value}"
+            ))
+        })
     }
 }
 
@@ -274,15 +338,6 @@ pub fn warn_on_inconsistent_state_labels(labels: &[String]) {
             "decoder: inconsistent state-labels present {present:?} — priority decoder picks first per spec; expected: only one state-label per story"
         ));
     }
-}
-
-pub fn parse_created_issue_number(formatted: &str) -> Option<u64> {
-    formatted
-        .strip_prefix('#')?
-        .split_whitespace()
-        .next()?
-        .parse()
-        .ok()
 }
 
 pub fn decode_story_metadata(v: &serde_json::Value) -> Option<Story> {

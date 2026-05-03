@@ -199,20 +199,17 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         let mut failures = 0usize;
         while let Ok(event) = rx.try_recv() {
             match self.adapter.push_event(&event).await {
-                Ok(refreshed) => {
+                Ok(follow_up) => {
                     drained += 1;
                     record_push_success(&self.status);
                     // #1151: the adapter captured GH's mutation
-                    // response. Apply it to the canonical store via
-                    // a synthesized StoryRefreshed event so the local
-                    // model reflects post-mutation state without a
-                    // follow-up `refresh_story(N)` call.
-                    if let Some(story) = refreshed {
-                        let refresh_event = BoardEvent::StoryRefreshed {
-                            meta: cache_fill_meta(),
-                            number: story.number,
-                            story,
-                        };
+                    // response and surfaced it as a follow-up
+                    // BoardEvent (StoryRefreshed for Issue-returning
+                    // mutations; LabelsRefreshed for label-mutation
+                    // responses). Dispatch via the reducer so the
+                    // local store reflects post-mutation state
+                    // without a follow-up `refresh_story(N)` call.
+                    if let Some(refresh_event) = follow_up {
                         self.store.apply(&refresh_event);
                     }
                 }
@@ -373,11 +370,23 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
 
     fn update_body(&self, number: u64, body: String) -> BoxedFuture<'_, Result<(), SyncError>> {
         let adapter = Arc::clone(&self.adapter);
-        Box::pin(async move { adapter.update_body(number, &body).await })
+        let store = Arc::clone(&self.store);
+        Box::pin(async move {
+            // #1151: capture post-update Story from the adapter and
+            // apply it to the canonical store so callers don't need
+            // a follow-up `refresh_story(N)` to observe the new body.
+            let story = adapter.update_body(number, &body).await?;
+            store.apply(&BoardEvent::StoryRefreshed {
+                meta: cache_fill_meta(),
+                number,
+                story,
+            });
+            Ok(())
+        })
     }
 }
 
-fn cache_fill_meta() -> EventMeta {
+pub(crate) fn cache_fill_meta() -> EventMeta {
     EventMeta {
         actor: "source-ingest".to_string(),
         ts: Utc::now(),

@@ -90,6 +90,16 @@ pub enum BoardEvent {
         number: u64,
         story: Story,
     },
+    /// #1151: GH-API label-mutation response captured. octocrab's
+    /// `add_labels` / `remove_label` return the post-mutation labels
+    /// list; the orchestrator dispatches this event so the reducer
+    /// can re-derive the local Story's `state` via `state_from_labels`
+    /// and refresh `tags` without a follow-up `refresh_story(N)` call.
+    LabelsRefreshed {
+        meta: EventMeta,
+        number: u64,
+        labels: Vec<String>,
+    },
 }
 
 impl BoardEvent {
@@ -108,7 +118,8 @@ impl BoardEvent {
             | BoardEvent::StoryReopened { meta, .. }
             | BoardEvent::ParentEpicSet { meta, .. }
             | BoardEvent::ParentEpicUnset { meta, .. }
-            | BoardEvent::StoryRefreshed { meta, .. } => meta,
+            | BoardEvent::StoryRefreshed { meta, .. }
+            | BoardEvent::LabelsRefreshed { meta, .. } => meta,
         }
     }
 
@@ -127,7 +138,8 @@ impl BoardEvent {
             | BoardEvent::StoryReopened { number, .. }
             | BoardEvent::ParentEpicSet { number, .. }
             | BoardEvent::ParentEpicUnset { number, .. }
-            | BoardEvent::StoryRefreshed { number, .. } => *number,
+            | BoardEvent::StoryRefreshed { number, .. }
+            | BoardEvent::LabelsRefreshed { number, .. } => *number,
         }
     }
 }

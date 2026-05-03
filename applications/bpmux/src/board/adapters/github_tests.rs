@@ -4,8 +4,7 @@ use chrono::{TimeZone, Utc};
 
 use crate::board::adapters::github::{
     classify_gate, decode_gate_comments, decode_story_metadata, parent_epic_from_labels,
-    parse_created_issue_number, state_from_labels, state_to_label, tags_from_labels,
-    warn_on_inconsistent_state_labels,
+    state_from_labels, state_to_label, tags_from_labels, warn_on_inconsistent_state_labels,
 };
 use crate::board::domain::story_type_from_labels_or_title;
 use crate::board::domain::{Gate, StoryState, StoryType, Tag};
@@ -448,23 +447,6 @@ fn classify_close_error_wraps_unrelated_errors_as_other() {
         classify_close_error(String::new()),
         SyncError::Other(_)
     ));
-}
-
-#[test]
-fn parse_created_issue_number_extracts_number_from_tracker_format() {
-    assert_eq!(
-        parse_created_issue_number("#451 Internal board abstraction"),
-        Some(451)
-    );
-    assert_eq!(parse_created_issue_number("#1 t"), Some(1));
-}
-
-#[test]
-fn parse_created_issue_number_returns_none_when_unparseable() {
-    assert!(parse_created_issue_number("issue created").is_none());
-    assert!(parse_created_issue_number("#abc title").is_none());
-    assert!(parse_created_issue_number("").is_none());
-    assert!(parse_created_issue_number("#").is_none());
 }
 
 #[test]

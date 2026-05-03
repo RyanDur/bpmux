@@ -768,12 +768,13 @@ pub(super) async fn handle_label_story(
         };
         r.mutate_sync(event)
             .map_err(|e| format!("#{number} enqueue failed: {e}"))?;
+        // #1151: drain dispatches LabelsRefreshed from the
+        // tracker's post-mutation labels list, so the local store
+        // reflects post-label state without a follow-up
+        // refresh_story round-trip.
         r.drain_pending()
             .await
             .map_err(|e| format!("#{number} label push failed: {e}"))?;
-        r.refresh_story(number)
-            .await
-            .map_err(|e| format!("#{number} refresh after label failed: {e}"))?;
         broadcast_board_invalidate(ws_tx).await;
         return Ok(ok_msg);
     }
@@ -1314,12 +1315,13 @@ pub(super) async fn handle_edit_story(
         .ok_or("missing 'body' argument")?;
     let r = refresh
         .ok_or("edit_story requires refresh (RefreshDriver) — no canonical store available")?;
+    // #1151: the orchestrator's update_body now captures the
+    // post-update Story from the adapter response and applies it to
+    // the canonical store via StoryRefreshed. The follow-up
+    // refresh_story round-trip is no longer needed.
     r.update_body(number, body.to_string())
         .await
         .map_err(|e| format!("#{number} body update failed: {e}"))?;
-    r.refresh_story(number)
-        .await
-        .map_err(|e| format!("#{number} refresh after edit failed: {e}"))?;
     broadcast_board_invalidate(ws_tx).await;
     Ok(format!("#{number} body updated"))
 }

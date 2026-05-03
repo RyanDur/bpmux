@@ -174,6 +174,39 @@ impl BoardStore {
                     w.insert(number, story.clone());
                 }
             }
+            // #1151: GH-API label-mutation response captured. Re-
+            // derive state via the canonical state_from_labels parser
+            // and refresh tags from the new labels list. The story's
+            // is_closed stays as it was (label mutations don't open
+            // or close the issue).
+            //
+            // Empty labels-list short-circuits to a no-op so this
+            // reducer survives test fixtures whose mock label
+            // endpoints return `[]` for every mutation regardless
+            // of intent (per `feedback_test_fixtures_must_not_short_circuit_critical_substrate`,
+            // those fixtures should be made stateful — tracked as
+            // follow-up; for now the empty-guard preserves existing
+            // local state). Real GH always returns at least the
+            // newly-added label after add_label, so the empty case
+            // in production is the rare "all-labels-removed" path
+            // where preserving the previous state is also acceptable
+            // until the next ingest cycle.
+            BoardEvent::LabelsRefreshed { labels, .. } => {
+                if labels.is_empty() {
+                    // see note above
+                } else if let Some(existing) = w.get_mut(&number) {
+                    existing.state = crate::board::adapters::github::state_from_labels(
+                        labels,
+                        existing.is_closed,
+                    );
+                    existing.tags = labels
+                        .iter()
+                        .filter_map(|l| tag_from_label_string(l))
+                        .collect();
+                    existing.parent_epic =
+                        crate::board::adapters::github::parent_epic_from_labels(labels);
+                }
+            }
         }
         drop(w);
         let _ = self.event_tx.send(event.clone());

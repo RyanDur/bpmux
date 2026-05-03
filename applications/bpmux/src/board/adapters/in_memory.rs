@@ -154,7 +154,7 @@ impl SourceAdapter for InMemorySourceAdapter {
         Ok(s.gate_comments.get(&number).cloned().unwrap_or_default())
     }
 
-    async fn push_event(&self, event: &BoardEvent) -> Result<Option<Story>, SyncError> {
+    async fn push_event(&self, event: &BoardEvent) -> Result<Option<BoardEvent>, SyncError> {
         let mut s = self.state.lock().unwrap_or_else(|e| e.into_inner());
         if s.failures_on_push {
             return Err(SyncError::SourceUnreachable("push test failure".into()));
@@ -242,12 +242,21 @@ impl SourceAdapter for InMemorySourceAdapter {
         Ok(number)
     }
 
-    async fn update_body(&self, number: u64, body: &str) -> Result<(), SyncError> {
+    async fn update_body(&self, number: u64, body: &str) -> Result<Story, SyncError> {
         let mut s = self.state.lock().unwrap_or_else(|e| e.into_inner());
         if s.failures_on_push {
             return Err(SyncError::SourceUnreachable("push test failure".into()));
         }
         s.bodies.insert(number, body.to_string());
-        Ok(())
+        // #1151: return the post-update Story (test substrate has
+        // direct access to its own state; production github adapter
+        // parses the GH-API response Issue).
+        let mut story =
+            s.stories.get(&number).cloned().ok_or_else(|| {
+                SyncError::Other(format!("update_body: story #{number} not seeded"))
+            })?;
+        story.body = Some(body.to_string());
+        story.acceptance_test_path = crate::bridge::parse_acceptance_test_path(body);
+        Ok(story)
     }
 }
