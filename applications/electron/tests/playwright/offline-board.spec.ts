@@ -8,9 +8,12 @@ test.describe('#1158 — offline-first board', () => {
   test('F1 visibility — sync-status indicator visible from any view', async () => {
     const { app, win } = await launchIsolatedWithWindow()
     try {
+      const region = win.locator('aside.sync-status-region')
+      await expect(region).toBeVisible()
+      await expect(region).toHaveAttribute('role', 'status')
+      await expect(region).toHaveAttribute('aria-live', 'polite')
       const indicator = win.locator('[data-test="sync-status-glyph"]')
       await expect(indicator).toBeVisible()
-      await expect(indicator).toHaveAttribute('aria-live', 'polite')
       await expect(indicator).toHaveAttribute(
         'data-state',
         /^(connected|syncing|offline-queued|drained-permanent-failure)$/

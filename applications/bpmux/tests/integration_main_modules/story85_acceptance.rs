@@ -81,14 +81,24 @@ fn ac2_click_channel_switches_view() {
 #[test]
 fn ac3_click_help_opens_overlay() {
     let bpmux = TestBpmux::start();
-
-    // "? help" appears at the right edge of the status bar (row 24 in 24-row terminal)
-    // Click near the right edge of the status bar
-    bpmux.mouse_click(78, 24);
-
     assert!(
-        bpmux.wait_for_tui("Commands:", Duration::from_secs(3)),
-        "Help overlay should open on click. Screen:\n{}",
+        bpmux.wait_for_tui("?=help", Duration::from_secs(5)),
+        "Status bar should render ?=help hint. Screen:\n{}",
+        bpmux.tui()
+    );
+    let screen = bpmux.tui();
+    let (row, col) = screen
+        .lines()
+        .enumerate()
+        .find_map(|(r, line)| line.find("?=help").map(|c| (r, c)))
+        .expect("?=help should be present in rendered TUI");
+    let click_col = col + 3;
+    bpmux.mouse_click((click_col + 1) as u16, (row + 1) as u16);
+    assert!(
+        bpmux.wait_for_tui("Commands:", Duration::from_secs(5)),
+        "Help overlay should open on click at row={} col={}. Screen:\n{}",
+        row + 1,
+        click_col + 1,
         bpmux.tui()
     );
 }

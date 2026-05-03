@@ -1,3 +1,8 @@
+.sync-status-region {
+  display: inline-flex;
+  align-items: center;
+}
+
 .sync-status-glyph {
   font-size: 0.75rem;
   color: var(--fg-secondary);

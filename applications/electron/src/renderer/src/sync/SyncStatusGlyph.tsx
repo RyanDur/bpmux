@@ -15,11 +15,15 @@ interface SyncStatusReport {
   dropped_events: DroppedEvent[]
 }
 
+type FetchOk<T> = { ok: true; data: T }
+type FetchErr = { ok: false; error: string }
+type FetchResult<T> = FetchOk<T> | FetchErr
+
 const POLL_MS = 5_000
 
 type SyncState = 'connected' | 'syncing' | 'offline-queued' | 'drained-permanent-failure'
 
-function deriveState(report: SyncStatusReport | null): SyncState {
+const deriveState = (report: SyncStatusReport | null): SyncState => {
   if (!report) return 'connected'
   if (report.dropped_events.length > 0) return 'drained-permanent-failure'
   if (report.pending_events > 0 && report.last_error !== null) return 'offline-queued'
@@ -27,7 +31,7 @@ function deriveState(report: SyncStatusReport | null): SyncState {
   return 'connected'
 }
 
-function stateGlyph(state: SyncState): string {
+const stateGlyph = (state: SyncState): string => {
   switch (state) {
     case 'connected':
       return '●'
@@ -40,7 +44,7 @@ function stateGlyph(state: SyncState): string {
   }
 }
 
-function stateAriaLabel(state: SyncState, count: number): string {
+const stateAriaLabel = (state: SyncState, count: number): string => {
   switch (state) {
     case 'connected':
       return 'Sync state: connected'
@@ -53,7 +57,7 @@ function stateAriaLabel(state: SyncState, count: number): string {
   }
 }
 
-function buildTooltip(state: SyncState, report: SyncStatusReport | null): string {
+const buildTooltip = (state: SyncState, report: SyncStatusReport | null): string => {
   if (!report) return 'Sync status loading…'
   const lines: string[] = []
   switch (state) {
@@ -80,33 +84,43 @@ function buildTooltip(state: SyncState, report: SyncStatusReport | null): string
   return lines.join('\n')
 }
 
+const fetchSyncStatus = async (
+  apiBase: string,
+  authToken: string,
+  signal?: AbortSignal
+): Promise<FetchResult<SyncStatusReport>> => {
+  const res = await fetch(`${apiBase}/api/sync-status`, {
+    headers: { Authorization: `Bearer ${authToken}` },
+    signal
+  })
+  if (!res.ok) return { ok: false, error: `HTTP ${res.status}` }
+  const data = (await res.json()) as SyncStatusReport
+  return { ok: true, data }
+}
+
 interface Props {
   apiBase?: string
   authToken?: string
 }
 
-function SyncStatusGlyph({ apiBase, authToken }: Props): React.JSX.Element {
+const SyncStatusGlyph = ({ apiBase, authToken }: Props): React.JSX.Element => {
   const [report, setReport] = useState<SyncStatusReport | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const fetchOnce = useCallback(
     async (signal?: AbortSignal): Promise<void> => {
       if (!apiBase) return
-      try {
-        const res = await fetch(`${apiBase}/api/sync-status`, {
-          headers: { Authorization: `Bearer ${authToken ?? ''}` },
-          signal
+      const result = await fetchSyncStatus(apiBase, authToken ?? '', signal).catch(
+        (err): FetchErr => ({
+          ok: false,
+          error: (err as Error)?.name === 'AbortError' ? '' : String(err)
         })
-        if (!res.ok) {
-          setError(`HTTP ${res.status}`)
-          return
-        }
-        const json = (await res.json()) as SyncStatusReport
-        setReport(json)
+      )
+      if (result.ok) {
+        setReport(result.data)
         setError(null)
-      } catch (err) {
-        if ((err as Error)?.name === 'AbortError') return
-        setError(err instanceof Error ? err.message : String(err))
+      } else if (result.error.length > 0) {
+        setError(result.error)
       }
     },
     [apiBase, authToken]
@@ -140,12 +154,12 @@ function SyncStatusGlyph({ apiBase, authToken }: Props): React.JSX.Element {
       await fetch(`${apiBase}/api/sync-status/acknowledge`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${authToken ?? ''}` }
-      })
+      }).catch(() => undefined)
     } else if (state === 'offline-queued' || state === 'syncing') {
       await fetch(`${apiBase}/api/sync-status/force-sync`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${authToken ?? ''}` }
-      })
+      }).catch(() => undefined)
     }
     await fetchOnce()
   }, [apiBase, authToken, fetchOnce, state])
@@ -156,20 +170,21 @@ function SyncStatusGlyph({ apiBase, authToken }: Props): React.JSX.Element {
   const showCount = state !== 'connected' && count > 0
 
   return (
-    <button
-      type="button"
-      className={`sync-status-glyph sync-status-glyph--${state}`}
-      onClick={handleClick}
-      title={tooltip}
-      aria-label={ariaLabel}
-      aria-live="polite"
-      data-test="sync-status-glyph"
-      data-state={state}
-      data-count={count}
-    >
-      <span aria-hidden="true">{glyph}</span>
-      {showCount && <small className="sync-status-glyph__count">{count}</small>}
-    </button>
+    <aside role="status" aria-live="polite" className="sync-status-region">
+      <button
+        type="button"
+        className={`sync-status-glyph sync-status-glyph--${state}`}
+        onClick={handleClick}
+        title={tooltip}
+        aria-label={ariaLabel}
+        data-test="sync-status-glyph"
+        data-state={state}
+        data-count={count}
+      >
+        <span aria-hidden="true">{glyph}</span>
+        {showCount && <small className="sync-status-glyph__count">{count}</small>}
+      </button>
+    </aside>
   )
 }
 
