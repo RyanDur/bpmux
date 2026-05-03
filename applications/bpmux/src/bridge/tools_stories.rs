@@ -34,21 +34,38 @@ pub(super) const ALL_STATE_LABELS: &[&str] = &[
 
 pub(super) const KEEP_NONE: &str = "";
 
+pub(super) fn stale_workflow_labels<'a>(current: &'a [String], keep: &str) -> Vec<&'a str> {
+    current
+        .iter()
+        .filter_map(|l| {
+            let l_str = l.as_str();
+            if l_str == keep {
+                return None;
+            }
+            ALL_STATE_LABELS
+                .iter()
+                .find(|s| **s == l_str)
+                .map(|_| l_str)
+        })
+        .collect()
+}
+
 pub(super) fn reap_workflow_labels(
     refresh: &dyn crate::board::RefreshDriver,
     number: u64,
     meta: &crate::board::events::EventMeta,
     keep: &str,
 ) -> Result<(), String> {
-    for stale in ALL_STATE_LABELS {
-        if *stale == keep {
-            continue;
-        }
+    let current = refresh
+        .story(number)
+        .map(|s| s.raw_labels)
+        .unwrap_or_default();
+    for stale in stale_workflow_labels(&current, keep) {
         refresh
             .mutate_sync(crate::board::BoardEvent::TagRemoved {
                 meta: meta.clone(),
                 number,
-                label: (*stale).to_string(),
+                label: stale.to_string(),
             })
             .map_err(|e| format!("#{number} {stale}-tag-remove enqueue failed: {e}"))?;
     }

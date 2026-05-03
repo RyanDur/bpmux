@@ -170,6 +170,7 @@ pub struct Story {
     pub is_closed: bool,
     pub parent_epic: Option<u64>,
     pub acceptance_test_path: Option<String>,
+    pub raw_labels: Vec<String>,
 }
 
 impl Story {
@@ -180,6 +181,15 @@ impl Story {
         filed_at: DateTime<Utc>,
         filed_by: String,
     ) -> Self {
+        let state_label = match state {
+            StoryState::Icebox => None,
+            StoryState::Ready => Some("ready"),
+            StoryState::InProgress => Some("in progress"),
+            StoryState::DeskCheck => Some("desk-check"),
+            StoryState::Delivered => Some("delivered"),
+            StoryState::Accepted => Some("accepted"),
+        };
+        let raw_labels = state_label.map(|l| vec![l.to_string()]).unwrap_or_default();
         Self {
             number,
             title,
@@ -194,6 +204,7 @@ impl Story {
             is_closed: false,
             parent_epic: None,
             acceptance_test_path: None,
+            raw_labels,
         }
     }
 }

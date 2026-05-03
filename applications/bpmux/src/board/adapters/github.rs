@@ -377,6 +377,7 @@ pub fn decode_story_metadata(v: &serde_json::Value) -> Option<Story> {
     story.tags = tags_from_labels(&labels);
     story.is_closed = is_closed;
     story.parent_epic = parent_epic_from_labels(&labels);
+    story.raw_labels = labels;
     Some(story)
 }
 

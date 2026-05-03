@@ -85,7 +85,16 @@ impl SourceAdapter for InMemorySourceAdapter {
                 "in-memory test failure".into(),
             ));
         }
-        Ok(s.stories.values().cloned().collect())
+        Ok(s.stories
+            .values()
+            .cloned()
+            .map(|mut story| {
+                if let Some(labels) = s.labels.get(&story.number) {
+                    story.raw_labels = labels.clone();
+                }
+                story
+            })
+            .collect())
     }
 
     async fn fetch_story_metadata(&self, number: u64) -> Result<Option<Story>, SyncError> {
@@ -98,6 +107,9 @@ impl SourceAdapter for InMemorySourceAdapter {
         let Some(mut story) = s.stories.get(&number).cloned() else {
             return Ok(None);
         };
+        if let Some(labels) = s.labels.get(&number) {
+            story.raw_labels = labels.clone();
+        }
         if let Some(comments) = s.free_comments.get(&number) {
             story.free_comments = Some(comments.clone());
         }

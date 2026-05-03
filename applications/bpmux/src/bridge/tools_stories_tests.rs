@@ -1395,13 +1395,9 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
         "gate_comments should contain PassDeskCheck entry: {gates:?}"
     );
 
-    // #1139 universal-reap-via-helper: pass_desk_check strips every
-    // workflow-state label in ALL_STATE_LABELS (9) except "delivered"
-    // (added via StateTransitioned). 8x TagRemoved + GateCommentAppended
-    // + StateTransitioned = 10.
     let pushed = adapter.pushed_events();
-    assert_eq!(pushed.len(), 10, "10 events expected: {pushed:?}");
-    let reap_labels: Vec<&str> = pushed[..8]
+    assert_eq!(pushed.len(), 3, "3 events expected post-#1156: {pushed:?}");
+    let reap_labels: Vec<&str> = pushed[..1]
         .iter()
         .filter_map(|e| match e {
             BoardEvent::TagRemoved {
@@ -1412,20 +1408,11 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
         .collect();
     assert_eq!(
         reap_labels,
-        vec![
-            "icebox",
-            "ready",
-            "in progress",
-            "desk-check",
-            "ready for accept",
-            "needs fixes",
-            "rejected",
-            "accepted",
-        ],
-        "#1139 universal-reap iterates ALL_STATE_LABELS minus 'delivered'"
+        vec!["desk-check"],
+        "post-#1156 pre-filter: only present-stale 'desk-check' label reaped"
     );
     assert!(matches!(
-        &pushed[8],
+        &pushed[1],
         BoardEvent::GateCommentAppended {
             number: 201,
             gate: Gate::PassDeskCheck,
@@ -1434,7 +1421,7 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
         }
     ));
     assert!(matches!(
-        &pushed[9],
+        &pushed[2],
         BoardEvent::StateTransitioned {
             number: 201,
             new_state: StoryState::Delivered,
@@ -1488,14 +1475,9 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
         "gate_comments should contain FailDeskCheck with payload: {gates:?}"
     );
 
-    // #1146 slice 1: fail_desk_check transitions DeskCheck → InProgress
-    // (back-edge); reap keeps "in progress" so post-fail label-set
-    // carries only the new-state label. ALL_STATE_LABELS has 9 entries;
-    // 8x TagRemoved (everything except "in progress") + GateCommentAppended
-    // + StateTransitioned = 10 events.
     let pushed = adapter.pushed_events();
-    assert_eq!(pushed.len(), 10, "10 events expected: {pushed:?}");
-    let reap_labels: Vec<&str> = pushed[..8]
+    assert_eq!(pushed.len(), 3, "3 events expected post-#1156: {pushed:?}");
+    let reap_labels: Vec<&str> = pushed[..1]
         .iter()
         .filter_map(|e| match e {
             BoardEvent::TagRemoved {
@@ -1506,20 +1488,11 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
         .collect();
     assert_eq!(
         reap_labels,
-        vec![
-            "icebox",
-            "ready",
-            "desk-check",
-            "delivered",
-            "ready for accept",
-            "needs fixes",
-            "rejected",
-            "accepted",
-        ],
-        "#1146 slice 1: universal-reap iterates ALL_STATE_LABELS minus 'in progress'"
+        vec!["delivered"],
+        "post-#1156 pre-filter: only present-stale 'delivered' label reaped"
     );
     assert!(matches!(
-        &pushed[8],
+        &pushed[1],
         BoardEvent::GateCommentAppended {
             number: 202,
             gate: Gate::FailDeskCheck,
@@ -1528,7 +1501,7 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
         } if p == "test failure"
     ));
     assert!(matches!(
-        &pushed[9],
+        &pushed[2],
         BoardEvent::StateTransitioned {
             number: 202,
             new_state: StoryState::InProgress,
@@ -1590,24 +1563,20 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
         "gate_comments should contain Pickup with both payload sections: {gates:?}"
     );
 
-    // #533 universal-reap on start_story: 8 TagRemoved (icebox / ready /
-    // desk-check / delivered / ready for accept / needs fixes / rejected /
-    // accepted) + GateCommentAppended(Pickup) + StateTransitioned(InProgress)
-    // = 10 events.
     let drained = orchestrator.drain_pending().await.unwrap();
-    assert_eq!(drained, 10, "10 events expected post-#533 universal-reap");
+    assert_eq!(drained, 3, "3 events expected post-#1156 pre-filter");
     let pushed = adapter.pushed_events();
-    assert_eq!(pushed.len(), 10);
+    assert_eq!(pushed.len(), 3);
     let reap_count = pushed
         .iter()
         .filter(|e| matches!(e, BoardEvent::TagRemoved { number: 203, .. }))
         .count();
     assert_eq!(
-        reap_count, 8,
-        "8 TagRemoved events expected for universal-reap"
+        reap_count, 1,
+        "post-#1156 pre-filter: only present-stale 'ready' label reaped"
     );
     assert!(matches!(
-        &pushed[8],
+        &pushed[1],
         BoardEvent::GateCommentAppended {
             number: 203,
             gate: Gate::Pickup,
@@ -1616,7 +1585,7 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
         } if p.contains("paraphrase content") && p.contains("reframing content")
     ));
     assert!(matches!(
-        &pushed[9],
+        &pushed[2],
         BoardEvent::StateTransitioned {
             number: 203,
             new_state: StoryState::InProgress,
@@ -1672,22 +1641,18 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
         "gate_comments should contain Delivered with the observation payload: {gates:?}"
     );
 
-    // #533 universal-reap on deliver_story: 8 TagRemoved (icebox / ready /
-    // in progress / delivered / ready for accept / needs fixes / rejected /
-    // accepted) + GateCommentAppended(Delivered) + StateTransitioned(DeskCheck)
-    // = 10 events.
     let pushed = adapter.pushed_events();
-    assert_eq!(pushed.len(), 10, "10 events expected post-#533: {pushed:?}");
+    assert_eq!(pushed.len(), 3, "3 events expected post-#1156: {pushed:?}");
     let reap_count = pushed
         .iter()
         .filter(|e| matches!(e, BoardEvent::TagRemoved { number: 204, .. }))
         .count();
     assert_eq!(
-        reap_count, 8,
-        "8 TagRemoved events expected for universal-reap"
+        reap_count, 1,
+        "post-#1156 pre-filter: only present-stale 'in progress' label reaped"
     );
     assert!(matches!(
-        &pushed[8],
+        &pushed[1],
         BoardEvent::GateCommentAppended {
             number: 204,
             gate: Gate::Delivered,
@@ -1696,7 +1661,7 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
         } if p == "drove the falsifier scenario end-to-end"
     ));
     assert!(matches!(
-        &pushed[9],
+        &pushed[2],
         BoardEvent::StateTransitioned {
             number: 204,
             new_state: StoryState::DeskCheck,
@@ -1748,14 +1713,9 @@ async fn accept_story_migrated_path_emits_tag_remove_gate_and_state_events() {
         "gate_comments should contain Accepted with no payload: {gates:?}"
     );
 
-    // #1139 universal-reap-via-helper: 8x TagRemoved (ALL_STATE_LABELS
-    // minus "accepted") + GateCommentAppended + StateTransitioned +
-    // StoryClosed = 11 events. The reaped labels span every workflow-
-    // state so accept_story is idempotent on whatever stale labels
-    // happen to be present pre-call.
     let pushed = adapter.pushed_events();
-    assert_eq!(pushed.len(), 11, "11 events expected: {pushed:?}");
-    let reap_labels: Vec<&str> = pushed[..8]
+    assert_eq!(pushed.len(), 4, "4 events expected post-#1156: {pushed:?}");
+    let reap_labels: Vec<&str> = pushed[..1]
         .iter()
         .filter_map(|e| match e {
             BoardEvent::TagRemoved {
@@ -1766,20 +1726,11 @@ async fn accept_story_migrated_path_emits_tag_remove_gate_and_state_events() {
         .collect();
     assert_eq!(
         reap_labels,
-        vec![
-            "icebox",
-            "ready",
-            "in progress",
-            "desk-check",
-            "delivered",
-            "ready for accept",
-            "needs fixes",
-            "rejected",
-        ],
-        "#1139 universal-reap iterates ALL_STATE_LABELS minus 'accepted'"
+        vec!["delivered"],
+        "post-#1156 pre-filter: only present-stale 'delivered' label reaped"
     );
     assert!(matches!(
-        &pushed[8],
+        &pushed[1],
         BoardEvent::GateCommentAppended {
             number: 205,
             gate: Gate::Accepted,
@@ -1788,7 +1739,7 @@ async fn accept_story_migrated_path_emits_tag_remove_gate_and_state_events() {
         }
     ));
     assert!(matches!(
-        &pushed[9],
+        &pushed[2],
         BoardEvent::StateTransitioned {
             number: 205,
             new_state: StoryState::Accepted,
@@ -1796,7 +1747,7 @@ async fn accept_story_migrated_path_emits_tag_remove_gate_and_state_events() {
         }
     ));
     assert!(matches!(
-        &pushed[10],
+        &pushed[3],
         BoardEvent::StoryClosed {
             number: 205,
             reason: None,
@@ -1830,6 +1781,14 @@ async fn accept_story_on_delivered_story_post_slice_5b_drains_full_cascade() {
         "ryan".into(),
     );
     adapter.seed_stories(vec![seeded]);
+    adapter.seed_labels(
+        5070,
+        vec![
+            "delivered".to_string(),
+            "ready for accept".to_string(),
+            "desk-check".to_string(),
+        ],
+    );
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
         Arc::clone(&adapter),
@@ -1846,8 +1805,8 @@ async fn accept_story_on_delivered_story_post_slice_5b_drains_full_cascade() {
     let pushed = adapter.pushed_events();
     assert_eq!(
         pushed.len(),
-        11,
-        "post-#1139 universal-reap-via-helper accept_story emits 11 events (8x TagRemoved over ALL_STATE_LABELS minus 'accepted' + GateCommentAppended + StateTransitioned + StoryClosed): {pushed:?}"
+        6,
+        "post-#1156 pre-filter accept_story emits 6 events (3 TagRemoved + GateCommentAppended + StateTransitioned + StoryClosed): {pushed:?}"
     );
     assert!(
         pushed.iter().any(|e| matches!(
@@ -1927,19 +1886,13 @@ async fn reject_story_migrated_path_emits_tag_remove_gate_with_reason_and_state_
         "gate_comments should contain Rejected with reason payload: {gates:?}"
     );
 
-    // #1146 slice 1: reject_story transitions Delivered → Ready
-    // (back-edge); reap keeps "ready" so post-reject label-set carries
-    // only the new-state label. 8x TagRemoved (ALL_STATE_LABELS minus
-    // "ready") + GateCommentAppended + StateTransitioned = 10 events.
-    // Cascade drains synchronously per #505 slice 2 so all events reach
-    // the adapter before return.
     let pushed = adapter.pushed_events();
     assert_eq!(
         pushed.len(),
-        10,
-        "#1146 slice 1: 8x TagRemoved + Gate + State; pushed: {pushed:?}"
+        3,
+        "post-#1156: 1 TagRemoved + Gate + State; pushed: {pushed:?}"
     );
-    let reap_labels: Vec<&str> = pushed[..8]
+    let reap_labels: Vec<&str> = pushed[..1]
         .iter()
         .filter_map(|e| match e {
             BoardEvent::TagRemoved {
@@ -1950,20 +1903,11 @@ async fn reject_story_migrated_path_emits_tag_remove_gate_with_reason_and_state_
         .collect();
     assert_eq!(
         reap_labels,
-        vec![
-            "icebox",
-            "in progress",
-            "desk-check",
-            "delivered",
-            "ready for accept",
-            "needs fixes",
-            "rejected",
-            "accepted",
-        ],
-        "#1146 slice 1: universal-reap iterates ALL_STATE_LABELS minus 'ready'"
+        vec!["delivered"],
+        "post-#1156 pre-filter: only present-stale 'delivered' label reaped"
     );
     assert!(matches!(
-        &pushed[8],
+        &pushed[1],
         BoardEvent::GateCommentAppended {
             number: 206,
             gate: Gate::Rejected,
@@ -1972,7 +1916,7 @@ async fn reject_story_migrated_path_emits_tag_remove_gate_with_reason_and_state_
         } if p == "scope mismatch"
     ));
     assert!(matches!(
-        &pushed[9],
+        &pushed[2],
         BoardEvent::StateTransitioned {
             number: 206,
             new_state: StoryState::Ready,
@@ -2493,10 +2437,11 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
         "#1142: handler drains internally; nothing left to drain"
     );
     let pushed = adapter.pushed_events();
-    // #1139 added universal-reap to close_story: 9x TagRemoved over
-    // ALL_STATE_LABELS (keep="" matches no label so all strip) +
-    // 1 StoryClosed = 10 events.
-    assert_eq!(pushed.len(), 10, "9 reaps + 1 StoryClosed: {pushed:?}");
+    assert_eq!(
+        pushed.len(),
+        2,
+        "post-#1156: 1 TagRemoved 'delivered' + 1 StoryClosed: {pushed:?}"
+    );
     assert!(
         pushed.iter().any(|e| matches!(
             e,
@@ -3547,4 +3492,75 @@ async fn deliver_story_propagates_drain_failure_at_label_remove() {
         err.contains("drain after deliver failed"),
         "error must name the deliver-drain stage: {err}"
     );
+}
+
+mod stale_workflow_labels_filter {
+    use super::*;
+
+    #[test]
+    fn empty_current_labels_returns_no_stale() {
+        let result = stale_workflow_labels(&[], "ready");
+        assert_eq!(result, Vec::<&str>::new());
+    }
+
+    #[test]
+    fn keep_label_excluded_even_when_present() {
+        let current = vec!["ready".to_string(), "Feature".to_string()];
+        let result = stale_workflow_labels(&current, "ready");
+        assert_eq!(result, Vec::<&str>::new());
+    }
+
+    #[test]
+    fn non_workflow_labels_excluded() {
+        let current = vec![
+            "Feature".to_string(),
+            "blocked".to_string(),
+            "type:Bug".to_string(),
+        ];
+        let result = stale_workflow_labels(&current, "ready");
+        assert_eq!(result, Vec::<&str>::new());
+    }
+
+    #[test]
+    fn single_present_workflow_label_returned_when_not_keep() {
+        let current = vec!["delivered".to_string(), "Feature".to_string()];
+        let result = stale_workflow_labels(&current, "ready");
+        assert_eq!(result, vec!["delivered"]);
+    }
+
+    #[test]
+    fn multi_workflow_labels_filtered_to_present_minus_keep() {
+        let current = vec![
+            "ready".to_string(),
+            "rejected".to_string(),
+            "needs fixes".to_string(),
+            "Feature".to_string(),
+            "blocked".to_string(),
+        ];
+        let result = stale_workflow_labels(&current, "ready");
+        assert_eq!(result.len(), 2);
+        assert!(result.contains(&"rejected"));
+        assert!(result.contains(&"needs fixes"));
+    }
+
+    #[test]
+    fn worst_case_all_workflow_labels_present_with_one_keep() {
+        let current: Vec<String> = ALL_STATE_LABELS.iter().map(|s| (*s).to_string()).collect();
+        let result = stale_workflow_labels(&current, "accepted");
+        assert_eq!(result.len(), ALL_STATE_LABELS.len() - 1);
+        assert!(!result.contains(&"accepted"));
+    }
+
+    #[test]
+    fn empty_keep_keeps_all_present_workflow_labels() {
+        let current = vec![
+            "ready".to_string(),
+            "delivered".to_string(),
+            "Feature".to_string(),
+        ];
+        let result = stale_workflow_labels(&current, KEEP_NONE);
+        assert_eq!(result.len(), 2);
+        assert!(result.contains(&"ready"));
+        assert!(result.contains(&"delivered"));
+    }
 }

@@ -53,6 +53,7 @@ fn seed_story(adapter: &InMemorySourceAdapter, number: u64, title: &str) {
         acceptance_test_path: Some("tests/integration_main_modules/rpc_canonical_store.rs".to_string()),
         filed_by: "test".to_string(),
         filed_at: Utc.with_ymd_and_hms(2026, 4, 27, 0, 0, 0).unwrap(),
+        raw_labels: Vec::new(),
     };
     adapter.seed_stories(vec![story]);
 }

@@ -71,6 +71,7 @@ impl BoardStore {
                     is_closed: false,
                     parent_epic: None,
                     acceptance_test_path: crate::bridge::parse_acceptance_test_path(body),
+                    raw_labels: Vec::new(),
                 };
                 w.insert(*n, story);
             }
@@ -205,6 +206,7 @@ impl BoardStore {
                         .collect();
                     existing.parent_epic =
                         crate::board::adapters::github::parent_epic_from_labels(labels);
+                    existing.raw_labels = labels.clone();
                 }
             }
         }
