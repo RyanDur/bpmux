@@ -64,16 +64,22 @@ pub trait StoryTracker: Clone + Send + Sync + 'static {
         &self,
         number: u64,
     ) -> impl std::future::Future<Output = Result<serde_json::Value, String>> + Send;
+    /// #1151: returns the post-mutation labels list (octocrab's
+    /// `add_labels` returns `Vec<Label>`). Capturing the labels list
+    /// lets callers re-derive the local Story state via
+    /// `state_from_labels` without a follow-up `get_story` round-trip.
     fn add_label(
         &self,
         number: u64,
         label: &str,
-    ) -> impl std::future::Future<Output = Result<String, String>> + Send;
+    ) -> impl std::future::Future<Output = Result<Vec<String>, String>> + Send;
+    /// #1151: returns the post-mutation labels list. Empty Vec on the
+    /// 404-idempotent path (label already absent).
     fn remove_label(
         &self,
         number: u64,
         label: &str,
-    ) -> impl std::future::Future<Output = Result<String, String>> + Send;
+    ) -> impl std::future::Future<Output = Result<Vec<String>, String>> + Send;
     /// #1151: returns the freshly-created Issue JSON. Includes the
     /// auto-assigned issue number; callers that previously parsed
     /// the format-string `"#{number} {title}"` should read
@@ -577,28 +583,30 @@ impl StoryTracker for OctocrabStoryTracker {
             .map_err(Self::classify)
     }
 
-    async fn add_label(&self, number: u64, label: &str) -> Result<String, String> {
+    async fn add_label(&self, number: u64, label: &str) -> Result<Vec<String>, String> {
         self.client
             .issues(&self.owner, &self.repo)
             .add_labels(number, &[label.to_string()])
             .await
-            .map(|_| format!("#{number} labeled '{label}'"))
+            .map(|labels| labels.into_iter().map(|l| l.name).collect())
             .map_err(Self::classify)
     }
 
-    async fn remove_label(&self, number: u64, label: &str) -> Result<String, String> {
+    async fn remove_label(&self, number: u64, label: &str) -> Result<Vec<String>, String> {
         match self
             .client
             .issues(&self.owner, &self.repo)
             .remove_label(number, label)
             .await
         {
-            Ok(_) => Ok(format!("#{number} unlabeled '{label}'")),
+            Ok(labels) => Ok(labels.into_iter().map(|l| l.name).collect()),
             // 404 on remove_label means the label wasn't attached —
             // treat as a successful no-op. Matches gh's lenient
             // behavior for --remove-label on an unlabeled issue.
+            // Empty Vec is the post-state we'd report; callers
+            // re-derive state from this list, so empty is safe.
             Err(octocrab::Error::GitHub { source, .. }) if source.status_code.as_u16() == 404 => {
-                Ok(format!("#{number} label '{label}' already absent"))
+                Ok(Vec::new())
             }
             Err(e) => Err(Self::classify(e)),
         }

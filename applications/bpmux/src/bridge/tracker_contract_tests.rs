@@ -104,7 +104,8 @@ async fn add_label_posts_to_labels_endpoint_with_array_body() {
     let tracker = mock_tracker(&server);
     let result = tracker.add_label(42, "ready").await;
     m.assert();
-    assert_eq!(result, Ok("#42 labeled 'ready'".to_string()));
+    // #1151: add_label now returns the post-mutation labels list.
+    assert_eq!(result, Ok(vec!["ready".to_string()]));
 }
 
 #[tokio::test]
@@ -139,7 +140,9 @@ async fn remove_label_succeeds_on_200() {
     let tracker = mock_tracker(&server);
     let result = tracker.remove_label(42, "ready").await;
     m.assert();
-    assert_eq!(result, Ok("#42 unlabeled 'ready'".to_string()));
+    // #1151: remove_label now returns the post-mutation labels list.
+    // Mock returns `[]`; the labels list is empty post-remove.
+    assert_eq!(result, Ok(Vec::<String>::new()));
 }
 
 #[tokio::test]
