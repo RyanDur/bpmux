@@ -49,8 +49,16 @@ fn get_story_returns_full_payload_for_existing_story() {
             "payload exposes title verbatim; got {story:?}"
         );
         assert!(
-            story["state"].is_string(),
-            "payload exposes state field; got {story:?}"
+            story["workflow_state"].is_string(),
+            "payload exposes workflow_state field (renamed from state per #1144); got {story:?}"
+        );
+        assert!(
+            story["is_closed"].is_boolean(),
+            "payload exposes is_closed bool field (added per #1144); got {story:?}"
+        );
+        assert!(
+            story.get("state").is_none(),
+            "legacy `state` field removed per #1144; only workflow_state + is_closed appear"
         );
         assert!(
             story["body"].is_string(),

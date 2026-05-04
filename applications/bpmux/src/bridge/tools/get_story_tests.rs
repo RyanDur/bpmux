@@ -243,3 +243,58 @@ async fn skips_enrichment_when_no_rework_gate_comments() {
     let body = parsed["body"].as_str().expect("body is string");
     assert_eq!(body, "plain body");
 }
+
+#[tokio::test]
+async fn output_exposes_workflow_state_and_is_closed_separately() {
+    let mut story = make_story(101, StoryState::Accepted, Some("body"));
+    story.is_closed = true;
+    let (store, orch) = seeded_orchestrator(vec![story], vec![]).await;
+    let args = serde_json::json!({"number": 101});
+    let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orch))
+        .await
+        .expect("should succeed");
+    let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
+    assert_eq!(parsed["workflow_state"], "accepted");
+    assert_eq!(parsed["is_closed"], true);
+    assert!(
+        parsed.get("state").is_none(),
+        "post-#1144: legacy `state` field is removed; only workflow_state + is_closed appear"
+    );
+}
+
+#[tokio::test]
+async fn divergent_case_workflow_ready_but_gh_closed_observable() {
+    let mut story = make_story(102, StoryState::Ready, Some("body"));
+    story.is_closed = true;
+    let (store, orch) = seeded_orchestrator(vec![story], vec![]).await;
+    let args = serde_json::json!({"number": 102});
+    let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orch))
+        .await
+        .expect("should succeed");
+    let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
+    assert_eq!(
+        parsed["workflow_state"], "ready",
+        "workflow axis reports Ready independent of GH-state"
+    );
+    assert_eq!(
+        parsed["is_closed"], true,
+        "GH-state axis reports is_closed=true even though workflow != Accepted"
+    );
+}
+
+#[tokio::test]
+async fn divergent_case_workflow_accepted_but_gh_open_observable() {
+    let mut story = make_story(103, StoryState::Accepted, Some("body"));
+    story.is_closed = false;
+    let (store, orch) = seeded_orchestrator(vec![story], vec![]).await;
+    let args = serde_json::json!({"number": 103});
+    let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orch))
+        .await
+        .expect("should succeed");
+    let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
+    assert_eq!(parsed["workflow_state"], "accepted");
+    assert_eq!(
+        parsed["is_closed"], false,
+        "GH-state axis reports is_closed=false even though workflow == Accepted (the 2026-05-02 false-success class)"
+    );
+}
