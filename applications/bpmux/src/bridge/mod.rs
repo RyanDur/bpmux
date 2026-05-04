@@ -21,7 +21,7 @@ use tokio_tungstenite::tungstenite;
 
 mod rpc_client;
 pub(crate) mod tools;
-mod tools_stories;
+pub(crate) mod tools_stories;
 pub(crate) mod tracker;
 
 #[cfg(test)]

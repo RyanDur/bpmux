@@ -199,7 +199,7 @@ const mergeComments = (
   return [...server, ...survivors]
 }
 
-type ActionMode = 'idle' | 'rejecting'
+type ActionMode = 'idle' | 'bug-question' | 'rejecting'
 type BusyKind = 'accept' | 'reject' | null
 
 const TOAST_MS = 4000
@@ -258,12 +258,8 @@ const DrillIn = ({
 
   const comments = serverComments === null ? null : mergeComments(serverComments, optimistic)
 
-  // #498: reject-form is now a native modal `<dialog>` driven by
-  // `mode === 'rejecting'` via showModal()/close() in useEffect.
-  // Native focus-trap + Escape-to-close + restore-on-close;
-  // CSS handles enter ([open] + @starting-style) + exit
-  // (:not([open])) animations.
   const rejectDialogRef = useRef<HTMLDialogElement | null>(null)
+  const bugQuestionDialogRef = useRef<HTMLDialogElement | null>(null)
 
   // Focus the article on mount so Esc falls to our handler before
   // anything upstream intercepts.
@@ -285,6 +281,16 @@ const DrillIn = ({
     if (mode === 'rejecting' && !dialog.open) {
       dialog.showModal()
     } else if (mode !== 'rejecting' && dialog.open) {
+      dialog.close()
+    }
+  }, [mode])
+
+  useEffect(() => {
+    const dialog = bugQuestionDialogRef.current
+    if (!dialog) return
+    if (mode === 'bug-question' && !dialog.open) {
+      dialog.showModal()
+    } else if (mode !== 'bug-question' && dialog.open) {
       dialog.close()
     }
   }, [mode])
@@ -439,40 +445,56 @@ const DrillIn = ({
 
   const canAct = isOwner && story.state === 'delivered'
 
-  const handleAccept = useCallback(async () => {
-    if (busy !== null) return
-    setBusy('accept')
-    const rollback = (reason: string): void => {
-      setBusy(null)
-      setToast(`Accept failed: ${reason}`)
-    }
-    try {
-      if (usingMock || !apiBase) {
-        // Optimistic local mutation in mock mode so the UX is viewable
-        // without a backend.
+  const fireAccept = useCallback(
+    async (wouldFileBug: boolean): Promise<void> => {
+      if (busy !== null) return
+      setBusy('accept')
+      const rollback = (reason: string): void => {
+        setBusy(null)
+        setToast(`Accept failed: ${reason}`)
+      }
+      try {
+        if (usingMock || !apiBase) {
+          onStoryMutated({ ...story, state: 'accepted' })
+          setBusy(null)
+          onBack()
+          return
+        }
+        const res = await fetch(`${apiBase}/api/stories/${story.number}/accept`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${authToken ?? ''}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ would_file_bug: wouldFileBug })
+        })
+        if (!res.ok) {
+          const detail = await res.text().catch(() => '')
+          rollback(`HTTP ${res.status}${detail ? ` — ${detail}` : ''}`)
+          return
+        }
         onStoryMutated({ ...story, state: 'accepted' })
         setBusy(null)
         onBack()
-        return
+      } catch (err) {
+        rollback(err instanceof Error ? err.message : String(err))
       }
-      const res = await fetch(`${apiBase}/api/stories/${story.number}/accept`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${authToken ?? ''}`,
-          'Content-Type': 'application/json'
-        }
-      })
-      if (!res.ok) {
-        rollback(`HTTP ${res.status}`)
-        return
-      }
-      onStoryMutated({ ...story, state: 'accepted' })
-      setBusy(null)
-      onBack()
-    } catch (err) {
-      rollback(err instanceof Error ? err.message : String(err))
-    }
-  }, [apiBase, authToken, busy, onBack, onStoryMutated, story, usingMock])
+    },
+    [apiBase, authToken, busy, onBack, onStoryMutated, story, usingMock]
+  )
+
+  const handleAccept = useCallback((): void => {
+    setMode('bug-question')
+  }, [])
+
+  const handleAcceptConfirm = useCallback((): void => {
+    setMode('idle')
+    void fireAccept(false)
+  }, [fireAccept])
+
+  const handleAcceptRouteToReject = useCallback((): void => {
+    setMode('rejecting')
+  }, [])
 
   const handleRejectSend = useCallback(async () => {
     const trimmed = note.trim()
@@ -484,7 +506,7 @@ const DrillIn = ({
     }
     try {
       if (usingMock || !apiBase) {
-        onStoryMutated({ ...story, state: 'in-progress' })
+        onStoryMutated({ ...story, state: 'ready' })
         setBusy(null)
         setMode('idle')
         setNote('')
@@ -500,10 +522,11 @@ const DrillIn = ({
         body: JSON.stringify({ note: trimmed })
       })
       if (!res.ok) {
-        rollback(`HTTP ${res.status}`)
+        const detail = await res.text().catch(() => '')
+        rollback(`HTTP ${res.status}${detail ? ` — ${detail}` : ''}`)
         return
       }
-      onStoryMutated({ ...story, state: 'in-progress' })
+      onStoryMutated({ ...story, state: 'ready' })
       setBusy(null)
       setMode('idle')
       setNote('')
@@ -596,9 +619,8 @@ const DrillIn = ({
       if (event.defaultPrevented) return
       if (event.key === 'Escape') {
         event.preventDefault()
-        if (mode === 'rejecting') {
+        if (mode === 'rejecting' || mode === 'bug-question') {
           setMode('idle')
-          // preserve note text per spec
           return
         }
         onBack()
@@ -873,6 +895,43 @@ const DrillIn = ({
                 </li>
               </menu>
             </form>
+          </dialog>
+          <dialog
+            ref={bugQuestionDialogRef}
+            className="drill-in-bug-question"
+            aria-label="Bug-question test"
+            onClose={() => setMode('idle')}
+            data-test="drill-in-bug-question"
+          >
+            <h3>Would you file a bug about this story if you accepted it as-is?</h3>
+            <p>
+              The bug-question test catches accept-and-file-bug-as-deferral. If you would file
+              a bug, the story still has work — use Reject instead.
+            </p>
+            <menu className="drill-in-action-row">
+              <li>
+                <button
+                  type="button"
+                  className="drill-in-btn drill-in-btn--primary"
+                  disabled={busy !== null}
+                  onClick={handleAcceptConfirm}
+                  data-test="drill-in-bug-question-no"
+                >
+                  No, accept it
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  className="drill-in-btn drill-in-btn--secondary"
+                  disabled={busy !== null}
+                  onClick={handleAcceptRouteToReject}
+                  data-test="drill-in-bug-question-yes"
+                >
+                  Yes, reject instead
+                </button>
+              </li>
+            </menu>
           </dialog>
         </footer>
       ) : null}

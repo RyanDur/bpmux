@@ -729,19 +729,6 @@ fn board_issue(number: u64, title: &str, state: &str, body: Option<&str>) -> Val
     })
 }
 
-fn board_comment(body: &str) -> Value {
-    json!({
-        "id": 1,
-        "node_id": "MDEyOklzc3VlQ29tbWVudDE=",
-        "url": "https://example.test/comments/1",
-        "html_url": "https://example.test/web/comment/1",
-        "body": body,
-        "author_association": "OWNER",
-        "user": board_author(),
-        "created_at": "2026-04-18T00:00:00Z"
-    })
-}
-
 fn tracker_for(server: &MockServer) -> crate::board::adapters::github::GitHubSourceAdapter {
     let inner = OctocrabStoryTracker::with_base_url(
         &format!("{}/", server.base_url()),
@@ -927,106 +914,63 @@ async fn get_story_returns_503_when_tracker_missing() {
 }
 
 #[tokio::test]
-async fn post_accept_story_closes_issue_and_broadcasts_invalidate() {
-    let server = MockServer::start();
-    let remove_label = server.mock(|when, then| {
-        when.method(Method::DELETE)
-            .path("/repos/acme/bpmux/issues/42/labels/delivered");
-        then.status(200)
-            .header("content-type", "application/json")
-            .body("[]");
-    });
-    let close = server.mock(|when, then| {
-        when.method(Method::PATCH)
-            .path("/repos/acme/bpmux/issues/42")
-            .body_includes("\"state\":\"closed\"");
-        then.status(200)
-            .header("content-type", "application/json")
-            .body(board_issue(42, "t", "closed", None).to_string());
-    });
-
-    let dir = TempDir::new().expect("tmpdir");
-    init_session(&dir);
-    let (session, tx) = board_test_session(&dir);
-    let mut rx = tx.subscribe();
-    let tracker = Some(Arc::new(tracker_for(&server)));
-    let router = board_router(session, tracker);
-
-    let response = post_json(router, "/api/stories/42/accept", "{}").await;
-    remove_label.assert();
-    close.assert();
-    assert_eq!(response.status(), StatusCode::OK);
-    let body = response_json(response).await;
-    assert_eq!(body["ok"], true);
-
-    // The board-invalidate broadcast must actually fire — without
-    // it, the TUI wouldn't refresh for ~60s after an HTTP-originated
-    // accept.
-    let msg = rx.try_recv().expect("board-invalidate broadcast");
-    assert_eq!(msg.message_type, session::MessageType::System);
-    assert_eq!(msg.text, crate::bridge::BOARD_INVALIDATE_MARKER);
-}
-
-#[tokio::test]
-async fn post_accept_story_returns_503_when_tracker_missing() {
+async fn post_accept_story_returns_503_when_orchestrator_missing() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
     let (session, _tx) = board_test_session(&dir);
     let router = board_router(session, None);
 
-    let response = post_json(router, "/api/stories/42/accept", "{}").await;
+    let response = post_json(
+        router,
+        "/api/stories/42/accept",
+        r#"{"would_file_bug":false}"#,
+    )
+    .await;
     assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
 }
 
 #[tokio::test]
-async fn post_reject_story_adds_label_and_posts_comment_and_broadcasts() {
-    let server = MockServer::start();
-    let remove_delivered = server.mock(|when, then| {
-        when.method(Method::DELETE)
-            .path("/repos/acme/bpmux/issues/7/labels/delivered");
-        then.status(200)
-            .header("content-type", "application/json")
-            .body("[]");
-    });
-    let add_rejected = server.mock(|when, then| {
-        when.method(Method::POST)
-            .path("/repos/acme/bpmux/issues/7/labels")
-            .body_includes("\"rejected\"");
-        then.status(200)
-            .header("content-type", "application/json")
-            .body(Value::Array(vec![]).to_string());
-    });
-    let comment = server.mock(|when, then| {
-        when.method(Method::POST)
-            .path("/repos/acme/bpmux/issues/7/comments")
-            .body_includes("needs more ACs");
-        then.status(201)
-            .header("content-type", "application/json")
-            .body(board_comment("needs more ACs").to_string());
-    });
-
+async fn post_accept_story_400_when_would_file_bug_missing() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
-    let (session, tx) = board_test_session(&dir);
-    let mut rx = tx.subscribe();
+    let (session, _tx) = board_test_session(&dir);
+    let server = MockServer::start();
+    let tracker = Some(Arc::new(tracker_for(&server)));
+    let router = board_router(session, tracker);
+
+    let response = post_json(router, "/api/stories/42/accept", "{}").await;
+    assert!(
+        response.status() == StatusCode::UNPROCESSABLE_ENTITY
+            || response.status() == StatusCode::BAD_REQUEST,
+        "missing required would_file_bug must 4xx; got {}",
+        response.status()
+    );
+}
+
+#[tokio::test]
+async fn post_accept_story_400_when_would_file_bug_true_without_force() {
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (session, _tx) = board_test_session(&dir);
+    let server = MockServer::start();
     let tracker = Some(Arc::new(tracker_for(&server)));
     let router = board_router(session, tracker);
 
     let response = post_json(
         router,
-        "/api/stories/7/reject",
-        r#"{"note":"needs more ACs"}"#,
+        "/api/stories/42/accept",
+        r#"{"would_file_bug":true}"#,
     )
     .await;
-    remove_delivered.assert();
-    add_rejected.assert();
-    comment.assert();
-    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
     let body = response_json(response).await;
-    assert_eq!(body["ok"], true);
-
-    let msg = rx.try_recv().expect("board-invalidate broadcast");
-    assert_eq!(msg.text, crate::bridge::BOARD_INVALIDATE_MARKER);
+    assert!(
+        body["error"]
+            .as_str()
+            .unwrap_or("")
+            .contains("reject_story"),
+        "would_file_bug=true must route the user to reject_story; got {body}"
+    );
 }
 
 #[tokio::test]

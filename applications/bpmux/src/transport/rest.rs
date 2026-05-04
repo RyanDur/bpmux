@@ -654,20 +654,57 @@ pub async fn get_story(
     }
 }
 
-/// POST /api/stories/:number/accept — accept a delivered story.
+#[derive(Deserialize)]
+pub struct AcceptPayload {
+    pub would_file_bug: bool,
+    #[serde(default)]
+    pub force: bool,
+    #[serde(default)]
+    pub bypass_reason: Option<String>,
+}
+
 pub async fn post_accept_story(
     State(session): State<Arc<session::Session>>,
-    axum::Extension(tracker): axum::Extension<TrackerHandle>,
+    axum::Extension(test_refresh): axum::Extension<crate::server::TestRefreshHandle>,
     axum::extract::Path(number): axum::extract::Path<u64>,
+    Json(payload): Json<AcceptPayload>,
 ) -> impl IntoResponse {
-    let Some(tracker) = tracker else {
+    let mut args = serde_json::Map::new();
+    args.insert(
+        "would_file_bug".to_string(),
+        serde_json::Value::Bool(payload.would_file_bug),
+    );
+    args.insert("force".to_string(), serde_json::Value::Bool(payload.force));
+    if let Some(r) = payload.bypass_reason.as_ref() {
+        args.insert(
+            "bypass_reason".to_string(),
+            serde_json::Value::String(r.clone()),
+        );
+    }
+    let bypass = match crate::bridge::tools_stories::verify_bug_question_or_bypass(
+        &args,
+        crate::bridge::tools_stories::BugGate::Accept,
+    ) {
+        Ok(b) => b,
+        Err(e) => {
+            return (StatusCode::BAD_REQUEST, json_headers(), err_body(&e));
+        }
+    };
+    let Some(refresh) = test_refresh.as_ref().cloned() else {
         return (
             StatusCode::SERVICE_UNAVAILABLE,
             json_headers(),
-            err_body("tracker not configured"),
+            err_body("orchestrator not configured"),
         );
     };
-    match tracker.accept_story(number).await {
+    match crate::bridge::tools_stories::accept_via_canonical_store(
+        &refresh,
+        number,
+        "ui-electron".to_string(),
+        bypass,
+    )
+    .await
+    {
         Ok(()) => {
             broadcast_board_invalidate(&session);
             (
@@ -689,33 +726,35 @@ pub struct RejectPayload {
     pub note: String,
 }
 
-/// POST /api/stories/:number/reject — reject a delivered story with
-/// a required non-empty note.
-///
-/// Note: extractor ordering matters for axum — body-consuming
-/// extractors (Json) must come LAST. Path is keyed-arg, Extension +
-/// State are shared, Json is body.
 pub async fn post_reject_story(
     State(session): State<Arc<session::Session>>,
-    axum::Extension(tracker): axum::Extension<TrackerHandle>,
+    axum::Extension(test_refresh): axum::Extension<crate::server::TestRefreshHandle>,
     axum::extract::Path(number): axum::extract::Path<u64>,
     Json(payload): Json<RejectPayload>,
 ) -> impl IntoResponse {
-    let Some(tracker) = tracker else {
-        return (
-            StatusCode::SERVICE_UNAVAILABLE,
-            json_headers(),
-            err_body("tracker not configured"),
-        );
-    };
-    if payload.note.trim().is_empty() {
+    let note = payload.note.trim().to_string();
+    if note.is_empty() {
         return (
             StatusCode::BAD_REQUEST,
             json_headers(),
             err_body("note must not be empty"),
         );
     }
-    match tracker.reject_story(number, &payload.note).await {
+    let Some(refresh) = test_refresh.as_ref().cloned() else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            json_headers(),
+            err_body("orchestrator not configured"),
+        );
+    };
+    match crate::bridge::tools_stories::reject_via_canonical_store(
+        &refresh,
+        number,
+        "ui-electron".to_string(),
+        note,
+    )
+    .await
+    {
         Ok(()) => {
             broadcast_board_invalidate(&session);
             (

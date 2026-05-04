@@ -908,53 +908,64 @@ pub(super) async fn handle_accept_story(
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
     let bypass = verify_bug_question_or_bypass(args, BugGate::Accept)?;
-    if let Some(r) = refresh {
-        r.refresh_story(number)
-            .await
-            .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?;
-    }
+    let r = refresh.ok_or(
+        "accept_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n",
+    )?;
     let role = role_from_name(agent_name);
     let signal = serde_json::to_string(&build_accept_signal(number, role))
         .map_err(|e| format!("signal: {e}"))?;
     if let Err(e) = ws_send(ws_tx, signal).await {
         crate::session::diag::log_diag(&format!("bridge: signal send failed: {e}"));
     }
-    if let Some(r) = refresh {
-        let meta = crate::board::events::EventMeta {
-            actor: crate::transport::ws::short_name(agent_name).to_string(),
-            ts: chrono::Utc::now(),
-            peer_id: crate::board::PeerId::local(),
-        };
-        reap_workflow_labels(r.as_ref(), number, &meta, "accepted")?;
-        r.mutate_sync(crate::board::BoardEvent::GateCommentAppended {
+    let actor = crate::transport::ws::short_name(agent_name).to_string();
+    accept_via_canonical_store(r, number, actor, bypass).await?;
+    broadcast_board_invalidate(ws_tx).await;
+    Ok(format!("#{number} accepted and closed"))
+}
+
+pub(crate) async fn accept_via_canonical_store(
+    refresh: &std::sync::Arc<dyn crate::board::RefreshDriver>,
+    number: u64,
+    actor: String,
+    bypass: Option<String>,
+) -> Result<(), String> {
+    refresh
+        .refresh_story(number)
+        .await
+        .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?;
+    let meta = crate::board::events::EventMeta {
+        actor,
+        ts: chrono::Utc::now(),
+        peer_id: crate::board::PeerId::local(),
+    };
+    reap_workflow_labels(refresh.as_ref(), number, &meta, "accepted")?;
+    refresh
+        .mutate_sync(crate::board::BoardEvent::GateCommentAppended {
             meta: meta.clone(),
             number,
             gate: crate::board::domain::Gate::Accepted,
-            payload: bypass.clone().map(format_bypass_payload),
+            payload: bypass.map(format_bypass_payload),
         })
         .map_err(|e| format!("#{number} gate enqueue failed: {e}"))?;
-        r.mutate_sync(crate::board::BoardEvent::StateTransitioned {
+    refresh
+        .mutate_sync(crate::board::BoardEvent::StateTransitioned {
             meta: meta.clone(),
             number,
             new_state: crate::board::domain::StoryState::Accepted,
         })
         .map_err(|e| format!("#{number} state enqueue failed: {e}"))?;
-        r.mutate_sync(crate::board::BoardEvent::StoryClosed {
+    refresh
+        .mutate_sync(crate::board::BoardEvent::StoryClosed {
             meta,
             number,
             reason: None,
         })
         .map_err(|e| format!("#{number} close enqueue failed: {e}"))?;
-        r.drain_pending()
-            .await
-            .map_err(|e| format!("#{number} drain after accept failed: {e}"))?;
-        broadcast_board_invalidate(ws_tx).await;
-        return Ok(format!("#{number} accepted and closed"));
-    }
-    Err(
-        "accept_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n"
-            .into(),
-    )
+    refresh
+        .drain_pending()
+        .await
+        .map_err(|e| format!("#{number} drain after accept failed: {e}"))?;
+    Ok(())
 }
 
 pub(super) async fn handle_reject_story(
@@ -968,62 +979,73 @@ pub(super) async fn handle_reject_story(
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
-    let was_accepted = if let Some(r) = refresh {
-        r.refresh_story(number)
-            .await
-            .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?;
-        r.story(number)
-            .map(|s| s.is_closed || s.state == crate::board::domain::StoryState::Accepted)
-            .unwrap_or(false)
-    } else {
-        false
-    };
+    let r = refresh.ok_or(
+        "reject_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n",
+    )?;
     let reason = args
         .get("reason")
         .and_then(|v| v.as_str())
-        .unwrap_or("rejected");
-    let signal = serde_json::to_string(&build_reject_signal(number, reason))
+        .unwrap_or("rejected")
+        .to_string();
+    let signal = serde_json::to_string(&build_reject_signal(number, &reason))
         .map_err(|e| format!("signal: {e}"))?;
     if let Err(e) = ws_send(ws_tx, signal).await {
         crate::session::diag::log_diag(&format!("bridge: signal send failed: {e}"));
     }
-    if let Some(r) = refresh {
-        let meta = crate::board::events::EventMeta {
-            actor: crate::transport::ws::short_name(agent_name).to_string(),
-            ts: chrono::Utc::now(),
-            peer_id: crate::board::PeerId::local(),
-        };
-        reap_workflow_labels(r.as_ref(), number, &meta, LABEL_READY)?;
-        if was_accepted {
-            r.mutate_sync(crate::board::BoardEvent::StoryReopened {
+    let actor = crate::transport::ws::short_name(agent_name).to_string();
+    reject_via_canonical_store(r, number, actor, reason.clone()).await?;
+    broadcast_board_invalidate(ws_tx).await;
+    Ok(format!("#{number} rejected: {reason}"))
+}
+
+pub(crate) async fn reject_via_canonical_store(
+    refresh: &std::sync::Arc<dyn crate::board::RefreshDriver>,
+    number: u64,
+    actor: String,
+    reason: String,
+) -> Result<(), String> {
+    refresh
+        .refresh_story(number)
+        .await
+        .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?;
+    let was_accepted = refresh
+        .story(number)
+        .map(|s| s.is_closed || s.state == crate::board::domain::StoryState::Accepted)
+        .unwrap_or(false);
+    let meta = crate::board::events::EventMeta {
+        actor,
+        ts: chrono::Utc::now(),
+        peer_id: crate::board::PeerId::local(),
+    };
+    reap_workflow_labels(refresh.as_ref(), number, &meta, LABEL_READY)?;
+    if was_accepted {
+        refresh
+            .mutate_sync(crate::board::BoardEvent::StoryReopened {
                 meta: meta.clone(),
                 number,
             })
             .map_err(|e| format!("#{number} reopen enqueue failed: {e}"))?;
-        }
-        r.mutate_sync(crate::board::BoardEvent::GateCommentAppended {
+    }
+    refresh
+        .mutate_sync(crate::board::BoardEvent::GateCommentAppended {
             meta: meta.clone(),
             number,
             gate: crate::board::domain::Gate::Rejected,
-            payload: Some(reason.to_string()),
+            payload: Some(reason),
         })
         .map_err(|e| format!("#{number} gate enqueue failed: {e}"))?;
-        r.mutate_sync(crate::board::BoardEvent::StateTransitioned {
+    refresh
+        .mutate_sync(crate::board::BoardEvent::StateTransitioned {
             meta,
             number,
             new_state: crate::board::domain::StoryState::Ready,
         })
         .map_err(|e| format!("#{number} state enqueue failed: {e}"))?;
-        r.drain_pending()
-            .await
-            .map_err(|e| format!("#{number} drain after reject failed: {e}"))?;
-        broadcast_board_invalidate(ws_tx).await;
-        return Ok(format!("#{number} rejected: {reason}"));
-    }
-    Err(
-        "reject_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n"
-            .into(),
-    )
+    refresh
+        .drain_pending()
+        .await
+        .map_err(|e| format!("#{number} drain after reject failed: {e}"))?;
+    Ok(())
 }
 
 /// Pass desk-check — designer only. Signals ryan that the story is
@@ -1491,7 +1513,7 @@ pub(super) fn build_iteration_close_signal() -> ClientMessage {
 }
 
 #[derive(Clone, Copy)]
-pub(super) enum BugGate {
+pub(crate) enum BugGate {
     Accept,
     PassDeskCheck,
 }
@@ -1519,7 +1541,7 @@ impl BugGate {
     }
 }
 
-pub(super) fn verify_bug_question_or_bypass(
+pub(crate) fn verify_bug_question_or_bypass(
     args: &serde_json::Map<String, serde_json::Value>,
     gate: BugGate,
 ) -> Result<Option<String>, String> {
