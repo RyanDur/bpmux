@@ -10,6 +10,7 @@ export default defineConfig({
   workers: 2,
   retries: 1,
   testDir: 'tests',
+  testIgnore: 'playwright/**',
   // Bump default action / expect-poll timeouts for parallel runs
   // where multiple Electron+bpmux backends share CPU at warmup.
   // Renderer derived state (e.g., sidebar-direct-{role} from
