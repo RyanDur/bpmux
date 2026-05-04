@@ -774,6 +774,31 @@ async fn octocrab_tracker_list_stories_returns_parseable_json() {
 
 #[cfg(feature = "integration_tests")]
 #[tokio::test]
+async fn octocrab_tracker_fetch_failed_tests_for_run_returns_structured_failures() {
+    use super::tracker::OctocrabStoryTracker;
+    let tracker = OctocrabStoryTracker::from_env().expect("auth configured");
+    let known_failed_run_id: u64 = 25329918989;
+    let result = tracker
+        .fetch_failed_tests_for_run(known_failed_run_id)
+        .await;
+    assert!(
+        result.is_ok(),
+        "fetch_failed_tests_for_run should succeed against ryandurling/bpmux run {known_failed_run_id}; got: {result:?}"
+    );
+    let report = result.unwrap();
+    assert_eq!(report.run_id, known_failed_run_id);
+    assert_eq!(
+        report.conclusion, "failure",
+        "known failed run should report conclusion=failure"
+    );
+    assert!(
+        !report.failures.is_empty(),
+        "structured failures should be non-empty for a known failed run"
+    );
+}
+
+#[cfg(feature = "integration_tests")]
+#[tokio::test]
 async fn octocrab_tracker_get_story_title_returns_known_story() {
     use super::tracker::OctocrabStoryTracker;
     let tracker = OctocrabStoryTracker::from_env().expect("auth configured");
