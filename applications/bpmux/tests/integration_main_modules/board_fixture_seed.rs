@@ -110,11 +110,13 @@ fn bpmux_surfaces_fixture_story_body_through_real_adapter_via_mocked_octocrab() 
             .unwrap_or_else(|| story.to_string());
         assert!(
             story_text.contains("Fixture-seed test"),
-            "get_story surfaces fixture title via real adapter; got:\n{story_text}"
+            "get_story surfaces fixture title via canonical-store; got:\n{story_text}"
         );
         assert!(
-            story_text.contains("Acceptance test path"),
-            "get_story surfaces fixture body via real adapter cascade; got:\n{story_text}"
+            story_text.contains("body_hydrated"),
+            "post-#1165 slice 1: response carries body_hydrated flag for caller; \
+             body content surfaces once background poller hydrates (slice 2+); \
+             got:\n{story_text}"
         );
     });
 }

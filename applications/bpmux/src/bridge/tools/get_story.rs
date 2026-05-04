@@ -44,41 +44,30 @@ fn rework_context_from_gates(gates: &[GateComment]) -> Option<String> {
     Some(out)
 }
 
+const NOT_HYDRATED_PLACEHOLDER: &str = "(body not yet hydrated; background poller will hydrate. \
+     Use refresh_story to force live-fetch when needed for high-stake operations.)";
+
 pub(in crate::bridge) async fn handle_get_story(
     args: &serde_json::Map<String, serde_json::Value>,
     board: Option<&Arc<BoardStore>>,
-    refresh: Option<&Arc<dyn RefreshDriver>>,
+    _refresh: Option<&Arc<dyn RefreshDriver>>,
 ) -> Result<String, String> {
     let number = args
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
-    let (b, r) = board
-        .zip(refresh)
-        .ok_or("get_story requires board + refresh — tracker fallback retired in slice 5l")?;
-    let mut story = b
+    let b = board.ok_or("get_story requires board (canonical-store)")?;
+    let story = b
         .story(number)
         .ok_or_else(|| format!("story #{number} not found in board"))?;
-    if story.body.is_none() {
-        let body = r
-            .fetch_body(number)
-            .await
-            .map_err(|e| format!("fetch body: {e}"))?;
-        story.body = Some(body);
-    }
-    let mut body_out = story.body.clone().unwrap_or_default();
+    let body_cached = story.body.as_deref();
+    let mut body_out = body_cached.unwrap_or(NOT_HYDRATED_PLACEHOLDER).to_string();
     let needs_gates = matches!(story.state, StoryState::Ready | StoryState::InProgress);
-    if needs_gates {
-        let gates = match story.gate_comments.clone() {
-            Some(g) => g,
-            None => r
-                .fetch_gate_comments(number)
-                .await
-                .map_err(|e| format!("fetch gates: {e}"))?,
-        };
-        if let Some(ctx) = rework_context_from_gates(&gates) {
-            body_out = enrich_body(&body_out, &ctx);
-        }
+    if needs_gates
+        && let Some(gates) = story.gate_comments.as_ref()
+        && let Some(ctx) = rework_context_from_gates(gates)
+    {
+        body_out = enrich_body(&body_out, &ctx);
     }
     let out = serde_json::json!({
         "number": story.number,
@@ -86,6 +75,8 @@ pub(in crate::bridge) async fn handle_get_story(
         "body": body_out,
         "state": if story.state == StoryState::Accepted { "closed" } else { "open" },
         "labels": [{"name": state_label(story.state)}],
+        "body_hydrated": body_cached.is_some(),
+        "gate_comments_hydrated": story.gate_comments.is_some(),
     });
     serde_json::to_string_pretty(&out).map_err(|e| format!("serialize story: {e}"))
 }

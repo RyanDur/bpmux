@@ -10,20 +10,25 @@ use crate::board::domain::{Gate, GateComment, Story, StoryState};
 use crate::board::{BoardStore, RefreshDriver, SyncOrchestrator};
 
 async fn seeded_orchestrator(
-    stories: Vec<Story>,
+    mut stories: Vec<Story>,
     gates: Vec<(u64, Vec<GateComment>)>,
 ) -> (Arc<BoardStore>, Arc<dyn RefreshDriver>) {
+    for (n, gs) in &gates {
+        if let Some(s) = stories.iter_mut().find(|s| s.number == *n) {
+            s.gate_comments = Some(gs.clone());
+        }
+    }
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(stories);
-    for (n, gs) in gates {
-        adapter.seed_gate_comments(n, gs);
+    adapter.seed_stories(stories.clone());
+    for (n, gs) in &gates {
+        adapter.seed_gate_comments(*n, gs.clone());
     }
+    store.seed_all(stories);
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&store),
         Arc::clone(&adapter),
     ));
-    orchestrator.refresh_all().await.unwrap();
     (store, orchestrator)
 }
 
@@ -42,11 +47,14 @@ fn make_story(number: u64, state: StoryState, body: Option<&str>) -> Story {
 }
 
 #[tokio::test]
-async fn handler_requires_board_and_refresh_after_5l_fallback_retirement() {
+async fn handler_requires_board_after_canonical_only_refactor() {
     let args = serde_json::json!({"number": 443});
     let result = handle_get_story(args.as_object().unwrap(), None, None).await;
     assert!(result.is_err());
-    assert!(result.unwrap_err().contains("requires board + refresh"));
+    assert!(
+        result.unwrap_err().contains("requires board"),
+        "post-#1165 slice 1: refresh no longer required for read; canonical-only"
+    );
 }
 
 #[tokio::test]

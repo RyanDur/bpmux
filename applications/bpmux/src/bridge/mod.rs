@@ -1118,6 +1118,8 @@ pub(crate) fn drain_interval_from_env() -> std::time::Duration {
 }
 
 #[cfg(test)]
+mod poller_middleware_tests;
+#[cfg(test)]
 mod tests;
 #[cfg(test)]
 mod tools_stories_tests;
