@@ -34,6 +34,16 @@ pub fn classify_close_error(msg: String) -> SyncError {
     }
 }
 
+/// #1165 slice 3: result of a conditional `If-None-Match` body fetch.
+/// `NotModified` carries no payload — the canonical store is already
+/// up-to-date, no event dispatched, no quota burned. `Modified` carries
+/// the fresh body + the new ETag so the reducer can seed both.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ConditionalBody {
+    NotModified,
+    Modified { body: String, etag: Option<String> },
+}
+
 pub fn is_permanent_push_failure(err: &SyncError) -> bool {
     matches!(
         err,
@@ -55,6 +65,25 @@ pub trait SourceAdapter: Send + Sync {
         &self,
         number: u64,
     ) -> impl std::future::Future<Output = Result<String, SyncError>> + Send;
+
+    /// #1165 slice 3: conditional fetch — pass the prior ETag for the
+    /// story's body to skip transfer when the upstream copy hasn't
+    /// changed (304 response). Default impl falls back to
+    /// `fetch_story_body` for adapters that don't model HTTP cache
+    /// validators (in-memory test substrate); the github adapter
+    /// overrides to issue an `If-None-Match: <prior_etag>` request and
+    /// surface `NotModified` on 304.
+    fn fetch_story_body_conditional(
+        &self,
+        number: u64,
+        _prior_etag: Option<String>,
+    ) -> impl std::future::Future<Output = Result<ConditionalBody, SyncError>> + Send {
+        async move {
+            self.fetch_story_body(number)
+                .await
+                .map(|body| ConditionalBody::Modified { body, etag: None })
+        }
+    }
 
     fn fetch_story_labels(
         &self,

@@ -155,6 +155,7 @@ impl BoardStore {
                     parent_epic: None,
                     acceptance_test_path: crate::bridge::parse_acceptance_test_path(body),
                     raw_labels: Vec::new(),
+                    body_etag: None,
                 };
                 w.insert(*n, story);
             }
@@ -201,10 +202,11 @@ impl BoardStore {
                     }
                 }
             }
-            BoardEvent::BodyFetched { body, .. } => {
+            BoardEvent::BodyFetched { body, etag, .. } => {
                 if let Some(story) = w.get_mut(&number) {
                     story.body = Some(body.clone());
                     story.acceptance_test_path = crate::bridge::parse_acceptance_test_path(body);
+                    story.body_etag = etag.clone();
                 }
             }
             BoardEvent::FreeCommentsFetched { comments, .. } => {
@@ -253,9 +255,17 @@ impl BoardStore {
                     if story.body.is_some() {
                         existing.body = story.body.clone();
                         existing.acceptance_test_path = story.acceptance_test_path.clone();
+                        // #1165 slice 3: a local mutate that rewrites
+                        // the body invalidates the prior conditional-
+                        // GET validator. The next hydration tick
+                        // re-fetches without `If-None-Match` so the
+                        // canonical store picks up the upstream
+                        // representation (which may differ from our
+                        // local mutate due to GH-side renderers).
+                        existing.body_etag = None;
                     }
                 } else {
-                    w.insert(number, story.clone());
+                    w.insert(number, (**story).clone());
                 }
             }
             // #1151: GH-API label-mutation response captured. Re-

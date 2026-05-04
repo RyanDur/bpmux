@@ -1110,6 +1110,32 @@ pub(crate) fn select_stories_to_hydrate(stories: &[crate::board::Story], limit: 
         .collect()
 }
 
+/// #1165 slice 3: pick stories that already have a body but might be
+/// stale upstream — these get re-polled with `If-None-Match: <etag>`
+/// so 304 costs no quota when the upstream copy is unchanged. Active
+/// states only (the same set as `select_stories_to_hydrate`) since
+/// icebox/accepted bodies don't change in practice.
+pub(crate) fn select_stories_to_revalidate(
+    stories: &[crate::board::Story],
+    limit: usize,
+) -> Vec<(u64, Option<String>)> {
+    use crate::board::domain::StoryState;
+    stories
+        .iter()
+        .filter(|s| {
+            matches!(
+                s.state,
+                StoryState::Ready
+                    | StoryState::InProgress
+                    | StoryState::DeskCheck
+                    | StoryState::Delivered
+            ) && s.body.is_some()
+        })
+        .take(limit)
+        .map(|s| (s.number, s.body_etag.clone()))
+        .collect()
+}
+
 pub(crate) async fn run_hydration_loop(
     refresh: Arc<dyn crate::board::RefreshDriver>,
     interval: std::time::Duration,
@@ -1121,8 +1147,16 @@ pub(crate) async fn run_hydration_loop(
         ticker.tick().await;
         let stories = refresh.all_stories();
         let to_hydrate = select_stories_to_hydrate(&stories, HYDRATION_MAX_PER_TICK);
-        for number in to_hydrate {
-            match refresh.fetch_body(number).await {
+        for (number, prior_etag) in
+            to_hydrate
+                .into_iter()
+                .map(|n| (n, None::<String>))
+                .chain(select_stories_to_revalidate(
+                    &stories,
+                    HYDRATION_MAX_PER_TICK,
+                ))
+        {
+            match refresh.fetch_body_conditional(number, prior_etag).await {
                 Ok(_) => {}
                 Err(e) => {
                     crate::session::diag::log_diag(&format!(

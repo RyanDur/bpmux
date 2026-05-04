@@ -171,6 +171,8 @@ pub struct Story {
     pub parent_epic: Option<u64>,
     pub acceptance_test_path: Option<String>,
     pub raw_labels: Vec<String>,
+    #[serde(default)]
+    pub body_etag: Option<String>,
 }
 
 impl Story {
@@ -205,6 +207,7 @@ impl Story {
             parent_epic: None,
             acceptance_test_path: None,
             raw_labels,
+            body_etag: None,
         }
     }
 }

@@ -136,6 +136,20 @@ pub trait StoryTracker: Clone + Send + Sync + 'static {
     ) -> impl std::future::Future<Output = Result<Option<WorkflowRunEntry>, String>> + Send;
 }
 
+/// #1165 slice 3: result of `get_story_conditional`. `NotModified`
+/// when prior etag matched upstream (no body parse, no canonical
+/// mutation); `Modified` when content changed (carries the new etag
+/// for the caller to store); `NotFound` when GitHub returned 404.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ConditionalIssue {
+    NotModified,
+    Modified {
+        value: serde_json::Value,
+        etag: Option<String>,
+    },
+    NotFound,
+}
+
 /// Octocrab-backed StoryTracker. Issues HTTP requests directly
 /// to GitHub's REST API. Sole production tracker — the former
 /// `GhTracker` subprocess fallback was retired in #320 to unify
@@ -341,6 +355,68 @@ impl OctocrabStoryTracker {
             ));
         }
         serde_json::from_slice(&body).map_err(|e| format!("json parse: {e}"))
+    }
+
+    /// #1165 slice 3: conditional `If-None-Match` GET for one issue.
+    /// Returns `ConditionalIssue::NotModified` on HTTP 304 (upstream
+    /// copy unchanged; no quota cost). On 200, returns the post-decode
+    /// JSON value plus the response's ETag header so callers can store
+    /// it for the next conditional poll. Composes with #1154's
+    /// RateLimitObserver — every response (including 304/403/429) seeds
+    /// the observer's headers regardless of the conditional outcome.
+    pub async fn get_story_conditional(
+        &self,
+        number: u64,
+        prior_etag: Option<&str>,
+    ) -> Result<ConditionalIssue, String> {
+        use http_body_util::BodyExt;
+        let path = format!("/repos/{}/{}/issues/{number}", self.owner, self.repo);
+        let mut headers = http::HeaderMap::new();
+        if let Some(etag) = prior_etag
+            && let Ok(value) = http::HeaderValue::from_str(etag)
+        {
+            headers.insert("if-none-match", value);
+        }
+        let response = self
+            .client
+            ._get_with_headers(path, Some(headers))
+            .await
+            .map_err(Self::classify)?;
+        crate::github::rate_limit::capture_headers(
+            response.headers(),
+            &self.rate_limit_observer,
+            std::time::SystemTime::now(),
+        );
+        let status = response.status();
+        let etag = response
+            .headers()
+            .get("etag")
+            .and_then(|v| v.to_str().ok())
+            .map(ToString::to_string);
+        if status.as_u16() == 304 {
+            return Ok(ConditionalIssue::NotModified);
+        }
+        if status.as_u16() == 404 {
+            return Ok(ConditionalIssue::NotFound);
+        }
+        let body = response
+            .into_body()
+            .collect()
+            .await
+            .map_err(|e| format!("body collect: {e}"))?
+            .to_bytes();
+        if !status.is_success() {
+            return Err(format!(
+                "github error {status}: {}",
+                String::from_utf8_lossy(&body)
+            ));
+        }
+        let issue: octocrab::models::issues::Issue =
+            serde_json::from_slice(&body).map_err(|e| format!("json parse: {e}"))?;
+        Ok(ConditionalIssue::Modified {
+            value: issue_to_board_json(&issue),
+            etag,
+        })
     }
 
     // `fetch_board_stories` + `get_story` moved to the

@@ -51,6 +51,8 @@ pub enum BoardEvent {
         meta: EventMeta,
         number: u64,
         body: String,
+        #[serde(default)]
+        etag: Option<String>,
     },
     FreeCommentsFetched {
         meta: EventMeta,
@@ -88,7 +90,7 @@ pub enum BoardEvent {
     StoryRefreshed {
         meta: EventMeta,
         number: u64,
-        story: Story,
+        story: Box<Story>,
     },
     /// #1151: GH-API label-mutation response captured. octocrab's
     /// `add_labels` / `remove_label` return the post-mutation labels

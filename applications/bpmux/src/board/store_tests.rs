@@ -155,6 +155,7 @@ fn body_fetched_event_populates_lazy_body() {
         meta: meta("dev", 2026, "local"),
         number: 1,
         body: "fetched body text".to_string(),
+        etag: None,
     });
     assert_eq!(
         store.story(1).unwrap().body.as_deref(),

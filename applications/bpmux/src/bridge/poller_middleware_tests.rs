@@ -154,6 +154,130 @@ async fn select_stories_to_hydrate_returns_empty_when_all_hydrated() {
 }
 
 #[tokio::test]
+async fn body_fetched_event_with_etag_stores_etag_on_canonical_story() {
+    use crate::board::events::BoardEvent;
+    let store = BoardStore::new();
+    store.seed_all(vec![seed_minimal(9000, StoryState::Ready)]);
+    store.apply(&BoardEvent::BodyFetched {
+        meta: crate::board::orchestrator::cache_fill_meta(),
+        number: 9000,
+        body: "hydrated body content".to_string(),
+        etag: Some("W/\"deadbeef\"".to_string()),
+    });
+    let story = store.story(9000).expect("story present");
+    assert_eq!(story.body.as_deref(), Some("hydrated body content"));
+    assert_eq!(story.body_etag.as_deref(), Some("W/\"deadbeef\""));
+}
+
+#[tokio::test]
+async fn local_body_mutate_invalidates_prior_etag() {
+    use crate::board::events::{BoardEvent, EventMeta};
+    use crate::board::peer::PeerId;
+    let store = BoardStore::new();
+    let mut seed = seed_minimal(9100, StoryState::Ready);
+    seed.body = Some("v1".to_string());
+    seed.body_etag = Some("W/\"etag-v1\"".to_string());
+    store.seed_all(vec![seed.clone()]);
+    let mut updated = seed;
+    updated.body = Some("v2".to_string());
+    store.apply(&BoardEvent::StoryRefreshed {
+        meta: EventMeta {
+            actor: "test".to_string(),
+            ts: Utc::now(),
+            peer_id: PeerId::local(),
+        },
+        number: 9100,
+        story: Box::new(updated),
+    });
+    let after = store.story(9100).expect("story present");
+    assert_eq!(after.body.as_deref(), Some("v2"));
+    assert_eq!(
+        after.body_etag, None,
+        "local mutate cleared prior etag so next conditional poll re-fetches"
+    );
+}
+
+#[tokio::test]
+async fn fetch_body_conditional_dispatches_event_with_etag_on_modified() {
+    use crate::board::events::BoardEvent;
+    use crate::board::sync::ConditionalBody;
+    use crate::board::{RefreshDriver, SyncOrchestrator};
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    adapter.seed_stories(vec![seed_minimal(9001, StoryState::Ready)]);
+    adapter.seed_body(9001, "real body".into());
+    let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+    orch.ingest_once().await.unwrap();
+    let mut rx = store.subscribe();
+    let result = RefreshDriver::fetch_body_conditional(&orch, 9001, None)
+        .await
+        .expect("conditional fetch ok");
+    assert!(matches!(result, ConditionalBody::Modified { .. }));
+    let event = rx.recv().await.expect("event dispatched");
+    assert!(matches!(
+        event,
+        BoardEvent::BodyFetched { number: 9001, .. }
+    ));
+    assert_eq!(
+        store.story(9001).unwrap().body.as_deref(),
+        Some("real body")
+    );
+}
+
+#[tokio::test]
+async fn select_stories_to_revalidate_picks_already_hydrated_active_stories() {
+    use crate::bridge::select_stories_to_revalidate;
+    let mut active_with_body = seed_minimal(700, StoryState::Ready);
+    active_with_body.body = Some("body".to_string());
+    active_with_body.body_etag = Some("etag-700".to_string());
+    let mut active_no_body = seed_minimal(701, StoryState::InProgress);
+    active_no_body.body = None;
+    let mut accepted_with_body = seed_minimal(702, StoryState::Accepted);
+    accepted_with_body.body = Some("body".to_string());
+    let mut icebox_with_body = seed_minimal(703, StoryState::Icebox);
+    icebox_with_body.body = Some("body".to_string());
+    let stories = vec![
+        active_with_body,
+        active_no_body,
+        accepted_with_body,
+        icebox_with_body,
+    ];
+    let picks = select_stories_to_revalidate(&stories, 10);
+    assert!(
+        picks
+            .iter()
+            .any(|(n, e)| *n == 700 && e.as_deref() == Some("etag-700")),
+        "active+hydrated stories selected with their etag: {picks:?}"
+    );
+    assert!(
+        !picks.iter().any(|(n, _)| *n == 701),
+        "missing-body stories left to hydration loop: {picks:?}"
+    );
+    assert!(
+        !picks.iter().any(|(n, _)| *n == 702),
+        "accepted stories not revalidated: {picks:?}"
+    );
+    assert!(
+        !picks.iter().any(|(n, _)| *n == 703),
+        "icebox stories not revalidated: {picks:?}"
+    );
+}
+
+#[tokio::test]
+async fn select_stories_to_revalidate_caps_at_limit() {
+    use crate::bridge::select_stories_to_revalidate;
+    let stories: Vec<Story> = (0..10)
+        .map(|i| {
+            let mut s = seed_minimal(800 + i, StoryState::Ready);
+            s.body = Some("body".to_string());
+            s
+        })
+        .collect();
+    let picks = select_stories_to_revalidate(&stories, 2);
+    assert_eq!(picks.len(), 2, "limit caps revalidation volume");
+}
+
+#[tokio::test]
 async fn get_story_returns_gate_comments_hydrated_flag_in_response() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());

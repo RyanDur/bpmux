@@ -12,7 +12,7 @@ use super::domain::{FreeComment, GateComment, Story};
 use super::events::{BoardEvent, EventMeta};
 use super::peer::PeerId;
 use super::store::{BoardStore, PersistError};
-use super::sync::{SourceAdapter, SyncError, is_permanent_push_failure};
+use super::sync::{ConditionalBody, SourceAdapter, SyncError, is_permanent_push_failure};
 
 pub fn default_outbox_path() -> Result<PathBuf, std::io::Error> {
     if let Ok(p) = std::env::var("BPMUX_BOARD_OUTBOX_PATH")
@@ -38,6 +38,24 @@ pub trait RefreshDriver: Send + Sync {
     fn drain_pending(&self) -> BoxedFuture<'_, Result<usize, SyncError>>;
     fn reconcile_dual_state_labels(&self) -> BoxedFuture<'_, Result<usize, SyncError>>;
     fn fetch_body(&self, number: u64) -> BoxedFuture<'_, Result<String, SyncError>>;
+    /// #1165 slice 3: conditional `If-None-Match` body fetch. Returns
+    /// `NotModified` when prior etag matches upstream (no canonical
+    /// mutation, no quota burn); `Modified { body, etag }` otherwise
+    /// (canonical seeded via `BodyFetched { etag }` event). Default
+    /// impl wraps `fetch_body` for drivers that don't model conditional
+    /// GET (test mocks); the SyncOrchestrator override hits the adapter
+    /// trait method which the github adapter answers via `If-None-Match`.
+    fn fetch_body_conditional(
+        &self,
+        number: u64,
+        _prior_etag: Option<String>,
+    ) -> BoxedFuture<'_, Result<ConditionalBody, SyncError>> {
+        Box::pin(async move {
+            self.fetch_body(number)
+                .await
+                .map(|body| ConditionalBody::Modified { body, etag: None })
+        })
+    }
     fn fetch_free_comments(
         &self,
         number: u64,
@@ -194,6 +212,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                     meta: cache_fill_meta(),
                     number,
                     body: body.clone(),
+                    etag: None,
                 };
                 self.store.apply(&event);
                 record_ingest_success(&self.status);
@@ -201,6 +220,47 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             }
             Err(e) => {
                 record_error(&self.status, &format!("fetch_body({number}): {e}"));
+                Err(e)
+            }
+        }
+    }
+
+    /// #1165 slice 3: conditional GET — when `prior_etag` matches the
+    /// upstream ETag, GitHub responds 304 + the adapter returns
+    /// `ConditionalBody::NotModified`; no event is dispatched (canonical
+    /// store unchanged, no quota cost). When the body has changed (or
+    /// no prior etag), a `BodyFetched { etag }` event seeds canonical
+    /// with the new content + new etag for the next conditional poll.
+    pub async fn fetch_body_conditional(
+        &self,
+        number: u64,
+        prior_etag: Option<String>,
+    ) -> Result<ConditionalBody, SyncError> {
+        match self
+            .adapter
+            .fetch_story_body_conditional(number, prior_etag)
+            .await
+        {
+            Ok(ConditionalBody::NotModified) => {
+                record_ingest_success(&self.status);
+                Ok(ConditionalBody::NotModified)
+            }
+            Ok(ConditionalBody::Modified { body, etag }) => {
+                let event = BoardEvent::BodyFetched {
+                    meta: cache_fill_meta(),
+                    number,
+                    body: body.clone(),
+                    etag: etag.clone(),
+                };
+                self.store.apply(&event);
+                record_ingest_success(&self.status);
+                Ok(ConditionalBody::Modified { body, etag })
+            }
+            Err(e) => {
+                record_error(
+                    &self.status,
+                    &format!("fetch_body_conditional({number}): {e}"),
+                );
                 Err(e)
             }
         }
@@ -413,6 +473,14 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         Box::pin(self.fetch_body(number))
     }
 
+    fn fetch_body_conditional(
+        &self,
+        number: u64,
+        prior_etag: Option<String>,
+    ) -> BoxedFuture<'_, Result<ConditionalBody, SyncError>> {
+        Box::pin(self.fetch_body_conditional(number, prior_etag))
+    }
+
     fn fetch_free_comments(
         &self,
         number: u64,
@@ -454,7 +522,7 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
             store.apply(&BoardEvent::StoryRefreshed {
                 meta: cache_fill_meta(),
                 number,
-                story,
+                story: Box::new(story),
             });
             Ok(())
         })

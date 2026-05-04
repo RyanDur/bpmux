@@ -481,3 +481,103 @@ async fn fetch_board_stories_state_open_query_volume_reduction() {
         "open + closed paths both contribute; Accepted column hydrates from closed fetch"
     );
 }
+
+#[tokio::test]
+async fn get_story_conditional_returns_modified_with_etag_when_no_prior_etag() {
+    use super::tracker::ConditionalIssue;
+    let server = MockServer::start();
+    let issue_v = issue(42, "[Feature] etag-test", "open", vec![]);
+    let m = server.mock(|when, then| {
+        when.method(Method::GET).path("/repos/acme/bpmux/issues/42");
+        then.status(200)
+            .header("content-type", "application/json")
+            .header("etag", "W/\"abc123\"")
+            .body(issue_v.to_string());
+    });
+    let tracker = mock_tracker(&server);
+    let result = tracker
+        .get_story_conditional(42, None)
+        .await
+        .expect("conditional GET ok");
+    m.assert();
+    match result {
+        ConditionalIssue::Modified { value, etag } => {
+            assert_eq!(value["number"].as_u64(), Some(42));
+            assert_eq!(etag.as_deref(), Some("W/\"abc123\""));
+        }
+        other => panic!("expected Modified with etag, got {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn get_story_conditional_sends_if_none_match_and_returns_not_modified_on_304() {
+    use super::tracker::ConditionalIssue;
+    let server = MockServer::start();
+    let m = server.mock(|when, then| {
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/issues/77")
+            .header("if-none-match", "W/\"prior-etag\"");
+        then.status(304).header("etag", "W/\"prior-etag\"");
+    });
+    let tracker = mock_tracker(&server);
+    let result = tracker
+        .get_story_conditional(77, Some("W/\"prior-etag\""))
+        .await
+        .expect("conditional GET ok");
+    m.assert();
+    assert!(
+        matches!(result, ConditionalIssue::NotModified),
+        "304 → NotModified: {result:?}"
+    );
+}
+
+#[tokio::test]
+async fn get_story_conditional_returns_modified_with_new_etag_when_content_changed() {
+    use super::tracker::ConditionalIssue;
+    let server = MockServer::start();
+    let issue_v = issue(99, "[Feature] changed", "open", vec![]);
+    let m = server.mock(|when, then| {
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/issues/99")
+            .header("if-none-match", "W/\"old\"");
+        then.status(200)
+            .header("content-type", "application/json")
+            .header("etag", "W/\"new\"")
+            .body(issue_v.to_string());
+    });
+    let tracker = mock_tracker(&server);
+    let result = tracker
+        .get_story_conditional(99, Some("W/\"old\""))
+        .await
+        .expect("conditional GET ok");
+    m.assert();
+    match result {
+        ConditionalIssue::Modified { etag, .. } => {
+            assert_eq!(etag.as_deref(), Some("W/\"new\""));
+        }
+        other => panic!("expected Modified with new etag, got {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn get_story_conditional_returns_not_found_on_404() {
+    use super::tracker::ConditionalIssue;
+    let server = MockServer::start();
+    let m = server.mock(|when, then| {
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/issues/9999");
+        then.status(404)
+            .header("content-type", "application/json")
+            .body(r#"{"message":"Not Found"}"#);
+    });
+    let tracker = mock_tracker(&server);
+    let result = tracker
+        .get_story_conditional(9999, None)
+        .await
+        .expect("conditional GET ok (404 is a structured outcome)");
+    m.assert();
+    assert!(
+        matches!(result, ConditionalIssue::NotFound),
+        "404 → NotFound: {result:?}"
+    );
+}

@@ -3,8 +3,8 @@ use chrono::{DateTime, Utc};
 use crate::board::domain::{FreeComment, Gate, GateComment, Story, StoryState, Tag};
 use crate::board::events::{BoardEvent, EventMeta};
 use crate::board::peer::PeerId;
-use crate::board::sync::{SourceAdapter, SyncError};
-use crate::bridge::tracker::{OctocrabStoryTracker, StoryTracker};
+use crate::board::sync::{ConditionalBody, SourceAdapter, SyncError};
+use crate::bridge::tracker::{ConditionalIssue, OctocrabStoryTracker, StoryTracker};
 
 pub struct GitHubSourceAdapter {
     inner: OctocrabStoryTracker,
@@ -102,6 +102,32 @@ impl SourceAdapter for GitHubSourceAdapter {
         }
     }
 
+    async fn fetch_story_body_conditional(
+        &self,
+        number: u64,
+        prior_etag: Option<String>,
+    ) -> Result<ConditionalBody, SyncError> {
+        match self
+            .inner
+            .get_story_conditional(number, prior_etag.as_deref())
+            .await
+        {
+            Ok(ConditionalIssue::NotModified) => Ok(ConditionalBody::NotModified),
+            Ok(ConditionalIssue::Modified { value, etag }) => {
+                let body = value
+                    .get("body")
+                    .and_then(|x| x.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                Ok(ConditionalBody::Modified { body, etag })
+            }
+            Ok(ConditionalIssue::NotFound) => {
+                Err(SyncError::Other(format!("story #{number} not found")))
+            }
+            Err(e) => Err(SyncError::Other(e)),
+        }
+    }
+
     async fn fetch_story_labels(&self, number: u64) -> Result<Vec<String>, SyncError> {
         Ok(self.inner.get_story_labels(number).await)
     }
@@ -167,7 +193,7 @@ impl SourceAdapter for GitHubSourceAdapter {
                             decode_story_metadata(&value).map(|story| BoardEvent::StoryRefreshed {
                                 meta: crate::board::orchestrator::cache_fill_meta(),
                                 number: *number,
-                                story,
+                                story: Box::new(story),
                             }),
                         )
                     }
@@ -188,7 +214,7 @@ impl SourceAdapter for GitHubSourceAdapter {
                     decode_story_metadata(&value).map(|story| BoardEvent::StoryRefreshed {
                         meta: crate::board::orchestrator::cache_fill_meta(),
                         number: *number,
-                        story,
+                        story: Box::new(story),
                     }),
                 )
             }
