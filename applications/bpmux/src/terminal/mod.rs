@@ -4,7 +4,6 @@ mod board;
 pub(crate) mod board_poller;
 mod board_view;
 mod chat;
-pub(crate) mod ci;
 mod commands;
 pub mod event;
 mod event_dispatch;
@@ -28,8 +27,6 @@ mod app_tests;
 mod board_poller_tests;
 #[cfg(test)]
 mod board_tests;
-#[cfg(test)]
-mod ci_tests;
 #[cfg(test)]
 mod event_tests;
 #[cfg(test)]

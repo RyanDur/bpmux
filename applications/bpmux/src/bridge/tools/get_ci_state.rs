@@ -4,7 +4,7 @@
 //! report. Pure `build_ci_state_report` is separated from the fetch
 //! so unit tests cover shape without network.
 
-use crate::terminal::ci::{CiState, RunEntry, classify_runs, github_actions_url};
+use crate::ci::{CiState, RunEntry, classify_runs, github_actions_url};
 
 #[derive(Debug, serde::Serialize, PartialEq, Eq)]
 pub struct CiStateReport {

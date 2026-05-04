@@ -2,6 +2,9 @@
 
 pub mod board;
 pub mod bridge;
+pub mod ci;
+#[cfg(test)]
+mod ci_tests;
 pub mod github;
 pub mod mcp;
 pub mod reload;

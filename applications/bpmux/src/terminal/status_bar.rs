@@ -13,11 +13,11 @@ use ratatui::{
 };
 
 use super::app::App;
-use super::ci::{CiGlyphColor, render_indicator as render_ci};
 use super::theme::{
     DRACULA_COMMENT, DRACULA_CYAN, DRACULA_FG, DRACULA_GREEN, DRACULA_ORANGE, DRACULA_PINK,
     DRACULA_RED, DRACULA_SELECTION, DRACULA_YELLOW,
 };
+use crate::ci::{CiGlyphColor, render_indicator as render_ci};
 
 const MAX_STATUS_DESC: usize = 15;
 

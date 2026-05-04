@@ -135,7 +135,7 @@ pub fn spawn(
             // in_progress / unknown" looks like. Single source of
             // truth for the state vocabulary.
             let run_id = report.database_id;
-            let runs = vec![crate::terminal::ci::RunEntry {
+            let runs = vec![crate::ci::RunEntry {
                 status: report.status,
                 conclusion: report.conclusion,
                 head_sha: report.head_sha,
@@ -146,13 +146,13 @@ pub fn spawn(
                 // enabling QuotaExhausted classification.
                 annotation_message: report.annotation_message,
             }];
-            let classified = crate::terminal::ci::classify_runs(&runs);
+            let classified = crate::ci::classify_runs(&runs);
             let current: &'static str = match classified.state {
-                crate::terminal::ci::CiState::Green => "success",
-                crate::terminal::ci::CiState::Red => "failure",
-                crate::terminal::ci::CiState::Running => "in_progress",
-                crate::terminal::ci::CiState::QuotaExhausted => "quota_exhausted",
-                crate::terminal::ci::CiState::Unknown => "unknown",
+                crate::ci::CiState::Green => "success",
+                crate::ci::CiState::Red => "failure",
+                crate::ci::CiState::Running => "in_progress",
+                crate::ci::CiState::QuotaExhausted => "quota_exhausted",
+                crate::ci::CiState::Unknown => "unknown",
             };
             let observation: Observation = (run_id, current);
             if first {
@@ -163,7 +163,7 @@ pub fn spawn(
             match classify_transition(last_seen, observation) {
                 Transition::Changed { .. } => {
                     last_seen = Some(observation);
-                    let event = crate::terminal::ci::CiEvent {
+                    let event = crate::ci::CiEvent {
                         state: classified.state,
                         sha: runs[0].head_sha.clone(),
                         title: runs[0].display_title.clone(),
@@ -188,7 +188,7 @@ pub fn spawn(
 ///   silent-hold-loop class at the SERVER's runtime path (this watcher
 ///   is what `server.rs:163` spawns; the TUI's `terminal::ci::spawn_poller`
 ///   is a separate poller that doesn't run in Electron-spawned bpmux).
-fn broadcast(session: &session::Session, event: &crate::terminal::ci::CiEvent) {
+fn broadcast(session: &session::Session, event: &crate::ci::CiEvent) {
     let marker_msg = session::Message {
         from: "bpmux".to_string(),
         text: crate::bridge::CI_STATE_UPDATE_MARKER.to_string(),
@@ -199,10 +199,10 @@ fn broadcast(session: &session::Session, event: &crate::terminal::ci::CiEvent) {
     if let Err(e) = session.broadcast(&marker_msg) {
         session::diag::log_diag(&format!("ci_watcher: marker broadcast failed: {e}"));
     }
-    let Some(text) = crate::terminal::ci::compute_broadcast_text(event) else {
+    let Some(text) = crate::ci::compute_broadcast_text(event) else {
         return;
     };
-    let multi_depth = crate::terminal::ci::build_multi_depth_for_transition(event);
+    let multi_depth = crate::ci::build_multi_depth_for_transition(event);
     let activity_msg = session::Message {
         from: "bpmux".to_string(),
         text: text.clone(),
@@ -214,7 +214,7 @@ fn broadcast(session: &session::Session, event: &crate::terminal::ci::CiEvent) {
     if let Err(e) = session.broadcast(&activity_msg) {
         session::diag::log_diag(&format!("ci_watcher: activity broadcast failed: {e}"));
     }
-    let dev_signal = crate::terminal::ci::build_dev_ci_signal(&text);
+    let dev_signal = crate::ci::build_dev_ci_signal(&text);
     if let Err(e) = session.broadcast(&dev_signal) {
         session::diag::log_diag(&format!("ci_watcher: dev signal failed: {e}"));
     }

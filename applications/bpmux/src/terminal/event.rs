@@ -231,14 +231,14 @@ where
     // failures). Headless mode skips the poller entirely, so no broadcast
     // pathway runs during tests — transition logic is covered by pure
     // unit tests on `compute_broadcast_text` in `ci.rs`.
-    let (ci_tx, mut ci_rx) = mpsc::channel::<super::ci::CiState>(4);
+    let (ci_tx, mut ci_rx) = mpsc::channel::<crate::ci::CiState>(4);
     if !headless {
         // #300 hydrate: scan the already-loaded message log for the most
         // recent CI broadcast so the poller's first poll doesn't re-emit
         // a phantom "CI failed" on TUI restart during a Red period. Pure
         // scan over owned data; cheap at startup.
-        let hydrated = super::ci::hydrate_last_broadcast(&app.msg.messages);
-        super::ci::spawn_poller(ci_tx, Some(Arc::clone(&session_arc)), hydrated);
+        let hydrated = crate::ci::hydrate_last_broadcast(&app.msg.messages);
+        crate::ci::spawn_poller(ci_tx, Some(Arc::clone(&session_arc)), hydrated);
     }
 
     // Background board poller (#219). Polls GitHub REST API for issue

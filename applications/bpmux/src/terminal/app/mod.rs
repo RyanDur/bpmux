@@ -141,7 +141,7 @@ pub struct App {
     pub input_mode: InputMode,
 
     // ── CI status (#151) ──
-    pub(super) ci_state: super::ci::CiState,
+    pub(super) ci_state: crate::ci::CiState,
 
     // ── Display toggles ──
     pub display: DisplayState,
@@ -206,7 +206,7 @@ impl App {
             board_poller_tx: None,
             board_fetch_request_tx: None,
             input_mode: InputMode::Chat,
-            ci_state: super::ci::CiState::Unknown,
+            ci_state: crate::ci::CiState::Unknown,
         }
     }
 

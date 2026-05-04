@@ -762,7 +762,7 @@ fn ci_green_renders_check_glyph() {
     let backend = TestBackend::new(120, 24);
     let mut terminal = Terminal::new(backend).unwrap();
     let mut app = test_app_with(vec![chat_msg("ryan:human", "hi")]);
-    app.ci_state = super::ci::CiState::Green;
+    app.ci_state = crate::ci::CiState::Green;
     terminal.draw(|frame| render(frame, &mut app)).unwrap();
     let content = buffer_to_string(terminal.backend().buffer());
     assert!(
@@ -776,7 +776,7 @@ fn ci_red_renders_cross_glyph() {
     let backend = TestBackend::new(120, 24);
     let mut terminal = Terminal::new(backend).unwrap();
     let mut app = test_app_with(vec![chat_msg("ryan:human", "hi")]);
-    app.ci_state = super::ci::CiState::Red;
+    app.ci_state = crate::ci::CiState::Red;
     terminal.draw(|frame| render(frame, &mut app)).unwrap();
     let content = buffer_to_string(terminal.backend().buffer());
     assert!(
@@ -790,7 +790,7 @@ fn ci_running_renders_circle_glyph() {
     let backend = TestBackend::new(120, 24);
     let mut terminal = Terminal::new(backend).unwrap();
     let mut app = test_app_with(vec![chat_msg("ryan:human", "hi")]);
-    app.ci_state = super::ci::CiState::Running;
+    app.ci_state = crate::ci::CiState::Running;
     terminal.draw(|frame| render(frame, &mut app)).unwrap();
     let content = buffer_to_string(terminal.backend().buffer());
     assert!(
@@ -807,7 +807,7 @@ fn ci_indicator_does_not_evict_help_hint_on_wide_terminal() {
     let backend = TestBackend::new(120, 24);
     let mut terminal = Terminal::new(backend).unwrap();
     let mut app = test_app_with(vec![chat_msg("ryan:human", "hi")]);
-    app.ci_state = super::ci::CiState::Green;
+    app.ci_state = crate::ci::CiState::Green;
     terminal.draw(|frame| render(frame, &mut app)).unwrap();
     let content = buffer_to_string(terminal.backend().buffer());
     assert!(content.contains("CI \u{2713}"));
@@ -938,7 +938,7 @@ fn ci_indicator_fits_80x24_with_full_peer_presence() {
     app.peers
         .activity
         .insert("pm".to_string(), ("available".to_string(), Instant::now()));
-    app.ci_state = super::ci::CiState::Red;
+    app.ci_state = crate::ci::CiState::Red;
     terminal.draw(|frame| render(frame, &mut app)).unwrap();
     let content = buffer_to_string(terminal.backend().buffer());
     // Both the CI glyph AND the help hint must survive at 80 cols with

@@ -1292,9 +1292,9 @@ pub async fn get_ci(axum::Extension(tracker): axum::Extension<TrackerHandle>) ->
     };
     match tracker.list_latest_run_on_main().await {
         Ok(latest) => {
-            let runs: Vec<crate::terminal::ci::RunEntry> = latest
+            let runs: Vec<crate::ci::RunEntry> = latest
                 .iter()
-                .map(|w| crate::terminal::ci::RunEntry {
+                .map(|w| crate::ci::RunEntry {
                     status: w.status.clone(),
                     conclusion: w.conclusion.clone(),
                     head_sha: w.head_sha.clone(),

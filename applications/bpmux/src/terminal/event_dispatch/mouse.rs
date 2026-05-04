@@ -146,7 +146,7 @@ fn handle_click(col: u16, row: u16, app: &mut App) {
             && col >= start
             && col <= end
         {
-            super::super::ci::open_in_browser(super::super::ci::github_actions_url());
+            crate::ci::open_in_browser(crate::ci::github_actions_url());
             return;
         }
         if app
