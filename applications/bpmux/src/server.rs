@@ -228,9 +228,13 @@ pub async fn run_server(
             crate::bridge::drain_interval_from_env(),
         ));
         tokio::spawn(crate::bridge::run_ingest_poll_loop(
-            refresh,
+            refresh.clone(),
             crate::bridge::poll_interval_from_env(),
             tracker.as_ref().map(|t| t.rate_limit_observer()),
+        ));
+        tokio::spawn(crate::bridge::run_hydration_loop(
+            refresh,
+            crate::bridge::hydration_interval_from_env(),
         ));
     }
 

@@ -1090,6 +1090,59 @@ pub(crate) fn poll_interval_from_env() -> std::time::Duration {
     std::time::Duration::from_secs(secs.max(1))
 }
 
+const HYDRATION_MAX_PER_TICK: usize = 3;
+
+pub(crate) fn select_stories_to_hydrate(stories: &[crate::board::Story], limit: usize) -> Vec<u64> {
+    use crate::board::domain::StoryState;
+    stories
+        .iter()
+        .filter(|s| {
+            matches!(
+                s.state,
+                StoryState::Ready
+                    | StoryState::InProgress
+                    | StoryState::DeskCheck
+                    | StoryState::Delivered
+            ) && s.body.is_none()
+        })
+        .take(limit)
+        .map(|s| s.number)
+        .collect()
+}
+
+pub(crate) async fn run_hydration_loop(
+    refresh: Arc<dyn crate::board::RefreshDriver>,
+    interval: std::time::Duration,
+) {
+    let start = tokio::time::Instant::now() + interval;
+    let mut ticker = tokio::time::interval_at(start, interval);
+    ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+    loop {
+        ticker.tick().await;
+        let stories = refresh.all_stories();
+        let to_hydrate = select_stories_to_hydrate(&stories, HYDRATION_MAX_PER_TICK);
+        for number in to_hydrate {
+            match refresh.fetch_body(number).await {
+                Ok(_) => {}
+                Err(e) => {
+                    crate::session::diag::log_diag(&format!(
+                        "bridge: hydrate body #{number} failed: {e}"
+                    ));
+                    break;
+                }
+            }
+        }
+    }
+}
+
+pub(crate) fn hydration_interval_from_env() -> std::time::Duration {
+    let secs = std::env::var("BPMUX_HYDRATION_INTERVAL_SECS")
+        .ok()
+        .and_then(|s| s.parse::<u64>().ok())
+        .unwrap_or(15);
+    std::time::Duration::from_secs(secs.max(1))
+}
+
 pub(crate) async fn run_drain_loop(
     refresh: Arc<dyn crate::board::RefreshDriver>,
     interval: std::time::Duration,

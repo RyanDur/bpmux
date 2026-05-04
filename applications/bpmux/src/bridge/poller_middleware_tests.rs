@@ -103,6 +103,57 @@ async fn get_story_does_not_call_adapter_fetch_body_when_body_missing() {
 }
 
 #[tokio::test]
+async fn select_stories_to_hydrate_picks_active_states_with_missing_body() {
+    use crate::bridge::select_stories_to_hydrate;
+    let mut active = seed_minimal(100, StoryState::Ready);
+    active.body = None;
+    let mut hydrated = seed_minimal(101, StoryState::InProgress);
+    hydrated.body = Some("already-cached".to_string());
+    let mut accepted = seed_minimal(102, StoryState::Accepted);
+    accepted.body = None;
+    let mut icebox = seed_minimal(103, StoryState::Icebox);
+    icebox.body = None;
+    let mut delivered = seed_minimal(104, StoryState::Delivered);
+    delivered.body = None;
+    let stories = vec![active, hydrated, accepted, icebox, delivered];
+    let picks = select_stories_to_hydrate(&stories, 10);
+    assert!(picks.contains(&100), "active+missing picked: {picks:?}");
+    assert!(picks.contains(&104), "delivered+missing picked: {picks:?}");
+    assert!(!picks.contains(&101), "hydrated stories skipped: {picks:?}");
+    assert!(
+        !picks.contains(&102),
+        "accepted stories not prioritized for hydration: {picks:?}"
+    );
+    assert!(
+        !picks.contains(&103),
+        "icebox stories not prioritized for hydration: {picks:?}"
+    );
+}
+
+#[tokio::test]
+async fn select_stories_to_hydrate_caps_at_limit() {
+    use crate::bridge::select_stories_to_hydrate;
+    let stories: Vec<Story> = (0..10)
+        .map(|i| {
+            let mut s = seed_minimal(200 + i, StoryState::Ready);
+            s.body = None;
+            s
+        })
+        .collect();
+    let picks = select_stories_to_hydrate(&stories, 3);
+    assert_eq!(picks.len(), 3, "limit caps per-tick fetch volume");
+}
+
+#[tokio::test]
+async fn select_stories_to_hydrate_returns_empty_when_all_hydrated() {
+    use crate::bridge::select_stories_to_hydrate;
+    let mut s = seed_minimal(300, StoryState::Ready);
+    s.body = Some("already".to_string());
+    let picks = select_stories_to_hydrate(&[s], 5);
+    assert!(picks.is_empty(), "no missing-body stories = empty picks");
+}
+
+#[tokio::test]
 async fn get_story_returns_gate_comments_hydrated_flag_in_response() {
     let store = Arc::new(BoardStore::new());
     let adapter = Arc::new(InMemorySourceAdapter::new());
