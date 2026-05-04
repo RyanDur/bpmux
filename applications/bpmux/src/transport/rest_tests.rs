@@ -1377,3 +1377,104 @@ async fn post_reaction_cascade_falls_back_to_no_excerpt_when_target_absent() {
         reaction_event.text
     );
 }
+
+#[tokio::test]
+async fn get_ci_returns_unknown_when_store_empty() {
+    use crate::transport::ci_state_store::CiStateStore;
+    let store = CiStateStore::new();
+    let router = axum::Router::new()
+        .route("/api/ci", axum::routing::get(super::rest::get_ci))
+        .layer(axum::Extension(store));
+    let request = Request::builder()
+        .method("GET")
+        .uri("/api/ci")
+        .body(Body::empty())
+        .expect("build request");
+    let response = router.oneshot(request).await.expect("response");
+    assert_eq!(response.status(), StatusCode::OK);
+    let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .expect("body");
+    let json: serde_json::Value = serde_json::from_slice(&bytes).expect("json");
+    assert_eq!(json["conclusion"], "unknown");
+    assert!(
+        json["last_updated_at"].is_null(),
+        "pre-first-poll: last_updated_at is null per AC; got {}",
+        json["last_updated_at"]
+    );
+}
+
+#[tokio::test]
+async fn get_ci_returns_cached_state_with_last_updated_at_after_write() {
+    use crate::bridge::tools::CiStateReport;
+    use crate::transport::ci_state_store::CiStateStore;
+    let store = CiStateStore::new();
+    let report = CiStateReport {
+        conclusion: "success",
+        last_run_id: Some(42),
+        branch: "main",
+        url: "https://github.com/RyanDur/bpmux/actions".to_string(),
+        head_sha: Some("abc1234".to_string()),
+        display_title: Some("test".to_string()),
+        last_updated_at: None,
+    };
+    store.write(report);
+    let router = axum::Router::new()
+        .route("/api/ci", axum::routing::get(super::rest::get_ci))
+        .layer(axum::Extension(store));
+    let request = Request::builder()
+        .method("GET")
+        .uri("/api/ci")
+        .body(Body::empty())
+        .expect("build request");
+    let response = router.oneshot(request).await.expect("response");
+    assert_eq!(response.status(), StatusCode::OK);
+    let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .expect("body");
+    let json: serde_json::Value = serde_json::from_slice(&bytes).expect("json");
+    assert_eq!(json["conclusion"], "success");
+    assert_eq!(json["last_run_id"], 42);
+    assert!(
+        json["last_updated_at"].is_string(),
+        "post-write: last_updated_at is RFC3339 string per AC; got {}",
+        json["last_updated_at"]
+    );
+    let ts = json["last_updated_at"].as_str().unwrap();
+    assert!(
+        chrono::DateTime::parse_from_rfc3339(ts).is_ok(),
+        "last_updated_at parses as RFC3339: {ts}"
+    );
+}
+
+#[tokio::test]
+async fn get_ci_does_not_hit_github_when_store_has_cached_state() {
+    use crate::bridge::tools::CiStateReport;
+    use crate::transport::ci_state_store::CiStateStore;
+    let store = CiStateStore::new();
+    store.write(CiStateReport {
+        conclusion: "failure",
+        last_run_id: Some(7),
+        branch: "main",
+        url: "https://github.com/RyanDur/bpmux/actions".to_string(),
+        head_sha: Some("def5678".to_string()),
+        display_title: Some("flaky test".to_string()),
+        last_updated_at: None,
+    });
+    let router = axum::Router::new()
+        .route("/api/ci", axum::routing::get(super::rest::get_ci))
+        .layer(axum::Extension(store));
+    let start = std::time::Instant::now();
+    let request = Request::builder()
+        .method("GET")
+        .uri("/api/ci")
+        .body(Body::empty())
+        .expect("build request");
+    let response = router.oneshot(request).await.expect("response");
+    let elapsed = start.elapsed();
+    assert_eq!(response.status(), StatusCode::OK);
+    assert!(
+        elapsed < std::time::Duration::from_millis(50),
+        "get_ci must read cache in <50ms (no GH call); took {elapsed:?}"
+    );
+}

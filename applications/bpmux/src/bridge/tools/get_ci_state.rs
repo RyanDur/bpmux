@@ -6,7 +6,7 @@
 
 use crate::ci::{CiState, RunEntry, classify_runs, github_actions_url};
 
-#[derive(Debug, serde::Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, serde::Serialize, PartialEq, Eq)]
 pub struct CiStateReport {
     pub conclusion: &'static str,
     pub last_run_id: Option<u64>,
@@ -14,6 +14,8 @@ pub struct CiStateReport {
     pub url: String,
     pub head_sha: Option<String>,
     pub display_title: Option<String>,
+    #[serde(default)]
+    pub last_updated_at: Option<String>,
 }
 
 pub fn build_ci_state_report(runs: &[RunEntry]) -> CiStateReport {
@@ -22,19 +24,9 @@ pub fn build_ci_state_report(runs: &[RunEntry]) -> CiStateReport {
         CiState::Green => "success",
         CiState::Red => "failure",
         CiState::Running => "in_progress",
-        // #397 new value — distinct from "failure" so team-gate
-        // code can branch: pass-with-citation vs hard-block.
         CiState::QuotaExhausted => "quota_exhausted",
         CiState::Unknown => "unknown",
     };
-    // #341 rework: the click-through URL is always the repo's top-level
-    // Actions page, never the run-specific URL. Ryan 2026-04-22 ~22:52
-    // UTC: "CI used to take me to all the actions." The run-specific
-    // URL cost him the overview context when he was triaging state
-    // transitions; the all-actions page gives him run history + the
-    // latest run at the top. `last_run_id` stays in the payload so
-    // future callers that want the run-specific URL can synthesize
-    // it themselves.
     let url = github_actions_url().to_string();
     CiStateReport {
         conclusion,
@@ -43,6 +35,19 @@ pub fn build_ci_state_report(runs: &[RunEntry]) -> CiStateReport {
         url,
         head_sha: event.sha,
         display_title: event.title,
+        last_updated_at: None,
+    }
+}
+
+pub fn unknown_ci_state_report() -> CiStateReport {
+    CiStateReport {
+        conclusion: "unknown",
+        last_run_id: None,
+        branch: "main",
+        url: github_actions_url().to_string(),
+        head_sha: None,
+        display_title: None,
+        last_updated_at: None,
     }
 }
 

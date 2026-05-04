@@ -1160,40 +1160,19 @@ pub async fn post_acknowledge_dropped(
     )
 }
 
-pub async fn get_ci(axum::Extension(tracker): axum::Extension<TrackerHandle>) -> impl IntoResponse {
-    let Some(tracker) = tracker else {
-        return (
-            StatusCode::SERVICE_UNAVAILABLE,
-            json_headers(),
-            err_body("tracker not configured"),
-        );
-    };
-    match tracker.list_latest_run_on_main().await {
-        Ok(latest) => {
-            let runs: Vec<crate::ci::RunEntry> = latest
-                .iter()
-                .map(|w| crate::ci::RunEntry {
-                    status: w.status.clone(),
-                    conclusion: w.conclusion.clone(),
-                    head_sha: w.head_sha.clone(),
-                    display_title: w.display_title.clone(),
-                    database_id: w.database_id,
-                    annotation_message: w.annotation_message.clone(),
-                })
-                .collect();
-            let report = crate::bridge::tools::build_ci_state_report(&runs);
-            (
-                StatusCode::OK,
-                json_headers(),
-                serde_json::to_string(&report).unwrap_or_else(|_| "{}".to_string()),
-            )
-        }
-        Err(e) => (
-            StatusCode::BAD_GATEWAY,
-            json_headers(),
-            err_body(&format!("ci state failed: {e}")),
-        ),
-    }
+pub async fn get_ci(
+    axum::Extension(ci_state_store): axum::Extension<
+        crate::transport::ci_state_store::CiStateStore,
+    >,
+) -> impl IntoResponse {
+    let report = ci_state_store
+        .read()
+        .unwrap_or_else(crate::bridge::tools::unknown_ci_state_report);
+    (
+        StatusCode::OK,
+        json_headers(),
+        serde_json::to_string(&report).unwrap_or_else(|_| "{}".to_string()),
+    )
 }
 
 /// GET /api/metrics — velocity + DORA computed from the session log.

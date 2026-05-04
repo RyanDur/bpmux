@@ -41,6 +41,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::board::adapters::github::GitHubSourceAdapter;
 use crate::session;
+use crate::transport::ci_state_store::CiStateStore;
 
 pub const POLL_INTERVAL: Duration = Duration::from_secs(60);
 
@@ -83,6 +84,7 @@ pub fn classify_transition(prev: Option<Observation>, current: Observation) -> T
 pub fn spawn(
     session: Arc<session::Session>,
     tracker: Arc<GitHubSourceAdapter>,
+    ci_state_store: CiStateStore,
     ct: CancellationToken,
 ) {
     let observer = tracker.rate_limit_observer();
@@ -154,6 +156,8 @@ pub fn spawn(
                 crate::ci::CiState::QuotaExhausted => "quota_exhausted",
                 crate::ci::CiState::Unknown => "unknown",
             };
+            let cached_report = crate::bridge::tools::build_ci_state_report(&runs);
+            ci_state_store.write(cached_report);
             let observation: Observation = (run_id, current);
             if first {
                 last_seen = Some(observation);
