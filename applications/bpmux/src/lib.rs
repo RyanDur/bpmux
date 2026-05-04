@@ -185,12 +185,10 @@ fn run_server_only(cli: &Cli) -> anyhow::Result<()> {
     let port = cli.mcp_port;
     let ct = CancellationToken::new();
     let screen_capture = Arc::new(std::sync::Mutex::new(String::new()));
-    let (inject_tx, _inject_rx) =
-        tokio::sync::mpsc::channel::<crate::terminal::event::TerminalInjectEvent>(16);
     let rt = tokio::runtime::Runtime::new()?;
     rt.block_on(async move {
         session::awareness::spawn(Arc::clone(&session), session.owner_name.clone());
-        server::run_server(session, port, ct, screen_capture, inject_tx)
+        server::run_server(session, port, ct, screen_capture)
             .await
             .map_err(|e| anyhow::anyhow!("{e}"))
     })
@@ -242,22 +240,15 @@ pub fn run() -> anyhow::Result<()> {
     let ct = CancellationToken::new();
     let server_ct = ct.clone();
     let screen_capture = Arc::new(std::sync::Mutex::new(String::new()));
-    let (inject_tx, inject_rx) =
+    let (_inject_tx, inject_rx) =
         tokio::sync::mpsc::channel::<crate::terminal::event::TerminalInjectEvent>(16);
 
     let rt = tokio::runtime::Runtime::new()?;
     let screen_for_server = Arc::clone(&screen_capture);
-    let inject_for_server = inject_tx.clone();
     let result = rt.block_on(async {
         tokio::spawn(async move {
-            if let Err(e) = server::run_server(
-                server_session,
-                server_port,
-                server_ct,
-                screen_for_server,
-                inject_for_server,
-            )
-            .await
+            if let Err(e) =
+                server::run_server(server_session, server_port, server_ct, screen_for_server).await
             {
                 session::diag::log_diag(&format!("server: run error: {e}"));
             }

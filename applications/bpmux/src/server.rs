@@ -188,7 +188,6 @@ pub async fn run_server(
     port: u16,
     ct: CancellationToken,
     screen_capture: Arc<std::sync::Mutex<String>>,
-    inject_tx: tokio::sync::mpsc::Sender<crate::terminal::event::TerminalInjectEvent>,
 ) -> anyhow::Result<()> {
     // Ensure the per-run auth token exists before binding the port.
     // Failing here is loud and blocks startup — simulate endpoints
@@ -254,31 +253,7 @@ pub async fn run_server(
     let unfurl_cache: transport::unfurl::UnfurlCacheHandle =
         std::sync::Arc::new(transport::unfurl::UnfurlCache::new());
 
-    // Auth-gated sub-router: simulate_* (existing) + the owner-gate
-    // board/story mutations (new). All routes here sit behind the
-    // bearer+loopback middleware — a single token check covers both
-    // the TUI-injection surface and the issue-mutation surface.
     let gated_routes = axum::Router::new()
-        .route(
-            "/api/simulate/click",
-            axum::routing::post(transport::rest::simulate_click),
-        )
-        .route(
-            "/api/simulate/key",
-            axum::routing::post(transport::rest::simulate_key),
-        )
-        .route(
-            "/api/simulate/type",
-            axum::routing::post(transport::rest::simulate_type),
-        )
-        .route(
-            "/api/simulate/input_clear",
-            axum::routing::post(transport::rest::simulate_input_clear),
-        )
-        .route(
-            "/api/simulate/input_submit",
-            axum::routing::post(transport::rest::simulate_input_submit),
-        )
         .route("/api/board", axum::routing::get(transport::rest::get_board))
         .route(
             "/api/stories/{number}",
@@ -428,7 +403,6 @@ pub async fn run_server(
         .merge(test_routes)
         .with_state(session)
         .layer(axum::Extension(screen_capture))
-        .layer(axum::Extension(inject_tx))
         .layer(axum::Extension(tracker))
         .layer(axum::Extension(test_refresh))
         // The Electron renderer loads from Vite's dev URL or file://

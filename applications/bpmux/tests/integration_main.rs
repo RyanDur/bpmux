@@ -29,8 +29,6 @@ mod bridge_collaboration;
 mod bridge_identity;
 #[path = "integration_main_modules/briefing_e2e.rs"]
 mod briefing_e2e;
-#[path = "integration_main_modules/capture_screen_e2e.rs"]
-mod capture_screen_e2e;
 #[path = "integration_main_modules/ci_canonical.rs"]
 mod ci_canonical;
 #[path = "integration_main_modules/classifier_misfire_e2e.rs"]
@@ -127,12 +125,6 @@ mod share_message;
 mod share_message_e2e;
 #[path = "integration_main_modules/sidebar_click.rs"]
 mod sidebar_click;
-#[path = "integration_main_modules/simulate_auth_gate.rs"]
-mod simulate_auth_gate;
-#[path = "integration_main_modules/simulate_click_dispatch.rs"]
-mod simulate_click_dispatch;
-#[path = "integration_main_modules/simulate_e2e.rs"]
-mod simulate_e2e;
 #[path = "integration_main_modules/start_story_e2e.rs"]
 mod start_story_e2e;
 #[path = "integration_main_modules/state_field_rederive.rs"]
