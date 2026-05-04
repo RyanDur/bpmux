@@ -56,6 +56,21 @@ pub trait SourceAdapter: Send + Sync {
         &self,
     ) -> impl std::future::Future<Output = Result<Vec<Story>, SyncError>> + Send;
 
+    /// #1165 slice 3: incremental list-fetch — pass the timestamp of
+    /// the previous successful list-poll as `since`. GitHub's `?since=`
+    /// filter returns only issues whose `updated_at` is at or after
+    /// the supplied timestamp, so steady-state polls receive ~0 issues
+    /// when no GH-side changes occurred. Default impl wraps
+    /// `ingest_metadata` (full poll) for adapters that don't model
+    /// delta queries; the github adapter overrides to add the query
+    /// param.
+    fn ingest_metadata_since(
+        &self,
+        _since: Option<chrono::DateTime<chrono::Utc>>,
+    ) -> impl std::future::Future<Output = Result<Vec<Story>, SyncError>> + Send {
+        self.ingest_metadata()
+    }
+
     fn fetch_story_metadata(
         &self,
         number: u64,

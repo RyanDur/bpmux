@@ -419,6 +419,65 @@ impl OctocrabStoryTracker {
         })
     }
 
+    /// #1165 slice 3: list-fetch with optional `?since=<ts>` to receive
+    /// only issues whose `updated_at` is at or after the supplied
+    /// timestamp. Steady-state polls receive ~0 issues when no GH-side
+    /// changes have occurred, so per-page transfer cost approaches
+    /// zero. `since=None` falls through to the full open+closed paginated
+    /// poll (used by initial ingest + manual refresh). Composes with
+    /// the per-story ETag path: list-since narrows what we look at,
+    /// per-story conditional GET keeps body re-fetches free.
+    pub async fn fetch_board_stories_since(
+        &self,
+        since: Option<chrono::DateTime<chrono::Utc>>,
+    ) -> Result<Vec<serde_json::Value>, String> {
+        // Use the `Z` form for UTC instead of `+00:00` so the timestamp
+        // doesn't introduce a `+` into the query string (where `+` would
+        // otherwise need percent-encoding to avoid being parsed as a
+        // space).
+        let since_q = since.map(|s| {
+            format!(
+                "&since={}",
+                s.to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
+            )
+        });
+        let mut all_issues: Vec<octocrab::models::issues::Issue> = Vec::new();
+        let mut page = 1u32;
+        loop {
+            let path = format!(
+                "/repos/{}/{}/issues?state=open&per_page=100&page={}{}",
+                self.owner,
+                self.repo,
+                page,
+                since_q.as_deref().unwrap_or("")
+            );
+            let issues: Vec<octocrab::models::issues::Issue> = self.get_with_capture(path).await?;
+            let count = issues.len();
+            all_issues.extend(issues);
+            if count < 100 {
+                break;
+            }
+            page += 1;
+        }
+        let open_count = all_issues.len();
+        let closed_path = format!(
+            "/repos/{}/{}/issues?state=closed&per_page=100&sort=updated&direction=desc{}",
+            self.owner,
+            self.repo,
+            since_q.as_deref().unwrap_or("")
+        );
+        let closed: Vec<octocrab::models::issues::Issue> =
+            self.get_with_capture(closed_path).await?;
+        let closed_count = closed.len();
+        all_issues.extend(closed);
+        crate::session::diag::log_diag(&format!(
+            "github fetch_board_stories_since(since={:?}): {open_count} open (paginated) + {closed_count} closed (1-page most-recent) = {} total",
+            since.map(|s| s.to_rfc3339()),
+            all_issues.len()
+        ));
+        Ok(all_issues.iter().map(issue_to_board_json).collect())
+    }
+
     // `fetch_board_stories` + `get_story` moved to the
     // `StoryTracker` trait impl for this type (#403 — list_ready
     // + get_story MCP handlers take `&impl StoryTracker` so they
@@ -749,35 +808,7 @@ impl StoryTracker for OctocrabStoryTracker {
     }
 
     async fn fetch_board_stories(&self) -> Result<Vec<serde_json::Value>, String> {
-        let mut all_issues: Vec<octocrab::models::issues::Issue> = Vec::new();
-        let mut page = 1u32;
-        loop {
-            let path = format!(
-                "/repos/{}/{}/issues?state=open&per_page=100&page={}",
-                self.owner, self.repo, page
-            );
-            let issues: Vec<octocrab::models::issues::Issue> = self.get_with_capture(path).await?;
-            let count = issues.len();
-            all_issues.extend(issues);
-            if count < 100 {
-                break;
-            }
-            page += 1;
-        }
-        let open_count = all_issues.len();
-        let closed_path = format!(
-            "/repos/{}/{}/issues?state=closed&per_page=100&sort=updated&direction=desc",
-            self.owner, self.repo
-        );
-        let closed: Vec<octocrab::models::issues::Issue> =
-            self.get_with_capture(closed_path).await?;
-        let closed_count = closed.len();
-        all_issues.extend(closed);
-        crate::session::diag::log_diag(&format!(
-            "github fetch_board_stories: {open_count} open (paginated) + {closed_count} closed (1-page most-recent) = {} total",
-            all_issues.len()
-        ));
-        Ok(all_issues.iter().map(issue_to_board_json).collect())
+        self.fetch_board_stories_since(None).await
     }
 
     /// #403: fetch one story's full detail. Returns `Ok(None)` when

@@ -1050,11 +1050,14 @@ pub(crate) async fn run_ingest_poll_loop(
     let base_backoff = std::time::Duration::from_secs(60);
     let max_backoff = std::time::Duration::from_secs(3600);
     let mut backoff = base_backoff;
+    let mut last_poll_since: Option<chrono::DateTime<chrono::Utc>> = None;
     loop {
         ticker.tick().await;
-        match refresh.refresh_all().await {
+        let poll_started_at = chrono::Utc::now();
+        match refresh.refresh_all_since(last_poll_since).await {
             Ok(()) => {
                 backoff = base_backoff;
+                last_poll_since = Some(poll_started_at);
             }
             Err(e) => {
                 let msg = e.to_string();

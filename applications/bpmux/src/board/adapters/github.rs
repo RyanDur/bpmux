@@ -60,9 +60,16 @@ impl GitHubSourceAdapter {
 
 impl SourceAdapter for GitHubSourceAdapter {
     async fn ingest_metadata(&self) -> Result<Vec<Story>, SyncError> {
+        self.ingest_metadata_since(None).await
+    }
+
+    async fn ingest_metadata_since(
+        &self,
+        since: Option<chrono::DateTime<chrono::Utc>>,
+    ) -> Result<Vec<Story>, SyncError> {
         let values = self
             .inner
-            .fetch_board_stories()
+            .fetch_board_stories_since(since)
             .await
             .map_err(SyncError::Other)?;
         let received = values.len();
@@ -76,7 +83,8 @@ impl SourceAdapter for GitHubSourceAdapter {
             }
         }
         crate::session::diag::log_diag(&format!(
-            "github ingest_metadata: received {received} values, decoded {} stories, dropped {dropped} (no number field)",
+            "github ingest_metadata_since(since={:?}): received {received} values, decoded {} stories, dropped {dropped} (no number field)",
+            since.map(|s| s.to_rfc3339()),
             out.len()
         ));
         Ok(out)

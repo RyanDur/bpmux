@@ -407,6 +407,7 @@ fn pick_most_recent_visible_chat_treats_null_message_type_as_chat() {
 
 mod ingest_poll_loop_tests {
     use std::sync::Arc;
+    use std::sync::Mutex;
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::time::Duration;
 
@@ -420,6 +421,7 @@ mod ingest_poll_loop_tests {
         refresh_all: AtomicUsize,
         drain_pending: AtomicUsize,
         fail_after: Option<usize>,
+        since_args: Mutex<Vec<Option<chrono::DateTime<chrono::Utc>>>>,
     }
 
     impl CountingDriver {
@@ -428,6 +430,7 @@ mod ingest_poll_loop_tests {
                 refresh_all: AtomicUsize::new(0),
                 drain_pending: AtomicUsize::new(0),
                 fail_after: None,
+                since_args: Mutex::new(Vec::new()),
             }
         }
         fn failing_after(n: usize) -> Self {
@@ -435,6 +438,7 @@ mod ingest_poll_loop_tests {
                 refresh_all: AtomicUsize::new(0),
                 drain_pending: AtomicUsize::new(0),
                 fail_after: Some(n),
+                since_args: Mutex::new(Vec::new()),
             }
         }
     }
@@ -456,6 +460,16 @@ mod ingest_poll_loop_tests {
                     Ok(())
                 }
             })
+        }
+        fn refresh_all_since(
+            &self,
+            since: Option<chrono::DateTime<chrono::Utc>>,
+        ) -> BoxedFuture<'_, Result<(), SyncError>> {
+            self.since_args
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .push(since);
+            self.refresh_all()
         }
         fn mutate_sync(&self, _e: BoardEvent) -> Result<(), SyncError> {
             Ok(())
@@ -548,6 +562,74 @@ mod ingest_poll_loop_tests {
         );
         assert!(!handle.is_finished(), "task must not terminate on error");
         handle.abort();
+    }
+
+    #[tokio::test]
+    async fn ingest_loop_first_tick_passes_none_then_subsequent_ticks_pass_prior_start_time() {
+        let driver = Arc::new(CountingDriver::new());
+        let driver_dyn: Arc<dyn RefreshDriver> = driver.clone();
+        let handle = tokio::spawn(run_ingest_poll_loop(
+            driver_dyn,
+            Duration::from_millis(50),
+            None,
+        ));
+        tokio::time::sleep(Duration::from_millis(220)).await;
+        handle.abort();
+        let captured = driver
+            .since_args
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
+        assert!(
+            captured.len() >= 3,
+            "expected >=3 ticks, saw {} since args: {captured:?}",
+            captured.len()
+        );
+        assert!(
+            captured[0].is_none(),
+            "first poll uses since=None (full poll on startup): {captured:?}"
+        );
+        assert!(
+            captured[1..].iter().all(|s| s.is_some()),
+            "subsequent polls pass since=Some(prior-start-ts): {captured:?}"
+        );
+        let monotonic = captured
+            .iter()
+            .filter_map(|s| s.as_ref())
+            .collect::<Vec<_>>()
+            .windows(2)
+            .all(|w| w[0] <= w[1]);
+        assert!(
+            monotonic,
+            "since timestamps advance monotonically: {captured:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn ingest_loop_does_not_advance_since_on_failure() {
+        let driver = Arc::new(CountingDriver::failing_after(1));
+        let driver_dyn: Arc<dyn RefreshDriver> = driver.clone();
+        let handle = tokio::spawn(run_ingest_poll_loop(
+            driver_dyn,
+            Duration::from_millis(40),
+            None,
+        ));
+        tokio::time::sleep(Duration::from_millis(220)).await;
+        handle.abort();
+        let captured = driver
+            .since_args
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
+        let with_some: Vec<_> = captured.iter().filter(|s| s.is_some()).collect();
+        assert!(
+            with_some.len() >= 2,
+            "test setup must produce >=2 since-bearing ticks (1 success advances since, then failures preserve it); saw {captured:?}"
+        );
+        assert_eq!(
+            with_some[0], with_some[1],
+            "after failure, since stays at last successful tick: {captured:?}"
+        );
     }
 
     #[tokio::test]

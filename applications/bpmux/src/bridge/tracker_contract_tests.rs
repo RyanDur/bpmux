@@ -560,6 +560,69 @@ async fn get_story_conditional_returns_modified_with_new_etag_when_content_chang
 }
 
 #[tokio::test]
+async fn fetch_board_stories_since_appends_since_query_param() {
+    let server = MockServer::start();
+    let since_q = "2026-05-01T00:00:00Z";
+    let open_mock = server.mock(|when, then| {
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/issues")
+            .query_param("state", "open")
+            .query_param("since", since_q);
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(Value::Array(vec![]).to_string());
+    });
+    let closed_mock = server.mock(|when, then| {
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/issues")
+            .query_param("state", "closed")
+            .query_param("since", since_q);
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(Value::Array(vec![]).to_string());
+    });
+    let tracker = mock_tracker(&server);
+    let since = chrono::DateTime::parse_from_rfc3339("2026-05-01T00:00:00+00:00")
+        .unwrap()
+        .with_timezone(&chrono::Utc);
+    let stories = tracker
+        .fetch_board_stories_since(Some(since))
+        .await
+        .expect("fetch_board_stories_since ok");
+    open_mock.assert();
+    closed_mock.assert();
+    assert!(stories.is_empty(), "empty mock returns empty: {stories:?}");
+}
+
+#[tokio::test]
+async fn fetch_board_stories_with_no_since_omits_since_param() {
+    let server = MockServer::start();
+    let open_mock = server.mock(|when, then| {
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/issues")
+            .query_param("state", "open");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(Value::Array(vec![]).to_string());
+    });
+    let closed_mock = server.mock(|when, then| {
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/issues")
+            .query_param("state", "closed");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(Value::Array(vec![]).to_string());
+    });
+    let tracker = mock_tracker(&server);
+    let _ = tracker
+        .fetch_board_stories_since(None)
+        .await
+        .expect("full poll ok");
+    open_mock.assert();
+    closed_mock.assert();
+}
+
+#[tokio::test]
 async fn get_story_conditional_returns_not_found_on_404() {
     use super::tracker::ConditionalIssue;
     let server = MockServer::start();

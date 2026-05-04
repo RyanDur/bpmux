@@ -31,6 +31,17 @@ pub type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 pub trait RefreshDriver: Send + Sync {
     fn refresh_story(&self, number: u64) -> BoxedFuture<'_, Result<Option<Story>, SyncError>>;
     fn refresh_all(&self) -> BoxedFuture<'_, Result<(), SyncError>>;
+    /// #1165 slice 3.2: incremental list-poll variant. Default impl
+    /// wraps `refresh_all` (full poll) for drivers that don't model
+    /// delta queries (test mocks). The SyncOrchestrator override
+    /// passes `since` through to the adapter so GH-side stories
+    /// updated before the timestamp aren't transferred.
+    fn refresh_all_since(
+        &self,
+        _since: Option<chrono::DateTime<chrono::Utc>>,
+    ) -> BoxedFuture<'_, Result<(), SyncError>> {
+        self.refresh_all()
+    }
     fn mutate_sync(&self, event: BoardEvent) -> Result<(), SyncError>;
     fn snapshot_status(&self) -> SyncStatus;
     fn acknowledge_dropped(&self) -> usize;
@@ -167,7 +178,21 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     }
 
     pub async fn ingest_once(&self) -> Result<(), SyncError> {
-        match self.adapter.ingest_metadata().await {
+        self.ingest_once_since(None).await
+    }
+
+    /// #1165 slice 3.2: incremental list-poll. `since=Some(ts)` filters
+    /// to issues updated at or after `ts` (cheap when most stories
+    /// haven't changed). `since=None` does a full poll (initial
+    /// ingest, manual refresh). `seed_all` merges the delta into the
+    /// canonical store; stories not in the delta keep their current
+    /// state, which is the correct semantics — `since` is a delta
+    /// filter, not a replace operation.
+    pub async fn ingest_once_since(
+        &self,
+        since: Option<chrono::DateTime<chrono::Utc>>,
+    ) -> Result<(), SyncError> {
+        match self.adapter.ingest_metadata_since(since).await {
             Ok(stories) => {
                 self.store.seed_all(stories);
                 record_ingest_success(&self.status);
@@ -443,6 +468,13 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
 
     fn refresh_all(&self) -> BoxedFuture<'_, Result<(), SyncError>> {
         Box::pin(self.refresh_all())
+    }
+
+    fn refresh_all_since(
+        &self,
+        since: Option<chrono::DateTime<chrono::Utc>>,
+    ) -> BoxedFuture<'_, Result<(), SyncError>> {
+        Box::pin(self.ingest_once_since(since))
     }
 
     fn mutate_sync(&self, event: BoardEvent) -> Result<(), SyncError> {
