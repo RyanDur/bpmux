@@ -44,6 +44,7 @@ use crate::session;
 use crate::transport::ci_state_store::CiStateStore;
 
 pub const POLL_INTERVAL: Duration = Duration::from_secs(60);
+pub const MAX_BACKOFF: Duration = Duration::from_secs(3600);
 
 /// Classification of a tick result vs prior state. `Changed` triggers
 /// the broadcast; `Same` is a no-op. `NoData` (empty runs list) leaves
@@ -92,7 +93,7 @@ pub fn spawn(
         let mut last_seen: Option<Observation> = None;
         let mut interval = tokio::time::interval(POLL_INTERVAL);
         let base_backoff = Duration::from_secs(60);
-        let max_backoff = Duration::from_secs(3600);
+        let max_backoff = MAX_BACKOFF;
         let mut backoff = base_backoff;
         let mut first = true;
         loop {

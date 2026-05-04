@@ -5,6 +5,7 @@
 //! so unit tests cover shape without network.
 
 use crate::ci::{CiState, RunEntry, classify_runs, github_actions_url};
+use crate::transport::ci_watcher::{MAX_BACKOFF, POLL_INTERVAL};
 
 #[derive(Debug, Clone, serde::Serialize, PartialEq, Eq)]
 pub struct CiStateReport {
@@ -16,6 +17,8 @@ pub struct CiStateReport {
     pub display_title: Option<String>,
     #[serde(default)]
     pub last_updated_at: Option<String>,
+    pub poll_interval_secs: u64,
+    pub backoff_cap_secs: u64,
 }
 
 pub fn build_ci_state_report(runs: &[RunEntry]) -> CiStateReport {
@@ -36,6 +39,8 @@ pub fn build_ci_state_report(runs: &[RunEntry]) -> CiStateReport {
         head_sha: event.sha,
         display_title: event.title,
         last_updated_at: None,
+        poll_interval_secs: POLL_INTERVAL.as_secs(),
+        backoff_cap_secs: MAX_BACKOFF.as_secs(),
     }
 }
 
@@ -48,6 +53,8 @@ pub fn unknown_ci_state_report() -> CiStateReport {
         head_sha: None,
         display_title: None,
         last_updated_at: None,
+        poll_interval_secs: POLL_INTERVAL.as_secs(),
+        backoff_cap_secs: MAX_BACKOFF.as_secs(),
     }
 }
 
@@ -234,6 +241,28 @@ mod tests {
         let r = run("completed", Some("failure"), Some(7));
         let report = build_ci_state_report(&[r]);
         assert_eq!(report.conclusion, "failure");
+    }
+
+    #[test]
+    fn report_carries_poll_interval_and_backoff_cap_matching_ci_watcher_constants() {
+        let report = build_ci_state_report(&[run("completed", Some("success"), Some(1))]);
+        assert_eq!(
+            report.poll_interval_secs,
+            POLL_INTERVAL.as_secs(),
+            "report.poll_interval_secs must equal ci_watcher::POLL_INTERVAL — contract can't drift"
+        );
+        assert_eq!(
+            report.backoff_cap_secs,
+            MAX_BACKOFF.as_secs(),
+            "report.backoff_cap_secs must equal ci_watcher::MAX_BACKOFF — contract can't drift"
+        );
+    }
+
+    #[test]
+    fn unknown_report_carries_same_contract_bounds_as_built_report() {
+        let unknown = unknown_ci_state_report();
+        assert_eq!(unknown.poll_interval_secs, POLL_INTERVAL.as_secs());
+        assert_eq!(unknown.backoff_cap_secs, MAX_BACKOFF.as_secs());
     }
 
     #[test]

@@ -1402,6 +1402,16 @@ async fn get_ci_returns_unknown_when_store_empty() {
         "pre-first-poll: last_updated_at is null per AC; got {}",
         json["last_updated_at"]
     );
+    assert_eq!(
+        json["poll_interval_secs"],
+        crate::transport::ci_watcher::POLL_INTERVAL.as_secs(),
+        "AC #3: poll_interval_secs surfaces ci_watcher contract bound"
+    );
+    assert_eq!(
+        json["backoff_cap_secs"],
+        crate::transport::ci_watcher::MAX_BACKOFF.as_secs(),
+        "AC #3: backoff_cap_secs surfaces ci_watcher contract bound"
+    );
 }
 
 #[tokio::test]
@@ -1417,6 +1427,8 @@ async fn get_ci_returns_cached_state_with_last_updated_at_after_write() {
         head_sha: Some("abc1234".to_string()),
         display_title: Some("test".to_string()),
         last_updated_at: None,
+        poll_interval_secs: 60,
+        backoff_cap_secs: 3600,
     };
     store.write(report);
     let router = axum::Router::new()
@@ -1460,6 +1472,8 @@ async fn get_ci_does_not_hit_github_when_store_has_cached_state() {
         head_sha: Some("def5678".to_string()),
         display_title: Some("flaky test".to_string()),
         last_updated_at: None,
+        poll_interval_secs: 60,
+        backoff_cap_secs: 3600,
     });
     let router = axum::Router::new()
         .route("/api/ci", axum::routing::get(super::rest::get_ci))

@@ -44,6 +44,8 @@ mod tests {
             head_sha: Some("abc1234".to_string()),
             display_title: Some("test".to_string()),
             last_updated_at: None,
+            poll_interval_secs: 60,
+            backoff_cap_secs: 3600,
         }
     }
 
