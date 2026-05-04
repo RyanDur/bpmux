@@ -3,7 +3,9 @@ import { launchIsolatedWithWindow } from '../helpers/launch'
 
 test.describe('#1160 — board-group <summary> keyboard activation', () => {
   test('Enter on focused board-group summary toggles aria-expanded + details[open]', async () => {
-    const { app, win } = await launchIsolatedWithWindow()
+    const { app, win } = await launchIsolatedWithWindow({
+      extraEnv: { BPMUX_TEST_MODE: '1' }
+    })
     try {
       const summary = win.locator('[data-test="board-group-ready"]')
       const details = win.locator('details.board-group').first()
@@ -22,7 +24,9 @@ test.describe('#1160 — board-group <summary> keyboard activation', () => {
   })
 
   test('mouse-click toggle preserved (regression guard)', async () => {
-    const { app, win } = await launchIsolatedWithWindow()
+    const { app, win } = await launchIsolatedWithWindow({
+      extraEnv: { BPMUX_TEST_MODE: '1' }
+    })
     try {
       const summary = win.locator('[data-test="board-group-ready"]')
       const details = win.locator('details.board-group').first()

@@ -6,7 +6,9 @@ import { launchIsolatedWithWindow } from '../helpers/launch'
 
 test.describe('#1158 — offline-first board', () => {
   test('F1 visibility — sync-status indicator visible from any view', async () => {
-    const { app, win } = await launchIsolatedWithWindow()
+    const { app, win } = await launchIsolatedWithWindow({
+      extraEnv: { BPMUX_TEST_MODE: '1' }
+    })
     try {
       const region = win.locator('aside.sync-status-region')
       await expect(region).toBeVisible()
@@ -24,7 +26,9 @@ test.describe('#1158 — offline-first board', () => {
   })
 
   test('F2 honest-success — /api/sync-status returns SyncStatus shape', async () => {
-    const { app, win, backendPort } = await launchIsolatedWithWindow()
+    const { app, win, backendPort } = await launchIsolatedWithWindow({
+      extraEnv: { BPMUX_TEST_MODE: '1' }
+    })
     try {
       const token = await win.evaluate(
         () => (window as unknown as { bpmux?: { authToken?: string } }).bpmux?.authToken ?? ''
@@ -120,7 +124,7 @@ test.describe('#1158 — offline-first board', () => {
 
   test('F8 stale — glyph surfaces stale state when ingest exceeds threshold', async () => {
     const { app, win } = await launchIsolatedWithWindow({
-      extraEnv: { BPMUX_STALENESS_THRESHOLD_SECS: '0' }
+      extraEnv: { BPMUX_TEST_MODE: '1', BPMUX_STALENESS_THRESHOLD_SECS: '0' }
     })
     try {
       const indicator = win.locator('[data-test="sync-status-glyph"]')
