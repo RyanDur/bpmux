@@ -219,6 +219,7 @@ const DrillIn = ({
   const [mode, setMode] = useState<ActionMode>('idle')
   const [busy, setBusy] = useState<BusyKind>(null)
   const [note, setNote] = useState<string>('')
+  const [bypassReason, setBypassReason] = useState<string>('')
   const [toast, setToast] = useState<string | null>(null)
   const [serverComments, setServerComments] = useState<Comment[] | null>(null)
   const [optimistic, setOptimistic] = useState<Comment[]>([])
@@ -258,8 +259,6 @@ const DrillIn = ({
 
   const comments = serverComments === null ? null : mergeComments(serverComments, optimistic)
 
-  const rejectDialogRef = useRef<HTMLDialogElement | null>(null)
-  const bugQuestionDialogRef = useRef<HTMLDialogElement | null>(null)
 
   // Focus the article on mount so Esc falls to our handler before
   // anything upstream intercepts.
@@ -275,27 +274,7 @@ const DrillIn = ({
     }
   }, [mode])
 
-  useEffect(() => {
-    const dialog = rejectDialogRef.current
-    if (!dialog) return
-    if (mode === 'rejecting' && !dialog.open) {
-      dialog.showModal()
-    } else if (mode !== 'rejecting' && dialog.open) {
-      dialog.close()
-    }
-  }, [mode])
-
-  useEffect(() => {
-    const dialog = bugQuestionDialogRef.current
-    if (!dialog) return
-    if (mode === 'bug-question' && !dialog.open) {
-      dialog.showModal()
-    } else if (mode !== 'bug-question' && dialog.open) {
-      dialog.close()
-    }
-  }, [mode])
-
-  // #368: when the drill-in is opened via a team-accept badge click,
+// #368: when the drill-in is opened via a team-accept badge click,
   // auto-expand the timeline details + scroll the section into view
   // so the user lands directly on the audit trail. RAF defers the
   // DOM mutation past the mount commit so the scroll measurement
@@ -446,7 +425,11 @@ const DrillIn = ({
   const canAct = isOwner && story.state === 'delivered'
 
   const fireAccept = useCallback(
-    async (wouldFileBug: boolean): Promise<void> => {
+    async (payload: {
+      would_file_bug: boolean
+      force?: boolean
+      bypass_reason?: string
+    }): Promise<void> => {
       if (busy !== null) return
       setBusy('accept')
       const rollback = (reason: string): void => {
@@ -466,7 +449,7 @@ const DrillIn = ({
             Authorization: `Bearer ${authToken ?? ''}`,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ would_file_bug: wouldFileBug })
+          body: JSON.stringify(payload)
         })
         if (!res.ok) {
           const detail = await res.text().catch(() => '')
@@ -489,12 +472,20 @@ const DrillIn = ({
 
   const handleAcceptConfirm = useCallback((): void => {
     setMode('idle')
-    void fireAccept(false)
+    void fireAccept({ would_file_bug: false })
   }, [fireAccept])
 
   const handleAcceptRouteToReject = useCallback((): void => {
     setMode('rejecting')
   }, [])
+
+  const handleAcceptBypass = useCallback((): void => {
+    const trimmed = bypassReason.trim()
+    if (!trimmed) return
+    setMode('idle')
+    setBypassReason('')
+    void fireAccept({ would_file_bug: true, force: true, bypass_reason: trimmed })
+  }, [bypassReason, fireAccept])
 
   const handleRejectSend = useCallback(async () => {
     const trimmed = note.trim()
@@ -849,10 +840,9 @@ const DrillIn = ({
             </menu>
           ) : null}
           <dialog
-            ref={rejectDialogRef}
+            open={mode === 'rejecting'}
             className="drill-in-reject-form"
             aria-label="Reject story"
-            onClose={() => setMode('idle')}
           >
             <form
               onSubmit={(event) => {
@@ -897,10 +887,9 @@ const DrillIn = ({
             </form>
           </dialog>
           <dialog
-            ref={bugQuestionDialogRef}
+            open={mode === 'bug-question'}
             className="drill-in-bug-question"
             aria-label="Bug-question test"
-            onClose={() => setMode('idle')}
             data-test="drill-in-bug-question"
           >
             <h3>Would you file a bug about this story if you accepted it as-is?</h3>
@@ -932,6 +921,38 @@ const DrillIn = ({
                 </button>
               </li>
             </menu>
+            <details className="drill-in-bypass">
+              <summary>Override bug-question (require justification)</summary>
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  void handleAcceptBypass()
+                }}
+              >
+                <label className="drill-in-reject-label">
+                  <small>Bypass reason (required, recorded in audit trail)</small>
+                  <textarea
+                    value={bypassReason}
+                    onChange={(e) => setBypassReason(e.target.value)}
+                    placeholder="Why is this bypass justified?"
+                    rows={3}
+                    data-test="drill-in-bypass-reason"
+                  />
+                </label>
+                <menu className="drill-in-action-row">
+                  <li>
+                    <button
+                      type="submit"
+                      className="drill-in-btn drill-in-btn--secondary"
+                      disabled={busy !== null || bypassReason.trim().length === 0}
+                      data-test="drill-in-bypass-submit"
+                    >
+                      Force accept
+                    </button>
+                  </li>
+                </menu>
+              </form>
+            </details>
           </dialog>
         </footer>
       ) : null}
