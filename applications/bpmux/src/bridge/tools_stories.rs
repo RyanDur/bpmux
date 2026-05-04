@@ -506,7 +506,16 @@ pub(crate) fn resolve_acceptance_test_path(path: &str) -> Option<std::path::Path
 }
 
 pub(crate) fn find_repo_root() -> Option<std::path::PathBuf> {
-    let start = std::env::current_dir().ok()?;
+    if let Some(start) = std::env::current_dir().ok()
+        && let Some(root) = walk_for_git_root(&start)
+    {
+        return Some(root);
+    }
+    let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    walk_for_git_root(&manifest_dir)
+}
+
+fn walk_for_git_root(start: &std::path::Path) -> Option<std::path::PathBuf> {
     for ancestor in start.ancestors() {
         if ancestor.join(".git").exists() {
             return Some(ancestor.to_path_buf());

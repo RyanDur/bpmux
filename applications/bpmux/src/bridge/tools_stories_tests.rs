@@ -3763,6 +3763,21 @@ mod atp_validator_repo_root_tests {
     }
 
     #[test]
+    fn find_repo_root_falls_back_to_cargo_manifest_when_cwd_outside_repo() {
+        let saved = std::env::current_dir().expect("cwd");
+        let outside = std::env::temp_dir();
+        std::env::set_current_dir(&outside).expect("chdir to temp");
+        let root = find_repo_root();
+        let restore = std::env::set_current_dir(&saved);
+        assert!(restore.is_ok(), "cwd restore");
+        let root = root.expect("CARGO_MANIFEST_DIR fallback finds repo root from outside cwd");
+        assert!(
+            root.join(".git").exists(),
+            "fallback root must contain .git: {root:?}"
+        );
+    }
+
+    #[test]
     fn resolve_path_works_from_subdirectory_cwd() {
         let saved = std::env::current_dir().expect("cwd");
         let root = find_repo_root().expect("repo root");
