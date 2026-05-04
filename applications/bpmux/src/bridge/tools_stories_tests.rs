@@ -793,7 +793,7 @@ async fn octocrab_tracker_fetch_failed_tests_for_run_returns_structured_failures
     );
     assert!(
         !report.failures.is_empty(),
-        "structured failures should be non-empty for a known failed run"
+        "structured failures should be non-empty for a known failed run; got report: {report:?}"
     );
 }
 

@@ -63,7 +63,12 @@ pub(in crate::bridge) async fn handle_get_ci_log_for_run(
 
 pub fn parse_playwright_failures_from_log(run_id: u64, raw_log: &str) -> CiRunFailures {
     let mut failures = Vec::new();
-    let mut lines = raw_log.lines().peekable();
+    let stripped_log: String = raw_log
+        .lines()
+        .map(strip_gh_actions_timestamp_prefix)
+        .collect::<Vec<&str>>()
+        .join("\n");
+    let mut lines = stripped_log.lines().peekable();
     while let Some(line) = lines.next() {
         let trimmed = line.trim_start_matches([' ', '\t']);
         let after_index: &str = if let Some(rest) = trimmed
@@ -118,6 +123,23 @@ pub fn parse_playwright_failures_from_log(run_id: u64, raw_log: &str) -> CiRunFa
         },
         failures,
     }
+}
+
+fn strip_gh_actions_timestamp_prefix(line: &str) -> &str {
+    let mut chars = line.char_indices();
+    for _ in 0..30 {
+        let Some((idx, c)) = chars.next() else {
+            return line;
+        };
+        if c == 'Z' && idx > 0 {
+            let after = &line[idx + 1..];
+            return after.strip_prefix(' ').unwrap_or(after);
+        }
+        if !(c.is_ascii_digit() || matches!(c, '-' | ':' | '.' | 'T')) {
+            return line;
+        }
+    }
+    line
 }
 
 fn strip_indexed_failure_prefix(line: &str) -> Option<&str> {
@@ -246,6 +268,31 @@ Running 47 tests using 4 workers, shard 6 of 6
         let json = serde_json::to_value(&err).unwrap();
         assert_eq!(json["kind"], "run_in_progress");
         assert_eq!(json["conclusion"], "in_progress");
+    }
+
+    #[test]
+    fn parses_failures_from_gh_actions_timestamp_prefixed_log() {
+        let log = "\
+2026-05-04T16:17:35.1721141Z Running 47 tests using 4 workers, shard 6 of 6
+2026-05-04T16:17:36.0000000Z
+2026-05-04T16:26:55.1234567Z   1) tests/playwright/offline-board.spec.ts:121:7 \u{203A} #1158 \u{2014} offline-first board \u{203A} F8 stale
+2026-05-04T16:26:55.1234568Z
+2026-05-04T16:26:55.1234569Z     Test timeout of 30000ms exceeded.
+";
+        let report = parse_playwright_failures_from_log(42, log);
+        assert_eq!(report.conclusion, "failure");
+        assert_eq!(
+            report.failures.len(),
+            1,
+            "GH-Actions timestamp-prefixed log must parse"
+        );
+        let f = &report.failures[0];
+        assert_eq!(
+            f.file.as_deref(),
+            Some("tests/playwright/offline-board.spec.ts"),
+            "parser strips GH timestamps before extracting file/line"
+        );
+        assert_eq!(f.line, Some(121));
     }
 
     #[test]
