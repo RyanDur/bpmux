@@ -1,27 +1,4 @@
 #!/bin/bash
-# Pre-push hook: Playwright e2e + file-size gate.
-#
-# Install: symlink or copy this file to .git/hooks/pre-push and make
-# it executable.
-#
-# Restructure 2026-05-01: cargo nextest + npm test:unit + cargo
-# audit moved to pre-commit (fast-feedback). Pre-push runs ONLY
-# Playwright e2e — the surface that's too slow for every commit.
-#
-# Restructure 2026-05-04 (#1152): switched from 3 bash-grouped
-# Playwright invocations to 6 Playwright-native --shard=N/6 runs,
-# mirroring the CI matrix in .github/workflows/ci.yml. Each shard
-# runs on its own log; logs concatenated post-wait. Wall-clock
-# target <7min on baseline dev machine.
-#
-# Workers tuned to 3 here vs 4 in CI: CI shards run on dedicated
-# runner VMs (per-shard concurrency = 4 workers × 1 VM = 4 concurrent
-# Electrons). Locally all 6 shards spawn on one machine, so 6 × 4 =
-# 24 concurrent Electrons starves time-sensitive specs (#1158
-# offline-board F8/F9 timeout-out under 24-way contention; safe at
-# 18-way). This matches the story's flake-class clause: scope-cut
-# the local-side parallelism rather than scope-cutting test
-# coverage, since CI's shard-VMs see the full workers=4.
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
@@ -35,8 +12,6 @@ fi
 
 echo "Running pre-push quality gates (6 Playwright shards × workers=3)..."
 
-# Shard logs + exit codes — declared before launch so wait/cat
-# loops are uniform.
 declare -a shard_logs shard_pids shard_exits
 total_shards=6
 for i in $(seq 1 $total_shards); do

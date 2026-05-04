@@ -10,33 +10,17 @@ jobs:
   test:
     runs-on: ubuntu-latest
     permissions:
-      # Integration tests hit gh CLI + GitHub REST via the built-in
-      # GITHUB_TOKEN; read-only scoping per Actions least-privilege.
       contents: read
       issues: read
       actions: read
     steps:
       - uses: actions/checkout@v4
-      # Install the pinned rustc so CI runs the same version
-      # developers use locally. Keep this in sync with
-      # `rust-toolchain.toml` at the repo root — rustup respects
-      # the file locally, dtolnay's action needs the version
-      # explicitly. Bumping Rust is a two-line change: this value
-      # and the toml's `channel`.
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: "1.95.0"
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
         with:
-          # #222: skip caching target/ so the cache stays small enough
-          # to save without hitting the runner's ~14GB disk limit.
-          # Two disk-full failures today (runs 24507576081 and
-          # 24490994629) both happened in the rust-cache Post step.
-          # Keeping ~/.cargo/registry + ~/.cargo/git caches preserves
-          # the dep-download speedup while dropping the biggest
-          # artifact directory (webrtc + tokio + octocrab dominate
-          # target/).
           cache-targets: "false"
       - name: Format check
         run: cargo fmt --check
@@ -44,14 +28,6 @@ jobs:
         run: cargo clippy -- -D warnings
       - name: Test (offline + contract drift against live GitHub)
         env:
-          # `integration_tests` feature adds the real-substrate drift
-          # suite on top of the offline run. One `cargo test` invocation
-          # covers both — same target dir, no second compile cost per
-          # Ryan's flag 2026-04-19 02:40.
-          # Post-#1136 consolidation: 103 test binaries → 3, so build
-          # and test parallelism are safe to relax. cargo defaults
-          # both to num CPUs; removing the --jobs 1 / --test-threads=1
-          # constraint reduces wall-clock significantly.
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BPMUX_REPO: ${{ github.repository }}
           BPMUX_SESSION_BASE: ${{ runner.temp }}/bpmux-sessions
@@ -61,10 +37,6 @@ jobs:
           cargo install cargo-audit
           cargo audit
 
-  # #1152: Playwright e2e in CI as structural gate (closes the
-  # pre-push --no-verify bypass class). 6-shard matrix; per-shard
-  # wall-clock target <5min. Each shard is its own runner VM with
-  # 4 vCPUs; --workers=4 saturates while keeping isolation.
   playwright-e2e:
     runs-on: ubuntu-latest
     permissions:
@@ -81,11 +53,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           cache-targets: "false"
-          # Distinct key from the `test` job so Playwright shards
-          # don't compete with it for cache writes — but share the
-          # registry/git caches.
           shared-key: "playwright-e2e"
-      - name: Build bpmux Rust binary (Electron spawns target/debug/bpmux)
+      - name: Build bpmux
         run: cargo build --bin bpmux
       - uses: actions/setup-node@v4
         with:
