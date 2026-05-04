@@ -469,29 +469,50 @@ fn user_facing_story_type(t: crate::board::domain::StoryType) -> bool {
 }
 
 fn check_path_exists(path: &str) -> Result<(), String> {
-    if resolve_acceptance_test_path(path).is_some() {
-        Ok(())
-    } else {
-        Err(format!(
-            "acceptance_test_path '{path}' does not exist (cwd: {:?}, also tried repo-relative shapes). Create the test file before pickup OR fix the path.",
-            std::env::current_dir().ok()
-        ))
+    if let Some(resolved) = resolve_acceptance_test_path(path) {
+        if resolved.exists() {
+            return Ok(());
+        }
+        return Err(format!(
+            "acceptance_test_path '{path}' resolved to {resolved:?} but file is missing. Create the test file before pickup OR fix the path. (repo-root: {:?}; cwd: {:?})",
+            find_repo_root(),
+            std::env::current_dir().ok(),
+        ));
     }
+    Err(format!(
+        "acceptance_test_path '{path}' does not exist; tried absolute, repo-root-relative, and cwd-walk shapes. Create the test file before pickup OR fix the path. (repo-root: {:?}; cwd: {:?})",
+        find_repo_root(),
+        std::env::current_dir().ok(),
+    ))
 }
 
-/// Resolve `path` against several reasonable cwd shapes the
-/// electron-server vs bridge subcommand may run with. PM filings
-/// usually use repo-root-relative paths; the validator's cwd may be
-/// `applications/electron`, `applications/bpmux`, or repo root
-/// depending on how the process was launched. Try each candidate
-/// rather than forcing PM to encode the validator-internal shape.
-fn resolve_acceptance_test_path(path: &str) -> Option<std::path::PathBuf> {
-    let candidates = [
-        std::path::PathBuf::from(path),
+pub(crate) fn resolve_acceptance_test_path(path: &str) -> Option<std::path::PathBuf> {
+    let raw = std::path::PathBuf::from(path);
+    if raw.is_absolute() {
+        return raw.exists().then_some(raw);
+    }
+    if let Some(root) = find_repo_root() {
+        let from_root = root.join(path);
+        if from_root.exists() {
+            return Some(from_root);
+        }
+    }
+    let cwd_candidates = [
+        raw.clone(),
         std::path::PathBuf::from("..").join(path),
         std::path::PathBuf::from("../..").join(path),
     ];
-    candidates.into_iter().find(|p| p.exists())
+    cwd_candidates.into_iter().find(|p| p.exists())
+}
+
+pub(crate) fn find_repo_root() -> Option<std::path::PathBuf> {
+    let start = std::env::current_dir().ok()?;
+    for ancestor in start.ancestors() {
+        if ancestor.join(".git").exists() {
+            return Some(ancestor.to_path_buf());
+        }
+    }
+    None
 }
 
 fn validate_acceptance_test_path_at_pickup(
