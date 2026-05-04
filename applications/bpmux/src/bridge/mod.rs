@@ -728,6 +728,7 @@ impl ServerHandler for BridgeServer {
                 }
                 "get_token_report" => tools::handle_get_token_report().await,
                 "get_ci_state" => tools::handle_get_ci_state(&args, port).await,
+                "get_ci_log_for_run" => tools::handle_get_ci_log_for_run(&args, port).await,
                 "get_sync_status" => tools::handle_get_sync_status(None).await,
                 "view_story_commits" => tools::handle_view_story_commits(&args).await,
                 "view_commit_diff" => tools::handle_view_commit_diff(&args).await,
@@ -870,6 +871,9 @@ pub fn build_advertised_tools() -> Vec<rmcp::model::Tool> {
         crate::mcp::tools::get_ci_state_tool(
             "Returns the current CI conclusion for bpmux main branch. Queries `gh run list --branch main -L 1` and returns a JSON object: { conclusion: 'success'|'failure'|'in_progress'|'unknown', last_run_id, branch: 'main', url, head_sha, display_title }. Pull-based — agents call this on-demand to make CI-aware decisions (ship gating, handoff signaling, pickup timing) without asking Ryan to relay. No permission gates; any role can call.",
         ),
+        crate::mcp::tools::get_ci_log_for_run_tool(
+            "Returns structured per-test failure records for a specific GH Actions run id (#1174). Args: { run_id: int }. Returns JSON `{ run_id, conclusion, failures: [{ shard_id, test_name, file, line, error_message, retry_count }] }`. Use after `get_ci_state` reports `failure` and you have the `last_run_id` — closes the diagnostic gap that previously forced agents to ask Ryan for gh-web logs. Cached per run_id with TTL-forever for completed runs (append-only-immutable); in-progress runs return a named error shape `{ kind: 'run_in_progress', conclusion }` rather than empty results. Any role can call.",
+        ),
         crate::mcp::tools::get_sync_status_tool(
             "#451: inspect the board-sync orchestrator's current state. Returns JSON `{last_ingest_at, last_push_at, pending_events, last_error}` — the same observability surface the Electron app reads to show a source-down indicator. Use to diagnose why a mutation failed (refresh-before-write reports `source unreachable`), confirm a background ingest ran, or check the pending-push buffer depth. Any role can call.",
         ),
@@ -992,6 +996,7 @@ pub const DISPATCHED_TOOL_NAMES: &[&str] = &[
     "remove_principle",
     "get_token_report",
     "get_ci_state",
+    "get_ci_log_for_run",
     "get_sync_status",
     "view_story_commits",
     "view_commit_diff",

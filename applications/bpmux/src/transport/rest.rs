@@ -1214,6 +1214,52 @@ pub async fn get_ci(
     )
 }
 
+pub async fn get_ci_log(
+    axum::Extension(tracker): axum::Extension<TrackerHandle>,
+    axum::Extension(ci_log_store): axum::Extension<crate::transport::ci_log_store::CiLogStore>,
+    axum::extract::Path(run_id): axum::extract::Path<u64>,
+) -> impl IntoResponse {
+    if let Some(cached) = ci_log_store.read(run_id) {
+        return (
+            StatusCode::OK,
+            json_headers(),
+            serde_json::to_string(&cached).unwrap_or_else(|_| "{}".to_string()),
+        );
+    }
+    let Some(tracker) = tracker else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            json_headers(),
+            err_body("tracker not configured"),
+        );
+    };
+    match tracker.fetch_failed_tests_for_run(run_id).await {
+        Ok(failures) => {
+            ci_log_store.write(run_id, failures.clone());
+            (
+                StatusCode::OK,
+                json_headers(),
+                serde_json::to_string(&failures).unwrap_or_else(|_| "{}".to_string()),
+            )
+        }
+        Err(err) => {
+            let status = match &err {
+                crate::bridge::tools::CiLogError::RunNotFound { .. } => StatusCode::NOT_FOUND,
+                crate::bridge::tools::CiLogError::RunInProgress { .. } => StatusCode::ACCEPTED,
+                crate::bridge::tools::CiLogError::RateLimited { .. } => {
+                    StatusCode::TOO_MANY_REQUESTS
+                }
+                crate::bridge::tools::CiLogError::UpstreamError { .. } => StatusCode::BAD_GATEWAY,
+            };
+            (
+                status,
+                json_headers(),
+                serde_json::to_string(&err).unwrap_or_else(|_| "{}".to_string()),
+            )
+        }
+    }
+}
+
 /// GET /api/metrics — velocity + DORA computed from the session log.
 /// Returns JSON mirroring `session::velocity::VelocityMetrics` so the
 /// Electron renderer can display without re-deriving.

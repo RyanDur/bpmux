@@ -49,6 +49,8 @@ mod edit_story;
 mod fail_desk_check_e2e;
 #[path = "integration_main_modules/generic_move_story.rs"]
 mod generic_move_story;
+#[path = "integration_main_modules/get_ci_log_for_run_e2e.rs"]
+mod get_ci_log_for_run_e2e;
 #[path = "integration_main_modules/get_ci_state_e2e.rs"]
 mod get_ci_state_e2e;
 #[path = "integration_main_modules/get_identity_e2e.rs"]

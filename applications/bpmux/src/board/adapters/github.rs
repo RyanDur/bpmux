@@ -41,6 +41,13 @@ impl GitHubSourceAdapter {
         self.inner.list_latest_run_on_main().await
     }
 
+    pub async fn fetch_failed_tests_for_run(
+        &self,
+        run_id: u64,
+    ) -> Result<crate::bridge::tools::CiRunFailures, crate::bridge::tools::CiLogError> {
+        self.inner.fetch_failed_tests_for_run(run_id).await
+    }
+
     pub fn rate_limit_observer(&self) -> crate::github::RateLimitObserver {
         self.inner.rate_limit_observer()
     }

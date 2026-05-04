@@ -245,6 +245,7 @@ pub async fn run_server(
     // have a tracker — without one `/api/ci` returns 503 and polling
     // would just log errors.
     let ci_state_store = crate::transport::ci_state_store::CiStateStore::new();
+    let ci_log_store = crate::transport::ci_log_store::CiLogStore::new();
     if let Some(tracker_arc) = tracker.as_ref().cloned() {
         crate::transport::ci_watcher::spawn(
             session.clone(),
@@ -291,6 +292,10 @@ pub async fn run_server(
             axum::routing::get(transport::rest::get_metrics),
         )
         .route("/api/ci", axum::routing::get(transport::rest::get_ci))
+        .route(
+            "/api/ci/log/{run_id}",
+            axum::routing::get(transport::rest::get_ci_log),
+        )
         .route(
             "/api/sync-status",
             axum::routing::get(transport::rest::get_sync_status),
@@ -411,6 +416,7 @@ pub async fn run_server(
         .layer(axum::Extension(screen_capture))
         .layer(axum::Extension(tracker))
         .layer(axum::Extension(ci_state_store))
+        .layer(axum::Extension(ci_log_store))
         .layer(axum::Extension(test_refresh))
         // The Electron renderer loads from Vite's dev URL or file://
         // and fetches this backend at 127.0.0.1:4117 — a cross-origin

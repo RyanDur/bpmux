@@ -970,6 +970,102 @@ impl OctocrabStoryTracker {
             };
         annotations.into_iter().find_map(|a| a.message)
     }
+
+    pub async fn fetch_failed_tests_for_run(
+        &self,
+        run_id: u64,
+    ) -> Result<crate::bridge::tools::CiRunFailures, crate::bridge::tools::CiLogError> {
+        #[derive(serde::Deserialize)]
+        struct Run {
+            status: Option<String>,
+            conclusion: Option<String>,
+        }
+        let run_path = format!("/repos/{}/{}/actions/runs/{run_id}", self.owner, self.repo);
+        let run: Run = self.client.get(run_path, None::<&()>).await.map_err(|e| {
+            let msg = format!("{e}");
+            if msg.contains("404") {
+                crate::bridge::tools::CiLogError::RunNotFound { run_id }
+            } else {
+                crate::bridge::tools::CiLogError::UpstreamError { detail: msg }
+            }
+        })?;
+        let conclusion = run
+            .conclusion
+            .clone()
+            .unwrap_or_else(|| "unknown".to_string());
+        if run.status.as_deref() != Some("completed") {
+            return Err(crate::bridge::tools::CiLogError::RunInProgress {
+                run_id,
+                conclusion: run
+                    .status
+                    .or(run.conclusion)
+                    .unwrap_or_else(|| "in_progress".to_string()),
+            });
+        }
+        #[derive(serde::Deserialize)]
+        struct Job {
+            id: u64,
+            name: String,
+            conclusion: Option<String>,
+        }
+        #[derive(serde::Deserialize)]
+        struct JobsResponse {
+            jobs: Vec<Job>,
+        }
+        let jobs_path = format!(
+            "/repos/{}/{}/actions/runs/{run_id}/jobs?per_page=100",
+            self.owner, self.repo
+        );
+        let jobs: JobsResponse = self.client.get(jobs_path, None::<&()>).await.map_err(|e| {
+            crate::bridge::tools::CiLogError::UpstreamError {
+                detail: format!("fetch jobs for run {run_id}: {e}"),
+            }
+        })?;
+        let mut all_failures: Vec<crate::bridge::tools::CiTestFailure> = Vec::new();
+        for job in jobs.jobs {
+            if job.conclusion.as_deref() != Some("failure") {
+                continue;
+            }
+            let log_path = format!(
+                "/repos/{}/{}/actions/jobs/{}/logs",
+                self.owner, self.repo, job.id
+            );
+            use http_body_util::BodyExt;
+            let log_text = match self.client._get(log_path).await {
+                Ok(resp) => {
+                    let body = resp.into_body().collect().await;
+                    match body {
+                        Ok(collected) => String::from_utf8_lossy(&collected.to_bytes()).to_string(),
+                        Err(e) => {
+                            crate::session::diag::log_diag(&format!(
+                                "tracker: collect log body for job {} failed: {e}",
+                                job.id
+                            ));
+                            continue;
+                        }
+                    }
+                }
+                Err(e) => {
+                    crate::session::diag::log_diag(&format!(
+                        "tracker: get log for job {} failed: {e}",
+                        job.id
+                    ));
+                    continue;
+                }
+            };
+            let parsed =
+                crate::bridge::tools::parse_playwright_failures_from_log(run_id, &log_text);
+            for mut failure in parsed.failures {
+                failure.shard_id = Some(job.name.clone());
+                all_failures.push(failure);
+            }
+        }
+        Ok(crate::bridge::tools::CiRunFailures {
+            run_id,
+            conclusion,
+            failures: all_failures,
+        })
+    }
 }
 
 #[cfg(test)]

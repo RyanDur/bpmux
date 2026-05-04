@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod ci_log_store;
 pub mod ci_state_store;
 pub mod ci_watcher;
 pub mod crypto;
