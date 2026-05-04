@@ -623,6 +623,74 @@ async fn fetch_board_stories_with_no_since_omits_since_param() {
 }
 
 #[tokio::test]
+async fn fetch_board_stories_paginates_closed_until_short_page() {
+    let server = MockServer::start();
+    let full_closed_page: Vec<Value> = (0..100)
+        .map(|i| {
+            issue(
+                1000 + i as u64,
+                "closed-fixture",
+                "closed",
+                vec!["accepted"],
+            )
+        })
+        .collect();
+    server.mock(|when, then| {
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/issues")
+            .query_param("state", "open");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(Value::Array(vec![]).to_string());
+    });
+    let closed_p1 = server.mock(|when, then| {
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/issues")
+            .query_param("state", "closed")
+            .query_param("page", "1");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(Value::Array(full_closed_page.clone()).to_string());
+    });
+    let closed_p2 = server.mock(|when, then| {
+        when.method(Method::GET)
+            .path("/repos/acme/bpmux/issues")
+            .query_param("state", "closed")
+            .query_param("page", "2");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                Value::Array(vec![issue(
+                    2000,
+                    "closed-page-two",
+                    "closed",
+                    vec!["accepted"],
+                )])
+                .to_string(),
+            );
+    });
+    let tracker = mock_tracker(&server);
+    let stories = tracker
+        .fetch_board_stories_since(None)
+        .await
+        .expect("paginated closed fetch ok");
+    closed_p1.assert();
+    closed_p2.assert();
+    assert_eq!(
+        stories.len(),
+        101,
+        "100 from closed-page-1 + 1 from closed-page-2 = 101 total"
+    );
+    assert!(
+        stories
+            .iter()
+            .filter_map(|s| s.get("number").and_then(|n| n.as_u64()))
+            .any(|n| n == 2000),
+        "page-2 closed story #2000 must be present (paginate-all-closed contract)"
+    );
+}
+
+#[tokio::test]
 async fn get_story_conditional_returns_not_found_on_404() {
     use super::tracker::ConditionalIssue;
     let server = MockServer::start();

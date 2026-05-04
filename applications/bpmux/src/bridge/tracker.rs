@@ -437,18 +437,28 @@ impl OctocrabStoryTracker {
             page += 1;
         }
         let open_count = all_issues.len();
-        let closed_path = format!(
-            "/repos/{}/{}/issues?state=closed&per_page=100&sort=updated&direction=desc{}",
-            self.owner,
-            self.repo,
-            since_q.as_deref().unwrap_or("")
-        );
-        let closed: Vec<octocrab::models::issues::Issue> =
-            self.get_with_capture(closed_path).await?;
-        let closed_count = closed.len();
-        all_issues.extend(closed);
+        let mut closed_count = 0usize;
+        let mut closed_page = 1u32;
+        loop {
+            let closed_path = format!(
+                "/repos/{}/{}/issues?state=closed&per_page=100&sort=updated&direction=desc&page={}{}",
+                self.owner,
+                self.repo,
+                closed_page,
+                since_q.as_deref().unwrap_or("")
+            );
+            let closed: Vec<octocrab::models::issues::Issue> =
+                self.get_with_capture(closed_path).await?;
+            let count = closed.len();
+            all_issues.extend(closed);
+            closed_count += count;
+            if count < 100 {
+                break;
+            }
+            closed_page += 1;
+        }
         crate::session::diag::log_diag(&format!(
-            "github fetch_board_stories_since(since={:?}): {open_count} open (paginated) + {closed_count} closed (1-page most-recent) = {} total",
+            "github fetch_board_stories_since(since={:?}): {open_count} open (paginated) + {closed_count} closed (paginated) = {} total",
             since.map(|s| s.to_rfc3339()),
             all_issues.len()
         ));
