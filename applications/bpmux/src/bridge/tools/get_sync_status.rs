@@ -110,6 +110,7 @@ mod tests {
             dropped_events: Vec::new(),
             recovering_from_corruption: false,
             stale: false,
+            startup_fail: false,
         };
         let driver: Arc<dyn RefreshDriver> = Arc::new(StubDriver(status));
         let out = handle_get_sync_status(Some(&driver)).await.unwrap();

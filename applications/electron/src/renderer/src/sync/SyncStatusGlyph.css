@@ -44,6 +44,10 @@
   &.sync-status-glyph--stale {
     color: var(--accent-warning);
   }
+
+  &.sync-status-glyph--startup-fail {
+    color: var(--accent-error);
+  }
 }
 
 .sync-status-glyph__count {

@@ -15,6 +15,7 @@ interface SyncStatusReport {
   dropped_events: DroppedEvent[]
   recovering_from_corruption: boolean
   stale: boolean
+  startup_fail: boolean
 }
 
 type FetchOk<T> = { ok: true; data: T }
@@ -30,11 +31,13 @@ type SyncState =
   | 'drained-permanent-failure'
   | 'recovering'
   | 'stale'
+  | 'startup-fail'
 
 const deriveState = (report: SyncStatusReport | null): SyncState => {
   if (!report) return 'connected'
   if (report.dropped_events.length > 0) return 'drained-permanent-failure'
   if (report.recovering_from_corruption) return 'recovering'
+  if (report.startup_fail) return 'startup-fail'
   if (report.pending_events > 0 && report.last_error !== null) return 'offline-queued'
   if (report.pending_events > 0) return 'syncing'
   if (report.stale) return 'stale'
@@ -55,6 +58,8 @@ const stateGlyph = (state: SyncState): string => {
       return '↻'
     case 'stale':
       return '◔'
+    case 'startup-fail':
+      return '⊘'
   }
 }
 
@@ -72,6 +77,8 @@ const stateAriaLabel = (state: SyncState, count: number): string => {
       return 'Sync state: recovering from local-cache corruption; rehydrating from GitHub'
     case 'stale':
       return 'Sync state: stale; last successful sync exceeded the staleness threshold'
+    case 'startup-fail':
+      return 'Sync state: startup pull failed; canonical store reflects last persisted snapshot only'
   }
 }
 
@@ -106,6 +113,12 @@ const buildTooltip = (state: SyncState, report: SyncStatusReport | null): string
       lines.push('Sync · stale')
       if (report.last_ingest_at) lines.push(`last ingest ${report.last_ingest_at}`)
       lines.push('(click to force-sync now)')
+      break
+    case 'startup-fail':
+      lines.push('Sync · startup pull failed')
+      if (report.last_error) lines.push(`error: ${report.last_error}`)
+      lines.push('canonical store reflects last persisted snapshot only')
+      lines.push('(click to retry; check token / network if persists)')
       break
   }
   return lines.join('\n')
@@ -207,7 +220,12 @@ const SyncStatusGlyph = ({ apiBase, authToken }: Props): React.JSX.Element => {
     let result: FetchResult<null> | null = null
     if (state === 'drained-permanent-failure') {
       result = await postAcknowledge(apiBase, token).catch(networkErrorToResult)
-    } else if (state === 'offline-queued' || state === 'syncing' || state === 'stale') {
+    } else if (
+      state === 'offline-queued' ||
+      state === 'syncing' ||
+      state === 'stale' ||
+      state === 'startup-fail'
+    ) {
       result = await postForceSync(apiBase, token).catch(networkErrorToResult)
     }
     if (result && !result.ok && result.error.length > 0) {

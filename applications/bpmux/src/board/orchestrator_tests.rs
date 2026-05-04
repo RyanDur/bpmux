@@ -520,6 +520,48 @@ mod staleness {
             !snap.stale,
             "ingest milliseconds ago is well under default 180s threshold: {snap:?}"
         );
+        assert!(!snap.startup_fail, "successful ingest is not startup-fail");
+    }
+
+    #[test]
+    fn startup_fail_when_no_ingest_yet_and_last_error_set() {
+        use crate::board::orchestrator::is_startup_fail;
+        assert!(is_startup_fail(None, Some("rate-limited")));
+    }
+
+    #[test]
+    fn no_startup_fail_when_ingest_succeeded_even_with_recent_error() {
+        use crate::board::orchestrator::is_startup_fail;
+        let last = Utc.with_ymd_and_hms(2026, 5, 3, 12, 0, 0).unwrap();
+        assert!(!is_startup_fail(
+            Some(last),
+            Some("post-success transient error")
+        ));
+    }
+
+    #[test]
+    fn no_startup_fail_when_no_ingest_yet_but_no_error_recorded() {
+        use crate::board::orchestrator::is_startup_fail;
+        assert!(
+            !is_startup_fail(None, None),
+            "fresh-session-pre-first-tick is not startup-fail until an error has been recorded"
+        );
+    }
+
+    #[tokio::test]
+    async fn snapshot_status_surfaces_startup_fail_when_ingest_fails_with_no_prior_success() {
+        let store = Arc::new(BoardStore::new());
+        let adapter = Arc::new(InMemorySourceAdapter::new());
+        adapter.set_ingest_failures(true);
+        let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+        let _ = orch.ingest_once().await;
+        let snap = orch.snapshot_status();
+        assert!(snap.last_ingest_at.is_none(), "no successful ingest yet");
+        assert!(snap.last_error.is_some(), "ingest error recorded");
+        assert!(
+            snap.startup_fail,
+            "no-ingest + last_error → startup_fail surfaces in snapshot: {snap:?}"
+        );
     }
 }
 

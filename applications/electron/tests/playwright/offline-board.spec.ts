@@ -16,7 +16,7 @@ test.describe('#1158 — offline-first board', () => {
       await expect(indicator).toBeVisible()
       await expect(indicator).toHaveAttribute(
         'data-state',
-        /^(connected|syncing|offline-queued|drained-permanent-failure|recovering|stale)$/
+        /^(connected|syncing|offline-queued|drained-permanent-failure|recovering|stale|startup-fail)$/
       )
     } finally {
       await app.close()
@@ -42,6 +42,8 @@ test.describe('#1158 — offline-first board', () => {
       expect(typeof json.recovering_from_corruption).toBe('boolean')
       expect(json).toHaveProperty('stale')
       expect(typeof json.stale).toBe('boolean')
+      expect(json).toHaveProperty('startup_fail')
+      expect(typeof json.startup_fail).toBe('boolean')
     } finally {
       await app.close()
     }
@@ -91,6 +93,26 @@ test.describe('#1158 — offline-first board', () => {
       expect(res.ok).toBe(true)
       const json = await res.json()
       expect(json.pending_events).toBe(2)
+    } finally {
+      await app.close()
+    }
+  })
+
+  test('F9 startup-fail — glyph surfaces startup-fail when initial pull never succeeds', async () => {
+    const { app, win } = await launchIsolatedWithWindow({
+      extraEnv: { BPMUX_TEST_MODE: '1', BPMUX_TEST_INGEST_FAIL: '1' }
+    })
+    try {
+      const indicator = win.locator('[data-test="sync-status-glyph"]')
+      await expect(indicator).toBeVisible()
+      await expect(indicator).toHaveAttribute('data-state', 'startup-fail', { timeout: 30_000 })
+      const computed = await indicator.evaluate(
+        (el) => window.getComputedStyle(el as HTMLElement).color
+      )
+      expect(
+        computed,
+        'startup-fail glyph picks up the error color (not default fg, not green)'
+      ).not.toBe('rgb(0, 0, 0)')
     } finally {
       await app.close()
     }

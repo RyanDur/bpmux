@@ -89,6 +89,8 @@ pub struct SyncStatus {
     pub recovering_from_corruption: bool,
     #[serde(default)]
     pub stale: bool,
+    #[serde(default)]
+    pub startup_fail: bool,
 }
 
 pub fn staleness_threshold_secs() -> u64 {
@@ -108,6 +110,10 @@ pub fn is_stale(
     };
     let elapsed = now.signed_duration_since(last);
     elapsed.num_seconds() >= 0 && (elapsed.num_seconds() as u64) > threshold_secs
+}
+
+pub fn is_startup_fail(last_ingest_at: Option<DateTime<Utc>>, last_error: Option<&str>) -> bool {
+    last_ingest_at.is_none() && last_error.is_some()
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -389,6 +395,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             staleness_threshold_secs(),
             Utc::now(),
         );
+        status.startup_fail = is_startup_fail(status.last_ingest_at, status.last_error.as_deref());
         status
     }
 
