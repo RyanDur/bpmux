@@ -13,15 +13,11 @@
 //! glyph in the status bar.
 
 use std::collections::HashMap;
-use std::sync::Arc;
-use std::time::Duration;
 
 use serde::Deserialize;
-use tokio::sync::mpsc;
 
-use crate::session::diag::log_diag;
+use crate::session::Message;
 use crate::session::message::{DeepDetail, MultiDepthPayload};
-use crate::session::{Message, MessageType, Session};
 
 /// CI indicator state. `Unknown` is the internal startup state
 /// before the first poll — rendered as a dim placeholder.
@@ -56,8 +52,6 @@ pub struct CiEvent {
     pub run_id: Option<u64>,
 }
 
-const POLL_INTERVAL: Duration = Duration::from_secs(60);
-
 /// Hydrate the poller's `last_broadcast` state from the session log
 /// (#300 fix). Scans messages newest→oldest for the most recent CI
 /// transition broadcast (Activity with `🔴 CI` / `🟢 CI` prefix) and
@@ -70,99 +64,6 @@ const POLL_INTERVAL: Duration = Duration::from_secs(60);
 /// Some(Red)` and falls into the emission branch. Hydration closes
 /// the gap across the restart boundary so the accepted broadcast
 /// contract ("emit only on genuine transitions") holds.
-pub(super) fn hydrate_last_broadcast(messages: &[Message]) -> Option<CiState> {
-    messages.iter().rev().find_map(|m| {
-        if m.message_type != MessageType::Activity {
-            return None;
-        }
-        if m.text.starts_with("\u{1F534} CI") {
-            Some(CiState::Red)
-        } else if m.text.starts_with("\u{1F7E2} CI") {
-            Some(CiState::Green)
-        } else if m.text.starts_with("\u{23F8} CI") {
-            Some(CiState::QuotaExhausted)
-        } else {
-            None
-        }
-    })
-}
-
-/// Spawn a background task that polls CI every POLL_INTERVAL and
-/// sends state updates to `tx`. The task exits cleanly when the
-/// receiver is dropped.
-///
-/// Only sends a state update when the CiState CHANGES. The startup
-/// transition from `Unknown` → first known state always fires.
-///
-/// Broadcast policy (#1140 — per-completion shape):
-/// When `broadcast_session` is `Some`, posts an activity-type
-/// broadcast message + dev-addressed signal on every NEW
-/// `(run_id, state)` tuple where the state is terminal (Green / Red
-/// / QuotaExhausted). Same `(run_id, state)` as last broadcast =
-/// silent (dedup). New `run_id` with same state = fires (covers the
-/// canonical "my push went green" case that the prior transition-
-/// only logic dropped). New state on same `run_id` = fires (covers
-/// in-progress→completed within a single run).
-///
-/// `initial_last_broadcast` is the hydrated state from prior session
-/// log (typically via `hydrate_last_broadcast(&app.msg.messages)`).
-/// Pass `None` for fresh-session cases. The hydrated value carries
-/// state but not `run_id`; on first-poll-post-restart the tuple-
-/// equality check sees `(None, S)` vs `(Some(N), S)` and fires once
-/// — small re-broadcast cost in exchange for the silent-hold-loop
-/// fix. Acceptable per #1140's premise.
-pub(super) fn spawn_poller(
-    tx: mpsc::Sender<CiState>,
-    broadcast_session: Option<Arc<Session>>,
-    initial_last_broadcast: Option<CiState>,
-) {
-    tokio::spawn(async move {
-        let mut last_state = CiState::Unknown;
-        let mut last_observation: Option<(Option<u64>, CiState)> =
-            initial_last_broadcast.map(|s| (None, s));
-        let mut interval = tokio::time::interval(POLL_INTERVAL);
-        loop {
-            interval.tick().await;
-            let event = match poll_once().await {
-                Ok(ev) => ev,
-                Err(e) => {
-                    log_diag(&format!("ci: poll error: {e}"));
-                    continue;
-                }
-            };
-            if event.state != last_state {
-                last_state = event.state;
-                if tx.send(event.state).await.is_err() {
-                    break;
-                }
-            }
-            let current_observation = (event.run_id, event.state);
-            if last_observation != Some(current_observation)
-                && let Some(session) = broadcast_session.as_ref()
-                && let Some(text) = compute_broadcast_text(&event)
-            {
-                let multi_depth = build_multi_depth_for_transition(&event);
-                let msg = Message {
-                    from: "bpmux".to_string(),
-                    text: text.clone(),
-                    ts: chrono::Utc::now(),
-                    message_type: MessageType::Activity,
-                    multi_depth: Some(multi_depth),
-                    ..Message::default()
-                };
-                if let Err(e) = session.broadcast(&msg) {
-                    log_diag(&format!("ci: broadcast error: {e}"));
-                }
-                let dev_signal = build_dev_ci_signal(&text);
-                if let Err(e) = session.broadcast(&dev_signal) {
-                    log_diag(&format!("ci: dev signal error: {e}"));
-                }
-                last_observation = Some(current_observation);
-            }
-        }
-    });
-}
-
 /// Format the broadcast text for a CI poll event. Pure function, no IO
 /// — caller (`spawn_poller`) is responsible for tuple-dedup before
 /// firing the broadcast.
@@ -263,28 +164,6 @@ pub(crate) fn build_multi_depth_for_transition(event: &CiEvent) -> MultiDepthPay
 /// repo; configurability is speculative.
 pub fn github_actions_url() -> &'static str {
     "https://github.com/RyanDur/bpmux/actions"
-}
-
-/// Open a URL in the user's default browser. Fire-and-forget: failure
-/// is logged to diag (the user sees nothing happen; better than
-/// panicking the TUI). Platform dispatch uses the conventional
-/// command for each OS.
-pub fn open_in_browser(url: &str) {
-    #[cfg(target_os = "macos")]
-    let program = "open";
-    #[cfg(target_os = "linux")]
-    let program = "xdg-open";
-    #[cfg(target_os = "windows")]
-    let program = "start";
-    #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
-    {
-        log_diag(&format!("open_in_browser: unsupported platform; url={url}"));
-        return;
-    }
-    #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
-    if let Err(e) = std::process::Command::new(program).arg(url).spawn() {
-        log_diag(&format!("open_in_browser: failed to spawn {program}: {e}"));
-    }
 }
 
 /// Build the dev-addressed workflow signal for a CI transition (#215).
@@ -388,22 +267,6 @@ pub(crate) fn annotation_indicates_quota_exhaustion(msg: &str) -> bool {
         || msg.contains("billing")
 }
 
-async fn poll_once() -> Result<CiEvent, Box<dyn std::error::Error + Send + Sync>> {
-    // #320: was `gh run list --branch main -L 1 --json ...`. Now calls the
-    // Actions REST API directly via octocrab so bpmux has no runtime
-    // dependency on the gh CLI. Env missing → error bubbles up and
-    // `spawn_poller`'s existing error handling absorbs it (diag log,
-    // keep-last-state).
-    let (client, owner, repo) = crate::github::octocrab_client()?;
-    #[derive(serde::Deserialize)]
-    struct RunsResponse {
-        workflow_runs: Vec<RunEntry>,
-    }
-    let path = format!("/repos/{owner}/{repo}/actions/runs?branch=main&per_page=1");
-    let response: RunsResponse = client.get(path, None::<&()>).await?;
-    Ok(classify_runs(&response.workflow_runs))
-}
-
 pub fn classify_runs(runs: &[RunEntry]) -> CiEvent {
     let Some(latest) = runs.first() else {
         return CiEvent::default();
@@ -435,34 +298,4 @@ pub fn classify_runs(runs: &[RunEntry]) -> CiEvent {
         title: latest.display_title.clone(),
         run_id: latest.database_id,
     }
-}
-
-/// Return the (glyph, color-hint) pair for the status bar. Unknown
-/// renders a dim `CI ?` placeholder so the affordance is visible at
-/// TUI boot — silent absence during the first-poll window reads as
-/// "indicator broken," which it isn't.
-pub(super) fn render_indicator(state: CiState) -> (&'static str, CiGlyphColor) {
-    match state {
-        CiState::Green => ("CI \u{2713}", CiGlyphColor::Green), // ✓
-        CiState::Red => ("CI \u{2717}", CiGlyphColor::Red),     // ✗
-        CiState::Running => ("CI \u{25CB}", CiGlyphColor::Yellow), // ◌
-        // #397 quota-exhausted: pause-glyph ⏸ + amber (Yellow).
-        // Distinct shape from the in-progress ring so readers see
-        // "paused for infrastructure" vs "running, waiting."
-        CiState::QuotaExhausted => ("CI \u{23F8}", CiGlyphColor::Yellow), // ⏸
-        CiState::Unknown => ("CI ?", CiGlyphColor::Dim),
-    }
-}
-
-/// Color-hint returned by `render_indicator`. The caller maps this to its
-/// own theme-specific color; keeping it as an enum avoids pulling the
-/// theme module into `ci.rs`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum CiGlyphColor {
-    Green,
-    Red,
-    Yellow,
-    /// Dim / de-emphasized — used for the Unknown placeholder so the
-    /// glyph is visible-but-quiet while waiting for the first poll.
-    Dim,
 }

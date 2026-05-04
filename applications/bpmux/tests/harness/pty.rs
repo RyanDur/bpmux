@@ -11,7 +11,6 @@ use serde_json::Value;
 
 use super::mock_gh::{comment_json, issue_json};
 use super::port::free_port;
-use super::screen::Screen;
 
 fn default_issue_json(number: u64, title: &str) -> Value {
     let body = format!(
@@ -35,7 +34,6 @@ pub struct TestBpmux {
     _drainer: Option<std::thread::JoinHandle<()>>,
     session_dir: Option<tempfile::TempDir>,
     writer: Arc<Mutex<Box<dyn Write + Send>>>,
-    screen: Arc<Mutex<Screen>>,
     port: u16,
     /// Default httpmock pointed at the spawned bpmux's GH boundary
     /// (BPMUX_GH_BASE_URL). `None` when the caller supplied their own
@@ -280,15 +278,12 @@ impl TestBpmux {
         let mut reader = pair.master.try_clone_reader().expect("clone reader");
         let writer = pair.master.take_writer().expect("take writer");
 
-        let screen = Arc::new(Mutex::new(Screen::new()));
-        let screen_feed = Arc::clone(&screen);
         let drainer = std::thread::spawn(move || {
             let mut buf = [0u8; 4096];
             while let Ok(n) = reader.read(&mut buf) {
                 if n == 0 {
                     break;
                 }
-                screen_feed.lock().expect("screen lock").feed(&buf[..n]);
             }
         });
 
@@ -297,21 +292,9 @@ impl TestBpmux {
             _drainer: Some(drainer),
             session_dir: Some(session_dir),
             writer: Arc::new(Mutex::new(writer)),
-            screen,
             port,
             _default_mock_gh: default_mock,
         };
-        // 15 s wait_for_tui: when 5+ TestBpmux subprocesses start
-        // concurrently within a single test binary (story61, story65,
-        // peer_count, sidebar_click etc. each have multiple #[test]
-        // functions running in cargo's default num_cpus pool), the
-        // "solo" render can stall past 5 s under load. The previous
-        // 5 s budget was tight enough that ac4_inline_code_renders +
-        // similar flaked one-in-N pre-push runs.
-        assert!(
-            bpmux.wait_for_tui("solo", Duration::from_secs(15)),
-            "TUI should render"
-        );
         bpmux.wait_for_http_ready();
         bpmux
     }
@@ -430,28 +413,6 @@ impl TestBpmux {
         self.session_dir.take().expect("session dir already taken")
     }
 
-    /// Poll the rendered TUI until it contains `target`. Returns true if
-    /// found within `timeout`, false otherwise.
-    pub fn wait_for_tui(&self, target: &str, timeout: Duration) -> bool {
-        let start = Instant::now();
-        while start.elapsed() < timeout {
-            if self.tui().contains(target) {
-                return true;
-            }
-            std::thread::sleep(Duration::from_millis(50));
-        }
-        false
-    }
-
-    /// Poll until `cond` returns true or `timeout` expires. Returns
-    /// `Ok(())` on success; on timeout returns an `Err` carrying the
-    /// caller-supplied `what` description and the current TUI snapshot
-    /// so the test failure message shows expected vs actual.
-    ///
-    /// Use this instead of `thread::sleep` when waiting for a UI state
-    /// change — it returns as soon as the condition is met (fast path
-    /// for conditions already true) and surfaces rich diagnostics when
-    /// the condition never becomes true.
     pub fn wait_until<F>(&self, what: &str, timeout: Duration, mut cond: F) -> Result<(), String>
     where
         F: FnMut() -> bool,
@@ -462,137 +423,9 @@ impl TestBpmux {
                 return Ok(());
             }
             if start.elapsed() >= timeout {
-                return Err(format!(
-                    "timeout after {timeout:?} waiting for {what}; screen:\n{}",
-                    self.tui()
-                ));
+                return Err(format!("timeout after {timeout:?} waiting for {what}"));
             }
             std::thread::sleep(Duration::from_millis(50));
-        }
-    }
-
-    /// Poll until `target` is no longer visible in the TUI. Inverse of
-    /// `wait_for_tui` — use it when a test waits for state to be
-    /// cleared (e.g. a filter removed, an overlay closed).
-    pub fn wait_for_tui_absent(&self, target: &str, timeout: Duration) -> Result<(), String> {
-        self.wait_until(&format!("'{target}' to disappear"), timeout, || {
-            !self.tui().contains(target)
-        })
-    }
-
-    /// Current TUI snapshot, rebuilt from accumulated bytes so callers
-    /// never catch the screen mid-redraw.
-    pub fn tui(&self) -> String {
-        self.screen.lock().expect("screen lock").contents()
-    }
-
-    /// Type characters into the TUI without pressing Enter.
-    pub fn type_chars(&self, text: &str) {
-        let mut w = self.writer.lock().expect("writer lock");
-        w.write_all(text.as_bytes()).expect("type text");
-        w.flush().expect("flush");
-    }
-
-    /// Type text into the TUI and press Enter, as a user would.
-    pub fn type_line(&self, text: &str) {
-        let mut w = self.writer.lock().expect("writer lock");
-        w.write_all(text.as_bytes()).expect("type text");
-        w.write_all(b"\r").expect("press enter");
-        w.flush().expect("flush");
-    }
-
-    /// Send a Ctrl+key combination (e.g. 'b' for Ctrl+B).
-    pub fn type_ctrl(&self, ch: char) {
-        let ctrl_byte = (ch as u8) & 0x1f;
-        let mut w = self.writer.lock().expect("writer lock");
-        w.write_all(&[ctrl_byte]).expect("type ctrl");
-        w.flush().expect("flush");
-    }
-
-    /// Send a special key escape sequence (e.g. "Left", "Right", "Up", "Down").
-    ///
-    /// Each call flushes immediately + parks briefly so crossterm's
-    /// escape-sequence decoder in the child process has time to fully
-    /// decode the sequence before any subsequent write arrives. Without
-    /// the park, under concurrent test load the bare `\x1b` lead byte
-    /// gets mis-parsed as a standalone Esc keypress while the trailing
-    /// `[A` / `[<...M` / etc bytes echo as literal characters in the
-    /// chat input field. Closes the flake-class previously documented
-    /// at `tests/integration_main_modules/board_view.rs:93` and
-    /// `story63_acceptance::ac1_unread_indicator_when_scrolled_up`.
-    pub fn type_key(&self, key: &str) {
-        let seq = match key {
-            "Up" => "\x1b[A",
-            "Down" => "\x1b[B",
-            "Right" => "\x1b[C",
-            "Left" => "\x1b[D",
-            "Esc" => "\x1b",
-            "Enter" => "\r",
-            "Alt-1" => "\x1b1",
-            _ => panic!("unsupported key: {key}"),
-        };
-        let mut w = self.writer.lock().expect("writer lock");
-        w.write_all(seq.as_bytes()).expect("type key");
-        w.flush().expect("flush");
-        drop(w);
-        std::thread::sleep(std::time::Duration::from_millis(20));
-    }
-
-    /// Simulate a bracketed paste: wraps text in paste-start/paste-end
-    /// escape sequences so crossterm delivers it as `Event::Paste`.
-    pub fn paste(&self, text: &str) {
-        let mut w = self.writer.lock().expect("writer lock");
-        w.write_all(b"\x1b[200~").expect("paste start");
-        w.write_all(text.as_bytes()).expect("paste content");
-        w.write_all(b"\x1b[201~").expect("paste end");
-        w.flush().expect("flush");
-    }
-
-    /// Send mouse scroll-up events through the PTY (SGR mouse protocol).
-    /// Each call sends `count` scroll-up events at position (col=10, row=10).
-    ///
-    /// Each event flushes immediately + parks briefly so crossterm's
-    /// escape-sequence decoder has time to fully decode the SGR
-    /// sequence before the next event arrives (see `type_key` doc for
-    /// the underlying flake-class).
-    pub fn mouse_scroll_up(&self, count: usize) {
-        for _ in 0..count {
-            let mut w = self.writer.lock().expect("writer lock");
-            // SGR: \x1b[<64;col;rowM = scroll up (button 64)
-            w.write_all(b"\x1b[<64;10;10M").expect("scroll up");
-            w.flush().expect("flush");
-            drop(w);
-            std::thread::sleep(std::time::Duration::from_millis(20));
-        }
-    }
-
-    /// Send a mouse click at the given (col, row) position (1-based, SGR protocol).
-    pub fn mouse_click(&self, col: u16, row: u16) {
-        let mut w = self.writer.lock().expect("writer lock");
-        // SGR: \x1b[<0;col;rowM = button press, \x1b[<0;col;rowm = button release
-        let press = format!("\x1b[<0;{col};{row}M");
-        let release = format!("\x1b[<0;{col};{row}m");
-        w.write_all(press.as_bytes()).expect("mouse press");
-        w.flush().expect("flush");
-        drop(w);
-        std::thread::sleep(std::time::Duration::from_millis(20));
-        let mut w = self.writer.lock().expect("writer lock");
-        w.write_all(release.as_bytes()).expect("mouse release");
-        w.flush().expect("flush");
-        drop(w);
-        std::thread::sleep(std::time::Duration::from_millis(20));
-    }
-
-    /// Send mouse scroll-down events through the PTY (SGR mouse protocol).
-    /// Same per-event flush+park as `mouse_scroll_up`.
-    pub fn mouse_scroll_down(&self, count: usize) {
-        for _ in 0..count {
-            let mut w = self.writer.lock().expect("writer lock");
-            // SGR: \x1b[<65;col;rowM = scroll down (button 65)
-            w.write_all(b"\x1b[<65;10;10M").expect("scroll down");
-            w.flush().expect("flush");
-            drop(w);
-            std::thread::sleep(std::time::Duration::from_millis(20));
         }
     }
 }

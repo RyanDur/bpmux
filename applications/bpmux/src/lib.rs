@@ -11,7 +11,6 @@ pub mod reload;
 pub mod roadmap;
 pub mod server;
 pub mod session;
-pub mod terminal;
 pub mod transport;
 
 use std::sync::Arc;
@@ -63,9 +62,7 @@ enum Command {
         #[arg(long)]
         board_fixture: Option<String>,
     },
-    /// Run in headless mode for agent testing (no terminal required)
-    Test,
-    /// Run the WS server + session without a TUI (Electron shell spawns this).
+    /// Run the WS server + session (now the default behavior; subcommand kept for explicitness in Electron spawn args).
     Server,
     /// Print an agent's recent lessons to stdout for session-start auto-surface (#157)
     Recall {
@@ -197,7 +194,6 @@ fn run_server_only(cli: &Cli) -> anyhow::Result<()> {
 pub fn run() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
-    let headless = matches!(cli.command, Some(Command::Test));
     if let Some(Command::Bridge {
         port,
         name,
@@ -216,92 +212,5 @@ pub fn run() -> anyhow::Result<()> {
         return run_emit_precommit_passed(sha, role);
     }
 
-    if matches!(cli.command, Some(Command::Server)) {
-        return run_server_only(&cli);
-    }
-
-    let base = resolve_session_base(&cli.session_base)?;
-    std::fs::create_dir_all(&base)?;
-    let session_dir = session::resume_or_create_session(&base)?;
-
-    let (wake_tx, mut wake_rx) =
-        broadcast::channel::<session::Message>(session::BROADCAST_CHANNEL_CAPACITY);
-    let session = Arc::new(session::Session::new(
-        session_dir,
-        cli.name.clone(),
-        wake_tx,
-    ));
-    let messages = session.read_messages()?;
-    let mut app = terminal::App::new(cli.name.clone(), session.id.clone(), messages);
-    app.identity.dir = Some(session.dir.clone());
-    terminal::ui_state::UiState::load_and_restore(&mut app, &session);
-    let server_session = Arc::clone(&session);
-    let server_port = cli.mcp_port;
-    let ct = CancellationToken::new();
-    let server_ct = ct.clone();
-    let screen_capture = Arc::new(std::sync::Mutex::new(String::new()));
-    let (_inject_tx, inject_rx) =
-        tokio::sync::mpsc::channel::<crate::terminal::event::TerminalInjectEvent>(16);
-
-    let rt = tokio::runtime::Runtime::new()?;
-    let screen_for_server = Arc::clone(&screen_capture);
-    let result = rt.block_on(async {
-        tokio::spawn(async move {
-            if let Err(e) =
-                server::run_server(server_session, server_port, server_ct, screen_for_server).await
-            {
-                session::diag::log_diag(&format!("server: run error: {e}"));
-            }
-        });
-
-        session::awareness::spawn(Arc::clone(&session), session.owner_name.clone());
-
-        if headless {
-            let backend = ratatui::backend::TestBackend::new(80, 24);
-            let mut terminal = ratatui::Terminal::new(backend)?;
-            eprintln!("bpmux: headless mode (80x24)");
-            terminal::run_tui(
-                &mut terminal,
-                &mut app,
-                &session,
-                &mut wake_rx,
-                Arc::clone(&screen_capture),
-                inject_rx,
-                true,
-            )
-            .await
-        } else {
-            crossterm::execute!(
-                std::io::stdout(),
-                crossterm::event::EnableMouseCapture,
-                crossterm::event::EnableFocusChange,
-                crossterm::event::EnableBracketedPaste,
-            )?;
-            let mut terminal = ratatui::init();
-            let result = terminal::run_tui(
-                &mut terminal,
-                &mut app,
-                &session,
-                &mut wake_rx,
-                Arc::clone(&screen_capture),
-                inject_rx,
-                false,
-            )
-            .await;
-            ratatui::restore();
-            crossterm::execute!(
-                std::io::stdout(),
-                crossterm::event::DisableMouseCapture,
-                crossterm::event::DisableFocusChange,
-                crossterm::event::DisableBracketedPaste,
-            )?;
-            result
-        }
-    });
-
-    if app.lifecycle.should_reload {
-        return reload::relaunch();
-    }
-
-    result.map_err(|e| anyhow::anyhow!("{e}"))
+    run_server_only(&cli)
 }

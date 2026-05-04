@@ -63,8 +63,4 @@ fn wait_until_fails_with_diagnostic_when_condition_never_true() {
         err.contains("never-true"),
         "err should include the `what` label: {err}"
     );
-    assert!(
-        err.contains("screen:"),
-        "err should include the TUI snapshot: {err}"
-    );
 }

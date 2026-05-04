@@ -41,14 +41,6 @@ pub fn relaunch() -> anyhow::Result<()> {
     let binary = std::env::current_exe()?;
     let args: Vec<String> = std::env::args().collect();
 
-    ratatui::restore();
-    crossterm::execute!(
-        std::io::stdout(),
-        crossterm::event::DisableMouseCapture,
-        crossterm::event::DisableFocusChange,
-        crossterm::event::DisableBracketedPaste,
-    )?;
-
     eprintln!("bpmux: binary changed, reloading...");
 
     #[cfg(unix)]
