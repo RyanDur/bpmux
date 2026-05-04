@@ -1,4 +1,5 @@
-import { test, expect, _electron as electron } from '@playwright/test'
+import { test, expect } from '@playwright/test'
+import { launchIsolatedWithWindow } from './helpers/launch'
 
 // Deterministic board fixture — one story per state we actively
 // exercise. `delivered` covers the Accept/Reject owner path; `ready`
@@ -28,43 +29,37 @@ const MOCK_BOARD = {
 }
 
 test('launches + connects + renders chat', async () => {
-  const app = await electron.launch({ args: ['out/main/index.js'] })
-  const win = await app.firstWindow()
-  await expect(win.locator('[data-test="app-root"]')).toBeVisible()
-  await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
-  await app.close()
+  const { app, win } = await launchIsolatedWithWindow()
+  try {
+    await expect(win.locator('[data-test="app-root"]')).toBeVisible()
+    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
+  } finally {
+    await app.close()
+  }
 })
 
 test('board renders stories, opens drill-in, shows Accept for delivered', async () => {
-  const app = await electron.launch({ args: ['out/main/index.js'] })
-  const win = await app.firstWindow()
-
-  // Intercept the board fetch so the test is independent of whatever
-  // the real backend has staged. We also intercept /api/stories/:n to
-  // keep drill-in navigation clean; the accept endpoint is covered by
-  // the mock-fallback path since we don't click it here (we only
-  // assert visibility of the button).
-  await win.route('**/api/board', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(MOCK_BOARD)
+  const { app, win } = await launchIsolatedWithWindow()
+  try {
+    await win.route('**/api/board', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(MOCK_BOARD)
+      })
     })
-  })
+    await win.reload()
 
-  await expect(win.locator('[data-test="board-region"]')).toBeVisible()
-  // A story row renders.
-  await expect(win.locator('[data-test="board-story-111"]')).toBeVisible()
-  await expect(win.locator('[data-test="board-story-222"]')).toBeVisible()
+    await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+    await expect(win.locator('[data-test="board-story-111"]')).toBeVisible()
+    await expect(win.locator('[data-test="board-story-222"]')).toBeVisible()
 
-  // Click into the delivered story.
-  await win.locator('[data-test="board-story-222"] button').click()
-  await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
+    await win.locator('[data-test="board-story-222"] button').click()
+    await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
 
-  // Accept button visible for ryan (the hardcoded identity) on
-  // delivered stories.
-  await expect(win.locator('[data-test="drill-in-accept"]')).toBeVisible()
-  await expect(win.locator('[data-test="drill-in-reject"]')).toBeVisible()
-
-  await app.close()
+    await expect(win.locator('[data-test="drill-in-accept"]')).toBeVisible()
+    await expect(win.locator('[data-test="drill-in-reject"]')).toBeVisible()
+  } finally {
+    await app.close()
+  }
 })
