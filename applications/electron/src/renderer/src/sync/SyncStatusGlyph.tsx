@@ -14,6 +14,7 @@ interface SyncStatusReport {
   last_error: string | null
   dropped_events: DroppedEvent[]
   recovering_from_corruption: boolean
+  stale: boolean
 }
 
 type FetchOk<T> = { ok: true; data: T }
@@ -28,6 +29,7 @@ type SyncState =
   | 'offline-queued'
   | 'drained-permanent-failure'
   | 'recovering'
+  | 'stale'
 
 const deriveState = (report: SyncStatusReport | null): SyncState => {
   if (!report) return 'connected'
@@ -35,6 +37,7 @@ const deriveState = (report: SyncStatusReport | null): SyncState => {
   if (report.recovering_from_corruption) return 'recovering'
   if (report.pending_events > 0 && report.last_error !== null) return 'offline-queued'
   if (report.pending_events > 0) return 'syncing'
+  if (report.stale) return 'stale'
   return 'connected'
 }
 
@@ -50,6 +53,8 @@ const stateGlyph = (state: SyncState): string => {
       return '✗'
     case 'recovering':
       return '↻'
+    case 'stale':
+      return '◔'
   }
 }
 
@@ -65,6 +70,8 @@ const stateAriaLabel = (state: SyncState, count: number): string => {
       return `Sync state: ${count} mutations dropped on permanent failure`
     case 'recovering':
       return 'Sync state: recovering from local-cache corruption; rehydrating from GitHub'
+    case 'stale':
+      return 'Sync state: stale; last successful sync exceeded the staleness threshold'
   }
 }
 
@@ -94,6 +101,11 @@ const buildTooltip = (state: SyncState, report: SyncStatusReport | null): string
     case 'recovering':
       lines.push('Sync · recovering from local-cache corruption')
       lines.push('rehydrating board state from GitHub...')
+      break
+    case 'stale':
+      lines.push('Sync · stale')
+      if (report.last_ingest_at) lines.push(`last ingest ${report.last_ingest_at}`)
+      lines.push('(click to force-sync now)')
       break
   }
   return lines.join('\n')
@@ -195,7 +207,7 @@ const SyncStatusGlyph = ({ apiBase, authToken }: Props): React.JSX.Element => {
     let result: FetchResult<null> | null = null
     if (state === 'drained-permanent-failure') {
       result = await postAcknowledge(apiBase, token).catch(networkErrorToResult)
-    } else if (state === 'offline-queued' || state === 'syncing') {
+    } else if (state === 'offline-queued' || state === 'syncing' || state === 'stale') {
       result = await postForceSync(apiBase, token).catch(networkErrorToResult)
     }
     if (result && !result.ok && result.error.length > 0) {

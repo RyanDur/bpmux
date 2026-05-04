@@ -99,6 +99,42 @@ pub struct SyncStatus {
     pub last_error: Option<String>,
     pub dropped_events: Vec<DroppedEvent>,
     pub recovering_from_corruption: bool,
+    /// #1165 slice 4: derived at snapshot time — true when
+    /// `last_ingest_at` is older than `staleness_threshold_secs()`
+    /// (BPMUX_STALENESS_THRESHOLD_SECS env, default 3× the hydration
+    /// poll interval = 180s). The renderer's SyncStatusGlyph reads
+    /// this directly to surface a "stale" state without the frontend
+    /// having to know the threshold.
+    #[serde(default)]
+    pub stale: bool,
+}
+
+/// #1165 slice 4: env-configurable staleness threshold for the
+/// SyncStatusGlyph. Defaults to 3× the hydration interval (15s × 3
+/// = 180s) so a momentary missed tick doesn't flip the glyph.
+pub fn staleness_threshold_secs() -> u64 {
+    std::env::var("BPMUX_STALENESS_THRESHOLD_SECS")
+        .ok()
+        .and_then(|s| s.parse::<u64>().ok())
+        .unwrap_or(180)
+}
+
+/// #1165 slice 4: pure staleness predicate. Extracted from the
+/// snapshot path so unit tests can pin time + threshold without
+/// reaching into the orchestrator. Returns false when there has
+/// been no ingest yet (the renderer surfaces that as "connecting"
+/// not "stale" — a fresh session can't be stale before it's ingested
+/// once).
+pub fn is_stale(
+    last_ingest_at: Option<DateTime<Utc>>,
+    threshold_secs: u64,
+    now: DateTime<Utc>,
+) -> bool {
+    let Some(last) = last_ingest_at else {
+        return false;
+    };
+    let elapsed = now.signed_duration_since(last);
+    elapsed.num_seconds() >= 0 && (elapsed.num_seconds() as u64) > threshold_secs
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -383,10 +419,17 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     }
 
     pub fn snapshot_status(&self) -> SyncStatus {
-        self.status
+        let mut status = self
+            .status
             .lock()
             .unwrap_or_else(|e| e.into_inner())
-            .clone()
+            .clone();
+        status.stale = is_stale(
+            status.last_ingest_at,
+            staleness_threshold_secs(),
+            Utc::now(),
+        );
+        status
     }
 
     pub async fn create_story(&self, title: &str, body: &str) -> Result<u64, SyncError> {

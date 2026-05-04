@@ -42,25 +42,22 @@ pub fn build_timeline_from_board(story: &Story, gates: &[GateComment]) -> Vec<se
 pub(in crate::bridge) async fn handle_view_story_timeline(
     args: &serde_json::Map<String, serde_json::Value>,
     board: Option<&Arc<BoardStore>>,
-    refresh: Option<&Arc<dyn RefreshDriver>>,
+    _refresh: Option<&Arc<dyn RefreshDriver>>,
 ) -> Result<String, String> {
     let number = args
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
-    let (b, r) = board.zip(refresh).ok_or(
-        "view_story_timeline requires board + refresh — tracker fallback retired in slice 5l",
-    )?;
+    let b = board.ok_or("view_story_timeline requires board (canonical-store)")?;
     let story = b
         .story(number)
         .ok_or_else(|| format!("story #{number} not found in board"))?;
-    let gates = match story.gate_comments.clone() {
-        Some(g) => g,
-        None => r
-            .fetch_gate_comments(number)
-            .await
-            .map_err(|e| format!("fetch gates: {e}"))?,
-    };
-    let timeline = build_timeline_from_board(&story, &gates);
-    serde_json::to_string_pretty(&timeline).map_err(|e| format!("serialize timeline: {e}"))
+    let hydrated = story.gate_comments.is_some();
+    let gates = story.gate_comments.clone().unwrap_or_default();
+    let events = build_timeline_from_board(&story, &gates);
+    let response = serde_json::json!({
+        "events": events,
+        "gate_comments_hydrated": hydrated,
+    });
+    serde_json::to_string_pretty(&response).map_err(|e| format!("serialize timeline: {e}"))
 }
