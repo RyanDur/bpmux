@@ -31,11 +31,6 @@ pub type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 pub trait RefreshDriver: Send + Sync {
     fn refresh_story(&self, number: u64) -> BoxedFuture<'_, Result<Option<Story>, SyncError>>;
     fn refresh_all(&self) -> BoxedFuture<'_, Result<(), SyncError>>;
-    /// #1165 slice 3.2: incremental list-poll variant. Default impl
-    /// wraps `refresh_all` (full poll) for drivers that don't model
-    /// delta queries (test mocks). The SyncOrchestrator override
-    /// passes `since` through to the adapter so GH-side stories
-    /// updated before the timestamp aren't transferred.
     fn refresh_all_since(
         &self,
         _since: Option<chrono::DateTime<chrono::Utc>>,
@@ -49,13 +44,6 @@ pub trait RefreshDriver: Send + Sync {
     fn drain_pending(&self) -> BoxedFuture<'_, Result<usize, SyncError>>;
     fn reconcile_dual_state_labels(&self) -> BoxedFuture<'_, Result<usize, SyncError>>;
     fn fetch_body(&self, number: u64) -> BoxedFuture<'_, Result<String, SyncError>>;
-    /// #1165 slice 3: conditional `If-None-Match` body fetch. Returns
-    /// `NotModified` when prior etag matches upstream (no canonical
-    /// mutation, no quota burn); `Modified { body, etag }` otherwise
-    /// (canonical seeded via `BodyFetched { etag }` event). Default
-    /// impl wraps `fetch_body` for drivers that don't model conditional
-    /// GET (test mocks); the SyncOrchestrator override hits the adapter
-    /// trait method which the github adapter answers via `If-None-Match`.
     fn fetch_body_conditional(
         &self,
         number: u64,
@@ -99,19 +87,10 @@ pub struct SyncStatus {
     pub last_error: Option<String>,
     pub dropped_events: Vec<DroppedEvent>,
     pub recovering_from_corruption: bool,
-    /// #1165 slice 4: derived at snapshot time — true when
-    /// `last_ingest_at` is older than `staleness_threshold_secs()`
-    /// (BPMUX_STALENESS_THRESHOLD_SECS env, default 3× the hydration
-    /// poll interval = 180s). The renderer's SyncStatusGlyph reads
-    /// this directly to surface a "stale" state without the frontend
-    /// having to know the threshold.
     #[serde(default)]
     pub stale: bool,
 }
 
-/// #1165 slice 4: env-configurable staleness threshold for the
-/// SyncStatusGlyph. Defaults to 3× the hydration interval (15s × 3
-/// = 180s) so a momentary missed tick doesn't flip the glyph.
 pub fn staleness_threshold_secs() -> u64 {
     std::env::var("BPMUX_STALENESS_THRESHOLD_SECS")
         .ok()
@@ -119,12 +98,6 @@ pub fn staleness_threshold_secs() -> u64 {
         .unwrap_or(180)
 }
 
-/// #1165 slice 4: pure staleness predicate. Extracted from the
-/// snapshot path so unit tests can pin time + threshold without
-/// reaching into the orchestrator. Returns false when there has
-/// been no ingest yet (the renderer surfaces that as "connecting"
-/// not "stale" — a fresh session can't be stale before it's ingested
-/// once).
 pub fn is_stale(
     last_ingest_at: Option<DateTime<Utc>>,
     threshold_secs: u64,
@@ -217,13 +190,6 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         self.ingest_once_since(None).await
     }
 
-    /// #1165 slice 3.2: incremental list-poll. `since=Some(ts)` filters
-    /// to issues updated at or after `ts` (cheap when most stories
-    /// haven't changed). `since=None` does a full poll (initial
-    /// ingest, manual refresh). `seed_all` merges the delta into the
-    /// canonical store; stories not in the delta keep their current
-    /// state, which is the correct semantics — `since` is a delta
-    /// filter, not a replace operation.
     pub async fn ingest_once_since(
         &self,
         since: Option<chrono::DateTime<chrono::Utc>>,
@@ -286,12 +252,6 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         }
     }
 
-    /// #1165 slice 3: conditional GET — when `prior_etag` matches the
-    /// upstream ETag, GitHub responds 304 + the adapter returns
-    /// `ConditionalBody::NotModified`; no event is dispatched (canonical
-    /// store unchanged, no quota cost). When the body has changed (or
-    /// no prior etag), a `BodyFetched { etag }` event seeds canonical
-    /// with the new content + new etag for the next conditional poll.
     pub async fn fetch_body_conditional(
         &self,
         number: u64,

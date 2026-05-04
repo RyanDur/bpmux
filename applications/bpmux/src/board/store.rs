@@ -239,11 +239,6 @@ impl BoardStore {
                     story.parent_epic = None;
                 }
             }
-            // #1151: GH-API mutation response captured. Field-by-
-            // field merge preserves gate_comments / free_comments
-            // which the mutation response doesn't carry separately.
-            // Body replaces only when the response includes one
-            // (label-only mutations don't).
             BoardEvent::StoryRefreshed { story, .. } => {
                 if let Some(existing) = w.get_mut(&number) {
                     existing.title = story.title.clone();
@@ -255,39 +250,14 @@ impl BoardStore {
                     if story.body.is_some() {
                         existing.body = story.body.clone();
                         existing.acceptance_test_path = story.acceptance_test_path.clone();
-                        // #1165 slice 3: a local mutate that rewrites
-                        // the body invalidates the prior conditional-
-                        // GET validator. The next hydration tick
-                        // re-fetches without `If-None-Match` so the
-                        // canonical store picks up the upstream
-                        // representation (which may differ from our
-                        // local mutate due to GH-side renderers).
                         existing.body_etag = None;
                     }
                 } else {
                     w.insert(number, (**story).clone());
                 }
             }
-            // #1151: GH-API label-mutation response captured. Re-
-            // derive state via the canonical state_from_labels parser
-            // and refresh tags from the new labels list. The story's
-            // is_closed stays as it was (label mutations don't open
-            // or close the issue).
-            //
-            // Empty labels-list short-circuits to a no-op so this
-            // reducer survives test fixtures whose mock label
-            // endpoints return `[]` for every mutation regardless
-            // of intent (per `feedback_test_fixtures_must_not_short_circuit_critical_substrate`,
-            // those fixtures should be made stateful — tracked as
-            // follow-up; for now the empty-guard preserves existing
-            // local state). Real GH always returns at least the
-            // newly-added label after add_label, so the empty case
-            // in production is the rare "all-labels-removed" path
-            // where preserving the previous state is also acceptable
-            // until the next ingest cycle.
             BoardEvent::LabelsRefreshed { labels, .. } => {
                 if labels.is_empty() {
-                    // see note above
                 } else if let Some(existing) = w.get_mut(&number) {
                     existing.state = crate::board::adapters::github::state_from_labels(
                         labels,

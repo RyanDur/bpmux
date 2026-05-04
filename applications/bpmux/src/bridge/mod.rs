@@ -1113,11 +1113,6 @@ pub(crate) fn select_stories_to_hydrate(stories: &[crate::board::Story], limit: 
         .collect()
 }
 
-/// #1165 slice 3: pick stories that already have a body but might be
-/// stale upstream — these get re-polled with `If-None-Match: <etag>`
-/// so 304 costs no quota when the upstream copy is unchanged. Active
-/// states only (the same set as `select_stories_to_hydrate`) since
-/// icebox/accepted bodies don't change in practice.
 pub(crate) fn select_stories_to_revalidate(
     stories: &[crate::board::Story],
     limit: usize,

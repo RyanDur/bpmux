@@ -136,10 +136,6 @@ pub trait StoryTracker: Clone + Send + Sync + 'static {
     ) -> impl std::future::Future<Output = Result<Option<WorkflowRunEntry>, String>> + Send;
 }
 
-/// #1165 slice 3: result of `get_story_conditional`. `NotModified`
-/// when prior etag matched upstream (no body parse, no canonical
-/// mutation); `Modified` when content changed (carries the new etag
-/// for the caller to store); `NotFound` when GitHub returned 404.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConditionalIssue {
     NotModified,
@@ -357,13 +353,6 @@ impl OctocrabStoryTracker {
         serde_json::from_slice(&body).map_err(|e| format!("json parse: {e}"))
     }
 
-    /// #1165 slice 3: conditional `If-None-Match` GET for one issue.
-    /// Returns `ConditionalIssue::NotModified` on HTTP 304 (upstream
-    /// copy unchanged; no quota cost). On 200, returns the post-decode
-    /// JSON value plus the response's ETag header so callers can store
-    /// it for the next conditional poll. Composes with #1154's
-    /// RateLimitObserver — every response (including 304/403/429) seeds
-    /// the observer's headers regardless of the conditional outcome.
     pub async fn get_story_conditional(
         &self,
         number: u64,
@@ -419,22 +408,10 @@ impl OctocrabStoryTracker {
         })
     }
 
-    /// #1165 slice 3: list-fetch with optional `?since=<ts>` to receive
-    /// only issues whose `updated_at` is at or after the supplied
-    /// timestamp. Steady-state polls receive ~0 issues when no GH-side
-    /// changes have occurred, so per-page transfer cost approaches
-    /// zero. `since=None` falls through to the full open+closed paginated
-    /// poll (used by initial ingest + manual refresh). Composes with
-    /// the per-story ETag path: list-since narrows what we look at,
-    /// per-story conditional GET keeps body re-fetches free.
     pub async fn fetch_board_stories_since(
         &self,
         since: Option<chrono::DateTime<chrono::Utc>>,
     ) -> Result<Vec<serde_json::Value>, String> {
-        // Use the `Z` form for UTC instead of `+00:00` so the timestamp
-        // doesn't introduce a `+` into the query string (where `+` would
-        // otherwise need percent-encoding to avoid being parsed as a
-        // space).
         let since_q = since.map(|s| {
             format!(
                 "&since={}",

@@ -34,10 +34,6 @@ pub fn classify_close_error(msg: String) -> SyncError {
     }
 }
 
-/// #1165 slice 3: result of a conditional `If-None-Match` body fetch.
-/// `NotModified` carries no payload — the canonical store is already
-/// up-to-date, no event dispatched, no quota burned. `Modified` carries
-/// the fresh body + the new ETag so the reducer can seed both.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConditionalBody {
     NotModified,
@@ -56,14 +52,6 @@ pub trait SourceAdapter: Send + Sync {
         &self,
     ) -> impl std::future::Future<Output = Result<Vec<Story>, SyncError>> + Send;
 
-    /// #1165 slice 3: incremental list-fetch — pass the timestamp of
-    /// the previous successful list-poll as `since`. GitHub's `?since=`
-    /// filter returns only issues whose `updated_at` is at or after
-    /// the supplied timestamp, so steady-state polls receive ~0 issues
-    /// when no GH-side changes occurred. Default impl wraps
-    /// `ingest_metadata` (full poll) for adapters that don't model
-    /// delta queries; the github adapter overrides to add the query
-    /// param.
     fn ingest_metadata_since(
         &self,
         _since: Option<chrono::DateTime<chrono::Utc>>,
@@ -81,13 +69,6 @@ pub trait SourceAdapter: Send + Sync {
         number: u64,
     ) -> impl std::future::Future<Output = Result<String, SyncError>> + Send;
 
-    /// #1165 slice 3: conditional fetch — pass the prior ETag for the
-    /// story's body to skip transfer when the upstream copy hasn't
-    /// changed (304 response). Default impl falls back to
-    /// `fetch_story_body` for adapters that don't model HTTP cache
-    /// validators (in-memory test substrate); the github adapter
-    /// overrides to issue an `If-None-Match: <prior_etag>` request and
-    /// surface `NotModified` on 304.
     fn fetch_story_body_conditional(
         &self,
         number: u64,
