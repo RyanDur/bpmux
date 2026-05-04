@@ -1,4 +1,3 @@
-//! PTY helpers: running bpmux in a pseudo-terminal and observing its TUI.
 #![allow(clippy::panic, clippy::expect_used)]
 
 use std::io::{Read, Write};
@@ -20,37 +19,20 @@ fn default_issue_json(number: u64, title: &str) -> Value {
     issue_json(number, title, &[], Some(&body))
 }
 
-/// A running bpmux instance in a PTY.
-///
-/// The drainer thread continuously reads the PTY and feeds a shared
-/// `ScreenState` that tests can query via `wait_for_tui`. Without the
-/// drainer the PTY buffer fills and bpmux blocks on writes, which is
-/// what tests (and production) would experience with no terminal attached.
-///
-/// Uses a free port and a temporary session directory. Drop kills the
-/// process; the drainer exits when the PTY closes.
 pub struct TestBpmux {
     child: Box<dyn portable_pty::Child + Send + Sync>,
     _drainer: Option<std::thread::JoinHandle<()>>,
     session_dir: Option<tempfile::TempDir>,
     writer: Arc<Mutex<Box<dyn Write + Send>>>,
     port: u16,
-    /// Default httpmock pointed at the spawned bpmux's GH boundary
-    /// (BPMUX_GH_BASE_URL). `None` when the caller supplied their own
-    /// mock URL via `start_with_mock_gh` or extra env. Holding the
-    /// MockServer here keeps it alive for the test's full duration.
     _default_mock_gh: Option<MockServer>,
 }
 
 impl TestBpmux {
-    /// Spawn bpmux with the default identity ("human") and block until the
-    /// TUI renders.
     pub fn start() -> Self {
         Self::start_named("human")
     }
 
-    /// Spawn bpmux with a specific `--name` identity and block until the TUI
-    /// renders.
     pub fn start_named(name: &str) -> Self {
         let session_dir = tempfile::TempDir::new().expect("temp dir");
         Self::start_with_session(name, session_dir)
@@ -190,16 +172,6 @@ impl TestBpmux {
             "BPMUX_LOG",
             std::env::temp_dir().join("bpmux-test-diag.log"),
         );
-        // #724: when no caller-supplied mock URL is in extra_env,
-        // point the spawned bpmux at a private empty-issues httpmock
-        // by default. Without this, every `TestBpmux::start()` call
-        // under the post-#534 pre-push gate (GH_TOKEN+BPMUX_REPO
-        // mandatory) polls real github.com — production state floods
-        // the TUI within seconds, breaking every "solo"-mode
-        // assertion. Per Ryan's 2026-04-30 directive: only octocrab
-        // gets test-doubled. Caller-side `start_with_mock_gh` still
-        // wins because extra_env's BPMUX_GH_BASE_URL is applied AFTER
-        // this default.
         let default_mock = if extra_env.iter().any(|(k, _)| *k == "BPMUX_GH_BASE_URL") {
             None
         } else {
@@ -299,19 +271,6 @@ impl TestBpmux {
         bpmux
     }
 
-    /// Block until the bpmux HTTP listener is accepting requests.
-    /// `wait_for_tui("solo")` confirms only the TUI rendered; the
-    /// server's TCP listener bind happens AFTER
-    /// `build_prod_orchestrator`'s ingest-with-retries (≈ 6 s
-    /// worst-case under the post-#534 pre-push gate where GH_TOKEN +
-    /// BPMUX_REPO are mandatory). Without this poll, every test that
-    /// POSTs immediately after `start*` race-fails with
-    /// connection-refused. 15 s timeout covers the worst-case retry
-    /// schedule with headroom.
-    ///
-    /// Sync TCP-connect probe rather than reqwest — `#[tokio::test]`
-    /// callers (share_message_test.rs etc.) are already inside a
-    /// tokio runtime, so spinning up a nested runtime panics.
     fn wait_for_http_ready(&self) {
         let addr = format!("127.0.0.1:{}", self.port)
             .parse::<std::net::SocketAddr>()
@@ -330,14 +289,6 @@ impl TestBpmux {
         self.port
     }
 
-    /// Path to the per-run auth_token file the spawned bpmux wrote at
-    /// startup. Bridge subprocesses driving auth-gated affordances
-    /// (simulate_*) need to read the SAME token file as the bpmux
-    /// server; pass this path via `BPMUX_AUTH_TOKEN_PATH` env-var on
-    /// `TestBridge::connect_with_env` so bridge's `load_auth_token()`
-    /// reads from the test's tempdir instead of the developer's real
-    /// `~/.bpmux/auth_token`. Closes the auth-token-cross-process gap
-    /// (#487) for simulate-class agent-side E2E.
     pub fn auth_token_path(&self) -> std::path::PathBuf {
         self.session_dir
             .as_ref()
@@ -346,11 +297,6 @@ impl TestBpmux {
             .join("auth_token")
     }
 
-    /// #662: per-run sessions-base path. Bridge subprocesses pass this
-    /// via `BPMUX_SESSIONS_BASE` so their `default_sessions_base()`
-    /// resolves to the test's tempdir, not the developer's real
-    /// `~/.bpmux/sessions/`. Closes the bridge-side cross-process
-    /// session-state-leak under parallel-load.
     pub fn sessions_base_path(&self) -> std::path::PathBuf {
         self.session_dir
             .as_ref()
@@ -359,14 +305,6 @@ impl TestBpmux {
             .to_path_buf()
     }
 
-    /// POST JSON to a path on the spawned bpmux's REST surface with
-    /// the per-run bearer token and loopback Host pin. Centralizes
-    /// the auth boilerplate that would otherwise repeat across every
-    /// simulate-endpoint test (#250). Returns the raw Response so
-    /// callers can assert on status + body as needed. Rejection-path
-    /// tests (wrong/missing bearer, spoofed host) intentionally
-    /// bypass this helper and build their own request — their whole
-    /// point is to deviate from the happy-path auth shape.
     pub async fn authed_post(&self, path: &str, body: serde_json::Value) -> reqwest::Response {
         let secret = self.simulate_secret();
         let url = format!("http://127.0.0.1:{}{}", self.port, path);
@@ -380,19 +318,12 @@ impl TestBpmux {
             .expect("POST to bpmux should send")
     }
 
-    /// Per-run auth token the spawned bpmux wrote at startup — tests
-    /// that POST to /api/simulate/* need this in the Authorization
-    /// header (#235).
     pub fn simulate_secret(&self) -> String {
         let dir = self
             .session_dir
             .as_ref()
             .expect("session dir taken before reading secret");
         let path = dir.path().join("auth_token");
-        // The server generates the token before binding the TCP port.
-        // `start_with_session_and_env` blocks until the TUI renders,
-        // so the file should already exist; poll briefly in case of
-        // timing jitter rather than panicking.
         let deadline = Instant::now() + Duration::from_secs(2);
         loop {
             if let Ok(s) = std::fs::read_to_string(&path) {
@@ -408,7 +339,6 @@ impl TestBpmux {
         }
     }
 
-    /// Take the session directory for reuse in a restart test.
     pub fn take_session_dir(&mut self) -> tempfile::TempDir {
         self.session_dir.take().expect("session dir already taken")
     }

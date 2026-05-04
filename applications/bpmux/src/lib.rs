@@ -62,7 +62,6 @@ enum Command {
         #[arg(long)]
         board_fixture: Option<String>,
     },
-    /// Run the WS server + session (now the default behavior; subcommand kept for explicitness in Electron spawn args).
     Server,
     /// Print an agent's recent lessons to stdout for session-start auto-surface (#157)
     Recall {

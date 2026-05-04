@@ -162,11 +162,6 @@ fn compute_broadcast_emits_failure_on_red_state() {
 
 #[test]
 fn compute_broadcast_emits_green_on_green_state() {
-    // #1140: per-completion shape — Green ALWAYS emits a broadcast
-    // text. Caller (`spawn_poller`) is responsible for tuple-dedup
-    // before firing. The prior transition-only semantics dropped
-    // GREEN→GREEN-with-new-run_id (the canonical "my push went green"
-    // case); pure render now always returns Some on terminal states.
     let text = compute_broadcast_text(&event(CiState::Green));
     assert!(text.is_some(), "Green terminal state should emit");
     assert!(text.unwrap().contains("CI green"));
