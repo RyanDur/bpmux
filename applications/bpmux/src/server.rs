@@ -224,6 +224,7 @@ pub async fn run_server(
     if let Some(refresh) = test_refresh.as_ref().cloned() {
         tokio::spawn(crate::bridge::run_drain_loop(
             refresh.clone(),
+            session.clone(),
             crate::bridge::drain_interval_from_env(),
         ));
         tokio::spawn(crate::bridge::run_ingest_poll_loop(

@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { SYNC_STATUS_UPDATE_MARKER, type ChatMessage } from '../transport/types'
+import { newMessagesContainMarker } from './markerDetection'
 import './SyncStatusGlyph.css'
 
 interface DroppedEvent {
@@ -170,11 +172,14 @@ const networkErrorToResult = (err: unknown): FetchErr => ({
 interface Props {
   apiBase?: string
   authToken?: string
+  messages?: ChatMessage[]
 }
 
-const SyncStatusGlyph = ({ apiBase, authToken }: Props): React.JSX.Element => {
+const SyncStatusGlyph = ({ apiBase, authToken, messages }: Props): React.JSX.Element => {
   const [report, setReport] = useState<SyncStatusReport | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const seenMessageCountRef = useRef<number>(messages?.length ?? 0)
+  const fetchOnceRef = useRef<() => Promise<void>>(async () => {})
 
   const fetchOnce = useCallback(
     async (signal?: AbortSignal): Promise<void> => {
@@ -198,15 +203,26 @@ const SyncStatusGlyph = ({ apiBase, authToken }: Props): React.JSX.Element => {
       return
     }
     const controller = new AbortController()
-    void fetchOnce(controller.signal)
+    const onceWithSignal = (): Promise<void> => fetchOnce(controller.signal)
+    fetchOnceRef.current = onceWithSignal
+    void onceWithSignal()
     const id = setInterval(() => {
-      void fetchOnce(controller.signal)
+      void onceWithSignal()
     }, POLL_MS)
     return () => {
       controller.abort()
       clearInterval(id)
     }
   }, [apiBase, fetchOnce])
+
+  useEffect(() => {
+    if (!messages) return
+    const prev = seenMessageCountRef.current
+    seenMessageCountRef.current = messages.length
+    if (newMessagesContainMarker(prev, messages, SYNC_STATUS_UPDATE_MARKER)) {
+      void fetchOnceRef.current()
+    }
+  }, [messages])
 
   const state = deriveState(report)
   const count =

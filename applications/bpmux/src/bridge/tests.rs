@@ -635,9 +635,21 @@ mod ingest_poll_loop_tests {
     #[tokio::test]
     async fn drain_loop_fires_drain_pending_on_each_tick() {
         use crate::bridge::run_drain_loop;
+        use tempfile::TempDir;
+        let dir = TempDir::new().expect("tmp");
+        let (tx, _rx) = tokio::sync::broadcast::channel(16);
+        let session = Arc::new(crate::session::Session::new(
+            dir.path().to_path_buf(),
+            "test".to_string(),
+            tx,
+        ));
         let driver = Arc::new(CountingDriver::new());
         let driver_dyn: Arc<dyn RefreshDriver> = driver.clone();
-        let handle = tokio::spawn(run_drain_loop(driver_dyn, Duration::from_millis(50)));
+        let handle = tokio::spawn(run_drain_loop(
+            driver_dyn,
+            session,
+            Duration::from_millis(50),
+        ));
         tokio::time::sleep(Duration::from_millis(25)).await;
         assert_eq!(driver.drain_pending.load(Ordering::SeqCst), 0);
         tokio::time::sleep(Duration::from_millis(250)).await;

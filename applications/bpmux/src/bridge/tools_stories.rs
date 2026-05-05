@@ -104,6 +104,17 @@ pub const REACTIONS_UPDATE_MARKER: &str = "__BPMUX_REACTIONS_UPDATE__";
 /// for the disconnected-then-reconnected window.
 pub const CI_STATE_UPDATE_MARKER: &str = "__BPMUX_CI_STATE_UPDATE__";
 
+/// Sync-status-change broadcast marker (#1164). Emitted by the
+/// bridge's `run_drain_loop` when a drain tick mutates state — i.e.
+/// `drain_pending` returned `Ok(n)` with `n > 0` (events flushed) OR
+/// `Err(_)` (mutation failed; pending count unchanged but last_error
+/// flipped). The renderer's `SyncStatusGlyph` subscribes and refetches
+/// `/api/sync-status` immediately, so the user sees state transitions
+/// within WS latency instead of waiting for the 5s client-side poll
+/// tick. The 5s poll stays as a resilience-fallback for the
+/// disconnected-then-reconnected window.
+pub const SYNC_STATUS_UPDATE_MARKER: &str = "__BPMUX_SYNC_STATUS_UPDATE__";
+
 /// #402 team-roster substrate. Broadcast when a WS peer joins /
 /// leaves / renames so the frontend's `useTeamRoster` hook refetches
 /// `/api/roster`. Push-based membership updates; same pattern as the

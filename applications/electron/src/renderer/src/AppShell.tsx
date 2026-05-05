@@ -207,7 +207,11 @@ const AppShell = ({
           {lanes === 'on' ? <LanesIcon /> : <StreamIcon />}
         </button>
         <CiGlyph messages={messages} />
-        <SyncStatusGlyph apiBase={bridge?.apiBase} authToken={bridge?.authToken} />
+        <SyncStatusGlyph
+          apiBase={bridge?.apiBase}
+          authToken={bridge?.authToken}
+          messages={messages}
+        />
       </header>
       <section className="app-body">
         <Sidebar

@@ -38,6 +38,7 @@ pub use tools_stories::CI_STATE_UPDATE_MARKER;
 pub use tools_stories::PINS_UPDATE_MARKER;
 pub use tools_stories::REACTIONS_UPDATE_MARKER;
 pub use tools_stories::ROSTER_UPDATE_MARKER;
+pub use tools_stories::SYNC_STATUS_UPDATE_MARKER;
 pub use tools_stories::parse_acceptance_test_path;
 
 use crate::transport::protocol::ServerMessage;
@@ -1182,6 +1183,7 @@ pub(crate) fn hydration_interval_from_env() -> std::time::Duration {
 
 pub(crate) async fn run_drain_loop(
     refresh: Arc<dyn crate::board::RefreshDriver>,
+    session: Arc<crate::session::Session>,
     interval: std::time::Duration,
 ) {
     let start = tokio::time::Instant::now() + interval;
@@ -1189,13 +1191,37 @@ pub(crate) async fn run_drain_loop(
     ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
     loop {
         ticker.tick().await;
-        match refresh.drain_pending().await {
-            Ok(0) => {}
-            Ok(n) => crate::session::diag::log_diag(&format!(
-                "bridge: background drain pushed {n} event(s)"
-            )),
-            Err(e) => crate::session::diag::log_diag(&format!("bridge: background drain: {e}")),
+        let state_changed = match refresh.drain_pending().await {
+            Ok(0) => false,
+            Ok(n) => {
+                crate::session::diag::log_diag(&format!(
+                    "bridge: background drain pushed {n} event(s)"
+                ));
+                true
+            }
+            Err(e) => {
+                crate::session::diag::log_diag(&format!("bridge: background drain: {e}"));
+                true
+            }
+        };
+        if state_changed {
+            broadcast_sync_status_update(&session);
         }
+    }
+}
+
+fn broadcast_sync_status_update(session: &crate::session::Session) {
+    let msg = crate::session::Message {
+        from: "bpmux".to_string(),
+        text: SYNC_STATUS_UPDATE_MARKER.to_string(),
+        ts: chrono::Utc::now(),
+        message_type: crate::session::MessageType::System,
+        ..crate::session::Message::default()
+    };
+    if let Err(e) = session.broadcast(&msg) {
+        crate::session::diag::log_diag(&format!(
+            "run_drain_loop: sync-status marker broadcast failed: {e}"
+        ));
     }
 }
 
