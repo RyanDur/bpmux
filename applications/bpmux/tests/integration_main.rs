@@ -67,6 +67,8 @@ mod get_token_report_e2e;
 mod get_usage_e2e;
 #[path = "integration_main_modules/gh_fixture_contract.rs"]
 mod gh_fixture_contract;
+#[path = "integration_main_modules/hook_auto_fire_skills_e2e.rs"]
+mod hook_auto_fire_skills_e2e;
 #[path = "integration_main_modules/identity_mutation_e2e.rs"]
 mod identity_mutation_e2e;
 #[path = "integration_main_modules/label_story_e2e.rs"]
