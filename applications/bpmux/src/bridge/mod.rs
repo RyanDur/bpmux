@@ -19,6 +19,7 @@ use serde_json::json;
 use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite;
 
+pub(crate) mod move_story;
 mod rpc_client;
 pub(crate) mod tools;
 pub(crate) mod tools_stories;
@@ -272,6 +273,15 @@ pub(crate) async fn dispatch_test_reorder_story(
 ) -> Result<String, String> {
     let empty_ws: tokio::sync::Mutex<Option<WsSink>> = tokio::sync::Mutex::new(None);
     tools_stories::handle_reorder_story(&args, agent_name, &empty_ws).await
+}
+
+pub(crate) async fn dispatch_test_move_story(
+    args: serde_json::Map<String, serde_json::Value>,
+    agent_name: &str,
+    refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
+) -> Result<String, String> {
+    let empty_ws: tokio::sync::Mutex<Option<WsSink>> = tokio::sync::Mutex::new(None);
+    move_story::handle_move_story(&args, agent_name, &empty_ws, refresh).await
 }
 
 pub(crate) async fn dispatch_test_edit_story(
@@ -755,6 +765,7 @@ impl ServerHandler for BridgeServer {
                 | "create_story"
                 | "comment_on_story"
                 | "label_story"
+                | "move_story"
                 | "set_parent_epic"
                 | "unset_parent_epic"
                 | "reorder_story"
@@ -918,6 +929,9 @@ pub fn build_advertised_tools() -> Vec<rmcp::model::Tool> {
         crate::mcp::tools::label_story_tool(
             "Add a label to a story (ready, blocked, icebox, deferred). PM ONLY — other roles are rejected.",
         ),
+        crate::mcp::tools::move_story_tool(
+            "Move a story to a target state + optional position with required rationale (#1188). Single atomic mutation consolidates label_story / reorder_story / close_story / accept_story workflows. Args: number (issue), target_state (one of: icebox, ready, in-progress, desk-check, delivered, accepted, retired), position (optional 1-based; PM-only when set; only meaningful for ready/icebox), rationale (REQUIRED non-empty string — surfaced in story-timeline + appended as issue-comment). Closes today's #1177-stuck-Accepted class structurally: moving a closed story OUT of Accepted/Retired into a non-terminal column auto-fires StoryReopened first. Any role can move COLUMN; PM owns ORDER per Ryan 2026-05-05 01:39 UTC. Goes through canonical-store mutation chain (refresh → reap → state-transition → audit-comment) per `feedback_rest_mcp_canonical_mutation_parity` — no half-states observable.",
+        ),
         crate::mcp::tools::set_parent_epic_tool(
             "Group a story under an Epic by setting its parent_epic. PM ONLY. Args: number (child) + epic_number (parent Epic). The Epic story-type is checked at filing-time on the parent; this tool only records the membership relationship. Self-parent rejected.",
         ),
@@ -1020,6 +1034,7 @@ pub const DISPATCHED_TOOL_NAMES: &[&str] = &[
     "create_story",
     "comment_on_story",
     "label_story",
+    "move_story",
     "set_parent_epic",
     "unset_parent_epic",
     "reorder_story",

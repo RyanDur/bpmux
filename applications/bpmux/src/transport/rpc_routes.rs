@@ -196,6 +196,7 @@ async fn dispatch(
             bridge::dispatch_test_unset_parent_epic(args, agent, refresh_ref).await
         }
         "reorder_story" => bridge::dispatch_test_reorder_story(args, agent).await,
+        "move_story" => bridge::dispatch_test_move_story(args, agent, refresh_ref).await,
         "edit_story" => bridge::dispatch_test_edit_story(args, agent, refresh_ref).await,
         "view_board" => bridge::dispatch_test_view_board(refresh_ref).await,
         "get_story" => bridge::dispatch_test_get_story(args, refresh_ref).await,
