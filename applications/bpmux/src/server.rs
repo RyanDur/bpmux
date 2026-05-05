@@ -247,6 +247,8 @@ pub async fn run_server(
     // would just log errors.
     let ci_state_store = crate::transport::ci_state_store::CiStateStore::new();
     let ci_log_store = crate::transport::ci_log_store::CiLogStore::new();
+    let electron_capture_lock: std::sync::Arc<tokio::sync::Mutex<()>> =
+        std::sync::Arc::new(tokio::sync::Mutex::new(()));
     if let Some(tracker_arc) = tracker.as_ref().cloned() {
         crate::transport::ci_watcher::spawn(
             session.clone(),
@@ -296,6 +298,10 @@ pub async fn run_server(
         .route(
             "/api/ci/log/{run_id}",
             axum::routing::get(transport::rest::get_ci_log),
+        )
+        .route(
+            "/api/electron-capture",
+            axum::routing::get(transport::rest::get_electron_capture),
         )
         .route(
             "/api/sync-status",
@@ -418,6 +424,7 @@ pub async fn run_server(
         .layer(axum::Extension(tracker))
         .layer(axum::Extension(ci_state_store))
         .layer(axum::Extension(ci_log_store))
+        .layer(axum::Extension(electron_capture_lock))
         .layer(axum::Extension(test_refresh))
         // The Electron renderer loads from Vite's dev URL or file://
         // and fetches this backend at 127.0.0.1:4117 — a cross-origin

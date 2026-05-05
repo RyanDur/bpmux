@@ -3,6 +3,7 @@ pub mod ci_log_store;
 pub mod ci_state_store;
 pub mod ci_watcher;
 pub mod crypto;
+pub mod electron_capture;
 pub mod peer;
 pub mod protocol;
 pub mod rest;

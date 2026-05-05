@@ -1,6 +1,7 @@
 // Session / identity / status tools
 mod add_principle;
 mod add_value;
+mod capture_electron_window;
 mod capture_screen;
 mod classifier_misfire;
 mod dev_in_flight;
@@ -61,6 +62,7 @@ mod view_velocity;
 
 pub use add_principle::add_principle_tool;
 pub use add_value::add_value_tool;
+pub use capture_electron_window::capture_electron_window_tool;
 pub use capture_screen::capture_screen_tool;
 pub use classifier_misfire::classifier_misfire_tool;
 pub use dev_in_flight::dev_in_flight_tool;

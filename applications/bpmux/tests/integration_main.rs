@@ -23,6 +23,8 @@ mod bookmark_e2e;
 mod bridge_collaboration;
 #[path = "integration_main_modules/briefing_e2e.rs"]
 mod briefing_e2e;
+#[path = "integration_main_modules/capture_electron_window_e2e.rs"]
+mod capture_electron_window_e2e;
 #[path = "integration_main_modules/ci_canonical.rs"]
 mod ci_canonical;
 #[path = "integration_main_modules/classifier_misfire_e2e.rs"]

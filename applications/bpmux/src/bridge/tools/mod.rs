@@ -4,6 +4,7 @@ mod helpers;
 
 mod add_principle;
 mod add_value;
+mod capture_electron_window;
 mod capture_screen;
 mod classifier_misfire;
 mod dev_in_flight;
@@ -64,6 +65,7 @@ pub(in crate::bridge) use helpers::{WsSink, ws_send};
 
 pub(in crate::bridge) use add_principle::handle_add_principle;
 pub(in crate::bridge) use add_value::handle_add_value;
+pub(in crate::bridge) use capture_electron_window::handle_capture_electron_window;
 pub(in crate::bridge) use capture_screen::handle_capture_screen;
 pub(in crate::bridge) use classifier_misfire::handle_classifier_misfire;
 pub(in crate::bridge) use dev_in_flight::handle_dev_in_flight;

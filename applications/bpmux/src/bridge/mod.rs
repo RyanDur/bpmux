@@ -685,6 +685,10 @@ impl ServerHandler for BridgeServer {
                 "list_peer_lessons" => tools::handle_list_peer_lessons(&args, port).await,
                 "save_lesson" => tools::handle_save_lesson(&args, port, &name).await,
                 "capture_screen" => tools::handle_capture_screen(port).await,
+                "capture_electron_window" => {
+                    let role = name.lock().await.clone();
+                    tools::handle_capture_electron_window(&role, port).await
+                }
                 "simulate_click" => tools::handle_simulate_click(&args, port).await,
                 "simulate_key" => tools::handle_simulate_key(&args, port).await,
                 "simulate_type" => tools::handle_simulate_type(&args, port).await,
@@ -814,6 +818,9 @@ pub fn build_advertised_tools() -> Vec<rmcp::model::Tool> {
         ),
         crate::mcp::tools::capture_screen_tool(
             "Capture the current TUI screen as text. Returns the 80x24 grid exactly as the user sees it. Use for visual verification and desk checking.",
+        ),
+        crate::mcp::tools::capture_electron_window_tool(
+            "Capture the bpmux Electron renderer window as a PNG (#1183). No args. Returns JSON `{ path, window_id, captured_at, width, height }` where `path` is a file under `~/.bpmux/captures/<timestamp>-<role>.png` that the agent can Read. macOS-only in v1: relies on system `screencapture` + `swift` (Xcode CLT). First-time use prompts macOS Screen Recording permission for the terminal/process running bpmux; until granted, the tool returns `{kind:'permission_denied', detail:...}` with the System Settings path. Other named error shapes: `electron_not_running` (no Electron process visible), `no_window` (Electron running but no bpmux window onscreen), `window_minimized` (window has 0x0 bounds). Captures are namespaced per role; the directory is auto-cleaned after 24h. Use this when you need to see what Ryan sees in the Electron app — replaces the Ryan-drops-screenshot anti-pattern.",
         ),
         crate::mcp::tools::simulate_click_tool(
             "Simulate a mouse click at (x, y) on the TUI. Use with capture_screen for interactive testing.",
@@ -980,6 +987,7 @@ pub const DISPATCHED_TOOL_NAMES: &[&str] = &[
     "list_peer_lessons",
     "save_lesson",
     "capture_screen",
+    "capture_electron_window",
     "simulate_click",
     "simulate_key",
     "simulate_type",
