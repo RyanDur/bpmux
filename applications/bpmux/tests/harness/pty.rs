@@ -74,10 +74,34 @@ impl TestBpmux {
         Self::start_with_session_and_env(name, session_dir, &[])
     }
 
+    /// Spawn bpmux on an explicit port, reusing an existing
+    /// session_dir. Used by #130 bridge-reconnect e2e to verify
+    /// server-restart-on-same-port → bridge auto-reconnect cascade.
+    /// The caller is responsible for ensuring the port is free at
+    /// spawn time (typically via `free_port()` immediately before
+    /// calling this); test isolation otherwise mirrors `start_with_
+    /// session_and_env`.
+    pub fn start_with_session_and_port(
+        name: &str,
+        session_dir: tempfile::TempDir,
+        port: u16,
+    ) -> Self {
+        Self::start_with_session_and_env_and_port(name, session_dir, &[], Some(port))
+    }
+
     fn start_with_session_and_env(
         name: &str,
         session_dir: tempfile::TempDir,
         extra_env: &[(&str, &str)],
+    ) -> Self {
+        Self::start_with_session_and_env_and_port(name, session_dir, extra_env, None)
+    }
+
+    fn start_with_session_and_env_and_port(
+        name: &str,
+        session_dir: tempfile::TempDir,
+        extra_env: &[(&str, &str)],
+        port_override: Option<u16>,
     ) -> Self {
         let bin = env!("CARGO_BIN_EXE_bpmux");
         let session_base = session_dir
@@ -85,7 +109,7 @@ impl TestBpmux {
             .to_str()
             .expect("temp path is utf-8")
             .to_string();
-        let port = free_port();
+        let port = port_override.unwrap_or_else(free_port);
 
         let pty_system = native_pty_system();
         let pair = pty_system
