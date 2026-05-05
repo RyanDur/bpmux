@@ -643,7 +643,6 @@ test.describe('real-backend', () => {
     const authTokenDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bpmux-react-auth-'))
     const authTokenPath = path.join(authTokenDir, 'auth_token')
     const { app, backendPort } = await launchWithIsolatedSession({
-      backendPort: 4132,
       seedMessages,
       extraEnv: { BPMUX_AUTH_TOKEN_PATH: authTokenPath }
     })
