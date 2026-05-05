@@ -41,6 +41,15 @@ impl GitHubSourceAdapter {
         self.inner.list_latest_run_on_main().await
     }
 
+    pub async fn list_latest_run_on_main_conditional(
+        &self,
+        prior_etag: Option<&str>,
+    ) -> Result<crate::bridge::tracker::ConditionalRunEntry, String> {
+        self.inner
+            .list_latest_run_on_main_conditional(prior_etag)
+            .await
+    }
+
     pub async fn fetch_failed_tests_for_run(
         &self,
         run_id: u64,

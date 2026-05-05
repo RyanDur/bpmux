@@ -35,4 +35,10 @@
   &.ci-glyph--unknown {
     color: var(--fg-dim);
   }
+
+  &.ci-glyph--watcher-unhealthy {
+    color: var(--accent-warning);
+    text-decoration: underline dotted;
+    text-underline-offset: 0.2em;
+  }
 }

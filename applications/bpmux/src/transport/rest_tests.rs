@@ -1371,6 +1371,7 @@ async fn get_ci_returns_cached_state_with_last_updated_at_after_write() {
         head_sha: Some("abc1234".to_string()),
         display_title: Some("test".to_string()),
         last_updated_at: None,
+        last_successful_poll_at: None,
         poll_interval_secs: 60,
         backoff_cap_secs: 3600,
     };
@@ -1416,6 +1417,7 @@ async fn get_ci_does_not_hit_github_when_store_has_cached_state() {
         head_sha: Some("def5678".to_string()),
         display_title: Some("flaky test".to_string()),
         last_updated_at: None,
+        last_successful_poll_at: None,
         poll_interval_secs: 60,
         backoff_cap_secs: 3600,
     });

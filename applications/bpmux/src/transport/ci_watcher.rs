@@ -43,8 +43,9 @@ use crate::board::adapters::github::GitHubSourceAdapter;
 use crate::session;
 use crate::transport::ci_state_store::CiStateStore;
 
-pub const POLL_INTERVAL: Duration = Duration::from_secs(60);
+pub const POLL_INTERVAL: Duration = Duration::from_secs(10);
 pub const MAX_BACKOFF: Duration = Duration::from_secs(3600);
+pub const WATCHER_UNHEALTHY_THRESHOLD: Duration = Duration::from_secs(120);
 
 /// Classification of a tick result vs prior state. `Changed` triggers
 /// the broadcast; `Same` is a no-op. `NoData` (empty runs list) leaves
@@ -91,6 +92,7 @@ pub fn spawn(
     let observer = tracker.rate_limit_observer();
     tokio::spawn(async move {
         let mut last_seen: Option<Observation> = None;
+        let mut last_etag: Option<String> = None;
         let mut interval = tokio::time::interval(POLL_INTERVAL);
         let base_backoff = Duration::from_secs(60);
         let max_backoff = MAX_BACKOFF;
@@ -101,13 +103,23 @@ pub fn spawn(
                 _ = ct.cancelled() => break,
                 _ = interval.tick() => {}
             }
-            let report = match tracker.list_latest_run_on_main().await {
-                Ok(Some(run)) => {
+            let conditional = tracker
+                .list_latest_run_on_main_conditional(last_etag.as_deref())
+                .await;
+            let report = match conditional {
+                Ok(crate::bridge::tracker::ConditionalRunEntry::NotModified) => {
                     backoff = base_backoff;
-                    run
+                    ci_state_store.mark_poll_succeeded();
+                    continue;
                 }
-                Ok(None) => {
+                Ok(crate::bridge::tracker::ConditionalRunEntry::Modified { entry, etag }) => {
                     backoff = base_backoff;
+                    last_etag = etag;
+                    entry
+                }
+                Ok(crate::bridge::tracker::ConditionalRunEntry::Empty) => {
+                    backoff = base_backoff;
+                    ci_state_store.mark_poll_succeeded();
                     continue;
                 }
                 Err(e) => {

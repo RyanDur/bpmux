@@ -17,6 +17,8 @@ pub struct CiStateReport {
     pub display_title: Option<String>,
     #[serde(default)]
     pub last_updated_at: Option<String>,
+    #[serde(default)]
+    pub last_successful_poll_at: Option<String>,
     pub poll_interval_secs: u64,
     pub backoff_cap_secs: u64,
 }
@@ -39,6 +41,7 @@ pub fn build_ci_state_report(runs: &[RunEntry]) -> CiStateReport {
         head_sha: event.sha,
         display_title: event.title,
         last_updated_at: None,
+        last_successful_poll_at: None,
         poll_interval_secs: POLL_INTERVAL.as_secs(),
         backoff_cap_secs: MAX_BACKOFF.as_secs(),
     }
@@ -53,6 +56,7 @@ pub fn unknown_ci_state_report() -> CiStateReport {
         head_sha: None,
         display_title: None,
         last_updated_at: None,
+        last_successful_poll_at: None,
         poll_interval_secs: POLL_INTERVAL.as_secs(),
         backoff_cap_secs: MAX_BACKOFF.as_secs(),
     }

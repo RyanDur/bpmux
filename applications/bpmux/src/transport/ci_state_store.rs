@@ -1,13 +1,19 @@
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 
 use crate::bridge::tools::CiStateReport;
 
+#[derive(Default)]
+struct CiStateInner {
+    report: Option<CiStateReport>,
+    last_successful_poll_at: Option<DateTime<Utc>>,
+}
+
 #[derive(Clone, Default)]
 pub struct CiStateStore {
-    inner: Arc<Mutex<Option<CiStateReport>>>,
+    inner: Arc<Mutex<CiStateInner>>,
 }
 
 impl CiStateStore {
@@ -16,14 +22,31 @@ impl CiStateStore {
     }
 
     pub fn write(&self, mut report: CiStateReport) {
-        report.last_updated_at = Some(Utc::now().to_rfc3339());
+        let now = Utc::now();
+        report.last_updated_at = Some(now.to_rfc3339());
+        report.last_successful_poll_at = Some(now.to_rfc3339());
         let mut guard = self.inner.lock().unwrap_or_else(|e| e.into_inner());
-        *guard = Some(report);
+        guard.report = Some(report);
+        guard.last_successful_poll_at = Some(now);
+    }
+
+    pub fn mark_poll_succeeded(&self) {
+        let now = Utc::now();
+        let mut guard = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+        guard.last_successful_poll_at = Some(now);
+        if let Some(report) = guard.report.as_mut() {
+            report.last_successful_poll_at = Some(now.to_rfc3339());
+        }
     }
 
     pub fn read(&self) -> Option<CiStateReport> {
         let guard = self.inner.lock().unwrap_or_else(|e| e.into_inner());
-        guard.clone()
+        guard.report.clone()
+    }
+
+    pub fn last_successful_poll_at(&self) -> Option<DateTime<Utc>> {
+        let guard = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+        guard.last_successful_poll_at
     }
 }
 
@@ -44,6 +67,7 @@ mod tests {
             head_sha: Some("abc1234".to_string()),
             display_title: Some("test".to_string()),
             last_updated_at: None,
+            last_successful_poll_at: None,
             poll_interval_secs: 60,
             backoff_cap_secs: 3600,
         }
@@ -90,6 +114,63 @@ mod tests {
             .read()
             .expect("clone must observe writes through shared Arc");
         assert_eq!(report.conclusion, "success");
+    }
+
+    #[test]
+    fn write_sets_last_successful_poll_at() {
+        let store = CiStateStore::new();
+        store.write(sample("success"));
+        let stored = store.read().expect("Some");
+        assert!(
+            stored.last_successful_poll_at.is_some(),
+            "write must stamp last_successful_poll_at"
+        );
+        let ts = stored.last_successful_poll_at.as_deref().unwrap();
+        assert!(
+            chrono::DateTime::parse_from_rfc3339(ts).is_ok(),
+            "last_successful_poll_at must be RFC3339: {ts}"
+        );
+        assert!(
+            store.last_successful_poll_at().is_some(),
+            "store also exposes timestamp via direct accessor"
+        );
+    }
+
+    #[test]
+    fn mark_poll_succeeded_updates_timestamp_without_writing_report() {
+        let store = CiStateStore::new();
+        assert!(store.last_successful_poll_at().is_none());
+        store.mark_poll_succeeded();
+        assert!(
+            store.last_successful_poll_at().is_some(),
+            "mark_poll_succeeded must stamp timestamp"
+        );
+        assert!(
+            store.read().is_none(),
+            "mark_poll_succeeded MUST NOT write a report (304-path: state unchanged)"
+        );
+    }
+
+    #[test]
+    fn mark_poll_succeeded_after_write_updates_timestamp_in_existing_report() {
+        let store = CiStateStore::new();
+        store.write(sample("success"));
+        let first_ts = store
+            .read()
+            .unwrap()
+            .last_successful_poll_at
+            .expect("set on write");
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        store.mark_poll_succeeded();
+        let second_ts = store
+            .read()
+            .unwrap()
+            .last_successful_poll_at
+            .expect("set on mark_poll_succeeded");
+        assert_ne!(
+            first_ts, second_ts,
+            "mark_poll_succeeded must advance the existing report's timestamp"
+        );
     }
 
     #[test]

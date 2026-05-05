@@ -774,6 +774,38 @@ async fn octocrab_tracker_list_stories_returns_parseable_json() {
 
 #[cfg(feature = "integration_tests")]
 #[tokio::test]
+async fn octocrab_tracker_conditional_poll_returns_not_modified_on_unchanged_run_list() {
+    use super::tracker::{ConditionalRunEntry, OctocrabStoryTracker};
+    let tracker = OctocrabStoryTracker::from_env().expect("auth configured");
+
+    let first = tracker
+        .list_latest_run_on_main_conditional(None)
+        .await
+        .expect("first conditional poll succeeds against ryandurling/bpmux");
+    let etag = match first {
+        ConditionalRunEntry::Modified { etag, .. } => {
+            etag.expect("GH returns ETag header on 200 — needed for the conditional round-trip")
+        }
+        ConditionalRunEntry::NotModified => {
+            panic!("first call with no prior etag must NOT return NotModified")
+        }
+        ConditionalRunEntry::Empty => {
+            panic!("ryandurling/bpmux main branch has runs; Empty is unexpected")
+        }
+    };
+
+    let second = tracker
+        .list_latest_run_on_main_conditional(Some(&etag))
+        .await
+        .expect("second conditional poll with prior etag succeeds");
+    assert!(
+        matches!(second, ConditionalRunEntry::NotModified),
+        "GH must respect If-None-Match and return 304 NotModified when run-list is unchanged; got: {second:?}"
+    );
+}
+
+#[cfg(feature = "integration_tests")]
+#[tokio::test]
 async fn octocrab_tracker_fetch_failed_tests_for_run_returns_structured_failures() {
     use super::tracker::OctocrabStoryTracker;
     let tracker = OctocrabStoryTracker::from_env().expect("auth configured");

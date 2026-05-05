@@ -22,7 +22,12 @@ interface CiStateReport {
   url: string
   head_sha: string | null
   display_title: string | null
+  last_successful_poll_at?: string | null
+  poll_interval_secs?: number
+  backoff_cap_secs?: number
 }
+
+const WATCHER_UNHEALTHY_THRESHOLD_MS = 120_000
 
 // Safety-net poll cadence. #361: 60s was too slow — a typical fast
 // CI run (<60s) could start + finish between polls. 15s catches
@@ -151,13 +156,15 @@ function CiGlyph({ messages }: Props): React.JSX.Element {
   }, [messages])
 
   const conclusion = state?.conclusion ?? 'unknown'
+  const watcherUnhealthy = isWatcherUnhealthy(state)
   const glyph = conclusionGlyph(conclusion)
   const url = state?.url ?? 'https://github.com'
-  const tooltip = buildTooltip(state, error, lastUpdated)
+  const tooltip = buildTooltip(state, error, lastUpdated, watcherUnhealthy)
+  const dataState = watcherUnhealthy ? 'watcher-unhealthy' : conclusion
 
   return (
     <a
-      className={`ci-glyph ci-glyph--${conclusion}`}
+      className={`ci-glyph ci-glyph--${conclusion}${watcherUnhealthy ? ' ci-glyph--watcher-unhealthy' : ''}`}
       href={url}
       target="_blank"
       rel="noopener noreferrer"
@@ -166,19 +173,42 @@ function CiGlyph({ messages }: Props): React.JSX.Element {
         if (url) window.open(url, '_blank', 'noopener,noreferrer')
       }}
       title={tooltip}
-      aria-label={conclusionAriaLabel(conclusion)}
+      aria-label={
+        watcherUnhealthy
+          ? watcherUnhealthyAriaLabel(state)
+          : conclusionAriaLabel(conclusion)
+      }
       data-test="ci-glyph"
       data-conclusion={conclusion}
+      data-state={dataState}
     >
       CI {glyph}
     </a>
   )
 }
 
+const isWatcherUnhealthy = (state: CiStateReport | null): boolean => {
+  if (!state || !state.last_successful_poll_at) return false
+  const lastPollMs = Date.parse(state.last_successful_poll_at)
+  if (Number.isNaN(lastPollMs)) return false
+  return Date.now() - lastPollMs > WATCHER_UNHEALTHY_THRESHOLD_MS
+}
+
+const watcherUnhealthyAriaLabel = (state: CiStateReport | null): string => {
+  if (!state?.last_successful_poll_at) {
+    return 'CI watcher unhealthy — no successful poll observed'
+  }
+  const ageSecs = Math.round(
+    (Date.now() - Date.parse(state.last_successful_poll_at)) / 1000
+  )
+  return `CI watcher unhealthy — last successful poll ${ageSecs}s ago`
+}
+
 function buildTooltip(
   state: CiStateReport | null,
   error: string | null,
-  lastUpdated: Date | null
+  lastUpdated: Date | null,
+  watcherUnhealthy: boolean
 ): string {
   if (error) return `CI error: ${error}`
   if (!state) return 'CI state loading…'
@@ -186,6 +216,12 @@ function buildTooltip(
   if (state.display_title) lines.push(state.display_title)
   if (state.head_sha) lines.push(state.head_sha.slice(0, 7))
   if (lastUpdated) lines.push(`checked ${format(lastUpdated, 'h:mm:ss a')}`)
+  if (watcherUnhealthy && state.last_successful_poll_at) {
+    const ageSecs = Math.round(
+      (Date.now() - Date.parse(state.last_successful_poll_at)) / 1000
+    )
+    lines.push(`⚠ watcher last polled ${ageSecs}s ago`)
+  }
   lines.push('(click to open on GitHub)')
   return lines.join('\n')
 }
