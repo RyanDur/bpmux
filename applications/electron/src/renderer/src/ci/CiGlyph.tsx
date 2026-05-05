@@ -1,6 +1,12 @@
 import { format } from 'date-fns'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { CI_STATE_UPDATE_MARKER, type ChatMessage } from '../transport/types'
+import {
+  derivedClassName,
+  derivedDataState,
+  isWatcherUnhealthy,
+  watcherUnhealthyAriaLabel
+} from './watcherHealth'
 import './CiGlyph.css'
 
 // #397 + #361 bundled: `quota_exhausted` is a distinct backend
@@ -26,8 +32,6 @@ interface CiStateReport {
   poll_interval_secs?: number
   backoff_cap_secs?: number
 }
-
-const WATCHER_UNHEALTHY_THRESHOLD_MS = 120_000
 
 // Safety-net poll cadence. #361: 60s was too slow — a typical fast
 // CI run (<60s) could start + finish between polls. 15s catches
@@ -160,11 +164,10 @@ function CiGlyph({ messages }: Props): React.JSX.Element {
   const glyph = conclusionGlyph(conclusion)
   const url = state?.url ?? 'https://github.com'
   const tooltip = buildTooltip(state, error, lastUpdated, watcherUnhealthy)
-  const dataState = watcherUnhealthy ? 'watcher-unhealthy' : conclusion
 
   return (
     <a
-      className={`ci-glyph ci-glyph--${conclusion}${watcherUnhealthy ? ' ci-glyph--watcher-unhealthy' : ''}`}
+      className={derivedClassName(conclusion, watcherUnhealthy)}
       href={url}
       target="_blank"
       rel="noopener noreferrer"
@@ -180,28 +183,11 @@ function CiGlyph({ messages }: Props): React.JSX.Element {
       }
       data-test="ci-glyph"
       data-conclusion={conclusion}
-      data-state={dataState}
+      data-state={derivedDataState(conclusion, watcherUnhealthy)}
     >
       CI {glyph}
     </a>
   )
-}
-
-const isWatcherUnhealthy = (state: CiStateReport | null): boolean => {
-  if (!state || !state.last_successful_poll_at) return false
-  const lastPollMs = Date.parse(state.last_successful_poll_at)
-  if (Number.isNaN(lastPollMs)) return false
-  return Date.now() - lastPollMs > WATCHER_UNHEALTHY_THRESHOLD_MS
-}
-
-const watcherUnhealthyAriaLabel = (state: CiStateReport | null): string => {
-  if (!state?.last_successful_poll_at) {
-    return 'CI watcher unhealthy — no successful poll observed'
-  }
-  const ageSecs = Math.round(
-    (Date.now() - Date.parse(state.last_successful_poll_at)) / 1000
-  )
-  return `CI watcher unhealthy — last successful poll ${ageSecs}s ago`
 }
 
 function buildTooltip(
