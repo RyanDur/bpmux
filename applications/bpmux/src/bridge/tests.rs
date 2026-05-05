@@ -421,6 +421,7 @@ mod ingest_poll_loop_tests {
         refresh_all: AtomicUsize,
         drain_pending: AtomicUsize,
         fail_after: Option<usize>,
+        drain_returns_n: usize,
         since_args: Mutex<Vec<Option<chrono::DateTime<chrono::Utc>>>>,
     }
 
@@ -430,6 +431,7 @@ mod ingest_poll_loop_tests {
                 refresh_all: AtomicUsize::new(0),
                 drain_pending: AtomicUsize::new(0),
                 fail_after: None,
+                drain_returns_n: 0,
                 since_args: Mutex::new(Vec::new()),
             }
         }
@@ -438,6 +440,16 @@ mod ingest_poll_loop_tests {
                 refresh_all: AtomicUsize::new(0),
                 drain_pending: AtomicUsize::new(0),
                 fail_after: Some(n),
+                drain_returns_n: 0,
+                since_args: Mutex::new(Vec::new()),
+            }
+        }
+        fn draining_n_per_tick(n: usize) -> Self {
+            Self {
+                refresh_all: AtomicUsize::new(0),
+                drain_pending: AtomicUsize::new(0),
+                fail_after: None,
+                drain_returns_n: n,
                 since_args: Mutex::new(Vec::new()),
             }
         }
@@ -483,7 +495,8 @@ mod ingest_poll_loop_tests {
         fn mark_recovering_from_corruption(&self) {}
         fn drain_pending(&self) -> BoxedFuture<'_, Result<usize, SyncError>> {
             self.drain_pending.fetch_add(1, Ordering::SeqCst);
-            Box::pin(async { Ok(0) })
+            let n = self.drain_returns_n;
+            Box::pin(async move { Ok(n) })
         }
         fn reconcile_dual_state_labels(&self) -> BoxedFuture<'_, Result<usize, SyncError>> {
             Box::pin(async { Ok(0) })
@@ -659,5 +672,66 @@ mod ingest_poll_loop_tests {
             "expected >=3 drain ticks in ~275ms, saw {count}"
         );
         handle.abort();
+    }
+
+    #[tokio::test]
+    async fn drain_loop_broadcasts_sync_status_marker_when_drain_changes_state() {
+        use crate::bridge::{SYNC_STATUS_UPDATE_MARKER, run_drain_loop};
+        use tempfile::TempDir;
+        let dir = TempDir::new().expect("tmp");
+        let (tx, mut rx) = tokio::sync::broadcast::channel(16);
+        let session = Arc::new(crate::session::Session::new(
+            dir.path().to_path_buf(),
+            "test".to_string(),
+            tx,
+        ));
+        let driver = Arc::new(CountingDriver::draining_n_per_tick(1));
+        let driver_dyn: Arc<dyn RefreshDriver> = driver.clone();
+        let handle = tokio::spawn(run_drain_loop(
+            driver_dyn,
+            session,
+            Duration::from_millis(50),
+        ));
+        let received = tokio::time::timeout(Duration::from_millis(500), rx.recv())
+            .await
+            .expect("marker must broadcast within 500ms when drain returns Ok(n>0)")
+            .expect("broadcast channel still open");
+        handle.abort();
+        assert_eq!(
+            received.text, SYNC_STATUS_UPDATE_MARKER,
+            "broadcast text must be SYNC_STATUS_UPDATE_MARKER on state-changed tick; got: {received:?}"
+        );
+        assert_eq!(
+            received.message_type,
+            crate::session::MessageType::System,
+            "marker is System message_type so bridge filter routes correctly"
+        );
+        assert_eq!(received.from, "bpmux");
+    }
+
+    #[tokio::test]
+    async fn drain_loop_does_not_broadcast_when_drain_returns_zero() {
+        use crate::bridge::run_drain_loop;
+        use tempfile::TempDir;
+        let dir = TempDir::new().expect("tmp");
+        let (tx, mut rx) = tokio::sync::broadcast::channel(16);
+        let session = Arc::new(crate::session::Session::new(
+            dir.path().to_path_buf(),
+            "test".to_string(),
+            tx,
+        ));
+        let driver = Arc::new(CountingDriver::new());
+        let driver_dyn: Arc<dyn RefreshDriver> = driver.clone();
+        let handle = tokio::spawn(run_drain_loop(
+            driver_dyn,
+            session,
+            Duration::from_millis(50),
+        ));
+        let result = tokio::time::timeout(Duration::from_millis(200), rx.recv()).await;
+        handle.abort();
+        assert!(
+            result.is_err(),
+            "no marker should broadcast when drain returns Ok(0); got: {result:?}"
+        );
     }
 }
