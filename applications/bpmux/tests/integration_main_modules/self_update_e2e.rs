@@ -138,13 +138,25 @@ fn binary_change_triggers_graceful_restart_with_exit_code_200() {
     // mtime that the watcher will observe.
     std::thread::sleep(Duration::from_millis(1100));
 
-    // Rewrite the binary file (just append a no-op trailer byte that
-    // doesn't get executed; we only need the mtime to change). Could
-    // also use std::os::unix::fs touch utimes but a simple OpenOptions
-    // append + write keeps it portable across the test path.
+    // Linux blocks `write()` against a running executable with errno
+    // ETXTBSY (kind ExecutableFileBusy) — text-file-busy lock — but
+    // `rename()` over the same path is allowed because it swaps the
+    // inode while the running process keeps its old inode mapped.
+    // Write the new content to a sibling temp file + rename over the
+    // path. Cross-platform: macOS doesn't enforce the lock so direct
+    // write also works there, but rename is portable + matches the
+    // way real binary swaps work in production (cargo build → mv).
     let mut bytes = std::fs::read(&copy).expect("read binary");
     bytes.push(0);
-    std::fs::write(&copy, &bytes).expect("rewrite binary");
+    let temp_path = copy.with_extension("new");
+    std::fs::write(&temp_path, &bytes).expect("write new binary contents to temp");
+    use std::os::unix::fs::PermissionsExt;
+    let mut perms = std::fs::metadata(&temp_path)
+        .expect("metadata")
+        .permissions();
+    perms.set_mode(0o755);
+    std::fs::set_permissions(&temp_path, perms).expect("set exec bit on temp binary");
+    std::fs::rename(&temp_path, &copy).expect("rename new binary over running path");
 
     // Wait for the subprocess to exit. The watcher polls every 1s
     // (BPMUX_BINARY_WATCH_INTERVAL_SECS=1); allow a generous window
