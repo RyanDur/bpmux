@@ -272,6 +272,13 @@ impl BoardStore {
                     existing.raw_labels = labels.clone();
                 }
             }
+            // #1195: ConflictDetected/ConflictResolved are
+            // audit-trail-only events. The conflict-pending count
+            // lives on SyncStatus (drain_once writes it); no
+            // canonical-store-level Story-field updates needed.
+            // Subscribers (TUI, renderer) observe these via the
+            // event-broadcast channel + can derive UI hints.
+            BoardEvent::ConflictDetected { .. } | BoardEvent::ConflictResolved { .. } => {}
         }
         drop(w);
         self.dirty.store(true, Ordering::Release);

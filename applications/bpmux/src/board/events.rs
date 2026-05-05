@@ -102,6 +102,25 @@ pub enum BoardEvent {
         number: u64,
         labels: Vec<String>,
     },
+    /// #1195: drain-time conflict detection — the queued mutation
+    /// would clash with externally-mutated server state. Audit-trail
+    /// event so observers (renderer / TUI / future replay) see why
+    /// the corresponding outbox entry stayed unflushed. The actual
+    /// classification semantics live in `orchestrator::classify_
+    /// conflict`; this variant just records the detection.
+    ConflictDetected {
+        meta: EventMeta,
+        number: u64,
+        kind: super::orchestrator::ConflictKind,
+    },
+    /// #1195: drain-time auto-resolve OR slice-B operator action
+    /// cleared a previously-detected conflict on this story. Audit
+    /// counterpart to ConflictDetected.
+    ConflictResolved {
+        meta: EventMeta,
+        number: u64,
+        origin: super::orchestrator::ConflictResolveOrigin,
+    },
 }
 
 impl BoardEvent {
@@ -121,7 +140,9 @@ impl BoardEvent {
             | BoardEvent::ParentEpicSet { meta, .. }
             | BoardEvent::ParentEpicUnset { meta, .. }
             | BoardEvent::StoryRefreshed { meta, .. }
-            | BoardEvent::LabelsRefreshed { meta, .. } => meta,
+            | BoardEvent::LabelsRefreshed { meta, .. }
+            | BoardEvent::ConflictDetected { meta, .. }
+            | BoardEvent::ConflictResolved { meta, .. } => meta,
         }
     }
 
@@ -141,7 +162,9 @@ impl BoardEvent {
             | BoardEvent::ParentEpicSet { number, .. }
             | BoardEvent::ParentEpicUnset { number, .. }
             | BoardEvent::StoryRefreshed { number, .. }
-            | BoardEvent::LabelsRefreshed { number, .. } => *number,
+            | BoardEvent::LabelsRefreshed { number, .. }
+            | BoardEvent::ConflictDetected { number, .. }
+            | BoardEvent::ConflictResolved { number, .. } => *number,
         }
     }
 }

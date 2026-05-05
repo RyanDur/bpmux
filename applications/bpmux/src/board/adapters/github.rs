@@ -333,7 +333,13 @@ impl SourceAdapter for GitHubSourceAdapter {
             | BoardEvent::FreeCommentsFetched { .. }
             | BoardEvent::GateCommentsFetched { .. }
             | BoardEvent::StoryRefreshed { .. }
-            | BoardEvent::LabelsRefreshed { .. } => Ok(None),
+            | BoardEvent::LabelsRefreshed { .. }
+            // #1195: ConflictDetected/ConflictResolved are
+            // audit-trail-only — they record drain-time conflict
+            // bookkeeping for the canonical store + subscribers,
+            // and don't push anything to GH.
+            | BoardEvent::ConflictDetected { .. }
+            | BoardEvent::ConflictResolved { .. } => Ok(None),
         }
     }
 

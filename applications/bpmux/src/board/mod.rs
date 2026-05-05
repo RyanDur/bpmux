@@ -8,6 +8,8 @@ pub mod store;
 pub mod sync;
 
 #[cfg(test)]
+mod conflict_classifier_tests;
+#[cfg(test)]
 mod domain_tests;
 #[cfg(test)]
 mod orchestrator_tests;
@@ -17,8 +19,9 @@ mod store_tests;
 pub use domain::{FreeComment, Gate, GateComment, Story, StoryState};
 pub use events::BoardEvent;
 pub use orchestrator::{
-    DroppedEvent, RefreshDriver, SyncOrchestrator, SyncStatus, acknowledge_dropped,
-    default_outbox_path, mark_recovering_from_corruption,
+    ConflictKind, ConflictResolveOrigin, DroppedEvent, QueuedEvent, RefreshDriver,
+    SyncOrchestrator, SyncStatus, acknowledge_dropped, default_outbox_path,
+    mark_recovering_from_corruption,
 };
 pub use peer::PeerId;
 pub use store::{BoardStore, PersistError, default_store_path};

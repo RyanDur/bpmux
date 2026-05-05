@@ -604,8 +604,10 @@ mod outbox_persistence {
         })
         .unwrap();
         assert!(path.exists(), "outbox file must exist after mutate");
-        let bytes = std::fs::read(&path).unwrap();
-        let events: Vec<BoardEvent> = serde_json::from_slice(&bytes).unwrap();
+        // #1195: outbox-on-disk schema is now Vec<QueuedEvent>
+        // (event + pre_state wrapper). Use the public load helper
+        // so the assertion stays decoupled from the internal shape.
+        let events = super::super::orchestrator::load_outbox_from_disk(&path).unwrap();
         assert_eq!(events.len(), 1);
     }
 
@@ -630,8 +632,7 @@ mod outbox_persistence {
         .unwrap();
         let drained = orch.drain_once().await.unwrap();
         assert_eq!(drained, 1);
-        let bytes = std::fs::read(&path).unwrap();
-        let events: Vec<BoardEvent> = serde_json::from_slice(&bytes).unwrap();
+        let events = super::super::orchestrator::load_outbox_from_disk(&path).unwrap();
         assert!(events.is_empty(), "outbox empty after successful drain");
     }
 
@@ -656,8 +657,7 @@ mod outbox_persistence {
         .unwrap();
         adapter.set_push_failures(true);
         let _ = orch.drain_once().await;
-        let bytes = std::fs::read(&path).unwrap();
-        let events: Vec<BoardEvent> = serde_json::from_slice(&bytes).unwrap();
+        let events = super::super::orchestrator::load_outbox_from_disk(&path).unwrap();
         assert_eq!(events.len(), 1, "failed event stays in outbox");
     }
 
@@ -835,13 +835,11 @@ mod outbox_persistence {
         .unwrap();
         adapter.set_push_failures(true);
         let _ = orch.drain_once().await;
-        let bytes = std::fs::read(&path).unwrap();
-        let events: Vec<BoardEvent> = serde_json::from_slice(&bytes).unwrap();
+        let events = super::super::orchestrator::load_outbox_from_disk(&path).unwrap();
         assert_eq!(events.len(), 1, "transient failure keeps event for retry");
         adapter.set_push_failures(false);
         orch.drain_once().await.unwrap();
-        let bytes = std::fs::read(&path).unwrap();
-        let events: Vec<BoardEvent> = serde_json::from_slice(&bytes).unwrap();
+        let events = super::super::orchestrator::load_outbox_from_disk(&path).unwrap();
         assert!(events.is_empty(), "event drains on retry post-recovery");
     }
 

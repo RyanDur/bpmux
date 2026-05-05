@@ -6,7 +6,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use chrono::{DateTime, Utc};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use super::domain::{FreeComment, GateComment, Story};
 use super::events::{BoardEvent, EventMeta};
@@ -91,6 +91,89 @@ pub struct SyncStatus {
     pub stale: bool,
     #[serde(default)]
     pub startup_fail: bool,
+    /// #1195: per-op count of currently-conflicted outbox entries.
+    /// Each drain tick re-classifies; a conflicted entry (server
+    /// state diverged externally between mutate-time and drain-time)
+    /// stays in the outbox + bumps this count for SyncStatusGlyph
+    /// state #5 (slice B) to render. Idempotent skips do NOT count
+    /// (they get dropped + diag-logged). Auto-resolved on next
+    /// drain tick when the divergent server state catches up.
+    #[serde(default)]
+    pub conflicts_pending: usize,
+}
+
+/// #1195: outbox-entry wrapper carrying the pre-mutation snapshot
+/// captured at queue-time. Required for divergence detection at
+/// drain-time: comparing the event's intended mutation to the
+/// canonical store's CURRENT state always says "already applied"
+/// because `mutate()` applies locally before the outbox push (see
+/// `feedback_mutate_sync_breaks_drain_time_idempotent_check`). The
+/// pre_state lets the classifier ask "did the world change between
+/// when I queued this and when I'm about to push it?"
+///
+/// `pre_state: None` means: legacy outbox entry from before #1195,
+/// OR the story didn't exist in the store at queue-time (e.g.
+/// pre-ingest). Either way, the classifier degrades to
+/// no-conflict-detection on those entries (returns None / pushes
+/// normally).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QueuedEvent {
+    pub event: BoardEvent,
+    #[serde(default)]
+    pub pre_state: Option<Story>,
+    /// #1195: classification carried-forward from prior drain tick
+    /// so auto-resolve can detect "was conflict, now not". Reset
+    /// every tick by re-running classify_conflict against the
+    /// current canonical state.
+    #[serde(default)]
+    pub last_classification: Option<ConflictKind>,
+}
+
+impl QueuedEvent {
+    pub fn new(event: BoardEvent, pre_state: Option<Story>) -> Self {
+        Self {
+            event,
+            pre_state,
+            last_classification: None,
+        }
+    }
+
+    pub fn from_legacy(event: BoardEvent) -> Self {
+        Self {
+            event,
+            pre_state: None,
+            last_classification: None,
+        }
+    }
+}
+
+/// #1195 conflict classification result. The classifier compares
+/// `pre_state` (snapshot captured at mutate-time) → `event` (the
+/// intended mutation) → `current` (canonical-store-state at
+/// drain-time, NOT GH state per #1194's no-per-op-GH-GET
+/// discipline). Five outcomes:
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ConflictKind {
+    /// The mutation is already applied at the canonical store and
+    /// would be a no-op (label-already-present, already-closed,
+    /// parent-epic-already-pointing-here). Drop without firing GH.
+    IdempotentSkip,
+    /// Server state diverged from pre_state in a way that conflicts
+    /// with the event's intended state-transition (e.g., offline
+    /// `StateTransitioned → Ready` was queued when server was
+    /// `Delivered`, but server is now at `Accepted`). Operator
+    /// click-to-resolve via slice B.
+    DivergentState,
+    /// Server label set diverged from pre_state in a way that
+    /// conflicts with the event's intended label change. Operator
+    /// click-to-resolve via slice B.
+    DivergentLabel,
+    /// External mutation arrived between queue-time and drain-time
+    /// and the server-shifted state is now incompatible with the
+    /// queued event's basic preconditions (e.g., we queued
+    /// `TagAdded` against an open issue but server has since closed
+    /// it). Sister to Divergent* but generalized.
+    External,
 }
 
 pub fn staleness_threshold_secs() -> u64 {
@@ -127,7 +210,7 @@ pub struct SyncOrchestrator<A: SourceAdapter + 'static> {
     store: Arc<BoardStore>,
     adapter: Arc<A>,
     status: Arc<Mutex<SyncStatus>>,
-    pending: Arc<Mutex<VecDeque<BoardEvent>>>,
+    pending: Arc<Mutex<VecDeque<QueuedEvent>>>,
     outbox_path: Option<PathBuf>,
 }
 
@@ -164,7 +247,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         let Some(path) = self.outbox_path.as_ref() else {
             return;
         };
-        let snapshot: Vec<BoardEvent> = {
+        let snapshot: Vec<QueuedEvent> = {
             let p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
             p.iter().cloned().collect()
         };
@@ -182,10 +265,19 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     }
 
     pub fn mutate(&self, event: BoardEvent) -> Result<(), SyncError> {
+        // #1195: capture pre_state BEFORE applying the event so
+        // drain-time can detect external mutations that arrived
+        // between mutate-time and drain-time. Per
+        // `feedback_mutate_sync_breaks_drain_time_idempotent_check`:
+        // comparing event-vs-current-store at drain-time always
+        // says "already applied" because the local apply ran first.
+        // The pre_state captures temporal context the comparison
+        // needs.
+        let pre_state = self.store.story(event.story_number());
         self.store.apply(&event);
         {
             let mut p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
-            p.push_back(event);
+            p.push_back(QueuedEvent::new(event, pre_state));
         }
         self.persist_outbox();
         bump_pending(&self.status, 1);
@@ -334,19 +426,111 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     pub async fn drain_once(&self) -> Result<usize, SyncError> {
         let mut drained = 0usize;
         let mut failures = 0usize;
+        // #1195 conflict-detection bookkeeping. We walk the outbox
+        // by index rather than always pop-from-front so a divergent
+        // entry can stay in place while non-conflicting entries
+        // behind it continue to drain (per #1163 falsifier-c on
+        // bulk-batch partial-conflict semantics).
+        let mut conflicts_pending = 0usize;
+        let mut conflict_offset = 0usize;
         loop {
-            let event_opt = {
+            let queued_opt = {
                 let p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
-                p.front().cloned()
+                p.get(conflict_offset).cloned()
             };
-            let Some(event) = event_opt else {
+            let Some(queued) = queued_opt else {
                 break;
             };
+            let event = queued.event.clone();
+            let current = self.store.story(event.story_number());
+            let prior_classification = queued.last_classification;
+            let kind = classify_conflict(queued.pre_state.as_ref(), &event, current.as_ref());
+
+            // Auto-resolve: a previously-conflicted entry that now
+            // classifies as compatible (None) means the server has
+            // caught up via ingest poll. Emit ConflictResolved so
+            // the audit-trail records the auto-clear.
+            if matches!(
+                prior_classification,
+                Some(
+                    ConflictKind::DivergentState
+                        | ConflictKind::DivergentLabel
+                        | ConflictKind::External
+                )
+            ) && kind.is_none()
+            {
+                self.store.apply(&BoardEvent::ConflictResolved {
+                    meta: cache_fill_meta(),
+                    number: event.story_number(),
+                    origin: ConflictResolveOrigin::DrainAutoReclassify,
+                });
+                crate::session::diag::log_diag(&format!(
+                    "orchestrator: conflict auto-resolved on drain re-classify for #{}",
+                    event.story_number()
+                ));
+            }
+
+            match kind {
+                Some(ConflictKind::IdempotentSkip) => {
+                    let mut p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
+                    if conflict_offset == 0 {
+                        p.pop_front();
+                    } else {
+                        p.remove(conflict_offset);
+                    }
+                    drop(p);
+                    self.persist_outbox();
+                    decrement_pending(&self.status);
+                    crate::session::diag::log_diag(&format!(
+                        "orchestrator: idempotent-skip dropped #{} (already-applied at canonical store)",
+                        event.story_number()
+                    ));
+                    continue;
+                }
+                Some(divergent) => {
+                    if !matches!(
+                        prior_classification,
+                        Some(
+                            ConflictKind::DivergentState
+                                | ConflictKind::DivergentLabel
+                                | ConflictKind::External
+                        )
+                    ) {
+                        // First detection of this conflict — emit
+                        // the audit-trail event so observers know
+                        // why this entry stays in the outbox.
+                        self.store.apply(&BoardEvent::ConflictDetected {
+                            meta: cache_fill_meta(),
+                            number: event.story_number(),
+                            kind: divergent,
+                        });
+                        crate::session::diag::log_diag(&format!(
+                            "orchestrator: conflict-detected {divergent:?} on #{}; left in outbox for slice-B click-to-resolve",
+                            event.story_number()
+                        ));
+                    }
+                    {
+                        let mut p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
+                        if let Some(slot) = p.get_mut(conflict_offset) {
+                            slot.last_classification = Some(divergent);
+                        }
+                    }
+                    self.persist_outbox();
+                    conflicts_pending += 1;
+                    conflict_offset += 1;
+                    continue;
+                }
+                None => {}
+            }
             match self.adapter.push_event(&event).await {
                 Ok(follow_up) => {
                     {
                         let mut p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
-                        p.pop_front();
+                        if conflict_offset == 0 {
+                            p.pop_front();
+                        } else {
+                            p.remove(conflict_offset);
+                        }
                     }
                     self.persist_outbox();
                     drained += 1;
@@ -361,7 +545,11 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                     if is_permanent_push_failure(&e) {
                         {
                             let mut p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
-                            p.pop_front();
+                            if conflict_offset == 0 {
+                                p.pop_front();
+                            } else {
+                                p.remove(conflict_offset);
+                            }
                         }
                         self.persist_outbox();
                         decrement_pending(&self.status);
@@ -376,6 +564,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                 }
             }
         }
+        record_conflicts_pending(&self.status, conflicts_pending);
         if failures > 0 {
             return Err(SyncError::Other(format!(
                 "{failures} push failures; {drained} pushes succeeded"
@@ -625,6 +814,100 @@ fn record_dropped(status: &Arc<Mutex<SyncStatus>>, story_number: u64, error: Str
     });
 }
 
+/// #1195: write the count of currently-conflicted outbox entries
+/// into SyncStatus. Each drain tick re-runs the classifier on
+/// every pending entry, so this fully reflects the current outbox
+/// state — no incremental accumulation across ticks.
+fn record_conflicts_pending(status: &Arc<Mutex<SyncStatus>>, count: usize) {
+    let mut s = status.lock().unwrap_or_else(|e| e.into_inner());
+    s.conflicts_pending = count;
+}
+
+/// #1195: 3-arg conflict classifier. Compares pre-mutation
+/// snapshot (captured at queue-time) against the event's intended
+/// mutation against the current canonical-store state. Pure
+/// function — no I/O. Returns `None` when the event is fine to
+/// push as-is.
+///
+/// Per #1194's no-per-op-GH-GET shipped substrate, `current` is
+/// the canonical-store-state, NOT a fresh GH fetch. The ingest
+/// poller (60s default) is what brings server-truth into the
+/// canonical store; this function trusts that view.
+///
+/// `pre_state: None` means: legacy outbox entry from before #1195
+/// OR the story didn't exist in the store at queue-time. The
+/// classifier degrades to no-conflict-detection (returns None) in
+/// that case — we can't tell if the world changed without the
+/// snapshot, so we err on "push and let the adapter surface any
+/// error".
+pub fn classify_conflict(
+    _pre_state: Option<&Story>,
+    event: &BoardEvent,
+    _current: Option<&Story>,
+) -> Option<ConflictKind> {
+    // Slice A ships SUBSTRATE only: QueuedEvent wrapper + pre_state
+    // capture + ConflictDetected/Resolved variants + SyncStatus
+    // .conflicts_pending field + outbox schema migration. The
+    // classifier returns None for now because correct semantics
+    // require tracking cumulative-local-mutation-effects separately
+    // from GH-fetched state (raw_labels reflects fetch-state, not
+    // local-applied state until LabelsRefreshed roundtrips). That
+    // scope-narrows the comparison to "intended-vs-server-truth"
+    // which is slice B+ work. The substrate IS in place so slice B
+    // plugs in the real classifier without further migrations.
+    match event {
+        BoardEvent::TagAdded { .. }
+        | BoardEvent::TagRemoved { .. }
+        | BoardEvent::StateTransitioned { .. }
+        | BoardEvent::StoryClosed { .. }
+        | BoardEvent::StoryReopened { .. }
+        | BoardEvent::ParentEpicSet { .. }
+        | BoardEvent::ParentEpicUnset { .. } => None,
+        // Annotation/observation events are additive and not
+        // conflict-classifiable in this slice.
+        BoardEvent::StoryCreated { .. }
+        | BoardEvent::GateCommentAppended { .. }
+        | BoardEvent::FreeCommentAppended { .. }
+        | BoardEvent::BodyFetched { .. }
+        | BoardEvent::FreeCommentsFetched { .. }
+        | BoardEvent::GateCommentsFetched { .. }
+        | BoardEvent::StoryRefreshed { .. }
+        | BoardEvent::LabelsRefreshed { .. }
+        | BoardEvent::ConflictDetected { .. }
+        | BoardEvent::ConflictResolved { .. } => None,
+    }
+}
+
+/// #1195: helper for slice B+ classifier semantics. Workflow
+/// labels are the dimension where a divergent label-add against
+/// a closed-Accepted story signals genuine conflict (vs additive
+/// tags like "blocked"). Lives here so the slice-A→B handoff
+/// keeps the helper alongside the substrate types.
+#[allow(dead_code)]
+fn is_workflow_label(label: &str) -> bool {
+    matches!(
+        label.to_ascii_lowercase().as_str(),
+        "icebox"
+            | "ready"
+            | "in progress"
+            | "desk-check"
+            | "delivered"
+            | "ready for accept"
+            | "needs fixes"
+            | "rejected"
+            | "accepted"
+    )
+}
+
+/// #1195: origin tag for ConflictResolved events. Slice A only
+/// fires the auto-reclassify origin (drain detects compatibility);
+/// slice B adds OperatorAction.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ConflictResolveOrigin {
+    DrainAutoReclassify,
+    OperatorAction,
+}
+
 pub fn acknowledge_dropped(status: &Arc<Mutex<SyncStatus>>) -> usize {
     let mut s = status.lock().unwrap_or_else(|e| e.into_inner());
     let cleared = s.dropped_events.len();
@@ -632,7 +915,32 @@ pub fn acknowledge_dropped(status: &Arc<Mutex<SyncStatus>>) -> usize {
     cleared
 }
 
-pub fn load_outbox_from_disk(path: &Path) -> Result<VecDeque<BoardEvent>, PersistError> {
+/// #1195: outbox-entry on-disk shape. Untagged enum lets us read
+/// both the new wrapped form (`{"event":{...},"pre_state":...}`)
+/// and the legacy bare-BoardEvent form (`{"StoryCreated":{...}}`)
+/// from the same file. New writes always use the wrapped form;
+/// legacy entries get pre_state: None on read (degrade to
+/// no-conflict-detection — the classifier returns None when
+/// pre_state is missing). Both variants boxed so the enum stays
+/// pointer-sized (clippy::large_enum_variant — `Story` inside
+/// QueuedEvent makes the variant fat).
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum OutboxEntryOnDisk {
+    NewShape(Box<QueuedEvent>),
+    LegacyShape(Box<BoardEvent>),
+}
+
+impl From<OutboxEntryOnDisk> for QueuedEvent {
+    fn from(disk: OutboxEntryOnDisk) -> QueuedEvent {
+        match disk {
+            OutboxEntryOnDisk::NewShape(q) => *q,
+            OutboxEntryOnDisk::LegacyShape(event) => QueuedEvent::from_legacy(*event),
+        }
+    }
+}
+
+pub fn load_outbox_from_disk(path: &Path) -> Result<VecDeque<QueuedEvent>, PersistError> {
     if !path.exists() {
         return Ok(VecDeque::new());
     }
@@ -640,11 +948,11 @@ pub fn load_outbox_from_disk(path: &Path) -> Result<VecDeque<BoardEvent>, Persis
     if bytes.is_empty() {
         return Ok(VecDeque::new());
     }
-    let events: Vec<BoardEvent> = serde_json::from_slice(&bytes)?;
-    Ok(events.into_iter().collect())
+    let entries: Vec<OutboxEntryOnDisk> = serde_json::from_slice(&bytes)?;
+    Ok(entries.into_iter().map(QueuedEvent::from).collect())
 }
 
-fn persist_outbox_to_disk(path: &Path, events: &[BoardEvent]) -> Result<(), PersistError> {
+fn persist_outbox_to_disk(path: &Path, events: &[QueuedEvent]) -> Result<(), PersistError> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
     }
