@@ -7,6 +7,34 @@ on:
   workflow_call:
 
 jobs:
+  # #1198: build bpmux once + share via artifact so the 6 playwright-e2e
+  # shards don't each pay 5-8min of duplicate compile. Runs in parallel
+  # with `test`. Wall-clock dominated by max(test, build-bpmux + slowest
+  # shard) instead of max(test, slowest-shard-with-build).
+  build-bpmux:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.95.0"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "playwright-e2e"
+      - name: Build bpmux binary
+        run: cargo build --bin bpmux
+      - name: Smoke-check binary
+        run: target/debug/bpmux --help > /dev/null
+      - name: Upload bpmux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bpmux-binary
+          path: target/debug/bpmux
+          retention-days: 1
+          if-no-files-found: error
+
   test:
     runs-on: ubuntu-latest
     permissions:
@@ -20,8 +48,6 @@ jobs:
           toolchain: "1.95.0"
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
-        with:
-          cache-targets: "false"
       - name: Format check
         run: cargo fmt --check
       - name: Clippy
@@ -36,6 +62,7 @@ jobs:
           cargo audit
 
   playwright-e2e:
+    needs: build-bpmux
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -45,15 +72,17 @@ jobs:
         shard: [1, 2, 3, 4, 5, 6]
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
+      # #1198: download the binary built once by build-bpmux instead of
+      # recompiling per shard. ~10s download vs 5-8min compile.
+      - name: Download bpmux artifact
+        uses: actions/download-artifact@v4
         with:
-          toolchain: "1.95.0"
-      - uses: Swatinem/rust-cache@v2
-        with:
-          cache-targets: "false"
-          shared-key: "playwright-e2e"
-      - name: Build bpmux
-        run: cargo build --bin bpmux
+          name: bpmux-binary
+          path: target/debug
+      - name: Make bpmux executable + smoke-check
+        run: |
+          chmod +x target/debug/bpmux
+          target/debug/bpmux --help > /dev/null
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
@@ -65,6 +94,15 @@ jobs:
       - name: Build Electron bundle (out/main/index.js)
         working-directory: applications/electron
         run: npm run build
+      # #1198: cache Chromium + system-deps install per shard. Key on
+      # package-lock.json hash so cache invalidates when Playwright
+      # version bumps. ~2min savings per shard on a cache hit.
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('applications/electron/package-lock.json') }}
       - name: Install Playwright + system deps (xvfb, fonts, etc)
         working-directory: applications/electron
         run: npx playwright install --with-deps
