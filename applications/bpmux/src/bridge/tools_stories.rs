@@ -331,11 +331,13 @@ pub(super) async fn handle_create_story(
     let parent_epic = args.get("parent_epic").and_then(|v| v.as_u64());
     if let Some(r) = refresh {
         if let Some(epic_number) = parent_epic {
-            r.refresh_story(epic_number)
-                .await
-                .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?;
+            // #1194: read parent from canonical store (ingest poller
+            // keeps it fresh ≤60s); refresh_story removed per
+            // "MCP actions only pull from / mutate the store".
             let parent = r.story(epic_number).ok_or_else(|| {
-                format!("epic #{epic_number} not found — cannot set as parent at filing")
+                format!(
+                    "epic #{epic_number} not found in canonical store — wait for next ingest tick or call refresh_story explicitly"
+                )
             })?;
             if parent.story_type != crate::board::domain::StoryType::Epic {
                 return Err(format!(
@@ -602,9 +604,9 @@ pub(super) async fn handle_start_story(
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
     if let Some(r) = refresh {
-        r.refresh_story(number)
-            .await
-            .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?;
+        // #1194: refresh_story removed; canonical store is kept fresh
+        // by the ingest poller (≤60s) + outbox drain (≤5s) per
+        // bridge::run_ingest_poll_loop / run_drain_loop.
         let _ = r.fetch_body(number).await;
     }
     let pickup_paraphrase = require_nonempty_string(
@@ -684,14 +686,12 @@ pub(super) async fn handle_deliver_story(
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
+    // #1194: read prior story from canonical store; refresh_story
+    // removed per "MCP actions only pull from / mutate the store".
     let refreshed: Option<Option<crate::board::domain::Story>> = match refresh {
         Some(r) => {
-            let s = r
-                .refresh_story(number)
-                .await
-                .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?;
             let _ = r.fetch_body(number).await;
-            Some(s)
+            Some(r.story(number))
         }
         None => None,
     };
@@ -783,9 +783,8 @@ pub(super) async fn handle_label_story(
         .and_then(|v| v.as_str())
         .unwrap_or("add");
     if let Some(r) = refresh {
-        r.refresh_story(number)
-            .await
-            .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?;
+        // #1194: refresh_story removed; trust the ingest poller +
+        // outbox-drain cascade.
         let meta = crate::board::events::EventMeta {
             actor: crate::transport::ws::short_name(agent_name).to_string(),
             ts: chrono::Utc::now(),
@@ -851,14 +850,14 @@ pub(super) async fn handle_set_parent_epic(
         return Err(format!("story #{number} cannot be its own parent epic"));
     }
     let r = refresh.ok_or("set_parent_epic requires refresh (RefreshDriver)")?;
-    r.refresh_story(number)
-        .await
-        .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?;
-    r.refresh_story(epic_number)
-        .await
-        .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?;
+    // #1194: read parent from canonical store; refresh_story removed
+    // for both child + parent reads. Ingest poller keeps state ≤60s
+    // fresh; if parent isn't in the store, the named-error below
+    // surfaces it (rather than silent-fall-through).
     let parent = r.story(epic_number).ok_or_else(|| {
-        format!("epic #{epic_number} not found — cannot set as parent of #{number}")
+        format!(
+            "epic #{epic_number} not found in canonical store — cannot set as parent of #{number} (wait for next ingest tick or call refresh_story explicitly)"
+        )
     })?;
     if parent.story_type != crate::board::domain::StoryType::Epic {
         return Err(format!(
@@ -893,9 +892,8 @@ pub(super) async fn handle_unset_parent_epic(
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
     let r = refresh.ok_or("unset_parent_epic requires refresh (RefreshDriver)")?;
-    r.refresh_story(number)
-        .await
-        .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?;
+    // #1194: refresh_story removed; canonical store + outbox drain
+    // covers eventual consistency.
     let meta = crate::board::events::EventMeta {
         actor: crate::transport::ws::short_name(agent_name).to_string(),
         ts: chrono::Utc::now(),
@@ -940,10 +938,8 @@ pub(crate) async fn accept_via_canonical_store(
     actor: String,
     bypass: Option<String>,
 ) -> Result<(), String> {
-    refresh
-        .refresh_story(number)
-        .await
-        .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?;
+    // #1194: refresh_story removed; ingest poller + outbox drain
+    // keep canonical store consistent without per-call GH GET.
     let meta = crate::board::events::EventMeta {
         actor,
         ts: chrono::Utc::now(),
@@ -1015,10 +1011,9 @@ pub(crate) async fn reject_via_canonical_store(
     actor: String,
     reason: String,
 ) -> Result<(), String> {
-    refresh
-        .refresh_story(number)
-        .await
-        .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?;
+    // #1194: read prior state from canonical store; refresh_story
+    // removed. is_closed-or-Accepted check still drives the
+    // StoryReopened branch below.
     let was_accepted = refresh
         .story(number)
         .map(|s| s.is_closed || s.state == crate::board::domain::StoryState::Accepted)
@@ -1077,11 +1072,8 @@ pub(super) async fn handle_pass_desk_check(
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
     let bypass = verify_bug_question_or_bypass(args, BugGate::PassDeskCheck)?;
-    if let Some(r) = refresh {
-        r.refresh_story(number)
-            .await
-            .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?;
-    }
+    // #1194: refresh_story removed; canonical store reads cover the
+    // story-type classification + state-transition path below.
     // Pick signal recipients based on story type (Feature/Bug/Chore
     // per the 3-type vocabulary, #264). Chore + Bug → PM alone
     // (team-accept lane). Feature → Ryan AND PM (#259 — Ryan is the
@@ -1145,10 +1137,10 @@ pub(super) async fn handle_fail_desk_check(
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
+    // #1194: read prior state from canonical store; refresh_story
+    // removed. The is_closed-or-Accepted check still drives the
+    // StoryReopened branch in the mutation chain below.
     let was_accepted = if let Some(r) = refresh {
-        r.refresh_story(number)
-            .await
-            .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?;
         r.story(number)
             .map(|s| s.is_closed || s.state == crate::board::domain::StoryState::Accepted)
             .unwrap_or(false)
@@ -1257,9 +1249,8 @@ pub(super) async fn handle_comment_on_story(
         return Err("'body' must not be empty".to_string());
     }
     if let Some(r) = refresh {
-        r.refresh_story(number)
-            .await
-            .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?;
+        // #1194: refresh_story removed; comment-append is purely
+        // additive (no prior-state validation needed).
         let event = crate::board::BoardEvent::FreeCommentAppended {
             meta: crate::board::events::EventMeta {
                 actor: crate::transport::ws::short_name(agent_name).to_string(),
@@ -1304,9 +1295,8 @@ pub(super) async fn handle_close_story(
         return Err("'reason' must not be empty — audit trail for closure".to_string());
     }
     if let Some(r) = refresh {
-        r.refresh_story(number)
-            .await
-            .map_err(|e| format!("source unreachable on refresh-before-write: {e}"))?;
+        // #1194: refresh_story removed; close fires StoryClosed +
+        // outbox drains the GH push asynchronously.
         let meta = crate::board::events::EventMeta {
             actor: crate::transport::ws::short_name(agent_name).to_string(),
             ts: chrono::Utc::now(),

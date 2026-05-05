@@ -235,6 +235,10 @@ async fn roundtrip_coherence_user_job_and_falsifier_preserved_through_real_githu
 #[tokio::test]
 async fn roundtrip_coherence_rejects_parent_epic_referencing_non_epic_through_real_github_decode_path()
  {
+    // Post-#1194: create_story reads parent from canonical store
+    // (no per-call refresh_story). To drive the not-an-Epic rejection
+    // path, the open-issues list mock returns #99 as a Feature so
+    // refresh_all populates the store with it during fixture setup.
     let server = MockServer::start();
 
     let list_mock = server.mock(|when, then| {
@@ -243,7 +247,9 @@ async fn roundtrip_coherence_rejects_parent_epic_referencing_non_epic_through_re
             .query_param("state", "open");
         then.status(200)
             .header("content-type", "application/json")
-            .body(Value::Array(vec![]).to_string());
+            .body(
+                Value::Array(vec![issue(99, "[Feature] not-an-epic", "open", vec![])]).to_string(),
+            );
     });
     server.mock(|when, then| {
         when.method(Method::GET)
@@ -252,13 +258,6 @@ async fn roundtrip_coherence_rejects_parent_epic_referencing_non_epic_through_re
         then.status(200)
             .header("content-type", "application/json")
             .body(Value::Array(vec![]).to_string());
-    });
-
-    let refresh_parent_mock = server.mock(|when, then| {
-        when.method(Method::GET).path("/repos/acme/bpmux/issues/99");
-        then.status(200)
-            .header("content-type", "application/json")
-            .body(issue(99, "[Feature] not-an-epic", "open", vec![]).to_string());
     });
 
     let (router, _refresh) = fixture_mock_octocrab(&server).await;
@@ -279,7 +278,6 @@ async fn roundtrip_coherence_rejects_parent_epic_referencing_non_epic_through_re
     assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
 
     list_mock.assert();
-    refresh_parent_mock.assert();
 
     let json = read_json(resp).await;
     let err = json["error"].as_str().expect("error string");
