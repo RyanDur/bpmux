@@ -282,6 +282,27 @@ pub(in crate::bridge) async fn handle_move_story(
                 reason: Some(format!("retired: {rationale}")),
             })
             .map_err(|e| format!("#{number} retire enqueue failed: {e}"))?;
+            // #1192: stamp an explicit "retired" label so state_from_
+            // labels can distinguish closed-via-retire from closed-via-
+            // accept on the next refresh. Without this, the canonical
+            // store collapses both into StoryState::Accepted and the
+            // renderer's Retired column never receives the story.
+            let already_retired = prior
+                .as_ref()
+                .map(|s| {
+                    s.raw_labels
+                        .iter()
+                        .any(|l| l.eq_ignore_ascii_case("retired"))
+                })
+                .unwrap_or(false);
+            if !already_retired {
+                r.mutate_sync(crate::board::BoardEvent::TagAdded {
+                    meta: meta.clone(),
+                    number,
+                    label: "retired".to_string(),
+                })
+                .map_err(|e| format!("#{number} retire-tag enqueue failed: {e}"))?;
+            }
         }
     }
 

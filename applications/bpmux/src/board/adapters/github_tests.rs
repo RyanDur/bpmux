@@ -41,6 +41,36 @@ fn state_from_labels_closed_issue_is_accepted_even_without_label() {
 }
 
 #[test]
+fn state_from_labels_retired_label_overrides_closed_fallback() {
+    // #1192: explicit "retired" tag must take precedence over the
+    // legacy "closed-no-label = Accepted" fallback so move_story →
+    // retired produces a state column_for can bucket as Retired
+    // (closed && state != Accepted).
+    let labels = vec!["retired".to_string()];
+    assert_eq!(state_from_labels(&labels, true), StoryState::Icebox);
+}
+
+#[test]
+fn state_from_labels_retired_label_loses_to_accepted() {
+    // #1192: if both labels are present (manual mis-tag), Accepted
+    // wins because the affirmative "this was accepted" signal is
+    // load-bearing for the renderer's success-narrative.
+    let labels = vec!["accepted".to_string(), "retired".to_string()];
+    assert_eq!(state_from_labels(&labels, true), StoryState::Accepted);
+}
+
+#[test]
+fn state_from_labels_retired_label_open_issue_returns_icebox() {
+    // #1192: retired-label on an open issue is a manual-tag edge case
+    // (move_story always pairs retired-tag with close). Returning
+    // Icebox here matches the closed case + means column_for sees
+    // (Icebox, false) → Icebox column. Acceptable semantic: an open
+    // issue tagged "retired" parks in Icebox until someone moves it.
+    let labels = vec!["retired".to_string()];
+    assert_eq!(state_from_labels(&labels, false), StoryState::Icebox);
+}
+
+#[test]
 fn state_from_labels_rejected_label_projects_to_ready() {
     // #1146 slice 3: stale "rejected" label from pre-collapse stories
     // projects to Ready (where reject_story now transitions to per

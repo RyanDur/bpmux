@@ -468,6 +468,15 @@ pub fn state_from_labels(labels: &[String], is_closed: bool) -> StoryState {
     if has("accepted") {
         return StoryState::Accepted;
     }
+    // #1192: explicit retired-tag distinguishes "closed via retire"
+    // from "closed via accept". Returning Icebox here lets column_for
+    // (closed + state != Accepted → Retired) bucket correctly without
+    // adding a 7th StoryState variant. Must precede the is_closed
+    // fallback below so the legacy "closed-no-label = Accepted" path
+    // doesn't collapse retired stories back into Accepted.
+    if has("retired") {
+        return StoryState::Icebox;
+    }
     // Stale labels from pre-#1146 stories project to their column-
     // equivalent state. Slice 1 stopped writers from producing these
     // labels; slice 3 retired the enum variants. Existing GH stories

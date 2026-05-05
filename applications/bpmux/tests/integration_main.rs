@@ -85,6 +85,8 @@ mod list_ready_e2e;
 mod mcp_advertisement_parity;
 #[path = "integration_main_modules/move_story_e2e.rs"]
 mod move_story_e2e;
+#[path = "integration_main_modules/move_story_retired_class_e2e.rs"]
+mod move_story_retired_class_e2e;
 #[path = "integration_main_modules/pass_desk_check_e2e.rs"]
 mod pass_desk_check_e2e;
 #[path = "integration_main_modules/plugin_acceptance.rs"]
