@@ -135,3 +135,76 @@ fn get_briefing_role_arg_overrides_default() {
         dev.close().await;
     });
 }
+
+/// #1148 — team-doctrine pointer-list surfaces in get_briefing
+/// response. Live-bridge e2e test driving the canonical scenario per
+/// `feedback_falsifier_load_bearing_test_at_e2e_layer`: agent calls
+/// get_briefing, response includes team_doctrine field with the 3
+/// canonical doctrine docs, each with mtime when reachable.
+#[test]
+fn get_briefing_includes_team_doctrine_pointer_list_for_three_canonical_docs() {
+    let bpmux = TestBpmux::start();
+    let rt = tokio::runtime::Runtime::new().expect("rt");
+    rt.block_on(async {
+        let dev = TestBridge::connect(&bpmux, "dev").await;
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        let response = dev
+            .call_tool("get_briefing", serde_json::json!({}))
+            .await
+            .expect("get_briefing should succeed");
+
+        let response_text = response
+            .as_str()
+            .map(String::from)
+            .unwrap_or_else(|| response.to_string());
+
+        assert!(
+            response_text.contains("team_doctrine"),
+            "response must surface team_doctrine field per #1148 falsifier; got:\n{response_text}"
+        );
+        assert!(
+            response_text.contains("docs/process-state-machine.md"),
+            "team_doctrine must include process-state-machine doc; got:\n{response_text}"
+        );
+        assert!(
+            response_text.contains("docs/handoff-process.md"),
+            "team_doctrine must include handoff-process doc; got:\n{response_text}"
+        );
+        assert!(
+            response_text.contains("docs/memory-architecture.md"),
+            "team_doctrine must include memory-architecture doc; got:\n{response_text}"
+        );
+
+        dev.close().await;
+    });
+}
+
+#[test]
+fn get_briefing_response_size_under_5kb_per_context_budget_discipline() {
+    let bpmux = TestBpmux::start();
+    let rt = tokio::runtime::Runtime::new().expect("rt");
+    rt.block_on(async {
+        let dev = TestBridge::connect(&bpmux, "dev").await;
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        let response = dev
+            .call_tool("get_briefing", serde_json::json!({}))
+            .await
+            .expect("get_briefing should succeed");
+
+        let response_text = response
+            .as_str()
+            .map(String::from)
+            .unwrap_or_else(|| response.to_string());
+
+        assert!(
+            response_text.len() < 5120,
+            "get_briefing total payload must stay context-budget-disciplined (<5KB) per #1148; \
+             team_doctrine is pointer-not-content. got {} bytes",
+            response_text.len()
+        );
+
+        dev.close().await;
+    });
+}
