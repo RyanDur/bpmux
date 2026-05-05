@@ -180,14 +180,28 @@ fn run_server_only(cli: &Cli) -> anyhow::Result<()> {
     ));
     let port = cli.mcp_port;
     let ct = CancellationToken::new();
+    let restart_signal = transport::self_update::RestartSignal::new();
     let screen_capture = Arc::new(std::sync::Mutex::new(String::new()));
     let rt = tokio::runtime::Runtime::new()?;
-    rt.block_on(async move {
-        session::awareness::spawn(Arc::clone(&session), session.owner_name.clone());
-        server::run_server(session, port, ct, screen_capture)
-            .await
-            .map_err(|e| anyhow::anyhow!("{e}"))
-    })
+    let server_result = rt.block_on({
+        let ct = ct.clone();
+        let restart_signal = restart_signal.clone();
+        async move {
+            session::awareness::spawn(Arc::clone(&session), session.owner_name.clone());
+            transport::self_update::spawn_binary_watcher(ct.clone(), restart_signal);
+            server::run_server(session, port, ct, screen_capture)
+                .await
+                .map_err(|e| anyhow::anyhow!("{e}"))
+        }
+    });
+    if restart_signal.was_fired() {
+        eprintln!(
+            "[bpmux] binary changed on disk; exiting with code {} so the supervisor respawns",
+            transport::self_update::RESTART_EXIT_CODE
+        );
+        std::process::exit(transport::self_update::RESTART_EXIT_CODE);
+    }
+    server_result
 }
 
 pub fn run() -> anyhow::Result<()> {

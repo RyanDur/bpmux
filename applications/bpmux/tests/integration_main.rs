@@ -103,6 +103,8 @@ mod rpc_canonical_store;
 mod save_lesson_e2e;
 #[path = "integration_main_modules/search_log_e2e.rs"]
 mod search_log_e2e;
+#[path = "integration_main_modules/self_update_e2e.rs"]
+mod self_update_e2e;
 #[path = "integration_main_modules/send_claude_response_hook.rs"]
 mod send_claude_response_hook;
 #[path = "integration_main_modules/send_message_e2e.rs"]
