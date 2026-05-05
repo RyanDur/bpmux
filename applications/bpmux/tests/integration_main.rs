@@ -21,6 +21,8 @@ mod board_fixture_seed;
 mod bookmark_e2e;
 #[path = "integration_main_modules/bridge_collaboration.rs"]
 mod bridge_collaboration;
+#[path = "integration_main_modules/bridge_reconnect_e2e.rs"]
+mod bridge_reconnect_e2e;
 #[path = "integration_main_modules/briefing_e2e.rs"]
 mod briefing_e2e;
 #[path = "integration_main_modules/capture_electron_window_e2e.rs"]
