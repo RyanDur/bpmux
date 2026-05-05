@@ -34,6 +34,49 @@ pub(super) const ALL_STATE_LABELS: &[&str] = &[
 
 pub(super) const KEEP_NONE: &str = "";
 
+/// #1197: ensure the canonical store has the story before any
+/// gate-tool mutates against it. Background:
+///
+/// `BoardStore::apply` for state-mutating events (StateTransitioned,
+/// TagAdded, TagRemoved, StoryClosed, etc.) silently no-ops if the
+/// story isn't already in the store (the reducer uses
+/// `if let Some(story) = w.get_mut(&number)` and falls through on
+/// None). Pre-#1194, gate-tools called `refresh_story(N)` which
+/// fetched from GH + populated the store before any mutation;
+/// #1194 removed that to drop per-tool GH calls but didn't add a
+/// fallback for the cache-miss case.
+///
+/// Result was the substrate-bug observed 2026-05-05 22:43-23:02:
+/// gate-tool fires success-message, the reducer's silent-no-op
+/// drops the mutation, get_story still shows old state.
+///
+/// This helper preserves #1194's "no per-call GH GET on hot path"
+/// (cache hit returns immediately) while restoring correctness on
+/// cache miss (one explicit refresh from source). If both reads
+/// return None, the story genuinely doesn't exist and the
+/// gate-tool fails fast with a named error rather than silently
+/// mutating the void.
+pub(super) async fn ensure_story_in_canonical_store(
+    refresh: &std::sync::Arc<dyn crate::board::RefreshDriver>,
+    number: u64,
+) -> Result<crate::board::Story, String> {
+    if let Some(story) = refresh.story(number) {
+        return Ok(story);
+    }
+    refresh.refresh_story(number).await.map_err(|e| {
+        format!(
+            "story #{number} not in canonical store + refresh_story failed: {e}; \
+             cannot proceed with mutation against unknown story state"
+        )
+    })?;
+    refresh.story(number).ok_or_else(|| {
+        format!(
+            "story #{number} not found in canonical store after refresh_story \
+             round-trip; story may not exist at source-of-truth"
+        )
+    })
+}
+
 pub(super) fn stale_workflow_labels<'a>(current: &'a [String], keep: &str) -> Vec<&'a str> {
     current
         .iter()
@@ -604,9 +647,11 @@ pub(super) async fn handle_start_story(
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
     if let Some(r) = refresh {
-        // #1194: refresh_story removed; canonical store is kept fresh
-        // by the ingest poller (≤60s) + outbox drain (≤5s) per
-        // bridge::run_ingest_poll_loop / run_drain_loop.
+        // #1197: ensure story in canonical store before mutating.
+        // Without this, a cache-miss + mutate_sync silently no-ops
+        // because reducers gate on `if let Some(story) = ...` —
+        // tool returns success but state never transitions.
+        ensure_story_in_canonical_store(r, number).await?;
         let _ = r.fetch_body(number).await;
     }
     let pickup_paraphrase = require_nonempty_string(
@@ -686,12 +731,13 @@ pub(super) async fn handle_deliver_story(
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
-    // #1194: read prior story from canonical store; refresh_story
-    // removed per "MCP actions only pull from / mutate the store".
+    // #1194 + #1197: read prior story from canonical store after
+    // ensuring it's there (cache-first + explicit refresh on miss).
     let refreshed: Option<Option<crate::board::domain::Story>> = match refresh {
         Some(r) => {
+            let story = ensure_story_in_canonical_store(r, number).await?;
             let _ = r.fetch_body(number).await;
-            Some(r.story(number))
+            Some(Some(story))
         }
         None => None,
     };
@@ -783,8 +829,8 @@ pub(super) async fn handle_label_story(
         .and_then(|v| v.as_str())
         .unwrap_or("add");
     if let Some(r) = refresh {
-        // #1194: refresh_story removed; trust the ingest poller +
-        // outbox-drain cascade.
+        // #1197: ensure story in canonical store before mutating.
+        ensure_story_in_canonical_store(r, number).await?;
         let meta = crate::board::events::EventMeta {
             actor: crate::transport::ws::short_name(agent_name).to_string(),
             ts: chrono::Utc::now(),
@@ -850,15 +896,10 @@ pub(super) async fn handle_set_parent_epic(
         return Err(format!("story #{number} cannot be its own parent epic"));
     }
     let r = refresh.ok_or("set_parent_epic requires refresh (RefreshDriver)")?;
-    // #1194: read parent from canonical store; refresh_story removed
-    // for both child + parent reads. Ingest poller keeps state ≤60s
-    // fresh; if parent isn't in the store, the named-error below
-    // surfaces it (rather than silent-fall-through).
-    let parent = r.story(epic_number).ok_or_else(|| {
-        format!(
-            "epic #{epic_number} not found in canonical store — cannot set as parent of #{number} (wait for next ingest tick or call refresh_story explicitly)"
-        )
-    })?;
+    // #1197: ensure both child + parent are in canonical store
+    // before mutating. Cache-first + explicit refresh on miss.
+    ensure_story_in_canonical_store(r, number).await?;
+    let parent = ensure_story_in_canonical_store(r, epic_number).await?;
     if parent.story_type != crate::board::domain::StoryType::Epic {
         return Err(format!(
             "story #{epic_number} is not an Epic (story_type={:?}); only Epic stories can be parents",
@@ -892,8 +933,8 @@ pub(super) async fn handle_unset_parent_epic(
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
     let r = refresh.ok_or("unset_parent_epic requires refresh (RefreshDriver)")?;
-    // #1194: refresh_story removed; canonical store + outbox drain
-    // covers eventual consistency.
+    // #1197: ensure story in canonical store before mutating.
+    ensure_story_in_canonical_store(r, number).await?;
     let meta = crate::board::events::EventMeta {
         actor: crate::transport::ws::short_name(agent_name).to_string(),
         ts: chrono::Utc::now(),
@@ -938,8 +979,8 @@ pub(crate) async fn accept_via_canonical_store(
     actor: String,
     bypass: Option<String>,
 ) -> Result<(), String> {
-    // #1194: refresh_story removed; ingest poller + outbox drain
-    // keep canonical store consistent without per-call GH GET.
+    // #1197: ensure story in canonical store before mutating.
+    ensure_story_in_canonical_store(refresh, number).await?;
     let meta = crate::board::events::EventMeta {
         actor,
         ts: chrono::Utc::now(),
@@ -1011,13 +1052,10 @@ pub(crate) async fn reject_via_canonical_store(
     actor: String,
     reason: String,
 ) -> Result<(), String> {
-    // #1194: read prior state from canonical store; refresh_story
-    // removed. is_closed-or-Accepted check still drives the
-    // StoryReopened branch below.
-    let was_accepted = refresh
-        .story(number)
-        .map(|s| s.is_closed || s.state == crate::board::domain::StoryState::Accepted)
-        .unwrap_or(false);
+    // #1197: ensure story in canonical store before mutating; the
+    // returned snapshot drives the StoryReopened branch below.
+    let prior = ensure_story_in_canonical_store(refresh, number).await?;
+    let was_accepted = prior.is_closed || prior.state == crate::board::domain::StoryState::Accepted;
     let meta = crate::board::events::EventMeta {
         actor,
         ts: chrono::Utc::now(),
@@ -1072,8 +1110,10 @@ pub(super) async fn handle_pass_desk_check(
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
     let bypass = verify_bug_question_or_bypass(args, BugGate::PassDeskCheck)?;
-    // #1194: refresh_story removed; canonical store reads cover the
-    // story-type classification + state-transition path below.
+    // #1197: ensure story in canonical store before mutating.
+    if let Some(r) = refresh {
+        ensure_story_in_canonical_store(r, number).await?;
+    }
     // Pick signal recipients based on story type (Feature/Bug/Chore
     // per the 3-type vocabulary, #264). Chore + Bug → PM alone
     // (team-accept lane). Feature → Ryan AND PM (#259 — Ryan is the
@@ -1137,13 +1177,11 @@ pub(super) async fn handle_fail_desk_check(
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
-    // #1194: read prior state from canonical store; refresh_story
-    // removed. The is_closed-or-Accepted check still drives the
-    // StoryReopened branch in the mutation chain below.
+    // #1197: ensure story in canonical store before mutating; the
+    // returned snapshot drives the StoryReopened branch below.
     let was_accepted = if let Some(r) = refresh {
-        r.story(number)
-            .map(|s| s.is_closed || s.state == crate::board::domain::StoryState::Accepted)
-            .unwrap_or(false)
+        let prior = ensure_story_in_canonical_store(r, number).await?;
+        prior.is_closed || prior.state == crate::board::domain::StoryState::Accepted
     } else {
         false
     };
@@ -1249,8 +1287,11 @@ pub(super) async fn handle_comment_on_story(
         return Err("'body' must not be empty".to_string());
     }
     if let Some(r) = refresh {
-        // #1194: refresh_story removed; comment-append is purely
-        // additive (no prior-state validation needed).
+        // #1197: ensure story in canonical store. Comment-append
+        // doesn't need prior state for validation, but the reducer's
+        // gate-on-Some-story means the comment is silently dropped
+        // if the story isn't in the store.
+        ensure_story_in_canonical_store(r, number).await?;
         let event = crate::board::BoardEvent::FreeCommentAppended {
             meta: crate::board::events::EventMeta {
                 actor: crate::transport::ws::short_name(agent_name).to_string(),
@@ -1295,8 +1336,8 @@ pub(super) async fn handle_close_story(
         return Err("'reason' must not be empty — audit trail for closure".to_string());
     }
     if let Some(r) = refresh {
-        // #1194: refresh_story removed; close fires StoryClosed +
-        // outbox drains the GH push asynchronously.
+        // #1197: ensure story in canonical store before mutating.
+        ensure_story_in_canonical_store(r, number).await?;
         let meta = crate::board::events::EventMeta {
             actor: crate::transport::ws::short_name(agent_name).to_string(),
             ts: chrono::Utc::now(),

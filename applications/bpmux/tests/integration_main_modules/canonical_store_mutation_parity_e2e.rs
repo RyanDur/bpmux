@@ -1,0 +1,152 @@
+//! #1197 regression: workflow-state mutations via MCP gate-tools
+//! must reflect in canonical-store-via-MCP get_story immediately.
+//!
+//! Pre-#1197 substrate-bug: gate-tool returns success-message but
+//! reducer silently no-ops on missing-story; subsequent get_story
+//! shows old state. Per `feedback_falsifier_load_bearing_test_at_e2e_layer`
+//! the regression test must drive the FULL chain (TestBpmux subprocess
+//! → mutate via gate-tool → get_story → assert state field) not just
+//! unit-test the reducer or the named-error path.
+//!
+//! Sister to #1192 e2e (move_story → retired distinct state).
+
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
+use std::time::Duration;
+
+use crate::harness::bridge::TestBridge;
+use crate::harness::pty::TestBpmux;
+use crate::harness::story_helpers::create_target_story;
+
+#[test]
+fn move_story_via_mcp_reflects_in_get_story_immediately() {
+    // Drives the post-#1197-fix path:
+    // 1. PM creates a story (lands in icebox)
+    // 2. PM moves the story via MCP move_story tool
+    // 3. PM calls MCP get_story — workflow_state must reflect the
+    //    new state (not the pre-mutation icebox)
+    //
+    // Pre-fix: get_story returned workflow_state="icebox" because
+    // the StateTransitioned reducer silently no-op'd against a
+    // canonical store that didn't have the just-created story (the
+    // create_story write went through a different path; the move
+    // ran against an empty store).
+    let bpmux = TestBpmux::start();
+    let rt = tokio::runtime::Runtime::new().expect("rt");
+    rt.block_on(async {
+        let pm = TestBridge::connect(&bpmux, "pm").await;
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        let target_number = create_target_story(
+            &pm,
+            "[Feature] mutation-parity-target",
+            "reject if move_story success-message doesn't reflect in get_story",
+        )
+        .await;
+
+        pm.call_tool(
+            "move_story",
+            serde_json::json!({
+                "number": target_number,
+                "target_state": "ready",
+                "rationale": "drive #1197 regression: success-message must match canonical-store"
+            }),
+        )
+        .await
+        .expect("move_story → ready should succeed");
+
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        let story = pm
+            .call_tool("get_story", serde_json::json!({ "number": target_number }))
+            .await
+            .expect("get_story should succeed");
+
+        let workflow_state = story
+            .get("workflow_state")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        assert_eq!(
+            workflow_state.to_ascii_lowercase(),
+            "ready",
+            "post-#1197 fix: MCP move_story success must reflect in MCP get_story \
+             workflow_state immediately. Got workflow_state={workflow_state}; full story={story}"
+        );
+
+        pm.close().await;
+    });
+}
+
+#[test]
+fn start_story_via_mcp_reflects_in_get_story_immediately() {
+    // Sister-coverage: same regression-shape but via the start_story
+    // gate-tool. Pre-#1197 fix this transitioned via the same
+    // reducer-silent-no-op path observed live on #1195's mid-impl.
+    let bpmux = TestBpmux::start();
+    let rt = tokio::runtime::Runtime::new().expect("rt");
+    rt.block_on(async {
+        let pm = TestBridge::connect(&bpmux, "pm").await;
+        let dev = TestBridge::connect(&bpmux, "dev").await;
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        let target_number = create_target_story(
+            &pm,
+            "[Feature] start-story-parity-target",
+            "reject if start_story success doesn't reflect in get_story",
+        )
+        .await;
+
+        // PM moves target into ready so dev can pick it up.
+        pm.call_tool(
+            "move_story",
+            serde_json::json!({
+                "number": target_number,
+                "target_state": "ready",
+                "rationale": "promote into ready so dev can start_story"
+            }),
+        )
+        .await
+        .expect("move_story → ready should succeed");
+
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        // Dev fires start_story. Pre-#1197 this returned success but
+        // the canonical store reflected stale state.
+        dev.call_tool(
+            "start_story",
+            serde_json::json!({
+                "number": target_number,
+                "pickup_paraphrase": "regression test for #1197 substrate-fix",
+                "falsifier_reframing": "reject if start_story success doesn't propagate"
+            }),
+        )
+        .await
+        .expect("start_story should succeed for dev");
+
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        let story = dev
+            .call_tool("get_story", serde_json::json!({ "number": target_number }))
+            .await
+            .expect("get_story should succeed");
+
+        let workflow_state = story
+            .get("workflow_state")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        assert!(
+            matches!(
+                workflow_state.to_ascii_lowercase().as_str(),
+                "in progress" | "in-progress" | "in_progress"
+            ),
+            "post-#1197 fix: MCP start_story success must reflect in MCP get_story \
+             workflow_state=in-progress (any spelling) immediately. \
+             Got workflow_state={workflow_state}"
+        );
+
+        pm.close().await;
+        dev.close().await;
+    });
+}

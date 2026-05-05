@@ -217,11 +217,15 @@ pub(in crate::bridge) async fn handle_move_story(
 
     let r = refresh
         .ok_or("move_story requires refresh (RefreshDriver) — tracker fallback not supported")?;
-    // #1194: read prior state from canonical store; refresh_story
-    // removed per "MCP actions only pull from / mutate the store"
-    // (Ryan 2026-05-05 12:57 UTC). Ingest poller keeps the store
-    // ≤60s fresh; outbox drain propagates this mutation to GH.
-    let prior = r.story(number);
+    // #1197 substrate-fix: ensure story is in canonical store
+    // before mutating. Pre-#1194 path used refresh_story; that was
+    // removed for hot-path GH-call elimination, but the reducer's
+    // silent-no-op on missing-story (store.rs:162-166 et al.)
+    // means mutations against an uningesed story would return
+    // success-message + drop. ensure_story does cache-first +
+    // explicit refresh on miss, errors only if truly missing.
+    let prior =
+        Some(crate::bridge::tools_stories::ensure_story_in_canonical_store(r, number).await?);
     let from_display = current_state_display(prior.as_ref()).to_string();
     let was_closed = prior.as_ref().map(|s| s.is_closed).unwrap_or(false);
 

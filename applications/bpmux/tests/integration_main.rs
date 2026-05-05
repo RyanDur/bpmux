@@ -25,6 +25,8 @@ mod bridge_collaboration;
 mod bridge_reconnect_e2e;
 #[path = "integration_main_modules/briefing_e2e.rs"]
 mod briefing_e2e;
+#[path = "integration_main_modules/canonical_store_mutation_parity_e2e.rs"]
+mod canonical_store_mutation_parity_e2e;
 #[path = "integration_main_modules/capture_electron_window_e2e.rs"]
 mod capture_electron_window_e2e;
 #[path = "integration_main_modules/ci_canonical.rs"]
