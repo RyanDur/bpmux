@@ -220,3 +220,162 @@ fn move_story_dev_caller_with_position_in_ready_rejected_per_pm_lane() {
         dev.close().await;
     });
 }
+
+/// Falsifier-c (LOAD-BEARING — the bug-class this story was filed
+/// to fix per spec body's '#1177 stuck-in-Accepted is exactly this').
+/// Drives the closed-story → non-terminal recovery path end-to-end:
+/// create → accept (closes the GH issue + transitions to Accepted) →
+/// move_story back to ready with rationale → assert success. The
+/// substrate fires StoryReopened first then StateTransitioned, so a
+/// successful tool return + non-error message is operational evidence
+/// the recovery cascade works.
+#[test]
+fn move_story_recovers_closed_story_back_to_ready_per_falsifier_c() {
+    let bpmux = TestBpmux::start();
+    let rt = tokio::runtime::Runtime::new().expect("rt");
+    rt.block_on(async {
+        let pm = TestBridge::connect(&bpmux, "pm").await;
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        let target_number = create_target_story(
+            &pm,
+            "[Feature] move-story-recover-from-accepted-target",
+            "reject if move_story can't un-stick a closed/Accepted story",
+        )
+        .await;
+
+        pm.call_tool(
+            "move_story",
+            serde_json::json!({
+                "number": target_number,
+                "target_state": "accepted",
+                "rationale": "stage close so the recovery path has something to undo"
+            }),
+        )
+        .await
+        .expect("move_story to accepted should succeed (closes issue + transitions Accepted)");
+
+        let recovery = pm
+            .call_tool(
+                "move_story",
+                serde_json::json!({
+                    "number": target_number,
+                    "target_state": "ready",
+                    "rationale": "recover from wrong-Accept — the #1177-stuck class fix"
+                }),
+            )
+            .await
+            .expect(
+                "move_story from accepted → ready must succeed (StoryReopened-then-StateTransitioned cascade per falsifier-c — this is the bug-class this story was filed to fix)",
+            );
+
+        let msg = recovery.as_str().unwrap_or("").to_string();
+        assert!(
+            msg.contains(&format!("#{target_number}")) && msg.contains("ready"),
+            "recovery message names target story + destination state; got {msg}"
+        );
+
+        pm.close().await;
+    });
+}
+
+/// Falsifier-a positive case: any-role can move COLUMNS without
+/// position. Ryan 2026-05-05 01:54 UTC: "we need a tool that allows
+/// an agent to put a story wherever it needs to be." dev-without-
+/// position must succeed for a column move; the existing dev-with-
+/// position rejection only covers the negative side.
+#[test]
+fn move_story_dev_caller_column_only_succeeds_per_falsifier_a() {
+    let bpmux = TestBpmux::start();
+    let rt = tokio::runtime::Runtime::new().expect("rt");
+    rt.block_on(async {
+        let pm = TestBridge::connect(&bpmux, "pm").await;
+        let dev = TestBridge::connect(&bpmux, "dev").await;
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        let target_number = create_target_story(
+            &pm,
+            "[Feature] move-story-dev-column-only-target",
+            "reject if dev can't move column WITHOUT specifying position",
+        )
+        .await;
+
+        let result = dev
+            .call_tool(
+                "move_story",
+                serde_json::json!({
+                    "number": target_number,
+                    "target_state": "icebox",
+                    "rationale": "dev moves column without position — agent-class column-move per Ryan 01:54"
+                }),
+            )
+            .await
+            .expect(
+                "dev-without-position must succeed — column-move is agent-class per Ryan 01:54 + scope-question 1 reconciliation",
+            );
+
+        let msg = result.as_str().unwrap_or("").to_string();
+        assert!(
+            msg.contains(&format!("#{target_number}")) && msg.contains("icebox"),
+            "column-move-success message names target + destination; got {msg}"
+        );
+
+        pm.close().await;
+        dev.close().await;
+    });
+}
+
+/// Falsifier-f end-to-end: audit-trail comment is visible after the
+/// move via view_comments. Unit tests cover the body shape; this
+/// test exercises the FreeCommentAppended → canonical-store →
+/// view_comments-readback cascade so the operator-visibility
+/// promise lands.
+#[test]
+fn move_story_audit_comment_surfaces_via_view_comments_per_falsifier_f() {
+    let bpmux = TestBpmux::start();
+    let rt = tokio::runtime::Runtime::new().expect("rt");
+    rt.block_on(async {
+        let pm = TestBridge::connect(&bpmux, "pm").await;
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        let target_number = create_target_story(
+            &pm,
+            "[Feature] move-story-audit-trail-target",
+            "reject if move_story doesn't surface audit-comment via view_comments",
+        )
+        .await;
+
+        pm.call_tool(
+            "move_story",
+            serde_json::json!({
+                "number": target_number,
+                "target_state": "ready",
+                "rationale": "AUDIT_TRAIL_MARKER_RATIONALE for view_comments readback"
+            }),
+        )
+        .await
+        .expect("move_story should succeed");
+
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        let comments = pm
+            .call_tool(
+                "view_comments",
+                serde_json::json!({ "number": target_number }),
+            )
+            .await
+            .expect("view_comments should succeed");
+
+        let dump = serde_json::to_string(&comments).unwrap_or_default();
+        assert!(
+            dump.contains("AUDIT_TRAIL_MARKER_RATIONALE"),
+            "view_comments must surface the rationale from the move_story audit-comment per falsifier-f; got {dump}"
+        );
+        assert!(
+            dump.contains("move_story") && dump.contains("ready"),
+            "audit-comment body must name the action + destination state; got {dump}"
+        );
+
+        pm.close().await;
+    });
+}
