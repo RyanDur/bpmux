@@ -29,6 +29,75 @@ BPMUX_PORT="${BPMUX_PORT:-4117}"
 BPMUX_ROLE="${BPMUX_ROLE:-unknown}"
 BPMUX_API="http://127.0.0.1:${BPMUX_PORT}/api/messages"
 
+# #279 — auto-save a bookmark BEFORE the broadcast so post-compaction
+# load_bookmark works. Two paths:
+#   1. Bookmark file already exists (agent ran save_bookmark earlier
+#      this session): touch last_updated to mark "preserved through
+#      this PreCompact"; agent's structured state is unchanged.
+#   2. No prior bookmark: write a minimal stub with timestamp + note
+#      "auto-saved at PreCompact" + role-correct path. Post-compaction
+#      load_bookmark returns this stub instead of an empty Bookmark,
+#      signaling "compaction happened; reconstruct from chat + lessons".
+# In both cases the existing chat broadcast still fires (additive
+# wiring per falsifier-(f)).
+SESSIONS_BASE="${BPMUX_SESSIONS_BASE:-$HOME/.bpmux/sessions}"
+# Resolve the current session directory. session::resume_or_create_
+# session writes a symlink `current` → the active session dir. If the
+# symlink resolves, use it; otherwise fall back to the bare sessions-
+# base (newer-startup may not yet have the symlink). Either way, the
+# bookmark lands at a path load_bookmark recognizes for this role.
+SESSION_DIR="$SESSIONS_BASE/current"
+if [ -L "$SESSION_DIR" ] || [ -d "$SESSION_DIR" ]; then
+  SESSION_DIR=$(cd "$SESSION_DIR" 2>/dev/null && pwd -P || echo "$SESSION_DIR")
+fi
+# Sanitize role to alphanumerics + dash + underscore so a role string
+# can't escape the session directory via traversal (mirrors the Rust
+# session::identity::sanitize_name discipline).
+SAFE_ROLE=$(printf '%s' "$BPMUX_ROLE" | sed 's/[^A-Za-z0-9_-]//g')
+if [ -z "$SAFE_ROLE" ]; then
+  SAFE_ROLE="unknown"
+fi
+BOOKMARK_PATH="$SESSION_DIR/bookmark-${SAFE_ROLE}.json"
+TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+mkdir -p "$SESSION_DIR" 2>/dev/null || true
+
+if [ -f "$BOOKMARK_PATH" ]; then
+  # Existing bookmark — update last_updated only, preserve everything
+  # else. Use python3 so JSON edits don't corrupt the file under a
+  # malformed sed. python3 is in plugin-runtime per token-adapter.sh.
+  python3 - <<EOF || true
+import json, sys
+path = "$BOOKMARK_PATH"
+ts = "$TS"
+try:
+    with open(path) as f:
+        data = json.load(f)
+except Exception:
+    data = {}
+if not isinstance(data, dict):
+    data = {}
+data["last_updated"] = ts
+with open(path, "w") as f:
+    json.dump(data, f, indent=2)
+EOF
+else
+  # No prior bookmark — write stub. Schema matches #168's Bookmark
+  # struct (current_task / decisions / open_questions / next_step /
+  # notes / last_updated). All-empty except note + timestamp so the
+  # schema stays #168-compatible for load_bookmark.
+  cat > "$BOOKMARK_PATH" <<EOF || true
+{
+  "current_task": "",
+  "decisions": [],
+  "open_questions": [],
+  "next_step": "",
+  "notes": "auto-saved at PreCompact",
+  "last_updated": "$TS"
+}
+EOF
+fi
+
 # Build the message body. Short by design — well under the 64 KB ws
 # cap, and intentionally laconic because the signal doesn't need to
 # carry details; it just needs to mark the boundary. Teammates read
