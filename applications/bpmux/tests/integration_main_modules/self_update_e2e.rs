@@ -121,6 +121,18 @@ fn binary_change_triggers_graceful_restart_with_exit_code_200() {
         panic!("bpmux copy never reached /healthz on port {port}");
     }
 
+    // Falsifier-(d) state-preservation drive: write a marker into the
+    // session-base BEFORE triggering the restart-signal. After the
+    // subprocess exits, assert the marker is still on disk + content
+    // unchanged. This drives the load-bearing cascade per
+    // feedback_falsifier_load_bearing_test_at_e2e_layer: state on
+    // disk → restart-cycle fires → state still on disk + intact.
+    let lessons_dir = session_base.path().join("lessons");
+    std::fs::create_dir_all(&lessons_dir).expect("create lessons dir");
+    let marker = lessons_dir.join("falsifier_d_state_preservation_marker.json");
+    let marker_payload = b"falsifier-d: this content must survive the restart-cycle";
+    std::fs::write(&marker, marker_payload).expect("write marker");
+
     // Sleep beyond filesystem mtime granularity (1s on most posix
     // FS; APFS sub-millisecond) so the touch produces a different
     // mtime that the watcher will observe.
@@ -162,5 +174,18 @@ fn binary_change_triggers_graceful_restart_with_exit_code_200() {
         Some(RESTART_EXIT_CODE),
         "bpmux must exit with {RESTART_EXIT_CODE} (restart-signal) after binary-mtime change; got {:?}",
         status.code()
+    );
+
+    // Falsifier-(d) e2e assertion: marker we wrote into session-base
+    // before the restart-cycle is still on disk + content intact.
+    assert!(
+        marker.exists(),
+        "session-base disk content must persist across the restart-cycle per falsifier-(d); marker missing at {}",
+        marker.display()
+    );
+    assert_eq!(
+        std::fs::read(&marker).expect("read marker"),
+        marker_payload,
+        "marker content must be unchanged across the restart-cycle (no corruption / partial-write)"
     );
 }
