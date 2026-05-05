@@ -1,11 +1,7 @@
 //! Live-Electron integration test for capture_electron_window MCP
-//! tool (#1183). Mirrors #1174's live-GH pattern: gated behind the
-//! `integration_tests` feature so CI without a running Electron
-//! instance doesn't fail. Run locally on macOS with:
+//! tool (#1183). Run locally on macOS with:
 //!
-//!     cargo test -p bpmux --test integration_main \
-//!         --features integration_tests \
-//!         capture_electron_window
+//!     cargo test -p bpmux --test integration_main capture_electron_window
 //!
 //! Requires: bpmux Electron app running, macOS Screen Recording
 //! permission granted to the terminal/process running this test.
@@ -24,11 +20,15 @@
 //! without Electron currently running. The test asserts only when
 //! the prerequisite environment exists, so CI green is achievable
 //! anywhere; only running-Electron + Screen Recording grant unlocks
-//! the full assertion path.
+//! the full assertion path. #1193 removed the prior
+//! `integration_tests` Cargo feature gate (Ryan 2026-05-05 directive
+//! against tests calling outside-this-computer resources). Quartz +
+//! Electron are local-this-computer, so the test stays — it's the
+//! soft-skip + macOS-only target gate that keeps CI safe.
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-#[cfg(all(feature = "integration_tests", target_os = "macos"))]
+#[cfg(target_os = "macos")]
 mod live {
     use bpmux::transport::electron_capture::{
         CaptureError, build_capture_filename, capture_window_to_path, captures_dir,

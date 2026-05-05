@@ -1,8 +1,5 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-#[cfg(feature = "integration_tests")]
-use super::tracker::StoryTracker;
-
 use super::tools_stories::*;
 use crate::board::domain::StoryType;
 use crate::session::velocity::classify_story;
@@ -714,192 +711,14 @@ async fn reject_rejects_unknown_role_via_handler() {
     assert!(result.unwrap_err().contains("restricted to"));
 }
 
-// Awareness signal for feature-gated integration tests (#299 rework
-// feedback from desk-check). `#[cfg(feature = ...)]` removes the tests
-// from default `cargo test` output entirely — AC3 originally asked for
-// a "skipped X real-substrate tests" message so devs know they exist.
-// This always-compiled test carries the signal in its NAME so the
-// default cargo-test listing surfaces it. Passes trivially; the
-// signal is the name appearing in the output.
-#[test]
-fn integration_tests_are_feature_gated_enable_with_features_integration_tests() {
-    // See `Cargo.toml` [features] + the `#[cfg(feature = "integration_tests")]`
-    // gates in this file. Run with:
-    //   cargo test --features integration_tests
-    // Requires `GH_TOKEN` + `BPMUX_REPO` env vars.
-    // 5 real-substrate contract tests: 2 against gh CLI + 3 against
-    // octocrab REST.
-}
-
-// GhTracker contract tests retired in #320 (gh CLI fallback deleted).
-// Octocrab is the sole production path; tests below exercise it.
-
-// ── Contract tests for OctocrabStoryTracker (#221) ──
-// Same pattern as GhTracker contract tests: feature-gated (#299 rework)
-// instead of `#[ignore]` + require auth. Run with
-// `cargo test --features integration_tests` when GH_TOKEN + BPMUX_REPO
-// are set. Default CI skips because the feature isn't enabled there.
-
-#[cfg(feature = "integration_tests")]
-#[tokio::test]
-async fn octocrab_tracker_from_env_builds_when_auth_configured() {
-    use super::tracker::OctocrabStoryTracker;
-    let tracker = OctocrabStoryTracker::from_env();
-    assert!(
-        tracker.is_some(),
-        "OctocrabStoryTracker should build with GH_TOKEN + BPMUX_REPO set"
-    );
-}
-
-#[cfg(feature = "integration_tests")]
-#[tokio::test]
-async fn octocrab_tracker_list_stories_returns_parseable_json() {
-    use super::tracker::OctocrabStoryTracker;
-    let tracker = OctocrabStoryTracker::from_env().expect("auth configured");
-    let result = tracker.list_stories().await;
-    assert!(
-        result.is_ok(),
-        "list_stories should succeed with auth. got: {result:?}"
-    );
-    let json_str = result.unwrap();
-    let parsed: Vec<serde_json::Value> =
-        serde_json::from_str(&json_str).expect("list_stories should return valid JSON array");
-    if let Some(first) = parsed.first() {
-        assert!(first.get("number").is_some(), "need 'number' field");
-        assert!(first.get("title").is_some(), "need 'title' field");
-        assert!(first.get("state").is_some(), "need 'state' field");
-        assert!(first.get("labels").is_some(), "need 'labels' field");
-    }
-}
-
-#[cfg(feature = "integration_tests")]
-#[tokio::test]
-async fn octocrab_tracker_conditional_poll_returns_not_modified_on_unchanged_run_list() {
-    use super::tracker::{ConditionalRunEntry, OctocrabStoryTracker};
-    let tracker = OctocrabStoryTracker::from_env().expect("auth configured");
-
-    let first = tracker
-        .list_latest_run_on_main_conditional(None)
-        .await
-        .expect("first conditional poll succeeds against ryandurling/bpmux");
-    let etag = match first {
-        ConditionalRunEntry::Modified { etag, .. } => {
-            etag.expect("GH returns ETag header on 200 — needed for the conditional round-trip")
-        }
-        ConditionalRunEntry::NotModified => {
-            panic!("first call with no prior etag must NOT return NotModified")
-        }
-        ConditionalRunEntry::Empty => {
-            panic!("ryandurling/bpmux main branch has runs; Empty is unexpected")
-        }
-    };
-
-    let second = tracker
-        .list_latest_run_on_main_conditional(Some(&etag))
-        .await
-        .expect("second conditional poll with prior etag succeeds");
-    assert!(
-        matches!(second, ConditionalRunEntry::NotModified),
-        "GH must respect If-None-Match and return 304 NotModified when run-list is unchanged; got: {second:?}"
-    );
-}
-
-#[cfg(feature = "integration_tests")]
-#[tokio::test]
-async fn octocrab_tracker_fetch_failed_tests_for_run_returns_structured_failures() {
-    use super::tracker::OctocrabStoryTracker;
-    let tracker = OctocrabStoryTracker::from_env().expect("auth configured");
-    let known_failed_run_id: u64 = 25329918989;
-    let result = tracker
-        .fetch_failed_tests_for_run(known_failed_run_id)
-        .await;
-    assert!(
-        result.is_ok(),
-        "fetch_failed_tests_for_run should succeed against ryandurling/bpmux run {known_failed_run_id}; got: {result:?}"
-    );
-    let report = result.unwrap();
-    assert_eq!(report.run_id, known_failed_run_id);
-    assert_eq!(
-        report.conclusion, "failure",
-        "known failed run should report conclusion=failure"
-    );
-    assert!(
-        !report.failures.is_empty(),
-        "structured failures should be non-empty for a known failed run; got report: {report:?}"
-    );
-}
-
-#[cfg(feature = "integration_tests")]
-#[tokio::test]
-async fn octocrab_tracker_get_story_title_returns_known_story() {
-    use super::tracker::OctocrabStoryTracker;
-    let tracker = OctocrabStoryTracker::from_env().expect("auth configured");
-    let title = tracker.get_story_title(213).await;
-    assert!(title.is_some(), "story #213 should exist");
-    assert!(!title.unwrap().is_empty(), "title non-empty");
-}
-
-#[cfg(feature = "integration_tests")]
-#[tokio::test]
-async fn spike_451_ingest_latency_benchmark() {
-    use super::tracker::OctocrabStoryTracker;
-    use std::time::Instant;
-    let tracker = OctocrabStoryTracker::from_env().expect("auth configured");
-    eprintln!("\n=== Spike 1 (#451): ingest-all latency ===");
-    let t0 = Instant::now();
-    let stories = tracker.fetch_board_stories().await.expect("board fetch");
-    let fetch = t0.elapsed();
-    let n = stories.len();
-    let bytes: usize = stories.iter().map(|s| s.to_string().len()).sum();
-    eprintln!(
-        "fetch_board_stories: {n} stories in {fetch:?}  —  {} KB serialized",
-        bytes / 1024
-    );
-    let active: Vec<u64> = stories
-        .iter()
-        .filter_map(|s| {
-            let state = s.get("state").and_then(|v| v.as_str())?;
-            if matches!(state, "ready" | "in-progress" | "delivered" | "accepted") {
-                s.get("number").and_then(|v| v.as_u64())
-            } else {
-                None
-            }
-        })
-        .collect();
-    let sample = active.len().min(30);
-    let t1 = Instant::now();
-    let mut total_c = 0usize;
-    let mut total_cb = 0usize;
-    for n in active.iter().take(sample) {
-        if let Ok(cs) = tracker.list_story_comments(*n).await {
-            total_c += cs.len();
-            total_cb += cs.iter().map(|c| c.to_string().len()).sum::<usize>();
-        }
-    }
-    let comments_elapsed = t1.elapsed();
-    eprintln!(
-        "list_story_comments sample: {} comments across {} stories in {comments_elapsed:?}  —  {} KB",
-        total_c,
-        sample,
-        total_cb / 1024
-    );
-    let projected = if sample > 0 {
-        let per_story = comments_elapsed.as_millis() / sample as u128;
-        per_story * active.len() as u128
-    } else {
-        0
-    };
-    eprintln!(
-        "projected comments-for-all-active: ~{}ms wall-clock, {} active stories",
-        projected,
-        active.len()
-    );
-    eprintln!(
-        "=== total eager-ingest estimate: ~{}ms, ~{} KB memory (JSON) ===\n",
-        fetch.as_millis() + projected,
-        (bytes + total_cb * active.len() / sample.max(1)) / 1024
-    );
-}
+// ── #1193: live-GH octocrab contract tests + integration_tests Cargo
+// feature retired per Ryan 2026-05-05 12:18+12:20+12:21 UTC absolute
+// directive that no tests call real outside-this-computer resources.
+// Contract-drift detection now relies on production substrate
+// (#1145 watcher-unhealthy + named-error-shapes + serde fail-loud);
+// httpmock MockServer at 127.0.0.1 covers the existing-test-shape
+// contract suite (tracker_contract_tests / external_mutation_tests /
+// test_routes_mock_octocrab_tests).
 
 // ── #391: observation-falsifier gate tests ──
 

@@ -44,16 +44,6 @@ once_cell = "1"
 http = "1"
 http-body-util = "0.1"
 
-[features]
-# Real-substrate contract tests against GitHub's live gh CLI +
-# octocrab REST API (#299). Gated behind a feature so default
-# `cargo test` stays reproducible offline. Enable with
-# `cargo test --features integration_tests` when `GH_TOKEN` and
-# `BPMUX_REPO` env vars are set. CI runs these in a separate
-# `integration` job conditional on repo secrets being configured;
-# see `.github/workflows/integration.yml`.
-integration_tests = []
-
 [dev-dependencies]
 tempfile = "3"
 portable-pty = "0.9"
