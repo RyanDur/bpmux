@@ -40,6 +40,44 @@ export interface LaunchResult {
   sessionBase: string
   userDataDir: string
   backendPort: number
+  // #1205: when launchIsolatedElectron auto-spawns a default
+  // mock-GH server (because extraEnv didn't supply
+  // BPMUX_GH_BASE_URL), the spawned MockGhServer is exposed here
+  // so callers can register custom routes / inspect requests /
+  // close cleanly. `undefined` means caller opted into a custom
+  // BPMUX_GH_BASE_URL via extraEnv (e.g., launchWithMockGh's own
+  // mock or a test-specific endpoint).
+  mockGh?: MockGhServer
+}
+
+// #1205: env vars that, when inherited from the dev's shell into
+// the spawned bpmux subprocess, would route GH calls to real
+// github.com. Stripped by default; callers MUST provide explicit
+// values in extraEnv (or rely on the auto-mock-GH default that
+// sets these to mock values) to opt into a specific GH endpoint.
+//
+// Without this filter, every Playwright test running on a dev
+// machine that has GH_TOKEN + BPMUX_REPO set in the shell silently
+// hits real api.github.com via the spawned bpmux's ci_watcher +
+// ingest_poll + hydration_loop. That was the substrate-bug
+// `feedback_no_real_github_in_tests` was filed to prevent +
+// `feedback_test_harness_must_apply_default_isolation` documents
+// the structural fix.
+const REAL_GH_ROUTING_ENV_KEYS = [
+  'GH_TOKEN',
+  'GITHUB_TOKEN',
+  'BPMUX_REPO',
+  'BPMUX_GH_BASE_URL'
+] as const
+
+const stripRealGhRoutingFromInheritedEnv = (): NodeJS.ProcessEnv => {
+  const filtered: NodeJS.ProcessEnv = {}
+  for (const [k, v] of Object.entries(process.env)) {
+    if (!REAL_GH_ROUTING_ENV_KEYS.includes(k as (typeof REAL_GH_ROUTING_ENV_KEYS)[number])) {
+      filtered[k] = v
+    }
+  }
+  return filtered
 }
 
 export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<LaunchResult> => {
@@ -82,20 +120,37 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
     mkdtempSync(join(tmpdir(), 'bpmux-playwright-outbox-')),
     'board-outbox.json'
   )
+
+  // #1205 default-mock-GH protection: when caller doesn't provide
+  // BPMUX_GH_BASE_URL via extraEnv, spawn an in-process mockGh +
+  // route the spawned bpmux's GitHubSourceAdapter at it. Mirror
+  // of Rust TestBpmux::start at pty.rs:199-265. Sister to
+  // `feedback_test_harness_must_apply_default_isolation`.
+  const callerSetsGhBaseUrl = !!opts.extraEnv?.['BPMUX_GH_BASE_URL']
+  let defaultMockGh: MockGhServer | undefined
+  const ghEnvOverrides: Record<string, string> = {}
+  if (!callerSetsGhBaseUrl) {
+    defaultMockGh = await startMockGhServer()
+    ghEnvOverrides['BPMUX_GH_BASE_URL'] = defaultMockGh.baseUrl
+    ghEnvOverrides['BPMUX_REPO'] = 'acme/bpmux'
+    ghEnvOverrides['GH_TOKEN'] = 'mock-gh-token'
+  }
+
   const app = await electron.launch({
     args: ['out/main/index.js', `--user-data-dir=${userDataDir}`],
     env: {
-      ...process.env,
+      ...stripRealGhRoutingFromInheritedEnv(),
       BPMUX_SESSION_BASE: sessionBase,
       BPMUX_BACKEND_PORT: String(backendPort),
       BPMUX_AUTH_TOKEN_PATH: defaultAuthTokenPath,
       BPMUX_BOARD_STORE_PATH: defaultBoardStorePath,
       BPMUX_BOARD_OUTBOX_PATH: defaultBoardOutboxPath,
+      ...ghEnvOverrides,
       ...(opts.extraEnv ?? {})
     }
   })
   await waitForHealthz(backendPort)
-  return { app, sessionBase, userDataDir, backendPort }
+  return { app, sessionBase, userDataDir, backendPort, mockGh: defaultMockGh }
 }
 
 const waitForHealthz = async (port: number): Promise<void> => {
