@@ -63,16 +63,24 @@ export interface LaunchResult {
 // `feedback_no_real_github_in_tests` was filed to prevent +
 // `feedback_test_harness_must_apply_default_isolation` documents
 // the structural fix.
-const REAL_GH_ROUTING_ENV_KEYS = [
+//
+// SOURCE-OF-TRUTH for which env vars actually route GH calls:
+// `applications/bpmux/src/bridge/tracker.rs:select_from_env` —
+// reads BPMUX_REPO, BPMUX_GH_BASE_URL, GH_TOKEN, GITHUB_TOKEN.
+// If tracker.rs adds a new env var, add it here AND update the
+// regression test at launch.test.ts.
+export const REAL_GH_ROUTING_ENV_KEYS = [
   'GH_TOKEN',
   'GITHUB_TOKEN',
   'BPMUX_REPO',
   'BPMUX_GH_BASE_URL'
 ] as const
 
-const stripRealGhRoutingFromInheritedEnv = (): NodeJS.ProcessEnv => {
+export const stripRealGhRoutingFromInheritedEnv = (
+  env: NodeJS.ProcessEnv = process.env
+): NodeJS.ProcessEnv => {
   const filtered: NodeJS.ProcessEnv = {}
-  for (const [k, v] of Object.entries(process.env)) {
+  for (const [k, v] of Object.entries(env)) {
     if (!REAL_GH_ROUTING_ENV_KEYS.includes(k as (typeof REAL_GH_ROUTING_ENV_KEYS)[number])) {
       filtered[k] = v
     }
@@ -139,7 +147,7 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
   const app = await electron.launch({
     args: ['out/main/index.js', `--user-data-dir=${userDataDir}`],
     env: {
-      ...stripRealGhRoutingFromInheritedEnv(),
+      ...stripRealGhRoutingFromInheritedEnv(process.env),
       BPMUX_SESSION_BASE: sessionBase,
       BPMUX_BACKEND_PORT: String(backendPort),
       BPMUX_AUTH_TOKEN_PATH: defaultAuthTokenPath,
