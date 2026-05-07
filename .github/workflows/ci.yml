@@ -7,10 +7,6 @@ on:
   workflow_call:
 
 jobs:
-  # #1198: build bpmux once + share via artifact so the 6 playwright-e2e
-  # shards don't each pay 5-8min of duplicate compile. Runs in parallel
-  # with `test`. Wall-clock dominated by max(test, build-bpmux + slowest
-  # shard) instead of max(test, slowest-shard-with-build).
   build-bpmux:
     runs-on: ubuntu-latest
     permissions:
@@ -72,8 +68,6 @@ jobs:
         shard: [1, 2, 3, 4, 5, 6]
     steps:
       - uses: actions/checkout@v4
-      # #1198: download the binary built once by build-bpmux instead of
-      # recompiling per shard. ~10s download vs 5-8min compile.
       - name: Download bpmux artifact
         uses: actions/download-artifact@v4
         with:
@@ -94,14 +88,6 @@ jobs:
       - name: Build Electron bundle (out/main/index.js)
         working-directory: applications/electron
         run: npm run build
-      # #1198: cache Chromium + system-deps install per shard. Key on
-      # package-lock.json hash so cache invalidates when Playwright
-      # version bumps. ~2min savings per shard on a cache hit.
-      # restore-keys fallback added per Ryan 2026-05-06 00:29 UTC +
-      # img_8.png (23m 11s) vs img_9.png (4m 53s) — 5× variance on
-      # this exact step. When package-lock.json changes but Playwright
-      # version doesn't, partial-match restore is faster than full
-      # re-download (chromium ~250MB).
       - name: Cache Playwright browsers
         id: playwright-cache
         uses: actions/cache@v4
