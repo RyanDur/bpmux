@@ -43,23 +43,37 @@ export interface LaunchResult {
   mockGh?: MockGhServer
 }
 
-export const REAL_GH_ROUTING_ENV_KEYS = [
-  'GH_TOKEN',
-  'GITHUB_TOKEN',
-  'BPMUX_REPO',
-  'BPMUX_GH_BASE_URL'
+export const SAFE_INHERITED_ENV_KEYS = [
+  'PATH',
+  'HOME',
+  'USER',
+  'LOGNAME',
+  'SHELL',
+  'LANG',
+  'LC_ALL',
+  'LC_CTYPE',
+  'LC_COLLATE',
+  'TMPDIR',
+  'TMP',
+  'TEMP',
+  'DISPLAY',
+  'XAUTHORITY',
+  'ELECTRON_RUN_AS_NODE',
+  'NODE_PATH',
+  'CI'
 ] as const
 
-export const stripRealGhRoutingFromInheritedEnv = (
+export const pickSafeInheritedEnv = (
   env: NodeJS.ProcessEnv = process.env
 ): NodeJS.ProcessEnv => {
-  const filtered: NodeJS.ProcessEnv = {}
-  for (const [k, v] of Object.entries(env)) {
-    if (!REAL_GH_ROUTING_ENV_KEYS.includes(k as (typeof REAL_GH_ROUTING_ENV_KEYS)[number])) {
-      filtered[k] = v
+  const picked: NodeJS.ProcessEnv = {}
+  for (const k of SAFE_INHERITED_ENV_KEYS) {
+    const v = env[k]
+    if (v !== undefined) {
+      picked[k] = v
     }
   }
-  return filtered
+  return picked
 }
 
 export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<LaunchResult> => {
@@ -116,7 +130,7 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
   const app = await electron.launch({
     args: ['out/main/index.js', `--user-data-dir=${userDataDir}`],
     env: {
-      ...stripRealGhRoutingFromInheritedEnv(process.env),
+      ...pickSafeInheritedEnv(process.env),
       BPMUX_SESSION_BASE: sessionBase,
       BPMUX_BACKEND_PORT: String(backendPort),
       BPMUX_AUTH_TOKEN_PATH: defaultAuthTokenPath,

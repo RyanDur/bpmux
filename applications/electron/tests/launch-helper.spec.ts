@@ -1,49 +1,54 @@
 import { test, expect } from '@playwright/test'
-import { REAL_GH_ROUTING_ENV_KEYS, stripRealGhRoutingFromInheritedEnv } from './helpers/launch'
+import { SAFE_INHERITED_ENV_KEYS, pickSafeInheritedEnv } from './helpers/launch'
 
-test.describe('#1205 launch-helper default-mock-GH protection', () => {
-  test('strip-list covers exactly the env vars bpmux tracker.rs reads', () => {
-    expect(REAL_GH_ROUTING_ENV_KEYS).toEqual([
-      'GH_TOKEN',
-      'GITHUB_TOKEN',
-      'BPMUX_REPO',
-      'BPMUX_GH_BASE_URL'
-    ])
+test.describe('#1205 launch-helper safe-inherited-env allow-list', () => {
+  test('allow-list excludes every GH-routing env var bpmux tracker.rs reads', () => {
+    const ghRoutingKeys = ['GH_TOKEN', 'GITHUB_TOKEN', 'BPMUX_REPO', 'BPMUX_GH_BASE_URL']
+    for (const k of ghRoutingKeys) {
+      expect(SAFE_INHERITED_ENV_KEYS).not.toContain(k)
+    }
   })
 
-  test('stripRealGhRoutingFromInheritedEnv removes GH-routing keys + preserves other env', () => {
+  test('allow-list contains the system essentials Electron + bpmux need', () => {
+    const required = ['PATH', 'HOME', 'TMPDIR', 'ELECTRON_RUN_AS_NODE']
+    for (const k of required) {
+      expect(SAFE_INHERITED_ENV_KEYS).toContain(k)
+    }
+  })
+
+  test('pickSafeInheritedEnv copies only allow-listed keys + drops everything else', () => {
     const fakeEnv: NodeJS.ProcessEnv = {
       GH_TOKEN: 'real-secret-token',
       GITHUB_TOKEN: 'another-real-token',
       BPMUX_REPO: 'RyanDur/bpmux',
       BPMUX_GH_BASE_URL: 'https://api.github.com',
+      BPMUX_SESSION_BASE: '/tmp/leaked',
+      RANDOM_OTHER: 'leaked',
       PATH: '/usr/bin:/bin',
       HOME: '/Users/ryandurling',
       TMPDIR: '/tmp',
-      ELECTRON_RUN_AS_NODE: '1',
-      BPMUX_SESSION_BASE: '/tmp/bpmux-session-isolated',
-      RANDOM_OTHER: 'preserved'
+      ELECTRON_RUN_AS_NODE: '1'
     }
-    const stripped = stripRealGhRoutingFromInheritedEnv(fakeEnv)
+    const picked = pickSafeInheritedEnv(fakeEnv)
 
-    expect(stripped.GH_TOKEN).toBeUndefined()
-    expect(stripped.GITHUB_TOKEN).toBeUndefined()
-    expect(stripped.BPMUX_REPO).toBeUndefined()
-    expect(stripped.BPMUX_GH_BASE_URL).toBeUndefined()
+    expect(picked.GH_TOKEN).toBeUndefined()
+    expect(picked.GITHUB_TOKEN).toBeUndefined()
+    expect(picked.BPMUX_REPO).toBeUndefined()
+    expect(picked.BPMUX_GH_BASE_URL).toBeUndefined()
+    expect(picked.BPMUX_SESSION_BASE).toBeUndefined()
+    expect(picked.RANDOM_OTHER).toBeUndefined()
 
-    expect(stripped.PATH).toBe('/usr/bin:/bin')
-    expect(stripped.HOME).toBe('/Users/ryandurling')
-    expect(stripped.TMPDIR).toBe('/tmp')
-    expect(stripped.ELECTRON_RUN_AS_NODE).toBe('1')
-    expect(stripped.BPMUX_SESSION_BASE).toBe('/tmp/bpmux-session-isolated')
-    expect(stripped.RANDOM_OTHER).toBe('preserved')
+    expect(picked.PATH).toBe('/usr/bin:/bin')
+    expect(picked.HOME).toBe('/Users/ryandurling')
+    expect(picked.TMPDIR).toBe('/tmp')
+    expect(picked.ELECTRON_RUN_AS_NODE).toBe('1')
   })
 
-  test('stripRealGhRoutingFromInheritedEnv handles empty + undefined input', () => {
-    const empty = stripRealGhRoutingFromInheritedEnv({})
+  test('pickSafeInheritedEnv handles empty + undefined input', () => {
+    const empty = pickSafeInheritedEnv({})
     expect(Object.keys(empty)).toHaveLength(0)
 
-    const onlyGh = stripRealGhRoutingFromInheritedEnv({
+    const onlyGh = pickSafeInheritedEnv({
       GH_TOKEN: 'x',
       GITHUB_TOKEN: 'y',
       BPMUX_REPO: 'a/b',
