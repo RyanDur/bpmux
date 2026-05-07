@@ -37,13 +37,7 @@ test.describe('Playwright runs in CI as a structural gate (#1152)', () => {
     expect(matrixSection).toMatch(/playwright install.*--with-deps|--with-deps.*playwright install/)
   })
 
-  test('playwright-e2e provisions bpmux Rust binary before tests (Electron spawns target/{debug,release}/bpmux at runtime)', () => {
-    // #1198 changed the provisioning path from in-shard `cargo build`
-    // to `download-artifact` from a dedicated build-bpmux job (single
-    // compile shared to 6 shards, ~5-8min wall-clock saved). The
-    // invariant that matters is "binary exists at target/debug/bpmux
-    // before the playwright shard runs tests" — either path
-    // satisfies it, so accept both shapes here.
+  test('playwright-e2e provisions bpmux binary via download-artifact OR local cargo build', () => {
     const yaml = ciYaml()
     const matrixSection = yaml.match(/playwright-e2e:[\s\S]*?(?=\n\S|$)/)?.[0] ?? ''
     const buildsLocally = /cargo build/.test(matrixSection)
@@ -53,10 +47,6 @@ test.describe('Playwright runs in CI as a structural gate (#1152)', () => {
   })
 
   test('a build-bpmux job exists OR playwright-e2e builds locally (one of two valid shapes per #1198)', () => {
-    // Sister to the previous test: the bpmux binary must come from
-    // SOMEWHERE before playwright-e2e runs. If playwright-e2e
-    // download-artifacts it, then a build-bpmux job must exist to
-    // produce that artifact.
     const yaml = ciYaml()
     const playwrightSection = yaml.match(/playwright-e2e:[\s\S]*?(?=\n\S|$)/)?.[0] ?? ''
     const buildsLocally = /cargo build/.test(playwrightSection)
