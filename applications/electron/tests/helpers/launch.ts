@@ -116,6 +116,10 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
     mkdtempSync(join(tmpdir(), 'bpmux-playwright-outbox-')),
     'board-outbox.json'
   )
+  const defaultLogPath = join(
+    mkdtempSync(join(tmpdir(), 'bpmux-playwright-log-')),
+    'bpmux-test-diag.log'
+  )
 
   const callerSetsGhBaseUrl = !!opts.extraEnv?.['BPMUX_GH_BASE_URL']
   let defaultMockGh: MockGhServer | undefined
@@ -136,6 +140,7 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
       BPMUX_AUTH_TOKEN_PATH: defaultAuthTokenPath,
       BPMUX_BOARD_STORE_PATH: defaultBoardStorePath,
       BPMUX_BOARD_OUTBOX_PATH: defaultBoardOutboxPath,
+      BPMUX_LOG: defaultLogPath,
       ...ghEnvOverrides,
       ...(opts.extraEnv ?? {})
     }

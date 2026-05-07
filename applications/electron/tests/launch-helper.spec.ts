@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test'
+import { readFileSync } from 'fs'
+import { join } from 'path'
 import { SAFE_INHERITED_ENV_KEYS, pickSafeInheritedEnv } from './helpers/launch'
+
+const LAUNCH_HELPER_PATH = join(__dirname, 'helpers', 'launch.ts')
+const launchHelperSource = (): string => readFileSync(LAUNCH_HELPER_PATH, 'utf-8')
 
 test.describe('#1205 launch-helper safe-inherited-env allow-list', () => {
   test('allow-list excludes every GH-routing env var bpmux tracker.rs reads', () => {
@@ -55,5 +60,27 @@ test.describe('#1205 launch-helper safe-inherited-env allow-list', () => {
       BPMUX_GH_BASE_URL: 'https://api.github.com'
     })
     expect(Object.keys(onlyGh)).toHaveLength(0)
+  })
+})
+
+test.describe('#1204 launchIsolatedElectron isolates BPMUX_LOG to per-test tempdir', () => {
+  test('launch.ts declares a defaultLogPath bound to a per-test mkdtemp dir', () => {
+    const src = launchHelperSource()
+    expect(src).toMatch(/const\s+defaultLogPath\s*=\s*join\(\s*mkdtempSync\(/)
+    expect(src).toMatch(/'bpmux-playwright-log-'/)
+    expect(src).toMatch(/'bpmux-test-diag\.log'/)
+  })
+
+  test('launch.ts wires BPMUX_LOG into the spawned bpmux env from defaultLogPath', () => {
+    const src = launchHelperSource()
+    expect(src).toMatch(/BPMUX_LOG:\s*defaultLogPath/)
+  })
+
+  test('isolation enumeration covers all four shared defaults together (auth-token, store, outbox, log)', () => {
+    const src = launchHelperSource()
+    expect(src).toMatch(/BPMUX_AUTH_TOKEN_PATH:\s*defaultAuthTokenPath/)
+    expect(src).toMatch(/BPMUX_BOARD_STORE_PATH:\s*defaultBoardStorePath/)
+    expect(src).toMatch(/BPMUX_BOARD_OUTBOX_PATH:\s*defaultBoardOutboxPath/)
+    expect(src).toMatch(/BPMUX_LOG:\s*defaultLogPath/)
   })
 })
