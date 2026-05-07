@@ -1,7 +1,11 @@
 import { test, expect } from '@playwright/test'
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { SAFE_INHERITED_ENV_KEYS, pickSafeInheritedEnv } from './helpers/launch'
+import {
+  SAFE_INHERITED_ENV_KEYS,
+  pickSafeInheritedEnv,
+  launchIsolatedElectron
+} from './helpers/launch'
 
 const LAUNCH_HELPER_PATH = join(__dirname, 'helpers', 'launch.ts')
 const launchHelperSource = (): string => readFileSync(LAUNCH_HELPER_PATH, 'utf-8')
@@ -62,6 +66,58 @@ test.describe('#1205 launch-helper safe-inherited-env allow-list', () => {
     expect(Object.keys(onlyGh)).toHaveLength(0)
   })
 })
+
+test.describe('#1205 r4 e2e falsifier-(d) — shell GH-routing env does not reach spawned bpmux', () => {
+  test('process.env.BPMUX_REPO + GH_TOKEN canary values do not appear in mockGh request log', async () => {
+    test.setTimeout(60_000)
+    const CANARY_REPO = 'CANARY-LEAKED-REPO/should-not-appear'
+    const CANARY_TOKEN = 'CANARY-LEAKED-TOKEN-should-not-appear'
+
+    const priorRepo = process.env.BPMUX_REPO
+    const priorToken = process.env.GH_TOKEN
+    const priorGithubToken = process.env.GITHUB_TOKEN
+    const priorBaseUrl = process.env.BPMUX_GH_BASE_URL
+    process.env.BPMUX_REPO = CANARY_REPO
+    process.env.GH_TOKEN = CANARY_TOKEN
+    process.env.GITHUB_TOKEN = CANARY_TOKEN
+    process.env.BPMUX_GH_BASE_URL = 'https://api.github.com'
+
+    try {
+      const { app, mockGh } = await launchIsolatedElectron({
+        extraEnv: { BPMUX_POLL_INTERVAL_SECS: '1' }
+      })
+      expect(mockGh).toBeDefined()
+
+      await expect
+        .poll(() => mockGh!.requestLog().length, { timeout: 15_000 })
+        .toBeGreaterThan(0)
+
+      const log = mockGh!.requestLog()
+      for (const req of log) {
+        expect(req.path).not.toContain('CANARY-LEAKED-REPO')
+        expect(req.authorization ?? '').not.toContain('CANARY-LEAKED-TOKEN')
+      }
+
+      const acmePathCount = log.filter((r) => r.path.includes('/repos/acme/bpmux/')).length
+      expect(acmePathCount).toBeGreaterThan(0)
+
+      await app.close()
+    } finally {
+      restoreEnv('BPMUX_REPO', priorRepo)
+      restoreEnv('GH_TOKEN', priorToken)
+      restoreEnv('GITHUB_TOKEN', priorGithubToken)
+      restoreEnv('BPMUX_GH_BASE_URL', priorBaseUrl)
+    }
+  })
+})
+
+const restoreEnv = (key: string, prior: string | undefined): void => {
+  if (prior === undefined) {
+    delete process.env[key]
+  } else {
+    process.env[key] = prior
+  }
+}
 
 test.describe('#1204 launchIsolatedElectron isolates BPMUX_LOG to per-test tempdir', () => {
   test('launch.ts declares a defaultLogPath bound to a per-test mkdtemp dir', () => {

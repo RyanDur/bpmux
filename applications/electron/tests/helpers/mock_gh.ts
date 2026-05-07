@@ -112,15 +112,18 @@ export interface MockRoute {
   bodyJson?: unknown
 }
 
+export interface MockGhRequest {
+  method: string
+  path: string
+  authorization?: string
+}
+
 export interface MockGhServer {
   baseUrl: string
   port: number
-  // Register an additional route. Routes registered later take
-  // precedence over earlier ones with the same path (last-write-wins).
   on(route: MockRoute): void
-  // Mutable in-memory state for tests that need to grow the issue
-  // list across mutations (e.g., create then list then re-fetch).
   setIssues(issues: ReadonlyArray<Record<string, unknown>>): void
+  requestLog(): ReadonlyArray<MockGhRequest>
   close(): Promise<void>
 }
 
@@ -138,6 +141,7 @@ export interface MockGhServer {
 export async function startMockGhServer(): Promise<MockGhServer> {
   const issues: Record<string, unknown>[] = []
   const overrides: MockRoute[] = []
+  const requests: MockGhRequest[] = []
 
   const server = createServer((req: IncomingMessage, res: ServerResponse) => {
     const url = req.url ?? ''
@@ -148,6 +152,13 @@ export async function startMockGhServer(): Promise<MockGhServer> {
       body += chunk.toString('utf-8')
     })
     req.on('end', () => {
+      const authHeader = req.headers['authorization']
+      const auth = typeof authHeader === 'string'
+        ? authHeader
+        : Array.isArray(authHeader)
+          ? (authHeader as string[]).join(',')
+          : undefined
+      requests.push({ method, path: url, authorization: auth })
       // Override match wins (last-registered first).
       for (let i = overrides.length - 1; i >= 0; i--) {
         const route = overrides[i]
@@ -316,6 +327,9 @@ export async function startMockGhServer(): Promise<MockGhServer> {
     setIssues(seed) {
       issues.length = 0
       issues.push(...seed)
+    },
+    requestLog() {
+      return [...requests]
     },
     async close() {
       await new Promise<void>((resolve, reject) => {
