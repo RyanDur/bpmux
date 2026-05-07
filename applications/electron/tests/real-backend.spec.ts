@@ -18,16 +18,6 @@ import { launchIsolatedElectron as launchWithIsolatedSession } from './helpers/l
 
 test.describe('real-backend', () => {
   test('CORS + WS roundtrip: chat region visible, no board error banner when tracker is configured', async () => {
-    // #1205: launchIsolatedElectron now auto-spawns a default
-    // mockGh server (when extraEnv doesn't supply
-    // BPMUX_GH_BASE_URL), so the spawned bpmux's
-    // GitHubSourceAdapter is configured + routes against the mock
-    // — NO real api.github.com calls. The test asserts the
-    // CORS+WS roundtrip + board-error-banner-hidden invariant
-    // unconditionally; the prior `hasTracker` conditional read
-    // process.env which leaked Ryan's real GH credentials into a
-    // real-network code path (today's rate-limit driver per
-    // `feedback_no_real_github_in_tests`).
     const { app } = await launchWithIsolatedSession()
     const win = await app.firstWindow()
 
@@ -35,8 +25,6 @@ test.describe('real-backend', () => {
     await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
     await expect(win.locator('[data-test="board-region"]')).toBeVisible()
 
-    // Tracker is always configured (mockGh present) — no error
-    // banner; mock-fallback badge absent.
     await expect(win.locator('[data-test="board-error"]')).toBeHidden({
       timeout: 10_000
     })
