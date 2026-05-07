@@ -882,20 +882,8 @@ mod outbox_persistence {
         assert_eq!(pushed[2].story_number(), 52);
     }
 
-    // ── #1197 regression: state-mutation silent-fail when story
-    //    not in canonical store ──
-
     #[tokio::test]
     async fn mutate_silent_no_op_when_story_not_in_store_pins_reducer_shape() {
-        // #1197 substrate-bug shape: BoardStore reducers for
-        // StateTransitioned/TagAdded/TagRemoved/StoryClosed/StoryReopened
-        // gate on `if let Some(story) = w.get_mut(&number) { ... }` —
-        // they silently no-op when the story isn't in the store. This
-        // test pins that reducer-shape (since #1197's substrate-fix
-        // lives at the gate-tool layer via ensure_story_in_canonical_
-        // store, not at the reducer). If a future refactor changes
-        // the reducer to upsert-on-missing or error-on-missing, this
-        // test surfaces the change.
         let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
@@ -915,17 +903,11 @@ mod outbox_persistence {
 
     #[tokio::test]
     async fn refresh_story_populates_store_so_subsequent_mutate_lands() {
-        // #1197 substrate-fix shape: ensure_story_in_canonical_store
-        // calls refresh_story on cache miss. This test pins the
-        // post-refresh path: refresh populates the store, then a
-        // mutate() applies (no longer silent-no-ops).
         let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
         adapter.seed_stories(vec![seed_story(777, StoryState::Ready)]);
         let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
 
-        // Story exists at source (adapter) but not yet in local
-        // store. Mutate without refresh first — silent no-op.
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
             number: 777,
@@ -937,14 +919,12 @@ mod outbox_persistence {
             "pre-refresh mutate silently no-ops"
         );
 
-        // Refresh populates the store from adapter.
         orch.refresh_story(777).await.unwrap();
         assert!(
             store.story(777).is_some(),
             "refresh_story populates the store from adapter"
         );
 
-        // Now mutate again — applies because the story exists.
         orch.mutate(BoardEvent::StateTransitioned {
             meta: meta(),
             number: 777,

@@ -20,17 +20,6 @@ use crate::harness::story_helpers::create_target_story;
 
 #[test]
 fn move_story_via_mcp_reflects_in_get_story_immediately() {
-    // Drives the post-#1197-fix path:
-    // 1. PM creates a story (lands in icebox)
-    // 2. PM moves the story via MCP move_story tool
-    // 3. PM calls MCP get_story — workflow_state must reflect the
-    //    new state (not the pre-mutation icebox)
-    //
-    // Pre-fix: get_story returned workflow_state="icebox" because
-    // the StateTransitioned reducer silently no-op'd against a
-    // canonical store that didn't have the just-created story (the
-    // create_story write went through a different path; the move
-    // ran against an empty store).
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
@@ -80,9 +69,6 @@ fn move_story_via_mcp_reflects_in_get_story_immediately() {
 
 #[test]
 fn start_story_via_mcp_reflects_in_get_story_immediately() {
-    // Sister-coverage: same regression-shape but via the start_story
-    // gate-tool. Pre-#1197 fix this transitioned via the same
-    // reducer-silent-no-op path observed live on #1195's mid-impl.
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
@@ -97,7 +83,6 @@ fn start_story_via_mcp_reflects_in_get_story_immediately() {
         )
         .await;
 
-        // PM moves target into ready so dev can pick it up.
         pm.call_tool(
             "move_story",
             serde_json::json!({
@@ -111,8 +96,6 @@ fn start_story_via_mcp_reflects_in_get_story_immediately() {
 
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        // Dev fires start_story. Pre-#1197 this returned success but
-        // the canonical store reflected stale state.
         dev.call_tool(
             "start_story",
             serde_json::json!({
