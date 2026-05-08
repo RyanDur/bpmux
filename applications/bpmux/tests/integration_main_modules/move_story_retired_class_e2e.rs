@@ -30,7 +30,7 @@ use std::time::Duration;
 
 #[test]
 fn move_story_retired_produces_state_distinct_from_accepted_at_canonical_store() {
-    let bpmux = TestBpmux::start();
+    let bpmux = TestBpmux::start_with_env("human", "BPMUX_TEST_MODE", "1");
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
         let pm = TestBridge::connect(&bpmux, "pm").await;
@@ -93,7 +93,7 @@ fn move_story_retired_then_view_board_buckets_in_retired_not_accepted_column() {
     // story under RETIRED, not ACCEPTED. column_for itself is unit-
     // tested elsewhere; this drives the full chain so a regression in
     // either layer (canonical or renderer) flags here.
-    let bpmux = TestBpmux::start();
+    let bpmux = TestBpmux::start_with_env("human", "BPMUX_TEST_MODE", "1");
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
         let pm = TestBridge::connect(&bpmux, "pm").await;

@@ -60,6 +60,7 @@ pub trait RefreshDriver: Send + Sync {
     fn mutate_sync(&self, event: BoardEvent) -> Result<(), SyncError>;
     fn drain_one_by_id(&self, id: MutationId) -> BoxedFuture<'_, DrainOneOutcome>;
     fn apply_server_rollback(&self, story: Story) -> BoxedFuture<'_, ()>;
+    fn snapshot_pending_for_mutation(&self, id: MutationId) -> Option<u64>;
     fn snapshot_status(&self) -> SyncStatus;
     fn acknowledge_dropped(&self) -> usize;
     fn mark_recovering_from_corruption(&self);
@@ -566,6 +567,13 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         self.store.seed_all(vec![story]);
     }
 
+    pub fn pending_issue_for_mutation(&self, id: MutationId) -> Option<u64> {
+        let p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
+        p.iter()
+            .find(|q| q.id == id)
+            .map(|q| q.event.story_number())
+    }
+
     pub async fn drain_once(&self) -> Result<usize, SyncError> {
         let mut drained = 0usize;
         let mut failures = 0usize;
@@ -832,6 +840,10 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         Box::pin(async move {
             store.seed_all(vec![story]);
         })
+    }
+
+    fn snapshot_pending_for_mutation(&self, id: MutationId) -> Option<u64> {
+        self.pending_issue_for_mutation(id)
     }
 
     fn snapshot_status(&self) -> SyncStatus {

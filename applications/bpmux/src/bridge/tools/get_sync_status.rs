@@ -45,6 +45,9 @@ mod tests {
         fn apply_server_rollback(&self, _story: crate::board::Story) -> BoxedFuture<'_, ()> {
             Box::pin(async {})
         }
+        fn snapshot_pending_for_mutation(&self, _id: crate::board::MutationId) -> Option<u64> {
+            None
+        }
         fn snapshot_status(&self) -> SyncStatus {
             self.0.clone()
         }

@@ -153,6 +153,7 @@ pub struct Orchestrator<T: CiPollFetch> {
     roster_store: Arc<RosterStore>,
     tokens: AsyncMutex<HashMap<PollKind, CancellationToken>>,
     mutation_tokens: AsyncMutex<HashMap<MutationId, CancellationToken>>,
+    issue_locks: AsyncMutex<HashMap<u64, Arc<AsyncMutex<()>>>>,
     listeners: Mutex<Vec<Arc<dyn CiBroadcastListener>>>,
     reactions_listeners: Mutex<Vec<Arc<dyn ReactionsBroadcastListener>>>,
     pins_listeners: Mutex<Vec<Arc<dyn PinsBroadcastListener>>>,
@@ -185,6 +186,7 @@ impl<T: CiPollFetch> Orchestrator<T> {
             roster_store: Arc::new(RosterStore::new()),
             tokens: AsyncMutex::new(HashMap::new()),
             mutation_tokens: AsyncMutex::new(HashMap::new()),
+            issue_locks: AsyncMutex::new(HashMap::new()),
             listeners: Mutex::new(Vec::new()),
             reactions_listeners: Mutex::new(Vec::new()),
             pins_listeners: Mutex::new(Vec::new()),
@@ -384,12 +386,58 @@ impl<T: CiPollFetch> Orchestrator<T> {
     }
 
     async fn middleware_start_update_github(self: &Arc<Self>, mutation_id: MutationId) {
-        let mut tokens = self.mutation_tokens.lock().await;
-        if tokens.contains_key(&mutation_id) {
+        let Some(refresh) = self.refresh.as_ref().cloned() else {
             return;
-        }
-        let local_ct = CancellationToken::new();
-        tokens.insert(mutation_id, local_ct);
+        };
+        let local_ct = {
+            let mut tokens = self.mutation_tokens.lock().await;
+            if tokens.contains_key(&mutation_id) {
+                return;
+            }
+            let ct = CancellationToken::new();
+            tokens.insert(mutation_id, ct.clone());
+            ct
+        };
+        let issue_lock = self.issue_lock_for(mutation_id, refresh.as_ref()).await;
+        let this = Arc::clone(self);
+        let parent_ct = self.parent_ct.clone();
+        tokio::spawn(async move {
+            let _guard = issue_lock.lock().await;
+            let outcome = tokio::select! {
+                _ = parent_ct.clone().cancelled_owned() => return,
+                _ = local_ct.clone().cancelled_owned() => return,
+                r = refresh.drain_one_by_id(mutation_id) => r,
+            };
+            match outcome {
+                crate::board::DrainOneOutcome::Confirmed => {
+                    this.middleware_mutation_confirmed(mutation_id).await;
+                }
+                crate::board::DrainOneOutcome::RolledBack { server_story } => {
+                    this.middleware_mutation_rolled_back(mutation_id, server_story.map(|b| *b))
+                        .await;
+                }
+                crate::board::DrainOneOutcome::TransientError(_)
+                | crate::board::DrainOneOutcome::NotFound => {
+                    this.middleware_stop_update_github(mutation_id).await;
+                }
+            }
+        });
+    }
+
+    async fn issue_lock_for(
+        &self,
+        mutation_id: MutationId,
+        refresh: &dyn RefreshDriver,
+    ) -> Arc<AsyncMutex<()>> {
+        let issue = refresh
+            .snapshot_pending_for_mutation(mutation_id)
+            .unwrap_or(mutation_id.0);
+        let mut locks = self.issue_locks.lock().await;
+        Arc::clone(
+            locks
+                .entry(issue)
+                .or_insert_with(|| Arc::new(AsyncMutex::new(()))),
+        )
     }
 
     async fn middleware_stop_update_github(self: &Arc<Self>, mutation_id: MutationId) {
