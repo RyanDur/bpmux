@@ -227,15 +227,6 @@ pub async fn run_server(
             session.clone(),
             crate::bridge::drain_interval_from_env(),
         ));
-        tokio::spawn(crate::bridge::run_ingest_poll_loop(
-            refresh.clone(),
-            crate::bridge::poll_interval_from_env(),
-            tracker.as_ref().map(|t| t.rate_limit_observer()),
-        ));
-        tokio::spawn(crate::bridge::run_hydration_loop(
-            refresh,
-            crate::bridge::hydration_interval_from_env(),
-        ));
     }
 
     // #372: spawn the push-based CI state watcher. Polls GitHub at
@@ -249,12 +240,20 @@ pub async fn run_server(
     let ci_log_store = crate::transport::ci_log_store::CiLogStore::new();
     let electron_capture_lock: std::sync::Arc<tokio::sync::Mutex<()>> =
         std::sync::Arc::new(tokio::sync::Mutex::new(()));
-    let orchestrator = std::sync::Arc::new(crate::orchestrator::Orchestrator::new(
+    let mut orchestrator_inner = crate::orchestrator::Orchestrator::new(
         session.clone(),
         tracker.as_ref().cloned(),
         ci_state_store.clone(),
         ct.clone(),
-    ));
+    );
+    if let Some(refresh) = test_refresh.as_ref().cloned() {
+        orchestrator_inner = orchestrator_inner.with_refresh(
+            refresh,
+            crate::bridge::poll_interval_from_env(),
+            crate::bridge::hydration_interval_from_env(),
+        );
+    }
+    let orchestrator = std::sync::Arc::new(orchestrator_inner);
     orchestrator.add_ci_listener(std::sync::Arc::new(
         crate::orchestrator::CiStateStoreWriter::new(ci_state_store.clone()),
     ));
@@ -262,8 +261,16 @@ pub async fn run_server(
         crate::orchestrator::CiSessionBroadcaster::new(session.clone()),
     ));
     orchestrator
-        .dispatch(crate::orchestrator::CiAction::StartCiPolling)
+        .dispatch(crate::orchestrator::OrchestratorAction::StartCiPolling)
         .await;
+    if test_refresh.is_some() {
+        orchestrator
+            .dispatch(crate::orchestrator::OrchestratorAction::StartIngestPolling)
+            .await;
+        orchestrator
+            .dispatch(crate::orchestrator::OrchestratorAction::StartHydrationPolling)
+            .await;
+    }
 
     // Unfurl cache (#343). One instance for the server lifetime so
     // all concurrent /api/unfurl requests share the memoized results.

@@ -1068,10 +1068,26 @@ pub fn run_bridge(
     })
 }
 
+#[cfg(test)]
 pub(crate) async fn run_ingest_poll_loop(
     refresh: Arc<dyn crate::board::RefreshDriver>,
     interval: std::time::Duration,
     observer: Option<crate::github::RateLimitObserver>,
+) {
+    run_ingest_poll_loop_cancellable(
+        refresh,
+        interval,
+        observer,
+        tokio_util::sync::CancellationToken::new(),
+    )
+    .await
+}
+
+pub async fn run_ingest_poll_loop_cancellable(
+    refresh: Arc<dyn crate::board::RefreshDriver>,
+    interval: std::time::Duration,
+    observer: Option<crate::github::RateLimitObserver>,
+    ct: tokio_util::sync::CancellationToken,
 ) {
     let start = tokio::time::Instant::now() + interval;
     let mut ticker = tokio::time::interval_at(start, interval);
@@ -1081,7 +1097,10 @@ pub(crate) async fn run_ingest_poll_loop(
     let mut backoff = base_backoff;
     let mut last_poll_since: Option<chrono::DateTime<chrono::Utc>> = None;
     loop {
-        ticker.tick().await;
+        tokio::select! {
+            _ = ct.cancelled() => break,
+            _ = ticker.tick() => {}
+        }
         let poll_started_at = chrono::Utc::now();
         match refresh.refresh_all_since(last_poll_since).await {
             Ok(()) => {
@@ -1163,15 +1182,33 @@ pub(crate) fn select_stories_to_revalidate(
         .collect()
 }
 
-pub(crate) async fn run_hydration_loop(
+pub async fn run_hydration_loop_cancellable(
     refresh: Arc<dyn crate::board::RefreshDriver>,
     interval: std::time::Duration,
+    observer: crate::github::RateLimitObserver,
+    ct: tokio_util::sync::CancellationToken,
 ) {
     let start = tokio::time::Instant::now() + interval;
     let mut ticker = tokio::time::interval_at(start, interval);
     ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
     loop {
-        ticker.tick().await;
+        tokio::select! {
+            _ = ct.cancelled() => break,
+            _ = ticker.tick() => {}
+        }
+        let snapshot = observer.snapshot();
+        let decision = crate::github::decide_backoff(
+            snapshot,
+            std::time::Duration::ZERO,
+            std::time::SystemTime::now(),
+        );
+        if decision.wait > std::time::Duration::ZERO {
+            tokio::select! {
+                _ = ct.cancelled() => break,
+                _ = tokio::time::sleep(decision.wait) => {}
+            }
+            continue;
+        }
         let stories = refresh.all_stories();
         let to_hydrate = select_stories_to_hydrate(&stories, HYDRATION_MAX_PER_TICK);
         for (number, prior_etag) in

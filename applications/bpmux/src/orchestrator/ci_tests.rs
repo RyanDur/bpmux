@@ -8,7 +8,10 @@ use tempfile::TempDir;
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 
-use super::ci::{CiAction, CiBroadcastListener, CiPollFetch, CiSnapshot, Orchestrator, PollKind};
+use super::ci::{
+    CiAction, CiBroadcastListener, CiPollFetch, CiSnapshot, Orchestrator, OrchestratorAction,
+    PollKind,
+};
 use crate::board::adapters::github::GitHubSourceAdapter;
 use crate::bridge::tracker::ConditionalRunEntry;
 use crate::ci::CiState;
@@ -285,4 +288,148 @@ async fn live_loop_dispatches_ci_updated_through_action_chain() {
         !orch.is_running(PollKind::Ci).await,
         "Stop cancels the loop within bounded time"
     );
+}
+
+fn refresh_for_tests() -> Arc<dyn crate::board::RefreshDriver> {
+    let store = Arc::new(crate::board::BoardStore::new());
+    let adapter = Arc::new(crate::board::adapters::in_memory::InMemorySourceAdapter::new());
+    Arc::new(crate::board::SyncOrchestrator::new(store, adapter))
+}
+
+#[tokio::test]
+async fn start_ingest_polling_no_op_without_refresh() {
+    let (session, _dir) = fresh_session();
+    let orch: Arc<Orchestrator<GitHubSourceAdapter>> = Arc::new(Orchestrator::new(
+        session,
+        None,
+        CiStateStore::new(),
+        CancellationToken::new(),
+    ));
+    orch.dispatch(OrchestratorAction::StartIngestPolling).await;
+    assert!(!orch.is_running(PollKind::Ingest).await);
+}
+
+#[tokio::test]
+async fn start_hydration_polling_no_op_without_refresh() {
+    let (session, _dir) = fresh_session();
+    let orch: Arc<Orchestrator<GitHubSourceAdapter>> = Arc::new(Orchestrator::new(
+        session,
+        None,
+        CiStateStore::new(),
+        CancellationToken::new(),
+    ));
+    orch.dispatch(OrchestratorAction::StartHydrationPolling)
+        .await;
+    assert!(!orch.is_running(PollKind::Hydration).await);
+}
+
+#[tokio::test]
+async fn stop_ingest_without_start_no_op() {
+    let (session, _dir) = fresh_session();
+    let orch: Arc<Orchestrator<GitHubSourceAdapter>> = Arc::new(Orchestrator::new(
+        session,
+        None,
+        CiStateStore::new(),
+        CancellationToken::new(),
+    ));
+    orch.dispatch(OrchestratorAction::StopIngestPolling).await;
+    assert!(!orch.is_running(PollKind::Ingest).await);
+}
+
+#[tokio::test]
+async fn stop_hydration_without_start_no_op() {
+    let (session, _dir) = fresh_session();
+    let orch: Arc<Orchestrator<GitHubSourceAdapter>> = Arc::new(Orchestrator::new(
+        session,
+        None,
+        CiStateStore::new(),
+        CancellationToken::new(),
+    ));
+    orch.dispatch(OrchestratorAction::StopHydrationPolling)
+        .await;
+    assert!(!orch.is_running(PollKind::Hydration).await);
+}
+
+#[tokio::test]
+async fn start_ingest_polling_spawns_loop_with_refresh() {
+    let (session, _dir) = fresh_session();
+    let orch: Arc<Orchestrator<GitHubSourceAdapter>> = Arc::new(
+        Orchestrator::new(session, None, CiStateStore::new(), CancellationToken::new())
+            .with_refresh(
+                refresh_for_tests(),
+                Duration::from_secs(60),
+                Duration::from_secs(15),
+            ),
+    );
+    orch.dispatch(OrchestratorAction::StartIngestPolling).await;
+    assert!(
+        orch.is_running(PollKind::Ingest).await,
+        "ingest spawn-path takes the refresh.is_some() branch"
+    );
+
+    orch.dispatch(OrchestratorAction::StopIngestPolling).await;
+    let deadline = std::time::Instant::now() + Duration::from_secs(2);
+    while std::time::Instant::now() < deadline && orch.is_running(PollKind::Ingest).await {
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    assert!(
+        !orch.is_running(PollKind::Ingest).await,
+        "Stop cancels the ingest loop within bounded time"
+    );
+}
+
+#[tokio::test]
+async fn start_hydration_polling_spawns_loop_with_refresh() {
+    let (session, _dir) = fresh_session();
+    let orch: Arc<Orchestrator<GitHubSourceAdapter>> = Arc::new(
+        Orchestrator::new(session, None, CiStateStore::new(), CancellationToken::new())
+            .with_refresh(
+                refresh_for_tests(),
+                Duration::from_secs(60),
+                Duration::from_secs(15),
+            ),
+    );
+    orch.dispatch(OrchestratorAction::StartHydrationPolling)
+        .await;
+    assert!(
+        orch.is_running(PollKind::Hydration).await,
+        "hydration spawn-path takes the refresh.is_some() branch"
+    );
+
+    orch.dispatch(OrchestratorAction::StopHydrationPolling)
+        .await;
+    let deadline = std::time::Instant::now() + Duration::from_secs(2);
+    while std::time::Instant::now() < deadline && orch.is_running(PollKind::Hydration).await {
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    assert!(
+        !orch.is_running(PollKind::Hydration).await,
+        "Stop cancels the hydration loop within bounded time"
+    );
+}
+
+#[tokio::test]
+async fn start_ingest_idempotent_no_op_when_already_running() {
+    let (session, _dir) = fresh_session();
+    let orch: Arc<Orchestrator<GitHubSourceAdapter>> = Arc::new(
+        Orchestrator::new(session, None, CiStateStore::new(), CancellationToken::new())
+            .with_refresh(
+                refresh_for_tests(),
+                Duration::from_secs(60),
+                Duration::from_secs(15),
+            ),
+    );
+    orch.dispatch(OrchestratorAction::StartIngestPolling).await;
+    assert!(orch.is_running(PollKind::Ingest).await);
+    orch.dispatch(OrchestratorAction::StartIngestPolling).await;
+    assert!(
+        orch.is_running(PollKind::Ingest).await,
+        "second StartIngestPolling stays running (no-op)"
+    );
+    orch.dispatch(OrchestratorAction::StopIngestPolling).await;
+    let deadline = std::time::Instant::now() + Duration::from_secs(2);
+    while std::time::Instant::now() < deadline && orch.is_running(PollKind::Ingest).await {
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    assert!(!orch.is_running(PollKind::Ingest).await);
 }

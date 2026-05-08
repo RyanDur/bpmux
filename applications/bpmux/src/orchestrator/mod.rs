@@ -5,6 +5,7 @@ pub mod listeners;
 mod ci_tests;
 
 pub use ci::{
-    CiAction, CiBroadcastListener, CiPollFetch, CiSnapshot, CiStore, Orchestrator, PollKind,
+    CiAction, CiBroadcastListener, CiPollFetch, CiSnapshot, CiStore, Orchestrator,
+    OrchestratorAction, PollKind,
 };
 pub use listeners::{CiSessionBroadcaster, CiStateStoreWriter};
