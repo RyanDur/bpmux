@@ -4,7 +4,12 @@ import { channelKey, messageKey, usePins } from '../hooks/usePins'
 import { useReactions } from '../hooks/useReactions'
 import Metrics from '../metrics/Metrics'
 import { RENDERER_IDENTITY, type SendOptions } from '../transport/useWebSocket'
-import type { ChatMessage, ConnectionStatus, ReactionAggregateWire } from '../transport/types'
+import type {
+  ChatMessage,
+  ConnectionStatus,
+  PinnedMessageWire,
+  ReactionAggregateWire
+} from '../transport/types'
 import FilterPills from './FilterPills'
 import Input from './Input'
 import MessageList from './MessageList'
@@ -31,6 +36,7 @@ interface Props {
   onAtBottomChange?: (atBottom: boolean) => void
   onPinnedKeysChange?: (keys: ReadonlySet<string>) => void
   mirrorReactions?: ReadonlyMap<string, ReactionAggregateWire[]>
+  mirrorPins?: ReadonlyMap<string, PinnedMessageWire[]>
 }
 
 const Chat = ({
@@ -52,12 +58,13 @@ const Chat = ({
   hasError,
   onAtBottomChange,
   onPinnedKeysChange,
-  mirrorReactions
+  mirrorReactions,
+  mirrorPins
 }: Props): React.JSX.Element => {
   const showReconnect = status !== 'connected'
   const [pinnedListOpen, setPinnedListOpen] = useState<boolean>(false)
   const pinsChannel = channelKey(recipient)
-  const pins = usePins({ apiBase, authToken, channel: pinsChannel, messages })
+  const pins = usePins({ apiBase, authToken, channel: pinsChannel, messages, mirrorPins })
 
   useEffect(() => {
     onPinnedKeysChange?.(pins.pinnedKeys)

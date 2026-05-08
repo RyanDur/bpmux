@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { BOARD_INVALIDATE_MARKER, type ChatMessage } from '../transport/types'
+import {
+  BOARD_INVALIDATE_MARKER,
+  type ChatMessage,
+  type PinnedMessageWire
+} from '../transport/types'
 
 // Must mirror applications/bpmux/src/session/pins.rs's PINS_UPDATE_MARKER.
 export const PINS_UPDATE_MARKER = '__BPMUX_PINS_UPDATE__'
@@ -37,7 +41,22 @@ interface UsePinsArgs {
   // Forwarded WS message stream so the hook can refetch on
   // PINS_UPDATE_MARKER (AC7: live peer updates) without polling.
   messages: ChatMessage[]
+  mirrorPins?: ReadonlyMap<string, PinnedMessageWire[]>
 }
+
+export const wireToPin = (wire: PinnedMessageWire): Pin => ({
+  message_key: wire.message_key,
+  from: wire.from,
+  ts: wire.ts,
+  text: wire.text,
+  pinned_by: wire.pinner,
+  pinned_at: wire.pinned_at
+})
+
+export const selectPins = (
+  mirrorEntry: readonly PinnedMessageWire[] | undefined,
+  restPins: readonly Pin[]
+): readonly Pin[] => (mirrorEntry ? mirrorEntry.map(wireToPin) : restPins)
 
 export interface UsePinsResult {
   pins: Pin[]
@@ -47,13 +66,23 @@ export interface UsePinsResult {
   refetch: () => Promise<void>
 }
 
-export function usePins({ apiBase, authToken, channel, messages }: UsePinsArgs): UsePinsResult {
-  const [pins, setPins] = useState<Pin[]>([])
+export function usePins({
+  apiBase,
+  authToken,
+  channel,
+  messages,
+  mirrorPins
+}: UsePinsArgs): UsePinsResult {
+  const [restPins, setRestPins] = useState<Pin[]>([])
   const seenMessageCountRef = useRef<number>(messages.length)
+  const pins = useMemo(
+    () => [...selectPins(mirrorPins?.get(channel), restPins)],
+    [mirrorPins, channel, restPins]
+  )
 
   const fetchPins = useCallback(async (): Promise<void> => {
     if (!apiBase) {
-      setPins([])
+      setRestPins([])
       return
     }
     try {
@@ -62,13 +91,13 @@ export function usePins({ apiBase, authToken, channel, messages }: UsePinsArgs):
         { headers: { Authorization: `Bearer ${authToken ?? ''}` } }
       )
       if (!res.ok) {
-        setPins([])
+        setRestPins([])
         return
       }
       const json = (await res.json()) as Pin[]
-      setPins(Array.isArray(json) ? json : [])
+      setRestPins(Array.isArray(json) ? json : [])
     } catch {
-      setPins([])
+      setRestPins([])
     }
   }, [apiBase, authToken, channel])
 
@@ -111,7 +140,7 @@ export function usePins({ apiBase, authToken, channel, messages }: UsePinsArgs):
         pinned_by: pinnedBy,
         pinned_at: new Date().toISOString()
       }
-      setPins((prev) => [...prev.filter((p) => p.message_key !== key), optimistic])
+      setRestPins((prev) => [...prev.filter((p) => p.message_key !== key), optimistic])
       try {
         const res = await fetch(`${apiBase}/api/pins`, {
           method: 'POST',
@@ -129,10 +158,10 @@ export function usePins({ apiBase, authToken, channel, messages }: UsePinsArgs):
           })
         })
         if (!res.ok) {
-          setPins((prev) => prev.filter((p) => p.message_key !== key))
+          setRestPins((prev) => prev.filter((p) => p.message_key !== key))
         }
       } catch {
-        setPins((prev) => prev.filter((p) => p.message_key !== key))
+        setRestPins((prev) => prev.filter((p) => p.message_key !== key))
       }
     },
     [apiBase, authToken, channel]
@@ -142,7 +171,7 @@ export function usePins({ apiBase, authToken, channel, messages }: UsePinsArgs):
     async (key: string): Promise<void> => {
       if (!apiBase) return
       const before = pins
-      setPins((prev) => prev.filter((p) => p.message_key !== key))
+      setRestPins((prev) => prev.filter((p) => p.message_key !== key))
       try {
         const res = await fetch(`${apiBase}/api/pins`, {
           method: 'DELETE',
@@ -153,10 +182,10 @@ export function usePins({ apiBase, authToken, channel, messages }: UsePinsArgs):
           body: JSON.stringify({ channel, message_key: key })
         })
         if (!res.ok) {
-          setPins(before)
+          setRestPins(before)
         }
       } catch {
-        setPins(before)
+        setRestPins(before)
       }
     },
     [apiBase, authToken, channel, pins]

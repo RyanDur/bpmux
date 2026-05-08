@@ -22,6 +22,7 @@ import type {
   ChatMessage,
   CiSnapshotWire,
   ConnectionStatus,
+  PinnedMessageWire,
   ReactionAggregateWire
 } from './transport/types'
 import { RENDERER_IDENTITY, type SendOptions } from './transport/useWebSocket'
@@ -72,6 +73,7 @@ interface Props {
   onPinnedKeysChange?: (keys: ReadonlySet<string>) => void
   ciSnapshot?: CiSnapshotWire | null
   mirrorReactions?: ReadonlyMap<string, ReactionAggregateWire[]>
+  mirrorPins?: ReadonlyMap<string, PinnedMessageWire[]>
 }
 
 const AppShell = ({
@@ -85,7 +87,8 @@ const AppShell = ({
   onAtBottomChange,
   onPinnedKeysChange,
   ciSnapshot,
-  mirrorReactions
+  mirrorReactions,
+  mirrorPins
 }: Props): React.JSX.Element => {
   const statusLabel =
     status === 'connected' ? 'connected' : status === 'connecting' ? 'connecting' : 'disconnected'
@@ -253,6 +256,7 @@ const AppShell = ({
           onAtBottomChange={onAtBottomChange}
           onPinnedKeysChange={onPinnedKeysChange}
           mirrorReactions={mirrorReactions}
+          mirrorPins={mirrorPins}
         />
         {boardOpen ? (
           <BoardResizeHandle
