@@ -44,6 +44,11 @@ impl ReactionsStore {
         Self::default()
     }
 
+    pub fn channel_keys(&self) -> Vec<String> {
+        let state = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+        state.by_channel.keys().cloned().collect()
+    }
+
     pub fn aggregated_for_channel(&self, channel: &str) -> Vec<AggregatedReaction> {
         let state = self.inner.lock().unwrap_or_else(|e| e.into_inner());
         let Some(buckets) = state.by_channel.get(channel) else {
@@ -130,6 +135,11 @@ struct PinsState {
 impl PinsStore {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    pub fn channel_keys(&self) -> Vec<String> {
+        let state = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+        state.by_channel.keys().cloned().collect()
     }
 
     pub fn list_for_channel(&self, channel: &str) -> Vec<PinnedMessage> {

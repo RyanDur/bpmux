@@ -61,13 +61,22 @@ pub fn parse_peer_lag_payload(text: &str) -> Option<(String, u64)> {
 pub async fn ws_handler(
     ws: WebSocketUpgrade,
     State(session): State<Arc<session::Session>>,
+    axum::Extension(orchestrator): axum::Extension<
+        Arc<crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>>,
+    >,
 ) -> Response {
-    ws.on_upgrade(|socket| handle_ws(socket, session))
+    ws.on_upgrade(move |socket| handle_ws(socket, session, orchestrator))
 }
 
-async fn handle_ws(socket: WebSocket, session: Arc<session::Session>) {
+async fn handle_ws(
+    socket: WebSocket,
+    session: Arc<session::Session>,
+    orchestrator: Arc<
+        crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>,
+    >,
+) {
     let (tx, rx) = socket.split();
-    if let Err(e) = run_ws_session(tx, rx, session).await {
+    if let Err(e) = run_ws_session(tx, rx, session, orchestrator).await {
         crate::session::diag::log_diag(&format!("ws: session error: {e}"));
     }
 }
@@ -76,6 +85,9 @@ async fn run_ws_session(
     mut tx: SplitSink<WebSocket, WsMessage>,
     mut rx: SplitStream<WebSocket>,
     session: Arc<session::Session>,
+    orchestrator: Arc<
+        crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>,
+    >,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut identity = wait_for_identify(&mut tx, &mut rx).await?;
     session.peer_connected();
@@ -95,6 +107,8 @@ async fn run_ws_session(
         },
     )
     .await?;
+    let snapshot_msg = build_state_snapshot_message(&orchestrator);
+    send_json(&mut tx, &ServerMessage::from(snapshot_msg)).await?;
     let join_msg = system_announcement(&format!("{identity} joined"));
     session.broadcast(&join_msg)?;
     let result: Result<(), Box<dyn std::error::Error + Send + Sync>> = async {
@@ -240,6 +254,22 @@ fn system_announcement(text: &str) -> session::Message {
         text: text.to_string(),
         ts: chrono::Utc::now(),
         message_type: MessageType::System,
+        ..session::Message::default()
+    }
+}
+
+fn build_state_snapshot_message(
+    orchestrator: &crate::orchestrator::Orchestrator<
+        crate::board::adapters::github::GitHubSourceAdapter,
+    >,
+) -> session::Message {
+    let snapshot = orchestrator.build_snapshot();
+    session::Message {
+        from: "bpmux".to_string(),
+        text: String::new(),
+        ts: chrono::Utc::now(),
+        message_type: MessageType::StateSnapshot,
+        state_snapshot: Some(snapshot),
         ..session::Message::default()
     }
 }

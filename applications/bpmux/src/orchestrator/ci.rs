@@ -189,6 +189,75 @@ impl<T: CiPollFetch> Orchestrator<T> {
         Arc::clone(&self.roster_store)
     }
 
+    pub fn build_snapshot(&self) -> crate::session::message::StateSnapshotPayload {
+        use crate::session::message::{
+            CiSnapshotWire, PinnedMessageWire, PinsChannelSnapshot, ReactionAggregateWire,
+            ReactionsChannelSnapshot, RosterMemberWire, StateSnapshotPayload,
+        };
+        let reactions = self
+            .reactions_store
+            .channel_keys()
+            .into_iter()
+            .map(|channel| {
+                let aggregated = self
+                    .reactions_store
+                    .aggregated_for_channel(&channel)
+                    .into_iter()
+                    .map(|a| ReactionAggregateWire {
+                        message_key: a.message_key,
+                        emoji: a.emoji,
+                        count: a.count,
+                        users: a.users,
+                    })
+                    .collect();
+                ReactionsChannelSnapshot {
+                    channel,
+                    aggregated,
+                }
+            })
+            .collect();
+        let pins = self
+            .pins_store
+            .channel_keys()
+            .into_iter()
+            .map(|channel| {
+                let pins = self
+                    .pins_store
+                    .list_for_channel(&channel)
+                    .into_iter()
+                    .map(|p| PinnedMessageWire {
+                        message_key: p.message_key,
+                        pinner: p.pinner,
+                        ts: p.ts,
+                    })
+                    .collect();
+                PinsChannelSnapshot { channel, pins }
+            })
+            .collect();
+        let ci = self.ci_store.snapshot().map(|s| CiSnapshotWire {
+            state: s.state,
+            run_id: s.run_id,
+            head_sha: s.head_sha,
+            display_title: s.display_title,
+        });
+        let roster = self
+            .roster_store
+            .members()
+            .into_iter()
+            .map(|m| RosterMemberWire {
+                name: m.name,
+                role: m.role,
+                presence: m.presence,
+            })
+            .collect();
+        StateSnapshotPayload {
+            reactions,
+            pins,
+            ci,
+            roster,
+        }
+    }
+
     pub fn add_reactions_listener(&self, listener: Arc<dyn ReactionsBroadcastListener>) {
         let mut l = self
             .reactions_listeners
