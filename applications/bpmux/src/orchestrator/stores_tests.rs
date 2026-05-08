@@ -419,6 +419,18 @@ async fn post_pin_rest_handler_dispatches_through_orchestrator() {
         "REST POST mutated orchestrator's PinsStore via dispatch"
     );
     assert_eq!(pins[0].message_key, "k1");
+    assert_eq!(
+        pins[0].text, "pinned message body",
+        "slice 5e2 enrichment: text snapshotted at pin-time"
+    );
+    assert_eq!(
+        pins[0].from, "dev:claude-code",
+        "slice 5e2 enrichment: from snapshotted at pin-time"
+    );
+    assert!(
+        !pins[0].pinned_at.is_empty(),
+        "slice 5e2 enrichment: pinned_at populated at pin-time"
+    );
 
     let received = rec.received.lock().unwrap();
     assert_eq!(
@@ -426,6 +438,67 @@ async fn post_pin_rest_handler_dispatches_through_orchestrator() {
         1,
         "REST POST → orchestrator.dispatch → reducer Changed → listener fired"
     );
+    assert_eq!(received[0].1[0].text, "pinned message body");
+    assert_eq!(received[0].1[0].from, "dev:claude-code");
+}
+
+#[tokio::test]
+async fn ws_dispatch_roster_join_populates_store_with_identity() {
+    let orch = fresh_orch();
+    let rec = Arc::new(RecRoster::default());
+    orch.add_roster_listener(rec.clone());
+
+    crate::transport::ws::dispatch_roster_join(&orch, "dev:claude-code").await;
+
+    let members = orch.roster_store().members();
+    assert_eq!(members.len(), 1);
+    assert_eq!(members[0].name, "dev");
+    assert_eq!(members[0].identity, "dev:claude-code");
+    assert_eq!(members[0].role, RosterRole::Dev);
+    assert_eq!(members[0].presence, Presence::Online);
+
+    let received = rec.received.lock().unwrap();
+    assert_eq!(received.len(), 1, "join dispatches → listener fires");
+}
+
+#[tokio::test]
+async fn ws_dispatch_roster_leave_removes_member() {
+    let orch = fresh_orch();
+    let rec = Arc::new(RecRoster::default());
+    orch.add_roster_listener(rec.clone());
+
+    crate::transport::ws::dispatch_roster_join(&orch, "designer:claude-code").await;
+    crate::transport::ws::dispatch_roster_leave(&orch, "designer:claude-code").await;
+
+    let members = orch.roster_store().members();
+    assert!(members.is_empty(), "leave removes member from store");
+
+    let received = rec.received.lock().unwrap();
+    assert_eq!(received.len(), 2, "join + leave both fire listeners");
+}
+
+#[tokio::test]
+async fn ws_dispatch_roster_join_role_mapping_covers_known_short_names() {
+    let cases = [
+        ("ryan:electron", "ryan", RosterRole::Owner),
+        ("dev:claude-code", "dev", RosterRole::Dev),
+        ("pm:claude-code", "pm", RosterRole::Pm),
+        ("designer:claude-code", "designer", RosterRole::Designer),
+        (
+            "agent-abc123:claude-code",
+            "agent-abc123",
+            RosterRole::Other,
+        ),
+    ];
+    for (identity, expected_name, expected_role) in cases {
+        let orch = fresh_orch();
+        crate::transport::ws::dispatch_roster_join(&orch, identity).await;
+        let members = orch.roster_store().members();
+        assert_eq!(members.len(), 1, "identity {identity}: 1 member");
+        assert_eq!(members[0].name, expected_name);
+        assert_eq!(members[0].role, expected_role);
+        assert_eq!(members[0].identity, identity);
+    }
 }
 
 #[tokio::test]

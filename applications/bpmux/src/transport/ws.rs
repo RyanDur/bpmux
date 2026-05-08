@@ -193,7 +193,7 @@ async fn run_ws_session(
     result
 }
 
-fn role_from_short_name(short: &str) -> crate::orchestrator::stores::RosterRole {
+pub(crate) fn role_from_short_name(short: &str) -> crate::orchestrator::stores::RosterRole {
     use crate::orchestrator::stores::RosterRole;
     match short {
         "designer" => RosterRole::Designer,
@@ -204,7 +204,7 @@ fn role_from_short_name(short: &str) -> crate::orchestrator::stores::RosterRole 
     }
 }
 
-async fn dispatch_roster_join(
+pub(crate) async fn dispatch_roster_join(
     orchestrator: &Arc<
         crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>,
     >,
@@ -226,7 +226,7 @@ async fn dispatch_roster_join(
         .await;
 }
 
-async fn dispatch_roster_leave(
+pub(crate) async fn dispatch_roster_leave(
     orchestrator: &Arc<
         crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>,
     >,
