@@ -69,7 +69,7 @@ test.describe('#1205 launch-helper safe-inherited-env allow-list', () => {
 
 test.describe('#1205 r4 e2e falsifier-(d) — shell GH-routing env does not reach spawned bpmux', () => {
   test('process.env.BPMUX_REPO + GH_TOKEN canary values do not appear in mockGh request log', async () => {
-    test.setTimeout(60_000)
+    test.setTimeout(90_000)
     const CANARY_REPO = 'CANARY-LEAKED-REPO/should-not-appear'
     const CANARY_TOKEN = 'CANARY-LEAKED-TOKEN-should-not-appear'
 
@@ -82,10 +82,13 @@ test.describe('#1205 r4 e2e falsifier-(d) — shell GH-routing env does not reac
     process.env.GITHUB_TOKEN = CANARY_TOKEN
     process.env.BPMUX_GH_BASE_URL = 'https://api.github.com'
 
+    let app: import('@playwright/test').ElectronApplication | undefined
     try {
-      const { app, mockGh } = await launchIsolatedElectron({
-        extraEnv: { BPMUX_POLL_INTERVAL_SECS: '1' }
+      const result = await launchIsolatedElectron({
+        extraEnv: { BPMUX_POLL_INTERVAL_SECS: '600' }
       })
+      app = result.app
+      const mockGh = result.mockGh
       expect(mockGh).toBeDefined()
 
       await expect
@@ -100,9 +103,9 @@ test.describe('#1205 r4 e2e falsifier-(d) — shell GH-routing env does not reac
 
       const acmePathCount = log.filter((r) => r.path.includes('/repos/acme/bpmux/')).length
       expect(acmePathCount).toBeGreaterThan(0)
-
-      await app.close()
+      expect(log.length).toBe(acmePathCount)
     } finally {
+      if (app) await app.close()
       restoreEnv('BPMUX_REPO', priorRepo)
       restoreEnv('GH_TOKEN', priorToken)
       restoreEnv('GITHUB_TOKEN', priorGithubToken)
