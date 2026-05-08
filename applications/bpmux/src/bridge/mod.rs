@@ -532,6 +532,8 @@ async fn run_ws_connection(
             addressee,
             message_type,
             multi_depth: _,
+            state_delta: _,
+            state_snapshot: _,
         } = msg
         {
             let from_short = from.split(':').next().unwrap_or(&from);
