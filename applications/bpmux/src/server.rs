@@ -249,14 +249,16 @@ pub async fn run_server(
     let ci_log_store = crate::transport::ci_log_store::CiLogStore::new();
     let electron_capture_lock: std::sync::Arc<tokio::sync::Mutex<()>> =
         std::sync::Arc::new(tokio::sync::Mutex::new(()));
-    if let Some(tracker_arc) = tracker.as_ref().cloned() {
-        crate::transport::ci_watcher::spawn(
+    let polling_control =
+        std::sync::Arc::new(crate::transport::polling_control::PollingControl::new(
             session.clone(),
-            tracker_arc,
+            tracker.as_ref().cloned(),
             ci_state_store.clone(),
             ct.clone(),
-        );
-    }
+        ));
+    polling_control
+        .dispatch(crate::transport::polling_control::PollAction::StartCi)
+        .await;
 
     // Unfurl cache (#343). One instance for the server lifetime so
     // all concurrent /api/unfurl requests share the memoized results.

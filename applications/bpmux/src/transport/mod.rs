@@ -5,6 +5,7 @@ pub mod ci_watcher;
 pub mod crypto;
 pub mod electron_capture;
 pub mod peer;
+pub mod polling_control;
 pub mod protocol;
 pub mod rest;
 pub mod rpc_routes;
@@ -24,6 +25,8 @@ mod crypto_tests;
 mod external_mutation_tests;
 #[cfg(test)]
 mod peer_tests;
+#[cfg(test)]
+mod polling_control_tests;
 #[cfg(test)]
 mod protocol_tests;
 #[cfg(test)]
