@@ -39,8 +39,7 @@ use std::time::Duration;
 
 use tokio_util::sync::CancellationToken;
 
-use crate::board::adapters::github::GitHubSourceAdapter;
-use crate::orchestrator::{CiAction, CiSnapshot, Orchestrator};
+use crate::orchestrator::{CiAction, CiPollFetch, CiSnapshot, Orchestrator};
 use crate::session;
 
 pub const POLL_INTERVAL: Duration = Duration::from_secs(10);
@@ -83,9 +82,9 @@ pub fn classify_transition(prev: Option<Observation>, current: Observation) -> T
 /// until the cancellation token fires. Silent on tracker / API
 /// errors beyond a diag-log entry — the frontend's 15s poll catches
 /// up next tick regardless.
-pub fn spawn(
-    orchestrator: Arc<Orchestrator>,
-    tracker: Arc<GitHubSourceAdapter>,
+pub fn spawn<T: CiPollFetch>(
+    orchestrator: Arc<Orchestrator<T>>,
+    tracker: Arc<T>,
     ct: CancellationToken,
 ) {
     let observer = orchestrator.rate_limit_observer().clone();

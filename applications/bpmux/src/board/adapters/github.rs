@@ -4,7 +4,10 @@ use crate::board::domain::{FreeComment, Gate, GateComment, Story, StoryState, Ta
 use crate::board::events::{BoardEvent, EventMeta};
 use crate::board::peer::PeerId;
 use crate::board::sync::{ConditionalBody, SourceAdapter, SyncError};
-use crate::bridge::tracker::{ConditionalIssue, OctocrabStoryTracker, StoryTracker};
+use crate::bridge::tracker::{
+    ConditionalIssue, ConditionalRunEntry, OctocrabStoryTracker, StoryTracker,
+};
+use crate::orchestrator::CiPollFetch;
 
 pub struct GitHubSourceAdapter {
     inner: OctocrabStoryTracker,
@@ -71,6 +74,19 @@ impl GitHubSourceAdapter {
 
     pub async fn list_story_comments(&self, number: u64) -> Result<Vec<serde_json::Value>, String> {
         self.inner.list_story_comments(number).await
+    }
+}
+
+impl CiPollFetch for GitHubSourceAdapter {
+    fn list_latest_run_on_main_conditional(
+        &self,
+        prior_etag: Option<&str>,
+    ) -> impl std::future::Future<Output = Result<ConditionalRunEntry, String>> + Send {
+        GitHubSourceAdapter::list_latest_run_on_main_conditional(self, prior_etag)
+    }
+
+    fn rate_limit_observer(&self) -> crate::github::RateLimitObserver {
+        GitHubSourceAdapter::rate_limit_observer(self)
     }
 }
 

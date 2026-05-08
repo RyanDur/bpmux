@@ -1,13 +1,23 @@
 use std::collections::HashMap;
+use std::future::Future;
 use std::sync::{Arc, Mutex};
 
 use tokio::sync::Mutex as AsyncMutex;
 use tokio_util::sync::CancellationToken;
 
-use crate::board::adapters::github::GitHubSourceAdapter;
+use crate::bridge::tracker::ConditionalRunEntry;
 use crate::ci::{CiEvent, CiState};
 use crate::github::RateLimitObserver;
 use crate::session;
+
+pub trait CiPollFetch: Send + Sync + 'static {
+    fn list_latest_run_on_main_conditional(
+        &self,
+        prior_etag: Option<&str>,
+    ) -> impl Future<Output = Result<ConditionalRunEntry, String>> + Send;
+
+    fn rate_limit_observer(&self) -> RateLimitObserver;
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum PollKind {
@@ -96,9 +106,9 @@ pub trait CiBroadcastListener: Send + Sync {
     fn on_changed(&self, snap: &CiSnapshot);
 }
 
-pub struct Orchestrator {
+pub struct Orchestrator<T: CiPollFetch> {
     session: Arc<session::Session>,
-    tracker: Option<Arc<GitHubSourceAdapter>>,
+    tracker: Option<Arc<T>>,
     parent_ct: CancellationToken,
     rate_limit_observer: RateLimitObserver,
     ci_store: Arc<CiStore>,
@@ -106,10 +116,10 @@ pub struct Orchestrator {
     listeners: Mutex<Vec<Arc<dyn CiBroadcastListener>>>,
 }
 
-impl Orchestrator {
+impl<T: CiPollFetch> Orchestrator<T> {
     pub fn new(
         session: Arc<session::Session>,
-        tracker: Option<Arc<GitHubSourceAdapter>>,
+        tracker: Option<Arc<T>>,
         parent_ct: CancellationToken,
     ) -> Self {
         let rate_limit_observer = tracker
@@ -178,7 +188,7 @@ impl Orchestrator {
             }
             task_clone.cancel();
         });
-        crate::transport::ci_watcher::spawn(Arc::clone(self), tracker, task_ct);
+        crate::transport::ci_watcher::spawn::<T>(Arc::clone(self), tracker, task_ct);
         tokens.insert(PollKind::Ci, local_ct);
     }
 
