@@ -1230,8 +1230,17 @@ async fn post_reaction_cascade_threads_excerpt_into_broadcast_event_text() {
     };
     session.broadcast(&target_msg).expect("seed target message");
 
+    let orch = std::sync::Arc::new(crate::orchestrator::Orchestrator::<
+        crate::board::adapters::github::GitHubSourceAdapter,
+    >::new(
+        session.clone(),
+        None,
+        crate::transport::ci_state_store::CiStateStore::new(),
+        tokio_util::sync::CancellationToken::new(),
+    ));
     let router = axum::Router::new()
         .route("/api/reactions", axum::routing::post(post_reaction))
+        .layer(axum::Extension(orch))
         .with_state(session.clone());
 
     let message_key = format!("{}|dev:claude-code", target_ts.to_rfc3339());
@@ -1287,8 +1296,17 @@ async fn post_reaction_cascade_falls_back_to_no_excerpt_when_target_absent() {
         tx.clone(),
     ));
 
+    let orch = std::sync::Arc::new(crate::orchestrator::Orchestrator::<
+        crate::board::adapters::github::GitHubSourceAdapter,
+    >::new(
+        session.clone(),
+        None,
+        crate::transport::ci_state_store::CiStateStore::new(),
+        tokio_util::sync::CancellationToken::new(),
+    ));
     let router = axum::Router::new()
         .route("/api/reactions", axum::routing::post(post_reaction))
+        .layer(axum::Extension(orch))
         .with_state(session.clone());
 
     let toggle_body = r#"{"channel":"broadcast","message_key":"2026-04-23T11:30:00+00:00|dev:claude-code","emoji":"👍","user":"ryan"}"#;

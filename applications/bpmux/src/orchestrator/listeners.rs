@@ -1,8 +1,13 @@
 use std::sync::Arc;
 
-use crate::bridge::CI_STATE_UPDATE_MARKER;
+use crate::bridge::{
+    CI_STATE_UPDATE_MARKER, PINS_UPDATE_MARKER, REACTIONS_UPDATE_MARKER, ROSTER_UPDATE_MARKER,
+};
 use crate::ci::RunEntry;
-use crate::orchestrator::{CiBroadcastListener, CiSnapshot};
+use crate::orchestrator::{
+    AggregatedReaction, CiBroadcastListener, CiSnapshot, PinnedMessage, PinsBroadcastListener,
+    ReactionsBroadcastListener, RosterBroadcastListener, RosterMember,
+};
 use crate::session;
 use crate::transport::ci_state_store::CiStateStore;
 
@@ -73,5 +78,66 @@ impl CiBroadcastListener for CiSessionBroadcaster {
         if let Err(e) = self.session.broadcast(&dev_signal) {
             session::diag::log_diag(&format!("ci_listener: dev signal failed: {e}"));
         }
+    }
+}
+
+fn broadcast_marker(session: &session::Session, marker: &str, label: &str) {
+    let msg = session::Message {
+        from: "bpmux".to_string(),
+        text: marker.to_string(),
+        ts: chrono::Utc::now(),
+        message_type: session::MessageType::System,
+        ..session::Message::default()
+    };
+    if let Err(e) = session.broadcast(&msg) {
+        session::diag::log_diag(&format!("{label}: marker broadcast failed: {e}"));
+    }
+}
+
+pub struct ReactionsSessionBroadcaster {
+    session: Arc<session::Session>,
+}
+
+impl ReactionsSessionBroadcaster {
+    pub fn new(session: Arc<session::Session>) -> Self {
+        Self { session }
+    }
+}
+
+impl ReactionsBroadcastListener for ReactionsSessionBroadcaster {
+    fn on_changed(&self, _channel: &str, _aggregated: &[AggregatedReaction]) {
+        broadcast_marker(&self.session, REACTIONS_UPDATE_MARKER, "reactions_listener");
+    }
+}
+
+pub struct PinsSessionBroadcaster {
+    session: Arc<session::Session>,
+}
+
+impl PinsSessionBroadcaster {
+    pub fn new(session: Arc<session::Session>) -> Self {
+        Self { session }
+    }
+}
+
+impl PinsBroadcastListener for PinsSessionBroadcaster {
+    fn on_changed(&self, _channel: &str, _pins: &[PinnedMessage]) {
+        broadcast_marker(&self.session, PINS_UPDATE_MARKER, "pins_listener");
+    }
+}
+
+pub struct RosterSessionBroadcaster {
+    session: Arc<session::Session>,
+}
+
+impl RosterSessionBroadcaster {
+    pub fn new(session: Arc<session::Session>) -> Self {
+        Self { session }
+    }
+}
+
+impl RosterBroadcastListener for RosterSessionBroadcaster {
+    fn on_changed(&self, _members: &[RosterMember]) {
+        broadcast_marker(&self.session, ROSTER_UPDATE_MARKER, "roster_listener");
     }
 }

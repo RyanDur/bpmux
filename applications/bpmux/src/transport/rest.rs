@@ -820,15 +820,18 @@ pub async fn get_pins(
 
 pub async fn post_pin(
     State(session): State<Arc<session::Session>>,
+    axum::Extension(orchestrator): axum::Extension<
+        Arc<crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>>,
+    >,
     axum::Json(body): axum::Json<PinCreate>,
 ) -> impl IntoResponse {
     let mut store = session::pins::load(&session.dir);
     let pin = session::pins::Pin {
-        message_key: body.message_key,
+        message_key: body.message_key.clone(),
         from: body.from,
-        ts: body.ts,
+        ts: body.ts.clone(),
         text: body.text,
-        pinned_by: body.pinned_by,
+        pinned_by: body.pinned_by.clone(),
         pinned_at: chrono::Utc::now().to_rfc3339(),
     };
     let added = session::pins::add_pin(&mut store, &body.channel, pin);
@@ -840,7 +843,18 @@ pub async fn post_pin(
                 err_body(&format!("save pins: {e}")),
             );
         }
-        broadcast_pins_update(&session);
+        orchestrator
+            .dispatch(crate::orchestrator::OrchestratorAction::Pins(
+                crate::orchestrator::PinsAction::PinAdded {
+                    channel: body.channel.clone(),
+                    pin: crate::orchestrator::PinnedMessage {
+                        message_key: body.message_key,
+                        pinner: body.pinned_by,
+                        ts: body.ts,
+                    },
+                },
+            ))
+            .await;
     }
     (
         StatusCode::OK,
@@ -851,6 +865,9 @@ pub async fn post_pin(
 
 pub async fn delete_pin(
     State(session): State<Arc<session::Session>>,
+    axum::Extension(orchestrator): axum::Extension<
+        Arc<crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>>,
+    >,
     axum::Json(body): axum::Json<PinDelete>,
 ) -> impl IntoResponse {
     let mut store = session::pins::load(&session.dir);
@@ -863,26 +880,20 @@ pub async fn delete_pin(
                 err_body(&format!("save pins: {e}")),
             );
         }
-        broadcast_pins_update(&session);
+        orchestrator
+            .dispatch(crate::orchestrator::OrchestratorAction::Pins(
+                crate::orchestrator::PinsAction::PinRemoved {
+                    channel: body.channel.clone(),
+                    message_key: body.message_key.clone(),
+                },
+            ))
+            .await;
     }
     (
         StatusCode::OK,
         json_headers(),
         serde_json::json!({ "removed": removed }).to_string(),
     )
-}
-
-fn broadcast_pins_update(session: &session::Session) {
-    let msg = session::Message {
-        from: "bpmux".to_string(),
-        text: crate::bridge::PINS_UPDATE_MARKER.to_string(),
-        ts: chrono::Utc::now(),
-        message_type: session::MessageType::System,
-        ..session::Message::default()
-    };
-    if let Err(e) = session.broadcast(&msg) {
-        session::diag::log_diag(&format!("rest: pins-update broadcast failed: {e}"));
-    }
 }
 
 /// Reactions REST (#340) — GET/POST /api/reactions.
@@ -918,6 +929,9 @@ pub async fn get_reactions(
 
 pub async fn post_reaction(
     State(session): State<Arc<session::Session>>,
+    axum::Extension(orchestrator): axum::Extension<
+        Arc<crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>>,
+    >,
     axum::Json(body): axum::Json<ReactionToggle>,
 ) -> impl IntoResponse {
     let mut store = session::reactions::load(&session.dir);
@@ -937,13 +951,17 @@ pub async fn post_reaction(
             err_body(&format!("save reactions: {e}")),
         );
     }
-    broadcast_reactions_update(&session);
-    // #387: broadcast an insight-class synthesized message so MCP-
-    // bridged agents see the reaction event in their stream.
-    // #400: enrich with a first-~40-chars excerpt of the target
-    // message body so agents can disambiguate which message among
-    // recent-from-same-sender was reacted to. Lookup failures fall
-    // through to the no-excerpt shape (graceful degradation).
+    orchestrator
+        .dispatch(crate::orchestrator::OrchestratorAction::Reactions(
+            crate::orchestrator::ReactionsAction::ReactionToggled {
+                channel: body.channel.clone(),
+                message_key: body.message_key.clone(),
+                emoji: body.emoji.clone(),
+                user: body.user.clone(),
+                ts_iso: now.clone(),
+            },
+        ))
+        .await;
     let excerpt = session
         .read_messages()
         .ok()
@@ -956,7 +974,8 @@ pub async fn post_reaction(
     )
 }
 
-fn broadcast_reactions_update(session: &session::Session) {
+#[allow(dead_code)]
+fn broadcast_reactions_update_legacy(session: &session::Session) {
     let msg = session::Message {
         from: "bpmux".to_string(),
         text: crate::bridge::REACTIONS_UPDATE_MARKER.to_string(),

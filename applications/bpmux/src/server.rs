@@ -260,6 +260,15 @@ pub async fn run_server(
     orchestrator.add_ci_listener(std::sync::Arc::new(
         crate::orchestrator::CiSessionBroadcaster::new(session.clone()),
     ));
+    orchestrator.add_reactions_listener(std::sync::Arc::new(
+        crate::orchestrator::ReactionsSessionBroadcaster::new(session.clone()),
+    ));
+    orchestrator.add_pins_listener(std::sync::Arc::new(
+        crate::orchestrator::PinsSessionBroadcaster::new(session.clone()),
+    ));
+    orchestrator.add_roster_listener(std::sync::Arc::new(
+        crate::orchestrator::RosterSessionBroadcaster::new(session.clone()),
+    ));
     orchestrator
         .dispatch(crate::orchestrator::OrchestratorAction::StartCiPolling)
         .await;
@@ -440,6 +449,7 @@ pub async fn run_server(
         .layer(axum::Extension(ci_log_store))
         .layer(axum::Extension(electron_capture_lock))
         .layer(axum::Extension(test_refresh))
+        .layer(axum::Extension(orchestrator.clone()))
         // The Electron renderer loads from Vite's dev URL or file://
         // and fetches this backend at 127.0.0.1:4117 — a cross-origin
         // request that the browser preflight-checks. Without this

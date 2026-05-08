@@ -11,7 +11,10 @@ pub use ci::{
     CiAction, CiBroadcastListener, CiPollFetch, CiSnapshot, CiStore, Orchestrator,
     OrchestratorAction, PollKind,
 };
-pub use listeners::{CiSessionBroadcaster, CiStateStoreWriter};
+pub use listeners::{
+    CiSessionBroadcaster, CiStateStoreWriter, PinsSessionBroadcaster, ReactionsSessionBroadcaster,
+    RosterSessionBroadcaster,
+};
 pub use stores::{
     AggregatedReaction, PinnedMessage, PinsAction, PinsBroadcastListener, PinsStore, Presence,
     ReactionsAction, ReactionsBroadcastListener, ReactionsStore, RosterAction,

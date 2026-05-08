@@ -279,6 +279,145 @@ async fn roster_presence_change_fires_only_when_actually_changed() {
 }
 
 #[tokio::test]
+async fn post_reaction_rest_handler_dispatches_through_orchestrator() {
+    use crate::transport::rest::{ReactionToggle, post_reaction};
+    use axum::body::{self, Body};
+    use axum::http::Request;
+    use tower::util::ServiceExt;
+
+    let dir = TempDir::new().expect("tempdir");
+    let (tx, _rx) = broadcast::channel::<Message>(64);
+    let session = Arc::new(Session::new(
+        dir.path().to_path_buf(),
+        "test".to_string(),
+        tx,
+    ));
+    let orch: Arc<Orchestrator<GitHubSourceAdapter>> = Arc::new(Orchestrator::new(
+        session.clone(),
+        None,
+        CiStateStore::new(),
+        CancellationToken::new(),
+    ));
+    let rec = Arc::new(RecReactions::default());
+    orch.add_reactions_listener(rec.clone());
+
+    let router = axum::Router::new()
+        .route("/api/reactions", axum::routing::post(post_reaction))
+        .layer(axum::Extension(orch.clone()))
+        .with_state(session.clone());
+
+    let body_text = serde_json::to_string(&serde_json::json!({
+        "channel": "broadcast",
+        "message_key": "k1",
+        "emoji": "👍",
+        "user": "ryan"
+    }))
+    .unwrap();
+    let response = router
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/reactions")
+                .header("Content-Type", "application/json")
+                .body(Body::from(body_text))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), 200);
+    let _ = body::to_bytes(response.into_body(), 4096).await.unwrap();
+    let _ = ReactionToggle {
+        channel: "_unused".to_string(),
+        message_key: "_unused".to_string(),
+        emoji: "_unused".to_string(),
+        user: "_unused".to_string(),
+    };
+
+    let agg = orch.reactions_store().aggregated_for_channel("broadcast");
+    assert_eq!(
+        agg.len(),
+        1,
+        "REST POST mutated orchestrator's ReactionsStore via dispatch"
+    );
+    assert_eq!(agg[0].count, 1);
+
+    let received = rec.received.lock().unwrap();
+    assert_eq!(
+        received.len(),
+        1,
+        "REST POST → orchestrator.dispatch → reducer Changed → listener fired"
+    );
+    assert_eq!(received[0].0, "broadcast");
+}
+
+#[tokio::test]
+async fn post_pin_rest_handler_dispatches_through_orchestrator() {
+    use crate::transport::rest::post_pin;
+    use axum::body::{self, Body};
+    use axum::http::Request;
+    use tower::util::ServiceExt;
+
+    let dir = TempDir::new().expect("tempdir");
+    let (tx, _rx) = broadcast::channel::<Message>(64);
+    let session = Arc::new(Session::new(
+        dir.path().to_path_buf(),
+        "test".to_string(),
+        tx,
+    ));
+    let orch: Arc<Orchestrator<GitHubSourceAdapter>> = Arc::new(Orchestrator::new(
+        session.clone(),
+        None,
+        CiStateStore::new(),
+        CancellationToken::new(),
+    ));
+    let rec = Arc::new(RecPins::default());
+    orch.add_pins_listener(rec.clone());
+
+    let router = axum::Router::new()
+        .route("/api/pins", axum::routing::post(post_pin))
+        .layer(axum::Extension(orch.clone()))
+        .with_state(session.clone());
+
+    let body_text = serde_json::to_string(&serde_json::json!({
+        "channel": "broadcast",
+        "message_key": "k1",
+        "from": "dev:claude-code",
+        "ts": "2026-04-22T12:00:00Z",
+        "text": "pinned message body",
+        "pinned_by": "ryan"
+    }))
+    .unwrap();
+    let response = router
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/pins")
+                .header("Content-Type", "application/json")
+                .body(Body::from(body_text))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), 200);
+    let _ = body::to_bytes(response.into_body(), 4096).await.unwrap();
+
+    let pins = orch.pins_store().list_for_channel("broadcast");
+    assert_eq!(
+        pins.len(),
+        1,
+        "REST POST mutated orchestrator's PinsStore via dispatch"
+    );
+    assert_eq!(pins[0].message_key, "k1");
+
+    let received = rec.received.lock().unwrap();
+    assert_eq!(
+        received.len(),
+        1,
+        "REST POST → orchestrator.dispatch → reducer Changed → listener fired"
+    );
+}
+
+#[tokio::test]
 async fn roster_remove_fires_listener_when_member_existed() {
     let orch = fresh_orch();
     let rec = Arc::new(RecRoster::default());
