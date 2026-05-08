@@ -1120,3 +1120,107 @@ mod slice_7_3_drain_one_by_id {
         );
     }
 }
+
+mod slice_7_4_drain_one_by_id_falsifiers {
+    use super::*;
+    use crate::board::DrainOneOutcome;
+
+    #[tokio::test]
+    async fn permanent_push_failure_drops_entry_returns_confirmed() {
+        let store = Arc::new(BoardStore::new());
+        let adapter = Arc::new(InMemorySourceAdapter::new());
+        store.seed_all(vec![seed_story(801, StoryState::Ready)]);
+        let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+        orch.mutate(BoardEvent::StateTransitioned {
+            meta: meta(),
+            number: 801,
+            new_state: StoryState::InProgress,
+        })
+        .unwrap();
+        adapter.set_permanent_push_failures(true);
+
+        let id = orch
+            .snapshot_pending_for_test()
+            .front()
+            .map(|q| q.id)
+            .expect("queued event has id");
+        let outcome = orch.drain_one_by_id(id).await;
+        assert!(matches!(outcome, DrainOneOutcome::Confirmed));
+        assert!(orch.snapshot_pending_for_test().is_empty());
+        assert_eq!(orch.snapshot_status().dropped_events.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn concurrent_calls_for_different_ids_complete_independently() {
+        let store = Arc::new(BoardStore::new());
+        let adapter = Arc::new(InMemorySourceAdapter::new());
+        store.seed_all(vec![
+            seed_story(901, StoryState::Ready),
+            seed_story(902, StoryState::Ready),
+        ]);
+        let orch = Arc::new(SyncOrchestrator::new(
+            Arc::clone(&store),
+            Arc::clone(&adapter),
+        ));
+        orch.mutate(BoardEvent::StateTransitioned {
+            meta: meta(),
+            number: 901,
+            new_state: StoryState::InProgress,
+        })
+        .unwrap();
+        orch.mutate(BoardEvent::StateTransitioned {
+            meta: meta(),
+            number: 902,
+            new_state: StoryState::InProgress,
+        })
+        .unwrap();
+
+        let pending = orch.snapshot_pending_for_test();
+        let id_a = pending[0].id;
+        let id_b = pending[1].id;
+        let orch_a = Arc::clone(&orch);
+        let orch_b = Arc::clone(&orch);
+        let (out_a, out_b) = tokio::join!(
+            async move { orch_a.drain_one_by_id(id_a).await },
+            async move { orch_b.drain_one_by_id(id_b).await },
+        );
+        assert!(matches!(out_a, DrainOneOutcome::Confirmed));
+        assert!(matches!(out_b, DrainOneOutcome::Confirmed));
+        assert!(orch.snapshot_pending_for_test().is_empty());
+        assert_eq!(adapter.pushed_events().len(), 2);
+    }
+
+    #[tokio::test]
+    async fn serial_calls_drain_in_request_order_for_same_issue() {
+        let store = Arc::new(BoardStore::new());
+        let adapter = Arc::new(InMemorySourceAdapter::new());
+        store.seed_all(vec![seed_story(1001, StoryState::Ready)]);
+        let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+        orch.mutate(BoardEvent::StateTransitioned {
+            meta: meta(),
+            number: 1001,
+            new_state: StoryState::InProgress,
+        })
+        .unwrap();
+        orch.mutate(BoardEvent::TagAdded {
+            meta: meta(),
+            number: 1001,
+            label: "blocked".to_string(),
+        })
+        .unwrap();
+
+        let pending = orch.snapshot_pending_for_test();
+        let id_first = pending[0].id;
+        let id_second = pending[1].id;
+
+        let outcome_first = orch.drain_one_by_id(id_first).await;
+        let outcome_second = orch.drain_one_by_id(id_second).await;
+        assert!(matches!(outcome_first, DrainOneOutcome::Confirmed));
+        assert!(matches!(outcome_second, DrainOneOutcome::Confirmed));
+
+        let pushed = adapter.pushed_events();
+        assert_eq!(pushed.len(), 2);
+        assert!(matches!(pushed[0], BoardEvent::StateTransitioned { .. }));
+        assert!(matches!(pushed[1], BoardEvent::TagAdded { .. }));
+    }
+}
