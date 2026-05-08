@@ -46,6 +46,19 @@ pub enum OrchestratorAction {
     Reactions(ReactionsAction),
     Pins(PinsAction),
     Roster(RosterAction),
+    StartUpdateGithub {
+        mutation_id: u64,
+    },
+    StopUpdateGithub {
+        mutation_id: u64,
+    },
+    MutationConfirmed {
+        mutation_id: u64,
+    },
+    MutationRolledBack {
+        mutation_id: u64,
+        server_story: Option<crate::board::domain::Story>,
+    },
 }
 
 pub type CiAction = OrchestratorAction;
@@ -139,6 +152,7 @@ pub struct Orchestrator<T: CiPollFetch> {
     pins_store: Arc<PinsStore>,
     roster_store: Arc<RosterStore>,
     tokens: AsyncMutex<HashMap<PollKind, CancellationToken>>,
+    mutation_tokens: AsyncMutex<HashMap<u64, CancellationToken>>,
     listeners: Mutex<Vec<Arc<dyn CiBroadcastListener>>>,
     reactions_listeners: Mutex<Vec<Arc<dyn ReactionsBroadcastListener>>>,
     pins_listeners: Mutex<Vec<Arc<dyn PinsBroadcastListener>>>,
@@ -170,6 +184,7 @@ impl<T: CiPollFetch> Orchestrator<T> {
             pins_store: Arc::new(PinsStore::new()),
             roster_store: Arc::new(RosterStore::new()),
             tokens: AsyncMutex::new(HashMap::new()),
+            mutation_tokens: AsyncMutex::new(HashMap::new()),
             listeners: Mutex::new(Vec::new()),
             reactions_listeners: Mutex::new(Vec::new()),
             pins_listeners: Mutex::new(Vec::new()),
@@ -330,7 +345,43 @@ impl<T: CiPollFetch> Orchestrator<T> {
             OrchestratorAction::Reactions(a) => self.middleware_reactions(a),
             OrchestratorAction::Pins(a) => self.middleware_pins(a),
             OrchestratorAction::Roster(a) => self.middleware_roster(a),
+            OrchestratorAction::StartUpdateGithub { mutation_id } => {
+                self.middleware_start_update_github(mutation_id).await
+            }
+            OrchestratorAction::StopUpdateGithub { mutation_id } => {
+                self.middleware_stop_update_github(mutation_id).await
+            }
+            OrchestratorAction::MutationConfirmed { mutation_id } => {
+                self.middleware_mutation_confirmed(mutation_id).await
+            }
+            OrchestratorAction::MutationRolledBack {
+                mutation_id,
+                server_story: _,
+            } => {
+                self.middleware_mutation_confirmed(mutation_id).await;
+            }
         }
+    }
+
+    async fn middleware_start_update_github(self: &Arc<Self>, mutation_id: u64) {
+        let mut tokens = self.mutation_tokens.lock().await;
+        if tokens.contains_key(&mutation_id) {
+            return;
+        }
+        let local_ct = CancellationToken::new();
+        tokens.insert(mutation_id, local_ct);
+    }
+
+    async fn middleware_stop_update_github(self: &Arc<Self>, mutation_id: u64) {
+        let mut tokens = self.mutation_tokens.lock().await;
+        if let Some(ct) = tokens.remove(&mutation_id) {
+            ct.cancel();
+        }
+    }
+
+    async fn middleware_mutation_confirmed(self: &Arc<Self>, mutation_id: u64) {
+        let mut tokens = self.mutation_tokens.lock().await;
+        tokens.remove(&mutation_id);
     }
 
     fn middleware_reactions(&self, action: ReactionsAction) {
@@ -514,6 +565,10 @@ fn validate_and_log(action: &OrchestratorAction) {
         OrchestratorAction::Reactions(_) => "Reactions",
         OrchestratorAction::Pins(_) => "Pins",
         OrchestratorAction::Roster(_) => "Roster",
+        OrchestratorAction::StartUpdateGithub { .. } => "StartUpdateGithub",
+        OrchestratorAction::StopUpdateGithub { .. } => "StopUpdateGithub",
+        OrchestratorAction::MutationConfirmed { .. } => "MutationConfirmed",
+        OrchestratorAction::MutationRolledBack { .. } => "MutationRolledBack",
     };
     crate::session::diag::log_diag(&format!("orchestrator: dispatch {label}"));
 }
