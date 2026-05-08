@@ -108,6 +108,9 @@ pub struct PinnedMessage {
     pub message_key: String,
     pub pinner: String,
     pub ts: String,
+    pub text: String,
+    pub from: String,
+    pub pinned_at: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

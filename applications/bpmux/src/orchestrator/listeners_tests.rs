@@ -99,6 +99,9 @@ async fn pins_listener_emits_typed_state_delta() {
         message_key: "m1".to_string(),
         pinner: "ryan".to_string(),
         ts: "2026-05-08T00:00:00Z".to_string(),
+        text: "pinned text".to_string(),
+        from: "ryan".to_string(),
+        pinned_at: "2026-05-08T00:00:01Z".to_string(),
     }];
     listener.on_changed("broadcast", &pins);
     let payload = drain_state_delta(&mut rx);

@@ -836,7 +836,7 @@ pub async fn post_pin(
         pinned_by: body.pinned_by.clone(),
         pinned_at: chrono::Utc::now().to_rfc3339(),
     };
-    let added = session::pins::add_pin(&mut store, &body.channel, pin);
+    let added = session::pins::add_pin(&mut store, &body.channel, pin.clone());
     if added {
         if let Err(e) = session::pins::save(&session.dir, &store) {
             return (
@@ -853,6 +853,9 @@ pub async fn post_pin(
                         message_key: body.message_key,
                         pinner: body.pinned_by,
                         ts: body.ts,
+                        text: pin.text.clone(),
+                        from: pin.from.clone(),
+                        pinned_at: pin.pinned_at.clone(),
                     },
                 },
             ))

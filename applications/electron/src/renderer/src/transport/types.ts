@@ -34,6 +34,9 @@ export interface PinnedMessageWire {
   message_key: string
   pinner: string
   ts: string
+  text: string
+  from: string
+  pinned_at: string
 }
 
 export type CiStateWire = 'unknown' | 'green' | 'red' | 'running' | 'quota_exhausted'

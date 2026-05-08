@@ -151,6 +151,9 @@ async fn pins_added_drives_reducer_and_fires_listener() {
             message_key: "k1".to_string(),
             pinner: "ryan".to_string(),
             ts: "t0".to_string(),
+            text: "pinned text".to_string(),
+            from: "ryan".to_string(),
+            pinned_at: "2026-05-08T00:00:00Z".to_string(),
         },
     }))
     .await;
@@ -176,6 +179,9 @@ async fn pin_added_idempotent_dedup_no_listener_on_duplicate() {
             message_key: "k1".to_string(),
             pinner: "ryan".to_string(),
             ts: "t0".to_string(),
+            text: "pinned text".to_string(),
+            from: "ryan".to_string(),
+            pinned_at: "2026-05-08T00:00:00Z".to_string(),
         },
     });
     orch.dispatch(add.clone()).await;
@@ -201,6 +207,9 @@ async fn pin_remove_clears_channel_and_fires_listener() {
             message_key: "k1".to_string(),
             pinner: "ryan".to_string(),
             ts: "t0".to_string(),
+            text: "pinned text".to_string(),
+            from: "ryan".to_string(),
+            pinned_at: "2026-05-08T00:00:00Z".to_string(),
         },
     }))
     .await;

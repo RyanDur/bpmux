@@ -14,7 +14,16 @@ describe('applyStateSnapshot', () => {
       pins: [
         {
           channel: 'broadcast',
-          pins: [{ message_key: 'm1', pinner: 'ryan', ts: '2026-05-08T00:00:00Z' }]
+          pins: [
+            {
+              message_key: 'm1',
+              pinner: 'ryan',
+              ts: '2026-05-08T00:00:00Z',
+              text: 'pinned text',
+              from: 'ryan',
+              pinned_at: '2026-05-08T00:00:01Z'
+            }
+          ]
         }
       ],
       ci: { state: 'green', run_id: 7, head_sha: 'abc', display_title: 'title' },
@@ -30,7 +39,21 @@ describe('applyStateSnapshot', () => {
   test('clears domains when snapshot omits them', () => {
     const seeded = applyStateSnapshot(emptyMirrorState(), {
       reactions: [{ channel: 'old', aggregated: [{ message_key: 'k', emoji: '🎉', count: 1, users: ['dev'] }] }],
-      pins: [{ channel: 'old', pins: [{ message_key: 'm', pinner: 'dev', ts: 't' }] }],
+      pins: [
+        {
+          channel: 'old',
+          pins: [
+            {
+              message_key: 'm',
+              pinner: 'dev',
+              ts: 't',
+              text: 'x',
+              from: 'dev',
+              pinned_at: 't'
+            }
+          ]
+        }
+      ],
       ci: { state: 'red' },
       roster: [{ name: 'dev', identity: 'dev:claude-code', role: 'Dev', presence: 'Online' }]
     })
@@ -116,7 +139,21 @@ describe('applyStateDelta', () => {
   test('preserves prev reference identity for un-touched maps', () => {
     const seeded = applyStateSnapshot(emptyMirrorState(), {
       reactions: [{ channel: 'a', aggregated: [{ message_key: 'k', emoji: '👍', count: 1, users: ['dev'] }] }],
-      pins: [{ channel: 'a', pins: [{ message_key: 'm', pinner: 'ryan', ts: 't' }] }],
+      pins: [
+        {
+          channel: 'a',
+          pins: [
+            {
+              message_key: 'm',
+              pinner: 'ryan',
+              ts: 't',
+              text: 'x',
+              from: 'ryan',
+              pinned_at: 't'
+            }
+          ]
+        }
+      ],
       ci: null,
       roster: []
     })

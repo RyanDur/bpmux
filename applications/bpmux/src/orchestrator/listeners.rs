@@ -136,6 +136,9 @@ fn pins_to_wire(pins: &[PinnedMessage]) -> Vec<PinnedMessageWire> {
             message_key: p.message_key.clone(),
             pinner: p.pinner.clone(),
             ts: p.ts.clone(),
+            text: p.text.clone(),
+            from: p.from.clone(),
+            pinned_at: p.pinned_at.clone(),
         })
         .collect()
 }

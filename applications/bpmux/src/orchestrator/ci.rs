@@ -229,6 +229,9 @@ impl<T: CiPollFetch> Orchestrator<T> {
                         message_key: p.message_key,
                         pinner: p.pinner,
                         ts: p.ts,
+                        text: p.text,
+                        from: p.from,
+                        pinned_at: p.pinned_at,
                     })
                     .collect();
                 PinsChannelSnapshot { channel, pins }
