@@ -64,7 +64,7 @@ const Chat = ({
   const showReconnect = status !== 'connected'
   const [pinnedListOpen, setPinnedListOpen] = useState<boolean>(false)
   const pinsChannel = channelKey(recipient)
-  const pins = usePins({ apiBase, authToken, channel: pinsChannel, messages, mirrorPins })
+  const pins = usePins({ apiBase, authToken, channel: pinsChannel, mirrorPins })
 
   useEffect(() => {
     onPinnedKeysChange?.(pins.pinnedKeys)
@@ -74,7 +74,6 @@ const Chat = ({
     apiBase,
     authToken,
     channel: pinsChannel,
-    messages,
     mirrorReactions
   })
 

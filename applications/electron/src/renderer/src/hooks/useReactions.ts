@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { ChatMessage, ReactionAggregateWire } from '../transport/types'
+import type { ReactionAggregateWire } from '../transport/types'
 
 export interface AggregatedReaction {
   message_key: string
@@ -17,7 +17,6 @@ interface UseReactionsArgs {
   apiBase: string | undefined
   authToken: string | undefined
   channel: string
-  messages: ChatMessage[]
   mirrorReactions?: ReadonlyMap<string, ReactionAggregateWire[]>
 }
 
@@ -32,10 +31,8 @@ export function useReactions({
   apiBase,
   authToken,
   channel,
-  messages,
   mirrorReactions
 }: UseReactionsArgs): UseReactionsResult {
-  void messages
   const [aggregated, setAggregated] = useState<AggregatedReaction[]>([])
   const effectiveAggregated = selectReactions(mirrorReactions?.get(channel), aggregated)
 
@@ -67,8 +64,6 @@ export function useReactions({
   const toggle = useCallback(
     async (messageKey: string, emoji: string, user: string): Promise<void> => {
       if (!apiBase) return
-      // Optimistic: flip local aggregation state immediately, then
-      // authoritative refetch lands via the REACTIONS_UPDATE broadcast.
       setAggregated((prev) => {
         const idx = prev.findIndex(
           (r) => r.message_key === messageKey && r.emoji === emoji

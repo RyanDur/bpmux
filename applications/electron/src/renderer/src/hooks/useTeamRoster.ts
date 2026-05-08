@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { ChatMessage, RosterMemberWire } from '../transport/types'
+import type { RosterMemberWire } from '../transport/types'
 
 export interface RosterEntry {
   identity: string
@@ -20,17 +20,14 @@ export const selectRoster = (
 interface Props {
   apiBase: string | undefined
   authToken: string | undefined
-  messages: ChatMessage[]
   mirrorRoster?: readonly RosterMemberWire[]
 }
 
 export function useTeamRoster({
   apiBase,
   authToken,
-  messages,
   mirrorRoster
 }: Props): readonly RosterEntry[] {
-  void messages
   const [restRoster, setRestRoster] = useState<readonly RosterEntry[]>([])
   const roster = useMemo(
     () => selectRoster(mirrorRoster, restRoster),
@@ -51,9 +48,6 @@ export function useTeamRoster({
         if (Array.isArray(json.roster)) setRestRoster(json.roster)
       } catch (err) {
         if ((err as Error)?.name === 'AbortError') return
-        // Soft-fail: leave previous roster intact. A later marker or
-        // the next mount cycle will retry. Sidebar doesn't flash
-        // empty on a transient fetch error.
       }
     },
     [apiBase, authToken]

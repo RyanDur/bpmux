@@ -2,8 +2,8 @@
 //!
 //! Any viewer can pin a message to its channel (broadcast / DM /
 //! group). Pins survive restart via `<session-dir>/pins.json` and
-//! broadcast via BOARD_INVALIDATE_MARKER-style marker so peers see
-//! each other's pin state live.
+//! broadcast via typed StateDelta::Pins frames (#1213 slice 5e2)
+//! so peers see each other's pin state live.
 //!
 //! `channel` is a stable string key — "broadcast" for to=null/all,
 //! a single recipient name for DMs, or a sorted-joined list for

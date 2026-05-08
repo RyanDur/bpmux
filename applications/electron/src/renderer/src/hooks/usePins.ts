@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { ChatMessage, PinnedMessageWire } from '../transport/types'
+import type { PinnedMessageWire } from '../transport/types'
 
 export interface Pin {
   message_key: string
@@ -31,7 +31,6 @@ interface UsePinsArgs {
   apiBase: string | undefined
   authToken: string | undefined
   channel: string
-  messages: ChatMessage[]
   mirrorPins?: ReadonlyMap<string, PinnedMessageWire[]>
 }
 
@@ -61,10 +60,8 @@ export function usePins({
   apiBase,
   authToken,
   channel,
-  messages,
   mirrorPins
 }: UsePinsArgs): UsePinsResult {
-  void messages
   const [restPins, setRestPins] = useState<Pin[]>([])
   const pins = useMemo(
     () => [...selectPins(mirrorPins?.get(channel), restPins)],

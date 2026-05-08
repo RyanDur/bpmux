@@ -62,7 +62,7 @@ const Sidebar = ({
   mirrorRoster
 }: Props): React.JSX.Element => {
   const systemCount = useMemo(() => countSystemMessages(messages), [messages])
-  const roster = useTeamRoster({ apiBase, authToken, messages, mirrorRoster })
+  const roster = useTeamRoster({ apiBase, authToken, mirrorRoster })
   const peerRoster = useMemo(
     () => roster.filter((e) => e.role !== RENDERER_IDENTITY),
     [roster]
