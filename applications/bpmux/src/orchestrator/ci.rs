@@ -533,12 +533,6 @@ impl<T: CiPollFetch> Orchestrator<T> {
         tokens.contains_key(&kind)
     }
 
-    #[cfg(test)]
-    pub async fn mutation_tokens_contains_for_test(&self, id: MutationId) -> bool {
-        let tokens = self.mutation_tokens.lock().await;
-        tokens.contains_key(&id)
-    }
-
     async fn spawn_lifecycle_proxy(&self, local_ct: CancellationToken, task_ct: CancellationToken) {
         let parent_clone = self.parent_ct.clone();
         let local_clone = local_ct.clone();
