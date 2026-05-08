@@ -10,8 +10,8 @@ mod listeners_tests;
 mod stores_tests;
 
 pub use ci::{
-    CiAction, CiBroadcastListener, CiPollFetch, CiSnapshot, CiStore, Orchestrator,
-    OrchestratorAction, PollKind,
+    CiAction, CiBroadcastListener, CiPollFetch, CiSnapshot, Orchestrator, OrchestratorAction,
+    PollKind,
 };
 pub use listeners::{
     CiSessionBroadcaster, CiStateStoreWriter, PinsSessionBroadcaster, ReactionsSessionBroadcaster,
