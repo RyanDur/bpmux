@@ -52,9 +52,9 @@ pub enum ServerMessage {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         multi_depth: Box<Option<crate::session::message::MultiDepthPayload>>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        state_delta: Option<crate::session::message::StateDeltaPayload>,
+        state_delta: Option<Box<crate::session::message::StateDeltaPayload>>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        state_snapshot: Option<crate::session::message::StateSnapshotPayload>,
+        state_snapshot: Option<Box<crate::session::message::StateSnapshotPayload>>,
     },
     #[serde(rename = "error")]
     Error { reason: String },
@@ -72,8 +72,8 @@ impl From<Message> for ServerMessage {
             addressee: msg.addressee,
             message_type: msg.message_type.to_wire(),
             multi_depth: Box::new(msg.multi_depth),
-            state_delta: msg.state_delta,
-            state_snapshot: msg.state_snapshot,
+            state_delta: msg.state_delta.map(Box::new),
+            state_snapshot: msg.state_snapshot.map(Box::new),
         }
     }
 }
