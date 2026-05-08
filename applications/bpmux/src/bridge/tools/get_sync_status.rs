@@ -36,6 +36,15 @@ mod tests {
         fn mutate_sync(&self, _event: BoardEvent) -> Result<(), SyncError> {
             Ok(())
         }
+        fn drain_one_by_id(
+            &self,
+            _id: crate::board::MutationId,
+        ) -> BoxedFuture<'_, crate::board::orchestrator::DrainOneOutcome> {
+            Box::pin(async { crate::board::orchestrator::DrainOneOutcome::NotFound })
+        }
+        fn apply_server_rollback(&self, _story: crate::board::Story) -> BoxedFuture<'_, ()> {
+            Box::pin(async {})
+        }
         fn snapshot_status(&self) -> SyncStatus {
             self.0.clone()
         }

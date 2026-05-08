@@ -375,9 +375,10 @@ impl<T: CiPollFetch> Orchestrator<T> {
             }
             OrchestratorAction::MutationRolledBack {
                 mutation_id,
-                server_story: _,
+                server_story,
             } => {
-                self.middleware_mutation_confirmed(mutation_id).await;
+                self.middleware_mutation_rolled_back(mutation_id, server_story)
+                    .await;
             }
         }
     }
@@ -401,6 +402,20 @@ impl<T: CiPollFetch> Orchestrator<T> {
     async fn middleware_mutation_confirmed(self: &Arc<Self>, mutation_id: MutationId) {
         let mut tokens = self.mutation_tokens.lock().await;
         tokens.remove(&mutation_id);
+    }
+
+    async fn middleware_mutation_rolled_back(
+        self: &Arc<Self>,
+        mutation_id: MutationId,
+        server_story: Option<crate::board::domain::Story>,
+    ) {
+        {
+            let mut tokens = self.mutation_tokens.lock().await;
+            tokens.remove(&mutation_id);
+        }
+        if let (Some(refresh), Some(story)) = (self.refresh.as_ref(), server_story) {
+            refresh.apply_server_rollback(story).await;
+        }
     }
 
     fn middleware_reactions(&self, action: ReactionsAction) {

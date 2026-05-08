@@ -204,7 +204,7 @@ async fn stop_ci_polling_without_start_no_op() {
 
 #[tokio::test]
 async fn spawn_action_drainer_routes_channel_actions_into_dispatch() {
-    use crate::board::MutationId;
+    use crate::orchestrator::stores::ReactionsAction;
     let (session, _dir) = fresh_session();
     let orch: Arc<Orchestrator<GitHubSourceAdapter>> = Arc::new(Orchestrator::new(
         session,
@@ -215,18 +215,25 @@ async fn spawn_action_drainer_routes_channel_actions_into_dispatch() {
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<OrchestratorAction>();
     orch.spawn_action_drainer(rx);
 
-    tx.send(OrchestratorAction::StartUpdateGithub {
-        mutation_id: MutationId(7),
-    })
+    tx.send(OrchestratorAction::Reactions(
+        ReactionsAction::ReactionToggled {
+            channel: "broadcast".to_string(),
+            message_key: "drainer-test".to_string(),
+            emoji: "🟢".to_string(),
+            user: "ryan".to_string(),
+            ts_iso: "2026-05-08T19:30:00Z".to_string(),
+        },
+    ))
     .expect("send into drainer channel");
 
     for _ in 0..50 {
         tokio::time::sleep(Duration::from_millis(20)).await;
-        if orch.mutation_tokens_contains_for_test(MutationId(7)).await {
+        let aggregated = orch.reactions_store().aggregated_for_channel("broadcast");
+        if !aggregated.is_empty() {
             return;
         }
     }
-    panic!("drainer did not dispatch StartUpdateGithub within 1s");
+    panic!("drainer did not route Reactions action through dispatch within 1s");
 }
 
 #[tokio::test]

@@ -486,6 +486,15 @@ mod ingest_poll_loop_tests {
         fn mutate_sync(&self, _e: BoardEvent) -> Result<(), SyncError> {
             Ok(())
         }
+        fn drain_one_by_id(
+            &self,
+            _id: crate::board::MutationId,
+        ) -> BoxedFuture<'_, crate::board::DrainOneOutcome> {
+            Box::pin(async { crate::board::DrainOneOutcome::NotFound })
+        }
+        fn apply_server_rollback(&self, _story: crate::board::Story) -> BoxedFuture<'_, ()> {
+            Box::pin(async {})
+        }
         fn snapshot_status(&self) -> SyncStatus {
             SyncStatus::default()
         }

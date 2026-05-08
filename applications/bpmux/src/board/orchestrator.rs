@@ -40,6 +40,14 @@ pub fn default_outbox_path() -> Result<PathBuf, std::io::Error> {
 
 pub type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
+#[derive(Debug)]
+pub enum DrainOneOutcome {
+    Confirmed,
+    RolledBack { server_story: Option<Box<Story>> },
+    TransientError(SyncError),
+    NotFound,
+}
+
 pub trait RefreshDriver: Send + Sync {
     fn refresh_story(&self, number: u64) -> BoxedFuture<'_, Result<Option<Story>, SyncError>>;
     fn refresh_all(&self) -> BoxedFuture<'_, Result<(), SyncError>>;
@@ -50,6 +58,8 @@ pub trait RefreshDriver: Send + Sync {
         self.refresh_all()
     }
     fn mutate_sync(&self, event: BoardEvent) -> Result<(), SyncError>;
+    fn drain_one_by_id(&self, id: MutationId) -> BoxedFuture<'_, DrainOneOutcome>;
+    fn apply_server_rollback(&self, story: Story) -> BoxedFuture<'_, ()>;
     fn snapshot_status(&self) -> SyncStatus;
     fn acknowledge_dropped(&self) -> usize;
     fn mark_recovering_from_corruption(&self);
@@ -475,6 +485,87 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         }
     }
 
+    pub async fn drain_one_by_id(&self, id: MutationId) -> DrainOneOutcome {
+        let queued = {
+            let p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
+            p.iter().find(|q| q.id == id).cloned()
+        };
+        let Some(queued) = queued else {
+            return DrainOneOutcome::NotFound;
+        };
+        let event = queued.event.clone();
+        let current = self.store.story(event.story_number());
+        let kind = classify_conflict(queued.pre_state.as_ref(), &event, current.as_ref());
+        match kind {
+            Some(ConflictKind::IdempotentSkip) => {
+                self.remove_pending_by_id(id);
+                self.persist_outbox();
+                decrement_pending(&self.status);
+                crate::session::diag::log_diag(&format!(
+                    "orchestrator: idempotent-skip dropped #{} via drain_one_by_id (already-applied)",
+                    event.story_number()
+                ));
+                DrainOneOutcome::Confirmed
+            }
+            Some(divergent) => {
+                self.remove_pending_by_id(id);
+                self.persist_outbox();
+                decrement_pending(&self.status);
+                self.store.apply(&BoardEvent::ConflictDetected {
+                    meta: cache_fill_meta(),
+                    number: event.story_number(),
+                    kind: divergent,
+                });
+                crate::session::diag::log_diag(&format!(
+                    "orchestrator: drain_one_by_id rolled back #{} ({divergent:?}); applying server_story",
+                    event.story_number()
+                ));
+                DrainOneOutcome::RolledBack {
+                    server_story: current.map(Box::new),
+                }
+            }
+            None => match self.adapter.push_event(&event).await {
+                Ok(follow_up) => {
+                    self.remove_pending_by_id(id);
+                    self.persist_outbox();
+                    decrement_pending(&self.status);
+                    record_push_success(&self.status);
+                    if let Some(refresh_event) = follow_up {
+                        self.store.apply(&refresh_event);
+                    }
+                    DrainOneOutcome::Confirmed
+                }
+                Err(e) => {
+                    record_error(&self.status, &format!("push: {e}"));
+                    if is_permanent_push_failure(&e) {
+                        self.remove_pending_by_id(id);
+                        self.persist_outbox();
+                        decrement_pending(&self.status);
+                        record_dropped(&self.status, event.story_number(), format!("{e}"));
+                        crate::session::diag::log_diag(&format!(
+                            "orchestrator: drain_one_by_id dropped #{} after permanent push failure ({e})",
+                            event.story_number()
+                        ));
+                        DrainOneOutcome::Confirmed
+                    } else {
+                        DrainOneOutcome::TransientError(e)
+                    }
+                }
+            },
+        }
+    }
+
+    fn remove_pending_by_id(&self, id: MutationId) {
+        let mut p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(idx) = p.iter().position(|q| q.id == id) {
+            p.remove(idx);
+        }
+    }
+
+    pub fn apply_server_rollback(&self, story: Story) {
+        self.store.seed_all(vec![story]);
+    }
+
     pub async fn drain_once(&self) -> Result<usize, SyncError> {
         let mut drained = 0usize;
         let mut failures = 0usize;
@@ -730,6 +821,17 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
 
     fn mutate_sync(&self, event: BoardEvent) -> Result<(), SyncError> {
         self.mutate(event)
+    }
+
+    fn drain_one_by_id(&self, id: MutationId) -> BoxedFuture<'_, DrainOneOutcome> {
+        Box::pin(self.drain_one_by_id(id))
+    }
+
+    fn apply_server_rollback(&self, story: Story) -> BoxedFuture<'_, ()> {
+        let store = Arc::clone(&self.store);
+        Box::pin(async move {
+            store.seed_all(vec![story]);
+        })
     }
 
     fn snapshot_status(&self) -> SyncStatus {

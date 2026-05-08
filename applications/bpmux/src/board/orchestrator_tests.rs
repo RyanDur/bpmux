@@ -1032,3 +1032,91 @@ mod slice_7_2_mutation_id_dispatch {
         );
     }
 }
+
+mod slice_7_3_drain_one_by_id {
+    use super::*;
+    use crate::board::DrainOneOutcome;
+    use crate::board::MutationId;
+
+    #[tokio::test]
+    async fn drain_one_by_id_pushes_clean_event_returns_confirmed() {
+        let store = Arc::new(BoardStore::new());
+        let adapter = Arc::new(InMemorySourceAdapter::new());
+        store.seed_all(vec![seed_story(401, StoryState::Ready)]);
+        let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+        orch.mutate(BoardEvent::StateTransitioned {
+            meta: meta(),
+            number: 401,
+            new_state: StoryState::InProgress,
+        })
+        .unwrap();
+
+        let id = orch
+            .snapshot_pending_for_test()
+            .front()
+            .map(|q| q.id)
+            .expect("queued event has id");
+        let outcome = orch.drain_one_by_id(id).await;
+        assert!(matches!(outcome, DrainOneOutcome::Confirmed));
+        assert_eq!(adapter.pushed_events().len(), 1);
+        assert!(orch.snapshot_pending_for_test().is_empty());
+    }
+
+    #[tokio::test]
+    async fn drain_one_by_id_transient_error_leaves_entry_in_outbox() {
+        let store = Arc::new(BoardStore::new());
+        let adapter = Arc::new(InMemorySourceAdapter::new());
+        store.seed_all(vec![seed_story(601, StoryState::Ready)]);
+        let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+        orch.mutate(BoardEvent::StateTransitioned {
+            meta: meta(),
+            number: 601,
+            new_state: StoryState::InProgress,
+        })
+        .unwrap();
+        adapter.set_push_failures(true);
+
+        let id = orch
+            .snapshot_pending_for_test()
+            .front()
+            .map(|q| q.id)
+            .expect("queued event has id");
+        let outcome = orch.drain_one_by_id(id).await;
+        assert!(matches!(outcome, DrainOneOutcome::TransientError(_)));
+        assert_eq!(orch.snapshot_pending_for_test().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn drain_one_by_id_returns_not_found_for_unknown_id() {
+        let store = Arc::new(BoardStore::new());
+        let adapter = Arc::new(InMemorySourceAdapter::new());
+        let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+        let outcome = orch.drain_one_by_id(MutationId(99999)).await;
+        assert!(matches!(outcome, DrainOneOutcome::NotFound));
+    }
+
+    #[tokio::test]
+    async fn apply_server_rollback_overwrites_local_optimistic_state() {
+        let store = Arc::new(BoardStore::new());
+        let adapter = Arc::new(InMemorySourceAdapter::new());
+        store.seed_all(vec![seed_story(701, StoryState::Ready)]);
+        let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+        orch.mutate(BoardEvent::StateTransitioned {
+            meta: meta(),
+            number: 701,
+            new_state: StoryState::InProgress,
+        })
+        .unwrap();
+        assert_eq!(
+            store.story(701).map(|s| s.state),
+            Some(StoryState::InProgress)
+        );
+
+        let server_view = seed_story(701, StoryState::Accepted);
+        orch.apply_server_rollback(server_view);
+        assert_eq!(
+            store.story(701).map(|s| s.state),
+            Some(StoryState::Accepted)
+        );
+    }
+}
