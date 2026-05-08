@@ -1,6 +1,6 @@
 import { format } from 'date-fns'
 import { useCallback, useEffect, useState } from 'react'
-import type { ChatMessage, CiSnapshotWire, CiStateWire } from '../transport/types'
+import type { CiSnapshotWire, CiStateWire } from '../transport/types'
 import {
   derivedClassName,
   derivedDataState,
@@ -86,11 +86,10 @@ function conclusionAriaLabel(conclusion: string): string {
 }
 
 interface Props {
-  messages?: ChatMessage[]
   ciSnapshot?: CiSnapshotWire | null
 }
 
-function CiGlyph({ messages: _messages, ciSnapshot }: Props): React.JSX.Element {
+function CiGlyph({ ciSnapshot }: Props): React.JSX.Element {
   const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
   const [state, setState] = useState<CiStateReport | null>(null)
   const [error, setError] = useState<string | null>(null)

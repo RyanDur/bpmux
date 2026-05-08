@@ -17,10 +17,10 @@ import { launchIsolatedElectron } from './helpers/launch'
 //   backend run where a push lands a new CI state.
 //
 // This spec smoke-tests the integrated glyph behavior with a static
-// fixture so a regression on AppShell's `messages` wiring or the
-// glyph's render-from-state path surfaces in CI. The push-path
-// functional check is deferred to the Rust unit tests + manual
-// verification per the test-infrastructure tradeoff above.
+// fixture so a regression on the glyph's render-from-state path
+// surfaces in CI. The push-path functional check is deferred to the
+// Rust unit tests + manual verification per the test-infrastructure
+// tradeoff above.
 
 const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 
@@ -59,7 +59,7 @@ async function launchWithFixture(): Promise<{
 }
 
 test.describe('desk-check #372 push-based CI state updates', () => {
-  test('CiGlyph renders CI state from /api/ci and accepts messages prop', async () => {
+  test('CiGlyph renders CI state from /api/ci', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
     const glyph = win.locator('[data-test="ci-glyph"]')

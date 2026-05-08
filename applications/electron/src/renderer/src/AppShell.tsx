@@ -221,7 +221,7 @@ const AppShell = ({
         >
           {lanes === 'on' ? <LanesIcon /> : <StreamIcon />}
         </button>
-        <CiGlyph messages={messages} ciSnapshot={ciSnapshot} />
+        <CiGlyph ciSnapshot={ciSnapshot} />
         <SyncStatusGlyph
           apiBase={bridge?.apiBase}
           authToken={bridge?.authToken}
