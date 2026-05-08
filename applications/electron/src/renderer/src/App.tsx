@@ -20,7 +20,7 @@ const App = (): React.JSX.Element => {
   const [atBottom, setAtBottom] = useState<boolean>(true)
   const [pinnedKeys, setPinnedKeys] = useState<ReadonlySet<string>>(() => new Set())
 
-  const { status, messages: liveRaw, sendChat } = useWebSocket(bridge?.wsUrl, {
+  const { status, messages: liveRaw, sendChat, mirror } = useWebSocket(bridge?.wsUrl, {
     apiBase: bridge?.apiBase,
     authToken: bridge?.authToken
   })
@@ -50,6 +50,7 @@ const App = (): React.JSX.Element => {
       hasError={hasError}
       onAtBottomChange={setAtBottom}
       onPinnedKeysChange={setPinnedKeys}
+      ciSnapshot={mirror.ci}
     />
   )
 }

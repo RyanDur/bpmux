@@ -18,7 +18,7 @@ import {
 } from './icons/TitlebarIcons'
 import { useBoardWidthStorage } from './lib/useBoardWidthStorage'
 import Sidebar from './sidebar/Sidebar'
-import type { ChatMessage, ConnectionStatus } from './transport/types'
+import type { ChatMessage, CiSnapshotWire, ConnectionStatus } from './transport/types'
 import { RENDERER_IDENTITY, type SendOptions } from './transport/useWebSocket'
 import './AppShell.css'
 
@@ -65,6 +65,7 @@ interface Props {
   hasError?: boolean
   onAtBottomChange?: (atBottom: boolean) => void
   onPinnedKeysChange?: (keys: ReadonlySet<string>) => void
+  ciSnapshot?: CiSnapshotWire | null
 }
 
 const AppShell = ({
@@ -76,7 +77,8 @@ const AppShell = ({
   hasMoreOlder,
   hasError,
   onAtBottomChange,
-  onPinnedKeysChange
+  onPinnedKeysChange,
+  ciSnapshot
 }: Props): React.JSX.Element => {
   const statusLabel =
     status === 'connected' ? 'connected' : status === 'connecting' ? 'connecting' : 'disconnected'
@@ -206,7 +208,7 @@ const AppShell = ({
         >
           {lanes === 'on' ? <LanesIcon /> : <StreamIcon />}
         </button>
-        <CiGlyph messages={messages} />
+        <CiGlyph messages={messages} ciSnapshot={ciSnapshot} />
         <SyncStatusGlyph
           apiBase={bridge?.apiBase}
           authToken={bridge?.authToken}

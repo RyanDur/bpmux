@@ -1,6 +1,11 @@
 import { format } from 'date-fns'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { CI_STATE_UPDATE_MARKER, type ChatMessage } from '../transport/types'
+import {
+  CI_STATE_UPDATE_MARKER,
+  type ChatMessage,
+  type CiSnapshotWire,
+  type CiStateWire
+} from '../transport/types'
 import {
   derivedClassName,
   derivedDataState,
@@ -45,6 +50,21 @@ interface CiStateReport {
 // changed while WS was down.
 const POLL_MS = 15_000
 
+function stateToConclusion(state: CiStateWire): CiConclusion {
+  switch (state) {
+    case 'green':
+      return 'success'
+    case 'red':
+      return 'failure'
+    case 'running':
+      return 'in_progress'
+    case 'quota_exhausted':
+      return 'quota_exhausted'
+    case 'unknown':
+      return 'unknown'
+  }
+}
+
 function conclusionGlyph(conclusion: string): string {
   switch (conclusion) {
     case 'success':
@@ -82,9 +102,10 @@ interface Props {
   // (undefined) when the caller doesn't have a stream — the glyph
   // falls back to poll-only.
   messages?: ChatMessage[]
+  ciSnapshot?: CiSnapshotWire | null
 }
 
-function CiGlyph({ messages }: Props): React.JSX.Element {
+function CiGlyph({ messages, ciSnapshot }: Props): React.JSX.Element {
   const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
   const [state, setState] = useState<CiStateReport | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -159,7 +180,9 @@ function CiGlyph({ messages }: Props): React.JSX.Element {
     if (hasCiUpdate) void fetchOnceRef.current()
   }, [messages])
 
-  const conclusion = state?.conclusion ?? 'unknown'
+  const conclusion = ciSnapshot
+    ? stateToConclusion(ciSnapshot.state)
+    : (state?.conclusion ?? 'unknown')
   const watcherUnhealthy = isWatcherUnhealthy(state)
   const glyph = conclusionGlyph(conclusion)
   const url = state?.url ?? 'https://github.com'
