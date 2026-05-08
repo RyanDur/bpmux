@@ -10,6 +10,11 @@ use crate::board::RefreshDriver;
 use crate::bridge::tracker::ConditionalRunEntry;
 use crate::ci::{CiEvent, CiState};
 use crate::github::RateLimitObserver;
+use crate::orchestrator::stores::{
+    PinsAction, PinsBroadcastListener, PinsStore, ReactionsAction, ReactionsBroadcastListener,
+    ReactionsStore, RosterAction, RosterBroadcastListener, RosterStore, StoreReduceOutcome,
+    apply_pins, apply_reactions, apply_roster,
+};
 use crate::session;
 use crate::transport::ci_state_store::CiStateStore;
 
@@ -38,6 +43,9 @@ pub enum OrchestratorAction {
     StopIngestPolling,
     StartHydrationPolling,
     StopHydrationPolling,
+    Reactions(ReactionsAction),
+    Pins(PinsAction),
+    Roster(RosterAction),
 }
 
 pub type CiAction = OrchestratorAction;
@@ -127,8 +135,14 @@ pub struct Orchestrator<T: CiPollFetch> {
     parent_ct: CancellationToken,
     rate_limit_observer: RateLimitObserver,
     ci_store: Arc<CiStore>,
+    reactions_store: Arc<ReactionsStore>,
+    pins_store: Arc<PinsStore>,
+    roster_store: Arc<RosterStore>,
     tokens: AsyncMutex<HashMap<PollKind, CancellationToken>>,
     listeners: Mutex<Vec<Arc<dyn CiBroadcastListener>>>,
+    reactions_listeners: Mutex<Vec<Arc<dyn ReactionsBroadcastListener>>>,
+    pins_listeners: Mutex<Vec<Arc<dyn PinsBroadcastListener>>>,
+    roster_listeners: Mutex<Vec<Arc<dyn RosterBroadcastListener>>>,
 }
 
 impl<T: CiPollFetch> Orchestrator<T> {
@@ -152,9 +166,51 @@ impl<T: CiPollFetch> Orchestrator<T> {
             parent_ct,
             rate_limit_observer,
             ci_store: Arc::new(CiStore::new()),
+            reactions_store: Arc::new(ReactionsStore::new()),
+            pins_store: Arc::new(PinsStore::new()),
+            roster_store: Arc::new(RosterStore::new()),
             tokens: AsyncMutex::new(HashMap::new()),
             listeners: Mutex::new(Vec::new()),
+            reactions_listeners: Mutex::new(Vec::new()),
+            pins_listeners: Mutex::new(Vec::new()),
+            roster_listeners: Mutex::new(Vec::new()),
         }
+    }
+
+    pub fn reactions_store(&self) -> Arc<ReactionsStore> {
+        Arc::clone(&self.reactions_store)
+    }
+
+    pub fn pins_store(&self) -> Arc<PinsStore> {
+        Arc::clone(&self.pins_store)
+    }
+
+    pub fn roster_store(&self) -> Arc<RosterStore> {
+        Arc::clone(&self.roster_store)
+    }
+
+    pub fn add_reactions_listener(&self, listener: Arc<dyn ReactionsBroadcastListener>) {
+        let mut l = self
+            .reactions_listeners
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        l.push(listener);
+    }
+
+    pub fn add_pins_listener(&self, listener: Arc<dyn PinsBroadcastListener>) {
+        let mut l = self
+            .pins_listeners
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        l.push(listener);
+    }
+
+    pub fn add_roster_listener(&self, listener: Arc<dyn RosterBroadcastListener>) {
+        let mut l = self
+            .roster_listeners
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        l.push(listener);
     }
 
     pub fn with_refresh(
@@ -198,6 +254,71 @@ impl<T: CiPollFetch> Orchestrator<T> {
             OrchestratorAction::StopHydrationPolling => {
                 self.middleware_stop(PollKind::Hydration).await
             }
+            OrchestratorAction::Reactions(a) => self.middleware_reactions(a),
+            OrchestratorAction::Pins(a) => self.middleware_pins(a),
+            OrchestratorAction::Roster(a) => self.middleware_roster(a),
+        }
+    }
+
+    fn middleware_reactions(&self, action: ReactionsAction) {
+        let outcome = apply_reactions(&self.reactions_store, &action);
+        if outcome != StoreReduceOutcome::Changed {
+            return;
+        }
+        let channel = match &action {
+            ReactionsAction::ReactionToggled { channel, .. } => channel.clone(),
+        };
+        let aggregated = self.reactions_store.aggregated_for_channel(&channel);
+        let listeners = {
+            let l = self
+                .reactions_listeners
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
+            l.clone()
+        };
+        for listener in listeners {
+            listener.on_changed(&channel, &aggregated);
+        }
+    }
+
+    fn middleware_pins(&self, action: PinsAction) {
+        let outcome = apply_pins(&self.pins_store, &action);
+        if outcome != StoreReduceOutcome::Changed {
+            return;
+        }
+        let channel = match &action {
+            PinsAction::PinAdded { channel, .. } | PinsAction::PinRemoved { channel, .. } => {
+                channel.clone()
+            }
+        };
+        let pins = self.pins_store.list_for_channel(&channel);
+        let listeners = {
+            let l = self
+                .pins_listeners
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
+            l.clone()
+        };
+        for listener in listeners {
+            listener.on_changed(&channel, &pins);
+        }
+    }
+
+    fn middleware_roster(&self, action: RosterAction) {
+        let outcome = apply_roster(&self.roster_store, &action);
+        if outcome != StoreReduceOutcome::Changed {
+            return;
+        }
+        let members = self.roster_store.members();
+        let listeners = {
+            let l = self
+                .roster_listeners
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
+            l.clone()
+        };
+        for listener in listeners {
+            listener.on_changed(&members);
         }
     }
 
@@ -317,6 +438,9 @@ fn validate_and_log(action: &OrchestratorAction) {
         OrchestratorAction::StopIngestPolling => "StopIngestPolling",
         OrchestratorAction::StartHydrationPolling => "StartHydrationPolling",
         OrchestratorAction::StopHydrationPolling => "StopHydrationPolling",
+        OrchestratorAction::Reactions(_) => "Reactions",
+        OrchestratorAction::Pins(_) => "Pins",
+        OrchestratorAction::Roster(_) => "Roster",
     };
     crate::session::diag::log_diag(&format!("orchestrator: dispatch {label}"));
 }
