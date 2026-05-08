@@ -141,6 +141,9 @@ export const useWebSocket = (
         setSessionId(parsed.session_id)
         break
       case 'message': {
+        if (parsed.message_type === 'state-snapshot' || parsed.message_type === 'state-delta') {
+          break
+        }
         msgCounterRef.current += 1
         const id = `${parsed.ts}-${msgCounterRef.current}`
         const chat: ChatMessage = {
