@@ -974,20 +974,6 @@ pub async fn post_reaction(
     )
 }
 
-#[allow(dead_code)]
-fn broadcast_reactions_update_legacy(session: &session::Session) {
-    let msg = session::Message {
-        from: "bpmux".to_string(),
-        text: crate::bridge::REACTIONS_UPDATE_MARKER.to_string(),
-        ts: chrono::Utc::now(),
-        message_type: session::MessageType::System,
-        ..session::Message::default()
-    };
-    if let Err(e) = session.broadcast(&msg) {
-        session::diag::log_diag(&format!("rest: reactions-update broadcast failed: {e}"));
-    }
-}
-
 /// #387 cross-agent reaction visibility. The system-class
 /// REACTIONS_UPDATE_MARKER is filtered by the bridge before reaching
 /// MCP-bridged agents, so reactions were Electron-UI-only pre-#387.
