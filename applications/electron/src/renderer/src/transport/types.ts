@@ -19,6 +19,63 @@ export interface ServerChatMessage {
   to?: string[] | null
   addressee?: string | null
   message_type?: string | null
+  state_delta?: StateDeltaPayload | null
+  state_snapshot?: StateSnapshotPayload | null
+}
+
+export interface ReactionAggregateWire {
+  message_key: string
+  emoji: string
+  count: number
+  users: string[]
+}
+
+export interface PinnedMessageWire {
+  message_key: string
+  pinner: string
+  ts: string
+}
+
+export type CiStateWire = 'unknown' | 'green' | 'red' | 'running' | 'quota_exhausted'
+
+export interface CiSnapshotWire {
+  state: CiStateWire
+  run_id?: number | null
+  head_sha?: string | null
+  display_title?: string | null
+}
+
+export type RosterRoleWire = 'Designer' | 'Dev' | 'Pm' | 'Owner' | 'Other'
+
+export type PresenceWire = 'Online' | 'Busy' | 'Away' | 'Offline'
+
+export interface RosterMemberWire {
+  name: string
+  role: RosterRoleWire
+  presence: PresenceWire
+}
+
+export type StateDeltaPayload =
+  | { domain: 'reactions'; channel: string; aggregated: ReactionAggregateWire[] }
+  | { domain: 'pins'; channel: string; pins: PinnedMessageWire[] }
+  | { domain: 'ci'; snapshot: CiSnapshotWire }
+  | { domain: 'roster'; members: RosterMemberWire[] }
+
+export interface ReactionsChannelSnapshot {
+  channel: string
+  aggregated: ReactionAggregateWire[]
+}
+
+export interface PinsChannelSnapshot {
+  channel: string
+  pins: PinnedMessageWire[]
+}
+
+export interface StateSnapshotPayload {
+  reactions: ReactionsChannelSnapshot[]
+  pins: PinsChannelSnapshot[]
+  ci?: CiSnapshotWire | null
+  roster: RosterMemberWire[]
 }
 
 export interface ServerError {
