@@ -174,7 +174,7 @@ pub trait PinsBroadcastListener: Send + Sync {
     fn on_changed(&self, channel: &str, pins: &[PinnedMessage]);
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, serde::Deserialize)]
 pub enum RosterRole {
     Designer,
     Dev,
@@ -183,7 +183,7 @@ pub enum RosterRole {
     Other,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, serde::Deserialize)]
 pub enum Presence {
     Online,
     Busy,
