@@ -18,7 +18,12 @@ import {
 } from './icons/TitlebarIcons'
 import { useBoardWidthStorage } from './lib/useBoardWidthStorage'
 import Sidebar from './sidebar/Sidebar'
-import type { ChatMessage, CiSnapshotWire, ConnectionStatus } from './transport/types'
+import type {
+  ChatMessage,
+  CiSnapshotWire,
+  ConnectionStatus,
+  ReactionAggregateWire
+} from './transport/types'
 import { RENDERER_IDENTITY, type SendOptions } from './transport/useWebSocket'
 import './AppShell.css'
 
@@ -66,6 +71,7 @@ interface Props {
   onAtBottomChange?: (atBottom: boolean) => void
   onPinnedKeysChange?: (keys: ReadonlySet<string>) => void
   ciSnapshot?: CiSnapshotWire | null
+  mirrorReactions?: ReadonlyMap<string, ReactionAggregateWire[]>
 }
 
 const AppShell = ({
@@ -78,7 +84,8 @@ const AppShell = ({
   hasError,
   onAtBottomChange,
   onPinnedKeysChange,
-  ciSnapshot
+  ciSnapshot,
+  mirrorReactions
 }: Props): React.JSX.Element => {
   const statusLabel =
     status === 'connected' ? 'connected' : status === 'connecting' ? 'connecting' : 'disconnected'
@@ -245,6 +252,7 @@ const AppShell = ({
           hasError={hasError}
           onAtBottomChange={onAtBottomChange}
           onPinnedKeysChange={onPinnedKeysChange}
+          mirrorReactions={mirrorReactions}
         />
         {boardOpen ? (
           <BoardResizeHandle

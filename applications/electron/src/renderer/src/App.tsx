@@ -51,6 +51,7 @@ const App = (): React.JSX.Element => {
       onAtBottomChange={setAtBottom}
       onPinnedKeysChange={setPinnedKeys}
       ciSnapshot={mirror.ci}
+      mirrorReactions={mirror.reactions}
     />
   )
 }

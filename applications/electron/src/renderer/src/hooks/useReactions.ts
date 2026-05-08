@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { BOARD_INVALIDATE_MARKER, type ChatMessage } from '../transport/types'
+import {
+  BOARD_INVALIDATE_MARKER,
+  type ChatMessage,
+  type ReactionAggregateWire
+} from '../transport/types'
 
 // Must mirror applications/bpmux/src/bridge/tools_stories.rs's
 // REACTIONS_UPDATE_MARKER.
@@ -12,11 +16,17 @@ export interface AggregatedReaction {
   users: string[]
 }
 
+export const selectReactions = (
+  mirrorEntry: readonly ReactionAggregateWire[] | undefined,
+  restAggregated: readonly AggregatedReaction[]
+): readonly AggregatedReaction[] => mirrorEntry ?? restAggregated
+
 interface UseReactionsArgs {
   apiBase: string | undefined
   authToken: string | undefined
   channel: string
   messages: ChatMessage[]
+  mirrorReactions?: ReadonlyMap<string, ReactionAggregateWire[]>
 }
 
 export interface UseReactionsResult {
@@ -30,10 +40,12 @@ export function useReactions({
   apiBase,
   authToken,
   channel,
-  messages
+  messages,
+  mirrorReactions
 }: UseReactionsArgs): UseReactionsResult {
   const [aggregated, setAggregated] = useState<AggregatedReaction[]>([])
   const seenMessageCountRef = useRef<number>(messages.length)
+  const effectiveAggregated = selectReactions(mirrorReactions?.get(channel), aggregated)
 
   const fetchReactions = useCallback(async (): Promise<void> => {
     if (!apiBase) {
@@ -125,7 +137,7 @@ export function useReactions({
   )
 
   const byMessage = new Map<string, AggregatedReaction[]>()
-  for (const r of aggregated) {
+  for (const r of effectiveAggregated) {
     const list = byMessage.get(r.message_key)
     if (list) list.push(r)
     else byMessage.set(r.message_key, [r])
