@@ -137,13 +137,6 @@ export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected'
 // applications/bpmux/src/bridge/tools_stories.rs.
 export const BOARD_INVALIDATE_MARKER = '__BPMUX_BOARD_INVALIDATE__'
 
-// CI-state-change marker (#372). Broadcast by the backend's CI
-// watcher task when the main-branch run conclusion changes. CiGlyph
-// subscribes and refetches /api/ci immediately; the 15s client-side
-// poll stays as the safety net. Must mirror `CI_STATE_UPDATE_MARKER`
-// in applications/bpmux/src/bridge/tools_stories.rs.
-export const CI_STATE_UPDATE_MARKER = '__BPMUX_CI_STATE_UPDATE__'
-
 // Sync-status-change marker (#1164). Broadcast by the bridge's
 // run_drain_loop when a drain tick mutates state (queued events
 // pushed or errored). SyncStatusGlyph subscribes and refetches
@@ -151,11 +144,3 @@ export const CI_STATE_UPDATE_MARKER = '__BPMUX_CI_STATE_UPDATE__'
 // the resilience-fallback. Must mirror `SYNC_STATUS_UPDATE_MARKER`
 // in applications/bpmux/src/bridge/tools_stories.rs.
 export const SYNC_STATUS_UPDATE_MARKER = '__BPMUX_SYNC_STATUS_UPDATE__'
-
-// #402 team-roster substrate. Backend broadcasts on WS peer join /
-// leave / rename; `useTeamRoster` subscribes and refetches
-// `/api/roster` on receipt. Sidebar membership derives from the
-// roster, not from observed message senders — so teammates stay
-// visible even when they haven't spoken recently. Must mirror
-// `ROSTER_UPDATE_MARKER` in applications/bpmux/src/bridge/tools_stories.rs.
-export const ROSTER_UPDATE_MARKER = '__BPMUX_ROSTER_UPDATE__'

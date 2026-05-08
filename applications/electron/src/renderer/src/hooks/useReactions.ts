@@ -1,13 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  BOARD_INVALIDATE_MARKER,
-  type ChatMessage,
-  type ReactionAggregateWire
-} from '../transport/types'
-
-// Must mirror applications/bpmux/src/bridge/tools_stories.rs's
-// REACTIONS_UPDATE_MARKER.
-export const REACTIONS_UPDATE_MARKER = '__BPMUX_REACTIONS_UPDATE__'
+import { useCallback, useEffect, useState } from 'react'
+import type { ChatMessage, ReactionAggregateWire } from '../transport/types'
 
 export interface AggregatedReaction {
   message_key: string
@@ -43,8 +35,8 @@ export function useReactions({
   messages,
   mirrorReactions
 }: UseReactionsArgs): UseReactionsResult {
+  void messages
   const [aggregated, setAggregated] = useState<AggregatedReaction[]>([])
-  const seenMessageCountRef = useRef<number>(messages.length)
   const effectiveAggregated = selectReactions(mirrorReactions?.get(channel), aggregated)
 
   const fetchReactions = useCallback(async (): Promise<void> => {
@@ -71,24 +63,6 @@ export function useReactions({
   useEffect(() => {
     void fetchReactions()
   }, [fetchReactions])
-
-  useEffect(() => {
-    const prev = seenMessageCountRef.current
-    if (messages.length <= prev) {
-      seenMessageCountRef.current = messages.length
-      return
-    }
-    const fresh = messages.slice(prev)
-    seenMessageCountRef.current = messages.length
-    if (
-      fresh.some(
-        (m) =>
-          m.text === REACTIONS_UPDATE_MARKER || m.text === BOARD_INVALIDATE_MARKER
-      )
-    ) {
-      void fetchReactions()
-    }
-  }, [messages, fetchReactions])
 
   const toggle = useCallback(
     async (messageKey: string, emoji: string, user: string): Promise<void> => {

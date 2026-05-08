@@ -1,12 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import {
-  BOARD_INVALIDATE_MARKER,
-  type ChatMessage,
-  type PinnedMessageWire
-} from '../transport/types'
-
-// Must mirror applications/bpmux/src/session/pins.rs's PINS_UPDATE_MARKER.
-export const PINS_UPDATE_MARKER = '__BPMUX_PINS_UPDATE__'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import type { ChatMessage, PinnedMessageWire } from '../transport/types'
 
 export interface Pin {
   message_key: string
@@ -73,8 +66,8 @@ export function usePins({
   messages,
   mirrorPins
 }: UsePinsArgs): UsePinsResult {
+  void messages
   const [restPins, setRestPins] = useState<Pin[]>([])
-  const seenMessageCountRef = useRef<number>(messages.length)
   const pins = useMemo(
     () => [...selectPins(mirrorPins?.get(channel), restPins)],
     [mirrorPins, channel, restPins]
@@ -105,25 +98,6 @@ export function usePins({
   useEffect(() => {
     void fetchPins()
   }, [fetchPins])
-
-  // Subscribe to PINS_UPDATE_MARKER (and BOARD_INVALIDATE_MARKER as a
-  // defensive double-tap since some pin flows also mutate the board).
-  useEffect(() => {
-    const prev = seenMessageCountRef.current
-    if (messages.length <= prev) {
-      seenMessageCountRef.current = messages.length
-      return
-    }
-    const fresh = messages.slice(prev)
-    seenMessageCountRef.current = messages.length
-    if (
-      fresh.some(
-        (m) => m.text === PINS_UPDATE_MARKER || m.text === BOARD_INVALIDATE_MARKER
-      )
-    ) {
-      void fetchPins()
-    }
-  }, [messages, fetchPins])
 
   const pin = useCallback(
     async (m: { from: string; ts: string; text: string }, pinnedBy: string): Promise<void> => {

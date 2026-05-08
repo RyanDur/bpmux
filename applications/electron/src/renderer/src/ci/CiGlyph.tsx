@@ -1,11 +1,6 @@
 import { format } from 'date-fns'
-import { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  CI_STATE_UPDATE_MARKER,
-  type ChatMessage,
-  type CiSnapshotWire,
-  type CiStateWire
-} from '../transport/types'
+import { useCallback, useEffect, useState } from 'react'
+import type { ChatMessage, CiSnapshotWire, CiStateWire } from '../transport/types'
 import {
   derivedClassName,
   derivedDataState,
@@ -105,7 +100,7 @@ interface Props {
   ciSnapshot?: CiSnapshotWire | null
 }
 
-function CiGlyph({ messages, ciSnapshot }: Props): React.JSX.Element {
+function CiGlyph({ messages: _messages, ciSnapshot }: Props): React.JSX.Element {
   const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
   const [state, setState] = useState<CiStateReport | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -113,13 +108,6 @@ function CiGlyph({ messages, ciSnapshot }: Props): React.JSX.Element {
   // so the user can confirm the poll is alive even when CI is stably
   // green.
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
-  // #372: only react to NEW marker arrivals, not the hydration
-  // backfill on mount. Same seenMessageCountRef pattern as pins /
-  // reactions / timeline.
-  const seenMessageCountRef = useRef<number>(messages?.length ?? 0)
-  // Keep a stable reference to the fetch fn so the marker-watch
-  // effect can call it without re-running when messages mutate.
-  const fetchOnceRef = useRef<() => Promise<void>>(async () => {})
 
   const buildFetch = useCallback(
     (signal: AbortSignal, cancelledCheck: () => boolean) => async (): Promise<void> => {
@@ -155,7 +143,6 @@ function CiGlyph({ messages, ciSnapshot }: Props): React.JSX.Element {
     let cancelled = false
     const controller = new AbortController()
     const fetchOnce = buildFetch(controller.signal, () => cancelled)
-    fetchOnceRef.current = fetchOnce
     void fetchOnce()
     const id = setInterval(() => {
       void fetchOnce()
@@ -166,19 +153,6 @@ function CiGlyph({ messages, ciSnapshot }: Props): React.JSX.Element {
       clearInterval(id)
     }
   }, [bridge?.apiBase, buildFetch])
-
-  // #372 push-based update: on each new message batch, check for
-  // CI_STATE_UPDATE_MARKER and refetch. seenMessageCountRef ensures
-  // we ignore the hydration backfill.
-  useEffect(() => {
-    if (!messages) return
-    const prev = seenMessageCountRef.current
-    seenMessageCountRef.current = messages.length
-    if (messages.length <= prev) return
-    const newMessages = messages.slice(prev)
-    const hasCiUpdate = newMessages.some((m) => m.text === CI_STATE_UPDATE_MARKER)
-    if (hasCiUpdate) void fetchOnceRef.current()
-  }, [messages])
 
   const conclusion = ciSnapshot
     ? stateToConclusion(ciSnapshot.state)

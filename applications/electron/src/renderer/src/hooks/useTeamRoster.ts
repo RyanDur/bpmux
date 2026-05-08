@@ -1,9 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import {
-  ROSTER_UPDATE_MARKER,
-  type ChatMessage,
-  type RosterMemberWire
-} from '../transport/types'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import type { ChatMessage, RosterMemberWire } from '../transport/types'
 
 // #402 team-roster substrate. Source of truth for sidebar
 // membership (directs + combinatorial groups). Previously the
@@ -49,17 +45,12 @@ export function useTeamRoster({
   messages,
   mirrorRoster
 }: Props): readonly RosterEntry[] {
+  void messages
   const [restRoster, setRestRoster] = useState<readonly RosterEntry[]>([])
   const roster = useMemo(
     () => selectRoster(mirrorRoster, restRoster),
     [mirrorRoster, restRoster]
   )
-  // Seen-count pattern (mirrors useReactions / useCiGlyph): only
-  // react to NEW marker arrivals, not the hydration backfill on
-  // mount. Prevents a stampede of refetches when the initial
-  // message window resolves.
-  const seenMessageCountRef = useRef<number>(messages.length)
-  const fetchOnceRef = useRef<() => Promise<void>>(async () => {})
 
   const buildFetch = useCallback(
     (signal: AbortSignal, cancelledCheck: () => boolean) => async (): Promise<void> => {
@@ -88,25 +79,12 @@ export function useTeamRoster({
     let cancelled = false
     const controller = new AbortController()
     const fetchOnce = buildFetch(controller.signal, () => cancelled)
-    fetchOnceRef.current = fetchOnce
     void fetchOnce()
     return () => {
       cancelled = true
       controller.abort()
     }
   }, [apiBase, buildFetch])
-
-  // Push-based refresh: ROSTER_UPDATE_MARKER arriving in the message
-  // stream triggers a refetch. Gated by seenMessageCountRef so
-  // hydration backfill doesn't flood refetches.
-  useEffect(() => {
-    const prev = seenMessageCountRef.current
-    seenMessageCountRef.current = messages.length
-    if (messages.length <= prev) return
-    const newMessages = messages.slice(prev)
-    const hasRosterUpdate = newMessages.some((m) => m.text === ROSTER_UPDATE_MARKER)
-    if (hasRosterUpdate) void fetchOnceRef.current()
-  }, [messages])
 
   return roster
 }

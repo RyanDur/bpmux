@@ -1,8 +1,5 @@
 use std::sync::Arc;
 
-use crate::bridge::{
-    CI_STATE_UPDATE_MARKER, PINS_UPDATE_MARKER, REACTIONS_UPDATE_MARKER, ROSTER_UPDATE_MARKER,
-};
 use crate::ci::RunEntry;
 use crate::orchestrator::{
     AggregatedReaction, CiBroadcastListener, CiSnapshot, PinnedMessage, PinsBroadcastListener,
@@ -52,16 +49,6 @@ impl CiSessionBroadcaster {
 impl CiBroadcastListener for CiSessionBroadcaster {
     fn on_changed(&self, snap: &CiSnapshot) {
         let event = snap.to_ci_event();
-        let marker_msg = session::Message {
-            from: "bpmux".to_string(),
-            text: CI_STATE_UPDATE_MARKER.to_string(),
-            ts: chrono::Utc::now(),
-            message_type: session::MessageType::System,
-            ..session::Message::default()
-        };
-        if let Err(e) = self.session.broadcast(&marker_msg) {
-            session::diag::log_diag(&format!("ci_listener: marker broadcast failed: {e}"));
-        }
         broadcast_state_delta(
             &self.session,
             StateDeltaPayload::Ci {
@@ -88,19 +75,6 @@ impl CiBroadcastListener for CiSessionBroadcaster {
         if let Err(e) = self.session.broadcast(&dev_signal) {
             session::diag::log_diag(&format!("ci_listener: dev signal failed: {e}"));
         }
-    }
-}
-
-fn broadcast_marker(session: &session::Session, marker: &str, label: &str) {
-    let msg = session::Message {
-        from: "bpmux".to_string(),
-        text: marker.to_string(),
-        ts: chrono::Utc::now(),
-        message_type: session::MessageType::System,
-        ..session::Message::default()
-    };
-    if let Err(e) = session.broadcast(&msg) {
-        session::diag::log_diag(&format!("{label}: marker broadcast failed: {e}"));
     }
 }
 
@@ -176,7 +150,6 @@ impl ReactionsSessionBroadcaster {
 
 impl ReactionsBroadcastListener for ReactionsSessionBroadcaster {
     fn on_changed(&self, channel: &str, aggregated: &[AggregatedReaction]) {
-        broadcast_marker(&self.session, REACTIONS_UPDATE_MARKER, "reactions_listener");
         broadcast_state_delta(
             &self.session,
             StateDeltaPayload::Reactions {
@@ -200,7 +173,6 @@ impl PinsSessionBroadcaster {
 
 impl PinsBroadcastListener for PinsSessionBroadcaster {
     fn on_changed(&self, channel: &str, pins: &[PinnedMessage]) {
-        broadcast_marker(&self.session, PINS_UPDATE_MARKER, "pins_listener");
         broadcast_state_delta(
             &self.session,
             StateDeltaPayload::Pins {
@@ -224,7 +196,6 @@ impl RosterSessionBroadcaster {
 
 impl RosterBroadcastListener for RosterSessionBroadcaster {
     fn on_changed(&self, members: &[RosterMember]) {
-        broadcast_marker(&self.session, ROSTER_UPDATE_MARKER, "roster_listener");
         broadcast_state_delta(
             &self.session,
             StateDeltaPayload::Roster {
