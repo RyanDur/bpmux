@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -13,6 +14,17 @@ use super::events::{BoardEvent, EventMeta};
 use super::peer::PeerId;
 use super::store::{BoardStore, PersistError};
 use super::sync::{ConditionalBody, SourceAdapter, SyncError, is_permanent_push_failure};
+
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize,
+)]
+pub struct MutationId(pub u64);
+
+impl std::fmt::Display for MutationId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 pub fn default_outbox_path() -> Result<PathBuf, std::io::Error> {
     if let Ok(p) = std::env::var("BPMUX_BOARD_OUTBOX_PATH")
@@ -118,6 +130,8 @@ pub struct SyncStatus {
 /// normally).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QueuedEvent {
+    #[serde(default)]
+    pub id: MutationId,
     pub event: BoardEvent,
     #[serde(default)]
     pub pre_state: Option<Story>,
@@ -132,6 +146,16 @@ pub struct QueuedEvent {
 impl QueuedEvent {
     pub fn new(event: BoardEvent, pre_state: Option<Story>) -> Self {
         Self {
+            id: MutationId::default(),
+            event,
+            pre_state,
+            last_classification: None,
+        }
+    }
+
+    pub fn new_with_id(id: MutationId, event: BoardEvent, pre_state: Option<Story>) -> Self {
+        Self {
+            id,
             event,
             pre_state,
             last_classification: None,
@@ -140,6 +164,7 @@ impl QueuedEvent {
 
     pub fn from_legacy(event: BoardEvent) -> Self {
         Self {
+            id: MutationId::default(),
             event,
             pre_state: None,
             last_classification: None,
@@ -212,6 +237,8 @@ pub struct SyncOrchestrator<A: SourceAdapter + 'static> {
     status: Arc<Mutex<SyncStatus>>,
     pending: Arc<Mutex<VecDeque<QueuedEvent>>>,
     outbox_path: Option<PathBuf>,
+    next_mutation_id: AtomicU64,
+    action_tx: Option<tokio::sync::mpsc::UnboundedSender<crate::orchestrator::OrchestratorAction>>,
 }
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
@@ -222,6 +249,8 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             status: Arc::new(Mutex::new(SyncStatus::default())),
             pending: Arc::new(Mutex::new(VecDeque::new())),
             outbox_path: None,
+            next_mutation_id: AtomicU64::new(1),
+            action_tx: None,
         }
     }
 
@@ -231,6 +260,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         path: PathBuf,
     ) -> Result<Self, PersistError> {
         let pending = load_outbox_from_disk(&path)?;
+        let next = pending.iter().map(|e| e.id.0).max().unwrap_or(0) + 1;
         Ok(Self {
             store,
             adapter,
@@ -240,7 +270,17 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             })),
             pending: Arc::new(Mutex::new(pending)),
             outbox_path: Some(path),
+            next_mutation_id: AtomicU64::new(next),
+            action_tx: None,
         })
+    }
+
+    pub fn with_action_tx(
+        mut self,
+        tx: tokio::sync::mpsc::UnboundedSender<crate::orchestrator::OrchestratorAction>,
+    ) -> Self {
+        self.action_tx = Some(tx);
+        self
     }
 
     fn persist_outbox(&self) {
@@ -260,6 +300,12 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         Arc::clone(&self.status)
     }
 
+    #[cfg(test)]
+    pub fn snapshot_pending_for_test(&self) -> VecDeque<QueuedEvent> {
+        let p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
+        p.clone()
+    }
+
     pub fn store(&self) -> Arc<BoardStore> {
         Arc::clone(&self.store)
     }
@@ -273,14 +319,20 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         // says "already applied" because the local apply ran first.
         // The pre_state captures temporal context the comparison
         // needs.
+        let id = MutationId(self.next_mutation_id.fetch_add(1, Ordering::SeqCst));
         let pre_state = self.store.story(event.story_number());
         self.store.apply(&event);
         {
             let mut p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
-            p.push_back(QueuedEvent::new(event, pre_state));
+            p.push_back(QueuedEvent::new_with_id(id, event, pre_state));
         }
         self.persist_outbox();
         bump_pending(&self.status, 1);
+        if let Some(tx) = &self.action_tx {
+            let _ = tx.send(crate::orchestrator::OrchestratorAction::StartUpdateGithub {
+                mutation_id: id,
+            });
+        }
         Ok(())
     }
 

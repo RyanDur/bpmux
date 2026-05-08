@@ -15,7 +15,10 @@ fn test_mode_enabled() -> bool {
         .unwrap_or(false)
 }
 
-async fn build_test_orchestrator(session: Arc<session::Session>) -> Arc<dyn RefreshDriver> {
+async fn build_test_orchestrator(
+    session: Arc<session::Session>,
+    action_tx: Option<tokio::sync::mpsc::UnboundedSender<crate::orchestrator::OrchestratorAction>>,
+) -> Arc<dyn RefreshDriver> {
     let _ = session;
     let mut corruption_detected = false;
     let store = match crate::board::default_store_path() {
@@ -34,15 +37,20 @@ async fn build_test_orchestrator(session: Arc<session::Session>) -> Arc<dyn Refr
         Err(_) => Arc::new(BoardStore::new()),
     };
     let adapter = Arc::new(crate::board::adapters::in_memory::InMemorySourceAdapter::new());
-    let orch: Arc<dyn RefreshDriver> = match crate::board::default_outbox_path() {
+    let orch_concrete = match crate::board::default_outbox_path() {
         Ok(path) => {
             match SyncOrchestrator::with_outbox_path(store.clone(), adapter.clone(), path) {
-                Ok(o) => Arc::new(o),
-                Err(_) => Arc::new(SyncOrchestrator::new(store, adapter)),
+                Ok(o) => o,
+                Err(_) => SyncOrchestrator::new(store, adapter),
             }
         }
-        Err(_) => Arc::new(SyncOrchestrator::new(store, adapter)),
+        Err(_) => SyncOrchestrator::new(store, adapter),
     };
+    let orch_concrete = match action_tx {
+        Some(tx) => orch_concrete.with_action_tx(tx),
+        None => orch_concrete,
+    };
+    let orch: Arc<dyn RefreshDriver> = Arc::new(orch_concrete);
     if corruption_detected {
         orch.mark_recovering_from_corruption();
     }
@@ -56,6 +64,7 @@ async fn build_test_orchestrator(session: Arc<session::Session>) -> Arc<dyn Refr
 
 async fn build_prod_orchestrator(
     adapter: Arc<crate::board::adapters::github::GitHubSourceAdapter>,
+    action_tx: Option<tokio::sync::mpsc::UnboundedSender<crate::orchestrator::OrchestratorAction>>,
 ) -> Arc<dyn RefreshDriver> {
     let store_path = match crate::board::default_store_path() {
         Ok(p) => Some(p),
@@ -97,7 +106,7 @@ async fn build_prod_orchestrator(
             None
         }
     };
-    let orch: Arc<dyn RefreshDriver> = match outbox_path.as_ref() {
+    let orch_concrete = match outbox_path.as_ref() {
         Some(path) => {
             match SyncOrchestrator::with_outbox_path(store.clone(), adapter.clone(), path.clone()) {
                 Ok(o) => {
@@ -105,18 +114,23 @@ async fn build_prod_orchestrator(
                     crate::session::diag::log_diag(&format!(
                         "server: board-outbox hydrated from disk ({pending_count} pending events at {path:?})"
                     ));
-                    Arc::new(o)
+                    o
                 }
                 Err(e) => {
                     crate::session::diag::log_diag(&format!(
                         "server: board-outbox disk-load failed ({e}); starting with empty outbox"
                     ));
-                    Arc::new(SyncOrchestrator::new(store.clone(), adapter.clone()))
+                    SyncOrchestrator::new(store.clone(), adapter.clone())
                 }
             }
         }
-        None => Arc::new(SyncOrchestrator::new(store.clone(), adapter.clone())),
+        None => SyncOrchestrator::new(store.clone(), adapter.clone()),
     };
+    let orch_concrete = match action_tx {
+        Some(tx) => orch_concrete.with_action_tx(tx),
+        None => orch_concrete,
+    };
+    let orch: Arc<dyn RefreshDriver> = Arc::new(orch_concrete);
     if corruption_detected {
         orch.mark_recovering_from_corruption();
         crate::session::diag::log_diag(
@@ -210,13 +224,16 @@ pub async fn run_server(
     let tracker: transport::rest::TrackerHandle =
         crate::board::adapters::github::GitHubSourceAdapter::from_env().map(std::sync::Arc::new);
 
+    let (action_tx, action_rx) =
+        tokio::sync::mpsc::unbounded_channel::<crate::orchestrator::OrchestratorAction>();
+
     let test_refresh: TestRefreshHandle = if test_mode_enabled() {
         eprintln!(
             "[bpmux server] BPMUX_TEST_MODE=1 — instantiating in-memory orchestrator for acceptance tests"
         );
-        Some(build_test_orchestrator(session.clone()).await)
+        Some(build_test_orchestrator(session.clone(), Some(action_tx.clone())).await)
     } else if let Some(tracker_arc) = tracker.as_ref().cloned() {
-        Some(build_prod_orchestrator(tracker_arc).await)
+        Some(build_prod_orchestrator(tracker_arc, Some(action_tx.clone())).await)
     } else {
         None
     };
@@ -253,6 +270,7 @@ pub async fn run_server(
         );
     }
     let orchestrator = std::sync::Arc::new(orchestrator_inner);
+    orchestrator.spawn_action_drainer(action_rx);
     orchestrator.add_ci_listener(std::sync::Arc::new(
         crate::orchestrator::CiStateStoreWriter::new(ci_state_store.clone()),
     ));

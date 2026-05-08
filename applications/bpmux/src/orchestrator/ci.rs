@@ -6,7 +6,7 @@ use std::time::Duration;
 use tokio::sync::Mutex as AsyncMutex;
 use tokio_util::sync::CancellationToken;
 
-use crate::board::RefreshDriver;
+use crate::board::{MutationId, RefreshDriver};
 use crate::bridge::tracker::ConditionalRunEntry;
 use crate::ci::{CiEvent, CiState};
 use crate::github::RateLimitObserver;
@@ -47,16 +47,16 @@ pub enum OrchestratorAction {
     Pins(PinsAction),
     Roster(RosterAction),
     StartUpdateGithub {
-        mutation_id: u64,
+        mutation_id: MutationId,
     },
     StopUpdateGithub {
-        mutation_id: u64,
+        mutation_id: MutationId,
     },
     MutationConfirmed {
-        mutation_id: u64,
+        mutation_id: MutationId,
     },
     MutationRolledBack {
-        mutation_id: u64,
+        mutation_id: MutationId,
         server_story: Option<crate::board::domain::Story>,
     },
 }
@@ -152,7 +152,7 @@ pub struct Orchestrator<T: CiPollFetch> {
     pins_store: Arc<PinsStore>,
     roster_store: Arc<RosterStore>,
     tokens: AsyncMutex<HashMap<PollKind, CancellationToken>>,
-    mutation_tokens: AsyncMutex<HashMap<u64, CancellationToken>>,
+    mutation_tokens: AsyncMutex<HashMap<MutationId, CancellationToken>>,
     listeners: Mutex<Vec<Arc<dyn CiBroadcastListener>>>,
     reactions_listeners: Mutex<Vec<Arc<dyn ReactionsBroadcastListener>>>,
     pins_listeners: Mutex<Vec<Arc<dyn PinsBroadcastListener>>>,
@@ -330,6 +330,25 @@ impl<T: CiPollFetch> Orchestrator<T> {
         listeners.push(listener);
     }
 
+    pub fn spawn_action_drainer(
+        self: &Arc<Self>,
+        mut rx: tokio::sync::mpsc::UnboundedReceiver<OrchestratorAction>,
+    ) -> tokio::task::JoinHandle<()> {
+        let this = Arc::clone(self);
+        let parent_ct = self.parent_ct.clone();
+        tokio::spawn(async move {
+            loop {
+                tokio::select! {
+                    _ = parent_ct.cancelled() => return,
+                    maybe = rx.recv() => match maybe {
+                        Some(action) => this.dispatch(action).await,
+                        None => return,
+                    }
+                }
+            }
+        })
+    }
+
     pub async fn dispatch(self: &Arc<Self>, action: OrchestratorAction) {
         validate_and_log(&action);
         match action {
@@ -363,7 +382,7 @@ impl<T: CiPollFetch> Orchestrator<T> {
         }
     }
 
-    async fn middleware_start_update_github(self: &Arc<Self>, mutation_id: u64) {
+    async fn middleware_start_update_github(self: &Arc<Self>, mutation_id: MutationId) {
         let mut tokens = self.mutation_tokens.lock().await;
         if tokens.contains_key(&mutation_id) {
             return;
@@ -372,14 +391,14 @@ impl<T: CiPollFetch> Orchestrator<T> {
         tokens.insert(mutation_id, local_ct);
     }
 
-    async fn middleware_stop_update_github(self: &Arc<Self>, mutation_id: u64) {
+    async fn middleware_stop_update_github(self: &Arc<Self>, mutation_id: MutationId) {
         let mut tokens = self.mutation_tokens.lock().await;
         if let Some(ct) = tokens.remove(&mutation_id) {
             ct.cancel();
         }
     }
 
-    async fn middleware_mutation_confirmed(self: &Arc<Self>, mutation_id: u64) {
+    async fn middleware_mutation_confirmed(self: &Arc<Self>, mutation_id: MutationId) {
         let mut tokens = self.mutation_tokens.lock().await;
         tokens.remove(&mutation_id);
     }
@@ -449,6 +468,12 @@ impl<T: CiPollFetch> Orchestrator<T> {
     pub async fn is_running(&self, kind: PollKind) -> bool {
         let tokens = self.tokens.lock().await;
         tokens.contains_key(&kind)
+    }
+
+    #[cfg(test)]
+    pub async fn mutation_tokens_contains_for_test(&self, id: MutationId) -> bool {
+        let tokens = self.mutation_tokens.lock().await;
+        tokens.contains_key(&id)
     }
 
     async fn spawn_lifecycle_proxy(&self, local_ct: CancellationToken, task_ct: CancellationToken) {

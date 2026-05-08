@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -200,6 +200,52 @@ async fn stop_ci_polling_without_start_no_op() {
     ));
     orch.dispatch(CiAction::StopCiPolling).await;
     assert!(!orch.is_running(PollKind::Ci).await);
+}
+
+#[tokio::test]
+async fn spawn_action_drainer_routes_channel_actions_into_dispatch() {
+    use crate::board::MutationId;
+    let (session, _dir) = fresh_session();
+    let orch: Arc<Orchestrator<GitHubSourceAdapter>> = Arc::new(Orchestrator::new(
+        session,
+        None,
+        CiStateStore::new(),
+        CancellationToken::new(),
+    ));
+    let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<OrchestratorAction>();
+    orch.spawn_action_drainer(rx);
+
+    tx.send(OrchestratorAction::StartUpdateGithub {
+        mutation_id: MutationId(7),
+    })
+    .expect("send into drainer channel");
+
+    for _ in 0..50 {
+        tokio::time::sleep(Duration::from_millis(20)).await;
+        if orch.mutation_tokens_contains_for_test(MutationId(7)).await {
+            return;
+        }
+    }
+    panic!("drainer did not dispatch StartUpdateGithub within 1s");
+}
+
+#[tokio::test]
+async fn spawn_action_drainer_exits_on_parent_cancel() {
+    let parent = CancellationToken::new();
+    let (session, _dir) = fresh_session();
+    let orch: Arc<Orchestrator<GitHubSourceAdapter>> = Arc::new(Orchestrator::new(
+        session,
+        None,
+        CiStateStore::new(),
+        parent.clone(),
+    ));
+    let (_tx, rx) = tokio::sync::mpsc::unbounded_channel::<OrchestratorAction>();
+    let handle = orch.spawn_action_drainer(rx);
+    parent.cancel();
+    tokio::time::timeout(Duration::from_secs(1), handle)
+        .await
+        .expect("drainer terminates within 1s of parent cancel")
+        .expect("drainer task joins cleanly");
 }
 
 #[tokio::test]

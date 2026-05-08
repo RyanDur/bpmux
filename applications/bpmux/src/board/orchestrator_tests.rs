@@ -938,3 +938,97 @@ mod outbox_persistence {
         );
     }
 }
+
+mod slice_7_2_mutation_id_dispatch {
+    use super::*;
+    use crate::board::MutationId;
+    use crate::orchestrator::OrchestratorAction;
+
+    #[tokio::test]
+    async fn mutate_dispatches_start_update_github_with_unique_id() {
+        let store = Arc::new(BoardStore::new());
+        let adapter = Arc::new(InMemorySourceAdapter::new());
+        adapter.seed_stories(vec![
+            seed_story(101, StoryState::Ready),
+            seed_story(102, StoryState::Ready),
+        ]);
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<OrchestratorAction>();
+        let orch =
+            SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter)).with_action_tx(tx);
+        orch.ingest_once().await.unwrap();
+
+        orch.mutate(BoardEvent::StateTransitioned {
+            meta: meta(),
+            number: 101,
+            new_state: StoryState::InProgress,
+        })
+        .unwrap();
+        orch.mutate(BoardEvent::StateTransitioned {
+            meta: meta(),
+            number: 102,
+            new_state: StoryState::InProgress,
+        })
+        .unwrap();
+
+        let action_a = rx.try_recv().expect("first dispatch");
+        let action_b = rx.try_recv().expect("second dispatch");
+        let id_a = match action_a {
+            OrchestratorAction::StartUpdateGithub { mutation_id } => mutation_id,
+            other => panic!("expected StartUpdateGithub, got {other:?}"),
+        };
+        let id_b = match action_b {
+            OrchestratorAction::StartUpdateGithub { mutation_id } => mutation_id,
+            other => panic!("expected StartUpdateGithub, got {other:?}"),
+        };
+        assert_ne!(id_a, id_b, "consecutive mutates allocate distinct ids");
+        assert!(id_a.0 >= 1 && id_b.0 >= 1, "ids start at 1, not 0");
+    }
+
+    #[tokio::test]
+    async fn mutate_without_action_tx_does_not_panic() {
+        let store = Arc::new(BoardStore::new());
+        let adapter = Arc::new(InMemorySourceAdapter::new());
+        adapter.seed_stories(vec![seed_story(201, StoryState::Ready)]);
+        let orch = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter));
+        orch.ingest_once().await.unwrap();
+        orch.mutate(BoardEvent::StateTransitioned {
+            meta: meta(),
+            number: 201,
+            new_state: StoryState::InProgress,
+        })
+        .unwrap();
+    }
+
+    #[tokio::test]
+    async fn queued_event_carries_allocated_id() {
+        let store = Arc::new(BoardStore::new());
+        let adapter = Arc::new(InMemorySourceAdapter::new());
+        adapter.seed_stories(vec![seed_story(301, StoryState::Ready)]);
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<OrchestratorAction>();
+        let orch =
+            SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter)).with_action_tx(tx);
+        orch.ingest_once().await.unwrap();
+        orch.mutate(BoardEvent::StateTransitioned {
+            meta: meta(),
+            number: 301,
+            new_state: StoryState::InProgress,
+        })
+        .unwrap();
+
+        let action = rx.try_recv().expect("dispatch fires");
+        let dispatched_id = match action {
+            OrchestratorAction::StartUpdateGithub { mutation_id } => mutation_id,
+            other => panic!("expected StartUpdateGithub, got {other:?}"),
+        };
+        let pending = orch.snapshot_pending_for_test();
+        let queued_id = pending.front().map(|q| q.id).expect("one queued event");
+        assert_eq!(
+            dispatched_id, queued_id,
+            "dispatched id matches QueuedEvent.id"
+        );
+        assert!(
+            dispatched_id != MutationId::default(),
+            "allocated id is non-default"
+        );
+    }
+}
