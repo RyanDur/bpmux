@@ -249,15 +249,19 @@ pub async fn run_server(
     let ci_log_store = crate::transport::ci_log_store::CiLogStore::new();
     let electron_capture_lock: std::sync::Arc<tokio::sync::Mutex<()>> =
         std::sync::Arc::new(tokio::sync::Mutex::new(()));
-    let polling_control =
-        std::sync::Arc::new(crate::transport::polling_control::PollingControl::new(
-            session.clone(),
-            tracker.as_ref().cloned(),
-            ci_state_store.clone(),
-            ct.clone(),
-        ));
-    polling_control
-        .dispatch(crate::transport::polling_control::PollAction::StartCi)
+    let orchestrator = std::sync::Arc::new(crate::orchestrator::Orchestrator::new(
+        session.clone(),
+        tracker.as_ref().cloned(),
+        ct.clone(),
+    ));
+    orchestrator.add_ci_listener(std::sync::Arc::new(
+        crate::orchestrator::CiStateStoreWriter::new(ci_state_store.clone()),
+    ));
+    orchestrator.add_ci_listener(std::sync::Arc::new(
+        crate::orchestrator::CiSessionBroadcaster::new(session.clone()),
+    ));
+    orchestrator
+        .dispatch(crate::orchestrator::CiAction::StartCiPolling)
         .await;
 
     // Unfurl cache (#343). One instance for the server lifetime so

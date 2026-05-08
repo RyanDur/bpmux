@@ -1,0 +1,217 @@
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+
+use tokio::sync::Mutex as AsyncMutex;
+use tokio_util::sync::CancellationToken;
+
+use crate::board::adapters::github::GitHubSourceAdapter;
+use crate::ci::{CiEvent, CiState};
+use crate::github::RateLimitObserver;
+use crate::session;
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum PollKind {
+    Ci,
+}
+
+#[derive(Clone, Debug)]
+pub enum CiAction {
+    StartCiPolling,
+    StopCiPolling,
+    CiUpdated(CiSnapshot),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CiSnapshot {
+    pub state: CiState,
+    pub run_id: Option<u64>,
+    pub head_sha: Option<String>,
+    pub display_title: Option<String>,
+    pub conclusion: &'static str,
+}
+
+impl CiSnapshot {
+    pub fn to_ci_event(&self) -> CiEvent {
+        CiEvent {
+            state: self.state,
+            sha: self.head_sha.clone(),
+            title: self.display_title.clone(),
+            run_id: self.run_id,
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct CiStore {
+    inner: Mutex<CiStoreState>,
+}
+
+#[derive(Default, Clone)]
+struct CiStoreState {
+    last_seen: Option<(Option<u64>, &'static str)>,
+    snapshot: Option<CiSnapshot>,
+}
+
+impl CiStore {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn snapshot(&self) -> Option<CiSnapshot> {
+        let state = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+        state.snapshot.clone()
+    }
+
+    pub fn last_seen(&self) -> Option<(Option<u64>, &'static str)> {
+        let state = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+        state.last_seen
+    }
+
+    fn apply(&self, action: &CiAction) -> CiReduceOutcome {
+        match action {
+            CiAction::CiUpdated(snap) => {
+                let mut state = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+                let key = (snap.run_id, snap.conclusion);
+                let changed = state.last_seen != Some(key);
+                state.last_seen = Some(key);
+                state.snapshot = Some(snap.clone());
+                if changed {
+                    CiReduceOutcome::Changed
+                } else {
+                    CiReduceOutcome::Unchanged
+                }
+            }
+            CiAction::StartCiPolling | CiAction::StopCiPolling => CiReduceOutcome::Unchanged,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CiReduceOutcome {
+    Changed,
+    Unchanged,
+}
+
+pub trait CiBroadcastListener: Send + Sync {
+    fn on_changed(&self, snap: &CiSnapshot);
+}
+
+pub struct Orchestrator {
+    session: Arc<session::Session>,
+    tracker: Option<Arc<GitHubSourceAdapter>>,
+    parent_ct: CancellationToken,
+    rate_limit_observer: RateLimitObserver,
+    ci_store: Arc<CiStore>,
+    tokens: AsyncMutex<HashMap<PollKind, CancellationToken>>,
+    listeners: Mutex<Vec<Arc<dyn CiBroadcastListener>>>,
+}
+
+impl Orchestrator {
+    pub fn new(
+        session: Arc<session::Session>,
+        tracker: Option<Arc<GitHubSourceAdapter>>,
+        parent_ct: CancellationToken,
+    ) -> Self {
+        let rate_limit_observer = tracker
+            .as_ref()
+            .map(|t| t.rate_limit_observer())
+            .unwrap_or_default();
+        Self {
+            session,
+            tracker,
+            parent_ct,
+            rate_limit_observer,
+            ci_store: Arc::new(CiStore::new()),
+            tokens: AsyncMutex::new(HashMap::new()),
+            listeners: Mutex::new(Vec::new()),
+        }
+    }
+
+    pub fn ci_store(&self) -> Arc<CiStore> {
+        Arc::clone(&self.ci_store)
+    }
+
+    pub fn rate_limit_observer(&self) -> &RateLimitObserver {
+        &self.rate_limit_observer
+    }
+
+    pub fn session(&self) -> Arc<session::Session> {
+        Arc::clone(&self.session)
+    }
+
+    pub fn add_ci_listener(&self, listener: Arc<dyn CiBroadcastListener>) {
+        let mut listeners = self.listeners.lock().unwrap_or_else(|e| e.into_inner());
+        listeners.push(listener);
+    }
+
+    pub async fn dispatch(self: &Arc<Self>, action: CiAction) {
+        validate_and_log(&action);
+        match action {
+            CiAction::StartCiPolling => self.middleware_start_ci().await,
+            CiAction::StopCiPolling => self.middleware_stop(PollKind::Ci).await,
+            CiAction::CiUpdated(_) => self.middleware_ci_updated(action).await,
+        }
+    }
+
+    pub async fn is_running(&self, kind: PollKind) -> bool {
+        let tokens = self.tokens.lock().await;
+        tokens.contains_key(&kind)
+    }
+
+    async fn middleware_start_ci(self: &Arc<Self>) {
+        let Some(tracker) = self.tracker.as_ref().cloned() else {
+            return;
+        };
+        let mut tokens = self.tokens.lock().await;
+        if tokens.contains_key(&PollKind::Ci) {
+            return;
+        }
+        let local_ct = CancellationToken::new();
+        let task_ct = CancellationToken::new();
+        let parent_clone = self.parent_ct.clone();
+        let local_clone = local_ct.clone();
+        let task_clone = task_ct.clone();
+        tokio::spawn(async move {
+            tokio::select! {
+                _ = parent_clone.cancelled() => {}
+                _ = local_clone.cancelled() => {}
+            }
+            task_clone.cancel();
+        });
+        crate::transport::ci_watcher::spawn(Arc::clone(self), tracker, task_ct);
+        tokens.insert(PollKind::Ci, local_ct);
+    }
+
+    async fn middleware_stop(&self, kind: PollKind) {
+        let mut tokens = self.tokens.lock().await;
+        if let Some(token) = tokens.remove(&kind) {
+            token.cancel();
+        }
+    }
+
+    async fn middleware_ci_updated(&self, action: CiAction) {
+        let outcome = self.ci_store.apply(&action);
+        if outcome == CiReduceOutcome::Changed {
+            let snap = match action {
+                CiAction::CiUpdated(s) => s,
+                _ => return,
+            };
+            let listeners = {
+                let l = self.listeners.lock().unwrap_or_else(|e| e.into_inner());
+                l.clone()
+            };
+            for listener in listeners {
+                listener.on_changed(&snap);
+            }
+        }
+    }
+}
+
+fn validate_and_log(action: &CiAction) {
+    let label = match action {
+        CiAction::StartCiPolling => "StartCiPolling",
+        CiAction::StopCiPolling => "StopCiPolling",
+        CiAction::CiUpdated(_) => "CiUpdated",
+    };
+    crate::session::diag::log_diag(&format!("orchestrator: dispatch {label}"));
+}

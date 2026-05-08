@@ -7,6 +7,7 @@ pub mod ci;
 mod ci_tests;
 pub mod github;
 pub mod mcp;
+pub mod orchestrator;
 pub mod reload;
 pub mod roadmap;
 pub mod server;

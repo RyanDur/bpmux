@@ -40,8 +40,8 @@ use std::time::Duration;
 use tokio_util::sync::CancellationToken;
 
 use crate::board::adapters::github::GitHubSourceAdapter;
+use crate::orchestrator::{CiAction, CiSnapshot, Orchestrator};
 use crate::session;
-use crate::transport::ci_state_store::CiStateStore;
 
 pub const POLL_INTERVAL: Duration = Duration::from_secs(10);
 pub const MAX_BACKOFF: Duration = Duration::from_secs(3600);
@@ -84,20 +84,17 @@ pub fn classify_transition(prev: Option<Observation>, current: Observation) -> T
 /// errors beyond a diag-log entry — the frontend's 15s poll catches
 /// up next tick regardless.
 pub fn spawn(
-    session: Arc<session::Session>,
+    orchestrator: Arc<Orchestrator>,
     tracker: Arc<GitHubSourceAdapter>,
-    ci_state_store: CiStateStore,
     ct: CancellationToken,
 ) {
-    let observer = tracker.rate_limit_observer();
+    let observer = orchestrator.rate_limit_observer().clone();
     tokio::spawn(async move {
-        let mut last_seen: Option<Observation> = None;
         let mut last_etag: Option<String> = None;
         let mut interval = tokio::time::interval(POLL_INTERVAL);
         let base_backoff = Duration::from_secs(60);
         let max_backoff = MAX_BACKOFF;
         let mut backoff = base_backoff;
-        let mut first = true;
         loop {
             tokio::select! {
                 _ = ct.cancelled() => break,
@@ -109,7 +106,6 @@ pub fn spawn(
             let report = match conditional {
                 Ok(crate::bridge::tracker::ConditionalRunEntry::NotModified) => {
                     backoff = base_backoff;
-                    ci_state_store.mark_poll_succeeded();
                     continue;
                 }
                 Ok(crate::bridge::tracker::ConditionalRunEntry::Modified { entry, etag }) => {
@@ -119,7 +115,6 @@ pub fn spawn(
                 }
                 Ok(crate::bridge::tracker::ConditionalRunEntry::Empty) => {
                     backoff = base_backoff;
-                    ci_state_store.mark_poll_succeeded();
                     continue;
                 }
                 Err(e) => {
@@ -145,10 +140,6 @@ pub fn spawn(
                     continue;
                 }
             };
-            // Reuse the existing classifier so watcher + REST endpoint
-            // + MCP tool all agree on what "success / failure /
-            // in_progress / unknown" looks like. Single source of
-            // truth for the state vocabulary.
             let run_id = report.database_id;
             let runs = vec![crate::ci::RunEntry {
                 status: report.status,
@@ -156,9 +147,6 @@ pub fn spawn(
                 head_sha: report.head_sha,
                 display_title: report.display_title,
                 database_id: report.database_id,
-                // #397: annotation_message flows from tracker's
-                // list_latest_run_on_main when conclusion=failure,
-                // enabling QuotaExhausted classification.
                 annotation_message: report.annotation_message,
             }];
             let classified = crate::ci::classify_runs(&runs);
@@ -169,70 +157,14 @@ pub fn spawn(
                 crate::ci::CiState::QuotaExhausted => "quota_exhausted",
                 crate::ci::CiState::Unknown => "unknown",
             };
-            let cached_report = crate::bridge::tools::build_ci_state_report(&runs);
-            ci_state_store.write(cached_report);
-            let observation: Observation = (run_id, current);
-            if first {
-                last_seen = Some(observation);
-                first = false;
-                continue;
-            }
-            match classify_transition(last_seen, observation) {
-                Transition::Changed { .. } => {
-                    last_seen = Some(observation);
-                    let event = crate::ci::CiEvent {
-                        state: classified.state,
-                        sha: runs[0].head_sha.clone(),
-                        title: runs[0].display_title.clone(),
-                        run_id,
-                    };
-                    broadcast(&session, &event);
-                }
-                Transition::Same | Transition::NoData => {}
-            }
+            let snapshot = CiSnapshot {
+                state: classified.state,
+                run_id,
+                head_sha: runs[0].head_sha.clone(),
+                display_title: runs[0].display_title.clone(),
+                conclusion: current,
+            };
+            orchestrator.dispatch(CiAction::CiUpdated(snapshot)).await;
         }
     });
-}
-
-/// Per-completion broadcast (#1140 rework):
-/// - Fires the existing `CI_STATE_UPDATE_MARKER` (System-class, filtered by
-///   the bridge before reaching agents) so the renderer's CiGlyph
-///   re-fetches `/api/ci`.
-/// - ALSO fires the agent-visible Activity broadcast + dev-addressed
-///   workflow signal via `terminal::ci`'s pure builders. Same shape as
-///   the TUI poller emits, so an agent receives one signal regardless
-///   of which poller observes the completion. Closes #1140's
-///   silent-hold-loop class at the SERVER's runtime path (this watcher
-///   is what `server.rs:163` spawns; the TUI's `terminal::ci::spawn_poller`
-///   is a separate poller that doesn't run in Electron-spawned bpmux).
-fn broadcast(session: &session::Session, event: &crate::ci::CiEvent) {
-    let marker_msg = session::Message {
-        from: "bpmux".to_string(),
-        text: crate::bridge::CI_STATE_UPDATE_MARKER.to_string(),
-        ts: chrono::Utc::now(),
-        message_type: session::MessageType::System,
-        ..session::Message::default()
-    };
-    if let Err(e) = session.broadcast(&marker_msg) {
-        session::diag::log_diag(&format!("ci_watcher: marker broadcast failed: {e}"));
-    }
-    let Some(text) = crate::ci::compute_broadcast_text(event) else {
-        return;
-    };
-    let multi_depth = crate::ci::build_multi_depth_for_transition(event);
-    let activity_msg = session::Message {
-        from: "bpmux".to_string(),
-        text: text.clone(),
-        ts: chrono::Utc::now(),
-        message_type: session::MessageType::Activity,
-        multi_depth: Some(multi_depth),
-        ..session::Message::default()
-    };
-    if let Err(e) = session.broadcast(&activity_msg) {
-        session::diag::log_diag(&format!("ci_watcher: activity broadcast failed: {e}"));
-    }
-    let dev_signal = crate::ci::build_dev_ci_signal(&text);
-    if let Err(e) = session.broadcast(&dev_signal) {
-        session::diag::log_diag(&format!("ci_watcher: dev signal failed: {e}"));
-    }
 }
