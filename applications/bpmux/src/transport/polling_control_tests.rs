@@ -39,6 +39,15 @@ async fn dispatch_stop_without_start_no_op() {
 }
 
 #[tokio::test]
+async fn rate_limit_observer_exposed_for_step_2_centralization() {
+    let (session, _dir) = fresh_session();
+    let pc = PollingControl::new(session, None, CiStateStore::new(), CancellationToken::new());
+    let snapshot = pc.rate_limit_observer().snapshot();
+    assert_eq!(snapshot.retry_after_wake_epoch, 0);
+    assert_eq!(snapshot.ratelimit_reset_epoch, 0);
+}
+
+#[tokio::test]
 async fn parent_cancel_stops_running_poll() {
     let parent = CancellationToken::new();
     let (session, _dir) = fresh_session();

@@ -5,6 +5,7 @@ use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 
 use crate::board::adapters::github::GitHubSourceAdapter;
+use crate::github::RateLimitObserver;
 use crate::session;
 use crate::transport::ci_state_store::CiStateStore;
 use crate::transport::ci_watcher;
@@ -24,6 +25,7 @@ pub struct PollingControl {
     tracker: Option<Arc<GitHubSourceAdapter>>,
     ci_state_store: CiStateStore,
     parent_ct: CancellationToken,
+    rate_limit_observer: RateLimitObserver,
     tokens: Mutex<HashMap<PollKind, CancellationToken>>,
 }
 
@@ -34,13 +36,22 @@ impl PollingControl {
         ci_state_store: CiStateStore,
         parent_ct: CancellationToken,
     ) -> Self {
+        let rate_limit_observer = tracker
+            .as_ref()
+            .map(|t| t.rate_limit_observer())
+            .unwrap_or_default();
         Self {
             session,
             tracker,
             ci_state_store,
             parent_ct,
+            rate_limit_observer,
             tokens: Mutex::new(HashMap::new()),
         }
+    }
+
+    pub fn rate_limit_observer(&self) -> &RateLimitObserver {
+        &self.rate_limit_observer
     }
 
     pub async fn dispatch(&self, action: PollAction) {
