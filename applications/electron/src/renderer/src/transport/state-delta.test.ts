@@ -18,7 +18,7 @@ describe('applyStateSnapshot', () => {
         }
       ],
       ci: { state: 'green', run_id: 7, head_sha: 'abc', display_title: 'title' },
-      roster: [{ name: 'ryan', role: 'Owner', presence: 'Online' }]
+      roster: [{ name: 'ryan', identity: 'ryan:electron', role: 'Owner', presence: 'Online' }]
     }
     const next = applyStateSnapshot(emptyMirrorState(), snapshot)
     expect(next.reactions.get('broadcast')?.[0].count).toBe(2)
@@ -32,7 +32,7 @@ describe('applyStateSnapshot', () => {
       reactions: [{ channel: 'old', aggregated: [{ message_key: 'k', emoji: '🎉', count: 1, users: ['dev'] }] }],
       pins: [{ channel: 'old', pins: [{ message_key: 'm', pinner: 'dev', ts: 't' }] }],
       ci: { state: 'red' },
-      roster: [{ name: 'dev', role: 'Dev', presence: 'Online' }]
+      roster: [{ name: 'dev', identity: 'dev:claude-code', role: 'Dev', presence: 'Online' }]
     })
     const cleared = applyStateSnapshot(seeded, {
       reactions: [],
@@ -100,15 +100,17 @@ describe('applyStateDelta', () => {
       pins: [],
       ci: null,
       roster: [
-        { name: 'a', role: 'Dev', presence: 'Online' },
-        { name: 'b', role: 'Pm', presence: 'Online' }
+        { name: 'a', identity: 'a:claude-code', role: 'Dev', presence: 'Online' },
+        { name: 'b', identity: 'b:claude-code', role: 'Pm', presence: 'Online' }
       ]
     })
     const next = applyStateDelta(seeded, {
       domain: 'roster',
-      members: [{ name: 'c', role: 'Designer', presence: 'Busy' }]
+      members: [{ name: 'c', identity: 'c:claude-code', role: 'Designer', presence: 'Busy' }]
     })
-    expect(next.roster).toEqual([{ name: 'c', role: 'Designer', presence: 'Busy' }])
+    expect(next.roster).toEqual([
+      { name: 'c', identity: 'c:claude-code', role: 'Designer', presence: 'Busy' }
+    ])
   })
 
   test('preserves prev reference identity for un-touched maps', () => {

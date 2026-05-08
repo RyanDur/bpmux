@@ -51,6 +51,7 @@ export type PresenceWire = 'Online' | 'Busy' | 'Away' | 'Offline'
 
 export interface RosterMemberWire {
   name: string
+  identity: string
   role: RosterRoleWire
   presence: PresenceWire
 }

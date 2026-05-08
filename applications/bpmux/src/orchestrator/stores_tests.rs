@@ -225,6 +225,7 @@ async fn roster_member_upserted_fires_listener() {
     orch.dispatch(OrchestratorAction::Roster(
         RosterAction::RosterMemberUpserted {
             name: "ryan".to_string(),
+            identity: "ryan:electron".to_string(),
             role: RosterRole::Owner,
             presence: Presence::Online,
         },
@@ -249,6 +250,7 @@ async fn roster_presence_change_fires_only_when_actually_changed() {
     orch.dispatch(OrchestratorAction::Roster(
         RosterAction::RosterMemberUpserted {
             name: "dev".to_string(),
+            identity: "dev:claude-code".to_string(),
             role: RosterRole::Dev,
             presence: Presence::Online,
         },
@@ -426,6 +428,7 @@ async fn roster_remove_fires_listener_when_member_existed() {
     orch.dispatch(OrchestratorAction::Roster(
         RosterAction::RosterMemberUpserted {
             name: "designer".to_string(),
+            identity: "designer:claude-code".to_string(),
             role: RosterRole::Designer,
             presence: Presence::Online,
         },

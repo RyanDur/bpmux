@@ -204,6 +204,7 @@ pub enum Presence {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct RosterMember {
     pub name: String,
+    pub identity: String,
     pub role: RosterRole,
     pub presence: Presence,
 }
@@ -212,6 +213,7 @@ pub struct RosterMember {
 pub enum RosterAction {
     RosterMemberUpserted {
         name: String,
+        identity: String,
         role: RosterRole,
         presence: Presence,
     },
@@ -249,20 +251,23 @@ impl RosterStore {
         match action {
             RosterAction::RosterMemberUpserted {
                 name,
+                identity,
                 role,
                 presence,
             } => {
                 if let Some(idx) = state.members.iter().position(|m| &m.name == name) {
                     let m = &mut state.members[idx];
-                    if m.role == *role && m.presence == *presence {
+                    if m.identity == *identity && m.role == *role && m.presence == *presence {
                         return StoreReduceOutcome::Unchanged;
                     }
+                    m.identity = identity.clone();
                     m.role = *role;
                     m.presence = *presence;
                     StoreReduceOutcome::Changed
                 } else {
                     state.members.push(RosterMember {
                         name: name.clone(),
+                        identity: identity.clone(),
                         role: *role,
                         presence: *presence,
                     });

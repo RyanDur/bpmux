@@ -96,6 +96,7 @@ async fn run_ws_session(
     // broadcast below signals the frontend to refetch roster via
     // ROSTER_UPDATE_MARKER.
     session.roster_join(&identity);
+    dispatch_roster_join(&orchestrator, &identity).await;
     broadcast_roster_update(&session);
     let mut broadcast_rx = session.subscribe();
     let mut heartbeat = tokio::time::interval(HEARTBEAT_INTERVAL);
@@ -158,8 +159,10 @@ async fn run_ws_session(
                                 // new one so subscribers see the
                                 // name change reflected.
                                 session.roster_leave(&identity);
+                                dispatch_roster_leave(&orchestrator, &identity).await;
                                 identity = new_identity;
                                 session.roster_join(&identity);
+                                dispatch_roster_join(&orchestrator, &identity).await;
                                 broadcast_roster_update(&session);
                                 let _ = session.broadcast(&system_announcement(&format!("{identity} joined")));
                             }
@@ -185,8 +188,58 @@ async fn run_ws_session(
     // #402: remove from roster + broadcast so the frontend sidebar
     // prunes the departed peer within heartbeat latency.
     session.roster_leave(&identity);
+    dispatch_roster_leave(&orchestrator, &identity).await;
     broadcast_roster_update(&session);
     result
+}
+
+fn role_from_short_name(short: &str) -> crate::orchestrator::stores::RosterRole {
+    use crate::orchestrator::stores::RosterRole;
+    match short {
+        "designer" => RosterRole::Designer,
+        "dev" => RosterRole::Dev,
+        "pm" => RosterRole::Pm,
+        "ryan" => RosterRole::Owner,
+        _ => RosterRole::Other,
+    }
+}
+
+async fn dispatch_roster_join(
+    orchestrator: &Arc<
+        crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>,
+    >,
+    identity: &str,
+) {
+    use crate::orchestrator::OrchestratorAction;
+    use crate::orchestrator::stores::{Presence, RosterAction};
+    let short = short_name(identity).to_string();
+    let role = role_from_short_name(&short);
+    orchestrator
+        .dispatch(OrchestratorAction::Roster(
+            RosterAction::RosterMemberUpserted {
+                name: short,
+                identity: identity.to_string(),
+                role,
+                presence: Presence::Online,
+            },
+        ))
+        .await;
+}
+
+async fn dispatch_roster_leave(
+    orchestrator: &Arc<
+        crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>,
+    >,
+    identity: &str,
+) {
+    use crate::orchestrator::OrchestratorAction;
+    use crate::orchestrator::stores::RosterAction;
+    let short = short_name(identity).to_string();
+    orchestrator
+        .dispatch(OrchestratorAction::Roster(
+            RosterAction::RosterMemberRemoved { name: short },
+        ))
+        .await;
 }
 
 /// #402: fire-and-log ROSTER_UPDATE_MARKER broadcast. Subscribers

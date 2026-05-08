@@ -154,6 +154,7 @@ fn roster_to_wire(members: &[RosterMember]) -> Vec<RosterMemberWire> {
         .iter()
         .map(|m| RosterMemberWire {
             name: m.name.clone(),
+            identity: m.identity.clone(),
             role: m.role,
             presence: m.presence,
         })

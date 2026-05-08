@@ -119,6 +119,7 @@ async fn roster_listener_emits_typed_state_delta() {
     let listener = RosterSessionBroadcaster::new(session);
     let members = vec![RosterMember {
         name: "ryan".to_string(),
+        identity: "ryan:electron".to_string(),
         role: RosterRole::Owner,
         presence: Presence::Online,
     }];
