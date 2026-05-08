@@ -454,6 +454,8 @@ pub async fn post_message(
         addressee: payload.addressee,
         explicit_privacy,
         multi_depth: payload.multi_depth,
+        state_delta: None,
+        state_snapshot: None,
     };
     if let Err(e) = session.broadcast(&msg) {
         return (

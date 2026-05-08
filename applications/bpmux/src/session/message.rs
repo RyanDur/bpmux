@@ -22,6 +22,16 @@ pub enum MessageType {
     /// escaped the 📝-text-prefix filter because they didn't carry
     /// the marker.
     Nudge,
+    /// #1213: typed state-delta envelope. Carries `StateDeltaPayload`
+    /// in the `state_delta` field. Frontend dispatcher routes by
+    /// domain to per-store reducer.
+    #[serde(rename = "state-delta")]
+    StateDelta,
+    /// #1213: full snapshot of all orchestrator-managed stores at
+    /// WS-connect time. Frontend hydrates local mirror from this
+    /// before subsequent StateDelta messages.
+    #[serde(rename = "state-snapshot")]
+    StateSnapshot,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
@@ -73,6 +83,105 @@ pub struct Message {
     /// by construction.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub multi_depth: Option<MultiDepthPayload>,
+
+    /// #1213: typed state-delta payload. `Some` only when
+    /// `message_type == StateDelta`. Frontend dispatcher routes by
+    /// the `domain` discriminator inside the payload to per-store
+    /// reducer. Backward-compat: receivers that don't understand
+    /// the field ignore it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub state_delta: Option<StateDeltaPayload>,
+
+    /// #1213: full state snapshot at WS-connect. `Some` only when
+    /// `message_type == StateSnapshot`. Carries all orchestrator-
+    /// managed store snapshots in one envelope so the frontend
+    /// hydrates local mirror in a single message before subsequent
+    /// StateDelta updates.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub state_snapshot: Option<StateSnapshotPayload>,
+}
+
+/// #1213: typed state-delta envelope. Discriminated union per
+/// orchestrator-managed domain. Sister to #1211 AC5 sealed-union
+/// types — `domain` field is the discriminator the frontend
+/// dispatcher routes on.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(tag = "domain")]
+pub enum StateDeltaPayload {
+    #[serde(rename = "reactions")]
+    Reactions {
+        channel: String,
+        #[serde(rename = "aggregated")]
+        aggregated: Vec<ReactionAggregateWire>,
+    },
+    #[serde(rename = "pins")]
+    Pins {
+        channel: String,
+        pins: Vec<PinnedMessageWire>,
+    },
+    #[serde(rename = "ci")]
+    Ci { snapshot: CiSnapshotWire },
+    #[serde(rename = "roster")]
+    Roster { members: Vec<RosterMemberWire> },
+}
+
+/// #1213: full snapshot of all orchestrator-managed stores. Sent on
+/// WS-connect/reconnect so new clients hydrate before any deltas
+/// arrive. Per-store snapshot mirrors the same wire-shape used in
+/// individual deltas — frontend can reuse the same reducer.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct StateSnapshotPayload {
+    #[serde(default)]
+    pub reactions: Vec<ReactionsChannelSnapshot>,
+    #[serde(default)]
+    pub pins: Vec<PinsChannelSnapshot>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ci: Option<CiSnapshotWire>,
+    #[serde(default)]
+    pub roster: Vec<RosterMemberWire>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ReactionsChannelSnapshot {
+    pub channel: String,
+    pub aggregated: Vec<ReactionAggregateWire>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct PinsChannelSnapshot {
+    pub channel: String,
+    pub pins: Vec<PinnedMessageWire>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ReactionAggregateWire {
+    pub message_key: String,
+    pub emoji: String,
+    pub count: usize,
+    pub users: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct PinnedMessageWire {
+    pub message_key: String,
+    pub pinner: String,
+    pub ts: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct CiSnapshotWire {
+    pub state: String,
+    pub run_id: Option<u64>,
+    pub head_sha: Option<String>,
+    pub display_title: Option<String>,
+    pub conclusion: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct RosterMemberWire {
+    pub name: String,
+    pub role: String,
+    pub presence: String,
 }
 
 /// Multi-depth rendering payload carried on a `Message` (#187).
@@ -164,6 +273,8 @@ impl MessageType {
             MessageType::System => Some("system".into()),
             MessageType::Insight => Some("insight".into()),
             MessageType::Nudge => Some("nudge".into()),
+            MessageType::StateDelta => Some("state-delta".into()),
+            MessageType::StateSnapshot => Some("state-snapshot".into()),
         }
     }
 }
@@ -175,6 +286,8 @@ impl From<Option<&str>> for MessageType {
             Some("system") => MessageType::System,
             Some("insight") => MessageType::Insight,
             Some("nudge") => MessageType::Nudge,
+            Some("state-delta") => MessageType::StateDelta,
+            Some("state-snapshot") => MessageType::StateSnapshot,
             _ => MessageType::Chat,
         }
     }
