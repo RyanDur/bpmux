@@ -10,10 +10,10 @@ import { launchIsolatedElectron } from './helpers/launch'
 //   `ci_watcher_tests.rs` — 6 unit tests exercise first-observation,
 //   same-same, and every pairwise transition.
 //
-// - Frontend subscriber path (CiGlyph consumes `messages` prop,
-//   watches for CI_STATE_UPDATE_MARKER, refetches): unit-testable by
-//   rendering CiGlyph with a changing messages array and observing
-//   the fetch count. See note below on Playwright limitation.
+// - Frontend subscriber path (CiGlyph reads mirror.ci.state from
+//   useWebSocket; updated by StateDelta::Ci frames per #1213):
+//   unit-testable via CiGlyph.test.tsx prop-injection of CiSnapshotWire
+//   shapes. See note below on Playwright limitation.
 //
 // - Full WS push loop (backend poller → broadcast frame → renderer
 //   onmessage → CiGlyph refetch): requires driving the backend's

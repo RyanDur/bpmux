@@ -38,11 +38,10 @@ interface CiStateReport {
 // transient states with substantial headroom and stays well under
 // GitHub's 5000/hr authenticated rate limit (240 polls/hr).
 //
-// #372: primary refresh is now the CI_STATE_UPDATE_MARKER broadcast
-// from the backend watcher — state changes land within WS latency,
-// not up to 15s. The poll stays as a safety net so a disconnect-
-// then-reconnect window can't strand the glyph on a conclusion that
-// changed while WS was down.
+// #1213: primary refresh is the WS-only state-flow — CiSnapshotWire
+// arrives via mirror.ci on connect-snapshot + state-delta frames;
+// the 15s REST poll stays as a safety net for the disconnect-
+// reconnect window.
 const POLL_MS = 15_000
 
 const stateToConclusion = (state: CiStateWire): CiConclusion => {
@@ -92,10 +91,6 @@ function conclusionAriaLabel(conclusion: string): string {
 }
 
 interface Props {
-  // WS message stream forwarded from useWebSocket. CiGlyph watches
-  // for CI_STATE_UPDATE_MARKER and refetches on receipt. Omit
-  // (undefined) when the caller doesn't have a stream — the glyph
-  // falls back to poll-only.
   messages?: ChatMessage[]
   ciSnapshot?: CiSnapshotWire | null
 }

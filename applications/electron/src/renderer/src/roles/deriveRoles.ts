@@ -186,14 +186,14 @@ export function deriveCombinatorialGroups(
 
 // ── #402 roster-based derivations ────────────────────────────────
 //
-// Membership authority switches from observed message senders to the
-// connected-agent roster (fetched via `/api/roster`, refreshed on
-// `ROSTER_UPDATE_MARKER`). The helpers below mirror the message-
-// based ones in signature but read from the roster snapshot instead.
-// The SAME filter rules apply — viewer exclusion + system-sender
-// exclusion — only the input axis changes. This preserves #393 AC1
-// team-shape-independence + #386's category detection + #399's
-// no-DM-to-the-medium semantic.
+// Membership authority is the connected-agent roster delivered via
+// the WS-only state-flow: mirror.roster updates from
+// StateSnapshot/StateDelta frames driven by the orchestrator's
+// RosterStore (#1213). Helpers below mirror the message-based ones
+// in signature but read from the roster snapshot. The SAME filter
+// rules apply — viewer exclusion + system-sender exclusion — only
+// the input axis changes. Preserves #393 AC1 team-shape-independence
+// + #386's category detection + #399's no-DM-to-the-medium semantic.
 
 /**
  * The full roster-derived team role set. Includes the viewer if

@@ -22,9 +22,7 @@ const installFrameCapture = (): void => {
           ;(
             window as unknown as { __bpmuxFrames: CapturedFrame[] }
           ).__bpmuxFrames.push(parsed)
-        } catch {
-          // non-JSON frames ignored
-        }
+        } catch {}
       })
     }
   } as unknown as typeof WebSocket
