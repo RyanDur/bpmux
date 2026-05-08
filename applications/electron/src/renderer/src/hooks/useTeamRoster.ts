@@ -1,5 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { ROSTER_UPDATE_MARKER, type ChatMessage } from '../transport/types'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  ROSTER_UPDATE_MARKER,
+  type ChatMessage,
+  type RosterMemberWire
+} from '../transport/types'
 
 // #402 team-roster substrate. Source of truth for sidebar
 // membership (directs + combinatorial groups). Previously the
@@ -15,10 +19,22 @@ export interface RosterEntry {
   role: string
 }
 
+export const wireToRosterEntry = (wire: RosterMemberWire): RosterEntry => ({
+  identity: wire.identity,
+  role: wire.name
+})
+
+export const selectRoster = (
+  mirrorRoster: readonly RosterMemberWire[] | undefined,
+  restRoster: readonly RosterEntry[]
+): readonly RosterEntry[] =>
+  mirrorRoster && mirrorRoster.length > 0 ? mirrorRoster.map(wireToRosterEntry) : restRoster
+
 interface Props {
   apiBase: string | undefined
   authToken: string | undefined
   messages: ChatMessage[]
+  mirrorRoster?: readonly RosterMemberWire[]
 }
 
 /**
@@ -27,8 +43,17 @@ interface Props {
  * Returns the current snapshot. Empty array before the first fetch
  * completes or when the bridge has no peers yet.
  */
-export function useTeamRoster({ apiBase, authToken, messages }: Props): readonly RosterEntry[] {
-  const [roster, setRoster] = useState<readonly RosterEntry[]>([])
+export function useTeamRoster({
+  apiBase,
+  authToken,
+  messages,
+  mirrorRoster
+}: Props): readonly RosterEntry[] {
+  const [restRoster, setRestRoster] = useState<readonly RosterEntry[]>([])
+  const roster = useMemo(
+    () => selectRoster(mirrorRoster, restRoster),
+    [mirrorRoster, restRoster]
+  )
   // Seen-count pattern (mirrors useReactions / useCiGlyph): only
   // react to NEW marker arrivals, not the hydration backfill on
   // mount. Prevents a stampede of refetches when the initial
@@ -47,7 +72,7 @@ export function useTeamRoster({ apiBase, authToken, messages }: Props): readonly
         if (!res.ok) return
         const json = (await res.json()) as { roster?: RosterEntry[] }
         if (cancelledCheck()) return
-        if (Array.isArray(json.roster)) setRoster(json.roster)
+        if (Array.isArray(json.roster)) setRestRoster(json.roster)
       } catch (err) {
         if ((err as Error)?.name === 'AbortError') return
         // Soft-fail: leave previous roster intact. A later marker or

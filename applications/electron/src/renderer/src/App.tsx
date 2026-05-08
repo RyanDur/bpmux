@@ -53,6 +53,7 @@ const App = (): React.JSX.Element => {
       ciSnapshot={mirror.ci}
       mirrorReactions={mirror.reactions}
       mirrorPins={mirror.pins}
+      mirrorRoster={mirror.roster}
     />
   )
 }

@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import type { ChatMessage } from '../transport/types'
+import type { ChatMessage, RosterMemberWire } from '../transport/types'
 import { classOf, type MessageFilter } from '../hooks/useMessageFilter'
 import { usePresence, type Presence } from '../hooks/usePresence'
 import { useTeamRoster } from '../hooks/useTeamRoster'
@@ -22,6 +22,7 @@ interface Props {
   filter: MessageFilter
   apiBase?: string
   authToken?: string
+  mirrorRoster?: readonly RosterMemberWire[]
 }
 
 const PRESENCE_LABEL: Record<Presence, string> = {
@@ -57,10 +58,11 @@ const Sidebar = ({
   messages,
   filter,
   apiBase,
-  authToken
+  authToken,
+  mirrorRoster
 }: Props): React.JSX.Element => {
   const systemCount = useMemo(() => countSystemMessages(messages), [messages])
-  const roster = useTeamRoster({ apiBase, authToken, messages })
+  const roster = useTeamRoster({ apiBase, authToken, messages, mirrorRoster })
   const directRoles = useMemo(() => {
     if (roster.length > 0) {
       return deriveDirectRolesFromRoster(roster, RENDERER_IDENTITY)
