@@ -61,6 +61,7 @@ pub trait RefreshDriver: Send + Sync {
     fn drain_one_by_id(&self, id: MutationId) -> BoxedFuture<'_, DrainOneOutcome>;
     fn apply_server_rollback(&self, story: Story) -> BoxedFuture<'_, ()>;
     fn snapshot_pending_for_mutation(&self, id: MutationId) -> Option<u64>;
+    fn issue_lock(&self, issue: u64) -> BoxedFuture<'_, Arc<tokio::sync::Mutex<()>>>;
     fn snapshot_status(&self) -> SyncStatus;
     fn acknowledge_dropped(&self) -> usize;
     fn mark_recovering_from_corruption(&self);
@@ -250,6 +251,7 @@ pub struct SyncOrchestrator<A: SourceAdapter + 'static> {
     outbox_path: Option<PathBuf>,
     next_mutation_id: AtomicU64,
     action_tx: Option<tokio::sync::mpsc::UnboundedSender<crate::orchestrator::OrchestratorAction>>,
+    issue_locks: tokio::sync::Mutex<std::collections::HashMap<u64, Arc<tokio::sync::Mutex<()>>>>,
 }
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
@@ -262,6 +264,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             outbox_path: None,
             next_mutation_id: AtomicU64::new(1),
             action_tx: None,
+            issue_locks: tokio::sync::Mutex::new(std::collections::HashMap::new()),
         }
     }
 
@@ -283,6 +286,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             outbox_path: Some(path),
             next_mutation_id: AtomicU64::new(next),
             action_tx: None,
+            issue_locks: tokio::sync::Mutex::new(std::collections::HashMap::new()),
         })
     }
 
@@ -495,6 +499,16 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             return DrainOneOutcome::NotFound;
         };
         let event = queued.event.clone();
+        let lock = self.issue_lock(event.story_number()).await;
+        let _guard = lock.lock().await;
+        let queued = {
+            let p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
+            p.iter().find(|q| q.id == id).cloned()
+        };
+        let Some(queued) = queued else {
+            return DrainOneOutcome::Confirmed;
+        };
+        let event = queued.event.clone();
         let current = self.store.story(event.story_number());
         let kind = classify_conflict(queued.pre_state.as_ref(), &event, current.as_ref());
         match kind {
@@ -574,6 +588,15 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             .map(|q| q.event.story_number())
     }
 
+    pub async fn issue_lock(&self, issue: u64) -> Arc<tokio::sync::Mutex<()>> {
+        let mut locks = self.issue_locks.lock().await;
+        Arc::clone(
+            locks
+                .entry(issue)
+                .or_insert_with(|| Arc::new(tokio::sync::Mutex::new(()))),
+        )
+    }
+
     pub async fn drain_once(&self) -> Result<usize, SyncError> {
         let mut drained = 0usize;
         let mut failures = 0usize;
@@ -585,6 +608,16 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         let mut conflicts_pending = 0usize;
         let mut conflict_offset = 0usize;
         loop {
+            let queued_opt = {
+                let p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
+                p.get(conflict_offset).cloned()
+            };
+            let Some(queued) = queued_opt else {
+                break;
+            };
+            let event = queued.event.clone();
+            let lock = self.issue_lock(event.story_number()).await;
+            let _guard = lock.lock().await;
             let queued_opt = {
                 let p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
                 p.get(conflict_offset).cloned()
@@ -844,6 +877,10 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
 
     fn snapshot_pending_for_mutation(&self, id: MutationId) -> Option<u64> {
         self.pending_issue_for_mutation(id)
+    }
+
+    fn issue_lock(&self, issue: u64) -> BoxedFuture<'_, Arc<tokio::sync::Mutex<()>>> {
+        Box::pin(self.issue_lock(issue))
     }
 
     fn snapshot_status(&self) -> SyncStatus {

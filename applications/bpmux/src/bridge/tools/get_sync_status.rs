@@ -48,6 +48,9 @@ mod tests {
         fn snapshot_pending_for_mutation(&self, _id: crate::board::MutationId) -> Option<u64> {
             None
         }
+        fn issue_lock(&self, _issue: u64) -> BoxedFuture<'_, Arc<tokio::sync::Mutex<()>>> {
+            Box::pin(async { Arc::new(tokio::sync::Mutex::new(())) })
+        }
         fn snapshot_status(&self) -> SyncStatus {
             self.0.clone()
         }

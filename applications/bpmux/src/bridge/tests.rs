@@ -498,6 +498,12 @@ mod ingest_poll_loop_tests {
         fn snapshot_pending_for_mutation(&self, _id: crate::board::MutationId) -> Option<u64> {
             None
         }
+        fn issue_lock(
+            &self,
+            _issue: u64,
+        ) -> BoxedFuture<'_, std::sync::Arc<tokio::sync::Mutex<()>>> {
+            Box::pin(async { std::sync::Arc::new(tokio::sync::Mutex::new(())) })
+        }
         fn snapshot_status(&self) -> SyncStatus {
             SyncStatus::default()
         }
