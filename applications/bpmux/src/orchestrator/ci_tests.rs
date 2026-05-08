@@ -433,3 +433,79 @@ async fn start_ingest_idempotent_no_op_when_already_running() {
     }
     assert!(!orch.is_running(PollKind::Ingest).await);
 }
+
+#[tokio::test]
+async fn start_hydration_idempotent_no_op_when_already_running() {
+    let (session, _dir) = fresh_session();
+    let orch: Arc<Orchestrator<GitHubSourceAdapter>> = Arc::new(
+        Orchestrator::new(session, None, CiStateStore::new(), CancellationToken::new())
+            .with_refresh(
+                refresh_for_tests(),
+                Duration::from_secs(60),
+                Duration::from_secs(15),
+            ),
+    );
+    orch.dispatch(OrchestratorAction::StartHydrationPolling)
+        .await;
+    assert!(orch.is_running(PollKind::Hydration).await);
+    orch.dispatch(OrchestratorAction::StartHydrationPolling)
+        .await;
+    assert!(
+        orch.is_running(PollKind::Hydration).await,
+        "second StartHydrationPolling stays running (no-op)"
+    );
+    orch.dispatch(OrchestratorAction::StopHydrationPolling)
+        .await;
+    let deadline = std::time::Instant::now() + Duration::from_secs(2);
+    while std::time::Instant::now() < deadline && orch.is_running(PollKind::Hydration).await {
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    assert!(!orch.is_running(PollKind::Hydration).await);
+}
+
+#[tokio::test]
+async fn rate_limit_cooldown_is_shared_across_ci_ingest_hydration_paths() {
+    let observer = RateLimitObserver::default();
+    let now_secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let cooldown_secs = 60u64;
+    observer.observe_retry_after_secs(cooldown_secs, std::time::SystemTime::now());
+
+    let snapshot = observer.snapshot();
+    assert_eq!(
+        snapshot.retry_after_wake_epoch,
+        now_secs.saturating_add(cooldown_secs),
+        "single observe_retry_after_secs(60) sets shared wake-epoch ~60s out"
+    );
+
+    let now = std::time::SystemTime::now();
+    let decision = crate::github::decide_backoff(snapshot, Duration::ZERO, now);
+    assert!(
+        decision.wait > Duration::from_secs(50),
+        "shared decide_backoff returns ~60s wait for any caller (CI/Ingest/Hydration) consulting the same observer; got {:?}",
+        decision.wait
+    );
+    assert!(
+        decision.wait <= Duration::from_secs(cooldown_secs + 1),
+        "wait bounded by cooldown duration; got {:?}",
+        decision.wait
+    );
+
+    let snap_again = observer.snapshot();
+    let decision_again = crate::github::decide_backoff(snap_again, Duration::ZERO, now);
+    assert_eq!(
+        decision.wait, decision_again.wait,
+        "Arc-shared observer: every caller's snapshot returns the same wake-epoch — single source of truth across CI + Ingest + Hydration"
+    );
+
+    let advanced = now + Duration::from_secs(cooldown_secs + 5);
+    let decision_post =
+        crate::github::decide_backoff(observer.snapshot(), Duration::ZERO, advanced);
+    assert_eq!(
+        decision_post.wait,
+        Duration::ZERO,
+        "after cooldown elapses, all callers see zero wait (gate clears for everyone simultaneously)"
+    );
+}
