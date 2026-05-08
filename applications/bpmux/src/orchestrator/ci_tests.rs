@@ -14,6 +14,7 @@ use crate::bridge::tracker::ConditionalRunEntry;
 use crate::ci::CiState;
 use crate::github::RateLimitObserver;
 use crate::session::{Message, Session};
+use crate::transport::ci_state_store::CiStateStore;
 
 fn fresh_session() -> (Arc<Session>, TempDir) {
     let dir = TempDir::new().expect("tempdir");
@@ -104,8 +105,12 @@ impl CiPollFetch for FakeCiTracker {
 #[tokio::test]
 async fn ci_updated_action_drives_reducer_and_fires_listener() {
     let (session, _dir) = fresh_session();
-    let orch: Arc<Orchestrator<GitHubSourceAdapter>> =
-        Arc::new(Orchestrator::new(session, None, CancellationToken::new()));
+    let orch: Arc<Orchestrator<GitHubSourceAdapter>> = Arc::new(Orchestrator::new(
+        session,
+        None,
+        CiStateStore::new(),
+        CancellationToken::new(),
+    ));
     let recorder = Arc::new(RecordingListener::default());
     orch.add_ci_listener(recorder.clone());
 
@@ -123,8 +128,12 @@ async fn ci_updated_action_drives_reducer_and_fires_listener() {
 #[tokio::test]
 async fn ci_updated_dedup_same_run_and_conclusion_no_listener_fire() {
     let (session, _dir) = fresh_session();
-    let orch: Arc<Orchestrator<GitHubSourceAdapter>> =
-        Arc::new(Orchestrator::new(session, None, CancellationToken::new()));
+    let orch: Arc<Orchestrator<GitHubSourceAdapter>> = Arc::new(Orchestrator::new(
+        session,
+        None,
+        CiStateStore::new(),
+        CancellationToken::new(),
+    ));
     let recorder = Arc::new(RecordingListener::default());
     orch.add_ci_listener(recorder.clone());
 
@@ -140,8 +149,12 @@ async fn ci_updated_dedup_same_run_and_conclusion_no_listener_fire() {
 #[tokio::test]
 async fn ci_updated_run_change_or_conclusion_change_fires_listener() {
     let (session, _dir) = fresh_session();
-    let orch: Arc<Orchestrator<GitHubSourceAdapter>> =
-        Arc::new(Orchestrator::new(session, None, CancellationToken::new()));
+    let orch: Arc<Orchestrator<GitHubSourceAdapter>> = Arc::new(Orchestrator::new(
+        session,
+        None,
+        CiStateStore::new(),
+        CancellationToken::new(),
+    ));
     let recorder = Arc::new(RecordingListener::default());
     orch.add_ci_listener(recorder.clone());
 
@@ -163,8 +176,12 @@ async fn ci_updated_run_change_or_conclusion_change_fires_listener() {
 #[tokio::test]
 async fn start_ci_polling_no_op_without_tracker() {
     let (session, _dir) = fresh_session();
-    let orch: Arc<Orchestrator<GitHubSourceAdapter>> =
-        Arc::new(Orchestrator::new(session, None, CancellationToken::new()));
+    let orch: Arc<Orchestrator<GitHubSourceAdapter>> = Arc::new(Orchestrator::new(
+        session,
+        None,
+        CiStateStore::new(),
+        CancellationToken::new(),
+    ));
     orch.dispatch(CiAction::StartCiPolling).await;
     assert!(!orch.is_running(PollKind::Ci).await);
 }
@@ -172,8 +189,12 @@ async fn start_ci_polling_no_op_without_tracker() {
 #[tokio::test]
 async fn stop_ci_polling_without_start_no_op() {
     let (session, _dir) = fresh_session();
-    let orch: Arc<Orchestrator<GitHubSourceAdapter>> =
-        Arc::new(Orchestrator::new(session, None, CancellationToken::new()));
+    let orch: Arc<Orchestrator<GitHubSourceAdapter>> = Arc::new(Orchestrator::new(
+        session,
+        None,
+        CiStateStore::new(),
+        CancellationToken::new(),
+    ));
     orch.dispatch(CiAction::StopCiPolling).await;
     assert!(!orch.is_running(PollKind::Ci).await);
 }
@@ -182,8 +203,12 @@ async fn stop_ci_polling_without_start_no_op() {
 async fn parent_cancel_propagates_when_running_no_tracker() {
     let parent = CancellationToken::new();
     let (session, _dir) = fresh_session();
-    let orch: Arc<Orchestrator<GitHubSourceAdapter>> =
-        Arc::new(Orchestrator::new(session, None, parent.clone()));
+    let orch: Arc<Orchestrator<GitHubSourceAdapter>> = Arc::new(Orchestrator::new(
+        session,
+        None,
+        CiStateStore::new(),
+        parent.clone(),
+    ));
     orch.dispatch(CiAction::StartCiPolling).await;
     parent.cancel();
     tokio::time::sleep(Duration::from_millis(50)).await;
@@ -194,8 +219,12 @@ async fn parent_cancel_propagates_when_running_no_tracker() {
 #[tokio::test]
 async fn rate_limit_observer_exposed_at_orchestrator_layer() {
     let (session, _dir) = fresh_session();
-    let orch: Arc<Orchestrator<GitHubSourceAdapter>> =
-        Arc::new(Orchestrator::new(session, None, CancellationToken::new()));
+    let orch: Arc<Orchestrator<GitHubSourceAdapter>> = Arc::new(Orchestrator::new(
+        session,
+        None,
+        CiStateStore::new(),
+        CancellationToken::new(),
+    ));
     let snapshot = orch.rate_limit_observer().snapshot();
     assert_eq!(snapshot.retry_after_wake_epoch, 0);
     assert_eq!(snapshot.ratelimit_reset_epoch, 0);
@@ -209,6 +238,7 @@ async fn live_loop_dispatches_ci_updated_through_action_chain() {
     let orch: Arc<Orchestrator<FakeCiTracker>> = Arc::new(Orchestrator::new(
         session,
         Some(tracker.clone()),
+        CiStateStore::new(),
         parent.clone(),
     ));
     let recorder = Arc::new(RecordingListener::default());

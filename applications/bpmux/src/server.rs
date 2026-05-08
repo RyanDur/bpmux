@@ -252,6 +252,7 @@ pub async fn run_server(
     let orchestrator = std::sync::Arc::new(crate::orchestrator::Orchestrator::new(
         session.clone(),
         tracker.as_ref().cloned(),
+        ci_state_store.clone(),
         ct.clone(),
     ));
     orchestrator.add_ci_listener(std::sync::Arc::new(

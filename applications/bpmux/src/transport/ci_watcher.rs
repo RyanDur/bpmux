@@ -41,6 +41,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::orchestrator::{CiAction, CiPollFetch, CiSnapshot, Orchestrator};
 use crate::session;
+use crate::transport::ci_state_store::CiStateStore;
 
 pub const POLL_INTERVAL: Duration = Duration::from_secs(10);
 pub const MAX_BACKOFF: Duration = Duration::from_secs(3600);
@@ -85,6 +86,7 @@ pub fn classify_transition(prev: Option<Observation>, current: Observation) -> T
 pub fn spawn<T: CiPollFetch>(
     orchestrator: Arc<Orchestrator<T>>,
     tracker: Arc<T>,
+    ci_state_store: CiStateStore,
     ct: CancellationToken,
 ) {
     let observer = orchestrator.rate_limit_observer().clone();
@@ -105,6 +107,7 @@ pub fn spawn<T: CiPollFetch>(
             let report = match conditional {
                 Ok(crate::bridge::tracker::ConditionalRunEntry::NotModified) => {
                     backoff = base_backoff;
+                    ci_state_store.mark_poll_succeeded();
                     continue;
                 }
                 Ok(crate::bridge::tracker::ConditionalRunEntry::Modified { entry, etag }) => {
@@ -114,6 +117,7 @@ pub fn spawn<T: CiPollFetch>(
                 }
                 Ok(crate::bridge::tracker::ConditionalRunEntry::Empty) => {
                     backoff = base_backoff;
+                    ci_state_store.mark_poll_succeeded();
                     continue;
                 }
                 Err(e) => {

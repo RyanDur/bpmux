@@ -9,6 +9,7 @@ use crate::bridge::tracker::ConditionalRunEntry;
 use crate::ci::{CiEvent, CiState};
 use crate::github::RateLimitObserver;
 use crate::session;
+use crate::transport::ci_state_store::CiStateStore;
 
 pub trait CiPollFetch: Send + Sync + 'static {
     fn list_latest_run_on_main_conditional(
@@ -109,6 +110,7 @@ pub trait CiBroadcastListener: Send + Sync {
 pub struct Orchestrator<T: CiPollFetch> {
     session: Arc<session::Session>,
     tracker: Option<Arc<T>>,
+    ci_state_store: CiStateStore,
     parent_ct: CancellationToken,
     rate_limit_observer: RateLimitObserver,
     ci_store: Arc<CiStore>,
@@ -120,6 +122,7 @@ impl<T: CiPollFetch> Orchestrator<T> {
     pub fn new(
         session: Arc<session::Session>,
         tracker: Option<Arc<T>>,
+        ci_state_store: CiStateStore,
         parent_ct: CancellationToken,
     ) -> Self {
         let rate_limit_observer = tracker
@@ -129,6 +132,7 @@ impl<T: CiPollFetch> Orchestrator<T> {
         Self {
             session,
             tracker,
+            ci_state_store,
             parent_ct,
             rate_limit_observer,
             ci_store: Arc::new(CiStore::new()),
@@ -188,7 +192,12 @@ impl<T: CiPollFetch> Orchestrator<T> {
             }
             task_clone.cancel();
         });
-        crate::transport::ci_watcher::spawn::<T>(Arc::clone(self), tracker, task_ct);
+        crate::transport::ci_watcher::spawn::<T>(
+            Arc::clone(self),
+            tracker,
+            self.ci_state_store.clone(),
+            task_ct,
+        );
         tokens.insert(PollKind::Ci, local_ct);
     }
 
