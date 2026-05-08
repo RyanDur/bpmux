@@ -63,18 +63,22 @@ const Sidebar = ({
 }: Props): React.JSX.Element => {
   const systemCount = useMemo(() => countSystemMessages(messages), [messages])
   const roster = useTeamRoster({ apiBase, authToken, messages, mirrorRoster })
+  const peerRoster = useMemo(
+    () => roster.filter((e) => e.role !== RENDERER_IDENTITY),
+    [roster]
+  )
   const directRoles = useMemo(() => {
-    if (roster.length > 0) {
+    if (peerRoster.length > 0) {
       return deriveDirectRolesFromRoster(roster, RENDERER_IDENTITY)
     }
     return deriveDirectRoles(messages, RENDERER_IDENTITY)
-  }, [roster, messages])
+  }, [peerRoster, roster, messages])
   const combinableRoles = useMemo(() => {
-    if (roster.length > 0) {
+    if (peerRoster.length > 0) {
       return deriveCombinableRolesFromRoster(roster, RENDERER_IDENTITY)
     }
     return deriveCombinableRoles(messages, RENDERER_IDENTITY)
-  }, [roster, messages])
+  }, [peerRoster, roster, messages])
   const groups = useMemo(() => deriveCombinatorialGroups(combinableRoles), [combinableRoles])
   const presence = usePresence(messages, directRoles)
 
