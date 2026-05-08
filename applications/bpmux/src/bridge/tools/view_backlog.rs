@@ -1,41 +1,9 @@
-use std::sync::Arc;
-
-use tokio::sync::Mutex;
-
-use super::helpers::{WsSink, ws_send};
+use crate::board::Story;
 use crate::board::column::{ColumnBucket, column_for};
-use crate::board::{BoardStore, Story};
 
 pub const VIEW_BACKLOG_MARKER: &str = "__BPMUX_VIEW_BACKLOG__";
 
 const SAMPLE_LIMIT: usize = 5;
-
-#[allow(dead_code)]
-pub(in crate::bridge) async fn handle_view_backlog(
-    ws_tx: &Mutex<Option<WsSink>>,
-    store: &Arc<BoardStore>,
-) -> Result<String, String> {
-    let marker_msg = crate::transport::protocol::ClientMessage::Send {
-        text: VIEW_BACKLOG_MARKER.to_string(),
-        to: None,
-        addressee: None,
-        message_type: Some("system".to_string()),
-    };
-    match serde_json::to_string(&marker_msg) {
-        Ok(json) => {
-            if let Err(e) = ws_send(ws_tx, json).await {
-                crate::session::diag::log_diag(&format!("view_backlog marker send failed: {e}"));
-            }
-        }
-        Err(e) => {
-            crate::session::diag::log_diag(&format!("view_backlog marker serialize failed: {e}"))
-        }
-    }
-
-    let stories = store.all_stories();
-    let summary = build_backlog_summary(&stories);
-    serde_json::to_string(&summary).map_err(|e| format!("serialize summary: {e}"))
-}
 
 pub(in crate::bridge) fn build_backlog_summary(stories: &[Story]) -> serde_json::Value {
     let mut ready: Vec<String> = Vec::new();

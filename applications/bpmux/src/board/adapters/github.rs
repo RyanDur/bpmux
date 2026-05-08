@@ -2,7 +2,6 @@ use chrono::{DateTime, Utc};
 
 use crate::board::domain::{FreeComment, Gate, GateComment, Story, StoryState, Tag};
 use crate::board::events::{BoardEvent, EventMeta};
-use crate::board::peer::PeerId;
 use crate::board::sync::{ConditionalBody, SourceAdapter, SyncError};
 use crate::bridge::tracker::{
     ConditionalIssue, ConditionalRunEntry, OctocrabStoryTracker, StoryTracker,
@@ -625,13 +624,4 @@ pub fn classify_gate(body: &str) -> Option<(Gate, Option<String>)> {
 
 fn extract_marker_payload(body: &str) -> Option<String> {
     body.split_once(":\n\n").map(|(_, rest)| rest.to_string())
-}
-
-#[allow(dead_code)]
-pub fn local_meta(actor: &str, ts: DateTime<Utc>) -> EventMeta {
-    EventMeta {
-        actor: actor.to_string(),
-        ts,
-        peer_id: PeerId::local(),
-    }
 }

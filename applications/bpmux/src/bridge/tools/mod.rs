@@ -113,15 +113,7 @@ pub(in crate::bridge) use view_story_timeline::handle_view_story_timeline;
 pub(in crate::bridge) use view_tokens::handle_view_tokens;
 pub(in crate::bridge) use view_velocity::{fetch_messages_via_http, handle_view_velocity};
 
-// Markers — re-exported so crate::bridge::tools::VIEW_*, etc. paths
-// remain available if any caller relies on them.
 pub use view_backlog::VIEW_BACKLOG_MARKER;
-#[allow(unused_imports)]
-pub(in crate::bridge) use view_roadmap::VIEW_ROADMAP_MARKER;
-#[allow(unused_imports)]
-pub(in crate::bridge) use view_tokens::VIEW_TOKENS_MARKER;
-#[allow(unused_imports)]
-pub(in crate::bridge) use view_velocity::VIEW_VELOCITY_MARKER;
 
 // Re-exports used only by bridge/tests.rs.
 #[cfg(test)]

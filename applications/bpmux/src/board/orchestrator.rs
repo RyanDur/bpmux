@@ -1044,27 +1044,6 @@ pub fn classify_conflict(
     }
 }
 
-/// #1195: helper for slice B+ classifier semantics. Workflow
-/// labels are the dimension where a divergent label-add against
-/// a closed-Accepted story signals genuine conflict (vs additive
-/// tags like "blocked"). Lives here so the slice-A→B handoff
-/// keeps the helper alongside the substrate types.
-#[allow(dead_code)]
-fn is_workflow_label(label: &str) -> bool {
-    matches!(
-        label.to_ascii_lowercase().as_str(),
-        "icebox"
-            | "ready"
-            | "in progress"
-            | "desk-check"
-            | "delivered"
-            | "ready for accept"
-            | "needs fixes"
-            | "rejected"
-            | "accepted"
-    )
-}
-
 /// #1195: origin tag for ConflictResolved events. Slice A only
 /// fires the auto-reclassify origin (drain detects compatibility);
 /// slice B adds OperatorAction.
