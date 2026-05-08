@@ -37,12 +37,7 @@ interface CiStateReport {
 // CI run (<60s) could start + finish between polls. 15s catches
 // transient states with substantial headroom and stays well under
 // GitHub's 5000/hr authenticated rate limit (240 polls/hr).
-//
-// #1213: primary refresh is the WS-only state-flow — CiSnapshotWire
-// arrives via mirror.ci on connect-snapshot + state-delta frames;
-// the 15s REST poll stays as a safety net for the disconnect-
-// reconnect window.
-const POLL_MS = 15_000
+const DISCONNECT_RECONNECT_SAFETY_POLL_MS = 15_000
 
 const stateToConclusion = (state: CiStateWire): CiConclusion => {
   switch (state) {
@@ -141,7 +136,7 @@ function CiGlyph({ messages: _messages, ciSnapshot }: Props): React.JSX.Element 
     void fetchOnce()
     const id = setInterval(() => {
       void fetchOnce()
-    }, POLL_MS)
+    }, DISCONNECT_RECONNECT_SAFETY_POLL_MS)
     return () => {
       cancelled = true
       controller.abort()
