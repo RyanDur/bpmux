@@ -50,7 +50,7 @@ interface CiStateReport {
 // changed while WS was down.
 const POLL_MS = 15_000
 
-function stateToConclusion(state: CiStateWire): CiConclusion {
+const stateToConclusion = (state: CiStateWire): CiConclusion => {
   switch (state) {
     case 'green':
       return 'success'
