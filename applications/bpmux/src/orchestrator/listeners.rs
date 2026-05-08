@@ -9,6 +9,9 @@ use crate::orchestrator::{
     ReactionsBroadcastListener, RosterBroadcastListener, RosterMember,
 };
 use crate::session;
+use crate::session::message::{
+    CiSnapshotWire, PinnedMessageWire, ReactionAggregateWire, RosterMemberWire, StateDeltaPayload,
+};
 use crate::transport::ci_state_store::CiStateStore;
 
 pub struct CiStateStoreWriter {
@@ -59,6 +62,13 @@ impl CiBroadcastListener for CiSessionBroadcaster {
         if let Err(e) = self.session.broadcast(&marker_msg) {
             session::diag::log_diag(&format!("ci_listener: marker broadcast failed: {e}"));
         }
+        broadcast_state_delta(
+            &self.session,
+            StateDeltaPayload::Ci {
+                snapshot: ci_to_wire(snap),
+            },
+            "ci_listener",
+        );
         let Some(text) = crate::ci::compute_broadcast_text(&event) else {
             return;
         };
@@ -94,6 +104,62 @@ fn broadcast_marker(session: &session::Session, marker: &str, label: &str) {
     }
 }
 
+fn broadcast_state_delta(session: &session::Session, payload: StateDeltaPayload, label: &str) {
+    let msg = session::Message {
+        from: "bpmux".to_string(),
+        text: String::new(),
+        ts: chrono::Utc::now(),
+        message_type: session::MessageType::StateDelta,
+        state_delta: Some(payload),
+        ..session::Message::default()
+    };
+    if let Err(e) = session.broadcast(&msg) {
+        session::diag::log_diag(&format!("{label}: state-delta broadcast failed: {e}"));
+    }
+}
+
+fn reactions_to_wire(aggregated: &[AggregatedReaction]) -> Vec<ReactionAggregateWire> {
+    aggregated
+        .iter()
+        .map(|a| ReactionAggregateWire {
+            message_key: a.message_key.clone(),
+            emoji: a.emoji.clone(),
+            count: a.count,
+            users: a.users.clone(),
+        })
+        .collect()
+}
+
+fn pins_to_wire(pins: &[PinnedMessage]) -> Vec<PinnedMessageWire> {
+    pins.iter()
+        .map(|p| PinnedMessageWire {
+            message_key: p.message_key.clone(),
+            pinner: p.pinner.clone(),
+            ts: p.ts.clone(),
+        })
+        .collect()
+}
+
+fn ci_to_wire(snap: &CiSnapshot) -> CiSnapshotWire {
+    CiSnapshotWire {
+        state: snap.state,
+        run_id: snap.run_id,
+        head_sha: snap.head_sha.clone(),
+        display_title: snap.display_title.clone(),
+    }
+}
+
+fn roster_to_wire(members: &[RosterMember]) -> Vec<RosterMemberWire> {
+    members
+        .iter()
+        .map(|m| RosterMemberWire {
+            name: m.name.clone(),
+            role: m.role,
+            presence: m.presence,
+        })
+        .collect()
+}
+
 pub struct ReactionsSessionBroadcaster {
     session: Arc<session::Session>,
 }
@@ -105,8 +171,16 @@ impl ReactionsSessionBroadcaster {
 }
 
 impl ReactionsBroadcastListener for ReactionsSessionBroadcaster {
-    fn on_changed(&self, _channel: &str, _aggregated: &[AggregatedReaction]) {
+    fn on_changed(&self, channel: &str, aggregated: &[AggregatedReaction]) {
         broadcast_marker(&self.session, REACTIONS_UPDATE_MARKER, "reactions_listener");
+        broadcast_state_delta(
+            &self.session,
+            StateDeltaPayload::Reactions {
+                channel: channel.to_string(),
+                aggregated: reactions_to_wire(aggregated),
+            },
+            "reactions_listener",
+        );
     }
 }
 
@@ -121,8 +195,16 @@ impl PinsSessionBroadcaster {
 }
 
 impl PinsBroadcastListener for PinsSessionBroadcaster {
-    fn on_changed(&self, _channel: &str, _pins: &[PinnedMessage]) {
+    fn on_changed(&self, channel: &str, pins: &[PinnedMessage]) {
         broadcast_marker(&self.session, PINS_UPDATE_MARKER, "pins_listener");
+        broadcast_state_delta(
+            &self.session,
+            StateDeltaPayload::Pins {
+                channel: channel.to_string(),
+                pins: pins_to_wire(pins),
+            },
+            "pins_listener",
+        );
     }
 }
 
@@ -137,7 +219,14 @@ impl RosterSessionBroadcaster {
 }
 
 impl RosterBroadcastListener for RosterSessionBroadcaster {
-    fn on_changed(&self, _members: &[RosterMember]) {
+    fn on_changed(&self, members: &[RosterMember]) {
         broadcast_marker(&self.session, ROSTER_UPDATE_MARKER, "roster_listener");
+        broadcast_state_delta(
+            &self.session,
+            StateDeltaPayload::Roster {
+                members: roster_to_wire(members),
+            },
+            "roster_listener",
+        );
     }
 }

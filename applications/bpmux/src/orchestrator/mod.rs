@@ -5,6 +5,8 @@ pub mod stores;
 #[cfg(test)]
 mod ci_tests;
 #[cfg(test)]
+mod listeners_tests;
+#[cfg(test)]
 mod stores_tests;
 
 pub use ci::{
