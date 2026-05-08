@@ -1,9 +1,10 @@
 //! Per-message emoji reactions — #340.
 //!
 //! Any viewer can add/remove reactions on any message. Reactions
-//! survive restart via `<session-dir>/reactions.json`, broadcast
-//! via REACTIONS_UPDATE_MARKER so peer renderers see pill updates
-//! within WS latency.
+//! survive restart via `<session-dir>/reactions.json`. State
+//! changes broadcast over WS as typed `StateDelta::Reactions` via
+//! the orchestrator's ReactionsSessionBroadcaster, so peer mirror
+//! state updates within WS latency.
 //!
 //! `channel` follows the same canonical-key derivation as pins —
 //! see session::pins::channel_key. `message_key` = `{ts}|{from}`.

@@ -784,8 +784,9 @@ pub struct CommentPayload {
 /// Pins REST (#342) — GET/POST/DELETE /api/pins.
 ///
 /// State is per-session at `<session-dir>/pins.json` via
-/// `session::pins`. Writes broadcast `PINS_UPDATE_MARKER` so peer
-/// renderers refetch without polling.
+/// `session::pins`. Writes dispatch `PinsAction::PinAdded`/`PinRemoved`
+/// to the orchestrator, which fans out a typed `StateDelta::Pins`
+/// over WS so peer mirror.pins updates within WS latency.
 #[derive(Deserialize)]
 pub struct PinsChannelQuery {
     pub channel: String,
@@ -979,12 +980,12 @@ pub async fn post_reaction(
     )
 }
 
-/// #387 cross-agent reaction visibility. The system-class
-/// REACTIONS_UPDATE_MARKER is filtered by the bridge before reaching
-/// MCP-bridged agents, so reactions were Electron-UI-only pre-#387.
-/// This synthesizes a human-readable insight-class chat entry so
-/// agents see "{user} reacted {emoji} to {sender}'s message" (or
-/// "removed {emoji} from…" on a toggle-off) in their stream.
+/// #387 cross-agent reaction visibility. Typed `StateDelta::Reactions`
+/// frames are renderer-mirror-only; MCP-bridged agents see chat
+/// insights rather than wire-state. This synthesizes a human-readable
+/// insight-class chat entry so agents see "{user} reacted {emoji} to
+/// {sender}'s message" (or "removed {emoji} from…" on a toggle-off)
+/// in their stream.
 ///
 /// Message-key shape is `{ts}|{from}` (mirrors session::pins /
 /// usePins / pinKey); we parse the `from` out to name the original

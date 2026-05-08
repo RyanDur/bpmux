@@ -31,8 +31,6 @@ interface UsePinsArgs {
   apiBase: string | undefined
   authToken: string | undefined
   channel: string
-  // Forwarded WS message stream so the hook can refetch on
-  // PINS_UPDATE_MARKER (AC7: live peer updates) without polling.
   messages: ChatMessage[]
   mirrorPins?: ReadonlyMap<string, PinnedMessageWire[]>
 }

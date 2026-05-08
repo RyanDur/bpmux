@@ -230,12 +230,11 @@ pub async fn run_server(
     }
 
     // #372: spawn the push-based CI state watcher. Polls GitHub at
-    // its own cadence (independent of the 15s frontend poll), emits
-    // CI_STATE_UPDATE_MARKER on detected conclusion change so the
-    // renderer's CiGlyph can refetch /api/ci immediately instead of
-    // waiting for its next local tick. Only spawns when we actually
-    // have a tracker — without one `/api/ci` returns 503 and polling
-    // would just log errors.
+    // its own cadence (independent of the 15s frontend poll). State
+    // changes flow as typed StateDelta::Ci via the orchestrator's
+    // CiSessionBroadcaster — renderer mirror.ci updates within WS
+    // latency. Only spawns when we have a tracker — without one
+    // `/api/ci` returns 503 and polling would just log errors.
     let ci_state_store = crate::transport::ci_state_store::CiStateStore::new();
     let ci_log_store = crate::transport::ci_log_store::CiLogStore::new();
     let electron_capture_lock: std::sync::Arc<tokio::sync::Mutex<()>> =

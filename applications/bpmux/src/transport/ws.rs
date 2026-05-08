@@ -91,10 +91,6 @@ async fn run_ws_session(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut identity = wait_for_identify(&mut tx, &mut rx).await?;
     session.peer_connected();
-    // #402: register in the session roster so `GET /api/roster` +
-    // sidebar membership reflect the live connection. The
-    // broadcast below signals the frontend to refetch roster via
-    // ROSTER_UPDATE_MARKER.
     session.roster_join(&identity);
     dispatch_roster_join(&orchestrator, &identity).await;
     let mut broadcast_rx = session.subscribe();
@@ -153,10 +149,6 @@ async fn run_ws_session(
                         Some(Ok(WsMessage::Text(text))) => {
                             if let Some(new_identity) = handle_client_message(&text, &identity, &session, &mut tx).await? {
                                 let _ = session.broadcast(&system_announcement(&format!("{identity} left")));
-                                // #402: roster churn on rename —
-                                // drop the old identity + add the
-                                // new one so subscribers see the
-                                // name change reflected.
                                 session.roster_leave(&identity);
                                 dispatch_roster_leave(&orchestrator, &identity).await;
                                 identity = new_identity;

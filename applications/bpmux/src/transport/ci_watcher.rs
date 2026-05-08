@@ -1,13 +1,11 @@
 //! Backend CI state watcher (#372). Polls GitHub at a fixed cadence,
-//! tracks the last-seen `(run_id, conclusion)` pair, and broadcasts
-//! `CI_STATE_UPDATE_MARKER` when either component differs — i.e. a
-//! new run on main OR a conclusion flip on the same run. The
-//! renderer's CiGlyph subscribes to that marker and refetches
-//! `/api/ci` immediately, turning CI state from pull-only (the 15s
-//! frontend poll from #361) into push-driven — state changes land
-//! within WS latency instead of waiting up to 15s for the next
-//! client tick. The 15s poll stays as a safety net so a disconnect-
-//! then-reconnect window doesn't strand the glyph on stale state.
+//! tracks the last-seen `(run_id, conclusion)` pair, and dispatches
+//! `OrchestratorAction::CiUpdated` when either component differs —
+//! i.e. a new run on main OR a conclusion flip on the same run.
+//! The orchestrator's CiSessionBroadcaster fans out a typed
+//! `StateDelta::Ci` over WS so the renderer's mirror.ci updates
+//! within WS latency. The 15s renderer-side poll stays as a safety
+//! net for disconnect-reconnect windows.
 //!
 //! #395: keyed on `(run_id, conclusion)` not conclusion alone. The
 //! prior version swallowed broadcasts when CI stayed red across

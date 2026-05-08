@@ -1,15 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ChatMessage, RosterMemberWire } from '../transport/types'
 
-// #402 team-roster substrate. Source of truth for sidebar
-// membership (directs + combinatorial groups). Previously the
-// sidebar derived membership from observed message senders, which
-// meant teammates disappeared as the hydration window narrowed
-// past their last message. Ryan 2026-04-23 12:08 UTC: "keep
-// losing the groups and directs." Fix: fetch the authoritative
-// roster from `/api/roster` + subscribe to `ROSTER_UPDATE_MARKER`
-// so the set stays in sync with actual bridge connections.
-
 export interface RosterEntry {
   identity: string
   role: string
@@ -33,12 +24,6 @@ interface Props {
   mirrorRoster?: readonly RosterMemberWire[]
 }
 
-/**
- * Fetches the connected-agent roster once at mount, then refetches
- * whenever a `ROSTER_UPDATE_MARKER` arrives on the message stream.
- * Returns the current snapshot. Empty array before the first fetch
- * completes or when the bridge has no peers yet.
- */
 export function useTeamRoster({
   apiBase,
   authToken,
