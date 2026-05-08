@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { applyStateDelta, applyStateSnapshot, emptyMirrorState } from './state-delta'
+import type { MirrorState } from './state-delta'
 import type { ChatMessage, ClientMessage, ConnectionStatus, ServerMessage } from './types'
 
 // WebSocket hook for the bpmux session protocol.
@@ -43,6 +45,7 @@ export interface UseWebSocketResult {
   messages: ChatMessage[]
   sessionId: string | null
   sendChat: (text: string, opts?: SendOptions) => void
+  mirror: MirrorState
 }
 
 interface HistoryMessage {
@@ -99,6 +102,7 @@ export const useWebSocket = (
   const [status, setStatus] = useState<ConnectionStatus>(url ? 'connecting' : 'disconnected')
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [sessionId, setSessionId] = useState<string | null>(null)
+  const [mirror, setMirror] = useState<MirrorState>(emptyMirrorState)
 
   const socketRef = useRef<WebSocket | null>(null)
   const backoffRef = useRef<number>(INITIAL_BACKOFF_MS)
@@ -141,7 +145,14 @@ export const useWebSocket = (
         setSessionId(parsed.session_id)
         break
       case 'message': {
-        if (parsed.message_type === 'state-snapshot' || parsed.message_type === 'state-delta') {
+        if (parsed.message_type === 'state-snapshot' && parsed.state_snapshot) {
+          const snap = parsed.state_snapshot
+          setMirror((prev) => applyStateSnapshot(prev, snap))
+          break
+        }
+        if (parsed.message_type === 'state-delta' && parsed.state_delta) {
+          const delta = parsed.state_delta
+          setMirror((prev) => applyStateDelta(prev, delta))
           break
         }
         msgCounterRef.current += 1
@@ -345,5 +356,5 @@ export const useWebSocket = (
     }
   }, [url, sendJson, handleServerMessage])
 
-  return { status, messages, sessionId, sendChat }
+  return { status, messages, sessionId, sendChat, mirror }
 }
