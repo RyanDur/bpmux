@@ -67,7 +67,7 @@ async function launchWithFixture(): Promise<{
 }
 
 test.describe('desk-check #457 slice 5 — Electron Epic-summary section', () => {
-  test('Epics section renders + expands via native details/summary', async () => {
+  test('#1185 Epic meta-card: progress + breakdown + no nested children + drill-in opens via header button', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="board-region"]')).toBeVisible()
@@ -78,21 +78,19 @@ test.describe('desk-check #457 slice 5 — Electron Epic-summary section', () =>
 
     const epic901 = win.locator('[data-test="board-epic-901"]')
     await expect(epic901).toBeVisible()
-    await expect(epic901).not.toHaveAttribute('open', '')
 
-    await expect(epic901.locator('.board-epic-counts')).toContainText('2 children')
-    await expect(epic901.locator('.board-epic-counts')).toContainText('1✓')
+    const progress = win.locator('[data-test="board-epic-901-progress"]')
+    await expect(progress).toBeVisible()
+    await expect(progress).toHaveAttribute('value', '1')
+    await expect(progress).toHaveAttribute('max', '2')
 
-    await epic901.locator('summary').click()
-    await expect(epic901).toHaveAttribute('open', '')
+    const breakdown = win.locator('[data-test="board-epic-901-breakdown"]')
+    await expect(breakdown).toContainText('1/2 accepted')
+    await expect(breakdown).toContainText('0/2 in-progress')
 
-    const childLinks = epic901.locator('.board-epic-children button')
-    await expect(childLinks).toHaveCount(2)
-    await expect(childLinks.first()).toContainText('#902')
-    await expect(childLinks.first()).toContainText('Child story under epic — feature')
-
-    await epic901.locator('summary').click()
-    await expect(epic901).not.toHaveAttribute('open', '')
+    await expect(epic901.locator('.board-epic-children')).toHaveCount(0)
+    await expect(epic901.locator('.board-epic-child-state')).toHaveCount(0)
+    await expect(epic901).not.toContainText('Child story under epic — feature')
 
     await app.close()
   })
@@ -144,47 +142,4 @@ test.describe('desk-check #457 slice 5 — Electron Epic-summary section', () =>
     await app.close()
   })
 
-  test('multiple epics can expand simultaneously (native details no mutual-exclusion)', async () => {
-    const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-457-multi-'))
-    const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-457-multi-'))
-    const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
-    const win = await app.firstWindow()
-    await win.route('**/api/board', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          fetched_at: '2026-04-26T00:00:00Z',
-          stories: [
-            {
-              number: 901,
-              title: 'Epic A',
-              state: 'in-progress',
-              labels: ['Epic'],
-              assignees: [],
-              created_at: '2026-04-26T00:00:00Z',
-              body: ''
-            },
-            {
-              number: 902,
-              title: 'Epic B',
-              state: 'in-progress',
-              labels: ['Epic'],
-              assignees: [],
-              created_at: '2026-04-26T00:00:00Z',
-              body: ''
-            }
-          ]
-        })
-      })
-    })
-    await win.reload()
-    const epicA = win.locator('[data-test="board-epic-901"]')
-    const epicB = win.locator('[data-test="board-epic-902"]')
-    await epicA.locator('summary').click()
-    await epicB.locator('summary').click()
-    await expect(epicA).toHaveAttribute('open', '')
-    await expect(epicB).toHaveAttribute('open', '')
-    await app.close()
-  })
 })

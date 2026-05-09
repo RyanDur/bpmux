@@ -366,30 +366,31 @@
     flex-direction: column;
   }
 
-  & .board-epic-details {
+  & .board-epic-card {
     border-top: 1px solid var(--border-subtle);
+    padding: var(--space-8) var(--space-16);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
   }
 
-  & .board-epic-summary {
+  & .board-epic-header {
+    display: flex;
+    align-items: center;
+  }
+
+  & .board-epic-button {
     display: flex;
     align-items: center;
     gap: var(--space-8);
-    padding: var(--space-6) var(--space-16);
+    width: 100%;
+    background: none;
+    border: none;
+    padding: var(--space-4) 0;
+    color: inherit;
+    font: inherit;
+    text-align: left;
     cursor: pointer;
-    user-select: none;
-    list-style: none;
-
-    &::-webkit-details-marker {
-      display: none;
-    }
-
-    &::before {
-      content: '▸';
-      color: var(--fg-dim);
-      /* #1134: raised from 0.625rem (10px) to meet 12px a11y floor. */
-      font-size: 0.75rem;
-      flex: 0 0 auto;
-    }
 
     &:hover {
       background: var(--bg-highlighted);
@@ -401,14 +402,9 @@
     }
   }
 
-  & .board-epic-details[open] > .board-epic-summary::before {
-    content: '▾';
-  }
-
   & .board-epic-state {
     flex: 0 0 auto;
     color: var(--fg-dim);
-    /* #1134: raised from 0.625rem (10px) to meet 12px a11y floor. */
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -441,31 +437,43 @@
     font-weight: 500;
   }
 
-  & .board-epic-counts {
-    flex: 0 0 auto;
+  & .board-epic-description {
     color: var(--fg-dim);
-    /* #1134: raised from 0.6875rem (11px) to meet 12px a11y floor. */
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    margin: 0;
+    padding: 0 var(--space-4);
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+  }
+
+  & .board-epic-progress {
+    width: 100%;
+    height: var(--space-8);
+    appearance: none;
+
+    &::-webkit-progress-bar {
+      background: var(--bg-highlighted);
+      border-radius: 3px;
+    }
+
+    &::-webkit-progress-value {
+      background: var(--accent-success);
+      border-radius: 3px;
+    }
+
+    &::-moz-progress-bar {
+      background: var(--accent-success);
+      border-radius: 3px;
+    }
+  }
+
+  & .board-epic-breakdown {
+    color: var(--fg-dim);
     font-size: 0.75rem;
     font-variant-numeric: tabular-nums;
-  }
-
-  & .board-epic-children {
-    display: flex;
-    flex-direction: column;
-    padding-left: var(--space-24);
-  }
-
-  & .board-epic-child .board-story-button {
-    padding: var(--space-4) var(--space-16);
-  }
-
-  & .board-epic-child-state {
-    flex: 0 0 auto;
-    color: var(--fg-dim);
-    /* #1134: raised from 0.6875rem (11px) to meet 12px a11y floor. */
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
   }
 
   & .board-story-title {

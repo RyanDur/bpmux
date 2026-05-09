@@ -8,7 +8,7 @@ import {
 } from '../transport/types'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import DrillIn from './DrillIn'
-import EpicSummary from './EpicSummary'
+import Epic from './Epic'
 import { ReworkGlyph } from './ReworkGlyph'
 import StoryBadge, { deriveBadge } from './StoryBadge'
 import StoryTypeGlyph from './StoryTypeGlyph'
@@ -482,7 +482,7 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
         />
       ) : (
         <section className="board-body" data-test="board-list">
-          <EpicSummary epics={epics} stories={stories} onOpen={handleOpen} />
+          <Epic epics={epics} stories={stories} onOpen={handleOpen} />
           {GROUP_ORDER.map((group) => (
             <BoardGroup
               key={group.state}
