@@ -1,13 +1,11 @@
 import { useMemo } from 'react'
-import type { ChatMessage, RosterMemberWire } from '../transport/types'
+import type { ChatMessage, ConnectionStatus, RosterMemberWire } from '../transport/types'
 import { classOf, type MessageFilter } from '../hooks/useMessageFilter'
 import { usePresence, type Presence } from '../hooks/usePresence'
 import { useTeamRoster } from '../hooks/useTeamRoster'
 import {
-  deriveCombinableRoles,
   deriveCombinableRolesFromRoster,
   deriveCombinatorialGroups,
-  deriveDirectRoles,
   deriveDirectRolesFromRoster
 } from '../roles/deriveRoles'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
@@ -23,6 +21,7 @@ interface Props {
   apiBase?: string
   authToken?: string
   mirrorRoster?: readonly RosterMemberWire[]
+  wsStatus?: ConnectionStatus
 }
 
 const PRESENCE_LABEL: Record<Presence, string> = {
@@ -59,26 +58,19 @@ const Sidebar = ({
   filter,
   apiBase,
   authToken,
-  mirrorRoster
+  mirrorRoster,
+  wsStatus
 }: Props): React.JSX.Element => {
   const systemCount = useMemo(() => countSystemMessages(messages), [messages])
-  const roster = useTeamRoster({ apiBase, authToken, mirrorRoster })
-  const peerRoster = useMemo(
-    () => roster.filter((e) => e.role !== RENDERER_IDENTITY),
+  const roster = useTeamRoster({ apiBase, authToken, mirrorRoster, wsStatus })
+  const directRoles = useMemo(
+    () => deriveDirectRolesFromRoster(roster, RENDERER_IDENTITY),
     [roster]
   )
-  const directRoles = useMemo(() => {
-    if (peerRoster.length > 0) {
-      return deriveDirectRolesFromRoster(roster, RENDERER_IDENTITY)
-    }
-    return deriveDirectRoles(messages, RENDERER_IDENTITY)
-  }, [peerRoster, roster, messages])
-  const combinableRoles = useMemo(() => {
-    if (peerRoster.length > 0) {
-      return deriveCombinableRolesFromRoster(roster, RENDERER_IDENTITY)
-    }
-    return deriveCombinableRoles(messages, RENDERER_IDENTITY)
-  }, [peerRoster, roster, messages])
+  const combinableRoles = useMemo(
+    () => deriveCombinableRolesFromRoster(roster, RENDERER_IDENTITY),
+    [roster]
+  )
   const groups = useMemo(() => deriveCombinatorialGroups(combinableRoles), [combinableRoles])
   const presence = usePresence(messages, directRoles)
 

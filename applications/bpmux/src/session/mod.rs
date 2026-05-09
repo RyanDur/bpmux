@@ -22,6 +22,9 @@ pub mod tokens;
 pub mod usage;
 pub mod velocity;
 
+#[cfg(test)]
+mod team_roster_tests;
+
 pub use classifier::{MessageClass, classify};
 pub use log::{
     BROADCAST_CHANNEL_CAPACITY, LogError, Session, append_message, create_session,

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { RosterMemberWire } from '../transport/types'
+import type { ConnectionStatus, RosterMemberWire } from '../transport/types'
+import { useRefetchOnReconnect } from '../board/useRefetchOnReconnect'
 
 export interface RosterEntry {
   identity: string
@@ -21,12 +22,14 @@ interface Props {
   apiBase: string | undefined
   authToken: string | undefined
   mirrorRoster?: readonly RosterMemberWire[]
+  wsStatus?: ConnectionStatus
 }
 
 export function useTeamRoster({
   apiBase,
   authToken,
-  mirrorRoster
+  mirrorRoster,
+  wsStatus
 }: Props): readonly RosterEntry[] {
   const [restRoster, setRestRoster] = useState<readonly RosterEntry[]>([])
   const roster = useMemo(
@@ -34,8 +37,8 @@ export function useTeamRoster({
     [mirrorRoster, restRoster]
   )
 
-  const buildFetch = useCallback(
-    (signal: AbortSignal, cancelledCheck: () => boolean) => async (): Promise<void> => {
+  const fetchRoster = useCallback(
+    async (signal?: AbortSignal): Promise<void> => {
       if (!apiBase) return
       try {
         const res = await fetch(`${apiBase}/api/roster`, {
@@ -44,7 +47,7 @@ export function useTeamRoster({
         })
         if (!res.ok) return
         const json = (await res.json()) as { roster?: RosterEntry[] }
-        if (cancelledCheck()) return
+        if (signal?.aborted) return
         if (Array.isArray(json.roster)) setRestRoster(json.roster)
       } catch (err) {
         if ((err as Error)?.name === 'AbortError') return
@@ -55,15 +58,16 @@ export function useTeamRoster({
 
   useEffect(() => {
     if (!apiBase) return
-    let cancelled = false
     const controller = new AbortController()
-    const fetchOnce = buildFetch(controller.signal, () => cancelled)
-    void fetchOnce()
+    void fetchRoster(controller.signal)
     return () => {
-      cancelled = true
       controller.abort()
     }
-  }, [apiBase, buildFetch])
+  }, [apiBase, fetchRoster])
+
+  useRefetchOnReconnect(wsStatus ?? 'connected', () => {
+    void fetchRoster()
+  })
 
   return roster
 }

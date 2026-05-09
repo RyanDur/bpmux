@@ -239,6 +239,7 @@ const AppShell = ({
           apiBase={bridge?.apiBase}
           authToken={bridge?.authToken}
           mirrorRoster={mirrorRoster}
+          wsStatus={status}
         />
         <Chat
           messages={messages}
