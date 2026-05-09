@@ -54,29 +54,12 @@ function UnfurlCards({ text, apiBase, authToken }: Props): React.JSX.Element | n
         target="_blank"
         rel="noreferrer noopener"
       >
-        {data.image && (
-          <img
-            className="unfurl-card-image"
-            src={data.image}
-            alt=""
-            loading="lazy"
-          />
-        )}
         <div className="unfurl-card-body">
-          <header className="unfurl-card-meta">
-            {data.favicon && (
-              <img
-                className="unfurl-card-favicon"
-                src={data.favicon}
-                alt=""
-                width="14"
-                height="14"
-              />
-            )}
-            {data.site_name && (
+          {data.site_name && (
+            <header className="unfurl-card-meta">
               <small className="unfurl-card-site">{data.site_name}</small>
-            )}
-          </header>
+            </header>
+          )}
           {data.title && <strong className="unfurl-card-title">{data.title}</strong>}
           {data.description && (
             <p className="unfurl-card-description">{data.description}</p>
