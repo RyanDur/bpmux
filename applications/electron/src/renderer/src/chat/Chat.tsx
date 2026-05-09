@@ -111,9 +111,9 @@ const Chat = ({
   return (
     <section className="chat" data-test="chat-region">
       {showReconnect && (
-        <aside className="chat-warning" role="status" aria-live="polite" data-test="chat-warning">
+        <div className="chat-warning" role="status" aria-live="polite" data-test="chat-warning">
           {status === 'connecting' ? 'connecting…' : 'reconnecting…'}
-        </aside>
+        </div>
       )}
       {scopeLabel && (
         <aside className="chat-scope" aria-live="polite">

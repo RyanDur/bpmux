@@ -970,9 +970,9 @@ const DrillIn = ({
       ) : null}
 
       {toast ? (
-        <aside className="drill-in-toast" role="status" data-test="drill-in-toast">
+        <div className="drill-in-toast" role="status" data-test="drill-in-toast">
           {toast}
-        </aside>
+        </div>
       ) : null}
     </article>
   )
