@@ -95,7 +95,8 @@
       color: var(--fg-primary);
     }
 
-    &:focus-visible {
+    &:focus-visible,
+    &:focus {
       border-color: var(--border-strong);
       outline: none;
     }
