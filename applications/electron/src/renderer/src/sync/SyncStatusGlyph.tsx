@@ -256,7 +256,7 @@ const SyncStatusGlyph = ({ apiBase, authToken, messages }: Props): React.JSX.Ele
   const showCount = state !== 'connected' && count > 0
 
   return (
-    <aside role="status" aria-live="polite" className="sync-status-region">
+    <div role="status" aria-live="polite" className="sync-status-region">
       <button
         type="button"
         className={`sync-status-glyph sync-status-glyph--${state}`}
@@ -270,7 +270,7 @@ const SyncStatusGlyph = ({ apiBase, authToken, messages }: Props): React.JSX.Ele
         <span aria-hidden="true">{glyph}</span>
         {showCount && <small className="sync-status-glyph__count">{count}</small>}
       </button>
-    </aside>
+    </div>
   )
 }
 

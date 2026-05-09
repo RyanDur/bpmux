@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchIsolatedElectron } from '../helpers/launch'
+import { formatViolations, runA11yAudit } from '../helpers/a11yAudit'
 
 interface ContrastFailure {
   category: 'contrast'
@@ -44,7 +45,23 @@ type AuditFailure = ContrastFailure | AriaFailure | KeyboardFailure | FocusFailu
 
 test.describe('#425 a11y audit — dark-theme contrast + ARIA + keyboard + focus-visible', () => {
   test('every visible interactive + text element passes the four-axis audit', async () => {
-    const { app } = await launchIsolatedElectron()
+    const { app } = await launchIsolatedElectron({
+      seedMessages: [
+        {
+          from: 'pm:claude-code',
+          text: 'audit-fixture pm message',
+          ts: '2026-04-22T16:00:00Z',
+          message_type: 'chat'
+        },
+        {
+          from: 'dev:claude-code',
+          text: 'audit-fixture dev message',
+          ts: '2026-04-22T16:01:00Z',
+          message_type: 'chat'
+        }
+      ],
+      seedRoster: ['pm:claude-code', 'dev:claude-code']
+    })
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="app-root"]')).toBeVisible()
     await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
@@ -79,13 +96,28 @@ test.describe('#425 a11y audit — dark-theme contrast + ARIA + keyboard + focus
         return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05)
       }
       function effectiveBackground(el: Element): [number, number, number] {
+        let r = 0
+        let g = 0
+        let b = 0
+        let remainingAlpha = 1
         let cur: Element | null = el
-        while (cur) {
+        while (cur && remainingAlpha > 0.001) {
           const parsed = parseColor(window.getComputedStyle(cur).backgroundColor)
-          if (parsed && parsed[3] > 0) return [parsed[0], parsed[1], parsed[2]]
+          if (parsed && parsed[3] > 0) {
+            const layerAlpha = parsed[3] * remainingAlpha
+            r += parsed[0] * layerAlpha
+            g += parsed[1] * layerAlpha
+            b += parsed[2] * layerAlpha
+            remainingAlpha *= 1 - parsed[3]
+          }
           cur = cur.parentElement
         }
-        return [0, 0, 0]
+        if (remainingAlpha > 0.001) {
+          r += 0 * remainingAlpha
+          g += 0 * remainingAlpha
+          b += 0 * remainingAlpha
+        }
+        return [Math.round(r), Math.round(g), Math.round(b)]
       }
       function isElementVisible(el: Element): boolean {
         const cs = window.getComputedStyle(el)
@@ -301,6 +333,15 @@ test.describe('#425 a11y audit — dark-theme contrast + ARIA + keyboard + focus
     expect(
       failures,
       `#425: ${failures.length} a11y violation(s) — see test output`
+    ).toEqual([])
+
+    const axeResult = await runA11yAudit(win)
+    if (axeResult.violations.length > 0) {
+      console.log(`\n#425 axe-core a11y audit:\n${formatViolations(axeResult)}`)
+    }
+    expect(
+      axeResult.violations.map((v) => ({ id: v.id, impact: v.impact })),
+      `#425 axe-core: ${axeResult.violations.length} violation(s) — see test output for full detail`
     ).toEqual([])
 
     await app.close()

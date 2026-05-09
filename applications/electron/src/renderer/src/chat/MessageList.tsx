@@ -177,9 +177,11 @@ const MessageList = ({
     setNewCount(0)
   }, [])
 
-  const regionProps = {
+  const listProps = {
     className: 'message-list',
-    'data-test': 'message-list',
+    'data-test': 'message-list'
+  }
+  const logRegionProps = {
     role: 'log' as const,
     'aria-label': 'Chat messages',
     'aria-live': 'polite' as const
@@ -421,13 +423,11 @@ const MessageList = ({
                 <h3 className="message-lane-title">{cls}</h3>
                 <small className="message-lane-count">{slice.length}</small>
               </header>
-              <ul
-                className="message-list message-list--lane"
-                role="log"
-                aria-live="polite"
-              >
-                {rows.map(renderRow)}
-              </ul>
+              <div role="log" aria-live="polite" className="message-log-region">
+                <ul className="message-list message-list--lane">
+                  {rows.map(renderRow)}
+                </ul>
+              </div>
             </section>
           )
         })}
@@ -464,9 +464,11 @@ const MessageList = ({
           couldn’t load older messages — retry
         </button>
       )}
-      <ul {...regionProps} ref={listRef} onScroll={handleScroll}>
-        {reversed.map(renderRow)}
-      </ul>
+      <div {...logRegionProps} className="message-log-region">
+        <ul {...listProps} ref={listRef} onScroll={handleScroll}>
+          {reversed.map(renderRow)}
+        </ul>
+      </div>
       {newCount > 0 && (
         <button
           type="button"
