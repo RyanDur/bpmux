@@ -24,6 +24,7 @@ mod get_usage;
 mod git_repo;
 #[cfg(test)]
 mod git_repo_tests;
+mod iteration_markers;
 mod list_lessons;
 mod list_peer_lessons;
 mod list_ready;
@@ -89,6 +90,9 @@ pub(in crate::bridge) use get_story::handle_get_story;
 pub(in crate::bridge) use get_sync_status::handle_get_sync_status;
 pub(in crate::bridge) use get_token_report::handle_get_token_report;
 pub(in crate::bridge) use get_usage::handle_get_usage;
+pub(in crate::bridge) use iteration_markers::{
+    handle_create_iteration_marker, handle_list_iteration_markers,
+};
 pub(in crate::bridge) use list_lessons::handle_list_lessons;
 pub(in crate::bridge) use list_peer_lessons::handle_list_peer_lessons;
 pub(in crate::bridge) use list_ready::handle_list_ready;

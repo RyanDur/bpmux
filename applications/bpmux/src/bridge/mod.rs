@@ -792,6 +792,10 @@ impl ServerHandler for BridgeServer {
                     let current_name = name.lock().await;
                     tools_stories::handle_close_iteration(&current_name, &ws_tx).await
                 }
+                "create_iteration_marker" => {
+                    tools::handle_create_iteration_marker(&args, port).await
+                }
+                "list_iteration_markers" => tools::handle_list_iteration_markers(port).await,
                 "get_usage" => tools::handle_get_usage(&args).await,
                 "view_tokens" => tools::handle_view_tokens(&ws_tx).await,
                 "view_roadmap" => tools::handle_view_roadmap(&ws_tx).await,
@@ -942,6 +946,12 @@ pub fn build_advertised_tools() -> Vec<rmcp::model::Tool> {
         crate::mcp::tools::close_iteration_tool(
             "Broadcast the iteration-close externalize-prompt (#282) so every agent flushes unsaved findings (via Write / save_lesson / add_principle / doc edit) before context compaction can evict them. PM ONLY — other roles are rejected. Fail-soft: tool returns after broadcast; iteration closes regardless of agent response.",
         ),
+        crate::mcp::tools::create_iteration_marker_tool(
+            "Create an iteration-marker pseudo-entity in the icebox column (#1249, Epic #1189). Markers visually divide stories into iteration-groups — \"everything above this marker is the next iteration.\" Optional `theme_name` (constellation: Orion, Lyra, etc.); auto-picks next unused if omitted. PM-discretion. Returns the new marker JSON with id + position + created_at.",
+        ),
+        crate::mcp::tools::list_iteration_markers_tool(
+            "List iteration-markers currently in the icebox, sorted by position (#1249). Returns `[{id, theme_name, position, created_at}, ...]`. Read-only; safe for any role.",
+        ),
         crate::mcp::tools::label_story_tool(
             "Add a label to a story (ready, blocked, icebox, deferred). PM ONLY — other roles are rejected.",
         ),
@@ -1066,6 +1076,8 @@ pub const DISPATCHED_TOOL_NAMES: &[&str] = &[
     "view_comments",
     "view_backlog",
     "close_iteration",
+    "create_iteration_marker",
+    "list_iteration_markers",
     "get_usage",
     "view_tokens",
     "view_roadmap",
