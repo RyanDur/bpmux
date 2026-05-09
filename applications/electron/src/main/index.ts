@@ -6,6 +6,7 @@ import { spawn, ChildProcess } from 'child_process'
 import * as http from 'http'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import { applySelfUpdateRestartPolicy } from './selfUpdateRestartPolicy'
 
 const BACKEND_HOST = '127.0.0.1'
 // BACKEND_PORT is overridable via env for test isolation — Playwright
@@ -31,9 +32,16 @@ const READY_POLL_INTERVAL_MS = 100
 const READY_TIMEOUT_MS = 30_000
 const SIGKILL_FALLBACK_MS = 2_000
 
+const RESTART_EXIT_CODE = 200
+const RESTART_LOOP_GUARD_WINDOW_MS = 60_000
+const RESTART_LOOP_GUARD_MAX = 5
+const RESTART_LOOP_HALT_EXIT_CODE = 99
+const RESTART_RESPAWN_DELAY_MS = 250
+
 let backendProcess: ChildProcess | null = null
 let authToken = ''
 let shuttingDown = false
+const recentRestartsAt: number[] = []
 
 function resolveBinaryPath(): string {
   if (app.isPackaged) {
@@ -173,10 +181,12 @@ async function spawnBackend(): Promise<void> {
   child.on('exit', (code, signal) => {
     console.log(`[bpmux] backend exited code=${code} signal=${signal}`)
     backendProcess = null
-    if (!shuttingDown) {
-      // If the backend dies unexpectedly while the app is running, tear down.
-      app.quit()
+    if (shuttingDown) return
+    if (code === RESTART_EXIT_CODE) {
+      handleSelfUpdateRestart()
+      return
     }
+    app.quit()
   })
 
   try {
@@ -191,6 +201,34 @@ async function spawnBackend(): Promise<void> {
   authToken = readAuthToken()
   console.log(`[bpmux] backend ready on ${API_BASE}`)
 }
+
+function handleSelfUpdateRestart(): void {
+  const decision = applySelfUpdateRestartPolicy(recentRestartsAt, Date.now(), {
+    windowMs: RESTART_LOOP_GUARD_WINDOW_MS,
+    maxRestarts: RESTART_LOOP_GUARD_MAX
+  })
+  if (decision.action === 'halt') {
+    console.error(
+      `[bpmux] self-update halt: ${decision.restartsInWindow} restarts in ${RESTART_LOOP_GUARD_WINDOW_MS / 1000}s — likely bad-binary thrash`
+    )
+    dialog.showErrorBox(
+      'bpmux self-update halted',
+      `Backend restart-loop guard tripped (${decision.restartsInWindow} restarts in ${RESTART_LOOP_GUARD_WINDOW_MS / 1000}s). Investigate the binary before relaunching.`
+    )
+    app.exit(RESTART_LOOP_HALT_EXIT_CODE)
+    return
+  }
+  console.log(
+    `[bpmux] self-update: respawning backend (restart #${decision.restartsInWindow} in window)`
+  )
+  setTimeout(() => {
+    spawnBackend().catch((err) => {
+      console.error('[bpmux] self-update respawn failed:', err)
+      if (!shuttingDown) app.quit()
+    })
+  }, RESTART_RESPAWN_DELAY_MS)
+}
+
 
 function killBackend(): void {
   const child = backendProcess
