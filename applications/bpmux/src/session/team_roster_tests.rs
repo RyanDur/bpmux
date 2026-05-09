@@ -1,25 +1,13 @@
 #![allow(clippy::unwrap_used)]
 
 use crate::session::log::{BROADCAST_CHANNEL_CAPACITY, Session};
-use crate::session::storage::FileStorage;
-use std::sync::Arc;
 use tempfile::tempdir;
 use tokio::sync::broadcast;
 
 fn fresh_session() -> Session {
     let dir = tempdir().unwrap().keep();
-    let storage: Arc<dyn crate::session::storage::Storage> =
-        Arc::new(FileStorage::new(dir.clone()));
     let (wake_tx, _wake_rx) = broadcast::channel(BROADCAST_CHANNEL_CAPACITY);
-    Session {
-        dir,
-        id: "test-session".to_string(),
-        owner_name: "ryan".to_string(),
-        wake_tx,
-        connected_peers: std::sync::atomic::AtomicUsize::new(0),
-        storage,
-        roster: std::sync::Mutex::new(std::collections::HashSet::new()),
-    }
+    Session::new(dir, "ryan".to_string(), wake_tx)
 }
 
 #[test]

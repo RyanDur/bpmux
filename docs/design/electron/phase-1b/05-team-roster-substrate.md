@@ -49,12 +49,13 @@ message stream (chat_only=200 + activity=50) →
 Problem: membership follows observed-history. Narrow window = missing
 roles. "Keep losing the groups and directs" is exactly this class.
 
-**After (#402):**
+**After (#402 / #1246):**
 
 ```
 bridge-connection-roster (backend tracks joined agents) →
-  useTeamRoster hook →
-  deriveDirectRoles / deriveCombinableRoles (operate on roster) →
+  useTeamRoster hook (refetches on WS-reconnect) →
+  deriveDirectRolesFromRoster / deriveCombinableRolesFromRoster
+  (operate on roster only; no message-history fallback) →
   sidebar entries
 
 observed messages →
@@ -134,10 +135,10 @@ deriveTeamRoles(messages, viewer) → string[]
 deriveDirectRoles(messages, viewer) → string[]
 deriveCombinableRoles(messages, viewer) → string[]
 
-// After:
-deriveTeamRoles(roster) → string[]
-deriveDirectRoles(roster, viewer) → string[]
-deriveCombinableRoles(roster, viewer) → string[]
+// After (#1246):
+deriveTeamRolesFromRoster(roster) → string[]
+deriveDirectRolesFromRoster(roster, viewer) → string[]
+deriveCombinableRolesFromRoster(roster, viewer) → string[]
 ```
 
 Inputs shift from `messages` to `roster`. Filter logic stays the same
@@ -148,9 +149,15 @@ at the helper layer.
 ### Sidebar.tsx wires through
 
 ```ts
-const roster = useTeamRoster(apiBase, authToken, messages)
-const directRoles = useMemo(() => deriveDirectRoles(roster, RENDERER_IDENTITY), [roster])
-const combinableRoles = useMemo(() => deriveCombinableRoles(roster, RENDERER_IDENTITY), [roster])
+const roster = useTeamRoster({ apiBase, authToken, mirrorRoster, wsStatus })
+const directRoles = useMemo(
+  () => deriveDirectRolesFromRoster(roster, RENDERER_IDENTITY),
+  [roster]
+)
+const combinableRoles = useMemo(
+  () => deriveCombinableRolesFromRoster(roster, RENDERER_IDENTITY),
+  [roster]
+)
 // usePresence stays the same — consumes messages for activity signal
 const presence = usePresence(messages, directRoles)
 ```
