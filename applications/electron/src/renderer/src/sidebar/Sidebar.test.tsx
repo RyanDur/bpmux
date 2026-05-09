@@ -134,3 +134,136 @@ describe('Sidebar — slice 5g+5g-fix mirror-roster derivation (replaces desk-ch
     expect(html).toContain('data-test="sidebar-group-designer+dev+pm"')
   })
 })
+
+describe('Sidebar — message-derived fallback path (replaces desk-check-386/393/399.spec.ts)', () => {
+  const messageDerivedTeam: ChatMessage[] = [
+    {
+      id: 'm-ryan',
+      from: 'ryan:electron',
+      text: 'ryan',
+      ts: '2026-04-23T11:00:00Z',
+      to: null,
+      addressee: null,
+      messageType: 'chat'
+    },
+    {
+      id: 'm-bpmux',
+      from: 'bpmux',
+      text: 'system',
+      ts: '2026-04-23T11:00:05Z',
+      to: null,
+      addressee: null,
+      messageType: 'system'
+    },
+    {
+      id: 'm-dev',
+      from: 'dev:claude-code',
+      text: 'dev',
+      ts: '2026-04-23T11:00:10Z',
+      to: null,
+      addressee: null,
+      messageType: 'chat'
+    },
+    {
+      id: 'm-pm',
+      from: 'pm:claude-code',
+      text: 'pm',
+      ts: '2026-04-23T11:00:20Z',
+      to: null,
+      addressee: null,
+      messageType: 'chat'
+    },
+    {
+      id: 'm-designer',
+      from: 'designer:claude-code',
+      text: 'designer',
+      ts: '2026-04-23T11:00:30Z',
+      to: null,
+      addressee: null,
+      messageType: 'chat'
+    }
+  ]
+
+  test('#399: bpmux (system sender) does NOT render as direct entry even though it speaks', () => {
+    const html = renderToStaticMarkup(
+      <Sidebar
+        recipient={null}
+        allView={false}
+        onSelectRecipient={() => {}}
+        onSelectAllView={() => {}}
+        messages={messageDerivedTeam}
+        filter={filter}
+      />
+    )
+    expect(html).not.toContain('data-test="sidebar-direct-bpmux"')
+    expect(html).toContain('data-test="sidebar-direct-dev"')
+    expect(html).toContain('data-test="sidebar-direct-pm"')
+    expect(html).toContain('data-test="sidebar-direct-designer"')
+  })
+
+  test('#386: combinatorial groups exclude viewer + system sender, yielding 4 groups', () => {
+    const html = renderToStaticMarkup(
+      <Sidebar
+        recipient={null}
+        allView={false}
+        onSelectRecipient={() => {}}
+        onSelectAllView={() => {}}
+        messages={messageDerivedTeam}
+        filter={filter}
+      />
+    )
+    expect(html).toContain('data-test="sidebar-group-designer+dev"')
+    expect(html).toContain('data-test="sidebar-group-designer+pm"')
+    expect(html).toContain('data-test="sidebar-group-dev+pm"')
+    expect(html).toContain('data-test="sidebar-group-designer+dev+pm"')
+    expect(html).not.toMatch(/data-test="sidebar-group-[^"]*ryan/)
+    expect(html).not.toMatch(/data-test="sidebar-group-[^"]*bpmux/)
+  })
+
+  test('#393: dynamic role (ops) outside the pre-#393 hardcoded list renders when discovered from messages', () => {
+    const messages: ChatMessage[] = [
+      {
+        id: 'm-ryan',
+        from: 'ryan:electron',
+        text: 'ryan',
+        ts: '2026-04-23T11:00:00Z',
+        to: null,
+        addressee: null,
+        messageType: 'chat'
+      },
+      {
+        id: 'm-dev',
+        from: 'dev:claude-code',
+        text: 'dev',
+        ts: '2026-04-23T11:00:10Z',
+        to: null,
+        addressee: null,
+        messageType: 'chat'
+      },
+      {
+        id: 'm-ops',
+        from: 'ops:claude-code',
+        text: 'ops',
+        ts: '2026-04-23T11:00:20Z',
+        to: null,
+        addressee: null,
+        messageType: 'chat'
+      }
+    ]
+    const html = renderToStaticMarkup(
+      <Sidebar
+        recipient={null}
+        allView={false}
+        onSelectRecipient={() => {}}
+        onSelectAllView={() => {}}
+        messages={messages}
+        filter={filter}
+      />
+    )
+    expect(html).toContain('data-test="sidebar-direct-dev"')
+    expect(html).toContain('data-test="sidebar-direct-ops"')
+    expect(html).not.toContain('data-test="sidebar-direct-designer"')
+    expect(html).not.toContain('data-test="sidebar-direct-pm"')
+    expect(html).not.toContain('data-test="sidebar-direct-ryan"')
+  })
+})
