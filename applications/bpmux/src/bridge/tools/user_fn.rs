@@ -139,6 +139,7 @@ pub fn substitute_args(
 
 pub(in crate::bridge) async fn handle_user_fn(
     args: &serde_json::Map<String, serde_json::Value>,
+    role: &str,
 ) -> Result<String, String> {
     let name = args
         .get("name")
@@ -156,8 +157,7 @@ pub(in crate::bridge) async fn handle_user_fn(
             return serde_json::to_string_pretty(&serde_json::json!({
                 "status": "not_defined",
                 "message": format!(
-                    "user_fn '{name}' not defined; create at {} (relative to workspace cwd)",
-                    path.display()
+                    "user_fn '{name}' not defined for role {role}; create at bpmux-{role}/.bpmux/functions/{name}.md"
                 )
             }))
             .map_err(|e| format!("serialize: {e}"));
@@ -188,6 +188,7 @@ pub(in crate::bridge) async fn handle_user_fn(
 
 pub(in crate::bridge) async fn handle_list_user_fns(
     _args: &serde_json::Map<String, serde_json::Value>,
+    _role: &str,
 ) -> Result<String, String> {
     let dir = functions_dir()?;
     if !dir.exists() {
@@ -242,6 +243,32 @@ pub(in crate::bridge) async fn handle_list_user_fns(
 #[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
+    use std::sync::Mutex;
+
+    static CWD_LOCK: Mutex<()> = Mutex::new(());
+
+    struct CwdGuard {
+        saved: PathBuf,
+        _guard: std::sync::MutexGuard<'static, ()>,
+    }
+
+    impl CwdGuard {
+        fn enter(target: &std::path::Path) -> Self {
+            let guard = CWD_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+            let saved = std::env::current_dir().unwrap();
+            std::env::set_current_dir(target).unwrap();
+            Self {
+                saved,
+                _guard: guard,
+            }
+        }
+    }
+
+    impl Drop for CwdGuard {
+        fn drop(&mut self) {
+            let _ = std::env::set_current_dir(&self.saved);
+        }
+    }
 
     fn workspace_functions_dir_for_test(cwd: &std::path::Path) -> PathBuf {
         cwd.join(".bpmux").join("functions")
@@ -326,19 +353,25 @@ mod tests {
     #[tokio::test]
     async fn handle_user_fn_returns_not_defined_when_file_missing() {
         let tmp = tempfile::tempdir().unwrap();
-        let saved = std::env::current_dir().unwrap();
-        std::env::set_current_dir(tmp.path()).unwrap();
+        let _cwd = CwdGuard::enter(tmp.path());
         let mut args = serde_json::Map::new();
         args.insert("name".into(), serde_json::json!("does_not_exist"));
-        let out = handle_user_fn(&args).await.unwrap();
-        std::env::set_current_dir(&saved).unwrap();
+        let out = handle_user_fn(&args, "dev").await.unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&out).unwrap();
         assert_eq!(parsed["status"], "not_defined");
+        let message = parsed["message"].as_str().unwrap();
+        assert!(message.contains("does_not_exist"));
         assert!(
-            parsed["message"]
-                .as_str()
-                .unwrap()
-                .contains("does_not_exist")
+            message.contains("for role dev"),
+            "message must name role per falsifier 12; got {message:?}"
+        );
+        assert!(
+            message.contains("bpmux-dev/.bpmux/functions/does_not_exist.md"),
+            "message must use canonical bpmux-<role>/.bpmux/... shape per falsifier 12; got {message:?}"
+        );
+        assert!(
+            !message.contains("relative to workspace cwd"),
+            "message must not leak bridge-internal vocabulary; got {message:?}"
         );
     }
 
@@ -352,13 +385,11 @@ mod tests {
             "---\nname: greet\ndescription: Greet someone\ntype: user_fn\nargs: [who]\n---\nHello {{who}}!\n",
         )
         .unwrap();
-        let saved = std::env::current_dir().unwrap();
-        std::env::set_current_dir(tmp.path()).unwrap();
+        let _cwd = CwdGuard::enter(tmp.path());
         let mut args = serde_json::Map::new();
         args.insert("name".into(), serde_json::json!("greet"));
         args.insert("args".into(), serde_json::json!({ "who": "team" }));
-        let out = handle_user_fn(&args).await.unwrap();
-        std::env::set_current_dir(&saved).unwrap();
+        let out = handle_user_fn(&args, "dev").await.unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&out).unwrap();
         assert_eq!(parsed["status"], "ok");
         assert_eq!(parsed["body"], "Hello team!\n");
@@ -374,12 +405,10 @@ mod tests {
             "---\nname: greet\ndescription: Greet someone\ntype: user_fn\nargs: [who]\n---\nHello {{who}}!\n",
         )
         .unwrap();
-        let saved = std::env::current_dir().unwrap();
-        std::env::set_current_dir(tmp.path()).unwrap();
+        let _cwd = CwdGuard::enter(tmp.path());
         let mut args = serde_json::Map::new();
         args.insert("name".into(), serde_json::json!("greet"));
-        let out = handle_user_fn(&args).await.unwrap();
-        std::env::set_current_dir(&saved).unwrap();
+        let out = handle_user_fn(&args, "dev").await.unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&out).unwrap();
         assert_eq!(parsed["status"], "missing_arg");
         assert!(parsed["message"].as_str().unwrap().contains("who"));
@@ -396,18 +425,16 @@ mod tests {
             "---\nname: v\ndescription: First\ntype: user_fn\n---\nv1\n",
         )
         .unwrap();
-        let saved = std::env::current_dir().unwrap();
-        std::env::set_current_dir(tmp.path()).unwrap();
+        let _cwd = CwdGuard::enter(tmp.path());
         let mut args = serde_json::Map::new();
         args.insert("name".into(), serde_json::json!("v"));
-        let first = handle_user_fn(&args).await.unwrap();
+        let first = handle_user_fn(&args, "dev").await.unwrap();
         std::fs::write(
             &path,
             "---\nname: v\ndescription: Second\ntype: user_fn\n---\nv2\n",
         )
         .unwrap();
-        let second = handle_user_fn(&args).await.unwrap();
-        std::env::set_current_dir(&saved).unwrap();
+        let second = handle_user_fn(&args, "dev").await.unwrap();
         let p1: serde_json::Value = serde_json::from_str(&first).unwrap();
         let p2: serde_json::Value = serde_json::from_str(&second).unwrap();
         assert_eq!(p1["body"], "v1\n");
@@ -415,12 +442,49 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn handle_user_fn_role_isolation_same_name_different_role_resolves_distinctly() {
+        let pm_workspace = tempfile::tempdir().unwrap();
+        let dev_workspace = tempfile::tempdir().unwrap();
+        let pm_fns = pm_workspace.path().join(".bpmux").join("functions");
+        let dev_fns = dev_workspace.path().join(".bpmux").join("functions");
+        std::fs::create_dir_all(&pm_fns).unwrap();
+        std::fs::create_dir_all(&dev_fns).unwrap();
+        std::fs::write(
+            pm_fns.join("walk.md"),
+            "---\nname: walk\ndescription: PM walk\ntype: user_fn\n---\nPM body.\n",
+        )
+        .unwrap();
+        std::fs::write(
+            dev_fns.join("walk.md"),
+            "---\nname: walk\ndescription: dev walk\ntype: user_fn\n---\nDev body.\n",
+        )
+        .unwrap();
+        let mut args = serde_json::Map::new();
+        args.insert("name".into(), serde_json::json!("walk"));
+        let pm_out = {
+            let _cwd = CwdGuard::enter(pm_workspace.path());
+            handle_user_fn(&args, "pm").await.unwrap()
+        };
+        let dev_out = {
+            let _cwd = CwdGuard::enter(dev_workspace.path());
+            handle_user_fn(&args, "dev").await.unwrap()
+        };
+        let pm_parsed: serde_json::Value = serde_json::from_str(&pm_out).unwrap();
+        let dev_parsed: serde_json::Value = serde_json::from_str(&dev_out).unwrap();
+        assert_eq!(pm_parsed["body"], "PM body.\n");
+        assert_eq!(dev_parsed["body"], "Dev body.\n");
+        assert_ne!(pm_parsed["body"], dev_parsed["body"]);
+        assert_eq!(pm_parsed["description"], "PM walk");
+        assert_eq!(dev_parsed["description"], "dev walk");
+    }
+
+    #[tokio::test]
     async fn handle_list_user_fns_returns_empty_when_dir_missing() {
         let tmp = tempfile::tempdir().unwrap();
-        let saved = std::env::current_dir().unwrap();
-        std::env::set_current_dir(tmp.path()).unwrap();
-        let out = handle_list_user_fns(&serde_json::Map::new()).await.unwrap();
-        std::env::set_current_dir(&saved).unwrap();
+        let _cwd = CwdGuard::enter(tmp.path());
+        let out = handle_list_user_fns(&serde_json::Map::new(), "dev")
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&out).unwrap();
         assert_eq!(parsed["functions"], serde_json::json!([]));
     }
@@ -441,10 +505,10 @@ mod tests {
         )
         .unwrap();
         std::fs::write(fns_dir.join("README.txt"), "ignored").unwrap();
-        let saved = std::env::current_dir().unwrap();
-        std::env::set_current_dir(tmp.path()).unwrap();
-        let out = handle_list_user_fns(&serde_json::Map::new()).await.unwrap();
-        std::env::set_current_dir(&saved).unwrap();
+        let _cwd = CwdGuard::enter(tmp.path());
+        let out = handle_list_user_fns(&serde_json::Map::new(), "dev")
+            .await
+            .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&out).unwrap();
         let fns = parsed["functions"].as_array().unwrap();
         assert_eq!(fns.len(), 2);

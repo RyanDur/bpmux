@@ -743,8 +743,14 @@ impl ServerHandler for BridgeServer {
                 "get_ci_state" => tools::handle_get_ci_state(&args, port).await,
                 "get_ci_log_for_run" => tools::handle_get_ci_log_for_run(&args, port).await,
                 "rerun_ci" => tools::handle_rerun_ci(&args, port).await,
-                "user_fn" => tools::handle_user_fn(&args).await,
-                "list_user_fns" => tools::handle_list_user_fns(&args).await,
+                "user_fn" => {
+                    let current_name = name.lock().await.clone();
+                    tools::handle_user_fn(&args, &current_name).await
+                }
+                "list_user_fns" => {
+                    let current_name = name.lock().await.clone();
+                    tools::handle_list_user_fns(&args, &current_name).await
+                }
                 "get_sync_status" => tools::handle_get_sync_status(port).await,
                 "view_story_commits" => tools::handle_view_story_commits(&args).await,
                 "view_commit_diff" => tools::handle_view_commit_diff(&args).await,
