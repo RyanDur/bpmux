@@ -298,3 +298,63 @@ async fn divergent_case_workflow_accepted_but_gh_open_observable() {
         "GH-state axis reports is_closed=false even though workflow == Accepted (the 2026-05-02 false-success class)"
     );
 }
+
+#[tokio::test]
+async fn surfaces_full_raw_labels_array_not_synthesized_state_label() {
+    let mut story = make_story(1207, StoryState::Ready, Some("body"));
+    story.raw_labels = vec![
+        "bug".to_string(),
+        "ready".to_string(),
+        "blocked".to_string(),
+        "blocked-by:514".to_string(),
+        "desk-check-fail".to_string(),
+    ];
+    let (store, orch) = seeded_orchestrator(vec![story], vec![]).await;
+    let args = serde_json::json!({"number": 1207});
+    let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orch))
+        .await
+        .expect("should succeed");
+    let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
+    let labels = parsed["labels"].as_array().expect("labels is array");
+    let names: Vec<&str> = labels
+        .iter()
+        .filter_map(|l| l.get("name").and_then(|n| n.as_str()))
+        .collect();
+    assert!(
+        names.contains(&"bug"),
+        "Type label 'bug' surfaces; got {names:?}"
+    );
+    assert!(
+        names.contains(&"blocked"),
+        "Block label 'blocked' surfaces; got {names:?}"
+    );
+    assert!(
+        names.contains(&"blocked-by:514"),
+        "Blocker-link label surfaces; got {names:?}"
+    );
+    assert!(
+        names.contains(&"desk-check-fail"),
+        "Rework label surfaces; got {names:?}"
+    );
+    assert!(
+        names.contains(&"ready"),
+        "State label still surfaces alongside others; got {names:?}"
+    );
+}
+
+#[tokio::test]
+async fn empty_raw_labels_returns_empty_labels_array() {
+    let mut story = make_story(1208, StoryState::Icebox, Some("body"));
+    story.raw_labels = Vec::new();
+    let (store, orch) = seeded_orchestrator(vec![story], vec![]).await;
+    let args = serde_json::json!({"number": 1208});
+    let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orch))
+        .await
+        .expect("should succeed");
+    let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
+    let labels = parsed["labels"].as_array().expect("labels is array");
+    assert!(
+        labels.is_empty(),
+        "raw_labels empty → labels array empty (no state-label synthesis); got {labels:?}"
+    );
+}

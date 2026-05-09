@@ -69,13 +69,18 @@ pub(in crate::bridge) async fn handle_get_story(
     {
         body_out = enrich_body(&body_out, &ctx);
     }
+    let labels: Vec<serde_json::Value> = story
+        .raw_labels
+        .iter()
+        .map(|name| serde_json::json!({"name": name}))
+        .collect();
     let out = serde_json::json!({
         "number": story.number,
         "title": story.title,
         "body": body_out,
         "workflow_state": state_label(story.state),
         "is_closed": story.is_closed,
-        "labels": [{"name": state_label(story.state)}],
+        "labels": labels,
         "body_hydrated": body_cached.is_some(),
         "gate_comments_hydrated": story.gate_comments.is_some(),
     });
