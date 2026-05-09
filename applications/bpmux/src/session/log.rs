@@ -62,6 +62,7 @@ impl Session {
             .to_string();
         let storage: Arc<dyn Storage> =
             Arc::new(InstrumentedStorage::new(FileStorage::new(dir.clone())));
+        let roster = load_seed_roster(&dir);
         Self {
             dir,
             id,
@@ -69,7 +70,7 @@ impl Session {
             wake_tx,
             connected_peers: AtomicUsize::new(0),
             storage,
-            roster: Mutex::new(HashSet::new()),
+            roster: Mutex::new(roster),
         }
     }
 
@@ -153,6 +154,28 @@ pub fn default_sessions_base() -> Result<PathBuf, LogError> {
         .join(".bpmux")
         .join("sessions");
     Ok(base)
+}
+
+fn load_seed_roster(dir: &Path) -> HashSet<String> {
+    let path = dir.join("roster_seed.json");
+    crate::session::diag::log_diag(&format!(
+        "load_seed_roster path={} exists={}",
+        path.display(),
+        path.exists()
+    ));
+    let Ok(content) = std::fs::read_to_string(&path) else {
+        return HashSet::new();
+    };
+    crate::session::diag::log_diag(&format!(
+        "load_seed_roster read content len={}",
+        content.len()
+    ));
+    let parsed: Result<Vec<String>, _> = serde_json::from_str(&content);
+    let Ok(list) = parsed else {
+        return HashSet::new();
+    };
+    crate::session::diag::log_diag(&format!("load_seed_roster loaded {} entries", list.len()));
+    list.into_iter().collect()
 }
 
 pub fn resume_or_create_session(base: &Path) -> Result<PathBuf, LogError> {

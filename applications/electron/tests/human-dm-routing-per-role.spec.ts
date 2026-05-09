@@ -46,7 +46,8 @@ test.describe('human-side E2E #476 — channel routing matrix — DMs per role',
   for (const { target, marker, other } of dmCases) {
     test(`DM scoped to ${target} is visible to ${target} but NOT to ${other}`, async () => {
       const { app, win, mockGh, backendPort } = await launchWithMockGh({
-        seedMessages: SEED_DIRECT_ROLES
+        seedMessages: SEED_DIRECT_ROLES,
+        seedRoster: ['pm:claude-code', 'dev:claude-code', 'designer:claude-code']
       })
       try {
         const consoleErrors: string[] = []

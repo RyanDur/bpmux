@@ -354,7 +354,8 @@ test.describe('real-backend', () => {
     // 4127 chosen arbitrarily; any unused loopback port would work.
     const { app } = await launchWithIsolatedSession({
       backendPort: 4127,
-      seedMessages
+      seedMessages,
+      seedRoster: ['dev:claude-code', 'designer:claude-code', 'pm:claude-code']
     })
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="app-root"]')).toBeVisible()
@@ -806,6 +807,7 @@ test.describe('real-backend', () => {
     // before we exercise the busy transition.
     const { app, backendPort } = await launchWithIsolatedSession({
       extraEnv: { BPMUX_AUTH_TOKEN_PATH: authTokenPath },
+      seedRoster: ['dev:claude-code'],
       seedMessages: [
         {
           from: 'dev:claude-code',

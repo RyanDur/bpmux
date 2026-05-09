@@ -66,30 +66,6 @@ export function deriveTeamRoles(
 }
 
 /**
- * Subset of derived roles that are "direct-DM-able" from the
- * viewer's perspective — every role except the viewer's own AND
- * system senders. Sidebar's "direct" section renders these.
- *
- * #399 + Ryan 2026-04-23 11:51 UTC: "bpmux is not something we
- * have conversations with. it is the medium in which we
- * communicate." System-typed senders are the transport layer;
- * treating them as DM targets invites users to address the
- * channel-substrate itself. Detection is structural (via
- * `messageType === 'system'`) — no literal name strings —
- * mirroring the same category filter #386's
- * `deriveCombinableRoles` uses for group enumeration.
- */
-export function deriveDirectRoles(
-  messages: readonly ChatMessage[],
-  viewer?: string
-): readonly string[] {
-  const all = deriveTeamRoles(messages, viewer)
-  const systemSenders = deriveSystemSenders(messages)
-  const self = viewer !== undefined ? shortName(viewer) : null
-  return all.filter((r) => r !== self && !systemSenders.has(r))
-}
-
-/**
  * Enumerate all combinatorial subsets of `roles` with size in
  * `[minSize, maxSize]` inclusive. Output is sorted canonically
  * — each subset's role list is alphabetical, and the outer list
@@ -124,48 +100,6 @@ export function combinations(
     walk(0)
   }
   return out
-}
-
-/**
- * #386 + Ryan 2026-04-23 11:47 UTC: the owner (viewer) and any
- * system senders are architectural CONSTANTS — always present in
- * every conversation — not combinatorial variables. They vary
- * over zero bits. Sidebar group enumeration must skip them.
- *
- * Identification is structural, not by hardcoded name:
- *   - viewer: caller-provided (already pluggable per #393 AC1).
- *     The renderer's current identity, whoever that is.
- *   - system senders: any `from` that has emitted at least one
- *     message with `messageType === 'system'`. In bpmux this is
- *     the `bpmux` bridge sender; the detector scales to any
- *     future system-typed emitter without a name-literal.
- */
-function deriveSystemSenders(
-  messages: readonly ChatMessage[]
-): ReadonlySet<string> {
-  const set = new Set<string>()
-  for (const m of messages) {
-    if (m.messageType === 'system' && m.from) {
-      set.add(shortName(m.from))
-    }
-  }
-  return set
-}
-
-/**
- * The "combinable" role set — observed team minus the viewer
- * (always-present owner) and system senders (always-present
- * bridge). This is the alphabet the sidebar's group enumeration
- * iterates over.
- */
-export function deriveCombinableRoles(
-  messages: readonly ChatMessage[],
-  viewer?: string
-): readonly string[] {
-  const all = deriveTeamRoles(messages, viewer)
-  const systemSenders = deriveSystemSenders(messages)
-  const self = viewer !== undefined ? shortName(viewer) : null
-  return all.filter((r) => r !== self && !systemSenders.has(r))
 }
 
 /**

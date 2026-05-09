@@ -30,6 +30,21 @@ fn fresh_session_has_empty_roster() {
 }
 
 #[test]
+fn session_pre_populates_roster_from_seed_file_at_session_dir() {
+    let dir = tempdir().unwrap().keep();
+    let seed = vec!["dev:claude-code".to_string(), "pm:claude-code".to_string()];
+    let path = dir.join("roster_seed.json");
+    std::fs::write(&path, serde_json::to_string(&seed).unwrap()).unwrap();
+    let (wake_tx, _) = broadcast::channel(BROADCAST_CHANNEL_CAPACITY);
+    let session = Session::new(dir, "ryan".to_string(), wake_tx);
+    let snapshot = session.roster_snapshot();
+    assert_eq!(
+        snapshot,
+        vec!["dev:claude-code".to_string(), "pm:claude-code".to_string()]
+    );
+}
+
+#[test]
 fn roster_join_populates_roster() {
     let session = fresh_session();
     session.roster_join("dev:claude-code");

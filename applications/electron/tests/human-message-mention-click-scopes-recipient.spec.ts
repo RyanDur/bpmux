@@ -18,7 +18,8 @@ test.describe('human-side E2E #476 — direct-action — message @mention click'
           ts: '2026-04-22T16:01:00Z',
           message_type: 'chat'
         }
-      ]
+      ],
+      seedRoster: ['dev:claude-code', 'pm:claude-code']
     })
     try {
       const consoleErrors: string[] = []

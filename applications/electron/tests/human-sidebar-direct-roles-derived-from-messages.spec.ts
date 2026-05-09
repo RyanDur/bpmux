@@ -23,7 +23,8 @@ test.describe('human-side E2E #476 — direct-action — sidebar direct-roles', 
           ts: '2026-04-22T16:02:00Z',
           message_type: 'chat'
         }
-      ]
+      ],
+      seedRoster: ['pm:claude-code', 'dev:claude-code', 'designer:claude-code']
     })
     try {
       const consoleErrors: string[] = []
@@ -68,7 +69,8 @@ test.describe('human-side E2E #476 — direct-action — sidebar direct-roles', 
           ts: '2026-04-22T16:01:00Z',
           message_type: 'chat'
         }
-      ]
+      ],
+      seedRoster: ['pm:claude-code', 'dev:claude-code']
     })
     try {
       const consoleErrors: string[] = []

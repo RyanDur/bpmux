@@ -40,7 +40,8 @@ const SEED_GROUP_HISTORY = [
 test.describe('human-side E2E #463 — group view shows agent-only history', () => {
   test('agent-only group conversation visible when owner selects the group view', async () => {
     const { app, win, mockGh } = await launchWithMockGh({
-      seedMessages: SEED_GROUP_HISTORY
+      seedMessages: SEED_GROUP_HISTORY,
+      seedRoster: ['pm:claude-code', 'dev:claude-code', 'designer:claude-code']
     })
     try {
       const consoleErrors: string[] = []

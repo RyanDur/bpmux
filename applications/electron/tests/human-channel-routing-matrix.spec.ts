@@ -32,7 +32,8 @@ const SEED_MULTI_ROLE_MESSAGES = [
 test.describe('human-side E2E #476 — channel routing matrix', () => {
   test('group message sent via sidebar-group button is visible to listed roles only', async () => {
     const { app, win, mockGh, backendPort } = await launchWithMockGh({
-      seedMessages: SEED_MULTI_ROLE_MESSAGES
+      seedMessages: SEED_MULTI_ROLE_MESSAGES,
+      seedRoster: ['pm:claude-code', 'dev:claude-code', 'designer:claude-code']
     })
     try {
       const consoleErrors: string[] = []

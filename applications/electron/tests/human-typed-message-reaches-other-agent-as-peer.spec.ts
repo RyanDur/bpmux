@@ -55,7 +55,8 @@ test.describe('human-side E2E #476 — cross-process — typed message reaches o
           ts: '2026-04-22T16:00:00Z',
           message_type: 'chat'
         }
-      ]
+      ],
+      seedRoster: ['dev:claude-code']
     })
     try {
       const consoleErrors: string[] = []

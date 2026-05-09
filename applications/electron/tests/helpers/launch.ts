@@ -32,6 +32,15 @@ export interface LaunchOpts {
    * `session::pins::PinsStore` Rust shape on the wire).
    */
   seedPins?: Record<string, ReadonlyArray<Record<string, unknown>>>
+  /**
+   * Pre-seed `<session-dir>/roster_seed.json` so bpmux's in-memory
+   * roster is pre-populated at startup with the listed identities
+   * (e.g., `["dev:claude-code", "pm:claude-code"]`). Sister to
+   * seedMessages — needed because bpmux's roster only populates via
+   * live WS-connect; tests that seed-messages-only need this to
+   * exercise sidebar's roster-derived peer entries (#1246).
+   */
+  seedRoster?: ReadonlyArray<string>
   extraEnv?: Record<string, string>
 }
 
@@ -83,7 +92,8 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
   const backendPort = opts.backendPort ?? (await getFreePort())
   const wantsSeed =
     (opts.seedMessages && opts.seedMessages.length > 0) ||
-    (opts.seedPins && Object.keys(opts.seedPins).length > 0)
+    (opts.seedPins && Object.keys(opts.seedPins).length > 0) ||
+    (opts.seedRoster && opts.seedRoster.length > 0)
   if (wantsSeed) {
     const sessionId = 'playwright-seed-' + Date.now().toString(36)
     const sessionDir = join(sessionBase, sessionId)
@@ -95,6 +105,12 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
     if (opts.seedPins && Object.keys(opts.seedPins).length > 0) {
       const store = { channels: opts.seedPins }
       writeFileSync(join(sessionDir, 'pins.json'), JSON.stringify(store))
+    }
+    if (opts.seedRoster && opts.seedRoster.length > 0) {
+      writeFileSync(
+        join(sessionDir, 'roster_seed.json'),
+        JSON.stringify(opts.seedRoster)
+      )
     }
     symlinkSync(sessionDir, join(sessionBase, 'current'))
   }
