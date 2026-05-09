@@ -1271,6 +1271,40 @@ pub async fn get_ci_log(
     }
 }
 
+pub async fn post_ci_rerun(
+    axum::Extension(tracker): axum::Extension<TrackerHandle>,
+    axum::extract::Path(run_id): axum::extract::Path<u64>,
+) -> impl IntoResponse {
+    let Some(tracker) = tracker else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            json_headers(),
+            err_body("tracker not configured"),
+        );
+    };
+    match tracker.rerun_failed_jobs(run_id).await {
+        Ok(()) => (
+            StatusCode::OK,
+            json_headers(),
+            serde_json::to_string(&serde_json::json!({
+                "status": "success",
+                "run_id": run_id,
+            }))
+            .unwrap_or_else(|_| "{}".to_string()),
+        ),
+        Err(err) => (
+            StatusCode::BAD_GATEWAY,
+            json_headers(),
+            serde_json::to_string(&serde_json::json!({
+                "status": "failure",
+                "run_id": run_id,
+                "message": err,
+            }))
+            .unwrap_or_else(|_| "{}".to_string()),
+        ),
+    }
+}
+
 /// Query params for GET /api/electron-capture: optional `role` for
 /// the agent calling, used in the namespaced filename.
 #[derive(Debug, Default, Deserialize)]

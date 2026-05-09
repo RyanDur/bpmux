@@ -59,6 +59,10 @@ impl GitHubSourceAdapter {
         self.inner.fetch_failed_tests_for_run(run_id).await
     }
 
+    pub async fn rerun_failed_jobs(&self, run_id: u64) -> Result<(), String> {
+        self.inner.rerun_failed_jobs(run_id).await
+    }
+
     pub fn rate_limit_observer(&self) -> crate::github::RateLimitObserver {
         self.inner.rate_limit_observer()
     }

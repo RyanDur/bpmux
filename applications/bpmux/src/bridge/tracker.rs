@@ -1144,6 +1144,26 @@ impl OctocrabStoryTracker {
             failures: all_failures,
         })
     }
+
+    pub async fn rerun_failed_jobs(&self, run_id: u64) -> Result<(), String> {
+        let path = format!(
+            "/repos/{}/{}/actions/runs/{run_id}/rerun-failed-jobs",
+            self.owner, self.repo
+        );
+        let response = self
+            .client
+            ._post(path, None::<&serde_json::Value>)
+            .await
+            .map_err(|e| format!("rerun_failed_jobs run_id={run_id}: {e}"))?;
+        let status = response.status();
+        if status.is_success() {
+            Ok(())
+        } else {
+            Err(format!(
+                "rerun_failed_jobs run_id={run_id}: github status {status}"
+            ))
+        }
+    }
 }
 
 #[cfg(test)]

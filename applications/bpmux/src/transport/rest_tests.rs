@@ -1456,3 +1456,70 @@ async fn get_ci_does_not_hit_github_when_store_has_cached_state() {
         "get_ci must read cache in <50ms (no GH call); took {elapsed:?}"
     );
 }
+
+#[tokio::test]
+async fn post_ci_rerun_returns_503_when_tracker_missing() {
+    let none_tracker: TrackerHandle = None;
+    let router = axum::Router::new()
+        .route(
+            "/api/ci/rerun/{run_id}",
+            axum::routing::post(super::rest::post_ci_rerun),
+        )
+        .layer(axum::Extension(none_tracker));
+    let response = post_json(router, "/api/ci/rerun/42", "").await;
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+    let body = response_json(response).await;
+    assert_eq!(body["error"], "tracker not configured");
+}
+
+#[tokio::test]
+async fn post_ci_rerun_returns_success_when_tracker_post_succeeds() {
+    let server = MockServer::start();
+    let m = server.mock(|when, then| {
+        when.method(Method::POST)
+            .path("/repos/acme/bpmux/actions/runs/123/rerun-failed-jobs");
+        then.status(201);
+    });
+    let tracker: TrackerHandle = Some(Arc::new(tracker_for(&server)));
+    let router = axum::Router::new()
+        .route(
+            "/api/ci/rerun/{run_id}",
+            axum::routing::post(super::rest::post_ci_rerun),
+        )
+        .layer(axum::Extension(tracker));
+    let response = post_json(router, "/api/ci/rerun/123", "").await;
+    m.assert();
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = response_json(response).await;
+    assert_eq!(body["status"], "success");
+    assert_eq!(body["run_id"], 123);
+}
+
+#[tokio::test]
+async fn post_ci_rerun_returns_502_when_github_upstream_errors() {
+    let server = MockServer::start();
+    let m = server.mock(|when, then| {
+        when.method(Method::POST)
+            .path("/repos/acme/bpmux/actions/runs/999/rerun-failed-jobs");
+        then.status(422);
+    });
+    let tracker: TrackerHandle = Some(Arc::new(tracker_for(&server)));
+    let router = axum::Router::new()
+        .route(
+            "/api/ci/rerun/{run_id}",
+            axum::routing::post(super::rest::post_ci_rerun),
+        )
+        .layer(axum::Extension(tracker));
+    let response = post_json(router, "/api/ci/rerun/999", "").await;
+    m.assert();
+    assert_eq!(response.status(), StatusCode::BAD_GATEWAY);
+    let body = response_json(response).await;
+    assert_eq!(body["status"], "failure");
+    assert_eq!(body["run_id"], 999);
+    assert!(
+        body["message"]
+            .as_str()
+            .unwrap()
+            .contains("rerun_failed_jobs")
+    );
+}
