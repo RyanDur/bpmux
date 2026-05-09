@@ -1,13 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAnimatedUnmount } from '../hooks/useAnimatedUnmount'
 import { useCollapsibleSectionsStorage } from '../lib/useCollapsibleSectionsStorage'
-import { BOARD_INVALIDATE_MARKER, type ChatMessage } from '../transport/types'
+import {
+  BOARD_INVALIDATE_MARKER,
+  type ChatMessage,
+  type ConnectionStatus
+} from '../transport/types'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import DrillIn from './DrillIn'
 import EpicSummary from './EpicSummary'
 import { ReworkGlyph } from './ReworkGlyph'
 import StoryBadge, { deriveBadge } from './StoryBadge'
 import StoryTypeGlyph from './StoryTypeGlyph'
+import { useRefetchOnReconnect } from './useRefetchOnReconnect'
 import {
   columnFor,
   GROUP_ORDER,
@@ -89,9 +94,10 @@ interface BoardProps {
   // for the transition declaration (#351 AC3).
   hidden?: boolean
   width?: number
+  wsStatus?: ConnectionStatus
 }
 
-function Board({ messages, hidden, width }: BoardProps): React.JSX.Element {
+function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Element {
   const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
   const [data, setData] = useState<BoardResponse | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
@@ -200,6 +206,10 @@ function Board({ messages, hidden, width }: BoardProps): React.JSX.Element {
       clearInterval(id)
     }
   }, [fetchBoard])
+
+  useRefetchOnReconnect(wsStatus ?? 'disconnected', () => {
+    void fetchBoard()
+  })
 
   // Invalidate subscription: any new BOARD_INVALIDATE_MARKER on the
   // chat stream triggers a refetch. Same ref-tracked last-seen-count

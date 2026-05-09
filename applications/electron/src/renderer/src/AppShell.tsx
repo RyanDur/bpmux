@@ -269,7 +269,12 @@ const AppShell = ({
             controlsId="board-region"
           />
         ) : null}
-        <Board messages={messages} hidden={!boardOpen} width={boardWidthStorage.width} />
+        <Board
+          messages={messages}
+          hidden={!boardOpen}
+          width={boardWidthStorage.width}
+          wsStatus={status}
+        />
       </section>
     </main>
   )
