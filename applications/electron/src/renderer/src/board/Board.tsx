@@ -16,6 +16,7 @@ import { useRefetchOnReconnect } from './useRefetchOnReconnect'
 import {
   columnFor,
   GROUP_ORDER,
+  isActiveEpic,
   storyTypeFromLabels,
   type BoardResponse,
   type BoardStory,
@@ -228,10 +229,7 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
   }, [messages, fetchBoard])
 
   const stories = useMemo(() => data?.stories ?? [], [data])
-  const epics = useMemo(
-    () => stories.filter((s) => storyTypeFromLabels(s.labels) === 'epic'),
-    [stories]
-  )
+  const epics = useMemo(() => stories.filter(isActiveEpic), [stories])
   const nonEpicStories = useMemo(
     () => stories.filter((s) => storyTypeFromLabels(s.labels) !== 'epic'),
     [stories]

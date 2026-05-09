@@ -132,6 +132,11 @@ export function storyTypeFromLabels(labels: string[]): StoryType {
   return 'unknown'
 }
 
+export const isActiveEpic = (story: BoardStory): boolean => {
+  if (storyTypeFromLabels(story.labels) !== 'epic') return false
+  return columnFor(story.state, story.gh_state === 'closed') !== 'retired'
+}
+
 export const deriveEpicState = (
   epicExplicitState: StoryState,
   children: BoardStory[]
