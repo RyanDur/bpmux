@@ -4,33 +4,6 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
 
-// #1216: deterministic e2e canary for env-leak via launchIsolatedElectron.
-//
-// Two layers protect spawned bpmux from process.env corruption:
-//   1. pickSafeInheritedEnv whitelist drops every BPMUX_* + GH_*
-//      env var from process.env at spawn time.
-//   2. launchIsolatedElectron's env spread sets BPMUX_SESSION_BASE,
-//      BPMUX_AUTH_TOKEN_PATH, BPMUX_BOARD_STORE_PATH,
-//      BPMUX_BOARD_OUTBOX_PATH, BPMUX_LOG, BPMUX_BACKEND_PORT to
-//      per-test tempdir paths AFTER the whitelist spread, so any
-//      whitelist regression that would re-admit BPMUX_* still loses
-//      to the explicit override.
-//
-// Unit-layer (`launch-helper.spec.ts`) tests both layers via source-
-// text-match + pure-function assertion. This spec drives the actual
-// spawn end-to-end + asserts the spawned backend's observable state
-// matches the launch-config tempdirs, NOT the leak path nor the
-// developer's real `~/.bpmux/` defaults.
-//
-// Falsifier shape (per `feedback_falsifier_load_bearing_test_at_e2e_layer`):
-// each test pre-seeds a UNIQUE marker in a leaky path. The marker
-// can ONLY surface in the spawned backend's state if BOTH
-// protective layers fail. If the marker appears, the canary fails
-// loudly with a path-trace in the assertion message. If the marker
-// is absent AND the spawned backend's diagnostic log names the
-// launch's tempdir (not the leaky path nor `~/.bpmux/`), isolation
-// is verified for that axis.
-
 interface BoardResponse {
   stories: Array<{ number: number; title: string }>
 }
@@ -112,8 +85,6 @@ test.describe('#1216 env-leak canary — launchIsolatedElectron isolation', () =
       const { app } = await launchIsolatedElectron({})
       await app.firstWindow()
 
-      // The leaky path must remain untouched — bpmux's diag log
-      // emissions go to launch's per-test path instead.
       expect(
         existsSync(leakyLogPath),
         `spawned bpmux must NOT write to process.env.BPMUX_LOG ` +
