@@ -743,6 +743,8 @@ impl ServerHandler for BridgeServer {
                 "get_ci_state" => tools::handle_get_ci_state(&args, port).await,
                 "get_ci_log_for_run" => tools::handle_get_ci_log_for_run(&args, port).await,
                 "rerun_ci" => tools::handle_rerun_ci(&args, port).await,
+                "user_fn" => tools::handle_user_fn(&args).await,
+                "list_user_fns" => tools::handle_list_user_fns(&args).await,
                 "get_sync_status" => tools::handle_get_sync_status(port).await,
                 "view_story_commits" => tools::handle_view_story_commits(&args).await,
                 "view_commit_diff" => tools::handle_view_commit_diff(&args).await,
@@ -895,6 +897,12 @@ pub fn build_advertised_tools() -> Vec<rmcp::model::Tool> {
         crate::mcp::tools::rerun_ci_tool(
             "Retrigger a failed GH Actions run via GitHub API direct (#1222). Args: { run_id: int }. Returns JSON `{ status: 'success' | 'failure', run_id, message? }`. Use this when a CI run failed on a transient flake (race-class, runner-unable-to-start, etc) to retrigger only the failed jobs without an empty-commit-as-CI-rerun anti-pattern and without falling back to gh CLI. NOT for code-broken runs — those need a substrate fix per `feedback_no_pre_push_hook_skip_ever`. Sister to get_ci_state. Any role can call.",
         ),
+        crate::mcp::tools::user_fn_tool(
+            "Invoke a per-role user-defined function (#459). Args: { name: string, args?: object }. Loads `bpmux-<role>/.bpmux/functions/<name>.md` (relative to bridge cwd; role-private — only your own role's directory), parses YAML frontmatter (name, description, type: user_fn, optional args[]), substitutes `{{key}}` slots in the body from args, returns JSON `{ status: 'ok' | 'not_defined' | 'missing_arg', name?, description?, body?, message? }`. Hot-reloads (no caching). Author definitions via Write/Edit (no separate authoring tool). v1 excludes composition / cross-role share / bpmux-side LLM invocation — your own Claude executes the returned body.",
+        ),
+        crate::mcp::tools::list_user_fns_tool(
+            "List your role's defined user-fns (#459). Returns JSON `{ functions: [{ name, description, args? }, ...] }` sorted by name. Role-private — enumerates `bpmux-<role>/.bpmux/functions/*.md` for your own role's directory only.",
+        ),
         crate::mcp::tools::get_sync_status_tool(
             "#451: inspect the board-sync orchestrator's current state. Returns JSON `{last_ingest_at, last_push_at, pending_events, last_error}` — the same observability surface the Electron app reads to show a source-down indicator. Use to diagnose why a mutation failed (refresh-before-write reports `source unreachable`), confirm a background ingest ran, or check the pending-push buffer depth. Any role can call.",
         ),
@@ -1023,6 +1031,8 @@ pub const DISPATCHED_TOOL_NAMES: &[&str] = &[
     "get_ci_state",
     "get_ci_log_for_run",
     "rerun_ci",
+    "user_fn",
+    "list_user_fns",
     "get_sync_status",
     "view_story_commits",
     "view_commit_diff",
