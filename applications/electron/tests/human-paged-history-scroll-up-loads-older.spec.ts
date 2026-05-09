@@ -74,9 +74,8 @@ test.describe('human-side E2E #1153 — scroll-up triggers paged-history fetch',
 
       // Falsifier: loading-pill must appear BEFORE the response lands
       // (no-jank — fetch is in flight before user reaches boundary).
-      const loadingPill = win.locator('[data-test="loading-older-pill"]')
+      const loadingPill = win.locator('output[data-test="loading-older-pill"]')
       await expect(loadingPill).toBeVisible({ timeout: 2000 })
-      await expect(loadingPill).toHaveAttribute('role', 'status')
 
       // loadOlder fired exactly the network call we expected.
       expect(pagedFetchCount).toBeGreaterThan(0)
