@@ -1,7 +1,13 @@
-import { describe, expect, test } from 'vitest'
+import { beforeEach, describe, expect, test } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import Epic from './Epic'
 import { isActiveEpic, type BoardStory } from './types'
+
+beforeEach(() => {
+  if (typeof window !== 'undefined') {
+    window.localStorage.clear()
+  }
+})
 
 const epicLabels = ['Epic']
 const featureLabels = ['Feature']
@@ -161,13 +167,12 @@ describe('#1185 Epic — meta-card DOM shape (falsifiers a-c, j)', () => {
     expect(htmlAfter).toContain('1/1 accepted')
   })
 
-  test('Epic header is a button that opens drill-in via onOpen (replaces nested-details affordance)', () => {
+  test('Epic header is a button that opens drill-in via onOpen', () => {
     const epic = story({ number: 1100 })
     const html = renderToStaticMarkup(
       <Epic epics={[epic]} stories={[epic]} onOpen={() => {}} />
     )
-    expect(html).toContain('class="board-epic-button"')
-    expect(html).not.toContain('board-epic-details')
+    expect(html).toContain('class="board-epic-open-button"')
   })
 })
 
@@ -237,5 +242,133 @@ describe('#1234 isActiveEpic predicate (carried over from EpicSummary surface)',
 
   test('non-Epic (Feature) → hidden regardless of state', () => {
     expect(isActiveEpic(story({ number: 300, labels: featureLabels }))).toBe(false)
+  })
+})
+
+describe('#1235 Epic-card collapse — native <details>/<summary> + activity-class defaults + persistence', () => {
+  test('Epic card wraps in native <details> + <summary> (falsifier-a)', () => {
+    const epic = story({ number: 1100, state: 'in-progress' })
+    const html = renderToStaticMarkup(
+      <Epic epics={[epic]} stories={[epic]} onOpen={() => {}} />
+    )
+    expect(html).toContain('<details')
+    expect(html).toContain('<summary')
+  })
+
+  test('in-progress Epic is open by default (falsifier-c)', () => {
+    const epic = story({ number: 1100, state: 'in-progress' })
+    const html = renderToStaticMarkup(
+      <Epic epics={[epic]} stories={[epic]} onOpen={() => {}} />
+    )
+    expect(html).toMatch(/<details[^>]*\sopen\b/)
+  })
+
+  test('accepted Epic is closed by default (falsifier-b)', () => {
+    const epic = story({ number: 1100, state: 'accepted' })
+    const html = renderToStaticMarkup(
+      <Epic epics={[epic]} stories={[epic]} onOpen={() => {}} />
+    )
+    expect(html).not.toMatch(/<details[^>]*\sopen\b/)
+  })
+
+  test('icebox Epic is closed by default (falsifier-b)', () => {
+    const epic = story({ number: 1100, state: 'icebox' })
+    const html = renderToStaticMarkup(
+      <Epic epics={[epic]} stories={[epic]} onOpen={() => {}} />
+    )
+    expect(html).not.toMatch(/<details[^>]*\sopen\b/)
+  })
+
+  test('summary line shows compact accepted/total progress (falsifier-d)', () => {
+    const epic = story({ number: 1100, state: 'in-progress' })
+    const children: BoardStory[] = [
+      story({ number: 1101, state: 'accepted', labels: featureLabels, parent_epic: 1100 }),
+      story({ number: 1102, state: 'in-progress', labels: featureLabels, parent_epic: 1100 }),
+      story({ number: 1103, state: 'icebox', labels: featureLabels, parent_epic: 1100 })
+    ]
+    const html = renderToStaticMarkup(
+      <Epic epics={[epic]} stories={[epic, ...children]} onOpen={() => {}} />
+    )
+    expect(html).toContain('data-test="board-epic-1100-summary-progress"')
+    expect(html).toContain('1/3')
+  })
+
+  test('summary shows ✓ when all children accepted (100% complete)', () => {
+    const epic = story({ number: 1100, state: 'in-progress' })
+    const children: BoardStory[] = [
+      story({ number: 1101, state: 'accepted', labels: featureLabels, parent_epic: 1100 }),
+      story({ number: 1102, state: 'accepted', labels: featureLabels, parent_epic: 1100 })
+    ]
+    const html = renderToStaticMarkup(
+      <Epic epics={[epic]} stories={[epic, ...children]} onOpen={() => {}} />
+    )
+    expect(html).toContain('2/2 ✓')
+  })
+
+  test('summary omits ✓ when not 100% complete', () => {
+    const epic = story({ number: 1100, state: 'in-progress' })
+    const children: BoardStory[] = [
+      story({ number: 1101, state: 'accepted', labels: featureLabels, parent_epic: 1100 }),
+      story({ number: 1102, state: 'in-progress', labels: featureLabels, parent_epic: 1100 })
+    ]
+    const html = renderToStaticMarkup(
+      <Epic epics={[epic]} stories={[epic, ...children]} onOpen={() => {}} />
+    )
+    expect(html).toContain('1/2')
+    expect(html).not.toContain('1/2 ✓')
+  })
+
+  test('persisted-closed state in localStorage overrides default-open (falsifier-e)', () => {
+    window.localStorage.setItem(
+      'bpmux-epic-collapse:ryan',
+      JSON.stringify({ '1100': false })
+    )
+    const epic = story({ number: 1100, state: 'in-progress' })
+    const html = renderToStaticMarkup(
+      <Epic epics={[epic]} stories={[epic]} onOpen={() => {}} />
+    )
+    expect(html).not.toMatch(/<details[^>]*\sopen\b/)
+  })
+
+  test('persisted-open state in localStorage overrides default-closed', () => {
+    window.localStorage.setItem(
+      'bpmux-epic-collapse:ryan',
+      JSON.stringify({ '1100': true })
+    )
+    const epic = story({ number: 1100, state: 'accepted' })
+    const html = renderToStaticMarkup(
+      <Epic epics={[epic]} stories={[epic]} onOpen={() => {}} />
+    )
+    expect(html).toMatch(/<details[^>]*\sopen\b/)
+  })
+
+  test('summary still contains glyph + #N + state + title', () => {
+    const epic = story({ number: 1100, state: 'in-progress', title: 'Epic Title Here' })
+    const html = renderToStaticMarkup(
+      <Epic epics={[epic]} stories={[epic]} onOpen={() => {}} />
+    )
+    expect(html).toContain('#1100')
+    expect(html).toContain('Epic Title Here')
+    expect(html).toContain('data-test="board-epic-1100-state"')
+  })
+
+  test('expanded body contains description + progress + breakdown', () => {
+    const epic = story({
+      number: 1100,
+      state: 'in-progress',
+      body: '## User job\n\nDescription paragraph here.\n'
+    })
+    const child: BoardStory = story({
+      number: 1101,
+      state: 'accepted',
+      labels: featureLabels,
+      parent_epic: 1100
+    })
+    const html = renderToStaticMarkup(
+      <Epic epics={[epic]} stories={[epic, child]} onOpen={() => {}} />
+    )
+    expect(html).toContain('Description paragraph here.')
+    expect(html).toContain('data-test="board-epic-1100-progress"')
+    expect(html).toContain('data-test="board-epic-1100-breakdown"')
   })
 })
