@@ -374,6 +374,11 @@ pub async fn run_server(
             axum::routing::get(transport::rest::get_reactions).post(transport::rest::post_reaction),
         )
         .route(
+            "/api/iteration_markers",
+            axum::routing::get(transport::rest::get_iteration_markers)
+                .post(transport::rest::post_iteration_marker),
+        )
+        .route(
             "/api/unfurl",
             axum::routing::get(transport::unfurl::get_unfurl).with_state(unfurl_cache),
         )

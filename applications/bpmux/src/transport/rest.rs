@@ -980,6 +980,48 @@ pub async fn post_reaction(
     )
 }
 
+#[derive(Deserialize)]
+pub struct IterationMarkerCreate {
+    #[serde(default)]
+    pub theme_name: Option<String>,
+}
+
+pub async fn get_iteration_markers(
+    State(session): State<Arc<session::Session>>,
+) -> impl IntoResponse {
+    let store = session::iteration_markers::load(&session.dir);
+    let markers = session::iteration_markers::list(&store);
+    (
+        StatusCode::OK,
+        json_headers(),
+        serde_json::to_string(&markers).unwrap_or_else(|_| "[]".to_string()),
+    )
+}
+
+pub async fn post_iteration_marker(
+    State(session): State<Arc<session::Session>>,
+    axum::Json(body): axum::Json<IterationMarkerCreate>,
+) -> impl IntoResponse {
+    let mut store = session::iteration_markers::load(&session.dir);
+    let theme = body
+        .theme_name
+        .unwrap_or_else(|| session::iteration_markers::next_unused_theme(&store));
+    let now = chrono::Utc::now().to_rfc3339();
+    let marker = session::iteration_markers::add(&mut store, theme, now);
+    if let Err(e) = session::iteration_markers::save(&session.dir, &store) {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json_headers(),
+            err_body(&format!("save iteration_markers: {e}")),
+        );
+    }
+    (
+        StatusCode::OK,
+        json_headers(),
+        serde_json::to_string(&marker).unwrap_or_else(|_| "{}".to_string()),
+    )
+}
+
 /// #387 cross-agent reaction visibility. Typed `StateDelta::Reactions`
 /// frames are renderer-mirror-only; MCP-bridged agents see chat
 /// insights rather than wire-state. This synthesizes a human-readable

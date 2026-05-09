@@ -7,6 +7,7 @@ pub mod classifier;
 pub mod diag;
 pub mod identity;
 pub mod instrumented_storage;
+pub mod iteration_markers;
 pub mod lessons;
 pub mod log;
 pub mod message;
