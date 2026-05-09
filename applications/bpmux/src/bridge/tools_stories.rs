@@ -602,10 +602,13 @@ pub(super) async fn handle_start_story(
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
-    if let Some(r) = refresh {
-        ensure_story_in_canonical_store(r, number).await?;
+    let was_closed = if let Some(r) = refresh {
+        let prior = ensure_story_in_canonical_store(r, number).await?;
         let _ = r.fetch_body(number).await;
-    }
+        prior.is_closed
+    } else {
+        false
+    };
     let pickup_paraphrase = require_nonempty_string(
         args,
         "pickup_paraphrase",
@@ -636,6 +639,13 @@ pub(super) async fn handle_start_story(
             ts: chrono::Utc::now(),
             peer_id: crate::board::PeerId::local(),
         };
+        if was_closed {
+            r.mutate_sync(crate::board::BoardEvent::StoryReopened {
+                meta: meta.clone(),
+                number,
+            })
+            .map_err(|e| format!("#{number} reopen enqueue failed: {e}"))?;
+        }
         // #518 slice 1: universal-reap via shared helper. Mirrors the
         // forward-direction pattern from #533 + symmetric to #519/#503
         // terminal-direction reaps. Closes the rework-pickup-from-
@@ -718,11 +728,23 @@ pub(super) async fn handle_deliver_story(
     // story so designer + pm see it at desk-check + accept gates.
     // Comment is auditable; fits the existing comment substrate.
     if let Some(r) = refresh {
+        let was_closed = refreshed
+            .as_ref()
+            .and_then(|s| s.as_ref())
+            .map(|s| s.is_closed)
+            .unwrap_or(false);
         let meta = crate::board::events::EventMeta {
             actor: crate::transport::ws::short_name(agent_name).to_string(),
             ts: chrono::Utc::now(),
             peer_id: crate::board::PeerId::local(),
         };
+        if was_closed {
+            r.mutate_sync(crate::board::BoardEvent::StoryReopened {
+                meta: meta.clone(),
+                number,
+            })
+            .map_err(|e| format!("#{number} reopen enqueue failed: {e}"))?;
+        }
         // #518 slice 1: universal-reap via shared helper.
         reap_workflow_labels(r.as_ref(), number, &meta, "desk-check")?;
         r.mutate_sync(crate::board::BoardEvent::GateCommentAppended {
@@ -1053,9 +1075,12 @@ pub(super) async fn handle_pass_desk_check(
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
     let bypass = verify_bug_question_or_bypass(args, BugGate::PassDeskCheck)?;
-    if let Some(r) = refresh {
-        ensure_story_in_canonical_store(r, number).await?;
-    }
+    let was_closed = if let Some(r) = refresh {
+        let prior = ensure_story_in_canonical_store(r, number).await?;
+        prior.is_closed
+    } else {
+        false
+    };
     // Pick signal recipients based on story type (Feature/Bug/Chore
     // per the 3-type vocabulary, #264). Chore + Bug → PM alone
     // (team-accept lane). Feature → Ryan AND PM (#259 — Ryan is the
@@ -1075,6 +1100,13 @@ pub(super) async fn handle_pass_desk_check(
             ts: chrono::Utc::now(),
             peer_id: crate::board::PeerId::local(),
         };
+        if was_closed {
+            r.mutate_sync(crate::board::BoardEvent::StoryReopened {
+                meta: meta.clone(),
+                number,
+            })
+            .map_err(|e| format!("#{number} reopen enqueue failed: {e}"))?;
+        }
         reap_workflow_labels(r.as_ref(), number, &meta, LABEL_DELIVERED)?;
         r.mutate_sync(crate::board::BoardEvent::GateCommentAppended {
             meta: meta.clone(),
