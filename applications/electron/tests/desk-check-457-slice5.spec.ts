@@ -95,14 +95,16 @@ test.describe('desk-check #457 slice 5 — Electron Epic-summary section', () =>
     await app.close()
   })
 
-  test('child story shows ↳ #N parent-epic ref in its state lane', async () => {
+  test('#1185 child story shows ↳ #N {title} human-readable parent-epic ref in its state lane', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="board-region"]')).toBeVisible()
 
     const childRow = win.locator('[data-test="board-story-902"]')
     await expect(childRow).toBeVisible()
-    await expect(childRow.locator('.board-story-epic-ref')).toContainText('↳ #901')
+    const epicRef = childRow.locator('.board-story-epic-ref')
+    await expect(epicRef).toContainText('↳ #901')
+    await expect(epicRef).toContainText('Epic: substrate consolidation')
 
     const standaloneRow = win.locator('[data-test="board-story-904"]')
     await expect(standaloneRow).toBeVisible()

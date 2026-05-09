@@ -230,6 +230,13 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
 
   const stories = useMemo(() => data?.stories ?? [], [data])
   const epics = useMemo(() => stories.filter(isActiveEpic), [stories])
+  const epicTitleByNumber = useMemo(() => {
+    const map = new Map<number, string>()
+    for (const s of stories) {
+      if (storyTypeFromLabels(s.labels) === 'epic') map.set(s.number, s.title)
+    }
+    return map
+  }, [stories])
   const nonEpicStories = useMemo(
     () => stories.filter((s) => storyTypeFromLabels(s.labels) !== 'epic'),
     [stories]
@@ -488,6 +495,7 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
               key={group.state}
               group={group}
               stories={grouped.get(group.state) ?? []}
+              epicTitleByNumber={epicTitleByNumber}
               loading={loading && !data}
               selectedNumber={effectiveSelected}
               onOpen={handleOpen}
@@ -517,6 +525,7 @@ function groupStories(stories: BoardStory[]): Map<ColumnState, BoardStory[]> {
 interface GroupProps {
   group: GroupSpec
   stories: BoardStory[]
+  epicTitleByNumber: Map<number, string>
   loading: boolean
   selectedNumber: number | null
   onOpen: (n: number) => void
@@ -533,6 +542,7 @@ interface GroupProps {
 function BoardGroup({
   group,
   stories,
+  epicTitleByNumber,
   loading,
   selectedNumber,
   onOpen,
@@ -630,6 +640,11 @@ function BoardGroup({
               <StoryRow
                 key={story.number}
                 story={story}
+                parentEpicTitle={
+                  story.parent_epic !== undefined
+                    ? epicTitleByNumber.get(story.parent_epic)
+                    : undefined
+                }
                 selected={story.number === selectedNumber}
                 draggable={draggable}
                 dragging={draggingNumber === story.number}
@@ -668,6 +683,7 @@ function BoardGroup({
 
 interface RowProps {
   story: BoardStory
+  parentEpicTitle?: string
   selected: boolean
   draggable: boolean
   // #333: parent tracks which row is being dragged; the matching
@@ -697,6 +713,7 @@ interface RowProps {
 
 function StoryRow({
   story,
+  parentEpicTitle,
   selected,
   draggable,
   dragging,
@@ -783,9 +800,14 @@ function StoryRow({
         {story.parent_epic !== undefined ? (
           <small
             className="board-story-epic-ref"
-            aria-label={`child of epic #${story.parent_epic}`}
+            aria-label={
+              parentEpicTitle !== undefined
+                ? `child of epic #${story.parent_epic} ${parentEpicTitle}`
+                : `child of epic #${story.parent_epic}`
+            }
           >
             ↳ #{story.parent_epic}
+            {parentEpicTitle !== undefined ? ` ${parentEpicTitle}` : ''}
           </small>
         ) : null}
       </div>
