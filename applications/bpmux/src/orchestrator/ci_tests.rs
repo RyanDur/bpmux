@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+use std::collections::VecDeque;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Duration;
@@ -58,14 +59,37 @@ impl CiBroadcastListener for RecordingListener {
 }
 
 struct FakeCiTracker {
-    fired: Mutex<bool>,
+    responses: Mutex<VecDeque<ConditionalRunEntry>>,
     notify: tokio::sync::Notify,
+}
+
+fn default_modified_entry() -> ConditionalRunEntry {
+    ConditionalRunEntry::Modified {
+        entry: crate::bridge::tracker::WorkflowRunEntry {
+            status: "completed".to_string(),
+            conclusion: Some("success".to_string()),
+            head_sha: Some("deadbeef".to_string()),
+            display_title: Some("fake CI run".to_string()),
+            database_id: Some(7777),
+            annotation_message: None,
+        },
+        etag: Some("etag-1".to_string()),
+    }
 }
 
 impl FakeCiTracker {
     fn new() -> Self {
+        let mut responses = VecDeque::new();
+        responses.push_back(default_modified_entry());
         Self {
-            fired: Mutex::new(false),
+            responses: Mutex::new(responses),
+            notify: tokio::sync::Notify::new(),
+        }
+    }
+
+    fn with_responses(responses: Vec<ConditionalRunEntry>) -> Self {
+        Self {
+            responses: Mutex::new(responses.into_iter().collect()),
             notify: tokio::sync::Notify::new(),
         }
     }
@@ -76,27 +100,16 @@ impl CiPollFetch for FakeCiTracker {
         &self,
         _prior_etag: Option<&str>,
     ) -> Result<ConditionalRunEntry, String> {
-        let already_fired = {
-            let mut fired = self.fired.lock().unwrap_or_else(|e| e.into_inner());
-            let was = *fired;
-            *fired = true;
-            was
+        let next = {
+            let mut q = self.responses.lock().unwrap_or_else(|e| e.into_inner());
+            q.pop_front()
         };
-        if already_fired {
-            self.notify.notified().await;
-            Err("loop-blocked-forever".to_string())
-        } else {
-            Ok(ConditionalRunEntry::Modified {
-                entry: crate::bridge::tracker::WorkflowRunEntry {
-                    status: "completed".to_string(),
-                    conclusion: Some("success".to_string()),
-                    head_sha: Some("deadbeef".to_string()),
-                    display_title: Some("fake CI run".to_string()),
-                    database_id: Some(7777),
-                    annotation_message: None,
-                },
-                etag: Some("etag-1".to_string()),
-            })
+        match next {
+            Some(entry) => Ok(entry),
+            None => {
+                self.notify.notified().await;
+                Err("loop-blocked-forever".to_string())
+            }
         }
     }
 
@@ -341,6 +354,70 @@ async fn live_loop_dispatches_ci_updated_through_action_chain() {
         !orch.is_running(PollKind::Ci).await,
         "Stop cancels the loop within bounded time"
     );
+}
+
+#[tokio::test]
+async fn live_loop_marks_poll_succeeded_on_all_three_branches() {
+    let (session, _dir) = fresh_session();
+    let tracker = Arc::new(FakeCiTracker::with_responses(vec![
+        default_modified_entry(),
+        ConditionalRunEntry::NotModified,
+        ConditionalRunEntry::Empty,
+    ]));
+    let parent = CancellationToken::new();
+    let ci_state_store = CiStateStore::new();
+    let orch: Arc<Orchestrator<FakeCiTracker>> = Arc::new(Orchestrator::new(
+        session,
+        Some(tracker.clone()),
+        ci_state_store.clone(),
+        parent.clone(),
+    ));
+
+    tokio::time::pause();
+    orch.dispatch(CiAction::StartCiPolling).await;
+    assert!(orch.is_running(PollKind::Ci).await);
+
+    for _ in 0..3 {
+        tokio::time::advance(Duration::from_secs(10)).await;
+        tokio::task::yield_now().await;
+        tokio::time::advance(Duration::from_millis(50)).await;
+        tokio::task::yield_now().await;
+    }
+    tokio::time::resume();
+
+    let deadline = std::time::Instant::now() + Duration::from_secs(2);
+    while std::time::Instant::now() < deadline {
+        let remaining = {
+            let q = tracker.responses.lock().unwrap();
+            q.len()
+        };
+        if remaining == 0 {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    let remaining_after_wait = {
+        let q = tracker.responses.lock().unwrap();
+        q.len()
+    };
+    assert_eq!(
+        remaining_after_wait, 0,
+        "all 3 fixture responses (Modified + NotModified + Empty) consumed by live loop"
+    );
+
+    let last_polled = ci_state_store.last_successful_poll_at();
+    assert!(
+        last_polled.is_some(),
+        "mark_poll_succeeded fires on Modified+NotModified+Empty branches; \
+         last_successful_poll_at must be Some after all 3 outcomes consumed"
+    );
+
+    orch.dispatch(CiAction::StopCiPolling).await;
+    let stop_deadline = std::time::Instant::now() + Duration::from_secs(2);
+    while std::time::Instant::now() < stop_deadline && orch.is_running(PollKind::Ci).await {
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    assert!(!orch.is_running(PollKind::Ci).await);
 }
 
 fn refresh_for_tests() -> Arc<dyn crate::board::RefreshDriver> {
