@@ -3094,6 +3094,43 @@ fn parse_acceptance_test_path_finds_path_among_prose() {
     );
 }
 
+#[test]
+fn parse_acceptance_test_path_strips_backtick_wrapped_path() {
+    let body =
+        "## Acceptance test path\n\n`applications/bpmux/src/bridge/tools/get_story_tests.rs`\n\n";
+    assert_eq!(
+        parse_acceptance_test_path(body),
+        Some("applications/bpmux/src/bridge/tools/get_story_tests.rs".to_string())
+    );
+}
+
+#[test]
+fn parse_acceptance_test_path_strips_asterisk_emphasized_path() {
+    let body = "## Acceptance test path\n\n*tests/foo.ts*\n\n";
+    assert_eq!(
+        parse_acceptance_test_path(body),
+        Some("tests/foo.ts".to_string())
+    );
+}
+
+#[test]
+fn parse_acceptance_test_path_strips_underscore_emphasized_path() {
+    let body = "## Acceptance test path\n\n_src/foo/bar.kt_\n\n";
+    assert_eq!(
+        parse_acceptance_test_path(body),
+        Some("src/foo/bar.kt".to_string())
+    );
+}
+
+#[test]
+fn parse_acceptance_test_path_strips_backticks_inside_bullet_label() {
+    let body = "## Acceptance test path\n\n- Primary: `tests/canonical.rs` (load-bearing)\n\n";
+    assert_eq!(
+        parse_acceptance_test_path(body),
+        Some("tests/canonical.rs".to_string())
+    );
+}
+
 #[tokio::test]
 async fn start_story_blocks_feature_without_acceptance_test_path() {
     use crate::board::BoardStore;

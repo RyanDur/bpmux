@@ -449,12 +449,16 @@ fn extract_path_from_line(line: &str) -> Option<String> {
         Some(idx) => &stripped[idx + 2..],
         None => stripped,
     };
-    let trimmed = after_label.trim();
+    let trimmed = after_label
+        .trim()
+        .trim_matches(|c: char| c == '`' || c == '*' || c == '_');
     let token = match trimmed.find([' ', '\t', '(']) {
         Some(idx) => &trimmed[..idx],
         None => trimmed,
     };
-    let candidate = token.trim_end_matches(['.', ',', ';']).trim();
+    let candidate = token
+        .trim_end_matches(['.', ',', ';', '`', '*', '_'])
+        .trim();
     if candidate.contains('/')
         && [
             ".rs", ".ts", ".tsx", ".js", ".jsx", ".py", ".go", ".rb", ".java", ".kt", ".cs",
