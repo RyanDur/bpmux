@@ -3,14 +3,6 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import EpicSummary from './EpicSummary'
 import { isActiveEpic, type BoardStory } from './types'
 
-// #1234: retired Epics (closed-non-Accepted, e.g. moved to Icebox +
-// closed for over-Epic'd reshape) must NOT appear in the renderer's
-// active Epic-summary list. Sister to columnFor's retired-bucket
-// pattern (#514) and to #1230/#1231 stale-state class. The fix lives
-// at Board.tsx where `epics` is derived; the predicate is hoisted to
-// `isActiveEpic` in types.ts so this falsifier can pin it without
-// mounting Board's WS lifecycle.
-
 const epicLabels = ['Epic']
 const featureLabels = ['Feature']
 
@@ -31,10 +23,6 @@ describe('#1234 isActiveEpic — Epic-summary visibility predicate', () => {
   })
 
   test('closed-Accepted Epic → visible (success-narrative preserved)', () => {
-    // mirrors columnFor's `accepted` carveout: an Epic whose children
-    // all accepted should still show as a meta-card so the team sees
-    // the full progress bar at-a-glance. Retire-vs-Accept is the
-    // distinguishing axis, not closed-state.
     expect(
       isActiveEpic(story({ number: 101, state: 'accepted', gh_state: 'closed' }))
     ).toBe(true)
@@ -70,11 +58,6 @@ describe('#1234 isActiveEpic — Epic-summary visibility predicate', () => {
 })
 
 describe('#1234 EpicSummary — retired-Epic exclusion at the rendered surface', () => {
-  // Integration falsifier: pipes a mixed stories array through
-  // isActiveEpic (mirroring Board.tsx:231) and hands the filtered
-  // result to EpicSummary. Asserts the rendered DOM shape contains
-  // the active Epics and excludes the retired one. Pins the
-  // predicate-to-renderer wiring without mounting Board.
   test('renders only active Epics from a mixed stories array', () => {
     const stories: BoardStory[] = [
       story({ number: 1100, title: 'active-epic-A', state: 'in-progress' }),
