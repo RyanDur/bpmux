@@ -97,6 +97,10 @@
   }
 }
 
+.message-log-region {
+  display: contents;
+}
+
 .message-list {
   flex: 1 1 auto;
   overflow-y: auto;
