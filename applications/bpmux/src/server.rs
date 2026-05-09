@@ -286,6 +286,9 @@ pub async fn run_server(
     orchestrator.add_roster_listener(std::sync::Arc::new(
         crate::orchestrator::RosterSessionBroadcaster::new(session.clone()),
     ));
+    for identity in session.roster_snapshot() {
+        crate::transport::ws::dispatch_roster_join(&orchestrator, &identity).await;
+    }
     orchestrator
         .dispatch(crate::orchestrator::OrchestratorAction::StartCiPolling)
         .await;
