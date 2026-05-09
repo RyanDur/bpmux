@@ -10,9 +10,8 @@ test.describe('#1158 — offline-first board', () => {
       extraEnv: { BPMUX_TEST_MODE: '1' }
     })
     try {
-      const region = win.locator('.sync-status-region')
+      const region = win.locator('output.sync-status-region')
       await expect(region).toBeVisible()
-      await expect(region).toHaveAttribute('role', 'status')
       await expect(region).toHaveAttribute('aria-live', 'polite')
       const indicator = win.locator('[data-test="sync-status-glyph"]')
       await expect(indicator).toBeVisible()

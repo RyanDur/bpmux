@@ -423,11 +423,11 @@ const MessageList = ({
                 <h3 className="message-lane-title">{cls}</h3>
                 <small className="message-lane-count">{slice.length}</small>
               </header>
-              <div role="log" aria-live="polite" className="message-log-region">
+              <section role="log" aria-live="polite" className="message-log-region">
                 <ul className="message-list message-list--lane">
                   {rows.map(renderRow)}
                 </ul>
-              </div>
+              </section>
             </section>
           )
         })}
@@ -464,11 +464,11 @@ const MessageList = ({
           couldn’t load older messages — retry
         </button>
       )}
-      <div {...logRegionProps} className="message-log-region">
+      <section {...logRegionProps} className="message-log-region">
         <ul {...listProps} ref={listRef} onScroll={handleScroll}>
           {reversed.map(renderRow)}
         </ul>
-      </div>
+      </section>
       {newCount > 0 && (
         <button
           type="button"
