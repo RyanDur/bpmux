@@ -358,3 +358,84 @@ async fn empty_raw_labels_returns_empty_labels_array() {
         "raw_labels empty → labels array empty (no state-label synthesis); got {labels:?}"
     );
 }
+
+#[tokio::test]
+async fn cache_miss_eagerly_fetches_body_via_refresh_driver() {
+    let story = make_story(1226, StoryState::Ready, None);
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    adapter.seed_stories(vec![story.clone()]);
+    adapter.seed_body(
+        1226,
+        "live-fetched body content via read-through".to_string(),
+    );
+    store.seed_all(vec![story]);
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    let args = serde_json::json!({"number": 1226});
+    let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orchestrator))
+        .await
+        .expect("should succeed");
+    let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
+    assert_eq!(
+        parsed["body_hydrated"].as_bool(),
+        Some(true),
+        "cache-miss must trigger read-through fetch and surface body_hydrated=true"
+    );
+    let body = parsed["body"].as_str().expect("body is string");
+    assert_eq!(
+        body, "live-fetched body content via read-through",
+        "cache-miss path must return adapter-fetched body, not placeholder"
+    );
+}
+
+#[tokio::test]
+async fn cache_miss_returns_placeholder_when_no_refresh_driver() {
+    let story = make_story(1226, StoryState::Ready, None);
+    let store = Arc::new(BoardStore::new());
+    store.seed_all(vec![story]);
+    let args = serde_json::json!({"number": 1226});
+    let result = handle_get_story(args.as_object().unwrap(), Some(&store), None)
+        .await
+        .expect("should succeed");
+    let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
+    assert_eq!(
+        parsed["body_hydrated"].as_bool(),
+        Some(false),
+        "no-refresh-driver path keeps body_hydrated=false (placeholder branch)"
+    );
+    let body = parsed["body"].as_str().expect("body is string");
+    assert!(
+        body.contains("not yet hydrated"),
+        "no-refresh-driver path returns placeholder text; got {body:?}"
+    );
+}
+
+#[tokio::test]
+async fn cache_hit_does_not_refetch_when_body_already_present() {
+    let story = make_story(1226, StoryState::Ready, Some("already-cached body"));
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    adapter.seed_stories(vec![story.clone()]);
+    adapter.seed_body(
+        1226,
+        "ADAPTER body — should NOT be returned because cache is hit".to_string(),
+    );
+    store.seed_all(vec![story]);
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    let args = serde_json::json!({"number": 1226});
+    let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orchestrator))
+        .await
+        .expect("should succeed");
+    let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
+    let body = parsed["body"].as_str().expect("body is string");
+    assert_eq!(
+        body, "already-cached body",
+        "cache-hit path must NOT re-fetch; adapter body must not leak"
+    );
+}

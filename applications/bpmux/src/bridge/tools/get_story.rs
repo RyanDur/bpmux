@@ -44,22 +44,38 @@ fn rework_context_from_gates(gates: &[GateComment]) -> Option<String> {
     Some(out)
 }
 
-const NOT_HYDRATED_PLACEHOLDER: &str = "(body not yet hydrated; background poller will hydrate. \
-     Use refresh_story to force live-fetch when needed for high-stake operations.)";
+const NOT_HYDRATED_PLACEHOLDER: &str =
+    "(body not yet hydrated; no refresh driver available to live-fetch.)";
 
 pub(in crate::bridge) async fn handle_get_story(
     args: &serde_json::Map<String, serde_json::Value>,
     board: Option<&Arc<BoardStore>>,
-    _refresh: Option<&Arc<dyn RefreshDriver>>,
+    refresh: Option<&Arc<dyn RefreshDriver>>,
 ) -> Result<String, String> {
     let number = args
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
     let b = board.ok_or("get_story requires board (canonical-store)")?;
-    let story = b
+    let mut story = b
         .story(number)
         .ok_or_else(|| format!("story #{number} not found in board"))?;
+    if story.body.is_none()
+        && let Some(r) = refresh
+    {
+        match r.fetch_body(number).await {
+            Ok(_) => {
+                story = b
+                    .story(number)
+                    .ok_or_else(|| format!("story #{number} not found in board after fetch"))?;
+            }
+            Err(e) => {
+                crate::session::diag::log_diag(&format!(
+                    "get_story #{number} read-through fetch_body failed: {e}"
+                ));
+            }
+        }
+    }
     let body_cached = story.body.as_deref();
     let mut body_out = body_cached.unwrap_or(NOT_HYDRATED_PLACEHOLDER).to_string();
     let needs_gates = matches!(story.state, StoryState::Ready | StoryState::InProgress);
