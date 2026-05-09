@@ -304,9 +304,8 @@ const Input = ({ onSend, disabled, placeholder, channelKey }: Props): React.JSX.
   return (
     <form className="chat-input" data-test="chat-input" onSubmit={(e) => e.preventDefault()}>
       {search !== null && (
-        <aside
+        <output
           className={`chat-input-search${search.matchIndex === null && search.query ? ' chat-input-search--nomatch' : ''}`}
-          role="status"
           aria-live="polite"
           data-test="chat-input-isearch"
         >
@@ -322,7 +321,7 @@ const Input = ({ onSend, disabled, placeholder, channelKey }: Props): React.JSX.
               `i-search: ${search.query}`
             )}
           </small>
-        </aside>
+        </output>
       )}
       <textarea
         key={disabled ? 'disabled' : 'enabled'}

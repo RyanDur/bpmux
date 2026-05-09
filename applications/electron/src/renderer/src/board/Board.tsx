@@ -461,9 +461,9 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
        * polite queues without interrupting the current announcement
        * (e.g., the aria-label the focused story button just
        * updated to). */}
-      <div className="sr-only" role="status" aria-live="polite" data-test="board-reorder-announce">
+      <output className="sr-only" aria-live="polite" data-test="board-reorder-announce">
         {reorderAnnounce}
-      </div>
+      </output>
 
       {error !== null && (
         <section className="board-error" role="alert" data-test="board-error">

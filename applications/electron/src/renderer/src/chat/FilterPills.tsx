@@ -64,14 +64,13 @@ function FilterPills({ filter, hiddenCounts }: Props): React.JSX.Element {
         })}
       </div>
       {summary && (
-        <p
+        <output
           className="filter-pills-summary"
-          role="status"
           aria-live="polite"
           data-test="filter-hidden-count"
         >
           {summary}
-        </p>
+        </output>
       )}
     </aside>
   )

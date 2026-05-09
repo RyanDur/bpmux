@@ -442,14 +442,13 @@ const MessageList = ({
   return (
     <div className="message-list-wrap" data-test="message-list-wrap">
       {isLoadingOlder && (
-        <aside
+        <output
           className="loading-older-pill"
           data-test="loading-older-pill"
-          role="status"
           aria-live="polite"
         >
           loading older messages…
-        </aside>
+        </output>
       )}
       {!isLoadingOlder && hasError && loadOlder && (
         <button
@@ -475,7 +474,6 @@ const MessageList = ({
           className="new-messages-pill"
           data-test="new-messages-pill"
           onClick={scrollToBottom}
-          role="status"
           aria-live="polite"
         >
           {newCount === 1 ? '1 new message ↓' : `${newCount} new messages ↓`}
