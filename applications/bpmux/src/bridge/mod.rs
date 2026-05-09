@@ -743,7 +743,7 @@ impl ServerHandler for BridgeServer {
                 "get_ci_state" => tools::handle_get_ci_state(&args, port).await,
                 "get_ci_log_for_run" => tools::handle_get_ci_log_for_run(&args, port).await,
                 "rerun_ci" => tools::handle_rerun_ci(&args, port).await,
-                "get_sync_status" => tools::handle_get_sync_status(None).await,
+                "get_sync_status" => tools::handle_get_sync_status(port).await,
                 "view_story_commits" => tools::handle_view_story_commits(&args).await,
                 "view_commit_diff" => tools::handle_view_commit_diff(&args).await,
                 "view_velocity" => {
@@ -1214,17 +1214,35 @@ pub async fn run_hydration_loop_cancellable(
         }
         let stories = refresh.all_stories();
         let to_hydrate = select_stories_to_hydrate(&stories, HYDRATION_MAX_PER_TICK);
-        for (number, prior_etag) in
-            to_hydrate
-                .into_iter()
-                .map(|n| (n, None::<String>))
-                .chain(select_stories_to_revalidate(
-                    &stories,
-                    HYDRATION_MAX_PER_TICK,
-                ))
+        let to_revalidate = select_stories_to_revalidate(&stories, HYDRATION_MAX_PER_TICK);
+        if to_hydrate.is_empty() && to_revalidate.is_empty() {
+            crate::session::diag::log_diag(
+                "bridge: hydration tick: nothing to hydrate or revalidate",
+            );
+            continue;
+        }
+        crate::session::diag::log_diag(&format!(
+            "bridge: hydration tick: hydrate={:?} revalidate={:?}",
+            to_hydrate,
+            to_revalidate.iter().map(|(n, _)| *n).collect::<Vec<_>>()
+        ));
+        let mut hydrated_ok = 0u32;
+        let mut revalidated_ok = 0u32;
+        let to_hydrate_len = to_hydrate.len();
+        for (idx, (number, prior_etag)) in to_hydrate
+            .into_iter()
+            .map(|n| (n, None::<String>))
+            .chain(to_revalidate)
+            .enumerate()
         {
             match refresh.fetch_body_conditional(number, prior_etag).await {
-                Ok(_) => {}
+                Ok(_) => {
+                    if idx < to_hydrate_len {
+                        hydrated_ok += 1;
+                    } else {
+                        revalidated_ok += 1;
+                    }
+                }
                 Err(e) => {
                     crate::session::diag::log_diag(&format!(
                         "bridge: hydrate body #{number} failed: {e}"
@@ -1233,6 +1251,9 @@ pub async fn run_hydration_loop_cancellable(
                 }
             }
         }
+        crate::session::diag::log_diag(&format!(
+            "bridge: hydration tick complete: hydrated={hydrated_ok} revalidated={revalidated_ok}"
+        ));
     }
 }
 
