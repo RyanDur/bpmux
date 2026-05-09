@@ -13,6 +13,8 @@ import { ReworkGlyph } from './ReworkGlyph'
 import StoryBadge, { deriveBadge } from './StoryBadge'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import { useRefetchOnReconnect } from './useRefetchOnReconnect'
+import IterationMarker from './IterationMarker'
+import { useIterationMarkers, type IterationMarker as IterationMarkerData } from '../hooks/useIterationMarkers'
 import {
   columnFor,
   GROUP_ORDER,
@@ -100,6 +102,10 @@ interface BoardProps {
 
 function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Element {
   const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
+  const iterationMarkers = useIterationMarkers({
+    apiBase: bridge?.apiBase,
+    authToken: bridge?.authToken
+  })
   const [data, setData] = useState<BoardResponse | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
@@ -496,6 +502,7 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
               group={group}
               stories={grouped.get(group.state) ?? []}
               epicTitleByNumber={epicTitleByNumber}
+              iterationMarkers={group.state === 'icebox' ? iterationMarkers : []}
               loading={loading && !data}
               selectedNumber={effectiveSelected}
               onOpen={handleOpen}
@@ -526,6 +533,7 @@ interface GroupProps {
   group: GroupSpec
   stories: BoardStory[]
   epicTitleByNumber: Map<number, string>
+  iterationMarkers: IterationMarkerData[]
   loading: boolean
   selectedNumber: number | null
   onOpen: (n: number) => void
@@ -543,6 +551,7 @@ function BoardGroup({
   group,
   stories,
   epicTitleByNumber,
+  iterationMarkers,
   loading,
   selectedNumber,
   onOpen,
@@ -619,6 +628,17 @@ function BoardGroup({
         <b className="board-group-label">{group.label}</b>
       </summary>
       <div id={contentId}>
+        {iterationMarkers.length > 0 && (
+          <ul className="board-iteration-markers" data-test="board-iteration-markers">
+            {iterationMarkers.map((marker, i) => (
+              <IterationMarker
+                key={marker.id}
+                marker={marker}
+                variant={i === 0 ? 'next' : 'future'}
+              />
+            ))}
+          </ul>
+        )}
         {loading ? (
           <ul className="board-story-list board-story-list--skeleton" aria-hidden="true">
             {[0, 1, 2].map((i) => (
@@ -627,9 +647,9 @@ function BoardGroup({
               </li>
             ))}
           </ul>
-        ) : stories.length === 0 ? (
+        ) : stories.length === 0 && iterationMarkers.length === 0 ? (
           <p className="board-group-empty">none</p>
-        ) : (
+        ) : stories.length === 0 ? null : (
           <ul
             className="board-story-list"
             onDragOver={handleListDragOver}
