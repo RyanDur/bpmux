@@ -238,6 +238,7 @@ const DrillIn = ({
   })
   const articleRef = useRef<HTMLElement | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+  const rejectDialogRef = useRef<HTMLDialogElement | null>(null)
   // #368 badge-click → focus the timeline section. Ref instead of
   // a controlled `open` prop so the user can still toggle the
   // details closed after the initial focus without losing the state
@@ -266,11 +267,16 @@ const DrillIn = ({
     articleRef.current?.focus()
   }, [])
 
-  // Autofocus the reject textarea when the reject flow opens so the
-  // owner can start typing the note immediately.
   useEffect(() => {
+    const dialog = rejectDialogRef.current
+    if (!dialog) return
     if (mode === 'rejecting') {
+      if (!dialog.open) {
+        dialog.showModal()
+      }
       textareaRef.current?.focus()
+    } else if (dialog.open) {
+      dialog.close()
     }
   }, [mode])
 
@@ -609,8 +615,11 @@ const DrillIn = ({
       handleQuoteShortcut(event)
       if (event.defaultPrevented) return
       if (event.key === 'Escape') {
+        if (mode === 'rejecting') {
+          return
+        }
         event.preventDefault()
-        if (mode === 'rejecting' || mode === 'bug-question') {
+        if (mode === 'bug-question') {
           setMode('idle')
           return
         }
@@ -840,9 +849,12 @@ const DrillIn = ({
             </menu>
           ) : null}
           <dialog
-            open={mode === 'rejecting'}
+            ref={rejectDialogRef}
             className="drill-in-reject-form"
             aria-label="Reject story"
+            onClose={() => {
+              if (mode === 'rejecting') setMode('idle')
+            }}
           >
             <form
               onSubmit={(event) => {
