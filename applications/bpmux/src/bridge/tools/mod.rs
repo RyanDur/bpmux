@@ -3,6 +3,8 @@
 mod helpers;
 
 mod add_principle;
+#[cfg(test)]
+mod add_stories_to_iteration_tests;
 mod add_value;
 mod capture_electron_window;
 mod capture_screen;
@@ -97,10 +99,12 @@ pub(in crate::bridge) use get_story::handle_get_story;
 pub(in crate::bridge) use get_sync_status::handle_get_sync_status;
 pub(in crate::bridge) use get_token_report::handle_get_token_report;
 pub(in crate::bridge) use get_usage::handle_get_usage;
+pub(crate) use iteration_markers::apply_add_stories_to_iteration;
 #[cfg(test)]
 pub(in crate::bridge) use iteration_markers::apply_reorder_iteration_marker;
 pub(in crate::bridge) use iteration_markers::{
-    handle_create_iteration_marker, handle_list_iteration_markers, handle_reorder_iteration_marker,
+    handle_add_stories_to_iteration, handle_create_iteration_marker, handle_list_iteration_markers,
+    handle_reorder_iteration_marker,
 };
 pub(in crate::bridge) use list_epic_children::handle_list_epic_children;
 pub(in crate::bridge) use list_lessons::handle_list_lessons;

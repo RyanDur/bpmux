@@ -390,6 +390,10 @@ pub async fn run_server(
             axum::routing::post(transport::rest::post_reorder_iteration_marker),
         )
         .route(
+            "/api/add_stories_to_iteration",
+            axum::routing::post(transport::rest::post_add_stories_to_iteration),
+        )
+        .route(
             "/api/unfurl",
             axum::routing::get(transport::unfurl::get_unfurl).with_state(unfurl_cache),
         )

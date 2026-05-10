@@ -1057,6 +1057,50 @@ pub async fn post_iteration_marker(
     )
 }
 
+#[derive(Deserialize)]
+pub struct AddStoriesToIterationRequest {
+    pub story_ids: Vec<u64>,
+    #[serde(default)]
+    pub marker_id: Option<u64>,
+    #[serde(default)]
+    pub theme_name: Option<String>,
+}
+
+pub async fn post_add_stories_to_iteration(
+    State(session): State<Arc<session::Session>>,
+    axum::Json(body): axum::Json<AddStoriesToIterationRequest>,
+) -> impl IntoResponse {
+    let priority_path = match session::priority::default_priority_path() {
+        Ok(p) => p,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                json_headers(),
+                err_body(&format!("priority path: {e}")),
+            );
+        }
+    };
+    let outcome = crate::bridge::tools::apply_add_stories_to_iteration(
+        &priority_path,
+        &session.dir,
+        &body.story_ids,
+        body.marker_id,
+        body.theme_name,
+    );
+    match outcome {
+        Ok(o) => {
+            broadcast_board_invalidate(&session);
+            let json = serde_json::to_string(&o).unwrap_or_else(|_| "{}".to_string());
+            (StatusCode::OK, json_headers(), json)
+        }
+        Err(e) => (
+            StatusCode::BAD_REQUEST,
+            json_headers(),
+            err_body(&format!("add_stories_to_iteration: {e}")),
+        ),
+    }
+}
+
 #[derive(Deserialize, Default)]
 pub struct CloseIterationParams {
     /// AC 16-17 carry_over flag (Q1 PM-ratified YAGNI v1 boolean).
