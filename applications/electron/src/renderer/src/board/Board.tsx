@@ -620,17 +620,6 @@ function BoardGroup({
         <b className="board-group-label">{group.label}</b>
       </summary>
       <div id={contentId}>
-        {iterationMarkers.length > 0 && (
-          <ul className="board-iteration-markers" data-test="board-iteration-markers">
-            {iterationMarkers.map((marker, i) => (
-              <IterationMarker
-                key={marker.id}
-                marker={marker}
-                variant={i === 0 ? 'next' : 'future'}
-              />
-            ))}
-          </ul>
-        )}
         {loading ? (
           <ul className="board-story-list board-story-list--skeleton" aria-hidden="true">
             {[0, 1, 2].map((i) => (
@@ -641,13 +630,23 @@ function BoardGroup({
           </ul>
         ) : stories.length === 0 && iterationMarkers.length === 0 ? (
           <p className="board-group-empty">none</p>
-        ) : stories.length === 0 ? null : (
+        ) : (
           <ul
             className="board-story-list"
+            data-test={
+              iterationMarkers.length > 0 ? 'board-icebox-unified' : 'board-story-list'
+            }
             onDragOver={handleListDragOver}
             onDrop={handleDrop}
             onDragLeave={() => setDropAt(null)}
           >
+            {iterationMarkers.map((marker, i) => (
+              <IterationMarker
+                key={`marker-${marker.id}`}
+                marker={marker}
+                variant={i === 0 ? 'next' : 'future'}
+              />
+            ))}
             {stories.map((story, i) => (
               <StoryRow
                 key={story.number}
