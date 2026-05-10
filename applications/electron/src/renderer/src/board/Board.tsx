@@ -633,9 +633,7 @@ function BoardGroup({
         ) : (
           <ul
             className="board-story-list"
-            data-test={
-              iterationMarkers.length > 0 ? 'board-icebox-unified' : 'board-story-list'
-            }
+            data-test={iterationMarkers.length > 0 ? 'board-icebox-unified' : undefined}
             onDragOver={handleListDragOver}
             onDrop={handleDrop}
             onDragLeave={() => setDropAt(null)}
