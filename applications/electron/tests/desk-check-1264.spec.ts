@@ -49,7 +49,7 @@ const ITERATION_MARKERS_FIXTURE = [
   { id: 8, theme_name: 'Lyra', position: 1, created_at: '2026-05-10T20:00:00Z' }
 ]
 
-async function launchWithIceboxFixture() {
+const launchWithIceboxFixture = async () => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-1264-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-1264-'))
   const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })

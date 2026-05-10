@@ -54,14 +54,7 @@ const ITERATION_MARKERS_FIXTURE = [
   }
 ]
 
-async function launchWithIceboxFixture(): Promise<{
-  app: Awaited<ReturnType<typeof import('@playwright/test')['_electron']['launch']>>
-  win: Awaited<ReturnType<typeof import('@playwright/test')['_electron']['launch']>> extends infer A
-    ? A extends { firstWindow: () => Promise<infer W> }
-      ? W
-      : never
-    : never
-}> {
+const launchWithIceboxFixture = async () => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-1258-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-1258-'))
   const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
@@ -85,7 +78,7 @@ async function launchWithIceboxFixture(): Promise<{
     }
   })
   await win.reload()
-  return { app, win } as never
+  return { app, win }
 }
 
 test.describe('desk-check #1258 close_iteration ceremony', () => {
