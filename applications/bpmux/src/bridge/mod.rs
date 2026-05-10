@@ -320,6 +320,16 @@ pub(crate) async fn dispatch_test_list_ready(
     tools::handle_list_ready(&store).await
 }
 
+pub(crate) async fn dispatch_test_list_epic_children(
+    args: serde_json::Map<String, serde_json::Value>,
+    refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
+) -> Result<String, String> {
+    let store = refresh
+        .map(|r| r.store())
+        .ok_or_else(|| "list_epic_children requires canonical store".to_string())?;
+    tools::handle_list_epic_children(&args, &store).await
+}
+
 pub(crate) async fn dispatch_test_dev_in_flight(
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
@@ -780,6 +790,7 @@ impl ServerHandler for BridgeServer {
                 | "view_board"
                 | "get_story"
                 | "list_ready"
+                | "list_epic_children"
                 | "dev_in_flight"
                 | "view_story_timeline"
                 | "view_comments"
@@ -928,6 +939,9 @@ pub fn build_advertised_tools() -> Vec<rmcp::model::Tool> {
         crate::mcp::tools::list_ready_tool(
             "Enumerate the full ready queue. Returns JSON array of `{number, title, labels[]}` for every story labeled `ready`. Any role can call. USE THIS INSTEAD OF `gh issue list --label ready` — view_backlog surfaces counts + a sample, list_ready returns the complete queue for full pickup-gate visibility.",
         ),
+        crate::mcp::tools::list_epic_children_tool(
+            "List all stories whose `parent_epic` field equals the given Epic issue number. Returns JSON `{epic_number, children: [{number, title, state, story_type, is_closed}, ...]}` sorted by issue number. Any role can call. Use this for Epic-progress-grounding, count-divergence diagnosis, and ratchet-time enumeration. Errors: `epic_number not found` if the issue doesn't exist; `not an Epic` if the story_type isn't Epic.",
+        ),
         crate::mcp::tools::view_board_tool(
             "View the project board — all stories grouped by state (icebox, ready, in progress, delivered, ready for accept, needs fixes, rejected, accepted) with counts. No host permission needed. Same data as the TUI board view.",
         ),
@@ -1071,6 +1085,7 @@ pub const DISPATCHED_TOOL_NAMES: &[&str] = &[
     "view_board",
     "get_story",
     "list_ready",
+    "list_epic_children",
     "dev_in_flight",
     "view_story_timeline",
     "view_comments",

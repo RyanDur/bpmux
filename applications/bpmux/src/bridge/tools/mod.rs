@@ -25,6 +25,9 @@ mod git_repo;
 #[cfg(test)]
 mod git_repo_tests;
 mod iteration_markers;
+mod list_epic_children;
+#[cfg(test)]
+mod list_epic_children_tests;
 mod list_lessons;
 mod list_peer_lessons;
 mod list_ready;
@@ -93,6 +96,7 @@ pub(in crate::bridge) use get_usage::handle_get_usage;
 pub(in crate::bridge) use iteration_markers::{
     handle_create_iteration_marker, handle_list_iteration_markers,
 };
+pub(in crate::bridge) use list_epic_children::handle_list_epic_children;
 pub(in crate::bridge) use list_lessons::handle_list_lessons;
 pub(in crate::bridge) use list_peer_lessons::handle_list_peer_lessons;
 pub(in crate::bridge) use list_ready::handle_list_ready;
