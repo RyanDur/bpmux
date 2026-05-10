@@ -113,6 +113,13 @@ const Epic = ({ epics, stories, onOpen }: Props): React.JSX.Element | null => {
                     </span>
                     <b className="board-epic-title">{epic.title}</b>
                   </button>
+                  <progress
+                    className="board-epic-progress board-epic-progress--summary"
+                    data-test={`board-epic-${epic.number}-progress`}
+                    value={breakdown.accepted}
+                    max={breakdown.total === 0 ? 1 : breakdown.total}
+                    aria-label={breakdownAriaLabel(breakdown)}
+                  />
                   <small
                     className="board-epic-summary-progress"
                     data-test={`board-epic-${epic.number}-summary-progress`}
@@ -129,13 +136,6 @@ const Epic = ({ epics, stories, onOpen }: Props): React.JSX.Element | null => {
                       {description}
                     </p>
                   )}
-                  <progress
-                    className="board-epic-progress"
-                    data-test={`board-epic-${epic.number}-progress`}
-                    value={breakdown.accepted}
-                    max={breakdown.total === 0 ? 1 : breakdown.total}
-                    aria-label={breakdownAriaLabel(breakdown)}
-                  />
                   <small
                     className="board-epic-breakdown"
                     data-test={`board-epic-${epic.number}-breakdown`}

@@ -352,7 +352,7 @@ describe('#1235 Epic-card collapse — native <details>/<summary> + activity-cla
     expect(html).toContain('data-test="board-epic-1100-state"')
   })
 
-  test('expanded body contains description + progress + breakdown', () => {
+  test('expanded body contains description + breakdown (progress moved to summary per #1243)', () => {
     const epic = story({
       number: 1100,
       state: 'in-progress',
@@ -368,7 +368,35 @@ describe('#1235 Epic-card collapse — native <details>/<summary> + activity-cla
       <Epic epics={[epic]} stories={[epic, child]} onOpen={() => {}} />
     )
     expect(html).toContain('Description paragraph here.')
-    expect(html).toContain('data-test="board-epic-1100-progress"')
     expect(html).toContain('data-test="board-epic-1100-breakdown"')
+  })
+
+  test('#1243 progress bar renders inside <summary> for always-visible at all collapse-states', () => {
+    const epic = story({ number: 1100, state: 'in-progress' })
+    const html = renderToStaticMarkup(
+      <Epic epics={[epic]} stories={[epic]} onOpen={() => {}} />
+    )
+    const summaryMatch = html.match(/<summary[^>]*>([\s\S]*?)<\/summary>/)
+    expect(summaryMatch).not.toBeNull()
+    expect(summaryMatch?.[1]).toContain('data-test="board-epic-1100-progress"')
+  })
+
+  test('#1243 progress bar carries thinner-summary class for CSS sizing', () => {
+    const epic = story({ number: 1100, state: 'in-progress' })
+    const html = renderToStaticMarkup(
+      <Epic epics={[epic]} stories={[epic]} onOpen={() => {}} />
+    )
+    expect(html).toContain('board-epic-progress--summary')
+  })
+
+  test('#1243 progress bar visible even when Epic <details> is closed by default', () => {
+    const epic = story({ number: 1100, state: 'accepted' })
+    const html = renderToStaticMarkup(
+      <Epic epics={[epic]} stories={[epic]} onOpen={() => {}} />
+    )
+    expect(html).not.toMatch(/<details[^>]*\sopen\b/)
+    const summaryMatch = html.match(/<summary[^>]*>([\s\S]*?)<\/summary>/)
+    expect(summaryMatch?.[1]).toContain('<progress')
+    expect(summaryMatch?.[1]).toContain('data-test="board-epic-1100-progress"')
   })
 })
