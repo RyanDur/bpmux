@@ -25,7 +25,8 @@ import {
   type BoardResponse,
   type BoardStory,
   type ColumnState,
-  type GroupSpec
+  type GroupSpec,
+  type IceboxItem
 } from './types'
 import './Board.css'
 
@@ -505,6 +506,7 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
               stories={grouped.get(group.state) ?? []}
               epicTitleByNumber={epicTitleByNumber}
               iterationMarkers={group.state === 'icebox' ? iterationMarkers : []}
+              iceboxUnified={group.state === 'icebox' ? (data?.icebox_unified ?? []) : []}
               loading={loading && !data}
               selectedNumber={effectiveSelected}
               onOpen={handleOpen}
@@ -526,6 +528,11 @@ interface GroupProps {
   stories: BoardStory[]
   epicTitleByNumber: Map<number, string>
   iterationMarkers: IterationMarkerData[]
+  /** #1258 α-substrate: unified ordering for icebox column. Empty
+   * for non-icebox columns. When present, BoardGroup interleaves
+   * markers + stories per the listed order; when empty (legacy
+   * pre-α state), falls back to markers-then-stories concatenation. */
+  iceboxUnified: IceboxItem[]
   loading: boolean
   selectedNumber: number | null
   onOpen: (n: number) => void
@@ -544,6 +551,7 @@ function BoardGroup({
   stories,
   epicTitleByNumber,
   iterationMarkers,
+  iceboxUnified,
   loading,
   selectedNumber,
   onOpen,
@@ -553,7 +561,10 @@ function BoardGroup({
   collapsed,
   onToggleCollapse
 }: GroupProps): React.JSX.Element {
-  const draggable = group.state === 'ready' && onReorder !== undefined
+  // #1258 α-substrate: drag-reorder is enabled in both ready (legacy)
+  // and icebox (cross-marker iteration assignment).
+  const draggable =
+    (group.state === 'ready' || group.state === 'icebox') && onReorder !== undefined
   const [dropAt, setDropAt] = useState<number | null>(null)
   // #333: track the row being dragged so we can hide it via CSS
   // (opacity: 0) for the duration of the gesture. Ryan 2026-04-22
@@ -638,51 +649,102 @@ function BoardGroup({
             onDrop={handleDrop}
             onDragLeave={() => setDropAt(null)}
           >
-            {iterationMarkers.map((marker, i) => (
-              <IterationMarker
-                key={`marker-${marker.id}`}
-                marker={marker}
-                variant={i === 0 ? 'next' : 'future'}
-              />
-            ))}
-            {stories.map((story, i) => (
-              <StoryRow
-                key={story.number}
-                story={story}
-                parentEpicTitle={
-                  story.parent_epic !== undefined
-                    ? epicTitleByNumber.get(story.parent_epic)
-                    : undefined
+            {(() => {
+              // #1258 α-substrate: when icebox_unified is present, walk
+              // it and emit each item in the unified order. Stories not
+              // in icebox_unified (yet) trail at the end. Markers always
+              // come from icebox_unified (no separate fallback path).
+              const storyByNumber = new Map(stories.map((s) => [s.number, s]))
+              const markerById = new Map(iterationMarkers.map((m) => [m.id, m]))
+              const inUnified = new Set<number>()
+              const items: Array<
+                | { kind: 'story'; story: BoardStory }
+                | { kind: 'marker'; marker: IterationMarkerData; variant: 'next' | 'future' }
+              > = []
+              if (iceboxUnified.length > 0) {
+                let markerSeen = 0
+                for (const u of iceboxUnified) {
+                  if (u.kind === 'story') {
+                    const s = storyByNumber.get(u.number)
+                    if (s !== undefined) {
+                      items.push({ kind: 'story', story: s })
+                      inUnified.add(u.number)
+                    }
+                  } else {
+                    const m = markerById.get(u.id)
+                    if (m !== undefined) {
+                      items.push({
+                        kind: 'marker',
+                        marker: m,
+                        variant: markerSeen === 0 ? 'next' : 'future'
+                      })
+                      markerSeen += 1
+                    }
+                  }
                 }
-                selected={story.number === selectedNumber}
-                draggable={draggable}
-                dragging={draggingNumber === story.number}
-                dropBefore={dropAt === i}
-                dropAfterLast={dropAt === stories.length && i === stories.length - 1}
-                position={i + 1}
-                total={stories.length}
-                onKeyboardReorder={
-                  draggable && onReorder !== undefined
-                    ? (direction) => {
-                        if (direction === 'up' && i === 0) return
-                        if (direction === 'down' && i === stories.length - 1) return
-                        const insertAt =
-                          direction === 'up' ? Math.max(0, i - 1) : Math.min(stories.length, i + 2)
-                        onReorder(group.state, story.number, insertAt)
-                      }
-                    : undefined
+              } else {
+                // Legacy fallback: markers first, then stories.
+                iterationMarkers.forEach((m, i) => {
+                  items.push({ kind: 'marker', marker: m, variant: i === 0 ? 'next' : 'future' })
+                })
+              }
+              for (const s of stories) {
+                if (!inUnified.has(s.number)) {
+                  items.push({ kind: 'story', story: s })
                 }
-                onOpen={onOpen}
-                onOpenTimeline={onOpenTimeline}
-                onSelect={onSelect}
-                onRowDragOver={handleRowDragOver(i)}
-                onDragStartRow={() => setDraggingNumber(story.number)}
-                onDragEndRow={() => {
-                  setDraggingNumber(null)
-                  setDropAt(null)
-                }}
-              />
-            ))}
+              }
+              const total = items.length
+              return items.map((item, i) => {
+                if (item.kind === 'marker') {
+                  return (
+                    <IterationMarker
+                      key={`marker-${item.marker.id}`}
+                      marker={item.marker}
+                      variant={item.variant}
+                    />
+                  )
+                }
+                const story = item.story
+                return (
+                  <StoryRow
+                    key={story.number}
+                    story={story}
+                    parentEpicTitle={
+                      story.parent_epic !== undefined
+                        ? epicTitleByNumber.get(story.parent_epic)
+                        : undefined
+                    }
+                    selected={story.number === selectedNumber}
+                    draggable={draggable}
+                    dragging={draggingNumber === story.number}
+                    dropBefore={dropAt === i}
+                    dropAfterLast={dropAt === total && i === total - 1}
+                    position={i + 1}
+                    total={total}
+                    onKeyboardReorder={
+                      draggable && onReorder !== undefined
+                        ? (direction) => {
+                            if (direction === 'up' && i === 0) return
+                            if (direction === 'down' && i === total - 1) return
+                            const insertAt =
+                              direction === 'up' ? Math.max(0, i - 1) : Math.min(total, i + 2)
+                            onReorder(group.state, story.number, insertAt)
+                          }
+                        : undefined
+                    }
+                    onOpen={onOpen}
+                    onOpenTimeline={onOpenTimeline}
+                    onSelect={onSelect}
+                    onRowDragOver={handleRowDragOver(i)}
+                    onDragStartRow={() => setDraggingNumber(story.number)}
+                    onDragEndRow={() => {
+                      setDraggingNumber(null)
+                      setDropAt(null)
+                    }}
+                  />
+                )
+              })
+            })()}
           </ul>
         )}
       </div>
