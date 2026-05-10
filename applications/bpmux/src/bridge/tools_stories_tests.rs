@@ -3834,3 +3834,167 @@ mod reopen_on_state_transition_tests {
         );
     }
 }
+
+// ── #1261: handle_reorder_story state="icebox" routing ──
+//
+// Pre-#1261 the MCP path called priority::reorder() directly for any
+// state, mutating only columns[state]. For state="icebox" that left
+// the story absent from icebox_unified (the canonical α-substrate
+// per #1258) — renderer + close_iteration ceremony failed to find
+// promotable stories. These tests assert apply_reorder_story (the
+// extracted priority-mutation helper that handle_reorder_story
+// delegates to) routes state="icebox" to reorder_icebox_unified +
+// cleans the story from legacy columns["icebox"].
+
+#[cfg(test)]
+mod reorder_story_icebox_routing_tests {
+    use crate::bridge::tools_stories::apply_reorder_story;
+    use crate::session::priority::{IceboxItem, load_priority};
+
+    #[test]
+    fn icebox_state_lands_story_in_icebox_unified() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("priority.json");
+        apply_reorder_story(&path, "icebox", 1251, 1).unwrap();
+        let index = load_priority(&path);
+        assert!(
+            index
+                .icebox_unified
+                .contains(&IceboxItem::Story { number: 1251 }),
+            "story must appear in icebox_unified post-reorder for state=icebox"
+        );
+    }
+
+    #[test]
+    fn icebox_state_removes_story_from_legacy_columns_icebox() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("priority.json");
+        // Seed legacy state: story already in columns["icebox"] (pre-#1261
+        // divergent state). #1261 self-repair: post-reorder, story should
+        // be in icebox_unified ONLY (removed from legacy).
+        std::fs::write(
+            &path,
+            r#"{
+                "icebox": [1251, 1252],
+                "icebox_unified": []
+            }"#,
+        )
+        .unwrap();
+        apply_reorder_story(&path, "icebox", 1251, 1).unwrap();
+        let index = load_priority(&path);
+        let legacy = index.columns.get("icebox").cloned().unwrap_or_default();
+        assert!(
+            !legacy.contains(&1251),
+            "story 1251 must be removed from legacy columns[\"icebox\"]; got {legacy:?}"
+        );
+        assert!(
+            index
+                .icebox_unified
+                .contains(&IceboxItem::Story { number: 1251 }),
+            "story 1251 must appear in icebox_unified"
+        );
+    }
+
+    #[test]
+    fn icebox_state_position_clamped_inserts_at_correct_index() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("priority.json");
+        apply_reorder_story(&path, "icebox", 100, 1).unwrap();
+        apply_reorder_story(&path, "icebox", 200, 2).unwrap();
+        apply_reorder_story(&path, "icebox", 300, 1).unwrap();
+        let index = load_priority(&path);
+        assert_eq!(
+            index.icebox_unified,
+            vec![
+                IceboxItem::Story { number: 300 },
+                IceboxItem::Story { number: 100 },
+                IceboxItem::Story { number: 200 },
+            ]
+        );
+    }
+
+    #[test]
+    fn icebox_state_preserves_existing_marker_position() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("priority.json");
+        // Seed: marker at icebox_unified[0]; reorder a story to position 1
+        // pushes the marker to position 2 (insert-at-1 displaces).
+        std::fs::write(&path, r#"{"icebox_unified":[{"kind":"marker","id":7}]}"#).unwrap();
+        apply_reorder_story(&path, "icebox", 1251, 1).unwrap();
+        let index = load_priority(&path);
+        assert_eq!(
+            index.icebox_unified,
+            vec![
+                IceboxItem::Story { number: 1251 },
+                IceboxItem::Marker { id: 7 },
+            ]
+        );
+    }
+
+    #[test]
+    fn ready_state_uses_legacy_columns_path_unchanged() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("priority.json");
+        apply_reorder_story(&path, "ready", 100, 1).unwrap();
+        apply_reorder_story(&path, "ready", 200, 2).unwrap();
+        let index = load_priority(&path);
+        assert_eq!(
+            index.columns.get("ready").cloned().unwrap_or_default(),
+            vec![100, 200]
+        );
+        // Ready stories must NOT land in icebox_unified.
+        assert!(
+            index.icebox_unified.is_empty(),
+            "ready-state reorder must not touch icebox_unified"
+        );
+    }
+
+    #[test]
+    fn in_progress_state_uses_legacy_columns_path_unchanged() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("priority.json");
+        apply_reorder_story(&path, "in-progress", 555, 1).unwrap();
+        let index = load_priority(&path);
+        assert_eq!(
+            index
+                .columns
+                .get("in-progress")
+                .cloned()
+                .unwrap_or_default(),
+            vec![555]
+        );
+        assert!(index.icebox_unified.is_empty());
+    }
+
+    #[test]
+    fn icebox_reorder_self_repairs_dual_state_divergence() {
+        // Empirical case from 2026-05-10 18:11 UTC on Ryan's session:
+        // priority.json had stories #1251-1254 in legacy columns["icebox"]
+        // + a marker in icebox_unified. Calling reorder_story for
+        // state="icebox" with position=1 must (a) add the story to
+        // icebox_unified, (b) remove it from legacy, (c) preserve the
+        // marker.
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("priority.json");
+        std::fs::write(
+            &path,
+            r#"{
+                "icebox": [1251, 1252, 1253, 1254],
+                "icebox_unified": [{"kind":"marker","id":0}]
+            }"#,
+        )
+        .unwrap();
+        apply_reorder_story(&path, "icebox", 1251, 1).unwrap();
+        let index = load_priority(&path);
+        let legacy = index.columns.get("icebox").cloned().unwrap_or_default();
+        assert!(!legacy.contains(&1251));
+        assert!(legacy.contains(&1252));
+        assert_eq!(
+            index.icebox_unified,
+            vec![
+                IceboxItem::Story { number: 1251 },
+                IceboxItem::Marker { id: 0 },
+            ]
+        );
+    }
+}
