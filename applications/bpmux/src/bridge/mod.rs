@@ -801,7 +801,7 @@ impl ServerHandler for BridgeServer {
                 }
                 "close_iteration" => {
                     let current_name = name.lock().await;
-                    tools_stories::handle_close_iteration(&current_name, &ws_tx, port).await
+                    tools_stories::handle_close_iteration(&current_name, &args, &ws_tx, port).await
                 }
                 "create_iteration_marker" => {
                     tools::handle_create_iteration_marker(&args, port).await

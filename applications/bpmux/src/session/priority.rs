@@ -73,6 +73,7 @@ pub fn close_iteration_atomic(
     priority: &mut PriorityIndex,
     markers: &mut Vec<super::iteration_markers::IterationMarker>,
     unfinished_ready: &[u64],
+    carry_over: bool,
 ) -> CloseIterationOutcome {
     let topmost = priority
         .icebox_unified
@@ -93,7 +94,11 @@ pub fn close_iteration_atomic(
         })
         .collect();
     priority.icebox_unified.drain(0..=k);
-    let dropped_back: Vec<u64> = unfinished_ready.to_vec();
+    let dropped_back: Vec<u64> = if carry_over {
+        Vec::new()
+    } else {
+        unfinished_ready.to_vec()
+    };
     for &n in dropped_back.iter().rev() {
         priority
             .icebox_unified

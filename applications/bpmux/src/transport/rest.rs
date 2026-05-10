@@ -1022,6 +1022,15 @@ pub async fn post_iteration_marker(
     )
 }
 
+#[derive(Deserialize, Default)]
+pub struct CloseIterationParams {
+    /// AC 16-17 carry_over flag (Q1 PM-ratified YAGNI v1 boolean).
+    /// When true, unfinished ready-stories remain in ready instead of
+    /// dropping back to icebox-top. Default false (drop-back).
+    #[serde(default)]
+    pub carry_over: bool,
+}
+
 /// #1258 close_iteration α-substrate: REST endpoint that runs the
 /// cross-store atomic step (promote stories above topmost marker,
 /// delete topmost marker, drop unfinished ready-stories to icebox-top).
@@ -1029,8 +1038,13 @@ pub async fn post_iteration_marker(
 /// state mutation behind middleware (per `feedback_middleware_owns_external_io`)
 /// and ensures REST + MCP share the canonical mutation chain (per
 /// `feedback_rest_mcp_canonical_mutation_parity`).
+///
+/// Best-effort cross-store atomicity (AC 20-22): pre-mutation
+/// snapshots of priority + markers are captured; on save-failure the
+/// snapshots are restored to disk, leaving pre-fire state intact.
 pub async fn post_close_iteration(
     State(session): State<Arc<session::Session>>,
+    Query(params): Query<CloseIterationParams>,
 ) -> impl IntoResponse {
     let priority_path = match session::priority::default_priority_path() {
         Ok(p) => p,
@@ -1042,13 +1056,16 @@ pub async fn post_close_iteration(
             );
         }
     };
-    let mut priority = session::priority::load_priority(&priority_path);
-    let mut markers_store = session::iteration_markers::load(&session.dir);
+    let priority_snapshot = session::priority::load_priority(&priority_path);
+    let markers_snapshot = session::iteration_markers::load(&session.dir);
+    let mut priority = priority_snapshot.clone();
+    let mut markers_store = markers_snapshot.clone();
     let unfinished_ready: Vec<u64> = priority.columns.get("ready").cloned().unwrap_or_default();
     let outcome = session::priority::close_iteration_atomic(
         &mut priority,
         &mut markers_store.markers,
         &unfinished_ready,
+        params.carry_over,
     );
     if let Err(e) = session::priority::save_priority(&priority_path, &priority) {
         return (
@@ -1058,6 +1075,12 @@ pub async fn post_close_iteration(
         );
     }
     if let Err(e) = session::iteration_markers::save(&session.dir, &markers_store) {
+        // AC 22: rollback priority to pre-fire state when markers save fails.
+        if let Err(rb) = session::priority::save_priority(&priority_path, &priority_snapshot) {
+            session::diag::log_diag(&format!(
+                "post_close_iteration: rollback after markers save-failure failed: {rb}"
+            ));
+        }
         return (
             StatusCode::INTERNAL_SERVER_ERROR,
             json_headers(),
