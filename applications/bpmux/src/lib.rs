@@ -211,6 +211,40 @@ fn migrate_icebox_unified_at_boot(session: &session::Session) {
     }
 }
 
+fn evict_stale_icebox_unified_at_boot(session: &session::Session) {
+    let Ok(path) = session::priority::default_priority_path() else {
+        return;
+    };
+    let mut index = session::priority::load_priority(&path);
+    let evicted = session::priority::evict_stories_not_in_legacy_icebox(&mut index);
+    if evicted == 0 {
+        return;
+    }
+    if let Err(e) = session::priority::save_priority(&path, &index) {
+        session::diag::log_diag(&format!("[#1266] stale-icebox eviction: save failed: {e}"));
+        return;
+    }
+    session::diag::log_diag(&format!(
+        "[#1266] stale-icebox eviction: removed {evicted} story entries from icebox_unified"
+    ));
+    let payload = session::message::StateDeltaPayload::IceboxMigration {
+        entries: index.icebox_unified.len(),
+    };
+    let msg = session::Message {
+        from: "bpmux".to_string(),
+        text: String::new(),
+        ts: chrono::Utc::now(),
+        message_type: session::MessageType::StateDelta,
+        state_delta: Some(payload),
+        ..session::Message::default()
+    };
+    if let Err(e) = session.broadcast(&msg) {
+        session::diag::log_diag(&format!(
+            "[#1266] stale-icebox eviction: state-delta broadcast failed: {e}"
+        ));
+    }
+}
+
 fn run_server_only(cli: &Cli) -> anyhow::Result<()> {
     let base = resolve_session_base(&cli.session_base)?;
     std::fs::create_dir_all(&base)?;
@@ -223,6 +257,7 @@ fn run_server_only(cli: &Cli) -> anyhow::Result<()> {
         wake_tx,
     ));
     migrate_icebox_unified_at_boot(&session);
+    evict_stale_icebox_unified_at_boot(&session);
     let port = cli.mcp_port;
     let ct = CancellationToken::new();
     let restart_signal = transport::self_update::RestartSignal::new();

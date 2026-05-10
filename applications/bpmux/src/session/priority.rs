@@ -152,6 +152,29 @@ where
     Ok(outcome)
 }
 
+/// #1266 stale-icebox eviction at server-boot. Story entries in
+/// `icebox_unified` whose number is NOT also in legacy
+/// `columns["icebox"]` represent state-divergence: a prior
+/// move_story (out-of-icebox) didn't cascade-clean unified.
+/// Evicts those entries; preserves Marker entries; preserves
+/// stories that ARE in legacy columns (canonical icebox members).
+/// Returns the number of evicted Story entries.
+pub fn evict_stories_not_in_legacy_icebox(index: &mut PriorityIndex) -> usize {
+    let canonical: std::collections::HashSet<u64> = index
+        .columns
+        .get("icebox")
+        .cloned()
+        .unwrap_or_default()
+        .into_iter()
+        .collect();
+    let before = index.icebox_unified.len();
+    index.icebox_unified.retain(|item| match item {
+        IceboxItem::Story { number } => canonical.contains(number),
+        IceboxItem::Marker { .. } => true,
+    });
+    before - index.icebox_unified.len()
+}
+
 /// #1258 α-substrate migration: populate `icebox_unified` from legacy
 /// state (separate `columns["icebox"]` story-list + per-session
 /// iteration markers) on first server boot post-α-ship. Idempotent:
