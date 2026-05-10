@@ -67,6 +67,13 @@ describe('#1260 story-row hierarchy + color', () => {
     expect(html).not.toContain('board-story-epic-ref')
   })
 
+  test('epic-link omitted when parent_epic is null (server-side null leak)', () => {
+    const s = { ...story({ number: 1258 }), parent_epic: null as unknown as number }
+    const html = renderToStaticMarkup(<StoryRow story={s} {...baseProps} />)
+    expect(html).not.toContain('data-test="epic-link"')
+    expect(html).not.toContain('↳ Epic')
+  })
+
   test('epic-link aria-label still names parent epic + title for screen readers', () => {
     const s = story({ number: 1258, parent_epic: 1189 })
     const html = renderToStaticMarkup(

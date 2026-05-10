@@ -107,7 +107,7 @@ const StoryRow = ({
           {story.title}
         </b>
         <ReworkGlyph reworkComment={story.rework_comment} />
-        {parentEpic !== undefined ? (
+        {typeof parentEpic === 'number' ? (
           <button
             type="button"
             className="board-story-epic-ref"
