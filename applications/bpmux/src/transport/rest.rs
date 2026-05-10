@@ -1101,6 +1101,41 @@ pub async fn post_add_stories_to_iteration(
     }
 }
 
+#[derive(Deserialize)]
+pub struct RemoveStoriesFromIterationRequest {
+    pub story_ids: Vec<u64>,
+}
+
+pub async fn post_remove_stories_from_iteration(
+    State(session): State<Arc<session::Session>>,
+    axum::Json(body): axum::Json<RemoveStoriesFromIterationRequest>,
+) -> impl IntoResponse {
+    let priority_path = match session::priority::default_priority_path() {
+        Ok(p) => p,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                json_headers(),
+                err_body(&format!("priority path: {e}")),
+            );
+        }
+    };
+    let outcome =
+        crate::bridge::tools::apply_remove_stories_from_iteration(&priority_path, &body.story_ids);
+    match outcome {
+        Ok(o) => {
+            broadcast_board_invalidate(&session);
+            let json = serde_json::to_string(&o).unwrap_or_else(|_| "{}".to_string());
+            (StatusCode::OK, json_headers(), json)
+        }
+        Err(e) => (
+            StatusCode::BAD_REQUEST,
+            json_headers(),
+            err_body(&format!("remove_stories_from_iteration: {e}")),
+        ),
+    }
+}
+
 #[derive(Deserialize, Default)]
 pub struct CloseIterationParams {
     /// AC 16-17 carry_over flag (Q1 PM-ratified YAGNI v1 boolean).

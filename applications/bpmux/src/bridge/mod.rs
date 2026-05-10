@@ -810,6 +810,10 @@ impl ServerHandler for BridgeServer {
                     let current_name = name.lock().await;
                     tools::handle_add_stories_to_iteration(&args, &current_name, port).await
                 }
+                "remove_stories_from_iteration" => {
+                    let current_name = name.lock().await;
+                    tools::handle_remove_stories_from_iteration(&args, &current_name, port).await
+                }
                 "reorder_iteration_marker" => {
                     let current_name = name.lock().await;
                     tools::handle_reorder_iteration_marker(&args, &current_name, &ws_tx).await
@@ -980,6 +984,9 @@ pub fn build_advertised_tools() -> Vec<rmcp::model::Tool> {
         crate::mcp::tools::add_stories_to_iteration_tool(
             "Bulk-fold ordered story_ids above an iteration marker in icebox_unified (#1263, Epic #1189). PM ONLY. Single atomic call replacing N reorder_story + 1 create_iteration_marker round-trips. Args: story_ids (ordered array; story_ids[0] lands at top of group, story_ids[N-1] just above marker), marker_id (existing marker — wins when both provided), theme_name (auto-create marker when marker_id omitted). Returns final positions JSON. Atomic-rollback on save-failure.",
         ),
+        crate::mcp::tools::remove_stories_from_iteration_tool(
+            "Batch-remove stories from their current iteration group in icebox_unified (#1267, Epic #1189). PM ONLY. Sister-inverse of add_stories_to_iteration: each story moves to the unscheduled bucket (immediately below the bottom-most marker). Args: story_ids (array of story numbers). Atomic-rollback on save-failure. Idempotent on already-unscheduled stories; no-op on stories not in icebox_unified.",
+        ),
         crate::mcp::tools::label_story_tool(
             "Add a label to a story (ready, blocked, icebox, deferred). PM ONLY — other roles are rejected.",
         ),
@@ -1107,6 +1114,7 @@ pub const DISPATCHED_TOOL_NAMES: &[&str] = &[
     "close_iteration",
     "create_iteration_marker",
     "add_stories_to_iteration",
+    "remove_stories_from_iteration",
     "reorder_iteration_marker",
     "list_iteration_markers",
     "get_usage",
