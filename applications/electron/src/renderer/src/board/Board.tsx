@@ -14,10 +14,14 @@ import StoryBadge, { deriveBadge } from './StoryBadge'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import { useRefetchOnReconnect } from './useRefetchOnReconnect'
 import IterationMarker from './IterationMarker'
-import { useIterationMarkers, type IterationMarker as IterationMarkerData } from '../hooks/useIterationMarkers'
+import {
+  useIterationMarkers,
+  type IterationMarker as IterationMarkerData
+} from '../hooks/useIterationMarkers'
 import {
   columnFor,
   GROUP_ORDER,
+  groupStories,
   isActiveEpic,
   storyTypeFromLabels,
   type BoardResponse,
@@ -517,16 +521,6 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
       )}
     </aside>
   )
-}
-
-function groupStories(stories: BoardStory[]): Map<ColumnState, BoardStory[]> {
-  const out = new Map<ColumnState, BoardStory[]>()
-  for (const group of GROUP_ORDER) out.set(group.state, [])
-  for (const story of stories) {
-    const list = out.get(columnFor(story.state, story.gh_state === 'closed'))
-    if (list) list.push(story)
-  }
-  return out
 }
 
 interface GroupProps {

@@ -1,3 +1,4 @@
+import MiniBoard from './MiniBoard'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import { useEpicCollapse } from './useEpicCollapse'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
@@ -21,8 +22,7 @@ interface StateBreakdown {
 
 const breakdownFor = (epic: BoardStory, all: BoardStory[]): StateBreakdown => {
   const children = all.filter((s) => s.parent_epic === epic.number)
-  const count = (state: StoryState): number =>
-    children.filter((s) => s.state === state).length
+  const count = (state: StoryState): number => children.filter((s) => s.state === state).length
   return {
     total: children.length,
     accepted: count('accepted'),
@@ -47,16 +47,6 @@ const extractDescription = (body: string): string => {
 
 const breakdownAriaLabel = (b: StateBreakdown): string =>
   `Progress: ${b.accepted} of ${b.total} children accepted; ${b.delivered} delivered, ${b.inProgress} in progress, ${b.deskCheck} in desk-check, ${b.ready} ready, ${b.icebox} in icebox`
-
-const breakdownText = (b: StateBreakdown): string =>
-  [
-    `${b.accepted}/${b.total} accepted`,
-    `${b.delivered}/${b.total} delivered`,
-    `${b.inProgress}/${b.total} in-progress`,
-    `${b.deskCheck}/${b.total} desk-check`,
-    `${b.ready}/${b.total} ready`,
-    `${b.icebox}/${b.total} icebox`
-  ].join(' · ')
 
 const isOpenByDefault = (derived: StoryState): boolean =>
   derived !== 'accepted' && derived !== 'icebox'
@@ -136,12 +126,7 @@ const Epic = ({ epics, stories, onOpen }: Props): React.JSX.Element | null => {
                       {description}
                     </p>
                   )}
-                  <small
-                    className="board-epic-breakdown"
-                    data-test={`board-epic-${epic.number}-breakdown`}
-                  >
-                    {breakdownText(breakdown)}
-                  </small>
+                  <MiniBoard epicNumber={epic.number} stories={children} />
                 </div>
               </details>
             </li>

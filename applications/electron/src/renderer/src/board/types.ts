@@ -123,7 +123,7 @@ export const STATES_IN_COLUMN: Record<ColumnState, StoryState[]> = {
 // Derive story type from labels (case-insensitive). Defaults to
 // 'unknown' when no type label is present — keeps the row glyph
 // predictable instead of guessing.
-export function storyTypeFromLabels(labels: string[]): StoryType {
+export const storyTypeFromLabels = (labels: string[]): StoryType => {
   const normalized = labels.map((l) => l.toLowerCase())
   if (normalized.includes('epic')) return 'epic'
   if (normalized.includes('feature')) return 'feature'
@@ -148,4 +148,14 @@ export const deriveEpicState = (
     return 'delivered'
   }
   return epicExplicitState
+}
+
+export const groupStories = (stories: BoardStory[]): Map<ColumnState, BoardStory[]> => {
+  const out = new Map<ColumnState, BoardStory[]>()
+  for (const group of GROUP_ORDER) out.set(group.state, [])
+  for (const story of stories) {
+    const list = out.get(columnFor(story.state, story.gh_state === 'closed'))
+    if (list) list.push(story)
+  }
+  return out
 }
