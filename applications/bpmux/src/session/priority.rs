@@ -8,13 +8,23 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-/// Ordered list of issue numbers per state column.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "lowercase")]
+pub enum IceboxItem {
+    Story { number: u64 },
+    Marker { id: u64 },
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct PriorityIndex {
-    /// Key: state label (lowercase, e.g. "ready", "in_progress").
-    /// Value: ordered list of issue numbers, highest priority first.
     #[serde(flatten)]
     pub columns: HashMap<String, Vec<u64>>,
+    #[serde(
+        default,
+        rename = "icebox_unified",
+        skip_serializing_if = "Vec::is_empty"
+    )]
+    pub icebox_unified: Vec<IceboxItem>,
 }
 
 /// Default priority file path: `~/.bpmux/priority.json`.
@@ -170,6 +180,53 @@ mod tests {
         save_priority(&path, &index).unwrap();
         let loaded = load_priority(&path);
         assert_eq!(loaded.columns["ready"], vec![100, 200]);
+    }
+
+    #[test]
+    fn icebox_unified_serializes_with_kind_tag() {
+        let mut index = PriorityIndex::default();
+        index.icebox_unified.push(IceboxItem::Marker { id: 7 });
+        index
+            .icebox_unified
+            .push(IceboxItem::Story { number: 1234 });
+        let json = serde_json::to_string(&index).unwrap();
+        assert!(json.contains(r#""icebox_unified""#));
+        assert!(json.contains(r#""kind":"marker""#));
+        assert!(json.contains(r#""kind":"story""#));
+        assert!(json.contains(r#""id":7"#));
+        assert!(json.contains(r#""number":1234"#));
+    }
+
+    #[test]
+    fn icebox_unified_round_trips() {
+        let mut index = PriorityIndex::default();
+        index.icebox_unified.push(IceboxItem::Marker { id: 7 });
+        index
+            .icebox_unified
+            .push(IceboxItem::Story { number: 1234 });
+        let json = serde_json::to_string(&index).unwrap();
+        let parsed: PriorityIndex = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.icebox_unified.len(), 2);
+        assert_eq!(parsed.icebox_unified[0], IceboxItem::Marker { id: 7 });
+        assert_eq!(parsed.icebox_unified[1], IceboxItem::Story { number: 1234 });
+    }
+
+    #[test]
+    fn legacy_priority_json_loads_with_empty_icebox_unified() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("priority.json");
+        std::fs::write(&path, r#"{"ready":[100,200],"icebox":[300,400]}"#).unwrap();
+        let loaded = load_priority(&path);
+        assert_eq!(loaded.columns["ready"], vec![100, 200]);
+        assert_eq!(loaded.columns["icebox"], vec![300, 400]);
+        assert!(loaded.icebox_unified.is_empty());
+    }
+
+    #[test]
+    fn empty_icebox_unified_is_omitted_from_json() {
+        let index = PriorityIndex::default();
+        let json = serde_json::to_string(&index).unwrap();
+        assert!(!json.contains("icebox_unified"));
     }
 
     // ── #333 apply_priority_to_board tests ──
