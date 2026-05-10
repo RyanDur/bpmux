@@ -1022,6 +1022,56 @@ pub async fn post_iteration_marker(
     )
 }
 
+/// #1258 close_iteration α-substrate: REST endpoint that runs the
+/// cross-store atomic step (promote stories above topmost marker,
+/// delete topmost marker, drop unfinished ready-stories to icebox-top).
+/// Returns the outcome as JSON. Bridge handler POSTs here to keep
+/// state mutation behind middleware (per `feedback_middleware_owns_external_io`)
+/// and ensures REST + MCP share the canonical mutation chain (per
+/// `feedback_rest_mcp_canonical_mutation_parity`).
+pub async fn post_close_iteration(
+    State(session): State<Arc<session::Session>>,
+) -> impl IntoResponse {
+    let priority_path = match session::priority::default_priority_path() {
+        Ok(p) => p,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                json_headers(),
+                err_body(&format!("priority path: {e}")),
+            );
+        }
+    };
+    let mut priority = session::priority::load_priority(&priority_path);
+    let mut markers_store = session::iteration_markers::load(&session.dir);
+    let unfinished_ready: Vec<u64> = priority.columns.get("ready").cloned().unwrap_or_default();
+    let outcome = session::priority::close_iteration_atomic(
+        &mut priority,
+        &mut markers_store.markers,
+        &unfinished_ready,
+    );
+    if let Err(e) = session::priority::save_priority(&priority_path, &priority) {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json_headers(),
+            err_body(&format!("save priority: {e}")),
+        );
+    }
+    if let Err(e) = session::iteration_markers::save(&session.dir, &markers_store) {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json_headers(),
+            err_body(&format!("save iteration_markers: {e}")),
+        );
+    }
+    let body = serde_json::json!({
+        "promoted": outcome.promoted,
+        "dropped_back": outcome.dropped_back,
+        "deleted_marker_id": outcome.deleted_marker_id,
+    });
+    (StatusCode::OK, json_headers(), body.to_string())
+}
+
 /// #387 cross-agent reaction visibility. Typed `StateDelta::Reactions`
 /// frames are renderer-mirror-only; MCP-bridged agents see chat
 /// insights rather than wire-state. This synthesizes a human-readable

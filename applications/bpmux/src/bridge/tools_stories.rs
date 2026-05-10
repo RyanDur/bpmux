@@ -1372,14 +1372,58 @@ pub(super) async fn handle_edit_story(
 pub(super) async fn handle_close_iteration(
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
+    port: u16,
 ) -> Result<String, String> {
     require_role(agent_name, &["pm"], "close iteration")?;
+    let outcome = post_close_iteration(port).await?;
     let signal = build_iteration_close_signal();
     let json = serde_json::to_string(&signal).map_err(|e| format!("signal: {e}"))?;
     if let Err(e) = ws_send(ws_tx, json).await {
         crate::session::diag::log_diag(&format!("bridge: iteration-close signal send failed: {e}"));
     }
-    Ok("iteration-close signal broadcast — agents prompted to flush unsaved findings".to_string())
+    Ok(format!(
+        "iteration-close signal broadcast — agents prompted to flush unsaved findings. \
+         promoted: {} stories; dropped back: {} stories; deleted marker: {}",
+        outcome.promoted.len(),
+        outcome.dropped_back.len(),
+        outcome
+            .deleted_marker_id
+            .map(|id| id.to_string())
+            .unwrap_or_else(|| "none (no markers in icebox)".to_string()),
+    ))
+}
+
+#[derive(Debug, Default, serde::Deserialize)]
+struct CloseIterationOutcomeJson {
+    #[serde(default)]
+    promoted: Vec<u64>,
+    #[serde(default)]
+    dropped_back: Vec<u64>,
+    #[serde(default)]
+    deleted_marker_id: Option<u64>,
+}
+
+async fn post_close_iteration(port: u16) -> Result<CloseIterationOutcomeJson, String> {
+    let token_path = crate::session::auth_token::default_auth_token_path()
+        .ok_or_else(|| "cannot resolve auth-token path (HOME unset?)".to_string())?;
+    let token = crate::session::auth_token::read(&token_path)
+        .map_err(|e| format!("read auth-token from {}: {e}", token_path.display()))?;
+    let url = format!("http://127.0.0.1:{port}/api/close_iteration");
+    let res = reqwest::Client::new()
+        .post(&url)
+        .header(reqwest::header::AUTHORIZATION, format!("Bearer {token}"))
+        .send()
+        .await
+        .map_err(|e| format!("close_iteration: bpmux-server unreachable at {url}: {e}"))?;
+    let status = res.status();
+    let text = res
+        .text()
+        .await
+        .map_err(|e| format!("close_iteration: read body: {e}"))?;
+    if !status.is_success() {
+        return Err(format!("close_iteration: {status} — {text}"));
+    }
+    serde_json::from_str(&text).map_err(|e| format!("close_iteration: parse outcome: {e}"))
 }
 
 // ── Workflow signal builders (#197) ──────────────────────────

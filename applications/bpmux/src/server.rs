@@ -382,6 +382,10 @@ pub async fn run_server(
                 .post(transport::rest::post_iteration_marker),
         )
         .route(
+            "/api/close_iteration",
+            axum::routing::post(transport::rest::post_close_iteration),
+        )
+        .route(
             "/api/unfurl",
             axum::routing::get(transport::unfurl::get_unfurl).with_state(unfurl_cache),
         )
