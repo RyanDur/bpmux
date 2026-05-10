@@ -64,6 +64,12 @@ export type StateDeltaPayload =
   | { domain: 'pins'; channel: string; pins: PinnedMessageWire[] }
   | { domain: 'ci'; snapshot: CiSnapshotWire }
   | { domain: 'roster'; members: RosterMemberWire[] }
+  | {
+      domain: 'iteration_close'
+      promoted: number[]
+      dropped_back: number[]
+      deleted_marker_id: number | null
+    }
 
 export interface ReactionsChannelSnapshot {
   channel: string

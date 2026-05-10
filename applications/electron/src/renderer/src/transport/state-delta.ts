@@ -59,5 +59,10 @@ export const applyStateDelta = (prev: MirrorState, delta: StateDeltaPayload): Mi
       return { ...prev, ci: delta.snapshot }
     case 'roster':
       return { ...prev, roster: delta.members }
+    case 'iteration_close':
+      // #1258 transient event — no MirrorState slot. Renderer-side
+      // listeners hook this domain separately to trigger a board
+      // refetch when iteration close mutates priority + markers.
+      return prev
   }
 }

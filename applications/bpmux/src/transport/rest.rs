@@ -1064,6 +1064,24 @@ pub async fn post_close_iteration(
             err_body(&format!("save iteration_markers: {e}")),
         );
     }
+    let payload = session::message::StateDeltaPayload::IterationClose {
+        promoted: outcome.promoted.clone(),
+        dropped_back: outcome.dropped_back.clone(),
+        deleted_marker_id: outcome.deleted_marker_id,
+    };
+    let delta_msg = session::Message {
+        from: "bpmux".to_string(),
+        text: String::new(),
+        ts: chrono::Utc::now(),
+        message_type: session::MessageType::StateDelta,
+        state_delta: Some(payload),
+        ..session::Message::default()
+    };
+    if let Err(e) = session.broadcast(&delta_msg) {
+        session::diag::log_diag(&format!(
+            "post_close_iteration: state-delta broadcast failed: {e}"
+        ));
+    }
     let body = serde_json::json!({
         "promoted": outcome.promoted,
         "dropped_back": outcome.dropped_back,

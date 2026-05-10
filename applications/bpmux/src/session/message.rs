@@ -103,6 +103,17 @@ pub enum StateDeltaPayload {
     Ci { snapshot: CiSnapshotWire },
     #[serde(rename = "roster")]
     Roster { members: Vec<RosterMemberWire> },
+    /// #1258 close_iteration outcome — emitted server-side after the
+    /// REST endpoint runs close_iteration_atomic. Renderers update the
+    /// board mirror without a full refetch: promoted stories appear in
+    /// ready, dropped_back stories appear at icebox-top, the deleted
+    /// marker disappears from the icebox.
+    #[serde(rename = "iteration_close")]
+    IterationClose {
+        promoted: Vec<u64>,
+        dropped_back: Vec<u64>,
+        deleted_marker_id: Option<u64>,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
