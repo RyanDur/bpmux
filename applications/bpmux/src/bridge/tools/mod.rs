@@ -7,6 +7,8 @@ mod add_value;
 mod capture_electron_window;
 mod capture_screen;
 mod classifier_misfire;
+#[cfg(test)]
+mod close_iteration_tests;
 mod dev_in_flight;
 mod get_bookmark;
 mod get_briefing;

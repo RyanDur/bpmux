@@ -40,6 +40,80 @@ pub fn load_priority(path: &Path) -> PriorityIndex {
     }
 }
 
+/// #1258 close_iteration outcome — the cross-store atomic step that
+/// (a) promotes stories above the topmost iteration marker into the
+/// ready queue, (b) deletes the topmost marker, (c) drops unfinished
+/// ready-stories back to the top of icebox_unified.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct CloseIterationOutcome {
+    pub promoted: Vec<u64>,
+    pub dropped_back: Vec<u64>,
+    pub deleted_marker_id: Option<u64>,
+}
+
+/// #1258 close_iteration α-substrate atomic step. Idempotent only in
+/// the no-markers case — when markers exist, calling this consumes
+/// the topmost marker and shifts state. Returns the outcome for
+/// caller-side WS broadcasts.
+///
+/// Semantic:
+/// 1. If no Marker exists in `icebox_unified`, returns empty Outcome
+///    (no-op; caller should fall back to legacy signal-only behavior).
+/// 2. Otherwise: promote = Story items in `icebox_unified[0..k]` where
+///    k is the index of the first Marker. These are appended to
+///    `priority.columns["ready"]`.
+/// 3. Delete = the marker at index k. `icebox_unified[0..=k]` are
+///    removed; remaining items shift up.
+/// 4. Drop-back = `unfinished_ready` (caller-supplied: ready-state
+///    story numbers that weren't promoted from prior iterations).
+///    These prepend to `icebox_unified` as Story items, and are
+///    removed from `priority.columns["ready"]`.
+/// 5. Markers list: the deleted marker is removed from `markers`.
+pub fn close_iteration_atomic(
+    priority: &mut PriorityIndex,
+    markers: &mut Vec<super::iteration_markers::IterationMarker>,
+    unfinished_ready: &[u64],
+) -> CloseIterationOutcome {
+    let topmost = priority
+        .icebox_unified
+        .iter()
+        .enumerate()
+        .find_map(|(i, item)| match item {
+            IceboxItem::Marker { id } => Some((i, *id)),
+            _ => None,
+        });
+    let Some((k, deleted_marker_id)) = topmost else {
+        return CloseIterationOutcome::default();
+    };
+    let promoted: Vec<u64> = priority.icebox_unified[..k]
+        .iter()
+        .filter_map(|item| match item {
+            IceboxItem::Story { number } => Some(*number),
+            _ => None,
+        })
+        .collect();
+    priority.icebox_unified.drain(0..=k);
+    let dropped_back: Vec<u64> = unfinished_ready.to_vec();
+    for &n in dropped_back.iter().rev() {
+        priority
+            .icebox_unified
+            .insert(0, IceboxItem::Story { number: n });
+    }
+    if let Some(ready) = priority.columns.get_mut("ready") {
+        ready.retain(|n| !dropped_back.contains(n));
+    }
+    let ready = priority.columns.entry("ready".to_string()).or_default();
+    for n in &promoted {
+        ready.push(*n);
+    }
+    markers.retain(|m| m.id != deleted_marker_id);
+    CloseIterationOutcome {
+        promoted,
+        dropped_back,
+        deleted_marker_id: Some(deleted_marker_id),
+    }
+}
+
 /// #1258 α-substrate migration: populate `icebox_unified` from legacy
 /// state (separate `columns["icebox"]` story-list + per-session
 /// iteration markers) on first server boot post-α-ship. Idempotent:
