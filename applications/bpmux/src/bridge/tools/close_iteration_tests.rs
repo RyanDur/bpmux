@@ -126,16 +126,16 @@ async fn build_refresh_with_stories(stories: Vec<Story>) -> Arc<dyn RefreshDrive
 }
 
 #[tokio::test]
-async fn guard_blocks_when_ready_queue_has_delivered_story() {
+async fn guard_blocks_when_current_iteration_has_delivered_story() {
     let refresh = build_refresh_with_stories(vec![seed_story(1234, StoryState::Delivered)]).await;
-    let blockers = collect_iteration_close_blockers(Some(&refresh)).await;
+    let blockers = collect_iteration_close_blockers(Some(&refresh), &[1234]).await;
     assert_eq!(blockers.len(), 1);
     assert_eq!(blockers[0].number, 1234);
     assert_eq!(blockers[0].state, "delivered");
 }
 
 #[tokio::test]
-async fn guard_blocks_for_each_non_accepted_in_flight_state() {
+async fn guard_blocks_for_each_non_accepted_in_flight_state_within_iteration() {
     let refresh = build_refresh_with_stories(vec![
         seed_story(100, StoryState::Ready),
         seed_story(200, StoryState::InProgress),
@@ -143,7 +143,7 @@ async fn guard_blocks_for_each_non_accepted_in_flight_state() {
         seed_story(400, StoryState::Delivered),
     ])
     .await;
-    let blockers = collect_iteration_close_blockers(Some(&refresh)).await;
+    let blockers = collect_iteration_close_blockers(Some(&refresh), &[100, 200, 300, 400]).await;
     assert_eq!(blockers.len(), 4);
     let numbers: Vec<u64> = blockers.iter().map(|b| b.number).collect();
     assert!(numbers.contains(&100));
@@ -153,27 +153,85 @@ async fn guard_blocks_for_each_non_accepted_in_flight_state() {
 }
 
 #[tokio::test]
+async fn guard_ignores_stories_outside_current_iteration_membership() {
+    let refresh = build_refresh_with_stories(vec![
+        seed_story(100, StoryState::Delivered),
+        seed_story(200, StoryState::InProgress),
+        seed_story(300, StoryState::DeskCheck),
+        seed_story(400, StoryState::Delivered),
+        seed_story(500, StoryState::Ready),
+    ])
+    .await;
+    let blockers = collect_iteration_close_blockers(Some(&refresh), &[]).await;
+    assert!(
+        blockers.is_empty(),
+        "empty current_iteration_stories means no blockers regardless of project-wide in-flight stories"
+    );
+}
+
+#[tokio::test]
+async fn guard_blocks_only_named_iteration_members_not_project_wide() {
+    let refresh = build_refresh_with_stories(vec![
+        seed_story(100, StoryState::Delivered),
+        seed_story(200, StoryState::InProgress),
+        seed_story(300, StoryState::Delivered),
+    ])
+    .await;
+    let blockers = collect_iteration_close_blockers(Some(&refresh), &[200]).await;
+    assert_eq!(blockers.len(), 1);
+    assert_eq!(blockers[0].number, 200);
+}
+
+#[tokio::test]
 async fn guard_passes_when_only_accepted_and_icebox_stories_exist() {
     let refresh = build_refresh_with_stories(vec![
         seed_story(500, StoryState::Accepted),
         seed_story(600, StoryState::Icebox),
     ])
     .await;
-    let blockers = collect_iteration_close_blockers(Some(&refresh)).await;
+    let blockers = collect_iteration_close_blockers(Some(&refresh), &[500, 600]).await;
     assert!(blockers.is_empty());
 }
 
 #[tokio::test]
 async fn guard_passes_when_board_is_empty() {
     let refresh = build_refresh_with_stories(vec![]).await;
-    let blockers = collect_iteration_close_blockers(Some(&refresh)).await;
+    let blockers = collect_iteration_close_blockers(Some(&refresh), &[]).await;
     assert!(blockers.is_empty());
 }
 
 #[tokio::test]
 async fn guard_no_refresh_handle_treated_as_no_blockers() {
-    let blockers = collect_iteration_close_blockers(None).await;
+    let blockers = collect_iteration_close_blockers(None, &[100, 200]).await;
     assert!(blockers.is_empty());
+}
+
+#[test]
+fn close_iteration_writes_promoted_ids_to_current_iteration_stories() {
+    let mut index = PriorityIndex::default();
+    index.icebox_unified.push(IceboxItem::Story { number: 100 });
+    index.icebox_unified.push(IceboxItem::Story { number: 200 });
+    index.icebox_unified.push(IceboxItem::Marker { id: 7 });
+    let mut markers = vec![marker(7, 0)];
+    close_iteration_atomic(&mut index, &mut markers);
+    assert_eq!(index.current_iteration_stories, vec![100, 200]);
+}
+
+#[test]
+fn close_iteration_replaces_previous_iteration_stories() {
+    let mut index = PriorityIndex {
+        current_iteration_stories: vec![1, 2, 3],
+        ..PriorityIndex::default()
+    };
+    index.icebox_unified.push(IceboxItem::Story { number: 100 });
+    index.icebox_unified.push(IceboxItem::Marker { id: 7 });
+    let mut markers = vec![marker(7, 0)];
+    close_iteration_atomic(&mut index, &mut markers);
+    assert_eq!(
+        index.current_iteration_stories,
+        vec![100],
+        "previous iteration's members replaced by current promote-batch"
+    );
 }
 
 #[test]

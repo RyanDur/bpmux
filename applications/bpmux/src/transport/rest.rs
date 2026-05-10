@@ -1184,7 +1184,12 @@ pub async fn post_close_iteration(
             );
         }
     };
-    let blockers = collect_iteration_close_blockers(test_refresh.as_ref()).await;
+    let pre_priority = session::priority::load_priority(&priority_path);
+    let blockers = collect_iteration_close_blockers(
+        test_refresh.as_ref(),
+        &pre_priority.current_iteration_stories,
+    )
+    .await;
     if !blockers.is_empty() {
         let body = build_close_iteration_blocked_body(&blockers);
         broadcast_iteration_close_blocked(&session, &blockers);
@@ -1263,7 +1268,11 @@ pub(crate) struct IterationCloseBlocker {
 
 pub(crate) async fn collect_iteration_close_blockers(
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
+    current_iteration_stories: &[u64],
 ) -> Vec<IterationCloseBlocker> {
+    if current_iteration_stories.is_empty() {
+        return Vec::new();
+    }
     let Some(refresh) = refresh else {
         return Vec::new();
     };
@@ -1277,8 +1286,11 @@ pub(crate) async fn collect_iteration_close_blockers(
         }
         stories = refresh.all_stories();
     }
+    let id_set: std::collections::HashSet<u64> =
+        current_iteration_stories.iter().copied().collect();
     stories
         .into_iter()
+        .filter(|s| id_set.contains(&s.number))
         .filter(|s| {
             matches!(
                 s.state,

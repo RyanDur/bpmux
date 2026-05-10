@@ -306,9 +306,17 @@ pub(in crate::bridge) async fn handle_move_story(
     let path = crate::session::priority::default_priority_path()
         .map_err(|e| format!("priority path: {e}"))?;
     let target_is_icebox = matches!(target, TargetState::Workflow(StoryState::Icebox));
+    let target_is_in_flight = matches!(
+        target,
+        TargetState::Workflow(StoryState::Ready)
+            | TargetState::Workflow(StoryState::InProgress)
+            | TargetState::Workflow(StoryState::DeskCheck)
+            | TargetState::Workflow(StoryState::Delivered)
+    );
     apply_move_story_priority(
         &path,
         target_is_icebox,
+        target_is_in_flight,
         number,
         position.zip(target_position_state_label(target)),
     )?;
@@ -340,6 +348,7 @@ fn target_position_state_label(target: TargetState) -> Option<&'static str> {
 pub(crate) fn apply_move_story_priority(
     path: &std::path::Path,
     target_is_icebox: bool,
+    target_is_in_flight: bool,
     number: u64,
     position_with_state: Option<(usize, &str)>,
 ) -> Result<(), String> {
@@ -350,6 +359,9 @@ pub(crate) fn apply_move_story_priority(
     }
     if !target_is_icebox {
         evict_story_from_icebox_unified(&mut index, number);
+    }
+    if target_is_in_flight && !index.current_iteration_stories.contains(&number) {
+        index.current_iteration_stories.push(number);
     }
     crate::session::priority::save_priority(path, &index).map_err(|save_err| {
         if let Err(rb) = crate::session::priority::save_priority(path, &priority_snapshot) {
@@ -533,7 +545,7 @@ mod move_story_priority_cascade_clean_tests {
                 {"kind":"story","number":1200}
             ]}"#,
         );
-        apply_move_story_priority(&path, false, 1100, None).unwrap();
+        apply_move_story_priority(&path, false, false, 1100, None).unwrap();
         let index = load_priority(&path);
         assert!(
             !index
@@ -561,7 +573,7 @@ mod move_story_priority_cascade_clean_tests {
             &path,
             r#"{"icebox_unified":[{"kind":"story","number":1100}]}"#,
         );
-        apply_move_story_priority(&path, false, 1100, None).unwrap();
+        apply_move_story_priority(&path, false, false, 1100, None).unwrap();
         let index = load_priority(&path);
         assert!(index.icebox_unified.is_empty());
     }
@@ -574,13 +586,14 @@ mod move_story_priority_cascade_clean_tests {
             &path,
             r#"{"icebox_unified":[{"kind":"story","number":1100}]}"#,
         );
-        apply_move_story_priority(&path, false, 1100, Some((1, "ready"))).unwrap();
+        apply_move_story_priority(&path, false, true, 1100, Some((1, "ready"))).unwrap();
         let index = load_priority(&path);
         assert!(index.icebox_unified.is_empty());
         assert_eq!(
             index.columns.get("ready").cloned().unwrap_or_default(),
             vec![1100]
         );
+        assert!(index.current_iteration_stories.contains(&1100));
     }
 
     #[test]
@@ -591,7 +604,7 @@ mod move_story_priority_cascade_clean_tests {
             &path,
             r#"{"icebox_unified":[{"kind":"story","number":1100}]}"#,
         );
-        apply_move_story_priority(&path, false, 1100, None).unwrap();
+        apply_move_story_priority(&path, false, true, 1100, None).unwrap();
         let index = load_priority(&path);
         assert!(index.icebox_unified.is_empty());
     }
@@ -604,7 +617,7 @@ mod move_story_priority_cascade_clean_tests {
             &path,
             r#"{"icebox_unified":[{"kind":"story","number":1100}]}"#,
         );
-        apply_move_story_priority(&path, false, 1100, None).unwrap();
+        apply_move_story_priority(&path, false, true, 1100, None).unwrap();
         let index = load_priority(&path);
         assert!(index.icebox_unified.is_empty());
     }
@@ -617,7 +630,7 @@ mod move_story_priority_cascade_clean_tests {
             &path,
             r#"{"icebox_unified":[{"kind":"story","number":1100}]}"#,
         );
-        apply_move_story_priority(&path, false, 1100, None).unwrap();
+        apply_move_story_priority(&path, false, true, 1100, None).unwrap();
         let index = load_priority(&path);
         assert!(index.icebox_unified.is_empty());
     }
@@ -630,7 +643,7 @@ mod move_story_priority_cascade_clean_tests {
             &path,
             r#"{"icebox_unified":[{"kind":"story","number":1100}]}"#,
         );
-        apply_move_story_priority(&path, true, 1100, Some((1, "icebox"))).unwrap();
+        apply_move_story_priority(&path, true, false, 1100, Some((1, "icebox"))).unwrap();
         let index = load_priority(&path);
         assert!(
             index
@@ -645,7 +658,7 @@ mod move_story_priority_cascade_clean_tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("priority.json");
         seed(&path, r#"{"icebox_unified":[]}"#);
-        apply_move_story_priority(&path, false, 9999, None).unwrap();
+        apply_move_story_priority(&path, false, false, 9999, None).unwrap();
         let index = load_priority(&path);
         assert!(index.icebox_unified.is_empty());
     }
@@ -654,7 +667,7 @@ mod move_story_priority_cascade_clean_tests {
     fn save_failure_returns_error_with_rollback_path() {
         let unwritable_path =
             std::path::PathBuf::from("/dev/null/no_such_dir_for_rollback_test/priority.json");
-        let result = apply_move_story_priority(&unwritable_path, false, 1100, None);
+        let result = apply_move_story_priority(&unwritable_path, false, false, 1100, None);
         assert!(result.is_err());
     }
 }

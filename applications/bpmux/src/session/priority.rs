@@ -25,6 +25,8 @@ pub struct PriorityIndex {
         skip_serializing_if = "Vec::is_empty"
     )]
     pub icebox_unified: Vec<IceboxItem>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub current_iteration_stories: Vec<u64>,
 }
 
 /// Default priority file path: `~/.bpmux/priority.json`.
@@ -79,6 +81,7 @@ pub fn close_iteration_atomic(
         ready.push(*n);
     }
     markers.retain(|m| m.id != deleted_marker_id);
+    priority.current_iteration_stories = promoted.clone();
     CloseIterationOutcome {
         promoted,
         deleted_marker_id: Some(deleted_marker_id),
