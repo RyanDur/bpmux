@@ -806,6 +806,10 @@ impl ServerHandler for BridgeServer {
                 "create_iteration_marker" => {
                     tools::handle_create_iteration_marker(&args, port).await
                 }
+                "reorder_iteration_marker" => {
+                    let current_name = name.lock().await;
+                    tools::handle_reorder_iteration_marker(&args, &current_name, &ws_tx).await
+                }
                 "list_iteration_markers" => tools::handle_list_iteration_markers(port).await,
                 "get_usage" => tools::handle_get_usage(&args).await,
                 "view_tokens" => tools::handle_view_tokens(&ws_tx).await,
@@ -966,6 +970,9 @@ pub fn build_advertised_tools() -> Vec<rmcp::model::Tool> {
         crate::mcp::tools::list_iteration_markers_tool(
             "List iteration-markers currently in the icebox, sorted by position (#1249). Returns `[{id, theme_name, position, created_at}, ...]`. Read-only; safe for any role.",
         ),
+        crate::mcp::tools::reorder_iteration_marker_tool(
+            "Reposition an iteration-marker within the icebox_unified column (#1262, Epic #1189). PM ONLY — other roles are rejected. Stories above the marker (lower 1-indexed position) promote on close_iteration; stories below queue for later iterations. Args: marker_id (from list_iteration_markers) + position (1-indexed; clamped to icebox_unified length).",
+        ),
         crate::mcp::tools::label_story_tool(
             "Add a label to a story (ready, blocked, icebox, deferred). PM ONLY — other roles are rejected.",
         ),
@@ -1092,6 +1099,7 @@ pub const DISPATCHED_TOOL_NAMES: &[&str] = &[
     "view_backlog",
     "close_iteration",
     "create_iteration_marker",
+    "reorder_iteration_marker",
     "list_iteration_markers",
     "get_usage",
     "view_tokens",
