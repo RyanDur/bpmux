@@ -1028,6 +1028,28 @@ pub async fn post_iteration_marker(
             err_body(&format!("save iteration_markers: {e}")),
         );
     }
+    // #1256 α-substrate cohesion: append to icebox_unified so the new
+    // marker appears in the canonical ordering surfaced via /api/board.
+    // Without this, newly-created markers are absent from the unified
+    // list until the next boot migration runs (idempotent — won't
+    // re-run on populated state). Renderer interleave walks iceboxUnified
+    // and would not render markers missing from it.
+    if let Ok(priority_path) = session::priority::default_priority_path() {
+        let mut index = session::priority::load_priority(&priority_path);
+        index
+            .icebox_unified
+            .push(session::priority::IceboxItem::Marker { id: marker.id });
+        if let Err(e) = session::priority::save_priority(&priority_path, &index) {
+            session::diag::log_diag(&format!(
+                "[#1256] post_iteration_marker: append to icebox_unified failed: {e}"
+            ));
+        }
+    }
+    // #1256 sister-coverage of #1255 create-path: broadcast board-invalidate
+    // so connected renderers refetch /api/board and see the new marker
+    // without a manual reload. #1255 retains scope for edit + delete +
+    // deeper renderer hot-update convergence.
+    broadcast_board_invalidate(&session);
     (
         StatusCode::OK,
         json_headers(),
