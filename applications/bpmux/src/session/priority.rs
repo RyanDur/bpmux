@@ -174,6 +174,17 @@ pub fn reorder(index: &mut PriorityIndex, state: &str, number: u64, position: us
     column.insert(pos, number);
 }
 
+/// #1258 α-substrate: move a story or marker to a specific position
+/// (1-indexed) within `icebox_unified`. If the item isn't in the
+/// list yet, it's inserted; otherwise it's moved. Position is 1-
+/// indexed across all IceboxItems (stories AND markers share the
+/// positional space).
+pub fn reorder_icebox_unified(index: &mut PriorityIndex, item: IceboxItem, position: usize) {
+    index.icebox_unified.retain(|x| x != &item);
+    let pos = position.saturating_sub(1).min(index.icebox_unified.len());
+    index.icebox_unified.insert(pos, item);
+}
+
 /// Sort a list of issue numbers by priority. Numbers in the priority
 /// list come first (in priority order); others are appended at the end
 /// in their original order.
@@ -419,6 +430,71 @@ mod tests {
         assert_eq!(index.icebox_unified[0], IceboxItem::Marker { id: 7 });
         assert_eq!(index.icebox_unified[1], IceboxItem::Marker { id: 9 });
         assert_eq!(index.icebox_unified[2], IceboxItem::Marker { id: 8 });
+    }
+
+    #[test]
+    fn reorder_icebox_unified_inserts_story_at_position() {
+        let mut index = PriorityIndex::default();
+        index.icebox_unified.push(IceboxItem::Marker { id: 7 });
+        index.icebox_unified.push(IceboxItem::Story { number: 200 });
+        reorder_icebox_unified(&mut index, IceboxItem::Story { number: 100 }, 1);
+        assert_eq!(
+            index.icebox_unified,
+            vec![
+                IceboxItem::Story { number: 100 },
+                IceboxItem::Marker { id: 7 },
+                IceboxItem::Story { number: 200 },
+            ]
+        );
+    }
+
+    #[test]
+    fn reorder_icebox_unified_moves_existing_story_across_marker() {
+        let mut index = PriorityIndex::default();
+        index.icebox_unified.push(IceboxItem::Story { number: 100 });
+        index.icebox_unified.push(IceboxItem::Marker { id: 7 });
+        index.icebox_unified.push(IceboxItem::Story { number: 200 });
+        // Move 100 to position 3 (below marker).
+        reorder_icebox_unified(&mut index, IceboxItem::Story { number: 100 }, 3);
+        assert_eq!(
+            index.icebox_unified,
+            vec![
+                IceboxItem::Marker { id: 7 },
+                IceboxItem::Story { number: 200 },
+                IceboxItem::Story { number: 100 },
+            ]
+        );
+    }
+
+    #[test]
+    fn reorder_icebox_unified_moves_marker_across_stories() {
+        let mut index = PriorityIndex::default();
+        index.icebox_unified.push(IceboxItem::Story { number: 100 });
+        index.icebox_unified.push(IceboxItem::Story { number: 200 });
+        index.icebox_unified.push(IceboxItem::Marker { id: 7 });
+        reorder_icebox_unified(&mut index, IceboxItem::Marker { id: 7 }, 1);
+        assert_eq!(
+            index.icebox_unified,
+            vec![
+                IceboxItem::Marker { id: 7 },
+                IceboxItem::Story { number: 100 },
+                IceboxItem::Story { number: 200 },
+            ]
+        );
+    }
+
+    #[test]
+    fn reorder_icebox_unified_clamps_position() {
+        let mut index = PriorityIndex::default();
+        index.icebox_unified.push(IceboxItem::Story { number: 100 });
+        reorder_icebox_unified(&mut index, IceboxItem::Story { number: 200 }, 99);
+        assert_eq!(
+            index.icebox_unified,
+            vec![
+                IceboxItem::Story { number: 100 },
+                IceboxItem::Story { number: 200 },
+            ]
+        );
     }
 
     #[test]

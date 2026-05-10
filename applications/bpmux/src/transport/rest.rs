@@ -582,15 +582,21 @@ pub async fn get_board(
             .iter()
             .map(crate::board::domain::story_to_board_json)
             .collect();
-        let ordered = match crate::session::priority::default_priority_path() {
+        let (ordered, icebox_unified) = match crate::session::priority::default_priority_path() {
             Ok(path) => {
                 let index = crate::session::priority::load_priority(&path);
-                crate::session::priority::apply_priority_to_board(stories, &index)
+                let icebox_unified = serde_json::to_value(&index.icebox_unified)
+                    .unwrap_or_else(|_| serde_json::json!([]));
+                (
+                    crate::session::priority::apply_priority_to_board(stories, &index),
+                    icebox_unified,
+                )
             }
-            Err(_) => stories,
+            Err(_) => (stories, serde_json::json!([])),
         };
         let body = serde_json::json!({
             "stories": ordered,
+            "icebox_unified": icebox_unified,
             "fetched_at": chrono::Utc::now().to_rfc3339(),
         });
         return (StatusCode::OK, json_headers(), body.to_string());
@@ -608,15 +614,22 @@ pub async fn get_board(
             // survives refetch. Without this, the frontend's
             // optimistic reorder gets overwritten on the very next
             // /api/board call with GitHub's native order.
-            let ordered = match crate::session::priority::default_priority_path() {
+            let (ordered, icebox_unified) = match crate::session::priority::default_priority_path()
+            {
                 Ok(path) => {
                     let index = crate::session::priority::load_priority(&path);
-                    crate::session::priority::apply_priority_to_board(stories, &index)
+                    let icebox_unified = serde_json::to_value(&index.icebox_unified)
+                        .unwrap_or_else(|_| serde_json::json!([]));
+                    (
+                        crate::session::priority::apply_priority_to_board(stories, &index),
+                        icebox_unified,
+                    )
                 }
-                Err(_) => stories,
+                Err(_) => (stories, serde_json::json!([])),
             };
             let body = serde_json::json!({
                 "stories": ordered,
+                "icebox_unified": icebox_unified,
                 "fetched_at": chrono::Utc::now().to_rfc3339(),
             });
             (StatusCode::OK, json_headers(), body.to_string())
@@ -1660,7 +1673,17 @@ pub async fn post_reorder_story(
         }
     };
     let mut index = crate::session::priority::load_priority(&path);
-    crate::session::priority::reorder(&mut index, &payload.state, number, payload.position);
+    if payload.state == "icebox" {
+        // #1258 α-substrate: icebox reorder operates on the unified
+        // positional space (markers + stories share the same list).
+        crate::session::priority::reorder_icebox_unified(
+            &mut index,
+            crate::session::priority::IceboxItem::Story { number },
+            payload.position,
+        );
+    } else {
+        crate::session::priority::reorder(&mut index, &payload.state, number, payload.position);
+    }
     if let Err(e) = crate::session::priority::save_priority(&path, &index) {
         return (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -1674,4 +1697,49 @@ pub async fn post_reorder_story(
         json_headers(),
         serde_json::json!({ "ok": true }).to_string(),
     )
+}
+
+/// #1258 α-substrate: POST /api/iteration_markers/:id/reorder — move
+/// a marker to a position in `icebox_unified`. Markers + stories share
+/// the same positional space; this lets PM/owner drag markers across
+/// stories to redefine iteration boundaries.
+pub async fn post_reorder_iteration_marker(
+    State(session): State<Arc<session::Session>>,
+    axum::extract::Path(id): axum::extract::Path<u64>,
+    Json(payload): Json<ReorderMarkerPayload>,
+) -> impl IntoResponse {
+    let path = match crate::session::priority::default_priority_path() {
+        Ok(p) => p,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                json_headers(),
+                err_body(&format!("priority path: {e}")),
+            );
+        }
+    };
+    let mut index = crate::session::priority::load_priority(&path);
+    crate::session::priority::reorder_icebox_unified(
+        &mut index,
+        crate::session::priority::IceboxItem::Marker { id },
+        payload.position,
+    );
+    if let Err(e) = crate::session::priority::save_priority(&path, &index) {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json_headers(),
+            err_body(&format!("save priority: {e}")),
+        );
+    }
+    broadcast_board_invalidate(&session);
+    (
+        StatusCode::OK,
+        json_headers(),
+        serde_json::json!({ "ok": true }).to_string(),
+    )
+}
+
+#[derive(Deserialize)]
+pub struct ReorderMarkerPayload {
+    pub position: usize,
 }
