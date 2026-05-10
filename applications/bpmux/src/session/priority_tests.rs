@@ -243,6 +243,155 @@ fn reorder_icebox_unified_clamps_position() {
     );
 }
 
+// ── #1258 AC 22 + 30: rollback failure-mode tests ──
+
+#[test]
+fn rollback_on_markers_save_failure_restores_priority() {
+    let mut priority = PriorityIndex::default();
+    priority
+        .icebox_unified
+        .push(IceboxItem::Story { number: 100 });
+    priority.icebox_unified.push(IceboxItem::Marker { id: 7 });
+    let snapshot = priority.clone();
+    let mut markers = vec![marker(7, 0)];
+
+    use std::cell::RefCell;
+    let priority_saves: RefCell<Vec<PriorityIndex>> = RefCell::new(Vec::new());
+
+    let result = apply_close_iteration_with_rollback(
+        &mut priority,
+        &mut markers,
+        &[],
+        false,
+        &snapshot,
+        |p: &PriorityIndex| {
+            priority_saves.borrow_mut().push(p.clone());
+            Ok(())
+        },
+        |_m: &[super::super::iteration_markers::IterationMarker]| Err("disk full".to_string()),
+    );
+
+    assert!(result.is_err(), "expected save-failure to surface as Err");
+    let err = result.unwrap_err();
+    assert!(
+        err.contains("rolled back"),
+        "expected rollback in error message: {err}"
+    );
+    let saves = priority_saves.borrow();
+    assert_eq!(
+        saves.len(),
+        2,
+        "priority saved twice (once with mutation, once for rollback)"
+    );
+    // Second save = snapshot (rollback).
+    assert_eq!(saves[1].icebox_unified, snapshot.icebox_unified);
+}
+
+#[test]
+fn rollback_on_markers_save_failure_rollback_save_also_fails_returns_double_error() {
+    let mut priority = PriorityIndex::default();
+    priority.icebox_unified.push(IceboxItem::Marker { id: 7 });
+    let snapshot = priority.clone();
+    let mut markers = vec![marker(7, 0)];
+
+    use std::cell::RefCell;
+    let save_count: RefCell<u32> = RefCell::new(0);
+
+    let result = apply_close_iteration_with_rollback(
+        &mut priority,
+        &mut markers,
+        &[],
+        false,
+        &snapshot,
+        |_: &PriorityIndex| {
+            let mut n = save_count.borrow_mut();
+            *n += 1;
+            if *n == 1 {
+                Ok(())
+            } else {
+                Err("rollback save failed".to_string())
+            }
+        },
+        |_: &[super::super::iteration_markers::IterationMarker]| {
+            Err("markers save failed".to_string())
+        },
+    );
+
+    let err = result.unwrap_err();
+    assert!(
+        err.contains("rollback also failed"),
+        "expected double-fail message: {err}"
+    );
+    assert_eq!(*save_count.borrow(), 2);
+}
+
+#[test]
+fn rollback_no_op_when_persistence_succeeds() {
+    let mut priority = PriorityIndex::default();
+    priority
+        .icebox_unified
+        .push(IceboxItem::Story { number: 100 });
+    priority.icebox_unified.push(IceboxItem::Marker { id: 7 });
+    let snapshot = priority.clone();
+    let mut markers = vec![marker(7, 0)];
+
+    use std::cell::RefCell;
+    let priority_saves: RefCell<u32> = RefCell::new(0);
+
+    let result = apply_close_iteration_with_rollback(
+        &mut priority,
+        &mut markers,
+        &[],
+        false,
+        &snapshot,
+        |_: &PriorityIndex| {
+            *priority_saves.borrow_mut() += 1;
+            Ok(())
+        },
+        |_: &[super::super::iteration_markers::IterationMarker]| Ok(()),
+    );
+
+    assert!(result.is_ok());
+    let outcome = result.unwrap();
+    assert_eq!(outcome.deleted_marker_id, Some(7));
+    assert_eq!(outcome.promoted, vec![100]);
+    assert_eq!(
+        *priority_saves.borrow(),
+        1,
+        "priority saved once (no rollback path)"
+    );
+}
+
+#[test]
+fn rollback_priority_save_failure_short_circuits_before_markers() {
+    let mut priority = PriorityIndex::default();
+    priority.icebox_unified.push(IceboxItem::Marker { id: 7 });
+    let snapshot = priority.clone();
+    let mut markers = vec![marker(7, 0)];
+
+    use std::cell::RefCell;
+    let markers_save_called: RefCell<bool> = RefCell::new(false);
+
+    let result = apply_close_iteration_with_rollback(
+        &mut priority,
+        &mut markers,
+        &[],
+        false,
+        &snapshot,
+        |_: &PriorityIndex| Err("priority save failed".to_string()),
+        |_: &[super::super::iteration_markers::IterationMarker]| {
+            *markers_save_called.borrow_mut() = true;
+            Ok(())
+        },
+    );
+
+    assert!(result.is_err());
+    assert!(
+        !*markers_save_called.borrow(),
+        "markers save should NOT be called when priority save fails first"
+    );
+}
+
 #[test]
 fn migrate_re_run_is_no_op() {
     let mut index = PriorityIndex::default();

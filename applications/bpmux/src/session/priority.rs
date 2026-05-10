@@ -119,6 +119,39 @@ pub fn close_iteration_atomic(
     }
 }
 
+/// #1258 AC 22 testable persistence wrapper around `close_iteration_atomic`.
+/// Calls the atomic function, then save_priority, then save_markers; if
+/// save_markers fails, rolls priority back to `priority_snapshot` via a
+/// second save_priority call. Returns the Outcome on success, or an error
+/// string on save-failure (after rollback attempt). This shape lets tests
+/// inject save-failure without touching disk and assert the rollback path
+/// is exercised.
+pub fn apply_close_iteration_with_rollback<SaveP, SaveM>(
+    priority: &mut PriorityIndex,
+    markers: &mut Vec<super::iteration_markers::IterationMarker>,
+    unfinished_ready: &[u64],
+    carry_over: bool,
+    priority_snapshot: &PriorityIndex,
+    save_priority: SaveP,
+    save_markers: SaveM,
+) -> Result<CloseIterationOutcome, String>
+where
+    SaveP: Fn(&PriorityIndex) -> Result<(), String>,
+    SaveM: FnOnce(&[super::iteration_markers::IterationMarker]) -> Result<(), String>,
+{
+    let outcome = close_iteration_atomic(priority, markers, unfinished_ready, carry_over);
+    save_priority(priority).map_err(|e| format!("save priority: {e}"))?;
+    if let Err(e) = save_markers(markers) {
+        if let Err(rb) = save_priority(priority_snapshot) {
+            return Err(format!(
+                "markers save failed: {e}; rollback also failed: {rb}"
+            ));
+        }
+        return Err(format!("markers save failed (priority rolled back): {e}"));
+    }
+    Ok(outcome)
+}
+
 /// #1258 α-substrate migration: populate `icebox_unified` from legacy
 /// state (separate `columns["icebox"]` story-list + per-session
 /// iteration markers) on first server boot post-α-ship. Idempotent:

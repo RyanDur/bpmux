@@ -1523,3 +1523,13 @@ async fn post_ci_rerun_returns_502_when_github_upstream_errors() {
             .contains("rerun_failed_jobs")
     );
 }
+
+// AC 31 live integration: covered via Playwright spec (desk-check-1258)
+// rather than a Rust integration test, because BPMUX_HOME-based path
+// injection conflicts with concurrent tests that read default_priority_path
+// (e.g., /api/board reorder tests). Playwright runs in a separate process
+// + electron-app fork, eliminating env-var pollution.
+//
+// The Rust-level coverage is via `apply_close_iteration_with_rollback`
+// helper-level tests (priority_tests.rs) which exercise the same
+// persistence + rollback semantics with mock save fns.

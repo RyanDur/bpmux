@@ -70,6 +70,7 @@ export type StateDeltaPayload =
       dropped_back: number[]
       deleted_marker_id: number | null
     }
+  | { domain: 'icebox_migration'; entries: number }
 
 export interface ReactionsChannelSnapshot {
   channel: string

@@ -1057,6 +1057,7 @@ pub struct CloseIterationParams {
 /// snapshots are restored to disk, leaving pre-fire state intact.
 pub async fn post_close_iteration(
     State(session): State<Arc<session::Session>>,
+    axum::Extension(tracker): axum::Extension<TrackerHandle>,
     Query(params): Query<CloseIterationParams>,
 ) -> impl IntoResponse {
     let priority_path = match session::priority::default_priority_path() {
@@ -1074,32 +1075,34 @@ pub async fn post_close_iteration(
     let mut priority = priority_snapshot.clone();
     let mut markers_store = markers_snapshot.clone();
     let unfinished_ready: Vec<u64> = priority.columns.get("ready").cloned().unwrap_or_default();
-    let outcome = session::priority::close_iteration_atomic(
+    let session_dir = session.dir.clone();
+    let priority_path_for_save = priority_path.clone();
+    let outcome = match session::priority::apply_close_iteration_with_rollback(
         &mut priority,
         &mut markers_store.markers,
         &unfinished_ready,
         params.carry_over,
-    );
-    if let Err(e) = session::priority::save_priority(&priority_path, &priority) {
-        return (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            json_headers(),
-            err_body(&format!("save priority: {e}")),
-        );
-    }
-    if let Err(e) = session::iteration_markers::save(&session.dir, &markers_store) {
-        // AC 22: rollback priority to pre-fire state when markers save fails.
-        if let Err(rb) = session::priority::save_priority(&priority_path, &priority_snapshot) {
-            session::diag::log_diag(&format!(
-                "post_close_iteration: rollback after markers save-failure failed: {rb}"
-            ));
+        &priority_snapshot,
+        |p: &session::priority::PriorityIndex| {
+            session::priority::save_priority(&priority_path_for_save, p).map_err(|e| e.to_string())
+        },
+        |m: &[session::iteration_markers::IterationMarker]| {
+            let store = session::iteration_markers::IterationMarkersStore {
+                markers: m.to_vec(),
+                next_id: markers_store.next_id,
+            };
+            session::iteration_markers::save(&session_dir, &store).map_err(|e| e.to_string())
+        },
+    ) {
+        Ok(o) => o,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                json_headers(),
+                err_body(&format!("close_iteration: {e}")),
+            );
         }
-        return (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            json_headers(),
-            err_body(&format!("save iteration_markers: {e}")),
-        );
-    }
+    };
     let payload = session::message::StateDeltaPayload::IterationClose {
         promoted: outcome.promoted.clone(),
         dropped_back: outcome.dropped_back.clone(),
@@ -1113,6 +1116,43 @@ pub async fn post_close_iteration(
         state_delta: Some(payload),
         ..session::Message::default()
     };
+    // AC 17 transition-history: post a comment on each affected story so
+    // operators (Ryan / PM) can audit the iteration-close ceremony from
+    // the GH issue side. Drop-back path comments "iteration-close
+    // drop-back: returned to icebox"; carry-over path comments
+    // "iteration-close carry-over: remained in ready". Promoted stories
+    // get a "promoted to ready" comment. Best-effort: tracker may be
+    // None (no GH_TOKEN) or comment may fail; logged but not fatal.
+    if let Some(t) = tracker.as_ref() {
+        for n in outcome.promoted.iter() {
+            let body = "iteration-close: promoted to ready (story was above the topmost iteration marker; close_iteration consumed the marker).";
+            if let Err(e) = t.post_story_comment(*n, body).await {
+                session::diag::log_diag(&format!(
+                    "[#1258 AC17] comment_on_story #{n} (promoted) failed: {e}"
+                ));
+            }
+        }
+        for n in outcome.dropped_back.iter() {
+            let body = "iteration-close: dropped back to icebox top (story was unfinished in ready when iteration closed; default drop-back per Q6).";
+            if let Err(e) = t.post_story_comment(*n, body).await {
+                session::diag::log_diag(&format!(
+                    "[#1258 AC17] comment_on_story #{n} (dropped_back) failed: {e}"
+                ));
+            }
+        }
+        if params.carry_over {
+            // carry_over=true: dropped_back is empty; comment on the
+            // unfinished_ready stories that stayed in ready.
+            for n in unfinished_ready.iter() {
+                let body = "iteration-close: carried over to next iteration (carry_over=true; story remained in ready instead of dropping back to icebox).";
+                if let Err(e) = t.post_story_comment(*n, body).await {
+                    session::diag::log_diag(&format!(
+                        "[#1258 AC17] comment_on_story #{n} (carry_over) failed: {e}"
+                    ));
+                }
+            }
+        }
+    }
     if let Err(e) = session.broadcast(&delta_msg) {
         session::diag::log_diag(&format!(
             "post_close_iteration: state-delta broadcast failed: {e}"
