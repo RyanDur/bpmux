@@ -1136,30 +1136,10 @@ pub async fn post_remove_stories_from_iteration(
     }
 }
 
-#[derive(Deserialize, Default)]
-pub struct CloseIterationParams {
-    /// AC 16-17 carry_over flag (Q1 PM-ratified YAGNI v1 boolean).
-    /// When true, unfinished ready-stories remain in ready instead of
-    /// dropping back to icebox-top. Default false (drop-back).
-    #[serde(default)]
-    pub carry_over: bool,
-}
-
-/// #1258 close_iteration α-substrate: REST endpoint that runs the
-/// cross-store atomic step (promote stories above topmost marker,
-/// delete topmost marker, drop unfinished ready-stories to icebox-top).
-/// Returns the outcome as JSON. Bridge handler POSTs here to keep
-/// state mutation behind middleware (per `feedback_middleware_owns_external_io`)
-/// and ensures REST + MCP share the canonical mutation chain (per
-/// `feedback_rest_mcp_canonical_mutation_parity`).
-///
-/// Best-effort cross-store atomicity (AC 20-22): pre-mutation
-/// snapshots of priority + markers are captured; on save-failure the
-/// snapshots are restored to disk, leaving pre-fire state intact.
 pub async fn post_close_iteration(
     State(session): State<Arc<session::Session>>,
     axum::Extension(tracker): axum::Extension<TrackerHandle>,
-    Query(params): Query<CloseIterationParams>,
+    axum::Extension(test_refresh): axum::Extension<crate::server::TestRefreshHandle>,
 ) -> impl IntoResponse {
     let priority_path = match session::priority::default_priority_path() {
         Ok(p) => p,
@@ -1171,18 +1151,21 @@ pub async fn post_close_iteration(
             );
         }
     };
+    let blockers = collect_iteration_close_blockers(test_refresh.as_ref()).await;
+    if !blockers.is_empty() {
+        let body = build_close_iteration_blocked_body(&blockers);
+        broadcast_iteration_close_blocked(&session, &blockers);
+        return (StatusCode::CONFLICT, json_headers(), body);
+    }
     let priority_snapshot = session::priority::load_priority(&priority_path);
     let markers_snapshot = session::iteration_markers::load(&session.dir);
     let mut priority = priority_snapshot.clone();
     let mut markers_store = markers_snapshot.clone();
-    let unfinished_ready: Vec<u64> = priority.columns.get("ready").cloned().unwrap_or_default();
     let session_dir = session.dir.clone();
     let priority_path_for_save = priority_path.clone();
     let outcome = match session::priority::apply_close_iteration_with_rollback(
         &mut priority,
         &mut markers_store.markers,
-        &unfinished_ready,
-        params.carry_over,
         &priority_snapshot,
         |p: &session::priority::PriorityIndex| {
             session::priority::save_priority(&priority_path_for_save, p).map_err(|e| e.to_string())
@@ -1206,7 +1189,6 @@ pub async fn post_close_iteration(
     };
     let payload = session::message::StateDeltaPayload::IterationClose {
         promoted: outcome.promoted.clone(),
-        dropped_back: outcome.dropped_back.clone(),
         deleted_marker_id: outcome.deleted_marker_id,
     };
     let delta_msg = session::Message {
@@ -1217,13 +1199,6 @@ pub async fn post_close_iteration(
         state_delta: Some(payload),
         ..session::Message::default()
     };
-    // AC 17 transition-history: post a comment on each affected story so
-    // operators (Ryan / PM) can audit the iteration-close ceremony from
-    // the GH issue side. Drop-back path comments "iteration-close
-    // drop-back: returned to icebox"; carry-over path comments
-    // "iteration-close carry-over: remained in ready". Promoted stories
-    // get a "promoted to ready" comment. Best-effort: tracker may be
-    // None (no GH_TOKEN) or comment may fail; logged but not fatal.
     if let Some(t) = tracker.as_ref() {
         for n in outcome.promoted.iter() {
             let body = "iteration-close: promoted to ready (story was above the topmost iteration marker; close_iteration consumed the marker).";
@@ -1231,26 +1206,6 @@ pub async fn post_close_iteration(
                 session::diag::log_diag(&format!(
                     "[#1258 AC17] comment_on_story #{n} (promoted) failed: {e}"
                 ));
-            }
-        }
-        for n in outcome.dropped_back.iter() {
-            let body = "iteration-close: dropped back to icebox top (story was unfinished in ready when iteration closed; default drop-back per Q6).";
-            if let Err(e) = t.post_story_comment(*n, body).await {
-                session::diag::log_diag(&format!(
-                    "[#1258 AC17] comment_on_story #{n} (dropped_back) failed: {e}"
-                ));
-            }
-        }
-        if params.carry_over {
-            // carry_over=true: dropped_back is empty; comment on the
-            // unfinished_ready stories that stayed in ready.
-            for n in unfinished_ready.iter() {
-                let body = "iteration-close: carried over to next iteration (carry_over=true; story remained in ready instead of dropping back to icebox).";
-                if let Err(e) = t.post_story_comment(*n, body).await {
-                    session::diag::log_diag(&format!(
-                        "[#1258 AC17] comment_on_story #{n} (carry_over) failed: {e}"
-                    ));
-                }
             }
         }
     }
@@ -1261,10 +1216,96 @@ pub async fn post_close_iteration(
     }
     let body = serde_json::json!({
         "promoted": outcome.promoted,
-        "dropped_back": outcome.dropped_back,
         "deleted_marker_id": outcome.deleted_marker_id,
     });
     (StatusCode::OK, json_headers(), body.to_string())
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub(crate) struct IterationCloseBlocker {
+    pub number: u64,
+    pub title: String,
+    pub state: String,
+}
+
+pub(crate) async fn collect_iteration_close_blockers(
+    refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
+) -> Vec<IterationCloseBlocker> {
+    let Some(refresh) = refresh else {
+        return Vec::new();
+    };
+    let mut stories = refresh.all_stories();
+    if stories.is_empty() {
+        if let Err(e) = refresh.refresh_all().await {
+            session::diag::log_diag(&format!(
+                "[#1258 guard] refresh_all failed: {e}; treating as no blockers"
+            ));
+            return Vec::new();
+        }
+        stories = refresh.all_stories();
+    }
+    stories
+        .into_iter()
+        .filter(|s| {
+            matches!(
+                s.state,
+                crate::board::domain::StoryState::Ready
+                    | crate::board::domain::StoryState::InProgress
+                    | crate::board::domain::StoryState::DeskCheck
+                    | crate::board::domain::StoryState::Delivered
+            )
+        })
+        .map(|s| IterationCloseBlocker {
+            number: s.number,
+            title: s.title,
+            state: s.state.as_str().to_string(),
+        })
+        .collect()
+}
+
+fn build_close_iteration_blocked_body(blockers: &[IterationCloseBlocker]) -> String {
+    let names: Vec<String> = blockers
+        .iter()
+        .map(|b| format!("#{} ({} — {})", b.number, b.state, b.title))
+        .collect();
+    let body = serde_json::json!({
+        "error": format!(
+            "close_iteration blocked: {} non-accepted stories in pipeline: {}",
+            blockers.len(),
+            names.join(", ")
+        ),
+        "blockers": blockers,
+    });
+    body.to_string()
+}
+
+fn broadcast_iteration_close_blocked(
+    session: &Arc<session::Session>,
+    blockers: &[IterationCloseBlocker],
+) {
+    let payload = session::message::StateDeltaPayload::IterationCloseBlocked {
+        blockers: blockers
+            .iter()
+            .map(|b| session::message::IterationCloseBlockerPayload {
+                number: b.number,
+                title: b.title.clone(),
+                state: b.state.clone(),
+            })
+            .collect(),
+    };
+    let msg = session::Message {
+        from: "bpmux".to_string(),
+        text: String::new(),
+        ts: chrono::Utc::now(),
+        message_type: session::MessageType::StateDelta,
+        state_delta: Some(payload),
+        ..session::Message::default()
+    };
+    if let Err(e) = session.broadcast(&msg) {
+        session::diag::log_diag(&format!(
+            "post_close_iteration: iteration-close-blocked broadcast failed: {e}"
+        ));
+    }
 }
 
 /// #387 cross-agent reaction visibility. Typed `StateDelta::Reactions`

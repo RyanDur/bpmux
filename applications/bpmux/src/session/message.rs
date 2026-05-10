@@ -111,8 +111,11 @@ pub enum StateDeltaPayload {
     #[serde(rename = "iteration_close")]
     IterationClose {
         promoted: Vec<u64>,
-        dropped_back: Vec<u64>,
         deleted_marker_id: Option<u64>,
+    },
+    #[serde(rename = "iteration_close_blocked")]
+    IterationCloseBlocked {
+        blockers: Vec<IterationCloseBlockerPayload>,
     },
     /// #1258 AC 26 — emitted server-side after the boot-time α-substrate
     /// migration populates `icebox_unified` from legacy state. Carries
@@ -121,6 +124,13 @@ pub enum StateDeltaPayload {
     /// see populated icebox_unified and don't emit.
     #[serde(rename = "icebox_migration")]
     IceboxMigration { entries: usize },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct IterationCloseBlockerPayload {
+    pub number: u64,
+    pub title: String,
+    pub state: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]

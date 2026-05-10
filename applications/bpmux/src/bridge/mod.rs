@@ -970,7 +970,7 @@ pub fn build_advertised_tools() -> Vec<rmcp::model::Tool> {
             "Mark a story as delivered. DEV ONLY — other roles are rejected.",
         ),
         crate::mcp::tools::close_iteration_tool(
-            "Broadcast the iteration-close externalize-prompt (#282) so every agent flushes unsaved findings (via Write / save_lesson / add_principle / doc edit) before context compaction can evict them. PM ONLY — other roles are rejected. Fail-soft: tool returns after broadcast; iteration closes regardless of agent response.",
+            "Close the current iteration: promote stories above the topmost iteration marker to ready, delete the consumed marker, broadcast the externalize-prompt (#282). PM ONLY. GUARDED (#1258 Ryan 2026-05-10 21:49 UTC): blocks with 409 if any non-icebox/non-accepted story exists in the pipeline (ready/in-progress/desk-check/delivered). Owner must accept or move_story-out all in-flight stories before close_iteration can fire.",
         ),
         crate::mcp::tools::create_iteration_marker_tool(
             "Create an iteration-marker pseudo-entity in the icebox column (#1249, Epic #1189). Markers visually divide stories into iteration-groups — \"everything above this marker is the next iteration.\" Optional `theme_name` (constellation: Orion, Lyra, etc.); auto-picks next unused if omitted. PM-discretion. Returns the new marker JSON with id + position + created_at.",

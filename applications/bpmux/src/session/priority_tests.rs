@@ -261,8 +261,6 @@ fn rollback_on_markers_save_failure_restores_priority() {
     let result = apply_close_iteration_with_rollback(
         &mut priority,
         &mut markers,
-        &[],
-        false,
         &snapshot,
         |p: &PriorityIndex| {
             priority_saves.borrow_mut().push(p.clone());
@@ -300,8 +298,6 @@ fn rollback_on_markers_save_failure_rollback_save_also_fails_returns_double_erro
     let result = apply_close_iteration_with_rollback(
         &mut priority,
         &mut markers,
-        &[],
-        false,
         &snapshot,
         |_: &PriorityIndex| {
             let mut n = save_count.borrow_mut();
@@ -341,8 +337,6 @@ fn rollback_no_op_when_persistence_succeeds() {
     let result = apply_close_iteration_with_rollback(
         &mut priority,
         &mut markers,
-        &[],
-        false,
         &snapshot,
         |_: &PriorityIndex| {
             *priority_saves.borrow_mut() += 1;
@@ -375,8 +369,6 @@ fn rollback_priority_save_failure_short_circuits_before_markers() {
     let result = apply_close_iteration_with_rollback(
         &mut priority,
         &mut markers,
-        &[],
-        false,
         &snapshot,
         |_: &PriorityIndex| Err("priority save failed".to_string()),
         |_: &[super::super::iteration_markers::IterationMarker]| {

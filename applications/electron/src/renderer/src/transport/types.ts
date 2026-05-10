@@ -67,8 +67,11 @@ export type StateDeltaPayload =
   | {
       domain: 'iteration_close'
       promoted: number[]
-      dropped_back: number[]
       deleted_marker_id: number | null
+    }
+  | {
+      domain: 'iteration_close_blocked'
+      blockers: { number: number; title: string; state: string }[]
     }
   | { domain: 'icebox_migration'; entries: number }
 
