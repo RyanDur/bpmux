@@ -168,10 +168,37 @@ fn post_activity(body: &serde_json::Value) {
     });
 }
 
+/// #1258 α-substrate boot migration. Idempotent: runs once at process
+/// init; subsequent boots see populated `icebox_unified` and no-op.
+/// Failures are logged via diag — migration is best-effort and must
+/// not block server boot (priority.json is recoverable from columns
+/// on next session).
+fn migrate_icebox_unified_at_boot(session_dir: &std::path::Path) {
+    let Ok(path) = session::priority::default_priority_path() else {
+        return;
+    };
+    let mut index = session::priority::load_priority(&path);
+    let markers_store = session::iteration_markers::load(session_dir);
+    let migrated = session::priority::migrate_icebox_unified(&mut index, &markers_store.markers);
+    if migrated {
+        if let Err(e) = session::priority::save_priority(&path, &index) {
+            session::diag::log_diag(&format!(
+                "[#1258] icebox_unified migration: save failed: {e}"
+            ));
+        } else {
+            session::diag::log_diag(&format!(
+                "[#1258] icebox_unified migration: populated {} entries",
+                index.icebox_unified.len()
+            ));
+        }
+    }
+}
+
 fn run_server_only(cli: &Cli) -> anyhow::Result<()> {
     let base = resolve_session_base(&cli.session_base)?;
     std::fs::create_dir_all(&base)?;
     let session_dir = session::resume_or_create_session(&base)?;
+    migrate_icebox_unified_at_boot(&session_dir);
     let (wake_tx, _wake_rx) =
         broadcast::channel::<session::Message>(session::BROADCAST_CHANNEL_CAPACITY);
     let session = Arc::new(session::Session::new(

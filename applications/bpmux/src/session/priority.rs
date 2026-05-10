@@ -40,6 +40,38 @@ pub fn load_priority(path: &Path) -> PriorityIndex {
     }
 }
 
+/// #1258 α-substrate migration: populate `icebox_unified` from legacy
+/// state (separate `columns["icebox"]` story-list + per-session
+/// iteration markers) on first server boot post-α-ship. Idempotent:
+/// if `icebox_unified` is already populated, returns false without
+/// touching state. Default ordering: legacy icebox stories (priority
+/// order) first, then iteration markers (position order). Legacy
+/// state had no story↔marker grouping, so markers post-migration
+/// represent "next iteration boundaries awaiting assignment" — owner
+/// can drag-reorder to interleave.
+pub fn migrate_icebox_unified(
+    index: &mut PriorityIndex,
+    markers: &[super::iteration_markers::IterationMarker],
+) -> bool {
+    if !index.icebox_unified.is_empty() {
+        return false;
+    }
+    let stories: Vec<u64> = index.columns.get("icebox").cloned().unwrap_or_default();
+    let mut sorted_markers: Vec<&super::iteration_markers::IterationMarker> =
+        markers.iter().collect();
+    sorted_markers.sort_by_key(|m| m.position);
+    if stories.is_empty() && sorted_markers.is_empty() {
+        return false;
+    }
+    for n in stories {
+        index.icebox_unified.push(IceboxItem::Story { number: n });
+    }
+    for m in sorted_markers {
+        index.icebox_unified.push(IceboxItem::Marker { id: m.id });
+    }
+    true
+}
+
 pub fn save_priority(path: &Path, index: &PriorityIndex) -> Result<(), std::io::Error> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
@@ -227,6 +259,100 @@ mod tests {
         let index = PriorityIndex::default();
         let json = serde_json::to_string(&index).unwrap();
         assert!(!json.contains("icebox_unified"));
+    }
+
+    // ── #1258 migration tests ──
+
+    fn marker(id: u64, position: u32) -> super::super::iteration_markers::IterationMarker {
+        super::super::iteration_markers::IterationMarker {
+            id,
+            theme_name: format!("theme{id}"),
+            position,
+            created_at: "2026-05-10T00:00:00Z".to_string(),
+        }
+    }
+
+    #[test]
+    fn migrate_populates_unified_with_stories_then_markers() {
+        let mut index = PriorityIndex::default();
+        index
+            .columns
+            .insert("icebox".to_string(), vec![100, 200, 300]);
+        let markers = vec![marker(7, 0), marker(8, 1)];
+        let migrated = migrate_icebox_unified(&mut index, &markers);
+        assert!(migrated);
+        assert_eq!(index.icebox_unified.len(), 5);
+        assert_eq!(index.icebox_unified[0], IceboxItem::Story { number: 100 });
+        assert_eq!(index.icebox_unified[1], IceboxItem::Story { number: 200 });
+        assert_eq!(index.icebox_unified[2], IceboxItem::Story { number: 300 });
+        assert_eq!(index.icebox_unified[3], IceboxItem::Marker { id: 7 });
+        assert_eq!(index.icebox_unified[4], IceboxItem::Marker { id: 8 });
+    }
+
+    #[test]
+    fn migrate_is_idempotent_when_unified_already_populated() {
+        let mut index = PriorityIndex::default();
+        index.icebox_unified.push(IceboxItem::Story { number: 999 });
+        index.columns.insert("icebox".to_string(), vec![100]);
+        let markers = vec![marker(7, 0)];
+        let migrated = migrate_icebox_unified(&mut index, &markers);
+        assert!(!migrated);
+        assert_eq!(index.icebox_unified.len(), 1);
+        assert_eq!(index.icebox_unified[0], IceboxItem::Story { number: 999 });
+    }
+
+    #[test]
+    fn migrate_no_op_when_no_legacy_state() {
+        let mut index = PriorityIndex::default();
+        let migrated = migrate_icebox_unified(&mut index, &[]);
+        assert!(!migrated);
+        assert!(index.icebox_unified.is_empty());
+    }
+
+    #[test]
+    fn migrate_with_only_markers_no_icebox_stories() {
+        let mut index = PriorityIndex::default();
+        let markers = vec![marker(7, 0), marker(8, 1)];
+        let migrated = migrate_icebox_unified(&mut index, &markers);
+        assert!(migrated);
+        assert_eq!(index.icebox_unified.len(), 2);
+        assert_eq!(index.icebox_unified[0], IceboxItem::Marker { id: 7 });
+        assert_eq!(index.icebox_unified[1], IceboxItem::Marker { id: 8 });
+    }
+
+    #[test]
+    fn migrate_with_only_icebox_stories_no_markers() {
+        let mut index = PriorityIndex::default();
+        index.columns.insert("icebox".to_string(), vec![100, 200]);
+        let migrated = migrate_icebox_unified(&mut index, &[]);
+        assert!(migrated);
+        assert_eq!(index.icebox_unified.len(), 2);
+        assert_eq!(index.icebox_unified[0], IceboxItem::Story { number: 100 });
+        assert_eq!(index.icebox_unified[1], IceboxItem::Story { number: 200 });
+    }
+
+    #[test]
+    fn migrate_sorts_markers_by_position() {
+        let mut index = PriorityIndex::default();
+        let markers = vec![marker(8, 5), marker(7, 1), marker(9, 3)];
+        let migrated = migrate_icebox_unified(&mut index, &markers);
+        assert!(migrated);
+        assert_eq!(index.icebox_unified[0], IceboxItem::Marker { id: 7 });
+        assert_eq!(index.icebox_unified[1], IceboxItem::Marker { id: 9 });
+        assert_eq!(index.icebox_unified[2], IceboxItem::Marker { id: 8 });
+    }
+
+    #[test]
+    fn migrate_re_run_is_no_op() {
+        let mut index = PriorityIndex::default();
+        index.columns.insert("icebox".to_string(), vec![100, 200]);
+        let markers = vec![marker(7, 0)];
+        let first = migrate_icebox_unified(&mut index, &markers);
+        assert!(first);
+        let snapshot = index.icebox_unified.clone();
+        let second = migrate_icebox_unified(&mut index, &markers);
+        assert!(!second);
+        assert_eq!(index.icebox_unified, snapshot);
     }
 
     // ── #333 apply_priority_to_board tests ──
