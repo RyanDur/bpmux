@@ -11,7 +11,7 @@ import DrillIn from './DrillIn'
 import Epic from './Epic'
 import StoryRow from './StoryRow'
 import { useRefetchOnReconnect } from './useRefetchOnReconnect'
-import IterationMarker from './IterationMarker'
+import IterationGroup from './IterationGroup'
 import {
   useIterationMarkers,
   type IterationMarker as IterationMarkerData
@@ -574,7 +574,7 @@ function BoardGroup({
   // hiding the origin row makes the drop target read unambiguously.
   const [draggingNumber, setDraggingNumber] = useState<number | null>(null)
 
-  const handleListDragOver = (event: React.DragEvent<HTMLUListElement>): void => {
+  const handleListDragOver = (event: React.DragEvent<HTMLElement>): void => {
     if (!draggable) return
     event.preventDefault()
     event.dataTransfer.dropEffect = 'move'
@@ -590,7 +590,7 @@ function BoardGroup({
       setDropAt(event.clientY < mid ? index : index + 1)
     }
 
-  const handleDrop = (event: React.DragEvent<HTMLUListElement>): void => {
+  const handleDrop = (event: React.DragEvent<HTMLElement>): void => {
     if (!draggable || onReorder === undefined) return
     event.preventDefault()
     const raw = event.dataTransfer.getData('text/bpmux-story')
@@ -642,110 +642,197 @@ function BoardGroup({
           </ul>
         ) : stories.length === 0 && iterationMarkers.length === 0 ? (
           <p className="board-group-empty">none</p>
-        ) : (
-          <ul
-            className="board-story-list"
-            data-test={iterationMarkers.length > 0 ? 'board-icebox-unified' : undefined}
+        ) : iterationMarkers.length > 0 && iceboxUnified.length > 0 ? (
+          <div
+            className="board-icebox-sections"
+            data-test="board-icebox-unified"
             onDragOver={handleListDragOver}
             onDrop={handleDrop}
             onDragLeave={() => setDropAt(null)}
           >
             {(() => {
-              // #1258 α-substrate: when icebox_unified is present, walk
-              // it and emit each item in the unified order. Stories not
-              // in icebox_unified (yet) trail at the end. Markers always
-              // come from icebox_unified (no separate fallback path).
               const storyByNumber = new Map(stories.map((s) => [s.number, s]))
               const markerById = new Map(iterationMarkers.map((m) => [m.id, m]))
-              const inUnified = new Set<number>()
-              const items: Array<
-                | { kind: 'story'; story: BoardStory }
-                | { kind: 'marker'; marker: IterationMarkerData; variant: 'next' | 'future' }
-              > = []
-              if (iceboxUnified.length > 0) {
-                let markerSeen = 0
-                for (const u of iceboxUnified) {
-                  if (u.kind === 'story') {
-                    const s = storyByNumber.get(u.number)
-                    if (s !== undefined) {
-                      items.push({ kind: 'story', story: s })
-                      inUnified.add(u.number)
-                    }
-                  } else {
-                    const m = markerById.get(u.id)
-                    if (m !== undefined) {
-                      items.push({
-                        kind: 'marker',
-                        marker: m,
-                        variant: markerSeen === 0 ? 'next' : 'future'
-                      })
-                      markerSeen += 1
-                    }
+              const sections: Array<{
+                kind: 'iteration' | 'unscheduled'
+                marker?: IterationMarkerData
+                variant?: 'next' | 'future'
+                stories: BoardStory[]
+                baseIndex: number
+              }> = []
+              const consumed = new Set<number>()
+              let bucket: BoardStory[] = []
+              let baseIndex = 0
+              let markerSeen = 0
+              for (const u of iceboxUnified) {
+                if (u.kind === 'story') {
+                  const s = storyByNumber.get(u.number)
+                  if (s !== undefined) {
+                    bucket.push(s)
+                    consumed.add(u.number)
+                  }
+                } else {
+                  const m = markerById.get(u.id)
+                  if (m !== undefined) {
+                    sections.push({
+                      kind: 'iteration',
+                      marker: m,
+                      variant: markerSeen === 0 ? 'next' : 'future',
+                      stories: bucket,
+                      baseIndex
+                    })
+                    baseIndex += bucket.length
+                    bucket = []
+                    markerSeen += 1
                   }
                 }
-              } else {
-                // Legacy fallback: markers first, then stories.
-                iterationMarkers.forEach((m, i) => {
-                  items.push({ kind: 'marker', marker: m, variant: i === 0 ? 'next' : 'future' })
+              }
+              const trailing: BoardStory[] = [
+                ...bucket,
+                ...stories.filter((s) => !consumed.has(s.number))
+              ]
+              if (trailing.length > 0) {
+                sections.push({
+                  kind: 'unscheduled',
+                  stories: trailing,
+                  baseIndex
                 })
               }
-              for (const s of stories) {
-                if (!inUnified.has(s.number)) {
-                  items.push({ kind: 'story', story: s })
-                }
-              }
-              const total = items.length
-              return items.map((item, i) => {
-                if (item.kind === 'marker') {
+              const total = sections.reduce((sum, sec) => sum + sec.stories.length, 0)
+              return sections.map((section) => {
+                if (section.kind === 'iteration' && section.marker) {
                   return (
-                    <IterationMarker
-                      key={`marker-${item.marker.id}`}
-                      marker={item.marker}
-                      variant={item.variant}
+                    <IterationGroup
+                      key={`marker-${section.marker.id}`}
+                      stories={section.stories}
+                      marker={section.marker}
+                      variant={section.variant ?? 'future'}
+                      viewerIdentity={RENDERER_IDENTITY}
+                      selectedNumber={selectedNumber}
+                      draggable={draggable}
+                      draggingNumber={draggingNumber}
+                      baseIndex={section.baseIndex}
+                      total={total}
+                      dropAt={dropAt}
+                      epicTitleByNumber={epicTitleByNumber}
+                      onOpen={onOpen}
+                      onOpenTimeline={onOpenTimeline}
+                      onSelect={onSelect}
+                      onKeyboardReorder={
+                        draggable && onReorder !== undefined
+                          ? (storyNumber, direction) => {
+                              const idx = section.baseIndex
+                              const localIdx = section.stories.findIndex(
+                                (s) => s.number === storyNumber
+                              )
+                              const i = idx + localIdx
+                              if (direction === 'up' && i === 0) return
+                              if (direction === 'down' && i === total - 1) return
+                              const insertAt =
+                                direction === 'up'
+                                  ? Math.max(0, i - 1)
+                                  : Math.min(total, i + 2)
+                              onReorder(group.state, storyNumber, insertAt)
+                            }
+                          : undefined
+                      }
+                      onRowDragOver={handleRowDragOver}
+                      onDragStartRow={(storyNumber) => setDraggingNumber(storyNumber)}
+                      onDragEndRow={() => {
+                        setDraggingNumber(null)
+                        setDropAt(null)
+                      }}
                     />
                   )
                 }
-                const story = item.story
                 return (
-                  <StoryRow
-                    key={story.number}
-                    story={story}
-                    parentEpicTitle={
-                      story.parent_epic !== undefined
-                        ? epicTitleByNumber.get(story.parent_epic)
-                        : undefined
-                    }
-                    selected={story.number === selectedNumber}
-                    draggable={draggable}
-                    dragging={draggingNumber === story.number}
-                    dropBefore={dropAt === i}
-                    dropAfterLast={dropAt === total && i === total - 1}
-                    position={i + 1}
-                    total={total}
-                    onKeyboardReorder={
-                      draggable && onReorder !== undefined
-                        ? (direction) => {
-                            if (direction === 'up' && i === 0) return
-                            if (direction === 'down' && i === total - 1) return
-                            const insertAt =
-                              direction === 'up' ? Math.max(0, i - 1) : Math.min(total, i + 2)
-                            onReorder(group.state, story.number, insertAt)
+                  <ul
+                    key="unscheduled"
+                    className="board-story-list board-iteration-unscheduled"
+                    data-test="iteration-unscheduled"
+                  >
+                    {section.stories.map((story, localIdx) => {
+                      const i = section.baseIndex + localIdx
+                      return (
+                        <StoryRow
+                          key={story.number}
+                          story={story}
+                          parentEpicTitle={
+                            story.parent_epic !== undefined
+                              ? epicTitleByNumber.get(story.parent_epic)
+                              : undefined
                           }
-                        : undefined
-                    }
-                    onOpen={onOpen}
-                    onOpenTimeline={onOpenTimeline}
-                    onSelect={onSelect}
-                    onRowDragOver={handleRowDragOver(i)}
-                    onDragStartRow={() => setDraggingNumber(story.number)}
-                    onDragEndRow={() => {
-                      setDraggingNumber(null)
-                      setDropAt(null)
-                    }}
-                  />
+                          selected={story.number === selectedNumber}
+                          draggable={draggable}
+                          dragging={draggingNumber === story.number}
+                          dropBefore={dropAt === i}
+                          dropAfterLast={dropAt === total && i === total - 1}
+                          position={i + 1}
+                          total={total}
+                          onOpen={onOpen}
+                          onOpenTimeline={onOpenTimeline}
+                          onSelect={onSelect}
+                          onRowDragOver={handleRowDragOver(i)}
+                          onDragStartRow={() => setDraggingNumber(story.number)}
+                          onDragEndRow={() => {
+                            setDraggingNumber(null)
+                            setDropAt(null)
+                          }}
+                        />
+                      )
+                    })}
+                  </ul>
                 )
               })
             })()}
+          </div>
+        ) : (
+          <ul
+            className="board-story-list"
+            onDragOver={handleListDragOver}
+            onDrop={handleDrop}
+            onDragLeave={() => setDropAt(null)}
+          >
+            {stories.map((story, i) => (
+              <StoryRow
+                key={story.number}
+                story={story}
+                parentEpicTitle={
+                  story.parent_epic !== undefined
+                    ? epicTitleByNumber.get(story.parent_epic)
+                    : undefined
+                }
+                selected={story.number === selectedNumber}
+                draggable={draggable}
+                dragging={draggingNumber === story.number}
+                dropBefore={dropAt === i}
+                dropAfterLast={dropAt === stories.length && i === stories.length - 1}
+                position={i + 1}
+                total={stories.length}
+                onKeyboardReorder={
+                  draggable && onReorder !== undefined
+                    ? (direction) => {
+                        if (direction === 'up' && i === 0) return
+                        if (direction === 'down' && i === stories.length - 1) return
+                        const insertAt =
+                          direction === 'up'
+                            ? Math.max(0, i - 1)
+                            : Math.min(stories.length, i + 2)
+                        onReorder(group.state, story.number, insertAt)
+                      }
+                    : undefined
+                }
+                onOpen={onOpen}
+                onOpenTimeline={onOpenTimeline}
+                onSelect={onSelect}
+                onRowDragOver={handleRowDragOver(i)}
+                onDragStartRow={() => setDraggingNumber(story.number)}
+                onDragEndRow={() => {
+                  setDraggingNumber(null)
+                  setDropAt(null)
+                }}
+              />
+            ))}
           </ul>
         )}
       </div>

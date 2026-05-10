@@ -89,28 +89,21 @@ async function launchWithIceboxFixture(): Promise<{
 }
 
 test.describe('desk-check #1258 close_iteration ceremony', () => {
-  test('AC 33/4: icebox column renders markers + stories in single unified UL (DOM shape)', async () => {
+  test('AC 33/4: icebox column groups stories by iteration via native details/summary', async () => {
     const { app, win } = await launchWithIceboxFixture()
     await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
 
-    // Open the icebox column (collapsed by default).
     await win.locator('[data-test="board-group-icebox"]').click()
 
-    // Marker + stories share a single UL — interleaved per icebox_unified.
-    const unifiedUL = win.locator('[data-test="board-icebox-unified"]')
-    await expect(unifiedUL).toBeVisible()
+    const sections = win.locator('[data-test="board-icebox-unified"]')
+    await expect(sections).toBeVisible()
 
-    // Order via direct children (markers + stories): expect interleaved.
-    const items = unifiedUL.locator(':scope > li')
-    const itemCount = await items.count()
-    expect(itemCount).toBe(3)
+    const iterationGroup = win.locator('[data-test="iteration-group-7"]')
+    await expect(iterationGroup).toHaveJSProperty('tagName', 'DETAILS')
+    await expect(iterationGroup.locator('[data-test="board-story-1101"]')).toBeVisible()
 
-    // Item 0 = story 1101 (above marker).
-    await expect(items.nth(0)).toHaveAttribute('data-test', 'board-story-1101')
-    // Item 1 = marker (no board-story-N data-test; carries iteration-marker-7).
-    await expect(items.nth(1)).toHaveAttribute('data-test', 'iteration-marker-7')
-    // Item 2 = story 1102 (below marker).
-    await expect(items.nth(2)).toHaveAttribute('data-test', 'board-story-1102')
+    const unscheduled = win.locator('[data-test="iteration-unscheduled"]')
+    await expect(unscheduled.locator('[data-test="board-story-1102"]')).toBeVisible()
 
     await app.close()
   })
