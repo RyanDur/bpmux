@@ -201,6 +201,31 @@ async fn guard_passes_when_board_is_empty() {
 }
 
 #[tokio::test]
+async fn promote_stories_to_ready_fires_state_transitioned_via_canonical_chain() {
+    use crate::bridge::tools_stories::promote_stories_to_ready_via_canonical_chain;
+    let refresh = build_refresh_with_stories(vec![
+        seed_story(100, StoryState::Icebox),
+        seed_story(200, StoryState::Icebox),
+    ])
+    .await;
+    promote_stories_to_ready_via_canonical_chain(&refresh, &[100, 200], "pm".to_string()).unwrap();
+    refresh.drain_pending().await.unwrap();
+    let stories = refresh.all_stories();
+    let s100 = stories.iter().find(|s| s.number == 100).unwrap();
+    let s200 = stories.iter().find(|s| s.number == 200).unwrap();
+    assert_eq!(s100.state, StoryState::Ready);
+    assert_eq!(s200.state, StoryState::Ready);
+}
+
+#[tokio::test]
+async fn promote_stories_to_ready_no_op_on_empty_list() {
+    use crate::bridge::tools_stories::promote_stories_to_ready_via_canonical_chain;
+    let refresh = build_refresh_with_stories(vec![]).await;
+    let result = promote_stories_to_ready_via_canonical_chain(&refresh, &[], "pm".to_string());
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
 async fn guard_no_refresh_handle_treated_as_no_blockers() {
     let blockers = collect_iteration_close_blockers(None, &[100, 200]).await;
     assert!(blockers.is_empty());

@@ -1225,6 +1225,23 @@ pub async fn post_close_iteration(
             );
         }
     };
+    if let Some(refresh) = test_refresh.as_ref()
+        && let Err(e) = crate::bridge::tools_stories::promote_stories_to_ready_via_canonical_chain(
+            refresh,
+            &outcome.promoted,
+            "pm".to_string(),
+        )
+    {
+        let _ = session::priority::save_priority(&priority_path, &priority_snapshot);
+        let _ = session::iteration_markers::save(&session.dir, &markers_snapshot);
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json_headers(),
+            err_body(&format!(
+                "close_iteration: canonical state-transition failed: {e} (priority + markers rolled back)"
+            )),
+        );
+    }
     let payload = session::message::StateDeltaPayload::IterationClose {
         promoted: outcome.promoted.clone(),
         deleted_marker_id: outcome.deleted_marker_id,
