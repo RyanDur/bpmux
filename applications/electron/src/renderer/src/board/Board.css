@@ -324,15 +324,24 @@
 
   & .board-story-epic-ref {
     flex: 0 0 auto;
-    color: var(--fg-dim);
+    color: var(--fg);
+    background: none;
+    border: none;
+    padding: 0 var(--space-2);
     font-variant-numeric: tabular-nums;
-    /* #1129: raised from 0.6875rem (11px) to meet the team's 12px
-     * a11y floor (real-backend.spec.ts a11y substrate test). The
-     * 11px rule failed low-vision readers; semantic content needs
-     * to clear the floor regardless of `<small>` browser defaults.
-     */
     font-size: 0.75rem;
     margin-left: var(--space-4);
+    cursor: pointer;
+    border-radius: 2px;
+
+    &:hover {
+      text-decoration: underline;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--accent-brand);
+      outline-offset: 1px;
+    }
   }
 
   /* #1146: rework glyph appears on stories whose most-recent state

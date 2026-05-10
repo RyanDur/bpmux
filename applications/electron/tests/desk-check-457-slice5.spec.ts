@@ -84,31 +84,34 @@ test.describe('desk-check #457 slice 5 — Electron Epic-summary section', () =>
     await expect(progress).toHaveAttribute('value', '1')
     await expect(progress).toHaveAttribute('max', '2')
 
-    const breakdown = win.locator('[data-test="board-epic-901-breakdown"]')
-    await expect(breakdown).toContainText('1/2 accepted')
-    await expect(breakdown).toContainText('0/2 in-progress')
+    const miniboard = win.locator('[data-test="board-epic-901-miniboard"]')
+    await expect(miniboard).toBeVisible()
+    const acceptedCol = win.locator('[data-test="board-epic-901-miniboard-column-accepted"]')
+    await expect(acceptedCol).toContainText('(1)')
+    const readyCol = win.locator('[data-test="board-epic-901-miniboard-column-ready"]')
+    await expect(readyCol).toContainText('(1)')
 
     await expect(epic901.locator('.board-epic-children')).toHaveCount(0)
     await expect(epic901.locator('.board-epic-child-state')).toHaveCount(0)
-    await expect(epic901).not.toContainText('Child story under epic — feature')
+    await expect(epic901.locator('.board-story-row')).toHaveCount(0)
 
     await app.close()
   })
 
-  test('#1185 child story shows ↳ #N {title} human-readable parent-epic ref in its state lane', async () => {
+  test('#1260 child story shows ↳ Epic #N link (no full Epic title in visible text) in its state lane', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="board-region"]')).toBeVisible()
 
     const childRow = win.locator('[data-test="board-story-902"]')
     await expect(childRow).toBeVisible()
-    const epicRef = childRow.locator('.board-story-epic-ref')
-    await expect(epicRef).toContainText('↳ #901')
-    await expect(epicRef).toContainText('Epic: substrate consolidation')
+    const epicRef = childRow.locator('[data-test="epic-link"]')
+    await expect(epicRef).toHaveText('↳ Epic #901')
+    await expect(epicRef).toHaveAttribute('aria-label', /open epic #901 Epic: substrate consolidation/)
 
     const standaloneRow = win.locator('[data-test="board-story-904"]')
     await expect(standaloneRow).toBeVisible()
-    await expect(standaloneRow.locator('.board-story-epic-ref')).toHaveCount(0)
+    await expect(standaloneRow.locator('[data-test="epic-link"]')).toHaveCount(0)
 
     await app.close()
   })
