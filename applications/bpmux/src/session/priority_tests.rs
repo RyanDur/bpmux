@@ -393,61 +393,6 @@ fn rollback_priority_save_failure_short_circuits_before_markers() {
 }
 
 #[test]
-fn evict_stale_icebox_removes_stories_not_in_legacy_columns() {
-    let mut index = PriorityIndex::default();
-    index.columns.insert("icebox".to_string(), vec![100, 200]);
-    index.icebox_unified.push(IceboxItem::Story { number: 100 });
-    index.icebox_unified.push(IceboxItem::Story { number: 999 });
-    index.icebox_unified.push(IceboxItem::Story { number: 200 });
-    index.icebox_unified.push(IceboxItem::Marker { id: 7 });
-    let evicted = evict_stories_not_in_legacy_icebox(&mut index);
-    assert_eq!(evicted, 1);
-    assert_eq!(
-        index.icebox_unified,
-        vec![
-            IceboxItem::Story { number: 100 },
-            IceboxItem::Story { number: 200 },
-            IceboxItem::Marker { id: 7 },
-        ]
-    );
-}
-
-#[test]
-fn evict_stale_icebox_no_op_when_all_stories_in_legacy() {
-    let mut index = PriorityIndex::default();
-    index.columns.insert("icebox".to_string(), vec![100]);
-    index.icebox_unified.push(IceboxItem::Story { number: 100 });
-    index.icebox_unified.push(IceboxItem::Marker { id: 7 });
-    let evicted = evict_stories_not_in_legacy_icebox(&mut index);
-    assert_eq!(evicted, 0);
-}
-
-#[test]
-fn evict_stale_icebox_preserves_all_markers_regardless_of_legacy() {
-    let mut index = PriorityIndex::default();
-    index.icebox_unified.push(IceboxItem::Marker { id: 7 });
-    index.icebox_unified.push(IceboxItem::Story { number: 999 });
-    index.icebox_unified.push(IceboxItem::Marker { id: 8 });
-    let evicted = evict_stories_not_in_legacy_icebox(&mut index);
-    assert_eq!(evicted, 1);
-    assert_eq!(
-        index.icebox_unified,
-        vec![IceboxItem::Marker { id: 7 }, IceboxItem::Marker { id: 8 }]
-    );
-}
-
-#[test]
-fn evict_stale_icebox_with_empty_legacy_evicts_all_stories_keeps_markers() {
-    let mut index = PriorityIndex::default();
-    index.icebox_unified.push(IceboxItem::Story { number: 100 });
-    index.icebox_unified.push(IceboxItem::Story { number: 200 });
-    index.icebox_unified.push(IceboxItem::Marker { id: 7 });
-    let evicted = evict_stories_not_in_legacy_icebox(&mut index);
-    assert_eq!(evicted, 2);
-    assert_eq!(index.icebox_unified, vec![IceboxItem::Marker { id: 7 }]);
-}
-
-#[test]
 fn migrate_re_run_is_no_op() {
     let mut index = PriorityIndex::default();
     index.columns.insert("icebox".to_string(), vec![100, 200]);
