@@ -119,7 +119,7 @@ pub const SYNC_STATUS_UPDATE_MARKER: &str = "__BPMUX_SYNC_STATUS_UPDATE__";
 /// Build the board-invalidate broadcast signal. System-typed so the
 /// TUI recognizes it as an internal marker rather than a chat line.
 /// No `to=` set — every agent's TUI receives + refreshes.
-pub(super) fn build_board_invalidate_signal() -> ClientMessage {
+pub(crate) fn build_board_invalidate_signal() -> ClientMessage {
     ClientMessage::Send {
         text: BOARD_INVALIDATE_MARKER.to_string(),
         to: None,
@@ -1384,16 +1384,16 @@ pub(super) async fn handle_close_iteration(
 
 // ── Workflow signal builders (#197) ──────────────────────────
 
-pub(super) fn build_delivery_signals(number: u64, title: &str) -> Vec<ClientMessage> {
+pub(crate) fn build_delivery_signals(number: u64, title: &str) -> Vec<ClientMessage> {
     vec![
         ClientMessage::Send {
-            text: format!("#{number} ({title}) delivered — desk-check needed"),
+            text: format!("#{number} ({title}) delivered."),
             to: Some(vec!["designer".to_string()]),
             addressee: Some("designer".to_string()),
             message_type: None,
         },
         ClientMessage::Send {
-            text: format!("#{number} ({title}) delivered. queue update: check ready count"),
+            text: format!("#{number} ({title}) delivered."),
             to: Some(vec!["pm".to_string()]),
             addressee: Some("pm".to_string()),
             message_type: None,
@@ -1401,29 +1401,27 @@ pub(super) fn build_delivery_signals(number: u64, title: &str) -> Vec<ClientMess
     ]
 }
 
-pub(super) fn build_start_signal(number: u64) -> ClientMessage {
+pub(crate) fn build_start_signal(number: u64) -> ClientMessage {
     ClientMessage::Send {
-        text: format!("#{number} started. ready queue shrunk — check if restocking needed"),
+        text: format!("#{number} started."),
         to: Some(vec!["pm".to_string()]),
         addressee: Some("pm".to_string()),
         message_type: None,
     }
 }
 
-pub(super) fn build_accept_signal(number: u64, accepted_by: &str) -> ClientMessage {
+pub(crate) fn build_accept_signal(number: u64, accepted_by: &str) -> ClientMessage {
     ClientMessage::Send {
-        text: format!(
-            "#{number} accepted by {accepted_by}. pick the next story from the ready queue"
-        ),
+        text: format!("#{number} accepted by {accepted_by}."),
         to: None,
         addressee: Some("dev".to_string()),
         message_type: None,
     }
 }
 
-pub(super) fn build_reject_signal(number: u64, reason: &str) -> ClientMessage {
+pub(crate) fn build_reject_signal(number: u64, reason: &str) -> ClientMessage {
     ClientMessage::Send {
-        text: format!("#{number} rejected: {reason}. fix and re-deliver"),
+        text: format!("#{number} rejected: {reason}."),
         to: Some(vec!["dev".to_string()]),
         addressee: Some("dev".to_string()),
         message_type: None,
@@ -1455,7 +1453,7 @@ pub(super) fn addressee_for_pass_desk_check(
     }
 }
 
-pub(super) fn build_pass_desk_check_signal(number: u64, addressee: &str) -> ClientMessage {
+pub(crate) fn build_pass_desk_check_signal(number: u64, addressee: &str) -> ClientMessage {
     ClientMessage::Send {
         text: format!("#{number} ready for acceptance. passed designer desk-check."),
         to: Some(vec![addressee.to_string()]),
@@ -1468,9 +1466,9 @@ pub(super) fn build_pass_desk_check_signal(number: u64, addressee: &str) -> Clie
 /// Ryan. Distinct from the Ryan-facing "ready for acceptance" signal:
 /// PM and Ryan have different roles in the accept loop (PM presents,
 /// Ryan decides) and the tailored text tells each what to do next.
-pub(super) fn build_pass_desk_check_pm_present_signal(number: u64) -> ClientMessage {
+pub(crate) fn build_pass_desk_check_pm_present_signal(number: u64) -> ClientMessage {
     ClientMessage::Send {
-        text: format!("#{number} passed designer desk-check. present to ryan."),
+        text: format!("#{number} passed designer desk-check."),
         to: Some(vec!["pm".to_string()]),
         addressee: Some("pm".to_string()),
         message_type: None,
@@ -1482,7 +1480,7 @@ pub(super) fn build_pass_desk_check_pm_present_signal(number: u64) -> ClientMess
 /// PM-facing "present to ryan" signal (#259 — previously PM had to
 /// scan chat for designer's PASS). For infrastructure, the single
 /// PM-facing signal is sufficient since PM is also the acceptor.
-pub(super) fn build_pass_desk_check_signals(
+pub(crate) fn build_pass_desk_check_signals(
     number: u64,
     story_type: crate::board::domain::StoryType,
 ) -> Vec<ClientMessage> {
@@ -1494,9 +1492,9 @@ pub(super) fn build_pass_desk_check_signals(
     signals
 }
 
-pub(super) fn build_fail_desk_check_signal(number: u64, reason: &str) -> ClientMessage {
+pub(crate) fn build_fail_desk_check_signal(number: u64, reason: &str) -> ClientMessage {
     ClientMessage::Send {
-        text: format!("#{number} failed desk-check: {reason} — needs fixes."),
+        text: format!("#{number} failed desk-check: {reason}."),
         to: Some(vec!["dev".to_string()]),
         addressee: Some("dev".to_string()),
         message_type: None,
@@ -1509,7 +1507,7 @@ pub(super) fn build_fail_desk_check_signal(number: u64, reason: &str) -> ClientM
 /// mid-chat discoveries risk eviction by compaction. Narrow v1 per
 /// the 2026-04-17 team converge — externalize-only, no compound retro
 /// or promotion audit. Agents decide what to save through own lens.
-pub(super) fn build_iteration_close_signal() -> ClientMessage {
+pub(crate) fn build_iteration_close_signal() -> ClientMessage {
     ClientMessage::Send {
         text: "[iteration-close] iteration closing — flush unsaved findings now via \
                Write / save_lesson / add_principle / doc edit. pre-close context is \

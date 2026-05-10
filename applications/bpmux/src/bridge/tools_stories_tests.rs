@@ -442,15 +442,12 @@ fn pass_desk_check_signals_ambiguous_routes_to_ryan_and_pm() {
 }
 
 #[test]
-fn pass_desk_check_pm_present_signal_cues_presentation() {
-    // Text distinguishes the PM-facing signal from the Ryan-facing
-    // "ready for acceptance" — each role gets the call-to-action
-    // appropriate to their role in the accept loop.
+fn pass_desk_check_pm_present_signal_targets_pm_with_passed_text() {
     if let ClientMessage::Send { text, to, .. } = build_pass_desk_check_pm_present_signal(210) {
         assert!(text.contains("#210"), "story number in text: {text}");
         assert!(
-            text.contains("present to ryan"),
-            "PM signal should cue presentation, got: {text}"
+            text.contains("passed designer desk-check"),
+            "PM signal should state desk-check passed, got: {text}"
         );
         assert_eq!(to.as_ref().unwrap(), &["pm"]);
     } else {
@@ -493,8 +490,8 @@ fn fail_desk_check_signal_includes_reason() {
             "story number should be in text: {text}"
         );
         assert!(
-            text.contains("needs fixes"),
-            "fail signal should say 'needs fixes': {text}"
+            text.contains("failed desk-check"),
+            "fail signal should state failed desk-check: {text}"
         );
     }
 }

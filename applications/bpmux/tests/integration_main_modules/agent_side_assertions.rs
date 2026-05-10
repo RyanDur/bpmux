@@ -140,20 +140,16 @@ fn deliver_story_signal_routes_desk_check_to_designer_not_dev() {
             "deliver_story Ok status should report signals sent. got: {status_str}"
         );
 
-        // Designer receives the desk-check addressed signal.
         designer
             .capture
-            .wait_for("desk-check needed", WAIT_PRESENCE_TIMEOUT)
+            .wait_for("#199 (deliver-target) delivered", WAIT_PRESENCE_TIMEOUT)
             .await;
 
-        // Negative: dev does NOT receive the desk-check signal. Give
-        // the broadcast time to propagate, then snapshot dev's
-        // captured notifications and assert the phrase is absent.
         tokio::time::sleep(Duration::from_millis(500)).await;
         let dev_seen = dev.capture.received().join("\n");
         assert!(
-            !dev_seen.contains("desk-check needed"),
-            "dev should NOT receive the designer-addressed desk-check signal. got:\n{dev_seen}"
+            !dev_seen.contains("#199 (deliver-target) delivered"),
+            "dev should NOT receive the designer-addressed delivery signal. got:\n{dev_seen}"
         );
 
         dev.close().await;

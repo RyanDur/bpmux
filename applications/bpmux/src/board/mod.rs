@@ -12,6 +12,8 @@ mod conflict_classifier_tests;
 #[cfg(test)]
 mod domain_tests;
 #[cfg(test)]
+mod event_messages_audit_tests;
+#[cfg(test)]
 mod orchestrator_tests;
 #[cfg(test)]
 mod store_tests;
