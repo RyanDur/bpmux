@@ -818,6 +818,10 @@ impl ServerHandler for BridgeServer {
                     let current_name = name.lock().await;
                     tools::handle_reorder_iteration_marker(&args, &current_name, &ws_tx).await
                 }
+                "delete_iteration_marker" => {
+                    let current_name = name.lock().await;
+                    tools::handle_delete_iteration_marker(&args, &current_name, port).await
+                }
                 "list_iteration_markers" => tools::handle_list_iteration_markers(port).await,
                 "get_usage" => tools::handle_get_usage(&args).await,
                 "view_tokens" => tools::handle_view_tokens(&ws_tx).await,
@@ -987,6 +991,9 @@ pub fn build_advertised_tools() -> Vec<rmcp::model::Tool> {
         crate::mcp::tools::remove_stories_from_iteration_tool(
             "Batch-remove stories from their current iteration group in icebox_unified (#1267, Epic #1189). PM ONLY. Sister-inverse of add_stories_to_iteration: each story moves to the unscheduled bucket (immediately below the bottom-most marker). Args: story_ids (array of story numbers). Atomic-rollback on save-failure. Idempotent on already-unscheduled stories; no-op on stories not in icebox_unified.",
         ),
+        crate::mcp::tools::delete_iteration_marker_tool(
+            "Direct-delete an iteration marker from markers-store + icebox_unified WITHOUT firing close_iteration (#1269, Epic #1189). PM ONLY. Errors with named blockers if the marker's group contains any stories — caller must use remove_stories_from_iteration to clear first. Errors if marker_id not found. Atomic snapshot+rollback. Args: marker_id (from list_iteration_markers).",
+        ),
         crate::mcp::tools::label_story_tool(
             "Add a label to a story (ready, blocked, icebox, deferred). PM ONLY — other roles are rejected.",
         ),
@@ -1116,6 +1123,7 @@ pub const DISPATCHED_TOOL_NAMES: &[&str] = &[
     "add_stories_to_iteration",
     "remove_stories_from_iteration",
     "reorder_iteration_marker",
+    "delete_iteration_marker",
     "list_iteration_markers",
     "get_usage",
     "view_tokens",

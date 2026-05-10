@@ -1136,6 +1136,39 @@ pub async fn post_remove_stories_from_iteration(
     }
 }
 
+pub async fn post_delete_iteration_marker(
+    State(session): State<Arc<session::Session>>,
+    axum::extract::Path(marker_id): axum::extract::Path<u64>,
+) -> impl IntoResponse {
+    let priority_path = match session::priority::default_priority_path() {
+        Ok(p) => p,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                json_headers(),
+                err_body(&format!("priority path: {e}")),
+            );
+        }
+    };
+    let outcome = crate::bridge::tools::apply_delete_iteration_marker(
+        &priority_path,
+        &session.dir,
+        marker_id,
+    );
+    match outcome {
+        Ok(o) => {
+            broadcast_board_invalidate(&session);
+            let json = serde_json::to_string(&o).unwrap_or_else(|_| "{}".to_string());
+            (StatusCode::OK, json_headers(), json)
+        }
+        Err(e) => (
+            StatusCode::BAD_REQUEST,
+            json_headers(),
+            err_body(&format!("delete_iteration_marker: {e}")),
+        ),
+    }
+}
+
 pub async fn post_close_iteration(
     State(session): State<Arc<session::Session>>,
     axum::Extension(tracker): axum::Extension<TrackerHandle>,

@@ -399,6 +399,10 @@ pub async fn run_server(
             axum::routing::post(transport::rest::post_remove_stories_from_iteration),
         )
         .route(
+            "/api/iteration_markers/{id}/delete",
+            axum::routing::post(transport::rest::post_delete_iteration_marker),
+        )
+        .route(
             "/api/unfurl",
             axum::routing::get(transport::unfurl::get_unfurl).with_state(unfurl_cache),
         )

@@ -11,6 +11,8 @@ mod capture_screen;
 mod classifier_misfire;
 #[cfg(test)]
 mod close_iteration_tests;
+#[cfg(test)]
+mod delete_iteration_marker_tests;
 mod dev_in_flight;
 mod get_bookmark;
 mod get_briefing;
@@ -104,10 +106,12 @@ pub(in crate::bridge) use get_usage::handle_get_usage;
 #[cfg(test)]
 pub(in crate::bridge) use iteration_markers::apply_reorder_iteration_marker;
 pub(crate) use iteration_markers::{
-    apply_add_stories_to_iteration, apply_remove_stories_from_iteration,
+    apply_add_stories_to_iteration, apply_delete_iteration_marker,
+    apply_remove_stories_from_iteration,
 };
 pub(in crate::bridge) use iteration_markers::{
-    handle_add_stories_to_iteration, handle_create_iteration_marker, handle_list_iteration_markers,
+    handle_add_stories_to_iteration, handle_create_iteration_marker,
+    handle_delete_iteration_marker, handle_list_iteration_markers,
     handle_remove_stories_from_iteration, handle_reorder_iteration_marker,
 };
 pub(in crate::bridge) use list_epic_children::handle_list_epic_children;
