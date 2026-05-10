@@ -107,5 +107,9 @@ fn theme_pool_contains_canonical_constellations() {
     assert!(pool.contains(&"Cassiopeia"));
     assert!(pool.contains(&"Cygnus"));
     assert!(pool.contains(&"Andromeda"));
-    assert!(CONSTELLATION_THEME_POOL.len() >= 30);
+    // #1257: exact-equality assertion so a regression that shrinks the
+    // pool turns this test red instead of silently passing under the
+    // prior `>= 30` lower-bound. Spot-check assertions above (AC 2)
+    // confirm enumeration completeness for the canonical names.
+    assert_eq!(CONSTELLATION_THEME_POOL.len(), 48);
 }
