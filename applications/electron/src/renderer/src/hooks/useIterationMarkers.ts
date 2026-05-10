@@ -22,17 +22,17 @@ interface Args {
 /// (post-prevSeenCount) message carries the BOARD_INVALIDATE_MARKER
 /// text. Pure-fn lets vitest exercise the gate logic without a React
 /// renderer.
-export function shouldRefetchMarkers(
+export const shouldRefetchMarkers = (
   messages: ChatMessage[] | undefined,
   prevSeenCount: number
-): boolean {
+): boolean => {
   if (messages === undefined) return false
   if (messages.length <= prevSeenCount) return false
   const fresh = messages.slice(prevSeenCount)
   return fresh.some((m) => m.text === BOARD_INVALIDATE_MARKER)
 }
 
-export function useIterationMarkers({ apiBase, authToken, messages }: Args): IterationMarker[] {
+export const useIterationMarkers = ({ apiBase, authToken, messages }: Args): IterationMarker[] => {
   const [markers, setMarkers] = useState<IterationMarker[]>([])
   const seenMessageCountRef = useRef<number>(messages?.length ?? 0)
 
