@@ -107,7 +107,8 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
   const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
   const iterationMarkers = useIterationMarkers({
     apiBase: bridge?.apiBase,
-    authToken: bridge?.authToken
+    authToken: bridge?.authToken,
+    messages
   })
   const [data, setData] = useState<BoardResponse | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
