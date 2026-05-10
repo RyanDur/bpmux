@@ -152,6 +152,33 @@ where
     Ok(outcome)
 }
 
+/// #1268 backward-resilience boot-time auto-heal. Story entries in
+/// `icebox_unified` whose canonical `workflow_state` is NOT `Icebox`
+/// represent state-divergence — substrate regression, pre-#1266
+/// stale state, or rollback to older binaries left them behind.
+/// Truth-source is canonical workflow_state per story (NOT legacy
+/// `columns["icebox"]`, which #1261's `apply_reorder_story` actively
+/// empties for icebox-resident stories). Sister-class to #1266
+/// forward cascade-clean at boot-axis. Returns count of evicted
+/// Story entries. Marker entries preserved unconditionally.
+/// Stories absent from `canonical_states` are preserved (treated as
+/// unknown rather than stale — safer default).
+pub fn auto_heal_icebox_unified_via_workflow_state(
+    index: &mut PriorityIndex,
+    canonical_states: &std::collections::HashMap<u64, super::super::board::domain::StoryState>,
+) -> usize {
+    let before = index.icebox_unified.len();
+    index.icebox_unified.retain(|item| match item {
+        IceboxItem::Marker { .. } => true,
+        IceboxItem::Story { number } => match canonical_states.get(number) {
+            Some(super::super::board::domain::StoryState::Icebox) => true,
+            Some(_) => false,
+            None => true,
+        },
+    });
+    before - index.icebox_unified.len()
+}
+
 /// #1258 α-substrate migration: populate `icebox_unified` from legacy
 /// state (separate `columns["icebox"]` story-list + per-session
 /// iteration markers) on first server boot post-α-ship. Idempotent:

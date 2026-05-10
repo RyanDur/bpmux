@@ -392,6 +392,168 @@ fn rollback_priority_save_failure_short_circuits_before_markers() {
     );
 }
 
+use crate::board::domain::StoryState;
+
+fn states_map(entries: &[(u64, StoryState)]) -> std::collections::HashMap<u64, StoryState> {
+    entries.iter().copied().collect()
+}
+
+#[test]
+fn auto_heal_evicts_stories_whose_workflow_state_is_not_icebox() {
+    let mut index = PriorityIndex::default();
+    index.icebox_unified.push(IceboxItem::Story { number: 100 });
+    index.icebox_unified.push(IceboxItem::Story { number: 200 });
+    index.icebox_unified.push(IceboxItem::Marker { id: 7 });
+    index.icebox_unified.push(IceboxItem::Story { number: 300 });
+    let states = states_map(&[
+        (100, StoryState::Accepted),
+        (200, StoryState::Icebox),
+        (300, StoryState::Ready),
+    ]);
+    let evicted = auto_heal_icebox_unified_via_workflow_state(&mut index, &states);
+    assert_eq!(evicted, 2);
+    assert_eq!(
+        index.icebox_unified,
+        vec![
+            IceboxItem::Story { number: 200 },
+            IceboxItem::Marker { id: 7 },
+        ]
+    );
+}
+
+#[test]
+fn auto_heal_clean_state_is_no_op() {
+    let mut index = PriorityIndex::default();
+    index.icebox_unified.push(IceboxItem::Story { number: 100 });
+    index.icebox_unified.push(IceboxItem::Marker { id: 7 });
+    let states = states_map(&[(100, StoryState::Icebox)]);
+    let evicted = auto_heal_icebox_unified_via_workflow_state(&mut index, &states);
+    assert_eq!(evicted, 0);
+    assert_eq!(index.icebox_unified.len(), 2);
+}
+
+#[test]
+fn auto_heal_preserves_all_markers_unconditionally() {
+    let mut index = PriorityIndex::default();
+    index.icebox_unified.push(IceboxItem::Marker { id: 7 });
+    index.icebox_unified.push(IceboxItem::Story { number: 999 });
+    index.icebox_unified.push(IceboxItem::Marker { id: 8 });
+    let states = states_map(&[(999, StoryState::Delivered)]);
+    let evicted = auto_heal_icebox_unified_via_workflow_state(&mut index, &states);
+    assert_eq!(evicted, 1);
+    assert_eq!(
+        index.icebox_unified,
+        vec![IceboxItem::Marker { id: 7 }, IceboxItem::Marker { id: 8 }]
+    );
+}
+
+#[test]
+fn auto_heal_preserves_icebox_state_stories() {
+    let mut index = PriorityIndex::default();
+    index.icebox_unified.push(IceboxItem::Story { number: 100 });
+    index.icebox_unified.push(IceboxItem::Story { number: 200 });
+    let states = states_map(&[(100, StoryState::Icebox), (200, StoryState::Icebox)]);
+    let evicted = auto_heal_icebox_unified_via_workflow_state(&mut index, &states);
+    assert_eq!(evicted, 0);
+    assert_eq!(index.icebox_unified.len(), 2);
+}
+
+#[test]
+fn auto_heal_preserves_stories_with_unknown_state() {
+    let mut index = PriorityIndex::default();
+    index.icebox_unified.push(IceboxItem::Story { number: 100 });
+    index.icebox_unified.push(IceboxItem::Story { number: 200 });
+    let states = states_map(&[(100, StoryState::Icebox)]);
+    let evicted = auto_heal_icebox_unified_via_workflow_state(&mut index, &states);
+    assert_eq!(evicted, 0);
+    assert_eq!(index.icebox_unified.len(), 2);
+}
+
+#[test]
+fn auto_heal_idempotent_second_run_is_no_op() {
+    let mut index = PriorityIndex::default();
+    index.icebox_unified.push(IceboxItem::Story { number: 100 });
+    index.icebox_unified.push(IceboxItem::Story { number: 200 });
+    index.icebox_unified.push(IceboxItem::Marker { id: 7 });
+    let states = states_map(&[(100, StoryState::Accepted), (200, StoryState::Icebox)]);
+    let first = auto_heal_icebox_unified_via_workflow_state(&mut index, &states);
+    assert_eq!(first, 1);
+    let second = auto_heal_icebox_unified_via_workflow_state(&mut index, &states);
+    assert_eq!(second, 0);
+    assert_eq!(
+        index.icebox_unified,
+        vec![
+            IceboxItem::Story { number: 200 },
+            IceboxItem::Marker { id: 7 },
+        ]
+    );
+}
+
+#[tokio::test]
+async fn auto_heal_boot_integration_evicts_stale_writes_clean_priority() {
+    use crate::board::RefreshDriver;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::orchestrator::SyncOrchestrator;
+    use crate::board::store::BoardStore;
+    use crate::session::Session;
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let dir = tempfile::tempdir().unwrap();
+    let priority_path = dir.path().join("priority.json");
+    let mut dirty = PriorityIndex::default();
+    dirty.icebox_unified.push(IceboxItem::Story { number: 100 });
+    dirty.icebox_unified.push(IceboxItem::Story { number: 200 });
+    dirty.icebox_unified.push(IceboxItem::Marker { id: 7 });
+    dirty.icebox_unified.push(IceboxItem::Story { number: 300 });
+    save_priority(&priority_path, &dirty).unwrap();
+
+    let session_dir = dir.path().join("session");
+    std::fs::create_dir_all(&session_dir).unwrap();
+    let (wake_tx, _wake_rx) = tokio::sync::broadcast::channel(16);
+    let session = Arc::new(Session::new(session_dir, "test".to_string(), wake_tx));
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let ts = Utc.with_ymd_and_hms(2026, 5, 1, 0, 0, 0).unwrap();
+    adapter.seed_stories(vec![
+        super::super::super::board::domain::Story::new_minimal(
+            100,
+            "s100".to_string(),
+            StoryState::Accepted,
+            ts,
+            "pm".to_string(),
+        ),
+        super::super::super::board::domain::Story::new_minimal(
+            200,
+            "s200".to_string(),
+            StoryState::Icebox,
+            ts,
+            "pm".to_string(),
+        ),
+        super::super::super::board::domain::Story::new_minimal(
+            300,
+            "s300".to_string(),
+            StoryState::Ready,
+            ts,
+            "pm".to_string(),
+        ),
+    ]);
+    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(store, adapter));
+
+    crate::auto_heal_icebox_at_path(&priority_path, session, refresh).await;
+
+    let healed = load_priority(&priority_path);
+    assert_eq!(
+        healed.icebox_unified,
+        vec![
+            IceboxItem::Story { number: 200 },
+            IceboxItem::Marker { id: 7 },
+        ],
+        "stale accepted/ready stories evicted; icebox-state + marker preserved"
+    );
+}
+
 #[test]
 fn migrate_re_run_is_no_op() {
     let mut index = PriorityIndex::default();

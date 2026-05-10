@@ -244,6 +244,7 @@ pub async fn run_server(
             session.clone(),
             crate::bridge::drain_interval_from_env(),
         ));
+        tokio::spawn(crate::auto_heal_icebox_at_boot(session.clone(), refresh));
     }
 
     // #372: spawn the push-based CI state watcher. Polls GitHub at

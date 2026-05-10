@@ -211,6 +211,72 @@ fn migrate_icebox_unified_at_boot(session: &session::Session) {
     }
 }
 
+/// #1268 backward-resilience boot-time auto-heal. Forces a one-shot
+/// `refresh_all` so the canonical workflow_state is available, then
+/// evicts Story entries from `icebox_unified` whose state ≠ Icebox.
+/// Pairs with #1266 forward cascade-clean at boot axis. Failures are
+/// logged via diag — heal is best-effort and must not block server
+/// boot. On successful eviction, emits an `IceboxMigration` state-
+/// delta so renderers refetch (sister-pattern to #1258 migration).
+pub async fn auto_heal_icebox_at_boot(
+    session: Arc<session::Session>,
+    refresh: Arc<dyn board::RefreshDriver>,
+) {
+    let Ok(path) = session::priority::default_priority_path() else {
+        return;
+    };
+    auto_heal_icebox_at_path(&path, session, refresh).await;
+}
+
+pub async fn auto_heal_icebox_at_path(
+    path: &std::path::Path,
+    session: Arc<session::Session>,
+    refresh: Arc<dyn board::RefreshDriver>,
+) {
+    if let Err(e) = refresh.refresh_all().await {
+        session::diag::log_diag(&format!(
+            "[#1268] auto-heal: refresh_all failed: {e}; skipping heal"
+        ));
+        return;
+    }
+    let mut index = session::priority::load_priority(path);
+    let canonical_states: std::collections::HashMap<u64, board::domain::StoryState> = refresh
+        .all_stories()
+        .into_iter()
+        .map(|s| (s.number, s.state))
+        .collect();
+    let evicted = session::priority::auto_heal_icebox_unified_via_workflow_state(
+        &mut index,
+        &canonical_states,
+    );
+    if evicted == 0 {
+        return;
+    }
+    if let Err(e) = session::priority::save_priority(path, &index) {
+        session::diag::log_diag(&format!("[#1268] auto-heal: save failed: {e}"));
+        return;
+    }
+    session::diag::log_diag(&format!(
+        "[#1268] auto-heal: evicted {evicted} stale story entries from icebox_unified"
+    ));
+    let payload = session::message::StateDeltaPayload::IceboxMigration {
+        entries: index.icebox_unified.len(),
+    };
+    let msg = session::Message {
+        from: "bpmux".to_string(),
+        text: String::new(),
+        ts: chrono::Utc::now(),
+        message_type: session::MessageType::StateDelta,
+        state_delta: Some(payload),
+        ..session::Message::default()
+    };
+    if let Err(e) = session.broadcast(&msg) {
+        session::diag::log_diag(&format!(
+            "[#1268] auto-heal: state-delta broadcast failed: {e}"
+        ));
+    }
+}
+
 fn run_server_only(cli: &Cli) -> anyhow::Result<()> {
     let base = resolve_session_base(&cli.session_base)?;
     std::fs::create_dir_all(&base)?;
