@@ -1234,11 +1234,6 @@ pub(super) async fn handle_reorder_story(
     Ok(format!("#{number} moved to position {position} in {state}"))
 }
 
-/// #1261: priority-mutation step extracted for direct test coverage.
-/// `handle_reorder_story` parses MCP args + delegates here. Tests fire
-/// this with a tempdir path to assert state="icebox" routes to
-/// `icebox_unified` (canonical α-substrate) instead of legacy
-/// `columns["icebox"]` only.
 pub(super) fn apply_reorder_story(
     path: &std::path::Path,
     state: &str,
@@ -1247,30 +1242,35 @@ pub(super) fn apply_reorder_story(
 ) -> Result<(), String> {
     let mut index = crate::session::priority::load_priority(path);
     if state == "icebox" {
-        // Route icebox-state through canonical α-substrate
-        // (icebox_unified) per #1258 commit 1a40396 +
-        // `feedback_rest_mcp_canonical_mutation_parity`. Pre-#1261 the
-        // MCP path mutated only `columns["icebox"]`, diverging from
-        // `icebox_unified` which is what the renderer + close_iteration
-        // ceremony read.
-        crate::session::priority::reorder_icebox_unified(
-            &mut index,
-            crate::session::priority::IceboxItem::Story { number },
-            position,
-        );
-        // Self-repair backward-compat: remove the story from legacy
-        // `columns["icebox"]` so canonical state lives in unified only.
-        // Existing dual-state divergence (story in both legacy + unified)
-        // collapses to unified-only on next reorder call.
-        if let Some(col) = index.columns.get_mut("icebox") {
-            col.retain(|&n| n != number);
-        }
+        place_icebox_story_in_canonical_unified(&mut index, number, position);
+        evict_story_from_legacy_icebox_column(&mut index, number);
     } else {
         crate::session::priority::reorder(&mut index, state, number, position);
     }
     crate::session::priority::save_priority(path, &index)
         .map_err(|e| format!("save priority: {e}"))?;
     Ok(())
+}
+
+fn place_icebox_story_in_canonical_unified(
+    index: &mut crate::session::priority::PriorityIndex,
+    number: u64,
+    position: usize,
+) {
+    crate::session::priority::reorder_icebox_unified(
+        index,
+        crate::session::priority::IceboxItem::Story { number },
+        position,
+    );
+}
+
+fn evict_story_from_legacy_icebox_column(
+    index: &mut crate::session::priority::PriorityIndex,
+    number: u64,
+) {
+    if let Some(col) = index.columns.get_mut("icebox") {
+        col.retain(|&n| n != number);
+    }
 }
 
 /// Add a comment to a story — any agent. Durable issue-audit-trail
