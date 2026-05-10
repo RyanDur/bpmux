@@ -323,3 +323,55 @@ fn fold_save_priority_persisted_atomic_when_markers_save_succeeds() {
     assert_eq!(markers_store.markers.len(), 1);
     assert_eq!(markers_store.markers[0].id, outcome.marker.id);
 }
+
+#[test]
+fn markers_save_failure_rolls_back_priority_to_snapshot() {
+    let priority_dir = tempfile::tempdir().unwrap();
+    let priority_path = priority_dir.path().join("priority.json");
+    seed_priority(
+        &priority_path,
+        r#"{"icebox_unified":[{"kind":"marker","id":7}]}"#,
+    );
+    let snapshot_before_call = load_priority(&priority_path);
+    let unwritable_session_dir =
+        std::path::PathBuf::from("/dev/null/no_such_session_dir_for_rollback_test");
+
+    let result = apply_add_stories_to_iteration(
+        &priority_path,
+        &unwritable_session_dir,
+        &[100, 200],
+        Some(7),
+        None,
+    );
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(
+        err.contains("priority rolled back") || err.contains("rollback"),
+        "rollback path must surface in error message: {err}"
+    );
+    let priority_index = load_priority(&priority_path);
+    assert_eq!(
+        priority_index.icebox_unified, snapshot_before_call.icebox_unified,
+        "priority must match pre-call snapshot after markers-save-failure rollback"
+    );
+}
+
+#[test]
+fn priority_save_failure_short_circuits_before_markers_save() {
+    let priority_path = std::path::PathBuf::from("/dev/null/no_such_priority_dir/priority.json");
+    let session_dir = tempfile::tempdir().unwrap();
+
+    let result = apply_add_stories_to_iteration(
+        &priority_path,
+        session_dir.path(),
+        &[100, 200],
+        None,
+        Some("Lyra".to_string()),
+    );
+    assert!(result.is_err());
+    let markers_store = crate::session::iteration_markers::load(session_dir.path());
+    assert!(
+        markers_store.markers.is_empty(),
+        "markers store must be untouched when priority save fails first"
+    );
+}
