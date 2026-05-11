@@ -61,19 +61,21 @@ jobs:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
       - name: Verify $HOME-isolation (#1285)
-        # Fail-loud if any toolchain action wrote into Ryan's user $HOME.
-        # Sister-shape regression test inside CI itself (AC 6-7).
+        # Verify that the toolchain action wrote into the redirected
+        # CARGO_HOME / RUSTUP_HOME paths rather than Ryan's user $HOME.
+        # This is the self-verifying regression gate (AC 6-7). Positive-
+        # assertion shape: check that the isolated paths contain the
+        # toolchain binaries AND that they resolve via PATH. We don't
+        # check Ryan's $HOME directly (mtime-newer comparison is
+        # unreliable on a long-lived self-hosted runner with shared
+        # user state).
         run: |
-          if [ -d "$HOME/.rustup/toolchains" ] && find "$HOME/.rustup/toolchains" -mindepth 1 -maxdepth 1 -newer "$GITHUB_WORKSPACE" -print -quit | grep -q . ; then
-            echo "::error::#1285 violation: $HOME/.rustup/toolchains was modified during this CI run; isolation broke."
-            exit 1
-          fi
-          if [ -f "$HOME/.cargo/bin/rustup" ] && [ "$HOME/.cargo/bin/rustup" -nt "$GITHUB_WORKSPACE" ]; then
-            echo "::error::#1285 violation: $HOME/.cargo/bin/rustup was modified during this CI run."
-            exit 1
-          fi
-          echo "#1285: $HOME-isolation OK; CARGO_HOME=$CARGO_HOME RUSTUP_HOME=$RUSTUP_HOME"
-          ls -la "$CARGO_HOME/bin" || true
+          test -n "$CARGO_HOME" || { echo "::error::#1285: CARGO_HOME unset"; exit 1; }
+          test -n "$RUSTUP_HOME" || { echo "::error::#1285: RUSTUP_HOME unset"; exit 1; }
+          test -d "$CARGO_HOME/bin" || { echo "::error::#1285: $CARGO_HOME/bin missing — toolchain action did not respect CARGO_HOME redirect"; exit 1; }
+          test -d "$RUSTUP_HOME/toolchains" || { echo "::error::#1285: $RUSTUP_HOME/toolchains missing — toolchain action did not respect RUSTUP_HOME redirect"; exit 1; }
+          which cargo | grep -q "$CARGO_HOME/bin" || { echo "::error::#1285: cargo resolves outside isolated CARGO_HOME ($(which cargo))"; exit 1; }
+          echo "#1285: $HOME-isolation verified; cargo at $(which cargo)"
       - name: Format check
         run: cargo fmt --check
       - name: Clippy
