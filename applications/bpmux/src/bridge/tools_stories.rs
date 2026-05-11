@@ -1417,6 +1417,23 @@ pub(super) async fn handle_close_story(
         r.drain_pending()
             .await
             .map_err(|e| format!("#{number} close push failed: {e}"))?;
+        // #1296 diagnostic: surface post-drain BoardStore state for the
+        // closed story. Linux CI workers=4 deterministically fails to
+        // see the story in accepted column; this log will reveal whether
+        // BoardStore state is correct (state=Accepted, is_closed=true)
+        // post-drain OR diverged (state=InProgress + is_closed=true
+        // would render in retired column instead of accepted; state=Icebox
+        // would render in icebox column).
+        if let Some(story) = r.story(number) {
+            crate::session::diag::log_diag(&format!(
+                "[#1296] close_story post-drain #{number}: state={:?} is_closed={} raw_labels={:?}",
+                story.state, story.is_closed, story.raw_labels
+            ));
+        } else {
+            crate::session::diag::log_diag(&format!(
+                "[#1296] close_story post-drain #{number}: story ABSENT from BoardStore"
+            ));
+        }
         broadcast_board_invalidate(ws_tx).await;
         return Ok(format!("#{number} closed: {reason}"));
     }
