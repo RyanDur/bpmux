@@ -452,8 +452,12 @@ contract!(
 fn file_global() -> (Arc<dyn GlobalStore>, tempfile::TempDir) {
     let dir = tempfile::tempdir().unwrap();
     let priority_path = dir.path().join("priority.json");
-    let global: Arc<dyn GlobalStore> =
-        Arc::new(FileGlobalStore::new().with_priority_path(priority_path));
+    let identity_dir = dir.path().join("identity");
+    let global: Arc<dyn GlobalStore> = Arc::new(
+        FileGlobalStore::new()
+            .with_priority_path(priority_path)
+            .with_identity_dir(identity_dir),
+    );
     (global, dir)
 }
 
@@ -528,6 +532,54 @@ global_contract!(
         assert_eq!(loaded.icebox_unified.len(), 2);
     }
 );
+
+// ── GlobalStore: identity (#1290 Phase-3 step 2) ──
+
+global_contract!(
+    load_identity_default_when_unset,
+    |global: &dyn GlobalStore| {
+        let idx = global.load_identity("dev");
+        assert!(idx.values.is_empty());
+    }
+);
+
+global_contract!(
+    save_then_load_identity_roundtrips,
+    |global: &dyn GlobalStore| {
+        let mut idx = crate::session::identity::IdentityIndex::default();
+        idx.values.push(crate::session::identity::IdentityValue {
+            name: "test-name".to_string(),
+            description: "test-value".to_string(),
+            principles: vec![],
+        });
+        global.save_identity("dev", &idx).unwrap();
+        let loaded = global.load_identity("dev");
+        assert_eq!(loaded.values.len(), 1);
+        assert_eq!(loaded.values[0].name, "test-name");
+        assert_eq!(loaded.values[0].description, "test-value");
+    }
+);
+
+global_contract!(per_role_identity_isolation, |global: &dyn GlobalStore| {
+    let mut dev_idx = crate::session::identity::IdentityIndex::default();
+    dev_idx
+        .values
+        .push(crate::session::identity::IdentityValue {
+            name: "k".to_string(),
+            description: "dev-val".to_string(),
+            principles: vec![],
+        });
+    let mut pm_idx = crate::session::identity::IdentityIndex::default();
+    pm_idx.values.push(crate::session::identity::IdentityValue {
+        name: "k".to_string(),
+        description: "pm-val".to_string(),
+        principles: vec![],
+    });
+    global.save_identity("dev", &dev_idx).unwrap();
+    global.save_identity("pm", &pm_idx).unwrap();
+    assert_eq!(global.load_identity("dev").values[0].description, "dev-val");
+    assert_eq!(global.load_identity("pm").values[0].description, "pm-val");
+});
 
 // ── BoardStore ↔ Storage trait integration (#1289 Phase-1 step 2) ──
 
