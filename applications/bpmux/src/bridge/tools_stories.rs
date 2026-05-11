@@ -459,18 +459,27 @@ fn extract_path_from_line(line: &str) -> Option<String> {
     let candidate = token
         .trim_end_matches(['.', ',', ';', '`', '*', '_'])
         .trim();
-    if candidate.contains('/')
-        && [
-            ".rs", ".ts", ".tsx", ".js", ".jsx", ".py", ".go", ".rb", ".java", ".kt", ".cs",
-            ".cpp", ".c", ".h", ".hpp", ".swift", ".m",
-        ]
-        .iter()
-        .any(|ext| candidate.ends_with(ext))
-    {
+    if candidate.contains('/') && is_acceptable_acceptance_test_path(candidate) {
         Some(candidate.to_string())
     } else {
         None
     }
+}
+
+fn is_acceptable_acceptance_test_path(candidate: &str) -> bool {
+    const SOURCE_EXTS: &[&str] = &[
+        ".rs", ".ts", ".tsx", ".js", ".jsx", ".py", ".go", ".rb", ".java", ".kt", ".cs", ".cpp",
+        ".c", ".h", ".hpp", ".swift", ".m",
+    ];
+    const OPS_EXTS: &[&str] = &[".md", ".yml", ".yaml", ".toml", ".json"];
+    const OPS_PREFIXES: &[&str] = &["docs/", ".github/workflows/"];
+    if SOURCE_EXTS.iter().any(|ext| candidate.ends_with(ext)) {
+        return true;
+    }
+    OPS_PREFIXES
+        .iter()
+        .any(|prefix| candidate.starts_with(prefix))
+        && OPS_EXTS.iter().any(|ext| candidate.ends_with(ext))
 }
 
 fn user_facing_story_type(t: crate::board::domain::StoryType) -> bool {

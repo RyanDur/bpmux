@@ -3077,6 +3077,48 @@ fn parse_acceptance_test_path_handles_label_prefix() {
 }
 
 #[test]
+fn parse_acceptance_test_path_accepts_md_under_docs_prefix() {
+    let body = "## Acceptance test path\n\ndocs/ops/self-hosted-runner-setup.md\n\n";
+    assert_eq!(
+        parse_acceptance_test_path(body),
+        Some("docs/ops/self-hosted-runner-setup.md".to_string())
+    );
+}
+
+#[test]
+fn parse_acceptance_test_path_accepts_yml_under_github_workflows_prefix() {
+    let body = "## Acceptance test path\n\n.github/workflows/ci.yml\n\n";
+    assert_eq!(
+        parse_acceptance_test_path(body),
+        Some(".github/workflows/ci.yml".to_string())
+    );
+}
+
+#[test]
+fn parse_acceptance_test_path_rejects_md_outside_ops_prefix() {
+    let body = "## Acceptance test path\n\nsrc/lib.md\n\n";
+    assert_eq!(parse_acceptance_test_path(body), None);
+}
+
+#[test]
+fn parse_acceptance_test_path_accepts_source_extension_under_ops_prefix() {
+    let body = "## Acceptance test path\n\ndocs/research/foo.rs\n\n";
+    assert_eq!(
+        parse_acceptance_test_path(body),
+        Some("docs/research/foo.rs".to_string())
+    );
+}
+
+#[test]
+fn parse_acceptance_test_path_accepts_toml_under_docs_prefix() {
+    let body = "## Acceptance test path\n\ndocs/config/example.toml\n\n";
+    assert_eq!(
+        parse_acceptance_test_path(body),
+        Some("docs/config/example.toml".to_string())
+    );
+}
+
+#[test]
 fn parse_acceptance_test_path_returns_none_when_no_path_shaped_line() {
     let body = "## Acceptance test path\n\n- Just prose\n- More prose\n\n";
     assert_eq!(parse_acceptance_test_path(body), None);
