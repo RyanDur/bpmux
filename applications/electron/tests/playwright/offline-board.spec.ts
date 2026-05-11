@@ -84,7 +84,14 @@ test.describe('#1158 — offline-first board', () => {
     writeFileSync(outboxPath, JSON.stringify(seedEvents))
 
     const { app, win, backendPort } = await launchIsolatedWithWindow({
-      extraEnv: { BPMUX_BOARD_OUTBOX_PATH: outboxPath, BPMUX_TEST_MODE: '1' }
+      extraEnv: {
+        BPMUX_BOARD_OUTBOX_PATH: outboxPath,
+        BPMUX_TEST_MODE: '1',
+        // #1290 Part B: opt out of the default MemoryStorage — this
+        // test seeds the outbox via filesystem write + asserts the
+        // backend loads it. MemoryStorage doesn't read on-disk seeds.
+        BPMUX_STORAGE_BACKEND: 'file'
+      }
     })
     try {
       const token = await win.evaluate(
@@ -159,7 +166,13 @@ test.describe('#1158 — offline-first board', () => {
     writeFileSync(outboxPath, JSON.stringify([event]))
 
     const first = await launchIsolatedWithWindow({
-      extraEnv: { BPMUX_BOARD_OUTBOX_PATH: outboxPath, BPMUX_TEST_MODE: '1' }
+      extraEnv: {
+        BPMUX_BOARD_OUTBOX_PATH: outboxPath,
+        BPMUX_TEST_MODE: '1',
+        // #1290 Part B: F5 restart-survival asserts outbox file persists
+        // across electron restart — MemoryStorage doesn't persist.
+        BPMUX_STORAGE_BACKEND: 'file'
+      }
     })
     try {
       const token1 = await first.win.evaluate(
@@ -177,7 +190,11 @@ test.describe('#1158 — offline-first board', () => {
     expect(persisted.length).toBe(1)
 
     const second = await launchIsolatedWithWindow({
-      extraEnv: { BPMUX_BOARD_OUTBOX_PATH: outboxPath, BPMUX_TEST_MODE: '1' }
+      extraEnv: {
+        BPMUX_BOARD_OUTBOX_PATH: outboxPath,
+        BPMUX_TEST_MODE: '1',
+        BPMUX_STORAGE_BACKEND: 'file'
+      }
     })
     try {
       const token2 = await second.win.evaluate(

@@ -23,7 +23,13 @@ test.describe('human-side E2E #476 — direct-action — pinned list', () => {
             pinned_at: '2026-04-22T16:01:00Z'
           }
         ]
-      }
+      },
+      // #1290 Part B: GET /api/pins reads pins.json directly from disk
+      // rather than through Storage::load_pins (REST-endpoint rewiring
+      // out of scope per #1290). MemoryStorage seeds wouldn't be visible
+      // to the renderer's pin-count fetch — opt back to FileStorage so
+      // seed_pins → save_pins → disk write → pin-count visible.
+      extraEnv: { BPMUX_STORAGE_BACKEND: 'file' }
     })
     try {
       const consoleErrors: string[] = []

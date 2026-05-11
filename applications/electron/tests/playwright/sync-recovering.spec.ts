@@ -16,7 +16,12 @@ test.describe('#1159 — corrupted board-store surfaces "recovering" indicator s
       extraEnv: {
         BPMUX_BOARD_STORE_PATH: storePath,
         BPMUX_TEST_MODE: '1',
-        BPMUX_TEST_INGEST_FAIL: '1'
+        BPMUX_TEST_INGEST_FAIL: '1',
+        // #1290 Part B: opt out of the default MemoryStorage — this
+        // test seeds a corrupted disk file + asserts the renderer
+        // surfaces 'recovering' state. MemoryStorage doesn't read
+        // disk files at all.
+        BPMUX_STORAGE_BACKEND: 'file'
       }
     })
     try {

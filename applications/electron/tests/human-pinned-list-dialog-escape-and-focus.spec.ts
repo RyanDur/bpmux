@@ -23,7 +23,12 @@ test.describe('human-side E2E #496 — pinned-list native dialog', () => {
             pinned_at: '2026-04-22T16:01:00Z'
           }
         ]
-      }
+      },
+      // #1290 Part B: GET /api/pins bypasses Storage trait (reads
+      // pins.json directly from disk; REST-endpoint rewiring out of
+      // scope per #1290). Opt back to FileStorage so seeded pins
+      // reach the renderer's pin-count fetch.
+      extraEnv: { BPMUX_STORAGE_BACKEND: 'file' }
     })
     try {
       const consoleErrors: string[] = []

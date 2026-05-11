@@ -156,6 +156,15 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
       // the routes are not mounted (production servers cannot reach
       // them).
       BPMUX_TEST_SEED_API: '1',
+      // #1289 + #1290: route bpmux's session storage through
+      // MemoryStorage so per-test backend-startup disk-I/O cost is
+      // eliminated — the substrate-class that empirically falsified
+      // macOS self-hosted e2e migration on f9ebe47/c8ba878/5bdb235.
+      // Test fixtures still seed via the storage trait (post-Part A),
+      // so seeds become observable identically to the FileStorage
+      // path. Tests that need FileStorage explicitly (e.g., asserting
+      // on-disk artifacts) can override via opts.extraEnv.
+      BPMUX_STORAGE_BACKEND: 'memory',
       ...ghEnvOverrides,
       ...(opts.extraEnv ?? {})
     }
