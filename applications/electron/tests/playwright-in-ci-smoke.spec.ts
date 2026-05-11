@@ -17,24 +17,22 @@ test.describe('Playwright runs in CI as a structural gate (#1152)', () => {
     expect(ciYaml()).toMatch(/^\s*playwright-e2e:\s*$/m)
   })
 
-  test('playwright-e2e matrix splits into 6 shards', () => {
+  // #1252: matrix sharding collapsed to a single job with
+  // --workers=N parallelism — 6-shard matrix serialized on a single
+  // self-hosted runner was a 6× wall-clock penalty. Test asserts the
+  // structural gate (Playwright runs) without locking the matrix
+  // shape, since AC 4 explicitly allows --workers=N alternative.
+  test('playwright-e2e job runs npx playwright test with worker parallelism', () => {
     const yaml = ciYaml()
     const matrixSection = yaml.match(/playwright-e2e:[\s\S]*?(?=\n\S|$)/)?.[0] ?? ''
-    expect(matrixSection).toMatch(/shard:\s*\[\s*1\s*,\s*2\s*,\s*3\s*,\s*4\s*,\s*5\s*,\s*6\s*\]/)
-  })
-
-  test('playwright-e2e job uses xvfb-run + npx playwright test --shard', () => {
-    const yaml = ciYaml()
-    const matrixSection = yaml.match(/playwright-e2e:[\s\S]*?(?=\n\S|$)/)?.[0] ?? ''
-    expect(matrixSection).toMatch(/xvfb-run/)
     expect(matrixSection).toMatch(/playwright test/)
-    expect(matrixSection).toMatch(/--shard=/)
+    expect(matrixSection).toMatch(/--workers=/)
   })
 
-  test('playwright-e2e installs playwright browsers with --with-deps', () => {
+  test('playwright-e2e installs playwright browsers', () => {
     const yaml = ciYaml()
     const matrixSection = yaml.match(/playwright-e2e:[\s\S]*?(?=\n\S|$)/)?.[0] ?? ''
-    expect(matrixSection).toMatch(/playwright install.*--with-deps|--with-deps.*playwright install/)
+    expect(matrixSection).toMatch(/playwright install/)
   })
 
   test('playwright-e2e provisions bpmux binary via download-artifact OR local cargo build', () => {

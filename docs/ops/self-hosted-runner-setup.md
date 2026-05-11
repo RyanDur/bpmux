@@ -222,68 +222,78 @@ Ryan physically rebooted his M1 Pro Mac; runner auto-restarted via LaunchAgent
 - Bridge MCP-tools post-cutover verification (#1254 slice 4)
 - Multi-runner pool / multi-platform matrix (deferred)
 
-## Slice-2 partial migration (#1252) — empirical post-mortem
+## Slice-2 full migration (#1252)
 
-Initial full-migration attempt (a9c02b9 → f9ebe47) targeted all 3
-jobs to `[self-hosted, macos, arm64]`. Empirical CI on f9ebe47
-revealed **playwright-e2e migration is unworkable** on bpmux-mac-m1
-substrate:
+Per Ryan-directive 2026-05-11 03:07 UTC ("keep migrating everything
+to the self hosted runner"), all 3 ci.yml jobs migrated to
+`[self-hosted, macos, arm64]`. Substrate-conflict surfaced during
+initial impl (overnight) drove two empirical design-decisions:
 
-- Single-shard wall-clock: 37 min (vs. ~4 min GHA-hosted Linux) =
-  9× slower
-- 3 of 5 completed shards FAILED with `Test timeout of 30000ms
-  exceeded` on stable tests (desk-check-357, desk-check-361, etc.)
-- Full matrix serialized would be 5-6 hours wall-clock — falsifier
-  (g) "≤ 2× GHA-hosted baseline" decisively tripped
-- Root cause class: macOS WindowServer doing real rendering work for
-  each Electron window spawned + per-test 30s timeout too tight for
-  the throttled-by-real-display environment
+| Job | Final state | macOS adaptations |
+|-----|-------------|--------------------|
+| `build-bpmux` | `[self-hosted, macos, arm64]` | produces aarch64-apple-darwin binary; consumed by Playwright shards on same host (no cross-arch copy) |
+| `test` (fmt/clippy/nextest/audit) | `[self-hosted, macos, arm64]` | cargo cross-platform; empirical 2-3 min wall-clock with warm Swatinem cache |
+| `playwright-e2e` | `[self-hosted, macos, arm64]` | dropped `xvfb-run` (macOS native windowing); dropped `--with-deps` (no apt on macOS); Playwright cache path `~/Library/Caches/ms-playwright`; sharding-design rebalanced (see below) |
 
-**Reverted-to-ubuntu-latest for e2e + build-bpmux**; only `test` job
-remains on self-hosted (where slice-2a evidence showed 2-3 min
-wall-clock + zero failures):
+### Sharding-design rebalance (AC 4 dev-call)
 
-| Job | Final state | Reason |
-|-----|-------------|--------|
-| `build-bpmux` | ubuntu-latest (reverted) | produces Linux x64 binary used by Playwright on ubuntu-latest matrix |
-| `test` (fmt/clippy/cargo test/audit) | `[self-hosted, macos, arm64]` | empirical: 2-3 min wall-clock; cache warm via Swatinem; no failures |
-| `playwright-e2e` (6-shard) | ubuntu-latest (reverted) | needs substrate work — testTimeout, sharding rethink, off-screen positioning, possibly Docker-Linux-on-Mac. Sister-story file. |
+Original 6-shard matrix was designed for parallel ubuntu-latest
+runners. On a single self-hosted runner, the matrix serializes —
+each shard pays full setup cost (actions/checkout + setup-node +
+npm-ci + Playwright-install) × 6, which dominates wall-clock.
 
-**UI-overlap mitigation: DEFERRED to follow-up story.**
+**Collapsed to single job + `--workers=8`**: one shard runs all
+tests with 8 Playwright workers in parallel, utilizing M1 Pro's 8
+performance cores. Setup cost amortizes once; Playwright's worker
+pool handles per-test parallelism within the shard.
 
-Initial attempt: BPMUX_TEST_MODE env gating `mainWindow.show()` —
-broke `real-backend.spec.ts:671 unfurls` + `human-observes-accepted-state-after-close-story.spec.ts:17`
-because macOS aggressively throttles hidden windows (renderer
-animations + fetch-handlers run slower; 10s `toBeVisible` timeouts
-exceed). Reverted in same commit.
+### Per-test timeout bump (testTimeout 30s → 90s)
 
-Alternative mitigations (designer's menu) remaining:
-- Off-screen window positioning (`x: -10_000, y: -10_000`) — window
-  technically visible, no throttling, user doesn't see it
-- Playwright `_electron.launch(args: ['--headless'])` — Electron may
-  not honor; needs verification
-- Reduce concurrency (`workers: 1`) during Ryan-live-hours
-- Off-hours CI cron (4am UTC schedule)
+Overnight CI on f9ebe47 showed stable tests (desk-check-357,
+desk-check-361) timing out at Playwright's 30s default — macOS
+WindowServer does real rendering work for each Electron window
+spawned (vs Linux+xvfb virtual framebuffer in GHA-hosted), making
+per-test wall-clock ~3× slower for Electron-window-heavy specs.
+`playwright.config.ts:timeout: 90_000` widens the ceiling enough
+for empirical passability without hiding hangs (anything >90s
+indicates a real hang, not WindowServer overhead).
 
-File follow-up substrate-story for owner-call on which mitigation to
-ship; this commit leaves UI-overlap unmitigated (tests visible on
-Ryan's screen during CI runs).
+### Sister-substrate-Bugs (impl deferred to standalone slices)
 
-**Trade-offs:**
+- **#1285 — $HOME-contention**: dtolnay/rust-toolchain action wipes
+  `~/.cargo/bin/rustup` mid-CI-run because the runner runs as
+  Ryan's user with Ryan's $HOME. Sister of
+  `feedback_no_broad_pkill_during_shared_session`. Fired LIVE 2×
+  during overnight impl. Mitigation impl deferred to #1285;
+  options: runner-isolated $HOME / action-cache redirect / action
+  replacement.
+- **#1286 — UI-overlap mitigation**: bpmux-mac-m1 IS Ryan's live
+  dev machine. Playwright tests spawn Electron windows during CI
+  runs. Initial mitigation attempt (BPMUX_TEST_MODE hidden-windows)
+  broke real-backend.spec.ts:671 + human-observes-* tests because
+  macOS throttles hidden windows below 10s timeouts; option
+  retired empirically. Designer's revised menu (3 options): (a)
+  off-screen window positioning (`x: -10_000, y: -10_000`) — window
+  technically visible, no throttling, user doesn't see it; (b)
+  reduce concurrency (`workers: 1`) during Ryan-live-hours; (c)
+  off-hours CI cron (4am UTC schedule). Mitigation impl deferred to
+  #1286.
 
-- ✓ All 3 jobs run on bpmux-mac-m1 — maximum quota-bypass
+### Trade-offs
+
+- ✓ All 3 jobs run on bpmux-mac-m1 — maximum quota-bypass at Epic
+  #1247 goal
 - ✓ Same-host artifact: build-bpmux produces arm64-darwin binary,
-  Playwright shards consume on same arch (no cross-arch copy)
-- ✓ Real-workload validation (cargo build + clippy + nextest +
-  Playwright e2e) — beyond synthetic smoke
-- ✓ UI-overlap mitigated via test-mode hidden windows
-- ✗ 6-shard matrix serializes on single runner (was 6× parallel on
-  GHA-hosted Linux); wall-clock impact ≈ 6× e2e duration
+  Playwright consumes on same arch (no cross-arch copy or wrong-
+  arch crash)
+- ✓ Real-workload validation: cargo build + clippy + nextest +
+  Playwright e2e all on bpmux-mac-m1
 - ⚠ Resource contention with Ryan's live work on same Mac (M1 Pro
   32GB; cargo + Playwright concurrent ≈ 4-8GB peak)
-- ⚠ Sharding-optimization deferred: 1×`--workers=8` may be faster on
-  single runner than 6 serialized shards; baseline measurement
-  pending CI run observations
+- ⚠ UI-overlap class until #1286 mitigation lands (Electron windows
+  spawn during CI runs visible on Ryan's screen)
+- ⚠ $HOME-contention class until #1285 mitigation lands (rustup
+  re-install required after each CI test job)
 
 **Deferred to future iteration:**
 

@@ -48,4 +48,18 @@ ignore = [
     #     quinn bump their rand dep, or if bpmux ever adds logger
     #     instrumentation around rand calls.
     "RUSTSEC-2026-0097",
+
+    # RUSTSEC-2026-0122 — rkyv 0.8.15 advisory.
+    # Transitive via webrtc 0.17.1 → dtls 0.17.1 → rkyv 0.8.15.
+    # bpmux uses webrtc for peer-to-peer chat transport (
+    # applications/bpmux/src/transport/webrtc.rs); dtls handles the
+    # encrypted UDP handshake; rkyv is used internally by dtls for
+    # protocol-state serialization (NOT for over-the-wire message
+    # decoding — that's protobuf/STUN/SCTP framing). bpmux's WebRTC
+    # peers are trusted (Ryan + his AI roles); inbound DTLS bytes
+    # are authenticated via the handshake before rkyv deserialization
+    # is reached, so attacker-controlled bytes don't hit the rkyv
+    # surface in our usage. Re-evaluate when webrtc/dtls bump rkyv
+    # OR if bpmux ever opens WebRTC to untrusted peers.
+    "RUSTSEC-2026-0122",
 ]
