@@ -162,6 +162,11 @@ pub trait GlobalStore: Send + Sync {
         role: &str,
         index: &super::identity::IdentityIndex,
     ) -> Result<(), std::io::Error>;
+
+    // #1290 Phase-3 step 3: per-role briefing (~/.bpmux/briefings/{role}.md).
+    // Raw markdown string; 1MB cap enforced in production save path.
+    fn load_briefing(&self, role: &str) -> String;
+    fn save_briefing(&self, role: &str, content: &str) -> Result<(), std::io::Error>;
 }
 
 /// File-based global store — production impl.
@@ -172,6 +177,9 @@ pub struct FileGlobalStore {
     /// #1290: per-instance identity-dir override. Tests inject
     /// tempdirs to avoid sharing `~/.bpmux/identity/`.
     identity_dir: Option<PathBuf>,
+    /// #1290: per-instance briefings-dir override. Tests inject
+    /// tempdirs to avoid sharing `~/.bpmux/briefings/`.
+    briefings_dir: Option<PathBuf>,
 }
 
 impl Default for FileGlobalStore {
@@ -185,6 +193,7 @@ impl FileGlobalStore {
         Self {
             priority_path: None,
             identity_dir: None,
+            briefings_dir: None,
         }
     }
 
@@ -203,6 +212,13 @@ impl FileGlobalStore {
         self
     }
 
+    /// #1290: opt-in briefings-dir override (per-role files live under
+    /// this dir as `{role}.md`).
+    pub fn with_briefings_dir(mut self, dir: PathBuf) -> Self {
+        self.briefings_dir = Some(dir);
+        self
+    }
+
     fn resolve_priority_path(&self) -> Result<PathBuf, String> {
         if let Some(p) = &self.priority_path {
             return Ok(p.clone());
@@ -215,6 +231,13 @@ impl FileGlobalStore {
             return Ok(d.clone());
         }
         super::identity::default_identity_dir()
+    }
+
+    fn resolve_briefings_dir(&self) -> PathBuf {
+        if let Some(d) = &self.briefings_dir {
+            return d.clone();
+        }
+        super::briefing::briefings_dir()
     }
 }
 
@@ -248,12 +271,21 @@ impl GlobalStore for FileGlobalStore {
         let dir = self.resolve_identity_dir()?;
         super::identity::save_identity(&dir, role, index)
     }
+
+    fn load_briefing(&self, role: &str) -> String {
+        super::briefing::load_briefing_in(&self.resolve_briefings_dir(), role)
+    }
+
+    fn save_briefing(&self, role: &str, content: &str) -> Result<(), std::io::Error> {
+        super::briefing::save_briefing_in(&self.resolve_briefings_dir(), role, content)
+    }
 }
 
 /// In-memory global store — tests-only impl.
 pub struct MemoryGlobalStore {
     priority: Mutex<super::priority::PriorityIndex>,
     identity: Mutex<HashMap<String, super::identity::IdentityIndex>>,
+    briefings: Mutex<HashMap<String, String>>,
 }
 
 impl Default for MemoryGlobalStore {
@@ -267,6 +299,7 @@ impl MemoryGlobalStore {
         Self {
             priority: Mutex::new(super::priority::PriorityIndex::default()),
             identity: Mutex::new(HashMap::new()),
+            briefings: Mutex::new(HashMap::new()),
         }
     }
 }
@@ -302,6 +335,23 @@ impl GlobalStore for MemoryGlobalStore {
             .lock()
             .unwrap_or_else(|e| e.into_inner())
             .insert(role.to_string(), index.clone());
+        Ok(())
+    }
+
+    fn load_briefing(&self, role: &str) -> String {
+        self.briefings
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(role)
+            .cloned()
+            .unwrap_or_default()
+    }
+
+    fn save_briefing(&self, role: &str, content: &str) -> Result<(), std::io::Error> {
+        self.briefings
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .insert(role.to_string(), content.to_string());
         Ok(())
     }
 }

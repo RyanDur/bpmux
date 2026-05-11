@@ -453,10 +453,12 @@ fn file_global() -> (Arc<dyn GlobalStore>, tempfile::TempDir) {
     let dir = tempfile::tempdir().unwrap();
     let priority_path = dir.path().join("priority.json");
     let identity_dir = dir.path().join("identity");
+    let briefings_dir = dir.path().join("briefings");
     let global: Arc<dyn GlobalStore> = Arc::new(
         FileGlobalStore::new()
             .with_priority_path(priority_path)
-            .with_identity_dir(identity_dir),
+            .with_identity_dir(identity_dir)
+            .with_briefings_dir(briefings_dir),
     );
     (global, dir)
 }
@@ -579,6 +581,34 @@ global_contract!(per_role_identity_isolation, |global: &dyn GlobalStore| {
     global.save_identity("pm", &pm_idx).unwrap();
     assert_eq!(global.load_identity("dev").values[0].description, "dev-val");
     assert_eq!(global.load_identity("pm").values[0].description, "pm-val");
+});
+
+// ── GlobalStore: briefing (#1290 Phase-3 step 3) ──
+
+global_contract!(
+    load_briefing_empty_when_unset,
+    |global: &dyn GlobalStore| {
+        let body = global.load_briefing("dev");
+        assert!(body.is_empty());
+    }
+);
+
+global_contract!(
+    save_then_load_briefing_roundtrips,
+    |global: &dyn GlobalStore| {
+        global
+            .save_briefing("dev", "# briefing\n\ntest content")
+            .unwrap();
+        let loaded = global.load_briefing("dev");
+        assert_eq!(loaded, "# briefing\n\ntest content");
+    }
+);
+
+global_contract!(per_role_briefing_isolation, |global: &dyn GlobalStore| {
+    global.save_briefing("dev", "dev-content").unwrap();
+    global.save_briefing("pm", "pm-content").unwrap();
+    assert_eq!(global.load_briefing("dev"), "dev-content");
+    assert_eq!(global.load_briefing("pm"), "pm-content");
 });
 
 // ── BoardStore ↔ Storage trait integration (#1289 Phase-1 step 2) ──
