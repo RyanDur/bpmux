@@ -44,6 +44,8 @@ mod tests {
                 line: Some(121),
                 error_message: "Test timeout 30000ms exceeded.".to_string(),
                 retry_count: 1,
+                stage: None,
+                class: None,
             }],
         }
     }

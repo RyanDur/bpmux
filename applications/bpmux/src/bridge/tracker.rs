@@ -1156,9 +1156,23 @@ impl OctocrabStoryTracker {
             };
             let parsed =
                 crate::bridge::tools::parse_playwright_failures_from_log(run_id, &log_text);
-            for mut failure in parsed.failures {
-                failure.shard_id = Some(job.name.clone());
-                all_failures.push(failure);
+            if parsed.failures.is_empty() {
+                // #1293 fallback: failed job whose log doesn't match
+                // the Playwright pattern (clippy / fmt / audit / build
+                // / setup / runner-level). Emit a non_test_failure
+                // record with tail-of-log so callers see ACTIONABLE
+                // content instead of empty failures[]. Closes the
+                // opaque-CI-failure class that drove the #1285 4-commit
+                // revert-cycle.
+                let fallback =
+                    crate::bridge::tools::build_non_test_failure_record(&job.name, &log_text);
+                all_failures.push(fallback);
+            } else {
+                for mut failure in parsed.failures {
+                    failure.shard_id = Some(job.name.clone());
+                    failure.stage = Some(job.name.clone());
+                    all_failures.push(failure);
+                }
             }
         }
         Ok(crate::bridge::tools::CiRunFailures {

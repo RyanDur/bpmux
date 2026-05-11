@@ -13,6 +13,22 @@ pub struct CiTestFailure {
     pub error_message: String,
     #[serde(default)]
     pub retry_count: u32,
+    /// #1293: the workflow-job stage that produced this failure (GH
+    /// Actions job name, e.g., "test", "build-bpmux", "playwright-e2e
+    /// (5)"). `None` for legacy parser paths.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stage: Option<String>,
+    /// #1293: failure class for caller-side routing. Known values:
+    /// `"playwright"` for parsed test-level failures;
+    /// `"non_test_failure"` for the fallback path covering clippy /
+    /// fmt / audit / build / setup / runner-level failures where the
+    /// `error_message` carries a tail snippet of the job log so
+    /// callers can iterate against ground-truth rather than empty
+    /// `failures[]`. Closes the opaque-CI-failure class that drove
+    /// the #1285 4-commit revert-cycle. `None` for legacy callers
+    /// pre-dating the discriminator.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub class: Option<String>,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
@@ -112,6 +128,8 @@ pub fn parse_playwright_failures_from_log(run_id: u64, raw_log: &str) -> CiRunFa
             line,
             error_message,
             retry_count,
+            stage: None,
+            class: Some("playwright".to_string()),
         });
     }
     CiRunFailures {
@@ -122,6 +140,49 @@ pub fn parse_playwright_failures_from_log(run_id: u64, raw_log: &str) -> CiRunFa
             "failure".to_string()
         },
         failures,
+    }
+}
+
+/// #1293: fallback failure-record builder for failed jobs whose log
+/// doesn't match the Playwright test-failure pattern (clippy / fmt /
+/// audit / build / setup / runner-level failures). Returns a single
+/// `CiTestFailure` with class="non_test_failure" carrying a
+/// tail-snippet of the log so callers see ACTIONABLE content instead
+/// of empty `failures[]`. The tail snippet stops at the last
+/// non-empty line and captures up to `MAX_TAIL_LINES` lines so the
+/// payload stays bounded.
+///
+/// Closes the opaque-CI-failure class that drove the #1285 4-commit
+/// revert-cycle (today's empirical pain). Per #1293 AC 8, the
+/// fallback record is load-bearing: explicit "non_test_failure" beats
+/// empty `failures[]` because callers need ground-truth for iteration.
+pub fn build_non_test_failure_record(job_name: &str, raw_log: &str) -> CiTestFailure {
+    const MAX_TAIL_LINES: usize = 50;
+    let stripped_log: String = raw_log
+        .lines()
+        .map(strip_gh_actions_timestamp_prefix)
+        .collect::<Vec<&str>>()
+        .join("\n");
+    let lines: Vec<&str> = stripped_log
+        .lines()
+        .filter(|l| !l.trim().is_empty())
+        .collect();
+    let tail_start = lines.len().saturating_sub(MAX_TAIL_LINES);
+    let tail: String = lines[tail_start..].join("\n");
+    let error_message = if tail.is_empty() {
+        "(job log empty or unparseable — workflow conclusion=failure)".to_string()
+    } else {
+        tail
+    };
+    CiTestFailure {
+        shard_id: Some(job_name.to_string()),
+        test_name: format!("(non-test failure in job: {job_name})"),
+        file: None,
+        line: None,
+        error_message,
+        retry_count: 0,
+        stage: Some(job_name.to_string()),
+        class: Some("non_test_failure".to_string()),
     }
 }
 
@@ -301,5 +362,79 @@ Running 47 tests using 4 workers, shard 6 of 6
         let json = serde_json::to_value(&err).unwrap();
         assert_eq!(json["kind"], "rate_limited");
         assert_eq!(json["wait_secs"], 60);
+    }
+
+    // #1293 fallback record tests
+
+    #[test]
+    fn fallback_record_for_clippy_failure_carries_tail_of_log() {
+        let log = "\
+2026-05-11T14:00:00Z Compiling bpmux v0.1.0
+2026-05-11T14:00:01Z error[E0308]: mismatched types
+2026-05-11T14:00:01Z   --> applications/bpmux/src/lib.rs:42:15
+2026-05-11T14:00:01Z    |
+2026-05-11T14:00:02Z error: aborting due to previous error
+2026-05-11T14:00:02Z Process completed with exit code 101.
+";
+        let record = build_non_test_failure_record("build-bpmux", log);
+        assert_eq!(record.class.as_deref(), Some("non_test_failure"));
+        assert_eq!(record.stage.as_deref(), Some("build-bpmux"));
+        assert_eq!(record.shard_id.as_deref(), Some("build-bpmux"));
+        assert!(
+            record.error_message.contains("error[E0308]"),
+            "tail-of-log carries the compiler error: {}",
+            record.error_message
+        );
+        assert!(
+            record.error_message.contains("exit code 101"),
+            "tail captures step exit code: {}",
+            record.error_message
+        );
+    }
+
+    #[test]
+    fn fallback_record_for_empty_log_returns_explicit_placeholder() {
+        let record = build_non_test_failure_record("test", "");
+        assert_eq!(record.class.as_deref(), Some("non_test_failure"));
+        assert!(
+            record.error_message.contains("empty or unparseable"),
+            "explicit placeholder beats empty failures[]: {}",
+            record.error_message
+        );
+    }
+
+    #[test]
+    fn fallback_record_bounded_by_max_tail_lines() {
+        let mut log = String::new();
+        for i in 0..200 {
+            log.push_str(&format!("line {i}\n"));
+        }
+        let record = build_non_test_failure_record("audit", &log);
+        let line_count = record.error_message.lines().count();
+        assert!(
+            line_count <= 50,
+            "MAX_TAIL_LINES bounds payload: {line_count}"
+        );
+        assert!(
+            record.error_message.contains("line 199"),
+            "tail captures the LAST lines (not first): {}",
+            record.error_message
+        );
+    }
+
+    #[test]
+    fn playwright_failure_carries_playwright_class() {
+        let log = "\
+  ✘  1 tests/foo.spec.ts:10:5 › suite › my test
+
+    Error: assertion failed
+";
+        let report = parse_playwright_failures_from_log(42, log);
+        assert_eq!(report.failures.len(), 1);
+        assert_eq!(
+            report.failures[0].class.as_deref(),
+            Some("playwright"),
+            "test-level failures carry class=\"playwright\" for caller-side routing"
+        );
     }
 }

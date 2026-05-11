@@ -94,6 +94,7 @@ pub(in crate::bridge) use get_briefing::handle_get_briefing;
 pub(crate) use get_ci_log_for_run::CiLogError;
 pub(crate) use get_ci_log_for_run::CiRunFailures;
 pub(crate) use get_ci_log_for_run::CiTestFailure;
+pub(crate) use get_ci_log_for_run::build_non_test_failure_record;
 pub(in crate::bridge) use get_ci_log_for_run::handle_get_ci_log_for_run;
 pub(crate) use get_ci_log_for_run::parse_playwright_failures_from_log;
 pub(crate) use get_ci_state::CiStateReport;
