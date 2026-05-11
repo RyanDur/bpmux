@@ -157,12 +157,6 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
       BPMUX_BOARD_STORE_PATH: defaultBoardStorePath,
       BPMUX_BOARD_OUTBOX_PATH: defaultBoardOutboxPath,
       BPMUX_LOG: defaultLogPath,
-      // #1289 AC 12: opt every Playwright test into MemoryStorage
-      // by default. The bpmux subprocess constructs Session with
-      // MemoryStorage instead of FileStorage, eliminating per-test
-      // backend-startup-disk-I/O cost. Tests that need disk-backed
-      // semantics can override via extraEnv.
-      BPMUX_STORAGE_BACKEND: 'memory',
       ...ghEnvOverrides,
       ...(opts.extraEnv ?? {})
     }
