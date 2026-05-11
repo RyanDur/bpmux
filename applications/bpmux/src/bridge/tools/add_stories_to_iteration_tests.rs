@@ -375,3 +375,119 @@ fn priority_save_failure_short_circuits_before_markers_save() {
         "markers store must be untouched when priority save fails first"
     );
 }
+
+// #1270: input-validation guard — `add_stories_to_iteration` rejects
+// non-icebox inputs pre-apply. Sister-pattern to #1258 r3 close_iteration
+// guard + #1268 truth-source via RefreshDriver.
+mod guard_1270 {
+    use crate::board::RefreshDriver;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState};
+    use crate::board::orchestrator::SyncOrchestrator;
+    use crate::board::store::BoardStore;
+    use crate::transport::rest::collect_add_stories_non_icebox_blockers;
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    fn seed_story(number: u64, state: StoryState) -> Story {
+        Story::new_minimal(
+            number,
+            format!("title-{number}"),
+            state,
+            Utc.with_ymd_and_hms(2026, 5, 10, 0, 0, 0).unwrap(),
+            "pm".to_string(),
+        )
+    }
+
+    async fn build_refresh_with_stories(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
+        let store = Arc::new(BoardStore::new());
+        let adapter = Arc::new(InMemorySourceAdapter::new());
+        adapter.seed_stories(stories);
+        let orch = SyncOrchestrator::new(store, adapter);
+        let orch: Arc<dyn RefreshDriver> = Arc::new(orch);
+        orch.refresh_all().await.unwrap();
+        orch
+    }
+
+    #[tokio::test]
+    async fn guard_blocks_accepted_state_input() {
+        let refresh =
+            build_refresh_with_stories(vec![seed_story(1261, StoryState::Accepted)]).await;
+        let blockers = collect_add_stories_non_icebox_blockers(Some(&refresh), &[1261]).await;
+        assert_eq!(blockers.len(), 1);
+        assert_eq!(blockers[0].number, 1261);
+        assert_eq!(blockers[0].state, "accepted");
+    }
+
+    #[tokio::test]
+    async fn guard_passes_when_all_inputs_icebox() {
+        let refresh = build_refresh_with_stories(vec![
+            seed_story(100, StoryState::Icebox),
+            seed_story(200, StoryState::Icebox),
+        ])
+        .await;
+        let blockers = collect_add_stories_non_icebox_blockers(Some(&refresh), &[100, 200]).await;
+        assert!(blockers.is_empty());
+    }
+
+    #[tokio::test]
+    async fn guard_blocks_each_non_icebox_input_state() {
+        let refresh = build_refresh_with_stories(vec![
+            seed_story(100, StoryState::Ready),
+            seed_story(200, StoryState::InProgress),
+            seed_story(300, StoryState::DeskCheck),
+            seed_story(400, StoryState::Delivered),
+            seed_story(500, StoryState::Accepted),
+        ])
+        .await;
+        let blockers =
+            collect_add_stories_non_icebox_blockers(Some(&refresh), &[100, 200, 300, 400, 500])
+                .await;
+        assert_eq!(blockers.len(), 5);
+        let numbers: Vec<u64> = blockers.iter().map(|b| b.number).collect();
+        assert!(numbers.contains(&100));
+        assert!(numbers.contains(&200));
+        assert!(numbers.contains(&300));
+        assert!(numbers.contains(&400));
+        assert!(numbers.contains(&500));
+    }
+
+    #[tokio::test]
+    async fn guard_mixed_input_reports_only_non_icebox() {
+        let refresh = build_refresh_with_stories(vec![
+            seed_story(100, StoryState::Icebox),
+            seed_story(200, StoryState::Accepted),
+            seed_story(300, StoryState::Icebox),
+        ])
+        .await;
+        let blockers =
+            collect_add_stories_non_icebox_blockers(Some(&refresh), &[100, 200, 300]).await;
+        assert_eq!(blockers.len(), 1);
+        assert_eq!(blockers[0].number, 200);
+        assert_eq!(blockers[0].state, "accepted");
+    }
+
+    #[tokio::test]
+    async fn guard_blocks_unknown_story_not_in_board() {
+        let refresh = build_refresh_with_stories(vec![seed_story(100, StoryState::Icebox)]).await;
+        let blockers = collect_add_stories_non_icebox_blockers(Some(&refresh), &[100, 9999]).await;
+        assert_eq!(blockers.len(), 1);
+        assert_eq!(blockers[0].number, 9999);
+        assert_eq!(blockers[0].state, "not-loaded");
+    }
+
+    #[tokio::test]
+    async fn guard_empty_input_returns_no_blockers() {
+        let refresh = build_refresh_with_stories(vec![seed_story(100, StoryState::Accepted)]).await;
+        let blockers = collect_add_stories_non_icebox_blockers(Some(&refresh), &[]).await;
+        assert!(blockers.is_empty());
+    }
+
+    #[tokio::test]
+    async fn guard_no_refresh_driver_returns_no_blockers() {
+        // None refresh signals test/diag mode where guard cannot
+        // validate; matches `collect_iteration_close_blockers` shape.
+        let blockers = collect_add_stories_non_icebox_blockers(None, &[100, 200]).await;
+        assert!(blockers.is_empty());
+    }
+}

@@ -1068,6 +1068,7 @@ pub struct AddStoriesToIterationRequest {
 
 pub async fn post_add_stories_to_iteration(
     State(session): State<Arc<session::Session>>,
+    axum::Extension(test_refresh): axum::Extension<crate::server::TestRefreshHandle>,
     axum::Json(body): axum::Json<AddStoriesToIterationRequest>,
 ) -> impl IntoResponse {
     let priority_path = match session::priority::default_priority_path() {
@@ -1080,6 +1081,12 @@ pub async fn post_add_stories_to_iteration(
             );
         }
     };
+    let blockers =
+        collect_add_stories_non_icebox_blockers(test_refresh.as_ref(), &body.story_ids).await;
+    if !blockers.is_empty() {
+        let blocked_body = build_add_stories_blocked_body(&blockers);
+        return (StatusCode::CONFLICT, json_headers(), blocked_body);
+    }
     let outcome = crate::bridge::tools::apply_add_stories_to_iteration(
         &priority_path,
         &session.dir,
@@ -1274,6 +1281,82 @@ pub async fn post_close_iteration(
         "deleted_marker_id": outcome.deleted_marker_id,
     });
     (StatusCode::OK, json_headers(), body.to_string())
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub(crate) struct AddStoriesNonIceboxBlocker {
+    pub number: u64,
+    pub title: String,
+    pub state: String,
+}
+
+/// Pre-mutation guard for `add_stories_to_iteration` (#1270).
+/// Returns the input stories whose canonical workflow_state != Icebox
+/// (or which can't be located in the board substrate at all). Empty
+/// vec means safe-to-apply; non-empty means caller must reject with
+/// 409 Conflict naming the blockers. Mirrors
+/// `collect_iteration_close_blockers` shape — sister-pattern to
+/// #1258 r3 + #1268 truth-source via RefreshDriver.
+pub(crate) async fn collect_add_stories_non_icebox_blockers(
+    refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
+    story_ids: &[u64],
+) -> Vec<AddStoriesNonIceboxBlocker> {
+    if story_ids.is_empty() {
+        return Vec::new();
+    }
+    let Some(refresh) = refresh else {
+        return Vec::new();
+    };
+    let mut stories = refresh.all_stories();
+    if stories.is_empty() {
+        if let Err(e) = refresh.refresh_all().await {
+            session::diag::log_diag(&format!(
+                "[#1270 guard] refresh_all failed: {e}; treating as no blockers"
+            ));
+            return Vec::new();
+        }
+        stories = refresh.all_stories();
+    }
+    let by_number: std::collections::HashMap<u64, &crate::board::domain::Story> =
+        stories.iter().map(|s| (s.number, s)).collect();
+    story_ids
+        .iter()
+        .filter_map(|id| match by_number.get(id) {
+            Some(story) if matches!(story.state, crate::board::domain::StoryState::Icebox) => None,
+            Some(story) => Some(AddStoriesNonIceboxBlocker {
+                number: story.number,
+                title: story.title.clone(),
+                state: story.state.as_str().to_string(),
+            }),
+            None => Some(AddStoriesNonIceboxBlocker {
+                number: *id,
+                title: String::new(),
+                state: "not-loaded".to_string(),
+            }),
+        })
+        .collect()
+}
+
+fn build_add_stories_blocked_body(blockers: &[AddStoriesNonIceboxBlocker]) -> String {
+    let names: Vec<String> = blockers
+        .iter()
+        .map(|b| {
+            if b.title.is_empty() {
+                format!("#{} ({})", b.number, b.state)
+            } else {
+                format!("#{} ({} — {})", b.number, b.state, b.title)
+            }
+        })
+        .collect();
+    let body = serde_json::json!({
+        "error": format!(
+            "add_stories_to_iteration blocked: {} input stories are not in icebox state: {}",
+            blockers.len(),
+            names.join(", ")
+        ),
+        "blockers": blockers,
+    });
+    body.to_string()
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
