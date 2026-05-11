@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
+#![allow(unsafe_code)]
 
 //! Tests for #1289: Store-trait DI refactor.
 //!
@@ -558,6 +559,104 @@ fn board_store_load_from_empty_storage_returns_empty() {
         Arc::new(MemoryStorage::new(PathBuf::from("/tmp/board-empty-marker")));
     let store = BoardStore::load_from_storage(storage.as_ref()).unwrap();
     assert!(store.all_stories().is_empty());
+}
+
+// ── AC 12 substrate-enabler proof (#1289) ──
+//
+// Verifies the `BPMUX_STORAGE_BACKEND=memory` env-var actually swaps
+// the Session::new storage backend to MemoryStorage. Behavioral test
+// rather than type-check: append a message via storage, observe that
+// memory-mode writes no file but file-mode does. This is the
+// unit-level proof-of-mechanism for AC 12; quantitative wall-clock
+// e2e measurement ships in the follow-up sister-story (per designer's
+// Cure 1.5 + PM's #1289 → [test-seed-API] chain).
+
+#[test]
+fn session_with_memory_backend_env_skips_disk_io() {
+    // Reset any leftover state from prior tests in this process.
+    // Env vars are process-global; tests serialize via std::env mutex.
+    let dir = tempfile::tempdir().unwrap();
+    let (tx, _rx) =
+        tokio::sync::broadcast::channel::<Message>(crate::session::BROADCAST_CHANNEL_CAPACITY);
+
+    let prior = std::env::var("BPMUX_STORAGE_BACKEND").ok();
+    // SAFETY: tests are single-process; this scope sets+unsets the var.
+    unsafe {
+        std::env::set_var("BPMUX_STORAGE_BACKEND", "memory");
+    }
+
+    let session = std::sync::Arc::new(crate::session::Session::new(
+        dir.path().to_path_buf(),
+        "test-dev".to_string(),
+        tx,
+    ));
+
+    // Append via the storage trait; if MemoryStorage is wired, the
+    // message lives in memory and no file gets written.
+    session
+        .storage
+        .append_message(&fresh_message("memory-mode-test"))
+        .unwrap();
+
+    let log_path = crate::session::log::log_path(dir.path());
+    assert!(
+        !log_path.exists(),
+        "BPMUX_STORAGE_BACKEND=memory must keep storage pure-in-memory; log file at {log_path:?} should not exist after append"
+    );
+
+    // Verify the in-memory append was actually applied.
+    let messages = session.storage.read_messages().unwrap();
+    assert_eq!(
+        messages.len(),
+        1,
+        "MemoryStorage retains the appended message in memory"
+    );
+    assert_eq!(messages[0].text, "memory-mode-test");
+
+    // Cleanup env var so subsequent tests get default FileStorage.
+    unsafe {
+        match prior {
+            Some(v) => std::env::set_var("BPMUX_STORAGE_BACKEND", v),
+            None => std::env::remove_var("BPMUX_STORAGE_BACKEND"),
+        }
+    }
+}
+
+#[test]
+fn session_without_backend_env_writes_disk_io() {
+    // Default backend = FileStorage (via InstrumentedStorage wrapper).
+    // Append writes to messages-current.jsonl on disk.
+    let dir = tempfile::tempdir().unwrap();
+    let (tx, _rx) =
+        tokio::sync::broadcast::channel::<Message>(crate::session::BROADCAST_CHANNEL_CAPACITY);
+
+    let prior = std::env::var("BPMUX_STORAGE_BACKEND").ok();
+    unsafe {
+        std::env::remove_var("BPMUX_STORAGE_BACKEND");
+    }
+
+    let session = std::sync::Arc::new(crate::session::Session::new(
+        dir.path().to_path_buf(),
+        "test-dev".to_string(),
+        tx,
+    ));
+
+    session
+        .storage
+        .append_message(&fresh_message("file-mode-test"))
+        .unwrap();
+
+    let log_path = crate::session::log::log_path(dir.path());
+    assert!(
+        log_path.exists(),
+        "default storage backend must write to disk at {log_path:?}"
+    );
+
+    if let Some(v) = prior {
+        unsafe {
+            std::env::set_var("BPMUX_STORAGE_BACKEND", v);
+        }
+    }
 }
 
 // ── MemoryStorage-specific: per-instance isolation ──
