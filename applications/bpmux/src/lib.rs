@@ -277,6 +277,59 @@ pub async fn auto_heal_icebox_at_path(
     }
 }
 
+/// #1272 backward-resilience boot-time auto-heal at ready-column-axis.
+/// Sister of `auto_heal_icebox_at_boot` (#1268) at columns["ready"]-
+/// axis. Forces a one-shot `refresh_all` so canonical workflow_state
+/// is available, then evicts entries from `columns["ready"]` whose
+/// state ≠ Ready (catches stale state from missing forward-cascade-
+/// clean on accept/close + duplicates from pre-#1272 close_iteration
+/// appends).
+///
+/// Best-effort: save-failures log via diag and don't block boot. No
+/// state-delta broadcast — the legacy ready-column is a backward-
+/// compat surface; renderers read the canonical state via
+/// list_ready/refresh.all_stories().
+pub async fn auto_heal_ready_column_at_boot(
+    session: Arc<session::Session>,
+    refresh: Arc<dyn board::RefreshDriver>,
+) {
+    let Ok(priority_path) = session::priority::default_priority_path() else {
+        return;
+    };
+    let _ = session;
+    auto_heal_ready_column_at_path(&priority_path, refresh).await;
+}
+
+pub async fn auto_heal_ready_column_at_path(
+    priority_path: &std::path::Path,
+    refresh: Arc<dyn board::RefreshDriver>,
+) {
+    if let Err(e) = refresh.refresh_all().await {
+        session::diag::log_diag(&format!(
+            "[#1272] auto-heal ready column: refresh_all failed: {e}; skipping heal"
+        ));
+        return;
+    }
+    let mut index = session::priority::load_priority(priority_path);
+    let canonical_states: std::collections::HashMap<u64, board::domain::StoryState> = refresh
+        .all_stories()
+        .into_iter()
+        .map(|s| (s.number, s.state))
+        .collect();
+    let evicted =
+        session::priority::auto_heal_ready_column_via_workflow_state(&mut index, &canonical_states);
+    if evicted == 0 {
+        return;
+    }
+    if let Err(e) = session::priority::save_priority(priority_path, &index) {
+        session::diag::log_diag(&format!("[#1272] auto-heal ready column: save failed: {e}"));
+        return;
+    }
+    session::diag::log_diag(&format!(
+        "[#1272] auto-heal ready column: evicted {evicted} stale/duplicate entries"
+    ));
+}
+
 /// #1283: boot-time restore of markers that are present in the
 /// markers-store but missing from `icebox_unified`. Reverse-direction
 /// sister of #1271 — that one evicts store-orphans against icebox_unified-

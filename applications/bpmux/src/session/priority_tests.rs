@@ -482,6 +482,156 @@ fn auto_heal_idempotent_second_run_is_no_op() {
     );
 }
 
+// ── #1272: auto_heal_ready_column_via_workflow_state ──
+
+#[test]
+fn auto_heal_ready_evicts_non_ready_stories() {
+    let mut index = PriorityIndex::default();
+    // Today's empirical repro shape: accepted/closed stories stuck +
+    // duplicates from repeated close_iteration appends.
+    index.columns.insert(
+        "ready".to_string(),
+        vec![
+            100, 1269, 1268, 1251, 1252, 1253, 1254, 1251, 1252, 1253, 1254,
+        ],
+    );
+    let states = states_map(&[
+        (100, StoryState::Accepted),
+        (1269, StoryState::Accepted),
+        (1268, StoryState::Accepted),
+        (1251, StoryState::Ready),
+        (1252, StoryState::Ready),
+        (1253, StoryState::Ready),
+        (1254, StoryState::Ready),
+    ]);
+    let evicted = auto_heal_ready_column_via_workflow_state(&mut index, &states);
+    // 11 entries → 4 unique-ready; 7 evicted (3 accepted + 4 duplicates).
+    assert_eq!(evicted, 7);
+    assert_eq!(
+        index.columns.get("ready").unwrap(),
+        &vec![1251, 1252, 1253, 1254],
+        "only canonical-Ready stories survive; duplicates removed"
+    );
+}
+
+#[test]
+fn auto_heal_ready_clean_state_no_op() {
+    let mut index = PriorityIndex::default();
+    index
+        .columns
+        .insert("ready".to_string(), vec![1251, 1252, 1253]);
+    let states = states_map(&[
+        (1251, StoryState::Ready),
+        (1252, StoryState::Ready),
+        (1253, StoryState::Ready),
+    ]);
+    let evicted = auto_heal_ready_column_via_workflow_state(&mut index, &states);
+    assert_eq!(evicted, 0);
+    assert_eq!(index.columns.get("ready").unwrap(), &vec![1251, 1252, 1253]);
+}
+
+#[test]
+fn auto_heal_ready_preserves_unknown_state_stories() {
+    let mut index = PriorityIndex::default();
+    index.columns.insert("ready".to_string(), vec![1251, 9999]);
+    let states = states_map(&[(1251, StoryState::Ready)]);
+    let evicted = auto_heal_ready_column_via_workflow_state(&mut index, &states);
+    assert_eq!(
+        evicted, 0,
+        "unknown-state stories preserved (safer default)"
+    );
+    assert_eq!(index.columns.get("ready").unwrap(), &vec![1251, 9999]);
+}
+
+#[test]
+fn auto_heal_ready_dedups_duplicate_entries_with_ready_state() {
+    let mut index = PriorityIndex::default();
+    index
+        .columns
+        .insert("ready".to_string(), vec![1251, 1252, 1251, 1253, 1252]);
+    let states = states_map(&[
+        (1251, StoryState::Ready),
+        (1252, StoryState::Ready),
+        (1253, StoryState::Ready),
+    ]);
+    let evicted = auto_heal_ready_column_via_workflow_state(&mut index, &states);
+    assert_eq!(evicted, 2, "2 duplicates evicted");
+    assert_eq!(
+        index.columns.get("ready").unwrap(),
+        &vec![1251, 1252, 1253],
+        "first occurrence wins; later duplicates dropped"
+    );
+}
+
+#[test]
+fn auto_heal_ready_noop_when_column_absent() {
+    let mut index = PriorityIndex::default();
+    let states = states_map(&[]);
+    let evicted = auto_heal_ready_column_via_workflow_state(&mut index, &states);
+    assert_eq!(evicted, 0);
+    assert!(!index.columns.contains_key("ready"));
+}
+
+#[test]
+fn auto_heal_ready_idempotent_second_run_no_op() {
+    let mut index = PriorityIndex::default();
+    index
+        .columns
+        .insert("ready".to_string(), vec![100, 1251, 100]);
+    let states = states_map(&[(100, StoryState::Accepted), (1251, StoryState::Ready)]);
+    let first = auto_heal_ready_column_via_workflow_state(&mut index, &states);
+    let second = auto_heal_ready_column_via_workflow_state(&mut index, &states);
+    assert_eq!(first, 2);
+    assert_eq!(second, 0);
+    assert_eq!(index.columns.get("ready").unwrap(), &vec![1251]);
+}
+
+// ── #1272: close_iteration_atomic dedup before append ──
+
+#[test]
+fn close_iteration_promote_batch_dedups_existing_ready_entries() {
+    let mut index = PriorityIndex::default();
+    // Pre-existing ready column with #100. close_iteration promotes
+    // #100 again — must dedup so the array stays unique.
+    index.columns.insert("ready".to_string(), vec![100]);
+    index.icebox_unified.push(IceboxItem::Story { number: 100 });
+    index.icebox_unified.push(IceboxItem::Marker { id: 7 });
+    let mut markers = vec![marker(7, 0)];
+    let outcome = close_iteration_atomic(&mut index, &mut markers);
+    assert_eq!(outcome.promoted, vec![100]);
+    assert_eq!(
+        index.columns.get("ready").unwrap(),
+        &vec![100],
+        "no duplicate — remove-then-append idempotent"
+    );
+}
+
+#[test]
+fn close_iteration_promote_batch_running_twice_does_not_duplicate() {
+    let mut index = PriorityIndex::default();
+    index.icebox_unified.push(IceboxItem::Story { number: 100 });
+    index.icebox_unified.push(IceboxItem::Story { number: 200 });
+    index.icebox_unified.push(IceboxItem::Marker { id: 7 });
+    index.icebox_unified.push(IceboxItem::Story { number: 300 });
+    index.icebox_unified.push(IceboxItem::Marker { id: 8 });
+    let mut markers = vec![marker(7, 0), marker(8, 1)];
+
+    // First close_iteration: marker 7 + stories 100/200
+    let first = close_iteration_atomic(&mut index, &mut markers);
+    assert_eq!(first.promoted, vec![100, 200]);
+
+    // Repeat (idempotency check; in production this'd be a second
+    // close_iteration on the next marker).
+    let second = close_iteration_atomic(&mut index, &mut markers);
+    assert_eq!(second.promoted, vec![300]);
+
+    assert_eq!(
+        index.columns.get("ready").unwrap(),
+        &vec![100, 200, 300],
+        "no duplicates across two close_iteration fires"
+    );
+}
+
 #[tokio::test]
 async fn auto_heal_boot_integration_evicts_stale_writes_clean_priority() {
     use crate::board::RefreshDriver;

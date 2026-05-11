@@ -360,6 +360,18 @@ pub(crate) fn apply_move_story_priority(
     if !target_is_icebox {
         evict_story_from_icebox_unified(&mut index, number);
     }
+    // #1272: forward cascade-clean for legacy `columns["ready"]` array.
+    // Sister to #1266 icebox eviction above at ready-column-axis. When
+    // target is anything other than Ready, the story must not remain
+    // in the legacy ready list — otherwise it accumulates as stale
+    // state (today's repro: accepted/closed stories stuck in ready).
+    // The `position_with_state` re-insert above (when target IS ready)
+    // already handles the ready→ready reorder case; here we evict on
+    // the out-of-ready path.
+    let target_is_ready = matches!(position_with_state, Some((_, "ready")));
+    if !target_is_ready {
+        evict_story_from_ready_column(&mut index, number);
+    }
     if target_is_in_flight && !index.current_iteration_stories.contains(&number) {
         index.current_iteration_stories.push(number);
     }
@@ -383,6 +395,18 @@ fn evict_story_from_icebox_unified(
             crate::session::priority::IceboxItem::Story { number: n } if *n == number
         )
     });
+}
+
+/// #1272: remove `number` from the legacy `columns["ready"]` array.
+/// Sister to `evict_story_from_icebox_unified` at ready-column-axis.
+/// No-op when the column is absent or the number isn't present.
+pub(crate) fn evict_story_from_ready_column(
+    index: &mut crate::session::priority::PriorityIndex,
+    number: u64,
+) {
+    if let Some(ready) = index.columns.get_mut("ready") {
+        ready.retain(|n| *n != number);
+    }
 }
 
 #[cfg(test)]

@@ -77,7 +77,13 @@ pub fn close_iteration_atomic(
         .collect();
     priority.icebox_unified.drain(0..=k);
     let ready = priority.columns.entry("ready".to_string()).or_default();
+    // #1272: dedup before append. Pre-#1272, repeated close_iteration
+    // fires accumulated duplicate entries in columns["ready"] (e.g.,
+    // priority.json on 2026-05-10 22:50 UTC showed #1251-#1254 each
+    // appearing twice). Remove-then-append per story-number is the
+    // idempotent shape.
     for n in &promoted {
+        ready.retain(|x| x != n);
         ready.push(*n);
     }
     markers.retain(|m| m.id != deleted_marker_id);
@@ -137,6 +143,49 @@ pub fn auto_heal_icebox_unified_via_workflow_state(
         },
     });
     before - index.icebox_unified.len()
+}
+
+/// #1272 backward-resilience boot-time auto-heal at ready-column-axis.
+/// Sister-pattern to `auto_heal_icebox_unified_via_workflow_state` at
+/// icebox-axis: legacy `columns["ready"]` array entries whose canonical
+/// `workflow_state` is NOT `Ready` represent state-divergence —
+/// missing forward-cascade-clean on state-transition out of ready
+/// (move_story / accept_story / close_story / etc.) OR pre-#1272
+/// stale state OR rollback to older binaries.
+///
+/// Empirically observed (PM 2026-05-10 22:50 UTC ground-check):
+/// priority.json `ready` array = [100, 1269, 1268, 1251, 1252, 1253,
+/// 1254, 1251, 1252, 1253, 1254] — accepted-state stories (#100, #1268,
+/// #1269) stuck in legacy ready array + duplicates from repeated
+/// close_iteration fires. Canonical `list_ready` correctly returned
+/// `[]`.
+///
+/// Truth-source = canonical workflow_state per story. Stories absent
+/// from `canonical_states` are preserved (treated as unknown rather
+/// than stale — safer default; sister-shape to icebox heal).
+/// Deduplicates in-pass: if the same number appears multiple times,
+/// only the first occurrence with workflow_state=Ready survives.
+/// Returns count of evicted entries.
+pub fn auto_heal_ready_column_via_workflow_state(
+    index: &mut PriorityIndex,
+    canonical_states: &std::collections::HashMap<u64, super::super::board::domain::StoryState>,
+) -> usize {
+    let Some(ready) = index.columns.get_mut("ready") else {
+        return 0;
+    };
+    let before = ready.len();
+    let mut seen = std::collections::HashSet::new();
+    ready.retain(|number| {
+        if !seen.insert(*number) {
+            return false;
+        }
+        match canonical_states.get(number) {
+            Some(super::super::board::domain::StoryState::Ready) => true,
+            Some(_) => false,
+            None => true,
+        }
+    });
+    before - ready.len()
 }
 
 /// #1258 α-substrate migration: populate `icebox_unified` from legacy
