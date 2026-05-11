@@ -1,7 +1,54 @@
-//! Storage abstraction — Strategy pattern.
+//! Storage abstraction — Strategy pattern (#1289).
 //!
-//! All persistence goes through this trait. The implementation
-//! can be swapped without changing calling code.
+//! Two traits define the persistence boundary:
+//!
+//! - [`Storage`] for session-scoped state (messages, lessons, board
+//!   snapshot, outbox, bookmarks, pins, reactions, iteration markers,
+//!   generic key-value). State lives under a session directory and
+//!   is short-lived relative to the user's overall bpmux history.
+//! - [`GlobalStore`] for cross-session state living at user-global
+//!   paths under `~/.bpmux/` (priority initially; identity /
+//!   briefings / tokens / usage / auth-token migration deferred to
+//!   #1290).
+//!
+//! Each trait has a production impl ([`FileStorage`] / [`FileGlobalStore`])
+//! and an in-memory impl ([`MemoryStorage`] / [`MemoryGlobalStore`]) for
+//! tests. Tests opt into in-memory mode via the
+//! `BPMUX_STORAGE_BACKEND=memory` env-var at `Session::new`
+//! construction time (see `session/log.rs:Session::new`).
+//!
+//! **Trait contract**:
+//! - Implementations satisfy semantic-parity verified by the
+//!   `contract!` macro at `session/storage_tests.rs` — every behavior
+//!   asserted runs against both `FileStorage` and `MemoryStorage`;
+//!   divergence is caught at test-write time.
+//! - Filesystem idiosyncrasies (atomic-rename via tmpfile, fsync
+//!   semantics, mode-0600 for sensitive paths, lock-file behavior)
+//!   stay inside `FileStorage`. The trait surface returns
+//!   `Result<T, std::io::Error>` / `Result<T, PersistError>`; callers
+//!   never reach into FS quirks. Per
+//!   `feedback_external_system_idiosyncrasies_at_boundary`.
+//! - `MemoryStorage` is per-instance: tests get isolated state by
+//!   constructing a fresh `MemoryStorage` per test fixture.
+//!
+//! **Path-injection builders**: each FileStorage method that derives
+//! a non-session-dir path (board store + outbox so far) has a
+//! corresponding `with_<thing>_path(p)` builder. Production
+//! constructs with `None` so the default `default_<thing>_path()`
+//! helper resolves at call-time (preserving the env-overridable +
+//! home-default semantic for `BPMUX_BOARD_STORE_PATH`,
+//! `BPMUX_BOARD_OUTBOX_PATH`, `BPMUX_PRIORITY_PATH`-equivalent).
+//! Tests construct with explicit per-test tempdirs to avoid
+//! polluting Ryan's actual `~/.bpmux/*` files.
+//!
+//! **Storage vs GlobalStore separation**: motivated by lifetime —
+//! `Storage` is per-session and tests get fresh state per launch;
+//! `GlobalStore` is per-user and persists across sessions
+//! (production reads + writes the same `~/.bpmux/priority.json`
+//! across many bpmux startups). Mixing them on a single trait would
+//! conflate two different reset-points + boundary-semantics. The
+//! separation is explicit per designer's 12:32 UTC trait-shape
+//! review.
 
 use std::collections::{HashMap, VecDeque};
 use std::path::{Path, PathBuf};

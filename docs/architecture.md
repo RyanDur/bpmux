@@ -82,6 +82,64 @@ bpmux likely doesn't need v6+ (microservices) at any foreseeable point
 — it's a single coordination substrate, not a service mesh. The
 Continuum's v3-v5 range is the load-bearing window for this product.
 
+## Storage layer: Strategy-pattern DI (#1289)
+
+bpmux's persistence is abstracted behind two traits, both at
+`applications/bpmux/src/session/storage.rs`:
+
+- **`Storage`** — session-scoped persistence. Owns reads/writes for
+  state that lives under a session directory: messages
+  (`messages-current.jsonl`), lessons + peer lessons, generic
+  key-value state, board snapshot (`board-store.json`), outbox
+  (`board-outbox.json`), bookmarks, pins, reactions, iteration
+  markers.
+- **`GlobalStore`** — cross-session persistence. Owns reads/writes
+  for state at user-global paths under `~/.bpmux/` that survive
+  multiple sessions: priority (`~/.bpmux/priority.json`) initially;
+  identity / briefings / tokens / usage / auth-token migration
+  deferred to #1290.
+
+**Two production impls + two test impls**, each storage type has
+contract tests proving FileStore / MemoryStore semantic-parity:
+
+- `FileStorage` + `FileGlobalStore` — disk-backed (production).
+  Atomic-rename + fsync semantics stay inside FileStorage; tests'
+  knowledge of those idiosyncrasies is zero.
+- `MemoryStorage` + `MemoryGlobalStore` — in-memory (tests).
+  Per-instance `Mutex<T>` state; no I/O. Selected via
+  `BPMUX_STORAGE_BACKEND=memory` env-var at `Session::new`
+  construction time.
+
+**Production behavior preserved by path-injection builders** —
+each FileStorage path is `Option<PathBuf>` with builder
+`with_<thing>_path(p)`. Default (None) resolves via the existing
+`default_<thing>_path()` helpers (env-overridable, e.g.,
+`BPMUX_BOARD_STORE_PATH` + `BPMUX_BOARD_OUTBOX_PATH`; home-default
+fallback). Production constructs with None; tests construct with
+explicit per-test tempdirs to avoid sharing `~/.bpmux/*` files.
+
+**Contract-test pattern at
+`applications/bpmux/src/session/storage_tests.rs`** — `contract!`
+macro runs the same assertion against both `FileStorage` and
+`MemoryStorage` (sister `global_contract!` for the GlobalStore
+pair). Behavioral parity is verified at test-write time; divergence
+is impossible to land. 67 contract tests covering 10 session-scoped
+types + priority.
+
+**Stage-fit**: this refactor strengthens v3 internal-bounded-context
+boundaries (session-storage capability has a clean DI seam) without
+forcing v4 components-within-app. Sister-pattern reference: the
+existing `BoardStore` + `InMemorySourceAdapter` at the SourceAdapter
+layer predates and validates this shape.
+
+**Test-substrate benefit + open follow-up**: tests injecting
+`MemoryStorage` skip per-test backend-startup-disk-I/O cost — the
+substrate-class that empirically falsified macOS self-hosted e2e
+migration on f9ebe47 / c8ba878 / 5bdb235. Full wall-clock
+measurement + launch-helper test-seed-API + remaining Phase-3
+globals (identity / briefings / tokens / usage / auth-token) ship in
+#1290.
+
 ## Why this doc exists
 
 bpmux's architectural substrate kept getting re-discovered + lost
