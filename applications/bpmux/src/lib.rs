@@ -351,6 +351,89 @@ pub async fn restore_marker_positions_to_icebox_unified_at_path(
     }
 }
 
+/// #1288: boot-time restore of story-fold-positions adjacent to
+/// markers. Story-side sister of #1283 (marker-side restore). Reads
+/// each marker's persisted `stories` snapshot (set by
+/// `sync_marker_fold_snapshots` at fold-mutation time) and restores
+/// missing stories to the icebox_unified position immediately before
+/// the marker. Stories whose canonical workflow_state is NOT Icebox
+/// are filtered out — #1268's auto_heal_icebox runs FIRST and may
+/// have evicted them legitimately.
+///
+/// MUST run AFTER `restore_marker_positions_to_icebox_unified_at_boot`
+/// (#1283; need marker present to anchor story insertion) and AFTER
+/// `auto_heal_icebox_at_boot` (#1268; need canonical_icebox_stories to
+/// filter evicted stories). MUST run BEFORE
+/// `auto_heal_markers_store_orphans_at_boot` (#1271; same ordering
+/// rationale as #1283 — preserve restored adjacency).
+///
+/// Best-effort: save-failures log via diag and don't block boot.
+/// State-delta broadcast post-restore.
+pub async fn restore_story_fold_positions_to_icebox_unified_at_boot(
+    session: Arc<session::Session>,
+    refresh: Arc<dyn board::RefreshDriver>,
+) {
+    let Ok(priority_path) = session::priority::default_priority_path() else {
+        return;
+    };
+    restore_story_fold_positions_to_icebox_unified_at_path(
+        &priority_path,
+        &session.dir,
+        session.clone(),
+        refresh,
+    )
+    .await;
+}
+
+pub async fn restore_story_fold_positions_to_icebox_unified_at_path(
+    priority_path: &std::path::Path,
+    session_dir: &std::path::Path,
+    session: Arc<session::Session>,
+    refresh: Arc<dyn board::RefreshDriver>,
+) {
+    let mut index = session::priority::load_priority(priority_path);
+    let store = session::iteration_markers::load(session_dir);
+    let canonical_icebox_stories: std::collections::HashSet<u64> = refresh
+        .all_stories()
+        .into_iter()
+        .filter(|s| s.state == board::domain::StoryState::Icebox)
+        .map(|s| s.number)
+        .collect();
+    let restored = session::iteration_markers::restore_story_fold_positions_to_icebox_unified(
+        &store,
+        &mut index.icebox_unified,
+        &canonical_icebox_stories,
+    );
+    if restored == 0 {
+        return;
+    }
+    if let Err(e) = session::priority::save_priority(priority_path, &index) {
+        session::diag::log_diag(&format!(
+            "[#1288] restore story-fold-positions: save failed: {e}"
+        ));
+        return;
+    }
+    session::diag::log_diag(&format!(
+        "[#1288] restore story-fold-positions: restored {restored} story-fold-position(s) adjacent to markers"
+    ));
+    let payload = session::message::StateDeltaPayload::IceboxMigration {
+        entries: index.icebox_unified.len(),
+    };
+    let msg = session::Message {
+        from: "bpmux".to_string(),
+        text: String::new(),
+        ts: chrono::Utc::now(),
+        message_type: session::MessageType::StateDelta,
+        state_delta: Some(payload),
+        ..session::Message::default()
+    };
+    if let Err(e) = session.broadcast(&msg) {
+        session::diag::log_diag(&format!(
+            "[#1288] restore story-fold-positions: state-delta broadcast failed: {e}"
+        ));
+    }
+}
+
 /// #1271: boot-time auto-heal of orphan markers in the iteration-
 /// markers store. Sister of `auto_heal_icebox_at_boot` at
 /// markers-store-axis. Truth-source is `icebox_unified` (canonical
@@ -363,6 +446,8 @@ pub async fn restore_marker_positions_to_icebox_unified_at_path(
 /// its final-shape when we compare against it (per AC 10 timing).
 /// MUST run AFTER `restore_marker_positions_to_icebox_unified_at_boot`
 /// (#1283) so we don't evict markers that #1283 is restoring.
+/// MUST run AFTER `restore_story_fold_positions_to_icebox_unified_at_boot`
+/// (#1288) — same rationale: preserve restored adjacency.
 /// Failures log via diag — heal is best-effort and must not block
 /// server boot.
 pub async fn auto_heal_markers_store_orphans_at_boot(session: Arc<session::Session>) {

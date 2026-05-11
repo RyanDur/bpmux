@@ -12,6 +12,7 @@ fn marker(id: u64, position: u32) -> IterationMarker {
         theme_name: format!("theme{id}"),
         position,
         created_at: "2026-05-10T00:00:00Z".to_string(),
+        ..IterationMarker::default()
     }
 }
 

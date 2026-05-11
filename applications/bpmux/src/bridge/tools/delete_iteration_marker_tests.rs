@@ -20,6 +20,7 @@ fn marker(id: u64, theme: &str, position: u32) -> IterationMarker {
         theme_name: theme.to_string(),
         position,
         created_at: "2026-05-10T22:00:00Z".to_string(),
+        ..IterationMarker::default()
     }
 }
 

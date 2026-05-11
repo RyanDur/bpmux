@@ -18,6 +18,7 @@ fn marker(id: u64, theme: &str, position: u32) -> IterationMarker {
         theme_name: theme.to_string(),
         position,
         created_at: "2026-05-10T22:00:00Z".to_string(),
+        ..IterationMarker::default()
     }
 }
 
@@ -506,4 +507,206 @@ async fn boot_restore_then_orphan_heal_preserves_restored_markers() {
         2,
         "icebox_unified has both markers post-sequence"
     );
+}
+
+// ── #1288: pure-function tests on compute_fold_above_marker + sync_marker_fold_snapshots + restore_story_fold_positions_to_icebox_unified ──
+
+#[test]
+fn compute_fold_above_marker_returns_stories_immediately_preceding() {
+    use crate::session::iteration_markers::compute_fold_above_marker;
+    use crate::session::priority::IceboxItem;
+    let icebox = vec![
+        IceboxItem::Story { number: 100 },
+        IceboxItem::Story { number: 101 },
+        IceboxItem::Story { number: 102 },
+        IceboxItem::Marker { id: 5 },
+        IceboxItem::Story { number: 200 },
+    ];
+    let fold = compute_fold_above_marker(&icebox, 5);
+    assert_eq!(fold, vec![100, 101, 102], "all stories preceding marker 5");
+    let fold_absent = compute_fold_above_marker(&icebox, 99);
+    assert!(
+        fold_absent.is_empty(),
+        "marker not in icebox_unified returns empty fold"
+    );
+}
+
+#[test]
+fn compute_fold_above_marker_bounded_by_previous_marker() {
+    use crate::session::iteration_markers::compute_fold_above_marker;
+    use crate::session::priority::IceboxItem;
+    // Marker M1 at index 1, Marker M2 at index 4; M2's fold is only
+    // stories 101 + 102 (NOT story 100 which is before M1).
+    let icebox = vec![
+        IceboxItem::Story { number: 100 },
+        IceboxItem::Marker { id: 1 },
+        IceboxItem::Story { number: 101 },
+        IceboxItem::Story { number: 102 },
+        IceboxItem::Marker { id: 2 },
+    ];
+    let fold = compute_fold_above_marker(&icebox, 2);
+    assert_eq!(
+        fold,
+        vec![101, 102],
+        "fold for M2 bounded above by M1; story 100 belongs to M1"
+    );
+    let fold_m1 = compute_fold_above_marker(&icebox, 1);
+    assert_eq!(fold_m1, vec![100], "fold for M1 = stories before it");
+}
+
+#[test]
+fn sync_marker_fold_snapshots_updates_every_marker() {
+    use crate::session::iteration_markers::sync_marker_fold_snapshots;
+    use crate::session::priority::IceboxItem;
+    let mut store = IterationMarkersStore {
+        markers: vec![marker(1, "M1", 0), marker(2, "M2", 1)],
+        next_id: 3,
+    };
+    let icebox = vec![
+        IceboxItem::Story { number: 100 },
+        IceboxItem::Marker { id: 1 },
+        IceboxItem::Story { number: 200 },
+        IceboxItem::Story { number: 201 },
+        IceboxItem::Marker { id: 2 },
+    ];
+    sync_marker_fold_snapshots(&mut store, &icebox);
+    let m1 = store.markers.iter().find(|m| m.id == 1).unwrap();
+    let m2 = store.markers.iter().find(|m| m.id == 2).unwrap();
+    assert_eq!(m1.stories, vec![100]);
+    assert_eq!(m2.stories, vec![200, 201]);
+}
+
+#[test]
+fn sync_clears_stories_for_markers_absent_from_icebox_unified() {
+    use crate::session::iteration_markers::sync_marker_fold_snapshots;
+    use crate::session::priority::IceboxItem;
+    // Marker 1 in store but NOT in icebox_unified → its stories[]
+    // should be cleared (live-state reflects positional truth).
+    let mut store = IterationMarkersStore {
+        markers: vec![IterationMarker {
+            id: 1,
+            theme_name: "M1".to_string(),
+            position: 0,
+            created_at: "ts".to_string(),
+            stories: vec![100, 101],
+        }],
+        next_id: 2,
+    };
+    let icebox: Vec<IceboxItem> = Vec::new();
+    sync_marker_fold_snapshots(&mut store, &icebox);
+    assert_eq!(
+        store.markers[0].stories,
+        Vec::<u64>::new(),
+        "marker absent from icebox_unified ⇒ empty fold-snapshot"
+    );
+}
+
+#[test]
+fn restore_story_fold_positions_inserts_missing_stories_before_marker() {
+    use crate::session::iteration_markers::restore_story_fold_positions_to_icebox_unified;
+    use crate::session::priority::IceboxItem;
+    // Pre-restart snapshot: marker 5 had stories [100, 101, 102].
+    // Post-restart icebox_unified has marker but no stories adjacent.
+    let store = IterationMarkersStore {
+        markers: vec![IterationMarker {
+            id: 5,
+            theme_name: "Aquila".to_string(),
+            position: 0,
+            created_at: "ts".to_string(),
+            stories: vec![100, 101, 102],
+        }],
+        next_id: 6,
+    };
+    let mut icebox = vec![IceboxItem::Marker { id: 5 }];
+    let canonical: std::collections::HashSet<u64> = [100, 101, 102].into_iter().collect();
+    let restored = restore_story_fold_positions_to_icebox_unified(&store, &mut icebox, &canonical);
+    assert_eq!(restored, 3);
+    assert_eq!(
+        icebox,
+        vec![
+            IceboxItem::Story { number: 100 },
+            IceboxItem::Story { number: 101 },
+            IceboxItem::Story { number: 102 },
+            IceboxItem::Marker { id: 5 },
+        ],
+        "stories restored in fold-order immediately before marker"
+    );
+}
+
+#[test]
+fn restore_story_fold_positions_skips_non_canonical_icebox_stories() {
+    use crate::session::iteration_markers::restore_story_fold_positions_to_icebox_unified;
+    use crate::session::priority::IceboxItem;
+    // Story 101 is in snapshot but no longer workflow_state=Icebox
+    // (per refresh.all_stories() canonical filter). Don't reinsert.
+    let store = IterationMarkersStore {
+        markers: vec![IterationMarker {
+            id: 5,
+            theme_name: "Aquila".to_string(),
+            position: 0,
+            created_at: "ts".to_string(),
+            stories: vec![100, 101, 102],
+        }],
+        next_id: 6,
+    };
+    let mut icebox = vec![IceboxItem::Marker { id: 5 }];
+    let canonical: std::collections::HashSet<u64> = [100, 102].into_iter().collect();
+    let restored = restore_story_fold_positions_to_icebox_unified(&store, &mut icebox, &canonical);
+    assert_eq!(restored, 2, "only 100 + 102 restored; 101 evicted upstream");
+    assert!(
+        icebox
+            .iter()
+            .all(|i| !matches!(i, IceboxItem::Story { number: 101 })),
+        "story 101 not reinserted (not in canonical icebox set)"
+    );
+}
+
+#[test]
+fn restore_story_fold_positions_skips_marker_absent_from_icebox_unified() {
+    use crate::session::iteration_markers::restore_story_fold_positions_to_icebox_unified;
+    use crate::session::priority::IceboxItem;
+    // Marker 5 has fold-snapshot but isn't yet in icebox_unified;
+    // can't restore stories without an anchor. #1283's marker-restore
+    // runs first to add the marker; this fn then runs.
+    let store = IterationMarkersStore {
+        markers: vec![IterationMarker {
+            id: 5,
+            theme_name: "Aquila".to_string(),
+            position: 0,
+            created_at: "ts".to_string(),
+            stories: vec![100, 101],
+        }],
+        next_id: 6,
+    };
+    let mut icebox: Vec<IceboxItem> = Vec::new();
+    let canonical: std::collections::HashSet<u64> = [100, 101].into_iter().collect();
+    let restored = restore_story_fold_positions_to_icebox_unified(&store, &mut icebox, &canonical);
+    assert_eq!(restored, 0, "no marker anchor ⇒ no insertion");
+    assert!(icebox.is_empty());
+}
+
+#[test]
+fn restore_story_fold_positions_idempotent_when_stories_already_present() {
+    use crate::session::iteration_markers::restore_story_fold_positions_to_icebox_unified;
+    use crate::session::priority::IceboxItem;
+    let store = IterationMarkersStore {
+        markers: vec![IterationMarker {
+            id: 5,
+            theme_name: "Aquila".to_string(),
+            position: 0,
+            created_at: "ts".to_string(),
+            stories: vec![100, 101],
+        }],
+        next_id: 6,
+    };
+    let mut icebox = vec![
+        IceboxItem::Story { number: 100 },
+        IceboxItem::Story { number: 101 },
+        IceboxItem::Marker { id: 5 },
+    ];
+    let canonical: std::collections::HashSet<u64> = [100, 101].into_iter().collect();
+    let first = restore_story_fold_positions_to_icebox_unified(&store, &mut icebox, &canonical);
+    let second = restore_story_fold_positions_to_icebox_unified(&store, &mut icebox, &canonical);
+    assert_eq!(first, 0, "stories already present ⇒ no restore");
+    assert_eq!(second, 0, "second run still no-op");
 }

@@ -9,7 +9,7 @@ fn marker_reorder_lands_in_icebox_unified_at_target_position() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("priority.json");
     std::fs::write(&path, r#"{"icebox_unified":[{"kind":"marker","id":7}]}"#).unwrap();
-    apply_reorder_iteration_marker(&path, 7, 1).unwrap();
+    apply_reorder_iteration_marker(&path, dir.path(), 7, 1).unwrap();
     let index = load_priority(&path);
     assert_eq!(index.icebox_unified, vec![IceboxItem::Marker { id: 7 }]);
 }
@@ -27,7 +27,7 @@ fn marker_reorder_moves_marker_across_stories_to_position_one() {
         ]}"#,
     )
     .unwrap();
-    apply_reorder_iteration_marker(&path, 7, 1).unwrap();
+    apply_reorder_iteration_marker(&path, dir.path(), 7, 1).unwrap();
     let index = load_priority(&path);
     assert_eq!(
         index.icebox_unified,
@@ -52,7 +52,7 @@ fn marker_reorder_moves_marker_below_existing_stories() {
         ]}"#,
     )
     .unwrap();
-    apply_reorder_iteration_marker(&path, 7, 3).unwrap();
+    apply_reorder_iteration_marker(&path, dir.path(), 7, 3).unwrap();
     let index = load_priority(&path);
     assert_eq!(
         index.icebox_unified,
@@ -73,7 +73,7 @@ fn marker_reorder_position_clamped_to_unified_length() {
         r#"{"icebox_unified":[{"kind":"story","number":100},{"kind":"marker","id":7}]}"#,
     )
     .unwrap();
-    apply_reorder_iteration_marker(&path, 7, 99).unwrap();
+    apply_reorder_iteration_marker(&path, dir.path(), 7, 99).unwrap();
     let index = load_priority(&path);
     assert_eq!(
         index.icebox_unified,
@@ -97,7 +97,7 @@ fn marker_reorder_preserves_other_markers() {
         ]}"#,
     )
     .unwrap();
-    apply_reorder_iteration_marker(&path, 8, 1).unwrap();
+    apply_reorder_iteration_marker(&path, dir.path(), 8, 1).unwrap();
     let index = load_priority(&path);
     assert_eq!(
         index.icebox_unified,

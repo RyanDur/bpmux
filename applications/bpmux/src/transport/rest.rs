@@ -1004,10 +1004,34 @@ pub async fn get_iteration_markers(
 ) -> impl IntoResponse {
     let store = session::iteration_markers::load(&session.dir);
     let markers = session::iteration_markers::list(&store);
+    // #1288 Part B: enrich each marker with its CURRENT folded-stories
+    // derived from icebox_unified positional-adjacency. The
+    // marker.stories field on disk is a snapshot used by boot-heal;
+    // the response field reflects live state so callers (UI counters,
+    // tool-output verification) see the canonical positional truth.
+    let priority_path = session::priority::default_priority_path();
+    let icebox_unified = match priority_path {
+        Ok(path) => session::priority::load_priority(&path).icebox_unified,
+        Err(_) => Vec::new(),
+    };
+    let enriched: Vec<serde_json::Value> = markers
+        .iter()
+        .map(|m| {
+            let stories =
+                session::iteration_markers::compute_fold_above_marker(&icebox_unified, m.id);
+            serde_json::json!({
+                "id": m.id,
+                "theme_name": m.theme_name,
+                "position": m.position,
+                "created_at": m.created_at,
+                "stories": stories,
+            })
+        })
+        .collect();
     (
         StatusCode::OK,
         json_headers(),
-        serde_json::to_string(&markers).unwrap_or_else(|_| "[]".to_string()),
+        serde_json::to_string(&enriched).unwrap_or_else(|_| "[]".to_string()),
     )
 }
 
@@ -1127,8 +1151,11 @@ pub async fn post_remove_stories_from_iteration(
             );
         }
     };
-    let outcome =
-        crate::bridge::tools::apply_remove_stories_from_iteration(&priority_path, &body.story_ids);
+    let outcome = crate::bridge::tools::apply_remove_stories_from_iteration(
+        &priority_path,
+        &session.dir,
+        &body.story_ids,
+    );
     match outcome {
         Ok(o) => {
             broadcast_board_invalidate(&session);

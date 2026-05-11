@@ -34,6 +34,7 @@ fn fold_with_marker_id_positions_stories_above_marker_in_input_order() {
             theme_name: "Orion".to_string(),
             position: 0,
             created_at: "ts".to_string(),
+            ..IterationMarker::default()
         }],
         8,
     );
@@ -117,6 +118,7 @@ fn fold_preserves_existing_items_above_target_marker() {
             theme_name: "Orion".to_string(),
             position: 0,
             created_at: "ts".to_string(),
+            ..IterationMarker::default()
         }],
         8,
     );
@@ -154,6 +156,7 @@ fn fold_evicts_legacy_columns_icebox_entry_for_each_story() {
             theme_name: "Orion".to_string(),
             position: 0,
             created_at: "ts".to_string(),
+            ..IterationMarker::default()
         }],
         8,
     );
@@ -191,6 +194,7 @@ fn fold_with_marker_id_wins_when_both_marker_id_and_theme_name_provided() {
             theme_name: "Orion".to_string(),
             position: 0,
             created_at: "ts".to_string(),
+            ..IterationMarker::default()
         }],
         8,
     );
@@ -242,6 +246,7 @@ fn fold_returns_error_when_story_ids_empty() {
             theme_name: "Orion".to_string(),
             position: 0,
             created_at: "ts".to_string(),
+            ..IterationMarker::default()
         }],
         8,
     );
@@ -283,6 +288,7 @@ fn fold_existing_story_in_unified_moves_to_target_position() {
             theme_name: "Orion".to_string(),
             position: 0,
             created_at: "ts".to_string(),
+            ..IterationMarker::default()
         }],
         8,
     );

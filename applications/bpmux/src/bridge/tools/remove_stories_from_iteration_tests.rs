@@ -21,7 +21,7 @@ fn single_story_removal_relocates_below_bottom_marker() {
         ]}"#,
     );
 
-    let outcome = apply_remove_stories_from_iteration(&priority_path, &[100]).unwrap();
+    let outcome = apply_remove_stories_from_iteration(&priority_path, dir.path(), &[100]).unwrap();
 
     let index = load_priority(&priority_path);
     assert_eq!(
@@ -51,7 +51,8 @@ fn batch_removal_relocates_all_below_bottom_marker_preserving_input_order() {
         ]}"#,
     );
 
-    let outcome = apply_remove_stories_from_iteration(&priority_path, &[100, 200, 300]).unwrap();
+    let outcome =
+        apply_remove_stories_from_iteration(&priority_path, dir.path(), &[100, 200, 300]).unwrap();
 
     let index = load_priority(&priority_path);
     assert_eq!(
@@ -80,7 +81,7 @@ fn preserves_marker_positions() {
         ]}"#,
     );
 
-    apply_remove_stories_from_iteration(&priority_path, &[100, 200]).unwrap();
+    apply_remove_stories_from_iteration(&priority_path, dir.path(), &[100, 200]).unwrap();
 
     let index = load_priority(&priority_path);
     assert_eq!(
@@ -108,7 +109,7 @@ fn preserves_other_stories_in_their_iteration_groups() {
         ]}"#,
     );
 
-    apply_remove_stories_from_iteration(&priority_path, &[100]).unwrap();
+    apply_remove_stories_from_iteration(&priority_path, dir.path(), &[100]).unwrap();
 
     let index = load_priority(&priority_path);
     assert_eq!(
@@ -134,7 +135,7 @@ fn handles_story_not_in_iteration_as_no_op() {
         ]}"#,
     );
 
-    let outcome = apply_remove_stories_from_iteration(&priority_path, &[999]).unwrap();
+    let outcome = apply_remove_stories_from_iteration(&priority_path, dir.path(), &[999]).unwrap();
 
     let index = load_priority(&priority_path);
     assert_eq!(
@@ -159,7 +160,7 @@ fn idempotent_on_already_unscheduled_story() {
         ]}"#,
     );
 
-    let outcome = apply_remove_stories_from_iteration(&priority_path, &[300]).unwrap();
+    let outcome = apply_remove_stories_from_iteration(&priority_path, dir.path(), &[300]).unwrap();
 
     let index = load_priority(&priority_path);
     assert_eq!(
@@ -185,9 +186,9 @@ fn idempotent_second_call_is_no_op() {
         ]}"#,
     );
 
-    apply_remove_stories_from_iteration(&priority_path, &[100]).unwrap();
+    apply_remove_stories_from_iteration(&priority_path, dir.path(), &[100]).unwrap();
     let snapshot = load_priority(&priority_path);
-    apply_remove_stories_from_iteration(&priority_path, &[100]).unwrap();
+    apply_remove_stories_from_iteration(&priority_path, dir.path(), &[100]).unwrap();
     let after = load_priority(&priority_path);
     assert_eq!(snapshot.icebox_unified, after.icebox_unified);
 }
@@ -204,7 +205,7 @@ fn no_markers_treats_story_as_already_unscheduled() {
         ]}"#,
     );
 
-    apply_remove_stories_from_iteration(&priority_path, &[100]).unwrap();
+    apply_remove_stories_from_iteration(&priority_path, dir.path(), &[100]).unwrap();
 
     let index = load_priority(&priority_path);
     assert_eq!(
@@ -222,15 +223,16 @@ fn empty_story_ids_returns_error() {
     let priority_path = dir.path().join("priority.json");
     seed_priority(&priority_path, r#"{"icebox_unified":[]}"#);
 
-    let result = apply_remove_stories_from_iteration(&priority_path, &[]);
+    let result = apply_remove_stories_from_iteration(&priority_path, dir.path(), &[]);
     assert!(result.is_err());
 }
 
 #[test]
 fn save_failure_rolls_back_to_snapshot() {
     let priority_path = std::path::PathBuf::from("/dev/null/no_such_priority_dir/priority.json");
+    let session_dir = std::path::PathBuf::from("/dev/null/no_such_session_dir");
 
-    let result = apply_remove_stories_from_iteration(&priority_path, &[100]);
+    let result = apply_remove_stories_from_iteration(&priority_path, &session_dir, &[100]);
     assert!(result.is_err());
     let err = result.unwrap_err();
     assert!(

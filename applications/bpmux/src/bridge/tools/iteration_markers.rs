@@ -44,13 +44,17 @@ pub(in crate::bridge) async fn handle_reorder_iteration_marker(
         .ok_or("missing 'position' argument")? as usize;
     let path = crate::session::priority::default_priority_path()
         .map_err(|e| format!("priority path: {e}"))?;
-    apply_reorder_iteration_marker(&path, marker_id, position)?;
+    let session_base =
+        crate::session::default_sessions_base().map_err(|e| format!("session base: {e}"))?;
+    let session_dir = session_base.join("current");
+    apply_reorder_iteration_marker(&path, &session_dir, marker_id, position)?;
     crate::bridge::tools_stories::broadcast_board_invalidate(ws_tx).await;
     Ok(format!("marker #{marker_id} moved to position {position}"))
 }
 
 pub(in crate::bridge) fn apply_reorder_iteration_marker(
     path: &std::path::Path,
+    session_dir: &std::path::Path,
     marker_id: u64,
     position: usize,
 ) -> Result<(), String> {
@@ -62,7 +66,29 @@ pub(in crate::bridge) fn apply_reorder_iteration_marker(
     );
     crate::session::priority::save_priority(path, &index)
         .map_err(|e| format!("save priority: {e}"))?;
+    // #1288: marker may have moved into a new fold-context; refresh
+    // every marker's stories snapshot.
+    if let Err(e) = refresh_marker_fold_snapshots(session_dir, &index.icebox_unified) {
+        crate::session::diag::log_diag(&format!(
+            "[#1288] apply_reorder_iteration_marker: fold-snapshot refresh failed: {e}"
+        ));
+    }
     Ok(())
+}
+
+/// #1288: pure helper to recompute + persist marker.stories fold-
+/// snapshots after a write-path mutates icebox_unified. Used at every
+/// add/remove/reorder site so the snapshot stays consistent with the
+/// canonical positional substrate. Save-failures are propagated so
+/// callers can roll back priority on a partial-write.
+fn refresh_marker_fold_snapshots(
+    session_dir: &std::path::Path,
+    icebox_unified: &[crate::session::priority::IceboxItem],
+) -> Result<(), String> {
+    let mut store = crate::session::iteration_markers::load(session_dir);
+    crate::session::iteration_markers::sync_marker_fold_snapshots(&mut store, icebox_unified);
+    crate::session::iteration_markers::save(session_dir, &store)
+        .map_err(|e| format!("save iteration_markers (fold-snapshot): {e}"))
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -154,6 +180,14 @@ pub(crate) fn apply_add_stories_to_iteration(
         .find(|m| m.id == target_marker_id)
         .map(|m| m.theme_name.clone())
         .unwrap_or_default();
+
+    // #1288: refresh fold-snapshots before persisting so marker.stories
+    // matches the new positional state. Sync mutates markers_store in
+    // place; save happens once below covering both schema + fold.
+    crate::session::iteration_markers::sync_marker_fold_snapshots(
+        &mut markers_store,
+        &priority.icebox_unified,
+    );
 
     crate::session::priority::save_priority(priority_path, &priority)
         .map_err(|e| format!("save priority: {e}"))?;
@@ -294,6 +328,7 @@ pub(in crate::bridge) async fn handle_remove_stories_from_iteration(
 
 pub(crate) fn apply_remove_stories_from_iteration(
     priority_path: &std::path::Path,
+    session_dir: &std::path::Path,
     story_ids: &[u64],
 ) -> Result<RemoveStoriesOutcome, String> {
     if story_ids.is_empty() {
@@ -311,6 +346,16 @@ pub(crate) fn apply_remove_stories_from_iteration(
             format!("save priority: {save_err} (rolled back to snapshot)")
         }
     })?;
+
+    // #1288: refresh fold-snapshots so the just-removed stories are
+    // no longer attributed to any marker. Save-failure here is logged
+    // via diag but doesn't roll back priority — fold-snapshot is
+    // recoverable from the next mutation OR boot-heal.
+    if let Err(e) = refresh_marker_fold_snapshots(session_dir, &priority.icebox_unified) {
+        crate::session::diag::log_diag(&format!(
+            "[#1288] apply_remove_stories_from_iteration: fold-snapshot refresh failed: {e}"
+        ));
+    }
 
     Ok(RemoveStoriesOutcome {
         stories: story_positions,

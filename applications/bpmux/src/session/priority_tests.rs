@@ -106,6 +106,7 @@ fn marker(id: u64, position: u32) -> super::super::iteration_markers::IterationM
         theme_name: format!("theme{id}"),
         position,
         created_at: "2026-05-10T00:00:00Z".to_string(),
+        ..super::super::iteration_markers::IterationMarker::default()
     }
 }
 

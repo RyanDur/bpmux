@@ -217,19 +217,27 @@ pub async fn run_server(
             session.clone(),
             crate::bridge::drain_interval_from_env(),
         ));
-        // Boot heal sequence (#1268 → #1283 → #1271):
+        // Boot heal sequence (#1268 → #1283 → #1288 → #1271):
         // 1. #1268 evicts non-icebox stories from icebox_unified
         //    (canonical workflow_state truth-source)
         // 2. #1283 restores markers from markers-store into
         //    icebox_unified when they're missing post-restart
-        //    (reverse-direction sister of #1271)
-        // 3. #1271 evicts store-markers absent from icebox_unified
-        //    (must run LAST so #1283's restores aren't evicted)
+        // 3. #1288 restores story-fold-positions adjacent to markers
+        //    (must run AFTER #1283 — needs marker present; AFTER #1268
+        //    — needs canonical icebox stories to filter evicted)
+        // 4. #1271 evicts store-markers absent from icebox_unified
+        //    (must run LAST so #1283/#1288 restores aren't evicted)
         let session_for_markers_heal = session.clone();
         tokio::spawn(async move {
-            crate::auto_heal_icebox_at_boot(session_for_markers_heal.clone(), refresh).await;
+            crate::auto_heal_icebox_at_boot(session_for_markers_heal.clone(), refresh.clone())
+                .await;
             crate::restore_marker_positions_to_icebox_unified_at_boot(
                 session_for_markers_heal.clone(),
+            )
+            .await;
+            crate::restore_story_fold_positions_to_icebox_unified_at_boot(
+                session_for_markers_heal.clone(),
+                refresh,
             )
             .await;
             crate::auto_heal_markers_store_orphans_at_boot(session_for_markers_heal).await;

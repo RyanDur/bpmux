@@ -1,12 +1,27 @@
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct IterationMarker {
     pub id: u64,
     pub theme_name: String,
     pub position: u32,
     pub created_at: String,
+    /// #1288: snapshot of story-ids folded above this marker in
+    /// icebox_unified, captured at the most-recent
+    /// `add_stories_to_iteration` / `remove_stories_from_iteration`
+    /// call. Used by the boot-time `restore_story_fold_positions_to_
+    /// icebox_unified` heal to repair marker→stories adjacency post-
+    /// restart. `#[serde(default)]` for backward-compat: legacy
+    /// iteration_markers.json files with no `stories` field load as
+    /// an empty Vec (no fold-snapshot ⇒ boot-heal no-op for that
+    /// marker).
+    ///
+    /// Order: top-of-fold first, just-above-marker last. So fold
+    /// `[100, 101, 102]` means icebox_unified contains story 100,
+    /// then story 101, then story 102, then this marker.
+    #[serde(default)]
+    pub stories: Vec<u64>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -60,6 +75,7 @@ pub fn add(
         theme_name,
         position,
         created_at,
+        stories: Vec::new(),
     };
     store.markers.push(marker.clone());
     marker
@@ -89,6 +105,121 @@ pub fn auto_heal_orphans(
     let before = store.markers.len();
     store.markers.retain(|m| canonical_ids.contains(&m.id));
     before - store.markers.len()
+}
+
+/// #1288: refresh the `stories` snapshot on every marker in `store` to
+/// match the current positional-adjacency in `icebox_unified`. For
+/// each marker M present in icebox_unified, M.stories becomes the list
+/// of story-ids that appear contiguously above M (between M and the
+/// previous marker — or the start of icebox_unified if M is the first
+/// marker). Markers absent from icebox_unified get their fold cleared
+/// (consistent with the rule that fold-snapshot reflects current
+/// adjacency, not historical).
+///
+/// Call this AFTER every code path that mutates marker→story
+/// adjacency in icebox_unified (`add_stories_to_iteration`,
+/// `remove_stories_from_iteration`, `reorder_iteration_marker`,
+/// `auto_heal_icebox`). The fold-snapshot is the truth-source that
+/// `restore_story_fold_positions_to_icebox_unified` reads at boot
+/// to repair adjacency post-restart.
+pub fn sync_marker_fold_snapshots(
+    store: &mut IterationMarkersStore,
+    icebox_unified: &[super::priority::IceboxItem],
+) {
+    for marker in &mut store.markers {
+        marker.stories = compute_fold_above_marker(icebox_unified, marker.id);
+    }
+}
+
+/// Pure: extract the list of story-ids contiguously preceding the
+/// given marker in icebox_unified. Returns empty Vec if marker is
+/// absent. Order: top-of-fold first, just-above-marker last.
+pub fn compute_fold_above_marker(
+    icebox_unified: &[super::priority::IceboxItem],
+    marker_id: u64,
+) -> Vec<u64> {
+    let Some(marker_idx) = icebox_unified.iter().position(|item| {
+        matches!(
+            item,
+            super::priority::IceboxItem::Marker { id } if *id == marker_id
+        )
+    }) else {
+        return Vec::new();
+    };
+    let group_start = icebox_unified[..marker_idx]
+        .iter()
+        .enumerate()
+        .rev()
+        .find(|(_, item)| matches!(item, super::priority::IceboxItem::Marker { .. }))
+        .map(|(i, _)| i + 1)
+        .unwrap_or(0);
+    icebox_unified[group_start..marker_idx]
+        .iter()
+        .filter_map(|item| match item {
+            super::priority::IceboxItem::Story { number } => Some(*number),
+            super::priority::IceboxItem::Marker { .. } => None,
+        })
+        .collect()
+}
+
+/// #1288: restore story-fold-positions adjacent to markers when the
+/// stories are absent from icebox_unified post-restart. Truth-source
+/// is each marker's persisted `stories` field (set by
+/// `sync_marker_fold_snapshots` at the most-recent fold-mutation).
+///
+/// For each marker M in `store` with M.stories non-empty:
+/// - If M is absent from icebox_unified, skip (marker itself must be
+///   restored first by #1283's `restore_missing_markers_to_icebox_unified`)
+/// - For each story-id in M.stories, in fold-order (top-of-fold
+///   first), insert into icebox_unified IMMEDIATELY BEFORE M if not
+///   already present. This preserves fold-order naturally: each new
+///   insert pushes M one slot right, and subsequent inserts land just
+///   before the new M-position, maintaining input-order.
+/// - Stories whose canonical workflow_state is NOT Icebox should be
+///   filtered out by the caller before this fires (e.g., via #1268's
+///   `refresh_all` snapshot) — this function trusts the input list.
+///
+/// Returns the number of stories restored. Idempotent: re-run on
+/// already-restored state finds stories present, inserts nothing.
+pub fn restore_story_fold_positions_to_icebox_unified(
+    store: &IterationMarkersStore,
+    icebox_unified: &mut Vec<super::priority::IceboxItem>,
+    canonical_icebox_stories: &std::collections::HashSet<u64>,
+) -> usize {
+    let mut restored = 0;
+    for marker in &store.markers {
+        if marker.stories.is_empty() {
+            continue;
+        }
+        for story_id in &marker.stories {
+            if !canonical_icebox_stories.contains(story_id) {
+                continue;
+            }
+            let already_present = icebox_unified.iter().any(|item| {
+                matches!(
+                    item,
+                    super::priority::IceboxItem::Story { number } if *number == *story_id
+                )
+            });
+            if already_present {
+                continue;
+            }
+            let Some(marker_idx) = icebox_unified.iter().position(|item| {
+                matches!(
+                    item,
+                    super::priority::IceboxItem::Marker { id } if *id == marker.id
+                )
+            }) else {
+                continue;
+            };
+            icebox_unified.insert(
+                marker_idx,
+                super::priority::IceboxItem::Story { number: *story_id },
+            );
+            restored += 1;
+        }
+    }
+    restored
 }
 
 /// #1283: restore markers from the markers-store into `icebox_unified`
