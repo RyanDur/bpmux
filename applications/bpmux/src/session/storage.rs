@@ -78,6 +78,13 @@ pub trait Storage: Send + Sync {
     // #1289 Phase-2: session-scoped pins (pins.json).
     fn load_pins(&self) -> super::pins::PinsStore;
     fn save_pins(&self, store: &super::pins::PinsStore) -> Result<(), std::io::Error>;
+
+    // #1289 Phase-2: session-scoped reactions (reactions.json).
+    fn load_reactions(&self) -> super::reactions::ReactionsStore;
+    fn save_reactions(
+        &self,
+        store: &super::reactions::ReactionsStore,
+    ) -> Result<(), std::io::Error>;
 }
 
 /// File-based storage — the current implementation.
@@ -264,6 +271,17 @@ impl Storage for FileStorage {
     fn save_pins(&self, store: &super::pins::PinsStore) -> Result<(), std::io::Error> {
         super::pins::save(&self.dir, store)
     }
+
+    fn load_reactions(&self) -> super::reactions::ReactionsStore {
+        super::reactions::load(&self.dir)
+    }
+
+    fn save_reactions(
+        &self,
+        store: &super::reactions::ReactionsStore,
+    ) -> Result<(), std::io::Error> {
+        super::reactions::save(&self.dir, store)
+    }
 }
 
 /// In-memory storage — #1289 substrate-foundation for the Store-trait
@@ -287,6 +305,7 @@ pub struct MemoryStorage {
     outbox: Mutex<VecDeque<QueuedEvent>>,
     bookmarks: Mutex<HashMap<String, super::bookmark::Bookmark>>,
     pins: Mutex<super::pins::PinsStore>,
+    reactions: Mutex<super::reactions::ReactionsStore>,
 }
 
 impl MemoryStorage {
@@ -304,6 +323,7 @@ impl MemoryStorage {
             outbox: Mutex::new(VecDeque::new()),
             bookmarks: Mutex::new(HashMap::new()),
             pins: Mutex::new(super::pins::PinsStore::default()),
+            reactions: Mutex::new(super::reactions::ReactionsStore::default()),
         }
     }
 }
@@ -473,6 +493,21 @@ impl Storage for MemoryStorage {
 
     fn save_pins(&self, store: &super::pins::PinsStore) -> Result<(), std::io::Error> {
         *self.pins.lock().unwrap_or_else(|e| e.into_inner()) = store.clone();
+        Ok(())
+    }
+
+    fn load_reactions(&self) -> super::reactions::ReactionsStore {
+        self.reactions
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
+    }
+
+    fn save_reactions(
+        &self,
+        store: &super::reactions::ReactionsStore,
+    ) -> Result<(), std::io::Error> {
+        *self.reactions.lock().unwrap_or_else(|e| e.into_inner()) = store.clone();
         Ok(())
     }
 }

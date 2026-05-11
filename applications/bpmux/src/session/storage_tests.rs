@@ -401,6 +401,23 @@ contract!(save_then_load_pins_roundtrips, |storage: &dyn Storage| {
     assert!(loaded.channels.contains_key("broadcast"));
 });
 
+// ── Reactions (#1289 Phase-2 step 3) ──
+
+contract!(load_reactions_empty_when_unset, |storage: &dyn Storage| {
+    let store = storage.load_reactions();
+    assert!(store.channels.is_empty());
+});
+
+contract!(
+    save_then_load_reactions_roundtrips,
+    |storage: &dyn Storage| {
+        let store = crate::session::reactions::ReactionsStore::default();
+        storage.save_reactions(&store).unwrap();
+        let loaded = storage.load_reactions();
+        assert!(loaded.channels.is_empty());
+    }
+);
+
 // ── BoardStore ↔ Storage trait integration (#1289 Phase-1 step 2) ──
 
 #[test]

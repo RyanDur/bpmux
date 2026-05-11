@@ -264,4 +264,27 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
         ));
         result
     }
+
+    fn load_reactions(&self) -> super::reactions::ReactionsStore {
+        let start = Instant::now();
+        let result = self.inner.load_reactions();
+        self.log(&format!(
+            "load_reactions {:.1}ms",
+            start.elapsed().as_secs_f64() * 1000.0
+        ));
+        result
+    }
+
+    fn save_reactions(
+        &self,
+        store: &super::reactions::ReactionsStore,
+    ) -> Result<(), std::io::Error> {
+        let start = Instant::now();
+        let result = self.inner.save_reactions(store);
+        self.log(&format!(
+            "save_reactions {:.1}ms",
+            start.elapsed().as_secs_f64() * 1000.0
+        ));
+        result
+    }
 }
