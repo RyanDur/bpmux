@@ -222,21 +222,32 @@ Ryan physically rebooted his M1 Pro Mac; runner auto-restarted via LaunchAgent
 - Bridge MCP-tools post-cutover verification (#1254 slice 4)
 - Multi-runner pool / multi-platform matrix (deferred)
 
-## Slice-2 full migration (#1252)
+## Slice-2 partial migration (#1252) — empirical post-mortem
 
-Slice-1 chose macOS arm64 substrate; slice-2 grounding revealed
-existing `ci.yml` jobs all target `ubuntu-latest` with Linux-specific
-deps (xvfb-run, `npx playwright install --with-deps`). Pure
-runs-on-directive lift-and-shift breaks on OS mismatch.
+Initial full-migration attempt (a9c02b9 → f9ebe47) targeted all 3
+jobs to `[self-hosted, macos, arm64]`. Empirical CI on f9ebe47
+revealed **playwright-e2e migration is unworkable** on bpmux-mac-m1
+substrate:
 
-**Full-migration path** (per Ryan 2026-05-10 22:07 CST directive
-"keep migrating everything to the self hosted runner"):
+- Single-shard wall-clock: 37 min (vs. ~4 min GHA-hosted Linux) =
+  9× slower
+- 3 of 5 completed shards FAILED with `Test timeout of 30000ms
+  exceeded` on stable tests (desk-check-357, desk-check-361, etc.)
+- Full matrix serialized would be 5-6 hours wall-clock — falsifier
+  (g) "≤ 2× GHA-hosted baseline" decisively tripped
+- Root cause class: macOS WindowServer doing real rendering work for
+  each Electron window spawned + per-test 30s timeout too tight for
+  the throttled-by-real-display environment
 
-| Job | Pre-#1252 | Post-#1252 | macOS adaptation |
-|-----|-----------|-------------|------------------|
-| `build-bpmux` | ubuntu-latest | `[self-hosted, macos, arm64]` | produces aarch64-apple-darwin binary (used by Playwright shards on same host) |
-| `test` (fmt/clippy/cargo test/audit) | ubuntu-latest | `[self-hosted, macos, arm64]` | no GUI, cargo cross-platform |
-| `playwright-e2e` (6-shard matrix) | ubuntu-latest | `[self-hosted, macos, arm64]` | dropped `xvfb-run` (macOS native windowing); dropped `--with-deps` (no apt on macOS); Playwright cache path `~/Library/Caches/ms-playwright` |
+**Reverted-to-ubuntu-latest for e2e + build-bpmux**; only `test` job
+remains on self-hosted (where slice-2a evidence showed 2-3 min
+wall-clock + zero failures):
+
+| Job | Final state | Reason |
+|-----|-------------|--------|
+| `build-bpmux` | ubuntu-latest (reverted) | produces Linux x64 binary used by Playwright on ubuntu-latest matrix |
+| `test` (fmt/clippy/cargo test/audit) | `[self-hosted, macos, arm64]` | empirical: 2-3 min wall-clock; cache warm via Swatinem; no failures |
+| `playwright-e2e` (6-shard) | ubuntu-latest (reverted) | needs substrate work — testTimeout, sharding rethink, off-screen positioning, possibly Docker-Linux-on-Mac. Sister-story file. |
 
 **UI-overlap mitigation: DEFERRED to follow-up story.**
 
