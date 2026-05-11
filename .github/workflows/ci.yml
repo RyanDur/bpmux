@@ -37,13 +37,43 @@ jobs:
       contents: read
       issues: read
       actions: read
+    # #1285: $HOME-isolation on bpmux-mac-m1 self-hosted runner. The
+    # runner runs as Ryan's user with Ryan's $HOME, so any action that
+    # writes to ~/.cargo, ~/.rustup, ~/.npm, etc. corrupts Ryan's live
+    # dev state. Empirical incident (dev 2026-05-11 03:28 UTC): the
+    # dtolnay/rust-toolchain action wiped ~/.cargo/bin/rustup mid-CI.
+    # Strategy: action-cache redirect via CARGO_HOME/RUSTUP_HOME env
+    # vars pointing at $RUNNER_TEMP-private paths. dtolnay/rust-toolchain
+    # respects these (standard rustup env vars); Swatinem/rust-cache@v2
+    # caches via the configured CARGO_HOME so cache paths follow.
+    # PATH update prepends the redirected cargo/bin so all later steps
+    # find the installed rust toolchain.
+    env:
+      CARGO_HOME: ${{ runner.temp }}/cargo
+      RUSTUP_HOME: ${{ runner.temp }}/rustup
     steps:
       - uses: actions/checkout@v4
+      - name: Prepend isolated CARGO_HOME/bin to PATH
+        run: echo "${{ runner.temp }}/cargo/bin" >> "$GITHUB_PATH"
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: "1.95.0"
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
+      - name: Verify $HOME-isolation (#1285)
+        # Fail-loud if any toolchain action wrote into Ryan's user $HOME.
+        # Sister-shape regression test inside CI itself (AC 6-7).
+        run: |
+          if [ -d "$HOME/.rustup/toolchains" ] && find "$HOME/.rustup/toolchains" -mindepth 1 -maxdepth 1 -newer "$GITHUB_WORKSPACE" -print -quit | grep -q . ; then
+            echo "::error::#1285 violation: $HOME/.rustup/toolchains was modified during this CI run; isolation broke."
+            exit 1
+          fi
+          if [ -f "$HOME/.cargo/bin/rustup" ] && [ "$HOME/.cargo/bin/rustup" -nt "$GITHUB_WORKSPACE" ]; then
+            echo "::error::#1285 violation: $HOME/.cargo/bin/rustup was modified during this CI run."
+            exit 1
+          fi
+          echo "#1285: $HOME-isolation OK; CARGO_HOME=$CARGO_HOME RUSTUP_HOME=$RUSTUP_HOME"
+          ls -la "$CARGO_HOME/bin" || true
       - name: Format check
         run: cargo fmt --check
       - name: Clippy

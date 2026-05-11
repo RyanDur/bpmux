@@ -290,6 +290,84 @@ backend-startup latency. Filed as sister-story under Epic #1247.
 - Off-hours CI cron: schedule e2e at 4am UTC (designer mitigation 4)
   to reduce real-time conflict with Ryan's live dev hours
 
+## $HOME-isolation on bpmux-mac-m1 (#1285)
+
+The bpmux-mac-m1 self-hosted runner runs as Ryan's user, sharing
+`$HOME` with his live dev shell. Empirical incident (dev 2026-05-11
+03:28 UTC during #1252 step-2): the `dtolnay/rust-toolchain` action
+wiped `~/.cargo/bin/rustup` mid-CI run, requiring a manual rustup +
+cargo-nextest reinstall to continue.
+
+This is the **same-user same-$HOME contention class** — sister of
+`feedback_no_broad_pkill_during_shared_session`. Substrate-fix is
+load-bearing for the dog-fooding-on-dev-machine channel (Ryan
+2026-05-10 23:21 UTC reframe): if Ryan can't trust his $HOME state,
+he can't dog-food cleanly.
+
+### Strategy: action-cache redirect via env vars
+
+Set `CARGO_HOME` and `RUSTUP_HOME` to `$RUNNER_TEMP`-private paths at
+the job level in `.github/workflows/ci.yml`. The toolchain actions
+respect these standard rustup env vars and write into the redirected
+paths instead of Ryan's `~/.cargo` / `~/.rustup`. A
+`PATH`-prepend step ensures later workflow steps find the redirected
+cargo binaries.
+
+Rationale for this strategy over alternatives:
+
+- **Runner-isolated $HOME** (alternative): would require runner-config
+  change + restart; loses Ryan's existing user-level cache benefits
+  (Swatinem/rust-cache populated against his real $HOME for pre-#1285
+  runs). Defer.
+- **Replace destructive actions** (alternative): `dtolnay/rust-toolchain`
+  is the de-facto standard; replacements would diverge from community
+  norm.
+- **Env-var redirect** (chosen): minimal-invasive, reversible, no
+  runner-config change, follows standard env-var conventions.
+
+### Action audit (.github/workflows/ci.yml)
+
+| Job | Runner | Action | $HOME-touch surface | Isolation |
+|-----|--------|--------|---------------------|-----------|
+| build-bpmux | ubuntu-latest | actions/checkout@v4 | none | N/A (ephemeral container) |
+| build-bpmux | ubuntu-latest | dtolnay/rust-toolchain@master | ~/.rustup ~/.cargo | N/A (ephemeral container) |
+| build-bpmux | ubuntu-latest | Swatinem/rust-cache@v2 | ~/.cargo/registry ~/.cargo/git | N/A (ephemeral container) |
+| build-bpmux | ubuntu-latest | actions/upload-artifact@v4 | none | N/A |
+| test | self-hosted macos arm64 | actions/checkout@v4 | none | safe (read-only) |
+| test | self-hosted macos arm64 | dtolnay/rust-toolchain@master | ~/.rustup ~/.cargo | **redirected** via job-level CARGO_HOME + RUSTUP_HOME → $RUNNER_TEMP |
+| test | self-hosted macos arm64 | Swatinem/rust-cache@v2 | CARGO_HOME paths | **redirected** transitively (follows CARGO_HOME) |
+| playwright-e2e | ubuntu-latest | actions/checkout@v4 | none | N/A (ephemeral container) |
+| playwright-e2e | ubuntu-latest | actions/download-artifact@v4 | none | N/A |
+| playwright-e2e | ubuntu-latest | actions/setup-node@v4 | ~/.npm | N/A (ephemeral container) |
+| playwright-e2e | ubuntu-latest | actions/cache@v4 | ~/.cache/ms-playwright | N/A (ephemeral container) |
+| playwright-e2e | ubuntu-latest | actions/upload-artifact@v4 | none | N/A |
+
+The only self-hosted-runner-resident job is `test`, where both
+$HOME-touching actions are now redirected. Other jobs run in
+ephemeral GHA-hosted containers and their $HOME-touches don't affect
+Ryan's machine.
+
+### Self-verifying $HOME-isolation gate
+
+The `test` job runs a "Verify $HOME-isolation" step after
+toolchain installation that fails the build if `~/.rustup/toolchains`
+or `~/.cargo/bin/rustup` were modified during the CI run. This is
+the regression test (AC 6-7) and runs as part of CI itself — any
+future action that breaks isolation surfaces immediately.
+
+### Future-action-addition discipline
+
+When adding any new action to `.github/workflows/*.yml`:
+
+1. If it runs in `runs-on: [self-hosted, macos, arm64]`, audit its
+   $HOME-touch surface BEFORE merging.
+2. If the action touches user-level config-dirs (`~/.cargo`,
+   `~/.rustup`, `~/.npm`, `~/.gradle`, `~/.m2`, `~/.ssh`, etc.),
+   either: (a) confirm read-only/scoped-path, OR (b) redirect to
+   `$RUNNER_TEMP` via env vars, OR (c) replace with action that
+   respects $HOME.
+3. Extend the audit table above with the new action's row.
+
 ## Substrate-fix sister-stories (#1289 + #1290)
 
 The hybrid-state migration above named two substrate gaps blocking
