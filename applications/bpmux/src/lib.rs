@@ -277,6 +277,69 @@ pub async fn auto_heal_icebox_at_path(
     }
 }
 
+/// #1271: boot-time auto-heal of orphan markers in the iteration-
+/// markers store. Sister of `auto_heal_icebox_at_boot` at
+/// markers-store-axis. Truth-source is `icebox_unified` (canonical
+/// positional substrate from #1258 + #1268); markers in the store
+/// whose id is not present in icebox_unified are evicted (likely
+/// residue from close_iteration / delete_iteration_marker fires
+/// where positional removal landed but store cleanup was lost).
+///
+/// MUST run AFTER `auto_heal_icebox_at_boot` so icebox_unified is in
+/// its final-shape when we compare against it (per AC 10 timing).
+/// Failures log via diag — heal is best-effort and must not block
+/// server boot.
+pub async fn auto_heal_markers_store_orphans_at_boot(session: Arc<session::Session>) {
+    let Ok(priority_path) = session::priority::default_priority_path() else {
+        return;
+    };
+    auto_heal_markers_store_orphans_at_path(&priority_path, &session.dir, session.clone()).await;
+}
+
+pub async fn auto_heal_markers_store_orphans_at_path(
+    priority_path: &std::path::Path,
+    session_dir: &std::path::Path,
+    session: Arc<session::Session>,
+) {
+    let index = session::priority::load_priority(priority_path);
+    let canonical_marker_ids: std::collections::HashSet<u64> = index
+        .icebox_unified
+        .iter()
+        .filter_map(|item| match item {
+            session::priority::IceboxItem::Marker { id } => Some(*id),
+            session::priority::IceboxItem::Story { .. } => None,
+        })
+        .collect();
+    let mut store = session::iteration_markers::load(session_dir);
+    let evicted = session::iteration_markers::auto_heal_orphans(&mut store, &canonical_marker_ids);
+    if evicted == 0 {
+        return;
+    }
+    if let Err(e) = session::iteration_markers::save(session_dir, &store) {
+        session::diag::log_diag(&format!("[#1271] markers-store heal: save failed: {e}"));
+        return;
+    }
+    session::diag::log_diag(&format!(
+        "[#1271] markers-store heal: evicted {evicted} orphan marker(s) absent from icebox_unified"
+    ));
+    let payload = session::message::StateDeltaPayload::IceboxMigration {
+        entries: index.icebox_unified.len(),
+    };
+    let msg = session::Message {
+        from: "bpmux".to_string(),
+        text: String::new(),
+        ts: chrono::Utc::now(),
+        message_type: session::MessageType::StateDelta,
+        state_delta: Some(payload),
+        ..session::Message::default()
+    };
+    if let Err(e) = session.broadcast(&msg) {
+        session::diag::log_diag(&format!(
+            "[#1271] markers-store heal: state-delta broadcast failed: {e}"
+        ));
+    }
+}
+
 fn run_server_only(cli: &Cli) -> anyhow::Result<()> {
     let base = resolve_session_base(&cli.session_base)?;
     std::fs::create_dir_all(&base)?;

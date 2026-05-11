@@ -71,6 +71,26 @@ pub fn remove(store: &mut IterationMarkersStore, id: u64) -> bool {
     store.markers.len() != before
 }
 
+/// #1271: evict markers from the store whose id is NOT in the
+/// canonical icebox_unified. Returns the number of orphans evicted.
+/// Sister of `priority::auto_heal_icebox_unified_via_workflow_state`
+/// at markers-store-axis — the canonical positional substrate is
+/// `icebox_unified`, and the markers-store is a downstream mirror
+/// of marker metadata. When close_iteration / delete_iteration_marker
+/// fires the positional removal but the store-side cleanup is lost
+/// (boot-restart, state-transition gap, fixture-setup), this heal
+/// reconciles the divergence.
+///
+/// Markers IN icebox_unified are preserved unconditionally. Idempotent.
+pub fn auto_heal_orphans(
+    store: &mut IterationMarkersStore,
+    canonical_ids: &std::collections::HashSet<u64>,
+) -> usize {
+    let before = store.markers.len();
+    store.markers.retain(|m| canonical_ids.contains(&m.id));
+    before - store.markers.len()
+}
+
 pub fn next_unused_theme(store: &IterationMarkersStore) -> String {
     let used: std::collections::HashSet<&String> =
         store.markers.iter().map(|m| &m.theme_name).collect();

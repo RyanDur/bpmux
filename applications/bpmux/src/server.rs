@@ -244,7 +244,14 @@ pub async fn run_server(
             session.clone(),
             crate::bridge::drain_interval_from_env(),
         ));
-        tokio::spawn(crate::auto_heal_icebox_at_boot(session.clone(), refresh));
+        // #1271 timing: markers-store orphan heal must run AFTER the
+        // icebox-side heal so the canonical icebox_unified is in its
+        // final shape before we compare marker membership against it.
+        let session_for_markers_heal = session.clone();
+        tokio::spawn(async move {
+            crate::auto_heal_icebox_at_boot(session_for_markers_heal.clone(), refresh).await;
+            crate::auto_heal_markers_store_orphans_at_boot(session_for_markers_heal).await;
+        });
     }
 
     // #372: spawn the push-based CI state watcher. Polls GitHub at
