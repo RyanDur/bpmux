@@ -91,6 +91,52 @@ pub fn auto_heal_orphans(
     before - store.markers.len()
 }
 
+/// #1283: restore markers from the markers-store into `icebox_unified`
+/// when they're missing from it post-restart. Reverse-direction sister
+/// of `auto_heal_orphans` (#1271): that one evicts store-orphans
+/// against icebox_unified-as-truth; this one treats markers-store as
+/// evidence-that-marker-should-exist and ensures icebox_unified
+/// contains it. Empirically observed substrate-divergence (Ryan
+/// 2026-05-11 02:56 UTC): priority.json's icebox_unified is
+/// effectively empty (Vec field, skip_serializing_if = Vec::is_empty
+/// → omitted from JSON when state-mutation paths save a stale
+/// snapshot) while markers-store retains 3 markers.
+///
+/// Truth-source for "marker exists" is markers-store. Markers missing
+/// from icebox_unified are appended at the END in marker-position
+/// order. Exact icebox_unified-position preservation requires a
+/// schema-add (`icebox_position`) — deferred to follow-up; the
+/// substrate-resilience user-job here is "marker remains in icebox
+/// post-restart". Returns the number of markers restored.
+///
+/// Ordering: MUST run BEFORE `auto_heal_orphans` so #1271 doesn't
+/// evict markers that THIS function is restoring (per #1283 AC 1).
+/// Idempotent: if every store-marker is already in icebox_unified,
+/// no-op.
+pub fn restore_missing_markers_to_icebox_unified(
+    store: &IterationMarkersStore,
+    icebox_unified: &mut Vec<super::priority::IceboxItem>,
+) -> usize {
+    let present: std::collections::HashSet<u64> = icebox_unified
+        .iter()
+        .filter_map(|item| match item {
+            super::priority::IceboxItem::Marker { id } => Some(*id),
+            super::priority::IceboxItem::Story { .. } => None,
+        })
+        .collect();
+    let mut sorted: Vec<&IterationMarker> = store
+        .markers
+        .iter()
+        .filter(|m| !present.contains(&m.id))
+        .collect();
+    sorted.sort_by_key(|m| m.position);
+    let restored = sorted.len();
+    for m in sorted {
+        icebox_unified.push(super::priority::IceboxItem::Marker { id: m.id });
+    }
+    restored
+}
+
 pub fn next_unused_theme(store: &IterationMarkersStore) -> String {
     let used: std::collections::HashSet<&String> =
         store.markers.iter().map(|m| &m.theme_name).collect();

@@ -259,3 +259,251 @@ async fn boot_heal_ignores_story_entries_in_icebox_unified() {
     assert_eq!(after.markers.len(), 1);
     assert_eq!(after.markers[0].id, 1);
 }
+
+// ── #1283: pure-function tests on `restore_missing_markers_to_icebox_unified` ──
+
+#[test]
+fn restore_appends_missing_markers_in_position_order() {
+    use crate::session::iteration_markers::restore_missing_markers_to_icebox_unified;
+    use crate::session::priority::IceboxItem;
+    let store = IterationMarkersStore {
+        markers: vec![
+            marker(2, "Aquila", 2),
+            marker(5, "Aquila", 3),
+            marker(6, "Pegasus", 4),
+        ],
+        next_id: 7,
+    };
+    let mut icebox_unified: Vec<IceboxItem> = Vec::new();
+    let restored = restore_missing_markers_to_icebox_unified(&store, &mut icebox_unified);
+    assert_eq!(restored, 3);
+    assert_eq!(
+        icebox_unified,
+        vec![
+            IceboxItem::Marker { id: 2 },
+            IceboxItem::Marker { id: 5 },
+            IceboxItem::Marker { id: 6 },
+        ],
+        "restored in marker-position order (2 → 3 → 4)"
+    );
+}
+
+#[test]
+fn restore_is_noop_when_all_markers_present() {
+    use crate::session::iteration_markers::restore_missing_markers_to_icebox_unified;
+    use crate::session::priority::IceboxItem;
+    let store = IterationMarkersStore {
+        markers: vec![marker(1, "Andromeda", 0), marker(2, "Aquila", 1)],
+        next_id: 3,
+    };
+    let mut icebox_unified = vec![IceboxItem::Marker { id: 1 }, IceboxItem::Marker { id: 2 }];
+    let before = icebox_unified.clone();
+    let restored = restore_missing_markers_to_icebox_unified(&store, &mut icebox_unified);
+    assert_eq!(restored, 0);
+    assert_eq!(icebox_unified, before);
+}
+
+#[test]
+fn restore_preserves_existing_stories_and_appends_missing_marker() {
+    use crate::session::iteration_markers::restore_missing_markers_to_icebox_unified;
+    use crate::session::priority::IceboxItem;
+    let store = IterationMarkersStore {
+        markers: vec![marker(1, "Andromeda", 0), marker(2, "Aquila", 1)],
+        next_id: 3,
+    };
+    let mut icebox_unified = vec![
+        IceboxItem::Story { number: 100 },
+        IceboxItem::Marker { id: 1 },
+        IceboxItem::Story { number: 200 },
+    ];
+    let restored = restore_missing_markers_to_icebox_unified(&store, &mut icebox_unified);
+    assert_eq!(restored, 1, "marker 2 restored; marker 1 already present");
+    assert_eq!(
+        icebox_unified,
+        vec![
+            IceboxItem::Story { number: 100 },
+            IceboxItem::Marker { id: 1 },
+            IceboxItem::Story { number: 200 },
+            IceboxItem::Marker { id: 2 },
+        ],
+        "existing stories preserved; missing marker appended"
+    );
+}
+
+#[test]
+fn restore_noop_when_store_empty() {
+    use crate::session::iteration_markers::restore_missing_markers_to_icebox_unified;
+    use crate::session::priority::IceboxItem;
+    let store = IterationMarkersStore::default();
+    let mut icebox_unified = vec![IceboxItem::Story { number: 100 }];
+    let before = icebox_unified.clone();
+    let restored = restore_missing_markers_to_icebox_unified(&store, &mut icebox_unified);
+    assert_eq!(restored, 0);
+    assert_eq!(icebox_unified, before);
+}
+
+#[test]
+fn restore_idempotent_across_multiple_invocations() {
+    use crate::session::iteration_markers::restore_missing_markers_to_icebox_unified;
+    use crate::session::priority::IceboxItem;
+    let store = IterationMarkersStore {
+        markers: vec![marker(1, "Andromeda", 0)],
+        next_id: 2,
+    };
+    let mut icebox_unified: Vec<IceboxItem> = Vec::new();
+    let first = restore_missing_markers_to_icebox_unified(&store, &mut icebox_unified);
+    let second = restore_missing_markers_to_icebox_unified(&store, &mut icebox_unified);
+    let third = restore_missing_markers_to_icebox_unified(&store, &mut icebox_unified);
+    assert_eq!(first, 1, "first run restores the missing marker");
+    assert_eq!(second, 0, "second run no-op");
+    assert_eq!(third, 0, "third run still no-op (multi-restart-survives)");
+    assert_eq!(icebox_unified, vec![IceboxItem::Marker { id: 1 }]);
+}
+
+// ── #1283: boot-integration tests via `restore_marker_positions_to_icebox_unified_at_path` ──
+
+#[tokio::test]
+async fn boot_restore_repairs_priority_json_when_icebox_unified_missing_markers() {
+    let (session, _rx, _dir) = fresh_session();
+    let priority_path = session.dir.join("priority.json");
+    // Empirical repro: priority.json has no icebox_unified field
+    // (skip_serializing_if = Vec::is_empty omitted it), markers-store
+    // has 3 markers. Ryan's UI showed no markers post-restart.
+    std::fs::write(&priority_path, r#"{"icebox":[],"ready":[]}"#).unwrap();
+    let store = IterationMarkersStore {
+        markers: vec![
+            marker(2, "Aquila", 2),
+            marker(5, "Aquila", 3),
+            marker(6, "Pegasus", 4),
+        ],
+        next_id: 7,
+    };
+    save(&session.dir, &store).unwrap();
+
+    crate::restore_marker_positions_to_icebox_unified_at_path(
+        &priority_path,
+        &session.dir,
+        session.clone(),
+    )
+    .await;
+
+    let index = crate::session::priority::load_priority(&priority_path);
+    assert_eq!(
+        index.icebox_unified.len(),
+        3,
+        "all 3 markers restored to icebox_unified"
+    );
+    let ids: Vec<u64> = index
+        .icebox_unified
+        .iter()
+        .filter_map(|i| match i {
+            crate::session::priority::IceboxItem::Marker { id } => Some(*id),
+            crate::session::priority::IceboxItem::Story { .. } => None,
+        })
+        .collect();
+    assert_eq!(ids, vec![2, 5, 6]);
+}
+
+#[tokio::test]
+async fn boot_restore_noop_when_already_consistent() {
+    let (session, _rx, _dir) = fresh_session();
+    let priority_path = session.dir.join("priority.json");
+    std::fs::write(
+        &priority_path,
+        r#"{"icebox_unified":[{"kind":"marker","id":1},{"kind":"marker","id":2}]}"#,
+    )
+    .unwrap();
+    let store = IterationMarkersStore {
+        markers: vec![marker(1, "Andromeda", 0), marker(2, "Aquila", 1)],
+        next_id: 3,
+    };
+    save(&session.dir, &store).unwrap();
+    let before_mtime = std::fs::metadata(&priority_path)
+        .unwrap()
+        .modified()
+        .unwrap();
+
+    crate::restore_marker_positions_to_icebox_unified_at_path(
+        &priority_path,
+        &session.dir,
+        session.clone(),
+    )
+    .await;
+
+    let after_mtime = std::fs::metadata(&priority_path)
+        .unwrap()
+        .modified()
+        .unwrap();
+    assert_eq!(
+        before_mtime, after_mtime,
+        "consistent state = no save = no mtime change"
+    );
+}
+
+#[tokio::test]
+async fn boot_restore_broadcasts_state_delta_on_restore() {
+    let (session, mut rx, _dir) = fresh_session();
+    let priority_path = session.dir.join("priority.json");
+    std::fs::write(&priority_path, r#"{}"#).unwrap();
+    let store = IterationMarkersStore {
+        markers: vec![marker(1, "Andromeda", 0)],
+        next_id: 2,
+    };
+    save(&session.dir, &store).unwrap();
+
+    crate::restore_marker_positions_to_icebox_unified_at_path(
+        &priority_path,
+        &session.dir,
+        session.clone(),
+    )
+    .await;
+
+    let msg = rx.try_recv().expect("state-delta broadcast received");
+    assert_eq!(msg.message_type, crate::session::MessageType::StateDelta);
+    match msg.state_delta {
+        Some(crate::session::message::StateDeltaPayload::IceboxMigration { entries }) => {
+            assert_eq!(entries, 1, "icebox_unified now has 1 marker");
+        }
+        other => panic!("expected IceboxMigration payload; got {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn boot_restore_then_orphan_heal_preserves_restored_markers() {
+    // Ordering invariant: #1283 restore MUST run before #1271 evict.
+    // Otherwise #1271 would evict the very markers #1283 restored
+    // (markers-store has them; icebox_unified DIDN'T pre-restore, so
+    // running #1271 first would treat them as orphans).
+    let (session, _rx, _dir) = fresh_session();
+    let priority_path = session.dir.join("priority.json");
+    std::fs::write(&priority_path, r#"{}"#).unwrap();
+    let store = IterationMarkersStore {
+        markers: vec![marker(1, "Andromeda", 0), marker(2, "Aquila", 1)],
+        next_id: 3,
+    };
+    save(&session.dir, &store).unwrap();
+
+    // Boot sequence step 1: #1283 restore
+    crate::restore_marker_positions_to_icebox_unified_at_path(
+        &priority_path,
+        &session.dir,
+        session.clone(),
+    )
+    .await;
+    // Boot sequence step 2: #1271 evict
+    crate::auto_heal_markers_store_orphans_at_path(&priority_path, &session.dir, session.clone())
+        .await;
+
+    let after = load(&session.dir);
+    assert_eq!(
+        after.markers.len(),
+        2,
+        "both markers survive the boot sequence — restore-then-evict preserves them"
+    );
+    let index = crate::session::priority::load_priority(&priority_path);
+    assert_eq!(
+        index.icebox_unified.len(),
+        2,
+        "icebox_unified has both markers post-sequence"
+    );
+}

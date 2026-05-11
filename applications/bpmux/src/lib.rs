@@ -277,6 +277,80 @@ pub async fn auto_heal_icebox_at_path(
     }
 }
 
+/// #1283: boot-time restore of markers that are present in the
+/// markers-store but missing from `icebox_unified`. Reverse-direction
+/// sister of #1271 — that one evicts store-orphans against icebox_unified-
+/// as-truth; this one treats markers-store-as-truth and ensures
+/// icebox_unified contains every marker the store knows about.
+///
+/// Empirically observed substrate-divergence (Ryan 2026-05-11 02:56 UTC):
+/// priority.json's icebox_unified was effectively empty (Vec field with
+/// skip_serializing_if = Vec::is_empty → some state-mutation path saved
+/// a stale snapshot and zeroed the field) while markers-store retained
+/// 3 markers (Pegasus, Aquila, orphan-Aquila). UI showed no markers
+/// while list_iteration_markers returned all 3 — tool-claim vs state
+/// divergence.
+///
+/// MUST run AFTER `auto_heal_icebox_at_boot` (#1268 evicts non-icebox
+/// stories from icebox_unified) AND BEFORE `auto_heal_markers_store_orphans_at_boot`
+/// (#1271 evicts store-orphans). Without that ordering, #1271 would
+/// evict the very markers THIS function is supposed to restore.
+///
+/// Best-effort: save-failures log via diag and don't block boot.
+/// State-delta broadcast post-restore (sister to #1258 IceboxMigration).
+pub async fn restore_marker_positions_to_icebox_unified_at_boot(session: Arc<session::Session>) {
+    let Ok(priority_path) = session::priority::default_priority_path() else {
+        return;
+    };
+    restore_marker_positions_to_icebox_unified_at_path(
+        &priority_path,
+        &session.dir,
+        session.clone(),
+    )
+    .await;
+}
+
+pub async fn restore_marker_positions_to_icebox_unified_at_path(
+    priority_path: &std::path::Path,
+    session_dir: &std::path::Path,
+    session: Arc<session::Session>,
+) {
+    let mut index = session::priority::load_priority(priority_path);
+    let markers_store = session::iteration_markers::load(session_dir);
+    let restored = session::iteration_markers::restore_missing_markers_to_icebox_unified(
+        &markers_store,
+        &mut index.icebox_unified,
+    );
+    if restored == 0 {
+        return;
+    }
+    if let Err(e) = session::priority::save_priority(priority_path, &index) {
+        session::diag::log_diag(&format!(
+            "[#1283] restore markers to icebox_unified: save failed: {e}"
+        ));
+        return;
+    }
+    session::diag::log_diag(&format!(
+        "[#1283] restore markers to icebox_unified: restored {restored} marker(s) missing from icebox_unified"
+    ));
+    let payload = session::message::StateDeltaPayload::IceboxMigration {
+        entries: index.icebox_unified.len(),
+    };
+    let msg = session::Message {
+        from: "bpmux".to_string(),
+        text: String::new(),
+        ts: chrono::Utc::now(),
+        message_type: session::MessageType::StateDelta,
+        state_delta: Some(payload),
+        ..session::Message::default()
+    };
+    if let Err(e) = session.broadcast(&msg) {
+        session::diag::log_diag(&format!(
+            "[#1283] restore markers to icebox_unified: state-delta broadcast failed: {e}"
+        ));
+    }
+}
+
 /// #1271: boot-time auto-heal of orphan markers in the iteration-
 /// markers store. Sister of `auto_heal_icebox_at_boot` at
 /// markers-store-axis. Truth-source is `icebox_unified` (canonical
@@ -287,6 +361,8 @@ pub async fn auto_heal_icebox_at_path(
 ///
 /// MUST run AFTER `auto_heal_icebox_at_boot` so icebox_unified is in
 /// its final-shape when we compare against it (per AC 10 timing).
+/// MUST run AFTER `restore_marker_positions_to_icebox_unified_at_boot`
+/// (#1283) so we don't evict markers that #1283 is restoring.
 /// Failures log via diag — heal is best-effort and must not block
 /// server boot.
 pub async fn auto_heal_markers_store_orphans_at_boot(session: Arc<session::Session>) {
