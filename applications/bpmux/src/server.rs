@@ -399,6 +399,29 @@ pub async fn run_server(
             transport::auth::gate,
         ));
 
+    // #1290 Part A: seed endpoints for Playwright e2e tests. Mounted
+    // only when BPMUX_TEST_SEED_API=1; structural boundary, not runtime
+    // conditional. Separate from BPMUX_TEST_MODE (which swaps to the
+    // in-memory orchestrator) so launchWithMockGh tests can seed state
+    // while keeping the prod orchestrator + mock-GH boundary.
+    let test_seed_routes = if transport::test_seed::seed_api_enabled() {
+        axum::Router::new()
+            .route(
+                "/api/test/seed_messages",
+                axum::routing::post(transport::test_seed::post_seed_messages),
+            )
+            .route(
+                "/api/test/seed_pins",
+                axum::routing::post(transport::test_seed::post_seed_pins),
+            )
+            .route(
+                "/api/test/seed_reactions",
+                axum::routing::post(transport::test_seed::post_seed_reactions),
+            )
+    } else {
+        axum::Router::new()
+    };
+
     let test_routes = if test_refresh.is_some() {
         axum::Router::new()
             .route(
@@ -472,6 +495,7 @@ pub async fn run_server(
         )
         .merge(gated_routes)
         .merge(test_routes)
+        .merge(test_seed_routes)
         .with_state(session)
         .layer(axum::Extension(screen_capture))
         .layer(axum::Extension(tracker))

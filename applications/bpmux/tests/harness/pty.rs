@@ -47,6 +47,15 @@ impl TestBpmux {
         Self::start_with_session_and_env(name, session_dir, &[(key, value)])
     }
 
+    /// Spawn bpmux with multiple extra env vars. Sister to `start_with_env`
+    /// for callers that need to set more than one variable at startup
+    /// (e.g., #1290 seed endpoints requiring both `BPMUX_TEST_SEED_API=1`
+    /// and `BPMUX_STORAGE_BACKEND=memory`).
+    pub fn start_with_envs(name: &str, extra_env: &[(&str, &str)]) -> Self {
+        let session_dir = tempfile::TempDir::new().expect("temp dir");
+        Self::start_with_session_and_env(name, session_dir, extra_env)
+    }
+
     /// #599: spawn bpmux with the SERVER's `GitHubSourceAdapter` aimed
     /// at a test MockServer via `BPMUX_GH_BASE_URL`. Required for the
     /// cross_bridge_mutation_propagation suite post-#516 canonical-

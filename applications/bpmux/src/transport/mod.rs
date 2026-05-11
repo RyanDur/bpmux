@@ -11,6 +11,7 @@ pub mod rest;
 pub mod rpc_routes;
 pub mod self_update;
 pub mod test_routes;
+pub mod test_seed;
 pub mod unfurl;
 pub mod webrtc;
 pub mod ws;
