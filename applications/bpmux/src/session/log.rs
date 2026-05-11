@@ -60,8 +60,17 @@ impl Session {
             .and_then(|n| n.to_str())
             .unwrap_or("unknown")
             .to_string();
-        let storage: Arc<dyn Storage> =
-            Arc::new(InstrumentedStorage::new(FileStorage::new(dir.clone())));
+        // #1289 AC 12 substrate-enabler: `BPMUX_STORAGE_BACKEND=memory`
+        // env var swaps the session storage to `MemoryStorage` (no
+        // disk I/O). Tests set this to eliminate per-test bpmux
+        // backend-startup-disk-I/O cost (the substrate-class that
+        // f9ebe47/c8ba878/5bdb235 empirically falsified). Default
+        // (unset or anything else) uses production-shape FileStorage.
+        let storage: Arc<dyn Storage> = match std::env::var("BPMUX_STORAGE_BACKEND").ok().as_deref()
+        {
+            Some("memory") => Arc::new(crate::session::storage::MemoryStorage::new(dir.clone())),
+            _ => Arc::new(InstrumentedStorage::new(FileStorage::new(dir.clone()))),
+        };
         let roster = load_seed_roster(&dir);
         Self {
             dir,
