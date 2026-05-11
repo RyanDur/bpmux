@@ -37,41 +37,13 @@ jobs:
       contents: read
       issues: read
       actions: read
-    # #1285: $HOME-isolation on bpmux-mac-m1 self-hosted runner. The
-    # runner runs as Ryan's user with Ryan's $HOME, so any action that
-    # writes to ~/.cargo, ~/.rustup, ~/.npm, etc. corrupts Ryan's live
-    # dev state. Empirical incident (dev 2026-05-11 03:28 UTC): the
-    # dtolnay/rust-toolchain action wiped ~/.cargo/bin/rustup mid-CI.
-    # Strategy: action-cache redirect via CARGO_HOME/RUSTUP_HOME env
-    # vars pointing at $RUNNER_TEMP-private paths. dtolnay/rust-toolchain
-    # respects these (standard rustup env vars); Swatinem/rust-cache@v2
-    # caches via the configured CARGO_HOME so cache paths follow.
-    # PATH update prepends the redirected cargo/bin so all later steps
-    # find the installed rust toolchain.
-    env:
-      CARGO_HOME: ${{ runner.temp }}/cargo
-      RUSTUP_HOME: ${{ runner.temp }}/rustup
     steps:
       - uses: actions/checkout@v4
-      - name: Prepend isolated CARGO_HOME/bin to PATH
-        run: echo "${{ runner.temp }}/cargo/bin" >> "$GITHUB_PATH"
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: "1.95.0"
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
-      - name: $HOME-isolation diagnostic (#1285)
-        # Non-failing diagnostic for the env-var redirect. Logs whether
-        # the redirected RUSTUP_HOME got populated; observability only,
-        # doesn't gate CI. Reliable in-CI validation of the redirect
-        # depends on action-internal behavior that varies — a proper
-        # gate is filed as a follow-up. The actual substrate-fix is
-        # the CARGO_HOME / RUSTUP_HOME env vars set at job level above.
-        run: |
-          echo "CARGO_HOME=${CARGO_HOME:-unset}"
-          echo "RUSTUP_HOME=${RUSTUP_HOME:-unset}"
-          ls "$RUSTUP_HOME/toolchains" 2>/dev/null || echo "(no toolchains under RUSTUP_HOME)"
-          which cargo || true
       - name: Format check
         run: cargo fmt --check
       - name: Clippy
