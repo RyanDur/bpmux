@@ -20,6 +20,8 @@ pub mod reactions;
 pub mod recall;
 pub mod search;
 pub mod storage;
+#[cfg(test)]
+mod storage_tests;
 pub mod tokens;
 pub mod usage;
 pub mod velocity;
