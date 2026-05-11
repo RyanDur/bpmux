@@ -606,6 +606,123 @@ fn close_iteration_promote_batch_dedups_existing_ready_entries() {
     );
 }
 
+// ── #1295: load_priority defensively restores markers from markers-store ──
+
+#[tokio::test]
+async fn load_priority_restores_missing_markers_from_session_markers_store() {
+    use crate::session::iteration_markers::{IterationMarker, IterationMarkersStore, save};
+    // Recreate today's empirical state: priority.json missing
+    // icebox_unified (post mid-session wipe), markers_store has 3
+    // markers via `current` symlink, load_priority must restore
+    // icebox_unified from the store before returning.
+    let tmp_home = tempfile::tempdir().unwrap();
+    let priority_path = tmp_home.path().join("priority.json");
+    let sessions_dir = tmp_home.path().join("sessions");
+    let session_id_dir = sessions_dir.join("alpha-session");
+    std::fs::create_dir_all(&session_id_dir).unwrap();
+    let current = sessions_dir.join("current");
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(&session_id_dir, &current).unwrap();
+    let store = IterationMarkersStore {
+        markers: vec![
+            IterationMarker {
+                id: 2,
+                theme_name: "Aquila".to_string(),
+                position: 2,
+                created_at: "2026-05-10T22:20:19Z".to_string(),
+                stories: Vec::new(),
+            },
+            IterationMarker {
+                id: 5,
+                theme_name: "Aquila".to_string(),
+                position: 3,
+                created_at: "2026-05-11T00:26:09Z".to_string(),
+                stories: Vec::new(),
+            },
+            IterationMarker {
+                id: 6,
+                theme_name: "Pegasus".to_string(),
+                position: 4,
+                created_at: "2026-05-11T00:40:06Z".to_string(),
+                stories: Vec::new(),
+            },
+        ],
+        next_id: 7,
+    };
+    save(&session_id_dir, &store).unwrap();
+    // priority.json with icebox_unified ABSENT — today's empirical
+    // post-wipe state.
+    std::fs::write(
+        &priority_path,
+        r#"{"ready":[100],"icebox":[],"current_iteration_stories":[]}"#,
+    )
+    .unwrap();
+    let index = load_priority(&priority_path);
+    let restored_marker_ids: Vec<u64> = index
+        .icebox_unified
+        .iter()
+        .filter_map(|i| match i {
+            IceboxItem::Marker { id } => Some(*id),
+            IceboxItem::Story { .. } => None,
+        })
+        .collect();
+    assert_eq!(
+        restored_marker_ids,
+        vec![2, 5, 6],
+        "load_priority must restore markers from markers-store when icebox_unified is empty"
+    );
+}
+
+#[tokio::test]
+async fn load_priority_noop_when_no_session_symlink() {
+    // Tests using arbitrary temp paths (no `current` symlink) must
+    // not trigger the restore — preserves existing tests' isolation.
+    let tmp_dir = tempfile::tempdir().unwrap();
+    let priority_path = tmp_dir.path().join("priority.json");
+    std::fs::write(&priority_path, r#"{"ready":[100]}"#).unwrap();
+    let index = load_priority(&priority_path);
+    assert!(
+        index.icebox_unified.is_empty(),
+        "no markers-store discoverable ⇒ no restore"
+    );
+    assert_eq!(index.columns.get("ready"), Some(&vec![100]));
+}
+
+#[tokio::test]
+async fn load_priority_raw_skips_marker_restore_for_boot_heal_callers() {
+    use crate::session::iteration_markers::{IterationMarker, IterationMarkersStore, save};
+    // Boot-heal callers (#1283 et al.) use load_priority_raw because
+    // they invoke the marker-restore EXPLICITLY in their next step.
+    // If load_priority did implicit restore too, the boot-heal's
+    // diag log would report restored=0 (already done) — semantically
+    // OK but obscures observability of the boot-time fix firing.
+    let tmp_home = tempfile::tempdir().unwrap();
+    let priority_path = tmp_home.path().join("priority.json");
+    let sessions_dir = tmp_home.path().join("sessions");
+    let session_id_dir = sessions_dir.join("alpha");
+    std::fs::create_dir_all(&session_id_dir).unwrap();
+    let current = sessions_dir.join("current");
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(&session_id_dir, &current).unwrap();
+    let store = IterationMarkersStore {
+        markers: vec![IterationMarker {
+            id: 1,
+            theme_name: "Andromeda".to_string(),
+            position: 0,
+            created_at: "ts".to_string(),
+            stories: Vec::new(),
+        }],
+        next_id: 2,
+    };
+    save(&session_id_dir, &store).unwrap();
+    std::fs::write(&priority_path, r#"{}"#).unwrap();
+    let raw = load_priority_raw(&priority_path);
+    assert!(
+        raw.icebox_unified.is_empty(),
+        "raw load skips marker-restore"
+    );
+}
+
 #[test]
 fn close_iteration_promote_batch_running_twice_does_not_duplicate() {
     let mut index = PriorityIndex::default();

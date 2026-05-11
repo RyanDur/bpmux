@@ -36,9 +36,60 @@ pub fn default_priority_path() -> Result<PathBuf, String> {
 }
 
 pub fn load_priority(path: &Path) -> PriorityIndex {
+    let mut index = load_priority_raw(path);
+    // #1295 defensive restore: if priority.json was written with
+    // icebox_unified empty (skip_serializing_if = Vec::is_empty omits
+    // the field) by some mid-session mutation that didn't preserve
+    // the markers state, repair it on load by consulting the
+    // markers-store. Best-effort: silently no-op when the session
+    // directory can't be discovered (e.g., tests using arbitrary
+    // paths, fresh installs with no `current` symlink).
+    //
+    // Sister-shape to #1283's boot-heal restore_missing_markers_to_
+    // icebox_unified, applied at every load so EVERY subsequent
+    // save_priority writes back a populated icebox_unified —
+    // regardless of which mid-session code path the save came from.
+    // Closes the substrate-bug class where load → modify → save
+    // cycles via mutation handlers wipe icebox_unified because the
+    // intermediate operation didn't repopulate markers.
+    if let Some(session_dir) = discover_session_dir_from_priority_path(path) {
+        let store = super::iteration_markers::load(&session_dir);
+        super::iteration_markers::restore_missing_markers_to_icebox_unified(
+            &store,
+            &mut index.icebox_unified,
+        );
+    }
+    index
+}
+
+/// Raw priority.json read without defensive marker-restore. Used by
+/// boot-heal helpers + tests where the marker-restore is the explicit
+/// next step (not implicit in load).
+pub fn load_priority_raw(path: &Path) -> PriorityIndex {
     match std::fs::read_to_string(path) {
         Ok(contents) => serde_json::from_str(&contents).unwrap_or_default(),
         Err(_) => PriorityIndex::default(),
+    }
+}
+
+/// #1295: discover the `iteration_markers.json` session directory
+/// from a priority.json path. Production layout:
+///
+/// ```text
+/// ~/.bpmux/priority.json       ← priority_path
+/// ~/.bpmux/sessions/current    ← symlink to ~/.bpmux/sessions/<uuid>/
+/// ~/.bpmux/sessions/<uuid>/iteration_markers.json
+/// ```
+///
+/// Returns `None` when no `current` symlink exists (e.g., tests with
+/// arbitrary tempdir priority paths).
+fn discover_session_dir_from_priority_path(priority_path: &Path) -> Option<PathBuf> {
+    let parent = priority_path.parent()?;
+    let current = parent.join("sessions").join("current");
+    if current.is_symlink() {
+        std::fs::read_link(&current).ok()
+    } else {
+        None
     }
 }
 

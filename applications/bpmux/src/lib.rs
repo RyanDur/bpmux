@@ -368,7 +368,13 @@ pub async fn restore_marker_positions_to_icebox_unified_at_path(
     session_dir: &std::path::Path,
     session: Arc<session::Session>,
 ) {
-    let mut index = session::priority::load_priority(priority_path);
+    // #1295: use load_priority_raw here so the boot-heal sees the ACTUAL
+    // on-disk state — if priority.json was wiped (icebox_unified absent),
+    // raw load returns empty Vec + we restore + save explicitly. The
+    // defensive load_priority would have already in-memory-restored,
+    // making restored=0 + skipping save + leaving disk broken until the
+    // next mid-session mutation. Use raw to repair disk eagerly at boot.
+    let mut index = session::priority::load_priority_raw(priority_path);
     let markers_store = session::iteration_markers::load(session_dir);
     let restored = session::iteration_markers::restore_missing_markers_to_icebox_unified(
         &markers_store,
