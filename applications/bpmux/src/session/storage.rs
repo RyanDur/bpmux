@@ -94,6 +94,106 @@ pub trait Storage: Send + Sync {
     ) -> Result<(), std::io::Error>;
 }
 
+/// #1289 Phase-3: cross-session global state. Distinct from `Storage`
+/// (which is session-scoped) because these files live at user-global
+/// paths (e.g., `~/.bpmux/priority.json`, `~/.bpmux/identity/{role}.json`)
+/// and survive across multiple bpmux sessions.
+///
+/// FileGlobalStore production impl resolves paths via existing
+/// `default_*_path()` helpers (each preserves their respective env-
+/// override + home-default semantics). MemoryGlobalStore tests-only
+/// impl uses per-instance Mutex<T> state.
+pub trait GlobalStore: Send + Sync {
+    // Priority (~/.bpmux/priority.json)
+    fn load_priority(&self) -> super::priority::PriorityIndex;
+    fn save_priority(&self, index: &super::priority::PriorityIndex) -> Result<(), std::io::Error>;
+}
+
+/// File-based global store — production impl.
+pub struct FileGlobalStore {
+    /// #1289: per-instance priority-path override. Tests inject
+    /// per-test paths to avoid sharing `~/.bpmux/priority.json`.
+    priority_path: Option<PathBuf>,
+}
+
+impl Default for FileGlobalStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl FileGlobalStore {
+    pub fn new() -> Self {
+        Self {
+            priority_path: None,
+        }
+    }
+
+    /// Opt-in path-injection for the priority index. Tests use this
+    /// to point at a unique tempdir; production leaves it `None` so
+    /// `default_priority_path()` resolves at call-time.
+    pub fn with_priority_path(mut self, path: PathBuf) -> Self {
+        self.priority_path = Some(path);
+        self
+    }
+
+    fn resolve_priority_path(&self) -> Result<PathBuf, String> {
+        if let Some(p) = &self.priority_path {
+            return Ok(p.clone());
+        }
+        super::priority::default_priority_path()
+    }
+}
+
+impl GlobalStore for FileGlobalStore {
+    fn load_priority(&self) -> super::priority::PriorityIndex {
+        match self.resolve_priority_path() {
+            Ok(path) => super::priority::load_priority(&path),
+            Err(_) => super::priority::PriorityIndex::default(),
+        }
+    }
+
+    fn save_priority(&self, index: &super::priority::PriorityIndex) -> Result<(), std::io::Error> {
+        let path = self
+            .resolve_priority_path()
+            .map_err(std::io::Error::other)?;
+        super::priority::save_priority(&path, index)
+    }
+}
+
+/// In-memory global store — tests-only impl.
+pub struct MemoryGlobalStore {
+    priority: Mutex<super::priority::PriorityIndex>,
+}
+
+impl Default for MemoryGlobalStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl MemoryGlobalStore {
+    pub fn new() -> Self {
+        Self {
+            priority: Mutex::new(super::priority::PriorityIndex::default()),
+        }
+    }
+}
+
+impl GlobalStore for MemoryGlobalStore {
+    fn load_priority(&self) -> super::priority::PriorityIndex {
+        self.priority
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
+    }
+
+    fn save_priority(&self, index: &super::priority::PriorityIndex) -> Result<(), std::io::Error> {
+        *self.priority.lock().unwrap_or_else(|e| e.into_inner()) = index.clone();
+        Ok(())
+    }
+}
+
 /// File-based storage — the current implementation.
 pub struct FileStorage {
     dir: PathBuf,

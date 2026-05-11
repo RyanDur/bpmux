@@ -18,7 +18,9 @@ use crate::board::domain::{Story, StoryState};
 use crate::session::lessons::LessonIndex;
 use crate::session::message::Message;
 use crate::session::search::SearchFilters;
-use crate::session::storage::{FileStorage, MemoryStorage, Storage};
+use crate::session::storage::{
+    FileGlobalStore, FileStorage, GlobalStore, MemoryGlobalStore, MemoryStorage, Storage,
+};
 use chrono::{TimeZone, Utc};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -441,6 +443,88 @@ contract!(
         let loaded = storage.load_iteration_markers();
         assert_eq!(loaded.markers.len(), 1);
         assert_eq!(loaded.markers[0].theme_name, "Aquila");
+    }
+);
+
+// ── GlobalStore: priority (#1289 Phase-3 step 1) ──
+
+fn file_global() -> (Arc<dyn GlobalStore>, tempfile::TempDir) {
+    let dir = tempfile::tempdir().unwrap();
+    let priority_path = dir.path().join("priority.json");
+    let global: Arc<dyn GlobalStore> =
+        Arc::new(FileGlobalStore::new().with_priority_path(priority_path));
+    (global, dir)
+}
+
+fn memory_global() -> (Arc<dyn GlobalStore>, tempfile::TempDir) {
+    let dir = tempfile::tempdir().unwrap();
+    let global: Arc<dyn GlobalStore> = Arc::new(MemoryGlobalStore::new());
+    (global, dir)
+}
+
+macro_rules! global_contract {
+    ($name:ident, $check:expr) => {
+        mod $name {
+            use super::*;
+
+            #[test]
+            fn file_global() {
+                let (global, _dir) = super::file_global();
+                $check(global.as_ref());
+            }
+
+            #[test]
+            fn memory_global() {
+                let (global, _dir) = super::memory_global();
+                $check(global.as_ref());
+            }
+        }
+    };
+}
+
+global_contract!(
+    load_priority_default_when_unset,
+    |global: &dyn GlobalStore| {
+        let idx = global.load_priority();
+        assert!(idx.icebox_unified.is_empty());
+        assert!(idx.columns.is_empty());
+    }
+);
+
+global_contract!(
+    save_then_load_priority_roundtrips,
+    |global: &dyn GlobalStore| {
+        let mut idx = crate::session::priority::PriorityIndex::default();
+        idx.icebox_unified
+            .push(crate::session::priority::IceboxItem::Story { number: 100 });
+        idx.icebox_unified
+            .push(crate::session::priority::IceboxItem::Marker { id: 5 });
+        global.save_priority(&idx).unwrap();
+        let loaded = global.load_priority();
+        assert_eq!(loaded.icebox_unified.len(), 2);
+    }
+);
+
+global_contract!(
+    save_priority_overwrites_previous,
+    |global: &dyn GlobalStore| {
+        let mut idx_v1 = crate::session::priority::PriorityIndex::default();
+        idx_v1
+            .icebox_unified
+            .push(crate::session::priority::IceboxItem::Story { number: 1 });
+        global.save_priority(&idx_v1).unwrap();
+
+        let mut idx_v2 = crate::session::priority::PriorityIndex::default();
+        idx_v2
+            .icebox_unified
+            .push(crate::session::priority::IceboxItem::Story { number: 2 });
+        idx_v2
+            .icebox_unified
+            .push(crate::session::priority::IceboxItem::Story { number: 3 });
+        global.save_priority(&idx_v2).unwrap();
+
+        let loaded = global.load_priority();
+        assert_eq!(loaded.icebox_unified.len(), 2);
     }
 );
 
