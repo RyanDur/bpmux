@@ -222,43 +222,35 @@ Ryan physically rebooted his M1 Pro Mac; runner auto-restarted via LaunchAgent
 - Bridge MCP-tools post-cutover verification (#1254 slice 4)
 - Multi-runner pool / multi-platform matrix (deferred)
 
-## Slice-2 full migration (#1252)
+## Slice-2 hybrid migration (#1252) — transitional shape
 
 Per Ryan-directive 2026-05-11 03:07 UTC ("keep migrating everything
-to the self hosted runner"), all 3 ci.yml jobs migrated to
-`[self-hosted, macos, arm64]`. Substrate-conflict surfaced during
-initial impl (overnight) drove two empirical design-decisions:
+to the self hosted runner"), initial impl migrated all 3 jobs.
+Empirical CI on f9ebe47 / c8ba878 / 5bdb235 showed playwright-e2e
+on macOS arm64 hits per-test 30-90s timeouts (~3× Linux+xvfb
+baseline) because each test spawns its own bpmux backend with
+filesystem-backed state — concurrent Electron+bpmux launches
+serialize on bpmux's startup cost.
 
-| Job | Final state | macOS adaptations |
-|-----|-------------|--------------------|
-| `build-bpmux` | `[self-hosted, macos, arm64]` | produces aarch64-apple-darwin binary; consumed by Playwright shards on same host (no cross-arch copy) |
-| `test` (fmt/clippy/nextest/audit) | `[self-hosted, macos, arm64]` | cargo cross-platform; empirical 2-3 min wall-clock with warm Swatinem cache |
-| `playwright-e2e` | `[self-hosted, macos, arm64]` | dropped `xvfb-run` (macOS native windowing); dropped `--with-deps` (no apt on macOS); Playwright cache path `~/Library/Caches/ms-playwright`; sharding-design rebalanced (see below) |
+Ryan-call 2026-05-11 06:08 CST: the proper fix is **datastore
+dependency-injection** — refactor bpmux's storage layer so tests
+can inject an in-memory store, eliminating per-test
+backend-startup latency. Filed as sister-story under Epic #1247.
 
-### Sharding-design rebalance (AC 4 dev-call)
+**Until sister-story lands, ci.yml is hybrid:**
 
-Original 6-shard matrix was designed for parallel ubuntu-latest
-runners. On a single self-hosted runner, the matrix serializes —
-each shard pays full setup cost (actions/checkout + setup-node +
-npm-ci + Playwright-install) × 6, which dominates wall-clock.
+| Job | Current state | Reason |
+|-----|---------------|--------|
+| `build-bpmux` | `ubuntu-latest` | produces Linux x64 binary for the Linux-hosted Playwright matrix |
+| `test` (fmt/clippy/nextest/audit) | `[self-hosted, macos, arm64]` | empirical 2-3 min wall-clock; zero failures across 4+ runs; cache warm via Swatinem |
+| `playwright-e2e` (6-shard) | `ubuntu-latest` | requires Store-trait DI substrate (sister-story) before macOS-native migration; full quota-bypass deferred |
 
-**Collapsed to single job + `--workers=4`**: one shard runs all
-tests with 4 Playwright workers in parallel. M1 Pro has 8
-performance cores; initial attempt at `--workers=8` oversaturated
-CPU during concurrent Electron-launch — each Playwright test calls
-`launchIsolated()` which spawns a fresh Electron + bpmux backend.
-With 8 simultaneous launches, each pair starved the others; bpmux
-`waitForHealthz` polled up to 60-90s vs the normal 5-10s, exhausting
-per-test budget before test logic ran. `--workers=4` gives each
-test ~2 perf cores during launch — startup completes in ~10s with
-full per-test budget remaining for test logic. Trade: total
-wall-clock ~2× vs uncontended-workers=8 but ALL tests get budget
-to complete.
+**Empirical evidence motivating the revert:**
 
-Sister-story candidate for future optimization: share one bpmux
-backend across tests in a worker (eliminate per-test backend
-launch). Currently out-of-scope; per-test isolation is the existing
-contract.
+- f9ebe47 (all 3 jobs migrated; 6-shard matrix on single self-hosted runner): 3/5 completed shards FAILED with 30s timeouts; projected total wall-clock 5-6 hours
+- c8ba878 (--workers=8 + 90s testTimeout): 11/~306 tests still timed out at 90s
+- 5bdb235 (--workers=4 + 30s default testTimeout): 25 failures (worse, because lower timeout exposed more per-test slowness)
+- Cumulative finding: per-test slowness on macOS arm64 + Electron is real (not just concurrency-contention); requires substrate-architecture fix, not CI-config tuning
 
 ### Sister-substrate-Bugs (impl deferred to standalone slices)
 
@@ -281,21 +273,15 @@ contract.
   off-hours CI cron (4am UTC schedule). Mitigation impl deferred to
   #1286.
 
-### Trade-offs
+### Trade-offs of hybrid state
 
-- ✓ All 3 jobs run on bpmux-mac-m1 — maximum quota-bypass at Epic
-  #1247 goal
-- ✓ Same-host artifact: build-bpmux produces arm64-darwin binary,
-  Playwright consumes on same arch (no cross-arch copy or wrong-
-  arch crash)
-- ✓ Real-workload validation: cargo build + clippy + nextest +
-  Playwright e2e all on bpmux-mac-m1
-- ⚠ Resource contention with Ryan's live work on same Mac (M1 Pro
-  32GB; cargo + Playwright concurrent ≈ 4-8GB peak)
-- ⚠ UI-overlap class until #1286 mitigation lands (Electron windows
-  spawn during CI runs visible on Ryan's screen)
-- ⚠ $HOME-contention class until #1285 mitigation lands (rustup
-  re-install required after each CI test job)
+- ✓ `test` job runs on bpmux-mac-m1 (partial quota-bypass; cargo
+  + clippy + nextest + audit no longer consume GHA-hosted minutes)
+- ✓ CI stays green throughout sister-story refactor
+- ⚠ Full quota-bypass deferred until Store-trait sister-story
+  delivers + we re-attempt e2e migration
+- ⚠ $HOME-contention class on test job until #1285 mitigation
+  lands (rustup re-install required after each CI test job)
 
 **Deferred to future iteration:**
 
