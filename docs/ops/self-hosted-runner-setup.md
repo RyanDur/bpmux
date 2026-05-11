@@ -238,21 +238,25 @@ runs-on-directive lift-and-shift breaks on OS mismatch.
 | `test` (fmt/clippy/cargo test/audit) | ubuntu-latest | `[self-hosted, macos, arm64]` | no GUI, cargo cross-platform |
 | `playwright-e2e` (6-shard matrix) | ubuntu-latest | `[self-hosted, macos, arm64]` | dropped `xvfb-run` (macOS native windowing); dropped `--with-deps` (no apt on macOS); Playwright cache path `~/Library/Caches/ms-playwright` |
 
-**UI-overlap mitigation (chosen at impl-time from designer's menu):**
+**UI-overlap mitigation: DEFERRED to follow-up story.**
 
-Option 1 from designer's menu — test-mode hidden windows via
-`BPMUX_TEST_MODE` env. Implementation:
+Initial attempt: BPMUX_TEST_MODE env gating `mainWindow.show()` —
+broke `real-backend.spec.ts:671 unfurls` + `human-observes-accepted-state-after-close-story.spec.ts:17`
+because macOS aggressively throttles hidden windows (renderer
+animations + fetch-handlers run slower; 10s `toBeVisible` timeouts
+exceed). Reverted in same commit.
 
-- `applications/electron/src/main/index.ts`: gate `mainWindow.show()`
-  on `process.env.BPMUX_TEST_MODE` — when set, window stays hidden
-  (matches existing `show: false` BrowserWindow construction)
-- `applications/electron/tests/helpers/launch.ts`: pass
-  `BPMUX_TEST_MODE: '1'` in default Electron launch env — covers all
-  Playwright tests via the canonical helper
+Alternative mitigations (designer's menu) remaining:
+- Off-screen window positioning (`x: -10_000, y: -10_000`) — window
+  technically visible, no throttling, user doesn't see it
+- Playwright `_electron.launch(args: ['--headless'])` — Electron may
+  not honor; needs verification
+- Reduce concurrency (`workers: 1`) during Ryan-live-hours
+- Off-hours CI cron (4am UTC schedule)
 
-Substrate-design choice (not impl-flag) because the test-mode-aware
-main process is reusable for any future headless scenario (CI,
-background-only mode, etc.).
+File follow-up substrate-story for owner-call on which mitigation to
+ship; this commit leaves UI-overlap unmitigated (tests visible on
+Ryan's screen during CI runs).
 
 **Trade-offs:**
 

@@ -266,9 +266,7 @@ function createWindow(): void {
   })
 
   mainWindow.on('ready-to-show', () => {
-    if (!process.env.BPMUX_TEST_MODE) {
-      mainWindow.show()
-    }
+    mainWindow.show()
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {

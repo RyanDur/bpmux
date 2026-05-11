@@ -157,7 +157,6 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
       BPMUX_BOARD_STORE_PATH: defaultBoardStorePath,
       BPMUX_BOARD_OUTBOX_PATH: defaultBoardOutboxPath,
       BPMUX_LOG: defaultLogPath,
-      BPMUX_TEST_MODE: '1',
       ...ghEnvOverrides,
       ...(opts.extraEnv ?? {})
     }
