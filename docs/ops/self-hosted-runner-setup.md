@@ -221,3 +221,38 @@ Ryan physically rebooted his M1 Pro Mac; runner auto-restarted via LaunchAgent
 - Cutover from GHA-hosted runners — routing-mode decision (#1253 slice 3)
 - Bridge MCP-tools post-cutover verification (#1254 slice 4)
 - Multi-runner pool / multi-platform matrix (deferred)
+
+## Slice-2 hybrid migration (#1252)
+
+Slice-1 chose macOS arm64 substrate; slice-2 grounding revealed
+existing `ci.yml` jobs all target `ubuntu-latest` with Linux-specific
+deps (xvfb-run, `npx playwright install --with-deps`). Pure
+runs-on-directive lift-and-shift breaks on OS mismatch.
+
+**Smallest-first hybrid path** chosen (per dev-lane owner-call at
+2026-05-10 22:00 CST + `feedback_authority_defer_on_named_pattern`):
+
+| Job | Pre-#1252 | Post-#1252 step 1 | Reason |
+|-----|-----------|-------------------|--------|
+| `build-bpmux` | ubuntu-latest | ubuntu-latest (unchanged) | builds Linux x64 binary used by Playwright e2e |
+| `test` (fmt/clippy/cargo test/audit) | ubuntu-latest | `[self-hosted, macos, arm64]` | no GUI, no xvfb, cargo cross-platform |
+| `playwright-e2e` | ubuntu-latest | ubuntu-latest (unchanged) | xvfb-run is Linux-only; sharding-rethink needed for single-runner |
+
+**Trade-offs:**
+
+- ✓ Real-workload (cargo build + test + clippy + audit) validates
+  bpmux-mac-m1 beyond synthetic smoke
+- ✓ Quota-bypass: one heavy job migrated; reduces GHA-hosted minutes
+- ✓ Linux coverage preserved for build-artifact + e2e (Playwright
+  shards still parallelize across GHA-hosted runners)
+- ✗ Cargo target cache rebuilds for aarch64-apple-darwin (first run)
+- ⚠ Resource contention with Ryan's live work on the same Mac (M1 Pro
+  32GB; cargo test ≈ 1.5GB peak; should be fine but watch)
+
+**Deferred (sister-story or slice 1.5):**
+
+- `playwright-e2e` migration — requires xvfb-replacement (macOS-native
+  Playwright headed mode) OR Linux substrate provisioning (Docker on
+  Mac, or separate Linux self-hosted runner)
+- `build-bpmux` migration — only worth migrating if e2e also migrates;
+  otherwise produces wrong-arch artifact for Linux Playwright shards
