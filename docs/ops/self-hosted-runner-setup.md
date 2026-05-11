@@ -222,37 +222,57 @@ Ryan physically rebooted his M1 Pro Mac; runner auto-restarted via LaunchAgent
 - Bridge MCP-tools post-cutover verification (#1254 slice 4)
 - Multi-runner pool / multi-platform matrix (deferred)
 
-## Slice-2 hybrid migration (#1252)
+## Slice-2 full migration (#1252)
 
 Slice-1 chose macOS arm64 substrate; slice-2 grounding revealed
 existing `ci.yml` jobs all target `ubuntu-latest` with Linux-specific
 deps (xvfb-run, `npx playwright install --with-deps`). Pure
 runs-on-directive lift-and-shift breaks on OS mismatch.
 
-**Smallest-first hybrid path** chosen (per dev-lane owner-call at
-2026-05-10 22:00 CST + `feedback_authority_defer_on_named_pattern`):
+**Full-migration path** (per Ryan 2026-05-10 22:07 CST directive
+"keep migrating everything to the self hosted runner"):
 
-| Job | Pre-#1252 | Post-#1252 step 1 | Reason |
-|-----|-----------|-------------------|--------|
-| `build-bpmux` | ubuntu-latest | ubuntu-latest (unchanged) | builds Linux x64 binary used by Playwright e2e |
-| `test` (fmt/clippy/cargo test/audit) | ubuntu-latest | `[self-hosted, macos, arm64]` | no GUI, no xvfb, cargo cross-platform |
-| `playwright-e2e` | ubuntu-latest | ubuntu-latest (unchanged) | xvfb-run is Linux-only; sharding-rethink needed for single-runner |
+| Job | Pre-#1252 | Post-#1252 | macOS adaptation |
+|-----|-----------|-------------|------------------|
+| `build-bpmux` | ubuntu-latest | `[self-hosted, macos, arm64]` | produces aarch64-apple-darwin binary (used by Playwright shards on same host) |
+| `test` (fmt/clippy/cargo test/audit) | ubuntu-latest | `[self-hosted, macos, arm64]` | no GUI, cargo cross-platform |
+| `playwright-e2e` (6-shard matrix) | ubuntu-latest | `[self-hosted, macos, arm64]` | dropped `xvfb-run` (macOS native windowing); dropped `--with-deps` (no apt on macOS); Playwright cache path `~/Library/Caches/ms-playwright` |
+
+**UI-overlap mitigation (chosen at impl-time from designer's menu):**
+
+Option 1 from designer's menu — test-mode hidden windows via
+`BPMUX_TEST_MODE` env. Implementation:
+
+- `applications/electron/src/main/index.ts`: gate `mainWindow.show()`
+  on `process.env.BPMUX_TEST_MODE` — when set, window stays hidden
+  (matches existing `show: false` BrowserWindow construction)
+- `applications/electron/tests/helpers/launch.ts`: pass
+  `BPMUX_TEST_MODE: '1'` in default Electron launch env — covers all
+  Playwright tests via the canonical helper
+
+Substrate-design choice (not impl-flag) because the test-mode-aware
+main process is reusable for any future headless scenario (CI,
+background-only mode, etc.).
 
 **Trade-offs:**
 
-- ✓ Real-workload (cargo build + test + clippy + audit) validates
-  bpmux-mac-m1 beyond synthetic smoke
-- ✓ Quota-bypass: one heavy job migrated; reduces GHA-hosted minutes
-- ✓ Linux coverage preserved for build-artifact + e2e (Playwright
-  shards still parallelize across GHA-hosted runners)
-- ✗ Cargo target cache rebuilds for aarch64-apple-darwin (first run)
-- ⚠ Resource contention with Ryan's live work on the same Mac (M1 Pro
-  32GB; cargo test ≈ 1.5GB peak; should be fine but watch)
+- ✓ All 3 jobs run on bpmux-mac-m1 — maximum quota-bypass
+- ✓ Same-host artifact: build-bpmux produces arm64-darwin binary,
+  Playwright shards consume on same arch (no cross-arch copy)
+- ✓ Real-workload validation (cargo build + clippy + nextest +
+  Playwright e2e) — beyond synthetic smoke
+- ✓ UI-overlap mitigated via test-mode hidden windows
+- ✗ 6-shard matrix serializes on single runner (was 6× parallel on
+  GHA-hosted Linux); wall-clock impact ≈ 6× e2e duration
+- ⚠ Resource contention with Ryan's live work on same Mac (M1 Pro
+  32GB; cargo + Playwright concurrent ≈ 4-8GB peak)
+- ⚠ Sharding-optimization deferred: 1×`--workers=8` may be faster on
+  single runner than 6 serialized shards; baseline measurement
+  pending CI run observations
 
-**Deferred (sister-story or slice 1.5):**
+**Deferred to future iteration:**
 
-- `playwright-e2e` migration — requires xvfb-replacement (macOS-native
-  Playwright headed mode) OR Linux substrate provisioning (Docker on
-  Mac, or separate Linux self-hosted runner)
-- `build-bpmux` migration — only worth migrating if e2e also migrates;
-  otherwise produces wrong-arch artifact for Linux Playwright shards
+- Sharding-rethink: 1-shard `--workers=8` vs 6-shard serialized
+  (whichever has lower wall-clock + acceptable memory ceiling)
+- Off-hours CI cron: schedule e2e at 4am UTC (designer mitigation 4)
+  to reduce real-time conflict with Ryan's live dev hours

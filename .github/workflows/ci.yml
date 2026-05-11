@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-bpmux:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, macos, arm64]
     permissions:
       contents: read
     steps:
@@ -59,7 +59,7 @@ jobs:
 
   playwright-e2e:
     needs: build-bpmux
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, macos, arm64]
     permissions:
       contents: read
     strategy:
@@ -92,16 +92,16 @@ jobs:
         id: playwright-cache
         uses: actions/cache@v4
         with:
-          path: ~/.cache/ms-playwright
+          path: ~/Library/Caches/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('applications/electron/package-lock.json') }}
           restore-keys: |
             playwright-${{ runner.os }}-
-      - name: Install Playwright + system deps (xvfb, fonts, etc)
+      - name: Install Playwright (macOS native windowing; no apt deps)
         working-directory: applications/electron
-        run: npx playwright install --with-deps
-      - name: Run Playwright shard ${{ matrix.shard }}/6 under xvfb
+        run: npx playwright install
+      - name: Run Playwright shard ${{ matrix.shard }}/6 (BPMUX_TEST_MODE hides windows)
         working-directory: applications/electron
-        run: xvfb-run --auto-servernum npx playwright test --reporter=dot --shard=${{ matrix.shard }}/6 --workers=4
+        run: npx playwright test --reporter=dot --shard=${{ matrix.shard }}/6 --workers=4
       - name: Upload Playwright traces on failure
         if: failure()
         uses: actions/upload-artifact@v4
