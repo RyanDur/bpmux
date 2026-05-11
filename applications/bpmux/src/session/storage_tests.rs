@@ -375,6 +375,32 @@ contract!(per_role_bookmark_isolation, |storage: &dyn Storage| {
     assert_eq!(storage.load_bookmark("pm").current_task, "pm task");
 });
 
+// ── Pins (#1289 Phase-2 step 2) ──
+
+contract!(load_pins_empty_when_unset, |storage: &dyn Storage| {
+    let store = storage.load_pins();
+    assert!(store.channels.is_empty());
+});
+
+contract!(save_then_load_pins_roundtrips, |storage: &dyn Storage| {
+    let mut store = crate::session::pins::PinsStore::default();
+    crate::session::pins::add_pin(
+        &mut store,
+        "broadcast",
+        crate::session::pins::Pin {
+            message_key: "2026-05-11T13:00:00Z|dev".to_string(),
+            from: "dev".to_string(),
+            ts: "2026-05-11T13:00:00Z".to_string(),
+            text: "pinned message body".to_string(),
+            pinned_by: "dev".to_string(),
+            pinned_at: "2026-05-11T13:00:00Z".to_string(),
+        },
+    );
+    storage.save_pins(&store).unwrap();
+    let loaded = storage.load_pins();
+    assert!(loaded.channels.contains_key("broadcast"));
+});
+
 // ── BoardStore ↔ Storage trait integration (#1289 Phase-1 step 2) ──
 
 #[test]

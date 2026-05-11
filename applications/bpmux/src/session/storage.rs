@@ -74,6 +74,10 @@ pub trait Storage: Send + Sync {
         role: &str,
         bookmark: &super::bookmark::Bookmark,
     ) -> Result<(), std::io::Error>;
+
+    // #1289 Phase-2: session-scoped pins (pins.json).
+    fn load_pins(&self) -> super::pins::PinsStore;
+    fn save_pins(&self, store: &super::pins::PinsStore) -> Result<(), std::io::Error>;
 }
 
 /// File-based storage — the current implementation.
@@ -252,6 +256,14 @@ impl Storage for FileStorage {
     ) -> Result<(), std::io::Error> {
         super::bookmark::save_bookmark(&self.dir, role, bookmark)
     }
+
+    fn load_pins(&self) -> super::pins::PinsStore {
+        super::pins::load(&self.dir)
+    }
+
+    fn save_pins(&self, store: &super::pins::PinsStore) -> Result<(), std::io::Error> {
+        super::pins::save(&self.dir, store)
+    }
 }
 
 /// In-memory storage — #1289 substrate-foundation for the Store-trait
@@ -274,6 +286,7 @@ pub struct MemoryStorage {
     board_snapshot: Mutex<HashMap<u64, Story>>,
     outbox: Mutex<VecDeque<QueuedEvent>>,
     bookmarks: Mutex<HashMap<String, super::bookmark::Bookmark>>,
+    pins: Mutex<super::pins::PinsStore>,
 }
 
 impl MemoryStorage {
@@ -290,6 +303,7 @@ impl MemoryStorage {
             board_snapshot: Mutex::new(HashMap::new()),
             outbox: Mutex::new(VecDeque::new()),
             bookmarks: Mutex::new(HashMap::new()),
+            pins: Mutex::new(super::pins::PinsStore::default()),
         }
     }
 }
@@ -450,6 +464,15 @@ impl Storage for MemoryStorage {
             .lock()
             .unwrap_or_else(|e| e.into_inner())
             .insert(role.to_string(), bookmark.clone());
+        Ok(())
+    }
+
+    fn load_pins(&self) -> super::pins::PinsStore {
+        self.pins.lock().unwrap_or_else(|e| e.into_inner()).clone()
+    }
+
+    fn save_pins(&self, store: &super::pins::PinsStore) -> Result<(), std::io::Error> {
+        *self.pins.lock().unwrap_or_else(|e| e.into_inner()) = store.clone();
         Ok(())
     }
 }
