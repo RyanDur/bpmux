@@ -249,6 +249,10 @@ pub struct SyncOrchestrator<A: SourceAdapter + 'static> {
     status: Arc<Mutex<SyncStatus>>,
     pending: Arc<Mutex<VecDeque<QueuedEvent>>>,
     outbox_path: Option<PathBuf>,
+    /// #1289 Phase-1 step 4: Storage-trait sink for outbox persistence.
+    /// When `Some`, used in preference to `outbox_path`. Set via
+    /// `with_storage` constructor (sister of `with_outbox_path`).
+    storage: Option<Arc<dyn crate::session::storage::Storage>>,
     next_mutation_id: AtomicU64,
     action_tx: Option<tokio::sync::mpsc::UnboundedSender<crate::orchestrator::OrchestratorAction>>,
     issue_locks: tokio::sync::Mutex<std::collections::HashMap<u64, Arc<tokio::sync::Mutex<()>>>>,
@@ -262,6 +266,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             status: Arc::new(Mutex::new(SyncStatus::default())),
             pending: Arc::new(Mutex::new(VecDeque::new())),
             outbox_path: None,
+            storage: None,
             next_mutation_id: AtomicU64::new(1),
             action_tx: None,
             issue_locks: tokio::sync::Mutex::new(std::collections::HashMap::new()),
@@ -284,6 +289,35 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             })),
             pending: Arc::new(Mutex::new(pending)),
             outbox_path: Some(path),
+            storage: None,
+            next_mutation_id: AtomicU64::new(next),
+            action_tx: None,
+            issue_locks: tokio::sync::Mutex::new(std::collections::HashMap::new()),
+        })
+    }
+
+    /// #1289 Phase-1 step 4: construct with Storage-trait sink for
+    /// outbox persistence. Sister of `with_outbox_path` at storage-DI
+    /// axis. When this constructor is used, `persist_outbox` routes
+    /// through `storage.save_outbox` instead of `persist_outbox_to_disk`,
+    /// and initial pending events come from `storage.load_outbox`.
+    pub fn with_storage(
+        store: Arc<BoardStore>,
+        adapter: Arc<A>,
+        storage: Arc<dyn crate::session::storage::Storage>,
+    ) -> Result<Self, PersistError> {
+        let pending = storage.load_outbox()?;
+        let next = pending.iter().map(|e| e.id.0).max().unwrap_or(0) + 1;
+        Ok(Self {
+            store,
+            adapter,
+            status: Arc::new(Mutex::new(SyncStatus {
+                pending_events: pending.len(),
+                ..SyncStatus::default()
+            })),
+            pending: Arc::new(Mutex::new(pending)),
+            outbox_path: None,
+            storage: Some(storage),
             next_mutation_id: AtomicU64::new(next),
             action_tx: None,
             issue_locks: tokio::sync::Mutex::new(std::collections::HashMap::new()),
@@ -299,12 +333,23 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     }
 
     fn persist_outbox(&self) {
-        let Some(path) = self.outbox_path.as_ref() else {
-            return;
-        };
         let snapshot: Vec<QueuedEvent> = {
             let p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
             p.iter().cloned().collect()
+        };
+        // #1289 Phase-1 step 4: prefer Storage-trait sink when set
+        // (with_storage construction); fall back to outbox_path for
+        // backward-compat with `with_outbox_path`-constructed instances.
+        if let Some(storage) = self.storage.as_ref() {
+            if let Err(e) = storage.save_outbox(&snapshot) {
+                crate::session::diag::log_diag(&format!(
+                    "orchestrator: outbox persist via storage failed: {e}"
+                ));
+            }
+            return;
+        }
+        let Some(path) = self.outbox_path.as_ref() else {
+            return;
         };
         if let Err(e) = persist_outbox_to_disk(path, &snapshot) {
             crate::session::diag::log_diag(&format!("orchestrator: outbox persist failed: {e}"));

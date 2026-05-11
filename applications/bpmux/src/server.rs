@@ -33,13 +33,12 @@ async fn build_test_orchestrator(
         }
     };
     let adapter = Arc::new(crate::board::adapters::in_memory::InMemorySourceAdapter::new());
-    let orch_concrete = match crate::board::default_outbox_path() {
-        Ok(path) => {
-            match SyncOrchestrator::with_outbox_path(store.clone(), adapter.clone(), path) {
-                Ok(o) => o,
-                Err(_) => SyncOrchestrator::new(store, adapter),
-            }
-        }
+    let orch_concrete = match SyncOrchestrator::with_storage(
+        store.clone(),
+        adapter.clone(),
+        session.storage.clone(),
+    ) {
+        Ok(o) => o,
         Err(_) => SyncOrchestrator::new(store, adapter),
     };
     let orch_concrete = match action_tx {
@@ -82,34 +81,24 @@ async fn build_prod_orchestrator(
             Arc::new(BoardStore::new())
         }
     };
-    let outbox_path = match crate::board::default_outbox_path() {
-        Ok(p) => Some(p),
+    let orch_concrete = match SyncOrchestrator::with_storage(
+        store.clone(),
+        adapter.clone(),
+        session.storage.clone(),
+    ) {
+        Ok(o) => {
+            let pending_count = o.snapshot_status().pending_events;
+            crate::session::diag::log_diag(&format!(
+                "server: board-outbox hydrated via storage ({pending_count} pending events)"
+            ));
+            o
+        }
         Err(e) => {
             crate::session::diag::log_diag(&format!(
-                "server: board-outbox path resolve failed: {e}; running without outbox persistence"
+                "server: board-outbox storage-load failed ({e}); starting with empty outbox"
             ));
-            None
+            SyncOrchestrator::new(store.clone(), adapter.clone())
         }
-    };
-    let orch_concrete = match outbox_path.as_ref() {
-        Some(path) => {
-            match SyncOrchestrator::with_outbox_path(store.clone(), adapter.clone(), path.clone()) {
-                Ok(o) => {
-                    let pending_count = o.snapshot_status().pending_events;
-                    crate::session::diag::log_diag(&format!(
-                        "server: board-outbox hydrated from disk ({pending_count} pending events at {path:?})"
-                    ));
-                    o
-                }
-                Err(e) => {
-                    crate::session::diag::log_diag(&format!(
-                        "server: board-outbox disk-load failed ({e}); starting with empty outbox"
-                    ));
-                    SyncOrchestrator::new(store.clone(), adapter.clone())
-                }
-            }
-        }
-        None => SyncOrchestrator::new(store.clone(), adapter.clone()),
     };
     let orch_concrete = match action_tx {
         Some(tx) => orch_concrete.with_action_tx(tx),
