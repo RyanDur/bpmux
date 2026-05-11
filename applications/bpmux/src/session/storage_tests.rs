@@ -456,13 +456,15 @@ fn file_global() -> (Arc<dyn GlobalStore>, tempfile::TempDir) {
     let briefings_dir = dir.path().join("briefings");
     let tokens_log_path = dir.path().join("tokens").join("log.jsonl");
     let usage_path = dir.path().join("usage.json");
+    let auth_token_path = dir.path().join("auth_token");
     let global: Arc<dyn GlobalStore> = Arc::new(
         FileGlobalStore::new()
             .with_priority_path(priority_path)
             .with_identity_dir(identity_dir)
             .with_briefings_dir(briefings_dir)
             .with_tokens_log_path(tokens_log_path)
-            .with_usage_path(usage_path),
+            .with_usage_path(usage_path)
+            .with_auth_token_path(auth_token_path),
     );
     (global, dir)
 }
@@ -724,6 +726,40 @@ global_contract!(
         assert!(!loaded.contains_key("slash:tokens"));
     }
 );
+
+// ── GlobalStore: auth_token (#1290 Phase-3 step 6, AC 18) ──
+//
+// Divergent contract: FileGlobalStore supports the operation;
+// MemoryGlobalStore returns Unsupported per boundary-discipline. Tests
+// here assert that divergence directly rather than running through the
+// `global_contract!` macro.
+
+#[test]
+fn file_global_ensure_auth_token_generates_and_reads_back() {
+    let (global, _dir) = file_global();
+    let token = global.ensure_auth_token().unwrap();
+    assert!(!token.is_empty());
+    assert_eq!(token.len(), 64, "32 bytes hex-encoded");
+    let read_back = global.read_auth_token().unwrap();
+    assert_eq!(token, read_back);
+}
+
+#[test]
+fn file_global_ensure_auth_token_is_stable_across_calls() {
+    let (global, _dir) = file_global();
+    let t1 = global.ensure_auth_token().unwrap();
+    let t2 = global.ensure_auth_token().unwrap();
+    assert_eq!(t1, t2, "ensure returns existing token when present");
+}
+
+#[test]
+fn memory_global_auth_token_returns_unsupported() {
+    let global = MemoryGlobalStore::new();
+    let err = global.ensure_auth_token().unwrap_err();
+    assert_eq!(err.kind(), std::io::ErrorKind::Unsupported);
+    let err = global.read_auth_token().unwrap_err();
+    assert_eq!(err.kind(), std::io::ErrorKind::Unsupported);
+}
 
 // ── BoardStore ↔ Storage trait integration (#1289 Phase-1 step 2) ──
 

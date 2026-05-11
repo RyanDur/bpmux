@@ -181,6 +181,16 @@ pub trait GlobalStore: Send + Sync {
         &self,
         map: &std::collections::HashMap<String, super::usage::Record>,
     ) -> Result<(), std::io::Error>;
+
+    // #1290 Phase-3 step 6 (AC 18): per-run auth token (~/.bpmux/auth_token).
+    // Process-owned secret with mode-0600 filesystem semantics. The
+    // MemoryGlobalStore impl returns NotSupported by boundary-discipline
+    // (`feedback_external_system_idiosyncrasies_at_boundary`) — tests
+    // requiring auth-token isolation use FileGlobalStore with
+    // `BPMUX_AUTH_TOKEN_PATH` per-test tempdir (the established pattern
+    // at `applications/electron/tests/helpers/launch.ts`).
+    fn ensure_auth_token(&self) -> std::io::Result<String>;
+    fn read_auth_token(&self) -> std::io::Result<String>;
 }
 
 /// File-based global store — production impl.
@@ -200,6 +210,9 @@ pub struct FileGlobalStore {
     /// #1290: per-instance usage-path override. Tests inject per-test
     /// paths to avoid sharing `~/.bpmux/usage.json`.
     usage_path: Option<PathBuf>,
+    /// #1290: per-instance auth-token-path override. Tests inject
+    /// per-test paths to avoid sharing `~/.bpmux/auth_token`.
+    auth_token_path: Option<PathBuf>,
 }
 
 impl Default for FileGlobalStore {
@@ -216,6 +229,7 @@ impl FileGlobalStore {
             briefings_dir: None,
             tokens_log_path: None,
             usage_path: None,
+            auth_token_path: None,
         }
     }
 
@@ -253,6 +267,12 @@ impl FileGlobalStore {
         self
     }
 
+    /// #1290: opt-in auth-token-path override.
+    pub fn with_auth_token_path(mut self, path: PathBuf) -> Self {
+        self.auth_token_path = Some(path);
+        self
+    }
+
     fn resolve_priority_path(&self) -> Result<PathBuf, String> {
         if let Some(p) = &self.priority_path {
             return Ok(p.clone());
@@ -286,6 +306,18 @@ impl FileGlobalStore {
             return Some(p.clone());
         }
         super::usage::default_usage_path()
+    }
+
+    fn resolve_auth_token_path(&self) -> std::io::Result<PathBuf> {
+        if let Some(p) = &self.auth_token_path {
+            return Ok(p.clone());
+        }
+        super::auth_token::default_auth_token_path().ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "home directory not found for auth_token",
+            )
+        })
     }
 }
 
@@ -353,6 +385,16 @@ impl GlobalStore for FileGlobalStore {
             return Ok(());
         };
         super::usage::save_to(&path, map)
+    }
+
+    fn ensure_auth_token(&self) -> std::io::Result<String> {
+        let path = self.resolve_auth_token_path()?;
+        super::auth_token::ensure(&path)
+    }
+
+    fn read_auth_token(&self) -> std::io::Result<String> {
+        let path = self.resolve_auth_token_path()?;
+        super::auth_token::read(&path)
     }
 }
 
@@ -460,6 +502,29 @@ impl GlobalStore for MemoryGlobalStore {
     ) -> Result<(), std::io::Error> {
         *self.usage.lock().unwrap_or_else(|e| e.into_inner()) = map.clone();
         Ok(())
+    }
+
+    // #1290 AC 18 boundary-discipline: auth_token is a process-owned
+    // secret requiring mode-0600 filesystem semantics. MemoryGlobalStore
+    // refuses the operation rather than fake non-FS in-memory storage —
+    // tests requiring auth-token isolation use FileGlobalStore with a
+    // per-test BPMUX_AUTH_TOKEN_PATH tempdir (the established pattern).
+    fn ensure_auth_token(&self) -> std::io::Result<String> {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::Unsupported,
+            "MemoryGlobalStore does not support auth_token (process-owned secret \
+             requires mode-0600 filesystem semantics); use FileGlobalStore with \
+             BPMUX_AUTH_TOKEN_PATH for test isolation",
+        ))
+    }
+
+    fn read_auth_token(&self) -> std::io::Result<String> {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::Unsupported,
+            "MemoryGlobalStore does not support auth_token (process-owned secret \
+             requires mode-0600 filesystem semantics); use FileGlobalStore with \
+             BPMUX_AUTH_TOKEN_PATH for test isolation",
+        ))
     }
 }
 
