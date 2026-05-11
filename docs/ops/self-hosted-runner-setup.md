@@ -242,21 +242,23 @@ runners. On a single self-hosted runner, the matrix serializes —
 each shard pays full setup cost (actions/checkout + setup-node +
 npm-ci + Playwright-install) × 6, which dominates wall-clock.
 
-**Collapsed to single job + `--workers=8`**: one shard runs all
-tests with 8 Playwright workers in parallel, utilizing M1 Pro's 8
-performance cores. Setup cost amortizes once; Playwright's worker
-pool handles per-test parallelism within the shard.
+**Collapsed to single job + `--workers=4`**: one shard runs all
+tests with 4 Playwright workers in parallel. M1 Pro has 8
+performance cores; initial attempt at `--workers=8` oversaturated
+CPU during concurrent Electron-launch — each Playwright test calls
+`launchIsolated()` which spawns a fresh Electron + bpmux backend.
+With 8 simultaneous launches, each pair starved the others; bpmux
+`waitForHealthz` polled up to 60-90s vs the normal 5-10s, exhausting
+per-test budget before test logic ran. `--workers=4` gives each
+test ~2 perf cores during launch — startup completes in ~10s with
+full per-test budget remaining for test logic. Trade: total
+wall-clock ~2× vs uncontended-workers=8 but ALL tests get budget
+to complete.
 
-### Per-test timeout bump (testTimeout 30s → 90s)
-
-Overnight CI on f9ebe47 showed stable tests (desk-check-357,
-desk-check-361) timing out at Playwright's 30s default — macOS
-WindowServer does real rendering work for each Electron window
-spawned (vs Linux+xvfb virtual framebuffer in GHA-hosted), making
-per-test wall-clock ~3× slower for Electron-window-heavy specs.
-`playwright.config.ts:timeout: 90_000` widens the ceiling enough
-for empirical passability without hiding hangs (anything >90s
-indicates a real hang, not WindowServer overhead).
+Sister-story candidate for future optimization: share one bpmux
+backend across tests in a worker (eliminate per-test backend
+launch). Currently out-of-scope; per-test isolation is the existing
+contract.
 
 ### Sister-substrate-Bugs (impl deferred to standalone slices)
 

@@ -96,13 +96,20 @@ jobs:
         working-directory: applications/electron
         run: npx playwright install
       # AC 4 sharding-decision: collapsed 6-shard matrix to single
-      # job with --workers=8 because single self-hosted runner
+      # job with --workers=N because single self-hosted runner
       # serializes the matrix; 6 shards × full setup-node + npm-ci +
-      # Playwright-install amortizes badly. --workers=8 uses M1 Pro's
-      # 8 performance cores in parallel within one shard.
-      - name: Run Playwright (single shard, --workers=8 on M1 Pro)
+      # Playwright-install amortizes badly. Initial --workers=8
+      # oversaturated CPU during concurrent Electron-launch (each
+      # test spawns fresh Electron + bpmux backend; 8 simultaneous
+      # starve each other → 60-90s startup vs 5-10s normal). Tuned
+      # down to --workers=4: each test gets ~2 perf cores during
+      # launch, finishes startup in ~10s, has full per-test budget
+      # for test logic. Trade: total wall-clock roughly doubles vs
+      # workers=8 (uncontended case) but ALL tests get budget to
+      # complete vs partial failure at workers=8.
+      - name: Run Playwright (single shard, --workers=4 on M1 Pro)
         working-directory: applications/electron
-        run: npx playwright test --reporter=dot --workers=8
+        run: npx playwright test --reporter=dot --workers=4
       - name: Upload Playwright traces on failure
         if: failure()
         uses: actions/upload-artifact@v4
