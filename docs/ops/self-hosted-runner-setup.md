@@ -290,6 +290,55 @@ backend-startup latency. Filed as sister-story under Epic #1247.
 - Off-hours CI cron: schedule e2e at 4am UTC (designer mitigation 4)
   to reduce real-time conflict with Ryan's live dev hours
 
+## UI-overlap mitigation: off-screen window positioning (#1286)
+
+bpmux-mac-m1 IS Ryan's live dev machine. When Playwright e2e tests
+run there, `_electron.launch()` spawns visible Electron windows that
+visually interfere with Ryan's screen during work hours. Dog-fooding-
+on-dev-machine is a load-bearing substrate-discovery channel (Ryan
+2026-05-10 23:21 UTC reframe), and visible test-windows during
+dev-work break that channel.
+
+### Option 1 retirement: hidden-windows broken by macOS throttle
+
+The original mitigation (dev 2026-05-11 03:08 UTC) used `BPMUX_TEST_MODE`
+to set `BrowserWindow({show: false})`. Reverted in `f9ebe47` after
+empirical observation: **macOS throttles hidden windows below 10s
+timeouts**, breaking real-backend + human-observes tests that require
+sustained DOM observation.
+
+### Strategy: off-screen positioning (Option 2 — chosen)
+
+When `BPMUX_TEST_WINDOW_POSITION=offscreen` is set, `applications/
+electron/src/main/index.ts` constructs the BrowserWindow at
+`{x: -10000, y: -10000}` — outside any reasonable monitor's
+coordinate space but technically active (no OS throttle). The
+Playwright launch helper sets this env var unconditionally in
+`launch.ts` (alongside `BPMUX_TEST_SEED_API=1`).
+
+### Trade-off analysis
+
+| Option | Wall-clock | Feedback latency | Multi-monitor | Test compatibility |
+|--------|-----------|------------------|---------------|--------------------|
+| 1 — hidden-windows | unchanged | unchanged | OK | **BROKEN** (macOS throttle) |
+| 2 — off-screen position | unchanged | unchanged | edge-case-risk | OK |
+| 3 — workers:1 live-hours | **6× slower** | unchanged | OK | OK |
+| 4 — off-hours cron | unchanged | **24h wait** | OK | OK |
+
+Option 2 chosen — only option that costs nothing on wall-clock OR
+feedback latency, and works with all existing tests. The multi-
+monitor edge-case (some macOS configurations may render off-screen
+differently across virtual displays) is deferred per body's
+"Out of scope" — Ryan's setup is single-monitor.
+
+### Regression test
+
+`applications/electron/tests/playwright/ui_overlap_mitigation.spec.ts`
+asserts via `BrowserWindow.getBounds()` that the spawned window's
+x-coord is well-negative (< -1000). Runs as part of the Playwright
+suite — any future change that breaks the off-screen positioning
+surfaces immediately.
+
 ## $HOME-isolation on bpmux-mac-m1 (#1285)
 
 The bpmux-mac-m1 self-hosted runner runs as Ryan's user, sharing

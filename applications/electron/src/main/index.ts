@@ -250,12 +250,31 @@ function killBackend(): void {
   }, SIGKILL_FALLBACK_MS)
 }
 
+// #1286 Option 2: off-screen window-positioning for Playwright e2e
+// tests on bpmux-mac-m1 self-hosted runner. When tests run on Ryan's
+// dev machine, visible test-spawned windows visually disrupt his
+// live work. Option 1 (hidden-windows via show:false sole-control)
+// was retired because macOS throttles hidden windows below 10s
+// timeouts (commit f9ebe47), breaking real-backend + human-observes
+// tests. Off-screen positioning keeps windows technically active
+// (no throttle) but outside any reasonable monitor's coordinate
+// space. Coordinate (-10000, -10000) is well below any practical
+// multi-monitor setup's leftmost extent.
+const OFFSCREEN_X = -10000
+const OFFSCREEN_Y = -10000
+
+function shouldPositionOffscreen(): boolean {
+  return process.env['BPMUX_TEST_WINDOW_POSITION'] === 'offscreen'
+}
+
 function createWindow(): void {
+  const offscreen = shouldPositionOffscreen()
   const mainWindow = new BrowserWindow({
     width: 900,
     height: 670,
     show: false,
     autoHideMenuBar: true,
+    ...(offscreen ? { x: OFFSCREEN_X, y: OFFSCREEN_Y } : {}),
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
