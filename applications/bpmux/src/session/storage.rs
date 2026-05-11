@@ -64,6 +64,16 @@ pub trait Storage: Send + Sync {
     // the QueuedEvent format directly.
     fn load_outbox(&self) -> Result<VecDeque<QueuedEvent>, PersistError>;
     fn save_outbox(&self, events: &[QueuedEvent]) -> Result<(), PersistError>;
+
+    // #1289 Phase-2: session-scoped per-role bookmark
+    // (bookmark-{role}.json). FileStorage derives path from self.dir +
+    // role. MemoryStorage uses HashMap<role, Bookmark> per-instance.
+    fn load_bookmark(&self, role: &str) -> super::bookmark::Bookmark;
+    fn save_bookmark(
+        &self,
+        role: &str,
+        bookmark: &super::bookmark::Bookmark,
+    ) -> Result<(), std::io::Error>;
 }
 
 /// File-based storage — the current implementation.
@@ -230,6 +240,18 @@ impl Storage for FileStorage {
         std::fs::rename(&tmp, &path)?;
         Ok(())
     }
+
+    fn load_bookmark(&self, role: &str) -> super::bookmark::Bookmark {
+        super::bookmark::load_bookmark(&self.dir, role)
+    }
+
+    fn save_bookmark(
+        &self,
+        role: &str,
+        bookmark: &super::bookmark::Bookmark,
+    ) -> Result<(), std::io::Error> {
+        super::bookmark::save_bookmark(&self.dir, role, bookmark)
+    }
 }
 
 /// In-memory storage — #1289 substrate-foundation for the Store-trait
@@ -251,6 +273,7 @@ pub struct MemoryStorage {
     state: Mutex<HashMap<String, String>>,
     board_snapshot: Mutex<HashMap<u64, Story>>,
     outbox: Mutex<VecDeque<QueuedEvent>>,
+    bookmarks: Mutex<HashMap<String, super::bookmark::Bookmark>>,
 }
 
 impl MemoryStorage {
@@ -266,6 +289,7 @@ impl MemoryStorage {
             state: Mutex::new(HashMap::new()),
             board_snapshot: Mutex::new(HashMap::new()),
             outbox: Mutex::new(VecDeque::new()),
+            bookmarks: Mutex::new(HashMap::new()),
         }
     }
 }
@@ -405,6 +429,27 @@ impl Storage for MemoryStorage {
     fn save_outbox(&self, events: &[QueuedEvent]) -> Result<(), PersistError> {
         let mut guard = self.outbox.lock().unwrap_or_else(|e| e.into_inner());
         *guard = events.iter().cloned().collect();
+        Ok(())
+    }
+
+    fn load_bookmark(&self, role: &str) -> super::bookmark::Bookmark {
+        self.bookmarks
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(role)
+            .cloned()
+            .unwrap_or_default()
+    }
+
+    fn save_bookmark(
+        &self,
+        role: &str,
+        bookmark: &super::bookmark::Bookmark,
+    ) -> Result<(), std::io::Error> {
+        self.bookmarks
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .insert(role.to_string(), bookmark.clone());
         Ok(())
     }
 }

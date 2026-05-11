@@ -334,6 +334,47 @@ contract!(save_outbox_overwrites_previous, |storage: &dyn Storage| {
     assert_eq!(loaded.len(), 2);
 });
 
+// ── Bookmark (#1289 Phase-2 step 1) ──
+
+contract!(load_bookmark_default_when_unset, |storage: &dyn Storage| {
+    let bm = storage.load_bookmark("dev");
+    assert!(bm.current_task.is_empty());
+    assert!(bm.decisions.is_empty());
+});
+
+contract!(
+    save_then_load_bookmark_roundtrips,
+    |storage: &dyn Storage| {
+        let bm = crate::session::bookmark::Bookmark {
+            current_task: "refactor storage trait".to_string(),
+            decisions: vec!["use DI pattern".to_string()],
+            open_questions: vec!["global vs session scope?".to_string()],
+            next_step: "phase 2".to_string(),
+            notes: "test note".to_string(),
+            last_updated: "2026-05-11T13:00:00Z".to_string(),
+        };
+        storage.save_bookmark("dev", &bm).unwrap();
+        let loaded = storage.load_bookmark("dev");
+        assert_eq!(loaded.current_task, "refactor storage trait");
+        assert_eq!(loaded.decisions.len(), 1);
+    }
+);
+
+contract!(per_role_bookmark_isolation, |storage: &dyn Storage| {
+    let dev_bm = crate::session::bookmark::Bookmark {
+        current_task: "dev task".to_string(),
+        ..Default::default()
+    };
+    let pm_bm = crate::session::bookmark::Bookmark {
+        current_task: "pm task".to_string(),
+        ..Default::default()
+    };
+    storage.save_bookmark("dev", &dev_bm).unwrap();
+    storage.save_bookmark("pm", &pm_bm).unwrap();
+    assert_eq!(storage.load_bookmark("dev").current_task, "dev task");
+    assert_eq!(storage.load_bookmark("pm").current_task, "pm task");
+});
+
 // ── BoardStore ↔ Storage trait integration (#1289 Phase-1 step 2) ──
 
 #[test]

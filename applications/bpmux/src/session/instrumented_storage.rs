@@ -218,4 +218,30 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
         ));
         result
     }
+
+    fn load_bookmark(&self, role: &str) -> super::bookmark::Bookmark {
+        let start = Instant::now();
+        let result = self.inner.load_bookmark(role);
+        self.log(&format!(
+            "load_bookmark '{}' {:.1}ms",
+            role,
+            start.elapsed().as_secs_f64() * 1000.0
+        ));
+        result
+    }
+
+    fn save_bookmark(
+        &self,
+        role: &str,
+        bookmark: &super::bookmark::Bookmark,
+    ) -> Result<(), std::io::Error> {
+        let start = Instant::now();
+        let result = self.inner.save_bookmark(role, bookmark);
+        self.log(&format!(
+            "save_bookmark '{}' {:.1}ms",
+            role,
+            start.elapsed().as_secs_f64() * 1000.0
+        ));
+        result
+    }
 }
