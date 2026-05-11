@@ -685,6 +685,127 @@ fn restore_story_fold_positions_skips_marker_absent_from_icebox_unified() {
     assert!(icebox.is_empty());
 }
 
+// ── #1294: backfill_legacy_marker_stories ──
+
+#[test]
+fn backfill_populates_legacy_marker_with_adjacent_icebox_stories() {
+    use crate::session::iteration_markers::backfill_legacy_marker_stories;
+    use crate::session::priority::IceboxItem;
+    let mut store = IterationMarkersStore {
+        markers: vec![IterationMarker {
+            id: 5,
+            theme_name: "Aquila".to_string(),
+            position: 0,
+            created_at: "ts".to_string(),
+            stories: Vec::new(),
+        }],
+        next_id: 6,
+    };
+    let icebox = vec![
+        IceboxItem::Story { number: 100 },
+        IceboxItem::Story { number: 101 },
+        IceboxItem::Marker { id: 5 },
+    ];
+    let backfilled = backfill_legacy_marker_stories(&mut store, &icebox);
+    assert_eq!(backfilled, 1);
+    assert_eq!(store.markers[0].stories, vec![100, 101]);
+}
+
+#[test]
+fn backfill_idempotent_skips_markers_with_populated_stories() {
+    use crate::session::iteration_markers::backfill_legacy_marker_stories;
+    use crate::session::priority::IceboxItem;
+    let mut store = IterationMarkersStore {
+        markers: vec![IterationMarker {
+            id: 5,
+            theme_name: "Aquila".to_string(),
+            position: 0,
+            created_at: "ts".to_string(),
+            stories: vec![200, 201],
+        }],
+        next_id: 6,
+    };
+    let icebox = vec![
+        IceboxItem::Story { number: 100 },
+        IceboxItem::Marker { id: 5 },
+    ];
+    let backfilled = backfill_legacy_marker_stories(&mut store, &icebox);
+    assert_eq!(backfilled, 0, "non-empty stories[] preserved");
+    assert_eq!(
+        store.markers[0].stories,
+        vec![200, 201],
+        "existing forward-heal'd values not overwritten by backfill"
+    );
+}
+
+#[test]
+fn backfill_no_op_when_marker_absent_from_icebox_unified() {
+    use crate::session::iteration_markers::backfill_legacy_marker_stories;
+    use crate::session::priority::IceboxItem;
+    let mut store = IterationMarkersStore {
+        markers: vec![IterationMarker {
+            id: 99,
+            theme_name: "GhostMarker".to_string(),
+            position: 0,
+            created_at: "ts".to_string(),
+            stories: Vec::new(),
+        }],
+        next_id: 100,
+    };
+    let icebox = vec![IceboxItem::Story { number: 100 }];
+    let backfilled = backfill_legacy_marker_stories(&mut store, &icebox);
+    assert_eq!(backfilled, 0);
+    assert!(store.markers[0].stories.is_empty());
+}
+
+#[test]
+fn backfill_today_three_legacy_markers_scenario() {
+    // Today's exact shape: Aquila id=2, Aquila id=5, Pegasus id=6 — all
+    // legacy (empty stories[]) — with adjacent stories in icebox_unified.
+    use crate::session::iteration_markers::backfill_legacy_marker_stories;
+    use crate::session::priority::IceboxItem;
+    let mut store = IterationMarkersStore {
+        markers: vec![
+            IterationMarker {
+                id: 2,
+                theme_name: "Aquila".to_string(),
+                position: 2,
+                created_at: "ts".to_string(),
+                stories: Vec::new(),
+            },
+            IterationMarker {
+                id: 5,
+                theme_name: "Aquila".to_string(),
+                position: 3,
+                created_at: "ts".to_string(),
+                stories: Vec::new(),
+            },
+            IterationMarker {
+                id: 6,
+                theme_name: "Pegasus".to_string(),
+                position: 4,
+                created_at: "ts".to_string(),
+                stories: Vec::new(),
+            },
+        ],
+        next_id: 7,
+    };
+    let icebox = vec![
+        IceboxItem::Story { number: 100 },
+        IceboxItem::Marker { id: 2 },
+        IceboxItem::Story { number: 200 },
+        IceboxItem::Story { number: 201 },
+        IceboxItem::Marker { id: 5 },
+        IceboxItem::Story { number: 300 },
+        IceboxItem::Marker { id: 6 },
+    ];
+    let backfilled = backfill_legacy_marker_stories(&mut store, &icebox);
+    assert_eq!(backfilled, 3);
+    assert_eq!(store.markers[0].stories, vec![100]);
+    assert_eq!(store.markers[1].stories, vec![200, 201]);
+    assert_eq!(store.markers[2].stories, vec![300]);
+}
+
 #[test]
 fn restore_story_fold_positions_idempotent_when_stories_already_present() {
     use crate::session::iteration_markers::restore_story_fold_positions_to_icebox_unified;

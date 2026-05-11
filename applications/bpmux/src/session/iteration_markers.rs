@@ -131,6 +131,37 @@ pub fn sync_marker_fold_snapshots(
     }
 }
 
+/// #1294: backfill `stories` snapshot for legacy markers whose
+/// `stories[]` is empty by deriving from icebox_unified positional-
+/// adjacency. Idempotent: markers with non-empty stories[] are NOT
+/// overwritten (preserves forward-going #1288 sync output).
+///
+/// Distinct from `sync_marker_fold_snapshots` which OVERWRITES every
+/// marker's stories[] (including clearing on absent-from-icebox).
+/// Backfill is one-shot migration-axis: legacy markers created before
+/// #1288's schema-add have empty stories[]; this populates them from
+/// the canonical icebox_unified positional substrate at boot, so
+/// pre-#1288 iteration-plan substrate becomes visible after restart.
+///
+/// Returns count of markers backfilled.
+pub fn backfill_legacy_marker_stories(
+    store: &mut IterationMarkersStore,
+    icebox_unified: &[super::priority::IceboxItem],
+) -> usize {
+    let mut backfilled = 0;
+    for marker in &mut store.markers {
+        if !marker.stories.is_empty() {
+            continue;
+        }
+        let derived = compute_fold_above_marker(icebox_unified, marker.id);
+        if !derived.is_empty() {
+            marker.stories = derived;
+            backfilled += 1;
+        }
+    }
+    backfilled
+}
+
 /// Pure: extract the list of story-ids contiguously preceding the
 /// given marker in icebox_unified. Returns empty Vec if marker is
 /// absent. Order: top-of-fold first, just-above-marker last.

@@ -493,6 +493,69 @@ pub async fn restore_story_fold_positions_to_icebox_unified_at_path(
     }
 }
 
+/// #1294: boot-time backfill of legacy markers' stories[] from
+/// icebox_unified positional-adjacency. Sister-completion of #1283
+/// (marker-side restore) + #1288 (forward-going stories[] sync) at
+/// the migration-axis: legacy markers created before #1288's
+/// schema-add have empty stories[] in markers-store. This boot-step
+/// derives stories[] from icebox_unified for those markers so
+/// pre-#1288 iteration-plan substrate becomes visible.
+///
+/// MUST run AFTER `restore_marker_positions_to_icebox_unified_at_boot`
+/// (#1283 — markers must be present in icebox_unified before we can
+/// derive adjacent stories) and AFTER
+/// `restore_story_fold_positions_to_icebox_unified_at_boot` (#1288 —
+/// forward-going fold-snapshot restoration; legacy entries skipped
+/// because their stories[] is empty). Best-effort save + state-delta
+/// broadcast post-backfill.
+pub async fn backfill_legacy_marker_stories_at_boot(session: Arc<session::Session>) {
+    let Ok(priority_path) = session::priority::default_priority_path() else {
+        return;
+    };
+    backfill_legacy_marker_stories_at_path(&priority_path, &session.dir, session.clone()).await;
+}
+
+pub async fn backfill_legacy_marker_stories_at_path(
+    priority_path: &std::path::Path,
+    session_dir: &std::path::Path,
+    session: Arc<session::Session>,
+) {
+    let index = session::priority::load_priority_raw(priority_path);
+    let mut store = session::iteration_markers::load(session_dir);
+    let backfilled = session::iteration_markers::backfill_legacy_marker_stories(
+        &mut store,
+        &index.icebox_unified,
+    );
+    if backfilled == 0 {
+        return;
+    }
+    if let Err(e) = session::iteration_markers::save(session_dir, &store) {
+        session::diag::log_diag(&format!(
+            "[#1294] backfill legacy marker stories: save failed: {e}"
+        ));
+        return;
+    }
+    session::diag::log_diag(&format!(
+        "[#1294] backfill legacy marker stories: backfilled {backfilled} marker(s) from icebox_unified positional-adjacency"
+    ));
+    let payload = session::message::StateDeltaPayload::IceboxMigration {
+        entries: index.icebox_unified.len(),
+    };
+    let msg = session::Message {
+        from: "bpmux".to_string(),
+        text: String::new(),
+        ts: chrono::Utc::now(),
+        message_type: session::MessageType::StateDelta,
+        state_delta: Some(payload),
+        ..session::Message::default()
+    };
+    if let Err(e) = session.broadcast(&msg) {
+        session::diag::log_diag(&format!(
+            "[#1294] backfill legacy marker stories: state-delta broadcast failed: {e}"
+        ));
+    }
+}
+
 /// #1271: boot-time auto-heal of orphan markers in the iteration-
 /// markers store. Sister of `auto_heal_icebox_at_boot` at
 /// markers-store-axis. Truth-source is `icebox_unified` (canonical
