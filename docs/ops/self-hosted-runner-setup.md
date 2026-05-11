@@ -289,3 +289,119 @@ backend-startup latency. Filed as sister-story under Epic #1247.
   (whichever has lower wall-clock + acceptable memory ceiling)
 - Off-hours CI cron: schedule e2e at 4am UTC (designer mitigation 4)
   to reduce real-time conflict with Ryan's live dev hours
+
+## Substrate-fix sister-stories (#1289 + #1290)
+
+The hybrid-state migration above named two substrate gaps blocking
+full quota-bypass: per-test bpmux backend-startup disk-I/O cost +
+test-seed mechanism that doesn't work without a disk. These were
+ratified at the 2026-05-11 14:39 UTC triple-role convergence as Cure
+1.5 (dev's 14:27 UTC grounded re-analysis surfaced post_message's
+`Utc::now()` override + missing pins/reactions seed endpoints;
+designer's 14:39 UTC body-vs-reality catch on #1289 added Phase-3
+completion to the same scope to avoid story-bloat).
+
+### #1289 — Store-trait DI substrate (delivered)
+
+bpmux's persistence behind two traits at
+`applications/bpmux/src/session/storage.rs`:
+
+- `Storage` — session-scoped (messages, lessons, board snapshot,
+  outbox, bookmarks, pins, reactions, iteration markers, generic
+  key-value)
+- `GlobalStore` — cross-session globals (priority + identity +
+  briefing + tokens + usage + auth_token)
+
+Each has two impls: `FileStorage`/`FileGlobalStore` (production,
+disk-backed) and `MemoryStorage`/`MemoryGlobalStore` (in-memory).
+Selection via `BPMUX_STORAGE_BACKEND=memory` env at `Session::new`.
+94 contract tests prove FileStore/MemoryStore semantic-parity at the
+trait surface; divergence is impossible to land.
+
+Boundary-discipline: auth_token has a divergent contract per
+`feedback_external_system_idiosyncrasies_at_boundary` —
+`FileGlobalStore` wraps mode-0600 filesystem semantics;
+`MemoryGlobalStore` returns `ErrorKind::Unsupported` because a
+process-owned cryptographic secret has no in-memory equivalent.
+
+Architecture-doc cross-reference: `docs/architecture.md` Storage
+layer section.
+
+### #1290 — Test-seed-API + Phase-3 completion (current)
+
+Three concerns ratified together per Cure 1.5:
+
+**Part A: Test-seed-API**. Decision (i) — new dedicated
+`/api/test/seed_messages` + `/api/test/seed_pins` +
+`/api/test/seed_reactions` endpoints in
+`applications/bpmux/src/transport/test_seed.rs`. Rationale: option
+(ii) (test-mode flag on `post_message`) would mix test concerns
+into a security-sensitive production path — `post_message`
+overrides `ts` with `Utc::now()` precisely to prevent timestamp
+spoofing. Dedicated test-mode endpoints satisfy the airtight-
+boundary discipline (#1290 AC 6).
+
+Gate: new env var `BPMUX_TEST_SEED_API=1` read at router-
+construction time only (structural boundary, not runtime
+conditional). Separate from `BPMUX_TEST_MODE` (which also swaps to
+the in-memory orchestrator) so `launchWithMockGh` Playwright tests
+can seed state while keeping the prod orchestrator pointed at the
+mock-GH boundary.
+
+Routes through `session.storage` trait — works identically against
+FileStorage + MemoryStorage. Closes the substrate-gap that made
+launch.ts's pre-#1290 `seedMessages`/`seedPins` filesystem-write
+mechanism incompatible with MemoryStorage.
+
+**Part B: launch.ts refactor + MemoryStorage default + wall-clock**.
+`applications/electron/tests/helpers/launch.ts` now sets:
+
+- `BPMUX_TEST_SEED_API=1` (enables seed routes)
+- `BPMUX_STORAGE_BACKEND=memory` (default; eliminates per-test
+  bpmux backend-startup disk-I/O)
+- POSTs `seedMessages` + `seedPins` via the new API after
+  `waitForHealthz`
+
+`seedRoster` path is unchanged (AC 10) — `Session::new` reads
+`roster_seed.json` directly at startup, not via the Storage trait,
+so the pre-launch filesystem setup remains. 5 disk-asserting specs
+(F3/F5 outbox restart + corrupted-store recovering + 2 pinned-list)
+opt back to FileStorage via per-spec `extraEnv:
+{BPMUX_STORAGE_BACKEND: 'file'}`. This explicit per-spec opt-out
+keeps the boundary visible at the test that depends on it.
+
+**Wall-clock measurements (macOS local, workers=2)**:
+
+| Surface | FileStorage | MemoryStorage | Notes |
+|---------|-------------|---------------|-------|
+| Single test (workers=1) | 1.72s | 1.80s | both <5s target |
+| 6-spec sample (12 tests) | 6.69s | 6.59s | minimal local diff (APFS SSD overhead small) |
+| Shard 6/6 (51 tests) | 52.8s + 3 failures | 21.1s | 60% reduction; failures were disk-asserting specs |
+| Full suite (308 tests) | not measured post-substrate | 167s (2.8 min) | well under 6-8min target |
+
+These are **local macOS measurements**, directional only. Official
+AC 12-13 numbers on the bpmux-mac-m1 self-hosted runner — where FS
+overhead is higher — roll into the AC 23 follow-up story below. The
+memory-vs-file gap should widen on the slower runner FS.
+
+**Part C: Phase-3 GlobalStore completion**. Mechanical sister-shape
+replication of #1289's priority archetype:
+
+- identity (`~/.bpmux/identity/{role}.json`) — sister 2a91ccb
+- briefings (`~/.bpmux/briefings/{role}.md`) — sister 1222506
+- tokens (`~/.bpmux/tokens/log.jsonl`) — sister 9b2fc9d (append-only)
+- usage (`~/.bpmux/usage.json`) — sister e8e5aaf
+- auth_token (`~/.bpmux/auth_token`) — sister 49e3f94 (divergent
+  MemoryGlobalStore contract per boundary-discipline)
+
+### Re-migration follow-up (AC 23)
+
+The full Epic #1247 self-hosted e2e migration (build-bpmux +
+playwright-e2e jobs → `[self-hosted, macos, arm64]` with
+MemoryStorage active) is filed as a follow-up at #1290 delivery.
+That story captures the official AC 12-13 wall-clock numbers
+against bpmux-mac-m1 and completes the Epic #1247 quota-bypass
+chain.
+
+Substrate-foundation chain: #1251 → #1252 → #1289 → #1290 →
+re-migration follow-up.
