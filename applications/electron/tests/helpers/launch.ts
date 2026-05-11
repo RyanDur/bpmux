@@ -90,28 +90,21 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
   const userDataDir =
     opts.userDataDir ?? mkdtempSync(join(tmpdir(), 'bpmux-playwright-userdata-'))
   const backendPort = opts.backendPort ?? (await getFreePort())
-  const wantsSeed =
-    (opts.seedMessages && opts.seedMessages.length > 0) ||
-    (opts.seedPins && Object.keys(opts.seedPins).length > 0) ||
-    (opts.seedRoster && opts.seedRoster.length > 0)
-  if (wantsSeed) {
+  // #1290 Part B: roster_seed.json is loaded at Session::new from
+  // session_dir/roster_seed.json (not via Storage trait — pre-#1290),
+  // so seedRoster STAYS as a filesystem-write + 'current' symlink
+  // setup (AC 10). seedMessages + seedPins moved to HTTP test-seed
+  // API after waitForHealthz so they route through the active Storage
+  // trait — works identically against FileStorage + MemoryStorage.
+  const hasRoster = opts.seedRoster && opts.seedRoster.length > 0
+  if (hasRoster) {
     const sessionId = 'playwright-seed-' + Date.now().toString(36)
     const sessionDir = join(sessionBase, sessionId)
     mkdirSync(sessionDir, { recursive: true })
-    if (opts.seedMessages && opts.seedMessages.length > 0) {
-      const jsonl = opts.seedMessages.map((m) => JSON.stringify(m)).join('\n') + '\n'
-      writeFileSync(join(sessionDir, 'messages-current.jsonl'), jsonl)
-    }
-    if (opts.seedPins && Object.keys(opts.seedPins).length > 0) {
-      const store = { channels: opts.seedPins }
-      writeFileSync(join(sessionDir, 'pins.json'), JSON.stringify(store))
-    }
-    if (opts.seedRoster && opts.seedRoster.length > 0) {
-      writeFileSync(
-        join(sessionDir, 'roster_seed.json'),
-        JSON.stringify(opts.seedRoster)
-      )
-    }
+    writeFileSync(
+      join(sessionDir, 'roster_seed.json'),
+      JSON.stringify(opts.seedRoster)
+    )
     symlinkSync(sessionDir, join(sessionBase, 'current'))
   }
   // Per-test auth-token isolation. Without this, parallel workers
@@ -157,12 +150,46 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
       BPMUX_BOARD_STORE_PATH: defaultBoardStorePath,
       BPMUX_BOARD_OUTBOX_PATH: defaultBoardOutboxPath,
       BPMUX_LOG: defaultLogPath,
+      // #1290 Part B: enable the test-seed endpoints
+      // (/api/test/seed_messages, /api/test/seed_pins,
+      // /api/test/seed_reactions). Structural gate — without this var
+      // the routes are not mounted (production servers cannot reach
+      // them).
+      BPMUX_TEST_SEED_API: '1',
       ...ghEnvOverrides,
       ...(opts.extraEnv ?? {})
     }
   })
   await waitForHealthz(backendPort)
+  await seedMessagesAndPinsViaApi(backendPort, opts)
   return { app, sessionBase, userDataDir, backendPort, mockGh: defaultMockGh }
+}
+
+const seedMessagesAndPinsViaApi = async (
+  backendPort: number,
+  opts: LaunchOpts
+): Promise<void> => {
+  if (opts.seedMessages && opts.seedMessages.length > 0) {
+    const res = await fetch(`http://127.0.0.1:${backendPort}/api/test/seed_messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: opts.seedMessages })
+    })
+    if (!res.ok) {
+      throw new Error(`seed_messages POST failed: ${res.status} ${await res.text()}`)
+    }
+  }
+  if (opts.seedPins && Object.keys(opts.seedPins).length > 0) {
+    const store = { channels: opts.seedPins }
+    const res = await fetch(`http://127.0.0.1:${backendPort}/api/test/seed_pins`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ store })
+    })
+    if (!res.ok) {
+      throw new Error(`seed_pins POST failed: ${res.status} ${await res.text()}`)
+    }
+  }
 }
 
 const waitForHealthz = async (port: number): Promise<void> => {
