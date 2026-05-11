@@ -107,6 +107,37 @@ impl BoardStore {
         Ok(())
     }
 
+    /// #1289 Phase-1 step 2: load via Storage trait instead of path.
+    /// Sister of `load_from_disk` but routes through the Storage
+    /// abstraction so tests can inject `MemoryStorage` (zero disk I/O).
+    /// Production behavior preserved: `FileStorage::load_board_snapshot`
+    /// resolves the same path as `default_store_path()` at call-time.
+    pub fn load_from_storage(
+        storage: &dyn crate::session::storage::Storage,
+    ) -> Result<Self, PersistError> {
+        let store = Self::new();
+        let snapshot = storage.load_board_snapshot()?;
+        let mut w = store.stories.write().unwrap_or_else(|e| e.into_inner());
+        *w = snapshot;
+        drop(w);
+        Ok(store)
+    }
+
+    /// #1289 Phase-1 step 2: persist via Storage trait instead of path.
+    /// Sister of `persist_to_disk`.
+    pub fn persist_to_storage(
+        &self,
+        storage: &dyn crate::session::storage::Storage,
+    ) -> Result<(), PersistError> {
+        let snapshot: HashMap<u64, Story> = {
+            let r = self.stories.read().unwrap_or_else(|e| e.into_inner());
+            r.clone()
+        };
+        storage.save_board_snapshot(&snapshot)?;
+        self.dirty.store(false, Ordering::Release);
+        Ok(())
+    }
+
     pub fn is_dirty(&self) -> bool {
         self.dirty.load(Ordering::Acquire)
     }

@@ -283,6 +283,38 @@ contract!(
     }
 );
 
+// ── BoardStore ↔ Storage trait integration (#1289 Phase-1 step 2) ──
+
+#[test]
+fn board_store_roundtrips_via_memory_storage() {
+    use crate::board::store::BoardStore;
+    let storage: Arc<dyn Storage> = Arc::new(MemoryStorage::new(PathBuf::from(
+        "/tmp/board-roundtrip-marker",
+    )));
+    let source = BoardStore::new();
+    source.seed_all(vec![seed_story(100, "alpha"), seed_story(200, "beta")]);
+    source.persist_to_storage(storage.as_ref()).unwrap();
+
+    let restored = BoardStore::load_from_storage(storage.as_ref()).unwrap();
+    let stories = restored.all_stories();
+    assert_eq!(stories.len(), 2);
+    assert!(
+        stories
+            .iter()
+            .any(|s| s.number == 100 && s.title == "alpha")
+    );
+    assert!(stories.iter().any(|s| s.number == 200 && s.title == "beta"));
+}
+
+#[test]
+fn board_store_load_from_empty_storage_returns_empty() {
+    use crate::board::store::BoardStore;
+    let storage: Arc<dyn Storage> =
+        Arc::new(MemoryStorage::new(PathBuf::from("/tmp/board-empty-marker")));
+    let store = BoardStore::load_from_storage(storage.as_ref()).unwrap();
+    assert!(store.all_stories().is_empty());
+}
+
 // ── MemoryStorage-specific: per-instance isolation ──
 
 #[test]
