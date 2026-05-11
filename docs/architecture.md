@@ -95,9 +95,12 @@ bpmux's persistence is abstracted behind two traits, both at
   markers.
 - **`GlobalStore`** — cross-session persistence. Owns reads/writes
   for state at user-global paths under `~/.bpmux/` that survive
-  multiple sessions: priority (`~/.bpmux/priority.json`) initially;
-  identity / briefings / tokens / usage / auth-token migration
-  deferred to #1290.
+  multiple sessions: priority (`~/.bpmux/priority.json`), per-role
+  identity (`~/.bpmux/identity/{role}.json`), per-role briefing
+  (`~/.bpmux/briefings/{role}.md`), token log
+  (`~/.bpmux/tokens/log.jsonl`), feature-usage counters
+  (`~/.bpmux/usage.json`), and per-run auth token
+  (`~/.bpmux/auth_token`).
 
 **Two production impls + two test impls**, each storage type has
 contract tests proving FileStore / MemoryStore semantic-parity:
@@ -123,8 +126,16 @@ explicit per-test tempdirs to avoid sharing `~/.bpmux/*` files.
 macro runs the same assertion against both `FileStorage` and
 `MemoryStorage` (sister `global_contract!` for the GlobalStore
 pair). Behavioral parity is verified at test-write time; divergence
-is impossible to land. 67 contract tests covering 10 session-scoped
-types + priority.
+is impossible to land. 94 contract tests covering 10 session-scoped
+types + 5 cross-session globals (priority / identity / briefing /
+tokens / usage). One global — `auth_token` — has a **divergent
+contract** by boundary-discipline: `FileGlobalStore` wraps mode-0600
+filesystem semantics; `MemoryGlobalStore` returns
+`ErrorKind::Unsupported` because a process-owned cryptographic
+secret has no in-memory equivalent. Tests requiring auth-token
+isolation use `FileGlobalStore` with per-test
+`BPMUX_AUTH_TOKEN_PATH` tempdir (established at
+`applications/electron/tests/helpers/launch.ts`).
 
 **Stage-fit**: this refactor strengthens v3 internal-bounded-context
 boundaries (session-storage capability has a clean DI seam) without
@@ -135,10 +146,11 @@ layer predates and validates this shape.
 **Test-substrate benefit + open follow-up**: tests injecting
 `MemoryStorage` skip per-test backend-startup-disk-I/O cost — the
 substrate-class that empirically falsified macOS self-hosted e2e
-migration on f9ebe47 / c8ba878 / 5bdb235. Full wall-clock
-measurement + launch-helper test-seed-API + remaining Phase-3
-globals (identity / briefings / tokens / usage / auth-token) ship in
-#1290.
+migration on f9ebe47 / c8ba878 / 5bdb235. Phase-3 GlobalStore
+extension (identity / briefings / tokens / usage / auth_token) shipped
+under #1290 (sister-shape commits 2a91ccb / 1222506 / 9b2fc9d /
+e8e5aaf / 49e3f94). Full wall-clock measurement + launch-helper
+test-seed-API (Part A/B) complete #1290.
 
 ## Why this doc exists
 
