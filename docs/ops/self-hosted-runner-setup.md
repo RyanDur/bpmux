@@ -193,10 +193,27 @@ Verify in GH Actions UI:
 - **Labels applied**: self-hosted, macos, arm64
 - **Service-manager**: `~/Library/LaunchAgents/actions.runner.RyanDur-bpmux.bpmux-mac-m1.plist` (user-level LaunchAgent; survives logout via launchd auto-start at user login)
 - **Initial PID after svc start**: 40316
-- **Runner state at GH UI**: pending Ryan-screenshot at `Settings → Actions → Runners` (expected: Idle when no job assigned; Active during job)
-- **Reboot-test result (AC 6)**: pending Ryan reboot
-- **Test-fire commit SHA**: pending (this commit pushes `.github/workflows/self-hosted-runner-smoke.yml` + this doc — first run-trigger)
-- **Test-fire run conclusion**: pending workflow-run completion
+
+### Test-fire (AC 10-12) ✓ — recorded 2026-05-10 20:43 UTC
+
+Grounded in runner-local diag log (canonical first-party execution record):
+
+- **Test-fire commit SHA**: b9aeefc "[#1251] self-hosted runner setup walkthrough + smoke-test workflow"
+- **Worker log**: `~/actions-runner/_diag/Worker_20260511-011055-utc.log`
+- **Workflow**: `.github/workflows/self-hosted-runner-smoke.yml`
+- **Job display name**: `smoke`
+- **runs-on resolved**: `self-hosted` (matched labels on bpmux-mac-m1)
+- **Job result**: `Succeeded` at 2026-05-11 01:10:56Z; `Job completed.` at 01:10:58Z
+
+### Reboot-test (AC 6) ✓ — recorded 2026-05-10 21:43 UTC
+
+Ryan physically rebooted his M1 Pro Mac; runner auto-restarted via LaunchAgent
+`RunAtLoad=true` semantics without manual intervention:
+
+- **System uptime post-reboot**: 20 min (verified via `uptime`)
+- **Runner-process restart**: `Runner_20260511-022720-utc.log` shows agent started at 02:27:20 UTC (~4 min after boot, consistent with launchd user-session-load timing)
+- **Listener status**: `"Listening for Jobs"` at 02:27:22Z; runner version `2.334.0`; VssConnection established with GitHub
+- **launchctl state**: `actions.runner.RyanDur-bpmux.bpmux-mac-m1` loaded, PID alive, exit-status 0
 
 ## Out of scope (slice 1; covered in later slices)
 
