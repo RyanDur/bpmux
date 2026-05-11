@@ -35,11 +35,16 @@ fn fresh_message(text: &str) -> Message {
 
 fn file_storage() -> (Arc<dyn Storage>, tempfile::TempDir) {
     let dir = tempfile::tempdir().unwrap();
-    // #1289: inject per-test board-store path so the contract test
-    // doesn't pollute ~/.bpmux/board-store.json.
+    // #1289: inject per-test board-store + outbox paths so the contract
+    // tests don't read/write Ryan's ~/.bpmux/board-store.json or
+    // ~/.bpmux/board-outbox.json.
     let board_path = dir.path().join("board-store.json");
-    let storage: Arc<dyn Storage> =
-        Arc::new(FileStorage::new(dir.path().to_path_buf()).with_board_store_path(board_path));
+    let outbox_path = dir.path().join("board-outbox.json");
+    let storage: Arc<dyn Storage> = Arc::new(
+        FileStorage::new(dir.path().to_path_buf())
+            .with_board_store_path(board_path)
+            .with_outbox_path(outbox_path),
+    );
     (storage, dir)
 }
 
@@ -282,6 +287,52 @@ contract!(
         assert_eq!(loaded.get(&100).unwrap().title, "v2");
     }
 );
+
+// ── Outbox (#1289 Phase-1 step 3) ──
+
+fn seed_outbox_event(number: u64, label: &str) -> crate::board::orchestrator::QueuedEvent {
+    use crate::board::events::{BoardEvent, EventMeta};
+    use crate::board::peer::PeerId;
+    let event = BoardEvent::TagAdded {
+        meta: EventMeta {
+            actor: "dev".to_string(),
+            ts: Utc.with_ymd_and_hms(2026, 5, 11, 12, 0, 0).unwrap(),
+            peer_id: PeerId::local(),
+        },
+        number,
+        label: label.to_string(),
+    };
+    crate::board::orchestrator::QueuedEvent::new(event, None)
+}
+
+contract!(load_outbox_empty_when_unset, |storage: &dyn Storage| {
+    let queue = storage.load_outbox().unwrap();
+    assert!(queue.is_empty());
+});
+
+contract!(save_then_load_outbox_roundtrips, |storage: &dyn Storage| {
+    let events = vec![
+        seed_outbox_event(100, "ready"),
+        seed_outbox_event(200, "in-progress"),
+    ];
+    storage.save_outbox(&events).unwrap();
+    let loaded = storage.load_outbox().unwrap();
+    assert_eq!(loaded.len(), 2);
+});
+
+contract!(save_outbox_overwrites_previous, |storage: &dyn Storage| {
+    storage
+        .save_outbox(&[seed_outbox_event(100, "ready")])
+        .unwrap();
+    storage
+        .save_outbox(&[
+            seed_outbox_event(200, "icebox"),
+            seed_outbox_event(300, "delivered"),
+        ])
+        .unwrap();
+    let loaded = storage.load_outbox().unwrap();
+    assert_eq!(loaded.len(), 2);
+});
 
 // ── BoardStore ↔ Storage trait integration (#1289 Phase-1 step 2) ──
 

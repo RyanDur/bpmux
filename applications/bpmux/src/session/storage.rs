@@ -3,11 +3,12 @@
 //! All persistence goes through this trait. The implementation
 //! can be swapped without changing calling code.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use crate::board::domain::Story;
+use crate::board::orchestrator::QueuedEvent;
 use crate::board::store::PersistError;
 
 use super::lessons::LessonIndex;
@@ -53,6 +54,16 @@ pub trait Storage: Send + Sync {
     // per-instance in-memory state.
     fn load_board_snapshot(&self) -> Result<HashMap<u64, Story>, PersistError>;
     fn save_board_snapshot(&self, snapshot: &HashMap<u64, Story>) -> Result<(), PersistError>;
+
+    // #1289 Phase-1 step 3: outbox queue (board-outbox.json).
+    // FileStorage uses the configured `outbox_path` (env-overridable
+    // via BPMUX_BOARD_OUTBOX_PATH at call-time; injectable per-instance
+    // via `with_outbox_path` for test isolation). MemoryStorage uses
+    // per-instance in-memory state. Disk-shape supports backward-compat
+    // legacy-Vec<BoardEvent> parse via OutboxEntryOnDisk; new writes use
+    // the QueuedEvent format directly.
+    fn load_outbox(&self) -> Result<VecDeque<QueuedEvent>, PersistError>;
+    fn save_outbox(&self, events: &[QueuedEvent]) -> Result<(), PersistError>;
 }
 
 /// File-based storage — the current implementation.
@@ -64,6 +75,10 @@ pub struct FileStorage {
     /// avoid sharing `~/.bpmux/board-store.json`; production uses
     /// the default-path resolution.
     board_store_path: Option<PathBuf>,
+    /// #1289: per-instance outbox-path override. Same shape as
+    /// `board_store_path`; `None` → `default_outbox_path()` at
+    /// call-time (BPMUX_BOARD_OUTBOX_PATH env-or-home).
+    outbox_path: Option<PathBuf>,
 }
 
 impl FileStorage {
@@ -71,6 +86,7 @@ impl FileStorage {
         Self {
             dir,
             board_store_path: None,
+            outbox_path: None,
         }
     }
 
@@ -83,11 +99,25 @@ impl FileStorage {
         self
     }
 
+    /// #1289 Phase-1 step 3: opt-in path-injection for the outbox.
+    /// Sister of `with_board_store_path` at outbox-axis.
+    pub fn with_outbox_path(mut self, path: PathBuf) -> Self {
+        self.outbox_path = Some(path);
+        self
+    }
+
     fn resolve_board_store_path(&self) -> Result<PathBuf, std::io::Error> {
         if let Some(p) = &self.board_store_path {
             return Ok(p.clone());
         }
         crate::board::store::default_store_path()
+    }
+
+    fn resolve_outbox_path(&self) -> Result<PathBuf, std::io::Error> {
+        if let Some(p) = &self.outbox_path {
+            return Ok(p.clone());
+        }
+        crate::board::orchestrator::default_outbox_path()
     }
 }
 
@@ -183,6 +213,23 @@ impl Storage for FileStorage {
         std::fs::rename(&tmp, &path)?;
         Ok(())
     }
+
+    fn load_outbox(&self) -> Result<VecDeque<QueuedEvent>, PersistError> {
+        let path = self.resolve_outbox_path()?;
+        crate::board::orchestrator::load_outbox_from_disk(&path)
+    }
+
+    fn save_outbox(&self, events: &[QueuedEvent]) -> Result<(), PersistError> {
+        let path = self.resolve_outbox_path()?;
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        let bytes = serde_json::to_vec(events)?;
+        let tmp = path.with_extension("tmp");
+        std::fs::write(&tmp, &bytes)?;
+        std::fs::rename(&tmp, &path)?;
+        Ok(())
+    }
 }
 
 /// In-memory storage — #1289 substrate-foundation for the Store-trait
@@ -203,6 +250,7 @@ pub struct MemoryStorage {
     peer_lessons: Mutex<HashMap<String, LessonIndex>>,
     state: Mutex<HashMap<String, String>>,
     board_snapshot: Mutex<HashMap<u64, Story>>,
+    outbox: Mutex<VecDeque<QueuedEvent>>,
 }
 
 impl MemoryStorage {
@@ -217,6 +265,7 @@ impl MemoryStorage {
             peer_lessons: Mutex::new(HashMap::new()),
             state: Mutex::new(HashMap::new()),
             board_snapshot: Mutex::new(HashMap::new()),
+            outbox: Mutex::new(VecDeque::new()),
         }
     }
 }
@@ -342,6 +391,20 @@ impl Storage for MemoryStorage {
             .board_snapshot
             .lock()
             .unwrap_or_else(|e| e.into_inner()) = snapshot.clone();
+        Ok(())
+    }
+
+    fn load_outbox(&self) -> Result<VecDeque<QueuedEvent>, PersistError> {
+        Ok(self
+            .outbox
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone())
+    }
+
+    fn save_outbox(&self, events: &[QueuedEvent]) -> Result<(), PersistError> {
+        let mut guard = self.outbox.lock().unwrap_or_else(|e| e.into_inner());
+        *guard = events.iter().cloned().collect();
         Ok(())
     }
 }

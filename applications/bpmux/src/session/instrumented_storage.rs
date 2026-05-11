@@ -186,4 +186,36 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
         ));
         result
     }
+
+    fn load_outbox(
+        &self,
+    ) -> Result<
+        std::collections::VecDeque<crate::board::orchestrator::QueuedEvent>,
+        crate::board::store::PersistError,
+    > {
+        let start = Instant::now();
+        let result = self.inner.load_outbox();
+        if let Ok(ref queue) = result {
+            self.log(&format!(
+                "load_outbox {} events {:.1}ms",
+                queue.len(),
+                start.elapsed().as_secs_f64() * 1000.0
+            ));
+        }
+        result
+    }
+
+    fn save_outbox(
+        &self,
+        events: &[crate::board::orchestrator::QueuedEvent],
+    ) -> Result<(), crate::board::store::PersistError> {
+        let start = Instant::now();
+        let result = self.inner.save_outbox(events);
+        self.log(&format!(
+            "save_outbox {} events {:.1}ms",
+            events.len(),
+            start.elapsed().as_secs_f64() * 1000.0
+        ));
+        result
+    }
 }
