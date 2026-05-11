@@ -85,6 +85,13 @@ pub trait Storage: Send + Sync {
         &self,
         store: &super::reactions::ReactionsStore,
     ) -> Result<(), std::io::Error>;
+
+    // #1289 Phase-2: session-scoped iteration markers (iteration_markers.json).
+    fn load_iteration_markers(&self) -> super::iteration_markers::IterationMarkersStore;
+    fn save_iteration_markers(
+        &self,
+        store: &super::iteration_markers::IterationMarkersStore,
+    ) -> Result<(), std::io::Error>;
 }
 
 /// File-based storage — the current implementation.
@@ -282,6 +289,17 @@ impl Storage for FileStorage {
     ) -> Result<(), std::io::Error> {
         super::reactions::save(&self.dir, store)
     }
+
+    fn load_iteration_markers(&self) -> super::iteration_markers::IterationMarkersStore {
+        super::iteration_markers::load(&self.dir)
+    }
+
+    fn save_iteration_markers(
+        &self,
+        store: &super::iteration_markers::IterationMarkersStore,
+    ) -> Result<(), std::io::Error> {
+        super::iteration_markers::save(&self.dir, store)
+    }
 }
 
 /// In-memory storage — #1289 substrate-foundation for the Store-trait
@@ -306,6 +324,7 @@ pub struct MemoryStorage {
     bookmarks: Mutex<HashMap<String, super::bookmark::Bookmark>>,
     pins: Mutex<super::pins::PinsStore>,
     reactions: Mutex<super::reactions::ReactionsStore>,
+    iteration_markers: Mutex<super::iteration_markers::IterationMarkersStore>,
 }
 
 impl MemoryStorage {
@@ -324,6 +343,9 @@ impl MemoryStorage {
             bookmarks: Mutex::new(HashMap::new()),
             pins: Mutex::new(super::pins::PinsStore::default()),
             reactions: Mutex::new(super::reactions::ReactionsStore::default()),
+            iteration_markers: Mutex::new(
+                super::iteration_markers::IterationMarkersStore::default(),
+            ),
         }
     }
 }
@@ -508,6 +530,24 @@ impl Storage for MemoryStorage {
         store: &super::reactions::ReactionsStore,
     ) -> Result<(), std::io::Error> {
         *self.reactions.lock().unwrap_or_else(|e| e.into_inner()) = store.clone();
+        Ok(())
+    }
+
+    fn load_iteration_markers(&self) -> super::iteration_markers::IterationMarkersStore {
+        self.iteration_markers
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
+    }
+
+    fn save_iteration_markers(
+        &self,
+        store: &super::iteration_markers::IterationMarkersStore,
+    ) -> Result<(), std::io::Error> {
+        *self
+            .iteration_markers
+            .lock()
+            .unwrap_or_else(|e| e.into_inner()) = store.clone();
         Ok(())
     }
 }

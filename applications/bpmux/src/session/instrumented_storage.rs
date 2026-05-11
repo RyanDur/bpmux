@@ -287,4 +287,27 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
         ));
         result
     }
+
+    fn load_iteration_markers(&self) -> super::iteration_markers::IterationMarkersStore {
+        let start = Instant::now();
+        let result = self.inner.load_iteration_markers();
+        self.log(&format!(
+            "load_iteration_markers {:.1}ms",
+            start.elapsed().as_secs_f64() * 1000.0
+        ));
+        result
+    }
+
+    fn save_iteration_markers(
+        &self,
+        store: &super::iteration_markers::IterationMarkersStore,
+    ) -> Result<(), std::io::Error> {
+        let start = Instant::now();
+        let result = self.inner.save_iteration_markers(store);
+        self.log(&format!(
+            "save_iteration_markers {:.1}ms",
+            start.elapsed().as_secs_f64() * 1000.0
+        ));
+        result
+    }
 }

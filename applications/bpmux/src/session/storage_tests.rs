@@ -418,6 +418,32 @@ contract!(
     }
 );
 
+// ── Iteration markers (#1289 Phase-2 step 4) ──
+
+contract!(
+    load_iteration_markers_empty_when_unset,
+    |storage: &dyn Storage| {
+        let store = storage.load_iteration_markers();
+        assert!(store.markers.is_empty());
+    }
+);
+
+contract!(
+    save_then_load_iteration_markers_roundtrips,
+    |storage: &dyn Storage| {
+        let mut store = crate::session::iteration_markers::IterationMarkersStore::default();
+        crate::session::iteration_markers::add(
+            &mut store,
+            "Aquila".to_string(),
+            "2026-05-11T13:00:00Z".to_string(),
+        );
+        storage.save_iteration_markers(&store).unwrap();
+        let loaded = storage.load_iteration_markers();
+        assert_eq!(loaded.markers.len(), 1);
+        assert_eq!(loaded.markers[0].theme_name, "Aquila");
+    }
+);
+
 // ── BoardStore ↔ Storage trait integration (#1289 Phase-1 step 2) ──
 
 #[test]
