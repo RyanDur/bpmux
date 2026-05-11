@@ -37,8 +37,27 @@ jobs:
       contents: read
       issues: read
       actions: read
+    # #1285: $HOME-isolation on bpmux-mac-m1 self-hosted runner. The
+    # runner runs as Ryan's user with Ryan's $HOME, so actions that
+    # write to ~/.cargo, ~/.rustup, etc. corrupt Ryan's live dev state.
+    # Empirical incident (dev 2026-05-11 03:28 UTC): dtolnay/rust-toolchain
+    # wiped ~/.cargo/bin/rustup mid-CI. Strategy: action-cache redirect
+    # via standard CARGO_HOME + RUSTUP_HOME env vars pointing at
+    # $RUNNER_TEMP-private paths. dtolnay/rust-toolchain + Swatinem/rust-
+    # cache respect these (standard rustup convention); the redirect
+    # keeps all writes inside the per-job temp dir which GH Actions
+    # cleans up between runs.
+    env:
+      CARGO_HOME: ${{ runner.temp }}/cargo
+      RUSTUP_HOME: ${{ runner.temp }}/rustup
     steps:
       - uses: actions/checkout@v4
+      - name: Prepend isolated CARGO_HOME/bin to PATH
+        # Ensures subsequent steps find cargo/rustc binaries from the
+        # redirected CARGO_HOME (rustup writes shims there). Without
+        # this, steps may resolve cargo from Ryan's user-level
+        # ~/.cargo/bin which defeats the isolation.
+        run: echo "${{ runner.temp }}/cargo/bin" >> "$GITHUB_PATH"
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: "1.95.0"
