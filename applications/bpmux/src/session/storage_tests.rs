@@ -454,11 +454,13 @@ fn file_global() -> (Arc<dyn GlobalStore>, tempfile::TempDir) {
     let priority_path = dir.path().join("priority.json");
     let identity_dir = dir.path().join("identity");
     let briefings_dir = dir.path().join("briefings");
+    let tokens_log_path = dir.path().join("tokens").join("log.jsonl");
     let global: Arc<dyn GlobalStore> = Arc::new(
         FileGlobalStore::new()
             .with_priority_path(priority_path)
             .with_identity_dir(identity_dir)
-            .with_briefings_dir(briefings_dir),
+            .with_briefings_dir(briefings_dir)
+            .with_tokens_log_path(tokens_log_path),
     );
     (global, dir)
 }
@@ -610,6 +612,61 @@ global_contract!(per_role_briefing_isolation, |global: &dyn GlobalStore| {
     assert_eq!(global.load_briefing("dev"), "dev-content");
     assert_eq!(global.load_briefing("pm"), "pm-content");
 });
+
+// ── GlobalStore: tokens (#1290 Phase-3 step 4) ──
+
+fn sample_token_row(ts: &str, output: u64) -> crate::session::tokens::TokenRow {
+    crate::session::tokens::TokenRow {
+        ts: ts.to_string(),
+        role: "dev".to_string(),
+        harness: "claude-code".to_string(),
+        model: "claude-opus-4-7".to_string(),
+        input_tokens: 100,
+        cache_creation_input_tokens: 0,
+        cache_read_input_tokens: 50,
+        output_tokens: output,
+        tool_call_count: 1,
+        turn_duration_ms: None,
+        transcript_line: None,
+        session_id: None,
+    }
+}
+
+global_contract!(
+    read_token_rows_empty_when_unset,
+    |global: &dyn GlobalStore| {
+        let rows = global.read_token_rows().unwrap();
+        assert!(rows.is_empty());
+    }
+);
+
+global_contract!(
+    append_then_read_token_rows_roundtrips,
+    |global: &dyn GlobalStore| {
+        let row = sample_token_row("2026-05-11T16:00:00Z", 200);
+        global.append_token_row(&row).unwrap();
+        let rows = global.read_token_rows().unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0], row);
+    }
+);
+
+global_contract!(
+    append_token_rows_preserves_order,
+    |global: &dyn GlobalStore| {
+        let r1 = sample_token_row("2026-05-11T16:00:00Z", 100);
+        let r2 = sample_token_row("2026-05-11T16:01:00Z", 200);
+        let r3 = sample_token_row("2026-05-11T16:02:00Z", 300);
+        global.append_token_row(&r1).unwrap();
+        global.append_token_row(&r2).unwrap();
+        global.append_token_row(&r3).unwrap();
+        let rows = global.read_token_rows().unwrap();
+        assert_eq!(rows.len(), 3);
+        assert_eq!(rows[0].output_tokens, 100);
+        assert_eq!(rows[1].output_tokens, 200);
+        assert_eq!(rows[2].output_tokens, 300);
+    }
+);
 
 // ── BoardStore ↔ Storage trait integration (#1289 Phase-1 step 2) ──
 

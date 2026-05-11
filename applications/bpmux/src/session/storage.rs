@@ -167,6 +167,11 @@ pub trait GlobalStore: Send + Sync {
     // Raw markdown string; 1MB cap enforced in production save path.
     fn load_briefing(&self, role: &str) -> String;
     fn save_briefing(&self, role: &str, content: &str) -> Result<(), std::io::Error>;
+
+    // #1290 Phase-3 step 4: token log (~/.bpmux/tokens/log.jsonl).
+    // Append-only; FileStore preserves POSIX append atomicity.
+    fn append_token_row(&self, row: &super::tokens::TokenRow) -> Result<(), super::log::LogError>;
+    fn read_token_rows(&self) -> Result<Vec<super::tokens::TokenRow>, super::log::LogError>;
 }
 
 /// File-based global store — production impl.
@@ -180,6 +185,9 @@ pub struct FileGlobalStore {
     /// #1290: per-instance briefings-dir override. Tests inject
     /// tempdirs to avoid sharing `~/.bpmux/briefings/`.
     briefings_dir: Option<PathBuf>,
+    /// #1290: per-instance tokens-log path override. Tests inject
+    /// per-test paths to avoid sharing `~/.bpmux/tokens/log.jsonl`.
+    tokens_log_path: Option<PathBuf>,
 }
 
 impl Default for FileGlobalStore {
@@ -194,6 +202,7 @@ impl FileGlobalStore {
             priority_path: None,
             identity_dir: None,
             briefings_dir: None,
+            tokens_log_path: None,
         }
     }
 
@@ -219,6 +228,12 @@ impl FileGlobalStore {
         self
     }
 
+    /// #1290: opt-in tokens-log path override.
+    pub fn with_tokens_log_path(mut self, path: PathBuf) -> Self {
+        self.tokens_log_path = Some(path);
+        self
+    }
+
     fn resolve_priority_path(&self) -> Result<PathBuf, String> {
         if let Some(p) = &self.priority_path {
             return Ok(p.clone());
@@ -238,6 +253,13 @@ impl FileGlobalStore {
             return d.clone();
         }
         super::briefing::briefings_dir()
+    }
+
+    fn resolve_tokens_log_path(&self) -> Result<PathBuf, super::log::LogError> {
+        if let Some(p) = &self.tokens_log_path {
+            return Ok(p.clone());
+        }
+        super::tokens::default_tokens_log_path()
     }
 }
 
@@ -279,6 +301,16 @@ impl GlobalStore for FileGlobalStore {
     fn save_briefing(&self, role: &str, content: &str) -> Result<(), std::io::Error> {
         super::briefing::save_briefing_in(&self.resolve_briefings_dir(), role, content)
     }
+
+    fn append_token_row(&self, row: &super::tokens::TokenRow) -> Result<(), super::log::LogError> {
+        let path = self.resolve_tokens_log_path()?;
+        super::tokens::append_token_row(&path, row)
+    }
+
+    fn read_token_rows(&self) -> Result<Vec<super::tokens::TokenRow>, super::log::LogError> {
+        let path = self.resolve_tokens_log_path()?;
+        super::tokens::read_token_rows(&path)
+    }
 }
 
 /// In-memory global store — tests-only impl.
@@ -286,6 +318,7 @@ pub struct MemoryGlobalStore {
     priority: Mutex<super::priority::PriorityIndex>,
     identity: Mutex<HashMap<String, super::identity::IdentityIndex>>,
     briefings: Mutex<HashMap<String, String>>,
+    tokens: Mutex<Vec<super::tokens::TokenRow>>,
 }
 
 impl Default for MemoryGlobalStore {
@@ -300,6 +333,7 @@ impl MemoryGlobalStore {
             priority: Mutex::new(super::priority::PriorityIndex::default()),
             identity: Mutex::new(HashMap::new()),
             briefings: Mutex::new(HashMap::new()),
+            tokens: Mutex::new(Vec::new()),
         }
     }
 }
@@ -353,6 +387,22 @@ impl GlobalStore for MemoryGlobalStore {
             .unwrap_or_else(|e| e.into_inner())
             .insert(role.to_string(), content.to_string());
         Ok(())
+    }
+
+    fn append_token_row(&self, row: &super::tokens::TokenRow) -> Result<(), super::log::LogError> {
+        self.tokens
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .push(row.clone());
+        Ok(())
+    }
+
+    fn read_token_rows(&self) -> Result<Vec<super::tokens::TokenRow>, super::log::LogError> {
+        Ok(self
+            .tokens
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone())
     }
 }
 
