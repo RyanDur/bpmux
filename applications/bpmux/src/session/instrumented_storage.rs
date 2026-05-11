@@ -154,4 +154,36 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
     fn dir(&self) -> &Path {
         self.inner.dir()
     }
+
+    fn load_board_snapshot(
+        &self,
+    ) -> Result<
+        std::collections::HashMap<u64, crate::board::domain::Story>,
+        crate::board::store::PersistError,
+    > {
+        let start = Instant::now();
+        let result = self.inner.load_board_snapshot();
+        if let Ok(ref snap) = result {
+            self.log(&format!(
+                "load_board_snapshot {} stories {:.1}ms",
+                snap.len(),
+                start.elapsed().as_secs_f64() * 1000.0
+            ));
+        }
+        result
+    }
+
+    fn save_board_snapshot(
+        &self,
+        snapshot: &std::collections::HashMap<u64, crate::board::domain::Story>,
+    ) -> Result<(), crate::board::store::PersistError> {
+        let start = Instant::now();
+        let result = self.inner.save_board_snapshot(snapshot);
+        self.log(&format!(
+            "save_board_snapshot {} stories {:.1}ms",
+            snapshot.len(),
+            start.elapsed().as_secs_f64() * 1000.0
+        ));
+        result
+    }
 }

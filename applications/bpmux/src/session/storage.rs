@@ -7,6 +7,9 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
+use crate::board::domain::Story;
+use crate::board::store::PersistError;
+
 use super::lessons::LessonIndex;
 use super::log::LogError;
 use super::message::Message;
@@ -42,16 +45,49 @@ pub trait Storage: Send + Sync {
 
     // Session directory (for backward compatibility during migration)
     fn dir(&self) -> &Path;
+
+    // #1289 Phase-1 extension: board snapshot (board-store.json).
+    // FileStorage uses the configured `board_store_path` (env-overridable
+    // via BPMUX_BOARD_STORE_PATH at call-time; injectable per-instance
+    // via `with_board_store_path` for test isolation). MemoryStorage uses
+    // per-instance in-memory state.
+    fn load_board_snapshot(&self) -> Result<HashMap<u64, Story>, PersistError>;
+    fn save_board_snapshot(&self, snapshot: &HashMap<u64, Story>) -> Result<(), PersistError>;
 }
 
 /// File-based storage — the current implementation.
 pub struct FileStorage {
     dir: PathBuf,
+    /// #1289: per-instance board-store path override. `None` →
+    /// `crate::board::store::default_store_path()` (env-or-home).
+    /// `Some(p)` → use `p` directly. Tests inject per-test paths to
+    /// avoid sharing `~/.bpmux/board-store.json`; production uses
+    /// the default-path resolution.
+    board_store_path: Option<PathBuf>,
 }
 
 impl FileStorage {
     pub fn new(dir: PathBuf) -> Self {
-        Self { dir }
+        Self {
+            dir,
+            board_store_path: None,
+        }
+    }
+
+    /// #1289: opt-in path-injection for the board-snapshot store.
+    /// Tests use this to point at a unique tempdir; production
+    /// leaves it `None` so `default_store_path()` resolves at
+    /// call-time (preserves env-override + home-default semantic).
+    pub fn with_board_store_path(mut self, path: PathBuf) -> Self {
+        self.board_store_path = Some(path);
+        self
+    }
+
+    fn resolve_board_store_path(&self) -> Result<PathBuf, std::io::Error> {
+        if let Some(p) = &self.board_store_path {
+            return Ok(p.clone());
+        }
+        crate::board::store::default_store_path()
     }
 }
 
@@ -123,6 +159,30 @@ impl Storage for FileStorage {
     fn dir(&self) -> &Path {
         &self.dir
     }
+
+    fn load_board_snapshot(&self) -> Result<HashMap<u64, Story>, PersistError> {
+        let path = self.resolve_board_store_path()?;
+        if !path.exists() {
+            return Ok(HashMap::new());
+        }
+        let bytes = std::fs::read(&path)?;
+        if bytes.is_empty() {
+            return Ok(HashMap::new());
+        }
+        Ok(serde_json::from_slice(&bytes)?)
+    }
+
+    fn save_board_snapshot(&self, snapshot: &HashMap<u64, Story>) -> Result<(), PersistError> {
+        let path = self.resolve_board_store_path()?;
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        let bytes = serde_json::to_vec(snapshot)?;
+        let tmp = path.with_extension("tmp");
+        std::fs::write(&tmp, &bytes)?;
+        std::fs::rename(&tmp, &path)?;
+        Ok(())
+    }
 }
 
 /// In-memory storage — #1289 substrate-foundation for the Store-trait
@@ -142,6 +202,7 @@ pub struct MemoryStorage {
     lessons: Mutex<LessonIndex>,
     peer_lessons: Mutex<HashMap<String, LessonIndex>>,
     state: Mutex<HashMap<String, String>>,
+    board_snapshot: Mutex<HashMap<u64, Story>>,
 }
 
 impl MemoryStorage {
@@ -155,6 +216,7 @@ impl MemoryStorage {
             lessons: Mutex::new(LessonIndex::default()),
             peer_lessons: Mutex::new(HashMap::new()),
             state: Mutex::new(HashMap::new()),
+            board_snapshot: Mutex::new(HashMap::new()),
         }
     }
 }
@@ -265,5 +327,21 @@ impl Storage for MemoryStorage {
 
     fn dir(&self) -> &Path {
         &self.dir
+    }
+
+    fn load_board_snapshot(&self) -> Result<HashMap<u64, Story>, PersistError> {
+        Ok(self
+            .board_snapshot
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone())
+    }
+
+    fn save_board_snapshot(&self, snapshot: &HashMap<u64, Story>) -> Result<(), PersistError> {
+        *self
+            .board_snapshot
+            .lock()
+            .unwrap_or_else(|e| e.into_inner()) = snapshot.clone();
+        Ok(())
     }
 }

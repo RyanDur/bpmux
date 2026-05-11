@@ -14,10 +14,13 @@
 //! The shared `contract` macro runs the same assertion suite against
 //! both impls so future trait extensions automatically verify parity.
 
+use crate::board::domain::{Story, StoryState};
 use crate::session::lessons::LessonIndex;
 use crate::session::message::Message;
 use crate::session::search::SearchFilters;
 use crate::session::storage::{FileStorage, MemoryStorage, Storage};
+use chrono::{TimeZone, Utc};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -32,7 +35,11 @@ fn fresh_message(text: &str) -> Message {
 
 fn file_storage() -> (Arc<dyn Storage>, tempfile::TempDir) {
     let dir = tempfile::tempdir().unwrap();
-    let storage: Arc<dyn Storage> = Arc::new(FileStorage::new(dir.path().to_path_buf()));
+    // #1289: inject per-test board-store path so the contract test
+    // doesn't pollute ~/.bpmux/board-store.json.
+    let board_path = dir.path().join("board-store.json");
+    let storage: Arc<dyn Storage> =
+        Arc::new(FileStorage::new(dir.path().to_path_buf()).with_board_store_path(board_path));
     (storage, dir)
 }
 
@@ -42,6 +49,16 @@ fn memory_storage() -> (Arc<dyn Storage>, tempfile::TempDir) {
     let dir = tempfile::tempdir().unwrap();
     let storage: Arc<dyn Storage> = Arc::new(MemoryStorage::new(dir.path().to_path_buf()));
     (storage, dir)
+}
+
+fn seed_story(number: u64, title: &str) -> Story {
+    Story::new_minimal(
+        number,
+        title.to_string(),
+        StoryState::Icebox,
+        Utc.with_ymd_and_hms(2026, 5, 11, 12, 0, 0).unwrap(),
+        "dev".to_string(),
+    )
 }
 
 /// Run a contract assertion against both `FileStorage` + `MemoryStorage`.
@@ -221,6 +238,48 @@ contract!(
     |storage: &dyn Storage| {
         let d = storage.dir();
         assert!(!d.as_os_str().is_empty());
+    }
+);
+
+// ── Board snapshot (#1289 Phase-1 step 1) ──
+
+contract!(
+    load_board_snapshot_empty_when_unset,
+    |storage: &dyn Storage| {
+        let snap = storage.load_board_snapshot().unwrap();
+        assert!(snap.is_empty());
+    }
+);
+
+contract!(
+    save_then_load_board_snapshot_roundtrips,
+    |storage: &dyn Storage| {
+        let mut snap = HashMap::new();
+        snap.insert(100, seed_story(100, "story-100"));
+        snap.insert(200, seed_story(200, "story-200"));
+        storage.save_board_snapshot(&snap).unwrap();
+        let loaded = storage.load_board_snapshot().unwrap();
+        assert_eq!(loaded.len(), 2);
+        assert_eq!(loaded.get(&100).unwrap().title, "story-100");
+        assert_eq!(loaded.get(&200).unwrap().title, "story-200");
+    }
+);
+
+contract!(
+    save_board_snapshot_overwrites_previous,
+    |storage: &dyn Storage| {
+        let mut snap_v1 = HashMap::new();
+        snap_v1.insert(100, seed_story(100, "v1"));
+        storage.save_board_snapshot(&snap_v1).unwrap();
+
+        let mut snap_v2 = HashMap::new();
+        snap_v2.insert(100, seed_story(100, "v2"));
+        snap_v2.insert(200, seed_story(200, "added"));
+        storage.save_board_snapshot(&snap_v2).unwrap();
+
+        let loaded = storage.load_board_snapshot().unwrap();
+        assert_eq!(loaded.len(), 2);
+        assert_eq!(loaded.get(&100).unwrap().title, "v2");
     }
 );
 
