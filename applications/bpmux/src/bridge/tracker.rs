@@ -37,6 +37,11 @@ pub struct WorkflowRunEntry {
     pub display_title: Option<String>,
     #[serde(rename = "id", alias = "databaseId", default)]
     pub database_id: Option<u64>,
+    /// #1287: workflow name (e.g., "CI", "self-hosted runner
+    /// smoke-test") used for per-workflow breakdown in aggregate
+    /// state — GitHub API field on `/repos/.../actions/runs`.
+    #[serde(default)]
+    pub name: Option<String>,
     /// #397: annotation message from the check-run surfaced on
     /// failed runs so classification can distinguish quota-
     /// exhausted / billing-blocked (pass-with-citation) from genuine
@@ -149,8 +154,14 @@ pub enum ConditionalIssue {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConditionalRunEntry {
     NotModified,
+    /// #1287: now carries ALL recent runs (not just the most-recent
+    /// single run) so the aggregate classifier can see every workflow
+    /// triggered by the latest commit. Entries are ordered by GitHub's
+    /// API default (most-recent first); the classifier filters by the
+    /// first entry's head_sha to identify which runs belong to the
+    /// latest commit.
     Modified {
-        entry: WorkflowRunEntry,
+        entries: Vec<WorkflowRunEntry>,
         etag: Option<String>,
     },
     Empty,
@@ -909,8 +920,13 @@ impl OctocrabStoryTracker {
         prior_etag: Option<&str>,
     ) -> Result<ConditionalRunEntry, String> {
         use http_body_util::BodyExt;
+        // #1287: per_page=20 fetches all workflow runs for the latest
+        // commit (typically 2-3 workflows per push: main CI + smoke
+        // workflow + occasional sister). Aggregate classifier filters
+        // by the first run's head_sha to find the latest-commit
+        // group.
         let path = format!(
-            "/repos/{}/{}/actions/runs?branch=main&per_page=1",
+            "/repos/{}/{}/actions/runs?branch=main&per_page=20",
             self.owner, self.repo
         );
         let mut headers = http::HeaderMap::new();
@@ -956,18 +972,25 @@ impl OctocrabStoryTracker {
         }
         let parsed: RunsResponse =
             serde_json::from_slice(&body).map_err(|e| format!("json parse: {e}"))?;
-        let Some(mut latest) = parsed.workflow_runs.into_iter().next() else {
+        let mut entries = parsed.workflow_runs;
+        if entries.is_empty() {
             return Ok(ConditionalRunEntry::Empty);
-        };
-        if latest.conclusion.as_deref() == Some("failure")
-            && let Some(run_id) = latest.database_id
-        {
-            latest.annotation_message = self.fetch_first_failure_annotation(run_id).await;
         }
-        Ok(ConditionalRunEntry::Modified {
-            entry: latest,
-            etag,
-        })
+        // Fetch annotation only for failed runs in the latest-commit
+        // group — pre-#1287 behavior was annotation-fetch on the
+        // single returned run; preserved here for failed entries
+        // matching the latest head_sha.
+        let head_sha = entries[0].head_sha.clone();
+        for entry in entries
+            .iter_mut()
+            .filter(|e| e.head_sha == head_sha)
+            .filter(|e| e.conclusion.as_deref() == Some("failure"))
+        {
+            if let Some(run_id) = entry.database_id {
+                entry.annotation_message = self.fetch_first_failure_annotation(run_id).await;
+            }
+        }
+        Ok(ConditionalRunEntry::Modified { entries, etag })
     }
 }
 

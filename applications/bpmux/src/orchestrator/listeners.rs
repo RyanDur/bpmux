@@ -29,6 +29,7 @@ impl CiBroadcastListener for CiStateStoreWriter {
             head_sha: snap.head_sha.clone(),
             display_title: snap.display_title.clone(),
             database_id: snap.run_id,
+            name: None,
             annotation_message: None,
         }];
         let report = crate::bridge::tools::build_ci_state_report(&runs);

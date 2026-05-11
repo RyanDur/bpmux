@@ -10,6 +10,7 @@ fn run(status: &str, conclusion: Option<&str>) -> RunEntry {
         head_sha: None,
         display_title: None,
         database_id: None,
+        name: None,
         annotation_message: None,
     }
 }
@@ -27,6 +28,7 @@ fn run_with_meta(
         head_sha: Some(sha.to_string()),
         display_title: Some(title.to_string()),
         database_id: Some(id),
+        name: None,
         annotation_message: None,
     }
 }
@@ -141,6 +143,7 @@ fn event(state: CiState) -> CiEvent {
         sha: None,
         title: None,
         run_id: None,
+        workflows: Vec::new(),
     }
 }
 
@@ -150,6 +153,7 @@ fn event_with_meta(state: CiState, sha: &str, title: &str, id: u64) -> CiEvent {
         sha: Some(sha.to_string()),
         title: Some(title.to_string()),
         run_id: Some(id),
+        workflows: Vec::new(),
     }
 }
 

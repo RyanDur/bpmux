@@ -1392,6 +1392,7 @@ async fn get_ci_returns_cached_state_with_last_updated_at_after_write() {
         last_successful_poll_at: None,
         poll_interval_secs: 60,
         backoff_cap_secs: 3600,
+        workflows: Vec::new(),
     };
     store.write(report);
     let router = axum::Router::new()
@@ -1438,6 +1439,7 @@ async fn get_ci_does_not_hit_github_when_store_has_cached_state() {
         last_successful_poll_at: None,
         poll_interval_secs: 60,
         backoff_cap_secs: 3600,
+        workflows: Vec::new(),
     });
     let router = axum::Router::new()
         .route("/api/ci", axum::routing::get(super::rest::get_ci))

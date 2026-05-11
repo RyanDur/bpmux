@@ -22,6 +22,19 @@ pub struct CiEvent {
     pub sha: Option<String>,
     pub title: Option<String>,
     pub run_id: Option<u64>,
+    /// #1287: per-workflow breakdown across all runs on the latest
+    /// head_sha. `state` is the aggregate; `workflows` carries the
+    /// individual run summaries so callers needing per-workflow
+    /// detail don't have to re-fetch.
+    pub workflows: Vec<WorkflowSummary>,
+}
+
+/// #1287: per-workflow run summary used in aggregate CI state.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+pub struct WorkflowSummary {
+    pub name: Option<String>,
+    pub run_id: Option<u64>,
+    pub conclusion: &'static str,
 }
 
 pub(crate) fn compute_broadcast_text(next: &CiEvent) -> Option<String> {
@@ -127,7 +140,7 @@ fn append_meta(line: &mut String, event: &CiEvent) {
     }
 }
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Clone, Deserialize, Default)]
 pub struct RunEntry {
     pub status: String,
     pub conclusion: Option<String>,
@@ -137,6 +150,11 @@ pub struct RunEntry {
     pub display_title: Option<String>,
     #[serde(rename = "id", alias = "databaseId", default)]
     pub database_id: Option<u64>,
+    /// #1287: workflow name (e.g., "CI", "self-hosted runner
+    /// smoke-test") — used for per-workflow breakdown in aggregate
+    /// state. GitHub API field on `/repos/.../actions/runs`.
+    #[serde(default)]
+    pub name: Option<String>,
     #[serde(default, skip)]
     pub annotation_message: Option<String>,
 }
@@ -147,35 +165,99 @@ pub(crate) fn annotation_indicates_quota_exhaustion(msg: &str) -> bool {
         || msg.contains("billing")
 }
 
+/// Classify the per-run state of a single GitHub Actions workflow
+/// run. Pure helper; called by `classify_runs` once per run to derive
+/// the per-workflow conclusion, then aggregated.
+fn classify_single_run(run: &RunEntry) -> CiState {
+    if run.status == "in_progress" || run.status == "queued" {
+        return CiState::Running;
+    }
+    match run.conclusion.as_deref() {
+        Some("success") => CiState::Green,
+        // #397: distinguish quota-exhausted / infrastructure-blocked
+        // failures from genuine code failures. The annotation message
+        // (populated upstream by the tracker for failed runs) carries
+        // GitHub's reason; if it matches the quota-exhaustion
+        // pattern, map to QuotaExhausted (team-gate pass-with-
+        // citation). Otherwise map to Red (genuine failure —
+        // block gates).
+        Some(_) => match run.annotation_message.as_deref() {
+            Some(msg) if annotation_indicates_quota_exhaustion(msg) => CiState::QuotaExhausted,
+            _ => CiState::Red,
+        },
+        None => CiState::Unknown,
+    }
+}
+
+fn ci_state_str(state: CiState) -> &'static str {
+    match state {
+        CiState::Green => "success",
+        CiState::Red => "failure",
+        CiState::Running => "in_progress",
+        CiState::QuotaExhausted => "quota_exhausted",
+        CiState::Unknown => "unknown",
+    }
+}
+
+/// #1287: aggregate CI state across all workflow runs on the latest
+/// commit (head_sha of the first run). Aggregation contract:
+///
+/// - `Running` if ANY run is in_progress/queued
+/// - `Red` if ANY completed run is failure (not quota)
+/// - `QuotaExhausted` if ANY run is quota_exhausted and none are red/running
+/// - `Green` if ALL filtered runs are success
+/// - `Unknown` if no filtered runs (or all unknown)
+///
+/// This replaces the prior `runs.first()` semantic which fired
+/// `🟢 CI green` on the first-to-conclude workflow even while sister
+/// workflows on the same commit were still running. Per
+/// `feedback_verify_tool_output_schema`: the aggregate-contract is
+/// the explicit shape callers depend on for gate-fire decisions
+/// (pre-deliver, pre-desk-check, pre-accept).
 pub fn classify_runs(runs: &[RunEntry]) -> CiEvent {
     let Some(latest) = runs.first() else {
         return CiEvent::default();
     };
-    // "Running wins over stale success or stale failure — the user cares
-    // that a fresh answer is coming." (spec)
-    let state = if latest.status == "in_progress" || latest.status == "queued" {
-        CiState::Running
+    let head_sha = latest.head_sha.clone();
+    // Filter to runs matching the latest commit's head_sha. If the
+    // first run has no head_sha (legacy/test-shape), fall back to
+    // single-run classification on `latest` only.
+    let filtered: Vec<&RunEntry> = if head_sha.is_some() {
+        runs.iter().filter(|r| r.head_sha == head_sha).collect()
     } else {
-        match latest.conclusion.as_deref() {
-            Some("success") => CiState::Green,
-            // #397: distinguish quota-exhausted / infrastructure-
-            // blocked failures from genuine code failures. The
-            // annotation message (populated upstream by the tracker
-            // for failed runs) carries GitHub's reason; if it matches
-            // the quota-exhaustion pattern, map to QuotaExhausted
-            // (team-gate pass-with-citation). Otherwise map to Red
-            // (genuine failure — block gates).
-            Some(_) => match latest.annotation_message.as_deref() {
-                Some(msg) if annotation_indicates_quota_exhaustion(msg) => CiState::QuotaExhausted,
-                _ => CiState::Red,
-            },
-            None => CiState::Unknown,
-        }
+        vec![latest]
     };
+    let per_workflow: Vec<(CiState, &RunEntry)> = filtered
+        .iter()
+        .map(|r| (classify_single_run(r), *r))
+        .collect();
+    let aggregate = if per_workflow.iter().any(|(s, _)| *s == CiState::Running) {
+        CiState::Running
+    } else if per_workflow.iter().any(|(s, _)| *s == CiState::Red) {
+        CiState::Red
+    } else if per_workflow
+        .iter()
+        .any(|(s, _)| *s == CiState::QuotaExhausted)
+    {
+        CiState::QuotaExhausted
+    } else if !per_workflow.is_empty() && per_workflow.iter().all(|(s, _)| *s == CiState::Green) {
+        CiState::Green
+    } else {
+        CiState::Unknown
+    };
+    let workflows: Vec<WorkflowSummary> = per_workflow
+        .iter()
+        .map(|(s, r)| WorkflowSummary {
+            name: r.name.clone(),
+            run_id: r.database_id,
+            conclusion: ci_state_str(*s),
+        })
+        .collect();
     CiEvent {
-        state,
+        state: aggregate,
         sha: latest.head_sha.clone(),
         title: latest.display_title.clone(),
         run_id: latest.database_id,
+        workflows,
     }
 }

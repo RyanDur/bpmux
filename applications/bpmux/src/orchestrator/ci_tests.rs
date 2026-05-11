@@ -43,6 +43,7 @@ fn snap(run_id: u64, conclusion: &'static str) -> CiSnapshot {
         head_sha: Some("deadbeef".to_string()),
         display_title: Some("test commit".to_string()),
         conclusion,
+        workflows: Vec::new(),
     }
 }
 
@@ -65,14 +66,15 @@ struct FakeCiTracker {
 
 fn default_modified_entry() -> ConditionalRunEntry {
     ConditionalRunEntry::Modified {
-        entry: crate::bridge::tracker::WorkflowRunEntry {
+        entries: vec![crate::bridge::tracker::WorkflowRunEntry {
             status: "completed".to_string(),
             conclusion: Some("success".to_string()),
             head_sha: Some("deadbeef".to_string()),
             display_title: Some("fake CI run".to_string()),
             database_id: Some(7777),
+            name: None,
             annotation_message: None,
-        },
+        }],
         etag: Some("etag-1".to_string()),
     }
 }

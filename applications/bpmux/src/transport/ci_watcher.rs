@@ -102,16 +102,16 @@ pub fn spawn<T: CiPollFetch>(
             let conditional = tracker
                 .list_latest_run_on_main_conditional(last_etag.as_deref())
                 .await;
-            let report = match conditional {
+            let entries = match conditional {
                 Ok(crate::bridge::tracker::ConditionalRunEntry::NotModified) => {
                     backoff = base_backoff;
                     ci_state_store.mark_poll_succeeded();
                     continue;
                 }
-                Ok(crate::bridge::tracker::ConditionalRunEntry::Modified { entry, etag }) => {
+                Ok(crate::bridge::tracker::ConditionalRunEntry::Modified { entries, etag }) => {
                     backoff = base_backoff;
                     last_etag = etag;
-                    entry
+                    entries
                 }
                 Ok(crate::bridge::tracker::ConditionalRunEntry::Empty) => {
                     backoff = base_backoff;
@@ -141,15 +141,22 @@ pub fn spawn<T: CiPollFetch>(
                     continue;
                 }
             };
-            let run_id = report.database_id;
-            let runs = vec![crate::ci::RunEntry {
-                status: report.status,
-                conclusion: report.conclusion,
-                head_sha: report.head_sha,
-                display_title: report.display_title,
-                database_id: report.database_id,
-                annotation_message: report.annotation_message,
-            }];
+            // #1287: classify across ALL entries (not just first) so
+            // aggregate state covers every workflow on the latest
+            // commit. classify_runs filters by first.head_sha
+            // internally.
+            let runs: Vec<crate::ci::RunEntry> = entries
+                .into_iter()
+                .map(|e| crate::ci::RunEntry {
+                    status: e.status,
+                    conclusion: e.conclusion,
+                    head_sha: e.head_sha,
+                    display_title: e.display_title,
+                    database_id: e.database_id,
+                    name: e.name,
+                    annotation_message: e.annotation_message,
+                })
+                .collect();
             let classified = crate::ci::classify_runs(&runs);
             let current: &'static str = match classified.state {
                 crate::ci::CiState::Green => "success",
@@ -160,10 +167,11 @@ pub fn spawn<T: CiPollFetch>(
             };
             let snapshot = CiSnapshot {
                 state: classified.state,
-                run_id,
-                head_sha: runs[0].head_sha.clone(),
-                display_title: runs[0].display_title.clone(),
+                run_id: classified.run_id,
+                head_sha: classified.sha.clone(),
+                display_title: classified.title.clone(),
                 conclusion: current,
+                workflows: classified.workflows.clone(),
             };
             orchestrator.dispatch(CiAction::CiUpdated(snapshot)).await;
         }

@@ -4,9 +4,26 @@
 //! report. Pure `build_ci_state_report` is separated from the fetch
 //! so unit tests cover shape without network.
 
-use crate::ci::{CiState, RunEntry, classify_runs, github_actions_url};
+use crate::ci::{CiState, RunEntry, WorkflowSummary, classify_runs, github_actions_url};
 use crate::transport::ci_watcher::{MAX_BACKOFF, POLL_INTERVAL};
 
+/// MCP `get_ci_state` response shape.
+///
+/// **Aggregate contract (#1287)**: `conclusion` aggregates the
+/// states of ALL workflow runs triggered by the latest commit (the
+/// head_sha of the most-recent run). It is NOT the conclusion of
+/// the last-workflow-to-conclude. Specifically:
+/// - `success` IFF all runs on the latest commit concluded with success
+/// - `failure` IF any run concluded with failure/cancelled (non-quota)
+/// - `quota_exhausted` IF any run is quota-blocked and none are red/running
+/// - `in_progress` IF any run on the latest commit is still running/queued
+/// - `unknown` if no runs are visible on the latest commit
+///
+/// `workflows` carries the per-run breakdown so callers needing
+/// per-workflow detail don't have to re-fetch via
+/// `get_ci_log_for_run`. `last_run_id` remains the most-recent run's
+/// id (legacy field; specific run lookup belongs to
+/// `get_ci_log_for_run`).
 #[derive(Debug, Clone, serde::Serialize, PartialEq, Eq)]
 pub struct CiStateReport {
     pub conclusion: &'static str,
@@ -21,6 +38,13 @@ pub struct CiStateReport {
     pub last_successful_poll_at: Option<String>,
     pub poll_interval_secs: u64,
     pub backoff_cap_secs: u64,
+    /// #1287: per-workflow run summaries on the latest commit.
+    /// Each entry: `{name, run_id, conclusion}`. `conclusion`
+    /// strings follow the same vocabulary as the top-level
+    /// aggregate (`success` / `failure` / `in_progress` /
+    /// `quota_exhausted` / `unknown`).
+    #[serde(default)]
+    pub workflows: Vec<WorkflowSummary>,
 }
 
 pub fn build_ci_state_report(runs: &[RunEntry]) -> CiStateReport {
@@ -44,6 +68,7 @@ pub fn build_ci_state_report(runs: &[RunEntry]) -> CiStateReport {
         last_successful_poll_at: None,
         poll_interval_secs: POLL_INTERVAL.as_secs(),
         backoff_cap_secs: MAX_BACKOFF.as_secs(),
+        workflows: event.workflows,
     }
 }
 
@@ -59,6 +84,7 @@ pub fn unknown_ci_state_report() -> CiStateReport {
         last_successful_poll_at: None,
         poll_interval_secs: POLL_INTERVAL.as_secs(),
         backoff_cap_secs: MAX_BACKOFF.as_secs(),
+        workflows: Vec::new(),
     }
 }
 
@@ -105,6 +131,7 @@ mod tests {
             head_sha: None,
             display_title: None,
             database_id: id,
+            name: None,
             annotation_message: None,
         }
     }
@@ -205,6 +232,7 @@ mod tests {
             head_sha: None,
             display_title: None,
             database_id: Some(1),
+            name: None,
             annotation_message: Some(msg.to_string()),
         }
     }

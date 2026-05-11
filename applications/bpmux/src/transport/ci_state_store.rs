@@ -70,6 +70,7 @@ mod tests {
             last_successful_poll_at: None,
             poll_interval_secs: 60,
             backoff_cap_secs: 3600,
+            workflows: Vec::new(),
         }
     }
 

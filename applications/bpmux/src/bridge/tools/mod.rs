@@ -18,6 +18,8 @@ mod get_bookmark;
 mod get_briefing;
 mod get_ci_log_for_run;
 mod get_ci_state;
+#[cfg(test)]
+mod get_ci_state_tests;
 mod get_identity;
 mod get_story;
 #[cfg(test)]

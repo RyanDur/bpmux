@@ -51,6 +51,7 @@ async fn ci_listener_emits_typed_state_delta() {
         head_sha: Some("abc123".to_string()),
         display_title: Some("title".to_string()),
         conclusion: "success",
+        workflows: Vec::new(),
     };
     listener.on_changed(&snap);
     let payload = drain_state_delta(&mut rx);
