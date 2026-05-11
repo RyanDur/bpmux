@@ -455,12 +455,14 @@ fn file_global() -> (Arc<dyn GlobalStore>, tempfile::TempDir) {
     let identity_dir = dir.path().join("identity");
     let briefings_dir = dir.path().join("briefings");
     let tokens_log_path = dir.path().join("tokens").join("log.jsonl");
+    let usage_path = dir.path().join("usage.json");
     let global: Arc<dyn GlobalStore> = Arc::new(
         FileGlobalStore::new()
             .with_priority_path(priority_path)
             .with_identity_dir(identity_dir)
             .with_briefings_dir(briefings_dir)
-            .with_tokens_log_path(tokens_log_path),
+            .with_tokens_log_path(tokens_log_path)
+            .with_usage_path(usage_path),
     );
     (global, dir)
 }
@@ -665,6 +667,61 @@ global_contract!(
         assert_eq!(rows[0].output_tokens, 100);
         assert_eq!(rows[1].output_tokens, 200);
         assert_eq!(rows[2].output_tokens, 300);
+    }
+);
+
+// ── GlobalStore: usage (#1290 Phase-3 step 5) ──
+
+global_contract!(load_usage_empty_when_unset, |global: &dyn GlobalStore| {
+    let map = global.load_usage();
+    assert!(map.is_empty());
+});
+
+global_contract!(
+    save_then_load_usage_roundtrips,
+    |global: &dyn GlobalStore| {
+        let mut map = HashMap::new();
+        map.insert(
+            "mcp:start_story".to_string(),
+            crate::session::usage::Record {
+                count: 5,
+                last_used: "2026-05-11T16:00:00Z".to_string(),
+            },
+        );
+        global.save_usage(&map).unwrap();
+        let loaded = global.load_usage();
+        assert_eq!(loaded.len(), 1);
+        assert_eq!(loaded.get("mcp:start_story").unwrap().count, 5);
+    }
+);
+
+global_contract!(
+    save_usage_overwrites_previous,
+    |global: &dyn GlobalStore| {
+        let mut v1 = HashMap::new();
+        v1.insert(
+            "slash:tokens".to_string(),
+            crate::session::usage::Record {
+                count: 1,
+                last_used: "2026-05-11T16:00:00Z".to_string(),
+            },
+        );
+        global.save_usage(&v1).unwrap();
+
+        let mut v2 = HashMap::new();
+        v2.insert(
+            "mcp:view_board".to_string(),
+            crate::session::usage::Record {
+                count: 10,
+                last_used: "2026-05-11T16:01:00Z".to_string(),
+            },
+        );
+        global.save_usage(&v2).unwrap();
+
+        let loaded = global.load_usage();
+        assert_eq!(loaded.len(), 1);
+        assert!(loaded.contains_key("mcp:view_board"));
+        assert!(!loaded.contains_key("slash:tokens"));
     }
 );
 

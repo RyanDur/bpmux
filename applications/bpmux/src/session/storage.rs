@@ -172,6 +172,15 @@ pub trait GlobalStore: Send + Sync {
     // Append-only; FileStore preserves POSIX append atomicity.
     fn append_token_row(&self, row: &super::tokens::TokenRow) -> Result<(), super::log::LogError>;
     fn read_token_rows(&self) -> Result<Vec<super::tokens::TokenRow>, super::log::LogError>;
+
+    // #1290 Phase-3 step 5: feature-usage counters (~/.bpmux/usage.json).
+    // Whole-map read/replace; the higher-level `usage::record()` helper
+    // composes load-mutate-save against the default path on FileStore.
+    fn load_usage(&self) -> std::collections::HashMap<String, super::usage::Record>;
+    fn save_usage(
+        &self,
+        map: &std::collections::HashMap<String, super::usage::Record>,
+    ) -> Result<(), std::io::Error>;
 }
 
 /// File-based global store — production impl.
@@ -188,6 +197,9 @@ pub struct FileGlobalStore {
     /// #1290: per-instance tokens-log path override. Tests inject
     /// per-test paths to avoid sharing `~/.bpmux/tokens/log.jsonl`.
     tokens_log_path: Option<PathBuf>,
+    /// #1290: per-instance usage-path override. Tests inject per-test
+    /// paths to avoid sharing `~/.bpmux/usage.json`.
+    usage_path: Option<PathBuf>,
 }
 
 impl Default for FileGlobalStore {
@@ -203,6 +215,7 @@ impl FileGlobalStore {
             identity_dir: None,
             briefings_dir: None,
             tokens_log_path: None,
+            usage_path: None,
         }
     }
 
@@ -234,6 +247,12 @@ impl FileGlobalStore {
         self
     }
 
+    /// #1290: opt-in usage-path override.
+    pub fn with_usage_path(mut self, path: PathBuf) -> Self {
+        self.usage_path = Some(path);
+        self
+    }
+
     fn resolve_priority_path(&self) -> Result<PathBuf, String> {
         if let Some(p) = &self.priority_path {
             return Ok(p.clone());
@@ -260,6 +279,13 @@ impl FileGlobalStore {
             return Ok(p.clone());
         }
         super::tokens::default_tokens_log_path()
+    }
+
+    fn resolve_usage_path(&self) -> Option<PathBuf> {
+        if let Some(p) = &self.usage_path {
+            return Some(p.clone());
+        }
+        super::usage::default_usage_path()
     }
 }
 
@@ -311,6 +337,23 @@ impl GlobalStore for FileGlobalStore {
         let path = self.resolve_tokens_log_path()?;
         super::tokens::read_token_rows(&path)
     }
+
+    fn load_usage(&self) -> std::collections::HashMap<String, super::usage::Record> {
+        let Some(path) = self.resolve_usage_path() else {
+            return std::collections::HashMap::new();
+        };
+        super::usage::load_from(&path)
+    }
+
+    fn save_usage(
+        &self,
+        map: &std::collections::HashMap<String, super::usage::Record>,
+    ) -> Result<(), std::io::Error> {
+        let Some(path) = self.resolve_usage_path() else {
+            return Ok(());
+        };
+        super::usage::save_to(&path, map)
+    }
 }
 
 /// In-memory global store — tests-only impl.
@@ -319,6 +362,7 @@ pub struct MemoryGlobalStore {
     identity: Mutex<HashMap<String, super::identity::IdentityIndex>>,
     briefings: Mutex<HashMap<String, String>>,
     tokens: Mutex<Vec<super::tokens::TokenRow>>,
+    usage: Mutex<HashMap<String, super::usage::Record>>,
 }
 
 impl Default for MemoryGlobalStore {
@@ -334,6 +378,7 @@ impl MemoryGlobalStore {
             identity: Mutex::new(HashMap::new()),
             briefings: Mutex::new(HashMap::new()),
             tokens: Mutex::new(Vec::new()),
+            usage: Mutex::new(HashMap::new()),
         }
     }
 }
@@ -403,6 +448,18 @@ impl GlobalStore for MemoryGlobalStore {
             .lock()
             .unwrap_or_else(|e| e.into_inner())
             .clone())
+    }
+
+    fn load_usage(&self) -> HashMap<String, super::usage::Record> {
+        self.usage.lock().unwrap_or_else(|e| e.into_inner()).clone()
+    }
+
+    fn save_usage(
+        &self,
+        map: &HashMap<String, super::usage::Record>,
+    ) -> Result<(), std::io::Error> {
+        *self.usage.lock().unwrap_or_else(|e| e.into_inner()) = map.clone();
+        Ok(())
     }
 }
 
