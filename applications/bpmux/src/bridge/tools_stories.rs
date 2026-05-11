@@ -673,6 +673,19 @@ pub(super) async fn handle_start_story(
             new_state: crate::board::domain::StoryState::InProgress,
         })
         .map_err(|e| format!("#{number} state enqueue failed: {e}"))?;
+        // #1292: drain the outbox before returning so callers see a
+        // fully-settled state. Without this, start_story enqueued
+        // labels (icebox → in-progress) ride on the background
+        // drain_loop tick (1s interval); subsequent close_story would
+        // race against still-in-flight tag-mutations. Under Linux-CI
+        // workers=4 + repeat-each=3, the 1.5s test-side wait wasn't
+        // sufficient — flake-class. Sister-shape to deliver_story /
+        // close_story / accept_story which already drain before
+        // returning. The asymmetry (start_story alone didn't drain)
+        // was the race-source.
+        r.drain_pending()
+            .await
+            .map_err(|e| format!("#{number} start push failed: {e}"))?;
         broadcast_board_invalidate(ws_tx).await;
         return Ok(format!("#{number} marked as in progress"));
     }

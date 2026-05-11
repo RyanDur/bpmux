@@ -1580,10 +1580,21 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
         "gate_comments should contain Pickup with both payload sections: {gates:?}"
     );
 
+    // #1292: handle_start_story now drains the outbox before returning
+    // (sister-shape to deliver/close/accept which already drain
+    // synchronously). The drain happens inside handle_start_story so
+    // by the time this test calls drain_pending, the outbox is empty.
     let drained = orchestrator.drain_pending().await.unwrap();
-    assert_eq!(drained, 3, "3 events expected post-#1156 pre-filter");
+    assert_eq!(
+        drained, 0,
+        "post-#1292: start_story drains synchronously; pending is empty by return"
+    );
     let pushed = adapter.pushed_events();
-    assert_eq!(pushed.len(), 3);
+    assert_eq!(
+        pushed.len(),
+        3,
+        "3 events still pushed to adapter (just drained synchronously now)"
+    );
     let reap_count = pushed
         .iter()
         .filter(|e| matches!(e, BoardEvent::TagRemoved { number: 203, .. }))
