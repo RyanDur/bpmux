@@ -1175,10 +1175,34 @@ impl OctocrabStoryTracker {
                 }
             }
         }
+        // #1293 AC 8: when the workflow conclusion is failure but the
+        // per-job loop produced no records (e.g., all jobs cancelled,
+        // runner host died, infrastructure failure with no job
+        // reaching conclusion="failure"), emit an unknown_failure_class
+        // record rather than empty failures[]. Callers depend on
+        // non-empty actionable records for ground-truth iteration.
+        let final_failures = if all_failures.is_empty() && conclusion == "failure" {
+            vec![crate::bridge::tools::CiTestFailure {
+                shard_id: Some("(workflow)".to_string()),
+                test_name: "(workflow failure: no job reached conclusion=failure)".to_string(),
+                file: None,
+                line: None,
+                error_message: format!(
+                    "workflow run {run_id} conclusion=failure but no per-job failure-conclusion found. \
+                     Likely runner-infrastructure failure (cancelled / host died / pre-job setup). \
+                     Inspect GH Actions UI directly for this run."
+                ),
+                retry_count: 0,
+                stage: Some("(workflow)".to_string()),
+                class: Some("unknown_failure_class".to_string()),
+            }]
+        } else {
+            all_failures
+        };
         Ok(crate::bridge::tools::CiRunFailures {
             run_id,
             conclusion,
-            failures: all_failures,
+            failures: final_failures,
         })
     }
 
