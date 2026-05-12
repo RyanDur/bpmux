@@ -63,6 +63,8 @@ pub struct BoardStore {
     stories: RwLock<HashMap<u64, Story>>,
     event_tx: broadcast::Sender<BoardEvent>,
     dirty: AtomicBool,
+    #[cfg(test)]
+    test_post_send_hook: std::sync::Mutex<Option<Box<dyn Fn() + Send + Sync>>>,
 }
 
 impl BoardStore {
@@ -72,7 +74,20 @@ impl BoardStore {
             stories: RwLock::new(HashMap::new()),
             event_tx,
             dirty: AtomicBool::new(false),
+            #[cfg(test)]
+            test_post_send_hook: std::sync::Mutex::new(None),
         }
+    }
+
+    #[cfg(test)]
+    pub fn set_test_post_send_hook<F>(&self, f: F)
+    where
+        F: Fn() + Send + Sync + 'static,
+    {
+        *self
+            .test_post_send_hook
+            .lock()
+            .unwrap_or_else(|e| e.into_inner()) = Some(Box::new(f));
     }
 
     pub fn load_from_disk(path: &Path) -> Result<Self, PersistError> {
@@ -161,16 +176,17 @@ impl BoardStore {
 
     /// Apply a `BoardEvent` to the canonical store.
     ///
-    /// **Fire-ordering invariant (#1282)**: the event-broadcast
-    /// (`event_tx.send`) fires BEFORE the write-lock acquires +
-    /// mutates the store. Downstream listeners receiving the event
-    /// can immediately read the store and observe the OLD state — the
-    /// transition-trigger that close_iteration's promote-batch scan,
-    /// icebox_unified cascade-clean, iteration_id membership scan,
-    /// and other downstream effects react to. Today's #1274 root
-    /// cause class: a state-mutation path that committed without
-    /// firing `BoardEvent::StateTransitioned`, leaving listeners
-    /// unable to detect the transition.
+    /// **Fire-ordering invariant (#1282)**: `event_tx.send` fires BEFORE
+    /// the write-lock acquires and mutates the store, in this exact
+    /// order within this function. Today's #1274 root cause class: a
+    /// state-mutation path that committed without firing the event,
+    /// leaving downstream listeners (close_iteration promote-batch
+    /// scan, icebox_unified cascade-clean, iteration_id membership scan)
+    /// unable to detect the transition. The pre-commit ordering ensures
+    /// that any observer running synchronously between the send and the
+    /// write-lock acquire (e.g., the `#[cfg(test)] test_post_send_hook`)
+    /// sees the pre-mutation store-state; the deterministic-ordering
+    /// regression test installs such a hook to pin the invariant.
     ///
     /// `BoardStore::apply` is the single chokepoint for every mutation
     /// in the canonical mutation chain (bridge handlers →
@@ -185,13 +201,17 @@ impl BoardStore {
     /// `LabelsRefreshed`, etc.): same pre-commit fire-ordering applies
     /// since the same code path serves all events.
     pub fn apply(&self, event: &BoardEvent) {
-        // Fire pre-commit per the invariant above. broadcast::send
-        // returns immediately (non-blocking); subscribers process the
-        // event in their own tasks. The write-lock acquired below
-        // does NOT hold during the send, so subscribers that read the
-        // store synchronously on event-receive can observe the OLD
-        // state.
         let _ = self.event_tx.send(event.clone());
+        #[cfg(test)]
+        {
+            let hook = self
+                .test_post_send_hook
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
+            if let Some(f) = hook.as_ref() {
+                f();
+            }
+        }
         let mut w = self.stories.write().unwrap_or_else(|e| e.into_inner());
         let number = event.story_number();
         match event {

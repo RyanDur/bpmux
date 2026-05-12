@@ -2,32 +2,26 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
-// Tests for #1282: BoardEvent::StateTransitioned fire-ordering invariant
-// at BoardStore::apply. The invariant: event_tx.send fires BEFORE the
-// store-mutation acquires the write-lock + commits — code-level
-// guarantee documented at BoardStore::apply. Today's #1274 surfaced
-// the underlying class: a state-mutation path that committed without
-// the corresponding event firing, leaving downstream listeners
-// (close_iteration promote-batch scan, icebox_unified cascade-clean)
-// unable to detect the transition.
+// Tests for #1282: BoardEvent fire-ordering invariant at BoardStore::apply.
+// The invariant: event_tx.send fires BEFORE the write-lock acquires +
+// mutates the store. Today's #1274 surfaced the underlying class: a
+// state-mutation path that committed without firing the event, leaving
+// downstream listeners (close_iteration promote-batch scan,
+// icebox_unified cascade-clean) unable to detect the transition.
 //
-// What this file actually verifies (practically observable):
-// 1. Every state-transition via BoardStore::apply delivers a
-//    BoardEvent::StateTransitioned to subscribers — the basic
-//    "event fires reliably" guarantee.
-// 2. The store reflects the new state after apply returns — atomic
-//    commit semantic.
-// 3. The #1274 regression scenario: close_iteration's downstream
-//    cascade-trigger path receives the event so promote-batch can
-//    react.
+// The deterministic-ordering test installs a #[cfg(test)] post-send
+// hook on BoardStore that fires synchronously between event_tx.send
+// and the write-lock acquire. The hook reads the store: since apply
+// has not yet acquired the write-lock, the read succeeds and observes
+// the PRE-mutation state. This pins the fire-ordering observably (per
+// `feedback_falsifier_load_bearing_test_at_e2e_layer` —
+// falsifier-class needs an observable assertion, not a carveout-prose
+// acknowledgement of the implementation/consequence gap).
 //
-// What the invariant is NOT (and why we don't pin it via subscribers):
-// the async subscriber pattern doesn't deterministically observe the
-// pre-mutation store-state because the subscriber-task isn't
-// guaranteed to run during apply. The fire-ordering is a code-level
-// property documented at the apply chokepoint; runtime tests verify
-// the consequence (event always delivered) rather than the
-// implementation (event-send before write-lock).
+// The delivery-reliability tests (start/deliver/accept/multi-subscriber)
+// pin the consequence: every state-transition via apply delivers an
+// event to subscribers + the store reflects the new state after apply
+// returns.
 
 use crate::board::BoardStore;
 use crate::board::domain::{Story, StoryState};
@@ -110,13 +104,11 @@ async fn accept_story_state_transition_dispatches_event() {
 
 #[tokio::test]
 async fn sister_to_1274_state_transition_reaches_cascade_listener() {
-    // #1274 sister-regression: the original failure mode was that a
-    // state-mutation path completed without firing the event, leaving
-    // close_iteration's promote-batch scan unable to detect the
-    // transition. The invariant at BoardStore::apply guarantees the
-    // event is delivered for every state-mutation that goes through
-    // the canonical chokepoint — so cascade-listeners (close_iteration,
-    // cascade-clean, etc.) always receive their trigger.
+    // #1274 sister-regression: the original failure mode was a
+    // state-mutation path that committed without firing the event,
+    // leaving close_iteration's promote-batch scan with no trigger.
+    // BoardStore::apply guarantees every state-mutation through the
+    // canonical chokepoint delivers an event to subscribers.
     let store = Arc::new(BoardStore::new());
     seed_story_at(&store, 400, StoryState::Delivered);
     let mut rx = store.subscribe();
@@ -130,7 +122,10 @@ async fn sister_to_1274_state_transition_reaches_cascade_listener() {
     let event = rx
         .try_recv()
         .expect("cascade-listener receives StateTransitioned event after apply (#1274 sister)");
-    matches!(event, BoardEvent::StateTransitioned { .. });
+    assert!(
+        matches!(event, BoardEvent::StateTransitioned { .. }),
+        "event delivered to subscriber is the StateTransitioned we sent"
+    );
     assert_eq!(
         store.story(400).unwrap().state,
         StoryState::Accepted,
@@ -140,10 +135,10 @@ async fn sister_to_1274_state_transition_reaches_cascade_listener() {
 
 #[tokio::test]
 async fn multiple_subscribers_each_receive_state_transition_event() {
-    // Reliability dimension: the broadcast channel delivers the event
-    // to ALL subscribers, not just one. Cascade-effects in different
-    // modules (close_iteration in one path, icebox_unified cascade-
-    // clean in another) each subscribe independently.
+    // Reliability dimension: broadcast delivers the event to ALL
+    // subscribers, not just one. Cascade-effects in different modules
+    // (close_iteration in one path, icebox_unified cascade-clean in
+    // another) each subscribe independently.
     let store = Arc::new(BoardStore::new());
     seed_story_at(&store, 500, StoryState::Ready);
     let mut rx_a = store.subscribe();
@@ -157,6 +152,51 @@ async fn multiple_subscribers_each_receive_state_transition_event() {
 
     let event_a = rx_a.try_recv().expect("subscriber A receives event");
     let event_b = rx_b.try_recv().expect("subscriber B receives event");
-    matches!(event_a, BoardEvent::StateTransitioned { .. });
-    matches!(event_b, BoardEvent::StateTransitioned { .. });
+    assert!(matches!(event_a, BoardEvent::StateTransitioned { .. }));
+    assert!(matches!(event_b, BoardEvent::StateTransitioned { .. }));
+}
+
+#[tokio::test]
+async fn pre_commit_fire_ordering_observable_via_post_send_hook() {
+    // Deterministic ordering test (#1282): installs a #[cfg(test)] hook
+    // on BoardStore that fires synchronously between event_tx.send and
+    // the write-lock acquire. The hook reads the store-state for the
+    // story being mutated — at this point the event has been broadcast
+    // but the mutation has NOT yet committed, so the hook observes the
+    // OLD state. This pins the pre-commit fire-ordering observably,
+    // discriminating between the invariant (OLD visible) and a
+    // post-commit alternative (NEW visible).
+    let store = Arc::new(BoardStore::new());
+    seed_story_at(&store, 600, StoryState::Ready);
+
+    let observed_at_hook: Arc<std::sync::Mutex<Option<StoryState>>> =
+        Arc::new(std::sync::Mutex::new(None));
+    let observed_clone = Arc::clone(&observed_at_hook);
+    let store_for_hook = Arc::clone(&store);
+    store.set_test_post_send_hook(move || {
+        let state = store_for_hook.story(600).map(|s| s.state);
+        *observed_clone.lock().unwrap_or_else(|e| e.into_inner()) = state;
+    });
+
+    store.apply(&BoardEvent::StateTransitioned {
+        meta: meta(),
+        number: 600,
+        new_state: StoryState::InProgress,
+    });
+
+    let observed = observed_at_hook
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .expect("hook fired between event_tx.send and write-lock acquire");
+    assert_eq!(
+        observed,
+        StoryState::Ready,
+        "hook ran AFTER event_tx.send but BEFORE write-lock acquired the mutation; \
+         observed pre-mutation state per #1282 fire-ordering invariant"
+    );
+    assert_eq!(
+        store.story(600).unwrap().state,
+        StoryState::InProgress,
+        "store reflects new state after apply returns"
+    );
 }
