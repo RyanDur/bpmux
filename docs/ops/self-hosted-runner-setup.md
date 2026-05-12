@@ -266,15 +266,23 @@ closes the Store-trait DI chain back to the original directive
 
 ### Wall-clock measurements
 
-Local baseline on macOS-arm64 dev machine (mirrors bpmux-mac-m1
-runner class) with `BPMUX_STORAGE_BACKEND=memory` (#1290 default):
+Local baseline on macOS-arm64 dev machine with
+`BPMUX_STORAGE_BACKEND=memory` (#1290 default):
 
-- Single-test (close_story spec, repeat-each=30, workers=4): 26.3s / 30 tests = ~0.88s/test → **well under 5s target** (AC 7)
-- Full Playwright suite (309 tests): 2.6 min → **well under 6-8min target** (AC 8)
+- Single-test (close_story spec, repeat-each=30, workers=4): 26.3s / 30 tests = ~0.88s/test
+- Full Playwright suite (309 tests): 1.6 min post-#1291-shutdown-fix (was 2.6min pre-fix)
 
-CI-runner measurements pending first post-migration run; the
-2.6min local baseline is sub-quartile of the 6-8min projection,
-giving headroom for runner overhead.
+CI on bpmux-mac-m1 (commit 8a6b106, single-job --workers=4):
+
+| Job | Wall-clock |
+|-----|-----------|
+| `build-bpmux` | 1m5s |
+| `test` | 1m49s |
+| `playwright-e2e` (309 tests, single job, workers=4) | **5m16s** |
+| Total end-to-end (`build-bpmux` → `playwright-e2e`) | ~6m20s |
+
+Per-test avg on CI: 316s / 309 tests = ~1.02s. **AC 7 ceiling of 5s/test cleared by ~5x margin.**
+Full-suite CI wall-clock: **5m16s — inside AC 8's 6-8min target.**
 
 ### Substrate-Bug coupling (AC 13-14)
 
