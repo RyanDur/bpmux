@@ -159,7 +159,39 @@ impl BoardStore {
         self.event_tx.receiver_count()
     }
 
+    /// Apply a `BoardEvent` to the canonical store.
+    ///
+    /// **Fire-ordering invariant (#1282)**: the event-broadcast
+    /// (`event_tx.send`) fires BEFORE the write-lock acquires +
+    /// mutates the store. Downstream listeners receiving the event
+    /// can immediately read the store and observe the OLD state — the
+    /// transition-trigger that close_iteration's promote-batch scan,
+    /// icebox_unified cascade-clean, iteration_id membership scan,
+    /// and other downstream effects react to. Today's #1274 root
+    /// cause class: a state-mutation path that committed without
+    /// firing `BoardEvent::StateTransitioned`, leaving listeners
+    /// unable to detect the transition.
+    ///
+    /// `BoardStore::apply` is the single chokepoint for every mutation
+    /// in the canonical mutation chain (bridge handlers →
+    /// `RefreshDriver::mutate_sync` → `SyncOrchestrator::mutate` →
+    /// `BoardStore::apply`). Any mutation that goes through this fn
+    /// inherits the invariant; any mutation that bypasses this fn
+    /// violates the invariant and must be routed through here per
+    /// `feedback_canonical_mutation_chain_through_orchestrator`.
+    ///
+    /// Sister-invariant for non-state mutations (`TagAdded`, `TagRemoved`,
+    /// `ParentEpicSet`/`Unset`, `StoryCreated`, `StoryClosed`/`Reopened`,
+    /// `LabelsRefreshed`, etc.): same pre-commit fire-ordering applies
+    /// since the same code path serves all events.
     pub fn apply(&self, event: &BoardEvent) {
+        // Fire pre-commit per the invariant above. broadcast::send
+        // returns immediately (non-blocking); subscribers process the
+        // event in their own tasks. The write-lock acquired below
+        // does NOT hold during the send, so subscribers that read the
+        // store synchronously on event-receive can observe the OLD
+        // state.
+        let _ = self.event_tx.send(event.clone());
         let mut w = self.stories.write().unwrap_or_else(|e| e.into_inner());
         let number = event.story_number();
         match event {
@@ -317,7 +349,6 @@ impl BoardStore {
         }
         drop(w);
         self.dirty.store(true, Ordering::Release);
-        let _ = self.event_tx.send(event.clone());
     }
 
     pub fn story(&self, number: u64) -> Option<Story> {

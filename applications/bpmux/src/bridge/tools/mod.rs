@@ -6,6 +6,8 @@ mod add_principle;
 #[cfg(test)]
 mod add_stories_to_iteration_tests;
 mod add_value;
+#[cfg(test)]
+mod board_event_fire_ordering_tests;
 mod capture_electron_window;
 mod capture_screen;
 mod classifier_misfire;
