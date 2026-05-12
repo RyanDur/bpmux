@@ -13,7 +13,6 @@ mod iteration_markers_tests;
 pub mod lessons;
 pub mod log;
 pub mod message;
-pub mod migrate_markers;
 pub mod pins;
 pub mod precommit;
 pub mod priority;

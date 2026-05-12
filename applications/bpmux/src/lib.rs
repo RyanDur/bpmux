@@ -16,9 +16,6 @@ pub mod transport;
 
 use std::sync::Arc;
 
-#[cfg(test)]
-mod lib_tests;
-
 use clap::{Parser, Subcommand};
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
@@ -622,61 +619,6 @@ pub async fn auto_heal_markers_store_orphans_at_path(
     if let Err(e) = session.broadcast(&msg) {
         session::diag::log_diag(&format!(
             "[#1271] markers-store heal: state-delta broadcast failed: {e}"
-        ));
-    }
-}
-
-/// #1301 Epic #1189 slice 5: boot-time markers-store → iteration-issue
-/// migration. Runs LAST in the boot-heal chain so the upstream healers
-/// (#1268/#1271/#1283/#1288/#1294) finalize markers + member adjacency
-/// before migration maps the now-stable state into canonical iteration-
-/// issues. Idempotent: second-boot post-migration produces all-Skip
-/// plans. Best-effort: failures log via diag + state-delta carries the
-/// migration count for cross-role awareness.
-pub async fn migrate_markers_to_iteration_issues_at_boot(
-    session: Arc<session::Session>,
-    refresh: Arc<dyn board::RefreshDriver>,
-) {
-    let markers_store = session::iteration_markers::load(&session.dir);
-    if markers_store.markers.is_empty() {
-        return;
-    }
-    let existing_iteration_issues: Vec<board::Story> = refresh
-        .all_stories()
-        .into_iter()
-        .filter(|s| matches!(s.story_type, board::domain::StoryType::Iteration) && !s.is_closed)
-        .collect();
-    let plan = session::migrate_markers::plan_marker_migration(
-        &markers_store.markers,
-        &existing_iteration_issues,
-    );
-    let outcome = session::migrate_markers::execute_marker_migration(&refresh, plan).await;
-    let migrated = outcome.migrated_count();
-    let skipped = outcome.skipped.len();
-    let errors = outcome.errors.len();
-    if migrated == 0 && skipped == 0 && errors == 0 {
-        return;
-    }
-    session::diag::log_diag(&format!(
-        "[#1301] markers-store migration: {migrated} created, {skipped} skipped, {errors} errors"
-    ));
-    for err in &outcome.errors {
-        session::diag::log_diag(&format!("[#1301] migration error: {err}"));
-    }
-    let payload = session::message::StateDeltaPayload::IceboxMigration {
-        entries: migrated + skipped,
-    };
-    let msg = session::Message {
-        from: "bpmux".to_string(),
-        text: String::new(),
-        ts: chrono::Utc::now(),
-        message_type: session::MessageType::StateDelta,
-        state_delta: Some(payload),
-        ..session::Message::default()
-    };
-    if let Err(e) = session.broadcast(&msg) {
-        session::diag::log_diag(&format!(
-            "[#1301] markers-store migration: state-delta broadcast failed: {e}"
         ));
     }
 }
