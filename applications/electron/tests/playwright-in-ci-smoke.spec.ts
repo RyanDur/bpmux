@@ -23,18 +23,20 @@ test.describe('Playwright runs in CI as a structural gate (#1152)', () => {
     expect(matrixSection).toMatch(/shard:\s*\[\s*1\s*,\s*2\s*,\s*3\s*,\s*4\s*,\s*5\s*,\s*6\s*\]/)
   })
 
-  test('playwright-e2e job uses xvfb-run + npx playwright test --shard', () => {
+  test('playwright-e2e runs on self-hosted macos arm64 + npx playwright test --shard (#1291)', () => {
     const yaml = ciYaml()
     const matrixSection = yaml.match(/playwright-e2e:[\s\S]*?(?=\n\S|$)/)?.[0] ?? ''
-    expect(matrixSection).toMatch(/xvfb-run/)
+    expect(matrixSection).toMatch(/runs-on:\s*\[\s*self-hosted\s*,\s*macos\s*,\s*arm64\s*\]/)
     expect(matrixSection).toMatch(/playwright test/)
     expect(matrixSection).toMatch(/--shard=/)
+    expect(matrixSection).not.toMatch(/xvfb-run/)
   })
 
-  test('playwright-e2e installs playwright browsers with --with-deps', () => {
+  test('playwright-e2e installs playwright browsers (no --with-deps on macOS; #1291)', () => {
     const yaml = ciYaml()
     const matrixSection = yaml.match(/playwright-e2e:[\s\S]*?(?=\n\S|$)/)?.[0] ?? ''
-    expect(matrixSection).toMatch(/playwright install.*--with-deps|--with-deps.*playwright install/)
+    expect(matrixSection).toMatch(/npx playwright install\b/)
+    expect(matrixSection).not.toMatch(/--with-deps/)
   })
 
   test('playwright-e2e provisions bpmux binary via download-artifact OR local cargo build', () => {
