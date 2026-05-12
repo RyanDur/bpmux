@@ -16,6 +16,8 @@ mod create_iteration_tests;
 #[cfg(test)]
 mod delete_iteration_marker_tests;
 mod dev_in_flight;
+#[cfg(test)]
+mod edit_story_tests;
 mod get_bookmark;
 mod get_briefing;
 mod get_ci_log_for_run;

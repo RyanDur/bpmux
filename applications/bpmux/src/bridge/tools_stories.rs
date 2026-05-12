@@ -1541,21 +1541,32 @@ pub(super) async fn handle_edit_story(
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
-    let body = args
-        .get("body")
-        .and_then(|v| v.as_str())
-        .ok_or("missing 'body' argument")?;
+    let body = args.get("body").and_then(|v| v.as_str());
+    let title = args.get("title").and_then(|v| v.as_str());
+    if body.is_none() && title.is_none() {
+        return Err("edit_story requires at least one of 'body' or 'title' (#1279)".to_string());
+    }
     let r = refresh
         .ok_or("edit_story requires refresh (RefreshDriver) — no canonical store available")?;
-    // #1151: the orchestrator's update_body now captures the
-    // post-update Story from the adapter response and applies it to
-    // the canonical store via StoryRefreshed. The follow-up
-    // refresh_story round-trip is no longer needed.
-    r.update_body(number, body.to_string())
-        .await
-        .map_err(|e| format!("#{number} body update failed: {e}"))?;
+    let mut updated: Vec<&str> = Vec::new();
+    if let Some(t) = title {
+        r.update_title(number, t.to_string())
+            .await
+            .map_err(|e| format!("#{number} title update failed: {e}"))?;
+        updated.push("title");
+    }
+    if let Some(b) = body {
+        // #1151: the orchestrator's update_body now captures the
+        // post-update Story from the adapter response and applies it to
+        // the canonical store via StoryRefreshed. The follow-up
+        // refresh_story round-trip is no longer needed.
+        r.update_body(number, b.to_string())
+            .await
+            .map_err(|e| format!("#{number} body update failed: {e}"))?;
+        updated.push("body");
+    }
     broadcast_board_invalidate(ws_tx).await;
-    Ok(format!("#{number} body updated"))
+    Ok(format!("#{number} {} updated", updated.join(" + ")))
 }
 
 /// Fire the iteration-close externalize-prompt (#282). PM-gated.

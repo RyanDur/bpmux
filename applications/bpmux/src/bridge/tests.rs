@@ -557,6 +557,13 @@ mod ingest_poll_loop_tests {
         ) -> BoxedFuture<'_, Result<(), SyncError>> {
             Box::pin(async { Ok(()) })
         }
+        fn update_title(
+            &self,
+            _number: u64,
+            _title: String,
+        ) -> BoxedFuture<'_, Result<(), SyncError>> {
+            Box::pin(async { Ok(()) })
+        }
     }
 
     #[tokio::test]

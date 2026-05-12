@@ -100,6 +100,13 @@ pub trait StoryTracker: Clone + Send + Sync + 'static {
         number: u64,
         body: &str,
     ) -> impl std::future::Future<Output = Result<serde_json::Value, String>> + Send;
+    /// #1279: sister to update_body at the title-axis. Returns the
+    /// post-update Issue JSON for orchestrator-store apply.
+    fn update_title(
+        &self,
+        number: u64,
+        title: &str,
+    ) -> impl std::future::Future<Output = Result<serde_json::Value, String>> + Send;
     /// #403: full board as typed JSON Values — used by `list_ready`
     /// and other filtered enumerations. Counterpart to the inherent
     /// `OctocrabStoryTracker::list_stories` (returns pre-serialized
@@ -809,6 +816,17 @@ impl StoryTracker for OctocrabStoryTracker {
             .issues(&self.owner, &self.repo)
             .update(number)
             .body(body)
+            .send()
+            .await
+            .map(|issue| issue_to_board_json(&issue))
+            .map_err(Self::classify)
+    }
+
+    async fn update_title(&self, number: u64, title: &str) -> Result<serde_json::Value, String> {
+        self.client
+            .issues(&self.owner, &self.repo)
+            .update(number)
+            .title(title)
             .send()
             .await
             .map(|issue| issue_to_board_json(&issue))

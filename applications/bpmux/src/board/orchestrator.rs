@@ -101,6 +101,13 @@ pub trait RefreshDriver: Send + Sync {
     /// `gh issue edit` directly so the edit is observable to bpmux's
     /// BoardStore + WS broadcast cycle.
     fn update_body(&self, number: u64, body: String) -> BoxedFuture<'_, Result<(), SyncError>>;
+
+    /// Replace a story's title at the source-of-truth (#1279). Mirrors
+    /// `update_body` at the title-axis: pushes the new title through
+    /// the adapter, then applies the returned Story to the canonical
+    /// BoardStore via `BoardEvent::StoryRefreshed` so callers don't
+    /// need a follow-up `refresh_story(N)` to observe the rename.
+    fn update_title(&self, number: u64, title: String) -> BoxedFuture<'_, Result<(), SyncError>>;
 }
 
 #[derive(Debug, Clone, Default, Serialize)]
@@ -998,6 +1005,20 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
             // apply it to the canonical store so callers don't need
             // a follow-up `refresh_story(N)` to observe the new body.
             let story = adapter.update_body(number, &body).await?;
+            store.apply(&BoardEvent::StoryRefreshed {
+                meta: cache_fill_meta(),
+                number,
+                story: Box::new(story),
+            });
+            Ok(())
+        })
+    }
+
+    fn update_title(&self, number: u64, title: String) -> BoxedFuture<'_, Result<(), SyncError>> {
+        let adapter = Arc::clone(&self.adapter);
+        let store = Arc::clone(&self.store);
+        Box::pin(async move {
+            let story = adapter.update_title(number, &title).await?;
             store.apply(&BoardEvent::StoryRefreshed {
                 meta: cache_fill_meta(),
                 number,

@@ -129,4 +129,14 @@ pub trait SourceAdapter: Send + Sync {
         number: u64,
         body: &str,
     ) -> impl std::future::Future<Output = Result<super::domain::Story, SyncError>> + Send;
+
+    /// Replace an existing story's title (#1279). Sister to update_body
+    /// at the title-axis. Returns the post-update Story so the
+    /// orchestrator can dispatch `BoardEvent::StoryRefreshed` to the
+    /// canonical store without a follow-up `refresh_story(N)` round-trip.
+    fn update_title(
+        &self,
+        number: u64,
+        title: &str,
+    ) -> impl std::future::Future<Output = Result<super::domain::Story, SyncError>> + Send;
 }

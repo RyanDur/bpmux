@@ -293,6 +293,21 @@ impl SourceAdapter for InMemorySourceAdapter {
             })?;
         story.body = Some(body.to_string());
         story.acceptance_test_path = crate::bridge::parse_acceptance_test_path(body);
+        s.stories.insert(number, story.clone());
+        Ok(story)
+    }
+
+    async fn update_title(&self, number: u64, title: &str) -> Result<Story, SyncError> {
+        let mut s = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        if s.failures_on_push {
+            return Err(SyncError::SourceUnreachable("push test failure".into()));
+        }
+        let mut story =
+            s.stories.get(&number).cloned().ok_or_else(|| {
+                SyncError::Other(format!("update_title: story #{number} not seeded"))
+            })?;
+        story.title = title.to_string();
+        s.stories.insert(number, story.clone());
         Ok(story)
     }
 }

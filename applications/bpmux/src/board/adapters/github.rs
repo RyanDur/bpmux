@@ -394,6 +394,19 @@ impl SourceAdapter for GitHubSourceAdapter {
             ))
         })
     }
+
+    async fn update_title(&self, number: u64, title: &str) -> Result<Story, SyncError> {
+        let value = self
+            .inner
+            .update_title(number, title)
+            .await
+            .map_err(SyncError::Other)?;
+        decode_story_metadata(&value).ok_or_else(|| {
+            SyncError::Other(format!(
+                "update_title succeeded but response unparseable as Story: {value}"
+            ))
+        })
+    }
 }
 
 pub fn warn_on_inconsistent_state_labels(labels: &[String]) {
