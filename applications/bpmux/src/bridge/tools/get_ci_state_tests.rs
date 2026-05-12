@@ -245,6 +245,129 @@ fn runs_without_head_sha_fall_back_to_single_run_classification() {
 }
 
 #[test]
+fn aggregate_handles_hybrid_runner_shape_post_1253_cutover() {
+    // #1254 (Epic #1247 slice 4): post-cutover verification that
+    // `get_ci_state`'s classification works on the hybrid CI shape
+    // shipped in #1253: `test` on [self-hosted, macos, arm64];
+    // `build-bpmux` + `playwright-e2e` on `ubuntu-latest`. The
+    // bridge-adapter consumes RunEntries from the GHA API — the
+    // runner-label (self-hosted vs ubuntu-latest) doesn't appear in
+    // the entry; only status + conclusion drive aggregation. This
+    // test pins that platform-axis-independence: any mix of runners
+    // for workflows-on-the-same-commit aggregates by the same rule.
+    //
+    // Sister to `feedback_local_pass_ci_fail_hidden_axis_coupling` —
+    // the bridge-tool contract is independent of runner platform; we
+    // assert that invariant here so a future refactor that introduces
+    // platform-conditional classification fires immediately.
+    let runs = vec![
+        run(
+            "completed",
+            Some("success"),
+            "57f1a08c",
+            "test",
+            75572890367,
+        ),
+        run(
+            "completed",
+            Some("success"),
+            "57f1a08c",
+            "build-bpmux",
+            75572890351,
+        ),
+        run(
+            "completed",
+            Some("success"),
+            "57f1a08c",
+            "playwright-e2e (1)",
+            75573139951,
+        ),
+        run(
+            "completed",
+            Some("success"),
+            "57f1a08c",
+            "playwright-e2e (2)",
+            75573139874,
+        ),
+        run(
+            "completed",
+            Some("success"),
+            "57f1a08c",
+            "playwright-e2e (3)",
+            75573139941,
+        ),
+        run(
+            "completed",
+            Some("success"),
+            "57f1a08c",
+            "playwright-e2e (4)",
+            75573139917,
+        ),
+        run(
+            "completed",
+            Some("success"),
+            "57f1a08c",
+            "playwright-e2e (5)",
+            75573140045,
+        ),
+        run(
+            "completed",
+            Some("success"),
+            "57f1a08c",
+            "playwright-e2e (6)",
+            75573140101,
+        ),
+    ];
+    let event = classify_runs(&runs);
+    assert_eq!(
+        event.state,
+        CiState::Green,
+        "hybrid runner shape (1 self-hosted + 7 ubuntu-latest jobs) aggregates Green when all succeed"
+    );
+    assert_eq!(
+        event.workflows.len(),
+        8,
+        "all 8 jobs surface in workflows[] breakdown"
+    );
+}
+
+#[test]
+fn aggregate_red_on_hybrid_shape_when_playwright_shard_fails() {
+    // Sister: #1254 falsifier — if any job in the hybrid shape fails
+    // (e.g., a playwright-e2e shard on ubuntu-latest), aggregate is
+    // Red regardless of which runner the failure came from.
+    let runs = vec![
+        run(
+            "completed",
+            Some("success"),
+            "57f1a08c",
+            "test",
+            75572890367,
+        ),
+        run(
+            "completed",
+            Some("success"),
+            "57f1a08c",
+            "build-bpmux",
+            75572890351,
+        ),
+        run(
+            "completed",
+            Some("failure"),
+            "57f1a08c",
+            "playwright-e2e (2)",
+            75573139874,
+        ),
+    ];
+    let event = classify_runs(&runs);
+    assert_eq!(
+        event.state,
+        CiState::Red,
+        "a single playwright shard failure on ubuntu-latest still aggregates to Red"
+    );
+}
+
+#[test]
 fn workflow_summary_conclusion_uses_canonical_strings() {
     // Workflow per-run conclusions must use the same vocabulary as
     // the aggregate (`success` / `failure` / `in_progress` /

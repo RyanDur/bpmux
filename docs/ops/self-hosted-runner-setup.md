@@ -462,6 +462,28 @@ post-ship verification: ≥1 week after 2026-05-12 02:00 UTC
 quota consumption is zero. If non-zero, file substrate-Bug —
 indicates a hidden workflow path still consumes quota.
 
+## Slice 4 bridge MCP-tool verification (#1254)
+
+Empirical verification that bridge MCP-tools continue working
+post-cutover (Epic #1247 completion-gate):
+
+- `get_ci_state`: used 30+ times during #1253 work to monitor CI runs
+  on the hybrid shape. Correctly classified `success` / `failure` /
+  `in_progress` across self-hosted-mac (test job) + ubuntu-latest
+  (build-bpmux + playwright-e2e shards). Aggregate-state rules
+  (#1287) work unchanged on hybrid runner distribution.
+- `rerun_ci`: fired on run 25711015159 during diagnosis; returned
+  `{status: success}` with no token-scope-gap regression (#1232 fix
+  intact). Rerun re-fired the same workflow against the hybrid shape.
+- `get_ci_log_for_run`: extracted worker-teardown failure details
+  from failed self-hosted playwright runs (e.g., 25709122365,
+  25711015159). The fallback `build_non_test_failure_record` path
+  (#1293) continues to populate `failures[].class="non_test_failure"`.
+
+Regression tests at `applications/bpmux/src/bridge/tools/get_ci_state_tests.rs:248-298`
+pin the platform-axis-independence invariant: classification works
+identically regardless of runner-label (self-hosted vs ubuntu-latest).
+
 ## UI-overlap mitigation: off-screen window positioning (#1286)
 
 bpmux-mac-m1 IS Ryan's live dev machine. When Playwright e2e tests
