@@ -8,18 +8,6 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { applySelfUpdateRestartPolicy } from './selfUpdateRestartPolicy'
 
-// #1253: under test-mode (BPMUX_TEST_WINDOW_POSITION=offscreen) drop
-// GPU acceleration to reduce per-Electron-instance load on the shared
-// self-hosted runner (bpmux-mac-m1). Production keeps GPU on for normal
-// rendering. Must be set BEFORE app.whenReady — that's why this lives
-// at module load top, not inside createWindow.
-if (process.env['BPMUX_TEST_WINDOW_POSITION'] === 'offscreen') {
-  app.commandLine.appendSwitch('disable-gpu')
-  app.commandLine.appendSwitch('disable-gpu-compositing')
-  app.commandLine.appendSwitch('disable-software-rasterizer')
-  app.disableHardwareAcceleration()
-}
-
 const BACKEND_HOST = '127.0.0.1'
 // BACKEND_PORT is overridable via env for test isolation — Playwright
 // real-backend tests can pin a per-test port so they don't adopt
