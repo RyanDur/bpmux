@@ -222,35 +222,88 @@ Ryan physically rebooted his M1 Pro Mac; runner auto-restarted via LaunchAgent
 - Bridge MCP-tools post-cutover verification (#1254 slice 4)
 - Multi-runner pool / multi-platform matrix (deferred)
 
-## Slice-2 hybrid migration (#1252) — transitional shape
+## Slice-2 hybrid migration (#1252) — retired (#1291 completes self-hosted-everything)
 
-Per Ryan-directive 2026-05-11 03:07 UTC ("keep migrating everything
-to the self hosted runner"), initial impl migrated all 3 jobs.
-Empirical CI on f9ebe47 / c8ba878 / 5bdb235 showed playwright-e2e
-on macOS arm64 hits per-test 30-90s timeouts (~3× Linux+xvfb
-baseline) because each test spawns its own bpmux backend with
-filesystem-backed state — concurrent Electron+bpmux launches
-serialize on bpmux's startup cost.
+Slice 2's hybrid shape was transitional pending Store-trait DI
+substrate. With #1289 (DI foundation) + #1290 (substrate completion
++ wall-clock proof) shipped, the per-test bpmux-startup disk-I/O
+cost that empirically blocked f9ebe47 / c8ba878 / 5bdb235 is closed.
+#1291 (this slice's resumption) migrates `build-bpmux` +
+`playwright-e2e` back to `[self-hosted, macos, arm64]` — see the
+"Full self-hosted state (#1291)" section below.
 
-Ryan-call 2026-05-11 06:08 CST: the proper fix is **datastore
-dependency-injection** — refactor bpmux's storage layer so tests
-can inject an in-memory store, eliminating per-test
-backend-startup latency. Filed as sister-story under Epic #1247.
+Retained here for historical context: the hybrid table is retired
+post-migration; the empirical-evidence list documents the substrate
+class that #1289 + #1290 closed.
 
-**Until sister-story lands, ci.yml is hybrid:**
-
-| Job | Current state | Reason |
-|-----|---------------|--------|
-| `build-bpmux` | `ubuntu-latest` | produces Linux x64 binary for the Linux-hosted Playwright matrix |
-| `test` (fmt/clippy/nextest/audit) | `[self-hosted, macos, arm64]` | empirical 2-3 min wall-clock; zero failures across 4+ runs; cache warm via Swatinem |
-| `playwright-e2e` (6-shard) | `ubuntu-latest` | requires Store-trait DI substrate (sister-story) before macOS-native migration; full quota-bypass deferred |
-
-**Empirical evidence motivating the revert:**
+**Empirical evidence motivating the original revert (now closed):**
 
 - f9ebe47 (all 3 jobs migrated; 6-shard matrix on single self-hosted runner): 3/5 completed shards FAILED with 30s timeouts; projected total wall-clock 5-6 hours
 - c8ba878 (--workers=8 + 90s testTimeout): 11/~306 tests still timed out at 90s
 - 5bdb235 (--workers=4 + 30s default testTimeout): 25 failures (worse, because lower timeout exposed more per-test slowness)
-- Cumulative finding: per-test slowness on macOS arm64 + Electron is real (not just concurrency-contention); requires substrate-architecture fix, not CI-config tuning
+- Cumulative finding: per-test slowness on macOS arm64 + Electron was substrate-shaped, not config-tuning-shaped. Closed by #1289 + #1290's MemoryStorage default in `applications/electron/tests/helpers/launch.ts`.
+
+## Full self-hosted state (#1291) — migration completed
+
+Substrate-foundation chain that unblocked this slice:
+
+`#1251` (slice 1: runner setup) → `#1252` (slice 2: hybrid transitional)
+→ `#1289` (Store-trait DI foundation) → `#1290` (substrate completion
++ wall-clock proof + Cure 1.5 fixes) → `#1291` (this slice: resumption).
+
+Each prior layer shipped substrate + commitment-to-next. This slice
+closes the Store-trait DI chain back to the original directive
+"migrate everything to the self-hosted runner" (Ryan 2026-05-11
+03:07 UTC + 11:34 UTC).
+
+### Final ci.yml shape (all jobs on self-hosted)
+
+| Job | Runner | Notes |
+|-----|--------|-------|
+| `build-bpmux` | `[self-hosted, macos, arm64]` | Produces `target/debug/bpmux` arm64-apple-darwin binary; cached via Swatinem with shared-key `playwright-e2e` |
+| `test` (fmt/clippy/nextest/audit) | `[self-hosted, macos, arm64]` | Unchanged since slice 2 step 1 |
+| `playwright-e2e` (6-shard, --workers=4) | `[self-hosted, macos, arm64]` | xvfb-run removed (macOS native windowing); `--with-deps` removed (no apt); Playwright cache at `~/Library/Caches/ms-playwright` |
+
+### Wall-clock measurements
+
+Local baseline on macOS-arm64 dev machine (mirrors bpmux-mac-m1
+runner class) with `BPMUX_STORAGE_BACKEND=memory` (#1290 default):
+
+- Single-test (close_story spec, repeat-each=30, workers=4): 26.3s / 30 tests = ~0.88s/test → **well under 5s target** (AC 7)
+- Full Playwright suite (309 tests): 2.6 min → **well under 6-8min target** (AC 8)
+
+CI-runner measurements pending first post-migration run; the
+2.6min local baseline is sub-quartile of the 6-8min projection,
+giving headroom for runner overhead.
+
+### Substrate-Bug coupling (AC 13-14)
+
+- **#1285 ($HOME-contention)**: strategy is **action-cache redirect
+  via env vars** (CARGO_HOME / RUSTUP_HOME → `$RUNNER_TEMP`-private
+  paths). Impl remains deferred per f865f03 — earlier convergence
+  attempts (5b3f53a → 80823e6 → 4d8f5b2 → a76df1a → d9a3802) hit an
+  opaque CI-failure pattern (failures[] empty even after #1293's
+  non-test-failure fallback). Test job currently runs on self-hosted
+  WITHOUT applied isolation; build-bpmux + playwright-e2e (this
+  slice) inherit the same pre-isolation state. Resumption-path per
+  f865f03: real-time monitoring during a fresh CI run while watching
+  the GH Actions UI, OR alternate isolation strategy that bypasses
+  `dtolnay/rust-toolchain` (assume pre-installed rustup on the
+  runner). Sister-story #1285 remains the home for the follow-up.
+- **#1286 (UI-overlap)**: handled via **off-screen window
+  positioning** (option 2 — chosen). `BPMUX_TEST_WINDOW_POSITION=
+  offscreen` is set unconditionally in `applications/electron/tests/
+  helpers/launch.ts:166`. `applications/electron/src/main/index.ts`
+  positions the BrowserWindow at `{x: -10000, y: -10000}` when the
+  env var is present. Regression test:
+  `applications/electron/tests/playwright/ui_overlap_mitigation.spec.ts`.
+
+### Future-action-addition discipline (unchanged from slice 2)
+
+When adding any new action to a self-hosted job, audit its
+$HOME-touch surface per the audit table below (#1285 section).
+Until #1285 isolation is re-applied, the audit's redirect column
+documents the *intended* state rather than the live state.
 
 ### Sister-substrate-Bugs (impl deferred to standalone slices)
 
