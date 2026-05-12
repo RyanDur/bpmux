@@ -248,11 +248,13 @@ pub async fn run_server(
             .await;
             crate::restore_story_fold_positions_to_icebox_unified_at_boot(
                 session_for_markers_heal.clone(),
-                refresh,
+                refresh.clone(),
             )
             .await;
             crate::backfill_legacy_marker_stories_at_boot(session_for_markers_heal.clone()).await;
-            crate::auto_heal_markers_store_orphans_at_boot(session_for_markers_heal).await;
+            crate::auto_heal_markers_store_orphans_at_boot(session_for_markers_heal.clone()).await;
+            crate::migrate_markers_to_iteration_issues_at_boot(session_for_markers_heal, refresh)
+                .await;
         });
     }
 
