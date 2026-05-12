@@ -256,13 +256,15 @@ closes the Store-trait DI chain back to the original directive
 "migrate everything to the self-hosted runner" (Ryan 2026-05-11
 03:07 UTC + 11:34 UTC).
 
-### Final ci.yml shape (all jobs on self-hosted)
+### Final ci.yml shape (hybrid; #1253 final per shared-dev-host saturation)
 
-| Job | Runner | Notes |
-|-----|--------|-------|
-| `build-bpmux` | `[self-hosted, macos, arm64]` | Produces `target/debug/bpmux` arm64-apple-darwin binary; cached via Swatinem with shared-key `playwright-e2e` |
-| `test` (fmt/clippy/nextest/audit) | `[self-hosted, macos, arm64]` | Unchanged since slice 2 step 1 |
-| `playwright-e2e` (single job, --workers=4) | `[self-hosted, macos, arm64]` | xvfb-run removed (macOS native windowing); `--with-deps` removed (no apt); Playwright cache at `~/Library/Caches/ms-playwright`. Sharding retired — with a 1-runner pool, matrix shards serialize and pay N× setup overhead without parallelism benefit. Workers=4 inside a single job gives in-process parallelism with one-time setup. |
+Per the 2026-05-12 saturation discovery (bpmux-mac-m1 load avg 30+, 800 processes contending with CI's Electron spawns → worker teardown timeouts across workers=4/2/1 configs), the playwright-e2e portion reverts to ubuntu-latest at rare cadence. Per-push playwright gating moves to the local pre-push hook on dev machines.
+
+| Job | Runner | Trigger | Notes |
+|-----|--------|---------|-------|
+| `test` (fmt/clippy/nextest/audit) | `[self-hosted, macos, arm64]` | every push | No GH-quota burn; cargo-only |
+| `build-bpmux` | `ubuntu-latest` | cron / dispatch / `[e2e]` msg | Linux x86_64 binary for playwright-e2e |
+| `playwright-e2e` (6-shard, xvfb, --workers=4) | `ubuntu-latest` | cron / dispatch / `[e2e]` msg | Async cadence; per-push gating is local pre-push hook |
 
 ### Wall-clock measurements
 
@@ -353,11 +355,29 @@ documents the *intended* state rather than the live state.
 
 ## Slice 3 cutover (#1253) — routing-mode + rollback runbook
 
-### Routing-mode decision: hard-cutover
+### Routing-mode decision: hybrid (per Ryan 2026-05-12 12:42 UTC)
 
-#1291 executed a hard-cutover: build-bpmux + playwright-e2e flipped
-from `ubuntu-latest` to `[self-hosted, macos, arm64]` in a single
-commit. No parallel-run period.
+Final shape after empirical observation that bpmux-mac-m1's shared-dev-host
+saturation made the full-self-hosted playwright run unstable (worker
+teardown timeouts under workers=4, 2, and 1):
+
+- **`test` job** (cargo fmt + clippy + nextest + audit): `[self-hosted, macos, arm64]` — always on push. No GH-quota burn.
+- **`build-bpmux` + `playwright-e2e` jobs**: `ubuntu-latest` — gated triggers ONLY.
+  - `schedule: cron: '0 4 * * *'` (nightly at 4am UTC)
+  - `workflow_dispatch` (manual fire from GH Actions UI)
+  - Commit-message opt-in: `contains(github.event.head_commit.message, '[e2e]')`
+- **Pre-push hook** (local, Ryan's machine + dev's machines): runs ALL tests including playwright. This is the per-push gate.
+
+This preserves: push-to-main is still gated by playwright at the pre-push layer; CI playwright runs on-demand + nightly to catch regressions that the pre-push hook missed.
+
+#1291 originally tried full-self-hosted hard-cutover; per the shared-dev-host
+saturation discovery (load avg 30+, 800 processes competing with CI's
+Electron spawns), the playwright-e2e portion reverted to ubuntu-latest. The
+overall Epic #1247 user-job ("CI without quota-burn") is satisfied at lower
+cost because:
+- Per-push CI burns ZERO GH minutes (test + build skip GH-hosted entirely)
+- Playwright runs ~30-60 times/month total (cron + opt-in + dispatch)
+- 30 runs × 6 shards × ~5min = ~900 min/month, well under 3000 quota
 
 **Rationale:** slice-2 (#1252) and the substrate-foundation chain
 (#1289 + #1290 + #1291) shipped with empirical parity verified on

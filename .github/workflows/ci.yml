@@ -5,32 +5,11 @@ on:
     branches: [main]
   pull_request:
   workflow_call:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 4 * * *"
 
 jobs:
-  build-bpmux:
-    runs-on: [self-hosted, macos, arm64]
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: "1.95.0"
-      - uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: "playwright-e2e"
-      - name: Build bpmux binary
-        run: cargo build --bin bpmux
-      - name: Smoke-check binary
-        run: target/debug/bpmux --help > /dev/null
-      - name: Upload bpmux artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: bpmux-binary
-          path: target/debug/bpmux
-          retention-days: 1
-          if-no-files-found: error
-
   test:
     runs-on: [self-hosted, macos, arm64]
     permissions:
@@ -57,11 +36,47 @@ jobs:
           cargo install cargo-audit
           cargo audit
 
-  playwright-e2e:
-    needs: build-bpmux
-    runs-on: [self-hosted, macos, arm64]
+  build-bpmux:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.head_commit.message, '[e2e]')
     permissions:
       contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.95.0"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "playwright-e2e"
+      - name: Build bpmux binary
+        run: cargo build --bin bpmux
+      - name: Smoke-check binary
+        run: target/debug/bpmux --help > /dev/null
+      - name: Upload bpmux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bpmux-binary
+          path: target/debug/bpmux
+          retention-days: 1
+          if-no-files-found: error
+
+  playwright-e2e:
+    needs: build-bpmux
+    if: |
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.head_commit.message, '[e2e]')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6]
     steps:
       - uses: actions/checkout@v4
       - name: Download bpmux artifact
@@ -88,26 +103,21 @@ jobs:
         id: playwright-cache
         uses: actions/cache@v4
         with:
-          path: ~/Library/Caches/ms-playwright
+          path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('applications/electron/package-lock.json') }}
           restore-keys: |
             playwright-${{ runner.os }}-
-      - name: Install Playwright
+      - name: Install Playwright + system deps (xvfb, fonts, etc)
         working-directory: applications/electron
-        run: npx playwright install
-      - name: Purge stale test tempdirs older than 60min
-        run: |
-          find "${TMPDIR:-/tmp}" -maxdepth 1 -type d \
-            \( -name 'bpmux-*' -o -name 'playwright-*' \) -mmin +60 \
-            -print0 2>/dev/null | xargs -0 -n 100 rm -rf 2>/dev/null || true
-      - name: Run Playwright
+        run: npx playwright install --with-deps
+      - name: Run Playwright shard ${{ matrix.shard }}/6 under xvfb
         working-directory: applications/electron
-        run: npx playwright test --reporter=dot --workers=1
+        run: xvfb-run --auto-servernum npx playwright test --reporter=dot --shard=${{ matrix.shard }}/6 --workers=4
       - name: Upload Playwright traces on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-traces
+          name: playwright-traces-shard-${{ matrix.shard }}
           path: |
             applications/electron/test-results/
             applications/electron/playwright-report/

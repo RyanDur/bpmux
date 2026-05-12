@@ -17,21 +17,28 @@ test.describe('Playwright runs in CI as a structural gate (#1152)', () => {
     expect(ciYaml()).toMatch(/^\s*playwright-e2e:\s*$/m)
   })
 
-  test('playwright-e2e runs on self-hosted macos arm64 with workers parallelism (#1291)', () => {
+  test('playwright-e2e matrix splits into 6 shards on ubuntu-latest under xvfb (#1253: rare GHA-hosted cadence)', () => {
     const yaml = ciYaml()
     const matrixSection = yaml.match(/playwright-e2e:[\s\S]*?(?=\n\S|$)/)?.[0] ?? ''
-    expect(matrixSection).toMatch(/runs-on:\s*\[\s*self-hosted\s*,\s*macos\s*,\s*arm64\s*\]/)
-    expect(matrixSection).toMatch(/playwright test/)
-    expect(matrixSection).toMatch(/--workers=\d+/)
-    expect(matrixSection).not.toMatch(/xvfb-run/)
-    expect(matrixSection).not.toMatch(/--shard=/)
+    expect(matrixSection).toMatch(/runs-on:\s*ubuntu-latest/)
+    expect(matrixSection).toMatch(/shard:\s*\[\s*1\s*,\s*2\s*,\s*3\s*,\s*4\s*,\s*5\s*,\s*6\s*\]/)
+    expect(matrixSection).toMatch(/xvfb-run/)
+    expect(matrixSection).toMatch(/--shard=/)
   })
 
-  test('playwright-e2e installs playwright browsers (no --with-deps on macOS; #1291)', () => {
+  test('playwright-e2e installs playwright browsers with --with-deps on Linux (#1253)', () => {
     const yaml = ciYaml()
     const matrixSection = yaml.match(/playwright-e2e:[\s\S]*?(?=\n\S|$)/)?.[0] ?? ''
-    expect(matrixSection).toMatch(/npx playwright install\b/)
-    expect(matrixSection).not.toMatch(/--with-deps/)
+    expect(matrixSection).toMatch(/playwright install.*--with-deps|--with-deps.*playwright install/)
+  })
+
+  test('playwright-e2e is gated on rare-trigger (#1253: cron OR workflow_dispatch OR commit-msg [e2e])', () => {
+    const yaml = ciYaml()
+    const matrixSection = yaml.match(/playwright-e2e:[\s\S]*?(?=\n\S|$)/)?.[0] ?? ''
+    expect(matrixSection).toMatch(/if:\s*\|/)
+    expect(matrixSection).toMatch(/github\.event_name\s*==\s*'schedule'/)
+    expect(matrixSection).toMatch(/github\.event_name\s*==\s*'workflow_dispatch'/)
+    expect(matrixSection).toMatch(/contains\(github\.event\.head_commit\.message,\s*'\[e2e\]'\)/)
   })
 
   test('playwright-e2e provisions bpmux binary via download-artifact OR local cargo build', () => {
