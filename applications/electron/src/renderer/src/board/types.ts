@@ -71,6 +71,7 @@ export interface BoardStory {
   created_at: string
   body: string
   parent_epic?: number
+  iteration_id?: number
   // #1146: server-derived rework-context. When the most-recent state
   // transition is backward (reject_story Delivered→Ready or
   // fail_desk_check DeskCheck→InProgress), the gate-comment's payload

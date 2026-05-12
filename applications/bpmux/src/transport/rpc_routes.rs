@@ -63,6 +63,7 @@ fn known_tools() -> &'static [&'static str] {
         "get_story",
         "list_ready",
         "list_epic_children",
+        "list_iteration_children",
         "dev_in_flight",
         "view_story_timeline",
         "view_comments",
@@ -77,6 +78,7 @@ fn is_read_only_tool(tool: &str) -> bool {
             | "get_story"
             | "list_ready"
             | "list_epic_children"
+            | "list_iteration_children"
             | "dev_in_flight"
             | "view_story_timeline"
             | "view_comments"
@@ -208,6 +210,9 @@ async fn dispatch(
         "get_story" => bridge::dispatch_test_get_story(args, refresh_ref).await,
         "list_ready" => bridge::dispatch_test_list_ready(refresh_ref).await,
         "list_epic_children" => bridge::dispatch_test_list_epic_children(args, refresh_ref).await,
+        "list_iteration_children" => {
+            bridge::dispatch_test_list_iteration_children(args, refresh_ref).await
+        }
         "dev_in_flight" => bridge::dispatch_test_dev_in_flight(refresh_ref).await,
         "view_story_timeline" => bridge::dispatch_test_view_story_timeline(args, refresh_ref).await,
         "view_comments" => bridge::dispatch_test_view_comments(args, refresh_ref).await,

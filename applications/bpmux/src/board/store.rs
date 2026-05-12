@@ -184,6 +184,7 @@ impl BoardStore {
                     gate_comments: Some(Vec::new()),
                     is_closed: false,
                     parent_epic: None,
+                    iteration_id: None,
                     acceptance_test_path: crate::bridge::parse_acceptance_test_path(body),
                     raw_labels: Vec::new(),
                     body_etag: None,
@@ -278,6 +279,7 @@ impl BoardStore {
                     existing.tags = story.tags.clone();
                     existing.is_closed = story.is_closed;
                     existing.parent_epic = story.parent_epic;
+                    existing.iteration_id = story.iteration_id;
                     if story.body.is_some() {
                         existing.body = story.body.clone();
                         existing.acceptance_test_path = story.acceptance_test_path.clone();
@@ -300,6 +302,8 @@ impl BoardStore {
                         .collect();
                     existing.parent_epic =
                         crate::board::adapters::github::parent_epic_from_labels(labels);
+                    existing.iteration_id =
+                        crate::board::adapters::github::iteration_id_from_labels(labels);
                     existing.raw_labels = labels.clone();
                 }
             }

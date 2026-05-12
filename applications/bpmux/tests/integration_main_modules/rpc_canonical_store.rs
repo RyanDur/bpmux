@@ -48,6 +48,7 @@ fn seed_story(adapter: &InMemorySourceAdapter, number: u64, title: &str) {
         story_type: StoryType::Feature,
         tags: Vec::new(),
         parent_epic: None,
+        iteration_id: None,
         gate_comments: None,
         free_comments: None,
         acceptance_test_path: Some("tests/integration_main_modules/rpc_canonical_store.rs".to_string()),

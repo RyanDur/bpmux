@@ -18,6 +18,7 @@ fn sample_story(state: StoryState, story_type: StoryType, is_closed: bool) -> St
         gate_comments: Some(Vec::new()),
         is_closed,
         parent_epic: None,
+        iteration_id: None,
         acceptance_test_path: None,
         raw_labels: Vec::new(),
         body_etag: None,
@@ -38,6 +39,7 @@ fn story_to_board_json_emits_renderer_wire_format_field_list() {
         "gh_state",
         "labels",
         "parent_epic",
+        "iteration_id",
         "assignees",
         "created_at",
         "body",
@@ -48,7 +50,7 @@ fn story_to_board_json_emits_renderer_wire_format_field_list() {
             "wire-format must include `{required}` (drift catches #451-class regression); keys present: {keys:?}"
         );
     }
-    assert_eq!(obj.len(), 10, "no spurious keys; keys present: {keys:?}");
+    assert_eq!(obj.len(), 11, "no spurious keys; keys present: {keys:?}");
 }
 
 #[test]

@@ -339,6 +339,16 @@ pub(crate) async fn dispatch_test_list_epic_children(
     tools::handle_list_epic_children(&args, &store).await
 }
 
+pub(crate) async fn dispatch_test_list_iteration_children(
+    args: serde_json::Map<String, serde_json::Value>,
+    refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
+) -> Result<String, String> {
+    let store = refresh
+        .map(|r| r.store())
+        .ok_or_else(|| "list_iteration_children requires canonical store".to_string())?;
+    tools::handle_list_iteration_children(&args, &store).await
+}
+
 pub(crate) async fn dispatch_test_dev_in_flight(
     refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
@@ -801,6 +811,7 @@ impl ServerHandler for BridgeServer {
                 | "get_story"
                 | "list_ready"
                 | "list_epic_children"
+                | "list_iteration_children"
                 | "dev_in_flight"
                 | "view_story_timeline"
                 | "view_comments"
@@ -968,6 +979,9 @@ pub fn build_advertised_tools() -> Vec<rmcp::model::Tool> {
         crate::mcp::tools::list_epic_children_tool(
             "List all stories whose `parent_epic` field equals the given Epic issue number. Returns JSON `{epic_number, children: [{number, title, state, story_type, is_closed}, ...]}` sorted by issue number. Any role can call. Use this for Epic-progress-grounding, count-divergence diagnosis, and ratchet-time enumeration. Errors: `epic_number not found` if the issue doesn't exist; `not an Epic` if the story_type isn't Epic.",
         ),
+        crate::mcp::tools::list_iteration_children_tool(
+            "List all stories whose `iteration_id` field equals the given Iteration issue number — iteration-membership query by foreign-key, canonical-via-GH substrate (#1298, Epic #1189 architectural-pivot slice 2). Returns JSON `{iteration_number, children: [{number, title, state, story_type, is_closed, parent_epic}, ...]}` sorted by issue number. Any role can call. Sister to list_epic_children at the iteration-axis; iteration_id is derived from the `iteration-#NNNN` label so Epic + Iteration are orthogonal axes (a story can have both parent_epic and iteration_id). Errors: `iteration_number not found` if the issue doesn't exist; `not an Iteration` if the story_type isn't Iteration.",
+        ),
         crate::mcp::tools::view_board_tool(
             "View the project board — all stories grouped by state (icebox, ready, in progress, delivered, ready for accept, needs fixes, rejected, accepted) with counts. No host permission needed. Same data as the TUI board view.",
         ),
@@ -1128,6 +1142,7 @@ pub const DISPATCHED_TOOL_NAMES: &[&str] = &[
     "get_story",
     "list_ready",
     "list_epic_children",
+    "list_iteration_children",
     "dev_in_flight",
     "view_story_timeline",
     "view_comments",
