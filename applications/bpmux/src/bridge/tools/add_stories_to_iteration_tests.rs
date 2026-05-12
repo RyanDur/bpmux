@@ -1,4 +1,5 @@
 #![allow(clippy::unwrap_used)]
+#![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
 use crate::bridge::tools::apply_add_stories_to_iteration;
@@ -495,5 +496,167 @@ mod guard_1270 {
         // validate; matches `collect_iteration_close_blockers` shape.
         let blockers = collect_add_stories_non_icebox_blockers(None, &[100, 200]).await;
         assert!(blockers.is_empty());
+    }
+}
+
+// #1299 slice 3: parallel-substrate canonical-mutation-chain tests.
+// Verifies that the new label-mutation path populates Story.iteration_id
+// via the slice-2 label-decoder, alongside the legacy icebox_unified
+// manipulation. close-out of icebox_unified manipulation deferred to
+// slice 6 #1302 per the strangler-fig sequencing.
+mod canonical_chain_1299 {
+    use crate::board::RefreshDriver;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState, StoryType};
+    use crate::board::orchestrator::SyncOrchestrator;
+    use crate::board::store::BoardStore;
+    use crate::transport::rest::{
+        apply_iteration_id_via_canonical_chain, find_iteration_issue_by_theme,
+    };
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    fn seed_member(number: u64) -> Story {
+        Story::new_minimal(
+            number,
+            format!("[Feature] member-{number}"),
+            StoryState::Icebox,
+            Utc.with_ymd_and_hms(2026, 5, 12, 0, 0, 0).unwrap(),
+            "pm".to_string(),
+        )
+    }
+
+    fn seed_iteration_issue(number: u64, theme: &str) -> Story {
+        let mut s = Story::new_minimal(
+            number,
+            format!("Iteration {theme}"),
+            StoryState::Icebox,
+            Utc.with_ymd_and_hms(2026, 5, 12, 0, 0, 0).unwrap(),
+            "pm".to_string(),
+        );
+        s.story_type = StoryType::Iteration;
+        s.raw_labels = vec!["iteration".to_string()];
+        s
+    }
+
+    async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
+        let store = Arc::new(BoardStore::new());
+        let adapter = Arc::new(InMemorySourceAdapter::new());
+        adapter.seed_stories(stories);
+        let orch = SyncOrchestrator::new(store, adapter);
+        let orch: Arc<dyn RefreshDriver> = Arc::new(orch);
+        orch.refresh_all().await.unwrap();
+        orch
+    }
+
+    #[tokio::test]
+    async fn find_iteration_issue_by_theme_returns_matching_open_issue_number() {
+        let refresh = build_refresh(vec![
+            seed_iteration_issue(1297, "Aquila"),
+            seed_iteration_issue(1400, "Pegasus"),
+            seed_member(200),
+        ])
+        .await;
+        assert_eq!(
+            find_iteration_issue_by_theme(&refresh, "Pegasus"),
+            Some(1400),
+            "open iteration-issue matched by theme_name"
+        );
+        assert_eq!(
+            find_iteration_issue_by_theme(&refresh, "Aquila"),
+            Some(1297)
+        );
+        assert_eq!(
+            find_iteration_issue_by_theme(&refresh, "NonexistentTheme"),
+            None,
+            "no matching iteration-issue → None (legacy fallback)"
+        );
+    }
+
+    #[tokio::test]
+    async fn find_iteration_issue_skips_closed_iteration_issues() {
+        let mut closed = seed_iteration_issue(1297, "Aquila");
+        closed.is_closed = true;
+        let refresh = build_refresh(vec![closed, seed_iteration_issue(1400, "Aquila")]).await;
+        assert_eq!(
+            find_iteration_issue_by_theme(&refresh, "Aquila"),
+            Some(1400),
+            "closed iteration-issue skipped; open match returned"
+        );
+    }
+
+    #[tokio::test]
+    async fn apply_canonical_chain_add_populates_iteration_id_via_label_decoder() {
+        // AC1: add_stories sets iteration_id per input via the canonical
+        // mutation chain (TagAdded "iteration-#NNNN" → adapter decoder
+        // (slice 2 #1298) → store.iteration_id field).
+        let refresh = build_refresh(vec![
+            seed_iteration_issue(1400, "Pegasus"),
+            seed_member(200),
+            seed_member(201),
+        ])
+        .await;
+        apply_iteration_id_via_canonical_chain(&refresh, 1400, &[200, 201], true);
+        assert_eq!(
+            refresh.story(200).and_then(|s| s.iteration_id),
+            Some(1400),
+            "#200 iteration_id populated via canonical chain"
+        );
+        assert_eq!(
+            refresh.story(201).and_then(|s| s.iteration_id),
+            Some(1400),
+            "#201 iteration_id populated via canonical chain"
+        );
+    }
+
+    #[tokio::test]
+    async fn apply_canonical_chain_remove_clears_iteration_id_via_label_decoder() {
+        // AC2: remove_stories clears iteration_id per input.
+        // Setup: seed member with iteration_id already set.
+        let mut member = seed_member(200);
+        member.raw_labels = vec!["icebox".to_string(), "iteration-#1400".to_string()];
+        member.iteration_id = Some(1400);
+        let refresh = build_refresh(vec![seed_iteration_issue(1400, "Pegasus"), member]).await;
+        assert_eq!(
+            refresh.story(200).and_then(|s| s.iteration_id),
+            Some(1400),
+            "pre-condition: #200 has iteration_id=1400"
+        );
+
+        apply_iteration_id_via_canonical_chain(&refresh, 1400, &[200], false);
+        assert_eq!(
+            refresh.story(200).and_then(|s| s.iteration_id),
+            None,
+            "AC2: iteration_id cleared via TagRemoved through canonical chain"
+        );
+    }
+
+    #[tokio::test]
+    async fn list_iteration_children_reflects_post_mutation_membership() {
+        // AC8 / falsifier (i): list_iteration_children (slice 2 sister-tool)
+        // returns correct membership after the canonical chain populates
+        // iteration_id. End-to-end membership-set round-trip.
+        let refresh = build_refresh(vec![
+            seed_iteration_issue(1400, "Pegasus"),
+            seed_member(200),
+            seed_member(201),
+            seed_member(202),
+        ])
+        .await;
+        apply_iteration_id_via_canonical_chain(&refresh, 1400, &[200, 202], true);
+        let args = serde_json::json!({ "iteration_number": 1400 });
+        let map = args.as_object().cloned().unwrap_or_default();
+        let store = refresh.store();
+        let result = crate::bridge::tools::handle_list_iteration_children(&map, &store)
+            .await
+            .expect("list_iteration_children succeeds");
+        assert!(
+            result.contains("\"number\": 200") && result.contains("\"number\": 202"),
+            "members 200 + 202 listed: {result}"
+        );
+        assert!(
+            !result.contains("\"number\": 201"),
+            "#201 (not added) NOT listed: {result}"
+        );
     }
 }

@@ -1111,6 +1111,7 @@ pub async fn post_add_stories_to_iteration(
         let blocked_body = build_add_stories_blocked_body(&blockers);
         return (StatusCode::CONFLICT, json_headers(), blocked_body);
     }
+    let theme_name_for_label = body.theme_name.clone();
     let outcome = crate::bridge::tools::apply_add_stories_to_iteration(
         &priority_path,
         &session.dir,
@@ -1120,6 +1121,27 @@ pub async fn post_add_stories_to_iteration(
     );
     match outcome {
         Ok(o) => {
+            // #1299 slice 3: parallel-substrate transition. The legacy
+            // icebox_unified manipulation above stays for renderer
+            // compat during the transition window (close-out at slice
+            // 6 #1302). In addition, if the iteration-issue substrate
+            // (slice 1 #1297) exists for this theme_name, populate
+            // each story's iteration_id via the canonical mutation
+            // chain (TagAdded "iteration-#NNNN" → adapter decoder via
+            // slice 2 #1298 → store.iteration_id field). list_iteration_
+            // children (slice 2 sister-tool) then returns the correct
+            // membership.
+            if let Some(theme) = theme_name_for_label.as_deref()
+                && let Some(refresh) = test_refresh.as_ref()
+                && let Some(iter_number) = find_iteration_issue_by_theme(refresh, theme)
+            {
+                apply_iteration_id_via_canonical_chain(
+                    refresh,
+                    iter_number,
+                    &body.story_ids,
+                    /*add*/ true,
+                );
+            }
             broadcast_board_invalidate(&session);
             let json = serde_json::to_string(&o).unwrap_or_else(|_| "{}".to_string());
             (StatusCode::OK, json_headers(), json)
@@ -1132,6 +1154,64 @@ pub async fn post_add_stories_to_iteration(
     }
 }
 
+/// #1299 slice 3 helper: find the open iteration-issue (story_type=Iteration,
+/// title "Iteration {theme_name}") that matches the given theme. Returns
+/// the issue number when found so the caller can label member-stories with
+/// "iteration-#NNNN" via the canonical mutation chain. Returns None when
+/// no matching iteration-issue exists yet — caller falls back to legacy
+/// markers-only behavior during the transition window.
+pub(crate) fn find_iteration_issue_by_theme(
+    refresh: &Arc<dyn crate::board::RefreshDriver>,
+    theme_name: &str,
+) -> Option<u64> {
+    let expected_title = format!("Iteration {theme_name}");
+    refresh
+        .all_stories()
+        .into_iter()
+        .find(|s| {
+            s.story_type == crate::board::domain::StoryType::Iteration
+                && !s.is_closed
+                && s.title.eq_ignore_ascii_case(&expected_title)
+        })
+        .map(|s| s.number)
+}
+
+/// #1299 slice 3 helper: fire TagAdded ("add") or TagRemoved ("remove")
+/// events on each story for the "iteration-#NNNN" label, routing
+/// through the canonical mutation chain. The label decoder at slice 2
+/// (#1298) populates Story.iteration_id from this label, so the
+/// membership-change is observable via list_iteration_children + the
+/// BoardEvent broadcast.
+pub(crate) fn apply_iteration_id_via_canonical_chain(
+    refresh: &Arc<dyn crate::board::RefreshDriver>,
+    iteration_number: u64,
+    story_ids: &[u64],
+    add: bool,
+) {
+    let label = format!("iteration-#{iteration_number}");
+    for &number in story_ids {
+        let meta = crate::board::orchestrator::cache_fill_meta();
+        let event = if add {
+            crate::board::BoardEvent::TagAdded {
+                meta,
+                number,
+                label: label.clone(),
+            }
+        } else {
+            crate::board::BoardEvent::TagRemoved {
+                meta,
+                number,
+                label: label.clone(),
+            }
+        };
+        if let Err(e) = refresh.mutate_sync(event) {
+            crate::session::diag::log_diag(&format!(
+                "#1299 apply_iteration_id_via_canonical_chain: mutate_sync failed for #{number} label={label} (add={add}): {e}"
+            ));
+        }
+    }
+}
+
 #[derive(Deserialize)]
 pub struct RemoveStoriesFromIterationRequest {
     pub story_ids: Vec<u64>,
@@ -1139,6 +1219,7 @@ pub struct RemoveStoriesFromIterationRequest {
 
 pub async fn post_remove_stories_from_iteration(
     State(session): State<Arc<session::Session>>,
+    axum::Extension(test_refresh): axum::Extension<crate::server::TestRefreshHandle>,
     axum::Json(body): axum::Json<RemoveStoriesFromIterationRequest>,
 ) -> impl IntoResponse {
     let priority_path = match session::priority::default_priority_path() {
@@ -1151,6 +1232,18 @@ pub async fn post_remove_stories_from_iteration(
             );
         }
     };
+    // #1299 slice 3: capture each story's current iteration_id BEFORE
+    // the legacy apply_ runs so we can fire TagRemoved through the
+    // canonical mutation chain post-apply. Parallel-substrate during
+    // the transition window per Epic #1189 slice 6 #1302 close-out.
+    let pre_iteration_ids: Vec<(u64, Option<u64>)> = match test_refresh.as_ref() {
+        Some(refresh) => body
+            .story_ids
+            .iter()
+            .map(|&n| (n, refresh.store().story(n).and_then(|s| s.iteration_id)))
+            .collect(),
+        None => Vec::new(),
+    };
     let outcome = crate::bridge::tools::apply_remove_stories_from_iteration(
         &priority_path,
         &session.dir,
@@ -1158,6 +1251,18 @@ pub async fn post_remove_stories_from_iteration(
     );
     match outcome {
         Ok(o) => {
+            if let Some(refresh) = test_refresh.as_ref() {
+                for (number, iteration_id) in &pre_iteration_ids {
+                    if let Some(iter_n) = iteration_id {
+                        apply_iteration_id_via_canonical_chain(
+                            refresh,
+                            *iter_n,
+                            &[*number],
+                            /*add*/ false,
+                        );
+                    }
+                }
+            }
             broadcast_board_invalidate(&session);
             let json = serde_json::to_string(&o).unwrap_or_else(|_| "{}".to_string());
             (StatusCode::OK, json_headers(), json)
