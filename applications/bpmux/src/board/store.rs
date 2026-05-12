@@ -57,6 +57,36 @@ fn tag_from_label_string(s: &str) -> Option<Tag> {
     }
 }
 
+/// On `BoardEvent::TagAdded`, keep `Story.raw_labels` and the
+/// label-derived fields (`iteration_id`, `parent_epic`) in sync with
+/// the broadcast label-set. Without this, a `TagAdded` for
+/// `"iteration-#NNNN"` would not surface as a `Story.iteration_id`
+/// update because the typed `Tag` enum only models `Blocked`; the
+/// label-based fields are decoded by `iteration_id_from_labels` +
+/// `parent_epic_from_labels` against `raw_labels`. #1299 membership-
+/// tools' canonical chain relies on this re-derivation at the
+/// chokepoint so `list_iteration_children` reflects post-mutation
+/// membership.
+fn sync_raw_labels_on_tag_added(story: &mut Story, label: &str) {
+    if !story.raw_labels.iter().any(|l| l == label) {
+        story.raw_labels.push(label.to_string());
+    }
+    story.iteration_id =
+        crate::board::adapters::github::iteration_id_from_labels(&story.raw_labels);
+    story.parent_epic = crate::board::adapters::github::parent_epic_from_labels(&story.raw_labels);
+}
+
+/// Sister to `sync_raw_labels_on_tag_added` for `BoardEvent::TagRemoved`:
+/// removes the label from `raw_labels` and re-derives `iteration_id` +
+/// `parent_epic` so removing `"iteration-#NNNN"` clears
+/// `Story.iteration_id`.
+fn sync_raw_labels_on_tag_removed(story: &mut Story, label: &str) {
+    story.raw_labels.retain(|l| l != label);
+    story.iteration_id =
+        crate::board::adapters::github::iteration_id_from_labels(&story.raw_labels);
+    story.parent_epic = crate::board::adapters::github::parent_epic_from_labels(&story.raw_labels);
+}
+
 const SUBSCRIBE_BUFFER: usize = 1_000;
 
 pub struct BoardStore {
@@ -255,19 +285,7 @@ impl BoardStore {
                     {
                         story.tags.push(tag);
                     }
-                    // #1299: keep raw_labels + label-derived fields
-                    // (iteration_id, parent_epic) in sync with the
-                    // label-set. Without this, a TagAdded for
-                    // "iteration-#NNNN" wouldn't surface as a
-                    // Story.iteration_id update — the membership-tools
-                    // canonical chain in #1299 relies on this.
-                    if !story.raw_labels.iter().any(|l| l == label) {
-                        story.raw_labels.push(label.clone());
-                    }
-                    story.iteration_id =
-                        crate::board::adapters::github::iteration_id_from_labels(&story.raw_labels);
-                    story.parent_epic =
-                        crate::board::adapters::github::parent_epic_from_labels(&story.raw_labels);
+                    sync_raw_labels_on_tag_added(story, label);
                 }
             }
             BoardEvent::TagRemoved { label, .. } => {
@@ -275,14 +293,7 @@ impl BoardStore {
                     if let Some(tag) = tag_from_label_string(label) {
                         story.tags.retain(|t| *t != tag);
                     }
-                    // #1299: sister to TagAdded — keep raw_labels +
-                    // label-derived fields in sync. Removing
-                    // "iteration-#NNNN" clears Story.iteration_id.
-                    story.raw_labels.retain(|l| l != label);
-                    story.iteration_id =
-                        crate::board::adapters::github::iteration_id_from_labels(&story.raw_labels);
-                    story.parent_epic =
-                        crate::board::adapters::github::parent_epic_from_labels(&story.raw_labels);
+                    sync_raw_labels_on_tag_removed(story, label);
                 }
             }
             BoardEvent::GateCommentAppended {

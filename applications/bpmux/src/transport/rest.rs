@@ -1121,16 +1121,6 @@ pub async fn post_add_stories_to_iteration(
     );
     match outcome {
         Ok(o) => {
-            // #1299 slice 3: parallel-substrate transition. The legacy
-            // icebox_unified manipulation above stays for renderer
-            // compat during the transition window (close-out at slice
-            // 6 #1302). In addition, if the iteration-issue substrate
-            // (slice 1 #1297) exists for this theme_name, populate
-            // each story's iteration_id via the canonical mutation
-            // chain (TagAdded "iteration-#NNNN" → adapter decoder via
-            // slice 2 #1298 → store.iteration_id field). list_iteration_
-            // children (slice 2 sister-tool) then returns the correct
-            // membership.
             if let Some(theme) = theme_name_for_label.as_deref()
                 && let Some(refresh) = test_refresh.as_ref()
                 && let Some(iter_number) = find_iteration_issue_by_theme(refresh, theme)
@@ -1139,7 +1129,7 @@ pub async fn post_add_stories_to_iteration(
                     refresh,
                     iter_number,
                     &body.story_ids,
-                    /*add*/ true,
+                    /* add */ true,
                 );
             }
             broadcast_board_invalidate(&session);
@@ -1160,6 +1150,14 @@ pub async fn post_add_stories_to_iteration(
 /// "iteration-#NNNN" via the canonical mutation chain. Returns None when
 /// no matching iteration-issue exists yet — caller falls back to legacy
 /// markers-only behavior during the transition window.
+///
+/// The `refresh` handle here comes from `TestRefreshHandle` (the name is
+/// legacy from #516; the handle is populated in BOTH test-mode AND
+/// production deployments with a configured GitHub tracker per
+/// `build_prod_orchestrator` at server.rs:208). The only deployment shape
+/// that returns `None` is a tracker-less server (no GH credentials / repo),
+/// which has no canonical mutation chain to route through; legacy
+/// icebox_unified manipulation alone applies in that shape.
 pub(crate) fn find_iteration_issue_by_theme(
     refresh: &Arc<dyn crate::board::RefreshDriver>,
     theme_name: &str,
@@ -1182,6 +1180,10 @@ pub(crate) fn find_iteration_issue_by_theme(
 /// (#1298) populates Story.iteration_id from this label, so the
 /// membership-change is observable via list_iteration_children + the
 /// BoardEvent broadcast.
+///
+/// Fires in both test-mode and production-with-GitHub-tracker (see
+/// `find_iteration_issue_by_theme` rustdoc for the `refresh` handle's
+/// production-fidelity provenance).
 pub(crate) fn apply_iteration_id_via_canonical_chain(
     refresh: &Arc<dyn crate::board::RefreshDriver>,
     iteration_number: u64,
@@ -1232,10 +1234,6 @@ pub async fn post_remove_stories_from_iteration(
             );
         }
     };
-    // #1299 slice 3: capture each story's current iteration_id BEFORE
-    // the legacy apply_ runs so we can fire TagRemoved through the
-    // canonical mutation chain post-apply. Parallel-substrate during
-    // the transition window per Epic #1189 slice 6 #1302 close-out.
     let pre_iteration_ids: Vec<(u64, Option<u64>)> = match test_refresh.as_ref() {
         Some(refresh) => body
             .story_ids
