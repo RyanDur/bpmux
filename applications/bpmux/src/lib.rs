@@ -16,6 +16,9 @@ pub mod transport;
 
 use std::sync::Arc;
 
+#[cfg(test)]
+mod lib_tests;
+
 use clap::{Parser, Subcommand};
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
