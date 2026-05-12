@@ -1576,12 +1576,13 @@ pub(super) async fn handle_edit_story(
 /// responds to the prompt — the tool is a reminder, not a barrier.
 pub(super) async fn handle_close_iteration(
     agent_name: &str,
-    _args: &serde_json::Map<String, serde_json::Value>,
+    args: &serde_json::Map<String, serde_json::Value>,
     ws_tx: &Mutex<Option<WsSink>>,
     port: u16,
 ) -> Result<String, String> {
     require_role(agent_name, &["pm"], "close iteration")?;
-    let outcome = post_close_iteration(port).await?;
+    let iteration_number = args.get("iteration_number").and_then(|v| v.as_u64());
+    let outcome = post_close_iteration(port, iteration_number).await?;
     let signal = build_iteration_close_signal();
     let json = serde_json::to_string(&signal).map_err(|e| format!("signal: {e}"))?;
     if let Err(e) = ws_send(ws_tx, json).await {
@@ -1606,15 +1607,20 @@ struct CloseIterationOutcomeJson {
     deleted_marker_id: Option<u64>,
 }
 
-async fn post_close_iteration(port: u16) -> Result<CloseIterationOutcomeJson, String> {
+async fn post_close_iteration(
+    port: u16,
+    iteration_number: Option<u64>,
+) -> Result<CloseIterationOutcomeJson, String> {
     let token_path = crate::session::auth_token::default_auth_token_path()
         .ok_or_else(|| "cannot resolve auth-token path (HOME unset?)".to_string())?;
     let token = crate::session::auth_token::read(&token_path)
         .map_err(|e| format!("read auth-token from {}: {e}", token_path.display()))?;
     let url = format!("http://127.0.0.1:{port}/api/close_iteration");
+    let body = serde_json::json!({ "iteration_number": iteration_number });
     let res = reqwest::Client::new()
         .post(&url)
         .header(reqwest::header::AUTHORIZATION, format!("Bearer {token}"))
+        .json(&body)
         .send()
         .await
         .map_err(|e| format!("close_iteration: bpmux-server unreachable at {url}: {e}"))?;
