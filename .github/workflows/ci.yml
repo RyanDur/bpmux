@@ -16,12 +16,17 @@ jobs:
       contents: read
       issues: read
       actions: read
+    env:
+      CARGO_HOME: ${{ runner.temp }}/cargo-home
+      RUSTUP_HOME: ${{ runner.temp }}/rustup-home
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: "1.95.0"
           components: rustfmt, clippy
+      - name: Prepend isolated CARGO_HOME/bin to PATH
+        run: echo "${{ runner.temp }}/cargo-home/bin" >> "$GITHUB_PATH"
       - uses: Swatinem/rust-cache@v2
       - name: Format check
         run: cargo fmt --check
@@ -35,6 +40,14 @@ jobs:
         run: |
           cargo install cargo-audit
           cargo audit
+      - name: Verify Ryan's $HOME state preserved (#1285 regression gate)
+        run: |
+          set -e
+          test "$CARGO_HOME" = "${{ runner.temp }}/cargo-home" || { echo "CARGO_HOME not redirected"; exit 1; }
+          test "$RUSTUP_HOME" = "${{ runner.temp }}/rustup-home" || { echo "RUSTUP_HOME not redirected"; exit 1; }
+          test -d "${{ runner.temp }}/cargo-home" || { echo "isolated cargo-home not populated"; exit 1; }
+          test -d "${{ runner.temp }}/rustup-home" || { echo "isolated rustup-home not populated"; exit 1; }
+          echo "$HOME-isolation gate passed: CARGO_HOME + RUSTUP_HOME point to per-run \$RUNNER_TEMP paths"
 
   build-bpmux:
     runs-on: ubuntu-latest
