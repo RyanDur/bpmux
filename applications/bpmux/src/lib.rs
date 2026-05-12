@@ -646,6 +646,15 @@ fn run_server_only(cli: &Cli) -> anyhow::Result<()> {
         async move {
             session::awareness::spawn(Arc::clone(&session), session.owner_name.clone());
             transport::self_update::spawn_binary_watcher(ct.clone(), restart_signal);
+            // #1291: SIGTERM/SIGINT handler triggers ct.cancel() so the
+            // server's graceful shutdown actually fires when Electron's
+            // killBackend() sends SIGTERM. Without this, axum kept
+            // serving WS long-polls until SIGKILL (2s after SIGTERM),
+            // and Playwright observed 4-10s per-test close — over 50
+            // tests/shard, cumulative cost exceeded the 30s worker-
+            // teardown budget on macOS arm64 self-hosted CI. Sister to
+            // server::run_server's hard-deadline shutdown path.
+            spawn_shutdown_signal_listener(ct.clone());
             server::run_server(session, port, ct, screen_capture)
                 .await
                 .map_err(|e| anyhow::anyhow!("{e}"))
@@ -659,6 +668,33 @@ fn run_server_only(cli: &Cli) -> anyhow::Result<()> {
         std::process::exit(transport::self_update::RESTART_EXIT_CODE);
     }
     server_result
+}
+
+fn spawn_shutdown_signal_listener(ct: CancellationToken) {
+    tokio::spawn(async move {
+        let sigterm = async {
+            #[cfg(unix)]
+            {
+                if let Ok(mut stream) =
+                    tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+                {
+                    stream.recv().await;
+                }
+            }
+            #[cfg(not(unix))]
+            std::future::pending::<()>().await;
+        };
+        let sigint = tokio::signal::ctrl_c();
+        tokio::select! {
+            _ = sigterm => {
+                crate::session::diag::log_diag("server: SIGTERM received; cancelling CT");
+            }
+            _ = sigint => {
+                crate::session::diag::log_diag("server: SIGINT received; cancelling CT");
+            }
+        }
+        ct.cancel();
+    });
 }
 
 pub fn run() -> anyhow::Result<()> {

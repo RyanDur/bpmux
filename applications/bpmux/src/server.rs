@@ -547,8 +547,29 @@ pub async fn run_server(
                 .allow_headers(tower_http::cors::Any),
         );
     let listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{port}")).await?;
-    axum::serve(listener, router)
-        .with_graceful_shutdown(async move { ct.cancelled_owned().await })
-        .await?;
+    // #1291: graceful shutdown with hard deadline. The signal handler
+    // (see run() in lib.rs) cancels `ct` on SIGTERM/SIGINT; axum then
+    // stops accepting new connections and drains in-flight requests.
+    // Without the hard deadline, long-poll WS connections kept axum
+    // serving for 4-10s per Playwright test on macOS arm64 self-hosted
+    // CI — across 50 tests/shard × 6 shards the cumulative cost
+    // overflowed Playwright's 30s worker-teardown budget and tipped the
+    // f9ebe47-class timeouts (sister to substrate-Bug recurrence). The
+    // 1500ms ceiling drops in-flight requests after graceful-drain
+    // expiry; clients see RST + retry, which Playwright handles fine.
+    let shutdown_ct = ct.clone();
+    let serve = axum::serve(listener, router)
+        .with_graceful_shutdown(async move { shutdown_ct.cancelled_owned().await });
+    tokio::select! {
+        res = serve => res?,
+        _ = async {
+            ct.cancelled().await;
+            tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
+        } => {
+            crate::session::diag::log_diag(
+                "server: graceful shutdown deadline (1500ms) elapsed; forcing exit",
+            );
+        }
+    }
     Ok(())
 }
