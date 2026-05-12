@@ -10,9 +10,19 @@ if [ ! -d "$REPO_ROOT/applications/electron/node_modules" ]; then
     exit 1
 fi
 
-echo "Running pre-push quality gates (6 Playwright shards × workers=3)..."
+echo "Running pre-push quality gates (6 Playwright shards sequentially, workers=3)..."
 
-declare -a shard_logs shard_pids shard_exits
+# Sequential shard execution (#1303 follow-up): parallel-hammer of 6
+# shards × workers=3 = 18 concurrent procs on bpmux-mac-m1 saturated
+# the host (WindowServer/GPU/CPU), causing shard-6 false-fails on
+# load-sensitive tests (real-backend unfurls, avatar grouping,
+# keyboard drag-reorder). #1253 moved CI's e2e to ubuntu-latest under
+# the same diagnosis; the local pre-push gate kept the parallel shape
+# and surfaced the same class. Sequential preserves the 6-shard
+# coverage with bounded concurrency (3 procs at peak per shard).
+# Trade-off: ~3min wall-clock vs the prior 1.5min flaky-parallel.
+
+declare -a shard_logs shard_exits
 total_shards=6
 for i in $(seq 1 $total_shards); do
     shard_logs[$i]=$(mktemp)
@@ -21,15 +31,13 @@ done
 
 for i in $(seq 1 $total_shards); do
     log="${shard_logs[$i]}"
+    set +e
     (cd "$REPO_ROOT/applications/electron" \
       && npx playwright test --reporter=dot \
            --shard="$i/$total_shards" --workers=3) \
-      >"$log" 2>&1 &
-    shard_pids[$i]=$!
-done
-
-for i in $(seq 1 $total_shards); do
-    wait "${shard_pids[$i]}" || shard_exits[$i]=$?
+      >"$log" 2>&1
+    shard_exits[$i]=$?
+    set -e
 done
 
 for i in $(seq 1 $total_shards); do
