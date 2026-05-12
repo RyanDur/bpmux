@@ -389,8 +389,7 @@ pub async fn run_server(
         )
         .route(
             "/api/iteration_markers",
-            axum::routing::get(transport::rest::get_iteration_markers)
-                .post(transport::rest::post_iteration_marker),
+            axum::routing::get(transport::rest::get_iteration_markers),
         )
         .route(
             "/api/close_iteration",

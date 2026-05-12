@@ -993,12 +993,6 @@ pub async fn post_reaction(
     )
 }
 
-#[derive(Deserialize)]
-pub struct IterationMarkerCreate {
-    #[serde(default)]
-    pub theme_name: Option<String>,
-}
-
 pub async fn get_iteration_markers(
     State(session): State<Arc<session::Session>>,
 ) -> impl IntoResponse {
@@ -1032,52 +1026,6 @@ pub async fn get_iteration_markers(
         StatusCode::OK,
         json_headers(),
         serde_json::to_string(&enriched).unwrap_or_else(|_| "[]".to_string()),
-    )
-}
-
-pub async fn post_iteration_marker(
-    State(session): State<Arc<session::Session>>,
-    axum::Json(body): axum::Json<IterationMarkerCreate>,
-) -> impl IntoResponse {
-    let mut store = session::iteration_markers::load(&session.dir);
-    let theme = body
-        .theme_name
-        .unwrap_or_else(|| session::iteration_markers::next_unused_theme(&store));
-    let now = chrono::Utc::now().to_rfc3339();
-    let marker = session::iteration_markers::add(&mut store, theme, now);
-    if let Err(e) = session::iteration_markers::save(&session.dir, &store) {
-        return (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            json_headers(),
-            err_body(&format!("save iteration_markers: {e}")),
-        );
-    }
-    // #1256 α-substrate cohesion: append to icebox_unified so the new
-    // marker appears in the canonical ordering surfaced via /api/board.
-    // Without this, newly-created markers are absent from the unified
-    // list until the next boot migration runs (idempotent — won't
-    // re-run on populated state). Renderer interleave walks iceboxUnified
-    // and would not render markers missing from it.
-    if let Ok(priority_path) = session::priority::default_priority_path() {
-        let mut index = session::priority::load_priority(&priority_path);
-        index
-            .icebox_unified
-            .push(session::priority::IceboxItem::Marker { id: marker.id });
-        if let Err(e) = session::priority::save_priority(&priority_path, &index) {
-            session::diag::log_diag(&format!(
-                "[#1256] post_iteration_marker: append to icebox_unified failed: {e}"
-            ));
-        }
-    }
-    // #1256 sister-coverage of #1255 create-path: broadcast board-invalidate
-    // so connected renderers refetch /api/board and see the new marker
-    // without a manual reload. #1255 retains scope for edit + delete +
-    // deeper renderer hot-update convergence.
-    broadcast_board_invalidate(&session);
-    (
-        StatusCode::OK,
-        json_headers(),
-        serde_json::to_string(&marker).unwrap_or_else(|_| "{}".to_string()),
     )
 }
 
