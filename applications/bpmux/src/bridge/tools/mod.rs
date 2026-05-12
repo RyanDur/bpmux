@@ -122,9 +122,7 @@ pub(crate) use iteration_markers::{
     apply_remove_stories_from_iteration,
 };
 pub(in crate::bridge) use iteration_markers::{
-    handle_add_stories_to_iteration, handle_create_iteration_marker,
-    handle_delete_iteration_marker, handle_list_iteration_markers,
-    handle_remove_stories_from_iteration, handle_reorder_iteration_marker,
+    handle_add_stories_to_iteration, handle_remove_stories_from_iteration,
 };
 pub(in crate::bridge) use list_epic_children::handle_list_epic_children;
 pub(in crate::bridge) use list_iteration_children::handle_list_iteration_children;

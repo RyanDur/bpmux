@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 pub(in crate::bridge) async fn handle_create_iteration_marker(
     args: &serde_json::Map<String, serde_json::Value>,
     port: u16,
@@ -28,6 +29,7 @@ pub(in crate::bridge) async fn handle_create_iteration_marker(
     Ok(text)
 }
 
+#[allow(dead_code)]
 pub(in crate::bridge) async fn handle_reorder_iteration_marker(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
@@ -52,6 +54,7 @@ pub(in crate::bridge) async fn handle_reorder_iteration_marker(
     Ok(format!("marker #{marker_id} moved to position {position}"))
 }
 
+#[allow(dead_code)]
 pub(in crate::bridge) fn apply_reorder_iteration_marker(
     path: &std::path::Path,
     session_dir: &std::path::Path,
@@ -410,6 +413,7 @@ pub(crate) struct DeleteMarkerOutcome {
     pub theme_name: String,
 }
 
+#[allow(dead_code)]
 pub(in crate::bridge) async fn handle_delete_iteration_marker(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
@@ -526,6 +530,7 @@ fn stories_in_marker_group(
         .collect()
 }
 
+#[allow(dead_code)]
 pub(in crate::bridge) async fn handle_list_iteration_markers(port: u16) -> Result<String, String> {
     let token_path = crate::session::auth_token::default_auth_token_path()
         .ok_or_else(|| "cannot resolve auth-token path (HOME unset?)".to_string())?;

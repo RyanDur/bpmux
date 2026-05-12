@@ -824,9 +824,6 @@ impl ServerHandler for BridgeServer {
                     let current_name = name.lock().await;
                     tools_stories::handle_close_iteration(&current_name, &args, &ws_tx, port).await
                 }
-                "create_iteration_marker" => {
-                    tools::handle_create_iteration_marker(&args, port).await
-                }
                 "add_stories_to_iteration" => {
                     let current_name = name.lock().await;
                     tools::handle_add_stories_to_iteration(&args, &current_name, port).await
@@ -835,15 +832,6 @@ impl ServerHandler for BridgeServer {
                     let current_name = name.lock().await;
                     tools::handle_remove_stories_from_iteration(&args, &current_name, port).await
                 }
-                "reorder_iteration_marker" => {
-                    let current_name = name.lock().await;
-                    tools::handle_reorder_iteration_marker(&args, &current_name, &ws_tx).await
-                }
-                "delete_iteration_marker" => {
-                    let current_name = name.lock().await;
-                    tools::handle_delete_iteration_marker(&args, &current_name, port).await
-                }
-                "list_iteration_markers" => tools::handle_list_iteration_markers(port).await,
                 "get_usage" => tools::handle_get_usage(&args).await,
                 "view_tokens" => tools::handle_view_tokens(&ws_tx).await,
                 "view_roadmap" => tools::handle_view_roadmap(&ws_tx).await,
@@ -1003,23 +991,11 @@ pub fn build_advertised_tools() -> Vec<rmcp::model::Tool> {
         crate::mcp::tools::close_iteration_tool(
             "Close the current iteration: promote stories above the topmost iteration marker to ready, delete the consumed marker, broadcast the externalize-prompt (#282). PM ONLY. GUARDED (#1258 Ryan 2026-05-10 21:49 UTC): blocks with 409 if any non-icebox/non-accepted story exists in the pipeline (ready/in-progress/desk-check/delivered). Owner must accept or move_story-out all in-flight stories before close_iteration can fire.",
         ),
-        crate::mcp::tools::create_iteration_marker_tool(
-            "Create an iteration-marker pseudo-entity in the icebox column (#1249, Epic #1189). Markers visually divide stories into iteration-groups — \"everything above this marker is the next iteration.\" Optional `theme_name` (constellation: Orion, Lyra, etc.); auto-picks next unused if omitted. PM-discretion. Returns the new marker JSON with id + position + created_at.",
-        ),
-        crate::mcp::tools::list_iteration_markers_tool(
-            "List iteration-markers currently in the icebox, sorted by position (#1249). Returns `[{id, theme_name, position, created_at}, ...]`. Read-only; safe for any role.",
-        ),
-        crate::mcp::tools::reorder_iteration_marker_tool(
-            "Reposition an iteration-marker within the icebox_unified column (#1262, Epic #1189). PM ONLY — other roles are rejected. Stories above the marker (lower 1-indexed position) promote on close_iteration; stories below queue for later iterations. Args: marker_id (from list_iteration_markers) + position (1-indexed; clamped to icebox_unified length).",
-        ),
         crate::mcp::tools::add_stories_to_iteration_tool(
-            "Bulk-fold ordered story_ids above an iteration marker in icebox_unified (#1263, Epic #1189). PM ONLY. Single atomic call replacing N reorder_story + 1 create_iteration_marker round-trips. Args: story_ids (ordered array; story_ids[0] lands at top of group, story_ids[N-1] just above marker), marker_id (existing marker — wins when both provided), theme_name (auto-create marker when marker_id omitted). Returns final positions JSON. Atomic-rollback on save-failure.",
+            "Add ordered story_ids to an iteration's membership via canonical iteration_id substrate (Epic #1189 slice 3 #1299). PM ONLY. Each story gets `iteration-#NNNN` label via the canonical mutation chain so Story.iteration_id populates (slice 2 #1298 substrate). Args: story_ids (ordered array), theme_name (resolves to matching open Iteration-issue by title \"Iteration {theme}\"). Atomic-fire across the batch.",
         ),
         crate::mcp::tools::remove_stories_from_iteration_tool(
-            "Batch-remove stories from their current iteration group in icebox_unified (#1267, Epic #1189). PM ONLY. Sister-inverse of add_stories_to_iteration: each story moves to the unscheduled bucket (immediately below the bottom-most marker). Args: story_ids (array of story numbers). Atomic-rollback on save-failure. Idempotent on already-unscheduled stories; no-op on stories not in icebox_unified.",
-        ),
-        crate::mcp::tools::delete_iteration_marker_tool(
-            "Direct-delete an iteration marker from markers-store + icebox_unified WITHOUT firing close_iteration (#1269, Epic #1189). PM ONLY. Errors with named blockers if the marker's group contains any stories — caller must use remove_stories_from_iteration to clear first. Errors if marker_id not found. Atomic snapshot+rollback. Args: marker_id (from list_iteration_markers).",
+            "Batch-remove stories from their current iteration via canonical iteration_id substrate (Epic #1189 slice 3 #1299). PM ONLY. Sister-inverse of add_stories_to_iteration: each story's iteration-#NNNN label is cleared via the canonical mutation chain. Args: story_ids (array of story numbers). Idempotent on stories not in any iteration.",
         ),
         crate::mcp::tools::label_story_tool(
             "Add a label to a story (ready, blocked, icebox, deferred). PM ONLY — other roles are rejected.",
@@ -1148,12 +1124,8 @@ pub const DISPATCHED_TOOL_NAMES: &[&str] = &[
     "view_comments",
     "view_backlog",
     "close_iteration",
-    "create_iteration_marker",
     "add_stories_to_iteration",
     "remove_stories_from_iteration",
-    "reorder_iteration_marker",
-    "delete_iteration_marker",
-    "list_iteration_markers",
     "get_usage",
     "view_tokens",
     "view_roadmap",
