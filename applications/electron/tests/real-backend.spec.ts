@@ -678,7 +678,6 @@ test.describe('real-backend', () => {
       }
     ]
     const { app } = await launchWithIsolatedSession({
-      backendPort: 4133,
       seedMessages
     })
     const win = await app.firstWindow()
