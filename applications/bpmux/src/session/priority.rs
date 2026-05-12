@@ -29,8 +29,20 @@ pub struct PriorityIndex {
     pub current_iteration_stories: Vec<u64>,
 }
 
-/// Default priority file path: `~/.bpmux/priority.json`.
+/// Default priority file path. Honors `BPMUX_PRIORITY_PATH` for per-test
+/// isolation (sister to BPMUX_USAGE_PATH / BPMUX_AUTH_TOKEN_PATH /
+/// BPMUX_SESSIONS_BASE — the established isolation pattern at this
+/// substrate layer). Falls back to `~/.bpmux/priority.json` in prod.
+/// Without env-isolation, parallel `cargo test` processes share the
+/// real user's priority.json and race on the create_dir_all + write +
+/// rename sequence inside `save_priority`, surfacing as transient
+/// `No such file or directory` failures (deterministic under load).
 pub fn default_priority_path() -> Result<PathBuf, String> {
+    if let Ok(override_path) = std::env::var("BPMUX_PRIORITY_PATH")
+        && !override_path.is_empty()
+    {
+        return Ok(PathBuf::from(override_path));
+    }
     let home = dirs::home_dir().ok_or_else(|| "cannot determine home directory".to_string())?;
     Ok(home.join(".bpmux").join("priority.json"))
 }
