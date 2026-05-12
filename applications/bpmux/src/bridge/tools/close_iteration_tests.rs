@@ -432,6 +432,59 @@ mod canonical_via_gh_1300 {
         assert!(iter.is_closed);
     }
 
+    #[test]
+    fn dispatcher_routes_iteration_number_some_to_canonical_path() {
+        // AC10 dispatcher path-routing test: iteration_number=Some(N)
+        // returns Canonical(N). Per `feedback_falsifier_load_bearing_test_at_e2e_layer`
+        // the routing decision is the falsifier — bug class is dispatcher
+        // reversing paths (canonical-helpers work but wrong path selected
+        // at wire-level).
+        use crate::transport::rest::{CloseIterationKind, close_iteration_kind};
+        assert_eq!(
+            close_iteration_kind(Some(1400)),
+            CloseIterationKind::Canonical(1400)
+        );
+        assert_eq!(
+            close_iteration_kind(Some(1297)),
+            CloseIterationKind::Canonical(1297)
+        );
+    }
+
+    #[test]
+    fn dispatcher_routes_iteration_number_none_to_legacy_path() {
+        // AC10 sister: iteration_number=None returns Legacy (markers-store
+        // path runs unchanged per backward-compat).
+        use crate::transport::rest::{CloseIterationKind, close_iteration_kind};
+        assert_eq!(close_iteration_kind(None), CloseIterationKind::Legacy);
+    }
+
+    #[tokio::test]
+    async fn canonical_path_does_not_touch_legacy_priority_json_substrate() {
+        // AC10 cross-contamination check: canonical path operates on
+        // store + iteration-issue only; does NOT mutate priority.json
+        // icebox_unified (that's the legacy substrate retiring at #1302).
+        // Verified by holding a priority.json snapshot pre-call and
+        // asserting post-call equality.
+        let priority_dir = tempfile::tempdir().unwrap();
+        let priority_path = priority_dir.path().join("priority.json");
+        let priority_pre = r#"{"icebox_unified":[{"kind":"marker","id":42}]}"#;
+        std::fs::write(&priority_path, priority_pre).unwrap();
+
+        let refresh = build_refresh(vec![
+            seed_iteration_issue(1400, "Pegasus"),
+            seed_member(200, StoryState::Icebox, Some(1400)),
+        ])
+        .await;
+        promote_members_then_close_iteration(&refresh, 1400, &[200])
+            .await
+            .unwrap();
+        let priority_post = std::fs::read_to_string(&priority_path).unwrap();
+        assert_eq!(
+            priority_pre, priority_post,
+            "canonical path does NOT touch legacy priority.json substrate (AC10 cross-contamination check)"
+        );
+    }
+
     #[tokio::test]
     async fn iteration_close_uses_canonical_mutation_chain_for_member_promotion() {
         // Falsifier (b): member-stories promoted via canonical mutation

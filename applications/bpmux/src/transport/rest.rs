@@ -1312,14 +1312,35 @@ pub struct CloseIterationRequest {
     pub iteration_number: Option<u64>,
 }
 
+/// #1300 slice 4 path-routing decision for close_iteration ceremony.
+/// `Canonical(n)` selects the canonical-via-GH path (closes the
+/// Iteration-issue + promotes members via iteration_id); `Legacy`
+/// selects the markers-store path (priority.json icebox_unified +
+/// markers-store manipulation per #1258 r3 ceremony). The legacy path
+/// retires at slice 6 #1302 close-out; until then dispatcher routing
+/// is the only seam preventing cross-contamination — AC10 makes the
+/// routing decision observable so regression tests can pin it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum CloseIterationKind {
+    Canonical(u64),
+    Legacy,
+}
+
+pub(crate) fn close_iteration_kind(iteration_number: Option<u64>) -> CloseIterationKind {
+    match iteration_number {
+        Some(n) => CloseIterationKind::Canonical(n),
+        None => CloseIterationKind::Legacy,
+    }
+}
+
 pub async fn post_close_iteration(
     State(session): State<Arc<session::Session>>,
     axum::Extension(tracker): axum::Extension<TrackerHandle>,
     axum::Extension(test_refresh): axum::Extension<crate::server::TestRefreshHandle>,
     body: Option<axum::Json<CloseIterationRequest>>,
 ) -> impl IntoResponse {
-    let iteration_number = body.and_then(|b| b.0.iteration_number);
-    if let Some(iter_n) = iteration_number {
+    let kind = close_iteration_kind(body.and_then(|b| b.0.iteration_number));
+    if let CloseIterationKind::Canonical(iter_n) = kind {
         return post_close_iteration_canonical(session, tracker, test_refresh, iter_n).await;
     }
     let priority_path = match session::priority::default_priority_path() {
