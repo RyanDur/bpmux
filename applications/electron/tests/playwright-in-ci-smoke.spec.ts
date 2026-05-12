@@ -17,19 +17,14 @@ test.describe('Playwright runs in CI as a structural gate (#1152)', () => {
     expect(ciYaml()).toMatch(/^\s*playwright-e2e:\s*$/m)
   })
 
-  test('playwright-e2e matrix splits into 6 shards', () => {
-    const yaml = ciYaml()
-    const matrixSection = yaml.match(/playwright-e2e:[\s\S]*?(?=\n\S|$)/)?.[0] ?? ''
-    expect(matrixSection).toMatch(/shard:\s*\[\s*1\s*,\s*2\s*,\s*3\s*,\s*4\s*,\s*5\s*,\s*6\s*\]/)
-  })
-
-  test('playwright-e2e runs on self-hosted macos arm64 + npx playwright test --shard (#1291)', () => {
+  test('playwright-e2e runs on self-hosted macos arm64 with workers parallelism (#1291)', () => {
     const yaml = ciYaml()
     const matrixSection = yaml.match(/playwright-e2e:[\s\S]*?(?=\n\S|$)/)?.[0] ?? ''
     expect(matrixSection).toMatch(/runs-on:\s*\[\s*self-hosted\s*,\s*macos\s*,\s*arm64\s*\]/)
     expect(matrixSection).toMatch(/playwright test/)
-    expect(matrixSection).toMatch(/--shard=/)
+    expect(matrixSection).toMatch(/--workers=\d+/)
     expect(matrixSection).not.toMatch(/xvfb-run/)
+    expect(matrixSection).not.toMatch(/--shard=/)
   })
 
   test('playwright-e2e installs playwright browsers (no --with-deps on macOS; #1291)', () => {

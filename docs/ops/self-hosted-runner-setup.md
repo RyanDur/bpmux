@@ -262,7 +262,7 @@ closes the Store-trait DI chain back to the original directive
 |-----|--------|-------|
 | `build-bpmux` | `[self-hosted, macos, arm64]` | Produces `target/debug/bpmux` arm64-apple-darwin binary; cached via Swatinem with shared-key `playwright-e2e` |
 | `test` (fmt/clippy/nextest/audit) | `[self-hosted, macos, arm64]` | Unchanged since slice 2 step 1 |
-| `playwright-e2e` (6-shard, --workers=4) | `[self-hosted, macos, arm64]` | xvfb-run removed (macOS native windowing); `--with-deps` removed (no apt); Playwright cache at `~/Library/Caches/ms-playwright` |
+| `playwright-e2e` (single job, --workers=4) | `[self-hosted, macos, arm64]` | xvfb-run removed (macOS native windowing); `--with-deps` removed (no apt); Playwright cache at `~/Library/Caches/ms-playwright`. Sharding retired — with a 1-runner pool, matrix shards serialize and pay N× setup overhead without parallelism benefit. Workers=4 inside a single job gives in-process parallelism with one-time setup. |
 
 ### Wall-clock measurements
 
