@@ -48,7 +48,13 @@ export const columnFor = (state: StoryState, isClosed: boolean = false): ColumnS
   }
 }
 
-export type StoryType = 'feature' | 'bug' | 'chore' | 'epic' | 'unknown'
+export type StoryType =
+  | 'feature'
+  | 'bug'
+  | 'chore'
+  | 'epic'
+  | 'iteration'
+  | 'unknown'
 
 export interface BoardStory {
   number: number
@@ -134,6 +140,7 @@ export const STATES_IN_COLUMN: Record<ColumnState, StoryState[]> = {
 // predictable instead of guessing.
 export const storyTypeFromLabels = (labels: string[]): StoryType => {
   const normalized = labels.map((l) => l.toLowerCase())
+  if (normalized.includes('iteration')) return 'iteration'
   if (normalized.includes('epic')) return 'epic'
   if (normalized.includes('feature')) return 'feature'
   if (normalized.includes('bug')) return 'bug'

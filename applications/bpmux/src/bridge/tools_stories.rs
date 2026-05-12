@@ -382,6 +382,106 @@ pub(super) async fn handle_create_story(
     )
 }
 
+/// #1297 Epic #1189 architectural-pivot slice 1: create a GH issue
+/// that represents an iteration itself (sister to Epic story_type).
+/// Replaces local markers-store substrate for iteration-marker
+/// representation — see ops doc + Epic #1189 architectural-pivot
+/// chain (#1297-#1302). The iteration-issue's title is
+/// "Iteration {theme_name}" + carries `iteration` label so
+/// `story_type_from_labels_or_title` decodes it as
+/// `StoryType::Iteration`. Duplicate theme_name (existing OPEN
+/// iteration with same name) is rejected at create-time with a
+/// named-collision error — sister-discipline to #1281.
+pub(super) async fn handle_create_iteration(
+    args: &serde_json::Map<String, serde_json::Value>,
+    agent_name: &str,
+    ws_tx: &Mutex<Option<WsSink>>,
+    refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
+) -> Result<String, String> {
+    if role_from_name(agent_name) != "pm" {
+        return Err(
+            "create_iteration is pm-lane. Iteration entities are PM-owned per Epic #1189."
+                .to_string(),
+        );
+    }
+    let theme_name = require_nonempty_string(
+        args,
+        "theme_name",
+        "theme_name is required: short name for the iteration (e.g., 'Aquila', 'Pegasus'). Surfaces as the GH issue title 'Iteration {theme_name}'.",
+    )?;
+    let r = refresh
+        .ok_or("create_iteration requires refresh (RefreshDriver) — canonical store unavailable")?;
+    let existing_open_iteration = r.all_stories().into_iter().find(|s| {
+        s.story_type == crate::board::domain::StoryType::Iteration
+            && !s.is_closed
+            && s.title
+                .eq_ignore_ascii_case(&format!("Iteration {theme_name}"))
+    });
+    if let Some(existing) = existing_open_iteration {
+        return Err(format!(
+            "iteration named '{theme_name}' already open as #{n}; close it first or pick a different name (#1281 sister-discipline: duplicate-collision rejected at create-time)",
+            n = existing.number
+        ));
+    }
+    let title = format!("Iteration {theme_name}");
+    let body = compose_iteration_body(theme_name);
+    let number = r
+        .create_story(title.clone(), body.clone())
+        .await
+        .map_err(|e| format!("create_iteration adapter call failed: {e}"))?;
+    let meta = crate::board::events::EventMeta {
+        actor: crate::transport::ws::short_name(agent_name).to_string(),
+        ts: chrono::Utc::now(),
+        peer_id: crate::board::PeerId::local(),
+    };
+    r.mutate_sync(crate::board::BoardEvent::StoryCreated {
+        meta: meta.clone(),
+        number,
+        title: title.clone(),
+        body: body.clone(),
+        initial_state: crate::board::domain::StoryState::Icebox,
+        story_type: crate::board::domain::StoryType::Iteration,
+    })
+    .map_err(|e| format!("#{number} iteration created but enqueue failed: {e}"))?;
+    r.mutate_sync(crate::board::BoardEvent::TagAdded {
+        meta,
+        number,
+        label: "iteration".to_string(),
+    })
+    .map_err(|e| format!("#{number} iteration label enqueue failed: {e}"))?;
+    broadcast_board_invalidate(ws_tx).await;
+    Ok(format!("iteration created: #{number} {title}"))
+}
+
+/// Build the issue body for a new iteration-issue. Designer's
+/// drafted markdown schema (2026-05-12 18:09 UTC): header line +
+/// status line + member-stories placeholder section + notes. Slice
+/// 2+ populate the member-stories section as iteration_id-tagged
+/// members are added; queries use the iteration_id field on member
+/// stories as canonical (body is human-readable + future-tooling
+/// hint, not parsed for membership).
+fn compose_iteration_body(theme_name: &str) -> String {
+    let today = chrono::Utc::now().format("%Y-%m-%d");
+    format!(
+        "## Iteration {theme_name}\n\
+         \n\
+         **Created**: {today}\n\
+         **Status**: Open\n\
+         \n\
+         ## Member stories\n\
+         \n\
+         <!-- Stories with iteration_id pointing here listed by future tooling.\n\
+              Populated by slice 2+ as members are added. -->\n\
+         \n\
+         _(no members yet)_\n\
+         \n\
+         ## Notes\n\
+         \n\
+         bpmux iteration substrate (Epic #1189 architectural-pivot).\n\
+         Close via `close_iteration` ceremony (slice 4).\n"
+    )
+}
+
 fn require_nonempty_string<'a>(
     args: &'a serde_json::Map<String, serde_json::Value>,
     key: &str,
@@ -1584,7 +1684,9 @@ pub(super) fn addressee_for_pass_desk_check(
     story_type: crate::board::domain::StoryType,
 ) -> &'static str {
     match story_type {
-        crate::board::domain::StoryType::Feature | crate::board::domain::StoryType::Epic => "ryan",
+        crate::board::domain::StoryType::Feature
+        | crate::board::domain::StoryType::Epic
+        | crate::board::domain::StoryType::Iteration => "ryan",
         crate::board::domain::StoryType::Bug | crate::board::domain::StoryType::Chore => "pm",
     }
 }

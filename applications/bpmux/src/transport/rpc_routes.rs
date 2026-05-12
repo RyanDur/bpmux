@@ -52,6 +52,7 @@ fn known_tools() -> &'static [&'static str] {
         "reject_story",
         "close_story",
         "create_story",
+        "create_iteration",
         "comment_on_story",
         "label_story",
         "set_parent_epic",
@@ -189,6 +190,9 @@ async fn dispatch(
         }
         "close_story" => bridge::dispatch_test_close_story(args, agent, refresh_ref).await,
         "create_story" => bridge::dispatch_test_create_story(args, agent, refresh_ref).await,
+        "create_iteration" => {
+            bridge::dispatch_test_create_iteration(args, agent, refresh_ref).await
+        }
         "comment_on_story" => {
             bridge::dispatch_test_comment_on_story(args, agent, refresh_ref).await
         }

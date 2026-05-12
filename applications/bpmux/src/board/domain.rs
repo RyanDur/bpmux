@@ -30,6 +30,7 @@ pub enum StoryType {
     Bug,
     Chore,
     Epic,
+    Iteration,
 }
 
 pub fn story_type_from_labels_or_title(labels: &[String], title: &str) -> StoryType {
@@ -39,12 +40,16 @@ pub fn story_type_from_labels_or_title(labels: &[String], title: &str) -> StoryT
             "bug" => return StoryType::Bug,
             "chore" => return StoryType::Chore,
             "epic" => return StoryType::Epic,
+            "iteration" => return StoryType::Iteration,
             _ => {}
         }
     }
     let lower = title.to_lowercase();
     if lower.starts_with("[epic") {
         return StoryType::Epic;
+    }
+    if lower.starts_with("[iteration") {
+        return StoryType::Iteration;
     }
     if lower.starts_with("[bug") || lower.starts_with("bug:") {
         return StoryType::Bug;
@@ -239,6 +244,7 @@ pub fn story_to_board_json(story: &Story) -> serde_json::Value {
             StoryType::Bug => "bug",
             StoryType::Chore => "chore",
             StoryType::Epic => "epic",
+            StoryType::Iteration => "iteration",
         }
         .to_string(),
     );

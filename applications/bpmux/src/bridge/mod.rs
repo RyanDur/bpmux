@@ -90,6 +90,15 @@ pub(crate) async fn dispatch_test_create_story(
     tools_stories::handle_create_story(&args, agent_name, &empty_ws, refresh).await
 }
 
+pub(crate) async fn dispatch_test_create_iteration(
+    args: serde_json::Map<String, serde_json::Value>,
+    agent_name: &str,
+    refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
+) -> Result<String, String> {
+    let empty_ws: tokio::sync::Mutex<Option<WsSink>> = tokio::sync::Mutex::new(None);
+    tools_stories::handle_create_iteration(&args, agent_name, &empty_ws, refresh).await
+}
+
 pub(crate) async fn dispatch_test_comment_on_story(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
@@ -780,6 +789,7 @@ impl ServerHandler for BridgeServer {
                 | "reject_story"
                 | "close_story"
                 | "create_story"
+                | "create_iteration"
                 | "comment_on_story"
                 | "label_story"
                 | "move_story"
@@ -967,6 +977,9 @@ pub fn build_advertised_tools() -> Vec<rmcp::model::Tool> {
         crate::mcp::tools::create_story_tool(
             "Create a new story (GitHub issue). PM ONLY — dev/designer/ryan/other roles are rejected with a message redirecting to broadcast: surface the pain in chat and pm files the story. Story starts unlabeled in the icebox.",
         ),
+        crate::mcp::tools::create_iteration_tool(
+            "Create a new iteration-issue (#1297, Epic #1189 architectural-pivot slice 1). PM ONLY. theme_name surfaces as the GH issue title 'Iteration {theme_name}' and the issue carries the 'iteration' label so it decodes as story_type=Iteration. Sister to the Epic story_type — iteration-issues are the canonical substrate for iteration entities, replacing local markers-store. Rejects with named-collision error if an OPEN iteration with the same theme_name already exists (sister-discipline to #1281).",
+        ),
         crate::mcp::tools::start_story_tool(
             "Mark a story as started. DEV ONLY — other roles are rejected with a clear message.",
         ),
@@ -1103,6 +1116,7 @@ pub const DISPATCHED_TOOL_NAMES: &[&str] = &[
     "reject_story",
     "close_story",
     "create_story",
+    "create_iteration",
     "comment_on_story",
     "label_story",
     "move_story",

@@ -12,6 +12,8 @@ mod classifier_misfire;
 #[cfg(test)]
 mod close_iteration_tests;
 #[cfg(test)]
+mod create_iteration_tests;
+#[cfg(test)]
 mod delete_iteration_marker_tests;
 mod dev_in_flight;
 mod get_bookmark;
