@@ -41,6 +41,36 @@ fn state_from_labels_closed_issue_is_accepted_even_without_label() {
 }
 
 #[test]
+fn state_from_labels_closed_issue_with_stale_workflow_label_is_accepted() {
+    // #1296: close_story enqueues TagRemoved + StoryClosed; the
+    // per-mutation drain tasks race on the issue-lock, so StoryClosed
+    // can be pushed BEFORE the labels are reaped from GH. The
+    // adapter's close-response then decodes with the stale workflow
+    // labels still attached; state_from_labels must collapse them to
+    // Accepted (rather than the workflow-state) so the renderer's
+    // columnFor routes the closed story to 'accepted' (not 'retired').
+    // Without this rule, the empty-LabelsRefreshed no-op in BoardStore
+    // leaves the stale state in place.
+    for stale in [
+        "in progress",
+        "ready",
+        "desk-check",
+        "delivered",
+        "ready for accept",
+        "needs fixes",
+        "rejected",
+        "icebox",
+    ] {
+        let labels = vec![stale.to_string()];
+        assert_eq!(
+            state_from_labels(&labels, true),
+            StoryState::Accepted,
+            "closed issue with stale '{stale}' label should be Accepted"
+        );
+    }
+}
+
+#[test]
 fn state_from_labels_retired_label_overrides_closed_fallback() {
     // #1192: explicit "retired" tag must take precedence over the
     // legacy "closed-no-label = Accepted" fallback so move_story →
@@ -201,13 +231,16 @@ fn decode_story_metadata_sets_is_closed_from_gh_state() {
 }
 
 #[test]
-fn decode_story_metadata_preserves_last_domain_state_for_closed_non_accepted() {
-    // #464: GH-closed alone no longer forces Accepted. Closed-without-
-    // an "accepted" label preserves the last domain state per labels
-    // (close-as-archive vs team-Accepted distinction). Story.is_closed
-    // remains true to flag the archive shape; the renderer combines
-    // state + is_closed to filter closed-non-Accepted from active
-    // buckets.
+fn decode_story_metadata_closed_without_retired_collapses_to_accepted() {
+    // #1296 supersedes #464's preserve-last-domain-state semantics for
+    // closed issues. close_story enqueues TagRemoved + StoryClosed and
+    // the per-mutation drain tasks race on the issue-lock, so the GH
+    // close-response can arrive with stale workflow labels still
+    // attached. Per #1192 the explicit "retired" tag is the canonical
+    // signal for closed-but-not-accepted; absence of that tag means
+    // "team-accepted via close." Decoder collapses to Accepted so the
+    // renderer's columnFor routes the story to 'accepted' instead of
+    // 'retired' regardless of which mutation task wins the drain race.
     let json = serde_json::json!({
         "number": 99,
         "title": "close_story-fired on a Delivered story; no accepted label present",
@@ -224,10 +257,8 @@ fn decode_story_metadata_preserves_last_domain_state_for_closed_non_accepted() {
     );
     assert_eq!(
         story.state,
-        StoryState::Delivered,
-        "without 'accepted' label, decoder preserves the last-domain state per label priority \
-         instead of forcing Accepted (#464); post-#1146 collapse, 'ready for accept' label \
-         projects to Delivered (display-equivalent in the pre-collapse bucketing)"
+        StoryState::Accepted,
+        "closed without retired tag is Accepted regardless of stale workflow labels (#1296)"
     );
 }
 

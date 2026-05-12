@@ -494,13 +494,21 @@ pub fn state_from_labels(labels: &[String], is_closed: bool) -> StoryState {
         return StoryState::Accepted;
     }
     // #1192: explicit retired-tag distinguishes "closed via retire"
-    // from "closed via accept". Returning Icebox here lets column_for
-    // (closed + state != Accepted → Retired) bucket correctly without
-    // adding a 7th StoryState variant. Must precede the is_closed
-    // fallback below so the legacy "closed-no-label = Accepted" path
-    // doesn't collapse retired stories back into Accepted.
+    // from "closed via accept". Must precede the is_closed → Accepted
+    // rule so retired-on-close stays in the retired column.
     if has("retired") {
         return StoryState::Icebox;
+    }
+    // #1296: is_closed=true means the issue is closed. Without an
+    // explicit retired tag, that's "accepted". This rule precedes the
+    // workflow-label fallbacks because close_story enqueues TagRemoved
+    // + StoryClosed and the mutation tasks race on the issue-lock
+    // (middleware_start_update_github spawns one task per mutation).
+    // If StoryClosed wins, mock-gh's PATCH-response still carries the
+    // pre-close labels — falling back to those would route the closed
+    // story to the retired column, contradicting the operator intent.
+    if is_closed {
+        return StoryState::Accepted;
     }
     // Stale labels from pre-#1146 stories project to their column-
     // equivalent state. Slice 1 stopped writers from producing these
@@ -527,9 +535,6 @@ pub fn state_from_labels(labels: &[String], is_closed: bool) -> StoryState {
     }
     if has("ready") {
         return StoryState::Ready;
-    }
-    if is_closed {
-        return StoryState::Accepted;
     }
     StoryState::Icebox
 }
