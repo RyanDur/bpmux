@@ -1,5 +1,5 @@
 import { _electron as electron, expect, type ElectronApplication, type Page } from '@playwright/test'
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, symlinkSync } from 'fs'
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, symlinkSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import * as net from 'net'
@@ -42,6 +42,19 @@ export interface LaunchOpts {
    */
   seedRoster?: ReadonlyArray<string>
   extraEnv?: Record<string, string>
+  /**
+   * #1291: opt-out of the auto-cleanup of helper-allocated mkdtempSync
+   * paths in `app.close`. Default is `false` (auto-cleanup ON). Set to
+   * `true` for cross-launch persistence tests (e.g. #449 board collapse
+   * state survives restart) that capture `result.userDataDir` /
+   * `result.sessionBase` from launch 1, close it, then re-launch with
+   * the SAME dirs to assert persisted state. Auto-cleanup on launch 1's
+   * close would wipe the dirs out from under launch 2. When the dirs
+   * were supplied externally (opts.userDataDir / opts.sessionBase),
+   * they're already excluded from the cleanup set — this flag only
+   * matters for the helper-allocated case.
+   */
+  preserveTempPaths?: boolean
 }
 
 export interface LaunchResult {
@@ -85,10 +98,43 @@ export const pickSafeInheritedEnv = (
   return picked
 }
 
+/**
+ * Track every mkdtempSync path the helper creates so test teardown can
+ * remove them. Before #1291 these accumulated in $TMPDIR (216k+ entries
+ * observed on bpmux-mac-m1 self-hosted runner 2026-05-12 02:35 UTC),
+ * which degraded APFS directory operations and tipped Playwright's 30s
+ * worker-teardown budget on the cumulative-load axis. The helper wraps
+ * `app.close` so the cleanup fires automatically in every test's
+ * `finally { await app.close() }` path.
+ */
+const cleanupTempPaths = (paths: string[]): void => {
+  for (const p of paths) {
+    try {
+      rmSync(p, { recursive: true, force: true })
+    } catch {
+      // Best-effort cleanup; lingering tempdirs are recoverable via
+      // periodic find -mmin +60 on the runner, but typical case is the
+      // path exists and rmSync succeeds.
+    }
+  }
+}
+
 export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<LaunchResult> => {
-  const sessionBase = opts.sessionBase ?? mkdtempSync(join(tmpdir(), 'bpmux-playwright-'))
+  const ownedTempPaths: string[] = []
+  const sessionBase =
+    opts.sessionBase ??
+    (() => {
+      const p = mkdtempSync(join(tmpdir(), 'bpmux-playwright-'))
+      ownedTempPaths.push(p)
+      return p
+    })()
   const userDataDir =
-    opts.userDataDir ?? mkdtempSync(join(tmpdir(), 'bpmux-playwright-userdata-'))
+    opts.userDataDir ??
+    (() => {
+      const p = mkdtempSync(join(tmpdir(), 'bpmux-playwright-userdata-'))
+      ownedTempPaths.push(p)
+      return p
+    })()
   const backendPort = opts.backendPort ?? (await getFreePort())
   // #1290 Part B: roster_seed.json is loaded at Session::new from
   // session_dir/roster_seed.json (not via Storage trait — pre-#1290),
@@ -113,22 +159,18 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
   // another worker's reader. Each test gets its own tempdir-backed
   // path; callers that pass an explicit BPMUX_AUTH_TOKEN_PATH in
   // extraEnv override this default.
-  const defaultAuthTokenPath = join(
-    mkdtempSync(join(tmpdir(), 'bpmux-playwright-auth-')),
-    'auth_token'
-  )
-  const defaultBoardStorePath = join(
-    mkdtempSync(join(tmpdir(), 'bpmux-playwright-store-')),
-    'board-store.json'
-  )
-  const defaultBoardOutboxPath = join(
-    mkdtempSync(join(tmpdir(), 'bpmux-playwright-outbox-')),
-    'board-outbox.json'
-  )
-  const defaultLogPath = join(
-    mkdtempSync(join(tmpdir(), 'bpmux-playwright-log-')),
-    'bpmux-test-diag.log'
-  )
+  const authDir = mkdtempSync(join(tmpdir(), 'bpmux-playwright-auth-'))
+  ownedTempPaths.push(authDir)
+  const defaultAuthTokenPath = join(authDir, 'auth_token')
+  const storeDir = mkdtempSync(join(tmpdir(), 'bpmux-playwright-store-'))
+  ownedTempPaths.push(storeDir)
+  const defaultBoardStorePath = join(storeDir, 'board-store.json')
+  const outboxDir = mkdtempSync(join(tmpdir(), 'bpmux-playwright-outbox-'))
+  ownedTempPaths.push(outboxDir)
+  const defaultBoardOutboxPath = join(outboxDir, 'board-outbox.json')
+  const logDir = mkdtempSync(join(tmpdir(), 'bpmux-playwright-log-'))
+  ownedTempPaths.push(logDir)
+  const defaultLogPath = join(logDir, 'bpmux-test-diag.log')
 
   const callerSetsGhBaseUrl = !!opts.extraEnv?.['BPMUX_GH_BASE_URL']
   let defaultMockGh: MockGhServer | undefined
@@ -179,6 +221,16 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
   })
   await waitForHealthz(backendPort)
   await seedMessagesAndPinsViaApi(backendPort, opts)
+  if (ownedTempPaths.length > 0 && !opts.preserveTempPaths) {
+    const originalClose = app.close.bind(app)
+    app.close = (async () => {
+      try {
+        await originalClose()
+      } finally {
+        cleanupTempPaths(ownedTempPaths)
+      }
+    }) as typeof app.close
+  }
   return { app, sessionBase, userDataDir, backendPort, mockGh: defaultMockGh }
 }
 
@@ -256,10 +308,8 @@ export const launchWithMockGh = async (
   // Per-test auth token — same isolation pattern as the default
   // launch helper, but we capture the path so we can read the
   // generated token after spawn.
-  const authTokenPath = join(
-    mkdtempSync(join(tmpdir(), 'bpmux-mockgh-auth-')),
-    'auth_token'
-  )
+  const authDir = mkdtempSync(join(tmpdir(), 'bpmux-mockgh-auth-'))
+  const authTokenPath = join(authDir, 'auth_token')
   const result = await launchIsolatedElectron({
     ...opts,
     extraEnv: {
@@ -314,6 +364,21 @@ export const launchWithMockGh = async (
       body: JSON.stringify(body ?? {})
     })
   }
+  // #1291: chain authDir cleanup onto the already-wrapped app.close
+  // from launchIsolatedElectron so this helper's authDir disappears
+  // when the test's `finally { await app.close() }` fires.
+  const innerClose = result.app.close.bind(result.app)
+  result.app.close = (async () => {
+    try {
+      await innerClose()
+    } finally {
+      try {
+        rmSync(authDir, { recursive: true, force: true })
+      } catch {
+        // best-effort
+      }
+    }
+  }) as typeof result.app.close
   return { ...result, win, mockGh, authToken, rpc }
 }
 

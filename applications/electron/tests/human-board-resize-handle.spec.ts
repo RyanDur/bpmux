@@ -107,7 +107,7 @@ test.describe('#458 board panel — drag-resize + persistence', () => {
   })
 
   test('width persists across app restart per viewer-identity', async () => {
-    const first = await launchIsolatedWithWindow()
+    const first = await launchIsolatedWithWindow({ preserveTempPaths: true })
     const handle = first.win.locator('[data-test="board-resize-handle"]')
     await handle.focus()
     await first.win.keyboard.press('ArrowRight')

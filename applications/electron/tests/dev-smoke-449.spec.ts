@@ -3,7 +3,7 @@ import { launchIsolatedWithWindow, launchIsolatedElectron } from './helpers/laun
 
 test.describe('#449 board collapse-state persists across refresh — dev smoke', () => {
   test('ready column collapsed state survives app restart', async () => {
-    const first = await launchIsolatedWithWindow()
+    const first = await launchIsolatedWithWindow({ preserveTempPaths: true })
     const readyToggle = first.win.locator('[data-test="board-group-ready"]')
     await expect(readyToggle).toHaveAttribute('aria-expanded', 'true')
     await readyToggle.click()
@@ -21,7 +21,7 @@ test.describe('#449 board collapse-state persists across refresh — dev smoke',
   })
 
   test('per-column state is preserved independently across restart', async () => {
-    const first = await launchIsolatedWithWindow()
+    const first = await launchIsolatedWithWindow({ preserveTempPaths: true })
     const ready = first.win.locator('[data-test="board-group-ready"]')
     const inProgress = first.win.locator('[data-test="board-group-in-progress"]')
     const delivered = first.win.locator('[data-test="board-group-delivered"]')
@@ -77,7 +77,7 @@ test.describe('#449 board collapse-state persists across refresh — dev smoke',
   })
 
   test('expanding a default-collapsed column persists across restart', async () => {
-    const first = await launchIsolatedWithWindow()
+    const first = await launchIsolatedWithWindow({ preserveTempPaths: true })
     const accepted = first.win.locator('[data-test="board-group-accepted"]')
     await expect(accepted).toHaveAttribute('aria-expanded', 'false')
     await accepted.click()

@@ -80,9 +80,13 @@ test.describe('#1205 launchIsolatedElectron wires pickSafeInheritedEnv at the en
 test.describe('#1204 launchIsolatedElectron isolates BPMUX_LOG to per-test tempdir', () => {
   test('launch.ts declares a defaultLogPath bound to a per-test mkdtemp dir', () => {
     const src = launchHelperSource()
-    expect(src).toMatch(/const\s+defaultLogPath\s*=\s*join\(\s*mkdtempSync\(/)
+    // #1291 refactored the mkdtempSync site so the path can be tracked
+    // for ownedTempPaths cleanup. Gate asserts the substrate intent
+    // (per-test mkdtemp + LOG-suffix join) rather than the exact
+    // line-wrap, so the refactor doesn't break the structural check.
+    expect(src).toMatch(/const\s+logDir\s*=\s*mkdtempSync\(/)
     expect(src).toMatch(/'bpmux-playwright-log-'/)
-    expect(src).toMatch(/'bpmux-test-diag\.log'/)
+    expect(src).toMatch(/const\s+defaultLogPath\s*=\s*join\(\s*logDir\s*,\s*'bpmux-test-diag\.log'/)
   })
 
   test('launch.ts wires BPMUX_LOG into the spawned bpmux env from defaultLogPath', () => {
