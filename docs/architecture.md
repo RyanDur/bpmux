@@ -152,6 +152,77 @@ under #1290 (sister-shape commits 2a91ccb / 1222506 / 9b2fc9d /
 e8e5aaf / 49e3f94). Full wall-clock measurement + launch-helper
 test-seed-API (Part A/B) complete #1290.
 
+## Iteration substrate: canonical-via-GH issue (Epic #1189)
+
+bpmux's iteration entities migrated from a local-only substrate
+(`session/iteration_markers.json` markers-store + `session/priority.json`
+icebox_unified positional manipulation) to a canonical-via-GH substrate
+where iterations are first-class GitHub issues with `story_type=Iteration`
+and `iteration_id` foreign-keys on member-stories. Epic #1189 sequenced
+the architectural-pivot across six slices (#1297-#1302) using
+strangler-fig parallel-substrate transition.
+
+**User-job (architecture-agnostic)**: iterations group stories for
+batched-by-theme planning, accept-walk ceremony, retro lineage, and
+"what's next" prioritization. The user-job hasn't changed; the
+architecture-fit underneath has.
+
+**Architectural-pivot motivation**: today's substrate-Bug class
+(#1283 missing-marker-restore + #1288 fold-position-loss + #1294
+legacy stories[]-backfill + #1295 mid-session save_priority null-write
++ #1273 iteration-scoped guard) all manifested as priority.json /
+markers-store consistency failures. Canonical-via-GH-issue substrate
+eliminates the class: GitHub issues have built-in atomicity for state
+transitions + label mutations + comment-history + close semantics +
+cross-session persistence + multi-agent visibility. Sister-pattern to
+#1289 Storage-trait DI at the iteration-substrate axis — both
+ratifications strengthen v3 internal-bounded-context boundaries by
+relocating capability state behind a canonical seam.
+
+**Slice progression**:
+
+| Slice | Issue | Surface |
+|---|---|---|
+| 1 | #1297 | `StoryType::Iteration` variant + `create_iteration(theme_name)` MCP tool + 'iteration' label decoder + TS schema parity |
+| 2 | #1298 | `Story.iteration_id: Option<u64>` + `iteration_id_from_labels` decoder + `list_iteration_children(iteration_number)` tool + `iteration-#NNNN` label-emit + `get_story` surfaces iteration_id |
+| 3 | #1299 | Membership tools (`add_stories_to_iteration` / `remove_stories_from_iteration`) fire iteration_id-via-label canonical chain alongside legacy icebox_unified manipulation (parallel substrate); `BoardStore::apply` TagAdded/TagRemoved sync raw_labels + label-derived fields |
+| 4 | #1300 | `close_iteration(iteration_number)` canonical-via-GH ceremony refactor: closes GH iteration-issue + promotes members via canonical mutation chain; legacy markers-store path preserved for backward-compat; `CloseIterationKind` dispatcher pins routing |
+| 5 | #1301 | Boot-time markers-store → iteration-issue migration; runs after the existing `#1268/#1271/#1283/#1288/#1294` boot-heal chain; idempotent via title-match guard; duplicate-theme deterministic-suffix (B/C/.../Z/AA) |
+| 6 | #1302 | Markers-store + icebox_unified marker-substrate retirement (close-out) — pending; ships after the renderer transitions to iteration-issue grouping |
+
+**Strangler-fig discipline**: slices 3 + 4 + 5 ship the NEW canonical
+substrate ALONGSIDE the legacy markers-store substrate during the
+transition window. The renderer reads icebox_unified for marker-grouping
+until the renderer-side iteration_id-grouping path lands; slice 6
+retires the legacy substrate atomically once the renderer transition
+is complete. This pattern matches the Storage-trait DI v3-strengthening
+shape: parallel paths during transition, atomic close-out at the
+retirement seam.
+
+**Chokepoint guarantee**: `BoardStore::apply` is the canonical
+mutation-chain chokepoint (#1282 fire-ordering invariant). All eight
+`BoardEvent::StateTransitioned` dispatch sites + all `TagAdded` /
+`TagRemoved` / `StoryClosed` / `StoryCreated` / `LabelsRefreshed`
+routes pass through it; the iteration-substrate inherits the
+fire-ordering + label-decoder + iteration_id-sync guarantees
+automatically. Sister to #1289 contract-test pattern that pins
+FileStorage / MemoryStorage parity at write-time.
+
+**Test-seed-API gap-list (Epic #1247 audit-output)**: the parallel-
+RTL migration audit (#1305) surfaced 6 missing test-seed-APIs gating
+bulk-migration batches 4.3-4.5 — `create_iteration_marker`,
+`add_stories_to_iteration_marker`, `seed_messages`, `seed_unfurls`,
+`seed_reactions`, `seed_pins`. The iteration-substrate pivot (Epic
+#1189) is largely complete in advance of these test-seed-APIs landing;
+the RTL-migration batches build the missing seed-APIs incrementally
+per their batch-scope.
+
+**Stage-fit**: this pivot strengthens v3 internal-bounded-context
+boundaries (iteration-capability has a canonical-via-GH seam) without
+forcing v4 components-within-app. Pre-pivot, iteration-state was
+fragmented across two file-system substrates with no clean seam; post-
+pivot, the canonical-via-GH-issue substrate is the seam.
+
 ## Why this doc exists
 
 bpmux's architectural substrate kept getting re-discovered + lost
