@@ -351,6 +351,97 @@ documents the *intended* state rather than the live state.
 - Off-hours CI cron: schedule e2e at 4am UTC (designer mitigation 4)
   to reduce real-time conflict with Ryan's live dev hours
 
+## Slice 3 cutover (#1253) — routing-mode + rollback runbook
+
+### Routing-mode decision: hard-cutover
+
+#1291 executed a hard-cutover: build-bpmux + playwright-e2e flipped
+from `ubuntu-latest` to `[self-hosted, macos, arm64]` in a single
+commit. No parallel-run period.
+
+**Rationale:** slice-2 (#1252) and the substrate-foundation chain
+(#1289 + #1290 + #1291) shipped with empirical parity verified on
+the post-shutdown-fix CI run (8a6b106 = 309 tests, ~1.02s/test
+avg, 5m16s full-suite). Parity confidence was high enough to skip
+the parallel-run risk-mitigation. Hard-cutover avoids indefinite-
+overlap drift (per `feedback_filing_related_creates_epic_membership_not_deferral`
+sister-class at workflow-axis: temporary-overlap rots into
+permanent-overlap without an end-date forcing function).
+
+### Quota-bypass verification
+
+Post-cutover grep over `.github/workflows/*.yml` returns zero
+hits for `ubuntu-latest` or `macos-latest`:
+
+```
+$ grep -E '^[[:space:]]*runs-on:' .github/workflows/*.yml
+ci.yml:    runs-on: [self-hosted, macos, arm64]   # build-bpmux
+ci.yml:    runs-on: [self-hosted, macos, arm64]   # test
+ci.yml:    runs-on: [self-hosted, macos, arm64]   # playwright-e2e
+self-hosted-runner-smoke.yml: runs-on: [self-hosted, macos, arm64]
+```
+
+All 4 jobs across both workflow files route to the self-hosted
+runner. Forward observation: confirm Repo Settings → Actions →
+Usage shows zero quota-burn ≥1 week post-cutover (filing-time
+verification not possible — runbook entry below).
+
+### Rollback runbook
+
+**Trigger criteria (any one fires):**
+
+1. ≥3 consecutive runner-failure CI runs WITHOUT a workflow-config
+   change between them — indicates substrate problem, not test
+   regression.
+2. bpmux-mac-m1 hardware/network down >15min — `gh run list
+   --limit 5` shows runs queued but not started for >15min.
+3. Ryan-explicit signal: "rollback the CI" or equivalent.
+
+**Rollback procedure:**
+
+1. Revert the relevant `runs-on:` directive(s) in `ci.yml` back to
+   `ubuntu-latest` (build-bpmux + playwright-e2e) or `[self-hosted,
+   macos, arm64]` → `ubuntu-latest` for `test`.
+2. If playwright-e2e is rolled back, restore the matrix shape
+   (`strategy.matrix.shard: [1..6]`, `--shard=${{ matrix.shard }}/6`,
+   `xvfb-run --auto-servernum`, `npx playwright install --with-deps`,
+   cache path `~/.cache/ms-playwright`) — see commit f865f03 for
+   the historical hybrid shape.
+3. Push the revert; CI runs on ubuntu-latest will consume GHA quota
+   again until the self-hosted issue is diagnosed.
+4. File a substrate-Bug under Epic #1247 capturing the failure
+   class. Resumption requires substrate-fix + parity re-validation
+   before re-cutover.
+
+### Backup runner-pool plan
+
+bpmux-mac-m1 is single-runner. Backup-pool options (deferred to
+ongoing-discipline; not in scope for #1253 ship):
+
+1. **Manual-trigger fallback:** Ryan adds a second self-hosted
+   runner (laptop or spare mac) on demand when bpmux-mac-m1 is
+   down. Labels: same `[self-hosted, macos, arm64]` — GH picks
+   whichever is online. No ci.yml change needed.
+2. **Cloud-VM fallback (macOS):** rent a macOS-arm64 cloud VM
+   (MacStadium, AWS EC2 mac instances) on incident. Higher latency
+   to provision; cost-bearing.
+3. **GHA-hosted emergency rollback:** the rollback runbook above
+   restores ubuntu-latest temporarily — burns quota but unblocks
+   CI within minutes.
+
+Operational default: option 3 (rollback runbook). Options 1-2
+documented for future iteration if single-runner availability
+becomes a recurring blocker.
+
+### Forward-time AC observation
+
+AC 6 ("Settings → Actions → Usage shows zero-quota-burn ≥1 week
+post-cutover") cannot be satisfied at filing-time. Tracked as
+post-ship verification: ≥1 week after 2026-05-12 02:00 UTC
+(commit 8a6b106 first all-self-hosted CI), confirm GHA-hosted
+quota consumption is zero. If non-zero, file substrate-Bug —
+indicates a hidden workflow path still consumes quota.
+
 ## UI-overlap mitigation: off-screen window positioning (#1286)
 
 bpmux-mac-m1 IS Ryan's live dev machine. When Playwright e2e tests
