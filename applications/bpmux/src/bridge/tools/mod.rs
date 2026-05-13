@@ -3,8 +3,6 @@
 mod helpers;
 
 mod add_principle;
-#[cfg(test)]
-mod add_stories_to_iteration_tests;
 mod add_value;
 #[cfg(test)]
 mod board_event_fire_ordering_tests;
@@ -111,9 +109,7 @@ pub(in crate::bridge) use get_story::handle_get_story;
 pub(in crate::bridge) use get_sync_status::handle_get_sync_status;
 pub(in crate::bridge) use get_token_report::handle_get_token_report;
 pub(in crate::bridge) use get_usage::handle_get_usage;
-pub(crate) use iteration_markers::{
-    apply_add_stories_to_iteration, apply_remove_stories_from_iteration,
-};
+pub(crate) use iteration_markers::apply_remove_stories_from_iteration;
 pub(in crate::bridge) use iteration_markers::{
     handle_add_stories_to_iteration, handle_remove_stories_from_iteration,
 };

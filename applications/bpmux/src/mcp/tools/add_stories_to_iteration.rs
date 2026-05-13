@@ -7,18 +7,14 @@ pub fn add_stories_to_iteration_tool(description: &'static str) -> Tool {
             "story_ids": {
                 "type": "array",
                 "items": { "type": "integer" },
-                "description": "Ordered list of story numbers to fold above the iteration marker. story_ids[0] lands at the top of the iteration group; story_ids[N-1] lands just above the marker."
+                "description": "List of story numbers to add to the iteration."
             },
-            "marker_id": {
+            "iteration_number": {
                 "type": "integer",
-                "description": "Existing iteration-marker id (from list_iteration_markers). Wins when both marker_id + theme_name are provided."
-            },
-            "theme_name": {
-                "type": "string",
-                "description": "Optional constellation name; used to auto-create a marker (appended to icebox_unified bottom) when marker_id is omitted."
+                "description": "Issue number of the Iteration story (story_type=Iteration). Each story gets the iteration_id label applied via the canonical mutation chain."
             }
         },
-        "required": ["story_ids"]
+        "required": ["story_ids", "iteration_number"]
     });
     Tool::new(
         "add_stories_to_iteration",

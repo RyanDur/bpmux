@@ -996,10 +996,7 @@ pub async fn post_reaction(
 #[derive(Deserialize)]
 pub struct AddStoriesToIterationRequest {
     pub story_ids: Vec<u64>,
-    #[serde(default)]
-    pub marker_id: Option<u64>,
-    #[serde(default)]
-    pub theme_name: Option<String>,
+    pub iteration_number: u64,
 }
 
 pub async fn post_add_stories_to_iteration(
@@ -1007,83 +1004,31 @@ pub async fn post_add_stories_to_iteration(
     axum::Extension(test_refresh): axum::Extension<crate::server::TestRefreshHandle>,
     axum::Json(body): axum::Json<AddStoriesToIterationRequest>,
 ) -> impl IntoResponse {
-    let priority_path = match session::priority::default_priority_path() {
-        Ok(p) => p,
-        Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                json_headers(),
-                err_body(&format!("priority path: {e}")),
-            );
-        }
-    };
     let blockers =
         collect_add_stories_non_icebox_blockers(test_refresh.as_ref(), &body.story_ids).await;
     if !blockers.is_empty() {
         let blocked_body = build_add_stories_blocked_body(&blockers);
         return (StatusCode::CONFLICT, json_headers(), blocked_body);
     }
-    let theme_name_for_label = body.theme_name.clone();
-    let outcome = crate::bridge::tools::apply_add_stories_to_iteration(
-        &priority_path,
-        &session.dir,
-        &body.story_ids,
-        body.marker_id,
-        body.theme_name,
-    );
-    match outcome {
-        Ok(o) => {
-            if let Some(theme) = theme_name_for_label.as_deref()
-                && let Some(refresh) = test_refresh.as_ref()
-                && let Some(iter_number) = find_iteration_issue_by_theme(refresh, theme)
-            {
-                apply_iteration_id_via_canonical_chain(
-                    refresh,
-                    iter_number,
-                    &body.story_ids,
-                    /* add */ true,
-                );
-            }
-            broadcast_board_invalidate(&session);
-            let json = serde_json::to_string(&o).unwrap_or_else(|_| "{}".to_string());
-            (StatusCode::OK, json_headers(), json)
-        }
-        Err(e) => (
-            StatusCode::BAD_REQUEST,
+    let Some(refresh) = test_refresh.as_ref() else {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
             json_headers(),
-            err_body(&format!("add_stories_to_iteration: {e}")),
-        ),
-    }
-}
-
-/// #1299 slice 3 helper: find the open iteration-issue (story_type=Iteration,
-/// title "Iteration {theme_name}") that matches the given theme. Returns
-/// the issue number when found so the caller can label member-stories with
-/// "iteration-#NNNN" via the canonical mutation chain. Returns None when
-/// no matching iteration-issue exists yet — caller falls back to legacy
-/// markers-only behavior during the transition window.
-///
-/// The `refresh` handle here comes from `TestRefreshHandle` (the name is
-/// legacy from #516; the handle is populated in BOTH test-mode AND
-/// production deployments with a configured GitHub tracker per
-/// `build_prod_orchestrator` at server.rs:208). The only deployment shape
-/// that returns `None` is a tracker-less server (no GH credentials / repo),
-/// which has no canonical mutation chain to route through; legacy
-/// icebox_unified manipulation alone applies in that shape.
-pub(crate) fn find_iteration_issue_by_theme(
-    refresh: &Arc<dyn crate::board::RefreshDriver>,
-    theme_name: &str,
-) -> Option<u64> {
-    let expected_title = format!("Iteration {theme_name}");
-    refresh
-        .all_stories()
-        .into_iter()
-        .find(|s| {
-            s.story_type == crate::board::domain::StoryType::Iteration
-                && !s.is_closed
-                && s.title.eq_ignore_ascii_case(&expected_title)
-        })
-        .map(|s| s.number)
+            err_body("add_stories_to_iteration: tracker not configured"),
+        );
+    };
+    apply_iteration_id_via_canonical_chain(
+        refresh,
+        body.iteration_number,
+        &body.story_ids,
+        /* add */ true,
+    );
+    broadcast_board_invalidate(&session);
+    let body_json = serde_json::json!({
+        "iteration_number": body.iteration_number,
+        "story_ids": body.story_ids,
+    });
+    (StatusCode::OK, json_headers(), body_json.to_string())
 }
 
 /// #1299 slice 3 helper: fire TagAdded ("add") or TagRemoved ("remove")
@@ -1092,10 +1037,6 @@ pub(crate) fn find_iteration_issue_by_theme(
 /// (#1298) populates Story.iteration_id from this label, so the
 /// membership-change is observable via list_iteration_children + the
 /// BoardEvent broadcast.
-///
-/// Fires in both test-mode and production-with-GitHub-tracker (see
-/// `find_iteration_issue_by_theme` rustdoc for the `refresh` handle's
-/// production-fidelity provenance).
 pub(crate) fn apply_iteration_id_via_canonical_chain(
     refresh: &Arc<dyn crate::board::RefreshDriver>,
     iteration_number: u64,
