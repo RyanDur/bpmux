@@ -396,10 +396,6 @@ pub async fn run_server(
             axum::routing::post(transport::rest::post_close_iteration),
         )
         .route(
-            "/api/iteration_markers/{id}/reorder",
-            axum::routing::post(transport::rest::post_reorder_iteration_marker),
-        )
-        .route(
             "/api/add_stories_to_iteration",
             axum::routing::post(transport::rest::post_add_stories_to_iteration),
         )
