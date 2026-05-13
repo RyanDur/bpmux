@@ -11,11 +11,6 @@ import DrillIn from './DrillIn'
 import Epic from './Epic'
 import StoryRow from './StoryRow'
 import { useRefetchOnReconnect } from './useRefetchOnReconnect'
-import IterationGroup from './IterationGroup'
-import {
-  useIterationMarkers,
-  type IterationMarker as IterationMarkerData
-} from '../hooks/useIterationMarkers'
 import {
   columnFor,
   GROUP_ORDER,
@@ -25,8 +20,7 @@ import {
   type BoardResponse,
   type BoardStory,
   type ColumnState,
-  type GroupSpec,
-  type IceboxItem
+  type GroupSpec
 } from './types'
 import './Board.css'
 
@@ -105,11 +99,6 @@ interface BoardProps {
 
 function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Element {
   const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
-  const iterationMarkers = useIterationMarkers({
-    apiBase: bridge?.apiBase,
-    authToken: bridge?.authToken,
-    messages
-  })
   const [data, setData] = useState<BoardResponse | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
@@ -506,8 +495,6 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
               group={group}
               stories={grouped.get(group.state) ?? []}
               epicTitleByNumber={epicTitleByNumber}
-              iterationMarkers={group.state === 'icebox' ? iterationMarkers : []}
-              iceboxUnified={group.state === 'icebox' ? (data?.icebox_unified ?? []) : []}
               loading={loading && !data}
               selectedNumber={effectiveSelected}
               onOpen={handleOpen}
@@ -528,12 +515,6 @@ interface GroupProps {
   group: GroupSpec
   stories: BoardStory[]
   epicTitleByNumber: Map<number, string>
-  iterationMarkers: IterationMarkerData[]
-  /** #1258 α-substrate: unified ordering for icebox column. Empty
-   * for non-icebox columns. When present, BoardGroup interleaves
-   * markers + stories per the listed order; when empty (legacy
-   * pre-α state), falls back to markers-then-stories concatenation. */
-  iceboxUnified: IceboxItem[]
   loading: boolean
   selectedNumber: number | null
   onOpen: (n: number) => void
@@ -551,8 +532,6 @@ function BoardGroup({
   group,
   stories,
   epicTitleByNumber,
-  iterationMarkers,
-  iceboxUnified,
   loading,
   selectedNumber,
   onOpen,
@@ -562,8 +541,6 @@ function BoardGroup({
   collapsed,
   onToggleCollapse
 }: GroupProps): React.JSX.Element {
-  // #1258 α-substrate: drag-reorder is enabled in both ready (legacy)
-  // and icebox (cross-marker iteration assignment).
   const draggable =
     (group.state === 'ready' || group.state === 'icebox') && onReorder !== undefined
   const [dropAt, setDropAt] = useState<number | null>(null)
@@ -640,152 +617,8 @@ function BoardGroup({
               </li>
             ))}
           </ul>
-        ) : stories.length === 0 && iterationMarkers.length === 0 ? (
+        ) : stories.length === 0 ? (
           <p className="board-group-empty">none</p>
-        ) : iterationMarkers.length > 0 && iceboxUnified.length > 0 ? (
-          <div
-            className="board-icebox-sections"
-            data-test="board-icebox-unified"
-            onDragOver={handleListDragOver}
-            onDrop={handleDrop}
-            onDragLeave={() => setDropAt(null)}
-          >
-            {(() => {
-              const storyByNumber = new Map(stories.map((s) => [s.number, s]))
-              const markerById = new Map(iterationMarkers.map((m) => [m.id, m]))
-              const sections: Array<{
-                kind: 'iteration' | 'unscheduled'
-                marker?: IterationMarkerData
-                variant?: 'next' | 'future'
-                stories: BoardStory[]
-                baseIndex: number
-              }> = []
-              const consumed = new Set<number>()
-              let bucket: BoardStory[] = []
-              let baseIndex = 0
-              let markerSeen = 0
-              for (const u of iceboxUnified) {
-                if (u.kind === 'story') {
-                  const s = storyByNumber.get(u.number)
-                  if (s !== undefined) {
-                    bucket.push(s)
-                    consumed.add(u.number)
-                  }
-                } else {
-                  const m = markerById.get(u.id)
-                  if (m !== undefined) {
-                    sections.push({
-                      kind: 'iteration',
-                      marker: m,
-                      variant: markerSeen === 0 ? 'next' : 'future',
-                      stories: bucket,
-                      baseIndex
-                    })
-                    baseIndex += bucket.length
-                    bucket = []
-                    markerSeen += 1
-                  }
-                }
-              }
-              const trailing: BoardStory[] = [
-                ...bucket,
-                ...stories.filter((s) => !consumed.has(s.number))
-              ]
-              if (trailing.length > 0) {
-                sections.push({
-                  kind: 'unscheduled',
-                  stories: trailing,
-                  baseIndex
-                })
-              }
-              const total = sections.reduce((sum, sec) => sum + sec.stories.length, 0)
-              return sections.map((section) => {
-                if (section.kind === 'iteration' && section.marker) {
-                  return (
-                    <IterationGroup
-                      key={`marker-${section.marker.id}`}
-                      stories={section.stories}
-                      marker={section.marker}
-                      variant={section.variant ?? 'future'}
-                      viewerIdentity={RENDERER_IDENTITY}
-                      selectedNumber={selectedNumber}
-                      draggable={draggable}
-                      draggingNumber={draggingNumber}
-                      baseIndex={section.baseIndex}
-                      total={total}
-                      dropAt={dropAt}
-                      epicTitleByNumber={epicTitleByNumber}
-                      onOpen={onOpen}
-                      onOpenTimeline={onOpenTimeline}
-                      onSelect={onSelect}
-                      onKeyboardReorder={
-                        draggable && onReorder !== undefined
-                          ? (storyNumber, direction) => {
-                              const idx = section.baseIndex
-                              const localIdx = section.stories.findIndex(
-                                (s) => s.number === storyNumber
-                              )
-                              const i = idx + localIdx
-                              if (direction === 'up' && i === 0) return
-                              if (direction === 'down' && i === total - 1) return
-                              const insertAt =
-                                direction === 'up'
-                                  ? Math.max(0, i - 1)
-                                  : Math.min(total, i + 2)
-                              onReorder(group.state, storyNumber, insertAt)
-                            }
-                          : undefined
-                      }
-                      onRowDragOver={handleRowDragOver}
-                      onDragStartRow={(storyNumber) => setDraggingNumber(storyNumber)}
-                      onDragEndRow={() => {
-                        setDraggingNumber(null)
-                        setDropAt(null)
-                      }}
-                    />
-                  )
-                }
-                return (
-                  <ul
-                    key="unscheduled"
-                    className="board-story-list board-iteration-unscheduled"
-                    data-test="iteration-unscheduled"
-                  >
-                    {section.stories.map((story, localIdx) => {
-                      const i = section.baseIndex + localIdx
-                      return (
-                        <StoryRow
-                          key={story.number}
-                          story={story}
-                          parentEpicTitle={
-                            story.parent_epic !== undefined
-                              ? epicTitleByNumber.get(story.parent_epic)
-                              : undefined
-                          }
-                          selected={story.number === selectedNumber}
-                          draggable={draggable}
-                          dragging={draggingNumber === story.number}
-                          dropBefore={dropAt === i}
-                          dropAfterLast={dropAt === total && i === total - 1}
-                          position={i + 1}
-                          total={total}
-                          onOpen={onOpen}
-                          onOpenTimeline={onOpenTimeline}
-                          onSelect={onSelect}
-                          onRowDragOver={handleRowDragOver(i)}
-                          onDragStartRow={() => setDraggingNumber(story.number)}
-                          onDragEndRow={() => {
-                            setDraggingNumber(null)
-                            setDropAt(null)
-                          }}
-                        />
-                      )
-                    })}
-                  </ul>
-                )
-              })
-            })()}
-          </div>
         ) : (
           <ul
             className="board-story-list"

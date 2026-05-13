@@ -388,10 +388,6 @@ pub async fn run_server(
             axum::routing::get(transport::rest::get_reactions).post(transport::rest::post_reaction),
         )
         .route(
-            "/api/iteration_markers",
-            axum::routing::get(transport::rest::get_iteration_markers),
-        )
-        .route(
             "/api/close_iteration",
             axum::routing::post(transport::rest::post_close_iteration),
         )

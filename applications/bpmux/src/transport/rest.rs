@@ -993,42 +993,6 @@ pub async fn post_reaction(
     )
 }
 
-pub async fn get_iteration_markers(
-    State(session): State<Arc<session::Session>>,
-) -> impl IntoResponse {
-    let store = session::iteration_markers::load(&session.dir);
-    let markers = session::iteration_markers::list(&store);
-    // #1288 Part B: enrich each marker with its CURRENT folded-stories
-    // derived from icebox_unified positional-adjacency. The
-    // marker.stories field on disk is a snapshot used by boot-heal;
-    // the response field reflects live state so callers (UI counters,
-    // tool-output verification) see the canonical positional truth.
-    let priority_path = session::priority::default_priority_path();
-    let icebox_unified = match priority_path {
-        Ok(path) => session::priority::load_priority(&path).icebox_unified,
-        Err(_) => Vec::new(),
-    };
-    let enriched: Vec<serde_json::Value> = markers
-        .iter()
-        .map(|m| {
-            let stories =
-                session::iteration_markers::compute_fold_above_marker(&icebox_unified, m.id);
-            serde_json::json!({
-                "id": m.id,
-                "theme_name": m.theme_name,
-                "position": m.position,
-                "created_at": m.created_at,
-                "stories": stories,
-            })
-        })
-        .collect();
-    (
-        StatusCode::OK,
-        json_headers(),
-        serde_json::to_string(&enriched).unwrap_or_else(|_| "[]".to_string()),
-    )
-}
-
 #[derive(Deserialize)]
 pub struct AddStoriesToIterationRequest {
     pub story_ids: Vec<u64>,
