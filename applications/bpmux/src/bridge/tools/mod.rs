@@ -48,8 +48,6 @@ mod list_ready;
 mod list_ready_tests;
 mod read_messages;
 mod remove_principle;
-#[cfg(test)]
-mod remove_stories_from_iteration_tests;
 mod rerun_ci;
 mod rework_context;
 mod save_bookmark;
@@ -109,7 +107,6 @@ pub(in crate::bridge) use get_story::handle_get_story;
 pub(in crate::bridge) use get_sync_status::handle_get_sync_status;
 pub(in crate::bridge) use get_token_report::handle_get_token_report;
 pub(in crate::bridge) use get_usage::handle_get_usage;
-pub(crate) use iteration_markers::apply_remove_stories_from_iteration;
 pub(in crate::bridge) use iteration_markers::{
     handle_add_stories_to_iteration, handle_remove_stories_from_iteration,
 };

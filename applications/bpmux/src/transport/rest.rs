@@ -1077,53 +1077,33 @@ pub async fn post_remove_stories_from_iteration(
     axum::Extension(test_refresh): axum::Extension<crate::server::TestRefreshHandle>,
     axum::Json(body): axum::Json<RemoveStoriesFromIterationRequest>,
 ) -> impl IntoResponse {
-    let priority_path = match session::priority::default_priority_path() {
-        Ok(p) => p,
-        Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                json_headers(),
-                err_body(&format!("priority path: {e}")),
+    let Some(refresh) = test_refresh.as_ref() else {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json_headers(),
+            err_body("remove_stories_from_iteration: tracker not configured"),
+        );
+    };
+    let pre_iteration_ids: Vec<(u64, Option<u64>)> = body
+        .story_ids
+        .iter()
+        .map(|&n| (n, refresh.store().story(n).and_then(|s| s.iteration_id)))
+        .collect();
+    for (number, iteration_id) in &pre_iteration_ids {
+        if let Some(iter_n) = iteration_id {
+            apply_iteration_id_via_canonical_chain(
+                refresh,
+                *iter_n,
+                &[*number],
+                /*add*/ false,
             );
         }
-    };
-    let pre_iteration_ids: Vec<(u64, Option<u64>)> = match test_refresh.as_ref() {
-        Some(refresh) => body
-            .story_ids
-            .iter()
-            .map(|&n| (n, refresh.store().story(n).and_then(|s| s.iteration_id)))
-            .collect(),
-        None => Vec::new(),
-    };
-    let outcome = crate::bridge::tools::apply_remove_stories_from_iteration(
-        &priority_path,
-        &session.dir,
-        &body.story_ids,
-    );
-    match outcome {
-        Ok(o) => {
-            if let Some(refresh) = test_refresh.as_ref() {
-                for (number, iteration_id) in &pre_iteration_ids {
-                    if let Some(iter_n) = iteration_id {
-                        apply_iteration_id_via_canonical_chain(
-                            refresh,
-                            *iter_n,
-                            &[*number],
-                            /*add*/ false,
-                        );
-                    }
-                }
-            }
-            broadcast_board_invalidate(&session);
-            let json = serde_json::to_string(&o).unwrap_or_else(|_| "{}".to_string());
-            (StatusCode::OK, json_headers(), json)
-        }
-        Err(e) => (
-            StatusCode::BAD_REQUEST,
-            json_headers(),
-            err_body(&format!("remove_stories_from_iteration: {e}")),
-        ),
     }
+    broadcast_board_invalidate(&session);
+    let body_json = serde_json::json!({
+        "story_ids": body.story_ids,
+    });
+    (StatusCode::OK, json_headers(), body_json.to_string())
 }
 
 #[derive(Default, Deserialize)]
