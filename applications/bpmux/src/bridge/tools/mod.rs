@@ -15,8 +15,6 @@ mod classifier_misfire;
 mod close_iteration_tests;
 #[cfg(test)]
 mod create_iteration_tests;
-#[cfg(test)]
-mod delete_iteration_marker_tests;
 mod dev_in_flight;
 #[cfg(test)]
 mod edit_story_tests;
@@ -118,8 +116,7 @@ pub(in crate::bridge) use get_usage::handle_get_usage;
 #[cfg(test)]
 pub(in crate::bridge) use iteration_markers::apply_reorder_iteration_marker;
 pub(crate) use iteration_markers::{
-    apply_add_stories_to_iteration, apply_delete_iteration_marker,
-    apply_remove_stories_from_iteration,
+    apply_add_stories_to_iteration, apply_remove_stories_from_iteration,
 };
 pub(in crate::bridge) use iteration_markers::{
     handle_add_stories_to_iteration, handle_remove_stories_from_iteration,
