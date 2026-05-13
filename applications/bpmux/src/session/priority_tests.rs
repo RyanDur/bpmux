@@ -244,147 +244,6 @@ fn reorder_icebox_unified_clamps_position() {
     );
 }
 
-// ── #1258 AC 22 + 30: rollback failure-mode tests ──
-
-#[test]
-fn rollback_on_markers_save_failure_restores_priority() {
-    let mut priority = PriorityIndex::default();
-    priority
-        .icebox_unified
-        .push(IceboxItem::Story { number: 100 });
-    priority.icebox_unified.push(IceboxItem::Marker { id: 7 });
-    let snapshot = priority.clone();
-    let mut markers = vec![marker(7, 0)];
-
-    use std::cell::RefCell;
-    let priority_saves: RefCell<Vec<PriorityIndex>> = RefCell::new(Vec::new());
-
-    let result = apply_close_iteration_with_rollback(
-        &mut priority,
-        &mut markers,
-        &snapshot,
-        |p: &PriorityIndex| {
-            priority_saves.borrow_mut().push(p.clone());
-            Ok(())
-        },
-        |_m: &[super::super::iteration_markers::IterationMarker]| Err("disk full".to_string()),
-    );
-
-    assert!(result.is_err(), "expected save-failure to surface as Err");
-    let err = result.unwrap_err();
-    assert!(
-        err.contains("rolled back"),
-        "expected rollback in error message: {err}"
-    );
-    let saves = priority_saves.borrow();
-    assert_eq!(
-        saves.len(),
-        2,
-        "priority saved twice (once with mutation, once for rollback)"
-    );
-    // Second save = snapshot (rollback).
-    assert_eq!(saves[1].icebox_unified, snapshot.icebox_unified);
-}
-
-#[test]
-fn rollback_on_markers_save_failure_rollback_save_also_fails_returns_double_error() {
-    let mut priority = PriorityIndex::default();
-    priority.icebox_unified.push(IceboxItem::Marker { id: 7 });
-    let snapshot = priority.clone();
-    let mut markers = vec![marker(7, 0)];
-
-    use std::cell::RefCell;
-    let save_count: RefCell<u32> = RefCell::new(0);
-
-    let result = apply_close_iteration_with_rollback(
-        &mut priority,
-        &mut markers,
-        &snapshot,
-        |_: &PriorityIndex| {
-            let mut n = save_count.borrow_mut();
-            *n += 1;
-            if *n == 1 {
-                Ok(())
-            } else {
-                Err("rollback save failed".to_string())
-            }
-        },
-        |_: &[super::super::iteration_markers::IterationMarker]| {
-            Err("markers save failed".to_string())
-        },
-    );
-
-    let err = result.unwrap_err();
-    assert!(
-        err.contains("rollback also failed"),
-        "expected double-fail message: {err}"
-    );
-    assert_eq!(*save_count.borrow(), 2);
-}
-
-#[test]
-fn rollback_no_op_when_persistence_succeeds() {
-    let mut priority = PriorityIndex::default();
-    priority
-        .icebox_unified
-        .push(IceboxItem::Story { number: 100 });
-    priority.icebox_unified.push(IceboxItem::Marker { id: 7 });
-    let snapshot = priority.clone();
-    let mut markers = vec![marker(7, 0)];
-
-    use std::cell::RefCell;
-    let priority_saves: RefCell<u32> = RefCell::new(0);
-
-    let result = apply_close_iteration_with_rollback(
-        &mut priority,
-        &mut markers,
-        &snapshot,
-        |_: &PriorityIndex| {
-            *priority_saves.borrow_mut() += 1;
-            Ok(())
-        },
-        |_: &[super::super::iteration_markers::IterationMarker]| Ok(()),
-    );
-
-    assert!(result.is_ok());
-    let outcome = result.unwrap();
-    assert_eq!(outcome.deleted_marker_id, Some(7));
-    assert_eq!(outcome.promoted, vec![100]);
-    assert_eq!(
-        *priority_saves.borrow(),
-        1,
-        "priority saved once (no rollback path)"
-    );
-}
-
-#[test]
-fn rollback_priority_save_failure_short_circuits_before_markers() {
-    let mut priority = PriorityIndex::default();
-    priority.icebox_unified.push(IceboxItem::Marker { id: 7 });
-    let snapshot = priority.clone();
-    let mut markers = vec![marker(7, 0)];
-
-    use std::cell::RefCell;
-    let markers_save_called: RefCell<bool> = RefCell::new(false);
-
-    let result = apply_close_iteration_with_rollback(
-        &mut priority,
-        &mut markers,
-        &snapshot,
-        |_: &PriorityIndex| Err("priority save failed".to_string()),
-        |_: &[super::super::iteration_markers::IterationMarker]| {
-            *markers_save_called.borrow_mut() = true;
-            Ok(())
-        },
-    );
-
-    assert!(result.is_err());
-    assert!(
-        !*markers_save_called.borrow(),
-        "markers save should NOT be called when priority save fails first"
-    );
-}
-
 use crate::board::domain::StoryState;
 
 fn states_map(entries: &[(u64, StoryState)]) -> std::collections::HashMap<u64, StoryState> {
@@ -586,26 +445,6 @@ fn auto_heal_ready_idempotent_second_run_no_op() {
     assert_eq!(index.columns.get("ready").unwrap(), &vec![1251]);
 }
 
-// ── #1272: close_iteration_atomic dedup before append ──
-
-#[test]
-fn close_iteration_promote_batch_dedups_existing_ready_entries() {
-    let mut index = PriorityIndex::default();
-    // Pre-existing ready column with #100. close_iteration promotes
-    // #100 again — must dedup so the array stays unique.
-    index.columns.insert("ready".to_string(), vec![100]);
-    index.icebox_unified.push(IceboxItem::Story { number: 100 });
-    index.icebox_unified.push(IceboxItem::Marker { id: 7 });
-    let mut markers = vec![marker(7, 0)];
-    let outcome = close_iteration_atomic(&mut index, &mut markers);
-    assert_eq!(outcome.promoted, vec![100]);
-    assert_eq!(
-        index.columns.get("ready").unwrap(),
-        &vec![100],
-        "no duplicate — remove-then-append idempotent"
-    );
-}
-
 // ── #1295: load_priority defensively restores markers from markers-store ──
 
 #[tokio::test]
@@ -720,32 +559,6 @@ async fn load_priority_raw_skips_marker_restore_for_boot_heal_callers() {
     assert!(
         raw.icebox_unified.is_empty(),
         "raw load skips marker-restore"
-    );
-}
-
-#[test]
-fn close_iteration_promote_batch_running_twice_does_not_duplicate() {
-    let mut index = PriorityIndex::default();
-    index.icebox_unified.push(IceboxItem::Story { number: 100 });
-    index.icebox_unified.push(IceboxItem::Story { number: 200 });
-    index.icebox_unified.push(IceboxItem::Marker { id: 7 });
-    index.icebox_unified.push(IceboxItem::Story { number: 300 });
-    index.icebox_unified.push(IceboxItem::Marker { id: 8 });
-    let mut markers = vec![marker(7, 0), marker(8, 1)];
-
-    // First close_iteration: marker 7 + stories 100/200
-    let first = close_iteration_atomic(&mut index, &mut markers);
-    assert_eq!(first.promoted, vec![100, 200]);
-
-    // Repeat (idempotency check; in production this'd be a second
-    // close_iteration on the next marker).
-    let second = close_iteration_atomic(&mut index, &mut markers);
-    assert_eq!(second.promoted, vec![300]);
-
-    assert_eq!(
-        index.columns.get("ready").unwrap(),
-        &vec![100, 200, 300],
-        "no duplicates across two close_iteration fires"
     );
 }
 

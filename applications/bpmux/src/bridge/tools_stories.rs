@@ -1063,42 +1063,6 @@ pub(super) async fn handle_accept_story(
     Ok(format!("#{number} accepted and closed"))
 }
 
-pub(crate) fn promote_stories_to_ready_via_canonical_chain(
-    refresh: &std::sync::Arc<dyn crate::board::RefreshDriver>,
-    promoted: &[u64],
-    actor: String,
-) -> Result<(), String> {
-    let meta = crate::board::events::EventMeta {
-        actor,
-        ts: chrono::Utc::now(),
-        peer_id: crate::board::PeerId::local(),
-    };
-    for &n in promoted {
-        reap_workflow_labels(refresh.as_ref(), n, &meta, "ready")?;
-        let already_ready = refresh
-            .story(n)
-            .map(|s| s.raw_labels.iter().any(|l| l == "ready"))
-            .unwrap_or(false);
-        if !already_ready {
-            refresh
-                .mutate_sync(crate::board::BoardEvent::TagAdded {
-                    meta: meta.clone(),
-                    number: n,
-                    label: "ready".to_string(),
-                })
-                .map_err(|e| format!("#{n} ready-tag enqueue failed: {e}"))?;
-        }
-        refresh
-            .mutate_sync(crate::board::BoardEvent::StateTransitioned {
-                meta: meta.clone(),
-                number: n,
-                new_state: crate::board::domain::StoryState::Ready,
-            })
-            .map_err(|e| format!("#{n} state-transition enqueue failed: {e}"))?;
-    }
-    Ok(())
-}
-
 pub(crate) async fn accept_via_canonical_store(
     refresh: &std::sync::Arc<dyn crate::board::RefreshDriver>,
     number: u64,

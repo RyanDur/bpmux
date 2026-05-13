@@ -1191,137 +1191,23 @@ pub struct CloseIterationRequest {
     pub iteration_number: Option<u64>,
 }
 
-/// #1300 slice 4 path-routing decision for close_iteration ceremony.
-/// `Canonical(n)` selects the canonical-via-GH path (closes the
-/// Iteration-issue + promotes members via iteration_id); `Legacy`
-/// selects the markers-store path (priority.json icebox_unified +
-/// markers-store manipulation per #1258 r3 ceremony). The legacy path
-/// retires at slice 6 #1302 close-out; until then dispatcher routing
-/// is the only seam preventing cross-contamination — AC10 makes the
-/// routing decision observable so regression tests can pin it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum CloseIterationKind {
-    Canonical(u64),
-    Legacy,
-}
-
-pub(crate) fn close_iteration_kind(iteration_number: Option<u64>) -> CloseIterationKind {
-    match iteration_number {
-        Some(n) => CloseIterationKind::Canonical(n),
-        None => CloseIterationKind::Legacy,
-    }
-}
-
 pub async fn post_close_iteration(
     State(session): State<Arc<session::Session>>,
     axum::Extension(tracker): axum::Extension<TrackerHandle>,
     axum::Extension(test_refresh): axum::Extension<crate::server::TestRefreshHandle>,
     body: Option<axum::Json<CloseIterationRequest>>,
 ) -> impl IntoResponse {
-    let kind = close_iteration_kind(body.and_then(|b| b.0.iteration_number));
-    if let CloseIterationKind::Canonical(iter_n) = kind {
-        return post_close_iteration_canonical(session, tracker, test_refresh, iter_n).await;
-    }
-    let priority_path = match session::priority::default_priority_path() {
-        Ok(p) => p,
-        Err(e) => {
+    let iter_n = match body.and_then(|b| b.0.iteration_number) {
+        Some(n) => n,
+        None => {
             return (
-                StatusCode::INTERNAL_SERVER_ERROR,
+                StatusCode::BAD_REQUEST,
                 json_headers(),
-                err_body(&format!("priority path: {e}")),
+                err_body("close_iteration requires iteration_number (canonical Iteration issue#)."),
             );
         }
     };
-    let pre_priority = session::priority::load_priority(&priority_path);
-    let blockers = collect_iteration_close_blockers(
-        test_refresh.as_ref(),
-        &pre_priority.current_iteration_stories,
-    )
-    .await;
-    if !blockers.is_empty() {
-        let body = build_close_iteration_blocked_body(&blockers);
-        broadcast_iteration_close_blocked(&session, &blockers);
-        return (StatusCode::CONFLICT, json_headers(), body);
-    }
-    let priority_snapshot = session::priority::load_priority(&priority_path);
-    let markers_snapshot = session::iteration_markers::load(&session.dir);
-    let mut priority = priority_snapshot.clone();
-    let mut markers_store = markers_snapshot.clone();
-    let session_dir = session.dir.clone();
-    let priority_path_for_save = priority_path.clone();
-    let outcome = match session::priority::apply_close_iteration_with_rollback(
-        &mut priority,
-        &mut markers_store.markers,
-        &priority_snapshot,
-        |p: &session::priority::PriorityIndex| {
-            session::priority::save_priority(&priority_path_for_save, p).map_err(|e| e.to_string())
-        },
-        |m: &[session::iteration_markers::IterationMarker]| {
-            let store = session::iteration_markers::IterationMarkersStore {
-                markers: m.to_vec(),
-                next_id: markers_store.next_id,
-            };
-            session::iteration_markers::save(&session_dir, &store).map_err(|e| e.to_string())
-        },
-    ) {
-        Ok(o) => o,
-        Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                json_headers(),
-                err_body(&format!("close_iteration: {e}")),
-            );
-        }
-    };
-    if let Some(refresh) = test_refresh.as_ref()
-        && let Err(e) = crate::bridge::tools_stories::promote_stories_to_ready_via_canonical_chain(
-            refresh,
-            &outcome.promoted,
-            "pm".to_string(),
-        )
-    {
-        let _ = session::priority::save_priority(&priority_path, &priority_snapshot);
-        let _ = session::iteration_markers::save(&session.dir, &markers_snapshot);
-        return (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            json_headers(),
-            err_body(&format!(
-                "close_iteration: canonical state-transition failed: {e} (priority + markers rolled back)"
-            )),
-        );
-    }
-    let payload = session::message::StateDeltaPayload::IterationClose {
-        promoted: outcome.promoted.clone(),
-        deleted_marker_id: outcome.deleted_marker_id,
-    };
-    let delta_msg = session::Message {
-        from: "bpmux".to_string(),
-        text: String::new(),
-        ts: chrono::Utc::now(),
-        message_type: session::MessageType::StateDelta,
-        state_delta: Some(payload),
-        ..session::Message::default()
-    };
-    if let Some(t) = tracker.as_ref() {
-        for n in outcome.promoted.iter() {
-            let body = "iteration-close: promoted to ready (story was above the topmost iteration marker; close_iteration consumed the marker).";
-            if let Err(e) = t.post_story_comment(*n, body).await {
-                session::diag::log_diag(&format!(
-                    "[#1258 AC17] comment_on_story #{n} (promoted) failed: {e}"
-                ));
-            }
-        }
-    }
-    if let Err(e) = session.broadcast(&delta_msg) {
-        session::diag::log_diag(&format!(
-            "post_close_iteration: state-delta broadcast failed: {e}"
-        ));
-    }
-    let body = serde_json::json!({
-        "promoted": outcome.promoted,
-        "deleted_marker_id": outcome.deleted_marker_id,
-    });
-    (StatusCode::OK, json_headers(), body.to_string())
+    post_close_iteration_canonical(session, tracker, test_refresh, iter_n).await
 }
 
 /// #1300 slice 4 canonical-via-GH close_iteration path. Closes the
@@ -1656,64 +1542,6 @@ pub(crate) struct IterationCloseBlocker {
     pub number: u64,
     pub title: String,
     pub state: String,
-}
-
-pub(crate) async fn collect_iteration_close_blockers(
-    refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
-    current_iteration_stories: &[u64],
-) -> Vec<IterationCloseBlocker> {
-    if current_iteration_stories.is_empty() {
-        return Vec::new();
-    }
-    let Some(refresh) = refresh else {
-        return Vec::new();
-    };
-    let mut stories = refresh.all_stories();
-    if stories.is_empty() {
-        if let Err(e) = refresh.refresh_all().await {
-            session::diag::log_diag(&format!(
-                "[#1258 guard] refresh_all failed: {e}; treating as no blockers"
-            ));
-            return Vec::new();
-        }
-        stories = refresh.all_stories();
-    }
-    let id_set: std::collections::HashSet<u64> =
-        current_iteration_stories.iter().copied().collect();
-    stories
-        .into_iter()
-        .filter(|s| id_set.contains(&s.number))
-        .filter(|s| {
-            matches!(
-                s.state,
-                crate::board::domain::StoryState::Ready
-                    | crate::board::domain::StoryState::InProgress
-                    | crate::board::domain::StoryState::DeskCheck
-                    | crate::board::domain::StoryState::Delivered
-            )
-        })
-        .map(|s| IterationCloseBlocker {
-            number: s.number,
-            title: s.title,
-            state: s.state.as_str().to_string(),
-        })
-        .collect()
-}
-
-fn build_close_iteration_blocked_body(blockers: &[IterationCloseBlocker]) -> String {
-    let names: Vec<String> = blockers
-        .iter()
-        .map(|b| format!("#{} ({} — {})", b.number, b.state, b.title))
-        .collect();
-    let body = serde_json::json!({
-        "error": format!(
-            "close_iteration blocked: {} non-accepted stories in pipeline: {}",
-            blockers.len(),
-            names.join(", ")
-        ),
-        "blockers": blockers,
-    });
-    body.to_string()
 }
 
 fn broadcast_iteration_close_blocked(
