@@ -188,16 +188,18 @@ relocating capability state behind a canonical seam.
 | 3 | #1299 | Membership tools (`add_stories_to_iteration` / `remove_stories_from_iteration`) fire iteration_id-via-label canonical chain alongside legacy icebox_unified manipulation (parallel substrate); `BoardStore::apply` TagAdded/TagRemoved sync raw_labels + label-derived fields |
 | 4 | #1300 | `close_iteration(iteration_number)` canonical-via-GH ceremony refactor: closes GH iteration-issue + promotes members via canonical mutation chain; legacy markers-store path preserved for backward-compat; `CloseIterationKind` dispatcher pins routing |
 | 5 | #1301 | One-shot manual migration recipe (no boot-time pipeline): PM reads `iteration_markers.json`, fires `create_iteration(theme_name)` for each active iteration, then `add_stories_to_iteration(iteration_number, story_ids)` for the members. Per Ryan 2026-05-12 22:54 UTC ("we shouldn't need it after this... just look at whats in the json and use the functions"): one-shot ceremonies don't need automated pipelines — imperative-fire-over-pipeline. Earlier auto-pipeline shipped at commits c316a87 + 4e4e610 was retired in this slice. |
-| 6 | #1302 | Markers-store + icebox_unified marker-substrate retirement (close-out) — pending; ships after the renderer transitions to iteration-issue grouping |
+| 6 | #1302 | Markers-store + icebox_unified marker-substrate retirement (close-out) — shipped via 9-commit vertical-slice chain: Phase 1 (MCP tool schemas) + Slices A/B/C/D (per-feature verticals: create / delete / reorder / read+renderer) + E.1 (close_iteration legacy path) + E.2 (add_stories markers coupling) + E.3 (remove_stories markers coupling) + E.4+E.5 (IceboxItem::Marker schema variant + session::iteration_markers module). ~4000 lines net deleted. Canonical-via-GH (story_type=Iteration + iteration_id label) is now sole substrate. Tolerant deserializer in priority.rs filters legacy `{kind:marker}` entries from existing priority.json on read for one-shot migration. |
 
-**Strangler-fig discipline**: slices 3 + 4 + 5 ship the NEW canonical
-substrate ALONGSIDE the legacy markers-store substrate during the
-transition window. The renderer reads icebox_unified for marker-grouping
-until the renderer-side iteration_id-grouping path lands; slice 6
-retires the legacy substrate atomically once the renderer transition
-is complete. This pattern matches the Storage-trait DI v3-strengthening
-shape: parallel paths during transition, atomic close-out at the
-retirement seam.
+**Strangler-fig discipline**: slices 3 + 4 + 5 shipped the NEW
+canonical substrate ALONGSIDE the legacy markers-store substrate
+during the transition window. The renderer read icebox_unified for
+marker-grouping until Slice D retired the renderer-side hook +
+components and the icebox column transitioned to flat-list rendering.
+Slice 6 then retired the legacy substrate atomically — each
+sub-slice retired one feature end-to-end across all layers
+(consumer-side before producer-side, per vertical-slice canon). This
+pattern matches the Storage-trait DI v3-strengthening shape: parallel
+paths during transition, atomic close-out at the retirement seam.
 
 **Chokepoint guarantee**: `BoardStore::apply` is the canonical
 mutation-chain chokepoint (#1282 fire-ordering invariant). All eight
