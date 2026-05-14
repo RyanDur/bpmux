@@ -27,13 +27,11 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
-
-interface SeedMessage {
-  from: string
-  text: string
-  ts: string
-  message_type: string
-}
+import {
+  resetMessages,
+  seedMessages,
+  type SeedMessage
+} from '../../../../test/fixtures/seedMessages'
 
 const SEED_MESSAGES: SeedMessage[] = [
   {
@@ -50,24 +48,6 @@ const SEED_MESSAGES: SeedMessage[] = [
   }
 ]
 
-async function seedMessages(
-  apiBase: string,
-  authToken: string,
-  messages: SeedMessage[]
-): Promise<void> {
-  const res = await fetch(`${apiBase}/api/test/seed_messages`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${authToken}`
-    },
-    body: JSON.stringify({ messages })
-  })
-  if (!res.ok) {
-    throw new Error(`seed_messages POST failed: ${res.status} ${await res.text()}`)
-  }
-}
-
 describe('human-side E2E #476 — read-class — message list (RTL+real-backend archetype)', () => {
   let rendered: RenderAppResult | null = null
 
@@ -79,13 +59,15 @@ describe('human-side E2E #476 — read-class — message list (RTL+real-backend 
   it(
     'seeded chat messages render with from + text in the message list',
     async () => {
-      // Seed-before-mount mirrors the Playwright spec's ordering
-      // (launch.ts seeds messages between waitForHealthz + the renderer
-      // attach). The renderer's useMessageHistory fetches /api/messages
-      // at mount, picking up the seeded rows from storage.
+      // Reset-then-seed-before-mount: vitest globalSetup shares ONE
+      // backend per-run, so state leaks across tests. Reset wipes the
+      // message-store; seed installs only this test's fixture; renderApp
+      // then mounts and useMessageHistory fetches /api/messages, picking
+      // up exactly the seeded rows (no cross-test bleed).
       const port = inject('bpmuxBackendPort')
       const authToken = inject('bpmuxAuthToken')
       const apiBase = `http://127.0.0.1:${port}`
+      await resetMessages(apiBase, authToken)
       await seedMessages(apiBase, authToken, SEED_MESSAGES)
 
       rendered = renderApp()

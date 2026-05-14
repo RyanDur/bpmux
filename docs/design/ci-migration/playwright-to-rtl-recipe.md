@@ -119,15 +119,58 @@ message list". The migration changes the test-runner substrate; the
 feature-catalog statement carries over verbatim per Ryan-canon
 2026-05-12 13:00 UTC living-documentation principle.
 
-## State-leak follow-up
+## State isolation (per #1306 slice 4.1)
 
-Per-run backend share (vitest globalSetup) means seeded messages
-persist across tests in the same run. For slice 4 batches, use unique
-seed-markers per test (the archetype uses
-`SEED_CHAT_MARKER_BPF13_*`) so assertions remain deterministic
-regardless of sibling-test state. A future infrastructure-add could
-introduce `/api/test/reset` or per-test backend respawn; not blocking
-slice 4.
+Per-run backend share (vitest globalSetup) means state leaks across
+tests in the same run. Two substrate-pieces close this:
+
+1. **`POST /api/test/reset_messages`** — wipes the message-store
+   (gated by `BPMUX_TEST_SEED_API=1`). Helper:
+   `test/fixtures/seedMessages.ts:resetMessages(apiBase, authToken)`.
+   Call before each test's `seedMessages()` so the test sees ONLY
+   its own fixture.
+2. **Serial vitest execution** (`vitest.config.ts:fileParallelism: false`
+   + `singleThread: true`) — parallel workers would race against the
+   shared backend's state even with reset; serialization removes the
+   race. Per-test cost stays <200ms; total cost amortizes globalSetup
+   spawn.
+
+Pattern for each migrated test:
+
+```ts
+const port = inject('bpmuxBackendPort')
+const authToken = inject('bpmuxAuthToken')
+const apiBase = `http://127.0.0.1:${port}`
+await resetMessages(apiBase, authToken)
+await seedMessages(apiBase, authToken, FIXTURE)
+rendered = renderApp()
+// assertions...
+```
+
+## Sister-shape variance: when to split a sub-batch
+
+Per #1306 falsifier (g): if specs within a sub-batch diverge from the
+archetype-shape (e.g., require seedRoster, win.reload, or reaction-state
+machinery), document + split into a follow-up slice rather than
+forcing the migration in-place. The #1306 first sub-batch (human-message-*)
+split 4 sister-OK + 3 divergent:
+
+**Migrated (sister-OK)**:
+- `class-glyphs-render` — seed → DOM → glyph-count
+- `grouping-five-minute-threshold` — seed → DOM → row-class counts
+- `mention-renders-as-pill` — seed → DOM → mention-pill text
+- `pin-toggle-button-renders` — seed → DOM → pin-button query
+
+**Deferred (divergent — pending follow-up sub-batch)**:
+- `mention-click-scopes-recipient` — uses `seedRoster` (roster-seed
+  fixture not yet in RTL infrastructure) + sidebar-direct-role
+  interaction
+- `filter-persists-across-reload` — uses `win.reload()` (RTL has no
+  direct equivalent; would need unmount + remount semantic + verify
+  localStorage persistence preserved)
+- `reaction-picker-opens` — multi-step reaction-state interaction
+  (open picker → select emoji → assert pill); each step is its own
+  WS round-trip
 
 ## Open: visual + native-only specs
 

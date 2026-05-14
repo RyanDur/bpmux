@@ -70,6 +70,11 @@ pub trait Storage: Send + Sync {
     fn append_message(&self, msg: &Message) -> Result<(), LogError>;
     fn read_messages(&self) -> Result<Vec<Message>, LogError>;
     fn search_messages(&self, filters: &SearchFilters) -> Vec<SearchResult>;
+    /// #1306 slice 4.1: test-only message-store wipe so RTL+real-backend
+    /// tests can reset state between cases sharing a per-run backend.
+    /// Production-callers never reach here — gated by
+    /// `BPMUX_TEST_SEED_API` at the REST boundary.
+    fn clear_messages(&self) -> Result<(), std::io::Error>;
 
     // Lessons
     fn load_lessons(&self) -> LessonIndex;
@@ -592,6 +597,15 @@ impl Storage for FileStorage {
         }
     }
 
+    fn clear_messages(&self) -> Result<(), std::io::Error> {
+        let log_path = self.dir.join("log.jsonl");
+        match std::fs::remove_file(&log_path) {
+            Ok(()) => Ok(()),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(e) => Err(e),
+        }
+    }
+
     fn load_lessons(&self) -> LessonIndex {
         super::lessons::load_index(&self.dir)
     }
@@ -786,6 +800,14 @@ impl Storage for MemoryStorage {
             .unwrap_or_else(|e| e.into_inner())
             .clone();
         search::search(&messages, filters)
+    }
+
+    fn clear_messages(&self) -> Result<(), std::io::Error> {
+        self.messages
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clear();
+        Ok(())
     }
 
     fn load_lessons(&self) -> LessonIndex {

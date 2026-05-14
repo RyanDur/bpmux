@@ -420,6 +420,10 @@ pub async fn run_server(
                 "/api/test/seed_reactions",
                 axum::routing::post(transport::test_seed::post_seed_reactions),
             )
+            .route(
+                "/api/test/reset_messages",
+                axum::routing::post(transport::test_seed::post_reset_messages),
+            )
     } else {
         axum::Router::new()
     };

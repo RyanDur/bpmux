@@ -112,3 +112,20 @@ pub async fn post_seed_reactions(
     }
     (StatusCode::CREATED, "seeded reactions".to_string())
 }
+
+/// #1306 slice 4.1: clear the message store. Lets RTL+real-backend
+/// tests reset state between cases that share the per-run backend
+/// (vitest globalSetup) — without this, seeded messages leak across
+/// tests and counts/scope-based assertions fail. Gated by
+/// `BPMUX_TEST_SEED_API` at the REST boundary.
+pub async fn post_reset_messages(
+    State(session): State<Arc<session::Session>>,
+) -> impl IntoResponse {
+    if let Err(e) = session.storage.clear_messages() {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("reset_messages failed: {e}"),
+        );
+    }
+    (StatusCode::OK, "reset messages".to_string())
+}

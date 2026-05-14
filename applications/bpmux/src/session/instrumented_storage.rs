@@ -86,6 +86,16 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
         results
     }
 
+    fn clear_messages(&self) -> Result<(), std::io::Error> {
+        let start = Instant::now();
+        let result = self.inner.clear_messages();
+        self.log(&format!(
+            "clear_messages {:.1}ms",
+            start.elapsed().as_secs_f64() * 1000.0
+        ));
+        result
+    }
+
     fn load_lessons(&self) -> LessonIndex {
         let start = Instant::now();
         let index = self.inner.load_lessons();

@@ -15,7 +15,14 @@
 // one-shot no-op error listener BEFORE calling super.close() so the
 // abort-event is consumed quietly.
 
+import { configure } from '@testing-library/react'
 import { WebSocket as RealWebSocket } from 'ws'
+
+// #1306 slice 4.1: bpmux uses `data-test` (not `data-testid`) as the
+// test-selector attribute. Configure RTL globally so findByTestId /
+// getByTestId match the project convention; tests don't have to
+// fall back to querySelector for data-test lookups.
+configure({ testIdAttribute: 'data-test' })
 
 class BrowserCompatWebSocket extends RealWebSocket {
   close(code?: number, reason?: string): void {

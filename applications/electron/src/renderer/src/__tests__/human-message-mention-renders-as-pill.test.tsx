@@ -1,0 +1,58 @@
+// #1306 sub-batch 4.1.A — migrated from
+// tests/human-message-mention-renders-as-pill.spec.ts.
+// Recipe: docs/design/ci-migration/playwright-to-rtl-recipe.md.
+
+import { afterEach, describe, expect, inject, it } from 'vitest'
+
+import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
+import {
+  resetMessages,
+  seedMessages,
+  type SeedMessage
+} from '../../../../test/fixtures/seedMessages'
+
+const SEED: SeedMessage[] = [
+  {
+    from: 'dev:claude-code',
+    text: 'first dev-authored message — establishes dev as known role',
+    ts: '2026-04-22T16:00:00Z',
+    message_type: 'chat'
+  },
+  {
+    from: 'pm:claude-code',
+    text: 'hey @dev — please look at this',
+    ts: '2026-04-22T16:01:00Z',
+    message_type: 'chat'
+  }
+]
+
+describe('human-side E2E #476 — read-class — message @mention pill', () => {
+  let rendered: RenderAppResult | null = null
+
+  afterEach(() => {
+    rendered?.cleanup()
+    rendered = null
+  })
+
+  it(
+    'seeded chat message with @<known-role> renders the role as a clickable pill',
+    async () => {
+      const port = inject('bpmuxBackendPort')
+      const authToken = inject('bpmuxAuthToken')
+      const apiBase = `http://127.0.0.1:${port}`
+      await resetMessages(apiBase, authToken)
+      await seedMessages(apiBase, authToken, SEED)
+
+      rendered = renderApp()
+
+      await rendered.findByText(/please look at this/, undefined, { timeout: 15_000 })
+
+      const mentions = await rendered.findAllByTestId('message-mention', undefined, {
+        timeout: 15_000
+      })
+      expect(mentions.length).toBeGreaterThanOrEqual(1)
+      expect(mentions[0].textContent).toContain('@dev')
+    },
+    20_000
+  )
+})
