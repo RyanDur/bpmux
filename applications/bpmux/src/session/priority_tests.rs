@@ -56,30 +56,41 @@ fn save_and_load_roundtrips() {
 #[test]
 fn icebox_unified_serializes_with_kind_tag() {
     let mut index = PriorityIndex::default();
-    index.icebox_unified.push(IceboxItem::Marker { id: 7 });
     index
         .icebox_unified
         .push(IceboxItem::Story { number: 1234 });
     let json = serde_json::to_string(&index).unwrap();
     assert!(json.contains(r#""icebox_unified""#));
-    assert!(json.contains(r#""kind":"marker""#));
     assert!(json.contains(r#""kind":"story""#));
-    assert!(json.contains(r#""id":7"#));
     assert!(json.contains(r#""number":1234"#));
 }
 
 #[test]
 fn icebox_unified_round_trips() {
     let mut index = PriorityIndex::default();
-    index.icebox_unified.push(IceboxItem::Marker { id: 7 });
     index
         .icebox_unified
         .push(IceboxItem::Story { number: 1234 });
     let json = serde_json::to_string(&index).unwrap();
     let parsed: PriorityIndex = serde_json::from_str(&json).unwrap();
-    assert_eq!(parsed.icebox_unified.len(), 2);
-    assert_eq!(parsed.icebox_unified[0], IceboxItem::Marker { id: 7 });
-    assert_eq!(parsed.icebox_unified[1], IceboxItem::Story { number: 1234 });
+    assert_eq!(parsed.icebox_unified.len(), 1);
+    assert_eq!(parsed.icebox_unified[0], IceboxItem::Story { number: 1234 });
+}
+
+#[test]
+fn icebox_unified_tolerant_load_strips_legacy_marker_entries() {
+    // Legacy priority.json files have {"kind":"marker","id":N} entries.
+    // Tolerant deserializer drops them; only story entries survive.
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("priority.json");
+    std::fs::write(
+        &path,
+        r#"{"icebox_unified":[{"kind":"marker","id":7},{"kind":"story","number":1234},{"kind":"marker","id":8}]}"#,
+    )
+    .unwrap();
+    let loaded = load_priority(&path);
+    assert_eq!(loaded.icebox_unified.len(), 1);
+    assert_eq!(loaded.icebox_unified[0], IceboxItem::Story { number: 1234 });
 }
 
 #[test]
@@ -100,31 +111,18 @@ fn empty_icebox_unified_is_omitted_from_json() {
     assert!(!json.contains("icebox_unified"));
 }
 
-fn marker(id: u64, position: u32) -> super::super::iteration_markers::IterationMarker {
-    super::super::iteration_markers::IterationMarker {
-        id,
-        theme_name: format!("theme{id}"),
-        position,
-        created_at: "2026-05-10T00:00:00Z".to_string(),
-        ..super::super::iteration_markers::IterationMarker::default()
-    }
-}
-
 #[test]
-fn migrate_populates_unified_with_stories_then_markers() {
+fn migrate_populates_unified_with_stories() {
     let mut index = PriorityIndex::default();
     index
         .columns
         .insert("icebox".to_string(), vec![100, 200, 300]);
-    let markers = vec![marker(7, 0), marker(8, 1)];
-    let migrated = migrate_icebox_unified(&mut index, &markers);
+    let migrated = migrate_icebox_unified(&mut index);
     assert!(migrated);
-    assert_eq!(index.icebox_unified.len(), 5);
+    assert_eq!(index.icebox_unified.len(), 3);
     assert_eq!(index.icebox_unified[0], IceboxItem::Story { number: 100 });
     assert_eq!(index.icebox_unified[1], IceboxItem::Story { number: 200 });
     assert_eq!(index.icebox_unified[2], IceboxItem::Story { number: 300 });
-    assert_eq!(index.icebox_unified[3], IceboxItem::Marker { id: 7 });
-    assert_eq!(index.icebox_unified[4], IceboxItem::Marker { id: 8 });
 }
 
 #[test]
@@ -132,8 +130,7 @@ fn migrate_is_idempotent_when_unified_already_populated() {
     let mut index = PriorityIndex::default();
     index.icebox_unified.push(IceboxItem::Story { number: 999 });
     index.columns.insert("icebox".to_string(), vec![100]);
-    let markers = vec![marker(7, 0)];
-    let migrated = migrate_icebox_unified(&mut index, &markers);
+    let migrated = migrate_icebox_unified(&mut index);
     assert!(!migrated);
     assert_eq!(index.icebox_unified.len(), 1);
     assert_eq!(index.icebox_unified[0], IceboxItem::Story { number: 999 });
@@ -142,88 +139,19 @@ fn migrate_is_idempotent_when_unified_already_populated() {
 #[test]
 fn migrate_no_op_when_no_legacy_state() {
     let mut index = PriorityIndex::default();
-    let migrated = migrate_icebox_unified(&mut index, &[]);
+    let migrated = migrate_icebox_unified(&mut index);
     assert!(!migrated);
     assert!(index.icebox_unified.is_empty());
 }
 
 #[test]
-fn migrate_with_only_markers_no_icebox_stories() {
-    let mut index = PriorityIndex::default();
-    let markers = vec![marker(7, 0), marker(8, 1)];
-    let migrated = migrate_icebox_unified(&mut index, &markers);
-    assert!(migrated);
-    assert_eq!(index.icebox_unified.len(), 2);
-    assert_eq!(index.icebox_unified[0], IceboxItem::Marker { id: 7 });
-    assert_eq!(index.icebox_unified[1], IceboxItem::Marker { id: 8 });
-}
-
-#[test]
-fn migrate_with_only_icebox_stories_no_markers() {
-    let mut index = PriorityIndex::default();
-    index.columns.insert("icebox".to_string(), vec![100, 200]);
-    let migrated = migrate_icebox_unified(&mut index, &[]);
-    assert!(migrated);
-    assert_eq!(index.icebox_unified.len(), 2);
-    assert_eq!(index.icebox_unified[0], IceboxItem::Story { number: 100 });
-    assert_eq!(index.icebox_unified[1], IceboxItem::Story { number: 200 });
-}
-
-#[test]
-fn migrate_sorts_markers_by_position() {
-    let mut index = PriorityIndex::default();
-    let markers = vec![marker(8, 5), marker(7, 1), marker(9, 3)];
-    let migrated = migrate_icebox_unified(&mut index, &markers);
-    assert!(migrated);
-    assert_eq!(index.icebox_unified[0], IceboxItem::Marker { id: 7 });
-    assert_eq!(index.icebox_unified[1], IceboxItem::Marker { id: 9 });
-    assert_eq!(index.icebox_unified[2], IceboxItem::Marker { id: 8 });
-}
-
-#[test]
 fn reorder_icebox_unified_inserts_story_at_position() {
     let mut index = PriorityIndex::default();
-    index.icebox_unified.push(IceboxItem::Marker { id: 7 });
     index.icebox_unified.push(IceboxItem::Story { number: 200 });
     reorder_icebox_unified(&mut index, IceboxItem::Story { number: 100 }, 1);
     assert_eq!(
         index.icebox_unified,
         vec![
-            IceboxItem::Story { number: 100 },
-            IceboxItem::Marker { id: 7 },
-            IceboxItem::Story { number: 200 },
-        ]
-    );
-}
-
-#[test]
-fn reorder_icebox_unified_moves_existing_story_across_marker() {
-    let mut index = PriorityIndex::default();
-    index.icebox_unified.push(IceboxItem::Story { number: 100 });
-    index.icebox_unified.push(IceboxItem::Marker { id: 7 });
-    index.icebox_unified.push(IceboxItem::Story { number: 200 });
-    reorder_icebox_unified(&mut index, IceboxItem::Story { number: 100 }, 3);
-    assert_eq!(
-        index.icebox_unified,
-        vec![
-            IceboxItem::Marker { id: 7 },
-            IceboxItem::Story { number: 200 },
-            IceboxItem::Story { number: 100 },
-        ]
-    );
-}
-
-#[test]
-fn reorder_icebox_unified_moves_marker_across_stories() {
-    let mut index = PriorityIndex::default();
-    index.icebox_unified.push(IceboxItem::Story { number: 100 });
-    index.icebox_unified.push(IceboxItem::Story { number: 200 });
-    index.icebox_unified.push(IceboxItem::Marker { id: 7 });
-    reorder_icebox_unified(&mut index, IceboxItem::Marker { id: 7 }, 1);
-    assert_eq!(
-        index.icebox_unified,
-        vec![
-            IceboxItem::Marker { id: 7 },
             IceboxItem::Story { number: 100 },
             IceboxItem::Story { number: 200 },
         ]
@@ -255,7 +183,6 @@ fn auto_heal_evicts_stories_whose_workflow_state_is_not_icebox() {
     let mut index = PriorityIndex::default();
     index.icebox_unified.push(IceboxItem::Story { number: 100 });
     index.icebox_unified.push(IceboxItem::Story { number: 200 });
-    index.icebox_unified.push(IceboxItem::Marker { id: 7 });
     index.icebox_unified.push(IceboxItem::Story { number: 300 });
     let states = states_map(&[
         (100, StoryState::Accepted),
@@ -266,10 +193,7 @@ fn auto_heal_evicts_stories_whose_workflow_state_is_not_icebox() {
     assert_eq!(evicted, 2);
     assert_eq!(
         index.icebox_unified,
-        vec![
-            IceboxItem::Story { number: 200 },
-            IceboxItem::Marker { id: 7 },
-        ]
+        vec![IceboxItem::Story { number: 200 }]
     );
 }
 
@@ -277,26 +201,10 @@ fn auto_heal_evicts_stories_whose_workflow_state_is_not_icebox() {
 fn auto_heal_clean_state_is_no_op() {
     let mut index = PriorityIndex::default();
     index.icebox_unified.push(IceboxItem::Story { number: 100 });
-    index.icebox_unified.push(IceboxItem::Marker { id: 7 });
     let states = states_map(&[(100, StoryState::Icebox)]);
     let evicted = auto_heal_icebox_unified_via_workflow_state(&mut index, &states);
     assert_eq!(evicted, 0);
-    assert_eq!(index.icebox_unified.len(), 2);
-}
-
-#[test]
-fn auto_heal_preserves_all_markers_unconditionally() {
-    let mut index = PriorityIndex::default();
-    index.icebox_unified.push(IceboxItem::Marker { id: 7 });
-    index.icebox_unified.push(IceboxItem::Story { number: 999 });
-    index.icebox_unified.push(IceboxItem::Marker { id: 8 });
-    let states = states_map(&[(999, StoryState::Delivered)]);
-    let evicted = auto_heal_icebox_unified_via_workflow_state(&mut index, &states);
-    assert_eq!(evicted, 1);
-    assert_eq!(
-        index.icebox_unified,
-        vec![IceboxItem::Marker { id: 7 }, IceboxItem::Marker { id: 8 }]
-    );
+    assert_eq!(index.icebox_unified.len(), 1);
 }
 
 #[test]
@@ -326,7 +234,6 @@ fn auto_heal_idempotent_second_run_is_no_op() {
     let mut index = PriorityIndex::default();
     index.icebox_unified.push(IceboxItem::Story { number: 100 });
     index.icebox_unified.push(IceboxItem::Story { number: 200 });
-    index.icebox_unified.push(IceboxItem::Marker { id: 7 });
     let states = states_map(&[(100, StoryState::Accepted), (200, StoryState::Icebox)]);
     let first = auto_heal_icebox_unified_via_workflow_state(&mut index, &states);
     assert_eq!(first, 1);
@@ -334,10 +241,7 @@ fn auto_heal_idempotent_second_run_is_no_op() {
     assert_eq!(second, 0);
     assert_eq!(
         index.icebox_unified,
-        vec![
-            IceboxItem::Story { number: 200 },
-            IceboxItem::Marker { id: 7 },
-        ]
+        vec![IceboxItem::Story { number: 200 }]
     );
 }
 
@@ -445,123 +349,6 @@ fn auto_heal_ready_idempotent_second_run_no_op() {
     assert_eq!(index.columns.get("ready").unwrap(), &vec![1251]);
 }
 
-// ── #1295: load_priority defensively restores markers from markers-store ──
-
-#[tokio::test]
-async fn load_priority_restores_missing_markers_from_session_markers_store() {
-    use crate::session::iteration_markers::{IterationMarker, IterationMarkersStore, save};
-    // Recreate today's empirical state: priority.json missing
-    // icebox_unified (post mid-session wipe), markers_store has 3
-    // markers via `current` symlink, load_priority must restore
-    // icebox_unified from the store before returning.
-    let tmp_home = tempfile::tempdir().unwrap();
-    let priority_path = tmp_home.path().join("priority.json");
-    let sessions_dir = tmp_home.path().join("sessions");
-    let session_id_dir = sessions_dir.join("alpha-session");
-    std::fs::create_dir_all(&session_id_dir).unwrap();
-    let current = sessions_dir.join("current");
-    #[cfg(unix)]
-    std::os::unix::fs::symlink(&session_id_dir, &current).unwrap();
-    let store = IterationMarkersStore {
-        markers: vec![
-            IterationMarker {
-                id: 2,
-                theme_name: "Aquila".to_string(),
-                position: 2,
-                created_at: "2026-05-10T22:20:19Z".to_string(),
-                stories: Vec::new(),
-            },
-            IterationMarker {
-                id: 5,
-                theme_name: "Aquila".to_string(),
-                position: 3,
-                created_at: "2026-05-11T00:26:09Z".to_string(),
-                stories: Vec::new(),
-            },
-            IterationMarker {
-                id: 6,
-                theme_name: "Pegasus".to_string(),
-                position: 4,
-                created_at: "2026-05-11T00:40:06Z".to_string(),
-                stories: Vec::new(),
-            },
-        ],
-        next_id: 7,
-    };
-    save(&session_id_dir, &store).unwrap();
-    // priority.json with icebox_unified ABSENT — today's empirical
-    // post-wipe state.
-    std::fs::write(
-        &priority_path,
-        r#"{"ready":[100],"icebox":[],"current_iteration_stories":[]}"#,
-    )
-    .unwrap();
-    let index = load_priority(&priority_path);
-    let restored_marker_ids: Vec<u64> = index
-        .icebox_unified
-        .iter()
-        .filter_map(|i| match i {
-            IceboxItem::Marker { id } => Some(*id),
-            IceboxItem::Story { .. } => None,
-        })
-        .collect();
-    assert_eq!(
-        restored_marker_ids,
-        vec![2, 5, 6],
-        "load_priority must restore markers from markers-store when icebox_unified is empty"
-    );
-}
-
-#[tokio::test]
-async fn load_priority_noop_when_no_session_symlink() {
-    // Tests using arbitrary temp paths (no `current` symlink) must
-    // not trigger the restore — preserves existing tests' isolation.
-    let tmp_dir = tempfile::tempdir().unwrap();
-    let priority_path = tmp_dir.path().join("priority.json");
-    std::fs::write(&priority_path, r#"{"ready":[100]}"#).unwrap();
-    let index = load_priority(&priority_path);
-    assert!(
-        index.icebox_unified.is_empty(),
-        "no markers-store discoverable ⇒ no restore"
-    );
-    assert_eq!(index.columns.get("ready"), Some(&vec![100]));
-}
-
-#[tokio::test]
-async fn load_priority_raw_skips_marker_restore_for_boot_heal_callers() {
-    use crate::session::iteration_markers::{IterationMarker, IterationMarkersStore, save};
-    // Boot-heal callers (#1283 et al.) use load_priority_raw because
-    // they invoke the marker-restore EXPLICITLY in their next step.
-    // If load_priority did implicit restore too, the boot-heal's
-    // diag log would report restored=0 (already done) — semantically
-    // OK but obscures observability of the boot-time fix firing.
-    let tmp_home = tempfile::tempdir().unwrap();
-    let priority_path = tmp_home.path().join("priority.json");
-    let sessions_dir = tmp_home.path().join("sessions");
-    let session_id_dir = sessions_dir.join("alpha");
-    std::fs::create_dir_all(&session_id_dir).unwrap();
-    let current = sessions_dir.join("current");
-    #[cfg(unix)]
-    std::os::unix::fs::symlink(&session_id_dir, &current).unwrap();
-    let store = IterationMarkersStore {
-        markers: vec![IterationMarker {
-            id: 1,
-            theme_name: "Andromeda".to_string(),
-            position: 0,
-            created_at: "ts".to_string(),
-            stories: Vec::new(),
-        }],
-        next_id: 2,
-    };
-    save(&session_id_dir, &store).unwrap();
-    std::fs::write(&priority_path, r#"{}"#).unwrap();
-    let raw = load_priority_raw(&priority_path);
-    assert!(
-        raw.icebox_unified.is_empty(),
-        "raw load skips marker-restore"
-    );
-}
-
 #[tokio::test]
 async fn auto_heal_boot_integration_evicts_stale_writes_clean_priority() {
     use crate::board::RefreshDriver;
@@ -577,7 +364,6 @@ async fn auto_heal_boot_integration_evicts_stale_writes_clean_priority() {
     let mut dirty = PriorityIndex::default();
     dirty.icebox_unified.push(IceboxItem::Story { number: 100 });
     dirty.icebox_unified.push(IceboxItem::Story { number: 200 });
-    dirty.icebox_unified.push(IceboxItem::Marker { id: 7 });
     dirty.icebox_unified.push(IceboxItem::Story { number: 300 });
     save_priority(&priority_path, &dirty).unwrap();
 
@@ -619,11 +405,8 @@ async fn auto_heal_boot_integration_evicts_stale_writes_clean_priority() {
     let healed = load_priority(&priority_path);
     assert_eq!(
         healed.icebox_unified,
-        vec![
-            IceboxItem::Story { number: 200 },
-            IceboxItem::Marker { id: 7 },
-        ],
-        "stale accepted/ready stories evicted; icebox-state + marker preserved"
+        vec![IceboxItem::Story { number: 200 }],
+        "stale accepted/ready stories evicted; icebox-state preserved"
     );
 }
 
@@ -631,11 +414,10 @@ async fn auto_heal_boot_integration_evicts_stale_writes_clean_priority() {
 fn migrate_re_run_is_no_op() {
     let mut index = PriorityIndex::default();
     index.columns.insert("icebox".to_string(), vec![100, 200]);
-    let markers = vec![marker(7, 0)];
-    let first = migrate_icebox_unified(&mut index, &markers);
+    let first = migrate_icebox_unified(&mut index);
     assert!(first);
     let snapshot = index.icebox_unified.clone();
-    let second = migrate_icebox_unified(&mut index, &markers);
+    let second = migrate_icebox_unified(&mut index);
     assert!(!second);
     assert_eq!(index.icebox_unified, snapshot);
 }

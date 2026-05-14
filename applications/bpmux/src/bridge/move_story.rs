@@ -565,7 +565,6 @@ mod move_story_priority_cascade_clean_tests {
             &path,
             r#"{"icebox_unified":[
                 {"kind":"story","number":1100},
-                {"kind":"marker","id":7},
                 {"kind":"story","number":1200}
             ]}"#,
         );
@@ -576,10 +575,6 @@ mod move_story_priority_cascade_clean_tests {
                 .icebox_unified
                 .contains(&IceboxItem::Story { number: 1100 }),
             "story 1100 must be evicted from icebox_unified"
-        );
-        assert!(
-            index.icebox_unified.contains(&IceboxItem::Marker { id: 7 }),
-            "marker preserved"
         );
         assert!(
             index

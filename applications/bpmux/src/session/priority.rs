@@ -4,7 +4,7 @@
 //! lists of issue numbers. PM sets the order; the board reads it.
 //! Stories not in the file appear at the bottom of their column.
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
@@ -12,7 +12,27 @@ use std::path::{Path, PathBuf};
 #[serde(tag = "kind", rename_all = "lowercase")]
 pub enum IceboxItem {
     Story { number: u64 },
-    Marker { id: u64 },
+}
+
+/// Tolerant deserializer for `icebox_unified` — accepts legacy
+/// `{"kind":"marker","id":N}` entries (from pre-#1302 priority.json
+/// files) by discarding them. The marker substrate is retired; only
+/// story entries survive a load.
+fn deserialize_icebox_unified_tolerant<'de, D>(d: D) -> Result<Vec<IceboxItem>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let raw: Vec<serde_json::Value> = Vec::deserialize(d)?;
+    Ok(raw
+        .into_iter()
+        .filter_map(|v| match v.get("kind").and_then(|k| k.as_str()) {
+            Some("story") => v
+                .get("number")
+                .and_then(|n| n.as_u64())
+                .map(|number| IceboxItem::Story { number }),
+            _ => None,
+        })
+        .collect())
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -22,7 +42,8 @@ pub struct PriorityIndex {
     #[serde(
         default,
         rename = "icebox_unified",
-        skip_serializing_if = "Vec::is_empty"
+        skip_serializing_if = "Vec::is_empty",
+        deserialize_with = "deserialize_icebox_unified_tolerant"
     )]
     pub icebox_unified: Vec<IceboxItem>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -48,35 +69,9 @@ pub fn default_priority_path() -> Result<PathBuf, String> {
 }
 
 pub fn load_priority(path: &Path) -> PriorityIndex {
-    let mut index = load_priority_raw(path);
-    // #1295 defensive restore: if priority.json was written with
-    // icebox_unified empty (skip_serializing_if = Vec::is_empty omits
-    // the field) by some mid-session mutation that didn't preserve
-    // the markers state, repair it on load by consulting the
-    // markers-store. Best-effort: silently no-op when the session
-    // directory can't be discovered (e.g., tests using arbitrary
-    // paths, fresh installs with no `current` symlink).
-    //
-    // Sister-shape to #1283's boot-heal restore_missing_markers_to_
-    // icebox_unified, applied at every load so EVERY subsequent
-    // save_priority writes back a populated icebox_unified —
-    // regardless of which mid-session code path the save came from.
-    // Closes the substrate-bug class where load → modify → save
-    // cycles via mutation handlers wipe icebox_unified because the
-    // intermediate operation didn't repopulate markers.
-    if let Some(session_dir) = discover_session_dir_from_priority_path(path) {
-        let store = super::iteration_markers::load(&session_dir);
-        super::iteration_markers::restore_missing_markers_to_icebox_unified(
-            &store,
-            &mut index.icebox_unified,
-        );
-    }
-    index
+    load_priority_raw(path)
 }
 
-/// Raw priority.json read without defensive marker-restore. Used by
-/// boot-heal helpers + tests where the marker-restore is the explicit
-/// next step (not implicit in load).
 pub fn load_priority_raw(path: &Path) -> PriorityIndex {
     match std::fs::read_to_string(path) {
         Ok(contents) => serde_json::from_str(&contents).unwrap_or_default(),
@@ -84,52 +79,22 @@ pub fn load_priority_raw(path: &Path) -> PriorityIndex {
     }
 }
 
-/// #1295: discover the `iteration_markers.json` session directory
-/// from a priority.json path. Production layout:
-///
-/// ```text
-/// ~/.bpmux/priority.json       ← priority_path
-/// ~/.bpmux/sessions/current    ← symlink to ~/.bpmux/sessions/<uuid>/
-/// ~/.bpmux/sessions/<uuid>/iteration_markers.json
-/// ```
-///
-/// Returns `None` when no `current` symlink exists (e.g., tests with
-/// arbitrary tempdir priority paths).
-fn discover_session_dir_from_priority_path(priority_path: &Path) -> Option<PathBuf> {
-    let parent = priority_path.parent()?;
-    let current = parent.join("sessions").join("current");
-    if current.is_symlink() {
-        std::fs::read_link(&current).ok()
-    } else {
-        None
-    }
-}
-
-/// #1258 close_iteration outcome — promotes stories above the topmost
-/// iteration marker into the ready queue and deletes the topmost marker.
 /// #1268 backward-resilience boot-time auto-heal. Story entries in
 /// `icebox_unified` whose canonical `workflow_state` is NOT `Icebox`
-/// represent state-divergence — substrate regression, pre-#1266
-/// stale state, or rollback to older binaries left them behind.
-/// Truth-source is canonical workflow_state per story (NOT legacy
-/// `columns["icebox"]`, which #1261's `apply_reorder_story` actively
-/// empties for icebox-resident stories). Sister-class to #1266
-/// forward cascade-clean at boot-axis. Returns count of evicted
-/// Story entries. Marker entries preserved unconditionally.
-/// Stories absent from `canonical_states` are preserved (treated as
-/// unknown rather than stale — safer default).
+/// represent state-divergence — stories absent from `canonical_states`
+/// are preserved (treated as unknown rather than stale).
 pub fn auto_heal_icebox_unified_via_workflow_state(
     index: &mut PriorityIndex,
     canonical_states: &std::collections::HashMap<u64, super::super::board::domain::StoryState>,
 ) -> usize {
     let before = index.icebox_unified.len();
-    index.icebox_unified.retain(|item| match item {
-        IceboxItem::Marker { .. } => true,
-        IceboxItem::Story { number } => match canonical_states.get(number) {
+    index.icebox_unified.retain(|item| {
+        let IceboxItem::Story { number } = item;
+        match canonical_states.get(number) {
             Some(super::super::board::domain::StoryState::Icebox) => true,
             Some(_) => false,
             None => true,
-        },
+        }
     });
     before - index.icebox_unified.len()
 }
@@ -178,33 +143,19 @@ pub fn auto_heal_ready_column_via_workflow_state(
 }
 
 /// #1258 α-substrate migration: populate `icebox_unified` from legacy
-/// state (separate `columns["icebox"]` story-list + per-session
-/// iteration markers) on first server boot post-α-ship. Idempotent:
-/// if `icebox_unified` is already populated, returns false without
-/// touching state. Default ordering: legacy icebox stories (priority
-/// order) first, then iteration markers (position order). Legacy
-/// state had no story↔marker grouping, so markers post-migration
-/// represent "next iteration boundaries awaiting assignment" — owner
-/// can drag-reorder to interleave.
-pub fn migrate_icebox_unified(
-    index: &mut PriorityIndex,
-    markers: &[super::iteration_markers::IterationMarker],
-) -> bool {
+/// `columns["icebox"]` story-list on first server boot post-α-ship.
+/// Idempotent: if `icebox_unified` is already populated, returns false
+/// without touching state.
+pub fn migrate_icebox_unified(index: &mut PriorityIndex) -> bool {
     if !index.icebox_unified.is_empty() {
         return false;
     }
     let stories: Vec<u64> = index.columns.get("icebox").cloned().unwrap_or_default();
-    let mut sorted_markers: Vec<&super::iteration_markers::IterationMarker> =
-        markers.iter().collect();
-    sorted_markers.sort_by_key(|m| m.position);
-    if stories.is_empty() && sorted_markers.is_empty() {
+    if stories.is_empty() {
         return false;
     }
     for n in stories {
         index.icebox_unified.push(IceboxItem::Story { number: n });
-    }
-    for m in sorted_markers {
-        index.icebox_unified.push(IceboxItem::Marker { id: m.id });
     }
     true
 }

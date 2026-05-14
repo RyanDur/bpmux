@@ -237,22 +237,7 @@ pub async fn run_server(
         tokio::spawn(async move {
             crate::auto_heal_icebox_at_boot(session_for_markers_heal.clone(), refresh.clone())
                 .await;
-            crate::auto_heal_ready_column_at_boot(
-                session_for_markers_heal.clone(),
-                refresh.clone(),
-            )
-            .await;
-            crate::restore_marker_positions_to_icebox_unified_at_boot(
-                session_for_markers_heal.clone(),
-            )
-            .await;
-            crate::restore_story_fold_positions_to_icebox_unified_at_boot(
-                session_for_markers_heal.clone(),
-                refresh.clone(),
-            )
-            .await;
-            crate::backfill_legacy_marker_stories_at_boot(session_for_markers_heal.clone()).await;
-            crate::auto_heal_markers_store_orphans_at_boot(session_for_markers_heal).await;
+            crate::auto_heal_ready_column_at_boot(session_for_markers_heal, refresh.clone()).await;
             let _ = refresh;
         });
     }

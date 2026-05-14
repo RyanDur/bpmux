@@ -3953,18 +3953,15 @@ mod reorder_story_icebox_routing_tests {
     }
 
     #[test]
-    fn icebox_state_inserts_story_above_existing_marker_at_position_one() {
+    fn icebox_state_inserts_story_into_empty_icebox_unified_at_position_one() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("priority.json");
-        std::fs::write(&path, r#"{"icebox_unified":[{"kind":"marker","id":7}]}"#).unwrap();
+        std::fs::write(&path, r#"{"icebox_unified":[]}"#).unwrap();
         apply_reorder_story(&path, "icebox", 1251, 1).unwrap();
         let index = load_priority(&path);
         assert_eq!(
             index.icebox_unified,
-            vec![
-                IceboxItem::Story { number: 1251 },
-                IceboxItem::Marker { id: 7 },
-            ]
+            vec![IceboxItem::Story { number: 1251 }]
         );
     }
 
@@ -4000,14 +3997,14 @@ mod reorder_story_icebox_routing_tests {
     }
 
     #[test]
-    fn icebox_reorder_with_dual_state_divergence_evicts_legacy_and_keeps_marker() {
+    fn icebox_reorder_with_dual_state_divergence_evicts_legacy_column_entry() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("priority.json");
         std::fs::write(
             &path,
             r#"{
                 "icebox": [1251, 1252, 1253, 1254],
-                "icebox_unified": [{"kind":"marker","id":0}]
+                "icebox_unified": []
             }"#,
         )
         .unwrap();
@@ -4018,10 +4015,7 @@ mod reorder_story_icebox_routing_tests {
         assert!(legacy.contains(&1252));
         assert_eq!(
             index.icebox_unified,
-            vec![
-                IceboxItem::Story { number: 1251 },
-                IceboxItem::Marker { id: 0 },
-            ]
+            vec![IceboxItem::Story { number: 1251 }]
         );
     }
 }

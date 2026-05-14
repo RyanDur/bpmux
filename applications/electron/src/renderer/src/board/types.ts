@@ -81,9 +81,7 @@ export interface BoardStory {
   rework_comment?: string | null
 }
 
-export type IceboxItem =
-  | { kind: 'story'; number: number }
-  | { kind: 'marker'; id: number }
+export type IceboxItem = { kind: 'story'; number: number }
 
 export interface BoardResponse {
   stories: BoardStory[]

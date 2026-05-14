@@ -14,8 +14,6 @@ mod domain_tests;
 #[cfg(test)]
 mod event_messages_audit_tests;
 #[cfg(test)]
-mod iteration_marker_tests;
-#[cfg(test)]
 mod orchestrator_tests;
 #[cfg(test)]
 mod store_tests;

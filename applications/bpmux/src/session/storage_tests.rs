@@ -423,30 +423,6 @@ contract!(
 
 // ── Iteration markers (#1289 Phase-2 step 4) ──
 
-contract!(
-    load_iteration_markers_empty_when_unset,
-    |storage: &dyn Storage| {
-        let store = storage.load_iteration_markers();
-        assert!(store.markers.is_empty());
-    }
-);
-
-contract!(
-    save_then_load_iteration_markers_roundtrips,
-    |storage: &dyn Storage| {
-        let mut store = crate::session::iteration_markers::IterationMarkersStore::default();
-        crate::session::iteration_markers::add(
-            &mut store,
-            "Aquila".to_string(),
-            "2026-05-11T13:00:00Z".to_string(),
-        );
-        storage.save_iteration_markers(&store).unwrap();
-        let loaded = storage.load_iteration_markers();
-        assert_eq!(loaded.markers.len(), 1);
-        assert_eq!(loaded.markers[0].theme_name, "Aquila");
-    }
-);
-
 // ── GlobalStore: priority (#1289 Phase-3 step 1) ──
 
 fn file_global() -> (Arc<dyn GlobalStore>, tempfile::TempDir) {
@@ -511,7 +487,7 @@ global_contract!(
         idx.icebox_unified
             .push(crate::session::priority::IceboxItem::Story { number: 100 });
         idx.icebox_unified
-            .push(crate::session::priority::IceboxItem::Marker { id: 5 });
+            .push(crate::session::priority::IceboxItem::Story { number: 200 });
         global.save_priority(&idx).unwrap();
         let loaded = global.load_priority();
         assert_eq!(loaded.icebox_unified.len(), 2);
