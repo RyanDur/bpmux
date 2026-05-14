@@ -25,7 +25,15 @@ use crate::session::storage::{
 use chrono::{TimeZone, Utc};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, MutexGuard};
+
+static BPMUX_STORAGE_BACKEND_ENV_LOCK: Mutex<()> = Mutex::new(());
+
+fn lock_storage_backend_env() -> MutexGuard<'static, ()> {
+    BPMUX_STORAGE_BACKEND_ENV_LOCK
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
 
 fn fresh_message(text: &str) -> Message {
     Message {
@@ -781,14 +789,12 @@ fn board_store_load_from_empty_storage_returns_empty() {
 
 #[test]
 fn session_with_memory_backend_env_skips_disk_io() {
-    // Reset any leftover state from prior tests in this process.
-    // Env vars are process-global; tests serialize via std::env mutex.
+    let _env_guard = lock_storage_backend_env();
     let dir = tempfile::tempdir().unwrap();
     let (tx, _rx) =
         tokio::sync::broadcast::channel::<Message>(crate::session::BROADCAST_CHANNEL_CAPACITY);
 
     let prior = std::env::var("BPMUX_STORAGE_BACKEND").ok();
-    // SAFETY: tests are single-process; this scope sets+unsets the var.
     unsafe {
         std::env::set_var("BPMUX_STORAGE_BACKEND", "memory");
     }
@@ -832,8 +838,7 @@ fn session_with_memory_backend_env_skips_disk_io() {
 
 #[test]
 fn session_without_backend_env_writes_disk_io() {
-    // Default backend = FileStorage (via InstrumentedStorage wrapper).
-    // Append writes to messages-current.jsonl on disk.
+    let _env_guard = lock_storage_backend_env();
     let dir = tempfile::tempdir().unwrap();
     let (tx, _rx) =
         tokio::sync::broadcast::channel::<Message>(crate::session::BROADCAST_CHANNEL_CAPACITY);
