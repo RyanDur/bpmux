@@ -2,27 +2,6 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
-// Tests for #1282: BoardEvent fire-ordering invariant at BoardStore::apply.
-// The invariant: event_tx.send fires BEFORE the write-lock acquires +
-// mutates the store. Today's #1274 surfaced the underlying class: a
-// state-mutation path that committed without firing the event, leaving
-// downstream listeners (close_iteration promote-batch scan,
-// icebox_unified cascade-clean) unable to detect the transition.
-//
-// The deterministic-ordering test installs a #[cfg(test)] post-send
-// hook on BoardStore that fires synchronously between event_tx.send
-// and the write-lock acquire. The hook reads the store: since apply
-// has not yet acquired the write-lock, the read succeeds and observes
-// the PRE-mutation state. This pins the fire-ordering observably (per
-// `feedback_falsifier_load_bearing_test_at_e2e_layer` —
-// falsifier-class needs an observable assertion, not a carveout-prose
-// acknowledgement of the implementation/consequence gap).
-//
-// The delivery-reliability tests (start/deliver/accept/multi-subscriber)
-// pin the consequence: every state-transition via apply delivers an
-// event to subscribers + the store reflects the new state after apply
-// returns.
-
 use crate::board::BoardStore;
 use crate::board::domain::{Story, StoryState};
 use crate::board::events::{BoardEvent, EventMeta};
