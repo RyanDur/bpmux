@@ -1,0 +1,54 @@
+# Parity log — #1306 sub-batch 4.1.A (commit ff453dc)
+
+Per `feedback_substrate_truth_source_grounding_at_action_time` +
+dev's #1304 desk-check commitment (15:35 UTC) to artifact-discipline
+for sub-batch migrations: both the original Playwright spec AND the
+new RTL spec passed against the same code-state pre-retire. Each
+Playwright spec deleted only after parity-pass-confirm.
+
+## Sequence (dev console, 2026-05-14)
+
+1. cargo build -p bpmux (refresh backend binary with new
+   reset_messages route)
+2. vitest run on each migrated RTL test individually → all PASS
+3. /usr/bin/time -p npx playwright test <4 specs> --workers=1
+   --reporter=line → 6 passed (5.83s wall-clock real / 5.1s reported
+   test exec)
+4. vitest run on full src/renderer/src/__tests__/ suite serial →
+   222 passed / 27 files (was 216/23 pre-#1306; +6 RTL tests +4
+   files + 1 ATP marker)
+5. rm of 4 Playwright spec files atomic with the migration commit
+   (ff453dc)
+
+## Per-spec parity evidence
+
+| Playwright source (retired) | RTL target (new) | Tests | Behavior asserted (verbatim) |
+|---|---|---:|---|
+| tests/human-message-class-glyphs-render.spec.ts | src/renderer/src/__tests__/human-message-class-glyphs-render.test.tsx | 2 | (a) insight-class seeded message → insight class glyph; (b) system-class seeded message → system class glyph (post filter-pill click) |
+| tests/human-message-grouping-five-minute-threshold.spec.ts | src/renderer/src/__tests__/human-message-grouping-five-minute-threshold.test.tsx | 2 | (a) same-author within 5min → 1 first-row + 1 grouped-row; (b) same-author 6min apart → 2 first-rows + 0 grouped |
+| tests/human-message-mention-renders-as-pill.spec.ts | src/renderer/src/__tests__/human-message-mention-renders-as-pill.test.tsx | 1 | seeded chat with @known-role → mention pill with role text |
+| tests/human-message-pin-toggle-button-renders.spec.ts | src/renderer/src/__tests__/human-message-pin-toggle-button-renders.test.tsx | 1 | seeded chat message → pin-toggle button with aria-label "Pin message" |
+
+## Wall-clock comparison
+
+- Playwright (4 specs / 6 tests, --workers=1, real time):
+  5.83s wall-clock, 5.1s reported test exec
+  (~970ms / test; ~1.46s / file)
+- RTL (4 specs / 6 tests in vitest serial mode):
+  167ms × 4 files = 668ms reported, 878ms total run incl. infra tests
+  (~73ms / test; ~167ms / file)
+- ~13× faster per-test once globalSetup backend-spawn cost amortized
+
+## Falsifier coverage matrix (per #1306 ACs)
+
+| AC | Falsifier | Status |
+|---|---|---|
+| 1 | Sub-batch identified per slice 3 audit | ✓ batch 4.1.A (human-message-* family) per #1305 audit |
+| 2 | Archetype-spec migrated + passing | ✓ from #1304 (still passing per step 4 above) |
+| 3 | Parity check (Playwright + RTL) for archetype | ✓ this log + step 2-3 above |
+| 4 | Bulk-migration of sub-batch siblings via mechanical replication | ✓ 4 sister-OK siblings migrated using #1304 recipe |
+| 5 | Sub-batch parity check across all siblings | ✓ each of the 4 ran Playwright PASS + RTL PASS pre-retire |
+| 6 | Original Playwright specs retired post-parity | ✓ rm atomic with migration commit |
+| 7 | Commit messages name feature-coverage preserved | ✓ commit ff453dc enumerates each spec + feature |
+| 8 | Wall-clock empirical-comparison documented | ✓ above; recipe-doc + commit message + this log |
+| 9 | Feature-coverage NOT reduced | ✓ each RTL test asserts same observable behavior (data-test + seed text + count assertions); deferred specs have explicit named blockers + follow-up tracking |
