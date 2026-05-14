@@ -726,3 +726,31 @@ chain.
 
 Substrate-foundation chain: #1251 → #1252 → #1289 → #1290 →
 re-migration follow-up.
+
+## Testing substrate: hybrid-shape state (Epic #1247 slice 5 interim, #1307)
+
+Post-Pegasus shipped state (2026-05-14):
+
+- **vitest + RTL + real-backend** is the PRIMARY e2e substrate.
+  Renderer behaviour migrates here per the recipe at
+  `docs/design/ci-migration/playwright-to-rtl-recipe.md`. Per-test
+  wall-clock <500ms; backend spawn amortizes once per test-run via
+  vitest globalSetup. The shared backend uses BPMUX_STORAGE_BACKEND=
+  memory (#1289) + BPMUX_TEST_MODE=1 + BPMUX_TEST_SEED_API=1; the
+  bpmux subprocess is the one this self-hosted-runner-setup
+  document describes (production binary; test-mode env-flags
+  decide orchestrator + storage + test-seed-API behavior).
+- **Playwright + Electron** runs the remaining ~115 specs (sub-batches
+  4.2-4.6 per #1305 audit + Bucket-2 Playwright-keep) until bulk-
+  migration ships. Shared-dev-host contention (the saturation class
+  that motivated Epic #1247) reduces proportional to the migrated
+  count; full elimination at final-close-out.
+- **Self-hosted runner labels** in `.github/workflows/*` are
+  unchanged from Epic #1247 slice 1. Both vitest + Playwright jobs
+  target `[self-hosted, macos, arm64]` on bpmux-mac-m1.
+
+**Pending bulk-migration sub-batches** (4.2-4.6 per #1305 audit):
+each named with blocked-by + resurfacing-condition in
+`docs/architecture.md` testing-substrate section. Final-close-out
+story re-files when bulk-migration completes; at that point this
+ops-doc updates to capture canonical-substrate post-final state.

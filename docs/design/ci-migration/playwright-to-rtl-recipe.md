@@ -8,6 +8,50 @@ mechanical replication applies to every batch-4.1 sister-spec
 the #1305 audit. Sub-batch slices (4.1, 4.2, …, 4.N per #1306)
 replicate this pattern.
 
+**Status (post-Pegasus, 2026-05-14)**: Epic #1247 substrate-chain
+ships in interim-close-out state per #1307. Sub-batches 4.1.A
+(#1306) + 4.1.B (#1335) shipped — full human-message-* family
+migrated (7/7 specs). Sub-batches 4.2-4.6 pending with
+resurfacing-condition (see `docs/architecture.md` testing-substrate
+section + final-close-out file-trigger phrase).
+
+## Sister-substrate-canon (established 2026-05-14)
+
+The shared test-fixtures + REST endpoints make the migration
+mechanical:
+
+| Substrate | File | Use |
+|---|---|---|
+| renderApp() | applications/electron/test/fixtures/renderApp.tsx | mount App against the per-run bpmux backend |
+| seedMessages(apiBase, authToken, messages) | applications/electron/test/fixtures/seedMessages.ts | seed chat-class message rows before mount |
+| resetMessages(apiBase, authToken) | (same file) | wipe message-store between tests |
+| seedRoster(apiBase, authToken, identities) | (same file) | dispatch roster-upsert via canonical orchestrator chain so mirror.roster propagates |
+| POST /api/test/seed_messages | transport/test_seed.rs | message-store append (gated by BPMUX_TEST_SEED_API) |
+| POST /api/test/reset_messages | (same file) | message-store wipe (#1306) |
+| POST /api/test/seed_roster | (same file) | roster-upsert via OrchestratorAction::Roster (#1335) |
+| Storage::clear_messages() | session/storage.rs | trait method backing reset_messages |
+| configure({ testIdAttribute: 'data-test' }) | test/setup/setupFile.ts | RTL queries match bpmux convention |
+
+## Parity-log discipline (established 2026-05-14)
+
+Per migrated sub-batch, commit a `parity-<commit>.log` artifact
+alongside the migration commit. Sister-canon: see
+`docs/design/ci-migration/parity-ff453dc.log` (#1306 4.1.A) and
+`parity-95783f9.log` (#1335 4.1.B) for the canonical shape.
+
+Contents (5 sections):
+
+1. **Sequence** — 5 steps: cargo build → vitest → playwright →
+   full-suite → atomic-rm
+2. **Per-spec evidence** — table mapping each Playwright source to
+   its RTL target + behavior-asserted column (verbatim from both)
+3. **Wall-clock comparison** — Playwright-original vs RTL-migrated
+   numbers (both wall-clock real + reported test exec)
+4. **Substrate-adds** (if any) — names new endpoints / helpers /
+   trait methods shipped within the slice (sister to no-defer canon)
+5. **Falsifier-coverage matrix** — table mapping each AC to
+   evidence-of-coverage in the migration
+
 ## Substrate
 
 - **vitest** instead of Playwright runner

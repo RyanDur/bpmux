@@ -225,6 +225,116 @@ forcing v4 components-within-app. Pre-pivot, iteration-state was
 fragmented across two file-system substrates with no clean seam; post-
 pivot, the canonical-via-GH-issue substrate is the seam.
 
+## Testing substrate: RTL+real-backend (primary) + Playwright (edge-coverage) (Epic #1247)
+
+**Canonical testing-substrate** (post-Pegasus shipped state, 2026-05-14):
+
+- **RTL+real-backend** is the PRIMARY e2e substrate for renderer
+  behaviour: vitest + jsdom + @testing-library/react + a real bpmux
+  backend subprocess spawned by globalSetup. Each test exercises real
+  REST + real WebSocket + real renderer round-trip; only Electron's
+  main process is absent. Per-test wall-clock is <500ms (per #1303
+  AC8); the backend-spawn cost amortizes once per test-run.
+- **Playwright** is RESERVED for edge-coverage that RTL cannot
+  faithfully replicate: cross-process IPC, native OS features
+  (clipboard / file-pick), and visual-class assertions (pixel-diff,
+  screenshot regression). Per #1305 audit Bucket-2.
+
+**Wall-clock empirical-win** (per #1304 + #1306 + #1335 deliveries):
+
+- Playwright per-spec: ~1.0-1.5s wall-clock (Electron launch +
+  Chromium startup + Playwright bootstrap + teardown)
+- RTL per-spec: ~73-167ms wall-clock once globalSetup amortized
+  (~10-13× faster per-test)
+- Cumulative win compounds across each migrated sub-batch as the
+  globalSetup amortization spreads over more tests
+
+**Substrate-foundation**:
+
+- **#1303** RTL+real-backend infrastructure: vitest globalSetup spawns
+  bpmux subprocess; bpmuxShim installs window.bpmux pointing at the
+  spawned backend; renderApp fixture wires it for tests. Per-run
+  serial pool (vitest.config.ts: `pool: 'threads',
+  poolOptions.threads.singleThread: true, fileParallelism: false`) so
+  parallel workers don't race against the shared backend message-
+  store + roster-store.
+- **Storage trait `clear_messages()`** (#1306) — test-only message-
+  store wipe so reset+seed pattern works deterministically across
+  tests sharing the per-run backend. Gated at REST boundary by
+  `BPMUX_TEST_SEED_API`; production never registers the route.
+- **Test-seed-API routes** (gated by `BPMUX_TEST_SEED_API=1` env-var):
+  `/api/test/seed_messages`, `/api/test/seed_pins`,
+  `/api/test/seed_reactions` (per #1290 Part A) +
+  `/api/test/reset_messages` (#1306) + `/api/test/seed_roster`
+  (#1335, dispatches via `OrchestratorAction::Roster` canonical
+  chain so `mirror.roster` propagates).
+- **Shared test fixtures**: `applications/electron/test/fixtures/`
+  exports `renderApp` + `seedMessages` + `resetMessages` +
+  `seedRoster`. Each helper one-liner; tests compose them in
+  reset→seed→render order.
+- **Recipe doc**: `docs/design/ci-migration/playwright-to-rtl-recipe.md`
+  documents the migration mechanism + state-isolation pattern +
+  sister-shape-variance discipline (split sub-batches when archetype
+  doesn't cover; ship substrate-add within slice per Ryan-canon
+  no-defer).
+- **Parity-log artifact**: per migrated sub-batch, a
+  `parity-<commit>.log` captures per-spec parity-evidence + wall-
+  clock comparison + falsifier-coverage matrix (sister-canon
+  established at #1304 + #1306 + #1335).
+
+**Sub-batch status (per #1305 audit decomposition)**:
+
+| Sub-batch | Family | Tests | Status |
+|---|---|---:|---|
+| 4.1.A | human-message-* sister-OK | 4 specs / 6 tests | ✓ shipped #1306 (commit ff453dc) |
+| 4.1.B | human-message-* divergent | 3 specs / 4 tests | ✓ shipped #1335 (commit 95783f9) |
+| 4.2 | real-backend.spec.ts + dev-smoke-* + human-board-* + human-chat-input-* + human-drill-in-* | ~22 specs | pending; blocked-by: none beyond #1303 infrastructure (sister-shape extension of 4.1 pattern) |
+| 4.3 | route-mock specs needing `seed_story` | ~25 specs | pending; blocked-by: `seed_story` test-API exists; sister-shape extension |
+| 4.4 | iteration-marker route-mock specs | ~6 specs | pending; blocked-by: marker-API gap (per #1305 audit gap-list — markers substrate retired at #1302; spec-class may no longer apply post-retire) |
+| 4.5 | message-seed specs (extended seed fields) | ~5 specs | pending; blocked-by: message-seed extension API |
+| 4.6 | reaction/pin/iteration-marker specs | ~5 specs | pending; blocked-by: seed-API gaps per #1305 audit |
+| Race/sync class | specialized real-backend (Bucket-1.5) | ~3 specs | pending; specialized; defer to final-close-out |
+
+**Resurfacing-condition for final close-out** (per
+`feedback_yagni_deferral_names_resurfacing_condition`): when
+bulk-batches 4.2-4.6 ship AND Playwright-keep ≤10% of original suite
+achieved, file new close-out story scoped to the final transition
+(retire shared-dev-host Playwright contention + pre-push hook update
+for RTL-primary + ops-doc final-state capture + ratify completion at
+Epic #1247 terminal-state). Search phrase for future PM:
+`"final close-out resurfacing-trigger"` — grep architecture.md or
+recipe.md.
+
+**File-trigger phrase**: file new close-out story when (a) all
+bulk-batches 4.2-4.6 ship (sub-batch sister-stories all reach
+terminal-state) AND (b) the remaining Playwright suite is verified
+≤10% of the original ~120-spec total. The new story's scope:
+retire shared-dev-host Playwright contention + finalize hybrid
+testing-substrate per the original (now-deferred) #1307 AC chain.
+
+**Stage-fit**: this substrate strengthens v3 internal-bounded-context
+boundaries (testing-capability has a canonical RTL+real-backend seam
+with Playwright as named edge-case). Pre-Epic, all e2e ran via
+Playwright + Electron — shared-dev-host contention saturated the
+single self-hosted runner. Post-shipped-state, the canonical RTL
+substrate runs ~10× faster per-spec on the same hardware.
+
+**Current shipped wall-clock** (bpmux-mac-m1, 2026-05-14, measured at
+#1307 close-out):
+
+- vitest full suite (including infrastructure tests + #1304 + #1306
+  + #1335 migrations + sub-batch ATP markers): 228 tests / 32 files
+  / 23.34s real time (was 215/22 pre-#1304); per-test ~102ms
+  amortized
+- Playwright remaining suite: ~115 specs (sub-batches 4.2-4.6 + race/
+  sync class + Bucket-2 Playwright-keep all still Playwright)
+
+The final target (<6-8min full-suite wall-clock per original Epic
+#1247 AC chain) carries forward to the final-close-out story.
+Current shipped state captures the architectural foundation +
+substrate-canon; final-close-out captures the full-bulk-migration
+terminal state.
+
 ## Why this doc exists
 
 bpmux's architectural substrate kept getting re-discovered + lost
