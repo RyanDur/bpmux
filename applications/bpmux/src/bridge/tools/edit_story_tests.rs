@@ -2,11 +2,6 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
-// Tests for #1279: `edit_story` accepts an optional `title` parameter
-// for in-flight title corrections (typo / template-leak recovery)
-// without losing issue number / comment-history / state-machine
-// continuity. Sister-pattern to update_body at the title-axis.
-
 use crate::board::RefreshDriver;
 use crate::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::board::domain::{Story, StoryState};
