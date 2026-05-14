@@ -1,4 +1,4 @@
-# Parity log — #1335 sub-batch 4.1.B (commit-pending)
+# Parity log — #1335 sub-batch 4.1.B (commit 95783f9)
 
 Per #1306 audit-trail discipline: each retired Playwright spec
 passed AND its new RTL replacement passed AGAINST THE SAME CODE-STATE
