@@ -39,6 +39,8 @@ function typeLabel(type: StoryType): string {
       return 'Chore'
     case 'epic':
       return 'Epic'
+    case 'iteration':
+      return 'Iteration'
     default:
       return 'Story'
   }
@@ -82,6 +84,15 @@ function renderPath(type: StoryType): React.JSX.Element {
           <rect x="4.5" y="8" width="7" height="2" rx="0.5" />
           <rect x="6" y="4.5" width="4" height="2" rx="0.5" />
           <rect x="7.25" y="1.5" width="1.5" height="2" rx="0.5" />
+        </g>
+      )
+    case 'iteration':
+      // Flag-on-pole — distinguishes iteration-issues (time-bound
+      // capability) from epics (architectural-scope) in the icebox.
+      return (
+        <g fill="currentColor">
+          <rect x="3.5" y="2" width="1" height="12" rx="0.3" />
+          <path d="M4.5 2.5h7l-1.6 2.2 1.6 2.2h-7z" />
         </g>
       )
     default:

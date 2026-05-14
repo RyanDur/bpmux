@@ -428,6 +428,10 @@ pub async fn run_server(
                 "/api/test/seed_roster",
                 axum::routing::post(transport::test_seed::post_seed_roster),
             )
+            .route(
+                "/api/test/seed_stories",
+                axum::routing::post(transport::test_seed::post_seed_stories),
+            )
     } else {
         axum::Router::new()
     };

@@ -152,6 +152,15 @@ export const isActiveEpic = (story: BoardStory): boolean => {
   return columnFor(story.state, story.gh_state === 'closed') !== 'retired'
 }
 
+// #1302 rework: sister to isActiveEpic — iteration-issues with
+// story_type=Iteration that are not retired (closed-without-accept)
+// show as parent-rows in the icebox section. Closed iterations
+// preserve in retired view per #1278 historical-artifact-visibility.
+export const isActiveIteration = (story: BoardStory): boolean => {
+  if (storyTypeFromLabels(story.labels) !== 'iteration') return false
+  return columnFor(story.state, story.gh_state === 'closed') !== 'retired'
+}
+
 export const deriveEpicState = (
   epicExplicitState: StoryState,
   children: BoardStory[]

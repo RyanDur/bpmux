@@ -142,6 +142,105 @@ pub struct SeedRosterBody {
     pub identities: Vec<String>,
 }
 
+/// #1302 rework slice 6: seed Story rows into the canonical board
+/// store via `BoardEvent::StoryCreated` dispatch + optional iteration
+/// label-tag. Lets RTL+real-backend tests seed iteration-issue +
+/// member-stories for the renderer-grouping live-walk gate. Gated by
+/// `BPMUX_TEST_SEED_API`.
+#[derive(Deserialize)]
+pub struct SeedStory {
+    pub number: u64,
+    pub title: String,
+    #[serde(default)]
+    pub body: String,
+    #[serde(default = "default_state_icebox")]
+    pub initial_state: String,
+    #[serde(default = "default_story_type_feature")]
+    pub story_type: String,
+    #[serde(default)]
+    pub iteration_id: Option<u64>,
+}
+
+fn default_state_icebox() -> String {
+    "icebox".to_string()
+}
+
+fn default_story_type_feature() -> String {
+    "feature".to_string()
+}
+
+#[derive(Deserialize)]
+pub struct SeedStoriesBody {
+    pub stories: Vec<SeedStory>,
+}
+
+pub async fn post_seed_stories(
+    axum::Extension(test_refresh): axum::Extension<crate::server::TestRefreshHandle>,
+    Json(body): Json<SeedStoriesBody>,
+) -> impl IntoResponse {
+    let Some(refresh) = test_refresh.as_ref() else {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "seed_stories: tracker not configured (test-refresh handle absent)".to_string(),
+        );
+    };
+    for s in &body.stories {
+        let initial_state = match s.initial_state.as_str() {
+            "icebox" => crate::board::domain::StoryState::Icebox,
+            "ready" => crate::board::domain::StoryState::Ready,
+            "in-progress" => crate::board::domain::StoryState::InProgress,
+            "desk-check" => crate::board::domain::StoryState::DeskCheck,
+            "delivered" => crate::board::domain::StoryState::Delivered,
+            "accepted" => crate::board::domain::StoryState::Accepted,
+            _ => crate::board::domain::StoryState::Icebox,
+        };
+        let story_type = match s.story_type.as_str() {
+            "iteration" => crate::board::domain::StoryType::Iteration,
+            "epic" => crate::board::domain::StoryType::Epic,
+            "bug" => crate::board::domain::StoryType::Bug,
+            "chore" => crate::board::domain::StoryType::Chore,
+            _ => crate::board::domain::StoryType::Feature,
+        };
+        let meta = crate::board::events::EventMeta {
+            actor: "test-seed".to_string(),
+            ts: chrono::Utc::now(),
+            peer_id: crate::board::PeerId::local(),
+        };
+        if let Err(e) = refresh.mutate_sync(crate::board::BoardEvent::StoryCreated {
+            meta: meta.clone(),
+            number: s.number,
+            title: s.title.clone(),
+            body: s.body.clone(),
+            initial_state,
+            story_type,
+        }) {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("seed_stories: StoryCreated #{} failed: {e}", s.number),
+            );
+        }
+        if let Some(iter_n) = s.iteration_id
+            && let Err(e) = refresh.mutate_sync(crate::board::BoardEvent::TagAdded {
+                meta,
+                number: s.number,
+                label: format!("iteration-#{iter_n}"),
+            })
+        {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!(
+                    "seed_stories: TagAdded iteration-#{iter_n} on #{} failed: {e}",
+                    s.number
+                ),
+            );
+        }
+    }
+    (
+        StatusCode::CREATED,
+        format!("seeded {} stories", body.stories.len()),
+    )
+}
+
 pub async fn post_seed_roster(
     axum::Extension(orchestrator): axum::Extension<
         Arc<crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>>,

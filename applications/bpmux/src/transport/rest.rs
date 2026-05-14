@@ -1004,6 +1004,20 @@ pub async fn post_add_stories_to_iteration(
     axum::Extension(test_refresh): axum::Extension<crate::server::TestRefreshHandle>,
     axum::Json(body): axum::Json<AddStoriesToIterationRequest>,
 ) -> impl IntoResponse {
+    // #1302 rework: an iteration cannot be added to itself as a
+    // member. The substrate-Bug surfaced today at 18:52 UTC when
+    // `add_stories_to_iteration(1336, [1336])` succeeded silently;
+    // reject at the validation layer with a named error.
+    if body.story_ids.contains(&body.iteration_number) {
+        return (
+            StatusCode::BAD_REQUEST,
+            json_headers(),
+            err_body(&format!(
+                "add_stories_to_iteration: iteration #{} cannot be a member of itself",
+                body.iteration_number
+            )),
+        );
+    }
     let blockers =
         collect_add_stories_non_icebox_blockers(test_refresh.as_ref(), &body.story_ids).await;
     if !blockers.is_empty() {

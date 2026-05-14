@@ -69,3 +69,34 @@ export async function seedRoster(
     throw new Error(`seed_roster POST failed: ${res.status} ${await res.text()}`)
   }
 }
+
+// #1302 rework: seed Story rows into the canonical board store via
+// `BoardEvent::StoryCreated` dispatch + optional iteration-label tag.
+// Lets RTL+real-backend tests seed iteration-issue + member-stories
+// for renderer-grouping live-walk gate. Gated by BPMUX_TEST_SEED_API.
+export interface SeedStory {
+  number: number
+  title: string
+  body?: string
+  initial_state?: 'icebox' | 'ready' | 'in-progress' | 'desk-check' | 'delivered' | 'accepted'
+  story_type?: 'feature' | 'bug' | 'chore' | 'epic' | 'iteration'
+  iteration_id?: number
+}
+
+export async function seedStories(
+  apiBase: string,
+  authToken: string,
+  stories: SeedStory[]
+): Promise<void> {
+  const res = await fetch(`${apiBase}/api/test/seed_stories`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${authToken}`
+    },
+    body: JSON.stringify({ stories })
+  })
+  if (!res.ok) {
+    throw new Error(`seed_stories POST failed: ${res.status} ${await res.text()}`)
+  }
+}
