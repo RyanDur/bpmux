@@ -424,6 +424,10 @@ pub async fn run_server(
                 "/api/test/reset_messages",
                 axum::routing::post(transport::test_seed::post_reset_messages),
             )
+            .route(
+                "/api/test/seed_roster",
+                axum::routing::post(transport::test_seed::post_seed_roster),
+            )
     } else {
         axum::Router::new()
     };

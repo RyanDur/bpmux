@@ -151,26 +151,40 @@ rendered = renderApp()
 
 Per #1306 falsifier (g): if specs within a sub-batch diverge from the
 archetype-shape (e.g., require seedRoster, win.reload, or reaction-state
-machinery), document + split into a follow-up slice rather than
-forcing the migration in-place. The #1306 first sub-batch (human-message-*)
-split 4 sister-OK + 3 divergent:
+machinery), document the variance, then ship the substrate-add WITHIN
+the slice (not as a follow-up). The #1306 sub-batch 4.1.A initially
+deferred 3 divergent specs; per Ryan-canon "no defer / no carry-over"
+(2026-05-14 17:09 UTC), those were brought back into Pegasus as #1335
+sub-batch 4.1.B which shipped all 3 substrate-adds + 3 specs together.
 
-**Migrated (sister-OK)**:
+**Substrate-adds in sub-batch 4.1.B (shipped in #1335)**:
+- `seedRoster` fixture + `POST /api/test/seed_roster` endpoint — seeds
+  the orchestrator's RosterStore via the canonical
+  `OrchestratorAction::Roster::RosterMemberUpserted` dispatch path so
+  mirror.roster propagates to the renderer's state-snapshot
+- RTL win.reload-equivalent — `rendered.cleanup()` then a fresh
+  `renderApp()`. jsdom retains localStorage across the cycle
+  (sister-semantic to a browser reload preserving localStorage; only
+  the window.bpmux shim re-installs). Tests calling this pattern
+  should `window.localStorage.clear()` in afterEach so filter-pill
+  state doesn't leak across cases
+- Multi-step reaction-state interaction — same pattern as any
+  multi-step test: click → waitFor next state → click → waitFor pill;
+  no new substrate beyond findByTestId + waitFor
+
+**Migrated in sub-batch 4.1.A (#1306)**:
 - `class-glyphs-render` — seed → DOM → glyph-count
 - `grouping-five-minute-threshold` — seed → DOM → row-class counts
 - `mention-renders-as-pill` — seed → DOM → mention-pill text
 - `pin-toggle-button-renders` — seed → DOM → pin-button query
 
-**Deferred (divergent — pending follow-up sub-batch)**:
-- `mention-click-scopes-recipient` — uses `seedRoster` (roster-seed
-  fixture not yet in RTL infrastructure) + sidebar-direct-role
-  interaction
-- `filter-persists-across-reload` — uses `win.reload()` (RTL has no
-  direct equivalent; would need unmount + remount semantic + verify
-  localStorage persistence preserved)
-- `reaction-picker-opens` — multi-step reaction-state interaction
-  (open picker → select emoji → assert pill); each step is its own
-  WS round-trip
+**Migrated in sub-batch 4.1.B (#1335)**:
+- `mention-click-scopes-recipient` — seedRoster → click pill → assert
+  sidebar-direct-dev aria-current
+- `filter-persists-across-reload` (2 tests) — click filter → unmount
+  → remount → assert pill state preserved
+- `reaction-picker-opens` — click add → assert picker → click emoji →
+  assert pill via WS round-trip
 
 ## Open: visual + native-only specs
 

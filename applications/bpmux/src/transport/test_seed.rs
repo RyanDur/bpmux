@@ -129,3 +129,51 @@ pub async fn post_reset_messages(
     }
     (StatusCode::OK, "reset messages".to_string())
 }
+
+/// #1335 slice 4.1.B: seed the orchestrator's RosterStore via the
+/// canonical OrchestratorAction::Roster dispatch path. Sister to the
+/// production WS-hello roster-upsert flow — same action shape, same
+/// broadcast semantic (mirror.roster propagates to the renderer's
+/// state-snapshot + state-delta channels). Each entry is a full
+/// identity string like "dev:claude-code"; the role is derived as the
+/// prefix before ':'. Gated by `BPMUX_TEST_SEED_API`.
+#[derive(Deserialize)]
+pub struct SeedRosterBody {
+    pub identities: Vec<String>,
+}
+
+pub async fn post_seed_roster(
+    axum::Extension(orchestrator): axum::Extension<
+        Arc<crate::orchestrator::Orchestrator<crate::board::adapters::github::GitHubSourceAdapter>>,
+    >,
+    Json(body): Json<SeedRosterBody>,
+) -> impl IntoResponse {
+    for identity in &body.identities {
+        let name = identity
+            .split(':')
+            .next()
+            .unwrap_or(identity.as_str())
+            .to_string();
+        let role = match name.as_str() {
+            "dev" => crate::orchestrator::RosterRole::Dev,
+            "pm" => crate::orchestrator::RosterRole::Pm,
+            "designer" => crate::orchestrator::RosterRole::Designer,
+            "ryan" => crate::orchestrator::RosterRole::Owner,
+            _ => crate::orchestrator::RosterRole::Other,
+        };
+        orchestrator
+            .dispatch(crate::orchestrator::OrchestratorAction::Roster(
+                crate::orchestrator::RosterAction::RosterMemberUpserted {
+                    name,
+                    identity: identity.clone(),
+                    role,
+                    presence: crate::orchestrator::Presence::Online,
+                },
+            ))
+            .await;
+    }
+    (
+        StatusCode::OK,
+        format!("seeded {} roster identities", body.identities.len()),
+    )
+}

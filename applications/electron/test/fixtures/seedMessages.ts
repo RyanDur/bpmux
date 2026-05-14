@@ -46,3 +46,26 @@ export async function resetMessages(apiBase: string, authToken: string): Promise
     throw new Error(`reset_messages POST failed: ${res.status} ${await res.text()}`)
   }
 }
+
+// #1335 slice 4.1.B: seed roster identities (sister to roster_seed.json
+// filesystem-write in launch.ts). Each entry is a full identity string
+// (e.g., "dev:claude-code"); the renderer's useTeamRoster fetches
+// /api/roster on mount + receives mirror updates and surfaces these as
+// sidebar-direct-<role> buttons.
+export async function seedRoster(
+  apiBase: string,
+  authToken: string,
+  identities: string[]
+): Promise<void> {
+  const res = await fetch(`${apiBase}/api/test/seed_roster`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${authToken}`
+    },
+    body: JSON.stringify({ identities })
+  })
+  if (!res.ok) {
+    throw new Error(`seed_roster POST failed: ${res.status} ${await res.text()}`)
+  }
+}

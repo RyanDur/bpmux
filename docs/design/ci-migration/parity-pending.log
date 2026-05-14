@@ -1,0 +1,75 @@
+# Parity log — #1335 sub-batch 4.1.B (commit-pending)
+
+Per #1306 audit-trail discipline: each retired Playwright spec
+passed AND its new RTL replacement passed AGAINST THE SAME CODE-STATE
+pre-retire.
+
+## Sequence (dev console, 2026-05-14)
+
+1. cargo build -p bpmux (refresh backend with new seed_roster route)
+2. vitest run on each migrated RTL test individually → all PASS
+3. /usr/bin/time -p npx playwright test <3 specs> --workers=1
+   --reporter=line → 4 passed (4.97s wall-clock real / 4.2s reported
+   test exec)
+4. vitest run on full src/renderer/src/__tests__/ suite serial →
+   227 passed / 31 files (was 222/27 + 1 ATP marker pre-#1335; +5
+   RTL tests +3 files for this slice)
+5. rm of 3 Playwright spec files + 1 ATP marker atomic with the
+   migration commit
+
+## Per-spec parity evidence
+
+| Playwright source (retired) | RTL target (new) | Tests | Behavior asserted (verbatim) |
+|---|---|---:|---|
+| tests/human-message-mention-click-scopes-recipient.spec.ts | src/renderer/src/__tests__/human-message-mention-click-scopes-recipient.test.tsx | 1 | seedMessages + seedRoster → mention pill click → sidebar-direct-dev aria-current=true + broadcast aria-current cleared |
+| tests/human-message-filter-persists-across-reload.spec.ts | src/renderer/src/__tests__/human-message-filter-persists-across-reload.test.tsx | 2 | (a) activity-pill toggle on → cleanup/remount → aria-pressed=true preserved; (b) chat-pill toggle off → cleanup/remount → aria-pressed=false preserved |
+| tests/human-message-reaction-picker-opens.spec.ts | src/renderer/src/__tests__/human-message-reaction-picker-opens.test.tsx | 1 | seeded message → click add → picker opens → click 👍 → picker closes → reaction-pill-👍 renders on the message |
+
+## Wall-clock comparison
+
+- Playwright (3 specs / 4 tests, --workers=1, real time):
+  4.97s wall-clock, 4.2s reported test exec
+  (~1.05s / test; ~1.65s / file)
+- RTL (3 specs / 4 tests in vitest serial mode):
+  ~140ms × 3 files = ~420ms reported, well under per-test budget
+  (~105ms / test; sister-pattern to #1306 4.1.A wall-clock)
+- ~10× faster per-test once globalSetup backend-spawn cost amortized
+
+## Substrate-adds (shipped within this slice)
+
+1. **`/api/test/seed_roster` REST endpoint** — dispatches
+   `OrchestratorAction::Roster(RosterAction::RosterMemberUpserted{...})`
+   to the canonical orchestrator action chain so mirror.roster
+   propagates to the renderer's state-snapshot. Gated by
+   `BPMUX_TEST_SEED_API` env-var at the structural router boundary.
+2. **`seedRoster` helper** in `test/fixtures/seedMessages.ts` —
+   POSTs identity list to the new endpoint.
+3. **RTL win.reload-equivalent** — `rendered.cleanup()` then a fresh
+   `renderApp()`. No new substrate; just an idiomatic pattern.
+   `window.localStorage.clear()` in afterEach so pill-state doesn't
+   leak across cases.
+
+## Falsifier coverage matrix (per #1335 ACs)
+
+| AC | Falsifier | Status |
+|---|---|---|
+| 1 | seedRoster fixture extracted to test/fixtures/ + accessible | ✓ `test/fixtures/seedMessages.ts:seedRoster` |
+| 2 | RTL win.reload-equivalent works + localStorage-persistence verified | ✓ cleanup/remount pattern in filter-persists test; both tests PASS |
+| 3 | Multi-step reaction-state interaction harness works + WS round-trips assertable | ✓ reaction-picker test PASS via real WS round-trip from backend to renderer |
+| 4 | All 3 deferred specs migrated + parity-confirmed + originals deleted | ✓ this log + atomic-rm |
+| 5 | Parity-log artifact committed per #1306 audit-trail discipline | ✓ this file |
+| 6 | Falsifier-coverage matrix per this AC list | ✓ this table |
+| 7 | Recipe-doc updated naming the 3 substrate-adds | ✓ updated sister-shape-variance section |
+
+## human-message-* family status post-#1335
+
+All 7 human-message-* Playwright specs migrated to RTL+real-backend:
+- (#1304 archetype) human-message-list-renders-seeded-chat
+- (#1306 4.1.A) class-glyphs-render + grouping-five-minute-threshold +
+  mention-renders-as-pill + pin-toggle-button-renders
+- (#1335 4.1.B) mention-click-scopes-recipient +
+  filter-persists-across-reload + reaction-picker-opens
+
+Zero Playwright sources remain for the human-message-* family. Next
+sub-batches (4.2-4.6) per #1305 audit ship after #1307 reshape
+(interim close-out ratification).
