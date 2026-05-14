@@ -185,7 +185,36 @@ fn decode_story_metadata_reads_object_label_shape() {
     assert_eq!(story.title, "Internal board abstraction");
     assert_eq!(story.state, StoryState::InProgress);
     assert_eq!(story.filed_by, "ryan");
-    assert!(story.body.is_none(), "body should not be eager-populated");
+    assert!(
+        story.body.is_none(),
+        "body absent from JSON → body remains None on decoded Story"
+    );
+}
+
+#[test]
+fn decode_story_metadata_decodes_body_when_present() {
+    let json = serde_json::json!({
+        "number": 1297,
+        "title": "Slice 3 — create_iteration inserts positional entry",
+        "state": "open",
+        "labels": [{"name": "ready"}],
+        "created_at": "2026-05-14T23:30:00+00:00",
+        "user": {"login": "pm"},
+        "body": "## User job\n\nWhen PM/Ryan wants to commit a group of stories to an iteration...\n\n## Acceptance test path\n\napplications/bpmux/src/bridge/tools/create_iteration_tests.rs",
+    });
+    let story = decode_story_metadata(&json).expect("story");
+    assert_eq!(
+        story.body.as_deref(),
+        Some(
+            "## User job\n\nWhen PM/Ryan wants to commit a group of stories to an iteration...\n\n## Acceptance test path\n\napplications/bpmux/src/bridge/tools/create_iteration_tests.rs"
+        ),
+        "body present in JSON must propagate to decoded Story (closes edit_story body-cascade-drop bug discovered 2026-05-14 23:33 UTC)"
+    );
+    assert_eq!(
+        story.acceptance_test_path.as_deref(),
+        Some("applications/bpmux/src/bridge/tools/create_iteration_tests.rs"),
+        "acceptance_test_path must be parsed from body when body decoded"
+    );
 }
 
 #[test]

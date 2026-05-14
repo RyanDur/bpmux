@@ -1016,10 +1016,10 @@ pub fn build_advertised_tools() -> Vec<rmcp::model::Tool> {
             "Add a comment to a story. Durable issue-audit-trail — visible to any future reader of the issue. Distinct from bpmux chat (session-scoped). Use for post-filing context (reconsider-notes, cross-refs, pickup-gate observations) you want persistent. Any agent role. Args: number + body (required; markdown supported).",
         ),
         crate::mcp::tools::accept_story_tool(
-            "Accept a delivered story and close it. OWNER (ryan) ONLY.",
+            "Accept a delivered story and close it. PM + owner — PM fires after audit (pre-accept-quality-audit + pre-accept-ci-check + pre-accept-live-walk skills); owner fires when walking directly. Per Ryan 2026-05-14 22:24 UTC: PM has accept-fire authority.",
         ),
         crate::mcp::tools::reject_story_tool(
-            "Reject a delivered story with a reason. OWNER (ryan) ONLY.",
+            "Reject a delivered story with a reason. PM + owner — PM fires when audit surfaces REJECT-flag (absolute-rule violation / falsifier-fidelity gap / substrate-correctness gap); owner fires when walking directly. Per Ryan 2026-05-14 22:24 UTC: PM has reject-fire authority. Rejected stories auto-flow to next iteration per `feedback_rejected_stories_default_to_next_iteration`.",
         ),
         crate::mcp::tools::reorder_story_tool(
             "Reorder a story's priority position within its state column. PM ONLY — other roles are rejected. Position 1 = top of column.",
