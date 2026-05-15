@@ -80,7 +80,13 @@ interface DragPayload {
   oldPosition: number
 }
 
+interface IterationDragPayload {
+  iterationNumber: number
+  oldOrder: number | null
+}
+
 const DRAG_MIMETYPE = 'application/x-bpmux-iteration-member'
+const DRAG_MIMETYPE_ITERATION = 'application/x-bpmux-iteration-itself'
 
 const postLabelMutation = (
   storyNumber: number,
@@ -115,6 +121,7 @@ const Iteration = ({ stories, onOpen }: Props): React.JSX.Element | null => {
   const collapse = useIterationCollapse(RENDERER_IDENTITY)
   const [draggedNumber, setDraggedNumber] = useState<number | null>(null)
   const [hoveredNumber, setHoveredNumber] = useState<number | null>(null)
+  const [draggedIterationNumber, setDraggedIterationNumber] = useState<number | null>(null)
   const iterations = [...stories.filter(isIterationStory)].sort((a, b) => {
     const ao = positionInIterationOrder(a)
     const bo = positionInIterationOrder(b)
@@ -160,7 +167,61 @@ const Iteration = ({ stories, onOpen }: Props): React.JSX.Element | null => {
                 data-iteration-kind="named"
                 data-iteration-name={themeName}
                 data-closed={iteration.gh_state === 'closed' ? 'true' : undefined}
+                data-dragging={
+                  draggedIterationNumber === iteration.number ? 'true' : undefined
+                }
                 open={open}
+                draggable={iteration.gh_state !== 'closed'}
+                onDragStart={(event) => {
+                  const payload: IterationDragPayload = {
+                    iterationNumber: iteration.number,
+                    oldOrder: positionInIterationOrder(iteration)
+                  }
+                  event.dataTransfer.setData(
+                    DRAG_MIMETYPE_ITERATION,
+                    JSON.stringify(payload)
+                  )
+                  event.dataTransfer.effectAllowed = 'move'
+                  setDraggedIterationNumber(iteration.number)
+                }}
+                onDragEnd={() => setDraggedIterationNumber(null)}
+                onDragOver={(event) => {
+                  if (event.dataTransfer.types.includes(DRAG_MIMETYPE_ITERATION)) {
+                    event.preventDefault()
+                    event.dataTransfer.dropEffect = 'move'
+                  }
+                }}
+                onDrop={(event) => {
+                  const raw = event.dataTransfer.getData(DRAG_MIMETYPE_ITERATION)
+                  if (!raw) return
+                  event.preventDefault()
+                  const payload = JSON.parse(raw) as IterationDragPayload
+                  if (payload.iterationNumber === iteration.number) return
+                  const targetOrder = positionInIterationOrder(iteration)
+                  if (targetOrder === null) return
+                  const allOrders = iterations
+                    .map((it) => positionInIterationOrder(it))
+                    .filter((p): p is number => p !== null)
+                  const targetIdx = allOrders.indexOf(targetOrder)
+                  if (targetIdx === -1) return
+                  const draggedOldOrder = payload.oldOrder
+                  if (draggedOldOrder === null) return
+                  const mutation = computeDropMutation({
+                    draggedNumber: payload.iterationNumber,
+                    draggedThemeName: 'order',
+                    draggedOldPosition: draggedOldOrder,
+                    targetThemeName: 'order',
+                    targetMemberPositions: allOrders,
+                    targetMemberIndex: targetIdx,
+                    targetMembersIncludeDragged: true
+                  })
+                  if (!mutation) return
+                  postLabelMutation(
+                    payload.iterationNumber,
+                    mutation.add,
+                    mutation.remove
+                  )
+                }}
                 onToggle={(event) => {
                   collapse.setOpen(key, event.currentTarget.open)
                 }}
