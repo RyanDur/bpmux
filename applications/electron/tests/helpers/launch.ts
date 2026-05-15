@@ -303,7 +303,9 @@ export const launchTwoElectronsSharedBackend = async (
     ...opts,
     extraEnv: {
       ...(opts.extraEnv ?? {}),
-      BPMUX_AUTH_TOKEN_PATH: authTokenPath
+      BPMUX_AUTH_TOKEN_PATH: authTokenPath,
+      BPMUX_POLL_INTERVAL_SECS: '600',
+      BPMUX_TEST_MODE: '1'
     }
   })
   const win1 = await r1.app.firstWindow()
@@ -311,7 +313,9 @@ export const launchTwoElectronsSharedBackend = async (
     backendPort: r1.backendPort,
     extraEnv: {
       ...(opts.extraEnv ?? {}),
-      BPMUX_AUTH_TOKEN_PATH: authTokenPath
+      BPMUX_AUTH_TOKEN_PATH: authTokenPath,
+      BPMUX_POLL_INTERVAL_SECS: '600',
+      BPMUX_TEST_MODE: '1'
     }
   })
   const win2 = await r2.app.firstWindow()
@@ -321,17 +325,17 @@ export const launchTwoElectronsSharedBackend = async (
     try {
       await r2.app.close()
     } catch {
-      // app1 owns the backend; r2.app.close just shuts the renderer
+      void 0
     }
     try {
       await r1.app.close()
     } catch {
-      // best-effort
+      void 0
     }
     try {
       rmSync(authDir, { recursive: true, force: true })
     } catch {
-      // best-effort
+      void 0
     }
   }
   return {

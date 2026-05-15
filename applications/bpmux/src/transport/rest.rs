@@ -1150,6 +1150,7 @@ async fn post_close_iteration_canonical(
             "post_close_iteration_canonical: state-delta broadcast failed: {e}"
         ));
     }
+    broadcast_board_invalidate(&session);
     let body = serde_json::json!({
         "promoted": promoted,
         "deleted_marker_id": serde_json::Value::Null,
