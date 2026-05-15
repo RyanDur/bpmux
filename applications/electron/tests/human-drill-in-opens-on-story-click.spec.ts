@@ -41,10 +41,7 @@ test.describe('human-side E2E #476 — direct-action — board drill-in', () => 
       await win.reload()
       await expect(win.locator('[data-test="board-region"]')).toBeVisible()
 
-      await win.locator('[data-test="board-group-icebox"]').click()
-      const storyRow = win.locator(
-        '#board-group-icebox-content [data-test="board-story-1"]'
-      )
+      const storyRow = win.locator('[data-test="board-story-1"]').first()
       await expect(storyRow).toContainText(titleMarker)
 
       consoleErrors.length = 0
@@ -54,7 +51,7 @@ test.describe('human-side E2E #476 — direct-action — board drill-in', () => 
       // but the renderer uses a `<div role="button" class="board-
       // story-button">` (clickable surface, not a real button). The
       // class selector matches the production element directly.
-      await storyRow.locator('.board-story-button').click()
+      await storyRow.locator('button').first().click()
 
       const drillIn = win.locator('[data-test="board-drill-in"]')
       await expect(drillIn).toBeVisible()

@@ -283,6 +283,69 @@ export const launchIsolatedWithWindow = async (
   return { ...result, win }
 }
 
+export interface DualElectronResult {
+  app1: ElectronApplication
+  app2: ElectronApplication
+  win1: Page
+  win2: Page
+  backendPort: number
+  authToken: string
+  apiBase: string
+  cleanup: () => Promise<void>
+}
+
+export const launchTwoElectronsSharedBackend = async (
+  opts: LaunchOpts = {}
+): Promise<DualElectronResult> => {
+  const authDir = mkdtempSync(join(tmpdir(), 'bpmux-dual-electron-auth-'))
+  const authTokenPath = join(authDir, 'auth_token')
+  const r1 = await launchIsolatedElectron({
+    ...opts,
+    extraEnv: {
+      ...(opts.extraEnv ?? {}),
+      BPMUX_AUTH_TOKEN_PATH: authTokenPath
+    }
+  })
+  const win1 = await r1.app.firstWindow()
+  const r2 = await launchIsolatedElectron({
+    backendPort: r1.backendPort,
+    extraEnv: {
+      ...(opts.extraEnv ?? {}),
+      BPMUX_AUTH_TOKEN_PATH: authTokenPath
+    }
+  })
+  const win2 = await r2.app.firstWindow()
+  const authToken = readFileSync(authTokenPath, 'utf-8').trim()
+  const apiBase = `http://127.0.0.1:${r1.backendPort}`
+  const cleanup = async (): Promise<void> => {
+    try {
+      await r2.app.close()
+    } catch {
+      // app1 owns the backend; r2.app.close just shuts the renderer
+    }
+    try {
+      await r1.app.close()
+    } catch {
+      // best-effort
+    }
+    try {
+      rmSync(authDir, { recursive: true, force: true })
+    } catch {
+      // best-effort
+    }
+  }
+  return {
+    app1: r1.app,
+    app2: r2.app,
+    win1,
+    win2,
+    backendPort: r1.backendPort,
+    authToken,
+    apiBase,
+    cleanup
+  }
+}
+
 // #1127: Playwright counterpart to #724's `TestBpmux::start_with_mock_gh`.
 // Spawns an in-process httpmock-style GH server and points the spawned
 // bpmux's GitHubSourceAdapter at it via BPMUX_GH_BASE_URL. Drops

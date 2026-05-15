@@ -38,13 +38,10 @@ test.describe('human-side E2E #476 — read-class — drill-in body content', ()
       await win.reload()
       await expect(win.locator('[data-test="board-region"]')).toBeVisible()
 
-      await win.locator('[data-test="board-group-icebox"]').click()
-      const storyRow = win.locator(
-        '#board-group-icebox-content [data-test="board-story-1"]'
-      )
+      const storyRow = win.locator('[data-test="board-story-1"]').first()
       await expect(storyRow).toContainText('drill-body-target')
 
-      await storyRow.locator('.board-story-button').click()
+      await storyRow.locator('button').first().click()
       const drillIn = win.locator('[data-test="board-drill-in"]')
       await expect(drillIn).toBeVisible()
 

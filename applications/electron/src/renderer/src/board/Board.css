@@ -363,9 +363,6 @@
     opacity: 0;
   }
 
-  /* #1339 Scenario 5: closed iteration rejects inbound drag with a brief
-     shake + not-allowed cursor so the user sees the rejection visually
-     (sister to outbound-lock via draggable=false on closed iterations). */
   & .board-iteration-card[data-closed='true'] {
     cursor: not-allowed;
   }

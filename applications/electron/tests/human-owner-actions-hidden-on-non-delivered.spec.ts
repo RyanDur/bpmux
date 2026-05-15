@@ -38,16 +38,13 @@ test.describe('human-side E2E #476 — owner-specific — actions hidden on non-
       await win.reload()
       await expect(win.locator('[data-test="board-region"]')).toBeVisible()
 
-      await win.locator('[data-test="board-group-icebox"]').click()
-      const storyRow = win.locator(
-        '#board-group-icebox-content [data-test="board-story-1"]'
-      )
+      const storyRow = win.locator('[data-test="board-story-1"]').first()
       await expect(storyRow).toContainText('icebox-not-actionable')
 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      await storyRow.locator('.board-story-button').click()
+      await storyRow.locator('button').first().click()
 
       const drillIn = win.locator('[data-test="board-drill-in"]')
       await expect(drillIn).toBeVisible()

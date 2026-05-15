@@ -17,9 +17,7 @@ test.describe('human-side E2E #476 — live-update class — BOARD_INVALIDATE re
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      const initial = win.locator(
-        '#board-group-icebox-content [data-test="board-story-1"]'
-      )
+      const initial = win.locator('[data-test="board-story-1"]')
       await expect(initial).toHaveCount(0)
 
       const createResp = await rpc(
@@ -37,10 +35,7 @@ test.describe('human-side E2E #476 — live-update class — BOARD_INVALIDATE re
       )
       expect(createResp.status).toBe(200)
 
-      await win.locator('[data-test="board-group-icebox"]').click()
-      const storyAfterInvalidate = win.locator(
-        '#board-group-icebox-content [data-test="board-story-1"]'
-      )
+      const storyAfterInvalidate = win.locator('[data-test="board-story-1"]').first()
       await expect(storyAfterInvalidate).toContainText('live-board-invalidate-marker', {
         timeout: 10000
       })

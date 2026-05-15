@@ -31,13 +31,21 @@ test.describe('human-side E2E #476 — direct-action — board keyboard navigati
       )
       expect(createResp.status).toBe(200)
 
+      const moveResp = await rpc(
+        'move_story',
+        {
+          number: 1,
+          target_state: 'ready',
+          rationale: 'flat-board flat-icebox kbd-nav fixture target'
+        },
+        'pm'
+      )
+      expect(moveResp.status).toBe(200)
+
       await win.reload()
       await waitForBoardLoaded(win)
 
-      await win.locator('[data-test="board-group-icebox"]').click()
-      const storyRow = win.locator(
-        '#board-group-icebox-content [data-test="board-story-1"]'
-      )
+      const storyRow = win.locator('[data-test="board-story-1"]').first()
       await expect(storyRow).toContainText('kbd-nav-target')
 
       consoleErrors.length = 0
