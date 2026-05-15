@@ -46,13 +46,7 @@ jobs:
           cargo install cargo-audit
           cargo audit
       - name: Verify Ryan's $HOME state preserved (#1285 regression gate)
-        run: |
-          set -e
-          test "$CARGO_HOME" = "$RUNNER_TEMP/cargo-home" || { echo "CARGO_HOME not redirected"; exit 1; }
-          test "$RUSTUP_HOME" = "$RUNNER_TEMP/rustup-home" || { echo "RUSTUP_HOME not redirected"; exit 1; }
-          test -d "$RUNNER_TEMP/cargo-home" || { echo "isolated cargo-home not populated"; exit 1; }
-          test -d "$RUNNER_TEMP/rustup-home" || { echo "isolated rustup-home not populated"; exit 1; }
-          echo "$HOME-isolation gate passed: CARGO_HOME + RUSTUP_HOME point to per-run \$RUNNER_TEMP paths"
+        run: scripts/verify-home-isolation.sh
 
   build-bpmux:
     runs-on: ubuntu-latest
