@@ -98,7 +98,6 @@ pub(in crate::bridge) async fn handle_get_story(
         "is_closed": story.is_closed,
         "labels": labels,
         "parent_epic": story.parent_epic,
-        "iteration_id": story.iteration_id,
         "body_hydrated": body_cached.is_some(),
         "gate_comments_hydrated": story.gate_comments.is_some(),
     });

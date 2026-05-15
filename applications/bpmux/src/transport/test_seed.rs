@@ -157,8 +157,6 @@ pub struct SeedStory {
     pub initial_state: String,
     #[serde(default = "default_story_type_feature")]
     pub story_type: String,
-    #[serde(default)]
-    pub iteration_id: Option<u64>,
 }
 
 fn default_state_icebox() -> String {
@@ -207,7 +205,7 @@ pub async fn post_seed_stories(
             peer_id: crate::board::PeerId::local(),
         };
         if let Err(e) = refresh.mutate_sync(crate::board::BoardEvent::StoryCreated {
-            meta: meta.clone(),
+            meta,
             number: s.number,
             title: s.title.clone(),
             body: s.body.clone(),
@@ -217,21 +215,6 @@ pub async fn post_seed_stories(
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("seed_stories: StoryCreated #{} failed: {e}", s.number),
-            );
-        }
-        if let Some(iter_n) = s.iteration_id
-            && let Err(e) = refresh.mutate_sync(crate::board::BoardEvent::TagAdded {
-                meta,
-                number: s.number,
-                label: format!("iteration-#{iter_n}"),
-            })
-        {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!(
-                    "seed_stories: TagAdded iteration-#{iter_n} on #{} failed: {e}",
-                    s.number
-                ),
             );
         }
     }

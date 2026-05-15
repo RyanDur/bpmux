@@ -58,32 +58,18 @@ fn tag_from_label_string(s: &str) -> Option<Tag> {
 }
 
 /// On `BoardEvent::TagAdded`, keep `Story.raw_labels` and the
-/// label-derived fields (`iteration_id`, `parent_epic`) in sync with
-/// the broadcast label-set. Without this, a `TagAdded` for
-/// `"iteration-#NNNN"` would not surface as a `Story.iteration_id`
-/// update because the typed `Tag` enum only models `Blocked`; the
-/// label-based fields are decoded by `iteration_id_from_labels` +
-/// `parent_epic_from_labels` against `raw_labels`. #1299 membership-
-/// tools' canonical chain relies on this re-derivation at the
-/// chokepoint so `list_iteration_children` reflects post-mutation
-/// membership.
+/// label-derived `parent_epic` field in sync with the broadcast
+/// label-set. (#1299 retired the `iteration_id` axis — iteration
+/// membership is now positional via `icebox_unified`.)
 fn sync_raw_labels_on_tag_added(story: &mut Story, label: &str) {
     if !story.raw_labels.iter().any(|l| l == label) {
         story.raw_labels.push(label.to_string());
     }
-    story.iteration_id =
-        crate::board::adapters::github::iteration_id_from_labels(&story.raw_labels);
     story.parent_epic = crate::board::adapters::github::parent_epic_from_labels(&story.raw_labels);
 }
 
-/// Sister to `sync_raw_labels_on_tag_added` for `BoardEvent::TagRemoved`:
-/// removes the label from `raw_labels` and re-derives `iteration_id` +
-/// `parent_epic` so removing `"iteration-#NNNN"` clears
-/// `Story.iteration_id`.
 fn sync_raw_labels_on_tag_removed(story: &mut Story, label: &str) {
     story.raw_labels.retain(|l| l != label);
-    story.iteration_id =
-        crate::board::adapters::github::iteration_id_from_labels(&story.raw_labels);
     story.parent_epic = crate::board::adapters::github::parent_epic_from_labels(&story.raw_labels);
 }
 
@@ -266,7 +252,6 @@ impl BoardStore {
                     gate_comments: Some(Vec::new()),
                     is_closed: false,
                     parent_epic: None,
-                    iteration_id: None,
                     acceptance_test_path: crate::bridge::parse_acceptance_test_path(body),
                     raw_labels: Vec::new(),
                     body_etag: None,
@@ -364,7 +349,6 @@ impl BoardStore {
                     existing.tags = story.tags.clone();
                     existing.is_closed = story.is_closed;
                     existing.parent_epic = story.parent_epic;
-                    existing.iteration_id = story.iteration_id;
                     if story.body.is_some() {
                         existing.body = story.body.clone();
                         existing.acceptance_test_path = story.acceptance_test_path.clone();
@@ -387,8 +371,6 @@ impl BoardStore {
                         .collect();
                     existing.parent_epic =
                         crate::board::adapters::github::parent_epic_from_labels(labels);
-                    existing.iteration_id =
-                        crate::board::adapters::github::iteration_id_from_labels(labels);
                     existing.raw_labels = labels.clone();
                 }
             }

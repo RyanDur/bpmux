@@ -8,6 +8,8 @@ pub mod store;
 pub mod sync;
 
 #[cfg(test)]
+mod canonical_tests;
+#[cfg(test)]
 mod conflict_classifier_tests;
 #[cfg(test)]
 mod domain_tests;

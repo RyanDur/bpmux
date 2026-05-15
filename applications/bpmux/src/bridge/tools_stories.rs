@@ -487,13 +487,11 @@ fn insert_iteration_into_icebox_unified(
     Ok(())
 }
 
-/// Build the issue body for a new iteration-issue. Designer's
-/// drafted markdown schema (2026-05-12 18:09 UTC): header line +
-/// status line + member-stories placeholder section + notes. Slice
-/// 2+ populate the member-stories section as iteration_id-tagged
-/// members are added; queries use the iteration_id field on member
-/// stories as canonical (body is human-readable + future-tooling
-/// hint, not parsed for membership).
+/// Build the issue body for a new iteration-issue. Cassiopeia
+/// substrate: iteration membership is positional (stories above the
+/// marker in icebox_unified, bounded by previous marker or top-of-
+/// icebox); body is human-readable + future-tooling hint, not parsed
+/// for membership.
 fn compose_iteration_body(theme_name: &str) -> String {
     let today = chrono::Utc::now().format("%Y-%m-%d");
     format!(
@@ -504,8 +502,8 @@ fn compose_iteration_body(theme_name: &str) -> String {
          \n\
          ## Member stories\n\
          \n\
-         <!-- Stories with iteration_id pointing here listed by future tooling.\n\
-              Populated by slice 2+ as members are added. -->\n\
+         <!-- Positional members: stories above this marker in icebox_unified,\n\
+              bounded by previous Iteration marker or top-of-icebox. -->\n\
          \n\
          _(no members yet)_\n\
          \n\

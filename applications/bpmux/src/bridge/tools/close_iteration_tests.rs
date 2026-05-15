@@ -24,7 +24,6 @@ mod canonical_via_gh_1300 {
             "pm".to_string(),
         );
         if let Some(iter) = iter_id {
-            s.iteration_id = Some(iter);
             s.raw_labels = vec![
                 format!("{state:?}").to_lowercase(),
                 format!("iteration-#{iter}"),
@@ -77,11 +76,9 @@ mod canonical_via_gh_1300 {
 
         let s200 = refresh.story(200).expect("member 200 exists");
         assert_eq!(s200.state, StoryState::Ready, "AC2: member 200 promoted");
-        assert_eq!(s200.iteration_id, None, "AC3: iteration_id cleared");
 
         let s201 = refresh.story(201).expect("member 201 exists");
         assert_eq!(s201.state, StoryState::Ready, "AC2: member 201 promoted");
-        assert_eq!(s201.iteration_id, None, "AC3: iteration_id cleared");
     }
 
     #[tokio::test]

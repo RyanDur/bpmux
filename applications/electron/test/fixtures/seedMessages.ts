@@ -57,7 +57,6 @@ export interface SeedStory {
   body?: string
   initial_state?: 'icebox' | 'ready' | 'in-progress' | 'desk-check' | 'delivered' | 'accepted'
   story_type?: 'feature' | 'bug' | 'chore' | 'epic' | 'iteration'
-  iteration_id?: number
 }
 
 export async function seedStories(

@@ -40,7 +40,6 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         gate_comments,
         is_closed,
         parent_epic,
-        iteration_id,
         acceptance_test_path,
         raw_labels,
         body_etag,
@@ -83,11 +82,6 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         *parent_epic,
         Some(100),
         "parent_epic must decode from labels"
-    );
-    assert_eq!(
-        *iteration_id,
-        Some(200),
-        "iteration_id must decode from labels"
     );
     assert_eq!(
         acceptance_test_path.as_deref(),

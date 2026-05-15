@@ -174,7 +174,6 @@ pub struct Story {
     pub gate_comments: Option<Vec<GateComment>>,
     pub is_closed: bool,
     pub parent_epic: Option<u64>,
-    pub iteration_id: Option<u64>,
     pub acceptance_test_path: Option<String>,
     pub raw_labels: Vec<String>,
     #[serde(default)]
@@ -211,7 +210,6 @@ impl Story {
             gate_comments: None,
             is_closed: false,
             parent_epic: None,
-            iteration_id: None,
             acceptance_test_path: None,
             raw_labels,
             body_etag: None,
@@ -258,9 +256,6 @@ pub fn story_to_board_json(story: &Story) -> serde_json::Value {
     if let Some(epic) = story.parent_epic {
         labels.push(format!("parent-epic-#{epic}"));
     }
-    if let Some(iter) = story.iteration_id {
-        labels.push(format!("iteration-#{iter}"));
-    }
     // Derive rework-context from transition history so the renderer can
     // surface the ↩ glyph + tooltip without a per-story round-trip to
     // /api/stories/:n. Most stories have no backward edge; for those,
@@ -279,7 +274,6 @@ pub fn story_to_board_json(story: &Story) -> serde_json::Value {
         "gh_state": if story.is_closed { "closed" } else { "open" },
         "labels": labels,
         "parent_epic": story.parent_epic,
-        "iteration_id": story.iteration_id,
         "assignees": Vec::<String>::new(),
         "created_at": story.filed_at.to_rfc3339(),
         "body": story.body.clone().unwrap_or_default(),
