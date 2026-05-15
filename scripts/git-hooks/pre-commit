@@ -43,6 +43,7 @@ fmt_log=$(mktemp); fmt_exit=0
 clippy_log=$(mktemp); clippy_exit=0
 nextest_log=$(mktemp); nextest_exit=0
 unit_log=$(mktemp); unit_exit=0
+inline_log=$(mktemp); inline_exit=0
 
 cargo fmt --check >"$fmt_log" 2>&1 &
 fmt_pid=$!
@@ -56,10 +57,14 @@ nextest_pid=$!
 (cd "$REPO_ROOT/applications/electron" && npm run test:unit) >"$unit_log" 2>&1 &
 unit_pid=$!
 
+"$REPO_ROOT/scripts/check-inline-comments.sh" >"$inline_log" 2>&1 &
+inline_pid=$!
+
 wait $fmt_pid || fmt_exit=$?
 wait $clippy_pid || clippy_exit=$?
 wait $nextest_pid || nextest_exit=$?
 wait $unit_pid || unit_exit=$?
+wait $inline_pid || inline_exit=$?
 
 # Print logs in deterministic order so failure context is easy to
 # scan regardless of which finished first.
@@ -67,7 +72,8 @@ echo "--- cargo fmt ---"; cat "$fmt_log"
 echo "--- cargo clippy ---"; cat "$clippy_log"
 echo "--- cargo nextest ---"; cat "$nextest_log"
 echo "--- npm test:unit ---"; cat "$unit_log"
-rm -f "$fmt_log" "$clippy_log" "$nextest_log" "$unit_log"
+echo "--- inline-// gate ---"; cat "$inline_log"
+rm -f "$fmt_log" "$clippy_log" "$nextest_log" "$unit_log" "$inline_log"
 
 # Treat 141 (SIGPIPE) as warn-not-fail per #1135 — Playwright's
 # vitest reporter can SIGPIPE on stdout pipe-close even when all
@@ -82,6 +88,7 @@ fi
 if [ $unit_exit -eq 141 ]; then
     echo "WARN: npm test:unit exited 141 (SIGPIPE — reporter pipe-close, not test failure)"
 fi
+[ $inline_exit -ne 0 ] && exit $inline_exit
 
 # cargo audit runs sequentially after parallel block — it locks the
 # Cargo registry index briefly and parallel-cargo can deadlock.

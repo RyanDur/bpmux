@@ -32,6 +32,11 @@ jobs:
         run: cargo fmt --check
       - name: Clippy
         run: cargo clippy -- -D warnings
+      - name: Inline-comment absolute-rule check (#1345 force-push backstop)
+        run: |
+          base="${{ github.event.pull_request.base.sha || github.event.before || 'HEAD~1' }}"
+          git diff --unified=0 "$base"..HEAD -- '*.rs' '*.ts' '*.tsx' '*.js' '*.jsx' \
+            | scripts/check-inline-comments.sh
       - name: Test (offline; no real outside-this-computer calls per Ryan 2026-05-05)
         env:
           BPMUX_SESSION_BASE: ${{ runner.temp }}/bpmux-sessions
