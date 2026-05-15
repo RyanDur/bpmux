@@ -509,7 +509,11 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
       ) : (
         <section className="board-body" data-test="board-list">
           <Epic epics={epics} stories={stories} onOpen={handleOpen} />
-          <Iteration stories={iterationContainerStories} onOpen={handleOpen} />
+          <Iteration
+            stories={iterationContainerStories}
+            onOpen={handleOpen}
+            onReorderAnnounce={setReorderAnnounce}
+          />
           {GROUP_ORDER.map((group) => (
             <BoardGroup
               key={group.state}

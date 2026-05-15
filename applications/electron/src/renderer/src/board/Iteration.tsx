@@ -8,6 +8,7 @@ import { storyTypeFromLabels, type BoardStory } from './types'
 interface Props {
   stories: BoardStory[]
   onOpen: (n: number) => void
+  onReorderAnnounce?: (text: string) => void
 }
 
 const UNSCHEDULED_KEY = 'unscheduled'
@@ -117,7 +118,7 @@ const eagerReorder = <T,>(items: T[], findId: (t: T) => number, fromId: number |
   return next
 }
 
-const Iteration = ({ stories, onOpen }: Props): React.JSX.Element | null => {
+const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Element | null => {
   const collapse = useIterationCollapse(RENDERER_IDENTITY)
   const [draggedNumber, setDraggedNumber] = useState<number | null>(null)
   const [hoveredNumber, setHoveredNumber] = useState<number | null>(null)
@@ -339,6 +340,11 @@ const Iteration = ({ stories, onOpen }: Props): React.JSX.Element | null => {
                           })
                           if (!mutation) return
                           postLabelMutation(story.number, mutation.add, mutation.remove)
+                          const newIdx =
+                            direction === 'up' ? originalIdx - 1 : originalIdx + 1
+                          onReorderAnnounce?.(
+                            `Moved ${story.title} to position ${newIdx + 1} of ${members.length} in ${iteration.title}`
+                          )
                         }}
                       >
                         <small className="board-story-number">#{story.number}</small>
