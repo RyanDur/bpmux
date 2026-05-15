@@ -1,16 +1,3 @@
-// #1303 Epic #1247 slice 1: infrastructure regression test.
-//
-// Pins the RTL+real-backend substrate-claim end-to-end:
-// - renderApp() fixture installs window.bpmux shim + renders <App />
-// - The rendered App actually connects to the real bpmux backend
-//   spawned by vitest globalSetup (MemoryStorage; no Electron)
-// - At least one backend round-trip succeeds (GET /api/board)
-// - Single-test wall-clock budget per AC8 (<500ms)
-//
-// This is the archetype-lock for slices 2-7 (#1304+); subsequent slices
-// migrate Playwright specs into this substrate via the same renderApp
-// fixture import-shape.
-
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'

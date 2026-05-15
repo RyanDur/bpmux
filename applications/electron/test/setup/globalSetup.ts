@@ -1,21 +1,3 @@
-// #1303 Epic #1247 slice 1: vitest globalSetup that spawns a real bpmux
-// backend (subprocess) for RTL+real-backend integration tests. Spawns
-// ONE backend per test-run via vitest's globalSetup hook; per-test
-// isolation comes from MemoryStorage (#1289 substrate) + per-test
-// state-reset (slice 2 will add seed-API reset hooks).
-//
-// Why per-run not per-worker: vitest's worker model varies (threads vs
-// forks); per-run spawn is the smallest viable unit + amortizes 1-2s
-// spawn cost across all tests in the run. AC8's <500ms per-test budget
-// is preserved because the spawn cost is amortized at globalSetup, not
-// charged per test.
-//
-// Sister-pattern to existing test-isolation env-vars at the
-// session/storage layer (BPMUX_USAGE_PATH / BPMUX_AUTH_TOKEN_PATH /
-// BPMUX_SESSIONS_BASE / BPMUX_BOARD_STORE_PATH / BPMUX_BOARD_OUTBOX_PATH /
-// BPMUX_PRIORITY_PATH); ensures the test backend is fully isolated from
-// the developer's real ~/.bpmux state.
-
 import { spawn, type ChildProcess } from 'node:child_process'
 import { existsSync, mkdtempSync, readFileSync } from 'node:fs'
 import net from 'node:net'
@@ -24,8 +6,6 @@ import { dirname, join } from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { fileURLToPath } from 'node:url'
 
-// vitest 4.x doesn't export GlobalSetupContext as a public type; inline
-// the minimal shape we need (provide(key, value) for inject(key) in tests).
 interface VitestProvideContext {
   provide: <K extends keyof ProvidedTestContext>(key: K, value: ProvidedTestContext[K]) => void
 }
@@ -67,9 +47,7 @@ async function waitForBackendReady(port: number): Promise<void> {
       if (res.status === 200 || res.status === 401) {
         return
       }
-    } catch {
-      // not ready yet
-    }
+    } catch {}
     await sleep(100)
   }
   throw new Error(
