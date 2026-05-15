@@ -12,6 +12,18 @@ interface Props {
 
 const UNSCHEDULED_KEY = 'unscheduled'
 const UNSCHEDULED_LABEL_PREFIX = 'iteration-Unscheduled.'
+const ITERATION_ORDER_PREFIX = 'iteration-order.'
+
+const positionInIterationOrder = (story: BoardStory): number | null => {
+  for (const label of story.labels) {
+    if (label.startsWith(ITERATION_ORDER_PREFIX)) {
+      const tail = label.slice(ITERATION_ORDER_PREFIX.length)
+      const n = parseInt(tail, 10)
+      if (!Number.isNaN(n)) return n
+    }
+  }
+  return null
+}
 
 const isIterationStory = (story: BoardStory): boolean =>
   storyTypeFromLabels(story.labels) === 'iteration'
@@ -103,7 +115,14 @@ const Iteration = ({ stories, onOpen }: Props): React.JSX.Element | null => {
   const collapse = useIterationCollapse(RENDERER_IDENTITY)
   const [draggedNumber, setDraggedNumber] = useState<number | null>(null)
   const [hoveredNumber, setHoveredNumber] = useState<number | null>(null)
-  const iterations = stories.filter(isIterationStory)
+  const iterations = [...stories.filter(isIterationStory)].sort((a, b) => {
+    const ao = positionInIterationOrder(a)
+    const bo = positionInIterationOrder(b)
+    if (ao !== null && bo !== null) return ao - bo
+    if (ao !== null) return -1
+    if (bo !== null) return 1
+    return a.number - b.number
+  })
   const loose = stories.filter(isLooseStory)
   if (iterations.length === 0 && loose.length === 0) return null
 
