@@ -9,6 +9,7 @@ import {
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import DrillIn from './DrillIn'
 import Epic from './Epic'
+import Iteration from './Iteration'
 import StoryRow from './StoryRow'
 import { useRefetchOnReconnect } from './useRefetchOnReconnect'
 import {
@@ -241,7 +242,25 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
     () => stories.filter((s) => storyTypeFromLabels(s.labels) !== 'epic'),
     [stories]
   )
-  const grouped = useMemo(() => groupStories(nonEpicStories), [nonEpicStories])
+  const iterationContainerStories = useMemo(
+    () =>
+      nonEpicStories.filter((s) => {
+        if (storyTypeFromLabels(s.labels) === 'iteration') return true
+        if (s.state === 'icebox' && !s.labels.some((l) => l.startsWith('iteration-'))) return true
+        return false
+      }),
+    [nonEpicStories]
+  )
+  const flatBoardStories = useMemo(
+    () =>
+      nonEpicStories.filter((s) => {
+        if (storyTypeFromLabels(s.labels) === 'iteration') return false
+        if (s.state === 'icebox' && !s.labels.some((l) => l.startsWith('iteration-'))) return false
+        return true
+      }),
+    [nonEpicStories]
+  )
+  const grouped = useMemo(() => groupStories(flatBoardStories), [flatBoardStories])
 
   // Flat navigation order matches the visible list order: for each
   // group in GROUP_ORDER, the group's stories in array order. We use
@@ -490,6 +509,7 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
       ) : (
         <section className="board-body" data-test="board-list">
           <Epic epics={epics} stories={stories} onOpen={handleOpen} />
+          <Iteration stories={iterationContainerStories} onOpen={handleOpen} />
           {GROUP_ORDER.map((group) => (
             <BoardGroup
               key={group.state}
