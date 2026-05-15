@@ -359,6 +359,10 @@
     cursor: help;
   }
 
+  & .board-iteration-member[data-dragging='true'] {
+    opacity: 0;
+  }
+
   & .board-iteration-marker {
     display: flex;
     align-items: center;

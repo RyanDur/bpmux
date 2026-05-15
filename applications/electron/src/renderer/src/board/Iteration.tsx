@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import { useIterationCollapse } from './useIterationCollapse'
 import { computeDropMutation } from './iterationPosition'
@@ -89,6 +90,7 @@ const postLabelMutation = (
 
 const Iteration = ({ stories, onOpen }: Props): React.JSX.Element | null => {
   const collapse = useIterationCollapse(RENDERER_IDENTITY)
+  const [draggedNumber, setDraggedNumber] = useState<number | null>(null)
   const iterations = stories.filter(isIterationStory)
   const loose = stories.filter(isLooseStory)
   if (iterations.length === 0 && loose.length === 0) return null
@@ -158,6 +160,7 @@ const Iteration = ({ stories, onOpen }: Props): React.JSX.Element | null => {
                       data-test={`board-story-${story.number}`}
                       data-iteration-member={story.number}
                       draggable={iteration.gh_state !== 'closed'}
+                      data-dragging={draggedNumber === story.number ? 'true' : undefined}
                       onDragStart={(event) => {
                         const payload: DragPayload = {
                           storyNumber: story.number,
@@ -166,7 +169,9 @@ const Iteration = ({ stories, onOpen }: Props): React.JSX.Element | null => {
                         }
                         event.dataTransfer.setData(DRAG_MIMETYPE, JSON.stringify(payload))
                         event.dataTransfer.effectAllowed = 'move'
+                        setDraggedNumber(story.number)
                       }}
+                      onDragEnd={() => setDraggedNumber(null)}
                       onDragOver={(event) => {
                         if (event.dataTransfer.types.includes(DRAG_MIMETYPE)) {
                           event.preventDefault()
