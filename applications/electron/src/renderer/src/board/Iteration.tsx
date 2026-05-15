@@ -9,22 +9,71 @@ interface Props {
 }
 
 const UNSCHEDULED_KEY = 'unscheduled'
+const UNSCHEDULED_LABEL_PREFIX = 'iteration-Unscheduled.'
 
 const isIterationStory = (story: BoardStory): boolean =>
   storyTypeFromLabels(story.labels) === 'iteration'
 
-const isLooseIceboxStory = (story: BoardStory): boolean => {
+const themeNameFromTitle = (title: string): string => {
+  const match = title.match(/^Iteration (.+)$/)
+  const raw = match ? match[1].trim() : title.trim()
+  return raw.replace(/\s+/g, '-')
+}
+
+interface IterationLabelParts {
+  name: string
+  position: number
+}
+
+const parseIterationLabel = (label: string): IterationLabelParts | null => {
+  const match = label.match(/^iteration-(.+)\.(\d+)$/)
+  if (!match) return null
+  return { name: match[1], position: parseInt(match[2], 10) }
+}
+
+const positionInIteration = (story: BoardStory, themeName: string): number | null => {
+  for (const label of story.labels) {
+    const parsed = parseIterationLabel(label)
+    if (parsed?.name === themeName) return parsed.position
+  }
+  return null
+}
+
+const positionInUnscheduled = (story: BoardStory): number | null => {
+  for (const label of story.labels) {
+    if (label.startsWith(UNSCHEDULED_LABEL_PREFIX)) {
+      const tail = label.slice(UNSCHEDULED_LABEL_PREFIX.length)
+      const n = parseInt(tail, 10)
+      if (!Number.isNaN(n)) return n
+    }
+  }
+  return null
+}
+
+const isLooseStory = (story: BoardStory): boolean => {
   if (isIterationStory(story)) return false
   if (story.state !== 'icebox') return false
-  if (story.labels.some((l) => l.startsWith('iteration-'))) return false
-  return true
+  const hasNamedIterationLabel = story.labels.some((l) => {
+    const parsed = parseIterationLabel(l)
+    return parsed !== null && parsed.name !== 'Unscheduled'
+  })
+  return !hasNamedIterationLabel
 }
 
 const Iteration = ({ stories, onOpen }: Props): React.JSX.Element | null => {
   const collapse = useIterationCollapse(RENDERER_IDENTITY)
   const iterations = stories.filter(isIterationStory)
-  const loose = stories.filter(isLooseIceboxStory)
+  const loose = stories.filter(isLooseStory)
   if (iterations.length === 0 && loose.length === 0) return null
+
+  const sortedLoose = [...loose].sort((a, b) => {
+    const ap = positionInUnscheduled(a)
+    const bp = positionInUnscheduled(b)
+    if (ap !== null && bp !== null) return ap - bp
+    if (ap !== null) return -1
+    if (bp !== null) return 1
+    return a.number - b.number
+  })
 
   return (
     <section className="board-iterations" data-test="board-iterations">
@@ -33,12 +82,23 @@ const Iteration = ({ stories, onOpen }: Props): React.JSX.Element | null => {
           const key = String(iteration.number)
           const defaultOpen = iteration.gh_state !== 'closed'
           const open = collapse.isOpen(key, defaultOpen)
+          const themeName = themeNameFromTitle(iteration.title)
+          const members = stories
+            .map((s) => {
+              if (isIterationStory(s)) return null
+              const position = positionInIteration(s, themeName)
+              if (position === null) return null
+              return { story: s, position }
+            })
+            .filter((m): m is { story: BoardStory; position: number } => m !== null)
+            .sort((a, b) => a.position - b.position)
           return (
             <li key={iteration.number} className="board-iteration-item">
               <details
                 className="board-iteration-card"
                 data-test={`board-iteration-${iteration.number}`}
                 data-iteration-kind="named"
+                data-iteration-name={themeName}
                 data-closed={iteration.gh_state === 'closed' ? 'true' : undefined}
                 open={open}
                 onToggle={(event) => {
@@ -60,14 +120,33 @@ const Iteration = ({ stories, onOpen }: Props): React.JSX.Element | null => {
                     <StoryTypeGlyph type="iteration" />
                     <small className="board-story-number">#{iteration.number}</small>
                     <b className="board-iteration-title">{iteration.title}</b>
+                    <small className="board-iteration-count">{members.length}</small>
                   </button>
                 </summary>
-                <ul className="board-iteration-body"></ul>
+                <ul className="board-iteration-body">
+                  {members.map(({ story }) => (
+                    <li
+                      key={story.number}
+                      className="board-iteration-member"
+                      data-test={`board-story-${story.number}`}
+                      data-iteration-member={story.number}
+                    >
+                      <button
+                        type="button"
+                        className="board-iteration-member-button"
+                        onClick={() => onOpen(story.number)}
+                      >
+                        <small className="board-story-number">#{story.number}</small>
+                        <span className="board-story-title">{story.title}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
               </details>
             </li>
           )
         })}
-        {loose.length > 0 && (
+        {sortedLoose.length > 0 && (
           <li key="unscheduled" className="board-iteration-item">
             <details
               className="board-iteration-card board-iteration-card--unscheduled"
@@ -80,14 +159,15 @@ const Iteration = ({ stories, onOpen }: Props): React.JSX.Element | null => {
             >
               <summary className="board-iteration-summary">
                 <b className="board-iteration-title">Unscheduled</b>
-                <small className="board-iteration-count">{loose.length}</small>
+                <small className="board-iteration-count">{sortedLoose.length}</small>
               </summary>
               <ul className="board-iteration-body">
-                {loose.map((story) => (
+                {sortedLoose.map((story) => (
                   <li
                     key={story.number}
                     className="board-iteration-member"
                     data-test={`board-story-${story.number}`}
+                    data-iteration-member={story.number}
                   >
                     <button
                       type="button"

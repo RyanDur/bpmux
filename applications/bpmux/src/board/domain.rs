@@ -256,6 +256,11 @@ pub fn story_to_board_json(story: &Story) -> serde_json::Value {
     if let Some(epic) = story.parent_epic {
         labels.push(format!("parent-epic-#{epic}"));
     }
+    for raw in &story.raw_labels {
+        if raw.starts_with("iteration-") && raw.contains('.') && !labels.iter().any(|l| l == raw) {
+            labels.push(raw.clone());
+        }
+    }
     // Derive rework-context from transition history so the renderer can
     // surface the ↩ glyph + tooltip without a per-story round-trip to
     // /api/stories/:n. Most stories have no backward edge; for those,

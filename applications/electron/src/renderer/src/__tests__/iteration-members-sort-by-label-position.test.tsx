@@ -1,0 +1,64 @@
+import { afterEach, describe, expect, inject, it } from 'vitest'
+
+import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
+import { seedStories } from '../../../../test/fixtures/seedMessages'
+
+describe('#1339 — iteration members sort by iteration-{Name}.{position} label', () => {
+  let rendered: RenderAppResult | null = null
+
+  afterEach(() => {
+    rendered?.cleanup()
+    rendered = null
+  })
+
+  it(
+    'member stories appear in label-position order inside the iteration container body',
+    async () => {
+      const port = inject('bpmuxBackendPort')
+      const authToken = inject('bpmuxAuthToken')
+      const apiBase = `http://127.0.0.1:${port}`
+
+      await seedStories(apiBase, authToken, [
+        {
+          number: 7401,
+          title: 'Iteration Cassiopeia',
+          story_type: 'iteration',
+          initial_state: 'icebox'
+        },
+        {
+          number: 7411,
+          title: 'story alpha',
+          story_type: 'feature',
+          initial_state: 'icebox',
+          labels: ['iteration-Cassiopeia.200']
+        },
+        {
+          number: 7412,
+          title: 'story bravo',
+          story_type: 'feature',
+          initial_state: 'icebox',
+          labels: ['iteration-Cassiopeia.100']
+        },
+        {
+          number: 7413,
+          title: 'story charlie',
+          story_type: 'feature',
+          initial_state: 'icebox',
+          labels: ['iteration-Cassiopeia.300']
+        }
+      ])
+
+      rendered = renderApp()
+
+      const container = await rendered.findByTestId('board-iteration-7401', undefined, {
+        timeout: 15_000
+      })
+      const memberRows = container.querySelectorAll('[data-iteration-member]')
+      const memberNumbers = Array.from(memberRows).map((el) =>
+        Number(el.getAttribute('data-iteration-member'))
+      )
+      expect(memberNumbers).toEqual([7412, 7411, 7413])
+    },
+    25_000
+  )
+})

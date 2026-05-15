@@ -246,7 +246,7 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
     () =>
       nonEpicStories.filter((s) => {
         if (storyTypeFromLabels(s.labels) === 'iteration') return true
-        if (s.state === 'icebox' && !s.labels.some((l) => l.startsWith('iteration-'))) return true
+        if (s.state === 'icebox') return true
         return false
       }),
     [nonEpicStories]
@@ -255,7 +255,7 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
     () =>
       nonEpicStories.filter((s) => {
         if (storyTypeFromLabels(s.labels) === 'iteration') return false
-        if (s.state === 'icebox' && !s.labels.some((l) => l.startsWith('iteration-'))) return false
+        if (s.state === 'icebox') return false
         return true
       }),
     [nonEpicStories]
