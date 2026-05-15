@@ -409,6 +409,7 @@ pub(super) async fn handle_create_iteration(
         "theme_name",
         "theme_name is required: short name for the iteration (e.g., 'Aquila', 'Pegasus'). Surfaces as the GH issue title 'Iteration {theme_name}'.",
     )?;
+    let position_after = args.get("position_after").and_then(|v| v.as_u64());
     let r = refresh
         .ok_or("create_iteration requires refresh (RefreshDriver) — canonical store unavailable")?;
     let existing_open_iteration = r.all_stories().into_iter().find(|s| {
@@ -449,8 +450,41 @@ pub(super) async fn handle_create_iteration(
         label: "iteration".to_string(),
     })
     .map_err(|e| format!("#{number} iteration label enqueue failed: {e}"))?;
+    if let Err(e) = insert_iteration_into_icebox_unified(number, position_after) {
+        crate::session::diag::log_diag(&format!(
+            "create_iteration #{number}: positional insert into icebox_unified failed: {e} (GH-issue created; canonical store mutated; positional entry will need manual reconciliation)"
+        ));
+    }
     broadcast_board_invalidate(ws_tx).await;
     Ok(format!("iteration created: #{number} {title}"))
+}
+
+fn insert_iteration_into_icebox_unified(
+    iteration_number: u64,
+    position_after: Option<u64>,
+) -> Result<(), String> {
+    let path = crate::session::priority::default_priority_path()?;
+    let mut index = crate::session::priority::load_priority(&path);
+    let entry = crate::session::priority::IceboxItem::Iteration {
+        number: iteration_number,
+    };
+    let insert_at = match position_after {
+        None => 0,
+        Some(target) => {
+            let pos = index.icebox_unified.iter().position(|item| match item {
+                crate::session::priority::IceboxItem::Story { number } => *number == target,
+                crate::session::priority::IceboxItem::Iteration { number } => *number == target,
+            });
+            match pos {
+                Some(idx) => idx + 1,
+                None => index.icebox_unified.len(),
+            }
+        }
+    };
+    index.icebox_unified.insert(insert_at, entry);
+    crate::session::priority::save_priority(&path, &index)
+        .map_err(|e| format!("save_priority failed: {e}"))?;
+    Ok(())
 }
 
 /// Build the issue body for a new iteration-issue. Designer's

@@ -12,12 +12,9 @@ use std::path::{Path, PathBuf};
 #[serde(tag = "kind", rename_all = "lowercase")]
 pub enum IceboxItem {
     Story { number: u64 },
+    Iteration { number: u64 },
 }
 
-/// Tolerant deserializer for `icebox_unified` — accepts legacy
-/// `{"kind":"marker","id":N}` entries (from pre-#1302 priority.json
-/// files) by discarding them. The marker substrate is retired; only
-/// story entries survive a load.
 fn deserialize_icebox_unified_tolerant<'de, D>(d: D) -> Result<Vec<IceboxItem>, D::Error>
 where
     D: Deserializer<'de>,
@@ -30,6 +27,10 @@ where
                 .get("number")
                 .and_then(|n| n.as_u64())
                 .map(|number| IceboxItem::Story { number }),
+            Some("iteration") => v
+                .get("number")
+                .and_then(|n| n.as_u64())
+                .map(|number| IceboxItem::Iteration { number }),
             _ => None,
         })
         .collect())
@@ -88,13 +89,13 @@ pub fn auto_heal_icebox_unified_via_workflow_state(
     canonical_states: &std::collections::HashMap<u64, super::super::board::domain::StoryState>,
 ) -> usize {
     let before = index.icebox_unified.len();
-    index.icebox_unified.retain(|item| {
-        let IceboxItem::Story { number } = item;
-        match canonical_states.get(number) {
+    index.icebox_unified.retain(|item| match item {
+        IceboxItem::Story { number } => match canonical_states.get(number) {
             Some(super::super::board::domain::StoryState::Icebox) => true,
             Some(_) => false,
             None => true,
-        }
+        },
+        IceboxItem::Iteration { .. } => true,
     });
     before - index.icebox_unified.len()
 }
