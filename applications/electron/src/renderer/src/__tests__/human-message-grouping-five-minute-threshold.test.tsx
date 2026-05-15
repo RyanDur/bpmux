@@ -1,7 +1,3 @@
-// #1306 sub-batch 4.1.A — migrated from
-// tests/human-message-grouping-five-minute-threshold.spec.ts.
-// Recipe: docs/design/ci-migration/playwright-to-rtl-recipe.md.
-
 import { afterEach, describe, expect, inject, it } from 'vitest'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
