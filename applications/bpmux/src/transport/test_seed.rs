@@ -177,6 +177,7 @@ pub struct SeedStoriesBody {
 }
 
 pub async fn post_seed_stories(
+    State(session): State<Arc<session::Session>>,
     axum::Extension(test_refresh): axum::Extension<crate::server::TestRefreshHandle>,
     Json(body): Json<SeedStoriesBody>,
 ) -> impl IntoResponse {
@@ -258,6 +259,17 @@ pub async fn post_seed_stories(
                 );
             }
         }
+    }
+    let invalidate_msg = session::Message {
+        from: "bpmux".to_string(),
+        text: crate::bridge::BOARD_INVALIDATE_MARKER.to_string(),
+        ts: chrono::Utc::now(),
+        ..session::Message::default()
+    };
+    if let Err(e) = session.broadcast(&invalidate_msg) {
+        crate::session::diag::log_diag(&format!(
+            "post_seed_stories: BOARD_INVALIDATE broadcast failed: {e}"
+        ));
     }
     (
         StatusCode::CREATED,
