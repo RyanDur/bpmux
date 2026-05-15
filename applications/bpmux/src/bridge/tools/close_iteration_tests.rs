@@ -168,15 +168,6 @@ mod canonical_via_gh_1300 {
 
     #[tokio::test]
     async fn close_walks_by_iteration_theme_label_not_by_priority_json_position() {
-        // #1300 substrate-pivot falsifier: close_iteration's member walk
-        // reads `iteration-{ThemeName}.{N}` labels from each story's
-        // raw_labels — NOT priority.json icebox_unified positional bands.
-        // Members tagged with the closing iteration's theme promote;
-        // members tagged with a different iteration's theme stay.
-        // This test replaces the legacy positional-band walk test
-        // (`close_promotes_only_stories_positionally_above_marker_bounded_by_previous_marker`)
-        // which depended on BPMUX_PRIORITY_PATH env-var and was CI-flaky
-        // under parallel runs.
         use crate::board::iteration_label::members_with_iteration_label;
         let refresh = build_refresh(vec![
             seed_iteration_issue(1400, "Pegasus"),
