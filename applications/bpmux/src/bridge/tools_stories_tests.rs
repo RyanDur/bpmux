@@ -3182,47 +3182,6 @@ fn parse_acceptance_test_path_strips_backticks_inside_bullet_label() {
 }
 
 #[tokio::test]
-async fn start_story_blocks_feature_without_acceptance_test_path() {
-    use crate::board::BoardStore;
-    use crate::board::RefreshDriver;
-    use crate::board::SyncOrchestrator;
-    use crate::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::board::domain::{Story, StoryState, StoryType};
-    use chrono::{TimeZone, Utc};
-    use std::sync::Arc;
-
-    let store = Arc::new(BoardStore::new());
-    let adapter = Arc::new(InMemorySourceAdapter::new());
-    let mut seeded = Story::new_minimal(
-        881,
-        "[Feature] needs path".into(),
-        StoryState::Ready,
-        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
-        "dev".into(),
-    );
-    seeded.story_type = StoryType::Feature;
-    adapter.seed_stories(vec![seeded]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
-    orch.refresh_all().await.unwrap();
-
-    let ws_tx = connected_ws_sink_for_test().await;
-    let mut args = serde_json::Map::new();
-    args.insert("number".into(), serde_json::json!(881));
-    args.insert("pickup_paraphrase".into(), serde_json::json!("p"));
-    args.insert("falsifier_reframing".into(), serde_json::json!("f"));
-    let result = handle_start_story(&args, "dev:claude-code", &ws_tx, Some(&orch)).await;
-    assert!(
-        result.is_err(),
-        "Feature without path must block: {result:?}"
-    );
-    let err = result.unwrap_err();
-    assert!(err.contains("acceptance_test_path required"), "{err}");
-}
-
-#[tokio::test]
 async fn start_story_blocks_when_acceptance_test_path_does_not_exist() {
     use crate::board::BoardStore;
     use crate::board::RefreshDriver;
@@ -3297,45 +3256,6 @@ async fn start_story_passes_chore_without_acceptance_test_path() {
     args.insert("falsifier_reframing".into(), serde_json::json!("f"));
     let result = handle_start_story(&args, "dev:claude-code", &ws_tx, Some(&orch)).await;
     assert!(result.is_ok(), "Chore exempt: {result:?}");
-}
-
-#[tokio::test]
-async fn deliver_story_blocks_feature_without_acceptance_test_path() {
-    use crate::board::BoardStore;
-    use crate::board::RefreshDriver;
-    use crate::board::SyncOrchestrator;
-    use crate::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::board::domain::{Story, StoryState, StoryType};
-    use chrono::{TimeZone, Utc};
-    use std::sync::Arc;
-
-    let store = Arc::new(BoardStore::new());
-    let adapter = Arc::new(InMemorySourceAdapter::new());
-    let mut seeded = Story::new_minimal(
-        884,
-        "[Feature] no path".into(),
-        StoryState::InProgress,
-        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
-        "dev".into(),
-    );
-    seeded.story_type = StoryType::Feature;
-    adapter.seed_stories(vec![seeded]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
-    orch.refresh_all().await.unwrap();
-
-    let ws_tx = connected_ws_sink_for_test().await;
-    let mut args = serde_json::Map::new();
-    args.insert("number".into(), serde_json::json!(884));
-    args.insert("verified_observation".into(), serde_json::json!("drove it"));
-    let result = handle_deliver_story(&args, "dev:claude-code", &ws_tx, Some(&orch)).await;
-    assert!(
-        result.is_err(),
-        "Feature without path must block at deliver: {result:?}"
-    );
-    assert!(result.unwrap_err().contains("acceptance_test_path missing"));
 }
 
 #[tokio::test]

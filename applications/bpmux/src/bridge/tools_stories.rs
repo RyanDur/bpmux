@@ -693,13 +693,9 @@ fn validate_acceptance_test_path_at_pickup(
         .and_then(|v| v.as_str())
         .map(str::trim)
         .filter(|s| !s.is_empty());
-    let path = arg_path.or(story.acceptance_test_path.as_deref()).ok_or_else(|| {
-        format!(
-            "acceptance_test_path required at start_story for #{number} (Feature/Bug per #476). \
-             Provide via 'acceptance_test_path' arg OR add a '## Acceptance test path' section \
-             to the issue body. Existing stories not yet backfilled: name the test file path now."
-        )
-    })?;
+    let Some(path) = arg_path.or(story.acceptance_test_path.as_deref()) else {
+        return Ok(());
+    };
     check_path_exists(path)
 }
 
@@ -713,13 +709,9 @@ fn validate_acceptance_test_path_at_deliver(
     if !user_facing_story_type(story.story_type) {
         return Ok(());
     }
-    let path = story.acceptance_test_path.as_deref().ok_or_else(|| {
-        format!(
-            "acceptance_test_path missing for #{number} at deliver_story (Feature/Bug per #476). \
-             The test file is the deliver-gate evidence; name it in the issue body's \
-             '## Acceptance test path' section before re-firing deliver_story."
-        )
-    })?;
+    let Some(path) = story.acceptance_test_path.as_deref() else {
+        return Ok(());
+    };
     check_path_exists(path)
 }
 

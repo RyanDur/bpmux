@@ -59,6 +59,8 @@ mod simulate_input_clear;
 mod simulate_input_submit;
 mod simulate_key;
 mod simulate_type;
+#[cfg(test)]
+mod start_story_validation_tests;
 mod update_principle;
 mod user_fn;
 mod view_backlog;
