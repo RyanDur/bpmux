@@ -499,3 +499,120 @@ fn apply_priority_entries_for_absent_numbers_ignored() {
     let sorted = apply_priority_to_board(stories, &index);
     assert_eq!(numbers_of(&sorted), vec![200, 100, 300]);
 }
+
+#[test]
+fn members_above_iteration_marker_returns_stories_in_positional_order() {
+    let index = PriorityIndex {
+        icebox_unified: vec![
+            IceboxItem::Story { number: 100 },
+            IceboxItem::Story { number: 200 },
+            IceboxItem::Iteration { number: 777 },
+            IceboxItem::Story { number: 300 },
+        ],
+        ..Default::default()
+    };
+    let members = members_above_iteration_marker(&index, 777);
+    assert_eq!(
+        members,
+        vec![100, 200],
+        "stories above marker promoted in positional order; stories below excluded"
+    );
+}
+
+#[test]
+fn members_above_iteration_marker_bounded_by_previous_marker() {
+    let index = PriorityIndex {
+        icebox_unified: vec![
+            IceboxItem::Story { number: 100 },
+            IceboxItem::Iteration { number: 777 },
+            IceboxItem::Story { number: 200 },
+            IceboxItem::Story { number: 201 },
+            IceboxItem::Iteration { number: 888 },
+            IceboxItem::Story { number: 300 },
+        ],
+        ..Default::default()
+    };
+    let members_first = members_above_iteration_marker(&index, 777);
+    assert_eq!(
+        members_first,
+        vec![100],
+        "first iteration's above-band is top-of-icebox..first-marker"
+    );
+    let members_second = members_above_iteration_marker(&index, 888);
+    assert_eq!(
+        members_second,
+        vec![200, 201],
+        "second iteration's above-band is bounded by previous marker (exclusive); previous-marker's above-stories not re-promoted"
+    );
+}
+
+#[test]
+fn members_above_iteration_marker_missing_iteration_returns_empty() {
+    let index = PriorityIndex {
+        icebox_unified: vec![
+            IceboxItem::Story { number: 100 },
+            IceboxItem::Story { number: 200 },
+        ],
+        ..Default::default()
+    };
+    let members = members_above_iteration_marker(&index, 999);
+    assert!(
+        members.is_empty(),
+        "missing iteration returns empty Vec (graceful no-op): {members:?}"
+    );
+}
+
+#[test]
+fn members_above_iteration_marker_top_of_icebox_marker_returns_empty() {
+    let index = PriorityIndex {
+        icebox_unified: vec![
+            IceboxItem::Iteration { number: 777 },
+            IceboxItem::Story { number: 100 },
+        ],
+        ..Default::default()
+    };
+    let members = members_above_iteration_marker(&index, 777);
+    assert!(
+        members.is_empty(),
+        "marker at top with nothing above promotes zero stories: {members:?}"
+    );
+}
+
+#[test]
+fn evict_promoted_members_drops_only_named_stories_keeping_markers() {
+    let mut index = PriorityIndex {
+        icebox_unified: vec![
+            IceboxItem::Story { number: 100 },
+            IceboxItem::Story { number: 200 },
+            IceboxItem::Iteration { number: 777 },
+            IceboxItem::Story { number: 300 },
+        ],
+        ..Default::default()
+    };
+    evict_promoted_members_from_icebox_unified(&mut index, &[100, 200]);
+    assert_eq!(
+        index.icebox_unified,
+        vec![
+            IceboxItem::Iteration { number: 777 },
+            IceboxItem::Story { number: 300 },
+        ],
+        "promoted stories evicted; iteration marker stays (closed-state historical artifact); below-marker stories untouched"
+    );
+}
+
+#[test]
+fn evict_promoted_members_with_empty_list_is_noop() {
+    let mut index = PriorityIndex {
+        icebox_unified: vec![
+            IceboxItem::Story { number: 100 },
+            IceboxItem::Iteration { number: 777 },
+        ],
+        ..Default::default()
+    };
+    let before = index.icebox_unified.clone();
+    evict_promoted_members_from_icebox_unified(&mut index, &[]);
+    assert_eq!(
+        index.icebox_unified, before,
+        "empty promoted-list = no change"
+    );
+}

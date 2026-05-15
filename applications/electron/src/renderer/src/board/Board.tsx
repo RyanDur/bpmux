@@ -329,7 +329,7 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
       let groupSize = 0
       if (prevData) {
         const inGroup = prevData.stories.filter(
-          (s) => columnFor(s.state, s.gh_state === 'closed') === state
+          (s) => columnFor(s.state, s.gh_state === 'closed', storyTypeFromLabels(s.labels)) === state
         )
         const fromIdx = inGroup.findIndex((s) => s.number === moved)
         if (fromIdx !== -1) {
@@ -344,10 +344,10 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
       setData((prev) => {
         if (!prev) return prev
         const inGroup = prev.stories.filter(
-          (s) => columnFor(s.state, s.gh_state === 'closed') === state
+          (s) => columnFor(s.state, s.gh_state === 'closed', storyTypeFromLabels(s.labels)) === state
         )
         const others = prev.stories.filter(
-          (s) => columnFor(s.state, s.gh_state === 'closed') !== state
+          (s) => columnFor(s.state, s.gh_state === 'closed', storyTypeFromLabels(s.labels)) !== state
         )
         const fromIdx = inGroup.findIndex((s) => s.number === moved)
         if (fromIdx === -1) return prev

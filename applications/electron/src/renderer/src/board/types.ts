@@ -32,7 +32,14 @@ export type ColumnState =
 // (column-bucketing): #464 owns "what state was this last in"; this
 // function owns "which active-work bucket should the user see this
 // story in right now."
-export const columnFor = (state: StoryState, isClosed: boolean = false): ColumnState => {
+export const columnFor = (
+  state: StoryState,
+  isClosed: boolean = false,
+  storyType: StoryType = 'unknown'
+): ColumnState => {
+  if (isClosed && storyType === 'iteration') {
+    return 'icebox'
+  }
   if (isClosed && state !== 'accepted') {
     return 'retired'
   }
@@ -185,7 +192,9 @@ export const groupStories = (stories: BoardStory[]): Map<ColumnState, BoardStory
   const out = new Map<ColumnState, BoardStory[]>()
   for (const group of GROUP_ORDER) out.set(group.state, [])
   for (const story of stories) {
-    const list = out.get(columnFor(story.state, story.gh_state === 'closed'))
+    const list = out.get(
+      columnFor(story.state, story.gh_state === 'closed', storyTypeFromLabels(story.labels))
+    )
     if (list) list.push(story)
   }
   return out

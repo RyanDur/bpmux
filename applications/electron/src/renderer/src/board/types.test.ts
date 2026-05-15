@@ -58,4 +58,19 @@ describe('#514 columnFor — closed-state-aware bucketing', () => {
       expect(columnFor('rejected', false)).toBe('ready')
     })
   })
+
+  describe('#1300 Slice C — closed iteration markers stay in icebox as historical artifact', () => {
+    test('closed iteration in state=icebox stays in ICEBOX column (closed-state visual record)', () => {
+      expect(columnFor('icebox', true, 'iteration')).toBe('icebox')
+    })
+    test('closed iteration in any non-accepted state stays in ICEBOX (closed-marker invariant)', () => {
+      expect(columnFor('ready', true, 'iteration')).toBe('icebox')
+      expect(columnFor('in-progress', true, 'iteration')).toBe('icebox')
+    })
+    test('closed non-iteration stays routing to RETIRED (no regression)', () => {
+      expect(columnFor('icebox', true, 'feature')).toBe('retired')
+      expect(columnFor('icebox', true, 'epic')).toBe('retired')
+      expect(columnFor('icebox', true)).toBe('retired')
+    })
+  })
 })

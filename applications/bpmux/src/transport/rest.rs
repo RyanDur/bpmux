@@ -1206,14 +1206,31 @@ async fn post_close_iteration_canonical(
             )),
         );
     }
-    let members: Vec<crate::board::Story> = refresh
+    let priority_path = match crate::session::priority::default_priority_path() {
+        Ok(p) => p,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                json_headers(),
+                err_body(&format!(
+                    "close_iteration: cannot resolve priority.json path: {e}"
+                )),
+            );
+        }
+    };
+    let priority = crate::session::priority::load_priority(&priority_path);
+    let candidate_numbers =
+        crate::session::priority::members_above_iteration_marker(&priority, iteration_number);
+    let open_member_set: std::collections::HashSet<u64> = refresh
         .all_stories()
         .into_iter()
-        .filter(|s| s.iteration_id == Some(iteration_number) && !s.is_closed)
+        .filter(|s| !s.is_closed)
+        .map(|s| s.number)
         .collect();
-    let mut members_sorted = members;
-    members_sorted.sort_by_key(|s| s.number);
-    let promoted: Vec<u64> = members_sorted.iter().map(|s| s.number).collect();
+    let promoted: Vec<u64> = candidate_numbers
+        .into_iter()
+        .filter(|n| open_member_set.contains(n))
+        .collect();
     let ready_queue_blockers = collect_ready_queue_blockers(refresh.as_ref()).await;
     if !ready_queue_blockers.is_empty() {
         let body = build_close_iteration_ready_queue_blocked_body(&ready_queue_blockers);
@@ -1231,6 +1248,16 @@ async fn post_close_iteration_canonical(
                 )),
             );
         }
+    }
+    let mut post_close_index = crate::session::priority::load_priority(&priority_path);
+    crate::session::priority::evict_promoted_members_from_icebox_unified(
+        &mut post_close_index,
+        &promoted,
+    );
+    if let Err(e) = crate::session::priority::save_priority(&priority_path, &post_close_index) {
+        session::diag::log_diag(&format!(
+            "post_close_iteration_canonical: icebox_unified eviction save failed: {e}"
+        ));
     }
     let payload = session::message::StateDeltaPayload::IterationClose {
         promoted: promoted.clone(),

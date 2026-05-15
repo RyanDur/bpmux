@@ -61,6 +61,7 @@ const StoryRow = ({
       aria-current={selected ? 'true' : undefined}
       data-test={`board-story-${story.number}`}
       data-story-type={type}
+      data-closed={story.gh_state === 'closed' ? 'true' : undefined}
       data-dragging={dragging ? 'true' : undefined}
       draggable={draggable}
       onDragStart={(event) => {

@@ -1,10 +1,8 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
+#![allow(unsafe_code)]
 
-// #1300 slice 4: canonical-via-GH close_iteration ceremony tests.
-// The new path operates on Iteration-issue (story_type=Iteration) +
-// promotes members queried via iteration_id.
 mod canonical_via_gh_1300 {
     use crate::board::RefreshDriver;
     use crate::board::adapters::in_memory::InMemorySourceAdapter;
@@ -169,6 +167,103 @@ mod canonical_via_gh_1300 {
         assert_eq!(
             priority_pre, priority_post,
             "canonical path does NOT touch legacy priority.json substrate (AC10 cross-contamination check)"
+        );
+    }
+
+    static PRIORITY_PATH_ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    fn priority_sandbox_setup() -> (
+        tempfile::TempDir,
+        std::path::PathBuf,
+        std::sync::MutexGuard<'static, ()>,
+    ) {
+        let guard = PRIORITY_PATH_ENV_LOCK
+            .lock()
+            .unwrap_or_else(|p| p.into_inner());
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("priority.json");
+        unsafe {
+            std::env::set_var("BPMUX_PRIORITY_PATH", &path);
+        }
+        (dir, path, guard)
+    }
+
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn close_promotes_only_stories_positionally_above_marker_bounded_by_previous_marker() {
+        use crate::session::priority::{
+            IceboxItem, PriorityIndex, evict_promoted_members_from_icebox_unified, load_priority,
+            members_above_iteration_marker, save_priority,
+        };
+        let (_dir, priority_path, _env_guard) = priority_sandbox_setup();
+        let seed = PriorityIndex {
+            icebox_unified: vec![
+                IceboxItem::Story { number: 901 },
+                IceboxItem::Iteration { number: 1400 },
+                IceboxItem::Story { number: 200 },
+                IceboxItem::Story { number: 201 },
+                IceboxItem::Iteration { number: 1401 },
+                IceboxItem::Story { number: 300 },
+            ],
+            ..Default::default()
+        };
+        save_priority(&priority_path, &seed).unwrap();
+
+        let refresh = build_refresh(vec![
+            seed_iteration_issue(1400, "Pegasus"),
+            seed_iteration_issue(1401, "Cassiopeia"),
+            seed_member(901, StoryState::Icebox, None),
+            seed_member(200, StoryState::Icebox, None),
+            seed_member(201, StoryState::Icebox, None),
+            seed_member(300, StoryState::Icebox, None),
+        ])
+        .await;
+
+        let priority = load_priority(&priority_path);
+        let candidate_numbers = members_above_iteration_marker(&priority, 1401);
+        assert_eq!(
+            candidate_numbers,
+            vec![200, 201],
+            "second iteration's above-band bounded by previous marker; story-901 stays above the first marker"
+        );
+
+        promote_members_then_close_iteration(&refresh, 1401, &candidate_numbers)
+            .await
+            .expect("positional close succeeds for the inner iteration");
+        assert_eq!(
+            refresh.story(200).unwrap().state,
+            StoryState::Ready,
+            "above-marker story 200 promoted"
+        );
+        assert_eq!(
+            refresh.story(201).unwrap().state,
+            StoryState::Ready,
+            "above-marker story 201 promoted"
+        );
+        assert_eq!(
+            refresh.story(901).unwrap().state,
+            StoryState::Icebox,
+            "story-901 stays in icebox (above the OTHER marker, not 1401's band)"
+        );
+        assert_eq!(
+            refresh.story(300).unwrap().state,
+            StoryState::Icebox,
+            "story-300 stays in icebox (positioned below the closed marker)"
+        );
+
+        let mut post = load_priority(&priority_path);
+        evict_promoted_members_from_icebox_unified(&mut post, &candidate_numbers);
+        save_priority(&priority_path, &post).unwrap();
+        let reloaded = load_priority(&priority_path);
+        assert_eq!(
+            reloaded.icebox_unified,
+            vec![
+                IceboxItem::Story { number: 901 },
+                IceboxItem::Iteration { number: 1400 },
+                IceboxItem::Iteration { number: 1401 },
+                IceboxItem::Story { number: 300 },
+            ],
+            "promoted stories evicted; both markers stay (1401 closed-state visual record); story-901 and story-300 stay positionally"
         );
     }
 
