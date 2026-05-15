@@ -1,5 +1,6 @@
 import StoryTypeGlyph from './StoryTypeGlyph'
 import { useIterationCollapse } from './useIterationCollapse'
+import { computeInsertPosition } from './iterationPosition'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import { storyTypeFromLabels, type BoardStory } from './types'
 
@@ -58,6 +59,32 @@ const isLooseStory = (story: BoardStory): boolean => {
     return parsed !== null && parsed.name !== 'Unscheduled'
   })
   return !hasNamedIterationLabel
+}
+
+interface DragPayload {
+  storyNumber: number
+  themeName: string
+  oldPosition: number
+}
+
+const DRAG_MIMETYPE = 'application/x-bpmux-iteration-member'
+
+const postLabelMutation = (
+  storyNumber: number,
+  addLabels: string[],
+  removeLabels: string[]
+): void => {
+  if (typeof window === 'undefined') return
+  const bridge = window.bpmux
+  if (!bridge?.apiBase) return
+  void fetch(`${bridge.apiBase}/api/stories/${storyNumber}/labels`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${bridge.authToken ?? ''}`
+    },
+    body: JSON.stringify({ add: addLabels, remove: removeLabels })
+  })
 }
 
 const Iteration = ({ stories, onOpen }: Props): React.JSX.Element | null => {
@@ -124,12 +151,54 @@ const Iteration = ({ stories, onOpen }: Props): React.JSX.Element | null => {
                   </button>
                 </summary>
                 <ul className="board-iteration-body">
-                  {members.map(({ story }) => (
+                  {members.map(({ story, position }, memberIdx) => (
                     <li
                       key={story.number}
                       className="board-iteration-member"
                       data-test={`board-story-${story.number}`}
                       data-iteration-member={story.number}
+                      draggable={iteration.gh_state !== 'closed'}
+                      onDragStart={(event) => {
+                        const payload: DragPayload = {
+                          storyNumber: story.number,
+                          themeName,
+                          oldPosition: position
+                        }
+                        event.dataTransfer.setData(DRAG_MIMETYPE, JSON.stringify(payload))
+                        event.dataTransfer.effectAllowed = 'move'
+                      }}
+                      onDragOver={(event) => {
+                        if (event.dataTransfer.types.includes(DRAG_MIMETYPE)) {
+                          event.preventDefault()
+                          event.dataTransfer.dropEffect = 'move'
+                        }
+                      }}
+                      onDrop={(event) => {
+                        const raw = event.dataTransfer.getData(DRAG_MIMETYPE)
+                        if (!raw) return
+                        event.preventDefault()
+                        const payload = JSON.parse(raw) as DragPayload
+                        if (payload.themeName !== themeName) return
+                        if (payload.storyNumber === story.number) return
+                        const withoutSource = members.filter(
+                          (m) => m.story.number !== payload.storyNumber
+                        )
+                        const sourceIdxInFull = members.findIndex(
+                          (m) => m.story.number === payload.storyNumber
+                        )
+                        const adjustedIdx =
+                          sourceIdxInFull < memberIdx ? memberIdx - 1 : memberIdx
+                        const { position: newPosition } = computeInsertPosition(
+                          adjustedIdx,
+                          withoutSource.map((m) => m.position)
+                        )
+                        if (newPosition === payload.oldPosition) return
+                        postLabelMutation(
+                          payload.storyNumber,
+                          [`iteration-${themeName}.${newPosition}`],
+                          [`iteration-${themeName}.${payload.oldPosition}`]
+                        )
+                      }}
                     >
                       <button
                         type="button"
