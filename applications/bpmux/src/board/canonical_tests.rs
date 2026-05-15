@@ -1,12 +1,12 @@
+//! #1299 Cassiopeia Slice E — regression tests pinning the no-parallel-
+//! shape contract for iteration membership. After Slice E retired the
+//! `iteration_id` field + the `iteration-#NNNN` label-emit path, the
+//! only iteration-membership signal is positional (via `icebox_unified`
+//! in priority.json). These tests fail if the legacy axis re-emerges
+//! from any future regression.
+
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::expect_used)]
-
-// #1299 Cassiopeia Slice E — regression tests pinning the no-parallel-
-// shape contract for iteration membership. After Slice E retired the
-// `iteration_id` field + the `iteration-#NNNN` label-emit path, the
-// only iteration-membership signal is positional (via `icebox_unified`
-// in priority.json). These tests fail if the legacy axis re-emerges
-// from any future regression.
 
 use crate::board::adapters::github::decode_story_metadata;
 use crate::board::domain::{Story, StoryState, StoryType};
