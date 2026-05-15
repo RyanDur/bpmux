@@ -1904,3 +1904,67 @@ pub async fn post_reorder_story(
         serde_json::json!({ "ok": true }).to_string(),
     )
 }
+
+#[derive(Deserialize)]
+pub struct LabelMutationPayload {
+    #[serde(default)]
+    pub add: Vec<String>,
+    #[serde(default)]
+    pub remove: Vec<String>,
+}
+
+/// POST /api/stories/:number/labels — atomic add/remove label mutation
+/// via the canonical mutation chain. Fires BoardEvent::TagRemoved for
+/// each label in `remove` then TagAdded for each in `add`. Renderer-
+/// driven so the caller controls the exact post-state of the story's
+/// label-set (e.g., drag-within-iteration computes the new position-
+/// suffix client-side via iterationPosition.ts util and POSTs the
+/// resulting add/remove pair).
+pub async fn post_story_labels(
+    State(session): State<Arc<session::Session>>,
+    axum::Extension(test_refresh): axum::Extension<crate::server::TestRefreshHandle>,
+    axum::extract::Path(number): axum::extract::Path<u64>,
+    Json(payload): Json<LabelMutationPayload>,
+) -> impl IntoResponse {
+    let Some(refresh) = test_refresh.as_ref().cloned() else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            json_headers(),
+            err_body("orchestrator not configured"),
+        );
+    };
+    for label in &payload.remove {
+        let meta = crate::board::orchestrator::cache_fill_meta();
+        if let Err(e) = refresh.mutate_sync(crate::board::BoardEvent::TagRemoved {
+            meta,
+            number,
+            label: label.clone(),
+        }) {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                json_headers(),
+                err_body(&format!("TagRemoved {label} on #{number}: {e}")),
+            );
+        }
+    }
+    for label in &payload.add {
+        let meta = crate::board::orchestrator::cache_fill_meta();
+        if let Err(e) = refresh.mutate_sync(crate::board::BoardEvent::TagAdded {
+            meta,
+            number,
+            label: label.clone(),
+        }) {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                json_headers(),
+                err_body(&format!("TagAdded {label} on #{number}: {e}")),
+            );
+        }
+    }
+    broadcast_board_invalidate(&session);
+    (
+        StatusCode::OK,
+        json_headers(),
+        serde_json::json!({ "ok": true, "number": number }).to_string(),
+    )
+}

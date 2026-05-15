@@ -321,6 +321,10 @@ pub async fn run_server(
             axum::routing::post(transport::rest::post_reorder_story),
         )
         .route(
+            "/api/stories/{number}/labels",
+            axum::routing::post(transport::rest::post_story_labels),
+        )
+        .route(
             "/api/stories/{number}/comments",
             axum::routing::get(transport::rest::get_story_comments)
                 .post(transport::rest::post_story_comment),
