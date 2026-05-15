@@ -309,6 +309,37 @@ const Iteration = ({ stories, onOpen }: Props): React.JSX.Element | null => {
                         type="button"
                         className="board-iteration-member-button"
                         onClick={() => onOpen(story.number)}
+                        onKeyDown={(event) => {
+                          if (!event.ctrlKey || !event.shiftKey) return
+                          if (iteration.gh_state === 'closed') return
+                          const direction =
+                            event.key === 'ArrowUp'
+                              ? 'up'
+                              : event.key === 'ArrowDown'
+                                ? 'down'
+                                : null
+                          if (direction === null) return
+                          event.preventDefault()
+                          const originalIdx = members.findIndex(
+                            (m) => m.story.number === story.number
+                          )
+                          if (originalIdx === -1) return
+                          if (direction === 'up' && originalIdx === 0) return
+                          if (direction === 'down' && originalIdx === members.length - 1) return
+                          const targetMemberIndex =
+                            direction === 'up' ? originalIdx - 1 : originalIdx + 2
+                          const mutation = computeDropMutation({
+                            draggedNumber: story.number,
+                            draggedThemeName: themeName,
+                            draggedOldPosition: position,
+                            targetThemeName: themeName,
+                            targetMemberPositions: members.map((m) => m.position),
+                            targetMemberIndex,
+                            targetMembersIncludeDragged: true
+                          })
+                          if (!mutation) return
+                          postLabelMutation(story.number, mutation.add, mutation.remove)
+                        }}
                       >
                         <small className="board-story-number">#{story.number}</small>
                         <span className="board-story-title">{story.title}</span>
