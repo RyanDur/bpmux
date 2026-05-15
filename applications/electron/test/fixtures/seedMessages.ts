@@ -58,6 +58,7 @@ export interface SeedStory {
   initial_state?: 'icebox' | 'ready' | 'in-progress' | 'desk-check' | 'delivered' | 'accepted'
   story_type?: 'feature' | 'bug' | 'chore' | 'epic' | 'iteration'
   labels?: string[]
+  is_closed?: boolean
 }
 
 export async function seedStories(

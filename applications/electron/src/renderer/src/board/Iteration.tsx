@@ -123,6 +123,9 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
   const [draggedNumber, setDraggedNumber] = useState<number | null>(null)
   const [hoveredNumber, setHoveredNumber] = useState<number | null>(null)
   const [draggedIterationNumber, setDraggedIterationNumber] = useState<number | null>(null)
+  const [dragRejectedIterationNumber, setDragRejectedIterationNumber] = useState<number | null>(
+    null
+  )
   const iterations = [...stories.filter(isIterationStory)].sort((a, b) => {
     const ao = positionInIterationOrder(a)
     const bo = positionInIterationOrder(b)
@@ -171,6 +174,9 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                 data-dragging={
                   draggedIterationNumber === iteration.number ? 'true' : undefined
                 }
+                data-drag-rejected={
+                  dragRejectedIterationNumber === iteration.number ? 'true' : undefined
+                }
                 open={open}
                 draggable={iteration.gh_state !== 'closed'}
                 onDragStart={(event) => {
@@ -187,9 +193,24 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                 }}
                 onDragEnd={() => setDraggedIterationNumber(null)}
                 onDragOver={(event) => {
+                  if (iteration.gh_state === 'closed') {
+                    if (
+                      event.dataTransfer.types.includes(DRAG_MIMETYPE) ||
+                      event.dataTransfer.types.includes(DRAG_MIMETYPE_ITERATION)
+                    ) {
+                      event.dataTransfer.dropEffect = 'none'
+                      setDragRejectedIterationNumber(iteration.number)
+                    }
+                    return
+                  }
                   if (event.dataTransfer.types.includes(DRAG_MIMETYPE_ITERATION)) {
                     event.preventDefault()
                     event.dataTransfer.dropEffect = 'move'
+                  }
+                }}
+                onDragLeave={() => {
+                  if (dragRejectedIterationNumber === iteration.number) {
+                    setDragRejectedIterationNumber(null)
                   }
                 }}
                 onDrop={(event) => {

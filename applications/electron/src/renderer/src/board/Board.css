@@ -363,6 +363,24 @@
     opacity: 0;
   }
 
+  /* #1339 Scenario 5: closed iteration rejects inbound drag with a brief
+     shake + not-allowed cursor so the user sees the rejection visually
+     (sister to outbound-lock via draggable=false on closed iterations). */
+  & .board-iteration-card[data-closed='true'] {
+    cursor: not-allowed;
+  }
+
+  & .board-iteration-card[data-drag-rejected='true'] {
+    animation: bpmux-drag-rejected-shake 0.3s ease-in-out;
+  }
+
+  @keyframes bpmux-drag-rejected-shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    50% { transform: translateX(4px); }
+    75% { transform: translateX(-2px); }
+  }
+
   & .board-iteration-marker {
     display: flex;
     align-items: center;

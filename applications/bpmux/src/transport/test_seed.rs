@@ -159,6 +159,8 @@ pub struct SeedStory {
     pub story_type: String,
     #[serde(default)]
     pub labels: Vec<String>,
+    #[serde(default)]
+    pub is_closed: bool,
 }
 
 fn default_state_icebox() -> String {
@@ -236,6 +238,23 @@ pub async fn post_seed_stories(
                         "seed_stories: TagAdded {label} on #{} failed: {e}",
                         s.number
                     ),
+                );
+            }
+        }
+        if s.is_closed {
+            let close_meta = crate::board::events::EventMeta {
+                actor: "test-seed".to_string(),
+                ts: chrono::Utc::now(),
+                peer_id: crate::board::PeerId::local(),
+            };
+            if let Err(e) = refresh.mutate_sync(crate::board::BoardEvent::StoryClosed {
+                meta: close_meta,
+                number: s.number,
+                reason: Some("test-seed: closed at seed time".to_string()),
+            }) {
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("seed_stories: StoryClosed #{} failed: {e}", s.number),
                 );
             }
         }
