@@ -191,6 +191,94 @@ impl QueuedEvent {
     }
 }
 
+fn iteration_prefix_class(label: &str) -> Option<String> {
+    if !label.starts_with("iteration-") {
+        return None;
+    }
+    let dot_idx = label.rfind('.')?;
+    label.get(dot_idx + 1..)?.parse::<u32>().ok()?;
+    Some(label[..=dot_idx].to_string())
+}
+
+fn coalesce_iteration_label_events(
+    queue: &mut VecDeque<QueuedEvent>,
+    new_event: &BoardEvent,
+    new_id: MutationId,
+    new_pre_state: &Option<Story>,
+) -> bool {
+    let (number, label, is_add) = match new_event {
+        BoardEvent::TagAdded { number, label, .. } => (*number, label.clone(), true),
+        BoardEvent::TagRemoved { number, label, .. } => (*number, label.clone(), false),
+        _ => return false,
+    };
+    let Some(prefix) = iteration_prefix_class(&label) else {
+        return false;
+    };
+    let class_indices: Vec<usize> = queue
+        .iter()
+        .enumerate()
+        .filter_map(|(i, q)| match &q.event {
+            BoardEvent::TagAdded {
+                number: n,
+                label: l,
+                ..
+            }
+            | BoardEvent::TagRemoved {
+                number: n,
+                label: l,
+                ..
+            } if *n == number && iteration_prefix_class(l).as_deref() == Some(prefix.as_str()) => {
+                Some(i)
+            }
+            _ => None,
+        })
+        .collect();
+    if class_indices.is_empty() {
+        return false;
+    }
+    let mut first_r_idx: Option<usize> = None;
+    let mut last_a_idx: Option<usize> = None;
+    for &i in &class_indices {
+        match &queue[i].event {
+            BoardEvent::TagRemoved { .. } if first_r_idx.is_none() => first_r_idx = Some(i),
+            BoardEvent::TagAdded { .. } => last_a_idx = Some(i),
+            _ => {}
+        }
+    }
+    let r_to_keep: Option<QueuedEvent>;
+    let a_to_keep: Option<QueuedEvent>;
+    if is_add {
+        r_to_keep = first_r_idx.map(|i| queue[i].clone());
+        a_to_keep = Some(QueuedEvent::new_with_id(
+            new_id,
+            new_event.clone(),
+            new_pre_state.clone(),
+        ));
+    } else {
+        r_to_keep = match first_r_idx {
+            Some(i) => Some(queue[i].clone()),
+            None => Some(QueuedEvent::new_with_id(
+                new_id,
+                new_event.clone(),
+                new_pre_state.clone(),
+            )),
+        };
+        a_to_keep = last_a_idx.map(|i| queue[i].clone());
+    }
+    let mut sorted = class_indices;
+    sorted.sort_unstable_by(|a, b| b.cmp(a));
+    for i in sorted {
+        queue.remove(i);
+    }
+    if let Some(r) = r_to_keep {
+        queue.push_back(r);
+    }
+    if let Some(a) = a_to_keep {
+        queue.push_back(a);
+    }
+    true
+}
+
 /// #1195 conflict classification result. The classifier compares
 /// `pre_state` (snapshot captured at mutate-time) → `event` (the
 /// intended mutation) → `current` (canonical-store-state at
@@ -389,12 +477,16 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         let id = MutationId(self.next_mutation_id.fetch_add(1, Ordering::SeqCst));
         let pre_state = self.store.story(event.story_number());
         self.store.apply(&event);
-        {
+        let queue_len = {
             let mut p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
-            p.push_back(QueuedEvent::new_with_id(id, event, pre_state));
-        }
+            let absorbed = coalesce_iteration_label_events(&mut p, &event, id, &pre_state);
+            if !absorbed {
+                p.push_back(QueuedEvent::new_with_id(id, event, pre_state));
+            }
+            p.len()
+        };
         self.persist_outbox();
-        bump_pending(&self.status, 1);
+        set_pending_events(&self.status, queue_len);
         if let Some(tx) = &self.action_tx {
             let _ = tx.send(crate::orchestrator::OrchestratorAction::StartUpdateGithub {
                 mutation_id: id,
@@ -1062,9 +1154,9 @@ fn record_error(status: &Arc<Mutex<SyncStatus>>, msg: &str) {
     s.last_error = Some(msg.to_string());
 }
 
-fn bump_pending(status: &Arc<Mutex<SyncStatus>>, by: usize) {
+fn set_pending_events(status: &Arc<Mutex<SyncStatus>>, value: usize) {
     let mut s = status.lock().unwrap_or_else(|e| e.into_inner());
-    s.pending_events += by;
+    s.pending_events = value;
 }
 
 fn decrement_pending(status: &Arc<Mutex<SyncStatus>>) {
