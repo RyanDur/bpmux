@@ -60,6 +60,7 @@ const StoryRow = ({
       className={classes.join(' ')}
       aria-current={selected ? 'true' : undefined}
       data-test={`board-story-${story.number}`}
+      data-story-type={type}
       data-dragging={dragging ? 'true' : undefined}
       draggable={draggable}
       onDragStart={(event) => {

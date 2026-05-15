@@ -9,7 +9,6 @@ import {
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import DrillIn from './DrillIn'
 import Epic from './Epic'
-import Iteration from './Iteration'
 import StoryRow from './StoryRow'
 import { useRefetchOnReconnect } from './useRefetchOnReconnect'
 import {
@@ -17,7 +16,6 @@ import {
   GROUP_ORDER,
   groupStories,
   isActiveEpic,
-  isActiveIteration,
   storyTypeFromLabels,
   type BoardResponse,
   type BoardStory,
@@ -231,7 +229,6 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
 
   const stories = useMemo(() => data?.stories ?? [], [data])
   const epics = useMemo(() => stories.filter(isActiveEpic), [stories])
-  const iterations = useMemo(() => stories.filter(isActiveIteration), [stories])
   const epicTitleByNumber = useMemo(() => {
     const map = new Map<number, string>()
     for (const s of stories) {
@@ -239,24 +236,11 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
     }
     return map
   }, [stories])
-  // Iteration-issues + iteration-member-stories surface inside the
-  // <Iteration> section (sister to Epic). The flat-state columns
-  // exclude both classes so members don't double-render in the icebox.
-  const iterationNumbers = useMemo(
-    () => new Set(iterations.map((i) => i.number)),
-    [iterations]
+  const nonEpicStories = useMemo(
+    () => stories.filter((s) => storyTypeFromLabels(s.labels) !== 'epic'),
+    [stories]
   )
-  const flatStateStories = useMemo(
-    () =>
-      stories.filter((s) => {
-        if (storyTypeFromLabels(s.labels) === 'epic') return false
-        if (storyTypeFromLabels(s.labels) === 'iteration') return false
-        if (s.iteration_id !== undefined && iterationNumbers.has(s.iteration_id)) return false
-        return true
-      }),
-    [stories, iterationNumbers]
-  )
-  const grouped = useMemo(() => groupStories(flatStateStories), [flatStateStories])
+  const grouped = useMemo(() => groupStories(nonEpicStories), [nonEpicStories])
 
   // Flat navigation order matches the visible list order: for each
   // group in GROUP_ORDER, the group's stories in array order. We use
@@ -505,7 +489,6 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
       ) : (
         <section className="board-body" data-test="board-list">
           <Epic epics={epics} stories={stories} onOpen={handleOpen} />
-          <Iteration iterations={iterations} stories={stories} onOpen={handleOpen} />
           {GROUP_ORDER.map((group) => (
             <BoardGroup
               key={group.state}
