@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { computeInsertPosition, DEFAULT_FIRST_POSITION } from './iterationPosition'
+import {
+  computeDropMutation,
+  computeInsertPosition,
+  DEFAULT_FIRST_POSITION
+} from './iterationPosition'
 
 describe('computeInsertPosition — sparse-numeric position-suffix for iteration-{Name}.{N} labels', () => {
   it('returns the default first position when the list is empty', () => {
@@ -59,5 +63,82 @@ describe('computeInsertPosition — sparse-numeric position-suffix for iteration
     const result = computeInsertPosition(1, [100, 105])
     expect(result.position).toBe(102)
     expect(result.cascadeNeeded).toBe(false)
+  })
+})
+
+describe('computeDropMutation — drag-drop yields canonical add/remove label-pair', () => {
+  it('within-iteration reorder produces single-iteration add/remove pair', () => {
+    const result = computeDropMutation({
+      draggedNumber: 7411,
+      draggedThemeName: 'Cassiopeia',
+      draggedOldPosition: 300,
+      targetThemeName: 'Cassiopeia',
+      targetMemberPositions: [100, 200, 300],
+      targetMemberIndex: 0,
+      targetMembersIncludeDragged: true
+    })
+    expect(result).toEqual({
+      add: ['iteration-Cassiopeia.50'],
+      remove: ['iteration-Cassiopeia.300']
+    })
+  })
+
+  it('within-iteration drop on own position returns null (no-op)', () => {
+    const result = computeDropMutation({
+      draggedNumber: 7411,
+      draggedThemeName: 'Cassiopeia',
+      draggedOldPosition: 200,
+      targetThemeName: 'Cassiopeia',
+      targetMemberPositions: [100, 200, 300],
+      targetMemberIndex: 1,
+      targetMembersIncludeDragged: true
+    })
+    expect(result).toBeNull()
+  })
+
+  it('cross-iteration drop retags with new iteration prefix', () => {
+    const result = computeDropMutation({
+      draggedNumber: 7411,
+      draggedThemeName: 'Cassiopeia',
+      draggedOldPosition: 200,
+      targetThemeName: 'Pegasus',
+      targetMemberPositions: [100, 200],
+      targetMemberIndex: 0,
+      targetMembersIncludeDragged: false
+    })
+    expect(result).toEqual({
+      add: ['iteration-Pegasus.50'],
+      remove: ['iteration-Cassiopeia.200']
+    })
+  })
+
+  it('cross-iteration drop into empty container places at default-first', () => {
+    const result = computeDropMutation({
+      draggedNumber: 7411,
+      draggedThemeName: 'Cassiopeia',
+      draggedOldPosition: 200,
+      targetThemeName: 'Pegasus',
+      targetMemberPositions: [],
+      targetMemberIndex: 0,
+      targetMembersIncludeDragged: false
+    })
+    expect(result).toEqual({
+      add: ['iteration-Pegasus.100'],
+      remove: ['iteration-Cassiopeia.200']
+    })
+  })
+
+  it('within-iteration drop after last position steps forward', () => {
+    const result = computeDropMutation({
+      draggedNumber: 7411,
+      draggedThemeName: 'Cassiopeia',
+      draggedOldPosition: 100,
+      targetThemeName: 'Cassiopeia',
+      targetMemberPositions: [100, 200, 300],
+      targetMemberIndex: 2,
+      targetMembersIncludeDragged: true
+    })
+    expect(result?.add).toEqual(['iteration-Cassiopeia.250'])
+    expect(result?.remove).toEqual(['iteration-Cassiopeia.100'])
   })
 })

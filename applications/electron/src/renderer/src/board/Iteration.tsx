@@ -1,6 +1,6 @@
 import StoryTypeGlyph from './StoryTypeGlyph'
 import { useIterationCollapse } from './useIterationCollapse'
-import { computeInsertPosition } from './iterationPosition'
+import { computeDropMutation } from './iterationPosition'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import { storyTypeFromLabels, type BoardStory } from './types'
 
@@ -178,26 +178,19 @@ const Iteration = ({ stories, onOpen }: Props): React.JSX.Element | null => {
                         if (!raw) return
                         event.preventDefault()
                         const payload = JSON.parse(raw) as DragPayload
-                        if (payload.themeName !== themeName) return
                         if (payload.storyNumber === story.number) return
-                        const withoutSource = members.filter(
-                          (m) => m.story.number !== payload.storyNumber
-                        )
-                        const sourceIdxInFull = members.findIndex(
-                          (m) => m.story.number === payload.storyNumber
-                        )
-                        const adjustedIdx =
-                          sourceIdxInFull < memberIdx ? memberIdx - 1 : memberIdx
-                        const { position: newPosition } = computeInsertPosition(
-                          adjustedIdx,
-                          withoutSource.map((m) => m.position)
-                        )
-                        if (newPosition === payload.oldPosition) return
-                        postLabelMutation(
-                          payload.storyNumber,
-                          [`iteration-${themeName}.${newPosition}`],
-                          [`iteration-${themeName}.${payload.oldPosition}`]
-                        )
+                        if (iteration.gh_state === 'closed') return
+                        const mutation = computeDropMutation({
+                          draggedNumber: payload.storyNumber,
+                          draggedThemeName: payload.themeName,
+                          draggedOldPosition: payload.oldPosition,
+                          targetThemeName: themeName,
+                          targetMemberPositions: members.map((m) => m.position),
+                          targetMemberIndex: memberIdx,
+                          targetMembersIncludeDragged: payload.themeName === themeName
+                        })
+                        if (!mutation) return
+                        postLabelMutation(payload.storyNumber, mutation.add, mutation.remove)
                       }}
                     >
                       <button

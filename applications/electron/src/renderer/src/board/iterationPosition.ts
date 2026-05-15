@@ -34,3 +34,47 @@ export const computeInsertPosition = (
   }
   return { position: left, cascadeNeeded: true }
 }
+
+export interface DropMutationInput {
+  draggedNumber: number
+  draggedThemeName: string
+  draggedOldPosition: number
+  targetThemeName: string
+  targetMemberPositions: number[]
+  targetMemberIndex: number
+  targetMembersIncludeDragged: boolean
+}
+
+export interface DropMutation {
+  add: string[]
+  remove: string[]
+}
+
+export const computeDropMutation = (input: DropMutationInput): DropMutation | null => {
+  const {
+    draggedNumber: _draggedNumber,
+    draggedThemeName,
+    draggedOldPosition,
+    targetThemeName,
+    targetMemberPositions,
+    targetMemberIndex,
+    targetMembersIncludeDragged
+  } = input
+  const sameContainer = draggedThemeName === targetThemeName
+  const withoutSource = sameContainer && targetMembersIncludeDragged
+    ? targetMemberPositions.filter((p) => p !== draggedOldPosition)
+    : targetMemberPositions
+  const sourceIdxInFull = sameContainer && targetMembersIncludeDragged
+    ? targetMemberPositions.findIndex((p) => p === draggedOldPosition)
+    : -1
+  const adjustedIdx =
+    sameContainer && sourceIdxInFull >= 0 && sourceIdxInFull < targetMemberIndex
+      ? targetMemberIndex - 1
+      : targetMemberIndex
+  const { position: newPosition } = computeInsertPosition(adjustedIdx, withoutSource)
+  if (sameContainer && newPosition === draggedOldPosition) return null
+  return {
+    add: [`iteration-${targetThemeName}.${newPosition}`],
+    remove: [`iteration-${draggedThemeName}.${draggedOldPosition}`]
+  }
+}
