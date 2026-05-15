@@ -88,9 +88,21 @@ const postLabelMutation = (
   })
 }
 
+const eagerReorder = <T,>(items: T[], findId: (t: T) => number, fromId: number | null, toId: number | null): T[] => {
+  if (fromId === null || toId === null) return items
+  const fromIdx = items.findIndex((t) => findId(t) === fromId)
+  const toIdx = items.findIndex((t) => findId(t) === toId)
+  if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return items
+  const next = [...items]
+  const [moved] = next.splice(fromIdx, 1)
+  next.splice(toIdx, 0, moved)
+  return next
+}
+
 const Iteration = ({ stories, onOpen }: Props): React.JSX.Element | null => {
   const collapse = useIterationCollapse(RENDERER_IDENTITY)
   const [draggedNumber, setDraggedNumber] = useState<number | null>(null)
+  const [hoveredNumber, setHoveredNumber] = useState<number | null>(null)
   const iterations = stories.filter(isIterationStory)
   const loose = stories.filter(isLooseStory)
   if (iterations.length === 0 && loose.length === 0) return null
@@ -153,7 +165,12 @@ const Iteration = ({ stories, onOpen }: Props): React.JSX.Element | null => {
                   </button>
                 </summary>
                 <ul className="board-iteration-body">
-                  {members.map(({ story, position }, memberIdx) => (
+                  {eagerReorder(
+                    members,
+                    (m) => m.story.number,
+                    draggedNumber,
+                    hoveredNumber
+                  ).map(({ story, position }) => (
                     <li
                       key={story.number}
                       className="board-iteration-member"
@@ -171,11 +188,17 @@ const Iteration = ({ stories, onOpen }: Props): React.JSX.Element | null => {
                         event.dataTransfer.effectAllowed = 'move'
                         setDraggedNumber(story.number)
                       }}
-                      onDragEnd={() => setDraggedNumber(null)}
+                      onDragEnd={() => {
+                        setDraggedNumber(null)
+                        setHoveredNumber(null)
+                      }}
                       onDragOver={(event) => {
                         if (event.dataTransfer.types.includes(DRAG_MIMETYPE)) {
                           event.preventDefault()
                           event.dataTransfer.dropEffect = 'move'
+                          if (draggedNumber !== null && draggedNumber !== story.number) {
+                            setHoveredNumber(story.number)
+                          }
                         }
                       }}
                       onDrop={(event) => {
@@ -185,13 +208,17 @@ const Iteration = ({ stories, onOpen }: Props): React.JSX.Element | null => {
                         const payload = JSON.parse(raw) as DragPayload
                         if (payload.storyNumber === story.number) return
                         if (iteration.gh_state === 'closed') return
+                        const originalIdx = members.findIndex(
+                          (m) => m.story.number === story.number
+                        )
+                        if (originalIdx === -1) return
                         const mutation = computeDropMutation({
                           draggedNumber: payload.storyNumber,
                           draggedThemeName: payload.themeName,
                           draggedOldPosition: payload.oldPosition,
                           targetThemeName: themeName,
                           targetMemberPositions: members.map((m) => m.position),
-                          targetMemberIndex: memberIdx,
+                          targetMemberIndex: originalIdx,
                           targetMembersIncludeDragged: payload.themeName === themeName
                         })
                         if (!mutation) return
