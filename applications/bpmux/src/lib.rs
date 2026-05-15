@@ -248,7 +248,17 @@ pub async fn auto_heal_icebox_at_path(
         &mut index,
         &canonical_states,
     );
-    if evicted == 0 {
+    let canonical_iteration_numbers: Vec<u64> = refresh
+        .all_stories()
+        .into_iter()
+        .filter(|s| matches!(s.story_type, board::domain::StoryType::Iteration))
+        .map(|s| s.number)
+        .collect();
+    let cassiopeia_audit = session::priority::migrate_existing_iterations_into_icebox_unified(
+        &mut index,
+        &canonical_iteration_numbers,
+    );
+    if evicted == 0 && cassiopeia_audit.is_noop() {
         return;
     }
     if let Err(e) = session::priority::save_priority(path, &index) {
@@ -258,6 +268,12 @@ pub async fn auto_heal_icebox_at_path(
     session::diag::log_diag(&format!(
         "[#1268] auto-heal: evicted {evicted} stale story entries from icebox_unified"
     ));
+    if !cassiopeia_audit.is_noop() {
+        session::diag::log_diag(&format!(
+            "[#1301] Cassiopeia iteration migration: dropped {:?}; inserted {:?}",
+            cassiopeia_audit.dropped_stale, cassiopeia_audit.inserted_missing
+        ));
+    }
     let payload = session::message::StateDeltaPayload::IceboxMigration {
         entries: index.icebox_unified.len(),
     };

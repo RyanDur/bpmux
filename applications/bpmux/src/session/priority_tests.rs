@@ -601,6 +601,104 @@ fn evict_promoted_members_drops_only_named_stories_keeping_markers() {
 }
 
 #[test]
+fn cassiopeia_migration_drops_stale_iteration_entries_not_in_canonical() {
+    let mut index = PriorityIndex {
+        icebox_unified: vec![
+            IceboxItem::Iteration { number: 1 },
+            IceboxItem::Iteration { number: 43 },
+            IceboxItem::Iteration { number: 1316 },
+            IceboxItem::Story { number: 555 },
+        ],
+        ..Default::default()
+    };
+    let audit = migrate_existing_iterations_into_icebox_unified(&mut index, &[1316]);
+    assert_eq!(
+        audit.dropped_stale,
+        vec![1, 43],
+        "stale numbers (no canonical iteration) dropped"
+    );
+    assert!(
+        audit.inserted_missing.is_empty(),
+        "nothing missing — canonical iteration already present"
+    );
+    assert_eq!(
+        index.icebox_unified,
+        vec![
+            IceboxItem::Iteration { number: 1316 },
+            IceboxItem::Story { number: 555 },
+        ],
+        "stale Iteration entries removed; canonical Iteration + unrelated Story preserved"
+    );
+}
+
+#[test]
+fn cassiopeia_migration_inserts_missing_canonical_iterations_at_bottom_sorted() {
+    let mut index = PriorityIndex {
+        icebox_unified: vec![
+            IceboxItem::Story { number: 100 },
+            IceboxItem::Iteration { number: 1316 },
+        ],
+        ..Default::default()
+    };
+    let audit = migrate_existing_iterations_into_icebox_unified(
+        &mut index,
+        &[1316, 1317, 1318, 1338, 1336],
+    );
+    assert_eq!(
+        audit.inserted_missing,
+        vec![1317, 1318, 1336, 1338],
+        "missing canonical iterations inserted in ascending order"
+    );
+    assert!(audit.dropped_stale.is_empty(), "no stale entries to drop");
+    assert_eq!(
+        index.icebox_unified,
+        vec![
+            IceboxItem::Story { number: 100 },
+            IceboxItem::Iteration { number: 1316 },
+            IceboxItem::Iteration { number: 1317 },
+            IceboxItem::Iteration { number: 1318 },
+            IceboxItem::Iteration { number: 1336 },
+            IceboxItem::Iteration { number: 1338 },
+        ],
+        "existing positions preserved; new iterations appended at bottom in ascending order"
+    );
+}
+
+#[test]
+fn cassiopeia_migration_is_idempotent_after_first_run() {
+    let mut index = PriorityIndex {
+        icebox_unified: vec![IceboxItem::Iteration { number: 1 }],
+        ..Default::default()
+    };
+    let first = migrate_existing_iterations_into_icebox_unified(&mut index, &[1316, 1317]);
+    assert_eq!(first.dropped_stale, vec![1]);
+    assert_eq!(first.inserted_missing, vec![1316, 1317]);
+    let second = migrate_existing_iterations_into_icebox_unified(&mut index, &[1316, 1317]);
+    assert!(
+        second.is_noop(),
+        "second run is a no-op (idempotent): {second:?}"
+    );
+}
+
+#[test]
+fn cassiopeia_migration_handles_both_stale_and_missing_in_one_pass() {
+    let mut index = PriorityIndex {
+        icebox_unified: vec![
+            IceboxItem::Iteration { number: 99 },
+            IceboxItem::Iteration { number: 1316 },
+        ],
+        ..Default::default()
+    };
+    let audit = migrate_existing_iterations_into_icebox_unified(&mut index, &[1316, 1317, 1318]);
+    assert_eq!(audit.dropped_stale, vec![99], "stale 99 dropped");
+    assert_eq!(
+        audit.inserted_missing,
+        vec![1317, 1318],
+        "missing 1317/1318 appended"
+    );
+}
+
+#[test]
 fn evict_promoted_members_with_empty_list_is_noop() {
     let mut index = PriorityIndex {
         icebox_unified: vec![

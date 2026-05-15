@@ -225,6 +225,45 @@ forcing v4 components-within-app. Pre-pivot, iteration-state was
 fragmented across two file-system substrates with no clean seam; post-
 pivot, the canonical-via-GH-issue substrate is the seam.
 
+### Cassiopeia ratification (2026-05-15, Epic #1189 Wave-C)
+
+After Pegasus shipped the iteration_id-axis membership shape, Ryan
+rejected the user-job-fit (2026-05-14 21:51 UTC): iteration-membership
+should be **positional-implicit** (the marker's icebox position IS the
+commitment signal) rather than **foreign-key-explicit** (`iteration_id`
+on each member). Wave-C re-decomposed the iteration-Epic into six
+vertical slices that pivot the membership-substrate without losing the
+user-job:
+
+| Slice | Issue  | Surface                                                                                            |
+|-------|--------|----------------------------------------------------------------------------------------------------|
+| A     | #1297  | `IceboxItem::Iteration { number }` variant in `icebox_unified`; `create_iteration` positional insert; renderer flows iteration stories through `StoryRow` (Pegasus `<Iteration>` parent-row retired) |
+| B     | #1339  | Iteration-marker drag preserves Iteration variant through the canonical reorder; closed iteration markers lock drag                                                  |
+| C     | #1300  | `close_iteration` derives members via above-marker positional walk (bounded by previous marker or top-of-icebox); marker stays at position with closed-state visual treatment; promoted entries evict from `icebox_unified`                                                                          |
+| D     | #1301  | One-shot Cassiopeia migration: `auto_heal_icebox_at_path` invokes `migrate_existing_iterations_into_icebox_unified` to drop stale `Iteration` entries + append canonical iteration numbers. Idempotent; sister to `migrate_icebox_unified` at #1258 axis. Audit-log: `docs/audit-logs/2026-05-15-cassiopeia-iteration-migration.md`. |
+| E     | #1299  | Retire iteration_id-axis surface (planned)                                                                                                                            |
+| close | #1302  | Iteration-Epic close-out (planned)                                                                                                                                    |
+
+**Positional-implicit-membership canon**: position in `icebox_unified`
+relative to iteration markers IS the membership signal. No explicit
+add/remove ceremonies; drag-to-reshape is the user-input. `close_iteration`
+walks above-marker, bounded by the previous marker. Closed iteration
+markers stay at their position (Slice C's `columnFor` routing + Slice
+B's drag-lock).
+
+**Substrate sole-source**: `icebox_unified` is the canonical positional
+substrate. The `iteration_id` field remains on the canonical-store
+`Story` model during the Wave-C transition window but is no longer the
+membership signal — Slice E retires its consumer surface atomically.
+
+**User-job invariant preserved**: per
+`feedback_architecture_pivot_preserves_user_job_invariant`, the pivot
+re-shapes the substrate without losing the user-visible iteration-as-
+batch-of-stories experience. Migration documents which existing
+iterations carried forward (5 canonical iterations as of 2026-05-15;
+Aquila B disambiguation already encoded in as-filed titles — see
+audit-log for the named rule).
+
 ## Testing substrate: RTL+real-backend (primary) + Playwright (edge-coverage) (Epic #1247)
 
 **Canonical testing-substrate** (post-Pegasus shipped state, 2026-05-14):

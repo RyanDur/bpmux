@@ -143,6 +143,76 @@ pub fn auto_heal_ready_column_via_workflow_state(
     before - ready.len()
 }
 
+/// #1301 Cassiopeia migration substrate: bring `icebox_unified` into
+/// alignment with the canonical-iteration set on the running store.
+///
+/// Two operations in one pass:
+///   1. Drop Iteration entries whose numbers no longer correspond to
+///      a canonical Iteration story (stale test artifacts, deleted
+///      iterations, etc.).
+///   2. Append Iteration entries for canonical iterations not yet in
+///      `icebox_unified`. New entries land at the bottom in
+///      canonical-number order — PM can then drag them to their
+///      preferred positions per Slice B's drag-reshape canon.
+///
+/// Idempotent: re-runs after the first pass are no-ops once the two
+/// sets are in alignment. Returns the audit-summary so callers can
+/// log what happened.
+pub fn migrate_existing_iterations_into_icebox_unified(
+    index: &mut PriorityIndex,
+    canonical_iteration_numbers: &[u64],
+) -> CassiopeiaMigrationAudit {
+    let canonical: std::collections::HashSet<u64> =
+        canonical_iteration_numbers.iter().copied().collect();
+    let mut dropped: Vec<u64> = Vec::new();
+    index.icebox_unified.retain(|item| match item {
+        IceboxItem::Iteration { number } => {
+            if canonical.contains(number) {
+                true
+            } else {
+                dropped.push(*number);
+                false
+            }
+        }
+        IceboxItem::Story { .. } => true,
+    });
+    let present: std::collections::HashSet<u64> = index
+        .icebox_unified
+        .iter()
+        .filter_map(|item| match item {
+            IceboxItem::Iteration { number } => Some(*number),
+            IceboxItem::Story { .. } => None,
+        })
+        .collect();
+    let mut to_insert: Vec<u64> = canonical_iteration_numbers
+        .iter()
+        .copied()
+        .filter(|n| !present.contains(n))
+        .collect();
+    to_insert.sort_unstable();
+    for n in to_insert.iter().copied() {
+        index
+            .icebox_unified
+            .push(IceboxItem::Iteration { number: n });
+    }
+    CassiopeiaMigrationAudit {
+        dropped_stale: dropped,
+        inserted_missing: to_insert,
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CassiopeiaMigrationAudit {
+    pub dropped_stale: Vec<u64>,
+    pub inserted_missing: Vec<u64>,
+}
+
+impl CassiopeiaMigrationAudit {
+    pub fn is_noop(&self) -> bool {
+        self.dropped_stale.is_empty() && self.inserted_missing.is_empty()
+    }
+}
+
 /// #1258 α-substrate migration: populate `icebox_unified` from legacy
 /// `columns["icebox"]` story-list on first server boot post-α-ship.
 /// Idempotent: if `icebox_unified` is already populated, returns false
