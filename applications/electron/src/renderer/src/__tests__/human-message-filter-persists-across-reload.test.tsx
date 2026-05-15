@@ -1,12 +1,3 @@
-// #1335 sub-batch 4.1.B — migrated from
-// tests/human-message-filter-persists-across-reload.spec.ts.
-// Recipe: docs/design/ci-migration/playwright-to-rtl-recipe.md.
-//
-// RTL win.reload-equivalent: rendered.cleanup() (unmount + remove
-// bpmuxShim) then a fresh renderApp() reattaches. jsdom retains
-// localStorage across the cycle (sister to a browser reload preserving
-// localStorage; only the window.bpmux shim re-installs).
-
 import { afterEach, describe, expect, inject, it } from 'vitest'
 import { waitFor } from '@testing-library/react'
 
@@ -19,8 +10,6 @@ describe('human-side E2E #476 — persistence-class — message filter', () => {
   afterEach(() => {
     rendered?.cleanup()
     rendered = null
-    // Wipe localStorage between tests so filter-pill state doesn't
-    // leak across cases.
     window.localStorage.clear()
   })
 
@@ -45,7 +34,6 @@ describe('human-side E2E #476 — persistence-class — message filter', () => {
       activityPill.click()
       await waitFor(() => expect(activityPill.getAttribute('aria-pressed')).toBe('true'))
 
-      // Reload-equivalent: unmount + remount; localStorage persists in jsdom
       rendered.cleanup()
       rendered = renderApp()
 
@@ -75,7 +63,6 @@ describe('human-side E2E #476 — persistence-class — message filter', () => {
       chatPill.click()
       await waitFor(() => expect(chatPill.getAttribute('aria-pressed')).toBe('false'))
 
-      // Reload-equivalent
       rendered.cleanup()
       rendered = renderApp()
 

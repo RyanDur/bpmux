@@ -1,7 +1,3 @@
-// #1335 sub-batch 4.1.B — migrated from
-// tests/human-message-reaction-picker-opens.spec.ts.
-// Recipe: docs/design/ci-migration/playwright-to-rtl-recipe.md.
-
 import { afterEach, describe, expect, inject, it } from 'vitest'
 import { waitFor } from '@testing-library/react'
 
@@ -58,12 +54,10 @@ describe('human-side E2E #476 — direct-action — message reaction picker', ()
       })
       ;(thumbsUp as HTMLElement).click()
 
-      // picker closes after selection
       await waitFor(() => {
         expect(rendered!.container.querySelectorAll('[data-test="reaction-picker"]').length).toBe(0)
       })
 
-      // pill renders on the message via WS round-trip
       await rendered.findByTestId('reaction-pill-👍', undefined, { timeout: 15_000 })
     },
     20_000

@@ -1,7 +1,3 @@
-// #1335 sub-batch 4.1.B — migrated from
-// tests/human-message-mention-click-scopes-recipient.spec.ts.
-// Recipe: docs/design/ci-migration/playwright-to-rtl-recipe.md.
-
 import { afterEach, describe, expect, inject, it } from 'vitest'
 import { waitFor } from '@testing-library/react'
 
@@ -50,15 +46,12 @@ describe('human-side E2E #476 — direct-action — message @mention click', () 
 
       await rendered.findByText(/please look at this/, undefined, { timeout: 15_000 })
 
-      // sidebar-direct-dev surfaces after the roster state-snapshot
-      // propagates via WS from the seeded orchestrator RosterStore.
       const devButton = await rendered.findByTestId('sidebar-direct-dev', undefined, {
         timeout: 15_000
       })
       const broadcastButton = rendered.getByTestId('sidebar-broadcast')
       expect(broadcastButton.getAttribute('aria-current')).toBe('true')
 
-      // Click the mention pill — should scope recipient to dev
       const mention = (await rendered.findAllByTestId('message-mention'))[0]
       mention.click()
 
