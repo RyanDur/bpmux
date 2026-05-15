@@ -248,7 +248,44 @@ The team charter / norms layer is satisfied by shared prose docs; identity stays
 - Team disciplines (gate protocol, cadence, premise-before-verdict, honest labels, no-mid-acceptance) live in shared docs as shared norms, not as a team identity file.
 - If we observe team-discipline drift later (same rule breaking consistently across roles despite being in all three identities), revisit whether a formal team-identity artifact would help. Today we don't observe that drift.
 
+## Iteration arcs — durable case-evidence
+
+Long-running iterations sometimes produce convergent learning across multiple roles + multiple stories that justifies a durable arc-summary on disk (vs only per-role memory). The pattern: a single iteration generates 8+ lessons that name a shared architectural-fix axis; the lessons taken together describe a *fix-pattern* applicable to future iterations facing sister-shaped failure-modes. The arc gives the next-iteration team a sister-pattern reference rather than re-derivation under velocity-pressure.
+
+### Pegasus → Cassiopeia arc (2026-05-14 retro → 2026-05-15 ratification)
+
+**Empirical case-evidence**: Pegasus iteration shipped 15 stories, accepted 2, rejected 13. Lessons were saved before AND during the iteration; load-bearing discipline still failed at apply-time under velocity-pressure. Retro at 2026-05-14 22:38–22:42 UTC converged on five architectural-fix patterns that anchor the next iteration (Cassiopeia) — and these patterns are themselves the durable take-away.
+
+**Architectural-fix patterns named**:
+
+1. **Substrate-enforce > discipline-only**. When a discipline-class fails repeatedly despite canon being saved, the right fix is to *build the gate that makes recidivism impossible*, not to "remember harder." Substrate enforces reflexively under pressure; canon-recall drifts. Sister to BoardStore::apply chokepoint pattern + storage_tests Mutex substrate-pinning. Cassiopeia Wave-1 ships the gates that close Pegasus's empirical discipline-gaps (deliver_story grep at commit-time + field-completeness regression test + falsifier-fidelity declaration at deliver-time). Stored: `feedback_substrate_enforce_over_discipline_only` (dev memory) + sister cross-role lessons.
+
+2. **Vertical-slice > horizontal-layer at decomposition**. Substrate-only slices (one Rust enum variant; one tool registration) have no user-visible behavior, so their tests slide into code-assertions ("cargo build passes" / "serde roundtrips") that violate `feedback_tests_assert_behavior_not_code`. Right shape: fold horizontal-layer work UP into vertical-slices that ship one observable user-job end-to-end. Pegasus's Epic #1189 iteration-shape was decomposed into 8 horizontal layers; Cassiopeia re-decomposed to 5–6 vertical slices each shipping observable behavior. Stored: `feedback_user_story_skill_apply_at_body_author_time` + Cassiopeia ratification ceremony record.
+
+3. **Behavior-axis at body-author-time**. Story bodies describe USER-JOB + observation-falsifier in behavior-axis terms (what user observes); HOW-axis content (file paths, struct names, function signatures, test code) lives in `comment_on_story` thread per Ryan 2026-05-15 00:16 UTC + 23:30 UTC convention. Deep-audit reshape at 2026-05-15 00:55 UTC moved impl-axis content out of 12 ready-queue bodies; PM's user-story skill enforces this discipline at body-author-time. Stored: `feedback_user_story_skill_apply_at_body_author_time`, `feedback_gherkin_is_the_acceptance_test_spec_file_path_is_impl_leak`.
+
+4. **Fix-now-as-exception per habit-caveat**. Pegasus iteration mid-flight surfaced two substrate-Bugs that genuinely blocked iteration-team workflow (storage_tests env-var-race; edit_story body-cascade-decode-drop). Ryan owner-expressly-asked carve-outs to no-rework-during-iteration canon, with explicit "but do not make this a habit." The carve-out shape: tiny + substrate-orthogonal + zero-behavior-change-risk + unblocks team workflow. Default = defer per `feedback_rejected_stories_default_to_next_iteration`; fix-now requires owner-ask + named-cause. Stored: `feedback_fix_now_is_exception_not_default`.
+
+5. **Selective-field-decode-with-silent-drop discipline-class**. Cascade-chain code that decodes JSON → struct can silently drop fields (today's empirical: `decode_story_metadata` dropped body field for ~weeks pre-2026-05-14). The class extends to any wire-protocol-additions to sister substrates. Cassiopeia substrate-fix #1345 ships compile-time-enforced field-completeness regression test using sentinel-roundtrip pattern — if future dev adds field to Story struct without wiring decoder, test fails citing the missing field. Stored: `feedback_edit_story_body_cascade_decode_drop` + `feedback_substrate_enforce_over_discipline_only` extends to this class.
+
+**Sub-pattern lessons saved 2026-05-14/15** (cross-reference; full text via `list_lessons` or per-role memory):
+- `feedback_architecture_pivot_preserves_user_job_invariant` — Epic #1189 reshape recidivism (substrate-pivot directive misread as user-job-reshape directive)
+- `feedback_no_per_story_accept_owner_walks_at_queue_done` — accept-walk happens at iteration close, not per-story
+- `feedback_rejected_stories_default_to_next_iteration` — REJECT routes to next iteration, not in-iteration rework
+- `feedback_no_rework_during_acceptance_walk` — dev observes during accept-walk; rework defers
+- `feedback_proactive_dev_lens_audit_during_accept_walk` — dev fires audit IN PARALLEL with PM + designer, not after-the-fact
+- `feedback_pre_deliver_absolute_rule_self_audit` — dev pre-deliver greps for absolute-rule violations
+- `feedback_test_timeout_discipline_and_per_run_backend_state_reset` — tight waitFor budgets + beforeEach reset
+- `feedback_bpmux_is_generic_team_coordination_not_team_process` — bpmux observes coordination-state; doesn't prescribe team-process (this-team-tooling lives in repo-tooling-layer per Ryan 2026-05-15 01:35 UTC)
+- `feedback_dont_ask_ryan_questions_during_conversation` — contribute substantive content; don't ask back
+- `feedback_bpmux_pause_vocabulary_requires_named_cause` — "standing by" / "holding" without named-cause fires hook; replace with active-next or named-blocker
+
+**Future-iteration sister-pattern hooks**: when the next iteration faces (a) a substrate-pivot that team converges on user-job reshape, (b) a horizontal-layered decomposition that produces substrate-only slices, (c) absolute-rule violations surfacing at accept-walk instead of desk-check, (d) a discipline-class failing repeatedly despite saved canon, OR (e) cascade-chain field-additions without decoder-side update — sister-pattern reference is this Cassiopeia-arc + the named architectural-fix patterns above.
+
+**Pegasus retro empirical evidence**: 13/15 rejection rate despite saved canon is the empirical case-evidence that discipline-recall fails under velocity-pressure; substrate-enforce + body-author-time gates close the pattern structurally.
+
 ## Changelog
 
 - 2026-04-17: initial authoring by designer; three-role converged (dev on storage/automation, pm on cadence/promotion, designer on framework lifecycle)
 - 2026-04-17: added "individual vs team identity" section — team converged on emergent-not-formalized with research backing (TMS, SMM, swift trust, social identity theory)
+- 2026-05-15: added "Iteration arcs — durable case-evidence" with Pegasus → Cassiopeia arc capturing 5 architectural-fix patterns + 10+ sub-pattern lessons (sister-pattern reference for future iterations facing substrate-pivot / horizontal-layer / discipline-recall / cascade-drop failure modes)
