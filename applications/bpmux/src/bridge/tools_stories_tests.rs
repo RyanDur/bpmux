@@ -4018,4 +4018,58 @@ mod reorder_story_icebox_routing_tests {
             vec![IceboxItem::Story { number: 1251 }]
         );
     }
+
+    #[test]
+    fn reorder_preserves_iteration_variant_when_dragging_an_iteration_marker() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("priority.json");
+        std::fs::write(
+            &path,
+            r#"{
+                "icebox_unified": [
+                    {"kind":"story","number":501},
+                    {"kind":"iteration","number":777},
+                    {"kind":"story","number":502}
+                ]
+            }"#,
+        )
+        .unwrap();
+        apply_reorder_story(&path, "icebox", 777, 3).unwrap();
+        let index = load_priority(&path);
+        assert_eq!(
+            index.icebox_unified,
+            vec![
+                IceboxItem::Story { number: 501 },
+                IceboxItem::Story { number: 502 },
+                IceboxItem::Iteration { number: 777 },
+            ],
+            "iteration marker repositions via reorder_story without losing Iteration variant"
+        );
+    }
+
+    #[test]
+    fn reorder_default_keeps_story_variant_for_non_iteration_numbers() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("priority.json");
+        std::fs::write(
+            &path,
+            r#"{
+                "icebox_unified": [
+                    {"kind":"story","number":501},
+                    {"kind":"iteration","number":777}
+                ]
+            }"#,
+        )
+        .unwrap();
+        apply_reorder_story(&path, "icebox", 501, 2).unwrap();
+        let index = load_priority(&path);
+        assert_eq!(
+            index.icebox_unified,
+            vec![
+                IceboxItem::Iteration { number: 777 },
+                IceboxItem::Story { number: 501 },
+            ],
+            "non-iteration drags retain Story variant; iteration variant elsewhere unaffected"
+        );
+    }
 }

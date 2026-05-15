@@ -1413,11 +1413,21 @@ fn place_icebox_story_in_canonical_unified(
     number: u64,
     position: usize,
 ) {
-    crate::session::priority::reorder_icebox_unified(
-        index,
-        crate::session::priority::IceboxItem::Story { number },
-        position,
-    );
+    let variant = preserve_existing_icebox_variant(index, number)
+        .unwrap_or(crate::session::priority::IceboxItem::Story { number });
+    crate::session::priority::reorder_icebox_unified(index, variant, position);
+}
+
+fn preserve_existing_icebox_variant(
+    index: &crate::session::priority::PriorityIndex,
+    number: u64,
+) -> Option<crate::session::priority::IceboxItem> {
+    index.icebox_unified.iter().find_map(|item| match item {
+        crate::session::priority::IceboxItem::Iteration { number: n } if *n == number => {
+            Some(crate::session::priority::IceboxItem::Iteration { number })
+        }
+        _ => None,
+    })
 }
 
 fn evict_story_from_legacy_icebox_column(

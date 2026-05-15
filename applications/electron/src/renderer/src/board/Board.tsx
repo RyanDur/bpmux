@@ -16,6 +16,7 @@ import {
   GROUP_ORDER,
   groupStories,
   isActiveEpic,
+  isClosedIterationMarker,
   storyTypeFromLabels,
   type BoardResponse,
   type BoardStory,
@@ -626,7 +627,9 @@ function BoardGroup({
             onDrop={handleDrop}
             onDragLeave={() => setDropAt(null)}
           >
-            {stories.map((story, i) => (
+            {stories.map((story, i) => {
+              const rowDraggable = draggable && !isClosedIterationMarker(story)
+              return (
               <StoryRow
                 key={story.number}
                 story={story}
@@ -636,14 +639,14 @@ function BoardGroup({
                     : undefined
                 }
                 selected={story.number === selectedNumber}
-                draggable={draggable}
+                draggable={rowDraggable}
                 dragging={draggingNumber === story.number}
                 dropBefore={dropAt === i}
                 dropAfterLast={dropAt === stories.length && i === stories.length - 1}
                 position={i + 1}
                 total={stories.length}
                 onKeyboardReorder={
-                  draggable && onReorder !== undefined
+                  rowDraggable && onReorder !== undefined
                     ? (direction) => {
                         if (direction === 'up' && i === 0) return
                         if (direction === 'down' && i === stories.length - 1) return
@@ -665,7 +668,8 @@ function BoardGroup({
                   setDropAt(null)
                 }}
               />
-            ))}
+              )
+            })}
           </ul>
         )}
       </div>

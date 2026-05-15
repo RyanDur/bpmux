@@ -163,6 +163,11 @@ export const isActiveIteration = (story: BoardStory): boolean => {
   return columnFor(story.state, story.gh_state === 'closed') !== 'retired'
 }
 
+export const isClosedIterationMarker = (story: BoardStory): boolean => {
+  if (storyTypeFromLabels(story.labels) !== 'iteration') return false
+  return story.gh_state === 'closed'
+}
+
 export const deriveEpicState = (
   epicExplicitState: StoryState,
   children: BoardStory[]
