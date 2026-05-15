@@ -236,6 +236,64 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                       event.stopPropagation()
                       onOpen(iteration.number)
                     }}
+                    onKeyDown={(event) => {
+                      if (!event.ctrlKey || !event.shiftKey) return
+                      if (iteration.gh_state === 'closed') return
+                      const direction =
+                        event.key === 'ArrowUp'
+                          ? 'up'
+                          : event.key === 'ArrowDown'
+                            ? 'down'
+                            : null
+                      if (direction === null) return
+                      event.preventDefault()
+                      const iterationIdx = iterations.findIndex(
+                        (it) => it.number === iteration.number
+                      )
+                      if (iterationIdx === -1) return
+                      const myOrder = positionInIterationOrder(iteration)
+                      if (myOrder === null) return
+                      if (direction === 'up' && iterationIdx === 0) {
+                        onReorderAnnounce?.(
+                          `${iteration.title} is already at position 1 among iterations`
+                        )
+                        return
+                      }
+                      if (
+                        direction === 'down' &&
+                        iterationIdx === iterations.length - 1
+                      ) {
+                        onReorderAnnounce?.(
+                          `${iteration.title} is already at last position among iterations`
+                        )
+                        return
+                      }
+                      const allOrders = iterations
+                        .map((it) => positionInIterationOrder(it))
+                        .filter((p): p is number => p !== null)
+                      const targetMemberIndex =
+                        direction === 'up' ? iterationIdx - 1 : iterationIdx + 2
+                      const mutation = computeDropMutation({
+                        draggedNumber: iteration.number,
+                        draggedThemeName: 'order',
+                        draggedOldPosition: myOrder,
+                        targetThemeName: 'order',
+                        targetMemberPositions: allOrders,
+                        targetMemberIndex,
+                        targetMembersIncludeDragged: true
+                      })
+                      if (!mutation) return
+                      postLabelMutation(
+                        iteration.number,
+                        mutation.add,
+                        mutation.remove
+                      )
+                      const newIdx =
+                        direction === 'up' ? iterationIdx - 1 : iterationIdx + 1
+                      onReorderAnnounce?.(
+                        `Moved ${iteration.title} to position ${newIdx + 1} of ${iterations.length} among iterations`
+                      )
+                    }}
                     title={iteration.title}
                     aria-label={`open iteration #${iteration.number} ${iteration.title}`}
                   >
