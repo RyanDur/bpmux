@@ -325,8 +325,18 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                             (m) => m.story.number === story.number
                           )
                           if (originalIdx === -1) return
-                          if (direction === 'up' && originalIdx === 0) return
-                          if (direction === 'down' && originalIdx === members.length - 1) return
+                          if (direction === 'up' && originalIdx === 0) {
+                            onReorderAnnounce?.(
+                              `${story.title} is already at position 1 in ${iteration.title}`
+                            )
+                            return
+                          }
+                          if (direction === 'down' && originalIdx === members.length - 1) {
+                            onReorderAnnounce?.(
+                              `${story.title} is already at last position in ${iteration.title}`
+                            )
+                            return
+                          }
                           const targetMemberIndex =
                             direction === 'up' ? originalIdx - 1 : originalIdx + 2
                           const mutation = computeDropMutation({
