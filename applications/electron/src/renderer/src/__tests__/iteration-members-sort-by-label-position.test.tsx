@@ -21,7 +21,7 @@ describe('#1339 — iteration members sort by iteration-{Name}.{position} label'
       await seedStories(apiBase, authToken, [
         {
           number: 7401,
-          title: 'Iteration Cassiopeia',
+          title: 'Iteration Aquila',
           story_type: 'iteration',
           initial_state: 'icebox'
         },
@@ -30,21 +30,21 @@ describe('#1339 — iteration members sort by iteration-{Name}.{position} label'
           title: 'story alpha',
           story_type: 'feature',
           initial_state: 'icebox',
-          labels: ['iteration-Cassiopeia.200']
+          labels: ['iteration-Aquila.200']
         },
         {
           number: 7412,
           title: 'story bravo',
           story_type: 'feature',
           initial_state: 'icebox',
-          labels: ['iteration-Cassiopeia.100']
+          labels: ['iteration-Aquila.100']
         },
         {
           number: 7413,
           title: 'story charlie',
           story_type: 'feature',
           initial_state: 'icebox',
-          labels: ['iteration-Cassiopeia.300']
+          labels: ['iteration-Aquila.300']
         }
       ])
 

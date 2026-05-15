@@ -1079,31 +1079,11 @@ async fn post_close_iteration_canonical(
             )),
         );
     }
-    let priority_path = match crate::session::priority::default_priority_path() {
-        Ok(p) => p,
-        Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                json_headers(),
-                err_body(&format!(
-                    "close_iteration: cannot resolve priority.json path: {e}"
-                )),
-            );
-        }
-    };
-    let priority = crate::session::priority::load_priority(&priority_path);
-    let candidate_numbers =
-        crate::session::priority::members_above_iteration_marker(&priority, iteration_number);
-    let open_member_set: std::collections::HashSet<u64> = refresh
-        .all_stories()
-        .into_iter()
-        .filter(|s| !s.is_closed)
-        .map(|s| s.number)
-        .collect();
-    let promoted: Vec<u64> = candidate_numbers
-        .into_iter()
-        .filter(|n| open_member_set.contains(n))
-        .collect();
+    let theme_name = crate::board::iteration_label::theme_name_from_title(&iteration.title);
+    let promoted: Vec<u64> = crate::board::iteration_label::members_with_iteration_label(
+        &refresh.all_stories(),
+        &theme_name,
+    );
     let ready_queue_blockers = collect_ready_queue_blockers(refresh.as_ref()).await;
     if !ready_queue_blockers.is_empty() {
         let body = build_close_iteration_ready_queue_blocked_body(&ready_queue_blockers);
@@ -1122,15 +1102,26 @@ async fn post_close_iteration_canonical(
             );
         }
     }
-    let mut post_close_index = crate::session::priority::load_priority(&priority_path);
-    crate::session::priority::evict_promoted_members_from_icebox_unified(
-        &mut post_close_index,
-        &promoted,
-    );
-    if let Err(e) = crate::session::priority::save_priority(&priority_path, &post_close_index) {
-        session::diag::log_diag(&format!(
-            "post_close_iteration_canonical: icebox_unified eviction save failed: {e}"
-        ));
+    match crate::session::priority::default_priority_path() {
+        Ok(priority_path) => {
+            let mut post_close_index = crate::session::priority::load_priority(&priority_path);
+            crate::session::priority::evict_promoted_members_from_icebox_unified(
+                &mut post_close_index,
+                &promoted,
+            );
+            if let Err(e) =
+                crate::session::priority::save_priority(&priority_path, &post_close_index)
+            {
+                session::diag::log_diag(&format!(
+                    "post_close_iteration_canonical: icebox_unified eviction save failed: {e}"
+                ));
+            }
+        }
+        Err(e) => {
+            session::diag::log_diag(&format!(
+                "post_close_iteration_canonical: priority.json eviction skipped — path resolve failed: {e}"
+            ));
+        }
     }
     let payload = session::message::StateDeltaPayload::IterationClose {
         promoted: promoted.clone(),
@@ -1211,14 +1202,27 @@ pub(crate) async fn promote_members_then_close_iteration(
     iteration_number: u64,
     promoted: &[u64],
 ) -> Result<(), String> {
-    let label = format!("iteration-#{iteration_number}");
+    let iteration_story = refresh
+        .story(iteration_number)
+        .ok_or_else(|| format!("iteration #{iteration_number} not found in store"))?;
+    let theme_name = crate::board::iteration_label::theme_name_from_title(&iteration_story.title);
     let meta = || crate::board::events::EventMeta {
         actor: "pm".to_string(),
         ts: chrono::Utc::now(),
         peer_id: crate::board::PeerId::local(),
     };
-    let mut applied: Vec<u64> = Vec::with_capacity(promoted.len());
+    let mut applied: Vec<(u64, String)> = Vec::with_capacity(promoted.len());
     for &n in promoted {
+        let member = refresh
+            .story(n)
+            .ok_or_else(|| format!("member #{n} not found in store"))?;
+        let member_label = crate::board::iteration_label::story_iteration_label_for_theme(
+            &member,
+            &theme_name,
+        )
+        .ok_or_else(|| {
+            format!("member #{n} carries no iteration-{theme_name}.* label (substrate-disconnect)")
+        })?;
         let result: Result<(), String> = (|| {
             refresh
                 .mutate_sync(crate::board::BoardEvent::TagAdded {
@@ -1238,15 +1242,15 @@ pub(crate) async fn promote_members_then_close_iteration(
                 .mutate_sync(crate::board::BoardEvent::TagRemoved {
                     meta: meta(),
                     number: n,
-                    label: label.clone(),
+                    label: member_label.clone(),
                 })
                 .map_err(|e| format!("#{n} iteration-label-remove enqueue failed: {e}"))?;
             Ok(())
         })();
         match result {
-            Ok(()) => applied.push(n),
+            Ok(()) => applied.push((n, member_label)),
             Err(e) => {
-                rollback_promoted_members(refresh, &applied, &label);
+                rollback_promoted_members(refresh, &applied);
                 return Err(format!("promote failed at #{n}: {e} (rolled back)"));
             }
         }
@@ -1261,7 +1265,7 @@ pub(crate) async fn promote_members_then_close_iteration(
             )),
         })
         .map_err(|e| {
-            rollback_promoted_members(refresh, &applied, &label);
+            rollback_promoted_members(refresh, &applied);
             format!("#{iteration_number} iteration-close enqueue failed: {e} (members rolled back; iteration-issue unchanged)")
         })?;
     Ok(())
@@ -1269,29 +1273,28 @@ pub(crate) async fn promote_members_then_close_iteration(
 
 fn rollback_promoted_members(
     refresh: &Arc<dyn crate::board::RefreshDriver>,
-    applied: &[u64],
-    label: &str,
+    applied: &[(u64, String)],
 ) {
     let meta = || crate::board::events::EventMeta {
         actor: "pm".to_string(),
         ts: chrono::Utc::now(),
         peer_id: crate::board::PeerId::local(),
     };
-    for &n in applied {
+    for (n, label) in applied {
         let _ = refresh.mutate_sync(crate::board::BoardEvent::TagRemoved {
             meta: meta(),
-            number: n,
+            number: *n,
             label: "ready".to_string(),
         });
         let _ = refresh.mutate_sync(crate::board::BoardEvent::StateTransitioned {
             meta: meta(),
-            number: n,
+            number: *n,
             new_state: crate::board::domain::StoryState::Icebox,
         });
         let _ = refresh.mutate_sync(crate::board::BoardEvent::TagAdded {
             meta: meta(),
-            number: n,
-            label: label.to_string(),
+            number: *n,
+            label: label.clone(),
         });
     }
 }

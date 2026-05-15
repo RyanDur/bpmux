@@ -252,36 +252,6 @@ pub fn reorder(index: &mut PriorityIndex, state: &str, number: u64, position: us
     column.insert(pos, number);
 }
 
-/// #1300 Slice C positional-implicit-membership: derive iteration
-/// members from `icebox_unified` by walking the entries above the
-/// named iteration marker. The walk is bounded by the nearest
-/// previous `IceboxItem::Iteration` (exclusive) — multi-marker
-/// icebox respects per-iteration above-bands. Story numbers are
-/// returned in icebox-positional order so the ready-queue promotion
-/// preserves the PM's chosen order. Non-Story entries (e.g. other
-/// markers, future variants) are skipped silently. Returns an empty
-/// Vec when the iteration is not present as an Iteration variant —
-/// graceful no-op rather than error.
-pub fn members_above_iteration_marker(index: &PriorityIndex, iteration_number: u64) -> Vec<u64> {
-    let Some(marker_idx) = index.icebox_unified.iter().position(
-        |item| matches!(item, IceboxItem::Iteration { number } if *number == iteration_number),
-    ) else {
-        return Vec::new();
-    };
-    let above_start = (0..marker_idx)
-        .rev()
-        .find(|&i| matches!(index.icebox_unified[i], IceboxItem::Iteration { .. }))
-        .map(|i| i + 1)
-        .unwrap_or(0);
-    index.icebox_unified[above_start..marker_idx]
-        .iter()
-        .filter_map(|item| match item {
-            IceboxItem::Story { number } => Some(*number),
-            IceboxItem::Iteration { .. } => None,
-        })
-        .collect()
-}
-
 /// #1300 Slice C: remove already-promoted stories from `icebox_unified`
 /// so the canonical store reflects post-close state (members are now
 /// in ready, no longer iceboxed). The iteration marker itself stays —

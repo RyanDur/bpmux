@@ -2,6 +2,7 @@ pub mod adapters;
 pub mod column;
 pub mod domain;
 pub mod events;
+pub mod iteration_label;
 pub mod orchestrator;
 pub mod peer;
 pub mod store;

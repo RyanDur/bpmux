@@ -15,7 +15,7 @@ mod canonical_via_gh_1300 {
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
-    fn seed_member(number: u64, state: StoryState, iter_id: Option<u64>) -> Story {
+    fn seed_member(number: u64, state: StoryState, iteration: Option<(&str, u32)>) -> Story {
         let mut s = Story::new_minimal(
             number,
             format!("[Feature] member-{number}"),
@@ -23,14 +23,13 @@ mod canonical_via_gh_1300 {
             Utc.with_ymd_and_hms(2026, 5, 12, 0, 0, 0).unwrap(),
             "pm".to_string(),
         );
-        if let Some(iter) = iter_id {
-            s.raw_labels = vec![
-                format!("{state:?}").to_lowercase(),
-                format!("iteration-#{iter}"),
-            ];
-        } else {
-            s.raw_labels = vec![format!("{state:?}").to_lowercase()];
-        }
+        let state_label = format!("{state:?}").to_lowercase();
+        s.raw_labels = match iteration {
+            Some((theme, position)) => {
+                vec![state_label, format!("iteration-{theme}.{position}")]
+            }
+            None => vec![state_label],
+        };
         s
     }
 
@@ -62,8 +61,8 @@ mod canonical_via_gh_1300 {
         // AC1 + AC2 + AC3: close GH issue + promote members + iteration_id cleared.
         let refresh = build_refresh(vec![
             seed_iteration_issue(1400, "Pegasus"),
-            seed_member(200, StoryState::Icebox, Some(1400)),
-            seed_member(201, StoryState::Icebox, Some(1400)),
+            seed_member(200, StoryState::Icebox, Some(("Pegasus", 100))),
+            seed_member(201, StoryState::Icebox, Some(("Pegasus", 200))),
         ])
         .await;
 
@@ -87,7 +86,7 @@ mod canonical_via_gh_1300 {
         let refresh = build_refresh(vec![
             seed_iteration_issue(1400, "Pegasus"),
             seed_member(900, StoryState::Ready, None),
-            seed_member(200, StoryState::Icebox, Some(1400)),
+            seed_member(200, StoryState::Icebox, Some(("Pegasus", 100))),
         ])
         .await;
         let blockers = collect_ready_queue_blockers(refresh.as_ref()).await;
@@ -100,7 +99,7 @@ mod canonical_via_gh_1300 {
     async fn ready_queue_empty_guard_passes_when_no_ready_stories() {
         let refresh = build_refresh(vec![
             seed_iteration_issue(1400, "Pegasus"),
-            seed_member(200, StoryState::Icebox, Some(1400)),
+            seed_member(200, StoryState::Icebox, Some(("Pegasus", 100))),
         ])
         .await;
         let blockers = collect_ready_queue_blockers(refresh.as_ref()).await;
@@ -116,7 +115,7 @@ mod canonical_via_gh_1300 {
         // accessible as historical-artifact (not deleted from store).
         let refresh = build_refresh(vec![
             seed_iteration_issue(1400, "Pegasus"),
-            seed_member(200, StoryState::Icebox, Some(1400)),
+            seed_member(200, StoryState::Icebox, Some(("Pegasus", 100))),
         ])
         .await;
         promote_members_then_close_iteration(&refresh, 1400, &[200])
@@ -154,7 +153,7 @@ mod canonical_via_gh_1300 {
 
         let refresh = build_refresh(vec![
             seed_iteration_issue(1400, "Pegasus"),
-            seed_member(200, StoryState::Icebox, Some(1400)),
+            seed_member(200, StoryState::Icebox, Some(("Pegasus", 100))),
         ])
         .await;
         promote_members_then_close_iteration(&refresh, 1400, &[200])
@@ -167,100 +166,74 @@ mod canonical_via_gh_1300 {
         );
     }
 
-    static PRIORITY_PATH_ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
-
-    fn priority_sandbox_setup() -> (
-        tempfile::TempDir,
-        std::path::PathBuf,
-        std::sync::MutexGuard<'static, ()>,
-    ) {
-        let guard = PRIORITY_PATH_ENV_LOCK
-            .lock()
-            .unwrap_or_else(|p| p.into_inner());
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("priority.json");
-        unsafe {
-            std::env::set_var("BPMUX_PRIORITY_PATH", &path);
-        }
-        (dir, path, guard)
-    }
-
-    #[allow(clippy::await_holding_lock)]
     #[tokio::test]
-    async fn close_promotes_only_stories_positionally_above_marker_bounded_by_previous_marker() {
-        use crate::session::priority::{
-            IceboxItem, PriorityIndex, evict_promoted_members_from_icebox_unified, load_priority,
-            members_above_iteration_marker, save_priority,
-        };
-        let (_dir, priority_path, _env_guard) = priority_sandbox_setup();
-        let seed = PriorityIndex {
-            icebox_unified: vec![
-                IceboxItem::Story { number: 901 },
-                IceboxItem::Iteration { number: 1400 },
-                IceboxItem::Story { number: 200 },
-                IceboxItem::Story { number: 201 },
-                IceboxItem::Iteration { number: 1401 },
-                IceboxItem::Story { number: 300 },
-            ],
-            ..Default::default()
-        };
-        save_priority(&priority_path, &seed).unwrap();
-
+    async fn close_walks_by_iteration_theme_label_not_by_priority_json_position() {
+        // #1300 substrate-pivot falsifier: close_iteration's member walk
+        // reads `iteration-{ThemeName}.{N}` labels from each story's
+        // raw_labels — NOT priority.json icebox_unified positional bands.
+        // Members tagged with the closing iteration's theme promote;
+        // members tagged with a different iteration's theme stay.
+        // This test replaces the legacy positional-band walk test
+        // (`close_promotes_only_stories_positionally_above_marker_bounded_by_previous_marker`)
+        // which depended on BPMUX_PRIORITY_PATH env-var and was CI-flaky
+        // under parallel runs.
+        use crate::board::iteration_label::members_with_iteration_label;
         let refresh = build_refresh(vec![
             seed_iteration_issue(1400, "Pegasus"),
             seed_iteration_issue(1401, "Cassiopeia"),
+            seed_member(200, StoryState::Icebox, Some(("Cassiopeia", 100))),
+            seed_member(201, StoryState::Icebox, Some(("Cassiopeia", 200))),
+            seed_member(300, StoryState::Icebox, Some(("Pegasus", 100))),
             seed_member(901, StoryState::Icebox, None),
-            seed_member(200, StoryState::Icebox, None),
-            seed_member(201, StoryState::Icebox, None),
-            seed_member(300, StoryState::Icebox, None),
         ])
         .await;
 
-        let priority = load_priority(&priority_path);
-        let candidate_numbers = members_above_iteration_marker(&priority, 1401);
+        let cassiopeia_members = members_with_iteration_label(&refresh.all_stories(), "Cassiopeia");
         assert_eq!(
-            candidate_numbers,
+            cassiopeia_members,
             vec![200, 201],
-            "second iteration's above-band bounded by previous marker; story-901 stays above the first marker"
+            "label-walk finds Cassiopeia-tagged members in position-order"
         );
 
-        promote_members_then_close_iteration(&refresh, 1401, &candidate_numbers)
+        promote_members_then_close_iteration(&refresh, 1401, &cassiopeia_members)
             .await
-            .expect("positional close succeeds for the inner iteration");
+            .expect("label-walk close succeeds for Cassiopeia");
+
         assert_eq!(
             refresh.story(200).unwrap().state,
             StoryState::Ready,
-            "above-marker story 200 promoted"
+            "Cassiopeia member 200 promoted"
         );
         assert_eq!(
             refresh.story(201).unwrap().state,
             StoryState::Ready,
-            "above-marker story 201 promoted"
-        );
-        assert_eq!(
-            refresh.story(901).unwrap().state,
-            StoryState::Icebox,
-            "story-901 stays in icebox (above the OTHER marker, not 1401's band)"
+            "Cassiopeia member 201 promoted"
         );
         assert_eq!(
             refresh.story(300).unwrap().state,
             StoryState::Icebox,
-            "story-300 stays in icebox (positioned below the closed marker)"
+            "Pegasus-tagged 300 stays — not in Cassiopeia's label-band"
+        );
+        assert_eq!(
+            refresh.story(901).unwrap().state,
+            StoryState::Icebox,
+            "untagged story 901 stays — no iteration-label means not a member"
         );
 
-        let mut post = load_priority(&priority_path);
-        evict_promoted_members_from_icebox_unified(&mut post, &candidate_numbers);
-        save_priority(&priority_path, &post).unwrap();
-        let reloaded = load_priority(&priority_path);
-        assert_eq!(
-            reloaded.icebox_unified,
-            vec![
-                IceboxItem::Story { number: 901 },
-                IceboxItem::Iteration { number: 1400 },
-                IceboxItem::Iteration { number: 1401 },
-                IceboxItem::Story { number: 300 },
-            ],
-            "promoted stories evicted; both markers stay (1401 closed-state visual record); story-901 and story-300 stay positionally"
+        let s200 = refresh.story(200).unwrap();
+        assert!(
+            !s200
+                .raw_labels
+                .iter()
+                .any(|l| l == "iteration-Cassiopeia.100"),
+            "member 200's iteration-Cassiopeia.100 label removed on promote (raw_labels={:?})",
+            s200.raw_labels
+        );
+        let s300 = refresh.story(300).unwrap();
+        assert!(
+            s300.raw_labels.iter().any(|l| l == "iteration-Pegasus.100"),
+            "non-member 300's iteration-Pegasus.100 label untouched (raw_labels={:?})",
+            s300.raw_labels
         );
     }
 
@@ -274,7 +247,7 @@ mod canonical_via_gh_1300 {
         // StoryClosed — all visible to subscribers.
         let refresh = build_refresh(vec![
             seed_iteration_issue(1400, "Pegasus"),
-            seed_member(200, StoryState::Icebox, Some(1400)),
+            seed_member(200, StoryState::Icebox, Some(("Pegasus", 100))),
         ])
         .await;
         let store = refresh.store();
