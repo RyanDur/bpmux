@@ -83,11 +83,6 @@ async fn accept_story_state_transition_dispatches_event() {
 
 #[tokio::test]
 async fn sister_to_1274_state_transition_reaches_cascade_listener() {
-    // #1274 sister-regression: the original failure mode was a
-    // state-mutation path that committed without firing the event,
-    // leaving close_iteration's promote-batch scan with no trigger.
-    // BoardStore::apply guarantees every state-mutation through the
-    // canonical chokepoint delivers an event to subscribers.
     let store = Arc::new(BoardStore::new());
     seed_story_at(&store, 400, StoryState::Delivered);
     let mut rx = store.subscribe();
@@ -114,10 +109,6 @@ async fn sister_to_1274_state_transition_reaches_cascade_listener() {
 
 #[tokio::test]
 async fn multiple_subscribers_each_receive_state_transition_event() {
-    // Reliability dimension: broadcast delivers the event to ALL
-    // subscribers, not just one. Cascade-effects in different modules
-    // (close_iteration in one path, icebox_unified cascade-clean in
-    // another) each subscribe independently.
     let store = Arc::new(BoardStore::new());
     seed_story_at(&store, 500, StoryState::Ready);
     let mut rx_a = store.subscribe();
@@ -137,14 +128,6 @@ async fn multiple_subscribers_each_receive_state_transition_event() {
 
 #[tokio::test]
 async fn pre_commit_fire_ordering_observable_via_post_send_hook() {
-    // Deterministic ordering test (#1282): installs a #[cfg(test)] hook
-    // on BoardStore that fires synchronously between event_tx.send and
-    // the write-lock acquire. The hook reads the store-state for the
-    // story being mutated — at this point the event has been broadcast
-    // but the mutation has NOT yet committed, so the hook observes the
-    // OLD state. This pins the pre-commit fire-ordering observably,
-    // discriminating between the invariant (OLD visible) and a
-    // post-commit alternative (NEW visible).
     let store = Arc::new(BoardStore::new());
     seed_story_at(&store, 600, StoryState::Ready);
 
