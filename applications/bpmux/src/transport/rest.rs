@@ -1089,27 +1089,6 @@ async fn post_close_iteration_canonical(
             );
         }
     }
-    match crate::session::priority::default_priority_path() {
-        Ok(priority_path) => {
-            let mut post_close_index = crate::session::priority::load_priority(&priority_path);
-            crate::session::priority::evict_promoted_members_from_icebox_unified(
-                &mut post_close_index,
-                &promoted,
-            );
-            if let Err(e) =
-                crate::session::priority::save_priority(&priority_path, &post_close_index)
-            {
-                session::diag::log_diag(&format!(
-                    "post_close_iteration_canonical: icebox_unified eviction save failed: {e}"
-                ));
-            }
-        }
-        Err(e) => {
-            session::diag::log_diag(&format!(
-                "post_close_iteration_canonical: priority.json eviction skipped — path resolve failed: {e}"
-            ));
-        }
-    }
     let payload = session::message::StateDeltaPayload::IterationClose {
         promoted: promoted.clone(),
         deleted_marker_id: None,

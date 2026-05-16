@@ -252,21 +252,6 @@ pub fn reorder(index: &mut PriorityIndex, state: &str, number: u64, position: us
     column.insert(pos, number);
 }
 
-/// #1300 Slice C: remove already-promoted stories from `icebox_unified`
-/// so the canonical store reflects post-close state (members are now
-/// in ready, no longer iceboxed). The iteration marker itself stays —
-/// closed-state visual record per #1278 historical-artifact preservation.
-pub fn evict_promoted_members_from_icebox_unified(index: &mut PriorityIndex, promoted: &[u64]) {
-    if promoted.is_empty() {
-        return;
-    }
-    let promoted_set: std::collections::HashSet<u64> = promoted.iter().copied().collect();
-    index.icebox_unified.retain(|item| match item {
-        IceboxItem::Story { number } => !promoted_set.contains(number),
-        IceboxItem::Iteration { .. } => true,
-    });
-}
-
 /// #1258 α-substrate: move a story or marker to a specific position
 /// (1-indexed) within `icebox_unified`. If the item isn't in the
 /// list yet, it's inserted; otherwise it's moved. Position is 1-

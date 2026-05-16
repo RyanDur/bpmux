@@ -501,28 +501,6 @@ fn apply_priority_entries_for_absent_numbers_ignored() {
 }
 
 #[test]
-fn evict_promoted_members_drops_only_named_stories_keeping_markers() {
-    let mut index = PriorityIndex {
-        icebox_unified: vec![
-            IceboxItem::Story { number: 100 },
-            IceboxItem::Story { number: 200 },
-            IceboxItem::Iteration { number: 777 },
-            IceboxItem::Story { number: 300 },
-        ],
-        ..Default::default()
-    };
-    evict_promoted_members_from_icebox_unified(&mut index, &[100, 200]);
-    assert_eq!(
-        index.icebox_unified,
-        vec![
-            IceboxItem::Iteration { number: 777 },
-            IceboxItem::Story { number: 300 },
-        ],
-        "promoted stories evicted; iteration marker stays (closed-state historical artifact); below-marker stories untouched"
-    );
-}
-
-#[test]
 fn cassiopeia_migration_drops_stale_iteration_entries_not_in_canonical() {
     let mut index = PriorityIndex {
         icebox_unified: vec![
@@ -617,22 +595,5 @@ fn cassiopeia_migration_handles_both_stale_and_missing_in_one_pass() {
         audit.inserted_missing,
         vec![1317, 1318],
         "missing 1317/1318 appended"
-    );
-}
-
-#[test]
-fn evict_promoted_members_with_empty_list_is_noop() {
-    let mut index = PriorityIndex {
-        icebox_unified: vec![
-            IceboxItem::Story { number: 100 },
-            IceboxItem::Iteration { number: 777 },
-        ],
-        ..Default::default()
-    };
-    let before = index.icebox_unified.clone();
-    evict_promoted_members_from_icebox_unified(&mut index, &[]);
-    assert_eq!(
-        index.icebox_unified, before,
-        "empty promoted-list = no change"
     );
 }
