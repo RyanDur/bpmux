@@ -84,6 +84,17 @@ const MOCK_RESPONSE: BoardResponse = {
   ]
 }
 
+// #1297: a story is an iteration-member when it carries a label of
+// shape `iteration-{ThemeName}.{N}` (the canonical-via-GH positional
+// substrate). `iteration-order.{N}` is the iteration-marker-ordering
+// namespace and is NOT a membership label.
+const hasIterationMemberLabel = (labels: string[]): boolean =>
+  labels.some((l) => {
+    if (!l.startsWith('iteration-')) return false
+    if (l.startsWith('iteration-order.')) return false
+    return /^iteration-.+\.\d+$/.test(l)
+  })
+
 interface BoardProps {
   // Chat message stream — forwarded to DrillIn so it can subscribe to
   // BOARD_INVALIDATE_MARKER broadcasts for live comment refresh.
@@ -247,6 +258,7 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
       nonEpicStories.filter((s) => {
         if (storyTypeFromLabels(s.labels) === 'iteration') return true
         if (s.state === 'icebox') return true
+        if (hasIterationMemberLabel(s.labels)) return true
         return false
       }),
     [nonEpicStories]
