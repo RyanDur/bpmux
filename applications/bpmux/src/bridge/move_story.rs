@@ -306,13 +306,6 @@ pub(in crate::bridge) async fn handle_move_story(
     let path = crate::session::priority::default_priority_path()
         .map_err(|e| format!("priority path: {e}"))?;
     let target_is_icebox = matches!(target, TargetState::Workflow(StoryState::Icebox));
-    let target_is_in_flight = matches!(
-        target,
-        TargetState::Workflow(StoryState::Ready)
-            | TargetState::Workflow(StoryState::InProgress)
-            | TargetState::Workflow(StoryState::DeskCheck)
-            | TargetState::Workflow(StoryState::Delivered)
-    );
     if target_is_icebox && let Some(pos) = position {
         crate::bridge::tools_stories::reorder_icebox_story_via_labels(r, number, pos)?;
     }
@@ -321,7 +314,7 @@ pub(in crate::bridge) async fn handle_move_story(
     } else {
         position.zip(target_position_state_label(target))
     };
-    apply_move_story_priority(&path, target_is_in_flight, number, priority_position)?;
+    apply_move_story_priority(&path, number, priority_position)?;
 
     let body = audit_comment_body(&actor_short, &from_display, target, position, &rationale);
     r.mutate_sync(crate::board::BoardEvent::FreeCommentAppended { meta, number, body })
@@ -349,7 +342,6 @@ fn target_position_state_label(target: TargetState) -> Option<&'static str> {
 
 pub(crate) fn apply_move_story_priority(
     path: &std::path::Path,
-    target_is_in_flight: bool,
     number: u64,
     position_with_state: Option<(usize, &str)>,
 ) -> Result<(), String> {
@@ -361,9 +353,6 @@ pub(crate) fn apply_move_story_priority(
     let target_is_ready = matches!(position_with_state, Some((_, "ready")));
     if !target_is_ready {
         evict_story_from_ready_column(&mut index, number);
-    }
-    if target_is_in_flight && !index.current_iteration_stories.contains(&number) {
-        index.current_iteration_stories.push(number);
     }
     crate::session::priority::save_priority(path, &index).map_err(|save_err| {
         if let Err(rb) = crate::session::priority::save_priority(path, &priority_snapshot) {
@@ -535,24 +524,23 @@ mod move_story_priority_cascade_clean_tests {
     }
 
     #[test]
-    fn move_to_ready_appends_to_legacy_ready_and_marks_current_iteration() {
+    fn move_to_ready_appends_to_legacy_ready_column() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("priority.json");
         seed(&path, r#"{}"#);
-        apply_move_story_priority(&path, true, 1100, Some((1, "ready"))).unwrap();
+        apply_move_story_priority(&path, 1100, Some((1, "ready"))).unwrap();
         let index = load_priority(&path);
         assert_eq!(
             index.columns.get("ready").cloned().unwrap_or_default(),
             vec![1100]
         );
-        assert!(index.current_iteration_stories.contains(&1100));
     }
 
     #[test]
     fn save_failure_returns_error_with_rollback_path() {
         let unwritable_path =
             std::path::PathBuf::from("/dev/null/no_such_dir_for_rollback_test/priority.json");
-        let result = apply_move_story_priority(&unwritable_path, false, 1100, None);
+        let result = apply_move_story_priority(&unwritable_path, 1100, None);
         assert!(result.is_err());
     }
 }

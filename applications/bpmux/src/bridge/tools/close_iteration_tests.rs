@@ -147,7 +147,7 @@ mod canonical_via_gh_1300 {
         // asserting post-call equality.
         let priority_dir = tempfile::tempdir().unwrap();
         let priority_path = priority_dir.path().join("priority.json");
-        let priority_pre = r#"{"columns":{},"current_iteration_stories":[42]}"#;
+        let priority_pre = r#"{"ready":[42]}"#;
         std::fs::write(&priority_path, priority_pre).unwrap();
 
         let refresh = build_refresh(vec![

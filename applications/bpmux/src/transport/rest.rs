@@ -1146,8 +1146,7 @@ pub(crate) async fn collect_ready_queue_blockers(
 }
 
 /// #1300 slice 4 blocked-body for the canonical-via-GH ready-empty
-/// guard. Sister to `build_close_iteration_blocked_body` (legacy
-/// path's `current_iteration_stories`-based variant).
+/// guard.
 fn build_close_iteration_ready_queue_blocked_body(blockers: &[IterationCloseBlocker]) -> String {
     serde_json::json!({
         "error": "close_iteration blocked: ready queue must be empty before canonical-via-GH iteration close (#1258 r3 guard).",

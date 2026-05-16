@@ -12,8 +12,6 @@ use std::path::{Path, PathBuf};
 pub struct PriorityIndex {
     #[serde(flatten)]
     pub columns: HashMap<String, Vec<u64>>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub current_iteration_stories: Vec<u64>,
 }
 
 /// Default priority file path. Honors `BPMUX_PRIORITY_PATH` for per-test
