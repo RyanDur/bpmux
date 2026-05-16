@@ -84,10 +84,6 @@ const MOCK_RESPONSE: BoardResponse = {
   ]
 }
 
-// #1297: a story is an iteration-member when it carries a label of
-// shape `iteration-{ThemeName}.{N}` (the canonical-via-GH positional
-// substrate). `iteration-order.{N}` is the iteration-marker-ordering
-// namespace and is NOT a membership label.
 const hasIterationMemberLabel = (labels: string[]): boolean =>
   labels.some((l) => {
     if (!l.startsWith('iteration-')) return false
