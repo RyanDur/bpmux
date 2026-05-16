@@ -245,3 +245,78 @@ fn apply_priority_entries_for_absent_numbers_ignored() {
     let sorted = apply_priority_to_board(stories, &index);
     assert_eq!(numbers_of(&sorted), vec![200, 100, 300]);
 }
+
+fn ready_story_with_order(number: u64, position: u32) -> serde_json::Value {
+    serde_json::json!({
+        "number": number,
+        "state": "ready",
+        "title": "s",
+        "labels": [{"name": "ready"}, {"name": format!("ready-order.{position}")}],
+    })
+}
+
+#[test]
+fn apply_priority_ready_sorts_by_ready_order_label_when_any_present() {
+    let mut index = PriorityIndex::default();
+    index.columns.insert("ready".to_string(), vec![999, 999]);
+    let stories = vec![
+        ready_story_with_order(300, 300),
+        ready_story_with_order(100, 100),
+        ready_story_with_order(200, 200),
+    ];
+    let sorted = apply_priority_to_board(stories, &index);
+    assert_eq!(numbers_of(&sorted), vec![100, 200, 300]);
+}
+
+#[test]
+fn apply_priority_ready_label_axis_wins_over_legacy_columns() {
+    let mut index = PriorityIndex::default();
+    index
+        .columns
+        .insert("ready".to_string(), vec![300, 200, 100]);
+    let stories = vec![
+        ready_story_with_order(100, 100),
+        ready_story_with_order(200, 200),
+        ready_story_with_order(300, 300),
+    ];
+    let sorted = apply_priority_to_board(stories, &index);
+    assert_eq!(
+        numbers_of(&sorted),
+        vec![100, 200, 300],
+        "label substrate wins; legacy columns ignored when any label present"
+    );
+}
+
+#[test]
+fn apply_priority_ready_falls_back_to_legacy_when_no_labels_present() {
+    let mut index = PriorityIndex::default();
+    index.columns.insert("ready".to_string(), vec![300, 100]);
+    let stories = vec![
+        story(100, "ready"),
+        story(200, "ready"),
+        story(300, "ready"),
+    ];
+    let sorted = apply_priority_to_board(stories, &index);
+    assert_eq!(
+        numbers_of(&sorted),
+        vec![300, 100, 200],
+        "no label present → legacy columns reader engages"
+    );
+}
+
+#[test]
+fn apply_priority_ready_mixed_labeled_and_unlabeled_labels_first() {
+    let mut index = PriorityIndex::default();
+    index.columns.insert("ready".to_string(), vec![200, 300]);
+    let stories = vec![
+        ready_story_with_order(100, 100),
+        story(200, "ready"),
+        story(300, "ready"),
+    ];
+    let sorted = apply_priority_to_board(stories, &index);
+    assert_eq!(
+        numbers_of(&sorted),
+        vec![100, 200, 300],
+        "labeled stories sort first by label position; unlabeled stories follow by issue number"
+    );
+}

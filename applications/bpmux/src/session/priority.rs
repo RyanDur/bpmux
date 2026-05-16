@@ -131,6 +131,12 @@ pub fn sort_by_priority(numbers: &[u64], priority: &[u64]) -> Vec<u64> {
 /// order). Without this, drag-to-reorder on the frontend persists via
 /// POST /api/stories/:n/reorder but the very next /api/board refetch
 /// returns GitHub's native order, snapping the UI back.
+///
+/// #1301 slice 4C.1: ready-state ordering prefers `ready-order.{N}`
+/// labels (canonical-via-GH substrate) when any ready story carries
+/// one. Stories without a label fall back to the legacy
+/// `columns["ready"]` position. The label substrate is the eventual
+/// sole source (slice 4E retires `columns`).
 pub fn apply_priority_to_board(
     stories: Vec<serde_json::Value>,
     priority: &PriorityIndex,
@@ -148,7 +154,9 @@ pub fn apply_priority_to_board(
         }
     }
     for (state, list) in by_state.iter_mut() {
-        if let Some(pri) = priority.columns.get(state) {
+        if state == "ready" {
+            sort_ready_by_labels_then_legacy(list, priority);
+        } else if let Some(pri) = priority.columns.get(state) {
             list.sort_by_cached_key(|s| {
                 let number = s.get("number").and_then(|v| v.as_u64()).unwrap_or(0);
                 pri.iter().position(|&p| p == number).unwrap_or(usize::MAX)
@@ -156,6 +164,32 @@ pub fn apply_priority_to_board(
         }
     }
     by_state.into_iter().flat_map(|(_, list)| list).collect()
+}
+
+fn ready_order_from_value(s: &serde_json::Value) -> Option<u32> {
+    s.get("labels")?.as_array()?.iter().find_map(|l| {
+        let name = l.as_str().or_else(|| l.get("name")?.as_str())?;
+        let rest = name.strip_prefix("ready-order.")?;
+        rest.parse::<u32>().ok()
+    })
+}
+
+fn sort_ready_by_labels_then_legacy(list: &mut [serde_json::Value], priority: &PriorityIndex) {
+    let any_labeled = list.iter().any(|s| ready_order_from_value(s).is_some());
+    if any_labeled {
+        list.sort_by_cached_key(|s| {
+            let label_pos = ready_order_from_value(s).map(u64::from);
+            let number = s.get("number").and_then(|v| v.as_u64()).unwrap_or(0);
+            (label_pos.unwrap_or(u64::MAX), number)
+        });
+        return;
+    }
+    if let Some(pri) = priority.columns.get("ready") {
+        list.sort_by_cached_key(|s| {
+            let number = s.get("number").and_then(|v| v.as_u64()).unwrap_or(0);
+            pri.iter().position(|&p| p == number).unwrap_or(usize::MAX)
+        });
+    }
 }
 
 #[cfg(test)]

@@ -21,6 +21,15 @@ fn sort_ready_by_priority(
     mut stories: Vec<serde_json::Value>,
     priority: &PriorityIndex,
 ) -> Vec<serde_json::Value> {
+    let any_labeled = stories.iter().any(|s| ready_order_from_value(s).is_some());
+    if any_labeled {
+        stories.sort_by_cached_key(|s| {
+            let label_pos = ready_order_from_value(s).map(u64::from);
+            let number = s.get("number").and_then(|v| v.as_u64()).unwrap_or(0);
+            (label_pos.unwrap_or(u64::MAX), number)
+        });
+        return stories;
+    }
     let ready_priority = priority.columns.get(READY_STATE);
     if let Some(pri) = ready_priority {
         stories.sort_by_cached_key(|s| {
@@ -29,6 +38,14 @@ fn sort_ready_by_priority(
         });
     }
     stories
+}
+
+fn ready_order_from_value(s: &serde_json::Value) -> Option<u32> {
+    s.get("labels")?.as_array()?.iter().find_map(|l| {
+        let name = l.as_str().or_else(|| l.get("name")?.as_str())?;
+        let rest = name.strip_prefix("ready-order.")?;
+        rest.parse::<u32>().ok()
+    })
 }
 
 fn assign_positions(stories: Vec<serde_json::Value>) -> Vec<serde_json::Value> {
@@ -53,11 +70,17 @@ pub(in crate::bridge) async fn handle_list_ready(
     let json_stories: Vec<serde_json::Value> = ready_stories
         .iter()
         .map(|s| {
+            let mut labels: Vec<serde_json::Value> = vec![serde_json::json!({"name": "ready"})];
+            for raw in &s.raw_labels {
+                if raw.starts_with("ready-order.") {
+                    labels.push(serde_json::json!({"name": raw}));
+                }
+            }
             serde_json::json!({
                 "number": s.number,
                 "title": s.title,
                 "state": "ready",
-                "labels": [{"name": "ready"}],
+                "labels": labels,
             })
         })
         .collect();

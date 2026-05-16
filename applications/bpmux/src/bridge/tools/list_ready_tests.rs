@@ -144,3 +144,52 @@ fn no_priority_entry_for_ready_passes_through_fetch_order() {
         .collect();
     assert_eq!(numbers, vec![100, 200, 300]);
 }
+
+fn ready_story_with_order(number: u64, position: u32) -> serde_json::Value {
+    serde_json::json!({
+        "number": number,
+        "state": "ready",
+        "title": "s",
+        "labels": [{"name": "ready"}, {"name": format!("ready-order.{position}")}],
+    })
+}
+
+#[test]
+fn ready_order_labels_dominate_legacy_priority_columns() {
+    let mut priority = PriorityIndex::default();
+    priority
+        .columns
+        .insert("ready".to_string(), vec![300, 200, 100]);
+    let stories = vec![
+        ready_story_with_order(100, 100),
+        ready_story_with_order(200, 200),
+        ready_story_with_order(300, 300),
+    ];
+    let queue = build_ready_queue(stories, &priority);
+    let numbers: Vec<u64> = queue
+        .iter()
+        .map(|s| s["number"].as_u64().unwrap())
+        .collect();
+    assert_eq!(numbers, vec![100, 200, 300]);
+}
+
+#[test]
+fn mixed_labeled_and_unlabeled_ready_stories_labels_first() {
+    let mut priority = PriorityIndex::default();
+    priority.columns.insert("ready".to_string(), vec![200, 300]);
+    let stories = vec![
+        ready_story_with_order(100, 50),
+        story(200, "ready", "b"),
+        story(300, "ready", "c"),
+    ];
+    let queue = build_ready_queue(stories, &priority);
+    let numbers: Vec<u64> = queue
+        .iter()
+        .map(|s| s["number"].as_u64().unwrap())
+        .collect();
+    assert_eq!(
+        numbers,
+        vec![100, 200, 300],
+        "labeled first (by position), unlabeled after (by issue number)"
+    );
+}

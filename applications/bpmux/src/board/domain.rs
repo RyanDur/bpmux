@@ -260,6 +260,9 @@ pub fn story_to_board_json(story: &Story) -> serde_json::Value {
         if raw.starts_with("iteration-") && raw.contains('.') && !labels.iter().any(|l| l == raw) {
             labels.push(raw.clone());
         }
+        if raw.starts_with("ready-order.") && !labels.iter().any(|l| l == raw) {
+            labels.push(raw.clone());
+        }
     }
     // Derive rework-context from transition history so the renderer can
     // surface the ↩ glyph + tooltip without a per-story round-trip to
