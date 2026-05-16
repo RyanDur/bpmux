@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { ReworkGlyph } from './ReworkGlyph'
+import StoryBadge from './StoryBadge'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import { useIterationCollapse } from './useIterationCollapse'
 import { computeDropMutation } from './iterationPosition'
@@ -369,11 +371,17 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                           postLabelMutation(payload.storyNumber, mutation.add, mutation.remove)
                         }}
                       >
-                        <button
-                          type="button"
-                          className="board-iteration-member-button"
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          className="board-iteration-member-button board-story-button"
                           onClick={() => onOpen(story.number)}
                           onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault()
+                              onOpen(story.number)
+                              return
+                            }
                             if (!event.ctrlKey || !event.shiftKey) return
                             if (iteration.gh_state === 'closed') return
                             const direction =
@@ -420,8 +428,28 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                           }}
                         >
                           <small className="board-story-number">#{story.number}</small>
-                          <span className="board-story-title">{story.title}</span>
-                        </button>
+                          <StoryTypeGlyph type={storyTypeFromLabels(story.labels)} />
+                          <StoryBadge story={story} onOpenBlocker={onOpen} />
+                          <b className="board-story-title" data-test="story-title">
+                            {story.title}
+                          </b>
+                          <ReworkGlyph reworkComment={story.rework_comment} />
+                          {typeof story.parent_epic === 'number' ? (
+                            <button
+                              type="button"
+                              className="board-story-epic-ref"
+                              data-test="epic-link"
+                              aria-label={`open epic #${story.parent_epic}`}
+                              onClick={(event) => {
+                                event.preventDefault()
+                                event.stopPropagation()
+                                onOpen(story.parent_epic as number)
+                              }}
+                            >
+                              ↳ Epic #{story.parent_epic}
+                            </button>
+                          ) : null}
+                        </div>
                       </li>
                     )
                   )}
@@ -453,14 +481,41 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                     data-test={`board-story-${story.number}`}
                     data-iteration-member={story.number}
                   >
-                    <button
-                      type="button"
-                      className="board-iteration-member-button"
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      className="board-iteration-member-button board-story-button"
                       onClick={() => onOpen(story.number)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault()
+                          onOpen(story.number)
+                        }
+                      }}
                     >
                       <small className="board-story-number">#{story.number}</small>
-                      <span className="board-story-title">{story.title}</span>
-                    </button>
+                      <StoryTypeGlyph type={storyTypeFromLabels(story.labels)} />
+                      <StoryBadge story={story} onOpenBlocker={onOpen} />
+                      <b className="board-story-title" data-test="story-title">
+                        {story.title}
+                      </b>
+                      <ReworkGlyph reworkComment={story.rework_comment} />
+                      {typeof story.parent_epic === 'number' ? (
+                        <button
+                          type="button"
+                          className="board-story-epic-ref"
+                          data-test="epic-link"
+                          aria-label={`open epic #${story.parent_epic}`}
+                          onClick={(event) => {
+                            event.preventDefault()
+                            event.stopPropagation()
+                            onOpen(story.parent_epic as number)
+                          }}
+                        >
+                          ↳ Epic #{story.parent_epic}
+                        </button>
+                      ) : null}
+                    </div>
                   </li>
                 ))}
               </ul>
