@@ -81,15 +81,8 @@ export interface BoardStory {
   rework_comment?: string | null
 }
 
-export type IceboxItem = { kind: 'story'; number: number } | { kind: 'iteration'; number: number }
-
 export interface BoardResponse {
   stories: BoardStory[]
-  /** #1258 α-substrate: unified ordering for the icebox column.
-   * Markers + stories share one positional space. When empty (e.g.
-   * pre-α legacy state), renderer falls back to markers-then-stories
-   * concatenation. */
-  icebox_unified?: IceboxItem[]
   fetched_at: string
 }
 

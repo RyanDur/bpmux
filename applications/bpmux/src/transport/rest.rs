@@ -582,21 +582,15 @@ pub async fn get_board(
             .iter()
             .map(crate::board::domain::story_to_board_json)
             .collect();
-        let (ordered, icebox_unified) = match crate::session::priority::default_priority_path() {
+        let ordered = match crate::session::priority::default_priority_path() {
             Ok(path) => {
                 let index = crate::session::priority::load_priority(&path);
-                let icebox_unified = serde_json::to_value(&index.icebox_unified)
-                    .unwrap_or_else(|_| serde_json::json!([]));
-                (
-                    crate::session::priority::apply_priority_to_board(stories, &index),
-                    icebox_unified,
-                )
+                crate::session::priority::apply_priority_to_board(stories, &index)
             }
-            Err(_) => (stories, serde_json::json!([])),
+            Err(_) => stories,
         };
         let body = serde_json::json!({
             "stories": ordered,
-            "icebox_unified": icebox_unified,
             "fetched_at": chrono::Utc::now().to_rfc3339(),
         });
         return (StatusCode::OK, json_headers(), body.to_string());
@@ -614,22 +608,15 @@ pub async fn get_board(
             // survives refetch. Without this, the frontend's
             // optimistic reorder gets overwritten on the very next
             // /api/board call with GitHub's native order.
-            let (ordered, icebox_unified) = match crate::session::priority::default_priority_path()
-            {
+            let ordered = match crate::session::priority::default_priority_path() {
                 Ok(path) => {
                     let index = crate::session::priority::load_priority(&path);
-                    let icebox_unified = serde_json::to_value(&index.icebox_unified)
-                        .unwrap_or_else(|_| serde_json::json!([]));
-                    (
-                        crate::session::priority::apply_priority_to_board(stories, &index),
-                        icebox_unified,
-                    )
+                    crate::session::priority::apply_priority_to_board(stories, &index)
                 }
-                Err(_) => (stories, serde_json::json!([])),
+                Err(_) => stories,
             };
             let body = serde_json::json!({
                 "stories": ordered,
-                "icebox_unified": icebox_unified,
                 "fetched_at": chrono::Utc::now().to_rfc3339(),
             });
             (StatusCode::OK, json_headers(), body.to_string())
