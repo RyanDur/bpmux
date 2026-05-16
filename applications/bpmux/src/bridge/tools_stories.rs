@@ -1188,6 +1188,9 @@ pub(super) async fn handle_pass_desk_check(
     let bypass = verify_bug_question_or_bypass(args, BugGate::PassDeskCheck)?;
     let was_closed = if let Some(r) = refresh {
         let prior = ensure_story_in_canonical_store(r, number).await?;
+        if let Some(body) = prior.body.as_deref() {
+            crate::bridge::atp_substantive_gate::verify_atp_substantive(body)?;
+        }
         prior.is_closed
     } else {
         false
