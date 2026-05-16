@@ -48,6 +48,37 @@ jobs:
       - name: Verify Ryan's $HOME state preserved (#1285 regression gate)
         run: scripts/verify-home-isolation.sh
 
+  vitest-rtl:
+    runs-on: [self-hosted, macos, arm64]
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Isolate CARGO_HOME + RUSTUP_HOME (#1285)
+        run: |
+          echo "CARGO_HOME=$RUNNER_TEMP/cargo-home-vitest" >> "$GITHUB_ENV"
+          echo "RUSTUP_HOME=$RUNNER_TEMP/rustup-home-vitest" >> "$GITHUB_ENV"
+          echo "$RUNNER_TEMP/cargo-home-vitest/bin" >> "$GITHUB_PATH"
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.95.0"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "vitest-rtl"
+      - name: Build bpmux binary (debug; vitest globalSetup requires target/debug/bpmux)
+        run: cargo build -p bpmux
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: applications/electron/package-lock.json
+      - name: Install Electron deps
+        working-directory: applications/electron
+        run: npm ci
+      - name: Vitest (RTL + real-backend)
+        working-directory: applications/electron
+        run: npm run test:unit
+
   build-bpmux:
     runs-on: ubuntu-latest
     if: |
