@@ -341,7 +341,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                         .map((it) => positionInIterationOrder(it))
                         .filter((p): p is number => p !== null)
                       const targetMemberIndex =
-                        direction === 'up' ? iterationIdx - 1 : iterationIdx + 2
+                        direction === 'up' ? iterationIdx - 1 : iterationIdx + 1
                       const mutation = computeDropMutation({
                         draggedNumber: iteration.number,
                         draggedThemeName: 'order',
@@ -498,7 +498,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                               return
                             }
                             const targetMemberIndex =
-                              direction === 'up' ? originalIdx - 1 : originalIdx + 2
+                              direction === 'up' ? originalIdx - 1 : originalIdx + 1
                             const mutation = computeDropMutation({
                               draggedNumber: story.number,
                               draggedThemeName: themeName,

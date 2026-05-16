@@ -64,13 +64,7 @@ export const computeDropMutation = (input: DropMutationInput): DropMutation | nu
   const withoutSource = sameContainer && targetMembersIncludeDragged
     ? targetMemberPositions.filter((p) => p !== draggedOldPosition)
     : targetMemberPositions
-  const sourceIdxInFull = sameContainer && targetMembersIncludeDragged
-    ? targetMemberPositions.findIndex((p) => p === draggedOldPosition)
-    : -1
-  const adjustedIdx =
-    sameContainer && sourceIdxInFull >= 0 && sourceIdxInFull < targetMemberIndex
-      ? targetMemberIndex - 1
-      : targetMemberIndex
+  const adjustedIdx = targetMemberIndex
   const { position: newPosition } = computeInsertPosition(adjustedIdx, withoutSource)
   if (sameContainer && newPosition === draggedOldPosition) return null
   return {

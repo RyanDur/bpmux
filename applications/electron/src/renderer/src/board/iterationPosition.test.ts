@@ -128,7 +128,7 @@ describe('computeDropMutation — drag-drop yields canonical add/remove label-pa
     })
   })
 
-  it('within-iteration drop after last position steps forward', () => {
+  it('within-iteration drop on last places source AT last (after stepping past last)', () => {
     const result = computeDropMutation({
       draggedNumber: 7411,
       draggedThemeName: 'Cassiopeia',
@@ -138,7 +138,35 @@ describe('computeDropMutation — drag-drop yields canonical add/remove label-pa
       targetMemberIndex: 2,
       targetMembersIncludeDragged: true
     })
+    expect(result?.add).toEqual(['iteration-Cassiopeia.400'])
+    expect(result?.remove).toEqual(['iteration-Cassiopeia.100'])
+  })
+
+  it('within-iteration adjacent-downward swap produces non-null mutation between target and next', () => {
+    const result = computeDropMutation({
+      draggedNumber: 7411,
+      draggedThemeName: 'Cassiopeia',
+      draggedOldPosition: 100,
+      targetThemeName: 'Cassiopeia',
+      targetMemberPositions: [100, 200, 300],
+      targetMemberIndex: 1,
+      targetMembersIncludeDragged: true
+    })
     expect(result?.add).toEqual(['iteration-Cassiopeia.250'])
     expect(result?.remove).toEqual(['iteration-Cassiopeia.100'])
+  })
+
+  it('within-iteration adjacent-upward swap places source before target', () => {
+    const result = computeDropMutation({
+      draggedNumber: 7411,
+      draggedThemeName: 'Cassiopeia',
+      draggedOldPosition: 200,
+      targetThemeName: 'Cassiopeia',
+      targetMemberPositions: [100, 200, 300],
+      targetMemberIndex: 0,
+      targetMembersIncludeDragged: true
+    })
+    expect(result?.add).toEqual(['iteration-Cassiopeia.50'])
+    expect(result?.remove).toEqual(['iteration-Cassiopeia.200'])
   })
 })
