@@ -3809,81 +3809,9 @@ mod reopen_on_state_transition_tests {
 }
 
 #[cfg(test)]
-mod reorder_story_icebox_routing_tests {
+mod reorder_story_legacy_column_tests {
     use crate::bridge::tools_stories::apply_reorder_story;
-    use crate::session::priority::{IceboxItem, load_priority};
-
-    #[test]
-    fn icebox_state_lands_story_in_icebox_unified() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("priority.json");
-        apply_reorder_story(&path, "icebox", 1251, 1).unwrap();
-        let index = load_priority(&path);
-        assert!(
-            index
-                .icebox_unified
-                .contains(&IceboxItem::Story { number: 1251 }),
-            "story must appear in icebox_unified post-reorder for state=icebox"
-        );
-    }
-
-    #[test]
-    fn icebox_state_removes_story_from_legacy_columns_icebox() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("priority.json");
-        std::fs::write(
-            &path,
-            r#"{
-                "icebox": [1251, 1252],
-                "icebox_unified": []
-            }"#,
-        )
-        .unwrap();
-        apply_reorder_story(&path, "icebox", 1251, 1).unwrap();
-        let index = load_priority(&path);
-        let legacy = index.columns.get("icebox").cloned().unwrap_or_default();
-        assert!(
-            !legacy.contains(&1251),
-            "story 1251 must be removed from legacy columns[\"icebox\"]; got {legacy:?}"
-        );
-        assert!(
-            index
-                .icebox_unified
-                .contains(&IceboxItem::Story { number: 1251 }),
-            "story 1251 must appear in icebox_unified"
-        );
-    }
-
-    #[test]
-    fn icebox_state_position_clamped_inserts_at_correct_index() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("priority.json");
-        apply_reorder_story(&path, "icebox", 100, 1).unwrap();
-        apply_reorder_story(&path, "icebox", 200, 2).unwrap();
-        apply_reorder_story(&path, "icebox", 300, 1).unwrap();
-        let index = load_priority(&path);
-        assert_eq!(
-            index.icebox_unified,
-            vec![
-                IceboxItem::Story { number: 300 },
-                IceboxItem::Story { number: 100 },
-                IceboxItem::Story { number: 200 },
-            ]
-        );
-    }
-
-    #[test]
-    fn icebox_state_inserts_story_into_empty_icebox_unified_at_position_one() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("priority.json");
-        std::fs::write(&path, r#"{"icebox_unified":[]}"#).unwrap();
-        apply_reorder_story(&path, "icebox", 1251, 1).unwrap();
-        let index = load_priority(&path);
-        assert_eq!(
-            index.icebox_unified,
-            vec![IceboxItem::Story { number: 1251 }]
-        );
-    }
+    use crate::session::priority::load_priority;
 
     #[test]
     fn ready_state_uses_legacy_columns_path_unchanged() {
@@ -3896,7 +3824,6 @@ mod reorder_story_icebox_routing_tests {
             index.columns.get("ready").cloned().unwrap_or_default(),
             vec![100, 200]
         );
-        assert!(index.icebox_unified.is_empty());
     }
 
     #[test]
@@ -3912,84 +3839,6 @@ mod reorder_story_icebox_routing_tests {
                 .cloned()
                 .unwrap_or_default(),
             vec![555]
-        );
-        assert!(index.icebox_unified.is_empty());
-    }
-
-    #[test]
-    fn icebox_reorder_with_dual_state_divergence_evicts_legacy_column_entry() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("priority.json");
-        std::fs::write(
-            &path,
-            r#"{
-                "icebox": [1251, 1252, 1253, 1254],
-                "icebox_unified": []
-            }"#,
-        )
-        .unwrap();
-        apply_reorder_story(&path, "icebox", 1251, 1).unwrap();
-        let index = load_priority(&path);
-        let legacy = index.columns.get("icebox").cloned().unwrap_or_default();
-        assert!(!legacy.contains(&1251));
-        assert!(legacy.contains(&1252));
-        assert_eq!(
-            index.icebox_unified,
-            vec![IceboxItem::Story { number: 1251 }]
-        );
-    }
-
-    #[test]
-    fn reorder_preserves_iteration_variant_when_dragging_an_iteration_marker() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("priority.json");
-        std::fs::write(
-            &path,
-            r#"{
-                "icebox_unified": [
-                    {"kind":"story","number":501},
-                    {"kind":"iteration","number":777},
-                    {"kind":"story","number":502}
-                ]
-            }"#,
-        )
-        .unwrap();
-        apply_reorder_story(&path, "icebox", 777, 3).unwrap();
-        let index = load_priority(&path);
-        assert_eq!(
-            index.icebox_unified,
-            vec![
-                IceboxItem::Story { number: 501 },
-                IceboxItem::Story { number: 502 },
-                IceboxItem::Iteration { number: 777 },
-            ],
-            "iteration marker repositions via reorder_story without losing Iteration variant"
-        );
-    }
-
-    #[test]
-    fn reorder_default_keeps_story_variant_for_non_iteration_numbers() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("priority.json");
-        std::fs::write(
-            &path,
-            r#"{
-                "icebox_unified": [
-                    {"kind":"story","number":501},
-                    {"kind":"iteration","number":777}
-                ]
-            }"#,
-        )
-        .unwrap();
-        apply_reorder_story(&path, "icebox", 501, 2).unwrap();
-        let index = load_priority(&path);
-        assert_eq!(
-            index.icebox_unified,
-            vec![
-                IceboxItem::Iteration { number: 777 },
-                IceboxItem::Story { number: 501 },
-            ],
-            "non-iteration drags retain Story variant; iteration variant elsewhere unaffected"
         );
     }
 }

@@ -1426,46 +1426,10 @@ pub(super) fn apply_reorder_story(
     position: usize,
 ) -> Result<(), String> {
     let mut index = crate::session::priority::load_priority(path);
-    if state == "icebox" {
-        place_icebox_story_in_canonical_unified(&mut index, number, position);
-        evict_story_from_legacy_icebox_column(&mut index, number);
-    } else {
-        crate::session::priority::reorder(&mut index, state, number, position);
-    }
+    crate::session::priority::reorder(&mut index, state, number, position);
     crate::session::priority::save_priority(path, &index)
         .map_err(|e| format!("save priority: {e}"))?;
     Ok(())
-}
-
-fn place_icebox_story_in_canonical_unified(
-    index: &mut crate::session::priority::PriorityIndex,
-    number: u64,
-    position: usize,
-) {
-    let variant = preserve_existing_icebox_variant(index, number)
-        .unwrap_or(crate::session::priority::IceboxItem::Story { number });
-    crate::session::priority::reorder_icebox_unified(index, variant, position);
-}
-
-fn preserve_existing_icebox_variant(
-    index: &crate::session::priority::PriorityIndex,
-    number: u64,
-) -> Option<crate::session::priority::IceboxItem> {
-    index.icebox_unified.iter().find_map(|item| match item {
-        crate::session::priority::IceboxItem::Iteration { number: n } if *n == number => {
-            Some(crate::session::priority::IceboxItem::Iteration { number })
-        }
-        _ => None,
-    })
-}
-
-fn evict_story_from_legacy_icebox_column(
-    index: &mut crate::session::priority::PriorityIndex,
-    number: u64,
-) {
-    if let Some(col) = index.columns.get_mut("icebox") {
-        col.retain(|&n| n != number);
-    }
 }
 
 /// Add a comment to a story — any agent. Durable issue-audit-trail

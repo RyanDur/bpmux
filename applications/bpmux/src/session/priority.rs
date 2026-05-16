@@ -252,17 +252,6 @@ pub fn reorder(index: &mut PriorityIndex, state: &str, number: u64, position: us
     column.insert(pos, number);
 }
 
-/// #1258 α-substrate: move a story or marker to a specific position
-/// (1-indexed) within `icebox_unified`. If the item isn't in the
-/// list yet, it's inserted; otherwise it's moved. Position is 1-
-/// indexed across all IceboxItems (stories AND markers share the
-/// positional space).
-pub fn reorder_icebox_unified(index: &mut PriorityIndex, item: IceboxItem, position: usize) {
-    index.icebox_unified.retain(|x| x != &item);
-    let pos = position.saturating_sub(1).min(index.icebox_unified.len());
-    index.icebox_unified.insert(pos, item);
-}
-
 /// Sort a list of issue numbers by priority. Numbers in the priority
 /// list come first (in priority order); others are appended at the end
 /// in their original order.

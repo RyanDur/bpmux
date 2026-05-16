@@ -144,34 +144,6 @@ fn migrate_no_op_when_no_legacy_state() {
     assert!(index.icebox_unified.is_empty());
 }
 
-#[test]
-fn reorder_icebox_unified_inserts_story_at_position() {
-    let mut index = PriorityIndex::default();
-    index.icebox_unified.push(IceboxItem::Story { number: 200 });
-    reorder_icebox_unified(&mut index, IceboxItem::Story { number: 100 }, 1);
-    assert_eq!(
-        index.icebox_unified,
-        vec![
-            IceboxItem::Story { number: 100 },
-            IceboxItem::Story { number: 200 },
-        ]
-    );
-}
-
-#[test]
-fn reorder_icebox_unified_clamps_position() {
-    let mut index = PriorityIndex::default();
-    index.icebox_unified.push(IceboxItem::Story { number: 100 });
-    reorder_icebox_unified(&mut index, IceboxItem::Story { number: 200 }, 99);
-    assert_eq!(
-        index.icebox_unified,
-        vec![
-            IceboxItem::Story { number: 100 },
-            IceboxItem::Story { number: 200 },
-        ]
-    );
-}
-
 use crate::board::domain::StoryState;
 
 fn states_map(entries: &[(u64, StoryState)]) -> std::collections::HashMap<u64, StoryState> {

@@ -1849,17 +1849,7 @@ pub async fn post_reorder_story(
         }
     };
     let mut index = crate::session::priority::load_priority(&path);
-    if payload.state == "icebox" {
-        // #1258 α-substrate: icebox reorder operates on the unified
-        // positional space (markers + stories share the same list).
-        crate::session::priority::reorder_icebox_unified(
-            &mut index,
-            crate::session::priority::IceboxItem::Story { number },
-            payload.position,
-        );
-    } else {
-        crate::session::priority::reorder(&mut index, &payload.state, number, payload.position);
-    }
+    crate::session::priority::reorder(&mut index, &payload.state, number, payload.position);
     if let Err(e) = crate::session::priority::save_priority(&path, &index) {
         return (
             StatusCode::INTERNAL_SERVER_ERROR,
