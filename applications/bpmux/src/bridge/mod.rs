@@ -275,9 +275,10 @@ pub(crate) async fn dispatch_test_unset_parent_epic(
 pub(crate) async fn dispatch_test_reorder_story(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     let empty_ws: tokio::sync::Mutex<Option<WsSink>> = tokio::sync::Mutex::new(None);
-    tools_stories::handle_reorder_story(&args, agent_name, &empty_ws).await
+    tools_stories::handle_reorder_story(&args, agent_name, &empty_ws, refresh).await
 }
 
 pub(crate) async fn dispatch_test_move_story(

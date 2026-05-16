@@ -1353,11 +1353,15 @@ pub(super) async fn handle_fail_desk_check(
     )
 }
 
-/// PM-controlled priority reordering; persists to priority index.
+/// PM-controlled priority reordering. For state="icebox", routes
+/// through the canonical-via-GH label substrate (#1301 Option B per
+/// team-converge); for other states, persists to legacy priority
+/// index columns.
 pub(super) async fn handle_reorder_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
+    refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
     require_role(agent_name, &["pm"], "reorder")?;
     let number = args
@@ -1373,11 +1377,83 @@ pub(super) async fn handle_reorder_story(
         .and_then(|v| v.as_str())
         .ok_or("missing 'state' argument (e.g., 'ready', 'in_progress', 'delivered')")?;
 
+    if state == "icebox" {
+        let r = refresh.ok_or(
+            "reorder_story state=icebox requires refresh-driver (canonical-via-GH label substrate per #1301)",
+        )?;
+        reorder_icebox_story_via_labels(r, number, position)?;
+        broadcast_board_invalidate(ws_tx).await;
+        return Ok(format!("#{number} moved to position {position} in icebox"));
+    }
+
     let path = crate::session::priority::default_priority_path()
         .map_err(|e| format!("priority path: {e}"))?;
     apply_reorder_story(&path, state, number, position)?;
     broadcast_board_invalidate(ws_tx).await;
     Ok(format!("#{number} moved to position {position} in {state}"))
+}
+
+fn reorder_icebox_story_via_labels(
+    refresh: &std::sync::Arc<dyn crate::board::RefreshDriver>,
+    number: u64,
+    position: usize,
+) -> Result<(), String> {
+    let story = refresh
+        .story(number)
+        .ok_or_else(|| format!("story #{number} not found in canonical store"))?;
+    let current_iteration = story.raw_labels.iter().find_map(|l| {
+        crate::board::iteration_label::parse_iteration_label(l)
+            .map(|p| (p.theme_name, l.clone()))
+    });
+    let theme_name = current_iteration
+        .as_ref()
+        .map(|(t, _)| t.clone())
+        .unwrap_or_else(|| "Unscheduled".to_string());
+    let other_positions: Vec<u32> = refresh
+        .all_stories()
+        .iter()
+        .filter(|s| s.number != number && !s.is_closed)
+        .filter_map(|s| {
+            s.raw_labels.iter().find_map(|l| {
+                crate::board::iteration_label::parse_iteration_label(l)
+                    .filter(|p| p.theme_name == theme_name)
+                    .map(|p| p.position)
+            })
+        })
+        .collect();
+    let insert_index = position.saturating_sub(1).min(other_positions.len());
+    let new_position = crate::board::iteration_label::compute_insert_position(
+        insert_index,
+        &other_positions,
+    );
+    let new_label = format!("iteration-{theme_name}.{new_position}");
+    if let Some((_, current_label)) = &current_iteration
+        && current_label.as_str() == new_label.as_str()
+    {
+        return Ok(());
+    }
+    let meta = || crate::board::events::EventMeta {
+        actor: "pm".to_string(),
+        ts: chrono::Utc::now(),
+        peer_id: crate::board::PeerId::local(),
+    };
+    if let Some((_, current_label)) = current_iteration {
+        refresh
+            .mutate_sync(crate::board::BoardEvent::TagRemoved {
+                meta: meta(),
+                number,
+                label: current_label,
+            })
+            .map_err(|e| format!("TagRemoved #{number}: {e}"))?;
+    }
+    refresh
+        .mutate_sync(crate::board::BoardEvent::TagAdded {
+            meta: meta(),
+            number,
+            label: new_label,
+        })
+        .map_err(|e| format!("TagAdded #{number}: {e}"))?;
+    Ok(())
 }
 
 pub(super) fn apply_reorder_story(
