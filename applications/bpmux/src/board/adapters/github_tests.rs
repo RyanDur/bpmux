@@ -2,6 +2,7 @@
 
 use chrono::{TimeZone, Utc};
 
+use crate::board::adapters::github::is_iteration_position_label_for_test as is_iteration_position_label;
 use crate::board::adapters::github::{
     classify_gate, decode_gate_comments, decode_story_metadata, parent_epic_from_labels,
     state_from_labels, state_to_label, tags_from_labels, warn_on_inconsistent_state_labels,
@@ -9,6 +10,36 @@ use crate::board::adapters::github::{
 use crate::board::domain::story_type_from_labels_or_title;
 use crate::board::domain::{Gate, StoryState, StoryType, Tag};
 use crate::board::sync::{SyncError, classify_close_error};
+
+#[test]
+fn is_iteration_position_label_matches_iteration_theme_dot_number() {
+    assert!(is_iteration_position_label("iteration-Cassiopeia.100"));
+    assert!(is_iteration_position_label("iteration-Aquila-B.50"));
+    assert!(is_iteration_position_label(
+        "iteration-My-Long-Theme-Name.999"
+    ));
+}
+
+#[test]
+fn is_iteration_position_label_rejects_iteration_order() {
+    assert!(!is_iteration_position_label("iteration-order.100"));
+    assert!(!is_iteration_position_label("iteration-order.0"));
+}
+
+#[test]
+fn is_iteration_position_label_rejects_non_iteration() {
+    assert!(!is_iteration_position_label("blocked"));
+    assert!(!is_iteration_position_label("ready"));
+    assert!(!is_iteration_position_label("parent-epic-#1247"));
+    assert!(!is_iteration_position_label("iteration"));
+}
+
+#[test]
+fn is_iteration_position_label_rejects_iteration_without_position_suffix() {
+    assert!(!is_iteration_position_label("iteration-Cassiopeia"));
+    assert!(!is_iteration_position_label("iteration-Cassiopeia."));
+    assert!(!is_iteration_position_label("iteration-Cassiopeia.abc"));
+}
 
 #[test]
 fn state_from_labels_accepted_wins_regardless_of_other_labels() {

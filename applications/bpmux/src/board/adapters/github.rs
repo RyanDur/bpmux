@@ -282,33 +282,36 @@ impl SourceAdapter for GitHubSourceAdapter {
                 Ok(None)
             }
             BoardEvent::TagAdded { number, label, .. } => {
-                // #1151: add_label returns the post-mutation labels
-                // list; LabelsRefreshed lets the reducer re-derive
-                // state without a follow-up fetch.
                 let labels = self
                     .inner
                     .add_label(*number, label)
                     .await
                     .map_err(SyncError::Other)?;
-                Ok(Some(BoardEvent::LabelsRefreshed {
-                    meta: crate::board::orchestrator::cache_fill_meta(),
-                    number: *number,
-                    labels,
-                }))
+                if is_iteration_position_label(label) {
+                    Ok(None)
+                } else {
+                    Ok(Some(BoardEvent::LabelsRefreshed {
+                        meta: crate::board::orchestrator::cache_fill_meta(),
+                        number: *number,
+                        labels,
+                    }))
+                }
             }
             BoardEvent::TagRemoved { number, label, .. } => {
-                // #1151: remove_label returns the post-mutation labels
-                // list (or empty Vec on the 404-idempotent path).
                 let labels = self
                     .inner
                     .remove_label(*number, label)
                     .await
                     .map_err(SyncError::Other)?;
-                Ok(Some(BoardEvent::LabelsRefreshed {
-                    meta: crate::board::orchestrator::cache_fill_meta(),
-                    number: *number,
-                    labels,
-                }))
+                if is_iteration_position_label(label) {
+                    Ok(None)
+                } else {
+                    Ok(Some(BoardEvent::LabelsRefreshed {
+                        meta: crate::board::orchestrator::cache_fill_meta(),
+                        number: *number,
+                        labels,
+                    }))
+                }
             }
             BoardEvent::ParentEpicSet {
                 number,
@@ -477,6 +480,25 @@ pub fn parent_epic_from_labels(labels: &[String]) -> Option<u64> {
     labels
         .iter()
         .find_map(|l| l.strip_prefix("parent-epic-#").and_then(|n| n.parse().ok()))
+}
+
+fn is_iteration_position_label(label: &str) -> bool {
+    let Some(rest) = label.strip_prefix("iteration-") else {
+        return false;
+    };
+    if rest.starts_with("order.") {
+        return false;
+    }
+    let Some(dot_idx) = rest.rfind('.') else {
+        return false;
+    };
+    rest.get(dot_idx + 1..)
+        .is_some_and(|tail| !tail.is_empty() && tail.chars().all(|c| c.is_ascii_digit()))
+}
+
+#[cfg(test)]
+pub(crate) fn is_iteration_position_label_for_test(label: &str) -> bool {
+    is_iteration_position_label(label)
 }
 
 fn extract_label_names(v: &serde_json::Value) -> Vec<String> {
