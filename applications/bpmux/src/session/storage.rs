@@ -149,10 +149,6 @@ pub trait Storage: Send + Sync {
 /// override + home-default semantics). MemoryGlobalStore tests-only
 /// impl uses per-instance Mutex<T> state.
 pub trait GlobalStore: Send + Sync {
-    // Priority (~/.bpmux/priority.json)
-    fn load_priority(&self) -> super::priority::PriorityIndex;
-    fn save_priority(&self, index: &super::priority::PriorityIndex) -> Result<(), std::io::Error>;
-
     // #1290 Phase-3 step 2: per-role identity (~/.bpmux/identity/{role}.json)
     fn load_identity(&self, role: &str) -> super::identity::IdentityIndex;
     fn save_identity(
@@ -193,9 +189,6 @@ pub trait GlobalStore: Send + Sync {
 
 /// File-based global store — production impl.
 pub struct FileGlobalStore {
-    /// #1289: per-instance priority-path override. Tests inject
-    /// per-test paths to avoid sharing `~/.bpmux/priority.json`.
-    priority_path: Option<PathBuf>,
     /// #1290: per-instance identity-dir override. Tests inject
     /// tempdirs to avoid sharing `~/.bpmux/identity/`.
     identity_dir: Option<PathBuf>,
@@ -222,21 +215,12 @@ impl Default for FileGlobalStore {
 impl FileGlobalStore {
     pub fn new() -> Self {
         Self {
-            priority_path: None,
             identity_dir: None,
             briefings_dir: None,
             tokens_log_path: None,
             usage_path: None,
             auth_token_path: None,
         }
-    }
-
-    /// Opt-in path-injection for the priority index. Tests use this
-    /// to point at a unique tempdir; production leaves it `None` so
-    /// `default_priority_path()` resolves at call-time.
-    pub fn with_priority_path(mut self, path: PathBuf) -> Self {
-        self.priority_path = Some(path);
-        self
     }
 
     /// #1290: opt-in identity-dir override (per-role files live under
@@ -269,13 +253,6 @@ impl FileGlobalStore {
     pub fn with_auth_token_path(mut self, path: PathBuf) -> Self {
         self.auth_token_path = Some(path);
         self
-    }
-
-    fn resolve_priority_path(&self) -> Result<PathBuf, String> {
-        if let Some(p) = &self.priority_path {
-            return Ok(p.clone());
-        }
-        super::priority::default_priority_path()
     }
 
     fn resolve_identity_dir(&self) -> Result<PathBuf, std::io::Error> {
@@ -320,20 +297,6 @@ impl FileGlobalStore {
 }
 
 impl GlobalStore for FileGlobalStore {
-    fn load_priority(&self) -> super::priority::PriorityIndex {
-        match self.resolve_priority_path() {
-            Ok(path) => super::priority::load_priority(&path),
-            Err(_) => super::priority::PriorityIndex::default(),
-        }
-    }
-
-    fn save_priority(&self, index: &super::priority::PriorityIndex) -> Result<(), std::io::Error> {
-        let path = self
-            .resolve_priority_path()
-            .map_err(std::io::Error::other)?;
-        super::priority::save_priority(&path, index)
-    }
-
     fn load_identity(&self, role: &str) -> super::identity::IdentityIndex {
         match self.resolve_identity_dir() {
             Ok(dir) => super::identity::load_identity(&dir, role),
@@ -398,7 +361,6 @@ impl GlobalStore for FileGlobalStore {
 
 /// In-memory global store — tests-only impl.
 pub struct MemoryGlobalStore {
-    priority: Mutex<super::priority::PriorityIndex>,
     identity: Mutex<HashMap<String, super::identity::IdentityIndex>>,
     briefings: Mutex<HashMap<String, String>>,
     tokens: Mutex<Vec<super::tokens::TokenRow>>,
@@ -414,7 +376,6 @@ impl Default for MemoryGlobalStore {
 impl MemoryGlobalStore {
     pub fn new() -> Self {
         Self {
-            priority: Mutex::new(super::priority::PriorityIndex::default()),
             identity: Mutex::new(HashMap::new()),
             briefings: Mutex::new(HashMap::new()),
             tokens: Mutex::new(Vec::new()),
@@ -424,18 +385,6 @@ impl MemoryGlobalStore {
 }
 
 impl GlobalStore for MemoryGlobalStore {
-    fn load_priority(&self) -> super::priority::PriorityIndex {
-        self.priority
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .clone()
-    }
-
-    fn save_priority(&self, index: &super::priority::PriorityIndex) -> Result<(), std::io::Error> {
-        *self.priority.lock().unwrap_or_else(|e| e.into_inner()) = index.clone();
-        Ok(())
-    }
-
     fn load_identity(&self, role: &str) -> super::identity::IdentityIndex {
         self.identity
             .lock()

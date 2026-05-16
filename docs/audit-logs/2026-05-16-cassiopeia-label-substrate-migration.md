@@ -85,11 +85,17 @@ states aren't user-drag-reorderable in the renderer
 (so the canonical Ready set is clean before label emission).
 Logs migrated count via `session::diag::log_diag`.
 
-**Retirement (slice 4E, pending):** Once migration validates in
-production, the `columns` field, `apply_priority_to_board`,
-`auto_heal_ready_column_at_boot`, and the legacy POST
-`/api/stories/:n/reorder` endpoint all retire. `priority.json`
-becomes empty / removable.
+**Retirement (slice 4E + 4F):** Slice 4E (commit 65d0760) retired
+`apply_priority_to_board` (→ `sort_board_by_ready_order_labels`),
+`auto_heal_ready_column_at_boot`, `apply_reorder_story`,
+`apply_move_story_priority`, the legacy POST `/api/stories/:n/reorder`
+endpoint, and `priority::reorder` / `sort_by_priority` /
+`auto_heal_ready_column_via_workflow_state`. Slice 4F retired the
+`PriorityIndex` struct itself + `load_priority` / `save_priority` +
+the `Storage::load_priority` / `save_priority` trait methods +
+`MemoryGlobalStore::priority` field. Only `default_priority_path()`
+remains, used by the one-shot boot migration for raw-JSON readout.
+`priority.json` is now fully dead-state and removable.
 
 ## Pre-Cassiopeia iteration-name disambiguation
 
@@ -117,8 +123,9 @@ broadcast → other instance refetch.
 | 4B | `ready-order.N` reader substrate + adapter suppression | 5b78b4ae |
 | 4C.1 | server reader prefers labels over legacy `columns["ready"]` | 97d7c05e |
 | 4C.2 | renderer Board.tsx drag emits ready-order label mutations | f1215231 |
-| 4D | boot migration `columns["ready"]` → `ready-order.N` labels + this doc | (this commit) |
-| 4E | retire `columns` field + `apply_priority_to_board` + legacy `/reorder` | pending |
+| 4D | boot migration `columns["ready"]` → `ready-order.N` labels + this doc | d91a53f7 |
+| 4E | retire writers + `auto_heal_ready_column_at_boot` + legacy `/reorder` endpoint | 65d0760 |
+| 4F | retire `PriorityIndex` struct + Storage trait priority methods | (this commit) |
 
 ## Notes
 

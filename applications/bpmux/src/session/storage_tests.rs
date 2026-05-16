@@ -435,7 +435,6 @@ contract!(
 
 fn file_global() -> (Arc<dyn GlobalStore>, tempfile::TempDir) {
     let dir = tempfile::tempdir().unwrap();
-    let priority_path = dir.path().join("priority.json");
     let identity_dir = dir.path().join("identity");
     let briefings_dir = dir.path().join("briefings");
     let tokens_log_path = dir.path().join("tokens").join("log.jsonl");
@@ -443,7 +442,6 @@ fn file_global() -> (Arc<dyn GlobalStore>, tempfile::TempDir) {
     let auth_token_path = dir.path().join("auth_token");
     let global: Arc<dyn GlobalStore> = Arc::new(
         FileGlobalStore::new()
-            .with_priority_path(priority_path)
             .with_identity_dir(identity_dir)
             .with_briefings_dir(briefings_dir)
             .with_tokens_log_path(tokens_log_path)
@@ -478,47 +476,6 @@ macro_rules! global_contract {
         }
     };
 }
-
-global_contract!(
-    load_priority_default_when_unset,
-    |global: &dyn GlobalStore| {
-        let idx = global.load_priority();
-        assert!(idx.columns.is_empty());
-    }
-);
-
-global_contract!(
-    save_then_load_priority_roundtrips,
-    |global: &dyn GlobalStore| {
-        let mut idx = crate::session::priority::PriorityIndex::default();
-        idx.columns.insert("ready".to_string(), vec![100, 200]);
-        global.save_priority(&idx).unwrap();
-        let loaded = global.load_priority();
-        assert_eq!(
-            loaded.columns.get("ready").cloned().unwrap_or_default(),
-            vec![100, 200]
-        );
-    }
-);
-
-global_contract!(
-    save_priority_overwrites_previous,
-    |global: &dyn GlobalStore| {
-        let mut idx_v1 = crate::session::priority::PriorityIndex::default();
-        idx_v1.columns.insert("ready".to_string(), vec![1]);
-        global.save_priority(&idx_v1).unwrap();
-
-        let mut idx_v2 = crate::session::priority::PriorityIndex::default();
-        idx_v2.columns.insert("ready".to_string(), vec![2, 3]);
-        global.save_priority(&idx_v2).unwrap();
-
-        let loaded = global.load_priority();
-        assert_eq!(
-            loaded.columns.get("ready").cloned().unwrap_or_default(),
-            vec![2, 3]
-        );
-    }
-);
 
 // ── GlobalStore: identity (#1290 Phase-3 step 2) ──
 

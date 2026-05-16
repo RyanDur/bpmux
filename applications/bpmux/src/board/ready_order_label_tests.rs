@@ -122,3 +122,73 @@ fn stories_with_ready_order_skips_unlabeled_stories() {
     ];
     assert_eq!(stories_with_ready_order(&stories), vec![500]);
 }
+
+fn ready_value_with_order(number: u64, position: u32) -> serde_json::Value {
+    serde_json::json!({
+        "number": number,
+        "state": "ready",
+        "title": "s",
+        "labels": [{"name": "ready"}, {"name": format!("ready-order.{position}")}],
+    })
+}
+
+fn value(number: u64, state: &str) -> serde_json::Value {
+    serde_json::json!({ "number": number, "state": state, "title": "s" })
+}
+
+fn numbers_of(stories: &[serde_json::Value]) -> Vec<u64> {
+    stories
+        .iter()
+        .filter_map(|s| s.get("number").and_then(|v| v.as_u64()))
+        .collect()
+}
+
+#[test]
+fn sort_board_ready_sorts_by_ready_order_label_when_present() {
+    let stories = vec![
+        ready_value_with_order(300, 300),
+        ready_value_with_order(100, 100),
+        ready_value_with_order(200, 200),
+    ];
+    let sorted = sort_board_by_ready_order_labels(stories);
+    assert_eq!(numbers_of(&sorted), vec![100, 200, 300]);
+}
+
+#[test]
+fn sort_board_ready_unlabeled_stories_fall_to_end_by_issue_number() {
+    let stories = vec![
+        value(300, "ready"),
+        ready_value_with_order(100, 50),
+        value(200, "ready"),
+    ];
+    let sorted = sort_board_by_ready_order_labels(stories);
+    assert_eq!(numbers_of(&sorted), vec![100, 200, 300]);
+}
+
+#[test]
+fn sort_board_leaves_non_ready_states_in_encounter_order() {
+    let stories = vec![
+        value(500, "delivered"),
+        ready_value_with_order(100, 100),
+        value(400, "delivered"),
+    ];
+    let sorted = sort_board_by_ready_order_labels(stories);
+    assert_eq!(numbers_of(&sorted), vec![500, 400, 100]);
+}
+
+#[test]
+fn sort_board_preserves_inter_state_encounter_order() {
+    let stories = vec![
+        value(500, "delivered"),
+        ready_value_with_order(100, 100),
+        value(600, "delivered"),
+    ];
+    let sorted = sort_board_by_ready_order_labels(stories);
+    assert_eq!(numbers_of(&sorted), vec![500, 600, 100]);
+}
+
+#[test]
+fn sort_board_empty_input_is_identity() {
+    let sorted = sort_board_by_ready_order_labels(vec![]);
+    assert!(sorted.is_empty());
+}

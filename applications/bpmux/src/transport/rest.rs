@@ -582,7 +582,7 @@ pub async fn get_board(
             .iter()
             .map(crate::board::domain::story_to_board_json)
             .collect();
-        let ordered = crate::session::priority::sort_board_by_ready_order_labels(stories);
+        let ordered = crate::board::ready_order_label::sort_board_by_ready_order_labels(stories);
         let body = serde_json::json!({
             "stories": ordered,
             "fetched_at": chrono::Utc::now().to_rfc3339(),
@@ -598,7 +598,8 @@ pub async fn get_board(
     };
     match tracker.fetch_board_stories().await {
         Ok(stories) => {
-            let ordered = crate::session::priority::sort_board_by_ready_order_labels(stories);
+            let ordered =
+                crate::board::ready_order_label::sort_board_by_ready_order_labels(stories);
             let body = serde_json::json!({
                 "stories": ordered,
                 "fetched_at": chrono::Utc::now().to_rfc3339(),

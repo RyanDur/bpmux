@@ -378,9 +378,8 @@ mod migration_legacy_ready_to_labels_tests {
     }
 
     fn seed_priority(path: &std::path::Path, ready: &[u64]) {
-        let mut index = session::priority::PriorityIndex::default();
-        index.columns.insert("ready".to_string(), ready.to_vec());
-        session::priority::save_priority(path, &index).unwrap();
+        let body = serde_json::json!({ "ready": ready });
+        std::fs::write(path, serde_json::to_string(&body).unwrap()).unwrap();
     }
 
     #[tokio::test]
