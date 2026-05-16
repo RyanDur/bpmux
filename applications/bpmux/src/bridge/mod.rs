@@ -20,6 +20,7 @@ use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite;
 
 pub(crate) mod atp_substantive_gate;
+pub(crate) mod deliver_story_body_diff_gate;
 pub(crate) mod move_story;
 mod rpc_client;
 pub(crate) mod tools;

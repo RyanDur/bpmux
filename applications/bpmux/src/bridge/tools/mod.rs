@@ -31,7 +31,7 @@ mod get_sync_status;
 mod get_sync_status_tests;
 mod get_token_report;
 mod get_usage;
-mod git_repo;
+pub(crate) mod git_repo;
 #[cfg(test)]
 mod git_repo_tests;
 mod list_epic_children;

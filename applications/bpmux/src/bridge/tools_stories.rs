@@ -814,6 +814,15 @@ pub(super) async fn handle_deliver_story(
     };
     if let Some(r) = refresh {
         validate_acceptance_test_path_at_deliver(number, r.as_ref())?;
+        if let Some(story) = refreshed.as_ref().and_then(|s| s.as_ref())
+            && let Some(body) = story.body.as_deref()
+        {
+            crate::bridge::deliver_story_body_diff_gate::verify_deliver_drift(
+                body,
+                story,
+                &|args| crate::bridge::tools::git_repo::run_git(args),
+            )?;
+        }
     }
     // #391 deliver-gate: dev must articulate what they drove end-to-
     // end before delivery. Becomes the diff-point designer checks at
