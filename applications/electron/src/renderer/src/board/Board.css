@@ -359,16 +359,18 @@
     cursor: help;
   }
 
+  & .board-iteration-member {
+    transition: opacity 50ms ease-out;
+  }
+
   & .board-iteration-member[data-dragging='true'] {
-    opacity: 0;
+    opacity: 0.001;
   }
 
   & .board-iteration-card {
-    background: rgba(120, 160, 200, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: var(--radius-2, 4px);
-    padding: var(--space-1, 2px) 0;
-    margin: var(--space-1, 2px) 0;
+    background: transparent;
+    border: none;
+    margin: var(--space-8, 8px) 0 0 0;
   }
 
   & .board-iteration-card[open] {
@@ -378,13 +380,38 @@
 
   & .board-iteration-summary {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: var(--space-2, 4px);
+    padding: var(--space-2, 4px) var(--space-8, 8px);
+    border-top: 1px solid var(--border-subtle);
+    background: var(--bg-elevated);
     cursor: pointer;
+    color: var(--fg-secondary);
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    & .board-iteration-title {
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    & .board-iteration-count {
+      font-size: 0.75rem;
+      color: var(--fg-dim);
+      font-variant-numeric: tabular-nums;
+    }
   }
 
   & .board-iteration-summary:hover {
-    background: rgba(120, 160, 200, 0.08);
+    background: var(--bg-highlighted);
+  }
+
+  & .board-iteration-card[open] > .board-iteration-summary {
+    color: var(--fg-primary);
   }
 
   & .board-iteration-card[data-closed='true'] {
