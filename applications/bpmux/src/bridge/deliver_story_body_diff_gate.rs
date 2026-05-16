@@ -67,8 +67,10 @@ pub(super) fn verify_body_atp_in_changed_paths(
     ))
 }
 
-/// Top-level gate API. Tolerant: returns Ok if git is unavailable or
-/// the story has no pickup-ts to anchor against.
+/// Top-level gate API. Tolerant: returns Ok if git is unavailable,
+/// the story has no pickup-ts to anchor against, or no commits have
+/// landed since pickup (empty changed-paths set → meaningless to
+/// diff against).
 pub(super) fn verify_deliver_drift(
     body: &str,
     story: &Story,
@@ -86,6 +88,9 @@ pub(super) fn verify_deliver_drift(
             return Ok(());
         }
     };
+    if changed_paths.is_empty() {
+        return Ok(());
+    }
     verify_body_atp_in_changed_paths(body, &changed_paths)
 }
 

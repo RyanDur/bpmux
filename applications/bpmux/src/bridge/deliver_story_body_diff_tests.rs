@@ -135,3 +135,14 @@ fn verify_deliver_drift_passes_when_body_atp_in_changed() {
     let git = fake_git_returning(&["applications/foo.test.tsx"]);
     assert!(verify_deliver_drift(body, &s, &git).is_ok());
 }
+
+#[test]
+fn verify_deliver_drift_lenient_when_no_commits_since_pickup() {
+    let body = "## ATP\n`applications/foo.test.tsx`";
+    let s = story_with_pickup(Utc.with_ymd_and_hms(2026, 5, 16, 22, 0, 0).unwrap());
+    let git = fake_git_returning(&[]);
+    assert!(
+        verify_deliver_drift(body, &s, &git).is_ok(),
+        "empty changed-paths means no commits since pickup; can't meaningfully diff body-ATP"
+    );
+}
