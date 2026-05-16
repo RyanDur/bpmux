@@ -220,6 +220,15 @@ pub async fn run_server(
         let session_for_markers_heal = session.clone();
         tokio::spawn(async move {
             crate::auto_heal_ready_column_at_boot(session_for_markers_heal, refresh.clone()).await;
+            match crate::migrate_legacy_ready_to_labels(refresh.clone()).await {
+                Ok(0) => {}
+                Ok(n) => crate::session::diag::log_diag(&format!(
+                    "[#1301 slice 4D] migrated {n} legacy ready-column entries to ready-order.N labels"
+                )),
+                Err(e) => crate::session::diag::log_diag(&format!(
+                    "[#1301 slice 4D] migrate_legacy_ready_to_labels failed: {e}"
+                )),
+            }
             let _ = refresh;
         });
     }
