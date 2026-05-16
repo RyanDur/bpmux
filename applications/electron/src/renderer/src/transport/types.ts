@@ -73,7 +73,6 @@ export type StateDeltaPayload =
       domain: 'iteration_close_blocked'
       blockers: { number: number; title: string; state: string }[]
     }
-  | { domain: 'icebox_migration'; entries: number }
 
 export interface ReactionsChannelSnapshot {
   channel: string

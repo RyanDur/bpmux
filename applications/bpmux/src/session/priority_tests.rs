@@ -54,94 +54,13 @@ fn save_and_load_roundtrips() {
 }
 
 #[test]
-fn icebox_unified_serializes_with_kind_tag() {
-    let mut index = PriorityIndex::default();
-    index
-        .icebox_unified
-        .push(IceboxItem::Story { number: 1234 });
-    let json = serde_json::to_string(&index).unwrap();
-    assert!(json.contains(r#""icebox_unified""#));
-    assert!(json.contains(r#""kind":"story""#));
-    assert!(json.contains(r#""number":1234"#));
-}
-
-#[test]
-fn icebox_unified_round_trips() {
-    let mut index = PriorityIndex::default();
-    index
-        .icebox_unified
-        .push(IceboxItem::Story { number: 1234 });
-    let json = serde_json::to_string(&index).unwrap();
-    let parsed: PriorityIndex = serde_json::from_str(&json).unwrap();
-    assert_eq!(parsed.icebox_unified.len(), 1);
-    assert_eq!(parsed.icebox_unified[0], IceboxItem::Story { number: 1234 });
-}
-
-#[test]
-fn icebox_unified_tolerant_load_strips_legacy_marker_entries() {
-    // Legacy priority.json files have {"kind":"marker","id":N} entries.
-    // Tolerant deserializer drops them; only story entries survive.
-    let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("priority.json");
-    std::fs::write(
-        &path,
-        r#"{"icebox_unified":[{"kind":"marker","id":7},{"kind":"story","number":1234},{"kind":"marker","id":8}]}"#,
-    )
-    .unwrap();
-    let loaded = load_priority(&path);
-    assert_eq!(loaded.icebox_unified.len(), 1);
-    assert_eq!(loaded.icebox_unified[0], IceboxItem::Story { number: 1234 });
-}
-
-#[test]
-fn legacy_priority_json_loads_with_empty_icebox_unified() {
+fn legacy_priority_json_loads_columns_unchanged() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("priority.json");
     std::fs::write(&path, r#"{"ready":[100,200],"icebox":[300,400]}"#).unwrap();
     let loaded = load_priority(&path);
     assert_eq!(loaded.columns["ready"], vec![100, 200]);
     assert_eq!(loaded.columns["icebox"], vec![300, 400]);
-    assert!(loaded.icebox_unified.is_empty());
-}
-
-#[test]
-fn empty_icebox_unified_is_omitted_from_json() {
-    let index = PriorityIndex::default();
-    let json = serde_json::to_string(&index).unwrap();
-    assert!(!json.contains("icebox_unified"));
-}
-
-#[test]
-fn migrate_populates_unified_with_stories() {
-    let mut index = PriorityIndex::default();
-    index
-        .columns
-        .insert("icebox".to_string(), vec![100, 200, 300]);
-    let migrated = migrate_icebox_unified(&mut index);
-    assert!(migrated);
-    assert_eq!(index.icebox_unified.len(), 3);
-    assert_eq!(index.icebox_unified[0], IceboxItem::Story { number: 100 });
-    assert_eq!(index.icebox_unified[1], IceboxItem::Story { number: 200 });
-    assert_eq!(index.icebox_unified[2], IceboxItem::Story { number: 300 });
-}
-
-#[test]
-fn migrate_is_idempotent_when_unified_already_populated() {
-    let mut index = PriorityIndex::default();
-    index.icebox_unified.push(IceboxItem::Story { number: 999 });
-    index.columns.insert("icebox".to_string(), vec![100]);
-    let migrated = migrate_icebox_unified(&mut index);
-    assert!(!migrated);
-    assert_eq!(index.icebox_unified.len(), 1);
-    assert_eq!(index.icebox_unified[0], IceboxItem::Story { number: 999 });
-}
-
-#[test]
-fn migrate_no_op_when_no_legacy_state() {
-    let mut index = PriorityIndex::default();
-    let migrated = migrate_icebox_unified(&mut index);
-    assert!(!migrated);
-    assert!(index.icebox_unified.is_empty());
 }
 
 use crate::board::domain::StoryState;
@@ -151,79 +70,8 @@ fn states_map(entries: &[(u64, StoryState)]) -> std::collections::HashMap<u64, S
 }
 
 #[test]
-fn auto_heal_evicts_stories_whose_workflow_state_is_not_icebox() {
-    let mut index = PriorityIndex::default();
-    index.icebox_unified.push(IceboxItem::Story { number: 100 });
-    index.icebox_unified.push(IceboxItem::Story { number: 200 });
-    index.icebox_unified.push(IceboxItem::Story { number: 300 });
-    let states = states_map(&[
-        (100, StoryState::Accepted),
-        (200, StoryState::Icebox),
-        (300, StoryState::Ready),
-    ]);
-    let evicted = auto_heal_icebox_unified_via_workflow_state(&mut index, &states);
-    assert_eq!(evicted, 2);
-    assert_eq!(
-        index.icebox_unified,
-        vec![IceboxItem::Story { number: 200 }]
-    );
-}
-
-#[test]
-fn auto_heal_clean_state_is_no_op() {
-    let mut index = PriorityIndex::default();
-    index.icebox_unified.push(IceboxItem::Story { number: 100 });
-    let states = states_map(&[(100, StoryState::Icebox)]);
-    let evicted = auto_heal_icebox_unified_via_workflow_state(&mut index, &states);
-    assert_eq!(evicted, 0);
-    assert_eq!(index.icebox_unified.len(), 1);
-}
-
-#[test]
-fn auto_heal_preserves_icebox_state_stories() {
-    let mut index = PriorityIndex::default();
-    index.icebox_unified.push(IceboxItem::Story { number: 100 });
-    index.icebox_unified.push(IceboxItem::Story { number: 200 });
-    let states = states_map(&[(100, StoryState::Icebox), (200, StoryState::Icebox)]);
-    let evicted = auto_heal_icebox_unified_via_workflow_state(&mut index, &states);
-    assert_eq!(evicted, 0);
-    assert_eq!(index.icebox_unified.len(), 2);
-}
-
-#[test]
-fn auto_heal_preserves_stories_with_unknown_state() {
-    let mut index = PriorityIndex::default();
-    index.icebox_unified.push(IceboxItem::Story { number: 100 });
-    index.icebox_unified.push(IceboxItem::Story { number: 200 });
-    let states = states_map(&[(100, StoryState::Icebox)]);
-    let evicted = auto_heal_icebox_unified_via_workflow_state(&mut index, &states);
-    assert_eq!(evicted, 0);
-    assert_eq!(index.icebox_unified.len(), 2);
-}
-
-#[test]
-fn auto_heal_idempotent_second_run_is_no_op() {
-    let mut index = PriorityIndex::default();
-    index.icebox_unified.push(IceboxItem::Story { number: 100 });
-    index.icebox_unified.push(IceboxItem::Story { number: 200 });
-    let states = states_map(&[(100, StoryState::Accepted), (200, StoryState::Icebox)]);
-    let first = auto_heal_icebox_unified_via_workflow_state(&mut index, &states);
-    assert_eq!(first, 1);
-    let second = auto_heal_icebox_unified_via_workflow_state(&mut index, &states);
-    assert_eq!(second, 0);
-    assert_eq!(
-        index.icebox_unified,
-        vec![IceboxItem::Story { number: 200 }]
-    );
-}
-
-// ── #1272: auto_heal_ready_column_via_workflow_state ──
-
-#[test]
 fn auto_heal_ready_evicts_non_ready_stories() {
     let mut index = PriorityIndex::default();
-    // Today's empirical repro shape: accepted/closed stories stuck +
-    // duplicates from repeated close_iteration appends.
     index.columns.insert(
         "ready".to_string(),
         vec![
@@ -240,7 +88,6 @@ fn auto_heal_ready_evicts_non_ready_stories() {
         (1254, StoryState::Ready),
     ]);
     let evicted = auto_heal_ready_column_via_workflow_state(&mut index, &states);
-    // 11 entries → 4 unique-ready; 7 evicted (3 accepted + 4 duplicates).
     assert_eq!(evicted, 7);
     assert_eq!(
         index.columns.get("ready").unwrap(),
@@ -321,79 +168,6 @@ fn auto_heal_ready_idempotent_second_run_no_op() {
     assert_eq!(index.columns.get("ready").unwrap(), &vec![1251]);
 }
 
-#[tokio::test]
-async fn auto_heal_boot_integration_evicts_stale_writes_clean_priority() {
-    use crate::board::RefreshDriver;
-    use crate::board::adapters::in_memory::InMemorySourceAdapter;
-    use crate::board::orchestrator::SyncOrchestrator;
-    use crate::board::store::BoardStore;
-    use crate::session::Session;
-    use chrono::{TimeZone, Utc};
-    use std::sync::Arc;
-
-    let dir = tempfile::tempdir().unwrap();
-    let priority_path = dir.path().join("priority.json");
-    let mut dirty = PriorityIndex::default();
-    dirty.icebox_unified.push(IceboxItem::Story { number: 100 });
-    dirty.icebox_unified.push(IceboxItem::Story { number: 200 });
-    dirty.icebox_unified.push(IceboxItem::Story { number: 300 });
-    save_priority(&priority_path, &dirty).unwrap();
-
-    let session_dir = dir.path().join("session");
-    std::fs::create_dir_all(&session_dir).unwrap();
-    let (wake_tx, _wake_rx) = tokio::sync::broadcast::channel(16);
-    let session = Arc::new(Session::new(session_dir, "test".to_string(), wake_tx));
-
-    let store = Arc::new(BoardStore::new());
-    let adapter = Arc::new(InMemorySourceAdapter::new());
-    let ts = Utc.with_ymd_and_hms(2026, 5, 1, 0, 0, 0).unwrap();
-    adapter.seed_stories(vec![
-        super::super::super::board::domain::Story::new_minimal(
-            100,
-            "s100".to_string(),
-            StoryState::Accepted,
-            ts,
-            "pm".to_string(),
-        ),
-        super::super::super::board::domain::Story::new_minimal(
-            200,
-            "s200".to_string(),
-            StoryState::Icebox,
-            ts,
-            "pm".to_string(),
-        ),
-        super::super::super::board::domain::Story::new_minimal(
-            300,
-            "s300".to_string(),
-            StoryState::Ready,
-            ts,
-            "pm".to_string(),
-        ),
-    ]);
-    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(store, adapter));
-
-    crate::auto_heal_icebox_at_path(&priority_path, session, refresh).await;
-
-    let healed = load_priority(&priority_path);
-    assert_eq!(
-        healed.icebox_unified,
-        vec![IceboxItem::Story { number: 200 }],
-        "stale accepted/ready stories evicted; icebox-state preserved"
-    );
-}
-
-#[test]
-fn migrate_re_run_is_no_op() {
-    let mut index = PriorityIndex::default();
-    index.columns.insert("icebox".to_string(), vec![100, 200]);
-    let first = migrate_icebox_unified(&mut index);
-    assert!(first);
-    let snapshot = index.icebox_unified.clone();
-    let second = migrate_icebox_unified(&mut index);
-    assert!(!second);
-    assert_eq!(index.icebox_unified, snapshot);
-}
-
 fn story(number: u64, state: &str) -> serde_json::Value {
     serde_json::json!({ "number": number, "state": state, "title": "s" })
 }
@@ -470,102 +244,4 @@ fn apply_priority_entries_for_absent_numbers_ignored() {
     ];
     let sorted = apply_priority_to_board(stories, &index);
     assert_eq!(numbers_of(&sorted), vec![200, 100, 300]);
-}
-
-#[test]
-fn cassiopeia_migration_drops_stale_iteration_entries_not_in_canonical() {
-    let mut index = PriorityIndex {
-        icebox_unified: vec![
-            IceboxItem::Iteration { number: 1 },
-            IceboxItem::Iteration { number: 43 },
-            IceboxItem::Iteration { number: 1316 },
-            IceboxItem::Story { number: 555 },
-        ],
-        ..Default::default()
-    };
-    let audit = migrate_existing_iterations_into_icebox_unified(&mut index, &[1316]);
-    assert_eq!(
-        audit.dropped_stale,
-        vec![1, 43],
-        "stale numbers (no canonical iteration) dropped"
-    );
-    assert!(
-        audit.inserted_missing.is_empty(),
-        "nothing missing — canonical iteration already present"
-    );
-    assert_eq!(
-        index.icebox_unified,
-        vec![
-            IceboxItem::Iteration { number: 1316 },
-            IceboxItem::Story { number: 555 },
-        ],
-        "stale Iteration entries removed; canonical Iteration + unrelated Story preserved"
-    );
-}
-
-#[test]
-fn cassiopeia_migration_inserts_missing_canonical_iterations_at_bottom_sorted() {
-    let mut index = PriorityIndex {
-        icebox_unified: vec![
-            IceboxItem::Story { number: 100 },
-            IceboxItem::Iteration { number: 1316 },
-        ],
-        ..Default::default()
-    };
-    let audit = migrate_existing_iterations_into_icebox_unified(
-        &mut index,
-        &[1316, 1317, 1318, 1338, 1336],
-    );
-    assert_eq!(
-        audit.inserted_missing,
-        vec![1317, 1318, 1336, 1338],
-        "missing canonical iterations inserted in ascending order"
-    );
-    assert!(audit.dropped_stale.is_empty(), "no stale entries to drop");
-    assert_eq!(
-        index.icebox_unified,
-        vec![
-            IceboxItem::Story { number: 100 },
-            IceboxItem::Iteration { number: 1316 },
-            IceboxItem::Iteration { number: 1317 },
-            IceboxItem::Iteration { number: 1318 },
-            IceboxItem::Iteration { number: 1336 },
-            IceboxItem::Iteration { number: 1338 },
-        ],
-        "existing positions preserved; new iterations appended at bottom in ascending order"
-    );
-}
-
-#[test]
-fn cassiopeia_migration_is_idempotent_after_first_run() {
-    let mut index = PriorityIndex {
-        icebox_unified: vec![IceboxItem::Iteration { number: 1 }],
-        ..Default::default()
-    };
-    let first = migrate_existing_iterations_into_icebox_unified(&mut index, &[1316, 1317]);
-    assert_eq!(first.dropped_stale, vec![1]);
-    assert_eq!(first.inserted_missing, vec![1316, 1317]);
-    let second = migrate_existing_iterations_into_icebox_unified(&mut index, &[1316, 1317]);
-    assert!(
-        second.is_noop(),
-        "second run is a no-op (idempotent): {second:?}"
-    );
-}
-
-#[test]
-fn cassiopeia_migration_handles_both_stale_and_missing_in_one_pass() {
-    let mut index = PriorityIndex {
-        icebox_unified: vec![
-            IceboxItem::Iteration { number: 99 },
-            IceboxItem::Iteration { number: 1316 },
-        ],
-        ..Default::default()
-    };
-    let audit = migrate_existing_iterations_into_icebox_unified(&mut index, &[1316, 1317, 1318]);
-    assert_eq!(audit.dropped_stale, vec![99], "stale 99 dropped");
-    assert_eq!(
-        audit.inserted_missing,
-        vec![1317, 1318],
-        "missing 1317/1318 appended"
-    );
 }

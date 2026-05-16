@@ -66,10 +66,5 @@ export const applyStateDelta = (prev: MirrorState, delta: StateDeltaPayload): Mi
       return prev
     case 'iteration_close_blocked':
       return prev
-    case 'icebox_migration':
-      // #1258 AC 26: transient one-time-at-boot migration event. No
-      // MirrorState slot; renderer listeners hook this domain to
-      // refetch /api/board if connected during boot.
-      return prev
   }
 }

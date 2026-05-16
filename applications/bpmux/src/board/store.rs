@@ -59,8 +59,9 @@ fn tag_from_label_string(s: &str) -> Option<Tag> {
 
 /// On `BoardEvent::TagAdded`, keep `Story.raw_labels` and the
 /// label-derived `parent_epic` field in sync with the broadcast
-/// label-set. (#1299 retired the `iteration_id` axis — iteration
-/// membership is now positional via `icebox_unified`.)
+/// label-set. (#1299 retired the `iteration_id` axis; #1301 retired
+/// `icebox_unified`. Iteration membership is now positional via
+/// `iteration-{Theme}.{N}` labels on member stories.)
 fn sync_raw_labels_on_tag_added(story: &mut Story, label: &str) {
     if !story.raw_labels.iter().any(|l| l == label) {
         story.raw_labels.push(label.to_string());
@@ -197,8 +198,8 @@ impl BoardStore {
     /// order within this function. Today's #1274 root cause class: a
     /// state-mutation path that committed without firing the event,
     /// leaving downstream listeners (close_iteration promote-batch
-    /// scan, icebox_unified cascade-clean, iteration_id membership scan)
-    /// unable to detect the transition. The pre-commit ordering ensures
+    /// scan, iteration-label membership scan) unable to detect the
+    /// transition. The pre-commit ordering ensures
     /// that any observer running synchronously between the send and the
     /// write-lock acquire (e.g., the `#[cfg(test)] test_post_send_hook`)
     /// sees the pre-mutation store-state; the deterministic-ordering

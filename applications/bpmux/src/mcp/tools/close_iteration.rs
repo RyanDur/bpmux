@@ -6,7 +6,7 @@ pub fn close_iteration_tool(description: &'static str) -> Tool {
         "properties": {
             "iteration_number": {
                 "type": "integer",
-                "description": "Issue number of the Iteration story (story_type=Iteration) to close. Closes the GH iteration-issue + promotes member-stories (derived positionally as stories above the marker in icebox_unified, bounded by previous Iteration marker or top-of-icebox) to ready via the canonical mutation chain. Preserves the ready-empty guard and IterationClose state-delta broadcast."
+                "description": "Issue number of the Iteration story (story_type=Iteration) to close. Closes the GH iteration-issue + promotes member-stories (derived from `iteration-{Theme}.{position}` labels on member stories) to ready via the canonical mutation chain. Preserves the ready-empty guard and IterationClose state-delta broadcast."
             }
         },
         "required": ["iteration_number"]

@@ -483,7 +483,6 @@ global_contract!(
     load_priority_default_when_unset,
     |global: &dyn GlobalStore| {
         let idx = global.load_priority();
-        assert!(idx.icebox_unified.is_empty());
         assert!(idx.columns.is_empty());
     }
 );
@@ -492,13 +491,13 @@ global_contract!(
     save_then_load_priority_roundtrips,
     |global: &dyn GlobalStore| {
         let mut idx = crate::session::priority::PriorityIndex::default();
-        idx.icebox_unified
-            .push(crate::session::priority::IceboxItem::Story { number: 100 });
-        idx.icebox_unified
-            .push(crate::session::priority::IceboxItem::Story { number: 200 });
+        idx.columns.insert("ready".to_string(), vec![100, 200]);
         global.save_priority(&idx).unwrap();
         let loaded = global.load_priority();
-        assert_eq!(loaded.icebox_unified.len(), 2);
+        assert_eq!(
+            loaded.columns.get("ready").cloned().unwrap_or_default(),
+            vec![100, 200]
+        );
     }
 );
 
@@ -506,22 +505,18 @@ global_contract!(
     save_priority_overwrites_previous,
     |global: &dyn GlobalStore| {
         let mut idx_v1 = crate::session::priority::PriorityIndex::default();
-        idx_v1
-            .icebox_unified
-            .push(crate::session::priority::IceboxItem::Story { number: 1 });
+        idx_v1.columns.insert("ready".to_string(), vec![1]);
         global.save_priority(&idx_v1).unwrap();
 
         let mut idx_v2 = crate::session::priority::PriorityIndex::default();
-        idx_v2
-            .icebox_unified
-            .push(crate::session::priority::IceboxItem::Story { number: 2 });
-        idx_v2
-            .icebox_unified
-            .push(crate::session::priority::IceboxItem::Story { number: 3 });
+        idx_v2.columns.insert("ready".to_string(), vec![2, 3]);
         global.save_priority(&idx_v2).unwrap();
 
         let loaded = global.load_priority();
-        assert_eq!(loaded.icebox_unified.len(), 2);
+        assert_eq!(
+            loaded.columns.get("ready").cloned().unwrap_or_default(),
+            vec![2, 3]
+        );
     }
 );
 

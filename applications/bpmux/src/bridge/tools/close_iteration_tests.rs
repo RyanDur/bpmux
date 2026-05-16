@@ -143,12 +143,13 @@ mod canonical_via_gh_1300 {
     async fn canonical_path_does_not_touch_legacy_priority_json_substrate() {
         // AC10 cross-contamination check: canonical path operates on
         // store + iteration-issue only; does NOT mutate priority.json
-        // icebox_unified (that's the legacy substrate retiring at #1302).
+        // (the remaining `columns` + `current_iteration_stories` fields
+        // are also slated to retire as part of broader #1301 scope).
         // Verified by holding a priority.json snapshot pre-call and
         // asserting post-call equality.
         let priority_dir = tempfile::tempdir().unwrap();
         let priority_path = priority_dir.path().join("priority.json");
-        let priority_pre = r#"{"icebox_unified":[{"kind":"marker","id":42}]}"#;
+        let priority_pre = r#"{"columns":{},"current_iteration_stories":[42]}"#;
         std::fs::write(&priority_path, priority_pre).unwrap();
 
         let refresh = build_refresh(vec![

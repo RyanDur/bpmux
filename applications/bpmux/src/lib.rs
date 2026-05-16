@@ -168,133 +168,8 @@ fn post_activity(body: &serde_json::Value) {
     });
 }
 
-/// #1258 α-substrate boot migration. Idempotent: runs once at process
-/// init; subsequent boots see populated `icebox_unified` and no-op.
-/// Failures are logged via diag — migration is best-effort and must
-/// not block server boot (priority.json is recoverable from columns
-/// on next session). On successful migration, emits an `IceboxMigration`
-/// state-delta so any bridges that connect during boot can refetch
-/// (AC 26).
-fn migrate_icebox_unified_at_boot(session: &session::Session) {
-    let Ok(path) = session::priority::default_priority_path() else {
-        return;
-    };
-    let mut index = session::priority::load_priority(&path);
-    let migrated = session::priority::migrate_icebox_unified(&mut index);
-    if !migrated {
-        return;
-    }
-    if let Err(e) = session::priority::save_priority(&path, &index) {
-        session::diag::log_diag(&format!(
-            "[#1258] icebox_unified migration: save failed: {e}"
-        ));
-        return;
-    }
-    let entries = index.icebox_unified.len();
-    session::diag::log_diag(&format!(
-        "[#1258] icebox_unified migration: populated {entries} entries"
-    ));
-    let payload = session::message::StateDeltaPayload::IceboxMigration { entries };
-    let msg = session::Message {
-        from: "bpmux".to_string(),
-        text: String::new(),
-        ts: chrono::Utc::now(),
-        message_type: session::MessageType::StateDelta,
-        state_delta: Some(payload),
-        ..session::Message::default()
-    };
-    if let Err(e) = session.broadcast(&msg) {
-        session::diag::log_diag(&format!(
-            "[#1258] icebox_unified migration: state-delta broadcast failed: {e}"
-        ));
-    }
-}
-
-/// #1268 backward-resilience boot-time auto-heal. Forces a one-shot
-/// `refresh_all` so the canonical workflow_state is available, then
-/// evicts Story entries from `icebox_unified` whose state ≠ Icebox.
-/// Pairs with #1266 forward cascade-clean at boot axis. Failures are
-/// logged via diag — heal is best-effort and must not block server
-/// boot. On successful eviction, emits an `IceboxMigration` state-
-/// delta so renderers refetch (sister-pattern to #1258 migration).
-pub async fn auto_heal_icebox_at_boot(
-    session: Arc<session::Session>,
-    refresh: Arc<dyn board::RefreshDriver>,
-) {
-    let Ok(path) = session::priority::default_priority_path() else {
-        return;
-    };
-    auto_heal_icebox_at_path(&path, session, refresh).await;
-}
-
-pub async fn auto_heal_icebox_at_path(
-    path: &std::path::Path,
-    session: Arc<session::Session>,
-    refresh: Arc<dyn board::RefreshDriver>,
-) {
-    if let Err(e) = refresh.refresh_all().await {
-        session::diag::log_diag(&format!(
-            "[#1268] auto-heal: refresh_all failed: {e}; skipping heal"
-        ));
-        return;
-    }
-    let mut index = session::priority::load_priority(path);
-    let canonical_states: std::collections::HashMap<u64, board::domain::StoryState> = refresh
-        .all_stories()
-        .into_iter()
-        .map(|s| (s.number, s.state))
-        .collect();
-    let evicted = session::priority::auto_heal_icebox_unified_via_workflow_state(
-        &mut index,
-        &canonical_states,
-    );
-    let canonical_iteration_numbers: Vec<u64> = refresh
-        .all_stories()
-        .into_iter()
-        .filter(|s| matches!(s.story_type, board::domain::StoryType::Iteration))
-        .map(|s| s.number)
-        .collect();
-    let cassiopeia_audit = session::priority::migrate_existing_iterations_into_icebox_unified(
-        &mut index,
-        &canonical_iteration_numbers,
-    );
-    if evicted == 0 && cassiopeia_audit.is_noop() {
-        return;
-    }
-    if let Err(e) = session::priority::save_priority(path, &index) {
-        session::diag::log_diag(&format!("[#1268] auto-heal: save failed: {e}"));
-        return;
-    }
-    session::diag::log_diag(&format!(
-        "[#1268] auto-heal: evicted {evicted} stale story entries from icebox_unified"
-    ));
-    if !cassiopeia_audit.is_noop() {
-        session::diag::log_diag(&format!(
-            "[#1301] Cassiopeia iteration migration: dropped {:?}; inserted {:?}",
-            cassiopeia_audit.dropped_stale, cassiopeia_audit.inserted_missing
-        ));
-    }
-    let payload = session::message::StateDeltaPayload::IceboxMigration {
-        entries: index.icebox_unified.len(),
-    };
-    let msg = session::Message {
-        from: "bpmux".to_string(),
-        text: String::new(),
-        ts: chrono::Utc::now(),
-        message_type: session::MessageType::StateDelta,
-        state_delta: Some(payload),
-        ..session::Message::default()
-    };
-    if let Err(e) = session.broadcast(&msg) {
-        session::diag::log_diag(&format!(
-            "[#1268] auto-heal: state-delta broadcast failed: {e}"
-        ));
-    }
-}
-
 /// #1272 backward-resilience boot-time auto-heal at ready-column-axis.
-/// Sister of `auto_heal_icebox_at_boot` (#1268) at columns["ready"]-
-/// axis. Forces a one-shot `refresh_all` so canonical workflow_state
+/// Forces a one-shot `refresh_all` so canonical workflow_state
 /// is available, then evicts entries from `columns["ready"]` whose
 /// state ≠ Ready (catches stale state from missing forward-cascade-
 /// clean on accept/close + duplicates from pre-#1272 close_iteration
@@ -356,7 +231,6 @@ fn run_server_only(cli: &Cli) -> anyhow::Result<()> {
         cli.name.clone(),
         wake_tx,
     ));
-    migrate_icebox_unified_at_boot(&session);
     let port = cli.mcp_port;
     let ct = CancellationToken::new();
     let restart_signal = transport::self_update::RestartSignal::new();

@@ -454,10 +454,9 @@ pub(super) async fn handle_create_iteration(
 }
 
 /// Build the issue body for a new iteration-issue. Cassiopeia
-/// substrate: iteration membership is positional (stories above the
-/// marker in icebox_unified, bounded by previous marker or top-of-
-/// icebox); body is human-readable + future-tooling hint, not parsed
-/// for membership.
+/// substrate: iteration membership is canonical-via-GH via
+/// `iteration-{Theme}.{position}` labels on member stories (#1300).
+/// Body is human-readable, not parsed for membership.
 fn compose_iteration_body(theme_name: &str) -> String {
     let today = chrono::Utc::now().format("%Y-%m-%d");
     format!(
@@ -468,15 +467,15 @@ fn compose_iteration_body(theme_name: &str) -> String {
          \n\
          ## Member stories\n\
          \n\
-         <!-- Positional members: stories above this marker in icebox_unified,\n\
-              bounded by previous Iteration marker or top-of-icebox. -->\n\
+         <!-- Members carry `iteration-{theme_name}.{{position}}` labels;\n\
+              ordering is by position ascending. -->\n\
          \n\
          _(no members yet)_\n\
          \n\
          ## Notes\n\
          \n\
          bpmux iteration substrate (Epic #1189 architectural-pivot).\n\
-         Close via `close_iteration` ceremony (slice 4).\n"
+         Close via `close_iteration` ceremony.\n"
     )
 }
 
