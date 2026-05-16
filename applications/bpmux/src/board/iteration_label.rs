@@ -90,16 +90,9 @@ pub fn derive_iteration_labels_from_icebox_unified(
     icebox_unified: &[IceboxItem],
     stories: &[Story],
 ) -> Vec<DerivedLabel> {
-    let title_of = |number: u64| -> Option<String> {
-        stories
-            .iter()
-            .find(|s| s.number == number)
-            .map(|s| s.title.clone())
-    };
+    let canonical = |number: u64| -> Option<&Story> { stories.iter().find(|s| s.number == number) };
     let has_existing = |number: u64, prefix: &str| -> bool {
-        stories
-            .iter()
-            .find(|s| s.number == number)
+        canonical(number)
             .map(|s| {
                 s.raw_labels.iter().any(|l| {
                     parse_iteration_label(l)
@@ -115,9 +108,11 @@ pub fn derive_iteration_labels_from_icebox_unified(
         std::collections::HashMap::new();
     for (i, item) in icebox_unified.iter().enumerate() {
         if let IceboxItem::Iteration { number } = item
-            && let Some(title) = title_of(*number)
+            && let Some(story) = canonical(*number)
+            && !story.is_closed
+            && matches!(story.story_type, crate::board::domain::StoryType::Iteration)
         {
-            let theme = theme_name_from_title(&title);
+            let theme = theme_name_from_title(&story.title);
             theme_at_idx.insert(i, theme.clone());
             if !has_existing(*number, "iteration-order.") {
                 out.push(DerivedLabel {
@@ -163,17 +158,19 @@ fn emit_member_labels_for_band(
     let mut seq: u32 = DEFAULT_FIRST_POSITION;
     for item in band {
         if let IceboxItem::Story { number } = item {
-            let has_label = stories
-                .iter()
-                .find(|s| s.number == *number)
-                .map(|s| {
-                    s.raw_labels.iter().any(|l| {
-                        parse_iteration_label(l)
-                            .map(|p| p.theme_name == theme)
-                            .unwrap_or(false)
-                    })
-                })
-                .unwrap_or(false);
+            let Some(story) = stories.iter().find(|s| s.number == *number) else {
+                seq += DEFAULT_STEP;
+                continue;
+            };
+            if story.is_closed {
+                seq += DEFAULT_STEP;
+                continue;
+            }
+            let has_label = story.raw_labels.iter().any(|l| {
+                parse_iteration_label(l)
+                    .map(|p| p.theme_name == theme)
+                    .unwrap_or(false)
+            });
             if !has_label {
                 out.push(DerivedLabel {
                     story_number: *number,
@@ -378,6 +375,9 @@ mod tests {
             Utc.with_ymd_and_hms(2026, 5, 15, 0, 0, 0).unwrap(),
             "pm".to_string(),
         );
+        if title.starts_with("Iteration ") {
+            s.story_type = crate::board::domain::StoryType::Iteration;
+        }
         s.raw_labels = raw_labels;
         s
     }
@@ -499,5 +499,148 @@ mod tests {
     fn derive_labels_no_op_on_empty_icebox_unified() {
         let derived = derive_iteration_labels_from_icebox_unified(&[], &[]);
         assert!(derived.is_empty());
+    }
+
+    mod defensive_guard_1301_class_a_tests {
+        use super::*;
+        use crate::board::domain::StoryType;
+
+        fn seed_with_type(
+            number: u64,
+            title: &str,
+            story_type: StoryType,
+            is_closed: bool,
+            raw_labels: Vec<String>,
+        ) -> Story {
+            let mut s = Story::new_minimal(
+                number,
+                title.to_string(),
+                StoryState::Icebox,
+                Utc.with_ymd_and_hms(2026, 5, 16, 0, 0, 0).unwrap(),
+                "pm".to_string(),
+            );
+            s.story_type = story_type;
+            s.is_closed = is_closed;
+            s.raw_labels = raw_labels;
+            s
+        }
+
+        #[test]
+        fn derive_skips_iteration_entry_pointing_to_closed_story() {
+            let unified = vec![IceboxItem::Iteration { number: 1 }];
+            let stories = vec![seed_with_type(
+                1,
+                "A developer can start a solo session",
+                StoryType::Feature,
+                true,
+                vec!["Feature".into(), "accepted".into()],
+            )];
+            let derived = derive_iteration_labels_from_icebox_unified(&unified, &stories);
+            assert!(
+                derived.is_empty(),
+                "stale Iteration entry pointing to closed story #1 should be skipped — defensive guard prevents Cassiopeia-label pollution on unrelated delivered work: {derived:?}"
+            );
+        }
+
+        #[test]
+        fn derive_skips_iteration_entry_when_canonical_type_is_not_iteration() {
+            let unified = vec![IceboxItem::Iteration { number: 42 }];
+            let stories = vec![seed_with_type(
+                42,
+                "Some Feature",
+                StoryType::Feature,
+                false,
+                vec!["Feature".into()],
+            )];
+            let derived = derive_iteration_labels_from_icebox_unified(&unified, &stories);
+            assert!(
+                derived.is_empty(),
+                "Iteration entry pointing to a Feature-type story should be skipped — type-mismatch guard: {derived:?}"
+            );
+        }
+
+        #[test]
+        fn derive_skips_story_entry_pointing_to_closed_story() {
+            let unified = vec![
+                IceboxItem::Story { number: 500 },
+                IceboxItem::Iteration { number: 777 },
+            ];
+            let stories = vec![
+                seed_with_type(
+                    500,
+                    "closed-story",
+                    StoryType::Feature,
+                    true,
+                    vec!["accepted".into()],
+                ),
+                seed_with_type(
+                    777,
+                    "Iteration Pegasus",
+                    StoryType::Iteration,
+                    false,
+                    vec![],
+                ),
+            ];
+            let derived = derive_iteration_labels_from_icebox_unified(&unified, &stories);
+            assert!(
+                !derived.iter().any(|d| d.story_number == 500),
+                "closed story in band should be skipped — defensive guard: {derived:?}"
+            );
+            assert!(
+                derived.iter().any(|d| d.story_number == 777),
+                "live iteration should still be labeled: {derived:?}"
+            );
+        }
+
+        #[test]
+        fn derive_still_labels_live_iteration_and_open_member() {
+            let unified = vec![
+                IceboxItem::Story { number: 100 },
+                IceboxItem::Iteration { number: 777 },
+            ];
+            let stories = vec![
+                seed_with_type(100, "live-story", StoryType::Feature, false, vec![]),
+                seed_with_type(
+                    777,
+                    "Iteration Pegasus",
+                    StoryType::Iteration,
+                    false,
+                    vec![],
+                ),
+            ];
+            let derived = derive_iteration_labels_from_icebox_unified(&unified, &stories);
+            assert!(
+                derived
+                    .iter()
+                    .any(|d| d.story_number == 100 && d.label == "iteration-Pegasus.100"),
+                "open member of live iteration should still be labeled: {derived:?}"
+            );
+            assert!(
+                derived
+                    .iter()
+                    .any(|d| d.story_number == 777 && d.label == "iteration-order.100"),
+                "live iteration should still get iteration-order label: {derived:?}"
+            );
+        }
+
+        #[test]
+        fn derive_skips_story_when_canonical_record_missing() {
+            let unified = vec![
+                IceboxItem::Story { number: 999 },
+                IceboxItem::Iteration { number: 777 },
+            ];
+            let stories = vec![seed_with_type(
+                777,
+                "Iteration Pegasus",
+                StoryType::Iteration,
+                false,
+                vec![],
+            )];
+            let derived = derive_iteration_labels_from_icebox_unified(&unified, &stories);
+            assert!(
+                !derived.iter().any(|d| d.story_number == 999),
+                "story 999 doesn't exist in canonical store; TagAdded would fail at adapter — skip: {derived:?}"
+            );
+        }
     }
 }

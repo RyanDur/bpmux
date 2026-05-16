@@ -123,7 +123,6 @@ async fn build_prod_orchestrator(
                     "server: production orchestrator ingest succeeded on attempt {} ({count} stories)",
                     attempt + 1
                 ));
-                migrate_icebox_unified_to_iteration_labels(&orch);
                 if let Err(e) = store.persist_to_storage(session.storage.as_ref()) {
                     crate::session::diag::log_diag(&format!(
                         "server: post-ingest snapshot to storage failed: {e}"
@@ -314,6 +313,7 @@ pub async fn run_server(
             crate::auto_heal_icebox_at_boot(session_for_markers_heal.clone(), refresh.clone())
                 .await;
             crate::auto_heal_ready_column_at_boot(session_for_markers_heal, refresh.clone()).await;
+            migrate_icebox_unified_to_iteration_labels(&refresh);
             let _ = refresh;
         });
     }
@@ -647,6 +647,9 @@ mod migration_1301_auto_on_startup_tests {
             Utc.with_ymd_and_hms(2026, 5, 15, 0, 0, 0).unwrap(),
             "pm".to_string(),
         );
+        if title.starts_with("Iteration ") {
+            s.story_type = crate::board::domain::StoryType::Iteration;
+        }
         s.raw_labels = raw_labels;
         s
     }
@@ -715,6 +718,31 @@ mod migration_1301_auto_on_startup_tests {
         assert_eq!(
             label_of(&orch, 777, "iteration-order."),
             Some("iteration-order.100".to_string())
+        );
+    }
+
+    #[tokio::test]
+    async fn migration_does_not_pollute_closed_delivered_story_when_priority_json_has_stale_entry()
+    {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("priority.json");
+        std::fs::write(
+            &path,
+            r#"{"icebox_unified":[{"kind":"iteration","number":1}]}"#,
+        )
+        .unwrap();
+        let mut closed_feature = seed_story_with_title(
+            1,
+            "A developer can start a solo session",
+            vec!["Feature".into(), "accepted".into()],
+        );
+        closed_feature.is_closed = true;
+        closed_feature.state = StoryState::Accepted;
+        let orch = build_orch(vec![closed_feature]).await;
+        migrate_icebox_unified_to_iteration_labels_at(&orch, &path);
+        assert!(
+            label_of(&orch, 1, "iteration-").is_none(),
+            "defensive guard must prevent Cassiopeia-label pollution on closed-delivered stories — exact prod-bug shape from 2026-05-16 boot"
         );
     }
 
