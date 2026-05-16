@@ -51,7 +51,7 @@ test.describe('human-side E2E #476 — direct-action — board drill-in', () => 
       // but the renderer uses a `<div role="button" class="board-
       // story-button">` (clickable surface, not a real button). The
       // class selector matches the production element directly.
-      await storyRow.locator('button').first().click()
+      await storyRow.locator('[role="button"]').first().click()
 
       const drillIn = win.locator('[data-test="board-drill-in"]')
       await expect(drillIn).toBeVisible()

@@ -41,7 +41,7 @@ test.describe('human-side E2E #476 — read-class — drill-in body content', ()
       const storyRow = win.locator('[data-test="board-story-1"]').first()
       await expect(storyRow).toContainText('drill-body-target')
 
-      await storyRow.locator('button').first().click()
+      await storyRow.locator('[role="button"]').first().click()
       const drillIn = win.locator('[data-test="board-drill-in"]')
       await expect(drillIn).toBeVisible()
 

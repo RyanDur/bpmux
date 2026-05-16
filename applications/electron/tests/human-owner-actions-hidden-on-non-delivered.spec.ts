@@ -44,7 +44,7 @@ test.describe('human-side E2E #476 — owner-specific — actions hidden on non-
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      await storyRow.locator('button').first().click()
+      await storyRow.locator('[role="button"]').first().click()
 
       const drillIn = win.locator('[data-test="board-drill-in"]')
       await expect(drillIn).toBeVisible()
