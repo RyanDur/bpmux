@@ -321,13 +321,7 @@ pub(in crate::bridge) async fn handle_move_story(
     } else {
         position.zip(target_position_state_label(target))
     };
-    apply_move_story_priority(
-        &path,
-        target_is_icebox,
-        target_is_in_flight,
-        number,
-        priority_position,
-    )?;
+    apply_move_story_priority(&path, target_is_in_flight, number, priority_position)?;
 
     let body = audit_comment_body(&actor_short, &from_display, target, position, &rationale);
     r.mutate_sync(crate::board::BoardEvent::FreeCommentAppended { meta, number, body })
@@ -355,7 +349,6 @@ fn target_position_state_label(target: TargetState) -> Option<&'static str> {
 
 pub(crate) fn apply_move_story_priority(
     path: &std::path::Path,
-    target_is_icebox: bool,
     target_is_in_flight: bool,
     number: u64,
     position_with_state: Option<(usize, &str)>,
@@ -365,17 +358,6 @@ pub(crate) fn apply_move_story_priority(
     if let Some((pos, state_str)) = position_with_state {
         crate::session::priority::reorder(&mut index, state_str, number, pos);
     }
-    if !target_is_icebox {
-        evict_story_from_icebox_unified(&mut index, number);
-    }
-    // #1272: forward cascade-clean for legacy `columns["ready"]` array.
-    // Sister to #1266 icebox eviction above at ready-column-axis. When
-    // target is anything other than Ready, the story must not remain
-    // in the legacy ready list — otherwise it accumulates as stale
-    // state (today's repro: accepted/closed stories stuck in ready).
-    // The `position_with_state` re-insert above (when target IS ready)
-    // already handles the ready→ready reorder case; here we evict on
-    // the out-of-ready path.
     let target_is_ready = matches!(position_with_state, Some((_, "ready")));
     if !target_is_ready {
         evict_story_from_ready_column(&mut index, number);
@@ -393,20 +375,7 @@ pub(crate) fn apply_move_story_priority(
     Ok(())
 }
 
-fn evict_story_from_icebox_unified(
-    index: &mut crate::session::priority::PriorityIndex,
-    number: u64,
-) {
-    index.icebox_unified.retain(|item| {
-        !matches!(
-            item,
-            crate::session::priority::IceboxItem::Story { number: n } if *n == number
-        )
-    });
-}
-
 /// #1272: remove `number` from the legacy `columns["ready"]` array.
-/// Sister to `evict_story_from_icebox_unified` at ready-column-axis.
 /// No-op when the column is absent or the number isn't present.
 pub(crate) fn evict_story_from_ready_column(
     index: &mut crate::session::priority::PriorityIndex,
@@ -559,63 +528,19 @@ mod tests {
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod move_story_priority_cascade_clean_tests {
     use super::*;
-    use crate::session::priority::{IceboxItem, load_priority};
+    use crate::session::priority::load_priority;
 
     fn seed(path: &std::path::Path, json: &str) {
         std::fs::write(path, json).unwrap();
     }
 
     #[test]
-    fn move_to_accepted_evicts_story_from_icebox_unified() {
+    fn move_to_ready_appends_to_legacy_ready_and_marks_current_iteration() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("priority.json");
-        seed(
-            &path,
-            r#"{"icebox_unified":[
-                {"kind":"story","number":1100},
-                {"kind":"story","number":1200}
-            ]}"#,
-        );
-        apply_move_story_priority(&path, false, false, 1100, None).unwrap();
+        seed(&path, r#"{}"#);
+        apply_move_story_priority(&path, true, 1100, Some((1, "ready"))).unwrap();
         let index = load_priority(&path);
-        assert!(
-            !index
-                .icebox_unified
-                .contains(&IceboxItem::Story { number: 1100 }),
-            "story 1100 must be evicted from icebox_unified"
-        );
-        assert!(
-            index
-                .icebox_unified
-                .contains(&IceboxItem::Story { number: 1200 }),
-            "story 1200 (not moved) preserved"
-        );
-    }
-
-    #[test]
-    fn move_to_retired_evicts_story_from_icebox_unified() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("priority.json");
-        seed(
-            &path,
-            r#"{"icebox_unified":[{"kind":"story","number":1100}]}"#,
-        );
-        apply_move_story_priority(&path, false, false, 1100, None).unwrap();
-        let index = load_priority(&path);
-        assert!(index.icebox_unified.is_empty());
-    }
-
-    #[test]
-    fn move_to_ready_evicts_from_unified_and_appends_to_legacy_ready() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("priority.json");
-        seed(
-            &path,
-            r#"{"icebox_unified":[{"kind":"story","number":1100}]}"#,
-        );
-        apply_move_story_priority(&path, false, true, 1100, Some((1, "ready"))).unwrap();
-        let index = load_priority(&path);
-        assert!(index.icebox_unified.is_empty());
         assert_eq!(
             index.columns.get("ready").cloned().unwrap_or_default(),
             vec![1100]
@@ -624,77 +549,10 @@ mod move_story_priority_cascade_clean_tests {
     }
 
     #[test]
-    fn move_to_in_progress_evicts_from_unified() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("priority.json");
-        seed(
-            &path,
-            r#"{"icebox_unified":[{"kind":"story","number":1100}]}"#,
-        );
-        apply_move_story_priority(&path, false, true, 1100, None).unwrap();
-        let index = load_priority(&path);
-        assert!(index.icebox_unified.is_empty());
-    }
-
-    #[test]
-    fn move_to_desk_check_evicts_from_unified() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("priority.json");
-        seed(
-            &path,
-            r#"{"icebox_unified":[{"kind":"story","number":1100}]}"#,
-        );
-        apply_move_story_priority(&path, false, true, 1100, None).unwrap();
-        let index = load_priority(&path);
-        assert!(index.icebox_unified.is_empty());
-    }
-
-    #[test]
-    fn move_to_delivered_evicts_from_unified() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("priority.json");
-        seed(
-            &path,
-            r#"{"icebox_unified":[{"kind":"story","number":1100}]}"#,
-        );
-        apply_move_story_priority(&path, false, true, 1100, None).unwrap();
-        let index = load_priority(&path);
-        assert!(index.icebox_unified.is_empty());
-    }
-
-    #[test]
-    fn move_to_icebox_does_not_evict_from_unified() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("priority.json");
-        seed(
-            &path,
-            r#"{"icebox_unified":[{"kind":"story","number":1100}]}"#,
-        );
-        apply_move_story_priority(&path, true, false, 1100, Some((1, "icebox"))).unwrap();
-        let index = load_priority(&path);
-        assert!(
-            index
-                .icebox_unified
-                .contains(&IceboxItem::Story { number: 1100 }),
-            "icebox-target preserves unified entry"
-        );
-    }
-
-    #[test]
-    fn move_for_story_not_in_unified_does_not_error() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("priority.json");
-        seed(&path, r#"{"icebox_unified":[]}"#);
-        apply_move_story_priority(&path, false, false, 9999, None).unwrap();
-        let index = load_priority(&path);
-        assert!(index.icebox_unified.is_empty());
-    }
-
-    #[test]
     fn save_failure_returns_error_with_rollback_path() {
         let unwritable_path =
             std::path::PathBuf::from("/dev/null/no_such_dir_for_rollback_test/priority.json");
-        let result = apply_move_story_priority(&unwritable_path, false, false, 1100, None);
+        let result = apply_move_story_priority(&unwritable_path, false, 1100, None);
         assert!(result.is_err());
     }
 }
