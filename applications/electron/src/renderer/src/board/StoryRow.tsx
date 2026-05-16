@@ -79,7 +79,12 @@ const StoryRow = ({
             event.dataTransfer.effectAllowed = 'move'
             const row = (event.currentTarget as HTMLElement).closest('li')
             if (row && typeof event.dataTransfer.setDragImage === 'function') {
-              event.dataTransfer.setDragImage(row, 0, 0)
+              const rect = row.getBoundingClientRect()
+              event.dataTransfer.setDragImage(
+                row,
+                event.clientX - rect.left,
+                event.clientY - rect.top
+              )
             }
             onDragStartRow?.()
           }}
