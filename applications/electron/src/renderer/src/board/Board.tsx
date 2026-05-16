@@ -10,6 +10,7 @@ import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import DrillIn from './DrillIn'
 import Epic from './Epic'
 import Iteration from './Iteration'
+import { computeReadyDropMutation } from './iterationPosition'
 import StoryRow from './StoryRow'
 import { useRefetchOnReconnect } from './useRefetchOnReconnect'
 import {
@@ -27,6 +28,16 @@ import {
 import './Board.css'
 
 type CollapseState = Record<ColumnState, boolean>
+
+const readyOrderFromLabels = (labels: string[]): number | null => {
+  for (const l of labels) {
+    if (l.startsWith('ready-order.')) {
+      const n = Number(l.slice('ready-order.'.length))
+      if (Number.isFinite(n) && Number.isInteger(n) && n >= 0) return n
+    }
+  }
+  return null
+}
 
 const BOARD_COLLAPSE_STORAGE_PREFIX = 'bpmux-board-collapse'
 
@@ -394,6 +405,43 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
         setReorderAnnounce(`Moved to position ${newPosition} of ${groupSize}`)
       }
       if (usingMock || !bridge?.apiBase) return
+      if (state === 'ready' && prevData) {
+        const readyStories = prevData.stories.filter(
+          (s) =>
+            columnFor(s.state, s.gh_state === 'closed', storyTypeFromLabels(s.labels)) === 'ready'
+        )
+        const targetMemberPositions = readyStories
+          .map((s) => readyOrderFromLabels(s.labels))
+          .filter((p): p is number => p !== null)
+        const draggedStory = readyStories.find((s) => s.number === moved)
+        const draggedOldPosition = draggedStory ? readyOrderFromLabels(draggedStory.labels) : null
+        const mutation = computeReadyDropMutation({
+          draggedOldPosition,
+          targetMemberPositions,
+          targetMemberIndex: Math.max(0, insertAt),
+          targetMembersIncludeDragged: draggedOldPosition !== null
+        })
+        if (mutation === null) return
+        fetch(`${bridge.apiBase}/api/stories/${moved}/labels`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${bridge.authToken ?? ''}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(mutation)
+        })
+          .then((res) => {
+            if (!res.ok) {
+              setData(prevData)
+              setError(`Reorder failed: HTTP ${res.status}`)
+            }
+          })
+          .catch((err) => {
+            setData(prevData)
+            setError(`Reorder failed: ${err instanceof Error ? err.message : String(err)}`)
+          })
+        return
+      }
       const targetPosition = Math.max(0, insertAt)
       fetch(`${bridge.apiBase}/api/stories/${moved}/reorder`, {
         method: 'POST',

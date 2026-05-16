@@ -72,3 +72,26 @@ export const computeDropMutation = (input: DropMutationInput): DropMutation | nu
     remove: [`iteration-${draggedThemeName}.${draggedOldPosition}`]
   }
 }
+
+export interface ReadyDropMutationInput {
+  draggedOldPosition: number | null
+  targetMemberPositions: number[]
+  targetMemberIndex: number
+  targetMembersIncludeDragged: boolean
+}
+
+export const computeReadyDropMutation = (
+  input: ReadyDropMutationInput
+): DropMutation | null => {
+  const { draggedOldPosition, targetMemberPositions, targetMemberIndex, targetMembersIncludeDragged } =
+    input
+  const withoutSource =
+    draggedOldPosition !== null && targetMembersIncludeDragged
+      ? targetMemberPositions.filter((p) => p !== draggedOldPosition)
+      : targetMemberPositions
+  const { position: newPosition } = computeInsertPosition(targetMemberIndex, withoutSource)
+  if (draggedOldPosition !== null && newPosition === draggedOldPosition) return null
+  const add = [`ready-order.${newPosition}`]
+  const remove = draggedOldPosition !== null ? [`ready-order.${draggedOldPosition}`] : []
+  return { add, remove }
+}

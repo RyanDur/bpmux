@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   computeDropMutation,
   computeInsertPosition,
+  computeReadyDropMutation,
   DEFAULT_FIRST_POSITION
 } from './iterationPosition'
 
@@ -168,5 +169,60 @@ describe('computeDropMutation — drag-drop yields canonical add/remove label-pa
     })
     expect(result?.add).toEqual(['iteration-Cassiopeia.50'])
     expect(result?.remove).toEqual(['iteration-Cassiopeia.200'])
+  })
+})
+
+describe('computeReadyDropMutation — ready-order.N label substrate (#1301 slice 4C.2)', () => {
+  it('first-ever drop on empty ready column emits ready-order.100 add with no remove', () => {
+    const result = computeReadyDropMutation({
+      draggedOldPosition: null,
+      targetMemberPositions: [],
+      targetMemberIndex: 0,
+      targetMembersIncludeDragged: false
+    })
+    expect(result).toEqual({ add: ['ready-order.100'], remove: [] })
+  })
+
+  it('story moved from icebox to ready emits ready-order.N add with no remove', () => {
+    const result = computeReadyDropMutation({
+      draggedOldPosition: null,
+      targetMemberPositions: [100, 200, 300],
+      targetMemberIndex: 1,
+      targetMembersIncludeDragged: false
+    })
+    expect(result?.add).toEqual(['ready-order.150'])
+    expect(result?.remove).toEqual([])
+  })
+
+  it('within-ready drop produces add + remove pair', () => {
+    const result = computeReadyDropMutation({
+      draggedOldPosition: 300,
+      targetMemberPositions: [100, 200, 300],
+      targetMemberIndex: 0,
+      targetMembersIncludeDragged: true
+    })
+    expect(result?.add).toEqual(['ready-order.50'])
+    expect(result?.remove).toEqual(['ready-order.300'])
+  })
+
+  it('drop on same position returns null (no-op mutation)', () => {
+    const result = computeReadyDropMutation({
+      draggedOldPosition: 200,
+      targetMemberPositions: [100, 200, 300],
+      targetMemberIndex: 1,
+      targetMembersIncludeDragged: true
+    })
+    expect(result).toBeNull()
+  })
+
+  it('drop at end of ready column appends with DEFAULT_STEP', () => {
+    const result = computeReadyDropMutation({
+      draggedOldPosition: null,
+      targetMemberPositions: [100, 200, 300],
+      targetMemberIndex: 3,
+      targetMembersIncludeDragged: false
+    })
+    expect(result?.add).toEqual(['ready-order.400'])
+    expect(result?.remove).toEqual([])
   })
 })
