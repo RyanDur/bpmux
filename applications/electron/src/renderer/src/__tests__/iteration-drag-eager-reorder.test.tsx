@@ -60,6 +60,7 @@ describe('#1339 step 2d-b — eager-reorder during drag-over (ChosenPicachu patt
       expect(orderBefore).toEqual([7911, 7912, 7913])
 
       const source = container.querySelector('[data-iteration-member="7913"]') as HTMLLIElement
+      const sourceGrip = source.querySelector('[data-test="story-grip"]') as HTMLElement
       const target = container.querySelector('[data-iteration-member="7911"]') as HTMLLIElement
 
       const dataStore: Record<string, string> = {}
@@ -75,7 +76,7 @@ describe('#1339 step 2d-b — eager-reorder during drag-over (ChosenPicachu patt
         effectAllowed: 'move',
         dropEffect: 'move'
       }
-      fireEvent.dragStart(source, { dataTransfer: dt })
+      fireEvent.dragStart(sourceGrip, { dataTransfer: dt })
       Object.defineProperty(dt, 'types', { value: Object.keys(dataStore) })
       fireEvent.dragOver(target, { dataTransfer: dt })
 

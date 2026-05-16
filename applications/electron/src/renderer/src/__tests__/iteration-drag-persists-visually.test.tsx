@@ -62,6 +62,7 @@ describe('#1339 — drag-within-iteration visual no snap-back (optimistic UI)', 
       expect(orderBefore).toEqual([7711, 7712, 7713])
 
       const source = container.querySelector('[data-iteration-member="7713"]') as HTMLLIElement
+      const sourceGrip = source.querySelector('[data-test="story-grip"]') as HTMLElement
       const target = container.querySelector('[data-iteration-member="7711"]') as HTMLLIElement
       const dataStore: Record<string, string> = {}
       const dt: Pick<DataTransfer, 'setData' | 'getData' | 'types' | 'effectAllowed' | 'dropEffect'> = {
@@ -73,11 +74,11 @@ describe('#1339 — drag-within-iteration visual no snap-back (optimistic UI)', 
         effectAllowed: 'move',
         dropEffect: 'move'
       }
-      fireEvent.dragStart(source, { dataTransfer: dt })
+      fireEvent.dragStart(sourceGrip, { dataTransfer: dt })
       Object.defineProperty(dt, 'types', { value: Object.keys(dataStore) })
       fireEvent.dragOver(target, { dataTransfer: dt })
       fireEvent.drop(target, { dataTransfer: dt })
-      fireEvent.dragEnd(source, { dataTransfer: dt })
+      fireEvent.dragEnd(sourceGrip, { dataTransfer: dt })
 
       await waitFor(
         () => {

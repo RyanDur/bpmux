@@ -42,6 +42,8 @@ describe('#1339 step 2d — dragged member carries data-dragging during drag ges
       })
       const member = container.querySelector('[data-iteration-member="7811"]') as HTMLLIElement
       expect(member).toBeTruthy()
+      const memberGrip = member.querySelector('[data-test="story-grip"]') as HTMLElement
+      expect(memberGrip).toBeTruthy()
       expect(member.getAttribute('data-dragging')).toBeNull()
 
       const dataStore: Record<string, string> = {}
@@ -57,10 +59,10 @@ describe('#1339 step 2d — dragged member carries data-dragging during drag ges
         effectAllowed: 'move',
         dropEffect: 'move'
       }
-      fireEvent.dragStart(member, { dataTransfer: dt })
+      fireEvent.dragStart(memberGrip, { dataTransfer: dt })
       expect(member.getAttribute('data-dragging')).toBe('true')
 
-      fireEvent.dragEnd(member, { dataTransfer: dt })
+      fireEvent.dragEnd(memberGrip, { dataTransfer: dt })
       expect(member.getAttribute('data-dragging')).toBeNull()
     },
     20_000

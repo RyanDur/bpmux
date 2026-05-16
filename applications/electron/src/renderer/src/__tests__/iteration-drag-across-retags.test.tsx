@@ -57,10 +57,12 @@ describe('#1339 — drag-across-iteration retags member with new iteration prefi
         timeout: 15_000
       })
       const source = velaContainer.querySelector('[data-iteration-member="7711"]') as HTMLLIElement
+      const sourceGrip = source.querySelector('[data-test="story-grip"]') as HTMLElement
       const target = cygnusContainer.querySelector(
         '[data-iteration-member="7721"]'
       ) as HTMLLIElement
       expect(source).toBeTruthy()
+      expect(sourceGrip).toBeTruthy()
       expect(target).toBeTruthy()
 
       const dataStore: Record<string, string> = {}
@@ -76,7 +78,7 @@ describe('#1339 — drag-across-iteration retags member with new iteration prefi
         effectAllowed: 'move',
         dropEffect: 'move'
       }
-      fireEvent.dragStart(source, { dataTransfer: dt })
+      fireEvent.dragStart(sourceGrip, { dataTransfer: dt })
       Object.defineProperty(dt, 'types', { value: Object.keys(dataStore) })
       fireEvent.dragOver(target, { dataTransfer: dt })
       fireEvent.drop(target, { dataTransfer: dt })

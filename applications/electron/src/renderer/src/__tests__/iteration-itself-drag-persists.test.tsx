@@ -55,6 +55,8 @@ describe('#1339 step 2g-b — iteration-itself drag persists via iteration-order
       const sirius = await rendered.findByTestId('board-iteration-8101', undefined, {
         timeout: 15_000
       })
+      const siriusGrip = sirius.querySelector('[data-test="iteration-grip"]') as HTMLElement
+      expect(siriusGrip).toBeTruthy()
       const vega = await rendered.findByTestId('board-iteration-8102', undefined, {
         timeout: 15_000
       })
@@ -72,7 +74,7 @@ describe('#1339 step 2g-b — iteration-itself drag persists via iteration-order
         effectAllowed: 'move',
         dropEffect: 'move'
       }
-      fireEvent.dragStart(sirius, { dataTransfer: dt })
+      fireEvent.dragStart(siriusGrip, { dataTransfer: dt })
       Object.defineProperty(dt, 'types', { value: Object.keys(dataStore) })
       fireEvent.dragOver(vega, { dataTransfer: dt })
       fireEvent.drop(vega, { dataTransfer: dt })

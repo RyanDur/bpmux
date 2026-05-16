@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { GripIcon } from './GripIcon'
 import { ReworkGlyph } from './ReworkGlyph'
 import StoryBadge from './StoryBadge'
 import StoryTypeGlyph from './StoryTypeGlyph'
@@ -221,17 +222,6 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                   dragRejectedIterationNumber === iteration.number ? 'true' : undefined
                 }
                 open={open}
-                draggable={iteration.gh_state !== 'closed'}
-                onDragStart={(event) => {
-                  const payload: IterationDragPayload = {
-                    iterationNumber: iteration.number,
-                    oldOrder: positionInIterationOrder(iteration)
-                  }
-                  event.dataTransfer.setData(DRAG_MIMETYPE_ITERATION, JSON.stringify(payload))
-                  event.dataTransfer.effectAllowed = 'move'
-                  setDraggedIterationNumber(iteration.number)
-                }}
-                onDragEnd={() => setDraggedIterationNumber(null)}
                 onDragOver={(event) => {
                   if (iteration.gh_state === 'closed') {
                     if (
@@ -285,6 +275,35 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                 }}
               >
                 <summary className="board-iteration-summary">
+                  {iteration.gh_state !== 'closed' ? (
+                    <span
+                      className="board-iteration-grip"
+                      data-test="iteration-grip"
+                      draggable={true}
+                      role="button"
+                      aria-label={`Drag to reorder iteration ${iteration.title}`}
+                      tabIndex={-1}
+                      onClick={(event) => {
+                        event.preventDefault()
+                        event.stopPropagation()
+                      }}
+                      onDragStart={(event) => {
+                        const payload: IterationDragPayload = {
+                          iterationNumber: iteration.number,
+                          oldOrder: positionInIterationOrder(iteration)
+                        }
+                        event.dataTransfer.setData(
+                          DRAG_MIMETYPE_ITERATION,
+                          JSON.stringify(payload)
+                        )
+                        event.dataTransfer.effectAllowed = 'move'
+                        setDraggedIterationNumber(iteration.number)
+                      }}
+                      onDragEnd={() => setDraggedIterationNumber(null)}
+                    >
+                      <GripIcon />
+                    </span>
+                  ) : null}
                   <button
                     type="button"
                     className="board-iteration-open-button"
@@ -359,22 +378,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                         className="board-iteration-member"
                         data-test={`board-story-${story.number}`}
                         data-iteration-member={story.number}
-                        draggable={iteration.gh_state !== 'closed'}
                         data-dragging={draggedNumber === story.number ? 'true' : undefined}
-                        onDragStart={(event) => {
-                          const payload: DragPayload = {
-                            storyNumber: story.number,
-                            themeName,
-                            oldPosition: position
-                          }
-                          event.dataTransfer.setData(DRAG_MIMETYPE, JSON.stringify(payload))
-                          event.dataTransfer.effectAllowed = 'move'
-                          setDraggedNumber(story.number)
-                        }}
-                        onDragEnd={() => {
-                          setDraggedNumber(null)
-                          setHoveredNumber(null)
-                        }}
                         onDragOver={(event) => {
                           if (event.dataTransfer.types.includes(DRAG_MIMETYPE)) {
                             event.preventDefault()
@@ -421,6 +425,35 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                           }
                         }}
                       >
+                        {iteration.gh_state !== 'closed' ? (
+                          <span
+                            className="board-story-grip"
+                            data-test="story-grip"
+                            draggable={true}
+                            role="button"
+                            aria-label={`Drag to reorder #${story.number}`}
+                            tabIndex={-1}
+                            onDragStart={(event) => {
+                              const payload: DragPayload = {
+                                storyNumber: story.number,
+                                themeName,
+                                oldPosition: position
+                              }
+                              event.dataTransfer.setData(
+                                DRAG_MIMETYPE,
+                                JSON.stringify(payload)
+                              )
+                              event.dataTransfer.effectAllowed = 'move'
+                              setDraggedNumber(story.number)
+                            }}
+                            onDragEnd={() => {
+                              setDraggedNumber(null)
+                              setHoveredNumber(null)
+                            }}
+                          >
+                            <GripIcon />
+                          </span>
+                        ) : null}
                         <div
                           role="button"
                           tabIndex={0}

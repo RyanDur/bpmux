@@ -1,3 +1,4 @@
+import { GripIcon } from './GripIcon'
 import { ReworkGlyph } from './ReworkGlyph'
 import StoryBadge, { deriveBadge } from './StoryBadge'
 import StoryTypeGlyph from './StoryTypeGlyph'
@@ -63,16 +64,26 @@ const StoryRow = ({
       data-story-type={type}
       data-closed={story.gh_state === 'closed' ? 'true' : undefined}
       data-dragging={dragging ? 'true' : undefined}
-      draggable={draggable}
-      onDragStart={(event) => {
-        if (!draggable) return
-        event.dataTransfer.setData('text/bpmux-story', String(story.number))
-        event.dataTransfer.effectAllowed = 'move'
-        onDragStartRow?.()
-      }}
-      onDragEnd={() => onDragEndRow?.()}
       onDragOver={onRowDragOver}
     >
+      {draggable ? (
+        <span
+          className="board-story-grip"
+          data-test="story-grip"
+          draggable={true}
+          role="button"
+          aria-label={`Drag to reorder #${story.number}`}
+          tabIndex={-1}
+          onDragStart={(event) => {
+            event.dataTransfer.setData('text/bpmux-story', String(story.number))
+            event.dataTransfer.effectAllowed = 'move'
+            onDragStartRow?.()
+          }}
+          onDragEnd={() => onDragEndRow?.()}
+        >
+          <GripIcon />
+        </span>
+      ) : null}
       <div
         role="button"
         tabIndex={0}

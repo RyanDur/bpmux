@@ -56,6 +56,8 @@ describe('#1339 Scenario 5 — closed iteration rejects inbound drag with visual
         '[data-iteration-member="8511"]'
       ) as HTMLLIElement
       expect(source).toBeTruthy()
+      const sourceGrip = source.querySelector('[data-test="story-grip"]') as HTMLElement
+      expect(sourceGrip).toBeTruthy()
 
       const dataStore: Record<string, string> = {}
       const dt: Pick<
@@ -70,7 +72,7 @@ describe('#1339 Scenario 5 — closed iteration rejects inbound drag with visual
         effectAllowed: 'move',
         dropEffect: 'move'
       }
-      fireEvent.dragStart(source, { dataTransfer: dt })
+      fireEvent.dragStart(sourceGrip, { dataTransfer: dt })
       Object.defineProperty(dt, 'types', { value: Object.keys(dataStore) })
       fireEvent.dragOver(eridanus, { dataTransfer: dt })
       expect(dt.dropEffect).toBe('none')

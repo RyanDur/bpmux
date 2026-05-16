@@ -107,22 +107,18 @@ test.describe('desk-check #333 drag-to-reorder (rework)', () => {
     await expect(win.locator('[data-test="board-group-ready"]').first()).toBeVisible()
 
     const row = win.locator('[data-test="board-story-701"]')
+    const grip = row.locator('[data-test="story-grip"]')
     await expect(row).toBeVisible()
-    // Pre-drag: no dragging attribute.
+    await expect(grip).toBeVisible()
     await expect(row).not.toHaveAttribute('data-dragging', 'true')
 
-    // Fire the dragstart + dragend lifecycle via evaluate — the
-    // Playwright drag-drop API doesn't cleanly trigger data-transfer
-    // setups for custom MIME types, so dispatching the events
-    // directly is the most reliable path to verify the parent's
-    // draggingNumber state tracking works.
-    await row.evaluate((el) => {
+    await grip.evaluate((el) => {
       const dt = new DataTransfer()
       el.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt }))
     })
     await expect(row).toHaveAttribute('data-dragging', 'true')
 
-    await row.evaluate((el) => {
+    await grip.evaluate((el) => {
       el.dispatchEvent(new DragEvent('dragend', { bubbles: true }))
     })
     await expect(row).not.toHaveAttribute('data-dragging', 'true')
