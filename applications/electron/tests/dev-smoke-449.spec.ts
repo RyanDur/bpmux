@@ -51,7 +51,7 @@ test.describe('#449 board collapse-state persists across refresh — dev smoke',
     await second.app.close()
   })
 
-  test('fresh userDataDir starts with GROUP_ORDER defaults (accepted + icebox collapsed)', async () => {
+  test('fresh userDataDir starts with GROUP_ORDER defaults (accepted collapsed; icebox open)', async () => {
     const { app, win } = await launchIsolatedWithWindow()
     await expect(win.locator('[data-test="board-group-ready"]')).toHaveAttribute(
       'aria-expanded',
@@ -71,7 +71,7 @@ test.describe('#449 board collapse-state persists across refresh — dev smoke',
     )
     await expect(win.locator('[data-test="board-group-icebox"]')).toHaveAttribute(
       'aria-expanded',
-      'false'
+      'true'
     )
     await app.close()
   })

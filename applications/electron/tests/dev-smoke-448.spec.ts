@@ -23,7 +23,7 @@ test.describe('#448 board column collapse affordance — dev smoke', () => {
     await app.close()
   })
 
-  test('default collapsed columns (accepted + icebox) start closed', async () => {
+  test('default collapsed columns (accepted) start closed', async () => {
     const { app, win } = await launchIsolatedWithWindow()
     await expect(win.locator('[data-test="board-group-accepted"]')).toHaveAttribute(
       'aria-expanded',
@@ -31,7 +31,7 @@ test.describe('#448 board column collapse affordance — dev smoke', () => {
     )
     await expect(win.locator('[data-test="board-group-icebox"]')).toHaveAttribute(
       'aria-expanded',
-      'false'
+      'true'
     )
     await app.close()
   })

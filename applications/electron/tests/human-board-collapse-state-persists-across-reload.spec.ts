@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
 
 test.describe('human-side E2E #476 — persistence-class — board collapse state', () => {
-  test('user-toggled icebox expand survives window reload', async () => {
+  test('user-toggled icebox collapse survives window reload', async () => {
     const { app, win, mockGh } = await launchWithMockGh()
     try {
       const consoleErrors: string[] = []
@@ -18,16 +18,16 @@ test.describe('human-side E2E #476 — persistence-class — board collapse stat
       pageErrors.length = 0
 
       const iceboxToggle = win.locator('[data-test="board-group-icebox"]')
-      await expect(iceboxToggle).toHaveAttribute('aria-expanded', 'false')
+      await expect(iceboxToggle).toHaveAttribute('aria-expanded', 'true')
 
       await iceboxToggle.click()
-      await expect(iceboxToggle).toHaveAttribute('aria-expanded', 'true')
+      await expect(iceboxToggle).toHaveAttribute('aria-expanded', 'false')
 
       await win.reload()
       await expect(win.locator('[data-test="board-region"]')).toBeVisible()
 
       const iceboxAfterReload = win.locator('[data-test="board-group-icebox"]')
-      await expect(iceboxAfterReload).toHaveAttribute('aria-expanded', 'true')
+      await expect(iceboxAfterReload).toHaveAttribute('aria-expanded', 'false')
 
       expect(consoleErrors).toEqual([])
       expect(pageErrors).toEqual([])
