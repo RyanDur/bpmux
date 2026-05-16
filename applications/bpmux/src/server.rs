@@ -123,6 +123,7 @@ async fn build_prod_orchestrator(
                     "server: production orchestrator ingest succeeded on attempt {} ({count} stories)",
                     attempt + 1
                 ));
+                migrate_icebox_unified_to_iteration_labels(&orch);
                 if let Err(e) = store.persist_to_storage(session.storage.as_ref()) {
                     crate::session::diag::log_diag(&format!(
                         "server: post-ingest snapshot to storage failed: {e}"
@@ -147,6 +148,81 @@ async fn build_prod_orchestrator(
         }
     }
     orch
+}
+
+fn migrate_icebox_unified_to_iteration_labels(orch: &Arc<dyn RefreshDriver>) {
+    let path = match crate::session::priority::default_priority_path() {
+        Ok(p) => p,
+        Err(e) => {
+            crate::session::diag::log_diag(&format!(
+                "server: migration skipped — priority.json path resolve failed: {e}"
+            ));
+            return;
+        }
+    };
+    migrate_icebox_unified_to_iteration_labels_at(orch, &path);
+}
+
+pub(crate) fn migrate_icebox_unified_to_iteration_labels_at(
+    orch: &Arc<dyn RefreshDriver>,
+    path: &std::path::Path,
+) {
+    if !path.exists() {
+        crate::session::diag::log_diag(
+            "server: migration skipped — priority.json absent (no legacy substrate to backfill)",
+        );
+        return;
+    }
+    let priority = crate::session::priority::load_priority(path);
+    if priority.icebox_unified.is_empty() {
+        crate::session::diag::log_diag(
+            "server: migration skipped — priority.json icebox_unified empty",
+        );
+        return;
+    }
+    let stories = orch.all_stories();
+    let derived = crate::board::iteration_label::derive_iteration_labels_from_icebox_unified(
+        &priority.icebox_unified,
+        &stories,
+    );
+    if derived.is_empty() {
+        crate::session::diag::log_diag(
+            "server: migration no-op — all stories already carry iteration labels (idempotent boot)",
+        );
+        return;
+    }
+    let mut applied: usize = 0;
+    let mut failed: usize = 0;
+    let mut stories_touched: std::collections::HashSet<u64> = std::collections::HashSet::new();
+    for d in &derived {
+        let meta = crate::board::events::EventMeta {
+            actor: "server-migration-1301".to_string(),
+            ts: chrono::Utc::now(),
+            peer_id: crate::board::PeerId::local(),
+        };
+        match orch.mutate_sync(crate::board::BoardEvent::TagAdded {
+            meta,
+            number: d.story_number,
+            label: d.label.clone(),
+        }) {
+            Ok(()) => {
+                applied += 1;
+                stories_touched.insert(d.story_number);
+            }
+            Err(e) => {
+                failed += 1;
+                crate::session::diag::log_diag(&format!(
+                    "server: migration TagAdded {} on #{} failed: {e}",
+                    d.label, d.story_number
+                ));
+            }
+        }
+    }
+    crate::session::diag::log_diag(&format!(
+        "server: migration completed — {applied} labels applied across {} stories (failures={failed}; icebox_unified entries={})",
+        stories_touched.len(),
+        priority.icebox_unified.len(),
+    ));
 }
 
 fn spawn_periodic_snapshot(
@@ -553,4 +629,119 @@ pub async fn run_server(
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod migration_1301_auto_on_startup_tests {
+    use super::*;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState};
+    use chrono::{TimeZone, Utc};
+
+    fn seed_story_with_title(number: u64, title: &str, raw_labels: Vec<String>) -> Story {
+        let mut s = Story::new_minimal(
+            number,
+            title.to_string(),
+            StoryState::Icebox,
+            Utc.with_ymd_and_hms(2026, 5, 15, 0, 0, 0).unwrap(),
+            "pm".to_string(),
+        );
+        s.raw_labels = raw_labels;
+        s
+    }
+
+    async fn build_orch(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
+        let store = Arc::new(BoardStore::new());
+        let adapter = Arc::new(InMemorySourceAdapter::new());
+        adapter.seed_stories(stories);
+        let orch: Arc<dyn RefreshDriver> =
+            Arc::new(crate::board::orchestrator::SyncOrchestrator::new(
+                Arc::clone(&store),
+                Arc::clone(&adapter),
+            ));
+        orch.refresh_all().await.unwrap();
+        orch
+    }
+
+    fn label_of(orch: &Arc<dyn RefreshDriver>, number: u64, prefix: &str) -> Option<String> {
+        orch.story(number)?
+            .raw_labels
+            .iter()
+            .find(|l| l.starts_with(prefix))
+            .cloned()
+    }
+
+    #[tokio::test]
+    async fn migration_skipped_when_priority_json_absent() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("priority.json");
+        let orch = build_orch(vec![seed_story_with_title(100, "story-100", vec![])]).await;
+        migrate_icebox_unified_to_iteration_labels_at(&orch, &path);
+        assert!(
+            label_of(&orch, 100, "iteration-").is_none(),
+            "no migration should fire when priority.json is absent"
+        );
+    }
+
+    #[tokio::test]
+    async fn migration_backfills_iteration_and_order_labels_for_pegasus_band() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("priority.json");
+        std::fs::write(
+            &path,
+            r#"{"icebox_unified":[
+                {"kind":"story","number":100},
+                {"kind":"story","number":101},
+                {"kind":"iteration","number":777}
+            ]}"#,
+        )
+        .unwrap();
+        let orch = build_orch(vec![
+            seed_story_with_title(100, "story-100", vec![]),
+            seed_story_with_title(101, "story-101", vec![]),
+            seed_story_with_title(777, "Iteration Pegasus", vec![]),
+        ])
+        .await;
+        migrate_icebox_unified_to_iteration_labels_at(&orch, &path);
+        assert_eq!(
+            label_of(&orch, 100, "iteration-Pegasus."),
+            Some("iteration-Pegasus.100".to_string())
+        );
+        assert_eq!(
+            label_of(&orch, 101, "iteration-Pegasus."),
+            Some("iteration-Pegasus.200".to_string())
+        );
+        assert_eq!(
+            label_of(&orch, 777, "iteration-order."),
+            Some("iteration-order.100".to_string())
+        );
+    }
+
+    #[tokio::test]
+    async fn migration_is_idempotent_on_second_boot() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("priority.json");
+        std::fs::write(
+            &path,
+            r#"{"icebox_unified":[
+                {"kind":"iteration","number":777},
+                {"kind":"story","number":200}
+            ]}"#,
+        )
+        .unwrap();
+        let orch = build_orch(vec![
+            seed_story_with_title(777, "Iteration Pegasus", vec![]),
+            seed_story_with_title(200, "loose-200", vec![]),
+        ])
+        .await;
+        migrate_icebox_unified_to_iteration_labels_at(&orch, &path);
+        let labels_after_first = orch.story(200).unwrap().raw_labels.clone();
+        migrate_icebox_unified_to_iteration_labels_at(&orch, &path);
+        let labels_after_second = orch.story(200).unwrap().raw_labels.clone();
+        assert_eq!(
+            labels_after_first, labels_after_second,
+            "second boot should be a no-op (idempotent migration)"
+        );
+    }
 }
