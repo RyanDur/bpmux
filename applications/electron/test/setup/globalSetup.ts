@@ -106,7 +106,8 @@ export default async function setup({
         BPMUX_AUTH_TOKEN_PATH: authTokenPath,
         BPMUX_BOARD_STORE_PATH: join(tempSessionDir, 'board-store.json'),
         BPMUX_BOARD_OUTBOX_PATH: join(tempSessionDir, 'board-outbox.json'),
-        BPMUX_SESSIONS_BASE: tempSessionDir
+        BPMUX_SESSIONS_BASE: tempSessionDir,
+        BPMUX_BINARY_WATCH_INTERVAL_SECS: '3600'
       },
       stdio: ['ignore', 'pipe', 'pipe']
     }
