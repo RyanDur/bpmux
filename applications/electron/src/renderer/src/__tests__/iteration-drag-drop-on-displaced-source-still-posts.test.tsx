@@ -4,23 +4,6 @@ import { fireEvent, waitFor } from '@testing-library/react'
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { seedStories } from '../../../../test/fixtures/seedMessages'
 
-// #1339 Scenario 1 user-axis falsifier — Ryan 2026-05-16 13:24 UTC:
-// drag-reorder permanently snaps back. Designer's root-cause grounded
-// 13:32 UTC: eagerReorder moves the source row to the hovered index;
-// the source's data-dragging='true' opacity:0.001 makes it look like a
-// drop slot; when user releases over that slot the onDrop fires on the
-// source <li> itself; same-story early-return skips the POST; the
-// optimistic pendingMemberPosition never sets; on dragEnd the eager
-// reorder collapses and the canonical labels (untouched) render the
-// original order. RTL tests pass because fireEvent.drop is fired on a
-// deliberately-chosen *non-source* target; real users release over the
-// eager-displaced source.
-//
-// This falsifier seeds the same DOM geometry: drags source, hovers
-// target (setHoveredNumber), then drops on the SOURCE row (the
-// displaced visual slot) — the path real users hit. Asserts the
-// canonical label mutation lands.
-
 describe('#1339 Sc1 user-axis — drop on displaced source row still posts label mutation', () => {
   let rendered: RenderAppResult | null = null
 
