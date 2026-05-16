@@ -4068,14 +4068,8 @@ mod reorder_story_icebox_label_substrate_tests_1301 {
     async fn icebox_reorder_loose_story_lands_in_unscheduled_container() {
         let orch = build_orchestrator(vec![
             seed_story(2010, vec!["icebox".into()]),
-            seed_story(
-                2011,
-                vec!["iteration-Unscheduled.100".into()],
-            ),
-            seed_story(
-                2012,
-                vec!["iteration-Unscheduled.200".into()],
-            ),
+            seed_story(2011, vec!["iteration-Unscheduled.100".into()]),
+            seed_story(2012, vec!["iteration-Unscheduled.200".into()]),
         ])
         .await;
         reorder(&orch, 2010, 1).await.unwrap();
@@ -4124,6 +4118,9 @@ mod reorder_story_icebox_label_substrate_tests_1301 {
     async fn icebox_reorder_rejects_when_story_not_in_store() {
         let orch = build_orchestrator(vec![]).await;
         let err = reorder(&orch, 9999, 1).await.unwrap_err();
-        assert!(err.contains("not found"), "expected not-found error; got {err}");
+        assert!(
+            err.contains("not found"),
+            "expected not-found error; got {err}"
+        );
     }
 }
