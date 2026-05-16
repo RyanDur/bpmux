@@ -1393,7 +1393,7 @@ pub(super) async fn handle_reorder_story(
     Ok(format!("#{number} moved to position {position} in {state}"))
 }
 
-fn reorder_icebox_story_via_labels(
+pub(crate) fn reorder_icebox_story_via_labels(
     refresh: &std::sync::Arc<dyn crate::board::RefreshDriver>,
     number: u64,
     position: usize,
