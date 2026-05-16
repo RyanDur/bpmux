@@ -371,6 +371,11 @@
     margin: var(--space-1, 2px) 0;
   }
 
+  & .board-iteration-card[open] {
+    display: flex;
+    flex-direction: column-reverse;
+  }
+
   & .board-iteration-summary {
     display: flex;
     align-items: baseline;

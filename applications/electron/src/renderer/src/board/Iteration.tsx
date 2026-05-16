@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ReworkGlyph } from './ReworkGlyph'
 import StoryBadge from './StoryBadge'
 import StoryTypeGlyph from './StoryTypeGlyph'
@@ -125,6 +125,11 @@ const eagerReorder = <T,>(
   return next
 }
 
+interface PendingMemberPosition {
+  theme: string
+  position: number
+}
+
 const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Element | null => {
   const collapse = useIterationCollapse(RENDERER_IDENTITY)
   const [draggedNumber, setDraggedNumber] = useState<number | null>(null)
@@ -133,6 +138,27 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
   const [dragRejectedIterationNumber, setDragRejectedIterationNumber] = useState<number | null>(
     null
   )
+  const [pendingMemberPosition, setPendingMemberPosition] = useState<
+    Record<number, PendingMemberPosition>
+  >({})
+
+  useEffect(() => {
+    setPendingMemberPosition((prev) => {
+      const next: Record<number, PendingMemberPosition> = {}
+      let changed = false
+      for (const [numStr, pending] of Object.entries(prev)) {
+        const num = Number(numStr)
+        const story = stories.find((s) => s.number === num)
+        const actualPosition = story ? positionInIteration(story, pending.theme) : null
+        if (actualPosition === pending.position) {
+          changed = true
+          continue
+        }
+        next[num] = pending
+      }
+      return changed ? next : prev
+    })
+  }, [stories])
   const iterations = [...stories.filter(isIterationStory)].sort((a, b) => {
     const ao = positionInIterationOrder(a)
     const bo = positionInIterationOrder(b)
@@ -162,9 +188,20 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
           const members = stories
             .map((s) => {
               if (isIterationStory(s)) return null
-              const position = positionInIteration(s, themeName)
-              if (position === null) return null
-              return { story: s, position }
+              const pending = pendingMemberPosition[s.number]
+              const labelPosition = positionInIteration(s, themeName)
+              const pendingPosition =
+                pending !== undefined && pending.theme === themeName ? pending.position : null
+              if (pendingPosition !== null) return { story: s, position: pendingPosition }
+              if (labelPosition === null) return null
+              if (
+                pending !== undefined &&
+                pending.theme !== themeName &&
+                pending.theme.toLowerCase() !== themeName.toLowerCase()
+              ) {
+                return null
+              }
+              return { story: s, position: labelPosition }
             })
             .filter((m): m is { story: BoardStory; position: number } => m !== null)
             .sort((a, b) => a.position - b.position)
@@ -369,6 +406,19 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                           })
                           if (!mutation) return
                           postLabelMutation(payload.storyNumber, mutation.add, mutation.remove)
+                          const addedLabel = mutation.add[0]
+                          const parsed = addedLabel
+                            ? parseIterationLabel(addedLabel)
+                            : null
+                          if (parsed) {
+                            setPendingMemberPosition((prev) => ({
+                              ...prev,
+                              [payload.storyNumber]: {
+                                theme: parsed.name,
+                                position: parsed.position
+                              }
+                            }))
+                          }
                         }}
                       >
                         <div
@@ -421,6 +471,19 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                             })
                             if (!mutation) return
                             postLabelMutation(story.number, mutation.add, mutation.remove)
+                            const addedLabel = mutation.add[0]
+                            const parsedKey = addedLabel
+                              ? parseIterationLabel(addedLabel)
+                              : null
+                            if (parsedKey) {
+                              setPendingMemberPosition((prev) => ({
+                                ...prev,
+                                [story.number]: {
+                                  theme: parsedKey.name,
+                                  position: parsedKey.position
+                                }
+                              }))
+                            }
                             const newIdx = direction === 'up' ? originalIdx - 1 : originalIdx + 1
                             onReorderAnnounce?.(
                               `Moved ${story.title} to position ${newIdx + 1} of ${members.length} in ${iteration.title}`
