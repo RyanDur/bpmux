@@ -1,12 +1,14 @@
 #!/bin/bash
 set -euo pipefail
 
-if [ -t 0 ]; then
+DIFF_OUTPUT=""
+if [ ! -t 0 ]; then
+    DIFF_OUTPUT=$(cat)
+fi
+if [ -z "$DIFF_OUTPUT" ]; then
     REPO_ROOT="$(git rev-parse --show-toplevel)"
     cd "$REPO_ROOT"
     DIFF_OUTPUT=$(git diff --cached --unified=0 -- '*.rs' '*.ts' '*.tsx' '*.js' '*.jsx' 2>/dev/null)
-else
-    DIFF_OUTPUT=$(cat)
 fi
 
 violations=$(
