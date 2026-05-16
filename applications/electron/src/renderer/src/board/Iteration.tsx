@@ -427,6 +427,8 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                               }
                             }))
                           }
+                          setDraggedNumber(null)
+                          setHoveredNumber(null)
                         }}
                       >
                         {iteration.gh_state !== 'closed' ? (

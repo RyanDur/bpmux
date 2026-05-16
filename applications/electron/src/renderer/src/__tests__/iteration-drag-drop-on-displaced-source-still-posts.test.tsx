@@ -79,6 +79,8 @@ describe('#1339 Sc1 user-axis — drop on displaced source row still posts label
       fireEvent.dragOver(target, { dataTransfer: dt })
       fireEvent.drop(source, { dataTransfer: dt })
 
+      expect(source.getAttribute('data-dragging')).not.toBe('true')
+
       await waitFor(
         async () => {
           const boardRes = await fetch(`${apiBase}/api/board`, {
