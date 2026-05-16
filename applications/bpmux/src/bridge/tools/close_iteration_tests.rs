@@ -143,8 +143,6 @@ mod canonical_via_gh_1300 {
     async fn canonical_path_does_not_touch_legacy_priority_json_substrate() {
         // AC10 cross-contamination check: canonical path operates on
         // store + iteration-issue only; does NOT mutate priority.json
-        // (the remaining `columns` + `current_iteration_stories` fields
-        // are also slated to retire as part of broader #1301 scope).
         // Verified by holding a priority.json snapshot pre-call and
         // asserting post-call equality.
         let priority_dir = tempfile::tempdir().unwrap();
