@@ -107,7 +107,12 @@ const postLabelMutation = (
   })
 }
 
-const eagerReorder = <T,>(items: T[], findId: (t: T) => number, fromId: number | null, toId: number | null): T[] => {
+const eagerReorder = <T,>(
+  items: T[],
+  findId: (t: T) => number,
+  fromId: number | null,
+  toId: number | null
+): T[] => {
   if (fromId === null || toId === null) return items
   const fromIdx = items.findIndex((t) => findId(t) === fromId)
   const toIdx = items.findIndex((t) => findId(t) === toId)
@@ -151,8 +156,6 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
       <ul className="board-iterations-list">
         {iterations.map((iteration) => {
           const key = String(iteration.number)
-          const defaultOpen = iteration.gh_state !== 'closed'
-          const open = collapse.isOpen(key, defaultOpen)
           const themeName = themeNameFromTitle(iteration.title)
           const members = stories
             .map((s) => {
@@ -163,6 +166,8 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
             })
             .filter((m): m is { story: BoardStory; position: number } => m !== null)
             .sort((a, b) => a.position - b.position)
+          const defaultOpen = iteration.gh_state !== 'closed' && members.length > 0
+          const open = collapse.isOpen(key, defaultOpen)
           return (
             <li key={iteration.number} className="board-iteration-item">
               <details
@@ -171,9 +176,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                 data-iteration-kind="named"
                 data-iteration-name={themeName}
                 data-closed={iteration.gh_state === 'closed' ? 'true' : undefined}
-                data-dragging={
-                  draggedIterationNumber === iteration.number ? 'true' : undefined
-                }
+                data-dragging={draggedIterationNumber === iteration.number ? 'true' : undefined}
                 data-drag-rejected={
                   dragRejectedIterationNumber === iteration.number ? 'true' : undefined
                 }
@@ -184,10 +187,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                     iterationNumber: iteration.number,
                     oldOrder: positionInIterationOrder(iteration)
                   }
-                  event.dataTransfer.setData(
-                    DRAG_MIMETYPE_ITERATION,
-                    JSON.stringify(payload)
-                  )
+                  event.dataTransfer.setData(DRAG_MIMETYPE_ITERATION, JSON.stringify(payload))
                   event.dataTransfer.effectAllowed = 'move'
                   setDraggedIterationNumber(iteration.number)
                 }}
@@ -238,11 +238,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                     targetMembersIncludeDragged: true
                   })
                   if (!mutation) return
-                  postLabelMutation(
-                    payload.iterationNumber,
-                    mutation.add,
-                    mutation.remove
-                  )
+                  postLabelMutation(payload.iterationNumber, mutation.add, mutation.remove)
                 }}
                 onToggle={(event) => {
                   collapse.setOpen(key, event.currentTarget.open)
@@ -261,11 +257,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                       if (!event.ctrlKey || !event.shiftKey) return
                       if (iteration.gh_state === 'closed') return
                       const direction =
-                        event.key === 'ArrowUp'
-                          ? 'up'
-                          : event.key === 'ArrowDown'
-                            ? 'down'
-                            : null
+                        event.key === 'ArrowUp' ? 'up' : event.key === 'ArrowDown' ? 'down' : null
                       if (direction === null) return
                       event.preventDefault()
                       const iterationIdx = iterations.findIndex(
@@ -280,10 +272,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                         )
                         return
                       }
-                      if (
-                        direction === 'down' &&
-                        iterationIdx === iterations.length - 1
-                      ) {
+                      if (direction === 'down' && iterationIdx === iterations.length - 1) {
                         onReorderAnnounce?.(
                           `${iteration.title} is already at last position among iterations`
                         )
@@ -304,13 +293,8 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                         targetMembersIncludeDragged: true
                       })
                       if (!mutation) return
-                      postLabelMutation(
-                        iteration.number,
-                        mutation.add,
-                        mutation.remove
-                      )
-                      const newIdx =
-                        direction === 'up' ? iterationIdx - 1 : iterationIdx + 1
+                      postLabelMutation(iteration.number, mutation.add, mutation.remove)
+                      const newIdx = direction === 'up' ? iterationIdx - 1 : iterationIdx + 1
                       onReorderAnnounce?.(
                         `Moved ${iteration.title} to position ${newIdx + 1} of ${iterations.length} among iterations`
                       )
@@ -321,126 +305,125 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                     <StoryTypeGlyph type="iteration" />
                     <small className="board-story-number">#{iteration.number}</small>
                     <b className="board-iteration-title">{iteration.title}</b>
-                    <small className="board-iteration-count">{members.length}</small>
+                    {iteration.gh_state === 'closed' && (
+                      <span className="board-iteration-closed-badge">(closed)</span>
+                    )}
+                    <small className="board-iteration-count">({members.length})</small>
                   </button>
                 </summary>
                 <ul className="board-iteration-body">
-                  {eagerReorder(
-                    members,
-                    (m) => m.story.number,
-                    draggedNumber,
-                    hoveredNumber
-                  ).map(({ story, position }) => (
-                    <li
-                      key={story.number}
-                      className="board-iteration-member"
-                      data-test={`board-story-${story.number}`}
-                      data-iteration-member={story.number}
-                      draggable={iteration.gh_state !== 'closed'}
-                      data-dragging={draggedNumber === story.number ? 'true' : undefined}
-                      onDragStart={(event) => {
-                        const payload: DragPayload = {
-                          storyNumber: story.number,
-                          themeName,
-                          oldPosition: position
-                        }
-                        event.dataTransfer.setData(DRAG_MIMETYPE, JSON.stringify(payload))
-                        event.dataTransfer.effectAllowed = 'move'
-                        setDraggedNumber(story.number)
-                      }}
-                      onDragEnd={() => {
-                        setDraggedNumber(null)
-                        setHoveredNumber(null)
-                      }}
-                      onDragOver={(event) => {
-                        if (event.dataTransfer.types.includes(DRAG_MIMETYPE)) {
-                          event.preventDefault()
-                          event.dataTransfer.dropEffect = 'move'
-                          if (draggedNumber !== null && draggedNumber !== story.number) {
-                            setHoveredNumber(story.number)
+                  {eagerReorder(members, (m) => m.story.number, draggedNumber, hoveredNumber).map(
+                    ({ story, position }) => (
+                      <li
+                        key={story.number}
+                        className="board-iteration-member"
+                        data-test={`board-story-${story.number}`}
+                        data-iteration-member={story.number}
+                        draggable={iteration.gh_state !== 'closed'}
+                        data-dragging={draggedNumber === story.number ? 'true' : undefined}
+                        onDragStart={(event) => {
+                          const payload: DragPayload = {
+                            storyNumber: story.number,
+                            themeName,
+                            oldPosition: position
                           }
-                        }
-                      }}
-                      onDrop={(event) => {
-                        const raw = event.dataTransfer.getData(DRAG_MIMETYPE)
-                        if (!raw) return
-                        event.preventDefault()
-                        const payload = JSON.parse(raw) as DragPayload
-                        if (payload.storyNumber === story.number) return
-                        if (iteration.gh_state === 'closed') return
-                        const originalIdx = members.findIndex(
-                          (m) => m.story.number === story.number
-                        )
-                        if (originalIdx === -1) return
-                        const mutation = computeDropMutation({
-                          draggedNumber: payload.storyNumber,
-                          draggedThemeName: payload.themeName,
-                          draggedOldPosition: payload.oldPosition,
-                          targetThemeName: themeName,
-                          targetMemberPositions: members.map((m) => m.position),
-                          targetMemberIndex: originalIdx,
-                          targetMembersIncludeDragged: payload.themeName === themeName
-                        })
-                        if (!mutation) return
-                        postLabelMutation(payload.storyNumber, mutation.add, mutation.remove)
-                      }}
-                    >
-                      <button
-                        type="button"
-                        className="board-iteration-member-button"
-                        onClick={() => onOpen(story.number)}
-                        onKeyDown={(event) => {
-                          if (!event.ctrlKey || !event.shiftKey) return
-                          if (iteration.gh_state === 'closed') return
-                          const direction =
-                            event.key === 'ArrowUp'
-                              ? 'up'
-                              : event.key === 'ArrowDown'
-                                ? 'down'
-                                : null
-                          if (direction === null) return
+                          event.dataTransfer.setData(DRAG_MIMETYPE, JSON.stringify(payload))
+                          event.dataTransfer.effectAllowed = 'move'
+                          setDraggedNumber(story.number)
+                        }}
+                        onDragEnd={() => {
+                          setDraggedNumber(null)
+                          setHoveredNumber(null)
+                        }}
+                        onDragOver={(event) => {
+                          if (event.dataTransfer.types.includes(DRAG_MIMETYPE)) {
+                            event.preventDefault()
+                            event.dataTransfer.dropEffect = 'move'
+                            if (draggedNumber !== null && draggedNumber !== story.number) {
+                              setHoveredNumber(story.number)
+                            }
+                          }
+                        }}
+                        onDrop={(event) => {
+                          const raw = event.dataTransfer.getData(DRAG_MIMETYPE)
+                          if (!raw) return
                           event.preventDefault()
+                          const payload = JSON.parse(raw) as DragPayload
+                          if (payload.storyNumber === story.number) return
+                          if (iteration.gh_state === 'closed') return
                           const originalIdx = members.findIndex(
                             (m) => m.story.number === story.number
                           )
                           if (originalIdx === -1) return
-                          if (direction === 'up' && originalIdx === 0) {
-                            onReorderAnnounce?.(
-                              `${story.title} is already at position 1 in ${iteration.title}`
-                            )
-                            return
-                          }
-                          if (direction === 'down' && originalIdx === members.length - 1) {
-                            onReorderAnnounce?.(
-                              `${story.title} is already at last position in ${iteration.title}`
-                            )
-                            return
-                          }
-                          const targetMemberIndex =
-                            direction === 'up' ? originalIdx - 1 : originalIdx + 2
                           const mutation = computeDropMutation({
-                            draggedNumber: story.number,
-                            draggedThemeName: themeName,
-                            draggedOldPosition: position,
+                            draggedNumber: payload.storyNumber,
+                            draggedThemeName: payload.themeName,
+                            draggedOldPosition: payload.oldPosition,
                             targetThemeName: themeName,
                             targetMemberPositions: members.map((m) => m.position),
-                            targetMemberIndex,
-                            targetMembersIncludeDragged: true
+                            targetMemberIndex: originalIdx,
+                            targetMembersIncludeDragged: payload.themeName === themeName
                           })
                           if (!mutation) return
-                          postLabelMutation(story.number, mutation.add, mutation.remove)
-                          const newIdx =
-                            direction === 'up' ? originalIdx - 1 : originalIdx + 1
-                          onReorderAnnounce?.(
-                            `Moved ${story.title} to position ${newIdx + 1} of ${members.length} in ${iteration.title}`
-                          )
+                          postLabelMutation(payload.storyNumber, mutation.add, mutation.remove)
                         }}
                       >
-                        <small className="board-story-number">#{story.number}</small>
-                        <span className="board-story-title">{story.title}</span>
-                      </button>
-                    </li>
-                  ))}
+                        <button
+                          type="button"
+                          className="board-iteration-member-button"
+                          onClick={() => onOpen(story.number)}
+                          onKeyDown={(event) => {
+                            if (!event.ctrlKey || !event.shiftKey) return
+                            if (iteration.gh_state === 'closed') return
+                            const direction =
+                              event.key === 'ArrowUp'
+                                ? 'up'
+                                : event.key === 'ArrowDown'
+                                  ? 'down'
+                                  : null
+                            if (direction === null) return
+                            event.preventDefault()
+                            const originalIdx = members.findIndex(
+                              (m) => m.story.number === story.number
+                            )
+                            if (originalIdx === -1) return
+                            if (direction === 'up' && originalIdx === 0) {
+                              onReorderAnnounce?.(
+                                `${story.title} is already at position 1 in ${iteration.title}`
+                              )
+                              return
+                            }
+                            if (direction === 'down' && originalIdx === members.length - 1) {
+                              onReorderAnnounce?.(
+                                `${story.title} is already at last position in ${iteration.title}`
+                              )
+                              return
+                            }
+                            const targetMemberIndex =
+                              direction === 'up' ? originalIdx - 1 : originalIdx + 2
+                            const mutation = computeDropMutation({
+                              draggedNumber: story.number,
+                              draggedThemeName: themeName,
+                              draggedOldPosition: position,
+                              targetThemeName: themeName,
+                              targetMemberPositions: members.map((m) => m.position),
+                              targetMemberIndex,
+                              targetMembersIncludeDragged: true
+                            })
+                            if (!mutation) return
+                            postLabelMutation(story.number, mutation.add, mutation.remove)
+                            const newIdx = direction === 'up' ? originalIdx - 1 : originalIdx + 1
+                            onReorderAnnounce?.(
+                              `Moved ${story.title} to position ${newIdx + 1} of ${members.length} in ${iteration.title}`
+                            )
+                          }}
+                        >
+                          <small className="board-story-number">#{story.number}</small>
+                          <span className="board-story-title">{story.title}</span>
+                        </button>
+                      </li>
+                    )
+                  )}
                 </ul>
               </details>
             </li>
@@ -459,7 +442,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
             >
               <summary className="board-iteration-summary">
                 <b className="board-iteration-title">Unscheduled</b>
-                <small className="board-iteration-count">{sortedLoose.length}</small>
+                <small className="board-iteration-count">({sortedLoose.length})</small>
               </summary>
               <ul className="board-iteration-body">
                 {sortedLoose.map((story) => (

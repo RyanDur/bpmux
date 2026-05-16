@@ -348,7 +348,8 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
       let groupSize = 0
       if (prevData) {
         const inGroup = prevData.stories.filter(
-          (s) => columnFor(s.state, s.gh_state === 'closed', storyTypeFromLabels(s.labels)) === state
+          (s) =>
+            columnFor(s.state, s.gh_state === 'closed', storyTypeFromLabels(s.labels)) === state
         )
         const fromIdx = inGroup.findIndex((s) => s.number === moved)
         if (fromIdx !== -1) {
@@ -363,10 +364,12 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
       setData((prev) => {
         if (!prev) return prev
         const inGroup = prev.stories.filter(
-          (s) => columnFor(s.state, s.gh_state === 'closed', storyTypeFromLabels(s.labels)) === state
+          (s) =>
+            columnFor(s.state, s.gh_state === 'closed', storyTypeFromLabels(s.labels)) === state
         )
         const others = prev.stories.filter(
-          (s) => columnFor(s.state, s.gh_state === 'closed', storyTypeFromLabels(s.labels)) !== state
+          (s) =>
+            columnFor(s.state, s.gh_state === 'closed', storyTypeFromLabels(s.labels)) !== state
         )
         const fromIdx = inGroup.findIndex((s) => s.number === moved)
         if (fromIdx === -1) return prev
@@ -509,16 +512,15 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
       ) : (
         <section className="board-body" data-test="board-list">
           <Epic epics={epics} stories={stories} onOpen={handleOpen} />
-          <Iteration
-            stories={iterationContainerStories}
-            onOpen={handleOpen}
-            onReorderAnnounce={setReorderAnnounce}
-          />
           {GROUP_ORDER.map((group) => (
             <BoardGroup
               key={group.state}
               group={group}
-              stories={grouped.get(group.state) ?? []}
+              stories={
+                group.state === 'icebox'
+                  ? iterationContainerStories
+                  : (grouped.get(group.state) ?? [])
+              }
               epicTitleByNumber={epicTitleByNumber}
               loading={loading && !data}
               selectedNumber={effectiveSelected}
@@ -528,7 +530,15 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
               onReorder={handleReorder}
               collapsed={collapsed[group.state]}
               onToggleCollapse={() => toggleCollapsed(group.state)}
-            />
+            >
+              {group.state === 'icebox' ? (
+                <Iteration
+                  stories={iterationContainerStories}
+                  onOpen={handleOpen}
+                  onReorderAnnounce={setReorderAnnounce}
+                />
+              ) : undefined}
+            </BoardGroup>
           ))}
         </section>
       )}
@@ -551,6 +561,7 @@ interface GroupProps {
   onReorder?: (state: ColumnState, moved: number, insertAt: number) => void
   collapsed: boolean
   onToggleCollapse: () => void
+  children?: React.ReactNode
 }
 
 function BoardGroup({
@@ -564,10 +575,10 @@ function BoardGroup({
   onSelect,
   onReorder,
   collapsed,
-  onToggleCollapse
+  onToggleCollapse,
+  children
 }: GroupProps): React.JSX.Element {
-  const draggable =
-    (group.state === 'ready' || group.state === 'icebox') && onReorder !== undefined
+  const draggable = (group.state === 'ready' || group.state === 'icebox') && onReorder !== undefined
   const [dropAt, setDropAt] = useState<number | null>(null)
   // #333: track the row being dragged so we can hide it via CSS
   // (opacity: 0) for the duration of the gesture. Ryan 2026-04-22
@@ -642,6 +653,8 @@ function BoardGroup({
               </li>
             ))}
           </ul>
+        ) : children !== undefined ? (
+          children
         ) : stories.length === 0 ? (
           <p className="board-group-empty">none</p>
         ) : (
@@ -654,44 +667,44 @@ function BoardGroup({
             {stories.map((story, i) => {
               const rowDraggable = draggable && !isClosedIterationMarker(story)
               return (
-              <StoryRow
-                key={story.number}
-                story={story}
-                parentEpicTitle={
-                  story.parent_epic !== undefined
-                    ? epicTitleByNumber.get(story.parent_epic)
-                    : undefined
-                }
-                selected={story.number === selectedNumber}
-                draggable={rowDraggable}
-                dragging={draggingNumber === story.number}
-                dropBefore={dropAt === i}
-                dropAfterLast={dropAt === stories.length && i === stories.length - 1}
-                position={i + 1}
-                total={stories.length}
-                onKeyboardReorder={
-                  rowDraggable && onReorder !== undefined
-                    ? (direction) => {
-                        if (direction === 'up' && i === 0) return
-                        if (direction === 'down' && i === stories.length - 1) return
-                        const insertAt =
-                          direction === 'up'
-                            ? Math.max(0, i - 1)
-                            : Math.min(stories.length, i + 2)
-                        onReorder(group.state, story.number, insertAt)
-                      }
-                    : undefined
-                }
-                onOpen={onOpen}
-                onOpenTimeline={onOpenTimeline}
-                onSelect={onSelect}
-                onRowDragOver={handleRowDragOver(i)}
-                onDragStartRow={() => setDraggingNumber(story.number)}
-                onDragEndRow={() => {
-                  setDraggingNumber(null)
-                  setDropAt(null)
-                }}
-              />
+                <StoryRow
+                  key={story.number}
+                  story={story}
+                  parentEpicTitle={
+                    story.parent_epic !== undefined
+                      ? epicTitleByNumber.get(story.parent_epic)
+                      : undefined
+                  }
+                  selected={story.number === selectedNumber}
+                  draggable={rowDraggable}
+                  dragging={draggingNumber === story.number}
+                  dropBefore={dropAt === i}
+                  dropAfterLast={dropAt === stories.length && i === stories.length - 1}
+                  position={i + 1}
+                  total={stories.length}
+                  onKeyboardReorder={
+                    rowDraggable && onReorder !== undefined
+                      ? (direction) => {
+                          if (direction === 'up' && i === 0) return
+                          if (direction === 'down' && i === stories.length - 1) return
+                          const insertAt =
+                            direction === 'up'
+                              ? Math.max(0, i - 1)
+                              : Math.min(stories.length, i + 2)
+                          onReorder(group.state, story.number, insertAt)
+                        }
+                      : undefined
+                  }
+                  onOpen={onOpen}
+                  onOpenTimeline={onOpenTimeline}
+                  onSelect={onSelect}
+                  onRowDragOver={handleRowDragOver(i)}
+                  onDragStartRow={() => setDraggingNumber(story.number)}
+                  onDragEndRow={() => {
+                    setDraggingNumber(null)
+                    setDropAt(null)
+                  }}
+                />
               )
             })}
           </ul>

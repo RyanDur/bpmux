@@ -55,13 +55,7 @@ export const columnFor = (
   }
 }
 
-export type StoryType =
-  | 'feature'
-  | 'bug'
-  | 'chore'
-  | 'epic'
-  | 'iteration'
-  | 'unknown'
+export type StoryType = 'feature' | 'bug' | 'chore' | 'epic' | 'iteration' | 'unknown'
 
 export interface BoardStory {
   number: number
@@ -87,9 +81,7 @@ export interface BoardStory {
   rework_comment?: string | null
 }
 
-export type IceboxItem =
-  | { kind: 'story'; number: number }
-  | { kind: 'iteration'; number: number }
+export type IceboxItem = { kind: 'story'; number: number } | { kind: 'iteration'; number: number }
 
 export interface BoardResponse {
   stories: BoardStory[]
@@ -125,7 +117,7 @@ export const GROUP_ORDER: GroupSpec[] = [
   { state: 'delivered', label: 'Delivered', collapsed: false },
   { state: 'accepted', label: 'Accepted', collapsed: true },
   { state: 'retired', label: 'Retired', collapsed: true },
-  { state: 'icebox', label: 'Icebox', collapsed: true }
+  { state: 'icebox', label: 'Icebox', collapsed: false }
 ]
 
 // Inverse mapping is partial — closed-non-Accepted projects to Retired
