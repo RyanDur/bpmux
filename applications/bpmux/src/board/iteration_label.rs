@@ -50,6 +50,35 @@ pub fn story_iteration_label_for_theme(story: &Story, theme_name: &str) -> Optio
     None
 }
 
+pub const DEFAULT_FIRST_POSITION: u32 = 100;
+pub const DEFAULT_STEP: u32 = 100;
+
+pub fn compute_insert_position(insert_index: usize, existing_positions: &[u32]) -> u32 {
+    let mut positions = existing_positions.to_vec();
+    positions.sort_unstable();
+    if positions.is_empty() {
+        return DEFAULT_FIRST_POSITION;
+    }
+    if insert_index == 0 {
+        let first = positions[0];
+        if first > 1 {
+            return first / 2;
+        }
+        return 0;
+    }
+    if insert_index >= positions.len() {
+        let last = positions[positions.len() - 1];
+        return last + DEFAULT_STEP;
+    }
+    let left = positions[insert_index - 1];
+    let right = positions[insert_index];
+    let gap = right.saturating_sub(left);
+    if gap >= 2 {
+        return left + gap / 2;
+    }
+    left
+}
+
 pub fn members_with_iteration_label(stories: &[Story], theme_name: &str) -> Vec<u64> {
     let mut members: Vec<(u64, u32)> = stories
         .iter()
@@ -193,5 +222,45 @@ mod tests {
     fn story_iteration_label_returns_none_when_theme_absent() {
         let s = seed(200, vec!["iteration-Cassiopeia.100".to_string()]);
         assert_eq!(story_iteration_label_for_theme(&s, "Pegasus"), None);
+    }
+
+    #[test]
+    fn compute_insert_position_empty_container_returns_default_first() {
+        assert_eq!(compute_insert_position(0, &[]), DEFAULT_FIRST_POSITION);
+        assert_eq!(compute_insert_position(5, &[]), DEFAULT_FIRST_POSITION);
+    }
+
+    #[test]
+    fn compute_insert_position_at_head_returns_midpoint_below_first() {
+        assert_eq!(compute_insert_position(0, &[100, 200, 300]), 50);
+        assert_eq!(compute_insert_position(0, &[200]), 100);
+    }
+
+    #[test]
+    fn compute_insert_position_at_tail_appends_default_step() {
+        assert_eq!(
+            compute_insert_position(3, &[100, 200, 300]),
+            300 + DEFAULT_STEP
+        );
+        assert_eq!(
+            compute_insert_position(99, &[100, 200, 300]),
+            300 + DEFAULT_STEP
+        );
+    }
+
+    #[test]
+    fn compute_insert_position_between_existing_returns_midpoint() {
+        assert_eq!(compute_insert_position(1, &[100, 300]), 200);
+        assert_eq!(compute_insert_position(2, &[100, 200, 400]), 300);
+    }
+
+    #[test]
+    fn compute_insert_position_cascade_when_gap_too_tight() {
+        assert_eq!(compute_insert_position(1, &[100, 101]), 100);
+    }
+
+    #[test]
+    fn compute_insert_position_sorts_input_before_computing() {
+        assert_eq!(compute_insert_position(1, &[300, 100, 200]), 150);
     }
 }
