@@ -31,6 +31,20 @@ test.describe('#1339 Scenario 2 — drag-across iteration cross-instance: member
               story_type: 'feature',
               initial_state: 'icebox',
               labels: ['iteration-Volans.100']
+            },
+            {
+              number: 9620,
+              title: 'volans-anchor',
+              story_type: 'feature',
+              initial_state: 'icebox',
+              labels: ['iteration-Volans.200']
+            },
+            {
+              number: 9621,
+              title: 'crater-anchor',
+              story_type: 'feature',
+              initial_state: 'icebox',
+              labels: ['iteration-Crater.100']
             }
           ]
         })

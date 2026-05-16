@@ -26,6 +26,20 @@ test.describe('#1339 Scenario 3 — iteration-itself reorder cross-instance: con
               story_type: 'iteration',
               initial_state: 'icebox',
               labels: ['iteration-order.200']
+            },
+            {
+              number: 9710,
+              title: 'norma-member',
+              story_type: 'feature',
+              initial_state: 'icebox',
+              labels: ['iteration-Norma.100']
+            },
+            {
+              number: 9711,
+              title: 'octans-member',
+              story_type: 'feature',
+              initial_state: 'icebox',
+              labels: ['iteration-Octans.100']
             }
           ]
         })
