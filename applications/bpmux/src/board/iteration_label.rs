@@ -13,6 +13,7 @@
 //!     [`parse_iteration_label`]
 
 use crate::board::domain::Story;
+use crate::session::priority::IceboxItem;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IterationLabelParts {
@@ -77,6 +78,111 @@ pub fn compute_insert_position(insert_index: usize, existing_positions: &[u32]) 
         return left + gap / 2;
     }
     left
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DerivedLabel {
+    pub story_number: u64,
+    pub label: String,
+}
+
+pub fn derive_iteration_labels_from_icebox_unified(
+    icebox_unified: &[IceboxItem],
+    stories: &[Story],
+) -> Vec<DerivedLabel> {
+    let title_of = |number: u64| -> Option<String> {
+        stories
+            .iter()
+            .find(|s| s.number == number)
+            .map(|s| s.title.clone())
+    };
+    let has_existing = |number: u64, prefix: &str| -> bool {
+        stories
+            .iter()
+            .find(|s| s.number == number)
+            .map(|s| {
+                s.raw_labels.iter().any(|l| {
+                    parse_iteration_label(l)
+                        .map(|p| format!("iteration-{}.", p.theme_name) == prefix)
+                        .unwrap_or(false)
+                })
+            })
+            .unwrap_or(false)
+    };
+    let mut out: Vec<DerivedLabel> = Vec::new();
+    let mut iteration_order_seq: u32 = DEFAULT_FIRST_POSITION;
+    let mut theme_at_idx: std::collections::HashMap<usize, String> =
+        std::collections::HashMap::new();
+    for (i, item) in icebox_unified.iter().enumerate() {
+        if let IceboxItem::Iteration { number } = item
+            && let Some(title) = title_of(*number)
+        {
+            let theme = theme_name_from_title(&title);
+            theme_at_idx.insert(i, theme.clone());
+            if !has_existing(*number, "iteration-order.") {
+                out.push(DerivedLabel {
+                    story_number: *number,
+                    label: format!("iteration-order.{iteration_order_seq}"),
+                });
+            }
+            iteration_order_seq += DEFAULT_STEP;
+        }
+    }
+    let mut band_start = 0usize;
+    for (i, item) in icebox_unified.iter().enumerate() {
+        if let IceboxItem::Iteration { .. } = item {
+            if let Some(theme) = theme_at_idx.get(&i) {
+                emit_member_labels_for_band(
+                    &icebox_unified[band_start..i],
+                    theme,
+                    stories,
+                    &mut out,
+                );
+            }
+            band_start = i + 1;
+        }
+    }
+    if band_start < icebox_unified.len() {
+        emit_member_labels_for_band(
+            &icebox_unified[band_start..],
+            "Unscheduled",
+            stories,
+            &mut out,
+        );
+    }
+    out
+}
+
+fn emit_member_labels_for_band(
+    band: &[IceboxItem],
+    theme: &str,
+    stories: &[Story],
+    out: &mut Vec<DerivedLabel>,
+) {
+    let prefix = format!("iteration-{theme}.");
+    let mut seq: u32 = DEFAULT_FIRST_POSITION;
+    for item in band {
+        if let IceboxItem::Story { number } = item {
+            let has_label = stories
+                .iter()
+                .find(|s| s.number == *number)
+                .map(|s| {
+                    s.raw_labels.iter().any(|l| {
+                        parse_iteration_label(l)
+                            .map(|p| p.theme_name == theme)
+                            .unwrap_or(false)
+                    })
+                })
+                .unwrap_or(false);
+            if !has_label {
+                out.push(DerivedLabel {
+                    story_number: *number,
+                    label: format!("{prefix}{seq}"),
+                });
+            }
+            seq += DEFAULT_STEP;
+        }
+    }
 }
 
 pub fn members_with_iteration_label(stories: &[Story], theme_name: &str) -> Vec<u64> {
@@ -262,5 +368,136 @@ mod tests {
     #[test]
     fn compute_insert_position_sorts_input_before_computing() {
         assert_eq!(compute_insert_position(1, &[300, 100, 200]), 150);
+    }
+
+    fn seed_with_title(number: u64, title: &str, raw_labels: Vec<String>) -> Story {
+        let mut s = Story::new_minimal(
+            number,
+            title.to_string(),
+            StoryState::Icebox,
+            Utc.with_ymd_and_hms(2026, 5, 15, 0, 0, 0).unwrap(),
+            "pm".to_string(),
+        );
+        s.raw_labels = raw_labels;
+        s
+    }
+
+    #[test]
+    fn derive_labels_handles_band_above_first_iteration_marker() {
+        let unified = vec![
+            IceboxItem::Story { number: 100 },
+            IceboxItem::Story { number: 101 },
+            IceboxItem::Iteration { number: 777 },
+        ];
+        let stories = vec![
+            seed_with_title(100, "story-100", vec![]),
+            seed_with_title(101, "story-101", vec![]),
+            seed_with_title(777, "Iteration Pegasus", vec![]),
+        ];
+        let derived = derive_iteration_labels_from_icebox_unified(&unified, &stories);
+        assert!(
+            derived.contains(&DerivedLabel {
+                story_number: 100,
+                label: "iteration-Pegasus.100".to_string()
+            }),
+            "story 100 (top of Pegasus band) → iteration-Pegasus.100; got {derived:?}"
+        );
+        assert!(
+            derived.contains(&DerivedLabel {
+                story_number: 101,
+                label: "iteration-Pegasus.200".to_string()
+            }),
+            "story 101 → iteration-Pegasus.200; got {derived:?}"
+        );
+        assert!(
+            derived.contains(&DerivedLabel {
+                story_number: 777,
+                label: "iteration-order.100".to_string()
+            }),
+            "iteration #777 → iteration-order.100 (first iteration); got {derived:?}"
+        );
+    }
+
+    #[test]
+    fn derive_labels_two_iterations_distinct_themes_and_iteration_order() {
+        let unified = vec![
+            IceboxItem::Story { number: 200 },
+            IceboxItem::Iteration { number: 777 },
+            IceboxItem::Story { number: 201 },
+            IceboxItem::Iteration { number: 888 },
+        ];
+        let stories = vec![
+            seed_with_title(200, "story-200", vec![]),
+            seed_with_title(201, "story-201", vec![]),
+            seed_with_title(777, "Iteration Pegasus", vec![]),
+            seed_with_title(888, "Iteration Cassiopeia", vec![]),
+        ];
+        let derived = derive_iteration_labels_from_icebox_unified(&unified, &stories);
+        assert!(derived.contains(&DerivedLabel {
+            story_number: 200,
+            label: "iteration-Pegasus.100".to_string()
+        }));
+        assert!(derived.contains(&DerivedLabel {
+            story_number: 201,
+            label: "iteration-Cassiopeia.100".to_string()
+        }));
+        assert!(derived.contains(&DerivedLabel {
+            story_number: 777,
+            label: "iteration-order.100".to_string()
+        }));
+        assert!(derived.contains(&DerivedLabel {
+            story_number: 888,
+            label: "iteration-order.200".to_string()
+        }));
+    }
+
+    #[test]
+    fn derive_labels_below_last_marker_is_unscheduled() {
+        let unified = vec![
+            IceboxItem::Iteration { number: 777 },
+            IceboxItem::Story { number: 300 },
+            IceboxItem::Story { number: 301 },
+        ];
+        let stories = vec![
+            seed_with_title(777, "Iteration Pegasus", vec![]),
+            seed_with_title(300, "loose-300", vec![]),
+            seed_with_title(301, "loose-301", vec![]),
+        ];
+        let derived = derive_iteration_labels_from_icebox_unified(&unified, &stories);
+        assert!(derived.contains(&DerivedLabel {
+            story_number: 300,
+            label: "iteration-Unscheduled.100".to_string()
+        }));
+        assert!(derived.contains(&DerivedLabel {
+            story_number: 301,
+            label: "iteration-Unscheduled.200".to_string()
+        }));
+    }
+
+    #[test]
+    fn derive_labels_skips_stories_already_labeled() {
+        let unified = vec![
+            IceboxItem::Story { number: 400 },
+            IceboxItem::Iteration { number: 777 },
+        ];
+        let stories = vec![
+            seed_with_title(400, "story-400", vec!["iteration-Pegasus.50".into()]),
+            seed_with_title(777, "Iteration Pegasus", vec!["iteration-order.50".into()]),
+        ];
+        let derived = derive_iteration_labels_from_icebox_unified(&unified, &stories);
+        assert!(
+            !derived.iter().any(|d| d.story_number == 400),
+            "story 400 already has Pegasus label; should not be re-labeled: {derived:?}"
+        );
+        assert!(
+            !derived.iter().any(|d| d.story_number == 777),
+            "iteration 777 already has iteration-order label; should not be re-labeled"
+        );
+    }
+
+    #[test]
+    fn derive_labels_no_op_on_empty_icebox_unified() {
+        let derived = derive_iteration_labels_from_icebox_unified(&[], &[]);
+        assert!(derived.is_empty());
     }
 }
