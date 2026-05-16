@@ -365,6 +365,27 @@
 
   & .board-iteration-card[data-closed='true'] {
     cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  & .board-iteration-card[data-closed='true'] .board-iteration-title {
+    text-decoration: line-through;
+  }
+
+  & .board-iteration-card[data-closed='true'] .board-iteration-title::after {
+    content: ' (closed)';
+    color: var(--color-muted, #888);
+    font-weight: normal;
+  }
+
+  & .board-iteration-card[data-iteration-kind='unscheduled'] {
+    border: 1px dashed var(--color-muted, #888);
+    border-radius: var(--radius-2, 4px);
+  }
+
+  & .board-iteration-card[data-iteration-kind='unscheduled'] .story-glyph,
+  & .board-iteration-card[data-iteration-kind='unscheduled'] .board-iteration-title {
+    color: var(--color-muted, #888);
   }
 
   & .board-iteration-card[data-drag-rejected='true'] {
