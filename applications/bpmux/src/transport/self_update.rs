@@ -72,16 +72,36 @@ pub fn spawn_binary_watcher(
         .ok()
         .and_then(|v| v.parse::<u64>().ok())
         .unwrap_or(DEFAULT_POLL_INTERVAL_SECS);
-    let path = match std::env::current_exe() {
+    let path = match resolve_watch_path() {
         Ok(p) => p,
         Err(e) => {
             crate::session::diag::log_diag(&format!(
-                "self-update: current_exe() failed ({e}); watcher disabled"
+                "self-update: cannot resolve watch path ({e}); watcher disabled"
             ));
             return tokio::spawn(async {});
         }
     };
     spawn_binary_watcher_at(path, ct, signal, Duration::from_secs(interval_secs))
+}
+
+/// Resolve the path the binary-watcher should monitor.
+/// `BPMUX_BINARY_WATCH_PATH` env var takes priority — set this to
+/// decouple the watched path from the running binary's actual location
+/// so dev's `cargo build --release` doesn't bump the watched path's
+/// mtime and trigger team electron restarts mid-iteration. Falls back
+/// to `current_exe()` when the env var is unset. Sister to #1379.
+fn resolve_watch_path() -> Result<PathBuf, String> {
+    let override_path = std::env::var("BPMUX_BINARY_WATCH_PATH")
+        .ok()
+        .filter(|s| !s.is_empty());
+    resolve_watch_path_with_override(override_path)
+}
+
+fn resolve_watch_path_with_override(env_value: Option<String>) -> Result<PathBuf, String> {
+    if let Some(override_path) = env_value {
+        return Ok(PathBuf::from(override_path));
+    }
+    std::env::current_exe().map_err(|e| format!("current_exe failed: {e}"))
 }
 
 pub fn spawn_binary_watcher_at(
@@ -352,6 +372,22 @@ mod tests {
             "watcher must cancel ct to trigger graceful shutdown"
         );
         let _ = handle.await;
+    }
+
+    #[test]
+    fn resolve_watch_path_honors_env_override() {
+        let tmp = tempfile::tempdir().unwrap();
+        let custom = tmp.path().join("installed-bpmux");
+        fs::write(&custom, b"v1").unwrap();
+        let resolved =
+            resolve_watch_path_with_override(Some(custom.display().to_string())).unwrap();
+        assert_eq!(resolved, custom);
+    }
+
+    #[test]
+    fn resolve_watch_path_falls_back_to_current_exe_when_no_override() {
+        let resolved = resolve_watch_path_with_override(None).unwrap();
+        assert_eq!(resolved, std::env::current_exe().unwrap());
     }
 
     #[tokio::test]

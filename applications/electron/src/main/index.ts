@@ -1,7 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain, dialog, Menu, type MenuItemConstructorOptions } from 'electron'
 import { join } from 'path'
 import { homedir } from 'os'
-import { existsSync, readFileSync, statSync } from 'fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync } from 'fs'
 import { spawn, ChildProcess } from 'child_process'
 import * as http from 'http'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -76,6 +76,38 @@ function resolveAuthTokenPath(): string {
     return override
   }
   return join(homedir(), '.bpmux', 'auth_token')
+}
+
+/**
+ * #1379: BPMUX_BINARY_WATCH self-update should watch a path
+ * decoupled from the dev-build dir (`target/release/bpmux`), so
+ * dev's `cargo build --release` doesn't trigger team electron
+ * restarts mid-iteration. Stage the resolved binary at a stable
+ * install path under `~/.bpmux/installed/bpmux` before spawning,
+ * and tell the spawned bpmux to watch THAT path via
+ * BPMUX_BINARY_WATCH_PATH. To update Ryan's running session, dev
+ * explicitly copies `target/release/bpmux` over the installed
+ * path (the publish step) — that mtime bump is what fires the
+ * watcher.
+ */
+function resolveInstalledBinaryPath(): string {
+  const override = process.env['BPMUX_BINARY_WATCH_PATH']
+  if (override && override.length > 0) {
+    return override
+  }
+  return join(homedir(), '.bpmux', 'installed', 'bpmux')
+}
+
+function stageBinaryAtInstalledPath(sourceBinary: string): string {
+  const installed = resolveInstalledBinaryPath()
+  const installedDir = join(installed, '..')
+  if (!existsSync(installedDir)) {
+    mkdirSync(installedDir, { recursive: true })
+  }
+  if (!existsSync(installed) || statSync(installed).mtimeMs < statSync(sourceBinary).mtimeMs) {
+    copyFileSync(sourceBinary, installed)
+  }
+  return installed
 }
 
 function checkBackendReady(): Promise<boolean> {
@@ -156,13 +188,18 @@ async function spawnBackend(): Promise<void> {
     return
   }
 
-  const binary = resolveBinaryPath()
+  const sourceBinary = resolveBinaryPath()
+  const installedBinary = stageBinaryAtInstalledPath(sourceBinary)
   const args = ['--name', 'dev-electron', '--mcp-port', String(BACKEND_PORT), 'server']
 
-  console.log(`[bpmux] spawning ${binary} ${args.join(' ')}`)
-  const child = spawn(binary, args, {
+  console.log(`[bpmux] spawning ${installedBinary} ${args.join(' ')}`)
+  const child = spawn(installedBinary, args, {
     stdio: ['ignore', 'inherit', 'inherit'],
-    windowsHide: true
+    windowsHide: true,
+    env: {
+      ...process.env,
+      BPMUX_BINARY_WATCH_PATH: installedBinary
+    }
   })
 
   backendProcess = child
@@ -172,7 +209,7 @@ async function spawnBackend(): Promise<void> {
     if (!shuttingDown) {
       dialog.showErrorBox(
         'bpmux backend failed to start',
-        `Could not spawn bpmux binary at:\n${binary}\n\n${err.message}`
+        `Could not spawn bpmux binary at:\n${installedBinary}\n\n${err.message}`
       )
       app.exit(1)
     }
