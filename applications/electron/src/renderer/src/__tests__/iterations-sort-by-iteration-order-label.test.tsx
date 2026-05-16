@@ -32,6 +32,20 @@ describe('#1339 step 2g-a — iteration containers sort by iteration-order.{N} l
           story_type: 'iteration',
           initial_state: 'icebox',
           labels: ['iteration-order.100']
+        },
+        {
+          number: 8010,
+          title: 'lynx-member',
+          story_type: 'feature',
+          initial_state: 'icebox',
+          labels: ['iteration-Lynx.100']
+        },
+        {
+          number: 8011,
+          title: 'hydra-member',
+          story_type: 'feature',
+          initial_state: 'icebox',
+          labels: ['iteration-Hydra.100']
         }
       ])
 

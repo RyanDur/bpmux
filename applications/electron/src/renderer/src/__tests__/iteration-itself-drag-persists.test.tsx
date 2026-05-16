@@ -33,6 +33,20 @@ describe('#1339 step 2g-b — iteration-itself drag persists via iteration-order
           story_type: 'iteration',
           initial_state: 'icebox',
           labels: ['iteration-order.100']
+        },
+        {
+          number: 8110,
+          title: 'sirius-member',
+          story_type: 'feature',
+          initial_state: 'icebox',
+          labels: ['iteration-Sirius.100']
+        },
+        {
+          number: 8111,
+          title: 'vega-member',
+          story_type: 'feature',
+          initial_state: 'icebox',
+          labels: ['iteration-Vega.100']
         }
       ])
 

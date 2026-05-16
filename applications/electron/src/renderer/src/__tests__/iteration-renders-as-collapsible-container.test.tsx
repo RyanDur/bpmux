@@ -25,6 +25,13 @@ describe('#1297 — iteration renders as a collapsible container in the icebox',
           title: 'Iteration Cassiopeia',
           story_type: 'iteration',
           initial_state: 'icebox'
+        },
+        {
+          number: 7100,
+          title: 'cassiopeia-member',
+          story_type: 'feature',
+          initial_state: 'icebox',
+          labels: ['iteration-Cassiopeia.100']
         }
       ])
 
@@ -51,9 +58,16 @@ describe('#1297 — iteration renders as a collapsible container in the icebox',
       await seedStories(apiBase, authToken, [
         {
           number: 7102,
-          title: 'Iteration Pegasus',
+          title: 'Iteration RemountCollapseScope',
           story_type: 'iteration',
           initial_state: 'icebox'
+        },
+        {
+          number: 7103,
+          title: 'remount-collapse-scope-member',
+          story_type: 'feature',
+          initial_state: 'icebox',
+          labels: ['iteration-RemountCollapseScope.100']
         }
       ])
 

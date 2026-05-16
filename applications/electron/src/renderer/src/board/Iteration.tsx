@@ -166,7 +166,8 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
             })
             .filter((m): m is { story: BoardStory; position: number } => m !== null)
             .sort((a, b) => a.position - b.position)
-          const defaultOpen = iteration.gh_state !== 'closed' && members.length > 0
+          if (members.length === 0 && iteration.gh_state !== 'closed') return null
+          const defaultOpen = iteration.gh_state !== 'closed'
           const open = collapse.isOpen(key, defaultOpen)
           return (
             <li key={iteration.number} className="board-iteration-item">

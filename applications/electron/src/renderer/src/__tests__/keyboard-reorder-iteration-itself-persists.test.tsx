@@ -44,6 +44,20 @@ describe('#1339 step 2h-4 — keyboard-reorder iteration-itself persists via ite
           story_type: 'iteration',
           initial_state: 'icebox',
           labels: ['iteration-order.60000']
+        },
+        {
+          number: 8410,
+          title: 'tucana-member',
+          story_type: 'feature',
+          initial_state: 'icebox',
+          labels: ['iteration-Tucana.100']
+        },
+        {
+          number: 8411,
+          title: 'draco-member',
+          story_type: 'feature',
+          initial_state: 'icebox',
+          labels: ['iteration-Draco.100']
         }
       ])
 
