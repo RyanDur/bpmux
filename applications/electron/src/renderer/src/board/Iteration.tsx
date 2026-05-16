@@ -393,10 +393,14 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                           if (!raw) return
                           event.preventDefault()
                           const payload = JSON.parse(raw) as DragPayload
-                          if (payload.storyNumber === story.number) return
                           if (iteration.gh_state === 'closed') return
+                          const targetNumber =
+                            payload.storyNumber === story.number && hoveredNumber !== null
+                              ? hoveredNumber
+                              : story.number
+                          if (payload.storyNumber === targetNumber) return
                           const originalIdx = members.findIndex(
-                            (m) => m.story.number === story.number
+                            (m) => m.story.number === targetNumber
                           )
                           if (originalIdx === -1) return
                           const mutation = computeDropMutation({
