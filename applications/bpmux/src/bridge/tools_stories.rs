@@ -1402,8 +1402,7 @@ fn reorder_icebox_story_via_labels(
         .story(number)
         .ok_or_else(|| format!("story #{number} not found in canonical store"))?;
     let current_iteration = story.raw_labels.iter().find_map(|l| {
-        crate::board::iteration_label::parse_iteration_label(l)
-            .map(|p| (p.theme_name, l.clone()))
+        crate::board::iteration_label::parse_iteration_label(l).map(|p| (p.theme_name, l.clone()))
     });
     let theme_name = current_iteration
         .as_ref()
@@ -1422,10 +1421,8 @@ fn reorder_icebox_story_via_labels(
         })
         .collect();
     let insert_index = position.saturating_sub(1).min(other_positions.len());
-    let new_position = crate::board::iteration_label::compute_insert_position(
-        insert_index,
-        &other_positions,
-    );
+    let new_position =
+        crate::board::iteration_label::compute_insert_position(insert_index, &other_positions);
     let new_label = format!("iteration-{theme_name}.{new_position}");
     if let Some((_, current_label)) = &current_iteration
         && current_label.as_str() == new_label.as_str()
