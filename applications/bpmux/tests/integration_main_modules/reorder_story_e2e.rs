@@ -16,42 +16,6 @@ use harness::pty::TestBpmux;
 use std::time::Duration;
 
 #[test]
-fn reorder_story_returns_message_naming_position_and_state() {
-    let bpmux = TestBpmux::start();
-    let rt = tokio::runtime::Runtime::new().expect("rt");
-    rt.block_on(async {
-        let pm = TestBridge::connect(&bpmux, "pm").await;
-        tokio::time::sleep(Duration::from_millis(500)).await;
-
-        let result = pm
-            .call_tool(
-                "reorder_story",
-                serde_json::json!({
-                    "number": 100,
-                    "position": 0,
-                    "state": "ready"
-                }),
-            )
-            .await
-            .expect("reorder_story should succeed");
-
-        let msg = result.as_str().unwrap_or("").to_string();
-        assert!(
-            msg.contains("#100"),
-            "message names target story; got {msg}"
-        );
-        assert!(
-            msg.contains("position 0"),
-            "message names new position; got {msg}"
-        );
-        assert!(
-            msg.contains("ready"),
-            "message names target state; got {msg}"
-        );
-    });
-}
-
-#[test]
 fn reorder_story_rejects_dev_caller_per_pm_lane_gate() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");

@@ -168,28 +168,6 @@ fn post_activity(body: &serde_json::Value) {
     });
 }
 
-/// #1272 backward-resilience boot-time auto-heal at ready-column-axis.
-/// Forces a one-shot `refresh_all` so canonical workflow_state
-/// is available, then evicts entries from `columns["ready"]` whose
-/// state ≠ Ready (catches stale state from missing forward-cascade-
-/// clean on accept/close + duplicates from pre-#1272 close_iteration
-/// appends).
-///
-/// Best-effort: save-failures log via diag and don't block boot. No
-/// state-delta broadcast — the legacy ready-column is a backward-
-/// compat surface; renderers read the canonical state via
-/// list_ready/refresh.all_stories().
-pub async fn auto_heal_ready_column_at_boot(
-    session: Arc<session::Session>,
-    refresh: Arc<dyn board::RefreshDriver>,
-) {
-    let Ok(priority_path) = session::priority::default_priority_path() else {
-        return;
-    };
-    let _ = session;
-    auto_heal_ready_column_at_path(&priority_path, refresh).await;
-}
-
 /// #1301 slice 4D — one-shot boot migration: translate pre-existing
 /// `priority.json` `columns["ready"]` entries into canonical-via-GH
 /// `ready-order.{position}` labels via the canonical mutation chain.
@@ -226,9 +204,14 @@ pub async fn migrate_legacy_ready_to_labels_at_path(
     if any_labeled {
         return Ok(0);
     }
-    let index = session::priority::load_priority(priority_path);
-    let Some(legacy_ready) = index.columns.get("ready") else {
-        return Ok(0);
+    let legacy_ready = match std::fs::read_to_string(priority_path) {
+        Ok(contents) => serde_json::from_str::<serde_json::Value>(&contents)
+            .ok()
+            .and_then(|v| v.get("ready").cloned())
+            .and_then(|v| v.as_array().cloned())
+            .map(|arr| arr.iter().filter_map(|n| n.as_u64()).collect::<Vec<u64>>())
+            .unwrap_or_default(),
+        Err(_) => return Ok(0),
     };
     if legacy_ready.is_empty() {
         return Ok(0);
@@ -240,7 +223,7 @@ pub async fn migrate_legacy_ready_to_labels_at_path(
         .map(|s| s.number)
         .collect();
     let mut migrated = 0usize;
-    for (idx, &number) in legacy_ready.iter().enumerate() {
+    for (idx, number) in legacy_ready.into_iter().enumerate() {
         if !canonical_ready.contains(&number) {
             continue;
         }
@@ -261,36 +244,6 @@ pub async fn migrate_legacy_ready_to_labels_at_path(
         migrated += 1;
     }
     Ok(migrated)
-}
-
-pub async fn auto_heal_ready_column_at_path(
-    priority_path: &std::path::Path,
-    refresh: Arc<dyn board::RefreshDriver>,
-) {
-    if let Err(e) = refresh.refresh_all().await {
-        session::diag::log_diag(&format!(
-            "[#1272] auto-heal ready column: refresh_all failed: {e}; skipping heal"
-        ));
-        return;
-    }
-    let mut index = session::priority::load_priority(priority_path);
-    let canonical_states: std::collections::HashMap<u64, board::domain::StoryState> = refresh
-        .all_stories()
-        .into_iter()
-        .map(|s| (s.number, s.state))
-        .collect();
-    let evicted =
-        session::priority::auto_heal_ready_column_via_workflow_state(&mut index, &canonical_states);
-    if evicted == 0 {
-        return;
-    }
-    if let Err(e) = session::priority::save_priority(priority_path, &index) {
-        session::diag::log_diag(&format!("[#1272] auto-heal ready column: save failed: {e}"));
-        return;
-    }
-    session::diag::log_diag(&format!(
-        "[#1272] auto-heal ready column: evicted {evicted} stale/duplicate entries"
-    ));
 }
 
 fn run_server_only(cli: &Cli) -> anyhow::Result<()> {

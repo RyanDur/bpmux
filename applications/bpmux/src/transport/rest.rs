@@ -582,13 +582,7 @@ pub async fn get_board(
             .iter()
             .map(crate::board::domain::story_to_board_json)
             .collect();
-        let ordered = match crate::session::priority::default_priority_path() {
-            Ok(path) => {
-                let index = crate::session::priority::load_priority(&path);
-                crate::session::priority::apply_priority_to_board(stories, &index)
-            }
-            Err(_) => stories,
-        };
+        let ordered = crate::session::priority::sort_board_by_ready_order_labels(stories);
         let body = serde_json::json!({
             "stories": ordered,
             "fetched_at": chrono::Utc::now().to_rfc3339(),
@@ -604,17 +598,7 @@ pub async fn get_board(
     };
     match tracker.fetch_board_stories().await {
         Ok(stories) => {
-            // #333: apply the persisted priority index so drag-reorder
-            // survives refetch. Without this, the frontend's
-            // optimistic reorder gets overwritten on the very next
-            // /api/board call with GitHub's native order.
-            let ordered = match crate::session::priority::default_priority_path() {
-                Ok(path) => {
-                    let index = crate::session::priority::load_priority(&path);
-                    crate::session::priority::apply_priority_to_board(stories, &index)
-                }
-                Err(_) => stories,
-            };
+            let ordered = crate::session::priority::sort_board_by_ready_order_labels(stories);
             let body = serde_json::json!({
                 "stories": ordered,
                 "fetched_at": chrono::Utc::now().to_rfc3339(),
@@ -1819,49 +1803,6 @@ pub async fn post_story_comment(
             err_body(&format!("comment failed: {e}")),
         ),
     }
-}
-
-#[derive(Deserialize)]
-pub struct ReorderPayload {
-    pub state: String,
-    pub position: usize,
-}
-
-/// POST /api/stories/:number/reorder — persist a story's queue
-/// position within a state column. Writes through the existing
-/// `session::priority` index (same durability path as the MCP
-/// `reorder_story` tool); broadcasts board-invalidate so other
-/// surfaces refresh.
-pub async fn post_reorder_story(
-    State(session): State<Arc<session::Session>>,
-    axum::extract::Path(number): axum::extract::Path<u64>,
-    Json(payload): Json<ReorderPayload>,
-) -> impl IntoResponse {
-    let path = match crate::session::priority::default_priority_path() {
-        Ok(p) => p,
-        Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                json_headers(),
-                err_body(&format!("priority path: {e}")),
-            );
-        }
-    };
-    let mut index = crate::session::priority::load_priority(&path);
-    crate::session::priority::reorder(&mut index, &payload.state, number, payload.position);
-    if let Err(e) = crate::session::priority::save_priority(&path, &index) {
-        return (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            json_headers(),
-            err_body(&format!("save priority: {e}")),
-        );
-    }
-    broadcast_board_invalidate(&session);
-    (
-        StatusCode::OK,
-        json_headers(),
-        serde_json::json!({ "ok": true }).to_string(),
-    )
 }
 
 #[derive(Deserialize)]

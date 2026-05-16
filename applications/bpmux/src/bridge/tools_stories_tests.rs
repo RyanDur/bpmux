@@ -3809,41 +3809,6 @@ mod reopen_on_state_transition_tests {
 }
 
 #[cfg(test)]
-mod reorder_story_legacy_column_tests {
-    use crate::bridge::tools_stories::apply_reorder_story;
-    use crate::session::priority::load_priority;
-
-    #[test]
-    fn ready_state_uses_legacy_columns_path_unchanged() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("priority.json");
-        apply_reorder_story(&path, "ready", 100, 1).unwrap();
-        apply_reorder_story(&path, "ready", 200, 2).unwrap();
-        let index = load_priority(&path);
-        assert_eq!(
-            index.columns.get("ready").cloned().unwrap_or_default(),
-            vec![100, 200]
-        );
-    }
-
-    #[test]
-    fn in_progress_state_uses_legacy_columns_path_unchanged() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("priority.json");
-        apply_reorder_story(&path, "in-progress", 555, 1).unwrap();
-        let index = load_priority(&path);
-        assert_eq!(
-            index
-                .columns
-                .get("in-progress")
-                .cloned()
-                .unwrap_or_default(),
-            vec![555]
-        );
-    }
-}
-
-#[cfg(test)]
 mod reorder_story_icebox_label_substrate_tests_1301 {
     use crate::board::BoardStore;
     use crate::board::RefreshDriver;

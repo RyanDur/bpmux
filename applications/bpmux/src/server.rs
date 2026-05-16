@@ -217,9 +217,14 @@ pub async fn run_server(
             session.clone(),
             crate::bridge::drain_interval_from_env(),
         ));
-        let session_for_markers_heal = session.clone();
+        let _session_for_unused = session.clone();
         tokio::spawn(async move {
-            crate::auto_heal_ready_column_at_boot(session_for_markers_heal, refresh.clone()).await;
+            if let Err(e) = refresh.refresh_all().await {
+                crate::session::diag::log_diag(&format!(
+                    "[#1301 slice 4D] migrate_legacy_ready_to_labels: refresh_all failed: {e}; skipping"
+                ));
+                return;
+            }
             match crate::migrate_legacy_ready_to_labels(refresh.clone()).await {
                 Ok(0) => {}
                 Ok(n) => crate::session::diag::log_diag(&format!(
@@ -306,10 +311,6 @@ pub async fn run_server(
         .route(
             "/api/stories/{number}/reject",
             axum::routing::post(transport::rest::post_reject_story),
-        )
-        .route(
-            "/api/stories/{number}/reorder",
-            axum::routing::post(transport::rest::post_reorder_story),
         )
         .route(
             "/api/stories/{number}/labels",

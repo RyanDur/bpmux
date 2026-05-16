@@ -1350,12 +1350,17 @@ pub(super) async fn handle_reorder_story(
         broadcast_board_invalidate(ws_tx).await;
         return Ok(format!("#{number} moved to position {position} in icebox"));
     }
-
-    let path = crate::session::priority::default_priority_path()
-        .map_err(|e| format!("priority path: {e}"))?;
-    apply_reorder_story(&path, state, number, position)?;
-    broadcast_board_invalidate(ws_tx).await;
-    Ok(format!("#{number} moved to position {position} in {state}"))
+    if state == "ready" {
+        let r = refresh.ok_or(
+            "reorder_story state=ready requires refresh-driver (canonical-via-GH label substrate per #1301)",
+        )?;
+        reorder_ready_story_via_labels(r, number, position)?;
+        broadcast_board_invalidate(ws_tx).await;
+        return Ok(format!("#{number} moved to position {position} in ready"));
+    }
+    Err(format!(
+        "reorder_story state='{state}' not supported (#1301 retired per-state ordering — only 'ready' and 'icebox' are user-orderable)"
+    ))
 }
 
 pub(crate) fn reorder_icebox_story_via_labels(
@@ -1418,16 +1423,59 @@ pub(crate) fn reorder_icebox_story_via_labels(
     Ok(())
 }
 
-pub(super) fn apply_reorder_story(
-    path: &std::path::Path,
-    state: &str,
+pub(crate) fn reorder_ready_story_via_labels(
+    refresh: &std::sync::Arc<dyn crate::board::RefreshDriver>,
     number: u64,
     position: usize,
 ) -> Result<(), String> {
-    let mut index = crate::session::priority::load_priority(path);
-    crate::session::priority::reorder(&mut index, state, number, position);
-    crate::session::priority::save_priority(path, &index)
-        .map_err(|e| format!("save priority: {e}"))?;
+    let story = refresh
+        .story(number)
+        .ok_or_else(|| format!("story #{number} not found in canonical store"))?;
+    let current = story.raw_labels.iter().find_map(|l| {
+        crate::board::ready_order_label::parse_ready_order_label(l).map(|p| (p, l.clone()))
+    });
+    let other_positions: Vec<u32> = refresh
+        .all_stories()
+        .iter()
+        .filter(|s| {
+            s.number != number && !s.is_closed && s.state == crate::board::domain::StoryState::Ready
+        })
+        .filter_map(|s| {
+            s.raw_labels
+                .iter()
+                .find_map(|l| crate::board::ready_order_label::parse_ready_order_label(l))
+        })
+        .collect();
+    let insert_index = position.saturating_sub(1).min(other_positions.len());
+    let new_position =
+        crate::board::iteration_label::compute_insert_position(insert_index, &other_positions);
+    let new_label = format!("ready-order.{new_position}");
+    if let Some((_, current_label)) = &current
+        && current_label.as_str() == new_label.as_str()
+    {
+        return Ok(());
+    }
+    let meta = || crate::board::events::EventMeta {
+        actor: "pm".to_string(),
+        ts: chrono::Utc::now(),
+        peer_id: crate::board::PeerId::local(),
+    };
+    if let Some((_, current_label)) = current {
+        refresh
+            .mutate_sync(crate::board::BoardEvent::TagRemoved {
+                meta: meta(),
+                number,
+                label: current_label,
+            })
+            .map_err(|e| format!("TagRemoved #{number}: {e}"))?;
+    }
+    refresh
+        .mutate_sync(crate::board::BoardEvent::TagAdded {
+            meta: meta(),
+            number,
+            label: new_label,
+        })
+        .map_err(|e| format!("TagAdded #{number}: {e}"))?;
     Ok(())
 }
 

@@ -440,27 +440,7 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
             setData(prevData)
             setError(`Reorder failed: ${err instanceof Error ? err.message : String(err)}`)
           })
-        return
       }
-      const targetPosition = Math.max(0, insertAt)
-      fetch(`${bridge.apiBase}/api/stories/${moved}/reorder`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${bridge.authToken ?? ''}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ state, position: targetPosition })
-      })
-        .then((res) => {
-          if (!res.ok) {
-            setData(prevData)
-            setError(`Reorder failed: HTTP ${res.status}`)
-          }
-        })
-        .catch((err) => {
-          setData(prevData)
-          setError(`Reorder failed: ${err instanceof Error ? err.message : String(err)}`)
-        })
     },
     [bridge?.apiBase, bridge?.authToken, data, usingMock]
   )
