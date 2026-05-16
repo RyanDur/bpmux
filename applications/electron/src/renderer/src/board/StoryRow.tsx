@@ -77,6 +77,10 @@ const StoryRow = ({
           onDragStart={(event) => {
             event.dataTransfer.setData('text/bpmux-story', String(story.number))
             event.dataTransfer.effectAllowed = 'move'
+            const row = (event.currentTarget as HTMLElement).closest('li')
+            if (row && typeof event.dataTransfer.setDragImage === 'function') {
+              event.dataTransfer.setDragImage(row, 0, 0)
+            }
             onDragStartRow?.()
           }}
           onDragEnd={() => onDragEndRow?.()}

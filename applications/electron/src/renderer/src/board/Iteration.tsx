@@ -297,6 +297,10 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                           JSON.stringify(payload)
                         )
                         event.dataTransfer.effectAllowed = 'move'
+                        const details = (event.currentTarget as HTMLElement).closest('details')
+                        if (details && typeof event.dataTransfer.setDragImage === 'function') {
+                          event.dataTransfer.setDragImage(details, 0, 0)
+                        }
                         setDraggedIterationNumber(iteration.number)
                       }}
                       onDragEnd={() => setDraggedIterationNumber(null)}
@@ -450,6 +454,10 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                                 JSON.stringify(payload)
                               )
                               event.dataTransfer.effectAllowed = 'move'
+                              const row = (event.currentTarget as HTMLElement).closest('li')
+                              if (row && typeof event.dataTransfer.setDragImage === 'function') {
+                                event.dataTransfer.setDragImage(row, 0, 0)
+                              }
                               setDraggedNumber(story.number)
                             }}
                             onDragEnd={() => {
