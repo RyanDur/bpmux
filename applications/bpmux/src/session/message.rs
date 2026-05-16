@@ -78,11 +78,45 @@ pub struct Message {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub multi_depth: Option<MultiDepthPayload>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "deserialize_state_delta_tolerant"
+    )]
     pub state_delta: Option<StateDeltaPayload>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "deserialize_state_snapshot_tolerant"
+    )]
     pub state_snapshot: Option<StateSnapshotPayload>,
+}
+
+/// Tolerant deserializer for historical log entries that may contain
+/// `state_delta` variants this binary no longer knows about (e.g.,
+/// `icebox_migration` was retired in #1301 slice 3 but lives on in
+/// pre-slice-3 messages on disk). Returns `None` rather than failing
+/// the whole `Message` deserialize, so `read_messages` can iterate
+/// the log without choking on a single stale entry.
+fn deserialize_state_delta_tolerant<'de, D>(
+    deserializer: D,
+) -> Result<Option<StateDeltaPayload>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let raw = Option::<serde_json::Value>::deserialize(deserializer)?;
+    Ok(raw.and_then(|v| serde_json::from_value(v).ok()))
+}
+
+fn deserialize_state_snapshot_tolerant<'de, D>(
+    deserializer: D,
+) -> Result<Option<StateSnapshotPayload>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let raw = Option::<serde_json::Value>::deserialize(deserializer)?;
+    Ok(raw.and_then(|v| serde_json::from_value(v).ok()))
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -311,5 +345,57 @@ impl Message {
             Some(BROADCAST_ALL) => true,
             Some(target) => target == role,
         }
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod tolerant_state_delta_tests {
+    use super::*;
+
+    #[test]
+    fn message_with_unknown_state_delta_variant_parses_as_none() {
+        let raw = r#"{
+          "from": "bpmux",
+          "text": "",
+          "ts": "2026-05-15T01:23:45Z",
+          "message_type": "state-delta",
+          "state_delta": {"domain": "icebox_migration", "details": "retired"}
+        }"#;
+        let m: Message = serde_json::from_str(raw).expect("retired variant must parse tolerantly");
+        assert_eq!(m.from, "bpmux");
+        assert!(m.state_delta.is_none());
+    }
+
+    #[test]
+    fn message_with_known_state_delta_variant_still_parses_canonically() {
+        let raw = r#"{
+          "from": "bpmux",
+          "text": "",
+          "ts": "2026-05-16T01:23:45Z",
+          "message_type": "state-delta",
+          "state_delta": {"domain": "roster", "members": []}
+        }"#;
+        let m: Message = serde_json::from_str(raw).expect("known variant parses");
+        assert!(matches!(
+            m.state_delta,
+            Some(StateDeltaPayload::Roster { members: _ })
+        ));
+    }
+
+    #[test]
+    fn read_messages_skips_zero_lines_with_legacy_state_delta_variant() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("messages-current.jsonl");
+        let lines = [
+            r#"{"from":"a","text":"first","ts":"2026-05-01T00:00:00Z"}"#,
+            r#"{"from":"bpmux","text":"","ts":"2026-05-15T00:00:00Z","message_type":"state-delta","state_delta":{"domain":"icebox_migration","details":"retired"}}"#,
+            r#"{"from":"b","text":"third","ts":"2026-06-01T00:00:00Z"}"#,
+        ];
+        std::fs::write(&path, lines.join("\n")).unwrap();
+        let parsed = crate::session::log::read_messages(dir.path())
+            .expect("read_messages tolerates legacy state-delta variants");
+        assert_eq!(parsed.len(), 3, "all 3 lines parse — none dropped");
+        assert!(parsed[1].state_delta.is_none(), "legacy variant → None");
     }
 }
