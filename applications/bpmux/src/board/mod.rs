@@ -5,6 +5,7 @@ pub mod events;
 pub mod iteration_label;
 pub mod orchestrator;
 pub mod peer;
+pub mod ready_order_label;
 pub mod store;
 pub mod sync;
 

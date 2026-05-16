@@ -3,6 +3,7 @@
 use chrono::{TimeZone, Utc};
 
 use crate::board::adapters::github::is_iteration_position_label_for_test as is_iteration_position_label;
+use crate::board::adapters::github::is_position_label_for_test as is_position_label;
 use crate::board::adapters::github::{
     classify_gate, decode_gate_comments, decode_story_metadata, parent_epic_from_labels,
     state_from_labels, state_to_label, tags_from_labels, warn_on_inconsistent_state_labels,
@@ -39,6 +40,16 @@ fn is_iteration_position_label_rejects_iteration_without_position_suffix() {
     assert!(!is_iteration_position_label("iteration-Cassiopeia"));
     assert!(!is_iteration_position_label("iteration-Cassiopeia."));
     assert!(!is_iteration_position_label("iteration-Cassiopeia.abc"));
+}
+
+#[test]
+fn is_position_label_covers_ready_order_and_iteration_position() {
+    assert!(is_position_label("ready-order.100"));
+    assert!(is_position_label("ready-order.42"));
+    assert!(is_position_label("iteration-Cassiopeia.100"));
+    assert!(!is_position_label("ready-order.foo"));
+    assert!(!is_position_label("ready"));
+    assert!(!is_position_label("blocked"));
 }
 
 #[test]

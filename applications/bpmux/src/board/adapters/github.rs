@@ -287,7 +287,7 @@ impl SourceAdapter for GitHubSourceAdapter {
                     .add_label(*number, label)
                     .await
                     .map_err(SyncError::Other)?;
-                if is_iteration_position_label(label) {
+                if is_position_label(label) {
                     Ok(None)
                 } else {
                     Ok(Some(BoardEvent::LabelsRefreshed {
@@ -303,7 +303,7 @@ impl SourceAdapter for GitHubSourceAdapter {
                     .remove_label(*number, label)
                     .await
                     .map_err(SyncError::Other)?;
-                if is_iteration_position_label(label) {
+                if is_position_label(label) {
                     Ok(None)
                 } else {
                     Ok(Some(BoardEvent::LabelsRefreshed {
@@ -496,9 +496,19 @@ fn is_iteration_position_label(label: &str) -> bool {
         .is_some_and(|tail| !tail.is_empty() && tail.chars().all(|c| c.is_ascii_digit()))
 }
 
+fn is_position_label(label: &str) -> bool {
+    is_iteration_position_label(label)
+        || crate::board::ready_order_label::is_ready_order_label(label)
+}
+
 #[cfg(test)]
 pub(crate) fn is_iteration_position_label_for_test(label: &str) -> bool {
     is_iteration_position_label(label)
+}
+
+#[cfg(test)]
+pub(crate) fn is_position_label_for_test(label: &str) -> bool {
+    is_position_label(label)
 }
 
 fn extract_label_names(v: &serde_json::Value) -> Vec<String> {
