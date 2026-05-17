@@ -140,32 +140,6 @@ mod canonical_via_gh_1300 {
     }
 
     #[tokio::test]
-    async fn canonical_path_does_not_touch_legacy_priority_json_substrate() {
-        // AC10 cross-contamination check: canonical path operates on
-        // store + iteration-issue only; does NOT mutate priority.json
-        // Verified by holding a priority.json snapshot pre-call and
-        // asserting post-call equality.
-        let priority_dir = tempfile::tempdir().unwrap();
-        let priority_path = priority_dir.path().join("priority.json");
-        let priority_pre = r#"{"ready":[42]}"#;
-        std::fs::write(&priority_path, priority_pre).unwrap();
-
-        let refresh = build_refresh(vec![
-            seed_iteration_issue(1400, "Pegasus"),
-            seed_member(200, StoryState::Icebox, Some(("Pegasus", 100))),
-        ])
-        .await;
-        promote_members_then_close_iteration(&refresh, 1400, &[200])
-            .await
-            .unwrap();
-        let priority_post = std::fs::read_to_string(&priority_path).unwrap();
-        assert_eq!(
-            priority_pre, priority_post,
-            "canonical path does NOT touch legacy priority.json substrate (AC10 cross-contamination check)"
-        );
-    }
-
-    #[tokio::test]
     async fn close_walks_by_iteration_theme_label_not_by_priority_json_position() {
         use crate::board::adapters::gh_label_codec::GhLabelCodec;
         use crate::board::iteration_label::members_with_iteration_label;

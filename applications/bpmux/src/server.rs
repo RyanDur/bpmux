@@ -217,25 +217,6 @@ pub async fn run_server(
             session.clone(),
             crate::bridge::drain_interval_from_env(),
         ));
-        let _session_for_unused = session.clone();
-        tokio::spawn(async move {
-            if let Err(e) = refresh.refresh_all().await {
-                crate::session::diag::log_diag(&format!(
-                    "[#1301 slice 4D] migrate_legacy_ready_to_labels: refresh_all failed: {e}; skipping"
-                ));
-                return;
-            }
-            match crate::migrate_legacy_ready_to_labels(refresh.clone()).await {
-                Ok(0) => {}
-                Ok(n) => crate::session::diag::log_diag(&format!(
-                    "[#1301 slice 4D] migrated {n} legacy ready-column entries to ready-order.N labels"
-                )),
-                Err(e) => crate::session::diag::log_diag(&format!(
-                    "[#1301 slice 4D] migrate_legacy_ready_to_labels failed: {e}"
-                )),
-            }
-            let _ = refresh;
-        });
     }
 
     // #372: spawn the push-based CI state watcher. Polls GitHub at

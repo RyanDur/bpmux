@@ -12,7 +12,6 @@ pub mod log;
 pub mod message;
 pub mod pins;
 pub mod precommit;
-pub mod priority;
 pub mod reactions;
 pub mod recall;
 pub mod search;

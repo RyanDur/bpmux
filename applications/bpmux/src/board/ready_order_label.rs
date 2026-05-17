@@ -44,9 +44,7 @@ pub fn stories_with_ready_order<C: LabelCodec>(codec: &C, stories: &[Story]) -> 
 ///
 /// Ready ordering: stories carrying a `ready-order.{N}` label sort
 /// ascending by label position. Unlabeled stories follow, ordered by
-/// issue number for stability (transitional shape until boot
-/// migration has labeled every legacy entry — see
-/// [`crate::migrate_legacy_ready_to_labels`]).
+/// issue number for stability.
 pub fn sort_board_by_ready_order_labels<C: LabelCodec>(
     codec: &C,
     stories: Vec<serde_json::Value>,
