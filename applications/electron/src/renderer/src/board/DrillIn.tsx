@@ -1,15 +1,9 @@
-import { format } from 'date-fns'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import MessageBody from '../chat/MessageBody'
 import { describeHttpError } from '../api/http'
-import {
-  getStoryComments,
-  postStoryAccept,
-  postStoryComment,
-  postStoryReject,
-  type Comment
-} from '../api/storiesClient'
-import { BOARD_INVALIDATE_MARKER, type ChatMessage } from '../transport/types'
+import { postStoryAccept, postStoryReject } from '../api/storiesClient'
+import type { ChatMessage } from '../transport/types'
+import Comments from './Comments'
 import StoryBadge from './StoryBadge'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import Timeline from './Timeline'
@@ -31,13 +25,6 @@ const LIFECYCLE_LABELS: ReadonlySet<string> = new Set([
 const isLifecycleLabel = (label: string): boolean =>
   LIFECYCLE_LABELS.has(label) || label.startsWith('blocked-by:')
 
-// Optimistic comments have a placeholder id in this range so the dedup
-// step can tell them apart from server-assigned ids (which are GitHub
-// issue comment ids, always positive). When the refetch (after the
-// invalidate broadcast) returns the real comment with a real id, the
-// optimistic one is dropped by the merge in mergeComments().
-const OPTIMISTIC_ID_BASE = -1_000_000_000
-
 interface Props {
   story: BoardStory
   isOwner: boolean
@@ -58,25 +45,6 @@ interface Props {
   focusTimeline?: boolean
   onBack: () => void
   onStoryMutated: (story: BoardStory) => void
-}
-
-const isInvalidateMarker = (m: ChatMessage): boolean => m.text === BOARD_INVALIDATE_MARKER
-
-const mergeComments = (
-  server: readonly Comment[],
-  optimistic: readonly Comment[]
-): Comment[] => {
-  if (optimistic.length === 0) return [...server]
-  const survivors = optimistic.filter((opt) => {
-    const optMs = new Date(opt.created_at).getTime()
-    return !server.some((s) => {
-      if (s.author !== opt.author) return false
-      if (s.body !== opt.body) return false
-      const sMs = new Date(s.created_at).getTime()
-      return Math.abs(sMs - optMs) < 10_000
-    })
-  })
-  return [...server, ...survivors]
 }
 
 type ActionMode = 'idle' | 'bug-question' | 'rejecting'
@@ -101,27 +69,9 @@ const DrillIn = ({
   const [note, setNote] = useState<string>('')
   const [bypassReason, setBypassReason] = useState<string>('')
   const [toast, setToast] = useState<string | null>(null)
-  const [serverComments, setServerComments] = useState<Comment[] | null>(null)
-  const [optimistic, setOptimistic] = useState<Comment[]>([])
-  const [commentDraft, setCommentDraft] = useState<string>('')
-  const [commentBusy, setCommentBusy] = useState<boolean>(false)
   const articleRef = useRef<HTMLElement | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const rejectDialogRef = useRef<HTMLDialogElement | null>(null)
-  const commentTextareaRef = useRef<HTMLTextAreaElement | null>(null)
-  // Invalidate subscription: remember how many messages we've seen so
-  // we only react to NEW marker messages (not the backfill hydration
-  // on mount). Tracked as a ref so the effect doesn't depend on
-  // previous message counts (which would re-trigger needlessly).
-  const seenMessageCountRef = useRef<number>(messages.length)
-  // Scroll preservation: track whether the comments list was scrolled
-  // to bottom BEFORE a refetch; after rerender, if so, auto-scroll to
-  // new bottom. If not, preserve scroll position so the reader isn't
-  // yanked away from mid-thread content.
-  const commentsListRef = useRef<HTMLUListElement | null>(null)
-  const wasAtBottomRef = useRef<boolean>(true)
-
-  const comments = serverComments === null ? null : mergeComments(serverComments, optimistic)
 
 
   // Focus the article on mount so Esc falls to our handler before
@@ -148,102 +98,6 @@ useEffect(() => {
     const id = setTimeout(() => setToast(null), TOAST_MS)
     return () => clearTimeout(id)
   }, [toast])
-
-  // Capture scroll state BEFORE the fetch so post-render can restore.
-  const captureScroll = useCallback((): void => {
-    const el = commentsListRef.current
-    if (!el) return
-    // "At bottom" tolerance: treat within 4px of the max scrollTop as
-    // "at bottom" — scroll rounding in Chromium can leave 1-2px gap.
-    const max = el.scrollHeight - el.clientHeight
-    wasAtBottomRef.current = max <= 0 || el.scrollTop >= max - 4
-  }, [])
-
-  const fetchComments = useCallback(
-    async (signal?: AbortSignal): Promise<void> => {
-      captureScroll()
-      if (usingMock || !apiBase) {
-        setServerComments([])
-        return
-      }
-      await getStoryComments({ apiBase, authToken }, story.number, signal)
-        .onSuccess((comments) => setServerComments(comments))
-        .onFailure((error) => {
-          if (error.kind === 'network' && error.message.includes('abort')) return
-          setServerComments([])
-        })
-        .value
-    },
-    [apiBase, authToken, captureScroll, story.number, usingMock]
-  )
-
-  useEffect(() => {
-    const controller = new AbortController()
-    void fetchComments(controller.signal)
-    return () => controller.abort()
-  }, [fetchComments])
-
-  // Live-refresh: watch for new BOARD_INVALIDATE_MARKER messages on
-  // the chat stream. On a new marker, refetch comments. The ref tracks
-  // last-seen message count so we only react to freshly arrived
-  // markers, not the backfill on initial mount (which often contains
-  // old invalidate markers from earlier in the session).
-  useEffect(() => {
-    const prev = seenMessageCountRef.current
-    if (messages.length <= prev) {
-      seenMessageCountRef.current = messages.length
-      return
-    }
-    const fresh = messages.slice(prev)
-    seenMessageCountRef.current = messages.length
-    if (fresh.some(isInvalidateMarker)) {
-      void fetchComments()
-    }
-  }, [messages, fetchComments])
-
-  // Post-render scroll restoration: if viewer was at bottom before
-  // the refetch, auto-scroll to bottom so they see the new entries.
-  // Otherwise the browser preserves scrollTop naturally (React keeps
-  // the scroll container in place across a list re-render with stable
-  // keys), so there's nothing to restore — they stay where they were.
-  useEffect(() => {
-    if (!wasAtBottomRef.current) return
-    const el = commentsListRef.current
-    if (!el) return
-    el.scrollTop = el.scrollHeight
-  }, [comments])
-
-  const handleCommentSubmit = useCallback(async () => {
-    const trimmed = commentDraft.trim()
-    if (!trimmed || commentBusy) return
-    setCommentBusy(true)
-    // Optimistic: show the comment immediately so the user sees their
-    // message land without waiting for the POST roundtrip + invalidate
-    // refetch cycle. Negative id marks it as optimistic for the merge
-    // dedup. If the POST fails we roll it back via the catch below.
-    const optimisticEntry: Comment = {
-      id: OPTIMISTIC_ID_BASE - Date.now(),
-      author: 'ryan',
-      body: trimmed,
-      created_at: new Date().toISOString()
-    }
-    setOptimistic((prev) => [...prev, optimisticEntry])
-    setCommentDraft('')
-    if (usingMock || !apiBase) {
-      // Mock path: no server, no invalidate — the optimistic entry
-      // just stays (it's the only record of the comment).
-      setCommentBusy(false)
-      return
-    }
-    await postStoryComment({ apiBase, authToken }, story.number, { body: trimmed })
-      .onFailure((error) => {
-        setOptimistic((prev) => prev.filter((c) => c.id !== optimisticEntry.id))
-        setCommentDraft(trimmed)
-        setToast(`Comment failed: ${describeHttpError(error)}`)
-      })
-      .value
-    setCommentBusy(false)
-  }, [apiBase, authToken, commentBusy, commentDraft, story.number, usingMock])
 
   const canAct = isOwner && story.state === 'delivered'
 
@@ -344,83 +198,11 @@ useEffect(() => {
   // placed AFTER the blank line that follows the quote block so
   // the author can type their reply immediately. The anchor in the
   // blockquote links back to the source comment via `#comment-<id>`;
-  // MessageBody renders this as a clickable scroll-to-origin link.
-  // Rationale: concurrent-write pain (Ryan 2026-04-22) — mid-compose,
-  // new comments arrive and the reply's antecedent becomes ambiguous.
-  const insertQuote = useCallback(
-    (id: string, author: string, text: string) => {
-      const selected = text.trim()
-      if (!selected) return
-      const quoted = selected
-        .split('\n')
-        .map((line) => `> ${line}`)
-        .join('\n')
-      const header = `> [@${author}](#comment-${id}):`
-      const prefix = `${header}\n${quoted}\n\n`
-      setCommentDraft((prev) => prefix + prev)
-      const caret = prefix.length
-      window.requestAnimationFrame(() => {
-        const ta = commentTextareaRef.current
-        if (!ta) return
-        ta.focus()
-        ta.setSelectionRange(caret, caret)
-      })
-    },
-    []
-  )
-
-  // Keyboard path (#366): Cmd/Ctrl+E with a selection inside a
-  // comment body fires the same `insertQuote` path as the native
-  // right-click menu below.
-  const handleQuoteShortcut = useCallback(
-    (event: React.KeyboardEvent<HTMLElement>) => {
-      if (event.key !== 'e' && event.key !== 'E') return
-      if (!(event.metaKey || event.ctrlKey)) return
-      if (event.altKey || event.shiftKey) return
-      const sel = window.getSelection()
-      if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return
-      const anchor = sel.anchorNode
-      if (!anchor) return
-      let node: Node | null = anchor
-      while (node && !(node instanceof HTMLElement && node.dataset.commentId)) {
-        node = node.parentNode
-      }
-      if (!(node instanceof HTMLElement)) return
-      const id = node.dataset.commentId
-      const author = node.dataset.commentAuthor ?? 'unknown'
-      if (!id) return
-      const selected = sel.toString().trim()
-      if (!selected) return
-      event.preventDefault()
-      insertQuote(id, author, selected)
-    },
-    [insertQuote]
-  )
-
-  // Native-menu path (#371): preload exposes `onQuoteComment`, which
-  // main triggers when the user clicks "Quote in reply" in the
-  // native right-click context menu. Same insertQuote path as the
-  // keyboard shortcut — single source of truth for the quote
-  // format so the two trigger surfaces can't drift apart.
-  useEffect(() => {
-    const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
-    if (!bridge?.onQuoteComment) return
-    const unsubscribe = bridge.onQuoteComment(({ commentId, author, text }) => {
-      insertQuote(commentId, author, text)
-    })
-    return unsubscribe
-  }, [insertQuote])
-
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLElement>) => {
-      // Quote-shortcut runs first — if it consumes the event
-      // (selection inside a comment + Cmd/Ctrl+E), we stop here.
-      handleQuoteShortcut(event)
       if (event.defaultPrevented) return
       if (event.key === 'Escape') {
-        if (mode === 'rejecting') {
-          return
-        }
+        if (mode === 'rejecting') return
         event.preventDefault()
         if (mode === 'bug-question') {
           setMode('idle')
@@ -429,7 +211,7 @@ useEffect(() => {
         onBack()
       }
     },
-    [handleQuoteShortcut, mode, onBack]
+    [mode, onBack]
   )
 
   const handleTextareaKeyDown = useCallback(
@@ -440,21 +222,6 @@ useEffect(() => {
       }
     },
     [handleRejectSend]
-  )
-
-  // Cmd/Ctrl+Enter on the comment textarea submits the comment —
-  // parity with the reject-form textarea above (#356). Shift+Enter
-  // still inserts a newline (standard textarea; we don't intercept
-  // that case). Matches the reject-form's handler exactly so the
-  // user's muscle memory transfers between the two inputs.
-  const handleCommentKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
-        event.preventDefault()
-        void handleCommentSubmit()
-      }
-    },
-    [handleCommentSubmit]
   )
 
   const type = storyTypeFromLabels(story.labels)
@@ -520,72 +287,14 @@ useEffect(() => {
         )}
       </section>
 
-      <section className="drill-in-comments" aria-label="Comments">
-        <header className="drill-in-comments-header">
-          <h4>Comments{comments !== null ? ` (${comments.length})` : ''}</h4>
-        </header>
-        {comments === null ? (
-          <p className="drill-in-comments-empty">loading…</p>
-        ) : comments.length === 0 ? (
-          <p className="drill-in-comments-empty">no comments yet</p>
-        ) : (
-          <ul className="drill-in-comments-list" ref={commentsListRef} data-test="drill-in-comments-list">
-            {comments.map((c) => (
-              <li
-                key={c.id}
-                className="drill-in-comment"
-                data-test="drill-in-comment"
-                data-comment-id={c.id}
-                data-comment-author={c.author}
-              >
-                <article>
-                  <header className="drill-in-comment-meta">
-                    <cite>{c.author}</cite>
-                    <time dateTime={c.created_at}>
-                      {format(new Date(c.created_at), 'MMM d · h:mm a zzz')}
-                    </time>
-                  </header>
-                  <section className="drill-in-comment-body">
-                    <MessageBody text={c.body} />
-                  </section>
-                </article>
-              </li>
-            ))}
-          </ul>
-        )}
-        <form
-          className="drill-in-comment-form"
-          onSubmit={(event) => {
-            event.preventDefault()
-            void handleCommentSubmit()
-          }}
-        >
-          <label className="drill-in-comment-label">
-            <small>Add a comment</small>
-            <textarea
-              ref={commentTextareaRef}
-              value={commentDraft}
-              onChange={(e) => setCommentDraft(e.target.value)}
-              onKeyDown={handleCommentKeyDown}
-              placeholder="Markdown supported — Cmd+Enter to send"
-              rows={3}
-              data-test="drill-in-comment-input"
-            />
-          </label>
-          <menu className="drill-in-action-row">
-            <li>
-              <button
-                type="submit"
-                className="drill-in-btn drill-in-btn--primary"
-                disabled={commentBusy || commentDraft.trim().length === 0}
-                data-test="drill-in-comment-send"
-              >
-                {commentBusy ? 'Sending…' : 'Comment'}
-              </button>
-            </li>
-          </menu>
-        </form>
-      </section>
+      <Comments
+        storyNumber={story.number}
+        apiBase={apiBase}
+        authToken={authToken}
+        usingMock={usingMock}
+        messages={messages}
+        onError={setToast}
+      />
 
       <Timeline
         story={story}
