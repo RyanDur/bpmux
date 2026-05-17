@@ -17,6 +17,7 @@ import {
   boardIterationTestId
 } from './testIds'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
+import { postStoryLabels } from '../api/labelsClient'
 import { storyTypeFromLabels, type BoardStory } from './types'
 
 interface Props {
@@ -86,14 +87,11 @@ const postLabelMutation = (
   if (typeof window === 'undefined') return
   const bridge = window.bpmux
   if (!bridge?.apiBase) return
-  void fetch(`${bridge.apiBase}/api/stories/${storyNumber}/labels`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${bridge.authToken ?? ''}`
-    },
-    body: JSON.stringify({ add: addLabels, remove: removeLabels })
-  })
+  void postStoryLabels(
+    { apiBase: bridge.apiBase, authToken: bridge.authToken },
+    storyNumber,
+    { add: addLabels, remove: removeLabels }
+  )
 }
 
 const eagerReorder = <T,>(

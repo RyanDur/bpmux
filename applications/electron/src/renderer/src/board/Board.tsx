@@ -7,6 +7,7 @@ import {
   type ConnectionStatus
 } from '../transport/types'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
+import { postStoryLabels } from '../api/labelsClient'
 import DrillIn from './DrillIn'
 import Epic from './Epic'
 import Iteration from './Iteration'
@@ -417,24 +418,20 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
           targetMembersIncludeDragged: draggedOldPosition !== null
         })
         if (mutation === null) return
-        fetch(`${bridge.apiBase}/api/stories/${moved}/labels`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${bridge.authToken ?? ''}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(mutation)
-        })
-          .then((res) => {
-            if (!res.ok) {
-              setData(prevData)
-              setError(`Reorder failed: HTTP ${res.status}`)
-            }
-          })
-          .catch((err) => {
+        void postStoryLabels(
+          { apiBase: bridge.apiBase, authToken: bridge.authToken },
+          moved,
+          mutation
+        ).then((result) => {
+          if (!result.ok) {
             setData(prevData)
-            setError(`Reorder failed: ${err instanceof Error ? err.message : String(err)}`)
-          })
+            setError(
+              result.error.kind === 'http'
+                ? `Reorder failed: ${result.error.message}`
+                : `Reorder failed: ${result.error.message}`
+            )
+          }
+        })
       }
     },
     [bridge?.apiBase, bridge?.authToken, data, usingMock]
