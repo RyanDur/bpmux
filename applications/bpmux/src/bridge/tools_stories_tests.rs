@@ -2457,8 +2457,8 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
     assert!(story.is_closed, "is_closed flag must be set");
     assert_eq!(
         story.state,
-        StoryState::Delivered,
-        "state preserved at last domain state — close is action-overlay, not state-transition"
+        StoryState::Retired,
+        "post-#1377: retire-class reason transitions state to Retired"
     );
 
     let drained = orchestrator.drain_pending().await.unwrap();
@@ -2469,8 +2469,8 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
     let pushed = adapter.pushed_events();
     assert_eq!(
         pushed.len(),
-        2,
-        "post-#1156: 1 TagRemoved 'delivered' + 1 StoryClosed: {pushed:?}"
+        4,
+        "post-#1377: 1 TagRemoved 'delivered' + 1 TagAdded 'retired' + 1 StateTransitioned + 1 StoryClosed (reason='superseded …' classifies retire-class): {pushed:?}"
     );
     assert!(
         pushed.iter().any(|e| matches!(
@@ -2482,6 +2482,21 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
             } if r == "superseded by #999 — won't ship"
         )),
         "StoryClosed event must be present with the reason payload"
+    );
+    assert!(
+        pushed.iter().any(|e| matches!(
+            e,
+            BoardEvent::TagAdded { number: 301, label, .. } if label == "retired"
+        )),
+        "TagAdded 'retired' event must fire for retire-class reason"
+    );
+    assert!(
+        pushed.iter().any(|e| matches!(
+            e,
+            BoardEvent::StateTransitioned { number: 301, new_state, .. }
+                if *new_state == crate::board::domain::StoryState::Retired
+        )),
+        "StateTransitioned → Retired must fire for retire-class reason"
     );
 }
 

@@ -15,6 +15,13 @@ use super::signals::{broadcast_board_invalidate, build_iteration_close_signal};
 /// fire StoryClosed; accept_story uses the same close path.
 /// Generalizes the invocation for superseded / duplicate / won't-fix
 /// closures.
+///
+/// #1377: reasons matching retire-class keywords (superseded /
+/// duplicate / won't-fix) add the `retired` label before
+/// `StoryClosed` fires, so the canonical state-axis lands as
+/// `StoryState::Retired` (distinct from ship-chain accept) and the
+/// renderer routes the story to the retired column instead of
+/// polluting accepted.
 pub(crate) async fn handle_close_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
@@ -41,6 +48,20 @@ pub(crate) async fn handle_close_story(
             peer_id: crate::board::PeerId::local(),
         };
         reap_workflow_labels(r.as_ref(), number, &meta, KEEP_NONE)?;
+        if is_retire_reason(reason) {
+            r.mutate_sync(crate::board::BoardEvent::TagAdded {
+                meta: meta.clone(),
+                number,
+                label: "retired".to_string(),
+            })
+            .map_err(|e| format!("#{number} retired-tag enqueue failed: {e}"))?;
+            r.mutate_sync(crate::board::BoardEvent::StateTransitioned {
+                meta: meta.clone(),
+                number,
+                new_state: crate::board::domain::StoryState::Retired,
+            })
+            .map_err(|e| format!("#{number} retired-state enqueue failed: {e}"))?;
+        }
         r.mutate_sync(crate::board::BoardEvent::StoryClosed {
             meta,
             number,
@@ -57,6 +78,57 @@ pub(crate) async fn handle_close_story(
         "close_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n"
             .into(),
     )
+}
+
+/// Classify a close_story reason as retire-class (superseded /
+/// duplicate / won't-fix) vs accept-class (everything else, including
+/// no-reason). Matches by first-token / contains so PM-prose like
+/// "superseded — fold-into-touch pattern" classifies as retire while
+/// "shipped clean" stays accept-class.
+pub(crate) fn is_retire_reason(reason: &str) -> bool {
+    let lower = reason.to_ascii_lowercase();
+    lower.starts_with("superseded")
+        || lower.starts_with("supersede")
+        || lower.starts_with("duplicate")
+        || lower.starts_with("won't-fix")
+        || lower.starts_with("won't fix")
+        || lower.starts_with("wont-fix")
+        || lower.starts_with("wontfix")
+        || lower.starts_with("retired")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_retire_reason;
+
+    #[test]
+    fn classifies_canonical_retire_reasons() {
+        assert!(is_retire_reason("superseded"));
+        assert!(is_retire_reason("duplicate"));
+        assert!(is_retire_reason("won't-fix"));
+        assert!(is_retire_reason("wont-fix"));
+        assert!(is_retire_reason("retired"));
+    }
+
+    #[test]
+    fn classifies_pm_prose_starting_with_retire_keyword() {
+        assert!(is_retire_reason("superseded — fold-into-touch pattern"));
+        assert!(is_retire_reason("duplicate of #1283"));
+        assert!(is_retire_reason("Won't fix — out of scope"));
+    }
+
+    #[test]
+    fn rejects_ship_chain_reasons() {
+        assert!(!is_retire_reason("shipped clean"));
+        assert!(!is_retire_reason("accepted via desk-check"));
+        assert!(!is_retire_reason("done"));
+    }
+
+    #[test]
+    fn rejects_unrelated_prose() {
+        assert!(!is_retire_reason("the feature looks great"));
+        assert!(!is_retire_reason(""));
+    }
 }
 
 /// Fire the iteration-close externalize-prompt (#282). PM-gated.
