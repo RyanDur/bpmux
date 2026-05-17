@@ -2,7 +2,13 @@ import { format } from 'date-fns'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import MessageBody from '../chat/MessageBody'
 import { describeHttpError } from '../api/http'
-import { postStoryComment, postStoryAccept, postStoryReject } from '../api/storiesClient'
+import {
+  getStoryComments,
+  postStoryAccept,
+  postStoryComment,
+  postStoryReject,
+  type Comment
+} from '../api/storiesClient'
 import {
   useTimeline,
   type ClassifiedEvent,
@@ -144,13 +150,6 @@ const renderTimelineList = (
       )}
     </>
   )
-}
-
-interface Comment {
-  id: number
-  author: string
-  body: string
-  created_at: string
 }
 
 // Optimistic comments have a placeholder id in this range so the dedup
@@ -320,24 +319,13 @@ const DrillIn = ({
         setServerComments([])
         return
       }
-      try {
-        const res = await fetch(
-          `${apiBase}/api/stories/${story.number}/comments`,
-          {
-            headers: { Authorization: `Bearer ${authToken ?? ''}` },
-            signal
-          }
-        )
-        if (!res.ok) {
+      await getStoryComments({ apiBase, authToken }, story.number, signal)
+        .onSuccess((comments) => setServerComments(comments))
+        .onFailure((error) => {
+          if (error.kind === 'network' && error.message.includes('abort')) return
           setServerComments([])
-          return
-        }
-        const json = (await res.json()) as Comment[]
-        setServerComments(json)
-      } catch (err) {
-        if ((err as Error)?.name === 'AbortError') return
-        setServerComments([])
-      }
+        })
+        .value
     },
     [apiBase, authToken, captureScroll, story.number, usingMock]
   )

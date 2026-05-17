@@ -22,6 +22,20 @@ export interface CommentPayload {
   body: string
 }
 
+export interface Comment {
+  id: number
+  author: string
+  body: string
+  created_at: string
+}
+
+export const getStoryComments = (
+  ctx: ApiContext,
+  storyNumber: number,
+  signal?: AbortSignal
+): AsyncResult<Comment[], HttpError> =>
+  http.get<Comment[]>(ctx, `/api/stories/${storyNumber}/comments`, signal)
+
 export const postStoryComment = (
   ctx: ApiContext,
   storyNumber: number,
