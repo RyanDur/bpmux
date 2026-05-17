@@ -21,14 +21,24 @@ Evidence:
 - Single-crate workspace — `Cargo.toml` declares one `bpmux` package;
   no sub-crates.
 - Top-level modules align with business capabilities, not horizontal
-  layers: `bridge` (MCP stdio integration) / `mcp` (MCP server runtime)
-  / `session` (persistent storage, lessons, identity) / `terminal`
-  (TUI) / `transport` (P2P networking, protocols).
+  layers: `board` (canonical store + adapters + RefreshDriver trait)
+  / `bridge` (MCP stdio integration) / `github` (GH API client) /
+  `mcp` (MCP server runtime) / `orchestrator` (action dispatch +
+  state-delta synthesis) / `session` (persistent storage, lessons,
+  identity, briefings, bookmarks, pins, reactions, tokens) /
+  `transport` (P2P networking, protocols, REST surface, WebRTC).
+  TUI lives in `applications/electron/` (TypeScript renderer +
+  Electron main), not in this crate; Epic #1247 retired the
+  in-crate `terminal/` module in favor of an Electron-owned UI
+  fed through the `transport` REST/WS surfaces.
 - Explicit module boundaries via `mod.rs` re-exports. Each feature
   group exposes a curated public API; internals stay private.
 - No circular dependencies between feature groups. Dependency flows
-  downward: `bridge` + `server` depend on `session` + `transport`;
-  `terminal` depends on `session` only; `session` is a leaf.
+  downward: `bridge` depends on `board` + `session` + `transport`;
+  `orchestrator` depends on `board`; `board` + `transport` depend
+  on `session`; `session` is a leaf. The TypeScript renderer talks
+  to bpmux only over the REST + WS protocols exposed by `transport`
+  — no in-process coupling.
 
 **Approaching v4 (components-within-app) but not there.** v4 requires
 independently-built-and-tested components with explicit declared
@@ -39,14 +49,10 @@ coupled (integration tests span features, spin up the full runtime).
 
 Ranked by pressure toward next-stage progression:
 
-1. **`terminal/` deeply models `session/` types** — 42 terminal files
-   directly import `crate::session`. Session schema changes require
-   auditing terminal rendering. A v4 move would decouple via event
-   streams or view-model layer.
-2. **`bridge/` tool responders duplicate `session/` access logic** —
-   no shared query layer. Adding an identity field requires touching
-   `session/identity.rs`, `bridge/tools/get_identity.rs`, and bridge
-   helpers. Coordination cost grows with change frequency.
+1. **`bridge/` tool responders duplicated `session/` access logic** —
+   no shared query layer. Adding an identity field used to require
+   touching `session/identity.rs`, `bridge/tools/get_identity.rs`, and
+   bridge helpers; coordination cost grew with change frequency.
    **Status (#1363):** wire-shape leak retired via `bridge::view_model`.
    Identity / token-report / bookmark / velocity responses now flow
    through bridge-owned view types (`IdentityIndexView`,
@@ -59,9 +65,25 @@ Ranked by pressure toward next-stage progression:
    module; full coordination-cost-reduction would require also
    collapsing the per-tool repeat of `load_X → write_X` patterns,
    which is downstream of the view-model substrate.
-3. **Integration tests require full runtime** — `tests/*_test.rs` spin
-   up server + session + terminal together. No component-level test
-   isolation. A v4 move would extract testable modules.
+2. **Integration tests require full runtime** — `tests/integration_main_modules/`
+   spin up the full bpmux server with session + board + orchestrator
+   + transport wired together; the in-process e2e tests under
+   `applications/electron/tests/` launch a real Electron instance + a
+   spawned bpmux binary in parallel. No component-level test isolation
+   in either tier. A v4 move would extract independently-testable
+   units (board operations testable without the orchestrator drain
+   loop; bridge tools testable against a stub `RefreshDriver` without
+   spinning up the canonical store from disk).
+3. **Renderer ↔ bpmux JSON-wire shape is the new boundary** — with
+   the TUI extracted to Electron + the Friction #2 view-model layer
+   landed, the new architectural seam is the REST/WS contract between
+   the TypeScript renderer and the Rust bpmux server. Wire-shape
+   drift here (e.g., a session::Foo schema change that the bridge
+   view_model absorbs into the wire JSON would not propagate to the
+   renderer's TypeScript types) is a coordination cost not yet
+   substrate-enforced; types are duplicated in `applications/electron/src/renderer/`.
+   v4-equivalent fix: codegen TypeScript types from the bridge view
+   models, or contract-test the wire shape at the boundary.
 
 ## Where v3 is working
 
@@ -74,9 +96,10 @@ The Continuum argues staying at a stage is often correct.
 - **Transport decoupled from business logic** — WebRTC support added
   with zero changes to bridge or session. Transport is resilient to
   layer additions because boundaries were explicit.
-- **Test harness mirrors module structure** — `tests/harness/` follows
-  `bridge/`, `pty/`, `peer/`, `screen/`. Test intent matches code
-  intent.
+- **Test harness mirrors module structure** — `tests/harness/`
+  contains `bridge.rs`, `mock_gh.rs`, `peer.rs`, `port.rs`, `pty.rs`,
+  `story_helpers.rs`; each sister-fixture maps to a code-side
+  feature group it supports. Test intent matches code intent.
 
 ## Stage-progression recommendation
 
@@ -84,11 +107,22 @@ Stay at v3 for the next 2-3 stories; begin v4 preparation work in
 parallel. The Continuum's guidance: progress when friction is urgent,
 not speculatively.
 
-Concrete first v4 step: extract a `bridge::view_model` boundary that
-translates session types into bridge-owned types. Testable with mocked
-session; decouples bridge from session refactor; unblocks friction #2
-without committing the whole codebase to v4. One or two stories of
-work, reversible.
+First v4 step landed (#1363): `bridge::view_model` boundary now
+translates session types into bridge-owned response types. Testable
+with mocked session; decouples bridge from session refactor; closed
+Friction #2's wire-shape leak class. Sister substrate-pivots in the
+same iteration window: #1353 (bridge/tools_stories.rs split into 9
+feature-cohered submodules), #1354 (transport/rest.rs split into 13
+feature-cohered submodules), #1360 (orchestrator.rs Mutex sites
+refactored to transactional-closure pattern), #1361 (snapshot_status
+immutable-derivation).
+
+Candidate next v4 step: extract a `board::view_model` mirror at the
+canonical-store↔consumer boundary. The pattern's leverage was high
+for bridge — single translation point per response class — and the
+same shape applies to `Story` / `BoardEvent` types crossing into
+renderer wire shapes. Sequential or parallel to the renderer-side
+TypeScript-codegen friction (#3 above).
 
 bpmux likely doesn't need v6+ (microservices) at any foreseeable point
 — it's a single coordination substrate, not a service mesh. The
