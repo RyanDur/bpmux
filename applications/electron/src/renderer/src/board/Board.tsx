@@ -11,6 +11,7 @@ import DrillIn from './DrillIn'
 import Epic from './Epic'
 import Iteration from './Iteration'
 import { computeReadyDropMutation } from './iterationPosition'
+import { isIterationPositionLabel, parseReadyOrderPosition } from './labelSchema'
 import StoryRow from './StoryRow'
 import { useRefetchOnReconnect } from './useRefetchOnReconnect'
 import {
@@ -31,10 +32,8 @@ type CollapseState = Record<ColumnState, boolean>
 
 const readyOrderFromLabels = (labels: string[]): number | null => {
   for (const l of labels) {
-    if (l.startsWith('ready-order.')) {
-      const n = Number(l.slice('ready-order.'.length))
-      if (Number.isFinite(n) && Number.isInteger(n) && n >= 0) return n
-    }
+    const n = parseReadyOrderPosition(l)
+    if (n !== null) return n
   }
   return null
 }
@@ -96,11 +95,7 @@ const MOCK_RESPONSE: BoardResponse = {
 }
 
 const hasIterationMemberLabel = (labels: string[]): boolean =>
-  labels.some((l) => {
-    if (!l.startsWith('iteration-')) return false
-    if (l.startsWith('iteration-order.')) return false
-    return /^iteration-.+\.\d+$/.test(l)
-  })
+  labels.some((l) => isIterationPositionLabel(l))
 
 interface BoardProps {
   // Chat message stream — forwarded to DrillIn so it can subscribe to

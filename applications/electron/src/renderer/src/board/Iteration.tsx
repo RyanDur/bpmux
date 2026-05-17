@@ -5,6 +5,12 @@ import StoryBadge from './StoryBadge'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import { useIterationCollapse } from './useIterationCollapse'
 import { computeDropMutation } from './iterationPosition'
+import {
+  parseIterationLabel,
+  parseIterationOrderPosition,
+  parseUnscheduledPosition,
+  themeNameFromTitle
+} from './labelSchema'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import { storyTypeFromLabels, type BoardStory } from './types'
 
@@ -15,39 +21,17 @@ interface Props {
 }
 
 const UNSCHEDULED_KEY = 'unscheduled'
-const UNSCHEDULED_LABEL_PREFIX = 'iteration-Unscheduled.'
-const ITERATION_ORDER_PREFIX = 'iteration-order.'
 
 const positionInIterationOrder = (story: BoardStory): number | null => {
   for (const label of story.labels) {
-    if (label.startsWith(ITERATION_ORDER_PREFIX)) {
-      const tail = label.slice(ITERATION_ORDER_PREFIX.length)
-      const n = parseInt(tail, 10)
-      if (!Number.isNaN(n)) return n
-    }
+    const n = parseIterationOrderPosition(label)
+    if (n !== null) return n
   }
   return null
 }
 
 const isIterationStory = (story: BoardStory): boolean =>
   storyTypeFromLabels(story.labels) === 'iteration'
-
-const themeNameFromTitle = (title: string): string => {
-  const match = title.match(/^Iteration (.+)$/)
-  const raw = match ? match[1].trim() : title.trim()
-  return raw.replace(/\s+/g, '-')
-}
-
-interface IterationLabelParts {
-  name: string
-  position: number
-}
-
-const parseIterationLabel = (label: string): IterationLabelParts | null => {
-  const match = label.match(/^iteration-(.+)\.(\d+)$/)
-  if (!match) return null
-  return { name: match[1], position: parseInt(match[2], 10) }
-}
 
 const positionInIteration = (story: BoardStory, themeName: string): number | null => {
   for (const label of story.labels) {
@@ -59,11 +43,8 @@ const positionInIteration = (story: BoardStory, themeName: string): number | nul
 
 const positionInUnscheduled = (story: BoardStory): number | null => {
   for (const label of story.labels) {
-    if (label.startsWith(UNSCHEDULED_LABEL_PREFIX)) {
-      const tail = label.slice(UNSCHEDULED_LABEL_PREFIX.length)
-      const n = parseInt(tail, 10)
-      if (!Number.isNaN(n)) return n
-    }
+    const n = parseUnscheduledPosition(label)
+    if (n !== null) return n
   }
   return null
 }

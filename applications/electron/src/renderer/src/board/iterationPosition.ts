@@ -1,3 +1,5 @@
+import { iterationLabel, readyOrderLabel } from './labelSchema'
+
 export const DEFAULT_FIRST_POSITION = 100
 export const DEFAULT_STEP = 100
 
@@ -68,8 +70,8 @@ export const computeDropMutation = (input: DropMutationInput): DropMutation | nu
   const { position: newPosition } = computeInsertPosition(adjustedIdx, withoutSource)
   if (sameContainer && newPosition === draggedOldPosition) return null
   return {
-    add: [`iteration-${targetThemeName}.${newPosition}`],
-    remove: [`iteration-${draggedThemeName}.${draggedOldPosition}`]
+    add: [iterationLabel(targetThemeName, newPosition)],
+    remove: [iterationLabel(draggedThemeName, draggedOldPosition)]
   }
 }
 
@@ -91,7 +93,7 @@ export const computeReadyDropMutation = (
       : targetMemberPositions
   const { position: newPosition } = computeInsertPosition(targetMemberIndex, withoutSource)
   if (draggedOldPosition !== null && newPosition === draggedOldPosition) return null
-  const add = [`ready-order.${newPosition}`]
-  const remove = draggedOldPosition !== null ? [`ready-order.${draggedOldPosition}`] : []
+  const add = [readyOrderLabel(newPosition)]
+  const remove = draggedOldPosition !== null ? [readyOrderLabel(draggedOldPosition)] : []
   return { add, remove }
 }

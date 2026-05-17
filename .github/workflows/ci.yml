@@ -77,7 +77,7 @@ jobs:
         run: npm ci
       - name: Vitest (RTL + real-backend)
         working-directory: applications/electron
-        run: npx vitest run --retry=2
+        run: npm run test:unit
 
   build-bpmux:
     runs-on: ubuntu-latest

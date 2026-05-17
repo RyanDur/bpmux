@@ -46,19 +46,22 @@ describe('human-side E2E #476 — direct-action — message @mention click', () 
 
       await rendered.findByText(/please look at this/, undefined, { timeout: 15_000 })
 
-      const devButton = await rendered.findByTestId('sidebar-direct-dev', undefined, {
+      await rendered.findByTestId('sidebar-direct-dev', undefined, {
         timeout: 15_000
       })
-      const broadcastButton = rendered.getByTestId('sidebar-broadcast')
-      expect(broadcastButton.getAttribute('aria-current')).toBe('true')
+      const initialBroadcast = rendered.getByTestId('sidebar-broadcast')
+      expect(initialBroadcast.getAttribute('aria-current')).toBe('true')
 
       const mention = (await rendered.findAllByTestId('message-mention'))[0]
       mention.click()
 
+      const r = rendered
       await waitFor(
         () => {
-          expect(devButton.getAttribute('aria-current')).toBe('true')
-          expect(broadcastButton.getAttribute('aria-current')).toBeNull()
+          const dev = r.getByTestId('sidebar-direct-dev')
+          const broadcast = r.getByTestId('sidebar-broadcast')
+          expect(dev.getAttribute('aria-current')).toBe('true')
+          expect(broadcast.getAttribute('aria-current')).toBeNull()
         },
         { timeout: 15_000 }
       )
