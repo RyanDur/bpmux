@@ -1,3 +1,4 @@
+pub mod gh_label_codec;
 pub mod github;
 #[cfg(test)]
 mod github_field_completeness_tests;

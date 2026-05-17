@@ -3,6 +3,7 @@ pub mod column;
 pub mod domain;
 pub mod events;
 pub mod iteration_label;
+pub mod label_codec;
 pub mod orchestrator;
 pub mod peer;
 pub mod ready_order_label;
