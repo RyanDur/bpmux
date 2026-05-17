@@ -29,10 +29,6 @@ const UNSCHEDULED_KEY = 'unscheduled'
 const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Element | null => {
   const collapse = useIterationCollapse(RENDERER_IDENTITY)
   const {
-    draggedNumber,
-    setDraggedNumber,
-    hoveredNumber,
-    setHoveredNumber,
     draggedIterationNumber,
     setDraggedIterationNumber,
     dragRejectedIterationNumber,
@@ -224,10 +220,6 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                   iteration={iteration}
                   themeName={themeName}
                   members={members}
-                  draggedNumber={draggedNumber}
-                  setDraggedNumber={setDraggedNumber}
-                  hoveredNumber={hoveredNumber}
-                  setHoveredNumber={setHoveredNumber}
                   setPending={setPending}
                   onOpen={onOpen}
                   onReorderAnnounce={onReorderAnnounce}

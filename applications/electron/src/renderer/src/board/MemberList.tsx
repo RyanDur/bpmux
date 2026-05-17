@@ -7,21 +7,25 @@ import { parseIterationLabel } from './labelSchema'
 import { STORY_GRIP_TEST_ID } from './testIds'
 import { storyTypeFromLabels, type BoardStory } from './types'
 import {
-  DRAG_MIMETYPE,
   type DragPayload,
   eagerReorder,
   postLabelMutation
 } from './iterationMembers'
 import type { IterationMember } from './useIterationMembers'
+import { DRAG_MIMETYPE_REGISTRY, useStoryDrag } from './useStoryDrag'
+
+const decodeDragPayload = (raw: string): DragPayload | null => {
+  try {
+    return JSON.parse(raw) as DragPayload
+  } catch {
+    return null
+  }
+}
 
 interface Props {
   iteration: BoardStory
   themeName: string
   members: IterationMember[]
-  draggedNumber: number | null
-  setDraggedNumber: (n: number | null) => void
-  hoveredNumber: number | null
-  setHoveredNumber: (n: number | null) => void
   setPending: (storyNumber: number, theme: string, position: number) => void
   onOpen: (n: number) => void
   onReorderAnnounce?: (text: string) => void
@@ -31,14 +35,16 @@ const MemberList = ({
   iteration,
   themeName,
   members,
-  draggedNumber,
-  setDraggedNumber,
-  hoveredNumber,
-  setHoveredNumber,
   setPending,
   onOpen,
   onReorderAnnounce
 }: Props): React.JSX.Element => {
+  const { draggedNumber, hoveredNumber, startDrag, endDrag, hover, decode, hasType } =
+    useStoryDrag<DragPayload>({
+      mimeType: DRAG_MIMETYPE_REGISTRY.ITERATION_MEMBER,
+      encode: JSON.stringify,
+      decode: decodeDragPayload
+    })
   const orderedMembers = eagerReorder(
     members,
     (m) => m.story.number,
@@ -55,19 +61,18 @@ const MemberList = ({
           data-iteration-member={story.number}
           data-dragging={draggedNumber === story.number ? 'true' : undefined}
           onDragOver={(event) => {
-            if (event.dataTransfer.types.includes(DRAG_MIMETYPE)) {
+            if (hasType(event)) {
               event.preventDefault()
               event.dataTransfer.dropEffect = 'move'
               if (draggedNumber !== null && draggedNumber !== story.number) {
-                setHoveredNumber(story.number)
+                hover(story.number)
               }
             }
           }}
           onDrop={(event) => {
-            const raw = event.dataTransfer.getData(DRAG_MIMETYPE)
-            if (!raw) return
+            const payload = decode(event)
+            if (payload === null) return
             event.preventDefault()
-            const payload = JSON.parse(raw) as DragPayload
             if (iteration.gh_state === 'closed') return
             const targetNumber =
               payload.storyNumber === story.number && hoveredNumber !== null
@@ -94,8 +99,7 @@ const MemberList = ({
             if (parsed) {
               setPending(payload.storyNumber, parsed.name, parsed.position)
             }
-            setDraggedNumber(null)
-            setHoveredNumber(null)
+            endDrag()
           }}
         >
           {iteration.gh_state !== 'closed' ? (
@@ -112,23 +116,9 @@ const MemberList = ({
                   themeName,
                   oldPosition: position
                 }
-                event.dataTransfer.setData(DRAG_MIMETYPE, JSON.stringify(payload))
-                event.dataTransfer.effectAllowed = 'move'
-                const row = (event.currentTarget as HTMLElement).closest('li')
-                if (row && typeof event.dataTransfer.setDragImage === 'function') {
-                  const rect = row.getBoundingClientRect()
-                  event.dataTransfer.setDragImage(
-                    row,
-                    event.clientX - rect.left,
-                    event.clientY - rect.top
-                  )
-                }
-                setDraggedNumber(story.number)
+                startDrag(event, story.number, payload)
               }}
-              onDragEnd={() => {
-                setDraggedNumber(null)
-                setHoveredNumber(null)
-              }}
+              onDragEnd={endDrag}
             >
               <GripIcon />
             </span>
