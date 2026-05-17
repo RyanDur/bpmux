@@ -37,18 +37,18 @@
 //! constructs with `None` so the default `default_<thing>_path()`
 //! helper resolves at call-time (preserving the env-overridable +
 //! home-default semantic for `BPMUX_BOARD_STORE_PATH`,
-//! `BPMUX_BOARD_OUTBOX_PATH`, `BPMUX_PRIORITY_PATH`-equivalent).
+//! `BPMUX_BOARD_OUTBOX_PATH`-equivalent).
 //! Tests construct with explicit per-test tempdirs to avoid
 //! polluting Ryan's actual `~/.bpmux/*` files.
 //!
 //! **Storage vs GlobalStore separation**: motivated by lifetime —
 //! `Storage` is per-session and tests get fresh state per launch;
 //! `GlobalStore` is per-user and persists across sessions
-//! (production reads + writes the same `~/.bpmux/priority.json`
-//! across many bpmux startups). Mixing them on a single trait would
-//! conflate two different reset-points + boundary-semantics. The
-//! separation is explicit per designer's 12:32 UTC trait-shape
-//! review.
+//! (production reads + writes the same `~/.bpmux/identity/{role}.json`
+//! and `~/.bpmux/briefings/{role}.md` across many bpmux startups).
+//! Mixing them on a single trait would conflate two different
+//! reset-points + boundary-semantics. The separation is explicit
+//! per designer's 12:32 UTC trait-shape review.
 
 use std::collections::{HashMap, VecDeque};
 use std::path::{Path, PathBuf};
@@ -141,7 +141,8 @@ pub trait Storage: Send + Sync {
 
 /// #1289 Phase-3: cross-session global state. Distinct from `Storage`
 /// (which is session-scoped) because these files live at user-global
-/// paths (e.g., `~/.bpmux/priority.json`, `~/.bpmux/identity/{role}.json`)
+/// paths (e.g., `~/.bpmux/identity/{role}.json`,
+/// `~/.bpmux/briefings/{role}.md`, `~/.bpmux/tokens/log.jsonl`)
 /// and survive across multiple bpmux sessions.
 ///
 /// FileGlobalStore production impl resolves paths via existing
