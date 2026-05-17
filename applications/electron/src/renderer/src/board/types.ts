@@ -15,6 +15,7 @@ export type StoryState =
   | 'needs-fixes'
   | 'rejected'
   | 'accepted'
+  | 'retired'
 
 export type ColumnState =
   | 'icebox'
