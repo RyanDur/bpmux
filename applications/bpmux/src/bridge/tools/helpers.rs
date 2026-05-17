@@ -82,9 +82,12 @@ fn load_auth_token() -> Result<String, String> {
 
 /// Format the post-state identity as JSON for tool success responses
 /// (#269). Returning the full index gives the caller observable
-/// evidence the write landed, per designer's spec.
+/// evidence the write landed, per designer's spec. Routes through
+/// `bridge::view_model::IdentityIndexView` per #1363 so the MCP-wire
+/// shape is bridge-owned, not session-owned.
 pub(super) fn identity_success(index: &crate::session::identity::IdentityIndex) -> String {
-    serde_json::to_string_pretty(index).unwrap_or_else(|_| "{}".to_string())
+    let view = crate::bridge::view_model::IdentityIndexView::from(index);
+    serde_json::to_string_pretty(&view).unwrap_or_else(|_| "{}".to_string())
 }
 
 /// Format an identity CRUD error as structured JSON: `{"error":
