@@ -1,31 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useAnimatedUnmount } from '../hooks/useAnimatedUnmount'
 import { useCollapsibleSectionsStorage } from '../lib/useCollapsibleSectionsStorage'
-import {
-  BOARD_INVALIDATE_MARKER,
-  type ChatMessage,
-  type ConnectionStatus
-} from '../transport/types'
+import type { ChatMessage, ConnectionStatus } from '../transport/types'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
-import { describeHttpError } from '../api/http'
-import { getBoard } from '../api/boardClient'
 import DrillIn from './DrillIn'
 import Epic from './Epic'
 import Iteration from './Iteration'
-import { isIterationPositionLabel } from './labelSchema'
 import BoardGroup from './BoardGroup'
-import { MOCK_BOARD_RESPONSE } from './mockBoard'
+import { useBoardData } from './useBoardData'
+import { useBoardFetch } from './useBoardFetch'
 import { useBoardReorder } from './useBoardReorder'
-import { useRefetchOnReconnect } from './useRefetchOnReconnect'
-import {
-  GROUP_ORDER,
-  groupStories,
-  isActiveEpic,
-  storyTypeFromLabels,
-  type BoardResponse,
-  type BoardStory,
-  type ColumnState
-} from './types'
+import { GROUP_ORDER, type BoardStory, type ColumnState } from './types'
 import './Board.css'
 
 type CollapseState = Record<ColumnState, boolean>
@@ -39,17 +24,6 @@ const initialCollapseState: CollapseState = (() => {
   }
   return result as CollapseState
 })()
-
-// Safety-net fallback refetch interval. Primary refresh is the WS
-// BOARD_INVALIDATE_MARKER subscription (#353); polling survives as a
-// cross-check in case a broadcast is missed (WS reconnect window, a
-// backend mutation that skipped the invalidate emit, etc). 5 minutes
-// is slow enough to not feel like primary polling but fast enough to
-// self-heal within a single work rhythm.
-const POLL_INTERVAL_MS = 5 * 60_000
-
-const hasIterationMemberLabel = (labels: string[]): boolean =>
-  labels.some((l) => isIterationPositionLabel(l))
 
 interface BoardProps {
   // Chat message stream — forwarded to DrillIn so it can subscribe to
@@ -68,10 +42,12 @@ interface BoardProps {
 
 function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Element {
   const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
-  const [data, setData] = useState<BoardResponse | null>(null)
-  const [loading, setLoading] = useState<boolean>(true)
-  const [error, setError] = useState<string | null>(null)
-  const [usingMock, setUsingMock] = useState<boolean>(false)
+  const { data, setData, loading, error, setError, usingMock, refetch } = useBoardFetch({
+    messages,
+    wsStatus,
+    apiBase: bridge?.apiBase,
+    authToken: bridge?.authToken
+  })
   const [selectedNumber, setSelectedNumber] = useState<number | null>(null)
   const [drilledNumber, setDrilledNumber] = useState<number | null>(null)
   // #368: when a team-accept badge is clicked, open the drill-in AND
@@ -97,145 +73,16 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
     [collapseStorage]
   )
 
-  // TODO(phase-1a-2): drag-reorder (reorder_story) + BOARD_INVALIDATE_MARKER
-  // subscription. 30s polling is the phase-1a-1 guarantee.
   const asideRef = useRef<HTMLElement | null>(null)
 
-  const fetchBoard = useCallback(
-    async (signal?: AbortSignal): Promise<void> => {
-      if (!bridge?.apiBase) {
-        // No preload / offline dev — render with mock so the shape is
-        // visible and caller can iterate on the UI without a backend.
-        // Defer via microtask so setState doesn't fire synchronously
-        // inside the caller's effect body.
-        await Promise.resolve()
-        if (signal?.aborted) return
-        setData(MOCK_BOARD_RESPONSE)
-        setUsingMock(true)
-        setError(null)
-        setLoading(false)
-        return
-      }
-      const delays = [0, 200, 500]
-      let lastErr: unknown = null
-      for (const delay of delays) {
-        if (signal?.aborted) return
-        if (delay > 0) {
-          await new Promise<void>((resolve) => setTimeout(resolve, delay))
-          if (signal?.aborted) return
-        }
-        const fetchResult = await getBoard(
-          { apiBase: bridge.apiBase, authToken: bridge.authToken },
-          signal
-        ).value
-        if (fetchResult.kind === 'success') {
-          setData(fetchResult.value)
-          setUsingMock(false)
-          setError(null)
-          setLoading(false)
-          return
-        }
-        if (signal?.aborted) return
-        lastErr = new Error(describeHttpError(fetchResult.reason))
-      }
-      console.error('bpmux board: fetch failed, falling back to mock', lastErr)
-      setData((prev) => prev ?? MOCK_BOARD_RESPONSE)
-      setUsingMock((prev) => prev || !prev)
-      setError(lastErr instanceof Error ? lastErr.message : String(lastErr))
-      setLoading(false)
-    },
-    [bridge?.apiBase, bridge?.authToken]
-  )
-
-  // Live-refresh (#353): Board subscribes to BOARD_INVALIDATE_MARKER
-  // broadcasts on the chat stream — same pattern as DrillIn's comment
-  // refresh (#345). Ref tracks last-seen count so backfill markers on
-  // mount don't trigger a refetch (the initial fetch below handles
-  // first load).
-  const seenMessageCountRef = useRef<number>(messages.length)
-
-  useEffect(() => {
-    const controller = new AbortController()
-    // Initial fetch + safety-net polling (slow interval, primary
-    // refresh is the invalidate subscription below). fetchBoard
-    // resolves async so any setState happens after the effect body
-    // returns, per React's external-data-sync pattern.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void fetchBoard(controller.signal)
-    const id = setInterval(() => {
-      void fetchBoard()
-    }, POLL_INTERVAL_MS)
-    return () => {
-      controller.abort()
-      clearInterval(id)
-    }
-  }, [fetchBoard])
-
-  useRefetchOnReconnect(wsStatus ?? 'disconnected', () => {
-    void fetchBoard()
-  })
-
-  // Invalidate subscription: any new BOARD_INVALIDATE_MARKER on the
-  // chat stream triggers a refetch. Same ref-tracked last-seen-count
-  // gating as DrillIn so backfill on initial hydration doesn't thrash.
-  useEffect(() => {
-    const prev = seenMessageCountRef.current
-    if (messages.length <= prev) {
-      seenMessageCountRef.current = messages.length
-      return
-    }
-    const fresh = messages.slice(prev)
-    seenMessageCountRef.current = messages.length
-    if (fresh.some((m) => m.text === BOARD_INVALIDATE_MARKER)) {
-      void fetchBoard()
-    }
-  }, [messages, fetchBoard])
-
-  const stories = useMemo(() => data?.stories ?? [], [data])
-  const epics = useMemo(() => stories.filter(isActiveEpic), [stories])
-  const epicTitleByNumber = useMemo(() => {
-    const map = new Map<number, string>()
-    for (const s of stories) {
-      if (storyTypeFromLabels(s.labels) === 'epic') map.set(s.number, s.title)
-    }
-    return map
-  }, [stories])
-  const nonEpicStories = useMemo(
-    () => stories.filter((s) => storyTypeFromLabels(s.labels) !== 'epic'),
-    [stories]
-  )
-  const iterationContainerStories = useMemo(
-    () =>
-      nonEpicStories.filter((s) => {
-        if (storyTypeFromLabels(s.labels) === 'iteration') return true
-        if (s.state === 'icebox') return true
-        if (hasIterationMemberLabel(s.labels)) return true
-        return false
-      }),
-    [nonEpicStories]
-  )
-  const flatBoardStories = useMemo(
-    () =>
-      nonEpicStories.filter((s) => {
-        if (storyTypeFromLabels(s.labels) === 'iteration') return false
-        if (s.state === 'icebox') return false
-        return true
-      }),
-    [nonEpicStories]
-  )
-  const grouped = useMemo(() => groupStories(flatBoardStories), [flatBoardStories])
-
-  // Flat navigation order matches the visible list order: for each
-  // group in GROUP_ORDER, the group's stories in array order. We use
-  // this for arrow-key navigation.
-  const navOrder = useMemo(() => {
-    const out: number[] = []
-    for (const group of GROUP_ORDER) {
-      const list = grouped.get(group.state) ?? []
-      for (const s of list) out.push(s.number)
-    }
-    return out
-  }, [grouped])
+  const {
+    stories,
+    epics,
+    epicTitleByNumber,
+    iterationContainerStories,
+    grouped,
+    navOrder
+  } = useBoardData(data)
 
   // Derive the effective selection at render time instead of syncing
   // state in an effect — if the stored selection has scrolled off the
@@ -384,9 +231,7 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
           <button
             type="button"
             className="board-error-retry"
-            onClick={() => {
-              void fetchBoard()
-            }}
+            onClick={refetch}
           >
             Retry
           </button>
