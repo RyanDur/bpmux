@@ -191,12 +191,15 @@ impl QueuedEvent {
     }
 }
 
-fn iteration_prefix_class(label: &str) -> Option<String> {
-    use crate::board::label_codec::LabelCodec;
-    crate::board::adapters::gh_label_codec::GhLabelCodec.iteration_label_class(label)
+fn iteration_prefix_class(
+    codec: &dyn crate::board::label_codec::LabelCodec,
+    label: &str,
+) -> Option<String> {
+    codec.iteration_label_class(label)
 }
 
 fn coalesce_iteration_label_events(
+    codec: &dyn crate::board::label_codec::LabelCodec,
     queue: &mut VecDeque<QueuedEvent>,
     new_event: &BoardEvent,
     new_id: MutationId,
@@ -207,7 +210,7 @@ fn coalesce_iteration_label_events(
         BoardEvent::TagRemoved { number, label, .. } => (*number, label.clone(), false),
         _ => return false,
     };
-    let Some(prefix) = iteration_prefix_class(&label) else {
+    let Some(prefix) = iteration_prefix_class(codec, &label) else {
         return false;
     };
     let class_indices: Vec<usize> = queue
@@ -223,7 +226,9 @@ fn coalesce_iteration_label_events(
                 number: n,
                 label: l,
                 ..
-            } if *n == number && iteration_prefix_class(l).as_deref() == Some(prefix.as_str()) => {
+            } if *n == number
+                && iteration_prefix_class(codec, l).as_deref() == Some(prefix.as_str()) =>
+            {
                 Some(i)
             }
             _ => None,
@@ -344,6 +349,12 @@ pub struct SyncOrchestrator<A: SourceAdapter + 'static> {
     /// When `Some`, used in preference to `outbox_path`. Set via
     /// `with_storage` constructor (sister of `with_outbox_path`).
     storage: Option<Arc<dyn crate::session::storage::Storage>>,
+    /// #1382: constructor-injected LabelCodec. Defaults to GhLabelCodec
+    /// via the existing constructors (preserves 30+ call-site API);
+    /// tests can swap a stub via the `with_codec` builder method to
+    /// drive iteration_prefix_class / coalesce_iteration_label_events
+    /// against arbitrary label syntax.
+    codec: Arc<dyn crate::board::label_codec::LabelCodec + Send + Sync>,
     next_mutation_id: AtomicU64,
     action_tx: Option<tokio::sync::mpsc::UnboundedSender<crate::orchestrator::OrchestratorAction>>,
     issue_locks: tokio::sync::Mutex<std::collections::HashMap<u64, Arc<tokio::sync::Mutex<()>>>>,
@@ -358,10 +369,25 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             pending: Arc::new(Mutex::new(VecDeque::new())),
             outbox_path: None,
             storage: None,
+            codec: Arc::new(crate::board::adapters::gh_label_codec::GhLabelCodec),
             next_mutation_id: AtomicU64::new(1),
             action_tx: None,
             issue_locks: tokio::sync::Mutex::new(std::collections::HashMap::new()),
         }
+    }
+
+    /// #1382: builder for stub-codec injection at test-time. Returns
+    /// the same orchestrator with the codec field replaced; preserves
+    /// every other field including pending-state from
+    /// `with_outbox_path` / `with_storage` constructors. Production
+    /// code never calls this — the default GhLabelCodec is the only
+    /// runtime codec.
+    pub fn with_codec(
+        mut self,
+        codec: Arc<dyn crate::board::label_codec::LabelCodec + Send + Sync>,
+    ) -> Self {
+        self.codec = codec;
+        self
     }
 
     pub fn with_outbox_path(
@@ -381,6 +407,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             pending: Arc::new(Mutex::new(pending)),
             outbox_path: Some(path),
             storage: None,
+            codec: Arc::new(crate::board::adapters::gh_label_codec::GhLabelCodec),
             next_mutation_id: AtomicU64::new(next),
             action_tx: None,
             issue_locks: tokio::sync::Mutex::new(std::collections::HashMap::new()),
@@ -409,6 +436,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             pending: Arc::new(Mutex::new(pending)),
             outbox_path: None,
             storage: Some(storage),
+            codec: Arc::new(crate::board::adapters::gh_label_codec::GhLabelCodec),
             next_mutation_id: AtomicU64::new(next),
             action_tx: None,
             issue_locks: tokio::sync::Mutex::new(std::collections::HashMap::new()),
@@ -489,7 +517,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         let pre_state = self.store.story(event.story_number());
         self.store.apply(&event);
         let queue_len = self.with_pending_mut(|p| {
-            let absorbed = coalesce_iteration_label_events(p, &event, id, &pre_state);
+            let absorbed = coalesce_iteration_label_events(&*self.codec, p, &event, id, &pre_state);
             if !absorbed {
                 p.push_back(QueuedEvent::new_with_id(id, event, pre_state));
             }
