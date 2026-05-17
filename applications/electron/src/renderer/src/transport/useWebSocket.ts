@@ -30,6 +30,9 @@ const MAX_BACKOFF_MS = 8000
 export const MAX_MESSAGES = 500
 export const CAP_TRIGGER_THRESHOLD = MAX_MESSAGES * 2
 
+export const HISTORY_CHAT_LIMIT = 200
+export const HISTORY_ACTIVITY_LIMIT = 50
+
 export interface SendOptions {
   addressee?: string | null
   to?: string[] | null
@@ -237,8 +240,12 @@ export const useWebSocket = (
         throw lastErr instanceof Error ? lastErr : new Error(String(lastErr))
       }
       Promise.all([
-        fetchHistoryWithRetry(`${apiBase}/api/messages?chat_only=true&limit=200`),
-        fetchHistoryWithRetry(`${apiBase}/api/messages?message_type=activity&limit=50`)
+        fetchHistoryWithRetry(
+          `${apiBase}/api/messages?chat_only=true&limit=${HISTORY_CHAT_LIMIT}`
+        ),
+        fetchHistoryWithRetry(
+          `${apiBase}/api/messages?message_type=activity&limit=${HISTORY_ACTIVITY_LIMIT}`
+        )
       ])
         .then(([chat, activity]) => {
           if (unmountedRef.current) return
