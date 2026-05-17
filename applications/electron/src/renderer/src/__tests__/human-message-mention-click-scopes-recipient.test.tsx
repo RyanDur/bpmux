@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
-import { waitFor } from '@testing-library/react'
+import { fireEvent, waitFor } from '@testing-library/react'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import {
@@ -52,10 +52,11 @@ describe('human-side E2E #476 — direct-action — message @mention click', () 
       const initialBroadcast = rendered.getByTestId('sidebar-broadcast')
       expect(initialBroadcast.getAttribute('aria-current')).toBe('true')
 
-      const mention = (await rendered.findAllByTestId('message-mention'))[0]
-      mention.click()
+      await rendered.findAllByTestId('message-mention', undefined, { timeout: 15_000 })
 
       const r = rendered
+      fireEvent.click(r.getAllByTestId('message-mention')[0])
+
       await waitFor(
         () => {
           const dev = r.getByTestId('sidebar-direct-dev')

@@ -23,7 +23,6 @@ export default defineConfig({
     // because each test still completes in <200ms and the backend
     // spawn-cost is amortized once.
     pool: 'threads',
-    poolOptions: { threads: { singleThread: true } },
     fileParallelism: false
   },
   resolve: {
