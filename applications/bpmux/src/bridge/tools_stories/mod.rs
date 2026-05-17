@@ -13,11 +13,14 @@ use crate::board::label_codec::LabelCodec;
 mod helpers;
 mod signals;
 
+pub use helpers::parse_acceptance_test_path;
 #[allow(unused_imports)]
 pub(crate) use helpers::{
     ALL_STATE_LABELS, KEEP_NONE, LABEL_DELIVERED, LABEL_IN_PROGRESS, LABEL_READY,
-    LABEL_READY_FOR_ACCEPT, ensure_story_in_canonical_store, reap_workflow_labels, require_role,
-    role_from_name, stale_workflow_labels,
+    LABEL_READY_FOR_ACCEPT, compose_iteration_body, compose_story_body,
+    ensure_story_in_canonical_store, find_repo_root, reap_workflow_labels, require_nonempty_string,
+    require_role, resolve_acceptance_test_path, role_from_name, stale_workflow_labels,
+    validate_acceptance_test_path_at_deliver, validate_acceptance_test_path_at_pickup,
 };
 pub use signals::{BOARD_INVALIDATE_MARKER, SYNC_STATUS_UPDATE_MARKER};
 #[allow(unused_imports)]
@@ -29,11 +32,6 @@ pub(crate) use signals::{
     build_start_signal, classify_for_pass_desk_check,
 };
 
-/// GitHub label vocabulary. Centralized so the read-checks
-/// (handle_view_board) and the write-calls (handle_start/deliver/etc.)
-/// stay in lockstep — a typo in one and not the other would silently
-/// misroute a story in the board view. New labels go here first, call
-/// sites reference the const.
 pub(super) async fn handle_view_board(
     _args: &serde_json::Map<String, serde_json::Value>,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
@@ -317,233 +315,6 @@ pub(super) async fn handle_create_iteration(
     .map_err(|e| format!("#{number} iteration label enqueue failed: {e}"))?;
     broadcast_board_invalidate(ws_tx).await;
     Ok(format!("iteration created: #{number} {title}"))
-}
-
-/// Build the issue body for a new iteration-issue. Cassiopeia
-/// substrate: iteration membership is canonical-via-GH via
-/// `iteration-{Theme}.{position}` labels on member stories (#1300).
-/// Body is human-readable, not parsed for membership.
-fn compose_iteration_body(theme_name: &str) -> String {
-    let today = chrono::Utc::now().format("%Y-%m-%d");
-    format!(
-        "## Iteration {theme_name}\n\
-         \n\
-         **Created**: {today}\n\
-         **Status**: Open\n\
-         \n\
-         ## Member stories\n\
-         \n\
-         <!-- Members carry `iteration-{theme_name}.{{position}}` labels;\n\
-              ordering is by position ascending. -->\n\
-         \n\
-         _(no members yet)_\n\
-         \n\
-         ## Notes\n\
-         \n\
-         bpmux iteration substrate (Epic #1189 architectural-pivot).\n\
-         Close via `close_iteration` ceremony.\n"
-    )
-}
-
-fn require_nonempty_string<'a>(
-    args: &'a serde_json::Map<String, serde_json::Value>,
-    key: &str,
-    error_doc: &str,
-) -> Result<&'a str, String> {
-    let val = args.get(key).and_then(|v| v.as_str()).unwrap_or("").trim();
-    if val.is_empty() {
-        return Err(error_doc.to_string());
-    }
-    // Return the original untrimmed slice so downstream formatting
-    // preserves intentional leading/trailing newlines in multi-line
-    // field values.
-    let raw = args.get(key).and_then(|v| v.as_str()).unwrap_or_default();
-    Ok(raw)
-}
-
-fn compose_story_body(
-    user_job: &str,
-    observation_falsifier: &str,
-    acceptance_test_path: Option<&str>,
-    author_body: &str,
-) -> String {
-    let mut out = String::new();
-    out.push_str("## User job\n\n");
-    out.push_str(user_job.trim());
-    out.push_str("\n\n## Observation falsifier\n\n");
-    out.push_str(observation_falsifier.trim());
-    if let Some(path) = acceptance_test_path {
-        out.push_str("\n\n## Acceptance test path\n\n");
-        out.push_str(path);
-    }
-    out.push_str("\n\n---\n\n");
-    out.push_str(author_body);
-    out
-}
-
-pub fn parse_acceptance_test_path(body: &str) -> Option<String> {
-    let marker = "## Acceptance test path\n\n";
-    let start = body.find(marker)? + marker.len();
-    let rest = &body[start..];
-    let end = rest.find("\n\n").unwrap_or(rest.len());
-    let section = &rest[..end];
-    for line in section.lines() {
-        if let Some(path) = extract_path_from_line(line) {
-            return Some(path);
-        }
-    }
-    None
-}
-
-/// Tolerate the common prose shapes PM uses around the path: bullets
-/// ("- Primary: tests/foo.rs"), labels ("Path: tests/foo.rs"),
-/// parentheticals ("tests/foo.rs (per gate-3 contract)"). Returns the
-/// first plausibly-path-shaped token on the line, or None when the
-/// line carries no recognizable path.
-fn extract_path_from_line(line: &str) -> Option<String> {
-    let line = line.trim();
-    if line.is_empty() {
-        return None;
-    }
-    let stripped = line
-        .trim_start_matches(|c: char| c == '-' || c == '*' || c == '•' || c.is_whitespace())
-        .trim();
-    let after_label = match stripped.find(": ") {
-        Some(idx) => &stripped[idx + 2..],
-        None => stripped,
-    };
-    let trimmed = after_label
-        .trim()
-        .trim_matches(|c: char| c == '`' || c == '*' || c == '_');
-    let token = match trimmed.find([' ', '\t', '(']) {
-        Some(idx) => &trimmed[..idx],
-        None => trimmed,
-    };
-    let candidate = token
-        .trim_end_matches(['.', ',', ';', '`', '*', '_'])
-        .trim();
-    if candidate.contains('/') && is_acceptable_acceptance_test_path(candidate) {
-        Some(candidate.to_string())
-    } else {
-        None
-    }
-}
-
-fn is_acceptable_acceptance_test_path(candidate: &str) -> bool {
-    const SOURCE_EXTS: &[&str] = &[
-        ".rs", ".ts", ".tsx", ".js", ".jsx", ".py", ".go", ".rb", ".java", ".kt", ".cs", ".cpp",
-        ".c", ".h", ".hpp", ".swift", ".m",
-    ];
-    const OPS_EXTS: &[&str] = &[".md", ".yml", ".yaml", ".toml", ".json"];
-    const OPS_PREFIXES: &[&str] = &["docs/", ".github/workflows/"];
-    if SOURCE_EXTS.iter().any(|ext| candidate.ends_with(ext)) {
-        return true;
-    }
-    OPS_PREFIXES
-        .iter()
-        .any(|prefix| candidate.starts_with(prefix))
-        && OPS_EXTS.iter().any(|ext| candidate.ends_with(ext))
-}
-
-fn user_facing_story_type(t: crate::board::domain::StoryType) -> bool {
-    matches!(
-        t,
-        crate::board::domain::StoryType::Feature | crate::board::domain::StoryType::Bug
-    )
-}
-
-fn check_path_exists(path: &str) -> Result<(), String> {
-    if let Some(resolved) = resolve_acceptance_test_path(path) {
-        if resolved.exists() {
-            return Ok(());
-        }
-        return Err(format!(
-            "acceptance_test_path '{path}' resolved to {resolved:?} but file is missing. Create the test file before pickup OR fix the path. (repo-root: {:?}; cwd: {:?})",
-            find_repo_root(),
-            std::env::current_dir().ok(),
-        ));
-    }
-    Err(format!(
-        "acceptance_test_path '{path}' does not exist; tried absolute, repo-root-relative, and cwd-walk shapes. Create the test file before pickup OR fix the path. (repo-root: {:?}; cwd: {:?})",
-        find_repo_root(),
-        std::env::current_dir().ok(),
-    ))
-}
-
-pub(crate) fn resolve_acceptance_test_path(path: &str) -> Option<std::path::PathBuf> {
-    let raw = std::path::PathBuf::from(path);
-    if raw.is_absolute() {
-        return raw.exists().then_some(raw);
-    }
-    if let Some(root) = find_repo_root() {
-        let from_root = root.join(path);
-        if from_root.exists() {
-            return Some(from_root);
-        }
-    }
-    let cwd_candidates = [
-        raw.clone(),
-        std::path::PathBuf::from("..").join(path),
-        std::path::PathBuf::from("../..").join(path),
-    ];
-    cwd_candidates.into_iter().find(|p| p.exists())
-}
-
-pub(crate) fn find_repo_root() -> Option<std::path::PathBuf> {
-    if let Some(start) = std::env::current_dir().ok()
-        && let Some(root) = walk_for_git_root(&start)
-    {
-        return Some(root);
-    }
-    let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    walk_for_git_root(&manifest_dir)
-}
-
-fn walk_for_git_root(start: &std::path::Path) -> Option<std::path::PathBuf> {
-    for ancestor in start.ancestors() {
-        if ancestor.join(".git").exists() {
-            return Some(ancestor.to_path_buf());
-        }
-    }
-    None
-}
-
-fn validate_acceptance_test_path_at_pickup(
-    args: &serde_json::Map<String, serde_json::Value>,
-    number: u64,
-    refresh: &dyn crate::board::RefreshDriver,
-) -> Result<(), String> {
-    let Some(story) = refresh.story(number) else {
-        return Ok(());
-    };
-    if !user_facing_story_type(story.story_type) {
-        return Ok(());
-    }
-    let arg_path = args
-        .get("acceptance_test_path")
-        .and_then(|v| v.as_str())
-        .map(str::trim)
-        .filter(|s| !s.is_empty());
-    let Some(path) = arg_path.or(story.acceptance_test_path.as_deref()) else {
-        return Ok(());
-    };
-    check_path_exists(path)
-}
-
-fn validate_acceptance_test_path_at_deliver(
-    number: u64,
-    refresh: &dyn crate::board::RefreshDriver,
-) -> Result<(), String> {
-    let Some(story) = refresh.story(number) else {
-        return Ok(());
-    };
-    if !user_facing_story_type(story.story_type) {
-        return Ok(());
-    }
-    let Some(path) = story.acceptance_test_path.as_deref() else {
-        return Ok(());
-    };
-    check_path_exists(path)
 }
 
 /// Signal fires on INTENT (before gh) so the team is notified
