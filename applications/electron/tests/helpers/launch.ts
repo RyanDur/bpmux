@@ -171,6 +171,9 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
   const logDir = mkdtempSync(join(tmpdir(), 'bpmux-playwright-log-'))
   ownedTempPaths.push(logDir)
   const defaultLogPath = join(logDir, 'bpmux-test-diag.log')
+  const installedDir = mkdtempSync(join(tmpdir(), 'bpmux-playwright-installed-'))
+  ownedTempPaths.push(installedDir)
+  const defaultInstalledBinaryPath = join(installedDir, 'bpmux')
 
   const callerSetsGhBaseUrl = !!opts.extraEnv?.['BPMUX_GH_BASE_URL']
   let defaultMockGh: MockGhServer | undefined
@@ -192,6 +195,7 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
       BPMUX_BOARD_STORE_PATH: defaultBoardStorePath,
       BPMUX_BOARD_OUTBOX_PATH: defaultBoardOutboxPath,
       BPMUX_LOG: defaultLogPath,
+      BPMUX_BINARY_WATCH_PATH: defaultInstalledBinaryPath,
       // #1290 Part B: enable the test-seed endpoints
       // (/api/test/seed_messages, /api/test/seed_pins,
       // /api/test/seed_reactions). Structural gate — without this var
