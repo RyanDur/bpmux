@@ -1,6 +1,7 @@
 import { format } from 'date-fns'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import MessageBody from '../chat/MessageBody'
+import { describeHttpError } from '../api/http'
 import { postStoryComment, postStoryAccept, postStoryReject } from '../api/storiesClient'
 import {
   useTimeline,
@@ -399,16 +400,13 @@ const DrillIn = ({
       setCommentBusy(false)
       return
     }
-    const result = await postStoryComment(
-      { apiBase, authToken },
-      story.number,
-      { body: trimmed }
-    )
-    if (!result.ok) {
-      setOptimistic((prev) => prev.filter((c) => c.id !== optimisticEntry.id))
-      setCommentDraft(trimmed)
-      setToast(`Comment failed: ${result.error.message}`)
-    }
+    await postStoryComment({ apiBase, authToken }, story.number, { body: trimmed })
+      .onFailure((error) => {
+        setOptimistic((prev) => prev.filter((c) => c.id !== optimisticEntry.id))
+        setCommentDraft(trimmed)
+        setToast(`Comment failed: ${describeHttpError(error)}`)
+      })
+      .value
     setCommentBusy(false)
   }, [apiBase, authToken, commentBusy, commentDraft, story.number, usingMock])
 
@@ -432,11 +430,14 @@ const DrillIn = ({
         onBack()
         return
       }
-      const result = await postStoryAccept({ apiBase, authToken }, story.number, payload)
-      if (!result.ok) {
-        rollback(result.error.message)
-        return
-      }
+      const proceed = await postStoryAccept({ apiBase, authToken }, story.number, payload).mapEither(
+        () => true,
+        (error) => {
+          rollback(describeHttpError(error))
+          return false
+        }
+      )
+      if (!proceed) return
       onStoryMutated({ ...story, state: 'accepted' })
       setBusy(null)
       onBack()
@@ -481,11 +482,18 @@ const DrillIn = ({
       onBack()
       return
     }
-    const result = await postStoryReject({ apiBase, authToken }, story.number, { note: trimmed })
-    if (!result.ok) {
-      rollback(result.error.message)
-      return
-    }
+    const proceed = await postStoryReject(
+      { apiBase, authToken },
+      story.number,
+      { note: trimmed }
+    ).mapEither(
+      () => true,
+      (error) => {
+        rollback(describeHttpError(error))
+        return false
+      }
+    )
+    if (!proceed) return
     onStoryMutated({ ...story, state: 'ready' })
     setBusy(null)
     setMode('idle')

@@ -91,7 +91,7 @@ const postLabelMutation = (
     { apiBase: bridge.apiBase, authToken: bridge.authToken },
     storyNumber,
     { add: addLabels, remove: removeLabels }
-  )
+  ).value
 }
 
 const eagerReorder = <T,>(

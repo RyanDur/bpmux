@@ -53,7 +53,8 @@ const request = async <T>(
   endpoint: string,
   method: 'GET' | 'POST' | 'PUT' | 'DELETE',
   body: unknown,
-  successStatuses: number[]
+  successStatuses: number[],
+  signal?: AbortSignal
 ): Promise<Result<T, HttpError>> => {
   const url = `${ctx.apiBase}${endpoint}`
   const init: RequestInit = {
@@ -62,6 +63,9 @@ const request = async <T>(
   }
   if (body !== undefined) {
     init.body = JSON.stringify(body)
+  }
+  if (signal) {
+    init.signal = signal
   }
   let res: Response
   try {
@@ -95,8 +99,12 @@ const request = async <T>(
 }
 
 export const http = {
-  get: <T>(ctx: ApiContext, endpoint: string): AsyncResult<T, HttpError> =>
-    ofPromise(request<T>(ctx, endpoint, 'GET', undefined, STATUS_OK)),
+  get: <T>(
+    ctx: ApiContext,
+    endpoint: string,
+    signal?: AbortSignal
+  ): AsyncResult<T, HttpError> =>
+    ofPromise(request<T>(ctx, endpoint, 'GET', undefined, STATUS_OK, signal)),
 
   post: <T = void>(
     ctx: ApiContext,

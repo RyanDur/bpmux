@@ -7,6 +7,8 @@ import {
   type ConnectionStatus
 } from '../transport/types'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
+import { describeHttpError } from '../api/http'
+import { getBoard } from '../api/boardClient'
 import { postStoryLabels } from '../api/labelsClient'
 import DrillIn from './DrillIn'
 import Epic from './Epic'
@@ -171,24 +173,19 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
           await new Promise<void>((resolve) => setTimeout(resolve, delay))
           if (signal?.aborted) return
         }
-        try {
-          const res = await fetch(`${bridge.apiBase}/api/board`, {
-            headers: { Authorization: `Bearer ${bridge.authToken}` },
-            signal
-          })
-          if (!res.ok) {
-            throw new Error(`board fetch ${res.status}`)
-          }
-          const json = (await res.json()) as BoardResponse
-          setData(json)
+        const fetchResult = await getBoard(
+          { apiBase: bridge.apiBase, authToken: bridge.authToken },
+          signal
+        ).value
+        if (fetchResult.kind === 'success') {
+          setData(fetchResult.value)
           setUsingMock(false)
           setError(null)
           setLoading(false)
           return
-        } catch (err) {
-          if (signal?.aborted) return
-          lastErr = err
         }
+        if (signal?.aborted) return
+        lastErr = new Error(describeHttpError(fetchResult.reason))
       }
       console.error('bpmux board: fetch failed, falling back to mock', lastErr)
       setData((prev) => prev ?? MOCK_RESPONSE)
@@ -422,16 +419,12 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
           { apiBase: bridge.apiBase, authToken: bridge.authToken },
           moved,
           mutation
-        ).then((result) => {
-          if (!result.ok) {
+        )
+          .onFailure((error) => {
             setData(prevData)
-            setError(
-              result.error.kind === 'http'
-                ? `Reorder failed: ${result.error.message}`
-                : `Reorder failed: ${result.error.message}`
-            )
-          }
-        })
+            setError(`Reorder failed: ${describeHttpError(error)}`)
+          })
+          .value
       }
     },
     [bridge?.apiBase, bridge?.authToken, data, usingMock]
