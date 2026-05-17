@@ -8,102 +8,15 @@ use serde::Deserialize;
 
 use crate::session;
 
+mod messages;
 mod shared;
 
+pub use messages::{
+    DEFAULT_MESSAGE_LIMIT, GetMessagesParams, PostMessage, get_messages, post_message,
+};
 pub(crate) use shared::json_headers;
 pub use shared::{CommentPayload, TrackerHandle};
 use shared::{broadcast_board_invalidate, err_body};
-
-pub const DEFAULT_MESSAGE_LIMIT: usize = 20;
-
-#[derive(Deserialize)]
-pub struct PostMessage {
-    pub from: String,
-    pub text: String,
-    pub message_type: Option<String>,
-    /// Attention signal (#158) — role this message is directed at.
-    /// See `session::message::Message::addressee`.
-    #[serde(default)]
-    pub addressee: Option<String>,
-    /// Multi-depth rendering payload (#187). Optional; omitted
-    /// requests produce `multi_depth: None` on the broadcast
-    /// message, which is identical to pre-#187 behavior.
-    #[serde(default)]
-    pub multi_depth: Option<session::message::MultiDepthPayload>,
-    /// Privacy filter — optional list of recipient names.
-    /// When set, only the listed roles receive the message.
-    #[serde(default)]
-    pub to: Option<Vec<String>>,
-}
-
-#[derive(Deserialize)]
-pub struct GetMessagesParams {
-    pub limit: Option<usize>,
-    pub offset: Option<usize>,
-    /// Filter to chat messages only (excludes activity/system). Default: true.
-    pub chat_only: Option<bool>,
-    /// Simulate delivery-side filtering as a specific peer (#191).
-    /// When set, only returns messages that would be delivered to this
-    /// role via WebSocket.
-    #[serde(rename = "as")]
-    pub as_peer: Option<String>,
-    /// Filter to exactly this message_type (#364). When set, overrides
-    /// `chat_only`'s default exclusion so callers can hydrate presence
-    /// (`message_type=activity`) without bumping `chat_only=false` and
-    /// pulling unrelated message classes.
-    pub message_type: Option<String>,
-    /// #1153: paged-history support. When set, returns only messages
-    /// with `ts < before`. Pairs with `limit` to page older history
-    /// on client-side scroll-up. Format: RFC3339 timestamp string.
-    pub before: Option<String>,
-}
-
-pub async fn get_messages(
-    State(session): State<Arc<session::Session>>,
-    Query(params): Query<GetMessagesParams>,
-) -> impl IntoResponse {
-    match session.read_messages() {
-        Ok(messages) => {
-            let chat_only = params.chat_only.unwrap_or(true);
-            let offset = params.offset.unwrap_or(0);
-            let limit = params.limit.unwrap_or(DEFAULT_MESSAGE_LIMIT);
-            let mut filtered: Vec<_> = if let Some(ref mt) = params.message_type {
-                let wanted = session::MessageType::from(Some(mt.as_str()));
-                messages
-                    .into_iter()
-                    .filter(|m| m.message_type == wanted)
-                    .collect()
-            } else if chat_only {
-                messages.into_iter().filter(|m| m.is_chat()).collect()
-            } else {
-                messages
-            };
-            if let Some(ref peer) = params.as_peer {
-                filtered.retain(|m| super::ws::should_deliver(m, peer));
-            }
-            // #1153: paged-history. When `before=<rfc3339>` is set,
-            // strict-less-than filter on message timestamp so callers
-            // can fetch older windows by passing the oldest-currently-
-            // rendered timestamp. Strict-less-than avoids duplicates at
-            // the boundary; client-side dedup handles any race.
-            if let Some(ref before_str) = params.before
-                && let Ok(before_ts) = before_str.parse::<chrono::DateTime<chrono::Utc>>()
-            {
-                filtered.retain(|m| m.ts < before_ts);
-            }
-            filtered.reverse();
-            let page: Vec<_> = filtered.into_iter().skip(offset).take(limit).collect();
-            (
-                StatusCode::OK,
-                serde_json::to_string(&page).unwrap_or_else(|_| "[]".to_string()),
-            )
-        }
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("failed to read: {e}"),
-        ),
-    }
-}
 
 #[derive(Deserialize)]
 pub struct SearchParams {
@@ -413,63 +326,6 @@ pub async fn post_lesson(
             format!("failed to save: {e}"),
         ),
     }
-}
-
-pub async fn post_message(
-    State(session): State<Arc<session::Session>>,
-    Json(payload): Json<PostMessage>,
-) -> impl IntoResponse {
-    if payload.text.is_empty() {
-        return (
-            StatusCode::BAD_REQUEST,
-            "text must not be empty".to_string(),
-        );
-    }
-    if payload.text.len() > 65536 {
-        return (
-            StatusCode::BAD_REQUEST,
-            format!(
-                "message too large: {} bytes exceeds limit of 65536",
-                payload.text.len()
-            ),
-        );
-    }
-    // Reject externally-originated `system` messages. System messages
-    // are reserved for internal bridge signals (classifier nudges,
-    // handoff warnings, join/leave) and must not be spoofable by HTTP
-    // callers. Internal callers that emit system messages do so
-    // through session::log::append / emit_system, not this handler.
-    if payload.message_type.as_deref() == Some("system") {
-        return (
-            StatusCode::FORBIDDEN,
-            "message_type=\"system\" is reserved for internal callers".to_string(),
-        );
-    }
-    // A `to` filter on incoming POST means the caller chose a
-    // directed recipient — same privacy semantic as `/to` in the
-    // TUI. Sets explicit_privacy so downstream guards (e.g., /share
-    // refusing to widen private messages) apply uniformly whether
-    // the DM originated from an agent, a hook, or the owner.
-    let explicit_privacy = payload.to.is_some();
-    let msg = session::Message {
-        from: payload.from,
-        text: payload.text,
-        ts: chrono::Utc::now(),
-        message_type: session::MessageType::from(payload.message_type.as_deref()),
-        to: payload.to,
-        addressee: payload.addressee,
-        explicit_privacy,
-        multi_depth: payload.multi_depth,
-        state_delta: None,
-        state_snapshot: None,
-    };
-    if let Err(e) = session.broadcast(&msg) {
-        return (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("failed to broadcast: {e}"),
-        );
-    }
-    (StatusCode::CREATED, "message sent".to_string())
 }
 
 /// POST body for the classifier misfire feedback endpoint (#159).
