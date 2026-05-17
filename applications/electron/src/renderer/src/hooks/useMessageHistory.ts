@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
+import { http } from '../api/http'
 import type { ChatMessage } from '../transport/types'
 
 const DEFAULT_PAGE_SIZE = 200
@@ -27,30 +28,8 @@ export interface UseMessageHistoryResult {
   hasError: boolean
 }
 
-type FetchOk<T> = { ok: true; data: T }
-type FetchErr = { ok: false }
-type FetchResult<T> = FetchOk<T> | FetchErr
-
 const messageKey = (m: { from: string; text: string; ts: string }): string =>
   `${m.ts}|${m.from}|${m.text}`
-
-const fetchPage = async (
-  url: string,
-  headers: Record<string, string>
-): Promise<FetchResult<HistoryMessage[]>> => {
-  try {
-    const res = await fetch(url, { headers })
-    if (!res.ok) {
-      console.error('bpmux: loadOlder non-ok response', res.status)
-      return { ok: false }
-    }
-    const data = (await res.json()) as HistoryMessage[]
-    return { ok: true, data }
-  } catch (err) {
-    console.error('bpmux: loadOlder failed', err)
-    return { ok: false }
-  }
-}
 
 export const mergeOlderHistory = (
   prependedHistory: ChatMessage[],
@@ -105,23 +84,20 @@ export const useMessageHistory = ({
     if (!oldest) return
 
     setIsLoadingOlder(true)
-    const url = `${apiBase}/api/messages?chat_only=true&before=${encodeURIComponent(oldest)}&limit=${pageSize}`
-    const headers: Record<string, string> = authToken
-      ? { Authorization: `Bearer ${authToken}` }
-      : {}
-    const result = await fetchPage(url, headers)
-    if (!result.ok) {
+    const endpoint = `/api/messages?chat_only=true&before=${encodeURIComponent(oldest)}&limit=${pageSize}`
+    const result = await http.get<HistoryMessage[]>({ apiBase, authToken }, endpoint).value
+    if (result.kind === 'failure') {
       setHasError(true)
       setIsLoadingOlder(false)
       return
     }
     setHasError(false)
-    if (result.data.length === 0) {
+    if (result.value.length === 0) {
       setHasMoreOlder(false)
       setIsLoadingOlder(false)
       return
     }
-    setPrependedHistory((prev) => mergeOlderHistory(prev, result.data, liveMessages))
+    setPrependedHistory((prev) => mergeOlderHistory(prev, result.value, liveMessages))
     setIsLoadingOlder(false)
   }, [apiBase, authToken, hasMoreOlder, isLoadingOlder, liveMessages, pageSize, prependedHistory])
 
