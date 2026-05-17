@@ -15,6 +15,7 @@ mod signals;
 mod transition;
 mod view;
 
+#[allow(unused_imports)]
 pub(crate) use acceptance::{
     BugGate, accept_via_canonical_store, handle_accept_story, handle_fail_desk_check,
     handle_pass_desk_check, handle_reject_story, reject_via_canonical_store,
