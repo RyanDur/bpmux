@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { ErrorBoundary as LibErrorBoundary, type FallbackProps } from 'react-error-boundary'
+import { asyncTryCatch } from './lib/asyncResult'
 import './ErrorBoundary.css'
 
 interface Props {
@@ -31,11 +32,9 @@ const copyErrorDetails = async (
     userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
     timestamp: new Date().toISOString()
   }
-  try {
-    await navigator.clipboard.writeText(JSON.stringify(payload, null, 2))
-  } catch {
-    return
-  }
+  await asyncTryCatch(() =>
+    navigator.clipboard.writeText(JSON.stringify(payload, null, 2))
+  ).value
 }
 
 const PlainFallback = ({ error }: FallbackProps): React.JSX.Element => {

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { tryCatch } from '../lib/result'
 import type { ChatMessage } from '../transport/types'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 
@@ -62,19 +63,24 @@ export function useNotifications(messages: ChatMessage[]): void {
       if (!isRelevant(msg, RENDERER_IDENTITY)) continue
       const senderShort = shortName(msg.from)
       const titlePrefix = msg.addressee === RENDERER_IDENTITY ? `@mention from ${senderShort}` : `DM from ${senderShort}`
-      try {
-        const notification = new Notification(titlePrefix, {
-          body: msg.text.length > 140 ? `${msg.text.slice(0, 140)}…` : msg.text,
-          tag: 'bpmux',
-          silent: false
+      tryCatch(
+        () =>
+          new Notification(titlePrefix, {
+            body: msg.text.length > 140 ? `${msg.text.slice(0, 140)}…` : msg.text,
+            tag: 'bpmux',
+            silent: false
+          }),
+        (err) => err
+      )
+        .onSuccess((notification) => {
+          notification.onclick = () => {
+            window.focus()
+            notification.close()
+          }
         })
-        notification.onclick = () => {
-          window.focus()
-          notification.close()
-        }
-      } catch (err) {
-        console.error('bpmux notification: failed to construct', err)
-      }
+        .onFailure((err) => {
+          console.error('bpmux notification: failed to construct', err)
+        })
     }
   }, [messages])
 }
