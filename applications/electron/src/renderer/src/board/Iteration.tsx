@@ -5,20 +5,28 @@ import StoryBadge from './StoryBadge'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import { useIterationCollapse } from './useIterationCollapse'
 import { computeDropMutation } from './iterationPosition'
-import {
-  parseIterationLabel,
-  parseIterationOrderPosition,
-  parseUnscheduledPosition,
-  themeNameFromTitle
-} from './labelSchema'
+import { parseIterationLabel, themeNameFromTitle } from './labelSchema'
 import {
   ITERATION_GRIP_TEST_ID,
   STORY_GRIP_TEST_ID,
   boardIterationTestId
 } from './testIds'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
-import { postStoryLabels } from '../api/labelsClient'
 import { storyTypeFromLabels, type BoardStory } from './types'
+import {
+  DRAG_MIMETYPE,
+  DRAG_MIMETYPE_ITERATION,
+  type DragPayload,
+  type IterationDragPayload,
+  type PendingMemberPosition,
+  eagerReorder,
+  isIterationStory,
+  isLooseStory,
+  positionInIteration,
+  positionInIterationOrder,
+  positionInUnscheduled,
+  postLabelMutation
+} from './iterationMembers'
 
 interface Props {
   stories: BoardStory[]
@@ -27,93 +35,6 @@ interface Props {
 }
 
 const UNSCHEDULED_KEY = 'unscheduled'
-
-const positionInIterationOrder = (story: BoardStory): number | null => {
-  for (const label of story.labels) {
-    const n = parseIterationOrderPosition(label)
-    if (n !== null) return n
-  }
-  return null
-}
-
-const isIterationStory = (story: BoardStory): boolean =>
-  storyTypeFromLabels(story.labels) === 'iteration'
-
-const positionInIteration = (story: BoardStory, themeName: string): number | null => {
-  for (const label of story.labels) {
-    const parsed = parseIterationLabel(label)
-    if (parsed?.name === themeName) return parsed.position
-  }
-  return null
-}
-
-const positionInUnscheduled = (story: BoardStory): number | null => {
-  for (const label of story.labels) {
-    const n = parseUnscheduledPosition(label)
-    if (n !== null) return n
-  }
-  return null
-}
-
-const isLooseStory = (story: BoardStory): boolean => {
-  if (isIterationStory(story)) return false
-  if (story.state !== 'icebox') return false
-  const hasNamedIterationLabel = story.labels.some((l) => {
-    const parsed = parseIterationLabel(l)
-    return parsed !== null && parsed.name !== 'Unscheduled'
-  })
-  return !hasNamedIterationLabel
-}
-
-interface DragPayload {
-  storyNumber: number
-  themeName: string
-  oldPosition: number
-}
-
-interface IterationDragPayload {
-  iterationNumber: number
-  oldOrder: number | null
-}
-
-const DRAG_MIMETYPE = 'application/x-bpmux-iteration-member'
-const DRAG_MIMETYPE_ITERATION = 'application/x-bpmux-iteration-itself'
-
-const postLabelMutation = (
-  storyNumber: number,
-  addLabels: string[],
-  removeLabels: string[]
-): void => {
-  if (typeof window === 'undefined') return
-  const bridge = window.bpmux
-  if (!bridge?.apiBase) return
-  void postStoryLabels(
-    { apiBase: bridge.apiBase, authToken: bridge.authToken },
-    storyNumber,
-    { add: addLabels, remove: removeLabels }
-  ).value
-}
-
-const eagerReorder = <T,>(
-  items: T[],
-  findId: (t: T) => number,
-  fromId: number | null,
-  toId: number | null
-): T[] => {
-  if (fromId === null || toId === null) return items
-  const fromIdx = items.findIndex((t) => findId(t) === fromId)
-  const toIdx = items.findIndex((t) => findId(t) === toId)
-  if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return items
-  const next = [...items]
-  const [moved] = next.splice(fromIdx, 1)
-  next.splice(toIdx, 0, moved)
-  return next
-}
-
-interface PendingMemberPosition {
-  theme: string
-  position: number
-}
 
 const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Element | null => {
   const collapse = useIterationCollapse(RENDERER_IDENTITY)
