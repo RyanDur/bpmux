@@ -38,10 +38,8 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
     dragRejectedIterationNumber,
     setDragRejectedIterationNumber
   } = useIterationDragState()
-  const { sortedIterations, sortedLoose, getMembersFor, setPending } =
-    useIterationMembers(stories)
+  const { sortedIterations, sortedLoose, getMembersFor, setPending } = useIterationMembers(stories)
   if (sortedIterations.length === 0 && sortedLoose.length === 0) return null
-
   return (
     <section className="board-iterations" data-test="board-iterations">
       <ul className="board-iterations-list">
