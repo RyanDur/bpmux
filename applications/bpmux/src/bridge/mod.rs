@@ -26,6 +26,7 @@ mod rpc_client;
 pub(crate) mod tools;
 pub(crate) mod tools_stories;
 pub(crate) mod tracker;
+pub(crate) mod view_model;
 
 #[cfg(test)]
 pub(crate) mod test_fixtures;
