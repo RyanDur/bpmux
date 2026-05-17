@@ -899,18 +899,20 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     }
 
     pub fn snapshot_status(&self) -> SyncStatus {
-        let mut status = self
+        let snapshot = self
             .status
             .lock()
             .unwrap_or_else(|e| e.into_inner())
             .clone();
-        status.stale = is_stale(
-            status.last_ingest_at,
-            staleness_threshold_secs(),
-            Utc::now(),
-        );
-        status.startup_fail = is_startup_fail(status.last_ingest_at, status.last_error.as_deref());
-        status
+        SyncStatus {
+            stale: is_stale(
+                snapshot.last_ingest_at,
+                staleness_threshold_secs(),
+                Utc::now(),
+            ),
+            startup_fail: is_startup_fail(snapshot.last_ingest_at, snapshot.last_error.as_deref()),
+            ..snapshot
+        }
     }
 
     pub async fn create_story(&self, title: &str, body: &str) -> Result<u64, SyncError> {
