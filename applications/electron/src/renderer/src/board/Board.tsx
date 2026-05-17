@@ -9,16 +9,14 @@ import {
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import { describeHttpError } from '../api/http'
 import { getBoard } from '../api/boardClient'
-import { postStoryLabels } from '../api/labelsClient'
 import DrillIn from './DrillIn'
 import Epic from './Epic'
 import Iteration from './Iteration'
-import { computeReadyDropMutation } from './iterationPosition'
-import { isIterationPositionLabel, parseReadyOrderPosition } from './labelSchema'
+import { isIterationPositionLabel } from './labelSchema'
 import BoardGroup from './BoardGroup'
+import { useBoardReorder } from './useBoardReorder'
 import { useRefetchOnReconnect } from './useRefetchOnReconnect'
 import {
-  columnFor,
   GROUP_ORDER,
   groupStories,
   isActiveEpic,
@@ -30,14 +28,6 @@ import {
 import './Board.css'
 
 type CollapseState = Record<ColumnState, boolean>
-
-const readyOrderFromLabels = (labels: string[]): number | null => {
-  for (const l of labels) {
-    const n = parseReadyOrderPosition(l)
-    if (n !== null) return n
-  }
-  return null
-}
 
 const BOARD_COLLAPSE_STORAGE_PREFIX = 'bpmux-board-collapse'
 
@@ -343,90 +333,15 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
     [setData]
   )
 
-  const handleReorder = useCallback(
-    (state: ColumnState, moved: number, insertAt: number): void => {
-      const prevData = data
-      // #357 rework: compute newPosition + groupSize synchronously
-      // from the current `data` snapshot instead of mutating locals
-      // inside the setData updater. The updater runs during React's
-      // commit phase, not during the event handler — so the prior
-      // code's `if (groupSize > 0)` check ran against 0 and the
-      // announce never fired. Keep the optimistic reorder inside
-      // setData (pure derivation from prev state), but derive the
-      // announce-values up front.
-      let newPosition = 0
-      let groupSize = 0
-      if (prevData) {
-        const inGroup = prevData.stories.filter(
-          (s) =>
-            columnFor(s.state, s.gh_state === 'closed', storyTypeFromLabels(s.labels)) === state
-        )
-        const fromIdx = inGroup.findIndex((s) => s.number === moved)
-        if (fromIdx !== -1) {
-          const clampedInsert = Math.max(
-            0,
-            Math.min(insertAt - (insertAt > fromIdx ? 1 : 0), inGroup.length - 1)
-          )
-          newPosition = clampedInsert + 1
-          groupSize = inGroup.length
-        }
-      }
-      setData((prev) => {
-        if (!prev) return prev
-        const inGroup = prev.stories.filter(
-          (s) =>
-            columnFor(s.state, s.gh_state === 'closed', storyTypeFromLabels(s.labels)) === state
-        )
-        const others = prev.stories.filter(
-          (s) =>
-            columnFor(s.state, s.gh_state === 'closed', storyTypeFromLabels(s.labels)) !== state
-        )
-        const fromIdx = inGroup.findIndex((s) => s.number === moved)
-        if (fromIdx === -1) return prev
-        const [movedStory] = inGroup.splice(fromIdx, 1)
-        const clampedInsert = Math.max(
-          0,
-          Math.min(insertAt - (insertAt > fromIdx ? 1 : 0), inGroup.length)
-        )
-        inGroup.splice(clampedInsert, 0, movedStory)
-        return { ...prev, stories: [...others, ...inGroup] }
-      })
-      if (groupSize > 0) {
-        // Live-region announcement for SR users (#357 AC5).
-        setReorderAnnounce(`Moved to position ${newPosition} of ${groupSize}`)
-      }
-      if (usingMock || !bridge?.apiBase) return
-      if (state === 'ready' && prevData) {
-        const readyStories = prevData.stories.filter(
-          (s) =>
-            columnFor(s.state, s.gh_state === 'closed', storyTypeFromLabels(s.labels)) === 'ready'
-        )
-        const targetMemberPositions = readyStories
-          .map((s) => readyOrderFromLabels(s.labels))
-          .filter((p): p is number => p !== null)
-        const draggedStory = readyStories.find((s) => s.number === moved)
-        const draggedOldPosition = draggedStory ? readyOrderFromLabels(draggedStory.labels) : null
-        const mutation = computeReadyDropMutation({
-          draggedOldPosition,
-          targetMemberPositions,
-          targetMemberIndex: Math.max(0, insertAt),
-          targetMembersIncludeDragged: draggedOldPosition !== null
-        })
-        if (mutation === null) return
-        void postStoryLabels(
-          { apiBase: bridge.apiBase, authToken: bridge.authToken },
-          moved,
-          mutation
-        )
-          .onFailure((error) => {
-            setData(prevData)
-            setError(`Reorder failed: ${describeHttpError(error)}`)
-          })
-          .value
-      }
-    },
-    [bridge?.apiBase, bridge?.authToken, data, usingMock]
-  )
+  const handleReorder = useBoardReorder({
+    data,
+    setData,
+    setReorderAnnounce,
+    setError,
+    usingMock,
+    apiBase: bridge?.apiBase,
+    authToken: bridge?.authToken
+  })
 
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLElement>) => {
