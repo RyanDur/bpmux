@@ -1349,30 +1349,35 @@ pub(super) async fn handle_reorder_story(
         .get("position")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'position' argument")? as usize;
-    let state = args
+    let state_str = args
         .get("state")
         .and_then(|v| v.as_str())
         .ok_or("missing 'state' argument (e.g., 'ready', 'in_progress', 'delivered')")?;
-
-    if state == "icebox" {
-        let r = refresh.ok_or(
-            "reorder_story state=icebox requires refresh-driver (canonical-via-GH label substrate per #1301)",
-        )?;
-        reorder_icebox_story_via_labels(r, number, position)?;
-        broadcast_board_invalidate(ws_tx).await;
-        return Ok(format!("#{number} moved to position {position} in icebox"));
+    let state = crate::board::domain::StoryState::parse(state_str).ok_or_else(|| {
+        format!("reorder_story state='{state_str}' not a valid StoryState (use icebox/ready/in-progress/desk-check/delivered/accepted)")
+    })?;
+    match state {
+        crate::board::domain::StoryState::Icebox => {
+            let r = refresh.ok_or(
+                "reorder_story state=icebox requires refresh-driver (canonical-via-GH label substrate per #1301)",
+            )?;
+            reorder_icebox_story_via_labels(r, number, position)?;
+            broadcast_board_invalidate(ws_tx).await;
+            Ok(format!("#{number} moved to position {position} in icebox"))
+        }
+        crate::board::domain::StoryState::Ready => {
+            let r = refresh.ok_or(
+                "reorder_story state=ready requires refresh-driver (canonical-via-GH label substrate per #1301)",
+            )?;
+            reorder_ready_story_via_labels(r, number, position)?;
+            broadcast_board_invalidate(ws_tx).await;
+            Ok(format!("#{number} moved to position {position} in ready"))
+        }
+        _ => Err(format!(
+            "reorder_story state='{}' not supported (#1301 retired per-state ordering — only 'ready' and 'icebox' are user-orderable)",
+            state.as_str()
+        )),
     }
-    if state == "ready" {
-        let r = refresh.ok_or(
-            "reorder_story state=ready requires refresh-driver (canonical-via-GH label substrate per #1301)",
-        )?;
-        reorder_ready_story_via_labels(r, number, position)?;
-        broadcast_board_invalidate(ws_tx).await;
-        return Ok(format!("#{number} moved to position {position} in ready"));
-    }
-    Err(format!(
-        "reorder_story state='{state}' not supported (#1301 retired per-state ordering — only 'ready' and 'icebox' are user-orderable)"
-    ))
 }
 
 pub(crate) fn reorder_icebox_story_via_labels(

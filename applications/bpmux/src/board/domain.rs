@@ -22,6 +22,23 @@ impl StoryState {
             StoryState::Accepted => "accepted",
         }
     }
+
+    /// Parse the canonical state-string back into the enum. Accepts
+    /// canonical forms (`in-progress`, `desk-check`) plus underscore
+    /// variants the MCP tool callers commonly use (`in_progress`,
+    /// `desk_check`). Returns None for any other string so callers
+    /// can produce a clear named-cause error. Sister to #1367.
+    pub fn parse(s: &str) -> Option<Self> {
+        match s {
+            "icebox" => Some(StoryState::Icebox),
+            "ready" => Some(StoryState::Ready),
+            "in-progress" | "in_progress" => Some(StoryState::InProgress),
+            "desk-check" | "desk_check" => Some(StoryState::DeskCheck),
+            "delivered" => Some(StoryState::Delivered),
+            "accepted" => Some(StoryState::Accepted),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

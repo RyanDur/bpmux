@@ -60,7 +60,7 @@ pub fn sort_board_by_ready_order_labels(stories: Vec<serde_json::Value>) -> Vec<
         }
     }
     for (state, list) in by_state.iter_mut() {
-        if state == "ready" {
+        if StoryState::parse(state) == Some(StoryState::Ready) {
             list.sort_by_cached_key(|s| {
                 let label_pos = ready_order_from_value(s).map(u64::from);
                 let number = s.get("number").and_then(|v| v.as_u64()).unwrap_or(0);
