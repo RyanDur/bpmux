@@ -1388,8 +1388,10 @@ pub(crate) fn reorder_icebox_story_via_labels(
     let story = refresh
         .story(number)
         .ok_or_else(|| format!("story #{number} not found in canonical store"))?;
+    let codec = crate::board::adapters::gh_label_codec::GhLabelCodec;
     let current_iteration = story.raw_labels.iter().find_map(|l| {
-        crate::board::iteration_label::parse_iteration_label(l).map(|p| (p.theme_name, l.clone()))
+        crate::board::iteration_label::parse_iteration_label(&codec, l)
+            .map(|p| (p.theme_name, l.clone()))
     });
     let theme_name = current_iteration
         .as_ref()
@@ -1401,7 +1403,7 @@ pub(crate) fn reorder_icebox_story_via_labels(
         .filter(|s| s.number != number && !s.is_closed)
         .filter_map(|s| {
             s.raw_labels.iter().find_map(|l| {
-                crate::board::iteration_label::parse_iteration_label(l)
+                crate::board::iteration_label::parse_iteration_label(&codec, l)
                     .filter(|p| p.theme_name == theme_name)
                     .map(|p| p.position)
             })
@@ -1448,8 +1450,9 @@ pub(crate) fn reorder_ready_story_via_labels(
     let story = refresh
         .story(number)
         .ok_or_else(|| format!("story #{number} not found in canonical store"))?;
+    let codec = crate::board::adapters::gh_label_codec::GhLabelCodec;
     let current = story.raw_labels.iter().find_map(|l| {
-        crate::board::ready_order_label::parse_ready_order_label(l).map(|p| (p, l.clone()))
+        crate::board::ready_order_label::parse_ready_order_label(&codec, l).map(|p| (p, l.clone()))
     });
     let other_positions: Vec<u32> = refresh
         .all_stories()
@@ -1460,7 +1463,7 @@ pub(crate) fn reorder_ready_story_via_labels(
         .filter_map(|s| {
             s.raw_labels
                 .iter()
-                .find_map(|l| crate::board::ready_order_label::parse_ready_order_label(l))
+                .find_map(|l| crate::board::ready_order_label::parse_ready_order_label(&codec, l))
         })
         .collect();
     let insert_index = position.saturating_sub(1).min(other_positions.len());

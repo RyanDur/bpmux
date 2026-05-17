@@ -137,6 +137,12 @@ impl LabelCodec for StubLabelCodec {
     fn decode_ready_order(&self, label: &str) -> Option<u32> {
         label.strip_prefix("rdy:")?.parse().ok()
     }
+    fn decode_iteration(
+        &self,
+        _label: &str,
+    ) -> Option<crate::board::iteration_label::IterationLabelParts> {
+        None
+    }
 }
 
 #[test]

@@ -9,16 +9,26 @@
 //! - Alternative repo-backends (GitLab, in-memory) can supply their
 //!   own encoding without rewriting consumers.
 //!
-//! Slice 1 (this commit) covers only the decode/predicate surface
-//! needed by `bridge::tools::list_ready`. Sister-slice (#1350 follow-
-//! up) extends the trait to cover the remaining call-sites in
-//! `domain.rs`, `orchestrator.rs`, `tools_stories.rs`, `lib.rs`, and
-//! the dedicated `ready_order_label` + `iteration_label` modules.
+//! Slice 2 (this commit) extends the surface from slice 1's
+//! ready-order-only foundation to include iteration-label
+//! decode/predicate, used by `board::iteration_label` and
+//! `board::ready_order_label` after their migration to take a codec
+//! parameter. Sister-slices 3 + 4 cover the remaining encode-side
+//! leaks in `board::domain`, `board::orchestrator`,
+//! `bridge::tools_stories`, and `lib`.
+
+use crate::board::iteration_label::IterationLabelParts;
 
 pub trait LabelCodec {
     fn decode_ready_order(&self, label: &str) -> Option<u32>;
 
     fn is_ready_order_label(&self, label: &str) -> bool {
         self.decode_ready_order(label).is_some()
+    }
+
+    fn decode_iteration(&self, label: &str) -> Option<IterationLabelParts>;
+
+    fn is_iteration_label(&self, label: &str) -> bool {
+        self.decode_iteration(label).is_some()
     }
 }

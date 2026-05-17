@@ -167,6 +167,7 @@ mod canonical_via_gh_1300 {
 
     #[tokio::test]
     async fn close_walks_by_iteration_theme_label_not_by_priority_json_position() {
+        use crate::board::adapters::gh_label_codec::GhLabelCodec;
         use crate::board::iteration_label::members_with_iteration_label;
         let refresh = build_refresh(vec![
             seed_iteration_issue(1400, "Pegasus"),
@@ -178,7 +179,8 @@ mod canonical_via_gh_1300 {
         ])
         .await;
 
-        let cassiopeia_members = members_with_iteration_label(&refresh.all_stories(), "Cassiopeia");
+        let cassiopeia_members =
+            members_with_iteration_label(&GhLabelCodec, &refresh.all_stories(), "Cassiopeia");
         assert_eq!(
             cassiopeia_members,
             vec![200, 201],

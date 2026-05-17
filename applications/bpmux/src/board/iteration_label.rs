@@ -11,8 +11,15 @@
 //!   - `themeNameFromTitle` → mirrored by [`theme_name_from_title`]
 //!   - `parseIterationLabel` regex `^iteration-(.+)\.(\d+)$` →
 //!     [`parse_iteration_label`]
+//!
+//! Slice 2 of #1350 threads a [`LabelCodec`] codec through every
+//! label-touching fn so the `iteration-{Theme}.{N}` syntax lives in
+//! the adapter (`GhLabelCodec`), not here. Helpers that don't touch
+//! label syntax (`theme_name_from_title`, `compute_insert_position`)
+//! remain codec-free.
 
 use crate::board::domain::Story;
+use crate::board::label_codec::LabelCodec;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IterationLabelParts {
@@ -25,23 +32,17 @@ pub fn theme_name_from_title(title: &str) -> String {
     raw.split_whitespace().collect::<Vec<_>>().join("-")
 }
 
-pub fn parse_iteration_label(label: &str) -> Option<IterationLabelParts> {
-    let rest = label.strip_prefix("iteration-")?;
-    let dot_idx = rest.rfind('.')?;
-    let (name, dotted_pos) = rest.split_at(dot_idx);
-    let position = dotted_pos.trim_start_matches('.').parse::<u32>().ok()?;
-    if name.is_empty() {
-        return None;
-    }
-    Some(IterationLabelParts {
-        theme_name: name.to_string(),
-        position,
-    })
+pub fn parse_iteration_label<C: LabelCodec>(codec: &C, label: &str) -> Option<IterationLabelParts> {
+    codec.decode_iteration(label)
 }
 
-pub fn story_iteration_label_for_theme(story: &Story, theme_name: &str) -> Option<String> {
+pub fn story_iteration_label_for_theme<C: LabelCodec>(
+    codec: &C,
+    story: &Story,
+    theme_name: &str,
+) -> Option<String> {
     for raw in &story.raw_labels {
-        if let Some(parts) = parse_iteration_label(raw)
+        if let Some(parts) = codec.decode_iteration(raw)
             && parts.theme_name == theme_name
         {
             return Some(raw.clone());
@@ -79,13 +80,17 @@ pub fn compute_insert_position(insert_index: usize, existing_positions: &[u32]) 
     left
 }
 
-pub fn members_with_iteration_label(stories: &[Story], theme_name: &str) -> Vec<u64> {
+pub fn members_with_iteration_label<C: LabelCodec>(
+    codec: &C,
+    stories: &[Story],
+    theme_name: &str,
+) -> Vec<u64> {
     let mut members: Vec<(u64, u32)> = stories
         .iter()
         .filter(|s| !s.is_closed)
         .filter_map(|s| {
             for raw in &s.raw_labels {
-                if let Some(parts) = parse_iteration_label(raw)
+                if let Some(parts) = codec.decode_iteration(raw)
                     && parts.theme_name == theme_name
                 {
                     return Some((s.number, parts.position));
@@ -101,6 +106,7 @@ pub fn members_with_iteration_label(stories: &[Story], theme_name: &str) -> Vec<
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::board::adapters::gh_label_codec::GhLabelCodec;
     use crate::board::domain::{Story, StoryState};
     use chrono::{TimeZone, Utc};
 
@@ -134,7 +140,7 @@ mod tests {
     #[test]
     fn parse_label_simple_position() {
         assert_eq!(
-            parse_iteration_label("iteration-Pegasus.100"),
+            parse_iteration_label(&GhLabelCodec, "iteration-Pegasus.100"),
             Some(IterationLabelParts {
                 theme_name: "Pegasus".to_string(),
                 position: 100
@@ -145,7 +151,7 @@ mod tests {
     #[test]
     fn parse_label_hyphenated_theme() {
         assert_eq!(
-            parse_iteration_label("iteration-Big-Dipper.200"),
+            parse_iteration_label(&GhLabelCodec, "iteration-Big-Dipper.200"),
             Some(IterationLabelParts {
                 theme_name: "Big-Dipper".to_string(),
                 position: 200
@@ -155,17 +161,26 @@ mod tests {
 
     #[test]
     fn parse_label_rejects_legacy_pegasus_format() {
-        assert_eq!(parse_iteration_label("iteration-#1400"), None);
+        assert_eq!(
+            parse_iteration_label(&GhLabelCodec, "iteration-#1400"),
+            None
+        );
     }
 
     #[test]
     fn parse_label_rejects_nondigit_position() {
-        assert_eq!(parse_iteration_label("iteration-Pegasus.foo"), None);
+        assert_eq!(
+            parse_iteration_label(&GhLabelCodec, "iteration-Pegasus.foo"),
+            None
+        );
     }
 
     #[test]
     fn parse_label_rejects_missing_position() {
-        assert_eq!(parse_iteration_label("iteration-Pegasus"), None);
+        assert_eq!(
+            parse_iteration_label(&GhLabelCodec, "iteration-Pegasus"),
+            None
+        );
     }
 
     #[test]
@@ -176,7 +191,7 @@ mod tests {
             seed(300, vec!["iteration-Cassiopeia.100".to_string()]),
         ];
         assert_eq!(
-            members_with_iteration_label(&stories, "Pegasus"),
+            members_with_iteration_label(&GhLabelCodec, &stories, "Pegasus"),
             vec![200, 201]
         );
     }
@@ -189,7 +204,7 @@ mod tests {
             seed(202, vec!["iteration-Pegasus.200".to_string()]),
         ];
         assert_eq!(
-            members_with_iteration_label(&stories, "Pegasus"),
+            members_with_iteration_label(&GhLabelCodec, &stories, "Pegasus"),
             vec![201, 202, 200]
         );
     }
@@ -199,7 +214,7 @@ mod tests {
         let mut s = seed(200, vec!["iteration-Pegasus.100".to_string()]);
         s.is_closed = true;
         let stories = vec![s];
-        assert!(members_with_iteration_label(&stories, "Pegasus").is_empty());
+        assert!(members_with_iteration_label(&GhLabelCodec, &stories, "Pegasus").is_empty());
     }
 
     #[test]
@@ -213,7 +228,7 @@ mod tests {
             ],
         );
         assert_eq!(
-            story_iteration_label_for_theme(&s, "Pegasus"),
+            story_iteration_label_for_theme(&GhLabelCodec, &s, "Pegasus"),
             Some("iteration-Pegasus.250".to_string())
         );
     }
@@ -221,7 +236,10 @@ mod tests {
     #[test]
     fn story_iteration_label_returns_none_when_theme_absent() {
         let s = seed(200, vec!["iteration-Cassiopeia.100".to_string()]);
-        assert_eq!(story_iteration_label_for_theme(&s, "Pegasus"), None);
+        assert_eq!(
+            story_iteration_label_for_theme(&GhLabelCodec, &s, "Pegasus"),
+            None
+        );
     }
 
     #[test]
@@ -262,5 +280,40 @@ mod tests {
     #[test]
     fn compute_insert_position_sorts_input_before_computing() {
         assert_eq!(compute_insert_position(1, &[300, 100, 200]), 150);
+    }
+
+    struct StubLabelCodec;
+
+    impl LabelCodec for StubLabelCodec {
+        fn decode_ready_order(&self, _label: &str) -> Option<u32> {
+            None
+        }
+        fn decode_iteration(&self, label: &str) -> Option<IterationLabelParts> {
+            let rest = label.strip_prefix("iter|")?;
+            let (theme, pos_str) = rest.rsplit_once(':')?;
+            let position = pos_str.parse().ok()?;
+            if theme.is_empty() {
+                return None;
+            }
+            Some(IterationLabelParts {
+                theme_name: theme.to_string(),
+                position,
+            })
+        }
+    }
+
+    #[test]
+    fn substrate_test_members_walk_works_with_arbitrary_codec_syntax() {
+        let stories = vec![
+            seed(200, vec!["iter|Pegasus:300".to_string()]),
+            seed(201, vec!["iter|Pegasus:100".to_string()]),
+            seed(202, vec!["iter|Pegasus:200".to_string()]),
+            seed(300, vec!["iter|Cassiopeia:100".to_string()]),
+        ];
+        assert_eq!(
+            members_with_iteration_label(&StubLabelCodec, &stories, "Pegasus"),
+            vec![201, 202, 200],
+            "stub-syntax iter|Theme:N sorts correctly without GH-syntax dependency"
+        );
     }
 }

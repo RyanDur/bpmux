@@ -582,7 +582,9 @@ pub async fn get_board(
             .iter()
             .map(crate::board::domain::story_to_board_json)
             .collect();
-        let ordered = crate::board::ready_order_label::sort_board_by_ready_order_labels(stories);
+        let codec = crate::board::adapters::gh_label_codec::GhLabelCodec;
+        let ordered =
+            crate::board::ready_order_label::sort_board_by_ready_order_labels(&codec, stories);
         let body = serde_json::json!({
             "stories": ordered,
             "fetched_at": chrono::Utc::now().to_rfc3339(),
@@ -598,8 +600,9 @@ pub async fn get_board(
     };
     match tracker.fetch_board_stories().await {
         Ok(stories) => {
+            let codec = crate::board::adapters::gh_label_codec::GhLabelCodec;
             let ordered =
-                crate::board::ready_order_label::sort_board_by_ready_order_labels(stories);
+                crate::board::ready_order_label::sort_board_by_ready_order_labels(&codec, stories);
             let body = serde_json::json!({
                 "stories": ordered,
                 "fetched_at": chrono::Utc::now().to_rfc3339(),
@@ -1052,7 +1055,9 @@ async fn post_close_iteration_canonical(
         );
     }
     let theme_name = crate::board::iteration_label::theme_name_from_title(&iteration.title);
+    let codec = crate::board::adapters::gh_label_codec::GhLabelCodec;
     let promoted: Vec<u64> = crate::board::iteration_label::members_with_iteration_label(
+        &codec,
         &refresh.all_stories(),
         &theme_name,
     );
@@ -1162,12 +1167,14 @@ pub(crate) async fn promote_members_then_close_iteration(
         ts: chrono::Utc::now(),
         peer_id: crate::board::PeerId::local(),
     };
+    let codec = crate::board::adapters::gh_label_codec::GhLabelCodec;
     let mut applied: Vec<(u64, String)> = Vec::with_capacity(promoted.len());
     for &n in promoted {
         let member = refresh
             .story(n)
             .ok_or_else(|| format!("member #{n} not found in store"))?;
         let member_label = crate::board::iteration_label::story_iteration_label_for_theme(
+            &codec,
             &member,
             &theme_name,
         )

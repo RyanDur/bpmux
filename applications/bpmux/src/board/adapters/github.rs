@@ -497,8 +497,9 @@ fn is_iteration_position_label(label: &str) -> bool {
 }
 
 fn is_position_label(label: &str) -> bool {
+    use crate::board::label_codec::LabelCodec;
     is_iteration_position_label(label)
-        || crate::board::ready_order_label::is_ready_order_label(label)
+        || crate::board::adapters::gh_label_codec::GhLabelCodec.is_ready_order_label(label)
 }
 
 #[cfg(test)]

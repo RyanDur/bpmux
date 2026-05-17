@@ -195,11 +195,12 @@ pub async fn migrate_legacy_ready_to_labels_at_path(
     priority_path: &std::path::Path,
     refresh: Arc<dyn board::RefreshDriver>,
 ) -> Result<usize, String> {
+    let codec = board::adapters::gh_label_codec::GhLabelCodec;
     let any_labeled = refresh.all_stories().iter().any(|s| {
         s.state == board::domain::StoryState::Ready
             && s.raw_labels
                 .iter()
-                .any(|l| board::ready_order_label::is_ready_order_label(l))
+                .any(|l| board::ready_order_label::is_ready_order_label(&codec, l))
     });
     if any_labeled {
         return Ok(0);

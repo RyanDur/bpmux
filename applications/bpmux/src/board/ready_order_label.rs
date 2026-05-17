@@ -5,34 +5,35 @@
 //! Sister to [`super::iteration_label`] which handles iteration
 //! membership ordering via `iteration-{Theme}.{position}` labels.
 //!
-//! Format pinned: `ready-order.<u32-position>` — sparse-numeric
-//! algebra (default step 100) so midpoint insertions don't cascade-
-//! rewrite every neighbor on each reorder.
+//! Slice 2 of #1350 threads a [`LabelCodec`] codec through every fn so
+//! the `ready-order.{N}` syntax lives in the adapter
+//! (`GhLabelCodec`), not here. Domain operations remain in this
+//! module; only the encode/decode delegates to the codec.
 
 use crate::board::domain::{Story, StoryState};
+use crate::board::label_codec::LabelCodec;
 
-pub fn parse_ready_order_label(label: &str) -> Option<u32> {
-    let rest = label.strip_prefix("ready-order.")?;
-    rest.parse::<u32>().ok()
+pub fn parse_ready_order_label<C: LabelCodec>(codec: &C, label: &str) -> Option<u32> {
+    codec.decode_ready_order(label)
 }
 
-pub fn is_ready_order_label(label: &str) -> bool {
-    parse_ready_order_label(label).is_some()
+pub fn is_ready_order_label<C: LabelCodec>(codec: &C, label: &str) -> bool {
+    codec.is_ready_order_label(label)
 }
 
-pub fn story_ready_order_position(story: &Story) -> Option<u32> {
+pub fn story_ready_order_position<C: LabelCodec>(codec: &C, story: &Story) -> Option<u32> {
     story
         .raw_labels
         .iter()
-        .filter_map(|l| parse_ready_order_label(l))
+        .filter_map(|l| codec.decode_ready_order(l))
         .min()
 }
 
-pub fn stories_with_ready_order(stories: &[Story]) -> Vec<u64> {
+pub fn stories_with_ready_order<C: LabelCodec>(codec: &C, stories: &[Story]) -> Vec<u64> {
     let mut ordered: Vec<(u64, u32)> = stories
         .iter()
         .filter(|s| !s.is_closed && s.state == StoryState::Ready)
-        .filter_map(|s| story_ready_order_position(s).map(|pos| (s.number, pos)))
+        .filter_map(|s| story_ready_order_position(codec, s).map(|pos| (s.number, pos)))
         .collect();
     ordered.sort_by_key(|(_, pos)| *pos);
     ordered.into_iter().map(|(n, _)| n).collect()
@@ -46,7 +47,10 @@ pub fn stories_with_ready_order(stories: &[Story]) -> Vec<u64> {
 /// issue number for stability (transitional shape until boot
 /// migration has labeled every legacy entry — see
 /// [`crate::migrate_legacy_ready_to_labels`]).
-pub fn sort_board_by_ready_order_labels(stories: Vec<serde_json::Value>) -> Vec<serde_json::Value> {
+pub fn sort_board_by_ready_order_labels<C: LabelCodec>(
+    codec: &C,
+    stories: Vec<serde_json::Value>,
+) -> Vec<serde_json::Value> {
     let mut by_state: Vec<(String, Vec<serde_json::Value>)> = Vec::new();
     for s in stories {
         let state = s
@@ -62,7 +66,7 @@ pub fn sort_board_by_ready_order_labels(stories: Vec<serde_json::Value>) -> Vec<
     for (state, list) in by_state.iter_mut() {
         if StoryState::parse(state) == Some(StoryState::Ready) {
             list.sort_by_cached_key(|s| {
-                let label_pos = ready_order_from_value(s).map(u64::from);
+                let label_pos = ready_order_from_value(codec, s).map(u64::from);
                 let number = s.get("number").and_then(|v| v.as_u64()).unwrap_or(0);
                 (label_pos.unwrap_or(u64::MAX), number)
             });
@@ -71,11 +75,10 @@ pub fn sort_board_by_ready_order_labels(stories: Vec<serde_json::Value>) -> Vec<
     by_state.into_iter().flat_map(|(_, list)| list).collect()
 }
 
-fn ready_order_from_value(s: &serde_json::Value) -> Option<u32> {
+fn ready_order_from_value<C: LabelCodec>(codec: &C, s: &serde_json::Value) -> Option<u32> {
     s.get("labels")?.as_array()?.iter().find_map(|l| {
         let name = l.as_str().or_else(|| l.get("name")?.as_str())?;
-        let rest = name.strip_prefix("ready-order.")?;
-        rest.parse::<u32>().ok()
+        codec.decode_ready_order(name)
     })
 }
 
