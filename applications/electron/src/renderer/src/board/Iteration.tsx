@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { GripIcon } from './GripIcon'
 import { ReworkGlyph } from './ReworkGlyph'
 import StoryBadge from './StoryBadge'
@@ -23,6 +22,7 @@ import {
   postLabelMutation
 } from './iterationMembers'
 import { useIterationMembers } from './useIterationMembers'
+import { useIterationDragState } from './useIterationDragState'
 
 interface Props {
   stories: BoardStory[]
@@ -34,12 +34,16 @@ const UNSCHEDULED_KEY = 'unscheduled'
 
 const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Element | null => {
   const collapse = useIterationCollapse(RENDERER_IDENTITY)
-  const [draggedNumber, setDraggedNumber] = useState<number | null>(null)
-  const [hoveredNumber, setHoveredNumber] = useState<number | null>(null)
-  const [draggedIterationNumber, setDraggedIterationNumber] = useState<number | null>(null)
-  const [dragRejectedIterationNumber, setDragRejectedIterationNumber] = useState<number | null>(
-    null
-  )
+  const {
+    draggedNumber,
+    setDraggedNumber,
+    hoveredNumber,
+    setHoveredNumber,
+    draggedIterationNumber,
+    setDraggedIterationNumber,
+    dragRejectedIterationNumber,
+    setDragRejectedIterationNumber
+  } = useIterationDragState()
   const { sortedIterations, sortedLoose, getMembersFor, setPending } =
     useIterationMembers(stories)
   if (sortedIterations.length === 0 && sortedLoose.length === 0) return null
