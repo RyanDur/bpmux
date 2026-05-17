@@ -20,7 +20,7 @@ export interface StoryRowProps {
   onOpenTimeline?: (n: number) => void
   onSelect: (n: number) => void
   onRowDragOver: (event: React.DragEvent<HTMLLIElement>) => void
-  onDragStartRow?: () => void
+  onDragStartRow?: (event: React.DragEvent<HTMLElement>) => void
   onDragEndRow?: () => void
 }
 
@@ -75,20 +75,7 @@ const StoryRow = ({
           role="button"
           aria-label={`Drag to reorder #${story.number}`}
           tabIndex={-1}
-          onDragStart={(event) => {
-            event.dataTransfer.setData('text/bpmux-story', String(story.number))
-            event.dataTransfer.effectAllowed = 'move'
-            const row = (event.currentTarget as HTMLElement).closest('li')
-            if (row && typeof event.dataTransfer.setDragImage === 'function') {
-              const rect = row.getBoundingClientRect()
-              event.dataTransfer.setDragImage(
-                row,
-                event.clientX - rect.left,
-                event.clientY - rect.top
-              )
-            }
-            onDragStartRow?.()
-          }}
+          onDragStart={(event) => onDragStartRow?.(event)}
           onDragEnd={() => onDragEndRow?.()}
         >
           <GripIcon />

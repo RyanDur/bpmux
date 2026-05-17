@@ -1,11 +1,17 @@
 import { useState } from 'react'
 import StoryRow from './StoryRow'
+import { DRAG_MIMETYPE_REGISTRY, useStoryDrag } from './useStoryDrag'
 import {
   isClosedIterationMarker,
   type BoardStory,
   type ColumnState,
   type GroupSpec
 } from './types'
+
+const decodeStoryNumber = (raw: string): number | null => {
+  const n = Number.parseInt(raw, 10)
+  return Number.isNaN(n) ? null : n
+}
 
 export interface BoardGroupProps {
   group: GroupSpec
@@ -39,7 +45,16 @@ const BoardGroup = ({
   const draggable =
     (group.state === 'ready' || group.state === 'icebox') && onReorder !== undefined
   const [dropAt, setDropAt] = useState<number | null>(null)
-  const [draggingNumber, setDraggingNumber] = useState<number | null>(null)
+  const {
+    draggedNumber: draggingNumber,
+    startDrag,
+    endDrag,
+    decode
+  } = useStoryDrag<number>({
+    mimeType: DRAG_MIMETYPE_REGISTRY.STORY_ROW,
+    encode: String,
+    decode: decodeStoryNumber
+  })
 
   const handleListDragOver = (event: React.DragEvent<HTMLElement>): void => {
     if (!draggable) return
@@ -60,16 +75,15 @@ const BoardGroup = ({
   const handleDrop = (event: React.DragEvent<HTMLElement>): void => {
     if (!draggable || onReorder === undefined) return
     event.preventDefault()
-    const raw = event.dataTransfer.getData('text/bpmux-story')
-    const moved = Number.parseInt(raw, 10)
-    if (Number.isNaN(moved) || dropAt === null) {
+    const moved = decode(event)
+    if (moved === null || dropAt === null) {
       setDropAt(null)
-      setDraggingNumber(null)
+      endDrag()
       return
     }
     onReorder(group.state, moved, dropAt)
     setDropAt(null)
-    setDraggingNumber(null)
+    endDrag()
   }
 
   const contentId = `board-group-${group.state}-content`
@@ -153,9 +167,9 @@ const BoardGroup = ({
                   onOpenTimeline={onOpenTimeline}
                   onSelect={onSelect}
                   onRowDragOver={handleRowDragOver(i)}
-                  onDragStartRow={() => setDraggingNumber(story.number)}
+                  onDragStartRow={(event) => startDrag(event, story.number, story.number)}
                   onDragEndRow={() => {
-                    setDraggingNumber(null)
+                    endDrag()
                     setDropAt(null)
                   }}
                 />
