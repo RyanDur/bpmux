@@ -966,6 +966,7 @@ fn stale_state_labels_for(story: &Story, raw_labels: &[String]) -> Vec<String> {
         super::domain::StoryState::DeskCheck => "desk-check",
         super::domain::StoryState::Delivered => "delivered",
         super::domain::StoryState::Accepted => "accepted",
+        super::domain::StoryState::Retired => "retired",
     };
     let all_state_labels = [
         "ready",

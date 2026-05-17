@@ -26,7 +26,7 @@ use bpmux::board::domain::StoryState;
 /// Encoded by hand from the TS source so this test catches drift on
 /// either side. Update both when the projection legitimately changes.
 fn renderer_column_for(state: StoryState, is_closed: bool) -> ColumnBucket {
-    if is_closed && state != StoryState::Accepted {
+    if is_closed && state != StoryState::Accepted && state != StoryState::Retired {
         return ColumnBucket::Retired;
     }
     match state {
@@ -36,6 +36,7 @@ fn renderer_column_for(state: StoryState, is_closed: bool) -> ColumnBucket {
         StoryState::DeskCheck => ColumnBucket::DeskCheck,
         StoryState::Delivered => ColumnBucket::Delivered,
         StoryState::Accepted => ColumnBucket::Accepted,
+        StoryState::Retired => ColumnBucket::Retired,
     }
 }
 

@@ -9,6 +9,13 @@ pub enum StoryState {
     DeskCheck,
     Delivered,
     Accepted,
+    /// #1377: closed via close_story with reason
+    /// ∈ {superseded, duplicate, won't-fix}. Distinct from Accepted
+    /// (which is ship-chain close — work landed in the iteration) and
+    /// distinct from Icebox (where the "retired" label previously
+    /// mis-routed). Renderer treats this as its own column-class so
+    /// retired stories don't pollute the accepted column.
+    Retired,
 }
 
 impl StoryState {
@@ -20,6 +27,7 @@ impl StoryState {
             StoryState::DeskCheck => "desk-check",
             StoryState::Delivered => "delivered",
             StoryState::Accepted => "accepted",
+            StoryState::Retired => "retired",
         }
     }
 
@@ -36,6 +44,7 @@ impl StoryState {
             "desk-check" | "desk_check" => Some(StoryState::DeskCheck),
             "delivered" => Some(StoryState::Delivered),
             "accepted" => Some(StoryState::Accepted),
+            "retired" => Some(StoryState::Retired),
             _ => None,
         }
     }
@@ -144,8 +153,11 @@ pub fn replay_transitions(gate_comments: &[GateComment]) -> Vec<StateTransition>
         .collect()
 }
 
-/// Linear ordinal over the 6 column-aligned states; backward-edge
-/// detection compares to-state's ordinal against from-state's.
+/// Linear ordinal over the column-aligned states; backward-edge
+/// detection compares to-state's ordinal against from-state's. Retired
+/// shares ship-chain-terminal ordinal with Accepted (both are
+/// no-further-forward end-states; neither can transition to the other
+/// via gate-comment, so the ordinal-tie is intentional).
 fn state_ordinal(s: StoryState) -> u8 {
     match s {
         StoryState::Icebox => 0,
@@ -153,7 +165,7 @@ fn state_ordinal(s: StoryState) -> u8 {
         StoryState::InProgress => 2,
         StoryState::DeskCheck => 3,
         StoryState::Delivered => 4,
-        StoryState::Accepted => 5,
+        StoryState::Accepted | StoryState::Retired => 5,
     }
 }
 
@@ -212,6 +224,7 @@ impl Story {
             StoryState::DeskCheck => Some("desk-check"),
             StoryState::Delivered => Some("delivered"),
             StoryState::Accepted => Some("accepted"),
+            StoryState::Retired => Some("retired"),
         };
         let raw_labels = state_label.map(|l| vec![l.to_string()]).unwrap_or_default();
         Self {

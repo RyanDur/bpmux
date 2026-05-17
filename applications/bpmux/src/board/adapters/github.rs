@@ -543,11 +543,8 @@ pub fn state_from_labels(labels: &[String], is_closed: bool) -> StoryState {
     if has("accepted") {
         return StoryState::Accepted;
     }
-    // #1192: explicit retired-tag distinguishes "closed via retire"
-    // from "closed via accept". Must precede the is_closed → Accepted
-    // rule so retired-on-close stays in the retired column.
     if has("retired") {
-        return StoryState::Icebox;
+        return StoryState::Retired;
     }
     // #1296: is_closed=true means the issue is closed. Without an
     // explicit retired tag, that's "accepted". This rule precedes the
@@ -597,6 +594,7 @@ pub fn state_to_label(state: StoryState) -> &'static str {
         StoryState::DeskCheck => "desk-check",
         StoryState::Delivered => "delivered",
         StoryState::Accepted => "accepted",
+        StoryState::Retired => "retired",
     }
 }
 

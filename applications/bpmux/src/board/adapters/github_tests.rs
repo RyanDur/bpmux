@@ -119,7 +119,7 @@ fn state_from_labels_retired_label_overrides_closed_fallback() {
     // retired produces a state column_for can bucket as Retired
     // (closed && state != Accepted).
     let labels = vec!["retired".to_string()];
-    assert_eq!(state_from_labels(&labels, true), StoryState::Icebox);
+    assert_eq!(state_from_labels(&labels, true), StoryState::Retired);
 }
 
 #[test]
@@ -132,14 +132,9 @@ fn state_from_labels_retired_label_loses_to_accepted() {
 }
 
 #[test]
-fn state_from_labels_retired_label_open_issue_returns_icebox() {
-    // #1192: retired-label on an open issue is a manual-tag edge case
-    // (move_story always pairs retired-tag with close). Returning
-    // Icebox here matches the closed case + means column_for sees
-    // (Icebox, false) → Icebox column. Acceptable semantic: an open
-    // issue tagged "retired" parks in Icebox until someone moves it.
+fn state_from_labels_retired_label_open_issue_returns_retired() {
     let labels = vec!["retired".to_string()];
-    assert_eq!(state_from_labels(&labels, false), StoryState::Icebox);
+    assert_eq!(state_from_labels(&labels, false), StoryState::Retired);
 }
 
 #[test]

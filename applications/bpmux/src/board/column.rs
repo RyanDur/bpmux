@@ -43,7 +43,7 @@ impl ColumnBucket {
 }
 
 pub fn column_for(state: StoryState, is_closed: bool) -> ColumnBucket {
-    if is_closed && state != StoryState::Accepted {
+    if is_closed && state != StoryState::Accepted && state != StoryState::Retired {
         return ColumnBucket::Retired;
     }
     match state {
@@ -53,5 +53,6 @@ pub fn column_for(state: StoryState, is_closed: bool) -> ColumnBucket {
         StoryState::DeskCheck => ColumnBucket::DeskCheck,
         StoryState::Delivered => ColumnBucket::Delivered,
         StoryState::Accepted => ColumnBucket::Accepted,
+        StoryState::Retired => ColumnBucket::Retired,
     }
 }

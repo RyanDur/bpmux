@@ -15,6 +15,7 @@ fn state_label(state: StoryState) -> &'static str {
         StoryState::DeskCheck => "desk-check",
         StoryState::Delivered => "delivered",
         StoryState::Accepted => "accepted",
+        StoryState::Retired => "retired",
     }
 }
 
