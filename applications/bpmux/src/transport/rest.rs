@@ -581,7 +581,7 @@ pub async fn get_board(
         let codec = crate::board::adapters::gh_label_codec::GhLabelCodec;
         let stories: Vec<serde_json::Value> = all
             .iter()
-            .map(|s| crate::board::domain::story_to_board_json(&codec, s))
+            .map(|s| crate::board::adapters::json::story_to_board_json(&codec, s))
             .collect();
         let ordered =
             crate::board::ready_order_label::sort_board_by_ready_order_labels(&codec, stories);
