@@ -424,10 +424,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     }
 
     fn persist_outbox(&self) {
-        let snapshot: Vec<QueuedEvent> = {
-            let p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
-            p.iter().cloned().collect()
-        };
+        let snapshot: Vec<QueuedEvent> = self.with_pending(|p| p.iter().cloned().collect());
         // #1289 Phase-1 step 4: prefer Storage-trait sink when set
         // (with_storage construction); fall back to outbox_path for
         // backward-compat with `with_outbox_path`-constructed instances.
@@ -451,10 +448,28 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         Arc::clone(&self.status)
     }
 
+    /// Transactional-closure read over the pending-events deque. The
+    /// std::sync::Mutex is locked once at entry (with poison recovery)
+    /// and dropped at closure-return, so the lock-scope is visibly
+    /// bounded at the call-site instead of spanning the enclosing fn
+    /// body.
+    fn with_pending<R>(&self, f: impl FnOnce(&VecDeque<QueuedEvent>) -> R) -> R {
+        let p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
+        f(&p)
+    }
+
+    /// Transactional-closure mutation over the pending-events deque.
+    /// Same lock-scope-bounded contract as `with_pending` for read-write
+    /// access. Per Ryan-canon "prefer immutability" (#1360): mutation
+    /// scope is bounded + visible at the call-site, not scattered.
+    fn with_pending_mut<R>(&self, f: impl FnOnce(&mut VecDeque<QueuedEvent>) -> R) -> R {
+        let mut p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
+        f(&mut p)
+    }
+
     #[cfg(test)]
     pub fn snapshot_pending_for_test(&self) -> VecDeque<QueuedEvent> {
-        let p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
-        p.clone()
+        self.with_pending(|p| p.clone())
     }
 
     pub fn store(&self) -> Arc<BoardStore> {
@@ -473,14 +488,13 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         let id = MutationId(self.next_mutation_id.fetch_add(1, Ordering::SeqCst));
         let pre_state = self.store.story(event.story_number());
         self.store.apply(&event);
-        let queue_len = {
-            let mut p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
-            let absorbed = coalesce_iteration_label_events(&mut p, &event, id, &pre_state);
+        let queue_len = self.with_pending_mut(|p| {
+            let absorbed = coalesce_iteration_label_events(p, &event, id, &pre_state);
             if !absorbed {
                 p.push_back(QueuedEvent::new_with_id(id, event, pre_state));
             }
             p.len()
-        };
+        });
         self.persist_outbox();
         set_pending_events(&self.status, queue_len);
         if let Some(tx) = &self.action_tx {
@@ -631,20 +645,14 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     }
 
     pub async fn drain_one_by_id(&self, id: MutationId) -> DrainOneOutcome {
-        let queued = {
-            let p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
-            p.iter().find(|q| q.id == id).cloned()
-        };
+        let queued = self.with_pending(|p| p.iter().find(|q| q.id == id).cloned());
         let Some(queued) = queued else {
             return DrainOneOutcome::NotFound;
         };
         let event = queued.event.clone();
         let lock = self.issue_lock(event.story_number()).await;
         let _guard = lock.lock().await;
-        let queued = {
-            let p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
-            p.iter().find(|q| q.id == id).cloned()
-        };
+        let queued = self.with_pending(|p| p.iter().find(|q| q.id == id).cloned());
         let Some(queued) = queued else {
             return DrainOneOutcome::Confirmed;
         };
@@ -711,10 +719,11 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     }
 
     fn remove_pending_by_id(&self, id: MutationId) {
-        let mut p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
-        if let Some(idx) = p.iter().position(|q| q.id == id) {
-            p.remove(idx);
-        }
+        self.with_pending_mut(|p| {
+            if let Some(idx) = p.iter().position(|q| q.id == id) {
+                p.remove(idx);
+            }
+        });
     }
 
     pub fn apply_server_rollback(&self, story: Story) {
@@ -722,10 +731,11 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     }
 
     pub fn pending_issue_for_mutation(&self, id: MutationId) -> Option<u64> {
-        let p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
-        p.iter()
-            .find(|q| q.id == id)
-            .map(|q| q.event.story_number())
+        self.with_pending(|p| {
+            p.iter()
+                .find(|q| q.id == id)
+                .map(|q| q.event.story_number())
+        })
     }
 
     pub async fn issue_lock(&self, issue: u64) -> Arc<tokio::sync::Mutex<()>> {
@@ -748,20 +758,14 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         let mut conflicts_pending = 0usize;
         let mut conflict_offset = 0usize;
         loop {
-            let queued_opt = {
-                let p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
-                p.get(conflict_offset).cloned()
-            };
+            let queued_opt = self.with_pending(|p| p.get(conflict_offset).cloned());
             let Some(queued) = queued_opt else {
                 break;
             };
             let event = queued.event.clone();
             let lock = self.issue_lock(event.story_number()).await;
             let _guard = lock.lock().await;
-            let queued_opt = {
-                let p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
-                p.get(conflict_offset).cloned()
-            };
+            let queued_opt = self.with_pending(|p| p.get(conflict_offset).cloned());
             let Some(queued) = queued_opt else {
                 break;
             };
@@ -796,13 +800,13 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
 
             match kind {
                 Some(ConflictKind::IdempotentSkip) => {
-                    let mut p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
-                    if conflict_offset == 0 {
-                        p.pop_front();
-                    } else {
-                        p.remove(conflict_offset);
-                    }
-                    drop(p);
+                    self.with_pending_mut(|p| {
+                        if conflict_offset == 0 {
+                            p.pop_front();
+                        } else {
+                            p.remove(conflict_offset);
+                        }
+                    });
                     self.persist_outbox();
                     decrement_pending(&self.status);
                     crate::session::diag::log_diag(&format!(
@@ -833,12 +837,11 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                             event.story_number()
                         ));
                     }
-                    {
-                        let mut p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
+                    self.with_pending_mut(|p| {
                         if let Some(slot) = p.get_mut(conflict_offset) {
                             slot.last_classification = Some(divergent);
                         }
-                    }
+                    });
                     self.persist_outbox();
                     conflicts_pending += 1;
                     conflict_offset += 1;
@@ -848,14 +851,13 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             }
             match self.adapter.push_event(&event).await {
                 Ok(follow_up) => {
-                    {
-                        let mut p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
+                    self.with_pending_mut(|p| {
                         if conflict_offset == 0 {
                             p.pop_front();
                         } else {
                             p.remove(conflict_offset);
                         }
-                    }
+                    });
                     self.persist_outbox();
                     drained += 1;
                     record_push_success(&self.status);
@@ -867,14 +869,13 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                     failures += 1;
                     record_error(&self.status, &format!("push: {e}"));
                     if is_permanent_push_failure(&e) {
-                        {
-                            let mut p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
+                        self.with_pending_mut(|p| {
                             if conflict_offset == 0 {
                                 p.pop_front();
                             } else {
                                 p.remove(conflict_offset);
                             }
-                        }
+                        });
                         self.persist_outbox();
                         decrement_pending(&self.status);
                         record_dropped(&self.status, event.story_number(), format!("{e}"));
@@ -1125,49 +1126,66 @@ pub(crate) fn cache_fill_meta() -> EventMeta {
     }
 }
 
-fn record_ingest_success(status: &Arc<Mutex<SyncStatus>>) {
+/// Transactional-closure mutation over a `SyncStatus` behind an
+/// `Arc<Mutex<_>>`. Free-fn form so the standalone `record_*` /
+/// `mark_*` helpers below can route their lock-acquire through one
+/// canonical site instead of each holding its own. Per #1360: lock-
+/// scope bounded + visible at the call-site, not scattered.
+fn with_status_mut<R>(status: &Arc<Mutex<SyncStatus>>, f: impl FnOnce(&mut SyncStatus) -> R) -> R {
     let mut s = status.lock().unwrap_or_else(|e| e.into_inner());
-    s.last_ingest_at = Some(Utc::now());
-    s.last_error = None;
-    s.recovering_from_corruption = false;
+    f(&mut s)
+}
+
+fn record_ingest_success(status: &Arc<Mutex<SyncStatus>>) {
+    with_status_mut(status, |s| {
+        s.last_ingest_at = Some(Utc::now());
+        s.last_error = None;
+        s.recovering_from_corruption = false;
+    });
 }
 
 pub fn mark_recovering_from_corruption(status: &Arc<Mutex<SyncStatus>>) {
-    let mut s = status.lock().unwrap_or_else(|e| e.into_inner());
-    s.recovering_from_corruption = true;
+    with_status_mut(status, |s| {
+        s.recovering_from_corruption = true;
+    });
 }
 
 fn record_push_success(status: &Arc<Mutex<SyncStatus>>) {
-    let mut s = status.lock().unwrap_or_else(|e| e.into_inner());
-    s.last_push_at = Some(Utc::now());
-    if s.pending_events > 0 {
-        s.pending_events -= 1;
-    }
+    with_status_mut(status, |s| {
+        s.last_push_at = Some(Utc::now());
+        if s.pending_events > 0 {
+            s.pending_events -= 1;
+        }
+    });
 }
 
 fn record_error(status: &Arc<Mutex<SyncStatus>>, msg: &str) {
-    let mut s = status.lock().unwrap_or_else(|e| e.into_inner());
-    s.last_error = Some(msg.to_string());
+    with_status_mut(status, |s| {
+        s.last_error = Some(msg.to_string());
+    });
 }
 
 fn set_pending_events(status: &Arc<Mutex<SyncStatus>>, value: usize) {
-    let mut s = status.lock().unwrap_or_else(|e| e.into_inner());
-    s.pending_events = value;
+    with_status_mut(status, |s| {
+        s.pending_events = value;
+    });
 }
 
 fn decrement_pending(status: &Arc<Mutex<SyncStatus>>) {
-    let mut s = status.lock().unwrap_or_else(|e| e.into_inner());
-    if s.pending_events > 0 {
-        s.pending_events -= 1;
-    }
+    with_status_mut(status, |s| {
+        if s.pending_events > 0 {
+            s.pending_events -= 1;
+        }
+    });
 }
 
 fn record_dropped(status: &Arc<Mutex<SyncStatus>>, story_number: u64, error: String) {
-    let mut s = status.lock().unwrap_or_else(|e| e.into_inner());
-    s.dropped_events.push(DroppedEvent {
-        story_number,
-        error,
-        ts: Utc::now(),
+    with_status_mut(status, |s| {
+        s.dropped_events.push(DroppedEvent {
+            story_number,
+            error,
+            ts: Utc::now(),
+        });
     });
 }
 
@@ -1176,8 +1194,9 @@ fn record_dropped(status: &Arc<Mutex<SyncStatus>>, story_number: u64, error: Str
 /// every pending entry, so this fully reflects the current outbox
 /// state — no incremental accumulation across ticks.
 fn record_conflicts_pending(status: &Arc<Mutex<SyncStatus>>, count: usize) {
-    let mut s = status.lock().unwrap_or_else(|e| e.into_inner());
-    s.conflicts_pending = count;
+    with_status_mut(status, |s| {
+        s.conflicts_pending = count;
+    });
 }
 
 /// #1195: 3-arg conflict classifier. Compares pre-mutation
@@ -1245,10 +1264,11 @@ pub enum ConflictResolveOrigin {
 }
 
 pub fn acknowledge_dropped(status: &Arc<Mutex<SyncStatus>>) -> usize {
-    let mut s = status.lock().unwrap_or_else(|e| e.into_inner());
-    let cleared = s.dropped_events.len();
-    s.dropped_events.clear();
-    cleared
+    with_status_mut(status, |s| {
+        let cleared = s.dropped_events.len();
+        s.dropped_events.clear();
+        cleared
+    })
 }
 
 /// #1195: outbox-entry on-disk shape. Untagged enum lets us read
