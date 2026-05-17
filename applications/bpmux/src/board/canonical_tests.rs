@@ -9,6 +9,7 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::expect_used)]
 
+use crate::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::board::adapters::github::decode_story_metadata;
 use crate::board::domain::{Story, StoryState, StoryType};
 use crate::board::store::BoardStore;
@@ -33,7 +34,7 @@ fn story_struct_has_no_iteration_id_field_in_board_json_projection() {
         Utc.with_ymd_and_hms(2026, 5, 15, 0, 0, 0).unwrap(),
         "pm".to_string(),
     );
-    let json = crate::board::domain::story_to_board_json(&story);
+    let json = crate::board::domain::story_to_board_json(&GhLabelCodec, &story);
     let obj = json.as_object().expect("object");
     assert!(
         !obj.contains_key("iteration_id"),
@@ -54,7 +55,7 @@ fn iteration_label_decoder_does_not_populate_a_story_field() {
         "labels": [{"name": "ready"}, {"name": "iteration-#1338"}],
     });
     let story = decode_story_metadata(&v).expect("decode");
-    let json = crate::board::domain::story_to_board_json(&story);
+    let json = crate::board::domain::story_to_board_json(&GhLabelCodec, &story);
     let obj = json.as_object().expect("object");
     assert!(
         !obj.contains_key("iteration_id"),
@@ -85,7 +86,7 @@ fn create_story_event_does_not_seed_iteration_membership() {
         story_type: StoryType::Feature,
     });
     let s = store.story(200).expect("story present");
-    let json = crate::board::domain::story_to_board_json(&s);
+    let json = crate::board::domain::story_to_board_json(&GhLabelCodec, &s);
     let obj = json.as_object().expect("object");
     assert!(
         !obj.contains_key("iteration_id"),

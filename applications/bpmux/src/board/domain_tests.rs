@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::domain::{Story, StoryState, StoryType, Tag, story_to_board_json};
+use crate::board::adapters::gh_label_codec::GhLabelCodec;
 
 fn sample_story(state: StoryState, story_type: StoryType, is_closed: bool) -> Story {
     Story {
@@ -27,7 +28,7 @@ fn sample_story(state: StoryState, story_type: StoryType, is_closed: bool) -> St
 #[test]
 fn story_to_board_json_emits_renderer_wire_format_field_list() {
     let s = sample_story(StoryState::Icebox, StoryType::Feature, false);
-    let json = story_to_board_json(&s);
+    let json = story_to_board_json(&GhLabelCodec, &s);
 
     let obj = json.as_object().expect("object");
     let keys: Vec<&String> = obj.keys().collect();
@@ -56,7 +57,7 @@ fn story_to_board_json_rework_comment_null_when_no_backward_edge() {
     // #1146 slice 4: stories without a backward-edge transition emit
     // rework_comment as JSON null. Renderer reads this as "no ↩ glyph".
     let s = sample_story(StoryState::Ready, StoryType::Feature, false);
-    let json = story_to_board_json(&s);
+    let json = story_to_board_json(&GhLabelCodec, &s);
     assert!(json["rework_comment"].is_null());
 }
 
@@ -94,7 +95,7 @@ fn story_to_board_json_rework_comment_carries_backward_edge_payload() {
             payload: Some("user-story not satisfied".into()),
         },
     ]);
-    let json = story_to_board_json(&s);
+    let json = story_to_board_json(&GhLabelCodec, &s);
     assert_eq!(
         json["rework_comment"].as_str(),
         Some("user-story not satisfied"),
@@ -141,7 +142,7 @@ fn story_to_board_json_rework_comment_clears_after_forward_edge() {
             payload: None,
         },
     ]);
-    let json = story_to_board_json(&s);
+    let json = story_to_board_json(&GhLabelCodec, &s);
     assert!(
         json["rework_comment"].is_null(),
         "forward transition (Pickup after Rejected) suppresses rework_comment"
@@ -161,7 +162,7 @@ fn story_to_board_json_emits_canonical_6_state_vocabulary() {
     ] {
         let s = sample_story(*state, StoryType::Feature, false);
         assert_eq!(
-            json_str(&story_to_board_json(&s), "state"),
+            json_str(&story_to_board_json(&GhLabelCodec, &s), "state"),
             *expected,
             "{state:?} serializes to canonical wire-vocab `{expected}` per #505 boundary-principle"
         );
@@ -172,20 +173,26 @@ fn story_to_board_json_emits_canonical_6_state_vocabulary() {
 fn story_to_board_json_is_closed_emits_gh_state_closed_independent_of_state() {
     let s = sample_story(StoryState::Icebox, StoryType::Feature, true);
     assert_eq!(
-        json_str(&story_to_board_json(&s), "state"),
+        json_str(&story_to_board_json(&GhLabelCodec, &s), "state"),
         "icebox",
         "Story.state stays canonical regardless of gh-side is_closed; the GH-adapter is_closed→Accepted translation happens at INGEST not at serialization"
     );
-    assert_eq!(json_str(&story_to_board_json(&s), "gh_state"), "closed");
+    assert_eq!(
+        json_str(&story_to_board_json(&GhLabelCodec, &s), "gh_state"),
+        "closed"
+    );
 }
 
 #[test]
 fn story_to_board_json_gh_state_lowercase_open_or_closed() {
     let open = sample_story(StoryState::Icebox, StoryType::Feature, false);
-    assert_eq!(json_str(&story_to_board_json(&open), "gh_state"), "open");
+    assert_eq!(
+        json_str(&story_to_board_json(&GhLabelCodec, &open), "gh_state"),
+        "open"
+    );
     let closed = sample_story(StoryState::Accepted, StoryType::Feature, true);
     assert_eq!(
-        json_str(&story_to_board_json(&closed), "gh_state"),
+        json_str(&story_to_board_json(&GhLabelCodec, &closed), "gh_state"),
         "closed"
     );
 }
@@ -199,7 +206,7 @@ fn story_to_board_json_labels_include_story_type() {
         (StoryType::Epic, "epic"),
     ] {
         let s = sample_story(StoryState::Icebox, *story_type, false);
-        let json = story_to_board_json(&s);
+        let json = story_to_board_json(&GhLabelCodec, &s);
         let labels = json["labels"].as_array().expect("labels array");
         assert!(
             labels.iter().any(|l| l.as_str() == Some(expected_label)),
@@ -212,7 +219,7 @@ fn story_to_board_json_labels_include_story_type() {
 fn story_to_board_json_labels_include_blocked_tag() {
     let mut s = sample_story(StoryState::Icebox, StoryType::Feature, false);
     s.tags.push(Tag::Blocked);
-    let json = story_to_board_json(&s);
+    let json = story_to_board_json(&GhLabelCodec, &s);
     let labels = json["labels"].as_array().expect("labels array");
     assert!(labels.iter().any(|l| l.as_str() == Some("blocked")));
 }
@@ -221,7 +228,7 @@ fn story_to_board_json_labels_include_blocked_tag() {
 fn story_to_board_json_parent_epic_emits_field_and_label() {
     let mut s = sample_story(StoryState::Icebox, StoryType::Feature, false);
     s.parent_epic = Some(7);
-    let json = story_to_board_json(&s);
+    let json = story_to_board_json(&GhLabelCodec, &s);
     assert_eq!(json["parent_epic"].as_u64(), Some(7));
     let labels = json["labels"].as_array().expect("labels array");
     assert!(
@@ -233,7 +240,7 @@ fn story_to_board_json_parent_epic_emits_field_and_label() {
 #[test]
 fn story_to_board_json_no_parent_epic_emits_null() {
     let s = sample_story(StoryState::Icebox, StoryType::Feature, false);
-    let json = story_to_board_json(&s);
+    let json = story_to_board_json(&GhLabelCodec, &s);
     assert!(
         json["parent_epic"].is_null(),
         "parent_epic null when absent; got {:?}",
@@ -245,14 +252,14 @@ fn story_to_board_json_no_parent_epic_emits_null() {
 fn story_to_board_json_body_unwraps_to_empty_string_when_none() {
     let mut s = sample_story(StoryState::Icebox, StoryType::Feature, false);
     s.body = None;
-    let json = story_to_board_json(&s);
+    let json = story_to_board_json(&GhLabelCodec, &s);
     assert_eq!(json["body"].as_str(), Some(""));
 }
 
 #[test]
 fn story_to_board_json_assignees_empty_array() {
     let s = sample_story(StoryState::Icebox, StoryType::Feature, false);
-    let json = story_to_board_json(&s);
+    let json = story_to_board_json(&GhLabelCodec, &s);
     let assignees = json["assignees"].as_array().expect("assignees array");
     assert!(assignees.is_empty());
 }
@@ -260,7 +267,7 @@ fn story_to_board_json_assignees_empty_array() {
 #[test]
 fn story_to_board_json_created_at_is_rfc3339() {
     let s = sample_story(StoryState::Icebox, StoryType::Feature, false);
-    let json = story_to_board_json(&s);
+    let json = story_to_board_json(&GhLabelCodec, &s);
     let created = json["created_at"].as_str().expect("created_at string");
     chrono::DateTime::parse_from_rfc3339(created).expect("created_at parses as RFC3339");
 }
@@ -300,4 +307,67 @@ fn story_state_parse_returns_none_for_unknown() {
     assert_eq!(StoryState::parse("not-a-state"), None);
     assert_eq!(StoryState::parse(""), None);
     assert_eq!(StoryState::parse("Ready"), None);
+}
+
+struct StubLabelCodec;
+
+impl crate::board::label_codec::LabelCodec for StubLabelCodec {
+    fn decode_ready_order(&self, label: &str) -> Option<u32> {
+        label.strip_prefix("rdy:")?.parse().ok()
+    }
+    fn decode_iteration(
+        &self,
+        label: &str,
+    ) -> Option<crate::board::iteration_label::IterationLabelParts> {
+        let rest = label.strip_prefix("iter|")?;
+        let (theme, pos_str) = rest.rsplit_once(':')?;
+        let position = pos_str.parse().ok()?;
+        if theme.is_empty() {
+            return None;
+        }
+        Some(crate::board::iteration_label::IterationLabelParts {
+            theme_name: theme.to_string(),
+            position,
+        })
+    }
+    fn is_iteration_label_loose(&self, label: &str) -> bool {
+        label.starts_with("iter|") && label.contains(':')
+    }
+    fn encode_parent_epic(&self, issue_number: u64) -> String {
+        format!("parent|{issue_number}")
+    }
+}
+
+#[test]
+fn substrate_test_story_to_board_json_works_with_arbitrary_codec_syntax() {
+    let mut s = sample_story(StoryState::Ready, StoryType::Feature, false);
+    s.parent_epic = Some(42);
+    s.raw_labels = vec![
+        "rdy:100".to_string(),
+        "iter|Pegasus:200".to_string(),
+        "noise-label".to_string(),
+    ];
+    let json = story_to_board_json(&StubLabelCodec, &s);
+    let labels: Vec<&str> = json["labels"]
+        .as_array()
+        .expect("labels array")
+        .iter()
+        .filter_map(|v| v.as_str())
+        .collect();
+    assert!(
+        labels.contains(&"parent|42"),
+        "stub-encoded parent-epic surfaces in wire labels: {labels:?}"
+    );
+    assert!(
+        labels.contains(&"iter|Pegasus:200"),
+        "stub-iteration-like label forwarded: {labels:?}"
+    );
+    assert!(
+        labels.contains(&"rdy:100"),
+        "stub ready-order forwarded: {labels:?}"
+    );
+    assert!(
+        !labels.contains(&"noise-label"),
+        "non-iteration non-ready-order labels not forwarded: {labels:?}"
+    );
 }

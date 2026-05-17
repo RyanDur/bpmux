@@ -1,6 +1,8 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+use crate::board::label_codec::LabelCodec;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum StoryState {
     Icebox,
@@ -253,7 +255,7 @@ pub fn derive_epic_state(epic_explicit_state: StoryState, children: &[&Story]) -
     epic_explicit_state
 }
 
-pub fn story_to_board_json(story: &Story) -> serde_json::Value {
+pub fn story_to_board_json<C: LabelCodec>(codec: &C, story: &Story) -> serde_json::Value {
     let mut labels: Vec<String> = Vec::new();
     labels.push(
         match story.story_type {
@@ -271,13 +273,13 @@ pub fn story_to_board_json(story: &Story) -> serde_json::Value {
         }
     }
     if let Some(epic) = story.parent_epic {
-        labels.push(format!("parent-epic-#{epic}"));
+        labels.push(codec.encode_parent_epic(epic));
     }
     for raw in &story.raw_labels {
-        if raw.starts_with("iteration-") && raw.contains('.') && !labels.iter().any(|l| l == raw) {
+        if codec.is_iteration_label_loose(raw) && !labels.iter().any(|l| l == raw) {
             labels.push(raw.clone());
         }
-        if raw.starts_with("ready-order.") && !labels.iter().any(|l| l == raw) {
+        if codec.is_ready_order_label(raw) && !labels.iter().any(|l| l == raw) {
             labels.push(raw.clone());
         }
     }

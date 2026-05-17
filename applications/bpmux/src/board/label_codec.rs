@@ -8,14 +8,6 @@
 //! - Domain code can be tested against a stub codec.
 //! - Alternative repo-backends (GitLab, in-memory) can supply their
 //!   own encoding without rewriting consumers.
-//!
-//! Slice 2 (this commit) extends the surface from slice 1's
-//! ready-order-only foundation to include iteration-label
-//! decode/predicate, used by `board::iteration_label` and
-//! `board::ready_order_label` after their migration to take a codec
-//! parameter. Sister-slices 3 + 4 cover the remaining encode-side
-//! leaks in `board::domain`, `board::orchestrator`,
-//! `bridge::tools_stories`, and `lib`.
 
 use crate::board::iteration_label::IterationLabelParts;
 
@@ -31,4 +23,12 @@ pub trait LabelCodec {
     fn is_iteration_label(&self, label: &str) -> bool {
         self.decode_iteration(label).is_some()
     }
+
+    /// Looser predicate than `is_iteration_label`: returns true for
+    /// any label that looks like a member-position iteration label
+    /// (has the iteration prefix AND embeds a position-separator),
+    /// even if the position is non-numeric.
+    fn is_iteration_label_loose(&self, label: &str) -> bool;
+
+    fn encode_parent_epic(&self, issue_number: u64) -> String;
 }

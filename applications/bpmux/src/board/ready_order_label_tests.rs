@@ -228,6 +228,12 @@ impl LabelCodec for StubLabelCodec {
     ) -> Option<crate::board::iteration_label::IterationLabelParts> {
         None
     }
+    fn is_iteration_label_loose(&self, _label: &str) -> bool {
+        false
+    }
+    fn encode_parent_epic(&self, issue_number: u64) -> String {
+        format!("parent|{issue_number}")
+    }
 }
 
 #[test]

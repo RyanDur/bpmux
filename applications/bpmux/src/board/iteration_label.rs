@@ -300,6 +300,12 @@ mod tests {
                 position,
             })
         }
+        fn is_iteration_label_loose(&self, label: &str) -> bool {
+            label.starts_with("iter|") && label.contains(':')
+        }
+        fn encode_parent_epic(&self, issue_number: u64) -> String {
+            format!("parent|{issue_number}")
+        }
     }
 
     #[test]

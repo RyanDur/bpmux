@@ -29,4 +29,12 @@ impl LabelCodec for GhLabelCodec {
             position,
         })
     }
+
+    fn is_iteration_label_loose(&self, label: &str) -> bool {
+        label.starts_with("iteration-") && label.contains('.')
+    }
+
+    fn encode_parent_epic(&self, issue_number: u64) -> String {
+        format!("parent-epic-#{issue_number}")
+    }
 }
