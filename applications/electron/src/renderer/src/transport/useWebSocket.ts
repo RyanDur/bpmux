@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { describeHttpError, http } from '../api/http'
+import { tryCatch } from '../lib/result'
 import { applyStateDelta, applyStateSnapshot, emptyMirrorState } from './state-delta'
 import type { MirrorState } from './state-delta'
 import type { ChatMessage, ClientMessage, ConnectionStatus, ServerMessage } from './types'
@@ -136,13 +138,15 @@ export const useWebSocket = (
   )
 
   const handleServerMessage = useCallback((raw: string) => {
-    let parsed: ServerMessage
-    try {
-      parsed = JSON.parse(raw) as ServerMessage
-    } catch (err) {
-      console.error('bpmux ws: non-JSON frame', err, raw)
+    const parseResult = tryCatch(
+      () => JSON.parse(raw) as ServerMessage,
+      (err) => err
+    )
+    if (parseResult.kind === 'failure') {
+      console.error('bpmux ws: non-JSON frame', parseResult.reason, raw)
       return
     }
+    const parsed = parseResult.value
     switch (parsed.type) {
       case 'welcome':
         setSessionId(parsed.session_id)
@@ -197,7 +201,6 @@ export const useWebSocket = (
     if (!historyLoadedRef.current && apiBase && authToken) {
       historyLoadedRef.current = true
       const controller = new AbortController()
-      const headers = { Authorization: `Bearer ${authToken}` }
       // Two parallel hydrations (#364):
       //   1. chat_only=true — regular chat + insight history for the
       //      MessageList; unchanged behavior.
@@ -219,7 +222,9 @@ export const useWebSocket = (
       // Mirrors fetchBoard's retry pattern. Only the FINAL failure
       // logs to console.error so transient warmup blips don't
       // pollute the dev/test signal.
-      const fetchHistoryWithRetry = async (url: string): Promise<HistoryMessage[]> => {
+      const fetchHistoryWithRetry = async (
+        endpoint: string
+      ): Promise<HistoryMessage[]> => {
         const delays = [0, 200, 500]
         let lastErr: unknown = null
         for (const delay of delays) {
@@ -228,23 +233,25 @@ export const useWebSocket = (
             await new Promise<void>((resolve) => setTimeout(resolve, delay))
             if (controller.signal.aborted) throw new Error('aborted')
           }
-          try {
-            const res = await fetch(url, { headers, signal: controller.signal })
-            if (!res.ok) throw new Error(`history fetch: ${res.status}`)
-            return (await res.json()) as HistoryMessage[]
-          } catch (err) {
-            if ((err as { name?: string })?.name === 'AbortError') throw err
-            lastErr = err
+          const result = await http.get<HistoryMessage[]>(
+            { apiBase, authToken },
+            endpoint,
+            controller.signal
+          ).value
+          if (result.kind === 'success') return result.value
+          if (result.reason.kind === 'network' && result.reason.message.includes('abort')) {
+            throw new Error('aborted')
           }
+          lastErr = new Error(describeHttpError(result.reason))
         }
         throw lastErr instanceof Error ? lastErr : new Error(String(lastErr))
       }
       Promise.all([
         fetchHistoryWithRetry(
-          `${apiBase}/api/messages?chat_only=true&limit=${HISTORY_CHAT_LIMIT}`
+          `/api/messages?chat_only=true&limit=${HISTORY_CHAT_LIMIT}`
         ),
         fetchHistoryWithRetry(
-          `${apiBase}/api/messages?message_type=activity&limit=${HISTORY_ACTIVITY_LIMIT}`
+          `/api/messages?message_type=activity&limit=${HISTORY_ACTIVITY_LIMIT}`
         )
       ])
         .then(([chat, activity]) => {
@@ -292,14 +299,16 @@ export const useWebSocket = (
     const connect = (): void => {
       if (unmountedRef.current) return
       setStatus('connecting')
-      let sock: WebSocket
-      try {
-        sock = new WebSocket(url)
-      } catch (err) {
-        console.error('bpmux ws: construct failed', err)
+      const constructResult = tryCatch(
+        () => new WebSocket(url),
+        (err) => err
+      )
+      if (constructResult.kind === 'failure') {
+        console.error('bpmux ws: construct failed', constructResult.reason)
         scheduleReconnect()
         return
       }
+      const sock = constructResult.value
       socketRef.current = sock
 
       sock.onopen = () => {
