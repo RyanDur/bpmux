@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { describeHttpError } from '../api/http'
 import { postStoryAccept, postStoryReject } from '../api/storiesClient'
+import BugQuestionDialog from './BugQuestionDialog'
 import type { BoardStory } from './types'
 
 export type ActionMode = 'idle' | 'bug-question' | 'rejecting'
@@ -229,74 +230,15 @@ const DrillInActions = ({
           </menu>
         </form>
       </dialog>
-      <dialog
+      <BugQuestionDialog
         open={mode === 'bug-question'}
-        className="drill-in-bug-question"
-        aria-label="Bug-question test"
-        data-test="drill-in-bug-question"
-      >
-        <h3>Would you file a bug about this story if you accepted it as-is?</h3>
-        <p>
-          The bug-question test catches accept-and-file-bug-as-deferral. If you would file
-          a bug, the story still has work — use Reject instead.
-        </p>
-        <menu className="drill-in-action-row">
-          <li>
-            <button
-              type="button"
-              className="drill-in-btn drill-in-btn--primary"
-              disabled={busy !== null}
-              onClick={handleAcceptConfirm}
-              data-test="drill-in-bug-question-no"
-            >
-              No, accept it
-            </button>
-          </li>
-          <li>
-            <button
-              type="button"
-              className="drill-in-btn drill-in-btn--secondary"
-              disabled={busy !== null}
-              onClick={handleAcceptRouteToReject}
-              data-test="drill-in-bug-question-yes"
-            >
-              Yes, reject instead
-            </button>
-          </li>
-        </menu>
-        <details className="drill-in-bypass">
-          <summary>Override bug-question (require justification)</summary>
-          <form
-            onSubmit={(event) => {
-              event.preventDefault()
-              void handleAcceptBypass()
-            }}
-          >
-            <label className="drill-in-reject-label">
-              <small>Bypass reason (required, recorded in audit trail)</small>
-              <textarea
-                value={bypassReason}
-                onChange={(e) => setBypassReason(e.target.value)}
-                placeholder="Why is this bypass justified?"
-                rows={3}
-                data-test="drill-in-bypass-reason"
-              />
-            </label>
-            <menu className="drill-in-action-row">
-              <li>
-                <button
-                  type="submit"
-                  className="drill-in-btn drill-in-btn--secondary"
-                  disabled={busy !== null || bypassReason.trim().length === 0}
-                  data-test="drill-in-bypass-submit"
-                >
-                  Force accept
-                </button>
-              </li>
-            </menu>
-          </form>
-        </details>
-      </dialog>
+        busy={busy !== null}
+        bypassReason={bypassReason}
+        setBypassReason={setBypassReason}
+        onAcceptConfirm={handleAcceptConfirm}
+        onAcceptRouteToReject={handleAcceptRouteToReject}
+        onAcceptBypass={handleAcceptBypass}
+      />
     </footer>
   )
 }
