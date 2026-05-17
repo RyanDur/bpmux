@@ -1,6 +1,7 @@
 import { format } from 'date-fns'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import MessageBody from '../chat/MessageBody'
+import { postStoryComment, postStoryAccept, postStoryReject } from '../api/storiesClient'
 import {
   useTimeline,
   type ClassifiedEvent,
@@ -398,34 +399,17 @@ const DrillIn = ({
       setCommentBusy(false)
       return
     }
-    try {
-      const res = await fetch(`${apiBase}/api/stories/${story.number}/comments`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${authToken ?? ''}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ body: trimmed })
-      })
-      if (!res.ok) {
-        // Roll back the optimistic entry + restore the draft so the
-        // user can retry. Otherwise the comment silently disappears
-        // and they have to retype.
-        setOptimistic((prev) => prev.filter((c) => c.id !== optimisticEntry.id))
-        setCommentDraft(trimmed)
-        setToast(`Comment failed: HTTP ${res.status}`)
-      }
-      // Success: the server will broadcast BOARD_INVALIDATE_MARKER.
-      // The invalidate-watcher effect above refetches, mergeComments
-      // replaces the optimistic entry with the server-authoritative
-      // one (matched by body + author + ≤10s created_at).
-    } catch (err) {
+    const result = await postStoryComment(
+      { apiBase, authToken },
+      story.number,
+      { body: trimmed }
+    )
+    if (!result.ok) {
       setOptimistic((prev) => prev.filter((c) => c.id !== optimisticEntry.id))
       setCommentDraft(trimmed)
-      setToast(`Comment failed: ${err instanceof Error ? err.message : String(err)}`)
-    } finally {
-      setCommentBusy(false)
+      setToast(`Comment failed: ${result.error.message}`)
     }
+    setCommentBusy(false)
   }, [apiBase, authToken, commentBusy, commentDraft, story.number, usingMock])
 
   const canAct = isOwner && story.state === 'delivered'
@@ -442,32 +426,20 @@ const DrillIn = ({
         setBusy(null)
         setToast(`Accept failed: ${reason}`)
       }
-      try {
-        if (usingMock || !apiBase) {
-          onStoryMutated({ ...story, state: 'accepted' })
-          setBusy(null)
-          onBack()
-          return
-        }
-        const res = await fetch(`${apiBase}/api/stories/${story.number}/accept`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${authToken ?? ''}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(payload)
-        })
-        if (!res.ok) {
-          const detail = await res.text().catch(() => '')
-          rollback(`HTTP ${res.status}${detail ? ` — ${detail}` : ''}`)
-          return
-        }
+      if (usingMock || !apiBase) {
         onStoryMutated({ ...story, state: 'accepted' })
         setBusy(null)
         onBack()
-      } catch (err) {
-        rollback(err instanceof Error ? err.message : String(err))
+        return
       }
+      const result = await postStoryAccept({ apiBase, authToken }, story.number, payload)
+      if (!result.ok) {
+        rollback(result.error.message)
+        return
+      }
+      onStoryMutated({ ...story, state: 'accepted' })
+      setBusy(null)
+      onBack()
     },
     [apiBase, authToken, busy, onBack, onStoryMutated, story, usingMock]
   )
@@ -501,36 +473,24 @@ const DrillIn = ({
       setBusy(null)
       setToast(`Reject failed: ${reason}`)
     }
-    try {
-      if (usingMock || !apiBase) {
-        onStoryMutated({ ...story, state: 'ready' })
-        setBusy(null)
-        setMode('idle')
-        setNote('')
-        onBack()
-        return
-      }
-      const res = await fetch(`${apiBase}/api/stories/${story.number}/reject`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${authToken ?? ''}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ note: trimmed })
-      })
-      if (!res.ok) {
-        const detail = await res.text().catch(() => '')
-        rollback(`HTTP ${res.status}${detail ? ` — ${detail}` : ''}`)
-        return
-      }
+    if (usingMock || !apiBase) {
       onStoryMutated({ ...story, state: 'ready' })
       setBusy(null)
       setMode('idle')
       setNote('')
       onBack()
-    } catch (err) {
-      rollback(err instanceof Error ? err.message : String(err))
+      return
     }
+    const result = await postStoryReject({ apiBase, authToken }, story.number, { note: trimmed })
+    if (!result.ok) {
+      rollback(result.error.message)
+      return
+    }
+    onStoryMutated({ ...story, state: 'ready' })
+    setBusy(null)
+    setMode('idle')
+    setNote('')
+    onBack()
   }, [apiBase, authToken, busy, note, onBack, onStoryMutated, story, usingMock])
 
   // #366 quote-excerpt: shared insertion logic. Either the keyboard
