@@ -11,6 +11,11 @@ import {
   parseUnscheduledPosition,
   themeNameFromTitle
 } from './labelSchema'
+import {
+  ITERATION_GRIP_TEST_ID,
+  STORY_GRIP_TEST_ID,
+  boardIterationTestId
+} from './testIds'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import { storyTypeFromLabels, type BoardStory } from './types'
 
@@ -194,7 +199,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
             <li key={iteration.number} className="board-iteration-item">
               <details
                 className="board-iteration-card"
-                data-test={`board-iteration-${iteration.number}`}
+                data-test={boardIterationTestId(iteration.number)}
                 data-iteration-kind="named"
                 data-iteration-name={themeName}
                 data-closed={iteration.gh_state === 'closed' ? 'true' : undefined}
@@ -259,7 +264,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                   {iteration.gh_state !== 'closed' ? (
                     <span
                       className="board-iteration-grip"
-                      data-test="iteration-grip"
+                      data-test={ITERATION_GRIP_TEST_ID}
                       draggable={true}
                       role="button"
                       aria-label={`Drag to reorder iteration ${iteration.title}`}
@@ -424,7 +429,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                         {iteration.gh_state !== 'closed' ? (
                           <span
                             className="board-story-grip"
-                            data-test="story-grip"
+                            data-test={STORY_GRIP_TEST_ID}
                             draggable={true}
                             role="button"
                             aria-label={`Drag to reorder #${story.number}`}

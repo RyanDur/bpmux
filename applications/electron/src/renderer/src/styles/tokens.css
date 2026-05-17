@@ -93,6 +93,13 @@
   --motion-ease-out: cubic-bezier(0, 0, 0.2, 1);
   --motion-ease-in: cubic-bezier(0.4, 0, 1, 1);
   --motion-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* #1366 invisible-but-layout-preserved token for drag-source hide:
+   * keep the element occupying its slot in flow so siblings don't
+   * shift, while making it functionally invisible. 0 would also hide
+   * but some browsers optimize-out 0-opacity from accessibility tree;
+   * 0.001 keeps it present without being visible. */
+  --invisible-placeholder: 0.001;
 }
 
 /* WCAG 2.3.3 — users who opted into reduced motion (vestibular

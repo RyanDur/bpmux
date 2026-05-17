@@ -360,7 +360,7 @@
   }
 
   & .board-iteration-member[data-dragging='true'] {
-    opacity: 0.001;
+    opacity: var(--invisible-placeholder);
   }
 
   & .board-iteration-card {

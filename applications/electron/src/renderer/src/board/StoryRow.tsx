@@ -2,6 +2,7 @@ import { GripIcon } from './GripIcon'
 import { ReworkGlyph } from './ReworkGlyph'
 import StoryBadge, { deriveBadge } from './StoryBadge'
 import StoryTypeGlyph from './StoryTypeGlyph'
+import { STORY_GRIP_TEST_ID } from './testIds'
 import { storyTypeFromLabels, type BoardStory } from './types'
 
 export interface StoryRowProps {
@@ -69,7 +70,7 @@ const StoryRow = ({
       {draggable ? (
         <span
           className="board-story-grip"
-          data-test="story-grip"
+          data-test={STORY_GRIP_TEST_ID}
           draggable={true}
           role="button"
           aria-label={`Drag to reorder #${story.number}`}
