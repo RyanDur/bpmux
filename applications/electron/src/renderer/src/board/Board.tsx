@@ -14,6 +14,7 @@ import Epic from './Epic'
 import Iteration from './Iteration'
 import { isIterationPositionLabel } from './labelSchema'
 import BoardGroup from './BoardGroup'
+import { MOCK_BOARD_RESPONSE } from './mockBoard'
 import { useBoardReorder } from './useBoardReorder'
 import { useRefetchOnReconnect } from './useRefetchOnReconnect'
 import {
@@ -46,44 +47,6 @@ const initialCollapseState: CollapseState = (() => {
 // is slow enough to not feel like primary polling but fast enough to
 // self-heal within a single work rhythm.
 const POLL_INTERVAL_MS = 5 * 60_000
-
-// Mock stories used when `window.bpmux.apiBase` is absent or the real
-// endpoint 404s during parallel backend bring-up. The shape must match
-// the real BoardResponse contract so the UI rendering path is
-// identical in both modes — we log a one-time warning so dev knows
-// they're looking at fallback data.
-const MOCK_RESPONSE: BoardResponse = {
-  fetched_at: new Date().toISOString(),
-  stories: [
-    {
-      number: 324,
-      title: 'Side-panel board surface — story list + drill-in',
-      state: 'ready',
-      labels: ['Feature', 'ready'],
-      assignees: ['dev'],
-      created_at: '2026-04-18T12:00:00Z',
-      body: '## What\nRight-docked board that lists current stories, groups by state, and drills into a single story on click.\n\n## Why\nRyan needs the board visible alongside chat during sessions so story state is continuously present, not a tool-call away.\n\n## Acceptance criteria\n- Groups collapse / expand\n- Arrow nav works\n- Drill-in shows body, accept/reject visible for delivered'
-    },
-    {
-      number: 325,
-      title: 'Project panel drill-in: metadata + actions',
-      state: 'in-progress',
-      labels: ['Feature', 'in-progress'],
-      assignees: ['dev'],
-      created_at: '2026-04-19T08:30:00Z',
-      body: 'Drill-in shows state, labels, assignees, body — plus Accept/Reject for the owner on delivered stories.'
-    },
-    {
-      number: 326,
-      title: 'Accept button fires from keyboard enter',
-      state: 'delivered',
-      labels: ['Bug'],
-      assignees: [],
-      created_at: '2026-04-20T10:15:00Z',
-      body: 'When a delivered story is open + Accept has focus, Enter should fire the accept action. Currently only mouse click works.'
-    }
-  ]
-}
 
 const hasIterationMemberLabel = (labels: string[]): boolean =>
   labels.some((l) => isIterationPositionLabel(l))
@@ -147,7 +110,7 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
         // inside the caller's effect body.
         await Promise.resolve()
         if (signal?.aborted) return
-        setData(MOCK_RESPONSE)
+        setData(MOCK_BOARD_RESPONSE)
         setUsingMock(true)
         setError(null)
         setLoading(false)
@@ -176,7 +139,7 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
         lastErr = new Error(describeHttpError(fetchResult.reason))
       }
       console.error('bpmux board: fetch failed, falling back to mock', lastErr)
-      setData((prev) => prev ?? MOCK_RESPONSE)
+      setData((prev) => prev ?? MOCK_BOARD_RESPONSE)
       setUsingMock((prev) => prev || !prev)
       setError(lastErr instanceof Error ? lastErr.message : String(lastErr))
       setLoading(false)
