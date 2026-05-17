@@ -284,8 +284,49 @@ Long-running iterations sometimes produce convergent learning across multiple ro
 
 **Pegasus retro empirical evidence**: 13/15 rejection rate despite saved canon is the empirical case-evidence that discipline-recall fails under velocity-pressure; substrate-enforce + body-author-time gates close the pattern structurally.
 
+## META-PRINCIPLE: Claims must be substrate-enforced, not contract-by-discipline
+
+Extension of the Cassiopeia-arc canon "substrate-enforce > discipline-only" from operational-discipline (a person remembering to follow a rule under pressure) to **documentation / state-axis discipline** (a *claim* a person makes about the system staying true to the system's shipped state).
+
+**The class**: claims about the system live on multiple surfaces, and each surface can drift from the shipped state. Drift surfaces at acceptance — too late to be cheap to fix. The remediation pattern is the same as Cassiopeia's substrate-enforce canon: don't ask the team to "remember to keep these surfaces aligned." Build the substrate that makes drift impossible.
+
+**Four claim-surfaces** that drift in the bpmux flow:
+
+1. **Body / AC** (story body, acceptance criteria, observation-falsifier). Drifts when implementation diverges from the user-job the body promised, OR when the AC names a test-path that doesn't hold the assertions the AC claims.
+2. **Workflow state** (the state-axis label on a story — `accepted`, `retired`, `delivered`). Drifts when the transition the state implies doesn't match the actual outcome (e.g., close_story with reason="superseded" coercing to accepted).
+3. **Commit message / branch name / broadcast-of-push**. Drifts when the commit subject doesn't summarize the diff, OR when a "pushed" claim is made before the commit reaches origin.
+4. **Test names / ATP path**. Drifts when the ATP-named file doesn't hold assertions of the body-promised behavior (the ATP-substantive class).
+
+**Substrate-fixes per surface** (3 shipped Andromeda-iteration, 1+ future-iteration):
+
+| Surface | Substrate-fix | Status |
+|---|---|---|
+| Body/AC ↔ shipped impl | #1378 deliver_story body-diff-vs-impl audit | shipped (Andromeda.275) |
+| Workflow-state ↔ outcome | #1377 close_story state-axis taxonomy (StoryState::Retired) | shipped (Andromeda.2600) |
+| ATP-path ↔ assertions | #1362 desk-check ATP-substantive gate | shipped (Andromeda.250) |
+| Commit-msg ↔ diff | commit-subject diff-summary gate at pre-commit | future-iteration candidate |
+| "Pushed" ↔ origin-state | deliver_story-side push-state verification (`git log --branches --not --remotes`) | future-iteration candidate (filed after PM's 2026-05-17 catch on local-only commits broadcasted as "pushed") |
+
+**Empirical case-evidence** (today's three claims-drift-from-impl instances):
+
+- **#1306 / #1335 ATP-path divergence**. The body's `## Acceptance test path` named a file (or marker stub) that didn't hold the assertions the body promised. The substrate-fix (#1362) is a desk-check gate that reads the ATP file's contents + verifies assertion markers exist + count > 0.
+- **#1285 body-named test-substrate divergence**. The body's promised test substrate (Rust integration test) was substituted at impl-time with a bash script. The substrate-fix (#1378) is a deliver_story-time gate that diffs the body's named substrate against the shipped impl's changed-paths.
+- **#1370 / #1377 close_story workflow_state divergence**. close_story with reason="superseded" coerced workflow_state to accepted in the canonical store, polluting the accepted column with non-shipped retirements. The substrate-fix (#1377) introduces `StoryState::Retired` + a reason-classifier so retire-class reasons route to a distinct state-axis.
+
+**Why each fix is substrate, not discipline**: the gate fires reflexively at the boundary — desk-check / deliver-time / close-time. A team-member under velocity-pressure can't "forget" to invoke the gate because the gate is in the canonical mutation chain. The check survives every replay; the discipline doesn't (per Pegasus's 13/15 rejection-despite-saved-canon evidence).
+
+**Sister-canon**:
+
+- [Cassiopeia-arc: substrate-enforce > discipline-only](#pegasus--cassiopeia-arc-2026-05-14-retro--2026-05-15-ratification) — the operational-discipline framing this META-PRINCIPLE extends.
+- `feedback_truthfulness_is_load_bearing_for_collaboration` (designer-lane, 2026-05-16) — the framing-axis: claims-vs-shipped-state diff is a trust-load-bearing surface; substrate-enforcing it preserves trust without per-claim audit overhead.
+- `feedback_atp_integrity_at_desk_check` (PM-lane, 2026-05-16) — operational-discipline sister; the substrate-fix #1362 retired the discipline-only path.
+- `feedback_substrate_enforce_over_discipline_only` (dev-lane, 2026-05-15) — Cassiopeia-arc's per-role lesson.
+
+**Future-iteration sister-pattern hook**: when an Andromeda-or-later iteration surfaces a *fourth* claim-surface (or sister-axis to one of the four enumerated above) drifting from shipped state, the response shape is *file a substrate-fix story* for the boundary-gate, not *save a lesson* asking the team to remember harder. The lesson is allowed as historical-anchor; the gate is the durable fix.
+
 ## Changelog
 
 - 2026-04-17: initial authoring by designer; three-role converged (dev on storage/automation, pm on cadence/promotion, designer on framework lifecycle)
 - 2026-04-17: added "individual vs team identity" section — team converged on emergent-not-formalized with research backing (TMS, SMM, swift trust, social identity theory)
 - 2026-05-15: added "Iteration arcs — durable case-evidence" with Pegasus → Cassiopeia arc capturing 5 architectural-fix patterns + 10+ sub-pattern lessons (sister-pattern reference for future iterations facing substrate-pivot / horizontal-layer / discipline-recall / cascade-drop failure modes)
+- 2026-05-17: added META-PRINCIPLE "Claims must be substrate-enforced, not contract-by-discipline" — extends Cassiopeia-arc substrate-enforce canon to claim-surfaces (body/AC + workflow-state + commit-msg + ATP-path) with the triangulating substrate-fixes (#1362 + #1377 + #1378) cited per surface (#1380)
