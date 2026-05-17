@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { GripIcon } from './GripIcon'
 import { ReworkGlyph } from './ReworkGlyph'
 import StoryBadge from './StoryBadge'
@@ -18,15 +18,11 @@ import {
   DRAG_MIMETYPE_ITERATION,
   type DragPayload,
   type IterationDragPayload,
-  type PendingMemberPosition,
   eagerReorder,
-  isIterationStory,
-  isLooseStory,
-  positionInIteration,
   positionInIterationOrder,
-  positionInUnscheduled,
   postLabelMutation
 } from './iterationMembers'
+import { useIterationMembers } from './useIterationMembers'
 
 interface Props {
   stories: BoardStory[]
@@ -44,73 +40,17 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
   const [dragRejectedIterationNumber, setDragRejectedIterationNumber] = useState<number | null>(
     null
   )
-  const [pendingMemberPosition, setPendingMemberPosition] = useState<
-    Record<number, PendingMemberPosition>
-  >({})
-
-  useEffect(() => {
-    setPendingMemberPosition((prev) => {
-      const next: Record<number, PendingMemberPosition> = {}
-      let changed = false
-      for (const [numStr, pending] of Object.entries(prev)) {
-        const num = Number(numStr)
-        const story = stories.find((s) => s.number === num)
-        const actualPosition = story ? positionInIteration(story, pending.theme) : null
-        if (actualPosition === pending.position) {
-          changed = true
-          continue
-        }
-        next[num] = pending
-      }
-      return changed ? next : prev
-    })
-  }, [stories])
-  const iterations = [...stories.filter(isIterationStory)].sort((a, b) => {
-    const ao = positionInIterationOrder(a)
-    const bo = positionInIterationOrder(b)
-    if (ao !== null && bo !== null) return ao - bo
-    if (ao !== null) return -1
-    if (bo !== null) return 1
-    return a.number - b.number
-  })
-  const loose = stories.filter(isLooseStory)
-  if (iterations.length === 0 && loose.length === 0) return null
-
-  const sortedLoose = [...loose].sort((a, b) => {
-    const ap = positionInUnscheduled(a)
-    const bp = positionInUnscheduled(b)
-    if (ap !== null && bp !== null) return ap - bp
-    if (ap !== null) return -1
-    if (bp !== null) return 1
-    return a.number - b.number
-  })
+  const { sortedIterations, sortedLoose, getMembersFor, setPending } =
+    useIterationMembers(stories)
+  if (sortedIterations.length === 0 && sortedLoose.length === 0) return null
 
   return (
     <section className="board-iterations" data-test="board-iterations">
       <ul className="board-iterations-list">
-        {iterations.map((iteration) => {
+        {sortedIterations.map((iteration) => {
           const key = String(iteration.number)
           const themeName = themeNameFromTitle(iteration.title)
-          const members = stories
-            .map((s) => {
-              if (isIterationStory(s)) return null
-              const pending = pendingMemberPosition[s.number]
-              const labelPosition = positionInIteration(s, themeName)
-              const pendingPosition =
-                pending !== undefined && pending.theme === themeName ? pending.position : null
-              if (pendingPosition !== null) return { story: s, position: pendingPosition }
-              if (labelPosition === null) return null
-              if (
-                pending !== undefined &&
-                pending.theme !== themeName &&
-                pending.theme.toLowerCase() !== themeName.toLowerCase()
-              ) {
-                return null
-              }
-              return { story: s, position: labelPosition }
-            })
-            .filter((m): m is { story: BoardStory; position: number } => m !== null)
-            .sort((a, b) => a.position - b.position)
+          const members = getMembersFor(themeName)
           if (members.length === 0 && iteration.gh_state !== 'closed') return null
           const defaultOpen = iteration.gh_state !== 'closed'
           const open = collapse.isOpen(key, defaultOpen)
@@ -156,7 +96,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                   if (payload.iterationNumber === iteration.number) return
                   const targetOrder = positionInIterationOrder(iteration)
                   if (targetOrder === null) return
-                  const allOrders = iterations
+                  const allOrders = sortedIterations
                     .map((it) => positionInIterationOrder(it))
                     .filter((p): p is number => p !== null)
                   const targetIdx = allOrders.indexOf(targetOrder)
@@ -233,7 +173,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                         event.key === 'ArrowUp' ? 'up' : event.key === 'ArrowDown' ? 'down' : null
                       if (direction === null) return
                       event.preventDefault()
-                      const iterationIdx = iterations.findIndex(
+                      const iterationIdx = sortedIterations.findIndex(
                         (it) => it.number === iteration.number
                       )
                       if (iterationIdx === -1) return
@@ -245,13 +185,13 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                         )
                         return
                       }
-                      if (direction === 'down' && iterationIdx === iterations.length - 1) {
+                      if (direction === 'down' && iterationIdx === sortedIterations.length - 1) {
                         onReorderAnnounce?.(
                           `${iteration.title} is already at last position among iterations`
                         )
                         return
                       }
-                      const allOrders = iterations
+                      const allOrders = sortedIterations
                         .map((it) => positionInIterationOrder(it))
                         .filter((p): p is number => p !== null)
                       const targetMemberIndex =
@@ -269,7 +209,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                       postLabelMutation(iteration.number, mutation.add, mutation.remove)
                       const newIdx = direction === 'up' ? iterationIdx - 1 : iterationIdx + 1
                       onReorderAnnounce?.(
-                        `Moved ${iteration.title} to position ${newIdx + 1} of ${iterations.length} among iterations`
+                        `Moved ${iteration.title} to position ${newIdx + 1} of ${sortedIterations.length} among iterations`
                       )
                     }}
                     title={iteration.title}
@@ -333,13 +273,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                             ? parseIterationLabel(addedLabel)
                             : null
                           if (parsed) {
-                            setPendingMemberPosition((prev) => ({
-                              ...prev,
-                              [payload.storyNumber]: {
-                                theme: parsed.name,
-                                position: parsed.position
-                              }
-                            }))
+                            setPending(payload.storyNumber, parsed.name, parsed.position)
                           }
                           setDraggedNumber(null)
                           setHoveredNumber(null)
@@ -438,13 +372,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                               ? parseIterationLabel(addedLabel)
                               : null
                             if (parsedKey) {
-                              setPendingMemberPosition((prev) => ({
-                                ...prev,
-                                [story.number]: {
-                                  theme: parsedKey.name,
-                                  position: parsedKey.position
-                                }
-                              }))
+                              setPending(story.number, parsedKey.name, parsedKey.position)
                             }
                             const newIdx = direction === 'up' ? originalIdx - 1 : originalIdx + 1
                             onReorderAnnounce?.(
