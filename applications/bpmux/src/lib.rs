@@ -224,12 +224,14 @@ pub async fn migrate_legacy_ready_to_labels_at_path(
         .map(|s| s.number)
         .collect();
     let mut migrated = 0usize;
+    let codec = board::adapters::gh_label_codec::GhLabelCodec;
+    use board::label_codec::LabelCodec;
     for (idx, number) in legacy_ready.into_iter().enumerate() {
         if !canonical_ready.contains(&number) {
             continue;
         }
         let position = ((idx + 1) as u32) * 100;
-        let label = format!("ready-order.{position}");
+        let label = codec.encode_ready_order(position);
         let meta = board::events::EventMeta {
             actor: "system".to_string(),
             ts: chrono::Utc::now(),

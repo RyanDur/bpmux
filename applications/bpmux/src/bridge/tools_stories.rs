@@ -8,6 +8,7 @@
 use tokio::sync::Mutex;
 
 use super::tools::{WsSink, ws_send};
+use crate::board::label_codec::LabelCodec;
 use crate::transport::protocol::ClientMessage;
 
 /// GitHub label vocabulary. Centralized so the read-checks
@@ -1412,7 +1413,7 @@ pub(crate) fn reorder_icebox_story_via_labels(
     let insert_index = position.saturating_sub(1).min(other_positions.len());
     let new_position =
         crate::board::iteration_label::compute_insert_position(insert_index, &other_positions);
-    let new_label = format!("iteration-{theme_name}.{new_position}");
+    let new_label = codec.encode_iteration(&theme_name, new_position);
     if let Some((_, current_label)) = &current_iteration
         && current_label.as_str() == new_label.as_str()
     {
@@ -1469,7 +1470,7 @@ pub(crate) fn reorder_ready_story_via_labels(
     let insert_index = position.saturating_sub(1).min(other_positions.len());
     let new_position =
         crate::board::iteration_label::compute_insert_position(insert_index, &other_positions);
-    let new_label = format!("ready-order.{new_position}");
+    let new_label = codec.encode_ready_order(new_position);
     if let Some((_, current_label)) = &current
         && current_label.as_str() == new_label.as_str()
     {

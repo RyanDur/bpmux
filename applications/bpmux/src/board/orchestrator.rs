@@ -192,12 +192,8 @@ impl QueuedEvent {
 }
 
 fn iteration_prefix_class(label: &str) -> Option<String> {
-    if !label.starts_with("iteration-") {
-        return None;
-    }
-    let dot_idx = label.rfind('.')?;
-    label.get(dot_idx + 1..)?.parse::<u32>().ok()?;
-    Some(label[..=dot_idx].to_string())
+    use crate::board::label_codec::LabelCodec;
+    crate::board::adapters::gh_label_codec::GhLabelCodec.iteration_label_class(label)
 }
 
 fn coalesce_iteration_label_events(

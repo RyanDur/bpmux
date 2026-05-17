@@ -234,6 +234,15 @@ impl LabelCodec for StubLabelCodec {
     fn encode_parent_epic(&self, issue_number: u64) -> String {
         format!("parent|{issue_number}")
     }
+    fn encode_ready_order(&self, position: u32) -> String {
+        format!("rdy:{position}")
+    }
+    fn encode_iteration(&self, _theme_name: &str, _position: u32) -> String {
+        String::new()
+    }
+    fn iteration_label_class(&self, _label: &str) -> Option<String> {
+        None
+    }
 }
 
 #[test]

@@ -336,6 +336,16 @@ impl crate::board::label_codec::LabelCodec for StubLabelCodec {
     fn encode_parent_epic(&self, issue_number: u64) -> String {
         format!("parent|{issue_number}")
     }
+    fn encode_ready_order(&self, position: u32) -> String {
+        format!("rdy:{position}")
+    }
+    fn encode_iteration(&self, theme_name: &str, position: u32) -> String {
+        format!("iter|{theme_name}:{position}")
+    }
+    fn iteration_label_class(&self, label: &str) -> Option<String> {
+        let parts = self.decode_iteration(label)?;
+        Some(format!("iter|{}:", parts.theme_name))
+    }
 }
 
 #[test]

@@ -16,6 +16,10 @@ impl LabelCodec for GhLabelCodec {
         label.strip_prefix("ready-order.")?.parse().ok()
     }
 
+    fn encode_ready_order(&self, position: u32) -> String {
+        format!("ready-order.{position}")
+    }
+
     fn decode_iteration(&self, label: &str) -> Option<IterationLabelParts> {
         let rest = label.strip_prefix("iteration-")?;
         let dot_idx = rest.rfind('.')?;
@@ -32,6 +36,15 @@ impl LabelCodec for GhLabelCodec {
 
     fn is_iteration_label_loose(&self, label: &str) -> bool {
         label.starts_with("iteration-") && label.contains('.')
+    }
+
+    fn encode_iteration(&self, theme_name: &str, position: u32) -> String {
+        format!("iteration-{theme_name}.{position}")
+    }
+
+    fn iteration_label_class(&self, label: &str) -> Option<String> {
+        let parts = self.decode_iteration(label)?;
+        Some(format!("iteration-{}.", parts.theme_name))
     }
 
     fn encode_parent_epic(&self, issue_number: u64) -> String {
