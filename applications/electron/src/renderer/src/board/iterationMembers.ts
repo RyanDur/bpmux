@@ -6,9 +6,6 @@ import {
 import { postStoryLabels } from '../api/labelsClient'
 import { storyTypeFromLabels, type BoardStory } from './types'
 
-export const DRAG_MIMETYPE = 'application/x-bpmux-iteration-member'
-export const DRAG_MIMETYPE_ITERATION = 'application/x-bpmux-iteration-itself'
-
 export interface DragPayload {
   storyNumber: number
   themeName: string

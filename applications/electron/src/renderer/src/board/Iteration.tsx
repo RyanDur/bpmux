@@ -7,12 +7,11 @@ import { ITERATION_GRIP_TEST_ID, boardIterationTestId } from './testIds'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import type { BoardStory } from './types'
 import {
-  DRAG_MIMETYPE,
-  DRAG_MIMETYPE_ITERATION,
   type IterationDragPayload,
   positionInIterationOrder,
   postLabelMutation
 } from './iterationMembers'
+import { DRAG_MIMETYPE_REGISTRY } from './useStoryDrag'
 import { useIterationMembers } from './useIterationMembers'
 import { useIterationDragState } from './useIterationDragState'
 import MemberList from './MemberList'
@@ -62,15 +61,15 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                 onDragOver={(event) => {
                   if (iteration.gh_state === 'closed') {
                     if (
-                      event.dataTransfer.types.includes(DRAG_MIMETYPE) ||
-                      event.dataTransfer.types.includes(DRAG_MIMETYPE_ITERATION)
+                      event.dataTransfer.types.includes(DRAG_MIMETYPE_REGISTRY.ITERATION_MEMBER) ||
+                      event.dataTransfer.types.includes(DRAG_MIMETYPE_REGISTRY.ITERATION_ITSELF)
                     ) {
                       event.dataTransfer.dropEffect = 'none'
                       setDragRejectedIterationNumber(iteration.number)
                     }
                     return
                   }
-                  if (event.dataTransfer.types.includes(DRAG_MIMETYPE_ITERATION)) {
+                  if (event.dataTransfer.types.includes(DRAG_MIMETYPE_REGISTRY.ITERATION_ITSELF)) {
                     event.preventDefault()
                     event.dataTransfer.dropEffect = 'move'
                   }
@@ -81,7 +80,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                   }
                 }}
                 onDrop={(event) => {
-                  const raw = event.dataTransfer.getData(DRAG_MIMETYPE_ITERATION)
+                  const raw = event.dataTransfer.getData(DRAG_MIMETYPE_REGISTRY.ITERATION_ITSELF)
                   if (!raw) return
                   event.preventDefault()
                   const payload = JSON.parse(raw) as IterationDragPayload
@@ -130,7 +129,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                           oldOrder: positionInIterationOrder(iteration)
                         }
                         event.dataTransfer.setData(
-                          DRAG_MIMETYPE_ITERATION,
+                          DRAG_MIMETYPE_REGISTRY.ITERATION_ITSELF,
                           JSON.stringify(payload)
                         )
                         event.dataTransfer.effectAllowed = 'move'
