@@ -9,5 +9,6 @@ pub(in crate::bridge) async fn handle_get_token_report() -> Result<String, Strin
     let path = default_tokens_log_path().map_err(|e| format!("path resolution failed: {e}"))?;
     let rows = read_token_rows(&path).map_err(|e| format!("log read failed: {e}"))?;
     let report = build_token_report(&rows);
-    serde_json::to_string_pretty(&report).map_err(|e| format!("serialization failed: {e}"))
+    let view = crate::bridge::view_model::TokenReportView::from(&report);
+    serde_json::to_string_pretty(&view).map_err(|e| format!("serialization failed: {e}"))
 }

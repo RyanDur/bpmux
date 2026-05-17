@@ -101,7 +101,8 @@ where
         }
     }
 
-    serde_json::to_string_pretty(&metrics).map_err(|e| format!("serialize: {e}"))
+    let view = crate::bridge::view_model::VelocityMetricsView::from(&metrics);
+    serde_json::to_string_pretty(&view).map_err(|e| format!("serialize: {e}"))
 }
 
 pub(in crate::bridge) fn is_feature_for_velocity(
