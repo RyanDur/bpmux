@@ -37,6 +37,54 @@ pub fn ws_url(port: u16, path: &str) -> String {
 mod tests {
     use super::*;
 
+    /// #1364 Sc4 substrate-enforce: scan src/ for hardcoded
+    /// `http://127.0.0.1:` or `ws://127.0.0.1:` literals to prevent
+    /// regression on the single-source-of-truth contract. New
+    /// callsites must route through [`api_url`] / [`ws_url`].
+    #[test]
+    fn no_hardcoded_localhost_literals_in_src() {
+        let manifest_dir = env!("CARGO_MANIFEST_DIR");
+        let src_dir = std::path::Path::new(manifest_dir).join("src");
+        let mut offenders: Vec<String> = Vec::new();
+        walk_rs_files(&src_dir, &mut |path: &std::path::Path| {
+            let path_str = path.display().to_string();
+            if path_str.ends_with("local_url.rs") {
+                return;
+            }
+            let Ok(content) = std::fs::read_to_string(path) else {
+                return;
+            };
+            for (lineno, line) in content.lines().enumerate() {
+                let trimmed = line.trim_start();
+                if trimmed.starts_with("//") {
+                    continue;
+                }
+                if line.contains("http://127.0.0.1:") || line.contains("ws://127.0.0.1:") {
+                    offenders.push(format!("{}:{}: {}", path_str, lineno + 1, line.trim()));
+                }
+            }
+        });
+        assert!(
+            offenders.is_empty(),
+            "#1364 Sc4 substrate-enforce: hardcoded localhost URL literals must route through transport::local_url helpers. Offenders:\n{}",
+            offenders.join("\n")
+        );
+    }
+
+    fn walk_rs_files(dir: &std::path::Path, callback: &mut dyn FnMut(&std::path::Path)) {
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                walk_rs_files(&path, callback);
+            } else if path.extension().and_then(|s| s.to_str()) == Some("rs") {
+                callback(&path);
+            }
+        }
+    }
+
     #[test]
     fn api_url_prefixes_http_and_local_host() {
         assert_eq!(
