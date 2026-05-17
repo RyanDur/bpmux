@@ -47,6 +47,18 @@ Ranked by pressure toward next-stage progression:
    no shared query layer. Adding an identity field requires touching
    `session/identity.rs`, `bridge/tools/get_identity.rs`, and bridge
    helpers. Coordination cost grows with change frequency.
+   **Status (#1363):** wire-shape leak retired via `bridge::view_model`.
+   Identity / token-report / bookmark / velocity responses now flow
+   through bridge-owned view types (`IdentityIndexView`,
+   `TokenReportView`, `BookmarkView`, `VelocityMetricsView`); session
+   schema changes are absorbed at the `From<&session::Foo>` translation
+   step instead of cascading to the MCP wire shape. Service-utility
+   calls (`session::diag::log_diag`, `session::auth_token::*`) remain
+   direct — they're infrastructure, not domain types. The shared
+   query-layer goal (DRY across tools) is partially met by the view
+   module; full coordination-cost-reduction would require also
+   collapsing the per-tool repeat of `load_X → write_X` patterns,
+   which is downstream of the view-model substrate.
 3. **Integration tests require full runtime** — `tests/*_test.rs` spin
    up server + session + terminal together. No component-level test
    isolation. A v4 move would extract testable modules.
