@@ -465,7 +465,7 @@ async fn run_ws_connection(
     peer: Peer<RoleServer>,
     ws_tx_store: Arc<Mutex<Option<WsSink>>>,
 ) {
-    let ws_url = format!("ws://127.0.0.1:{port}/ws");
+    let ws_url = crate::transport::local_url::ws_url(port, "/ws");
     let (ws_stream, _) = match tokio_tungstenite::connect_async(&ws_url).await {
         Ok(conn) => conn,
         Err(e) => {

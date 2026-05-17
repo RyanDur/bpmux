@@ -15,7 +15,7 @@ pub(in crate::bridge) const VIEW_VELOCITY_MARKER: &str = "__BPMUX_VIEW_VELOCITY_
 pub(in crate::bridge) async fn fetch_messages_via_http(
     port: u16,
 ) -> Result<Vec<crate::session::Message>, String> {
-    let url = format!("http://127.0.0.1:{port}/api/messages?limit=2000");
+    let url = crate::transport::local_url::api_url(port, "/api/messages?limit=2000");
     let body = reqwest::get(&url)
         .await
         .map_err(|e| format!("failed to fetch: {e}"))?

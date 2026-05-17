@@ -102,7 +102,10 @@ pub(in crate::bridge) async fn handle_share_message(
     // surface — same filter the WS push path uses, so what the tool
     // sees matches what the agent saw.
     let as_encoded = urlencoding(short);
-    let url = format!("http://127.0.0.1:{port}/api/messages?limit=20&as={as_encoded}");
+    let url = crate::transport::local_url::api_url(
+        port,
+        &format!("/api/messages?limit=20&as={as_encoded}"),
+    );
     let body = reqwest::get(&url)
         .await
         .map_err(|e| format!("failed to fetch log: {e}"))?

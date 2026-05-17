@@ -5,6 +5,7 @@ pub mod ci_watcher;
 pub mod crypto;
 
 pub mod electron_capture;
+pub mod local_url;
 pub mod peer;
 pub mod protocol;
 pub mod rest;

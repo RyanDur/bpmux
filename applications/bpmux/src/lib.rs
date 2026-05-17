@@ -32,7 +32,7 @@ struct Cli {
     name: String,
 
     /// MCP server port
-    #[arg(long, default_value = "4117")]
+    #[arg(long, default_value_t = transport::local_url::DEFAULT_API_PORT)]
     mcp_port: u16,
 
     /// Session base directory (defaults to ~/.bpmux/sessions)
@@ -48,7 +48,7 @@ enum Command {
     /// Run as a channel bridge for Claude Code integration
     Bridge {
         /// bpmux server port to connect to
-        #[arg(long, default_value = "4117")]
+        #[arg(long, default_value_t = transport::local_url::DEFAULT_API_PORT)]
         port: u16,
 
         /// Base identity name for this bridge (a unique suffix is appended)
@@ -125,7 +125,7 @@ fn resolve_bpmux_port() -> u16 {
     std::env::var("BPMUX_PORT")
         .ok()
         .and_then(|s| s.parse().ok())
-        .unwrap_or(4117)
+        .unwrap_or(transport::local_url::DEFAULT_API_PORT)
 }
 
 fn emit_recall_activity(role: &str, count: usize) {
@@ -150,7 +150,7 @@ fn run_emit_precommit_passed(sha: &str, role_arg: &Option<String>) -> anyhow::Re
 
 fn post_activity(body: &serde_json::Value) {
     let port = resolve_bpmux_port();
-    let url = format!("http://127.0.0.1:{port}/api/messages");
+    let url = transport::local_url::api_url(port, "/api/messages");
     // Fire the POST from a one-shot tokio runtime. reqwest is async
     // and this entry point is sync; the runtime is cheap and local.
     let Ok(rt) = tokio::runtime::Builder::new_current_thread()

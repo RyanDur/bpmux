@@ -1,5 +1,5 @@
 pub(in crate::bridge) async fn handle_capture_screen(port: u16) -> Result<String, String> {
-    let url = format!("http://127.0.0.1:{port}/api/screen");
+    let url = crate::transport::local_url::api_url(port, "/api/screen");
     let body = reqwest::get(&url)
         .await
         .map_err(|e| format!("failed to capture: {e}"))?

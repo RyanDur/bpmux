@@ -34,7 +34,7 @@ pub(in crate::bridge) async fn handle_classifier_misfire(
         "reason": reason,
     });
     let client = reqwest::Client::new();
-    let url = format!("http://127.0.0.1:{port}/api/classifier-misfire");
+    let url = crate::transport::local_url::api_url(port, "/api/classifier-misfire");
     let resp = client
         .post(&url)
         .json(&body)

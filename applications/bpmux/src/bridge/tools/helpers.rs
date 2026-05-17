@@ -44,7 +44,7 @@ pub(super) async fn post_simulate(
     body: &serde_json::Value,
 ) -> Result<String, String> {
     let token = load_auth_token()?;
-    let url = format!("http://127.0.0.1:{port}{path}");
+    let url = crate::transport::local_url::api_url(port, path);
     let resp = reqwest::Client::new()
         .post(&url)
         .bearer_auth(&token)

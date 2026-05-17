@@ -30,7 +30,7 @@ pub(in crate::bridge) async fn handle_save_lesson(
         "evidence": evidence,
     });
     let client = reqwest::Client::new();
-    let url = format!("http://127.0.0.1:{port}/api/lessons");
+    let url = crate::transport::local_url::api_url(port, "/api/lessons");
     let resp = client
         .post(&url)
         .json(&body)

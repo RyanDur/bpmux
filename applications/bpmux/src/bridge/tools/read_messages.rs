@@ -37,7 +37,10 @@ pub(in crate::bridge) async fn handle_read_messages(
     // see via notifications, silently diverging the two paths.
     let short = agent_name.split(':').next().unwrap_or(agent_name);
     let as_encoded = urlencoding(short);
-    let url = format!("http://127.0.0.1:{port}/api/messages?limit={limit}&as={as_encoded}");
+    let url = crate::transport::local_url::api_url(
+        port,
+        &format!("/api/messages?limit={limit}&as={as_encoded}"),
+    );
     let body = reqwest::get(&url)
         .await
         .map_err(|e| format!("failed to fetch: {e}"))?
