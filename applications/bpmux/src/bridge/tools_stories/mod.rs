@@ -10,8 +10,15 @@ use tokio::sync::Mutex;
 use super::tools::{WsSink, ws_send};
 use crate::board::label_codec::LabelCodec;
 
+mod helpers;
 mod signals;
 
+#[allow(unused_imports)]
+pub(crate) use helpers::{
+    ALL_STATE_LABELS, KEEP_NONE, LABEL_DELIVERED, LABEL_IN_PROGRESS, LABEL_READY,
+    LABEL_READY_FOR_ACCEPT, ensure_story_in_canonical_store, reap_workflow_labels, require_role,
+    role_from_name, stale_workflow_labels,
+};
 pub use signals::{BOARD_INVALIDATE_MARKER, SYNC_STATUS_UPDATE_MARKER};
 #[allow(unused_imports)]
 pub(crate) use signals::{
@@ -27,105 +34,6 @@ pub(crate) use signals::{
 /// stay in lockstep — a typo in one and not the other would silently
 /// misroute a story in the board view. New labels go here first, call
 /// sites reference the const.
-const LABEL_DELIVERED: &str = "delivered";
-const LABEL_IN_PROGRESS: &str = "in progress";
-const LABEL_READY: &str = "ready";
-const LABEL_READY_FOR_ACCEPT: &str = "ready for accept";
-
-pub(super) const ALL_STATE_LABELS: &[&str] = &[
-    "icebox",
-    LABEL_READY,
-    LABEL_IN_PROGRESS,
-    "desk-check",
-    LABEL_DELIVERED,
-    LABEL_READY_FOR_ACCEPT,
-    "needs fixes",
-    "rejected",
-    "accepted",
-];
-
-pub(super) const KEEP_NONE: &str = "";
-
-pub(super) async fn ensure_story_in_canonical_store(
-    refresh: &std::sync::Arc<dyn crate::board::RefreshDriver>,
-    number: u64,
-) -> Result<crate::board::Story, String> {
-    if let Some(story) = refresh.story(number) {
-        return Ok(story);
-    }
-    refresh.refresh_story(number).await.map_err(|e| {
-        format!(
-            "story #{number} not in canonical store + refresh_story failed: {e}; \
-             cannot proceed with mutation against unknown story state"
-        )
-    })?;
-    refresh.story(number).ok_or_else(|| {
-        format!(
-            "story #{number} not found in canonical store after refresh_story \
-             round-trip; story may not exist at source-of-truth"
-        )
-    })
-}
-
-pub(super) fn stale_workflow_labels<'a>(current: &'a [String], keep: &str) -> Vec<&'a str> {
-    current
-        .iter()
-        .filter_map(|l| {
-            let l_str = l.as_str();
-            if l_str == keep {
-                return None;
-            }
-            ALL_STATE_LABELS
-                .iter()
-                .find(|s| **s == l_str)
-                .map(|_| l_str)
-        })
-        .collect()
-}
-
-pub(super) fn reap_workflow_labels(
-    refresh: &dyn crate::board::RefreshDriver,
-    number: u64,
-    meta: &crate::board::events::EventMeta,
-    keep: &str,
-) -> Result<(), String> {
-    let current = refresh
-        .story(number)
-        .map(|s| s.raw_labels)
-        .unwrap_or_default();
-    for stale in stale_workflow_labels(&current, keep) {
-        refresh
-            .mutate_sync(crate::board::BoardEvent::TagRemoved {
-                meta: meta.clone(),
-                number,
-                label: stale.to_string(),
-            })
-            .map_err(|e| format!("#{number} {stale}-tag-remove enqueue failed: {e}"))?;
-    }
-    Ok(())
-}
-
-pub(super) fn role_from_name(name: &str) -> &str {
-    name.split(':').next().unwrap_or(name)
-}
-
-pub(super) fn require_role(
-    agent_name: &str,
-    allowed: &[&str],
-    operation: &str,
-) -> Result<(), String> {
-    let role = role_from_name(agent_name);
-    if allowed.contains(&role) {
-        Ok(())
-    } else {
-        Err(format!(
-            "{operation} is restricted to {}. ask {} to {operation}.",
-            allowed.join(" or "),
-            allowed[0],
-        ))
-    }
-}
-
 pub(super) async fn handle_view_board(
     _args: &serde_json::Map<String, serde_json::Value>,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
