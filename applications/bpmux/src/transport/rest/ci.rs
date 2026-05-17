@@ -1,0 +1,107 @@
+//! CI state + log + rerun handlers — Electron CI glyph + post-failure
+//! diagnostic surface for the renderer. `get_ci` reuses the MCP bridge's
+//! CI report builder so the Electron glyph and the MCP `get_ci_state`
+//! always agree by construction.
+
+use super::shared::{TrackerHandle, err_body, json_headers};
+use axum::http::StatusCode;
+use axum::response::IntoResponse;
+
+/// GET /api/ci — current CI state for the main branch + last-run
+/// metadata. Reuses the MCP bridge's CI report builder so the
+/// Electron CI glyph + MCP `get_ci_state` always agree by
+/// construction.
+pub async fn get_ci(
+    axum::Extension(ci_state_store): axum::Extension<
+        crate::transport::ci_state_store::CiStateStore,
+    >,
+) -> impl IntoResponse {
+    let report = ci_state_store
+        .read()
+        .unwrap_or_else(crate::bridge::tools::unknown_ci_state_report);
+    (
+        StatusCode::OK,
+        json_headers(),
+        serde_json::to_string(&report).unwrap_or_else(|_| "{}".to_string()),
+    )
+}
+
+pub async fn get_ci_log(
+    axum::Extension(tracker): axum::Extension<TrackerHandle>,
+    axum::Extension(ci_log_store): axum::Extension<crate::transport::ci_log_store::CiLogStore>,
+    axum::extract::Path(run_id): axum::extract::Path<u64>,
+) -> impl IntoResponse {
+    if let Some(cached) = ci_log_store.read(run_id) {
+        return (
+            StatusCode::OK,
+            json_headers(),
+            serde_json::to_string(&cached).unwrap_or_else(|_| "{}".to_string()),
+        );
+    }
+    let Some(tracker) = tracker else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            json_headers(),
+            err_body("tracker not configured"),
+        );
+    };
+    match tracker.fetch_failed_tests_for_run(run_id).await {
+        Ok(failures) => {
+            ci_log_store.write(run_id, failures.clone());
+            (
+                StatusCode::OK,
+                json_headers(),
+                serde_json::to_string(&failures).unwrap_or_else(|_| "{}".to_string()),
+            )
+        }
+        Err(err) => {
+            let status = match &err {
+                crate::bridge::tools::CiLogError::RunNotFound { .. } => StatusCode::NOT_FOUND,
+                crate::bridge::tools::CiLogError::RunInProgress { .. } => StatusCode::ACCEPTED,
+                crate::bridge::tools::CiLogError::RateLimited { .. } => {
+                    StatusCode::TOO_MANY_REQUESTS
+                }
+                crate::bridge::tools::CiLogError::UpstreamError { .. } => StatusCode::BAD_GATEWAY,
+            };
+            (
+                status,
+                json_headers(),
+                serde_json::to_string(&err).unwrap_or_else(|_| "{}".to_string()),
+            )
+        }
+    }
+}
+
+pub async fn post_ci_rerun(
+    axum::Extension(tracker): axum::Extension<TrackerHandle>,
+    axum::extract::Path(run_id): axum::extract::Path<u64>,
+) -> impl IntoResponse {
+    let Some(tracker) = tracker else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            json_headers(),
+            err_body("tracker not configured"),
+        );
+    };
+    match tracker.rerun_failed_jobs(run_id).await {
+        Ok(()) => (
+            StatusCode::OK,
+            json_headers(),
+            serde_json::to_string(&serde_json::json!({
+                "status": "success",
+                "run_id": run_id,
+            }))
+            .unwrap_or_else(|_| "{}".to_string()),
+        ),
+        Err(err) => (
+            StatusCode::BAD_GATEWAY,
+            json_headers(),
+            serde_json::to_string(&serde_json::json!({
+                "status": "failure",
+                "run_id": run_id,
+                "message": err,
+            }))
+            .unwrap_or_else(|_| "{}".to_string()),
+        ),
+    }
+}
