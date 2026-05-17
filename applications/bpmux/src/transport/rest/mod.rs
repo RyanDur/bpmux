@@ -8,6 +8,12 @@ use serde::Deserialize;
 
 use crate::session;
 
+mod shared;
+
+pub(crate) use shared::json_headers;
+pub use shared::{CommentPayload, TrackerHandle};
+use shared::{broadcast_board_invalidate, err_body};
+
 pub const DEFAULT_MESSAGE_LIMIT: usize = 20;
 
 #[derive(Deserialize)]
@@ -513,41 +519,6 @@ pub async fn post_classifier_misfire(
 // per-role gate beyond authentication. If the deployment model ever
 // grows multi-user auth, a sender-identity check would go here.
 
-/// Optional shared tracker handle, injected via axum Extension at
-/// server startup. `None` when GitHub env config is missing — the
-/// handlers then return 503 so the renderer can surface "tracker not
-/// configured" instead of a silent empty board.
-pub type TrackerHandle = Option<Arc<crate::board::adapters::github::GitHubSourceAdapter>>;
-
-/// Structured error body. All handlers in this section reply with
-/// this shape on failure so the renderer can branch on the `error`
-/// key without string-matching response text.
-fn err_body(message: &str) -> String {
-    serde_json::json!({ "error": message }).to_string()
-}
-
-pub(super) fn json_headers() -> [(axum::http::HeaderName, &'static str); 1] {
-    [(axum::http::header::CONTENT_TYPE, "application/json")]
-}
-
-/// Broadcast a board-invalidate marker through the session. Mirrors
-/// the MCP bridge's `broadcast_board_invalidate` — same marker text,
-/// same system message_type — so the TUI's event loop picks it up
-/// and triggers an immediate board refetch regardless of which path
-/// (MCP tool or HTTP REST) caused the mutation.
-fn broadcast_board_invalidate(session: &session::Session) {
-    let msg = session::Message {
-        from: "bpmux".to_string(),
-        text: crate::bridge::BOARD_INVALIDATE_MARKER.to_string(),
-        ts: chrono::Utc::now(),
-        message_type: session::MessageType::System,
-        ..session::Message::default()
-    };
-    if let Err(e) = session.broadcast(&msg) {
-        session::diag::log_diag(&format!("rest: board-invalidate broadcast failed: {e}"));
-    }
-}
-
 /// GET /api/board — return the whole board as `{ stories, fetched_at }`.
 pub async fn get_board(
     axum::Extension(tracker): axum::Extension<TrackerHandle>,
@@ -759,11 +730,6 @@ pub async fn post_reject_story(
             err_body(&format!("reject failed: {e}")),
         ),
     }
-}
-
-#[derive(Deserialize)]
-pub struct CommentPayload {
-    pub body: String,
 }
 
 /// GET /api/ci — current CI state for the main branch + last-run metadata.
