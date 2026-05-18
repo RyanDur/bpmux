@@ -1110,6 +1110,13 @@ pub fn run_bridge(
     _fake_tracker: bool,
     _board_fixture: Option<String>,
 ) -> anyhow::Result<()> {
+    let project_root = crate::workflow::load_project_root_or_cwd();
+    let _workflow = crate::workflow::load_workflow(&project_root).map_err(|e| {
+        anyhow::anyhow!(
+            "{}",
+            serde_json::to_string(&e).unwrap_or_else(|_| e.to_string())
+        )
+    })?;
     let rt = tokio::runtime::Runtime::new()?;
     rt.block_on(async {
         let server = BridgeServer::new(port, name.to_string());
