@@ -5,6 +5,24 @@ use crate::board::domain::StoryType;
 use crate::session::velocity::classify_story;
 use crate::transport::protocol::ClientMessage;
 
+fn test_ci_state_store_green() -> crate::transport::ci_state_store::CiStateStore {
+    let store = crate::transport::ci_state_store::CiStateStore::new();
+    store.write(crate::bridge::tools::CiStateReport {
+        conclusion: "success",
+        last_run_id: None,
+        branch: "main",
+        url: String::new(),
+        head_sha: Some("test-fixture-sha".to_string()),
+        display_title: None,
+        last_updated_at: None,
+        last_successful_poll_at: None,
+        poll_interval_secs: 0,
+        backoff_cap_secs: 0,
+        workflows: Vec::new(),
+    });
+    store
+}
+
 #[test]
 fn role_from_name_extracts_short_role() {
     assert_eq!(role_from_name("dev:claude-code"), "dev");
@@ -1452,10 +1470,9 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
         "dev".into(),
     );
     adapter.seed_stories(vec![seeded]);
-    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&store),
-        Arc::clone(&adapter),
-    ));
+    let orch_concrete = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter))
+        .with_ci_state_store(test_ci_state_store_green());
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(orch_concrete);
     orchestrator.refresh_all().await.unwrap();
 
     let ws_tx = connected_ws_sink_for_test().await;
@@ -3795,10 +3812,9 @@ mod reopen_on_state_transition_tests {
         let store = Arc::new(BoardStore::new());
         let adapter = Arc::new(InMemorySourceAdapter::new());
         adapter.seed_stories(vec![seeded.clone()]);
-        let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-            Arc::clone(&store),
-            Arc::clone(&adapter),
-        ));
+        let orch_concrete = SyncOrchestrator::new(Arc::clone(&store), Arc::clone(&adapter))
+            .with_ci_state_store(super::test_ci_state_store_green());
+        let orch: Arc<dyn RefreshDriver> = Arc::new(orch_concrete);
         orch.refresh_all().await.unwrap();
         (store, orch, adapter)
     }

@@ -316,6 +316,9 @@ pub(crate) async fn handle_pass_desk_check(
         )
         .map_err(|e| e.as_json_string())?;
     }
+    let ci_snapshot = refresh.and_then(|r| r.ci_state());
+    crate::workflow::check_ci_green(transition, ci_snapshot.as_ref())
+        .map_err(|e| e.as_json_string())?;
     let was_closed = if let Some(r) = refresh {
         let prior = ensure_story_in_canonical_store(r, number).await?;
         if let Some(body) = prior.body.as_deref() {

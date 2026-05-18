@@ -114,6 +114,16 @@ pub trait RefreshDriver: Send + Sync {
     /// BoardStore via `BoardEvent::StoryRefreshed` so callers don't
     /// need a follow-up `refresh_story(N)` to observe the rename.
     fn update_title(&self, number: u64, title: String) -> BoxedFuture<'_, Result<(), SyncError>>;
+
+    /// #1420 Slice 2: CI-state snapshot for the workflow gate's
+    /// `check_ci_green` validator. Production orchestrator wires this
+    /// from its `CiStateStore`; test/in-memory orchestrators return
+    /// None (which the validator treats as `unknown`, refusing the
+    /// transition). Default impl returns None so existing test
+    /// substrates compile unchanged.
+    fn ci_state(&self) -> Option<crate::workflow::CiSnapshot> {
+        None
+    }
 }
 
 /// #1195: outbox-entry wrapper carrying the pre-mutation snapshot
@@ -195,6 +205,12 @@ pub struct SyncOrchestrator<A: SourceAdapter + 'static> {
         Option<tokio::sync::mpsc::UnboundedSender<crate::orchestrator::OrchestratorAction>>,
     pub(super) issue_locks:
         tokio::sync::Mutex<std::collections::HashMap<u64, Arc<tokio::sync::Mutex<()>>>>,
+    /// #1420 Slice 2: shared CI-state store the workflow gate
+    /// validator reads through `RefreshDriver::ci_state()`. Production
+    /// server.rs wires this via `with_ci_state_store`; test-mode and
+    /// in-memory orchestrators leave it None (gate then treats CI as
+    /// `unknown` and refuses CI-gated transitions).
+    pub(super) ci_state_store: Option<crate::transport::ci_state_store::CiStateStore>,
 }
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
@@ -210,7 +226,24 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             next_mutation_id: AtomicU64::new(1),
             action_tx: None,
             issue_locks: tokio::sync::Mutex::new(std::collections::HashMap::new()),
+            ci_state_store: None,
         }
+    }
+
+    /// #1420 Slice 2: inject the shared CI-state store so the
+    /// workflow gate's `check_ci_green` validator can read aggregate
+    /// CI state through `RefreshDriver::ci_state()`. Production
+    /// server.rs calls this between `Orchestrator::new` and
+    /// `spawn_action_drainer`; test-mode orchestrators leave it
+    /// unset (gate then refuses CI-gated transitions, which is the
+    /// canonical-correct behavior — tests must opt in to a green
+    /// snapshot via this builder).
+    pub fn with_ci_state_store(
+        mut self,
+        store: crate::transport::ci_state_store::CiStateStore,
+    ) -> Self {
+        self.ci_state_store = Some(store);
+        self
     }
 
     /// #1382: builder for stub-codec injection at test-time. Returns
@@ -248,6 +281,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             next_mutation_id: AtomicU64::new(next),
             action_tx: None,
             issue_locks: tokio::sync::Mutex::new(std::collections::HashMap::new()),
+            ci_state_store: None,
         })
     }
 
@@ -277,6 +311,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             next_mutation_id: AtomicU64::new(next),
             action_tx: None,
             issue_locks: tokio::sync::Mutex::new(std::collections::HashMap::new()),
+            ci_state_store: None,
         })
     }
 
@@ -696,6 +731,15 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
                 story: Box::new(story),
             });
             Ok(())
+        })
+    }
+
+    fn ci_state(&self) -> Option<crate::workflow::CiSnapshot> {
+        let store = self.ci_state_store.as_ref()?;
+        let report = store.read()?;
+        Some(crate::workflow::CiSnapshot {
+            conclusion: report.conclusion.to_string(),
+            head_sha: report.head_sha.unwrap_or_default(),
         })
     }
 }

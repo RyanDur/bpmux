@@ -209,6 +209,7 @@ impl TestBpmux {
             "BPMUX_LOG",
             std::env::temp_dir().join("bpmux-test-diag.log"),
         );
+        cmd.env("BPMUX_TEST_SEED_CI_GREEN", "1");
         let default_mock = if extra_env.iter().any(|(k, _)| *k == "BPMUX_GH_BASE_URL") {
             None
         } else {

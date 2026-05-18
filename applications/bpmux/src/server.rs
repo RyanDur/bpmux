@@ -15,9 +15,32 @@ fn test_mode_enabled() -> bool {
         .unwrap_or(false)
 }
 
+fn seed_ci_green_for_tests(store: &crate::transport::ci_state_store::CiStateStore) {
+    let enabled = std::env::var("BPMUX_TEST_SEED_CI_GREEN")
+        .map(|v| !v.is_empty() && v != "0")
+        .unwrap_or(false);
+    if !enabled {
+        return;
+    }
+    store.write(crate::bridge::tools::CiStateReport {
+        conclusion: "success",
+        last_run_id: None,
+        branch: "main",
+        url: String::new(),
+        head_sha: Some("test-mode-fixture-sha".to_string()),
+        display_title: None,
+        last_updated_at: None,
+        last_successful_poll_at: None,
+        poll_interval_secs: 0,
+        backoff_cap_secs: 0,
+        workflows: Vec::new(),
+    });
+}
+
 async fn build_test_orchestrator(
     session: Arc<session::Session>,
     action_tx: Option<tokio::sync::mpsc::UnboundedSender<crate::orchestrator::OrchestratorAction>>,
+    ci_state_store: crate::transport::ci_state_store::CiStateStore,
 ) -> Arc<dyn RefreshDriver> {
     let mut corruption_detected = false;
     let store = match BoardStore::load_from_storage(session.storage.as_ref()) {
@@ -45,6 +68,8 @@ async fn build_test_orchestrator(
         Some(tx) => orch_concrete.with_action_tx(tx),
         None => orch_concrete,
     };
+    seed_ci_green_for_tests(&ci_state_store);
+    let orch_concrete = orch_concrete.with_ci_state_store(ci_state_store);
     let orch: Arc<dyn RefreshDriver> = Arc::new(orch_concrete);
     if corruption_detected {
         orch.mark_recovering_from_corruption();
@@ -61,6 +86,7 @@ async fn build_prod_orchestrator(
     session: Arc<session::Session>,
     adapter: Arc<crate::board::adapters::github::GitHubSourceAdapter>,
     action_tx: Option<tokio::sync::mpsc::UnboundedSender<crate::orchestrator::OrchestratorAction>>,
+    ci_state_store: crate::transport::ci_state_store::CiStateStore,
 ) -> Arc<dyn RefreshDriver> {
     let mut corruption_detected = false;
     let store = match BoardStore::load_from_storage(session.storage.as_ref()) {
@@ -104,6 +130,8 @@ async fn build_prod_orchestrator(
         Some(tx) => orch_concrete.with_action_tx(tx),
         None => orch_concrete,
     };
+    seed_ci_green_for_tests(&ci_state_store);
+    let orch_concrete = orch_concrete.with_ci_state_store(ci_state_store);
     let orch: Arc<dyn RefreshDriver> = Arc::new(orch_concrete);
     if corruption_detected {
         orch.mark_recovering_from_corruption();
@@ -200,13 +228,30 @@ pub async fn run_server(
     let (action_tx, action_rx) =
         tokio::sync::mpsc::unbounded_channel::<crate::orchestrator::OrchestratorAction>();
 
+    let ci_state_store = crate::transport::ci_state_store::CiStateStore::new();
+
     let test_refresh: TestRefreshHandle = if test_mode_enabled() {
         eprintln!(
             "[bpmux server] BPMUX_TEST_MODE=1 — instantiating in-memory orchestrator for acceptance tests"
         );
-        Some(build_test_orchestrator(session.clone(), Some(action_tx.clone())).await)
+        Some(
+            build_test_orchestrator(
+                session.clone(),
+                Some(action_tx.clone()),
+                ci_state_store.clone(),
+            )
+            .await,
+        )
     } else if let Some(tracker_arc) = tracker.as_ref().cloned() {
-        Some(build_prod_orchestrator(session.clone(), tracker_arc, Some(action_tx.clone())).await)
+        Some(
+            build_prod_orchestrator(
+                session.clone(),
+                tracker_arc,
+                Some(action_tx.clone()),
+                ci_state_store.clone(),
+            )
+            .await,
+        )
     } else {
         None
     };
@@ -218,14 +263,6 @@ pub async fn run_server(
             crate::bridge::drain_interval_from_env(),
         ));
     }
-
-    // #372: spawn the push-based CI state watcher. Polls GitHub at
-    // its own cadence (independent of the 15s frontend poll). State
-    // changes flow as typed StateDelta::Ci via the orchestrator's
-    // CiSessionBroadcaster — renderer mirror.ci updates within WS
-    // latency. Only spawns when we have a tracker — without one
-    // `/api/ci` returns 503 and polling would just log errors.
-    let ci_state_store = crate::transport::ci_state_store::CiStateStore::new();
     let ci_log_store = crate::transport::ci_log_store::CiLogStore::new();
     let electron_capture_lock: std::sync::Arc<tokio::sync::Mutex<()>> =
         std::sync::Arc::new(tokio::sync::Mutex::new(()));
