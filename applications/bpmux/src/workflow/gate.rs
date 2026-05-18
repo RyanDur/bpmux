@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::Serialize;
 use thiserror::Error;
 
-use super::config::{GateClass, WorkflowConfig};
+use super::config::{GateClass, Transition, WorkflowConfig};
 
 #[derive(Debug, Error, Clone, PartialEq, Eq, Serialize)]
 #[serde(tag = "kind", rename_all = "kebab-case")]
@@ -60,17 +60,11 @@ pub struct EvidenceMessage {
 }
 
 pub fn check_evidence_present(
-    workflow: &WorkflowConfig,
-    transition_id: &str,
+    transition: &Transition,
     actor_role: &str,
     messages: &[EvidenceMessage],
     now: DateTime<Utc>,
 ) -> Result<(), GateError> {
-    let Some(transition) = workflow.transition_by_id(transition_id) else {
-        return Err(GateError::TransitionUndefined {
-            attempted_transition: transition_id.to_string(),
-        });
-    };
     if transition.gate_class == GateClass::None || transition.required_evidence_roles.is_empty() {
         return Ok(());
     }
@@ -90,29 +84,20 @@ pub fn check_evidence_present(
     } else {
         Err(GateError::GateMismatch {
             actor_role: actor_role.to_string(),
-            attempted_transition: transition_id.to_string(),
+            attempted_transition: transition.id.clone(),
             class: transition.gate_class,
             missing_evidence: missing,
         })
     }
 }
 
-pub fn check_role_allowed(
-    workflow: &WorkflowConfig,
-    transition_id: &str,
-    actor_role: &str,
-) -> Result<(), GateError> {
-    let Some(transition) = workflow.transition_by_id(transition_id) else {
-        return Err(GateError::TransitionUndefined {
-            attempted_transition: transition_id.to_string(),
-        });
-    };
+pub fn check_role_allowed(transition: &Transition, actor_role: &str) -> Result<(), GateError> {
     if transition.actor_roles.iter().any(|r| r == actor_role) {
         Ok(())
     } else {
         Err(GateError::RoleNotAllowed {
             actor_role: actor_role.to_string(),
-            attempted_transition: transition_id.to_string(),
+            attempted_transition: transition.id.clone(),
             allowed_roles: transition.actor_roles.clone(),
         })
     }
@@ -124,23 +109,31 @@ pub fn check_role_allowed(
 /// target. The error cites the from-state as `expected_state` so the
 /// caller can see what state the transition expected.
 pub fn check_target_state_valid(
-    workflow: &WorkflowConfig,
-    transition_id: &str,
+    transition: &Transition,
     current_state: &str,
 ) -> Result<(), GateError> {
-    let Some(transition) = workflow.transition_by_id(transition_id) else {
-        return Err(GateError::TransitionUndefined {
-            attempted_transition: transition_id.to_string(),
-        });
-    };
     if current_state == transition.to {
         return Err(GateError::TargetStateInvalid {
-            attempted_transition: transition_id.to_string(),
+            attempted_transition: transition.id.clone(),
             current_state: current_state.to_string(),
             expected_state: transition.from.clone(),
         });
     }
     Ok(())
+}
+
+/// Lookup helper that returns the structured TransitionUndefined
+/// error when no matching transition exists for (id, class).
+pub fn resolve_transition<'a>(
+    workflow: &'a WorkflowConfig,
+    transition_id: &str,
+    class: GateClass,
+) -> Result<&'a Transition, GateError> {
+    workflow
+        .transition_for(transition_id, class)
+        .ok_or_else(|| GateError::TransitionUndefined {
+            attempted_transition: transition_id.to_string(),
+        })
 }
 
 /// One row of the story's prior gate-fire history — the slice of

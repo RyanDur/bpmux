@@ -519,13 +519,23 @@ async fn accept_requires_refresh_after_5n_fallback_retirement() {
 
 #[tokio::test]
 async fn accept_rejects_unknown_role_via_handler() {
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::{BoardStore, RefreshDriver, SyncOrchestrator};
+    use std::sync::Arc;
+
     let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
-    let args = serde_json::json!({"number": 1});
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    let args = serde_json::json!({"number": 1, "would_file_bug": false});
     let result = handle_accept_story(
         args.as_object().unwrap(),
         "intern:claude-code",
         &ws_tx,
-        None,
+        Some(&orchestrator),
         None,
     )
     .await;

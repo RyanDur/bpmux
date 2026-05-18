@@ -41,6 +41,12 @@
 //!   Bundled-default actor sets don't overlap, so the guard is
 //!   preventative-only at default config; substrate proof lives
 //!   in workflow::gate_tests.
+//!
+//! Slice 5 (owner-walk gate-class per-story): coverage of Scenarios
+//! 2 + 4 (fuller). Stories with label `gate:owner-walk` route to
+//! the owner-walk-class transition variant (actor_roles=[ryan],
+//! required_evidence=[]); stories without the label default to
+//! team-verifiable.
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
@@ -209,5 +215,52 @@ fn pm_fires_team_verifiable_without_dev_verdict_returns_structured_409() {
 
         pm.close().await;
         designer.close().await;
+    });
+}
+
+#[test]
+fn pm_firing_accept_on_owner_walk_story_returns_role_not_allowed() {
+    let bpmux = TestBpmux::start();
+    let rt = tokio::runtime::Runtime::new().expect("rt");
+    rt.block_on(async {
+        let pm = TestBridge::connect(&bpmux, "pm").await;
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        let target_number = create_target_story(
+            &pm,
+            "[Feature] owner-walk-target",
+            "reject if PM firing accept on a gate:owner-walk story doesn't return role-not-allowed",
+        )
+        .await;
+
+        pm.call_tool(
+            "label_story",
+            serde_json::json!({"number": target_number, "label": "gate:owner-walk"}),
+        )
+        .await
+        .expect("label_story to add gate:owner-walk");
+
+        let err = pm
+            .call_tool(
+                "accept_story",
+                serde_json::json!({"number": target_number, "would_file_bug": false}),
+            )
+            .await
+            .expect_err("pm firing owner-walk accept should be refused");
+
+        assert!(
+            err.contains("\"kind\":\"workflow-role-not-allowed\""),
+            "rejection cites structured kind; got {err}"
+        );
+        assert!(
+            err.contains("\"actor_role\":\"pm\""),
+            "rejection cites pm as firing role; got {err}"
+        );
+        assert!(
+            err.contains("\"allowed_roles\":[\"ryan\"]"),
+            "rejection cites only ryan allowed for owner-walk class; got {err}"
+        );
+
+        pm.close().await;
     });
 }

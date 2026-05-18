@@ -28,29 +28,34 @@ pub(crate) async fn handle_accept_story(
 ) -> Result<String, String> {
     let actor_role = role_from_name(agent_name);
     let workflow = crate::workflow::current_workflow();
-    crate::workflow::check_role_allowed(workflow, "accept", actor_role)
-        .map_err(|e| e.as_json_string())?;
     let number = args
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
     let bypass = verify_bug_question_or_bypass(args, BugGate::Accept)?;
+    let r = refresh.ok_or(
+        "accept_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n",
+    )?;
+    let story_opt = r.store().story(number);
+    let class = story_opt
+        .as_ref()
+        .map(|s| crate::workflow::gate_class_from_labels(&s.raw_labels))
+        .unwrap_or(crate::workflow::GateClass::TeamVerifiable);
+    let transition = crate::workflow::resolve_transition(workflow, "accept", class)
+        .map_err(|e| e.as_json_string())?;
+    crate::workflow::check_role_allowed(transition, actor_role).map_err(|e| e.as_json_string())?;
     if let Some(s) = session {
         let evidence = recent_evidence_from_session(s)?;
         crate::workflow::check_evidence_present(
-            workflow,
-            "accept",
+            transition,
             actor_role,
             &evidence,
             chrono::Utc::now(),
         )
         .map_err(|e| e.as_json_string())?;
     }
-    let r = refresh.ok_or(
-        "accept_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n",
-    )?;
-    if let Some(story) = r.store().story(number) {
-        crate::workflow::check_target_state_valid(workflow, "accept", story.state.as_str())
+    if let Some(story) = story_opt.as_ref() {
+        crate::workflow::check_target_state_valid(transition, story.state.as_str())
             .map_err(|e| e.as_json_string())?;
         if let Some(comments) = story.gate_comments.as_deref() {
             let prior_fires: Vec<crate::workflow::PriorFire> = comments

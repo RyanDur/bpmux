@@ -20,10 +20,10 @@ mod gate_tests;
 #[cfg(test)]
 mod loader_tests;
 
-pub use config::{GateClass, Section, State, Transition, WorkflowConfig};
+pub use config::{GateClass, Section, State, Transition, WorkflowConfig, gate_class_from_labels};
 pub use gate::{
     EvidenceMessage, GateError, PriorFire, check_evidence_present, check_role_allowed,
-    check_self_mutation_refused, check_target_state_valid,
+    check_self_mutation_refused, check_target_state_valid, resolve_transition,
 };
 pub use loader::{
     WorkflowLoadError, current_workflow, install_workflow, load_project_root_or_cwd, load_workflow,

@@ -6,25 +6,37 @@ use super::bundled_default::bundled_default;
 use super::config::{GateClass, Transition, WorkflowConfig};
 use super::gate::{
     EvidenceMessage, GateError, PriorFire, check_evidence_present, check_role_allowed,
-    check_self_mutation_refused, check_target_state_valid,
+    check_self_mutation_refused, check_target_state_valid, resolve_transition,
 };
 
-#[test]
-fn bundled_default_allows_ryan_to_accept() {
-    let workflow = bundled_default();
-    assert!(check_role_allowed(&workflow, "accept", "ryan").is_ok());
+fn accept_team_verifiable() -> Transition {
+    bundled_default()
+        .transition_for("accept", GateClass::TeamVerifiable)
+        .cloned()
+        .expect("bundled-default has team-verifiable accept")
+}
+
+fn accept_owner_walk() -> Transition {
+    bundled_default()
+        .transition_for("accept", GateClass::OwnerWalk)
+        .cloned()
+        .expect("bundled-default has owner-walk accept")
 }
 
 #[test]
-fn bundled_default_allows_pm_to_accept() {
-    let workflow = bundled_default();
-    assert!(check_role_allowed(&workflow, "accept", "pm").is_ok());
+fn bundled_default_allows_ryan_to_accept_team_verifiable() {
+    assert!(check_role_allowed(&accept_team_verifiable(), "ryan").is_ok());
 }
 
 #[test]
-fn bundled_default_refuses_designer_to_accept() {
-    let workflow = bundled_default();
-    let err = check_role_allowed(&workflow, "accept", "designer").expect_err("designer refused");
+fn bundled_default_allows_pm_to_accept_team_verifiable() {
+    assert!(check_role_allowed(&accept_team_verifiable(), "pm").is_ok());
+}
+
+#[test]
+fn bundled_default_refuses_designer_to_accept_team_verifiable() {
+    let err =
+        check_role_allowed(&accept_team_verifiable(), "designer").expect_err("designer refused");
     match err {
         GateError::RoleNotAllowed {
             actor_role,
@@ -42,47 +54,72 @@ fn bundled_default_refuses_designer_to_accept() {
 }
 
 #[test]
-fn bundled_default_refuses_dev_to_accept() {
-    let workflow = bundled_default();
+fn bundled_default_refuses_dev_to_accept_team_verifiable() {
     assert!(matches!(
-        check_role_allowed(&workflow, "accept", "dev"),
+        check_role_allowed(&accept_team_verifiable(), "dev"),
         Err(GateError::RoleNotAllowed { .. })
     ));
 }
 
 #[test]
-fn unknown_transition_returns_transition_undefined() {
-    let workflow = WorkflowConfig {
-        section: vec![],
-        state: vec![],
-        transition: vec![],
-    };
-    let err = check_role_allowed(&workflow, "accept", "pm").expect_err("undefined transition");
-    assert!(matches!(err, GateError::TransitionUndefined { .. }));
+fn owner_walk_accept_allows_ryan_only() {
+    let owner_walk = accept_owner_walk();
+    assert!(check_role_allowed(&owner_walk, "ryan").is_ok());
+    assert!(matches!(
+        check_role_allowed(&owner_walk, "pm"),
+        Err(GateError::RoleNotAllowed { .. })
+    ));
+    assert!(matches!(
+        check_role_allowed(&owner_walk, "dev"),
+        Err(GateError::RoleNotAllowed { .. })
+    ));
 }
 
 #[test]
-fn transition_with_only_one_role_refuses_other_roles() {
+fn resolve_transition_returns_team_verifiable_when_class_team_verifiable() {
+    let workflow = bundled_default();
+    let t = resolve_transition(&workflow, "accept", GateClass::TeamVerifiable).unwrap();
+    assert_eq!(t.gate_class, GateClass::TeamVerifiable);
+    assert_eq!(t.required_evidence_roles, vec!["designer", "dev"]);
+}
+
+#[test]
+fn resolve_transition_returns_owner_walk_when_class_owner_walk() {
+    let workflow = bundled_default();
+    let t = resolve_transition(&workflow, "accept", GateClass::OwnerWalk).unwrap();
+    assert_eq!(t.gate_class, GateClass::OwnerWalk);
+    assert!(t.required_evidence_roles.is_empty());
+}
+
+#[test]
+fn resolve_transition_falls_back_to_class_none_when_no_class_match() {
     let workflow = WorkflowConfig {
         section: vec![],
         state: vec![],
         transition: vec![Transition {
-            id: "accept".into(),
-            from: "delivered".into(),
-            to: "accepted".into(),
-            actor_roles: vec!["coordinator".into()],
+            id: "deliver".into(),
+            from: "in-progress".into(),
+            to: "desk-check".into(),
+            actor_roles: vec!["dev".into()],
             gate_class: GateClass::None,
             evidence_window_seconds: 0,
             required_evidence_roles: vec![],
         }],
     };
-    assert!(check_role_allowed(&workflow, "accept", "coordinator").is_ok());
-    let err = check_role_allowed(&workflow, "accept", "implementer").expect_err("not allowed");
-    if let GateError::RoleNotAllowed { allowed_roles, .. } = err {
-        assert_eq!(allowed_roles, vec!["coordinator".to_string()]);
-    } else {
-        panic!("expected RoleNotAllowed");
-    }
+    let t = resolve_transition(&workflow, "deliver", GateClass::TeamVerifiable).unwrap();
+    assert_eq!(t.gate_class, GateClass::None);
+}
+
+#[test]
+fn resolve_transition_returns_undefined_when_id_missing() {
+    let workflow = WorkflowConfig {
+        section: vec![],
+        state: vec![],
+        transition: vec![],
+    };
+    let err = resolve_transition(&workflow, "accept", GateClass::TeamVerifiable)
+        .expect_err("undefined transition");
+    assert!(matches!(err, GateError::TransitionUndefined { .. }));
 }
 
 #[test]
@@ -109,19 +146,17 @@ fn msg(from_role: &str, seconds_ago: i64) -> EvidenceMessage {
 
 #[test]
 fn evidence_check_passes_when_all_required_roles_broadcast_within_window() {
-    let workflow = bundled_default();
     let now = Utc::now();
     let messages = vec![msg("designer", 60), msg("dev", 120)];
-    assert!(check_evidence_present(&workflow, "accept", "pm", &messages, now).is_ok());
+    assert!(check_evidence_present(&accept_team_verifiable(), "pm", &messages, now).is_ok());
 }
 
 #[test]
 fn evidence_check_fails_when_designer_verdict_missing() {
-    let workflow = bundled_default();
     let now = Utc::now();
     let messages = vec![msg("dev", 60)];
-    let err =
-        check_evidence_present(&workflow, "accept", "pm", &messages, now).expect_err("missing");
+    let err = check_evidence_present(&accept_team_verifiable(), "pm", &messages, now)
+        .expect_err("missing");
     match err {
         GateError::GateMismatch {
             missing_evidence,
@@ -137,11 +172,10 @@ fn evidence_check_fails_when_designer_verdict_missing() {
 
 #[test]
 fn evidence_check_fails_when_dev_verdict_missing() {
-    let workflow = bundled_default();
     let now = Utc::now();
     let messages = vec![msg("designer", 60)];
-    let err =
-        check_evidence_present(&workflow, "accept", "pm", &messages, now).expect_err("missing");
+    let err = check_evidence_present(&accept_team_verifiable(), "pm", &messages, now)
+        .expect_err("missing");
     if let GateError::GateMismatch {
         missing_evidence, ..
     } = err
@@ -154,9 +188,9 @@ fn evidence_check_fails_when_dev_verdict_missing() {
 
 #[test]
 fn evidence_check_fails_when_both_verdicts_missing() {
-    let workflow = bundled_default();
     let now = Utc::now();
-    let err = check_evidence_present(&workflow, "accept", "pm", &[], now).expect_err("missing");
+    let err =
+        check_evidence_present(&accept_team_verifiable(), "pm", &[], now).expect_err("missing");
     if let GateError::GateMismatch {
         missing_evidence, ..
     } = err
@@ -172,10 +206,9 @@ fn evidence_check_fails_when_both_verdicts_missing() {
 
 #[test]
 fn evidence_check_fails_when_designer_verdict_is_stale_beyond_window() {
-    let workflow = bundled_default();
     let now = Utc::now();
     let messages = vec![msg("designer", 601), msg("dev", 60)];
-    let err = check_evidence_present(&workflow, "accept", "pm", &messages, now)
+    let err = check_evidence_present(&accept_team_verifiable(), "pm", &messages, now)
         .expect_err("stale designer");
     if let GateError::GateMismatch {
         missing_evidence, ..
@@ -188,23 +221,10 @@ fn evidence_check_fails_when_designer_verdict_is_stale_beyond_window() {
 }
 
 #[test]
-fn evidence_check_passes_for_transitions_with_no_evidence_required() {
-    let workflow = bundled_default();
+fn owner_walk_accept_passes_with_no_team_evidence() {
     let now = Utc::now();
-    assert!(check_evidence_present(&workflow, "pickup", "dev", &[], now).is_ok());
-    assert!(check_evidence_present(&workflow, "deliver", "dev", &[], now).is_ok());
-}
-
-#[test]
-fn evidence_check_returns_transition_undefined_when_missing() {
-    let workflow = WorkflowConfig {
-        section: vec![],
-        state: vec![],
-        transition: vec![],
-    };
-    let err =
-        check_evidence_present(&workflow, "accept", "pm", &[], Utc::now()).expect_err("undefined");
-    assert!(matches!(err, GateError::TransitionUndefined { .. }));
+    let owner_walk = accept_owner_walk();
+    assert!(check_evidence_present(&owner_walk, "ryan", &[], now).is_ok());
 }
 
 #[test]
@@ -225,15 +245,14 @@ fn gate_mismatch_json_includes_class_and_missing_evidence_fields() {
 
 #[test]
 fn target_state_valid_passes_when_current_is_not_yet_target() {
-    let workflow = bundled_default();
-    assert!(check_target_state_valid(&workflow, "accept", "delivered").is_ok());
-    assert!(check_target_state_valid(&workflow, "accept", "in-progress").is_ok());
+    let t = accept_team_verifiable();
+    assert!(check_target_state_valid(&t, "delivered").is_ok());
+    assert!(check_target_state_valid(&t, "in-progress").is_ok());
 }
 
 #[test]
 fn target_state_valid_refuses_when_already_in_target_state() {
-    let workflow = bundled_default();
-    let err = check_target_state_valid(&workflow, "accept", "accepted")
+    let err = check_target_state_valid(&accept_team_verifiable(), "accepted")
         .expect_err("accepted-already refused");
     match err {
         GateError::TargetStateInvalid {
@@ -247,18 +266,6 @@ fn target_state_valid_refuses_when_already_in_target_state() {
         }
         other => panic!("expected TargetStateInvalid, got {other:?}"),
     }
-}
-
-#[test]
-fn target_state_valid_returns_transition_undefined_when_unknown() {
-    let workflow = WorkflowConfig {
-        section: vec![],
-        state: vec![],
-        transition: vec![],
-    };
-    let err = check_target_state_valid(&workflow, "accept", "delivered")
-        .expect_err("undefined transition");
-    assert!(matches!(err, GateError::TransitionUndefined { .. }));
 }
 
 #[test]
