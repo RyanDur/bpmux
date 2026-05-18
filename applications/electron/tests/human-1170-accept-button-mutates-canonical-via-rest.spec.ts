@@ -4,7 +4,7 @@ import { seedTeamVerdicts } from './helpers/seed-evidence'
 
 test.describe('#1170 — UI accept-button mutates canonical store via REST (no silent-fail)', () => {
   test('accept-button click transitions delivered → accepted in canonical AND renderer', async () => {
-    const { app, win, mockGh, rpc, backendPort } = await launchWithMockGh()
+    const { app, win, mockGh, rpc } = await launchWithMockGh()
     try {
       const consoleErrors: string[] = []
       const pageErrors: Error[] = []
@@ -45,14 +45,14 @@ test.describe('#1170 — UI accept-button mutates canonical store via REST (no s
       })
       expect(deliverResp.status).toBe(200)
 
-      await seedTeamVerdicts(backendPort, ['designer'])
+      await seedTeamVerdicts(rpc, 1, ['designer'])
       const passResp = await rpc(
         'pass_desk_check',
         { number: 1, would_file_bug: false },
         'designer'
       )
       expect(passResp.status).toBe(200)
-      await seedTeamVerdicts(backendPort, ['designer', 'dev'])
+      await seedTeamVerdicts(rpc, 1, ['designer', 'dev'])
 
       await win.reload()
       await expect(win.locator('[data-test="board-region"]')).toBeVisible()

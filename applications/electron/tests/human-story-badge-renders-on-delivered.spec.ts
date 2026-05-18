@@ -8,7 +8,7 @@ import { seedTeamVerdicts } from './helpers/seed-evidence'
 
 test.describe('human-side E2E #476 — read-class — story badge', () => {
   test('delivered Feature renders the awaiting-owner badge', async () => {
-    const { app, win, mockGh, rpc, backendPort } = await launchWithMockGh()
+    const { app, win, mockGh, rpc } = await launchWithMockGh()
     try {
       const consoleErrors: string[] = []
       const pageErrors: Error[] = []
@@ -51,8 +51,7 @@ test.describe('human-side E2E #476 — read-class — story badge', () => {
       })
       expect(deliverResp.status).toBe(200)
 
-      const seedResp = await seedTeamVerdicts(backendPort, ['designer'])
-      expect(seedResp.status).toBe(201)
+      await seedTeamVerdicts(rpc, 1, ['designer'])
       const passResp = await rpc('pass_desk_check', { number: 1, would_file_bug: false }, 'designer')
       expect(passResp.status).toBe(200)
 

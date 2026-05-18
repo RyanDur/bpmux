@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { seedTeamVerdicts } from './helpers/seed-evidence'
 
 // #1127 sub-slice 2: replicate human-observes-* migration onto the
 // accept_story sibling. Setup walks create→start→deliver to get a
@@ -12,7 +13,7 @@ import { launchWithMockGh } from './helpers/launch'
 
 test.describe('human-side E2E #476 — observation-class — accept_story', () => {
   test('human observes ACCEPTED after accept_story across live-mutation-chain', async () => {
-    const { app, win, mockGh, rpc, backendPort } = await launchWithMockGh()
+    const { app, win, mockGh, rpc } = await launchWithMockGh()
     try {
       const consoleErrors: string[] = []
       const pageErrors: Error[] = []
@@ -58,25 +59,7 @@ test.describe('human-side E2E #476 — observation-class — accept_story', () =
       })
       expect(deliverResp.status).toBe(200)
 
-      const seedResp = await fetch(`http://127.0.0.1:${backendPort}/api/test/seed_messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [
-            {
-              from: 'designer',
-              text: 'verdict: substrate verified',
-              ts: new Date().toISOString()
-            },
-            {
-              from: 'dev',
-              text: 'verdict: substrate verified',
-              ts: new Date().toISOString()
-            }
-          ]
-        })
-      })
-      expect(seedResp.status).toBe(201)
+      await seedTeamVerdicts(rpc, 1, ['designer', 'dev'])
 
       const acceptResp = await rpc('accept_story', { number: 1, would_file_bug: false }, 'pm')
       expect(acceptResp.status).toBe(200)

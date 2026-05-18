@@ -13,7 +13,7 @@ import { seedTeamVerdicts } from './helpers/seed-evidence'
 
 test.describe('human-side E2E #499 — StoryBadge no nested-button', () => {
   test('delivered story renders + opens via click + keyboard without hydration warnings', async () => {
-    const { app, win, mockGh, rpc, backendPort } = await launchWithMockGh()
+    const { app, win, mockGh, rpc } = await launchWithMockGh()
     try {
       const consoleErrors: string[] = []
       const pageErrors: Error[] = []
@@ -56,7 +56,7 @@ test.describe('human-side E2E #499 — StoryBadge no nested-button', () => {
       })
       expect(deliverResp.status).toBe(200)
 
-      await seedTeamVerdicts(backendPort, ['designer'])
+      await seedTeamVerdicts(rpc, 1, ['designer'])
       const passResp = await rpc('pass_desk_check', { number: 1, would_file_bug: false }, 'designer')
       expect(passResp.status).toBe(200)
 

@@ -8,7 +8,7 @@ import { seedTeamVerdicts } from './helpers/seed-evidence'
 
 test.describe('human-side E2E #476 — direct-action — drill-in reject form', () => {
   test('reject button opens textarea + send is gated on non-empty trimmed note', async () => {
-    const { app, win, mockGh, rpc, backendPort } = await launchWithMockGh()
+    const { app, win, mockGh, rpc } = await launchWithMockGh()
     try {
       const consoleErrors: string[] = []
       const pageErrors: Error[] = []
@@ -50,8 +50,7 @@ test.describe('human-side E2E #476 — direct-action — drill-in reject form', 
       })
       expect(deliverResp.status).toBe(200)
 
-      const seedResp = await seedTeamVerdicts(backendPort, ['designer'])
-      expect(seedResp.status).toBe(201)
+      await seedTeamVerdicts(rpc, 1, ['designer'])
       const passResp = await rpc('pass_desk_check', { number: 1, would_file_bug: false }, 'designer')
       expect(passResp.status).toBe(200)
 
@@ -91,7 +90,7 @@ test.describe('human-side E2E #476 — direct-action — drill-in reject form', 
   })
 
   test('#498 native dialog migration: showModal opens form, escape closes + restores focus, cancel does NOT fire reject', async () => {
-    const { app, win, mockGh, rpc, backendPort } = await launchWithMockGh()
+    const { app, win, mockGh, rpc } = await launchWithMockGh()
     try {
       const consoleErrors: string[] = []
       const pageErrors: Error[] = []
@@ -124,7 +123,7 @@ test.describe('human-side E2E #476 — direct-action — drill-in reject form', 
         number: 1,
         verified_observation: 'Drove deliver so designer can pass desk-check next.'
       })
-      await seedTeamVerdicts(backendPort, ['designer'])
+      await seedTeamVerdicts(rpc, 1, ['designer'])
       await rpc(
         'pass_desk_check',
         { number: 1, would_file_bug: false },

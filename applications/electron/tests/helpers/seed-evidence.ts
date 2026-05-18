@@ -1,20 +1,38 @@
 /**
- * Helper to seed verdict-message evidence via /api/test/seed_messages
- * so workflow-gate evidence-check (#1385 / #1386) passes for tests
- * firing accept_story / pass_desk_check. The from-roles map to the
- * required_evidence_roles in the bundled-default workflow.toml.
+ * Helper to seed verdicts in the per-session `VerdictsStore` so the
+ * workflow-gate evidence-check passes for tests firing accept_story /
+ * pass_desk_check. #1407 swapped the data-source from chat-messages
+ * to the canonical VerdictsStore — this helper fires
+ * `submit_verdict` MCP-calls through the auth-gated `/api/rpc/`
+ * surface (same path the bridge uses), one per required role on the
+ * given story.
  */
+export type RpcFn = (
+  tool: string,
+  body: unknown,
+  agent?: string
+) => Promise<Response>
+
 export const seedTeamVerdicts = async (
-  backendPort: number,
-  roles: string[],
-  text = 'verdict: substrate verified'
-): Promise<Response> => {
-  const ts = new Date().toISOString()
-  return fetch(`http://127.0.0.1:${backendPort}/api/test/seed_messages`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      messages: roles.map((from) => ({ from, text, ts }))
-    })
-  })
+  rpc: RpcFn,
+  storyNumber: number,
+  roles: string[]
+): Promise<void> => {
+  for (const role of roles) {
+    const resp = await rpc(
+      'submit_verdict',
+      {
+        story_number: storyNumber,
+        verdict: 'verified',
+        substrate_grounding: `test-harness: ${role} verdict on #${storyNumber}`
+      },
+      role
+    )
+    if (resp.status !== 200) {
+      const text = await resp.text()
+      throw new Error(
+        `seedTeamVerdicts: submit_verdict for role=${role} on #${storyNumber} returned ${resp.status} — ${text}`
+      )
+    }
+  }
 }
