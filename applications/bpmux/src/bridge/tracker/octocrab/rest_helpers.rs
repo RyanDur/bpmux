@@ -1,20 +1,6 @@
-//! REST-handler-only convenience methods on `OctocrabStoryTracker`:
-//! `accept_story` / `reject_story` / `list_story_timeline` /
-//! `post_story_comment` / `list_stories` / `get_story_title`. These
-//! are used by the bridge's REST endpoints (and a few sister
-//! handlers) but are not part of the `StoryTracker` trait surface;
-//! callers reach them through the concrete type. Extracted to its
-//! own module per #1416 Slice 2 so the parent `octocrab/mod.rs`
-//! stays cohesion-bounded.
-
 use super::OctocrabStoryTracker;
 
 impl OctocrabStoryTracker {
-    /// Accept a delivered story: remove the `delivered` label, close
-    /// the issue. Mirrors the label/close sequence in
-    /// `tools_stories::handle_accept_story` but without the ws signal
-    /// side effects — the REST handler fires the board-invalidate
-    /// broadcast itself via the session.
     pub async fn accept_story(&self, number: u64) -> Result<(), String> {
         if let Err(e) = self
             .client
@@ -43,10 +29,6 @@ impl OctocrabStoryTracker {
             .map_err(Self::classify)
     }
 
-    /// Reject a delivered story: remove `delivered`, add `rejected`,
-    /// post the rejection note as a comment. Returns Err only when the
-    /// load-bearing comment post fails — label updates are best-effort
-    /// so a stale label doesn't hide a real rejection from the team.
     pub async fn reject_story(&self, number: u64, note: &str) -> Result<(), String> {
         if let Err(e) = self
             .client
@@ -84,13 +66,6 @@ impl OctocrabStoryTracker {
             .map_err(Self::classify)
     }
 
-    /// Fetch the issue's timeline: creation (as a "filed" event) plus
-    /// every GitHub issue event (labeled / unlabeled / closed / reopened
-    /// / commented / ...) in chronological order. Returns a condensed
-    /// JSON array — the renderer classifies events into lifecycle gates
-    /// (started, delivered, accepted, rejected, closed) from the raw
-    /// event + label combination. Serialisable through serde_json so
-    /// the REST handler can forward without re-deriving.
     pub async fn list_story_timeline(&self, number: u64) -> Result<Vec<serde_json::Value>, String> {
         let issue = self
             .client
@@ -151,10 +126,6 @@ impl OctocrabStoryTracker {
         Ok(out)
     }
 
-    /// Post a comment on a story. Thin wrapper around the trait method
-    /// for the REST handler's convenience (keeps the REST layer off
-    /// the StoryTracker trait so the FakeTracker doesn't need to stub
-    /// a new method).
     pub async fn post_story_comment(&self, number: u64, body: &str) -> Result<(), String> {
         self.client
             .issues(&self.owner, &self.repo)

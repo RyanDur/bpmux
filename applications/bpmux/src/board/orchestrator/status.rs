@@ -1,9 +1,3 @@
-//! Sync status: the observable health surface of `SyncOrchestrator`
-//! (last ingest/push timestamps, pending-event count, errors, drops,
-//! conflicts). Plus the transactional-closure record-* helpers that
-//! all status mutations route through (#1360 — single canonical
-//! lock-acquire site).
-
 use std::sync::Arc;
 use std::sync::Mutex;
 
@@ -22,13 +16,6 @@ pub struct SyncStatus {
     pub stale: bool,
     #[serde(default)]
     pub startup_fail: bool,
-    /// #1195: per-op count of currently-conflicted outbox entries.
-    /// Each drain tick re-classifies; a conflicted entry (server
-    /// state diverged externally between mutate-time and drain-time)
-    /// stays in the outbox + bumps this count for SyncStatusGlyph
-    /// state #5 (slice B) to render. Idempotent skips do NOT count
-    /// (they get dropped + diag-logged). Auto-resolved on next
-    /// drain tick when the divergent server state catches up.
     #[serde(default)]
     pub conflicts_pending: usize,
 }
@@ -63,11 +50,6 @@ pub fn is_startup_fail(last_ingest_at: Option<DateTime<Utc>>, last_error: Option
     last_ingest_at.is_none() && last_error.is_some()
 }
 
-/// Transactional-closure mutation over a `SyncStatus` behind an
-/// `Arc<Mutex<_>>`. Free-fn form so the standalone `record_*` /
-/// `mark_*` helpers below can route their lock-acquire through one
-/// canonical site instead of each holding its own. Per #1360: lock-
-/// scope bounded + visible at the call-site, not scattered.
 pub(super) fn with_status_mut<R>(
     status: &Arc<Mutex<SyncStatus>>,
     f: impl FnOnce(&mut SyncStatus) -> R,
@@ -129,10 +111,6 @@ pub(super) fn record_dropped(status: &Arc<Mutex<SyncStatus>>, story_number: u64,
     });
 }
 
-/// #1195: write the count of currently-conflicted outbox entries
-/// into SyncStatus. Each drain tick re-runs the classifier on
-/// every pending entry, so this fully reflects the current outbox
-/// state — no incremental accumulation across ticks.
 pub(super) fn record_conflicts_pending(status: &Arc<Mutex<SyncStatus>>, count: usize) {
     with_status_mut(status, |s| {
         s.conflicts_pending = count;

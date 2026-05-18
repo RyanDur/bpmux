@@ -1,13 +1,3 @@
-//! GH-issue JSON-shape helpers used by sister `octocrab` sub-modules
-//! to serialise an `octocrab::models::issues::Issue` into the
-//! board-store-friendly envelope that
-//! `board::adapters::github::decode_story_metadata` consumes. The
-//! decoder reads `gh_state` + `labels` and derives canonical
-//! `Story.state` via the single classifier `state_from_labels` per
-//! Ryan's 2026-04-27 boundary-principle ruling. These helpers are
-//! the boundary OUT — they serialise raw GH facts; no state
-//! classification happens here.
-
 pub(super) fn gh_state_label(state: &octocrab::models::IssueState) -> &'static str {
     match state {
         octocrab::models::IssueState::Open => "open",

@@ -1,8 +1,3 @@
-//! `impl StoryTracker for OctocrabStoryTracker` — the trait-surface
-//! wiring that the bridge handlers route their issue mutations
-//! through. Extracted to its own module per #1416 Slice 2 so the
-//! parent `octocrab/mod.rs` stays cohesion-bounded.
-
 use crate::bridge::tracker::{StoryTracker, WorkflowRunEntry};
 
 use super::OctocrabStoryTracker;
@@ -95,9 +90,6 @@ impl StoryTracker for OctocrabStoryTracker {
         self.fetch_board_stories_since(None).await
     }
 
-    /// #403: fetch one story's full detail. Returns `Ok(None)` when
-    /// the issue doesn't exist (GitHub 404) so handlers can map to
-    /// a typed not-found response; `Err` for any other failure.
     async fn get_story(&self, number: u64) -> Result<Option<serde_json::Value>, String> {
         match self
             .client

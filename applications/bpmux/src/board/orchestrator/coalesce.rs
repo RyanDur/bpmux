@@ -1,13 +1,3 @@
-//! Iteration-label coalescence + state-label staleness helpers.
-//!
-//! `coalesce_iteration_label_events` collapses sequential
-//! TagAdded/TagRemoved events for the same iteration-prefix into a
-//! single keep-the-latest pair before they're pushed to the outbox,
-//! so a story that bounces between iterations doesn't accumulate
-//! N noisy events. `stale_state_labels_for` returns the labels that
-//! should be removed when a story transitions state (called from the
-//! reap-stale-labels flow inside `accept`/`reject`/etc.).
-
 use std::collections::VecDeque;
 
 use crate::board::domain::{Story, StoryState};

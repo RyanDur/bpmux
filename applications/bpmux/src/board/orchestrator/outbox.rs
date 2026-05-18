@@ -1,12 +1,3 @@
-//! Outbox persistence: on-disk shape of pending mutation events,
-//! plus load/persist helpers used by `SyncOrchestrator` to keep the
-//! pending-queue durable across restarts.
-//!
-//! The on-disk format is an untagged-enum bridge between the new
-//! wrapped form (`{event, pre_state, ...}`) and the legacy bare-
-//! BoardEvent form so existing outbox files keep loading. New writes
-//! always use the wrapped form.
-
 use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 
@@ -29,15 +20,6 @@ pub fn default_outbox_path() -> Result<PathBuf, std::io::Error> {
     Ok(base.join(".bpmux").join("board-outbox.json"))
 }
 
-/// #1195: outbox-entry on-disk shape. Untagged enum lets us read
-/// both the new wrapped form (`{"event":{...},"pre_state":...}`)
-/// and the legacy bare-BoardEvent form (`{"StoryCreated":{...}}`)
-/// from the same file. New writes always use the wrapped form;
-/// legacy entries get pre_state: None on read (degrade to
-/// no-conflict-detection — the classifier returns None when
-/// pre_state is missing). Both variants boxed so the enum stays
-/// pointer-sized (clippy::large_enum_variant — `Story` inside
-/// QueuedEvent makes the variant fat).
 #[derive(Deserialize)]
 #[serde(untagged)]
 enum OutboxEntryOnDisk {

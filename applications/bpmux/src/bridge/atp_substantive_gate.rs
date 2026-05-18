@@ -1,25 +1,7 @@
-//! #1362 desk-check substrate-gate: validates the body's named ATP
-//! path(s) contain substantive assertions, not empty stubs.
-//!
-//! Fires from `handle_pass_desk_check` before the label-mutation
-//! chain. Today's #1306 + #1335 catch surfaced the body-vs-impl ATP-
-//! path-stub class: a story body cites an ATP file path; the file
-//! exists but contains zero assertions. Designer-desk-check passes
-//! manually; PM-accept audit catches the gap at acceptance instead.
-//!
-//! Substrate-enforce > discipline-only canon: the gate cheaply
-//! prevents the class at desk-check fire, not at accept-audit.
-
 use std::path::PathBuf;
 
-/// Source-file extensions the gate inspects for assertion-content.
-/// Other ATP path types (markdown audit-logs, docs, etc.) are
-/// implicitly accepted — the gate doesn't gate on non-source.
 const SOURCE_EXTENSIONS: &[&str] = &["rs", "tsx", "ts", "js", "jsx"];
 
-/// Substring markers that count as "this file has assertions."
-/// At least one of these must appear in a source-ATP file for the
-/// gate to consider it substantive.
 const ASSERTION_MARKERS: &[&str] = &[
     "expect(",
     "assert_eq!",
@@ -34,16 +16,6 @@ const ASSERTION_MARKERS: &[&str] = &[
     ".toHaveBeenCalled",
 ];
 
-/// Parse ATP paths from a story body. Per #1419, scope path-extraction
-/// to the body's `## Acceptance test path` section only — decompose-
-/// class stories naturally name god-files in user-job prose, and
-/// scanning whole-body false-positive-flags those narrative mentions
-/// as candidate ATP-paths (which, post-decompose, are composition-
-/// shell files with zero assertion markers). When no section header
-/// is found, returns an empty Vec (no paths to validate); the gate's
-/// catch-class for stub-ATP relies on the section explicitly naming
-/// a source-file path, so the absence of the section means no ATP-
-/// shape to verify.
 pub(super) fn extract_atp_paths(body: &str) -> Vec<String> {
     let Some(section) = extract_atp_section(body) else {
         return Vec::new();
@@ -64,14 +36,6 @@ pub(super) fn extract_atp_paths(body: &str) -> Vec<String> {
     paths
 }
 
-/// Find the body slice between the `## Acceptance test path` header
-/// and the next markdown header (`##` or `---`). Returns `None` when
-/// the header isn't present. If multiple `## Acceptance test path`
-/// sections exist (some bodies repeat the heading), returns the
-/// LAST occurrence — the section closest to the body footer is the
-/// canonical ATP (matches the convention `compose_story_body` uses
-/// when stitching dev-supplied bodies with the auto-appended ATP
-/// section).
 fn extract_atp_section(body: &str) -> Option<&str> {
     const HEADER: &str = "## Acceptance test path";
     let header_start = body.rfind(HEADER)?;
@@ -90,21 +54,13 @@ fn has_source_extension(path: &str) -> bool {
         .any(|ext| path.ends_with(&format!(".{ext}")) || path.ends_with(&format!(".test.{ext}")))
 }
 
-/// Verdict per ATP path inspection.
 #[derive(Debug, Clone, PartialEq)]
 pub(super) enum AtpVerdict {
-    /// File found and contains at least one assertion marker.
     Substantive,
-    /// File found but contains zero assertion markers — stub.
     Stub,
-    /// File not found at any candidate root — gate is lenient and
-    /// treats path-resolution failure as not-blocking. The caller
-    /// can choose to surface this as a warning.
     NotFound,
 }
 
-/// Resolve a body-named ATP path against candidate workspace roots
-/// + return the verdict on assertion-content.
 pub(super) fn classify_atp_path(path: &str, candidate_roots: &[PathBuf]) -> AtpVerdict {
     for root in candidate_roots {
         let resolved = root.join(path);
@@ -125,8 +81,6 @@ fn has_assertion(contents: &str) -> bool {
     ASSERTION_MARKERS.iter().any(|m| contents.contains(m))
 }
 
-/// Default candidate roots — walks up from `current_dir` looking for
-/// a workspace `Cargo.toml`. Falls back to `current_dir` itself.
 pub(super) fn default_candidate_roots() -> Vec<PathBuf> {
     let mut roots = Vec::new();
     if let Ok(cwd) = std::env::current_dir() {
@@ -150,10 +104,6 @@ pub(super) fn default_candidate_roots() -> Vec<PathBuf> {
     roots
 }
 
-/// Top-level gate API. Returns `Err` with a clear message when the
-/// body cites a source-file ATP that exists but contains no
-/// assertions. Lenient on NotFound (path-resolution failures don't
-/// block — separate concern).
 pub(super) fn verify_atp_substantive(body: &str) -> Result<(), String> {
     verify_atp_substantive_with_roots(body, &default_candidate_roots())
 }
@@ -181,17 +131,6 @@ pub(super) fn verify_atp_substantive_with_roots(
     ))
 }
 
-/// #1412 preventive sister to `verify_atp_substantive`: fires at
-/// `create_story` / `edit_story` time (before pickup), stricter than
-/// the desk-check gate. Both `NotFound` and `Stub` block — the goal is
-/// to refuse ATP-divergence at filing-time so it never reaches
-/// pickup. Lenient `verify_atp_substantive` (desk-check time) treats
-/// NotFound as not-blocking because the file might appear between
-/// filing and pickup; the pre-filing gate has no such grace.
-///
-/// Returns a structured error so the MCP handler can serialise
-/// `{ kind, path, message }` for the caller — distinct from the
-/// human-readable desk-check error string.
 #[derive(Debug, Clone, PartialEq)]
 pub(super) struct AtpPreFilingError {
     pub kind: &'static str,

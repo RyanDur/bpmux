@@ -1,17 +1,3 @@
-//! Octocrab-backed `StoryTracker` implementation + sister tracker
-//! plumbing. The sole production tracker post-#320 (the previous
-//! gh-CLI subprocess fallback was retired); the bridge fails-loud
-//! at startup when env config is insufficient instead of falling
-//! back to subprocess.
-//!
-//! Decomposed in #1416 Slice 2 along axis-of-change boundaries:
-//! - this `mod.rs` holds the `OctocrabStoryTracker` struct +
-//!   env-decisioning + REST mutation helpers + the
-//!   `impl StoryTracker` block;
-//! - sister `conditional` holds ETag-aware fetch methods;
-//! - sister `ci` holds GH-Actions CI-axis methods
-//!   (annotations, failed-test extraction, rerun).
-
 mod ci;
 mod conditional;
 mod json_shape;
@@ -25,14 +11,6 @@ use super::trait_def::{
     log_labels_fetch_failure,
 };
 
-/// Octocrab-backed StoryTracker. Issues HTTP requests directly
-/// to GitHub's REST API. Sole production tracker — the former
-/// `GhTracker` subprocess fallback was retired in #320 to unify
-/// on a single backend + drop gh CLI runtime dependency.
-///
-/// Constructed from an authenticated `Octocrab` client + owner/repo
-/// strings. Production path builds it from `GH_TOKEN`/`GITHUB_TOKEN`
-/// + `BPMUX_REPO` env vars; see `OctocrabStoryTracker::from_env`.
 #[derive(Clone)]
 pub struct OctocrabStoryTracker {
     client: octocrab::Octocrab,
@@ -47,18 +25,6 @@ impl OctocrabStoryTracker {
     }
 }
 
-/// Result of inspecting env vars to decide whether we can build an
-/// `OctocrabStoryTracker`. Separates env-decisioning (pure, testable)
-/// from the octocrab client build (impure, requires network config).
-/// `Octocrab` is a successful selection; `Fallback` names WHY the
-/// bridge startup will fail-loud (#320: no more subprocess fallback).
-///
-/// `OctocrabWithBaseUrl` (#482) is the cross-bridge-substrate path:
-/// when `BPMUX_GH_BASE_URL` is set the bridge subprocess points at
-/// a test-controlled MockServer instead of api.github.com, enabling
-/// multiple bridges to share a single mock GitHub source-of-truth
-/// for cross-bridge mutation-propagation tests. No GH_TOKEN required
-/// since httpmock doesn't validate auth.
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum TrackerSelection {
     Octocrab {
@@ -74,29 +40,13 @@ pub(crate) enum TrackerSelection {
     Fallback(FallbackReason),
 }
 
-/// Named reasons `OctocrabStoryTracker::from_env` returns `None`.
-/// Pre-#320 these were "fall back to gh CLI" branches; post-#320
-/// they're "fail-loud the bridge can't start" — the enum name +
-/// variant names stuck for diff continuity with #298. Diag logs
-/// cite the specific reason so the user sees WHICH env var is
-/// missing.
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum FallbackReason {
-    /// `BPMUX_REPO` env var missing entirely.
     NoRepo,
-    /// `BPMUX_REPO` present but doesn't match "owner/name" format
-    /// (no `/` separator or empty segments).
     MalformedRepo,
-    /// Neither `GH_TOKEN` nor `GITHUB_TOKEN` set. Octocrab can't
-    /// auth without one.
     NoToken,
 }
 
-/// Pure env-decisioning. Accepts a closure reader so tests can
-/// inject arbitrary env-var maps without mutating the process env
-/// (which would require a global lock for parallel test safety —
-/// existing `tracker_tests.rs` uses that pattern for log-diag,
-/// but for pure selection-logic a closure is lighter).
 pub(crate) fn select_from_env<F>(get: F) -> TrackerSelection
 where
     F: Fn(&str) -> Option<String>,
@@ -128,13 +78,6 @@ where
 }
 
 impl OctocrabStoryTracker {
-    /// Build from env vars. Returns None when required auth/repo
-    /// config is missing — bridge startup (run_bridge) fails loud in
-    /// that case (#320; pre-#320 this was a fallback path).
-    ///
-    /// Logs the specific missing-env reason to diag on None so the
-    /// user sees WHICH var needs setting (NoRepo / MalformedRepo /
-    /// NoToken). Pattern preserved from #298's silent-swap diagnosis.
     pub fn from_env() -> Option<Self> {
         match select_from_env(|k| std::env::var(k).ok()) {
             TrackerSelection::Octocrab { owner, repo, token } => {
@@ -172,13 +115,6 @@ impl OctocrabStoryTracker {
         }
     }
 
-    /// Build a tracker pointed at an arbitrary base URL instead of
-    /// `https://api.github.com`. Contract tests spin up an httpmock
-    /// server and pass its URL here so the tracker's HTTP calls hit
-    /// the mock without any real-network side effects. Also reachable
-    /// from production via `from_env` when `BPMUX_GH_BASE_URL` is set
-    /// (#482 cross-bridge substrate); the runtime path stays
-    /// api.github.com when the env var is absent.
     pub(crate) fn with_base_url(
         base_url: &str,
         owner: String,

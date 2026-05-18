@@ -96,23 +96,9 @@ pub trait RefreshDriver: Send + Sync {
     fn create_story(&self, title: String, body: String) -> BoxedFuture<'_, Result<u64, SyncError>>;
     fn story(&self, number: u64) -> Option<Story>;
     fn all_stories(&self) -> Vec<Story>;
-    /// Hand back the canonical BoardStore so handlers that need
-    /// `&Arc<BoardStore>` (the read tools predating the trait) can
-    /// share the same storage the orchestrator mutates. Added in #516
-    /// slice 4 so server-side RPC dispatch can reuse the existing
-    /// read handlers without forking them.
     fn store(&self) -> Arc<BoardStore>;
-    /// Replace a story's body at the source-of-truth (#530). Bridges
-    /// route body-edits through this trait method instead of using
-    /// `gh issue edit` directly so the edit is observable to bpmux's
-    /// BoardStore + WS broadcast cycle.
     fn update_body(&self, number: u64, body: String) -> BoxedFuture<'_, Result<(), SyncError>>;
 
-    /// Replace a story's title at the source-of-truth (#1279). Mirrors
-    /// `update_body` at the title-axis: pushes the new title through
-    /// the adapter, then applies the returned Story to the canonical
-    /// BoardStore via `BoardEvent::StoryRefreshed` so callers don't
-    /// need a follow-up `refresh_story(N)` to observe the rename.
     fn update_title(&self, number: u64, title: String) -> BoxedFuture<'_, Result<(), SyncError>>;
 
     fn ci_state(&self) -> Option<crate::workflow::CiSnapshot> {
@@ -171,20 +157,6 @@ impl RaceWindowBarrier {
     }
 }
 
-/// #1195: outbox-entry wrapper carrying the pre-mutation snapshot
-/// captured at queue-time. Required for divergence detection at
-/// drain-time: comparing the event's intended mutation to the
-/// canonical store's CURRENT state always says "already applied"
-/// because `mutate()` applies locally before the outbox push (see
-/// `feedback_mutate_sync_breaks_drain_time_idempotent_check`). The
-/// pre_state lets the classifier ask "did the world change between
-/// when I queued this and when I'm about to push it?"
-///
-/// `pre_state: None` means: legacy outbox entry from before #1195,
-/// OR the story didn't exist in the store at queue-time (e.g.
-/// pre-ingest). Either way, the classifier degrades to
-/// no-conflict-detection on those entries (returns None / pushes
-/// normally).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QueuedEvent {
     #[serde(default)]
@@ -192,10 +164,6 @@ pub struct QueuedEvent {
     pub event: BoardEvent,
     #[serde(default)]
     pub pre_state: Option<Story>,
-    /// #1195: classification carried-forward from prior drain tick
-    /// so auto-resolve can detect "was conflict, now not". Reset
-    /// every tick by re-running classify_conflict against the
-    /// current canonical state.
     #[serde(default)]
     pub last_classification: Option<ConflictKind>,
 }
@@ -235,15 +203,7 @@ pub struct SyncOrchestrator<A: SourceAdapter + 'static> {
     pub(super) status: Arc<Mutex<SyncStatus>>,
     pub(super) pending: Arc<Mutex<VecDeque<QueuedEvent>>>,
     pub(super) outbox_path: Option<PathBuf>,
-    /// #1289 Phase-1 step 4: Storage-trait sink for outbox persistence.
-    /// When `Some`, used in preference to `outbox_path`. Set via
-    /// `with_storage` constructor (sister of `with_outbox_path`).
     pub(super) storage: Option<Arc<dyn crate::session::storage::Storage>>,
-    /// #1382: constructor-injected LabelCodec. Defaults to GhLabelCodec
-    /// via the existing constructors (preserves 30+ call-site API);
-    /// tests can swap a stub via the `with_codec` builder method to
-    /// drive iteration_prefix_class / coalesce_iteration_label_events
-    /// against arbitrary label syntax.
     pub(super) codec: Arc<dyn crate::board::label_codec::LabelCodec + Send + Sync>,
     pub(super) next_mutation_id: AtomicU64,
     pub(super) action_tx:
@@ -285,12 +245,6 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         self
     }
 
-    /// #1382: builder for stub-codec injection at test-time. Returns
-    /// the same orchestrator with the codec field replaced; preserves
-    /// every other field including pending-state from
-    /// `with_outbox_path` / `with_storage` constructors. Production
-    /// code never calls this — the default GhLabelCodec is the only
-    /// runtime codec.
     pub fn with_codec(
         mut self,
         codec: Arc<dyn crate::board::label_codec::LabelCodec + Send + Sync>,
@@ -325,11 +279,6 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         })
     }
 
-    /// #1289 Phase-1 step 4: construct with Storage-trait sink for
-    /// outbox persistence. Sister of `with_outbox_path` at storage-DI
-    /// axis. When this constructor is used, `persist_outbox` routes
-    /// through `storage.save_outbox` instead of `persist_outbox_to_disk`,
-    /// and initial pending events come from `storage.load_outbox`.
     pub fn with_storage(
         store: Arc<BoardStore>,
         adapter: Arc<A>,
@@ -366,9 +315,6 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
 
     pub(super) fn persist_outbox(&self) {
         let snapshot: Vec<QueuedEvent> = self.with_pending(|p| p.iter().cloned().collect());
-        // #1289 Phase-1 step 4: prefer Storage-trait sink when set
-        // (with_storage construction); fall back to outbox_path for
-        // backward-compat with `with_outbox_path`-constructed instances.
         if let Some(storage) = self.storage.as_ref() {
             if let Err(e) = storage.save_outbox(&snapshot) {
                 crate::session::diag::log_diag(&format!(
@@ -389,20 +335,11 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         Arc::clone(&self.status)
     }
 
-    /// Transactional-closure read over the pending-events deque. The
-    /// std::sync::Mutex is locked once at entry (with poison recovery)
-    /// and dropped at closure-return, so the lock-scope is visibly
-    /// bounded at the call-site instead of spanning the enclosing fn
-    /// body.
     pub(super) fn with_pending<R>(&self, f: impl FnOnce(&VecDeque<QueuedEvent>) -> R) -> R {
         let p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
         f(&p)
     }
 
-    /// Transactional-closure mutation over the pending-events deque.
-    /// Same lock-scope-bounded contract as `with_pending` for read-write
-    /// access. Per Ryan-canon "prefer immutability" (#1360): mutation
-    /// scope is bounded + visible at the call-site, not scattered.
     pub(super) fn with_pending_mut<R>(&self, f: impl FnOnce(&mut VecDeque<QueuedEvent>) -> R) -> R {
         let mut p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
         f(&mut p)
@@ -748,9 +685,6 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         let adapter = Arc::clone(&self.adapter);
         let store = Arc::clone(&self.store);
         Box::pin(async move {
-            // #1151: capture post-update Story from the adapter and
-            // apply it to the canonical store so callers don't need
-            // a follow-up `refresh_story(N)` to observe the new body.
             let story = adapter.update_body(number, &body).await?;
             store.apply(&BoardEvent::StoryRefreshed {
                 meta: cache_fill_meta(),

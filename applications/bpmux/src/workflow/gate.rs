@@ -91,8 +91,6 @@ pub fn check_ci_green(
     }
 }
 
-/// A minimal slice of a channel message — only the fields the gate
-/// validator needs to attribute a verdict to a role within a window.
 #[derive(Debug, Clone)]
 pub struct EvidenceMessage {
     pub from_role: String,
@@ -143,11 +141,6 @@ pub fn check_role_allowed(transition: &Transition, actor_role: &str) -> Result<(
     }
 }
 
-/// Refuse a transition fire when the story is already in the
-/// transition's target state — covers the concurrent-fire race where
-/// a second fire arrives after the first has mutated state to the
-/// target. The error cites the from-state as `expected_state` so the
-/// caller can see what state the transition expected.
 pub fn check_target_state_valid(
     transition: &Transition,
     current_state: &str,
@@ -162,8 +155,6 @@ pub fn check_target_state_valid(
     Ok(())
 }
 
-/// Lookup helper that returns the structured TransitionUndefined
-/// error when no matching transition exists for (id, class).
 pub fn resolve_transition<'a>(
     workflow: &'a WorkflowConfig,
     transition_id: &str,
@@ -176,10 +167,6 @@ pub fn resolve_transition<'a>(
         })
 }
 
-/// One row of the story's prior gate-fire history — the slice of
-/// `GateComment` the self-mutation guard needs to attribute prior
-/// fires to actors. Caller maps `board::domain::GateComment` →
-/// PriorFire so the validator stays domain-independent.
 #[derive(Debug, Clone)]
 pub struct PriorFire {
     pub gate_id: String,

@@ -1,28 +1,6 @@
-//! CI-related GH-API methods on `OctocrabStoryTracker`:
-//! `fetch_first_failure_annotation` (for #397 quota-vs-failure
-//! classification), `fetch_failed_tests_for_run` (#1174 structured
-//! per-test failure records), and `rerun_failed_jobs` (#1222
-//! retrigger). Extracted to its own module per #1416 Slice 2 so the
-//! parent `octocrab` module stays cohesion-bounded.
-
 use super::OctocrabStoryTracker;
 
 impl OctocrabStoryTracker {
-    /// Fetch the first annotation message for the primary check-run
-    /// of a failed workflow run. Returns None on any error path
-    /// (logged via diag) — annotations are advisory for
-    /// classification, not load-bearing for functionality. Worst-
-    /// case: we miss the quota-exhausted distinction and classify
-    /// as generic Red, which is the pre-#397 behavior.
-    ///
-    /// Two HTTP calls per failed run:
-    ///   1. /actions/runs/{id}/jobs → primary job's check_run_url
-    ///   2. GET that check_run_url → output.annotations_url → fetch
-    ///      first annotation message
-    ///
-    /// Cost budget: only fires on failure path, which is transient
-    /// in healthy state; GitHub rate limit (5000/hr authed) has
-    /// substantial headroom for realistic polling cadences.
     pub(super) async fn fetch_first_failure_annotation(&self, run_id: u64) -> Option<String> {
         #[derive(serde::Deserialize)]
         struct Job {

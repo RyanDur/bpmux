@@ -57,11 +57,6 @@ fn tag_from_label_string(s: &str) -> Option<Tag> {
     }
 }
 
-/// On `BoardEvent::TagAdded`, keep `Story.raw_labels` and the
-/// label-derived `parent_epic` field in sync with the broadcast
-/// label-set. (#1299 retired the `iteration_id` axis; #1301 retired
-/// `icebox_unified`. Iteration membership is now positional via
-/// `iteration-{Theme}.{N}` labels on member stories.)
 fn sync_raw_labels_on_tag_added(story: &mut Story, label: &str) {
     if !story.raw_labels.iter().any(|l| l == label) {
         story.raw_labels.push(label.to_string());
@@ -139,11 +134,6 @@ impl BoardStore {
         Ok(())
     }
 
-    /// #1289 Phase-1 step 2: load via Storage trait instead of path.
-    /// Sister of `load_from_disk` but routes through the Storage
-    /// abstraction so tests can inject `MemoryStorage` (zero disk I/O).
-    /// Production behavior preserved: `FileStorage::load_board_snapshot`
-    /// resolves the same path as `default_store_path()` at call-time.
     pub fn load_from_storage(
         storage: &dyn crate::session::storage::Storage,
     ) -> Result<Self, PersistError> {
@@ -155,8 +145,6 @@ impl BoardStore {
         Ok(store)
     }
 
-    /// #1289 Phase-1 step 2: persist via Storage trait instead of path.
-    /// Sister of `persist_to_disk`.
     pub fn persist_to_storage(
         &self,
         storage: &dyn crate::session::storage::Storage,
@@ -183,14 +171,6 @@ impl BoardStore {
         self.dirty.store(true, Ordering::Release);
     }
 
-    /// Remove a story from the canonical store. Returns the removed
-    /// Story when it existed; None when it wasn't present.
-    ///
-    /// Used by the orchestrator's post-ingest purge to drop persisted
-    /// stories that the adapter's ingest filter declared deleted
-    /// (e.g., #1418 retired-empty iterations that landed in storage
-    /// before the filter shipped + hydrate at boot before the next
-    /// ingest tick).
     pub fn remove(&self, number: u64) -> Option<Story> {
         let removed = self
             .stories
@@ -211,32 +191,6 @@ impl BoardStore {
         self.event_tx.receiver_count()
     }
 
-    /// Apply a `BoardEvent` to the canonical store.
-    ///
-    /// **Fire-ordering invariant (#1282)**: `event_tx.send` fires BEFORE
-    /// the write-lock acquires and mutates the store, in this exact
-    /// order within this function. Today's #1274 root cause class: a
-    /// state-mutation path that committed without firing the event,
-    /// leaving downstream listeners (close_iteration promote-batch
-    /// scan, iteration-label membership scan) unable to detect the
-    /// transition. The pre-commit ordering ensures
-    /// that any observer running synchronously between the send and the
-    /// write-lock acquire (e.g., the `#[cfg(test)] test_post_send_hook`)
-    /// sees the pre-mutation store-state; the deterministic-ordering
-    /// regression test installs such a hook to pin the invariant.
-    ///
-    /// `BoardStore::apply` is the single chokepoint for every mutation
-    /// in the canonical mutation chain (bridge handlers →
-    /// `RefreshDriver::mutate_sync` → `SyncOrchestrator::mutate` →
-    /// `BoardStore::apply`). Any mutation that goes through this fn
-    /// inherits the invariant; any mutation that bypasses this fn
-    /// violates the invariant and must be routed through here per
-    /// `feedback_canonical_mutation_chain_through_orchestrator`.
-    ///
-    /// Sister-invariant for non-state mutations (`TagAdded`, `TagRemoved`,
-    /// `ParentEpicSet`/`Unset`, `StoryCreated`, `StoryClosed`/`Reopened`,
-    /// `LabelsRefreshed`, etc.): same pre-commit fire-ordering applies
-    /// since the same code path serves all events.
     pub fn apply(&self, event: &BoardEvent) {
         let _ = self.event_tx.send(event.clone());
         #[cfg(test)]
@@ -395,12 +349,6 @@ impl BoardStore {
                     existing.raw_labels = labels.clone();
                 }
             }
-            // #1195: ConflictDetected/ConflictResolved are
-            // audit-trail-only events. The conflict-pending count
-            // lives on SyncStatus (drain_once writes it); no
-            // canonical-store-level Story-field updates needed.
-            // Subscribers (TUI, renderer) observe these via the
-            // event-broadcast channel + can derive UI hints.
             BoardEvent::ConflictDetected { .. } | BoardEvent::ConflictResolved { .. } => {}
         }
         drop(w);

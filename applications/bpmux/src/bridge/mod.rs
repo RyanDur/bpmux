@@ -1,10 +1,3 @@
-//! Channel bridge: stdio MCP server that forwards to bpmux's WebSocket endpoint.
-//!
-//! Claude Code spawns this as a subprocess. It connects to a running bpmux instance
-//! via WebSocket and bridges messages bidirectionally:
-//!   - bpmux messages → Claude Code channel notifications (via stdout)
-//!   - Claude Code tool calls → bpmux messages (via WebSocket)
-
 use std::sync::Arc;
 
 use futures::{SinkExt, StreamExt};
@@ -54,11 +47,6 @@ pub(crate) use dispatch::{
 #[cfg(test)]
 pub(crate) mod test_fixtures;
 
-/// Public re-export so the transport layer can fire the same board-
-/// invalidate marker that MCP bridge tools use (#313). Keeping one
-/// constant means the TUI event handler stays a single branch — no
-/// separate matching paths for MCP-originated vs REST-originated
-/// invalidates.
 pub use tools::VIEW_BACKLOG_MARKER;
 pub use tools_stories::BOARD_INVALIDATE_MARKER;
 pub use tools_stories::SYNC_STATUS_UPDATE_MARKER;
@@ -101,13 +89,6 @@ impl BridgeServer {
     }
 }
 
-/// Validate a meta payload against the Claude Code channel contract.
-///
-/// Returns Err if any value is null. Claude Code v2.1.109+ rejects
-/// notifications with null meta values, breaking the MCP stdio pipe
-/// entirely (silent on v2.1.92, loud on later versions). This check
-/// fails loudly at the boundary so we catch our own contract violations
-/// before they cross into a system we don't control.
 pub(super) fn validate_meta(
     meta: &serde_json::Map<String, serde_json::Value>,
 ) -> Result<(), String> {
@@ -121,17 +102,6 @@ pub(super) fn validate_meta(
     Ok(())
 }
 
-/// Build the `meta` payload for a channel notification.
-///
-/// Optional fields are OMITTED (not sent as null) when absent. This matters
-/// because:
-/// - The MCP channel spec treats meta entries as tag attributes — null isn't a valid attribute
-/// - Claude Code v2.1.109+ rejects notifications with null meta values outright
-/// - Presence-as-signal semantics: "no addressee" (key omitted) means broadcast attention,
-///   whereas "addressee: null" could be misread as "explicitly addressed to nobody"
-///
-/// Core fields (from/ts/channel/source) are always present. The two optional
-/// fields (addressee/message_type) are only included when non-None.
 pub(super) fn build_notification_meta(
     from: &str,
     ts: &str,
@@ -231,7 +201,6 @@ async fn run_ws_connection(
                 continue;
             }
         };
-        // Surface server-side errors so silent drops stop being silent.
         if let ServerMessage::Error { ref reason } = msg {
             eprintln!("Bridge: server rejected message: {reason}");
             continue;
@@ -260,7 +229,6 @@ async fn run_ws_connection(
                 continue;
             }
 
-            // Only deliver messages relevant to this agent
             let current_name = name.lock().await;
             let relevant = match &to {
                 None => true,
@@ -296,9 +264,6 @@ async fn run_ws_connection(
                 addressee.as_deref(),
                 message_type.as_deref(),
             );
-            // Boundary validator: fail loudly if our payload violates the
-            // Claude Code contract, rather than silently shipping it and
-            // watching the MCP pipe crash.
             if let Err(violation) = validate_meta(&meta) {
                 eprintln!("Bridge: CONTRACT VIOLATION on outbound notification: {violation}");
                 continue;

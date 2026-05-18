@@ -1,14 +1,3 @@
-//! Mutate + drain implementations on `SyncOrchestrator`.
-//!
-//! `mutate` enqueues a `BoardEvent` to the pending-outbox after
-//! applying it to the canonical store + capturing pre_state for
-//! drain-time conflict classification (#1195). `drain_once` walks
-//! the outbox in order, classifying each entry, and either pushes
-//! through the adapter, drops as idempotent-skip, or leaves a
-//! divergent entry in place for slice-B operator resolution.
-//! `drain_one_by_id` is the targeted variant used by the
-//! action-dispatcher's per-mutation drain task.
-
 use std::sync::atomic::Ordering;
 
 use crate::board::events::BoardEvent;
@@ -22,13 +11,6 @@ use super::{
 };
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
-    /// Enqueue an event to the pending-outbox after applying it
-    /// locally. Captures `pre_state` BEFORE the store apply so
-    /// drain-time can detect external mutations that arrived between
-    /// mutate-time and drain-time — without this snapshot,
-    /// event-vs-current-store at drain-time always reads "already
-    /// applied" because the local apply ran first
-    /// (`feedback_mutate_sync_breaks_drain_time_idempotent_check`).
     pub fn mutate(&self, event: BoardEvent) -> Result<(), SyncError> {
         let id = MutationId(self.next_mutation_id.fetch_add(1, Ordering::SeqCst));
         let pre_state = self.store.story(event.story_number());
@@ -132,13 +114,6 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         });
     }
 
-    /// Walk the outbox by index (not pop-from-front) so a divergent
-    /// entry can stay in place while non-conflicting entries behind
-    /// it continue to drain — bulk-batch partial-conflict semantics
-    /// per #1163 falsifier-c. Each tick re-classifies every entry
-    /// against the current canonical state; previously-conflicted
-    /// entries that now classify as compatible emit ConflictResolved
-    /// so the audit trail records the auto-clear.
     pub async fn drain_once(&self) -> Result<usize, SyncError> {
         let mut drained = 0usize;
         let mut failures = 0usize;

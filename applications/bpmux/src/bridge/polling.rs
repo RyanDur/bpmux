@@ -1,11 +1,3 @@
-//! Background polling loops for the bridge: ingest (re-fetch story
-//! metadata from source-of-truth), hydration (load story bodies +
-//! revalidate via ETag), and drain (push pending mutations to source).
-//!
-//! Each loop has its own cancellable variant taking a CancellationToken
-//! and a test-only un-cancellable shim. Intervals come from env-var
-//! helpers so production cadence and test cadence are independent.
-
 use std::sync::Arc;
 
 #[cfg(test)]

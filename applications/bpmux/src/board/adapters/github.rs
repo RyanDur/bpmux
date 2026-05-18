@@ -201,10 +201,6 @@ impl SourceAdapter for GitHubSourceAdapter {
             BoardEvent::StateTransitioned {
                 number, new_state, ..
             } => {
-                // #1151: state-label add returns the post-mutation
-                // labels list; surface it as LabelsRefreshed so the
-                // reducer re-derives `state` via `state_from_labels`
-                // and refreshes `tags` without a follow-up fetch.
                 let label = state_to_label(*new_state);
                 let labels = self
                     .inner
@@ -224,14 +220,6 @@ impl SourceAdapter for GitHubSourceAdapter {
                         .await
                         .map_err(SyncError::Other)?;
                 }
-                // #1151: capture the GH-API close-mutation response.
-                // octocrab's `update().state(Closed).send()` returns
-                // the post-close Issue; the tracker serializes it via
-                // `issue_to_board_json` and we parse here. Returning
-                // a `StoryRefreshed` event triggers the orchestrator
-                // drain to apply it via the reducer so the local
-                // store reflects `is_closed=true` without a follow-up
-                // `refresh_story(N)`.
                 match self.inner.close_story(*number).await {
                     Ok(value) => {
                         Ok(
@@ -249,7 +237,6 @@ impl SourceAdapter for GitHubSourceAdapter {
                 }
             }
             BoardEvent::StoryReopened { number, .. } => {
-                // #1151: capture the post-reopen Issue payload.
                 let value = self
                     .inner
                     .reopen_story(*number)
@@ -333,10 +320,6 @@ impl SourceAdapter for GitHubSourceAdapter {
                 }))
             }
             BoardEvent::ParentEpicUnset { number, .. } => {
-                // Multi-step: fetch current labels, remove all
-                // parent-epic-* entries. Captures the LAST
-                // remove_label response as the post-state so the
-                // reducer sees the final labels list.
                 let current = self.inner.get_story_labels(*number).await;
                 let mut last_response: Option<Vec<String>> = None;
                 for l in current.iter().filter(|l| l.starts_with("parent-epic-#")) {
@@ -358,19 +341,12 @@ impl SourceAdapter for GitHubSourceAdapter {
             | BoardEvent::GateCommentsFetched { .. }
             | BoardEvent::StoryRefreshed { .. }
             | BoardEvent::LabelsRefreshed { .. }
-            // #1195: ConflictDetected/ConflictResolved are
-            // audit-trail-only — they record drain-time conflict
-            // bookkeeping for the canonical store + subscribers,
-            // and don't push anything to GH.
             | BoardEvent::ConflictDetected { .. }
             | BoardEvent::ConflictResolved { .. } => Ok(None),
         }
     }
 
     async fn create_story(&self, title: &str, body: &str) -> Result<u64, SyncError> {
-        // #1151: tracker now returns the freshly-created Issue JSON;
-        // pull `number` directly instead of parsing the legacy
-        // `"#{number} {title}"` format-string.
         let issue = self
             .inner
             .create_story(title, body)
@@ -384,10 +360,6 @@ impl SourceAdapter for GitHubSourceAdapter {
     }
 
     async fn update_body(&self, number: u64, body: &str) -> Result<Story, SyncError> {
-        // #1151: capture the post-update Issue (octocrab returns the
-        // freshly-updated Issue from `update().body(body).send()`) so
-        // the orchestrator can apply it to the canonical store
-        // without a follow-up `refresh_story(N)` call.
         let value = self
             .inner
             .update_body(number, body)
@@ -437,13 +409,6 @@ pub fn warn_on_inconsistent_state_labels(labels: &[String]) {
     }
 }
 
-/// #1418 substrate-ingest filter: drop iteration stories that are
-/// `Retired` and have zero member-stories in the same ingest batch.
-/// Per Ryan-canon "we shouldn't even allow them into our system" —
-/// GitHub keeps the issue (its own audit trail); bpmux's canonical
-/// store does not surface retired-empty iterations at all. Preserves
-/// closed iterations with members (history-value) and any open
-/// iterations regardless of member count (per #1413 fix).
 pub fn filter_retired_empty_iterations(stories: Vec<Story>) -> Vec<Story> {
     let purge: Vec<u64> = iteration_numbers_to_purge_as_retired_empty(&stories);
     if purge.is_empty() {
@@ -455,13 +420,6 @@ pub fn filter_retired_empty_iterations(stories: Vec<Story>) -> Vec<Story> {
         .collect()
 }
 
-/// #1418 sister to `filter_retired_empty_iterations`: returns the
-/// `Story.number`s of retired-empty iterations in a batch — used by
-/// the orchestrator's post-ingest purge to evict already-loaded
-/// entries from the canonical store (the at-ingest filter only
-/// catches FRESH ingests; persisted-then-hydrated entries need an
-/// already-loaded-purge step per
-/// `feedback_substrate_filter_must_apply_to_both_fresh_and_loaded`).
 pub fn iteration_numbers_to_purge_as_retired_empty(stories: &[Story]) -> Vec<u64> {
     use crate::board::domain::StoryType;
     let retired_iterations: Vec<(&Story, String)> = stories
@@ -599,22 +557,9 @@ pub fn state_from_labels(labels: &[String], is_closed: bool) -> StoryState {
     if has("retired") {
         return StoryState::Retired;
     }
-    // #1296: is_closed=true means the issue is closed. Without an
-    // explicit retired tag, that's "accepted". This rule precedes the
-    // workflow-label fallbacks because close_story enqueues TagRemoved
-    // + StoryClosed and the mutation tasks race on the issue-lock
-    // (middleware_start_update_github spawns one task per mutation).
-    // If StoryClosed wins, mock-gh's PATCH-response still carries the
-    // pre-close labels — falling back to those would route the closed
-    // story to the retired column, contradicting the operator intent.
     if is_closed {
         return StoryState::Accepted;
     }
-    // Stale labels from pre-#1146 stories project to their column-
-    // equivalent state. Slice 1 stopped writers from producing these
-    // labels; slice 3 retired the enum variants. Existing GH stories
-    // may still carry them until the next reap cycle, so the parser
-    // continues to recognize them but maps to the surviving 6 states.
     if has("rejected") {
         return StoryState::Ready;
     }

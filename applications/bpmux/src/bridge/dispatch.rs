@@ -1,23 +1,7 @@
-//! Test-RPC dispatch glue: thin async wrappers around the
-//! `tools_stories::handle_*` and `tools::handle_*` handlers used by
-//! `/api/test/*` REST endpoints and the MCP RPC route.
-//!
-//! Each `dispatch_test_*` function builds an empty `WsSink` mutex
-//! (REST dispatch has no client WS to fire signals to) and forwards
-//! to the underlying handler. Post-handler, workflow signals that the
-//! handler would have fired via `ws_send` are instead broadcast
-//! through `session.broadcast` so chat observers see the same
-//! transitions REST observers see.
-
 use std::sync::Arc;
 
 use super::{WsSink, move_story, tools, tools_stories};
 
-/// #570 helper: broadcast a `ClientMessage::Send` workflow signal via
-/// `session.broadcast` (canonical-store-side path). Used by dispatch_
-/// test_* after handlers — handler-internal `ws_send(empty_ws_tx, ...)`
-/// is silent post-#516 because RPC dispatch passes None ws_tx; this
-/// helper restores the chat-side workflow-signal observation surface.
 pub(super) fn broadcast_client_msg_via_session(
     session: &Arc<crate::session::Session>,
     agent_name: &str,

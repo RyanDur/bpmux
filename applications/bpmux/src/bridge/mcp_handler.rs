@@ -1,12 +1,3 @@
-//! `impl ServerHandler for BridgeServer` — the MCP-side dispatch
-//! entry. Receives `list_tools` / `call_tool` from rmcp's transport
-//! and routes to per-tool handlers under `super::tools` /
-//! `super::tools_stories` / `super::rpc_client`.
-//!
-//! Extracted from bridge/mod.rs during #1409 so the trait impl lives
-//! alongside its dispatch table rather than crowding the bridge-server
-//! struct definition.
-
 use std::future::Future;
 
 use rmcp::model::{

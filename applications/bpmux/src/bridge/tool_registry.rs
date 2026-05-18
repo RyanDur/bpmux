@@ -1,17 +1,3 @@
-//! MCP tool advertisement registry: build_advertised_tools() + the
-//! sister DISPATCHED_TOOL_NAMES const. Extracted from bridge/mod.rs
-//! during #1409 so the registry stays in one place and the parity test
-//! in tests/mcp_advertisement_parity_test.rs (#531) reads from a
-//! cohesive module rather than the bridge-server file.
-
-/// Build the list of tools advertised via MCP `list_tools`. Extracted
-/// from the trait body so the parity test in
-/// `tests/mcp_advertisement_parity_test.rs` (#531) can compare the
-/// advertised set against `DISPATCHED_TOOL_NAMES` without a full MCP
-/// service stand-up. Adding a new tool here without a matching entry
-/// in `DISPATCHED_TOOL_NAMES` (and a `call_tool` match arm) — or
-/// vice-versa — fails the parity tests at unit-test time, which closes
-/// the #530-shape gap structurally.
 pub fn build_advertised_tools() -> Vec<rmcp::model::Tool> {
     vec![
         crate::mcp::tools::send_message_tool(
@@ -210,10 +196,6 @@ pub fn build_advertised_tools() -> Vec<rmcp::model::Tool> {
     ]
 }
 
-/// Tool names that `BridgeServer::call_tool` dispatches. Mirror of the
-/// match-arm name literals — kept as a const so the parity test in
-/// `tests/mcp_advertisement_parity_test.rs` (#531) can compare it to
-/// the advertised set returned by `build_advertised_tools`.
 pub const DISPATCHED_TOOL_NAMES: &[&str] = &[
     "send_message",
     "share_message",

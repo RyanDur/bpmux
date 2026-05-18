@@ -1,9 +1,3 @@
-//! ETag-aware conditional fetch methods on `OctocrabStoryTracker`.
-//! `list_latest_run_on_main_conditional` issues an `If-None-Match`
-//! header against the GH Actions runs endpoint and returns
-//! `NotModified` / `Empty` / `Modified { entries, etag }` so callers
-//! can preserve their cache when the server hasn't changed.
-
 use crate::bridge::tracker::WorkflowRunEntry;
 
 use super::{ConditionalRunEntry, OctocrabStoryTracker};
