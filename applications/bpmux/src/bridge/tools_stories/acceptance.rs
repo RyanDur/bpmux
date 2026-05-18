@@ -46,7 +46,7 @@ pub(crate) async fn handle_accept_story(
         .map_err(|e| e.as_json_string())?;
     crate::workflow::check_role_allowed(transition, actor_role).map_err(|e| e.as_json_string())?;
     if let Some(s) = session {
-        let evidence = recent_evidence_from_session(s, number)?;
+        let evidence = recent_evidence_for_story(s, number)?;
         crate::workflow::check_evidence_present(
             transition,
             actor_role,
@@ -100,15 +100,7 @@ fn gate_to_id(gate: crate::board::domain::Gate) -> &'static str {
     }
 }
 
-/// #1407 Slice 3: read structured verdicts for a specific story
-/// from the canonical `VerdictsStore` (sister to comments/labels),
-/// mapping to the validator's `EvidenceMessage` shape. Replaces the
-/// slice-3 #1385 permissive baseline ("any recent message from role
-/// within window" reading ALL session messages). The story-scoped
-/// filter tightens the substrate from global-channel-window to
-/// per-story verdict-axis — a verdict cast on #99 no longer satisfies
-/// evidence for accept_story #42.
-fn recent_evidence_from_session(
+fn recent_evidence_for_story(
     session: &std::sync::Arc<crate::session::Session>,
     story_number: u64,
 ) -> Result<Vec<crate::workflow::EvidenceMessage>, String> {
@@ -312,7 +304,7 @@ pub(crate) async fn handle_pass_desk_check(
         .map_err(|e| e.as_json_string())?;
     crate::workflow::check_role_allowed(transition, actor_role).map_err(|e| e.as_json_string())?;
     if let Some(s) = session {
-        let evidence = recent_evidence_from_session(s, number)?;
+        let evidence = recent_evidence_for_story(s, number)?;
         crate::workflow::check_evidence_present(
             transition,
             actor_role,

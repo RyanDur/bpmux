@@ -1,12 +1,3 @@
-/**
- * Helper to seed verdicts in the per-session `VerdictsStore` so the
- * workflow-gate evidence-check passes for tests firing accept_story /
- * pass_desk_check. #1407 swapped the data-source from chat-messages
- * to the canonical VerdictsStore — this helper fires
- * `submit_verdict` MCP-calls through the auth-gated `/api/rpc/`
- * surface (same path the bridge uses), one per required role on the
- * given story.
- */
 export type RpcFn = (
   tool: string,
   body: unknown,

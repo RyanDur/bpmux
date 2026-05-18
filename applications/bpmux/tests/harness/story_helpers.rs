@@ -63,14 +63,6 @@ pub async fn drive_to_delivered(
     .expect("deliver_story");
 }
 
-/// Seed designer + dev verdicts via the canonical `submit_verdict`
-/// MCP-tool (#1407 Slice 2) so the #1385 workflow-gate's
-/// evidence-check (TeamVerifiable class on `accept`) passes for the
-/// test under exercise. Both verdicts are story-scoped (#1407 Slice
-/// 3 tightened the check from global-channel-window to per-story).
-///
-/// Pre-#1407 this seeded freetext chat messages; the permissive
-/// "any recent message from role" baseline retired in Slice 3.
 pub async fn seed_team_verifiable_evidence(bpmux: &super::pty::TestBpmux, story_number: u64) {
     let designer = TestBridge::connect(bpmux, "designer").await;
     let dev = TestBridge::connect(bpmux, "dev").await;

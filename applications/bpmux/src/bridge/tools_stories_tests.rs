@@ -4041,20 +4041,6 @@ mod reorder_story_icebox_label_substrate_tests_1301 {
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod verdict_substrate_integration_1407 {
-    //! #1407 ATP — pins the Slice-3 data-source swap end-to-end:
-    //! `submit_verdict` writes to VerdictsStore; accept_story's
-    //! evidence-check reads from VerdictsStore filtered by
-    //! story_number. The validator
-    //! (`workflow::gate::check_evidence_present`) is bit-for-bit
-    //! unchanged — slice-3 #1385's forward-compat data-source-
-    //! agnostic abstraction pays off here.
-    //!
-    //! Verifies the canon contract Option C ships: SHAPE
-    //! (submit_verdict is the only path) + CONTENT
-    //! (substrate_grounding is a required arg + persists to disk)
-    //! + STORY-SCOPE (a verdict on #99 does not satisfy evidence
-    //!   for accept_story #42).
-
     use crate::board::BoardStore;
     use crate::board::RefreshDriver;
     use crate::board::SyncOrchestrator;

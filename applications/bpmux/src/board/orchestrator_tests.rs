@@ -1598,27 +1598,6 @@ mod codec_injection_substrate {
 
 #[cfg(test)]
 mod race_window_barrier {
-    //! #1406 substrate-tests for `RaceWindowBarrier` — the test-only
-    //! counted leader/follower rendezvous installed via
-    //! `with_race_window_barrier` from
-    //! `BPMUX_TEST_RACE_WINDOW_REQUESTS=N` on the server subprocess.
-    //! Production servers never set the env var so the orchestrator's
-    //! `race_window_barrier` field stays None + the trait default
-    //! `test_race_window_*` methods are no-ops.
-    //!
-    //! Leader/follower happens-before semantics are verified in
-    //! production via the #1421-blocked e2e — `tokio::sync::Barrier`
-    //! designates the LAST arriver as leader (not the first), and
-    //! since `arrive()` does not surface is_leader to the caller, a
-    //! unit-axis test cannot deterministically dispatch "leader work"
-    //! to the right task without exposing the designation.
-    //! The basic API contract (target=0 pass-through, complete
-    //! idempotence under target=N) IS unit-testable here; the
-    //! happens-before contract belongs to the integration-axis.
-    //! Production usage is symmetric — both fires of
-    //! handle_accept_story call arrive() then the same critical-
-    //! section then complete(); Barrier's is_leader assignment is
-    //! transparent to the handler code.
 
     use crate::board::RaceWindowBarrier;
     use std::sync::Arc;

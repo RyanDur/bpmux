@@ -1,17 +1,4 @@
-//! #1407 Slice 2 — `submit_verdict` MCP-tool handler.
-//!
-//! Reads `(story_number, verdict, substrate_grounding)` from MCP
-//! args, role-gates to dev + designer (the evidence-required actor
-//! set per `bundled_default::transition::accept`'s
-//! `required_evidence_roles`), then writes the structured Verdict to
-//! the per-session `VerdictsStore` at `<session-dir>/verdicts.json`.
-//!
-//! Slice 3 swaps accept_story's evidence-check data-source to read
-//! from this store via `session::verdicts::verdicts_for_story` — at
-//! that point the permissive "any recent message from role within
-//! window" baseline retires.
-
-use crate::session::verdicts::{Verdict, add_verdict, load, save};
+use crate::session::verdicts::{AddVerdictOutcome, Verdict, add_or_replace_verdict, load, save};
 use std::sync::Arc;
 
 pub(in crate::bridge) async fn handle_submit_verdict(
@@ -41,7 +28,7 @@ pub(in crate::bridge) async fn handle_submit_verdict(
         .and_then(|v| v.as_str())
         .map(str::trim)
         .filter(|s| !s.is_empty())
-        .ok_or("missing 'substrate_grounding' argument (non-empty string — required CONTENT cite per #1407 Option C)")?
+        .ok_or("missing 'substrate_grounding' argument (non-empty string)")?
         .to_string();
 
     let entry = Verdict {
@@ -53,12 +40,15 @@ pub(in crate::bridge) async fn handle_submit_verdict(
     };
 
     let mut store = load(&session.dir);
-    let inserted = add_verdict(&mut store, entry);
+    let outcome = add_or_replace_verdict(&mut store, entry);
     save(&session.dir, &store).map_err(|e| format!("save verdicts: {e}"))?;
 
+    let outcome_label = match outcome {
+        AddVerdictOutcome::Inserted => "new",
+        AddVerdictOutcome::Replaced => "replaced prior",
+    };
     Ok(format!(
-        "verdict recorded on #{story_number} from {role} ({})",
-        if inserted { "new" } else { "replaced prior" }
+        "verdict recorded on #{story_number} from {role} ({outcome_label})"
     ))
 }
 
@@ -174,7 +164,7 @@ mod tests {
         assert!(result.contains("replaced prior"));
         let store = load(&session.dir);
         let stored = verdicts_for_story(&store, 42);
-        assert_eq!(stored.len(), 1, "replay-over keeps list length 1");
+        assert_eq!(stored.len(), 1);
         assert_eq!(stored[0].verdict, "rejected");
         assert_eq!(
             stored[0].substrate_grounding,

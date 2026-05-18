@@ -1,25 +1,3 @@
-//! In-process `SourceAdapter` implementation used by the bridge's
-//! test harness (TestBpmux subprocesses run with this adapter when
-//! `BPMUX_TEST_MODE=1` or with `--fake-tracker`). It substitutes for
-//! the production `GitHubSourceAdapter` while exposing the same
-//! ingest + push surface, so e2e tests don't pay GitHub-round-trip
-//! latency.
-//!
-//! Concurrent-fire race-window (#1385 Sc 9 / #1406): each method
-//! takes a `state.lock()` so individual reads + writes are atomic, BUT
-//! mutation→re-ingest serializes within tokio's single-task scheduler
-//! — fire-A's handler completes its mutate before yielding to
-//! fire-B's task, so the substrate-validator's
-//! `check_target_state_valid` 409 path was historically
-//! unobservable at e2e-axis (only unit-tested in
-//! `workflow::gate_tests`). #1406 closes that gap via the
-//! `RaceWindowBarrier` test-only counted leader/follower rendezvous
-//! installed on `SyncOrchestrator` from
-//! `BPMUX_TEST_RACE_WINDOW_REQUESTS=N`. Production single-orchestrator
-//! serialization is preserved bit-for-bit: the env var is never set
-//! on production servers + the trait default `test_race_window_*`
-//! methods are no-ops.
-
 use std::collections::HashMap;
 use std::sync::Mutex;
 

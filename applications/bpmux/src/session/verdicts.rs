@@ -1,29 +1,8 @@
-//! Per-story verdict storage — #1407 Slice 1.
-//!
-//! `submit_verdict` MCP-tool writes a `Verdict` to this canonical
-//! substrate-data-store (sister to `pins` + `reactions` + `bookmarks`);
-//! accept_story's evidence-check reads them out filtered by
-//! story_number. Replaces the slice-3 permissive baseline
-//! ("any recent message from role within window" — see acceptance.rs's
-//! prior `recent_evidence_from_session`) with structured verdict-data
-//! that enforces both SHAPE (this IS a verdict) and CONTENT
-//! (`substrate_grounding` is a required field, not discipline-inside-
-//! a-message-body).
-//!
-//! Persistence pattern mirrors `pins`: load from
-//! `<session-dir>/verdicts.json` on session boot; rewrite on each
-//! mutation. Sister-restart shape; no separate broadcast-axis (Slice 2
-//! adds wake-tx broadcast if downstream renderer integration surfaces).
-
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-/// A single verdict cast by a role on a story. The
-/// `substrate_grounding` field carries the cite required for accept_
-/// story's evidence-axis to clear — CONTENT enforced structurally
-/// via the submit_verdict MCP-tool's required arg shape (Slice 2).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Verdict {
     pub story_number: u64,
@@ -33,15 +12,15 @@ pub struct Verdict {
     pub ts: DateTime<Utc>,
 }
 
-/// All verdicts known to a session, keyed by story_number. Multiple
-/// verdicts per story expected (one per evidence-axis role per fire).
-/// Replaying the same (story, role) overwrites the prior entry —
-/// retraction-shape is out-of-scope per #1407 body; last-write-wins
-/// is the simplest substrate that satisfies the evidence-check
-/// "any verdict from role within window" semantic.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct VerdictsStore {
     pub stories: BTreeMap<u64, Vec<Verdict>>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AddVerdictOutcome {
+    Inserted,
+    Replaced,
 }
 
 pub fn verdicts_path(session_dir: &Path) -> PathBuf {
@@ -64,24 +43,17 @@ pub fn save(session_dir: &Path, store: &VerdictsStore) -> Result<(), std::io::Er
     std::fs::write(&path, json)
 }
 
-/// Record (or replay-over) a verdict for `(story_number, from_role)`.
-/// Returns `true` if this was a new verdict for that (story, role)
-/// pair; `false` if it replayed-over a prior verdict from the same
-/// role on the same story (last-write-wins).
-pub fn add_verdict(store: &mut VerdictsStore, verdict: Verdict) -> bool {
+pub fn add_or_replace_verdict(store: &mut VerdictsStore, verdict: Verdict) -> AddVerdictOutcome {
     let list = store.stories.entry(verdict.story_number).or_default();
     if let Some(existing) = list.iter_mut().find(|v| v.from_role == verdict.from_role) {
         *existing = verdict;
-        false
+        AddVerdictOutcome::Replaced
     } else {
         list.push(verdict);
-        true
+        AddVerdictOutcome::Inserted
     }
 }
 
-/// Return verdicts cast on `story_number`, in insertion order.
-/// Used by the evidence-check caller to construct `EvidenceMessage`
-/// entries for the workflow gate validator.
 pub fn verdicts_for_story(store: &VerdictsStore, story_number: u64) -> Vec<Verdict> {
     store
         .stories
@@ -107,38 +79,32 @@ mod tests {
     }
 
     #[test]
-    fn add_verdict_inserts_new_role() {
+    fn add_or_replace_verdict_inserts_when_role_absent_on_story() {
         let mut store = VerdictsStore::default();
-        let inserted = add_verdict(&mut store, sample_verdict(42, "designer"));
-        assert!(inserted, "first verdict for a (story, role) is new");
+        let outcome = add_or_replace_verdict(&mut store, sample_verdict(42, "designer"));
+        assert_eq!(outcome, AddVerdictOutcome::Inserted);
         assert_eq!(verdicts_for_story(&store, 42).len(), 1);
     }
 
     #[test]
-    fn add_verdict_replays_over_same_role_on_same_story() {
+    fn add_or_replace_verdict_replaces_when_same_role_on_same_story() {
         let mut store = VerdictsStore::default();
         let first = sample_verdict(42, "designer");
         let mut second = sample_verdict(42, "designer");
         second.substrate_grounding = "updated cite".into();
-        add_verdict(&mut store, first);
-        let inserted = add_verdict(&mut store, second.clone());
-        assert!(
-            !inserted,
-            "replay-over same (story, role) is not a new insertion"
-        );
+        add_or_replace_verdict(&mut store, first);
+        let outcome = add_or_replace_verdict(&mut store, second);
+        assert_eq!(outcome, AddVerdictOutcome::Replaced);
         let listed = verdicts_for_story(&store, 42);
-        assert_eq!(listed.len(), 1, "replay-over keeps list length 1");
-        assert_eq!(
-            listed[0].substrate_grounding, "updated cite",
-            "last-write-wins on (story, role) collision"
-        );
+        assert_eq!(listed.len(), 1);
+        assert_eq!(listed[0].substrate_grounding, "updated cite");
     }
 
     #[test]
-    fn add_verdict_keeps_distinct_roles_separate() {
+    fn add_or_replace_verdict_keeps_distinct_roles_separate() {
         let mut store = VerdictsStore::default();
-        add_verdict(&mut store, sample_verdict(42, "designer"));
-        add_verdict(&mut store, sample_verdict(42, "dev"));
+        add_or_replace_verdict(&mut store, sample_verdict(42, "designer"));
+        add_or_replace_verdict(&mut store, sample_verdict(42, "dev"));
         let listed = verdicts_for_story(&store, 42);
         assert_eq!(listed.len(), 2);
         let roles: Vec<&str> = listed.iter().map(|v| v.from_role.as_str()).collect();
@@ -156,9 +122,9 @@ mod tests {
     fn save_load_round_trip_preserves_verdicts() {
         let dir = TempDir::new().unwrap();
         let mut store = VerdictsStore::default();
-        add_verdict(&mut store, sample_verdict(42, "designer"));
-        add_verdict(&mut store, sample_verdict(42, "dev"));
-        add_verdict(&mut store, sample_verdict(99, "designer"));
+        add_or_replace_verdict(&mut store, sample_verdict(42, "designer"));
+        add_or_replace_verdict(&mut store, sample_verdict(42, "dev"));
+        add_or_replace_verdict(&mut store, sample_verdict(99, "designer"));
         save(dir.path(), &store).unwrap();
         let loaded = load(dir.path());
         assert_eq!(verdicts_for_story(&loaded, 42).len(), 2);
