@@ -1,7 +1,25 @@
-use super::config::{GateClass, Section, State, Transition, WorkflowConfig};
+use super::config::{GateClass, Role, Section, State, Transition, WorkflowConfig};
 
 pub fn bundled_default() -> WorkflowConfig {
     WorkflowConfig {
+        role: vec![
+            Role {
+                id: "ryan".into(),
+                purposes: vec!["owner".into()],
+            },
+            Role {
+                id: "pm".into(),
+                purposes: vec!["pm".into()],
+            },
+            Role {
+                id: "designer".into(),
+                purposes: vec!["designer".into()],
+            },
+            Role {
+                id: "dev".into(),
+                purposes: vec!["dev".into()],
+            },
+        ],
         section: vec![
             Section {
                 id: "pre-work".into(),

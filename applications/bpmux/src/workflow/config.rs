@@ -8,6 +8,15 @@ pub struct WorkflowConfig {
     pub state: Vec<State>,
     #[serde(default)]
     pub transition: Vec<Transition>,
+    #[serde(default)]
+    pub role: Vec<Role>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Role {
+    pub id: String,
+    #[serde(default)]
+    pub purposes: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -61,17 +70,10 @@ impl GateClass {
 }
 
 impl WorkflowConfig {
-    /// Backward-compat lookup — returns the first transition with the
-    /// given id. Pre-slice-5 callers used this when only one config
-    /// row per id existed. Slice 5+ callers should use
-    /// [`Self::transition_for`] which also matches on gate_class.
     pub fn transition_by_id(&self, id: &str) -> Option<&Transition> {
         self.transition.iter().find(|t| t.id == id)
     }
 
-    /// Slice 5: lookup by (id, gate_class). When a transition row
-    /// has `gate_class = None` the row is treated as a class-agnostic
-    /// fallback — it matches any caller's class.
     pub fn transition_for(&self, id: &str, class: GateClass) -> Option<&Transition> {
         self.transition
             .iter()
@@ -81,6 +83,17 @@ impl WorkflowConfig {
                     .iter()
                     .find(|t| t.id == id && t.gate_class == GateClass::None)
             })
+    }
+
+    pub fn role_id_for_purpose(&self, purpose: &str) -> Option<&str> {
+        self.role
+            .iter()
+            .find(|r| r.purposes.iter().any(|p| p == purpose))
+            .map(|r| r.id.as_str())
+    }
+
+    pub fn owner_role_id(&self) -> Option<&str> {
+        self.role_id_for_purpose("owner")
     }
 }
 
@@ -93,4 +106,81 @@ pub fn gate_class_from_labels(labels: &[String]) -> GateClass {
         }
     }
     GateClass::TeamVerifiable
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod role_resolver_tests {
+    use super::*;
+
+    fn workflow_with_roles(roles: Vec<Role>) -> WorkflowConfig {
+        WorkflowConfig {
+            section: vec![],
+            state: vec![],
+            transition: vec![],
+            role: roles,
+        }
+    }
+
+    #[test]
+    fn role_id_for_purpose_returns_matching_role() {
+        let workflow = workflow_with_roles(vec![Role {
+            id: "alice".into(),
+            purposes: vec!["owner".into()],
+        }]);
+        assert_eq!(workflow.role_id_for_purpose("owner"), Some("alice"));
+    }
+
+    #[test]
+    fn role_id_for_purpose_returns_none_when_no_role_matches() {
+        let workflow = workflow_with_roles(vec![Role {
+            id: "alice".into(),
+            purposes: vec!["owner".into()],
+        }]);
+        assert_eq!(workflow.role_id_for_purpose("pm"), None);
+    }
+
+    #[test]
+    fn role_can_carry_multiple_purposes() {
+        let workflow = workflow_with_roles(vec![Role {
+            id: "alice".into(),
+            purposes: vec!["pm".into(), "lead".into()],
+        }]);
+        assert_eq!(workflow.role_id_for_purpose("pm"), Some("alice"));
+        assert_eq!(workflow.role_id_for_purpose("lead"), Some("alice"));
+    }
+
+    #[test]
+    fn owner_role_id_resolves_via_owner_purpose() {
+        let workflow = workflow_with_roles(vec![
+            Role {
+                id: "alice".into(),
+                purposes: vec!["owner".into()],
+            },
+            Role {
+                id: "bob".into(),
+                purposes: vec!["dev".into()],
+            },
+        ]);
+        assert_eq!(workflow.owner_role_id(), Some("alice"));
+    }
+
+    #[test]
+    fn owner_role_id_returns_none_when_no_owner_purpose() {
+        let workflow = workflow_with_roles(vec![Role {
+            id: "bob".into(),
+            purposes: vec!["dev".into()],
+        }]);
+        assert_eq!(workflow.owner_role_id(), None);
+    }
+
+    #[test]
+    fn bundled_default_resolves_canonical_purposes_to_canonical_ids() {
+        let workflow = crate::workflow::bundled_default::bundled_default();
+        assert_eq!(workflow.role_id_for_purpose("owner"), Some("ryan"));
+        assert_eq!(workflow.role_id_for_purpose("pm"), Some("pm"));
+        assert_eq!(workflow.role_id_for_purpose("designer"), Some("designer"));
+        assert_eq!(workflow.role_id_for_purpose("dev"), Some("dev"));
+        assert_eq!(workflow.owner_role_id(), Some("ryan"));
+    }
 }

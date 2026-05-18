@@ -105,6 +105,7 @@ fn resolve_transition_falls_back_to_class_none_when_no_class_match() {
             evidence_window_seconds: 0,
             required_evidence_roles: vec![],
         }],
+        role: vec![],
     };
     let t = resolve_transition(&workflow, "deliver", GateClass::TeamVerifiable).unwrap();
     assert_eq!(t.gate_class, GateClass::None);
@@ -116,6 +117,7 @@ fn resolve_transition_returns_undefined_when_id_missing() {
         section: vec![],
         state: vec![],
         transition: vec![],
+        role: vec![],
     };
     let err = resolve_transition(&workflow, "accept", GateClass::TeamVerifiable)
         .expect_err("undefined transition");

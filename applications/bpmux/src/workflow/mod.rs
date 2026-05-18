@@ -8,7 +8,9 @@ mod gate_tests;
 #[cfg(test)]
 mod loader_tests;
 
-pub use config::{GateClass, Section, State, Transition, WorkflowConfig, gate_class_from_labels};
+pub use config::{
+    GateClass, Role, Section, State, Transition, WorkflowConfig, gate_class_from_labels,
+};
 pub use gate::{
     CiSnapshot, EvidenceMessage, GateError, PriorFire, check_ci_green, check_evidence_present,
     check_role_allowed, check_self_mutation_refused, check_target_state_valid, resolve_transition,
