@@ -12,7 +12,7 @@ import { launchWithMockGh } from './helpers/launch'
 
 test.describe('human-side E2E #476 — observation-class — accept_story', () => {
   test('human observes ACCEPTED after accept_story across live-mutation-chain', async () => {
-    const { app, win, mockGh, rpc } = await launchWithMockGh()
+    const { app, win, mockGh, rpc, backendPort } = await launchWithMockGh()
     try {
       const consoleErrors: string[] = []
       const pageErrors: Error[] = []
@@ -58,10 +58,26 @@ test.describe('human-side E2E #476 — observation-class — accept_story', () =
       })
       expect(deliverResp.status).toBe(200)
 
-      // Gate under test: ryan/pm/designer/dev all allowed per
-      // require_role; we send as 'pm' to mirror the production path
-      // (Ryan + PM are the canonical accept-authority per
-      // `project_infra_gate_delegation`).
+      const seedResp = await fetch(`http://127.0.0.1:${backendPort}/api/test/seed_messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            {
+              from: 'designer',
+              text: 'verdict: substrate verified',
+              ts: new Date().toISOString()
+            },
+            {
+              from: 'dev',
+              text: 'verdict: substrate verified',
+              ts: new Date().toISOString()
+            }
+          ]
+        })
+      })
+      expect(seedResp.status).toBe(201)
+
       const acceptResp = await rpc('accept_story', { number: 1, would_file_bug: false }, 'pm')
       expect(acceptResp.status).toBe(200)
 
