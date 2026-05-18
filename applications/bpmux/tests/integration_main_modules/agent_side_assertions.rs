@@ -394,9 +394,10 @@ fn accept_story_rejects_unknown_roles() {
     });
 }
 
-/// AC (#213): designer and dev can call accept_story.
+/// #1385 slice 2: designer + dev firing accept_story are substrate-refused
+/// per workflow.toml actor_roles (supersedes #213's permissive allowlist).
 #[test]
-fn accept_story_allows_designer_and_dev() {
+fn accept_story_refuses_designer_and_dev_per_workflow_substrate() {
     use harness::mock_gh::{issue_json, mock_story_mutations};
     use httpmock::{Method, MockServer};
     use serde_json::Value;
@@ -422,28 +423,29 @@ fn accept_story_allows_designer_and_dev() {
 
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        let result = designer
+        let err = designer
             .call_tool(
                 "accept_story",
                 serde_json::json!({"number": 900, "would_file_bug": false}),
             )
-            .await;
+            .await
+            .expect_err("designer should be substrate-refused per workflow.toml");
         assert!(
-            result.is_ok(),
-            "designer should be allowed to accept. got: {:?}",
-            result
+            err.contains("workflow-role-not-allowed")
+                && err.contains("\"actor_role\":\"designer\""),
+            "designer rejection cites structured kind + actor; got {err}"
         );
 
-        let result = dev
+        let err = dev
             .call_tool(
                 "accept_story",
                 serde_json::json!({"number": 901, "would_file_bug": false}),
             )
-            .await;
+            .await
+            .expect_err("dev should be substrate-refused per workflow.toml");
         assert!(
-            result.is_ok(),
-            "dev should be allowed to accept. got: {:?}",
-            result
+            err.contains("workflow-role-not-allowed") && err.contains("\"actor_role\":\"dev\""),
+            "dev rejection cites structured kind + actor; got {err}"
         );
 
         designer.close().await;

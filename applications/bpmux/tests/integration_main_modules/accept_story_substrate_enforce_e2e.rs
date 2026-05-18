@@ -15,9 +15,62 @@
 //!  10. self-mutation guard — actor who delivered cannot fire accept
 //!  11. workflow.toml configures evidence_window_seconds per transition
 //!
-//! Test scaffolds are stubs as scenarios land slice-by-slice.
+//! Slice 2 (role-check): partial coverage of Scenario 4 (dev/designer
+//! fires accept on workflow.toml-restricted actor_roles list → 409
+//! workflow-role-not-allowed structured error). Sister to
+//! accept_story_e2e::accept_story_designer_refused_per_workflow_substrate.
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+use crate::harness;
+
+use harness::bridge::TestBridge;
+use harness::pty::TestBpmux;
+use harness::story_helpers::create_target_story;
+use std::time::Duration;
+
 #[test]
-fn placeholder_until_scenario_tests_land() {}
+fn dev_firing_accept_returns_structured_409_with_workflow_role_not_allowed_kind() {
+    let bpmux = TestBpmux::start();
+    let rt = tokio::runtime::Runtime::new().expect("rt");
+    rt.block_on(async {
+        let pm = TestBridge::connect(&bpmux, "pm").await;
+        let dev = TestBridge::connect(&bpmux, "dev").await;
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        let target_number = create_target_story(
+            &pm,
+            "[Feature] dev-accept-substrate-refusal",
+            "reject if dev firing accept_story isn't substrate-refused per workflow.toml actor_roles",
+        )
+        .await;
+
+        let err = dev
+            .call_tool(
+                "accept_story",
+                serde_json::json!({"number": target_number, "would_file_bug": false}),
+            )
+            .await
+            .expect_err("dev should be substrate-refused");
+
+        assert!(
+            err.contains("\"kind\":\"workflow-role-not-allowed\""),
+            "structured kind discriminator present; got {err}"
+        );
+        assert!(
+            err.contains("\"actor_role\":\"dev\""),
+            "actor_role names firing role; got {err}"
+        );
+        assert!(
+            err.contains("\"attempted_transition\":\"accept\""),
+            "attempted_transition names the gate; got {err}"
+        );
+        assert!(
+            err.contains("\"ryan\"") && err.contains("\"pm\""),
+            "allowed_roles cites the workflow.toml-configured set; got {err}"
+        );
+
+        pm.close().await;
+        dev.close().await;
+    });
+}

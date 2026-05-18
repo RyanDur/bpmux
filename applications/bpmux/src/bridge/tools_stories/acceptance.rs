@@ -25,7 +25,9 @@ pub(crate) async fn handle_accept_story(
     ws_tx: &Mutex<Option<WsSink>>,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
-    require_role(agent_name, &["ryan", "pm", "designer", "dev"], "accept")?;
+    let actor_role = role_from_name(agent_name);
+    crate::workflow::check_role_allowed(crate::workflow::current_workflow(), "accept", actor_role)
+        .map_err(|e| e.as_json_string())?;
     let number = args
         .get("number")
         .and_then(|v| v.as_u64())

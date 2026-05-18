@@ -522,8 +522,15 @@ async fn accept_rejects_unknown_role_via_handler() {
         None,
     )
     .await;
-    assert!(result.is_err());
-    assert!(result.unwrap_err().contains("restricted to"));
+    let err = result.expect_err("intern role should be substrate-refused");
+    assert!(
+        err.contains("workflow-role-not-allowed"),
+        "structured kind cites workflow-role-not-allowed; got {err}"
+    );
+    assert!(
+        err.contains("\"actor_role\":\"intern\""),
+        "structured error names firing role; got {err}"
+    );
 }
 
 #[tokio::test]

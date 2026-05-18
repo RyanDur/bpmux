@@ -1,10 +1,21 @@
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 
 use serde::Serialize;
 use thiserror::Error;
 
 use super::bundled_default::bundled_default;
 use super::config::WorkflowConfig;
+
+static WORKFLOW: OnceLock<WorkflowConfig> = OnceLock::new();
+
+pub fn install_workflow(config: WorkflowConfig) {
+    let _ = WORKFLOW.set(config);
+}
+
+pub fn current_workflow() -> &'static WorkflowConfig {
+    WORKFLOW.get_or_init(bundled_default)
+}
 
 #[derive(Debug, Error, Clone, PartialEq, Eq, Serialize)]
 #[serde(tag = "kind", rename_all = "kebab-case")]

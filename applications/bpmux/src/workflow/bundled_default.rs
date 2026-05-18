@@ -1,4 +1,4 @@
-use super::config::{Section, State, WorkflowConfig};
+use super::config::{Section, State, Transition, WorkflowConfig};
 
 pub fn bundled_default() -> WorkflowConfig {
     WorkflowConfig {
@@ -41,6 +41,44 @@ pub fn bundled_default() -> WorkflowConfig {
             State {
                 id: "retired".into(),
                 section: "post-work".into(),
+            },
+        ],
+        transition: vec![
+            Transition {
+                id: "pickup".into(),
+                from: "ready".into(),
+                to: "in-progress".into(),
+                actor_roles: vec!["dev".into()],
+            },
+            Transition {
+                id: "deliver".into(),
+                from: "in-progress".into(),
+                to: "desk-check".into(),
+                actor_roles: vec!["dev".into()],
+            },
+            Transition {
+                id: "pass-desk-check".into(),
+                from: "desk-check".into(),
+                to: "delivered".into(),
+                actor_roles: vec!["pm".into(), "designer".into()],
+            },
+            Transition {
+                id: "fail-desk-check".into(),
+                from: "desk-check".into(),
+                to: "in-progress".into(),
+                actor_roles: vec!["pm".into(), "designer".into()],
+            },
+            Transition {
+                id: "reject".into(),
+                from: "delivered".into(),
+                to: "ready".into(),
+                actor_roles: vec!["ryan".into(), "pm".into()],
+            },
+            Transition {
+                id: "accept".into(),
+                from: "delivered".into(),
+                to: "accepted".into(),
+                actor_roles: vec!["ryan".into(), "pm".into()],
             },
         ],
     }
