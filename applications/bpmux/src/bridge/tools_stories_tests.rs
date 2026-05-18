@@ -738,17 +738,34 @@ async fn reject_allows_pm_designer_dev_owner() {
 
 #[tokio::test]
 async fn reject_rejects_unknown_role_via_handler() {
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::{BoardStore, RefreshDriver, SyncOrchestrator};
+    use std::sync::Arc;
+
     let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
     let args = serde_json::json!({"number": 1, "reason": "test"});
     let result = handle_reject_story(
         args.as_object().unwrap(),
         "intern:claude-code",
         &ws_tx,
-        None,
+        Some(&orchestrator),
     )
     .await;
-    assert!(result.is_err());
-    assert!(result.unwrap_err().contains("restricted to"));
+    let err = result.expect_err("intern role should be substrate-refused");
+    assert!(
+        err.contains("workflow-role-not-allowed"),
+        "structured kind cites workflow-role-not-allowed; got {err}"
+    );
+    assert!(
+        err.contains("\"actor_role\":\"intern\""),
+        "structured error names firing role; got {err}"
+    );
 }
 
 // ── #1193: live-GH octocrab contract tests + integration_tests Cargo

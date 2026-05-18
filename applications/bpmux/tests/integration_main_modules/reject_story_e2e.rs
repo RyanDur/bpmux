@@ -63,7 +63,7 @@ fn reject_story_pm_with_reason_succeeds() {
 }
 
 #[test]
-fn reject_story_designer_can_call() {
+fn reject_story_designer_refused_per_workflow_substrate() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
@@ -74,11 +74,11 @@ fn reject_story_designer_can_call() {
         let target_number = create_target_story(
             &pm,
             "[Feature] designer-reject-target",
-            "reject if designer can't call reject_story per multi-role allowlist",
+            "reject if designer firing reject_story isn't substrate-refused per #1389 workflow.toml actor_roles",
         )
         .await;
 
-        let result = designer
+        let err = designer
             .call_tool(
                 "reject_story",
                 serde_json::json!({
@@ -87,12 +87,19 @@ fn reject_story_designer_can_call() {
                 }),
             )
             .await
-            .expect("designer should be allowed to call reject_story");
+            .expect_err("designer should be substrate-refused per workflow.toml actor_roles");
 
-        let msg = result.as_str().unwrap_or("").to_string();
         assert!(
-            msg.contains("rejected"),
-            "designer-fired reject succeeds; got {msg}"
+            err.contains("workflow-role-not-allowed"),
+            "rejection cites structured kind; got {err}"
+        );
+        assert!(
+            err.contains("\"actor_role\":\"designer\""),
+            "rejection cites the firing role; got {err}"
+        );
+        assert!(
+            err.contains("\"attempted_transition\":\"reject\""),
+            "rejection cites the attempted transition; got {err}"
         );
 
         pm.close().await;

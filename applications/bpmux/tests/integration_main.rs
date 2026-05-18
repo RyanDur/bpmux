@@ -13,6 +13,8 @@ mod harness;
 mod accept_story_e2e;
 #[path = "integration_main_modules/accept_story_substrate_enforce_e2e.rs"]
 mod accept_story_substrate_enforce_e2e;
+#[path = "integration_main_modules/acceptance_reject_substrate_enforce_e2e.rs"]
+mod acceptance_reject_substrate_enforce_e2e;
 #[path = "integration_main_modules/agent_side_assertions.rs"]
 mod agent_side_assertions;
 #[path = "integration_main_modules/board_column_parity_e2e.rs"]

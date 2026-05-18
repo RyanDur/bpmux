@@ -166,26 +166,56 @@ pub(crate) async fn handle_reject_story(
     ws_tx: &Mutex<Option<WsSink>>,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
-    require_role(agent_name, &["ryan", "pm", "designer", "dev"], "reject")?;
+    let actor_role = role_from_name(agent_name);
+    let workflow = crate::workflow::current_workflow();
     let number = args
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
-    let r = refresh.ok_or(
-        "reject_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n",
-    )?;
     let reason = args
         .get("reason")
         .and_then(|v| v.as_str())
-        .unwrap_or("rejected")
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .ok_or_else(|| {
+            crate::workflow::GateError::GateMismatch {
+                actor_role: actor_role.to_string(),
+                attempted_transition: "reject".to_string(),
+                class: crate::workflow::GateClass::None,
+                missing_evidence: vec!["reason-cite".to_string()],
+            }
+            .as_json_string()
+        })?
         .to_string();
+    let r = refresh.ok_or(
+        "reject_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n",
+    )?;
+    let story_opt = r.store().story(number);
+    let class = story_opt
+        .as_ref()
+        .map(|s| crate::workflow::gate_class_from_labels(&s.raw_labels))
+        .unwrap_or(crate::workflow::GateClass::TeamVerifiable);
+    let transition = crate::workflow::resolve_transition(workflow, "reject", class)
+        .map_err(|e| e.as_json_string())?;
+    crate::workflow::check_role_allowed(transition, actor_role).map_err(|e| e.as_json_string())?;
+    if let Some(story) = story_opt.as_ref() {
+        crate::workflow::check_target_state_valid(transition, story.state.as_str())
+            .map_err(|e| e.as_json_string())?;
+    }
+    let target_state =
+        crate::board::domain::StoryState::parse(&transition.to).ok_or_else(|| {
+            format!(
+                "workflow.toml reject.to '{}' is not a known state",
+                transition.to
+            )
+        })?;
     let signal = serde_json::to_string(&build_reject_signal(number, &reason))
         .map_err(|e| format!("signal: {e}"))?;
     if let Err(e) = ws_send(ws_tx, signal).await {
         crate::session::diag::log_diag(&format!("bridge: signal send failed: {e}"));
     }
     let actor = crate::transport::ws::short_name(agent_name).to_string();
-    reject_via_canonical_store(r, number, actor, reason.clone()).await?;
+    reject_via_canonical_store(r, number, actor, reason.clone(), target_state).await?;
     broadcast_board_invalidate(ws_tx).await;
     Ok(format!("#{number} rejected: {reason}"))
 }
@@ -195,6 +225,7 @@ pub(crate) async fn reject_via_canonical_store(
     number: u64,
     actor: String,
     reason: String,
+    target_state: crate::board::domain::StoryState,
 ) -> Result<(), String> {
     let prior = ensure_story_in_canonical_store(refresh, number).await?;
     let was_accepted = prior.is_closed || prior.state == crate::board::domain::StoryState::Accepted;
@@ -203,7 +234,13 @@ pub(crate) async fn reject_via_canonical_store(
         ts: chrono::Utc::now(),
         peer_id: crate::board::PeerId::local(),
     };
-    reap_workflow_labels(refresh.as_ref(), number, &meta, LABEL_READY)?;
+    let keep_label = match target_state {
+        crate::board::domain::StoryState::Ready => LABEL_READY,
+        crate::board::domain::StoryState::InProgress => LABEL_IN_PROGRESS,
+        crate::board::domain::StoryState::Delivered => LABEL_DELIVERED,
+        _ => LABEL_READY,
+    };
+    reap_workflow_labels(refresh.as_ref(), number, &meta, keep_label)?;
     if was_accepted {
         refresh
             .mutate_sync(crate::board::BoardEvent::StoryReopened {
@@ -224,7 +261,7 @@ pub(crate) async fn reject_via_canonical_store(
         .mutate_sync(crate::board::BoardEvent::StateTransitioned {
             meta,
             number,
-            new_state: crate::board::domain::StoryState::Ready,
+            new_state: target_state,
         })
         .map_err(|e| format!("#{number} state enqueue failed: {e}"))?;
     refresh
