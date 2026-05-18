@@ -49,6 +49,61 @@ pub enum GateError {
         attempted_transition: String,
         prior_fire: String,
     },
+    #[error(
+        "workflow-ci-not-green: '{attempted_transition}' refused — CI conclusion '{ci_conclusion}' on head '{head_sha}' (path: {green_head_check_path})"
+    )]
+    #[serde(rename = "workflow-ci-not-green")]
+    CiNotGreen {
+        attempted_transition: String,
+        ci_conclusion: String,
+        head_sha: String,
+        green_head_check_path: String,
+    },
+}
+
+/// CI-state snapshot the workflow gate consumes — abstracts the
+/// `get_ci_state` shape down to the fields the validator needs so
+/// `check_ci_green` stays domain-independent. Caller maps the bridge's
+/// real CI state into this struct.
+#[derive(Debug, Clone)]
+pub struct CiSnapshot {
+    pub conclusion: String,
+    pub head_sha: String,
+}
+
+/// #1420 dual-gate sister to evidence + role checks: refuse the
+/// transition fire when CI is not green on the work's head_sha.
+/// Per Ryan-canon 2026-05-18 17:25/17:27 UTC: pass_desk_check
+/// (and sister CI-gated transitions) require either CI green on
+/// the work's commit OR the work's commit in the ancestry of a
+/// green CI head. This MVP slice checks the head_sha (single point);
+/// proper git-ancestry-traversal is a sister-touch when surfacing.
+///
+/// quota_exhausted is treated as an exception class — the gate
+/// returns Ok so the caller can rely on a separate evidence-cite
+/// (matching pre-accept-ci-check skill's quota-exception canon).
+pub fn check_ci_green(
+    transition: &Transition,
+    snapshot: Option<&CiSnapshot>,
+) -> Result<(), GateError> {
+    let Some(snap) = snapshot else {
+        return Err(GateError::CiNotGreen {
+            attempted_transition: transition.id.clone(),
+            ci_conclusion: "unknown".to_string(),
+            head_sha: String::new(),
+            green_head_check_path: "neither".to_string(),
+        });
+    };
+    match snap.conclusion.as_str() {
+        "success" => Ok(()),
+        "quota_exhausted" => Ok(()),
+        other => Err(GateError::CiNotGreen {
+            attempted_transition: transition.id.clone(),
+            ci_conclusion: other.to_string(),
+            head_sha: snap.head_sha.clone(),
+            green_head_check_path: "neither".to_string(),
+        }),
+    }
 }
 
 /// A minimal slice of a channel message — only the fields the gate

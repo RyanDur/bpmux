@@ -5,8 +5,8 @@ use chrono::Utc;
 use super::bundled_default::bundled_default;
 use super::config::{GateClass, Transition, WorkflowConfig};
 use super::gate::{
-    EvidenceMessage, GateError, PriorFire, check_evidence_present, check_role_allowed,
-    check_self_mutation_refused, check_target_state_valid, resolve_transition,
+    CiSnapshot, EvidenceMessage, GateError, PriorFire, check_ci_green, check_evidence_present,
+    check_role_allowed, check_self_mutation_refused, check_target_state_valid, resolve_transition,
 };
 
 fn accept_team_verifiable() -> Transition {
@@ -349,4 +349,107 @@ fn self_mutation_refused_json_shape() {
     assert_eq!(json["actor_role"], "pm");
     assert_eq!(json["attempted_transition"], "accept");
     assert_eq!(json["prior_fire"], "deliver");
+}
+
+fn pass_desk_check_transition() -> Transition {
+    bundled_default()
+        .transition_for("pass-desk-check", GateClass::TeamVerifiable)
+        .cloned()
+        .or_else(|| {
+            bundled_default()
+                .transition_for("pass-desk-check", GateClass::None)
+                .cloned()
+        })
+        .unwrap_or(Transition {
+            id: "pass-desk-check".to_string(),
+            from: "delivered".to_string(),
+            to: "delivered".to_string(),
+            actor_roles: vec!["designer".to_string()],
+            gate_class: GateClass::None,
+            required_evidence_roles: Vec::new(),
+            evidence_window_seconds: 600,
+        })
+}
+
+#[test]
+fn ci_green_passes_on_success_conclusion() {
+    let snap = CiSnapshot {
+        conclusion: "success".to_string(),
+        head_sha: "abc123".to_string(),
+    };
+    assert!(check_ci_green(&pass_desk_check_transition(), Some(&snap)).is_ok());
+}
+
+#[test]
+fn ci_green_refuses_on_failure_conclusion() {
+    let snap = CiSnapshot {
+        conclusion: "failure".to_string(),
+        head_sha: "deadbeef".to_string(),
+    };
+    let err = check_ci_green(&pass_desk_check_transition(), Some(&snap))
+        .expect_err("failure CI must refuse");
+    match err {
+        GateError::CiNotGreen {
+            attempted_transition,
+            ci_conclusion,
+            head_sha,
+            green_head_check_path,
+        } => {
+            assert_eq!(attempted_transition, "pass-desk-check");
+            assert_eq!(ci_conclusion, "failure");
+            assert_eq!(head_sha, "deadbeef");
+            assert_eq!(green_head_check_path, "neither");
+        }
+        other => panic!("expected CiNotGreen, got {other:?}"),
+    }
+}
+
+#[test]
+fn ci_green_refuses_on_in_progress_conclusion() {
+    let snap = CiSnapshot {
+        conclusion: "in_progress".to_string(),
+        head_sha: "wip".to_string(),
+    };
+    let err = check_ci_green(&pass_desk_check_transition(), Some(&snap))
+        .expect_err("in_progress CI must refuse");
+    assert!(
+        matches!(err, GateError::CiNotGreen { ci_conclusion, .. } if ci_conclusion == "in_progress")
+    );
+}
+
+#[test]
+fn ci_green_quota_exhausted_is_exception_class() {
+    let snap = CiSnapshot {
+        conclusion: "quota_exhausted".to_string(),
+        head_sha: "quota".to_string(),
+    };
+    assert!(
+        check_ci_green(&pass_desk_check_transition(), Some(&snap)).is_ok(),
+        "quota_exhausted is an exception class (sister to pre-accept-ci-check skill)"
+    );
+}
+
+#[test]
+fn ci_green_refuses_when_snapshot_absent() {
+    let err = check_ci_green(&pass_desk_check_transition(), None)
+        .expect_err("absent snapshot must refuse");
+    assert!(
+        matches!(err, GateError::CiNotGreen { ci_conclusion, head_sha, .. } if ci_conclusion == "unknown" && head_sha.is_empty())
+    );
+}
+
+#[test]
+fn ci_not_green_json_shape() {
+    let err = GateError::CiNotGreen {
+        attempted_transition: "pass-desk-check".into(),
+        ci_conclusion: "in_progress".into(),
+        head_sha: "abc123".into(),
+        green_head_check_path: "neither".into(),
+    };
+    let json = serde_json::to_value(&err).unwrap();
+    assert_eq!(json["kind"], "workflow-ci-not-green");
+    assert_eq!(json["attempted_transition"], "pass-desk-check");
+    assert_eq!(json["ci_conclusion"], "in_progress");
+    assert_eq!(json["head_sha"], "abc123");
+    assert_eq!(json["green_head_check_path"], "neither");
 }
