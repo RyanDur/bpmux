@@ -88,6 +88,95 @@ id = "icebox"
 }
 
 #[test]
+fn workflow_toml_overrides_evidence_window_seconds_per_transition() {
+    let tmp = TempDir::new().unwrap();
+    write_workflow(
+        &tmp,
+        r#"
+[[section]]
+id = "pre-work"
+
+[[section]]
+id = "in-work"
+
+[[section]]
+id = "post-work"
+
+[[state]]
+id = "delivered"
+section = "in-work"
+
+[[state]]
+id = "accepted"
+section = "post-work"
+
+[[transition]]
+id = "accept"
+from = "delivered"
+to = "accepted"
+actor_roles = ["pm"]
+gate_class = "team-verifiable"
+evidence_window_seconds = 120
+required_evidence_roles = ["designer", "dev"]
+"#,
+    );
+    let workflow = load_workflow(tmp.path()).expect("valid TOML should parse");
+    let t = workflow
+        .transition
+        .iter()
+        .find(|t| t.id == "accept")
+        .expect("accept transition present");
+    assert_eq!(t.evidence_window_seconds, 120);
+    assert_eq!(t.required_evidence_roles, vec!["designer", "dev"]);
+}
+
+#[test]
+fn workflow_toml_supports_per_class_accept_transitions() {
+    let tmp = TempDir::new().unwrap();
+    write_workflow(
+        &tmp,
+        r#"
+[[transition]]
+id = "accept"
+from = "delivered"
+to = "accepted"
+actor_roles = ["ryan", "pm"]
+gate_class = "team-verifiable"
+evidence_window_seconds = 600
+required_evidence_roles = ["designer", "dev"]
+
+[[transition]]
+id = "accept"
+from = "delivered"
+to = "accepted"
+actor_roles = ["ryan"]
+gate_class = "owner-walk"
+evidence_window_seconds = 0
+required_evidence_roles = []
+"#,
+    );
+    let workflow = load_workflow(tmp.path()).expect("valid TOML should parse");
+    assert_eq!(
+        workflow
+            .transition
+            .iter()
+            .filter(|t| t.id == "accept")
+            .count(),
+        2,
+        "both class variants parse"
+    );
+    use super::config::GateClass;
+    let team_verifiable = workflow
+        .transition_for("accept", GateClass::TeamVerifiable)
+        .expect("team-verifiable variant");
+    assert_eq!(team_verifiable.actor_roles, vec!["ryan", "pm"]);
+    let owner_walk = workflow
+        .transition_for("accept", GateClass::OwnerWalk)
+        .expect("owner-walk variant");
+    assert_eq!(owner_walk.actor_roles, vec!["ryan"]);
+}
+
+#[test]
 fn structured_error_serializes_with_kind_discriminator() {
     let err = WorkflowLoadError::ParseFailed {
         path: "/tmp/x/.bpmux/workflow.toml".into(),

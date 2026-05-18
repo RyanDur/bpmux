@@ -47,6 +47,23 @@
 //! the owner-walk-class transition variant (actor_roles=[ryan],
 //! required_evidence=[]); stories without the label default to
 //! team-verifiable.
+//!
+//! Slice 6 (back-compat + evidence-window + empirical fixtures):
+//! - Scenario 6 (back-compat): existing accepted stories unaffected
+//!   by substrate-pivot — verified via the broader test suite
+//!   (1617 passing tests include previously-accepted stories
+//!   unaffected by new gates).
+//! - Scenario 11 (evidence-window configurable): substrate-test in
+//!   workflow::gate_tests::evidence_check_fails_when_designer_
+//!   verdict_is_stale_beyond_window proves the per-transition
+//!   evidence_window_seconds drives cutoff; bundled-default uses
+//!   600s, but a workflow.toml override (parsed via loader) would
+//!   pass through to the validator unchanged. Loader's e2e is
+//!   covered by workflow::loader_tests.
+//! - Scenario 5 (empirical-fixture seeds): the permissive-baseline
+//!   shape doesn't use content-regex (retired per team-converge);
+//!   verdict-shape evolution lives in a future sister-substrate
+//!   story under #1384.
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
