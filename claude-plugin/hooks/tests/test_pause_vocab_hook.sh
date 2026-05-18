@@ -64,6 +64,19 @@ run_case "no-banned-phrase"               "moving on to the next story"         
 # ── empty text ──
 run_case "empty-text"                     ""                                      "allow"
 
+# ── #1405 cause-bound shape (banned + "for X" same-sentence) ──
+run_case "for-cause-ci-green"             "standing by for CI green on 80dea156"          "allow"
+run_case "for-cause-acceptance-call"      "PM standing by for your acceptance-call"       "allow"
+run_case "for-cause-owner-review"         "monitoring for owner review on the diff"       "allow"
+run_case "for-cause-pm-signal"            "hold position for pm-signal on next story"     "allow"
+
+# ── #1405 regression-anchor: prefix-only still fires (no "for X" cause-clause) ──
+run_case "prefix-pm-no-cause"             "PM standing by"                                 "ask"
+run_case "prefix-monitoring-channel"      "monitoring the team channel"                    "ask"
+run_case "prefix-watching-room"           "watching for changes"                           "ask"
+# ^ "watching for" is itself the banned phrase; "watching for changes" has no SEPARATE
+# "for X" clause beyond the banned-phrase substring. Stays banned.
+
 echo
 echo "==================================="
 echo "PASS: $PASS  FAIL: $FAIL"

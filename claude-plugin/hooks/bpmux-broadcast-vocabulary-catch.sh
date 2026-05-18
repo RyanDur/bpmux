@@ -52,6 +52,19 @@ if echo "$LOWER" | grep -qE "$NAMED_CAUSE_PATTERN"; then
   exit 0
 fi
 
+# #1405: also recognize "<banned-phrase> ... for <substantive-noun>"
+# as legitimate substrate-bound shape (sister to allow-list
+# `named-active-trigger`). Strip the banned phrase(s) from the
+# message and look for a remaining " for X" clause — X must be a
+# real noun (3+ alpha chars, hyphens allowed) to filter out
+# spurious "for" particles. The banned-phrase strip prevents
+# "watching for" (which contains "for" intrinsically) from
+# self-satisfying without a separate cause-clause.
+WITHOUT_BANNED=$(echo "$STRIPPED" | sed -E "s/($BANNED_PATTERN)//g")
+if echo "$WITHOUT_BANNED" | grep -qE ' for [a-z][a-z-]+'; then
+  exit 0
+fi
+
 MATCHED=$(echo "$STRIPPED" | grep -oE "$BANNED_PATTERN" | head -1)
 
 REASON="self-imposed-pause vocabulary detected (\"$MATCHED\") without named stop-cause. Per #493 substrate-fix: broadcasts that signal pause/standby require a NAMED cause (queue-empty, blocker, owner-signal, red-CI, next-pull, substrate-bound, legitimate-deferral, named-active-trigger). Either: (1) rewrite to explicit active work + commit-beat, or (2) name the stop-cause explicitly. See feedback_silent_while_working_reads_as_stopped."
