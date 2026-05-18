@@ -42,7 +42,6 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
           const key = String(iteration.number)
           const themeName = themeNameFromTitle(iteration.title)
           const members = getMembersFor(themeName)
-          if (members.length === 0 && iteration.gh_state !== 'closed') return null
           const defaultOpen = iteration.gh_state !== 'closed'
           const open = collapse.isOpen(key, defaultOpen)
           return (
