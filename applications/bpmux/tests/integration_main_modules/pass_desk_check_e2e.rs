@@ -34,6 +34,10 @@ fn pass_desk_check_designer_succeeds() {
         )
         .await;
 
+        designer
+            .send("verdict: substrate verified via rg + git show fragments")
+            .await;
+
         let result = designer
             .call_tool(
                 "pass_desk_check",
@@ -114,6 +118,10 @@ fn pass_desk_check_view_board_reflects_ready_for_accept_via_fixture_seed() {
         let designer =
             TestBridge::connect_with_mock_gh(&bpmux, "designer", &base_url).await;
         tokio::time::sleep(Duration::from_millis(1500)).await;
+
+        designer
+            .send("verdict: substrate verified via rg + git show fragments")
+            .await;
 
         designer
             .call_tool(

@@ -95,6 +95,8 @@ mod move_story_e2e;
 mod move_story_retired_class_e2e;
 #[path = "integration_main_modules/pass_desk_check_e2e.rs"]
 mod pass_desk_check_e2e;
+#[path = "integration_main_modules/pass_desk_check_substrate_enforce_e2e.rs"]
+mod pass_desk_check_substrate_enforce_e2e;
 #[path = "integration_main_modules/plugin_acceptance.rs"]
 mod plugin_acceptance;
 #[path = "integration_main_modules/precompact_save_bookmark_e2e.rs"]

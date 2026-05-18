@@ -624,6 +624,7 @@ async fn pass_desk_check_requires_would_file_bug_arg() {
         "designer:claude-code",
         &ws_tx,
         None,
+        None,
     )
     .await
     .expect_err("missing would_file_bug should be rejected");
@@ -645,6 +646,7 @@ async fn pass_desk_check_blocks_when_would_file_bug_true_without_force() {
         args.as_object().unwrap(),
         "designer:claude-code",
         &ws_tx,
+        None,
         None,
     )
     .await
@@ -1460,8 +1462,14 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(201));
     args.insert("would_file_bug".into(), serde_json::json!(false));
-    let result =
-        handle_pass_desk_check(&args, "designer:claude-code", &ws_tx, Some(&orchestrator)).await;
+    let result = handle_pass_desk_check(
+        &args,
+        "designer:claude-code",
+        &ws_tx,
+        Some(&orchestrator),
+        None,
+    )
+    .await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = store.story(201).unwrap();
@@ -3870,7 +3878,7 @@ mod reopen_on_state_transition_tests {
         args.insert("number".into(), serde_json::json!(7130));
         args.insert("would_file_bug".into(), serde_json::json!(false));
         let result =
-            handle_pass_desk_check(&args, "designer:claude-code", &ws_tx, Some(&orch)).await;
+            handle_pass_desk_check(&args, "designer:claude-code", &ws_tx, Some(&orch), None).await;
         assert!(result.is_ok(), "pass_desk_check should succeed: {result:?}");
         orch.drain_pending().await.unwrap();
         let pushed = adapter.pushed_events();

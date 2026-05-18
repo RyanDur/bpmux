@@ -186,6 +186,10 @@ fn pass_desk_check_signal_routes_to_ryan_not_dev() {
 
         tokio::time::sleep(Duration::from_millis(500)).await;
 
+        designer
+            .send("verdict: substrate verified via rg + git show fragments")
+            .await;
+
         let status = designer
             .call_tool(
                 "pass_desk_check",
@@ -298,8 +302,8 @@ fn pass_desk_check_rejects_non_designer_callers() {
             .await
             .expect_err("dev should be rejected from pass_desk_check");
         assert!(
-            err.contains("restricted to designer"),
-            "rejection message should name the required role. got: {err}"
+            err.contains("workflow-role-not-allowed") && err.contains("\"actor_role\":\"dev\""),
+            "rejection cites structured workflow-role-not-allowed kind; got {err}"
         );
 
         tokio::time::sleep(Duration::from_millis(500)).await;

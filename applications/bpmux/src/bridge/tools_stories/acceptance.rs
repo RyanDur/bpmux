@@ -288,13 +288,34 @@ pub(crate) async fn handle_pass_desk_check(
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
+    session: Option<&std::sync::Arc<crate::session::Session>>,
 ) -> Result<String, String> {
-    require_role(agent_name, &["designer"], "pass desk-check")?;
+    let actor_role = role_from_name(agent_name);
+    let workflow = crate::workflow::current_workflow();
     let number = args
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
     let bypass = verify_bug_question_or_bypass(args, BugGate::PassDeskCheck)?;
+    let r_opt = refresh;
+    let story_opt = r_opt.and_then(|r| r.store().story(number));
+    let class = story_opt
+        .as_ref()
+        .map(|s| crate::workflow::gate_class_from_labels(&s.raw_labels))
+        .unwrap_or(crate::workflow::GateClass::TeamVerifiable);
+    let transition = crate::workflow::resolve_transition(workflow, "pass-desk-check", class)
+        .map_err(|e| e.as_json_string())?;
+    crate::workflow::check_role_allowed(transition, actor_role).map_err(|e| e.as_json_string())?;
+    if let Some(s) = session {
+        let evidence = recent_evidence_from_session(s)?;
+        crate::workflow::check_evidence_present(
+            transition,
+            actor_role,
+            &evidence,
+            chrono::Utc::now(),
+        )
+        .map_err(|e| e.as_json_string())?;
+    }
     let was_closed = if let Some(r) = refresh {
         let prior = ensure_story_in_canonical_store(r, number).await?;
         if let Some(body) = prior.body.as_deref() {

@@ -214,7 +214,8 @@ pub(crate) async fn dispatch_test_pass_desk_check(
 ) -> Result<String, String> {
     let empty_ws: tokio::sync::Mutex<Option<WsSink>> = tokio::sync::Mutex::new(None);
     let result =
-        tools_stories::handle_pass_desk_check(&args, agent_name, &empty_ws, refresh).await?;
+        tools_stories::handle_pass_desk_check(&args, agent_name, &empty_ws, refresh, Some(session))
+            .await?;
     // #570: handler's ws_send fired against empty ws_tx (silent
     // no-op post-#516); fire workflow signals via session.broadcast
     // here so observers actually see "ready for acceptance" in chat.
