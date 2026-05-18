@@ -34,14 +34,22 @@ const ASSERTION_MARKERS: &[&str] = &[
     ".toHaveBeenCalled",
 ];
 
-/// Parse ATP paths from a story body. The body convention is a
-/// section header like `## Acceptance test path` followed by one or
-/// more file paths (in backticks, plus-separated, or newline-
-/// separated). The parser is intentionally lenient — extracts any
-/// path-shaped string with a source-file extension.
+/// Parse ATP paths from a story body. Per #1419, scope path-extraction
+/// to the body's `## Acceptance test path` section only — decompose-
+/// class stories naturally name god-files in user-job prose, and
+/// scanning whole-body false-positive-flags those narrative mentions
+/// as candidate ATP-paths (which, post-decompose, are composition-
+/// shell files with zero assertion markers). When no section header
+/// is found, returns an empty Vec (no paths to validate); the gate's
+/// catch-class for stub-ATP relies on the section explicitly naming
+/// a source-file path, so the absence of the section means no ATP-
+/// shape to verify.
 pub(super) fn extract_atp_paths(body: &str) -> Vec<String> {
+    let Some(section) = extract_atp_section(body) else {
+        return Vec::new();
+    };
     let mut paths = Vec::new();
-    for line in body.lines() {
+    for line in section.lines() {
         for token in line.split(|c: char| c.is_whitespace() || c == '`' || c == '+' || c == ',') {
             let trimmed = token.trim_matches(|c: char| {
                 c == '.' || c == ':' || c == ';' || c == '(' || c == ')' || c == '"'
@@ -54,6 +62,26 @@ pub(super) fn extract_atp_paths(body: &str) -> Vec<String> {
     paths.sort();
     paths.dedup();
     paths
+}
+
+/// Find the body slice between the `## Acceptance test path` header
+/// and the next markdown header (`##` or `---`). Returns `None` when
+/// the header isn't present. If multiple `## Acceptance test path`
+/// sections exist (some bodies repeat the heading), returns the
+/// LAST occurrence — the section closest to the body footer is the
+/// canonical ATP (matches the convention `compose_story_body` uses
+/// when stitching dev-supplied bodies with the auto-appended ATP
+/// section).
+fn extract_atp_section(body: &str) -> Option<&str> {
+    const HEADER: &str = "## Acceptance test path";
+    let header_start = body.rfind(HEADER)?;
+    let after_header = header_start + HEADER.len();
+    let rest = &body[after_header..];
+    let end_offset = rest
+        .find("\n## ")
+        .or_else(|| rest.find("\n---"))
+        .unwrap_or(rest.len());
+    Some(&rest[..end_offset])
 }
 
 fn has_source_extension(path: &str) -> bool {
@@ -253,7 +281,7 @@ mod tests {
 
     #[test]
     fn extract_multiple_atp_paths_plus_separated() {
-        let body = "## ATP\n`foo/bar.test.tsx + baz/qux.rs`\n";
+        let body = "## Acceptance test path\n`foo/bar.test.tsx + baz/qux.rs`\n";
         let paths = extract_atp_paths(body);
         assert!(paths.contains(&"foo/bar.test.tsx".to_string()));
         assert!(paths.contains(&"baz/qux.rs".to_string()));
@@ -261,9 +289,42 @@ mod tests {
 
     #[test]
     fn extract_skips_non_source_paths() {
-        let body = "ATP: docs/audit-logs/2026-05-16.md + applications/foo.test.tsx";
+        let body =
+            "## Acceptance test path\n`docs/audit-logs/2026-05-16.md + applications/foo.test.tsx`";
         let paths = extract_atp_paths(body);
         assert_eq!(paths, vec!["applications/foo.test.tsx"]);
+    }
+
+    #[test]
+    fn extract_returns_empty_when_no_atp_section_header() {
+        let body = "## User job\n\nWhen developer reads bridge/mod.rs the god-file structure should ...\n\n## Observation falsifier\n\nreject if narrative mentions like applications/bpmux/src/bridge/mod.rs trip the gate";
+        let paths = extract_atp_paths(body);
+        assert!(
+            paths.is_empty(),
+            "#1419 section-anchor: narrative god-file mentions outside ATP-section must not trigger; got {paths:?}"
+        );
+    }
+
+    #[test]
+    fn extract_scopes_to_atp_section_ignoring_narrative_mentions() {
+        let body = "## User job\n\nWhen developer reads applications/bpmux/src/bridge/mod.rs to understand the bridge ...\n\n## Acceptance test path\n\n`applications/bpmux/src/bridge/tests.rs`\n";
+        let paths = extract_atp_paths(body);
+        assert_eq!(
+            paths,
+            vec!["applications/bpmux/src/bridge/tests.rs".to_string()],
+            "#1419 section-anchor: only the ATP-section path is extracted, narrative bridge/mod.rs ignored"
+        );
+    }
+
+    #[test]
+    fn extract_uses_last_atp_section_when_multiple_present() {
+        let body = "## Acceptance test path\n\n`first/section.rs`\n\n---\n\n## User job\n\nstub\n\n## Acceptance test path\n\n`second/canonical.rs`";
+        let paths = extract_atp_paths(body);
+        assert_eq!(
+            paths,
+            vec!["second/canonical.rs".to_string()],
+            "section-anchor picks the LAST occurrence (canonical compose_story_body order); got {paths:?}"
+        );
     }
 
     #[test]

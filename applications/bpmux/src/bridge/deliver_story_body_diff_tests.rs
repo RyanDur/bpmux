@@ -92,14 +92,14 @@ fn verify_body_atp_in_changed_paths_blocks_when_atp_missing() {
 
 #[test]
 fn verify_body_atp_in_changed_paths_lenient_when_body_has_no_source_atp() {
-    let body = "## ATP\n`docs/audit-logs/2026-05-16.md`";
+    let body = "## Acceptance test path\n`docs/audit-logs/2026-05-16.md`";
     let changed: Vec<String> = vec![];
     assert!(verify_body_atp_in_changed_paths(body, &changed).is_ok());
 }
 
 #[test]
 fn verify_deliver_drift_passes_when_pickup_ts_missing() {
-    let body = "## ATP\n`applications/never.test.tsx`";
+    let body = "## Acceptance test path\n`applications/never.test.tsx`";
     let s = Story::new_minimal(
         1,
         "t".to_string(),
@@ -113,7 +113,7 @@ fn verify_deliver_drift_passes_when_pickup_ts_missing() {
 
 #[test]
 fn verify_deliver_drift_passes_when_git_errors() {
-    let body = "## ATP\n`applications/foo.test.tsx`";
+    let body = "## Acceptance test path\n`applications/foo.test.tsx`";
     let s = story_with_pickup(Utc.with_ymd_and_hms(2026, 5, 16, 22, 0, 0).unwrap());
     let git = fake_git_error();
     assert!(verify_deliver_drift(body, &s, &git).is_ok());
@@ -121,7 +121,7 @@ fn verify_deliver_drift_passes_when_git_errors() {
 
 #[test]
 fn verify_deliver_drift_blocks_when_body_atp_missing_from_changed() {
-    let body = "## ATP\n`applications/foo.test.tsx`";
+    let body = "## Acceptance test path\n`applications/foo.test.tsx`";
     let s = story_with_pickup(Utc.with_ymd_and_hms(2026, 5, 16, 22, 0, 0).unwrap());
     let git = fake_git_returning(&["applications/bar.test.tsx"]);
     let err = verify_deliver_drift(body, &s, &git).unwrap_err();
@@ -130,7 +130,7 @@ fn verify_deliver_drift_blocks_when_body_atp_missing_from_changed() {
 
 #[test]
 fn verify_deliver_drift_passes_when_body_atp_in_changed() {
-    let body = "## ATP\n`applications/foo.test.tsx`";
+    let body = "## Acceptance test path\n`applications/foo.test.tsx`";
     let s = story_with_pickup(Utc.with_ymd_and_hms(2026, 5, 16, 22, 0, 0).unwrap());
     let git = fake_git_returning(&["applications/foo.test.tsx"]);
     assert!(verify_deliver_drift(body, &s, &git).is_ok());
@@ -138,7 +138,7 @@ fn verify_deliver_drift_passes_when_body_atp_in_changed() {
 
 #[test]
 fn verify_deliver_drift_lenient_when_no_commits_since_pickup() {
-    let body = "## ATP\n`applications/foo.test.tsx`";
+    let body = "## Acceptance test path\n`applications/foo.test.tsx`";
     let s = story_with_pickup(Utc.with_ymd_and_hms(2026, 5, 16, 22, 0, 0).unwrap());
     let git = fake_git_returning(&[]);
     assert!(
