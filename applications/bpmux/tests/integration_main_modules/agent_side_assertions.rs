@@ -187,8 +187,16 @@ fn pass_desk_check_signal_routes_to_ryan_not_dev() {
         tokio::time::sleep(Duration::from_millis(500)).await;
 
         designer
-            .send("verdict: substrate verified via rg + git show fragments")
-            .await;
+            .call_tool(
+                "submit_verdict",
+                serde_json::json!({
+                    "story_number": 203,
+                    "verdict": "verified",
+                    "substrate_grounding": "rg + git show fragments cited at src/foo.rs:42"
+                }),
+            )
+            .await
+            .expect("designer submit_verdict");
 
         let status = designer
             .call_tool(
@@ -346,8 +354,27 @@ fn accept_story_allows_pm_and_broadcasts_role_attribution() {
 
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        designer.send("verdict: substrate verified").await;
-        dev.send("verdict: substrate verified").await;
+        designer
+            .call_tool(
+                "submit_verdict",
+                serde_json::json!({
+                    "story_number": 213,
+                    "verdict": "verified",
+                    "substrate_grounding": "test-harness: designer verdict"
+                }),
+            )
+            .await
+            .expect("designer submit_verdict");
+        dev.call_tool(
+            "submit_verdict",
+            serde_json::json!({
+                "story_number": 213,
+                "verdict": "verified",
+                "substrate_grounding": "test-harness: dev verdict"
+            }),
+        )
+        .await
+        .expect("dev submit_verdict");
 
         let result = pm
             .call_tool(
@@ -487,7 +514,8 @@ fn accept_story_is_idempotent_on_already_closed() {
 
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        harness::story_helpers::seed_team_verifiable_evidence_with_mock_gh(&bpmux, &base_url).await;
+        harness::story_helpers::seed_team_verifiable_evidence_with_mock_gh(&bpmux, &base_url, 213)
+            .await;
 
         let _ = pm
             .call_tool(

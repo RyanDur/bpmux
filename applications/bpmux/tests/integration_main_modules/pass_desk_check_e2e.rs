@@ -35,8 +35,16 @@ fn pass_desk_check_designer_succeeds() {
         .await;
 
         designer
-            .send("verdict: substrate verified via rg + git show fragments")
-            .await;
+            .call_tool(
+                "submit_verdict",
+                serde_json::json!({
+                    "story_number": target_number,
+                    "verdict": "verified",
+                    "substrate_grounding": "rg + git show fragments cited at src/foo.rs:42"
+                }),
+            )
+            .await
+            .expect("designer submit_verdict");
 
         let result = designer
             .call_tool(
@@ -120,8 +128,16 @@ fn pass_desk_check_view_board_reflects_ready_for_accept_via_fixture_seed() {
         tokio::time::sleep(Duration::from_millis(1500)).await;
 
         designer
-            .send("verdict: substrate verified via rg + git show fragments")
-            .await;
+            .call_tool(
+                "submit_verdict",
+                serde_json::json!({
+                    "story_number": 500,
+                    "verdict": "verified",
+                    "substrate_grounding": "rg + git show fragments cited at src/foo.rs:42"
+                }),
+            )
+            .await
+            .expect("designer submit_verdict");
 
         designer
             .call_tool(

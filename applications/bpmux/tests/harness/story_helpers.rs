@@ -63,20 +63,38 @@ pub async fn drive_to_delivered(
     .expect("deliver_story");
 }
 
-/// Seed designer + dev verdict-messages in the channel so the #1385
-/// workflow-gate's evidence-check (TeamVerifiable class on `accept`)
-/// passes for the test under exercise. Used by tests that fire
-/// accept_story under the bundled-default workflow (which requires
-/// both verdicts present within evidence_window_seconds).
+/// Seed designer + dev verdicts via the canonical `submit_verdict`
+/// MCP-tool (#1407 Slice 2) so the #1385 workflow-gate's
+/// evidence-check (TeamVerifiable class on `accept`) passes for the
+/// test under exercise. Both verdicts are story-scoped (#1407 Slice
+/// 3 tightened the check from global-channel-window to per-story).
 ///
-/// The shape "any recent message from required role within window"
-/// is slice 3's permissive baseline; future slices may tighten to
-/// structured verdict-substrate.
-pub async fn seed_team_verifiable_evidence(bpmux: &super::pty::TestBpmux) {
+/// Pre-#1407 this seeded freetext chat messages; the permissive
+/// "any recent message from role" baseline retired in Slice 3.
+pub async fn seed_team_verifiable_evidence(bpmux: &super::pty::TestBpmux, story_number: u64) {
     let designer = TestBridge::connect(bpmux, "designer").await;
     let dev = TestBridge::connect(bpmux, "dev").await;
-    designer.send("verdict: substrate verified").await;
-    dev.send("verdict: substrate verified").await;
+    designer
+        .call_tool(
+            "submit_verdict",
+            serde_json::json!({
+                "story_number": story_number,
+                "verdict": "verified",
+                "substrate_grounding": "test-harness seed: designer verdict for accept-evidence"
+            }),
+        )
+        .await
+        .expect("designer submit_verdict");
+    dev.call_tool(
+        "submit_verdict",
+        serde_json::json!({
+            "story_number": story_number,
+            "verdict": "verified",
+            "substrate_grounding": "test-harness seed: dev verdict for accept-evidence"
+        }),
+    )
+    .await
+    .expect("dev submit_verdict");
     designer.close().await;
     dev.close().await;
 }
@@ -84,11 +102,31 @@ pub async fn seed_team_verifiable_evidence(bpmux: &super::pty::TestBpmux) {
 pub async fn seed_team_verifiable_evidence_with_mock_gh(
     bpmux: &super::pty::TestBpmux,
     mock_gh_base_url: &str,
+    story_number: u64,
 ) {
     let designer = TestBridge::connect_with_mock_gh(bpmux, "designer", mock_gh_base_url).await;
     let dev = TestBridge::connect_with_mock_gh(bpmux, "dev", mock_gh_base_url).await;
-    designer.send("verdict: substrate verified").await;
-    dev.send("verdict: substrate verified").await;
+    designer
+        .call_tool(
+            "submit_verdict",
+            serde_json::json!({
+                "story_number": story_number,
+                "verdict": "verified",
+                "substrate_grounding": "test-harness seed: designer verdict for accept-evidence"
+            }),
+        )
+        .await
+        .expect("designer submit_verdict");
+    dev.call_tool(
+        "submit_verdict",
+        serde_json::json!({
+            "story_number": story_number,
+            "verdict": "verified",
+            "substrate_grounding": "test-harness seed: dev verdict for accept-evidence"
+        }),
+    )
+    .await
+    .expect("dev submit_verdict");
     designer.close().await;
     dev.close().await;
 }

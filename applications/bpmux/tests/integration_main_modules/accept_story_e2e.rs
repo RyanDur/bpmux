@@ -35,7 +35,7 @@ fn accept_story_pm_succeeds() {
         )
         .await;
 
-        seed_team_verifiable_evidence(&bpmux).await;
+        seed_team_verifiable_evidence(&bpmux, target_number).await;
 
         let result = pm
             .call_tool(
@@ -153,7 +153,8 @@ fn accept_story_view_board_reflects_accepted_via_mocked_seed() {
         let pm = TestBridge::connect_with_mock_gh(&bpmux, "pm", &base_url).await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        harness::story_helpers::seed_team_verifiable_evidence_with_mock_gh(&bpmux, &base_url).await;
+        harness::story_helpers::seed_team_verifiable_evidence_with_mock_gh(&bpmux, &base_url, 600)
+            .await;
 
         pm.call_tool(
             "accept_story",

@@ -46,7 +46,7 @@ pub(crate) async fn handle_accept_story(
         .map_err(|e| e.as_json_string())?;
     crate::workflow::check_role_allowed(transition, actor_role).map_err(|e| e.as_json_string())?;
     if let Some(s) = session {
-        let evidence = recent_evidence_from_session(s)?;
+        let evidence = recent_evidence_from_session(s, number)?;
         crate::workflow::check_evidence_present(
             transition,
             actor_role,
@@ -100,22 +100,25 @@ fn gate_to_id(gate: crate::board::domain::Gate) -> &'static str {
     }
 }
 
+/// #1407 Slice 3: read structured verdicts for a specific story
+/// from the canonical `VerdictsStore` (sister to comments/labels),
+/// mapping to the validator's `EvidenceMessage` shape. Replaces the
+/// slice-3 #1385 permissive baseline ("any recent message from role
+/// within window" reading ALL session messages). The story-scoped
+/// filter tightens the substrate from global-channel-window to
+/// per-story verdict-axis — a verdict cast on #99 no longer satisfies
+/// evidence for accept_story #42.
 fn recent_evidence_from_session(
     session: &std::sync::Arc<crate::session::Session>,
+    story_number: u64,
 ) -> Result<Vec<crate::workflow::EvidenceMessage>, String> {
-    let messages = session
-        .read_messages()
-        .map_err(|e| format!("read session messages: {e}"))?;
-    Ok(messages
+    let store = crate::session::verdicts::load(&session.dir);
+    let verdicts = crate::session::verdicts::verdicts_for_story(&store, story_number);
+    Ok(verdicts
         .into_iter()
-        .map(|m| crate::workflow::EvidenceMessage {
-            from_role: m
-                .from
-                .split(':')
-                .next()
-                .unwrap_or(m.from.as_str())
-                .to_string(),
-            ts: m.ts,
+        .map(|v| crate::workflow::EvidenceMessage {
+            from_role: v.from_role,
+            ts: v.ts,
         })
         .collect())
 }
@@ -309,7 +312,7 @@ pub(crate) async fn handle_pass_desk_check(
         .map_err(|e| e.as_json_string())?;
     crate::workflow::check_role_allowed(transition, actor_role).map_err(|e| e.as_json_string())?;
     if let Some(s) = session {
-        let evidence = recent_evidence_from_session(s)?;
+        let evidence = recent_evidence_from_session(s, number)?;
         crate::workflow::check_evidence_present(
             transition,
             actor_role,

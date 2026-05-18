@@ -135,7 +135,7 @@ fn pm_fires_team_verifiable_with_both_verdicts_succeeds() {
         )
         .await;
 
-        seed_team_verifiable_evidence(&bpmux).await;
+        seed_team_verifiable_evidence(&bpmux, target_number).await;
 
         let result = pm
             .call_tool(
@@ -171,7 +171,16 @@ fn pm_fires_team_verifiable_without_designer_verdict_returns_structured_409() {
         )
         .await;
 
-        dev.send("verdict: substrate verified").await;
+        dev.call_tool(
+            "submit_verdict",
+            serde_json::json!({
+                "story_number": target_number,
+                "verdict": "verified",
+                "substrate_grounding": "test-harness: dev verdict (no designer pair)"
+            }),
+        )
+        .await
+        .expect("dev submit_verdict");
 
         let err = pm
             .call_tool(
@@ -215,7 +224,17 @@ fn pm_fires_team_verifiable_without_dev_verdict_returns_structured_409() {
         )
         .await;
 
-        designer.send("verdict: substrate verified").await;
+        designer
+            .call_tool(
+                "submit_verdict",
+                serde_json::json!({
+                    "story_number": target_number,
+                    "verdict": "verified",
+                    "substrate_grounding": "test-harness: designer verdict (no dev pair)"
+                }),
+            )
+            .await
+            .expect("designer submit_verdict");
 
         let err = pm
             .call_tool(
