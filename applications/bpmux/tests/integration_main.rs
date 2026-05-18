@@ -17,6 +17,8 @@ mod accept_story_substrate_enforce_e2e;
 mod acceptance_reject_substrate_enforce_e2e;
 #[path = "integration_main_modules/agent_side_assertions.rs"]
 mod agent_side_assertions;
+#[path = "integration_main_modules/atp_pre_filing_audit_substrate_enforce_e2e.rs"]
+mod atp_pre_filing_audit_substrate_enforce_e2e;
 #[path = "integration_main_modules/board_column_parity_e2e.rs"]
 mod board_column_parity_e2e;
 #[path = "integration_main_modules/board_fixture_seed.rs"]

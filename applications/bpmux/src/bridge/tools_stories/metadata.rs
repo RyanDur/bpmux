@@ -214,6 +214,13 @@ pub(crate) async fn handle_edit_story(
     }
     let r = refresh
         .ok_or("edit_story requires refresh (RefreshDriver) — no canonical store available")?;
+    if let Some(b) = body {
+        let story = ensure_story_in_canonical_store(r, number).await?;
+        if story.story_type != crate::board::domain::StoryType::Chore {
+            crate::bridge::atp_substantive_gate::verify_atp_pre_filing(b, None)
+                .map_err(|e| e.as_json_string())?;
+        }
+    }
     let mut updated: Vec<&str> = Vec::new();
     if let Some(t) = title {
         r.update_title(number, t.to_string())

@@ -57,6 +57,15 @@ pub(crate) async fn handle_create_story(
         acceptance_test_path,
         author_body,
     );
+    if crate::board::domain::story_type_from_labels_or_title(&[], title)
+        != crate::board::domain::StoryType::Chore
+    {
+        crate::bridge::atp_substantive_gate::verify_atp_pre_filing(
+            &composed_body,
+            acceptance_test_path,
+        )
+        .map_err(|e| e.as_json_string())?;
+    }
     let parent_epic = args.get("parent_epic").and_then(|v| v.as_u64());
     if let Some(r) = refresh {
         if let Some(epic_number) = parent_epic {
