@@ -1,12 +1,13 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { seedTeamVerdicts } from './helpers/seed-evidence'
 
 // #1127 sub-slice 3: owner-specific actions visible on a story that
 // reached DELIVERED column. Setup: create→start→deliver→pass_desk_check.
 
 test.describe('human-side E2E #476 — owner-specific — accept/reject buttons on delivered drill-in', () => {
   test('owner sees accept + reject buttons in drill-in actions for a delivered story', async () => {
-    const { app, win, mockGh, rpc } = await launchWithMockGh()
+    const { app, win, mockGh, rpc, backendPort } = await launchWithMockGh()
     try {
       const consoleErrors: string[] = []
       const pageErrors: Error[] = []
@@ -49,6 +50,7 @@ test.describe('human-side E2E #476 — owner-specific — accept/reject buttons 
       })
       expect(deliverResp.status).toBe(200)
 
+      await seedTeamVerdicts(backendPort, ['designer'])
       const passResp = await rpc('pass_desk_check', { number: 1, would_file_bug: false }, 'designer')
       expect(passResp.status).toBe(200)
 
