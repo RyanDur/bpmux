@@ -31,6 +31,24 @@ pub enum GateError {
         class: GateClass,
         missing_evidence: Vec<String>,
     },
+    #[error(
+        "workflow-target-state-invalid: story is {current_state}, expected {expected_state} for '{attempted_transition}'"
+    )]
+    #[serde(rename = "workflow-target-state-invalid")]
+    TargetStateInvalid {
+        attempted_transition: String,
+        current_state: String,
+        expected_state: String,
+    },
+    #[error(
+        "workflow-self-mutation-refused: actor '{actor_role}' previously fired '{prior_fire}'; cannot fire '{attempted_transition}'"
+    )]
+    #[serde(rename = "workflow-self-mutation-refused")]
+    SelfMutationRefused {
+        actor_role: String,
+        attempted_transition: String,
+        prior_fire: String,
+    },
 }
 
 /// A minimal slice of a channel message — only the fields the gate
@@ -98,6 +116,59 @@ pub fn check_role_allowed(
             allowed_roles: transition.actor_roles.clone(),
         })
     }
+}
+
+/// Refuse a transition fire when the story is already in the
+/// transition's target state — covers the concurrent-fire race where
+/// a second fire arrives after the first has mutated state to the
+/// target. The error cites the from-state as `expected_state` so the
+/// caller can see what state the transition expected.
+pub fn check_target_state_valid(
+    workflow: &WorkflowConfig,
+    transition_id: &str,
+    current_state: &str,
+) -> Result<(), GateError> {
+    let Some(transition) = workflow.transition_by_id(transition_id) else {
+        return Err(GateError::TransitionUndefined {
+            attempted_transition: transition_id.to_string(),
+        });
+    };
+    if current_state == transition.to {
+        return Err(GateError::TargetStateInvalid {
+            attempted_transition: transition_id.to_string(),
+            current_state: current_state.to_string(),
+            expected_state: transition.from.clone(),
+        });
+    }
+    Ok(())
+}
+
+/// One row of the story's prior gate-fire history — the slice of
+/// `GateComment` the self-mutation guard needs to attribute prior
+/// fires to actors. Caller maps `board::domain::GateComment` →
+/// PriorFire so the validator stays domain-independent.
+#[derive(Debug, Clone)]
+pub struct PriorFire {
+    pub gate_id: String,
+    pub actor_role: String,
+}
+
+pub fn check_self_mutation_refused(
+    actor_role: &str,
+    attempted_transition: &str,
+    prior_fires: &[PriorFire],
+    refused_prior_gates: &[&str],
+) -> Result<(), GateError> {
+    for prior in prior_fires {
+        if refused_prior_gates.contains(&prior.gate_id.as_str()) && prior.actor_role == actor_role {
+            return Err(GateError::SelfMutationRefused {
+                actor_role: actor_role.to_string(),
+                attempted_transition: attempted_transition.to_string(),
+                prior_fire: prior.gate_id.clone(),
+            });
+        }
+    }
+    Ok(())
 }
 
 impl GateError {

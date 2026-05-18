@@ -23,6 +23,24 @@
 //! team-verifiable accept with both designer + dev verdicts in window
 //! → 200; PM fires team-verifiable without designer-verdict → 409
 //! workflow-gate-mismatch with missing_evidence cite.
+//!
+//! Slice 4 (concurrent-fire + self-mutation guards): substrate
+//! primitives in workflow::gate (check_target_state_valid +
+//! check_self_mutation_refused) wired into handle_accept_story.
+//!
+//! - Scenario 9 (race-guard): refuses if story.state is already the
+//!   transition's to-state (accepted). Returns structured
+//!   workflow-target-state-invalid with current_state +
+//!   expected_state cite. Substrate-correct in production (GH
+//!   adapter reflects close after first accept). E2E not added here
+//!   because the InMemorySourceAdapter used by TestBpmux doesn't
+//!   round-trip mutation→adapter→re-ingest within a single test
+//!   run; substrate proof lives in workflow::gate_tests.
+//! - Scenario 10 (self-mutation): refuses if same actor fired a
+//!   prior gate in the refused list (deliver / pass-desk-check).
+//!   Bundled-default actor sets don't overlap, so the guard is
+//!   preventative-only at default config; substrate proof lives
+//!   in workflow::gate_tests.
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 

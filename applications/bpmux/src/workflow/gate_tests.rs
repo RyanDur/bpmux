@@ -4,7 +4,10 @@ use chrono::Utc;
 
 use super::bundled_default::bundled_default;
 use super::config::{GateClass, Transition, WorkflowConfig};
-use super::gate::{EvidenceMessage, GateError, check_evidence_present, check_role_allowed};
+use super::gate::{
+    EvidenceMessage, GateError, PriorFire, check_evidence_present, check_role_allowed,
+    check_self_mutation_refused, check_target_state_valid,
+};
 
 #[test]
 fn bundled_default_allows_ryan_to_accept() {
@@ -218,4 +221,125 @@ fn gate_mismatch_json_includes_class_and_missing_evidence_fields() {
     assert_eq!(json["attempted_transition"], "accept");
     assert_eq!(json["class"], "team-verifiable");
     assert_eq!(json["missing_evidence"][0], "designer-verdict");
+}
+
+#[test]
+fn target_state_valid_passes_when_current_is_not_yet_target() {
+    let workflow = bundled_default();
+    assert!(check_target_state_valid(&workflow, "accept", "delivered").is_ok());
+    assert!(check_target_state_valid(&workflow, "accept", "in-progress").is_ok());
+}
+
+#[test]
+fn target_state_valid_refuses_when_already_in_target_state() {
+    let workflow = bundled_default();
+    let err = check_target_state_valid(&workflow, "accept", "accepted")
+        .expect_err("accepted-already refused");
+    match err {
+        GateError::TargetStateInvalid {
+            attempted_transition,
+            current_state,
+            expected_state,
+        } => {
+            assert_eq!(attempted_transition, "accept");
+            assert_eq!(current_state, "accepted");
+            assert_eq!(expected_state, "delivered");
+        }
+        other => panic!("expected TargetStateInvalid, got {other:?}"),
+    }
+}
+
+#[test]
+fn target_state_valid_returns_transition_undefined_when_unknown() {
+    let workflow = WorkflowConfig {
+        section: vec![],
+        state: vec![],
+        transition: vec![],
+    };
+    let err = check_target_state_valid(&workflow, "accept", "delivered")
+        .expect_err("undefined transition");
+    assert!(matches!(err, GateError::TransitionUndefined { .. }));
+}
+
+#[test]
+fn target_state_invalid_json_shape() {
+    let err = GateError::TargetStateInvalid {
+        attempted_transition: "accept".into(),
+        current_state: "accepted".into(),
+        expected_state: "delivered".into(),
+    };
+    let json = serde_json::to_value(&err).unwrap();
+    assert_eq!(json["kind"], "workflow-target-state-invalid");
+    assert_eq!(json["current_state"], "accepted");
+    assert_eq!(json["expected_state"], "delivered");
+}
+
+fn prior(gate_id: &str, actor: &str) -> PriorFire {
+    PriorFire {
+        gate_id: gate_id.into(),
+        actor_role: actor.into(),
+    }
+}
+
+#[test]
+fn self_mutation_refused_when_same_actor_fired_deliver() {
+    let prior_fires = vec![prior("deliver", "pm")];
+    let err = check_self_mutation_refused("pm", "accept", &prior_fires, &["deliver"])
+        .expect_err("same actor refused");
+    match err {
+        GateError::SelfMutationRefused {
+            actor_role,
+            attempted_transition,
+            prior_fire,
+        } => {
+            assert_eq!(actor_role, "pm");
+            assert_eq!(attempted_transition, "accept");
+            assert_eq!(prior_fire, "deliver");
+        }
+        other => panic!("expected SelfMutationRefused, got {other:?}"),
+    }
+}
+
+#[test]
+fn self_mutation_passes_when_different_actor_fired_deliver() {
+    let prior_fires = vec![prior("deliver", "dev")];
+    assert!(check_self_mutation_refused("pm", "accept", &prior_fires, &["deliver"]).is_ok());
+}
+
+#[test]
+fn self_mutation_passes_when_no_prior_fires() {
+    assert!(check_self_mutation_refused("pm", "accept", &[], &["deliver"]).is_ok());
+}
+
+#[test]
+fn self_mutation_refused_when_actor_fired_pass_desk_check() {
+    let prior_fires = vec![prior("pass-desk-check", "pm")];
+    let err = check_self_mutation_refused(
+        "pm",
+        "accept",
+        &prior_fires,
+        &["deliver", "pass-desk-check"],
+    )
+    .expect_err("pm passed desk-check + cannot self-accept");
+    assert!(matches!(err, GateError::SelfMutationRefused { .. }));
+}
+
+#[test]
+fn self_mutation_ignores_gates_outside_refused_list() {
+    let prior_fires = vec![prior("pickup", "pm")];
+    assert!(check_self_mutation_refused("pm", "accept", &prior_fires, &["deliver"]).is_ok());
+}
+
+#[test]
+fn self_mutation_refused_json_shape() {
+    let err = GateError::SelfMutationRefused {
+        actor_role: "pm".into(),
+        attempted_transition: "accept".into(),
+        prior_fire: "deliver".into(),
+    };
+    let json = serde_json::to_value(&err).unwrap();
+    assert_eq!(json["kind"], "workflow-self-mutation-refused");
+    assert_eq!(json["actor_role"], "pm");
+    assert_eq!(json["attempted_transition"], "accept");
+    assert_eq!(json["prior_fire"], "deliver");
 }

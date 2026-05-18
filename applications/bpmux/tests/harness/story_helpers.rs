@@ -18,6 +18,47 @@ pub fn extract_story_number(create_msg: &str) -> u64 {
     tail[..end].parse().expect("parse story number")
 }
 
+/// Drive a story through pickup + deliver so it lands in the
+/// Delivered state, satisfying the #1385 slice-4 target-state-check
+/// (accept requires Delivered). Caller passes a separate dev bridge
+/// so the deliver-fire actor is different from the accept-fire actor
+/// (sister-axis: slice-4 self-mutation guard refuses same-actor
+/// deliver+accept).
+pub async fn drive_to_delivered(
+    pm: &TestBridge,
+    dev: &TestBridge,
+    story_number: u64,
+    acceptance_test_path: &str,
+) {
+    pm.call_tool(
+        "edit_story",
+        serde_json::json!({"number": story_number, "labels_add": ["ready"]}),
+    )
+    .await
+    .expect("move to ready");
+    dev.call_tool(
+        "start_story",
+        serde_json::json!({
+            "number": story_number,
+            "pickup_paraphrase": "drive_to_delivered: pickup for state-check coverage",
+            "falsifier_reframing": "drive_to_delivered: same falsifier as filing"
+        }),
+    )
+    .await
+    .expect("start_story");
+    dev.call_tool(
+        "deliver_story",
+        serde_json::json!({
+            "number": story_number,
+            "verified_observation": format!(
+                "drive_to_delivered: simulated deliver against {acceptance_test_path}"
+            )
+        }),
+    )
+    .await
+    .expect("deliver_story");
+}
+
 /// Seed designer + dev verdict-messages in the channel so the #1385
 /// workflow-gate's evidence-check (TeamVerifiable class on `accept`)
 /// passes for the test under exercise. Used by tests that fire

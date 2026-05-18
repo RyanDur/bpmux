@@ -49,6 +49,26 @@ pub(crate) async fn handle_accept_story(
     let r = refresh.ok_or(
         "accept_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n",
     )?;
+    if let Some(story) = r.store().story(number) {
+        crate::workflow::check_target_state_valid(workflow, "accept", story.state.as_str())
+            .map_err(|e| e.as_json_string())?;
+        if let Some(comments) = story.gate_comments.as_deref() {
+            let prior_fires: Vec<crate::workflow::PriorFire> = comments
+                .iter()
+                .map(|gc| crate::workflow::PriorFire {
+                    gate_id: gate_to_id(gc.gate).to_string(),
+                    actor_role: gc.actor.clone(),
+                })
+                .collect();
+            crate::workflow::check_self_mutation_refused(
+                actor_role,
+                "accept",
+                &prior_fires,
+                &["deliver", "pass-desk-check"],
+            )
+            .map_err(|e| e.as_json_string())?;
+        }
+    }
     let role = role_from_name(agent_name);
     let signal = serde_json::to_string(&build_accept_signal(number, role))
         .map_err(|e| format!("signal: {e}"))?;
@@ -59,6 +79,18 @@ pub(crate) async fn handle_accept_story(
     accept_via_canonical_store(r, number, actor, bypass).await?;
     broadcast_board_invalidate(ws_tx).await;
     Ok(format!("#{number} accepted and closed"))
+}
+
+fn gate_to_id(gate: crate::board::domain::Gate) -> &'static str {
+    match gate {
+        crate::board::domain::Gate::Filed => "filed",
+        crate::board::domain::Gate::Pickup => "pickup",
+        crate::board::domain::Gate::Delivered => "deliver",
+        crate::board::domain::Gate::PassDeskCheck => "pass-desk-check",
+        crate::board::domain::Gate::FailDeskCheck => "fail-desk-check",
+        crate::board::domain::Gate::Rejected => "reject",
+        crate::board::domain::Gate::Accepted => "accept",
+    }
 }
 
 fn recent_evidence_from_session(
