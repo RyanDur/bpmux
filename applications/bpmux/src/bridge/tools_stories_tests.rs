@@ -4037,3 +4037,190 @@ mod reorder_story_icebox_label_substrate_tests_1301 {
         );
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+mod verdict_substrate_integration_1407 {
+    //! #1407 ATP — pins the Slice-3 data-source swap end-to-end:
+    //! `submit_verdict` writes to VerdictsStore; accept_story's
+    //! evidence-check reads from VerdictsStore filtered by
+    //! story_number. The validator
+    //! (`workflow::gate::check_evidence_present`) is bit-for-bit
+    //! unchanged — slice-3 #1385's forward-compat data-source-
+    //! agnostic abstraction pays off here.
+    //!
+    //! Verifies the canon contract Option C ships: SHAPE
+    //! (submit_verdict is the only path) + CONTENT
+    //! (substrate_grounding is a required arg + persists to disk)
+    //! + STORY-SCOPE (a verdict on #99 does not satisfy evidence
+    //!   for accept_story #42).
+
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState};
+    use crate::bridge::tools::handle_submit_verdict;
+    use crate::bridge::tools_stories::handle_accept_story;
+    use crate::session::log::Session;
+    use crate::session::verdicts::{load, verdicts_for_story};
+    use chrono::{TimeZone, Utc};
+    use std::path::PathBuf;
+    use std::sync::Arc;
+    use tempfile::TempDir;
+    use tokio::sync::Mutex;
+    use tokio::sync::broadcast;
+
+    fn make_session(dir: PathBuf) -> Arc<Session> {
+        let (tx, _) = broadcast::channel(16);
+        Arc::new(Session::new(dir, "ryan".to_string(), tx))
+    }
+
+    async fn build_orchestrator_with_seed(seeded: Story) -> Arc<dyn RefreshDriver> {
+        let store = Arc::new(BoardStore::new());
+        let adapter = Arc::new(InMemorySourceAdapter::new());
+        adapter.seed_stories(vec![seeded]);
+        let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+            Arc::clone(&store),
+            Arc::clone(&adapter),
+        ));
+        orch.refresh_all().await.unwrap();
+        orch
+    }
+
+    fn delivered_story(number: u64) -> Story {
+        let mut story = Story::new_minimal(
+            number,
+            format!("story-{number}"),
+            StoryState::Delivered,
+            Utc.with_ymd_and_hms(2026, 5, 18, 0, 0, 0).unwrap(),
+            "dev".to_string(),
+        );
+        story.raw_labels = vec!["delivered".to_string()];
+        story
+    }
+
+    fn verdict_args(number: u64) -> serde_json::Map<String, serde_json::Value> {
+        let mut m = serde_json::Map::new();
+        m.insert("story_number".into(), serde_json::json!(number));
+        m.insert("verdict".into(), serde_json::json!("verified"));
+        m.insert(
+            "substrate_grounding".into(),
+            serde_json::json!("src/foo.rs cite"),
+        );
+        m
+    }
+
+    fn accept_args(number: u64) -> serde_json::Map<String, serde_json::Value> {
+        let mut m = serde_json::Map::new();
+        m.insert("number".into(), serde_json::json!(number));
+        m.insert("would_file_bug".into(), serde_json::json!(false));
+        m
+    }
+
+    #[tokio::test]
+    async fn submit_verdict_persists_to_verdicts_store_at_session_dir() {
+        let dir = TempDir::new().unwrap();
+        let session = make_session(dir.path().to_path_buf());
+        handle_submit_verdict(&verdict_args(42), "designer:claude-code", &session)
+            .await
+            .expect("designer submit_verdict");
+        handle_submit_verdict(&verdict_args(42), "dev:claude-code", &session)
+            .await
+            .expect("dev submit_verdict");
+        let store = load(&session.dir);
+        let stored = verdicts_for_story(&store, 42);
+        assert_eq!(stored.len(), 2);
+        let roles: Vec<&str> = stored.iter().map(|v| v.from_role.as_str()).collect();
+        assert!(roles.contains(&"designer"));
+        assert!(roles.contains(&"dev"));
+    }
+
+    #[tokio::test]
+    async fn accept_story_succeeds_when_both_verdicts_present_for_target_story() {
+        let dir = TempDir::new().unwrap();
+        let session = make_session(dir.path().to_path_buf());
+        handle_submit_verdict(&verdict_args(42), "designer", &session)
+            .await
+            .unwrap();
+        handle_submit_verdict(&verdict_args(42), "dev", &session)
+            .await
+            .unwrap();
+
+        let orch = build_orchestrator_with_seed(delivered_story(42)).await;
+        let empty_ws: Mutex<Option<crate::bridge::tools::WsSink>> = Mutex::new(None);
+        let result = handle_accept_story(
+            &accept_args(42),
+            "pm",
+            &empty_ws,
+            Some(&orch),
+            Some(&session),
+        )
+        .await;
+        assert!(
+            result.is_ok(),
+            "accept_story must succeed when both verdicts present for target story; got {result:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn accept_story_refuses_when_verdicts_exist_only_on_a_different_story() {
+        let dir = TempDir::new().unwrap();
+        let session = make_session(dir.path().to_path_buf());
+        handle_submit_verdict(&verdict_args(99), "designer", &session)
+            .await
+            .unwrap();
+        handle_submit_verdict(&verdict_args(99), "dev", &session)
+            .await
+            .unwrap();
+
+        let orch = build_orchestrator_with_seed(delivered_story(42)).await;
+        let empty_ws: Mutex<Option<crate::bridge::tools::WsSink>> = Mutex::new(None);
+        let err = handle_accept_story(
+            &accept_args(42),
+            "pm",
+            &empty_ws,
+            Some(&orch),
+            Some(&session),
+        )
+        .await
+        .expect_err("verdicts on #99 must not satisfy accept_story #42");
+        assert!(
+            err.contains("workflow-gate-mismatch"),
+            "rejection cites structured kind; got {err}"
+        );
+        assert!(
+            err.contains("designer-verdict") && err.contains("dev-verdict"),
+            "both verdicts missing for the target story; got {err}"
+        );
+    }
+
+    #[tokio::test]
+    async fn accept_story_refuses_when_only_designer_verdict_present() {
+        let dir = TempDir::new().unwrap();
+        let session = make_session(dir.path().to_path_buf());
+        handle_submit_verdict(&verdict_args(42), "designer", &session)
+            .await
+            .unwrap();
+
+        let orch = build_orchestrator_with_seed(delivered_story(42)).await;
+        let empty_ws: Mutex<Option<crate::bridge::tools::WsSink>> = Mutex::new(None);
+        let err = handle_accept_story(
+            &accept_args(42),
+            "pm",
+            &empty_ws,
+            Some(&orch),
+            Some(&session),
+        )
+        .await
+        .expect_err("missing dev-verdict must refuse");
+        assert!(
+            err.contains("dev-verdict"),
+            "rejection cites missing dev-verdict; got {err}"
+        );
+        assert!(
+            !err.contains("designer-verdict"),
+            "rejection should NOT cite designer-verdict (it's present); got {err}"
+        );
+    }
+}
