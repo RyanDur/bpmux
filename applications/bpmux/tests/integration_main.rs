@@ -9,6 +9,8 @@
 
 mod harness;
 
+#[path = "integration_main_modules/accept_story_concurrent_fire_e2e.rs"]
+mod accept_story_concurrent_fire_e2e;
 #[path = "integration_main_modules/accept_story_e2e.rs"]
 mod accept_story_e2e;
 #[path = "integration_main_modules/accept_story_substrate_enforce_e2e.rs"]
