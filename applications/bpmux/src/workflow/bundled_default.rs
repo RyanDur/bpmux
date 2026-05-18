@@ -1,4 +1,4 @@
-use super::config::{Section, State, Transition, WorkflowConfig};
+use super::config::{GateClass, Section, State, Transition, WorkflowConfig};
 
 pub fn bundled_default() -> WorkflowConfig {
     WorkflowConfig {
@@ -49,36 +49,54 @@ pub fn bundled_default() -> WorkflowConfig {
                 from: "ready".into(),
                 to: "in-progress".into(),
                 actor_roles: vec!["dev".into()],
+                gate_class: GateClass::None,
+                evidence_window_seconds: 0,
+                required_evidence_roles: vec![],
             },
             Transition {
                 id: "deliver".into(),
                 from: "in-progress".into(),
                 to: "desk-check".into(),
                 actor_roles: vec!["dev".into()],
+                gate_class: GateClass::None,
+                evidence_window_seconds: 0,
+                required_evidence_roles: vec![],
             },
             Transition {
                 id: "pass-desk-check".into(),
                 from: "desk-check".into(),
                 to: "delivered".into(),
                 actor_roles: vec!["pm".into(), "designer".into()],
+                gate_class: GateClass::None,
+                evidence_window_seconds: 0,
+                required_evidence_roles: vec![],
             },
             Transition {
                 id: "fail-desk-check".into(),
                 from: "desk-check".into(),
                 to: "in-progress".into(),
                 actor_roles: vec!["pm".into(), "designer".into()],
+                gate_class: GateClass::None,
+                evidence_window_seconds: 0,
+                required_evidence_roles: vec![],
             },
             Transition {
                 id: "reject".into(),
                 from: "delivered".into(),
                 to: "ready".into(),
                 actor_roles: vec!["ryan".into(), "pm".into()],
+                gate_class: GateClass::None,
+                evidence_window_seconds: 0,
+                required_evidence_roles: vec![],
             },
             Transition {
                 id: "accept".into(),
                 from: "delivered".into(),
                 to: "accepted".into(),
                 actor_roles: vec!["ryan".into(), "pm".into()],
+                gate_class: GateClass::TeamVerifiable,
+                evidence_window_seconds: 600,
+                required_evidence_roles: vec!["designer".into(), "dev".into()],
             },
         ],
     }

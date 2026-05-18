@@ -17,7 +17,7 @@ use crate::harness;
 
 use harness::bridge::TestBridge;
 use harness::pty::TestBpmux;
-use harness::story_helpers::create_target_story;
+use harness::story_helpers::{create_target_story, seed_team_verifiable_evidence};
 use std::time::Duration;
 
 #[test]
@@ -34,6 +34,8 @@ fn accept_story_pm_succeeds() {
             "reject if accept_story doesn't fire signal + state transition + close",
         )
         .await;
+
+        seed_team_verifiable_evidence(&bpmux).await;
 
         let result = pm
             .call_tool(
@@ -150,6 +152,8 @@ fn accept_story_view_board_reflects_accepted_via_mocked_seed() {
     rt.block_on(async {
         let pm = TestBridge::connect_with_mock_gh(&bpmux, "pm", &base_url).await;
         tokio::time::sleep(Duration::from_millis(500)).await;
+
+        harness::story_helpers::seed_team_verifiable_evidence_with_mock_gh(&bpmux, &base_url).await;
 
         pm.call_tool(
             "accept_story",

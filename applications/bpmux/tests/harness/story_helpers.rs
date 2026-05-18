@@ -18,6 +18,36 @@ pub fn extract_story_number(create_msg: &str) -> u64 {
     tail[..end].parse().expect("parse story number")
 }
 
+/// Seed designer + dev verdict-messages in the channel so the #1385
+/// workflow-gate's evidence-check (TeamVerifiable class on `accept`)
+/// passes for the test under exercise. Used by tests that fire
+/// accept_story under the bundled-default workflow (which requires
+/// both verdicts present within evidence_window_seconds).
+///
+/// The shape "any recent message from required role within window"
+/// is slice 3's permissive baseline; future slices may tighten to
+/// structured verdict-substrate.
+pub async fn seed_team_verifiable_evidence(bpmux: &super::pty::TestBpmux) {
+    let designer = TestBridge::connect(bpmux, "designer").await;
+    let dev = TestBridge::connect(bpmux, "dev").await;
+    designer.send("verdict: substrate verified").await;
+    dev.send("verdict: substrate verified").await;
+    designer.close().await;
+    dev.close().await;
+}
+
+pub async fn seed_team_verifiable_evidence_with_mock_gh(
+    bpmux: &super::pty::TestBpmux,
+    mock_gh_base_url: &str,
+) {
+    let designer = TestBridge::connect_with_mock_gh(bpmux, "designer", mock_gh_base_url).await;
+    let dev = TestBridge::connect_with_mock_gh(bpmux, "dev", mock_gh_base_url).await;
+    designer.send("verdict: substrate verified").await;
+    dev.send("verdict: substrate verified").await;
+    designer.close().await;
+    dev.close().await;
+}
+
 pub async fn create_target_story(pm: &TestBridge, title: &str, falsifier: &str) -> u64 {
     // #537 default-include `acceptance_test_path` pointing to this
     // harness file (always exists in the workspace tree) so #521's

@@ -24,15 +24,28 @@ pub(crate) async fn handle_accept_story(
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
+    session: Option<&std::sync::Arc<crate::session::Session>>,
 ) -> Result<String, String> {
     let actor_role = role_from_name(agent_name);
-    crate::workflow::check_role_allowed(crate::workflow::current_workflow(), "accept", actor_role)
+    let workflow = crate::workflow::current_workflow();
+    crate::workflow::check_role_allowed(workflow, "accept", actor_role)
         .map_err(|e| e.as_json_string())?;
     let number = args
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
     let bypass = verify_bug_question_or_bypass(args, BugGate::Accept)?;
+    if let Some(s) = session {
+        let evidence = recent_evidence_from_session(s)?;
+        crate::workflow::check_evidence_present(
+            workflow,
+            "accept",
+            actor_role,
+            &evidence,
+            chrono::Utc::now(),
+        )
+        .map_err(|e| e.as_json_string())?;
+    }
     let r = refresh.ok_or(
         "accept_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n",
     )?;
@@ -46,6 +59,26 @@ pub(crate) async fn handle_accept_story(
     accept_via_canonical_store(r, number, actor, bypass).await?;
     broadcast_board_invalidate(ws_tx).await;
     Ok(format!("#{number} accepted and closed"))
+}
+
+fn recent_evidence_from_session(
+    session: &std::sync::Arc<crate::session::Session>,
+) -> Result<Vec<crate::workflow::EvidenceMessage>, String> {
+    let messages = session
+        .read_messages()
+        .map_err(|e| format!("read session messages: {e}"))?;
+    Ok(messages
+        .into_iter()
+        .map(|m| crate::workflow::EvidenceMessage {
+            from_role: m
+                .from
+                .split(':')
+                .next()
+                .unwrap_or(m.from.as_str())
+                .to_string(),
+            ts: m.ts,
+        })
+        .collect())
 }
 
 pub(crate) async fn accept_via_canonical_store(

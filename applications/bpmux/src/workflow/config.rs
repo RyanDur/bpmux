@@ -28,6 +28,21 @@ pub struct Transition {
     pub to: String,
     #[serde(default)]
     pub actor_roles: Vec<String>,
+    #[serde(default)]
+    pub gate_class: GateClass,
+    #[serde(default)]
+    pub evidence_window_seconds: u64,
+    #[serde(default)]
+    pub required_evidence_roles: Vec<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "kebab-case")]
+pub enum GateClass {
+    #[default]
+    None,
+    TeamVerifiable,
+    OwnerWalk,
 }
 
 impl WorkflowConfig {

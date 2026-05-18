@@ -337,9 +337,13 @@ fn accept_story_allows_pm_and_broadcasts_role_attribution() {
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
         let pm = TestBridge::connect_with_mock_gh(&bpmux, "pm", &base_url).await;
+        let designer = TestBridge::connect_with_mock_gh(&bpmux, "designer", &base_url).await;
         let dev = TestBridge::connect_with_mock_gh(&bpmux, "dev", &base_url).await;
 
         tokio::time::sleep(Duration::from_millis(500)).await;
+
+        designer.send("verdict: substrate verified").await;
+        dev.send("verdict: substrate verified").await;
 
         let result = pm
             .call_tool(
@@ -478,6 +482,8 @@ fn accept_story_is_idempotent_on_already_closed() {
         let pm = TestBridge::connect_with_mock_gh(&bpmux, "pm", &base_url).await;
 
         tokio::time::sleep(Duration::from_millis(500)).await;
+
+        harness::story_helpers::seed_team_verifiable_evidence_with_mock_gh(&bpmux, &base_url).await;
 
         let _ = pm
             .call_tool(

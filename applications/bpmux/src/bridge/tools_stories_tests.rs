@@ -502,8 +502,14 @@ fn fail_desk_check_signal_includes_reason() {
 async fn accept_requires_refresh_after_5n_fallback_retirement() {
     let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
     let args = serde_json::json!({"number": 213, "would_file_bug": false});
-    let result =
-        handle_accept_story(args.as_object().unwrap(), "pm:claude-code", &ws_tx, None).await;
+    let result = handle_accept_story(
+        args.as_object().unwrap(),
+        "pm:claude-code",
+        &ws_tx,
+        None,
+        None,
+    )
+    .await;
     assert!(
         result.is_err(),
         "expected refresh-required Err, got {result:?}"
@@ -519,6 +525,7 @@ async fn accept_rejects_unknown_role_via_handler() {
         args.as_object().unwrap(),
         "intern:claude-code",
         &ws_tx,
+        None,
         None,
     )
     .await;
@@ -537,9 +544,15 @@ async fn accept_rejects_unknown_role_via_handler() {
 async fn accept_requires_would_file_bug_arg() {
     let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
     let args = serde_json::json!({"number": 213});
-    let err = handle_accept_story(args.as_object().unwrap(), "pm:claude-code", &ws_tx, None)
-        .await
-        .expect_err("missing would_file_bug should be rejected");
+    let err = handle_accept_story(
+        args.as_object().unwrap(),
+        "pm:claude-code",
+        &ws_tx,
+        None,
+        None,
+    )
+    .await
+    .expect_err("missing would_file_bug should be rejected");
     assert!(
         err.contains("would_file_bug"),
         "rejection cites the missing arg: {err}"
@@ -554,9 +567,15 @@ async fn accept_requires_would_file_bug_arg() {
 async fn accept_blocks_when_would_file_bug_true_without_force() {
     let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
     let args = serde_json::json!({"number": 213, "would_file_bug": true});
-    let err = handle_accept_story(args.as_object().unwrap(), "pm:claude-code", &ws_tx, None)
-        .await
-        .expect_err("would_file_bug=true should block accept");
+    let err = handle_accept_story(
+        args.as_object().unwrap(),
+        "pm:claude-code",
+        &ws_tx,
+        None,
+        None,
+    )
+    .await
+    .expect_err("would_file_bug=true should block accept");
     assert!(
         err.contains("reject_story"),
         "block routes to alternate gate: {err}"
@@ -571,9 +590,15 @@ async fn accept_blocks_when_would_file_bug_true_without_force() {
 async fn accept_force_bypass_requires_bypass_reason() {
     let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
     let args = serde_json::json!({"number": 213, "would_file_bug": true, "force": true});
-    let err = handle_accept_story(args.as_object().unwrap(), "pm:claude-code", &ws_tx, None)
-        .await
-        .expect_err("force without bypass_reason should be rejected");
+    let err = handle_accept_story(
+        args.as_object().unwrap(),
+        "pm:claude-code",
+        &ws_tx,
+        None,
+        None,
+    )
+    .await
+    .expect_err("force without bypass_reason should be rejected");
     assert!(
         err.contains("bypass_reason"),
         "rejection cites the missing arg: {err}"
@@ -655,6 +680,7 @@ async fn accept_force_bypass_with_reason_records_in_gate_payload() {
         "ryan:human",
         &ws_tx,
         Some(&orchestrator),
+        None,
     )
     .await;
     assert!(result.is_ok(), "force+reason should succeed: {result:?}");
@@ -1736,7 +1762,7 @@ async fn accept_story_migrated_path_emits_tag_remove_gate_and_state_events() {
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(205));
     args.insert("would_file_bug".into(), serde_json::json!(false));
-    let result = handle_accept_story(&args, "ryan:human", &ws_tx, Some(&orchestrator)).await;
+    let result = handle_accept_story(&args, "ryan:human", &ws_tx, Some(&orchestrator), None).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = store.story(205).unwrap();
@@ -1835,7 +1861,7 @@ async fn accept_story_on_delivered_story_post_slice_5b_drains_full_cascade() {
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(5070));
     args.insert("would_file_bug".into(), serde_json::json!(false));
-    handle_accept_story(&args, "ryan:human", &ws_tx, Some(&orch))
+    handle_accept_story(&args, "ryan:human", &ws_tx, Some(&orch), None)
         .await
         .unwrap();
 

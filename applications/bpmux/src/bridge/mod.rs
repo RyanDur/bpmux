@@ -167,7 +167,9 @@ pub(crate) async fn dispatch_test_accept_story(
     session: &Arc<crate::session::Session>,
 ) -> Result<String, String> {
     let empty_ws: tokio::sync::Mutex<Option<WsSink>> = tokio::sync::Mutex::new(None);
-    let result = tools_stories::handle_accept_story(&args, agent_name, &empty_ws, refresh).await?;
+    let result =
+        tools_stories::handle_accept_story(&args, agent_name, &empty_ws, refresh, Some(session))
+            .await?;
     // #570: fire accept_story workflow signals via session.
     if let Some(number) = args.get("number").and_then(|v| v.as_u64()) {
         let role = tools_stories::role_from_name(agent_name);
