@@ -117,10 +117,12 @@ impl SourceAdapter for GitHubSourceAdapter {
                 dropped += 1;
             }
         }
+        let pre_filter = out.len();
+        out = filter_retired_empty_iterations(out);
+        let filtered_out = pre_filter - out.len();
         crate::session::diag::log_diag(&format!(
-            "github ingest_metadata_since(since={:?}): received {received} values, decoded {} stories, dropped {dropped} (no number field)",
+            "github ingest_metadata_since(since={:?}): received {received} values, decoded {pre_filter} stories, dropped {dropped} (no number field), filtered {filtered_out} retired+0-member iterations",
             since.map(|s| s.to_rfc3339()),
-            out.len()
         ));
         Ok(out)
     }
@@ -435,6 +437,52 @@ pub fn warn_on_inconsistent_state_labels(labels: &[String]) {
     }
 }
 
+/// #1418 substrate-ingest filter: drop iteration stories that are
+/// `Retired` and have zero member-stories in the same ingest batch.
+/// Per Ryan-canon "we shouldn't even allow them into our system" —
+/// GitHub keeps the issue (its own audit trail); bpmux's canonical
+/// store does not surface retired-empty iterations at all. Preserves
+/// closed iterations with members (history-value) and any open
+/// iterations regardless of member count (per #1413 fix).
+pub fn filter_retired_empty_iterations(stories: Vec<Story>) -> Vec<Story> {
+    use crate::board::domain::StoryType;
+    let retired_themes: Vec<String> = stories
+        .iter()
+        .filter(|s| s.story_type == StoryType::Iteration && s.state == StoryState::Retired)
+        .filter_map(|s| s.title.strip_prefix("Iteration ").map(|t| t.to_string()))
+        .collect();
+    if retired_themes.is_empty() {
+        return stories;
+    }
+    let empty_retired_themes: Vec<String> = retired_themes
+        .iter()
+        .filter(|theme| {
+            let prefix = format!("iteration-{theme}.");
+            !stories
+                .iter()
+                .any(|s| s.raw_labels.iter().any(|l| l.starts_with(&prefix)))
+        })
+        .cloned()
+        .collect();
+    if empty_retired_themes.is_empty() {
+        return stories;
+    }
+    stories
+        .into_iter()
+        .filter(|s| {
+            if s.story_type != StoryType::Iteration || s.state != StoryState::Retired {
+                return true;
+            }
+            let theme = s
+                .title
+                .strip_prefix("Iteration ")
+                .unwrap_or(&s.title)
+                .to_string();
+            !empty_retired_themes.contains(&theme)
+        })
+        .collect()
+}
+
 pub fn decode_story_metadata(v: &serde_json::Value) -> Option<Story> {
     let number = v.get("number").and_then(|x| x.as_u64())?;
     let title = v
@@ -681,4 +729,118 @@ pub fn classify_gate(body: &str) -> Option<(Gate, Option<String>)> {
 
 fn extract_marker_payload(body: &str) -> Option<String> {
     body.split_once(":\n\n").map(|(_, rest)| rest.to_string())
+}
+
+#[cfg(test)]
+mod filter_retired_empty_iterations_tests {
+    use super::*;
+    use crate::board::domain::{Story, StoryState, StoryType};
+    use chrono::Utc;
+
+    fn iter_story(number: u64, theme: &str, state: StoryState) -> Story {
+        let mut s = Story::new_minimal(
+            number,
+            format!("Iteration {theme}"),
+            state,
+            Utc::now(),
+            "test".to_string(),
+        );
+        s.story_type = StoryType::Iteration;
+        s
+    }
+
+    fn member_story(number: u64, theme: &str, position: u64) -> Story {
+        let mut s = Story::new_minimal(
+            number,
+            format!("[Feature] member-{number}"),
+            StoryState::Icebox,
+            Utc::now(),
+            "test".to_string(),
+        );
+        s.story_type = StoryType::Feature;
+        s.raw_labels.push(format!("iteration-{theme}.{position}"));
+        s
+    }
+
+    #[test]
+    fn retired_zero_member_iteration_filtered_out() {
+        let stories = vec![iter_story(1, "Aquila", StoryState::Retired)];
+        let filtered = filter_retired_empty_iterations(stories);
+        assert!(
+            filtered.is_empty(),
+            "retired+0-member iteration must be filtered; got {filtered:?}"
+        );
+    }
+
+    #[test]
+    fn retired_with_members_preserved_history_value() {
+        let stories = vec![
+            iter_story(1, "Andromeda", StoryState::Retired),
+            member_story(2, "Andromeda", 100),
+            member_story(3, "Andromeda", 200),
+        ];
+        let filtered = filter_retired_empty_iterations(stories);
+        assert_eq!(filtered.len(), 3, "closed+N kept; got {filtered:?}");
+        assert!(filtered.iter().any(|s| s.number == 1));
+    }
+
+    #[test]
+    fn open_zero_member_iteration_preserved_per_1413_fix() {
+        let stories = vec![iter_story(1, "Lyra", StoryState::Icebox)];
+        let filtered = filter_retired_empty_iterations(stories);
+        assert_eq!(filtered.len(), 1, "open+0 stays per #1413 fix");
+    }
+
+    #[test]
+    fn open_with_members_preserved() {
+        let stories = vec![
+            iter_story(1, "Carina", StoryState::Icebox),
+            member_story(2, "Carina", 100),
+        ];
+        let filtered = filter_retired_empty_iterations(stories);
+        assert_eq!(filtered.len(), 2);
+    }
+
+    #[test]
+    fn closed_accepted_with_members_preserved() {
+        let stories = vec![
+            iter_story(1, "Pegasus", StoryState::Accepted),
+            member_story(2, "Pegasus", 100),
+        ];
+        let filtered = filter_retired_empty_iterations(stories);
+        assert_eq!(
+            filtered.len(),
+            2,
+            "Accepted (not Retired) iteration not subject to filter"
+        );
+    }
+
+    #[test]
+    fn mix_of_retired_empty_and_retired_with_members_filters_only_empty() {
+        let stories = vec![
+            iter_story(1, "Empty", StoryState::Retired),
+            iter_story(2, "WithKids", StoryState::Retired),
+            member_story(3, "WithKids", 100),
+        ];
+        let filtered = filter_retired_empty_iterations(stories);
+        assert_eq!(filtered.len(), 2);
+        assert!(filtered.iter().any(|s| s.number == 2));
+        assert!(filtered.iter().any(|s| s.number == 3));
+        assert!(!filtered.iter().any(|s| s.number == 1));
+    }
+
+    #[test]
+    fn non_iteration_retired_story_not_subject_to_filter() {
+        let mut s = Story::new_minimal(
+            1,
+            "[Chore] retired-chore".to_string(),
+            StoryState::Retired,
+            Utc::now(),
+            "test".to_string(),
+        );
+        s.story_type = StoryType::Chore;
+        let stories = vec![s];
+        let filtered = filter_retired_empty_iterations(stories);
+        assert_eq!(filtered.len(), 1, "only iteration-type-class is filtered");
+    }
 }
