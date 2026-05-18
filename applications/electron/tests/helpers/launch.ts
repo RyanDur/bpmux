@@ -202,6 +202,7 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
       // the routes are not mounted (production servers cannot reach
       // them).
       BPMUX_TEST_SEED_API: '1',
+      BPMUX_TEST_SEED_CI_GREEN: '1',
       // #1286 Option 2: off-screen window-positioning. Tests on
       // bpmux-mac-m1 (self-hosted; Ryan's dev machine) MUST NOT spawn
       // visible windows that disrupt his live work. Main process

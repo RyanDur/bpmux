@@ -100,6 +100,7 @@ export default async function setup({
         ...process.env,
         BPMUX_TEST_MODE: '1',
         BPMUX_TEST_SEED_API: '1',
+        BPMUX_TEST_SEED_CI_GREEN: '1',
         BPMUX_STORAGE_BACKEND: 'memory',
         BPMUX_PRIORITY_PATH: join(tempSessionDir, 'priority.json'),
         BPMUX_USAGE_PATH: join(tempSessionDir, 'usage.json'),
