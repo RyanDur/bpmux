@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::AtomicU64;
 
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
@@ -13,10 +13,11 @@ use super::domain::{FreeComment, GateComment, Story};
 use super::events::{BoardEvent, EventMeta};
 use super::peer::PeerId;
 use super::store::{BoardStore, PersistError};
-use super::sync::{ConditionalBody, SourceAdapter, SyncError, is_permanent_push_failure};
+use super::sync::{ConditionalBody, SourceAdapter, SyncError};
 
 mod coalesce;
 mod conflict;
+mod drain;
 mod outbox;
 mod status;
 
@@ -174,24 +175,26 @@ impl QueuedEvent {
 }
 
 pub struct SyncOrchestrator<A: SourceAdapter + 'static> {
-    store: Arc<BoardStore>,
-    adapter: Arc<A>,
-    status: Arc<Mutex<SyncStatus>>,
-    pending: Arc<Mutex<VecDeque<QueuedEvent>>>,
-    outbox_path: Option<PathBuf>,
+    pub(super) store: Arc<BoardStore>,
+    pub(super) adapter: Arc<A>,
+    pub(super) status: Arc<Mutex<SyncStatus>>,
+    pub(super) pending: Arc<Mutex<VecDeque<QueuedEvent>>>,
+    pub(super) outbox_path: Option<PathBuf>,
     /// #1289 Phase-1 step 4: Storage-trait sink for outbox persistence.
     /// When `Some`, used in preference to `outbox_path`. Set via
     /// `with_storage` constructor (sister of `with_outbox_path`).
-    storage: Option<Arc<dyn crate::session::storage::Storage>>,
+    pub(super) storage: Option<Arc<dyn crate::session::storage::Storage>>,
     /// #1382: constructor-injected LabelCodec. Defaults to GhLabelCodec
     /// via the existing constructors (preserves 30+ call-site API);
     /// tests can swap a stub via the `with_codec` builder method to
     /// drive iteration_prefix_class / coalesce_iteration_label_events
     /// against arbitrary label syntax.
-    codec: Arc<dyn crate::board::label_codec::LabelCodec + Send + Sync>,
-    next_mutation_id: AtomicU64,
-    action_tx: Option<tokio::sync::mpsc::UnboundedSender<crate::orchestrator::OrchestratorAction>>,
-    issue_locks: tokio::sync::Mutex<std::collections::HashMap<u64, Arc<tokio::sync::Mutex<()>>>>,
+    pub(super) codec: Arc<dyn crate::board::label_codec::LabelCodec + Send + Sync>,
+    pub(super) next_mutation_id: AtomicU64,
+    pub(super) action_tx:
+        Option<tokio::sync::mpsc::UnboundedSender<crate::orchestrator::OrchestratorAction>>,
+    pub(super) issue_locks:
+        tokio::sync::Mutex<std::collections::HashMap<u64, Arc<tokio::sync::Mutex<()>>>>,
 }
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
@@ -285,7 +288,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         self
     }
 
-    fn persist_outbox(&self) {
+    pub(super) fn persist_outbox(&self) {
         let snapshot: Vec<QueuedEvent> = self.with_pending(|p| p.iter().cloned().collect());
         // #1289 Phase-1 step 4: prefer Storage-trait sink when set
         // (with_storage construction); fall back to outbox_path for
@@ -315,7 +318,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     /// and dropped at closure-return, so the lock-scope is visibly
     /// bounded at the call-site instead of spanning the enclosing fn
     /// body.
-    fn with_pending<R>(&self, f: impl FnOnce(&VecDeque<QueuedEvent>) -> R) -> R {
+    pub(super) fn with_pending<R>(&self, f: impl FnOnce(&VecDeque<QueuedEvent>) -> R) -> R {
         let p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
         f(&p)
     }
@@ -324,7 +327,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     /// Same lock-scope-bounded contract as `with_pending` for read-write
     /// access. Per Ryan-canon "prefer immutability" (#1360): mutation
     /// scope is bounded + visible at the call-site, not scattered.
-    fn with_pending_mut<R>(&self, f: impl FnOnce(&mut VecDeque<QueuedEvent>) -> R) -> R {
+    pub(super) fn with_pending_mut<R>(&self, f: impl FnOnce(&mut VecDeque<QueuedEvent>) -> R) -> R {
         let mut p = self.pending.lock().unwrap_or_else(|e| e.into_inner());
         f(&mut p)
     }
@@ -336,35 +339,6 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
 
     pub fn store(&self) -> Arc<BoardStore> {
         Arc::clone(&self.store)
-    }
-
-    pub fn mutate(&self, event: BoardEvent) -> Result<(), SyncError> {
-        // #1195: capture pre_state BEFORE applying the event so
-        // drain-time can detect external mutations that arrived
-        // between mutate-time and drain-time. Per
-        // `feedback_mutate_sync_breaks_drain_time_idempotent_check`:
-        // comparing event-vs-current-store at drain-time always
-        // says "already applied" because the local apply ran first.
-        // The pre_state captures temporal context the comparison
-        // needs.
-        let id = MutationId(self.next_mutation_id.fetch_add(1, Ordering::SeqCst));
-        let pre_state = self.store.story(event.story_number());
-        self.store.apply(&event);
-        let queue_len = self.with_pending_mut(|p| {
-            let absorbed = coalesce_iteration_label_events(&*self.codec, p, &event, id, &pre_state);
-            if !absorbed {
-                p.push_back(QueuedEvent::new_with_id(id, event, pre_state));
-            }
-            p.len()
-        });
-        self.persist_outbox();
-        set_pending_events(&self.status, queue_len);
-        if let Some(tx) = &self.action_tx {
-            let _ = tx.send(crate::orchestrator::OrchestratorAction::StartUpdateGithub {
-                mutation_id: id,
-            });
-        }
-        Ok(())
     }
 
     pub async fn ingest_once(&self) -> Result<(), SyncError> {
@@ -506,88 +480,6 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         }
     }
 
-    pub async fn drain_one_by_id(&self, id: MutationId) -> DrainOneOutcome {
-        let queued = self.with_pending(|p| p.iter().find(|q| q.id == id).cloned());
-        let Some(queued) = queued else {
-            return DrainOneOutcome::NotFound;
-        };
-        let event = queued.event.clone();
-        let lock = self.issue_lock(event.story_number()).await;
-        let _guard = lock.lock().await;
-        let queued = self.with_pending(|p| p.iter().find(|q| q.id == id).cloned());
-        let Some(queued) = queued else {
-            return DrainOneOutcome::Confirmed;
-        };
-        let event = queued.event.clone();
-        let current = self.store.story(event.story_number());
-        let kind = classify_conflict(queued.pre_state.as_ref(), &event, current.as_ref());
-        match kind {
-            Some(ConflictKind::IdempotentSkip) => {
-                self.remove_pending_by_id(id);
-                self.persist_outbox();
-                decrement_pending(&self.status);
-                crate::session::diag::log_diag(&format!(
-                    "orchestrator: idempotent-skip dropped #{} via drain_one_by_id (already-applied)",
-                    event.story_number()
-                ));
-                DrainOneOutcome::Confirmed
-            }
-            Some(divergent) => {
-                self.remove_pending_by_id(id);
-                self.persist_outbox();
-                decrement_pending(&self.status);
-                self.store.apply(&BoardEvent::ConflictDetected {
-                    meta: cache_fill_meta(),
-                    number: event.story_number(),
-                    kind: divergent,
-                });
-                crate::session::diag::log_diag(&format!(
-                    "orchestrator: drain_one_by_id rolled back #{} ({divergent:?}); applying server_story",
-                    event.story_number()
-                ));
-                DrainOneOutcome::RolledBack {
-                    server_story: current.map(Box::new),
-                }
-            }
-            None => match self.adapter.push_event(&event).await {
-                Ok(follow_up) => {
-                    self.remove_pending_by_id(id);
-                    self.persist_outbox();
-                    decrement_pending(&self.status);
-                    record_push_success(&self.status);
-                    if let Some(refresh_event) = follow_up {
-                        self.store.apply(&refresh_event);
-                    }
-                    DrainOneOutcome::Confirmed
-                }
-                Err(e) => {
-                    record_error(&self.status, &format!("push: {e}"));
-                    if is_permanent_push_failure(&e) {
-                        self.remove_pending_by_id(id);
-                        self.persist_outbox();
-                        decrement_pending(&self.status);
-                        record_dropped(&self.status, event.story_number(), format!("{e}"));
-                        crate::session::diag::log_diag(&format!(
-                            "orchestrator: drain_one_by_id dropped #{} after permanent push failure ({e})",
-                            event.story_number()
-                        ));
-                        DrainOneOutcome::Confirmed
-                    } else {
-                        DrainOneOutcome::TransientError(e)
-                    }
-                }
-            },
-        }
-    }
-
-    fn remove_pending_by_id(&self, id: MutationId) {
-        self.with_pending_mut(|p| {
-            if let Some(idx) = p.iter().position(|q| q.id == id) {
-                p.remove(idx);
-            }
-        });
-    }
-
     pub fn apply_server_rollback(&self, story: Story) {
         self.store.seed_all(vec![story]);
     }
@@ -607,157 +499,6 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                 .entry(issue)
                 .or_insert_with(|| Arc::new(tokio::sync::Mutex::new(()))),
         )
-    }
-
-    pub async fn drain_once(&self) -> Result<usize, SyncError> {
-        let mut drained = 0usize;
-        let mut failures = 0usize;
-        // #1195 conflict-detection bookkeeping. We walk the outbox
-        // by index rather than always pop-from-front so a divergent
-        // entry can stay in place while non-conflicting entries
-        // behind it continue to drain (per #1163 falsifier-c on
-        // bulk-batch partial-conflict semantics).
-        let mut conflicts_pending = 0usize;
-        let mut conflict_offset = 0usize;
-        loop {
-            let queued_opt = self.with_pending(|p| p.get(conflict_offset).cloned());
-            let Some(queued) = queued_opt else {
-                break;
-            };
-            let event = queued.event.clone();
-            let lock = self.issue_lock(event.story_number()).await;
-            let _guard = lock.lock().await;
-            let queued_opt = self.with_pending(|p| p.get(conflict_offset).cloned());
-            let Some(queued) = queued_opt else {
-                break;
-            };
-            let event = queued.event.clone();
-            let current = self.store.story(event.story_number());
-            let prior_classification = queued.last_classification;
-            let kind = classify_conflict(queued.pre_state.as_ref(), &event, current.as_ref());
-
-            // Auto-resolve: a previously-conflicted entry that now
-            // classifies as compatible (None) means the server has
-            // caught up via ingest poll. Emit ConflictResolved so
-            // the audit-trail records the auto-clear.
-            if matches!(
-                prior_classification,
-                Some(
-                    ConflictKind::DivergentState
-                        | ConflictKind::DivergentLabel
-                        | ConflictKind::External
-                )
-            ) && kind.is_none()
-            {
-                self.store.apply(&BoardEvent::ConflictResolved {
-                    meta: cache_fill_meta(),
-                    number: event.story_number(),
-                    origin: ConflictResolveOrigin::DrainAutoReclassify,
-                });
-                crate::session::diag::log_diag(&format!(
-                    "orchestrator: conflict auto-resolved on drain re-classify for #{}",
-                    event.story_number()
-                ));
-            }
-
-            match kind {
-                Some(ConflictKind::IdempotentSkip) => {
-                    self.with_pending_mut(|p| {
-                        if conflict_offset == 0 {
-                            p.pop_front();
-                        } else {
-                            p.remove(conflict_offset);
-                        }
-                    });
-                    self.persist_outbox();
-                    decrement_pending(&self.status);
-                    crate::session::diag::log_diag(&format!(
-                        "orchestrator: idempotent-skip dropped #{} (already-applied at canonical store)",
-                        event.story_number()
-                    ));
-                    continue;
-                }
-                Some(divergent) => {
-                    if !matches!(
-                        prior_classification,
-                        Some(
-                            ConflictKind::DivergentState
-                                | ConflictKind::DivergentLabel
-                                | ConflictKind::External
-                        )
-                    ) {
-                        // First detection of this conflict — emit
-                        // the audit-trail event so observers know
-                        // why this entry stays in the outbox.
-                        self.store.apply(&BoardEvent::ConflictDetected {
-                            meta: cache_fill_meta(),
-                            number: event.story_number(),
-                            kind: divergent,
-                        });
-                        crate::session::diag::log_diag(&format!(
-                            "orchestrator: conflict-detected {divergent:?} on #{}; left in outbox for slice-B click-to-resolve",
-                            event.story_number()
-                        ));
-                    }
-                    self.with_pending_mut(|p| {
-                        if let Some(slot) = p.get_mut(conflict_offset) {
-                            slot.last_classification = Some(divergent);
-                        }
-                    });
-                    self.persist_outbox();
-                    conflicts_pending += 1;
-                    conflict_offset += 1;
-                    continue;
-                }
-                None => {}
-            }
-            match self.adapter.push_event(&event).await {
-                Ok(follow_up) => {
-                    self.with_pending_mut(|p| {
-                        if conflict_offset == 0 {
-                            p.pop_front();
-                        } else {
-                            p.remove(conflict_offset);
-                        }
-                    });
-                    self.persist_outbox();
-                    drained += 1;
-                    record_push_success(&self.status);
-                    if let Some(refresh_event) = follow_up {
-                        self.store.apply(&refresh_event);
-                    }
-                }
-                Err(e) => {
-                    failures += 1;
-                    record_error(&self.status, &format!("push: {e}"));
-                    if is_permanent_push_failure(&e) {
-                        self.with_pending_mut(|p| {
-                            if conflict_offset == 0 {
-                                p.pop_front();
-                            } else {
-                                p.remove(conflict_offset);
-                            }
-                        });
-                        self.persist_outbox();
-                        decrement_pending(&self.status);
-                        record_dropped(&self.status, event.story_number(), format!("{e}"));
-                        crate::session::diag::log_diag(&format!(
-                            "orchestrator: dropped event after permanent push failure ({e}); event #{}",
-                            event.story_number()
-                        ));
-                        continue;
-                    }
-                    break;
-                }
-            }
-        }
-        record_conflicts_pending(&self.status, conflicts_pending);
-        if failures > 0 {
-            return Err(SyncError::Other(format!(
-                "{failures} push failures; {drained} pushes succeeded"
-            )));
-        }
-        Ok(drained)
     }
 
     pub fn snapshot_status(&self) -> SyncStatus {
