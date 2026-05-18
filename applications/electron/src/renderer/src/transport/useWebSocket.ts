@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { describeHttpError, http } from '../api/http'
+import { asyncTryCatch } from '../lib/asyncResult'
 import { tryCatch } from '../lib/result'
 import { applyStateDelta, applyStateSnapshot, emptyMirrorState } from './state-delta'
 import type { MirrorState } from './state-delta'
@@ -246,15 +247,17 @@ export const useWebSocket = (
         }
         throw lastErr instanceof Error ? lastErr : new Error(String(lastErr))
       }
-      Promise.all([
-        fetchHistoryWithRetry(
-          `/api/messages?chat_only=true&limit=${HISTORY_CHAT_LIMIT}`
-        ),
-        fetchHistoryWithRetry(
-          `/api/messages?message_type=activity&limit=${HISTORY_ACTIVITY_LIMIT}`
-        )
-      ])
-        .then(([chat, activity]) => {
+      void asyncTryCatch(() =>
+        Promise.all([
+          fetchHistoryWithRetry(
+            `/api/messages?chat_only=true&limit=${HISTORY_CHAT_LIMIT}`
+          ),
+          fetchHistoryWithRetry(
+            `/api/messages?message_type=activity&limit=${HISTORY_ACTIVITY_LIMIT}`
+          )
+        ])
+      )
+        .onSuccess(([chat, activity]) => {
           if (unmountedRef.current) return
           // Both responses are newest-first from the server; combine
           // and chronological-sort before merging so the resulting
@@ -289,11 +292,11 @@ export const useWebSocket = (
             return merged
           })
         })
-        .catch((err) => {
-          if (err?.name === 'AbortError') return
+        .onFailure((err) => {
+          if (err.name === 'AbortError' || err.message === 'aborted') return
           console.error('bpmux ws: history fetch failed', err)
           historyLoadedRef.current = false
-        })
+        }).value
     }
 
     const connect = (): void => {
