@@ -42,12 +42,20 @@ section = "pre-work"
 [[state]]
 id = "ready"
 section = "pre-work"
+
+[[state]]
+id = "in-progress"
+section = "in-work"
+
+[[state]]
+id = "accepted"
+section = "post-work"
 "#,
     );
     let result = load_workflow(tmp.path()).expect("valid TOML should parse");
     assert_eq!(result.section.len(), 3);
     assert_eq!(result.section[0].id, "pre-work");
-    assert_eq!(result.state.len(), 2);
+    assert_eq!(result.state.len(), 4);
     assert_eq!(result.state[0].id, "icebox");
     assert_eq!(result.state[0].section, "pre-work");
 }
@@ -88,6 +96,150 @@ id = "icebox"
 }
 
 #[test]
+fn workflow_toml_with_non_canonical_section_hard_fails() {
+    let tmp = TempDir::new().unwrap();
+    write_workflow(
+        &tmp,
+        r#"
+[[state]]
+id = "staging"
+section = "deployment"
+"#,
+    );
+    let err = load_workflow(tmp.path()).expect_err("non-canonical section should fail");
+    match err {
+        WorkflowLoadError::CanonViolation {
+            invalid_section,
+            valid_sections,
+            state_id,
+        } => {
+            assert_eq!(invalid_section, "deployment");
+            assert_eq!(state_id, "staging");
+            assert!(valid_sections.contains(&"pre-work".to_string()));
+            assert!(valid_sections.contains(&"in-work".to_string()));
+            assert!(valid_sections.contains(&"post-work".to_string()));
+        }
+        other => panic!("expected CanonViolation, got {other:?}"),
+    }
+}
+
+#[test]
+fn workflow_toml_with_empty_states_hard_fails_per_canonical_section() {
+    let tmp = TempDir::new().unwrap();
+    write_workflow(&tmp, "");
+    let err = load_workflow(tmp.path()).expect_err("empty workflow.toml should fail");
+    match err {
+        WorkflowLoadError::EmptyStates { missing_sections } => {
+            assert_eq!(missing_sections.len(), 3);
+            assert!(missing_sections.contains(&"pre-work".to_string()));
+            assert!(missing_sections.contains(&"in-work".to_string()));
+            assert!(missing_sections.contains(&"post-work".to_string()));
+        }
+        other => panic!("expected EmptyStates, got {other:?}"),
+    }
+}
+
+#[test]
+fn workflow_toml_with_state_in_some_but_not_all_canonical_sections_hard_fails() {
+    let tmp = TempDir::new().unwrap();
+    write_workflow(
+        &tmp,
+        r#"
+[[state]]
+id = "icebox"
+section = "pre-work"
+
+[[state]]
+id = "ready"
+section = "pre-work"
+"#,
+    );
+    let err = load_workflow(tmp.path()).expect_err("partial-coverage workflow.toml should fail");
+    match err {
+        WorkflowLoadError::EmptyStates { missing_sections } => {
+            assert!(missing_sections.contains(&"in-work".to_string()));
+            assert!(missing_sections.contains(&"post-work".to_string()));
+        }
+        other => panic!("expected EmptyStates, got {other:?}"),
+    }
+}
+
+#[test]
+fn canon_violation_json_shape() {
+    let err = WorkflowLoadError::CanonViolation {
+        invalid_section: "deployment".into(),
+        valid_sections: vec!["pre-work".into(), "in-work".into(), "post-work".into()],
+        state_id: "staging".into(),
+    };
+    let json = serde_json::to_value(&err).unwrap();
+    assert_eq!(json["kind"], "workflow-canon-violation");
+    assert_eq!(json["invalid_section"], "deployment");
+    assert_eq!(json["state_id"], "staging");
+}
+
+#[test]
+fn workflow_toml_with_multiple_subsections_per_canonical_section_parses_cleanly() {
+    let tmp = TempDir::new().unwrap();
+    write_workflow(
+        &tmp,
+        r#"
+[[state]]
+id = "ideas"
+section = "pre-work"
+
+[[state]]
+id = "triaged"
+section = "pre-work"
+
+[[state]]
+id = "vetted"
+section = "pre-work"
+
+[[state]]
+id = "refined"
+section = "pre-work"
+
+[[state]]
+id = "ready"
+section = "pre-work"
+
+[[state]]
+id = "in-progress"
+section = "in-work"
+
+[[state]]
+id = "accepted"
+section = "post-work"
+"#,
+    );
+    let workflow = load_workflow(tmp.path()).expect("multi-subsection workflow.toml parses");
+    assert_eq!(
+        workflow
+            .state
+            .iter()
+            .filter(|s| s.section == "pre-work")
+            .count(),
+        5
+    );
+    assert_eq!(
+        workflow
+            .state
+            .iter()
+            .filter(|s| s.section == "in-work")
+            .count(),
+        1
+    );
+    assert_eq!(
+        workflow
+            .state
+            .iter()
+            .filter(|s| s.section == "post-work")
+            .count(),
+        1
+    );
+}
+
+#[test]
 fn workflow_toml_overrides_evidence_window_seconds_per_transition() {
     let tmp = TempDir::new().unwrap();
     write_workflow(
@@ -101,6 +253,10 @@ id = "in-work"
 
 [[section]]
 id = "post-work"
+
+[[state]]
+id = "ready"
+section = "pre-work"
 
 [[state]]
 id = "delivered"
@@ -136,6 +292,18 @@ fn workflow_toml_supports_per_class_accept_transitions() {
     write_workflow(
         &tmp,
         r#"
+[[state]]
+id = "ready"
+section = "pre-work"
+
+[[state]]
+id = "delivered"
+section = "in-work"
+
+[[state]]
+id = "accepted"
+section = "post-work"
+
 [[transition]]
 id = "accept"
 from = "delivered"

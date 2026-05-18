@@ -26,6 +26,6 @@ pub use gate::{
     check_self_mutation_refused, check_target_state_valid, resolve_transition,
 };
 pub use loader::{
-    WorkflowLoadError, current_workflow, install_workflow, load_project_root_or_cwd, load_workflow,
-    workflow_path,
+    CANONICAL_SECTIONS, WorkflowLoadError, current_workflow, install_workflow,
+    load_project_root_or_cwd, load_workflow, validate_section_skeleton, workflow_path,
 };
