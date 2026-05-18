@@ -337,3 +337,11 @@ pub(crate) async fn dispatch_test_view_backlog(
     let summary = tools::build_backlog_summary(&stories);
     serde_json::to_string(&summary).map_err(|e| format!("serialize summary: {e}"))
 }
+
+pub(crate) async fn dispatch_test_submit_verdict(
+    args: serde_json::Map<String, serde_json::Value>,
+    agent_name: &str,
+    session: &Arc<crate::session::Session>,
+) -> Result<String, String> {
+    tools::handle_submit_verdict(&args, agent_name, session).await
+}

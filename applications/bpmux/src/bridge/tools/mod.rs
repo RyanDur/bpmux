@@ -61,6 +61,7 @@ mod simulate_key;
 mod simulate_type;
 #[cfg(test)]
 mod start_story_validation_tests;
+mod submit_verdict;
 mod update_principle;
 mod user_fn;
 mod view_backlog;
@@ -125,6 +126,7 @@ pub(in crate::bridge) use simulate_input_clear::handle_simulate_input_clear;
 pub(in crate::bridge) use simulate_input_submit::handle_simulate_input_submit;
 pub(in crate::bridge) use simulate_key::handle_simulate_key;
 pub(in crate::bridge) use simulate_type::handle_simulate_type;
+pub(in crate::bridge) use submit_verdict::handle_submit_verdict;
 pub(in crate::bridge) use update_principle::handle_update_principle;
 pub(in crate::bridge) use user_fn::{handle_list_user_fns, handle_user_fn};
 pub(in crate::bridge) use view_backlog::build_backlog_summary;

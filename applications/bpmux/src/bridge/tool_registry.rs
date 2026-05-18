@@ -177,6 +177,9 @@ pub fn build_advertised_tools() -> Vec<rmcp::model::Tool> {
         crate::mcp::tools::pass_desk_check_tool(
             "Mark a delivered story as passed desk-check. Applies the 'ready for accept' label and signals ryan that acceptance is ready. DESIGNER ONLY.",
         ),
+        crate::mcp::tools::submit_verdict_tool(
+            "Cast a substrate-grounded verdict on a story so accept_story's evidence-check reads structured data instead of regex-over-freetext chat messages (#1407 Option C). DEV + DESIGNER fire when team-verifiable evidence is required. `substrate_grounding` is a REQUIRED non-empty cite of the source-grounded reason the verdict was reached — CONTENT enforced structurally per META-CANON substrate-enforce > discipline.",
+        ),
         crate::mcp::tools::fail_desk_check_tool(
             "Mark a delivered story as failed desk-check with a reason. Applies the 'needs fixes' label and signals dev with the reason. DESIGNER ONLY.",
         ),
@@ -276,4 +279,5 @@ pub const DISPATCHED_TOOL_NAMES: &[&str] = &[
     "get_usage",
     "view_tokens",
     "view_roadmap",
+    "submit_verdict",
 ];
