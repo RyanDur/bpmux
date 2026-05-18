@@ -183,6 +183,26 @@ impl BoardStore {
         self.dirty.store(true, Ordering::Release);
     }
 
+    /// Remove a story from the canonical store. Returns the removed
+    /// Story when it existed; None when it wasn't present.
+    ///
+    /// Used by the orchestrator's post-ingest purge to drop persisted
+    /// stories that the adapter's ingest filter declared deleted
+    /// (e.g., #1418 retired-empty iterations that landed in storage
+    /// before the filter shipped + hydrate at boot before the next
+    /// ingest tick).
+    pub fn remove(&self, number: u64) -> Option<Story> {
+        let removed = self
+            .stories
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(&number);
+        if removed.is_some() {
+            self.dirty.store(true, Ordering::Release);
+        }
+        removed
+    }
+
     pub fn subscribe(&self) -> broadcast::Receiver<BoardEvent> {
         self.event_tx.subscribe()
     }

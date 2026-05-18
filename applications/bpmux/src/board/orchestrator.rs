@@ -352,6 +352,12 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         match self.adapter.ingest_metadata_since(since).await {
             Ok(stories) => {
                 self.store.seed_all(stories);
+                let purge = super::adapters::github::iteration_numbers_to_purge_as_retired_empty(
+                    &self.store.all_stories(),
+                );
+                for n in purge {
+                    self.store.remove(n);
+                }
                 record_ingest_success(&self.status);
                 Ok(())
             }

@@ -445,41 +445,46 @@ pub fn warn_on_inconsistent_state_labels(labels: &[String]) {
 /// closed iterations with members (history-value) and any open
 /// iterations regardless of member count (per #1413 fix).
 pub fn filter_retired_empty_iterations(stories: Vec<Story>) -> Vec<Story> {
-    use crate::board::domain::StoryType;
-    let retired_themes: Vec<String> = stories
-        .iter()
-        .filter(|s| s.story_type == StoryType::Iteration && s.state == StoryState::Retired)
-        .filter_map(|s| s.title.strip_prefix("Iteration ").map(|t| t.to_string()))
-        .collect();
-    if retired_themes.is_empty() {
+    let purge: Vec<u64> = iteration_numbers_to_purge_as_retired_empty(&stories);
+    if purge.is_empty() {
         return stories;
     }
-    let empty_retired_themes: Vec<String> = retired_themes
+    stories
+        .into_iter()
+        .filter(|s| !purge.contains(&s.number))
+        .collect()
+}
+
+/// #1418 sister to `filter_retired_empty_iterations`: returns the
+/// `Story.number`s of retired-empty iterations in a batch — used by
+/// the orchestrator's post-ingest purge to evict already-loaded
+/// entries from the canonical store (the at-ingest filter only
+/// catches FRESH ingests; persisted-then-hydrated entries need an
+/// already-loaded-purge step per
+/// `feedback_substrate_filter_must_apply_to_both_fresh_and_loaded`).
+pub fn iteration_numbers_to_purge_as_retired_empty(stories: &[Story]) -> Vec<u64> {
+    use crate::board::domain::StoryType;
+    let retired_iterations: Vec<(&Story, String)> = stories
         .iter()
-        .filter(|theme| {
+        .filter(|s| s.story_type == StoryType::Iteration && s.state == StoryState::Retired)
+        .filter_map(|s| {
+            s.title
+                .strip_prefix("Iteration ")
+                .map(|theme| (s, theme.to_string()))
+        })
+        .collect();
+    if retired_iterations.is_empty() {
+        return Vec::new();
+    }
+    retired_iterations
+        .into_iter()
+        .filter(|(_, theme)| {
             let prefix = format!("iteration-{theme}.");
             !stories
                 .iter()
                 .any(|s| s.raw_labels.iter().any(|l| l.starts_with(&prefix)))
         })
-        .cloned()
-        .collect();
-    if empty_retired_themes.is_empty() {
-        return stories;
-    }
-    stories
-        .into_iter()
-        .filter(|s| {
-            if s.story_type != StoryType::Iteration || s.state != StoryState::Retired {
-                return true;
-            }
-            let theme = s
-                .title
-                .strip_prefix("Iteration ")
-                .unwrap_or(&s.title)
-                .to_string();
-            !empty_retired_themes.contains(&theme)
-        })
+        .map(|(s, _)| s.number)
         .collect()
 }
 
