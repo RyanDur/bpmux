@@ -31,8 +31,12 @@ pub async fn drive_to_delivered(
     acceptance_test_path: &str,
 ) {
     pm.call_tool(
-        "edit_story",
-        serde_json::json!({"number": story_number, "labels_add": ["ready"]}),
+        "move_story",
+        serde_json::json!({
+            "number": story_number,
+            "target_state": "ready",
+            "rationale": "drive_to_delivered: promote icebox→ready for downstream pickup"
+        }),
     )
     .await
     .expect("move to ready");

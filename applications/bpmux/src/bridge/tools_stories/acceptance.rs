@@ -36,6 +36,7 @@ pub(crate) async fn handle_accept_story(
     let r = refresh.ok_or(
         "accept_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n",
     )?;
+    r.test_race_window_rendezvous().await;
     let story_opt = r.store().story(number);
     let class = story_opt
         .as_ref()
@@ -82,6 +83,7 @@ pub(crate) async fn handle_accept_story(
     }
     let actor = crate::transport::ws::short_name(agent_name).to_string();
     accept_via_canonical_store(r, number, actor, bypass).await?;
+    r.test_race_window_complete();
     broadcast_board_invalidate(ws_tx).await;
     Ok(format!("#{number} accepted and closed"))
 }

@@ -15,6 +15,15 @@ fn test_mode_enabled() -> bool {
         .unwrap_or(false)
 }
 
+fn race_window_barrier_from_env() -> Option<Arc<crate::board::RaceWindowBarrier>> {
+    let raw = std::env::var("BPMUX_TEST_RACE_WINDOW_REQUESTS").ok()?;
+    let target: usize = raw.trim().parse().ok()?;
+    if target < 2 {
+        return None;
+    }
+    Some(Arc::new(crate::board::RaceWindowBarrier::new(target)))
+}
+
 fn seed_ci_green_for_tests(store: &crate::transport::ci_state_store::CiStateStore) {
     let enabled = std::env::var("BPMUX_TEST_SEED_CI_GREEN")
         .map(|v| !v.is_empty() && v != "0")
@@ -41,6 +50,7 @@ async fn build_test_orchestrator(
     session: Arc<session::Session>,
     action_tx: Option<tokio::sync::mpsc::UnboundedSender<crate::orchestrator::OrchestratorAction>>,
     ci_state_store: crate::transport::ci_state_store::CiStateStore,
+    race_window_barrier: Option<Arc<crate::board::RaceWindowBarrier>>,
 ) -> Arc<dyn RefreshDriver> {
     let mut corruption_detected = false;
     let store = match BoardStore::load_from_storage(session.storage.as_ref()) {
@@ -69,7 +79,10 @@ async fn build_test_orchestrator(
         None => orch_concrete,
     };
     seed_ci_green_for_tests(&ci_state_store);
-    let orch_concrete = orch_concrete.with_ci_state_store(ci_state_store);
+    let mut orch_concrete = orch_concrete.with_ci_state_store(ci_state_store);
+    if let Some(barrier) = race_window_barrier {
+        orch_concrete = orch_concrete.with_race_window_barrier(barrier);
+    }
     let orch: Arc<dyn RefreshDriver> = Arc::new(orch_concrete);
     if corruption_detected {
         orch.mark_recovering_from_corruption();
@@ -87,6 +100,7 @@ async fn build_prod_orchestrator(
     adapter: Arc<crate::board::adapters::github::GitHubSourceAdapter>,
     action_tx: Option<tokio::sync::mpsc::UnboundedSender<crate::orchestrator::OrchestratorAction>>,
     ci_state_store: crate::transport::ci_state_store::CiStateStore,
+    race_window_barrier: Option<Arc<crate::board::RaceWindowBarrier>>,
 ) -> Arc<dyn RefreshDriver> {
     let mut corruption_detected = false;
     let store = match BoardStore::load_from_storage(session.storage.as_ref()) {
@@ -131,7 +145,10 @@ async fn build_prod_orchestrator(
         None => orch_concrete,
     };
     seed_ci_green_for_tests(&ci_state_store);
-    let orch_concrete = orch_concrete.with_ci_state_store(ci_state_store);
+    let mut orch_concrete = orch_concrete.with_ci_state_store(ci_state_store);
+    if let Some(barrier) = race_window_barrier {
+        orch_concrete = orch_concrete.with_race_window_barrier(barrier);
+    }
     let orch: Arc<dyn RefreshDriver> = Arc::new(orch_concrete);
     if corruption_detected {
         orch.mark_recovering_from_corruption();
@@ -229,6 +246,7 @@ pub async fn run_server(
         tokio::sync::mpsc::unbounded_channel::<crate::orchestrator::OrchestratorAction>();
 
     let ci_state_store = crate::transport::ci_state_store::CiStateStore::new();
+    let race_window_barrier = race_window_barrier_from_env();
 
     let test_refresh: TestRefreshHandle = if test_mode_enabled() {
         eprintln!(
@@ -239,6 +257,7 @@ pub async fn run_server(
                 session.clone(),
                 Some(action_tx.clone()),
                 ci_state_store.clone(),
+                race_window_barrier.clone(),
             )
             .await,
         )
@@ -249,6 +268,7 @@ pub async fn run_server(
                 tracker_arc,
                 Some(action_tx.clone()),
                 ci_state_store.clone(),
+                race_window_barrier.clone(),
             )
             .await,
         )

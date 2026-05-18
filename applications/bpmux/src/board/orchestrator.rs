@@ -124,6 +124,106 @@ pub trait RefreshDriver: Send + Sync {
     fn ci_state(&self) -> Option<crate::workflow::CiSnapshot> {
         None
     }
+
+    /// #1406 Slice 2: test-only race-window rendezvous hook for the
+    /// gate-fire handlers (currently accept_story; sister-class fires
+    /// can opt in). Production orchestrators no-op via this default
+    /// impl. When env `BPMUX_TEST_RACE_WINDOW_REQUESTS=N` is set on
+    /// the server subprocess, SyncOrchestrator builds a counted
+    /// `RaceWindowBarrier(N)` and this method synchronizes N
+    /// concurrent fires at the top of the handler — the
+    /// Barrier-designated leader proceeds immediately; followers
+    /// wait inside `arrive` for the leader's `complete()`. When
+    /// followers wake the BoardStore reflects the leader's mutation,
+    /// so substrate-validator `check_target_state_valid` returns
+    /// `workflow-target-state-invalid` on the follower's check —
+    /// canon-shape per #1385 Sc 9. Production single-orchestrator
+    /// serialization is preserved bit-for-bit because the env var is
+    /// never set on production servers.
+    fn test_race_window_rendezvous(&self) -> BoxedFuture<'_, ()> {
+        Box::pin(async {})
+    }
+
+    /// #1406 Slice 2 sister-method: leader signals critical-section
+    /// completion so followers waiting in `test_race_window_rendezvous`
+    /// can proceed and observe the mutated state. Called by gate-fire
+    /// handlers AFTER the state-mutate (e.g., after
+    /// `accept_via_canonical_store`). Production no-op via this
+    /// default impl; SyncOrchestrator override calls
+    /// `RaceWindowBarrier::complete()` when a barrier is configured.
+    /// Idempotent — non-leaders calling it after the leader's call
+    /// no-op cleanly.
+    fn test_race_window_complete(&self) {}
+}
+
+/// #1406 Slice 2: leader-follower rendezvous barrier for test-only
+/// e2e exercise of the gate-fire race-window (#1385 Sc 9). N
+/// concurrent fires call `arrive().await`; the tokio Barrier
+/// synchronizes them so none proceeds until all N have arrived. Then
+/// the Barrier-designated leader returns first + does the critical
+/// section (check + mutate); followers wait inside `arrive` until the
+/// leader calls `complete()`. When followers wake, the BoardStore
+/// reflects the leader's mutation, so the substrate-validator
+/// (`check_target_state_valid`) returns 409
+/// `workflow-target-state-invalid` on the follower's check — which is
+/// exactly the canon-shape #1385 Sc 9 specifies.
+///
+/// `target = 0` makes the barrier a pass-through no-op (the
+/// production code-path: env `BPMUX_TEST_RACE_WINDOW_REQUESTS` unset
+/// → SyncOrchestrator builds no barrier → trait default no-op
+/// `test_race_window_rendezvous`).
+///
+/// The leader-done signal uses a `tokio::sync::watch` channel — its
+/// per-receiver version tracking sidesteps the lost-wakeup race
+/// inherent to Notify (notify_waiters fires before follower
+/// registers → notification dropped → follower deadlocks). watch
+/// gives followers a `borrow()` view of the current value plus
+/// `changed()` that resolves on any version bump beyond the
+/// receiver's seen version, so a complete() that fires before the
+/// follower's check is observable via the immediate borrow.
+pub struct RaceWindowBarrier {
+    target: usize,
+    arrival_barrier: tokio::sync::Barrier,
+    leader_done_tx: tokio::sync::watch::Sender<bool>,
+    leader_done_rx: tokio::sync::watch::Receiver<bool>,
+}
+
+impl RaceWindowBarrier {
+    pub fn new(target: usize) -> Self {
+        let (tx, rx) = tokio::sync::watch::channel(false);
+        Self {
+            target,
+            arrival_barrier: tokio::sync::Barrier::new(target.max(1)),
+            leader_done_tx: tx,
+            leader_done_rx: rx,
+        }
+    }
+
+    pub async fn arrive(&self) {
+        if self.target == 0 {
+            return;
+        }
+        let is_leader = self.arrival_barrier.wait().await.is_leader();
+        if is_leader {
+            return;
+        }
+        let mut rx = self.leader_done_rx.clone();
+        loop {
+            if *rx.borrow_and_update() {
+                return;
+            }
+            if rx.changed().await.is_err() {
+                return;
+            }
+        }
+    }
+
+    pub fn complete(&self) {
+        if self.target == 0 {
+            return;
+        }
+        let _ = self.leader_done_tx.send(true);
+    }
 }
 
 /// #1195: outbox-entry wrapper carrying the pre-mutation snapshot
@@ -211,6 +311,15 @@ pub struct SyncOrchestrator<A: SourceAdapter + 'static> {
     /// in-memory orchestrators leave it None (gate then treats CI as
     /// `unknown` and refuses CI-gated transitions).
     pub(super) ci_state_store: Option<crate::transport::ci_state_store::CiStateStore>,
+    /// #1406 Slice 2: counted rendezvous barrier for test-only e2e
+    /// exercise of gate-fire race-window. Populated at startup only
+    /// when env `BPMUX_TEST_RACE_WINDOW_REQUESTS` is set (test
+    /// subprocess); None in production (never set on production
+    /// servers). When Some, `test_race_window_rendezvous` awaits the
+    /// barrier between substrate-validator check and state-mutate so
+    /// the e2e test can observe the substrate-validator's
+    /// concurrent-fire path.
+    pub(super) race_window_barrier: Option<Arc<RaceWindowBarrier>>,
 }
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
@@ -227,6 +336,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             action_tx: None,
             issue_locks: tokio::sync::Mutex::new(std::collections::HashMap::new()),
             ci_state_store: None,
+            race_window_barrier: None,
         }
     }
 
@@ -243,6 +353,19 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         store: crate::transport::ci_state_store::CiStateStore,
     ) -> Self {
         self.ci_state_store = Some(store);
+        self
+    }
+
+    /// #1406 Slice 2: inject the test-only counted rendezvous barrier
+    /// so the gate-fire handlers (currently accept_story) can
+    /// interleave at the substrate-validator → state-mutate boundary
+    /// for e2e race-window exercise. Production server.rs only calls
+    /// this when env `BPMUX_TEST_RACE_WINDOW_REQUESTS=N` is set
+    /// (test subprocess); production servers never set the env so
+    /// this stays None + the trait's default no-op `arrive` makes
+    /// the gate handler proceed without yielding.
+    pub fn with_race_window_barrier(mut self, barrier: Arc<RaceWindowBarrier>) -> Self {
+        self.race_window_barrier = Some(barrier);
         self
     }
 
@@ -282,6 +405,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             action_tx: None,
             issue_locks: tokio::sync::Mutex::new(std::collections::HashMap::new()),
             ci_state_store: None,
+            race_window_barrier: None,
         })
     }
 
@@ -312,6 +436,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             action_tx: None,
             issue_locks: tokio::sync::Mutex::new(std::collections::HashMap::new()),
             ci_state_store: None,
+            race_window_barrier: None,
         })
     }
 
@@ -741,6 +866,21 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
             conclusion: report.conclusion.to_string(),
             head_sha: report.head_sha.unwrap_or_default(),
         })
+    }
+
+    fn test_race_window_rendezvous(&self) -> BoxedFuture<'_, ()> {
+        let barrier = self.race_window_barrier.clone();
+        Box::pin(async move {
+            if let Some(b) = barrier {
+                b.arrive().await;
+            }
+        })
+    }
+
+    fn test_race_window_complete(&self) {
+        if let Some(b) = self.race_window_barrier.as_ref() {
+            b.complete();
+        }
     }
 }
 
