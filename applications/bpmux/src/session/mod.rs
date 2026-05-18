@@ -21,6 +21,7 @@ mod storage_tests;
 pub mod tokens;
 pub mod usage;
 pub mod velocity;
+pub mod verdicts;
 
 #[cfg(test)]
 mod team_roster_tests;
