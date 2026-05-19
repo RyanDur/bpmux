@@ -8,13 +8,8 @@ pub enum StoryState {
     InProgress,
     DeskCheck,
     Delivered,
+    Acceptance,
     Accepted,
-    /// #1377: closed via close_story with reason
-    /// ∈ {superseded, duplicate, won't-fix}. Distinct from Accepted
-    /// (which is ship-chain close — work landed in the iteration) and
-    /// distinct from Icebox (where the "retired" label previously
-    /// mis-routed). Renderer treats this as its own column-class so
-    /// retired stories don't pollute the accepted column.
     Retired,
 }
 
@@ -26,16 +21,12 @@ impl StoryState {
             StoryState::InProgress => "in-progress",
             StoryState::DeskCheck => "desk-check",
             StoryState::Delivered => "delivered",
+            StoryState::Acceptance => "acceptance",
             StoryState::Accepted => "accepted",
             StoryState::Retired => "retired",
         }
     }
 
-    /// Parse the canonical state-string back into the enum. Accepts
-    /// canonical forms (`in-progress`, `desk-check`) plus underscore
-    /// variants the MCP tool callers commonly use (`in_progress`,
-    /// `desk_check`). Returns None for any other string so callers
-    /// can produce a clear named-cause error. Sister to #1367.
     pub fn parse(s: &str) -> Option<Self> {
         match s {
             "icebox" => Some(StoryState::Icebox),
@@ -43,6 +34,7 @@ impl StoryState {
             "in-progress" | "in_progress" => Some(StoryState::InProgress),
             "desk-check" | "desk_check" => Some(StoryState::DeskCheck),
             "delivered" => Some(StoryState::Delivered),
+            "acceptance" => Some(StoryState::Acceptance),
             "accepted" => Some(StoryState::Accepted),
             "retired" => Some(StoryState::Retired),
             _ => None,
@@ -164,7 +156,7 @@ fn state_ordinal(s: StoryState) -> u8 {
         StoryState::Ready => 1,
         StoryState::InProgress => 2,
         StoryState::DeskCheck => 3,
-        StoryState::Delivered => 4,
+        StoryState::Delivered | StoryState::Acceptance => 4,
         StoryState::Accepted | StoryState::Retired => 5,
     }
 }
@@ -223,6 +215,7 @@ impl Story {
             StoryState::InProgress => Some("in progress"),
             StoryState::DeskCheck => Some("desk-check"),
             StoryState::Delivered => Some("delivered"),
+            StoryState::Acceptance => Some("acceptance"),
             StoryState::Accepted => Some("accepted"),
             StoryState::Retired => Some("retired"),
         };

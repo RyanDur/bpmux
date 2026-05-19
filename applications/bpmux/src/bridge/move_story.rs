@@ -81,6 +81,7 @@ impl TargetState {
             Self::Workflow(StoryState::InProgress) => Some("in progress"),
             Self::Workflow(StoryState::DeskCheck) => Some("desk-check"),
             Self::Workflow(StoryState::Delivered) => Some("delivered"),
+            Self::Workflow(StoryState::Acceptance) => Some("acceptance"),
             Self::Workflow(StoryState::Accepted) => Some("accepted"),
             Self::Workflow(StoryState::Retired) | Self::Retired => Some("retired"),
             Self::Workflow(StoryState::Icebox) => None,
@@ -98,6 +99,7 @@ impl TargetState {
             Self::Workflow(StoryState::InProgress) => "in-progress",
             Self::Workflow(StoryState::DeskCheck) => "desk-check",
             Self::Workflow(StoryState::Delivered) => "delivered",
+            Self::Workflow(StoryState::Acceptance) => "acceptance",
             Self::Workflow(StoryState::Accepted) => "accepted",
             Self::Workflow(StoryState::Retired) | Self::Retired => "retired",
         }
@@ -146,6 +148,7 @@ fn current_state_display(story: Option<&crate::board::domain::Story>) -> &'stati
             StoryState::InProgress => "in-progress",
             StoryState::DeskCheck => "desk-check",
             StoryState::Delivered => "delivered",
+            StoryState::Acceptance => "acceptance",
             StoryState::Accepted => "accepted",
             StoryState::Retired => "retired",
         },

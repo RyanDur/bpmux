@@ -34,7 +34,7 @@ fn renderer_column_for(state: StoryState, is_closed: bool) -> ColumnBucket {
         StoryState::Ready => ColumnBucket::Ready,
         StoryState::InProgress => ColumnBucket::InProgress,
         StoryState::DeskCheck => ColumnBucket::DeskCheck,
-        StoryState::Delivered => ColumnBucket::Delivered,
+        StoryState::Delivered | StoryState::Acceptance => ColumnBucket::Delivered,
         StoryState::Accepted => ColumnBucket::Accepted,
         StoryState::Retired => ColumnBucket::Retired,
     }

@@ -101,6 +101,7 @@ pub(super) fn stale_state_labels_for(story: &Story, raw_labels: &[String]) -> Ve
         StoryState::InProgress => "in progress",
         StoryState::DeskCheck => "desk-check",
         StoryState::Delivered => "delivered",
+        StoryState::Acceptance => "acceptance",
         StoryState::Accepted => "accepted",
         StoryState::Retired => "retired",
     };

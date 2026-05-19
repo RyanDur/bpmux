@@ -383,6 +383,7 @@ fn label_for_state(state: crate::board::domain::StoryState) -> &'static str {
         StoryState::InProgress => "in progress",
         StoryState::DeskCheck => "desk-check",
         StoryState::Delivered => "delivered",
+        StoryState::Acceptance => "acceptance",
         StoryState::Accepted => "accepted",
         StoryState::Retired => "retired",
     }
