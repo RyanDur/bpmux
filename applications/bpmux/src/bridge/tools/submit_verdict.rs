@@ -1,5 +1,4 @@
 use crate::session::Message;
-use crate::session::MessageType;
 use crate::session::verdicts::{AddVerdictOutcome, Verdict, add_or_replace_verdict, load, save};
 use std::sync::Arc;
 
@@ -56,7 +55,6 @@ pub(in crate::bridge) async fn handle_submit_verdict(
         from: "bpmux".to_string(),
         text: format!("verdict cast on #{story_number} from {role}: {verdict_value}"),
         ts,
-        message_type: MessageType::Activity,
         addressee: Some(pm_id.to_string()),
         ..Message::default()
     };
