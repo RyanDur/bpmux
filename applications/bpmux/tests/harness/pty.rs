@@ -8,8 +8,9 @@ use httpmock::{Method, MockServer};
 use portable_pty::{CommandBuilder, PtySize, native_pty_system};
 use serde_json::Value;
 
-use super::mock_gh::{comment_json, issue_json};
+use super::mock_gh::{MockIssueState, issue_json, mock_story_mutations_with_state};
 use super::port::free_port;
+use std::sync::Mutex as StdMutex;
 
 fn default_issue_json(number: u64, title: &str) -> Value {
     let body = format!(
@@ -237,42 +238,17 @@ impl TestBpmux {
             // outside #1 still resolve. Without these, drain_pending
             // fails on the first label-add or comment-create.
             for n in 1..=8u64 {
-                let issue_path = format!("/repos/acme/bpmux/issues/{n}");
-                let labels_path = format!("/repos/acme/bpmux/issues/{n}/labels");
-                let comments_path = format!("/repos/acme/bpmux/issues/{n}/comments");
-                let labels_delete_re = format!(r"^/repos/acme/bpmux/issues/{n}/labels/.+$");
-                let issue_get_path = issue_path.clone();
-                server.mock(|when, then| {
-                    when.method(Method::GET).path(issue_get_path);
-                    then.status(200)
-                        .header("content-type", "application/json")
-                        .body(default_issue_json(n, "test-target").to_string());
-                });
-                server.mock(|when, then| {
-                    when.method(Method::PATCH).path(issue_path);
-                    then.status(200)
-                        .header("content-type", "application/json")
-                        .body(default_issue_json(n, "test-target").to_string());
-                });
-                server.mock(|when, then| {
-                    when.method(Method::POST).path(labels_path);
-                    then.status(200)
-                        .header("content-type", "application/json")
-                        .body("[]");
-                });
-                server.mock(|when, then| {
-                    when.method(Method::POST).path(comments_path);
-                    then.status(201)
-                        .header("content-type", "application/json")
-                        .body(comment_json("ok").to_string());
-                });
-                server.mock(|when, then| {
-                    when.method(Method::DELETE)
-                        .path_matches(regex::Regex::new(&labels_delete_re).unwrap());
-                    then.status(200)
-                        .header("content-type", "application/json")
-                        .body("[]");
-                });
+                let body = format!(
+                    "## Acceptance test path\n\n{}/tests/harness/story_helpers.rs\n",
+                    env!("CARGO_MANIFEST_DIR")
+                );
+                let state = Arc::new(StdMutex::new(MockIssueState {
+                    title: "test-target".to_string(),
+                    body: Some(body),
+                    labels: Vec::new(),
+                    is_closed: false,
+                }));
+                mock_story_mutations_with_state(&server, n, state);
             }
             cmd.env("BPMUX_GH_BASE_URL", format!("{}/", server.base_url()));
             cmd.env("BPMUX_REPO", "acme/bpmux");

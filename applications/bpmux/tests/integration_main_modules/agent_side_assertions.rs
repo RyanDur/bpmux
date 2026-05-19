@@ -517,23 +517,30 @@ fn accept_story_is_idempotent_on_already_closed() {
         harness::story_helpers::seed_team_verifiable_evidence_with_mock_gh(&bpmux, &base_url, 213)
             .await;
 
-        let _ = pm
-            .call_tool(
-                "accept_story",
-                serde_json::json!({"number": 213, "would_file_bug": false}),
-            )
-            .await;
-
-        let result = pm
+        let first = pm
             .call_tool(
                 "accept_story",
                 serde_json::json!({"number": 213, "would_file_bug": false}),
             )
             .await;
         assert!(
-            result.is_ok(),
-            "double-accept should succeed against mocked GH. got: {:?}",
-            result
+            first.is_ok(),
+            "first accept_story should succeed. got: {:?}",
+            first
+        );
+
+        let second = pm
+            .call_tool(
+                "accept_story",
+                serde_json::json!({"number": 213, "would_file_bug": false}),
+            )
+            .await;
+        let err = second.expect_err(
+            "second accept_story on already-accepted story should refuse via substrate-validator",
+        );
+        assert!(
+            err.to_string().contains("workflow-target-state-invalid"),
+            "second fire must surface workflow-target-state-invalid; got {err}"
         );
 
         pm.close().await;

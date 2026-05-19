@@ -15,8 +15,9 @@
 //! emits the full shape from a single `name` argument.
 #![allow(dead_code)]
 
-use httpmock::{Method, MockServer};
+use httpmock::{HttpMockRequest, HttpMockResponse, Method, MockServer};
 use serde_json::Value;
+use std::sync::{Arc, Mutex};
 
 /// Build a full GitHub label JSON object suitable for inclusion in an
 /// issue's `labels` array. Stable id/url so identical names produce
@@ -46,31 +47,88 @@ pub fn label_json(name: &str) -> Value {
 /// per test (different labels/seeds). This helper registers per-issue
 /// endpoints (issue detail + mutations) only.
 pub fn mock_story_mutations(server: &MockServer, number: u64, issue_response: &Value) {
+    let initial_labels = labels_from_issue(issue_response);
+    let initial_is_closed = issue_response
+        .get("state")
+        .and_then(|v| v.as_str())
+        .map(|s| s == "closed")
+        .unwrap_or(false);
+    let state = Arc::new(Mutex::new(MockIssueState {
+        title: issue_response
+            .get("title")
+            .and_then(|v| v.as_str())
+            .unwrap_or("untitled")
+            .to_string(),
+        body: issue_response
+            .get("body")
+            .and_then(|v| v.as_str())
+            .map(str::to_string),
+        labels: initial_labels,
+        is_closed: initial_is_closed,
+    }));
+    mock_story_mutations_with_state(server, number, state);
+}
+
+pub fn mock_story_mutations_with_state(
+    server: &MockServer,
+    number: u64,
+    state: Arc<Mutex<MockIssueState>>,
+) {
     let issue_path = format!("/repos/acme/bpmux/issues/{number}");
     let labels_path = format!("/repos/acme/bpmux/issues/{number}/labels");
     let comments_path = format!("/repos/acme/bpmux/issues/{number}/comments");
     let labels_delete_re = format!(r"^/repos/acme/bpmux/issues/{number}/labels/.+$");
 
-    let issue_get_clone = issue_response.clone();
-    let issue_patch_clone = issue_response.clone();
+    let get_state = Arc::clone(&state);
     let issue_path_get = issue_path.clone();
     server.mock(|when, then| {
         when.method(Method::GET).path(issue_path_get);
-        then.status(200)
-            .header("content-type", "application/json")
-            .body(issue_get_clone.to_string());
+        then.respond_with(move |_req: &HttpMockRequest| {
+            let snap = get_state.lock().unwrap().clone();
+            json_response(snap.to_issue_json(number))
+        });
     });
+    let patch_state = Arc::clone(&state);
     server.mock(|when, then| {
         when.method(Method::PATCH).path(issue_path);
-        then.status(200)
-            .header("content-type", "application/json")
-            .body(issue_patch_clone.to_string());
+        then.respond_with(move |req: &HttpMockRequest| {
+            let mut s = patch_state.lock().unwrap();
+            if let Some(patch) = parse_json_body(req) {
+                if let Some(state_str) = patch.get("state").and_then(|v| v.as_str()) {
+                    s.is_closed = state_str == "closed";
+                }
+                if let Some(labels_arr) = patch.get("labels").and_then(|v| v.as_array()) {
+                    let new_labels: Vec<String> = labels_arr
+                        .iter()
+                        .filter_map(|v| v.as_str().map(String::from))
+                        .collect();
+                    s.labels = new_labels;
+                }
+            }
+            let snap = s.clone();
+            drop(s);
+            json_response(snap.to_issue_json(number))
+        });
     });
+    let post_labels_state = Arc::clone(&state);
     server.mock(|when, then| {
         when.method(Method::POST).path(labels_path);
-        then.status(200)
-            .header("content-type", "application/json")
-            .body(Value::Array(vec![]).to_string());
+        then.respond_with(move |req: &HttpMockRequest| {
+            let mut s = post_labels_state.lock().unwrap();
+            if let Some(patch) = parse_json_body(req)
+                && let Some(labels_arr) = patch.get("labels").and_then(|v| v.as_array())
+            {
+                for v in labels_arr {
+                    if let Some(name) = v.as_str()
+                        && !s.labels.iter().any(|l| l == name)
+                    {
+                        s.labels.push(name.to_string());
+                    }
+                }
+            }
+            let labels_json: Vec<Value> = s.labels.iter().map(|n| label_json(n)).collect();
+            json_response(Value::Array(labels_json))
+        });
     });
     server.mock(|when, then| {
         when.method(Method::POST).path(comments_path);
@@ -78,13 +136,67 @@ pub fn mock_story_mutations(server: &MockServer, number: u64, issue_response: &V
             .header("content-type", "application/json")
             .body(comment_json("ok").to_string());
     });
+    let delete_labels_state = Arc::clone(&state);
     server.mock(|when, then| {
         when.method(Method::DELETE)
             .path_matches(regex::Regex::new(&labels_delete_re).unwrap());
-        then.status(200)
-            .header("content-type", "application/json")
-            .body(Value::Array(vec![]).to_string());
+        then.respond_with(move |req: &HttpMockRequest| {
+            let mut s = delete_labels_state.lock().unwrap();
+            let removed_label = req.uri().path().rsplit('/').next().map(String::from);
+            if let Some(name) = removed_label {
+                s.labels.retain(|l| l != &name);
+            }
+            let labels_json: Vec<Value> = s.labels.iter().map(|n| label_json(n)).collect();
+            json_response(Value::Array(labels_json))
+        });
     });
+}
+
+#[derive(Clone)]
+pub struct MockIssueState {
+    pub title: String,
+    pub body: Option<String>,
+    pub labels: Vec<String>,
+    pub is_closed: bool,
+}
+
+impl MockIssueState {
+    pub fn to_issue_json(&self, number: u64) -> Value {
+        let labels: Vec<&str> = self.labels.iter().map(String::as_str).collect();
+        let mut issue = issue_json(number, &self.title, &labels, self.body.as_deref());
+        if let Some(obj) = issue.as_object_mut() {
+            obj.insert(
+                "state".to_string(),
+                Value::String(if self.is_closed { "closed" } else { "open" }.to_string()),
+            );
+        }
+        issue
+    }
+}
+
+fn labels_from_issue(issue: &Value) -> Vec<String> {
+    issue
+        .get("labels")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|l| l.get("name").and_then(|n| n.as_str()).map(String::from))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn parse_json_body(req: &HttpMockRequest) -> Option<Value> {
+    let body = req.body();
+    serde_json::from_slice::<Value>(body.as_ref()).ok()
+}
+
+fn json_response(value: Value) -> HttpMockResponse {
+    HttpMockResponse::builder()
+        .status(200)
+        .header("content-type", "application/json")
+        .body(value.to_string())
+        .build()
 }
 
 /// Build a GitHub comment JSON shape suitable as the response body for
