@@ -50,16 +50,41 @@ run_case "piped-clean" "+pub fn foo() {}" "pass" "piped"
 INLINE_VIOLATION=$(printf '+// dropping a comment here\n+pub fn foo() {}')
 run_case "piped-inline-violation" "$INLINE_VIOLATION" "fail" "piped"
 
-# Piped-stdin: rustdoc /// → pass.
-RUSTDOC_OK=$(printf '+/// a rustdoc comment\n+pub fn foo() {}')
-run_case "piped-rustdoc-ok" "$RUSTDOC_OK" "pass" "piped"
+# Piped-stdin: rustdoc /// → fail (#1422 — Ryan-canon "build understanding into code").
+RUSTDOC_VIOLATION=$(printf '+/// a rustdoc comment\n+pub fn foo() {}')
+run_case "piped-rustdoc-violation" "$RUSTDOC_VIOLATION" "fail" "piped"
 
-# Piped-stdin: module-doc //! → pass.
-MODULE_DOC_OK=$(printf '+//! a module doc\n+pub fn foo() {}')
-run_case "piped-module-doc-ok" "$MODULE_DOC_OK" "pass" "piped"
+# Piped-stdin: module-doc //! → fail (#1422).
+MODULE_DOC_VIOLATION=$(printf '+//! a module doc\n+pub fn foo() {}')
+run_case "piped-module-doc-violation" "$MODULE_DOC_VIOLATION" "fail" "piped"
+
+# Piped-stdin: block-comment /* */ → fail (#1422).
+BLOCK_VIOLATION=$(printf '+/* a block comment */\n+pub fn foo() {}')
+run_case "piped-block-comment-violation" "$BLOCK_VIOLATION" "fail" "piped"
+
+# Piped-stdin: URL in string-literal → pass (#1422 false-positive guard).
+URL_OK=$(printf '+pub fn foo() { let url = "https://example.com"; }')
+run_case "piped-url-in-string-ok" "$URL_OK" "pass" "piped"
+
+# Piped-stdin: /* */ inside string-literal → pass (#1422 false-positive guard).
+BLOCK_IN_STRING=$(printf '+pub fn foo() { let s = "this /\052 not a comment \052/ either"; }')
+run_case "piped-block-in-string-ok" "$BLOCK_IN_STRING" "pass" "piped"
 
 # Piped-stdin: empty diff → pass (sanity).
 run_case "piped-empty-diff" "" "pass" "piped"
+
+# Piped-stdin: structured-error-shape — verify file:line + class + canon-cite (#1422 falsifier-g).
+STRUCTURED_INPUT=$(printf '+++ b/foo.rs\n@@ -1,0 +1,1 @@\n+/// docstring on a fn')
+STRUCTURED_ERR=$(echo "$STRUCTURED_INPUT" | "$SCRIPT" 2>&1 || true)
+if echo "$STRUCTURED_ERR" | grep -q "foo.rs:1:" \
+   && echo "$STRUCTURED_ERR" | grep -q "comment class '///'" \
+   && echo "$STRUCTURED_ERR" | grep -q "Ryan-canon 2026-05-18"; then
+  echo "PASS  [structured-error-shape]"
+  PASS=$((PASS+1))
+else
+  echo "FAIL  [structured-error-shape] expected file:line + class + canon-cite; got: $STRUCTURED_ERR"
+  FAIL=$((FAIL+1))
+fi
 
 # Closed-stdin: triggers git diff --cached fallback. We can't
 # deterministically assert pass/fail (depends on user's staged state),

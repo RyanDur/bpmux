@@ -72,7 +72,7 @@ echo "--- cargo fmt ---"; cat "$fmt_log"
 echo "--- cargo clippy ---"; cat "$clippy_log"
 echo "--- cargo nextest ---"; cat "$nextest_log"
 echo "--- npm test:unit ---"; cat "$unit_log"
-echo "--- inline-// gate ---"; cat "$inline_log"
+echo "--- comment-class gate ---"; cat "$inline_log"
 rm -f "$fmt_log" "$clippy_log" "$nextest_log" "$unit_log" "$inline_log"
 
 # Treat 141 (SIGPIPE) as warn-not-fail per #1135 — Playwright's

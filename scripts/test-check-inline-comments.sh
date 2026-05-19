@@ -37,7 +37,7 @@ fn main() {}
 EOF
 )"
 
-assert_no_violation "rustdoc /// passes" "$(cat <<'EOF'
+assert_violation "rustdoc /// rejected (#1422)" "$(cat <<'EOF'
 diff --git a/foo.rs b/foo.rs
 --- a/foo.rs
 +++ b/foo.rs
@@ -47,7 +47,7 @@ pub fn x() {}
 EOF
 )"
 
-assert_no_violation "module-doc //! passes" "$(cat <<'EOF'
+assert_violation "module-doc //! rejected (#1422)" "$(cat <<'EOF'
 diff --git a/foo.rs b/foo.rs
 --- a/foo.rs
 +++ b/foo.rs
@@ -77,13 +77,43 @@ export default function App() {}
 EOF
 )"
 
-assert_no_violation "JSDoc /** */ block passes" "$(cat <<'EOF'
+assert_violation "JSDoc /** */ block rejected (#1422)" "$(cat <<'EOF'
 diff --git a/app.ts b/app.ts
 --- a/app.ts
 +++ b/app.ts
 @@ -1,1 +1,3 @@
 +/** jsdoc block */
 +export function x() {}
+fn main() {}
+EOF
+)"
+
+assert_violation "block-comment /* */ rejected (#1422)" "$(cat <<'EOF'
+diff --git a/foo.rs b/foo.rs
+--- a/foo.rs
++++ b/foo.rs
+@@ -1,1 +1,2 @@
++    /* block comment */
+fn main() {}
+EOF
+)"
+
+assert_no_violation "URL in string-literal passes (false-positive guard #1422)" "$(cat <<'EOF'
+diff --git a/foo.rs b/foo.rs
+--- a/foo.rs
++++ b/foo.rs
+@@ -1,1 +1,2 @@
++    let url = "https://example.com";
+fn main() {}
+EOF
+)"
+
+assert_no_violation "block-token in string-literal passes (false-positive guard #1422)" "$(cat <<'EOF'
+diff --git a/foo.rs b/foo.rs
+--- a/foo.rs
++++ b/foo.rs
+@@ -1,1 +1,2 @@
++    let s = "this isn't a /\052 comment \052/ either";
 fn main() {}
 EOF
 )"
