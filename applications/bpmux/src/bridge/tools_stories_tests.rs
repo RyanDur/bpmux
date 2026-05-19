@@ -450,9 +450,6 @@ fn pass_desk_check_signal_announces_ready_for_acceptance() {
 
 #[test]
 fn pass_desk_check_signals_emits_two_for_feature() {
-    // Feature PASS emits two signals so PM gets the presentation cue
-    // directly — without this, PM depends on scanning chat for the
-    // designer's PASS message.
     let signals = build_pass_desk_check_signals(210, StoryType::Feature, &[]);
     assert_eq!(signals.len(), 2, "feature PASS should emit two signals");
     let addressees: Vec<Option<String>> = signals
@@ -474,9 +471,6 @@ fn pass_desk_check_signals_emits_two_for_feature() {
 
 #[test]
 fn pass_desk_check_signals_emits_one_for_infra() {
-    // Infra (honest-plumbing / half-slice) continues to route to PM
-    // alone — PM is both presenter and acceptor for the team-accept
-    // lane, so no companion signal is needed.
     let signals = build_pass_desk_check_signals(253, StoryType::Chore, &[]);
     assert_eq!(signals.len(), 1, "infra PASS should emit one signal");
     if let ClientMessage::Send { addressee, .. } = &signals[0] {
@@ -488,9 +482,6 @@ fn pass_desk_check_signals_emits_one_for_infra() {
 
 #[test]
 fn pass_desk_check_signals_ambiguous_routes_to_ryan_and_pm() {
-    // An unlabeled / ambiguously-labeled story defaults to Ryan's
-    // lane (see addressee_for_pass_desk_check). That means the
-    // feature-coroutine also fires — PM gets a presenter signal.
     let signals = build_pass_desk_check_signals(999, classify_story(&[], ""), &[]);
     assert_eq!(signals.len(), 2);
 }
