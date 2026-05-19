@@ -3,6 +3,13 @@ use tokio::sync::Mutex;
 use super::super::tools::{WsSink, ws_send};
 use crate::transport::protocol::ClientMessage;
 
+fn role_id_for_purpose(purpose: &str) -> String {
+    crate::workflow::current_workflow()
+        .role_id_for_purpose(purpose)
+        .map(str::to_string)
+        .unwrap_or_else(|| purpose.to_string())
+}
+
 pub const BOARD_INVALIDATE_MARKER: &str = "__BPMUX_BOARD_INVALIDATE__";
 
 pub const SYNC_STATUS_UPDATE_MARKER: &str = "__BPMUX_SYNC_STATUS_UPDATE__";
@@ -33,27 +40,30 @@ pub(crate) async fn broadcast_board_invalidate(ws_tx: &Mutex<Option<WsSink>>) {
 }
 
 pub(crate) fn build_delivery_signals(number: u64, title: &str) -> Vec<ClientMessage> {
+    let designer = role_id_for_purpose("designer");
+    let pm = role_id_for_purpose("pm");
     vec![
         ClientMessage::Send {
             text: format!("#{number} ({title}) delivered."),
-            to: Some(vec!["designer".to_string()]),
-            addressee: Some("designer".to_string()),
+            to: Some(vec![designer.clone()]),
+            addressee: Some(designer),
             message_type: None,
         },
         ClientMessage::Send {
             text: format!("#{number} ({title}) delivered."),
-            to: Some(vec!["pm".to_string()]),
-            addressee: Some("pm".to_string()),
+            to: Some(vec![pm.clone()]),
+            addressee: Some(pm),
             message_type: None,
         },
     ]
 }
 
 pub(crate) fn build_start_signal(number: u64) -> ClientMessage {
+    let pm = role_id_for_purpose("pm");
     ClientMessage::Send {
         text: format!("#{number} started."),
-        to: Some(vec!["pm".to_string()]),
-        addressee: Some("pm".to_string()),
+        to: Some(vec![pm.clone()]),
+        addressee: Some(pm),
         message_type: None,
     }
 }
@@ -62,16 +72,17 @@ pub(crate) fn build_accept_signal(number: u64, accepted_by: &str) -> ClientMessa
     ClientMessage::Send {
         text: format!("#{number} accepted by {accepted_by}."),
         to: None,
-        addressee: Some("dev".to_string()),
+        addressee: Some(role_id_for_purpose("dev")),
         message_type: None,
     }
 }
 
 pub(crate) fn build_reject_signal(number: u64, reason: &str) -> ClientMessage {
+    let dev = role_id_for_purpose("dev");
     ClientMessage::Send {
         text: format!("#{number} rejected: {reason}."),
-        to: Some(vec!["dev".to_string()]),
-        addressee: Some("dev".to_string()),
+        to: Some(vec![dev.clone()]),
+        addressee: Some(dev),
         message_type: None,
     }
 }
@@ -110,10 +121,11 @@ pub(crate) fn build_pass_desk_check_signal(number: u64, addressee: &str) -> Clie
 }
 
 pub(crate) fn build_pass_desk_check_pm_present_signal(number: u64) -> ClientMessage {
+    let pm = role_id_for_purpose("pm");
     ClientMessage::Send {
         text: format!("#{number} passed designer desk-check."),
-        to: Some(vec!["pm".to_string()]),
-        addressee: Some("pm".to_string()),
+        to: Some(vec![pm.clone()]),
+        addressee: Some(pm),
         message_type: None,
     }
 }
@@ -134,10 +146,11 @@ pub(crate) fn build_pass_desk_check_signals(
 }
 
 pub(crate) fn build_fail_desk_check_signal(number: u64, reason: &str) -> ClientMessage {
+    let dev = role_id_for_purpose("dev");
     ClientMessage::Send {
         text: format!("#{number} failed desk-check: {reason}."),
-        to: Some(vec!["dev".to_string()]),
-        addressee: Some("dev".to_string()),
+        to: Some(vec![dev.clone()]),
+        addressee: Some(dev),
         message_type: None,
     }
 }
