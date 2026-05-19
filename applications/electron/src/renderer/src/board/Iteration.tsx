@@ -109,7 +109,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                   collapse.setOpen(key, event.currentTarget.open)
                 }}
               >
-                <summary className="board-iteration-summary">
+                <summary className="board-iteration-summary" data-test="board-iteration-summary">
                   {iteration.gh_state !== 'closed' ? (
                     <span
                       className="board-iteration-grip"
@@ -151,6 +151,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                   <button
                     type="button"
                     className="board-iteration-open-button"
+                    data-test="board-iteration-open-button"
                     onClick={(event) => {
                       event.preventDefault()
                       event.stopPropagation()

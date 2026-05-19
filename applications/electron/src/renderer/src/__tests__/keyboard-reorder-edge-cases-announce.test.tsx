@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
-import { waitFor } from '@testing-library/react'
+import { waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
@@ -49,11 +49,9 @@ describe('#1339 step 2h-3 — keyboard-reorder edge-cases announce intent to SR 
       const container = await rendered.findByTestId('board-iteration-8201', undefined, {
         timeout: 15_000
       })
-      const alphaRow = container.querySelector(
-        '[data-iteration-member="8211"]'
-      ) as HTMLLIElement
-      const alphaButton = alphaRow.querySelector(
-        '.board-iteration-member-button'
+      const alphaRow = within(container).getByTestId('board-story-8211') as HTMLLIElement
+      const alphaButton = within(alphaRow).getByTestId(
+        'board-iteration-member-button'
       ) as HTMLButtonElement
 
       const user = userEvent.setup()
@@ -116,11 +114,9 @@ describe('#1339 step 2h-3 — keyboard-reorder edge-cases announce intent to SR 
       const container = await rendered.findByTestId('board-iteration-8301', undefined, {
         timeout: 15_000
       })
-      const bravoRow = container.querySelector(
-        '[data-iteration-member="8312"]'
-      ) as HTMLLIElement
-      const bravoButton = bravoRow.querySelector(
-        '.board-iteration-member-button'
+      const bravoRow = within(container).getByTestId('board-story-8312') as HTMLLIElement
+      const bravoButton = within(bravoRow).getByTestId(
+        'board-iteration-member-button'
       ) as HTMLButtonElement
 
       const user = userEvent.setup()

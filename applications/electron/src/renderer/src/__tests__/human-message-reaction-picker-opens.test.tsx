@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
-import { waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import {
@@ -55,7 +55,7 @@ describe('human-side E2E #476 — direct-action — message reaction picker', ()
       ;(thumbsUp as HTMLElement).click()
 
       await waitFor(() => {
-        expect(rendered!.container.querySelectorAll('[data-test="reaction-picker"]').length).toBe(0)
+        expect(screen.queryAllByTestId('reaction-picker').length).toBe(0)
       })
 
       await rendered.findByTestId('reaction-pill-👍', undefined, { timeout: 15_000 })

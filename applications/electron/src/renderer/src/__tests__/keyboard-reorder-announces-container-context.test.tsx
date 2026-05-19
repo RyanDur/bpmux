@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
-import { waitFor } from '@testing-library/react'
+import { waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
@@ -56,11 +56,9 @@ describe('#1339 step 2h-2 — keyboard-reorder announces container-context for s
       const container = await rendered.findByTestId('board-iteration-7901', undefined, {
         timeout: 15_000
       })
-      const charlieRow = container.querySelector(
-        '[data-iteration-member="7913"]'
-      ) as HTMLLIElement
-      const charlieButton = charlieRow.querySelector(
-        '.board-iteration-member-button'
+      const charlieRow = within(container).getByTestId('board-story-7913') as HTMLLIElement
+      const charlieButton = within(charlieRow).getByTestId(
+        'board-iteration-member-button'
       ) as HTMLButtonElement
 
       const user = userEvent.setup()

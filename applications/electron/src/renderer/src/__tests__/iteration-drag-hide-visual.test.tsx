@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
-import { fireEvent } from '@testing-library/react'
+import { fireEvent, within } from '@testing-library/react'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { seedStories } from '../../../../test/fixtures/seedMessages'
@@ -40,7 +40,7 @@ describe('#1339 step 2d — dragged member carries data-dragging during drag ges
       const container = await rendered.findByTestId('board-iteration-7801', undefined, {
         timeout: 15_000
       })
-      const member = container.querySelector('[data-iteration-member="7811"]') as HTMLLIElement
+      const member = within(container).getByTestId('board-story-7811') as HTMLLIElement
       expect(member).toBeTruthy()
       const memberGrip = member.querySelector('[data-test="story-grip"]') as HTMLElement
       expect(memberGrip).toBeTruthy()

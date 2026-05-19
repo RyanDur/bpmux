@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
+import { screen } from '@testing-library/react'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import {
@@ -52,14 +53,11 @@ describe('human-side E2E #476 — read-class — message class glyphs', () => {
 
       await rendered.findByText(/reasoning trace/, undefined, { timeout: 15_000 })
 
-      const insightGlyphs = rendered.container.querySelectorAll(
-        '[data-test="message-class-glyph"][data-class="insight"]'
-      )
+      const allGlyphs = screen.queryAllByTestId('message-class-glyph')
+      const insightGlyphs = allGlyphs.filter((el) => el.getAttribute('data-class') === 'insight')
       expect(insightGlyphs.length).toBe(1)
 
-      const chatGlyphs = rendered.container.querySelectorAll(
-        '[data-test="message-class-glyph"][data-class="chat"]'
-      )
+      const chatGlyphs = allGlyphs.filter((el) => el.getAttribute('data-class') === 'chat')
       expect(chatGlyphs.length).toBe(0)
     },
     20_000

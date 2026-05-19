@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
+import { screen } from '@testing-library/react'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import {
@@ -59,11 +60,10 @@ describe('human-side E2E #476 — read-class — message grouping 5-min threshol
       await rendered.findByText(/GROUPED_FIRST_MARKER_BPF18/, undefined, { timeout: 15_000 })
       await rendered.findByText(/GROUPED_SECOND_MARKER_BPF18/, undefined, { timeout: 15_000 })
 
-      const list = rendered.container.querySelector('[data-test="message-list"]')
-      expect(list).toBeTruthy()
+      const list = screen.getByTestId('message-list')
 
-      const firstRows = list?.querySelectorAll('.message-row--first') ?? []
-      const groupedRows = list?.querySelectorAll('.message-row--grouped') ?? []
+      const firstRows = list.querySelectorAll('.message-row--first')
+      const groupedRows = list.querySelectorAll('.message-row--grouped')
       expect(firstRows.length).toBe(1)
       expect(groupedRows.length).toBe(1)
     },
@@ -83,11 +83,10 @@ describe('human-side E2E #476 — read-class — message grouping 5-min threshol
 
       await rendered.findByText(/NONGROUPED_SECOND_MARKER_BPF18/, undefined, { timeout: 15_000 })
 
-      const list = rendered.container.querySelector('[data-test="message-list"]')
-      expect(list).toBeTruthy()
+      const list = screen.getByTestId('message-list')
 
-      const firstRows = list?.querySelectorAll('.message-row--first') ?? []
-      const groupedRows = list?.querySelectorAll('.message-row--grouped') ?? []
+      const firstRows = list.querySelectorAll('.message-row--first')
+      const groupedRows = list.querySelectorAll('.message-row--grouped')
       expect(firstRows.length).toBe(2)
       expect(groupedRows.length).toBe(0)
     },

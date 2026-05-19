@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
+import { within } from '@testing-library/react'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { seedStories } from '../../../../test/fixtures/seedMessages'
@@ -53,8 +54,8 @@ describe('#1339 — iteration members sort by iteration-{Name}.{position} label'
       const container = await rendered.findByTestId('board-iteration-7401', undefined, {
         timeout: 15_000
       })
-      const memberRows = container.querySelectorAll('[data-iteration-member]')
-      const memberNumbers = Array.from(memberRows).map((el) =>
+      const memberRows = within(container).getAllByTestId(/^board-story-\d+$/)
+      const memberNumbers = memberRows.map((el) =>
         Number(el.getAttribute('data-iteration-member'))
       )
       expect(memberNumbers).toEqual([7412, 7411, 7413])

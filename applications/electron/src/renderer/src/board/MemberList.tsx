@@ -127,6 +127,7 @@ const MemberList = ({
             role="button"
             tabIndex={0}
             className="board-iteration-member-button board-story-button"
+            data-test="board-iteration-member-button"
             onClick={() => onOpen(story.number)}
             onKeyDown={(event) => {
               if (event.key === 'Enter' || event.key === ' ') {

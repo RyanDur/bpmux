@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
-import { waitFor } from '@testing-library/react'
+import { waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
@@ -42,7 +42,7 @@ describe('#1297 — iteration renders as a collapsible container in the icebox',
         timeout: 15_000
       })
       expect(container.tagName.toLowerCase()).toBe('details')
-      const summary = container.querySelector('summary')
+      const summary = within(container).getByTestId('board-iteration-summary')
       expect(summary).toBeTruthy()
       expect(summary?.textContent).toContain('Cassiopeia')
     },
@@ -79,7 +79,7 @@ describe('#1297 — iteration renders as a collapsible container in the icebox',
       })) as HTMLDetailsElement
 
       const initiallyOpen = container.open
-      const summary = container.querySelector('summary')
+      const summary = within(container).getByTestId('board-iteration-summary')
       expect(summary).toBeTruthy()
       const user = userEvent.setup()
       await user.click(summary as HTMLElement)

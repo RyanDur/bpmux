@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
+import { within } from '@testing-library/react'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { seedStories } from '../../../../test/fixtures/seedMessages'
@@ -41,9 +42,7 @@ describe('#1297 — iteration container shows members regardless of workflow sta
         undefined,
         { timeout: 15_000 }
       )
-      const memberInContainer = container.querySelector(
-        '[data-iteration-member="9301"]'
-      )
+      const memberInContainer = within(container).getByTestId('board-story-9301')
       expect(memberInContainer).toBeTruthy()
     },
     20_000

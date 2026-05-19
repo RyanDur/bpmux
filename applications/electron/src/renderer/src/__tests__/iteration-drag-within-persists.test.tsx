@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
-import { fireEvent, waitFor } from '@testing-library/react'
+import { fireEvent, waitFor, within } from '@testing-library/react'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { seedStories } from '../../../../test/fixtures/seedMessages'
@@ -54,14 +54,14 @@ describe('#1339 — drag-within-iteration persists via label mutation', () => {
       const container = await rendered.findByTestId('board-iteration-7601', undefined, {
         timeout: 15_000
       })
-      const orderBefore = Array.from(container.querySelectorAll('[data-iteration-member]')).map(
-        (el) => Number(el.getAttribute('data-iteration-member'))
-      )
+      const orderBefore = within(container)
+        .getAllByTestId(/^board-story-\d+$/)
+        .map((el) => Number(el.getAttribute('data-iteration-member')))
       expect(orderBefore).toEqual([7611, 7612, 7613])
 
-      const source = container.querySelector('[data-iteration-member="7613"]') as HTMLLIElement
-      const sourceGrip = source.querySelector('[data-test="story-grip"]') as HTMLElement
-      const target = container.querySelector('[data-iteration-member="7611"]') as HTMLLIElement
+      const source = within(container).getByTestId('board-story-7613') as HTMLLIElement
+      const sourceGrip = within(source).getByTestId('story-grip') as HTMLElement
+      const target = within(container).getByTestId('board-story-7611') as HTMLLIElement
       expect(source).toBeTruthy()
       expect(target).toBeTruthy()
 

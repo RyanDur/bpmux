@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
+import { screen } from '@testing-library/react'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import {
@@ -44,10 +45,10 @@ describe('human-side E2E #476 — read-class — message list (RTL+real-backend 
       await rendered.findByText(/SEED_CHAT_MARKER_BPF13_FIRST/, undefined, { timeout: 15_000 })
       await rendered.findByText(/SEED_CHAT_MARKER_BPF13_SECOND/, undefined, { timeout: 15_000 })
 
-      const list = rendered.container.querySelector('[data-test="message-list"]')
+      const list = screen.getByTestId('message-list')
       expect(list).toBeTruthy()
 
-      const rows = rendered.container.querySelectorAll('[data-test="message-row"]')
+      const rows = screen.getAllByTestId('message-row')
       expect(rows.length).toBeGreaterThanOrEqual(2)
     },
     20_000

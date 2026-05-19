@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
-import { fireEvent } from '@testing-library/react'
+import { fireEvent, within } from '@testing-library/react'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { seedStories } from '../../../../test/fixtures/seedMessages'
@@ -54,14 +54,14 @@ describe('#1339 step 2d-b — eager-reorder during drag-over (ChosenPicachu patt
       const container = await rendered.findByTestId('board-iteration-7901', undefined, {
         timeout: 15_000
       })
-      const orderBefore = Array.from(container.querySelectorAll('[data-iteration-member]')).map(
-        (el) => Number(el.getAttribute('data-iteration-member'))
-      )
+      const orderBefore = within(container)
+        .getAllByTestId(/^board-story-\d+$/)
+        .map((el) => Number(el.getAttribute('data-iteration-member')))
       expect(orderBefore).toEqual([7911, 7912, 7913])
 
-      const source = container.querySelector('[data-iteration-member="7913"]') as HTMLLIElement
-      const sourceGrip = source.querySelector('[data-test="story-grip"]') as HTMLElement
-      const target = container.querySelector('[data-iteration-member="7911"]') as HTMLLIElement
+      const source = within(container).getByTestId('board-story-7913') as HTMLLIElement
+      const sourceGrip = within(source).getByTestId('story-grip') as HTMLElement
+      const target = within(container).getByTestId('board-story-7911') as HTMLLIElement
 
       const dataStore: Record<string, string> = {}
       const dt: Pick<
@@ -80,9 +80,9 @@ describe('#1339 step 2d-b — eager-reorder during drag-over (ChosenPicachu patt
       Object.defineProperty(dt, 'types', { value: Object.keys(dataStore) })
       fireEvent.dragOver(target, { dataTransfer: dt })
 
-      const orderDuringDrag = Array.from(
-        container.querySelectorAll('[data-iteration-member]')
-      ).map((el) => Number(el.getAttribute('data-iteration-member')))
+      const orderDuringDrag = within(container)
+        .getAllByTestId(/^board-story-\d+$/)
+        .map((el) => Number(el.getAttribute('data-iteration-member')))
       expect(orderDuringDrag).toEqual([7913, 7911, 7912])
     },
     20_000

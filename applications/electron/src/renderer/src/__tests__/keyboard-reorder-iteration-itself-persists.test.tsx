@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
-import { waitFor } from '@testing-library/react'
+import { waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
@@ -68,8 +68,8 @@ describe('#1339 step 2h-4 — keyboard-reorder iteration-itself persists via ite
       const dracoCard = await rendered.findByTestId('board-iteration-8402', undefined, {
         timeout: 15_000
       })
-      const dracoOpenButton = dracoCard.querySelector(
-        '.board-iteration-open-button'
+      const dracoOpenButton = within(dracoCard).getByTestId(
+        'board-iteration-open-button'
       ) as HTMLButtonElement
       expect(dracoOpenButton).toBeTruthy()
 

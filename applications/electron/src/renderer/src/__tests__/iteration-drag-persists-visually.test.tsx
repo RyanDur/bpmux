@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
-import { fireEvent, waitFor } from '@testing-library/react'
+import { fireEvent, waitFor, within } from '@testing-library/react'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { seedStories } from '../../../../test/fixtures/seedMessages'
@@ -55,15 +55,15 @@ describe('#1339 — drag-within-iteration visual no snap-back (optimistic UI)', 
         timeout: 15_000
       })
       const queryOrder = (): number[] =>
-        Array.from(container.querySelectorAll('[data-iteration-member]')).map((el) =>
-          Number(el.getAttribute('data-iteration-member'))
-        )
+        within(container)
+          .getAllByTestId(/^board-story-\d+$/)
+          .map((el) => Number(el.getAttribute('data-iteration-member')))
       const orderBefore = queryOrder()
       expect(orderBefore).toEqual([7711, 7712, 7713])
 
-      const source = container.querySelector('[data-iteration-member="7713"]') as HTMLLIElement
-      const sourceGrip = source.querySelector('[data-test="story-grip"]') as HTMLElement
-      const target = container.querySelector('[data-iteration-member="7711"]') as HTMLLIElement
+      const source = within(container).getByTestId('board-story-7713') as HTMLLIElement
+      const sourceGrip = within(source).getByTestId('story-grip') as HTMLElement
+      const target = within(container).getByTestId('board-story-7711') as HTMLLIElement
       const dataStore: Record<string, string> = {}
       const dt: Pick<DataTransfer, 'setData' | 'getData' | 'types' | 'effectAllowed' | 'dropEffect'> = {
         setData: (type: string, value: string) => {

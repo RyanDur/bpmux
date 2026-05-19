@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
-import { fireEvent, waitFor } from '@testing-library/react'
+import { fireEvent, waitFor, within } from '@testing-library/react'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { seedStories } from '../../../../test/fixtures/seedMessages'
@@ -54,9 +54,9 @@ describe('#1339 Sc1 user-axis — drop on displaced source row still posts label
       const container = await rendered.findByTestId('board-iteration-9501', undefined, {
         timeout: 15_000
       })
-      const source = container.querySelector('[data-iteration-member="9513"]') as HTMLLIElement
-      const sourceGrip = source.querySelector('[data-test="story-grip"]') as HTMLElement
-      const target = container.querySelector('[data-iteration-member="9511"]') as HTMLLIElement
+      const source = within(container).getByTestId('board-story-9513') as HTMLLIElement
+      const sourceGrip = within(source).getByTestId('story-grip') as HTMLElement
+      const target = within(container).getByTestId('board-story-9511') as HTMLLIElement
       expect(source).toBeTruthy()
       expect(sourceGrip).toBeTruthy()
       expect(target).toBeTruthy()

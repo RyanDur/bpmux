@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
-import { waitFor } from '@testing-library/react'
+import { waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
@@ -56,11 +56,9 @@ describe('#1339 step 2h-1 — keyboard-reorder within iteration container persis
       const container = await rendered.findByTestId('board-iteration-7801', undefined, {
         timeout: 15_000
       })
-      const alphaRow = container.querySelector(
-        '[data-iteration-member="7811"]'
-      ) as HTMLLIElement
-      const alphaButton = alphaRow.querySelector(
-        '.board-iteration-member-button'
+      const alphaRow = within(container).getByTestId('board-story-7811') as HTMLLIElement
+      const alphaButton = within(alphaRow).getByTestId(
+        'board-iteration-member-button'
       ) as HTMLButtonElement
 
       const user = userEvent.setup()
@@ -126,17 +124,15 @@ describe('#1339 step 2h-1 — keyboard-reorder within iteration container persis
       const container = await rendered.findByTestId('board-iteration-7701', undefined, {
         timeout: 15_000
       })
-      const orderBefore = Array.from(container.querySelectorAll('[data-iteration-member]')).map(
-        (el) => Number(el.getAttribute('data-iteration-member'))
-      )
+      const orderBefore = within(container)
+        .getAllByTestId(/^board-story-\d+$/)
+        .map((el) => Number(el.getAttribute('data-iteration-member')))
       expect(orderBefore).toEqual([7711, 7712, 7713])
 
-      const charlieRow = container.querySelector(
-        '[data-iteration-member="7713"]'
-      ) as HTMLLIElement
+      const charlieRow = within(container).getByTestId('board-story-7713') as HTMLLIElement
       expect(charlieRow).toBeTruthy()
-      const charlieButton = charlieRow.querySelector(
-        '.board-iteration-member-button'
+      const charlieButton = within(charlieRow).getByTestId(
+        'board-iteration-member-button'
       ) as HTMLButtonElement
       expect(charlieButton).toBeTruthy()
 

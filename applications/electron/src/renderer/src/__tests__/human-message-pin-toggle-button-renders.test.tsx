@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
+import { screen } from '@testing-library/react'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import {
@@ -37,7 +38,7 @@ describe('human-side E2E #476 — direct-action — message pin toggle', () => {
 
       await rendered.findByText(/pinnable test message/, undefined, { timeout: 15_000 })
 
-      const pinButtons = rendered.container.querySelectorAll('[data-test="message-pin-toggle"]')
+      const pinButtons = screen.getAllByTestId('message-pin-toggle')
       expect(pinButtons.length).toBe(1)
       expect(pinButtons[0].getAttribute('aria-label')).toBe('Pin message')
     },
