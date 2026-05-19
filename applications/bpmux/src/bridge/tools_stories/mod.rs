@@ -29,8 +29,9 @@ pub(crate) use helpers::{
     ALL_STATE_LABELS, KEEP_NONE, LABEL_DELIVERED, LABEL_IN_PROGRESS, LABEL_READY,
     LABEL_READY_FOR_ACCEPT, compose_iteration_body, compose_story_body,
     ensure_story_in_canonical_store, find_repo_root, reap_workflow_labels, require_nonempty_string,
-    require_role, resolve_acceptance_test_path, role_from_name, stale_workflow_labels,
-    validate_acceptance_test_path_at_deliver, validate_acceptance_test_path_at_pickup,
+    require_purpose, require_role, resolve_acceptance_test_path, role_from_name,
+    stale_workflow_labels, validate_acceptance_test_path_at_deliver,
+    validate_acceptance_test_path_at_pickup,
 };
 pub(crate) use metadata::{
     handle_comment_on_story, handle_edit_story, handle_label_story, handle_set_parent_epic,

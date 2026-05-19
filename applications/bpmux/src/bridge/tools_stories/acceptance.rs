@@ -12,7 +12,7 @@ use tokio::sync::Mutex;
 use super::super::tools::{WsSink, ws_send};
 use super::helpers::{
     LABEL_DELIVERED, LABEL_IN_PROGRESS, LABEL_READY, ensure_story_in_canonical_store,
-    reap_workflow_labels, require_role, role_from_name,
+    reap_workflow_labels, require_purpose, role_from_name,
 };
 use super::signals::{
     broadcast_board_invalidate, build_accept_signal, build_fail_desk_check_signal,
@@ -384,7 +384,7 @@ pub(crate) async fn handle_fail_desk_check(
     ws_tx: &Mutex<Option<WsSink>>,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
-    require_role(agent_name, &["designer"], "fail desk-check")?;
+    require_purpose(agent_name, &["designer"], "fail desk-check")?;
     let number = args
         .get("number")
         .and_then(|v| v.as_u64())

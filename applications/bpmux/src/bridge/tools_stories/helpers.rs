@@ -108,6 +108,25 @@ pub(crate) fn require_role(
     }
 }
 
+pub(crate) fn require_purpose(
+    agent_name: &str,
+    purposes: &[&str],
+    operation: &str,
+) -> Result<(), String> {
+    let workflow = crate::workflow::current_workflow();
+    let allowed: Vec<String> = purposes
+        .iter()
+        .map(|p| {
+            workflow
+                .role_id_for_purpose(p)
+                .map(str::to_string)
+                .unwrap_or_else(|| (*p).to_string())
+        })
+        .collect();
+    let allowed_refs: Vec<&str> = allowed.iter().map(String::as_str).collect();
+    require_role(agent_name, &allowed_refs, operation)
+}
+
 /// Build the issue body for a new iteration-issue. Cassiopeia
 /// substrate: iteration membership is canonical-via-GH via
 /// `iteration-{Theme}.{position}` labels on member stories (#1300).

@@ -6,7 +6,7 @@ use tokio::sync::Mutex;
 
 use super::super::tools::{WsSink, ws_send};
 use super::helpers::{
-    KEEP_NONE, ensure_story_in_canonical_store, reap_workflow_labels, require_role,
+    KEEP_NONE, ensure_story_in_canonical_store, reap_workflow_labels, require_purpose,
 };
 use super::signals::{broadcast_board_invalidate, build_iteration_close_signal};
 
@@ -28,7 +28,7 @@ pub(crate) async fn handle_close_story(
     ws_tx: &Mutex<Option<WsSink>>,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
-    require_role(agent_name, &["pm"], "close")?;
+    require_purpose(agent_name, &["pm"], "close")?;
     let number = args
         .get("number")
         .and_then(|v| v.as_u64())
@@ -142,7 +142,7 @@ pub(crate) async fn handle_close_iteration(
     ws_tx: &Mutex<Option<WsSink>>,
     port: u16,
 ) -> Result<String, String> {
-    require_role(agent_name, &["pm"], "close iteration")?;
+    require_purpose(agent_name, &["pm"], "close iteration")?;
     let iteration_number = args.get("iteration_number").and_then(|v| v.as_u64());
     let outcome = post_close_iteration(port, iteration_number).await?;
     let signal = build_iteration_close_signal();

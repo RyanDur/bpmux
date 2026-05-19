@@ -24,7 +24,10 @@ pub(crate) async fn handle_create_story(
     ws_tx: &Mutex<Option<WsSink>>,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
-    if role_from_name(agent_name) != "pm" {
+    let pm = crate::workflow::current_workflow()
+        .role_id_for_purpose("pm")
+        .unwrap_or("pm");
+    if role_from_name(agent_name) != pm {
         return Err(
             "create_story is pm-lane. If you have a pain to file, surface it in broadcast chat \
              and pm will file the story."
@@ -135,7 +138,10 @@ pub(crate) async fn handle_create_iteration(
     ws_tx: &Mutex<Option<WsSink>>,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
-    if role_from_name(agent_name) != "pm" {
+    let pm = crate::workflow::current_workflow()
+        .role_id_for_purpose("pm")
+        .unwrap_or("pm");
+    if role_from_name(agent_name) != pm {
         return Err(
             "create_iteration is pm-lane. Iteration entities are PM-owned per Epic #1189."
                 .to_string(),
