@@ -108,7 +108,7 @@ export const GROUP_ORDER: GroupSpec[] = [
   { state: 'ready', label: 'Ready', collapsed: false },
   { state: 'in-progress', label: 'In Progress', collapsed: false },
   { state: 'desk-check', label: 'Desk Check', collapsed: false },
-  { state: 'delivered', label: 'Delivered', collapsed: false },
+  { state: 'delivered', label: 'Acceptance', collapsed: false },
   { state: 'accepted', label: 'Accepted', collapsed: true },
   { state: 'retired', label: 'Retired', collapsed: true },
   { state: 'icebox', label: 'Icebox', collapsed: false }
