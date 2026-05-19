@@ -307,14 +307,34 @@ pub fn run_bridge(
         )
     })?;
     crate::workflow::install_workflow(workflow);
+    let ct = tokio_util::sync::CancellationToken::new();
+    let restart_signal = crate::transport::self_update::RestartSignal::new();
     let rt = tokio::runtime::Runtime::new()?;
-    rt.block_on(async {
-        let server = BridgeServer::new(port, name.to_string());
-        let (stdin, stdout) = rmcp::transport::io::stdio();
-        let service = server.serve((stdin, stdout)).await?;
-        service.waiting().await?;
-        anyhow::Ok(())
-    })
+    let service_result: anyhow::Result<()> = rt.block_on({
+        let ct = ct.clone();
+        let restart_signal = restart_signal.clone();
+        async move {
+            crate::transport::self_update::spawn_binary_watcher(ct.clone(), restart_signal);
+            let server = BridgeServer::new(port, name.to_string());
+            let (stdin, stdout) = rmcp::transport::io::stdio();
+            let service = server.serve((stdin, stdout)).await?;
+            tokio::select! {
+                result = service.waiting() => {
+                    result?;
+                }
+                _ = ct.cancelled() => {}
+            }
+            anyhow::Ok(())
+        }
+    });
+    if restart_signal.was_fired() {
+        eprintln!(
+            "[bpmux bridge] binary changed on disk; exiting with code {} so Claude Code respawns the MCP server with refreshed tools",
+            crate::transport::self_update::RESTART_EXIT_CODE
+        );
+        std::process::exit(crate::transport::self_update::RESTART_EXIT_CODE);
+    }
+    service_result
 }
 
 #[cfg(test)]
