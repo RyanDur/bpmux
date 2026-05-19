@@ -7,9 +7,14 @@ pub(in crate::bridge) async fn handle_submit_verdict(
     session: &Arc<crate::session::Session>,
 ) -> Result<String, String> {
     let role = agent_name.split(':').next().unwrap_or(agent_name);
-    if !matches!(role, "dev" | "designer") {
+    let workflow = crate::workflow::current_workflow();
+    let dev_id = workflow.role_id_for_purpose("dev").unwrap_or("dev");
+    let designer_id = workflow
+        .role_id_for_purpose("designer")
+        .unwrap_or("designer");
+    if role != dev_id && role != designer_id {
         return Err(format!(
-            "submit_verdict is restricted to dev or designer; agent '{agent_name}' is role '{role}'"
+            "submit_verdict is restricted to {dev_id} or {designer_id}; agent '{agent_name}' is role '{role}'"
         ));
     }
     let story_number = args
