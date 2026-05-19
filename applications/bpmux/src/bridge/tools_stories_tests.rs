@@ -4209,4 +4209,125 @@ mod verdict_substrate_integration_1407 {
             "rejection should NOT cite designer-verdict (it's present); got {err}"
         );
     }
+
+    #[tokio::test]
+    async fn submit_verdict_broadcasts_pm_addressed_activity_on_success() {
+        let dir = TempDir::new().unwrap();
+        let session = make_session(dir.path().to_path_buf());
+        let mut rx = session.subscribe();
+        handle_submit_verdict(&verdict_args(42), "designer:claude-code", &session)
+            .await
+            .expect("designer submit_verdict");
+        let msg = tokio::time::timeout(std::time::Duration::from_millis(500), rx.recv())
+            .await
+            .expect("notification arrives within ws-latency")
+            .expect("broadcast channel open");
+        assert_eq!(msg.from, "bpmux");
+        assert_eq!(msg.addressee.as_deref(), Some("pm"));
+        assert_eq!(msg.message_type, crate::session::MessageType::Activity);
+        assert!(
+            msg.text.contains("#42"),
+            "payload carries story_number; got {}",
+            msg.text
+        );
+        assert!(
+            msg.text.contains("designer"),
+            "payload carries from_role; got {}",
+            msg.text
+        );
+        assert!(
+            msg.text.contains("verified"),
+            "payload carries verdict; got {}",
+            msg.text
+        );
+    }
+
+    #[tokio::test]
+    async fn submit_verdict_broadcasts_exactly_once_per_fire() {
+        let dir = TempDir::new().unwrap();
+        let session = make_session(dir.path().to_path_buf());
+        let mut rx = session.subscribe();
+        handle_submit_verdict(&verdict_args(42), "designer:claude-code", &session)
+            .await
+            .expect("designer submit_verdict");
+        let _first = tokio::time::timeout(std::time::Duration::from_millis(500), rx.recv())
+            .await
+            .expect("first notification arrives")
+            .expect("broadcast channel open");
+        let second = tokio::time::timeout(std::time::Duration::from_millis(150), rx.recv()).await;
+        assert!(
+            second.is_err(),
+            "no duplicate notification fires for single submit_verdict; got {second:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn submit_verdict_broadcasts_replacement_on_replay() {
+        let dir = TempDir::new().unwrap();
+        let session = make_session(dir.path().to_path_buf());
+        let mut rx = session.subscribe();
+        handle_submit_verdict(&verdict_args(42), "designer:claude-code", &session)
+            .await
+            .expect("first submit_verdict");
+        let first = tokio::time::timeout(std::time::Duration::from_millis(500), rx.recv())
+            .await
+            .expect("first notification arrives")
+            .expect("broadcast channel open");
+        assert!(first.text.contains("verified"));
+
+        let mut second_args = serde_json::Map::new();
+        second_args.insert("story_number".into(), serde_json::json!(42));
+        second_args.insert("verdict".into(), serde_json::json!("rejected"));
+        second_args.insert(
+            "substrate_grounding".into(),
+            serde_json::json!("updated cite after second pass"),
+        );
+        handle_submit_verdict(&second_args, "designer:claude-code", &session)
+            .await
+            .expect("replay submit_verdict");
+        let replacement = tokio::time::timeout(std::time::Duration::from_millis(500), rx.recv())
+            .await
+            .expect("replacement notification arrives")
+            .expect("broadcast channel open");
+        assert!(
+            replacement.text.contains("rejected"),
+            "replacement notification reflects new verdict; got {}",
+            replacement.text
+        );
+    }
+
+    #[tokio::test]
+    async fn submit_verdict_does_not_broadcast_when_substrate_grounding_missing() {
+        let dir = TempDir::new().unwrap();
+        let session = make_session(dir.path().to_path_buf());
+        let mut rx = session.subscribe();
+        let mut bad_args = serde_json::Map::new();
+        bad_args.insert("story_number".into(), serde_json::json!(42));
+        bad_args.insert("verdict".into(), serde_json::json!("verified"));
+        let err = handle_submit_verdict(&bad_args, "designer:claude-code", &session)
+            .await
+            .expect_err("missing substrate_grounding must refuse");
+        assert!(err.contains("substrate_grounding"));
+        let nothing = tokio::time::timeout(std::time::Duration::from_millis(150), rx.recv()).await;
+        assert!(
+            nothing.is_err(),
+            "no notification fires on submit_verdict failure; got {nothing:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn submit_verdict_does_not_broadcast_when_role_refused() {
+        let dir = TempDir::new().unwrap();
+        let session = make_session(dir.path().to_path_buf());
+        let mut rx = session.subscribe();
+        let err = handle_submit_verdict(&verdict_args(42), "pm:claude-code", &session)
+            .await
+            .expect_err("pm role must refuse");
+        assert!(err.contains("restricted to"));
+        let nothing = tokio::time::timeout(std::time::Duration::from_millis(150), rx.recv()).await;
+        assert!(
+            nothing.is_err(),
+            "no notification fires on role-refusal; got {nothing:?}"
+        );
+    }
 }

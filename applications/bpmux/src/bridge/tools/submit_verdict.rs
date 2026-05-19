@@ -1,3 +1,5 @@
+use crate::session::Message;
+use crate::session::MessageType;
 use crate::session::verdicts::{AddVerdictOutcome, Verdict, add_or_replace_verdict, load, save};
 use std::sync::Arc;
 
@@ -36,17 +38,33 @@ pub(in crate::bridge) async fn handle_submit_verdict(
         .ok_or("missing 'substrate_grounding' argument (non-empty string)")?
         .to_string();
 
+    let ts = chrono::Utc::now();
     let entry = Verdict {
         story_number,
         from_role: role.to_string(),
-        verdict: verdict_value,
+        verdict: verdict_value.clone(),
         substrate_grounding,
-        ts: chrono::Utc::now(),
+        ts,
     };
 
     let mut store = load(&session.dir);
     let outcome = add_or_replace_verdict(&mut store, entry);
     save(&session.dir, &store).map_err(|e| format!("save verdicts: {e}"))?;
+
+    let pm_id = workflow.role_id_for_purpose("pm").unwrap_or("pm");
+    let notification = Message {
+        from: "bpmux".to_string(),
+        text: format!("verdict cast on #{story_number} from {role}: {verdict_value}"),
+        ts,
+        message_type: MessageType::Activity,
+        addressee: Some(pm_id.to_string()),
+        ..Message::default()
+    };
+    if let Err(e) = session.broadcast(&notification) {
+        crate::session::diag::log_diag(&format!(
+            "submit_verdict: verdict-cast broadcast failed for #{story_number}: {e}"
+        ));
+    }
 
     let outcome_label = match outcome {
         AddVerdictOutcome::Inserted => "new",
