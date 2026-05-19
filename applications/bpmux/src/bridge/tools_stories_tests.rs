@@ -1198,9 +1198,6 @@ async fn start_story_validation_passes_then_refresh_required_after_5n() {
 
 #[tokio::test]
 async fn start_story_still_dev_only_with_new_params() {
-    // Role gate fires before param parsing — a pm / designer / ryan
-    // call with both new fields populated must still be rejected as
-    // "restricted to dev." #398 doesn't relax the existing scope.
     let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
     let args = serde_json::json!({
         "number": 398,
@@ -1211,11 +1208,16 @@ async fn start_story_still_dev_only_with_new_params() {
         let result = handle_start_story(args.as_object().unwrap(), caller, &ws_tx, None).await;
         assert!(
             result.is_err(),
-            "{caller} must be rejected by dev-only gate"
+            "{caller} must be rejected by workflow-substrate role-gate"
+        );
+        let err = result.unwrap_err();
+        assert!(
+            err.contains("\"kind\":\"workflow-role-not-allowed\""),
+            "{caller} rejection should cite structured kind; got {err}"
         );
         assert!(
-            result.unwrap_err().contains("restricted to dev"),
-            "{caller} rejection should cite role restriction"
+            err.contains("\"attempted_transition\":\"pickup\""),
+            "{caller} rejection should cite attempted_transition; got {err}"
         );
     }
 }

@@ -145,6 +145,8 @@ mod set_status_e2e;
 mod share_message_e2e;
 #[path = "integration_main_modules/start_story_e2e.rs"]
 mod start_story_e2e;
+#[path = "integration_main_modules/start_story_substrate_enforce_e2e.rs"]
+mod start_story_substrate_enforce_e2e;
 #[path = "integration_main_modules/state_field_rederive.rs"]
 mod state_field_rederive;
 #[path = "integration_main_modules/story59_acceptance.rs"]
