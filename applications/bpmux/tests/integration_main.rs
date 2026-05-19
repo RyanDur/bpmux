@@ -45,6 +45,8 @@ mod classifier_misfire_e2e;
 mod close_iteration_e2e;
 #[path = "integration_main_modules/close_story_e2e.rs"]
 mod close_story_e2e;
+#[path = "integration_main_modules/close_story_substrate_enforce_e2e.rs"]
+mod close_story_substrate_enforce_e2e;
 #[path = "integration_main_modules/comment_on_story_e2e.rs"]
 mod comment_on_story_e2e;
 #[path = "integration_main_modules/create_story_e2e.rs"]

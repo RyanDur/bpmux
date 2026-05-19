@@ -124,12 +124,12 @@ fn close_story_rejects_empty_reason() {
             .expect_err("empty reason should be rejected");
 
         assert!(
-            err.contains("reason"),
-            "rejection names the offending field; got {err}"
+            err.contains("\"missing_evidence\":[\"reason-cite\"]"),
+            "structured rejection cites missing reason-cite; got {err}"
         );
         assert!(
-            err.contains("audit"),
-            "rejection cites audit-trail rationale; got {err}"
+            err.contains("\"attempted_transition\":\"close\""),
+            "rejection cites attempted_transition; got {err}"
         );
 
         pm.close().await;

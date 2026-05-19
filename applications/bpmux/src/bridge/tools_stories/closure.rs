@@ -1,34 +1,26 @@
-//! Closure handlers: close_story (single-story retire) and
-//! close_iteration (PM-gated iteration externalize-prompt + server-
-//! side promote/close ceremony).
-
 use tokio::sync::Mutex;
 
 use super::super::tools::{WsSink, ws_send};
 use super::helpers::{
     KEEP_NONE, ensure_story_in_canonical_store, reap_workflow_labels, require_purpose,
+    role_from_name,
 };
 use super::signals::{broadcast_board_invalidate, build_iteration_close_signal};
 
-/// Close a story with a reason — PM-only. Routes through the
-/// RefreshDriver per #451 to append the reason as a comment, then
-/// fire StoryClosed; accept_story uses the same close path.
-/// Generalizes the invocation for superseded / duplicate / won't-fix
-/// closures.
-///
-/// #1377: reasons matching retire-class keywords (superseded /
-/// duplicate / won't-fix) add the `retired` label before
-/// `StoryClosed` fires, so the canonical state-axis lands as
-/// `StoryState::Retired` (distinct from ship-chain accept) and the
-/// renderer routes the story to the retired column instead of
-/// polluting accepted.
+const REASON_CITE_MIN_CHARS: usize = 16;
+
 pub(crate) async fn handle_close_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
-    require_purpose(agent_name, &["pm"], "close")?;
+    let actor_role = role_from_name(agent_name);
+    let workflow = crate::workflow::current_workflow();
+    let transition =
+        crate::workflow::resolve_transition(workflow, "close", crate::workflow::GateClass::None)
+            .map_err(|e| e.as_json_string())?;
+    crate::workflow::check_role_allowed(transition, actor_role).map_err(|e| e.as_json_string())?;
     let number = args
         .get("number")
         .and_then(|v| v.as_u64())
@@ -37,8 +29,16 @@ pub(crate) async fn handle_close_story(
         .get("reason")
         .and_then(|v| v.as_str())
         .ok_or("missing 'reason' argument")?;
-    if reason.trim().is_empty() {
-        return Err("'reason' must not be empty — audit trail for closure".to_string());
+    let trimmed_reason = reason.trim();
+    if trimmed_reason.len() < REASON_CITE_MIN_CHARS {
+        let err = serde_json::json!({
+            "kind": "workflow-gate-mismatch",
+            "attempted_transition": "close",
+            "missing_evidence": ["reason-cite"],
+            "min_chars": REASON_CITE_MIN_CHARS,
+            "observed_chars": trimmed_reason.len(),
+        });
+        return Err(err.to_string());
     }
     if let Some(r) = refresh {
         ensure_story_in_canonical_store(r, number).await?;

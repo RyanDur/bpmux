@@ -125,6 +125,15 @@ pub fn bundled_default() -> WorkflowConfig {
                 evidence_window_seconds: 0,
                 required_evidence_roles: vec![],
             },
+            Transition {
+                id: "close".into(),
+                from: "any".into(),
+                to: "retired".into(),
+                actor_roles: vec!["pm".into()],
+                gate_class: GateClass::None,
+                evidence_window_seconds: 0,
+                required_evidence_roles: vec![],
+            },
         ],
     }
 }

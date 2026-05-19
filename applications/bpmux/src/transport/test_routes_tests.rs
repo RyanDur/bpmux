@@ -524,12 +524,12 @@ async fn close_story_response_correctness_rejects_empty_reason() {
     let json = read_json(resp).await;
     let err = json["error"].as_str().expect("error string");
     assert!(
-        err.contains("reason"),
-        "rejection names the missing field; got {err}"
+        err.contains("\"missing_evidence\":[\"reason-cite\"]"),
+        "structured rejection cites missing reason-cite; got {err}"
     );
     assert!(
-        err.contains("audit"),
-        "rejection cites audit-trail rationale per close discipline; got {err}"
+        err.contains("\"attempted_transition\":\"close\""),
+        "rejection cites attempted_transition; got {err}"
     );
 }
 
