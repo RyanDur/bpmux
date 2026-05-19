@@ -1548,7 +1548,7 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
     let seeded = Story::new_minimal(
         202,
         "t".into(),
-        StoryState::Delivered,
+        StoryState::DeskCheck,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
@@ -1562,7 +1562,8 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
     let ws_tx = connected_ws_sink_for_test().await;
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(202));
-    args.insert("reason".into(), serde_json::json!("test failure"));
+    let substantive_reason = "observed: ATP file foo.rs has zero assertions, refutes clause (b)";
+    args.insert("reason".into(), serde_json::json!(substantive_reason));
     let result =
         handle_fail_desk_check(&args, "designer:claude-code", &ws_tx, Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
@@ -1573,7 +1574,8 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
     assert!(
         gates
             .iter()
-            .any(|g| g.gate == Gate::FailDeskCheck && g.payload.as_deref() == Some("test failure")),
+            .any(|g| g.gate == Gate::FailDeskCheck
+                && g.payload.as_deref() == Some(substantive_reason)),
         "gate_comments should contain FailDeskCheck with payload: {gates:?}"
     );
 
@@ -1590,8 +1592,8 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
         .collect();
     assert_eq!(
         reap_labels,
-        vec!["delivered"],
-        "post-#1156 pre-filter: only present-stale 'delivered' label reaped"
+        vec!["desk-check"],
+        "post-#1156 pre-filter: only present-stale 'desk-check' label reaped (from-state)"
     );
     assert!(matches!(
         &pushed[1],
@@ -1600,7 +1602,7 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
             gate: Gate::FailDeskCheck,
             payload: Some(p),
             ..
-        } if p == "test failure"
+        } if p == substantive_reason
     ));
     assert!(matches!(
         &pushed[2],

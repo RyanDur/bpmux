@@ -63,6 +63,8 @@ mod diag_routing;
 mod edit_story;
 #[path = "integration_main_modules/fail_desk_check_e2e.rs"]
 mod fail_desk_check_e2e;
+#[path = "integration_main_modules/fail_desk_check_substrate_enforce_e2e.rs"]
+mod fail_desk_check_substrate_enforce_e2e;
 #[path = "integration_main_modules/generic_move_story.rs"]
 mod generic_move_story;
 #[path = "integration_main_modules/get_ci_log_for_run_e2e.rs"]

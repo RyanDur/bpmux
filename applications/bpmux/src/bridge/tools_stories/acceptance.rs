@@ -12,7 +12,7 @@ use tokio::sync::Mutex;
 use super::super::tools::{WsSink, ws_send};
 use super::helpers::{
     LABEL_DELIVERED, LABEL_IN_PROGRESS, LABEL_READY, ensure_story_in_canonical_store,
-    reap_workflow_labels, require_purpose, role_from_name,
+    reap_workflow_labels, role_from_name,
 };
 use super::signals::{
     broadcast_board_invalidate, build_accept_signal, build_fail_desk_check_signal,
@@ -373,32 +373,75 @@ pub(crate) async fn handle_pass_desk_check(
     )
 }
 
-/// Fail desk-check — designer only. Transitions DeskCheck → InProgress
-/// (back-edge); rework-context lives in the gate-comment history, not
-/// a separate state or label. Signal-send failure is fail-soft per the
-/// start_story / accept_story / deliver_story precedent — state-
-/// transition mutate_sync is load-bearing, signal is auxiliary.
+const FALSIFIER_CITE_MIN_CHARS: usize = 16;
+
+fn label_for_state(state: crate::board::domain::StoryState) -> &'static str {
+    use crate::board::domain::StoryState;
+    match state {
+        StoryState::Icebox => "icebox",
+        StoryState::Ready => "ready",
+        StoryState::InProgress => "in progress",
+        StoryState::DeskCheck => "desk-check",
+        StoryState::Delivered => "delivered",
+        StoryState::Accepted => "accepted",
+        StoryState::Retired => "retired",
+    }
+}
+
 pub(crate) async fn handle_fail_desk_check(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     ws_tx: &Mutex<Option<WsSink>>,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
-    require_purpose(agent_name, &["designer"], "fail desk-check")?;
+    let actor_role = role_from_name(agent_name);
+    let workflow = crate::workflow::current_workflow();
+    let transition = crate::workflow::resolve_transition(
+        workflow,
+        "fail-desk-check",
+        crate::workflow::GateClass::None,
+    )
+    .map_err(|e| e.as_json_string())?;
+    crate::workflow::check_role_allowed(transition, actor_role).map_err(|e| e.as_json_string())?;
     let number = args
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
-    let was_accepted = if let Some(r) = refresh {
-        let prior = ensure_story_in_canonical_store(r, number).await?;
-        prior.is_closed || prior.state == crate::board::domain::StoryState::Accepted
+    let prior = if let Some(r) = refresh {
+        Some(ensure_story_in_canonical_store(r, number).await?)
     } else {
-        false
+        None
     };
+    if let Some(story) = prior.as_ref() {
+        crate::workflow::check_target_state_valid(transition, story.state.as_str())
+            .map_err(|e| e.as_json_string())?;
+    }
+    let was_accepted = prior
+        .as_ref()
+        .map(|s| s.is_closed || s.state == crate::board::domain::StoryState::Accepted)
+        .unwrap_or(false);
     let reason = args
         .get("reason")
         .and_then(|v| v.as_str())
         .ok_or("missing 'reason' argument")?;
+    let trimmed_reason = reason.trim();
+    if trimmed_reason.len() < FALSIFIER_CITE_MIN_CHARS {
+        let err = serde_json::json!({
+            "kind": "workflow-gate-mismatch",
+            "attempted_transition": "fail-desk-check",
+            "missing_evidence": ["falsifier-cite"],
+            "min_chars": FALSIFIER_CITE_MIN_CHARS,
+            "observed_chars": trimmed_reason.len(),
+        });
+        return Err(err.to_string());
+    }
+    let target_state =
+        crate::board::domain::StoryState::parse(transition.to.as_str()).ok_or_else(|| {
+            format!(
+                "workflow.toml fail-desk-check transition.to='{}' is not a recognized StoryState",
+                transition.to
+            )
+        })?;
     let signal = serde_json::to_string(&build_fail_desk_check_signal(number, reason))
         .map_err(|e| format!("signal: {e}"))?;
     if let Err(e) = ws_send(ws_tx, signal).await {
@@ -417,7 +460,8 @@ pub(crate) async fn handle_fail_desk_check(
             })
             .map_err(|e| format!("#{number} reopen enqueue failed: {e}"))?;
         }
-        reap_workflow_labels(r.as_ref(), number, &meta, LABEL_IN_PROGRESS)?;
+        let keep_label = label_for_state(target_state);
+        reap_workflow_labels(r.as_ref(), number, &meta, keep_label)?;
         r.mutate_sync(crate::board::BoardEvent::GateCommentAppended {
             meta: meta.clone(),
             number,
@@ -428,7 +472,7 @@ pub(crate) async fn handle_fail_desk_check(
         r.mutate_sync(crate::board::BoardEvent::StateTransitioned {
             meta,
             number,
-            new_state: crate::board::domain::StoryState::InProgress,
+            new_state: target_state,
         })
         .map_err(|e| format!("#{number} state enqueue failed: {e}"))?;
         r.drain_pending()
