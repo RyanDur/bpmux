@@ -4,6 +4,8 @@ import eslintConfigPrettier from '@electron-toolkit/eslint-config-prettier'
 import eslintPluginReact from 'eslint-plugin-react'
 import eslintPluginReactHooks from 'eslint-plugin-react-hooks'
 import eslintPluginReactRefresh from 'eslint-plugin-react-refresh'
+import eslintPluginTestingLibrary from 'eslint-plugin-testing-library'
+import eslintPluginJestDom from 'eslint-plugin-jest-dom'
 
 export default defineConfig(
   { ignores: ['**/node_modules', '**/dist', '**/out'] },
@@ -34,6 +36,26 @@ export default defineConfig(
     files: ['**/ErrorBoundary.tsx'],
     rules: {
       'func-style': 'off'
+    }
+  },
+  {
+    files: [
+      '**/*.test.{ts,tsx}',
+      '**/__tests__/**/*.{ts,tsx}',
+      'tests/**/*.{ts,tsx}'
+    ],
+    plugins: {
+      'testing-library': eslintPluginTestingLibrary,
+      'jest-dom': eslintPluginJestDom
+    },
+    rules: {
+      'testing-library/prefer-user-event': 'warn',
+      'testing-library/no-container': 'warn',
+      'testing-library/no-unnecessary-act': 'warn',
+      'testing-library/prefer-screen-queries': 'warn',
+      'testing-library/prefer-find-by': 'warn',
+      'testing-library/no-debugging-utils': 'warn',
+      'jest-dom/prefer-enabled-disabled': 'warn'
     }
   },
   eslintConfigPrettier
