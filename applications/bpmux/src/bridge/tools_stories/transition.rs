@@ -10,8 +10,8 @@ use tokio::sync::Mutex;
 use super::super::tools::{WsSink, ws_send};
 use super::helpers::{
     LABEL_IN_PROGRESS, ensure_story_in_canonical_store, reap_workflow_labels,
-    require_nonempty_string, require_role, validate_acceptance_test_path_at_deliver,
-    validate_acceptance_test_path_at_pickup,
+    require_nonempty_string, require_role, role_from_name,
+    validate_acceptance_test_path_at_deliver, validate_acceptance_test_path_at_pickup,
 };
 use super::signals::{broadcast_board_invalidate, build_delivery_signals, build_start_signal};
 
@@ -122,7 +122,12 @@ pub(crate) async fn handle_deliver_story(
     ws_tx: &Mutex<Option<WsSink>>,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
-    require_role(agent_name, &["dev"], "deliver")?;
+    let actor_role = role_from_name(agent_name);
+    let workflow = crate::workflow::current_workflow();
+    let transition =
+        crate::workflow::resolve_transition(workflow, "deliver", crate::workflow::GateClass::None)
+            .map_err(|e| e.as_json_string())?;
+    crate::workflow::check_role_allowed(transition, actor_role).map_err(|e| e.as_json_string())?;
     let number = args
         .get("number")
         .and_then(|v| v.as_u64())
@@ -135,6 +140,10 @@ pub(crate) async fn handle_deliver_story(
         }
         None => None,
     };
+    if let Some(story) = refreshed.as_ref().and_then(|s| s.as_ref()) {
+        crate::workflow::check_target_state_valid(transition, story.state.as_str())
+            .map_err(|e| e.as_json_string())?;
+    }
     if let Some(r) = refresh {
         validate_acceptance_test_path_at_deliver(number, r.as_ref())?;
         if let Some(story) = refreshed.as_ref().and_then(|s| s.as_ref())
