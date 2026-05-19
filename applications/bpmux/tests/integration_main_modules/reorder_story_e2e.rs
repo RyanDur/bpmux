@@ -36,8 +36,12 @@ fn reorder_story_rejects_dev_caller_per_pm_lane_gate() {
             .expect_err("dev should be rejected by reorder pm-lane gate");
 
         assert!(
-            err.contains("pm") || err.contains("only") || err.contains("restricted"),
-            "rejection cites pm-lane discipline; got {err}"
+            err.contains("\"kind\":\"workflow-role-not-allowed\""),
+            "structured kind cites workflow-role-not-allowed; got {err}"
+        );
+        assert!(
+            err.contains("\"attempted_transition\":\"reorder\""),
+            "rejection cites attempted_transition; got {err}"
         );
 
         dev.close().await;

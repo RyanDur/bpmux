@@ -40,9 +40,7 @@ use tokio::sync::Mutex;
 use crate::board::RefreshDriver;
 use crate::board::domain::StoryState;
 use crate::board::events::EventMeta;
-use crate::bridge::tools_stories::{
-    KEEP_NONE, broadcast_board_invalidate, reap_workflow_labels, require_purpose,
-};
+use crate::bridge::tools_stories::{KEEP_NONE, broadcast_board_invalidate, reap_workflow_labels};
 
 use super::tools::WsSink;
 
@@ -210,11 +208,16 @@ pub(in crate::bridge) async fn handle_move_story(
                 target.as_display()
             ));
         }
-        require_purpose(
-            agent_name,
-            &["pm"],
-            "specify position in ready/icebox (PM owns queue-organization per Ryan 2026-05-05 01:39 UTC)",
-        )?;
+        let actor_role = crate::transport::ws::short_name(agent_name);
+        let workflow = crate::workflow::current_workflow();
+        let transition = crate::workflow::resolve_transition(
+            workflow,
+            "move-with-position",
+            crate::workflow::GateClass::None,
+        )
+        .map_err(|e| e.as_json_string())?;
+        crate::workflow::check_role_allowed(transition, actor_role)
+            .map_err(|e| e.as_json_string())?;
     }
 
     let r = refresh

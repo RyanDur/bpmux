@@ -99,6 +99,8 @@ mod list_peer_lessons_e2e;
 mod list_ready_e2e;
 #[path = "integration_main_modules/mcp_advertisement_parity.rs"]
 mod mcp_advertisement_parity;
+#[path = "integration_main_modules/move_reorder_substrate_enforce_e2e.rs"]
+mod move_reorder_substrate_enforce_e2e;
 #[path = "integration_main_modules/move_story_e2e.rs"]
 mod move_story_e2e;
 #[path = "integration_main_modules/move_story_retired_class_e2e.rs"]

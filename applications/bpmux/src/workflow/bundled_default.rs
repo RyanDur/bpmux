@@ -134,6 +134,24 @@ pub fn bundled_default() -> WorkflowConfig {
                 evidence_window_seconds: 0,
                 required_evidence_roles: vec![],
             },
+            Transition {
+                id: "reorder".into(),
+                from: "any".into(),
+                to: "any".into(),
+                actor_roles: vec!["pm".into()],
+                gate_class: GateClass::None,
+                evidence_window_seconds: 0,
+                required_evidence_roles: vec![],
+            },
+            Transition {
+                id: "move-with-position".into(),
+                from: "any".into(),
+                to: "any".into(),
+                actor_roles: vec!["pm".into()],
+                gate_class: GateClass::None,
+                evidence_window_seconds: 0,
+                required_evidence_roles: vec![],
+            },
         ],
     }
 }
