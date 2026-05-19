@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
-import { fireEvent, waitFor } from '@testing-library/react'
+import { waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { seedStories } from '../../../../test/fixtures/seedMessages'
@@ -50,12 +51,13 @@ describe('#1339 Scenario 4 — grip-handle is the sole drag-initiator', () => {
 
       expect(rendered.queryByTestId('board-drill-in')).toBeNull()
 
-      fireEvent.click(grip)
+      const user = userEvent.setup()
+      await user.click(grip)
       expect(rendered.queryByTestId('board-drill-in')).toBeNull()
 
       const button = row.querySelector('.board-story-button') as HTMLElement
       expect(button).toBeTruthy()
-      fireEvent.click(button)
+      await user.click(button)
       await waitFor(
         () => {
           expect(rendered!.queryByTestId('board-drill-in')).toBeTruthy()

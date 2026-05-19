@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
-import { fireEvent, waitFor } from '@testing-library/react'
+import { waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import {
@@ -55,7 +56,8 @@ describe('human-side E2E #476 — direct-action — message @mention click', () 
       await rendered.findAllByTestId('message-mention', undefined, { timeout: 15_000 })
 
       const r = rendered
-      fireEvent.click(r.getAllByTestId('message-mention')[0])
+      const user = userEvent.setup()
+      await user.click(r.getAllByTestId('message-mention')[0])
 
       await waitFor(
         () => {

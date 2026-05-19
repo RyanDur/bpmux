@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
-import { fireEvent, waitFor } from '@testing-library/react'
+import { waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { seedStories } from '../../../../test/fixtures/seedMessages'
+import { pressReorderShortcut } from '../../../../test/fixtures/pressReorderShortcut'
 
 describe('#1339 step 2h-1 — keyboard-reorder within iteration container persists via label mutation', () => {
   let rendered: RenderAppResult | null = null
@@ -61,7 +63,8 @@ describe('#1339 step 2h-1 — keyboard-reorder within iteration container persis
         '.board-iteration-member-button'
       ) as HTMLButtonElement
 
-      fireEvent.keyDown(alphaButton, { key: 'ArrowDown', ctrlKey: true, shiftKey: true })
+      const user = userEvent.setup()
+      await pressReorderShortcut(user, alphaButton, 'ArrowDown')
 
       await waitFor(
         async () => {
@@ -137,7 +140,8 @@ describe('#1339 step 2h-1 — keyboard-reorder within iteration container persis
       ) as HTMLButtonElement
       expect(charlieButton).toBeTruthy()
 
-      fireEvent.keyDown(charlieButton, { key: 'ArrowUp', ctrlKey: true, shiftKey: true })
+      const user = userEvent.setup()
+      await pressReorderShortcut(user, charlieButton, 'ArrowUp')
 
       await waitFor(
         async () => {

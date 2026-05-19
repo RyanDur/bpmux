@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
-import { fireEvent, waitFor } from '@testing-library/react'
+import { waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { seedStories } from '../../../../test/fixtures/seedMessages'
+import { pressReorderShortcut } from '../../../../test/fixtures/pressReorderShortcut'
 
 describe('#1339 step 2h-4 — keyboard-reorder iteration-itself persists via iteration-order label mutation', () => {
   let rendered: RenderAppResult | null = null
@@ -71,11 +73,8 @@ describe('#1339 step 2h-4 — keyboard-reorder iteration-itself persists via ite
       ) as HTMLButtonElement
       expect(dracoOpenButton).toBeTruthy()
 
-      fireEvent.keyDown(dracoOpenButton, {
-        key: 'ArrowUp',
-        ctrlKey: true,
-        shiftKey: true
-      })
+      const user = userEvent.setup()
+      await pressReorderShortcut(user, dracoOpenButton, 'ArrowUp')
 
       await waitFor(
         async () => {

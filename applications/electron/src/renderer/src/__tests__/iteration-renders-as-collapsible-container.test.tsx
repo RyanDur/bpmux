@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
-import { fireEvent, waitFor } from '@testing-library/react'
+import { waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { seedStories } from '../../../../test/fixtures/seedMessages'
@@ -80,7 +81,8 @@ describe('#1297 — iteration renders as a collapsible container in the icebox',
       const initiallyOpen = container.open
       const summary = container.querySelector('summary')
       expect(summary).toBeTruthy()
-      fireEvent.click(summary as HTMLElement)
+      const user = userEvent.setup()
+      await user.click(summary as HTMLElement)
       await waitFor(() => expect(container.open).toBe(!initiallyOpen))
 
       rendered.cleanup()

@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
-import { fireEvent, waitFor } from '@testing-library/react'
+import { waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { seedStories } from '../../../../test/fixtures/seedMessages'
+import { pressReorderShortcut } from '../../../../test/fixtures/pressReorderShortcut'
 
 describe('#1339 step 2h-2 — keyboard-reorder announces container-context for screen readers', () => {
   let rendered: RenderAppResult | null = null
@@ -61,7 +63,8 @@ describe('#1339 step 2h-2 — keyboard-reorder announces container-context for s
         '.board-iteration-member-button'
       ) as HTMLButtonElement
 
-      fireEvent.keyDown(charlieButton, { key: 'ArrowUp', ctrlKey: true, shiftKey: true })
+      const user = userEvent.setup()
+      await pressReorderShortcut(user, charlieButton, 'ArrowUp')
 
       const announce = rendered.getByTestId('board-reorder-announce')
       await waitFor(
