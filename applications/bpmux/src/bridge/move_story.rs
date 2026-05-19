@@ -41,7 +41,7 @@ use crate::board::RefreshDriver;
 use crate::board::domain::StoryState;
 use crate::board::events::EventMeta;
 use crate::bridge::tools_stories::{
-    KEEP_NONE, broadcast_board_invalidate, reap_workflow_labels, require_role,
+    KEEP_NONE, broadcast_board_invalidate, reap_workflow_labels, require_purpose,
 };
 
 use super::tools::WsSink;
@@ -210,7 +210,7 @@ pub(in crate::bridge) async fn handle_move_story(
                 target.as_display()
             ));
         }
-        require_role(
+        require_purpose(
             agent_name,
             &["pm"],
             "specify position in ready/icebox (PM owns queue-organization per Ryan 2026-05-05 01:39 UTC)",

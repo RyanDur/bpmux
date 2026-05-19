@@ -60,10 +60,17 @@ pub(crate) fn build_multi_depth_for_transition(event: &CiEvent) -> MultiDepthPay
         ),
     };
 
+    let workflow = crate::workflow::current_workflow();
+    let role_id_for = |purpose: &str| {
+        workflow
+            .role_id_for_purpose(purpose)
+            .map(str::to_string)
+            .unwrap_or_else(|| purpose.to_string())
+    };
     let mut role_default: HashMap<String, String> = HashMap::new();
-    role_default.insert("pm".to_string(), summary.clone());
-    role_default.insert("designer".to_string(), summary.clone());
-    role_default.insert("dev".to_string(), dev_detail);
+    role_default.insert(role_id_for("pm"), summary.clone());
+    role_default.insert(role_id_for("designer"), summary.clone());
+    role_default.insert(role_id_for("dev"), dev_detail);
 
     let deep = match event.run_id {
         Some(id) => DeepDetail::OnDemand {
@@ -87,12 +94,16 @@ pub fn github_actions_url() -> &'static str {
 }
 
 pub(crate) fn build_dev_ci_signal(text: &str) -> Message {
+    let dev = crate::workflow::current_workflow()
+        .role_id_for_purpose("dev")
+        .map(str::to_string)
+        .unwrap_or_else(|| "dev".to_string());
     Message {
         from: "bpmux".to_string(),
         text: text.to_string(),
         ts: chrono::Utc::now(),
-        to: Some(vec!["dev".to_string()]),
-        addressee: Some("dev".to_string()),
+        to: Some(vec![dev.clone()]),
+        addressee: Some(dev),
         ..Message::default()
     }
 }
