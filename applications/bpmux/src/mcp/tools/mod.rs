@@ -41,6 +41,7 @@ mod view_roadmap;
 mod view_story_commits;
 mod view_story_timeline;
 mod view_tokens;
+mod view_verdicts;
 
 // Story management tools (#140)
 mod accept_story;
@@ -108,6 +109,7 @@ pub use view_roadmap::view_roadmap_tool;
 pub use view_story_commits::view_story_commits_tool;
 pub use view_story_timeline::view_story_timeline_tool;
 pub use view_tokens::view_tokens_tool;
+pub use view_verdicts::view_verdicts_tool;
 
 pub use accept_story::accept_story_tool;
 pub use close_iteration::close_iteration_tool;

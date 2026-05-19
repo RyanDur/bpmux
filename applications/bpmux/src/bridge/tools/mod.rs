@@ -78,6 +78,7 @@ mod view_story_timeline;
 mod view_story_timeline_tests;
 mod view_tokens;
 mod view_velocity;
+mod view_verdicts;
 
 // Shared helpers re-exported for tools_stories.rs (sibling module
 // inside bridge) which needs WsSink + ws_send.
@@ -137,6 +138,7 @@ pub(in crate::bridge) use view_story_commits::handle_view_story_commits;
 pub(in crate::bridge) use view_story_timeline::handle_view_story_timeline;
 pub(in crate::bridge) use view_tokens::handle_view_tokens;
 pub(in crate::bridge) use view_velocity::{fetch_messages_via_http, handle_view_velocity};
+pub(in crate::bridge) use view_verdicts::handle_view_verdicts;
 
 pub use view_backlog::VIEW_BACKLOG_MARKER;
 

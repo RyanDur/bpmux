@@ -4330,4 +4330,152 @@ mod verdict_substrate_integration_1407 {
             "no notification fires on role-refusal; got {nothing:?}"
         );
     }
+
+    fn view_args(number: u64) -> serde_json::Map<String, serde_json::Value> {
+        let mut m = serde_json::Map::new();
+        m.insert("story_number".into(), serde_json::json!(number));
+        m
+    }
+
+    #[tokio::test]
+    async fn view_verdicts_returns_record_after_submit() {
+        let dir = TempDir::new().unwrap();
+        let session = make_session(dir.path().to_path_buf());
+        crate::bridge::tools::handle_submit_verdict(
+            &verdict_args(42),
+            "designer:claude-code",
+            &session,
+        )
+        .await
+        .expect("designer submit_verdict");
+        let response = crate::bridge::tools::handle_view_verdicts(&view_args(42), &session)
+            .await
+            .expect("view_verdicts succeeds after write");
+        let parsed: serde_json::Value = serde_json::from_str(&response).expect("response is JSON");
+        let records = parsed.as_array().expect("response is array");
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0]["from_role"], "designer");
+        assert_eq!(records[0]["verdict"], "verified");
+        assert_eq!(records[0]["substrate_grounding"], "src/foo.rs cite");
+        assert!(records[0]["ts"].is_string());
+        assert_eq!(records[0]["story_number"], 42);
+    }
+
+    #[tokio::test]
+    async fn view_verdicts_returns_empty_for_unknown_story() {
+        let dir = TempDir::new().unwrap();
+        let session = make_session(dir.path().to_path_buf());
+        let response = crate::bridge::tools::handle_view_verdicts(&view_args(99999), &session)
+            .await
+            .expect("view_verdicts succeeds for empty store");
+        let parsed: serde_json::Value = serde_json::from_str(&response).expect("response is JSON");
+        let records = parsed.as_array().expect("response is array");
+        assert!(
+            records.is_empty(),
+            "empty store should return empty array; got {records:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn view_verdicts_scopes_by_story_number() {
+        let dir = TempDir::new().unwrap();
+        let session = make_session(dir.path().to_path_buf());
+        crate::bridge::tools::handle_submit_verdict(
+            &verdict_args(10),
+            "designer:claude-code",
+            &session,
+        )
+        .await
+        .unwrap();
+        crate::bridge::tools::handle_submit_verdict(&verdict_args(20), "dev:claude-code", &session)
+            .await
+            .unwrap();
+        crate::bridge::tools::handle_submit_verdict(
+            &verdict_args(30),
+            "designer:claude-code",
+            &session,
+        )
+        .await
+        .unwrap();
+
+        let response = crate::bridge::tools::handle_view_verdicts(&view_args(20), &session)
+            .await
+            .unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();
+        let records = parsed.as_array().unwrap();
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0]["story_number"], 20);
+        assert_eq!(records[0]["from_role"], "dev");
+    }
+
+    #[tokio::test]
+    async fn view_verdicts_returns_both_roles_for_one_story() {
+        let dir = TempDir::new().unwrap();
+        let session = make_session(dir.path().to_path_buf());
+        crate::bridge::tools::handle_submit_verdict(
+            &verdict_args(42),
+            "designer:claude-code",
+            &session,
+        )
+        .await
+        .unwrap();
+        crate::bridge::tools::handle_submit_verdict(&verdict_args(42), "dev:claude-code", &session)
+            .await
+            .unwrap();
+        let response = crate::bridge::tools::handle_view_verdicts(&view_args(42), &session)
+            .await
+            .unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();
+        let records = parsed.as_array().unwrap();
+        assert_eq!(records.len(), 2);
+        let roles: Vec<&str> = records
+            .iter()
+            .filter_map(|r| r["from_role"].as_str())
+            .collect();
+        assert!(roles.contains(&"designer"));
+        assert!(roles.contains(&"dev"));
+    }
+
+    #[tokio::test]
+    async fn view_verdicts_is_pure_read() {
+        let dir = TempDir::new().unwrap();
+        let session = make_session(dir.path().to_path_buf());
+        crate::bridge::tools::handle_submit_verdict(
+            &verdict_args(42),
+            "designer:claude-code",
+            &session,
+        )
+        .await
+        .unwrap();
+        let before = load(&session.dir);
+        let count_before = verdicts_for_story(&before, 42).len();
+
+        crate::bridge::tools::handle_view_verdicts(&view_args(42), &session)
+            .await
+            .unwrap();
+        crate::bridge::tools::handle_view_verdicts(&view_args(42), &session)
+            .await
+            .unwrap();
+        crate::bridge::tools::handle_view_verdicts(&view_args(42), &session)
+            .await
+            .unwrap();
+
+        let after = load(&session.dir);
+        let count_after = verdicts_for_story(&after, 42).len();
+        assert_eq!(
+            count_before, count_after,
+            "view_verdicts must not mutate the store"
+        );
+    }
+
+    #[tokio::test]
+    async fn view_verdicts_refuses_missing_story_number() {
+        let dir = TempDir::new().unwrap();
+        let session = make_session(dir.path().to_path_buf());
+        let empty_args = serde_json::Map::new();
+        let err = crate::bridge::tools::handle_view_verdicts(&empty_args, &session)
+            .await
+            .expect_err("missing story_number must refuse");
+        assert!(err.contains("story_number"));
+    }
 }

@@ -182,7 +182,8 @@ impl ServerHandler for BridgeServer {
                 | "view_story_timeline"
                 | "view_comments"
                 | "view_backlog"
-                | "submit_verdict" => {
+                | "submit_verdict"
+                | "view_verdicts" => {
                     let current_name = name.lock().await.clone();
                     rpc_client::dispatch_via_rpc(port, request.name.as_ref(), &current_name, &args)
                         .await

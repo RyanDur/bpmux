@@ -329,3 +329,10 @@ pub(crate) async fn dispatch_test_submit_verdict(
 ) -> Result<String, String> {
     tools::handle_submit_verdict(&args, agent_name, session).await
 }
+
+pub(crate) async fn dispatch_test_view_verdicts(
+    args: serde_json::Map<String, serde_json::Value>,
+    session: &Arc<crate::session::Session>,
+) -> Result<String, String> {
+    tools::handle_view_verdicts(&args, session).await
+}
