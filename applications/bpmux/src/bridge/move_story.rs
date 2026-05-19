@@ -77,14 +77,9 @@ impl TargetState {
 
     fn as_label(self) -> Option<&'static str> {
         match self {
-            Self::Workflow(StoryState::Ready) => Some("ready"),
-            Self::Workflow(StoryState::InProgress) => Some("in progress"),
-            Self::Workflow(StoryState::DeskCheck) => Some("desk-check"),
-            Self::Workflow(StoryState::Delivered) => Some("delivered"),
-            Self::Workflow(StoryState::Acceptance) => Some("acceptance"),
-            Self::Workflow(StoryState::Accepted) => Some("accepted"),
-            Self::Workflow(StoryState::Retired) | Self::Retired => Some("retired"),
             Self::Workflow(StoryState::Icebox) => None,
+            Self::Workflow(state) => Some(state.github_label()),
+            Self::Retired => Some(StoryState::Retired.github_label()),
         }
     }
 
@@ -94,14 +89,8 @@ impl TargetState {
 
     fn as_display(self) -> &'static str {
         match self {
-            Self::Workflow(StoryState::Icebox) => "icebox",
-            Self::Workflow(StoryState::Ready) => "ready",
-            Self::Workflow(StoryState::InProgress) => "in-progress",
-            Self::Workflow(StoryState::DeskCheck) => "desk-check",
-            Self::Workflow(StoryState::Delivered) => "delivered",
-            Self::Workflow(StoryState::Acceptance) => "acceptance",
-            Self::Workflow(StoryState::Accepted) => "accepted",
-            Self::Workflow(StoryState::Retired) | Self::Retired => "retired",
+            Self::Workflow(state) => state.as_str(),
+            Self::Retired => StoryState::Retired.as_str(),
         }
     }
 }

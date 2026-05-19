@@ -387,17 +387,17 @@ impl SourceAdapter for GitHubSourceAdapter {
 }
 
 pub fn warn_on_inconsistent_state_labels(labels: &[String]) {
-    const STATE_LABELS: &[&str] = &[
-        "ready",
-        "in progress",
-        "desk-check",
-        "delivered",
+    let state_labels = [
+        StoryState::Ready.github_label(),
+        StoryState::InProgress.github_label(),
+        StoryState::DeskCheck.github_label(),
+        StoryState::Delivered.github_label(),
+        StoryState::Accepted.github_label(),
         "ready for accept",
         "needs fixes",
         "rejected",
-        "accepted",
     ];
-    let present: Vec<&str> = STATE_LABELS
+    let present: Vec<&str> = state_labels
         .iter()
         .copied()
         .filter(|needle| labels.iter().any(|l| l.eq_ignore_ascii_case(needle)))
@@ -551,10 +551,10 @@ pub fn tags_from_labels(labels: &[String]) -> Vec<Tag> {
 pub fn state_from_labels(labels: &[String], is_closed: bool) -> StoryState {
     let has = |needle: &str| labels.iter().any(|l| l.eq_ignore_ascii_case(needle));
     warn_on_inconsistent_state_labels(labels);
-    if has("accepted") {
+    if has(StoryState::Accepted.github_label()) {
         return StoryState::Accepted;
     }
-    if has("retired") {
+    if has(StoryState::Retired.github_label()) {
         return StoryState::Retired;
     }
     if is_closed {
@@ -569,32 +569,23 @@ pub fn state_from_labels(labels: &[String], is_closed: bool) -> StoryState {
     if has("ready for accept") {
         return StoryState::Delivered;
     }
-    if has("delivered") {
+    if has(StoryState::Delivered.github_label()) {
         return StoryState::Delivered;
     }
-    if has("desk-check") {
+    if has(StoryState::DeskCheck.github_label()) {
         return StoryState::DeskCheck;
     }
-    if has("in progress") {
+    if has(StoryState::InProgress.github_label()) {
         return StoryState::InProgress;
     }
-    if has("ready") {
+    if has(StoryState::Ready.github_label()) {
         return StoryState::Ready;
     }
     StoryState::Icebox
 }
 
 pub fn state_to_label(state: StoryState) -> &'static str {
-    match state {
-        StoryState::Icebox => "icebox",
-        StoryState::Ready => "ready",
-        StoryState::InProgress => "in progress",
-        StoryState::DeskCheck => "desk-check",
-        StoryState::Delivered => "delivered",
-        StoryState::Acceptance => "acceptance",
-        StoryState::Accepted => "accepted",
-        StoryState::Retired => "retired",
-    }
+    state.github_label()
 }
 
 fn decode_free_comment(v: &serde_json::Value) -> Option<FreeComment> {

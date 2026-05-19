@@ -97,29 +97,23 @@ pub(super) fn coalesce_iteration_label_events(
 pub(super) fn stale_state_labels_for(story: &Story, raw_labels: &[String]) -> Vec<String> {
     let expected = match story.state {
         StoryState::Icebox => "",
-        StoryState::Ready => "ready",
-        StoryState::InProgress => "in progress",
-        StoryState::DeskCheck => "desk-check",
-        StoryState::Delivered => "delivered",
-        StoryState::Acceptance => "acceptance",
-        StoryState::Accepted => "accepted",
-        StoryState::Retired => "retired",
+        other => other.github_label(),
     };
-    let all_state_labels = [
-        "ready",
-        "in progress",
-        "desk-check",
-        "delivered",
-        "ready for accept",
-        "needs fixes",
-        "rejected",
-        "accepted",
+    let canonical_state_labels = [
+        StoryState::Ready.github_label(),
+        StoryState::InProgress.github_label(),
+        StoryState::DeskCheck.github_label(),
+        StoryState::Delivered.github_label(),
+        StoryState::Accepted.github_label(),
     ];
+    let legacy_state_labels = ["ready for accept", "needs fixes", "rejected"];
     raw_labels
         .iter()
         .filter(|l| {
             let lower = l.to_ascii_lowercase();
-            all_state_labels.contains(&lower.as_str()) && lower != expected
+            let is_state_label = canonical_state_labels.contains(&lower.as_str())
+                || legacy_state_labels.contains(&lower.as_str());
+            is_state_label && lower != expected
         })
         .cloned()
         .collect()

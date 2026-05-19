@@ -376,17 +376,7 @@ pub(crate) async fn handle_pass_desk_check(
 const FALSIFIER_CITE_MIN_CHARS: usize = 16;
 
 fn label_for_state(state: crate::board::domain::StoryState) -> &'static str {
-    use crate::board::domain::StoryState;
-    match state {
-        StoryState::Icebox => "icebox",
-        StoryState::Ready => "ready",
-        StoryState::InProgress => "in progress",
-        StoryState::DeskCheck => "desk-check",
-        StoryState::Delivered => "delivered",
-        StoryState::Acceptance => "acceptance",
-        StoryState::Accepted => "accepted",
-        StoryState::Retired => "retired",
-    }
+    state.github_label()
 }
 
 pub(crate) async fn handle_fail_desk_check(

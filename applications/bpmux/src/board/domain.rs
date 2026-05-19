@@ -27,6 +27,19 @@ impl StoryState {
         }
     }
 
+    pub fn github_label(self) -> &'static str {
+        match self {
+            StoryState::Icebox => "icebox",
+            StoryState::Ready => "ready",
+            StoryState::InProgress => "in progress",
+            StoryState::DeskCheck => "desk-check",
+            StoryState::Delivered => "delivered",
+            StoryState::Acceptance => "acceptance",
+            StoryState::Accepted => "accepted",
+            StoryState::Retired => "retired",
+        }
+    }
+
     pub fn parse(s: &str) -> Option<Self> {
         match s {
             "icebox" => Some(StoryState::Icebox),
@@ -209,17 +222,10 @@ impl Story {
         filed_at: DateTime<Utc>,
         filed_by: String,
     ) -> Self {
-        let state_label = match state {
-            StoryState::Icebox => None,
-            StoryState::Ready => Some("ready"),
-            StoryState::InProgress => Some("in progress"),
-            StoryState::DeskCheck => Some("desk-check"),
-            StoryState::Delivered => Some("delivered"),
-            StoryState::Acceptance => Some("acceptance"),
-            StoryState::Accepted => Some("accepted"),
-            StoryState::Retired => Some("retired"),
+        let raw_labels = match state {
+            StoryState::Icebox => Vec::new(),
+            other => vec![other.github_label().to_string()],
         };
-        let raw_labels = state_label.map(|l| vec![l.to_string()]).unwrap_or_default();
         Self {
             number,
             title,
