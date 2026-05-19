@@ -102,6 +102,10 @@ pub(super) fn validate_meta(
     Ok(())
 }
 
+pub fn message_type_reaches_llm_stream(message_type: Option<&str>) -> bool {
+    !matches!(message_type, Some("activity") | Some("system"))
+}
+
 pub(super) fn build_notification_meta(
     from: &str,
     ts: &str,
@@ -224,8 +228,7 @@ async fn run_ws_connection(
             }
             drop(current_name);
 
-            let mt = message_type.as_deref();
-            if mt == Some("activity") || mt == Some("system") {
+            if !message_type_reaches_llm_stream(message_type.as_deref()) {
                 continue;
             }
 
