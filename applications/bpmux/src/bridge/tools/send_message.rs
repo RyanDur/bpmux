@@ -5,7 +5,12 @@ use super::helpers::{WsSink, ws_send};
 use crate::session::diag::log_diag;
 use crate::transport::protocol::ClientMessage;
 
-const OWNER_ROLE: &str = "ryan";
+fn owner_role_id() -> String {
+    crate::workflow::current_workflow()
+        .owner_role_id()
+        .map(str::to_string)
+        .unwrap_or_else(|| "ryan".to_string())
+}
 
 #[derive(Serialize)]
 #[serde(untagged)]
@@ -25,8 +30,9 @@ pub fn ensure_owner_included(to: Option<Vec<String>>) -> Option<Vec<String>> {
     if list.is_empty() || list.iter().any(|r| r == "all") {
         return Some(list);
     }
-    if !list.iter().any(|r| r == OWNER_ROLE) {
-        list.push(OWNER_ROLE.to_string());
+    let owner = owner_role_id();
+    if !list.iter().any(|r| r == &owner) {
+        list.push(owner);
     }
     Some(list)
 }
@@ -129,14 +135,14 @@ mod tests {
     fn owner_auto_included_when_absent_from_to() {
         let to = Some(vec!["dev".to_string(), "pm".to_string()]);
         let adjusted = ensure_owner_included(to).expect("scoped");
-        assert!(adjusted.iter().any(|r| r == OWNER_ROLE));
+        assert!(adjusted.iter().any(|r| r == "ryan"));
     }
 
     #[test]
     fn owner_not_duplicated_when_already_in_to() {
         let to = Some(vec!["ryan".to_string(), "dev".to_string()]);
         let adjusted = ensure_owner_included(to).expect("scoped");
-        assert_eq!(adjusted.iter().filter(|r| *r == OWNER_ROLE).count(), 1);
+        assert_eq!(adjusted.iter().filter(|r| **r == "ryan").count(), 1);
     }
 
     #[test]
@@ -190,7 +196,7 @@ mod tests {
             .filter_map(|v| v.as_str())
             .collect::<Vec<_>>();
         assert!(list.contains(&"dev"));
-        assert!(list.contains(&OWNER_ROLE));
+        assert!(list.contains(&"ryan"));
         Ok(())
     }
 }

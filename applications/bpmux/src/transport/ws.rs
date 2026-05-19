@@ -184,11 +184,17 @@ async fn run_ws_session(
 
 pub(crate) fn role_from_short_name(short: &str) -> crate::orchestrator::stores::RosterRole {
     use crate::orchestrator::stores::RosterRole;
-    match short {
-        "designer" => RosterRole::Designer,
-        "dev" => RosterRole::Dev,
-        "pm" => RosterRole::Pm,
-        "ryan" => RosterRole::Owner,
+    let workflow = crate::workflow::current_workflow();
+    let purpose = workflow
+        .role
+        .iter()
+        .find(|r| r.id == short)
+        .and_then(|r| r.purposes.first().map(String::as_str));
+    match purpose {
+        Some("designer") => RosterRole::Designer,
+        Some("dev") => RosterRole::Dev,
+        Some("pm") => RosterRole::Pm,
+        Some("owner") => RosterRole::Owner,
         _ => RosterRole::Other,
     }
 }

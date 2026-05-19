@@ -202,7 +202,10 @@ pub(crate) async fn handle_edit_story(
     ws_tx: &Mutex<Option<WsSink>>,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
-    require_role(agent_name, &["pm", "ryan"], "edit story")?;
+    let workflow = crate::workflow::current_workflow();
+    let pm = workflow.role_id_for_purpose("pm").unwrap_or("pm");
+    let owner = workflow.owner_role_id().unwrap_or("ryan");
+    require_role(agent_name, &[pm, owner], "edit story")?;
     let number = args
         .get("number")
         .and_then(|v| v.as_u64())
