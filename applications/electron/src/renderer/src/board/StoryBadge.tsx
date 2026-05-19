@@ -1,30 +1,12 @@
 import { storyTypeFromLabels, type BoardStory } from './types'
 
-// #368: team-accept audit badge. Variants:
-//   - blocked (#390): story has a `blocked` label while in delivered
-//     — "not actionable for you right now." Highest precedence on
-//     delivered rows so owner's acceptance walk can skip it at a
-//     glance. Inline SVG road-sign glyph + amber family.
-//   - rework: story is currently in a desk-check-fail cycle (red)
-//   - team-accepted: story is in the team-gate lane (bug/chore),
-//     either awaiting PM accept (delivered state) or already accepted
-//     by the team (accepted state). Solid green.
-//   - accepted: story is in the owner-gate lane (feature), either
-//     awaiting Ryan's accept (delivered) or already accepted by Ryan.
-//     Outlined green — shape-distinct from solid so colorblind
-//     readers differentiate lanes, too.
-//
-// Badge lane is TYPE-DRIVEN (bug/chore = team, feature = owner) per
-// the 3-type delegation vocabulary (#264). Rework overrides both
-// lanes because the active cycle is the immediate signal. Blocked
-// overrides rework because "not in your queue" outranks "needs a
-// redelivery cycle" as an owner-facing skip signal.
-
 export type BadgeKind = 'team-accepted' | 'accepted' | 'rework' | 'blocked'
 
 const DESK_CHECK_FAIL_LABEL = 'desk-check-fail'
 const BLOCKED_LABEL = 'blocked'
 const BLOCKED_BY_PREFIX = 'blocked-by:'
+const ACCEPTOR_TEAM_LABEL = 'awaiting team'
+const ACCEPTOR_OWNER_LABEL = 'awaiting owner'
 
 // Parse `blocked-by:<N>` label (case-insensitive) into a story number.
 // Returns null when absent or malformed — the caller falls back to
@@ -41,24 +23,17 @@ export function blockerNumberFromLabels(labels: string[]): number | null {
   return null
 }
 
-// Decide which badge (if any) should surface on a row. Only stories
-// in delivered / accepted states get a badge — upstream states
-// (ready/in-progress/icebox) don't carry accept semantics yet.
 export function deriveBadge(story: BoardStory): BadgeKind | null {
   if (story.state !== 'delivered' && story.state !== 'accepted') return null
   const normalized = story.labels.map((l) => l.toLowerCase())
-  // Blocked takes precedence on delivered rows only. Accepted rows
-  // shouldn't carry block-state; if one does (data-shape gap), the
-  // accept-lane badge wins — the story is done, block is stale.
   if (story.state === 'delivered' && normalized.includes(BLOCKED_LABEL)) {
     return 'blocked'
   }
-  const hasRework = normalized.includes(DESK_CHECK_FAIL_LABEL)
-  if (hasRework) return 'rework'
+  if (normalized.includes(DESK_CHECK_FAIL_LABEL)) return 'rework'
+  if (normalized.includes(ACCEPTOR_TEAM_LABEL)) return 'team-accepted'
+  if (normalized.includes(ACCEPTOR_OWNER_LABEL)) return 'accepted'
   const type = storyTypeFromLabels(story.labels)
   if (type === 'bug' || type === 'chore') return 'team-accepted'
-  // features default to owner-accept lane; unknown type defaults
-  // there too (conservative — owner-accept is the stricter gate).
   return 'accepted'
 }
 
