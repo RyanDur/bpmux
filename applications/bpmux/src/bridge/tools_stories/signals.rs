@@ -99,15 +99,25 @@ pub(crate) fn classify_for_pass_desk_check(
 
 pub(crate) fn addressee_for_pass_desk_check(
     story_type: crate::board::domain::StoryType,
+    labels: &[String],
 ) -> &'static str {
     let workflow = crate::workflow::current_workflow();
+    let owner = || workflow.owner_role_id().unwrap_or("ryan");
+    let team = || workflow.role_id_for_purpose("pm").unwrap_or("pm");
+
+    let has_label = |needle: &str| labels.iter().any(|l| l.eq_ignore_ascii_case(needle));
+    if has_label("awaiting team") {
+        return team();
+    }
+    if has_label("awaiting owner") {
+        return owner();
+    }
+
     match story_type {
         crate::board::domain::StoryType::Feature
         | crate::board::domain::StoryType::Epic
-        | crate::board::domain::StoryType::Iteration => workflow.owner_role_id().unwrap_or("ryan"),
-        crate::board::domain::StoryType::Bug | crate::board::domain::StoryType::Chore => {
-            workflow.role_id_for_purpose("pm").unwrap_or("pm")
-        }
+        | crate::board::domain::StoryType::Iteration => owner(),
+        crate::board::domain::StoryType::Bug | crate::board::domain::StoryType::Chore => team(),
     }
 }
 
@@ -133,8 +143,9 @@ pub(crate) fn build_pass_desk_check_pm_present_signal(number: u64) -> ClientMess
 pub(crate) fn build_pass_desk_check_signals(
     number: u64,
     story_type: crate::board::domain::StoryType,
+    labels: &[String],
 ) -> Vec<ClientMessage> {
-    let primary = addressee_for_pass_desk_check(story_type);
+    let primary = addressee_for_pass_desk_check(story_type, labels);
     let owner = crate::workflow::current_workflow()
         .owner_role_id()
         .unwrap_or("ryan");

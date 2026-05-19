@@ -162,7 +162,11 @@ pub(crate) async fn dispatch_test_pass_desk_check(
             .await?;
     if let Some(number) = args.get("number").and_then(|v| v.as_u64()) {
         let story_type = tools_stories::classify_for_pass_desk_check(number, refresh);
-        for msg in tools_stories::build_pass_desk_check_signals(number, story_type) {
+        let labels = refresh
+            .and_then(|r| r.story(number))
+            .map(|s| s.raw_labels)
+            .unwrap_or_default();
+        for msg in tools_stories::build_pass_desk_check_signals(number, story_type, &labels) {
             broadcast_client_msg_via_session(session, agent_name, msg);
         }
     }

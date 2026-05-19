@@ -326,7 +326,11 @@ pub(crate) async fn handle_pass_desk_check(
         false
     };
     let story_type = classify_for_pass_desk_check(number, refresh);
-    for msg in build_pass_desk_check_signals(number, story_type) {
+    let labels = refresh
+        .and_then(|r| r.story(number))
+        .map(|s| s.raw_labels)
+        .unwrap_or_default();
+    for msg in build_pass_desk_check_signals(number, story_type, &labels) {
         let signal = serde_json::to_string(&msg).map_err(|e| format!("signal: {e}"))?;
         if let Err(e) = ws_send(ws_tx, signal).await {
             crate::session::diag::log_diag(&format!("bridge: signal send failed: {e}"));
