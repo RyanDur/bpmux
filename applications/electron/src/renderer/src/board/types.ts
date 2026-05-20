@@ -161,16 +161,24 @@ export const isClosedIterationMarker = (story: BoardStory): boolean => {
 }
 
 export const deriveEpicState = (
-  epicExplicitState: StoryState,
+  _epicExplicitState: StoryState,
   children: BoardStory[]
 ): StoryState => {
-  if (epicExplicitState === 'accepted') return 'accepted'
-  if (children.length === 0) return epicExplicitState
-  if (children.some((c) => c.state === 'in-progress')) return 'in-progress'
-  if (children.every((c) => c.state === 'delivered' || c.state === 'accepted')) {
-    return 'delivered'
+  if (children.length === 0 || children.every((c) => c.state === 'icebox')) {
+    return 'icebox'
   }
-  return epicExplicitState
+  const anyActive = children.some((c) =>
+    c.state === 'in-progress' ||
+    c.state === 'desk-check' ||
+    c.state === 'delivered' ||
+    c.state === 'ready-for-accept'
+  )
+  if (anyActive) return 'in-progress'
+  const nonRetired = children.filter((c) => c.state !== 'retired')
+  if (nonRetired.length === 0) return 'retired'
+  if (nonRetired.every((c) => c.state === 'accepted')) return 'accepted'
+  if (children.some((c) => c.state === 'ready')) return 'ready'
+  return 'icebox'
 }
 
 export const groupStories = (stories: BoardStory[]): Map<ColumnState, BoardStory[]> => {

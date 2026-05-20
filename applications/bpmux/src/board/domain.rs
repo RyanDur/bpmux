@@ -280,21 +280,34 @@ pub fn substitute_member_stories_section(body: &str, derived_content: &str) -> S
     out
 }
 
-pub fn derive_epic_state(epic_explicit_state: StoryState, children: &[&Story]) -> StoryState {
-    if epic_explicit_state == StoryState::Accepted {
-        return StoryState::Accepted;
+pub fn derive_epic_state(_epic_explicit_state: StoryState, children: &[&Story]) -> StoryState {
+    if children.is_empty() || children.iter().all(|c| c.state == StoryState::Icebox) {
+        return StoryState::Icebox;
     }
-    if children.is_empty() {
-        return epic_explicit_state;
-    }
-    if children.iter().any(|c| c.state == StoryState::InProgress) {
+    let any_active = children.iter().any(|c| {
+        matches!(
+            c.state,
+            StoryState::InProgress
+                | StoryState::DeskCheck
+                | StoryState::Delivered
+                | StoryState::Acceptance
+        )
+    });
+    if any_active {
         return StoryState::InProgress;
     }
-    let all_delivered_or_beyond = children
+    let non_retired: Vec<&&Story> = children
         .iter()
-        .all(|c| matches!(c.state, StoryState::Delivered | StoryState::Accepted));
-    if all_delivered_or_beyond {
-        return StoryState::Delivered;
+        .filter(|c| c.state != StoryState::Retired)
+        .collect();
+    if non_retired.is_empty() {
+        return StoryState::Retired;
     }
-    epic_explicit_state
+    if non_retired.iter().all(|c| c.state == StoryState::Accepted) {
+        return StoryState::Accepted;
+    }
+    if children.iter().any(|c| c.state == StoryState::Ready) {
+        return StoryState::Ready;
+    }
+    StoryState::Icebox
 }

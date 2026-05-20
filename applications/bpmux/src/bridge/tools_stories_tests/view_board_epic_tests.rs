@@ -481,7 +481,7 @@ async fn view_board_filters_epic_stories_out_of_state_lanes() {
 }
 
 #[tokio::test]
-async fn view_board_epic_derived_state_reflects_all_delivered_children() {
+async fn view_board_epic_with_delivered_children_derives_in_progress_post_1450() {
     use crate::board::BoardStore;
     use crate::board::RefreshDriver;
     use crate::board::SyncOrchestrator;
@@ -515,13 +515,13 @@ async fn view_board_epic_derived_state_reflects_all_delivered_children() {
         .await
         .unwrap();
     assert!(
-        out.contains("#720 [delivered] delivered umbrella"),
-        "Epic with all-delivered children should derive 'delivered' state: {out}"
+        out.contains("#720 [in-progress] delivered umbrella"),
+        "Post-#1450 truth-table: Delivered children are active-state class → Epic derives in-progress; got: {out}"
     );
 }
 
 #[tokio::test]
-async fn view_board_epic_explicit_accepted_overrides_derivation() {
+async fn view_board_epic_ignores_explicit_state_when_children_present_post_1450() {
     use crate::board::BoardStore;
     use crate::board::RefreshDriver;
     use crate::board::SyncOrchestrator;
@@ -553,7 +553,7 @@ async fn view_board_epic_explicit_accepted_overrides_derivation() {
         .await
         .unwrap();
     assert!(
-        out.contains("#730 [accepted] owner-accepted umbrella"),
-        "Epic with explicit Accepted state should NOT derive from in-progress child: {out}"
+        out.contains("#730 [in-progress] owner-accepted umbrella"),
+        "Post-#1450: explicit_state ignored — substrate IS source-of-truth (META-CANON #1); active child wins; got: {out}"
     );
 }

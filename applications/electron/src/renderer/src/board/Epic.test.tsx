@@ -216,7 +216,10 @@ describe('#1235 Epic-card collapse — native <details>/<summary> + activity-cla
 
   test('in-progress Epic is open by default (falsifier-c)', () => {
     const epic = story({ number: 1100, state: 'in-progress' })
-    const html = renderToStaticMarkup(<Epic epics={[epic]} stories={[epic]} onOpen={() => {}} />)
+    const child = story({ number: 1101, state: 'in-progress', parent_epic: 1100 })
+    const html = renderToStaticMarkup(
+      <Epic epics={[epic]} stories={[epic, child]} onOpen={() => {}} />
+    )
     expect(html).toMatch(/<details[^>]*\sopen\b/)
   })
 

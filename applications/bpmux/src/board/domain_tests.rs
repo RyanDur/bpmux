@@ -1,8 +1,10 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::domain::{
-    StoryState, derive_iteration_member_section, substitute_member_stories_section,
+    Story, StoryState, derive_epic_state, derive_iteration_member_section,
+    substitute_member_stories_section,
 };
+use chrono::{TimeZone, Utc};
 
 #[test]
 fn story_state_parse_round_trips_via_as_str() {
@@ -259,5 +261,206 @@ fn substitute_member_section_re_derivation_reflects_membership_mutation_1462() {
     assert!(
         after_add.contains("- #3 — c\n"),
         "added story appears on re-derivation: {after_add}"
+    );
+}
+
+fn epic_child(number: u64, state: StoryState) -> Story {
+    Story::new_minimal(
+        number,
+        format!("child-{number}"),
+        state,
+        Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
+        "pm".into(),
+    )
+}
+
+#[test]
+fn derive_epic_state_returns_icebox_for_empty_children_1450() {
+    assert_eq!(
+        derive_epic_state(StoryState::Ready, &[]),
+        StoryState::Icebox,
+        "empty children must derive Icebox regardless of explicit state"
+    );
+}
+
+#[test]
+fn derive_epic_state_returns_icebox_when_all_children_icebox_1450() {
+    let kids = [
+        epic_child(1, StoryState::Icebox),
+        epic_child(2, StoryState::Icebox),
+    ];
+    let refs: Vec<&Story> = kids.iter().collect();
+    assert_eq!(
+        derive_epic_state(StoryState::Ready, &refs),
+        StoryState::Icebox,
+        "all-Icebox children derive Icebox"
+    );
+}
+
+#[test]
+fn derive_epic_state_returns_ready_for_one_ready_no_active_1450() {
+    let kids = [
+        epic_child(1, StoryState::Ready),
+        epic_child(2, StoryState::Icebox),
+    ];
+    let refs: Vec<&Story> = kids.iter().collect();
+    assert_eq!(
+        derive_epic_state(StoryState::Icebox, &refs),
+        StoryState::Ready,
+        "1+ Ready child + no active children derives Ready"
+    );
+}
+
+#[test]
+fn derive_epic_state_returns_in_progress_for_active_child_1450() {
+    for active_state in [
+        StoryState::InProgress,
+        StoryState::DeskCheck,
+        StoryState::Delivered,
+        StoryState::Acceptance,
+    ] {
+        let kids = [
+            epic_child(1, StoryState::Ready),
+            epic_child(2, active_state),
+        ];
+        let refs: Vec<&Story> = kids.iter().collect();
+        assert_eq!(
+            derive_epic_state(StoryState::Icebox, &refs),
+            StoryState::InProgress,
+            "active-state {active_state:?} child derives InProgress at Epic-axis"
+        );
+    }
+}
+
+#[test]
+fn derive_epic_state_returns_accepted_when_all_non_retired_accepted_1450() {
+    let kids = [
+        epic_child(1, StoryState::Accepted),
+        epic_child(2, StoryState::Accepted),
+    ];
+    let refs: Vec<&Story> = kids.iter().collect();
+    assert_eq!(
+        derive_epic_state(StoryState::Icebox, &refs),
+        StoryState::Accepted,
+        "all-Accepted children derive Accepted"
+    );
+}
+
+#[test]
+fn derive_epic_state_returns_retired_when_all_retired_1450() {
+    let kids = [
+        epic_child(1, StoryState::Retired),
+        epic_child(2, StoryState::Retired),
+    ];
+    let refs: Vec<&Story> = kids.iter().collect();
+    assert_eq!(
+        derive_epic_state(StoryState::Accepted, &refs),
+        StoryState::Retired,
+        "all-Retired children derive Retired (overrides explicit Accepted)"
+    );
+}
+
+#[test]
+fn derive_epic_state_mixed_accepted_and_retired_no_active_derives_accepted_1450() {
+    let kids = [
+        epic_child(1, StoryState::Accepted),
+        epic_child(2, StoryState::Retired),
+        epic_child(3, StoryState::Accepted),
+    ];
+    let refs: Vec<&Story> = kids.iter().collect();
+    assert_eq!(
+        derive_epic_state(StoryState::Icebox, &refs),
+        StoryState::Accepted,
+        "mixed Accepted + Retired (no active) derives Accepted — retired don't block accept"
+    );
+}
+
+#[test]
+fn derive_epic_state_ignores_explicit_state_when_children_present_1450() {
+    let kids = [epic_child(1, StoryState::InProgress)];
+    let refs: Vec<&Story> = kids.iter().collect();
+    assert_eq!(
+        derive_epic_state(StoryState::Accepted, &refs),
+        StoryState::InProgress,
+        "post-1450: explicit_state is ignored — substrate IS source-of-truth (META-CANON #1)"
+    );
+    assert_eq!(
+        derive_epic_state(StoryState::Retired, &refs),
+        StoryState::InProgress,
+        "Retired explicit_state also ignored when active children present"
+    );
+}
+
+#[test]
+fn derive_epic_state_active_dominates_terminal_at_in_progress_axis_1450() {
+    let kids = [
+        epic_child(1, StoryState::Accepted),
+        epic_child(2, StoryState::Retired),
+        epic_child(3, StoryState::InProgress),
+    ];
+    let refs: Vec<&Story> = kids.iter().collect();
+    assert_eq!(
+        derive_epic_state(StoryState::Accepted, &refs),
+        StoryState::InProgress,
+        "1+ active child dominates Accepted/Retired siblings"
+    );
+}
+
+#[test]
+fn derive_epic_state_ready_with_terminal_children_derives_ready_1450() {
+    let kids = [
+        epic_child(1, StoryState::Ready),
+        epic_child(2, StoryState::Accepted),
+        epic_child(3, StoryState::Retired),
+    ];
+    let refs: Vec<&Story> = kids.iter().collect();
+    assert_eq!(
+        derive_epic_state(StoryState::Icebox, &refs),
+        StoryState::Ready,
+        "Ready + terminal-only siblings (no active) derives Ready — terminal don't block Ready"
+    );
+}
+
+#[test]
+fn derive_epic_state_1189_paradox_regression_1450() {
+    let mut kids: Vec<Story> = Vec::new();
+    for n in 1..=30 {
+        kids.push(epic_child(n, StoryState::Accepted));
+    }
+    for n in 31..=36 {
+        kids.push(epic_child(n, StoryState::Retired));
+    }
+    let refs: Vec<&Story> = kids.iter().collect();
+    assert_eq!(
+        derive_epic_state(StoryState::Icebox, &refs),
+        StoryState::Accepted,
+        "#1189 paradox: Epic with 30 Accepted + 6 Retired children derives Accepted, NOT Icebox (Ryan-canon 2026-05-19 01:47 UTC)"
+    );
+}
+
+#[test]
+fn derive_epic_state_does_not_return_non_epic_states_1450() {
+    let kids = [
+        epic_child(1, StoryState::DeskCheck),
+        epic_child(2, StoryState::Delivered),
+        epic_child(3, StoryState::Acceptance),
+    ];
+    let refs: Vec<&Story> = kids.iter().collect();
+    let derived = derive_epic_state(StoryState::Icebox, &refs);
+    assert!(
+        matches!(
+            derived,
+            StoryState::Icebox
+                | StoryState::Ready
+                | StoryState::InProgress
+                | StoryState::Accepted
+                | StoryState::Retired
+        ),
+        "Epic state must be one of {{Icebox, Ready, InProgress, Accepted, Retired}}; never DeskCheck/Delivered/Acceptance; got {derived:?}"
+    );
+    assert_eq!(
+        derived,
+        StoryState::InProgress,
+        "DeskCheck/Delivered/Acceptance children roll up to InProgress"
     );
 }
