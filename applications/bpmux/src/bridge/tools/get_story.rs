@@ -1,8 +1,11 @@
 use std::sync::Arc;
 
+use crate::board::adapters::gh_label_codec::GhLabelCodec;
 use crate::board::domain::{
-    Gate, GateComment, StoryState, most_recent_backward_transition, replay_transitions,
+    Gate, GateComment, StoryState, StoryType, derive_iteration_member_section,
+    most_recent_backward_transition, replay_transitions, substitute_member_stories_section,
 };
+use crate::board::iteration_label::{members_with_iteration_label, theme_name_from_title};
 use crate::board::{BoardStore, RefreshDriver};
 
 use super::rework_context::enrich_body;
@@ -86,6 +89,20 @@ pub(in crate::bridge) async fn handle_get_story(
         && let Some(ctx) = rework_context_from_gates(gates)
     {
         body_out = enrich_body(&body_out, &ctx);
+    }
+    if story.story_type == StoryType::Iteration && body_cached.is_some() {
+        let theme_name = theme_name_from_title(&story.title);
+        let codec = GhLabelCodec;
+        let all_stories = b.all_stories();
+        let member_numbers = members_with_iteration_label(&codec, &all_stories, &theme_name);
+        let members: Vec<(u64, String)> = member_numbers
+            .iter()
+            .filter_map(|n| b.story(*n).map(|s| (*n, s.title.clone())))
+            .collect();
+        let members_refs: Vec<(u64, &str)> =
+            members.iter().map(|(n, t)| (*n, t.as_str())).collect();
+        let derived = derive_iteration_member_section(&members_refs);
+        body_out = substitute_member_stories_section(&body_out, &derived);
     }
     let labels: Vec<serde_json::Value> = story
         .raw_labels

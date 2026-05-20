@@ -6,7 +6,7 @@ use chrono::{TimeZone, Utc};
 
 use super::get_story::handle_get_story;
 use crate::board::adapters::in_memory::InMemorySourceAdapter;
-use crate::board::domain::{Gate, GateComment, Story, StoryState};
+use crate::board::domain::{Gate, GateComment, Story, StoryState, StoryType};
 use crate::board::{BoardStore, RefreshDriver, SyncOrchestrator};
 
 async fn seeded_orchestrator(
@@ -437,5 +437,148 @@ async fn cache_hit_does_not_refetch_when_body_already_present() {
     assert_eq!(
         body, "already-cached body",
         "cache-hit path must NOT re-fetch; adapter body must not leak"
+    );
+}
+
+fn make_iteration(number: u64, theme: &str, body: &str) -> Story {
+    let mut s = Story::new_minimal(
+        number,
+        format!("Iteration {theme}"),
+        StoryState::Ready,
+        Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
+        "pm".into(),
+    );
+    s.story_type = StoryType::Iteration;
+    s.body = Some(body.to_string());
+    s
+}
+
+fn make_member(number: u64, title: &str, theme: &str, position: u32) -> Story {
+    let mut s = Story::new_minimal(
+        number,
+        title.into(),
+        StoryState::Ready,
+        Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
+        "pm".into(),
+    );
+    s.raw_labels = vec!["ready".into(), format!("iteration-{theme}.{position}")];
+    s
+}
+
+const ITERATION_BODY_TEMPLATE: &str = "## Iteration Telescopium\n\
+\n\
+**Created**: 2026-05-19\n\
+**Status**: Open\n\
+\n\
+## Member stories\n\
+\n\
+<!-- Members carry `iteration-Telescopium.{position}` labels;\n\
+     ordering is by position ascending. -->\n\
+\n\
+_(no members yet)_\n\
+\n\
+## Notes\n\
+\n\
+bpmux iteration substrate.\n";
+
+#[tokio::test]
+async fn get_story_auto_derives_iteration_members_into_body_1462() {
+    let iteration = make_iteration(1397, "Telescopium", ITERATION_BODY_TEMPLATE);
+    let members = vec![
+        make_member(1309, "ci_get_job_status MCP tool", "Telescopium", 100),
+        make_member(1265, "reorder_story PM-only gate", "Telescopium", 200),
+        make_member(1463, "Split e2e workflow", "Telescopium", 300),
+    ];
+    let mut all = vec![iteration];
+    all.extend(members);
+    let (store, orch) = seeded_orchestrator(all, vec![]).await;
+    let args = serde_json::json!({"number": 1397});
+    let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orch))
+        .await
+        .expect("should succeed");
+    let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
+    let body = parsed["body"].as_str().expect("body is string");
+    assert!(
+        body.contains("- #1309 — ci_get_job_status MCP tool\n"),
+        "first member auto-derived into body: {body}"
+    );
+    assert!(
+        body.contains("- #1265 — reorder_story PM-only gate\n"),
+        "second member auto-derived: {body}"
+    );
+    assert!(
+        body.contains("- #1463 — Split e2e workflow\n"),
+        "third member auto-derived: {body}"
+    );
+    assert!(
+        !body.contains("_(no members yet)_"),
+        "placeholder replaced when members present: {body}"
+    );
+    let pos_1309 = body.find("- #1309").expect("1309 present");
+    let pos_1265 = body.find("- #1265").expect("1265 present");
+    let pos_1463 = body.find("- #1463").expect("1463 present");
+    assert!(
+        pos_1309 < pos_1265 && pos_1265 < pos_1463,
+        "members ordered position-ascending (100 < 200 < 300): {body}"
+    );
+}
+
+#[tokio::test]
+async fn get_story_preserves_placeholder_when_iteration_has_no_members_1462() {
+    let iteration = make_iteration(1397, "Telescopium", ITERATION_BODY_TEMPLATE);
+    let (store, orch) = seeded_orchestrator(vec![iteration], vec![]).await;
+    let args = serde_json::json!({"number": 1397});
+    let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orch))
+        .await
+        .expect("should succeed");
+    let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
+    let body = parsed["body"].as_str().expect("body is string");
+    assert!(
+        body.contains("_(no members yet)_"),
+        "empty-iteration body preserves placeholder: {body}"
+    );
+}
+
+#[tokio::test]
+async fn get_story_does_not_derive_members_for_non_iteration_stories_1462() {
+    let story = make_story(
+        1463,
+        StoryState::Accepted,
+        Some("## Iteration Telescopium\n\n## Member stories\n\n_(no members yet)_\n\n## Notes\n"),
+    );
+    let (store, orch) = seeded_orchestrator(vec![story], vec![]).await;
+    let args = serde_json::json!({"number": 1463});
+    let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orch))
+        .await
+        .expect("should succeed");
+    let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
+    let body = parsed["body"].as_str().expect("body is string");
+    assert!(
+        body.contains("_(no members yet)_"),
+        "non-iteration story with member-stories header is left alone (no substitution): {body}"
+    );
+}
+
+#[tokio::test]
+async fn get_story_excludes_closed_member_stories_from_derivation_1462() {
+    let iteration = make_iteration(1397, "Telescopium", ITERATION_BODY_TEMPLATE);
+    let mut closed_member = make_member(1309, "Already shipped", "Telescopium", 100);
+    closed_member.is_closed = true;
+    let open_member = make_member(1265, "Still open", "Telescopium", 200);
+    let (store, orch) =
+        seeded_orchestrator(vec![iteration, closed_member, open_member], vec![]).await;
+    let args = serde_json::json!({"number": 1397});
+    let result = handle_get_story(args.as_object().unwrap(), Some(&store), Some(&orch))
+        .await
+        .expect("should succeed");
+    let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
+    let body = parsed["body"].as_str().expect("body is string");
+    assert!(
+        !body.contains("- #1309"),
+        "closed member excluded (sister to members_with_iteration_label closed-skip semantic): {body}"
+    );
+    assert!(
+        body.contains("- #1265 — Still open\n"),
+        "open member preserved: {body}"
     );
 }
