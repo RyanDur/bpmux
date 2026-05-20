@@ -1,59 +1,25 @@
 use tokio::sync::Mutex;
 
 use super::super::tools::WsSink;
-use super::helpers::role_from_name;
-use super::signals::broadcast_board_invalidate;
 use crate::board::label_codec::LabelCodec;
 
+pub(crate) fn reorder_story_retired_error() -> String {
+    serde_json::json!({
+        "kind": "tool-retired",
+        "retired_axis": "reorder-tool",
+        "successor": "move_story",
+        "message": "reorder_story is retired per #1403. Use move_story(number, target_state=<same column>, position=<N>, rationale=<why>) — position-axis is uniform with state-transition substrate via #1392 universal-move. Internal position-mutation algorithm preserved; only the dedicated reorder_story tool retires."
+    })
+    .to_string()
+}
+
 pub(crate) async fn handle_reorder_story(
-    args: &serde_json::Map<String, serde_json::Value>,
-    agent_name: &str,
-    ws_tx: &Mutex<Option<WsSink>>,
-    refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
+    _args: &serde_json::Map<String, serde_json::Value>,
+    _agent_name: &str,
+    _ws_tx: &Mutex<Option<WsSink>>,
+    _refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
-    let actor_role = role_from_name(agent_name);
-    let workflow = crate::workflow::current_workflow();
-    let transition =
-        crate::workflow::resolve_transition(workflow, "reorder", crate::workflow::GateClass::None)
-            .map_err(|e| e.as_json_string())?;
-    crate::workflow::check_role_allowed(transition, actor_role).map_err(|e| e.as_json_string())?;
-    let number = args
-        .get("number")
-        .and_then(|v| v.as_u64())
-        .ok_or("missing 'number' argument")?;
-    let position = args
-        .get("position")
-        .and_then(|v| v.as_u64())
-        .ok_or("missing 'position' argument")? as usize;
-    let state_str = args
-        .get("state")
-        .and_then(|v| v.as_str())
-        .ok_or("missing 'state' argument (e.g., 'ready', 'in_progress', 'delivered')")?;
-    let state = crate::board::domain::StoryState::parse(state_str).ok_or_else(|| {
-        format!("reorder_story state='{state_str}' not a valid StoryState (use icebox/ready/in-progress/desk-check/delivered/accepted)")
-    })?;
-    match state {
-        crate::board::domain::StoryState::Icebox => {
-            let r = refresh.ok_or(
-                "reorder_story state=icebox requires refresh-driver (canonical-via-GH label substrate per #1301)",
-            )?;
-            reorder_icebox_story_via_labels(r, number, position)?;
-            broadcast_board_invalidate(ws_tx).await;
-            Ok(format!("#{number} moved to position {position} in icebox"))
-        }
-        crate::board::domain::StoryState::Ready => {
-            let r = refresh.ok_or(
-                "reorder_story state=ready requires refresh-driver (canonical-via-GH label substrate per #1301)",
-            )?;
-            reorder_ready_story_via_labels(r, number, position)?;
-            broadcast_board_invalidate(ws_tx).await;
-            Ok(format!("#{number} moved to position {position} in ready"))
-        }
-        _ => Err(format!(
-            "reorder_story state='{}' not supported (#1301 retired per-state ordering — only 'ready' and 'icebox' are user-orderable)",
-            state.as_str()
-        )),
-    }
+    Err(reorder_story_retired_error())
 }
 
 pub(crate) fn reorder_icebox_story_via_labels(

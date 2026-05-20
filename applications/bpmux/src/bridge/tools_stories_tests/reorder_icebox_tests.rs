@@ -15,7 +15,7 @@ mod reorder_story_icebox_label_substrate_tests_1301 {
     use crate::board::SyncOrchestrator;
     use crate::board::adapters::in_memory::InMemorySourceAdapter;
     use crate::board::domain::{Story, StoryState};
-    use crate::bridge::tools_stories::handle_reorder_story;
+    use crate::bridge::tools_stories::reorder_icebox_story_via_labels;
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -48,12 +48,7 @@ mod reorder_story_icebox_label_substrate_tests_1301 {
         number: u64,
         position: u64,
     ) -> Result<String, String> {
-        let mut args = serde_json::Map::new();
-        args.insert("number".into(), serde_json::json!(number));
-        args.insert("position".into(), serde_json::json!(position));
-        args.insert("state".into(), serde_json::json!("icebox"));
-        let ws_tx = tokio::sync::Mutex::new(None);
-        handle_reorder_story(&args, "pm:test", &ws_tx, Some(orch)).await
+        reorder_icebox_story_via_labels(orch, number, position as usize).map(|_| String::new())
     }
 
     #[tokio::test]

@@ -8,7 +8,7 @@ use harness::story_helpers::create_target_story;
 use std::time::Duration;
 
 #[test]
-fn dev_firing_reorder_returns_structured_409_with_workflow_role_not_allowed_kind() {
+fn dev_firing_reorder_returns_tool_retired_post_1403() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
@@ -18,8 +18,8 @@ fn dev_firing_reorder_returns_structured_409_with_workflow_role_not_allowed_kind
 
         let target_number = create_target_story(
             &pm,
-            "[Feature] dev-reorder-substrate-refusal",
-            "reject if dev firing reorder_story isn't substrate-refused per workflow.toml actor_roles (#1265 closure)",
+            "[Feature] dev-reorder-tool-retired",
+            "post-#1403 reorder_story is retired; dev MUST receive tool-retired (NOT workflow-role-not-allowed) — retire-gate precedes role-gate",
         )
         .await;
 
@@ -33,23 +33,23 @@ fn dev_firing_reorder_returns_structured_409_with_workflow_role_not_allowed_kind
                 }),
             )
             .await
-            .expect_err("dev should be substrate-refused at reorder axis (#1265 closure)");
+            .expect_err("dev firing retired reorder_story tool must error");
 
         assert!(
-            err.contains("\"kind\":\"workflow-role-not-allowed\""),
-            "structured kind discriminator present; got {err}"
+            err.contains("\"kind\":\"tool-retired\""),
+            "structured kind cites tool-retired post-#1403 retire; got {err}"
         );
         assert!(
-            err.contains("\"actor_role\":\"dev\""),
-            "actor_role names firing role; got {err}"
+            err.contains("\"successor\":\"move_story\""),
+            "rejection cites successor=move_story; got {err}"
         );
         assert!(
-            err.contains("\"attempted_transition\":\"reorder\""),
-            "attempted_transition names the gate; got {err}"
+            err.contains("\"retired_axis\":\"reorder-tool\""),
+            "rejection cites retired_axis=reorder-tool; got {err}"
         );
         assert!(
-            err.contains("\"pm\""),
-            "allowed_roles cites the workflow.toml-configured set; got {err}"
+            !err.contains("workflow-role-not-allowed"),
+            "retire-gate precedes role-gate post-#1403; got {err}"
         );
 
         pm.close().await;
@@ -58,7 +58,7 @@ fn dev_firing_reorder_returns_structured_409_with_workflow_role_not_allowed_kind
 }
 
 #[test]
-fn designer_firing_reorder_returns_structured_409() {
+fn designer_firing_reorder_returns_tool_retired_post_1403() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
@@ -68,8 +68,8 @@ fn designer_firing_reorder_returns_structured_409() {
 
         let target_number = create_target_story(
             &pm,
-            "[Feature] designer-reorder-substrate-refusal",
-            "reject if designer firing reorder_story isn't substrate-refused",
+            "[Feature] designer-reorder-tool-retired",
+            "post-#1403 reorder_story is retired; designer MUST receive tool-retired",
         )
         .await;
 
@@ -83,15 +83,15 @@ fn designer_firing_reorder_returns_structured_409() {
                 }),
             )
             .await
-            .expect_err("designer should be substrate-refused at reorder axis");
+            .expect_err("designer firing retired reorder_story tool must error");
 
         assert!(
-            err.contains("\"kind\":\"workflow-role-not-allowed\""),
-            "structured kind discriminator present; got {err}"
+            err.contains("\"kind\":\"tool-retired\""),
+            "structured kind cites tool-retired post-#1403; got {err}"
         );
         assert!(
-            err.contains("\"actor_role\":\"designer\""),
-            "actor_role names firing role; got {err}"
+            err.contains("\"successor\":\"move_story\""),
+            "rejection cites successor; got {err}"
         );
 
         pm.close().await;

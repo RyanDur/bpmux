@@ -227,7 +227,7 @@ fn reorder_args(
 }
 
 #[tokio::test]
-async fn reorder_story_rejects_non_pm_roles_via_workflow_gate_1265() {
+async fn reorder_story_returns_tool_retired_regardless_of_role_1403() {
     let ws_tx = tokio::sync::Mutex::new(None);
     let args = reorder_args(42, 1, "ready");
     for caller in [
@@ -235,45 +235,44 @@ async fn reorder_story_rejects_non_pm_roles_via_workflow_gate_1265() {
         "dev:claude-code",
         "ryan:human",
         "intern:claude-code",
+        "pm:claude-code",
     ] {
         let result = handle_reorder_story(&args, caller, &ws_tx, None).await;
         let err = result.expect_err(&format!(
-            "{caller} must be substrate-refused at reorder gate"
+            "{caller}: reorder_story is retired; must return tool-retired"
         ));
         assert!(
-            err.contains("workflow-role-not-allowed"),
-            "{caller}: error must carry canonical kind=workflow-role-not-allowed; got {err}"
-        );
-        let role_short = caller.split(':').next().unwrap_or(caller);
-        assert!(
-            err.contains(&format!("\"actor_role\":\"{role_short}\"")),
-            "{caller}: error must name firing role={role_short}; got {err}"
+            err.contains("\"kind\":\"tool-retired\""),
+            "{caller}: error must carry canonical kind=tool-retired; got {err}"
         );
         assert!(
-            err.contains("\"attempted_transition\":\"reorder\""),
-            "{caller}: error must cite reorder transition; got {err}"
+            err.contains("\"successor\":\"move_story\""),
+            "{caller}: error must cite successor=move_story; got {err}"
         );
         assert!(
-            err.contains("\"allowed_roles\":[\"pm\"]"),
-            "{caller}: error must enumerate allowed-roles=[pm]; got {err}"
+            err.contains("\"retired_axis\":\"reorder-tool\""),
+            "{caller}: error must cite retired_axis=reorder-tool; got {err}"
+        );
+        assert!(
+            !err.contains("workflow-role-not-allowed"),
+            "{caller}: role-gate must NOT fire (retire-gate precedes); got {err}"
         );
     }
 }
 
 #[tokio::test]
-async fn reorder_story_passes_role_gate_for_pm_1265() {
+async fn reorder_story_retire_returns_actionable_successor_path_1403() {
     let ws_tx = tokio::sync::Mutex::new(None);
     let args = reorder_args(42, 1, "ready");
-    let result = handle_reorder_story(&args, "pm:claude-code", &ws_tx, None).await;
-    let err = result.expect_err(
-        "pm call with refresh=None must still error (downstream substrate need), proving role-gate passed",
+    let err = handle_reorder_story(&args, "pm:claude-code", &ws_tx, None)
+        .await
+        .expect_err("retired tool must error");
+    assert!(
+        err.contains("move_story"),
+        "error message must name the successor tool: {err}"
     );
     assert!(
-        !err.contains("workflow-role-not-allowed"),
-        "pm role MUST pass the workflow-role-not-allowed gate; got {err}"
-    );
-    assert!(
-        err.contains("refresh-driver") || err.contains("refresh"),
-        "pm role passed the gate and hit downstream refresh-driver requirement; got {err}"
+        err.contains("target_state") && err.contains("position"),
+        "error message must cite the args caller should use: {err}"
     );
 }
