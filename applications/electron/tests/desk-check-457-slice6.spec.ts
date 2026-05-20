@@ -63,7 +63,7 @@ test.describe('desk-check #457 slice 6 — Epic hybrid state-derivation + lane f
     await app.close()
   })
 
-  test('Epic with all-delivered children derives delivered state', async () => {
+  test('Epic with all-delivered children derives in-progress (delivered is not a terminal child state per #1450 truth-table)', async () => {
     const { app, consoleErrors } = await launchWith({
       fetched_at: ts,
       stories: [
@@ -100,12 +100,12 @@ test.describe('desk-check #457 slice 6 — Epic hybrid state-derivation + lane f
     })
     const win = await app.firstWindow()
     const stateBadge = win.locator('[data-test="board-epic-911-state"]')
-    await expect(stateBadge).toHaveText('delivered')
+    await expect(stateBadge).toHaveText('in-progress')
     expect(consoleErrors).toEqual([])
     await app.close()
   })
 
-  test('Epic with explicit accepted state ignores in-progress child', async () => {
+  test('Epic explicit state is ignored; in-progress child derives in-progress per #1450 truth-table', async () => {
     const { app, consoleErrors } = await launchWith({
       fetched_at: ts,
       stories: [
@@ -132,7 +132,7 @@ test.describe('desk-check #457 slice 6 — Epic hybrid state-derivation + lane f
     })
     const win = await app.firstWindow()
     const stateBadge = win.locator('[data-test="board-epic-921-state"]')
-    await expect(stateBadge).toHaveText('accepted')
+    await expect(stateBadge).toHaveText('in-progress')
     expect(consoleErrors).toEqual([])
     await app.close()
   })
