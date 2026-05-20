@@ -80,23 +80,18 @@ pub(crate) async fn handle_view_board(
                 .iter()
                 .filter(|c| c.parent_epic == Some(epic.number))
                 .collect();
-            let total = children.len();
-            let accepted_count = children
-                .iter()
-                .filter(|c| c.state == crate::board::domain::StoryState::Accepted)
-                .count();
-            let delivered_count = children
-                .iter()
-                .filter(|c| c.state == crate::board::domain::StoryState::Delivered)
-                .count();
-            let in_progress_count = children
-                .iter()
-                .filter(|c| c.state == crate::board::domain::StoryState::InProgress)
-                .count();
+            let counts = crate::board::domain::derive_epic_counts(&children);
             let derived = crate::board::domain::derive_epic_state(epic.state, &children);
             out.push_str(&format!(
-                "  #{} [{}] {} ({total} children: {accepted_count} accepted, {delivered_count} delivered, {in_progress_count} in-progress)\n",
-                epic.number, derived.as_str(), epic.title
+                "  #{} [{}] {} ({total} children: {accepted} accepted, {retired} retired, {active} active, {icebox} icebox)\n",
+                epic.number,
+                derived.as_str(),
+                epic.title,
+                total = counts.total_count,
+                accepted = counts.accepted_count,
+                retired = counts.retired_count,
+                active = counts.active_count,
+                icebox = counts.icebox_count
             ));
         }
         out.push('\n');

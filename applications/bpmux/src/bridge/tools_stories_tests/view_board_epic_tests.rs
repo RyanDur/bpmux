@@ -376,7 +376,7 @@ async fn view_board_renders_epic_summary_section_with_child_progress() {
     );
     assert!(
         out.contains(
-            "#700 [in-progress] umbrella story (3 children: 1 accepted, 1 delivered, 1 in-progress)"
+            "#700 [in-progress] umbrella story (3 children: 1 accepted, 0 retired, 2 active, 0 icebox)"
         ),
         "expected Epic-summary line with derived state + progress in:\n{out}"
     );

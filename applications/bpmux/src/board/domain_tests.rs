@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::domain::{
-    Story, StoryState, derive_epic_state, derive_iteration_member_section,
+    Story, StoryState, derive_epic_counts, derive_epic_state, derive_iteration_member_section,
     substitute_member_stories_section,
 };
 use chrono::{TimeZone, Utc};
@@ -462,5 +462,161 @@ fn derive_epic_state_does_not_return_non_epic_states_1450() {
         derived,
         StoryState::InProgress,
         "DeskCheck/Delivered/Acceptance children roll up to InProgress"
+    );
+}
+
+#[test]
+fn derive_epic_counts_empty_children_returns_zero_axes_1451() {
+    let counts = derive_epic_counts(&[]);
+    assert_eq!(counts.accepted_count, 0);
+    assert_eq!(counts.retired_count, 0);
+    assert_eq!(counts.active_count, 0);
+    assert_eq!(counts.icebox_count, 0);
+    assert_eq!(counts.total_count, 0);
+    assert_eq!(counts.progress_denominator(), 0);
+}
+
+#[test]
+fn derive_epic_counts_single_axis_per_state_1451() {
+    let kids = [
+        epic_child(1, StoryState::Accepted),
+        epic_child(2, StoryState::Accepted),
+        epic_child(3, StoryState::Retired),
+        epic_child(4, StoryState::Ready),
+        epic_child(5, StoryState::Icebox),
+    ];
+    let refs: Vec<&Story> = kids.iter().collect();
+    let counts = derive_epic_counts(&refs);
+    assert_eq!(counts.accepted_count, 2);
+    assert_eq!(counts.retired_count, 1);
+    assert_eq!(counts.active_count, 1, "Ready is in active-set");
+    assert_eq!(counts.icebox_count, 1);
+    assert_eq!(counts.total_count, 5);
+}
+
+#[test]
+fn derive_epic_counts_active_includes_all_canonical_active_states_1451() {
+    let kids = [
+        epic_child(1, StoryState::Ready),
+        epic_child(2, StoryState::InProgress),
+        epic_child(3, StoryState::DeskCheck),
+        epic_child(4, StoryState::Delivered),
+        epic_child(5, StoryState::Acceptance),
+    ];
+    let refs: Vec<&Story> = kids.iter().collect();
+    let counts = derive_epic_counts(&refs);
+    assert_eq!(
+        counts.active_count, 5,
+        "active-set must include Ready+InProgress+DeskCheck+Delivered+Acceptance (sister to S1 derivation rule 2)"
+    );
+    assert_eq!(counts.accepted_count, 0);
+    assert_eq!(counts.retired_count, 0);
+    assert_eq!(counts.icebox_count, 0);
+}
+
+#[test]
+fn derive_epic_counts_progress_denominator_excludes_retired_1451() {
+    let kids = [
+        epic_child(1, StoryState::Accepted),
+        epic_child(2, StoryState::Accepted),
+        epic_child(3, StoryState::Accepted),
+        epic_child(4, StoryState::Retired),
+        epic_child(5, StoryState::Retired),
+        epic_child(6, StoryState::Ready),
+    ];
+    let refs: Vec<&Story> = kids.iter().collect();
+    let counts = derive_epic_counts(&refs);
+    assert_eq!(counts.accepted_count, 3);
+    assert_eq!(counts.retired_count, 2);
+    assert_eq!(counts.active_count, 1);
+    assert_eq!(counts.total_count, 6);
+    assert_eq!(
+        counts.progress_denominator(),
+        4,
+        "progress_denominator = accepted + active (retired excluded since scope-removed); 3 + 1 = 4, NOT 6"
+    );
+}
+
+#[test]
+fn derive_epic_counts_1189_paradox_regression_1451() {
+    let mut kids: Vec<Story> = Vec::new();
+    for n in 1..=25 {
+        kids.push(epic_child(n, StoryState::Accepted));
+    }
+    for n in 26..=30 {
+        kids.push(epic_child(n, StoryState::Retired));
+    }
+    for n in 31..=36 {
+        kids.push(epic_child(n, StoryState::InProgress));
+    }
+    let refs: Vec<&Story> = kids.iter().collect();
+    let counts = derive_epic_counts(&refs);
+    assert_eq!(counts.accepted_count, 25, "#1189 truth: 25 shipped");
+    assert_eq!(
+        counts.retired_count, 5,
+        "#1189 truth: 5 retired (scope-removed)"
+    );
+    assert_eq!(counts.active_count, 6, "#1189 truth: 6 active");
+    assert_eq!(counts.total_count, 36);
+    assert_eq!(
+        counts.progress_denominator(),
+        31,
+        "true progress = 25/31 (not 30/36 conflated)"
+    );
+}
+
+#[test]
+fn derive_epic_counts_all_retired_zero_accepted_1451() {
+    let kids = [
+        epic_child(1, StoryState::Retired),
+        epic_child(2, StoryState::Retired),
+    ];
+    let refs: Vec<&Story> = kids.iter().collect();
+    let counts = derive_epic_counts(&refs);
+    assert_eq!(
+        counts.accepted_count, 0,
+        "retired-children do NOT contribute to accepted-count (per `feedback_walk_surface_vs_conviction_converge_class_discrimination`)"
+    );
+    assert_eq!(counts.retired_count, 2);
+    assert_eq!(counts.active_count, 0);
+    assert_eq!(counts.total_count, 2);
+    assert_eq!(
+        counts.progress_denominator(),
+        0,
+        "all-retired Epic has no relevant-work — denominator is 0 (visually 0/0 + retired-axis surfaces the scope-removal)"
+    );
+}
+
+#[test]
+fn derive_epic_counts_icebox_separate_from_active_1451() {
+    let kids = [
+        epic_child(1, StoryState::Icebox),
+        epic_child(2, StoryState::Icebox),
+        epic_child(3, StoryState::Ready),
+    ];
+    let refs: Vec<&Story> = kids.iter().collect();
+    let counts = derive_epic_counts(&refs);
+    assert_eq!(counts.icebox_count, 2);
+    assert_eq!(
+        counts.active_count, 1,
+        "Icebox NOT included in active-count"
+    );
+}
+
+#[test]
+fn derive_epic_counts_total_equals_sum_of_axes_1451() {
+    let kids = [
+        epic_child(1, StoryState::Accepted),
+        epic_child(2, StoryState::Retired),
+        epic_child(3, StoryState::Ready),
+        epic_child(4, StoryState::InProgress),
+        epic_child(5, StoryState::Icebox),
+    ];
+    let refs: Vec<&Story> = kids.iter().collect();
+    let counts = derive_epic_counts(&refs);
+    assert_eq!(
+        counts.total_count,
+        counts.accepted_count + counts.retired_count + counts.active_count + counts.icebox_count,
+        "total_count is sum of 4 discriminated axes — no overlap, no gap"
     );
 }

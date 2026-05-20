@@ -89,7 +89,7 @@ describe('#1185 Epic — meta-card DOM shape (falsifiers a-c, j)', () => {
     expect(html).toContain('max="1"')
   })
 
-  test('progress aria-label exposes accepted/total + state-breakdown for screen readers', () => {
+  test('progress aria-label exposes accepted/denom + state-breakdown for screen readers (#1451 retire-aware)', () => {
     const epic = story({ number: 1100 })
     const children: BoardStory[] = [
       story({ number: 1101, state: 'accepted', labels: featureLabels, parent_epic: 1100 }),
@@ -98,9 +98,10 @@ describe('#1185 Epic — meta-card DOM shape (falsifiers a-c, j)', () => {
     const html = renderToStaticMarkup(
       <Epic epics={[epic]} stories={[epic, ...children]} onOpen={() => {}} />
     )
-    expect(html).toMatch(/aria-label="Progress: 1 of 2 children accepted/)
+    expect(html).toMatch(/aria-label="Progress: 1 of 2 relevant children accepted/)
     expect(html).toContain('1 delivered')
     expect(html).toContain('0 in progress')
+    expect(html).toContain('0 retired')
   })
 
   test('progress aria-label rolls ready-for-accept into delivered + needs-fixes into in-progress + rejected into ready', () => {
@@ -235,7 +236,7 @@ describe('#1235 Epic-card collapse — native <details>/<summary> + activity-cla
     expect(html).not.toMatch(/<details[^>]*\sopen\b/)
   })
 
-  test('summary line shows compact accepted/total progress (falsifier-d)', () => {
+  test('summary line shows compact accepted/relevant progress (falsifier-d; #1451 retire+icebox aware)', () => {
     const epic = story({ number: 1100, state: 'in-progress' })
     const children: BoardStory[] = [
       story({ number: 1101, state: 'accepted', labels: featureLabels, parent_epic: 1100 }),
@@ -246,7 +247,7 @@ describe('#1235 Epic-card collapse — native <details>/<summary> + activity-cla
       <Epic epics={[epic]} stories={[epic, ...children]} onOpen={() => {}} />
     )
     expect(html).toContain('data-test="board-epic-1100-summary-progress"')
-    expect(html).toContain('1/3')
+    expect(html).toContain('1/2')
   })
 
   test('summary shows ✓ when all children accepted (100% complete)', () => {

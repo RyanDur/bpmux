@@ -13,6 +13,7 @@ interface Props {
 interface StateBreakdown {
   total: number
   accepted: number
+  retired: number
   delivered: number
   inProgress: number
   deskCheck: number
@@ -26,6 +27,7 @@ const breakdownFor = (epic: BoardStory, all: BoardStory[]): StateBreakdown => {
   return {
     total: children.length,
     accepted: count('accepted'),
+    retired: count('retired'),
     delivered: count('delivered') + count('ready-for-accept'),
     inProgress: count('in-progress') + count('needs-fixes'),
     deskCheck: count('desk-check'),
@@ -33,6 +35,9 @@ const breakdownFor = (epic: BoardStory, all: BoardStory[]): StateBreakdown => {
     icebox: count('icebox')
   }
 }
+
+const progressDenominatorFor = (b: StateBreakdown): number =>
+  b.accepted + b.delivered + b.inProgress + b.deskCheck + b.ready
 
 const extractDescription = (body: string): string => {
   if (!body.trim()) return ''
@@ -45,8 +50,10 @@ const extractDescription = (body: string): string => {
   return firstPara ? firstPara.trim() : ''
 }
 
-const breakdownAriaLabel = (b: StateBreakdown): string =>
-  `Progress: ${b.accepted} of ${b.total} children accepted; ${b.delivered} delivered, ${b.inProgress} in progress, ${b.deskCheck} in desk-check, ${b.ready} ready, ${b.icebox} in icebox`
+const breakdownAriaLabel = (b: StateBreakdown): string => {
+  const denom = progressDenominatorFor(b)
+  return `Progress: ${b.accepted} of ${denom} relevant children accepted; ${b.delivered} delivered, ${b.inProgress} in progress, ${b.deskCheck} in desk-check, ${b.ready} ready, ${b.icebox} in icebox, ${b.retired} retired (scope-removed; excluded from progress denominator)`
+}
 
 const isOpenByDefault = (derived: StoryState): boolean =>
   derived !== 'accepted' && derived !== 'icebox'
@@ -68,8 +75,9 @@ const Epic = ({ epics, stories, onOpen }: Props): React.JSX.Element | null => {
           const description = extractDescription(epic.body)
           const defaultOpen = isOpenByDefault(derived)
           const open = collapse.isOpen(epic.number, defaultOpen)
-          const allDone = breakdown.total > 0 && breakdown.accepted === breakdown.total
-          const summaryProgress = `${breakdown.accepted}/${breakdown.total === 0 ? 0 : breakdown.total}${allDone ? ' ✓' : ''}`
+          const denom = progressDenominatorFor(breakdown)
+          const allDone = denom > 0 && breakdown.accepted === denom
+          const summaryProgress = `${breakdown.accepted}/${denom}${allDone ? ' ✓' : ''}`
           return (
             <li key={epic.number} className="board-epic-item">
               <details
