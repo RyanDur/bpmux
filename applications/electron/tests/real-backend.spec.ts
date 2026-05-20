@@ -689,13 +689,13 @@ test.describe('real-backend', () => {
     await expect(win.locator('[data-test="app-root"]')).toBeVisible()
     await expect(win.locator('[data-test="board-story-701"]')).toBeVisible()
 
-    // Focus the first Ready row's button and fire Ctrl+Shift+Down twice.
     const firstRow = win.locator('[data-test="board-story-701"] .board-story-button')
+    await firstRow.waitFor({ state: 'attached' })
     await firstRow.focus()
+    await expect(firstRow).toBeFocused()
     await firstRow.press('Control+Shift+ArrowDown')
+    await expect.poll(() => reorderCalls.length).toBeGreaterThanOrEqual(1)
     await firstRow.press('Control+Shift+ArrowDown')
-
-    // Two reorder POSTs fired for story 701 with increasing insertAt.
     await expect.poll(() => reorderCalls.length).toBeGreaterThanOrEqual(2)
     expect(reorderCalls[0].number).toBe(701)
     expect(reorderCalls[1].number).toBe(701)
