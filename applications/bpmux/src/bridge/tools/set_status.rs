@@ -1,23 +1,20 @@
 use tokio::sync::Mutex;
 
-use super::helpers::{WsSink, ws_send};
-use crate::transport::protocol::ClientMessage;
+use super::helpers::WsSink;
+
+pub(in crate::bridge) fn set_status_retired_error() -> String {
+    serde_json::json!({
+        "kind": "tool-retired",
+        "retired_axis": "manual-status-mutation",
+        "successor": "workflow-event-hooks",
+        "message": "set_status is retired per #1404. Status is managed automatically by hooks per `feedback_bpmux_no_manual_status` canon — workflow-events (start_story / deliver_story / pass_desk_check / accept_story / reject_story / close_story) propagate state via hook-automation. Fire the workflow-event that matches your intent; do not call set_status manually."
+    })
+    .to_string()
+}
 
 pub(in crate::bridge) async fn handle_set_status(
-    args: &serde_json::Map<String, serde_json::Value>,
-    ws_tx: &Mutex<Option<WsSink>>,
+    _args: &serde_json::Map<String, serde_json::Value>,
+    _ws_tx: &Mutex<Option<WsSink>>,
 ) -> Result<String, String> {
-    let status = args
-        .get("status")
-        .and_then(|v| v.as_str())
-        .ok_or("missing 'status' argument")?;
-    let json = serde_json::to_string(&ClientMessage::Send {
-        text: status.to_string(),
-        to: None,
-        addressee: None,
-        message_type: Some("activity".into()),
-    })
-    .map_err(|e| format!("failed to serialize: {e}"))?;
-    ws_send(ws_tx, json).await?;
-    Ok(format!("status set to {status}"))
+    Err(set_status_retired_error())
 }

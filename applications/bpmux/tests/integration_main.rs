@@ -151,6 +151,8 @@ mod set_name_e2e;
 mod set_parent_epic_e2e;
 #[path = "integration_main_modules/set_status_e2e.rs"]
 mod set_status_e2e;
+#[path = "integration_main_modules/set_status_retire_e2e.rs"]
+mod set_status_retire_e2e;
 #[path = "integration_main_modules/share_message_e2e.rs"]
 mod share_message_e2e;
 #[path = "integration_main_modules/start_story_e2e.rs"]
