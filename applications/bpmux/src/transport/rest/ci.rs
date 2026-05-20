@@ -72,6 +72,52 @@ pub async fn get_ci_log(
     }
 }
 
+#[derive(serde::Deserialize, Default)]
+pub struct CiJobsQuery {
+    #[serde(default)]
+    pub verbose: bool,
+}
+
+pub async fn get_ci_jobs(
+    axum::Extension(tracker): axum::Extension<TrackerHandle>,
+    axum::extract::Path(run_id): axum::extract::Path<u64>,
+    axum::extract::Query(query): axum::extract::Query<CiJobsQuery>,
+) -> impl IntoResponse {
+    let Some(tracker) = tracker else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            json_headers(),
+            err_body("tracker not configured"),
+        );
+    };
+    match tracker.fetch_job_status_for_run(run_id).await {
+        Ok(jobs) => {
+            let response =
+                crate::bridge::tools::build_ci_job_status_response(run_id, jobs, query.verbose);
+            (
+                StatusCode::OK,
+                json_headers(),
+                serde_json::to_string(&response).unwrap_or_else(|_| "{}".to_string()),
+            )
+        }
+        Err(err) => {
+            let status = match err.code {
+                "not_found" => StatusCode::NOT_FOUND,
+                "auth_failed" => StatusCode::UNAUTHORIZED,
+                "rate_limit" => StatusCode::TOO_MANY_REQUESTS,
+                "quota_exhausted" => StatusCode::PAYMENT_REQUIRED,
+                "invalid_id" => StatusCode::BAD_REQUEST,
+                _ => StatusCode::BAD_GATEWAY,
+            };
+            (
+                status,
+                json_headers(),
+                serde_json::to_string(&err).unwrap_or_else(|_| "{}".to_string()),
+            )
+        }
+    }
+}
+
 pub async fn post_ci_rerun(
     axum::Extension(tracker): axum::Extension<TrackerHandle>,
     axum::extract::Path(run_id): axum::extract::Path<u64>,

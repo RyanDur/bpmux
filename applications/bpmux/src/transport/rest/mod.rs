@@ -24,7 +24,7 @@ pub use board::{
     post_story_labels,
 };
 pub use capture::{ElectronCaptureQuery, get_electron_capture, get_screen};
-pub use ci::{get_ci, get_ci_log, post_ci_rerun};
+pub use ci::{get_ci, get_ci_jobs, get_ci_log, post_ci_rerun};
 pub use classifier::{ClassifierMisfire, post_classifier_misfire};
 pub use iteration_close::{CloseIterationRequest, post_close_iteration};
 #[allow(unused_imports)]

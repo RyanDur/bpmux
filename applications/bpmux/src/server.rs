@@ -377,6 +377,10 @@ pub async fn run_server(
             axum::routing::post(transport::rest::post_ci_rerun),
         )
         .route(
+            "/api/ci/jobs/{run_id}",
+            axum::routing::get(transport::rest::get_ci_jobs),
+        )
+        .route(
             "/api/electron-capture",
             axum::routing::get(transport::rest::get_electron_capture),
         )

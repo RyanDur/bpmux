@@ -138,6 +138,7 @@ impl ServerHandler for BridgeServer {
                 "get_token_report" => tools::handle_get_token_report().await,
                 "get_ci_state" => tools::handle_get_ci_state(&args, port).await,
                 "get_ci_log_for_run" => tools::handle_get_ci_log_for_run(&args, port).await,
+                "ci_get_job_status" => tools::handle_ci_get_job_status(&args, port).await,
                 "rerun_ci" => tools::handle_rerun_ci(&args, port).await,
                 "user_fn" => {
                     let current_name = name.lock().await.clone();
