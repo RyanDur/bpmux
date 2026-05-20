@@ -1,0 +1,636 @@
+#![allow(unused_imports)]
+
+use super::super::tools_stories::*;
+use super::{
+    connected_ws_sink_for_test, connected_ws_sink_with_capture, test_ci_state_store_green,
+};
+use crate::board::domain::StoryType;
+use crate::session::velocity::classify_story;
+use crate::transport::protocol::ClientMessage;
+
+#[tokio::test]
+async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
+    use crate::board::BoardEvent;
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Gate, Story, StoryState};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let mut seeded = Story::new_minimal(
+        203,
+        "t".into(),
+        StoryState::Ready,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "dev".into(),
+    );
+    seeded.story_type = crate::board::domain::StoryType::Chore;
+    adapter.seed_stories(vec![seeded]);
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orchestrator.refresh_all().await.unwrap();
+
+    let ws_tx = connected_ws_sink_for_test().await;
+    let mut args = serde_json::Map::new();
+    args.insert("number".into(), serde_json::json!(203));
+    args.insert(
+        "pickup_paraphrase".into(),
+        serde_json::json!("paraphrase content"),
+    );
+    args.insert(
+        "falsifier_reframing".into(),
+        serde_json::json!("reframing content"),
+    );
+    let result = handle_start_story(&args, "dev:claude-code", &ws_tx, Some(&orchestrator)).await;
+    assert!(result.is_ok(), "migrated path should succeed: {result:?}");
+
+    let story = store.story(203).unwrap();
+    assert_eq!(story.state, StoryState::InProgress);
+    let gates = story.gate_comments.as_ref().expect("gate_comments seeded");
+    assert!(
+        gates.iter().any(|g| g.gate == Gate::Pickup
+            && g.payload.as_deref().is_some_and(
+                |p| p.contains("paraphrase content") && p.contains("reframing content")
+            )),
+        "gate_comments should contain Pickup with both payload sections: {gates:?}"
+    );
+
+    let drained = orchestrator.drain_pending().await.unwrap();
+    assert_eq!(
+        drained, 0,
+        "post-#1292: start_story drains synchronously; pending is empty by return"
+    );
+    let pushed = adapter.pushed_events();
+    assert_eq!(
+        pushed.len(),
+        3,
+        "3 events still pushed to adapter (just drained synchronously now)"
+    );
+    let reap_count = pushed
+        .iter()
+        .filter(|e| matches!(e, BoardEvent::TagRemoved { number: 203, .. }))
+        .count();
+    assert_eq!(
+        reap_count, 1,
+        "post-#1156 pre-filter: only present-stale 'ready' label reaped"
+    );
+    assert!(matches!(
+        &pushed[1],
+        BoardEvent::GateCommentAppended {
+            number: 203,
+            gate: Gate::Pickup,
+            payload: Some(p),
+            ..
+        } if p.contains("paraphrase content") && p.contains("reframing content")
+    ));
+    assert!(matches!(
+        &pushed[2],
+        BoardEvent::StateTransitioned {
+            number: 203,
+            new_state: StoryState::InProgress,
+            ..
+        }
+    ));
+}
+
+#[tokio::test]
+async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_state_events() {
+    use crate::board::BoardEvent;
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Gate, Story, StoryState};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let mut seeded = Story::new_minimal(
+        204,
+        "t".into(),
+        StoryState::InProgress,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "dev".into(),
+    );
+    seeded.story_type = crate::board::domain::StoryType::Chore;
+    adapter.seed_stories(vec![seeded]);
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orchestrator.refresh_all().await.unwrap();
+
+    let ws_tx = connected_ws_sink_for_test().await;
+    let mut args = serde_json::Map::new();
+    args.insert("number".into(), serde_json::json!(204));
+    args.insert(
+        "verified_observation".into(),
+        serde_json::json!("drove the falsifier scenario end-to-end"),
+    );
+    let result = handle_deliver_story(&args, "dev:claude-code", &ws_tx, Some(&orchestrator)).await;
+    assert!(result.is_ok(), "migrated path should succeed: {result:?}");
+
+    let story = store.story(204).unwrap();
+    assert_eq!(story.state, StoryState::DeskCheck);
+    let gates = story.gate_comments.as_ref().expect("gate_comments seeded");
+    assert!(
+        gates.iter().any(|g| g.gate == Gate::Delivered
+            && g.payload.as_deref() == Some("drove the falsifier scenario end-to-end")),
+        "gate_comments should contain Delivered with the observation payload: {gates:?}"
+    );
+
+    let pushed = adapter.pushed_events();
+    assert_eq!(pushed.len(), 3, "3 events expected post-#1156: {pushed:?}");
+    let reap_count = pushed
+        .iter()
+        .filter(|e| matches!(e, BoardEvent::TagRemoved { number: 204, .. }))
+        .count();
+    assert_eq!(
+        reap_count, 1,
+        "post-#1156 pre-filter: only present-stale 'in progress' label reaped"
+    );
+    assert!(matches!(
+        &pushed[1],
+        BoardEvent::GateCommentAppended {
+            number: 204,
+            gate: Gate::Delivered,
+            payload: Some(p),
+            ..
+        } if p == "drove the falsifier scenario end-to-end"
+    ));
+    assert!(matches!(
+        &pushed[2],
+        BoardEvent::StateTransitioned {
+            number: 204,
+            new_state: StoryState::DeskCheck,
+            ..
+        }
+    ));
+}
+
+#[tokio::test]
+async fn accept_story_migrated_path_emits_tag_remove_gate_and_state_events() {
+    use crate::board::BoardEvent;
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Gate, Story, StoryState};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let seeded = Story::new_minimal(
+        205,
+        "t".into(),
+        StoryState::Delivered,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "dev".into(),
+    );
+    adapter.seed_stories(vec![seeded]);
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orchestrator.refresh_all().await.unwrap();
+
+    let ws_tx = connected_ws_sink_for_test().await;
+    let mut args = serde_json::Map::new();
+    args.insert("number".into(), serde_json::json!(205));
+    args.insert("would_file_bug".into(), serde_json::json!(false));
+    let result = handle_accept_story(&args, "ryan:human", &ws_tx, Some(&orchestrator), None).await;
+    assert!(result.is_ok(), "migrated path should succeed: {result:?}");
+
+    let story = store.story(205).unwrap();
+    assert_eq!(story.state, StoryState::Accepted);
+    let gates = story.gate_comments.as_ref().expect("gate_comments seeded");
+    assert!(
+        gates
+            .iter()
+            .any(|g| g.gate == Gate::Accepted && g.payload.is_none()),
+        "gate_comments should contain Accepted with no payload: {gates:?}"
+    );
+
+    let pushed = adapter.pushed_events();
+    assert_eq!(pushed.len(), 4, "4 events expected post-#1156: {pushed:?}");
+    let reap_labels: Vec<&str> = pushed[..1]
+        .iter()
+        .filter_map(|e| match e {
+            BoardEvent::TagRemoved {
+                number: 205, label, ..
+            } => Some(label.as_str()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        reap_labels,
+        vec!["delivered"],
+        "post-#1156 pre-filter: only present-stale 'delivered' label reaped"
+    );
+    assert!(matches!(
+        &pushed[1],
+        BoardEvent::GateCommentAppended {
+            number: 205,
+            gate: Gate::Accepted,
+            payload: None,
+            ..
+        }
+    ));
+    assert!(matches!(
+        &pushed[2],
+        BoardEvent::StateTransitioned {
+            number: 205,
+            new_state: StoryState::Accepted,
+            ..
+        }
+    ));
+    assert!(matches!(
+        &pushed[3],
+        BoardEvent::StoryClosed {
+            number: 205,
+            reason: None,
+            ..
+        }
+    ));
+    assert!(
+        store.story(205).expect("story exists").is_closed,
+        "is_closed flag must be set after StoryClosed event applies"
+    );
+}
+
+#[tokio::test]
+async fn accept_story_on_delivered_story_post_slice_5b_drains_full_cascade() {
+    use crate::board::BoardEvent;
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let seeded = Story::new_minimal(
+        5070,
+        "[Bug] post-slice-5b accept-on-delivered cascade".into(),
+        StoryState::Delivered,
+        Utc.with_ymd_and_hms(2026, 4, 27, 0, 0, 0).unwrap(),
+        "ryan".into(),
+    );
+    adapter.seed_stories(vec![seeded]);
+    adapter.seed_labels(
+        5070,
+        vec![
+            "delivered".to_string(),
+            "ready for accept".to_string(),
+            "desk-check".to_string(),
+        ],
+    );
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orch.refresh_all().await.unwrap();
+
+    let ws_tx = connected_ws_sink_for_test().await;
+    let mut args = serde_json::Map::new();
+    args.insert("number".into(), serde_json::json!(5070));
+    args.insert("would_file_bug".into(), serde_json::json!(false));
+    handle_accept_story(&args, "ryan:human", &ws_tx, Some(&orch), None)
+        .await
+        .unwrap();
+
+    let pushed = adapter.pushed_events();
+    assert_eq!(
+        pushed.len(),
+        6,
+        "post-#1156 pre-filter accept_story emits 6 events (3 TagRemoved + GateCommentAppended + StateTransitioned + StoryClosed): {pushed:?}"
+    );
+    assert!(
+        pushed.iter().any(|e| matches!(
+            e,
+            BoardEvent::TagRemoved { number: 5070, label, .. } if label == "delivered"
+        )),
+        "must reap 'delivered' label (post-slice-5b: pass_desk_check sets this)"
+    );
+    assert!(
+        pushed.iter().any(|e| matches!(
+            e,
+            BoardEvent::TagRemoved { number: 5070, label, .. } if label == "ready for accept"
+        )),
+        "must reap 'ready for accept' label (legacy back-compat for pre-slice-5b stories)"
+    );
+    assert!(
+        pushed.iter().any(|e| matches!(
+            e,
+            BoardEvent::TagRemoved { number: 5070, label, .. } if label == "desk-check"
+        )),
+        "must reap 'desk-check' label (#507 fix: covers DeskCheck pre-state class post-slice-5b)"
+    );
+    assert!(
+        pushed.iter().any(|e| matches!(
+            e,
+            BoardEvent::StateTransitioned {
+                number: 5070,
+                new_state: StoryState::Accepted,
+                ..
+            }
+        )),
+        "must emit StateTransitioned(Accepted) → adapter add_label('accepted')"
+    );
+}
+
+#[tokio::test]
+async fn reject_story_migrated_path_emits_tag_remove_gate_with_reason_and_state_events() {
+    use crate::board::BoardEvent;
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Gate, Story, StoryState};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let seeded = Story::new_minimal(
+        206,
+        "t".into(),
+        StoryState::Delivered,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "dev".into(),
+    );
+    adapter.seed_stories(vec![seeded]);
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orchestrator.refresh_all().await.unwrap();
+
+    let ws_tx = connected_ws_sink_for_test().await;
+    let mut args = serde_json::Map::new();
+    args.insert("number".into(), serde_json::json!(206));
+    args.insert("reason".into(), serde_json::json!("scope mismatch"));
+    let result = handle_reject_story(&args, "ryan:human", &ws_tx, Some(&orchestrator)).await;
+    assert!(result.is_ok(), "migrated path should succeed: {result:?}");
+
+    let story = store.story(206).unwrap();
+    assert_eq!(story.state, StoryState::Ready);
+    let gates = story.gate_comments.as_ref().expect("gate_comments seeded");
+    assert!(
+        gates
+            .iter()
+            .any(|g| g.gate == Gate::Rejected && g.payload.as_deref() == Some("scope mismatch")),
+        "gate_comments should contain Rejected with reason payload: {gates:?}"
+    );
+
+    let pushed = adapter.pushed_events();
+    assert_eq!(
+        pushed.len(),
+        3,
+        "post-#1156: 1 TagRemoved + Gate + State; pushed: {pushed:?}"
+    );
+    let reap_labels: Vec<&str> = pushed[..1]
+        .iter()
+        .filter_map(|e| match e {
+            BoardEvent::TagRemoved {
+                number: 206, label, ..
+            } => Some(label.as_str()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        reap_labels,
+        vec!["delivered"],
+        "post-#1156 pre-filter: only present-stale 'delivered' label reaped"
+    );
+    assert!(matches!(
+        &pushed[1],
+        BoardEvent::GateCommentAppended {
+            number: 206,
+            gate: Gate::Rejected,
+            payload: Some(p),
+            ..
+        } if p == "scope mismatch"
+    ));
+    assert!(matches!(
+        &pushed[2],
+        BoardEvent::StateTransitioned {
+            number: 206,
+            new_state: StoryState::Ready,
+            ..
+        }
+    ));
+}
+
+#[tokio::test]
+async fn create_story_migrated_path_assigns_number_and_emits_story_created_event() {
+    use crate::board::BoardEvent;
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState, StoryType};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    adapter.seed_stories(vec![Story::new_minimal(
+        50,
+        "seed".into(),
+        StoryState::Ready,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "pm".into(),
+    )]);
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orchestrator.refresh_all().await.unwrap();
+
+    let ws_tx = connected_ws_sink_for_test().await;
+    let mut args = serde_json::Map::new();
+    args.insert(
+        "title".into(),
+        serde_json::json!("[Bug] live-verify failure"),
+    );
+    args.insert(
+        "user_job".into(),
+        serde_json::json!("When pm files, dev needs..."),
+    );
+    args.insert(
+        "observation_falsifier".into(),
+        serde_json::json!("I would reject if..."),
+    );
+    args.insert("body".into(), serde_json::json!("author note"));
+
+    let result = handle_create_story(&args, "pm:claude-code", &ws_tx, Some(&orchestrator)).await;
+    assert!(result.is_ok(), "migrated path should succeed: {result:?}");
+    let response = result.unwrap();
+    assert!(
+        response.contains("#51"),
+        "response should carry the source-assigned number 51 (max+1 over seed 50): {response}"
+    );
+
+    let story = store
+        .story(51)
+        .expect("StoryCreated event applied to store");
+    assert_eq!(story.title, "[Bug] live-verify failure");
+    assert_eq!(story.state, StoryState::Icebox);
+    assert_eq!(
+        story.story_type,
+        StoryType::Bug,
+        "story_type derived from title prefix [Bug]"
+    );
+
+    let drained = orchestrator.drain_pending().await.unwrap();
+    assert_eq!(drained, 1, "exactly one event (StoryCreated) drained");
+    let pushed = adapter.pushed_events();
+    assert_eq!(pushed.len(), 1);
+    assert!(matches!(
+        &pushed[0],
+        BoardEvent::StoryCreated {
+            number: 51,
+            initial_state: StoryState::Icebox,
+            story_type: StoryType::Bug,
+            ..
+        }
+    ));
+}
+
+#[tokio::test]
+async fn deliver_story_migrated_path_uses_store_title_not_tracker() {
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let store = Arc::new(BoardStore::new());
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let mut seeded = Story::new_minimal(
+        207,
+        "store-titled-207".into(),
+        StoryState::InProgress,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "dev".into(),
+    );
+    seeded.story_type = crate::board::domain::StoryType::Chore;
+    adapter.seed_stories(vec![seeded]);
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&store),
+        Arc::clone(&adapter),
+    ));
+    orchestrator.refresh_all().await.unwrap();
+
+    let (ws_tx, captured) = connected_ws_sink_with_capture().await;
+    let mut args = serde_json::Map::new();
+    args.insert("number".into(), serde_json::json!(207));
+    args.insert(
+        "verified_observation".into(),
+        serde_json::json!("ran end-to-end"),
+    );
+    let result = handle_deliver_story(&args, "dev:claude-code", &ws_tx, Some(&orchestrator)).await;
+    assert!(result.is_ok(), "migrated path should succeed: {result:?}");
+
+    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    let messages = captured.lock().await;
+    let signal_text_combined = messages.join("\n");
+    assert!(
+        signal_text_combined.contains("store-titled-207"),
+        "migrated deliver path must use store-side title; expected `store-titled-207` in WS signals: {signal_text_combined}"
+    );
+    assert!(
+        !signal_text_combined.contains("(fake) story #207"),
+        "migrated deliver path must NOT fall back to FakeTracker title; FakeTracker text leaked: {signal_text_combined}"
+    );
+}
+
+#[cfg(test)]
+mod classify_for_pass_desk_check_tests {
+    use super::*;
+    use crate::board::BoardStore;
+    use crate::board::RefreshDriver;
+    use crate::board::SyncOrchestrator;
+    use crate::board::adapters::in_memory::InMemorySourceAdapter;
+    use crate::board::domain::{Story, StoryState};
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    async fn orchestrator_with_seed(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
+        let store = Arc::new(BoardStore::new());
+        let adapter = Arc::new(InMemorySourceAdapter::new());
+        adapter.seed_stories(stories);
+        let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+            Arc::clone(&store),
+            Arc::clone(&adapter),
+        ));
+        orch.refresh_all().await.unwrap();
+        orch
+    }
+
+    fn make_story(number: u64, story_type: StoryType) -> Story {
+        let mut s = Story::new_minimal(
+            number,
+            format!("story-{number}"),
+            StoryState::Delivered,
+            Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+            "dev".into(),
+        );
+        s.story_type = story_type;
+        s
+    }
+
+    #[tokio::test]
+    async fn refreshed_path_returns_feature_via_typed_story_type() {
+        let orch = orchestrator_with_seed(vec![make_story(910, StoryType::Feature)]).await;
+        assert_eq!(
+            classify_for_pass_desk_check(910, Some(&orch)),
+            StoryType::Feature
+        );
+    }
+
+    #[tokio::test]
+    async fn refreshed_path_returns_bug_via_typed_story_type() {
+        let orch = orchestrator_with_seed(vec![make_story(911, StoryType::Bug)]).await;
+        assert_eq!(
+            classify_for_pass_desk_check(911, Some(&orch)),
+            StoryType::Bug
+        );
+    }
+
+    #[tokio::test]
+    async fn refreshed_path_returns_chore_via_typed_story_type() {
+        let orch = orchestrator_with_seed(vec![make_story(912, StoryType::Chore)]).await;
+        assert_eq!(
+            classify_for_pass_desk_check(912, Some(&orch)),
+            StoryType::Chore
+        );
+    }
+
+    #[tokio::test]
+    async fn defaults_to_feature_when_refresh_absent() {
+        assert_eq!(classify_for_pass_desk_check(913, None), StoryType::Feature);
+    }
+
+    #[tokio::test]
+    async fn defaults_to_feature_when_story_not_in_cache() {
+        let orch = orchestrator_with_seed(vec![]).await;
+        assert_eq!(
+            classify_for_pass_desk_check(914, Some(&orch)),
+            StoryType::Feature
+        );
+    }
+}
