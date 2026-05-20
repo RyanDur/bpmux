@@ -73,7 +73,7 @@ async function launchWithFixture(opts: {
   const win = await app.firstWindow()
 
   let reorderFired = false
-  await win.route('**/api/stories/*/reorder', async (route) => {
+  await win.route('**/api/stories/*/labels', async (route) => {
     reorderFired = true
     await route.fulfill({
       status: 200,

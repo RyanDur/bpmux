@@ -55,7 +55,7 @@ async function launchWithFixture(): Promise<{
   const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
   const win = await app.firstWindow()
 
-  await win.route('**/api/stories/*/reorder', async (route) => {
+  await win.route('**/api/stories/*/labels', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',

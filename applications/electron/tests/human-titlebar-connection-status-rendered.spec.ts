@@ -18,13 +18,13 @@ test.describe('human-side E2E #476 — read-class — titlebar connection status
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      const connection = win.locator('[data-test="titlebar-connection"]')
+      const connection = win.locator('[data-test="titlebar-app"]')
       await expect(connection).toBeVisible()
 
-      const label = win.locator('[data-test="titlebar-connection-label"]')
+      const label = win.locator('[data-test="titlebar-app-state"]')
       await expect(label).toBeVisible()
       const labelText = (await label.textContent())?.trim() ?? ''
-      expect(['online', 'connecting…', 'offline']).toContain(labelText)
+      expect(['online', 'reconnecting', 'offline']).toContain(labelText)
 
       expect(consoleErrors).toEqual([])
       expect(pageErrors).toEqual([])
@@ -49,7 +49,7 @@ test.describe('human-side E2E #476 — read-class — titlebar connection status
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      const label = win.locator('[data-test="titlebar-connection-label"]')
+      const label = win.locator('[data-test="titlebar-app-state"]')
       await expect(label).toContainText('online', { timeout: 10000 })
 
       expect(consoleErrors).toEqual([])

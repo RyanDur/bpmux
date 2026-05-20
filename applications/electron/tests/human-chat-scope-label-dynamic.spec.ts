@@ -67,7 +67,7 @@ test.describe('human-side E2E #476 — read-class — chat scope label', () => {
       pageErrors.length = 0
 
       const warning = win.locator('[data-test="chat-warning"]')
-      const connectionLabel = win.locator('[data-test="titlebar-connection-label"]')
+      const connectionLabel = win.locator('[data-test="titlebar-app-state"]')
       await expect(connectionLabel).toContainText('online', { timeout: 10000 })
       await expect(warning).toHaveCount(0)
 
