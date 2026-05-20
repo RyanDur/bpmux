@@ -70,27 +70,6 @@ pub async fn post_seed_messages(
     )
 }
 
-/// Seed-pins payload — full `PinsStore` shape (channel-key → Pin
-/// list). Replaces the entire pins state (matches the existing
-/// `seedPins` filesystem-write semantic in launch.ts).
-#[derive(Deserialize)]
-pub struct SeedPinsBody {
-    pub store: session::pins::PinsStore,
-}
-
-pub async fn post_seed_pins(
-    State(session): State<Arc<session::Session>>,
-    Json(body): Json<SeedPinsBody>,
-) -> impl IntoResponse {
-    if let Err(e) = session.storage.save_pins(&body.store) {
-        return (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("seed_pins save failed: {e}"),
-        );
-    }
-    (StatusCode::CREATED, "seeded pins".to_string())
-}
-
 /// Seed-reactions payload — full `ReactionsStore` shape. Replaces the
 /// entire reactions state. Currently unused by launch.ts but the API
 /// surface is added now per #1290 AC 5 so future test fixtures can

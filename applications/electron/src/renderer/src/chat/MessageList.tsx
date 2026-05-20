@@ -6,15 +6,13 @@ import { usePresence } from '../hooks/usePresence'
 import { useScrollGutter } from '../hooks/useScrollGutter'
 import { deriveTeamRoles } from '../roles/deriveRoles'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
-import MessageItem, { pinKey, shortName } from './MessageItem'
+import MessageItem, { messageKey, shortName } from './MessageItem'
 import { isMessageInScope } from './scope'
 import './MessageList.css'
 
 interface Props {
   messages: ChatMessage[]
   visibleClasses: ReadonlySet<MessageClass>
-  pinnedKeys?: ReadonlySet<string>
-  onTogglePin?: (m: ChatMessage) => void
   reactionsByMessage?: Map<string, import('../hooks/useReactions').AggregatedReaction[]>
   onToggleReaction?: (messageKey: string, emoji: string) => void
   viewer?: string
@@ -46,8 +44,6 @@ const isGroupedWithPrev = (curr: ChatMessage, prev: ChatMessage | null): boolean
 const MessageList = ({
   messages,
   visibleClasses,
-  pinnedKeys,
-  onTogglePin,
   reactionsByMessage,
   onToggleReaction,
   viewer,
@@ -107,8 +103,7 @@ const MessageList = ({
   }
 
   const renderRow = ({ m, grouped }: { m: ChatMessage; grouped: boolean }): React.JSX.Element => {
-    const pinned = pinnedKeys?.has(pinKey(m)) ?? false
-    const mKey = pinKey(m)
+    const mKey = messageKey(m)
     return (
       <MessageItem
         key={m.id}
@@ -120,8 +115,6 @@ const MessageList = ({
         presence={presence}
         mentionRoles={mentionRoles}
         onMention={handleMention}
-        pinned={pinned}
-        onTogglePin={onTogglePin}
         reactions={reactionsByMessage?.get(mKey)}
         onToggleReaction={onToggleReaction}
       />

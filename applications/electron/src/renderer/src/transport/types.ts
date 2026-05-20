@@ -30,15 +30,6 @@ export interface ReactionAggregateWire {
   users: string[]
 }
 
-export interface PinnedMessageWire {
-  message_key: string
-  pinner: string
-  ts: string
-  text: string
-  from: string
-  pinned_at: string
-}
-
 export type CiStateWire = 'unknown' | 'green' | 'red' | 'running' | 'quota_exhausted'
 
 export interface CiSnapshotWire {
@@ -61,7 +52,6 @@ export interface RosterMemberWire {
 
 export type StateDeltaPayload =
   | { domain: 'reactions'; channel: string; aggregated: ReactionAggregateWire[] }
-  | { domain: 'pins'; channel: string; pins: PinnedMessageWire[] }
   | { domain: 'ci'; snapshot: CiSnapshotWire }
   | { domain: 'roster'; members: RosterMemberWire[] }
   | {
@@ -79,14 +69,8 @@ export interface ReactionsChannelSnapshot {
   aggregated: ReactionAggregateWire[]
 }
 
-export interface PinsChannelSnapshot {
-  channel: string
-  pins: PinnedMessageWire[]
-}
-
 export interface StateSnapshotPayload {
   reactions: ReactionsChannelSnapshot[]
-  pins: PinsChannelSnapshot[]
   ci?: CiSnapshotWire | null
   roster: RosterMemberWire[]
 }

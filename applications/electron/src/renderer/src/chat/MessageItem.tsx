@@ -19,8 +19,6 @@ interface Props {
   presence: Map<string, string>
   mentionRoles: Set<string>
   onMention: (role: string) => void
-  pinned: boolean
-  onTogglePin?: (m: ChatMessage) => void
   reactions?: AggregatedReaction[]
   onToggleReaction?: (messageKey: string, emoji: string) => void
 }
@@ -41,7 +39,7 @@ const avatarClasses = (sender: string): string => {
   return `message-avatar ${shape}`
 }
 
-const pinKey = (m: ChatMessage): string => `${m.ts}|${m.from}`
+const messageKey = (m: ChatMessage): string => `${m.ts}|${m.from}`
 
 const MessageItem = ({
   m,
@@ -52,8 +50,6 @@ const MessageItem = ({
   presence,
   mentionRoles,
   onMention,
-  pinned,
-  onTogglePin,
   reactions,
   onToggleReaction
 }: Props): React.JSX.Element => {
@@ -67,13 +63,12 @@ const MessageItem = ({
     'message-row',
     grouped ? 'message-row--grouped' : 'message-row--first',
     addressedToViewer ? 'message-row--to-me' : '',
-    addressedToOther ? 'message-row--to-other' : '',
-    pinned ? 'message-row--pinned' : ''
+    addressedToOther ? 'message-row--to-other' : ''
   ]
     .filter(Boolean)
     .join(' ')
 
-  const mKey = pinKey(m)
+  const mKey = messageKey(m)
 
   return (
     <li key={m.id} className={rowClasses} data-test="message-row">
@@ -136,28 +131,6 @@ const MessageItem = ({
                 @{addressee}
               </small>
             )}
-            {pinned && (
-              <span
-                className="message-pinned-indicator"
-                data-test="message-pinned-indicator"
-                aria-label="pinned"
-                title="pinned in this channel"
-              >
-                📌
-              </span>
-            )}
-            {onTogglePin && (
-              <button
-                type="button"
-                className="message-pin-toggle"
-                data-test="message-pin-toggle"
-                aria-label={pinned ? 'Unpin message' : 'Pin message'}
-                title={pinned ? 'Unpin' : 'Pin'}
-                onClick={() => onTogglePin(m)}
-              >
-                {pinned ? '✖' : '📌'}
-              </button>
-            )}
           </header>
         )}
         {grouped && (
@@ -196,4 +169,4 @@ const MessageItem = ({
 }
 
 export default MessageItem
-export { pinKey, shortName, formatTime, avatarClasses }
+export { messageKey, shortName, formatTime, avatarClasses }

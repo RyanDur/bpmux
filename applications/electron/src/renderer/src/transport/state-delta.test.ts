@@ -3,7 +3,7 @@ import { applyStateDelta, applyStateSnapshot, emptyMirrorState } from './state-d
 import type { StateDeltaPayload, StateSnapshotPayload } from './types'
 
 describe('applyStateSnapshot', () => {
-  test('replaces all four domains from a fresh snapshot', () => {
+  test('replaces all domains from a fresh snapshot', () => {
     const snapshot: StateSnapshotPayload = {
       reactions: [
         {
@@ -11,60 +11,29 @@ describe('applyStateSnapshot', () => {
           aggregated: [{ message_key: 'k1', emoji: '👍', count: 2, users: ['ryan', 'dev'] }]
         }
       ],
-      pins: [
-        {
-          channel: 'broadcast',
-          pins: [
-            {
-              message_key: 'm1',
-              pinner: 'ryan',
-              ts: '2026-05-08T00:00:00Z',
-              text: 'pinned text',
-              from: 'ryan',
-              pinned_at: '2026-05-08T00:00:01Z'
-            }
-          ]
-        }
-      ],
       ci: { state: 'green', run_id: 7, head_sha: 'abc', display_title: 'title' },
       roster: [{ name: 'ryan', identity: 'ryan:electron', role: 'Owner', presence: 'Online' }]
     }
     const next = applyStateSnapshot(emptyMirrorState(), snapshot)
     expect(next.reactions.get('broadcast')?.[0].count).toBe(2)
-    expect(next.pins.get('broadcast')?.[0].pinner).toBe('ryan')
     expect(next.ci?.state).toBe('green')
     expect(next.roster[0].name).toBe('ryan')
   })
 
   test('clears domains when snapshot omits them', () => {
     const seeded = applyStateSnapshot(emptyMirrorState(), {
-      reactions: [{ channel: 'old', aggregated: [{ message_key: 'k', emoji: '🎉', count: 1, users: ['dev'] }] }],
-      pins: [
-        {
-          channel: 'old',
-          pins: [
-            {
-              message_key: 'm',
-              pinner: 'dev',
-              ts: 't',
-              text: 'x',
-              from: 'dev',
-              pinned_at: 't'
-            }
-          ]
-        }
+      reactions: [
+        { channel: 'old', aggregated: [{ message_key: 'k', emoji: '🎉', count: 1, users: ['dev'] }] }
       ],
       ci: { state: 'red' },
       roster: [{ name: 'dev', identity: 'dev:claude-code', role: 'Dev', presence: 'Online' }]
     })
     const cleared = applyStateSnapshot(seeded, {
       reactions: [],
-      pins: [],
       ci: null,
       roster: []
     })
     expect(cleared.reactions.size).toBe(0)
-    expect(cleared.pins.size).toBe(0)
     expect(cleared.ci).toBeNull()
     expect(cleared.roster).toEqual([])
   })
@@ -77,7 +46,6 @@ describe('applyStateDelta', () => {
         { channel: 'a', aggregated: [{ message_key: 'k1', emoji: '👍', count: 1, users: ['dev'] }] },
         { channel: 'b', aggregated: [{ message_key: 'k2', emoji: '🎉', count: 1, users: ['ryan'] }] }
       ],
-      pins: [],
       ci: null,
       roster: []
     })
@@ -93,8 +61,9 @@ describe('applyStateDelta', () => {
 
   test('removes empty reactions channel from the map', () => {
     const seeded = applyStateSnapshot(emptyMirrorState(), {
-      reactions: [{ channel: 'a', aggregated: [{ message_key: 'k', emoji: '👍', count: 1, users: ['dev'] }] }],
-      pins: [],
+      reactions: [
+        { channel: 'a', aggregated: [{ message_key: 'k', emoji: '👍', count: 1, users: ['dev'] }] }
+      ],
       ci: null,
       roster: []
     })
@@ -105,7 +74,6 @@ describe('applyStateDelta', () => {
   test('replaces ci snapshot in place', () => {
     const seeded = applyStateSnapshot(emptyMirrorState(), {
       reactions: [],
-      pins: [],
       ci: { state: 'green' },
       roster: []
     })
@@ -120,7 +88,6 @@ describe('applyStateDelta', () => {
   test('replaces roster wholesale', () => {
     const seeded = applyStateSnapshot(emptyMirrorState(), {
       reactions: [],
-      pins: [],
       ci: null,
       roster: [
         { name: 'a', identity: 'a:claude-code', role: 'Dev', presence: 'Online' },
@@ -138,21 +105,8 @@ describe('applyStateDelta', () => {
 
   test('preserves prev reference identity for un-touched maps', () => {
     const seeded = applyStateSnapshot(emptyMirrorState(), {
-      reactions: [{ channel: 'a', aggregated: [{ message_key: 'k', emoji: '👍', count: 1, users: ['dev'] }] }],
-      pins: [
-        {
-          channel: 'a',
-          pins: [
-            {
-              message_key: 'm',
-              pinner: 'ryan',
-              ts: 't',
-              text: 'x',
-              from: 'ryan',
-              pinned_at: 't'
-            }
-          ]
-        }
+      reactions: [
+        { channel: 'a', aggregated: [{ message_key: 'k', emoji: '👍', count: 1, users: ['dev'] }] }
       ],
       ci: null,
       roster: []
@@ -162,6 +116,5 @@ describe('applyStateDelta', () => {
       snapshot: { state: 'green' }
     })
     expect(next.reactions).toBe(seeded.reactions)
-    expect(next.pins).toBe(seeded.pins)
   })
 })

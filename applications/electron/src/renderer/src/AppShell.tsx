@@ -13,7 +13,6 @@ import type {
   ChatMessage,
   CiSnapshotWire,
   ConnectionStatus,
-  PinnedMessageWire,
   ReactionAggregateWire,
   RosterMemberWire
 } from './transport/types'
@@ -62,10 +61,8 @@ interface Props {
   hasMoreOlder?: boolean
   hasError?: boolean
   onAtBottomChange?: (atBottom: boolean) => void
-  onPinnedKeysChange?: (keys: ReadonlySet<string>) => void
   ciSnapshot?: CiSnapshotWire | null
   mirrorReactions?: ReadonlyMap<string, ReactionAggregateWire[]>
-  mirrorPins?: ReadonlyMap<string, PinnedMessageWire[]>
   mirrorRoster?: readonly RosterMemberWire[]
 }
 
@@ -78,10 +75,8 @@ const AppShell = ({
   hasMoreOlder,
   hasError,
   onAtBottomChange,
-  onPinnedKeysChange,
   ciSnapshot,
   mirrorReactions,
-  mirrorPins,
   mirrorRoster
 }: Props): React.JSX.Element => {
   const [boardOpen, setBoardOpen] = useState<boolean>(true)
@@ -216,9 +211,7 @@ const AppShell = ({
           hasMoreOlder={hasMoreOlder}
           hasError={hasError}
           onAtBottomChange={onAtBottomChange}
-          onPinnedKeysChange={onPinnedKeysChange}
           mirrorReactions={mirrorReactions}
-          mirrorPins={mirrorPins}
         />
         {boardOpen ? (
           <BoardResizeHandle

@@ -11,9 +11,8 @@ use crate::bridge::tracker::ConditionalRunEntry;
 use crate::ci::{CiEvent, CiState};
 use crate::github::RateLimitObserver;
 use crate::orchestrator::stores::{
-    PinsAction, PinsBroadcastListener, PinsStore, ReactionsAction, ReactionsBroadcastListener,
-    ReactionsStore, RosterAction, RosterBroadcastListener, RosterStore, StoreReduceOutcome,
-    apply_pins, apply_reactions, apply_roster,
+    ReactionsAction, ReactionsBroadcastListener, ReactionsStore, RosterAction,
+    RosterBroadcastListener, RosterStore, StoreReduceOutcome, apply_reactions, apply_roster,
 };
 use crate::session;
 use crate::transport::ci_state_store::CiStateStore;
@@ -44,7 +43,6 @@ pub enum OrchestratorAction {
     StartHydrationPolling,
     StopHydrationPolling,
     Reactions(ReactionsAction),
-    Pins(PinsAction),
     Roster(RosterAction),
     StartUpdateGithub {
         mutation_id: MutationId,
@@ -153,13 +151,11 @@ pub struct Orchestrator<T: CiPollFetch> {
     rate_limit_observer: RateLimitObserver,
     ci_store: Arc<CiStore>,
     reactions_store: Arc<ReactionsStore>,
-    pins_store: Arc<PinsStore>,
     roster_store: Arc<RosterStore>,
     tokens: AsyncMutex<HashMap<PollKind, CancellationToken>>,
     mutation_tokens: AsyncMutex<HashMap<MutationId, CancellationToken>>,
     listeners: Mutex<Vec<Arc<dyn CiBroadcastListener>>>,
     reactions_listeners: Mutex<Vec<Arc<dyn ReactionsBroadcastListener>>>,
-    pins_listeners: Mutex<Vec<Arc<dyn PinsBroadcastListener>>>,
     roster_listeners: Mutex<Vec<Arc<dyn RosterBroadcastListener>>>,
 }
 
@@ -185,13 +181,11 @@ impl<T: CiPollFetch> Orchestrator<T> {
             rate_limit_observer,
             ci_store: Arc::new(CiStore::new()),
             reactions_store: Arc::new(ReactionsStore::new()),
-            pins_store: Arc::new(PinsStore::new()),
             roster_store: Arc::new(RosterStore::new()),
             tokens: AsyncMutex::new(HashMap::new()),
             mutation_tokens: AsyncMutex::new(HashMap::new()),
             listeners: Mutex::new(Vec::new()),
             reactions_listeners: Mutex::new(Vec::new()),
-            pins_listeners: Mutex::new(Vec::new()),
             roster_listeners: Mutex::new(Vec::new()),
         }
     }
@@ -200,18 +194,14 @@ impl<T: CiPollFetch> Orchestrator<T> {
         Arc::clone(&self.reactions_store)
     }
 
-    pub fn pins_store(&self) -> Arc<PinsStore> {
-        Arc::clone(&self.pins_store)
-    }
-
     pub fn roster_store(&self) -> Arc<RosterStore> {
         Arc::clone(&self.roster_store)
     }
 
     pub fn build_snapshot(&self) -> crate::session::message::StateSnapshotPayload {
         use crate::session::message::{
-            CiSnapshotWire, PinnedMessageWire, PinsChannelSnapshot, ReactionAggregateWire,
-            ReactionsChannelSnapshot, RosterMemberWire, StateSnapshotPayload,
+            CiSnapshotWire, ReactionAggregateWire, ReactionsChannelSnapshot, RosterMemberWire,
+            StateSnapshotPayload,
         };
         let reactions = self
             .reactions_store
@@ -235,27 +225,6 @@ impl<T: CiPollFetch> Orchestrator<T> {
                 }
             })
             .collect();
-        let pins = self
-            .pins_store
-            .channel_keys()
-            .into_iter()
-            .map(|channel| {
-                let pins = self
-                    .pins_store
-                    .list_for_channel(&channel)
-                    .into_iter()
-                    .map(|p| PinnedMessageWire {
-                        message_key: p.message_key,
-                        pinner: p.pinner,
-                        ts: p.ts,
-                        text: p.text,
-                        from: p.from,
-                        pinned_at: p.pinned_at,
-                    })
-                    .collect();
-                PinsChannelSnapshot { channel, pins }
-            })
-            .collect();
         let ci = self.ci_store.snapshot().map(|s| CiSnapshotWire {
             state: s.state,
             run_id: s.run_id,
@@ -275,7 +244,6 @@ impl<T: CiPollFetch> Orchestrator<T> {
             .collect();
         StateSnapshotPayload {
             reactions,
-            pins,
             ci,
             roster,
         }
@@ -284,14 +252,6 @@ impl<T: CiPollFetch> Orchestrator<T> {
     pub fn add_reactions_listener(&self, listener: Arc<dyn ReactionsBroadcastListener>) {
         let mut l = self
             .reactions_listeners
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
-        l.push(listener);
-    }
-
-    pub fn add_pins_listener(&self, listener: Arc<dyn PinsBroadcastListener>) {
-        let mut l = self
-            .pins_listeners
             .lock()
             .unwrap_or_else(|e| e.into_inner());
         l.push(listener);
@@ -366,7 +326,6 @@ impl<T: CiPollFetch> Orchestrator<T> {
                 self.middleware_stop(PollKind::Hydration).await
             }
             OrchestratorAction::Reactions(a) => self.middleware_reactions(a),
-            OrchestratorAction::Pins(a) => self.middleware_pins(a),
             OrchestratorAction::Roster(a) => self.middleware_roster(a),
             OrchestratorAction::StartUpdateGithub { mutation_id } => {
                 self.middleware_start_update_github(mutation_id).await
@@ -468,29 +427,6 @@ impl<T: CiPollFetch> Orchestrator<T> {
         };
         for listener in listeners {
             listener.on_changed(&channel, &aggregated);
-        }
-    }
-
-    fn middleware_pins(&self, action: PinsAction) {
-        let outcome = apply_pins(&self.pins_store, &action);
-        if outcome != StoreReduceOutcome::Changed {
-            return;
-        }
-        let channel = match &action {
-            PinsAction::PinAdded { channel, .. } | PinsAction::PinRemoved { channel, .. } => {
-                channel.clone()
-            }
-        };
-        let pins = self.pins_store.list_for_channel(&channel);
-        let listeners = {
-            let l = self
-                .pins_listeners
-                .lock()
-                .unwrap_or_else(|e| e.into_inner());
-            l.clone()
-        };
-        for listener in listeners {
-            listener.on_changed(&channel, &pins);
         }
     }
 
@@ -629,7 +565,6 @@ fn validate_and_log(action: &OrchestratorAction) {
         OrchestratorAction::StartHydrationPolling => "StartHydrationPolling",
         OrchestratorAction::StopHydrationPolling => "StopHydrationPolling",
         OrchestratorAction::Reactions(_) => "Reactions",
-        OrchestratorAction::Pins(_) => "Pins",
         OrchestratorAction::Roster(_) => "Roster",
         OrchestratorAction::StartUpdateGithub { .. } => "StartUpdateGithub",
         OrchestratorAction::StopUpdateGithub { .. } => "StopUpdateGithub",

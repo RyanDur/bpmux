@@ -10,7 +10,6 @@ pub mod instrumented_storage;
 pub mod lessons;
 pub mod log;
 pub mod message;
-pub mod pins;
 pub mod precommit;
 pub mod reactions;
 pub mod recall;

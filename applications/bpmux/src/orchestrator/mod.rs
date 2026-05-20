@@ -14,11 +14,10 @@ pub use ci::{
     PollKind,
 };
 pub use listeners::{
-    CiSessionBroadcaster, CiStateStoreWriter, PinsSessionBroadcaster, ReactionsSessionBroadcaster,
-    RosterSessionBroadcaster,
+    CiSessionBroadcaster, CiStateStoreWriter, ReactionsSessionBroadcaster, RosterSessionBroadcaster,
 };
 pub use stores::{
-    AggregatedReaction, PinnedMessage, PinsAction, PinsBroadcastListener, PinsStore, Presence,
-    ReactionsAction, ReactionsBroadcastListener, ReactionsStore, RosterAction,
-    RosterBroadcastListener, RosterMember, RosterRole, RosterStore, StoreReduceOutcome,
+    AggregatedReaction, Presence, ReactionsAction, ReactionsBroadcastListener, ReactionsStore,
+    RosterAction, RosterBroadcastListener, RosterMember, RosterRole, RosterStore,
+    StoreReduceOutcome,
 };

@@ -103,90 +103,6 @@ pub trait ReactionsBroadcastListener: Send + Sync {
     fn on_changed(&self, channel: &str, aggregated: &[AggregatedReaction]);
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-pub struct PinnedMessage {
-    pub message_key: String,
-    pub pinner: String,
-    pub ts: String,
-    pub text: String,
-    pub from: String,
-    pub pinned_at: String,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum PinsAction {
-    PinAdded {
-        channel: String,
-        pin: PinnedMessage,
-    },
-    PinRemoved {
-        channel: String,
-        message_key: String,
-    },
-}
-
-#[derive(Default)]
-pub struct PinsStore {
-    inner: Mutex<PinsState>,
-}
-
-#[derive(Default, Clone)]
-struct PinsState {
-    by_channel: BTreeMap<String, Vec<PinnedMessage>>,
-}
-
-impl PinsStore {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn channel_keys(&self) -> Vec<String> {
-        let state = self.inner.lock().unwrap_or_else(|e| e.into_inner());
-        state.by_channel.keys().cloned().collect()
-    }
-
-    pub fn list_for_channel(&self, channel: &str) -> Vec<PinnedMessage> {
-        let state = self.inner.lock().unwrap_or_else(|e| e.into_inner());
-        state.by_channel.get(channel).cloned().unwrap_or_default()
-    }
-
-    fn apply(&self, action: &PinsAction) -> StoreReduceOutcome {
-        match action {
-            PinsAction::PinAdded { channel, pin } => {
-                let mut state = self.inner.lock().unwrap_or_else(|e| e.into_inner());
-                let list = state.by_channel.entry(channel.clone()).or_default();
-                if list.iter().any(|p| p.message_key == pin.message_key) {
-                    return StoreReduceOutcome::Unchanged;
-                }
-                list.push(pin.clone());
-                StoreReduceOutcome::Changed
-            }
-            PinsAction::PinRemoved {
-                channel,
-                message_key,
-            } => {
-                let mut state = self.inner.lock().unwrap_or_else(|e| e.into_inner());
-                let Some(list) = state.by_channel.get_mut(channel) else {
-                    return StoreReduceOutcome::Unchanged;
-                };
-                let before = list.len();
-                list.retain(|p| &p.message_key != message_key);
-                if list.len() == before {
-                    return StoreReduceOutcome::Unchanged;
-                }
-                if list.is_empty() {
-                    state.by_channel.remove(channel);
-                }
-                StoreReduceOutcome::Changed
-            }
-        }
-    }
-}
-
-pub trait PinsBroadcastListener: Send + Sync {
-    fn on_changed(&self, channel: &str, pins: &[PinnedMessage]);
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, serde::Deserialize)]
 pub enum RosterRole {
     Designer,
@@ -310,10 +226,6 @@ pub(super) fn apply_reactions(
     store: &Arc<ReactionsStore>,
     action: &ReactionsAction,
 ) -> StoreReduceOutcome {
-    store.apply(action)
-}
-
-pub(super) fn apply_pins(store: &Arc<PinsStore>, action: &PinsAction) -> StoreReduceOutcome {
     store.apply(action)
 }
 

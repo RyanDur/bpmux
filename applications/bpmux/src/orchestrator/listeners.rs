@@ -2,12 +2,12 @@ use std::sync::Arc;
 
 use crate::ci::RunEntry;
 use crate::orchestrator::{
-    AggregatedReaction, CiBroadcastListener, CiSnapshot, PinnedMessage, PinsBroadcastListener,
-    ReactionsBroadcastListener, RosterBroadcastListener, RosterMember,
+    AggregatedReaction, CiBroadcastListener, CiSnapshot, ReactionsBroadcastListener,
+    RosterBroadcastListener, RosterMember,
 };
 use crate::session;
 use crate::session::message::{
-    CiSnapshotWire, PinnedMessageWire, ReactionAggregateWire, RosterMemberWire, StateDeltaPayload,
+    CiSnapshotWire, ReactionAggregateWire, RosterMemberWire, StateDeltaPayload,
 };
 use crate::transport::ci_state_store::CiStateStore;
 
@@ -105,19 +105,6 @@ fn reactions_to_wire(aggregated: &[AggregatedReaction]) -> Vec<ReactionAggregate
         .collect()
 }
 
-fn pins_to_wire(pins: &[PinnedMessage]) -> Vec<PinnedMessageWire> {
-    pins.iter()
-        .map(|p| PinnedMessageWire {
-            message_key: p.message_key.clone(),
-            pinner: p.pinner.clone(),
-            ts: p.ts.clone(),
-            text: p.text.clone(),
-            from: p.from.clone(),
-            pinned_at: p.pinned_at.clone(),
-        })
-        .collect()
-}
-
 fn ci_to_wire(snap: &CiSnapshot) -> CiSnapshotWire {
     CiSnapshotWire {
         state: snap.state,
@@ -158,29 +145,6 @@ impl ReactionsBroadcastListener for ReactionsSessionBroadcaster {
                 aggregated: reactions_to_wire(aggregated),
             },
             "reactions_listener",
-        );
-    }
-}
-
-pub struct PinsSessionBroadcaster {
-    session: Arc<session::Session>,
-}
-
-impl PinsSessionBroadcaster {
-    pub fn new(session: Arc<session::Session>) -> Self {
-        Self { session }
-    }
-}
-
-impl PinsBroadcastListener for PinsSessionBroadcaster {
-    fn on_changed(&self, channel: &str, pins: &[PinnedMessage]) {
-        broadcast_state_delta(
-            &self.session,
-            StateDeltaPayload::Pins {
-                channel: channel.to_string(),
-                pins: pins_to_wire(pins),
-            },
-            "pins_listener",
         );
     }
 }

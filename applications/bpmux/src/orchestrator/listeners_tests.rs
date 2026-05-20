@@ -6,12 +6,11 @@ use tempfile::TempDir;
 use tokio::sync::broadcast;
 
 use super::listeners::{
-    CiSessionBroadcaster, PinsSessionBroadcaster, ReactionsSessionBroadcaster,
-    RosterSessionBroadcaster,
+    CiSessionBroadcaster, ReactionsSessionBroadcaster, RosterSessionBroadcaster,
 };
 use super::stores::{
-    AggregatedReaction, PinnedMessage, PinsBroadcastListener, Presence, ReactionsBroadcastListener,
-    RosterBroadcastListener, RosterMember, RosterRole,
+    AggregatedReaction, Presence, ReactionsBroadcastListener, RosterBroadcastListener,
+    RosterMember, RosterRole,
 };
 use crate::ci::CiState;
 use crate::orchestrator::CiBroadcastListener;
@@ -89,31 +88,6 @@ async fn reactions_listener_emits_typed_state_delta() {
             assert_eq!(aggregated[0].users.len(), 2);
         }
         _ => panic!("expected Reactions variant"),
-    }
-}
-
-#[tokio::test]
-async fn pins_listener_emits_typed_state_delta() {
-    let (session, mut rx, _dir) = fresh_session();
-    let listener = PinsSessionBroadcaster::new(session);
-    let pins = vec![PinnedMessage {
-        message_key: "m1".to_string(),
-        pinner: "ryan".to_string(),
-        ts: "2026-05-08T00:00:00Z".to_string(),
-        text: "pinned text".to_string(),
-        from: "ryan".to_string(),
-        pinned_at: "2026-05-08T00:00:01Z".to_string(),
-    }];
-    listener.on_changed("broadcast", &pins);
-    let payload = drain_state_delta(&mut rx);
-    match payload {
-        StateDeltaPayload::Pins { channel, pins } => {
-            assert_eq!(channel, "broadcast");
-            assert_eq!(pins.len(), 1);
-            assert_eq!(pins[0].message_key, "m1");
-            assert_eq!(pins[0].pinner, "ryan");
-        }
-        _ => panic!("expected Pins variant"),
     }
 }
 

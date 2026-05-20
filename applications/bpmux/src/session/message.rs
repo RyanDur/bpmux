@@ -128,11 +128,6 @@ pub enum StateDeltaPayload {
         #[serde(rename = "aggregated")]
         aggregated: Vec<ReactionAggregateWire>,
     },
-    #[serde(rename = "pins")]
-    Pins {
-        channel: String,
-        pins: Vec<PinnedMessageWire>,
-    },
     #[serde(rename = "ci")]
     Ci { snapshot: CiSnapshotWire },
     #[serde(rename = "roster")]
@@ -164,8 +159,6 @@ pub struct IterationCloseBlockerPayload {
 pub struct StateSnapshotPayload {
     #[serde(default)]
     pub reactions: Vec<ReactionsChannelSnapshot>,
-    #[serde(default)]
-    pub pins: Vec<PinsChannelSnapshot>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ci: Option<CiSnapshotWire>,
     #[serde(default)]
@@ -179,27 +172,11 @@ pub struct ReactionsChannelSnapshot {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct PinsChannelSnapshot {
-    pub channel: String,
-    pub pins: Vec<PinnedMessageWire>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ReactionAggregateWire {
     pub message_key: String,
     pub emoji: String,
     pub count: usize,
     pub users: Vec<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct PinnedMessageWire {
-    pub message_key: String,
-    pub pinner: String,
-    pub ts: String,
-    pub text: String,
-    pub from: String,
-    pub pinned_at: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

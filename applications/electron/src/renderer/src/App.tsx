@@ -18,17 +18,13 @@ const App = (): React.JSX.Element => {
   }
 
   const [atBottom, setAtBottom] = useState<boolean>(true)
-  const [pinnedKeys, setPinnedKeys] = useState<ReadonlySet<string>>(() => new Set())
 
   const { status, messages: liveRaw, sendChat, mirror } = useWebSocket(bridge?.wsUrl, {
     apiBase: bridge?.apiBase,
     authToken: bridge?.authToken
   })
 
-  const liveMessages = useMemo(
-    () => capPerPush(liveRaw, atBottom, pinnedKeys),
-    [liveRaw, atBottom, pinnedKeys]
-  )
+  const liveMessages = useMemo(() => capPerPush(liveRaw, atBottom), [liveRaw, atBottom])
 
   const { combinedMessages, loadOlder, isLoadingOlder, hasMoreOlder, hasError } =
     useMessageHistory({
@@ -49,10 +45,8 @@ const App = (): React.JSX.Element => {
       hasMoreOlder={hasMoreOlder}
       hasError={hasError}
       onAtBottomChange={setAtBottom}
-      onPinnedKeysChange={setPinnedKeys}
       ciSnapshot={mirror.ci}
       mirrorReactions={mirror.reactions}
-      mirrorPins={mirror.pins}
       mirrorRoster={mirror.roster}
     />
   )

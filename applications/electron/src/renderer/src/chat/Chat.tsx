@@ -1,19 +1,16 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { classOf, useMessageFilter, type MessageClass } from '../hooks/useMessageFilter'
-import { channelKey, messageKey, usePins } from '../hooks/usePins'
 import { useReactions } from '../hooks/useReactions'
 import Metrics from '../metrics/Metrics'
 import { RENDERER_IDENTITY, type SendOptions } from '../transport/useWebSocket'
 import type {
   ChatMessage,
   ConnectionStatus,
-  PinnedMessageWire,
   ReactionAggregateWire
 } from '../transport/types'
 import FilterPills from './FilterPills'
 import Input from './Input'
 import MessageList from './MessageList'
-import PinnedList from './PinnedList'
 import './Chat.css'
 
 interface Props {
@@ -33,9 +30,12 @@ interface Props {
   hasMoreOlder?: boolean
   hasError?: boolean
   onAtBottomChange?: (atBottom: boolean) => void
-  onPinnedKeysChange?: (keys: ReadonlySet<string>) => void
   mirrorReactions?: ReadonlyMap<string, ReactionAggregateWire[]>
-  mirrorPins?: ReadonlyMap<string, PinnedMessageWire[]>
+}
+
+const channelKey = (recipient: string[] | null): string => {
+  if (!recipient || recipient.length === 0) return 'broadcast'
+  return [...recipient].sort().join('+')
 }
 
 const Chat = ({
@@ -55,34 +55,16 @@ const Chat = ({
   hasMoreOlder,
   hasError,
   onAtBottomChange,
-  onPinnedKeysChange,
-  mirrorReactions,
-  mirrorPins
+  mirrorReactions
 }: Props): React.JSX.Element => {
   const showReconnect = status !== 'connected'
-  const [pinnedListOpen, setPinnedListOpen] = useState<boolean>(false)
-  const pinsChannel = channelKey(recipient)
-  const pins = usePins({ apiBase, authToken, channel: pinsChannel, mirrorPins })
-
-  useEffect(() => {
-    onPinnedKeysChange?.(pins.pinnedKeys)
-  }, [pins.pinnedKeys, onPinnedKeysChange])
-
+  const reactionsChannel = channelKey(recipient)
   const reactions = useReactions({
     apiBase,
     authToken,
-    channel: pinsChannel,
+    channel: reactionsChannel,
     mirrorReactions
   })
-
-  const togglePin = (m: ChatMessage): void => {
-    const key = messageKey(m)
-    if (pins.pinnedKeys.has(key)) {
-      void pins.unpin(key)
-    } else {
-      void pins.pin({ from: m.from, ts: m.ts, text: m.text }, RENDERER_IDENTITY)
-    }
-  }
 
   const hiddenCounts = useMemo((): Partial<Record<MessageClass, number>> => {
     const counts: Partial<Record<MessageClass, number>> = {}
@@ -118,29 +100,10 @@ const Chat = ({
           <small>{scopeLabel}</small>
         </aside>
       )}
-      <aside
-        className="chat-channel-header"
-        data-test="chat-channel-header"
-        aria-label="Channel actions"
-      >
-        <button
-          type="button"
-          className="chat-pin-count"
-          data-test="chat-pin-count"
-          onClick={() => setPinnedListOpen(true)}
-          disabled={pins.pins.length === 0}
-          aria-label={`${pins.pins.length} pinned messages — open list`}
-          title="View pinned messages"
-        >
-          📌 <span>{pins.pins.length}</span>
-        </button>
-      </aside>
       <FilterPills filter={filter} hiddenCounts={hiddenCounts} />
       <MessageList
         messages={messages}
         visibleClasses={filter.visible}
-        pinnedKeys={pins.pinnedKeys}
-        onTogglePin={togglePin}
         reactionsByMessage={reactions.byMessage}
         onToggleReaction={(key, emoji) => {
           void reactions.toggle(key, emoji, RENDERER_IDENTITY)
@@ -163,18 +126,10 @@ const Chat = ({
         onClose={onCloseMetrics}
         open={metricsOpen}
       />
-      <PinnedList
-        pins={pins.pins}
-        onUnpin={(key) => {
-          void pins.unpin(key)
-        }}
-        onClose={() => setPinnedListOpen(false)}
-        open={pinnedListOpen}
-      />
       <Input
-        key={allView ? 'all' : pinsChannel}
+        key={allView ? 'all' : reactionsChannel}
         onSend={handleSend}
-        channelKey={allView ? 'all' : pinsChannel}
+        channelKey={allView ? 'all' : reactionsChannel}
         placeholder={
           recipient && recipient.length > 0 ? `message ${recipient.join(' + ')}` : undefined
         }

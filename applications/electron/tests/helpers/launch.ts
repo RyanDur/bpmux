@@ -26,13 +26,6 @@ export interface LaunchOpts {
   backendPort?: number
   seedMessages?: ReadonlyArray<Record<string, unknown>>
   /**
-   * Pre-seed `<session-dir>/pins.json` so the Electron renderer's
-   * `usePins` hook hydrates a non-empty pins state on mount (#489).
-   * Map shape: channel key → ordered Pin records (matches
-   * `session::pins::PinsStore` Rust shape on the wire).
-   */
-  seedPins?: Record<string, ReadonlyArray<Record<string, unknown>>>
-  /**
    * Pre-seed `<session-dir>/roster_seed.json` so bpmux's in-memory
    * roster is pre-populated at startup with the listed identities
    * (e.g., `["dev:claude-code", "pm:claude-code"]`). Sister to
@@ -225,7 +218,7 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
     }
   })
   await waitForHealthz(backendPort)
-  await seedMessagesAndPinsViaApi(backendPort, opts)
+  await seedMessagesViaApi(backendPort, opts)
   if (ownedTempPaths.length > 0 && !opts.preserveTempPaths) {
     const originalClose = app.close.bind(app)
     app.close = (async () => {
@@ -239,7 +232,7 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
   return { app, sessionBase, userDataDir, backendPort, mockGh: defaultMockGh }
 }
 
-const seedMessagesAndPinsViaApi = async (
+const seedMessagesViaApi = async (
   backendPort: number,
   opts: LaunchOpts
 ): Promise<void> => {
@@ -251,17 +244,6 @@ const seedMessagesAndPinsViaApi = async (
     })
     if (!res.ok) {
       throw new Error(`seed_messages POST failed: ${res.status} ${await res.text()}`)
-    }
-  }
-  if (opts.seedPins && Object.keys(opts.seedPins).length > 0) {
-    const store = { channels: opts.seedPins }
-    const res = await fetch(`http://127.0.0.1:${backendPort}/api/test/seed_pins`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ store })
-    })
-    if (!res.ok) {
-      throw new Error(`seed_pins POST failed: ${res.status} ${await res.text()}`)
     }
   }
 }

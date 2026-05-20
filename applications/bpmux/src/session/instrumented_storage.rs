@@ -255,26 +255,6 @@ impl<S: Storage> Storage for InstrumentedStorage<S> {
         result
     }
 
-    fn load_pins(&self) -> super::pins::PinsStore {
-        let start = Instant::now();
-        let result = self.inner.load_pins();
-        self.log(&format!(
-            "load_pins {:.1}ms",
-            start.elapsed().as_secs_f64() * 1000.0
-        ));
-        result
-    }
-
-    fn save_pins(&self, store: &super::pins::PinsStore) -> Result<(), std::io::Error> {
-        let start = Instant::now();
-        let result = self.inner.save_pins(store);
-        self.log(&format!(
-            "save_pins {:.1}ms",
-            start.elapsed().as_secs_f64() * 1000.0
-        ));
-        result
-    }
-
     fn load_reactions(&self) -> super::reactions::ReactionsStore {
         let start = Instant::now();
         let result = self.inner.load_reactions();

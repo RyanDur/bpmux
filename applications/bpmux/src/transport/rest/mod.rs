@@ -12,7 +12,6 @@ mod iteration_close;
 mod lessons;
 mod messages;
 mod metrics;
-mod pins;
 mod reactions;
 mod roster;
 mod search;
@@ -38,7 +37,6 @@ pub use messages::{
     DEFAULT_MESSAGE_LIMIT, GetMessagesParams, PostMessage, get_messages, post_message,
 };
 pub use metrics::get_metrics;
-pub use pins::{PinCreate, PinDelete, PinsChannelQuery, delete_pin, get_pins, post_pin};
 #[allow(unused_imports)]
 pub(crate) use reactions::{
     EXCERPT_MAX_LEN, build_reaction_event_text_with_excerpt, find_message_excerpt, truncate_excerpt,

@@ -69,32 +69,10 @@ const messageKey = (m: { from: string; text: string; ts: string }): string =>
 export const capMessages = (messages: ChatMessage[], max: number): ChatMessage[] =>
   messages.length > max ? messages.slice(messages.length - max) : messages
 
-const pinKey = (m: ChatMessage): string => `${m.ts}|${m.from}`
-
-export const capMessagesPreservingPinned = (
-  messages: ChatMessage[],
-  max: number,
-  pinnedKeys: ReadonlySet<string>
-): ChatMessage[] => {
-  if (messages.length <= max) return messages
-  const recentN = messages.slice(messages.length - max)
-  const recentKeys = new Set(recentN.map(pinKey))
-  const olderPinned: ChatMessage[] = []
-  for (const m of messages.slice(0, messages.length - max)) {
-    const k = pinKey(m)
-    if (pinnedKeys.has(k) && !recentKeys.has(k)) olderPinned.push(m)
-  }
-  return olderPinned.length === 0 ? recentN : [...olderPinned, ...recentN]
-}
-
-export const capPerPush = (
-  next: ChatMessage[],
-  atBottom: boolean,
-  pinnedKeys: ReadonlySet<string>
-): ChatMessage[] => {
+export const capPerPush = (next: ChatMessage[], atBottom: boolean): ChatMessage[] => {
   if (!atBottom) return next
   if (next.length <= CAP_TRIGGER_THRESHOLD) return next
-  return capMessagesPreservingPinned(next, MAX_MESSAGES, pinnedKeys)
+  return next.slice(next.length - MAX_MESSAGES)
 }
 
 export const useWebSocket = (

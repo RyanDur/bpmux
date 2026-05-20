@@ -310,9 +310,6 @@ pub async fn run_server(
     orchestrator.add_reactions_listener(std::sync::Arc::new(
         crate::orchestrator::ReactionsSessionBroadcaster::new(session.clone()),
     ));
-    orchestrator.add_pins_listener(std::sync::Arc::new(
-        crate::orchestrator::PinsSessionBroadcaster::new(session.clone()),
-    ));
     orchestrator.add_roster_listener(std::sync::Arc::new(
         crate::orchestrator::RosterSessionBroadcaster::new(session.clone()),
     ));
@@ -401,12 +398,6 @@ pub async fn run_server(
             axum::routing::get(transport::rest::get_roster),
         )
         .route(
-            "/api/pins",
-            axum::routing::get(transport::rest::get_pins)
-                .post(transport::rest::post_pin)
-                .delete(transport::rest::delete_pin),
-        )
-        .route(
             "/api/reactions",
             axum::routing::get(transport::rest::get_reactions).post(transport::rest::post_reaction),
         )
@@ -441,10 +432,6 @@ pub async fn run_server(
             .route(
                 "/api/test/seed_messages",
                 axum::routing::post(transport::test_seed::post_seed_messages),
-            )
-            .route(
-                "/api/test/seed_pins",
-                axum::routing::post(transport::test_seed::post_seed_pins),
             )
             .route(
                 "/api/test/seed_reactions",
