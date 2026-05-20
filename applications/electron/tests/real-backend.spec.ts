@@ -672,13 +672,16 @@ test.describe('real-backend', () => {
         body: JSON.stringify(board)
       })
     })
-    const reorderCalls: Array<{ number: number; position: number }> = []
-    await win.route('**/api/stories/*/reorder', async (route) => {
+    const reorderCalls: Array<{ number: number }> = []
+    await win.route('**/api/stories/*/labels', async (route) => {
       const req = route.request()
+      if (req.method() !== 'POST') {
+        await route.fallback()
+        return
+      }
       const urlParts = req.url().split('/')
       const numberStr = urlParts[urlParts.length - 2] ?? ''
-      const body = req.postDataJSON() as { position: number }
-      reorderCalls.push({ number: Number.parseInt(numberStr, 10), position: body.position })
+      reorderCalls.push({ number: Number.parseInt(numberStr, 10) })
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
