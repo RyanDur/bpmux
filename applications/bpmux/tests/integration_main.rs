@@ -93,6 +93,8 @@ mod hook_auto_fire_skills_e2e;
 mod identity_mutation_e2e;
 #[path = "integration_main_modules/label_story_e2e.rs"]
 mod label_story_e2e;
+#[path = "integration_main_modules/label_story_iteration_retire_e2e.rs"]
+mod label_story_iteration_retire_e2e;
 #[path = "integration_main_modules/list_lessons_e2e.rs"]
 mod list_lessons_e2e;
 #[path = "integration_main_modules/list_peer_lessons_e2e.rs"]

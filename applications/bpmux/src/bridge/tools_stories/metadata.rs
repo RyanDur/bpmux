@@ -19,6 +19,29 @@ use super::signals::broadcast_board_invalidate;
 /// a no-op. Remove is idempotent — the tracker maps GitHub's 404
 /// ("label not attached") to Ok so callers can safely
 /// remove-without-checking.
+pub(crate) fn is_retired_iteration_label_axis(label: &str) -> bool {
+    use crate::board::label_codec::LabelCodec;
+    crate::board::adapters::gh_label_codec::GhLabelCodec
+        .decode_iteration(label)
+        .is_some()
+}
+
+pub(crate) fn retired_iteration_label_axis_error(label: &str) -> String {
+    serde_json::json!({
+        "kind": "tool-retired",
+        "retired_axis": "iteration-label",
+        "label": label,
+        "successor": "add_story_to_iteration",
+        "message": format!(
+            "label_story refuses iteration-axis labels (#1402 retire). \
+             Use add_story_to_iteration(iteration_number, story_number, position) \
+             — iteration-membership is canonical-relation substrate per #1399, \
+             not magic-string-parse labels. Label '{label}' parses as iteration-{{Theme}}.{{position}}."
+        ),
+    })
+    .to_string()
+}
+
 pub(crate) async fn handle_label_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
@@ -38,6 +61,9 @@ pub(crate) async fn handle_label_story(
         .get("operation")
         .and_then(|v| v.as_str())
         .unwrap_or("add");
+    if operation == "add" && is_retired_iteration_label_axis(label) {
+        return Err(retired_iteration_label_axis_error(label));
+    }
     if let Some(r) = refresh {
         ensure_story_in_canonical_store(r, number).await?;
         let meta = crate::board::events::EventMeta {

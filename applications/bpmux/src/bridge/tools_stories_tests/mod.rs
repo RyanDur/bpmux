@@ -5,6 +5,7 @@ mod add_story_to_iteration_tests;
 mod atp_validator_tests;
 mod handler_unit_tests;
 mod integration_drain_tests;
+mod label_story_iteration_retire_tests;
 mod lifecycle_handler_tests;
 mod mutation_handler_tests;
 mod notification_bridge_tests;
