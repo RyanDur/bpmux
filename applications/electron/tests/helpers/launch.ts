@@ -196,14 +196,6 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
       // them).
       BPMUX_TEST_SEED_API: '1',
       BPMUX_TEST_SEED_CI_GREEN: '1',
-      // #1286 Option 2: off-screen window-positioning. Tests on
-      // bpmux-mac-m1 (self-hosted; Ryan's dev machine) MUST NOT spawn
-      // visible windows that disrupt his live work. Main process
-      // reads this env var + positions BrowserWindow at (-10000, -10000)
-      // — technically active (no macOS throttle) + outside any
-      // reasonable monitor's coords. Sister to BPMUX_TEST_SEED_API
-      // gate: structural test-mode env var, never set in production.
-      BPMUX_TEST_WINDOW_POSITION: 'offscreen',
       // #1289 + #1290: route bpmux's session storage through
       // MemoryStorage so per-test backend-startup disk-I/O cost is
       // eliminated — the substrate-class that empirically falsified

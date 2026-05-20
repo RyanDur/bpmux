@@ -73,6 +73,7 @@
   & output {
     display: inline-flex;
     align-items: center;
+    align-self: center;
     -webkit-app-region: no-drag;
   }
 }
