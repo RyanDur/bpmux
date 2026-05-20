@@ -291,7 +291,7 @@ pub struct EpicCounts {
 
 impl EpicCounts {
     pub fn progress_denominator(&self) -> usize {
-        self.accepted_count + self.active_count
+        self.accepted_count + self.active_count + self.icebox_count
     }
 }
 

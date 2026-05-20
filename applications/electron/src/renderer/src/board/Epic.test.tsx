@@ -89,6 +89,22 @@ describe('#1185 Epic — meta-card DOM shape (falsifiers a-c, j)', () => {
     expect(html).toContain('max="1"')
   })
 
+  test('progress max excludes retired but INCLUDES icebox (canon-refinement 2026-05-20 23:12 UTC)', () => {
+    const epic = story({ number: 1100 })
+    const children: BoardStory[] = [
+      story({ number: 1101, state: 'accepted', labels: featureLabels, parent_epic: 1100 }),
+      story({ number: 1102, state: 'in-progress', labels: featureLabels, parent_epic: 1100 }),
+      story({ number: 1103, state: 'icebox', labels: featureLabels, parent_epic: 1100 }),
+      story({ number: 1104, state: 'icebox', labels: featureLabels, parent_epic: 1100 }),
+      story({ number: 1105, state: 'retired', labels: featureLabels, parent_epic: 1100 })
+    ]
+    const html = renderToStaticMarkup(
+      <Epic epics={[epic]} stories={[epic, ...children]} onOpen={() => {}} />
+    )
+    expect(html).toContain('value="1"')
+    expect(html).toContain('max="4"')
+  })
+
   test('progress aria-label exposes accepted/denom + state-breakdown for screen readers (#1451 retire-aware)', () => {
     const epic = story({ number: 1100 })
     const children: BoardStory[] = [
@@ -98,7 +114,7 @@ describe('#1185 Epic — meta-card DOM shape (falsifiers a-c, j)', () => {
     const html = renderToStaticMarkup(
       <Epic epics={[epic]} stories={[epic, ...children]} onOpen={() => {}} />
     )
-    expect(html).toMatch(/aria-label="Progress: 1 of 2 relevant children accepted/)
+    expect(html).toMatch(/aria-label="Progress: 1 of 2 children needing completion accepted/)
     expect(html).toContain('1 delivered')
     expect(html).toContain('0 in progress')
     expect(html).toContain('0 retired')
@@ -236,7 +252,7 @@ describe('#1235 Epic-card collapse — native <details>/<summary> + activity-cla
     expect(html).not.toMatch(/<details[^>]*\sopen\b/)
   })
 
-  test('summary line shows compact accepted/relevant progress (falsifier-d; #1451 retire+icebox aware)', () => {
+  test('summary line shows compact accepted/needs-completion progress (#1451 canon-refinement: icebox included; retired excluded)', () => {
     const epic = story({ number: 1100, state: 'in-progress' })
     const children: BoardStory[] = [
       story({ number: 1101, state: 'accepted', labels: featureLabels, parent_epic: 1100 }),
@@ -247,7 +263,7 @@ describe('#1235 Epic-card collapse — native <details>/<summary> + activity-cla
       <Epic epics={[epic]} stories={[epic, ...children]} onOpen={() => {}} />
     )
     expect(html).toContain('data-test="board-epic-1100-summary-progress"')
-    expect(html).toContain('1/2')
+    expect(html).toContain('1/3')
   })
 
   test('summary shows ✓ when all children accepted (100% complete)', () => {

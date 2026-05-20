@@ -515,7 +515,7 @@ fn derive_epic_counts_active_includes_all_canonical_active_states_1451() {
 }
 
 #[test]
-fn derive_epic_counts_progress_denominator_excludes_retired_1451() {
+fn derive_epic_counts_progress_denominator_excludes_only_retired_1451() {
     let kids = [
         epic_child(1, StoryState::Accepted),
         epic_child(2, StoryState::Accepted),
@@ -529,11 +529,61 @@ fn derive_epic_counts_progress_denominator_excludes_retired_1451() {
     assert_eq!(counts.accepted_count, 3);
     assert_eq!(counts.retired_count, 2);
     assert_eq!(counts.active_count, 1);
+    assert_eq!(counts.icebox_count, 0);
     assert_eq!(counts.total_count, 6);
     assert_eq!(
         counts.progress_denominator(),
         4,
-        "progress_denominator = accepted + active (retired excluded since scope-removed); 3 + 1 = 4, NOT 6"
+        "progress_denominator = accepted + active + icebox (only retired excluded as soft-delete); 3 + 1 + 0 = 4"
+    );
+}
+
+#[test]
+fn derive_epic_counts_progress_denominator_includes_icebox_1451_canon_refinement() {
+    let kids = [
+        epic_child(1, StoryState::Ready),
+        epic_child(2, StoryState::Icebox),
+        epic_child(3, StoryState::Icebox),
+        epic_child(4, StoryState::Icebox),
+        epic_child(5, StoryState::Icebox),
+        epic_child(6, StoryState::Icebox),
+        epic_child(7, StoryState::Icebox),
+        epic_child(8, StoryState::Icebox),
+        epic_child(9, StoryState::Icebox),
+    ];
+    let refs: Vec<&Story> = kids.iter().collect();
+    let counts = derive_epic_counts(&refs);
+    assert_eq!(counts.accepted_count, 0);
+    assert_eq!(counts.active_count, 1);
+    assert_eq!(counts.icebox_count, 8);
+    assert_eq!(counts.retired_count, 0);
+    assert_eq!(
+        counts.progress_denominator(),
+        9,
+        "Epic #1477 canon-truth: 1 active + 8 icebox = 9 stories needing completion; icebox INCLUDED in denom (Ryan-canon 2026-05-20 23:12 UTC)"
+    );
+}
+
+#[test]
+fn derive_epic_counts_progress_denominator_mixed_excludes_retired_only_1451_canon() {
+    let kids = [
+        epic_child(1, StoryState::Accepted),
+        epic_child(2, StoryState::Accepted),
+        epic_child(3, StoryState::InProgress),
+        epic_child(4, StoryState::Icebox),
+        epic_child(5, StoryState::Icebox),
+        epic_child(6, StoryState::Retired),
+    ];
+    let refs: Vec<&Story> = kids.iter().collect();
+    let counts = derive_epic_counts(&refs);
+    assert_eq!(counts.accepted_count, 2);
+    assert_eq!(counts.active_count, 1);
+    assert_eq!(counts.icebox_count, 2);
+    assert_eq!(counts.retired_count, 1);
+    assert_eq!(
+        counts.progress_denominator(),
+        5,
+        "mixed: 2 accepted + 1 active + 2 icebox = 5 (retired excluded); fraction reads 2/5"
     );
 }
 

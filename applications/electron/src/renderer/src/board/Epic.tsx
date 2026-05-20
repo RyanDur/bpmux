@@ -37,7 +37,7 @@ const breakdownFor = (epic: BoardStory, all: BoardStory[]): StateBreakdown => {
 }
 
 const progressDenominatorFor = (b: StateBreakdown): number =>
-  b.accepted + b.delivered + b.inProgress + b.deskCheck + b.ready
+  b.accepted + b.delivered + b.inProgress + b.deskCheck + b.ready + b.icebox
 
 const extractDescription = (body: string): string => {
   if (!body.trim()) return ''
@@ -52,7 +52,7 @@ const extractDescription = (body: string): string => {
 
 const breakdownAriaLabel = (b: StateBreakdown): string => {
   const denom = progressDenominatorFor(b)
-  return `Progress: ${b.accepted} of ${denom} relevant children accepted; ${b.delivered} delivered, ${b.inProgress} in progress, ${b.deskCheck} in desk-check, ${b.ready} ready, ${b.icebox} in icebox, ${b.retired} retired (scope-removed; excluded from progress denominator)`
+  return `Progress: ${b.accepted} of ${denom} children needing completion accepted; ${b.delivered} delivered, ${b.inProgress} in progress, ${b.deskCheck} in desk-check, ${b.ready} ready, ${b.icebox} in icebox, ${b.retired} retired (scope-removed; excluded from progress denominator)`
 }
 
 const isOpenByDefault = (derived: StoryState): boolean =>
@@ -115,7 +115,7 @@ const Epic = ({ epics, stories, onOpen }: Props): React.JSX.Element | null => {
                     className="board-epic-progress board-epic-progress--summary"
                     data-test={`board-epic-${epic.number}-progress`}
                     value={breakdown.accepted}
-                    max={breakdown.total === 0 ? 1 : breakdown.total}
+                    max={denom === 0 ? 1 : denom}
                     aria-label={breakdownAriaLabel(breakdown)}
                   />
                   <small
