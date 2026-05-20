@@ -43,6 +43,7 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         acceptance_test_path,
         raw_labels,
         body_etag,
+        iteration_membership: _,
     } = decoded;
 
     assert_eq!(*number, 42, "number must roundtrip from JSON");

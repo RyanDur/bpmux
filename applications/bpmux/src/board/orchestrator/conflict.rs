@@ -23,7 +23,8 @@ pub fn classify_conflict(
         | BoardEvent::StoryClosed { .. }
         | BoardEvent::StoryReopened { .. }
         | BoardEvent::ParentEpicSet { .. }
-        | BoardEvent::ParentEpicUnset { .. } => None,
+        | BoardEvent::ParentEpicUnset { .. }
+        | BoardEvent::IterationMembershipSet { .. } => None,
         BoardEvent::StoryCreated { .. }
         | BoardEvent::GateCommentAppended { .. }
         | BoardEvent::FreeCommentAppended { .. }

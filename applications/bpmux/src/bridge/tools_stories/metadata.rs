@@ -6,7 +6,7 @@
 use tokio::sync::Mutex;
 
 use super::super::tools::WsSink;
-use super::helpers::{ensure_story_in_canonical_store, require_purpose};
+use super::helpers::{ensure_story_in_canonical_store, require_purpose, role_from_name};
 use super::signals::broadcast_board_invalidate;
 
 /// label_story accepts an `operation` arg of "add" (default) or
@@ -122,6 +122,65 @@ pub(crate) async fn handle_set_parent_epic(
     .map_err(|e| format!("#{number} parent_epic enqueue failed: {e}"))?;
     broadcast_board_invalidate(ws_tx).await;
     Ok(format!("#{number} grouped under epic #{epic_number}"))
+}
+
+pub(crate) async fn handle_add_story_to_iteration(
+    args: &serde_json::Map<String, serde_json::Value>,
+    agent_name: &str,
+    ws_tx: &Mutex<Option<WsSink>>,
+    refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
+) -> Result<String, String> {
+    let actor_role = role_from_name(agent_name);
+    let workflow = crate::workflow::current_workflow();
+    let transition = crate::workflow::resolve_transition(
+        workflow,
+        "add-to-iteration",
+        crate::workflow::GateClass::None,
+    )
+    .map_err(|e| e.as_json_string())?;
+    crate::workflow::check_role_allowed(transition, actor_role).map_err(|e| e.as_json_string())?;
+    let story_number = args
+        .get("story_number")
+        .and_then(|v| v.as_u64())
+        .ok_or("missing 'story_number' argument")?;
+    let iteration_number = args
+        .get("iteration_number")
+        .and_then(|v| v.as_u64())
+        .ok_or("missing 'iteration_number' argument")?;
+    let position = args
+        .get("position")
+        .and_then(|v| v.as_u64())
+        .ok_or("missing 'position' argument")? as u32;
+    if story_number == iteration_number {
+        return Err(format!(
+            "story #{story_number} cannot be added to itself as iteration-member"
+        ));
+    }
+    let r = refresh.ok_or("add_story_to_iteration requires refresh (RefreshDriver)")?;
+    ensure_story_in_canonical_store(r, story_number).await?;
+    let parent = ensure_story_in_canonical_store(r, iteration_number).await?;
+    if parent.story_type != crate::board::domain::StoryType::Iteration {
+        return Err(format!(
+            "story #{iteration_number} is not an Iteration (story_type={:?}); only Iteration stories can carry iteration-members",
+            parent.story_type
+        ));
+    }
+    let meta = crate::board::events::EventMeta {
+        actor: crate::transport::ws::short_name(agent_name).to_string(),
+        ts: chrono::Utc::now(),
+        peer_id: crate::board::PeerId::local(),
+    };
+    r.mutate_sync(crate::board::BoardEvent::IterationMembershipSet {
+        meta,
+        number: story_number,
+        iteration_number,
+        position,
+    })
+    .map_err(|e| format!("#{story_number} iteration-membership enqueue failed: {e}"))?;
+    broadcast_board_invalidate(ws_tx).await;
+    Ok(format!(
+        "#{story_number} added to iteration #{iteration_number} at position {position}"
+    ))
 }
 
 pub(crate) async fn handle_unset_parent_epic(

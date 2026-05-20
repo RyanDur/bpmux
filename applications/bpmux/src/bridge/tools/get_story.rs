@@ -5,7 +5,7 @@ use crate::board::domain::{
     Gate, GateComment, StoryState, StoryType, derive_iteration_member_section,
     most_recent_backward_transition, replay_transitions, substitute_member_stories_section,
 };
-use crate::board::iteration_label::{members_with_iteration_label, theme_name_from_title};
+use crate::board::iteration_label::{members_of_iteration, theme_name_from_title};
 use crate::board::{BoardStore, RefreshDriver};
 
 use super::rework_context::enrich_body;
@@ -94,7 +94,7 @@ pub(in crate::bridge) async fn handle_get_story(
         let theme_name = theme_name_from_title(&story.title);
         let codec = GhLabelCodec;
         let all_stories = b.all_stories();
-        let member_numbers = members_with_iteration_label(&codec, &all_stories, &theme_name);
+        let member_numbers = members_of_iteration(&codec, &all_stories, story.number, &theme_name);
         let members: Vec<(u64, String)> = member_numbers
             .iter()
             .filter_map(|n| b.story(*n).map(|s| (*n, s.title.clone())))

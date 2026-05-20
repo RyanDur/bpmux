@@ -103,6 +103,35 @@ pub fn members_with_iteration_label<C: LabelCodec>(
     members.into_iter().map(|(n, _)| n).collect()
 }
 
+pub fn members_of_iteration<C: LabelCodec>(
+    codec: &C,
+    stories: &[Story],
+    iteration_number: u64,
+    theme_name: &str,
+) -> Vec<u64> {
+    let mut members: Vec<(u64, u32)> = stories
+        .iter()
+        .filter(|s| !s.is_closed)
+        .filter_map(|s| {
+            if let Some((it, pos)) = s.iteration_membership
+                && it == iteration_number
+            {
+                return Some((s.number, pos));
+            }
+            for raw in &s.raw_labels {
+                if let Some(parts) = codec.decode_iteration(raw)
+                    && parts.theme_name == theme_name
+                {
+                    return Some((s.number, parts.position));
+                }
+            }
+            None
+        })
+        .collect();
+    members.sort_by_key(|(_, pos)| *pos);
+    members.into_iter().map(|(n, _)| n).collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -316,6 +345,96 @@ mod tests {
             let parts = self.decode_iteration(label)?;
             Some(format!("iter|{}:", parts.theme_name))
         }
+    }
+
+    fn seed_with_iteration_membership(number: u64, iteration_number: u64, position: u32) -> Story {
+        let mut s = seed(number, vec![]);
+        s.iteration_membership = Some((iteration_number, position));
+        s
+    }
+
+    #[test]
+    fn members_of_iteration_reads_canonical_relation_field_first_1399() {
+        let stories = vec![
+            seed_with_iteration_membership(2001, 1397, 100),
+            seed_with_iteration_membership(2002, 1397, 200),
+        ];
+        assert_eq!(
+            members_of_iteration(&GhLabelCodec, &stories, 1397, "Telescopium"),
+            vec![2001, 2002]
+        );
+    }
+
+    #[test]
+    fn members_of_iteration_falls_back_to_legacy_theme_label_1399() {
+        let stories = vec![
+            seed(2001, vec!["iteration-Telescopium.100".to_string()]),
+            seed(2002, vec!["iteration-Telescopium.200".to_string()]),
+        ];
+        assert_eq!(
+            members_of_iteration(&GhLabelCodec, &stories, 1397, "Telescopium"),
+            vec![2001, 2002]
+        );
+    }
+
+    #[test]
+    fn members_of_iteration_unions_canonical_relation_and_legacy_theme_label_1399() {
+        let stories = vec![
+            seed_with_iteration_membership(2001, 1397, 100),
+            seed(2002, vec!["iteration-Telescopium.200".to_string()]),
+            seed_with_iteration_membership(2003, 1397, 300),
+        ];
+        assert_eq!(
+            members_of_iteration(&GhLabelCodec, &stories, 1397, "Telescopium"),
+            vec![2001, 2002, 2003]
+        );
+    }
+
+    #[test]
+    fn members_of_iteration_canonical_relation_takes_precedence_when_both_present_1399() {
+        let mut s = seed(2001, vec!["iteration-Telescopium.999".to_string()]);
+        s.iteration_membership = Some((1397, 100));
+        let stories = vec![s];
+        assert_eq!(
+            members_of_iteration(&GhLabelCodec, &stories, 1397, "Telescopium"),
+            vec![2001]
+        );
+    }
+
+    #[test]
+    fn members_of_iteration_skips_closed_stories_1399() {
+        let mut closed = seed_with_iteration_membership(2001, 1397, 100);
+        closed.is_closed = true;
+        let stories = vec![closed, seed_with_iteration_membership(2002, 1397, 200)];
+        assert_eq!(
+            members_of_iteration(&GhLabelCodec, &stories, 1397, "Telescopium"),
+            vec![2002]
+        );
+    }
+
+    #[test]
+    fn members_of_iteration_does_not_match_different_iteration_number_1399() {
+        let stories = vec![
+            seed_with_iteration_membership(2001, 1397, 100),
+            seed_with_iteration_membership(2002, 1398, 200),
+        ];
+        assert_eq!(
+            members_of_iteration(&GhLabelCodec, &stories, 1397, "Telescopium"),
+            vec![2001]
+        );
+    }
+
+    #[test]
+    fn members_of_iteration_sorts_position_ascending_across_substrates_1399() {
+        let stories = vec![
+            seed(2001, vec!["iteration-Telescopium.300".to_string()]),
+            seed_with_iteration_membership(2002, 1397, 100),
+            seed(2003, vec!["iteration-Telescopium.200".to_string()]),
+        ];
+        assert_eq!(
+            members_of_iteration(&GhLabelCodec, &stories, 1397, "Telescopium"),
+            vec![2002, 2003, 2001]
+        );
     }
 
     #[test]

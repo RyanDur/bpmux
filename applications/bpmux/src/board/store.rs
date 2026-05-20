@@ -230,6 +230,7 @@ impl BoardStore {
                     acceptance_test_path: crate::bridge::parse_acceptance_test_path(body),
                     raw_labels: Vec::new(),
                     body_etag: None,
+                    iteration_membership: None,
                 };
                 w.insert(*n, story);
             }
@@ -316,6 +317,15 @@ impl BoardStore {
                     story.parent_epic = None;
                 }
             }
+            BoardEvent::IterationMembershipSet {
+                iteration_number,
+                position,
+                ..
+            } => {
+                if let Some(story) = w.get_mut(&number) {
+                    story.iteration_membership = Some((*iteration_number, *position));
+                }
+            }
             BoardEvent::StoryRefreshed { story, .. } => {
                 if let Some(existing) = w.get_mut(&number) {
                     existing.title = story.title.clone();
@@ -324,6 +334,7 @@ impl BoardStore {
                     existing.tags = story.tags.clone();
                     existing.is_closed = story.is_closed;
                     existing.parent_epic = story.parent_epic;
+                    existing.iteration_membership = story.iteration_membership;
                     if story.body.is_some() {
                         existing.body = story.body.clone();
                         existing.acceptance_test_path = story.acceptance_test_path.clone();
@@ -346,6 +357,8 @@ impl BoardStore {
                         .collect();
                     existing.parent_epic =
                         crate::board::adapters::github::parent_epic_from_labels(labels);
+                    existing.iteration_membership =
+                        crate::board::adapters::github::iteration_membership_from_labels(labels);
                     existing.raw_labels = labels.clone();
                 }
             }

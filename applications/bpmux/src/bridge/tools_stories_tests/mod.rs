@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 mod acceptance_test_path_tests;
+mod add_story_to_iteration_tests;
 mod atp_validator_tests;
 mod handler_unit_tests;
 mod integration_drain_tests;

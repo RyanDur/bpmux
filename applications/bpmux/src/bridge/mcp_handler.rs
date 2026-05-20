@@ -173,6 +173,7 @@ impl ServerHandler for BridgeServer {
                 | "move_story"
                 | "set_parent_epic"
                 | "unset_parent_epic"
+                | "add_story_to_iteration"
                 | "reorder_story"
                 | "edit_story"
                 | "view_board"

@@ -82,6 +82,12 @@ pub enum BoardEvent {
         meta: EventMeta,
         number: u64,
     },
+    IterationMembershipSet {
+        meta: EventMeta,
+        number: u64,
+        iteration_number: u64,
+        position: u32,
+    },
     /// #1151: GH-API mutation response captured. The tracker's
     /// underlying GH endpoint returned the post-mutation Issue; the
     /// adapter parsed it into a `Story`; the orchestrator dispatches
@@ -139,6 +145,7 @@ impl BoardEvent {
             | BoardEvent::StoryReopened { meta, .. }
             | BoardEvent::ParentEpicSet { meta, .. }
             | BoardEvent::ParentEpicUnset { meta, .. }
+            | BoardEvent::IterationMembershipSet { meta, .. }
             | BoardEvent::StoryRefreshed { meta, .. }
             | BoardEvent::LabelsRefreshed { meta, .. }
             | BoardEvent::ConflictDetected { meta, .. }
@@ -161,6 +168,7 @@ impl BoardEvent {
             | BoardEvent::StoryReopened { number, .. }
             | BoardEvent::ParentEpicSet { number, .. }
             | BoardEvent::ParentEpicUnset { number, .. }
+            | BoardEvent::IterationMembershipSet { number, .. }
             | BoardEvent::StoryRefreshed { number, .. }
             | BoardEvent::LabelsRefreshed { number, .. }
             | BoardEvent::ConflictDetected { number, .. }

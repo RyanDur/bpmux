@@ -46,6 +46,7 @@ mod view_verdicts;
 
 // Story management tools (#140)
 mod accept_story;
+mod add_story_to_iteration;
 mod close_iteration;
 mod close_story;
 mod comment_on_story;
@@ -114,6 +115,7 @@ pub use view_tokens::view_tokens_tool;
 pub use view_verdicts::view_verdicts_tool;
 
 pub use accept_story::accept_story_tool;
+pub use add_story_to_iteration::add_story_to_iteration_tool;
 pub use close_iteration::close_iteration_tool;
 pub use close_story::close_story_tool;
 pub use comment_on_story::comment_on_story_tool;

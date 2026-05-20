@@ -5,8 +5,9 @@ use chrono::{TimeZone, Utc};
 use crate::board::adapters::github::is_iteration_position_label_for_test as is_iteration_position_label;
 use crate::board::adapters::github::is_position_label_for_test as is_position_label;
 use crate::board::adapters::github::{
-    classify_gate, decode_gate_comments, decode_story_metadata, parent_epic_from_labels,
-    state_from_labels, state_to_label, tags_from_labels, warn_on_inconsistent_state_labels,
+    classify_gate, decode_gate_comments, decode_story_metadata, iteration_membership_from_labels,
+    parent_epic_from_labels, state_from_labels, state_to_label, tags_from_labels,
+    warn_on_inconsistent_state_labels,
 };
 use crate::board::domain::story_type_from_labels_or_title;
 use crate::board::domain::{Gate, StoryState, StoryType, Tag};
@@ -608,6 +609,58 @@ fn parent_epic_from_labels_picks_first_well_formed_match() {
         "parent-epic-#200".to_string(),
     ];
     assert_eq!(parent_epic_from_labels(&labels), Some(100));
+}
+
+#[test]
+fn iteration_membership_from_labels_extracts_number_and_position_1399() {
+    let labels = vec![
+        "ready".to_string(),
+        "parent-iteration-#1397.100".to_string(),
+    ];
+    assert_eq!(iteration_membership_from_labels(&labels), Some((1397, 100)));
+}
+
+#[test]
+fn iteration_membership_from_labels_returns_none_when_label_absent_1399() {
+    let labels = vec!["ready".to_string(), "icebox".to_string()];
+    assert_eq!(iteration_membership_from_labels(&labels), None);
+}
+
+#[test]
+fn iteration_membership_from_labels_returns_none_when_position_missing_1399() {
+    let labels = vec!["parent-iteration-#1397".to_string()];
+    assert_eq!(iteration_membership_from_labels(&labels), None);
+}
+
+#[test]
+fn iteration_membership_from_labels_returns_none_when_position_unparseable_1399() {
+    let labels = vec!["parent-iteration-#1397.abc".to_string()];
+    assert_eq!(iteration_membership_from_labels(&labels), None);
+}
+
+#[test]
+fn iteration_membership_from_labels_returns_none_when_iteration_number_unparseable_1399() {
+    let labels = vec!["parent-iteration-#abc.100".to_string()];
+    assert_eq!(iteration_membership_from_labels(&labels), None);
+}
+
+#[test]
+fn iteration_membership_from_labels_handles_large_position_and_iteration_number_1399() {
+    let labels = vec!["parent-iteration-#999999999.4294967295".to_string()];
+    assert_eq!(
+        iteration_membership_from_labels(&labels),
+        Some((999_999_999, u32::MAX))
+    );
+}
+
+#[test]
+fn iteration_membership_from_labels_picks_first_well_formed_match_1399() {
+    let labels = vec![
+        "parent-iteration-#1397.bad".to_string(),
+        "parent-iteration-#1397.100".to_string(),
+        "parent-iteration-#1398.200".to_string(),
+    ];
+    assert_eq!(iteration_membership_from_labels(&labels), Some((1397, 100)));
 }
 
 #[test]

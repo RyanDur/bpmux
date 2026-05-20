@@ -57,6 +57,7 @@ fn known_tools() -> &'static [&'static str] {
         "label_story",
         "set_parent_epic",
         "unset_parent_epic",
+        "add_story_to_iteration",
         "reorder_story",
         "edit_story",
         "view_board",
@@ -203,6 +204,9 @@ async fn dispatch(
         "set_parent_epic" => bridge::dispatch_test_set_parent_epic(args, agent, refresh_ref).await,
         "unset_parent_epic" => {
             bridge::dispatch_test_unset_parent_epic(args, agent, refresh_ref).await
+        }
+        "add_story_to_iteration" => {
+            bridge::dispatch_test_add_story_to_iteration(args, agent, refresh_ref).await
         }
         "reorder_story" => bridge::dispatch_test_reorder_story(args, agent, refresh_ref).await,
         "move_story" => bridge::dispatch_test_move_story(args, agent, refresh_ref).await,

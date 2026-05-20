@@ -17,6 +17,8 @@ mod accept_story_e2e;
 mod accept_story_substrate_enforce_e2e;
 #[path = "integration_main_modules/acceptance_reject_substrate_enforce_e2e.rs"]
 mod acceptance_reject_substrate_enforce_e2e;
+#[path = "integration_main_modules/add_story_to_iteration_e2e.rs"]
+mod add_story_to_iteration_e2e;
 #[path = "integration_main_modules/agent_side_assertions.rs"]
 mod agent_side_assertions;
 #[path = "integration_main_modules/atp_pre_filing_audit_substrate_enforce_e2e.rs"]

@@ -34,8 +34,8 @@ pub(crate) use helpers::{
     validate_acceptance_test_path_at_pickup,
 };
 pub(crate) use metadata::{
-    handle_comment_on_story, handle_edit_story, handle_label_story, handle_set_parent_epic,
-    handle_unset_parent_epic,
+    handle_add_story_to_iteration, handle_comment_on_story, handle_edit_story, handle_label_story,
+    handle_set_parent_epic, handle_unset_parent_epic,
 };
 pub(crate) use reorder::{
     handle_reorder_story, reorder_icebox_story_via_labels, reorder_ready_story_via_labels,

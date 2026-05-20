@@ -212,6 +212,8 @@ pub struct Story {
     pub raw_labels: Vec<String>,
     #[serde(default)]
     pub body_etag: Option<String>,
+    #[serde(default)]
+    pub iteration_membership: Option<(u64, u32)>,
 }
 
 impl Story {
@@ -242,6 +244,7 @@ impl Story {
             acceptance_test_path: None,
             raw_labels,
             body_etag: None,
+            iteration_membership: None,
         }
     }
 }

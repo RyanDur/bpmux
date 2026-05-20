@@ -344,6 +344,34 @@ impl SourceAdapter for GitHubSourceAdapter {
                     labels,
                 }))
             }
+            BoardEvent::IterationMembershipSet {
+                number,
+                iteration_number,
+                position,
+                ..
+            } => {
+                let current = self.inner.get_story_labels(*number).await;
+                for l in current
+                    .iter()
+                    .filter(|l| l.starts_with("parent-iteration-#"))
+                {
+                    self.inner
+                        .remove_label(*number, l)
+                        .await
+                        .map_err(SyncError::Other)?;
+                }
+                let label = format!("parent-iteration-#{iteration_number}.{position}");
+                let labels = self
+                    .inner
+                    .add_label(*number, &label)
+                    .await
+                    .map_err(SyncError::Other)?;
+                Ok(Some(BoardEvent::LabelsRefreshed {
+                    meta: crate::board::orchestrator::cache_fill_meta(),
+                    number: *number,
+                    labels,
+                }))
+            }
             BoardEvent::BodyFetched { .. }
             | BoardEvent::FreeCommentsFetched { .. }
             | BoardEvent::GateCommentsFetched { .. }
@@ -487,6 +515,7 @@ pub fn decode_story_metadata(v: &serde_json::Value) -> Option<Story> {
     story.tags = tags_from_labels(&labels);
     story.is_closed = is_closed;
     story.parent_epic = parent_epic_from_labels(&labels);
+    story.iteration_membership = iteration_membership_from_labels(&labels);
     story.raw_labels = labels;
     if let Some(body) = v.get("body").and_then(|x| x.as_str()) {
         story.body = Some(body.to_string());
@@ -499,6 +528,16 @@ pub fn parent_epic_from_labels(labels: &[String]) -> Option<u64> {
     labels
         .iter()
         .find_map(|l| l.strip_prefix("parent-epic-#").and_then(|n| n.parse().ok()))
+}
+
+pub fn iteration_membership_from_labels(labels: &[String]) -> Option<(u64, u32)> {
+    labels.iter().find_map(|l| {
+        let rest = l.strip_prefix("parent-iteration-#")?;
+        let (n_str, p_str) = rest.split_once('.')?;
+        let iteration_number: u64 = n_str.parse().ok()?;
+        let position: u32 = p_str.parse().ok()?;
+        Some((iteration_number, position))
+    })
 }
 
 fn is_iteration_position_label(label: &str) -> bool {
