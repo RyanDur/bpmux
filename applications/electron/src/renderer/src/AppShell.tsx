@@ -4,18 +4,10 @@ import BoardResizeHandle, { BOARD_DEFAULT_WIDTH, clampBoardWidth } from './board
 import Chat from './chat/Chat'
 import CiGlyph from './ci/CiGlyph'
 import SyncStatusGlyph from './sync/SyncStatusGlyph'
-import { useDensity } from './hooks/useDensity'
 import { useLaneSeparation } from './hooks/useLaneSeparation'
 import { useMessageFilter } from './hooks/useMessageFilter'
 import { useTheme } from './hooks/useTheme'
-import {
-  LanesIcon,
-  MoonIcon,
-  RowsComfortableIcon,
-  RowsCompactIcon,
-  StreamIcon,
-  SunIcon
-} from './icons/TitlebarIcons'
+import { MoonIcon, SunIcon } from './icons/TitlebarIcons'
 import { useBoardWidthStorage } from './lib/useBoardWidthStorage'
 import Sidebar from './sidebar/Sidebar'
 import type {
@@ -93,9 +85,6 @@ const AppShell = ({
   mirrorPins,
   mirrorRoster
 }: Props): React.JSX.Element => {
-  const statusLabel =
-    status === 'connected' ? 'connected' : status === 'connecting' ? 'connecting' : 'disconnected'
-
   const [boardOpen, setBoardOpen] = useState<boolean>(true)
   const boardWidthStorage = useBoardWidthStorage(
     'bpmux-board-width',
@@ -116,8 +105,7 @@ const AppShell = ({
   const [allView, setAllView] = useState<boolean>(initialScope?.kind === 'all')
   const [metricsOpen, setMetricsOpen] = useState<boolean>(false)
   const { theme, toggle: toggleTheme } = useTheme()
-  const { density, toggle: toggleDensity } = useDensity()
-  const { lanes, toggle: toggleLanes } = useLaneSeparation()
+  const { lanes } = useLaneSeparation()
   const filter = useMessageFilter()
   const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
 
@@ -162,24 +150,22 @@ const AppShell = ({
   return (
     <main className="app" data-test="app-root">
       <header className="titlebar" data-test="titlebar">
-        <strong className="titlebar-app">bpmux</strong>
-        <i className="titlebar-spacer" aria-hidden="true" />
-        <span
-          className={`titlebar-connection titlebar-connection--${status}`}
-          title={`WebSocket connection: ${statusLabel}`}
-          aria-label={`WebSocket connection ${statusLabel}`}
-          data-test="titlebar-connection"
+        <strong
+          className={`titlebar-app titlebar-app--${status}`}
+          data-status={status}
+          data-test="titlebar-app"
+          aria-label={`bpmux ${status === 'connected' ? 'online' : status === 'connecting' ? 'reconnecting' : 'offline'}`}
         >
-          <i className={`titlebar-status titlebar-status--${status}`} aria-hidden="true" />
-          <small className="titlebar-connection-label" data-test="titlebar-connection-label">
+          bpmux{' '}
+          <span className="titlebar-app-state" data-test="titlebar-app-state">
             {status === 'connected'
               ? 'online'
               : status === 'connecting'
-                ? 'connecting…'
+                ? 'reconnecting'
                 : 'offline'}
-          </small>
-        </span>
-        <i className="titlebar-divider" aria-hidden="true" />
+          </span>
+        </strong>
+        <i className="titlebar-spacer" aria-hidden="true" />
         <button
           type="button"
           className="titlebar-theme-toggle"
@@ -189,44 +175,18 @@ const AppShell = ({
         >
           {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
         </button>
-        <button
-          type="button"
-          className="titlebar-density-toggle"
-          onClick={toggleDensity}
-          aria-pressed={density === 'compact'}
-          aria-label={
-            density === 'compact' ? 'Switch to comfortable density' : 'Switch to compact density'
-          }
-          title={
-            density === 'compact' ? 'Switch to comfortable density' : 'Switch to compact density'
-          }
-          data-test="titlebar-density-toggle"
-          data-density={density}
-        >
-          {density === 'compact' ? <RowsCompactIcon /> : <RowsComfortableIcon />}
-        </button>
-        <button
-          type="button"
-          className="titlebar-lanes-toggle"
-          onClick={toggleLanes}
-          aria-pressed={lanes === 'on'}
-          aria-label={
-            lanes === 'on' ? 'Switch to interleaved messages' : 'Switch to lane-separated messages'
-          }
-          title={
-            lanes === 'on' ? 'Switch to interleaved messages' : 'Switch to lane-separated messages'
-          }
-          data-test="titlebar-lanes-toggle"
-          data-lanes={lanes}
-        >
-          {lanes === 'on' ? <LanesIcon /> : <StreamIcon />}
-        </button>
-        <CiGlyph ciSnapshot={ciSnapshot} />
-        <SyncStatusGlyph
-          apiBase={bridge?.apiBase}
-          authToken={bridge?.authToken}
-          messages={messages}
-        />
+        <span className="titlebar-indicator-group" data-test="titlebar-ci">
+          <small className="titlebar-indicator-label">CI</small>
+          <CiGlyph ciSnapshot={ciSnapshot} />
+        </span>
+        <span className="titlebar-indicator-group" data-test="titlebar-board">
+          <small className="titlebar-indicator-label">Board</small>
+          <SyncStatusGlyph
+            apiBase={bridge?.apiBase}
+            authToken={bridge?.authToken}
+            messages={messages}
+          />
+        </span>
       </header>
       <section className="app-body">
         <Sidebar

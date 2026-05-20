@@ -311,6 +311,7 @@ function createWindow(): void {
     height: 670,
     show: false,
     autoHideMenuBar: true,
+    titleBarStyle: 'hiddenInset',
     ...(offscreen ? { x: OFFSCREEN_X, y: OFFSCREEN_Y } : {}),
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {

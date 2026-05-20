@@ -9,75 +9,41 @@
   gap: var(--space-8);
   height: 40px;
   padding: 0 var(--space-8);
+  padding-left: 80px;
   border-bottom: 1px solid var(--border-subtle);
   background: var(--bg-elevated);
   font-size: 0.8125rem;
   font-weight: 600;
-  /* Frameless-friendly; ignored when the window is framed. */
   -webkit-app-region: drag;
 
   & .titlebar-app {
     color: var(--fg-primary);
+    transition: color var(--motion-duration-fast) var(--motion-ease-out);
+
+    &.titlebar-app--connected .titlebar-app-state {
+      color: var(--accent-success);
+    }
+
+    &.titlebar-app--connecting .titlebar-app-state {
+      color: var(--accent-warning);
+    }
+
+    &.titlebar-app--disconnected .titlebar-app-state {
+      color: var(--accent-error);
+    }
+  }
+
+  & .titlebar-app-state {
+    color: var(--fg-dim);
+    font-weight: 400;
+    transition: color var(--motion-duration-fast) var(--motion-ease-out);
   }
 
   & .titlebar-spacer {
     flex: 1 1 auto;
   }
 
-  /* Connection indicator (dot + visible label, #362). Label makes
-   * the connection-vs-CI distinction obvious at glance without
-   * relying on hover tooltips that aren't visible until the user
-   * pauses there. */
-  & .titlebar-connection {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-4);
-    color: var(--fg-secondary);
-    font-size: 0.75rem;
-    font-weight: 400;
-    padding: 0 var(--space-6);
-    -webkit-app-region: no-drag;
-  }
-
-  & .titlebar-connection-label {
-    color: var(--fg-secondary);
-  }
-
-  & .titlebar-status {
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--fg-dim);
-    transition: background-color var(--motion-duration-fast) var(--motion-ease-out);
-
-    &.titlebar-status--connected {
-      background: var(--accent-success);
-    }
-
-    &.titlebar-status--connecting {
-      background: var(--accent-warning);
-    }
-
-    &.titlebar-status--disconnected {
-      background: var(--accent-error);
-    }
-  }
-
-  /* Vertical divider between connection + right-side titlebar items
-   * (theme toggle, CI glyph). Visual separation reinforces the
-   * semantic-region boundary so users don't lump the indicators
-   * together. */
-  & .titlebar-divider {
-    width: 1px;
-    height: 18px;
-    background: var(--border-subtle);
-    display: inline-block;
-  }
-
-  & .titlebar-theme-toggle,
-  & .titlebar-density-toggle,
-  & .titlebar-lanes-toggle {
+  & .titlebar-theme-toggle {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -102,13 +68,16 @@
     }
   }
 
-  /* Pressed state styling shared across density + lanes toggles so
-   * both feel consistent with the titlebar's filter-affordance
-   * vocabulary (accent-brand tint when the non-default mode is
-   * active). */
-  & .titlebar-density-toggle[aria-pressed='true'],
-  & .titlebar-lanes-toggle[aria-pressed='true'] {
-    background: color-mix(in srgb, var(--accent-brand) 12%, transparent);
-    color: var(--accent-brand);
+  & .titlebar-indicator-group {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-4);
+    -webkit-app-region: no-drag;
+  }
+
+  & .titlebar-indicator-label {
+    color: var(--fg-secondary);
+    font-size: 0.75rem;
+    font-weight: 500;
   }
 }
