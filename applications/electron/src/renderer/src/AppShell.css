@@ -7,7 +7,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-8);
-  height: 28px;
+  height: 32px;
   padding: 0 var(--space-8);
   padding-left: 80px;
   border-bottom: 1px solid var(--border-subtle);
@@ -21,7 +21,7 @@
     display: inline-flex;
     align-items: center;
     gap: var(--space-4);
-    height: 100%;
+    flex: 1;
     color: var(--fg-primary);
     transition: color var(--motion-duration-fast) var(--motion-ease-out);
 
@@ -43,10 +43,6 @@
     font-weight: 400;
     font-size: 0.75rem;
     transition: color var(--motion-duration-fast) var(--motion-ease-out);
-  }
-
-  & .titlebar-spacer {
-    flex: 1 1 auto;
   }
 
   & .titlebar-theme-toggle {
@@ -74,16 +70,9 @@
     }
   }
 
-  & .titlebar-indicator-group {
+  & output {
     display: inline-flex;
     align-items: center;
-    gap: var(--space-4);
     -webkit-app-region: no-drag;
-  }
-
-  & .titlebar-indicator-label {
-    color: var(--fg-secondary);
-    font-size: 0.75rem;
-    font-weight: 500;
   }
 }

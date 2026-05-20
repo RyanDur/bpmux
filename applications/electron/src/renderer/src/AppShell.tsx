@@ -148,16 +148,14 @@ const AppShell = ({
           data-test="titlebar-app"
           aria-label={`bpmux ${status === 'connected' ? 'online' : status === 'connecting' ? 'reconnecting' : 'offline'}`}
         >
-          <span className="titlebar-app-name">bpmux</span>
-          <span className="titlebar-app-state" data-test="titlebar-app-state">
-            {status === 'connected'
+          bpmux <small className="titlebar-app-state" data-test="titlebar-app-state">{
+            status === 'connected'
               ? 'online'
               : status === 'connecting'
                 ? 'reconnecting'
-                : 'offline'}
-          </span>
+                : 'offline'
+          }</small>
         </strong>
-        <i className="titlebar-spacer" aria-hidden="true" />
         <button
           type="button"
           className="titlebar-theme-toggle"
@@ -167,9 +165,9 @@ const AppShell = ({
         >
           {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
         </button>
-        <span className="titlebar-indicator-group" data-test="titlebar-ci">
+        <output data-test="titlebar-ci">
           <CiGlyph ciSnapshot={ciSnapshot} />
-        </span>
+        </output>
       </header>
       <section className="app-body">
         <Sidebar

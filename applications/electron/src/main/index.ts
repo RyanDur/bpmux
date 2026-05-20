@@ -5,7 +5,6 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync } from 'fs'
 import { spawn, ChildProcess } from 'child_process'
 import * as http from 'http'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import icon from '../../resources/icon.png?asset'
 import { applySelfUpdateRestartPolicy } from './selfUpdateRestartPolicy'
 
 const BACKEND_HOST = '127.0.0.1'
@@ -311,9 +310,10 @@ function createWindow(): void {
     height: 670,
     show: false,
     autoHideMenuBar: true,
-    titleBarStyle: 'hiddenInset',
-    ...(offscreen ? { x: OFFSCREEN_X, y: OFFSCREEN_Y } : {}),
-    ...(process.platform === 'linux' ? { icon } : {}),
+    titleBarStyle: 'hidden',
+    titleBarOverlay: {
+      height: 32
+    },
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: true,
