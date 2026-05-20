@@ -67,7 +67,7 @@ by sister-shape sub-batch (the unit of migration-slice scope).
 | `app.spec.ts` | Electron app boot/launch invariants | Real-Electron-main |
 | `launch-helper.spec.ts` | `launchIsolatedElectron` infrastructure tests itself | Real-Electron-main |
 | `canary-env-leak.spec.ts` | Detects env-var leakage from dev shell into Playwright subprocess | Real-Electron-main + env-isolation |
-| `playwright-in-ci-smoke.spec.ts` | Asserts CI workflow shape (.github/workflows/ci.yml structure) | CI-infrastructure (no renderer dependency) |
+| `playwright-in-ci-smoke.spec.ts` | Asserts CI workflow shape (`ci.yml` self-hosted + `e2e.yml` GH-hosted split per #1463) | CI-infrastructure (no renderer dependency) |
 | `port-isolation.spec.ts` | Port-allocation infrastructure tests itself | Real-Electron-main |
 | `desk-check-378.spec.ts` | Notification fire on backgrounded window | Native-OS |
 | `desk-check-382.spec.ts` | Notification permission + permission-granted path | Native-OS |

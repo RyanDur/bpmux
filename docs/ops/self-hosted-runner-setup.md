@@ -263,8 +263,8 @@ Per the 2026-05-12 saturation discovery (bpmux-mac-m1 load avg 30+, 800 processe
 | Job | Runner | Trigger | Notes |
 |-----|--------|---------|-------|
 | `test` (fmt/clippy/nextest/audit) | `[self-hosted, macos, arm64]` | every push | No GH-quota burn; cargo-only |
-| `build-bpmux` | `ubuntu-latest` | cron / dispatch / `[e2e]` msg | Linux x86_64 binary for playwright-e2e |
-| `playwright-e2e` (6-shard, xvfb, --workers=4) | `ubuntu-latest` | cron / dispatch / `[e2e]` msg | Async cadence; per-push gating is local pre-push hook |
+| `build-bpmux` | `ubuntu-latest` | `workflow_dispatch` / `push:tags:['v*']` (per #1463, in `e2e.yml`) | Linux x86_64 binary for `playwright-e2e` |
+| `playwright-e2e` (6-shard, xvfb, --workers=4) | `ubuntu-latest` | `workflow_dispatch` / `push:tags:['v*']` (per #1463, in `e2e.yml`) | Async cadence; per-push gating is local pre-push hook |
 
 ### Wall-clock measurements
 
@@ -350,8 +350,8 @@ documents the *intended* state rather than the live state.
 
 - Sharding-rethink: 1-shard `--workers=8` vs 6-shard serialized
   (whichever has lower wall-clock + acceptable memory ceiling)
-- Off-hours CI cron: schedule e2e at 4am UTC (designer mitigation 4)
-  to reduce real-time conflict with Ryan's live dev hours
+
+(Off-hours CI cron was tried at 4am UTC schedule, then reverted in #1463 after the cron caused recurring GH Actions budget exhaustion. e2e is now manual/release-tag only.)
 
 ## Slice 3 cutover (#1253) — routing-mode + rollback runbook
 
@@ -361,11 +361,11 @@ Final shape after empirical observation that bpmux-mac-m1's shared-dev-host
 saturation made the full-self-hosted playwright run unstable (worker
 teardown timeouts under workers=4, 2, and 1):
 
-- **`test` job** (cargo fmt + clippy + nextest + audit): `[self-hosted, macos, arm64]` — always on push. No GH-quota burn.
-- **`build-bpmux` + `playwright-e2e` jobs**: `ubuntu-latest` — gated triggers ONLY.
-  - `schedule: cron: '0 4 * * *'` (nightly at 4am UTC)
+- **`test` job** (cargo fmt + clippy + nextest + audit): `[self-hosted, macos, arm64]` in `ci.yml` — always on push. No GH-quota burn.
+- **`vitest-rtl` job**: `[self-hosted, macos, arm64]` in `ci.yml` — always on push. No GH-quota burn.
+- **`build-bpmux` + `playwright-e2e` jobs**: `ubuntu-latest` in `e2e.yml` (per #1463 substrate-fix) — gated triggers ONLY.
   - `workflow_dispatch` (manual fire from GH Actions UI)
-  - Commit-message opt-in: `contains(github.event.head_commit.message, '[e2e]')`
+  - `push: tags: ['v*']` (release-tag pattern)
 - **Pre-push hook** (local, Ryan's machine + dev's machines): runs ALL tests including playwright. This is the per-push gate.
 
 This preserves: push-to-main is still gated by playwright at the pre-push layer; CI playwright runs on-demand + nightly to catch regressions that the pre-push hook missed.
@@ -390,21 +390,22 @@ permanent-overlap without an end-date forcing function).
 
 ### Quota-bypass verification
 
-Post-cutover grep over `.github/workflows/*.yml` returns zero
-hits for `ubuntu-latest` or `macos-latest`:
+Post-#1463 grep over `.github/workflows/*.yml`:
 
 ```
 $ grep -E '^[[:space:]]*runs-on:' .github/workflows/*.yml
-ci.yml:    runs-on: [self-hosted, macos, arm64]   # build-bpmux
 ci.yml:    runs-on: [self-hosted, macos, arm64]   # test
-ci.yml:    runs-on: [self-hosted, macos, arm64]   # playwright-e2e
+ci.yml:    runs-on: [self-hosted, macos, arm64]   # vitest-rtl
+e2e.yml:    runs-on: ubuntu-latest                # build-bpmux
+e2e.yml:    runs-on: ubuntu-latest                # playwright-e2e
 self-hosted-runner-smoke.yml: runs-on: [self-hosted, macos, arm64]
 ```
 
-All 4 jobs across both workflow files route to the self-hosted
-runner. Forward observation: confirm Repo Settings → Actions →
-Usage shows zero quota-burn ≥1 week post-cutover (filing-time
-verification not possible — runbook entry below).
+Per-push CI (`ci.yml`) routes entirely to the self-hosted runner — zero
+GH-hosted quota burn on every push. `e2e.yml`'s GH-hosted jobs only
+fire on `workflow_dispatch` (manual) or `push: tags: ['v*']` (release-
+tag), so they consume quota only at deliberate cadence rather than
+on every push or daily cron.
 
 ### Rollback runbook
 
