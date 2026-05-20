@@ -4,7 +4,6 @@ import BoardResizeHandle, { BOARD_DEFAULT_WIDTH, clampBoardWidth } from './board
 import Chat from './chat/Chat'
 import CiGlyph from './ci/CiGlyph'
 import SyncStatusGlyph from './sync/SyncStatusGlyph'
-import { useLaneSeparation } from './hooks/useLaneSeparation'
 import { useMessageFilter } from './hooks/useMessageFilter'
 import { useTheme } from './hooks/useTheme'
 import { MoonIcon, SunIcon } from './icons/TitlebarIcons'
@@ -105,7 +104,6 @@ const AppShell = ({
   const [allView, setAllView] = useState<boolean>(initialScope?.kind === 'all')
   const [metricsOpen, setMetricsOpen] = useState<boolean>(false)
   const { theme, toggle: toggleTheme } = useTheme()
-  const { lanes } = useLaneSeparation()
   const filter = useMessageFilter()
   const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
 
@@ -212,7 +210,6 @@ const AppShell = ({
           onCloseMetrics={() => setMetricsOpen(false)}
           apiBase={bridge?.apiBase}
           authToken={bridge?.authToken}
-          lanes={lanes}
           onSend={onSend}
           loadOlder={loadOlder}
           isLoadingOlder={isLoadingOlder}

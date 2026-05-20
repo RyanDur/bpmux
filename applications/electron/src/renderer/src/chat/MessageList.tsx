@@ -20,7 +20,6 @@ interface Props {
   viewer?: string
   apiBase?: string
   authToken?: string
-  lanes?: 'on' | 'off'
   recipient?: string[] | null
   allView?: boolean
   onSelectRecipient?: (r: string[] | null) => void
@@ -54,7 +53,6 @@ const MessageList = ({
   viewer,
   apiBase,
   authToken,
-  lanes = 'off',
   recipient = null,
   allView = false,
   onSelectRecipient,
@@ -136,44 +134,6 @@ const MessageList = ({
       grouped: isGroupedWithPrev(m, i > 0 ? slice[i - 1] : null)
     }))
     return [...withGrouping].reverse()
-  }
-
-  if (lanes === 'on') {
-    const LANE_ORDER: MessageClass[] = ['chat', 'insight', 'activity', 'system']
-    const byClass = new Map<MessageClass, ChatMessage[]>()
-    for (const cls of LANE_ORDER) byClass.set(cls, [])
-    for (const m of visible) {
-      const cls = classOf(m.messageType)
-      byClass.get(cls)?.push(m)
-    }
-    return (
-      <div className="message-lanes" data-test="message-lanes">
-        {LANE_ORDER.map((cls) => {
-          const slice = byClass.get(cls) ?? []
-          if (slice.length === 0) return null
-          const rows = buildReversed(slice)
-          return (
-            <section
-              key={cls}
-              className={`message-lane message-lane--${cls}`}
-              data-test="message-lane"
-              data-lane-class={cls}
-              aria-label={`${cls} messages`}
-            >
-              <header className="message-lane-header">
-                <h3 className="message-lane-title">{cls}</h3>
-                <small className="message-lane-count">{slice.length}</small>
-              </header>
-              <section role="log" aria-live="polite" className="message-log-region">
-                <ul className="message-list message-list--lane">
-                  {rows.map(renderRow)}
-                </ul>
-              </section>
-            </section>
-          )
-        })}
-      </div>
-    )
   }
 
   const reversed = buildReversed(visible)

@@ -27,7 +27,6 @@ interface Props {
   onCloseMetrics: () => void
   apiBase: string | undefined
   authToken: string | undefined
-  lanes?: 'on' | 'off'
   onSend: (text: string, opts?: SendOptions) => void
   loadOlder?: () => Promise<void>
   isLoadingOlder?: boolean
@@ -50,7 +49,6 @@ const Chat = ({
   onCloseMetrics,
   apiBase,
   authToken,
-  lanes = 'off',
   onSend,
   loadOlder,
   isLoadingOlder,
@@ -153,7 +151,6 @@ const Chat = ({
         onSelectRecipient={onSelectRecipient}
         apiBase={apiBase}
         authToken={authToken}
-        lanes={lanes}
         loadOlder={loadOlder}
         isLoadingOlder={isLoadingOlder}
         hasMoreOlder={hasMoreOlder}
