@@ -213,3 +213,67 @@ fn require_role_rejects_non_designer_from_desk_check_operations() {
         assert!(result.unwrap_err().contains("restricted to designer"));
     }
 }
+
+fn reorder_args(
+    number: u64,
+    position: u64,
+    state: &str,
+) -> serde_json::Map<String, serde_json::Value> {
+    let mut args = serde_json::Map::new();
+    args.insert("number".into(), serde_json::json!(number));
+    args.insert("position".into(), serde_json::json!(position));
+    args.insert("state".into(), serde_json::json!(state));
+    args
+}
+
+#[tokio::test]
+async fn reorder_story_rejects_non_pm_roles_via_workflow_gate_1265() {
+    let ws_tx = tokio::sync::Mutex::new(None);
+    let args = reorder_args(42, 1, "ready");
+    for caller in [
+        "designer:claude-code",
+        "dev:claude-code",
+        "ryan:human",
+        "intern:claude-code",
+    ] {
+        let result = handle_reorder_story(&args, caller, &ws_tx, None).await;
+        let err = result.expect_err(&format!(
+            "{caller} must be substrate-refused at reorder gate"
+        ));
+        assert!(
+            err.contains("workflow-role-not-allowed"),
+            "{caller}: error must carry canonical kind=workflow-role-not-allowed; got {err}"
+        );
+        let role_short = caller.split(':').next().unwrap_or(caller);
+        assert!(
+            err.contains(&format!("\"actor_role\":\"{role_short}\"")),
+            "{caller}: error must name firing role={role_short}; got {err}"
+        );
+        assert!(
+            err.contains("\"attempted_transition\":\"reorder\""),
+            "{caller}: error must cite reorder transition; got {err}"
+        );
+        assert!(
+            err.contains("\"allowed_roles\":[\"pm\"]"),
+            "{caller}: error must enumerate allowed-roles=[pm]; got {err}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn reorder_story_passes_role_gate_for_pm_1265() {
+    let ws_tx = tokio::sync::Mutex::new(None);
+    let args = reorder_args(42, 1, "ready");
+    let result = handle_reorder_story(&args, "pm:claude-code", &ws_tx, None).await;
+    let err = result.expect_err(
+        "pm call with refresh=None must still error (downstream substrate need), proving role-gate passed",
+    );
+    assert!(
+        !err.contains("workflow-role-not-allowed"),
+        "pm role MUST pass the workflow-role-not-allowed gate; got {err}"
+    );
+    assert!(
+        err.contains("refresh-driver") || err.contains("refresh"),
+        "pm role passed the gate and hit downstream refresh-driver requirement; got {err}"
+    );
+}
