@@ -7,13 +7,14 @@
   display: flex;
   align-items: center;
   gap: var(--space-8);
-  height: 40px;
+  height: 28px;
   padding: 0 var(--space-8);
   padding-left: 80px;
   border-bottom: 1px solid var(--border-subtle);
   background: var(--bg-elevated);
   font-size: 0.8125rem;
   font-weight: 600;
+  line-height: 1;
   -webkit-app-region: drag;
 
   & .titlebar-app {

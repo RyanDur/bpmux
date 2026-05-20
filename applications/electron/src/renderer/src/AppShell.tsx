@@ -3,7 +3,6 @@ import Board from './board/Board'
 import BoardResizeHandle, { BOARD_DEFAULT_WIDTH, clampBoardWidth } from './board/BoardResizeHandle'
 import Chat from './chat/Chat'
 import CiGlyph from './ci/CiGlyph'
-import SyncStatusGlyph from './sync/SyncStatusGlyph'
 import { useMessageFilter } from './hooks/useMessageFilter'
 import { useTheme } from './hooks/useTheme'
 import { MoonIcon, SunIcon } from './icons/TitlebarIcons'
@@ -169,16 +168,7 @@ const AppShell = ({
           {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
         </button>
         <span className="titlebar-indicator-group" data-test="titlebar-ci">
-          <small className="titlebar-indicator-label">CI</small>
           <CiGlyph ciSnapshot={ciSnapshot} />
-        </span>
-        <span className="titlebar-indicator-group" data-test="titlebar-board">
-          <small className="titlebar-indicator-label">Board</small>
-          <SyncStatusGlyph
-            apiBase={bridge?.apiBase}
-            authToken={bridge?.authToken}
-            messages={messages}
-          />
         </span>
       </header>
       <section className="app-body">

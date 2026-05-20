@@ -7,7 +7,7 @@ const renderHeader = (status: ConnectionStatus): string => {
   return renderToStaticMarkup(<AppShell status={status} messages={[]} onSend={() => {}} />)
 }
 
-describe('Header title-as-state-canvas + function-named connector labels (Pictor S3 #1449)', () => {
+describe('Header title-as-state-canvas (Pictor S3 #1449 rework)', () => {
   test('title carries app name + state text + connected-state-class when status=connected', () => {
     const html = renderHeader('connected')
     expect(html).toContain('data-test="titlebar-app"')
@@ -31,19 +31,18 @@ describe('Header title-as-state-canvas + function-named connector labels (Pictor
     expect(html).toContain('aria-label="bpmux offline"')
   })
 
-  test('CI indicator has visible "CI" label (function-named per Scenario 4)', () => {
+  test('CI indicator renders without redundant text wrapper (Scenario 4 — CiGlyph self-labels)', () => {
     const html = renderHeader('connected')
-    expect(html).toMatch(/data-test="titlebar-ci"[^>]*>[\s\S]*?>CI<\/small>/)
+    expect(html).toContain('data-test="titlebar-ci"')
+    expect(html).not.toMatch(/data-test="titlebar-ci"[^>]*>[\s\S]*?<small[^>]*>CI<\/small>/)
   })
 
-  test('Board indicator has visible "Board" label (function-named not "gh" per Scenario 4)', () => {
+  test('Board indicator NOT in titlebar — relocated to Board column-header per Scenario 5', () => {
     const html = renderHeader('connected')
-    expect(html).toMatch(/data-test="titlebar-board"[^>]*>[\s\S]*?>Board<\/small>/)
-    expect(html).not.toMatch(/>gh</)
-    expect(html).not.toMatch(/>github</)
+    expect(html).not.toContain('data-test="titlebar-board"')
   })
 
-  test('right-side cluster does NOT carry density-toggle or lanes-toggle (Scenario 3 + falsifier g)', () => {
+  test('right-side cluster does NOT carry density-toggle or lanes-toggle (retired)', () => {
     const html = renderHeader('connected')
     expect(html).not.toContain('data-test="titlebar-density-toggle"')
     expect(html).not.toContain('data-test="titlebar-lanes-toggle"')
@@ -55,7 +54,7 @@ describe('Header title-as-state-canvas + function-named connector labels (Pictor
     expect(html).not.toContain('data-test="titlebar-connection-label"')
   })
 
-  test('multi-modal signal — title text + class together (WCAG 2.1 SC 1.4.1; Scenario 6)', () => {
+  test('multi-modal signal — title text + class together (WCAG 2.1 SC 1.4.1; Scenario 8)', () => {
     const html = renderHeader('disconnected')
     expect(html).toContain('titlebar-app--disconnected')
     expect(html).toContain('>offline<')

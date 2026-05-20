@@ -3,6 +3,7 @@ import { useAnimatedUnmount } from '../hooks/useAnimatedUnmount'
 import { useCollapsibleSectionsStorage } from '../lib/useCollapsibleSectionsStorage'
 import type { ChatMessage, ConnectionStatus } from '../transport/types'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
+import SyncStatusGlyph from '../sync/SyncStatusGlyph'
 import DrillIn from './DrillIn'
 import Epic from './Epic'
 import Iteration from './Iteration'
@@ -205,6 +206,11 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
       inert={hidden ? true : undefined}
     >
       <header className="board-header">
+        <SyncStatusGlyph
+          apiBase={bridge?.apiBase}
+          authToken={bridge?.authToken}
+          messages={messages}
+        />
         <h2 className="board-title">Board</h2>
         {usingMock ? (
           <small
