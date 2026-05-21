@@ -1,4 +1,4 @@
-import { test, expect, _electron as electron } from '@playwright/test'
+import { test, expect, _electron as electron, type Page } from '@playwright/test'
 import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
@@ -6,23 +6,20 @@ import { launchIsolatedElectron } from './helpers/launch'
 
 const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 
-async function launchIsolated(): Promise<{
+const launchIsolated = async (): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
-}> {
+}> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-350-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-350-'))
   const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
   return { app }
 }
 
-async function readToken(win: any, name: string): Promise<string> {
-  return win.evaluate((n: string) =>
-    window
-      .getComputedStyle(document.documentElement)
-      .getPropertyValue(n)
-      .trim(), name
+const readToken = async (win: Page, name: string): Promise<string> =>
+  win.evaluate(
+    (n: string) => window.getComputedStyle(document.documentElement).getPropertyValue(n).trim(),
+    name
   )
-}
 
 test.describe('desk-check #350 motion substrate', () => {
   test('six motion tokens resolve to declared values in default media', async () => {
@@ -102,7 +99,9 @@ test.describe('desk-check #350 motion substrate', () => {
       el.remove()
       return r
     })
-    console.log(`#350 AC3 normal media: transform=${normal.transform}, transition-property=${normal.transitionProperty}`)
+    console.log(
+      `#350 AC3 normal media: transform=${normal.transform}, transition-property=${normal.transitionProperty}`
+    )
 
     await win.emulateMedia({ reducedMotion: 'reduce' })
 
@@ -117,7 +116,9 @@ test.describe('desk-check #350 motion substrate', () => {
       el.remove()
       return r
     })
-    console.log(`#350 AC3 reduced motion: transform=${reduced.transform}, transition-property=${reduced.transitionProperty}`)
+    console.log(
+      `#350 AC3 reduced motion: transform=${reduced.transform}, transition-property=${reduced.transitionProperty}`
+    )
 
     // Under reduced-motion, .motion-safe-transform should force
     // transform:none and transition-property:opacity.

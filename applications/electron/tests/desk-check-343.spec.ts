@@ -30,7 +30,7 @@ const MOCK_MESSAGES = [
   }
 ]
 
-const UNFURLS: Record<string, any> = {
+const UNFURLS: Record<string, Record<string, unknown>> = {
   'https://example.com/article': {
     url: 'https://example.com/article',
     title: 'An Example Article',
@@ -54,9 +54,9 @@ const UNFURLS: Record<string, any> = {
   }
 }
 
-async function launchWithMessages(): Promise<{
+const launchWithMessages = async (): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
-}> {
+}> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-343-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-343-'))
   const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
@@ -95,12 +95,13 @@ test.describe('desk-check #343 URL unfurls', () => {
 
     // Enumerate unfurl-related DOM.
     const unfurlElts = await win.evaluate(() =>
-      Array.from(document.querySelectorAll('[data-test*="unfurl" i], .unfurl-card, .unfurl-cards'))
-        .map((el) => ({
-          dataTest: el.getAttribute('data-test'),
-          className: el.className,
-          text: (el.textContent ?? '').trim().slice(0, 100)
-        }))
+      Array.from(
+        document.querySelectorAll('[data-test*="unfurl" i], .unfurl-card, .unfurl-cards')
+      ).map((el) => ({
+        dataTest: el.getAttribute('data-test'),
+        className: el.className,
+        text: (el.textContent ?? '').trim().slice(0, 100)
+      }))
     )
     console.log(`#343 unfurl elements found: ${unfurlElts.length}`)
     unfurlElts.forEach((e, i) => console.log(`  [${i}] ${JSON.stringify(e)}`))
@@ -155,12 +156,11 @@ test.describe('desk-check #343 URL unfurls', () => {
     await win.waitForTimeout(1500)
 
     const linkAttrs = await win.evaluate(() =>
-      Array.from(document.querySelectorAll('.unfurl-card a, a.unfurl-card'))
-        .map((a) => ({
-          href: (a as HTMLAnchorElement).href,
-          target: (a as HTMLAnchorElement).target,
-          rel: (a as HTMLAnchorElement).rel
-        }))
+      Array.from(document.querySelectorAll('.unfurl-card a, a.unfurl-card')).map((a) => ({
+        href: (a as HTMLAnchorElement).href,
+        target: (a as HTMLAnchorElement).target,
+        rel: (a as HTMLAnchorElement).rel
+      }))
     )
     console.log(`#343 AC3 unfurl link attrs:`)
     linkAttrs.forEach((l, i) => console.log(`  [${i}] ${JSON.stringify(l)}`))

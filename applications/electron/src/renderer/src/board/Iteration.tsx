@@ -111,11 +111,11 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
               >
                 <summary className="board-iteration-summary" data-test="board-iteration-summary">
                   {iteration.gh_state !== 'closed' ? (
-                    <span
+                    <button
+                      type="button"
                       className="board-iteration-grip"
                       data-test={ITERATION_GRIP_TEST_ID}
                       draggable={true}
-                      role="button"
                       aria-label={`Drag to reorder iteration ${iteration.title}`}
                       tabIndex={-1}
                       onClick={(event) => {
@@ -146,7 +146,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                       onDragEnd={() => setDraggedIterationNumber(null)}
                     >
                       <GripIcon />
-                    </span>
+                    </button>
                   ) : null}
                   <button
                     type="button"

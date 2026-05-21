@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import MessageBody from '../chat/MessageBody'
 import type { ChatMessage } from '../transport/types'
 import Comments from './Comments'
@@ -64,7 +64,6 @@ const DrillIn = ({
   const [toast, setToast] = useState<string | null>(null)
   const articleRef = useRef<HTMLElement | null>(null)
 
-
   // Focus the article on mount so Esc falls to our handler before
   // anything upstream intercepts.
   useEffect(() => {
@@ -79,21 +78,21 @@ const DrillIn = ({
 
   const canAct = isOwner && story.state === 'delivered'
 
-  const handleKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLElement>) => {
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent): void => {
       if (event.defaultPrevented) return
-      if (event.key === 'Escape') {
-        if (mode === 'rejecting') return
-        event.preventDefault()
-        if (mode === 'bug-question') {
-          setMode('idle')
-          return
-        }
-        onBack()
+      if (event.key !== 'Escape') return
+      if (mode === 'rejecting') return
+      event.preventDefault()
+      if (mode === 'bug-question') {
+        setMode('idle')
+        return
       }
-    },
-    [mode, onBack]
-  )
+      onBack()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [mode, onBack])
 
   const type = storyTypeFromLabels(story.labels)
 
@@ -103,9 +102,7 @@ const DrillIn = ({
       data-visible={visible || undefined}
       aria-hidden={!visible || undefined}
       ref={articleRef}
-      tabIndex={-1}
       data-test="board-drill-in"
-      onKeyDown={handleKeyDown}
       aria-label={`Story ${story.number}: ${story.title}`}
     >
       <header className="drill-in-header">
@@ -198,23 +195,23 @@ const DrillIn = ({
 }
 
 const BackArrow = (): React.JSX.Element => (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 12 12"
-      aria-hidden="true"
-      focusable="false"
-      className="drill-in-back-arrow"
-    >
-      <path
-        d="M7.5 2L3 6l4.5 4"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
+  <svg
+    width="12"
+    height="12"
+    viewBox="0 0 12 12"
+    aria-hidden="true"
+    focusable="false"
+    className="drill-in-back-arrow"
+  >
+    <path
+      d="M7.5 2L3 6l4.5 4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+)
 
 export default DrillIn

@@ -41,7 +41,7 @@ interface BoardProps {
   wsStatus?: ConnectionStatus
 }
 
-function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Element {
+const Board = ({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Element => {
   const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
   const { data, setData, loading, error, setError, usingMock, refetch } = useBoardFetch({
     messages,
@@ -76,14 +76,8 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
 
   const asideRef = useRef<HTMLElement | null>(null)
 
-  const {
-    stories,
-    epics,
-    epicTitleByNumber,
-    iterationContainerStories,
-    grouped,
-    navOrder
-  } = useBoardData(data)
+  const { stories, epics, epicTitleByNumber, iterationContainerStories, grouped, navOrder } =
+    useBoardData(data)
 
   // Derive the effective selection at render time instead of syncing
   // state in an effect — if the stored selection has scrolled off the
@@ -105,12 +99,12 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
   // last-known story, then unmount. Snapshot the story in a ref so
   // the fade-out has a stable object to render while drilledStory
   // itself is null.
-  const lastDrilledStoryRef = useRef<typeof drilledStory>(null)
-  if (drilledStory !== null) {
-    lastDrilledStoryRef.current = drilledStory
+  const [lastDrilledStory, setLastDrilledStory] = useState<typeof drilledStory>(drilledStory)
+  if (drilledStory !== null && drilledStory !== lastDrilledStory) {
+    setLastDrilledStory(drilledStory)
   }
   const drillAnim = useAnimatedUnmount(drilledStory !== null, 250)
-  const renderedDrill = drilledStory ?? lastDrilledStoryRef.current
+  const renderedDrill = drilledStory ?? lastDrilledStory
 
   const handleOpen = useCallback((number: number) => {
     setSelectedNumber(number)
@@ -195,7 +189,6 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
       id="board-region"
       className={`board${hidden ? ' board--hidden' : ''}`}
       data-test="board-region"
-      tabIndex={0}
       ref={asideRef}
       onKeyDown={handleKeyDown}
       aria-label="Board"
@@ -234,11 +227,7 @@ function Board({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
       {error !== null && (
         <section className="board-error" role="alert" data-test="board-error">
           <p className="board-error-text">Couldn&apos;t refresh board: {error}</p>
-          <button
-            type="button"
-            className="board-error-retry"
-            onClick={refetch}
-          >
+          <button type="button" className="board-error-retry" onClick={refetch}>
             Retry
           </button>
         </section>

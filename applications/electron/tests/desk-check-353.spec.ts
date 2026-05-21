@@ -21,16 +21,16 @@ const MOCK_BOARD = {
   ]
 }
 
-async function launchWithBoard(): Promise<{
+const launchWithBoard = async (): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
-}> {
+}> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-353-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-353-'))
   const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
   const win = await app.firstWindow()
-  let boardFetchCount = 0
+  let _boardFetchCount = 0
   await win.route('**/api/board', async (route) => {
-    boardFetchCount++
+    _boardFetchCount++
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -43,7 +43,7 @@ async function launchWithBoard(): Promise<{
   await win.reload()
   // Expose the counter via window for later checking.
   await win.evaluate(() => {
-    ;(window as any).__boardFetchCount = 0
+    ;(window as unknown as { __boardFetchCount: number }).__boardFetchCount = 0
   })
   return { app }
 }

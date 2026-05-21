@@ -23,8 +23,8 @@ const TEARDOWN_TIMEOUT_MS = 3_000
 let backendProc: ChildProcess | null = null
 let tempSessionDir: string | null = null
 
-function getFreePort(): Promise<number> {
-  return new Promise((resolve, reject) => {
+const getFreePort = (): Promise<number> =>
+  new Promise((resolve, reject) => {
     const server = net.createServer()
     server.listen(0, '127.0.0.1', () => {
       const addr = server.address()
@@ -37,9 +37,8 @@ function getFreePort(): Promise<number> {
     })
     server.on('error', reject)
   })
-}
 
-async function waitForBackendReady(port: number): Promise<void> {
+const waitForBackendReady = async (port: number): Promise<void> => {
   const deadline = Date.now() + BACKEND_READY_TIMEOUT_MS
   while (Date.now() < deadline) {
     try {
@@ -47,7 +46,9 @@ async function waitForBackendReady(port: number): Promise<void> {
       if (res.status === 200 || res.status === 401) {
         return
       }
-    } catch {}
+    } catch (_e) {
+      void _e
+    }
     await sleep(100)
   }
   throw new Error(
@@ -55,7 +56,7 @@ async function waitForBackendReady(port: number): Promise<void> {
   )
 }
 
-async function waitForAuthToken(tokenPath: string): Promise<string> {
+const waitForAuthToken = async (tokenPath: string): Promise<string> => {
   const deadline = Date.now() + TOKEN_FILE_TIMEOUT_MS
   while (Date.now() < deadline) {
     if (existsSync(tokenPath)) {
@@ -86,15 +87,7 @@ export default async function setup({
 
   backendProc = spawn(
     bpmuxBinary,
-    [
-      '--name',
-      'test',
-      '--mcp-port',
-      String(port),
-      '--session-base',
-      tempSessionDir,
-      'server'
-    ],
+    ['--name', 'test', '--mcp-port', String(port), '--session-base', tempSessionDir, 'server'],
     {
       env: {
         ...process.env,

@@ -11,18 +11,16 @@ interface CapturedFrame {
 const installFrameCapture = (): void => {
   ;(window as unknown as { __bpmuxFrames: CapturedFrame[] }).__bpmuxFrames = []
   const OrigWebSocket = window.WebSocket
-  ;(window as unknown as { WebSocket: typeof WebSocket }).WebSocket = class
-    extends OrigWebSocket
-  {
+  ;(window as unknown as { WebSocket: typeof WebSocket }).WebSocket = class extends OrigWebSocket {
     constructor(url: string | URL, protocols?: string | string[]) {
       super(url, protocols)
       this.addEventListener('message', (event) => {
         try {
           const parsed = JSON.parse(event.data as string) as CapturedFrame
-          ;(
-            window as unknown as { __bpmuxFrames: CapturedFrame[] }
-          ).__bpmuxFrames.push(parsed)
-        } catch {}
+          ;(window as unknown as { __bpmuxFrames: CapturedFrame[] }).__bpmuxFrames.push(parsed)
+        } catch (_e) {
+          void _e
+        }
       })
     }
   } as unknown as typeof WebSocket
@@ -31,10 +29,7 @@ const installFrameCapture = (): void => {
 const readFrames = async (
   win: Awaited<ReturnType<Awaited<ReturnType<typeof launchIsolatedElectron>>['app']['firstWindow']>>
 ): Promise<CapturedFrame[]> =>
-  win.evaluate(
-    () =>
-      (window as unknown as { __bpmuxFrames: CapturedFrame[] }).__bpmuxFrames ?? []
-  )
+  win.evaluate(() => (window as unknown as { __bpmuxFrames: CapturedFrame[] }).__bpmuxFrames ?? [])
 
 test.describe('#1213 race-class elimination — WS-only state-flow integration', () => {
   test('AC8 / falsifier-(e): WS-connect delivers StateSnapshot as first non-Welcome frame', async () => {
@@ -44,10 +39,13 @@ test.describe('#1213 race-class elimination — WS-only state-flow integration',
     await win.reload()
     await expect(win.locator('[data-test="app-root"]')).toBeVisible()
     await expect
-      .poll(async () => {
-        const frames = await readFrames(win)
-        return frames.some((f) => f.message_type === 'state-snapshot')
-      }, { timeout: 5_000 })
+      .poll(
+        async () => {
+          const frames = await readFrames(win)
+          return frames.some((f) => f.message_type === 'state-snapshot')
+        },
+        { timeout: 5_000 }
+      )
       .toBe(true)
     const frames = await readFrames(win)
     const welcomeIdx = frames.findIndex((f) => f.type === 'welcome')
@@ -69,10 +67,13 @@ test.describe('#1213 race-class elimination — WS-only state-flow integration',
     await win.reload()
     await expect(win.locator('[data-test="app-root"]')).toBeVisible()
     await expect
-      .poll(async () => {
-        const frames = await readFrames(win)
-        return frames.some((f) => f.message_type === 'state-snapshot')
-      }, { timeout: 5_000 })
+      .poll(
+        async () => {
+          const frames = await readFrames(win)
+          return frames.some((f) => f.message_type === 'state-snapshot')
+        },
+        { timeout: 5_000 }
+      )
       .toBe(true)
     const token = await win.evaluate(
       () => (window as unknown as { bpmux?: { authToken?: string } }).bpmux?.authToken ?? ''
@@ -91,12 +92,15 @@ test.describe('#1213 race-class elimination — WS-only state-flow integration',
       })
     })
     await expect
-      .poll(async () => {
-        const frames = await readFrames(win)
-        return frames.some(
-          (f) => f.message_type === 'state-delta' && f.state_delta?.domain === 'reactions'
-        )
-      }, { timeout: 5_000 })
+      .poll(
+        async () => {
+          const frames = await readFrames(win)
+          return frames.some(
+            (f) => f.message_type === 'state-delta' && f.state_delta?.domain === 'reactions'
+          )
+        },
+        { timeout: 5_000 }
+      )
       .toBe(true)
     await app.close()
   })
@@ -108,18 +112,24 @@ test.describe('#1213 race-class elimination — WS-only state-flow integration',
     await win.reload()
     await expect(win.locator('[data-test="app-root"]')).toBeVisible()
     await expect
-      .poll(async () => {
-        const frames = await readFrames(win)
-        return frames.filter((f) => f.message_type === 'state-snapshot').length >= 1
-      }, { timeout: 5_000 })
+      .poll(
+        async () => {
+          const frames = await readFrames(win)
+          return frames.filter((f) => f.message_type === 'state-snapshot').length >= 1
+        },
+        { timeout: 5_000 }
+      )
       .toBe(true)
     await win.reload()
     await expect(win.locator('[data-test="app-root"]')).toBeVisible()
     await expect
-      .poll(async () => {
-        const frames = await readFrames(win)
-        return frames.filter((f) => f.message_type === 'state-snapshot').length >= 1
-      }, { timeout: 5_000 })
+      .poll(
+        async () => {
+          const frames = await readFrames(win)
+          return frames.filter((f) => f.message_type === 'state-snapshot').length >= 1
+        },
+        { timeout: 5_000 }
+      )
       .toBe(true)
     await app.close()
   })

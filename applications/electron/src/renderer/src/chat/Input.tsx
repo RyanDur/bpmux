@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { useDraftStorage } from './useDraftStorage'
 import { useInputHistory } from './useInputHistory'
@@ -72,6 +72,10 @@ const Input = ({ onSend, disabled, placeholder, channelKey }: Props): React.JSX.
   const { value, setValue } = useDraftStorage(channelKey)
   const history = useInputHistory()
   const [search, setSearch] = useState<SearchState | null>(null)
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+  useEffect(() => {
+    if (!disabled) textareaRef.current?.focus()
+  }, [disabled])
 
   const applySearchMatch = useCallback(
     (idx: number | null): void => {
@@ -325,7 +329,7 @@ const Input = ({ onSend, disabled, placeholder, channelKey }: Props): React.JSX.
       )}
       <textarea
         key={disabled ? 'disabled' : 'enabled'}
-        autoFocus={!disabled}
+        ref={textareaRef}
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}

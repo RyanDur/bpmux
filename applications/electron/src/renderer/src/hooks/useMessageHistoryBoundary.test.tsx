@@ -37,7 +37,18 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-const makeAsyncResult = <S, F>(result: ReturnType<typeof success<S, F>> | ReturnType<typeof failure<F, S>>) => ({
+const makeAsyncResult = <S, F>(
+  result: ReturnType<typeof success<S, F>> | ReturnType<typeof failure<F, S>>
+): {
+  value: Promise<typeof result>
+  map: ReturnType<typeof vi.fn>
+  andThen: ReturnType<typeof vi.fn>
+  or: ReturnType<typeof vi.fn>
+  onSuccess: ReturnType<typeof vi.fn>
+  onFailure: ReturnType<typeof vi.fn>
+  either: ReturnType<typeof vi.fn>
+  mapEither: ReturnType<typeof vi.fn>
+} => ({
   value: Promise.resolve(result),
   map: vi.fn(),
   andThen: vi.fn(),
@@ -69,9 +80,7 @@ describe('#1359 useMessageHistory — Result-chain boundary behavior', () => {
   })
 
   test('http.get success with empty payload flips hasMoreOlder=false', async () => {
-    vi.mocked(http.get).mockReturnValueOnce(
-      makeAsyncResult(success([])) as never
-    )
+    vi.mocked(http.get).mockReturnValueOnce(makeAsyncResult(success([])) as never)
     const { result } = renderHook(() =>
       useMessageHistory({
         liveMessages: [live(0)],
@@ -113,8 +122,6 @@ describe('#1359 useMessageHistory — Result-chain boundary behavior', () => {
     })
     expect(result.current.combinedMessages.length).toBeGreaterThanOrEqual(2)
     expect(result.current.hasError).toBe(false)
-    expect(
-      result.current.combinedMessages.some((m) => m.text === 'older message')
-    ).toBe(true)
+    expect(result.current.combinedMessages.some((m) => m.text === 'older message')).toBe(true)
   })
 })
