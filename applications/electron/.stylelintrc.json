@@ -19,9 +19,12 @@
     "at-rule-no-unknown": null
   },
   "ignoreFiles": [
-    "node_modules/**",
-    "out/**",
-    "dist/**",
-    "build/**"
+    "**/node_modules/**",
+    "**/out/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/test-results/**",
+    "**/playwright-report/**",
+    "**/coverage/**"
   ]
 }

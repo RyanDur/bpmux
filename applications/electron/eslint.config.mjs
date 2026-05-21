@@ -9,7 +9,18 @@ import eslintPluginJestDom from 'eslint-plugin-jest-dom'
 import eslintPluginJsxA11y from 'eslint-plugin-jsx-a11y'
 
 export default defineConfig(
-  { ignores: ['**/node_modules', '**/dist', '**/out'] },
+  {
+    ignores: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/out/**',
+      '**/build/**',
+      '**/test-results/**',
+      '**/playwright-report/**',
+      '**/coverage/**',
+      '**/*.tsbuildinfo'
+    ]
+  },
   tseslint.configs.recommended,
   eslintPluginReact.configs.flat.recommended,
   eslintPluginReact.configs.flat['jsx-runtime'],
