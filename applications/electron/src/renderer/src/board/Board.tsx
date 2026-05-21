@@ -4,9 +4,7 @@ import type { ChatMessage, ConnectionStatus } from '../transport/types'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import SyncStatusGlyph from '../sync/SyncStatusGlyph'
 import DrillIn from './DrillIn'
-import Epic from './Epic'
-import Iteration from './Iteration'
-import BoardGroup from './BoardGroup'
+import BoardTabs from './BoardTabs'
 import { useBoardData } from './useBoardData'
 import { useBoardFetch } from './useBoardFetch'
 import { useBoardReorder } from './useBoardReorder'
@@ -250,35 +248,22 @@ const Board = ({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
         />
       ) : (
         <section className="board-body" data-test="board-list">
-          <Epic epics={epics} stories={stories} onOpen={handleOpen} />
-          {GROUP_ORDER.map((group) => (
-            <BoardGroup
-              key={group.state}
-              group={group}
-              stories={
-                group.state === 'icebox'
-                  ? iterationContainerStories
-                  : (grouped.get(group.state) ?? [])
-              }
-              epicTitleByNumber={epicTitleByNumber}
-              loading={loading && !data}
-              selectedNumber={effectiveSelected}
-              onOpen={handleOpen}
-              onOpenTimeline={handleOpenTimeline}
-              onSelect={setSelectedNumber}
-              onReorder={handleReorder}
-              collapsed={collapsed[group.state]}
-              onToggleCollapse={() => toggleCollapsed(group.state)}
-            >
-              {group.state === 'icebox' ? (
-                <Iteration
-                  stories={iterationContainerStories}
-                  onOpen={handleOpen}
-                  onReorderAnnounce={setReorderAnnounce}
-                />
-              ) : undefined}
-            </BoardGroup>
-          ))}
+          <BoardTabs
+            stories={stories}
+            epics={epics}
+            epicTitleByNumber={epicTitleByNumber}
+            iterationContainerStories={iterationContainerStories}
+            grouped={grouped}
+            loading={loading && !data}
+            effectiveSelected={effectiveSelected}
+            collapsed={collapsed}
+            onToggleCollapse={toggleCollapsed}
+            onOpen={handleOpen}
+            onOpenTimeline={handleOpenTimeline}
+            onSelect={setSelectedNumber}
+            onReorder={handleReorder}
+            onReorderAnnounce={setReorderAnnounce}
+          />
         </section>
       )}
     </aside>

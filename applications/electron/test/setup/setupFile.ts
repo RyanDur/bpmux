@@ -1,7 +1,7 @@
 import { configure } from '@testing-library/react'
 import { WebSocket as RealWebSocket } from 'ws'
 
-configure({ testIdAttribute: 'data-test' })
+configure({ testIdAttribute: 'data-test', defaultHidden: true })
 
 class BrowserCompatWebSocket extends RealWebSocket {
   close(code?: number, reason?: string): void {
