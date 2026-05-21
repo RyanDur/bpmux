@@ -102,7 +102,7 @@ fn pass_desk_check_invalid_acceptor_returns_structured_409() {
             "rejection cites acceptor-class evidence; got {err}"
         );
         assert!(
-            err.contains("\"allowed\":[\"team\",\"owner\"]"),
+            err.contains("\"allowed\":[\"team\",\"owner\",\"dev\"]"),
             "rejection cites allowed enum values; got {err}"
         );
 

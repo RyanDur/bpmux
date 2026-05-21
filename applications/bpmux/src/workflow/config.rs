@@ -57,6 +57,7 @@ pub enum GateClass {
     None,
     TeamVerifiable,
     OwnerWalk,
+    DevVerifiable,
 }
 
 impl GateClass {
@@ -65,6 +66,7 @@ impl GateClass {
             GateClass::None => None,
             GateClass::TeamVerifiable => Some("team-verifiable"),
             GateClass::OwnerWalk => Some("owner-walk"),
+            GateClass::DevVerifiable => Some("dev-verifiable"),
         }
     }
 }
@@ -106,11 +108,15 @@ pub fn gate_class_from_labels(labels: &[String]) -> GateClass {
         if lower == "awaiting owner" {
             return GateClass::OwnerWalk;
         }
+        if lower == "awaiting dev" {
+            return GateClass::DevVerifiable;
+        }
     }
     for l in labels {
         match l.as_str() {
             "gate:owner-walk" => return GateClass::OwnerWalk,
             "gate:team-verifiable" => return GateClass::TeamVerifiable,
+            "gate:dev-verifiable" => return GateClass::DevVerifiable,
             _ => {}
         }
     }
@@ -129,11 +135,15 @@ pub fn gate_class_from_labels_and_story_type(
         if lower == "awaiting owner" {
             return GateClass::OwnerWalk;
         }
+        if lower == "awaiting dev" {
+            return GateClass::DevVerifiable;
+        }
     }
     for l in labels {
         match l.as_str() {
             "gate:owner-walk" => return GateClass::OwnerWalk,
             "gate:team-verifiable" => return GateClass::TeamVerifiable,
+            "gate:dev-verifiable" => return GateClass::DevVerifiable,
             _ => {}
         }
     }
@@ -141,9 +151,8 @@ pub fn gate_class_from_labels_and_story_type(
         crate::board::domain::StoryType::Feature
         | crate::board::domain::StoryType::Epic
         | crate::board::domain::StoryType::Iteration => GateClass::OwnerWalk,
-        crate::board::domain::StoryType::Bug | crate::board::domain::StoryType::Chore => {
-            GateClass::TeamVerifiable
-        }
+        crate::board::domain::StoryType::Bug => GateClass::TeamVerifiable,
+        crate::board::domain::StoryType::Chore => GateClass::DevVerifiable,
     }
 }
 
@@ -208,11 +217,38 @@ mod gate_class_from_labels_and_story_type_tests_1460 {
     }
 
     #[test]
-    fn falls_back_to_story_type_chore_team_verifiable() {
+    fn falls_back_to_story_type_chore_dev_verifiable() {
         let labels: Vec<String> = vec![];
         assert_eq!(
             gate_class_from_labels_and_story_type(&labels, StoryType::Chore),
-            GateClass::TeamVerifiable
+            GateClass::DevVerifiable
+        );
+    }
+
+    #[test]
+    fn label_first_priority_awaiting_dev_returns_dev_verifiable() {
+        let labels = vec![lbl("awaiting dev"), lbl("Chore")];
+        assert_eq!(
+            gate_class_from_labels_and_story_type(&labels, StoryType::Chore),
+            GateClass::DevVerifiable
+        );
+    }
+
+    #[test]
+    fn awaiting_dev_label_overrides_feature_story_type() {
+        let labels = vec![lbl("awaiting dev")];
+        assert_eq!(
+            gate_class_from_labels_and_story_type(&labels, StoryType::Feature),
+            GateClass::DevVerifiable
+        );
+    }
+
+    #[test]
+    fn legacy_gate_dev_verifiable_label_honored() {
+        let labels = vec![lbl("gate:dev-verifiable")];
+        assert_eq!(
+            gate_class_from_labels_and_story_type(&labels, StoryType::Feature),
+            GateClass::DevVerifiable
         );
     }
 

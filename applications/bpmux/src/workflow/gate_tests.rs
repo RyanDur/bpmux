@@ -23,6 +23,13 @@ fn accept_owner_walk() -> Transition {
         .expect("bundled-default has owner-walk accept")
 }
 
+fn accept_dev_verifiable() -> Transition {
+    bundled_default()
+        .transition_for("accept", GateClass::DevVerifiable)
+        .cloned()
+        .expect("bundled-default has dev-verifiable accept (chore-ownership-triad)")
+}
+
 #[test]
 fn bundled_default_allows_ryan_to_accept_team_verifiable() {
     assert!(check_role_allowed(&accept_team_verifiable(), "ryan").is_ok());
@@ -73,6 +80,38 @@ fn owner_walk_accept_allows_ryan_only() {
         check_role_allowed(&owner_walk, "dev"),
         Err(GateError::RoleNotAllowed { .. })
     ));
+}
+
+#[test]
+fn dev_verifiable_accept_allows_dev_only() {
+    let dev_verifiable = accept_dev_verifiable();
+    assert!(check_role_allowed(&dev_verifiable, "dev").is_ok());
+    assert!(matches!(
+        check_role_allowed(&dev_verifiable, "pm"),
+        Err(GateError::RoleNotAllowed { .. })
+    ));
+    assert!(matches!(
+        check_role_allowed(&dev_verifiable, "ryan"),
+        Err(GateError::RoleNotAllowed { .. })
+    ));
+    assert!(matches!(
+        check_role_allowed(&dev_verifiable, "designer"),
+        Err(GateError::RoleNotAllowed { .. })
+    ));
+}
+
+#[test]
+fn dev_verifiable_accept_requires_designer_evidence() {
+    let dev_verifiable = accept_dev_verifiable();
+    assert_eq!(dev_verifiable.required_evidence_roles, vec!["designer"]);
+}
+
+#[test]
+fn resolve_transition_returns_dev_verifiable_when_class_dev_verifiable() {
+    let workflow = bundled_default();
+    let t = resolve_transition(&workflow, "accept", GateClass::DevVerifiable).unwrap();
+    assert_eq!(t.gate_class, GateClass::DevVerifiable);
+    assert_eq!(t.actor_roles, vec!["dev"]);
 }
 
 #[test]

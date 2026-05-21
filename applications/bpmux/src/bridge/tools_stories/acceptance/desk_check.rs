@@ -5,14 +5,21 @@ use super::helpers::{
 };
 use crate::bridge::tools::{WsSink, ws_send};
 use crate::bridge::tools_stories::helpers::{
-    LABEL_AWAITING_OWNER, LABEL_AWAITING_TEAM, LABEL_DELIVERED, ensure_story_in_canonical_store,
-    reap_workflow_labels, role_from_name,
+    LABEL_AWAITING_DEV, LABEL_AWAITING_OWNER, LABEL_AWAITING_TEAM, LABEL_DELIVERED,
+    ensure_story_in_canonical_store, reap_workflow_labels, role_from_name,
 };
+
+const ALL_ACCEPTOR_LABELS: [&str; 3] = [
+    LABEL_AWAITING_TEAM,
+    LABEL_AWAITING_OWNER,
+    LABEL_AWAITING_DEV,
+];
 
 #[derive(Clone, Copy)]
 enum AcceptorClass {
     Team,
     Owner,
+    Dev,
 }
 
 impl AcceptorClass {
@@ -20,20 +27,20 @@ impl AcceptorClass {
         match self {
             AcceptorClass::Team => LABEL_AWAITING_TEAM,
             AcceptorClass::Owner => LABEL_AWAITING_OWNER,
+            AcceptorClass::Dev => LABEL_AWAITING_DEV,
         }
     }
 
-    fn opposite_label(self) -> &'static str {
-        match self {
-            AcceptorClass::Team => LABEL_AWAITING_OWNER,
-            AcceptorClass::Owner => LABEL_AWAITING_TEAM,
-        }
+    fn stale_labels(self) -> impl Iterator<Item = &'static str> {
+        let keep = self.label();
+        ALL_ACCEPTOR_LABELS.into_iter().filter(move |l| *l != keep)
     }
 
     fn parse(raw: &str) -> Option<Self> {
         match raw {
             "team" => Some(AcceptorClass::Team),
             "owner" => Some(AcceptorClass::Owner),
+            "dev" => Some(AcceptorClass::Dev),
             _ => None,
         }
     }
@@ -47,7 +54,7 @@ fn parse_acceptor_arg(
             "kind": "workflow-gate-mismatch",
             "attempted_transition": "pass-desk-check",
             "missing_evidence": ["acceptor-class"],
-            "hint": "pass_desk_check requires acceptor: \"team\" | \"owner\" — designer voices acceptor-class at gate-fire per Ryan-canon 2026-05-20 03:08:51 UTC + feedback_designer_voices_acceptor_class_at_pass_desk_check",
+            "hint": "pass_desk_check requires acceptor: \"team\" | \"owner\" | \"dev\" — designer voices acceptor-class at gate-fire per Ryan-canon 2026-05-20 03:08:51 UTC + feedback_designer_voices_acceptor_class_at_pass_desk_check; \"dev\" routes [Chore]-class to dev-acceptance (chore-ownership-triad)",
         })
         .to_string()
     })?;
@@ -57,7 +64,7 @@ fn parse_acceptor_arg(
             "attempted_transition": "pass-desk-check",
             "missing_evidence": ["acceptor-class"],
             "observed": raw,
-            "allowed": ["team", "owner"],
+            "allowed": ["team", "owner", "dev"],
         })
         .to_string()
     })
@@ -141,14 +148,15 @@ pub(crate) async fn handle_pass_desk_check(
         }
         reap_workflow_labels(r.as_ref(), number, &meta, LABEL_DELIVERED)?;
         let labels_after_reap = r.story(number).map(|s| s.raw_labels).unwrap_or_default();
-        let opposite = acceptor.opposite_label();
-        if labels_after_reap.iter().any(|l| l == opposite) {
-            r.mutate_sync(crate::board::BoardEvent::TagRemoved {
-                meta: meta.clone(),
-                number,
-                label: opposite.to_string(),
-            })
-            .map_err(|e| format!("#{number} {opposite}-remove enqueue failed: {e}"))?;
+        for stale in acceptor.stale_labels() {
+            if labels_after_reap.iter().any(|l| l == stale) {
+                r.mutate_sync(crate::board::BoardEvent::TagRemoved {
+                    meta: meta.clone(),
+                    number,
+                    label: stale.to_string(),
+                })
+                .map_err(|e| format!("#{number} {stale}-remove enqueue failed: {e}"))?;
+            }
         }
         let acceptor_label = acceptor.label();
         if !labels_after_reap.iter().any(|l| l == acceptor_label) {
