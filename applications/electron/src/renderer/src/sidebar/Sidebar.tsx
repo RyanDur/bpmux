@@ -32,6 +32,9 @@ const PRESENCE_LABEL: Record<Presence, string> = {
 
 const groupKey = (names: readonly string[]): string => [...names].sort().join('+')
 
+const isAllMembersGroup = (names: readonly string[], combinableRoles: readonly string[]): boolean =>
+  names.length === combinableRoles.length && names.every((n) => combinableRoles.includes(n))
+
 const countSystemMessages = (messages: readonly ChatMessage[]): number => {
   let n = 0
   for (const m of messages) {
@@ -68,16 +71,12 @@ const Sidebar = ({
   const groups = useMemo(() => deriveCombinatorialGroups(combinableRoles), [combinableRoles])
   const presence = usePresence(messages, directRoles)
 
-  const systemOnly = filter.visible.size === 1 && filter.visible.has('bpmux')
-  const broadcastSelected = !allView && recipient === null && !systemOnly
-  const systemSelected = !allView && recipient === null && systemOnly
+  const bpmuxOnly = filter.visible.size === 1 && filter.visible.has('bpmux')
+  const allMembersGroupSelected = !allView && recipient === null && !bpmuxOnly
+  const bpmuxSelected = !allView && recipient === null && bpmuxOnly
 
   const goAll = (): void => {
     onSelectAllView()
-    filter.reset()
-  }
-  const goBroadcast = (): void => {
-    onSelectRecipient(null)
     filter.reset()
   }
   const goDirect = (role: string): void => {
@@ -85,10 +84,14 @@ const Sidebar = ({
     filter.reset()
   }
   const goGroup = (names: string[]): void => {
-    onSelectRecipient(names)
+    if (isAllMembersGroup(names, combinableRoles)) {
+      onSelectRecipient(null)
+    } else {
+      onSelectRecipient(names)
+    }
     filter.reset()
   }
-  const goSystem = (): void => {
+  const goBpmux = (): void => {
     onSelectRecipient(null)
     filter.setOnly('bpmux')
   }
@@ -101,18 +104,10 @@ const Sidebar = ({
           type="button"
           aria-current={allView || undefined}
           data-test="sidebar-all"
+          title="meta-view of every channel"
           onClick={goAll}
         >
           all conversations
-        </button>
-        <button
-          className={`sidebar-item${broadcastSelected ? ' sidebar-item--active' : ''}`}
-          type="button"
-          aria-current={broadcastSelected || undefined}
-          data-test="sidebar-broadcast"
-          onClick={goBroadcast}
-        >
-          broadcast
         </button>
       </section>
       <section className="sidebar-section">
@@ -157,38 +152,50 @@ const Sidebar = ({
         ) : (
           groups.map((names) => {
             const key = groupKey(names)
-            const active = !allView && recipientMatches(recipient, names)
+            const isAllMembers = isAllMembersGroup(names, combinableRoles)
+            const active = isAllMembers
+              ? allMembersGroupSelected
+              : !allView && recipientMatches(recipient, names)
             return (
               <button
                 key={key}
-                className={`sidebar-item${active ? ' sidebar-item--active' : ''}`}
+                className={`sidebar-item sidebar-item--group${active ? ' sidebar-item--active' : ''}`}
                 type="button"
                 aria-current={active || undefined}
+                aria-label={`scope chat to ${names.join(' + ')}; owner ryan also observes`}
                 data-test={`sidebar-group-${key}`}
+                data-all-members={isAllMembers ? 'true' : undefined}
                 onClick={() => goGroup(names)}
-                title={`scope chat to ${names.join(' + ')}`}
+                title={`${names.join(' + ')} — owner ryan observes`}
               >
-                {names.join(' + ')}
+                <span className="sidebar-item-label">{names.join(' + ')}</span>
+                <small
+                  className="sidebar-item-owner-affordance"
+                  data-test={`sidebar-group-${key}-owner`}
+                  aria-hidden="true"
+                >
+                  +ryan
+                </small>
               </button>
             )
           })
         )}
       </section>
       <section className="sidebar-section">
-        <h3 className="sidebar-heading">system</h3>
+        <h3 className="sidebar-heading">bpmux</h3>
         {systemCount === 0 ? (
-          <p className="sidebar-empty" data-test="sidebar-system-empty">
+          <p className="sidebar-empty" data-test="sidebar-bpmux-empty">
             none yet
           </p>
         ) : (
           <button
-            className={`sidebar-item${systemSelected ? ' sidebar-item--active' : ''}`}
+            className={`sidebar-item${bpmuxSelected ? ' sidebar-item--active' : ''}`}
             type="button"
-            aria-current={systemSelected || undefined}
-            data-test="sidebar-system"
-            onClick={goSystem}
+            aria-current={bpmuxSelected || undefined}
+            data-test="sidebar-bpmux"
+            onClick={goBpmux}
           >
-            system ({systemCount})
+            bpmux ({systemCount})
           </button>
         )}
       </section>

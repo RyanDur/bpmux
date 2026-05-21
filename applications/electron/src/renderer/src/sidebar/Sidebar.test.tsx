@@ -100,7 +100,7 @@ describe('Sidebar — slice 5g+5g-fix mirror-roster derivation (replaces desk-ch
     expect(html).not.toContain('data-test="sidebar-direct-dev"')
   })
 
-  test('broadcast entry renders regardless of roster availability', () => {
+  test('#1457: broadcast button retired — all conversations entry remains', () => {
     const html = renderToStaticMarkup(
       <Sidebar
         recipient={null}
@@ -111,7 +111,8 @@ describe('Sidebar — slice 5g+5g-fix mirror-roster derivation (replaces desk-ch
         filter={filter}
       />
     )
-    expect(html).toContain('data-test="sidebar-broadcast"')
+    expect(html).not.toContain('data-test="sidebar-broadcast"')
+    expect(html).toContain('data-test="sidebar-all"')
   })
 
   test('combinatorial groups derive from peer roster (excludes self)', () => {
@@ -232,5 +233,125 @@ describe('#1246 Sidebar — roster is source-of-truth; no message-history fallba
       />
     )
     expect(html).not.toMatch(/data-test="sidebar-group-/)
+  })
+})
+
+describe('#1457 Sidebar — Ryan-never-excluded canon visibility + SYSTEM→BPMUX rename', () => {
+  test('Scenario 2: every GROUP row carries +ryan owner-affordance + aria-label "owner ryan also observes"', () => {
+    const html = renderToStaticMarkup(
+      <Sidebar
+        recipient={null}
+        allView={false}
+        onSelectRecipient={() => {}}
+        onSelectAllView={() => {}}
+        messages={RYAN_ONLY_MESSAGES}
+        filter={filter}
+        mirrorRoster={ROSTER_FIXTURE}
+      />
+    )
+    expect(html).toContain('aria-label="scope chat to designer + dev; owner ryan also observes"')
+    expect(html).toContain(
+      'aria-label="scope chat to designer + dev + pm; owner ryan also observes"'
+    )
+    expect(html).toContain('data-test="sidebar-group-designer+dev-owner"')
+  })
+
+  test('Scenario 3: SYSTEM section heading renamed to BPMUX', () => {
+    const messages: ChatMessage[] = [
+      {
+        id: 'sys-1',
+        from: 'bpmux',
+        text: 'a bpmux broadcast',
+        ts: '2026-04-23T12:00:00Z',
+        to: null,
+        addressee: null,
+        messageType: 'system'
+      }
+    ]
+    const html = renderToStaticMarkup(
+      <Sidebar
+        recipient={null}
+        allView={false}
+        onSelectRecipient={() => {}}
+        onSelectAllView={() => {}}
+        messages={messages}
+        filter={filter}
+        mirrorRoster={ROSTER_FIXTURE}
+      />
+    )
+    expect(html).toContain('<h3 class="sidebar-heading">bpmux</h3>')
+    expect(html).not.toContain('<h3 class="sidebar-heading">system</h3>')
+    expect(html).toContain('data-test="sidebar-bpmux"')
+    expect(html).not.toContain('data-test="sidebar-system"')
+    expect(html).toContain('bpmux (1)')
+  })
+
+  test('Scenario 3 cont.: bpmux section empty-state replaces system empty-state', () => {
+    const html = renderToStaticMarkup(
+      <Sidebar
+        recipient={null}
+        allView={false}
+        onSelectRecipient={() => {}}
+        onSelectAllView={() => {}}
+        messages={[]}
+        filter={filter}
+        mirrorRoster={ROSTER_FIXTURE}
+      />
+    )
+    expect(html).toContain('data-test="sidebar-bpmux-empty"')
+    expect(html).not.toContain('data-test="sidebar-system-empty"')
+  })
+
+  test('Scenario 4: all GROUP rooms use member-list-naming (role + role)', () => {
+    const html = renderToStaticMarkup(
+      <Sidebar
+        recipient={null}
+        allView={false}
+        onSelectRecipient={() => {}}
+        onSelectAllView={() => {}}
+        messages={RYAN_ONLY_MESSAGES}
+        filter={filter}
+        mirrorRoster={ROSTER_FIXTURE}
+      />
+    )
+    expect(html).not.toContain('>broadcast<')
+    expect(html).toMatch(/data-test="sidebar-group-designer\+dev"/)
+    expect(html).toMatch(/data-test="sidebar-group-designer\+pm"/)
+    expect(html).toMatch(/data-test="sidebar-group-dev\+pm"/)
+    expect(html).toMatch(/data-test="sidebar-group-designer\+dev\+pm"/)
+  })
+
+  test('Scenario 4 cont.: 3-role all-members group carries data-all-members=true for broadcast-substrate routing', () => {
+    const html = renderToStaticMarkup(
+      <Sidebar
+        recipient={null}
+        allView={false}
+        onSelectRecipient={() => {}}
+        onSelectAllView={() => {}}
+        messages={RYAN_ONLY_MESSAGES}
+        filter={filter}
+        mirrorRoster={ROSTER_FIXTURE}
+      />
+    )
+    expect(html).toMatch(
+      /data-test="sidebar-group-designer\+dev\+pm"[\s\S]*data-all-members="true"/
+    )
+  })
+
+  test('Scenario 5: all conversations entry preserved with explanatory title', () => {
+    const html = renderToStaticMarkup(
+      <Sidebar
+        recipient={null}
+        allView={false}
+        onSelectRecipient={() => {}}
+        onSelectAllView={() => {}}
+        messages={RYAN_ONLY_MESSAGES}
+        filter={filter}
+        mirrorRoster={ROSTER_FIXTURE}
+      />
+    )
+    expect(html).toContain('data-test="sidebar-all"')
+    expect(html).toContain('all conversations')
+    expect(html).toMatch(/title="meta-view of every channel"/)
   })
 })

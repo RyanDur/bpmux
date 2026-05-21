@@ -45,11 +45,10 @@ describe('human-side E2E #476 — direct-action — message @mention click', () 
 
     await rendered.findByText(/please look at this/, undefined, { timeout: 15_000 })
 
-    await rendered.findByTestId('sidebar-direct-dev', undefined, {
+    const initialAllMembers = await rendered.findByTestId('sidebar-group-dev+pm', undefined, {
       timeout: 15_000
     })
-    const initialBroadcast = rendered.getByTestId('sidebar-broadcast')
-    expect(initialBroadcast.getAttribute('aria-current')).toBe('true')
+    expect(initialAllMembers.getAttribute('aria-current')).toBe('true')
 
     await rendered.findAllByTestId('message-mention', undefined, { timeout: 15_000 })
 
@@ -60,9 +59,9 @@ describe('human-side E2E #476 — direct-action — message @mention click', () 
     await waitFor(
       () => {
         const dev = r.getByTestId('sidebar-direct-dev')
-        const broadcast = r.getByTestId('sidebar-broadcast')
+        const allMembers = r.getByTestId('sidebar-group-dev+pm')
         expect(dev.getAttribute('aria-current')).toBe('true')
-        expect(broadcast.getAttribute('aria-current')).toBeNull()
+        expect(allMembers.getAttribute('aria-current')).toBeNull()
       },
       { timeout: 15_000 }
     )
