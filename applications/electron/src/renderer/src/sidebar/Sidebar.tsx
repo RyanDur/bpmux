@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import type { ChatMessage, RosterMemberWire } from '../transport/types'
-import { classOf, type MessageFilter } from '../hooks/useMessageFilter'
+import { type MessageFilter } from '../hooks/useMessageFilter'
 import { usePresence, type Presence } from '../hooks/usePresence'
 import { useTeamRoster } from '../hooks/useTeamRoster'
 import {
@@ -35,14 +35,6 @@ const groupKey = (names: readonly string[]): string => [...names].sort().join('+
 const isAllMembersGroup = (names: readonly string[], combinableRoles: readonly string[]): boolean =>
   names.length === combinableRoles.length && names.every((n) => combinableRoles.includes(n))
 
-const countSystemMessages = (messages: readonly ChatMessage[]): number => {
-  let n = 0
-  for (const m of messages) {
-    if (classOf(m.messageType) === 'bpmux') n++
-  }
-  return n
-}
-
 const recipientMatches = (recipient: string[] | null, names: readonly string[]): boolean => {
   if (recipient === null) return false
   if (recipient.length !== names.length) return false
@@ -58,7 +50,6 @@ const Sidebar = ({
   filter,
   mirrorRoster
 }: Props): React.JSX.Element => {
-  const systemCount = useMemo(() => countSystemMessages(messages), [messages])
   const roster = useTeamRoster({ mirrorRoster })
   const directRoles = useMemo(
     () => deriveDirectRolesFromRoster(roster, RENDERER_IDENTITY),
@@ -68,12 +59,16 @@ const Sidebar = ({
     () => deriveCombinableRolesFromRoster(roster, RENDERER_IDENTITY),
     [roster]
   )
-  const groups = useMemo(() => deriveCombinatorialGroups(combinableRoles), [combinableRoles])
+  const partialGroups = useMemo(
+    () =>
+      deriveCombinatorialGroups(combinableRoles).filter(
+        (names) => !(names.length === combinableRoles.length && combinableRoles.length >= 3)
+      ),
+    [combinableRoles]
+  )
   const presence = usePresence(messages, directRoles)
 
-  const bpmuxOnly = filter.visible.size === 1 && filter.visible.has('bpmux')
-  const allMembersGroupSelected = !allView && recipient === null && !bpmuxOnly
-  const bpmuxSelected = !allView && recipient === null && bpmuxOnly
+  const allMembersGroupSelected = !allView && recipient === null
 
   const goAll = (): void => {
     onSelectAllView()
@@ -90,10 +85,6 @@ const Sidebar = ({
       onSelectRecipient(names)
     }
     filter.reset()
-  }
-  const goBpmux = (): void => {
-    onSelectRecipient(null)
-    filter.setOnly('bpmux')
   }
 
   return (
@@ -126,14 +117,14 @@ const Sidebar = ({
               data-test={`sidebar-direct-${role}`}
               onClick={() => goDirect(role)}
             >
-              <span
+              <i
                 className={`presence-dot presence-dot--${status}`}
                 data-test={`presence-dot-${role}`}
                 data-presence={status}
                 aria-label={`${role} ${statusLabel}`}
                 title={`${role} — ${statusLabel}`}
               />
-              <span className="sidebar-item-label">{role}</span>
+              {role}
               {status !== 'offline' && status !== 'available' && (
                 <small className="sidebar-item-status" data-test={`presence-label-${role}`}>
                   {statusLabel}
@@ -145,12 +136,12 @@ const Sidebar = ({
       </section>
       <section className="sidebar-section">
         <h3 className="sidebar-heading">groups</h3>
-        {groups.length === 0 ? (
+        {partialGroups.length === 0 ? (
           <p className="sidebar-empty" data-test="sidebar-groups-empty">
             none yet
           </p>
         ) : (
-          groups.map((names) => {
+          partialGroups.map((names) => {
             const key = groupKey(names)
             const isAllMembers = isAllMembersGroup(names, combinableRoles)
             const active = isAllMembers
@@ -162,41 +153,15 @@ const Sidebar = ({
                 className={`sidebar-item sidebar-item--group${active ? ' sidebar-item--active' : ''}`}
                 type="button"
                 aria-current={active || undefined}
-                aria-label={`scope chat to ${names.join(' + ')}; owner ryan also observes`}
+                aria-label={`scope chat to ${names.join(' + ')}`}
                 data-test={`sidebar-group-${key}`}
-                data-all-members={isAllMembers ? 'true' : undefined}
                 onClick={() => goGroup(names)}
-                title={`${names.join(' + ')} — owner ryan observes`}
+                title={names.join(' + ')}
               >
-                <span className="sidebar-item-label">{names.join(' + ')}</span>
-                <small
-                  className="sidebar-item-owner-affordance"
-                  data-test={`sidebar-group-${key}-owner`}
-                  aria-hidden="true"
-                >
-                  +ryan
-                </small>
+                {names.join(' + ')}
               </button>
             )
           })
-        )}
-      </section>
-      <section className="sidebar-section">
-        <h3 className="sidebar-heading">bpmux</h3>
-        {systemCount === 0 ? (
-          <p className="sidebar-empty" data-test="sidebar-bpmux-empty">
-            none yet
-          </p>
-        ) : (
-          <button
-            className={`sidebar-item${bpmuxSelected ? ' sidebar-item--active' : ''}`}
-            type="button"
-            aria-current={bpmuxSelected || undefined}
-            data-test="sidebar-bpmux"
-            onClick={goBpmux}
-          >
-            bpmux ({systemCount})
-          </button>
         )}
       </section>
     </nav>

@@ -130,7 +130,7 @@ describe('Sidebar — slice 5g+5g-fix mirror-roster derivation (replaces desk-ch
     expect(html).toContain('data-test="sidebar-group-designer+dev"')
     expect(html).toContain('data-test="sidebar-group-designer+pm"')
     expect(html).toContain('data-test="sidebar-group-dev+pm"')
-    expect(html).toContain('data-test="sidebar-group-designer+dev+pm"')
+    expect(html).not.toContain('data-test="sidebar-group-designer+dev+pm"')
   })
 })
 
@@ -236,8 +236,8 @@ describe('#1246 Sidebar — roster is source-of-truth; no message-history fallba
   })
 })
 
-describe('#1457 Sidebar — Ryan-never-excluded canon visibility + SYSTEM→BPMUX rename', () => {
-  test('Scenario 2: every GROUP row carries +ryan owner-affordance + aria-label "owner ryan also observes"', () => {
+describe('#1457 Sidebar — Pictor-rework: retire +ryan / 3-role-group / BPMUX section', () => {
+  test('Scenario 1: GROUP rows do NOT carry +ryan affordance (owner-is-constant; canon-cite 18:31 UTC "I am already here")', () => {
     const html = renderToStaticMarkup(
       <Sidebar
         recipient={null}
@@ -249,14 +249,13 @@ describe('#1457 Sidebar — Ryan-never-excluded canon visibility + SYSTEM→BPMU
         mirrorRoster={ROSTER_FIXTURE}
       />
     )
-    expect(html).toContain('aria-label="scope chat to designer + dev; owner ryan also observes"')
-    expect(html).toContain(
-      'aria-label="scope chat to designer + dev + pm; owner ryan also observes"'
-    )
-    expect(html).toContain('data-test="sidebar-group-designer+dev-owner"')
+    expect(html).not.toContain('+ryan')
+    expect(html).not.toContain('sidebar-item-owner-affordance')
+    expect(html).not.toContain('owner ryan also observes')
+    expect(html).not.toMatch(/data-test="sidebar-group-[^"]+-owner"/)
   })
 
-  test('Scenario 3: SYSTEM section heading renamed to BPMUX', () => {
+  test('Scenario 2: BPMUX section retired entirely (filter pills handle bpmux class)', () => {
     const messages: ChatMessage[] = [
       {
         id: 'sys-1',
@@ -279,30 +278,30 @@ describe('#1457 Sidebar — Ryan-never-excluded canon visibility + SYSTEM→BPMU
         mirrorRoster={ROSTER_FIXTURE}
       />
     )
-    expect(html).toContain('<h3 class="sidebar-heading">bpmux</h3>')
+    expect(html).not.toContain('<h3 class="sidebar-heading">bpmux</h3>')
     expect(html).not.toContain('<h3 class="sidebar-heading">system</h3>')
-    expect(html).toContain('data-test="sidebar-bpmux"')
+    expect(html).not.toContain('data-test="sidebar-bpmux"')
+    expect(html).not.toContain('data-test="sidebar-bpmux-empty"')
     expect(html).not.toContain('data-test="sidebar-system"')
-    expect(html).toContain('bpmux (1)')
   })
 
-  test('Scenario 3 cont.: bpmux section empty-state replaces system empty-state', () => {
+  test('Scenario 3: 3-role all-members group retired (subsumed by "all conversations")', () => {
     const html = renderToStaticMarkup(
       <Sidebar
         recipient={null}
         allView={false}
         onSelectRecipient={() => {}}
         onSelectAllView={() => {}}
-        messages={[]}
+        messages={RYAN_ONLY_MESSAGES}
         filter={filter}
         mirrorRoster={ROSTER_FIXTURE}
       />
     )
-    expect(html).toContain('data-test="sidebar-bpmux-empty"')
-    expect(html).not.toContain('data-test="sidebar-system-empty"')
+    expect(html).not.toMatch(/data-test="sidebar-group-designer\+dev\+pm"/)
+    expect(html).not.toContain('data-all-members="true"')
   })
 
-  test('Scenario 4: all GROUP rooms use member-list-naming (role + role)', () => {
+  test('Scenario 4: 2-role GROUP rooms preserved with member-list-naming', () => {
     const html = renderToStaticMarkup(
       <Sidebar
         recipient={null}
@@ -318,27 +317,9 @@ describe('#1457 Sidebar — Ryan-never-excluded canon visibility + SYSTEM→BPMU
     expect(html).toMatch(/data-test="sidebar-group-designer\+dev"/)
     expect(html).toMatch(/data-test="sidebar-group-designer\+pm"/)
     expect(html).toMatch(/data-test="sidebar-group-dev\+pm"/)
-    expect(html).toMatch(/data-test="sidebar-group-designer\+dev\+pm"/)
   })
 
-  test('Scenario 4 cont.: 3-role all-members group carries data-all-members=true for broadcast-substrate routing', () => {
-    const html = renderToStaticMarkup(
-      <Sidebar
-        recipient={null}
-        allView={false}
-        onSelectRecipient={() => {}}
-        onSelectAllView={() => {}}
-        messages={RYAN_ONLY_MESSAGES}
-        filter={filter}
-        mirrorRoster={ROSTER_FIXTURE}
-      />
-    )
-    expect(html).toMatch(
-      /data-test="sidebar-group-designer\+dev\+pm"[\s\S]*data-all-members="true"/
-    )
-  })
-
-  test('Scenario 5: all conversations entry preserved with explanatory title', () => {
+  test('Scenario 5: "all conversations" entry preserved with explanatory title', () => {
     const html = renderToStaticMarkup(
       <Sidebar
         recipient={null}
@@ -353,5 +334,38 @@ describe('#1457 Sidebar — Ryan-never-excluded canon visibility + SYSTEM→BPMU
     expect(html).toContain('data-test="sidebar-all"')
     expect(html).toContain('all conversations')
     expect(html).toMatch(/title="meta-view of every channel"/)
+  })
+
+  test('Scenario 6 canon: zero <div> + zero <span> in rendered sidebar (feedback_html5_semantic_no_divs_spans)', () => {
+    const html = renderToStaticMarkup(
+      <Sidebar
+        recipient={null}
+        allView={false}
+        onSelectRecipient={() => {}}
+        onSelectAllView={() => {}}
+        messages={RYAN_ONLY_MESSAGES}
+        filter={filter}
+        mirrorRoster={ROSTER_FIXTURE}
+      />
+    )
+    expect(html).not.toMatch(/<div\b/)
+    expect(html).not.toMatch(/<span\b/)
+  })
+
+  test('Scenario 7: presence-dot still renders per DIRECT role (semantic refactored to <i>)', () => {
+    const html = renderToStaticMarkup(
+      <Sidebar
+        recipient={null}
+        allView={false}
+        onSelectRecipient={() => {}}
+        onSelectAllView={() => {}}
+        messages={RYAN_ONLY_MESSAGES}
+        filter={filter}
+        mirrorRoster={ROSTER_FIXTURE}
+      />
+    )
+    expect(html).toMatch(/data-test="presence-dot-designer"/)
+    expect(html).toMatch(/data-test="presence-dot-dev"/)
+    expect(html).toMatch(/data-test="presence-dot-pm"/)
   })
 })
