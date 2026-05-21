@@ -62,14 +62,21 @@ const Chat = ({
     mirrorReactions
   })
 
-  const hiddenCounts = useMemo((): Partial<Record<MessageClass, number>> => {
-    const counts: Partial<Record<MessageClass, number>> = {}
+  const { hiddenCounts, visibleCounts } = useMemo((): {
+    hiddenCounts: Partial<Record<MessageClass, number>>
+    visibleCounts: Partial<Record<MessageClass, number>>
+  } => {
+    const hidden: Partial<Record<MessageClass, number>> = {}
+    const visible: Partial<Record<MessageClass, number>> = {}
     for (const m of messages) {
       const cls = classOf(m.messageType)
-      if (filter.visible.has(cls)) continue
-      counts[cls] = (counts[cls] ?? 0) + 1
+      if (filter.visible.has(cls)) {
+        visible[cls] = (visible[cls] ?? 0) + 1
+      } else {
+        hidden[cls] = (hidden[cls] ?? 0) + 1
+      }
     }
-    return counts
+    return { hiddenCounts: hidden, visibleCounts: visible }
   }, [messages, filter.visible])
 
   const handleSend = (text: string, addressee: string | null): void => {
@@ -96,7 +103,7 @@ const Chat = ({
           <small>{scopeLabel}</small>
         </aside>
       )}
-      <FilterPills filter={filter} hiddenCounts={hiddenCounts} />
+      <FilterPills filter={filter} hiddenCounts={hiddenCounts} visibleCounts={visibleCounts} />
       <MessageList
         messages={messages}
         visibleClasses={filter.visible}

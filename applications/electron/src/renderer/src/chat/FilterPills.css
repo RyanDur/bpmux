@@ -1,10 +1,10 @@
 .filter-pills {
-  padding: var(--space-6) var(--space-16);
-  border-bottom: 1px solid var(--border-subtle);
-  background: var(--bg-base);
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+  padding: var(--space-6) var(--space-16);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-base);
 
   & .filter-pills-row {
     display: flex;
@@ -13,6 +13,9 @@
   }
 
   & .filter-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-4);
     padding: var(--space-2) var(--space-8);
     font-size: 0.75rem;
     color: var(--fg-secondary);
@@ -20,44 +23,50 @@
     border: 1px solid var(--border-subtle);
     border-radius: 999px;
     cursor: pointer;
-
-    /* Toggle state animates (#352 AC1). bg + color + border all
-     * interpolate over the instant tier — the fastest token —
-     * because toggling is an immediate confirm-not-distract signal,
-     * not a focal state change. Reduced-motion resolves to 0ms. */
     transition:
       background-color var(--motion-duration-instant) var(--motion-ease-out),
       color var(--motion-duration-instant) var(--motion-ease-out),
-      border-color var(--motion-duration-instant) var(--motion-ease-out);
+      border-color var(--motion-duration-instant) var(--motion-ease-out),
+      opacity var(--motion-duration-instant) var(--motion-ease-out);
 
     &:hover {
       background: var(--bg-highlighted);
     }
 
-    /* aria-pressed=true is the canonical toggle-state signal per WAI-
-     * ARIA; matching on the attribute means our styling tracks the
-     * accessibility state by construction (no separate --active class
-     * drift from aria-pressed drift). */
-    &.filter-pill--active,
-    &[aria-pressed='true'] {
-      color: var(--fg-primary);
-      background: var(--bg-highlighted);
-      border-color: var(--border-strong);
-      font-weight: 600;
-    }
-
-    /* Focus ring: visible keyboard-focus (AC7 requires keyboard
-     * reachability). Outline over box-shadow so it survives the
-     * rounded-pill border-radius cleanly. */
     &:focus-visible {
       outline: 2px solid var(--accent-brand);
       outline-offset: 2px;
     }
+
+    &[aria-checked='true'] {
+      color: var(--fg-primary);
+      background: var(--bg-highlighted);
+      border-color: var(--accent-brand);
+      font-weight: 600;
+    }
+
+    &[aria-checked='false'] {
+      color: var(--fg-dim);
+      background: transparent;
+      border-style: dashed;
+      font-style: italic;
+    }
+
+    &[data-empty='true'] {
+      opacity: 0.4;
+    }
   }
 
-  & .filter-pills-summary {
+  & .filter-pill-count {
+    color: var(--fg-dim);
+    font-variant-numeric: tabular-nums;
+    font-style: normal;
+  }
+
+  & .filter-pills-empty-hint {
     margin: 0;
     font-size: 0.75rem;
     color: var(--fg-dim);
+    font-style: italic;
   }
 }

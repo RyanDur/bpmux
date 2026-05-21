@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
-import { screen } from '@testing-library/react'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import {
@@ -8,16 +7,22 @@ import {
   type SeedMessage
 } from '../../../../test/fixtures/seedMessages'
 
-const INSIGHT_SEED: SeedMessage[] = [
+const INSIGHT_LEGACY_SEED: SeedMessage[] = [
   {
     from: 'dev:claude-code',
-    text: 'an insight-class reasoning trace',
+    text: 'a chat message to anchor scope',
     ts: '2026-04-22T16:00:00Z',
+    message_type: 'chat'
+  },
+  {
+    from: 'dev:claude-code',
+    text: 'a legacy insight-class reasoning trace remapped to events',
+    ts: '2026-04-22T16:01:00Z',
     message_type: 'insight'
   }
 ]
 
-const SYSTEM_SEED: SeedMessage[] = [
+const BPMUX_SEED: SeedMessage[] = [
   {
     from: 'dev:claude-code',
     text: 'a chat message to anchor known-roles',
@@ -26,13 +31,13 @@ const SYSTEM_SEED: SeedMessage[] = [
   },
   {
     from: 'bpmux:system',
-    text: 'a system event message',
+    text: 'a bpmux broadcast message',
     ts: '2026-04-22T16:01:00Z',
     message_type: 'system'
   }
 ]
 
-describe('human-side E2E #476 — read-class — message class glyphs', () => {
+describe('human-side E2E #476 — read-class — message class glyphs (post-#1456 3-class remap)', () => {
   let rendered: RenderAppResult | null = null
 
   afterEach(() => {
@@ -40,43 +45,51 @@ describe('human-side E2E #476 — read-class — message class glyphs', () => {
     rendered = null
   })
 
-  it('insight-class seeded message renders the insight class glyph', async () => {
+  it('legacy insight-class seeded message remaps to events glyph (#1456 classOf legacy remap)', async () => {
     const port = inject('bpmuxBackendPort')
     const authToken = inject('bpmuxAuthToken')
     const apiBase = `http://127.0.0.1:${port}`
     await resetMessages(apiBase, authToken)
-    await seedMessages(apiBase, authToken, INSIGHT_SEED)
+    await seedMessages(apiBase, authToken, INSIGHT_LEGACY_SEED)
 
     rendered = renderApp()
 
-    await rendered.findByText(/reasoning trace/, undefined, { timeout: 15_000 })
+    const eventsPill = await rendered.findByTestId('filter-pill-events', undefined, {
+      timeout: 15_000
+    })
+    eventsPill.click()
 
-    const allGlyphs = screen.queryAllByTestId('message-class-glyph')
+    const allGlyphs = await rendered.findAllByTestId('message-class-glyph', undefined, {
+      timeout: 15_000
+    })
+    const eventsGlyphs = allGlyphs.filter((el) => el.getAttribute('data-class') === 'events')
+    expect(eventsGlyphs.length).toBeGreaterThan(0)
+
     const insightGlyphs = allGlyphs.filter((el) => el.getAttribute('data-class') === 'insight')
-    expect(insightGlyphs.length).toBe(1)
-
-    const chatGlyphs = allGlyphs.filter((el) => el.getAttribute('data-class') === 'chat')
-    expect(chatGlyphs.length).toBe(0)
+    expect(insightGlyphs.length).toBe(0)
   }, 20_000)
 
-  it('system-class seeded message renders the system class glyph', async () => {
+  it('legacy system-class seeded message remaps to bpmux glyph (#1456 classOf legacy remap)', async () => {
     const port = inject('bpmuxBackendPort')
     const authToken = inject('bpmuxAuthToken')
     const apiBase = `http://127.0.0.1:${port}`
     await resetMessages(apiBase, authToken)
-    await seedMessages(apiBase, authToken, SYSTEM_SEED)
+    await seedMessages(apiBase, authToken, BPMUX_SEED)
 
     rendered = renderApp()
 
-    const filterPill = await rendered.findByTestId('filter-pill-system', undefined, {
+    const filterPill = await rendered.findByTestId('filter-pill-bpmux', undefined, {
       timeout: 15_000
     })
     filterPill.click()
 
-    const systemGlyphs = await rendered.findAllByTestId('message-class-glyph', undefined, {
+    const bpmuxGlyphs = await rendered.findAllByTestId('message-class-glyph', undefined, {
       timeout: 15_000
     })
-    const systemOnly = systemGlyphs.filter((g) => g.getAttribute('data-class') === 'system')
-    expect(systemOnly.length).toBe(1)
+    const bpmuxOnly = bpmuxGlyphs.filter((g) => g.getAttribute('data-class') === 'bpmux')
+    expect(bpmuxOnly.length).toBe(1)
+
+    const systemGlyphs = bpmuxGlyphs.filter((g) => g.getAttribute('data-class') === 'system')
+    expect(systemGlyphs.length).toBe(0)
   }, 20_000)
 })

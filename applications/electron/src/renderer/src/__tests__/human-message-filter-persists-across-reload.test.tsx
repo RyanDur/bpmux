@@ -4,7 +4,7 @@ import { waitFor } from '@testing-library/react'
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { resetMessages } from '../../../../test/fixtures/seedMessages'
 
-describe('human-side E2E #476 — persistence-class — message filter', () => {
+describe('human-side E2E #476 — persistence-class — message filter (#1456 3-class mute-toggle)', () => {
   let rendered: RenderAppResult | null = null
 
   afterEach(() => {
@@ -13,7 +13,7 @@ describe('human-side E2E #476 — persistence-class — message filter', () => {
     window.localStorage.clear()
   })
 
-  it('toggling activity-class on persists across reload', async () => {
+  it('toggling events-class on persists across reload', async () => {
     const port = inject('bpmuxBackendPort')
     const authToken = inject('bpmuxAuthToken')
     const apiBase = `http://127.0.0.1:${port}`
@@ -26,19 +26,19 @@ describe('human-side E2E #476 — persistence-class — message filter', () => {
     })
     expect(filterPills).toBeTruthy()
 
-    const activityPill = await rendered.findByTestId('filter-pill-activity')
-    expect(activityPill.getAttribute('aria-pressed')).toBe('false')
+    const eventsPill = await rendered.findByTestId('filter-pill-events')
+    expect(eventsPill.getAttribute('aria-checked')).toBe('false')
 
-    activityPill.click()
-    await waitFor(() => expect(activityPill.getAttribute('aria-pressed')).toBe('true'))
+    eventsPill.click()
+    await waitFor(() => expect(eventsPill.getAttribute('aria-checked')).toBe('true'))
 
     rendered.cleanup()
     rendered = renderApp()
 
-    const activityAfterReload = await rendered.findByTestId('filter-pill-activity', undefined, {
+    const eventsAfterReload = await rendered.findByTestId('filter-pill-events', undefined, {
       timeout: 15_000
     })
-    expect(activityAfterReload.getAttribute('aria-pressed')).toBe('true')
+    expect(eventsAfterReload.getAttribute('aria-checked')).toBe('true')
   }, 20_000)
 
   it('toggling chat-class off persists across reload', async () => {
@@ -52,10 +52,10 @@ describe('human-side E2E #476 — persistence-class — message filter', () => {
     const chatPill = await rendered.findByTestId('filter-pill-chat', undefined, {
       timeout: 15_000
     })
-    expect(chatPill.getAttribute('aria-pressed')).toBe('true')
+    expect(chatPill.getAttribute('aria-checked')).toBe('true')
 
     chatPill.click()
-    await waitFor(() => expect(chatPill.getAttribute('aria-pressed')).toBe('false'))
+    await waitFor(() => expect(chatPill.getAttribute('aria-checked')).toBe('false'))
 
     rendered.cleanup()
     rendered = renderApp()
@@ -63,6 +63,6 @@ describe('human-side E2E #476 — persistence-class — message filter', () => {
     const chatAfterReload = await rendered.findByTestId('filter-pill-chat', undefined, {
       timeout: 15_000
     })
-    expect(chatAfterReload.getAttribute('aria-pressed')).toBe('false')
+    expect(chatAfterReload.getAttribute('aria-checked')).toBe('false')
   }, 20_000)
 })

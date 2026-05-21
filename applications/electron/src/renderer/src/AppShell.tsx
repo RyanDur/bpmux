@@ -99,7 +99,12 @@ const AppShell = ({
   const [allView, setAllView] = useState<boolean>(initialScope?.kind === 'all')
   const [metricsOpen, setMetricsOpen] = useState<boolean>(false)
   const { theme, toggle: toggleTheme } = useTheme()
-  const filter = useMessageFilter()
+  const channelKey = allView
+    ? 'all'
+    : recipient && recipient.length > 0
+      ? `scoped:${[...recipient].sort().join(',')}`
+      : 'broadcast'
+  const filter = useMessageFilter(channelKey)
   const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
 
   const selectRecipient = (r: string[] | null): void => {

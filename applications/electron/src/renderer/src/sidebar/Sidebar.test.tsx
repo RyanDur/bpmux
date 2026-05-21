@@ -5,12 +5,10 @@ import type { MessageFilter } from '../hooks/useMessageFilter'
 import type { ChatMessage, RosterMemberWire } from '../transport/types'
 
 const filter: MessageFilter = {
-  visible: new Set(['chat', 'insight']),
+  visible: new Set(['chat']),
   toggle: () => {},
-  setAll: () => {},
   reset: () => {},
-  setOnly: () => {},
-  isAllActive: false
+  setOnly: () => {}
 }
 
 const wire = (overrides: Partial<RosterMemberWire>): RosterMemberWire => ({

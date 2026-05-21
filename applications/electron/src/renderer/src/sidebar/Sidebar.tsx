@@ -35,7 +35,7 @@ const groupKey = (names: readonly string[]): string => [...names].sort().join('+
 const countSystemMessages = (messages: readonly ChatMessage[]): number => {
   let n = 0
   for (const m of messages) {
-    if (classOf(m.messageType) === 'system') n++
+    if (classOf(m.messageType) === 'bpmux') n++
   }
   return n
 }
@@ -68,7 +68,7 @@ const Sidebar = ({
   const groups = useMemo(() => deriveCombinatorialGroups(combinableRoles), [combinableRoles])
   const presence = usePresence(messages, directRoles)
 
-  const systemOnly = filter.visible.size === 1 && filter.visible.has('system')
+  const systemOnly = filter.visible.size === 1 && filter.visible.has('bpmux')
   const broadcastSelected = !allView && recipient === null && !systemOnly
   const systemSelected = !allView && recipient === null && systemOnly
 
@@ -90,7 +90,7 @@ const Sidebar = ({
   }
   const goSystem = (): void => {
     onSelectRecipient(null)
-    filter.setOnly('system')
+    filter.setOnly('bpmux')
   }
 
   return (
