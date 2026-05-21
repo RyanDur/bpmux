@@ -9,9 +9,9 @@ import { launchIsolatedElectron } from './helpers/launch'
 // the system clipboard. Cmd+V pastes it back via platform-native
 // clipboard — one clipboard story, no internal yank-ref.
 
-async function launchWithFixture(): Promise<{
+const launchWithFixture = async (): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
-}> {
+}> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-378-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-378-'))
   const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })

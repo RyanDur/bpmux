@@ -37,9 +37,7 @@ test.describe('#1242 chat-paste — zero console errors when unfurl renders', ()
     })
 
     await expect(win.locator('[data-test="app-root"]')).toBeVisible()
-    const card = win.locator(
-      '[data-test="unfurl-card-https://code.claude.com/docs/en/sub-agents"]'
-    )
+    const card = win.locator('[data-test="unfurl-card-https://code.claude.com/docs/en/sub-agents"]')
     await expect(card).toBeVisible({ timeout: 10_000 })
 
     consoleErrors.length = 0

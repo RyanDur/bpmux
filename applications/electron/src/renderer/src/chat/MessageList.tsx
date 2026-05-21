@@ -60,8 +60,7 @@ const MessageList = ({
 }: Props): React.JSX.Element => {
   const visible = messages.filter(
     (m) =>
-      visibleClasses.has(classOf(m.messageType)) &&
-      isMessageInScope(m, recipient, viewer, allView)
+      visibleClasses.has(classOf(m.messageType)) && isMessageInScope(m, recipient, viewer, allView)
   )
   const presenceRoles = useMemo(
     () => deriveTeamRoles(messages, viewer ?? RENDERER_IDENTITY),
@@ -133,11 +132,7 @@ const MessageList = ({
   return (
     <div className="message-list-wrap" data-test="message-list-wrap">
       {isLoadingOlder && (
-        <output
-          className="loading-older-pill"
-          data-test="loading-older-pill"
-          aria-live="polite"
-        >
+        <output className="loading-older-pill" data-test="loading-older-pill" aria-live="polite">
           loading older messages…
         </output>
       )}

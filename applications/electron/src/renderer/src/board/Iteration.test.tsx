@@ -54,9 +54,7 @@ describe('#1413 Iteration — renders regardless of member-count or open/closed 
     const carina = iterationStory({ number: 9002, title: 'Iteration Carina', gh_state: 'open' })
     const m1 = memberStory({ number: 9201, labels: ['Feature', iterationLabel('Carina', 100)] })
     const m2 = memberStory({ number: 9202, labels: ['Feature', iterationLabel('Carina', 200)] })
-    const html = renderToStaticMarkup(
-      <Iteration stories={[carina, m1, m2]} onOpen={() => {}} />
-    )
+    const html = renderToStaticMarkup(<Iteration stories={[carina, m1, m2]} onOpen={() => {}} />)
     expect(html).toContain('data-test="board-iteration-9002"')
     expect(html).toContain('Iteration Carina')
     expect(html).toContain('(2)')
@@ -70,9 +68,7 @@ describe('#1413 Iteration — renders regardless of member-count or open/closed 
       gh_state: 'closed'
     })
     const m1 = memberStory({ number: 9301, labels: ['Feature', iterationLabel('Andromeda', 100)] })
-    const html = renderToStaticMarkup(
-      <Iteration stories={[andromeda, m1]} onOpen={() => {}} />
-    )
+    const html = renderToStaticMarkup(<Iteration stories={[andromeda, m1]} onOpen={() => {}} />)
     expect(html).toContain('data-test="board-iteration-9003"')
     expect(html).toContain('Iteration Andromeda')
     expect(html).toContain('(closed)')

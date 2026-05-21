@@ -19,19 +19,25 @@ const App = (): React.JSX.Element => {
 
   const [atBottom, setAtBottom] = useState<boolean>(true)
 
-  const { status, messages: liveRaw, sendChat, mirror } = useWebSocket(bridge?.wsUrl, {
+  const {
+    status,
+    messages: liveRaw,
+    sendChat,
+    mirror
+  } = useWebSocket(bridge?.wsUrl, {
     apiBase: bridge?.apiBase,
     authToken: bridge?.authToken
   })
 
   const liveMessages = useMemo(() => capPerPush(liveRaw, atBottom), [liveRaw, atBottom])
 
-  const { combinedMessages, loadOlder, isLoadingOlder, hasMoreOlder, hasError } =
-    useMessageHistory({
+  const { combinedMessages, loadOlder, isLoadingOlder, hasMoreOlder, hasError } = useMessageHistory(
+    {
       liveMessages,
       apiBase: bridge?.apiBase,
       authToken: bridge?.authToken
-    })
+    }
+  )
 
   useNotifications(combinedMessages)
 

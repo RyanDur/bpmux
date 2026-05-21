@@ -14,7 +14,7 @@ import type { AddressInfo } from 'net'
 // the entire issue gets silently dropped by serde, leaving the
 // BoardStore empty with no error surface. label_json mirrors the
 // Rust helper: emit the full shape from a single name argument.
-export function labelJson(name: string): Record<string, unknown> {
+export const labelJson = (name: string): Record<string, unknown> => {
   let id = 0
   for (const c of Buffer.from(name, 'utf-8')) {
     id = (id * 131 + c) >>> 0
@@ -33,76 +33,70 @@ export function labelJson(name: string): Record<string, unknown> {
 // Octocrab's Comment deserializer needs more than `{id}` — without
 // the full shape it silently fails on drain-push, manifesting as a
 // hard-to-debug log_diag warning instead of a test failure.
-export function commentJson(body: string): Record<string, unknown> {
-  return {
-    id: 1,
-    node_id: 'MDEyOklzc3VlQ29tbWVudDE=',
-    url: 'https://example.test/comments/1',
-    html_url: 'https://example.test/web/comment/1',
-    body,
-    author_association: 'OWNER',
-    user: ghUser(),
-    created_at: '2026-04-30T00:00:00Z'
-  }
-}
+export const commentJson = (body: string): Record<string, unknown> => ({
+  id: 1,
+  node_id: 'MDEyOklzc3VlQ29tbWVudDE=',
+  url: 'https://example.test/comments/1',
+  html_url: 'https://example.test/web/comment/1',
+  body,
+  author_association: 'OWNER',
+  user: ghUser(),
+  created_at: '2026-04-30T00:00:00Z'
+})
 
-export function issueJson(
+export const issueJson = (
   number: number,
   title: string,
   labels: ReadonlyArray<string>,
   body: string | null
-): Record<string, unknown> {
-  return {
-    id: number,
-    node_id: 'MDU6SXNzdWUx',
-    url: `https://example.test/issues/${number}`,
-    repository_url: 'https://example.test/repo',
-    labels_url: `https://example.test/issues/${number}/labels{/name}`,
-    comments_url: `https://example.test/issues/${number}/comments`,
-    events_url: `https://example.test/issues/${number}/events`,
-    html_url: `https://example.test/web/${number}`,
-    number,
-    state: 'open',
-    state_reason: null,
-    title,
-    body,
-    user: ghUser(),
-    labels: labels.map(labelJson),
-    assignees: [],
-    author_association: 'OWNER',
-    comments: 0,
-    created_at: '2026-04-26T19:30:00Z',
-    updated_at: '2026-04-26T19:30:00Z',
-    closed_at: null,
-    milestone: null,
-    pull_request: null,
-    active_lock_reason: null,
-    locked: false
-  }
-}
+): Record<string, unknown> => ({
+  id: number,
+  node_id: 'MDU6SXNzdWUx',
+  url: `https://example.test/issues/${number}`,
+  repository_url: 'https://example.test/repo',
+  labels_url: `https://example.test/issues/${number}/labels{/name}`,
+  comments_url: `https://example.test/issues/${number}/comments`,
+  events_url: `https://example.test/issues/${number}/events`,
+  html_url: `https://example.test/web/${number}`,
+  number,
+  state: 'open',
+  state_reason: null,
+  title,
+  body,
+  user: ghUser(),
+  labels: labels.map(labelJson),
+  assignees: [],
+  author_association: 'OWNER',
+  comments: 0,
+  created_at: '2026-04-26T19:30:00Z',
+  updated_at: '2026-04-26T19:30:00Z',
+  closed_at: null,
+  milestone: null,
+  pull_request: null,
+  active_lock_reason: null,
+  locked: false
+})
 
-function ghUser(): Record<string, unknown> {
-  return {
-    login: 'actor',
-    id: 1,
-    node_id: 'MDQ6VXNlcjE=',
-    avatar_url: 'https://example.test/avatar.png',
-    gravatar_id: '',
-    url: 'https://example.test/users/actor',
-    html_url: 'https://example.test/actor',
-    followers_url: 'https://example.test/actor/followers',
-    following_url: 'https://example.test/actor/following{/other_user}',
-    gists_url: 'https://example.test/actor/gists{/gist_id}',
-    starred_url: 'https://example.test/actor/starred{/owner}{/repo}',
-    subscriptions_url: 'https://example.test/actor/subscriptions',
-    organizations_url: 'https://example.test/actor/orgs',
-    repos_url: 'https://example.test/actor/repos',
-    events_url: 'https://example.test/actor/events{/privacy}',
-    received_events_url: 'https://example.test/actor/received_events',
-    type: 'User',
-    site_admin: false
-  }
-}
+const ghUser = (): Record<string, unknown> => ({
+  login: 'actor',
+  id: 1,
+  node_id: 'MDQ6VXNlcjE=',
+  avatar_url: 'https://example.test/avatar.png',
+  gravatar_id: '',
+  url: 'https://example.test/users/actor',
+  html_url: 'https://example.test/actor',
+  followers_url: 'https://example.test/actor/followers',
+  following_url: 'https://example.test/actor/following{/other_user}',
+  gists_url: 'https://example.test/actor/gists{/gist_id}',
+  starred_url: 'https://example.test/actor/starred{/owner}{/repo}',
+  subscriptions_url: 'https://example.test/actor/subscriptions',
+  organizations_url: 'https://example.test/actor/orgs',
+  repos_url: 'https://example.test/actor/repos',
+  events_url: 'https://example.test/actor/events{/privacy}',
+  received_events_url: 'https://example.test/actor/received_events',
+  type: 'User',
+  site_admin: false
+})
 
 export interface MockRoute {
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE'
@@ -138,7 +132,7 @@ export interface MockGhServer {
 //   DELETE /repos/acme/bpmux/issues/{n}/labels/* → []
 //   POST   /repos/acme/bpmux/issues/{n}/comments → comment_json("ok")
 // Tests can override via on() before the gate-tool fires.
-export async function startMockGhServer(): Promise<MockGhServer> {
+export const startMockGhServer = async (): Promise<MockGhServer> => {
   const issues: Record<string, unknown>[] = []
   const overrides: MockRoute[] = []
   const requests: MockGhRequest[] = []
@@ -153,11 +147,12 @@ export async function startMockGhServer(): Promise<MockGhServer> {
     })
     req.on('end', () => {
       const authHeader = req.headers['authorization']
-      const auth = typeof authHeader === 'string'
-        ? authHeader
-        : Array.isArray(authHeader)
-          ? (authHeader as string[]).join(',')
-          : undefined
+      const auth =
+        typeof authHeader === 'string'
+          ? authHeader
+          : Array.isArray(authHeader)
+            ? (authHeader as string[]).join(',')
+            : undefined
       requests.push({ method, path: url, authorization: auth })
       // Override match wins (last-registered first).
       for (let i = overrides.length - 1; i >= 0; i--) {
@@ -256,9 +251,7 @@ export async function startMockGhServer(): Promise<MockGhServer> {
         send(res, 200, [])
         return
       }
-      const removeLabel = url.match(
-        /^\/repos\/acme\/bpmux\/issues\/(\d+)\/labels\/(.+?)(?:\?.*)?$/
-      )
+      const removeLabel = url.match(/^\/repos\/acme\/bpmux\/issues\/(\d+)\/labels\/(.+?)(?:\?.*)?$/)
       if (method === 'DELETE' && removeLabel) {
         const n = Number(removeLabel[1])
         const labelName = decodeURIComponent(removeLabel[2])
@@ -275,36 +268,24 @@ export async function startMockGhServer(): Promise<MockGhServer> {
         send(res, 200, [])
         return
       }
-      if (
-        method === 'POST' &&
-        /^\/repos\/acme\/bpmux\/issues\/\d+\/comments(\?.*)?$/.test(url)
-      ) {
+      if (method === 'POST' && /^\/repos\/acme\/bpmux\/issues\/\d+\/comments(\?.*)?$/.test(url)) {
         send(res, 201, commentJson('ok'))
         return
       }
       // ci_watcher polls this every few seconds. Default empty
       // workflow_runs so the renderer's /api/ci endpoint resolves
       // cleanly (no console errors from a 404→502 cascade).
-      if (
-        method === 'GET' &&
-        /^\/repos\/acme\/bpmux\/actions\/runs(\?.*)?$/.test(url)
-      ) {
+      if (method === 'GET' && /^\/repos\/acme\/bpmux\/actions\/runs(\?.*)?$/.test(url)) {
         send(res, 200, { total_count: 0, workflow_runs: [] })
         return
       }
       // Drill-in opens fetch comments + timeline. Default empty so
       // open-on-row-click doesn't 502.
-      if (
-        method === 'GET' &&
-        /^\/repos\/acme\/bpmux\/issues\/\d+\/comments(\?.*)?$/.test(url)
-      ) {
+      if (method === 'GET' && /^\/repos\/acme\/bpmux\/issues\/\d+\/comments(\?.*)?$/.test(url)) {
         send(res, 200, [])
         return
       }
-      if (
-        method === 'GET' &&
-        /^\/repos\/acme\/bpmux\/issues\/\d+\/timeline(\?.*)?$/.test(url)
-      ) {
+      if (method === 'GET' && /^\/repos\/acme\/bpmux\/issues\/\d+\/timeline(\?.*)?$/.test(url)) {
         send(res, 200, [])
         return
       }
@@ -321,17 +302,15 @@ export async function startMockGhServer(): Promise<MockGhServer> {
   return {
     baseUrl: `http://127.0.0.1:${port}/`,
     port,
-    on(route) {
+    on: (route) => {
       overrides.push(route)
     },
-    setIssues(seed) {
+    setIssues: (seed) => {
       issues.length = 0
       issues.push(...seed)
     },
-    requestLog() {
-      return [...requests]
-    },
-    async close() {
+    requestLog: () => [...requests],
+    close: async () => {
       await new Promise<void>((resolve, reject) => {
         server.close((err?: Error) => (err ? reject(err) : resolve()))
       })
@@ -339,7 +318,7 @@ export async function startMockGhServer(): Promise<MockGhServer> {
   }
 }
 
-function send(res: ServerResponse, status: number, body: unknown): void {
+const send = (res: ServerResponse, status: number, body: unknown): void => {
   res.statusCode = status
   res.setHeader('content-type', 'application/json')
   res.end(JSON.stringify(body))

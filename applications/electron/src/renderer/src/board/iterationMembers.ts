@@ -33,10 +33,7 @@ export const positionInIterationOrder = (story: BoardStory): number | null => {
 export const isIterationStory = (story: BoardStory): boolean =>
   storyTypeFromLabels(story.labels) === 'iteration'
 
-export const positionInIteration = (
-  story: BoardStory,
-  themeName: string
-): number | null => {
+export const positionInIteration = (story: BoardStory, themeName: string): number | null => {
   for (const label of story.labels) {
     const parsed = parseIterationLabel(label)
     if (parsed?.name === themeName) return parsed.position
@@ -86,9 +83,8 @@ export const postLabelMutation = (
   if (typeof window === 'undefined') return
   const bridge = window.bpmux
   if (!bridge?.apiBase) return
-  void postStoryLabels(
-    { apiBase: bridge.apiBase, authToken: bridge.authToken },
-    storyNumber,
-    { add: addLabels, remove: removeLabels }
-  ).value
+  void postStoryLabels({ apiBase: bridge.apiBase, authToken: bridge.authToken }, storyNumber, {
+    add: addLabels,
+    remove: removeLabels
+  }).value
 }

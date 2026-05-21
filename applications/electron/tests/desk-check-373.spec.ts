@@ -44,9 +44,9 @@ const MESSAGES = [
   }
 ]
 
-async function launchWithFixture(): Promise<{
+const launchWithFixture = async (): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
-}> {
+}> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-373-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-373-'))
   const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
@@ -113,9 +113,7 @@ test.describe('desk-check #373 illustrated class glyphs', () => {
       })
       .first()
     await expect(chatRow).toBeVisible({ timeout: 5_000 })
-    await expect(
-      chatRow.locator('[data-test="message-class-glyph"]')
-    ).toHaveCount(0)
+    await expect(chatRow.locator('[data-test="message-class-glyph"]')).toHaveCount(0)
 
     await app.close()
   })

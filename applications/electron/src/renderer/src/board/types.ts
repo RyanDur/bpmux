@@ -167,11 +167,12 @@ export const deriveEpicState = (
   if (children.length === 0 || children.every((c) => c.state === 'icebox')) {
     return 'icebox'
   }
-  const anyActive = children.some((c) =>
-    c.state === 'in-progress' ||
-    c.state === 'desk-check' ||
-    c.state === 'delivered' ||
-    c.state === 'ready-for-accept'
+  const anyActive = children.some(
+    (c) =>
+      c.state === 'in-progress' ||
+      c.state === 'desk-check' ||
+      c.state === 'delivered' ||
+      c.state === 'ready-for-accept'
   )
   if (anyActive) return 'in-progress'
   const nonRetired = children.filter((c) => c.state !== 'retired')

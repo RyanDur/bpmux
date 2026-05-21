@@ -26,7 +26,7 @@ import type { RosterEntry } from '../hooks/useTeamRoster'
  * the `shortName` helper in MessageList; duplicated here to keep this
  * module standalone.
  */
-function shortName(identity: string): string {
+const shortName = (identity: string): string => {
   const idx = identity.indexOf(':')
   return idx === -1 ? identity : identity.slice(0, idx)
 }
@@ -46,10 +46,10 @@ function shortName(identity: string): string {
  * fallback render "unknown" when a sender isn't in the set, same
  * as pre-#393.
  */
-export function deriveTeamRoles(
+export const deriveTeamRoles = (
   messages: readonly ChatMessage[],
   viewer?: string
-): readonly string[] {
+): readonly string[] => {
   const set = new Set<string>()
   if (viewer !== undefined && viewer.length > 0) set.add(shortName(viewer))
   for (const m of messages) {
@@ -72,11 +72,11 @@ export function deriveTeamRoles(
  * is ordered by size ascending then lexicographic. Pure function;
  * stable across re-renders given the same input.
  */
-export function combinations(
+export const combinations = (
   roles: readonly string[],
   minSize: number,
   maxSize: number
-): string[][] {
+): string[][] => {
   const sorted = [...roles].sort()
   const out: string[][] = []
   const n = sorted.length
@@ -111,9 +111,7 @@ export function combinations(
  * 3 combinable roles → C(3,2) + C(3,3) = 4 subsets.
  * 4 combinable roles → C(4,2) + C(4,3) + C(4,4) = 11 subsets.
  */
-export function deriveCombinatorialGroups(
-  roles: readonly string[]
-): string[][] {
+export const deriveCombinatorialGroups = (roles: readonly string[]): string[][] => {
   if (roles.length < 2) return []
   return combinations(roles, 2, roles.length)
 }
@@ -123,9 +121,7 @@ export function deriveCombinatorialGroups(
  * present in the roster (which it typically is, since Electron's
  * renderer holds a WS connection). Sorted for stable iteration.
  */
-export function deriveTeamRolesFromRoster(
-  roster: readonly RosterEntry[]
-): readonly string[] {
+export const deriveTeamRolesFromRoster = (roster: readonly RosterEntry[]): readonly string[] => {
   const set = new Set<string>()
   for (const entry of roster) set.add(entry.role)
   return Array.from(set).sort()
@@ -159,10 +155,10 @@ const toolSuffixOf = (identity: string): string => {
 
 const isAutoIdentity = (role: string): boolean => role.startsWith('agent-')
 
-export function deriveDirectRolesFromRoster(
+export const deriveDirectRolesFromRoster = (
   roster: readonly RosterEntry[],
   viewer?: string
-): readonly string[] {
+): readonly string[] => {
   const self = viewer !== undefined ? shortName(viewer) : null
   const namedTools = new Set<string>()
   for (const e of roster) {
@@ -184,9 +180,7 @@ export function deriveDirectRolesFromRoster(
  * that's DM-able but not group-addressable) has a clean extension
  * point.
  */
-export function deriveCombinableRolesFromRoster(
+export const deriveCombinableRolesFromRoster = (
   roster: readonly RosterEntry[],
   viewer?: string
-): readonly string[] {
-  return deriveDirectRolesFromRoster(roster, viewer)
-}
+): readonly string[] => deriveDirectRolesFromRoster(roster, viewer)

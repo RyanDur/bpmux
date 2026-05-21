@@ -17,11 +17,7 @@ export interface UseStoryDragOptions<P> {
 export interface UseStoryDragResult<P> {
   draggedNumber: number | null
   hoveredNumber: number | null
-  startDrag: (
-    event: React.DragEvent<HTMLElement>,
-    storyNumber: number,
-    payload: P
-  ) => void
+  startDrag: (event: React.DragEvent<HTMLElement>, storyNumber: number, payload: P) => void
   endDrag: () => void
   hover: (storyNumber: number | null) => void
   decode: (event: React.DragEvent<HTMLElement>) => P | null
@@ -69,8 +65,7 @@ export const useStoryDrag = <P>(options: UseStoryDragOptions<P>): UseStoryDragRe
   )
 
   const hasType = useCallback(
-    (event: React.DragEvent<HTMLElement>): boolean =>
-      event.dataTransfer.types.includes(mimeType),
+    (event: React.DragEvent<HTMLElement>): boolean => event.dataTransfer.types.includes(mimeType),
     [mimeType]
   )
 

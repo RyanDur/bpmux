@@ -3,10 +3,7 @@ import { ESLint } from 'eslint'
 import { resolve } from 'path'
 
 const ELECTRON_APP_ROOT = resolve(__dirname, '../../../..')
-const FIXTURE_PATH = resolve(
-  __dirname,
-  'fixtures/dodds-anti-patterns.fixture.tsx'
-)
+const FIXTURE_PATH = resolve(__dirname, 'fixtures/dodds-anti-patterns.fixture.tsx')
 
 const EXPECTED_RULE_IDS = [
   'testing-library/prefer-user-event',
@@ -24,14 +21,11 @@ const lintFixture = async (): Promise<ESLint.LintResult[]> => {
 }
 
 describe('Dodds RTL anti-pattern eslint substrate (#1423)', () => {
-  test.each(EXPECTED_RULE_IDS)(
-    'rule %s fires on its anti-pattern in fixture',
-    async (ruleId) => {
-      const [result] = await lintFixture()
-      const firedRuleIds = result.messages.map((m) => m.ruleId)
-      expect(firedRuleIds).toContain(ruleId)
-    }
-  )
+  test.each(EXPECTED_RULE_IDS)('rule %s fires on its anti-pattern in fixture', async (ruleId) => {
+    const [result] = await lintFixture()
+    const firedRuleIds = result.messages.map((m) => m.ruleId)
+    expect(firedRuleIds).toContain(ruleId)
+  })
 
   test('grace-tier: rules emit warnings not errors', async () => {
     const [result] = await lintFixture()

@@ -44,24 +44,14 @@ describe('#1355 DrillInActions independence', () => {
 
   test('hides accept/reject menu when mode is not idle', () => {
     const html = renderToStaticMarkup(
-      <DrillInActions
-        {...baseProps}
-        story={story({})}
-        canAct={true}
-        mode="rejecting"
-      />
+      <DrillInActions {...baseProps} story={story({})} canAct={true} mode="rejecting" />
     )
     expect(html).not.toContain('data-test="drill-in-actions"')
   })
 
   test('renders the bug-question dialog when mode=bug-question', () => {
     const html = renderToStaticMarkup(
-      <DrillInActions
-        {...baseProps}
-        story={story({})}
-        canAct={true}
-        mode="bug-question"
-      />
+      <DrillInActions {...baseProps} story={story({})} canAct={true} mode="bug-question" />
     )
     expect(html).toContain('data-test="drill-in-bug-question"')
     expect(html).toContain('Would you file a bug')
@@ -80,12 +70,7 @@ describe('#1355 DrillInActions independence', () => {
 
   test('bypass details element is present inside bug-question dialog', () => {
     const html = renderToStaticMarkup(
-      <DrillInActions
-        {...baseProps}
-        story={story({})}
-        canAct={true}
-        mode="bug-question"
-      />
+      <DrillInActions {...baseProps} story={story({})} canAct={true} mode="bug-question" />
     )
     expect(html).toContain('drill-in-bypass')
     expect(html).toContain('data-test="drill-in-bypass-reason"')

@@ -22,9 +22,7 @@ describe('selectReactions — slice 5c reactions mirror-priority archetype', () 
 
   test('returns mirror entry even when empty (mirror is authoritative for "no reactions")', () => {
     const mirror: ReactionAggregateWire[] = []
-    const rest: AggregatedReaction[] = [
-      { message_key: 'k', emoji: '👍', count: 1, users: ['dev'] }
-    ]
+    const rest: AggregatedReaction[] = [{ message_key: 'k', emoji: '👍', count: 1, users: ['dev'] }]
     expect(selectReactions(mirror, rest)).toBe(mirror)
   })
 })

@@ -6,11 +6,7 @@ import { computeDropMutation } from './iterationPosition'
 import { parseIterationLabel } from './labelSchema'
 import { STORY_GRIP_TEST_ID } from './testIds'
 import { storyTypeFromLabels, type BoardStory } from './types'
-import {
-  type DragPayload,
-  eagerReorder,
-  postLabelMutation
-} from './iterationMembers'
+import { type DragPayload, eagerReorder, postLabelMutation } from './iterationMembers'
 import type { IterationMember } from './useIterationMembers'
 import { DRAG_MIMETYPE_REGISTRY, useStoryDrag } from './useStoryDrag'
 
@@ -45,12 +41,7 @@ const MemberList = ({
       encode: JSON.stringify,
       decode: decodeDragPayload
     })
-  const orderedMembers = eagerReorder(
-    members,
-    (m) => m.story.number,
-    draggedNumber,
-    hoveredNumber
-  )
+  const orderedMembers = eagerReorder(members, (m) => m.story.number, draggedNumber, hoveredNumber)
   return (
     <ul className="board-iteration-body">
       {orderedMembers.map(({ story, position }) => (
@@ -79,9 +70,7 @@ const MemberList = ({
                 ? hoveredNumber
                 : story.number
             if (payload.storyNumber === targetNumber) return
-            const originalIdx = members.findIndex(
-              (m) => m.story.number === targetNumber
-            )
+            const originalIdx = members.findIndex((m) => m.story.number === targetNumber)
             if (originalIdx === -1) return
             const mutation = computeDropMutation({
               draggedNumber: payload.storyNumber,
@@ -138,21 +127,13 @@ const MemberList = ({
               if (!event.ctrlKey || !event.shiftKey) return
               if (iteration.gh_state === 'closed') return
               const direction =
-                event.key === 'ArrowUp'
-                  ? 'up'
-                  : event.key === 'ArrowDown'
-                    ? 'down'
-                    : null
+                event.key === 'ArrowUp' ? 'up' : event.key === 'ArrowDown' ? 'down' : null
               if (direction === null) return
               event.preventDefault()
-              const originalIdx = members.findIndex(
-                (m) => m.story.number === story.number
-              )
+              const originalIdx = members.findIndex((m) => m.story.number === story.number)
               if (originalIdx === -1) return
               if (direction === 'up' && originalIdx === 0) {
-                onReorderAnnounce?.(
-                  `${story.title} is already at position 1 in ${iteration.title}`
-                )
+                onReorderAnnounce?.(`${story.title} is already at position 1 in ${iteration.title}`)
                 return
               }
               if (direction === 'down' && originalIdx === members.length - 1) {
@@ -161,8 +142,7 @@ const MemberList = ({
                 )
                 return
               }
-              const targetMemberIndex =
-                direction === 'up' ? originalIdx - 1 : originalIdx + 1
+              const targetMemberIndex = direction === 'up' ? originalIdx - 1 : originalIdx + 1
               const mutation = computeDropMutation({
                 draggedNumber: story.number,
                 draggedThemeName: themeName,
@@ -175,9 +155,7 @@ const MemberList = ({
               if (!mutation) return
               postLabelMutation(story.number, mutation.add, mutation.remove)
               const addedLabel = mutation.add[0]
-              const parsedKey = addedLabel
-                ? parseIterationLabel(addedLabel)
-                : null
+              const parsedKey = addedLabel ? parseIterationLabel(addedLabel) : null
               if (parsedKey) {
                 setPending(story.number, parsedKey.name, parsedKey.position)
               }

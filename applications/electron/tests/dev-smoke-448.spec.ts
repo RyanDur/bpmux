@@ -60,9 +60,7 @@ test.describe('#448 board column collapse affordance — dev smoke', () => {
 
   test('chevron glyph swaps between expanded and collapsed', async () => {
     const { app, win } = await launchIsolatedWithWindow()
-    const chevron = win
-      .locator('[data-test="board-group-ready"]')
-      .locator('.board-group-chevron')
+    const chevron = win.locator('[data-test="board-group-ready"]').locator('.board-group-chevron')
     const before = (): Promise<string> =>
       chevron.evaluate((el) => getComputedStyle(el, '::before').content)
     expect(await before()).toBe('"▾"')

@@ -36,9 +36,9 @@ const MOCK_COMMENTS = [
   }
 ]
 
-async function launchWithFixture(): Promise<{
+const launchWithFixture = async (): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
-}> {
+}> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-366-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-366-'))
   const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
@@ -61,20 +61,18 @@ async function launchWithFixture(): Promise<{
   return { app }
 }
 
-async function openStoryDrillIn(win: Awaited<ReturnType<Awaited<ReturnType<typeof electron.launch>>['firstWindow']>>): Promise<void> {
+const openStoryDrillIn = async (
+  win: Awaited<ReturnType<Awaited<ReturnType<typeof electron.launch>>['firstWindow']>>
+): Promise<void> => {
   await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
   // Pre-#1128 used `[data-test="board-story-card"]` which never
   // existed in the renderer. Fixture seeds story #366 in `ready`
   // state; click `.board-story-button` (post-#499 div-class) under
   // the canonical row test-id to open the drill-in.
-  const storyButton = win.locator(
-    '[data-test="board-story-366"] .board-story-button'
-  )
+  const storyButton = win.locator('[data-test="board-story-366"] .board-story-button')
   await storyButton.click()
   await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
-  await expect(
-    win.locator('[data-test="drill-in-comment"]').first()
-  ).toBeVisible()
+  await expect(win.locator('[data-test="drill-in-comment"]').first()).toBeVisible()
 }
 
 test.describe('desk-check #366 comment quote-excerpt', () => {
@@ -91,9 +89,7 @@ test.describe('desk-check #366 comment quote-excerpt', () => {
     // Selection API — more precise than chord-dragging and doesn't
     // depend on font metrics.
     await win.evaluate(() => {
-      const li = document.querySelector<HTMLElement>(
-        '[data-comment-id="7700"]'
-      )
+      const li = document.querySelector<HTMLElement>('[data-comment-id="7700"]')
       if (!li) throw new Error('comment li not found')
       const body = li.querySelector<HTMLElement>('.drill-in-comment-body p')
       if (!body || !body.firstChild) throw new Error('comment body not found')
@@ -114,9 +110,7 @@ test.describe('desk-check #366 comment quote-excerpt', () => {
     await win.keyboard.press(process.platform === 'darwin' ? 'Meta+E' : 'Control+E')
 
     // Draft should now contain the quote-block prefix.
-    const draft = await win
-      .locator('[data-test="drill-in-comment-input"]')
-      .inputValue()
+    const draft = await win.locator('[data-test="drill-in-comment-input"]').inputValue()
     console.log(`#366 draft after quote:\n${draft}`)
 
     expect(draft).toContain('> [@designer](#comment-7700):')
@@ -126,9 +120,7 @@ test.describe('desk-check #366 comment quote-excerpt', () => {
 
     // Textarea should have focus so the user can type directly.
     const focused = await win.evaluate(() => {
-      const ta = document.querySelector<HTMLTextAreaElement>(
-        '[data-test="drill-in-comment-input"]'
-      )
+      const ta = document.querySelector<HTMLTextAreaElement>('[data-test="drill-in-comment-input"]')
       return document.activeElement === ta
     })
     expect(focused).toBe(true)
@@ -150,9 +142,7 @@ test.describe('desk-check #366 comment quote-excerpt', () => {
     await win.locator('[data-test="board-drill-in"]').focus()
     await win.keyboard.press(process.platform === 'darwin' ? 'Meta+E' : 'Control+E')
 
-    const draft = await win
-      .locator('[data-test="drill-in-comment-input"]')
-      .inputValue()
+    const draft = await win.locator('[data-test="drill-in-comment-input"]').inputValue()
     expect(draft).toBe('')
 
     await app.close()
@@ -165,7 +155,9 @@ test.describe('desk-check #366 comment quote-excerpt', () => {
 
     // Select the drill-in title text (which is NOT inside a comment).
     await win.evaluate(() => {
-      const title = document.querySelector<HTMLElement>('[data-test="board-drill-in"] h1, [data-test="board-drill-in"] h2, [data-test="board-drill-in"] .drill-in-title')
+      const title = document.querySelector<HTMLElement>(
+        '[data-test="board-drill-in"] h1, [data-test="board-drill-in"] h2, [data-test="board-drill-in"] .drill-in-title'
+      )
       if (!title || !title.firstChild) return
       const range = document.createRange()
       range.selectNodeContents(title)
@@ -178,9 +170,7 @@ test.describe('desk-check #366 comment quote-excerpt', () => {
     await win.locator('[data-test="board-drill-in"]').focus()
     await win.keyboard.press(process.platform === 'darwin' ? 'Meta+E' : 'Control+E')
 
-    const draft = await win
-      .locator('[data-test="drill-in-comment-input"]')
-      .inputValue()
+    const draft = await win.locator('[data-test="drill-in-comment-input"]').inputValue()
     expect(draft).toBe('')
 
     await app.close()

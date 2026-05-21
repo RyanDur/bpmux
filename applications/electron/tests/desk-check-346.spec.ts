@@ -67,9 +67,9 @@ const MESSAGES_WITH_GROUPS_AND_SYSTEM = [
   }
 ]
 
-async function launchWithFixture(): Promise<{
+const launchWithFixture = async (): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
-}> {
+}> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-346-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-346-'))
   const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })

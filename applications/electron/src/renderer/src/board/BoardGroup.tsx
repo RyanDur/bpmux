@@ -1,12 +1,7 @@
 import { useState } from 'react'
 import StoryRow from './StoryRow'
 import { DRAG_MIMETYPE_REGISTRY, useStoryDrag } from './useStoryDrag'
-import {
-  isClosedIterationMarker,
-  type BoardStory,
-  type ColumnState,
-  type GroupSpec
-} from './types'
+import { isClosedIterationMarker, type BoardStory, type ColumnState, type GroupSpec } from './types'
 
 const decodeStoryNumber = (raw: string): number | null => {
   const n = Number.parseInt(raw, 10)
@@ -42,8 +37,7 @@ const BoardGroup = ({
   onToggleCollapse,
   children
 }: BoardGroupProps): React.JSX.Element => {
-  const draggable =
-    (group.state === 'ready' || group.state === 'icebox') && onReorder !== undefined
+  const draggable = (group.state === 'ready' || group.state === 'icebox') && onReorder !== undefined
   const [dropAt, setDropAt] = useState<number | null>(null)
   const {
     draggedNumber: draggingNumber,

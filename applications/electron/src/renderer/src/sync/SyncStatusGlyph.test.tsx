@@ -21,10 +21,7 @@ describe('#1164 SyncStatusGlyph WS-marker push', () => {
   })
 
   it('ignores hydration backfill — marker present but already seen returns false', () => {
-    const messages: ChatMessage[] = [
-      msg(SYNC_STATUS_UPDATE_MARKER, 'm1'),
-      msg('chat', 'm2')
-    ]
+    const messages: ChatMessage[] = [msg(SYNC_STATUS_UPDATE_MARKER, 'm1'), msg('chat', 'm2')]
     expect(newMessagesContainMarker(2, messages, SYNC_STATUS_UPDATE_MARKER)).toBe(false)
   })
 
@@ -53,9 +50,7 @@ describe('#1164 SyncStatusGlyph WS-marker push', () => {
   })
 
   it('does not match the marker via substring — exact text only', () => {
-    const messages: ChatMessage[] = [
-      msg(`prefix ${SYNC_STATUS_UPDATE_MARKER} suffix`, 'm1')
-    ]
+    const messages: ChatMessage[] = [msg(`prefix ${SYNC_STATUS_UPDATE_MARKER} suffix`, 'm1')]
     expect(newMessagesContainMarker(0, messages, SYNC_STATUS_UPDATE_MARKER)).toBe(false)
   })
 })

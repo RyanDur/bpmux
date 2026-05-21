@@ -16,11 +16,7 @@ declare global {
       // future web surface) omit the handler and fall back to the
       // Cmd+E keyboard path from #366.
       onQuoteComment?: (
-        callback: (payload: {
-          commentId: string
-          author: string
-          text: string
-        }) => void
+        callback: (payload: { commentId: string; author: string; text: string }) => void
       ) => () => void
     }
   }

@@ -33,9 +33,9 @@ const CI_SUCCESS = {
   display_title: 'green'
 }
 
-async function launchWithFixture(): Promise<{
+const launchWithFixture = async (): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
-}> {
+}> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-372-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-372-'))
   const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })

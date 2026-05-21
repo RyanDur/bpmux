@@ -7,21 +7,14 @@ import type { ChatMessage } from '../transport/types'
 // from the log. Unknown / missing = 'offline'.
 export type Presence = 'available' | 'busy' | 'blocked' | 'idle' | 'help' | 'offline'
 
-const KNOWN: readonly Presence[] = [
-  'available',
-  'busy',
-  'blocked',
-  'idle',
-  'help',
-  'offline'
-]
+const KNOWN: readonly Presence[] = ['available', 'busy', 'blocked', 'idle', 'help', 'offline']
 
-function shortName(identity: string): string {
+const shortName = (identity: string): string => {
   const idx = identity.indexOf(':')
   return idx === -1 ? identity : identity.slice(0, idx)
 }
 
-function asPresence(text: string): Presence | null {
+const asPresence = (text: string): Presence | null => {
   const t = text.trim().toLowerCase()
   return (KNOWN as readonly string[]).includes(t) ? (t as Presence) : null
 }
@@ -32,11 +25,11 @@ function asPresence(text: string): Presence | null {
  * picking the first activity match per role. Complexity O(N), fine
  * for chat-log scale; could cache per new-message if we see it hot.
  */
-export function usePresence(
+export const usePresence = (
   messages: readonly ChatMessage[],
   roles: readonly string[]
-): Map<string, Presence> {
-  return useMemo(() => {
+): Map<string, Presence> =>
+  useMemo(() => {
     const out = new Map<string, Presence>()
     for (const role of roles) out.set(role, 'offline')
 
@@ -56,4 +49,3 @@ export function usePresence(
     }
     return out
   }, [messages, roles])
-}

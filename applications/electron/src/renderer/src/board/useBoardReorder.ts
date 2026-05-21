@@ -3,12 +3,7 @@ import { describeHttpError } from '../api/http'
 import { postStoryLabels } from '../api/labelsClient'
 import { computeReadyDropMutation } from './iterationPosition'
 import { parseReadyOrderPosition } from './labelSchema'
-import {
-  columnFor,
-  storyTypeFromLabels,
-  type BoardResponse,
-  type ColumnState
-} from './types'
+import { columnFor, storyTypeFromLabels, type BoardResponse, type ColumnState } from './types'
 
 const readyOrderFromLabels = (labels: string[]): number | null => {
   for (const l of labels) {
@@ -28,11 +23,7 @@ export interface UseBoardReorderOptions {
   authToken: string | undefined
 }
 
-export type HandleReorder = (
-  state: ColumnState,
-  moved: number,
-  insertAt: number
-) => void
+export type HandleReorder = (state: ColumnState, moved: number, insertAt: number) => void
 
 export const useBoardReorder = ({
   data,
@@ -51,8 +42,7 @@ export const useBoardReorder = ({
       if (prevData) {
         const inGroup = prevData.stories.filter(
           (s) =>
-            columnFor(s.state, s.gh_state === 'closed', storyTypeFromLabels(s.labels)) ===
-            state
+            columnFor(s.state, s.gh_state === 'closed', storyTypeFromLabels(s.labels)) === state
         )
         const fromIdx = inGroup.findIndex((s) => s.number === moved)
         if (fromIdx !== -1) {
@@ -68,13 +58,11 @@ export const useBoardReorder = ({
         if (!prev) return prev
         const inGroup = prev.stories.filter(
           (s) =>
-            columnFor(s.state, s.gh_state === 'closed', storyTypeFromLabels(s.labels)) ===
-            state
+            columnFor(s.state, s.gh_state === 'closed', storyTypeFromLabels(s.labels)) === state
         )
         const others = prev.stories.filter(
           (s) =>
-            columnFor(s.state, s.gh_state === 'closed', storyTypeFromLabels(s.labels)) !==
-            state
+            columnFor(s.state, s.gh_state === 'closed', storyTypeFromLabels(s.labels)) !== state
         )
         const fromIdx = inGroup.findIndex((s) => s.number === moved)
         if (fromIdx === -1) return prev
@@ -93,16 +81,13 @@ export const useBoardReorder = ({
       if (state === 'ready' && prevData) {
         const readyStories = prevData.stories.filter(
           (s) =>
-            columnFor(s.state, s.gh_state === 'closed', storyTypeFromLabels(s.labels)) ===
-            'ready'
+            columnFor(s.state, s.gh_state === 'closed', storyTypeFromLabels(s.labels)) === 'ready'
         )
         const targetMemberPositions = readyStories
           .map((s) => readyOrderFromLabels(s.labels))
           .filter((p): p is number => p !== null)
         const draggedStory = readyStories.find((s) => s.number === moved)
-        const draggedOldPosition = draggedStory
-          ? readyOrderFromLabels(draggedStory.labels)
-          : null
+        const draggedOldPosition = draggedStory ? readyOrderFromLabels(draggedStory.labels) : null
         const mutation = computeReadyDropMutation({
           draggedOldPosition,
           targetMemberPositions,
@@ -110,11 +95,10 @@ export const useBoardReorder = ({
           targetMembersIncludeDragged: draggedOldPosition !== null
         })
         if (mutation === null) return
-        void postStoryLabels({ apiBase, authToken }, moved, mutation)
-          .onFailure((error) => {
-            setData(prevData)
-            setError(`Reorder failed: ${describeHttpError(error)}`)
-          }).value
+        void postStoryLabels({ apiBase, authToken }, moved, mutation).onFailure((error) => {
+          setData(prevData)
+          setError(`Reorder failed: ${describeHttpError(error)}`)
+        }).value
       }
     },
     [data, setData, setReorderAnnounce, setError, usingMock, apiBase, authToken]

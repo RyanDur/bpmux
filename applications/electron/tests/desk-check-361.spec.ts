@@ -11,9 +11,9 @@ import { launchIsolatedElectron } from './helpers/launch'
 // — "glyph color never changes" — is gated by confirming each
 // conclusion renders its documented class.
 
-async function launchWithCiState(
+const launchWithCiState = async (
   conclusion: string
-): Promise<{ app: Awaited<ReturnType<typeof electron.launch>> }> {
+): Promise<{ app: Awaited<ReturnType<typeof electron.launch>> }> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-361-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-361-'))
   const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
@@ -80,10 +80,7 @@ test.describe('desk-check #361 CI glyph color + glyph tracks conclusion', () => 
     const { app } = await launchWithCiState('quota_exhausted')
     const win = await app.firstWindow()
     const glyph = win.locator('[data-test="ci-glyph"]')
-    await expect(glyph).toHaveAttribute(
-      'aria-label',
-      /quota exhausted/i
-    )
+    await expect(glyph).toHaveAttribute('aria-label', /quota exhausted/i)
     await app.close()
   })
 

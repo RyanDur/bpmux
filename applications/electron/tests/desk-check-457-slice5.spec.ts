@@ -48,9 +48,9 @@ const MOCK_BOARD = {
   ]
 }
 
-async function launchWithFixture(): Promise<{
+const launchWithFixture = async (): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
-}> {
+}> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-457-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-457-'))
   const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
@@ -107,7 +107,10 @@ test.describe('desk-check #457 slice 5 — Electron Epic-summary section', () =>
     await expect(childRow).toBeVisible()
     const epicRef = childRow.locator('[data-test="epic-link"]')
     await expect(epicRef).toHaveText('↳ Epic #901')
-    await expect(epicRef).toHaveAttribute('aria-label', /open epic #901 Epic: substrate consolidation/)
+    await expect(epicRef).toHaveAttribute(
+      'aria-label',
+      /open epic #901 Epic: substrate consolidation/
+    )
 
     const standaloneRow = win.locator('[data-test="board-story-904"]')
     await expect(standaloneRow).toBeVisible()
@@ -146,5 +149,4 @@ test.describe('desk-check #457 slice 5 — Electron Epic-summary section', () =>
     await expect(win.locator('[data-test="board-epics"]')).toHaveCount(0)
     await app.close()
   })
-
 })

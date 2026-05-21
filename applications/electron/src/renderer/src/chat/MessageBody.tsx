@@ -32,7 +32,7 @@ const COMMENT_ANCHOR_RE = /^#comment-(\d+)$/
 const FLASH_CLASS = 'drill-in-comment--highlight'
 const FLASH_MS = 1500
 
-function handleCommentAnchor(id: string): void {
+const handleCommentAnchor = (id: string): void => {
   const el = document.querySelector(`[data-comment-id="${id}"]`)
   if (!(el instanceof HTMLElement)) return
   el.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -40,7 +40,7 @@ function handleCommentAnchor(id: string): void {
   window.setTimeout(() => el.classList.remove(FLASH_CLASS), FLASH_MS)
 }
 
-function MessageBody({ text, knownRoles, onMention }: Props): React.JSX.Element {
+const MessageBody = ({ text, knownRoles, onMention }: Props): React.JSX.Element => {
   // Stable per-render key prefix so mention spans within a given
   // message don't collide with their siblings across re-renders.
   const mentionKeyPrefix = useId()

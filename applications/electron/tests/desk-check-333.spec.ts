@@ -62,11 +62,11 @@ const MOCK_BOARD_AFTER = {
   ]
 }
 
-async function launchWithFixture(opts: {
+const launchWithFixture = async (opts: {
   postReorderBody: typeof MOCK_BOARD_BEFORE
 }): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
-}> {
+}> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-333-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-333-'))
   const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
@@ -144,11 +144,7 @@ test.describe('desk-check #333 drag-to-reorder (rework)', () => {
     const initialOrder = await rows.evaluateAll((els) =>
       els.map((el) => el.getAttribute('data-test'))
     )
-    expect(initialOrder).toEqual([
-      'board-story-701',
-      'board-story-702',
-      'board-story-703'
-    ])
+    expect(initialOrder).toEqual(['board-story-701', 'board-story-702', 'board-story-703'])
 
     // Simulate keyboard reorder — the same handleReorder path fires
     // the POST. Ctrl+Shift+Down on the first row bumps it past the
@@ -166,17 +162,11 @@ test.describe('desk-check #333 drag-to-reorder (rework)', () => {
     // on the eventual-consistency state (post-invalidate) since
     // that's what Ryan's walk observes.
     await expect(async () => {
-      const order = await rows.evaluateAll((els) =>
-        els.map((el) => el.getAttribute('data-test'))
-      )
+      const order = await rows.evaluateAll((els) => els.map((el) => el.getAttribute('data-test')))
       // Either the optimistic result (701 moved) or the post-refetch
       // priority-applied result — both satisfy the falsifier that
       // the order changed + didn't snap back to original.
-      expect(order).not.toEqual([
-        'board-story-701',
-        'board-story-702',
-        'board-story-703'
-      ])
+      expect(order).not.toEqual(['board-story-701', 'board-story-702', 'board-story-703'])
     }).toPass({ timeout: 5_000 })
 
     await app.close()

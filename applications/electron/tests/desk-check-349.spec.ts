@@ -53,10 +53,12 @@ const MIXED_CLASS_MESSAGES = [
 
 const CLASSES = ['chat', 'insight', 'activity', 'system'] as const
 
-async function launchWithFixture(userDataDir?: string): Promise<{
+const launchWithFixture = async (
+  userDataDir?: string
+): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
   udd: string
-}> {
+}> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-349-'))
   const udd = userDataDir ?? mkdtempSync(join(tmpdir(), 'bpmux-userdata-349-'))
   const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
@@ -101,9 +103,7 @@ test.describe('desk-check #349 richer filter', () => {
       console.log(`  [${cls}] aria-pressed=${pressed}`)
     }
 
-    const hiddenCount = await win
-      .locator('[data-test="filter-hidden-count"]')
-      .textContent()
+    const hiddenCount = await win.locator('[data-test="filter-hidden-count"]').textContent()
     console.log(`#349 AC4 hidden-count at default: "${hiddenCount?.trim()}"`)
 
     await app.close()
@@ -188,9 +188,7 @@ test.describe('desk-check #349 richer filter', () => {
     order.push(focused)
     for (let i = 0; i < 4; i++) {
       await win.keyboard.press('Tab')
-      const next = await win.evaluate(
-        () => document.activeElement?.getAttribute('data-test') ?? ''
-      )
+      const next = await win.evaluate(() => document.activeElement?.getAttribute('data-test') ?? '')
       order.push(next)
     }
     console.log(`#349 AC7 Tab order from all: ${order.join(' → ')}`)

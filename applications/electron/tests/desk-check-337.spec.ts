@@ -52,9 +52,9 @@ const MOCK_COMMENTS = [
   }
 ]
 
-async function launchWithFixture(): Promise<{
+const launchWithFixture = async (): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
-}> {
+}> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-337-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-337-'))
   const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
@@ -119,9 +119,9 @@ test.describe('desk-check #337 rework: drill-in scroll reaches comments', () => 
 
     // Post-form textarea also reachable (falsifier explicitly names
     // "comments list + post-form").
-    await expect(
-      win.locator('[data-test="drill-in-comment-input"]')
-    ).toBeInViewport({ timeout: 3_000 })
+    await expect(win.locator('[data-test="drill-in-comment-input"]')).toBeInViewport({
+      timeout: 3_000
+    })
 
     await win.screenshot({
       path: join(EVIDENCE_DIR, '102-drill-in-comments-reachable.png'),

@@ -54,9 +54,9 @@ const MOCK_BOARD = {
   ]
 }
 
-async function launchWithFixture(): Promise<{
+const launchWithFixture = async (): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
-}> {
+}> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-375-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-375-'))
   const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
@@ -78,10 +78,10 @@ async function launchWithFixture(): Promise<{
   return { app }
 }
 
-async function openGroup(
+const openGroup = async (
   win: Awaited<ReturnType<Awaited<ReturnType<typeof electron.launch>>['firstWindow']>>,
   state: 'delivered' | 'accepted'
-): Promise<void> {
+): Promise<void> => {
   // Post-#516: `data-test="board-group-{state}"` lives on `<summary>`,
   // not `<details>`. Pre-#1128 helper read `.open` on summary
   // (undefined) + then `group.locator('summary').first()` looked for a
@@ -105,15 +105,11 @@ test.describe('desk-check #375 state-aware badge labels', () => {
     await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
     await openGroup(win, 'delivered')
 
-    const feat = win.locator(
-      '[data-test="board-story-900"] [data-test="story-badge"]'
-    )
+    const feat = win.locator('[data-test="board-story-900"] [data-test="story-badge"]')
     await expect(feat).toHaveAttribute('data-badge-kind', 'accepted')
     await expect(feat).toContainText('awaiting owner')
 
-    const chore = win.locator(
-      '[data-test="board-story-901"] [data-test="story-badge"]'
-    )
+    const chore = win.locator('[data-test="board-story-901"] [data-test="story-badge"]')
     await expect(chore).toHaveAttribute('data-badge-kind', 'team-accepted')
     await expect(chore).toContainText('awaiting team')
 
@@ -130,15 +126,11 @@ test.describe('desk-check #375 state-aware badge labels', () => {
     await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
     await openGroup(win, 'accepted')
 
-    const feat = win.locator(
-      '[data-test="board-story-902"] [data-test="story-badge"]'
-    )
+    const feat = win.locator('[data-test="board-story-902"] [data-test="story-badge"]')
     await expect(feat).toHaveAttribute('data-badge-kind', 'accepted')
     await expect(feat).toContainText('owner-accepted')
 
-    const chore = win.locator(
-      '[data-test="board-story-903"] [data-test="story-badge"]'
-    )
+    const chore = win.locator('[data-test="board-story-903"] [data-test="story-badge"]')
     await expect(chore).toHaveAttribute('data-badge-kind', 'team-accepted')
     await expect(chore).toContainText('team-accepted')
 

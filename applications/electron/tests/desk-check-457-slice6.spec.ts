@@ -4,10 +4,12 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
 
-async function launchWith(board: object): Promise<{
+const launchWith = async (
+  board: object
+): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
   consoleErrors: string[]
-}> {
+}> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-457-6-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-457-6-'))
   const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })

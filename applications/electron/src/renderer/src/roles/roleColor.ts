@@ -26,7 +26,7 @@ const BACKGROUND_ALPHA = 0.15
  * rolling hash — small, stable, collision-rare over short ASCII
  * role names (dev / pm / designer / ryan / ops / qa / etc).
  */
-function hashRole(role: string): number {
+const hashRole = (role: string): number => {
   let h = 5381
   for (let i = 0; i < role.length; i++) {
     // h * 33 + charCode, forced to unsigned 32-bit so the modulus
@@ -47,7 +47,7 @@ export interface RoleColor {
  * the returned `color` + `background` as inline styles on the
  * avatar / @mention pill element.
  */
-export function roleColorFor(role: string): RoleColor {
+export const roleColorFor = (role: string): RoleColor => {
   const hue = hashRole(role) % HUE_MOD
   return {
     color: `hsl(${hue} ${SATURATION_PCT}% ${LIGHTNESS_PCT}%)`,

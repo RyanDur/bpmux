@@ -19,9 +19,11 @@ const MOCK_BOARD = {
   ]
 }
 
-async function launchWithBoard(reducedMotion?: 'reduce'): Promise<{
+const launchWithBoard = async (
+  reducedMotion?: 'reduce'
+): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
-}> {
+}> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-354-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-354-'))
   const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
@@ -70,7 +72,9 @@ test.describe('desk-check #354 close-direction animations', () => {
     const afterExit = await win.evaluate(() =>
       document.querySelector('[data-test="board-drill-in"]')
     )
-    console.log(`#354 drill-in DOM after full exit: ${afterExit === null ? 'unmounted ✓' : 'still present'}`)
+    console.log(
+      `#354 drill-in DOM after full exit: ${afterExit === null ? 'unmounted ✓' : 'still present'}`
+    )
 
     await app.close()
   })

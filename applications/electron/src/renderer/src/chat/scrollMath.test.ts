@@ -11,15 +11,11 @@ describe('isNearTopUnderColumnReverse', () => {
   })
 
   test('returns false in the middle of the list', () => {
-    expect(
-      isNearTopUnderColumnReverse(MAX_SCROLL / 2, SCROLL_HEIGHT, CLIENT_HEIGHT)
-    ).toBe(false)
+    expect(isNearTopUnderColumnReverse(MAX_SCROLL / 2, SCROLL_HEIGHT, CLIENT_HEIGHT)).toBe(false)
   })
 
   test('returns true at visual top', () => {
-    expect(
-      isNearTopUnderColumnReverse(MAX_SCROLL, SCROLL_HEIGHT, CLIENT_HEIGHT)
-    ).toBe(true)
+    expect(isNearTopUnderColumnReverse(MAX_SCROLL, SCROLL_HEIGHT, CLIENT_HEIGHT)).toBe(true)
   })
 
   test('returns true within threshold of visual top', () => {
@@ -43,9 +39,7 @@ describe('isNearTopUnderColumnReverse', () => {
   })
 
   test('handles negative scrollTop (Firefox column-reverse)', () => {
-    expect(
-      isNearTopUnderColumnReverse(-MAX_SCROLL, SCROLL_HEIGHT, CLIENT_HEIGHT)
-    ).toBe(true)
+    expect(isNearTopUnderColumnReverse(-MAX_SCROLL, SCROLL_HEIGHT, CLIENT_HEIGHT)).toBe(true)
   })
 
   test('returns false when content does not overflow', () => {
@@ -55,12 +49,8 @@ describe('isNearTopUnderColumnReverse', () => {
 
   test('threshold parameter is overridable', () => {
     const scrollTop = MAX_SCROLL - 300
-    expect(isNearTopUnderColumnReverse(scrollTop, SCROLL_HEIGHT, CLIENT_HEIGHT)).toBe(
-      false
-    )
-    expect(
-      isNearTopUnderColumnReverse(scrollTop, SCROLL_HEIGHT, CLIENT_HEIGHT, 400)
-    ).toBe(true)
+    expect(isNearTopUnderColumnReverse(scrollTop, SCROLL_HEIGHT, CLIENT_HEIGHT)).toBe(false)
+    expect(isNearTopUnderColumnReverse(scrollTop, SCROLL_HEIGHT, CLIENT_HEIGHT, 400)).toBe(true)
   })
 
   test('NEAR_TOP_THRESHOLD_PX default is the designer-tuned value', () => {

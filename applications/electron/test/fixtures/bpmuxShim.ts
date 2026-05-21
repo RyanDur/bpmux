@@ -7,7 +7,7 @@ export interface BpmuxShimConfig {
 let previousBpmux: Window['bpmux'] | undefined
 let installed = false
 
-export function installBpmuxShim(config: BpmuxShimConfig): void {
+export const installBpmuxShim = (config: BpmuxShimConfig): void => {
   if (installed) {
     uninstallBpmuxShim()
   }
@@ -21,7 +21,7 @@ export function installBpmuxShim(config: BpmuxShimConfig): void {
   installed = true
 }
 
-export function uninstallBpmuxShim(): void {
+export const uninstallBpmuxShim = (): void => {
   if (!installed) return
   window.bpmux = previousBpmux
   previousBpmux = undefined

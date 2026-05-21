@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from 'react'
 const URL_RE = /https?:\/\/[^\s<>"')(]+/g
 const TRAILING_PUNCT_RE = /[.,!?;:)\]'"*]+$/
 
-export function extractUrls(text: string): string[] {
+export const extractUrls = (text: string): string[] => {
   const matches = text.match(URL_RE) ?? []
   const seen = new Set<string>()
   const out: string[] = []
@@ -44,7 +44,11 @@ interface UseUnfurlArgs {
   urls: readonly string[]
 }
 
-export function useUnfurl({ apiBase, authToken, urls }: UseUnfurlArgs): Map<string, UnfurlData | undefined> {
+export const useUnfurl = ({
+  apiBase,
+  authToken,
+  urls
+}: UseUnfurlArgs): Map<string, UnfurlData | undefined> => {
   // Object state that gets replaced whenever the set of cached
   // results changes, so React rerenders the message row with the
   // new previews.
@@ -69,10 +73,9 @@ export function useUnfurl({ apiBase, authToken, urls }: UseUnfurlArgs): Map<stri
       cache.set(url, { state: 'loading' })
       ;(async () => {
         try {
-          const res = await fetch(
-            `${apiBase}/api/unfurl?url=${encodeURIComponent(url)}`,
-            { headers: { Authorization: `Bearer ${authToken ?? ''}` } }
-          )
+          const res = await fetch(`${apiBase}/api/unfurl?url=${encodeURIComponent(url)}`, {
+            headers: { Authorization: `Bearer ${authToken ?? ''}` }
+          })
           let data: UnfurlData = { url }
           if (res.ok) {
             try {

@@ -148,13 +148,14 @@ const AppShell = ({
           data-test="titlebar-app"
           aria-label={`bpmux ${status === 'connected' ? 'online' : status === 'connecting' ? 'reconnecting' : 'offline'}`}
         >
-          bpmux <small className="titlebar-app-state" data-test="titlebar-app-state">{
-            status === 'connected'
+          bpmux{' '}
+          <small className="titlebar-app-state" data-test="titlebar-app-state">
+            {status === 'connected'
               ? 'online'
               : status === 'connecting'
                 ? 'reconnecting'
-                : 'offline'
-          }</small>
+                : 'offline'}
+          </small>
         </strong>
         <button
           type="button"

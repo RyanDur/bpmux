@@ -46,9 +46,7 @@ test.describe('#1216 env-leak canary — launchIsolatedElectron isolation', () =
       const { app, backendPort } = await launchIsolatedElectron({})
       const win = await app.firstWindow()
       const authToken = await win.evaluate(
-        () =>
-          (window as unknown as { bpmux?: { authToken?: string } }).bpmux
-            ?.authToken ?? ''
+        () => (window as unknown as { bpmux?: { authToken?: string } }).bpmux?.authToken ?? ''
       )
       const board = (await win.evaluate(
         async ({ apiBase, token }) => {
@@ -133,9 +131,7 @@ test.describe('#1216 env-leak canary — launchIsolatedElectron isolation', () =
       const { app, backendPort } = await launchIsolatedElectron({})
       const win = await app.firstWindow()
       const authToken = await win.evaluate(
-        () =>
-          (window as unknown as { bpmux?: { authToken?: string } }).bpmux
-            ?.authToken ?? ''
+        () => (window as unknown as { bpmux?: { authToken?: string } }).bpmux?.authToken ?? ''
       )
       const status = (await win.evaluate(
         async ({ apiBase, token }) => {
@@ -156,10 +152,8 @@ test.describe('#1216 env-leak canary — launchIsolatedElectron isolation', () =
 
       await app.close()
     } finally {
-      if (priorEnvValue === undefined)
-        delete process.env.BPMUX_BOARD_OUTBOX_PATH
+      if (priorEnvValue === undefined) delete process.env.BPMUX_BOARD_OUTBOX_PATH
       else process.env.BPMUX_BOARD_OUTBOX_PATH = priorEnvValue
     }
   })
-
 })

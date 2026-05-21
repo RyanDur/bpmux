@@ -63,7 +63,9 @@ test.describe('human-side E2E #476 — channel routing matrix', () => {
       const list = win.locator('[data-test="message-list"]')
       await expect(list).toContainText(groupMarker, { timeout: 10000 })
 
-      const fetchAs = async (peer: string): Promise<Array<{ text: string; to?: string[] | null }>> => {
+      const fetchAs = async (
+        peer: string
+      ): Promise<Array<{ text: string; to?: string[] | null }>> => {
         const resp = await fetch(
           `http://127.0.0.1:${backendPort}/api/messages?as=${peer}&limit=200`
         )

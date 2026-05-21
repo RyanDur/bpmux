@@ -35,9 +35,9 @@ const MOCK_COMMENTS = [
   }
 ]
 
-async function launchWithFixture(): Promise<{
+const launchWithFixture = async (): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
-}> {
+}> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-371-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-371-'))
   const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
@@ -74,9 +74,7 @@ test.describe('desk-check #371 right-click quote context menu', () => {
     const storyCard = win.locator('[data-test="board-story-371"]')
     await storyCard.first().click()
     await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
-    await expect(
-      win.locator('[data-test="drill-in-comment"]').first()
-    ).toBeVisible()
+    await expect(win.locator('[data-test="drill-in-comment"]').first()).toBeVisible()
 
     // Simulate the main-process click by sending the IPC frame the
     // native "Quote in reply" menu item would emit. No need to
@@ -93,20 +91,14 @@ test.describe('desk-check #371 right-click quote context menu', () => {
     })
 
     // Draft should contain the quote block.
-    const draft = await win
-      .locator('[data-test="drill-in-comment-input"]')
-      .inputValue()
+    const draft = await win.locator('[data-test="drill-in-comment-input"]').inputValue()
     expect(draft).toContain('> [@designer](#comment-4200):')
-    expect(draft).toContain(
-      '> native menu preserves Copy/Paste/Inspect alongside Quote in reply.'
-    )
+    expect(draft).toContain('> native menu preserves Copy/Paste/Inspect alongside Quote in reply.')
     expect(draft.endsWith('\n\n')).toBe(true)
 
     // Textarea should be focused with cursor at prefix.length.
     const focused = await win.evaluate(() => {
-      const ta = document.querySelector<HTMLTextAreaElement>(
-        '[data-test="drill-in-comment-input"]'
-      )
+      const ta = document.querySelector<HTMLTextAreaElement>('[data-test="drill-in-comment-input"]')
       return document.activeElement === ta
     })
     expect(focused).toBe(true)

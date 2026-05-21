@@ -25,8 +25,8 @@ const BugQuestionDialog = ({
   >
     <h3>Would you file a bug about this story if you accepted it as-is?</h3>
     <p>
-      The bug-question test catches accept-and-file-bug-as-deferral. If you would file
-      a bug, the story still has work — use Reject instead.
+      The bug-question test catches accept-and-file-bug-as-deferral. If you would file a bug, the
+      story still has work — use Reject instead.
     </p>
     <menu className="drill-in-action-row">
       <li>

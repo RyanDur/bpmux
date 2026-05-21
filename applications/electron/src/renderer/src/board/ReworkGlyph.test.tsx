@@ -11,9 +11,7 @@ import { ReworkGlyph } from './ReworkGlyph'
 
 describe('#1146 ReworkGlyph — column-surface ↩ glyph rendering', () => {
   test('renders the glyph when rework_comment is non-null', () => {
-    const html = renderToStaticMarkup(
-      <ReworkGlyph reworkComment="user-story not satisfied" />
-    )
+    const html = renderToStaticMarkup(<ReworkGlyph reworkComment="user-story not satisfied" />)
     expect(html).toContain('class="board-story-rework-glyph"')
     expect(html).toContain('↩')
   })
@@ -53,9 +51,7 @@ describe('#1146 ReworkGlyph — column-surface ↩ glyph rendering', () => {
     // with the `board-story-rework-glyph` class so the cross-surface
     // selector `[data-rework="true"] .board-story-rework-glyph`
     // (designer's filing-time desk-check selector) stays stable.
-    const html = renderToStaticMarkup(
-      <ReworkGlyph reworkComment="rework reason" />
-    )
+    const html = renderToStaticMarkup(<ReworkGlyph reworkComment="rework reason" />)
     expect(html.startsWith('<span')).toBe(true)
     expect(html.endsWith('</span>')).toBe(true)
     // exactly one span open + close tag

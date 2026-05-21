@@ -57,9 +57,9 @@ const MOCK_BOARD = {
   ]
 }
 
-async function launchWithFixture(): Promise<{
+const launchWithFixture = async (): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
-}> {
+}> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-390-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-390-'))
   const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
@@ -95,9 +95,9 @@ async function launchWithFixture(): Promise<{
   return { app }
 }
 
-async function openDelivered(
+const openDelivered = async (
   win: Awaited<ReturnType<Awaited<ReturnType<typeof electron.launch>>['firstWindow']>>
-): Promise<void> {
+): Promise<void> => {
   // Post-#516: data-test on summary, not details. See desk-check-375.
   const summary = win.locator('[data-test="board-group-delivered"]').first()
   const isOpen = await summary.evaluate((el: Element) => {

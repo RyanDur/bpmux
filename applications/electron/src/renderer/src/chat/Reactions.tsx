@@ -33,7 +33,7 @@ interface PickerProps {
  * the preferred side would clip against the viewport. Esc + click-
  * outside dismiss (#355 AC5).
  */
-function Picker({ anchorRef, onPick, onClose }: PickerProps): React.JSX.Element {
+const Picker = ({ anchorRef, onPick, onClose }: PickerProps): React.JSX.Element => {
   const pickerRef = useRef<HTMLDivElement | null>(null)
   const [position, setPosition] = useState<PickerPosition>('above')
 
@@ -109,7 +109,7 @@ interface Props {
   onToggle: (emoji: string) => void
 }
 
-function Reactions({ reactions, viewer, onToggle }: Props): React.JSX.Element | null {
+const Reactions = ({ reactions, viewer, onToggle }: Props): React.JSX.Element | null => {
   const [pickerOpen, setPickerOpen] = useState<boolean>(false)
   const addButtonRef = useRef<HTMLButtonElement | null>(null)
   const pills = reactions ?? []
@@ -176,7 +176,7 @@ interface AddOnlyProps {
  * reactions. Shown on message hover so the viewer can add the first
  * reaction without a full Reactions container reflowing the row.
  */
-export function ReactionAddButton({ onToggle }: AddOnlyProps): React.JSX.Element {
+export const ReactionAddButton = ({ onToggle }: AddOnlyProps): React.JSX.Element => {
   const [open, setOpen] = useState<boolean>(false)
   const buttonRef = useRef<HTMLButtonElement | null>(null)
   return (

@@ -51,9 +51,9 @@ const MOCK_BOARD = {
   ]
 }
 
-async function launchWithFixture(): Promise<{
+const launchWithFixture = async (): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
-}> {
+}> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-368-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-368-'))
   const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
@@ -108,9 +108,7 @@ test.describe('desk-check #368 team-accept badge', () => {
     )
     // #375 state-aware label: delivered + team lane reads
     // "awaiting team" (tense-correct for pre-accept state).
-    await expect(chore.locator('[data-test="story-badge"]')).toContainText(
-      'awaiting team'
-    )
+    await expect(chore.locator('[data-test="story-badge"]')).toContainText('awaiting team')
 
     const feature = win.locator('[data-test="board-story-801"]')
     await expect(feature.locator('[data-test="story-badge"]')).toHaveAttribute(
@@ -120,18 +118,14 @@ test.describe('desk-check #368 team-accept badge', () => {
     // #375 state-aware label: delivered + owner lane reads
     // "awaiting owner" (not "accepted" — that's past-tense wrong
     // for a row the owner hasn't accepted yet).
-    await expect(feature.locator('[data-test="story-badge"]')).toContainText(
-      'awaiting owner'
-    )
+    await expect(feature.locator('[data-test="story-badge"]')).toContainText('awaiting owner')
 
     const rework = win.locator('[data-test="board-story-802"]')
     await expect(rework.locator('[data-test="story-badge"]')).toHaveAttribute(
       'data-badge-kind',
       'rework'
     )
-    await expect(rework.locator('[data-test="story-badge"]')).toContainText(
-      'rework'
-    )
+    await expect(rework.locator('[data-test="story-badge"]')).toContainText('rework')
 
     // Upstream states should NOT carry a badge.
     const plain = win.locator('[data-test="board-story-803"]')
@@ -157,9 +151,7 @@ test.describe('desk-check #368 team-accept badge', () => {
       await deliveredSummary.click()
     }
 
-    const badge = win
-      .locator('[data-test="board-story-800"] [data-test="story-badge"]')
-      .first()
+    const badge = win.locator('[data-test="board-story-800"] [data-test="story-badge"]').first()
     await badge.click()
 
     // Drill-in should be open.

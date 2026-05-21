@@ -41,7 +41,8 @@ test.describe('#1170 — UI accept-button mutates canonical store via REST (no s
 
       const deliverResp = await rpc('deliver_story', {
         number: 1,
-        verified_observation: 'Drove deliver via /api/rpc/deliver_story; staging accept-button click as the gate under test.'
+        verified_observation:
+          'Drove deliver via /api/rpc/deliver_story; staging accept-button click as the gate under test.'
       })
       expect(deliverResp.status).toBe(200)
 
@@ -56,7 +57,9 @@ test.describe('#1170 — UI accept-button mutates canonical store via REST (no s
 
       await win.reload()
       await expect(win.locator('[data-test="board-region"]')).toBeVisible()
-      const deliveredCard = win.locator('#board-group-delivered-content [data-test="board-story-1"]')
+      const deliveredCard = win.locator(
+        '#board-group-delivered-content [data-test="board-story-1"]'
+      )
       await expect(deliveredCard).toContainText('human-1170-accept-button-canonical-mutation')
       await deliveredCard.locator('.board-story-button').click()
       await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
@@ -71,7 +74,8 @@ test.describe('#1170 — UI accept-button mutates canonical store via REST (no s
 
       await expect(async () => {
         const boardResp = await win.evaluate(async () => {
-          const bridge = (window as unknown as { bpmux?: { authToken?: string; apiBase?: string } }).bpmux
+          const bridge = (window as unknown as { bpmux?: { authToken?: string; apiBase?: string } })
+            .bpmux
           const r = await fetch(`${bridge?.apiBase}/api/board`, {
             headers: { Authorization: `Bearer ${bridge?.authToken ?? ''}` }
           })
@@ -84,13 +88,13 @@ test.describe('#1170 — UI accept-button mutates canonical store via REST (no s
       }).toPass({ timeout: 10_000 })
 
       await win.locator('[data-test="board-group-accepted"]').click()
-      const acceptedCard = win.locator(
-        '#board-group-accepted-content [data-test="board-story-1"]'
-      )
+      const acceptedCard = win.locator('#board-group-accepted-content [data-test="board-story-1"]')
       await expect(acceptedCard).toBeVisible()
 
       for (const otherState of ['ready', 'in-progress', 'desk-check', 'delivered', 'icebox']) {
-        const elsewhere = win.locator(`#board-group-${otherState}-content [data-test="board-story-1"]`)
+        const elsewhere = win.locator(
+          `#board-group-${otherState}-content [data-test="board-story-1"]`
+        )
         await expect(elsewhere).toHaveCount(0)
       }
 

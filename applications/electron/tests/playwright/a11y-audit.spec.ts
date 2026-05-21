@@ -75,27 +75,27 @@ test.describe('#425 a11y audit — dark-theme contrast + ARIA + keyboard + focus
     await win.waitForFunction(() => document.documentElement.dataset.theme === 'dark')
 
     const failures = await win.evaluate(() => {
-      function parseColor(cssColor: string): [number, number, number, number] | null {
+      const parseColor = (cssColor: string): [number, number, number, number] | null => {
         const m = /^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)$/.exec(cssColor.trim())
         if (!m) return null
         return [Number(m[1]), Number(m[2]), Number(m[3]), m[4] !== undefined ? Number(m[4]) : 1]
       }
-      function relativeLuminance(r: number, g: number, b: number): number {
+      const relativeLuminance = (r: number, g: number, b: number): number => {
         const channel = (c: number): number => {
           const s = c / 255
           return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
         }
         return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b)
       }
-      function contrastRatio(
+      const contrastRatio = (
         fg: [number, number, number],
         bg: [number, number, number]
-      ): number {
+      ): number => {
         const l1 = relativeLuminance(fg[0], fg[1], fg[2])
         const l2 = relativeLuminance(bg[0], bg[1], bg[2])
         return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05)
       }
-      function effectiveBackground(el: Element): [number, number, number] {
+      const effectiveBackground = (el: Element): [number, number, number] => {
         let r = 0
         let g = 0
         let b = 0
@@ -119,20 +119,20 @@ test.describe('#425 a11y audit — dark-theme contrast + ARIA + keyboard + focus
         }
         return [Math.round(r), Math.round(g), Math.round(b)]
       }
-      function isElementVisible(el: Element): boolean {
+      const isElementVisible = (el: Element): boolean => {
         const cs = window.getComputedStyle(el)
         if (cs.display === 'none' || cs.visibility === 'hidden' || cs.opacity === '0') return false
         const rect = (el as HTMLElement).getBoundingClientRect()
         return rect.width > 0 && rect.height > 0
       }
-      function descriptor(el: Element): { tag: string; className: string; testId: string | null } {
-        return {
-          tag: el.tagName.toLowerCase(),
-          className: el.className.toString().slice(0, 80),
-          testId: el.getAttribute('data-test')
-        }
-      }
-      function accessibleName(el: Element): string {
+      const descriptor = (
+        el: Element
+      ): { tag: string; className: string; testId: string | null } => ({
+        tag: el.tagName.toLowerCase(),
+        className: el.className.toString().slice(0, 80),
+        testId: el.getAttribute('data-test')
+      })
+      const accessibleName = (el: Element): string => {
         const labelledby = el.getAttribute('aria-labelledby')
         if (labelledby) {
           const ref = document.getElementById(labelledby)
@@ -202,8 +202,8 @@ test.describe('#425 a11y audit — dark-theme contrast + ARIA + keyboard + focus
 
       const interactiveSelector =
         'button, a[href], input, select, textarea, [role="button"], [role="link"], [role="tab"], [role="menuitem"], [role="checkbox"], [role="radio"], [role="switch"], [tabindex]'
-      const interactives = Array.from(document.querySelectorAll(interactiveSelector)).filter(
-        (el) => isElementVisible(el)
+      const interactives = Array.from(document.querySelectorAll(interactiveSelector)).filter((el) =>
+        isElementVisible(el)
       )
 
       for (const el of interactives) {
@@ -229,12 +229,14 @@ test.describe('#425 a11y audit — dark-theme contrast + ARIA + keyboard + focus
         }
       }
 
-      function focusSnapshot(el: Element): {
+      const focusSnapshot = (
+        el: Element
+      ): {
         outline: string
         boxShadow: string
         borderColor: string
         backgroundColor: string
-      } {
+      } => {
         const cs = window.getComputedStyle(el)
         return {
           outline: `${cs.outlineStyle} ${cs.outlineWidth} ${cs.outlineColor}`,
@@ -243,8 +245,8 @@ test.describe('#425 a11y audit — dark-theme contrast + ARIA + keyboard + focus
           backgroundColor: cs.backgroundColor
         }
       }
-      function declaresFocusVisibleStyle(el: Element): boolean {
-        function walk(rules: CSSRuleList): boolean {
+      const declaresFocusVisibleStyle = (el: Element): boolean => {
+        const walk = (rules: CSSRuleList): boolean => {
           for (const rule of Array.from(rules)) {
             if (rule instanceof CSSStyleRule) {
               const sel = rule.selectorText
@@ -330,10 +332,7 @@ test.describe('#425 a11y audit — dark-theme contrast + ARIA + keyboard + focus
       }
     }
 
-    expect(
-      failures,
-      `#425: ${failures.length} a11y violation(s) — see test output`
-    ).toEqual([])
+    expect(failures, `#425: ${failures.length} a11y violation(s) — see test output`).toEqual([])
 
     const axeResult = await runA11yAudit(win)
     if (axeResult.violations.length > 0) {

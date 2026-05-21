@@ -23,7 +23,10 @@ describe('applyStateSnapshot', () => {
   test('clears domains when snapshot omits them', () => {
     const seeded = applyStateSnapshot(emptyMirrorState(), {
       reactions: [
-        { channel: 'old', aggregated: [{ message_key: 'k', emoji: '🎉', count: 1, users: ['dev'] }] }
+        {
+          channel: 'old',
+          aggregated: [{ message_key: 'k', emoji: '🎉', count: 1, users: ['dev'] }]
+        }
       ],
       ci: { state: 'red' },
       roster: [{ name: 'dev', identity: 'dev:claude-code', role: 'Dev', presence: 'Online' }]
@@ -43,8 +46,14 @@ describe('applyStateDelta', () => {
   test('merges reactions for a single channel without touching others', () => {
     const seeded = applyStateSnapshot(emptyMirrorState(), {
       reactions: [
-        { channel: 'a', aggregated: [{ message_key: 'k1', emoji: '👍', count: 1, users: ['dev'] }] },
-        { channel: 'b', aggregated: [{ message_key: 'k2', emoji: '🎉', count: 1, users: ['ryan'] }] }
+        {
+          channel: 'a',
+          aggregated: [{ message_key: 'k1', emoji: '👍', count: 1, users: ['dev'] }]
+        },
+        {
+          channel: 'b',
+          aggregated: [{ message_key: 'k2', emoji: '🎉', count: 1, users: ['ryan'] }]
+        }
       ],
       ci: null,
       roster: []

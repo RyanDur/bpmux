@@ -6,10 +6,10 @@ export interface ReconnectDecision {
   shouldRefetch: boolean
 }
 
-export function decideRefetchOnStatus(
+export const decideRefetchOnStatus = (
   status: ConnectionStatus,
   wasDisconnected: boolean
-): ReconnectDecision {
+): ReconnectDecision => {
   if (status === 'disconnected') {
     return { wasDisconnected: true, shouldRefetch: false }
   }
@@ -19,10 +19,7 @@ export function decideRefetchOnStatus(
   return { wasDisconnected, shouldRefetch: false }
 }
 
-export function useRefetchOnReconnect(
-  status: ConnectionStatus,
-  refetch: () => void
-): void {
+export const useRefetchOnReconnect = (status: ConnectionStatus, refetch: () => void): void => {
   const wasDisconnectedRef = useRef<boolean>(false)
   useEffect(() => {
     const decision = decideRefetchOnStatus(status, wasDisconnectedRef.current)

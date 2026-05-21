@@ -23,9 +23,9 @@ import { launchIsolatedElectron } from './helpers/launch'
 
 const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 
-async function launchWithFixture(): Promise<{
+const launchWithFixture = async (): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
-}> {
+}> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-382-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-382-'))
   const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
@@ -62,8 +62,7 @@ test.describe('desk-check #382: notifications honor focus + message class', () =
     const activity = await win.evaluate(() => ({
       hasFocus: document.hasFocus(),
       visibility: document.visibilityState,
-      active:
-        document.hasFocus() && document.visibilityState === 'visible'
+      active: document.hasFocus() && document.visibilityState === 'visible'
     }))
 
     console.log(`#382 focus state:`, activity)

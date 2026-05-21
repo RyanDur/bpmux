@@ -35,9 +35,9 @@ const MESSAGES = [
   }
 ]
 
-async function launchWithFixture(): Promise<{
+const launchWithFixture = async (): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
-}> {
+}> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-381-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-381-'))
   const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
@@ -74,9 +74,7 @@ test.describe('desk-check #381: inline markdown rendering', () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
-    await expect(win.locator('[data-test="message-row"]').first()).toBeVisible(
-      { timeout: 5_000 }
-    )
+    await expect(win.locator('[data-test="message-row"]').first()).toBeVisible({ timeout: 5_000 })
 
     // Locate the specific inline elements within the rendered
     // markdown. MessageBody wraps in `.markdown-body`.

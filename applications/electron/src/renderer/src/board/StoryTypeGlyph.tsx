@@ -12,7 +12,7 @@ interface Props {
 // colors are read from CSS via `currentColor` — parents set `color:
 // var(--accent-…)` and the glyph inherits. Keeps theming centralised
 // with the tokens file.
-function StoryTypeGlyph({ type }: Props): React.JSX.Element {
+const StoryTypeGlyph = ({ type }: Props): React.JSX.Element => {
   const label = typeLabel(type)
   return (
     <svg
@@ -29,7 +29,7 @@ function StoryTypeGlyph({ type }: Props): React.JSX.Element {
   )
 }
 
-function typeLabel(type: StoryType): string {
+const typeLabel = (type: StoryType): string => {
   switch (type) {
     case 'feature':
       return 'Feature'
@@ -46,7 +46,7 @@ function typeLabel(type: StoryType): string {
   }
 }
 
-function renderPath(type: StoryType): React.JSX.Element {
+const renderPath = (type: StoryType): React.JSX.Element => {
   switch (type) {
     case 'feature':
       // 4-point star (sparkle-ish).

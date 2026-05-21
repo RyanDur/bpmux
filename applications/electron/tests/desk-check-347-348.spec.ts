@@ -60,9 +60,9 @@ const MOCK_MESSAGES = [
   }
 ]
 
-async function launchAndSeed(): Promise<{
+const launchAndSeed = async (): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
-}> {
+}> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-'))
   const { app } = await launchIsolatedElectron({ sessionBase })
   const win = await app.firstWindow()
@@ -103,7 +103,9 @@ test.describe('desk-check 347+348', () => {
 
     const avatars = win.locator('[data-test="message-avatar"]')
     const avatarCount = await avatars.count()
-    console.log(`#348 AC1+AC2: ${avatarCount} avatars render for 7 messages (designer-grouped = 1 anchor; dev + pm + ryan + dev(to-pm) = 4 more ⇒ expect 5)`)
+    console.log(
+      `#348 AC1+AC2: ${avatarCount} avatars render for 7 messages (designer-grouped = 1 anchor; dev + pm + ryan + dev(to-pm) = 4 more ⇒ expect 5)`
+    )
 
     for (let i = 0; i < avatarCount; i++) {
       const role = await avatars.nth(i).getAttribute('data-role')
@@ -137,9 +139,7 @@ test.describe('desk-check 347+348', () => {
     const win = await app.firstWindow()
     await win.waitForTimeout(500)
 
-    const messageListRole = await win
-      .locator('[data-test="message-list"]')
-      .getAttribute('role')
+    const messageListRole = await win.locator('[data-test="message-list"]').getAttribute('role')
     const messageListAriaLive = await win
       .locator('[data-test="message-list"]')
       .getAttribute('aria-live')

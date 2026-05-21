@@ -31,26 +31,22 @@ describe('human-side E2E #476 — read-class — message list (RTL+real-backend 
     rendered = null
   })
 
-  it(
-    'seeded chat messages render with from + text in the message list',
-    async () => {
-      const port = inject('bpmuxBackendPort')
-      const authToken = inject('bpmuxAuthToken')
-      const apiBase = `http://127.0.0.1:${port}`
-      await resetMessages(apiBase, authToken)
-      await seedMessages(apiBase, authToken, SEED_MESSAGES)
+  it('seeded chat messages render with from + text in the message list', async () => {
+    const port = inject('bpmuxBackendPort')
+    const authToken = inject('bpmuxAuthToken')
+    const apiBase = `http://127.0.0.1:${port}`
+    await resetMessages(apiBase, authToken)
+    await seedMessages(apiBase, authToken, SEED_MESSAGES)
 
-      rendered = renderApp()
+    rendered = renderApp()
 
-      await rendered.findByText(/SEED_CHAT_MARKER_BPF13_FIRST/, undefined, { timeout: 15_000 })
-      await rendered.findByText(/SEED_CHAT_MARKER_BPF13_SECOND/, undefined, { timeout: 15_000 })
+    await rendered.findByText(/SEED_CHAT_MARKER_BPF13_FIRST/, undefined, { timeout: 15_000 })
+    await rendered.findByText(/SEED_CHAT_MARKER_BPF13_SECOND/, undefined, { timeout: 15_000 })
 
-      const list = screen.getByTestId('message-list')
-      expect(list).toBeTruthy()
+    const list = screen.getByTestId('message-list')
+    expect(list).toBeTruthy()
 
-      const rows = screen.getAllByTestId('message-row')
-      expect(rows.length).toBeGreaterThanOrEqual(2)
-    },
-    20_000
-  )
+    const rows = screen.getAllByTestId('message-row')
+    expect(rows.length).toBeGreaterThanOrEqual(2)
+  }, 20_000)
 })

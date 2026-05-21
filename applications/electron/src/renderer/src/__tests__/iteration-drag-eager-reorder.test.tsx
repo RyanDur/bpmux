@@ -12,62 +12,58 @@ describe('#1339 step 2d-b — eager-reorder during drag-over (ChosenPicachu patt
     rendered = null
   })
 
-  it(
-    'dragging member-3 over member-1 reorders the visible list to [3, 1, 2] before drop',
-    async () => {
-      const port = inject('bpmuxBackendPort')
-      const authToken = inject('bpmuxAuthToken')
-      const apiBase = `http://127.0.0.1:${port}`
+  it('dragging member-3 over member-1 reorders the visible list to [3, 1, 2] before drop', async () => {
+    const port = inject('bpmuxBackendPort')
+    const authToken = inject('bpmuxAuthToken')
+    const apiBase = `http://127.0.0.1:${port}`
 
-      await seedStories(apiBase, authToken, [
-        {
-          number: 7901,
-          title: 'Iteration Orion',
-          story_type: 'iteration',
-          initial_state: 'icebox'
-        },
-        {
-          number: 7911,
-          title: 'orion-alpha',
-          story_type: 'feature',
-          initial_state: 'icebox',
-          labels: ['iteration-Orion.100']
-        },
-        {
-          number: 7912,
-          title: 'orion-bravo',
-          story_type: 'feature',
-          initial_state: 'icebox',
-          labels: ['iteration-Orion.200']
-        },
-        {
-          number: 7913,
-          title: 'orion-charlie',
-          story_type: 'feature',
-          initial_state: 'icebox',
-          labels: ['iteration-Orion.300']
-        }
-      ])
+    await seedStories(apiBase, authToken, [
+      {
+        number: 7901,
+        title: 'Iteration Orion',
+        story_type: 'iteration',
+        initial_state: 'icebox'
+      },
+      {
+        number: 7911,
+        title: 'orion-alpha',
+        story_type: 'feature',
+        initial_state: 'icebox',
+        labels: ['iteration-Orion.100']
+      },
+      {
+        number: 7912,
+        title: 'orion-bravo',
+        story_type: 'feature',
+        initial_state: 'icebox',
+        labels: ['iteration-Orion.200']
+      },
+      {
+        number: 7913,
+        title: 'orion-charlie',
+        story_type: 'feature',
+        initial_state: 'icebox',
+        labels: ['iteration-Orion.300']
+      }
+    ])
 
-      rendered = renderApp()
+    rendered = renderApp()
 
-      const container = await rendered.findByTestId('board-iteration-7901', undefined, {
-        timeout: 15_000
-      })
-      const orderBefore = within(container)
-        .getAllByTestId(/^board-story-\d+$/)
-        .map((el) => Number(el.getAttribute('data-iteration-member')))
-      expect(orderBefore).toEqual([7911, 7912, 7913])
+    const container = await rendered.findByTestId('board-iteration-7901', undefined, {
+      timeout: 15_000
+    })
+    const orderBefore = within(container)
+      .getAllByTestId(/^board-story-\d+$/)
+      .map((el) => Number(el.getAttribute('data-iteration-member')))
+    expect(orderBefore).toEqual([7911, 7912, 7913])
 
-      const source = within(container).getByTestId('board-story-7913') as HTMLLIElement
-      const sourceGrip = within(source).getByTestId('story-grip') as HTMLElement
-      const target = within(container).getByTestId('board-story-7911') as HTMLLIElement
+    const source = within(container).getByTestId('board-story-7913') as HTMLLIElement
+    const sourceGrip = within(source).getByTestId('story-grip') as HTMLElement
+    const target = within(container).getByTestId('board-story-7911') as HTMLLIElement
 
-      const dataStore: Record<string, string> = {}
-      const dt: Pick<
-        DataTransfer,
-        'setData' | 'getData' | 'types' | 'effectAllowed' | 'dropEffect'
-      > = {
+    const dataStore: Record<string, string> = {}
+    const dt: Pick<DataTransfer, 'setData' | 'getData' | 'types' | 'effectAllowed' | 'dropEffect'> =
+      {
         setData: (type: string, value: string) => {
           dataStore[type] = value
         },
@@ -76,15 +72,13 @@ describe('#1339 step 2d-b — eager-reorder during drag-over (ChosenPicachu patt
         effectAllowed: 'move',
         dropEffect: 'move'
       }
-      fireEvent.dragStart(sourceGrip, { dataTransfer: dt })
-      Object.defineProperty(dt, 'types', { value: Object.keys(dataStore) })
-      fireEvent.dragOver(target, { dataTransfer: dt })
+    fireEvent.dragStart(sourceGrip, { dataTransfer: dt })
+    Object.defineProperty(dt, 'types', { value: Object.keys(dataStore) })
+    fireEvent.dragOver(target, { dataTransfer: dt })
 
-      const orderDuringDrag = within(container)
-        .getAllByTestId(/^board-story-\d+$/)
-        .map((el) => Number(el.getAttribute('data-iteration-member')))
-      expect(orderDuringDrag).toEqual([7913, 7911, 7912])
-    },
-    20_000
-  )
+    const orderDuringDrag = within(container)
+      .getAllByTestId(/^board-story-\d+$/)
+      .map((el) => Number(el.getAttribute('data-iteration-member')))
+    expect(orderDuringDrag).toEqual([7913, 7911, 7912])
+  }, 20_000)
 })

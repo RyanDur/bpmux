@@ -63,9 +63,10 @@ export const computeDropMutation = (input: DropMutationInput): DropMutation | nu
     targetMembersIncludeDragged
   } = input
   const sameContainer = draggedThemeName === targetThemeName
-  const withoutSource = sameContainer && targetMembersIncludeDragged
-    ? targetMemberPositions.filter((p) => p !== draggedOldPosition)
-    : targetMemberPositions
+  const withoutSource =
+    sameContainer && targetMembersIncludeDragged
+      ? targetMemberPositions.filter((p) => p !== draggedOldPosition)
+      : targetMemberPositions
   const adjustedIdx = targetMemberIndex
   const { position: newPosition } = computeInsertPosition(adjustedIdx, withoutSource)
   if (sameContainer && newPosition === draggedOldPosition) return null
@@ -82,11 +83,13 @@ export interface ReadyDropMutationInput {
   targetMembersIncludeDragged: boolean
 }
 
-export const computeReadyDropMutation = (
-  input: ReadyDropMutationInput
-): DropMutation | null => {
-  const { draggedOldPosition, targetMemberPositions, targetMemberIndex, targetMembersIncludeDragged } =
-    input
+export const computeReadyDropMutation = (input: ReadyDropMutationInput): DropMutation | null => {
+  const {
+    draggedOldPosition,
+    targetMemberPositions,
+    targetMemberIndex,
+    targetMembersIncludeDragged
+  } = input
   const withoutSource =
     draggedOldPosition !== null && targetMembersIncludeDragged
       ? targetMemberPositions.filter((p) => p !== draggedOldPosition)

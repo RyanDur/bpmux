@@ -51,15 +51,17 @@ test.describe('human-side E2E #476 — direct-action — drill-in reject form', 
       expect(deliverResp.status).toBe(200)
 
       await seedTeamVerdicts(rpc, 1, ['designer'])
-      const passResp = await rpc('pass_desk_check', { number: 1, would_file_bug: false }, 'designer')
+      const passResp = await rpc(
+        'pass_desk_check',
+        { number: 1, would_file_bug: false },
+        'designer'
+      )
       expect(passResp.status).toBe(200)
 
       await win.reload()
       await expect(win.locator('[data-test="board-region"]')).toBeVisible()
 
-      const storyRow = win.locator(
-        '#board-group-delivered-content [data-test="board-story-1"]'
-      )
+      const storyRow = win.locator('#board-group-delivered-content [data-test="board-story-1"]')
       await expect(storyRow).toContainText('reject-form-target')
 
       consoleErrors.length = 0
@@ -109,7 +111,8 @@ test.describe('human-side E2E #476 — direct-action — drill-in reject form', 
           title: '[Feature] dialog-migration-target',
           user_job:
             'When the owner opens the reject form, native dialog substrate provides focus-trap + Escape-close.',
-          observation_falsifier: 'reject if Escape does not close the form, or focus does not restore',
+          observation_falsifier:
+            'reject if Escape does not close the form, or focus does not restore',
           acceptance_test_path: acceptanceTestPath
         },
         'pm'
@@ -124,20 +127,14 @@ test.describe('human-side E2E #476 — direct-action — drill-in reject form', 
         verified_observation: 'Drove deliver so designer can pass desk-check next.'
       })
       await seedTeamVerdicts(rpc, 1, ['designer'])
-      await rpc(
-        'pass_desk_check',
-        { number: 1, would_file_bug: false },
-        'designer'
-      )
+      await rpc('pass_desk_check', { number: 1, would_file_bug: false }, 'designer')
       await win.reload()
       await expect(win.locator('[data-test="board-region"]')).toBeVisible()
 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      const storyRow = win.locator(
-        '#board-group-delivered-content [data-test="board-story-1"]'
-      )
+      const storyRow = win.locator('#board-group-delivered-content [data-test="board-story-1"]')
       await storyRow.locator('.board-story-button').click()
       await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
 

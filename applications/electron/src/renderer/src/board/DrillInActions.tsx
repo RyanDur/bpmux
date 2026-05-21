@@ -67,7 +67,11 @@ const DrillInActions = ({
         onBack()
         return
       }
-      const proceed = await postStoryAccept({ apiBase, authToken }, story.number, payload).mapEither(
+      const proceed = await postStoryAccept(
+        { apiBase, authToken },
+        story.number,
+        payload
+      ).mapEither(
         () => true,
         (error) => {
           rollback(describeHttpError(error))
@@ -119,11 +123,9 @@ const DrillInActions = ({
       onBack()
       return
     }
-    const proceed = await postStoryReject(
-      { apiBase, authToken },
-      story.number,
-      { note: trimmed }
-    ).mapEither(
+    const proceed = await postStoryReject({ apiBase, authToken }, story.number, {
+      note: trimmed
+    }).mapEither(
       () => true,
       (error) => {
         rollback(describeHttpError(error))

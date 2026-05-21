@@ -36,9 +36,9 @@ const INITIAL_COMMENTS = [
   }
 ]
 
-async function launchWithFixture(): Promise<{
+const launchWithFixture = async (): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
-}> {
+}> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-345-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-345-'))
   const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })

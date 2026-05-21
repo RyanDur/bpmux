@@ -1,8 +1,4 @@
-export type RpcFn = (
-  tool: string,
-  body: unknown,
-  agent?: string
-) => Promise<Response>
+export type RpcFn = (tool: string, body: unknown, agent?: string) => Promise<Response>
 
 export const seedTeamVerdicts = async (
   rpc: RpcFn,

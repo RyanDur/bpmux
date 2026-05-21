@@ -11,7 +11,7 @@ const STORAGE_KEY = 'bpmux-message-filter'
 // them back in when they want the full firehose.
 const DEFAULT_VISIBLE: readonly MessageClass[] = ['chat', 'insight']
 
-function readStored(): MessageClass[] | null {
+const readStored = (): MessageClass[] | null => {
   if (typeof window === 'undefined') return null
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
@@ -28,7 +28,7 @@ function readStored(): MessageClass[] | null {
   }
 }
 
-function resolveInitial(): Set<MessageClass> {
+const resolveInitial = (): Set<MessageClass> => {
   const stored = readStored()
   return new Set(stored ?? DEFAULT_VISIBLE)
 }
@@ -50,14 +50,14 @@ export interface MessageFilter {
 // Anything unrecognised (including missing messageType) falls through
 // to 'chat' — keeps historical messages without a class tag visible
 // under the default filter.
-export function classOf(messageType: string | null | undefined): MessageClass {
+export const classOf = (messageType: string | null | undefined): MessageClass => {
   if (messageType && (MESSAGE_CLASSES as readonly string[]).includes(messageType)) {
     return messageType as MessageClass
   }
   return 'chat'
 }
 
-export function useMessageFilter(): MessageFilter {
+export const useMessageFilter = (): MessageFilter => {
   const [visible, setVisible] = useState<Set<MessageClass>>(resolveInitial)
 
   useEffect(() => {

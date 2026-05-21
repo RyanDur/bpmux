@@ -32,9 +32,7 @@ const copyErrorDetails = async (
     userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
     timestamp: new Date().toISOString()
   }
-  await asyncTryCatch(() =>
-    navigator.clipboard.writeText(JSON.stringify(payload, null, 2))
-  ).value
+  await asyncTryCatch(() => navigator.clipboard.writeText(JSON.stringify(payload, null, 2))).value
 }
 
 const PlainFallback = ({ error }: FallbackProps): React.JSX.Element => {

@@ -59,9 +59,7 @@ test.describe('#1339 Scenario 1 — two bpmux instances see the same iteration o
         ;(el as HTMLDetailsElement).open = true
       })
 
-      const memberOrderIn = async (
-        page: typeof win1
-      ): Promise<number[]> => {
+      const memberOrderIn = async (page: typeof win1): Promise<number[]> => {
         return await page.evaluate(() => {
           const container = document.querySelector('[data-test="board-iteration-9301"]')
           if (!container) return []

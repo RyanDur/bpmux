@@ -11,65 +11,59 @@ describe('#1339 step 2g-a — iteration containers sort by iteration-order.{N} l
     rendered = null
   })
 
-  it(
-    'iteration with iteration-order.200 renders AFTER iteration with iteration-order.100',
-    async () => {
-      const port = inject('bpmuxBackendPort')
-      const authToken = inject('bpmuxAuthToken')
-      const apiBase = `http://127.0.0.1:${port}`
+  it('iteration with iteration-order.200 renders AFTER iteration with iteration-order.100', async () => {
+    const port = inject('bpmuxBackendPort')
+    const authToken = inject('bpmuxAuthToken')
+    const apiBase = `http://127.0.0.1:${port}`
 
-      await seedStories(apiBase, authToken, [
-        {
-          number: 8001,
-          title: 'Iteration Lynx',
-          story_type: 'iteration',
-          initial_state: 'icebox',
-          labels: ['iteration-order.200']
-        },
-        {
-          number: 8002,
-          title: 'Iteration Hydra',
-          story_type: 'iteration',
-          initial_state: 'icebox',
-          labels: ['iteration-order.100']
-        },
-        {
-          number: 8010,
-          title: 'lynx-member',
-          story_type: 'feature',
-          initial_state: 'icebox',
-          labels: ['iteration-Lynx.100']
-        },
-        {
-          number: 8011,
-          title: 'hydra-member',
-          story_type: 'feature',
-          initial_state: 'icebox',
-          labels: ['iteration-Hydra.100']
-        }
-      ])
+    await seedStories(apiBase, authToken, [
+      {
+        number: 8001,
+        title: 'Iteration Lynx',
+        story_type: 'iteration',
+        initial_state: 'icebox',
+        labels: ['iteration-order.200']
+      },
+      {
+        number: 8002,
+        title: 'Iteration Hydra',
+        story_type: 'iteration',
+        initial_state: 'icebox',
+        labels: ['iteration-order.100']
+      },
+      {
+        number: 8010,
+        title: 'lynx-member',
+        story_type: 'feature',
+        initial_state: 'icebox',
+        labels: ['iteration-Lynx.100']
+      },
+      {
+        number: 8011,
+        title: 'hydra-member',
+        story_type: 'feature',
+        initial_state: 'icebox',
+        labels: ['iteration-Hydra.100']
+      }
+    ])
 
-      rendered = renderApp()
+    rendered = renderApp()
 
-      await rendered.findByTestId('board-iteration-8001', undefined, { timeout: 15_000 })
-      await rendered.findByTestId('board-iteration-8002', undefined, { timeout: 15_000 })
+    await rendered.findByTestId('board-iteration-8001', undefined, { timeout: 15_000 })
+    await rendered.findByTestId('board-iteration-8002', undefined, { timeout: 15_000 })
 
-      const iterationsList = document.querySelector('.board-iterations-list')
-      expect(iterationsList).toBeTruthy()
-      const renderedIterationIds = Array.from(
-        iterationsList!.querySelectorAll('[data-test^="board-iteration-"]')
-      )
-        .map((el) => el.getAttribute('data-test'))
-        .filter(
-          (t) => t !== null && /^board-iteration-\d+$/.test(t)
-        ) as string[]
+    const iterationsList = document.querySelector('.board-iterations-list')
+    expect(iterationsList).toBeTruthy()
+    const renderedIterationIds = Array.from(
+      iterationsList!.querySelectorAll('[data-test^="board-iteration-"]')
+    )
+      .map((el) => el.getAttribute('data-test'))
+      .filter((t) => t !== null && /^board-iteration-\d+$/.test(t)) as string[]
 
-      const hydraIdx = renderedIterationIds.indexOf('board-iteration-8002')
-      const lynxIdx = renderedIterationIds.indexOf('board-iteration-8001')
-      expect(hydraIdx).toBeGreaterThanOrEqual(0)
-      expect(lynxIdx).toBeGreaterThanOrEqual(0)
-      expect(hydraIdx).toBeLessThan(lynxIdx)
-    },
-    25_000
-  )
+    const hydraIdx = renderedIterationIds.indexOf('board-iteration-8002')
+    const lynxIdx = renderedIterationIds.indexOf('board-iteration-8001')
+    expect(hydraIdx).toBeGreaterThanOrEqual(0)
+    expect(lynxIdx).toBeGreaterThanOrEqual(0)
+    expect(hydraIdx).toBeLessThan(lynxIdx)
+  }, 25_000)
 })

@@ -1,4 +1,12 @@
-import { app, shell, BrowserWindow, ipcMain, dialog, Menu, type MenuItemConstructorOptions } from 'electron'
+import {
+  app,
+  shell,
+  BrowserWindow,
+  ipcMain,
+  dialog,
+  Menu,
+  type MenuItemConstructorOptions
+} from 'electron'
 import { join } from 'path'
 import { homedir } from 'os'
 import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync } from 'fs'
@@ -61,9 +69,7 @@ const resolveBinaryPath = (): string => {
   const releaseExists = existsSync(releasePath)
   const debugExists = existsSync(debugPath)
   if (releaseExists && debugExists) {
-    return statSync(releasePath).mtimeMs >= statSync(debugPath).mtimeMs
-      ? releasePath
-      : debugPath
+    return statSync(releasePath).mtimeMs >= statSync(debugPath).mtimeMs ? releasePath : debugPath
   }
   if (releaseExists) return releasePath
   return debugPath
@@ -265,7 +271,6 @@ const handleSelfUpdateRestart = (): void => {
   }, RESTART_RESPAWN_DELAY_MS)
 }
 
-
 const killBackend = (): void => {
   const child = backendProcess
   if (!child || child.killed) return
@@ -415,7 +420,7 @@ app.whenReady().then(async () => {
 
   createWindow()
 
-  app.on('activate', function () {
+  app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
 })

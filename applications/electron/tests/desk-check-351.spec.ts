@@ -21,9 +21,11 @@ const MOCK_BOARD = {
   ]
 }
 
-async function launchWithBoard(reducedMotion?: 'reduce'): Promise<{
+const launchWithBoard = async (
+  reducedMotion?: 'reduce'
+): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
-}> {
+}> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-351-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-351-'))
   const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
@@ -98,14 +100,14 @@ test.describe('desk-check #351 high-signal transitions', () => {
     await win.keyboard.press(process.platform === 'darwin' ? 'Meta+p' : 'Control+p')
     await win.waitForTimeout(400)
 
-    const boardClass = await win.evaluate(() =>
-      document.querySelector('[data-test="board-region"]')?.className ?? ''
+    const boardClass = await win.evaluate(
+      () => document.querySelector('[data-test="board-region"]')?.className ?? ''
     )
     console.log(`  board-region class after toggle: "${boardClass}"`)
 
     // Board should STILL be in DOM (always-mounted) — just .board--hidden.
-    const stillMounted = await win.evaluate(() =>
-      !!document.querySelector('[data-test="board-region"]')
+    const stillMounted = await win.evaluate(
+      () => !!document.querySelector('[data-test="board-region"]')
     )
     console.log(`  board DOM still mounted: ${stillMounted}`)
     expect(stillMounted).toBe(true)

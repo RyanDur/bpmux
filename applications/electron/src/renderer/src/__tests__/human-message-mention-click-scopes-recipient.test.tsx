@@ -33,42 +33,38 @@ describe('human-side E2E #476 — direct-action — message @mention click', () 
     rendered = null
   })
 
-  it(
-    'clicking an @<role> pill scopes the chat recipient to that role',
-    async () => {
-      const port = inject('bpmuxBackendPort')
-      const authToken = inject('bpmuxAuthToken')
-      const apiBase = `http://127.0.0.1:${port}`
-      await resetMessages(apiBase, authToken)
-      await seedMessages(apiBase, authToken, SEED)
-      await seedRoster(apiBase, authToken, ['dev:claude-code', 'pm:claude-code'])
+  it('clicking an @<role> pill scopes the chat recipient to that role', async () => {
+    const port = inject('bpmuxBackendPort')
+    const authToken = inject('bpmuxAuthToken')
+    const apiBase = `http://127.0.0.1:${port}`
+    await resetMessages(apiBase, authToken)
+    await seedMessages(apiBase, authToken, SEED)
+    await seedRoster(apiBase, authToken, ['dev:claude-code', 'pm:claude-code'])
 
-      rendered = renderApp()
+    rendered = renderApp()
 
-      await rendered.findByText(/please look at this/, undefined, { timeout: 15_000 })
+    await rendered.findByText(/please look at this/, undefined, { timeout: 15_000 })
 
-      await rendered.findByTestId('sidebar-direct-dev', undefined, {
-        timeout: 15_000
-      })
-      const initialBroadcast = rendered.getByTestId('sidebar-broadcast')
-      expect(initialBroadcast.getAttribute('aria-current')).toBe('true')
+    await rendered.findByTestId('sidebar-direct-dev', undefined, {
+      timeout: 15_000
+    })
+    const initialBroadcast = rendered.getByTestId('sidebar-broadcast')
+    expect(initialBroadcast.getAttribute('aria-current')).toBe('true')
 
-      await rendered.findAllByTestId('message-mention', undefined, { timeout: 15_000 })
+    await rendered.findAllByTestId('message-mention', undefined, { timeout: 15_000 })
 
-      const r = rendered
-      const user = userEvent.setup()
-      await user.click(r.getAllByTestId('message-mention')[0])
+    const r = rendered
+    const user = userEvent.setup()
+    await user.click(r.getAllByTestId('message-mention')[0])
 
-      await waitFor(
-        () => {
-          const dev = r.getByTestId('sidebar-direct-dev')
-          const broadcast = r.getByTestId('sidebar-broadcast')
-          expect(dev.getAttribute('aria-current')).toBe('true')
-          expect(broadcast.getAttribute('aria-current')).toBeNull()
-        },
-        { timeout: 15_000 }
-      )
-    },
-    30_000
-  )
+    await waitFor(
+      () => {
+        const dev = r.getByTestId('sidebar-direct-dev')
+        const broadcast = r.getByTestId('sidebar-broadcast')
+        expect(dev.getAttribute('aria-current')).toBe('true')
+        expect(broadcast.getAttribute('aria-current')).toBeNull()
+      },
+      { timeout: 15_000 }
+    )
+  }, 30_000)
 })

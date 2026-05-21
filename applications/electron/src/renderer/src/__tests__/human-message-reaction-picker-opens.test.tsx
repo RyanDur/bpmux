@@ -25,41 +25,37 @@ describe('human-side E2E #476 — direct-action — message reaction picker', ()
     rendered = null
   })
 
-  it(
-    'reaction-add → pick emoji → pill renders on the message (full cycle)',
-    async () => {
-      const port = inject('bpmuxBackendPort')
-      const authToken = inject('bpmuxAuthToken')
-      const apiBase = `http://127.0.0.1:${port}`
-      await resetMessages(apiBase, authToken)
-      await seedMessages(apiBase, authToken, SEED)
+  it('reaction-add → pick emoji → pill renders on the message (full cycle)', async () => {
+    const port = inject('bpmuxBackendPort')
+    const authToken = inject('bpmuxAuthToken')
+    const apiBase = `http://127.0.0.1:${port}`
+    await resetMessages(apiBase, authToken)
+    await seedMessages(apiBase, authToken, SEED)
 
-      rendered = renderApp()
+    rendered = renderApp()
 
-      await rendered.findByText(/reactable test message/, undefined, { timeout: 15_000 })
+    await rendered.findByText(/reactable test message/, undefined, { timeout: 15_000 })
 
-      const addButton = (await rendered.findAllByTestId('reaction-add-first'))[0] as HTMLElement
-      expect(addButton.getAttribute('aria-expanded')).toBe('false')
+    const addButton = (await rendered.findAllByTestId('reaction-add-first'))[0] as HTMLElement
+    expect(addButton.getAttribute('aria-expanded')).toBe('false')
 
-      addButton.click()
-      await waitFor(() => expect(addButton.getAttribute('aria-expanded')).toBe('true'))
+    addButton.click()
+    await waitFor(() => expect(addButton.getAttribute('aria-expanded')).toBe('true'))
 
-      const picker = await rendered.findByTestId('reaction-picker', undefined, {
-        timeout: 5_000
-      })
-      expect(picker).toBeTruthy()
+    const picker = await rendered.findByTestId('reaction-picker', undefined, {
+      timeout: 5_000
+    })
+    expect(picker).toBeTruthy()
 
-      const thumbsUp = await rendered.findByTestId('reaction-picker-👍', undefined, {
-        timeout: 5_000
-      })
-      ;(thumbsUp as HTMLElement).click()
+    const thumbsUp = await rendered.findByTestId('reaction-picker-👍', undefined, {
+      timeout: 5_000
+    })
+    ;(thumbsUp as HTMLElement).click()
 
-      await waitFor(() => {
-        expect(screen.queryAllByTestId('reaction-picker').length).toBe(0)
-      })
+    await waitFor(() => {
+      expect(screen.queryAllByTestId('reaction-picker').length).toBe(0)
+    })
 
-      await rendered.findByTestId('reaction-pill-👍', undefined, { timeout: 15_000 })
-    },
-    20_000
-  )
+    await rendered.findByTestId('reaction-pill-👍', undefined, { timeout: 15_000 })
+  }, 20_000)
 })

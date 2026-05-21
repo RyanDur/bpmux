@@ -1,4 +1,9 @@
-import { _electron as electron, expect, type ElectronApplication, type Page } from '@playwright/test'
+import {
+  _electron as electron,
+  expect,
+  type ElectronApplication,
+  type Page
+} from '@playwright/test'
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, symlinkSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
@@ -78,9 +83,7 @@ export const SAFE_INHERITED_ENV_KEYS = [
   'CI'
 ] as const
 
-export const pickSafeInheritedEnv = (
-  env: NodeJS.ProcessEnv = process.env
-): NodeJS.ProcessEnv => {
+export const pickSafeInheritedEnv = (env: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv => {
   const picked: NodeJS.ProcessEnv = {}
   for (const k of SAFE_INHERITED_ENV_KEYS) {
     const v = env[k]
@@ -140,10 +143,7 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
     const sessionId = 'playwright-seed-' + Date.now().toString(36)
     const sessionDir = join(sessionBase, sessionId)
     mkdirSync(sessionDir, { recursive: true })
-    writeFileSync(
-      join(sessionDir, 'roster_seed.json'),
-      JSON.stringify(opts.seedRoster)
-    )
+    writeFileSync(join(sessionDir, 'roster_seed.json'), JSON.stringify(opts.seedRoster))
     symlinkSync(sessionDir, join(sessionBase, 'current'))
   }
   // Per-test auth-token isolation. Without this, parallel workers
@@ -224,10 +224,7 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
   return { app, sessionBase, userDataDir, backendPort, mockGh: defaultMockGh }
 }
 
-const seedMessagesViaApi = async (
-  backendPort: number,
-  opts: LaunchOpts
-): Promise<void> => {
+const seedMessagesViaApi = async (backendPort: number, opts: LaunchOpts): Promise<void> => {
   if (opts.seedMessages && opts.seedMessages.length > 0) {
     const res = await fetch(`http://127.0.0.1:${backendPort}/api/test/seed_messages`, {
       method: 'POST',
@@ -347,9 +344,7 @@ export interface MockGhLaunchResult extends LaunchResult {
   rpc: (tool: string, body: unknown, agent?: string) => Promise<Response>
 }
 
-export const launchWithMockGh = async (
-  opts: LaunchOpts = {}
-): Promise<MockGhLaunchResult> => {
+export const launchWithMockGh = async (opts: LaunchOpts = {}): Promise<MockGhLaunchResult> => {
   const mockGh = await startMockGhServer()
   // Per-test auth token — same isolation pattern as the default
   // launch helper, but we capture the path so we can read the
@@ -437,13 +432,9 @@ export const waitForBoardLoaded = async (win: Page): Promise<void> => {
 // `anchorText` gates downstream derived-state assertions on WS
 // history actually arriving — message-list visibility alone races
 // against hydration under workers=2 contention.
-export const waitForMessagesLoaded = async (
-  win: Page,
-  anchorText?: string
-): Promise<void> => {
+export const waitForMessagesLoaded = async (win: Page, anchorText?: string): Promise<void> => {
   await expect(win.locator('[data-test="message-list"]')).toBeVisible()
   if (anchorText) {
     await expect(win.locator('[data-test="message-list"]')).toContainText(anchorText)
   }
 }
-

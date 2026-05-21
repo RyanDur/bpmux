@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 
-const storageKey = (viewerIdentity: string): string =>
-  `bpmux-iteration-collapse:${viewerIdentity}`
+const storageKey = (viewerIdentity: string): string => `bpmux-iteration-collapse:${viewerIdentity}`
 
 const readStored = (viewerIdentity: string): Record<string, boolean> => {
   if (typeof window === 'undefined') return {}
@@ -35,9 +34,7 @@ export interface IterationCollapseStorage {
 }
 
 export const useIterationCollapse = (viewerIdentity: string): IterationCollapseStorage => {
-  const [stored, setStored] = useState<Record<string, boolean>>(() =>
-    readStored(viewerIdentity)
-  )
+  const [stored, setStored] = useState<Record<string, boolean>>(() => readStored(viewerIdentity))
   useEffect(() => {
     writeStored(viewerIdentity, stored)
   }, [viewerIdentity, stored])

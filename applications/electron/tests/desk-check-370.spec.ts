@@ -36,9 +36,9 @@ const AD_HOC_MESSAGES = [
   }
 ]
 
-async function launchWithFixture(): Promise<{
+const launchWithFixture = async (): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
-}> {
+}> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-370-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-370-'))
   const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })

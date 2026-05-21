@@ -19,10 +19,10 @@ const MOCK_BOARD = {
   ]
 }
 
-async function launchBoard(): Promise<{
+const launchBoard = async (): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
   postCount: { n: number }
-}> {
+}> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-356-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-356-'))
   const postCount = { n: 0 }

@@ -28,12 +28,9 @@ describe('#514 columnFor — closed-state-aware bucketing', () => {
       ['ready-for-accept', 'retired'],
       ['needs-fixes', 'retired'],
       ['rejected', 'retired']
-    ])(
-      'closed + state=%s (non-Accepted) → RETIRED (decision-not-to-pursue)',
-      (state, column) => {
-        expect(columnFor(state, true)).toBe(column)
-      }
-    )
+    ])('closed + state=%s (non-Accepted) → RETIRED (decision-not-to-pursue)', (state, column) => {
+      expect(columnFor(state, true)).toBe(column)
+    })
 
     test('closed + state=accepted stays in ACCEPTED (success-narrative preserved)', () => {
       expect(columnFor('accepted', true)).toBe('accepted')

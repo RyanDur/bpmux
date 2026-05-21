@@ -3,11 +3,7 @@ import { classOf, useMessageFilter, type MessageClass } from '../hooks/useMessag
 import { useReactions } from '../hooks/useReactions'
 import Metrics from '../metrics/Metrics'
 import { RENDERER_IDENTITY, type SendOptions } from '../transport/useWebSocket'
-import type {
-  ChatMessage,
-  ConnectionStatus,
-  ReactionAggregateWire
-} from '../transport/types'
+import type { ChatMessage, ConnectionStatus, ReactionAggregateWire } from '../transport/types'
 import FilterPills from './FilterPills'
 import Input from './Input'
 import MessageList from './MessageList'

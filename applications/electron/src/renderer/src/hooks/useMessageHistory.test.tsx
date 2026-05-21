@@ -19,7 +19,9 @@ const mkLive = (i: number): ChatMessage => ({
   messageType: null
 })
 
-const mkOlderRow = (i: number): {
+const mkOlderRow = (
+  i: number
+): {
   from: string
   text: string
   ts: string
@@ -48,10 +50,7 @@ describe('#1153 mergeOlderHistory — pure dedupe + chronological merge', () => 
     const live = [mkLive(0), mkLive(1)]
     // Server includes a row that's already in live (boundary-overlap
     // race) plus a genuine older row.
-    const older = [
-      { from: live[0].from, text: live[0].text, ts: live[0].ts },
-      mkOlderRow(0)
-    ]
+    const older = [{ from: live[0].from, text: live[0].text, ts: live[0].ts }, mkOlderRow(0)]
     const result = mergeOlderHistory([], older, live)
     // Only the genuine older row makes it through.
     expect(result.length).toBe(1)

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 
-const storageKey = (prefix: string, viewerIdentity: string): string =>
-  `${prefix}:${viewerIdentity}`
+const storageKey = (prefix: string, viewerIdentity: string): string => `${prefix}:${viewerIdentity}`
 
 const readState = <K extends string>(
   prefix: string,

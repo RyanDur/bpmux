@@ -85,16 +85,12 @@ test.describe('human-side E2E #476 — cross-process — typed message reaches o
       const list = win.locator('[data-test="message-list"]')
       await expect(list).toContainText(dmMarker, { timeout: 10000 })
 
-      const devResp = await fetch(
-        `http://127.0.0.1:${backendPort}/api/messages?as=dev&limit=200`
-      )
+      const devResp = await fetch(`http://127.0.0.1:${backendPort}/api/messages?as=dev&limit=200`)
       expect(devResp.status).toBe(200)
       const devMessages = (await devResp.json()) as Array<{ text: string }>
       expect(devMessages.some((m) => m.text === dmMarker)).toBe(true)
 
-      const pmResp = await fetch(
-        `http://127.0.0.1:${backendPort}/api/messages?as=pm&limit=200`
-      )
+      const pmResp = await fetch(`http://127.0.0.1:${backendPort}/api/messages?as=pm&limit=200`)
       expect(pmResp.status).toBe(200)
       const pmMessages = (await pmResp.json()) as Array<{ text: string }>
       expect(pmMessages.some((m) => m.text === dmMarker)).toBe(false)

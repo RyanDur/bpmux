@@ -7,9 +7,8 @@ interface Props {
   authToken: string | undefined
 }
 
-function hasAnyUnfurlableField(data: UnfurlData): boolean {
-  return Boolean(data.title) || Boolean(data.description) || Boolean(data.image)
-}
+const hasAnyUnfurlableField = (data: UnfurlData): boolean =>
+  Boolean(data.title) || Boolean(data.description) || Boolean(data.image)
 
 /**
  * Renders unfurl preview cards beneath a message body for every URL
@@ -19,7 +18,7 @@ function hasAnyUnfurlableField(data: UnfurlData): boolean {
  * system shell handler automatically when setWindowOpenHandler is
  * configured (default in `@electron-toolkit/utils` setup).
  */
-function UnfurlCards({ text, apiBase, authToken }: Props): React.JSX.Element | null {
+const UnfurlCards = ({ text, apiBase, authToken }: Props): React.JSX.Element | null => {
   const urls = extractUrls(text)
   const unfurls = useUnfurl({ apiBase, authToken, urls })
 
@@ -61,9 +60,7 @@ function UnfurlCards({ text, apiBase, authToken }: Props): React.JSX.Element | n
             </header>
           )}
           {data.title && <strong className="unfurl-card-title">{data.title}</strong>}
-          {data.description && (
-            <p className="unfurl-card-description">{data.description}</p>
-          )}
+          {data.description && <p className="unfurl-card-description">{data.description}</p>}
         </div>
       </a>
     )

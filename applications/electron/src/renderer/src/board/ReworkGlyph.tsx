@@ -10,7 +10,7 @@ interface ReworkGlyphProps {
 // in story_to_board_json). Tooltip carries the backward-edge comment
 // so dev sees the rework reason on hover/focus without opening the
 // story.
-export function ReworkGlyph({ reworkComment }: ReworkGlyphProps): JSX.Element | null {
+export const ReworkGlyph = ({ reworkComment }: ReworkGlyphProps): JSX.Element | null => {
   if (!reworkComment) return null
   return (
     <span

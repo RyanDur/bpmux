@@ -13,60 +13,56 @@ describe('#1339 Scenario 4 — grip-handle is the sole drag-initiator', () => {
     rendered = null
   })
 
-  it(
-    'renders a grip-handle on draggable rows; clicking the row body opens drill-in, clicking the grip does not',
-    async () => {
-      const port = inject('bpmuxBackendPort')
-      const authToken = inject('bpmuxAuthToken')
-      const apiBase = `http://127.0.0.1:${port}`
+  it('renders a grip-handle on draggable rows; clicking the row body opens drill-in, clicking the grip does not', async () => {
+    const port = inject('bpmuxBackendPort')
+    const authToken = inject('bpmuxAuthToken')
+    const apiBase = `http://127.0.0.1:${port}`
 
-      await seedStories(apiBase, authToken, [
-        {
-          number: 8801,
-          title: 'Iteration GripTest',
-          story_type: 'iteration',
-          initial_state: 'icebox'
-        },
-        {
-          number: 8811,
-          title: 'draggable member',
-          story_type: 'feature',
-          initial_state: 'icebox',
-          labels: ['iteration-GripTest.100']
-        }
-      ])
+    await seedStories(apiBase, authToken, [
+      {
+        number: 8801,
+        title: 'Iteration GripTest',
+        story_type: 'iteration',
+        initial_state: 'icebox'
+      },
+      {
+        number: 8811,
+        title: 'draggable member',
+        story_type: 'feature',
+        initial_state: 'icebox',
+        labels: ['iteration-GripTest.100']
+      }
+    ])
 
-      rendered = renderApp()
+    rendered = renderApp()
 
-      const row = await rendered.findByTestId('board-story-8811', undefined, {
-        timeout: 15_000
-      })
-      expect(row.tagName.toLowerCase()).toBe('li')
-      expect(row.getAttribute('draggable')).not.toBe('true')
+    const row = await rendered.findByTestId('board-story-8811', undefined, {
+      timeout: 15_000
+    })
+    expect(row.tagName.toLowerCase()).toBe('li')
+    expect(row.getAttribute('draggable')).not.toBe('true')
 
-      const grip = row.querySelector('[data-test="story-grip"]') as HTMLElement
-      expect(grip).toBeTruthy()
-      expect(grip.getAttribute('draggable')).toBe('true')
-      expect(grip.getAttribute('aria-label')).toMatch(/drag.*8811/i)
+    const grip = row.querySelector('[data-test="story-grip"]') as HTMLElement
+    expect(grip).toBeTruthy()
+    expect(grip.getAttribute('draggable')).toBe('true')
+    expect(grip.getAttribute('aria-label')).toMatch(/drag.*8811/i)
 
-      expect(rendered.queryByTestId('board-drill-in')).toBeNull()
+    expect(rendered.queryByTestId('board-drill-in')).toBeNull()
 
-      const user = userEvent.setup()
-      await user.click(grip)
-      expect(rendered.queryByTestId('board-drill-in')).toBeNull()
+    const user = userEvent.setup()
+    await user.click(grip)
+    expect(rendered.queryByTestId('board-drill-in')).toBeNull()
 
-      const button = row.querySelector('.board-story-button') as HTMLElement
-      expect(button).toBeTruthy()
-      await user.click(button)
-      await waitFor(
-        () => {
-          expect(rendered!.queryByTestId('board-drill-in')).toBeTruthy()
-        },
-        { timeout: 5_000 }
-      )
-    },
-    30_000
-  )
+    const button = row.querySelector('.board-story-button') as HTMLElement
+    expect(button).toBeTruthy()
+    await user.click(button)
+    await waitFor(
+      () => {
+        expect(rendered!.queryByTestId('board-drill-in')).toBeTruthy()
+      },
+      { timeout: 5_000 }
+    )
+  }, 30_000)
 
   it('omits the grip on non-draggable rows (closed-iteration members)', async () => {
     const port = inject('bpmuxBackendPort')

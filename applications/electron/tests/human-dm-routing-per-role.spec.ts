@@ -27,10 +27,7 @@ interface FetchedMessage {
   to?: string[] | null
 }
 
-const fetchAs = async (
-  port: number,
-  peer: string
-): Promise<FetchedMessage[]> => {
+const fetchAs = async (port: number, peer: string): Promise<FetchedMessage[]> => {
   const resp = await fetch(`http://127.0.0.1:${port}/api/messages?as=${peer}&limit=200`)
   if (!resp.ok) throw new Error(`fetch as ${peer}: ${resp.status}`)
   return (await resp.json()) as FetchedMessage[]

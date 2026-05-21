@@ -1,10 +1,6 @@
 import { format } from 'date-fns'
 import { useEffect, useRef, useState } from 'react'
-import {
-  useTimeline,
-  type ClassifiedEvent,
-  type TimelineGate
-} from '../hooks/useTimeline'
+import { useTimeline, type ClassifiedEvent, type TimelineGate } from '../hooks/useTimeline'
 import type { ChatMessage } from '../transport/types'
 import type { BoardStory } from './types'
 
@@ -82,9 +78,7 @@ const renderTimelineList = (
               <time className="drill-in-timeline-ts" dateTime={e.raw.ts}>
                 {format(new Date(e.raw.ts), 'MMM d · h:mm a')}
               </time>
-              {e.raw.actor && (
-                <cite className="drill-in-timeline-actor">{e.raw.actor}</cite>
-              )}
+              {e.raw.actor && <cite className="drill-in-timeline-actor">{e.raw.actor}</cite>}
               {e.raw.body && (
                 <small className="drill-in-timeline-note">{truncate(e.raw.body)}</small>
               )}
@@ -93,10 +87,7 @@ const renderTimelineList = (
         })}
       </ol>
       {preEventLog && (
-        <p
-          className="drill-in-timeline-footer"
-          data-test="drill-in-timeline-prelog"
-        >
+        <p className="drill-in-timeline-footer" data-test="drill-in-timeline-prelog">
           history pre-dates event log
         </p>
       )}
@@ -139,11 +130,7 @@ const Timeline = ({
   }, [focusTimeline])
 
   return (
-    <details
-      className="drill-in-timeline"
-      data-test="drill-in-timeline"
-      ref={detailsRef}
-    >
+    <details className="drill-in-timeline" data-test="drill-in-timeline" ref={detailsRef}>
       <summary className="drill-in-timeline-summary">
         <h4>Timeline{timeline.events ? ` (${timeline.events.length})` : ''}</h4>
       </summary>

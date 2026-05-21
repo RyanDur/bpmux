@@ -12,60 +12,59 @@ describe('#1339 — drag-within-iteration visual no snap-back (optimistic UI)', 
     rendered = null
   })
 
-  it(
-    'after drop, the rendered member order reflects the new position without waiting for backend state-delta — falsifier for the snap-back bug Ryan flagged at 04:18 UTC',
-    async () => {
-      const port = inject('bpmuxBackendPort')
-      const authToken = inject('bpmuxAuthToken')
-      const apiBase = `http://127.0.0.1:${port}`
+  it('after drop, the rendered member order reflects the new position without waiting for backend state-delta — falsifier for the snap-back bug Ryan flagged at 04:18 UTC', async () => {
+    const port = inject('bpmuxBackendPort')
+    const authToken = inject('bpmuxAuthToken')
+    const apiBase = `http://127.0.0.1:${port}`
 
-      await seedStories(apiBase, authToken, [
-        {
-          number: 7701,
-          title: 'Iteration OptimisticVisualTheme',
-          story_type: 'iteration',
-          initial_state: 'icebox'
-        },
-        {
-          number: 7711,
-          title: 'opt-alpha',
-          story_type: 'feature',
-          initial_state: 'icebox',
-          labels: ['iteration-OptimisticVisualTheme.100']
-        },
-        {
-          number: 7712,
-          title: 'opt-bravo',
-          story_type: 'feature',
-          initial_state: 'icebox',
-          labels: ['iteration-OptimisticVisualTheme.200']
-        },
-        {
-          number: 7713,
-          title: 'opt-charlie',
-          story_type: 'feature',
-          initial_state: 'icebox',
-          labels: ['iteration-OptimisticVisualTheme.300']
-        }
-      ])
+    await seedStories(apiBase, authToken, [
+      {
+        number: 7701,
+        title: 'Iteration OptimisticVisualTheme',
+        story_type: 'iteration',
+        initial_state: 'icebox'
+      },
+      {
+        number: 7711,
+        title: 'opt-alpha',
+        story_type: 'feature',
+        initial_state: 'icebox',
+        labels: ['iteration-OptimisticVisualTheme.100']
+      },
+      {
+        number: 7712,
+        title: 'opt-bravo',
+        story_type: 'feature',
+        initial_state: 'icebox',
+        labels: ['iteration-OptimisticVisualTheme.200']
+      },
+      {
+        number: 7713,
+        title: 'opt-charlie',
+        story_type: 'feature',
+        initial_state: 'icebox',
+        labels: ['iteration-OptimisticVisualTheme.300']
+      }
+    ])
 
-      rendered = renderApp()
+    rendered = renderApp()
 
-      const container = await rendered.findByTestId('board-iteration-7701', undefined, {
-        timeout: 15_000
-      })
-      const queryOrder = (): number[] =>
-        within(container)
-          .getAllByTestId(/^board-story-\d+$/)
-          .map((el) => Number(el.getAttribute('data-iteration-member')))
-      const orderBefore = queryOrder()
-      expect(orderBefore).toEqual([7711, 7712, 7713])
+    const container = await rendered.findByTestId('board-iteration-7701', undefined, {
+      timeout: 15_000
+    })
+    const queryOrder = (): number[] =>
+      within(container)
+        .getAllByTestId(/^board-story-\d+$/)
+        .map((el) => Number(el.getAttribute('data-iteration-member')))
+    const orderBefore = queryOrder()
+    expect(orderBefore).toEqual([7711, 7712, 7713])
 
-      const source = within(container).getByTestId('board-story-7713') as HTMLLIElement
-      const sourceGrip = within(source).getByTestId('story-grip') as HTMLElement
-      const target = within(container).getByTestId('board-story-7711') as HTMLLIElement
-      const dataStore: Record<string, string> = {}
-      const dt: Pick<DataTransfer, 'setData' | 'getData' | 'types' | 'effectAllowed' | 'dropEffect'> = {
+    const source = within(container).getByTestId('board-story-7713') as HTMLLIElement
+    const sourceGrip = within(source).getByTestId('story-grip') as HTMLElement
+    const target = within(container).getByTestId('board-story-7711') as HTMLLIElement
+    const dataStore: Record<string, string> = {}
+    const dt: Pick<DataTransfer, 'setData' | 'getData' | 'types' | 'effectAllowed' | 'dropEffect'> =
+      {
         setData: (type: string, value: string) => {
           dataStore[type] = value
         },
@@ -74,20 +73,18 @@ describe('#1339 — drag-within-iteration visual no snap-back (optimistic UI)', 
         effectAllowed: 'move',
         dropEffect: 'move'
       }
-      fireEvent.dragStart(sourceGrip, { dataTransfer: dt })
-      Object.defineProperty(dt, 'types', { value: Object.keys(dataStore) })
-      fireEvent.dragOver(target, { dataTransfer: dt })
-      fireEvent.drop(target, { dataTransfer: dt })
-      fireEvent.dragEnd(sourceGrip, { dataTransfer: dt })
+    fireEvent.dragStart(sourceGrip, { dataTransfer: dt })
+    Object.defineProperty(dt, 'types', { value: Object.keys(dataStore) })
+    fireEvent.dragOver(target, { dataTransfer: dt })
+    fireEvent.drop(target, { dataTransfer: dt })
+    fireEvent.dragEnd(sourceGrip, { dataTransfer: dt })
 
-      await waitFor(
-        () => {
-          const orderAfter = queryOrder()
-          expect(orderAfter[0]).toBe(7713)
-        },
-        { timeout: 2_000, interval: 50 }
-      )
-    },
-    20_000
-  )
+    await waitFor(
+      () => {
+        const orderAfter = queryOrder()
+        expect(orderAfter[0]).toBe(7713)
+      },
+      { timeout: 2_000, interval: 50 }
+    )
+  }, 20_000)
 })

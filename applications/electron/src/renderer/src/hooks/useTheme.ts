@@ -4,7 +4,7 @@ export type Theme = 'dark' | 'light'
 
 const STORAGE_KEY = 'bpmux-theme'
 
-function resolveInitial(): Theme {
+const resolveInitial = (): Theme => {
   if (typeof window === 'undefined') return 'dark'
   const stored = window.localStorage.getItem(STORAGE_KEY)
   if (stored === 'light' || stored === 'dark') return stored
@@ -15,7 +15,7 @@ function resolveInitial(): Theme {
   return 'dark'
 }
 
-export function useTheme(): { theme: Theme; toggle: () => void; set: (t: Theme) => void } {
+export const useTheme = (): { theme: Theme; toggle: () => void; set: (t: Theme) => void } => {
   const [theme, setTheme] = useState<Theme>(resolveInitial)
 
   useEffect(() => {

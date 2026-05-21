@@ -1,8 +1,4 @@
-import {
-  MESSAGE_CLASSES,
-  type MessageClass,
-  type MessageFilter
-} from '../hooks/useMessageFilter'
+import { MESSAGE_CLASSES, type MessageClass, type MessageFilter } from '../hooks/useMessageFilter'
 import './FilterPills.css'
 
 interface Props {
@@ -12,7 +8,7 @@ interface Props {
   hiddenCounts: Partial<Record<MessageClass, number>>
 }
 
-function hiddenSummary(counts: Partial<Record<MessageClass, number>>): string | null {
+const hiddenSummary = (counts: Partial<Record<MessageClass, number>>): string | null => {
   // Class names render as invariants ("1 activity, 3 system hidden"),
   // not English words — pluralizing "activity → activitys" reads broken
   // and "activity → activities" invents a lexical relationship the UI
@@ -27,16 +23,12 @@ function hiddenSummary(counts: Partial<Record<MessageClass, number>>): string | 
   return `${parts.join(', ')} hidden`
 }
 
-function FilterPills({ filter, hiddenCounts }: Props): React.JSX.Element {
+const FilterPills = ({ filter, hiddenCounts }: Props): React.JSX.Element => {
   const { visible, toggle, setAll, isAllActive } = filter
   const summary = hiddenSummary(hiddenCounts)
 
   return (
-    <aside
-      className="filter-pills"
-      data-test="filter-pills"
-      aria-label="Message class filter"
-    >
+    <aside className="filter-pills" data-test="filter-pills" aria-label="Message class filter">
       <div className="filter-pills-row">
         <button
           type="button"
@@ -64,11 +56,7 @@ function FilterPills({ filter, hiddenCounts }: Props): React.JSX.Element {
         })}
       </div>
       {summary && (
-        <output
-          className="filter-pills-summary"
-          aria-live="polite"
-          data-test="filter-hidden-count"
-        >
+        <output className="filter-pills-summary" aria-live="polite" data-test="filter-hidden-count">
           {summary}
         </output>
       )}

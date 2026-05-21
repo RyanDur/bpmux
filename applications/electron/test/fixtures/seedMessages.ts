@@ -5,11 +5,11 @@ export interface SeedMessage {
   message_type: string
 }
 
-export async function seedMessages(
+export const seedMessages = async (
   apiBase: string,
   authToken: string,
   messages: SeedMessage[]
-): Promise<void> {
+): Promise<void> => {
   const res = await fetch(`${apiBase}/api/test/seed_messages`, {
     method: 'POST',
     headers: {
@@ -23,7 +23,7 @@ export async function seedMessages(
   }
 }
 
-export async function resetMessages(apiBase: string, authToken: string): Promise<void> {
+export const resetMessages = async (apiBase: string, authToken: string): Promise<void> => {
   const res = await fetch(`${apiBase}/api/test/reset_messages`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${authToken}` }
@@ -33,11 +33,11 @@ export async function resetMessages(apiBase: string, authToken: string): Promise
   }
 }
 
-export async function seedRoster(
+export const seedRoster = async (
   apiBase: string,
   authToken: string,
   identities: string[]
-): Promise<void> {
+): Promise<void> => {
   const res = await fetch(`${apiBase}/api/test/seed_roster`, {
     method: 'POST',
     headers: {
@@ -61,11 +61,11 @@ export interface SeedStory {
   is_closed?: boolean
 }
 
-export async function seedStories(
+export const seedStories = async (
   apiBase: string,
   authToken: string,
   stories: SeedStory[]
-): Promise<void> {
+): Promise<void> => {
   const res = await fetch(`${apiBase}/api/test/seed_stories`, {
     method: 'POST',
     headers: {

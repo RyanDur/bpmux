@@ -34,10 +34,7 @@ export type HttpError =
 const STATUS_OK = [200]
 const STATUS_OK_NO_CONTENT = [200, 201, 204]
 
-const buildHeaders = (
-  ctx: ApiContext,
-  includeContentType: boolean
-): Record<string, string> => {
+const buildHeaders = (ctx: ApiContext, includeContentType: boolean): Record<string, string> => {
   const headers: Record<string, string> = {
     Accept: 'application/json',
     Authorization: `Bearer ${ctx.authToken ?? ''}`
@@ -99,25 +96,13 @@ const request = async <T>(
 }
 
 export const http = {
-  get: <T>(
-    ctx: ApiContext,
-    endpoint: string,
-    signal?: AbortSignal
-  ): AsyncResult<T, HttpError> =>
+  get: <T>(ctx: ApiContext, endpoint: string, signal?: AbortSignal): AsyncResult<T, HttpError> =>
     ofPromise(request<T>(ctx, endpoint, 'GET', undefined, STATUS_OK, signal)),
 
-  post: <T = void>(
-    ctx: ApiContext,
-    endpoint: string,
-    body?: unknown
-  ): AsyncResult<T, HttpError> =>
+  post: <T = void>(ctx: ApiContext, endpoint: string, body?: unknown): AsyncResult<T, HttpError> =>
     ofPromise(request<T>(ctx, endpoint, 'POST', body, STATUS_OK_NO_CONTENT)),
 
-  put: <T = void>(
-    ctx: ApiContext,
-    endpoint: string,
-    body?: unknown
-  ): AsyncResult<T, HttpError> =>
+  put: <T = void>(ctx: ApiContext, endpoint: string, body?: unknown): AsyncResult<T, HttpError> =>
     ofPromise(request<T>(ctx, endpoint, 'PUT', body, STATUS_OK_NO_CONTENT)),
 
   delete: <T = void>(

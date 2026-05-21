@@ -57,16 +57,10 @@ test.describe('real-backend', () => {
     // { tag, fontSize, snippet } tuples so the failure message
     // pinpoints which element + what text violates the floor.
     const textNodes = await win.evaluate(() => {
-      const walker = document.createTreeWalker(
-        document.body,
-        NodeFilter.SHOW_TEXT,
-        {
-          acceptNode: (n) =>
-            n.textContent?.trim()
-              ? NodeFilter.FILTER_ACCEPT
-              : NodeFilter.FILTER_REJECT
-        }
-      )
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+        acceptNode: (n) =>
+          n.textContent?.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT
+      })
       const results: Array<{ tag: string; fontSize: number; snippet: string }> = []
       const seen = new Set<Element>()
       while (walker.nextNode()) {
@@ -260,9 +254,9 @@ test.describe('real-backend', () => {
       // carries data-test="message-class-glyph" + aria-label="insight",
       // but textContent is empty — assert the SVG presence + the
       // aria-label instead.
-      const insightGlyph = win.locator(
-        '[data-test="message-class-glyph"][data-class="insight"]'
-      ).first()
+      const insightGlyph = win
+        .locator('[data-test="message-class-glyph"][data-class="insight"]')
+        .first()
       await expect(insightGlyph).toHaveAttribute('aria-label', 'insight')
       await expect(insightGlyph.locator('svg')).toBeVisible()
 
@@ -278,9 +272,7 @@ test.describe('real-backend', () => {
       // Create non-default state: hide insight. Assert the hidden-count
       // mentions insight regardless of exact number.
       await win.locator('[data-test="filter-pill-insight"]').click()
-      await expect(win.locator('[data-test="filter-hidden-count"]')).toContainText(
-        /insight/
-      )
+      await expect(win.locator('[data-test="filter-hidden-count"]')).toContainText(/insight/)
 
       await app.close()
     }
@@ -307,9 +299,7 @@ test.describe('real-backend', () => {
         'aria-pressed',
         'true'
       )
-      await expect(win.locator('[data-test="filter-hidden-count"]')).toContainText(
-        /insight/
-      )
+      await expect(win.locator('[data-test="filter-hidden-count"]')).toContainText(/insight/)
       await app.close()
     }
   })
@@ -397,7 +387,10 @@ test.describe('real-backend', () => {
 
     // Default media: token resolves to the declared 150ms.
     const defaultDuration = await win.evaluate(() =>
-      window.getComputedStyle(document.documentElement).getPropertyValue('--motion-duration-fast').trim()
+      window
+        .getComputedStyle(document.documentElement)
+        .getPropertyValue('--motion-duration-fast')
+        .trim()
     )
     expect(defaultDuration).toBe('150ms')
 
@@ -406,7 +399,10 @@ test.describe('real-backend', () => {
     // its duration therefore fires at 0ms, suppressing motion.
     await win.emulateMedia({ reducedMotion: 'reduce' })
     const reducedDuration = await win.evaluate(() =>
-      window.getComputedStyle(document.documentElement).getPropertyValue('--motion-duration-fast').trim()
+      window
+        .getComputedStyle(document.documentElement)
+        .getPropertyValue('--motion-duration-fast')
+        .trim()
     )
     expect(reducedDuration).toBe('0ms')
 
@@ -429,8 +425,8 @@ test.describe('real-backend', () => {
     await expect(win.locator('[data-test="app-root"]')).toBeVisible()
 
     // Theme toggle lives on body → color + background-color transition.
-    const bodyDuration = await win.evaluate(() =>
-      window.getComputedStyle(document.body).transitionDuration
+    const bodyDuration = await win.evaluate(
+      () => window.getComputedStyle(document.body).transitionDuration
     )
     expect(bodyDuration).toContain('0.15s')
 
@@ -443,10 +439,10 @@ test.describe('real-backend', () => {
     const titlebar = win.locator('[data-test="titlebar"]')
     await titlebar.click()
     await win.keyboard.press('Control+p')
-    const boardTransition = await win.evaluate(() =>
-      window.getComputedStyle(
-        document.querySelector('[data-test="board-region"]') as Element
-      ).transition
+    const boardTransition = await win.evaluate(
+      () =>
+        window.getComputedStyle(document.querySelector('[data-test="board-region"]') as Element)
+          .transition
     )
     expect(boardTransition).toContain('flex-basis')
     expect(boardTransition).toContain('0.15s')
@@ -456,8 +452,8 @@ test.describe('real-backend', () => {
     // Reduced-motion: transition-duration on the same elements should
     // go to 0s because the token at :root now resolves to 0ms.
     await win.emulateMedia({ reducedMotion: 'reduce' })
-    const bodyDurationReduced = await win.evaluate(() =>
-      window.getComputedStyle(document.body).transitionDuration
+    const bodyDurationReduced = await win.evaluate(
+      () => window.getComputedStyle(document.body).transitionDuration
     )
     // Chromium reports '0s' for zero-duration transitions.
     expect(bodyDurationReduced).toMatch(/^0s|, 0s|0s,/)
@@ -526,7 +522,6 @@ test.describe('real-backend', () => {
     await app.close()
   })
 
-
   // #340 reactions — end-to-end: POST /api/reactions from test
   // process → broadcast fires REACTIONS_UPDATE → renderer refetches,
   // reaction-pill appears with count + aria-label listing reactors.
@@ -575,10 +570,7 @@ test.describe('real-backend', () => {
     // the aria-label.
     const pill = win.locator('[data-test="reaction-pill-👍"]').first()
     await expect(pill).toBeVisible({ timeout: 10_000 })
-    await expect(pill).toHaveAttribute(
-      'aria-label',
-      /👍 1 reactions from dev/
-    )
+    await expect(pill).toHaveAttribute('aria-label', /👍 1 reactions from dev/)
 
     await app.close()
   })
@@ -639,9 +631,7 @@ test.describe('real-backend', () => {
     const appAria = await titlebarApp.getAttribute('aria-label')
     expect(appAria).toMatch(/^bpmux /)
 
-    const appState = await win
-      .locator('[data-test="titlebar-app-state"]')
-      .textContent()
+    const appState = await win.locator('[data-test="titlebar-app-state"]').textContent()
     expect(appState).not.toBeNull()
     expect(appState?.startsWith('CI ')).toBe(false)
     expect(['online', 'reconnecting', 'offline']).toContain(appState)
@@ -658,9 +648,33 @@ test.describe('real-backend', () => {
     const board = {
       fetched_at: '2026-04-22T19:00:00Z',
       stories: [
-        { number: 701, title: 'Story one', state: 'ready', labels: ['ready'], assignees: [], created_at: '2026-04-22T00:00:00Z', body: '' },
-        { number: 702, title: 'Story two', state: 'ready', labels: ['ready'], assignees: [], created_at: '2026-04-22T00:01:00Z', body: '' },
-        { number: 703, title: 'Story three', state: 'ready', labels: ['ready'], assignees: [], created_at: '2026-04-22T00:02:00Z', body: '' }
+        {
+          number: 701,
+          title: 'Story one',
+          state: 'ready',
+          labels: ['ready'],
+          assignees: [],
+          created_at: '2026-04-22T00:00:00Z',
+          body: ''
+        },
+        {
+          number: 702,
+          title: 'Story two',
+          state: 'ready',
+          labels: ['ready'],
+          assignees: [],
+          created_at: '2026-04-22T00:01:00Z',
+          body: ''
+        },
+        {
+          number: 703,
+          title: 'Story three',
+          state: 'ready',
+          labels: ['ready'],
+          assignees: [],
+          created_at: '2026-04-22T00:02:00Z',
+          body: ''
+        }
       ]
     }
     const { app } = await launchWithIsolatedSession()
@@ -766,9 +780,7 @@ test.describe('real-backend', () => {
       timeout: 10_000
     })
     // Status suffix renders for non-available/offline states.
-    await expect(
-      win.locator('[data-test="presence-label-dev"]')
-    ).toContainText('busy')
+    await expect(win.locator('[data-test="presence-label-dev"]')).toContainText('busy')
 
     await app.close()
   })
@@ -809,10 +821,7 @@ test.describe('real-backend', () => {
     // the body column, but vertical separation is the readability
     // invariant).
     const pickerRect = await picker.boundingBox()
-    const bodyRect = await row
-      .locator('.message-body')
-      .first()
-      .boundingBox()
+    const bodyRect = await row.locator('.message-body').first().boundingBox()
     expect(pickerRect).not.toBeNull()
     expect(bodyRect).not.toBeNull()
     if (pickerRect && bodyRect) {

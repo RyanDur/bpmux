@@ -29,12 +29,12 @@ const MENTION_RE = /(^|[^A-Za-z0-9_@])@([A-Za-z0-9_-]+)/g
  * prefix (e.g., message id) per container so adjacent paragraphs'
  * mentions don't collide under reconciliation.
  */
-export function splitMentions(
+export const splitMentions = (
   text: string,
   knownRoles: ReadonlySet<string>,
   onMention: ((role: string) => void) | undefined,
   keyPrefix: string
-): ReactNode[] {
+): ReactNode[] => {
   if (knownRoles.size === 0) return [text]
   const out: ReactNode[] = []
   let lastIndex = 0
@@ -96,12 +96,12 @@ export function splitMentions(
  * stays inside the strong because that's its natural scope per
  * markdown semantics.
  */
-export function replaceMentionsInChildren(
+export const replaceMentionsInChildren = (
   children: ReactNode,
   knownRoles: ReadonlySet<string>,
   onMention: ((role: string) => void) | undefined,
   keyPrefix: string
-): ReactNode {
+): ReactNode => {
   if (!Array.isArray(children)) {
     if (typeof children === 'string') {
       return splitMentions(children, knownRoles, onMention, keyPrefix)

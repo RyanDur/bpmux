@@ -29,9 +29,9 @@ const MESSAGES = [
   }
 ]
 
-async function launchWithFixture(): Promise<{
+const launchWithFixture = async (): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
-}> {
+}> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-380-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-380-'))
   const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
@@ -92,9 +92,9 @@ test.describe('desk-check #380 inline @mention pills', () => {
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
 
-    await expect(
-      win.locator('[data-test="message-mention"][data-role="nobody-role"]')
-    ).toHaveCount(0)
+    await expect(win.locator('[data-test="message-mention"][data-role="nobody-role"]')).toHaveCount(
+      0
+    )
 
     // Sanity: the @nobody-role string is still in the rendered
     // text somewhere (plain, not split).

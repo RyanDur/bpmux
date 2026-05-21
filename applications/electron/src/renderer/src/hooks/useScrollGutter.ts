@@ -30,8 +30,7 @@ export const useScrollGutter = ({
   const lastLengthRef = useRef<number>(visibleCount)
   const [newCount, setNewCount] = useState<number>(0)
 
-  const triggerableLoadOlder =
-    loadOlder && hasMoreOlder && !isLoadingOlder ? loadOlder : null
+  const triggerableLoadOlder = loadOlder && hasMoreOlder && !isLoadingOlder ? loadOlder : null
 
   const handleScroll = useCallback((): void => {
     const ul = listRef.current

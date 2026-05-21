@@ -17,5 +17,4 @@ export const postStoryLabels = (
   ctx: ApiContext,
   storyNumber: number,
   mutation: LabelMutation
-): AsyncResult<void, HttpError> =>
-  http.post(ctx, `/api/stories/${storyNumber}/labels`, mutation)
+): AsyncResult<void, HttpError> => http.post(ctx, `/api/stories/${storyNumber}/labels`, mutation)

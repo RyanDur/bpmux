@@ -11,32 +11,28 @@ describe('#1300 — closed iteration renders "(closed)" badge as JSX sibling (no
     rendered = null
   })
 
-  it(
-    'closed iteration row renders a .board-iteration-closed-badge with text "(closed)" + data-closed="true" on the card',
-    async () => {
-      const port = inject('bpmuxBackendPort')
-      const authToken = inject('bpmuxAuthToken')
-      const apiBase = `http://127.0.0.1:${port}`
+  it('closed iteration row renders a .board-iteration-closed-badge with text "(closed)" + data-closed="true" on the card', async () => {
+    const port = inject('bpmuxBackendPort')
+    const authToken = inject('bpmuxAuthToken')
+    const apiBase = `http://127.0.0.1:${port}`
 
-      await seedStories(apiBase, authToken, [
-        {
-          number: 9201,
-          title: 'Iteration RetiredOne',
-          story_type: 'iteration',
-          initial_state: 'icebox',
-          is_closed: true
-        }
-      ])
+    await seedStories(apiBase, authToken, [
+      {
+        number: 9201,
+        title: 'Iteration RetiredOne',
+        story_type: 'iteration',
+        initial_state: 'icebox',
+        is_closed: true
+      }
+    ])
 
-      rendered = renderApp()
-      const row = await rendered.findByTestId('board-iteration-9201', undefined, {
-        timeout: 15_000
-      })
-      expect(row.getAttribute('data-closed')).toBe('true')
-      const badge = row.querySelector('.board-iteration-closed-badge')
-      expect(badge).toBeTruthy()
-      expect(badge?.textContent).toBe('(closed)')
-    },
-    20_000
-  )
+    rendered = renderApp()
+    const row = await rendered.findByTestId('board-iteration-9201', undefined, {
+      timeout: 15_000
+    })
+    expect(row.getAttribute('data-closed')).toBe('true')
+    const badge = row.querySelector('.board-iteration-closed-badge')
+    expect(badge).toBeTruthy()
+    expect(badge?.textContent).toBe('(closed)')
+  }, 20_000)
 })

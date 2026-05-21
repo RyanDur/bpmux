@@ -25,13 +25,8 @@ export const watcherUnhealthyAriaLabel = (
   return `CI watcher unhealthy — last successful poll ${ageSecs}s ago`
 }
 
-export const derivedClassName = (
-  conclusion: string,
-  watcherUnhealthy: boolean
-): string =>
+export const derivedClassName = (conclusion: string, watcherUnhealthy: boolean): string =>
   `ci-glyph ci-glyph--${conclusion}${watcherUnhealthy ? ' ci-glyph--watcher-unhealthy' : ''}`
 
-export const derivedDataState = (
-  conclusion: string,
-  watcherUnhealthy: boolean
-): string => (watcherUnhealthy ? 'watcher-unhealthy' : conclusion)
+export const derivedDataState = (conclusion: string, watcherUnhealthy: boolean): string =>
+  watcherUnhealthy ? 'watcher-unhealthy' : conclusion

@@ -48,9 +48,7 @@ describe('#1357 BoardGroup independence', () => {
   })
 
   test('renders skeleton list when loading=true', () => {
-    const html = renderToStaticMarkup(
-      <BoardGroup {...baseProps} stories={[]} loading={true} />
-    )
+    const html = renderToStaticMarkup(<BoardGroup {...baseProps} stories={[]} loading={true} />)
     expect(html).toContain('board-story-list--skeleton')
     expect(html).toContain('skeleton-bar')
   })
@@ -97,12 +95,7 @@ describe('#1357 BoardGroup independence', () => {
     }
     const stories = [story({ number: 101, state: 'accepted', title: 'shipped' })]
     const html = renderToStaticMarkup(
-      <BoardGroup
-        {...baseProps}
-        group={acceptedGroup}
-        stories={stories}
-        collapsed={true}
-      />
+      <BoardGroup {...baseProps} group={acceptedGroup} stories={stories} collapsed={true} />
     )
     expect(html).toContain('data-test="board-group-accepted"')
     expect(html).toContain('shipped')

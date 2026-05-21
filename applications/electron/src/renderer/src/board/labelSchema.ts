@@ -29,50 +29,46 @@ export interface IterationLabelParts {
   position: number
 }
 
-export function iterationLabel(themeName: string, position: number): string {
-  return `${ITERATION_PREFIX}${themeName}.${position}`
-}
+export const iterationLabel = (themeName: string, position: number): string =>
+  `${ITERATION_PREFIX}${themeName}.${position}`
 
-export function readyOrderLabel(position: number): string {
-  return `${READY_ORDER_PREFIX}${position}`
-}
+export const readyOrderLabel = (position: number): string => `${READY_ORDER_PREFIX}${position}`
 
-export function unscheduledLabel(position: number): string {
-  return `${UNSCHEDULED_LABEL_PREFIX}${position}`
-}
+export const unscheduledLabel = (position: number): string =>
+  `${UNSCHEDULED_LABEL_PREFIX}${position}`
 
-export function parseIterationLabel(label: string): IterationLabelParts | null {
+export const parseIterationLabel = (label: string): IterationLabelParts | null => {
   const match = label.match(ITERATION_LABEL_RE)
   if (match === null) return null
   return { name: match[1], position: parseInt(match[2], 10) }
 }
 
-export function parseIterationOrderPosition(label: string): number | null {
+export const parseIterationOrderPosition = (label: string): number | null => {
   if (!label.startsWith(ITERATION_ORDER_PREFIX)) return null
   const n = parseInt(label.slice(ITERATION_ORDER_PREFIX.length), 10)
   return Number.isNaN(n) ? null : n
 }
 
-export function parseReadyOrderPosition(label: string): number | null {
+export const parseReadyOrderPosition = (label: string): number | null => {
   if (!label.startsWith(READY_ORDER_PREFIX)) return null
   const n = Number(label.slice(READY_ORDER_PREFIX.length))
   if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0) return null
   return n
 }
 
-export function parseUnscheduledPosition(label: string): number | null {
+export const parseUnscheduledPosition = (label: string): number | null => {
   if (!label.startsWith(UNSCHEDULED_LABEL_PREFIX)) return null
   const n = parseInt(label.slice(UNSCHEDULED_LABEL_PREFIX.length), 10)
   return Number.isNaN(n) ? null : n
 }
 
-export function isIterationPositionLabel(label: string): boolean {
+export const isIterationPositionLabel = (label: string): boolean => {
   if (!label.startsWith(ITERATION_PREFIX)) return false
   if (label.startsWith(ITERATION_ORDER_PREFIX)) return false
   return ITERATION_LABEL_RE.test(label)
 }
 
-export function themeNameFromTitle(title: string): string {
+export const themeNameFromTitle = (title: string): string => {
   const match = title.match(/^Iteration (.+)$/)
   const raw = match !== null ? match[1].trim() : title.trim()
   return raw.replace(/\s+/g, '-')

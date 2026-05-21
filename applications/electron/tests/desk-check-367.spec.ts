@@ -76,9 +76,9 @@ const MOCK_TIMELINE = [
   }
 ]
 
-async function launchWithFixture(): Promise<{
+const launchWithFixture = async (): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
-}> {
+}> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-367-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-367-'))
   const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
@@ -125,9 +125,7 @@ test.describe('desk-check #367 timeline audit-trail', () => {
 
     // Expand the details.
     await timeline.locator('summary').click()
-    await expect(
-      win.locator('[data-test="drill-in-timeline-list"]')
-    ).toBeVisible()
+    await expect(win.locator('[data-test="drill-in-timeline-list"]')).toBeVisible()
 
     // Default filter: every MAJOR_GATE event should be present.
     // (commented is NOT a major gate; should be hidden until "show
@@ -147,9 +145,7 @@ test.describe('desk-check #367 timeline audit-trail', () => {
 
     // Rework group: the 2nd delivered + accepted items carry the
     // rework-group attribute because they followed the desk-check-fail.
-    const reworkItems = win.locator(
-      '[data-test="drill-in-timeline-item"][data-rework-group]'
-    )
+    const reworkItems = win.locator('[data-test="drill-in-timeline-item"][data-rework-group]')
     const reworkCount = await reworkItems.count()
     console.log(`#367 rework-grouped items: ${reworkCount}`)
     expect(reworkCount).toBeGreaterThanOrEqual(3) // fail + redeliver + accept
@@ -174,9 +170,7 @@ test.describe('desk-check #367 timeline audit-trail', () => {
     await win.locator('[data-test="drill-in-timeline-toggle"]').click()
 
     // After show-all, the commented event should render.
-    const commentedItem = win.locator(
-      '[data-test="drill-in-timeline-item"][data-gate="commented"]'
-    )
+    const commentedItem = win.locator('[data-test="drill-in-timeline-item"][data-gate="commented"]')
     await expect(commentedItem).toHaveCount(1)
     await expect(commentedItem).toContainText('Great work team')
 

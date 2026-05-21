@@ -19,7 +19,7 @@ export interface RenderAppResult extends RenderResult {
   apiBase: string
 }
 
-export function renderApp(opts: RenderAppOptions = {}): RenderAppResult {
+export const renderApp = (opts: RenderAppOptions = {}): RenderAppResult => {
   const port = opts.port ?? inject('bpmuxBackendPort')
   const authToken = opts.authToken ?? inject('bpmuxAuthToken')
   const apiBase = opts.apiBase ?? `http://127.0.0.1:${port}`

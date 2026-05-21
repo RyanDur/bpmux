@@ -8,12 +8,10 @@ export interface UseIterationDragStateResult {
 }
 
 export const useIterationDragState = (): UseIterationDragStateResult => {
-  const [draggedIterationNumber, setDraggedIterationNumber] = useState<number | null>(
+  const [draggedIterationNumber, setDraggedIterationNumber] = useState<number | null>(null)
+  const [dragRejectedIterationNumber, setDragRejectedIterationNumber] = useState<number | null>(
     null
   )
-  const [dragRejectedIterationNumber, setDragRejectedIterationNumber] = useState<
-    number | null
-  >(null)
   return {
     draggedIterationNumber,
     setDraggedIterationNumber,

@@ -6,10 +6,7 @@ import { launchIsolatedWithWindow } from '../helpers/launch'
 
 test.describe('#1159 — corrupted board-store surfaces "recovering" indicator state', () => {
   test('corrupted disk file triggers recovering data-state on launch', async () => {
-    const storePath = join(
-      mkdtempSync(join(tmpdir(), 'bpmux-corrupt-store-')),
-      'board-store.json'
-    )
+    const storePath = join(mkdtempSync(join(tmpdir(), 'bpmux-corrupt-store-')), 'board-store.json')
     writeFileSync(storePath, '{not valid json at all')
 
     const { app, win } = await launchIsolatedWithWindow({

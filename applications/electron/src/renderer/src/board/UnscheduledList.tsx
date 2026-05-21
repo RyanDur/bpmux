@@ -10,12 +10,7 @@ interface Props {
   onOpen: (n: number) => void
 }
 
-const UnscheduledList = ({
-  stories,
-  open,
-  onToggle,
-  onOpen
-}: Props): React.JSX.Element | null => {
+const UnscheduledList = ({ stories, open, onToggle, onOpen }: Props): React.JSX.Element | null => {
   if (stories.length === 0) return null
   return (
     <li key="unscheduled" className="board-iteration-item">

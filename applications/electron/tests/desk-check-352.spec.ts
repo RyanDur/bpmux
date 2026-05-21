@@ -23,9 +23,11 @@ const MOCK_MESSAGES = [
   }
 ]
 
-async function launchWithMessages(reducedMotion?: 'reduce'): Promise<{
+const launchWithMessages = async (
+  reducedMotion?: 'reduce'
+): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
-}> {
+}> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-352-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-352-'))
   const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
@@ -125,7 +127,9 @@ test.describe('desk-check #352 micro-interactions', () => {
     await expect(win.locator('[data-test="filter-pill-all"]')).toBeVisible()
 
     const pillDur = await win.evaluate(
-      () => window.getComputedStyle(document.querySelector('[data-test="filter-pill-all"]')!).transitionDuration
+      () =>
+        window.getComputedStyle(document.querySelector('[data-test="filter-pill-all"]')!)
+          .transitionDuration
     )
     console.log(`#352 AC6 filter-pill duration under reduced-motion: ${pillDur}`)
     expect(pillDur).toMatch(/^0s|^0ms/)

@@ -47,9 +47,9 @@ const MOCK_BOARD_BEFORE = {
   ]
 }
 
-async function launchWithFixture(): Promise<{
+const launchWithFixture = async (): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
-}> {
+}> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-357-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-357-'))
   const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
@@ -97,9 +97,7 @@ test.describe('desk-check #357 keyboard-accessible drag-reorder', () => {
     // Row order changes (811 moves past 812 in DOM).
     const rows = win.locator('#board-group-ready-content [data-test^="board-story-"]')
     await expect(async () => {
-      const order = await rows.evaluateAll((els) =>
-        els.map((el) => el.getAttribute('data-test'))
-      )
+      const order = await rows.evaluateAll((els) => els.map((el) => el.getAttribute('data-test')))
       expect(order[0]).not.toBe('board-story-811')
     }).toPass({ timeout: 3_000 })
 
@@ -121,11 +119,7 @@ test.describe('desk-check #357 keyboard-accessible drag-reorder', () => {
     // Order unchanged.
     const rows = win.locator('#board-group-ready-content [data-test^="board-story-"]')
     const order = await rows.evaluateAll((els) => els.map((el) => el.getAttribute('data-test')))
-    expect(order).toEqual([
-      'board-story-811',
-      'board-story-812',
-      'board-story-813'
-    ])
+    expect(order).toEqual(['board-story-811', 'board-story-812', 'board-story-813'])
 
     // Announcement text must NOT have fired (stays empty). If the
     // handler short-circuited at i===0, no setReorderAnnounce call.
@@ -146,11 +140,7 @@ test.describe('desk-check #357 keyboard-accessible drag-reorder', () => {
 
     const rows = win.locator('#board-group-ready-content [data-test^="board-story-"]')
     const order = await rows.evaluateAll((els) => els.map((el) => el.getAttribute('data-test')))
-    expect(order).toEqual([
-      'board-story-811',
-      'board-story-812',
-      'board-story-813'
-    ])
+    expect(order).toEqual(['board-story-811', 'board-story-812', 'board-story-813'])
 
     const announce = win.locator('[data-test="board-reorder-announce"]')
     await expect(announce).toHaveText('')

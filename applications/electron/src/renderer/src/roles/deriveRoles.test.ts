@@ -33,10 +33,7 @@ describe('#495 deriveDirectRolesFromRoster — orphan agent-XXXX dedup', () => {
       { identity: 'agent-abcd:claude-code', role: 'agent-abcd' },
       { identity: 'agent-xyzw:cursor', role: 'agent-xyzw' }
     ]
-    expect(deriveDirectRolesFromRoster(roster, 'ryan:human')).toEqual([
-      'agent-abcd',
-      'agent-xyzw'
-    ])
+    expect(deriveDirectRolesFromRoster(roster, 'ryan:human')).toEqual(['agent-abcd', 'agent-xyzw'])
   })
 
   test('filters viewer self from output', () => {
@@ -77,10 +74,7 @@ describe('#393 deriveTeamRoles — runtime discovery from message stream (replac
   })
 
   test('omits designer/pm when neither speaks (no hardcoded fallback)', () => {
-    const messages = [
-      msg({ from: 'ryan:electron' }),
-      msg({ from: 'dev:claude-code' })
-    ]
+    const messages = [msg({ from: 'ryan:electron' }), msg({ from: 'dev:claude-code' })]
     const roles = deriveTeamRoles(messages, 'ryan:electron')
     expect(roles).not.toContain('designer')
     expect(roles).not.toContain('pm')

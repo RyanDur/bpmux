@@ -46,7 +46,9 @@ test.describe('Playwright runs in CI as a structural gate (#1152, post-#1463 spl
     const yaml = e2eYaml()
     const playwrightSection = yaml.match(/playwright-e2e:[\s\S]*$/)?.[0] ?? ''
     expect(playwrightSection).not.toMatch(/github\.event_name\s*==\s*'schedule'/)
-    expect(playwrightSection).not.toMatch(/contains\(github\.event\.head_commit\.message,\s*'\[e2e\]'\)/)
+    expect(playwrightSection).not.toMatch(
+      /contains\(github\.event\.head_commit\.message,\s*'\[e2e\]'\)/
+    )
   })
 
   test('playwright-e2e provisions bpmux binary via download-artifact', () => {

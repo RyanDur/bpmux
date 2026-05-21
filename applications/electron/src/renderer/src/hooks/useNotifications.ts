@@ -3,12 +3,12 @@ import { tryCatch } from '../lib/result'
 import type { ChatMessage } from '../transport/types'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 
-function shortName(identity: string): string {
+const shortName = (identity: string): string => {
   const idx = identity.indexOf(':')
   return idx === -1 ? identity : identity.slice(0, idx)
 }
 
-export function isRelevant(msg: ChatMessage, self: string): boolean {
+export const isRelevant = (msg: ChatMessage, self: string): boolean => {
   if (shortName(msg.from) === self) return false
   if (msg.messageType === 'activity' || msg.messageType === 'system') return false
   if (msg.addressee === self) return true
@@ -27,12 +27,12 @@ export function isRelevant(msg: ChatMessage, self: string): boolean {
 // Visibility check layered on top so tab-hidden Electron (possible
 // via multi-window setups or OS window-group hide) also qualifies
 // as "not actively viewing."
-function isViewerActive(): boolean {
+const isViewerActive = (): boolean => {
   if (typeof document === 'undefined') return true
   return document.hasFocus() && document.visibilityState === 'visible'
 }
 
-export function useNotifications(messages: ChatMessage[]): void {
+export const useNotifications = (messages: ChatMessage[]): void => {
   const lastSeenRef = useRef<number>(messages.length)
   const firstRunRef = useRef<boolean>(true)
 
@@ -62,7 +62,10 @@ export function useNotifications(messages: ChatMessage[]): void {
     for (const msg of fresh) {
       if (!isRelevant(msg, RENDERER_IDENTITY)) continue
       const senderShort = shortName(msg.from)
-      const titlePrefix = msg.addressee === RENDERER_IDENTITY ? `@mention from ${senderShort}` : `DM from ${senderShort}`
+      const titlePrefix =
+        msg.addressee === RENDERER_IDENTITY
+          ? `@mention from ${senderShort}`
+          : `DM from ${senderShort}`
       tryCatch(
         () =>
           new Notification(titlePrefix, {

@@ -57,12 +57,12 @@ test.describe('#1339 Scenario 3 — iteration-itself reorder cross-instance: con
         })
       }
 
-      await expect.poll(async () => await orderIn(win1), { timeout: 15_000, intervals: [200] }).toEqual([
-        9701, 9702
-      ])
-      await expect.poll(async () => await orderIn(win2), { timeout: 15_000, intervals: [200] }).toEqual([
-        9701, 9702
-      ])
+      await expect
+        .poll(async () => await orderIn(win1), { timeout: 15_000, intervals: [200] })
+        .toEqual([9701, 9702])
+      await expect
+        .poll(async () => await orderIn(win2), { timeout: 15_000, intervals: [200] })
+        .toEqual([9701, 9702])
 
       const mutateRes = await fetch(`${apiBase}/api/stories/9702/labels`, {
         method: 'POST',
@@ -77,12 +77,12 @@ test.describe('#1339 Scenario 3 — iteration-itself reorder cross-instance: con
       })
       expect(mutateRes.ok).toBe(true)
 
-      await expect.poll(async () => await orderIn(win1), { timeout: 15_000, intervals: [200] }).toEqual([
-        9702, 9701
-      ])
-      await expect.poll(async () => await orderIn(win2), { timeout: 15_000, intervals: [200] }).toEqual([
-        9702, 9701
-      ])
+      await expect
+        .poll(async () => await orderIn(win1), { timeout: 15_000, intervals: [200] })
+        .toEqual([9702, 9701])
+      await expect
+        .poll(async () => await orderIn(win2), { timeout: 15_000, intervals: [200] })
+        .toEqual([9702, 9701])
     } finally {
       await cleanup()
     }

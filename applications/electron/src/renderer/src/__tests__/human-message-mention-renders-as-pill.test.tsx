@@ -30,25 +30,21 @@ describe('human-side E2E #476 — read-class — message @mention pill', () => {
     rendered = null
   })
 
-  it(
-    'seeded chat message with @<known-role> renders the role as a clickable pill',
-    async () => {
-      const port = inject('bpmuxBackendPort')
-      const authToken = inject('bpmuxAuthToken')
-      const apiBase = `http://127.0.0.1:${port}`
-      await resetMessages(apiBase, authToken)
-      await seedMessages(apiBase, authToken, SEED)
+  it('seeded chat message with @<known-role> renders the role as a clickable pill', async () => {
+    const port = inject('bpmuxBackendPort')
+    const authToken = inject('bpmuxAuthToken')
+    const apiBase = `http://127.0.0.1:${port}`
+    await resetMessages(apiBase, authToken)
+    await seedMessages(apiBase, authToken, SEED)
 
-      rendered = renderApp()
+    rendered = renderApp()
 
-      await rendered.findByText(/please look at this/, undefined, { timeout: 15_000 })
+    await rendered.findByText(/please look at this/, undefined, { timeout: 15_000 })
 
-      const mentions = await rendered.findAllByTestId('message-mention', undefined, {
-        timeout: 15_000
-      })
-      expect(mentions.length).toBeGreaterThanOrEqual(1)
-      expect(mentions[0].textContent).toContain('@dev')
-    },
-    20_000
-  )
+    const mentions = await rendered.findAllByTestId('message-mention', undefined, {
+      timeout: 15_000
+    })
+    expect(mentions.length).toBeGreaterThanOrEqual(1)
+    expect(mentions[0].textContent).toContain('@dev')
+  }, 20_000)
 })
