@@ -18,6 +18,38 @@ Captured 2026-05-20 23:43 UTC as Slice 1 of Epic #1477 (story #1478). Establishe
 | 1 | `jsx-a11y/click-events-have-key-events` | Per-component touch |
 | 1 | `@typescript-eslint/no-unused-vars` | Per-component touch |
 
+## ESLint Caelum extension — no-restricted-syntax (52 errors across 23 files) — armed 2026-05-21 (#1493)
+
+`no-restricted-syntax` rule bans JSX `<div>` + `<span>` opening-elements in `src/renderer/src/**/*.tsx` (production-only; test + fixture files exempt) per Ryan-canon `feedback_html5_semantic_no_divs_spans` + `feedback_first_rule_of_aria`. Staged-files-only gate same as Slice 1 baseline — new code blocked at pre-commit; baseline tolerated until per-component slices touch each file.
+
+| File | Count | Owning slice |
+|:-----|------:|:-------------|
+| `board/Epic.tsx` | 7 | Caelum #1455-rework (Epic-display) |
+| `chat/Reactions.tsx` | 5 | Caelum Slice 3 / 7 (Chat / Reactions+UnfurlCards) |
+| `chat/UnfurlCards.tsx` | 4 | Caelum Slice 7 |
+| `sidebar/Sidebar.tsx` | 3 | Caelum #1457-rework + Slice 2 |
+| `chat/MessageItem.tsx` | 3 | Caelum Slice 3 |
+| `board/Tabs.tsx` | 3 | Caelum #1453-rework (Tabs HTML5+radio-group) |
+| `board/Iteration.tsx` | 3 | Caelum Slice 4 |
+| `chat/FilterPills.tsx` | 2 | Caelum #1456-rework |
+| `board/Timeline.tsx` | 2 | Caelum Slice 4 |
+| `board/StoryRow.tsx` | 2 | Caelum Slice 4 |
+| `board/StoryBadge.tsx` | 2 | Caelum Slice 4 / 6 |
+| `board/MiniBoard.tsx` | 2 | Caelum Slice 4 |
+| `board/MemberList.tsx` | 2 | Caelum Slice 4 |
+| `board/BoardGroup.tsx` | 2 | Caelum Slice 4 |
+| `board/BoardResizeHandle.tsx` | 1 | Caelum Slice 4 |
+| `board/ReworkGlyph.tsx` | 1 | Caelum Slice 4 / 6 |
+| `board/UnscheduledList.tsx` | 1 | Caelum Slice 4 |
+| `chat/ClassGlyph.tsx` | 1 | Caelum #1456-rework |
+| `chat/Input.tsx` | 1 | Caelum Slice 3 / 8 |
+| `chat/MessageBody.tsx` | 1 | Caelum Slice 3 |
+| `chat/MessageList.tsx` | 1 | Caelum Slice 3 |
+| `chat/renderMentions.tsx` | 1 | Caelum Slice 3 |
+| `metrics/Metrics.tsx` | 1 | Caelum Slice 4 / catchall |
+
+Waivers: none. Genuine library-edge waivers (if discovered later) should be added at the rule-site in `eslint.config.mjs` with `file:line + rationale` per #1493 falsifier (e).
+
 ## Stylelint baseline (166 errors)
 
 | Count | Rule | Owning slice |
@@ -50,4 +82,4 @@ Captured 2026-05-20 23:43 UTC as Slice 1 of Epic #1477 (story #1478). Establishe
 
 - Fixing the 356 baseline violations enumerated above (deferred to per-component slices 2-8)
 - Full-tree gate enforcement (deferred to Slice 9 `#1486`)
-- Custom-rule authoring for JSX `{' '}` detection and div/span-where-semantic-fits — covered by jsx-a11y existing rules + can be augmented as canon-violations surface in audit cycles
+- Custom-rule authoring for JSX `{' '}` detection (deferred); div/span-banned now armed via #1493 above.

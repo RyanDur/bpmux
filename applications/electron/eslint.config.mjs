@@ -61,6 +61,25 @@ export default defineConfig(
     }
   },
   {
+    files: ['src/renderer/src/**/*.tsx'],
+    ignores: ['**/*.test.{ts,tsx}', '**/fixtures/**'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "JSXOpeningElement[name.name='div']",
+          message:
+            'no <div> — html5-semantic canon (feedback_html5_semantic_no_divs_spans): use <section>/<article>/<aside>/<main>/<header>/<footer>/<nav>/<form>/<details>/<dialog>/<figure> per element-role; if the role is decorative wrapping for layout, hoist the layout onto the parent via flex/grid gap. waivers: none today; document any genuine library-edge here with file:line + rationale before disabling.'
+        },
+        {
+          selector: "JSXOpeningElement[name.name='span']",
+          message:
+            'no <span> — html5-semantic canon (feedback_first_rule_of_aria + feedback_html5_semantic_no_divs_spans): use <small>/<b>/<i>/<output>/<data>/<mark>/<em>/<strong>/<time>/<kbd>/<code> per phrasing-role, or CSS ::before/::after for decoration. if you need an inline grouping with no semantic, ask whether the styling can move to the parent. waivers: none today; document any genuine library-edge here with file:line + rationale before disabling.'
+        }
+      ]
+    }
+  },
+  {
     files: ['**/*.test.{ts,tsx}', '**/__tests__/**/*.{ts,tsx}', 'tests/**/*.{ts,tsx}'],
     plugins: {
       'testing-library': eslintPluginTestingLibrary,
