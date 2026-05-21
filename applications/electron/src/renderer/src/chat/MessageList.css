@@ -129,326 +129,22 @@
     font-size: 0.8125rem;
   }
 
-  & .message-row {
-    display: flex;
-    flex-direction: column;
-    gap: var(--chat-row-gap);
-
-    /* Flex children default to min-width: auto (intrinsic content
-     * width) which lets a long unbreakable string push the row past
-     * the container, triggering a horizontal scrollbar on .message-
-     * list (rgb(51 102 85)). Forcing min-width: 0 lets the row shrink to the
-     * column's width; the body's overflow-wrap below handles the
-     * actual text break. */
-    min-width: 0;
-
-    /* Arrival animation (rgb(51 85 34) AC4): new message rows slide up from
-     * a few px below + fade in. @starting-style fires once per mount
-     * — React keyed by m.id keeps the element stable after hydration
-     * so the transition only plays when a genuinely new row mounts
-     * (WS arrival) rather than on every re-render. Reduced-motion
-     * users get 0ms on duration + no transform via the nested @media
-     * block below.
-     *
-     * Note: the 70K-message hydration backfill will animate every
-     * row on initial load; since all rows are inserted in a single
-     * frame they fade/rise together — reads as a pleasant arrival
-     * rather than noisy. If that ever feels off, a "seen at hydration"
-     * flag can be threaded from useWebSocket to skip the animation
-     * on backfill; not needed per current UX observation. */
-    transition:
-      transform var(--motion-duration-fast) var(--motion-ease-out),
-      opacity var(--motion-duration-fast) var(--motion-ease-out);
-    transform: translateY(0);
-    opacity: 1;
-
-    @starting-style {
-      transform: translateY(6px);
-      opacity: 0;
-    }
-
-    /* Reduced-motion: kill the transform (motion-inducing); keep
-     * opacity so the arrival still feels like something appeared. */
-    @media (prefers-reduced-motion: reduce) {
-      transform: none;
-
-      @starting-style {
-        transform: none;
-      }
-    }
-
-    /* First-of-group gets the full avatar-anchored layout: a 28px
-     * avatar column on the left, header + body occupying the right
-     * column. Body lines up under the header, NOT under the avatar,
-     * so the conversation reads as a single column of bodies with
-     * anchors jutting to the left. Continuation messages reuse the
-     * grid but hide the avatar, keeping body alignment identical.
-     * Grid is used (not flex) because we need the left column's
-     * width to be constant whether or not the avatar renders, so
-     * body indentation stays stable across the group. */
-    &.message-row--first,
-    &.message-row--grouped {
-      & article {
-        display: grid;
-
-        /* minmax(0, 1fr) — the explicit shrinkable form. `1fr`
-         * alone has an implicit min-content floor so long code /
-         * URLs in the body would widen the grid track past the
-         * container. minmax(0, 1fr) lets the column shrink to 0
-         * so the body respects container width (rgb(51 102 85)). First
-         * column tracks --chat-avatar-size so compact mode's 20px
-         * avatar doesn't leave an 8px gap between avatar + body. */
-        grid-template-columns: var(--chat-avatar-size) minmax(0, 1fr);
-        gap: var(--chat-row-gap) var(--space-8);
-        align-items: start;
-      }
-    }
-
-    &.message-row--first article {
-      & .message-avatar-wrap {
-        grid-column: 1;
-        grid-row: 1 / span 2;
-
-        /* Wrap sits in the grid cell the avatar previously occupied.
-         * rgb(51 119 0): position: relative so the absolutely-positioned
-         * tooltip child anchors to this avatar and not to the grid
-         * cell or the message row. */
-        position: relative;
-      }
-
-      & .message-meta {
-        grid-column: 2;
-      }
-
-      & .message-body {
-        grid-column: 2;
-      }
-    }
-
-    &.message-row--grouped {
-      & article {
-        /* Tighter vertical gap between grouped continuations than
-         * between groups — reinforces the "one speaker" feel without
-         * requiring extra chrome. */
-        row-gap: 0;
-        margin-top: calc(-1 * var(--space-4));
-      }
-
-      & .message-ts--grouped {
-        grid-column: 2;
-
-        /* De-emphasis carried by the --fg-dimmer tier alone; font
-         * stays at inherited 0.75rem so every text element clears
-         * the rgb(51 68 119) AC2 12px floor. Compounding size + color would
-         * over-dim and breach the a11y substrate. */
-        color: var(--fg-dimmer);
-      }
-
-      /* False-positive: --first and --grouped are mutually-exclusive BEM
-       * modifiers on the same row — both rules can never apply to one
-       * element, so no cascade conflict actually occurs. */
-      /* stylelint-disable-next-line no-descending-specificity */
-      & .message-body {
-        grid-column: 2;
-      }
-    }
-
-    /* Addressed-to-viewer: accent-color left border. Rendered as an
-     * inset shadow on the grid wrapper so it doesn't shift the grid's
-     * column geometry (stays aligned with non-addressed rows). */
-    &.message-row--to-me {
-      padding-left: var(--space-8);
-      box-shadow: inset 3px 0 0 var(--accent-brand);
-    }
-
-    /* Addressed-to-other: body color steps back to --msg-fg-muted so
-     * the viewer's eye is drawn to messages meant for them. Still
-     * clears WCAG AA, so the message is legible if the viewer reads
-     * it — just de-prioritised visually.
-     * False-positive: --to-other and --first/--grouped are orthogonal
-     * BEM modifiers; rule's specificity-cascade heuristic doesn't model
-     * orthogonal-modifier scopes. */
-    /* stylelint-disable-next-line no-descending-specificity */
-    &.message-row--to-other .message-body {
-      color: var(--msg-fg-muted);
-    }
-
-  }
-
-  /* Avatar: 28px square (AI roles) or circle (Ryan). Role-color
-   * background from --role-* tokens. Bold first-initial centered.
-   * aria-hidden in JSX — sender is announced via .sr-only prefix
-   * and/or visible <cite>, so the avatar is pure visual anchor.
-   * Fade-in on first mount only (rgb(51 85 34) AC3): the avatar is rendered
-   * inside a `.message-row--first` article, which itself only renders
-   * when grouping breaks. So @starting-style fires exactly when a
-   * new first-of-group avatar mounts — not on every scroll rerender.
-   * */
-  & .message-avatar {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-
-    /* rgb(51 102 153) density: --chat-avatar-size is 28px in comfortable,
-     * 20px in compact. Font-size scales proportionally so the
-     * initial stays centered + legible at either size. */
-    width: var(--chat-avatar-size);
-    height: var(--chat-avatar-size);
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: var(--bg-base);
-    user-select: none;
-    transition: opacity var(--motion-duration-fast) var(--motion-ease-out);
-    opacity: 1;
-
-    @starting-style {
-      opacity: 0;
-    }
-  }
-
-  & .message-avatar--square {
-    border-radius: 4px;
-  }
-
-  & .message-avatar--circle {
-    border-radius: 50%;
-  }
-
-  & .message-avatar--ryan {
-    background: var(--role-ryan);
-  }
-
-  & .message-avatar--designer {
-    background: var(--role-designer);
-  }
-
-  & .message-avatar--dev {
-    background: var(--role-dev);
-  }
-
-  & .message-avatar--pm {
-    background: var(--role-pm);
-  }
-
-  & .message-avatar--unknown {
-    background: var(--border-strong);
-    color: var(--fg-primary);
-  }
-
-  /* rgb(51 119 0) avatar tooltip. Positioned below the avatar with a small
-   * gap. Pure CSS reveal via :hover / :focus-within on the wrap; no
-   * JS state. 150ms show-delay matches Nielsen timing (avoids
-   * flashing on drag-through); hide is immediate (removing delay)
-   * so the tooltip dismisses cleanly as the cursor leaves.
-   * False-positive: this outer-scope rule and the inner --first article
-   * rule target different DOM levels in practice; no cascade conflict. */
-  /* stylelint-disable-next-line no-descending-specificity */
+  /* Avatar tooltip — positioned below the avatar with a small gap. Pure
+   * CSS reveal via :hover / :focus-within on the wrap; no JS state.
+   * 150ms show-delay matches Nielsen timing (avoids flashing on
+   * drag-through); hide is immediate (removing delay) so the tooltip
+   * dismisses cleanly as the cursor leaves. */
   & .message-avatar-wrap {
     display: inline-flex;
     position: relative;
   }
 
-  & .avatar-tooltip {
-    position: absolute;
-    top: calc(100% + var(--space-4));
-    left: 0;
-    min-width: 180px;
-    max-width: 260px;
-    padding: var(--space-6) var(--space-8);
-    border-radius: 6px;
-    background: var(--bg-elevated);
-    border: 1px solid var(--border-subtle);
-    color: var(--fg-primary);
-    box-shadow: 0 4px 16px color-mix(in srgb, rgb(0 0 0) 35%, transparent);
-    font-size: 0.75rem;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-
-    /* Hidden by default; revealed on hover / focus. pointer-events:
-     * none when hidden so the invisible tooltip doesn't intercept
-     * hover on whatever it overlaps with. z-index lifts it above
-     * the avatar column so it doesn't clip under sibling rows. */
-    opacity: 0;
-    pointer-events: none;
-    z-index: 10;
-    transform: translateY(-2px);
-    transition:
-      opacity var(--motion-duration-medium) var(--motion-ease-out) 150ms,
-      transform var(--motion-duration-medium) var(--motion-ease-out) 150ms;
-  }
-
-  & .message-avatar-wrap:hover .avatar-tooltip,
-  & .message-avatar-wrap:focus-within .avatar-tooltip {
-    opacity: 1;
-    transform: translateY(0);
-    pointer-events: auto;
-
-    /* Show delay is already in the main transition; override
-     * transition-delay to 0 on the hide side so dismiss is
-     * immediate (feels snappy instead of laggy). */
-    transition-delay: 150ms;
-  }
-
-  /* Small tail pointing up toward the avatar — draws the eye back to
-   * the trigger + reinforces the tooltip-belongs-to-this-avatar
-   * semantic. Absolute-positioned ::before pseudo-element keeps the
-   * DOM clean. */
-  & .avatar-tooltip::before {
-    content: '';
-    position: absolute;
-    top: -5px;
-    left: 10px;
-    width: 10px;
-    height: 10px;
-    background: var(--bg-elevated);
-    border-left: 1px solid var(--border-subtle);
-    border-top: 1px solid var(--border-subtle);
-    transform: rotate(45deg);
-  }
-
-  & .avatar-tooltip-label {
-    font-weight: 600;
-    color: var(--fg-primary);
-  }
-
-  & .avatar-tooltip-status {
-    color: var(--fg-dim);
-    font-size: 0.6875rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-
-    /* Status-specific tint — same vocabulary as sidebar dots
-     * (rgb(51 102 0)). Keeps the presence signal visible WITHOUT duplicating
-     * the sidebar's dot affordance on the avatar itself. */
-    &.avatar-tooltip-status--available {
-      color: var(--accent-success);
-    }
-
-    &.avatar-tooltip-status--busy {
-      color: var(--accent-warning);
-    }
-
-    &.avatar-tooltip-status--blocked,
-    &.avatar-tooltip-status--help {
-      color: var(--accent-error);
-    }
-  }
-
-  /* Outer-scope base layout for article; --first and --grouped modifiers
-   * above override grid-template, but those are mutually-exclusive
-   * modifier classes — no cascade conflict at runtime. */
-  /* stylelint-disable-next-line no-descending-specificity */
   & .message-row article {
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
   }
 
-  /* Outer-scope base for message-meta; modifier-scoped rules above
-   * (--first article .message-meta) only apply when --first modifier
-   * is present, leaving this base to cover the unmodified case. */
-  /* stylelint-disable-next-line no-descending-specificity */
   & .message-meta {
     display: flex;
     gap: var(--space-8);
@@ -456,63 +152,6 @@
     font-size: 0.75rem;
   }
 
-  & .message-from {
-    font-weight: 600;
-    color: var(--fg-primary);
-    font-style: normal;
-  }
-
-  & .message-ts {
-    color: var(--fg-dim);
-
-    /* rgb(51 102 153): bumps to 500 in compact mode so the dim-tier metadata
-     * stays legible against the tighter row padding; stays at 400
-     * (inherited) in comfortable. */
-    font-weight: var(--chat-ts-font-weight);
-  }
-
-  & .message-channel {
-    color: var(--fg-dim);
-    font-size: 0.75rem;
-    font-family: ui-monospace, Menlo, Consolas, monospace;
-  }
-
-  & .message-addressee {
-    color: var(--accent-brand);
-    font-size: 0.75rem;
-    font-weight: 600;
-    padding: 0 var(--space-4);
-    border-radius: 4px;
-    background: color-mix(in srgb, var(--accent-brand) 14%, transparent);
-  }
-
-  /* Per-class gutter glyph. Inline before the body (not a separate
-   * grid column) so chat messages — the majority — don't carry a
-   * trailing empty gutter. rgb(51 119 51) carries role="img" + aria-label so
-   * SR users hear the class when landing on the glyph; sighted
-   * users read the SVG shape at the --fg-dim tier. inline-flex +
-   * align-items: center centers the 12px SVG against the body text
-   * baseline cleanly — inline-block + vertical-align was drifting
-   * the unicode version off the cap-line on some OS font stacks. */
-  & .message-class-glyph {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: var(--space-6);
-    color: var(--fg-dim);
-    vertical-align: text-bottom;
-    user-select: none;
-
-    /* Sized by the inline SVG's width/height attributes; don't let
-     * the default font-size leak into the svg's em-relative values
-     * (safari/chromium differ on this). */
-    line-height: 1;
-  }
-
-  /* Outer-scope base for message-body; modifier-scoped overrides above
-   * (--first article, --grouped, --to-other) layer on top when their
-   * modifier classes are present. */
-  /* stylelint-disable-next-line no-descending-specificity */
   & .message-body {
     color: var(--fg-primary);
     font-size: 0.875rem;
@@ -629,5 +268,342 @@
       border-radius: 4px;
     }
   }
+
+  & .message-row {
+    display: flex;
+    flex-direction: column;
+    gap: var(--chat-row-gap);
+
+    /* Flex children default to min-width: auto (intrinsic content
+     * width) which lets a long unbreakable string push the row past
+     * the container, triggering a horizontal scrollbar on .message-
+     * list (rgb(51 102 85)). Forcing min-width: 0 lets the row shrink to the
+     * column's width; the body's overflow-wrap below handles the
+     * actual text break. */
+    min-width: 0;
+
+    /* Arrival animation (rgb(51 85 34) AC4): new message rows slide up from
+     * a few px below + fade in. @starting-style fires once per mount
+     * — React keyed by m.id keeps the element stable after hydration
+     * so the transition only plays when a genuinely new row mounts
+     * (WS arrival) rather than on every re-render. Reduced-motion
+     * users get 0ms on duration + no transform via the nested @media
+     * block below.
+     *
+     * Note: the 70K-message hydration backfill will animate every
+     * row on initial load; since all rows are inserted in a single
+     * frame they fade/rise together — reads as a pleasant arrival
+     * rather than noisy. If that ever feels off, a "seen at hydration"
+     * flag can be threaded from useWebSocket to skip the animation
+     * on backfill; not needed per current UX observation. */
+    transition:
+      transform var(--motion-duration-fast) var(--motion-ease-out),
+      opacity var(--motion-duration-fast) var(--motion-ease-out);
+    transform: translateY(0);
+    opacity: 1;
+
+    @starting-style {
+      transform: translateY(6px);
+      opacity: 0;
+    }
+
+    /* Reduced-motion: kill the transform (motion-inducing); keep
+     * opacity so the arrival still feels like something appeared. */
+    @media (prefers-reduced-motion: reduce) {
+      transform: none;
+
+      @starting-style {
+        transform: none;
+      }
+    }
+
+    /* First-of-group gets the full avatar-anchored layout: a 28px
+     * avatar column on the left, header + body occupying the right
+     * column. Body lines up under the header, NOT under the avatar,
+     * so the conversation reads as a single column of bodies with
+     * anchors jutting to the left. Continuation messages reuse the
+     * grid but hide the avatar, keeping body alignment identical.
+     * Grid is used (not flex) because we need the left column's
+     * width to be constant whether or not the avatar renders, so
+     * body indentation stays stable across the group. */
+
+    /* Addressed-to-viewer: accent-color left border. Rendered as an
+     * inset shadow on the grid wrapper so it doesn't shift the grid's
+     * column geometry (stays aligned with non-addressed rows). */
+    &.message-row--to-me {
+      padding-left: var(--space-8);
+      box-shadow: inset 3px 0 0 var(--accent-brand);
+    }
+
+    /* Addressed-to-other: body color steps back to --msg-fg-muted so
+     * the viewer's eye is drawn to messages meant for them. Still
+     * clears WCAG AA, so the message is legible if the viewer reads
+     * it — just de-prioritised visually. */
+    &.message-row--to-other .message-body {
+      color: var(--msg-fg-muted);
+    }
+
+    &.message-row--first,
+    &.message-row--grouped {
+      & article {
+        display: grid;
+
+        /* minmax(0, 1fr) — the explicit shrinkable form. `1fr`
+         * alone has an implicit min-content floor so long code /
+         * URLs in the body would widen the grid track past the
+         * container. minmax(0, 1fr) lets the column shrink to 0
+         * so the body respects container width (rgb(51 102 85)). First
+         * column tracks --chat-avatar-size so compact mode's 20px
+         * avatar doesn't leave an 8px gap between avatar + body. */
+        grid-template-columns: var(--chat-avatar-size) minmax(0, 1fr);
+        gap: var(--chat-row-gap) var(--space-8);
+        align-items: start;
+
+        & .message-body {
+          grid-column: 2;
+        }
+      }
+    }
+
+    &.message-row--first article {
+      & .message-avatar-wrap {
+        grid-column: 1;
+        grid-row: 1 / span 2;
+
+        /* Wrap sits in the grid cell the avatar previously occupied.
+         * rgb(51 119 0): position: relative so the absolutely-positioned
+         * tooltip child anchors to this avatar and not to the grid
+         * cell or the message row. */
+        position: relative;
+      }
+
+      & .message-meta {
+        grid-column: 2;
+      }
+    }
+
+    &.message-row--grouped {
+      & article {
+        /* Tighter vertical gap between grouped continuations than
+         * between groups — reinforces the "one speaker" feel without
+         * requiring extra chrome. */
+        row-gap: 0;
+        margin-top: calc(-1 * var(--space-4));
+      }
+
+      & .message-ts--grouped {
+        grid-column: 2;
+
+        /* De-emphasis carried by the --fg-dimmer tier alone; font
+         * stays at inherited 0.75rem so every text element clears
+         * the rgb(51 68 119) AC2 12px floor. Compounding size + color would
+         * over-dim and breach the a11y substrate. */
+        color: var(--fg-dimmer);
+      }
+    }
+
+  }
+
+  /* Avatar: 28px square (AI roles) or circle (Ryan). Role-color
+   * background from --role-* tokens. Bold first-initial centered.
+   * aria-hidden in JSX — sender is announced via .sr-only prefix
+   * and/or visible <cite>, so the avatar is pure visual anchor.
+   * Fade-in on first mount only (rgb(51 85 34) AC3): the avatar is rendered
+   * inside a `.message-row--first` article, which itself only renders
+   * when grouping breaks. So @starting-style fires exactly when a
+   * new first-of-group avatar mounts — not on every scroll rerender.
+   * */
+  & .message-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    /* rgb(51 102 153) density: --chat-avatar-size is 28px in comfortable,
+     * 20px in compact. Font-size scales proportionally so the
+     * initial stays centered + legible at either size. */
+    width: var(--chat-avatar-size);
+    height: var(--chat-avatar-size);
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--bg-base);
+    user-select: none;
+    transition: opacity var(--motion-duration-fast) var(--motion-ease-out);
+    opacity: 1;
+
+    @starting-style {
+      opacity: 0;
+    }
+  }
+
+  & .message-avatar--square {
+    border-radius: 4px;
+  }
+
+  & .message-avatar--circle {
+    border-radius: 50%;
+  }
+
+  & .message-avatar--ryan {
+    background: var(--role-ryan);
+  }
+
+  & .message-avatar--designer {
+    background: var(--role-designer);
+  }
+
+  & .message-avatar--dev {
+    background: var(--role-dev);
+  }
+
+  & .message-avatar--pm {
+    background: var(--role-pm);
+  }
+
+  & .message-avatar--unknown {
+    background: var(--border-strong);
+    color: var(--fg-primary);
+  }
+
+
+  & .avatar-tooltip {
+    position: absolute;
+    top: calc(100% + var(--space-4));
+    left: 0;
+    min-width: 180px;
+    max-width: 260px;
+    padding: var(--space-6) var(--space-8);
+    border-radius: 6px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    color: var(--fg-primary);
+    box-shadow: 0 4px 16px color-mix(in srgb, rgb(0 0 0) 35%, transparent);
+    font-size: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+
+    /* Hidden by default; revealed on hover / focus. pointer-events:
+     * none when hidden so the invisible tooltip doesn't intercept
+     * hover on whatever it overlaps with. z-index lifts it above
+     * the avatar column so it doesn't clip under sibling rows. */
+    opacity: 0;
+    pointer-events: none;
+    z-index: 10;
+    transform: translateY(-2px);
+    transition:
+      opacity var(--motion-duration-medium) var(--motion-ease-out) 150ms,
+      transform var(--motion-duration-medium) var(--motion-ease-out) 150ms;
+  }
+
+  & .message-avatar-wrap:hover .avatar-tooltip,
+  & .message-avatar-wrap:focus-within .avatar-tooltip {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+
+    /* Show delay is already in the main transition; override
+     * transition-delay to 0 on the hide side so dismiss is
+     * immediate (feels snappy instead of laggy). */
+    transition-delay: 150ms;
+  }
+
+  /* Small tail pointing up toward the avatar — draws the eye back to
+   * the trigger + reinforces the tooltip-belongs-to-this-avatar
+   * semantic. Absolute-positioned ::before pseudo-element keeps the
+   * DOM clean. */
+  & .avatar-tooltip::before {
+    content: '';
+    position: absolute;
+    top: -5px;
+    left: 10px;
+    width: 10px;
+    height: 10px;
+    background: var(--bg-elevated);
+    border-left: 1px solid var(--border-subtle);
+    border-top: 1px solid var(--border-subtle);
+    transform: rotate(45deg);
+  }
+
+  & .avatar-tooltip-label {
+    font-weight: 600;
+    color: var(--fg-primary);
+  }
+
+  & .avatar-tooltip-status {
+    color: var(--fg-dim);
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+
+    /* Status-specific tint — same vocabulary as sidebar dots
+     * (rgb(51 102 0)). Keeps the presence signal visible WITHOUT duplicating
+     * the sidebar's dot affordance on the avatar itself. */
+    &.avatar-tooltip-status--available {
+      color: var(--accent-success);
+    }
+
+    &.avatar-tooltip-status--busy {
+      color: var(--accent-warning);
+    }
+
+    &.avatar-tooltip-status--blocked,
+    &.avatar-tooltip-status--help {
+      color: var(--accent-error);
+    }
+  }
+
+  & .message-from {
+    font-weight: 600;
+    color: var(--fg-primary);
+    font-style: normal;
+  }
+
+  & .message-ts {
+    color: var(--fg-dim);
+
+    /* rgb(51 102 153): bumps to 500 in compact mode so the dim-tier metadata
+     * stays legible against the tighter row padding; stays at 400
+     * (inherited) in comfortable. */
+    font-weight: var(--chat-ts-font-weight);
+  }
+
+  & .message-channel {
+    color: var(--fg-dim);
+    font-size: 0.75rem;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+  }
+
+  & .message-addressee {
+    color: var(--accent-brand);
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0 var(--space-4);
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--accent-brand) 14%, transparent);
+  }
+
+  /* Per-class gutter glyph. Inline before the body (not a separate
+   * grid column) so chat messages — the majority — don't carry a
+   * trailing empty gutter. rgb(51 119 51) carries role="img" + aria-label so
+   * SR users hear the class when landing on the glyph; sighted
+   * users read the SVG shape at the --fg-dim tier. inline-flex +
+   * align-items: center centers the 12px SVG against the body text
+   * baseline cleanly — inline-block + vertical-align was drifting
+   * the unicode version off the cap-line on some OS font stacks. */
+  & .message-class-glyph {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: var(--space-6);
+    color: var(--fg-dim);
+    vertical-align: text-bottom;
+    user-select: none;
+
+    /* Sized by the inline SVG's width/height attributes; don't let
+     * the default font-size leak into the svg's em-relative values
+     * (safari/chromium differ on this). */
+    line-height: 1;
+  }
+
 }
 

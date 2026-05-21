@@ -36,28 +36,7 @@
       transform var(--motion-duration-medium) var(--motion-ease-out),
       opacity var(--motion-duration-fast) var(--motion-ease-out);
   }
-}
 
-/* Reduced-motion: kill the transform (motion-inducing) but keep the
- * opacity fade so the element still feels like it "appeared" — just
- * without the slide. Duration tokens already resolve to 0ms under
- * reduced-motion so the fade is effectively instant too. */
-@media (prefers-reduced-motion: reduce) {
-  .drill-in {
-    transform: none !important;
-
-    &[data-visible] {
-      transform: none !important;
-    }
-  }
-}
-
-/* Second `.drill-in` block; the @media (prefers-reduced-motion) block
- * between the two rules prevents native CSS merge. Layout+animation
- * lives in the top block, child structure in this one — separation
- * is intentional for readability. */
-/* stylelint-disable-next-line no-duplicate-selectors */
-.drill-in {
   & .drill-in-header {
     padding: var(--space-8) var(--space-16);
     border-bottom: 1px solid var(--border-subtle);
@@ -142,6 +121,50 @@
     color: var(--fg-secondary);
     font-size: 0.75rem;
     line-height: 1.4;
+  }
+
+  & .drill-in-bug-question {
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-base);
+    padding: var(--space-12);
+    margin: 0;
+    max-width: 32rem;
+    max-height: none;
+  }
+
+  & .drill-in-bug-question[open] {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+    opacity: 1;
+    transition: opacity var(--motion-duration-fast) var(--motion-ease-out);
+
+    @starting-style {
+      opacity: 0;
+    }
+  }
+
+  & .drill-in-bug-question:not([open]) {
+    opacity: 0;
+    transition: opacity var(--motion-duration-fast) var(--motion-ease-in);
+  }
+
+  & .drill-in-bug-question h3 {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--fg-primary);
+  }
+
+  & .drill-in-bug-question p {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--fg-dim);
+    margin: 0;
+  }
+
+  & .drill-in-comment-body p {
+    margin: 0;
   }
 
   & .drill-in-body {
@@ -290,51 +313,6 @@
     transition: opacity var(--motion-duration-fast) var(--motion-ease-in);
   }
 
-  & .drill-in-bug-question {
-    border: 1px solid var(--border-subtle);
-    background: var(--bg-base);
-    padding: var(--space-12);
-    margin: 0;
-    max-width: 32rem;
-    max-height: none;
-  }
-
-  & .drill-in-bug-question[open] {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-8);
-    opacity: 1;
-    transition: opacity var(--motion-duration-fast) var(--motion-ease-out);
-
-    @starting-style {
-      opacity: 0;
-    }
-  }
-
-  & .drill-in-bug-question:not([open]) {
-    opacity: 0;
-    transition: opacity var(--motion-duration-fast) var(--motion-ease-in);
-  }
-
-  /* False-positive: drill-in-bug-question is a sibling scope to
-   * drill-in-body; the rule's heuristic compares selectors that share
-   * an ancestor (.drill-in) but the actual elements live in disjoint
-   * subtrees, so no cascade conflict can occur. */
-  /* stylelint-disable-next-line no-descending-specificity */
-  & .drill-in-bug-question h3 {
-    font-size: 0.9375rem;
-    font-weight: 600;
-    margin: 0;
-    color: var(--fg-primary);
-  }
-
-  /* stylelint-disable-next-line no-descending-specificity */
-  & .drill-in-bug-question p {
-    font-size: 0.8125rem;
-    line-height: 1.5;
-    color: var(--fg-dim);
-    margin: 0;
-  }
 
   & .drill-in-bypass {
     border-top: 1px solid var(--border-subtle);
@@ -520,14 +498,6 @@
   & .drill-in-comment-body {
     font-size: 0.8125rem;
     color: var(--fg-primary);
-
-    /* False-positive: drill-in-comment-body is a sibling scope to
-     * drill-in-body; child p elements live in disjoint subtrees so
-     * cascade conflict can't occur. */
-    /* stylelint-disable-next-line no-descending-specificity */
-    & p {
-      margin: 0;
-    }
   }
 
   & .drill-in-comment-form {
@@ -713,5 +683,19 @@
     color: var(--fg-dim);
     font-style: italic;
     border-top: 1px dashed var(--border-subtle);
+  }
+}
+
+/* Reduced-motion: kill the transform (motion-inducing) but keep the
+ * opacity fade so the element still feels like it "appeared" — just
+ * without the slide. Duration tokens already resolve to 0ms under
+ * reduced-motion so the fade is effectively instant too. */
+@media (prefers-reduced-motion: reduce) {
+  .drill-in {
+    transform: none !important;
+
+    &[data-visible] {
+      transform: none !important;
+    }
   }
 }
