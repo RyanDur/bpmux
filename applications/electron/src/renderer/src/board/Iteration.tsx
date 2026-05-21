@@ -6,6 +6,7 @@ import { computeDropMutation } from './iterationPosition'
 import { themeNameFromTitle } from './labelSchema'
 import { ITERATION_GRIP_TEST_ID, boardIterationTestId } from './testIds'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
+import { findCurrentIteration } from './currentIteration'
 import type { BoardStory } from './types'
 import {
   type IterationDragPayload,
@@ -56,7 +57,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
   if (sortedIterations.length === 0 && sortedLoose.length === 0) return null
   const activePlannedIterations = sortedIterations.filter((it) => it.gh_state !== 'closed')
   const closedIterations = sortedIterations.filter((it) => it.gh_state === 'closed')
-  const currentIterationNumber = activePlannedIterations[0]?.number ?? null
+  const currentIterationNumber = findCurrentIteration(stories)?.number ?? null
 
   const renderIterationRow = (iteration: BoardStory): React.JSX.Element => {
     const key = String(iteration.number)

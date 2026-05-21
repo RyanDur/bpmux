@@ -223,7 +223,7 @@ describe('#1454 Iteration list scaling — section-grouped (Active+Planned / Clo
     expect(html.slice(closedCountIdx, closedCountIdx + 200)).toContain('(2)')
   })
 
-  test('Scenario 6: first active iteration gets data-current-iteration anchor', () => {
+  test('Scenario 6 (fallback): first active iteration by iteration-order gets anchor when no iter has in-flight work', () => {
     const first = iterationStory({
       number: 9001,
       title: 'Iteration First',
@@ -245,6 +245,43 @@ describe('#1454 Iteration list scaling — section-grouped (Active+Planned / Clo
     )
     expect(firstAnchor).toBeTruthy()
     expect(secondAnchor).toBeNull()
+  })
+
+  test('Scenario 6-rework (#1454): iter with only-iceboxed children NOT anchored; iter with in-flight children IS anchored', () => {
+    const iterIcebox = iterationStory({
+      number: 9001,
+      title: 'Iteration IceboxOnly',
+      gh_state: 'open',
+      labels: ['iteration', 'iteration-order.100']
+    })
+    const iterInFlight = iterationStory({
+      number: 9002,
+      title: 'Iteration Working',
+      gh_state: 'open',
+      labels: ['iteration', 'iteration-order.200']
+    })
+    const iceboxChild = memberStory({
+      number: 9501,
+      state: 'icebox',
+      iteration_membership: { iteration_number: 9001, position: 100 }
+    })
+    const inFlightChild = memberStory({
+      number: 9502,
+      state: 'in-progress',
+      iteration_membership: { iteration_number: 9002, position: 100 }
+    })
+    const html = renderToStaticMarkup(
+      <Iteration
+        stories={[iterIcebox, iterInFlight, iceboxChild, inFlightChild]}
+        onOpen={() => {}}
+      />
+    )
+    expect(
+      html.match(/data-test="board-iteration-9001"[^>]*data-current-iteration="true"/)
+    ).toBeNull()
+    expect(
+      html.match(/data-test="board-iteration-9002"[^>]*data-current-iteration="true"/)
+    ).toBeTruthy()
   })
 
   test('Scenario regression: closed iterations omit drag-handle (grip)', () => {
