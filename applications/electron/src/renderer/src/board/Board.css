@@ -801,24 +801,6 @@
     font-variant-numeric: tabular-nums;
   }
 
-  & .board-epic-count--accepted {
-    color: var(--accent-success);
-  }
-
-  & .board-epic-count--retired {
-    color: var(--fg-dim);
-    text-decoration: line-through;
-  }
-
-  & .board-epic-count--active {
-    color: var(--fg-secondary);
-  }
-
-  & .board-epic-count--done {
-    color: var(--accent-success);
-    font-weight: 600;
-  }
-
   & .board-epic-count--empty {
     color: var(--fg-dim);
     font-style: italic;

@@ -252,7 +252,7 @@ describe('#1235 Epic-card collapse — native <details>/<summary> + activity-cla
     expect(html).not.toMatch(/<details[^>]*\sopen\b/)
   })
 
-  test('#1455 summary shows 3-axis count (accepted ✓ + active ●; retired hidden when 0)', () => {
+  test('#1455 summary shows plain "{accepted} / {denom}" count format (no glyphs)', () => {
     const epic = story({ number: 1100, state: 'in-progress' })
     const children: BoardStory[] = [
       story({ number: 1101, state: 'accepted', labels: featureLabels, parent_epic: 1100 }),
@@ -263,14 +263,14 @@ describe('#1235 Epic-card collapse — native <details>/<summary> + activity-cla
       <Epic epics={[epic]} stories={[epic, ...children]} onOpen={() => {}} />
     )
     expect(html).toContain('data-test="board-epic-1100-summary-progress"')
-    expect(html).toContain('data-test="board-epic-1100-count-accepted"')
-    expect(html).toContain('1✓')
-    expect(html).toContain('data-test="board-epic-1100-count-active"')
-    expect(html).toContain('2●')
-    expect(html).not.toContain('data-test="board-epic-1100-count-retired"')
+    expect(html).toContain('data-test="board-epic-1100-count"')
+    expect(html).toContain('1 / 3')
+    expect(html).not.toContain('✓')
+    expect(html).not.toContain('●')
+    expect(html).not.toContain('⊘')
   })
 
-  test('#1455 summary shows ✓ marker when all children accepted (100% complete) + hides active when zero', () => {
+  test('#1455 100% complete still renders plain "N / N" (no done-marker glyph)', () => {
     const epic = story({ number: 1100, state: 'in-progress' })
     const children: BoardStory[] = [
       story({ number: 1101, state: 'accepted', labels: featureLabels, parent_epic: 1100 }),
@@ -279,26 +279,12 @@ describe('#1235 Epic-card collapse — native <details>/<summary> + activity-cla
     const html = renderToStaticMarkup(
       <Epic epics={[epic]} stories={[epic, ...children]} onOpen={() => {}} />
     )
-    expect(html).toContain('2✓')
-    expect(html).toContain('data-test="board-epic-1100-count-done"')
-    expect(html).not.toContain('data-test="board-epic-1100-count-active"')
-  })
-
-  test('#1455 summary omits done-marker when not 100% complete', () => {
-    const epic = story({ number: 1100, state: 'in-progress' })
-    const children: BoardStory[] = [
-      story({ number: 1101, state: 'accepted', labels: featureLabels, parent_epic: 1100 }),
-      story({ number: 1102, state: 'in-progress', labels: featureLabels, parent_epic: 1100 })
-    ]
-    const html = renderToStaticMarkup(
-      <Epic epics={[epic]} stories={[epic, ...children]} onOpen={() => {}} />
-    )
-    expect(html).toContain('1✓')
-    expect(html).toContain('1●')
+    expect(html).toContain('2 / 2')
+    expect(html).not.toContain('✓')
     expect(html).not.toContain('data-test="board-epic-1100-count-done"')
   })
 
-  test('#1455 summary discriminates retired children when any present (Scenario 1+4 falsifier)', () => {
+  test('#1455 retired children EXCLUDED from count-display entirely (soft-delete = invisible)', () => {
     const epic = story({ number: 1100, state: 'in-progress' })
     const children: BoardStory[] = [
       story({ number: 1101, state: 'accepted', labels: featureLabels, parent_epic: 1100 }),
@@ -309,12 +295,11 @@ describe('#1235 Epic-card collapse — native <details>/<summary> + activity-cla
     const html = renderToStaticMarkup(
       <Epic epics={[epic]} stories={[epic, ...children]} onOpen={() => {}} />
     )
-    expect(html).toContain('data-test="board-epic-1100-count-accepted"')
-    expect(html).toContain('2✓')
-    expect(html).toContain('data-test="board-epic-1100-count-retired"')
-    expect(html).toContain('1⊘')
-    expect(html).toContain('data-test="board-epic-1100-count-active"')
-    expect(html).toContain('1●')
+    expect(html).toContain('data-test="board-epic-1100-count"')
+    expect(html).toContain('2 / 3')
+    expect(html).not.toContain('data-test="board-epic-1100-count-retired"')
+    expect(html).not.toContain('⊘')
+    expect(html).not.toContain('line-through')
   })
 
   test('#1455 Scenario 3 — title-prefix `[Epic]` retired from rendered title', () => {
