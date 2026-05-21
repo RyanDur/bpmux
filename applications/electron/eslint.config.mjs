@@ -7,6 +7,7 @@ import eslintPluginReactRefresh from 'eslint-plugin-react-refresh'
 import eslintPluginTestingLibrary from 'eslint-plugin-testing-library'
 import eslintPluginJestDom from 'eslint-plugin-jest-dom'
 import eslintPluginJsxA11y from 'eslint-plugin-jsx-a11y'
+import eslintPluginPreferArrow from 'eslint-plugin-prefer-arrow-functions'
 
 export default defineConfig(
   {
@@ -36,12 +37,14 @@ export default defineConfig(
     files: ['**/*.{ts,tsx}'],
     plugins: {
       'react-hooks': eslintPluginReactHooks,
-      'react-refresh': eslintPluginReactRefresh
+      'react-refresh': eslintPluginReactRefresh,
+      'prefer-arrow-functions': eslintPluginPreferArrow
     },
     rules: {
       ...eslintPluginReactHooks.configs.recommended.rules,
       ...eslintPluginReactRefresh.configs.vite.rules,
       'func-style': ['error', 'expression', { allowArrowFunctions: true }],
+      'prefer-arrow-functions/prefer-arrow-functions': ['error', { returnStyle: 'unchanged' }],
       'prefer-arrow-callback': 'error',
       'prefer-const': 'error',
       '@typescript-eslint/no-explicit-any': 'error',
