@@ -94,11 +94,48 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
     expect(getByTestId('board-tab-done').getAttribute('aria-selected')).toBe('false')
   })
 
-  test('Scenario 3: Now tab shows iteration anchor when an open iteration exists', () => {
+  test('Scenario 3: Now tab anchor displays theme name (Iteration prefix stripped) for current iteration', () => {
     const iter = iterationStory({ number: 1500, title: 'Iteration Sextans' })
-    const { getByTestId } = render(<BoardTabs {...buildProps([iter])} />)
+    const inFlightChild = featureStory({
+      number: 9101,
+      state: 'in-progress',
+      iteration_membership: { iteration_number: 1500, position: 100 }
+    })
+    const { getByTestId } = render(<BoardTabs {...buildProps([iter, inFlightChild])} />)
     const anchor = getByTestId('board-now-iteration-anchor')
-    expect(anchor.textContent).toContain('Iteration Sextans')
+    expect(anchor.textContent).toContain('Sextans')
+    expect(anchor.textContent).not.toContain('Iteration Sextans')
+  })
+
+  test('Scenario 3-rework: anchor picks iter with in-flight children over iter-with-only-icebox-children', () => {
+    const microscopium = iterationStory({
+      number: 1398,
+      title: 'Iteration Microscopium',
+      labels: ['iteration', 'iteration-order.100']
+    })
+    const pictor = iterationStory({
+      number: 1458,
+      title: 'Iteration Pictor',
+      labels: ['iteration', 'iteration-order.200']
+    })
+    const microscopiumIcebox = featureStory({
+      number: 9001,
+      state: 'icebox',
+      iteration_membership: { iteration_number: 1398, position: 100 }
+    })
+    const pictorInProgress = featureStory({
+      number: 9002,
+      state: 'in-progress',
+      iteration_membership: { iteration_number: 1458, position: 100 }
+    })
+    const { getByTestId } = render(
+      <BoardTabs
+        {...buildProps([microscopium, pictor, microscopiumIcebox, pictorInProgress])}
+      />
+    )
+    const anchor = getByTestId('board-now-iteration-anchor')
+    expect(anchor.textContent).toContain('Pictor')
+    expect(anchor.textContent).not.toContain('Microscopium')
   })
 
   test('Scenario 3 cont.: Now tab Epic-card shows only Epics belonging to current iteration', () => {

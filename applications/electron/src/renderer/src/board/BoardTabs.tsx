@@ -6,6 +6,7 @@ import Tabs, { type TabDef } from './Tabs'
 import { useTabStorage } from '../lib/useTabStorage'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import { epicNumbersInIteration, findCurrentIteration } from './currentIteration'
+import { themeNameFromTitle } from './labelSchema'
 import {
   GROUP_ORDER,
   isActiveEpic,
@@ -121,7 +122,7 @@ const BoardTabs = ({
       {currentIteration !== null && (
         <header className="board-now-anchor" data-test="board-now-iteration-anchor">
           <small className="board-now-anchor-label">Iteration</small>
-          <b className="board-now-anchor-title">{currentIteration.title}</b>
+          <b className="board-now-anchor-title">{themeNameFromTitle(currentIteration.title)}</b>
         </header>
       )}
       <Epic epics={currentIterationEpics} stories={stories} onOpen={onOpen} />

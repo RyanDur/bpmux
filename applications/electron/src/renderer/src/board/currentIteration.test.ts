@@ -38,7 +38,7 @@ describe('#1453 findCurrentIteration', () => {
     expect(findCurrentIteration([])).toBeNull()
   })
 
-  test('picks lowest iteration-order.N among open iterations', () => {
+  test('falls back to lowest iteration-order.N when no iter has in-flight children', () => {
     const b = iterationStory({
       number: 2,
       title: 'B',
@@ -57,7 +57,7 @@ describe('#1453 findCurrentIteration', () => {
     expect(findCurrentIteration([b, a, c])?.number).toBe(1)
   })
 
-  test('falls back to lowest issue number when no iteration-order labels', () => {
+  test('falls back to lowest issue number when no iteration-order labels + no in-flight', () => {
     const a = iterationStory({ number: 5, title: 'A' })
     const b = iterationStory({ number: 3, title: 'B' })
     expect(findCurrentIteration([a, b])?.number).toBe(3)
@@ -75,6 +75,115 @@ describe('#1453 findCurrentIteration', () => {
       labels: ['iteration', 'iteration-order.200']
     })
     expect(findCurrentIteration([closed, open])?.number).toBe(2)
+  })
+
+  test('#1453-rework: picks iter with in-flight children over iter with only-iceboxed children', () => {
+    const microscopium = iterationStory({
+      number: 1398,
+      title: 'Iteration Microscopium',
+      labels: ['iteration', 'iteration-order.100']
+    })
+    const pictor = iterationStory({
+      number: 1458,
+      title: 'Iteration Pictor',
+      labels: ['iteration', 'iteration-order.200']
+    })
+    const microscopiumIcebox = story({
+      number: 9001,
+      state: 'icebox',
+      iteration_membership: { iteration_number: 1398, position: 100 }
+    })
+    const pictorInProgress = story({
+      number: 9002,
+      state: 'in-progress',
+      iteration_membership: { iteration_number: 1458, position: 100 }
+    })
+    expect(
+      findCurrentIteration([microscopium, pictor, microscopiumIcebox, pictorInProgress])?.number
+    ).toBe(1458)
+  })
+
+  test('#1453-rework: tie-breaker = lowest iteration-order among multiple in-flight iters', () => {
+    const iterA = iterationStory({
+      number: 100,
+      title: 'A',
+      labels: ['iteration', 'iteration-order.200']
+    })
+    const iterB = iterationStory({
+      number: 200,
+      title: 'B',
+      labels: ['iteration', 'iteration-order.100']
+    })
+    const aMember = story({
+      number: 9001,
+      state: 'ready',
+      iteration_membership: { iteration_number: 100, position: 100 }
+    })
+    const bMember = story({
+      number: 9002,
+      state: 'in-progress',
+      iteration_membership: { iteration_number: 200, position: 100 }
+    })
+    expect(findCurrentIteration([iterA, iterB, aMember, bMember])?.number).toBe(200)
+  })
+
+  test('#1453-rework: in-flight states covered (ready / in-progress / desk-check / delivered / ready-for-accept / needs-fixes / rejected)', () => {
+    const inFlightStates = [
+      'ready',
+      'in-progress',
+      'desk-check',
+      'delivered',
+      'ready-for-accept',
+      'needs-fixes',
+      'rejected'
+    ] as const
+    for (const state of inFlightStates) {
+      const candidate = iterationStory({
+        number: 1,
+        title: 'A',
+        labels: ['iteration', 'iteration-order.200']
+      })
+      const other = iterationStory({
+        number: 2,
+        title: 'B',
+        labels: ['iteration', 'iteration-order.100']
+      })
+      const inFlightChild = story({
+        number: 9001,
+        state,
+        iteration_membership: { iteration_number: 1, position: 100 }
+      })
+      const otherIcebox = story({
+        number: 9002,
+        state: 'icebox',
+        iteration_membership: { iteration_number: 2, position: 100 }
+      })
+      expect(findCurrentIteration([candidate, other, inFlightChild, otherIcebox])?.number).toBe(1)
+    }
+  })
+
+  test('#1453-rework: terminal-state children (accepted / retired) do NOT promote iter as current', () => {
+    const a = iterationStory({
+      number: 1,
+      title: 'A',
+      labels: ['iteration', 'iteration-order.200']
+    })
+    const b = iterationStory({
+      number: 2,
+      title: 'B',
+      labels: ['iteration', 'iteration-order.100']
+    })
+    const acceptedChildOfA = story({
+      number: 9001,
+      state: 'accepted',
+      iteration_membership: { iteration_number: 1, position: 100 }
+    })
+    const retiredChildOfA = story({
+      number: 9002,
+      state: 'retired',
+      iteration_membership: { iteration_number: 1, position: 200 }
+    })
+    expect(findCurrentIteration([a, b, acceptedChildOfA, retiredChildOfA])?.number).toBe(2)
   })
 })
 
