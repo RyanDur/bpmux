@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
-import { useAnimatedUnmount } from '../hooks/useAnimatedUnmount'
 import { useCollapsibleSectionsStorage } from '../lib/useCollapsibleSectionsStorage'
 import type { ChatMessage, ConnectionStatus } from '../transport/types'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
@@ -103,8 +102,10 @@ const Board = ({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
   if (drilledStory !== null && drilledStory !== lastDrilledStory) {
     setLastDrilledStory(drilledStory)
   }
-  const drillAnim = useAnimatedUnmount(drilledStory !== null, 250)
   const renderedDrill = drilledStory ?? lastDrilledStory
+  const handleDrillUnmountReady = useCallback(() => {
+    if (drilledStory === null) setLastDrilledStory(null)
+  }, [drilledStory])
 
   const handleOpen = useCallback((number: number) => {
     setSelectedNumber(number)
@@ -233,7 +234,7 @@ const Board = ({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
         </section>
       )}
 
-      {drillAnim.mounted && renderedDrill !== null ? (
+      {renderedDrill !== null ? (
         <DrillIn
           story={renderedDrill}
           isOwner={isOwner}
@@ -241,10 +242,11 @@ const Board = ({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
           authToken={bridge?.authToken}
           usingMock={usingMock}
           messages={messages}
-          visible={drillAnim.visible}
+          visible={drilledStory !== null}
           focusTimeline={focusTimelineFor === renderedDrill.number}
           onBack={handleBack}
           onStoryMutated={handleStoryMutated}
+          onUnmountReady={handleDrillUnmountReady}
         />
       ) : (
         <section className="board-body" data-test="board-list">

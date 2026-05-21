@@ -59,7 +59,7 @@ export interface UseTimelineResult {
 // `tools_stories::{start_story, deliver_story, accept_story,
 // reject_story}`. Consumers that want the filing + closure anchors
 // get those from the synthetic `filed` + closed events directly.
-export function classifyEvent(e: TimelineEvent): TimelineGate | null {
+export const classifyEvent = (e: TimelineEvent): TimelineGate | null => {
   if (e.event === 'filed') return 'filed'
   if (e.event === 'closed') return 'closed'
   if (e.event === 'reopened') return 'reopened'
@@ -86,7 +86,7 @@ export function classifyEvent(e: TimelineEvent): TimelineGate | null {
 // a rework group id. The loop's start is the desk-check-fail itself;
 // the close is the next terminal gate. Events without a group stay
 // ungrouped (reworkGroup: undefined).
-function markReworkCycles(events: ClassifiedEvent[]): ClassifiedEvent[] {
+const markReworkCycles = (events: ClassifiedEvent[]): ClassifiedEvent[] => {
   const out = events.map((e) => ({ ...e }))
   let cycle = 0
   let inCycle = false
@@ -107,15 +107,20 @@ function markReworkCycles(events: ClassifiedEvent[]): ClassifiedEvent[] {
   return out
 }
 
-export function useTimeline({
+export const useTimeline = ({
   apiBase,
   authToken,
   storyNumber,
   messages
-}: UseTimelineArgs): UseTimelineResult {
+}: UseTimelineArgs): UseTimelineResult => {
   const [events, setEvents] = useState<ClassifiedEvent[] | null>(null)
-  const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
+  const loading =
+    events === null &&
+    error === null &&
+    storyNumber !== null &&
+    apiBase !== undefined &&
+    authToken !== undefined
   // Track message count across renders so we only refetch on new
   // board-invalidate markers (not on the hydration backfill). Mirrors
   // the pattern DrillIn uses for comment refetches.
@@ -123,14 +128,10 @@ export function useTimeline({
 
   const refetch = useCallback(async (): Promise<void> => {
     if (!apiBase || !authToken || storyNumber === null) return
-    setLoading(true)
     try {
-      const res = await fetch(
-        `${apiBase}/api/stories/${storyNumber}/timeline`,
-        {
-          headers: { Authorization: `Bearer ${authToken}` }
-        }
-      )
+      const res = await fetch(`${apiBase}/api/stories/${storyNumber}/timeline`, {
+        headers: { Authorization: `Bearer ${authToken}` }
+      })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const raw = (await res.json()) as TimelineEvent[]
       const classified: ClassifiedEvent[] = raw.map((r) => ({
@@ -141,27 +142,44 @@ export function useTimeline({
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
-    } finally {
-      setLoading(false)
     }
   }, [apiBase, authToken, storyNumber])
 
   useEffect(() => {
-    if (storyNumber === null) {
-      setEvents(null)
+    if (storyNumber === null || !apiBase || !authToken) {
       return
     }
-    void refetch()
-  }, [storyNumber, refetch])
+    const controller = new AbortController()
+    fetch(`${apiBase}/api/stories/${storyNumber}/timeline`, {
+      headers: { Authorization: `Bearer ${authToken}` },
+      signal: controller.signal
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        return (await res.json()) as TimelineEvent[]
+      })
+      .then((raw) => {
+        if (controller.signal.aborted) return
+        const classified: ClassifiedEvent[] = raw.map((r) => ({
+          raw: r,
+          gate: classifyEvent(r)
+        }))
+        setEvents(markReworkCycles(classified))
+        setError(null)
+      })
+      .catch((err: unknown) => {
+        if (controller.signal.aborted) return
+        setError(err instanceof Error ? err.message : String(err))
+      })
+    return () => controller.abort()
+  }, [storyNumber, apiBase, authToken])
 
   useEffect(() => {
     const prev = seenMessageCountRef.current
     seenMessageCountRef.current = messages.length
     if (messages.length <= prev) return
     const newMessages = messages.slice(prev)
-    const hasInvalidate = newMessages.some(
-      (m) => m.text === BOARD_INVALIDATE_MARKER
-    )
+    const hasInvalidate = newMessages.some((m) => m.text === BOARD_INVALIDATE_MARKER)
     if (hasInvalidate) void refetch()
   }, [messages, refetch])
 

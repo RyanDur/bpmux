@@ -44,6 +44,7 @@ interface Props {
   focusTimeline?: boolean
   onBack: () => void
   onStoryMutated: (story: BoardStory) => void
+  onUnmountReady?: () => void
 }
 
 const TOAST_MS = 4000
@@ -58,7 +59,8 @@ const DrillIn = ({
   visible,
   focusTimeline,
   onBack,
-  onStoryMutated
+  onStoryMutated,
+  onUnmountReady
 }: Props): React.JSX.Element => {
   const [mode, setMode] = useState<ActionMode>('idle')
   const [toast, setToast] = useState<string | null>(null)
@@ -104,6 +106,11 @@ const DrillIn = ({
       ref={articleRef}
       data-test="board-drill-in"
       aria-label={`Story ${story.number}: ${story.title}`}
+      onTransitionEnd={(event) => {
+        if (!visible && event.propertyName === 'opacity' && onUnmountReady) {
+          onUnmountReady()
+        }
+      }}
     >
       <header className="drill-in-header">
         <button
