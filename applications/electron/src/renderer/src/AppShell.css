@@ -17,6 +17,13 @@
   line-height: 1;
   -webkit-app-region: drag;
 
+  & .titlebar-app-state {
+    color: var(--fg-dim);
+    font-weight: 400;
+    font-size: 0.75rem;
+    transition: color var(--motion-duration-fast) var(--motion-ease-out);
+  }
+
   & .titlebar-app {
     display: inline-flex;
     align-items: center;
@@ -36,13 +43,6 @@
     &.titlebar-app--disconnected .titlebar-app-state {
       color: var(--accent-error);
     }
-  }
-
-  & .titlebar-app-state {
-    color: var(--fg-dim);
-    font-weight: 400;
-    font-size: 0.75rem;
-    transition: color var(--motion-duration-fast) var(--motion-ease-out);
   }
 
   & .titlebar-theme-toggle {
