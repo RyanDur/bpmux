@@ -2,6 +2,16 @@
  * the drill-in; the two share the same <aside> frame so chat doesn't
  * reflow when we swap. */
 
+/* Blocked-badge base styles. Color pairs with the awaiting-lane palette
+ * (same attention tier) but the inline BlockerGlyph shape + "blocked"
+ * label provide the primary differentiation. Outlined so it reads as
+ * "parked" rather than "solid done," and distinct from rework-red. */
+.story-badge--blocked {
+  color: var(--accent-warning);
+  border-color: var(--accent-warning);
+  background: transparent;
+}
+
 .board {
   flex: 0 0 360px;
   border-left: 1px solid var(--border-subtle);
@@ -60,7 +70,7 @@
     align-items: center;
     gap: var(--space-8);
     padding: var(--space-6) var(--space-16);
-    background: #3a2f1a;
+    background: rgb(58 47 26);
     border-bottom: 1px solid var(--border-subtle);
 
     & .board-error-text {
@@ -77,7 +87,7 @@
       font-size: 0.75rem;
 
       &:hover {
-        background: rgba(212, 161, 60, 0.15);
+        background: rgb(212 161 60 / 15%);
       }
 
       &:focus-visible {
@@ -140,6 +150,7 @@
   & .board-group-chevron {
     flex: 0 0 auto;
     width: 0.75rem;
+
     /* #1134: raised from 0.625rem (10px) to meet the team's 12px
      * a11y floor (real-backend.spec.ts a11y substrate test). */
     font-size: 0.75rem;
@@ -189,16 +200,19 @@
     gap: var(--space-4);
   }
 
+  & .board-story-title {
+    font-weight: 400;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    font-size: 0.8125rem;
+  }
+
   & .board-story-row {
     display: flex;
     align-items: stretch;
     gap: var(--space-2, 4px);
-
-    &[aria-current='true'] > .board-story-button {
-      background: var(--bg-highlighted);
-      box-shadow: inset 2px 0 0 var(--accent-brand);
-      color: var(--fg-primary);
-    }
 
     /* Drop-target indicators distinguish via SHAPE (dashed stroke +
      * dot glyph), not color alone — so colorblind users and low-
@@ -242,7 +256,7 @@
       }
     }
 
-    /* #333: hide the dragged row while the drag gesture is active so
+    /* rgb(51 51 51): hide the dragged row while the drag gesture is active so
      * the insertion-point indicator + the browser's ghost image
      * aren't competing for visual attention with the origin row.
      * Reappears naturally when React re-renders with the new order
@@ -253,7 +267,7 @@
   }
 
   & .board-story-button {
-    /* Flex (not grid) because #368 added a conditional StoryBadge
+    /* Flex (not grid) because rgb(51 102 136) added a conditional StoryBadge
      * sibling — the badge only renders for delivered / accepted /
      * rework rows. Grid's fixed column count would leave an empty
      * cell on rows without a badge, misaligning titles. Flex + min-
@@ -285,6 +299,26 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
+  }
+
+  /* Blocked row body dim — opacity preserves readability (text still
+   * meets AA contrast against the row background) while visually
+   * parking the row against its neighbors. The badge itself opts
+   * out of the dim via opacity:1 so the block signal remains the
+   * anchor. Selected + drop indicators override the dim so interaction
+   * affordances remain fully legible. */
+  & .board-story-row--blocked .board-story-button {
+    opacity: 0.7;
+  }
+
+  & .board-story-row--blocked .story-badge--blocked {
+    opacity: 1;
+  }
+
+  & .board-story-row[aria-current='true'] > .board-story-button {
+    background: var(--bg-highlighted);
+    box-shadow: inset 2px 0 0 var(--accent-brand);
+    color: var(--fg-primary);
   }
 
   & .board-story-number {
@@ -420,7 +454,7 @@
   }
 
   & .board-iteration-closed-badge {
-    color: var(--color-muted, #888);
+    color: var(--color-muted, rgb(136 136 136));
     font-weight: normal;
     font-style: italic;
     text-decoration: none;
@@ -428,13 +462,13 @@
 
   & .board-iteration-card[data-iteration-kind='unscheduled'] {
     background: transparent;
-    border: 1px dashed var(--color-muted, #888);
+    border: 1px dashed var(--color-muted, rgb(136 136 136));
     border-radius: var(--radius-2, 4px);
   }
 
   & .board-iteration-card[data-iteration-kind='unscheduled'] .story-glyph,
   & .board-iteration-card[data-iteration-kind='unscheduled'] .board-iteration-title {
-    color: var(--color-muted, #888);
+    color: var(--color-muted, rgb(136 136 136));
   }
 
   & .board-iteration-card[data-drag-rejected='true'] {
@@ -446,12 +480,15 @@
     100% {
       transform: translateX(0);
     }
+
     25% {
       transform: translateX(-4px);
     }
+
     50% {
       transform: translateX(4px);
     }
+
     75% {
       transform: translateX(-2px);
     }
@@ -493,7 +530,7 @@
   }
 
   & .board-iteration-marker--next {
-    background: var(--accent-info-bg, rgba(0, 191, 255, 0.12));
+    background: var(--accent-info-bg, rgb(0 191 255 / 12%));
     border-left: 3px solid var(--accent-info);
   }
 
@@ -798,15 +835,6 @@
     color: var(--fg-secondary);
   }
 
-  & .board-story-title {
-    font-weight: 400;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    min-width: 0;
-    font-size: 0.8125rem;
-  }
-
   & .board-story-row--skeleton {
     padding: var(--space-6) var(--space-16);
 
@@ -826,6 +854,7 @@
   100% {
     opacity: 0.6;
   }
+
   50% {
     opacity: 0.2;
   }
@@ -838,13 +867,13 @@
 }
 
 /* Narrow window: hide board below 800px wide (per spec). */
-@media (max-width: 800px) {
+@media (width <= 800px) {
   .board {
     display: none;
   }
 }
 
-/* #368 team-accept audit badge. Inline next to story number + type
+/* rgb(51 102 136) team-accept audit badge. Inline next to story number + type
  * glyph, left of the title. Shape + color vary by kind so color-
  * blind + monochrome-theme readers differentiate via the glyph ↻ vs
  * ✓ and the fill vs outline treatment, not just hue. */
@@ -855,10 +884,12 @@
   flex: 0 0 auto;
   padding: 0 var(--space-6);
   border-radius: 999px;
+
   /* #1134: raised from 0.6875rem (11px) to meet 12px a11y floor. */
   font-size: 0.75rem;
   line-height: 1.4;
   font-weight: 600;
+
   /* Base is plain text color; variants override. */
   color: var(--fg-primary);
   background: transparent;
@@ -883,17 +914,17 @@ button.story-badge {
   }
 }
 
-/* #376 3-axis differentiation for glance-speed reading:
+/* rgb(51 119 102) 3-axis differentiation for glance-speed reading:
  *   COLOR = state  (amber = awaiting, green = accepted, red = rework)
  *   SHAPE = lane   (outlined = owner, solid = team)
  *   TEXT  = both   (disambiguates SR users + reinforces scan)
  *
- * Before #376, awaiting-vs-accepted differed only on text + fill
+ * Before rgb(51 119 102), awaiting-vs-accepted differed only on text + fill
  * pattern; Ryan's 2026-04-22 observation ("same color, confusing at
  * a glance") was the shared-region-indicators multi-axis lesson
  * firing — color was silent on the state axis.
  *
- * Color palette rationale (Ryan's preference at #376 review):
+ * Color palette rationale (Ryan's preference at rgb(51 119 102) review):
  *   - Amber (awaiting): delivered rows carry a mild "needs your
  *     attention next" tint. Not alarming — amber, not red — but
  *     visually distinct from the completion-green so a glance
@@ -910,7 +941,7 @@ button.story-badge {
  * queued-for-attention rather than already-done. */
 
 /* Solid — team-accept lane (bug/chore). Contrast: white text on
- * the filled accent clears AA at 11px per #347 a11y substrate
+ * the filled accent clears AA at 11px per rgb(51 68 119) a11y substrate
  * (font-weight: 600 helps). Default color is success-green for the
  * accepted state; delivered-state override below flips it amber. */
 .story-badge--team-accepted {
@@ -955,34 +986,6 @@ button.story-badge {
   border-color: var(--accent-error);
 }
 
-/* #390 blocked — "not actionable for you right now." Amber-family
- * color pairs with the awaiting-lane palette (same attention tier)
- * but the inline BlockerGlyph shape + "blocked" label provide the
- * primary differentiation. Outlined so it reads as "parked" rather
- * than "solid done," and distinct from rework-red to avoid reading
- * as an urgent fix cycle — blocked is waiting, not broken. */
-.story-badge--blocked {
-  color: var(--accent-warning);
-  border-color: var(--accent-warning);
-  background: transparent;
-}
-
-/* Blocked row body dim. Opacity preserves readability (text still
- * meets AA contrast against the row background) while visually
- * parking the row against its neighbors — owner can skim past
- * blocked rows during an acceptance walk without hiding them. The
- * badge itself opts out of the dim via opacity:1 so the block
- * signal remains the anchor.
- *
- * Selected + drop indicators override the dim so interaction
- * affordances remain fully legible. */
-.board-story-row--blocked .board-story-button {
-  opacity: 0.7;
-}
-
-.board-story-row--blocked .story-badge--blocked {
-  opacity: 1;
-}
 
 /* #1339 Scenario 4: grip-handle is the sole drag-initiator on
  * StoryRow + iteration members + iteration <summary>. cursor: grab
@@ -997,7 +1000,7 @@ button.story-badge {
   width: 16px;
   flex-shrink: 0;
   cursor: grab;
-  color: var(--fg-muted, #888);
+  color: var(--fg-muted, rgb(136 136 136));
   padding: 0 2px;
 }
 
@@ -1006,12 +1009,12 @@ button.story-badge {
   cursor: grabbing;
 }
 
-.board-story-grip:hover .board-story-grip-icon,
-.board-iteration-grip:hover .board-story-grip-icon {
-  color: var(--fg-primary);
-}
-
 .board-story-grip-icon {
   fill: currentColor;
   pointer-events: none;
+}
+
+.board-story-grip:hover .board-story-grip-icon,
+.board-iteration-grip:hover .board-story-grip-icon {
+  color: var(--fg-primary);
 }
