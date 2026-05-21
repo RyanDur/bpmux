@@ -345,7 +345,7 @@
 
     &.message-row--first,
     &.message-row--grouped {
-      & article {
+      & > article {
         display: grid;
 
         /* minmax(0, 1fr) — the explicit shrinkable form. `1fr`
@@ -365,7 +365,7 @@
       }
     }
 
-    &.message-row--first article {
+    &.message-row--first > article {
       & .message-avatar-wrap {
         grid-column: 1;
         grid-row: 1 / span 2;
@@ -383,7 +383,7 @@
     }
 
     &.message-row--grouped {
-      & article {
+      & > article {
         /* Tighter vertical gap between grouped continuations than
          * between groups — reinforces the "one speaker" feel without
          * requiring extra chrome. */
