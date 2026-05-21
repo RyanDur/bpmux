@@ -89,9 +89,18 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
 
   test('Scenario 2: default tab is Now on first render (no persisted state)', () => {
     const { getByTestId } = render(<BoardTabs {...buildProps([])} />)
-    expect(getByTestId('board-tab-now').getAttribute('aria-selected')).toBe('true')
-    expect(getByTestId('board-tab-plan').getAttribute('aria-selected')).toBe('false')
-    expect(getByTestId('board-tab-done').getAttribute('aria-selected')).toBe('false')
+    const nowRadio = getByTestId('board-tab-now').querySelector(
+      'input[type="radio"]'
+    ) as HTMLInputElement
+    const planRadio = getByTestId('board-tab-plan').querySelector(
+      'input[type="radio"]'
+    ) as HTMLInputElement
+    const doneRadio = getByTestId('board-tab-done').querySelector(
+      'input[type="radio"]'
+    ) as HTMLInputElement
+    expect(nowRadio.checked).toBe(true)
+    expect(planRadio.checked).toBe(false)
+    expect(doneRadio.checked).toBe(false)
   })
 
   test('Scenario 3: Now tab anchor displays theme name (Iteration prefix stripped) for current iteration', () => {
@@ -183,8 +192,14 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
   test('Scenario 6: clicking Plan tab activates it; previously-active Now becomes inactive', () => {
     const { getByTestId } = render(<BoardTabs {...buildProps([])} />)
     fireEvent.click(getByTestId('board-tab-plan'))
-    expect(getByTestId('board-tab-plan').getAttribute('aria-selected')).toBe('true')
-    expect(getByTestId('board-tab-now').getAttribute('aria-selected')).toBe('false')
+    const planRadio = getByTestId('board-tab-plan').querySelector(
+      'input[type="radio"]'
+    ) as HTMLInputElement
+    const nowRadio = getByTestId('board-tab-now').querySelector(
+      'input[type="radio"]'
+    ) as HTMLInputElement
+    expect(planRadio.checked).toBe(true)
+    expect(nowRadio.checked).toBe(false)
     expect(getByTestId('board-tabpanel-plan').hasAttribute('hidden')).toBe(false)
     expect(getByTestId('board-tabpanel-now').hasAttribute('hidden')).toBe(true)
   })
@@ -195,7 +210,10 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
     fireEvent.click(first.getByTestId('board-tab-done'))
     first.unmount()
     const second = render(<BoardTabs {...props} />)
-    expect(second.getByTestId('board-tab-done').getAttribute('aria-selected')).toBe('true')
+    const doneRadio = second
+      .getByTestId('board-tab-done')
+      .querySelector('input[type="radio"]') as HTMLInputElement
+    expect(doneRadio.checked).toBe(true)
   })
 
   test('Scenario 10: section discrimination — ready stories appear only in Now panel', () => {

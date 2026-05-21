@@ -21,76 +21,80 @@ const Harness = ({ initial = 'one' as Id }: { initial?: Id }): React.JSX.Element
       tabs={TABS}
       activeId={active}
       onActiveChange={setActive}
-      renderPanel={(id) => <span data-test={`panel-content-${id}`}>{id}</span>}
+      renderPanel={(id) => <output data-test={`panel-content-${id}`}>{id}</output>}
     />
   )
 }
 
-describe('#1453 Tabs primitive — ARIA + keyboard + click', () => {
-  test('renders role=tablist with 3 role=tab buttons + aria-selected on active', () => {
+describe('#1453 Tabs primitive — native HTML5 radio-group (Ryan-canon supersession)', () => {
+  test('renders fieldset (role=group) with 3 native radios + label-text', () => {
     const { getByRole, getAllByRole } = render(<Harness />)
-    const tablist = getByRole('tablist', { name: 'Test tabs' })
-    expect(tablist).toBeTruthy()
-    const tabs = getAllByRole('tab')
-    expect(tabs.length).toBe(3)
-    expect(tabs[0].getAttribute('aria-selected')).toBe('true')
-    expect(tabs[1].getAttribute('aria-selected')).toBe('false')
-    expect(tabs[2].getAttribute('aria-selected')).toBe('false')
+    const group = getByRole('group', { name: 'Test tabs' })
+    expect(group).toBeTruthy()
+    const radios = getAllByRole('radio')
+    expect(radios.length).toBe(3)
+    expect(radios.every((r) => r.getAttribute('type') === 'radio')).toBe(true)
+    expect(radios.every((r) => r.tagName.toLowerCase() === 'input')).toBe(true)
   })
 
-  test('active tab has tabIndex=0; inactive tabs have tabIndex=-1', () => {
+  test('radios share the same name attribute (single radio-group)', () => {
     const { getAllByRole } = render(<Harness />)
-    const tabs = getAllByRole('tab')
-    expect(tabs[0].getAttribute('tabindex')).toBe('0')
-    expect(tabs[1].getAttribute('tabindex')).toBe('-1')
-    expect(tabs[2].getAttribute('tabindex')).toBe('-1')
+    const radios = getAllByRole('radio') as HTMLInputElement[]
+    const groupName = radios[0].name
+    expect(groupName).not.toBe('')
+    expect(radios.every((r) => r.name === groupName)).toBe(true)
   })
 
-  test('panels have role=tabpanel + aria-labelledby + hidden on inactive', () => {
+  test('active tab radio is checked; others are not', () => {
+    const { getAllByRole } = render(<Harness initial="two" />)
+    const radios = getAllByRole('radio') as HTMLInputElement[]
+    expect(radios[0].checked).toBe(false)
+    expect(radios[1].checked).toBe(true)
+    expect(radios[2].checked).toBe(false)
+  })
+
+  test('panels render as <article> with hidden on inactive panels', () => {
+    const { container } = render(<Harness />)
+    const articles = container.querySelectorAll('article.tabs-panel')
+    expect(articles.length).toBe(3)
+    expect((articles[0] as HTMLElement).hidden).toBe(false)
+    expect((articles[1] as HTMLElement).hidden).toBe(true)
+    expect((articles[2] as HTMLElement).hidden).toBe(true)
+  })
+
+  test('click on label activates the matching radio (label-wraps-radio implicit association)', () => {
+    const { getByTestId, getAllByRole } = render(<Harness />)
+    const radios = getAllByRole('radio') as HTMLInputElement[]
+    expect(radios[0].checked).toBe(true)
+    fireEvent.click(getByTestId('tab-two'))
+    expect(radios[0].checked).toBe(false)
+    expect(radios[1].checked).toBe(true)
+  })
+
+  test('changing radio fires onActiveChange', () => {
     const { getAllByRole } = render(<Harness />)
-    const panels = getAllByRole('tabpanel', { hidden: true })
-    expect(panels.length).toBe(3)
-    expect(panels[0].hasAttribute('hidden')).toBe(false)
-    expect(panels[1].hasAttribute('hidden')).toBe(true)
-    expect(panels[2].hasAttribute('hidden')).toBe(true)
-    expect(panels[0].getAttribute('aria-labelledby')).toBe('tab-one')
+    const radios = getAllByRole('radio') as HTMLInputElement[]
+    fireEvent.click(radios[2])
+    expect(radios[2].checked).toBe(true)
   })
 
-  test('click on tab activates it', () => {
-    const { getByTestId } = render(<Harness />)
-    const two = getByTestId('tab-two')
-    fireEvent.click(two)
-    expect(two.getAttribute('aria-selected')).toBe('true')
-    expect(getByTestId('tab-one').getAttribute('aria-selected')).toBe('false')
+  test('no <div> or <span> in rendered tree (canon: feedback_html5_semantic_no_divs_spans)', () => {
+    const { container } = render(<Harness />)
+    expect(container.querySelectorAll('div').length).toBe(0)
+    expect(container.querySelectorAll('span').length).toBe(0)
   })
 
-  test('ArrowRight cycles forward; ArrowLeft cycles back; wraps around', () => {
-    const { getByRole, getAllByRole } = render(<Harness />)
-    const tablist = getByRole('tablist')
-    fireEvent.keyDown(tablist, { key: 'ArrowRight' })
-    expect(getAllByRole('tab')[1].getAttribute('aria-selected')).toBe('true')
-    fireEvent.keyDown(tablist, { key: 'ArrowRight' })
-    expect(getAllByRole('tab')[2].getAttribute('aria-selected')).toBe('true')
-    fireEvent.keyDown(tablist, { key: 'ArrowRight' })
-    expect(getAllByRole('tab')[0].getAttribute('aria-selected')).toBe('true')
-    fireEvent.keyDown(tablist, { key: 'ArrowLeft' })
-    expect(getAllByRole('tab')[2].getAttribute('aria-selected')).toBe('true')
+  test('no ARIA role overlay on div (canon: feedback_first_rule_of_aria)', () => {
+    const { queryByRole, queryAllByRole } = render(<Harness />)
+    expect(queryByRole('tablist')).toBeNull()
+    expect(queryAllByRole('tab')).toEqual([])
+    expect(queryAllByRole('tabpanel', { hidden: true })).toEqual([])
   })
 
-  test('Home jumps to first; End jumps to last', () => {
-    const { getByRole, getAllByRole } = render(<Harness initial="two" />)
-    const tablist = getByRole('tablist')
-    fireEvent.keyDown(tablist, { key: 'End' })
-    expect(getAllByRole('tab')[2].getAttribute('aria-selected')).toBe('true')
-    fireEvent.keyDown(tablist, { key: 'Home' })
-    expect(getAllByRole('tab')[0].getAttribute('aria-selected')).toBe('true')
-  })
-
-  test('Other keys do not change active tab', () => {
-    const { getByRole, getAllByRole } = render(<Harness />)
-    const tablist = getByRole('tablist')
-    fireEvent.keyDown(tablist, { key: 'a' })
-    fireEvent.keyDown(tablist, { key: 'Enter' })
-    expect(getAllByRole('tab')[0].getAttribute('aria-selected')).toBe('true')
+  test('legend carries the accessible name for the radio-group (visually hidden via CSS)', () => {
+    const { container } = render(<Harness />)
+    const legend = container.querySelector('legend')
+    expect(legend).not.toBeNull()
+    expect(legend?.textContent).toBe('Test tabs')
   })
 })
