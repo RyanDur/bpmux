@@ -124,6 +124,7 @@ mod reopen_on_state_transition_tests {
         let ws_tx = super::connected_ws_sink_for_test().await;
         let mut args = serde_json::Map::new();
         args.insert("number".into(), serde_json::json!(7130));
+        args.insert("acceptor".into(), serde_json::json!("owner"));
         args.insert("would_file_bug".into(), serde_json::json!(false));
         let result =
             handle_pass_desk_check(&args, "designer:claude-code", &ws_tx, Some(&orch), None).await;

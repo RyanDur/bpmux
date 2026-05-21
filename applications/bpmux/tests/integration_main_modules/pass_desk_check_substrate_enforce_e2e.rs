@@ -42,7 +42,7 @@ fn dev_firing_pass_desk_check_returns_workflow_role_not_allowed() {
         let err = dev
             .call_tool(
                 "pass_desk_check",
-                serde_json::json!({"number": target_number, "would_file_bug": false}),
+                serde_json::json!({"number": target_number, "acceptor": "owner", "would_file_bug": false}),
             )
             .await
             .expect_err("dev should be substrate-refused");
@@ -84,7 +84,7 @@ fn designer_firing_pass_desk_check_without_broadcast_returns_structured_409() {
         let err = designer
             .call_tool(
                 "pass_desk_check",
-                serde_json::json!({"number": target_number, "would_file_bug": false}),
+                serde_json::json!({"number": target_number, "acceptor": "owner", "would_file_bug": false}),
             )
             .await
             .expect_err("pass_desk_check without designer-evidence should be refused");
@@ -134,7 +134,7 @@ fn designer_firing_pass_desk_check_with_broadcast_succeeds() {
         let result = designer
             .call_tool(
                 "pass_desk_check",
-                serde_json::json!({"number": target_number, "would_file_bug": false}),
+                serde_json::json!({"number": target_number, "acceptor": "owner", "would_file_bug": false}),
             )
             .await
             .expect("pass_desk_check with designer-evidence should succeed");

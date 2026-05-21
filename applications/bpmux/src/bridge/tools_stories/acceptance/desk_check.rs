@@ -5,8 +5,63 @@ use super::helpers::{
 };
 use crate::bridge::tools::{WsSink, ws_send};
 use crate::bridge::tools_stories::helpers::{
-    LABEL_DELIVERED, ensure_story_in_canonical_store, reap_workflow_labels, role_from_name,
+    LABEL_AWAITING_OWNER, LABEL_AWAITING_TEAM, LABEL_DELIVERED, ensure_story_in_canonical_store,
+    reap_workflow_labels, role_from_name,
 };
+
+#[derive(Clone, Copy)]
+enum AcceptorClass {
+    Team,
+    Owner,
+}
+
+impl AcceptorClass {
+    fn label(self) -> &'static str {
+        match self {
+            AcceptorClass::Team => LABEL_AWAITING_TEAM,
+            AcceptorClass::Owner => LABEL_AWAITING_OWNER,
+        }
+    }
+
+    fn opposite_label(self) -> &'static str {
+        match self {
+            AcceptorClass::Team => LABEL_AWAITING_OWNER,
+            AcceptorClass::Owner => LABEL_AWAITING_TEAM,
+        }
+    }
+
+    fn parse(raw: &str) -> Option<Self> {
+        match raw {
+            "team" => Some(AcceptorClass::Team),
+            "owner" => Some(AcceptorClass::Owner),
+            _ => None,
+        }
+    }
+}
+
+fn parse_acceptor_arg(
+    args: &serde_json::Map<String, serde_json::Value>,
+) -> Result<AcceptorClass, String> {
+    let raw = args.get("acceptor").and_then(|v| v.as_str()).ok_or_else(|| {
+        serde_json::json!({
+            "kind": "workflow-gate-mismatch",
+            "attempted_transition": "pass-desk-check",
+            "missing_evidence": ["acceptor-class"],
+            "hint": "pass_desk_check requires acceptor: \"team\" | \"owner\" — designer voices acceptor-class at gate-fire per Ryan-canon 2026-05-20 03:08:51 UTC + feedback_designer_voices_acceptor_class_at_pass_desk_check",
+        })
+        .to_string()
+    })?;
+    AcceptorClass::parse(raw.trim()).ok_or_else(|| {
+        serde_json::json!({
+            "kind": "workflow-gate-mismatch",
+            "attempted_transition": "pass-desk-check",
+            "missing_evidence": ["acceptor-class"],
+            "observed": raw,
+            "allowed": ["team", "owner"],
+        })
+        .to_string()
+    })
+}
 use crate::bridge::tools_stories::signals::{
     broadcast_board_invalidate, build_fail_desk_check_signal, build_pass_desk_check_signals,
     classify_for_pass_desk_check,
@@ -27,6 +82,7 @@ pub(crate) async fn handle_pass_desk_check(
         .get("number")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'number' argument")?;
+    let acceptor = parse_acceptor_arg(args)?;
     let bypass = verify_bug_question_or_bypass(args, BugGate::PassDeskCheck)?;
     let r_opt = refresh;
     let story_opt = r_opt.and_then(|r| r.store().story(number));
@@ -84,6 +140,25 @@ pub(crate) async fn handle_pass_desk_check(
             .map_err(|e| format!("#{number} reopen enqueue failed: {e}"))?;
         }
         reap_workflow_labels(r.as_ref(), number, &meta, LABEL_DELIVERED)?;
+        let labels_after_reap = r.story(number).map(|s| s.raw_labels).unwrap_or_default();
+        let opposite = acceptor.opposite_label();
+        if labels_after_reap.iter().any(|l| l == opposite) {
+            r.mutate_sync(crate::board::BoardEvent::TagRemoved {
+                meta: meta.clone(),
+                number,
+                label: opposite.to_string(),
+            })
+            .map_err(|e| format!("#{number} {opposite}-remove enqueue failed: {e}"))?;
+        }
+        let acceptor_label = acceptor.label();
+        if !labels_after_reap.iter().any(|l| l == acceptor_label) {
+            r.mutate_sync(crate::board::BoardEvent::TagAdded {
+                meta: meta.clone(),
+                number,
+                label: acceptor_label.to_string(),
+            })
+            .map_err(|e| format!("#{number} {acceptor_label}-add enqueue failed: {e}"))?;
+        }
         r.mutate_sync(crate::board::BoardEvent::GateCommentAppended {
             meta: meta.clone(),
             number,

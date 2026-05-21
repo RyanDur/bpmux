@@ -53,7 +53,7 @@ test.describe('human-side E2E #476 — direct-action — drill-in reject form', 
       await seedTeamVerdicts(rpc, 1, ['designer'])
       const passResp = await rpc(
         'pass_desk_check',
-        { number: 1, would_file_bug: false },
+        { number: 1, acceptor: 'owner', would_file_bug: false },
         'designer'
       )
       expect(passResp.status).toBe(200)
@@ -127,7 +127,7 @@ test.describe('human-side E2E #476 — direct-action — drill-in reject form', 
         verified_observation: 'Drove deliver so designer can pass desk-check next.'
       })
       await seedTeamVerdicts(rpc, 1, ['designer'])
-      await rpc('pass_desk_check', { number: 1, would_file_bug: false }, 'designer')
+      await rpc('pass_desk_check', { number: 1, acceptor: 'owner', would_file_bug: false }, 'designer')
       await win.reload()
       await expect(win.locator('[data-test="board-region"]')).toBeVisible()
 

@@ -201,7 +201,7 @@ fn pass_desk_check_signal_routes_to_ryan_not_dev() {
         let status = designer
             .call_tool(
                 "pass_desk_check",
-                serde_json::json!({"number": 203, "would_file_bug": false}),
+                serde_json::json!({"number": 203, "acceptor": "owner", "would_file_bug": false}),
             )
             .await
             .expect("pass_desk_check signal should succeed");
@@ -305,7 +305,7 @@ fn pass_desk_check_rejects_non_designer_callers() {
         let err = dev
             .call_tool(
                 "pass_desk_check",
-                serde_json::json!({"number": 203, "would_file_bug": false}),
+                serde_json::json!({"number": 203, "acceptor": "owner", "would_file_bug": false}),
             )
             .await
             .expect_err("dev should be rejected from pass_desk_check");

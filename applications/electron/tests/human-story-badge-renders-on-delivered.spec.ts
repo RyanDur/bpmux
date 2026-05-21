@@ -54,7 +54,7 @@ test.describe('human-side E2E #476 — read-class — story badge', () => {
       await seedTeamVerdicts(rpc, 1, ['designer'])
       const passResp = await rpc(
         'pass_desk_check',
-        { number: 1, would_file_bug: false },
+        { number: 1, acceptor: 'owner', would_file_bug: false },
         'designer'
       )
       expect(passResp.status).toBe(200)

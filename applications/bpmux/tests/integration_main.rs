@@ -109,6 +109,8 @@ mod move_reorder_substrate_enforce_e2e;
 mod move_story_e2e;
 #[path = "integration_main_modules/move_story_retired_class_e2e.rs"]
 mod move_story_retired_class_e2e;
+#[path = "integration_main_modules/pass_desk_check_acceptor_arg_e2e.rs"]
+mod pass_desk_check_acceptor_arg_e2e;
 #[path = "integration_main_modules/pass_desk_check_e2e.rs"]
 mod pass_desk_check_e2e;
 #[path = "integration_main_modules/pass_desk_check_substrate_enforce_e2e.rs"]

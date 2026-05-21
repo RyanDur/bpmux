@@ -210,6 +210,7 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
     let ws_tx = connected_ws_sink_for_test().await;
     let mut args = serde_json::Map::new();
     args.insert("number".into(), serde_json::json!(201));
+    args.insert("acceptor".into(), serde_json::json!("owner"));
     args.insert("would_file_bug".into(), serde_json::json!(false));
     let result = handle_pass_desk_check(
         &args,
@@ -230,7 +231,11 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
     );
 
     let pushed = adapter.pushed_events();
-    assert_eq!(pushed.len(), 3, "3 events expected post-#1156: {pushed:?}");
+    assert_eq!(
+        pushed.len(),
+        4,
+        "4 events expected post-#1459 (reap + acceptor-label + gate + state): {pushed:?}"
+    );
     let reap_labels: Vec<&str> = pushed[..1]
         .iter()
         .filter_map(|e| match e {
@@ -247,6 +252,12 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
     );
     assert!(matches!(
         &pushed[1],
+        BoardEvent::TagAdded {
+            number: 201, label, ..
+        } if label == "awaiting owner"
+    ));
+    assert!(matches!(
+        &pushed[2],
         BoardEvent::GateCommentAppended {
             number: 201,
             gate: Gate::PassDeskCheck,
@@ -255,7 +266,7 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
         }
     ));
     assert!(matches!(
-        &pushed[2],
+        &pushed[3],
         BoardEvent::StateTransitioned {
             number: 201,
             new_state: StoryState::Delivered,

@@ -8,6 +8,11 @@ pub fn pass_desk_check_tool(description: &'static str) -> Tool {
                 "type": "integer",
                 "description": "Issue number that passed desk-check"
             },
+            "acceptor": {
+                "type": "string",
+                "enum": ["team", "owner"],
+                "description": "Acceptor-class for the story at desk-check terminal. \"team\" routes to PM-aggregated team-verdict acceptance; \"owner\" routes to Ryan-USE-axis acceptance. Per Ryan-canon 2026-05-20 03:08:51 UTC + `feedback_designer_voices_acceptor_class_at_pass_desk_check` — illegal-states-unrepresentable at acceptor-axis per Wlaschin Designing-with-Types. Handler atomically applies `awaiting team` / `awaiting owner` label BEFORE gate transition."
+            },
             "would_file_bug": {
                 "type": "boolean",
                 "description": "Bug-question test: would you file a bug about this story if you passed it as-is? If true, pass_desk_check blocks and routes you to fail_desk_check instead (per `feedback_bug_question_test_at_desk_check`)."
@@ -21,7 +26,7 @@ pub fn pass_desk_check_tool(description: &'static str) -> Tool {
                 "description": "Required when force=true and would_file_bug=true. Explicit justification recorded in gate-comment per `feedback_external_catch_over_self_catch`."
             }
         },
-        "required": ["number", "would_file_bug"]
+        "required": ["number", "acceptor", "would_file_bug"]
     });
     Tool::new(
         "pass_desk_check",

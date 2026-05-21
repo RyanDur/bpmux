@@ -14,6 +14,9 @@ pub(crate) const LABEL_IN_PROGRESS: &str = "in progress";
 pub(crate) const LABEL_READY: &str = "ready";
 pub(crate) const LABEL_READY_FOR_ACCEPT: &str = "ready for accept";
 
+pub(crate) const LABEL_AWAITING_TEAM: &str = "awaiting team";
+pub(crate) const LABEL_AWAITING_OWNER: &str = "awaiting owner";
+
 pub(crate) const ALL_STATE_LABELS: &[&str] = &[
     "icebox",
     LABEL_READY,

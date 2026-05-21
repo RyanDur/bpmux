@@ -128,7 +128,7 @@ async fn accept_force_bypass_requires_bypass_reason() {
 #[tokio::test]
 async fn pass_desk_check_requires_would_file_bug_arg() {
     let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
-    let args = serde_json::json!({"number": 201});
+    let args = serde_json::json!({"number": 201, "acceptor": "owner"});
     let err = handle_pass_desk_check(
         args.as_object().unwrap(),
         "designer:claude-code",
@@ -151,7 +151,7 @@ async fn pass_desk_check_requires_would_file_bug_arg() {
 #[tokio::test]
 async fn pass_desk_check_blocks_when_would_file_bug_true_without_force() {
     let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
-    let args = serde_json::json!({"number": 201, "would_file_bug": true});
+    let args = serde_json::json!({"number": 201, "acceptor": "owner", "would_file_bug": true});
     let err = handle_pass_desk_check(
         args.as_object().unwrap(),
         "designer:claude-code",
