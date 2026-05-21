@@ -131,7 +131,7 @@ const MessageList = ({
 
   const reversed = buildReversed(visible)
   return (
-    <div className="message-list-wrap" data-test="message-list-wrap">
+    <section className="message-list-wrap" data-test="message-list-wrap">
       {isLoadingOlder && (
         <output className="loading-older-pill" data-test="loading-older-pill" aria-live="polite">
           loading older messages…
@@ -166,7 +166,7 @@ const MessageList = ({
           {newCount === 1 ? '1 new message ↓' : `${newCount} new messages ↓`}
         </button>
       )}
-    </div>
+    </section>
   )
 }
 

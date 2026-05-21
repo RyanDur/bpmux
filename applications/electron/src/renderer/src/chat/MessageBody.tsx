@@ -49,12 +49,7 @@ const MessageBody = ({ text, knownRoles, onMention }: Props): React.JSX.Element 
     replaceMentionsInChildren(children, mentionRoles, onMention, mentionKeyPrefix)
 
   return (
-    // #381: `.markdown-body` scope restores Meyer-reset-stripped
-    // defaults on inline (strong / em / code) + block (h1-h6, ul, ol,
-    // blockquote) elements via `revert`. Applied via MessageBody.css
-    // so every consumer (chat message, drill-in story body, drill-
-    // in comment body) inherits the restoration uniformly.
-    <div className="markdown-body">
+    <article className="markdown-body">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeHighlight]}
@@ -87,7 +82,7 @@ const MessageBody = ({ text, knownRoles, onMention }: Props): React.JSX.Element 
       >
         {text}
       </ReactMarkdown>
-    </div>
+    </article>
   )
 }
 

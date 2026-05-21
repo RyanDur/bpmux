@@ -28,21 +28,18 @@ const UnfurlCards = ({ text, apiBase, authToken }: Props): React.JSX.Element | n
   for (const url of urls) {
     const data = unfurls.get(url)
     if (data === undefined) {
-      // Loading placeholder (AC7): tiny skeleton so message layout
-      // is stable even while the server fetches metadata.
       cards.push(
-        <div
+        <article
           key={url}
           className="unfurl-card unfurl-card--loading"
           data-test={`unfurl-loading-${url}`}
           aria-label={`loading preview for ${url}`}
         >
-          <span className="unfurl-card-url">{url}</span>
-        </div>
+          <small className="unfurl-card-url">{url}</small>
+        </article>
       )
       continue
     }
-    // AC5: no card if nothing useful came back.
     if (!hasAnyUnfurlableField(data)) continue
     cards.push(
       <a
@@ -53,7 +50,7 @@ const UnfurlCards = ({ text, apiBase, authToken }: Props): React.JSX.Element | n
         target="_blank"
         rel="noreferrer noopener"
       >
-        <div className="unfurl-card-body">
+        <article className="unfurl-card-body">
           {data.site_name && (
             <header className="unfurl-card-meta">
               <small className="unfurl-card-site">{data.site_name}</small>
@@ -61,16 +58,16 @@ const UnfurlCards = ({ text, apiBase, authToken }: Props): React.JSX.Element | n
           )}
           {data.title && <strong className="unfurl-card-title">{data.title}</strong>}
           {data.description && <p className="unfurl-card-description">{data.description}</p>}
-        </div>
+        </article>
       </a>
     )
   }
 
   if (cards.length === 0) return null
   return (
-    <div className="unfurl-cards" data-test="unfurl-cards">
+    <section className="unfurl-cards" data-test="unfurl-cards">
       {cards}
-    </div>
+    </section>
   )
 }
 

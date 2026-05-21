@@ -34,7 +34,7 @@ interface PickerProps {
  * outside dismiss (#355 AC5).
  */
 const Picker = ({ anchorRef, onPick, onClose }: PickerProps): React.JSX.Element => {
-  const pickerRef = useRef<HTMLDivElement | null>(null)
+  const pickerRef = useRef<HTMLUListElement | null>(null)
   const [position, setPosition] = useState<PickerPosition>('above')
 
   // Measure anchor position on mount to decide above-vs-below.
@@ -77,7 +77,7 @@ const Picker = ({ anchorRef, onPick, onClose }: PickerProps): React.JSX.Element 
   }, [anchorRef, onClose])
 
   return (
-    <div
+    <ul
       ref={pickerRef}
       className={`reaction-picker reaction-picker--${position}`}
       data-test="reaction-picker"
@@ -86,20 +86,22 @@ const Picker = ({ anchorRef, onPick, onClose }: PickerProps): React.JSX.Element 
       aria-label="Pick a reaction"
     >
       {EMOJI_PALETTE.map((e) => (
-        <button
-          key={e}
-          type="button"
-          className="reaction-picker-item"
-          data-test={`reaction-picker-${e}`}
-          aria-label={`React with ${e}`}
-          onClick={() => {
-            onPick(e)
-          }}
-        >
-          {e}
-        </button>
+        <li key={e} role="none">
+          <button
+            type="button"
+            className="reaction-picker-item"
+            data-test={`reaction-picker-${e}`}
+            aria-label={`React with ${e}`}
+            role="menuitem"
+            onClick={() => {
+              onPick(e)
+            }}
+          >
+            {e}
+          </button>
+        </li>
       ))}
-    </div>
+    </ul>
   )
 }
 
@@ -119,7 +121,7 @@ const Reactions = ({ reactions, viewer, onToggle }: Props): React.JSX.Element | 
   }
 
   return (
-    <div className="message-reactions" data-test="message-reactions">
+    <footer className="message-reactions" data-test="message-reactions">
       {pills.map((r) => {
         const reacted = r.users.includes(viewer)
         return (
@@ -133,12 +135,12 @@ const Reactions = ({ reactions, viewer, onToggle }: Props): React.JSX.Element | 
             aria-pressed={reacted}
             onClick={() => onToggle(r.emoji)}
           >
-            <span aria-hidden="true">{r.emoji}</span>
+            <i aria-hidden="true">{r.emoji}</i>
             <small>{r.count}</small>
           </button>
         )
       })}
-      <span className="reaction-add-anchor">
+      <aside className="reaction-add-anchor">
         <button
           ref={addButtonRef}
           type="button"
@@ -162,8 +164,8 @@ const Reactions = ({ reactions, viewer, onToggle }: Props): React.JSX.Element | 
             onClose={() => setPickerOpen(false)}
           />
         )}
-      </span>
-    </div>
+      </aside>
+    </footer>
   )
 }
 
@@ -180,7 +182,7 @@ export const ReactionAddButton = ({ onToggle }: AddOnlyProps): React.JSX.Element
   const [open, setOpen] = useState<boolean>(false)
   const buttonRef = useRef<HTMLButtonElement | null>(null)
   return (
-    <span className="reaction-add-container">
+    <aside className="reaction-add-container">
       <button
         ref={buttonRef}
         type="button"
@@ -204,7 +206,7 @@ export const ReactionAddButton = ({ onToggle }: AddOnlyProps): React.JSX.Element
           onClose={() => setOpen(false)}
         />
       )}
-    </span>
+    </aside>
   )
 }
 

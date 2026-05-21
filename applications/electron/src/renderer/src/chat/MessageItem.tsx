@@ -55,7 +55,7 @@ const MessageItem = ({
   return (
     <li key={m.id} className={rowClasses} data-test="message-row">
       <article>
-        <span className="sr-only">{sender}:</span>
+        <i className="sr-only">{sender}:</i>
         {!grouped &&
           (() => {
             const label = sender.charAt(0).toUpperCase() + sender.slice(1)
@@ -63,7 +63,7 @@ const MessageItem = ({
             const tooltipId = `avatar-info-${m.id}`
             const roleColor = roleColorFor(sender)
             return (
-              <span className="message-avatar-wrap">
+              <aside className="message-avatar-wrap">
                 <button
                   type="button"
                   className={avatarClasses(sender)}
@@ -78,7 +78,7 @@ const MessageItem = ({
                 >
                   {sender.charAt(0).toUpperCase()}
                 </button>
-                <span
+                <aside
                   id={tooltipId}
                   role="tooltip"
                   className="avatar-tooltip"
@@ -91,8 +91,8 @@ const MessageItem = ({
                   >
                     {status}
                   </small>
-                </span>
-              </span>
+                </aside>
+              </aside>
             )
           })()}
         {!grouped && (

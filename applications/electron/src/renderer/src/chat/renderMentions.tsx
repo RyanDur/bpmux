@@ -52,33 +52,31 @@ export const splitMentions = (
     const handleClick = (): void => {
       onMention?.(role)
     }
-    // #401: pill color comes from the runtime `roleColorFor` palette
-    // so any role (ryan/dev/pm/designer AND future ops/qa/...) gets a
-    // distinct identity-tint without a per-role CSS rule.
     const pillColor = roleColorFor(role)
     out.push(
-      <span
-        key={key}
-        className="message-mention"
-        data-role={role}
-        data-test="message-mention"
-        style={{ color: pillColor.color, background: pillColor.background }}
-        role={onMention ? 'button' : undefined}
-        tabIndex={onMention ? 0 : undefined}
-        onClick={onMention ? handleClick : undefined}
-        onKeyDown={
-          onMention
-            ? (e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  handleClick()
-                }
-              }
-            : undefined
-        }
-      >
-        @{role}
-      </span>
+      onMention ? (
+        <button
+          key={key}
+          type="button"
+          className="message-mention"
+          data-role={role}
+          data-test="message-mention"
+          style={{ color: pillColor.color, background: pillColor.background }}
+          onClick={handleClick}
+        >
+          @{role}
+        </button>
+      ) : (
+        <b
+          key={key}
+          className="message-mention"
+          data-role={role}
+          data-test="message-mention"
+          style={{ color: pillColor.color, background: pillColor.background }}
+        >
+          @{role}
+        </b>
+      )
     )
     lastIndex = end
   }

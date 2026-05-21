@@ -316,10 +316,10 @@ const Input = ({ onSend, disabled, placeholder, channelKey }: Props): React.JSX.
           <small>
             {search.matchIndex === null && search.query ? (
               <>
-                <span className="chat-input-search-fail-glyph" aria-hidden="true">
+                <i className="chat-input-search-fail-glyph" aria-hidden="true">
                   ✗
-                </span>{' '}
-                failing i-search: {search.query}
+                </i>
+                {` failing i-search: ${search.query}`}
               </>
             ) : (
               `i-search: ${search.query}`
