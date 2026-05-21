@@ -30,6 +30,7 @@ pub(crate) async fn handle_reject_story(
                 attempted_transition: "reject".to_string(),
                 class: crate::workflow::GateClass::None,
                 missing_evidence: vec!["reason-cite".to_string()],
+                verdict_state: None,
             }
             .as_json_string()
         })?

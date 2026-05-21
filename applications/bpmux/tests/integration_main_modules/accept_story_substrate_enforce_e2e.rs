@@ -221,7 +221,7 @@ fn pm_fires_team_verifiable_without_designer_verdict_returns_structured_409() {
             "rejection cites the gate-class; got {err}"
         );
         assert!(
-            err.contains("\"missing_evidence\":[\"designer-verdict\"]"),
+            err.contains("\"missing_evidence\":[\"designer-verdict-missing\"]"),
             "rejection cites the missing-evidence list; got {err}"
         );
 
@@ -278,7 +278,7 @@ fn pm_fires_team_verifiable_without_dev_verdict_returns_structured_409() {
             .expect_err("accept_story should be refused without dev-verdict");
 
         assert!(
-            err.contains("\"missing_evidence\":[\"dev-verdict\"]"),
+            err.contains("\"missing_evidence\":[\"dev-verdict-missing\"]"),
             "rejection cites dev-verdict missing; got {err}"
         );
 

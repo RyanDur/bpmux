@@ -165,7 +165,10 @@ fn evidence_check_fails_when_designer_verdict_missing() {
             class,
             ..
         } => {
-            assert_eq!(missing_evidence, vec!["designer-verdict".to_string()]);
+            assert_eq!(
+                missing_evidence,
+                vec!["designer-verdict-missing".to_string()]
+            );
             assert_eq!(class, GateClass::TeamVerifiable);
         }
         other => panic!("expected GateMismatch, got {other:?}"),
@@ -182,7 +185,7 @@ fn evidence_check_fails_when_dev_verdict_missing() {
         missing_evidence, ..
     } = err
     {
-        assert_eq!(missing_evidence, vec!["dev-verdict".to_string()]);
+        assert_eq!(missing_evidence, vec!["dev-verdict-missing".to_string()]);
     } else {
         panic!("expected GateMismatch");
     }
@@ -199,7 +202,10 @@ fn evidence_check_fails_when_both_verdicts_missing() {
     {
         assert_eq!(
             missing_evidence,
-            vec!["designer-verdict".to_string(), "dev-verdict".to_string()]
+            vec![
+                "designer-verdict-missing".to_string(),
+                "dev-verdict-missing".to_string()
+            ]
         );
     } else {
         panic!("expected GateMismatch");
@@ -216,7 +222,10 @@ fn evidence_check_fails_when_designer_verdict_is_stale_beyond_window() {
         missing_evidence, ..
     } = err
     {
-        assert_eq!(missing_evidence, vec!["designer-verdict".to_string()]);
+        assert_eq!(
+            missing_evidence,
+            vec!["designer-verdict-expired".to_string()]
+        );
     } else {
         panic!("expected GateMismatch");
     }
@@ -236,6 +245,7 @@ fn gate_mismatch_json_includes_class_and_missing_evidence_fields() {
         attempted_transition: "accept".into(),
         class: GateClass::TeamVerifiable,
         missing_evidence: vec!["designer-verdict".into()],
+        verdict_state: None,
     };
     let json = serde_json::to_value(&err).unwrap();
     assert_eq!(json["kind"], "workflow-gate-mismatch");
@@ -243,6 +253,74 @@ fn gate_mismatch_json_includes_class_and_missing_evidence_fields() {
     assert_eq!(json["attempted_transition"], "accept");
     assert_eq!(json["class"], "team-verifiable");
     assert_eq!(json["missing_evidence"][0], "designer-verdict");
+}
+
+#[test]
+fn evidence_check_surfaces_verdict_state_per_role_when_missing_or_stale_1461() {
+    let now = Utc::now();
+    let messages = vec![msg("designer", 60), msg("dev", 800)];
+    let err = check_evidence_present(&accept_team_verifiable(), "pm", &messages, now)
+        .expect_err("dev stale");
+    match err {
+        GateError::GateMismatch {
+            missing_evidence,
+            verdict_state,
+            ..
+        } => {
+            assert_eq!(missing_evidence, vec!["dev-verdict-expired".to_string()]);
+            let state = verdict_state.expect("verdict_state populated");
+            let designer = state.get("designer").expect("designer entry");
+            assert!(designer.cast_at.is_some(), "designer cast_at populated");
+            assert!(designer.expired_at.is_some(), "designer expired_at derived");
+            assert!(
+                designer.stale_age_secs.is_none(),
+                "designer verdict in-window: stale_age_secs absent"
+            );
+            let dev = state.get("dev").expect("dev entry");
+            assert!(dev.cast_at.is_some(), "dev cast_at populated");
+            assert!(
+                dev.stale_age_secs.is_some_and(|secs| secs > 0),
+                "dev verdict stale: stale_age_secs positive"
+            );
+        }
+        other => panic!("expected GateMismatch, got {other:?}"),
+    }
+}
+
+#[test]
+fn evidence_check_distinguishes_missing_from_stale_in_verdict_state_1461() {
+    let now = Utc::now();
+    let messages = vec![msg("designer", 9999)];
+    let err = check_evidence_present(&accept_team_verifiable(), "pm", &messages, now)
+        .expect_err("designer stale + dev missing");
+    match err {
+        GateError::GateMismatch {
+            missing_evidence,
+            verdict_state,
+            ..
+        } => {
+            assert!(missing_evidence.contains(&"designer-verdict-expired".to_string()));
+            assert!(missing_evidence.contains(&"dev-verdict-missing".to_string()));
+            let state = verdict_state.expect("verdict_state populated");
+            assert!(
+                state.get("designer").and_then(|v| v.cast_at).is_some(),
+                "designer cast_at populated (stale)"
+            );
+            assert!(
+                state.get("dev").and_then(|v| v.cast_at).is_none(),
+                "dev cast_at null (missing)"
+            );
+        }
+        other => panic!("expected GateMismatch, got {other:?}"),
+    }
+}
+
+#[test]
+fn evidence_check_no_verdict_state_when_class_is_none_or_no_required_roles_1461() {
+    let now = Utc::now();
+    let owner_walk = accept_owner_walk();
+    let result = check_evidence_present(&owner_walk, "ryan", &[], now);
+    assert!(result.is_ok());
 }
 
 #[test]

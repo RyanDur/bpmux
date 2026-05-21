@@ -1,8 +1,16 @@
 use chrono::{DateTime, Utc};
 use serde::Serialize;
+use std::collections::BTreeMap;
 use thiserror::Error;
 
 use super::config::{GateClass, Transition, WorkflowConfig};
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct VerdictState {
+    pub cast_at: Option<DateTime<Utc>>,
+    pub expired_at: Option<DateTime<Utc>>,
+    pub stale_age_secs: Option<i64>,
+}
 
 #[derive(Debug, Error, Clone, PartialEq, Eq, Serialize)]
 #[serde(tag = "kind", rename_all = "kebab-case")]
@@ -30,6 +38,8 @@ pub enum GateError {
         attempted_transition: String,
         class: GateClass,
         missing_evidence: Vec<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        verdict_state: Option<BTreeMap<String, VerdictState>>,
     },
     #[error(
         "workflow-target-state-invalid: story is {current_state}, expected {expected_state} for '{attempted_transition}'"
@@ -109,13 +119,32 @@ pub fn check_evidence_present(
     let window = chrono::Duration::seconds(transition.evidence_window_seconds as i64);
     let cutoff = now - window;
     let mut missing: Vec<String> = Vec::new();
+    let mut verdict_state: BTreeMap<String, VerdictState> = BTreeMap::new();
     for required in &transition.required_evidence_roles {
-        let has = messages
+        let latest_for_role = messages
             .iter()
-            .any(|m| m.from_role == *required && m.ts >= cutoff);
-        if !has {
-            missing.push(format!("{required}-verdict"));
+            .filter(|m| m.from_role == *required)
+            .max_by_key(|m| m.ts)
+            .map(|m| m.ts);
+        let has_in_window = latest_for_role.is_some_and(|ts| ts >= cutoff);
+        if !has_in_window {
+            match latest_for_role {
+                None => missing.push(format!("{required}-verdict-missing")),
+                Some(_) => missing.push(format!("{required}-verdict-expired")),
+            }
         }
+        let expired_at = latest_for_role.map(|ts| ts + window);
+        let stale_age_secs = expired_at
+            .filter(|exp| *exp < now)
+            .map(|exp| (now - exp).num_seconds());
+        verdict_state.insert(
+            required.clone(),
+            VerdictState {
+                cast_at: latest_for_role,
+                expired_at,
+                stale_age_secs,
+            },
+        );
     }
     if missing.is_empty() {
         Ok(())
@@ -125,6 +154,7 @@ pub fn check_evidence_present(
             attempted_transition: transition.id.clone(),
             class: transition.gate_class,
             missing_evidence: missing,
+            verdict_state: Some(verdict_state),
         })
     }
 }

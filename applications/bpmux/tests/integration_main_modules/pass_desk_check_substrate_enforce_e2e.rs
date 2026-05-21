@@ -94,7 +94,7 @@ fn designer_firing_pass_desk_check_without_broadcast_returns_structured_409() {
             "rejection cites structured kind; got {err}"
         );
         assert!(
-            err.contains("\"missing_evidence\":[\"designer-verdict\"]"),
+            err.contains("\"missing_evidence\":[\"designer-verdict-missing\"]"),
             "rejection cites missing designer-verdict evidence; got {err}"
         );
 
