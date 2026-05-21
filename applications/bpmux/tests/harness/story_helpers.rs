@@ -64,8 +64,19 @@ pub async fn drive_to_delivered(
 }
 
 pub async fn seed_team_verifiable_evidence(bpmux: &super::pty::TestBpmux, story_number: u64) {
+    let pm = TestBridge::connect(bpmux, "pm").await;
     let designer = TestBridge::connect(bpmux, "designer").await;
     let dev = TestBridge::connect(bpmux, "dev").await;
+    pm.call_tool(
+        "label_story",
+        serde_json::json!({
+            "number": story_number,
+            "label": "awaiting team",
+            "rationale": "test-harness seed: acceptor-axis = team for team-verifiable acceptance"
+        }),
+    )
+    .await
+    .expect("pm label_story awaiting team");
     designer
         .call_tool(
             "submit_verdict",
@@ -87,6 +98,7 @@ pub async fn seed_team_verifiable_evidence(bpmux: &super::pty::TestBpmux, story_
     )
     .await
     .expect("dev submit_verdict");
+    pm.close().await;
     designer.close().await;
     dev.close().await;
 }
@@ -96,8 +108,20 @@ pub async fn seed_team_verifiable_evidence_with_mock_gh(
     mock_gh_base_url: &str,
     story_number: u64,
 ) {
+    let pm = TestBridge::connect_with_mock_gh(bpmux, "pm", mock_gh_base_url).await;
     let designer = TestBridge::connect_with_mock_gh(bpmux, "designer", mock_gh_base_url).await;
     let dev = TestBridge::connect_with_mock_gh(bpmux, "dev", mock_gh_base_url).await;
+    pm.call_tool(
+        "label_story",
+        serde_json::json!({
+            "number": story_number,
+            "label": "awaiting team",
+            "rationale": "test-harness seed: acceptor-axis = team for team-verifiable acceptance"
+        }),
+    )
+    .await
+    .expect("pm label_story awaiting team");
+    pm.close().await;
     designer
         .call_tool(
             "submit_verdict",

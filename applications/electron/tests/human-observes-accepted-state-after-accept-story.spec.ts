@@ -61,6 +61,17 @@ test.describe('human-side E2E #476 — observation-class — accept_story', () =
 
       await seedTeamVerdicts(rpc, 1, ['designer', 'dev'])
 
+      const labelResp = await rpc(
+        'label_story',
+        {
+          number: 1,
+          label: 'awaiting team',
+          rationale: '#1460 test fixture: acceptor=team for team-verifiable accept'
+        },
+        'pm'
+      )
+      expect(labelResp.status).toBe(200)
+
       const acceptResp = await rpc('accept_story', { number: 1, would_file_bug: false }, 'pm')
       expect(acceptResp.status).toBe(200)
 

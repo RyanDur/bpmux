@@ -40,7 +40,9 @@ pub(crate) async fn handle_reject_story(
     let story_opt = r.store().story(number);
     let class = story_opt
         .as_ref()
-        .map(|s| crate::workflow::gate_class_from_labels(&s.raw_labels))
+        .map(|s| {
+            crate::workflow::gate_class_from_labels_and_story_type(&s.raw_labels, s.story_type)
+        })
         .unwrap_or(crate::workflow::GateClass::TeamVerifiable);
     let transition = crate::workflow::resolve_transition(workflow, "reject", class)
         .map_err(|e| e.as_json_string())?;

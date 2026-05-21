@@ -376,6 +376,17 @@ fn accept_story_allows_pm_and_broadcasts_role_attribution() {
         .await
         .expect("dev submit_verdict");
 
+        pm.call_tool(
+            "label_story",
+            serde_json::json!({
+                "number": 213,
+                "label": "awaiting team",
+                "rationale": "test fixture: acceptor=team for team-verifiable accept"
+            }),
+        )
+        .await
+        .expect("pm label_story awaiting team");
+
         let result = pm
             .call_tool(
                 "accept_story",

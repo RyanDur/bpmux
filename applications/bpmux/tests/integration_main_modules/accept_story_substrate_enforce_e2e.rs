@@ -90,6 +90,17 @@ fn dev_firing_accept_returns_structured_409_with_workflow_role_not_allowed_kind(
         )
         .await;
 
+        pm.call_tool(
+            "label_story",
+            serde_json::json!({
+                "number": target_number,
+                "label": "awaiting team",
+                "rationale": "test fixture: acceptor=team to assert allowed_roles=[ryan,pm]"
+            }),
+        )
+        .await
+        .expect("pm label_story awaiting team");
+
         let err = dev
             .call_tool(
                 "accept_story",
@@ -171,6 +182,17 @@ fn pm_fires_team_verifiable_without_designer_verdict_returns_structured_409() {
         )
         .await;
 
+        pm.call_tool(
+            "label_story",
+            serde_json::json!({
+                "number": target_number,
+                "label": "awaiting team",
+                "rationale": "test fixture: acceptor=team"
+            }),
+        )
+        .await
+        .expect("pm label_story awaiting team");
+
         dev.call_tool(
             "submit_verdict",
             serde_json::json!({
@@ -223,6 +245,17 @@ fn pm_fires_team_verifiable_without_dev_verdict_returns_structured_409() {
             "reject if PM-fire accept without dev-verdict isn't substrate-refused",
         )
         .await;
+
+        pm.call_tool(
+            "label_story",
+            serde_json::json!({
+                "number": target_number,
+                "label": "awaiting team",
+                "rationale": "test fixture: acceptor=team"
+            }),
+        )
+        .await
+        .expect("pm label_story awaiting team");
 
         designer
             .call_tool(

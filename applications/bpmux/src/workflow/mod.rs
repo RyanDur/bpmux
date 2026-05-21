@@ -10,6 +10,7 @@ mod loader_tests;
 
 pub use config::{
     GateClass, Role, Section, State, Transition, WorkflowConfig, gate_class_from_labels,
+    gate_class_from_labels_and_story_type,
 };
 pub use gate::{
     CiSnapshot, EvidenceMessage, GateError, PriorFire, check_ci_green, check_evidence_present,

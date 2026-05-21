@@ -52,7 +52,7 @@ mod verdict_substrate_integration_1407 {
             Utc.with_ymd_and_hms(2026, 5, 18, 0, 0, 0).unwrap(),
             "dev".to_string(),
         );
-        story.raw_labels = vec!["delivered".to_string()];
+        story.raw_labels = vec!["delivered".to_string(), "awaiting team".to_string()];
         story
     }
 
