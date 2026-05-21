@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import Iteration from './Iteration'
-import { iterationLabel } from './labelSchema'
+import { iterationLabel, parentIterationLabel } from './labelSchema'
 import type { BoardStory } from './types'
 
 const iterationStory = (overrides: Partial<BoardStory>): BoardStory => ({
@@ -78,5 +78,64 @@ describe('#1413 Iteration — renders regardless of member-count or open/closed 
   test('returns null when no iterations and no loose stories (existing behavior preserved)', () => {
     const html = renderToStaticMarkup(<Iteration stories={[]} onOpen={() => {}} />)
     expect(html).toBe('')
+  })
+})
+
+describe('#1492 Iteration — union-reads canonical-relation parent-iteration labels (sister to #1399 substrate-data)', () => {
+  test('Scenario 5 (fix-anchor): canonical-relation-only members surface in count', () => {
+    const reticulum = iterationStory({
+      number: 1464,
+      title: 'Iteration Reticulum',
+      gh_state: 'open'
+    })
+    const m1 = memberStory({
+      number: 9501,
+      labels: ['Feature', parentIterationLabel(1464, 100)]
+    })
+    const m2 = memberStory({
+      number: 9502,
+      labels: ['Feature', parentIterationLabel(1464, 200)]
+    })
+    const html = renderToStaticMarkup(<Iteration stories={[reticulum, m1, m2]} onOpen={() => {}} />)
+    expect(html).toContain('data-test="board-iteration-1464"')
+    expect(html).toContain('Iteration Reticulum')
+    expect(html).toContain('(2)')
+  })
+
+  test('Scenario 6 (regression-anchor): mixed legacy + canonical-relation members union + dedupe', () => {
+    const caelum = iterationStory({ number: 1491, title: 'Iteration Caelum', gh_state: 'open' })
+    const legacyOnly = memberStory({
+      number: 9601,
+      labels: ['Feature', iterationLabel('Caelum', 100)]
+    })
+    const canonicalOnly = memberStory({
+      number: 9602,
+      labels: ['Feature', parentIterationLabel(1491, 200)]
+    })
+    const both = memberStory({
+      number: 9603,
+      labels: ['Feature', iterationLabel('Caelum', 300), parentIterationLabel(1491, 300)]
+    })
+    const html = renderToStaticMarkup(
+      <Iteration stories={[caelum, legacyOnly, canonicalOnly, both]} onOpen={() => {}} />
+    )
+    expect(html).toContain('data-test="board-iteration-1491"')
+    expect(html).toContain('Iteration Caelum')
+    expect(html).toContain('(3)')
+  })
+
+  test('Scenario 7 (drill-in-axis): canonical-relation members enumerated in member-list', () => {
+    const microscopium = iterationStory({
+      number: 1398,
+      title: 'Iteration Microscopium',
+      gh_state: 'open'
+    })
+    const m1 = memberStory({
+      number: 9701,
+      title: 'canonical-member-one',
+      labels: ['Feature', parentIterationLabel(1398, 100)]
+    })
+    const html = renderToStaticMarkup(<Iteration stories={[microscopium, m1]} onOpen={() => {}} />)
+    expect(html).toContain('canonical-member-one')
   })
 })

@@ -1,6 +1,7 @@
 import {
   parseIterationLabel,
   parseIterationOrderPosition,
+  parseParentIterationLabel,
   parseUnscheduledPosition
 } from './labelSchema'
 import { postStoryLabels } from '../api/labelsClient'
@@ -37,6 +38,17 @@ export const positionInIteration = (story: BoardStory, themeName: string): numbe
   for (const label of story.labels) {
     const parsed = parseIterationLabel(label)
     if (parsed?.name === themeName) return parsed.position
+  }
+  return null
+}
+
+export const positionInParentIteration = (
+  story: BoardStory,
+  iterationNumber: number
+): number | null => {
+  for (const label of story.labels) {
+    const parsed = parseParentIterationLabel(label)
+    if (parsed?.iterationNumber === iterationNumber) return parsed.position
   }
   return null
 }

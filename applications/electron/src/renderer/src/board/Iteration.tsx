@@ -41,7 +41,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
         {sortedIterations.map((iteration) => {
           const key = String(iteration.number)
           const themeName = themeNameFromTitle(iteration.title)
-          const members = getMembersFor(themeName)
+          const members = getMembersFor(themeName, iteration.number)
           const defaultOpen = iteration.gh_state !== 'closed'
           const open = collapse.isOpen(key, defaultOpen)
           return (
