@@ -139,7 +139,7 @@
     position: relative;
   }
 
-  & .message-row article {
+  & .message-row > article {
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
