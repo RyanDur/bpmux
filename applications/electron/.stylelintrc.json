@@ -1,0 +1,27 @@
+{
+  "extends": ["stylelint-config-standard"],
+  "rules": {
+    "declaration-property-unit-allowed-list": {
+      "font-size": ["rem"],
+      "/^border(-(top|right|bottom|left|inline|block))?(-width)?$/": ["px"],
+      "/^border-(top|bottom|left|right|inline|block)?-?(left|right|top|bottom|start|end|inline|block)?-radius$/": ["px"],
+      "outline-width": ["px"],
+      "outline-offset": ["px"]
+    },
+    "color-no-hex": true,
+    "color-named": "never",
+    "function-no-unknown": null,
+    "no-empty-source": null,
+    "selector-class-pattern": null,
+    "custom-property-pattern": null,
+    "value-keyword-case": null,
+    "media-feature-name-no-unknown": null,
+    "at-rule-no-unknown": null
+  },
+  "ignoreFiles": [
+    "node_modules/**",
+    "out/**",
+    "dist/**",
+    "build/**"
+  ]
+}

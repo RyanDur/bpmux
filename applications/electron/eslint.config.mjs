@@ -6,12 +6,14 @@ import eslintPluginReactHooks from 'eslint-plugin-react-hooks'
 import eslintPluginReactRefresh from 'eslint-plugin-react-refresh'
 import eslintPluginTestingLibrary from 'eslint-plugin-testing-library'
 import eslintPluginJestDom from 'eslint-plugin-jest-dom'
+import eslintPluginJsxA11y from 'eslint-plugin-jsx-a11y'
 
 export default defineConfig(
   { ignores: ['**/node_modules', '**/dist', '**/out'] },
   tseslint.configs.recommended,
   eslintPluginReact.configs.flat.recommended,
   eslintPluginReact.configs.flat['jsx-runtime'],
+  eslintPluginJsxA11y.flatConfigs.recommended,
   {
     settings: {
       react: {
@@ -29,7 +31,13 @@ export default defineConfig(
       ...eslintPluginReactHooks.configs.recommended.rules,
       ...eslintPluginReactRefresh.configs.vite.rules,
       'func-style': ['error', 'expression', { allowArrowFunctions: true }],
-      'prefer-arrow-callback': 'error'
+      'prefer-arrow-callback': 'error',
+      'prefer-const': 'error',
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }
+      ]
     }
   },
   {
@@ -39,11 +47,7 @@ export default defineConfig(
     }
   },
   {
-    files: [
-      '**/*.test.{ts,tsx}',
-      '**/__tests__/**/*.{ts,tsx}',
-      'tests/**/*.{ts,tsx}'
-    ],
+    files: ['**/*.test.{ts,tsx}', '**/__tests__/**/*.{ts,tsx}', 'tests/**/*.{ts,tsx}'],
     plugins: {
       'testing-library': eslintPluginTestingLibrary,
       'jest-dom': eslintPluginJestDom
