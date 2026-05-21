@@ -7,11 +7,11 @@ export type SelfUpdateRestartDecision =
   | { action: 'respawn'; restartsInWindow: number }
   | { action: 'halt'; restartsInWindow: number }
 
-export function applySelfUpdateRestartPolicy(
+export const applySelfUpdateRestartPolicy = (
   recentAt: number[],
   now: number,
   policy: SelfUpdateRestartPolicy
-): SelfUpdateRestartDecision {
+): SelfUpdateRestartDecision => {
   while (recentAt.length > 0 && now - recentAt[0]! > policy.windowMs) {
     recentAt.shift()
   }

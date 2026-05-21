@@ -42,7 +42,7 @@ let authToken = ''
 let shuttingDown = false
 const recentRestartsAt: number[] = []
 
-function resolveBinaryPath(): string {
+const resolveBinaryPath = (): string => {
   if (app.isPackaged) {
     // NOTE: packaged layout is not wired for phase-1a. We'll drop the binary
     // in process.resourcesPath/bpmux when electron-builder integration lands.
@@ -69,7 +69,7 @@ function resolveBinaryPath(): string {
   return debugPath
 }
 
-function resolveAuthTokenPath(): string {
+const resolveAuthTokenPath = (): string => {
   const override = process.env['BPMUX_AUTH_TOKEN_PATH']
   if (override && override.length > 0) {
     return override
@@ -89,7 +89,7 @@ function resolveAuthTokenPath(): string {
  * path (the publish step) — that mtime bump is what fires the
  * watcher.
  */
-function resolveInstalledBinaryPath(): string {
+const resolveInstalledBinaryPath = (): string => {
   const override = process.env['BPMUX_BINARY_WATCH_PATH']
   if (override && override.length > 0) {
     return override
@@ -97,7 +97,7 @@ function resolveInstalledBinaryPath(): string {
   return join(homedir(), '.bpmux', 'installed', 'bpmux')
 }
 
-function stageBinaryAtInstalledPath(sourceBinary: string): string {
+const stageBinaryAtInstalledPath = (sourceBinary: string): string => {
   const installed = resolveInstalledBinaryPath()
   const installedDir = join(installed, '..')
   if (!existsSync(installedDir)) {
@@ -109,7 +109,7 @@ function stageBinaryAtInstalledPath(sourceBinary: string): string {
   return installed
 }
 
-function checkBackendReady(): Promise<boolean> {
+const checkBackendReady = (): Promise<boolean> => {
   return new Promise((resolve) => {
     // Use the dedicated /healthz liveness route (unauth, constant-size)
     // instead of /api/messages, which returns the full session log and
@@ -137,7 +137,7 @@ function checkBackendReady(): Promise<boolean> {
   })
 }
 
-function checkPortInUse(): Promise<boolean> {
+const checkPortInUse = (): Promise<boolean> => {
   // If something is already listening on 4117, we'd see a successful connect.
   return new Promise((resolve) => {
     const req = http.request(
@@ -162,7 +162,7 @@ function checkPortInUse(): Promise<boolean> {
   })
 }
 
-async function waitForBackendReady(): Promise<void> {
+const waitForBackendReady = async (): Promise<void> => {
   const start = Date.now()
   while (Date.now() - start < READY_TIMEOUT_MS) {
     if (await checkBackendReady()) return
@@ -173,13 +173,13 @@ async function waitForBackendReady(): Promise<void> {
   )
 }
 
-function readAuthToken(): string {
+const readAuthToken = (): string => {
   const tokenPath = resolveAuthTokenPath()
   const raw = readFileSync(tokenPath, 'utf8')
   return raw.trim()
 }
 
-async function spawnBackend(): Promise<void> {
+const spawnBackend = async (): Promise<void> => {
   console.log(`[bpmux] checking port ${BACKEND_PORT}...`)
   if (await checkPortInUse()) {
     console.log(`[bpmux] backend already running on ${BACKEND_PORT} — adopting`)
@@ -238,7 +238,7 @@ async function spawnBackend(): Promise<void> {
   console.log(`[bpmux] backend ready on ${API_BASE}`)
 }
 
-function handleSelfUpdateRestart(): void {
+const handleSelfUpdateRestart = (): void => {
   const decision = applySelfUpdateRestartPolicy(recentRestartsAt, Date.now(), {
     windowMs: RESTART_LOOP_GUARD_WINDOW_MS,
     maxRestarts: RESTART_LOOP_GUARD_MAX
@@ -266,7 +266,7 @@ function handleSelfUpdateRestart(): void {
 }
 
 
-function killBackend(): void {
+const killBackend = (): void => {
   const child = backendProcess
   if (!child || child.killed) return
   shuttingDown = true
@@ -286,7 +286,7 @@ function killBackend(): void {
   }, SIGKILL_FALLBACK_MS)
 }
 
-function createWindow(): void {
+const createWindow = (): void => {
   const mainWindow = new BrowserWindow({
     width: 900,
     height: 670,
