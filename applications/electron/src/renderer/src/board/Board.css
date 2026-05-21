@@ -475,6 +475,65 @@
     animation: bpmux-drag-rejected-shake 0.3s ease-in-out;
   }
 
+  & .board-iteration-card[data-current-iteration='true'] > .board-iteration-summary {
+    border-left: 2px solid var(--accent-brand);
+
+    & .board-iteration-title {
+      color: var(--fg-primary);
+      font-weight: 700;
+    }
+  }
+
+  & .board-iterations-section {
+    display: flex;
+    flex-direction: column;
+    margin-top: var(--space-8);
+  }
+
+  & .board-iterations-section-summary {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-4) var(--space-8);
+    background: transparent;
+    cursor: pointer;
+    color: var(--fg-secondary);
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    & .board-iterations-section-label {
+      font-weight: 600;
+    }
+
+    & .board-iterations-section-count {
+      color: var(--fg-dim);
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  & .board-iterations-section-chevron {
+    width: 8px;
+    height: 8px;
+    border-right: 1.5px solid currentcolor;
+    border-bottom: 1.5px solid currentcolor;
+    transform: rotate(-45deg);
+    transition: transform var(--motion-duration-fast) var(--motion-ease-out);
+  }
+
+  & .board-iterations-section[open] > .board-iterations-section-summary
+    .board-iterations-section-chevron {
+    transform: rotate(45deg);
+  }
+
+  & .board-iterations-section--closed .board-iteration-card[data-closed='true'] {
+    opacity: 0.6;
+  }
+
   @keyframes bpmux-drag-rejected-shake {
     0%,
     100% {

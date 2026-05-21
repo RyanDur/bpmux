@@ -167,3 +167,90 @@ describe('#1492 Iteration — reads canonical-relation iteration_membership type
     expect(caelumChunk).toContain('(1)')
   })
 })
+
+describe('#1454 Iteration list scaling — section-grouped (Active+Planned / Closed)', () => {
+  test('Scenario 1: renders 2 sub-sections with canonical labels + counts', () => {
+    const active1 = iterationStory({
+      number: 9001,
+      title: 'Iteration ActiveA',
+      gh_state: 'open'
+    })
+    const active2 = iterationStory({
+      number: 9002,
+      title: 'Iteration ActiveB',
+      gh_state: 'open'
+    })
+    const closed1 = iterationStory({
+      number: 9003,
+      title: 'Iteration ClosedA',
+      gh_state: 'closed'
+    })
+    const html = renderToStaticMarkup(
+      <Iteration stories={[active1, active2, closed1]} onOpen={() => {}} />
+    )
+    expect(html).toContain('data-test="board-iterations-section-active-planned"')
+    expect(html).toContain('data-test="board-iterations-section-closed"')
+    expect(html).toContain('Active + Planned')
+    expect(html).toContain('Closed')
+    const activeCountIdx = html.indexOf('board-iterations-section-active-planned-count')
+    const closedCountIdx = html.indexOf('board-iterations-section-closed-count')
+    expect(html.slice(activeCountIdx, activeCountIdx + 200)).toContain('(2)')
+    expect(html.slice(closedCountIdx, closedCountIdx + 200)).toContain('(1)')
+  })
+
+  test('Scenario 2: Active+Planned section open by default; Closed collapsed', () => {
+    const active = iterationStory({ number: 9001, title: 'Iteration A', gh_state: 'open' })
+    const closed = iterationStory({ number: 9002, title: 'Iteration B', gh_state: 'closed' })
+    const html = renderToStaticMarkup(<Iteration stories={[active, closed]} onOpen={() => {}} />)
+    const activeMatch = html.match(
+      /data-test="board-iterations-section-active-planned"[^>]*open[^>]*>/
+    )
+    const closedMatch = html.match(/data-test="board-iterations-section-closed"([^>]*)>/)
+    expect(activeMatch).toBeTruthy()
+    expect(closedMatch?.[1]).not.toContain(' open')
+  })
+
+  test('Scenario 4: each section count reflects partition counts', () => {
+    const a = iterationStory({ number: 9001, title: 'A', gh_state: 'open' })
+    const b = iterationStory({ number: 9002, title: 'B', gh_state: 'open' })
+    const c = iterationStory({ number: 9003, title: 'C', gh_state: 'open' })
+    const x = iterationStory({ number: 9101, title: 'X', gh_state: 'closed' })
+    const y = iterationStory({ number: 9102, title: 'Y', gh_state: 'closed' })
+    const html = renderToStaticMarkup(<Iteration stories={[a, b, c, x, y]} onOpen={() => {}} />)
+    const activeCountIdx = html.indexOf('board-iterations-section-active-planned-count')
+    const closedCountIdx = html.indexOf('board-iterations-section-closed-count')
+    expect(html.slice(activeCountIdx, activeCountIdx + 200)).toContain('(3)')
+    expect(html.slice(closedCountIdx, closedCountIdx + 200)).toContain('(2)')
+  })
+
+  test('Scenario 6: first active iteration gets data-current-iteration anchor', () => {
+    const first = iterationStory({
+      number: 9001,
+      title: 'Iteration First',
+      gh_state: 'open',
+      labels: ['iteration', 'iteration-order.100']
+    })
+    const second = iterationStory({
+      number: 9002,
+      title: 'Iteration Second',
+      gh_state: 'open',
+      labels: ['iteration', 'iteration-order.200']
+    })
+    const html = renderToStaticMarkup(<Iteration stories={[second, first]} onOpen={() => {}} />)
+    const firstAnchor = html.match(
+      /data-test="board-iteration-9001"[^>]*data-current-iteration="true"/
+    )
+    const secondAnchor = html.match(
+      /data-test="board-iteration-9002"[^>]*data-current-iteration="true"/
+    )
+    expect(firstAnchor).toBeTruthy()
+    expect(secondAnchor).toBeNull()
+  })
+
+  test('Scenario regression: closed iterations omit drag-handle (grip)', () => {
+    const closed = iterationStory({ number: 9001, title: 'Iteration ClosedA', gh_state: 'closed' })
+    const html = renderToStaticMarkup(<Iteration stories={[closed]} onOpen={() => {}} />)
+    const closedCardChunk = html.slice(html.indexOf('data-test="board-iteration-9001"'))
+    expect(closedCardChunk).not.toContain('data-test="iteration-grip"')
+  })
+})
