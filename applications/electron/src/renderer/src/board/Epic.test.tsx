@@ -252,7 +252,7 @@ describe('#1235 Epic-card collapse — native <details>/<summary> + activity-cla
     expect(html).not.toMatch(/<details[^>]*\sopen\b/)
   })
 
-  test('summary line shows compact accepted/needs-completion progress (#1451 canon-refinement: icebox included; retired excluded)', () => {
+  test('#1455 summary shows 3-axis count (accepted ✓ + active ●; retired hidden when 0)', () => {
     const epic = story({ number: 1100, state: 'in-progress' })
     const children: BoardStory[] = [
       story({ number: 1101, state: 'accepted', labels: featureLabels, parent_epic: 1100 }),
@@ -263,10 +263,14 @@ describe('#1235 Epic-card collapse — native <details>/<summary> + activity-cla
       <Epic epics={[epic]} stories={[epic, ...children]} onOpen={() => {}} />
     )
     expect(html).toContain('data-test="board-epic-1100-summary-progress"')
-    expect(html).toContain('1/3')
+    expect(html).toContain('data-test="board-epic-1100-count-accepted"')
+    expect(html).toContain('1✓')
+    expect(html).toContain('data-test="board-epic-1100-count-active"')
+    expect(html).toContain('2●')
+    expect(html).not.toContain('data-test="board-epic-1100-count-retired"')
   })
 
-  test('summary shows ✓ when all children accepted (100% complete)', () => {
+  test('#1455 summary shows ✓ marker when all children accepted (100% complete) + hides active when zero', () => {
     const epic = story({ number: 1100, state: 'in-progress' })
     const children: BoardStory[] = [
       story({ number: 1101, state: 'accepted', labels: featureLabels, parent_epic: 1100 }),
@@ -275,10 +279,12 @@ describe('#1235 Epic-card collapse — native <details>/<summary> + activity-cla
     const html = renderToStaticMarkup(
       <Epic epics={[epic]} stories={[epic, ...children]} onOpen={() => {}} />
     )
-    expect(html).toContain('2/2 ✓')
+    expect(html).toContain('2✓')
+    expect(html).toContain('data-test="board-epic-1100-count-done"')
+    expect(html).not.toContain('data-test="board-epic-1100-count-active"')
   })
 
-  test('summary omits ✓ when not 100% complete', () => {
+  test('#1455 summary omits done-marker when not 100% complete', () => {
     const epic = story({ number: 1100, state: 'in-progress' })
     const children: BoardStory[] = [
       story({ number: 1101, state: 'accepted', labels: featureLabels, parent_epic: 1100 }),
@@ -287,8 +293,43 @@ describe('#1235 Epic-card collapse — native <details>/<summary> + activity-cla
     const html = renderToStaticMarkup(
       <Epic epics={[epic]} stories={[epic, ...children]} onOpen={() => {}} />
     )
-    expect(html).toContain('1/2')
-    expect(html).not.toContain('1/2 ✓')
+    expect(html).toContain('1✓')
+    expect(html).toContain('1●')
+    expect(html).not.toContain('data-test="board-epic-1100-count-done"')
+  })
+
+  test('#1455 summary discriminates retired children when any present (Scenario 1+4 falsifier)', () => {
+    const epic = story({ number: 1100, state: 'in-progress' })
+    const children: BoardStory[] = [
+      story({ number: 1101, state: 'accepted', labels: featureLabels, parent_epic: 1100 }),
+      story({ number: 1102, state: 'accepted', labels: featureLabels, parent_epic: 1100 }),
+      story({ number: 1103, state: 'retired', labels: featureLabels, parent_epic: 1100 }),
+      story({ number: 1104, state: 'in-progress', labels: featureLabels, parent_epic: 1100 })
+    ]
+    const html = renderToStaticMarkup(
+      <Epic epics={[epic]} stories={[epic, ...children]} onOpen={() => {}} />
+    )
+    expect(html).toContain('data-test="board-epic-1100-count-accepted"')
+    expect(html).toContain('2✓')
+    expect(html).toContain('data-test="board-epic-1100-count-retired"')
+    expect(html).toContain('1⊘')
+    expect(html).toContain('data-test="board-epic-1100-count-active"')
+    expect(html).toContain('1●')
+  })
+
+  test('#1455 Scenario 3 — title-prefix `[Epic]` retired from rendered title', () => {
+    const epic = story({ number: 1100, title: '[Epic] Visual coherence', state: 'in-progress' })
+    const html = renderToStaticMarkup(<Epic epics={[epic]} stories={[epic]} onOpen={() => {}} />)
+    expect(html).toContain('Visual coherence')
+    expect(html).not.toMatch(/\[Epic\]\s*Visual coherence/)
+  })
+
+  test('#1455 Scenario 8 — empty Epic (zero children) reads "empty" not "0/0"', () => {
+    const epic = story({ number: 1100, title: 'Lonely Epic', state: 'icebox' })
+    const html = renderToStaticMarkup(<Epic epics={[epic]} stories={[epic]} onOpen={() => {}} />)
+    expect(html).toContain('data-test="board-epic-1100-count-empty"')
+    expect(html).toContain('empty')
+    expect(html).not.toContain('0/0')
   })
 
   test('persisted-closed state in localStorage overrides default-open (falsifier-e)', () => {

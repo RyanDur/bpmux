@@ -50,6 +50,13 @@ const extractDescription = (body: string): string => {
   return firstPara ? firstPara.trim() : ''
 }
 
+const EPIC_TITLE_PREFIX_RE = /^\s*\[\s*epic\s*\]\s*/i
+
+const stripEpicPrefix = (title: string): string => title.replace(EPIC_TITLE_PREFIX_RE, '')
+
+const activeChildrenCountFor = (b: StateBreakdown): number =>
+  b.delivered + b.inProgress + b.deskCheck + b.ready + b.icebox
+
 const breakdownAriaLabel = (b: StateBreakdown): string => {
   const denom = progressDenominatorFor(b)
   return `Progress: ${b.accepted} of ${denom} children needing completion accepted; ${b.delivered} delivered, ${b.inProgress} in progress, ${b.deskCheck} in desk-check, ${b.ready} ready, ${b.icebox} in icebox, ${b.retired} retired (scope-removed; excluded from progress denominator)`
@@ -76,8 +83,9 @@ const Epic = ({ epics, stories, onOpen }: Props): React.JSX.Element | null => {
           const defaultOpen = isOpenByDefault(derived)
           const open = collapse.isOpen(epic.number, defaultOpen)
           const denom = progressDenominatorFor(breakdown)
+          const activeCount = activeChildrenCountFor(breakdown)
           const allDone = denom > 0 && breakdown.accepted === denom
-          const summaryProgress = `${breakdown.accepted}/${denom}${allDone ? ' ✓' : ''}`
+          const displayTitle = stripEpicPrefix(epic.title)
           return (
             <li key={epic.number} className="board-epic-item">
               <details
@@ -97,8 +105,8 @@ const Epic = ({ epics, stories, onOpen }: Props): React.JSX.Element | null => {
                       event.stopPropagation()
                       onOpen(epic.number)
                     }}
-                    title={epic.title}
-                    aria-label={`open epic #${epic.number} ${epic.title}`}
+                    title={displayTitle}
+                    aria-label={`open epic #${epic.number} ${displayTitle}`}
                   >
                     <StoryTypeGlyph type="epic" />
                     <small className="board-story-number">#{epic.number}</small>
@@ -109,7 +117,7 @@ const Epic = ({ epics, stories, onOpen }: Props): React.JSX.Element | null => {
                     >
                       {derived}
                     </span>
-                    <b className="board-epic-title">{epic.title}</b>
+                    <b className="board-epic-title">{displayTitle}</b>
                   </button>
                   <progress
                     className="board-epic-progress board-epic-progress--summary"
@@ -121,8 +129,51 @@ const Epic = ({ epics, stories, onOpen }: Props): React.JSX.Element | null => {
                   <small
                     className="board-epic-summary-progress"
                     data-test={`board-epic-${epic.number}-summary-progress`}
+                    aria-label={breakdownAriaLabel(breakdown)}
                   >
-                    {summaryProgress}
+                    {denom === 0 && breakdown.retired === 0 ? (
+                      <span
+                        className="board-epic-count board-epic-count--empty"
+                        data-test={`board-epic-${epic.number}-count-empty`}
+                      >
+                        empty
+                      </span>
+                    ) : (
+                      <>
+                        <span
+                          className="board-epic-count board-epic-count--accepted"
+                          data-test={`board-epic-${epic.number}-count-accepted`}
+                        >
+                          {breakdown.accepted}✓
+                        </span>
+                        {breakdown.retired > 0 && (
+                          <span
+                            className="board-epic-count board-epic-count--retired"
+                            data-test={`board-epic-${epic.number}-count-retired`}
+                          >
+                            {' / '}
+                            {breakdown.retired}⊘
+                          </span>
+                        )}
+                        {activeCount > 0 && (
+                          <span
+                            className="board-epic-count board-epic-count--active"
+                            data-test={`board-epic-${epic.number}-count-active`}
+                          >
+                            {' / '}
+                            {activeCount}●
+                          </span>
+                        )}
+                        {allDone && (
+                          <span
+                            className="board-epic-count board-epic-count--done"
+                            data-test={`board-epic-${epic.number}-count-done`}
+                          >
+                            {' ✓'}
+                          </span>
+                        )}
+                      </>
+                    )}
                   </small>
                 </summary>
                 <div className="board-epic-body">
