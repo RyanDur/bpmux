@@ -244,6 +244,9 @@
         color: var(--fg-dimmer);
       }
 
+      /* False-positive: --first and --grouped are mutually-exclusive BEM
+       * modifiers on the same row — both rules can never apply to one
+       * element, so no cascade conflict actually occurs. */
       /* stylelint-disable-next-line no-descending-specificity */
       & .message-body {
         grid-column: 2;
@@ -261,7 +264,10 @@
     /* Addressed-to-other: body color steps back to --msg-fg-muted so
      * the viewer's eye is drawn to messages meant for them. Still
      * clears WCAG AA, so the message is legible if the viewer reads
-     * it — just de-prioritised visually. */
+     * it — just de-prioritised visually.
+     * False-positive: --to-other and --first/--grouped are orthogonal
+     * BEM modifiers; rule's specificity-cascade heuristic doesn't model
+     * orthogonal-modifier scopes. */
     /* stylelint-disable-next-line no-descending-specificity */
     &.message-row--to-other .message-body {
       color: var(--msg-fg-muted);
@@ -333,7 +339,9 @@
    * gap. Pure CSS reveal via :hover / :focus-within on the wrap; no
    * JS state. 150ms show-delay matches Nielsen timing (avoids
    * flashing on drag-through); hide is immediate (removing delay)
-   * so the tooltip dismisses cleanly as the cursor leaves. */
+   * so the tooltip dismisses cleanly as the cursor leaves.
+   * False-positive: this outer-scope rule and the inner --first article
+   * rule target different DOM levels in practice; no cascade conflict. */
   /* stylelint-disable-next-line no-descending-specificity */
   & .message-avatar-wrap {
     display: inline-flex;
@@ -427,6 +435,9 @@
     }
   }
 
+  /* Outer-scope base layout for article; --first and --grouped modifiers
+   * above override grid-template, but those are mutually-exclusive
+   * modifier classes — no cascade conflict at runtime. */
   /* stylelint-disable-next-line no-descending-specificity */
   & .message-row article {
     display: flex;
@@ -434,6 +445,9 @@
     gap: var(--space-2);
   }
 
+  /* Outer-scope base for message-meta; modifier-scoped rules above
+   * (--first article .message-meta) only apply when --first modifier
+   * is present, leaving this base to cover the unmodified case. */
   /* stylelint-disable-next-line no-descending-specificity */
   & .message-meta {
     display: flex;
@@ -495,6 +509,9 @@
     line-height: 1;
   }
 
+  /* Outer-scope base for message-body; modifier-scoped overrides above
+   * (--first article, --grouped, --to-other) layer on top when their
+   * modifier classes are present. */
   /* stylelint-disable-next-line no-descending-specificity */
   & .message-body {
     color: var(--fg-primary);

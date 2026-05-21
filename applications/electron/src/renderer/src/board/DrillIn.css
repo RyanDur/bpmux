@@ -52,6 +52,10 @@
   }
 }
 
+/* Second `.drill-in` block; the @media (prefers-reduced-motion) block
+ * between the two rules prevents native CSS merge. Layout+animation
+ * lives in the top block, child structure in this one — separation
+ * is intentional for readability. */
 /* stylelint-disable-next-line no-duplicate-selectors */
 .drill-in {
   & .drill-in-header {
@@ -312,6 +316,10 @@
     transition: opacity var(--motion-duration-fast) var(--motion-ease-in);
   }
 
+  /* False-positive: drill-in-bug-question is a sibling scope to
+   * drill-in-body; the rule's heuristic compares selectors that share
+   * an ancestor (.drill-in) but the actual elements live in disjoint
+   * subtrees, so no cascade conflict can occur. */
   /* stylelint-disable-next-line no-descending-specificity */
   & .drill-in-bug-question h3 {
     font-size: 0.9375rem;
@@ -513,6 +521,9 @@
     font-size: 0.8125rem;
     color: var(--fg-primary);
 
+    /* False-positive: drill-in-comment-body is a sibling scope to
+     * drill-in-body; child p elements live in disjoint subtrees so
+     * cascade conflict can't occur. */
     /* stylelint-disable-next-line no-descending-specificity */
     & p {
       margin: 0;
