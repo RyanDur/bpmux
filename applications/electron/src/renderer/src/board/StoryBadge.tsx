@@ -89,7 +89,7 @@ const StoryBadge = ({ story, onOpenTimeline, onOpenBlocker }: Props): React.JSX.
 
   const inner = (
     <>
-      {kind === 'blocked' ? <BlockerGlyph /> : <span aria-hidden="true">{KIND_GLYPH[kind]}</span>}
+      {kind === 'blocked' ? <BlockerGlyph /> : <i aria-hidden="true">{KIND_GLYPH[kind]}</i>}
       <small>{label}</small>
     </>
   )
@@ -119,7 +119,7 @@ const StoryBadge = ({ story, onOpenTimeline, onOpenBlocker }: Props): React.JSX.
     )
   }
   return (
-    <span
+    <output
       className={classes}
       data-test="story-badge"
       data-badge-kind={kind}
@@ -128,7 +128,7 @@ const StoryBadge = ({ story, onOpenTimeline, onOpenBlocker }: Props): React.JSX.
       aria-label={`${label}: ${tooltip}`}
     >
       {inner}
-    </span>
+    </output>
   )
 }
 

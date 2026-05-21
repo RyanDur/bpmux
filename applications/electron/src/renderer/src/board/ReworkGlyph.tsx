@@ -13,12 +13,12 @@ interface ReworkGlyphProps {
 export const ReworkGlyph = ({ reworkComment }: ReworkGlyphProps): JSX.Element | null => {
   if (!reworkComment) return null
   return (
-    <span
+    <i
       className="board-story-rework-glyph"
       title={reworkComment}
       aria-label={`Rework: ${reworkComment}`}
     >
       ↩
-    </span>
+    </i>
   )
 }

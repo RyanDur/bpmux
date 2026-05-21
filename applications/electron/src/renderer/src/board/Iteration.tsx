@@ -230,7 +230,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
               <small className="board-story-number">#{iteration.number}</small>
               <b className="board-iteration-title">{iteration.title}</b>
               {iteration.gh_state === 'closed' && (
-                <span className="board-iteration-closed-badge">(closed)</span>
+                <small className="board-iteration-closed-badge">(closed)</small>
               )}
               <small className="board-iteration-count">({members.length})</small>
             </button>
@@ -260,7 +260,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
           className="board-iterations-section-summary"
           data-test="board-iterations-section-active-planned-summary"
         >
-          <span className="board-iterations-section-chevron" aria-hidden="true" />
+          <i className="board-iterations-section-chevron" aria-hidden="true" />
           <b className="board-iterations-section-label">Active + Planned</b>
           <small
             className="board-iterations-section-count"
@@ -281,7 +281,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
           className="board-iterations-section-summary"
           data-test="board-iterations-section-closed-summary"
         >
-          <span className="board-iterations-section-chevron" aria-hidden="true" />
+          <i className="board-iterations-section-chevron" aria-hidden="true" />
           <b className="board-iterations-section-label">Closed</b>
           <small
             className="board-iterations-section-count"

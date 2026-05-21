@@ -46,17 +46,12 @@ describe('#1146 ReworkGlyph — column-surface ↩ glyph rendering', () => {
     expect(html).toContain(`aria-label="Rework: ${comment}"`)
   })
 
-  test('renders inside a single span element with stable selector class', () => {
-    // designer-lane DOM-shape contract: the glyph is a single <span>
-    // with the `board-story-rework-glyph` class so the cross-surface
-    // selector `[data-rework="true"] .board-story-rework-glyph`
-    // (designer's filing-time desk-check selector) stays stable.
+  test('renders inside a single <i> element with stable selector class', () => {
     const html = renderToStaticMarkup(<ReworkGlyph reworkComment="rework reason" />)
-    expect(html.startsWith('<span')).toBe(true)
-    expect(html.endsWith('</span>')).toBe(true)
-    // exactly one span open + close tag
-    const openCount = (html.match(/<span/g) ?? []).length
-    const closeCount = (html.match(/<\/span>/g) ?? []).length
+    expect(html.startsWith('<i')).toBe(true)
+    expect(html.endsWith('</i>')).toBe(true)
+    const openCount = (html.match(/<i[\s>]/g) ?? []).length
+    const closeCount = (html.match(/<\/i>/g) ?? []).length
     expect(openCount).toBe(1)
     expect(closeCount).toBe(1)
   })

@@ -96,7 +96,7 @@ const BoardGroup = ({
         aria-expanded={!collapsed}
         aria-controls={contentId}
       >
-        <span className="board-group-chevron" aria-hidden="true" />
+        <i className="board-group-chevron" aria-hidden="true" />
         <small
           className="board-group-count"
           data-test={`board-group-${group.state}-count`}
@@ -106,7 +106,7 @@ const BoardGroup = ({
         </small>
         <b className="board-group-label">{group.label}</b>
       </summary>
-      <div id={contentId}>
+      <section id={contentId}>
         {loading ? (
           <ul className="board-story-list board-story-list--skeleton" aria-hidden="true">
             {[0, 1, 2].map((i) => (
@@ -171,7 +171,7 @@ const BoardGroup = ({
             })}
           </ul>
         )}
-      </div>
+      </section>
     </details>
   )
 }

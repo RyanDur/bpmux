@@ -8,7 +8,7 @@ interface Props {
 const MiniBoard = ({ epicNumber, stories }: Props): React.JSX.Element => {
   const grouped = groupStories(stories)
   return (
-    <div className="board-epic-miniboard" data-test={`board-epic-${epicNumber}-miniboard`}>
+    <section className="board-epic-miniboard" data-test={`board-epic-${epicNumber}-miniboard`}>
       {GROUP_ORDER.map((group) => {
         const colStories = grouped.get(group.state) ?? []
         const colTest = `board-epic-${epicNumber}-miniboard-column-${group.state}`
@@ -39,8 +39,8 @@ const MiniBoard = ({ epicNumber, stories }: Props): React.JSX.Element => {
                     data-test={`board-epic-${epicNumber}-miniboard-child-${story.number}`}
                     aria-label={`#${story.number} ${story.title}, ${story.state}`}
                   >
-                    <small className="board-epic-miniboard-child-number">#{story.number}</small>{' '}
-                    <span className="board-epic-miniboard-child-title">{story.title}</span>
+                    <small className="board-epic-miniboard-child-number">#{story.number}</small>
+                    <b className="board-epic-miniboard-child-title">{story.title}</b>
                   </li>
                 ))}
               </ul>
@@ -48,7 +48,7 @@ const MiniBoard = ({ epicNumber, stories }: Props): React.JSX.Element => {
           </details>
         )
       })}
-    </div>
+    </section>
   )
 }
 

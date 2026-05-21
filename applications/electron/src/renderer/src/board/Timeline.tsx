@@ -74,7 +74,7 @@ const renderTimelineList = (
               data-gate={e.gate ?? e.raw.event}
               data-rework-group={e.reworkGroup ?? undefined}
             >
-              <span className="drill-in-timeline-kind">{labelFor(e)}</span>
+              <b className="drill-in-timeline-kind">{labelFor(e)}</b>
               <time className="drill-in-timeline-ts" dateTime={e.raw.ts}>
                 {format(new Date(e.raw.ts), 'MMM d · h:mm a')}
               </time>
@@ -140,7 +140,7 @@ const Timeline = ({
         <p className="drill-in-timeline-empty">failed to load: {timeline.error}</p>
       ) : timeline.events && timeline.events.length > 0 ? (
         <>
-          <div className="drill-in-timeline-controls">
+          <section className="drill-in-timeline-controls">
             <button
               type="button"
               className="drill-in-timeline-toggle"
@@ -150,7 +150,7 @@ const Timeline = ({
             >
               {showAll ? 'Show major gates only' : 'Show all events'}
             </button>
-          </div>
+          </section>
           {renderTimelineList(timeline.events, showAll, story)}
         </>
       ) : (

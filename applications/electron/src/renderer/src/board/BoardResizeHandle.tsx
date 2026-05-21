@@ -28,7 +28,7 @@ const BoardResizeHandle = ({ width, setWidth, controlsId }: Props): React.JSX.El
   }, [])
 
   const onPointerDown = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
+    (e: React.PointerEvent<HTMLButtonElement>) => {
       e.preventDefault()
       const startX = e.clientX
       const startWidth = width
@@ -58,7 +58,7 @@ const BoardResizeHandle = ({ width, setWidth, controlsId }: Props): React.JSX.El
   )
 
   const onKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLDivElement>) => {
+    (e: React.KeyboardEvent<HTMLButtonElement>) => {
       const max = computeMaxWidth(viewportWidth)
       if (e.key === 'ArrowLeft') {
         e.preventDefault()
@@ -95,7 +95,8 @@ const BoardResizeHandle = ({ width, setWidth, controlsId }: Props): React.JSX.El
   )
 
   return (
-    <div
+    <button
+      type="button"
       className="board-resize-handle"
       data-test="board-resize-handle"
       role="slider"
@@ -105,7 +106,6 @@ const BoardResizeHandle = ({ width, setWidth, controlsId }: Props): React.JSX.El
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={widthPercent(width, viewportWidth)}
-      tabIndex={0}
       onPointerDown={onPointerDown}
       onKeyDown={onKeyDown}
     />
