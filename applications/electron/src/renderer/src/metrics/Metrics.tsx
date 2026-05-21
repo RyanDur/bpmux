@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { describeHttpError, http } from '../api/http'
 import './Metrics.css'
 
 interface Props {
@@ -19,19 +20,27 @@ interface VelocityPayload {
   note: string | null
 }
 
-function formatHours(h: number | null): string {
+const formatHours = (h: number | null): string => {
   if (h === null) return '—'
   if (h < 1) return `${Math.round(h * 60)}m`
   if (h < 24) return `${h.toFixed(1)}h`
   return `${(h / 24).toFixed(1)}d`
 }
 
-function formatPercent(p: number | null): string {
+const formatPercent = (p: number | null): string => {
   if (p === null) return '—'
   return `${Math.round(p * 100)}%`
 }
 
-function Bar({ value, max, color }: { value: number; max: number; color: string }): React.JSX.Element {
+const Bar = ({
+  value,
+  max,
+  color
+}: {
+  value: number
+  max: number
+  color: string
+}): React.JSX.Element => {
   const width = Math.min(100, (value / max) * 100)
   return (
     <svg className="metrics-bar" viewBox="0 0 100 8" preserveAspectRatio="none" aria-hidden="true">
@@ -41,9 +50,10 @@ function Bar({ value, max, color }: { value: number; max: number; color: string 
   )
 }
 
-function Metrics({ apiBase, authToken, onClose, open }: Props): React.JSX.Element {
+const Metrics = ({ apiBase, authToken, onClose, open }: Props): React.JSX.Element => {
   const [data, setData] = useState<VelocityPayload | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [fetchError, setFetchError] = useState<string | null>(null)
+  const error = open && !apiBase ? 'backend not reachable' : fetchError
   const dialogRef = useRef<HTMLDialogElement | null>(null)
 
   useEffect(() => {
@@ -52,24 +62,17 @@ function Metrics({ apiBase, authToken, onClose, open }: Props): React.JSX.Elemen
     // mounted via useAnimatedUnmount, so each open caused a fresh
     // mount + fresh fetch. Native <dialog> stays mounted; gate the
     // fetch on `open` instead.
-    if (!open) return
-    if (!apiBase) {
-      setError('backend not reachable')
-      return
-    }
+    if (!open || !apiBase) return
     const controller = new AbortController()
-    fetch(`${apiBase}/api/metrics`, {
-      headers: { Authorization: `Bearer ${authToken ?? ''}` },
-      signal: controller.signal
-    })
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        return (await res.json()) as VelocityPayload
+    http
+      .get<VelocityPayload>({ apiBase, authToken }, '/api/metrics', controller.signal)
+      .onSuccess((json) => {
+        if (controller.signal.aborted) return
+        setData(json)
       })
-      .then((json) => setData(json))
-      .catch((err) => {
-        if ((err as Error)?.name === 'AbortError') return
-        setError(err instanceof Error ? err.message : String(err))
+      .onFailure((err) => {
+        if (controller.signal.aborted) return
+        setFetchError(describeHttpError(err))
       })
     return () => controller.abort()
   }, [open, apiBase, authToken])
@@ -100,12 +103,21 @@ function Metrics({ apiBase, authToken, onClose, open }: Props): React.JSX.Elemen
     >
       <header className="metrics-header">
         <h2>Velocity + DORA</h2>
-        <button type="button" className="metrics-close" onClick={onClose} aria-label="Close metrics">
+        <button
+          type="button"
+          className="metrics-close"
+          onClick={onClose}
+          aria-label="Close metrics"
+        >
           ✕
         </button>
       </header>
 
-      {error !== null && <p className="metrics-error" role="alert">Couldn&apos;t load metrics: {error}</p>}
+      {error !== null && (
+        <p className="metrics-error" role="alert">
+          Couldn&apos;t load metrics: {error}
+        </p>
+      )}
 
       {data !== null && (
         <dl className="metrics-grid">
@@ -114,10 +126,7 @@ function Metrics({ apiBase, authToken, onClose, open }: Props): React.JSX.Elemen
             value={data.delivered_per_day.toFixed(2)}
             bar={<Bar value={data.delivered_per_day} max={5} color="var(--accent-success)" />}
           />
-          <MetricTile
-            label="Delivered in window"
-            value={String(data.delivered_in_window)}
-          />
+          <MetricTile label="Delivered in window" value={String(data.delivered_in_window)} />
           <MetricTile
             label="Median pickup → deliver"
             value={formatHours(data.median_pickup_to_deliver_hours)}
@@ -166,7 +175,7 @@ function Metrics({ apiBase, authToken, onClose, open }: Props): React.JSX.Elemen
   )
 }
 
-function MetricTile({
+const MetricTile = ({
   label,
   value,
   bar
@@ -174,20 +183,14 @@ function MetricTile({
   label: string
   value: string
   bar?: React.JSX.Element
-}): React.JSX.Element {
-  // HTML5 spec restricts <dl>'s permitted content to <dt>, <dd>, and
-  // <div> grouping wrappers — <section> inside <dl> is invalid and
-  // causes assistive tech to mispair term/definition in some readers
-  // (#338 follow-up).
-  return (
-    <div className="metrics-tile">
-      <dt>{label}</dt>
-      <dd>
-        <strong className="metrics-value">{value}</strong>
-        {bar}
-      </dd>
-    </div>
-  )
-}
+}): React.JSX.Element => (
+  <div className="metrics-tile">
+    <dt>{label}</dt>
+    <dd>
+      <strong className="metrics-value">{value}</strong>
+      {bar}
+    </dd>
+  </div>
+)
 
 export default Metrics

@@ -23,10 +23,10 @@ describe('#1355 Comments independence', () => {
     expect(html).toContain('<h4>Comments')
   })
 
-  test('renders "loading…" empty state on initial mount (before fetch resolves)', () => {
+  test('renders empty state on initial mount when no backend (apiBase=undefined)', () => {
     const html = renderToStaticMarkup(<Comments {...baseProps} />)
     expect(html).toContain('drill-in-comments-empty')
-    expect(html).toContain('loading…')
+    expect(html).toContain('no comments yet')
   })
 
   test('renders the comment submit form regardless of comments state', () => {

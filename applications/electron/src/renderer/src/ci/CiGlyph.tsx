@@ -14,12 +14,7 @@ import './CiGlyph.css'
 // between hard-block and pass-with-citation. The glyph renders it
 // with ⏸ + amber so the owner can see "infra unavailable" at a
 // glance instead of reading it as a code-failure red.
-type CiConclusion =
-  | 'success'
-  | 'failure'
-  | 'in_progress'
-  | 'quota_exhausted'
-  | 'unknown'
+type CiConclusion = 'success' | 'failure' | 'in_progress' | 'quota_exhausted' | 'unknown'
 
 interface CiStateReport {
   conclusion: CiConclusion
@@ -54,7 +49,7 @@ const stateToConclusion = (state: CiStateWire): CiConclusion => {
   }
 }
 
-function conclusionGlyph(conclusion: string): string {
+const conclusionGlyph = (conclusion: string): string => {
   switch (conclusion) {
     case 'success':
       return '✓'
@@ -76,7 +71,7 @@ function conclusionGlyph(conclusion: string): string {
 // vocabulary with accessibility text — `quota_exhausted` needs a
 // spelled-out reason so screen-reader users aren't left guessing
 // what ⏸ means.
-function conclusionAriaLabel(conclusion: string): string {
+const conclusionAriaLabel = (conclusion: string): string => {
   switch (conclusion) {
     case 'quota_exhausted':
       return 'CI unavailable — GitHub Actions quota exhausted'
@@ -89,10 +84,12 @@ interface Props {
   ciSnapshot?: CiSnapshotWire | null
 }
 
-function CiGlyph({ ciSnapshot }: Props): React.JSX.Element {
+const CiGlyph = ({ ciSnapshot }: Props): React.JSX.Element => {
   const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
   const [state, setState] = useState<CiStateReport | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [fetchError, setFetchError] = useState<string | null>(null)
+  const error = bridge?.apiBase ? fetchError : 'no backend'
+  const setError = setFetchError
   // #361: surface the last-successful-fetch timestamp in the tooltip
   // so the user can confirm the poll is alive even when CI is stably
   // green.
@@ -125,10 +122,7 @@ function CiGlyph({ ciSnapshot }: Props): React.JSX.Element {
   )
 
   useEffect(() => {
-    if (!bridge?.apiBase) {
-      setError('no backend')
-      return
-    }
+    if (!bridge?.apiBase) return
     let cancelled = false
     const controller = new AbortController()
     const fetchOnce = buildFetch(controller.signal, () => cancelled)
@@ -163,9 +157,7 @@ function CiGlyph({ ciSnapshot }: Props): React.JSX.Element {
       }}
       title={tooltip}
       aria-label={
-        watcherUnhealthy
-          ? watcherUnhealthyAriaLabel(state)
-          : conclusionAriaLabel(conclusion)
+        watcherUnhealthy ? watcherUnhealthyAriaLabel(state) : conclusionAriaLabel(conclusion)
       }
       data-test="ci-glyph"
       data-conclusion={conclusion}
@@ -176,12 +168,12 @@ function CiGlyph({ ciSnapshot }: Props): React.JSX.Element {
   )
 }
 
-function buildTooltip(
+const buildTooltip = (
   state: CiStateReport | null,
   error: string | null,
   lastUpdated: Date | null,
   watcherUnhealthy: boolean
-): string {
+): string => {
   if (error) return `CI error: ${error}`
   if (!state) return 'CI state loading…'
   const lines = [`CI · ${state.branch} · ${state.conclusion}`]
@@ -189,9 +181,7 @@ function buildTooltip(
   if (state.head_sha) lines.push(state.head_sha.slice(0, 7))
   if (lastUpdated) lines.push(`checked ${format(lastUpdated, 'h:mm:ss a')}`)
   if (watcherUnhealthy && state.last_successful_poll_at) {
-    const ageSecs = Math.round(
-      (Date.now() - Date.parse(state.last_successful_poll_at)) / 1000
-    )
+    const ageSecs = Math.round((Date.now() - Date.parse(state.last_successful_poll_at)) / 1000)
     lines.push(`⚠ watcher last polled ${ageSecs}s ago`)
   }
   lines.push('(click to open on GitHub)')

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import type { BoardStory } from './types'
 import {
   type PendingMemberPosition,
@@ -39,54 +39,39 @@ const compareLoose = (a: BoardStory, b: BoardStory): number => {
   return a.number - b.number
 }
 
-export const useIterationMembers = (
-  stories: BoardStory[]
-): UseIterationMembersResult => {
+export const useIterationMembers = (stories: BoardStory[]): UseIterationMembersResult => {
   const [pendingMemberPosition, setPendingMemberPosition] = useState<
     Record<number, PendingMemberPosition>
   >({})
 
-  useEffect(() => {
-    setPendingMemberPosition((prev) => {
-      const next: Record<number, PendingMemberPosition> = {}
-      let changed = false
-      for (const [numStr, pending] of Object.entries(prev)) {
-        const num = Number(numStr)
-        const story = stories.find((s) => s.number === num)
-        const actualPosition = story
-          ? positionInIteration(story, pending.theme)
-          : null
-        if (actualPosition === pending.position) {
-          changed = true
-          continue
-        }
-        next[num] = pending
-      }
-      return changed ? next : prev
-    })
-  }, [stories])
+  const effectivePending = useMemo<Record<number, PendingMemberPosition>>(() => {
+    const out: Record<number, PendingMemberPosition> = {}
+    for (const [numStr, pending] of Object.entries(pendingMemberPosition)) {
+      const num = Number(numStr)
+      const story = stories.find((s) => s.number === num)
+      const actualPosition = story ? positionInIteration(story, pending.theme) : null
+      if (actualPosition === pending.position) continue
+      out[num] = pending
+    }
+    return out
+  }, [stories, pendingMemberPosition])
 
   const sortedIterations = useMemo(
     () => [...stories.filter(isIterationStory)].sort(compareIterations),
     [stories]
   )
 
-  const sortedLoose = useMemo(
-    () => [...stories.filter(isLooseStory)].sort(compareLoose),
-    [stories]
-  )
+  const sortedLoose = useMemo(() => [...stories.filter(isLooseStory)].sort(compareLoose), [stories])
 
   const getMembersFor = useCallback(
     (themeName: string): IterationMember[] =>
       stories
         .map((s) => {
           if (isIterationStory(s)) return null
-          const pending = pendingMemberPosition[s.number]
+          const pending = effectivePending[s.number]
           const labelPosition = positionInIteration(s, themeName)
           const pendingPosition =
-            pending !== undefined && pending.theme === themeName
-              ? pending.position
-              : null
+            pending !== undefined && pending.theme === themeName ? pending.position : null
           if (pendingPosition !== null) {
             return { story: s, position: pendingPosition }
           }
@@ -102,18 +87,15 @@ export const useIterationMembers = (
         })
         .filter((m): m is IterationMember => m !== null)
         .sort((a, b) => a.position - b.position),
-    [stories, pendingMemberPosition]
+    [stories, effectivePending]
   )
 
-  const setPending = useCallback(
-    (storyNumber: number, theme: string, position: number): void => {
-      setPendingMemberPosition((prev) => ({
-        ...prev,
-        [storyNumber]: { theme, position }
-      }))
-    },
-    []
-  )
+  const setPending = useCallback((storyNumber: number, theme: string, position: number): void => {
+    setPendingMemberPosition((prev) => ({
+      ...prev,
+      [storyNumber]: { theme, position }
+    }))
+  }, [])
 
   return { sortedIterations, sortedLoose, getMembersFor, setPending }
 }

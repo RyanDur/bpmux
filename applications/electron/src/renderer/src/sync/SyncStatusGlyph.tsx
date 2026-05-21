@@ -140,10 +140,7 @@ const fetchSyncStatus = async (
   return { ok: true, data }
 }
 
-const postForceSync = async (
-  apiBase: string,
-  authToken: string
-): Promise<FetchResult<null>> => {
+const postForceSync = async (apiBase: string, authToken: string): Promise<FetchResult<null>> => {
   const res = await fetch(`${apiBase}/api/sync-status/force-sync`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${authToken}` }
@@ -152,10 +149,7 @@ const postForceSync = async (
   return { ok: true, data: null }
 }
 
-const postAcknowledge = async (
-  apiBase: string,
-  authToken: string
-): Promise<FetchResult<null>> => {
+const postAcknowledge = async (apiBase: string, authToken: string): Promise<FetchResult<null>> => {
   const res = await fetch(`${apiBase}/api/sync-status/acknowledge`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${authToken}` }
@@ -177,7 +171,9 @@ interface Props {
 
 const SyncStatusGlyph = ({ apiBase, authToken, messages }: Props): React.JSX.Element => {
   const [report, setReport] = useState<SyncStatusReport | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [fetchError, setFetchError] = useState<string | null>(null)
+  const error = apiBase ? fetchError : 'no backend'
+  const setError = setFetchError
   const seenMessageCountRef = useRef<number>(messages?.length ?? 0)
   const fetchOnceRef = useRef<() => Promise<void>>(async () => {})
 
@@ -198,10 +194,7 @@ const SyncStatusGlyph = ({ apiBase, authToken, messages }: Props): React.JSX.Ele
   )
 
   useEffect(() => {
-    if (!apiBase) {
-      setError('no backend')
-      return
-    }
+    if (!apiBase) return
     const controller = new AbortController()
     const onceWithSignal = (): Promise<void> => fetchOnce(controller.signal)
     fetchOnceRef.current = onceWithSignal

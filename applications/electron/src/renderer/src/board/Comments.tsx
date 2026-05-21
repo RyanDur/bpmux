@@ -2,23 +2,17 @@ import { format } from 'date-fns'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import MessageBody from '../chat/MessageBody'
 import { describeHttpError } from '../api/http'
-import {
-  getStoryComments,
-  postStoryComment,
-  type Comment
-} from '../api/storiesClient'
+import { getStoryComments, postStoryComment, type Comment } from '../api/storiesClient'
 import { BOARD_INVALIDATE_MARKER, type ChatMessage } from '../transport/types'
 
 const OPTIMISTIC_ID_BASE = -1_000_000_000
 
 const isInvalidateMarker = (m: ChatMessage): boolean => m.text === BOARD_INVALIDATE_MARKER
 
-const mergeComments = (server: Comment[], optimistic: Comment[]): Comment[] => {
+const mergeComments = (server: readonly Comment[], optimistic: readonly Comment[]): Comment[] => {
   const seen = new Set(server.map((c) => `${c.author}|${c.body}`))
   const keepOptimistic = optimistic.filter((o) => !seen.has(`${o.author}|${o.body}`))
-  return [...server, ...keepOptimistic].sort((a, b) =>
-    a.created_at.localeCompare(b.created_at)
-  )
+  return [...server, ...keepOptimistic].sort((a, b) => a.created_at.localeCompare(b.created_at))
 }
 
 interface Props {
@@ -38,7 +32,7 @@ const Comments = ({
   messages,
   onError
 }: Props): React.JSX.Element => {
-  const [serverComments, setServerComments] = useState<Comment[] | null>(null)
+  const [fetchedComments, setFetchedComments] = useState<Comment[] | null>(null)
   const [optimistic, setOptimistic] = useState<Comment[]>([])
   const [commentDraft, setCommentDraft] = useState<string>('')
   const [commentBusy, setCommentBusy] = useState<boolean>(false)
@@ -47,6 +41,8 @@ const Comments = ({
   const seenMessageCountRef = useRef<number>(messages.length)
   const wasAtBottomRef = useRef<boolean>(true)
 
+  const offline = usingMock || apiBase === undefined
+  const serverComments: readonly Comment[] | null = offline ? [] : fetchedComments
   const comments = serverComments === null ? null : mergeComments(serverComments, optimistic)
 
   const captureScroll = useCallback((): void => {
@@ -59,25 +55,35 @@ const Comments = ({
   const fetchComments = useCallback(
     async (signal?: AbortSignal): Promise<void> => {
       captureScroll()
-      if (usingMock || apiBase === undefined) {
-        setServerComments([])
+      if (offline) {
         return
       }
       await getStoryComments({ apiBase, authToken }, storyNumber, signal)
-        .onSuccess((c) => setServerComments(c))
+        .onSuccess((c) => setFetchedComments(c))
         .onFailure((error) => {
           if (error.kind === 'network' && error.message.includes('abort')) return
-          setServerComments([])
+          setFetchedComments([])
         }).value
     },
-    [apiBase, authToken, captureScroll, storyNumber, usingMock]
+    [apiBase, authToken, captureScroll, storyNumber, offline]
   )
 
   useEffect(() => {
+    if (offline) return
+    captureScroll()
     const controller = new AbortController()
-    void fetchComments(controller.signal)
+    getStoryComments({ apiBase, authToken }, storyNumber, controller.signal)
+      .onSuccess((c) => {
+        if (controller.signal.aborted) return
+        setFetchedComments(c)
+      })
+      .onFailure((error) => {
+        if (controller.signal.aborted) return
+        if (error.kind === 'network' && error.message.includes('abort')) return
+        setFetchedComments([])
+      })
     return () => controller.abort()
-  }, [fetchComments])
+  }, [apiBase, authToken, captureScroll, storyNumber, offline])
 
   useEffect(() => {
     const prev = seenMessageCountRef.current
@@ -115,36 +121,34 @@ const Comments = ({
       setCommentBusy(false)
       return
     }
-    await postStoryComment({ apiBase, authToken }, storyNumber, { body: trimmed })
-      .onFailure((error) => {
+    await postStoryComment({ apiBase, authToken }, storyNumber, { body: trimmed }).onFailure(
+      (error) => {
         setOptimistic((prev) => prev.filter((c) => c.id !== optimisticEntry.id))
         setCommentDraft(trimmed)
         onError(`Comment failed: ${describeHttpError(error)}`)
-      }).value
+      }
+    ).value
     setCommentBusy(false)
   }, [apiBase, authToken, commentBusy, commentDraft, onError, storyNumber, usingMock])
 
-  const insertQuote = useCallback(
-    (id: string, author: string, text: string) => {
-      const selected = text.trim()
-      if (!selected) return
-      const quoted = selected
-        .split('\n')
-        .map((line) => `> ${line}`)
-        .join('\n')
-      const header = `> [@${author}](#comment-${id}):`
-      const prefix = `${header}\n${quoted}\n\n`
-      setCommentDraft((prev) => prefix + prev)
-      const caret = prefix.length
-      window.requestAnimationFrame(() => {
-        const ta = commentTextareaRef.current
-        if (!ta) return
-        ta.focus()
-        ta.setSelectionRange(caret, caret)
-      })
-    },
-    []
-  )
+  const insertQuote = useCallback((id: string, author: string, text: string) => {
+    const selected = text.trim()
+    if (!selected) return
+    const quoted = selected
+      .split('\n')
+      .map((line) => `> ${line}`)
+      .join('\n')
+    const header = `> [@${author}](#comment-${id}):`
+    const prefix = `${header}\n${quoted}\n\n`
+    setCommentDraft((prev) => prefix + prev)
+    const caret = prefix.length
+    window.requestAnimationFrame(() => {
+      const ta = commentTextareaRef.current
+      if (!ta) return
+      ta.focus()
+      ta.setSelectionRange(caret, caret)
+    })
+  }, [])
 
   useEffect(() => {
     const bridge = typeof window !== 'undefined' ? window.bpmux : undefined

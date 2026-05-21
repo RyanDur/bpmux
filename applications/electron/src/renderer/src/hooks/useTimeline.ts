@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { describeHttpError, http } from '../api/http'
 import { BOARD_INVALIDATE_MARKER, type ChatMessage } from '../transport/types'
 
 // Raw timeline event as returned by GET /api/stories/:number/timeline.
@@ -150,15 +151,13 @@ export const useTimeline = ({
       return
     }
     const controller = new AbortController()
-    fetch(`${apiBase}/api/stories/${storyNumber}/timeline`, {
-      headers: { Authorization: `Bearer ${authToken}` },
-      signal: controller.signal
-    })
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        return (await res.json()) as TimelineEvent[]
-      })
-      .then((raw) => {
+    http
+      .get<TimelineEvent[]>(
+        { apiBase, authToken },
+        `/api/stories/${storyNumber}/timeline`,
+        controller.signal
+      )
+      .onSuccess((raw) => {
         if (controller.signal.aborted) return
         const classified: ClassifiedEvent[] = raw.map((r) => ({
           raw: r,
@@ -167,9 +166,9 @@ export const useTimeline = ({
         setEvents(markReworkCycles(classified))
         setError(null)
       })
-      .catch((err: unknown) => {
+      .onFailure((err) => {
         if (controller.signal.aborted) return
-        setError(err instanceof Error ? err.message : String(err))
+        setError(describeHttpError(err))
       })
     return () => controller.abort()
   }, [storyNumber, apiBase, authToken])
