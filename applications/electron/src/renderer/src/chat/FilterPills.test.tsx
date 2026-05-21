@@ -32,7 +32,13 @@ const Harness = ({
   return <FilterPills filter={filter} hiddenCounts={hiddenCounts} visibleCounts={visibleCounts} />
 }
 
-describe('#1456 FilterPills — 3-pill mute-toggle (Scenarios 1-9)', () => {
+const checkboxFor = (pill: HTMLElement): HTMLInputElement => {
+  const input = pill.querySelector('input[type="checkbox"]')
+  if (input === null) throw new Error('filter-pill missing checkbox')
+  return input as HTMLInputElement
+}
+
+describe('#1456 FilterPills — native HTML5 checkbox-in-label (Ryan-canon supersession)', () => {
   test('Scenario 1: exactly 3 pills render with canon labels chat/events/bpmux', () => {
     const { getByTestId, queryByTestId } = render(<Harness />)
     expect(getByTestId('filter-pill-chat')).toBeTruthy()
@@ -44,21 +50,21 @@ describe('#1456 FilterPills — 3-pill mute-toggle (Scenarios 1-9)', () => {
     expect(queryByTestId('filter-pill-system')).toBeNull()
   })
 
-  test('Scenario 2: default chat ON; events + bpmux OFF', () => {
+  test('Scenario 2: default chat ON; events + bpmux OFF (via native checkbox.checked)', () => {
     const { getByTestId } = render(<Harness />)
-    expect(getByTestId('filter-pill-chat').getAttribute('aria-checked')).toBe('true')
-    expect(getByTestId('filter-pill-events').getAttribute('aria-checked')).toBe('false')
-    expect(getByTestId('filter-pill-bpmux').getAttribute('aria-checked')).toBe('false')
+    expect(checkboxFor(getByTestId('filter-pill-chat')).checked).toBe(true)
+    expect(checkboxFor(getByTestId('filter-pill-events')).checked).toBe(false)
+    expect(checkboxFor(getByTestId('filter-pill-bpmux')).checked).toBe(false)
   })
 
-  test('Scenario 3: clicking pill mute-toggles state', () => {
+  test('Scenario 3: clicking pill mute-toggles state (label-wraps-input implicit-association)', () => {
     const { getByTestId } = render(<Harness />)
     const chatPill = getByTestId('filter-pill-chat')
-    expect(chatPill.getAttribute('aria-checked')).toBe('true')
+    expect(checkboxFor(chatPill).checked).toBe(true)
     fireEvent.click(chatPill)
-    expect(chatPill.getAttribute('aria-checked')).toBe('false')
+    expect(checkboxFor(chatPill).checked).toBe(false)
     fireEvent.click(chatPill)
-    expect(chatPill.getAttribute('aria-checked')).toBe('true')
+    expect(checkboxFor(chatPill).checked).toBe(true)
   })
 
   test('Scenario 4: all-off allowed; empty-hint shows when all muted', () => {
@@ -68,7 +74,7 @@ describe('#1456 FilterPills — 3-pill mute-toggle (Scenarios 1-9)', () => {
     expect(getByTestId('filter-pills-empty-hint')).toBeTruthy()
   })
 
-  test('Scenario 5: ON/OFF visual state distinguishable via aria-checked + data-state', () => {
+  test('Scenario 5: ON/OFF visual state distinguishable via data-state', () => {
     const { getByTestId } = render(<Harness />)
     expect(getByTestId('filter-pill-chat').getAttribute('data-state')).toBe('on')
     expect(getByTestId('filter-pill-events').getAttribute('data-state')).toBe('off')
@@ -90,14 +96,34 @@ describe('#1456 FilterPills — 3-pill mute-toggle (Scenarios 1-9)', () => {
     expect(getByTestId('filter-pill-bpmux-count').textContent).toBe('(0)')
   })
 
-  test('Scenario 9: each pill has role=switch + accessible aria-label', () => {
+  test('Scenario 9: each pill input has role=checkbox + accessible aria-label', () => {
     const { getByTestId } = render(<Harness />)
     for (const cls of MESSAGE_CLASSES) {
       const pill = getByTestId(`filter-pill-${cls}`)
-      expect(pill.getAttribute('role')).toBe('switch')
-      const label = pill.getAttribute('aria-label')
+      const input = checkboxFor(pill)
+      expect(input.getAttribute('type')).toBe('checkbox')
+      const label = input.getAttribute('aria-label')
       expect(label).toMatch(new RegExp(`^${cls}`))
       expect(label).toMatch(/(shown|hidden)/)
     }
+  })
+
+  test('canon: zero <div> + zero <span> in rendered tree (feedback_html5_semantic_no_divs_spans)', () => {
+    const { container } = render(<Harness />)
+    expect(container.querySelectorAll('div').length).toBe(0)
+    expect(container.querySelectorAll('span').length).toBe(0)
+  })
+
+  test('canon: no role overlay on a non-canonical element (feedback_first_rule_of_aria)', () => {
+    const { container } = render(<Harness />)
+    expect(container.querySelector('[role="switch"]')).toBeNull()
+  })
+
+  test('canon: fieldset group with legend carries accessible name', () => {
+    const { container } = render(<Harness />)
+    const fieldset = container.querySelector('fieldset.filter-pills-row')
+    expect(fieldset).not.toBeNull()
+    const legend = fieldset?.querySelector('legend')
+    expect(legend?.textContent).toMatch(/message class/i)
   })
 })

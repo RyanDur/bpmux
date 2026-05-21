@@ -27,10 +27,16 @@ describe('human-side E2E #476 — persistence-class — message filter (#1456 3-
     expect(filterPills).toBeTruthy()
 
     const eventsPill = await rendered.findByTestId('filter-pill-events')
-    expect(eventsPill.getAttribute('aria-checked')).toBe('false')
+    const eventsInput = eventsPill.querySelector('input[type="checkbox"]') as HTMLInputElement
+    expect(eventsInput.checked).toBe(false)
 
     eventsPill.click()
-    await waitFor(() => expect(eventsPill.getAttribute('aria-checked')).toBe('true'))
+    await waitFor(
+      () =>
+        expect(
+          (eventsPill.querySelector('input[type="checkbox"]') as HTMLInputElement).checked
+        ).toBe(true)
+    )
 
     rendered.cleanup()
     rendered = renderApp()
@@ -38,7 +44,9 @@ describe('human-side E2E #476 — persistence-class — message filter (#1456 3-
     const eventsAfterReload = await rendered.findByTestId('filter-pill-events', undefined, {
       timeout: 15_000
     })
-    expect(eventsAfterReload.getAttribute('aria-checked')).toBe('true')
+    expect(
+      (eventsAfterReload.querySelector('input[type="checkbox"]') as HTMLInputElement).checked
+    ).toBe(true)
   }, 20_000)
 
   it('toggling chat-class off persists across reload', async () => {
@@ -52,10 +60,17 @@ describe('human-side E2E #476 — persistence-class — message filter (#1456 3-
     const chatPill = await rendered.findByTestId('filter-pill-chat', undefined, {
       timeout: 15_000
     })
-    expect(chatPill.getAttribute('aria-checked')).toBe('true')
+    expect((chatPill.querySelector('input[type="checkbox"]') as HTMLInputElement).checked).toBe(
+      true
+    )
 
     chatPill.click()
-    await waitFor(() => expect(chatPill.getAttribute('aria-checked')).toBe('false'))
+    await waitFor(
+      () =>
+        expect((chatPill.querySelector('input[type="checkbox"]') as HTMLInputElement).checked).toBe(
+          false
+        )
+    )
 
     rendered.cleanup()
     rendered = renderApp()
@@ -63,6 +78,8 @@ describe('human-side E2E #476 — persistence-class — message filter (#1456 3-
     const chatAfterReload = await rendered.findByTestId('filter-pill-chat', undefined, {
       timeout: 15_000
     })
-    expect(chatAfterReload.getAttribute('aria-checked')).toBe('false')
+    expect(
+      (chatAfterReload.querySelector('input[type="checkbox"]') as HTMLInputElement).checked
+    ).toBe(false)
   }, 20_000)
 })
