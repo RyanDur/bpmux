@@ -181,7 +181,7 @@ mod verdict_substrate_integration_1407 {
     }
 
     #[tokio::test]
-    async fn submit_verdict_broadcasts_pm_addressed_chat_on_success() {
+    async fn submit_verdict_broadcasts_pm_addressed_system_on_success() {
         let dir = TempDir::new().unwrap();
         let session = make_session(dir.path().to_path_buf());
         let mut rx = session.subscribe();
@@ -194,7 +194,11 @@ mod verdict_substrate_integration_1407 {
             .expect("broadcast channel open");
         assert_eq!(msg.from, "bpmux");
         assert_eq!(msg.addressee.as_deref(), Some("pm"));
-        assert_eq!(msg.message_type, crate::session::MessageType::Chat);
+        assert_eq!(
+            msg.message_type,
+            crate::session::MessageType::System,
+            "#1494 producer-axis canon: bpmux verdict-cast must wire as MessageType::System so renderer classOf-remap classifies as bpmux-class; the prior Chat default leaked past the bpmux pill (sister to #1456 filter-canon)"
+        );
         assert!(
             msg.text.contains("#42"),
             "payload carries story_number; got {}",

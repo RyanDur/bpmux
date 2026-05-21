@@ -1,5 +1,5 @@
-use crate::session::Message;
 use crate::session::verdicts::{AddVerdictOutcome, Verdict, add_or_replace_verdict, load, save};
+use crate::session::{Message, MessageType};
 use std::sync::Arc;
 
 pub(in crate::bridge) async fn handle_submit_verdict(
@@ -55,6 +55,7 @@ pub(in crate::bridge) async fn handle_submit_verdict(
         from: "bpmux".to_string(),
         text: format!("verdict cast on #{story_number} from {role}: {verdict_value}"),
         ts,
+        message_type: MessageType::System,
         addressee: Some(pm_id.to_string()),
         ..Message::default()
     };
@@ -101,6 +102,44 @@ mod tests {
             serde_json::json!(substrate_grounding),
         );
         m
+    }
+
+    fn make_session_with_rx(
+        dir: PathBuf,
+    ) -> (
+        Arc<Session>,
+        tokio::sync::broadcast::Receiver<crate::session::Message>,
+    ) {
+        let (tx, rx) = broadcast::channel(16);
+        let session = Arc::new(Session::new(dir, "ryan".to_string(), tx));
+        (session, rx)
+    }
+
+    #[tokio::test]
+    async fn verdict_cast_broadcast_carries_message_type_system_not_chat() {
+        let dir = TempDir::new().unwrap();
+        let (session, mut rx) = make_session_with_rx(dir.path().to_path_buf());
+        let args = make_args(
+            1494,
+            "verified",
+            "src/bridge/tools/submit_verdict.rs:54 cite",
+        );
+        handle_submit_verdict(&args, "dev:claude-code", &session)
+            .await
+            .expect("dev fire should succeed");
+        let received = rx.try_recv().expect("broadcast should arrive");
+        assert_eq!(received.from, "bpmux");
+        assert_eq!(
+            received.message_type,
+            crate::session::MessageType::System,
+            "verdict-cast notification must use MessageType::System so chat-filter bpmux pill catches it; default Chat lets the message leak past the consumer filter (sister to #1456 producer-axis bug)"
+        );
+        let wire = serde_json::to_value(&received).expect("serialize");
+        assert_eq!(
+            wire.get("message_type").and_then(|v| v.as_str()),
+            Some("system"),
+            "wire payload must serialize message_type=\"system\" so renderer classOf-remap classifies as bpmux-class"
+        );
     }
 
     #[tokio::test]

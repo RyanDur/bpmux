@@ -61,6 +61,7 @@ impl PileonDetector {
                         self.responders.len()
                     ),
                     ts: chrono::Utc::now(),
+                    message_type: crate::session::MessageType::Nudge,
                     to: Some(self.responders.clone()),
                     ..Message::default()
                 };

@@ -73,6 +73,7 @@ impl RecallSystem {
                     lesson.topic, lesson.lesson, lesson.topic
                 ),
                 ts: chrono::Utc::now(),
+                message_type: crate::session::MessageType::Nudge,
                 to: Some(vec![sender.to_string()]),
                 ..Message::default()
             };
