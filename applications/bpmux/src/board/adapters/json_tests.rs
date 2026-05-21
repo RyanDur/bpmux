@@ -39,6 +39,7 @@ fn story_to_board_json_emits_renderer_wire_format_field_list() {
         "gh_state",
         "labels",
         "parent_epic",
+        "iteration_membership",
         "assignees",
         "created_at",
         "body",
@@ -49,7 +50,30 @@ fn story_to_board_json_emits_renderer_wire_format_field_list() {
             "wire-format must include `{required}` (drift catches #451-class regression); keys present: {keys:?}"
         );
     }
-    assert_eq!(obj.len(), 10, "no spurious keys; keys present: {keys:?}");
+    assert_eq!(obj.len(), 11, "no spurious keys; keys present: {keys:?}");
+}
+
+#[test]
+fn story_to_board_json_iteration_membership_null_when_none_1492() {
+    let s = sample_story(StoryState::Icebox, StoryType::Feature, false);
+    let json = story_to_board_json(&GhLabelCodec, &s);
+    assert!(
+        json["iteration_membership"].is_null(),
+        "iteration_membership emits JSON null when Story.iteration_membership is None; got: {}",
+        json["iteration_membership"]
+    );
+}
+
+#[test]
+fn story_to_board_json_iteration_membership_object_when_set_1492() {
+    let mut s = sample_story(StoryState::Icebox, StoryType::Feature, false);
+    s.iteration_membership = Some((1464, 100));
+    let json = story_to_board_json(&GhLabelCodec, &s);
+    let membership = json["iteration_membership"]
+        .as_object()
+        .expect("iteration_membership object when Some");
+    assert_eq!(membership["iteration_number"].as_u64(), Some(1464));
+    assert_eq!(membership["position"].as_u64(), Some(100));
 }
 
 /// Stories without a backward-edge transition emit rework_comment as

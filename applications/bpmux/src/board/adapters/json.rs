@@ -48,6 +48,14 @@ pub fn story_to_board_json<C: LabelCodec>(codec: &C, story: &Story) -> serde_jso
         .as_deref()
         .and_then(|ts| most_recent_backward_transition(ts).cloned())
         .and_then(|t| t.comment);
+    let iteration_membership = story
+        .iteration_membership
+        .map(|(iteration_number, position)| {
+            serde_json::json!({
+                "iteration_number": iteration_number,
+                "position": position,
+            })
+        });
     serde_json::json!({
         "number": story.number,
         "title": story.title,
@@ -55,6 +63,7 @@ pub fn story_to_board_json<C: LabelCodec>(codec: &C, story: &Story) -> serde_jso
         "gh_state": if story.is_closed { "closed" } else { "open" },
         "labels": labels,
         "parent_epic": story.parent_epic,
+        "iteration_membership": iteration_membership,
         "assignees": Vec::<String>::new(),
         "created_at": story.filed_at.to_rfc3339(),
         "body": story.body.clone().unwrap_or_default(),

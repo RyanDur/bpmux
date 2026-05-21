@@ -1,7 +1,6 @@
 import {
   parseIterationLabel,
   parseIterationOrderPosition,
-  parseParentIterationLabel,
   parseUnscheduledPosition
 } from './labelSchema'
 import { postStoryLabels } from '../api/labelsClient'
@@ -46,9 +45,9 @@ export const positionInParentIteration = (
   story: BoardStory,
   iterationNumber: number
 ): number | null => {
-  for (const label of story.labels) {
-    const parsed = parseParentIterationLabel(label)
-    if (parsed?.iterationNumber === iterationNumber) return parsed.position
+  const membership = story.iteration_membership
+  if (membership && membership.iteration_number === iterationNumber) {
+    return membership.position
   }
   return null
 }

@@ -58,6 +58,11 @@ export const columnFor = (
 
 export type StoryType = 'feature' | 'bug' | 'chore' | 'epic' | 'iteration' | 'unknown'
 
+export interface IterationMembership {
+  iteration_number: number
+  position: number
+}
+
 export interface BoardStory {
   number: number
   title: string
@@ -73,6 +78,7 @@ export interface BoardStory {
   created_at: string
   body: string
   parent_epic?: number
+  iteration_membership?: IterationMembership | null
   // #1146: server-derived rework-context. When the most-recent state
   // transition is backward (reject_story Delivered→Ready or
   // fail_desk_check DeskCheck→InProgress), the gate-comment's payload
