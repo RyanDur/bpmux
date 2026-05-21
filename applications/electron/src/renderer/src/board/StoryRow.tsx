@@ -1,6 +1,7 @@
 import { GripIcon } from './GripIcon'
 import { ReworkGlyph } from './ReworkGlyph'
-import StoryBadge, { deriveBadge } from './StoryBadge'
+import StoryBadge from './StoryBadge'
+import { deriveBadge } from './StoryBadge.utils'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import { STORY_GRIP_TEST_ID } from './testIds'
 import { storyTypeFromLabels, type BoardStory } from './types'

@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { deriveBadge } from './StoryBadge'
+import { deriveBadge } from './StoryBadge.utils'
 import type { BoardStory } from './types'
 
 const baseStory = (overrides: Partial<BoardStory> = {}): BoardStory => ({

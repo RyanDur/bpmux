@@ -1,64 +1,14 @@
-import { storyTypeFromLabels, type BoardStory } from './types'
-
-export type BadgeKind = 'team-accepted' | 'accepted' | 'rework' | 'blocked'
-
-const DESK_CHECK_FAIL_LABEL = 'desk-check-fail'
-const BLOCKED_LABEL = 'blocked'
-const BLOCKED_BY_PREFIX = 'blocked-by:'
-const ACCEPTOR_TEAM_LABEL = 'awaiting team'
-const ACCEPTOR_OWNER_LABEL = 'awaiting owner'
-
-// Parse `blocked-by:<N>` label (case-insensitive) into a story number.
-// Returns null when absent or malformed — the caller falls back to
-// a generic "no blocker specified" tooltip rather than hiding the
-// block-state signal entirely (#390 nothing-hidden principle).
-export function blockerNumberFromLabels(labels: string[]): number | null {
-  for (const l of labels) {
-    const lower = l.toLowerCase()
-    if (lower.startsWith(BLOCKED_BY_PREFIX)) {
-      const n = Number.parseInt(lower.slice(BLOCKED_BY_PREFIX.length), 10)
-      if (Number.isFinite(n) && n > 0) return n
-    }
-  }
-  return null
-}
-
-export function deriveBadge(story: BoardStory): BadgeKind | null {
-  if (story.state !== 'delivered' && story.state !== 'accepted') return null
-  const normalized = story.labels.map((l) => l.toLowerCase())
-  if (story.state === 'delivered' && normalized.includes(BLOCKED_LABEL)) {
-    return 'blocked'
-  }
-  if (normalized.includes(DESK_CHECK_FAIL_LABEL)) return 'rework'
-  if (normalized.includes(ACCEPTOR_TEAM_LABEL)) return 'team-accepted'
-  if (normalized.includes(ACCEPTOR_OWNER_LABEL)) return 'accepted'
-  const type = storyTypeFromLabels(story.labels)
-  if (type === 'bug' || type === 'chore') return 'team-accepted'
-  return 'accepted'
-}
-
-// State-aware label text. Kind identifies the lane (owner vs team
-// accept lane; rework override; blocked override). State disambiguates
-// tense on accept variants; rework + blocked are transient states
-// that only make sense on delivered rows.
-export function labelFor(kind: BadgeKind, state: BoardStory['state']): string {
-  if (kind === 'blocked') return 'blocked'
-  if (kind === 'rework') return 'rework'
-  if (state === 'accepted') {
-    return kind === 'team-accepted' ? 'team-accepted' : 'owner-accepted'
-  }
-  // state === 'delivered'
-  return kind === 'team-accepted' ? 'awaiting team' : 'awaiting owner'
-}
+import { type BoardStory } from './types'
+import { blockerNumberFromLabels, deriveBadge, labelFor, type BadgeKind } from './StoryBadge.utils'
 
 // Human-readable tooltip + aria-label per kind and current state.
 // Stays short so the badge remains visually unobtrusive; the
 // drill-in timeline (#367) carries the full audit trail.
-function tooltipFor(
+const tooltipFor = (
   kind: BadgeKind,
   state: BoardStory['state'],
   blockerNumber: number | null
-): string {
+): string => {
   if (kind === 'blocked') {
     return blockerNumber !== null
       ? `blocked — waiting on #${blockerNumber}`
@@ -82,29 +32,12 @@ function tooltipFor(
 // universal road-sign "no-entry" vocabulary: circle + diagonal slash.
 // Paired with the glyph text fallback for terminals and SR users
 // (aria-hidden on the SVG; the button / span carries the label).
-function BlockerGlyph(): React.JSX.Element {
-  return (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 12 12"
-      fill="none"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1" />
-      <line
-        x1="3"
-        y1="9"
-        x2="9"
-        y2="3"
-        stroke="currentColor"
-        strokeWidth="1"
-        strokeLinecap="round"
-      />
-    </svg>
-  )
-}
+const BlockerGlyph = (): React.JSX.Element => (
+  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true" focusable="false">
+    <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1" />
+    <line x1="3" y1="9" x2="9" y2="3" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+  </svg>
+)
 
 // Text-glyph per kind — used for the non-blocked variants. Blocked
 // renders the inline SVG above; keeping it out of this table avoids
@@ -128,11 +61,7 @@ interface Props {
   onOpenBlocker?: (storyNumber: number) => void
 }
 
-function StoryBadge({
-  story,
-  onOpenTimeline,
-  onOpenBlocker
-}: Props): React.JSX.Element | null {
+const StoryBadge = ({ story, onOpenTimeline, onOpenBlocker }: Props): React.JSX.Element | null => {
   const kind = deriveBadge(story)
   if (kind === null) return null
   const blockerNumber = kind === 'blocked' ? blockerNumberFromLabels(story.labels) : null
@@ -156,19 +85,11 @@ function StoryBadge({
         ? () => onOpenTimeline(story.number)
         : undefined
   const ariaSuffix =
-    kind === 'blocked'
-      ? blockerNumber !== null
-        ? ' — open blocker'
-        : ''
-      : ' — open timeline'
+    kind === 'blocked' ? (blockerNumber !== null ? ' — open blocker' : '') : ' — open timeline'
 
   const inner = (
     <>
-      {kind === 'blocked' ? (
-        <BlockerGlyph />
-      ) : (
-        <span aria-hidden="true">{KIND_GLYPH[kind]}</span>
-      )}
+      {kind === 'blocked' ? <BlockerGlyph /> : <span aria-hidden="true">{KIND_GLYPH[kind]}</span>}
       <small>{label}</small>
     </>
   )

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import Board from './board/Board'
-import BoardResizeHandle, { BOARD_DEFAULT_WIDTH, clampBoardWidth } from './board/BoardResizeHandle'
+import BoardResizeHandle from './board/BoardResizeHandle'
+import { BOARD_DEFAULT_WIDTH, clampBoardWidth } from './board/BoardResizeHandle.utils'
 import Chat from './chat/Chat'
 import CiGlyph from './ci/CiGlyph'
 import { useMessageFilter } from './hooks/useMessageFilter'

@@ -1,4 +1,3 @@
-import { format } from 'date-fns'
 import type { ChatMessage } from '../transport/types'
 import { classOf } from '../hooks/useMessageFilter'
 import type { AggregatedReaction } from '../hooks/useReactions'
@@ -9,6 +8,7 @@ import MessageBody from './MessageBody'
 import Reactions, { ReactionAddButton } from './Reactions'
 import UnfurlCards from './UnfurlCards'
 import { channelLabelOf } from './scope'
+import { avatarClasses, formatTime, messageKey, shortName } from './MessageItem.utils'
 
 interface Props {
   m: ChatMessage
@@ -22,24 +22,6 @@ interface Props {
   reactions?: AggregatedReaction[]
   onToggleReaction?: (messageKey: string, emoji: string) => void
 }
-
-const formatTime = (ts: string): string => {
-  const d = new Date(ts)
-  if (Number.isNaN(d.getTime())) return ts
-  return format(d, 'h:mm a zzz')
-}
-
-const shortName = (identity: string): string => {
-  const idx = identity.indexOf(':')
-  return idx === -1 ? identity : identity.slice(0, idx)
-}
-
-const avatarClasses = (sender: string): string => {
-  const shape = sender === 'ryan' ? 'message-avatar--circle' : 'message-avatar--square'
-  return `message-avatar ${shape}`
-}
-
-const messageKey = (m: ChatMessage): string => `${m.ts}|${m.from}`
 
 const MessageItem = ({
   m,
@@ -74,44 +56,45 @@ const MessageItem = ({
     <li key={m.id} className={rowClasses} data-test="message-row">
       <article>
         <span className="sr-only">{sender}:</span>
-        {!grouped && (() => {
-          const label = sender.charAt(0).toUpperCase() + sender.slice(1)
-          const status = presence.get(sender) ?? 'offline'
-          const tooltipId = `avatar-info-${m.id}`
-          const roleColor = roleColorFor(sender)
-          return (
-            <span className="message-avatar-wrap">
-              <button
-                type="button"
-                className={avatarClasses(sender)}
-                data-test="message-avatar"
-                data-role={sender}
-                style={{
-                  background: roleColor.background,
-                  color: roleColor.color
-                }}
-                aria-describedby={tooltipId}
-                aria-label={`${label} — ${status}`}
-              >
-                {sender.charAt(0).toUpperCase()}
-              </button>
-              <span
-                id={tooltipId}
-                role="tooltip"
-                className="avatar-tooltip"
-                data-test="avatar-tooltip"
-              >
-                <strong className="avatar-tooltip-label">{label}</strong>
-                <small
-                  className={`avatar-tooltip-status avatar-tooltip-status--${status}`}
-                  data-test="avatar-tooltip-status"
+        {!grouped &&
+          (() => {
+            const label = sender.charAt(0).toUpperCase() + sender.slice(1)
+            const status = presence.get(sender) ?? 'offline'
+            const tooltipId = `avatar-info-${m.id}`
+            const roleColor = roleColorFor(sender)
+            return (
+              <span className="message-avatar-wrap">
+                <button
+                  type="button"
+                  className={avatarClasses(sender)}
+                  data-test="message-avatar"
+                  data-role={sender}
+                  style={{
+                    background: roleColor.background,
+                    color: roleColor.color
+                  }}
+                  aria-describedby={tooltipId}
+                  aria-label={`${label} — ${status}`}
                 >
-                  {status}
-                </small>
+                  {sender.charAt(0).toUpperCase()}
+                </button>
+                <span
+                  id={tooltipId}
+                  role="tooltip"
+                  className="avatar-tooltip"
+                  data-test="avatar-tooltip"
+                >
+                  <strong className="avatar-tooltip-label">{label}</strong>
+                  <small
+                    className={`avatar-tooltip-status avatar-tooltip-status--${status}`}
+                    data-test="avatar-tooltip-status"
+                  >
+                    {status}
+                  </small>
+                </span>
               </span>
-            </span>
-          )
-        })()}
+            )
+          })()}
         {!grouped && (
           <header className="message-meta">
             <cite className="message-from" aria-hidden="true">
@@ -124,10 +107,7 @@ const MessageItem = ({
               [{channel}]
             </small>
             {addressee && (
-              <small
-                className="message-addressee"
-                title={`attention: @${addressee}`}
-              >
+              <small className="message-addressee" title={`attention: @${addressee}`}>
                 @{addressee}
               </small>
             )}
@@ -140,28 +120,22 @@ const MessageItem = ({
         )}
         <section className="message-body">
           <ClassGlyph cls={classOf(m.messageType)} />
-          <MessageBody
-            text={m.text}
-            knownRoles={mentionRoles}
-            onMention={onMention}
-          />
+          <MessageBody text={m.text} knownRoles={mentionRoles} onMention={onMention} />
           <UnfurlCards text={m.text} apiBase={apiBase} authToken={authToken} />
-          {onToggleReaction && viewer && (() => {
-            if (reactions && reactions.length > 0) {
-              return (
-                <Reactions
-                  reactions={reactions}
-                  viewer={viewer}
-                  onToggle={(emoji) => onToggleReaction(mKey, emoji)}
-                />
-              )
-            }
-            return (
-              <ReactionAddButton
-                onToggle={(emoji) => onToggleReaction(mKey, emoji)}
-              />
-            )
-          })()}
+          {onToggleReaction &&
+            viewer &&
+            (() => {
+              if (reactions && reactions.length > 0) {
+                return (
+                  <Reactions
+                    reactions={reactions}
+                    viewer={viewer}
+                    onToggle={(emoji) => onToggleReaction(mKey, emoji)}
+                  />
+                )
+              }
+              return <ReactionAddButton onToggle={(emoji) => onToggleReaction(mKey, emoji)} />
+            })()}
         </section>
       </article>
     </li>
@@ -169,4 +143,3 @@ const MessageItem = ({
 }
 
 export default MessageItem
-export { messageKey, shortName, formatTime, avatarClasses }
