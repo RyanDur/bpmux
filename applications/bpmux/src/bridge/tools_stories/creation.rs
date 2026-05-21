@@ -24,20 +24,24 @@ pub(crate) async fn handle_create_story(
     ws_tx: &Mutex<Option<WsSink>>,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
 ) -> Result<String, String> {
-    let pm = crate::workflow::current_workflow()
-        .role_id_for_purpose("pm")
-        .unwrap_or("pm");
-    if role_from_name(agent_name) != pm {
-        return Err(
-            "create_story is pm-lane. If you have a pain to file, surface it in broadcast chat \
-             and pm will file the story."
-                .to_string(),
-        );
-    }
+    let workflow = crate::workflow::current_workflow();
+    let pm = workflow.role_id_for_purpose("pm").unwrap_or("pm");
+    let dev = workflow.role_id_for_purpose("dev").unwrap_or("dev");
+    let actor_role = role_from_name(agent_name);
     let title = args
         .get("title")
         .and_then(|v| v.as_str())
         .ok_or("missing 'title' argument")?;
+    let is_chore = crate::board::domain::story_type_from_labels_or_title(&[], title)
+        == crate::board::domain::StoryType::Chore;
+    if actor_role != pm && !(actor_role == dev && is_chore) {
+        return Err(
+            "create_story is pm-lane (dev may author [Chore]-class stories per chore-ownership \
+             canon). If you have a pain to file, surface it in broadcast chat and pm will file \
+             the story."
+                .to_string(),
+        );
+    }
     let user_job = require_nonempty_string(
         args,
         "user_job",

@@ -35,6 +35,68 @@ async fn create_story_rejects_non_pm_role() {
 }
 
 #[tokio::test]
+async fn create_story_allows_dev_for_chore_class() {
+    let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
+    let args = serde_json::json!({
+        "title": "[Chore] refactor Board panel to HTML5-semantic",
+        "user_job": "as dev, the board files comply with #1493",
+        "observation_falsifier": "reject if div/span remain"
+    });
+    for role in ["dev", "dev:claude-code"].iter() {
+        let result = handle_create_story(args.as_object().unwrap(), role, &ws_tx, None).await;
+        assert!(
+            result.is_err(),
+            "dev+chore passes role-gate then hits refresh-required; got: {result:?}"
+        );
+        let err = result.unwrap_err();
+        assert!(
+            err.contains("requires refresh"),
+            "dev+chore should clear the role-gate (chore-ownership canon) and fail at refresh; role={role}, err={err}"
+        );
+        assert!(
+            !err.contains("pm-lane"),
+            "dev+chore must NOT be rejected as pm-lane; role={role}, err={err}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn create_story_rejects_dev_for_non_chore_class() {
+    let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
+    let args = serde_json::json!({
+        "title": "[Feature] add a thing",
+        "user_job": "as dev, I want X",
+        "observation_falsifier": "reject if X"
+    });
+    let result = handle_create_story(args.as_object().unwrap(), "dev", &ws_tx, None).await;
+    assert!(result.is_err(), "dev creating a Feature should be rejected");
+    let err = result.unwrap_err();
+    assert!(
+        err.contains("pm-lane"),
+        "dev+non-chore stays pm-lane (only chores are dev-authored); err={err}"
+    );
+}
+
+#[tokio::test]
+async fn create_story_rejects_designer_even_for_chore_class() {
+    let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
+    let args = serde_json::json!({
+        "title": "[Chore] some refactor",
+        "user_job": "as designer, I want X",
+        "observation_falsifier": "reject if X"
+    });
+    let result = handle_create_story(args.as_object().unwrap(), "designer", &ws_tx, None).await;
+    assert!(
+        result.is_err(),
+        "designer creating a chore should be rejected (chore-authorship is dev-only)"
+    );
+    assert!(
+        result.unwrap_err().contains("pm-lane"),
+        "designer+chore stays gated; only dev authors chores"
+    );
+}
+
+#[tokio::test]
 async fn create_story_pm_role_passes_role_gate_then_hits_refresh_required() {
     let ws_tx = std::sync::Arc::new(tokio::sync::Mutex::new(None));
     let args = serde_json::json!({
