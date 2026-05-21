@@ -43,58 +43,57 @@ export const useBoardFetch = ({
   const seenMessageCountRef = useRef<number>(messages.length)
 
   const fetchBoard = useCallback(
-    async (signal?: AbortSignal): Promise<void> => {
+    (signal?: AbortSignal): void => {
       if (apiBase === undefined) {
-        await Promise.resolve()
-        if (signal?.aborted) return
         setData(MOCK_BOARD_RESPONSE)
         setUsingMock(true)
         setError(null)
         setLoading(false)
         return
       }
-      let lastErr: unknown = null
-      for (const delay of RETRY_DELAYS_MS) {
-        if (signal?.aborted) return
-        if (delay > 0) {
-          await new Promise<void>((resolve) => setTimeout(resolve, delay))
-          if (signal?.aborted) return
-        }
-        const fetchResult = await getBoard({ apiBase, authToken }, signal).value
-        if (fetchResult.kind === 'success') {
-          setData(fetchResult.value)
-          setUsingMock(false)
-          setError(null)
-          setLoading(false)
-          return
-        }
-        if (signal?.aborted) return
-        lastErr = new Error(describeHttpError(fetchResult.reason))
+      let attempt = 0
+      const tryFetch = (): void => {
+        getBoard({ apiBase, authToken }, signal)
+          .onSuccess((board) => {
+            if (signal?.aborted) return
+            setData(board)
+            setUsingMock(false)
+            setError(null)
+            setLoading(false)
+          })
+          .onFailure((reason) => {
+            if (signal?.aborted) return
+            attempt += 1
+            if (attempt < RETRY_DELAYS_MS.length) {
+              setTimeout(tryFetch, RETRY_DELAYS_MS[attempt])
+              return
+            }
+            const message = describeHttpError(reason)
+            console.error('bpmux board: fetch failed, falling back to mock', message)
+            setData((prev) => prev ?? MOCK_BOARD_RESPONSE)
+            setUsingMock((prev) => prev || !prev)
+            setError(message)
+            setLoading(false)
+          })
       }
-      console.error('bpmux board: fetch failed, falling back to mock', lastErr)
-      setData((prev) => prev ?? MOCK_BOARD_RESPONSE)
-      setUsingMock((prev) => prev || !prev)
-      setError(lastErr instanceof Error ? lastErr.message : String(lastErr))
-      setLoading(false)
+      tryFetch()
     },
     [apiBase, authToken]
   )
 
   useEffect(() => {
     const controller = new AbortController()
-    /* eslint-disable-next-line react-hooks/set-state-in-effect */
-    void fetchBoard(controller.signal)
-    const id = setInterval(() => {
-      void fetchBoard()
-    }, POLL_INTERVAL_MS)
+    const initial = setTimeout(() => fetchBoard(controller.signal), 0)
+    const id = setInterval(() => fetchBoard(), POLL_INTERVAL_MS)
     return () => {
       controller.abort()
+      clearTimeout(initial)
       clearInterval(id)
     }
   }, [fetchBoard])
 
   useRefetchOnReconnect(wsStatus ?? 'disconnected', () => {
-    void fetchBoard()
+    fetchBoard()
   })
 
   useEffect(() => {
@@ -106,12 +105,12 @@ export const useBoardFetch = ({
     const fresh = messages.slice(prev)
     seenMessageCountRef.current = messages.length
     if (fresh.some((m) => m.text === BOARD_INVALIDATE_MARKER)) {
-      void fetchBoard()
+      fetchBoard()
     }
   }, [messages, fetchBoard])
 
   const refetch = useCallback((): void => {
-    void fetchBoard()
+    fetchBoard()
   }, [fetchBoard])
 
   return { data, setData, loading, error, setError, usingMock, refetch }
