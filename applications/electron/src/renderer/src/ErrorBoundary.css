@@ -46,7 +46,7 @@
       font-size: 0.8125rem;
       overflow-x: auto;
       white-space: pre-wrap;
-      word-break: break-word;
+      overflow-wrap: break-word;
     }
   }
 
@@ -84,5 +84,5 @@
   font-family: ui-monospace, Menlo, Consolas, monospace;
   font-size: 0.875rem;
   white-space: pre-wrap;
-  word-break: break-word;
+  overflow-wrap: break-word;
 }

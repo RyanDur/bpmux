@@ -14,7 +14,8 @@ body,
 body {
   color: var(--fg-primary);
   background: var(--bg-base);
-  /* Smooth theme-toggle interpolation (AC6 of #351). Light↔dark
+
+  /* Smooth theme-toggle interpolation (AC6 of rgb(51 85 17)). Light↔dark
    * switches the --bg-base and --fg-primary token values; a
    * transition on color + background-color makes the change feel
    * like a mode-shift, not a flash. 150ms keeps the flip responsive.
@@ -22,6 +23,7 @@ body {
    * they see the same instant flip as before — no mandatory motion. */
   transition: color var(--motion-duration-fast) var(--motion-ease-in-out),
               background-color var(--motion-duration-fast) var(--motion-ease-in-out);
+
   /* Platform defaults only — Inter dropped (not self-hosted, so
    * loading from Google Fonts added a network round-trip and FOUC
    * risk for zero guaranteed benefit). The -apple-system / Segoe UI
@@ -66,7 +68,8 @@ button {
   border: none;
   padding: 0;
   cursor: pointer;
-  /* Default hover/active transition for every button (#352 AC2).
+
+  /* Default hover/active transition for every button (rgb(51 85 34) AC2).
    * Per-component overrides can extend (adding transform or other
    * properties) but bg + color cover the majority case. Duration
    * token auto-zeros under reduced-motion. */
@@ -111,7 +114,7 @@ textarea {
   padding: 0;
   margin: -1px;
   overflow: hidden;
-  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
   white-space: nowrap;
   border: 0;
 }

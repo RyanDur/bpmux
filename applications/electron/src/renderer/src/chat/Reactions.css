@@ -137,7 +137,8 @@
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   z-index: 20;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 25%);
+
   /* Directional tail via pseudo-element. Square rotated 45deg gives
    * a clean 12px caret; positioned on the side facing the anchor. */
   &::before {

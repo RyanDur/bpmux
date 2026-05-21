@@ -1,3 +1,4 @@
+
 .metrics {
   flex: 1 1 auto;
   overflow-y: auto;
@@ -9,32 +10,29 @@
   margin: 0;
   max-width: none;
   max-height: none;
-}
 
-.metrics[open] {
-  display: flex;
-  flex-direction: column;
-  transform: translateY(0);
-  opacity: 1;
-  transition:
-    transform var(--motion-duration-medium) var(--motion-ease-out),
-    opacity var(--motion-duration-fast) var(--motion-ease-out);
+  &[open] {
+    display: flex;
+    flex-direction: column;
+    transform: translateY(0);
+    opacity: 1;
+    transition:
+      transform var(--motion-duration-medium) var(--motion-ease-out),
+      opacity var(--motion-duration-fast) var(--motion-ease-out);
 
-  @starting-style {
+    @starting-style {
+      transform: translateY(-16px);
+      opacity: 0;
+    }
+  }
+
+  &:not([open]) {
     transform: translateY(-16px);
     opacity: 0;
+    transition:
+      transform var(--motion-duration-medium) var(--motion-ease-in),
+      opacity var(--motion-duration-fast) var(--motion-ease-in);
   }
-}
-
-.metrics:not([open]) {
-  transform: translateY(-16px);
-  opacity: 0;
-  transition:
-    transform var(--motion-duration-medium) var(--motion-ease-in),
-    opacity var(--motion-duration-fast) var(--motion-ease-in);
-}
-
-.metrics {
 
   & .metrics-header {
     display: flex;

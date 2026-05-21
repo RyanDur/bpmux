@@ -9,14 +9,14 @@
 
 :root {
   /* Opt in to keyword-size interpolation globally — required by
-   * #351 AC7's <details> height animation + any future auto↔0
+   * rgb(51 85 17) AC7's <details> height animation + any future auto↔0
    * transitions. Has no effect on explicit-size transitions. */
   interpolate-size: allow-keywords;
 
   /* backgrounds */
-  --bg-base: #1a1a1a;
-  --bg-elevated: #252525;
-  --bg-highlighted: #333;
+  --bg-base: rgb(26 26 26);
+  --bg-elevated: rgb(37 37 37);
+  --bg-highlighted: rgb(51 51 51);
 
   /* foregrounds — contrast-tiered so every body-text usage of --fg-dim
    * clears WCAG AA (4.5:1) on --bg-base automatically. --fg-dimmer is
@@ -25,28 +25,28 @@
    * focal message body. --msg-fg-muted is the addressed-to-other
    * dim: still legible (clears 4.5:1) but visually steps back so the
    * viewer's eye lands on messages meant for them. */
-  --fg-primary: #e8e8e8;
-  --fg-secondary: #b0b0b0;
-  --fg-dim: #9d9d9d;
-  --fg-dimmer: #808080;
-  --msg-fg-muted: #bbbbbb;
+  --fg-primary: rgb(232 232 232);
+  --fg-secondary: rgb(176 176 176);
+  --fg-dim: rgb(157 157 157);
+  --fg-dimmer: rgb(128 128 128);
+  --msg-fg-muted: rgb(187 187 187);
 
   /* accents */
-  --accent-brand: #6aa0ff;
-  --accent-success: #3fb950;
-  --accent-warning: #d4a13c;
-  --accent-error: #ff6b6b;
-  --accent-info: #4fc3f7;
+  --accent-brand: rgb(106 160 255);
+  --accent-success: rgb(63 185 80);
+  --accent-warning: rgb(212 161 60);
+  --accent-error: rgb(255 107 107);
+  --accent-info: rgb(79 195 247);
 
   /* borders */
-  --border-subtle: #333;
-  --border-strong: #555;
+  --border-subtle: rgb(51 51 51);
+  --border-strong: rgb(85 85 85);
 
   /* role colors (for messages) */
-  --role-ryan: #ffd54f;
-  --role-designer: #b368e9;
-  --role-dev: #4fc3f7;
-  --role-pm: #81c784;
+  --role-ryan: rgb(255 213 79);
+  --role-designer: rgb(179 104 233);
+  --role-dev: rgb(79 195 247);
+  --role-pm: rgb(129 199 132);
 
   /* spacing — base 8 (values named after their px size).
    * Fractional steps 2/4/6 only between 0 and 8 (¼/½/¾ of base).
@@ -62,7 +62,6 @@
   --space-48: 48px;
   --space-56: 56px;
   --space-64: 64px;
-
   --chat-avatar-size: 28px;
   --chat-row-gap: var(--space-2);
   --chat-group-gap: var(--space-8);
@@ -83,7 +82,6 @@
   --motion-duration-instant: 80ms;
   --motion-duration-fast: 150ms;
   --motion-duration-medium: 250ms;
-
   --motion-ease-out: cubic-bezier(0, 0, 0.2, 1);
   --motion-ease-in: cubic-bezier(0.4, 0, 1, 1);
   --motion-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
@@ -143,35 +141,35 @@
 
 [data-theme="light"] {
   /* backgrounds */
-  --bg-base: #ffffff;
-  --bg-elevated: #f5f5f5;
-  --bg-highlighted: #e5e8ef;
+  --bg-base: rgb(255 255 255);
+  --bg-elevated: rgb(245 245 245);
+  --bg-highlighted: rgb(229 232 239);
 
   /* foregrounds — contrast-tiered parallel to dark theme. --fg-dim
-   * clears WCAG AA (4.5:1) on #ffffff; --fg-dimmer is UI-component
+   * clears WCAG AA (4.5:1) on rgb(255 255 255); --fg-dimmer is UI-component
    * tier (3:1) for grouped-continuation metadata; --msg-fg-muted is
    * the addressed-to-other dim. */
-  --fg-primary: #1a1a1a;
-  --fg-secondary: #4a5568;
-  --fg-dim: #5a6578;
-  --fg-dimmer: #718096;
-  --msg-fg-muted: #6b7280;
+  --fg-primary: rgb(26 26 26);
+  --fg-secondary: rgb(74 85 104);
+  --fg-dim: rgb(90 101 120);
+  --fg-dimmer: rgb(113 128 150);
+  --msg-fg-muted: rgb(107 114 128);
 
   /* accents — tuned for AA contrast on light bg */
-  --accent-brand: #2563eb;
-  --accent-success: #16a34a;
-  --accent-warning: #b45309;
-  --accent-error: #dc2626;
-  --accent-info: #0284c7;
+  --accent-brand: rgb(37 99 235);
+  --accent-success: rgb(22 163 74);
+  --accent-warning: rgb(180 83 9);
+  --accent-error: rgb(220 38 38);
+  --accent-info: rgb(2 132 199);
 
   /* borders */
-  --border-subtle: #e2e8f0;
-  --border-strong: #cbd5e0;
+  --border-subtle: rgb(226 232 240);
+  --border-strong: rgb(203 213 224);
 
   /* role colors — slightly darker versions for light-mode contrast */
-  --role-ryan: #a16207;
-  --role-designer: #7e22ce;
-  --role-dev: #0369a1;
-  --role-pm: #15803d;
+  --role-ryan: rgb(161 98 7);
+  --role-designer: rgb(126 34 206);
+  --role-dev: rgb(3 105 161);
+  --role-pm: rgb(21 128 61);
 }
 

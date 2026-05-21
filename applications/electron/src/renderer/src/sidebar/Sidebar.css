@@ -88,16 +88,20 @@
     &.presence-dot--available {
       background: var(--accent-success);
     }
+
     &.presence-dot--busy {
       background: var(--accent-warning);
     }
+
     &.presence-dot--blocked,
     &.presence-dot--help {
       background: var(--accent-error);
     }
+
     &.presence-dot--idle {
       background: var(--fg-dim);
     }
+
     &.presence-dot--offline {
       background: var(--fg-dimmer);
     }

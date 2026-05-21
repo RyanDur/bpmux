@@ -1,6 +1,6 @@
-/* #381: markdown-rendered content restores default inline + block
+/* rgb(51 136 17): markdown-rendered content restores default inline + block
  * element styling within a scoped `.markdown-body` wrapper. The
- * Meyer reset (#347) strips browser defaults with `font: inherit`
+ * Meyer reset (rgb(51 68 119)) strips browser defaults with `font: inherit`
  * on every listed element (strong, em, code, h1-h6, ul, ol, li,
  * blockquote, etc.); without restoration inside a markdown-render
  * scope, `**bold**` shows as plain text, `*italic*` has no slant,
@@ -40,6 +40,7 @@
 .markdown-body h5,
 .markdown-body h6 {
   font-weight: revert;
+
   /* Size tiers: parent stylesheets (MessageList / DrillIn) may
    * layer specific font-sizes per tier; leave those per-context.
    * Default browser h1-h6 sizing is handled by `revert` on the
@@ -57,7 +58,7 @@
  * this floor. */
 .markdown-body code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.875em;
+  font-size: 0.875rem;
   background: var(--bg-elevated);
   padding: 0.1em var(--space-4);
   border-radius: 3px;
@@ -102,7 +103,7 @@
   border-left: 2px solid var(--border-strong);
 }
 
-/* #380 inline @mention pills. Color comes from the role-token
+/* rgb(51 136 0) inline @mention pills. Color comes from the role-token
  * palette (--role-{ryan,dev,pm,designer} when available, else
  * --role-unknown). A subtle tinted background signals the pill
  * identity without overwhelming the surrounding text; font-weight
@@ -145,7 +146,7 @@
 }
 
 /* Clickable variant — cursor pointer + focus ring when rendered as
- * a button per #332 click-to-scope parity with sidebar. */
+ * a button per rgb(51 51 34) click-to-scope parity with sidebar. */
 .markdown-body .message-mention[role='button'] {
   cursor: pointer;
 }
