@@ -40,6 +40,7 @@ test.describe('human-side E2E #476 — direct-action — board drill-in', () => 
 
       await win.reload()
       await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      await win.locator('[data-test="board-tab-plan"]').click()
 
       const storyRow = win.locator('[data-test="board-story-1"]').first()
       await expect(storyRow).toContainText(titleMarker)
@@ -47,11 +48,7 @@ test.describe('human-side E2E #476 — direct-action — board drill-in', () => 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      // Pre-#1127 the spec used `storyRow.locator('button').first()`,
-      // but the renderer uses a `<div role="button" class="board-
-      // story-button">` (clickable surface, not a real button). The
-      // class selector matches the production element directly.
-      await storyRow.locator('[role="button"]').first().click()
+      await storyRow.locator('.board-story-navigate').click()
 
       const drillIn = win.locator('[data-test="board-drill-in"]')
       await expect(drillIn).toBeVisible()

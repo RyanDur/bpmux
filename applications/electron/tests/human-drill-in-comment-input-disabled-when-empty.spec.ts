@@ -36,11 +36,12 @@ test.describe('human-side E2E #476 — direct-action — drill-in comment input'
 
       await win.reload()
       await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      await win.locator('[data-test="board-tab-plan"]').click()
 
       const storyRow = win.locator('[data-test="board-story-1"]').first()
       await expect(storyRow).toContainText('comment-input-target')
 
-      await storyRow.locator('[role="button"]').first().click()
+      await storyRow.locator('.board-story-navigate').click()
       const drillIn = win.locator('[data-test="board-drill-in"]')
       await expect(drillIn).toBeVisible()
 
