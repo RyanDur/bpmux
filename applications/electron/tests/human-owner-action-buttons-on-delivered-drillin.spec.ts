@@ -67,7 +67,7 @@ test.describe('human-side E2E #476 — owner-specific — accept/reject buttons 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      await storyRow.locator('.board-story-button').click()
+      await storyRow.locator('.board-story-navigate').click({ position: { x: 4, y: 4 } })
 
       const drillIn = win.locator('[data-test="board-drill-in"]')
       await expect(drillIn).toBeVisible()

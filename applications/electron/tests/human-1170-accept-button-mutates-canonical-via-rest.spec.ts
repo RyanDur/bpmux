@@ -61,7 +61,7 @@ test.describe('#1170 — UI accept-button mutates canonical store via REST (no s
         '#board-group-delivered-content [data-test="board-story-1"]'
       )
       await expect(deliveredCard).toContainText('human-1170-accept-button-canonical-mutation')
-      await deliveredCard.locator('.board-story-button').click()
+      await deliveredCard.locator('.board-story-navigate').click({ position: { x: 4, y: 4 } })
       await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
 
       const acceptBtn = win.locator('[data-test="drill-in-accept"]')

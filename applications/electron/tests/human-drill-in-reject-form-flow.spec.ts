@@ -67,7 +67,7 @@ test.describe('human-side E2E #476 — direct-action — drill-in reject form', 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      await storyRow.locator('.board-story-button').click()
+      await storyRow.locator('.board-story-navigate').click({ position: { x: 4, y: 4 } })
       await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
 
       await win.locator('[data-test="drill-in-reject"]').click()
@@ -135,7 +135,7 @@ test.describe('human-side E2E #476 — direct-action — drill-in reject form', 
       pageErrors.length = 0
 
       const storyRow = win.locator('#board-group-delivered-content [data-test="board-story-1"]')
-      await storyRow.locator('.board-story-button').click()
+      await storyRow.locator('.board-story-navigate').click({ position: { x: 4, y: 4 } })
       await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
 
       const rejectButton = win.locator('[data-test="drill-in-reject"]')
