@@ -10,7 +10,7 @@ if [ ! -d "$REPO_ROOT/applications/electron/node_modules" ]; then
     exit 1
 fi
 
-echo "Running pre-push quality gates (serial heavy specs at workers=1, then 6 main shards at workers=3)..."
+echo "Running pre-push quality gates (serial heavy specs at workers=1, then 6 main shards at workers=2)..."
 
 # The heaviest specs (real-backend spawns a full bpmux backend per
 # test; a11y-audit walks the whole DOM) are serial-isolated into a
@@ -19,7 +19,10 @@ echo "Running pre-push quality gates (serial heavy specs at workers=1, then 6 ma
 # once under host saturation) manufactured timeout + worker-crash +
 # render-variance false-fails — every spec passes at workers=1; the
 # gate flaked only under workers=3 contention. The `main` project
-# (testIgnore those specs) keeps the 6-shard workers=3 coverage.
+# (testIgnore those specs) runs the 6 shards at workers=2 — every main
+# spec still launches an electron+backend pair, so workers=3 (3 pairs)
+# kept crashing a worker on a loaded host ("1 error not part of any
+# test"); workers=2 cuts concurrent pairs while keeping parallelism.
 # Sequential shard execution (#1303) bounds concurrency further.
 
 serial_log=$(mktemp)
@@ -42,7 +45,7 @@ for i in $(seq 1 $total_shards); do
     set +e
     (cd "$REPO_ROOT/applications/electron" \
       && npx playwright test --reporter=dot --project=main \
-           --shard="$i/$total_shards" --workers=3) \
+           --shard="$i/$total_shards" --workers=2) \
       >"$log" 2>&1
     shard_exits[$i]=$?
     set -e
