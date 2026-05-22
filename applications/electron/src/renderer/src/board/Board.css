@@ -966,7 +966,7 @@
 /* Button-variant badges (clickable → drill-in timeline). Keep the
  * hover / focus affordances subtle so the badge reads as an inline
  * label by default, actionable on reach. */
-button.story-badge {
+.story-badge--action {
   position: relative;
   z-index: 1;
   cursor: pointer;

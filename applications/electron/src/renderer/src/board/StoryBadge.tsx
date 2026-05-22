@@ -101,7 +101,7 @@ const StoryBadge = ({ story, onOpenTimeline, onOpenBlocker }: Props): React.JSX.
     return (
       <button
         type="button"
-        className={classes}
+        className={`${classes} story-badge--action`}
         data-test="story-badge"
         data-badge-kind={kind}
         data-state={story.state}

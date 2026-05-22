@@ -16,8 +16,22 @@
     "custom-property-pattern": null,
     "value-keyword-case": null,
     "media-feature-name-no-unknown": null,
-    "at-rule-no-unknown": null
+    "at-rule-no-unknown": null,
+    "selector-max-type": [
+      0,
+      {
+        "ignore": ["descendant", "child", "next-sibling"]
+      }
+    ]
   },
+  "overrides": [
+    {
+      "files": ["src/renderer/src/styles/*.css"],
+      "rules": {
+        "selector-max-type": null
+      }
+    }
+  ],
   "ignoreFiles": [
     "**/node_modules/**",
     "**/out/**",

@@ -48,7 +48,7 @@
       outline-offset: -2px;
     }
 
-    &:has(input:checked) {
+    &:has(.tabs-radio:checked) {
       color: var(--fg-primary);
       border-bottom-color: var(--accent-brand);
     }

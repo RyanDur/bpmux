@@ -54,7 +54,7 @@
       outline-offset: 2px;
     }
 
-    &:has(input:checked) {
+    &:has(.filter-pill-checkbox:checked) {
       color: var(--fg-primary);
       background: var(--bg-highlighted);
       border-color: var(--accent-brand);
