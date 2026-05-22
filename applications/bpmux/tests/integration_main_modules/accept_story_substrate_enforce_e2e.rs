@@ -167,6 +167,66 @@ fn pm_fires_team_verifiable_with_both_verdicts_succeeds() {
 }
 
 #[test]
+fn dev_accept_story_succeeds_on_awaiting_dev_chore_with_designer_evidence() {
+    let bpmux = TestBpmux::start();
+    let rt = tokio::runtime::Runtime::new().expect("rt");
+    rt.block_on(async {
+        let pm = TestBridge::connect(&bpmux, "pm").await;
+        let dev = TestBridge::connect(&bpmux, "dev").await;
+        let designer = TestBridge::connect(&bpmux, "designer").await;
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        let target_number = create_target_story(
+            &pm,
+            "[Chore] dev-accepts-chore-with-designer-evidence",
+            "reject if dev-fire accept on an awaiting-dev Chore with designer-verdict doesn't 200 (chore-ownership-triad accept-half)",
+        )
+        .await;
+
+        pm.call_tool(
+            "label_story",
+            serde_json::json!({
+                "number": target_number,
+                "label": "awaiting dev",
+                "rationale": "test fixture: acceptor=dev (Chore dev-acceptor)"
+            }),
+        )
+        .await
+        .expect("pm label_story awaiting dev");
+
+        designer
+            .call_tool(
+                "submit_verdict",
+                serde_json::json!({
+                    "story_number": target_number,
+                    "verdict": "verified",
+                    "substrate_grounding": "test-harness: designer verdict = required-evidence for dev-verifiable accept"
+                }),
+            )
+            .await
+            .expect("designer submit_verdict");
+
+        let result = dev
+            .call_tool(
+                "accept_story",
+                serde_json::json!({"number": target_number, "would_file_bug": false}),
+            )
+            .await
+            .expect("dev accept_story should succeed on awaiting-dev Chore with designer-evidence");
+
+        let msg = result.as_str().unwrap_or("").to_string();
+        assert!(
+            msg.contains("accepted"),
+            "dev-accept happy-path message names accept; got {msg}"
+        );
+
+        pm.close().await;
+        dev.close().await;
+        designer.close().await;
+    });
+}
+
+#[test]
 fn pm_fires_team_verifiable_without_designer_verdict_returns_structured_409() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");

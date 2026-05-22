@@ -234,3 +234,69 @@ fn pass_desk_check_acceptor_owner_applies_awaiting_owner_label() {
         designer.close().await;
     });
 }
+
+#[test]
+fn pass_desk_check_acceptor_dev_applies_awaiting_dev_label() {
+    let bpmux = TestBpmux::start();
+    let rt = tokio::runtime::Runtime::new().expect("rt");
+    rt.block_on(async {
+        let pm = TestBridge::connect(&bpmux, "pm").await;
+        let designer = TestBridge::connect(&bpmux, "designer").await;
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        let target_number = create_target_story(
+            &pm,
+            "[Chore] pass-desk-check-dev-acceptor",
+            "reject if pass_desk_check with acceptor=dev does NOT apply awaiting dev label atomically",
+        )
+        .await;
+
+        designer
+            .call_tool(
+                "submit_verdict",
+                serde_json::json!({
+                    "story_number": target_number,
+                    "verdict": "verified",
+                    "substrate_grounding": "src/qux.rs:42 + rg snippet for dev-class atomic-label-application",
+                }),
+            )
+            .await
+            .expect("designer submit_verdict");
+
+        designer
+            .call_tool(
+                "pass_desk_check",
+                serde_json::json!({
+                    "number": target_number,
+                    "acceptor": "dev",
+                    "would_file_bug": false
+                }),
+            )
+            .await
+            .expect("pass_desk_check with acceptor=dev should succeed");
+
+        let story = designer
+            .call_tool("get_story", serde_json::json!({"number": target_number}))
+            .await
+            .expect("get_story should succeed");
+        let story_text = story
+            .as_str()
+            .map(String::from)
+            .unwrap_or_else(|| story.to_string());
+        assert!(
+            story_text.contains("awaiting dev"),
+            "post-pass_desk_check labels include awaiting dev; got:\n{story_text}"
+        );
+        assert!(
+            !story_text.contains("awaiting team"),
+            "awaiting team must NOT coexist with awaiting dev (single-acceptor-label invariant); got:\n{story_text}"
+        );
+        assert!(
+            !story_text.contains("awaiting owner"),
+            "awaiting owner must NOT coexist with awaiting dev (single-acceptor-label invariant); got:\n{story_text}"
+        );
+
+        pm.close().await;
+        designer.close().await;
+    });
+}
