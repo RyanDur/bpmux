@@ -1,5 +1,7 @@
 import { defineConfig } from '@playwright/test'
 
+const SERIAL_HEAVY_SPECS = ['**/real-backend.spec.ts', '**/a11y-audit.spec.ts']
+
 export default defineConfig({
   // Each test launches its own isolated Electron+bpmux pair with a
   // unique BPMUX_BACKEND_PORT (getFreePort), unique session-base +
@@ -20,5 +22,9 @@ export default defineConfig({
   },
   use: {
     actionTimeout: 10_000
-  }
+  },
+  projects: [
+    { name: 'serial', testMatch: SERIAL_HEAVY_SPECS },
+    { name: 'main', testIgnore: SERIAL_HEAVY_SPECS }
+  ]
 })

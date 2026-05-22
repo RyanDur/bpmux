@@ -10,17 +10,25 @@ if [ ! -d "$REPO_ROOT/applications/electron/node_modules" ]; then
     exit 1
 fi
 
-echo "Running pre-push quality gates (6 Playwright shards sequentially, workers=3)..."
+echo "Running pre-push quality gates (serial heavy specs at workers=1, then 6 main shards at workers=3)..."
 
-# Sequential shard execution (#1303 follow-up): parallel-hammer of 6
-# shards × workers=3 = 18 concurrent procs on bpmux-mac-m1 saturated
-# the host (WindowServer/GPU/CPU), causing shard-6 false-fails on
-# load-sensitive tests (real-backend unfurls, avatar grouping,
-# keyboard drag-reorder). #1253 moved CI's e2e to ubuntu-latest under
-# the same diagnosis; the local pre-push gate kept the parallel shape
-# and surfaced the same class. Sequential preserves the 6-shard
-# coverage with bounded concurrency (3 procs at peak per shard).
-# Trade-off: ~3min wall-clock vs the prior 1.5min flaky-parallel.
+# The heaviest specs (real-backend spawns a full bpmux backend per
+# test; a11y-audit walks the whole DOM) are serial-isolated into a
+# workers=1 pass via the `serial` playwright project, so they don't
+# contend at 3-way parallelism. That contention (3 real-backends at
+# once under host saturation) manufactured timeout + worker-crash +
+# render-variance false-fails — every spec passes at workers=1; the
+# gate flaked only under workers=3 contention. The `main` project
+# (testIgnore those specs) keeps the 6-shard workers=3 coverage.
+# Sequential shard execution (#1303) bounds concurrency further.
+
+serial_log=$(mktemp)
+set +e
+(cd "$REPO_ROOT/applications/electron" \
+  && npx playwright test --reporter=dot --project=serial --workers=1) \
+  >"$serial_log" 2>&1
+serial_exit=$?
+set -e
 
 declare -a shard_logs shard_exits
 total_shards=6
@@ -33,12 +41,16 @@ for i in $(seq 1 $total_shards); do
     log="${shard_logs[$i]}"
     set +e
     (cd "$REPO_ROOT/applications/electron" \
-      && npx playwright test --reporter=dot \
+      && npx playwright test --reporter=dot --project=main \
            --shard="$i/$total_shards" --workers=3) \
       >"$log" 2>&1
     shard_exits[$i]=$?
     set -e
 done
+
+echo "--- serial (workers=1) ---"
+cat "$serial_log"
+rm -f "$serial_log"
 
 for i in $(seq 1 $total_shards); do
     echo "--- shard $i/$total_shards ---"
@@ -57,6 +69,7 @@ for_each_exit_check() {
     fi
 }
 
+for_each_exit_check "e2e serial (workers=1)" "$serial_exit"
 for i in $(seq 1 $total_shards); do
     for_each_exit_check "e2e shard $i/$total_shards" "${shard_exits[$i]}"
 done
