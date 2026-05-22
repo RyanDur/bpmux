@@ -270,11 +270,11 @@
   }
 
   & .message-row {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-rows: 1fr;
     gap: var(--chat-row-gap);
 
-    /* Flex children default to min-width: auto (intrinsic content
+    /* Grid items default to min-width: auto (intrinsic content
      * width) which lets a long unbreakable string push the row past
      * the container, triggering a horizontal scrollbar on .message-
      * list (rgb(51 102 85)). Forcing min-width: 0 lets the row shrink to the
@@ -282,39 +282,32 @@
      * actual text break. */
     min-width: 0;
 
-    /* Arrival animation (rgb(51 85 34) AC4): new message rows slide up from
-     * a few px below + fade in. @starting-style fires once per mount
-     * — React keyed by m.id keeps the element stable after hydration
-     * so the transition only plays when a genuinely new row mounts
-     * (WS arrival) rather than on every re-render. Reduced-motion
-     * users get 0ms on duration + no transform via the nested @media
-     * block below.
+    /* Arrival animation (#1487): new message rows reveal via a pure
+     * grid-fr height-grow (0fr -> 1fr) — NO fade (Ryan taste-call
+     * 2026-05-22: "I don't like the fade reveal"). @starting-style
+     * fires once per mount — React keyed by m.id keeps the element
+     * stable after hydration so the grow plays only when a genuinely
+     * new row mounts (WS arrival) rather than on every re-render.
+     * The child article clips with overflow:hidden during the 0fr
+     * collapse so content doesn't bleed. Reduced-motion is handled by
+     * --motion-duration-fast (0ms under prefers-reduced-motion in
+     * tokens.css) — the grow snaps instantly, no media block needed.
      *
-     * Note: the 70K-message hydration backfill will animate every
-     * row on initial load; since all rows are inserted in a single
-     * frame they fade/rise together — reads as a pleasant arrival
-     * rather than noisy. If that ever feels off, a "seen at hydration"
-     * flag can be threaded from useWebSocket to skip the animation
-     * on backfill; not needed per current UX observation. */
-    transition:
-      transform var(--motion-duration-fast) var(--motion-ease-out),
-      opacity var(--motion-duration-fast) var(--motion-ease-out);
-    transform: translateY(0);
-    opacity: 1;
+     * Note: the 70K-message hydration backfill will animate every row
+     * on initial load; since all rows are inserted in a single frame
+     * they grow together — reads as a pleasant arrival rather than
+     * noisy. If that ever feels off, a "seen at hydration" flag can be
+     * threaded from useWebSocket to skip the animation on backfill;
+     * not needed per current UX observation. */
+    transition: grid-template-rows var(--motion-duration-fast) var(--motion-ease-out);
 
     @starting-style {
-      transform: translateY(6px);
-      opacity: 0;
+      grid-template-rows: 0fr;
     }
 
-    /* Reduced-motion: kill the transform (motion-inducing); keep
-     * opacity so the arrival still feels like something appeared. */
-    @media (prefers-reduced-motion: reduce) {
-      transform: none;
-
-      @starting-style {
-        transform: none;
-      }
+    & > article {
+      overflow: hidden;
+      min-height: 0;
     }
 
     /* First-of-group gets the full avatar-anchored layout: a 28px
