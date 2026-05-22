@@ -1,6 +1,10 @@
 import { defineConfig } from '@playwright/test'
 
-const SERIAL_HEAVY_SPECS = ['**/real-backend.spec.ts', '**/a11y-audit.spec.ts']
+const SERIAL_HEAVY_SPECS = [
+  '**/real-backend.spec.ts',
+  '**/a11y-audit.spec.ts',
+  '**/canary-env-leak.spec.ts'
+]
 
 export default defineConfig({
   // Each test launches its own isolated Electron+bpmux pair with a

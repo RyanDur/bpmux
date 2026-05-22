@@ -54,7 +54,9 @@ test('board renders stories, opens drill-in, shows Accept for delivered', async 
     await expect(win.locator('[data-test="board-story-111"]')).toBeVisible()
     await expect(win.locator('[data-test="board-story-222"]')).toBeVisible()
 
-    await win.locator('[data-test="board-story-222"] button').click()
+    await win.locator('[data-test="board-story-222"] .board-story-navigate').click({
+      position: { x: 4, y: 4 }
+    })
     await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
 
     await expect(win.locator('[data-test="drill-in-accept"]')).toBeVisible()
