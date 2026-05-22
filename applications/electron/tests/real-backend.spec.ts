@@ -427,7 +427,7 @@ test.describe('real-backend', () => {
   // transform. Asserts that the pill declares a token-driven transition
   // on background-color (AC8a) and that .message-row declares a
   // transform transition at fast duration for arrival animation (AC8b).
-  test('micro-interactions: filter pill transitions bg-color, message-row transitions transform', async () => {
+  test('micro-interactions: filter pill transitions bg-color, message-row transitions grid-template-rows', async () => {
     const { app } = await launchWithIsolatedSession()
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="app-root"]')).toBeVisible()
@@ -478,7 +478,7 @@ test.describe('real-backend', () => {
         duration: s.transitionDuration
       }
     })
-    expect(rowTransition.property).toContain('transform')
+    expect(rowTransition.property).toContain('grid-template-rows')
     expect(rowTransition.duration).toContain('0.15s')
 
     await app.close()
