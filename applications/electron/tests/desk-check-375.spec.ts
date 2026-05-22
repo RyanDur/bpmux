@@ -88,6 +88,7 @@ const openGroup = async (
   // descendant summary inside the summary itself — 0 matches → click
   // hung the test. Click the summary directly so native <details>
   // toggle fires.
+  await win.locator(`[data-test="board-tab-${state === 'accepted' ? 'done' : 'now'}"]`).click()
   const summary = win.locator(`[data-test="board-group-${state}"]`).first()
   const isOpen = await summary.evaluate((el: Element) => {
     const details = el.closest('details')

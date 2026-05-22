@@ -75,6 +75,7 @@ const openGroup = async (
   // Post-#516: data-test on summary, not details. See desk-check-375
   // for full diagnosis. Click summary directly to fire <details>
   // toggle.
+  await win.locator(`[data-test="board-tab-${state === 'accepted' ? 'done' : 'now'}"]`).click()
   const summary = win.locator(`[data-test="board-group-${state}"]`).first()
   const isOpen = await summary.evaluate((el: Element) => {
     const details = el.closest('details')
