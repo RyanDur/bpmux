@@ -164,9 +164,10 @@ test.describe('desk-check #457 slice 6 — Epic hybrid state-derivation + lane f
       ]
     })
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="board-epic-931"]')).toBeVisible()
-    await expect(win.locator('[data-test="board-story-931"]')).toHaveCount(0)
     await expect(win.locator('[data-test="board-story-932"]')).toBeVisible()
+    await expect(win.locator('[data-test="board-story-931"]')).toHaveCount(0)
+    await win.locator('[data-test="board-tab-plan"]').click()
+    await expect(win.locator('[data-test="board-epic-931"]')).toBeVisible()
     expect(consoleErrors).toEqual([])
     await app.close()
   })
