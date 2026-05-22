@@ -93,7 +93,7 @@ test.describe('human-side E2E #476 — channel routing matrix', () => {
     }
   })
 
-  test('insight filter toggle off hides insight messages; toggle on shows them again', async () => {
+  test('events filter toggle on shows events messages; off hides them again', async () => {
     const { app, win, mockGh } = await launchWithMockGh({
       seedMessages: [
         {
@@ -104,9 +104,9 @@ test.describe('human-side E2E #476 — channel routing matrix', () => {
         },
         {
           from: 'dev:claude-code',
-          text: 'INSIGHT_FILTER_MARKER_BPF20',
+          text: 'EVENTS_FILTER_MARKER_BPF20',
           ts: '2026-04-22T16:01:00Z',
-          message_type: 'insight'
+          message_type: 'activity'
         }
       ]
     })
@@ -120,21 +120,22 @@ test.describe('human-side E2E #476 — channel routing matrix', () => {
 
       const list = win.locator('[data-test="message-list"]')
       await expect(list).toBeVisible()
-      await expect(list).toContainText('INSIGHT_FILTER_MARKER_BPF20', { timeout: 10000 })
+      await expect(list).toContainText('a normal chat message', { timeout: 10000 })
 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      const insightPill = win.locator('[data-test="filter-pill-insight"]')
-      await expect(insightPill).toHaveAttribute('aria-pressed', 'true')
+      const eventsPill = win.locator('[data-test="filter-pill-events"]')
+      await expect(eventsPill).toHaveAttribute('data-state', 'off')
+      await expect(list).not.toContainText('EVENTS_FILTER_MARKER_BPF20')
 
-      await insightPill.click()
-      await expect(insightPill).toHaveAttribute('aria-pressed', 'false')
-      await expect(list).not.toContainText('INSIGHT_FILTER_MARKER_BPF20')
+      await eventsPill.click()
+      await expect(eventsPill).toHaveAttribute('data-state', 'on')
+      await expect(list).toContainText('EVENTS_FILTER_MARKER_BPF20')
 
-      await insightPill.click()
-      await expect(insightPill).toHaveAttribute('aria-pressed', 'true')
-      await expect(list).toContainText('INSIGHT_FILTER_MARKER_BPF20')
+      await eventsPill.click()
+      await expect(eventsPill).toHaveAttribute('data-state', 'off')
+      await expect(list).not.toContainText('EVENTS_FILTER_MARKER_BPF20')
 
       expect(consoleErrors).toEqual([])
       expect(pageErrors).toEqual([])
