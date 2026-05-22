@@ -260,7 +260,7 @@ const SyncStatusGlyph = ({ apiBase, authToken, messages }: Props): React.JSX.Ele
         data-state={state}
         data-count={count}
       >
-        <span aria-hidden="true">{glyph}</span>
+        <i aria-hidden="true">{glyph}</i>
         {showCount && <small className="sync-status-glyph__count">{count}</small>}
       </button>
     </output>
