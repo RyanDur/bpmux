@@ -77,6 +77,7 @@ test.describe('human-side E2E #476 — observation-class — accept_story', () =
 
       await win.reload()
       await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      await win.locator('[data-test="board-tab-done"]').click()
       await win.locator('[data-test="board-group-accepted"]').click()
 
       const storyAccepted = win.locator('#board-group-accepted-content [data-test="board-story-1"]')

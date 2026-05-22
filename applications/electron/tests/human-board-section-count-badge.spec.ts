@@ -6,6 +6,7 @@ test.describe('#468 board panel B2 — section-count badges', () => {
     const { app, win, mockGh } = await launchWithMockGh()
     try {
       await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      await win.locator('[data-test="board-tab-done"]').click()
 
       const acceptedSummary = win.locator('[data-test="board-group-accepted"]')
       await expect(acceptedSummary).toHaveAttribute('aria-expanded', 'false')

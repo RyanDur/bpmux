@@ -87,6 +87,7 @@ test.describe('#1170 — UI accept-button mutates canonical store via REST (no s
         expect(story?.state).toBe('accepted')
       }).toPass({ timeout: 10_000 })
 
+      await win.locator('[data-test="board-tab-done"]').click()
       await win.locator('[data-test="board-group-accepted"]').click()
       const acceptedCard = win.locator('#board-group-accepted-content [data-test="board-story-1"]')
       await expect(acceptedCard).toBeVisible()

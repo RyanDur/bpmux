@@ -55,11 +55,14 @@ test.describe('#467 board panel — bounded scroll + sticky headers + native <de
 
       await expect(ready).toHaveAttribute('aria-expanded', 'true')
       await expect(inProgress).toHaveAttribute('aria-expanded', 'true')
+
+      await win.locator('[data-test="board-tab-done"]').click()
       await expect(accepted).toHaveAttribute('aria-expanded', 'false')
 
       await accepted.click()
       await expect(accepted).toHaveAttribute('aria-expanded', 'true')
 
+      await win.locator('[data-test="board-tab-now"]').click()
       await expect(ready).toHaveAttribute('aria-expanded', 'true')
       await expect(inProgress).toHaveAttribute('aria-expanded', 'true')
     } finally {

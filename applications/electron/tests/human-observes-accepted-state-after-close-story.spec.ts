@@ -57,6 +57,7 @@ test.describe('human-side E2E #476/#1377 — observation-class — close_story',
       await win.reload()
       await expect(win.locator('[data-test="board-region"]')).toBeVisible()
 
+      await win.locator('[data-test="board-tab-done"]').click()
       await win.locator('[data-test="board-group-retired"]').click()
       const storyRetired = win.locator('#board-group-retired-content [data-test="board-story-1"]')
       await expect(storyRetired).toContainText('human-observes-closed')
