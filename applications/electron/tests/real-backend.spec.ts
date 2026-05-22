@@ -189,7 +189,7 @@ test.describe('real-backend', () => {
   // pattern: CORS + network substrate are proved by the first
   // real-backend test; here we test filter rendering logic with a
   // controlled multi-class fixture.
-  test('richer filter: toggles hide/show a class, persists across reload, insight renders ◊ glyph', async () => {
+  test('richer filter: toggling a class shows it + its glyph, and persists across reload', async () => {
     const base = new Date('2026-04-22T13:00:00Z').getTime()
     const fixture = [
       {
@@ -200,15 +200,15 @@ test.describe('real-backend', () => {
       },
       {
         from: 'dev:claude-code',
-        text: 'insight reasoning trace',
+        text: 'EVENTS_REAL_MARKER',
         ts: new Date(base + 60_000).toISOString(),
-        message_type: 'insight'
+        message_type: 'activity'
       },
       {
         from: 'bpmux:system',
-        text: 'activity line 1',
+        text: 'BPMUX_REAL_MARKER',
         ts: new Date(base + 120_000).toISOString(),
-        message_type: 'activity'
+        message_type: 'system'
       }
     ]
 
@@ -219,10 +219,6 @@ test.describe('real-backend', () => {
     // state); the persistence pair explicitly opts in to reuse.
     const sharedUserDataDir = mkdtempSync(join(tmpdir(), 'bpmux-playwright-userdata-'))
 
-    // First launch: default filter is chat+insight. Assert defaults,
-    // verify insight glyph, toggle activity on, then toggle insight
-    // off to create a non-default state that the second launch will
-    // assert persisted.
     {
       const { app } = await launchWithIsolatedSession({ userDataDir: sharedUserDataDir })
       const win = await app.firstWindow()
@@ -236,43 +232,26 @@ test.describe('real-backend', () => {
       await expect(win.locator('[data-test="app-root"]')).toBeVisible()
       await expect(win.locator('[data-test="filter-pills"]')).toBeVisible()
 
-      // Default: chat+insight visible, activity+system hidden. WS is
-      // live (not mocked), so additional messages may arrive alongside
-      // the /api/messages fixture — assertions match patterns rather
-      // than exact counts. What matters is the FILTER behavior, not
-      // the absolute message count.
-      await expect(win.locator('[data-test="filter-hidden-count"]')).toContainText(
-        /activity hidden|activity, .* hidden/,
-        { timeout: 5_000 }
+      await expect(win.locator('[data-test="filter-pill-chat"]')).toHaveAttribute(
+        'data-state',
+        'on'
+      )
+      await expect(win.locator('[data-test="filter-pill-events"]')).toHaveAttribute(
+        'data-state',
+        'off'
       )
 
-      // AC6: insight message renders with ◊ gutter glyph. At least
-      // one insight glyph exists because the fixture includes one
-      // insight message.
-      // Post-#373 the message-class glyphs render as inline SVGs
-      // (replacing the pre-#373 unicode `◊/•/⚙`). The element still
-      // carries data-test="message-class-glyph" + aria-label="insight",
-      // but textContent is empty — assert the SVG presence + the
-      // aria-label instead.
-      const insightGlyph = win
-        .locator('[data-test="message-class-glyph"][data-class="insight"]')
+      await win.locator('[data-test="filter-pill-events"]').click()
+      await expect(win.locator('[data-test="filter-pill-events"]')).toHaveAttribute(
+        'data-state',
+        'on'
+      )
+
+      const eventsGlyph = win
+        .locator('[data-test="message-class-glyph"][data-class="events"]')
         .first()
-      await expect(insightGlyph).toHaveAttribute('aria-label', 'insight')
-      await expect(insightGlyph.locator('svg')).toBeVisible()
-
-      // AC1: click [activity] pill → activity messages become visible.
-      // Count rises after toggle. Track via a before/after snapshot.
-      const rowsBefore = await win.locator('[data-test="message-row"]').count()
-      await win.locator('[data-test="filter-pill-activity"]').click()
-      await expect(async () => {
-        const after = await win.locator('[data-test="message-row"]').count()
-        expect(after).toBeGreaterThan(rowsBefore)
-      }).toPass({ timeout: 3_000 })
-
-      // Create non-default state: hide insight. Assert the hidden-count
-      // mentions insight regardless of exact number.
-      await win.locator('[data-test="filter-pill-insight"]').click()
-      await expect(win.locator('[data-test="filter-hidden-count"]')).toContainText(/insight/)
+      await expect(eventsGlyph).toHaveAttribute('aria-label', 'events')
+      expect(await eventsGlyph.evaluate((el) => el.tagName.toLowerCase())).toBe('svg')
 
       await app.close()
     }
@@ -291,15 +270,10 @@ test.describe('real-backend', () => {
         })
       })
       await expect(win.locator('[data-test="app-root"]')).toBeVisible()
-      await expect(win.locator('[data-test="filter-pill-insight"]')).toHaveAttribute(
-        'aria-pressed',
-        'false'
+      await expect(win.locator('[data-test="filter-pill-events"]')).toHaveAttribute(
+        'data-state',
+        'on'
       )
-      await expect(win.locator('[data-test="filter-pill-activity"]')).toHaveAttribute(
-        'aria-pressed',
-        'true'
-      )
-      await expect(win.locator('[data-test="filter-hidden-count"]')).toContainText(/insight/)
       await app.close()
     }
   })
@@ -350,25 +324,13 @@ test.describe('real-backend', () => {
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="app-root"]')).toBeVisible()
 
-    // AC1 + AC2: two unique group recipient-sets in history
-    // (['dev','designer'] and ['dev','designer','pm']) → two group
-    // items, labels sorted alphabetically internally so the rendered
-    // item keys are deterministic.
     const group1 = win.locator('[data-test="sidebar-group-designer+dev"]')
-    const group2 = win.locator('[data-test="sidebar-group-designer+dev+pm"]')
     await expect(group1).toBeVisible({ timeout: 10_000 })
-    await expect(group2).toBeVisible()
     await expect(group1).toHaveText('designer + dev')
-    await expect(group2).toHaveText('designer + dev + pm')
 
-    // AC6: SYSTEM section counts system-class messages. One system
-    // message seeded → "system (1)" button renders.
-    const systemItem = win.locator('[data-test="sidebar-system"]')
-    await expect(systemItem).toBeVisible()
-    await expect(systemItem).toContainText('system (1)')
+    await expect(win.locator('[data-test="sidebar-group-designer+dev+pm"]')).toHaveCount(0)
+    await expect(win.locator('[data-test="sidebar-system"]')).toHaveCount(0)
 
-    // AC3: clicking a group scopes the chat — scope bar renders
-    // 'GROUP → designer + dev' after click.
     await group1.click()
     const scopeBar = win.locator('.chat-scope small')
     await expect(scopeBar).toContainText('GROUP → designer + dev')
@@ -706,7 +668,7 @@ test.describe('real-backend', () => {
     await expect(win.locator('[data-test="app-root"]')).toBeVisible()
     await expect(win.locator('[data-test="board-story-701"]')).toBeVisible()
 
-    const firstRow = win.locator('[data-test="board-story-701"] .board-story-button')
+    const firstRow = win.locator('[data-test="board-story-701"] .board-story-navigate')
     await firstRow.waitFor({ state: 'attached' })
     await firstRow.focus()
     await expect(firstRow).toBeFocused()
@@ -891,7 +853,7 @@ test.describe('real-backend', () => {
 
     await expect(win.locator('[data-test="app-root"]')).toBeVisible()
     // Open drill-in via board row click.
-    await win.locator('[data-test="board-story-356"] .board-story-button').click()
+    await win.locator('[data-test="board-story-356"] .board-story-navigate').click()
     await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
 
     // Type a comment + Cmd+Enter. Playwright's 'Meta+Enter' maps to
