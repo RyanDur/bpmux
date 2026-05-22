@@ -79,7 +79,7 @@ test.describe('human-side E2E #499 — StoryBadge no nested-button', () => {
       await win.keyboard.press('Escape')
       await expect(drillIn).not.toBeVisible({ timeout: 5000 })
 
-      const button = row.locator('.board-story-button')
+      const button = row.locator('.board-story-navigate')
       await button.focus()
       await win.keyboard.press('Enter')
       await expect(drillIn).toBeVisible()
