@@ -70,28 +70,24 @@ const launchWithFixture = async (): Promise<{
 }
 
 test.describe('desk-check #373 illustrated class glyphs', () => {
-  test('insight + activity + system each render a labelled SVG glyph', async () => {
+  test('events + bpmux messages each render a labelled SVG glyph', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
 
-    // Enable insight + activity + system filters so those messages
-    // render. Defaults might be chat + insight only depending on
-    // the current filter config; we use the filter pills if they
-    // exist, otherwise the default hydration path.
-    // For simplicity, just assert on whatever glyphs the default
-    // filter happens to expose — at minimum insight should render
-    // (chat + insight are the defaults per #349).
-    const insight = win.locator('[data-test="message-class-glyph"][data-class="insight"]')
-    await expect(insight.first()).toBeVisible({ timeout: 5_000 })
+    await win.locator('[data-test="filter-pill-events"]').click()
+    await win.locator('[data-test="filter-pill-bpmux"]').click()
 
-    // Glyph should have role="img" + aria-label for SR users.
-    await expect(insight.first()).toHaveAttribute('role', 'img')
-    await expect(insight.first()).toHaveAttribute('aria-label', 'insight')
+    const events = win.locator('[data-test="message-class-glyph"][data-class="events"]')
+    await expect(events.first()).toBeVisible({ timeout: 5_000 })
+    await expect(events.first()).toHaveAttribute('role', 'img')
+    await expect(events.first()).toHaveAttribute('aria-label', 'events')
+    expect(await events.first().evaluate((el) => el.tagName.toLowerCase())).toBe('svg')
 
-    // Contains an <svg> child (custom SVG, not unicode text).
-    const svgCount = await insight.first().locator('svg').count()
-    expect(svgCount).toBe(1)
+    const bpmux = win.locator('[data-test="message-class-glyph"][data-class="bpmux"]')
+    await expect(bpmux.first()).toBeVisible({ timeout: 5_000 })
+    await expect(bpmux.first()).toHaveAttribute('aria-label', 'bpmux')
+    expect(await bpmux.first().evaluate((el) => el.tagName.toLowerCase())).toBe('svg')
 
     await win.screenshot({
       path: join(EVIDENCE_DIR, '92-class-glyphs.png')
