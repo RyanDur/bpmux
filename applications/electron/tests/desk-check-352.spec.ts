@@ -98,7 +98,7 @@ test.describe('desk-check #352 micro-interactions', () => {
     await app.close()
   })
 
-  test('message-row has transform + opacity transition at fast duration', async () => {
+  test('message-row has grid-template-rows transition at fast duration', async () => {
     const { app } = await launchWithMessages()
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="message-row"]').first()).toBeVisible()
@@ -115,8 +115,7 @@ test.describe('desk-check #352 micro-interactions', () => {
     console.log(`#352 AC4 message-row transition:`)
     console.log(`  property: ${row?.property}`)
     console.log(`  duration: ${row?.duration}`)
-    expect(row?.property).toContain('transform')
-    expect(row?.property).toContain('opacity')
+    expect(row?.property).toContain('grid-template-rows')
     expect(row?.duration).toMatch(/0\.15s|150ms/)
     await app.close()
   })
