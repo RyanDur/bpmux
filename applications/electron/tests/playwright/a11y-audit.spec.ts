@@ -73,6 +73,13 @@ test.describe('#425 a11y audit — dark-theme contrast + ARIA + keyboard + focus
     await expect(win.locator('[data-test="app-root"]')).toBeVisible()
     await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
     await win.waitForFunction(() => document.documentElement.dataset.theme === 'dark')
+    await win.evaluate(() => {
+      document.getAnimations().forEach((animation) => {
+        if (animation.effect?.getComputedTiming().iterations !== Infinity) {
+          animation.finish()
+        }
+      })
+    })
 
     const failures = await win.evaluate(() => {
       const parseColor = (cssColor: string): [number, number, number, number] | null => {
