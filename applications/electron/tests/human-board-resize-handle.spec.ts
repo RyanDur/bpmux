@@ -20,10 +20,10 @@ test.describe('#458 board panel — drag-resize + persistence', () => {
     await app.close()
   })
 
-  test('handle exposes WAI-ARIA windowsplitter contract', async () => {
+  test('handle exposes WAI-ARIA slider contract (role=slider per jsx-a11y; native-button focusable)', async () => {
     const { app, win } = await launchIsolatedWithWindow()
     const handle = win.locator('[data-test="board-resize-handle"]')
-    await expect(handle).toHaveAttribute('role', 'separator')
+    await expect(handle).toHaveAttribute('role', 'slider')
     await expect(handle).toHaveAttribute('aria-orientation', 'vertical')
     await expect(handle).toHaveAttribute('aria-controls', 'board-region')
     await expect(handle).toHaveAttribute('aria-label', 'Board panel width')

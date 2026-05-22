@@ -73,6 +73,8 @@ test.describe('desk-check #457 slice 5 — Electron Epic-summary section', () =>
     await expect(win.locator('[data-test="board-region"]')).toBeVisible()
     await expect(win.locator('[data-test="board-list"]')).toBeVisible()
 
+    await win.locator('[data-test="board-tab-plan"]').click()
+
     const epics = win.locator('[data-test="board-epics"]')
     await expect(epics).toBeVisible()
 

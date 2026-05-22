@@ -11,16 +11,15 @@ test.describe('#505 slice 5c — Board panel DESK-CHECK column', () => {
         'board-group-ready',
         'board-group-in-progress',
         'board-group-desk-check',
-        'board-group-delivered',
-        'board-group-accepted',
-        'board-group-retired',
-        'board-group-icebox'
+        'board-group-delivered'
       ]
 
       const order = await win.evaluate(() => {
-        const summaries = document.querySelectorAll<HTMLElement>(
-          '[data-test^="board-group-"]:not([data-test$="-count"])'
-        )
+        const now = document.querySelector('[data-test="board-tabpanel-now-content"]')
+        const summaries =
+          now?.querySelectorAll<HTMLElement>(
+            '[data-test^="board-group-"]:not([data-test$="-count"])'
+          ) ?? []
         return Array.from(summaries).map((el) => el.getAttribute('data-test') ?? '')
       })
 

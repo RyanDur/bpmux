@@ -65,10 +65,12 @@ test.describe('#449 board collapse-state persists across refresh — dev smoke',
       'aria-expanded',
       'true'
     )
+    await win.locator('[data-test="board-tab-done"]').click()
     await expect(win.locator('[data-test="board-group-accepted"]')).toHaveAttribute(
       'aria-expanded',
       'false'
     )
+    await win.locator('[data-test="board-tab-plan"]').click()
     await expect(win.locator('[data-test="board-group-icebox"]')).toHaveAttribute(
       'aria-expanded',
       'true'
@@ -78,6 +80,7 @@ test.describe('#449 board collapse-state persists across refresh — dev smoke',
 
   test('expanding a default-collapsed column persists across restart', async () => {
     const first = await launchIsolatedWithWindow({ preserveTempPaths: true })
+    await first.win.locator('[data-test="board-tab-done"]').click()
     const accepted = first.win.locator('[data-test="board-group-accepted"]')
     await expect(accepted).toHaveAttribute('aria-expanded', 'false')
     await accepted.click()
@@ -88,6 +91,7 @@ test.describe('#449 board collapse-state persists across refresh — dev smoke',
 
     const second = await launchIsolatedElectron({ userDataDir, sessionBase })
     const win = await second.app.firstWindow()
+    await win.locator('[data-test="board-tab-done"]').click()
     await expect(win.locator('[data-test="board-group-accepted"]')).toHaveAttribute(
       'aria-expanded',
       'true'

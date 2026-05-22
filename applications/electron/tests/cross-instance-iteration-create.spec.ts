@@ -36,6 +36,9 @@ test.describe('#1297 Scenario 3 — create iteration in one instance is visible 
       })
       expect(seedRes.ok).toBe(true)
 
+      await win1.locator('[data-test="board-tab-plan"]').click()
+      await win2.locator('[data-test="board-tab-plan"]').click()
+
       await expect(win1.locator(iterSelector)).toBeVisible({ timeout: 15_000 })
       await expect(win2.locator(iterSelector)).toBeVisible({ timeout: 15_000 })
 

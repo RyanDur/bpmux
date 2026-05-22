@@ -51,6 +51,9 @@ test.describe('#1339 Scenario 2 — drag-across iteration cross-instance: member
       })
       expect(seedRes.ok).toBe(true)
 
+      await win1.locator('[data-test="board-tab-plan"]').click()
+      await win2.locator('[data-test="board-tab-plan"]').click()
+
       const volansSelector = '[data-test="board-iteration-9601"]'
       const craterSelector = '[data-test="board-iteration-9602"]'
       await expect(win1.locator(volansSelector)).toBeVisible({ timeout: 15_000 })

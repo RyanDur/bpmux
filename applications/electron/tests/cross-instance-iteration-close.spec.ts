@@ -40,6 +40,8 @@ test.describe('#1300 Scenario 2 — two bpmux instances see the same iteration-c
 
       await win1.reload()
       await win2.reload()
+      await win1.locator('[data-test="board-tab-plan"]').click()
+      await win2.locator('[data-test="board-tab-plan"]').click()
 
       const iterSelector = '[data-test="board-iteration-9401"]'
       await expect(win1.locator(iterSelector)).toBeVisible({ timeout: 20_000 })

@@ -46,6 +46,9 @@ test.describe('#1339 Scenario 3 — iteration-itself reorder cross-instance: con
       })
       expect(seedRes.ok).toBe(true)
 
+      await win1.locator('[data-test="board-tab-plan"]').click()
+      await win2.locator('[data-test="board-tab-plan"]').click()
+
       const orderIn = async (page: typeof win1): Promise<number[]> => {
         return await page.evaluate(() => {
           const list = document.querySelector('.board-iterations-list')

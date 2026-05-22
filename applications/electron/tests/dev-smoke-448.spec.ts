@@ -2,12 +2,15 @@ import { test, expect } from '@playwright/test'
 import { launchIsolatedWithWindow } from './helpers/launch'
 
 test.describe('#448 board column collapse affordance — dev smoke', () => {
-  test('each board column renders a toggle button', async () => {
+  test('each board column renders a toggle button (across NOW/DONE/PLAN tabs)', async () => {
     const { app, win } = await launchIsolatedWithWindow()
-    const states = ['ready', 'in-progress', 'delivered', 'accepted', 'icebox']
-    for (const state of states) {
+    for (const state of ['ready', 'in-progress', 'delivered']) {
       await expect(win.locator(`[data-test="board-group-${state}"]`)).toBeVisible()
     }
+    await win.locator('[data-test="board-tab-done"]').click()
+    await expect(win.locator('[data-test="board-group-accepted"]')).toBeVisible()
+    await win.locator('[data-test="board-tab-plan"]').click()
+    await expect(win.locator('[data-test="board-group-icebox"]')).toBeVisible()
     await app.close()
   })
 
@@ -25,10 +28,12 @@ test.describe('#448 board column collapse affordance — dev smoke', () => {
 
   test('default collapsed columns (accepted) start closed', async () => {
     const { app, win } = await launchIsolatedWithWindow()
+    await win.locator('[data-test="board-tab-done"]').click()
     await expect(win.locator('[data-test="board-group-accepted"]')).toHaveAttribute(
       'aria-expanded',
       'false'
     )
+    await win.locator('[data-test="board-tab-plan"]').click()
     await expect(win.locator('[data-test="board-group-icebox"]')).toHaveAttribute(
       'aria-expanded',
       'true'

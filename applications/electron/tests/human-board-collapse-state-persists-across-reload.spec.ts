@@ -17,6 +17,8 @@ test.describe('human-side E2E #476 — persistence-class — board collapse stat
       consoleErrors.length = 0
       pageErrors.length = 0
 
+      await win.locator('[data-test="board-tab-plan"]').click()
+
       const iceboxToggle = win.locator('[data-test="board-group-icebox"]')
       await expect(iceboxToggle).toHaveAttribute('aria-expanded', 'true')
 
@@ -25,6 +27,7 @@ test.describe('human-side E2E #476 — persistence-class — board collapse stat
 
       await win.reload()
       await expect(win.locator('[data-test="board-region"]')).toBeVisible()
+      await win.locator('[data-test="board-tab-plan"]').click()
 
       const iceboxAfterReload = win.locator('[data-test="board-group-icebox"]')
       await expect(iceboxAfterReload).toHaveAttribute('aria-expanded', 'false')
