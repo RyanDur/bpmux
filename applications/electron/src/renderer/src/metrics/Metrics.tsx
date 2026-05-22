@@ -120,7 +120,7 @@ const Metrics = ({ apiBase, authToken, onClose, open }: Props): React.JSX.Elemen
       )}
 
       {data !== null && (
-        <dl className="metrics-grid">
+        <section className="metrics-grid">
           <MetricTile
             label={`Delivered / day (${data.window_days}d)`}
             value={data.delivered_per_day.toFixed(2)}
@@ -169,7 +169,7 @@ const Metrics = ({ apiBase, authToken, onClose, open }: Props): React.JSX.Elemen
               <small>{data.note ?? 'Sparse data window.'}</small>
             </p>
           )}
-        </dl>
+        </section>
       )}
     </dialog>
   )
@@ -184,13 +184,13 @@ const MetricTile = ({
   value: string
   bar?: React.JSX.Element
 }): React.JSX.Element => (
-  <div className="metrics-tile">
+  <dl className="metrics-tile">
     <dt>{label}</dt>
     <dd>
       <strong className="metrics-value">{value}</strong>
       {bar}
     </dd>
-  </div>
+  </dl>
 )
 
 export default Metrics
