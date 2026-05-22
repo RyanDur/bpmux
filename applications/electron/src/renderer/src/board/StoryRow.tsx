@@ -71,6 +71,7 @@ const StoryRow = ({
       <button
         type="button"
         className="board-story-navigate"
+        tabIndex={selected ? 0 : -1}
         onClick={() => onOpen(story.number)}
         onFocus={() => onSelect(story.number)}
         onMouseEnter={() => onSelect(story.number)}

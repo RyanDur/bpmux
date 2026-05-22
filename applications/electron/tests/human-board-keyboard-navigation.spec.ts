@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import { launchWithMockGh, waitForBoardLoaded } from './helpers/launch'
 
 test.describe('human-side E2E #476 — direct-action — board keyboard navigation', () => {
-  test('ArrowDown selects first story; Enter opens drill-in', async () => {
+  test('board is a roving-tabindex composite: one tab-stop, arrows rove, native-button Enter opens', async () => {
     const { app, win, mockGh, rpc } = await launchWithMockGh()
     try {
       const consoleErrors: string[] = []
@@ -14,52 +14,62 @@ test.describe('human-side E2E #476 — direct-action — board keyboard navigati
 
       await waitForBoardLoaded(win)
 
-      consoleErrors.length = 0
-      pageErrors.length = 0
-
-      const createResp = await rpc(
-        'create_story',
-        {
-          title: '[Feature] kbd-nav-target',
-          user_job: 'When the human focuses the board, ArrowDown navigates to the first story.',
-          observation_falsifier:
-            'reject if ArrowDown does not select a story OR Enter does not open drill-in',
-          acceptance_test_path:
-            'applications/electron/tests/human-board-keyboard-navigation.spec.ts'
-        },
-        'pm'
-      )
-      expect(createResp.status).toBe(200)
-
-      const moveResp = await rpc(
-        'move_story',
-        {
-          number: 1,
-          target_state: 'ready',
-          rationale: 'flat-board flat-icebox kbd-nav fixture target'
-        },
-        'pm'
-      )
-      expect(moveResp.status).toBe(200)
+      for (const title of ['[Feature] kbd-nav-first', '[Feature] kbd-nav-second']) {
+        const createResp = await rpc(
+          'create_story',
+          {
+            title,
+            user_job:
+              'When the human keyboard-navigates the board, arrows rove and Enter opens the focused row.',
+            observation_falsifier:
+              'reject if board is not one tab-stop OR arrows do not rove OR native Enter does not open drill-in',
+            acceptance_test_path:
+              'applications/electron/tests/human-board-keyboard-navigation.spec.ts'
+          },
+          'pm'
+        )
+        expect(createResp.status).toBe(200)
+      }
+      for (const number of [1, 2]) {
+        const moveResp = await rpc(
+          'move_story',
+          { number, target_state: 'ready', rationale: 'kbd-nav roving fixture' },
+          'pm'
+        )
+        expect(moveResp.status).toBe(200)
+      }
 
       await win.reload()
       await waitForBoardLoaded(win)
 
-      const storyRow = win.locator('[data-test="board-story-1"]').first()
-      await expect(storyRow).toContainText('kbd-nav-target')
+      const navOf = (n: number): ReturnType<typeof win.locator> =>
+        win.locator(`[data-test="board-story-${n}"] .board-story-navigate`)
+
+      await expect(win.locator('[data-test="board-story-1"]')).toContainText('kbd-nav-first')
 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      await win.locator('[data-test="board-region"]').focus()
+      await expect(navOf(1)).toHaveAttribute('tabindex', '0')
+      await expect(navOf(2)).toHaveAttribute('tabindex', '-1')
+      await expect(win.locator('.board-story-navigate[tabindex="0"]')).toHaveCount(1)
 
+      await navOf(1).focus()
       await win.keyboard.press('ArrowDown')
-      await expect(storyRow).toHaveAttribute('aria-current', 'true')
+
+      await expect(navOf(2)).toBeFocused()
+      await expect(navOf(2)).toHaveAttribute('tabindex', '0')
+      await expect(navOf(1)).toHaveAttribute('tabindex', '-1')
+      await expect(win.locator('[data-test="board-story-2"]')).toHaveAttribute(
+        'aria-current',
+        'true'
+      )
+      await expect(win.locator('.board-story-navigate[tabindex="0"]')).toHaveCount(1)
 
       await win.keyboard.press('Enter')
       const drillIn = win.locator('[data-test="board-drill-in"]')
       await expect(drillIn).toBeVisible()
-      await expect(drillIn).toContainText('kbd-nav-target')
+      await expect(drillIn).toContainText('kbd-nav-second')
 
       expect(consoleErrors).toEqual([])
       expect(pageErrors).toEqual([])

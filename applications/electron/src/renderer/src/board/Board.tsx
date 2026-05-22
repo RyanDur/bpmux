@@ -85,6 +85,15 @@ const Board = ({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
       ? selectedNumber
       : (navOrder[0] ?? null)
 
+  const focusRow = useCallback((number: number | null) => {
+    if (number === null) return
+    requestAnimationFrame(() => {
+      asideRef.current
+        ?.querySelector<HTMLElement>(`[data-test="board-story-${number}"] .board-story-navigate`)
+        ?.focus()
+    })
+  }, [])
+
   const drilledStory = useMemo(
     () =>
       drilledNumber === null ? null : (stories.find((s) => s.number === drilledNumber) ?? null),
@@ -120,9 +129,8 @@ const Board = ({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
   const handleBack = useCallback(() => {
     setDrilledNumber(null)
     setFocusTimelineFor(null)
-    // Refocus the board so arrow nav resumes immediately.
-    requestAnimationFrame(() => asideRef.current?.focus())
-  }, [])
+    focusRow(effectiveSelected)
+  }, [effectiveSelected, focusRow])
 
   const handleStoryMutated = useCallback(
     (updated: BoardStory) => {
@@ -164,21 +172,16 @@ const Board = ({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
         const idx = current === null ? -1 : navOrder.indexOf(current)
         const next = navOrder[Math.min(idx + 1, navOrder.length - 1)]
         setSelectedNumber(next)
+        focusRow(next)
       } else if (event.key === 'ArrowUp') {
         event.preventDefault()
         const idx = current === null ? navOrder.length : navOrder.indexOf(current)
         const next = navOrder[Math.max(idx - 1, 0)]
         setSelectedNumber(next)
-      } else if (event.key === 'Enter') {
-        const target = event.target as HTMLElement
-        if (target.closest('summary')) return
-        if (current !== null) {
-          event.preventDefault()
-          handleOpen(current)
-        }
+        focusRow(next)
       }
     },
-    [drilledNumber, effectiveSelected, handleBack, handleOpen, navOrder]
+    [drilledNumber, effectiveSelected, focusRow, handleBack, navOrder]
   )
 
   const isOwner = RENDERER_IDENTITY === 'ryan'
