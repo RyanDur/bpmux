@@ -67,7 +67,7 @@ const launchWithFixture = async (): Promise<{
 }
 
 test.describe('desk-check #457 slice 5 — Electron Epic-summary section', () => {
-  test('#1185 Epic meta-card: progress + breakdown + no nested children + drill-in opens via header button', async () => {
+  test('#1185 Epic meta-card: progress + breakdown + no nested children + summary toggle-only with body view-details (#1516)', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="board-region"]')).toBeVisible()
@@ -94,6 +94,9 @@ test.describe('desk-check #457 slice 5 — Electron Epic-summary section', () =>
     await expect(epic901.locator('.board-epic-children')).toHaveCount(0)
     await expect(epic901.locator('.board-epic-child-state')).toHaveCount(0)
     await expect(epic901.locator('.board-story-row')).toHaveCount(0)
+
+    await expect(epic901.locator('.board-epic-summary button')).toHaveCount(0)
+    await expect(win.locator('[data-test="board-epic-901-view-details"]')).toBeVisible()
 
     await app.close()
   })

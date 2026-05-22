@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import MiniBoard from './MiniBoard'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import { useEpicCollapse } from './useEpicCollapse'
@@ -9,6 +10,8 @@ interface Props {
   stories: BoardStory[]
   onOpen: (n: number) => void
 }
+
+type EpicSort = 'progress' | 'created'
 
 interface StateBreakdown {
   total: number
@@ -62,17 +65,41 @@ const breakdownAriaLabel = (b: StateBreakdown): string => {
 const isOpenByDefault = (derived: StoryState): boolean =>
   derived !== 'accepted' && derived !== 'icebox'
 
+const progressRatioFor = (epic: BoardStory, all: BoardStory[]): number => {
+  const breakdown = breakdownFor(epic, all)
+  const denom = progressDenominatorFor(breakdown)
+  return denom === 0 ? 0 : breakdown.accepted / denom
+}
+
+const sortEpics = (epics: BoardStory[], sort: EpicSort, all: BoardStory[]): BoardStory[] =>
+  [...epics].sort((a, b) => {
+    if (sort === 'created') return a.created_at.localeCompare(b.created_at)
+    return progressRatioFor(b, all) - progressRatioFor(a, all)
+  })
+
 const Epic = ({ epics, stories, onOpen }: Props): React.JSX.Element | null => {
   const collapse = useEpicCollapse(RENDERER_IDENTITY)
+  const [sort, setSort] = useState<EpicSort>('progress')
   if (epics.length === 0) return null
+  const sortedEpics = sortEpics(epics, sort, stories)
   return (
     <section className="board-epics" data-test="board-epics">
       <header className="board-epics-header">
         <b className="board-group-label">Epics</b>
         <small className="board-group-count">{epics.length}</small>
+        <button
+          type="button"
+          className="board-epics-sort"
+          data-test="board-epics-sort"
+          data-sort={sort}
+          aria-label={`Sort epics by ${sort === 'progress' ? 'progress' : 'created date'}; click to change`}
+          onClick={() => setSort((prev) => (prev === 'progress' ? 'created' : 'progress'))}
+        >
+          sort: {sort === 'progress' ? 'progress' : 'created'}
+        </button>
       </header>
       <ul className="board-epics-list">
-        {epics.map((epic) => {
+        {sortedEpics.map((epic) => {
           const breakdown = breakdownFor(epic, stories)
           const children = stories.filter((s) => s.parent_epic === epic.number)
           const derived = deriveEpicState(epic.state, children)
@@ -92,28 +119,16 @@ const Epic = ({ epics, stories, onOpen }: Props): React.JSX.Element | null => {
                 }}
               >
                 <summary className="board-epic-summary">
-                  <button
-                    type="button"
-                    className="board-epic-open-button"
-                    onClick={(event) => {
-                      event.preventDefault()
-                      event.stopPropagation()
-                      onOpen(epic.number)
-                    }}
-                    title={displayTitle}
-                    aria-label={`open epic #${epic.number} ${displayTitle}`}
+                  <StoryTypeGlyph type="epic" />
+                  <small className="board-story-number">#{epic.number}</small>
+                  <output
+                    className="board-epic-state"
+                    data-state={derived}
+                    data-test={`board-epic-${epic.number}-state`}
                   >
-                    <StoryTypeGlyph type="epic" />
-                    <small className="board-story-number">#{epic.number}</small>
-                    <output
-                      className="board-epic-state"
-                      data-state={derived}
-                      data-test={`board-epic-${epic.number}-state`}
-                    >
-                      {derived}
-                    </output>
-                    <b className="board-epic-title">{displayTitle}</b>
-                  </button>
+                    {derived}
+                  </output>
+                  <b className="board-epic-title">{displayTitle}</b>
                   <progress
                     className="board-epic-progress board-epic-progress--summary"
                     data-test={`board-epic-${epic.number}-progress`}
@@ -153,6 +168,15 @@ const Epic = ({ epics, stories, onOpen }: Props): React.JSX.Element | null => {
                     </p>
                   )}
                   <MiniBoard epicNumber={epic.number} stories={children} />
+                  <button
+                    type="button"
+                    className="board-epic-view-details"
+                    data-test={`board-epic-${epic.number}-view-details`}
+                    onClick={() => onOpen(epic.number)}
+                    aria-label={`view epic details: #${epic.number} ${displayTitle}`}
+                  >
+                    view epic details →
+                  </button>
                 </section>
               </details>
             </li>

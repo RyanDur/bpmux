@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, test } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
+import { cleanup, fireEvent, render } from '@testing-library/react'
 import Epic from './Epic'
 import { isActiveEpic, type BoardStory } from './types'
 
@@ -7,6 +8,10 @@ beforeEach(() => {
   if (typeof window !== 'undefined') {
     window.localStorage.clear()
   }
+})
+
+afterEach(() => {
+  cleanup()
 })
 
 const epicLabels = ['Epic']
@@ -155,10 +160,76 @@ describe('#1185 Epic — meta-card DOM shape (falsifiers a-c, j)', () => {
     expect(htmlAfter).toMatch(/aria-label="Accepted: 1 child"/)
   })
 
-  test('Epic header is a button that opens drill-in via onOpen', () => {
+  test('Epic summary is toggle-only — no nested interactive element', () => {
     const epic = story({ number: 1100 })
     const html = renderToStaticMarkup(<Epic epics={[epic]} stories={[epic]} onOpen={() => {}} />)
-    expect(html).toContain('class="board-epic-open-button"')
+    expect(html).not.toContain('class="board-epic-open-button"')
+    const summary = html.slice(html.indexOf('board-epic-summary'), html.indexOf('board-epic-body'))
+    expect(summary).not.toContain('<button')
+  })
+
+  test('navigate to drill-in lives in the body via "view epic details" button', () => {
+    const epic = story({ number: 1100 })
+    const html = renderToStaticMarkup(<Epic epics={[epic]} stories={[epic]} onOpen={() => {}} />)
+    const body = html.slice(html.indexOf('board-epic-body'))
+    expect(body).toContain('board-epic-1100-view-details')
+    expect(body).toContain('view epic details')
+  })
+
+  test('EPICS header renders a toggleable sort-control defaulting to progress', () => {
+    const epic = story({ number: 1100 })
+    const html = renderToStaticMarkup(<Epic epics={[epic]} stories={[epic]} onOpen={() => {}} />)
+    expect(html).toContain('board-epics-sort')
+    expect(html).toContain('data-sort="progress"')
+  })
+
+  test('clicking "view epic details" fires onOpen with the epic number', () => {
+    const epic = story({ number: 1100 })
+    let opened: number | null = null
+    const { getByTestId } = render(
+      <Epic epics={[epic]} stories={[epic]} onOpen={(n) => (opened = n)} />
+    )
+    fireEvent.click(getByTestId('board-epic-1100-view-details'))
+    expect(opened).toBe(1100)
+  })
+
+  test('sort defaults progress-desc (more-accepted epic first); toggling switches to created-ascending', () => {
+    const epicCreatedEarlierLowerProgress = story({
+      number: 1100,
+      title: 'epic-A',
+      created_at: '2026-01-01T00:00:00Z'
+    })
+    const epicCreatedLaterHigherProgress = story({
+      number: 1200,
+      title: 'epic-B',
+      created_at: '2026-02-01T00:00:00Z'
+    })
+    const acceptedChildOf1200 = story({
+      number: 1201,
+      state: 'accepted',
+      labels: featureLabels,
+      parent_epic: 1200
+    })
+    const stories: BoardStory[] = [
+      epicCreatedEarlierLowerProgress,
+      epicCreatedLaterHigherProgress,
+      acceptedChildOf1200
+    ]
+    const { getByTestId, container } = render(
+      <Epic
+        epics={[epicCreatedEarlierLowerProgress, epicCreatedLaterHigherProgress]}
+        stories={stories}
+        onOpen={() => {}}
+      />
+    )
+    const idsInOrder = (): number[] =>
+      Array.from(container.querySelectorAll('[data-test^="board-epic-"][data-test$="00"]')).map(
+        (el) => Number(el.getAttribute('data-test')!.replace('board-epic-', ''))
+      )
+    expect(idsInOrder()).toEqual([1200, 1100])
+    fireEvent.click(getByTestId('board-epics-sort'))
+    expect(getByTestId('board-epics-sort').getAttribute('data-sort')).toBe('created')
+    expect(idsInOrder()).toEqual([1100, 1200])
   })
 })
 
