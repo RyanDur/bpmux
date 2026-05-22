@@ -68,24 +68,9 @@ const StoryRow = ({
       data-dragging={dragging ? 'true' : undefined}
       onDragOver={onRowDragOver}
     >
-      {draggable ? (
-        <span
-          className="board-story-grip"
-          data-test={STORY_GRIP_TEST_ID}
-          draggable={true}
-          role="button"
-          aria-label={`Drag to reorder #${story.number}`}
-          tabIndex={-1}
-          onDragStart={(event) => onDragStartRow?.(event)}
-          onDragEnd={() => onDragEndRow?.()}
-        >
-          <GripIcon />
-        </span>
-      ) : null}
-      <div
-        role="button"
-        tabIndex={0}
-        className="board-story-button"
+      <button
+        type="button"
+        className="board-story-navigate"
         onClick={() => onOpen(story.number)}
         onFocus={() => onSelect(story.number)}
         onMouseEnter={() => onSelect(story.number)}
@@ -99,41 +84,49 @@ const StoryRow = ({
             if (event.key === 'ArrowDown') {
               event.preventDefault()
               onKeyboardReorder('down')
-              return
             }
-          }
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault()
-            onOpen(story.number)
           }
         }}
         title={story.title}
         aria-label={ariaLabel}
         data-rework={story.rework_comment ? 'true' : undefined}
-      >
-        <small className="board-story-number">#{story.number}</small>
-        <StoryTypeGlyph type={type} />
-        <StoryBadge story={story} onOpenTimeline={onOpenTimeline} onOpenBlocker={onOpen} />
-        <b className="board-story-title" data-test="story-title">
-          {story.title}
-        </b>
-        <ReworkGlyph reworkComment={story.rework_comment} />
-        {typeof parentEpic === 'number' ? (
-          <button
-            type="button"
-            className="board-story-epic-ref"
-            data-test="epic-link"
-            aria-label={epicAriaLabel}
-            onClick={(event) => {
-              event.preventDefault()
-              event.stopPropagation()
-              onOpen(parentEpic)
-            }}
-          >
-            ↳ Epic #{parentEpic}
-          </button>
-        ) : null}
-      </div>
+      />
+      {draggable ? (
+        <button
+          type="button"
+          className="board-story-grip"
+          data-test={STORY_GRIP_TEST_ID}
+          draggable={true}
+          aria-label={`Drag to reorder #${story.number}`}
+          tabIndex={-1}
+          onDragStart={(event) => onDragStartRow?.(event)}
+          onDragEnd={() => onDragEndRow?.()}
+        >
+          <GripIcon />
+        </button>
+      ) : null}
+      <small className="board-story-number">#{story.number}</small>
+      <StoryTypeGlyph type={type} />
+      <StoryBadge story={story} onOpenTimeline={onOpenTimeline} onOpenBlocker={onOpen} />
+      <b className="board-story-title" data-test="story-title">
+        {story.title}
+      </b>
+      <ReworkGlyph reworkComment={story.rework_comment} />
+      {typeof parentEpic === 'number' ? (
+        <button
+          type="button"
+          className="board-story-epic-ref"
+          data-test="epic-link"
+          aria-label={epicAriaLabel}
+          onClick={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+            onOpen(parentEpic)
+          }}
+        >
+          ↳ Epic #{parentEpic}
+        </button>
+      ) : null}
     </li>
   )
 }

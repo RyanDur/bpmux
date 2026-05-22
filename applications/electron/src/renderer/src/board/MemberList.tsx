@@ -91,39 +91,13 @@ const MemberList = ({
             endDrag()
           }}
         >
-          {iteration.gh_state !== 'closed' ? (
-            <span
-              className="board-story-grip"
-              data-test={STORY_GRIP_TEST_ID}
-              draggable={true}
-              role="button"
-              aria-label={`Drag to reorder #${story.number}`}
-              tabIndex={-1}
-              onDragStart={(event) => {
-                const payload: DragPayload = {
-                  storyNumber: story.number,
-                  themeName,
-                  oldPosition: position
-                }
-                startDrag(event, story.number, payload)
-              }}
-              onDragEnd={endDrag}
-            >
-              <GripIcon />
-            </span>
-          ) : null}
-          <div
-            role="button"
-            tabIndex={0}
-            className="board-iteration-member-button board-story-button"
+          <button
+            type="button"
+            className="board-iteration-member-navigate board-story-navigate"
             data-test="board-iteration-member-button"
+            aria-label={`open #${story.number} ${story.title}`}
             onClick={() => onOpen(story.number)}
             onKeyDown={(event) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault()
-                onOpen(story.number)
-                return
-              }
               if (!event.ctrlKey || !event.shiftKey) return
               if (iteration.gh_state === 'closed') return
               const direction =
@@ -164,30 +138,50 @@ const MemberList = ({
                 `Moved ${story.title} to position ${newIdx + 1} of ${members.length} in ${iteration.title}`
               )
             }}
-          >
-            <small className="board-story-number">#{story.number}</small>
-            <StoryTypeGlyph type={storyTypeFromLabels(story.labels)} />
-            <StoryBadge story={story} onOpenBlocker={onOpen} />
-            <b className="board-story-title" data-test="story-title">
-              {story.title}
-            </b>
-            <ReworkGlyph reworkComment={story.rework_comment} />
-            {typeof story.parent_epic === 'number' ? (
-              <button
-                type="button"
-                className="board-story-epic-ref"
-                data-test="epic-link"
-                aria-label={`open epic #${story.parent_epic}`}
-                onClick={(event) => {
-                  event.preventDefault()
-                  event.stopPropagation()
-                  onOpen(story.parent_epic as number)
-                }}
-              >
-                ↳ Epic #{story.parent_epic}
-              </button>
-            ) : null}
-          </div>
+          />
+          {iteration.gh_state !== 'closed' ? (
+            <button
+              type="button"
+              className="board-story-grip"
+              data-test={STORY_GRIP_TEST_ID}
+              draggable={true}
+              aria-label={`Drag to reorder #${story.number}`}
+              tabIndex={-1}
+              onDragStart={(event) => {
+                const payload: DragPayload = {
+                  storyNumber: story.number,
+                  themeName,
+                  oldPosition: position
+                }
+                startDrag(event, story.number, payload)
+              }}
+              onDragEnd={endDrag}
+            >
+              <GripIcon />
+            </button>
+          ) : null}
+          <small className="board-story-number">#{story.number}</small>
+          <StoryTypeGlyph type={storyTypeFromLabels(story.labels)} />
+          <StoryBadge story={story} onOpenBlocker={onOpen} />
+          <b className="board-story-title" data-test="story-title">
+            {story.title}
+          </b>
+          <ReworkGlyph reworkComment={story.rework_comment} />
+          {typeof story.parent_epic === 'number' ? (
+            <button
+              type="button"
+              className="board-story-epic-ref"
+              data-test="epic-link"
+              aria-label={`open epic #${story.parent_epic}`}
+              onClick={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                onOpen(story.parent_epic as number)
+              }}
+            >
+              ↳ Epic #{story.parent_epic}
+            </button>
+          ) : null}
         </li>
       ))}
     </ul>

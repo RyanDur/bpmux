@@ -35,41 +35,34 @@ const UnscheduledList = ({ stories, open, onToggle, onOpen }: Props): React.JSX.
               data-test={`board-story-${story.number}`}
               data-iteration-member={story.number}
             >
-              <div
-                role="button"
-                tabIndex={0}
-                className="board-iteration-member-button board-story-button"
+              <button
+                type="button"
+                className="board-iteration-member-navigate board-story-navigate"
+                aria-label={`open #${story.number} ${story.title}`}
                 onClick={() => onOpen(story.number)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
+              />
+              <small className="board-story-number">#{story.number}</small>
+              <StoryTypeGlyph type={storyTypeFromLabels(story.labels)} />
+              <StoryBadge story={story} onOpenBlocker={onOpen} />
+              <b className="board-story-title" data-test="story-title">
+                {story.title}
+              </b>
+              <ReworkGlyph reworkComment={story.rework_comment} />
+              {typeof story.parent_epic === 'number' ? (
+                <button
+                  type="button"
+                  className="board-story-epic-ref"
+                  data-test="epic-link"
+                  aria-label={`open epic #${story.parent_epic}`}
+                  onClick={(event) => {
                     event.preventDefault()
-                    onOpen(story.number)
-                  }
-                }}
-              >
-                <small className="board-story-number">#{story.number}</small>
-                <StoryTypeGlyph type={storyTypeFromLabels(story.labels)} />
-                <StoryBadge story={story} onOpenBlocker={onOpen} />
-                <b className="board-story-title" data-test="story-title">
-                  {story.title}
-                </b>
-                <ReworkGlyph reworkComment={story.rework_comment} />
-                {typeof story.parent_epic === 'number' ? (
-                  <button
-                    type="button"
-                    className="board-story-epic-ref"
-                    data-test="epic-link"
-                    aria-label={`open epic #${story.parent_epic}`}
-                    onClick={(event) => {
-                      event.preventDefault()
-                      event.stopPropagation()
-                      onOpen(story.parent_epic as number)
-                    }}
-                  >
-                    ↳ Epic #{story.parent_epic}
-                  </button>
-                ) : null}
-              </div>
+                    event.stopPropagation()
+                    onOpen(story.parent_epic as number)
+                  }}
+                >
+                  ↳ Epic #{story.parent_epic}
+                </button>
+              ) : null}
             </li>
           ))}
         </ul>

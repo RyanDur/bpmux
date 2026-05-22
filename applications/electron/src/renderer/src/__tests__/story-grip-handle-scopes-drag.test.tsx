@@ -53,7 +53,7 @@ describe('#1339 Scenario 4 — grip-handle is the sole drag-initiator', () => {
     await user.click(grip)
     expect(rendered.queryByTestId('board-drill-in')).toBeNull()
 
-    const button = row.querySelector('.board-story-button') as HTMLElement
+    const button = row.querySelector('.board-story-navigate') as HTMLElement
     expect(button).toBeTruthy()
     await user.click(button)
     await waitFor(
