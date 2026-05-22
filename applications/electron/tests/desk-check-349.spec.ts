@@ -51,7 +51,6 @@ const MIXED_CLASS_MESSAGES = [
   }
 ]
 
-const CLASSES = ['chat', 'insight', 'activity', 'system'] as const
 
 const launchWithFixture = async (
   userDataDir?: string
@@ -75,67 +74,45 @@ const launchWithFixture = async (
 }
 
 test.describe('desk-check #349 richer filter', () => {
-  test('default state: pills present, chat+insight pressed, activity+system hidden', async () => {
+  test('default state: 3 pills present, chat on, events + bpmux muted', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
-    await win.waitForTimeout(500)
 
-    // Full region screenshot for pill visibility + default filter state.
-    const chatRegion = win.locator('[data-test="chat-region"]')
-    await chatRegion.screenshot({
-      path: join(EVIDENCE_DIR, '10-filter-default-chat-insight.png')
-    })
-
-    // Enumerate pill states via aria-pressed.
     const pillContainer = win.locator('[data-test="filter-pills"]')
     await expect(pillContainer).toBeVisible()
 
-    const allPressed = await win
-      .locator('[data-test="filter-pill-all"]')
-      .getAttribute('aria-pressed')
-    console.log(`#349 AC1/AC2 pill states:`)
-    console.log(`  [all] aria-pressed=${allPressed}`)
-    for (const cls of CLASSES) {
-      const pressed = await win
-        .locator(`[data-test="filter-pill-${cls}"]`)
-        .getAttribute('aria-pressed')
-      console.log(`  [${cls}] aria-pressed=${pressed}`)
-    }
+    await expect(win.locator('[data-test="filter-pill-chat"]')).toHaveAttribute('data-state', 'on')
+    await expect(win.locator('[data-test="filter-pill-events"]')).toHaveAttribute(
+      'data-state',
+      'off'
+    )
+    await expect(win.locator('[data-test="filter-pill-bpmux"]')).toHaveAttribute('data-state', 'off')
 
-    const hiddenCount = await win.locator('[data-test="filter-hidden-count"]').textContent()
-    console.log(`#349 AC4 hidden-count at default: "${hiddenCount?.trim()}"`)
+    await pillContainer.screenshot({
+      path: join(EVIDENCE_DIR, '10-filter-default-chat-only.png')
+    })
 
     await app.close()
   })
 
-  test('toggle system ON: pill becomes pressed, ⚙ glyph renders on system message', async () => {
+  test('toggle bpmux ON: pill becomes active + bpmux glyph renders on system message', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await win.waitForTimeout(500)
+    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
 
-    // Click system pill.
-    await win.locator('[data-test="filter-pill-system"]').click()
-    await win.waitForTimeout(200)
+    const bpmuxPill = win.locator('[data-test="filter-pill-bpmux"]')
+    await expect(bpmuxPill).toHaveAttribute('data-state', 'off')
+    await bpmuxPill.click()
+    await expect(bpmuxPill).toHaveAttribute('data-state', 'on')
 
-    const pressed = await win
-      .locator('[data-test="filter-pill-system"]')
-      .getAttribute('aria-pressed')
-    console.log(`#349 AC3 after click: [system] aria-pressed=${pressed}`)
+    await expect(
+      win.locator('[data-test="message-class-glyph"][data-class="bpmux"]').first()
+    ).toBeVisible()
 
-    const chatRegion = win.locator('[data-test="chat-region"]')
-    await chatRegion.screenshot({
-      path: join(EVIDENCE_DIR, '11-filter-system-on-glyphs.png')
+    await win.locator('[data-test="chat-region"]').screenshot({
+      path: join(EVIDENCE_DIR, '11-filter-bpmux-on-glyph.png')
     })
-
-    // Enumerate visible rows + extract text to confirm glyphs.
-    const messageRows = win.locator('[data-test="message-row"]')
-    const rowCount = await messageRows.count()
-    console.log(`#349 AC6: ${rowCount} rows rendered with system toggled on:`)
-    for (let i = 0; i < rowCount; i++) {
-      const text = (await messageRows.nth(i).textContent())?.trim()
-      console.log(`  row[${i}] "${(text ?? '').replace(/\n/g, ' ').slice(0, 120)}"`)
-    }
 
     await app.close()
   })
@@ -144,30 +121,23 @@ test.describe('desk-check #349 richer filter', () => {
     const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-349-persist-'))
     const first = await launchWithFixture(udd)
     const win1 = await first.app.firstWindow()
-    await win1.waitForTimeout(500)
+    await expect(win1.locator('[data-test="chat-region"]')).toBeVisible()
 
-    // Toggle system ON in the first session.
-    await win1.locator('[data-test="filter-pill-system"]').click()
-    await win1.waitForTimeout(200)
-    const preClose = await win1
-      .locator('[data-test="filter-pill-system"]')
-      .getAttribute('aria-pressed')
-    console.log(`#349 AC5 pre-close: [system] aria-pressed=${preClose}`)
+    const bpmuxPill1 = win1.locator('[data-test="filter-pill-bpmux"]')
+    await bpmuxPill1.click()
+    await expect(bpmuxPill1).toHaveAttribute('data-state', 'on')
     await first.app.close()
 
-    // Relaunch with same user-data-dir — localStorage persists.
     const second = await launchWithFixture(udd)
     const win2 = await second.app.firstWindow()
     await expect(win2.locator('[data-test="chat-region"]')).toBeVisible()
-    await win2.waitForTimeout(500)
 
-    const postReopen = await win2
-      .locator('[data-test="filter-pill-system"]')
-      .getAttribute('aria-pressed')
-    console.log(`#349 AC5 post-reopen: [system] aria-pressed=${postReopen}`)
+    await expect(win2.locator('[data-test="filter-pill-bpmux"]')).toHaveAttribute(
+      'data-state',
+      'on'
+    )
 
-    const pillContainer = win2.locator('[data-test="filter-pills"]')
-    await pillContainer.screenshot({
+    await win2.locator('[data-test="filter-pills"]').screenshot({
       path: join(EVIDENCE_DIR, '12-filter-persisted-after-reopen.png')
     })
 
@@ -177,21 +147,23 @@ test.describe('desk-check #349 richer filter', () => {
   test('keyboard: pills Tab-reachable', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await win.waitForTimeout(500)
+    await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
 
-    // Focus the "all" pill + verify subsequent Tabs move through the row.
-    await win.locator('[data-test="filter-pill-all"]').focus()
-    const order: string[] = []
-    const focused = await win.evaluate(
-      () => document.activeElement?.getAttribute('data-test') ?? ''
-    )
-    order.push(focused)
-    for (let i = 0; i < 4; i++) {
+    await win.locator('[data-test="filter-pill-chat"] input').focus()
+    const reached: string[] = []
+    for (let i = 0; i < 3; i++) {
+      const cls = await win.evaluate(
+        () =>
+          document.activeElement
+            ?.closest('[data-test^="filter-pill-"]')
+            ?.getAttribute('data-test') ?? ''
+      )
+      reached.push(cls)
       await win.keyboard.press('Tab')
-      const next = await win.evaluate(() => document.activeElement?.getAttribute('data-test') ?? '')
-      order.push(next)
     }
-    console.log(`#349 AC7 Tab order from all: ${order.join(' → ')}`)
+    expect(reached).toContain('filter-pill-chat')
+    expect(reached).toContain('filter-pill-events')
+    expect(reached).toContain('filter-pill-bpmux')
 
     await app.close()
   })

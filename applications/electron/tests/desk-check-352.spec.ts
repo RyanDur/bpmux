@@ -48,9 +48,9 @@ test.describe('desk-check #352 micro-interactions', () => {
   test('filter pill transitions at instant duration (80ms)', async () => {
     const { app } = await launchWithMessages()
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="filter-pill-all"]')).toBeVisible()
+    await expect(win.locator('[data-test="filter-pill-chat"]')).toBeVisible()
     const pill = await win.evaluate(() => {
-      const el = document.querySelector('[data-test="filter-pill-all"]')
+      const el = document.querySelector('[data-test="filter-pill-chat"]')
       if (!el) return null
       const cs = window.getComputedStyle(el)
       return { property: cs.transitionProperty, duration: cs.transitionDuration }
@@ -124,11 +124,11 @@ test.describe('desk-check #352 micro-interactions', () => {
   test('reduced-motion zeros filter-pill + message-row durations; message-row transform drops', async () => {
     const { app } = await launchWithMessages('reduce')
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="filter-pill-all"]')).toBeVisible()
+    await expect(win.locator('[data-test="filter-pill-chat"]')).toBeVisible()
 
     const pillDur = await win.evaluate(
       () =>
-        window.getComputedStyle(document.querySelector('[data-test="filter-pill-all"]')!)
+        window.getComputedStyle(document.querySelector('[data-test="filter-pill-chat"]')!)
           .transitionDuration
     )
     console.log(`#352 AC6 filter-pill duration under reduced-motion: ${pillDur}`)
