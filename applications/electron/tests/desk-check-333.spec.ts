@@ -149,10 +149,7 @@ test.describe('desk-check #333 drag-to-reorder (rework)', () => {
     // Simulate keyboard reorder — the same handleReorder path fires
     // the POST. Ctrl+Shift+Down on the first row bumps it past the
     // second, matching the existing keyboard-reorder contract (#357).
-    // #1128: post-#499 the clickable row surface is `<div role="button"
-    // class="board-story-button">`, not `<button class="…">` — drop the
-    // tag prefix so the selector matches.
-    const firstRow = win.locator('[data-test="board-story-701"] .board-story-button')
+    const firstRow = win.locator('[data-test="board-story-701"] .board-story-navigate')
     await firstRow.focus()
     await firstRow.press('Control+Shift+ArrowDown')
 

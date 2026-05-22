@@ -74,7 +74,7 @@ test.describe('desk-check #345 live comment refresh', () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="board-region"]')).toBeVisible()
-    await win.locator('[data-test="board-story-345"] .board-story-button').click()
+    await win.locator('[data-test="board-story-345"] .board-story-navigate').click()
     await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
     await win.waitForTimeout(500)
 
@@ -96,7 +96,7 @@ test.describe('desk-check #345 live comment refresh', () => {
   test('optimistic render: typed comment appears immediately on submit', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await win.locator('[data-test="board-story-345"] .board-story-button').click()
+    await win.locator('[data-test="board-story-345"] .board-story-navigate').click()
     await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
     await win.waitForTimeout(500)
 
@@ -152,7 +152,7 @@ test.describe('desk-check #345 live comment refresh', () => {
     })
     await win.reload()
 
-    await win.locator('[data-test="board-story-345"] .board-story-button').click()
+    await win.locator('[data-test="board-story-345"] .board-story-navigate').click()
     await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
     await win.waitForTimeout(500)
 

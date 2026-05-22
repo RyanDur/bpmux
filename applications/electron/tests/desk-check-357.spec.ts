@@ -80,7 +80,7 @@ test.describe('desk-check #357 keyboard-accessible drag-reorder', () => {
     await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
     await expect(win.locator('[data-test="board-group-ready"]').first()).toBeVisible()
 
-    const firstRow = win.locator('[data-test="board-story-811"] .board-story-button')
+    const firstRow = win.locator('[data-test="board-story-811"] .board-story-navigate')
     await firstRow.focus()
 
     // Pre-reorder: live region empty.
@@ -111,7 +111,7 @@ test.describe('desk-check #357 keyboard-accessible drag-reorder', () => {
     // announcement.
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    const firstRow = win.locator('[data-test="board-story-811"] .board-story-button')
+    const firstRow = win.locator('[data-test="board-story-811"] .board-story-navigate')
     await firstRow.focus()
 
     await firstRow.press('Control+Shift+ArrowUp')
@@ -133,7 +133,7 @@ test.describe('desk-check #357 keyboard-accessible drag-reorder', () => {
     // Mirror of the first-row case at the other boundary.
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    const lastRow = win.locator('[data-test="board-story-813"] .board-story-button')
+    const lastRow = win.locator('[data-test="board-story-813"] .board-story-navigate')
     await lastRow.focus()
 
     await lastRow.press('Control+Shift+ArrowDown')
@@ -154,7 +154,7 @@ test.describe('desk-check #357 keyboard-accessible drag-reorder', () => {
     // Keyboard-only users hear the affordance at focus time.
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    const button = win.locator('[data-test="board-story-811"] .board-story-button')
+    const button = win.locator('[data-test="board-story-811"] .board-story-navigate')
     const ariaLabel = await button.getAttribute('aria-label')
     expect(ariaLabel).toMatch(/position 1 of 3/i)
     expect(ariaLabel).toMatch(/Ctrl\+Shift/i)
