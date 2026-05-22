@@ -83,8 +83,8 @@ test.describe('human-side E2E #476 — direct-action — sidebar direct-roles', 
       await expect(win.locator('[data-test="sidebar"]')).toBeVisible()
       await waitForMessagesLoaded(win, 'pm broadcast')
 
-      const broadcastButton = win.locator('[data-test="sidebar-broadcast"]')
-      await expect(broadcastButton).toHaveAttribute('aria-current', 'true')
+      const allButton = win.locator('[data-test="sidebar-all"]')
+      await expect(allButton).toHaveAttribute('aria-current', 'true')
 
       consoleErrors.length = 0
       pageErrors.length = 0
@@ -93,7 +93,7 @@ test.describe('human-side E2E #476 — direct-action — sidebar direct-roles', 
       await expect(devButton).toBeVisible({ timeout: 20000 })
       await devButton.click()
       await expect(devButton).toHaveAttribute('aria-current', 'true')
-      await expect(broadcastButton).not.toHaveAttribute('aria-current', 'true')
+      await expect(allButton).not.toHaveAttribute('aria-current', 'true')
 
       expect(consoleErrors).toEqual([])
       expect(pageErrors).toEqual([])

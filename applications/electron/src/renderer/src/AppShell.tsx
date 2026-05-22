@@ -96,7 +96,7 @@ const AppShell = ({
   const [recipient, setRecipient] = useState<string[] | null>(
     initialScope?.kind === 'scoped' ? initialScope.value : null
   )
-  const [allView, setAllView] = useState<boolean>(initialScope?.kind === 'all')
+  const [allView, setAllView] = useState<boolean>(initialScope?.kind !== 'scoped')
   const [metricsOpen, setMetricsOpen] = useState<boolean>(false)
   const { theme, toggle: toggleTheme } = useTheme()
   const channelKey = allView

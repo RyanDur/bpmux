@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
 
 test.describe('human-side E2E #476 — read-class — sidebar empty-state', () => {
-  test('empty session shows broadcast/all + groups-empty + system-empty fallbacks', async () => {
+  test('empty session shows all-conversations + groups-empty; broadcast + system retired (#1457)', async () => {
     const { app, win, mockGh } = await launchWithMockGh()
     try {
       const consoleErrors: string[] = []
@@ -19,7 +19,7 @@ test.describe('human-side E2E #476 — read-class — sidebar empty-state', () =
       pageErrors.length = 0
 
       await expect(win.locator('[data-test="sidebar-all"]')).toBeVisible()
-      await expect(win.locator('[data-test="sidebar-broadcast"]')).toBeVisible()
+      await expect(win.locator('[data-test="sidebar-broadcast"]')).toHaveCount(0)
       await expect(win.locator('[data-test="sidebar-groups-empty"]')).toBeVisible()
       await expect(win.locator('[data-test="sidebar-groups-empty"]')).toContainText('none yet')
 
