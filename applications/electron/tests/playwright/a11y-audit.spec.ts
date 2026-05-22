@@ -150,6 +150,8 @@ test.describe('#425 a11y audit — dark-theme contrast + ARIA + keyboard + focus
             const explicitLabel = document.querySelector(`label[for="${id}"]`)
             if (explicitLabel?.textContent?.trim()) return explicitLabel.textContent.trim()
           }
+          const wrappingLabel = el.closest('label')
+          if (wrappingLabel?.textContent?.trim()) return wrappingLabel.textContent.trim()
           const placeholder = el.getAttribute('placeholder')
           if (placeholder?.trim()) return placeholder.trim()
         }
