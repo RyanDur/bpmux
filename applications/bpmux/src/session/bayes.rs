@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::session::Message;
 use crate::session::classifier::{ExperienceKind, MessageClass};
 
-const SMOOTHING: f64 = 1.0; // Laplace smoothing
+const SMOOTHING: f64 = 1.0;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct BayesModel {
@@ -44,11 +44,6 @@ impl BayesModel {
             return super::classifier::classify(msg, owner_name);
         }
 
-        // Match the pattern classifier's early-return guards so trained
-        // Bayes paths don't accidentally classify bpmux's own nudge text
-        // as a new experience. This closes the "recursive nudge match"
-        // failure mode observed in the #163 interim misfire log — the
-        // pattern classifier already had these guards; Bayes did not.
         if !msg.is_chat() {
             return MessageClass::Routine;
         }
@@ -95,7 +90,6 @@ fn extract_features(msg: &Message, owner_name: &str) -> Vec<String> {
 
     let mut features = Vec::new();
 
-    // Sender features
     if sender == owner_name {
         features.push("sender:owner".into());
     } else if msg.from.contains("claude-code") {
@@ -104,7 +98,6 @@ fn extract_features(msg: &Message, owner_name: &str) -> Vec<String> {
         features.push("sender:other".into());
     }
 
-    // Length features
     let len = text.len();
     if len < 20 {
         features.push("len:short".into());
@@ -114,7 +107,6 @@ fn extract_features(msg: &Message, owner_name: &str) -> Vec<String> {
         features.push("len:long".into());
     }
 
-    // Punctuation features
     if text.contains('?') {
         features.push("punct:question".into());
     }
@@ -122,7 +114,6 @@ fn extract_features(msg: &Message, owner_name: &str) -> Vec<String> {
         features.push("punct:exclaim".into());
     }
 
-    // Word pattern features
     let signal_words: &[(&str, &str)] = &[
         ("don't", "word:dont"),
         ("should", "word:should"),
@@ -149,7 +140,6 @@ fn extract_features(msg: &Message, owner_name: &str) -> Vec<String> {
         }
     }
 
-    // Addressing features
     if msg.to.is_none() {
         features.push("target:broadcast".into());
     } else {
@@ -220,7 +210,6 @@ mod tests {
     fn trained_model_classifies() {
         let mut model = BayesModel::default();
         let training_data = vec![
-            // Experiences
             msg("ryan:human", "you should focus on the problem not the fix"),
             msg("ryan:human", "you should restate before building anything"),
             msg("ryan:human", "you should always verify before showing me"),
@@ -255,7 +244,6 @@ mod tests {
                 "pm:claude-code",
                 "have you considered splitting this into two stories?",
             ),
-            // Discussions
             msg("dev:claude-code", "I'll fix the filter now"),
             msg("dev:claude-code", "understood, working on it"),
             msg("dev:claude-code", "tests pass, pushing now"),
@@ -265,7 +253,6 @@ mod tests {
             msg("ryan:human", "yes"),
             msg("pm:claude-code", "board updated, three stories in ready"),
             msg("designer:claude-code", "design sign-off on the overlay"),
-            // Decisions
             msg("pm:claude-code", "#92 accepted and closed"),
             msg("ryan:human", "accepted"),
             msg("pm:claude-code", "#110 filed and in backlog"),
@@ -273,7 +260,6 @@ mod tests {
         model.train(&training_data, "ryan");
         assert!(model.is_trained());
 
-        // Teaching message from owner should be experience
         let m = msg(
             "ryan:human",
             "you should always verify before showing me the result",

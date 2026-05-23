@@ -94,14 +94,6 @@ const CORRECTION: &[&str] = &[
     "lazy causation",
 ];
 
-/// Short, formulaic phrases that signal a correction just landed. Catching
-/// these means we don't need to pattern-match the *verbose* correction
-/// itself — we just notice when someone accepts one. See the `#152` story
-/// body for the origin reasoning.
-///
-/// These bypass the `MIN_EXPERIENCE_LEN` gate because admissions are
-/// intentionally short ("my bad" is 6 chars). Without the bypass they'd
-/// never classify as experiences.
 const ADMISSION: &[&str] = &[
     "you're right",
     "youre right",
@@ -205,12 +197,6 @@ impl Classifier {
 
         let text_lower = msg.text.to_lowercase();
 
-        // Admissions fire regardless of length and before the operational /
-        // coordination filters. "You're right" is 11 chars and would
-        // otherwise fail the `MIN_EXPERIENCE_LEN` gate below. The admission
-        // itself IS the learning signal — the classifier doesn't need to
-        // understand what was corrected, only that a correction was
-        // accepted.
         if matches(&self.admission, &text_lower) {
             return MessageClass::Experience(ExperienceKind::Correction);
         }
