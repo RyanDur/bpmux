@@ -57,11 +57,6 @@ const Metrics = ({ apiBase, authToken, onClose, open }: Props): React.JSX.Elemen
   const dialogRef = useRef<HTMLDialogElement | null>(null)
 
   useEffect(() => {
-    // #497 slice 2: re-fetch on every open so reopens see fresh
-    // velocity/DORA data. Pre-fix the dialog was conditionally
-    // mounted via useAnimatedUnmount, so each open caused a fresh
-    // mount + fresh fetch. Native <dialog> stays mounted; gate the
-    // fetch on `open` instead.
     if (!open || !apiBase) return
     const controller = new AbortController()
     http

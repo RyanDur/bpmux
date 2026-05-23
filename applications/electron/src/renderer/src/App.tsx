@@ -5,10 +5,6 @@ import { useNotifications } from './hooks/useNotifications'
 import { capPerPush, useWebSocket } from './transport/useWebSocket'
 
 const App = (): React.JSX.Element => {
-  // `window.bpmux` is injected by the preload script owned by the
-  // parallel main-process agent. If it's missing (e.g., renderer
-  // loaded without preload during dev), we still render the shell
-  // and surface the error in devtools — no white screen.
   const bridge = window.bpmux
   if (!bridge) {
     console.error(

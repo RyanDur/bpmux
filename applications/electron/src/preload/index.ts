@@ -19,9 +19,6 @@ try {
     wsUrl: config.wsUrl,
     authToken: config.authToken,
     apiBase: config.apiBase,
-    // #371: subscribe to main-process quote-comment dispatches
-    // triggered by the native context-menu's "Quote in reply" item.
-    // Returns an unsubscribe fn so hook cleanup is straightforward.
     onQuoteComment: (callback: (payload: QuoteCommentPayload) => void): (() => void) => {
       const listener = (_event: IpcRendererEvent, payload: QuoteCommentPayload): void => {
         callback(payload)
