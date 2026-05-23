@@ -1,15 +1,3 @@
-//! Shared httpmock fixture helpers for octocrab-shaped responses.
-//!
-//! `octocrab::models::issues::Issue` (and its nested `Author`) is
-//! `non_exhaustive` with many required fields — every test that
-//! stages a mocked GitHub response needs the same boilerplate JSON
-//! shape. Centralising here so the contract-test suites
-//! (`bridge::tracker_contract_tests`,
-//! `transport::test_routes_mock_octocrab_tests`, future contract
-//! suites for additional adapters) all share one fixture surface.
-//!
-//! Update these helpers when octocrab bumps its model definitions.
-
 use serde_json::{Value, json};
 
 pub(crate) fn author() -> Value {

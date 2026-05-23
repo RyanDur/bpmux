@@ -1,13 +1,5 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-//! #1165 ATP — Background poller-middleware hydrates canonical-store;
-//! read tools always serve from canonical (no live-GH-fetch on read paths).
-//!
-//! Slice 1: get_story canonical-only — removes lazy-fetch fall-through
-//! that hit GH live when story.body or gate_comments were missing.
-//! Slices 2-4 (poller-middleware substrate / ETag + since / stale state +
-//! #1141 supersede) layer on top in subsequent commits.
-
 use std::sync::Arc;
 
 use chrono::{TimeZone, Utc};

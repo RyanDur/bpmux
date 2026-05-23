@@ -58,7 +58,6 @@ mod canonical_via_gh_1300 {
 
     #[tokio::test]
     async fn promotes_each_member_to_ready_and_closes_iteration_issue() {
-        // AC1 + AC2 + AC3: close GH issue + promote members + iteration_id cleared.
         let refresh = build_refresh(vec![
             seed_iteration_issue(1400, "Pegasus"),
             seed_member(200, StoryState::Icebox, Some(("Pegasus", 100))),
@@ -82,7 +81,6 @@ mod canonical_via_gh_1300 {
 
     #[tokio::test]
     async fn ready_queue_empty_guard_blocks_close_when_stories_in_ready() {
-        // AC5: #1258 r3 ready-empty guard preserved at canonical-via-GH axis.
         let refresh = build_refresh(vec![
             seed_iteration_issue(1400, "Pegasus"),
             seed_member(900, StoryState::Ready, None),
@@ -111,8 +109,6 @@ mod canonical_via_gh_1300 {
 
     #[tokio::test]
     async fn closed_iteration_issue_remains_queryable_for_history_preservation() {
-        // AC7 + falsifier (h): #1278 sister — closed Iteration-issue stays
-        // accessible as historical-artifact (not deleted from store).
         let refresh = build_refresh(vec![
             seed_iteration_issue(1400, "Pegasus"),
             seed_member(200, StoryState::Icebox, Some(("Pegasus", 100))),
@@ -129,8 +125,6 @@ mod canonical_via_gh_1300 {
 
     #[tokio::test]
     async fn empty_member_list_closes_iteration_issue_gracefully() {
-        // Falsifier (g): graceful failure on no-members. Empty member-list
-        // is the boundary case: iteration-issue closes; no member-promotions.
         let refresh = build_refresh(vec![seed_iteration_issue(1400, "Pegasus")]).await;
         promote_members_then_close_iteration(&refresh, 1400, &[])
             .await
@@ -205,12 +199,6 @@ mod canonical_via_gh_1300 {
 
     #[tokio::test]
     async fn iteration_close_uses_canonical_mutation_chain_for_member_promotion() {
-        // Falsifier (b): member-stories promoted via canonical mutation
-        // chain (not direct store-write). Verified by subscribing to
-        // BoardStore events: per #1282 fire-ordering, each member-promotion
-        // emits TagAdded("ready") + StateTransitioned(Ready) + TagRemoved
-        // ("iteration-#NNNN"), and the iteration-issue close emits
-        // StoryClosed — all visible to subscribers.
         let refresh = build_refresh(vec![
             seed_iteration_issue(1400, "Pegasus"),
             seed_member(200, StoryState::Icebox, Some(("Pegasus", 100))),

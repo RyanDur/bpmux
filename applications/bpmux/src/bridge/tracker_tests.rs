@@ -1,19 +1,9 @@
-//! Tests for the tracker's fail-loud observability (#236).
-//!
-//! Live `gh` and `octocrab` aren't available in CI, so we test the
-//! extracted helper `log_labels_fetch_failure` directly — it owns
-//! the fail-soft + log_diag semantics tracker callers delegate to.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::tracker::log_labels_fetch_failure;
 use std::sync::{Mutex, MutexGuard, OnceLock};
 use tempfile::TempDir;
 
-/// Serialize access to the BPMUX_LOG env var across these tests.
-/// cargo test runs tests in parallel by default; without this mutex
-/// a concurrent `remove_var` races with a `set_var` + read pattern
-/// and the "writes" test flaps.
 fn env_lock() -> MutexGuard<'static, ()> {
     static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
     LOCK.get_or_init(|| Mutex::new(()))
@@ -27,9 +17,6 @@ struct DiagEnvGuard {
 }
 
 impl DiagEnvGuard {
-    /// Set `BPMUX_LOG` to `path` for the life of the guard, holding
-    /// a process-wide mutex while the var is mutated. Restores the
-    /// previous value (or removes it) on drop.
     fn set(path: &std::path::Path) -> Self {
         let lock = env_lock();
         let prev = std::env::var("BPMUX_LOG").ok();
@@ -100,10 +87,6 @@ fn log_labels_fetch_failure_writes_to_diag_file() {
 
 #[test]
 fn log_labels_fetch_failure_is_silent_when_bpmux_log_unset() {
-    // Mirrors session::diag::log_diag's no-op branch: when BPMUX_LOG
-    // isn't set, the helper must not write anywhere and must still
-    // return an empty Vec. This is the pre-#236 silent behavior
-    // preserved for users who haven't opted into diagnostics.
     let tmp = TempDir::new().unwrap();
     let guard_path = tmp.path().join("bpmux.log");
     let _guard = DiagEnvGuard::unset();
@@ -131,20 +114,10 @@ fn log_labels_fetch_failure_distinguishes_backends() {
     assert!(contents.contains("(gh parse)") && contents.contains("#3"));
 }
 
-// #298 tracker-selection tests — exercise env-var permutations via
-// closure-injected env reader (no process env mutation, no env_lock
-// serialization needed). Catches the silent Octocrab→Gh fallback
-// class by asserting the exact FallbackReason variant for each
-// degenerate env state.
-
 mod tracker_selection {
     use super::super::tracker::{FallbackReason, TrackerSelection, select_from_env};
     use std::collections::HashMap;
 
-    /// Build a reader closure over an owned env map. Tests construct
-    /// a fresh map per case so no cross-test state leaks. Closure
-    /// matches `Fn(&str) -> Option<String>` so `select_from_env`
-    /// accepts it directly.
     fn reader(env: HashMap<&str, &str>) -> impl Fn(&str) -> Option<String> {
         let owned: HashMap<String, String> = env
             .into_iter()
@@ -171,9 +144,6 @@ mod tracker_selection {
 
     #[test]
     fn returns_octocrab_when_repo_and_github_token_set() {
-        // GITHUB_TOKEN is the documented Actions-runtime variant;
-        // bridge treats it as an alias for GH_TOKEN so repo owners
-        // with either convention work without re-configuring.
         let r = reader(HashMap::from([
             ("BPMUX_REPO", "ryan/bpmux"),
             ("GITHUB_TOKEN", "gh-actions-token"),
@@ -186,9 +156,6 @@ mod tracker_selection {
 
     #[test]
     fn gh_token_wins_when_both_tokens_set() {
-        // Preference order: GH_TOKEN first, GITHUB_TOKEN fallback.
-        // Matches gh CLI's precedence; avoids surprise when someone
-        // sets both expecting the user-convention one to win.
         let r = reader(HashMap::from([
             ("BPMUX_REPO", "o/r"),
             ("GH_TOKEN", "primary"),
@@ -202,9 +169,6 @@ mod tracker_selection {
 
     #[test]
     fn fallback_no_repo_when_bpmux_repo_missing() {
-        // Most common failure mode: user sets GH_TOKEN thinking it's
-        // enough but hasn't set BPMUX_REPO. Caller logs this reason;
-        // user gets a diag hit telling them what's missing.
         let r = reader(HashMap::from([("GH_TOKEN", "t")]));
         assert_eq!(
             select_from_env(r),
@@ -214,9 +178,6 @@ mod tracker_selection {
 
     #[test]
     fn fallback_malformed_repo_when_no_slash() {
-        // BPMUX_REPO must be "owner/name"; a bare token (no slash)
-        // is malformed. Distinguished from NoRepo so the diag line
-        // points the user at the format issue, not a missing var.
         let r = reader(HashMap::from([
             ("BPMUX_REPO", "justname"),
             ("GH_TOKEN", "t"),
@@ -256,10 +217,6 @@ mod tracker_selection {
 
     #[test]
     fn fallback_when_env_is_completely_empty() {
-        // NoRepo wins (checked first in the resolution order).
-        // Deterministic ordering matters because a diag reader
-        // that sees NoRepo knows it's not a token issue; if
-        // ordering flipped they'd chase the wrong fix.
         let r = reader(HashMap::new());
         assert_eq!(
             select_from_env(r),

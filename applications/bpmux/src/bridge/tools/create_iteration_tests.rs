@@ -3,11 +3,6 @@
 #![allow(clippy::panic)]
 #![allow(unsafe_code)]
 
-// Tests for #1297: `create_iteration(theme_name)` MCP tool — creates a
-// GH issue with story_type=Iteration as the canonical iteration entity
-// (replaces local markers-store substrate). Sister-pattern to existing
-// Epic story_type + create_story canonical-mutation-chain.
-
 use crate::board::RefreshDriver;
 use crate::board::adapters::in_memory::InMemorySourceAdapter;
 use crate::board::domain::{Story, StoryState, StoryType};

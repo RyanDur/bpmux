@@ -1,19 +1,3 @@
-//! Contract tests for `OctocrabStoryTracker` against a local httpmock
-//! server. These tests run on every `cargo test` — no credentials
-//! required, no live-network side effects — so pre-push + CI catch
-//! drift between bpmux's use of octocrab and the recorded REST
-//! contract.
-//!
-//! Re-record against the live API via `scripts/rerecord-fixtures.sh`
-//! when GitHub changes a response shape or bpmux starts calling a
-//! new endpoint; feature-gated integration suite (#299) stays as the
-//! drift oracle that surfaces "recorded contract no longer matches
-//! reality."
-//!
-//! Each test spins its own server + tracker so there's no shared
-//! state across tests — httpmock's async server binds an ephemeral
-//! port per instance. `with_base_url` points octocrab at the mock.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::test_fixtures::{author, issue};
@@ -67,8 +51,6 @@ async fn close_story_issues_patch_with_closed_state() {
     let tracker = mock_tracker(&server);
     let result = tracker.close_story(42).await;
     m.assert();
-    // #1151: close_story now returns the post-close Issue JSON so the
-    // adapter can parse it into a Story and dispatch StoryRefreshed.
     let value = result.expect("close_story should succeed");
     assert_eq!(value["number"].as_u64(), Some(42));
     assert_eq!(value["gh_state"].as_str(), Some("closed"));
@@ -104,15 +86,11 @@ async fn add_label_posts_to_labels_endpoint_with_array_body() {
     let tracker = mock_tracker(&server);
     let result = tracker.add_label(42, "ready").await;
     m.assert();
-    // #1151: add_label now returns the post-mutation labels list.
     assert_eq!(result, Ok(vec!["ready".to_string()]));
 }
 
 #[tokio::test]
 async fn remove_label_deletes_and_treats_404_as_idempotent_noop() {
-    // GitHub returns 404 when removing a label not attached; the
-    // tracker folds this into success so callers treat "already
-    // clear" as a no-op. Contract: 404 on DELETE = Ok.
     let server = MockServer::start();
     let m = server.mock(|when, then| {
         when.method(Method::DELETE)
@@ -140,8 +118,6 @@ async fn remove_label_succeeds_on_200() {
     let tracker = mock_tracker(&server);
     let result = tracker.remove_label(42, "ready").await;
     m.assert();
-    // #1151: remove_label now returns the post-mutation labels list.
-    // Mock returns `[]`; the labels list is empty post-remove.
     assert_eq!(result, Ok(Vec::<String>::new()));
 }
 
@@ -160,7 +136,6 @@ async fn create_story_posts_to_issues_with_title_and_body() {
     let tracker = mock_tracker(&server);
     let result = tracker.create_story("new story", "body-text").await;
     m.assert();
-    // #1151: create_story now returns the freshly-created Issue JSON.
     let value = result.expect("create_story should succeed");
     assert_eq!(value["number"].as_u64(), Some(501));
     assert_eq!(value["title"].as_str(), Some("new story"));
@@ -227,8 +202,6 @@ async fn get_story_labels_returns_names_from_labels_array() {
 
 #[tokio::test]
 async fn get_story_labels_returns_empty_on_404() {
-    // 404 on get-issue means ambiguous-labels per the fail-soft
-    // contract — caller defaults addressee up to Ryan, not a panic.
     let server = MockServer::start();
     let m = server.mock(|when, then| {
         when.method(Method::GET)
@@ -260,15 +233,6 @@ async fn get_story_title_returns_title_on_200() {
 
 #[tokio::test]
 async fn fetch_board_stories_concatenates_six_pages_full_repo_scale() {
-    // #522: the canonical store had ~285 fewer stories than gh CLI
-    // ground-truth post-#511 pagination shipped. To rule out a multi-
-    // page concat regression at the chain boundary, this test pins the
-    // 6-page case (525 issues across pages of 100 + last partial 25).
-    // If the chain holds end-to-end on the mocked side, the gap lives
-    // somewhere outside fetch_board_stories — at GH-side, ingest
-    // scheduling, or further downstream — and the diagnostic count-log
-    // added in this slice will surface the actual point of loss in the
-    // running canonical store.
     use super::tracker::StoryTracker;
 
     let server = MockServer::start();
@@ -337,13 +301,6 @@ async fn fetch_board_stories_concatenates_six_pages_full_repo_scale() {
 
 #[tokio::test]
 async fn fetch_board_stories_follows_next_link_until_exhaustion() {
-    // #511: GitHub returns issues in pages of up to 100 ordered by
-    // updated_at desc. Without next-link follow-through, the renderer
-    // sees only the first page; after a heavy iteration crowds the
-    // first page with recently-touched-but-old stories, today's just-
-    // filed items disappear from the board until something else
-    // updates them. This test pins the multi-page contract: serve two
-    // pages, assert the implementation collects items from both.
     use super::tracker::StoryTracker;
 
     let server = MockServer::start();

@@ -2,17 +2,6 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
-// Tests for #1287: `get_ci_state` aggregate-state across all
-// workflows triggered by a commit. Targets `classify_runs` (the
-// pure aggregation logic) + `build_ci_state_report` (the report
-// shape including the `workflows: Vec<WorkflowSummary>` breakdown).
-//
-// Sister to today's #1283 + #1271 substrate-resilience chain and
-// to `feedback_verify_tool_output_schema` (observation-tool
-// field-overloading class): aggregate vs last-workflow-on-commit
-// vs per-workflow are distinct contracts; the field semantic is
-// now explicit.
-
 use crate::bridge::tools::build_ci_state_report;
 use crate::ci::{CiState, RunEntry, classify_runs};
 
@@ -34,14 +23,8 @@ fn run(
     }
 }
 
-// ── AC 1: aggregate behavior — 4 rules ──
-
 #[test]
 fn aggregate_returns_in_progress_when_any_workflow_running() {
-    // Reproduces the live bug-class: smoke workflow concluded green,
-    // main CI still running. Old behavior returned `success` based on
-    // first-to-conclude. New behavior: `in_progress` because any
-    // run still active wins.
     let runs = vec![
         run("completed", Some("success"), "abc1234", "smoke", 100),
         run("in_progress", None, "abc1234", "CI", 101),
@@ -90,16 +73,8 @@ fn aggregate_returns_unknown_for_no_runs() {
     assert!(event.workflows.is_empty());
 }
 
-// ── AC 2: failure wins over running when both present ──
-// (failure is the more-actionable signal: red CI blocks gates
-// regardless of whether other workflows are still progressing)
-
 #[test]
 fn aggregate_running_wins_over_failure() {
-    // Spec aggregation: Running > Red. If any is running, we don't
-    // know yet whether the failure is final (a re-run might be in-
-    // flight). Gate callers should treat Running as "wait, don't
-    // decide yet".
     let runs = vec![
         run("completed", Some("failure"), "abc1234", "CI", 100),
         run("in_progress", None, "abc1234", "smoke", 101),
@@ -108,13 +83,8 @@ fn aggregate_running_wins_over_failure() {
     assert_eq!(event.state, CiState::Running);
 }
 
-// ── AC 3: head_sha filtering — only the latest commit's runs count ──
-
 #[test]
 fn aggregate_filters_to_latest_head_sha_ignores_older_commit_runs() {
-    // Latest commit (abc1234) has 2 green runs; an older commit
-    // (def5678) had a failure. Aggregate should be Green because
-    // only the latest commit's runs are considered.
     let runs = vec![
         run("completed", Some("success"), "abc1234", "smoke", 200),
         run("completed", Some("success"), "abc1234", "CI", 201),
@@ -132,8 +102,6 @@ fn aggregate_filters_to_latest_head_sha_ignores_older_commit_runs() {
         "only latest-commit runs in breakdown"
     );
 }
-
-// ── AC 4: workflows[] field carries per-run breakdown ──
 
 #[test]
 fn workflows_field_carries_per_run_breakdown() {
@@ -176,13 +144,8 @@ fn build_ci_state_report_serializes_workflows_array() {
     assert_eq!(json["workflows"].as_array().unwrap().len(), 2);
 }
 
-// ── AC 7: regression — false-positive green when some still running ──
-
 #[test]
 fn regression_smoke_fast_main_slow_does_not_fire_premature_green() {
-    // Today's reproducer-class: smoke workflow concludes in 1-8s,
-    // main CI in 5-60 min. Bridge previously fired "🟢 CI green" on
-    // smoke conclusion alone; new aggregate makes this in_progress.
     let runs = vec![
         run(
             "completed",
@@ -221,12 +184,8 @@ fn regression_smoke_green_main_failure_aggregates_to_failure() {
     );
 }
 
-// ── Edge cases ──
-
 #[test]
 fn single_workflow_run_aggregates_to_its_own_state() {
-    // Backward-compat: single-workflow projects must behave the
-    // same as before (per-run state = aggregate state).
     let runs = vec![run("completed", Some("success"), "abc1234", "CI", 100)];
     let event = classify_runs(&runs);
     assert_eq!(event.state, CiState::Green);
@@ -235,8 +194,6 @@ fn single_workflow_run_aggregates_to_its_own_state() {
 
 #[test]
 fn runs_without_head_sha_fall_back_to_single_run_classification() {
-    // Legacy test-shape: no head_sha set. classify_runs falls back
-    // to per-run on `latest` only (pre-#1287 behavior preserved).
     let mut entry = run("completed", Some("success"), "", "CI", 100);
     entry.head_sha = None;
     let runs = vec![entry];
@@ -246,20 +203,6 @@ fn runs_without_head_sha_fall_back_to_single_run_classification() {
 
 #[test]
 fn aggregate_handles_hybrid_runner_shape_post_1253_cutover() {
-    // #1254 (Epic #1247 slice 4): post-cutover verification that
-    // `get_ci_state`'s classification works on the hybrid CI shape
-    // shipped in #1253: `test` on [self-hosted, macos, arm64];
-    // `build-bpmux` + `playwright-e2e` on `ubuntu-latest`. The
-    // bridge-adapter consumes RunEntries from the GHA API — the
-    // runner-label (self-hosted vs ubuntu-latest) doesn't appear in
-    // the entry; only status + conclusion drive aggregation. This
-    // test pins that platform-axis-independence: any mix of runners
-    // for workflows-on-the-same-commit aggregates by the same rule.
-    //
-    // Sister to `feedback_local_pass_ci_fail_hidden_axis_coupling` —
-    // the bridge-tool contract is independent of runner platform; we
-    // assert that invariant here so a future refactor that introduces
-    // platform-conditional classification fires immediately.
     let runs = vec![
         run(
             "completed",
@@ -333,9 +276,6 @@ fn aggregate_handles_hybrid_runner_shape_post_1253_cutover() {
 
 #[test]
 fn aggregate_red_on_hybrid_shape_when_playwright_shard_fails() {
-    // Sister: #1254 falsifier — if any job in the hybrid shape fails
-    // (e.g., a playwright-e2e shard on ubuntu-latest), aggregate is
-    // Red regardless of which runner the failure came from.
     let runs = vec![
         run(
             "completed",
@@ -369,10 +309,6 @@ fn aggregate_red_on_hybrid_shape_when_playwright_shard_fails() {
 
 #[test]
 fn workflow_summary_conclusion_uses_canonical_strings() {
-    // Workflow per-run conclusions must use the same vocabulary as
-    // the aggregate (`success` / `failure` / `in_progress` /
-    // `quota_exhausted` / `unknown`) so callers can rely on one
-    // contract.
     let runs = vec![
         run("completed", Some("success"), "abc", "a", 1),
         run("completed", Some("failure"), "abc", "b", 2),
@@ -383,7 +319,5 @@ fn workflow_summary_conclusion_uses_canonical_strings() {
     let conclusions: Vec<&str> = event.workflows.iter().map(|w| w.conclusion).collect();
     assert!(conclusions.contains(&"success"));
     assert!(conclusions.contains(&"failure"));
-    // both in_progress and queued map to "in_progress" in the
-    // aggregate vocabulary
     assert!(conclusions.iter().filter(|c| **c == "in_progress").count() >= 2);
 }

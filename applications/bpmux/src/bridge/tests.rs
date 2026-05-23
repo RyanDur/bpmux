@@ -37,18 +37,6 @@ fn resolve_bridge_name_generates_agent_suffix_for_unexpanded_placeholder() {
     );
 }
 
-// ── build_notification_meta tests ──────────────────────────
-//
-// Why these tests matter: Claude Code v2.1.109+ rejects channel
-// notifications whose meta contains null values. The rejection breaks
-// the entire MCP stdio pipe, not just the single notification. This
-// function is the last step before the payload crosses the Claude Code
-// boundary — if it emits null, team communication breaks.
-//
-// Presence-as-signal is also load-bearing: "addressee: null" and
-// "no addressee key" are semantically different. Dropping absent keys
-// preserves that distinction.
-
 #[test]
 fn build_meta_always_includes_core_fields() {
     let meta = build_notification_meta(
@@ -103,8 +91,6 @@ fn build_meta_includes_message_type_when_present() {
 
 #[test]
 fn build_meta_never_contains_null_values() {
-    // Contract for Claude Code v2.1.109+: null in meta crashes the
-    // MCP stdio pipe. Verify across every combination of present/absent.
     let cases = [
         build_notification_meta("r", "t", "c", None, None),
         build_notification_meta("r", "t", "c", Some("dev"), None),
@@ -117,13 +103,6 @@ fn build_meta_never_contains_null_values() {
         }
     }
 }
-
-// ── validate_meta boundary check ───────────────────────────
-//
-// This is the runtime validator wired in just before peer.send_notification.
-// Its job is to catch our own contract violations at the boundary rather
-// than silently shipping them into Claude Code (where they vanish silently
-// on v2.1.92 or crash the MCP pipe on v2.1.109+).
 
 #[test]
 fn validate_meta_accepts_payload_with_no_nulls() {
@@ -174,13 +153,6 @@ fn build_meta_mixed_presence_only_includes_present_keys() {
     assert!(meta.contains_key("message_type"));
 }
 
-// ── curate_message tests (story #200) ────────────────────────
-//
-// curate_message is the read_messages response curator. It preserves
-// addressee/topic/message_type/ts so agents can implement the #158
-// addressee protocol and #191 topic scoping. Broadcast messages are
-// distinguishable from addressed ones via null fields.
-
 use super::tools::curate_message;
 
 #[test]
@@ -228,7 +200,6 @@ fn curate_message_preserves_message_type_when_present() {
 
 #[test]
 fn curate_message_broadcast_has_null_addressee() {
-    // Broadcast (no addressee) must be distinguishable from addressed.
     let raw = serde_json::json!({
         "from": "dev",
         "text": "broadcast",
@@ -244,8 +215,6 @@ fn curate_message_broadcast_has_null_addressee() {
 
 #[test]
 fn curate_message_addressee_visible_across_recipients() {
-    // pm must see a dev-addressed message with addressee: "dev" visible.
-    // Curation does not filter based on viewer — agents decide.
     let raw = serde_json::json!({
         "from": "ryan",
         "text": "work on this dev",
@@ -258,7 +227,6 @@ fn curate_message_addressee_visible_across_recipients() {
 
 #[test]
 fn curate_message_returns_none_when_required_fields_missing() {
-    // Malformed message (missing `from`) is skipped entirely.
     let raw = serde_json::json!({
         "text": "no sender",
         "ts": "2026-04-15T21:00:00Z",
@@ -308,8 +276,6 @@ fn curate_message_preserves_to_array_for_privacy_scoped() {
     assert_eq!(to[1].as_str(), Some("designer"));
 }
 
-// ── share_message pure helpers (#174) ────────────────────────
-
 use super::tools::{format_share_marker, parse_share_scope, pick_most_recent_visible_chat};
 
 #[test]
@@ -351,9 +317,6 @@ fn format_share_marker_form2_omits_source_scope() {
 
 #[test]
 fn pick_most_recent_visible_chat_skips_non_chat_types() {
-    // Most-recent-first ordering — an Activity message at index 0
-    // (the most recent) must be skipped; the Chat at index 1 is
-    // the correct pick.
     let messages = vec![
         serde_json::json!({
             "from": "dev",
@@ -391,8 +354,6 @@ fn pick_most_recent_visible_chat_returns_none_when_only_system_and_activity() {
 
 #[test]
 fn pick_most_recent_visible_chat_treats_null_message_type_as_chat() {
-    // The REST curator emits `message_type: null` for Chat (default
-    // variant). The picker must treat that as chat, not skip it.
     let messages = vec![serde_json::json!({
         "from": "ryan",
         "text": "broadcast hello",

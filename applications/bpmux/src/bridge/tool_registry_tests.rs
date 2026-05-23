@@ -1,9 +1,3 @@
-//! #1299 Cassiopeia Slice E — regression tests pinning the MCP tool
-//! registry's no-parallel-shape contract for iteration membership.
-//! After Slice E retired the 3 iteration_id-axis tools, the registry
-//! must NOT advertise them. Sister to canonical_tests.rs (substrate-
-//! axis); this is the bridge-axis gate.
-
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::expect_used)]
 
