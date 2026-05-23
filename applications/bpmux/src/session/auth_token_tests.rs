@@ -1,6 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::auth_token::{default_auth_token_path, ensure, eq, generate_and_write, read};
+use super::auth_token::{
+    constant_time_eq, default_auth_token_path, ensure, generate_and_write, read,
+};
 use tempfile::TempDir;
 
 fn tmp() -> (TempDir, std::path::PathBuf) {
@@ -68,18 +70,18 @@ fn ensure_regenerates_when_file_is_empty() {
 
 #[test]
 fn eq_rejects_mismatched_length() {
-    assert!(!eq("abc", "abcd"));
-    assert!(!eq("abcd", "abc"));
+    assert!(!constant_time_eq("abc", "abcd"));
+    assert!(!constant_time_eq("abcd", "abc"));
 }
 
 #[test]
 fn eq_accepts_exact_match() {
-    assert!(eq("deadbeef", "deadbeef"));
+    assert!(constant_time_eq("deadbeef", "deadbeef"));
 }
 
 #[test]
 fn eq_rejects_same_length_different_content() {
-    assert!(!eq("deadbeef", "deadbeec"));
+    assert!(!constant_time_eq("deadbeef", "deadbeec"));
 }
 
 #[test]

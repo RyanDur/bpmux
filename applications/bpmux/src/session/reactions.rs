@@ -1,27 +1,7 @@
-//! Per-message emoji reactions — #340.
-//!
-//! Any viewer can add/remove reactions on any message. Reactions
-//! survive restart via `<session-dir>/reactions.json`. State
-//! changes broadcast over WS as typed `StateDelta::Reactions` via
-//! the orchestrator's ReactionsSessionBroadcaster, so peer mirror
-//! state updates within WS latency.
-//!
-//! `channel` follows the same canonical-key derivation as pins —
-//! see session::pins::channel_key. `message_key` = `{ts}|{from}`.
-//!
-//! Note on AC6 ("persist in the JSONL log"): this impl stores
-//! reactions in a separate json file rather than inline in the
-//! append-only messages-current.jsonl. The message log is append-
-//! only; reactions are mutable per-message state. Separate store
-//! keeps the log pristine while satisfying persist-across-restart.
-
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-/// A single reaction instance. Multiple Reactions with the same
-/// (message_key, emoji) across different users aggregate to a
-/// single pill with the per-user list for the hover tooltip.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Reaction {
     pub message_key: String,
@@ -30,9 +10,6 @@ pub struct Reaction {
     pub reacted_at: String,
 }
 
-/// Aggregated reaction shape the renderer consumes: one entry per
-/// (message_key, emoji) with a list of reactors + count. Frontends
-/// can render without recomputing the aggregation.
 #[derive(Debug, Clone, Serialize)]
 pub struct AggregatedReaction {
     pub message_key: String,
@@ -41,7 +18,6 @@ pub struct AggregatedReaction {
     pub users: Vec<String>,
 }
 
-/// Full reactions store: channel_key → flat list of Reactions.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ReactionsStore {
     pub channels: BTreeMap<String, Vec<Reaction>>,
@@ -67,9 +43,6 @@ pub fn save(session_dir: &Path, store: &ReactionsStore) -> Result<(), std::io::E
     std::fs::write(&path, json)
 }
 
-/// Toggle a reaction: adds if the (user, emoji) combo doesn't exist
-/// on this message; removes if it does. Returns the new state:
-/// true = reaction present after toggle, false = removed.
 pub fn toggle_reaction(
     store: &mut ReactionsStore,
     channel: &str,
@@ -99,8 +72,6 @@ pub fn toggle_reaction(
     }
 }
 
-/// Aggregate by (message_key, emoji) for a channel. Renderer
-/// consumes this shape directly.
 pub fn aggregate_for_channel(store: &ReactionsStore, channel: &str) -> Vec<AggregatedReaction> {
     let Some(list) = store.channels.get(channel) else {
         return Vec::new();

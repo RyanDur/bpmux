@@ -56,7 +56,7 @@ pub fn is_authorized(headers: &HeaderMap, expected_token: &str) -> bool {
         .get(header::AUTHORIZATION)
         .and_then(|v| v.to_str().ok())
         .and_then(parse_bearer)
-        .is_some_and(|got| auth_token::eq(got, expected_token));
+        .is_some_and(|got| auth_token::constant_time_eq(got, expected_token));
     let host_ok = headers
         .get(header::HOST)
         .and_then(|v| v.to_str().ok())

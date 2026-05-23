@@ -1,24 +1,3 @@
-//! Per-run auth token for the simulate_* REST endpoints (#235).
-//!
-//! `/api/simulate/key` and `/api/simulate/click` inject crossterm events
-//! into the running TUI. Without a gate, any local process on 127.0.0.1
-//! (or a DNS-rebound browser page) can drive Ryan's session. This module
-//! owns the shared secret bpmux and its bridge subprocesses use to prove
-//! they come from the same launch.
-//!
-//! Layout: 32 bytes of OS entropy, hex-encoded, written mode-0600 under
-//! `~/.bpmux/auth_token`. Overridable via `BPMUX_AUTH_TOKEN_PATH` so
-//! tests and alternative layouts don't need to thread the path through
-//! every call site.
-//!
-//! Startup contract:
-//! - Missing file: server generates a fresh token and writes it. Zero-
-//!   config for solo devs.
-//! - Unreadable / unwritable file: fail loud — we need the token for
-//!   every request.
-//! - Stale file from a prior crash: harmless; server overwrites on
-//!   launch since the secret is per-run, not per-host.
-
 use std::io;
 use std::path::{Path, PathBuf};
 
@@ -33,8 +12,6 @@ pub fn default_auth_token_path() -> Option<PathBuf> {
     dirs::home_dir().map(|h| h.join(".bpmux").join("auth_token"))
 }
 
-/// Generate a fresh token, hex-encode, and persist it mode-0600 at
-/// `path`. Overwrites any existing file — the secret is per-run.
 pub fn generate_and_write(path: &Path) -> io::Result<String> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
@@ -52,9 +29,6 @@ pub fn read(path: &Path) -> io::Result<String> {
     std::fs::read_to_string(path).map(|s| s.trim().to_string())
 }
 
-/// Ensure a token exists at `path` and return its value. Generates on
-/// missing; propagates IO errors on unwritable or unreadable paths —
-/// callers (server startup, bridge subprocess) decide how loud to fail.
 pub fn ensure(path: &Path) -> io::Result<String> {
     match read(path) {
         Ok(t) if !t.is_empty() => Ok(t),
@@ -62,11 +36,7 @@ pub fn ensure(path: &Path) -> io::Result<String> {
     }
 }
 
-/// Constant-time equality check — bytewise XOR accumulated into one
-/// byte so the total time doesn't leak which prefix matched. Returns
-/// false on length mismatch (length is not a secret; leaking that is
-/// fine and avoids branching).
-pub fn eq(a: &str, b: &str) -> bool {
+pub fn constant_time_eq(a: &str, b: &str) -> bool {
     let (a, b) = (a.as_bytes(), b.as_bytes());
     if a.len() != b.len() {
         return false;
