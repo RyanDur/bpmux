@@ -1,9 +1,3 @@
-//! Message-channel handlers — REST surface mirroring the WebSocket
-//! message-broadcast flow. `get_messages` is the agent-side history
-//! reader (chat-only by default, with paged-history + delivery-side
-//! filter knobs); `post_message` is the agent-side write endpoint
-//! that broadcasts through `session::Session::broadcast`.
-
 use std::sync::Arc;
 
 use axum::Json;
@@ -14,15 +8,8 @@ use serde::Deserialize;
 
 use crate::session;
 
-/// Default `limit` for `GET /api/messages` when the caller omits the
-/// query parameter. Read by `bridge::tools::read_messages` so the
-/// MCP tool and the REST endpoint stay aligned.
 pub const DEFAULT_MESSAGE_LIMIT: usize = 20;
 
-/// POST body for `/api/messages`. `to` enables single-recipient
-/// privacy semantics (#158 directed delivery), `multi_depth` carries
-/// the optional multi-depth rendering payload (#187), and `addressee`
-/// is the attention signal (#158).
 #[derive(Deserialize)]
 pub struct PostMessage {
     pub from: String,
@@ -36,12 +23,6 @@ pub struct PostMessage {
     pub to: Option<Vec<String>>,
 }
 
-/// Query parameters for `/api/messages`. `chat_only` defaults to
-/// true so system/activity classes don't bleed into chat reads;
-/// `as_peer` simulates delivery-side filtering for a specific role
-/// (#191); `message_type` overrides `chat_only`'s default so callers
-/// can hydrate presence without bumping `chat_only=false` (#364);
-/// `before` enables paged-history reads (#1153) by RFC3339 timestamp.
 #[derive(Deserialize)]
 pub struct GetMessagesParams {
     pub limit: Option<usize>,
@@ -53,11 +34,6 @@ pub struct GetMessagesParams {
     pub before: Option<String>,
 }
 
-/// GET /api/messages — page of recent messages, newest-first,
-/// filtered per `GetMessagesParams`. The `before` parameter uses
-/// strict-less-than (`m.ts < before`) so callers paging older
-/// history pass the oldest-currently-rendered timestamp without
-/// boundary duplicates; client-side dedup handles any race.
 pub async fn get_messages(
     State(session): State<Arc<session::Session>>,
     Query(params): Query<GetMessagesParams>,
@@ -100,15 +76,6 @@ pub async fn get_messages(
     }
 }
 
-/// POST /api/messages — broadcast an agent-sent message through
-/// `session::Session::broadcast`. Rejects `message_type="system"`
-/// (reserved for internal bridge signals — classifier nudges,
-/// handoff warnings, join/leave — which dispatch through
-/// `session::log::append` / `emit_system`, never this handler).
-/// A non-empty `to` filter sets `explicit_privacy=true` on the
-/// stored message so downstream guards (e.g. `/share` refusing to
-/// widen private messages) treat HTTP-originated DMs identically
-/// to TUI `/to` DMs.
 pub async fn post_message(
     State(session): State<Arc<session::Session>>,
     Json(payload): Json<PostMessage>,

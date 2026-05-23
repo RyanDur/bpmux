@@ -1,11 +1,3 @@
-//! Lesson-substrate handlers — read indexed lessons (text response,
-//! optional topic/limit/reinforcement filters), persist new lessons,
-//! and surface a peer-role's saved lessons read-only.
-//!
-//! Response bodies are plain-text (not JSON) — the renderer renders
-//! them verbatim, and the MCP `get_lessons` / `list_peer_lessons`
-//! tools share the same text shape so REST + MCP stay aligned.
-
 use std::sync::Arc;
 
 use axum::Json;
@@ -35,11 +27,6 @@ pub struct PeerLessonsQuery {
     pub peer: Option<String>,
 }
 
-/// GET /api/lessons — list indexed lessons. With `limit=N`, returns
-/// the top-N lessons ranked by `reinforcement_count` (then
-/// `established`) so the renderer can show the most-load-bearing
-/// lessons first. With `topic=...`, substring-filters topic names
-/// case-insensitively. Default shape groups lessons by topic.
 pub async fn get_lessons(
     State(session): State<Arc<session::Session>>,
     Query(params): Query<LessonsQuery>,
@@ -106,9 +93,6 @@ pub async fn get_lessons(
     }
 }
 
-/// GET /api/peer-lessons — surface a peer-role's saved lessons
-/// read-only. Without `peer=...`, returns the list of available
-/// peers from session storage.
 pub async fn get_peer_lessons(
     State(session): State<Arc<session::Session>>,
     Query(params): Query<PeerLessonsQuery>,
@@ -145,7 +129,6 @@ pub async fn get_peer_lessons(
     (StatusCode::OK, text)
 }
 
-/// POST /api/lessons — persist a new lesson to session storage.
 pub async fn post_lesson(
     State(session): State<Arc<session::Session>>,
     Json(payload): Json<SaveLessonPayload>,

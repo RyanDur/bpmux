@@ -1,8 +1,3 @@
-//! Roster + sync-status handlers (#402) — currently-connected WS-peer
-//! snapshot for the renderer's directs + groups sidebar, plus the
-//! sync-orchestrator status / force-drain / acknowledge-dropped
-//! surface.
-
 use std::sync::Arc;
 
 use axum::extract::State;
@@ -12,22 +7,12 @@ use axum::response::IntoResponse;
 use super::shared::{err_body, json_headers};
 use crate::session;
 
-/// #402: serialized roster entry. Mirrors the frontend's
-/// `RosterEntry` shape in `useTeamRoster.ts` — identity + derived
-/// short-role. No system senders here (bpmux broadcasts system
-/// messages but never holds a WS connection, so it can't enter
-/// the roster via the peer-join path); frontend relies on this
-/// invariant to skip the `isSystem` filter.
 #[derive(serde::Serialize)]
 pub struct RosterEntry {
     pub identity: String,
     pub role: String,
 }
 
-/// #402: snapshot of currently-connected WS peers. Source of truth
-/// for the sidebar's directs + combinatorial-groups membership.
-/// Empty array when no peers are connected (e.g., fresh start
-/// before Electron's own WS handshake completes).
 pub async fn get_roster(State(session): State<Arc<session::Session>>) -> impl IntoResponse {
     let roster: Vec<RosterEntry> = session
         .roster_snapshot()

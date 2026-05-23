@@ -1,10 +1,3 @@
-//! Screen + window capture handlers — `get_screen` returns a textual
-//! agent-screen capture (filled by the bridge), and
-//! `get_electron_capture` shells out to macOS `screencapture` to grab
-//! the Electron renderer window as a PNG (#1183). The electron-capture
-//! path is serialized via a per-server mutex so concurrent callers
-//! don't fight `screencapture` (PM-lean #3).
-
 use std::sync::Arc;
 
 use axum::extract::Query;
@@ -24,17 +17,11 @@ pub async fn get_screen(
     (StatusCode::OK, screen)
 }
 
-/// Query params for GET /api/electron-capture: optional `role` for
-/// the agent calling, used in the namespaced filename.
 #[derive(Debug, Default, Deserialize)]
 pub struct ElectronCaptureQuery {
     pub role: Option<String>,
 }
 
-/// GET /api/electron-capture — capture the bpmux Electron renderer
-/// window via macOS `screencapture` and return the resulting PNG
-/// path (#1183). Serialized via `electron_capture_lock` so concurrent
-/// callers don't fight `screencapture` (PM-lean #3).
 pub async fn get_electron_capture(
     axum::Extension(lock): axum::Extension<std::sync::Arc<tokio::sync::Mutex<()>>>,
     Query(params): Query<ElectronCaptureQuery>,

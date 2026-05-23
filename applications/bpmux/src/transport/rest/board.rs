@@ -1,14 +1,3 @@
-//! Board + story REST endpoints (owner-gate).
-//!
-//! The Electron renderer fetches board state and performs owner-gate
-//! actions (accept / reject) through these endpoints. Every route in
-//! this section sits behind the bearer+loopback auth middleware that
-//! already guards `simulate_*`. On a single-token loopback
-//! deployment, an authorized caller is implicitly the local owner —
-//! there is no per-role gate beyond authentication. If the
-//! deployment model ever grows multi-user auth, a sender-identity
-//! check would go here.
-
 use std::sync::Arc;
 
 use axum::Json;
@@ -22,7 +11,6 @@ use super::shared::{
 };
 use crate::session;
 
-/// GET /api/board — return the whole board as `{ stories, fetched_at }`.
 pub async fn get_board(
     axum::Extension(tracker): axum::Extension<TrackerHandle>,
     axum::Extension(test_refresh): axum::Extension<crate::server::TestRefreshHandle>,
@@ -91,7 +79,6 @@ pub async fn get_board(
     }
 }
 
-/// GET /api/stories/:number — return one story with full body.
 pub async fn get_story(
     axum::Extension(tracker): axum::Extension<TrackerHandle>,
     axum::extract::Path(number): axum::extract::Path<u64>,
@@ -242,7 +229,6 @@ pub async fn post_reject_story(
     }
 }
 
-/// GET /api/stories/:number/comments — list comments for a story.
 pub async fn get_story_comments(
     axum::Extension(tracker): axum::Extension<TrackerHandle>,
     axum::extract::Path(number): axum::extract::Path<u64>,
@@ -268,9 +254,6 @@ pub async fn get_story_comments(
     }
 }
 
-/// GET /api/stories/:number/timeline — issue creation + event history
-/// for the story's drill-in timeline section (#367). Returns condensed
-/// event records the renderer classifies into lifecycle gates.
 pub async fn get_story_timeline(
     axum::Extension(tracker): axum::Extension<TrackerHandle>,
     axum::Extension(test_refresh): axum::Extension<crate::server::TestRefreshHandle>,
@@ -305,7 +288,6 @@ pub async fn get_story_timeline(
     }
 }
 
-/// POST /api/stories/:number/comments — add a comment.
 pub async fn post_story_comment(
     State(session): State<Arc<session::Session>>,
     axum::Extension(tracker): axum::Extension<TrackerHandle>,
@@ -351,13 +333,6 @@ pub struct LabelMutationPayload {
     pub remove: Vec<String>,
 }
 
-/// POST /api/stories/:number/labels — atomic add/remove label mutation
-/// via the canonical mutation chain. Fires `BoardEvent::TagRemoved`
-/// for each label in `remove` then `TagAdded` for each in `add`.
-/// Renderer-driven so the caller controls the exact post-state of
-/// the story's label-set (e.g., drag-within-iteration computes the
-/// new position-suffix client-side via `iterationPosition.ts` util
-/// and POSTs the resulting add/remove pair).
 pub async fn post_story_labels(
     State(session): State<Arc<session::Session>>,
     axum::Extension(test_refresh): axum::Extension<crate::server::TestRefreshHandle>,
