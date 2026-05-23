@@ -1,23 +1,3 @@
-//! Symmetric Rust counterpart to the renderer's iteration-label helpers.
-//!
-//! `iteration-{ThemeName}.{position}` labels are the canonical-via-GH
-//! substrate for iteration-membership and member-ordering (#1300).
-//! Theme-name and label parsing must match the renderer's
-//! `Iteration.tsx` helpers exactly — drift here means a label that
-//! renders correctly may be invisible to the close-iteration walk
-//! (or vice versa).
-//!
-//! Renderer references:
-//!   - `themeNameFromTitle` → mirrored by [`theme_name_from_title`]
-//!   - `parseIterationLabel` regex `^iteration-(.+)\.(\d+)$` →
-//!     [`parse_iteration_label`]
-//!
-//! Slice 2 of #1350 threads a [`LabelCodec`] codec through every
-//! label-touching fn so the `iteration-{Theme}.{N}` syntax lives in
-//! the adapter (`GhLabelCodec`), not here. Helpers that don't touch
-//! label syntax (`theme_name_from_title`, `compute_insert_position`)
-//! remain codec-free.
-
 use crate::board::domain::Story;
 use crate::board::label_codec::LabelCodec;
 
