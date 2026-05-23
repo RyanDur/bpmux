@@ -55,6 +55,47 @@ pub(in crate::bridge) fn pick_most_recent_visible_chat(
     })
 }
 
+pub(in crate::bridge) fn build_reshare_message(
+    source: &serde_json::Value,
+    agent_short: &str,
+    target_to: Option<Vec<String>>,
+) -> Result<ClientMessage, String> {
+    if source
+        .get("explicit_privacy")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false)
+    {
+        return Err(
+            "cannot share a private message; paraphrase it in your own words if it needs wider visibility"
+                .to_string(),
+        );
+    }
+    let source_text = source
+        .get("text")
+        .and_then(|v| v.as_str())
+        .ok_or("source message has no text")?;
+    let source_to = source.get("to").and_then(|v| v.as_array());
+    let source_scope = match source_to {
+        None => "broadcast".to_string(),
+        Some(recipients) if recipients.is_empty() => "broadcast".to_string(),
+        Some(_) => {
+            let sender_short = source
+                .get("from")
+                .and_then(|v| v.as_str())
+                .and_then(|s| s.split(':').next())
+                .unwrap_or("peer");
+            sender_short.to_string()
+        }
+    };
+    let marker = format_share_marker(agent_short, Some(&source_scope), source_text);
+    Ok(ClientMessage::Send {
+        text: marker,
+        to: target_to,
+        addressee: None,
+        message_type: None,
+    })
+}
+
 /// `share_message` tool — widen a recent message (Form 1) or send
 /// fresh text (Form 2) to a wider scope with provenance marking.
 /// Mirrors the TUI's `/share` semantic for agents, including the
@@ -118,49 +159,8 @@ pub(in crate::bridge) async fn handle_share_message(
         return Err("No recent visible chat to share.".to_string());
     };
 
-    // Privacy gate — refuse to widen explicit-privacy messages.
-    if source
-        .get("explicit_privacy")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false)
-    {
-        return Err(
-            "cannot share a private message; paraphrase it in your own words if it needs wider visibility"
-                .to_string(),
-        );
-    }
-
-    let source_text = source
-        .get("text")
-        .and_then(|v| v.as_str())
-        .ok_or("source message has no text")?;
-    let source_to = source.get("to").and_then(|v| v.as_array());
-    let source_scope = match source_to {
-        None => "broadcast".to_string(),
-        Some(recipients) if recipients.is_empty() => "broadcast".to_string(),
-        Some(_) => {
-            // For a DM between agent and one counterpart, report the
-            // counterpart as the source scope — matches the TUI's
-            // channel_name convention.
-            let sender_short = source
-                .get("from")
-                .and_then(|v| v.as_str())
-                .and_then(|s| s.split(':').next())
-                .unwrap_or("peer");
-            sender_short.to_string()
-        }
-    };
-    let marker = format_share_marker(short, Some(&source_scope), source_text);
-
-    // addressee is explicitly NOT inherited. Propagated messages are
-    // awareness updates, not tasks for the original recipient.
-    let json = serde_json::to_string(&ClientMessage::Send {
-        text: marker,
-        to: target_to,
-        addressee: None,
-        message_type: None,
-    })
-    .map_err(|e| format!("failed to serialize: {e}"))?;
+    let json = serde_json::to_string(&build_reshare_message(source, short, target_to)?)
+        .map_err(|e| format!("failed to serialize: {e}"))?;
     ws_send(ws_tx, json).await?;
     Ok(format!(
         "shared recent message to {}",
