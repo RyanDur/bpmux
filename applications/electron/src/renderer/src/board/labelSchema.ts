@@ -1,21 +1,3 @@
-/**
- * #1365 single-source-of-truth for renderer-side iteration + ready-order
- * label substrate. Mirrors the Rust modules at
- * `applications/bpmux/src/board/iteration_label.rs` +
- * `applications/bpmux/src/board/ready_order_label.rs`.
- *
- * Pre-Andromeda, label-schema literals + parsers were scattered:
- *   - Iteration.tsx had `iteration-Unscheduled.`, `iteration-order.`,
- *     parseIterationLabel regex, themeNameFromTitle
- *   - Board.tsx had `ready-order.` prefix + parser inline
- *   - iterationPosition.ts had iteration-label construction inline
- *
- * Cross-layer drift would surface as renderer parses one shape, Rust
- * emits another, members silently fail to associate with their
- * iteration. Sister to Ryan-canon 2026-05-16 21:00 UTC "watch out
- * for magic numbers and strings."
- */
-
 export const ITERATION_PREFIX = 'iteration-'
 export const ITERATION_ORDER_PREFIX = 'iteration-order.'
 export const READY_ORDER_PREFIX = 'ready-order.'

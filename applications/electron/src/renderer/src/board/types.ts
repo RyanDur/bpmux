@@ -1,10 +1,3 @@
-// Wire-protocol types mirroring `GET /api/board` +
-// `GET /api/stories/:number` from the Rust backend.
-//
-// Keep in sync with applications/bpmux/src/http/board.rs. Any field
-// added server-side should flow through here before it hits the
-// components.
-
 export type StoryState =
   | 'icebox'
   | 'ready'
@@ -26,13 +19,6 @@ export type ColumnState =
   | 'accepted'
   | 'retired'
 
-// Closed-non-Accepted stories project to RETIRED (close_story for
-// retire / dedupe / won't-fix); closed-Accepted stays in ACCEPTED so
-// the success-narrative isn't polluted by decision-not-to-pursue
-// closures. #514 separates substrate (state-decoder) from visual
-// (column-bucketing): #464 owns "what state was this last in"; this
-// function owns "which active-work bucket should the user see this
-// story in right now."
 export const columnFor = (
   state: StoryState,
   isClosed: boolean = false,
@@ -67,11 +53,6 @@ export interface BoardStory {
   number: number
   title: string
   state: StoryState
-  // GitHub issue state: "open" or "closed". Distinct from `state`,
-  // which is the bpmux workflow-state derived per #464 (preserves
-  // last domain state on closed-without-explicit-accept). columnFor
-  // reads this to keep closed stories out of active-work columns
-  // regardless of preserved last-state (#514).
   gh_state?: 'open' | 'closed'
   labels: string[]
   assignees: string[]
@@ -79,12 +60,6 @@ export interface BoardStory {
   body: string
   parent_epic?: number
   iteration_membership?: IterationMembership | null
-  // #1146: server-derived rework-context. When the most-recent state
-  // transition is backward (reject_story Delivered→Ready or
-  // fail_desk_check DeskCheck→InProgress), the gate-comment's payload
-  // surfaces here so the renderer can show ↩ glyph + tooltip without
-  // a per-story round-trip. Null when no backward edge or when a
-  // later forward transition has superseded.
   rework_comment?: string | null
 }
 
@@ -93,23 +68,12 @@ export interface BoardResponse {
   fetched_at: string
 }
 
-// Display order for state groups + human-readable label.
 export interface GroupSpec {
   state: ColumnState
   label: string
-  // Collapsed by default (still visible, opened on click). `<details>`
-  // needs the open attribute to default to expanded, so defaultOpen =
-  // !collapsed.
   collapsed: boolean
 }
 
-// AWAITING-ACCEPT removed (#359): phantom column — no backend label
-// distinguishes "delivered awaiting team accept" from plain "delivered"
-// yet. Reserving the column pre-populated user expectation as a bug
-// when it stayed empty in every session. Reintroduce when phase-2's
-// team-accept-badge (held story #D) lands with real semantics; at
-// that point the column can be renamed based on observed behavior,
-// not pre-reserved vocabulary.
 export const GROUP_ORDER: GroupSpec[] = [
   { state: 'ready', label: 'Ready', collapsed: false },
   { state: 'in-progress', label: 'In Progress', collapsed: false },
@@ -120,10 +84,6 @@ export const GROUP_ORDER: GroupSpec[] = [
   { state: 'icebox', label: 'Icebox', collapsed: false }
 ]
 
-// Inverse mapping is partial — closed-non-Accepted projects to Retired
-// from any non-Accepted StoryState, so the Retired column is keyed on
-// is_closed rather than on a specific state. Listed empty here to keep
-// the Record exhaustive; columnFor is the source of truth.
 export const STATES_IN_COLUMN: Record<ColumnState, StoryState[]> = {
   icebox: ['icebox'],
   ready: ['ready', 'rejected'],
@@ -134,9 +94,6 @@ export const STATES_IN_COLUMN: Record<ColumnState, StoryState[]> = {
   retired: []
 }
 
-// Derive story type from labels (case-insensitive). Defaults to
-// 'unknown' when no type label is present — keeps the row glyph
-// predictable instead of guessing.
 export const storyTypeFromLabels = (labels: string[]): StoryType => {
   const normalized = labels.map((l) => l.toLowerCase())
   if (normalized.includes('iteration')) return 'iteration'
@@ -152,10 +109,6 @@ export const isActiveEpic = (story: BoardStory): boolean => {
   return columnFor(story.state, story.gh_state === 'closed') !== 'retired'
 }
 
-// #1302 rework: sister to isActiveEpic — iteration-issues with
-// story_type=Iteration that are not retired (closed-without-accept)
-// show as parent-rows in the icebox section. Closed iterations
-// preserve in retired view per #1278 historical-artifact-visibility.
 export const isActiveIteration = (story: BoardStory): boolean => {
   if (storyTypeFromLabels(story.labels) !== 'iteration') return false
   return columnFor(story.state, story.gh_state === 'closed') !== 'retired'
