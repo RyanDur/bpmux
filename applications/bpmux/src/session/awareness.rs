@@ -1,12 +1,3 @@
-//! Awareness system — monitors the session and provides nudges.
-//!
-//! Five independent detectors, each with its own state:
-//! - Experience: buffers teaching moments, nudges after pauses
-//! - Recall: surfaces relevant lessons when topics match
-//! - Pileon: detects when 3+ agents respond simultaneously
-//! - Handoff: tracks explicit handoffs and follows up if unacknowledged
-//! - Agents: tracks who is connected
-
 pub mod agents;
 pub mod experience;
 pub mod handoff;
@@ -24,7 +15,6 @@ use handoff::HandoffTracker;
 use pileon::PileonDetector;
 use recall::RecallSystem;
 
-/// Spawn the awareness task that monitors the session broadcast.
 pub fn spawn(session: Arc<Session>, owner_name: String) {
     let mut rx = session.subscribe();
     let messages = session.read_messages().unwrap_or_default();

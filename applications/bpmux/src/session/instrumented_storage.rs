@@ -1,10 +1,3 @@
-//! Decorator over Storage that logs timing and data volume.
-//!
-//! Instrumentation is opt-in via the `BPMUX_STORAGE_LOG` environment variable.
-//! When set, it names a file path that each storage operation appends a line
-//! to. When unset, logging is a no-op — important because the TUI owns the
-//! terminal and any write to stdout/stderr corrupts the rendered frame.
-
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::Instant;

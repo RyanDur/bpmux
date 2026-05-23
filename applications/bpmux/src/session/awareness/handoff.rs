@@ -1,5 +1,3 @@
-//! Tracks explicit handoffs and nudges if unacknowledged.
-
 use std::time::Duration;
 use tokio::time::Instant;
 
@@ -30,11 +28,6 @@ struct PendingHandoff {
     from: String,
     to: String,
     when: Instant,
-    /// Wall-clock timestamp of the handoff message, used by the
-    /// conversation-state check in `timeout_nudge` to query the session
-    /// log for responses that arrived after this point. `when` (Instant)
-    /// is for tokio deadline math; `ts` is for comparing against
-    /// persisted `Message::ts` values.
     ts: chrono::DateTime<chrono::Utc>,
 }
 
@@ -82,19 +75,6 @@ impl HandoffTracker {
         let Some(h) = self.pending.take() else {
             return;
         };
-        // Conversation-state check. Before emitting the "X hasn't
-        // acknowledged the handoff" nudge, query the session log for
-        // any messages from `h.to` with a timestamp after the
-        // handoff. If the recipient has spoken since, suppress the
-        // nudge — the handoff WAS acknowledged, and the in-memory
-        // clear may have been missed due to tokio::select! race
-        // timing or message-routing delay.
-        //
-        // This is defense-in-depth against the observed misfire pattern:
-        // the in-memory `sender == h.to` clear on line ~60 above already
-        // handles the common case, but the misfire log documented three
-        // instances where the nudge fired while the recipient HAD
-        // responded. The session log is the durable ground truth.
         if let Ok(messages) = session.read_messages() {
             let recipient_responded = messages.iter().any(|m| {
                 if !m.is_chat() {
@@ -104,7 +84,7 @@ impl HandoffTracker {
                 sender == h.to && m.ts > h.ts
             });
             if recipient_responded {
-                return; // suppressed — recipient already spoke after handoff
+                return;
             }
         }
 
@@ -115,10 +95,6 @@ impl HandoffTracker {
                 h.to, h.from
             ),
             ts: chrono::Utc::now(),
-            // Classifier-authored nudges carry `Nudge` instead
-            // of `Chat` so the default view filter catches them by
-            // type rather than by the fragile text-prefix check that
-            // caught only 📝-marked messages.
             message_type: MessageType::Nudge,
             to: Some(vec![h.to]),
             ..Message::default()

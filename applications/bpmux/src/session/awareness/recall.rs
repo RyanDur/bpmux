@@ -1,5 +1,3 @@
-//! Surfaces relevant lessons when conversation touches known topics.
-
 use std::collections::HashSet;
 use std::path::Path;
 
@@ -28,7 +26,6 @@ impl RecallSystem {
     }
 
     pub fn on_message(&mut self, session: &Session, msg: &Message, sender: &str, owner_name: &str) {
-        // Refresh cache when new lessons are saved
         if sender == "bpmux" && msg.text.contains("lesson saved") {
             self.cached_index = session.storage.load_lessons();
         }

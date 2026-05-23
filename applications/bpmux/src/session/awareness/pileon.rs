@@ -1,5 +1,3 @@
-//! Detects when 3+ agents respond to the same message within 5 seconds.
-
 use std::time::Duration;
 use tokio::time::Instant;
 

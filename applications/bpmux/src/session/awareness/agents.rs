@@ -1,5 +1,3 @@
-//! Tracks which agents are currently connected.
-
 use crate::session::message::{Message, MessageType};
 
 pub struct AgentTracker {

@@ -69,18 +69,18 @@ fn ensure_regenerates_when_file_is_empty() {
 }
 
 #[test]
-fn eq_rejects_mismatched_length() {
+fn constant_time_eq_rejects_mismatched_length() {
     assert!(!constant_time_eq("abc", "abcd"));
     assert!(!constant_time_eq("abcd", "abc"));
 }
 
 #[test]
-fn eq_accepts_exact_match() {
+fn constant_time_eq_accepts_exact_match() {
     assert!(constant_time_eq("deadbeef", "deadbeef"));
 }
 
 #[test]
-fn eq_rejects_same_length_different_content() {
+fn constant_time_eq_rejects_same_length_different_content() {
     assert!(!constant_time_eq("deadbeef", "deadbeec"));
 }
 
