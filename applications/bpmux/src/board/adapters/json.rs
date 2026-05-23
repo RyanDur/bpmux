@@ -1,13 +1,3 @@
-//! JSON wire-format adapter for `/api/board` (#1351).
-//!
-//! Serialization of `Story` to the renderer's expected wire shape is
-//! a transport-boundary concern, not a domain concern. This module
-//! owns the JSON projection so `board::domain` stays free of
-//! `serde_json::Value` and the renderer-specific key names.
-//!
-//! Routes label encoding through the `LabelCodec` trait so the
-//! GH-specific syntax remains in `GhLabelCodec`.
-
 use crate::board::domain::{
     Story, StoryType, Tag, most_recent_backward_transition, replay_transitions,
 };

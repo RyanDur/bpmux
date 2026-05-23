@@ -1,15 +1,3 @@
-//! Symmetric Rust counterpart to ready-column ordering via GH labels.
-//!
-//! `ready-order.{position}` labels are the canonical-via-GH substrate
-//! for the ready queue's user-visible ordering (#1301 slice 4B+).
-//! Sister to [`super::iteration_label`] which handles iteration
-//! membership ordering via `iteration-{Theme}.{position}` labels.
-//!
-//! Slice 2 of #1350 threads a [`LabelCodec`] codec through every fn so
-//! the `ready-order.{N}` syntax lives in the adapter
-//! (`GhLabelCodec`), not here. Domain operations remain in this
-//! module; only the encode/decode delegates to the codec.
-
 use crate::board::domain::{Story, StoryState};
 use crate::board::label_codec::LabelCodec;
 
@@ -39,12 +27,6 @@ pub fn stories_with_ready_order<C: LabelCodec>(codec: &C, stories: &[Story]) -> 
     ordered.into_iter().map(|(n, _)| n).collect()
 }
 
-/// Sort a board-stories JSON array by `ready-order.{N}` labels for the
-/// `ready` group. Other groups pass through in encounter order.
-///
-/// Ready ordering: stories carrying a `ready-order.{N}` label sort
-/// ascending by label position. Unlabeled stories follow, ordered by
-/// issue number for stability.
 pub fn sort_board_by_ready_order_labels<C: LabelCodec>(
     codec: &C,
     stories: Vec<serde_json::Value>,

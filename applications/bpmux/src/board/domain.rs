@@ -118,9 +118,6 @@ pub struct GateComment {
     pub payload: Option<String>,
 }
 
-/// One step in a story's state-transition history. Audit substrate is
-/// derived from `gate_comments` via [`replay_transitions`]; there is
-/// no dedicated GH persistence layer for transitions.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StateTransition {
     pub from: StoryState,
@@ -130,10 +127,6 @@ pub struct StateTransition {
     pub comment: Option<String>,
 }
 
-/// Replay a story's state-transitions from its gate-comment history.
-/// Each `Gate` variant maps to a fixed (from, to) tuple, so the
-/// gate-name is recoverable from the edge alone. Gate::Filed is the
-/// creation event, not a transition, and is filtered out.
 pub fn replay_transitions(gate_comments: &[GateComment]) -> Vec<StateTransition> {
     gate_comments
         .iter()
@@ -158,11 +151,6 @@ pub fn replay_transitions(gate_comments: &[GateComment]) -> Vec<StateTransition>
         .collect()
 }
 
-/// Linear ordinal over the column-aligned states; backward-edge
-/// detection compares to-state's ordinal against from-state's. Retired
-/// shares ship-chain-terminal ordinal with Accepted (both are
-/// no-further-forward end-states; neither can transition to the other
-/// via gate-comment, so the ordinal-tie is intentional).
 fn state_ordinal(s: StoryState) -> u8 {
     match s {
         StoryState::Icebox => 0,
@@ -178,9 +166,6 @@ pub fn is_backward(t: &StateTransition) -> bool {
     state_ordinal(t.to) < state_ordinal(t.from)
 }
 
-/// Returns the most-recent transition only if it's backward. Once a
-/// later forward transition lands, this returns None — rework-context
-/// stops surfacing as soon as the story moves forward again.
 pub fn most_recent_backward_transition(
     transitions: &[StateTransition],
 ) -> Option<&StateTransition> {

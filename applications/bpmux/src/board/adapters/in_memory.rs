@@ -258,10 +258,6 @@ impl SourceAdapter for InMemorySourceAdapter {
             }
             _ => {}
         }
-        // #1151: in-memory adapter doesn't have a GH-side response to
-        // capture; the test substrate updates its own state via the
-        // pushed_events log. Production github adapter will return
-        // Some(Story) after the response-capture wiring lands.
         Ok(None)
     }
 
@@ -291,9 +287,6 @@ impl SourceAdapter for InMemorySourceAdapter {
             return Err(SyncError::SourceUnreachable("push test failure".into()));
         }
         s.bodies.insert(number, body.to_string());
-        // #1151: return the post-update Story (test substrate has
-        // direct access to its own state; production github adapter
-        // parses the GH-API response Issue).
         let mut story =
             s.stories.get(&number).cloned().ok_or_else(|| {
                 SyncError::Other(format!("update_body: story #{number} not seeded"))
