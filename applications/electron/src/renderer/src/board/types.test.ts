@@ -46,9 +46,6 @@ describe('#514 columnFor — closed-state-aware bucketing', () => {
 
   describe('#514 slice 2 — needs-fixes splits from rejected for OPEN issues', () => {
     test('OPEN + needs-fixes is dev-iterating-on-feedback → IN PROGRESS, not READY', () => {
-      // Designer-fail (fail_desk_check) leaves the story at needs-fixes
-      // while dev keeps iterating. Buckets with active work, not the
-      // pickup-able queue.
       expect(columnFor('needs-fixes', false)).toBe('in-progress')
     })
     test('OPEN + rejected stays in READY (owner-reject = re-pickup-able)', () => {
