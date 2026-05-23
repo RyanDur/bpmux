@@ -88,40 +88,21 @@ pub enum BoardEvent {
         iteration_number: u64,
         position: u32,
     },
-    /// #1151: GH-API mutation response captured. The tracker's
-    /// underlying GH endpoint returned the post-mutation Issue; the
-    /// adapter parsed it into a `Story`; the orchestrator dispatches
-    /// this event so the canonical store reflects the GH-side truth
-    /// without a follow-up `refresh_story(N)` call.
     StoryRefreshed {
         meta: EventMeta,
         number: u64,
         story: Box<Story>,
     },
-    /// #1151: GH-API label-mutation response captured. octocrab's
-    /// `add_labels` / `remove_label` return the post-mutation labels
-    /// list; the orchestrator dispatches this event so the reducer
-    /// can re-derive the local Story's `state` via `state_from_labels`
-    /// and refresh `tags` without a follow-up `refresh_story(N)` call.
     LabelsRefreshed {
         meta: EventMeta,
         number: u64,
         labels: Vec<String>,
     },
-    /// #1195: drain-time conflict detection — the queued mutation
-    /// would clash with externally-mutated server state. Audit-trail
-    /// event so observers (renderer / TUI / future replay) see why
-    /// the corresponding outbox entry stayed unflushed. The actual
-    /// classification semantics live in `orchestrator::classify_
-    /// conflict`; this variant just records the detection.
     ConflictDetected {
         meta: EventMeta,
         number: u64,
         kind: super::orchestrator::ConflictKind,
     },
-    /// #1195: drain-time auto-resolve OR slice-B operator action
-    /// cleared a previously-detected conflict on this story. Audit
-    /// counterpart to ConflictDetected.
     ConflictResolved {
         meta: EventMeta,
         number: u64,

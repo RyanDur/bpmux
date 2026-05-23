@@ -96,14 +96,6 @@ pub trait SourceAdapter: Send + Sync {
         number: u64,
     ) -> impl std::future::Future<Output = Result<Vec<super::domain::GateComment>, SyncError>> + Send;
 
-    /// #1151: returns `Some(BoardEvent)` when GH's mutation response
-    /// payload was captured; the orchestrator drain dispatches the
-    /// returned event via `BoardStore::apply`. The follow-up is
-    /// typically `StoryRefreshed { story }` for Issue-returning
-    /// mutations or `LabelsRefreshed { labels }` for label mutations.
-    /// Returns `None` for events with no useful response (e.g.,
-    /// reducer-only events) or when the adapter chose not to capture
-    /// (e.g., test in-memory adapter).
     fn push_event(
         &self,
         event: &BoardEvent,
@@ -115,25 +107,12 @@ pub trait SourceAdapter: Send + Sync {
         body: &str,
     ) -> impl std::future::Future<Output = Result<u64, SyncError>> + Send;
 
-    /// Replace an existing story's body. The implementation pushes the
-    /// new body to the source-of-truth (GitHub for production, the
-    /// in-memory cache for tests).
-    ///
-    /// #1151: Returns the post-update Story so the orchestrator can
-    /// dispatch `BoardEvent::StoryRefreshed` to the canonical store
-    /// without a follow-up `refresh_story(N)` call. The github adapter
-    /// parses octocrab's update-response Issue; the in-memory adapter
-    /// returns the local Story with the updated body.
     fn update_body(
         &self,
         number: u64,
         body: &str,
     ) -> impl std::future::Future<Output = Result<super::domain::Story, SyncError>> + Send;
 
-    /// Replace an existing story's title (#1279). Sister to update_body
-    /// at the title-axis. Returns the post-update Story so the
-    /// orchestrator can dispatch `BoardEvent::StoryRefreshed` to the
-    /// canonical store without a follow-up `refresh_story(N)` round-trip.
     fn update_title(
         &self,
         number: u64,
