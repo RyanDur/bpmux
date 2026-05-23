@@ -218,10 +218,6 @@ async fn roundtrip_coherence_user_job_and_falsifier_preserved_through_real_githu
 #[tokio::test]
 async fn roundtrip_coherence_rejects_parent_epic_referencing_non_epic_through_real_github_decode_path()
  {
-    // Post-#1194: create_story reads parent from canonical store
-    // (no per-call refresh_story). To drive the not-an-Epic rejection
-    // path, the open-issues list mock returns #99 as a Feature so
-    // refresh_all populates the store with it during fixture setup.
     let server = MockServer::start();
 
     let list_mock = server.mock(|when, then| {
@@ -243,7 +239,16 @@ async fn roundtrip_coherence_rejects_parent_epic_referencing_non_epic_through_re
             .body(Value::Array(vec![]).to_string());
     });
 
-    let (router, _refresh) = fixture_mock_octocrab(&server).await;
+    let (router, refresh) = fixture_mock_octocrab(&server).await;
+    assert!(
+        matches!(
+            refresh.story(99).map(|s| s.story_type),
+            Some(crate::board::domain::StoryType::Feature)
+        ),
+        "fixture must seed #99 as a non-Epic (Feature) in the canonical store: create_story \
+         reads its parent from the store, so without the seed the not-an-Epic rejection would \
+         be exercised via the wrong parent-missing path (both map to BAD_REQUEST)"
+    );
 
     let body = r#"{
         "title":"[Feature] child-of-non-epic",
