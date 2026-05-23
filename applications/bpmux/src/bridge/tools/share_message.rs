@@ -3,10 +3,6 @@ use tokio::sync::Mutex;
 use super::helpers::{WsSink, urlencoding, ws_send};
 use crate::transport::protocol::ClientMessage;
 
-/// Parse the `scope` arg into a target-recipient list. "all" (the
-/// BROADCAST_ALL sentinel) widens to everyone and returns None;
-/// other strings are split on comma into explicit recipients.
-/// Returns Err when the arg is empty or only whitespace.
 pub(in crate::bridge) fn parse_share_scope(scope: &str) -> Result<Option<Vec<String>>, String> {
     if scope.is_empty() {
         return Err("empty scope".to_string());
@@ -25,9 +21,6 @@ pub(in crate::bridge) fn parse_share_scope(scope: &str) -> Result<Option<Vec<Str
     Ok(Some(recipients))
 }
 
-/// Format the provenance marker an agent's share carries into the
-/// target scope. Form 1 (re-share) includes source-scope; Form 2
-/// (fresh share) omits it because there's no source thread.
 pub(in crate::bridge) fn format_share_marker(
     agent: &str,
     source_scope: Option<&str>,
@@ -39,20 +32,12 @@ pub(in crate::bridge) fn format_share_marker(
     }
 }
 
-/// Pick the agent's most recent visible chat message for Form 1
-/// re-share. `messages` is the list the REST `/api/messages?as=<agent>`
-/// endpoint returns — most-recent-first. Returns the source message,
-/// or None when the agent has no shareable recent chat in view.
-/// Skips non-chat message types (activity, system, etc.).
 pub(in crate::bridge) fn pick_most_recent_visible_chat(
     messages: &[serde_json::Value],
 ) -> Option<&serde_json::Value> {
-    messages.iter().find(|m| {
-        // Chat is represented by missing or null message_type in
-        // the REST output (the default variant). Any explicit
-        // message_type string is a non-chat kind we should skip.
-        m.get("message_type").map(|v| v.is_null()).unwrap_or(true)
-    })
+    messages
+        .iter()
+        .find(|m| m.get("message_type").map(|v| v.is_null()).unwrap_or(true))
 }
 
 pub(in crate::bridge) fn build_reshare_message(
@@ -96,12 +81,6 @@ pub(in crate::bridge) fn build_reshare_message(
     })
 }
 
-/// `share_message` tool — widen a recent message (Form 1) or send
-/// fresh text (Form 2) to a wider scope with provenance marking.
-/// Mirrors the TUI's `/share` semantic for agents, including the
-/// explicit-privacy refusal: messages the source sender marked
-/// private cannot be re-shared (agents must paraphrase in their
-/// own words if they need wider visibility).
 pub(in crate::bridge) async fn handle_share_message(
     args: &serde_json::Map<String, serde_json::Value>,
     port: u16,
@@ -121,7 +100,6 @@ pub(in crate::bridge) async fn handle_share_message(
         .filter(|s| !s.is_empty());
     let short = agent_name.split(':').next().unwrap_or(agent_name);
 
-    // Form 2: explicit new text.
     if let Some(body) = fresh_text {
         let marker = format_share_marker(short, None, body);
         let json = serde_json::to_string(&ClientMessage::Send {
@@ -138,10 +116,6 @@ pub(in crate::bridge) async fn handle_share_message(
         ));
     }
 
-    // Form 1: propagate the agent's most recent visible chat message.
-    // Fetch the agent's visibility-scoped recent log via the REST
-    // surface — same filter the WS push path uses, so what the tool
-    // sees matches what the agent saw.
     let as_encoded = urlencoding(short);
     let url = crate::transport::local_url::api_url(
         port,
@@ -173,5 +147,145 @@ fn scope_str_or_all(scope: &str) -> &str {
         "all"
     } else {
         scope
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
+    use super::*;
+
+    fn private_source() -> serde_json::Value {
+        serde_json::json!({
+            "from": "designer:claude-code",
+            "text": "confidential design note",
+            "explicit_privacy": true,
+            "to": ["dev"]
+        })
+    }
+
+    fn shareable_broadcast_source() -> serde_json::Value {
+        serde_json::json!({
+            "from": "pm:claude-code",
+            "text": "open broadcast note",
+            "to": serde_json::Value::Null
+        })
+    }
+
+    #[test]
+    fn reshare_refuses_explicit_privacy_source_and_does_not_widen() {
+        let err = build_reshare_message(&private_source(), "pm", Some(vec!["all".to_string()]))
+            .expect_err("an explicit_privacy source must be refused");
+        assert!(
+            err.contains("cannot share a private message"),
+            "refusal names the privacy cause; got {err}"
+        );
+        assert!(
+            build_reshare_message(&private_source(), "pm", None).is_err(),
+            "a private source must never produce a ClientMessage::Send — no widening to any scope"
+        );
+    }
+
+    #[test]
+    fn reshare_drops_addressee_on_propagated_message() {
+        match build_reshare_message(
+            &shareable_broadcast_source(),
+            "dev",
+            Some(vec!["all".into()]),
+        )
+        .expect("non-private source builds a Send")
+        {
+            ClientMessage::Send { addressee, .. } => assert_eq!(
+                addressee, None,
+                "propagated message must not inherit the source addressee"
+            ),
+            other => panic!("expected ClientMessage::Send, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn reshare_marks_source_scope_broadcast_when_source_has_no_recipients() {
+        match build_reshare_message(&shareable_broadcast_source(), "dev", None).unwrap() {
+            ClientMessage::Send { text, .. } => assert!(
+                text.contains("from broadcast thread"),
+                "no-recipient source marks broadcast provenance; got {text}"
+            ),
+            other => panic!("expected Send, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn reshare_marks_source_scope_counterpart_for_dm() {
+        let dm = serde_json::json!({"from": "designer:claude-code", "text": "x", "to": ["dev"]});
+        match build_reshare_message(&dm, "dev", None).unwrap() {
+            ClientMessage::Send { text, .. } => assert!(
+                text.contains("from designer thread"),
+                "DM source marks the counterpart as provenance scope; got {text}"
+            ),
+            other => panic!("expected Send, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn format_share_marker_form1_includes_source_scope() {
+        assert_eq!(
+            format_share_marker("dev", Some("pm"), "body"),
+            "[Shared by dev from pm thread] body"
+        );
+    }
+
+    #[test]
+    fn format_share_marker_form2_omits_source_scope() {
+        assert_eq!(
+            format_share_marker("dev", None, "body"),
+            "[Shared by dev] body"
+        );
+    }
+
+    #[test]
+    fn parse_share_scope_all_widens_to_broadcast() {
+        assert_eq!(
+            parse_share_scope(crate::session::message::BROADCAST_ALL),
+            Ok(None)
+        );
+    }
+
+    #[test]
+    fn parse_share_scope_comma_list_splits_into_recipients() {
+        assert_eq!(
+            parse_share_scope("pm, designer"),
+            Ok(Some(vec!["pm".to_string(), "designer".to_string()]))
+        );
+    }
+
+    #[test]
+    fn parse_share_scope_empty_or_whitespace_is_err() {
+        assert!(parse_share_scope("").is_err());
+        assert!(parse_share_scope("  ,  ").is_err());
+    }
+
+    #[test]
+    fn pick_most_recent_skips_non_chat_then_returns_chat() {
+        let messages = vec![
+            serde_json::json!({"message_type": "activity", "text": "act"}),
+            serde_json::json!({"message_type": serde_json::Value::Null, "text": "real chat"}),
+        ];
+        assert_eq!(
+            pick_most_recent_visible_chat(&messages).unwrap()["text"],
+            "real chat"
+        );
+    }
+
+    #[test]
+    fn pick_most_recent_treats_missing_message_type_as_chat() {
+        let messages = vec![serde_json::json!({"text": "untyped chat"})];
+        assert!(pick_most_recent_visible_chat(&messages).is_some());
+    }
+
+    #[test]
+    fn pick_most_recent_none_when_all_non_chat() {
+        let messages = vec![serde_json::json!({"message_type": "system", "text": "sys"})];
+        assert!(pick_most_recent_visible_chat(&messages).is_none());
     }
 }

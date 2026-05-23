@@ -1,14 +1,5 @@
 use super::helpers::urlencoding;
 
-/// Curate a raw message JSON value into the shape agents consume via
-/// read_messages. Returns None if required fields (`from`, `text`) are
-/// missing or malformed — those messages are skipped entirely.
-///
-/// Optional fields (addressee, topic, to, message_type) are preserved
-/// as null when absent so agents can distinguish "broadcast" (null) from
-/// "addressed to someone else" (a role name). This is the REST/JSON
-/// convention; the channel-notification path in bridge/mod.rs uses
-/// omit-when-absent because Claude Code v2.1.109+ rejects null meta.
 pub(in crate::bridge) fn curate_message(raw: &serde_json::Value) -> Option<serde_json::Value> {
     Some(serde_json::json!({
         "from": raw["from"].as_str()?,
@@ -31,16 +22,8 @@ pub(in crate::bridge) async fn handle_read_messages(
         .get("limit")
         .and_then(|v| v.as_u64())
         .unwrap_or(default_limit);
-    // Pass the agent's short name as `?as=` so the REST endpoint
-    // applies the topic-subscription filter — matching the WebSocket
-    // push path. Without this the agent reads messages it would not
-    // see via notifications, silently diverging the two paths.
     let short = agent_name.split(':').next().unwrap_or(agent_name);
-    let as_encoded = urlencoding(short);
-    let url = crate::transport::local_url::api_url(
-        port,
-        &format!("/api/messages?limit={limit}&as={as_encoded}"),
-    );
+    let url = crate::transport::local_url::api_url(port, &read_messages_request_path(limit, short));
     let body = reqwest::get(&url)
         .await
         .map_err(|e| format!("failed to fetch: {e}"))?
@@ -53,4 +36,31 @@ pub(in crate::bridge) async fn handle_read_messages(
     }
     let curated: Vec<serde_json::Value> = msgs.iter().filter_map(curate_message).collect();
     serde_json::to_string_pretty(&curated).map_err(|e| format!("format: {e}"))
+}
+
+fn read_messages_request_path(limit: u64, agent_short: &str) -> String {
+    format!(
+        "/api/messages?limit={limit}&as={}",
+        urlencoding(agent_short)
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn read_messages_request_path_scopes_by_agent_via_as_param() {
+        let path = read_messages_request_path(20, "dev");
+        assert!(
+            path.contains("as=dev"),
+            "read_messages must pass ?as=<agent> so the REST endpoint applies the same \
+             should_deliver topic-filter as the WS push path; dropping it diverges REST-read \
+             visibility from WS-push. got {path}"
+        );
+        assert!(
+            path.contains("limit=20"),
+            "limit must be carried; got {path}"
+        );
+    }
 }
