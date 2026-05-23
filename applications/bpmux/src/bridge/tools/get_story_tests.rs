@@ -131,12 +131,6 @@ async fn does_not_enrich_body_for_non_rework_story() {
 
 #[tokio::test]
 async fn enriches_body_for_ready_story_post_reject_via_transition_history() {
-    // #1146 slice 2a: rework-detect derives from transition-history
-    // backward-edge predicate, not state-keyed match. Post-slice-1
-    // reject_story transitions Delivered → Ready (not Rejected); this
-    // test pins that get_story still surfaces "## Rework context" when
-    // the story is in Ready state and has a backward-edge in its
-    // transition history.
     let story = make_story(700, StoryState::Ready, Some("original body"));
     let gates = vec![
         GateComment {
@@ -181,10 +175,6 @@ async fn enriches_body_for_ready_story_post_reject_via_transition_history() {
 
 #[tokio::test]
 async fn does_not_enrich_body_when_most_recent_transition_is_forward() {
-    // #1146 slice 2a: most_recent_backward_transition returns None when
-    // the latest replay-edge is forward (e.g., Ready → InProgress via
-    // start_story after a prior reject). Rework-context stops surfacing
-    // once the story moves forward again.
     let story = make_story(701, StoryState::InProgress, Some("clean body"));
     let gates = vec![
         GateComment {

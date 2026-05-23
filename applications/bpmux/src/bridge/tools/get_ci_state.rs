@@ -1,29 +1,6 @@
-//! Pull-based CI state for agents. Fetches the most recent workflow
-//! run on main via the tracker's octocrab client (#320 unified; was
-//! `gh run list` subprocess pre-#320) and returns a structured
-//! report. Pure `build_ci_state_report` is separated from the fetch
-//! so unit tests cover shape without network.
-
 use crate::ci::{CiState, RunEntry, WorkflowSummary, classify_runs, github_actions_url};
 use crate::transport::ci_watcher::{MAX_BACKOFF, POLL_INTERVAL};
 
-/// MCP `get_ci_state` response shape.
-///
-/// **Aggregate contract (#1287)**: `conclusion` aggregates the
-/// states of ALL workflow runs triggered by the latest commit (the
-/// head_sha of the most-recent run). It is NOT the conclusion of
-/// the last-workflow-to-conclude. Specifically:
-/// - `success` IFF all runs on the latest commit concluded with success
-/// - `failure` IF any run concluded with failure/cancelled (non-quota)
-/// - `quota_exhausted` IF any run is quota-blocked and none are red/running
-/// - `in_progress` IF any run on the latest commit is still running/queued
-/// - `unknown` if no runs are visible on the latest commit
-///
-/// `workflows` carries the per-run breakdown so callers needing
-/// per-workflow detail don't have to re-fetch via
-/// `get_ci_log_for_run`. `last_run_id` remains the most-recent run's
-/// id (legacy field; specific run lookup belongs to
-/// `get_ci_log_for_run`).
 #[derive(Debug, Clone, serde::Serialize, PartialEq, Eq)]
 pub struct CiStateReport {
     pub conclusion: &'static str,
@@ -38,11 +15,6 @@ pub struct CiStateReport {
     pub last_successful_poll_at: Option<String>,
     pub poll_interval_secs: u64,
     pub backoff_cap_secs: u64,
-    /// #1287: per-workflow run summaries on the latest commit.
-    /// Each entry: `{name, run_id, conclusion}`. `conclusion`
-    /// strings follow the same vocabulary as the top-level
-    /// aggregate (`success` / `failure` / `in_progress` /
-    /// `quota_exhausted` / `unknown`).
     #[serde(default)]
     pub workflows: Vec<WorkflowSummary>,
 }
@@ -88,11 +60,6 @@ pub fn unknown_ci_state_report() -> CiStateReport {
     }
 }
 
-/// #526: bridges read CI state from the electron-server's canonical
-/// `/api/ci` endpoint instead of holding their own GitHubApi handle.
-/// One ci_watcher on the server fetches GH; every bridge renders the
-/// same report via this RPC. No more per-bridge rate-limit accounting
-/// or momentary cross-bridge divergence during fetch windows.
 pub(in crate::bridge) async fn handle_get_ci_state(
     _args: &serde_json::Map<String, serde_json::Value>,
     port: u16,
@@ -149,9 +116,6 @@ mod tests {
         let report = build_ci_state_report(&[run("completed", Some("success"), Some(42))]);
         assert_eq!(report.conclusion, "success");
         assert_eq!(report.last_run_id, Some(42));
-        // #341 rework: URL is always the all-actions page, not
-        // /runs/{id}. `last_run_id` stays in the payload for callers
-        // that want to synthesize the run-specific URL themselves.
         assert_eq!(report.url, "https://github.com/RyanDur/bpmux/actions");
     }
 
@@ -193,10 +157,6 @@ mod tests {
         assert_eq!(report.url, "https://github.com/RyanDur/bpmux/actions");
     }
 
-    // #341 rework falsifier guard: URL must be the all-actions page
-    // regardless of run_id presence. If a future refactor re-introduces
-    // the run-specific URL, this test fails with a clear diff on the
-    // expected URL shape.
     #[test]
     fn url_is_always_all_actions_page_even_with_run_id() {
         let report = build_ci_state_report(&[run("completed", Some("failure"), Some(9999))]);
@@ -204,7 +164,6 @@ mod tests {
             report.url, "https://github.com/RyanDur/bpmux/actions",
             "#341 rework: URL must not embed the run_id"
         );
-        // last_run_id preserved for callers that want the run-specific URL
         assert_eq!(report.last_run_id, Some(9999));
     }
 
@@ -216,14 +175,9 @@ mod tests {
         assert_eq!(parsed["conclusion"], "success");
         assert_eq!(parsed["last_run_id"], 1);
         assert_eq!(parsed["branch"], "main");
-        // #341 rework: URL field carries the all-actions page even
-        // when a run_id is present. last_run_id stays in the payload
-        // separately so it can be used elsewhere.
         assert!(parsed["url"].as_str().unwrap().ends_with("/actions"));
         assert!(!parsed["url"].as_str().unwrap().contains("/runs/"));
     }
-
-    // ── #397 quota-exhausted classifier tests ──
 
     fn run_with_annotation(conclusion: &str, msg: &str) -> RunEntry {
         RunEntry {
@@ -252,8 +206,6 @@ mod tests {
 
     #[test]
     fn regular_test_failure_stays_failure_not_quota_exhausted() {
-        // A genuine test-failure annotation (e.g., an assertion
-        // error) should NOT trip the quota classifier.
         let r = run_with_annotation(
             "failure",
             "assertion failed: left != right at tests/foo.rs:42",
@@ -267,9 +219,6 @@ mod tests {
 
     #[test]
     fn failure_with_no_annotation_stays_failure() {
-        // Failed run without any annotation = legacy path; treat as
-        // failure (pre-#397 behavior preserved when annotation
-        // fetch returns nothing).
         let r = run("completed", Some("failure"), Some(7));
         let report = build_ci_state_report(&[r]);
         assert_eq!(report.conclusion, "failure");
@@ -299,8 +248,6 @@ mod tests {
 
     #[test]
     fn spending_limit_phrase_alone_also_triggers_quota() {
-        // Symmetric coverage: the annotation's other canonical
-        // phrases should also match.
         let r = run_with_annotation(
             "failure",
             "This repository's workflow runs are paused: spending limit reached.",

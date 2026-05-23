@@ -23,10 +23,6 @@ fn state_label(state: StoryState) -> &'static str {
     }
 }
 
-/// Build the "## Rework context" body section when the story's most-
-/// recent transition is backward. The rejection reason is the backward
-/// transition's comment; the verified-observation is the most-recent
-/// Gate::Delivered comment (which describes what's being reworked).
 fn rework_context_from_gates(gates: &[GateComment]) -> Option<String> {
     let transitions = replay_transitions(gates);
     let backward = most_recent_backward_transition(&transitions)?;

@@ -1,7 +1,3 @@
-/// Per-role identity traits loaded at session start. Returns a
-/// `bridge::view_model::IdentityIndexView` — bridge-owned shape so
-/// MCP consumers are insulated from session::identity refactors
-/// (#1363; architecture.md Friction #2).
 pub(in crate::bridge) async fn handle_get_identity(
     args: &serde_json::Map<String, serde_json::Value>,
     default_role: &str,
