@@ -1,8 +1,3 @@
-/* Titlebar (window chrome). App.css owns the `.app` / `.app-body`
- * geometry (shared across shell + future modal layers); this file
- * styles just the titlebar strip itself.
- */
-
 .titlebar {
   display: flex;
   align-items: center;

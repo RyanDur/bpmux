@@ -22,9 +22,6 @@
     border-bottom: 1px solid var(--border-subtle);
   }
 
-  /* Channel header — tiny action bar above the filter pills.
-   * Currently only hosts the pinned-count button; can grow to
-   * channel-settings affordances later. */
   & .chat-channel-header {
     display: flex;
     justify-content: flex-end;

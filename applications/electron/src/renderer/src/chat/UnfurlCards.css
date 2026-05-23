@@ -29,7 +29,6 @@
     outline-offset: 1px;
   }
 
-  /* Loading skeleton: no image/body, just the URL on a tinted pill. */
   &.unfurl-card--loading {
     grid-template-columns: 1fr;
     color: var(--fg-dim);
