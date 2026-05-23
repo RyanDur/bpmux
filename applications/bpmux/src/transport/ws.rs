@@ -11,25 +11,6 @@ use crate::session;
 use crate::session::MessageType;
 use crate::transport::protocol::{ClientMessage, ServerMessage};
 
-/// Maximum accepted size for an inbound client-to-server WebSocket text
-/// frame. Messages larger than this are rejected with a `ServerMessage::Error`
-/// reply and NOT broadcast.
-///
-/// **History** (#tbd — 2026-04-11): originally set to 4096. During a
-/// nav/drive pair-programming experiment on 2026-04-10 evening, coordination
-/// messages (detailed test steps, multi-paragraph instructions, retrospectives)
-/// repeatedly exceeded the 4096 limit and were silently dropped from the
-/// sender's perspective. Silent because `handle_client_message` returned
-/// `Ok(None)` after the size rejection — the broadcast never happened, and
-/// the sender's `ws_send` (see `src/bridge/tools.rs::ws_send`) only checks
-/// that the frame left the socket, not that the server accepted it.
-///
-/// Raised to 65536 (64 KB) — comfortably larger than any legitimate
-/// coordination message bpmux carries (typical: ~1 KB, largest observed:
-/// ~5 KB for session retros), still bounded against DoS. If a future use
-/// case legitimately needs bigger messages (code dumps, diff pastes, full
-/// docs), we should introduce chunked messaging rather than raise this
-/// ceiling further — 64 KB is a generous floor, not a design target.
 const MAX_MESSAGE_SIZE: usize = 65536;
 const HEARTBEAT_INTERVAL: std::time::Duration = std::time::Duration::from_secs(30);
 
@@ -175,8 +156,6 @@ async fn run_ws_session(
     let leave_msg = system_announcement(&format!("{identity} left"));
     let _ = session.broadcast(&leave_msg);
     session.peer_disconnected();
-    // #402: remove from roster + broadcast so the frontend sidebar
-    // prunes the departed peer within heartbeat latency.
     session.roster_leave(&identity);
     dispatch_roster_leave(&orchestrator, &identity).await;
     result
@@ -309,10 +288,6 @@ pub(crate) fn short_name(identity: &str) -> &str {
     identity.split(':').next().unwrap_or(identity)
 }
 
-/// Add a topic to a peer's subscription set (shared state).
-/// Check whether a message should be delivered to a specific peer.
-/// DM filtering only — the pre-#270 topic-subscription branch is
-/// gone; threads (#268) scope viewer-side, not delivery-side.
 pub(crate) fn should_deliver(msg: &session::Message, peer_identity: &str) -> bool {
     let recipients = match &msg.to {
         None => return true,
@@ -332,15 +307,6 @@ pub(crate) fn should_deliver(msg: &session::Message, peer_identity: &str) -> boo
     recipients.iter().any(|r| r == peer_short)
 }
 
-/// Pure size check extracted for testability. Returns `true` if the
-/// message body fits within the accepted inbound frame budget; callers
-/// reject oversized messages before broadcasting.
-///
-/// Extracted on 2026-04-11 as part of the silent-drop fix so a unit test
-/// can regression-guard `MAX_MESSAGE_SIZE` without having to stand up a
-/// real WebSocket. If someone lowers the constant back toward its old
-/// (4096) value and breaks legitimate coordination messages, the test
-/// will fail at build time instead of silently reintroducing the bug.
 pub(crate) fn message_size_ok(text: &str) -> bool {
     text.len() <= MAX_MESSAGE_SIZE
 }
@@ -352,12 +318,6 @@ async fn handle_client_message(
     tx: &mut SplitSink<WebSocket, WsMessage>,
 ) -> Result<Option<String>, Box<dyn std::error::Error + Send + Sync>> {
     if !message_size_ok(text) {
-        // Log the drop so oversized messages become visible in the diag
-        // log. Without this, drops were the silent-failure mode that
-        // caused the 2026-04-10 nav/drive experiment to stall — the
-        // server rejected, the client's ws_send returned success, nobody
-        // saw the failure. The diag log (gated on `BPMUX_LOG` env var)
-        // gives post-hoc evidence even if the error reply is ignored.
         crate::session::diag::log_diag(&format!(
             "ws: rejected oversized message from {identity}: {} bytes (max {MAX_MESSAGE_SIZE})",
             text.len()
@@ -381,14 +341,6 @@ async fn handle_client_message(
             addressee,
             message_type,
         }) => {
-            // When the caller supplies a `to` filter, treat the
-            // message as an explicit DM — same privacy semantic as
-            // the TUI's `/to` path. Without this, agent DMs look
-            // like broadcasts that happen to have `to` set, and
-            // privacy-aware guards (e.g., /share's refusal to widen
-            // explicit-privacy messages) don't trigger. Matches the
-            // AC on #247: agent-originated DMs carry the same
-            // privacy flag as owner DMs.
             let explicit_privacy = to.is_some();
             let msg = session::Message {
                 from: identity.to_string(),

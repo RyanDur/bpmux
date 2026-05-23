@@ -4,7 +4,6 @@ use tokio::sync::{broadcast, mpsc};
 use crate::session::Session;
 use crate::session::message::Message;
 
-/// Commands from the TUI to the event loop's P2P handler.
 #[derive(Debug)]
 pub enum P2pCommand {
     CreateSession,
@@ -17,7 +16,6 @@ pub enum P2pCommand {
     },
 }
 
-/// Results from async P2P operations back to the TUI.
 pub enum P2pResult {
     OfferReady {
         offer: crate::transport::webrtc::PendingOffer,
@@ -85,7 +83,6 @@ pub enum PeerMessage {
         ts: String,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         to: Option<Vec<String>>,
-        /// Attention signal (#158) — see `session::message::Message::addressee`.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         addressee: Option<String>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -106,13 +103,6 @@ pub enum PeerMessage {
     LessonQueryResponse { lessons_json: String },
 }
 
-/// Spawn relay tasks that bridge a remote peer's transport channel
-/// with the local session broadcast.
-///
-/// Returns the `RemotePeer` handle and a task join handle.
-/// The caller provides:
-/// - `inbound_rx`: messages arriving from the remote transport
-/// - `outbound_tx`: messages to send to the remote transport
 pub fn spawn_relay(
     session: Arc<Session>,
     peer_name: String,
@@ -127,11 +117,6 @@ pub fn spawn_relay(
     let reply_tx = outbound_tx.clone();
     let initial_peer_name = peer_name.clone();
 
-    // Inbound: remote peer → local session broadcast.
-    //
-    // `current_name` starts as the placeholder ("remote") and is replaced
-    // once the remote side sends its Hello. Lesson storage keys and the
-    // disconnect announcement use whatever the most recent name is.
     tokio::spawn(async move {
         let mut current_name = initial_peer_name;
         while let Some(json) = inbound_rx.recv().await {
@@ -223,8 +208,6 @@ pub fn spawn_relay(
                 }
             }
         }
-        // Inbound channel closed — remote peer is gone. Announce so the TUI
-        // clears the status dot and channel list.
         let left = Message {
             from: "bpmux".to_string(),
             text: format!("{current_name} left"),
@@ -236,7 +219,6 @@ pub fn spawn_relay(
         connected_relay.store(false, std::sync::atomic::Ordering::Relaxed);
     });
 
-    // Outbound: local session broadcast → remote peer
     let mut session_rx = session.subscribe();
     let outbound_for_relay = outbound_tx.clone();
     let connected_outbound = connected.clone();

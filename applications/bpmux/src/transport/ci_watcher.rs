@@ -1,37 +1,3 @@
-//! Backend CI state watcher (#372). Polls GitHub at a fixed cadence,
-//! tracks the last-seen `(run_id, conclusion)` pair, and dispatches
-//! `OrchestratorAction::CiUpdated` when either component differs —
-//! i.e. a new run on main OR a conclusion flip on the same run.
-//! The orchestrator's CiSessionBroadcaster fans out a typed
-//! `StateDelta::Ci` over WS so the renderer's mirror.ci updates
-//! within WS latency. The 15s renderer-side poll stays as a safety
-//! net for disconnect-reconnect windows.
-//!
-//! #395: keyed on `(run_id, conclusion)` not conclusion alone. The
-//! prior version swallowed broadcasts when CI stayed red across
-//! successive pushes (billing failures, flaky substrate) — only the
-//! first red fired, later reds fell through `Same`. Now every new
-//! run_id fires regardless of whether its conclusion matches the
-//! prior run's.
-//!
-//! Poll cadence is 60s — push-on-transition still keeps the glyph
-//! tight via WS broadcast; the poll itself only matters as a safety
-//! net for reconnect windows + secondary-visibility (the frontend's
-//! own 15s poll covers per-client refresh). 60 polls/hr leaves
-//! ample headroom under GitHub's 5000/hr authenticated rate limit
-//! AND avoids triggering secondary rate-limit (burst-pattern
-//! detection) which the prior 10s cadence kept self-perpetuating —
-//! once tripped, every 10s tick re-tripped it indefinitely.
-//! 2026-05-02 retro: cross-role convergence on cadence-reduction
-//! after empirically observing the self-perpetuating-loop class
-//! across yesterday + today's debugging arcs. Structural close via
-//! #1140 (push-substrate via webhook) when shipped; this is the
-//! immediate mitigation.
-//!
-//! Pure classification via `classify_transition` lets unit tests
-//! cover the "emit exactly when conclusion changes, not on every
-//! tick" contract without mocking the tracker.
-
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -45,15 +11,6 @@ pub const POLL_INTERVAL: Duration = Duration::from_secs(10);
 pub const MAX_BACKOFF: Duration = Duration::from_secs(3600);
 pub const WATCHER_UNHEALTHY_THRESHOLD: Duration = Duration::from_secs(120);
 
-/// Classification of a tick result vs prior state. `Changed` triggers
-/// the broadcast; `Same` is a no-op. `NoData` (empty runs list) leaves
-/// prior state untouched so a transient empty response doesn't burn
-/// the next genuine transition.
-///
-/// #395: the key used for dedup is the `(run_id, conclusion)` tuple.
-/// A new run_id with the same conclusion as the prior run is still a
-/// `Changed` — the team needs visibility on each run's outcome, not
-/// just transitions between distinct conclusions.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Transition {
     Changed { new_conclusion: &'static str },
@@ -61,11 +18,6 @@ pub enum Transition {
     NoData,
 }
 
-/// Observation key: the pair we dedup on. `run_id` is optional because
-/// GitHub's response schema allows it to be missing; in practice it's
-/// always populated for real runs, but the type stays faithful. When
-/// `run_id` is `None`, dedup falls back to conclusion-only semantics
-/// for that slot (same as pre-#395 behavior).
 pub type Observation = (Option<u64>, &'static str);
 
 pub fn classify_transition(prev: Option<Observation>, current: Observation) -> Transition {
@@ -77,10 +29,6 @@ pub fn classify_transition(prev: Option<Observation>, current: Observation) -> T
     }
 }
 
-/// Spawn the background watcher. Returns immediately; the task runs
-/// until the cancellation token fires. Silent on tracker / API
-/// errors beyond a diag-log entry — the frontend's 15s poll catches
-/// up next tick regardless.
 pub fn spawn<T: CiPollFetch>(
     orchestrator: Arc<Orchestrator<T>>,
     tracker: Arc<T>,
@@ -141,10 +89,6 @@ pub fn spawn<T: CiPollFetch>(
                     continue;
                 }
             };
-            // #1287: classify across ALL entries (not just first) so
-            // aggregate state covers every workflow on the latest
-            // commit. classify_runs filters by first.head_sha
-            // internally.
             let runs: Vec<crate::ci::RunEntry> = entries
                 .into_iter()
                 .map(|e| crate::ci::RunEntry {
