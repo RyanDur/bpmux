@@ -1,8 +1,3 @@
-/* Cross-component rules: document chrome, app shell geometry, and
- * element defaults that every feature inherits. Feature-local styles
- * live in their co-located `{feature}/{Component}.css`.
- */
-
 html,
 body,
 #root {
@@ -14,21 +9,8 @@ body,
 body {
   color: var(--fg-primary);
   background: var(--bg-base);
-
-  /* Smooth theme-toggle interpolation (AC6 of rgb(51 85 17)). Light↔dark
-   * switches the --bg-base and --fg-primary token values; a
-   * transition on color + background-color makes the change feel
-   * like a mode-shift, not a flash. 150ms keeps the flip responsive.
-   * prefers-reduced-motion users get 0ms via the token override, so
-   * they see the same instant flip as before — no mandatory motion. */
   transition: color var(--motion-duration-fast) var(--motion-ease-in-out),
               background-color var(--motion-duration-fast) var(--motion-ease-in-out);
-
-  /* Platform defaults only — Inter dropped (not self-hosted, so
-   * loading from Google Fonts added a network round-trip and FOUC
-   * risk for zero guaranteed benefit). The -apple-system / Segoe UI
-   * cascade picks the native system UI font on every platform we
-   * ship to, which already has excellent screen-rendered hinting. */
   font-family:
     -apple-system,
     BlinkMacSystemFont,
@@ -68,11 +50,6 @@ button {
   border: none;
   padding: 0;
   cursor: pointer;
-
-  /* Default hover/active transition for every button (rgb(51 85 34) AC2).
-   * Per-component overrides can extend (adding transform or other
-   * properties) but bg + color cover the majority case. Duration
-   * token auto-zeros under reduced-motion. */
   transition:
     background-color var(--motion-duration-instant) var(--motion-ease-out),
     color var(--motion-duration-instant) var(--motion-ease-out),
@@ -84,7 +61,6 @@ textarea {
   color: inherit;
 }
 
-/* App shell: titlebar above, regions (sidebar / chat / board) below. */
 .app {
   display: flex;
   flex-direction: column;
@@ -101,12 +77,10 @@ textarea {
   min-height: 0;
 }
 
-/* Accessible hiding utility — element is removed from visual layout
- * but remains in the accessibility tree. Canonical "visually hidden"
- * pattern (clip-path variant; preferred over display:none which hides
- * from AT, and over 0/0 sizing which some AT skip). Used for
- * screen-reader-only prefixes like the sender name in each message
- * row. */
+/* visually-hidden utility — clip-path keeps the element in the a11y
+ * tree while removing it from visual layout. NOT display:none (hides
+ * from AT) NOR 0/0 sizing (some AT skip it); this AT-presence guard is
+ * un-test-pinned. Carries SR-only prefixes like the per-row sender. */
 .sr-only {
   position: absolute;
   width: 1px;
