@@ -258,3 +258,38 @@ fn addressee_is_independent_of_to() {
     assert!(dm_no_addressee.is_addressed_to("pm"));
     assert!(dm_no_addressee.is_addressed_to("dev")); // addressee: None = everyone
 }
+
+#[test]
+fn nudge_message_is_not_chat() {
+    let msg = Message {
+        message_type: MessageType::Nudge,
+        ..Message::default()
+    };
+    assert!(
+        !msg.is_chat(),
+        "Nudge is a system-authored operational signal, not chat — it must classify non-chat so the noise-filter hides it"
+    );
+}
+
+#[test]
+fn chat_omits_message_type_but_non_chat_serializes_it() {
+    let chat = Message {
+        message_type: MessageType::Chat,
+        ..Message::default()
+    };
+    let chat_json = serde_json::to_string(&chat).expect("serialize");
+    assert!(
+        !chat_json.contains("message_type"),
+        "Chat must omit message_type on the wire (default-chat): {chat_json}"
+    );
+
+    let insight = Message {
+        message_type: MessageType::Insight,
+        ..Message::default()
+    };
+    let insight_json = serde_json::to_string(&insight).expect("serialize");
+    assert!(
+        insight_json.contains(r#""message_type":"insight""#),
+        "non-Chat types must serialize their wire-type so the renderer keeps the class-glyph: {insight_json}"
+    );
+}
