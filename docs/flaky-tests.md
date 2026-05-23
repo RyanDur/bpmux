@@ -5,13 +5,15 @@ full parallel suite). Maintained by dev as flakes surface; feeds the de-flake
 story (#1529 + extensions). Each entry: test, suite, vector, evidence,
 occurrences.
 
-All entries below are in the `integration_main` cargo test binary, whose ~291
-tests run in parallel within one process and share process-global / on-disk
-state. Common signature: **passes in isolation, fails under full-binary
-parallelism, a DIFFERENT test fails each run** (nondeterministic-which-test =
-contention, not a deterministic regression).
+Two suites surface flakes: the `integration_main` cargo test binary (~291
+tests, parallel in one process, shared process-global / on-disk state) and the
+vitest `npm test:unit` renderer suite. The cargo signature: **passes in
+isolation, fails under full-binary parallelism, a DIFFERENT test fails each
+run** (nondeterministic-which-test = contention, not a deterministic
+regression). The vitest signature so far is **subprocess-spawning tests timing
+out under load** (eslint/binary cascade), not assertion failures.
 
-## Open
+## Open — integration_main (cargo nextest)
 
 ### diag_routing::log_diag_under_cargo_test_writes_to_tmpdir_not_home
 - **Suite:** integration_main
@@ -49,6 +51,23 @@ contention, not a deterministic regression).
 - **Fix candidate:** #1529's workflow-config isolation — its protect-test
   should pin BOTH accept-tests green under parallel.
 
+## Open — vitest (npm test:unit)
+
+### eslint-testing-library.test.ts > prefer-user-event fires on its anti-pattern in fixture
+- **Suite:** vitest (npm test:unit), file
+  `src/renderer/src/__tests__/eslint-testing-library.test.ts` (#1423 substrate)
+- **Vector:** the test spawns eslint on a fixture (subprocess); the whole file
+  took 8146ms while the per-test timeout is 5000ms. Under pre-commit load
+  (parallel cargo recompile + nextest + vitest) the eslint subprocess starves
+  → single test times out. Load-induced, NOT an assertion failure.
+- **Evidence:** failed local pre-commit on slice-55 (CSS-only change, cannot
+  affect eslint-rule tests); passed clean on immediate re-run (489 passed).
+  Same run's nextest self-reported "1835 passed (1 flaky)".
+- **Occurrences:** 2026-05-23 (local pre-commit slice-55, ×1, green on rerun).
+- **Fix candidate:** raise per-test timeout for subprocess-spawning eslint
+  tests (testTimeout override on the file/describe), or serialize them off the
+  hot pre-commit path. Sister to the cargo-recompile-cascade vitest flakes.
+
 ## De-flake scope (for the N+1 story)
 
 `integration_main` has ≥3 distinct parallelism / shared-state flake-vectors:
@@ -60,3 +79,8 @@ contention, not a deterministic regression).
 
 Direction: per-test isolation (unique ports / tmpfiles / workflow-config) or a
 shared-state reset between cases. A suite-wide hardening generalizes #1529.
+
+Plus a 4th vector in a DIFFERENT suite — **vitest subprocess-timeout**: tests
+that spawn eslint/a binary (eslint-testing-library.test.ts) starve under
+pre-commit load and trip the 5s per-test timeout. Direction: per-file
+testTimeout override or move subprocess tests off the hot pre-commit path.
