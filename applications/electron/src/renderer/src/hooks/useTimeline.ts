@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { describeHttpError, http } from '../api/http'
-import { BOARD_INVALIDATE_MARKER, type ChatMessage } from '../transport/types'
 
 // Raw timeline event as returned by GET /api/stories/:number/timeline.
 // The backend forwards GitHub's issue-events list + a synthetic
@@ -45,7 +44,7 @@ interface UseTimelineArgs {
   apiBase: string | undefined
   authToken: string | undefined
   storyNumber: number | null
-  messages: ChatMessage[]
+  boardInvalidateTick: number
 }
 
 export interface UseTimelineResult {
@@ -112,7 +111,7 @@ export const useTimeline = ({
   apiBase,
   authToken,
   storyNumber,
-  messages
+  boardInvalidateTick
 }: UseTimelineArgs): UseTimelineResult => {
   const [events, setEvents] = useState<ClassifiedEvent[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -122,10 +121,6 @@ export const useTimeline = ({
     storyNumber !== null &&
     apiBase !== undefined &&
     authToken !== undefined
-  // Track message count across renders so we only refetch on new
-  // board-invalidate markers (not on the hydration backfill). Mirrors
-  // the pattern DrillIn uses for comment refetches.
-  const seenMessageCountRef = useRef<number>(messages.length)
 
   const refetch = useCallback(async (): Promise<void> => {
     if (!apiBase || !authToken || storyNumber === null) return
@@ -174,13 +169,10 @@ export const useTimeline = ({
   }, [storyNumber, apiBase, authToken])
 
   useEffect(() => {
-    const prev = seenMessageCountRef.current
-    seenMessageCountRef.current = messages.length
-    if (messages.length <= prev) return
-    const newMessages = messages.slice(prev)
-    const hasInvalidate = newMessages.some((m) => m.text === BOARD_INVALIDATE_MARKER)
-    if (hasInvalidate) void refetch()
-  }, [messages, refetch])
+    if (boardInvalidateTick === 0) return
+    const id = setTimeout(() => void refetch(), 0)
+    return () => clearTimeout(id)
+  }, [boardInvalidateTick, refetch])
 
   return { events, loading, error, refetch }
 }

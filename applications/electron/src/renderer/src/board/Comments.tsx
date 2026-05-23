@@ -3,11 +3,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import MessageBody from '../chat/MessageBody'
 import { describeHttpError } from '../api/http'
 import { getStoryComments, postStoryComment, type Comment } from '../api/storiesClient'
-import { BOARD_INVALIDATE_MARKER, type ChatMessage } from '../transport/types'
 
 const OPTIMISTIC_ID_BASE = -1_000_000_000
-
-const isInvalidateMarker = (m: ChatMessage): boolean => m.text === BOARD_INVALIDATE_MARKER
 
 const mergeComments = (server: readonly Comment[], optimistic: readonly Comment[]): Comment[] => {
   const seen = new Set(server.map((c) => `${c.author}|${c.body}`))
@@ -20,7 +17,7 @@ interface Props {
   apiBase: string | undefined
   authToken: string | undefined
   usingMock: boolean
-  messages: ChatMessage[]
+  boardInvalidateTick: number
   onError: (msg: string) => void
 }
 
@@ -29,7 +26,7 @@ const Comments = ({
   apiBase,
   authToken,
   usingMock,
-  messages,
+  boardInvalidateTick,
   onError
 }: Props): React.JSX.Element => {
   const [fetchedComments, setFetchedComments] = useState<Comment[] | null>(null)
@@ -38,7 +35,6 @@ const Comments = ({
   const [commentBusy, setCommentBusy] = useState<boolean>(false)
   const commentsListRef = useRef<HTMLUListElement | null>(null)
   const commentTextareaRef = useRef<HTMLTextAreaElement | null>(null)
-  const seenMessageCountRef = useRef<number>(messages.length)
   const wasAtBottomRef = useRef<boolean>(true)
 
   const offline = usingMock || apiBase === undefined
@@ -86,17 +82,9 @@ const Comments = ({
   }, [apiBase, authToken, captureScroll, storyNumber, offline])
 
   useEffect(() => {
-    const prev = seenMessageCountRef.current
-    if (messages.length <= prev) {
-      seenMessageCountRef.current = messages.length
-      return
-    }
-    const fresh = messages.slice(prev)
-    seenMessageCountRef.current = messages.length
-    if (fresh.some(isInvalidateMarker)) {
-      void fetchComments()
-    }
-  }, [messages, fetchComments])
+    if (boardInvalidateTick === 0) return
+    void fetchComments()
+  }, [boardInvalidateTick, fetchComments])
 
   useEffect(() => {
     if (!wasAtBottomRef.current) return

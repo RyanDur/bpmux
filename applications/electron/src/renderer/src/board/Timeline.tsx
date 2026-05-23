@@ -1,7 +1,6 @@
 import { format } from 'date-fns'
 import { useEffect, useRef, useState } from 'react'
 import { useTimeline, type ClassifiedEvent, type TimelineGate } from '../hooks/useTimeline'
-import type { ChatMessage } from '../transport/types'
 import type { BoardStory } from './types'
 
 const GATE_LABEL: Record<TimelineGate, string> = {
@@ -99,7 +98,7 @@ interface Props {
   story: BoardStory
   apiBase: string | undefined
   authToken: string | undefined
-  messages: ChatMessage[]
+  boardInvalidateTick: number
   focusTimeline?: boolean
 }
 
@@ -107,7 +106,7 @@ const Timeline = ({
   story,
   apiBase,
   authToken,
-  messages,
+  boardInvalidateTick,
   focusTimeline
 }: Props): React.JSX.Element => {
   const [showAll, setShowAll] = useState<boolean>(false)
@@ -115,7 +114,7 @@ const Timeline = ({
     apiBase,
     authToken,
     storyNumber: story.number,
-    messages
+    boardInvalidateTick
   })
   const detailsRef = useRef<HTMLDetailsElement | null>(null)
 

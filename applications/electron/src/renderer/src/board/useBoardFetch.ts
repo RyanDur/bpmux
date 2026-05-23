@@ -1,11 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { describeHttpError } from '../api/http'
 import { getBoard } from '../api/boardClient'
-import {
-  BOARD_INVALIDATE_MARKER,
-  type ChatMessage,
-  type ConnectionStatus
-} from '../transport/types'
+import type { ConnectionStatus } from '../transport/types'
 import { MOCK_BOARD_RESPONSE } from './mockBoard'
 import { useRefetchOnReconnect } from './useRefetchOnReconnect'
 import type { BoardResponse } from './types'
@@ -14,7 +10,7 @@ const POLL_INTERVAL_MS = 5 * 60_000
 const RETRY_DELAYS_MS = [0, 200, 500] as const
 
 export interface UseBoardFetchOptions {
-  messages: ChatMessage[]
+  boardInvalidateTick: number
   wsStatus: ConnectionStatus | undefined
   apiBase: string | undefined
   authToken: string | undefined
@@ -31,7 +27,7 @@ export interface UseBoardFetchResult {
 }
 
 export const useBoardFetch = ({
-  messages,
+  boardInvalidateTick,
   wsStatus,
   apiBase,
   authToken
@@ -40,7 +36,6 @@ export const useBoardFetch = ({
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
   const [usingMock, setUsingMock] = useState<boolean>(false)
-  const seenMessageCountRef = useRef<number>(messages.length)
 
   const fetchBoard = useCallback(
     (signal?: AbortSignal): void => {
@@ -97,17 +92,10 @@ export const useBoardFetch = ({
   })
 
   useEffect(() => {
-    const prev = seenMessageCountRef.current
-    if (messages.length <= prev) {
-      seenMessageCountRef.current = messages.length
-      return
-    }
-    const fresh = messages.slice(prev)
-    seenMessageCountRef.current = messages.length
-    if (fresh.some((m) => m.text === BOARD_INVALIDATE_MARKER)) {
-      fetchBoard()
-    }
-  }, [messages, fetchBoard])
+    if (boardInvalidateTick === 0) return
+    const id = setTimeout(() => fetchBoard(), 0)
+    return () => clearTimeout(id)
+  }, [boardInvalidateTick, fetchBoard])
 
   const refetch = useCallback((): void => {
     fetchBoard()

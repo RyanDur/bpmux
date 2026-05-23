@@ -19,7 +19,7 @@ const story = (overrides: Partial<BoardStory>): BoardStory => ({
 const baseProps = {
   apiBase: undefined,
   authToken: undefined,
-  messages: []
+  boardInvalidateTick: 0
 }
 
 describe('#1355 Timeline independence', () => {

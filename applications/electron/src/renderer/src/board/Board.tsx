@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useCollapsibleSectionsStorage } from '../lib/useCollapsibleSectionsStorage'
-import type { ChatMessage, ConnectionStatus } from '../transport/types'
+import type { ConnectionStatus } from '../transport/types'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import SyncStatusGlyph from '../sync/SyncStatusGlyph'
 import DrillIn from './DrillIn'
@@ -24,11 +24,8 @@ const initialCollapseState: CollapseState = (() => {
 })()
 
 interface BoardProps {
-  // Chat message stream — forwarded to DrillIn so it can subscribe to
-  // BOARD_INVALIDATE_MARKER broadcasts for live comment refresh.
-  // Board itself doesn't observe messages; Board polls /api/board on
-  // a 30s interval for story list changes, which is orthogonal.
-  messages: ChatMessage[]
+  boardInvalidateTick: number
+  syncStatusTick: number
   // Collapsed state for Ctrl+P toggle. When true, the aside stays
   // mounted (state preserved) but animates to 0 width via CSS. When
   // false, the aside is visible at its normal width. See Board.css
@@ -38,10 +35,16 @@ interface BoardProps {
   wsStatus?: ConnectionStatus
 }
 
-const Board = ({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Element => {
+const Board = ({
+  boardInvalidateTick,
+  syncStatusTick,
+  hidden,
+  width,
+  wsStatus
+}: BoardProps): React.JSX.Element => {
   const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
   const { data, setData, loading, error, setError, usingMock, refetch } = useBoardFetch({
-    messages,
+    boardInvalidateTick,
     wsStatus,
     apiBase: bridge?.apiBase,
     authToken: bridge?.authToken
@@ -204,7 +207,7 @@ const Board = ({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
         <SyncStatusGlyph
           apiBase={bridge?.apiBase}
           authToken={bridge?.authToken}
-          messages={messages}
+          syncStatusTick={syncStatusTick}
         />
         <h2 className="board-title">Board</h2>
         {usingMock ? (
@@ -242,7 +245,7 @@ const Board = ({ messages, hidden, width, wsStatus }: BoardProps): React.JSX.Ele
           apiBase={bridge?.apiBase}
           authToken={bridge?.authToken}
           usingMock={usingMock}
-          messages={messages}
+          boardInvalidateTick={boardInvalidateTick}
           visible={drilledStory !== null}
           focusTimeline={focusTimelineFor === renderedDrill.number}
           onBack={handleBack}

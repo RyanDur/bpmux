@@ -7,7 +7,7 @@ const baseProps = {
   apiBase: undefined,
   authToken: undefined,
   usingMock: false,
-  messages: [],
+  boardInvalidateTick: 0,
   onError: () => {}
 }
 

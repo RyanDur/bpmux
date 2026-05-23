@@ -64,6 +64,8 @@ interface Props {
   ciSnapshot?: CiSnapshotWire | null
   mirrorReactions?: ReadonlyMap<string, ReactionAggregateWire[]>
   mirrorRoster?: readonly RosterMemberWire[]
+  boardInvalidateTick: number
+  syncStatusTick: number
 }
 
 const AppShell = ({
@@ -77,7 +79,9 @@ const AppShell = ({
   onAtBottomChange,
   ciSnapshot,
   mirrorReactions,
-  mirrorRoster
+  mirrorRoster,
+  boardInvalidateTick,
+  syncStatusTick
 }: Props): React.JSX.Element => {
   const [boardOpen, setBoardOpen] = useState<boolean>(true)
   const boardWidthStorage = useBoardWidthStorage(
@@ -213,7 +217,8 @@ const AppShell = ({
           />
         ) : null}
         <Board
-          messages={messages}
+          boardInvalidateTick={boardInvalidateTick}
+          syncStatusTick={syncStatusTick}
           hidden={!boardOpen}
           width={boardWidthStorage.width}
           wsStatus={status}

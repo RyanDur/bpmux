@@ -4,7 +4,14 @@ import { asyncTryCatch } from '../lib/asyncResult'
 import { tryCatch } from '../lib/result'
 import { applyStateDelta, applyStateSnapshot, emptyMirrorState } from './state-delta'
 import type { MirrorState } from './state-delta'
-import type { ChatMessage, ClientMessage, ConnectionStatus, ServerMessage } from './types'
+import {
+  BOARD_INVALIDATE_MARKER,
+  SYNC_STATUS_UPDATE_MARKER,
+  type ChatMessage,
+  type ClientMessage,
+  type ConnectionStatus,
+  type ServerMessage
+} from './types'
 
 // WebSocket hook for the bpmux session protocol.
 //
@@ -52,6 +59,8 @@ export interface UseWebSocketResult {
   sessionId: string | null
   sendChat: (text: string, opts?: SendOptions) => void
   mirror: MirrorState
+  boardInvalidateTick: number
+  syncStatusTick: number
 }
 
 interface HistoryMessage {
@@ -87,6 +96,8 @@ export const useWebSocket = (
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [mirror, setMirror] = useState<MirrorState>(emptyMirrorState)
+  const [boardInvalidateTick, setBoardInvalidateTick] = useState<number>(0)
+  const [syncStatusTick, setSyncStatusTick] = useState<number>(0)
 
   const socketRef = useRef<WebSocket | null>(null)
   const backoffRef = useRef<number>(INITIAL_BACKOFF_MS)
@@ -139,6 +150,14 @@ export const useWebSocket = (
         if (parsed.message_type === 'state-delta' && parsed.state_delta) {
           const delta = parsed.state_delta
           setMirror((prev) => applyStateDelta(prev, delta))
+          break
+        }
+        if (parsed.text === BOARD_INVALIDATE_MARKER) {
+          setBoardInvalidateTick((n) => n + 1)
+          break
+        }
+        if (parsed.text === SYNC_STATUS_UPDATE_MARKER) {
+          setSyncStatusTick((n) => n + 1)
           break
         }
         msgCounterRef.current += 1
@@ -201,9 +220,7 @@ export const useWebSocket = (
       // Mirrors fetchBoard's retry pattern. Only the FINAL failure
       // logs to console.error so transient warmup blips don't
       // pollute the dev/test signal.
-      const fetchHistoryWithRetry = async (
-        endpoint: string
-      ): Promise<HistoryMessage[]> => {
+      const fetchHistoryWithRetry = async (endpoint: string): Promise<HistoryMessage[]> => {
         const delays = [0, 200, 500]
         let lastErr: unknown = null
         for (const delay of delays) {
@@ -227,9 +244,7 @@ export const useWebSocket = (
       }
       void asyncTryCatch(() =>
         Promise.all([
-          fetchHistoryWithRetry(
-            `/api/messages?chat_only=true&limit=${HISTORY_CHAT_LIMIT}`
-          ),
+          fetchHistoryWithRetry(`/api/messages?chat_only=true&limit=${HISTORY_CHAT_LIMIT}`),
           fetchHistoryWithRetry(
             `/api/messages?message_type=activity&limit=${HISTORY_ACTIVITY_LIMIT}`
           )
@@ -240,9 +255,7 @@ export const useWebSocket = (
           // Both responses are newest-first from the server; combine
           // and chronological-sort before merging so the resulting
           // state stays ts-ordered regardless of fetch arrival order.
-          const combined = [...chat, ...activity].sort((a, b) =>
-            a.ts.localeCompare(b.ts)
-          )
+          const combined = [...chat, ...activity].sort((a, b) => a.ts.localeCompare(b.ts))
           setMessages((live) => {
             const seen = new Set<string>()
             const merged: ChatMessage[] = []
@@ -353,5 +366,5 @@ export const useWebSocket = (
     }
   }, [url, sendJson, handleServerMessage])
 
-  return { status, messages, sessionId, sendChat, mirror }
+  return { status, messages, sessionId, sendChat, mirror, boardInvalidateTick, syncStatusTick }
 }

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import MessageBody from '../chat/MessageBody'
-import type { ChatMessage } from '../transport/types'
 import Comments from './Comments'
 import DrillInActions, { type ActionMode } from './DrillInActions'
 import StoryBadge from './StoryBadge'
@@ -30,11 +29,7 @@ interface Props {
   apiBase: string | undefined
   authToken: string | undefined
   usingMock: boolean
-  // Chat message stream from the WS. DrillIn watches this for
-  // BOARD_INVALIDATE_MARKER messages (published when any peer posts
-  // a comment, accepts/rejects, etc.) and refetches comments live —
-  // the viewer sees peer activity without having to exit + re-drill.
-  messages: ChatMessage[]
+  boardInvalidateTick: number
   // #354 close-direction: Board's useAnimatedUnmount flips this to
   // false to trigger the exit transition before unmount.
   visible: boolean
@@ -55,7 +50,7 @@ const DrillIn = ({
   apiBase,
   authToken,
   usingMock,
-  messages,
+  boardInvalidateTick,
   visible,
   focusTimeline,
   onBack,
@@ -167,7 +162,7 @@ const DrillIn = ({
         apiBase={apiBase}
         authToken={authToken}
         usingMock={usingMock}
-        messages={messages}
+        boardInvalidateTick={boardInvalidateTick}
         onError={setToast}
       />
 
@@ -175,7 +170,7 @@ const DrillIn = ({
         story={story}
         apiBase={apiBase}
         authToken={authToken}
-        messages={messages}
+        boardInvalidateTick={boardInvalidateTick}
         focusTimeline={focusTimeline}
       />
 

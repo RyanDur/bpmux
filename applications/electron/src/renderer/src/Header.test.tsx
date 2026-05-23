@@ -4,7 +4,15 @@ import AppShell from './AppShell'
 import type { ConnectionStatus } from './transport/types'
 
 const renderHeader = (status: ConnectionStatus): string => {
-  return renderToStaticMarkup(<AppShell status={status} messages={[]} onSend={() => {}} />)
+  return renderToStaticMarkup(
+    <AppShell
+      status={status}
+      messages={[]}
+      onSend={() => {}}
+      boardInvalidateTick={0}
+      syncStatusTick={0}
+    />
+  )
 }
 
 describe('Header title-as-state-canvas (Pictor S3 #1449 rework)', () => {
