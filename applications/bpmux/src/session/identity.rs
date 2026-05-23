@@ -1,27 +1,6 @@
-//! Identity layer — #190 / two-layer memory architecture.
-//!
-//! Stores stable, portable agent identity traits that persist across
-//! sessions and project boundaries. Distinct from lessons (which are
-//! session-scoped and decay). Identity traits represent WHO the agent
-//! is — principles, values, working patterns — not WHAT they learned
-//! in a specific session.
-//!
-//! Schema: values→principles (#269). Each role's identity is a list
-//! of values; each value carries a name, a description, and a list
-//! of principles that operationalize the value. The on-disk file at
-//! `~/.bpmux/identity/{role}.json` uses this shape.
-//!
-//! Storage: `~/.bpmux/identity/{role}.json`. Cross-session by design;
-//! sits alongside `~/.bpmux/sessions/` and `~/.bpmux/tokens/`.
-
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
-/// One value the agent holds, and the principles that operationalize
-/// it. Pre-#269 this was a flat `IdentityTrait` (name + description
-/// only); the on-disk files have carried the values+principles shape
-/// since day one, so the Rust types caught up to the canonical
-/// schema rather than the other way around.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct IdentityValue {
     pub name: String,
@@ -30,15 +9,11 @@ pub struct IdentityValue {
     pub principles: Vec<String>,
 }
 
-/// The identity index for one agent role.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct IdentityIndex {
     pub values: Vec<IdentityValue>,
 }
 
-/// Errors from CRUD operations on an IdentityIndex. Narrow enum so
-/// handlers can surface a structured JSON error per #269's spec —
-/// machine-parseable `kind` + human-readable `detail`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IdentityError {
     ValueNotFound(String),
@@ -48,7 +23,6 @@ pub enum IdentityError {
 }
 
 impl IdentityError {
-    /// Machine-readable error kind for tool responses.
     pub fn kind(&self) -> &'static str {
         match self {
             Self::ValueNotFound(_) => "value_not_found",
@@ -79,10 +53,6 @@ impl std::fmt::Display for IdentityError {
 
 impl std::error::Error for IdentityError {}
 
-/// Default identity directory: `BPMUX_IDENTITY_DIR` env-var when set,
-/// else `~/.bpmux/identity/`. The env-var override (#484) lets tests
-/// isolate to a tempdir without racing on the developer's real
-/// identity files; production-default preserved when env-var unset.
 pub fn default_identity_dir() -> Result<PathBuf, std::io::Error> {
     if let Some(override_path) = std::env::var_os("BPMUX_IDENTITY_DIR") {
         return Ok(PathBuf::from(override_path));
@@ -93,8 +63,6 @@ pub fn default_identity_dir() -> Result<PathBuf, std::io::Error> {
     Ok(home.join(".bpmux").join("identity"))
 }
 
-/// Sanitize a name for use in file paths — only alphanumeric, dash,
-/// underscore allowed. Prevents path traversal via role/peer names.
 pub fn sanitize_name(name: &str) -> String {
     name.chars()
         .filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_')
@@ -105,8 +73,6 @@ pub fn identity_path(base: &Path, role: &str) -> PathBuf {
     base.join(format!("{}.json", sanitize_name(role)))
 }
 
-/// Load identity for a role. Returns an empty index if the file
-/// doesn't exist (first-use case, not an error).
 pub fn load_identity(base: &Path, role: &str) -> IdentityIndex {
     let path = identity_path(base, role);
     match std::fs::read_to_string(&path) {
@@ -115,7 +81,6 @@ pub fn load_identity(base: &Path, role: &str) -> IdentityIndex {
     }
 }
 
-/// Save identity for a role. Creates parent directories if needed.
 pub fn save_identity(base: &Path, role: &str, index: &IdentityIndex) -> Result<(), std::io::Error> {
     std::fs::create_dir_all(base)?;
     let path = identity_path(base, role);
@@ -124,10 +89,6 @@ pub fn save_identity(base: &Path, role: &str, index: &IdentityIndex) -> Result<(
     std::fs::write(&path, json)
 }
 
-/// Create a new value with the given name and description. Errors
-/// if the value name is already present (no accidental overwrite of
-/// description). Principles list starts empty; use `add_principle`
-/// to populate.
 pub fn add_value(
     index: &mut IdentityIndex,
     name: &str,
@@ -144,8 +105,6 @@ pub fn add_value(
     Ok(())
 }
 
-/// Append a principle under the named value. Errors if the value
-/// doesn't exist or the principle is already present (dedup).
 pub fn add_principle(
     index: &mut IdentityIndex,
     value_name: &str,
@@ -166,8 +125,6 @@ pub fn add_principle(
     Ok(())
 }
 
-/// Replace one principle's text with another in the named value.
-/// Errors if value or old principle not found.
 pub fn update_principle(
     index: &mut IdentityIndex,
     value_name: &str,
@@ -191,9 +148,6 @@ pub fn update_principle(
     Ok(())
 }
 
-/// Remove a principle from the named value. Errors if value or
-/// principle not found (so the caller knows it was a no-op vs a
-/// genuine removal).
 pub fn remove_principle(
     index: &mut IdentityIndex,
     value_name: &str,
@@ -377,11 +331,6 @@ mod tests {
 
     #[test]
     fn load_identity_parses_real_file_schema() {
-        // Pre-#269 regression: load_identity used to return an
-        // empty IdentityIndex for real files because IdentityIndex
-        // had a `traits` field but the on-disk schema has `values`.
-        // This test pins the schema fix — the JSON shape matches
-        // what actually lives in ~/.bpmux/identity/*.json.
         let dir = tempdir().unwrap();
         let path = dir.path().join("dev.json");
         std::fs::write(
@@ -403,18 +352,10 @@ mod tests {
         assert_eq!(loaded.values[0].principles.len(), 2);
     }
 
-    /// Regression against #269's initial FAIL: designer.json had a
-    /// different old schema (values-as-object + separate principles
-    /// array with `serves` back-refs). The initial PR didn't catch it
-    /// because the unit test used a fixture, not the actual files.
-    /// This test pins FIXTURES SHAPED LIKE EACH AGENT'S CURRENT FILE
-    /// so a future schema drift in any agent's file is caught at
-    /// test time rather than silently at load.
     #[test]
     fn all_three_agent_file_shapes_parse() {
         let dir = tempdir().unwrap();
 
-        // dev.json shape: 4 values, each with 4-5 principles (strings).
         let dev_fixture = r#"{
             "values": [
                 { "name": "correctness", "description": "code does what it claims", "principles": ["p1", "p2", "p3", "p4"] },
@@ -425,7 +366,6 @@ mod tests {
         }"#;
         std::fs::write(dir.path().join("dev.json"), dev_fixture).unwrap();
 
-        // pm.json shape: 4 values, each with 5-6 principles.
         let pm_fixture = r#"{
             "values": [
                 { "name": "trust", "description": "foundations", "principles": ["p1", "p2", "p3", "p4", "p5", "p6"] },
@@ -436,7 +376,6 @@ mod tests {
         }"#;
         std::fs::write(dir.path().join("pm.json"), pm_fixture).unwrap();
 
-        // designer.json shape post-#269 migration: 4 values, each with 2-4 principles.
         let designer_fixture = r#"{
             "values": [
                 { "name": "clarity", "description": "user understands", "principles": ["p1", "p2"] },
@@ -465,11 +404,6 @@ mod tests {
         }
     }
 
-    /// Local-run verification: load the agent's actual ~/.bpmux
-    /// identity files and assert they parse into non-empty values.
-    /// Ignored by default because CI / other dev machines don't have
-    /// these files. Run with `cargo test -- --ignored` during local
-    /// testing of schema changes.
     #[test]
     #[ignore = "loads real ~/.bpmux/identity/*.json — run with --ignored on machines that have them"]
     fn real_identity_files_on_disk_parse_canonical() {

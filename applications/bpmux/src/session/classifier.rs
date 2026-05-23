@@ -26,7 +26,7 @@ impl MessageClass {
     }
 }
 
-const MIN_EXPERIENCE_LEN: usize = 20;
+pub(crate) const MIN_EXPERIENCE_LEN: usize = 20;
 
 pub const COORDINATION_PATTERNS: &[&str] = &[
     "starting on",

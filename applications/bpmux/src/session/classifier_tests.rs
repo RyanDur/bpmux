@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use super::classifier::{ExperienceKind, MessageClass, classify};
+use super::classifier::{ExperienceKind, MIN_EXPERIENCE_LEN, MessageClass, classify};
 use super::message::{Message, MessageType};
 use chrono::Utc;
 
@@ -249,6 +249,10 @@ fn admission_my_miss_is_correction() {
 #[test]
 fn admission_my_bad_is_correction() {
     let m = msg("designer:claude-code", "my bad.");
+    assert!(
+        m.text.len() < MIN_EXPERIENCE_LEN,
+        "admission input must stay under MIN_EXPERIENCE_LEN to exercise the length-gate bypass"
+    );
     assert_eq!(
         classify(&m, "ryan"),
         MessageClass::Experience(ExperienceKind::Correction)
