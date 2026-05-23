@@ -23,9 +23,6 @@
       color: var(--fg-primary);
     }
 
-    /* Viewer-reacted state: accent-brand tint + border so the viewer
-     * can scan their own reactions at a glance. aria-pressed=true on
-     * the same condition keeps the screen-reader semantics aligned. */
     &.reaction-pill--reacted,
     &[aria-pressed='true'] {
       background: color-mix(in srgb, var(--accent-brand) 18%, var(--bg-elevated));
@@ -39,9 +36,6 @@
     }
   }
 
-  /* Anchor wrapper: creates a positioning context for the Picker
-   * popover so above/below placement is relative to the + button,
-   * not the whole reactions row. */
   & .reaction-add-anchor {
     position: relative;
     display: inline-flex;
@@ -81,9 +75,6 @@
   }
 }
 
-/* Add-only variant: compact button + picker popup for messages that
- * have no existing reactions. Reveal via :hover of parent
- * .message-row + keyboard focus. */
 .reaction-add-container {
   position: relative;
   display: inline-flex;
@@ -122,11 +113,6 @@
   opacity: 1;
 }
 
-/* Picker popover (#355). Positions above or below the anchor based
- * on available space; directional tail points at the trigger so the
- * spatial relationship is obvious. Absolute-positioned relative to
- * the .reaction-add-anchor / .reaction-add-container wrapper, so it
- * doesn't shift the flow of the message or overlap body text. */
 .reaction-picker {
   position: absolute;
   left: 0;
@@ -139,8 +125,6 @@
   z-index: 20;
   box-shadow: 0 4px 12px rgb(0 0 0 / 25%);
 
-  /* Directional tail via pseudo-element. Square rotated 45deg gives
-   * a clean 12px caret; positioned on the side facing the anchor. */
   &::before {
     content: '';
     position: absolute;
