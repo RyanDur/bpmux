@@ -1,34 +1,8 @@
 import type { ReactNode } from 'react'
 import { roleColorFor } from '../roles/roleColor'
 
-// #380 inline @mention pills in message body text.
-//
-// react-markdown renders text as React strings; there's no
-// top-level "text" component hook in v9 to intercept. Instead,
-// consumers override container elements (p / li / etc) and walk
-// their children, passing any string to `splitMentions` to expand
-// @-matches into pill spans.
-//
-// Role validity comes from a caller-provided set — per #393 AC1
-// discipline, the renderer doesn't hardcode team composition.
-// Pass the output of `deriveTeamRoles(messages, viewer)` when you
-// want @-pill rendering; omit / pass undefined to disable (plain
-// text render, matches per-AC2 "unknown @foo stays plain text").
-
-// Matches `@name` where `name` is a word-ish token. The regex is
-// anchored to word-boundary at the start so "foo@bar" doesn't
-// match, but whitespace-prefixed + leading-of-string both do.
 const MENTION_RE = /(^|[^A-Za-z0-9_@])@([A-Za-z0-9_-]+)/g
 
-/**
- * Split a string into alternating plain-text and mention-pill
- * ReactNode segments. Mentions matching roles outside `knownRoles`
- * pass through unchanged (plain text, per #380 AC2).
- *
- * `keyPrefix` is used to build stable React keys; pass a unique
- * prefix (e.g., message id) per container so adjacent paragraphs'
- * mentions don't collide under reconciliation.
- */
 export const splitMentions = (
   text: string,
   knownRoles: ReadonlySet<string>,
@@ -45,7 +19,6 @@ export const splitMentions = (
     const end = start + 1 + role.length
     if (!knownRoles.has(role)) continue
     if (start > lastIndex) {
-      // Include the leading char + any text before it.
       out.push(text.slice(lastIndex, start))
     }
     const key = `${keyPrefix}:mention:${i++}:${start}`
@@ -86,14 +59,6 @@ export const splitMentions = (
   return out.length === 0 ? [text] : out
 }
 
-/**
- * Walk React children; when a child is a string, replace it with
- * the splitMentions output. Non-string children (inline markup
- * from react-markdown — strong / em / code / etc) pass through.
- * The walk is shallow — a mention inside <strong>@pm</strong>
- * stays inside the strong because that's its natural scope per
- * markdown semantics.
- */
 export const replaceMentionsInChildren = (
   children: ReactNode,
   knownRoles: ReadonlySet<string>,

@@ -2,20 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import type { AggregatedReaction } from '../hooks/useReactions'
 import './Reactions.css'
 
-// Minimal curated emoji palette (#340). Full Slack-style picker with
-// search over the entire Unicode emoji set is out-of-scope for v1;
-// these 6 cover the common "ack / +1 / celebrate / ship it" signals
-// that reactions are meant to carry in the first place. A richer
-// picker can be added as a follow-up when users exhaust the palette.
 export const EMOJI_PALETTE = ['👍', '🎉', '❤️', '🚀', '👀', '❌'] as const
 
-// Picker placement heuristic (#355):
-//   - Preferred: above the trigger (matches Slack/Discord).
-//   - Fallback to below when there isn't enough room above for the
-//     picker height + tail.
-// Rough picker height estimate — actual measured size drives the
-// boundary check; this constant is just the preliminary "would it
-// fit" gate while the picker is still invisible.
 const PICKER_HEIGHT_ESTIMATE = 44
 
 type PickerPosition = 'above' | 'below'
@@ -26,32 +14,19 @@ interface PickerProps {
   onClose: () => void
 }
 
-/**
- * Absolute-positioned emoji palette anchored to a trigger button.
- * Computes above/below placement by measuring available space around
- * the anchor's bounding rect on mount, with an automatic flip when
- * the preferred side would clip against the viewport. Esc + click-
- * outside dismiss (#355 AC5).
- */
 const Picker = ({ anchorRef, onPick, onClose }: PickerProps): React.JSX.Element => {
   const pickerRef = useRef<HTMLUListElement | null>(null)
   const [position, setPosition] = useState<PickerPosition>('above')
 
-  // Measure anchor position on mount to decide above-vs-below.
   useEffect(() => {
     const anchor = anchorRef.current
     if (!anchor) return
     const rect = anchor.getBoundingClientRect()
-    // Estimate needed height; actual could be larger if the picker
-    // wraps, but the palette is a single row so this is close
-    // enough for the flip decision.
     const needed = PICKER_HEIGHT_ESTIMATE + 8
     const hasSpaceAbove = rect.top >= needed
     setPosition(hasSpaceAbove ? 'above' : 'below')
   }, [anchorRef])
 
-  // Esc + click-outside close (AC5). Listeners on document so they
-  // fire regardless of focus position inside the picker.
   useEffect(() => {
     const handleKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') {
@@ -173,11 +148,6 @@ interface AddOnlyProps {
   onToggle: (emoji: string) => void
 }
 
-/**
- * Compact picker-only affordance for messages with no existing
- * reactions. Shown on message hover so the viewer can add the first
- * reaction without a full Reactions container reflowing the row.
- */
 export const ReactionAddButton = ({ onToggle }: AddOnlyProps): React.JSX.Element => {
   const [open, setOpen] = useState<boolean>(false)
   const buttonRef = useRef<HTMLButtonElement | null>(null)
