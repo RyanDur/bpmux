@@ -3,12 +3,6 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-
-  /* rgb(51 51 119) rework: outer .drill-in is the scroll container — whole
-   * drill-in scrolls as one document (GitHub issue-detail convention)
-   * so comments below the fold are reachable. Previous shape had
-   * body-scrolls + comments-as-sibling, which left comments
-   * unreachable (Ryan 2026-04-22 "can't scroll"). */
   overflow-y: auto;
   outline: none;
   position: relative;
@@ -29,13 +23,6 @@
   & .drill-in-header {
     padding: var(--space-8) var(--space-16);
     border-bottom: 1px solid var(--border-subtle);
-
-    /* rgb(51 51 119) rework: outer .drill-in now scrolls as one document
-     * (body + comments + timeline + actions all in one scroll).
-     * Stick the back-crumb header so the "Back to board" affordance
-     * is always reachable regardless of scroll position — prevents
-     * the user from losing exit path when reading long threads.
-     * Designer flagged this at pickup-gate as a regression risk. */
     position: sticky;
     top: 0;
     z-index: 2;
