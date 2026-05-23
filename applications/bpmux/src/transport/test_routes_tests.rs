@@ -1,17 +1,3 @@
-//! Integration tests for the `/api/test/*` HTTP surface (#476).
-//!
-//! Three sections per the designer-authored template (broadcast 02:18 UTC):
-//!
-//! 1. response-correctness: the HTTP route's request/response shape is
-//!    what callers expect (status codes + error-message naming).
-//! 2. roundtrip-coherence: a write through the route is observable via
-//!    the production read path (`handle_view_board` / `RefreshDriver`).
-//! 3. contract-equality: identical assertions must pass against every
-//!    adapter mode (InMemorySourceAdapter, MockOctocrab, GitHubSourceAdapter-VCR).
-//!    First-pass commit covers InMemorySourceAdapter only; subsequent
-//!    commits add MockOctocrab + GH-VCR runners that re-execute these
-//!    same assertions.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use std::sync::Arc;

@@ -49,8 +49,6 @@ fn rejects_external_host_with_correct_bearer() {
 
 #[test]
 fn rejects_suffix_trap_host() {
-    // Classic suffix match attack: attacker controls evil.com, hopes
-    // naive "starts_with 127.0.0.1" check lets them in.
     let h = headers(Some("secret-xyz"), Some("127.0.0.1.evil.com"));
     assert!(!is_authorized(&h, "secret-xyz"));
 }
@@ -68,7 +66,6 @@ fn rejects_bearer_with_only_whitespace() {
 
 #[test]
 fn rejects_basic_auth_scheme() {
-    // Header exists but isn't Bearer — should fail to parse.
     let mut h = HeaderMap::new();
     h.insert(
         header::AUTHORIZATION,

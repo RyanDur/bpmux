@@ -42,7 +42,7 @@ fn each_encryption_produces_unique_code() {
 #[test]
 fn invalid_code_returns_error() {
     assert!(crypto::decrypt("not-base64!!!", "pass").is_err());
-    assert!(crypto::decrypt("dG9vc2hvcnQ", "pass").is_err()); // too short
+    assert!(crypto::decrypt("dG9vc2hvcnQ", "pass").is_err());
     assert!(crypto::decrypt("", "pass").is_err());
 }
 
@@ -79,7 +79,6 @@ fn generated_passphrases_vary() {
     let p2 = crypto::generate_passphrase().unwrap();
     let p3 = crypto::generate_passphrase().unwrap();
 
-    // Extremely unlikely all three are equal
     assert!(p1 != p2 || p2 != p3, "passphrases should be random");
 }
 

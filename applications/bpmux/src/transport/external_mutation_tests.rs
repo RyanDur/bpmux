@@ -1,27 +1,3 @@
-//! External-mutation E2E tests (#476 Phase 1 backfill — external-
-//! mutation user-class). Use the MockOctocrab adapter mode (commits
-//! 6/7/8 substrate) to exercise bpmux's adapter observing state
-//! changes that originate OUTSIDE bpmux (gh CLI, GitHub UI, automation).
-//!
-//! Per the 3-class framing — external-mutation applicability =
-//! {agent: no, human: no, external: yes}. Tests verify that bpmux's
-//! refresh path picks up source-of-truth changes that the bridge
-//! itself didn't author.
-//!
-//! Three canonical user-jobs covered here:
-//!   1. external-create — issue created via gh CLI / GitHub UI;
-//!      bpmux refresh observes the new story
-//!   2. external-label — label added externally (e.g., `in progress`);
-//!      bpmux refresh reflects the new state per state_from_labels
-//!   3. external-close — issue closed externally; bpmux refresh
-//!      reflects the closed state via is_closed → "accepted"
-//!
-//! Same substrate as `test_routes_mock_octocrab_tests`: real
-//! GitHubSourceAdapter pointed at httpmock; full decode_story_metadata
-//! path exercised. Bridge-subprocess-against-MockServer is deferred
-//! (would need TestBpmux harness extension to support custom
-//! GH base URL via env-var to OctocrabStoryTracker).
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use std::sync::Arc;

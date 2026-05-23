@@ -1,11 +1,5 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-//! Session-layer integration tests for spawn_relay's presence handling.
-//!
-//! These exercise Hello → "X joined" and inbound-close → "X left" without
-//! the WebRTC stack. They use plain mpsc channels in place of a data channel
-//! pair so the test can pump messages directly.
-
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -92,8 +86,6 @@ async fn inbound_close_produces_left_system_message() {
         .await
         .unwrap();
 
-    // Consume the "joined" system message so the next_system_text below
-    // sees the "left" one.
     let joined = next_system_text(&mut rx).await.expect("joined");
     assert_eq!(joined, "alice joined");
 

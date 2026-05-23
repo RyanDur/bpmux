@@ -1,20 +1,3 @@
-//! Integration tests for the `/api/test/*` HTTP surface against
-//! the MockOctocrab adapter mode (#476).
-//!
-//! Per the 3-mode contract-test-suite design (Pact-style):
-//!
-//!   - InMemorySourceAdapter — fast/isolation; covered by
-//!     `test_routes_tests` (commit 3).
-//!   - **MockOctocrabAdapter** — GitHubSourceAdapter pointed at a
-//!     httpmock server; exercises the real `decode_story_metadata`
-//!     path that the InMemoryAdapter bypasses. THIS FILE.
-//!   - GitHubSourceAdapter-VCR — recorded responses (deferred).
-//!
-//! Same assertions must pass identically across all three modes per
-//! `feedback_test_fixtures_must_not_short_circuit_critical_substrate`.
-//! First-pass commit covers a single round-trip assertion against
-//! the new mode; remaining assertions backfill in subsequent commits.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use std::sync::Arc;
