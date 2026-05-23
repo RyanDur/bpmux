@@ -1,6 +1,24 @@
-import { describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
+import { cleanup, render, waitFor } from '@testing-library/react'
 import Comments from './Comments'
+
+const getStoryComments = vi.fn()
+const postStoryComment = vi.fn()
+
+vi.mock('../api/storiesClient', () => ({
+  getStoryComments: (...args: unknown[]) => getStoryComments(...args),
+  postStoryComment: (...args: unknown[]) => postStoryComment(...args)
+}))
+
+const chainable = (): unknown => {
+  const c = {
+    onSuccess: () => c,
+    onFailure: () => c,
+    value: Promise.resolve()
+  }
+  return c
+}
 
 const baseProps = {
   storyNumber: 999,
@@ -10,6 +28,8 @@ const baseProps = {
   boardInvalidateTick: 0,
   onError: () => {}
 }
+
+afterEach(() => cleanup())
 
 describe('#1355 Comments independence', () => {
   test('renders standalone (substrate-axis) — no DrillIn.tsx parent required', () => {
@@ -48,5 +68,28 @@ describe('#1355 Comments independence', () => {
     const b = renderToStaticMarkup(<Comments {...baseProps} storyNumber={102} />)
     expect(a).toContain('drill-in-comments')
     expect(b).toContain('drill-in-comments')
+  })
+})
+
+describe('#1456 Comments — refetch survives the ingest-strip (tick replaces marker-scan)', () => {
+  const liveProps = {
+    storyNumber: 700,
+    apiBase: 'http://127.0.0.1:9',
+    authToken: 'tok',
+    usingMock: false,
+    boardInvalidateTick: 0,
+    onError: (): void => {}
+  }
+
+  test('a board-invalidate tick increment triggers a comments refetch (silent-regression guard)', async () => {
+    getStoryComments.mockReset()
+    getStoryComments.mockImplementation(() => chainable())
+    const { rerender } = render(<Comments {...liveProps} />)
+    await waitFor(() => expect(getStoryComments).toHaveBeenCalled())
+    const before = getStoryComments.mock.calls.length
+
+    rerender(<Comments {...liveProps} boardInvalidateTick={1} />)
+
+    await waitFor(() => expect(getStoryComments.mock.calls.length).toBe(before + 1))
   })
 })
