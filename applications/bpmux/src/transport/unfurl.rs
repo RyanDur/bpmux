@@ -1,17 +1,3 @@
-//! Server-side URL-unfurl — #343.
-//!
-//! GET /api/unfurl?url=... fetches the URL, extracts OpenGraph +
-//! basic meta tags, returns a JSON envelope the renderer turns
-//! into a preview card.
-//!
-//! Runs server-side (AC8) so the renderer doesn't leak the user's
-//! IP to arbitrary sites, and so we can share a cache across all
-//! message renders that reference the same URL.
-//!
-//! Parse strategy: regex over the HTML for OG + HTML-standard meta
-//! tags. Not a full HTML parser — Slack-style previews only care
-//! about half a dozen tags, and the regex stays dependency-free.
-
 use axum::{
     extract::{Query, State},
     http::StatusCode,
@@ -26,9 +12,6 @@ use std::time::{Duration, Instant};
 
 use super::rest::json_headers;
 
-/// What the renderer gets per URL. All fields optional; the renderer
-/// degrades gracefully (AC5) — no card if the fetch failed entirely,
-/// minimal card if only some fields are present.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct UnfurlData {
     pub url: String,
@@ -44,10 +27,6 @@ pub struct UnfurlQuery {
     pub url: String,
 }
 
-/// In-process cache: URL → (data, fetched_at). TTL keeps preview
-/// content fresh-ish without hammering target sites on every
-/// re-render. Simple HashMap under Mutex is fine at chat-session
-/// scale; LRU + persistence are premature.
 #[derive(Default)]
 pub struct UnfurlCache {
     entries: Mutex<HashMap<String, (UnfurlData, Instant)>>,
@@ -77,15 +56,11 @@ impl UnfurlCache {
 
 pub type UnfurlCacheHandle = Arc<UnfurlCache>;
 
-const CACHE_TTL: Duration = Duration::from_secs(3600); // 1 hour
+const CACHE_TTL: Duration = Duration::from_secs(3600);
 const FETCH_TIMEOUT: Duration = Duration::from_secs(5);
-const MAX_BODY_BYTES: usize = 512 * 1024; // 512KB read cap — preview metadata lives in <head>, not deep in long articles
+const MAX_BODY_BYTES: usize = 512 * 1024;
 
 static META_RE: Lazy<Regex> = Lazy::new(|| {
-    // Matches <meta property="og:title" content="..."> plus the
-    // name="description" variant. Non-greedy match inside content,
-    // case-insensitive attribute names. Captures:
-    //   (property-or-name: property|name) (key: og:title|description|…) (content)
     #[allow(clippy::expect_used)]
     Regex::new(r#"(?i)<meta\s+(?:property|name)=["']([^"']+)["']\s+content=["']([^"']*)["']"#)
         .expect("meta-tag regex compiles")
@@ -108,7 +83,6 @@ fn extract_from_html(url: &str, html: &str) -> UnfurlData {
         ..Default::default()
     };
 
-    // Meta scan — og:* wins over html meta when both present.
     for cap in META_RE.captures_iter(html) {
         let Some(key) = cap.get(1).map(|m| m.as_str().to_lowercase()) else {
             continue;
@@ -129,7 +103,6 @@ fn extract_from_html(url: &str, html: &str) -> UnfurlData {
         }
     }
 
-    // <title> fallback when OG is absent.
     if data.title.is_none()
         && let Some(cap) = TITLE_RE.captures(html)
         && let Some(m) = cap.get(1)
@@ -137,7 +110,6 @@ fn extract_from_html(url: &str, html: &str) -> UnfurlData {
         data.title = Some(m.as_str().trim().to_string());
     }
 
-    // Favicon: relative hrefs get resolved against the URL origin.
     if let Some(cap) = FAVICON_RE.captures(html)
         && let Some(m) = cap.get(1)
     {
@@ -166,8 +138,6 @@ async fn fetch_html(url: &str) -> Option<String> {
     if !response.status().is_success() {
         return None;
     }
-    // Read a capped amount — we only care about <head>, never the
-    // full body. Prevents runaway memory on large pages.
     let bytes = response.bytes().await.ok()?;
     let slice = &bytes[..bytes.len().min(MAX_BODY_BYTES)];
     Some(String::from_utf8_lossy(slice).into_owned())
@@ -177,7 +147,6 @@ pub async fn get_unfurl(
     State(cache): State<UnfurlCacheHandle>,
     Query(params): Query<UnfurlQuery>,
 ) -> impl IntoResponse {
-    // Basic URL sanity: must parse as a URL; must be http/https.
     let Ok(parsed) = url::Url::parse(&params.url) else {
         return (
             StatusCode::BAD_REQUEST,
@@ -202,8 +171,6 @@ pub async fn get_unfurl(
     }
 
     let Some(html) = fetch_html(&params.url).await else {
-        // AC5: degrade silently. Return empty data so the renderer
-        // shows no card (all fields None + url unchanged).
         let data = UnfurlData {
             url: params.url.clone(),
             ..Default::default()

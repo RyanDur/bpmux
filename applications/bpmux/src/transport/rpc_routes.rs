@@ -1,21 +1,3 @@
-//! RPC routes for cross-process bridge → electron-server tool dispatch (#516).
-//!
-//! Architectural-shift slices:
-//! - Slice 1: protocol shape + one canonical mutation endpoint.
-//! - Slice 2: bridge `start_story` migrated through it (archetype-validation).
-//! - Slice 3: generalize to `POST /api/rpc/{tool}`; route every mutation
-//!   tool through the same endpoint per template-replication
-//!   (`feedback_archetype_validation_unlocks_template_replication`).
-//! - Slice 4: remove the bridge-side BoardStore + SyncOrchestrator so
-//!   electron-server is the sole canonical store.
-//!
-//! Auth model: routes sit behind the existing Bearer + loopback gate
-//! (same as `/api/simulate/*`). The caller's role identity flows in via
-//! the `X-BPMUX-Agent` header — handlers like `handle_start_story` are
-//! role-gated (`require_role`) and a missing or unknown role would
-//! short-circuit there. The header is the lightest-weight way to
-//! express "who is invoking" without restructuring the auth state.
-
 use std::sync::Arc;
 
 use axum::Json;
@@ -32,16 +14,8 @@ use crate::session::{self, Message, MessageType};
 
 pub const AGENT_HEADER: &str = "X-BPMUX-Agent";
 
-/// Roles the bridge can identify as. The MCP handlers' `require_role`
-/// gate enforces tool-by-tool admission; this constant is the
-/// envelope-level liveness check before we even get there.
 const KNOWN_AGENTS: &[&str] = &["dev", "pm", "designer", "owner"];
 
-/// Tools that the generic RPC endpoint dispatches. Mutations cover the
-/// full state-machine cascade (start / deliver / pass / fail / accept /
-/// reject / close + ancillary). Reads cover the team-state queries the
-/// bridge used to answer from its own BoardStore — slice 4 routes them
-/// through the canonical store so all readers see the same data.
 fn known_tools() -> &'static [&'static str] {
     &[
         "start_story",
@@ -88,11 +62,6 @@ fn is_read_only_tool(tool: &str) -> bool {
     )
 }
 
-/// Fire VIEW_BACKLOG_MARKER (#359) through the session so the renderer
-/// flips into backlog-display mode. The MCP handler used to do this via
-/// the bridge's WS sink directly; under the canonical-store routing the
-/// bridge has no sink to use, so the server emits the marker the same
-/// way `fire_board_invalidate` does.
 fn fire_view_backlog_marker(session: &Arc<session::Session>) {
     let msg = Message {
         from: "bpmux:rpc".to_string(),
@@ -106,7 +75,6 @@ fn fire_view_backlog_marker(session: &Arc<session::Session>) {
     }
 }
 
-/// Resolve the caller role from the `X-BPMUX-Agent` request header.
 pub fn agent_from_headers(headers: &HeaderMap) -> Result<String, String> {
     let raw = headers
         .get(AGENT_HEADER)
@@ -126,10 +94,6 @@ pub fn agent_from_headers(headers: &HeaderMap) -> Result<String, String> {
     Ok(raw)
 }
 
-/// Mirror of `transport::test_routes::fire_board_invalidate` (#490). The
-/// RPC dispatch path takes an empty WsSink, so we restore the live-
-/// update broadcast at the route boundary so connected clients refetch
-/// /api/board.
 fn fire_board_invalidate(session: &Arc<session::Session>) {
     let msg = Message {
         from: "bpmux:rpc".to_string(),
@@ -143,9 +107,6 @@ fn fire_board_invalidate(session: &Arc<session::Session>) {
     }
 }
 
-/// Coerce the JSON-Object body into the `Map<String, Value>` shape the
-/// handler dispatchers expect. RPC clients always send a JSON object;
-/// any other shape is a protocol error.
 fn args_from_value(body: Value) -> Result<serde_json::Map<String, Value>, String> {
     match body {
         Value::Object(map) => Ok(map),
@@ -163,10 +124,6 @@ fn args_from_value(body: Value) -> Result<serde_json::Map<String, Value>, String
     }
 }
 
-/// Generic dispatch — the body is the MCP-tool args as JSON; the path
-/// parameter names the tool. Slice 3 routes every mutation tool through
-/// here so the bridge's per-tool dispatch sites collapse to one-line
-/// `dispatch_via_rpc(...)` calls.
 async fn dispatch(
     refresh: &Arc<dyn RefreshDriver>,
     tool: &str,
@@ -228,9 +185,6 @@ async fn dispatch(
     }
 }
 
-/// `POST /api/rpc/{tool}` — generic dispatch endpoint backing all
-/// mutation tools the bridge forwards (#516 slices 1-3). Path param
-/// names the tool; body is the MCP args object.
 pub async fn post_rpc_tool(
     State(session): State<Arc<session::Session>>,
     axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
@@ -266,8 +220,6 @@ pub async fn post_rpc_tool(
     };
     match dispatch(&refresh, &tool, &agent, args, &session).await {
         Ok(message) => {
-            // Firing BOARD_INVALIDATE on a read would re-trigger the
-            // very read that just ran (feedback loop).
             if tool == "view_backlog" {
                 fire_view_backlog_marker(&session);
             } else if !is_read_only_tool(&tool) {
@@ -358,7 +310,6 @@ mod tests {
     fn known_tools_covers_full_state_machine_and_critical_reads() {
         let tools = known_tools();
         for required in [
-            // Mutations across the full cascade
             "start_story",
             "deliver_story",
             "pass_desk_check",
@@ -366,7 +317,6 @@ mod tests {
             "accept_story",
             "reject_story",
             "close_story",
-            // Reads that the bridge agent UX depends on
             "view_board",
             "get_story",
             "list_ready",
