@@ -19,9 +19,6 @@ pub struct Session {
     pub wake_tx: broadcast::Sender<Message>,
     pub connected_peers: AtomicUsize,
     pub storage: Arc<dyn Storage>,
-    /// #402: set of currently-connected WS peer identities (e.g.,
-    /// `"dev:claude-code"`). Source of truth for sidebar membership
-    /// (directs + combinatorial groups). Updated on WS join/leave.
     pub roster: Mutex<HashSet<String>>,
 }
 
@@ -34,10 +31,6 @@ impl Clone for Session {
             wake_tx: self.wake_tx.clone(),
             connected_peers: AtomicUsize::new(self.connected_peers.load(Ordering::Relaxed)),
             storage: self.storage.clone(),
-            // Roster is per-runtime state; cloning a session shouldn't
-            // inherit live WS connections. Start fresh; the cloned
-            // session represents a snapshot of the log, not the live
-            // peers.
             roster: Mutex::new(HashSet::new()),
         }
     }
@@ -60,12 +53,6 @@ impl Session {
             .and_then(|n| n.to_str())
             .unwrap_or("unknown")
             .to_string();
-        // #1289 AC 12 substrate-enabler: `BPMUX_STORAGE_BACKEND=memory`
-        // env var swaps the session storage to `MemoryStorage` (no
-        // disk I/O). Tests set this to eliminate per-test bpmux
-        // backend-startup-disk-I/O cost (the substrate-class that
-        // f9ebe47/c8ba878/5bdb235 empirically falsified). Default
-        // (unset or anything else) uses production-shape FileStorage.
         let storage: Arc<dyn Storage> = match std::env::var("BPMUX_STORAGE_BACKEND").ok().as_deref()
         {
             Some("memory") => Arc::new(crate::session::storage::MemoryStorage::new(dir.clone())),
@@ -100,27 +87,18 @@ impl Session {
         self.connected_peers.load(Ordering::Relaxed)
     }
 
-    /// #402: register an identity as connected. Duplicate inserts are
-    /// idempotent (HashSet semantics). Returns the roster size after
-    /// insertion so callers can gate side-effects (e.g., broadcast
-    /// only when the set actually changed — though the current call
-    /// site broadcasts on every ws-lifecycle event regardless).
     pub fn roster_join(&self, identity: &str) -> usize {
         let mut r = self.roster.lock().unwrap_or_else(|e| e.into_inner());
         r.insert(identity.to_string());
         r.len()
     }
 
-    /// #402: unregister an identity. Idempotent on already-absent
-    /// entries.
     pub fn roster_leave(&self, identity: &str) -> usize {
         let mut r = self.roster.lock().unwrap_or_else(|e| e.into_inner());
         r.remove(identity);
         r.len()
     }
 
-    /// #402: snapshot of currently-connected identities. Sorted for
-    /// stable iteration + deterministic test output.
     pub fn roster_snapshot(&self) -> Vec<String> {
         let r = self.roster.lock().unwrap_or_else(|e| e.into_inner());
         let mut out: Vec<String> = r.iter().cloned().collect();

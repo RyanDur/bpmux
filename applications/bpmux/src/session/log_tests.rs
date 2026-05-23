@@ -30,6 +30,19 @@ fn appends_and_reads_messages() {
 }
 
 #[test]
+fn cloned_session_starts_with_empty_roster() {
+    let dir = TempDir::new().expect("temp dir");
+    let (tx, _rx) = broadcast::channel(16);
+    let session = Session::new(dir.path().to_path_buf(), "ryan".to_string(), tx);
+    session.roster_join("dev:claude-code");
+    let cloned = session.clone();
+    assert!(
+        cloned.roster_snapshot().is_empty(),
+        "clone must start with a fresh roster (snapshot semantics), not inherit live WS peers"
+    );
+}
+
+#[test]
 fn reads_empty_when_no_log_exists() {
     let dir = TempDir::new().expect("temp dir");
     let messages = read_messages(dir.path()).expect("read");

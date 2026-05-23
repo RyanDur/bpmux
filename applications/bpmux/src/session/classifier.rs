@@ -1,6 +1,3 @@
-//! Message classification using Chain of Responsibility with
-//! Aho-Corasick multi-pattern matching for O(m) classification.
-
 use crate::session::Message;
 use aho_corasick::AhoCorasick;
 use serde::{Deserialize, Serialize};
@@ -91,10 +88,6 @@ const CORRECTION: &[&str] = &[
     "not that way",
     "that's wrong",
     "the problem is",
-    // Diplomatic / peer-to-peer correction variants. These are the forms
-    // one agent uses to push back on another without sounding imperative.
-    // Added for #152 — the morning of 2026-04-10 when dev corrected pm's
-    // lazy-causation habit and the existing patterns didn't catch it.
     "without checking",
     "please verify",
     "before attributing",
@@ -169,7 +162,6 @@ fn build_matcher(patterns: &[&str]) -> Option<AhoCorasick> {
         .ok()
 }
 
-/// Pre-built pattern matchers for O(m) classification.
 pub struct Classifier {
     operational: Option<AhoCorasick>,
     decision: Option<AhoCorasick>,
@@ -260,10 +252,7 @@ impl Classifier {
     }
 }
 
-/// Convenience function that creates a temporary classifier.
-/// For hot paths, use Classifier::new() once and reuse.
 pub fn classify(msg: &Message, owner_name: &str) -> MessageClass {
-    // Use a thread-local cached classifier to avoid rebuilding on every call
     thread_local! {
         static CLASSIFIER: Classifier = Classifier::new();
     }
