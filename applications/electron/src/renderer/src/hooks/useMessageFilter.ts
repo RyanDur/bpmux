@@ -40,7 +40,10 @@ export interface MessageFilter {
 const LEGACY_TYPE_REMAP: Record<string, MessageClass> = {
   system: 'bpmux',
   activity: 'events',
-  insight: 'events'
+  insight: 'events',
+  'state-delta': 'events',
+  'state-snapshot': 'events',
+  nudge: 'events'
 }
 
 export const classOf = (messageType: string | null | undefined): MessageClass => {
