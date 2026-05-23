@@ -26,10 +26,6 @@ const initialCollapseState: CollapseState = (() => {
 interface BoardProps {
   boardInvalidateTick: number
   syncStatusTick: number
-  // Collapsed state for Ctrl+P toggle. When true, the aside stays
-  // mounted (state preserved) but animates to 0 width via CSS. When
-  // false, the aside is visible at its normal width. See Board.css
-  // for the transition declaration (#351 AC3).
   hidden?: boolean
   width?: number
   wsStatus?: ConnectionStatus
@@ -51,15 +47,7 @@ const Board = ({
   })
   const [selectedNumber, setSelectedNumber] = useState<number | null>(null)
   const [drilledNumber, setDrilledNumber] = useState<number | null>(null)
-  // #368: when a team-accept badge is clicked, open the drill-in AND
-  // auto-expand + scroll the timeline. Tracked as a story number (so
-  // subsequent re-clicks on the same story re-fire even when that
-  // story's drill-in is already open). Cleared on drill close.
   const [focusTimelineFor, setFocusTimelineFor] = useState<number | null>(null)
-  // Reorder announcement (#357 AC5). Updated on each keyboard-driven
-  // reorder so screen readers narrate "moved to position N".
-  // aria-live="polite" queues the announcement without interrupting
-  // what the user is currently reading.
   const [reorderAnnounce, setReorderAnnounce] = useState<string>('')
   const collapseStorage = useCollapsibleSectionsStorage<ColumnState>(
     BOARD_COLLAPSE_STORAGE_PREFIX,
@@ -79,10 +67,6 @@ const Board = ({
   const { stories, epics, epicTitleByNumber, iterationContainerStories, grouped, navOrder } =
     useBoardData(data)
 
-  // Derive the effective selection at render time instead of syncing
-  // state in an effect — if the stored selection has scrolled off the
-  // list we show the first row as highlighted. Keyboard-nav handlers
-  // still commit the user's explicit choice via setSelectedNumber.
   const effectiveSelected =
     selectedNumber !== null && navOrder.includes(selectedNumber)
       ? selectedNumber
@@ -103,11 +87,6 @@ const Board = ({
     [drilledNumber, stories]
   )
 
-  // Close-direction animation (#354 AC1): when drilledStory flips
-  // null, keep DrillIn mounted for the exit transition using the
-  // last-known story, then unmount. Snapshot the story in a ref so
-  // the fade-out has a stable object to render while drilledStory
-  // itself is null.
   const [lastDrilledStory, setLastDrilledStory] = useState<typeof drilledStory>(drilledStory)
   if (drilledStory !== null && drilledStory !== lastDrilledStory) {
     setLastDrilledStory(drilledStory)
@@ -160,7 +139,6 @@ const Board = ({
 
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLElement>) => {
-      // Drill-in owns its own key handling; don't double-dispatch.
       if (drilledNumber !== null) {
         if (event.key === 'Escape') {
           event.preventDefault()
@@ -199,8 +177,6 @@ const Board = ({
       aria-label="Board"
       aria-hidden={hidden ? true : undefined}
       style={width !== undefined && !hidden ? { flex: `0 0 ${width}px` } : undefined}
-      // inert removes the element from focus + pointer events when
-      // animating out; aria-hidden keeps AT from traversing.
       inert={hidden ? true : undefined}
     >
       <header className="board-header">
@@ -220,11 +196,6 @@ const Board = ({
           </small>
         ) : null}
       </header>
-      {/* Reorder live-region (#357 AC5). Visually hidden; SR users
-       * hear the new position after each keyboard reorder. aria-live
-       * polite queues without interrupting the current announcement
-       * (e.g., the aria-label the focused story button just
-       * updated to). */}
       <output className="sr-only" aria-live="polite" data-test="board-reorder-announce">
         {reorderAnnounce}
       </output>
