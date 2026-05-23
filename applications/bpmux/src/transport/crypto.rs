@@ -34,7 +34,6 @@ impl std::fmt::Display for CryptoError {
 
 impl std::error::Error for CryptoError {}
 
-// Safety: PBKDF2_ITERATIONS is a compile-time constant > 0
 const ITERATIONS: NonZeroU32 = match NonZeroU32::new(PBKDF2_ITERATIONS) {
     Some(n) => n,
     None => unreachable!(),

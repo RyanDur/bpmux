@@ -2,7 +2,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::session::Message;
 
-/// Messages sent from WebSocket client to server
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum ClientMessage {
@@ -17,8 +16,6 @@ pub enum ClientMessage {
         text: String,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         to: Option<Vec<String>>,
-        /// Attention signal (#158): role this message is directed at.
-        /// See `Message::addressee` for the full semantic.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         addressee: Option<String>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -30,7 +27,6 @@ pub enum ClientMessage {
     Rename { name: String },
 }
 
-/// Messages sent from server to WebSocket client
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum ServerMessage {
@@ -43,12 +39,10 @@ pub enum ServerMessage {
         ts: String,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         to: Option<Vec<String>>,
-        /// Attention signal (#158) — see `Message::addressee`.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         addressee: Option<String>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         message_type: Option<String>,
-        /// Multi-depth payload (#187).
         #[serde(default, skip_serializing_if = "Option::is_none")]
         multi_depth: Box<Option<crate::session::message::MultiDepthPayload>>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
