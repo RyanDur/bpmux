@@ -1,5 +1,3 @@
-//! Story management tools (#140).
-
 use rmcp::model::Tool;
 
 pub fn view_board_tool(description: &'static str) -> Tool {

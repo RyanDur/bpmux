@@ -1,10 +1,5 @@
 use rmcp::model::Tool;
 
-/// #1297 Epic #1189 architectural-pivot slice 1: schema-enforced
-/// creation of iteration-issues (sister to Epic story_type +
-/// create_story tool). theme_name is the only required arg; the body
-/// is composed by the handler per designer's drafted iteration-body
-/// markdown schema (designer 2026-05-12 18:09 UTC).
 pub fn create_iteration_tool(description: &'static str) -> Tool {
     let schema = serde_json::json!({
         "type": "object",

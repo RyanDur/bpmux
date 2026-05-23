@@ -1,13 +1,5 @@
 use rmcp::model::Tool;
 
-/// #391: the deliver-gate from the 2026-04-22 retro's 4-gate
-/// externalization model requires dev to articulate what they
-/// DROVE end-to-end at delivery time, not just "tests pass."
-/// Required `verified_observation` param forces the dev to write
-/// the falsifier-scenario walk result into the delivery record —
-/// becomes the diff-point designer checks at desk-check
-/// (claim-vs-reality; mismatch → rework). Missing/empty → MCP
-/// validation rejection.
 pub fn deliver_story_tool(description: &'static str) -> Tool {
     let schema = serde_json::json!({
         "type": "object",

@@ -1,13 +1,5 @@
 use rmcp::model::Tool;
 
-// #392: `operation` added to close the ADD-only bypass. Without a
-// REMOVE path in MCP, label removal required `gh issue edit
-// --remove-label`, which bypassed the bridge's BOARD_INVALIDATE
-// broadcast and left peer renderers on a stale board. With this
-// extension, both directions go through the bridge and fire the
-// invalidate marker on success; no call-out to raw gh stays needed
-// for label mutation. Default = "add" preserves backward-compat
-// with existing callers that omit `operation`.
 pub fn label_story_tool(description: &'static str) -> Tool {
     let schema = serde_json::json!({
         "type": "object",

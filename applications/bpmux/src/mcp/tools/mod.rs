@@ -1,4 +1,3 @@
-// Session / identity / status tools
 mod add_principle;
 mod add_value;
 mod capture_electron_window;
@@ -44,7 +43,6 @@ mod view_story_timeline;
 mod view_tokens;
 mod view_verdicts;
 
-// Story management tools (#140)
 mod accept_story;
 mod add_story_to_iteration;
 mod close_iteration;

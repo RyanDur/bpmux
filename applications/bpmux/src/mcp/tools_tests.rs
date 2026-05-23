@@ -1,6 +1,5 @@
 use super::tools::*;
 
-/// AC: send_message tool description tells agents not to self-prefix.
 #[test]
 fn send_message_description_warns_against_name_prefix() {
     let desc =

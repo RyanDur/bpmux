@@ -1,14 +1,5 @@
 use rmcp::model::Tool;
 
-// #398 pickup-gate completeness: `start_story` now requires
-// `pickup_paraphrase` + `falsifier_reframing` as non-empty strings.
-// Closes the architecture-completeness gap #391 and #392 opened —
-// create_story + deliver_story both gate on observation-structure
-// params; start_story previously took only `number`, leaving the
-// pickup gate as discipline-only. Ryan 2026-04-23 02:17→02:27 UTC
-// surfaced this as a "silent pickup → is dev stalled?" ambiguity
-// class that a 9-minute silence slipped through. Schema-level gate
-// forces the paraphrase broadcast as a precondition of the mutation.
 pub fn start_story_tool(description: &'static str) -> Tool {
     let schema = serde_json::json!({
         "type": "object",

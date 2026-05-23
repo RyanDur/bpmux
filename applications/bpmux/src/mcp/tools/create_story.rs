@@ -1,12 +1,5 @@
 use rmcp::model::Tool;
 
-/// #391: the 4-gate externalization model from the 2026-04-22 retro
-/// requires every new story to name its user-job + observation-
-/// falsifier at filing time. Previously these were template-
-/// discipline the agent could silently skip; making them required
-/// MCP params converts discipline into schema-enforced architecture.
-/// `user_job` and `observation_falsifier` are string params + listed
-/// in `required`; missing/empty → MCP validation rejection.
 pub fn create_story_tool(description: &'static str) -> Tool {
     let schema = serde_json::json!({
         "type": "object",
