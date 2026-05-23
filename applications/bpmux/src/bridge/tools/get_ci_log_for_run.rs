@@ -1,9 +1,3 @@
-//! Per-test CI failure breakdown for a given GH Actions run (#1174).
-//! Sister-substrate to #1145's get_ci_state, but keyed by run_id with
-//! TTL-forever cache for completed-run logs (append-only-immutable).
-//! In-progress runs bypass cache and return a named error-shape so
-//! callers don't get stale empty results from incomplete runs.
-
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
 pub struct CiTestFailure {
     pub shard_id: Option<String>,
@@ -13,20 +7,8 @@ pub struct CiTestFailure {
     pub error_message: String,
     #[serde(default)]
     pub retry_count: u32,
-    /// #1293: the workflow-job stage that produced this failure (GH
-    /// Actions job name, e.g., "test", "build-bpmux", "playwright-e2e
-    /// (5)"). `None` for legacy parser paths.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stage: Option<String>,
-    /// #1293: failure class for caller-side routing. Known values:
-    /// `"playwright"` for parsed test-level failures;
-    /// `"non_test_failure"` for the fallback path covering clippy /
-    /// fmt / audit / build / setup / runner-level failures where the
-    /// `error_message` carries a tail snippet of the job log so
-    /// callers can iterate against ground-truth rather than empty
-    /// `failures[]`. Closes the opaque-CI-failure class that drove
-    /// the #1285 4-commit revert-cycle. `None` for legacy callers
-    /// pre-dating the discriminator.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub class: Option<String>,
 }
@@ -143,19 +125,6 @@ pub fn parse_playwright_failures_from_log(run_id: u64, raw_log: &str) -> CiRunFa
     }
 }
 
-/// #1293: fallback failure-record builder for failed jobs whose log
-/// doesn't match the Playwright test-failure pattern (clippy / fmt /
-/// audit / build / setup / runner-level failures). Returns a single
-/// `CiTestFailure` with class="non_test_failure" carrying a
-/// tail-snippet of the log so callers see ACTIONABLE content instead
-/// of empty `failures[]`. The tail snippet stops at the last
-/// non-empty line and captures up to `MAX_TAIL_LINES` lines so the
-/// payload stays bounded.
-///
-/// Closes the opaque-CI-failure class that drove the #1285 4-commit
-/// revert-cycle (today's empirical pain). Per #1293 AC 8, the
-/// fallback record is load-bearing: explicit "non_test_failure" beats
-/// empty `failures[]` because callers need ground-truth for iteration.
 pub fn build_non_test_failure_record(job_name: &str, raw_log: &str) -> CiTestFailure {
     const MAX_TAIL_LINES: usize = 50;
     let stripped_log: String = raw_log
@@ -363,8 +332,6 @@ Running 47 tests using 4 workers, shard 6 of 6
         assert_eq!(json["kind"], "rate_limited");
         assert_eq!(json["wait_secs"], 60);
     }
-
-    // #1293 fallback record tests
 
     #[test]
     fn fallback_record_for_clippy_failure_carries_tail_of_log() {

@@ -1,18 +1,5 @@
 use tokio::sync::Mutex;
 
-/// Classifier misfire feedback handler (#159).
-///
-/// Agents call this tool when they observe a classifier nudge firing on a
-/// message that isn't actually a learning moment. POSTs to bpmux's
-/// `/api/classifier-misfire` which writes a `MISFIRE` line to the diag
-/// log (gated on `BPMUX_LOG` being set). No effect on the classifier
-/// itself — this is purely a training-signal capture path so agent
-/// knowledge about wrong fires gets externalized instead of silently
-/// dismissed.
-///
-/// The `reason` argument is OPTIONAL per the acceptance criteria: agents
-/// can mark a fire as wrong without having to explain why. Per Naur's
-/// "state observation, not conclusion" framing.
 pub(in crate::bridge) async fn handle_classifier_misfire(
     args: &serde_json::Map<String, serde_json::Value>,
     port: u16,
