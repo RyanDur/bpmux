@@ -1,52 +1,32 @@
-//! Session bookmark / notes — #168.
-//!
-//! Structured session state that survives compaction. Each agent can
-//! save a "where am I, what's happening, what's next" snapshot at
-//! any time via the `save_bookmark` MCP tool. Post-compaction, the
-//! agent reads the bookmark to resume with high fidelity instead of
-//! reconstructing state from chat history.
-//!
-//! Storage: `{session-dir}/bookmark-{role}.json` — per-role, per-
-//! session. Overwrites in place (current state, not history).
-
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
-/// Structured session state snapshot.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct Bookmark {
-    /// What the agent is currently working on.
     #[serde(default)]
     pub current_task: String,
 
-    /// Key decisions made this session that matter for context.
     #[serde(default)]
     pub decisions: Vec<String>,
 
-    /// Open questions or unresolved threads.
     #[serde(default)]
     pub open_questions: Vec<String>,
 
-    /// What the agent expects to do next.
     #[serde(default)]
     pub next_step: String,
 
-    /// Free-text notes for anything not structured.
     #[serde(default)]
     pub notes: String,
 
-    /// When the bookmark was last updated.
     #[serde(default)]
     pub last_updated: String,
 }
 
-/// Path to a role's bookmark within a session directory.
 pub fn bookmark_path(session_dir: &Path, role: &str) -> PathBuf {
     let safe_role = super::identity::sanitize_name(role);
     session_dir.join(format!("bookmark-{safe_role}.json"))
 }
 
-/// Load a bookmark. Returns empty bookmark if file doesn't exist.
 pub fn load_bookmark(session_dir: &Path, role: &str) -> Bookmark {
     let path = bookmark_path(session_dir, role);
     match std::fs::read_to_string(&path) {
@@ -55,7 +35,6 @@ pub fn load_bookmark(session_dir: &Path, role: &str) -> Bookmark {
     }
 }
 
-/// Save a bookmark. Creates parent directories if needed.
 pub fn save_bookmark(
     session_dir: &Path,
     role: &str,
