@@ -1,7 +1,3 @@
-/* Drill-in view — replaces the list inside the board <aside> when a
- * story is opened. Shares the parent's width; scrolls inside its own
- * body region so the header + action bar stay pinned. */
-
 .drill-in {
   flex: 1 1 auto;
   display: flex;
@@ -16,13 +12,6 @@
   overflow-y: auto;
   outline: none;
   position: relative;
-
-  /* Enter + exit transitions (rgb(51 85 17) AC1 + rgb(51 85 68) close-direction):
-   * default state is closed/exiting (translateX 24px, opacity 0);
-   * [data-visible] flips to entered (translateX 0, opacity 1). Board
-   * drives this via useAnimatedUnmount so the exit transition plays
-   * before the component unmounts. Ease-out arriving, ease-in
-   * leaving per the motion conventions from rgb(51 85 0). */
   transition:
     transform var(--motion-duration-medium) var(--motion-ease-in),
     opacity var(--motion-duration-fast) var(--motion-ease-in);
@@ -168,10 +157,6 @@
   }
 
   & .drill-in-body {
-    /* rgb(51 51 119) rework: body no longer owns scroll; the outer .drill-in
-     * is the scroll container. Body shrinks to its content so the
-     * comments section renders directly below without the phantom
-     * flex-grow stretching body to fill. */
     padding: var(--space-16);
     font-size: 0.8125rem;
     line-height: 1.6;
@@ -285,9 +270,6 @@
   }
 
   & .drill-in-reject-form {
-    /* rgb(68 153 136): native <dialog>.showModal() drives open/close; CSS
-     * handles enter via @starting-style + [open] and exit via
-     * :not([open]) per the same pattern as rgb(68 153 102)/rgb(68 153 119). */
     border: 1px solid var(--border-subtle);
     background: var(--bg-base);
     padding: var(--space-12);
@@ -466,11 +448,6 @@
     background: var(--bg-elevated);
     transition: background-color 1.5s ease-out;
 
-    /* Highlight for search-navigated comment (rgb(51 68 68) AC4): briefly
-     * paint an accent-brand tinted background, then fade back to the
-     * elevated tone. Duration is ~1.5s — long enough to notice, short
-     * enough not to linger. transition handles the fade-out; class
-     * removal in the React effect retriggers the rest state. */
     &.drill-in-comment--highlight {
       background: color-mix(in srgb, var(--accent-brand) 18%, var(--bg-elevated));
       transition: background-color 100ms ease-in;
@@ -533,10 +510,6 @@
     }
   }
 
-  /* rgb(51 102 119) timeline. Native <details> + <summary> collapse — no JS
-   * toggle state. Default-closed via the open attribute omission in
-   * JSX. Summary is a flow-content heading so the clickable area is
-   * the full "Timeline (N)" line. */
   & .drill-in-timeline {
     border-top: 1px solid var(--border-subtle);
     padding: var(--space-8) var(--space-16);
@@ -548,8 +521,6 @@
       user-select: none;
       padding: var(--space-2) 0;
 
-      /* Remove the default disclosure triangle; we render our own
-       * so it follows motion + color tokens consistently. */
       &::-webkit-details-marker {
         display: none;
       }
@@ -561,8 +532,6 @@
         color: var(--fg-primary);
       }
 
-      /* Rotating chevron — ► when closed, ▼ when open. Uses the
-       * details' [open] attribute as the state selector, no JS. */
       &::before {
         content: '▸';
         display: inline-block;
@@ -649,9 +618,6 @@
       grid-column: 1 / span 2;
     }
 
-    /* Gate-specific left-border colors to cue lifecycle progression
-     * at a glance. Filed + started are neutral; delivered = warning
-     * (mid-review); accepted/closed = success; fail/reject = error. */
     &.drill-in-timeline-item--delivered {
       border-left-color: var(--accent-warning);
     }
@@ -666,11 +632,6 @@
       border-left-color: var(--accent-error);
     }
 
-    /* Rework-cycle items get a subtle inset so a run of events
-     * reads as a grouped iteration rather than a flat list. The
-     * group-id attribute is available for future enhancement
-     * (e.g., per-cycle accent color) without changing the data
-     * flow. */
     &.drill-in-timeline-item--rework {
       margin-left: var(--space-16);
     }
@@ -686,10 +647,6 @@
   }
 }
 
-/* Reduced-motion: kill the transform (motion-inducing) but keep the
- * opacity fade so the element still feels like it "appeared" — just
- * without the slide. Duration tokens already resolve to 0ms under
- * reduced-motion so the fade is effectively instant too. */
 @media (prefers-reduced-motion: reduce) {
   .drill-in {
     transform: none !important;
