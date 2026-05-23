@@ -16,10 +16,6 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { applySelfUpdateRestartPolicy } from './selfUpdateRestartPolicy'
 
 const BACKEND_HOST = '127.0.0.1'
-// BACKEND_PORT is overridable via env for test isolation — Playwright
-// real-backend tests can pin a per-test port so they don't adopt
-// whatever bpmux is already running on 4117 (e.g., the dev's live
-// session). Production + default dev run on 4117.
 const BACKEND_PORT = (() => {
   const raw = process.env['BPMUX_BACKEND_PORT']
   if (!raw) return 4117
@@ -30,12 +26,6 @@ const BACKEND_PORT = (() => {
 const API_BASE = `http://${BACKEND_HOST}:${BACKEND_PORT}`
 const WS_URL = `ws://${BACKEND_HOST}:${BACKEND_PORT}/ws`
 const READY_POLL_INTERVAL_MS = 100
-// 30 s readiness budget. The bpmux server's HTTP listener binds
-// after `build_prod_orchestrator` completes its ingest-with-retries
-// (0/500/1500/4000 ms backoffs ≈ 6 s minimum), and the initial GH
-// ingest of a 500+ story canonical store can add several seconds
-// of paginated fetch on top. The previous 10 s budget left no
-// headroom and tripped on cold starts.
 const READY_TIMEOUT_MS = 30_000
 const SIGKILL_FALLBACK_MS = 2_000
 
@@ -52,17 +42,8 @@ const recentRestartsAt: number[] = []
 
 const resolveBinaryPath = (): string => {
   if (app.isPackaged) {
-    // NOTE: packaged layout is not wired for phase-1a. We'll drop the binary
-    // in process.resourcesPath/bpmux when electron-builder integration lands.
     return join(process.resourcesPath, 'bpmux')
   }
-  // __dirname during dev = <repo>/applications/electron/out/main.
-  // Workspace root is four levels up. Prefer the freshest of
-  // target/release vs target/debug — startup latency on a 500+ story
-  // canonical-store ingest can blow the 10 s electron readiness
-  // timeout on a debug binary, so when both are present we pick the
-  // newer one. `cargo build [--release]` updates the relevant
-  // mtime; whichever build the developer just ran wins.
   const workspace = join(__dirname, '../../../..')
   const releasePath = join(workspace, 'target/release/bpmux')
   const debugPath = join(workspace, 'target/debug/bpmux')
@@ -83,18 +64,6 @@ const resolveAuthTokenPath = (): string => {
   return join(homedir(), '.bpmux', 'auth_token')
 }
 
-/**
- * #1379: BPMUX_BINARY_WATCH self-update should watch a path
- * decoupled from the dev-build dir (`target/release/bpmux`), so
- * dev's `cargo build --release` doesn't trigger team electron
- * restarts mid-iteration. Stage the resolved binary at a stable
- * install path under `~/.bpmux/installed/bpmux` before spawning,
- * and tell the spawned bpmux to watch THAT path via
- * BPMUX_BINARY_WATCH_PATH. To update Ryan's running session, dev
- * explicitly copies `target/release/bpmux` over the installed
- * path (the publish step) — that mtime bump is what fires the
- * watcher.
- */
 const resolveInstalledBinaryPath = (): string => {
   const override = process.env['BPMUX_BINARY_WATCH_PATH']
   if (override && override.length > 0) {
@@ -117,10 +86,6 @@ const stageBinaryAtInstalledPath = (sourceBinary: string): string => {
 
 const checkBackendReady = (): Promise<boolean> => {
   return new Promise((resolve) => {
-    // Use the dedicated /healthz liveness route (unauth, constant-size)
-    // instead of /api/messages, which returns the full session log and
-    // gets slower than the readiness timeout once the log grows past
-    // a few hundred KB. See `applications/bpmux/src/server.rs`.
     const req = http.request(
       {
         host: BACKEND_HOST,
@@ -144,7 +109,6 @@ const checkBackendReady = (): Promise<boolean> => {
 }
 
 const checkPortInUse = (): Promise<boolean> => {
-  // If something is already listening on 4117, we'd see a successful connect.
   return new Promise((resolve) => {
     const req = http.request(
       {
@@ -318,19 +282,8 @@ const createWindow = (): void => {
     return { action: 'deny' }
   })
 
-  // #371: right-click context menu integration for the quote-
-  // excerpt feature. Builds a native Menu so Copy / Paste / Inspect
-  // Element remain available alongside the custom "Quote in reply"
-  // item (the Cmd+E keyboard path shipped in #366). Main builds the
-  // menu because only main has access to Electron's Menu API; the
-  // renderer signals quote-readiness by setting a data attribute on
-  // the selected comment's <li>, which main reads via a short
-  // executeJavaScript probe at context-menu time.
   mainWindow.webContents.on('context-menu', (event, params) => {
     if (!params.selectionText) return
-    // Probe: is the selection inside a comment? If so, return its
-    // id + author so the click handler has the metadata it needs to
-    // dispatch the quote to the renderer.
     mainWindow.webContents
       .executeJavaScript(
         `(() => {
@@ -356,9 +309,6 @@ const createWindow = (): void => {
           { role: 'selectAll' }
         ]
         if (ctx && ctx.commentId) {
-          // Prepend the quote item so it's visually prominent (above
-          // the standard clipboard items). Matches macOS context-menu
-          // conventions where contextual-first actions lead.
           template.unshift(
             {
               label: 'Quote in reply',
@@ -401,9 +351,6 @@ app.whenReady().then(async () => {
     apiBase: API_BASE
   })
 
-  // Async form (per spec) + sync form (preload uses sendSync so the exposed
-  // fields are populated before the renderer evaluates; both return the same
-  // payload).
   ipcMain.handle('bpmux:config', () => configPayload())
   ipcMain.on('bpmux:config-sync', (event) => {
     event.returnValue = configPayload()
@@ -414,7 +361,6 @@ app.whenReady().then(async () => {
   try {
     await spawnBackend()
   } catch {
-    // spawnBackend already surfaced a dialog + triggered app.exit.
     return
   }
 
@@ -433,7 +379,6 @@ process.on('exit', () => {
   killBackend()
 })
 
-// Forward common termination signals so the child doesn't orphan.
 for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP'] as const) {
   process.on(sig, () => {
     killBackend()
