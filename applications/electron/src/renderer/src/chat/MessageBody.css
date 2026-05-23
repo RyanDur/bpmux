@@ -1,26 +1,3 @@
-/* rgb(51 136 17): markdown-rendered content restores default inline + block
- * element styling within a scoped `.markdown-body` wrapper. The
- * Meyer reset (rgb(51 68 119)) strips browser defaults with `font: inherit`
- * on every listed element (strong, em, code, h1-h6, ul, ol, li,
- * blockquote, etc.); without restoration inside a markdown-render
- * scope, `**bold**` shows as plain text, `*italic*` has no slant,
- * `` `inline code` `` has no monospace font. Ryan's direction
- * during acceptance walk: "if you surround it with an element that
- * has a class like markdown or something you can reset the styles
- * without losing the reset" + the follow-up pointer to CSS
- * `revert` keyword.
- *
- * `revert` rolls the specified property back to the user-agent
- * default (what the browser would have applied without any author
- * stylesheet). Per-property rather than `all: revert` keeps colors/
- * font-sizes inherited from parent scopes (chat message, drill-in
- * story body, drill-in comment body — three consumers of this
- * wrapper, each with their own color/size context).
- *
- * Consumers: MessageBody.tsx wraps ReactMarkdown output in a
- * `<div className="markdown-body">` so this stylesheet applies in
- * every markdown-rendered context without per-context duplication. */
-
 .markdown-body strong,
 .markdown-body b {
   font-weight: revert;
@@ -40,22 +17,11 @@
 .markdown-body h5,
 .markdown-body h6 {
   font-weight: revert;
-
-  /* Size tiers: parent stylesheets (MessageList / DrillIn) may
-   * layer specific font-sizes per tier; leave those per-context.
-   * Default browser h1-h6 sizing is handled by `revert` on the
-   * font shorthand's size + margin fallback from the reset. */
   font-size: revert;
   margin: revert;
   line-height: 1.3;
 }
 
-/* Inline code gets a distinct monospace treatment + subtle tint so
- * it reads as "code" at glance. Block-level `<pre>` stays per-
- * context (chat / drill-in each layer their own padding + bg).
- * Per-context overrides (e.g., the chat `.message-body code` rule)
- * remain valid — they add specificity, they don't conflict with
- * this floor. */
 .markdown-body code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.875rem;
@@ -64,19 +30,12 @@
   border-radius: 3px;
 }
 
-/* Code inside `<pre>` (block-level fence) drops the inline tint —
- * block itself carries the elevated background; double-tinting
- * looks muddy. */
 .markdown-body pre code {
   background: transparent;
   padding: 0;
   font-size: inherit;
 }
 
-/* List defaults — reset.css wipes both the padding AND the list-
- * style (ol, ul → list-style: none + padding: 0). Per-context
- * rules may layer padding for indentation; list-style bullet/
- * number reverts here so markdown lists look like lists. */
 .markdown-body ul {
   list-style: disc;
   padding-left: var(--space-24);
@@ -87,29 +46,15 @@
   padding-left: var(--space-24);
 }
 
-.markdown-body li {
-  /* margin already set in per-context rules (MessageList); leave
-   * vertical spacing there. */
-}
-
-/* Blockquote default rule — per-context overrides in
- * MessageList.css / DrillIn.css add per-surface color + border
- * treatments; this floor ensures there's at least some indentation
- * visible if a new consumer mounts MessageBody without its own
- * blockquote rule. */
 .markdown-body blockquote {
   margin-left: var(--space-8);
   padding-left: var(--space-8);
   border-left: 2px solid var(--border-strong);
 }
 
-/* rgb(51 136 0) inline @mention pills. Color comes from the role-token
- * palette (--role-{ryan,dev,pm,designer} when available, else
- * --role-unknown). A subtle tinted background signals the pill
- * identity without overwhelming the surrounding text; font-weight
- * 600 gives a second axis of differentiation for monochrome or
- * low-contrast viewers. Rendered inline (no layout shift from the
- * text it replaces). */
+/* font-weight 600 is a second differentiation axis beyond role-color
+ * for monochrome / low-contrast viewers; this color+weight redundancy
+ * is un-test-pinned. */
 .markdown-body .message-mention {
   display: inline-block;
   padding: 0 var(--space-4);
@@ -145,8 +90,6 @@
   background: color-mix(in srgb, var(--role-designer) 15%, transparent);
 }
 
-/* Clickable variant — cursor pointer + focus ring when rendered as
- * a button per rgb(51 51 34) click-to-scope parity with sidebar. */
 .markdown-body .message-mention[role='button'] {
   cursor: pointer;
 }
