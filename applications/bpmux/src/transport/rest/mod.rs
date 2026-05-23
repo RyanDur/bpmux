@@ -1,9 +1,3 @@
-//! HTTP REST surface for the bpmux server — organized by feature-area
-//! submodule. Every route registered at `server.rs::build_router` is
-//! served by one of the handlers re-exported here; the `mod.rs` itself
-//! holds only module declarations + `pub use` re-exports so the
-//! `crate::transport::rest::*` paths consumers depend on stay stable.
-
 mod board;
 mod capture;
 mod ci;

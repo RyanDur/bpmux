@@ -1,16 +1,7 @@
-//! CI state + log + rerun handlers — Electron CI glyph + post-failure
-//! diagnostic surface for the renderer. `get_ci` reuses the MCP bridge's
-//! CI report builder so the Electron glyph and the MCP `get_ci_state`
-//! always agree by construction.
-
 use super::shared::{TrackerHandle, err_body, json_headers};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 
-/// GET /api/ci — current CI state for the main branch + last-run
-/// metadata. Reuses the MCP bridge's CI report builder so the
-/// Electron CI glyph + MCP `get_ci_state` always agree by
-/// construction.
 pub async fn get_ci(
     axum::Extension(ci_state_store): axum::Extension<
         crate::transport::ci_state_store::CiStateStore,
