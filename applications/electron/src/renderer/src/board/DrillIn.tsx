@@ -30,12 +30,7 @@ interface Props {
   authToken: string | undefined
   usingMock: boolean
   boardInvalidateTick: number
-  // #354 close-direction: Board's useAnimatedUnmount flips this to
-  // false to trigger the exit transition before unmount.
   visible: boolean
-  // #368: when true, DrillIn auto-expands the timeline section + scrolls
-  // it into view on mount. Used by the team-accept badge click path so
-  // opening a drill-in via the badge lands directly on the audit trail.
   focusTimeline?: boolean
   onBack: () => void
   onStoryMutated: (story: BoardStory) => void
@@ -61,8 +56,6 @@ const DrillIn = ({
   const [toast, setToast] = useState<string | null>(null)
   const articleRef = useRef<HTMLElement | null>(null)
 
-  // Focus the article on mount so Esc falls to our handler before
-  // anything upstream intercepts.
   useEffect(() => {
     articleRef.current?.focus()
   }, [])
