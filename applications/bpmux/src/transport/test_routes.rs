@@ -12,14 +12,6 @@ use crate::bridge;
 use crate::server::TestRefreshHandle;
 use crate::session::{self, Message, MessageType};
 
-/// Fire BOARD_INVALIDATE_MARKER through the session's broadcast
-/// channel so connected WS clients (the Electron renderer in
-/// Playwright tests) refetch their board state without manual
-/// reload (#490). Mirrors the production path where bridge
-/// subprocess mutations broadcast the marker as a system-typed
-/// chat message; test-routes don't go through the bridge subprocess
-/// (axum-direct path uses an empty WsSink), so this restores the
-/// live-update semantic for Playwright observation-class specs.
 fn fire_board_invalidate(session: &Arc<session::Session>) {
     let msg = Message {
         from: "bpmux:test".to_string(),

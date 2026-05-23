@@ -37,14 +37,12 @@ impl std::fmt::Display for WebRtcError {
 
 impl std::error::Error for WebRtcError {}
 
-/// A connected WebRTC data channel, ready for the relay to use.
 pub struct DataChannelPair {
     pub inbound_rx: mpsc::Receiver<String>,
     pub outbound_tx: mpsc::Sender<String>,
     pub peer_connection: Arc<RTCPeerConnection>,
 }
 
-/// An offer waiting for an answer to complete the connection.
 pub struct PendingOffer {
     pub offer_sdp: String,
     peer_connection: Arc<RTCPeerConnection>,
@@ -53,7 +51,6 @@ pub struct PendingOffer {
 }
 
 impl PendingOffer {
-    /// Complete the connection by accepting the remote answer.
     pub async fn accept_answer(self, answer_sdp: &str) -> Result<DataChannelPair, WebRtcError> {
         let answer: RTCSessionDescription =
             serde_json::from_str(answer_sdp).map_err(|e| WebRtcError::Sdp(e.to_string()))?;
@@ -73,8 +70,6 @@ impl PendingOffer {
     }
 }
 
-/// Create a WebRTC offer with a data channel.
-/// Returns a `PendingOffer` containing the SDP to share with the remote peer.
 pub async fn create_offer() -> Result<PendingOffer, WebRtcError> {
     let pc = new_peer_connection().await?;
     let (inbound_tx, inbound_rx) = mpsc::channel(CHANNEL_BUFFER);
@@ -121,8 +116,6 @@ pub async fn create_offer() -> Result<PendingOffer, WebRtcError> {
     })
 }
 
-/// Accept a remote offer and produce an answer.
-/// Returns the answer SDP and a connected `DataChannelPair`.
 pub async fn accept_offer(offer_sdp: &str) -> Result<(String, DataChannelPair), WebRtcError> {
     let pc = new_peer_connection().await?;
     let (inbound_tx, inbound_rx) = mpsc::channel(CHANNEL_BUFFER);
@@ -174,7 +167,6 @@ pub async fn accept_offer(offer_sdp: &str) -> Result<(String, DataChannelPair), 
     let answer_sdp =
         serde_json::to_string(&local_desc).map_err(|e| WebRtcError::Sdp(e.to_string()))?;
 
-    // Wait for the data channel to arrive (offerer creates it, answerer receives it)
     let dc = tokio::select! {
         Some(dc) = dc_rx.recv() => dc,
         _ = tokio::time::sleep(std::time::Duration::from_secs(ICE_GATHERING_TIMEOUT_SECS)) => {
@@ -253,9 +245,7 @@ fn register_connection_state_handler(pc: &Arc<RTCPeerConnection>) {
     pc.on_peer_connection_state_change(Box::new(|state: RTCPeerConnectionState| {
         Box::pin(async move {
             match state {
-                RTCPeerConnectionState::Failed | RTCPeerConnectionState::Disconnected => {
-                    // Connection lost — relay tasks will detect via channel closure
-                }
+                RTCPeerConnectionState::Failed | RTCPeerConnectionState::Disconnected => {}
                 _ => {}
             }
         })

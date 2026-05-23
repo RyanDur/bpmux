@@ -1,22 +1,3 @@
-//! Self-update substrate (#118) — bpmux watches its own binary file.
-//! On change-detection, fires the cancellation token to gracefully
-//! shut down the server, sets a "restart-requested" signal, and
-//! exits with `RESTART_EXIT_CODE`. A wrapper supervisor script
-//! (`scripts/run-bpmux.sh`) respawns bpmux on that exit code so the
-//! new binary takes over without manual intervention.
-//!
-//! State preservation: bpmux's session log / lessons / briefings /
-//! bookmarks / board-store / outbox are already disk-persisted under
-//! `~/.bpmux/`. The new process loads from disk on startup; no
-//! special handoff is needed beyond agent-side auto-reconnect (#130
-//! sister-class).
-//!
-//! Restart-loop guard: we track recent restart timestamps to detect
-//! a bad-binary-causes-restart-thrash. If the supervisor sees N
-//! restarts within M seconds, it halts with a non-200 exit code so
-//! human attention is required (rather than silent thrash burning
-//! CPU + disk).
-
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -24,23 +5,10 @@ use std::time::{Duration, SystemTime};
 
 use tokio_util::sync::CancellationToken;
 
-/// Exit code that signals "I'm shutting down because the binary
-/// changed; please respawn me." A wrapper supervisor script reads
-/// this and continues its loop. Any other exit code (0 = clean stop,
-/// 1 = error, 137 = killed, ...) terminates the loop.
 pub const RESTART_EXIT_CODE: i32 = 200;
 
-/// Default watcher poll cadence. Filesystem mtime check is cheap; a
-/// few-second interval is plenty for a developer-loop-cadence change
-/// (typical rebuild is on the order of seconds-to-minutes), and the
-/// short interval means agents see the new code within the same
-/// rebuild cycle.
 const DEFAULT_POLL_INTERVAL_SECS: u64 = 5;
 
-/// Set when the binary watcher detects a change. Caller checks after
-/// the server's `run_server` future resolves to decide whether to
-/// exit with `RESTART_EXIT_CODE` (binary-change-driven) or 0
-/// (normal-shutdown-driven).
 #[derive(Debug, Clone, Default)]
 pub struct RestartSignal {
     flag: Arc<AtomicBool>,
@@ -60,10 +28,6 @@ impl RestartSignal {
     }
 }
 
-/// Spawn a tokio task that polls the running binary's path for mtime
-/// changes. On change, fires the restart signal + cancels the token
-/// so `axum::serve(..).with_graceful_shutdown(..)` returns. Returns
-/// the JoinHandle for callers that want to drop it on shutdown.
 pub fn spawn_binary_watcher(
     ct: CancellationToken,
     signal: RestartSignal,
@@ -84,12 +48,6 @@ pub fn spawn_binary_watcher(
     spawn_binary_watcher_at(path, ct, signal, Duration::from_secs(interval_secs))
 }
 
-/// Resolve the path the binary-watcher should monitor.
-/// `BPMUX_BINARY_WATCH_PATH` env var takes priority — set this to
-/// decouple the watched path from the running binary's actual location
-/// so dev's `cargo build --release` doesn't bump the watched path's
-/// mtime and trigger team electron restarts mid-iteration. Falls back
-/// to `current_exe()` when the env var is unset. Sister to #1379.
 fn resolve_watch_path() -> Result<PathBuf, String> {
     let override_path = std::env::var("BPMUX_BINARY_WATCH_PATH")
         .ok()
@@ -148,16 +106,6 @@ fn read_mtime(path: &Path) -> Option<SystemTime> {
     std::fs::metadata(path).and_then(|m| m.modified()).ok()
 }
 
-/// Restart-loop guard. Tracks recent exit timestamps; if more than
-/// `max_restarts_in_window` restarts arrive within
-/// `restart_window`, returns false (caller should halt instead of
-/// respawning). The supervisor script reads this state from a tiny
-/// JSON file under `~/.bpmux/restart-state.json`.
-///
-/// The guard lives in Rust so the supervisor can be a thin shell
-/// loop while the policy stays testable. Wrapper script just calls
-/// `bpmux self-update-check` after each spawn and reads the exit
-/// code (0 = continue, non-0 = halt).
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Default)]
 pub struct RestartHistory {
     pub recent_restarts_at: Vec<chrono::DateTime<chrono::Utc>>,
@@ -180,8 +128,6 @@ impl RestartHistory {
     }
 }
 
-/// Default loop-guard policy: 5 restarts within 60 seconds = bad
-/// binary; halt the supervisor. Tunable via env vars for testing.
 pub fn loop_guard_should_halt(
     history: &RestartHistory,
     now: chrono::DateTime<chrono::Utc>,
@@ -349,14 +295,9 @@ mod tests {
             signal.clone(),
             Duration::from_millis(50),
         );
-        // Sleep so the watcher reads initial mtime.
         tokio::time::sleep(Duration::from_millis(120)).await;
-        // Sleep beyond filesystem mtime granularity (most posix
-        // filesystems are 1s resolution; APFS sub-millisecond) to
-        // guarantee a different mtime when we rewrite the file.
         tokio::time::sleep(Duration::from_millis(1100)).await;
         fs::write(&path, b"v2-changed").unwrap();
-        // Wait for watcher to detect.
         for _ in 0..50 {
             if signal.was_fired() {
                 break;

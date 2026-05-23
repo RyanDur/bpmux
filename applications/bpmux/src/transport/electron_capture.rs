@@ -1,39 +1,8 @@
-//! Electron-window capture substrate (#1183). Discovers the bpmux
-//! Electron window via a Swift one-liner that calls Quartz's
-//! CGWindowListCopyWindowInfo, then invokes macOS `screencapture -l
-//! <wid>` to write the PNG to a namespaced path under
-//! `~/.bpmux/captures/`.
-//!
-//! Architecture notes:
-//! - Window discovery is OS-level (Quartz via `swift -e ...`). No
-//!   Electron-side instrumentation per #1183 falsifier-f.
-//! - Capture is bpmux-window-only via `-l <windowid>`. Never
-//!   screen-wide per falsifier-d.
-//! - Cleanup runs on each capture: prunes captures older than
-//!   `RETENTION_HOURS` so tmp doesn't accumulate forever per
-//!   falsifier-i.
-//! - macOS-only for v1 per PM-lean #1; Linux/Windows deferred.
-//! - `swift` runtime (Xcode CLT) is required on macOS. Captured at
-//!   tool description so adopters know the prerequisite.
-
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
 const RETENTION_HOURS: u64 = 24;
 
-/// Swift script that prints the bpmux Electron window's CGWindowID to
-/// stdout, or `NO_WINDOW`/`NO_ELECTRON` to indicate the named error
-/// shape. Read by `find_bpmux_window` via `swift -` (stdin).
-///
-/// Title-fallback: kCGWindowName is gated by Screen Recording TCC
-/// permission. Without it, all titles return null. Strategy:
-/// 1. Prefer exact title match "bpmux" (works once Screen Recording
-///    is granted).
-/// 2. Fall back to largest visible Electron window meeting a size
-///    threshold (so menus/tooltips don't match) — this is the common
-///    case before the permission grant, and benign because
-///    screencapture itself will report PermissionDenied if the user
-///    hasn't granted Screen Recording yet.
 const WINDOW_DISCOVERY_SCRIPT: &str = r#"
 import Quartz
 let info = (CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]]) ?? []
