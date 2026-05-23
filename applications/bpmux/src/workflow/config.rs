@@ -37,11 +37,6 @@ pub struct Transition {
     pub to: String,
     #[serde(default)]
     pub actor_roles: Vec<String>,
-    /// Per-class binding. A transition row matches a fire when both
-    /// `id` AND `gate_class` align with the story-axis class label.
-    /// Multiple rows can share an `id` provided they differ on
-    /// `gate_class` — that's how owner-walk vs team-verifiable accept
-    /// configs co-exist under the single `accept` transition identity.
     #[serde(default)]
     pub gate_class: GateClass,
     #[serde(default)]

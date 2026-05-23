@@ -68,8 +68,6 @@ pub struct CiSnapshot {
     pub head_sha: Option<String>,
     pub display_title: Option<String>,
     pub conclusion: &'static str,
-    /// #1287: per-workflow breakdown across all runs on the latest
-    /// head_sha; aggregate `state` is derived from these.
     pub workflows: Vec<crate::ci::WorkflowSummary>,
 }
 

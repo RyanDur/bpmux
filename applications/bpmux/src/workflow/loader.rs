@@ -17,9 +17,6 @@ pub fn current_workflow() -> &'static WorkflowConfig {
     WORKFLOW.get_or_init(bundled_default)
 }
 
-/// The bpmux-canonical 3-section skeleton. workflow.toml's
-/// `[[state]]` rows must use one of these section names; any other
-/// value is a canon-violation (#1394 substrate-enforce).
 pub const CANONICAL_SECTIONS: &[&str] = &["pre-work", "in-work", "post-work"];
 
 #[derive(Debug, Error, Clone, PartialEq, Eq, Serialize)]
@@ -81,9 +78,6 @@ pub fn load_workflow(project_root: &Path) -> Result<WorkflowConfig, WorkflowLoad
     Ok(config)
 }
 
-/// #1394 substrate-enforce: every state must declare one of the
-/// CANONICAL_SECTIONS, and each canonical section must have at least
-/// one state. Empty-states is semantically malformed.
 pub fn validate_section_skeleton(config: &WorkflowConfig) -> Result<(), WorkflowLoadError> {
     for state in &config.state {
         if !CANONICAL_SECTIONS.iter().any(|c| *c == state.section) {
