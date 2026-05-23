@@ -1,10 +1,3 @@
-//! Story + iteration creation handlers (PM-lane).
-//!
-//! Both `handle_create_story` and `handle_create_iteration` are
-//! restricted to the `pm` role. They write to the canonical store
-//! via the `RefreshDriver` interface and broadcast a
-//! board-invalidate signal so peer renderers refresh.
-
 use tokio::sync::Mutex;
 
 use super::super::tools::WsSink;
@@ -13,11 +6,6 @@ use super::helpers::{
 };
 use super::signals::broadcast_board_invalidate;
 
-/// `user_job` + `observation_falsifier` are required (2026-04-22
-/// retro 4-gate externalization model). Validation errors name the
-/// missing field AND surface a retro-framing pointer so the caller
-/// understands WHY the field is required (discoverable-error
-/// requirement per pickup-gate falsifier).
 pub(crate) async fn handle_create_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
@@ -129,13 +117,6 @@ pub(crate) async fn handle_create_story(
     )
 }
 
-/// Create a GH issue representing an iteration (#1297 Epic #1189
-/// architectural-pivot slice 1). Sister to Epic story_type. Title is
-/// `Iteration {theme_name}` + carries the `iteration` label so
-/// `story_type_from_labels_or_title` decodes it as
-/// `StoryType::Iteration`. Duplicate theme_name (existing OPEN
-/// iteration with same name) is rejected at create-time with a
-/// named-collision error — sister-discipline to #1281.
 pub(crate) async fn handle_create_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,

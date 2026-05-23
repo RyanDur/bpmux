@@ -80,11 +80,6 @@ pub(crate) async fn handle_close_story(
     )
 }
 
-/// Classify a close_story reason as retire-class (superseded /
-/// duplicate / won't-fix) vs accept-class (everything else, including
-/// no-reason). Matches by first-token / contains so PM-prose like
-/// "superseded — fold-into-touch pattern" classifies as retire while
-/// "shipped clean" stays accept-class.
 pub(crate) fn is_retire_reason(reason: &str) -> bool {
     let lower = reason.to_ascii_lowercase();
     lower.starts_with("superseded")
@@ -131,11 +126,6 @@ mod tests {
     }
 }
 
-/// Fire the iteration-close externalize-prompt (#282). PM-gated.
-///
-/// Fail-soft: the MCP tool returns after the broadcast ws_send
-/// completes. Iteration closes regardless of whether any agent
-/// responds to the prompt — the tool is a reminder, not a barrier.
 pub(crate) async fn handle_close_iteration(
     agent_name: &str,
     args: &serde_json::Map<String, serde_json::Value>,

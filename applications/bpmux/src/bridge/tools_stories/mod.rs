@@ -1,10 +1,3 @@
-//! Story management tool handlers.
-//!
-//! Lane-aware operations against the RefreshDriver-backed BoardStore
-//! (#451 retired the standalone tracker abstraction). Workflow
-//! signals fire on INTENT (before the source-of-truth mutation) so
-//! the team is notified even when the mutation fails.
-
 mod acceptance;
 mod closure;
 mod creation;

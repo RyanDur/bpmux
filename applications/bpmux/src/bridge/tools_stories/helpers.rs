@@ -1,14 +1,3 @@
-//! Cross-handler helpers: workflow-label hygiene, role gating, body
-//! composition, and acceptance-test-path validation.
-//!
-//! Workflow-label constants (`LABEL_DELIVERED` etc.) live here so
-//! both the state-label set (`ALL_STATE_LABELS`) and the handler
-//! call-sites can reference them without scattering string literals.
-//! Body composers + path-validation helpers also live here as
-//! cross-handler pure utilities. Extracted from `bridge::tools_stories`
-//! per #1353; consumers reach these via `mod.rs` re-exports so
-//! existing import paths stay valid.
-
 pub(crate) const LABEL_DELIVERED: &str = "delivered";
 pub(crate) const LABEL_IN_PROGRESS: &str = "in progress";
 pub(crate) const LABEL_READY: &str = "ready";
@@ -131,10 +120,6 @@ pub(crate) fn require_purpose(
     require_role(agent_name, &allowed_refs, operation)
 }
 
-/// Build the issue body for a new iteration-issue. Cassiopeia
-/// substrate: iteration membership is canonical-via-GH via
-/// `iteration-{Theme}.{position}` labels on member stories (#1300).
-/// Body is human-readable, not parsed for membership.
 pub(crate) fn compose_iteration_body(theme_name: &str) -> String {
     let today = chrono::Utc::now().format("%Y-%m-%d");
     format!(
@@ -157,9 +142,6 @@ pub(crate) fn compose_iteration_body(theme_name: &str) -> String {
     )
 }
 
-/// Extract a trimmed-nonempty string from the JSON args map. Returns
-/// the untrimmed raw slice so downstream formatting preserves
-/// intentional leading/trailing whitespace in multi-line field values.
 pub(crate) fn require_nonempty_string<'a>(
     args: &'a serde_json::Map<String, serde_json::Value>,
     key: &str,
@@ -207,11 +189,6 @@ pub fn parse_acceptance_test_path(body: &str) -> Option<String> {
     None
 }
 
-/// Tolerate the common prose shapes PM uses around the path: bullets
-/// ("- Primary: tests/foo.rs"), labels ("Path: tests/foo.rs"),
-/// parentheticals ("tests/foo.rs (per gate-3 contract)"). Returns the
-/// first plausibly-path-shaped token on the line, or None when the
-/// line carries no recognizable path.
 fn extract_path_from_line(line: &str) -> Option<String> {
     let line = line.trim();
     if line.is_empty() {

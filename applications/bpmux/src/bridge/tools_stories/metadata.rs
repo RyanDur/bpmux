@@ -1,24 +1,9 @@
-//! Metadata handlers: label add/remove, parent-epic set/unset,
-//! free-form comments, and body/title edits. Each mutates the
-//! canonical store via `RefreshDriver` and broadcasts a board-
-//! invalidate so peer renderers refresh.
-
 use tokio::sync::Mutex;
 
 use super::super::tools::WsSink;
 use super::helpers::{ensure_story_in_canonical_store, require_purpose, role_from_name};
 use super::signals::broadcast_board_invalidate;
 
-/// label_story accepts an `operation` arg of "add" (default) or
-/// "remove" (#392). The remove path closes the earlier bypass —
-/// before this story, label removal required raw `gh issue edit
-/// --remove-label`, which mutated GitHub without firing the
-/// bridge's BOARD_INVALIDATE broadcast and stranded peer boards on
-/// stale state. Both paths now broadcast on success; errors bubble
-/// up without broadcasting so peers aren't asked to refresh against
-/// a no-op. Remove is idempotent — the tracker maps GitHub's 404
-/// ("label not attached") to Ok so callers can safely
-/// remove-without-checking.
 pub(crate) fn is_retired_iteration_label_axis(label: &str) -> bool {
     use crate::board::label_codec::LabelCodec;
     crate::board::adapters::gh_label_codec::GhLabelCodec
@@ -233,10 +218,6 @@ pub(crate) async fn handle_unset_parent_epic(
     Ok(format!("#{number} ungrouped from parent epic"))
 }
 
-/// Add a comment to a story — any agent. Durable issue-audit-trail
-/// (visible to any future reader of the issue; distinct from bpmux
-/// chat which is session-scoped). Routes through the RefreshDriver
-/// per #451; reject_story invokes the same path.
 pub(crate) async fn handle_comment_on_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
@@ -276,11 +257,6 @@ pub(crate) async fn handle_comment_on_story(
     )
 }
 
-/// Replace a story's body or title via the canonical store (#530).
-/// Closes the gh-bypass class observed during ATP-corrections — edits
-/// surface in the BoardStore + WS broadcast so every observer sees
-/// the change without a separate refresh cycle. At least one of
-/// `body` or `title` must be supplied (#1279).
 pub(crate) async fn handle_edit_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,

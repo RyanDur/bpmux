@@ -1,12 +1,3 @@
-//! `view_board` handler: render the team-facing board as a flat
-//! text report grouped by column bucket (icebox / ready / in-progress
-//! / desk-check / delivered / accepted / retired) with an epic
-//! roll-up at the top.
-//!
-//! Read-only — no mutation, no signals fired. Sits alone in its own
-//! submodule to keep `mod.rs` focused on lifecycle handlers + module
-//! plumbing. Extracted from `bridge::tools_stories` per #1353.
-
 pub(crate) async fn handle_view_board(
     _args: &serde_json::Map<String, serde_json::Value>,
     refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
