@@ -62,11 +62,6 @@ fn state_from_labels_accepted_wins_regardless_of_other_labels() {
 
 #[test]
 fn warn_on_inconsistent_state_labels_does_not_panic() {
-    // #469 defense-in-depth: state-label inconsistency emits a
-    // log_diag warning. Test verifies callable shape across the
-    // boundary cases: zero state-labels (no warn), one state-label
-    // (no warn), two-or-more state-labels (warn fires; observable
-    // via BPMUX_LOG when configured).
     warn_on_inconsistent_state_labels(&[]);
     warn_on_inconsistent_state_labels(&["ready".to_string()]);
     warn_on_inconsistent_state_labels(&["accepted".to_string(), "rejected".to_string()]);
@@ -85,15 +80,6 @@ fn state_from_labels_closed_issue_is_accepted_even_without_label() {
 
 #[test]
 fn state_from_labels_closed_issue_with_stale_workflow_label_is_accepted() {
-    // #1296: close_story enqueues TagRemoved + StoryClosed; the
-    // per-mutation drain tasks race on the issue-lock, so StoryClosed
-    // can be pushed BEFORE the labels are reaped from GH. The
-    // adapter's close-response then decodes with the stale workflow
-    // labels still attached; state_from_labels must collapse them to
-    // Accepted (rather than the workflow-state) so the renderer's
-    // columnFor routes the closed story to 'accepted' (not 'retired').
-    // Without this rule, the empty-LabelsRefreshed no-op in BoardStore
-    // leaves the stale state in place.
     for stale in [
         "in progress",
         "ready",
@@ -115,19 +101,12 @@ fn state_from_labels_closed_issue_with_stale_workflow_label_is_accepted() {
 
 #[test]
 fn state_from_labels_retired_label_overrides_closed_fallback() {
-    // #1192: explicit "retired" tag must take precedence over the
-    // legacy "closed-no-label = Accepted" fallback so move_story →
-    // retired produces a state column_for can bucket as Retired
-    // (closed && state != Accepted).
     let labels = vec!["retired".to_string()];
     assert_eq!(state_from_labels(&labels, true), StoryState::Retired);
 }
 
 #[test]
 fn state_from_labels_retired_label_loses_to_accepted() {
-    // #1192: if both labels are present (manual mis-tag), Accepted
-    // wins because the affirmative "this was accepted" signal is
-    // load-bearing for the renderer's success-narrative.
     let labels = vec!["accepted".to_string(), "retired".to_string()];
     assert_eq!(state_from_labels(&labels, true), StoryState::Accepted);
 }
@@ -140,25 +119,18 @@ fn state_from_labels_retired_label_open_issue_returns_retired() {
 
 #[test]
 fn state_from_labels_rejected_label_projects_to_ready() {
-    // #1146 slice 3: stale "rejected" label from pre-collapse stories
-    // projects to Ready (where reject_story now transitions to per
-    // slice 1). Parser preserves recognition until next reap clears.
     let labels = vec!["delivered".to_string(), "rejected".to_string()];
     assert_eq!(state_from_labels(&labels, false), StoryState::Ready);
 }
 
 #[test]
 fn state_from_labels_needs_fixes_label_projects_to_in_progress() {
-    // #1146 slice 3: stale "needs fixes" label projects to InProgress
-    // (where fail_desk_check transitions to per slice 1).
     let labels = vec!["delivered".to_string(), "needs fixes".to_string()];
     assert_eq!(state_from_labels(&labels, false), StoryState::InProgress);
 }
 
 #[test]
 fn state_from_labels_ready_for_accept_label_projects_to_delivered() {
-    // #1146 slice 3: stale "ready for accept" label projects to
-    // Delivered (display-equivalent per pre-collapse column.rs bucket).
     let labels = vec!["delivered".to_string(), "ready for accept".to_string()];
     assert_eq!(state_from_labels(&labels, false), StoryState::Delivered);
 }
@@ -201,9 +173,6 @@ fn state_to_label_roundtrips_ready() {
 
 #[test]
 fn state_to_label_roundtrips_in_progress_space() {
-    // #1146 slice 3: post-collapse, fail_desk_check transitions land
-    // at InProgress; the round-trip via the "in progress" label is
-    // the analog of the retired NeedsFixes round-trip.
     let labels = vec![state_to_label(StoryState::InProgress).to_string()];
     assert_eq!(state_from_labels(&labels, false), StoryState::InProgress);
 }
@@ -299,15 +268,6 @@ fn decode_story_metadata_sets_is_closed_from_gh_state() {
 
 #[test]
 fn decode_story_metadata_closed_without_retired_collapses_to_accepted() {
-    // #1296 supersedes #464's preserve-last-domain-state semantics for
-    // closed issues. close_story enqueues TagRemoved + StoryClosed and
-    // the per-mutation drain tasks race on the issue-lock, so the GH
-    // close-response can arrive with stale workflow labels still
-    // attached. Per #1192 the explicit "retired" tag is the canonical
-    // signal for closed-but-not-accepted; absence of that tag means
-    // "team-accepted via close." Decoder collapses to Accepted so the
-    // renderer's columnFor routes the story to 'accepted' instead of
-    // 'retired' regardless of which mutation task wins the drain race.
     let json = serde_json::json!({
         "number": 99,
         "title": "close_story-fired on a Delivered story; no accepted label present",

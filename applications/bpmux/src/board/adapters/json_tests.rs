@@ -76,8 +76,6 @@ fn story_to_board_json_iteration_membership_object_when_set_1492() {
     assert_eq!(membership["position"].as_u64(), Some(100));
 }
 
-/// Stories without a backward-edge transition emit rework_comment as
-/// JSON null. Renderer reads this as "no return glyph".
 #[test]
 fn story_to_board_json_rework_comment_null_when_no_backward_edge() {
     let s = sample_story(StoryState::Ready, StoryType::Feature, false);
@@ -85,10 +83,6 @@ fn story_to_board_json_rework_comment_null_when_no_backward_edge() {
     assert!(json["rework_comment"].is_null());
 }
 
-/// When the most-recent transition is backward (e.g., reject_story
-/// Delivered → Ready), the gate-comment payload surfaces in
-/// rework_comment so the renderer can show it as the return-glyph's
-/// tooltip without a per-story round-trip.
 #[test]
 fn story_to_board_json_rework_comment_carries_backward_edge_payload() {
     use crate::board::domain::{Gate, GateComment};
@@ -127,9 +121,6 @@ fn story_to_board_json_rework_comment_carries_backward_edge_payload() {
     );
 }
 
-/// Once the story moves forward again (e.g., dev claims start_story
-/// after rejection), the most-recent transition is forward and
-/// rework_comment becomes null again.
 #[test]
 fn story_to_board_json_rework_comment_clears_after_forward_edge() {
     use crate::board::domain::{Gate, GateComment};
@@ -173,8 +164,6 @@ fn story_to_board_json_rework_comment_clears_after_forward_edge() {
     );
 }
 
-/// Collapsed StoryState enum to 6 column-aligned wire values
-/// (#1146 slice 3).
 #[test]
 fn story_to_board_json_emits_canonical_6_state_vocabulary() {
     for (state, expected) in &[
