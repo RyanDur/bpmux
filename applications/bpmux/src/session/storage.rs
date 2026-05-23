@@ -1,55 +1,3 @@
-//! Storage abstraction — Strategy pattern (#1289).
-//!
-//! Two traits define the persistence boundary:
-//!
-//! - [`Storage`] for session-scoped state (messages, lessons, board
-//!   snapshot, outbox, bookmarks, pins, reactions, iteration markers,
-//!   generic key-value). State lives under a session directory and
-//!   is short-lived relative to the user's overall bpmux history.
-//! - [`GlobalStore`] for cross-session state living at user-global
-//!   paths under `~/.bpmux/` (priority initially; identity /
-//!   briefings / tokens / usage / auth-token migration deferred to
-//!   #1290).
-//!
-//! Each trait has a production impl ([`FileStorage`] / [`FileGlobalStore`])
-//! and an in-memory impl ([`MemoryStorage`] / [`MemoryGlobalStore`]) for
-//! tests. Tests opt into in-memory mode via the
-//! `BPMUX_STORAGE_BACKEND=memory` env-var at `Session::new`
-//! construction time (see `session/log.rs:Session::new`).
-//!
-//! **Trait contract**:
-//! - Implementations satisfy semantic-parity verified by the
-//!   `contract!` macro at `session/storage_tests.rs` — every behavior
-//!   asserted runs against both `FileStorage` and `MemoryStorage`;
-//!   divergence is caught at test-write time.
-//! - Filesystem idiosyncrasies (atomic-rename via tmpfile, fsync
-//!   semantics, mode-0600 for sensitive paths, lock-file behavior)
-//!   stay inside `FileStorage`. The trait surface returns
-//!   `Result<T, std::io::Error>` / `Result<T, PersistError>`; callers
-//!   never reach into FS quirks. Per
-//!   `feedback_external_system_idiosyncrasies_at_boundary`.
-//! - `MemoryStorage` is per-instance: tests get isolated state by
-//!   constructing a fresh `MemoryStorage` per test fixture.
-//!
-//! **Path-injection builders**: each FileStorage method that derives
-//! a non-session-dir path (board store + outbox so far) has a
-//! corresponding `with_<thing>_path(p)` builder. Production
-//! constructs with `None` so the default `default_<thing>_path()`
-//! helper resolves at call-time (preserving the env-overridable +
-//! home-default semantic for `BPMUX_BOARD_STORE_PATH`,
-//! `BPMUX_BOARD_OUTBOX_PATH`-equivalent).
-//! Tests construct with explicit per-test tempdirs to avoid
-//! polluting Ryan's actual `~/.bpmux/*` files.
-//!
-//! **Storage vs GlobalStore separation**: motivated by lifetime —
-//! `Storage` is per-session and tests get fresh state per launch;
-//! `GlobalStore` is per-user and persists across sessions
-//! (production reads + writes the same `~/.bpmux/identity/{role}.json`
-//! and `~/.bpmux/briefings/{role}.md` across many bpmux startups).
-//! Mixing them on a single trait would conflate two different
-//! reset-points + boundary-semantics. The separation is explicit
-//! per designer's 12:32 UTC trait-shape review.
-
 use std::collections::{HashMap, VecDeque};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -63,20 +11,12 @@ use super::log::LogError;
 use super::message::Message;
 use super::search::{self, SearchFilters, SearchResult};
 
-/// The persistence interface. Core code depends on this trait,
-/// never on a concrete storage mechanism.
 pub trait Storage: Send + Sync {
-    // Messages
     fn append_message(&self, msg: &Message) -> Result<(), LogError>;
     fn read_messages(&self) -> Result<Vec<Message>, LogError>;
     fn search_messages(&self, filters: &SearchFilters) -> Vec<SearchResult>;
-    /// #1306 slice 4.1: test-only message-store wipe so RTL+real-backend
-    /// tests can reset state between cases sharing a per-run backend.
-    /// Production-callers never reach here — gated by
-    /// `BPMUX_TEST_SEED_API` at the REST boundary.
     fn clear_messages(&self) -> Result<(), std::io::Error>;
 
-    // Lessons
     fn load_lessons(&self) -> LessonIndex;
     fn save_lessons(&self, index: &LessonIndex) -> Result<(), std::io::Error>;
     fn add_lesson(
@@ -87,39 +27,21 @@ pub trait Storage: Send + Sync {
         evidence: Vec<String>,
     ) -> Result<(), std::io::Error>;
 
-    // Peer lessons
     fn load_peer_lessons(&self, peer: &str) -> LessonIndex;
     fn save_peer_lessons(&self, peer: &str, index: &LessonIndex) -> Result<(), std::io::Error>;
     fn list_peers(&self) -> Vec<String>;
 
-    // Session state (generic key-value)
     fn load_state(&self, key: &str) -> Option<String>;
     fn save_state(&self, key: &str, value: &str);
 
-    // Session directory (for backward compatibility during migration)
     fn dir(&self) -> &Path;
 
-    // #1289 Phase-1 extension: board snapshot (board-store.json).
-    // FileStorage uses the configured `board_store_path` (env-overridable
-    // via BPMUX_BOARD_STORE_PATH at call-time; injectable per-instance
-    // via `with_board_store_path` for test isolation). MemoryStorage uses
-    // per-instance in-memory state.
     fn load_board_snapshot(&self) -> Result<HashMap<u64, Story>, PersistError>;
     fn save_board_snapshot(&self, snapshot: &HashMap<u64, Story>) -> Result<(), PersistError>;
 
-    // #1289 Phase-1 step 3: outbox queue (board-outbox.json).
-    // FileStorage uses the configured `outbox_path` (env-overridable
-    // via BPMUX_BOARD_OUTBOX_PATH at call-time; injectable per-instance
-    // via `with_outbox_path` for test isolation). MemoryStorage uses
-    // per-instance in-memory state. Disk-shape supports backward-compat
-    // legacy-Vec<BoardEvent> parse via OutboxEntryOnDisk; new writes use
-    // the QueuedEvent format directly.
     fn load_outbox(&self) -> Result<VecDeque<QueuedEvent>, PersistError>;
     fn save_outbox(&self, events: &[QueuedEvent]) -> Result<(), PersistError>;
 
-    // #1289 Phase-2: session-scoped per-role bookmark
-    // (bookmark-{role}.json). FileStorage derives path from self.dir +
-    // role. MemoryStorage uses HashMap<role, Bookmark> per-instance.
     fn load_bookmark(&self, role: &str) -> super::bookmark::Bookmark;
     fn save_bookmark(
         &self,
@@ -127,7 +49,6 @@ pub trait Storage: Send + Sync {
         bookmark: &super::bookmark::Bookmark,
     ) -> Result<(), std::io::Error>;
 
-    // #1289 Phase-2: session-scoped reactions (reactions.json).
     fn load_reactions(&self) -> super::reactions::ReactionsStore;
     fn save_reactions(
         &self,
@@ -135,18 +56,7 @@ pub trait Storage: Send + Sync {
     ) -> Result<(), std::io::Error>;
 }
 
-/// #1289 Phase-3: cross-session global state. Distinct from `Storage`
-/// (which is session-scoped) because these files live at user-global
-/// paths (e.g., `~/.bpmux/identity/{role}.json`,
-/// `~/.bpmux/briefings/{role}.md`, `~/.bpmux/tokens/log.jsonl`)
-/// and survive across multiple bpmux sessions.
-///
-/// FileGlobalStore production impl resolves paths via existing
-/// `default_*_path()` helpers (each preserves their respective env-
-/// override + home-default semantics). MemoryGlobalStore tests-only
-/// impl uses per-instance Mutex<T> state.
 pub trait GlobalStore: Send + Sync {
-    // #1290 Phase-3 step 2: per-role identity (~/.bpmux/identity/{role}.json)
     fn load_identity(&self, role: &str) -> super::identity::IdentityIndex;
     fn save_identity(
         &self,
@@ -154,52 +64,27 @@ pub trait GlobalStore: Send + Sync {
         index: &super::identity::IdentityIndex,
     ) -> Result<(), std::io::Error>;
 
-    // #1290 Phase-3 step 3: per-role briefing (~/.bpmux/briefings/{role}.md).
-    // Raw markdown string; 1MB cap enforced in production save path.
     fn load_briefing(&self, role: &str) -> String;
     fn save_briefing(&self, role: &str, content: &str) -> Result<(), std::io::Error>;
 
-    // #1290 Phase-3 step 4: token log (~/.bpmux/tokens/log.jsonl).
-    // Append-only; FileStore preserves POSIX append atomicity.
     fn append_token_row(&self, row: &super::tokens::TokenRow) -> Result<(), super::log::LogError>;
     fn read_token_rows(&self) -> Result<Vec<super::tokens::TokenRow>, super::log::LogError>;
 
-    // #1290 Phase-3 step 5: feature-usage counters (~/.bpmux/usage.json).
-    // Whole-map read/replace; the higher-level `usage::record()` helper
-    // composes load-mutate-save against the default path on FileStore.
     fn load_usage(&self) -> std::collections::HashMap<String, super::usage::Record>;
     fn save_usage(
         &self,
         map: &std::collections::HashMap<String, super::usage::Record>,
     ) -> Result<(), std::io::Error>;
 
-    // #1290 Phase-3 step 6 (AC 18): per-run auth token (~/.bpmux/auth_token).
-    // Process-owned secret with mode-0600 filesystem semantics. The
-    // MemoryGlobalStore impl returns NotSupported by boundary-discipline
-    // (`feedback_external_system_idiosyncrasies_at_boundary`) — tests
-    // requiring auth-token isolation use FileGlobalStore with
-    // `BPMUX_AUTH_TOKEN_PATH` per-test tempdir (the established pattern
-    // at `applications/electron/tests/helpers/launch.ts`).
     fn ensure_auth_token(&self) -> std::io::Result<String>;
     fn read_auth_token(&self) -> std::io::Result<String>;
 }
 
-/// File-based global store — production impl.
 pub struct FileGlobalStore {
-    /// #1290: per-instance identity-dir override. Tests inject
-    /// tempdirs to avoid sharing `~/.bpmux/identity/`.
     identity_dir: Option<PathBuf>,
-    /// #1290: per-instance briefings-dir override. Tests inject
-    /// tempdirs to avoid sharing `~/.bpmux/briefings/`.
     briefings_dir: Option<PathBuf>,
-    /// #1290: per-instance tokens-log path override. Tests inject
-    /// per-test paths to avoid sharing `~/.bpmux/tokens/log.jsonl`.
     tokens_log_path: Option<PathBuf>,
-    /// #1290: per-instance usage-path override. Tests inject per-test
-    /// paths to avoid sharing `~/.bpmux/usage.json`.
     usage_path: Option<PathBuf>,
-    /// #1290: per-instance auth-token-path override. Tests inject
-    /// per-test paths to avoid sharing `~/.bpmux/auth_token`.
     auth_token_path: Option<PathBuf>,
 }
 
@@ -220,33 +105,26 @@ impl FileGlobalStore {
         }
     }
 
-    /// #1290: opt-in identity-dir override (per-role files live under
-    /// this dir as `{role}.json`).
     pub fn with_identity_dir(mut self, dir: PathBuf) -> Self {
         self.identity_dir = Some(dir);
         self
     }
 
-    /// #1290: opt-in briefings-dir override (per-role files live under
-    /// this dir as `{role}.md`).
     pub fn with_briefings_dir(mut self, dir: PathBuf) -> Self {
         self.briefings_dir = Some(dir);
         self
     }
 
-    /// #1290: opt-in tokens-log path override.
     pub fn with_tokens_log_path(mut self, path: PathBuf) -> Self {
         self.tokens_log_path = Some(path);
         self
     }
 
-    /// #1290: opt-in usage-path override.
     pub fn with_usage_path(mut self, path: PathBuf) -> Self {
         self.usage_path = Some(path);
         self
     }
 
-    /// #1290: opt-in auth-token-path override.
     pub fn with_auth_token_path(mut self, path: PathBuf) -> Self {
         self.auth_token_path = Some(path);
         self
@@ -356,7 +234,6 @@ impl GlobalStore for FileGlobalStore {
     }
 }
 
-/// In-memory global store — tests-only impl.
 pub struct MemoryGlobalStore {
     identity: Mutex<HashMap<String, super::identity::IdentityIndex>>,
     briefings: Mutex<HashMap<String, String>>,
@@ -448,11 +325,6 @@ impl GlobalStore for MemoryGlobalStore {
         Ok(())
     }
 
-    // #1290 AC 18 boundary-discipline: auth_token is a process-owned
-    // secret requiring mode-0600 filesystem semantics. MemoryGlobalStore
-    // refuses the operation rather than fake non-FS in-memory storage —
-    // tests requiring auth-token isolation use FileGlobalStore with a
-    // per-test BPMUX_AUTH_TOKEN_PATH tempdir (the established pattern).
     fn ensure_auth_token(&self) -> std::io::Result<String> {
         Err(std::io::Error::new(
             std::io::ErrorKind::Unsupported,
@@ -472,18 +344,9 @@ impl GlobalStore for MemoryGlobalStore {
     }
 }
 
-/// File-based storage — the current implementation.
 pub struct FileStorage {
     dir: PathBuf,
-    /// #1289: per-instance board-store path override. `None` →
-    /// `crate::board::store::default_store_path()` (env-or-home).
-    /// `Some(p)` → use `p` directly. Tests inject per-test paths to
-    /// avoid sharing `~/.bpmux/board-store.json`; production uses
-    /// the default-path resolution.
     board_store_path: Option<PathBuf>,
-    /// #1289: per-instance outbox-path override. Same shape as
-    /// `board_store_path`; `None` → `default_outbox_path()` at
-    /// call-time (BPMUX_BOARD_OUTBOX_PATH env-or-home).
     outbox_path: Option<PathBuf>,
 }
 
@@ -496,17 +359,11 @@ impl FileStorage {
         }
     }
 
-    /// #1289: opt-in path-injection for the board-snapshot store.
-    /// Tests use this to point at a unique tempdir; production
-    /// leaves it `None` so `default_store_path()` resolves at
-    /// call-time (preserves env-override + home-default semantic).
     pub fn with_board_store_path(mut self, path: PathBuf) -> Self {
         self.board_store_path = Some(path);
         self
     }
 
-    /// #1289 Phase-1 step 3: opt-in path-injection for the outbox.
-    /// Sister of `with_board_store_path` at outbox-axis.
     pub fn with_outbox_path(mut self, path: PathBuf) -> Self {
         self.outbox_path = Some(path);
         self
@@ -670,17 +527,6 @@ impl Storage for FileStorage {
     }
 }
 
-/// In-memory storage — #1289 substrate-foundation for the Store-trait
-/// DI refactor. Provides parity with `FileStorage` semantics on every
-/// existing trait method without disk I/O.
-///
-/// Tests inject this via the launch helper so per-test backend startup
-/// skips filesystem I/O (the macOS-WindowServer-class slowness root
-/// cause from f9ebe47 / c8ba878 / 5bdb235 empirical evidence today).
-///
-/// `dir()` returns the path passed at construction — it's a marker
-/// path tests use for any code that derives derived-state from
-/// session-dir, but no I/O is performed against it.
 pub struct MemoryStorage {
     dir: PathBuf,
     messages: Mutex<Vec<Message>>,
@@ -694,9 +540,6 @@ pub struct MemoryStorage {
 }
 
 impl MemoryStorage {
-    /// `dir` is a marker path returned by `dir()`. No I/O is performed
-    /// against it. Tests typically pass a `tempfile::tempdir()` path
-    /// so the marker is unique per test.
     pub fn new(dir: PathBuf) -> Self {
         Self {
             dir,
