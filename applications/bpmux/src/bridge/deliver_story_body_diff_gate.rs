@@ -1,21 +1,3 @@
-//! #1378 deliver_story body-diff-vs-impl audit.
-//!
-//! Sister substrate-fix to #1362 (desk-check ATP-gate) + #1377
-//! (close_story state-axis) triangulating the "claims drift from
-//! shipped" meta-class surfaced in today's iteration-close-audit
-//! retro. Where #1362 fires at desk-check time, this gate fires at
-//! deliver_story time: diffs body's ATP path(s) against
-//! git-changed-paths since story-pickup. Block when body cites an
-//! ATP not in changed paths since pickup.
-//!
-//! Lenient by design:
-//! - Body has no source-ATP → pass (sister to #1362).
-//! - Git unavailable / git command fails → log + pass (separate
-//!   substrate concern; don't make deliver_story depend on
-//!   git-environmental-axis).
-//! - Body's ATP not yet implemented but story scope says it's
-//!   incoming → caught by #1362 desk-check gate instead.
-
 use chrono::{DateTime, Utc};
 
 use crate::board::domain::{Gate, Story};
@@ -67,10 +49,6 @@ pub(super) fn verify_body_atp_in_changed_paths(
     ))
 }
 
-/// Top-level gate API. Tolerant: returns Ok if git is unavailable,
-/// the story has no pickup-ts to anchor against, or no commits have
-/// landed since pickup (empty changed-paths set → meaningless to
-/// diff against).
 pub(super) fn verify_deliver_drift(
     body: &str,
     story: &Story,

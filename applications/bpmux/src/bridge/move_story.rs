@@ -1,36 +1,3 @@
-//! `move_story` — unified state-traversal MCP tool (#1188).
-//!
-//! Single tool consolidating the existing label_story / reorder_story /
-//! close_story chains. Atomic at canonical-store level: refresh →
-//! reap stale workflow labels → fire StateTransitioned (and StoryReopened
-//! / StoryClosed for cross-terminal cases) → optionally reorder →
-//! append audit-trail comment → broadcast invalidate. No half-states
-//! observable per #1188 falsifier-h.
-//!
-//! Permission boundary (falsifier-e + scope-question 1):
-//! - any role can move a story across COLUMNS (state-transition) —
-//!   reflects "agents are users" + Ryan 01:54 "agent puts a story
-//!   wherever it needs to be";
-//! - position is honored only when target_state is Ready or Icebox
-//!   (the queue-organization columns) AND the caller is PM —
-//!   reconciles with Ryan 01:39 "PM feeds and organizes the ready
-//!   queue".
-//!
-//! Terminal-state recovery (falsifier-c + scope-question 2):
-//! moving a story OUT of Accepted (or any closed state) into a non-
-//! terminal state fires StoryReopened first, then the workflow-label
-//! transition. Closes the #1177-stuck class structurally.
-//!
-//! Audit-trail (falsifier-f): every move appends a FreeCommentAppended
-//! capturing actor + from_state + to_state + position + rationale + ts.
-//! Issue-comment is the persistent surface; story-timeline derives
-//! from comment audit-trail.
-//!
-//! Goes through `RefreshDriver::mutate_sync` per #1170 lesson
-//! (`feedback_rest_mcp_canonical_mutation_parity`). No direct adapter
-//! writes — all paths are reducer-cascading so observers (BoardStore,
-//! TUI, Electron renderer) see consistent post-state.
-
 use std::sync::Arc;
 
 use serde_json::Map;
@@ -44,11 +11,6 @@ use crate::bridge::tools_stories::{KEEP_NONE, broadcast_board_invalidate, reap_w
 
 use super::tools::WsSink;
 
-/// Reserved name for the closed/retired terminal state. Not a
-/// `StoryState` variant because the canonical model treats it as
-/// "issue is closed" — a separate axis from workflow_state per
-/// `feedback_state_transitions_distinct_dont_conflate`. We accept it
-/// as a target_state argument and translate to BoardEvent::StoryClosed.
 const TARGET_STATE_RETIRED: &str = "retired";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -95,11 +57,6 @@ impl TargetState {
     }
 }
 
-/// Falsifier-d disambiguation — position is an absolute 1-based index
-/// within the destination column's priority list. v1 doesn't support
-/// "before #N" / "after #N" semantics; the spec leaves this as a
-/// future extension once we observe a use case the absolute form
-/// can't satisfy.
 fn parse_position(args: &Map<String, Value>) -> Result<Option<usize>, String> {
     match args.get("position") {
         None | Some(Value::Null) => Ok(None),
@@ -145,11 +102,6 @@ fn current_state_display(story: Option<&crate::board::domain::Story>) -> &'stati
     }
 }
 
-/// Build the audit-trail comment body. Includes actor (the role that
-/// fired the move), the from→to transition, optional new position,
-/// and the rationale. This is the substrate behind story-timeline
-/// per falsifier-f — view_story_timeline reads from comment events
-/// using the same shape.
 fn audit_comment_body(
     actor_short: &str,
     from_state: &str,
@@ -276,11 +228,6 @@ pub(in crate::bridge) async fn handle_move_story(
                 reason: Some(format!("retired: {rationale}")),
             })
             .map_err(|e| format!("#{number} retire enqueue failed: {e}"))?;
-            // #1192: stamp an explicit "retired" label so state_from_
-            // labels can distinguish closed-via-retire from closed-via-
-            // accept on the next refresh. Without this, the canonical
-            // store collapses both into StoryState::Accepted and the
-            // renderer's Retired column never receives the story.
             let already_retired = prior
                 .as_ref()
                 .map(|s| {
