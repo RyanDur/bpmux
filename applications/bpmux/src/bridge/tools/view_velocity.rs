@@ -4,14 +4,8 @@ use tokio::sync::Mutex;
 
 use super::helpers::{WsSink, ws_send};
 
-/// Marker the bridge emits when an agent calls view_velocity (#210).
-/// Kept in sync with VIEW_VELOCITY_MARKER in terminal/event.rs.
 pub(in crate::bridge) const VIEW_VELOCITY_MARKER: &str = "__BPMUX_VIEW_VELOCITY__";
 
-/// Production messages-fetcher: the existing self-fetch over the
-/// in-process HTTP server's /api/messages endpoint. Tests inject a
-/// closure that bypasses HTTP so handle_view_velocity is reachable
-/// from in-process axum-direct tests.
 pub(in crate::bridge) async fn fetch_messages_via_http(
     port: u16,
 ) -> Result<Vec<crate::session::Message>, String> {
@@ -25,21 +19,6 @@ pub(in crate::bridge) async fn fetch_messages_via_http(
     serde_json::from_str(&body).map_err(|e| format!("parse messages: {e}: {body}"))
 }
 
-/// `view_velocity` — fetch the recent message log, parse workflow-
-/// signal timestamps, and return velocity metrics as JSON. Counts
-/// only business-value stories (vertical / stranded-vertical) per
-/// #251; honest-plumbing events are still in the log but don't
-/// move the feature-velocity needle.
-///
-/// Also emits VIEW_VELOCITY_MARKER so Ryan's TUI opens the project
-/// panel (#210 — agent-triggered surface). Same two-audience pattern
-/// as view_roadmap: the JSON return is for the calling agent, the
-/// marker side-effect is for Ryan.
-///
-/// `fetch_messages` is the messages-source abstraction (#480): the
-/// production callsite passes `|| fetch_messages_via_http(port)`;
-/// in-process tests pass `|| async move { Ok(mock_messages) }` so
-/// the handler is reachable without spinning up a live HTTP server.
 pub(in crate::bridge) async fn handle_view_velocity<F, Fut>(
     fetch_messages: F,
     ws_tx: &Mutex<Option<WsSink>>,
@@ -51,10 +30,6 @@ where
 {
     let messages = fetch_messages().await?;
 
-    // Pre-fetch labels for every issue number mentioned in a
-    // lifecycle signal so compute can synchronously classify each
-    // event as feature vs debt. Fetching once per unique issue
-    // keeps the cost bounded to the number of stories in-window.
     let mut unique_numbers: std::collections::HashSet<u64> = std::collections::HashSet::new();
     for m in &messages {
         if let Some(hash_idx) = m.text.find('#')
@@ -77,19 +52,12 @@ where
         feature_numbers.contains(&n)
     });
 
-    // Surface the view in Ryan's TUI alongside the JSON return.
-    // Failure to emit is non-fatal — the JSON data is still useful to
-    // the calling agent even if the TUI-side effect couldn't fire.
     let marker_msg = crate::transport::protocol::ClientMessage::Send {
         text: VIEW_VELOCITY_MARKER.to_string(),
         to: None,
         addressee: None,
         message_type: Some("system".to_string()),
     };
-    // Log marker send/serialize failures instead of silently discarding
-    // them (fail-loud-for-dev-tools discipline). The caller still gets
-    // the metrics JSON back even if the TUI marker doesn't land — same
-    // non-blocking intent as before, but failures now leave a trail.
     match serde_json::to_string(&marker_msg) {
         Ok(json) => {
             if let Err(e) = ws_send(ws_tx, json).await {

@@ -92,10 +92,6 @@ mod tests {
 
     #[test]
     fn delivered_and_desk_check_collapse_into_delivered_count() {
-        // #1146 slice 3: post-collapse, Delivered and DeskCheck fold
-        // into delivered_count via view_backlog's narrower 5-bucket
-        // output shape (which folds DeskCheck with Delivered through
-        // column_for + bucketing).
         let stories = vec![
             story(104, "d", StoryState::Delivered),
             story(105, "dc", StoryState::DeskCheck),
@@ -111,10 +107,6 @@ mod tests {
 
     #[test]
     fn closed_non_accepted_story_lands_in_retired_count() {
-        // #1146 slice 2b: Retired is the new 7th bucket — closed stories
-        // whose preserved workflow state isn't Accepted (close_story
-        // for retire / dedupe / won't-fix) display separately so the
-        // Accepted column's success-narrative isn't polluted.
         let mut s = story(109, "retired", StoryState::Ready);
         s.is_closed = true;
         let summary = build_backlog_summary(&[s]);
