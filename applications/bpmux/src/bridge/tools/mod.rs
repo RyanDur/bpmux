@@ -1,5 +1,3 @@
-//! Bridge tool handlers — one module per MCP tool.
-
 mod helpers;
 
 mod add_principle;
@@ -83,8 +81,6 @@ mod view_tokens;
 mod view_velocity;
 mod view_verdicts;
 
-// Shared helpers re-exported for tools_stories.rs (sibling module
-// inside bridge) which needs WsSink + ws_send.
 pub(in crate::bridge) use helpers::{WsSink, ws_send};
 
 pub(in crate::bridge) use add_principle::handle_add_principle;
@@ -150,7 +146,6 @@ pub(in crate::bridge) use view_verdicts::handle_view_verdicts;
 
 pub use view_backlog::VIEW_BACKLOG_MARKER;
 
-// Re-exports used only by bridge/tests.rs.
 #[cfg(test)]
 pub(in crate::bridge) use read_messages::curate_message;
 #[cfg(test)]

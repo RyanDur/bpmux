@@ -1,5 +1,3 @@
-//! Shared helpers used across multiple bridge tool handlers.
-
 use futures::SinkExt;
 use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite;
@@ -33,11 +31,6 @@ pub(super) fn urlencoding(s: &str) -> String {
         .collect()
 }
 
-/// POST a JSON body to the bpmux server's simulate endpoint with
-/// the per-run auth token (Bearer) and loopback Host pin. Shared
-/// by handle_simulate_click + handle_simulate_key so the auth
-/// boilerplate lives in one place; adding a new simulate endpoint
-/// (or tightening the auth pattern) only touches this helper.
 pub(super) async fn post_simulate(
     port: u16,
     path: &str,
@@ -56,10 +49,6 @@ pub(super) async fn post_simulate(
     resp.text().await.map_err(|e| format!("failed: {e}"))
 }
 
-/// Read the per-run auth token that the server wrote at startup. Two
-/// distinct failure strings so an agent invoking a simulate tool knows
-/// whether bpmux hasn't started yet vs. the file is there but we can't
-/// read it.
 fn load_auth_token() -> Result<String, String> {
     let path = crate::session::auth_token::default_auth_token_path()
         .ok_or_else(|| "auth token path unavailable (no home directory)".to_string())?;
@@ -80,19 +69,11 @@ fn load_auth_token() -> Result<String, String> {
     }
 }
 
-/// Format the post-state identity as JSON for tool success responses
-/// (#269). Returning the full index gives the caller observable
-/// evidence the write landed, per designer's spec. Routes through
-/// `bridge::view_model::IdentityIndexView` per #1363 so the MCP-wire
-/// shape is bridge-owned, not session-owned.
 pub(super) fn identity_success(index: &crate::session::identity::IdentityIndex) -> String {
     let view = crate::bridge::view_model::IdentityIndexView::from(index);
     serde_json::to_string_pretty(&view).unwrap_or_else(|_| "{}".to_string())
 }
 
-/// Format an identity CRUD error as structured JSON: `{"error":
-/// "kind", "detail": "..."}`. Tool callers can branch on `error`
-/// without string-matching the detail.
 pub(super) fn identity_error(e: &crate::session::identity::IdentityError) -> String {
     serde_json::json!({
         "error": e.kind(),

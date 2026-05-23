@@ -20,13 +20,6 @@ pub fn resolve_repo_root() -> Option<PathBuf> {
 }
 
 pub fn run_git(args: &[&str]) -> Result<String, String> {
-    // BPMUX_GIT_STUB_DIR substrate (#1136 follow-up; Ryan
-    // 2026-05-02 02:39): tests must not depend on real git history —
-    // CI's shallow checkout doesn't have story-N commits, and the
-    // dev's local checkout has them, hiding the test's git-coupling.
-    // When the env var is set, run_git reads canned output from
-    // `<dir>/<subcommand>.txt` keyed by args[0]. Production (no env
-    // var) shells to git as before.
     if let Ok(stub_dir) = std::env::var("BPMUX_GIT_STUB_DIR") {
         let subcmd = args.first().copied().unwrap_or("");
         let path = std::path::Path::new(&stub_dir).join(format!("{subcmd}.txt"));

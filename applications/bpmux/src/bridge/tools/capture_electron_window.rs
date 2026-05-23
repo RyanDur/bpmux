@@ -1,8 +1,3 @@
-//! Bridge handler for capture_electron_window MCP tool (#1183).
-//! Thin proxy that hits the bpmux backend's /api/electron-capture
-//! endpoint with the calling agent's role for filename namespacing,
-//! then forwards the JSON response unchanged.
-
 pub(in crate::bridge) async fn handle_capture_electron_window(
     role: &str,
     port: u16,
