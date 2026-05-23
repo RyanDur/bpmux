@@ -22,14 +22,9 @@ pub struct CiEvent {
     pub sha: Option<String>,
     pub title: Option<String>,
     pub run_id: Option<u64>,
-    /// #1287: per-workflow breakdown across all runs on the latest
-    /// head_sha. `state` is the aggregate; `workflows` carries the
-    /// individual run summaries so callers needing per-workflow
-    /// detail don't have to re-fetch.
     pub workflows: Vec<WorkflowSummary>,
 }
 
-/// #1287: per-workflow run summary used in aggregate CI state.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
 pub struct WorkflowSummary {
     pub name: Option<String>,
@@ -133,7 +128,6 @@ fn append_meta(line: &mut String, event: &CiEvent) {
         line.push_str(&short);
         if let Some(title) = event.title.as_deref() {
             line.push_str(" \"");
-            // Truncate long titles so the one-line format stays scannable.
             const MAX_TITLE_LEN: usize = 60;
             if title.chars().count() > MAX_TITLE_LEN {
                 let truncated: String = title.chars().take(MAX_TITLE_LEN - 1).collect();
@@ -161,9 +155,6 @@ pub struct RunEntry {
     pub display_title: Option<String>,
     #[serde(rename = "id", alias = "databaseId", default)]
     pub database_id: Option<u64>,
-    /// #1287: workflow name (e.g., "CI", "self-hosted runner
-    /// smoke-test") — used for per-workflow breakdown in aggregate
-    /// state. GitHub API field on `/repos/.../actions/runs`.
     #[serde(default)]
     pub name: Option<String>,
     #[serde(default, skip)]
@@ -176,22 +167,12 @@ pub(crate) fn annotation_indicates_quota_exhaustion(msg: &str) -> bool {
         || msg.contains("billing")
 }
 
-/// Classify the per-run state of a single GitHub Actions workflow
-/// run. Pure helper; called by `classify_runs` once per run to derive
-/// the per-workflow conclusion, then aggregated.
 fn classify_single_run(run: &RunEntry) -> CiState {
     if run.status == "in_progress" || run.status == "queued" {
         return CiState::Running;
     }
     match run.conclusion.as_deref() {
         Some("success") => CiState::Green,
-        // #397: distinguish quota-exhausted / infrastructure-blocked
-        // failures from genuine code failures. The annotation message
-        // (populated upstream by the tracker for failed runs) carries
-        // GitHub's reason; if it matches the quota-exhaustion
-        // pattern, map to QuotaExhausted (team-gate pass-with-
-        // citation). Otherwise map to Red (genuine failure —
-        // block gates).
         Some(_) => match run.annotation_message.as_deref() {
             Some(msg) if annotation_indicates_quota_exhaustion(msg) => CiState::QuotaExhausted,
             _ => CiState::Red,
@@ -210,29 +191,11 @@ fn ci_state_str(state: CiState) -> &'static str {
     }
 }
 
-/// #1287: aggregate CI state across all workflow runs on the latest
-/// commit (head_sha of the first run). Aggregation contract:
-///
-/// - `Running` if ANY run is in_progress/queued
-/// - `Red` if ANY completed run is failure (not quota)
-/// - `QuotaExhausted` if ANY run is quota_exhausted and none are red/running
-/// - `Green` if ALL filtered runs are success
-/// - `Unknown` if no filtered runs (or all unknown)
-///
-/// This replaces the prior `runs.first()` semantic which fired
-/// `🟢 CI green` on the first-to-conclude workflow even while sister
-/// workflows on the same commit were still running. Per
-/// `feedback_verify_tool_output_schema`: the aggregate-contract is
-/// the explicit shape callers depend on for gate-fire decisions
-/// (pre-deliver, pre-desk-check, pre-accept).
 pub fn classify_runs(runs: &[RunEntry]) -> CiEvent {
     let Some(latest) = runs.first() else {
         return CiEvent::default();
     };
     let head_sha = latest.head_sha.clone();
-    // Filter to runs matching the latest commit's head_sha. If the
-    // first run has no head_sha (legacy/test-shape), fall back to
-    // single-run classification on `latest` only.
     let filtered: Vec<&RunEntry> = if head_sha.is_some() {
         runs.iter().filter(|r| r.head_sha == head_sha).collect()
     } else {

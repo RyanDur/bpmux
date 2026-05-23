@@ -80,7 +80,6 @@ fn completed_cancelled_is_red() {
 
 #[test]
 fn completed_timed_out_is_red() {
-    // Per spec: all non-success conclusions render red.
     assert_eq!(
         classify_runs(&[run("completed", Some("timed_out"))]).state,
         CiState::Red
@@ -97,7 +96,6 @@ fn completed_action_required_is_red() {
 
 #[test]
 fn completed_without_conclusion_is_unknown() {
-    // Degenerate case: gh shouldn't return this, but defend anyway.
     assert_eq!(
         classify_runs(&[run("completed", None)]).state,
         CiState::Unknown
@@ -106,9 +104,6 @@ fn completed_without_conclusion_is_unknown() {
 
 #[test]
 fn running_wins_over_stale_red_or_green() {
-    // When gh gives us only one run, and that run is in_progress, we
-    // render Running even if a previous run was red. The spec
-    // explicitly wants "running wins."
     assert_eq!(
         classify_runs(&[run("in_progress", None)]).state,
         CiState::Running
@@ -129,13 +124,6 @@ fn classify_runs_preserves_metadata_fields_into_ci_event() {
     assert_eq!(event.title.as_deref(), Some("fix: prevent silent drop"));
     assert_eq!(event.run_id, Some(12345));
 }
-
-// ─────────────────────────────────────────────────────────────────
-// #106 broadcast transition tests — pure function over the
-// state-transition table described in PM's shape comment. Unit
-// names because these test what the function returns, not what a
-// system does.
-// ─────────────────────────────────────────────────────────────────
 
 fn event(state: CiState) -> CiEvent {
     CiEvent {
@@ -237,12 +225,6 @@ fn green_message_includes_sha_and_run_link() {
     assert!(text.contains("gh run view 999"));
 }
 
-// ─────────────────────────────────────────────────────────────────
-// #188 multi-depth payload tests — pure function over the
-// `build_multi_depth_for_transition` helper. Unit-named per the
-// test-name discipline: describe what the function returns.
-// ─────────────────────────────────────────────────────────────────
-
 #[test]
 fn build_multi_depth_for_failure_uses_red_glyph_summary() {
     let ev = event_with_meta(CiState::Red, "abcdef1", "fix: x", 42);
@@ -274,16 +256,12 @@ fn build_multi_depth_for_green_uses_green_glyph_summary() {
 fn build_multi_depth_sets_pm_and_designer_defaults_to_summary() {
     let ev = event_with_meta(CiState::Red, "abcdef1", "fix: x", 42);
     let payload = build_multi_depth_for_transition(&ev);
-    // pm and designer default to the summary — binary-state
-    // is all they need to make routing decisions.
     assert_eq!(payload.role_default.get("pm"), Some(&payload.summary));
     assert_eq!(payload.role_default.get("designer"), Some(&payload.summary));
 }
 
 #[test]
 fn build_multi_depth_sets_dev_default_to_detail_line_with_sha_and_run_link() {
-    // Dev needs stage/commit context to diagnose a failure —
-    // defaults to the rich form, not the summary.
     let ev = event_with_meta(
         CiState::Red,
         "abcdef1234",
@@ -296,7 +274,6 @@ fn build_multi_depth_sets_dev_default_to_detail_line_with_sha_and_run_link() {
     assert!(dev.contains("abcdef1"), "short SHA missing: {dev}");
     assert!(dev.contains("fix: prevent silent drop"), "title missing");
     assert!(dev.contains("gh run view 54321"), "run link missing");
-    // Dev's default is strictly richer than the summary — not equal.
     assert_ne!(dev, &payload.summary);
 }
 
@@ -326,10 +303,7 @@ fn build_multi_depth_deep_detail_is_on_demand_when_run_id_present() {
 
 #[test]
 fn build_multi_depth_deep_detail_is_preloaded_fallback_when_run_id_missing() {
-    // Degenerate gh output case — no run_id available. Should
-    // still produce a valid payload, falling back to a
-    // Preloaded placeholder rather than panicking.
-    let ev = event(CiState::Red); // defaults: all metadata None
+    let ev = event(CiState::Red);
     let payload = build_multi_depth_for_transition(&ev);
     match payload.deep {
         DeepDetail::Preloaded { text } => {
@@ -343,9 +317,6 @@ fn build_multi_depth_deep_detail_is_preloaded_fallback_when_run_id_missing() {
 
 #[test]
 fn build_multi_depth_green_dev_default_describes_green_not_failure() {
-    // Guard against a copy-paste bug where green-completion rendering
-    // leaks the failure template. Dev's green default should say
-    // "CI green", not "CI failed".
     let ev = event_with_meta(CiState::Green, "abcdef1", "fix", 42);
     let payload = build_multi_depth_for_transition(&ev);
     let dev = payload.role_default.get("dev").expect("dev entry");
@@ -355,9 +326,6 @@ fn build_multi_depth_green_dev_default_describes_green_not_failure() {
 
 #[test]
 fn build_multi_depth_role_default_has_entries_for_all_three_roles() {
-    // Regression guard: if a future edit drops a role by
-    // accident, this test fires. Three agent roles + optional
-    // ryan (absent, falls back to summary).
     let ev = event_with_meta(CiState::Red, "abcdef1", "fix", 42);
     let payload = build_multi_depth_for_transition(&ev);
     assert_eq!(
@@ -370,8 +338,6 @@ fn build_multi_depth_role_default_has_entries_for_all_three_roles() {
     assert!(payload.role_default.contains_key("designer"));
     assert!(payload.role_default.contains_key("dev"));
 }
-
-// ── Dev-addressed CI signal ──
 
 #[test]
 fn build_dev_ci_signal_addresses_dev_only() {
@@ -390,9 +356,6 @@ fn build_dev_ci_signal_addresses_dev_only() {
 
 #[test]
 fn build_dev_ci_signal_uses_chat_message_type() {
-    // Chat (not Activity) so the bridge pushes it to dev's
-    // notifications. Activity messages are filtered out of agent
-    // chat streams per #152.
     let signal = build_dev_ci_signal("anything");
     assert_eq!(signal.message_type, crate::session::MessageType::Chat);
 }

@@ -321,3 +321,49 @@ fn workflow_summary_conclusion_uses_canonical_strings() {
     assert!(conclusions.contains(&"failure"));
     assert!(conclusions.iter().filter(|c| **c == "in_progress").count() >= 2);
 }
+
+fn quota_run(head_sha: &str, run_id: u64) -> RunEntry {
+    RunEntry {
+        status: "completed".to_string(),
+        conclusion: Some("failure".to_string()),
+        head_sha: Some(head_sha.to_string()),
+        display_title: Some(format!("commit on {head_sha}")),
+        database_id: Some(run_id),
+        name: Some("CI".to_string()),
+        annotation_message: Some(
+            "The job was not started because recent account payments have failed or your spending limit needs to be increased."
+                .to_string(),
+        ),
+    }
+}
+
+#[test]
+fn aggregate_quota_exhausted_wins_over_green_but_loses_to_red_and_running() {
+    assert_eq!(
+        classify_runs(&[
+            run("completed", Some("success"), "abc1234", "smoke", 201),
+            quota_run("abc1234", 200),
+        ])
+        .state,
+        CiState::QuotaExhausted,
+        "quota-exhausted with no red/running run aggregates to QuotaExhausted (not Green)"
+    );
+    assert_eq!(
+        classify_runs(&[
+            run("completed", Some("failure"), "abc1234", "smoke", 202),
+            quota_run("abc1234", 200),
+        ])
+        .state,
+        CiState::Red,
+        "a genuine failure outranks quota-exhausted"
+    );
+    assert_eq!(
+        classify_runs(&[
+            run("in_progress", None, "abc1234", "smoke", 203),
+            quota_run("abc1234", 200),
+        ])
+        .state,
+        CiState::Running,
+        "an in-progress run outranks quota-exhausted"
+    );
+}
