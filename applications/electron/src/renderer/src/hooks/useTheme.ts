@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { tryCatch } from '../lib/result'
 
 export type Theme = 'dark' | 'light'
 
@@ -22,11 +23,10 @@ export const useTheme = (): { theme: Theme; toggle: () => void; set: (t: Theme) 
     if (typeof document !== 'undefined') {
       document.documentElement.dataset.theme = theme
     }
-    try {
-      window.localStorage.setItem(STORAGE_KEY, theme)
-    } catch {
-      // storage can fail silently (private mode, etc.)
-    }
+    tryCatch(
+      () => window.localStorage.setItem(STORAGE_KEY, theme),
+      () => undefined
+    )
   }, [theme])
 
   const toggle = useCallback((): void => {

@@ -1,11 +1,3 @@
-// Wire-protocol types mirroring
-// `applications/bpmux/src/transport/protocol.rs`. Keep in sync with the
-// Rust `ClientMessage` / `ServerMessage` enums — both serialize with
-// `#[serde(tag = "type")]`, so the discriminator field is `type` and
-// values are lowercased variant names.
-
-// ─── server → client ─────────────────────────────────────────────────
-
 export interface ServerWelcome {
   type: 'welcome'
   session_id: string
@@ -86,8 +78,6 @@ export interface ServerPong {
 
 export type ServerMessage = ServerWelcome | ServerChatMessage | ServerError | ServerPong
 
-// ─── client → server ─────────────────────────────────────────────────
-
 export interface ClientIdentify {
   type: 'identify'
   name: string
@@ -108,8 +98,6 @@ export interface ClientPing {
 
 export type ClientMessage = ClientIdentify | ClientSend | ClientPing
 
-// ─── renderer-local view model ───────────────────────────────────────
-
 export interface ChatMessage {
   id: string
   from: string
@@ -122,18 +110,6 @@ export interface ChatMessage {
 
 export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected'
 
-// Board-invalidate marker — broadcast by the backend when board
-// state changes (accept/reject/reorder/comment). Renderer components
-// that cache data (board list, drill-in comments) subscribe by
-// watching the message stream for this marker text and refetch on
-// match. Must exactly mirror `BOARD_INVALIDATE_MARKER` in
-// applications/bpmux/src/bridge/tools_stories.rs.
 export const BOARD_INVALIDATE_MARKER = '__BPMUX_BOARD_INVALIDATE__'
 
-// Sync-status-change marker (#1164). Broadcast by the bridge's
-// run_drain_loop when a drain tick mutates state (queued events
-// pushed or errored). SyncStatusGlyph subscribes and refetches
-// /api/sync-status immediately; the 5s client-side poll stays as
-// the resilience-fallback. Must mirror `SYNC_STATUS_UPDATE_MARKER`
-// in applications/bpmux/src/bridge/tools_stories.rs.
 export const SYNC_STATUS_UPDATE_MARKER = '__BPMUX_SYNC_STATUS_UPDATE__'

@@ -10,14 +10,6 @@ interface Props {
 const hasAnyUnfurlableField = (data: UnfurlData): boolean =>
   Boolean(data.title) || Boolean(data.description) || Boolean(data.image)
 
-/**
- * Renders unfurl preview cards beneath a message body for every URL
- * in the text. Per #343: multiple URLs → multiple stacked cards (AC4);
- * failed fetch → no card (AC5). Click opens in the OS browser via
- * the <a target="_blank"> path — Electron converts this to the
- * system shell handler automatically when setWindowOpenHandler is
- * configured (default in `@electron-toolkit/utils` setup).
- */
 const UnfurlCards = ({ text, apiBase, authToken }: Props): React.JSX.Element | null => {
   const urls = extractUrls(text)
   const unfurls = useUnfurl({ apiBase, authToken, urls })

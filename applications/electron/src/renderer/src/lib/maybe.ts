@@ -1,14 +1,3 @@
-/**
- * `Maybe<T>` — `Some<T> | Nothing<T>` discriminated-union with
- * monadic ops. Ported from the battleship repo's canonical pattern
- * (#1352).
- *
- * Use `maybe(value)` to lift a nullable value into a `Maybe`; `some`
- * / `nothing` to construct directly. Chain via `.map` / `.mBind` /
- * `.or` without explicit null-checks; collapse via `.orElse(default)`
- * / `.orNull()` at the boundary.
- */
-
 type Some<T> = {
   isNothing: false
   map<U>(fn: (value: T) => U): Some<U>

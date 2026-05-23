@@ -1,10 +1,3 @@
-/**
- * Stories mutation client (#1352). Thin wrappers over `http.post`
- * covering the three DrillIn-driven owner-gate routes: comment
- * append, accept, reject. Pins endpoint + payload shape per fn so
- * callers express intent (postStoryAccept) instead of URL.
- */
-
 import { type ApiContext, type HttpError, http } from './http'
 import { type AsyncResult } from '../lib/asyncResult'
 

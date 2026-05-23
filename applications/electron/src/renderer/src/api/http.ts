@@ -1,23 +1,3 @@
-/**
- * Generic HTTP verb module (#1352 / Ryan-pattern). Wraps the global
- * `fetch` in `AsyncResult<T, HttpError>` so callers branch on
- * `result.kind === 'success'` instead of try-catch + manual
- * res.ok checks. Sister-shape to the battleship repo's
- * `protocols/http/http.ts`.
- *
- * Verbs (`get`, `post`, `put`, `delete`) each bind:
- *  - The HTTP method.
- *  - The success-status allowlist (per-verb so a POST returning 204
- *    isn't a server error and a GET returning 201 is a server error).
- *  - The Accept / Content-Type / Authorization headers.
- *  - JSON decode + tagged-failure on network OR non-allowlist status.
- *
- * `ApiContext` carries the per-call apiBase + authToken; production
- * callers pass `window.bpmux` fields; tests inject a fake. The
- * generic `T` parameter is the success-body shape; pass `void` (or
- * leave defaulted) when the response has no useful body.
- */
-
 import { type AsyncResult, asyncFailure, ofPromise } from '../lib/asyncResult'
 import { failure, success, type Result } from '../lib/result'
 
@@ -113,11 +93,6 @@ export const http = {
     ofPromise(request<T>(ctx, endpoint, 'DELETE', body, STATUS_OK_NO_CONTENT))
 }
 
-/**
- * Format an `HttpError` as a single human-readable string for toast/
- * inline-error display. Callers that need to branch on the error
- * shape match on `error.kind` directly instead.
- */
 export const describeHttpError = (error: HttpError): string => {
   switch (error.kind) {
     case 'http':

@@ -4,14 +4,6 @@ interface Props {
   type: StoryType
 }
 
-// Inline SVG glyphs for the three story types. Hand-drawn rather than
-// pulled from an icon library (per Ryan's no-deps rule). Each glyph is
-// a single-path sketch in a 16x16 box so it renders crisp at the row
-// heights we use.
-//
-// colors are read from CSS via `currentColor` — parents set `color:
-// var(--accent-…)` and the glyph inherits. Keeps theming centralised
-// with the tokens file.
 const StoryTypeGlyph = ({ type }: Props): React.JSX.Element => {
   const label = typeLabel(type)
   return (
@@ -49,7 +41,6 @@ const typeLabel = (type: StoryType): string => {
 const renderPath = (type: StoryType): React.JSX.Element => {
   switch (type) {
     case 'feature':
-      // 4-point star (sparkle-ish).
       return (
         <path
           d="M8 1.5l1.4 4.1 4.1 1.4-4.1 1.4L8 12.5 6.6 8.4 2.5 7l4.1-1.4z"
@@ -57,7 +48,6 @@ const renderPath = (type: StoryType): React.JSX.Element => {
         />
       )
     case 'bug':
-      // Rounded bug body with two antennae.
       return (
         <g fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
           <path d="M5.5 3.2l1.2 1.6M10.5 3.2l-1.2 1.6" />
@@ -70,7 +60,6 @@ const renderPath = (type: StoryType): React.JSX.Element => {
         </g>
       )
     case 'chore':
-      // 8-tooth gear outline.
       return (
         <g fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round">
           <path d="M8 2.3v1.8M8 11.9v1.8M2.3 8h1.8M11.9 8h1.8M4.2 4.2l1.3 1.3M10.5 10.5l1.3 1.3M4.2 11.8l1.3-1.3M10.5 5.5l1.3-1.3" />
@@ -87,8 +76,6 @@ const renderPath = (type: StoryType): React.JSX.Element => {
         </g>
       )
     case 'iteration':
-      // Flag-on-pole — distinguishes iteration-issues (time-bound
-      // capability) from epics (architectural-scope) in the icebox.
       return (
         <g fill="currentColor">
           <rect x="3.5" y="2" width="1" height="12" rx="0.3" />
@@ -96,7 +83,6 @@ const renderPath = (type: StoryType): React.JSX.Element => {
         </g>
       )
     default:
-      // Dim dot.
       return <circle cx="8" cy="8" r="2" fill="currentColor" />
   }
 }

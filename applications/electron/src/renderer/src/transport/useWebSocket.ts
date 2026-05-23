@@ -13,24 +13,6 @@ import {
   type ServerMessage
 } from './types'
 
-// WebSocket hook for the bpmux session protocol.
-//
-// Protocol (see applications/bpmux/src/transport/ws.rs):
-//   1. Client connects.
-//   2. Client sends `{type:"identify", name, tool}` (5s server-side
-//      timeout; anything else before identify draws an error reply).
-//   3. Server replies `{type:"welcome", session_id}`, then streams
-//      `{type:"message", ...}` frames for every broadcast.
-//   4. Server emits WS-level Ping frames every 30s (browser responds
-//      automatically — we don't handle those).
-//   5. To send: `{type:"send", text}` for broadcast. `to` omitted =
-//      broadcast. The server stamps `from` using our identify name.
-//
-// There is no bearer-token auth on the WS handshake — the token in
-// `window.bpmux.authToken` gates the HTTP simulate_* endpoints, not
-// the WS. Ryan's ownership model keeps the WS a loopback-only local
-// channel with identify-by-name.
-
 export const RENDERER_IDENTITY = 'ryan'
 const RENDERER_TOOL = 'electron'
 
@@ -89,9 +71,6 @@ export const useWebSocket = (
   opts: UseWebSocketOptions = {}
 ): UseWebSocketResult => {
   const { apiBase, authToken } = opts
-  // When no URL is provided (preload missing), start disconnected
-  // rather than connecting — avoids a setState-in-effect cascade and
-  // correctly represents the state.
   const [status, setStatus] = useState<ConnectionStatus>(url ? 'connecting' : 'disconnected')
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [sessionId, setSessionId] = useState<string | null>(null)
@@ -199,27 +178,6 @@ export const useWebSocket = (
     if (!historyLoadedRef.current && apiBase && authToken) {
       historyLoadedRef.current = true
       const controller = new AbortController()
-      // Two parallel hydrations (#364):
-      //   1. chat_only=true — regular chat + insight history for the
-      //      MessageList; unchanged behavior.
-      //   2. message_type=activity — small activity seed so the
-      //      sidebar presence dots derive sensibly on first render.
-      //      Without this, usePresence saw zero activity messages in
-      //      the initial state (chat_only=true filters them out) and
-      //      every role displayed as 'offline' until a NEW tool-call
-      //      broadcast arrived over WS. That left pm + designer stuck
-      //      at offline mid-session even while they were actively
-      //      messaging, because chat messages don't update presence.
-      //   The activity seed is small (50 events covers each role's
-      //   latest state with wide margin) and activity events are
-      //   single-word payloads, so the extra RTT is negligible.
-      // Retry with backoff so the renderer tolerates a brief cold-
-      // start window where the bpmux backend isn't yet listening
-      // (Electron + bpmux backend launch in parallel; backend bind
-      // can lag the renderer's first fetch by a few hundred ms).
-      // Mirrors fetchBoard's retry pattern. Only the FINAL failure
-      // logs to console.error so transient warmup blips don't
-      // pollute the dev/test signal.
       const fetchHistoryWithRetry = async (endpoint: string): Promise<HistoryMessage[]> => {
         const delays = [0, 200, 500]
         let lastErr: unknown = null
@@ -252,9 +210,6 @@ export const useWebSocket = (
       )
         .onSuccess(([chat, activity]) => {
           if (unmountedRef.current) return
-          // Both responses are newest-first from the server; combine
-          // and chronological-sort before merging so the resulting
-          // state stays ts-ordered regardless of fetch arrival order.
           const combined = [...chat, ...activity].sort((a, b) => a.ts.localeCompare(b.ts))
           setMessages((live) => {
             const seen = new Set<string>()

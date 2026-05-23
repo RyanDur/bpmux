@@ -1,12 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { describeHttpError, http } from '../api/http'
 
-// Raw timeline event as returned by GET /api/stories/:number/timeline.
-// The backend forwards GitHub's issue-events list + a synthetic
-// "filed" record for the issue's own creation. Classification into
-// lifecycle gates (started / delivered / accepted / rejected / closed)
-// happens here on the renderer — the mapping is a product concern
-// (bpmux's label vocabulary) that shouldn't live in the API layer.
 export interface TimelineEvent {
   event: string
   actor: string
@@ -15,10 +9,6 @@ export interface TimelineEvent {
   body?: string
 }
 
-// The classified gate kinds we surface in the default "major gates"
-// filter. Any event that isn't one of these falls under `labeled-
-// other` / `commented` / `other` and hides unless the user toggles
-// "show all".
 export type TimelineGate =
   | 'filed'
   | 'started'
@@ -32,11 +22,6 @@ export type TimelineGate =
 export interface ClassifiedEvent {
   raw: TimelineEvent
   gate: TimelineGate | null
-  // Rework cycles are contiguous runs starting with a desk-check-fail
-  // that end when the next accepted / closed / rejected gate fires.
-  // When present, groups the event visually with its siblings in the
-  // same cycle so readers see the loop as a single iteration rather
-  // than a flat list of gate events.
   reworkGroup?: number
 }
 
@@ -54,11 +39,6 @@ export interface UseTimelineResult {
   refetch: () => Promise<void>
 }
 
-// Map a raw issue-event + label name to a lifecycle gate. Mirrors the
-// label vocabulary the Rust bridge writes in
-// `tools_stories::{start_story, deliver_story, accept_story,
-// reject_story}`. Consumers that want the filing + closure anchors
-// get those from the synthetic `filed` + closed events directly.
 export const classifyEvent = (e: TimelineEvent): TimelineGate | null => {
   if (e.event === 'filed') return 'filed'
   if (e.event === 'closed') return 'closed'
@@ -82,10 +62,6 @@ export const classifyEvent = (e: TimelineEvent): TimelineGate | null => {
   return null
 }
 
-// Annotate desk-check-fail → … → (accepted|closed|rejected) runs with
-// a rework group id. The loop's start is the desk-check-fail itself;
-// the close is the next terminal gate. Events without a group stay
-// ungrouped (reworkGroup: undefined).
 const markReworkCycles = (events: ClassifiedEvent[]): ClassifiedEvent[] => {
   const out = events.map((e) => ({ ...e }))
   let cycle = 0

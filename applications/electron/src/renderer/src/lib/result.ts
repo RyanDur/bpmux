@@ -1,16 +1,3 @@
-/**
- * `Result<S, F>` — discriminated-union over success or failure with
- * monadic ops. Ported from the battleship repo's canonical Result
- * pattern (#1352 — Ryan-confirmed reference shape).
- *
- * `success` and `failure` are the only constructors; both return
- * frozen objects so misuse via mutation fails loudly.
- *
- * Use `andThen` to chain `Result`-returning steps without try-catch;
- * `or` to recover via a fallback `Result`; `either` / `mapEither` to
- * collapse the union into a single typed value at the boundary.
- */
-
 export type Result<S, F> = Success<S, F> | Failure<S, F>
 
 export type Success<S, F> = {

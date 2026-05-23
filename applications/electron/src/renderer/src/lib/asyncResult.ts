@@ -1,16 +1,3 @@
-/**
- * `AsyncResult<S, F>` — `Promise<Result<S, F>>` wrapped in a monadic
- * interface so callers can chain `.map` / `.andThen` / `.or` across
- * async boundaries without unwrapping into try-catch. Ported from
- * the battleship repo's canonical pattern (#1352).
- *
- * Use `asyncResult(promise)` to lift a regular `Promise<S>` into an
- * `AsyncResult<S, F>` (catches into `failure`); `asyncTryCatch` for
- * the same with `Error` as the failure type; `asyncSuccess` /
- * `asyncFailure` to construct directly; `ofPromise` to wrap a
- * `Promise<Result<S, F>>` someone else built.
- */
-
 import { success, failure, tryCatch, toError, type Result } from './result'
 
 export type AsyncResult<S, F> = {

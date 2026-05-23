@@ -16,7 +16,6 @@ interface UseReactionsArgs {
 }
 
 export interface UseReactionsResult {
-  // Keyed by message_key for O(1) lookup per row render.
   byMessage: Map<string, AggregatedReaction[]>
   toggle: (messageKey: string, emoji: string, user: string) => Promise<void>
 }

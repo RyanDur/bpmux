@@ -9,11 +9,6 @@ import {
 } from './watcherHealth'
 import './CiGlyph.css'
 
-// #397 + #361 bundled: `quota_exhausted` is a distinct backend
-// conclusion (not a kind of failure) so team-gate code can branch
-// between hard-block and pass-with-citation. The glyph renders it
-// with ⏸ + amber so the owner can see "infra unavailable" at a
-// glance instead of reading it as a code-failure red.
 type CiConclusion = 'success' | 'failure' | 'in_progress' | 'quota_exhausted' | 'unknown'
 
 interface CiStateReport {
@@ -28,10 +23,6 @@ interface CiStateReport {
   backoff_cap_secs?: number
 }
 
-// Safety-net poll cadence. #361: 60s was too slow — a typical fast
-// CI run (<60s) could start + finish between polls. 15s catches
-// transient states with substantial headroom and stays well under
-// GitHub's 5000/hr authenticated rate limit (240 polls/hr).
 const DISCONNECT_RECONNECT_SAFETY_POLL_MS = 15_000
 
 const stateToConclusion = (state: CiStateWire): CiConclusion => {
@@ -58,19 +49,12 @@ const conclusionGlyph = (conclusion: string): string => {
     case 'in_progress':
       return '◌'
     case 'quota_exhausted':
-      // #397 + #361: distinct from ✗ so owner reads "infra paused"
-      // not "code failed." Shape carries the signal for color-blind
-      // readers; color (amber) reinforces.
       return '⏸'
     default:
       return '?'
   }
 }
 
-// Human-readable conclusion for aria-label. Extends the glyph
-// vocabulary with accessibility text — `quota_exhausted` needs a
-// spelled-out reason so screen-reader users aren't left guessing
-// what ⏸ means.
 const conclusionAriaLabel = (conclusion: string): string => {
   switch (conclusion) {
     case 'quota_exhausted':
@@ -90,9 +74,6 @@ const CiGlyph = ({ ciSnapshot }: Props): React.JSX.Element => {
   const [fetchError, setFetchError] = useState<string | null>(null)
   const error = bridge?.apiBase ? fetchError : 'no backend'
   const setError = setFetchError
-  // #361: surface the last-successful-fetch timestamp in the tooltip
-  // so the user can confirm the poll is alive even when CI is stably
-  // green.
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
   const buildFetch = useCallback(
