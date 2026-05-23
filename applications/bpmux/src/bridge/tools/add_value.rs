@@ -3,8 +3,6 @@ use crate::session::identity::{add_value, default_identity_dir, load_identity, s
 
 use super::helpers::{identity_error, identity_success};
 
-/// `add_value` — create a new top-level value on the caller's own
-/// identity file. Role-derived (agents can only mutate their own).
 pub(in crate::bridge) async fn handle_add_value(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,

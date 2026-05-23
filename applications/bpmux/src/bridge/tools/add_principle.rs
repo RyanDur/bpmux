@@ -3,9 +3,6 @@ use crate::session::identity::{add_principle, default_identity_dir, load_identit
 
 use super::helpers::{identity_error, identity_success};
 
-/// `add_principle` — append a principle under a named value on the
-/// caller's own identity file. Role derived from caller; no cross-
-/// role surface by construction.
 pub(in crate::bridge) async fn handle_add_principle(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,

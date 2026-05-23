@@ -1,15 +1,3 @@
-//! Read-side of the post-compact briefing pair (#287). Returns the
-//! caller's own briefing by default; pass `role` to read another
-//! role's (peer-read is allowed per the individuality-plus-emergent-
-//! team discipline — transparency without merging).
-//!
-//! #1148: response now includes a `team_doctrine` pointer-list with
-//! filesystem-mtime so process-doctrine reaches all agents
-//! structurally without baking content into per-role CLAUDE.md.
-//! Pointer-shape (path + last_updated_at + key_sections) keeps
-//! per-call context-budget under ~2KB; agents read full content
-//! on-demand via the Read tool when relevant.
-
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;

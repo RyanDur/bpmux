@@ -1,6 +1,5 @@
 use super::helpers::get_session_dir;
 
-/// Post-compaction recovery — bookmark survives context resets.
 pub(in crate::bridge) async fn handle_save_bookmark(
     args: &serde_json::Map<String, serde_json::Value>,
     _port: u16,

@@ -5,9 +5,6 @@ use crate::session::identity::{
 
 use super::helpers::{identity_error, identity_success};
 
-/// `update_principle` — replace an existing principle's text with a
-/// refined version on the caller's own identity. Exact-match on old
-/// text required; errors structured per #269.
 pub(in crate::bridge) async fn handle_update_principle(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,

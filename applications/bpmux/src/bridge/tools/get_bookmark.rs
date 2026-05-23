@@ -1,6 +1,5 @@
 use super::helpers::get_session_dir;
 
-/// Bookmark recovery companion to save_bookmark.
 pub(in crate::bridge) async fn handle_get_bookmark(
     args: &serde_json::Map<String, serde_json::Value>,
     _port: u16,

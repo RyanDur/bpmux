@@ -5,8 +5,6 @@ use crate::session::identity::{
 
 use super::helpers::{identity_error, identity_success};
 
-/// `remove_principle` — drop a principle from the caller's own
-/// identity. Use to prune decoration per the cost-to-hold audit.
 pub(in crate::bridge) async fn handle_remove_principle(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,

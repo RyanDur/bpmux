@@ -1,6 +1,3 @@
-/// Write-side of the post-compact briefing pair (#287). Agent curates
-/// this mid-session; `session-start.sh` reads it post-compact so the
-/// agent can re-enter context with their chosen continuity reminders.
 pub(in crate::bridge) async fn handle_save_briefing(
     args: &serde_json::Map<String, serde_json::Value>,
     name: &str,
