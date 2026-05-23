@@ -1,33 +1,7 @@
-//! HTTP client for cross-process tool dispatch from the bridge subcommand
-//! to electron-server's canonical SyncOrchestrator (#516).
-//!
-//! Slice 2: bridges stop running mutation handlers against their own
-//! local BoardStore + adapter and instead POST to
-//! `/api/rpc/<tool>` on `http://127.0.0.1:{port}` (the electron-server
-//! they're already WS-connected to). Slice 1 added the receiving
-//! endpoint; this module is the calling side. Slice 3 generalizes the
-//! protocol so every mutation tool routes through one client function.
-//!
-//! Auth-token discovery: same source the electron-server's `auth::gate`
-//! middleware verifies against — `BPMUX_AUTH_TOKEN_PATH` override, else
-//! `default_auth_token_path()` (`~/.bpmux/auth_token`). Bridge + server
-//! share a filesystem so they read the same token by construction.
-//!
-//! Failure mode is fail-loud per #516 designer amendment 1: if the
-//! electron-server is offline / unreachable / returns a non-2xx, the
-//! caller gets a structured error string naming the cause. Bridges do
-//! NOT silently fall back to local-handler dispatch — that would
-//! resurrect the dual-store divergence #516 exists to eliminate.
-
 use serde_json::{Map, Value};
 
 const RPC_AGENT_HEADER: &str = "X-BPMUX-Agent";
 
-/// Resolve the per-run auth token the bridge presents to the electron-
-/// server. Mirrors the discovery path `auth::gate` validates against on
-/// the receiving side: BPMUX_AUTH_TOKEN_PATH env override else
-/// `~/.bpmux/auth_token`. Bridge + server share a filesystem so they
-/// observe the same token by construction.
 fn load_auth_token() -> Result<String, String> {
     let path = crate::session::auth_token::default_auth_token_path()
         .ok_or_else(|| "cannot resolve auth-token path (HOME unset?)".to_string())?;
@@ -35,12 +9,6 @@ fn load_auth_token() -> Result<String, String> {
         .map_err(|e| format!("read auth-token from {}: {e}", path.display()))
 }
 
-/// POST a JSON body to `/api/rpc/<tool>` on the local electron-server,
-/// authenticated as `agent`. Returns the server's `message` field on
-/// success, or a structured error otherwise. The error string names
-/// the cause (unreachable, non-2xx status, malformed body) so the
-/// caller can surface it through MCP's error channel without
-/// guessing.
 async fn post_rpc(
     port: u16,
     tool: &str,
@@ -82,10 +50,6 @@ async fn post_rpc(
     }
 }
 
-/// Bridge-side generic dispatch: forwards an MCP-tool args map to the
-/// electron-server's canonical SyncOrchestrator via the
-/// `/api/rpc/{tool}` endpoint. Bridge dispatch sites collapse to a
-/// single one-liner per tool (#516 slice 3 template-replication).
 pub(super) async fn dispatch_via_rpc(
     port: u16,
     tool: &str,
@@ -186,8 +150,6 @@ mod tests {
 
     #[tokio::test]
     async fn post_rpc_routes_path_param_for_arbitrary_tools() {
-        // Generic dispatcher handles any tool name — verify a tool other
-        // than start_story round-trips through the same client.
         let server = MockServer::start();
         let m = server.mock(|when, then| {
             when.method(Method::POST).path("/api/rpc/accept_story");

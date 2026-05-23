@@ -1,30 +1,7 @@
-//! Bridge-owned response shapes — `bridge::view_model::*` types are
-//! the public-API shapes returned by bridge tools to MCP callers.
-//!
-//! Per architecture.md Friction #2 (#1363): bridge tools previously
-//! serialized `session::*` types directly via their `Serialize`
-//! derive, leaking the session schema across the bridge↔MCP wire. A
-//! field rename in `session/identity.rs` would silently change the
-//! MCP JSON shape — making bridge a downstream of session refactors.
-//!
-//! The view-model boundary inverts that dependency: bridge owns its
-//! response shapes, and per-class `From<&session::Foo>` translations
-//! decide what to expose. Session schema changes are absorbed by the
-//! translation step, not propagated to MCP consumers.
-//!
-//! This is the foundation slice — slice 1 of the multi-slice
-//! migration. Subsequent slices populate the module with views for
-//! each bridge-tool class (identity write-path / briefing / tokens /
-//! bookmark / messages / etc.).
-
 use serde::Serialize;
 
 use crate::session;
 
-/// Mirror of `session::identity::IdentityValue` exposed at the
-/// bridge↔MCP boundary. Field-for-field today; the boundary's value
-/// lands when session::IdentityValue gains/renames fields — the
-/// translation in `From` controls what flows to MCP.
 #[derive(Debug, Clone, Serialize)]
 pub struct IdentityValueView {
     pub name: String,
@@ -42,8 +19,6 @@ impl From<&session::identity::IdentityValue> for IdentityValueView {
     }
 }
 
-/// Mirror of `session::identity::IdentityIndex` — the collection
-/// of identity values for one role.
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct IdentityIndexView {
     pub values: Vec<IdentityValueView>,
@@ -57,7 +32,6 @@ impl From<&session::identity::IdentityIndex> for IdentityIndexView {
     }
 }
 
-/// Bridge-owned mirror of `session::tokens::TokenReport`.
 #[derive(Debug, Clone, Serialize)]
 pub struct TokenReportView {
     pub total_tokens: u64,
@@ -66,7 +40,6 @@ pub struct TokenReportView {
     pub recent: Vec<TokenReportEntryView>,
 }
 
-/// Bridge-owned mirror of `session::tokens::TokenReportEntry`.
 #[derive(Debug, Clone, Serialize)]
 pub struct TokenReportEntryView {
     pub ts: String,
@@ -107,9 +80,6 @@ impl From<&session::tokens::TokenReportEntry> for TokenReportEntryView {
     }
 }
 
-/// Bridge-owned mirror of `session::bookmark::Bookmark`. The bookmark
-/// is per-role mid-session-state structured-snapshot the agent
-/// curates for post-compact re-entry context.
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct BookmarkView {
     pub current_task: String,
@@ -133,9 +103,6 @@ impl From<&session::bookmark::Bookmark> for BookmarkView {
     }
 }
 
-/// Bridge-owned mirror of `session::velocity::VelocityMetrics`. The
-/// renderer-side displays these without re-deriving; the agent-side
-/// `view_velocity` tool returns the same shape.
 #[derive(Debug, Clone, Serialize)]
 pub struct VelocityMetricsView {
     pub window_days: i64,
