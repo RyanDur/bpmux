@@ -221,9 +221,6 @@ pub async fn run_server(
     ct: CancellationToken,
     screen_capture: Arc<std::sync::Mutex<String>>,
 ) -> anyhow::Result<()> {
-    // Ensure the per-run auth token exists before binding the port.
-    // Failing here is loud and blocks startup — simulate endpoints
-    // can't be gated without a secret.
     let token_path = session::auth_token::default_auth_token_path()
         .ok_or_else(|| anyhow::anyhow!("cannot locate ~/.bpmux auth token path"))?;
     let token = session::auth_token::ensure(&token_path).map_err(|e| {
@@ -234,11 +231,6 @@ pub async fn run_server(
     })?;
     let auth_state = AuthState::new(token);
 
-    // Board + story REST endpoints require a live tracker. Build once
-    // at startup so each request doesn't re-auth with GitHub. None on
-    // missing env — the handlers surface 503 "tracker not configured"
-    // so the renderer can show a tracker-missing banner instead of a
-    // blank board.
     let tracker: transport::rest::TrackerHandle =
         crate::board::adapters::github::GitHubSourceAdapter::from_env().map(std::sync::Arc::new);
 
@@ -328,8 +320,6 @@ pub async fn run_server(
             .await;
     }
 
-    // Unfurl cache (#343). One instance for the server lifetime so
-    // all concurrent /api/unfurl requests share the memoized results.
     let unfurl_cache: transport::unfurl::UnfurlCacheHandle =
         std::sync::Arc::new(transport::unfurl::UnfurlCache::new());
 
@@ -409,10 +399,6 @@ pub async fn run_server(
             "/api/unfurl",
             axum::routing::get(transport::unfurl::get_unfurl).with_state(unfurl_cache),
         )
-        // #516 slices 1-3: generic RPC dispatch from team-bridges to
-        // electron-server's canonical SyncOrchestrator. Path param names
-        // the tool; body is the MCP args object. Mutation tools route
-        // here; read tools migrate alongside the slice 4 cutover.
         .route(
             "/api/rpc/{tool}",
             axum::routing::post(transport::rpc_routes::post_rpc_tool),
@@ -422,11 +408,6 @@ pub async fn run_server(
             transport::auth::gate,
         ));
 
-    // #1290 Part A: seed endpoints for Playwright e2e tests. Mounted
-    // only when BPMUX_TEST_SEED_API=1; structural boundary, not runtime
-    // conditional. Separate from BPMUX_TEST_MODE (which swaps to the
-    // in-memory orchestrator) so launchWithMockGh tests can seed state
-    // while keeping the prod orchestrator + mock-GH boundary.
     let test_seed_routes = if transport::test_seed::seed_api_enabled() {
         axum::Router::new()
             .route(
@@ -492,12 +473,6 @@ pub async fn run_server(
     };
 
     let router = axum::Router::new()
-        // Liveness probe: tiny, no auth, no data. Electron's
-        // spawn-or-adopt flow polls this to decide when the backend
-        // is ready to accept requests. Kept separate from
-        // `/api/messages` — which is auth-free by design but also
-        // returns the full log and gets slower as the session
-        // grows, eventually exceeding Electron's readiness timeout.
         .route("/healthz", axum::routing::get(|| async { "ok" }))
         .route("/ws", axum::routing::any(transport::ws::ws_handler))
         .route(
@@ -535,13 +510,6 @@ pub async fn run_server(
         .layer(axum::Extension(electron_capture_lock))
         .layer(axum::Extension(test_refresh))
         .layer(axum::Extension(orchestrator.clone()))
-        // The Electron renderer loads from Vite's dev URL or file://
-        // and fetches this backend at 127.0.0.1:4117 — a cross-origin
-        // request that the browser preflight-checks. Without this
-        // layer, every /api/* call fails with "Failed to fetch" while
-        // the WebSocket (not subject to CORS) works fine. Server binds
-        // to loopback only (see listener below), so permissive CORS
-        // doesn't widen the network attack surface.
         .layer(
             tower_http::cors::CorsLayer::new()
                 .allow_origin(tower_http::cors::Any)
@@ -549,16 +517,6 @@ pub async fn run_server(
                 .allow_headers(tower_http::cors::Any),
         );
     let listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{port}")).await?;
-    // #1291: graceful shutdown with hard deadline. The signal handler
-    // (see run() in lib.rs) cancels `ct` on SIGTERM/SIGINT; axum then
-    // stops accepting new connections and drains in-flight requests.
-    // Without the hard deadline, long-poll WS connections kept axum
-    // serving for 4-10s per Playwright test on macOS arm64 self-hosted
-    // CI — across 50 tests/shard × 6 shards the cumulative cost
-    // overflowed Playwright's 30s worker-teardown budget and tipped the
-    // f9ebe47-class timeouts (sister to substrate-Bug recurrence). The
-    // 1500ms ceiling drops in-flight requests after graceful-drain
-    // expiry; clients see RST + retry, which Playwright handles fine.
     let shutdown_ct = ct.clone();
     let serve = axum::serve(listener, router)
         .with_graceful_shutdown(async move { shutdown_ct.cancelled_owned().await });

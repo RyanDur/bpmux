@@ -113,11 +113,6 @@ fn run_recall(cli: &Cli, role_arg: &Option<String>) -> anyhow::Result<()> {
     };
     let lessons = session::recall::surface_for_role(&session_dir, &role);
     print!("{}", session::recall::format_for_surface(&role, &lessons));
-    // Emit a user-visible activity line into the bpmux channel
-    // so Ryan can observe that recall fired without asking the agent
-    // to quote its private system-reminder back. Best-effort — if the
-    // bpmux TUI isn't running, the POST fails silently so the hook
-    // never blocks session start.
     emit_recall_activity(&role, lessons.len());
     Ok(())
 }
@@ -152,8 +147,6 @@ fn run_emit_precommit_passed(sha: &str, role_arg: &Option<String>) -> anyhow::Re
 fn post_activity(body: &serde_json::Value) {
     let port = resolve_bpmux_port();
     let url = transport::local_url::api_url(port, "/api/messages");
-    // Fire the POST from a one-shot tokio runtime. reqwest is async
-    // and this entry point is sync; the runtime is cheap and local.
     let Ok(rt) = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -191,14 +184,6 @@ fn run_server_only(cli: &Cli) -> anyhow::Result<()> {
         async move {
             session::awareness::spawn(Arc::clone(&session), session.owner_name.clone());
             transport::self_update::spawn_binary_watcher(ct.clone(), restart_signal);
-            // #1291: SIGTERM/SIGINT handler triggers ct.cancel() so the
-            // server's graceful shutdown actually fires when Electron's
-            // killBackend() sends SIGTERM. Without this, axum kept
-            // serving WS long-polls until SIGKILL (2s after SIGTERM),
-            // and Playwright observed 4-10s per-test close — over 50
-            // tests/shard, cumulative cost exceeded the 30s worker-
-            // teardown budget on macOS arm64 self-hosted CI. Sister to
-            // server::run_server's hard-deadline shutdown path.
             spawn_shutdown_signal_listener(ct.clone());
             server::run_server(session, port, ct, screen_capture)
                 .await

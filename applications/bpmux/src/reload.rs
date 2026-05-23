@@ -5,8 +5,6 @@ use tokio::sync::watch;
 
 const CHECK_INTERVAL: Duration = Duration::from_secs(5);
 
-/// Spawn a task that watches the running binary for changes.
-/// Returns a receiver that signals `true` when a reload is needed.
 pub fn spawn_watcher() -> watch::Receiver<bool> {
     let (tx, rx) = watch::channel(false);
 
@@ -35,8 +33,6 @@ pub fn spawn_watcher() -> watch::Receiver<bool> {
     rx
 }
 
-/// Re-launch the current binary with the same arguments.
-/// Uses Unix exec to replace the process in place.
 pub fn relaunch() -> anyhow::Result<()> {
     let binary = std::env::current_exe()?;
     let args: Vec<String> = std::env::args().collect();
@@ -46,7 +42,6 @@ pub fn relaunch() -> anyhow::Result<()> {
     #[cfg(unix)]
     {
         use std::os::unix::process::CommandExt;
-        // exec replaces the process image — safe, no shell involved
         let err = std::process::Command::new(binary).args(&args[1..]).exec();
         anyhow::bail!("relaunch failed: {err}");
     }
