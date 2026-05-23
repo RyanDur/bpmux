@@ -1,10 +1,3 @@
-//! Iteration-close handler (#1300 / #1258) — canonical-via-GH path
-//! that closes an Iteration-issue, promotes its member-stories to
-//! Ready via the canonical mutation chain, broadcasts an
-//! `IterationClose` state-delta, and gates on a ready-queue-empty
-//! precondition. Atomic-fire: per-member failures roll back already-
-//! promoted members + leave the iteration-issue unchanged.
-
 use std::sync::Arc;
 
 use axum::extract::State;
@@ -40,14 +33,6 @@ pub async fn post_close_iteration(
     post_close_iteration_canonical(session, tracker, test_refresh, iter_n).await
 }
 
-/// #1300 slice 4 canonical-via-GH close_iteration path. Closes the
-/// Iteration-issue (`StoryClosed` event), promotes member-stories
-/// (queried via the `iteration_id` field per slice 2 substrate) to
-/// Ready via the canonical mutation chain (`TagAdded "ready"` +
-/// `StateTransitioned` + `TagRemoved "iteration-#NNNN"`), and
-/// broadcasts the `IterationClose` state-delta. Atomic-fire: on any
-/// per-member failure, the rollback path re-opens the iteration-
-/// issue + reverts already-promoted members to Icebox.
 async fn post_close_iteration_canonical(
     session: Arc<session::Session>,
     tracker: TrackerHandle,
@@ -159,11 +144,6 @@ async fn post_close_iteration_canonical(
     (StatusCode::OK, json_headers(), body.to_string())
 }
 
-/// #1300 slice 4 ready-queue empty guard for the canonical-via-GH
-/// path. Mirrors `feedback_close_iteration_ready_queue_empty_guard`
-/// at the new substrate-axis: lists stories currently in Ready state
-/// via the canonical store + returns them as blockers. Empty vec means
-/// safe-to-close.
 pub(crate) async fn collect_ready_queue_blockers(
     refresh: &dyn crate::board::RefreshDriver,
 ) -> Vec<IterationCloseBlocker> {
@@ -179,8 +159,6 @@ pub(crate) async fn collect_ready_queue_blockers(
         .collect()
 }
 
-/// #1300 slice 4 blocked-body for the canonical-via-GH ready-empty
-/// guard.
 fn build_close_iteration_ready_queue_blocked_body(blockers: &[IterationCloseBlocker]) -> String {
     serde_json::json!({
         "error": "close_iteration blocked: ready queue must be empty before canonical-via-GH iteration close (#1258 r3 guard).",
@@ -189,14 +167,6 @@ fn build_close_iteration_ready_queue_blocked_body(blockers: &[IterationCloseBloc
     .to_string()
 }
 
-/// #1300 slice 4 canonical-mutation-chain helper: promotes each member
-/// to Ready (`TagAdded ready` + `StateTransitioned` + `TagRemoved
-/// iteration-#NNNN`), then closes the iteration-issue. On any per-step
-/// failure, attempts rollback by reverting each already-applied member
-/// (`TagRemoved ready` + `StateTransitioned Icebox` + `TagAdded
-/// iteration-#NNNN`) and leaving the iteration-issue in its pre-call
-/// state. Returns `Ok` on full success, `Err` with rollback summary
-/// otherwise.
 pub(crate) async fn promote_members_then_close_iteration(
     refresh: &Arc<dyn crate::board::RefreshDriver>,
     iteration_number: u64,
