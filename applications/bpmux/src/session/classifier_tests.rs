@@ -96,11 +96,6 @@ fn owner_restart_question_is_discussion() {
 
 #[test]
 fn owner_path_to_screenshot_is_discussion() {
-    // The classifier contract is "a bare file-path string from the
-    // owner classifies as discussion, not a directive." Exercise the
-    // contract with a synthetic path — binding to a real share
-    // artifact on a developer's disk would make the test machine-
-    // specific and tie the suite to transient files.
     let m = msg("ryan:human", "/tmp/screenshot.png");
     assert_eq!(classify(&m, "ryan"), MessageClass::Discussion);
 }
@@ -140,8 +135,6 @@ fn system_message_is_routine() {
     };
     assert_eq!(classify(&m, "ryan"), MessageClass::Routine);
 }
-
-// New: experiences from any sender
 
 #[test]
 fn agent_teaching_is_experience() {
@@ -223,13 +216,6 @@ fn is_experience_helper() {
     assert!(!MessageClass::Decision.is_experience());
 }
 
-// ---------- Admission detection ----------
-//
-// Admissions are short, formulaic acceptances of a correction. They fire
-// regardless of message length and regardless of sender role, because the
-// signal is "a correction just landed" — which is valuable whether the
-// corrector is Ryan, another agent, or the same agent reflecting.
-
 #[test]
 fn admission_youre_right_is_correction() {
     let m = msg("pm:claude-code", "you're right, my bad");
@@ -262,8 +248,6 @@ fn admission_my_miss_is_correction() {
 
 #[test]
 fn admission_my_bad_is_correction() {
-    // Note: 6 chars plus a period. Intentionally under MIN_EXPERIENCE_LEN —
-    // the admission bypass is what makes this fire.
     let m = msg("designer:claude-code", "my bad.");
     assert_eq!(
         classify(&m, "ryan"),
@@ -312,8 +296,6 @@ fn admission_wont_do_it_again_is_correction() {
 
 #[test]
 fn admission_from_owner_also_classifies() {
-    // Ryan accepting an agent's pushback is just as valuable as an agent
-    // accepting Ryan's pushback.
     let m = msg("ryan:human", "you're right, that was the wrong framing");
     assert_eq!(
         classify(&m, "ryan"),
@@ -323,8 +305,6 @@ fn admission_from_owner_also_classifies() {
 
 #[test]
 fn diplomatic_without_checking_is_correction() {
-    // This is the actual phrasing that escaped the classifier this morning
-    // when dev corrected PM's lazy-causation habit.
     let m = msg(
         "dev:claude-code",
         "you assigned blame without checking the actual diff",
@@ -349,9 +329,6 @@ fn diplomatic_please_verify_is_correction() {
 
 #[test]
 fn admission_not_a_false_positive_inside_longer_message() {
-    // "you're right about that one" — still an admission. Belt-and-
-    // suspenders check: the matcher is substring-based so any occurrence
-    // anywhere in the message fires.
     let m = msg(
         "pm:claude-code",
         "ok i went back and looked at the diff, you're right about that one — shipping the fix",

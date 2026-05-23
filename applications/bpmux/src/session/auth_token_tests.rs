@@ -37,8 +37,6 @@ fn generate_writes_mode_0600() {
     let (_dir, path) = tmp();
     generate_and_write(&path).unwrap();
     let meta = std::fs::metadata(&path).unwrap();
-    // Mask to the permission bits — some filesystems surface additional
-    // type bits through st_mode.
     let mode = meta.permissions().mode() & 0o777;
     assert_eq!(mode, 0o600, "auth_token must be owner-read-write only");
 }
@@ -86,10 +84,6 @@ fn eq_rejects_same_length_different_content() {
 
 #[test]
 fn default_path_returns_some_path() {
-    // Env-override behavior is exercised at integration-test level
-    // where we can isolate process env via spawned subprocesses.
-    // Here we assert the function returns a path so the null-branch
-    // (no HOME and no override) doesn't silently regress.
     let got = default_auth_token_path();
     assert!(got.is_some(), "expected a default auth token path");
 }

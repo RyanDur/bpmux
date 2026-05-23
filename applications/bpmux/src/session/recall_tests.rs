@@ -1,9 +1,5 @@
 #![allow(clippy::unwrap_used)]
 
-//! Tests for session-start recall (#157). The binding constraint is
-//! role-scoped isolation — a pm recall must never return dev or designer
-//! lessons, and vice versa. Individuality-at-the-implementation-layer.
-
 use tempfile::TempDir;
 
 use super::lessons::{AgentLesson, LessonIndex, save_index};
@@ -59,7 +55,6 @@ fn surfaces_only_matching_role() {
 
 #[test]
 fn pm_never_sees_dev_lessons() {
-    // The load-bearing individuality constraint: cross-role isolation.
     let dir = TempDir::new().unwrap();
     write_index(
         &dir,
@@ -123,7 +118,6 @@ fn ties_broken_by_recency() {
     );
 
     let surfaced = surface_for_role(dir.path(), "dev");
-    // All have the same reinforcement count (3), so recency decides.
     assert_eq!(surfaced[0].topic, "newer");
     assert_eq!(surfaced[1].topic, "older");
     assert_eq!(surfaced[2].topic, "oldest");
@@ -146,7 +140,6 @@ fn caps_at_max_surfaced() {
 
     let surfaced = surface_for_role(dir.path(), "dev");
     assert_eq!(surfaced.len(), MAX_SURFACED_LESSONS);
-    // Highest-reinforcement lesson is the first.
     assert_eq!(
         surfaced[0].topic,
         format!("lesson-{}", MAX_SURFACED_LESSONS + 4)
@@ -168,7 +161,6 @@ fn format_for_surface_empty_has_fallback_message() {
     let out = format_for_surface("dev", &[]);
     assert!(out.contains("no prior lessons"));
     assert!(out.contains("dev"));
-    // Hint points the agent at save_lesson so they can populate it.
     assert!(out.contains("save_lesson"));
 }
 

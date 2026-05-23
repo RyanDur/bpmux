@@ -55,13 +55,8 @@ fn serializes_message_to_json() {
     assert_eq!(parsed, msg);
 }
 
-// ---------- Addressee field ----------
-
 #[test]
 fn addressee_omitted_by_default_in_json() {
-    // Backward compatibility: a message with no addressee serializes
-    // without the field, matching the pre-#158 wire format. Existing
-    // consumers that don't know about `addressee` keep working.
     let msg = Message {
         from: "ryan:human".to_string(),
         text: "hi".to_string(),
@@ -89,8 +84,6 @@ fn addressee_roundtrips_through_json() {
 
 #[test]
 fn addressee_deserializes_from_pre_158_json() {
-    // Messages saved before #158 shipped don't have the field. They
-    // must deserialize cleanly as `addressee: None` — backward compat.
     let json = r#"{"from":"ryan:human","text":"hi","ts":"2026-04-02T12:00:00Z","to":null}"#;
     let parsed: Message = serde_json::from_str(json).expect("deserialize");
     assert!(parsed.addressee.is_none());
@@ -120,8 +113,6 @@ fn is_addressed_to_all_is_for_everyone() {
 
 #[test]
 fn is_addressed_to_specific_role_excludes_others() {
-    // Core individuality-preserving check: a pm-addressed message
-    // should not count as directed at dev or designer.
     let msg = Message {
         addressee: Some("pm".to_string()),
         ..Message::default()
@@ -131,13 +122,8 @@ fn is_addressed_to_specific_role_excludes_others() {
     assert!(!msg.is_addressed_to("designer"));
 }
 
-// ---------- Multi_depth rendering payload ----------
-
 #[test]
 fn message_without_multi_depth_serializes_without_the_field() {
-    // Backward compat: existing senders produce `None` and the wire
-    // format is unchanged. Existing receivers that don't know about
-    // `multi_depth` keep working.
     let msg = Message {
         from: "dev:claude-code".to_string(),
         text: "plain".to_string(),
@@ -153,8 +139,6 @@ fn message_without_multi_depth_serializes_without_the_field() {
 
 #[test]
 fn message_deserializes_from_pre_187_json_without_multi_depth() {
-    // Historical session logs written before #187 shipped don't have
-    // the field. They must deserialize cleanly as `multi_depth: None`.
     let json = r#"{"from":"ryan:human","text":"hi","ts":"2026-04-02T12:00:00Z","to":null}"#;
     let parsed: Message = serde_json::from_str(json).expect("deserialize");
     assert!(parsed.multi_depth.is_none());
@@ -205,8 +189,6 @@ fn multi_depth_payload_roundtrips_on_demand_deep_detail() {
         ..Message::default()
     };
     let json = serde_json::to_string(&msg).expect("serialize");
-    // The discriminant field from `#[serde(tag = "kind")]` should be
-    // present and distinct from Preloaded.
     assert!(json.contains(r#""kind":"on_demand""#), "got: {json}");
     assert!(json.contains(r#""command":"gh run view 12345""#));
     let parsed: Message = serde_json::from_str(&json).expect("deserialize");
@@ -215,8 +197,6 @@ fn multi_depth_payload_roundtrips_on_demand_deep_detail() {
 
 #[test]
 fn multi_depth_with_empty_role_default_still_roundtrips() {
-    // Minimal payload: just summary + deep, no role-tuning. Useful as
-    // a sanity check that `role_default` defaults cleanly.
     let payload = MultiDepthPayload {
         summary: "ok".to_string(),
         role_default: std::collections::HashMap::new(),
@@ -231,17 +211,12 @@ fn multi_depth_with_empty_role_default_still_roundtrips() {
 
 #[test]
 fn is_addressed_to_none_is_for_everyone_sanity() {
-    // Trivial — proves the default-impl of Message still works after
-    // the new field was added.
     let msg = Message::default();
     assert!(msg.is_addressed_to("dev"));
 }
 
 #[test]
 fn addressee_is_independent_of_to() {
-    // Both fields coexist: a broadcast-visible message (to: None)
-    // can still have an addressee, and a DM (to: Some([...])) can
-    // have no addressee. The two fields answer different questions.
     let broadcast_with_addressee = Message {
         to: None,
         addressee: Some("pm".to_string()),
@@ -256,7 +231,7 @@ fn addressee_is_independent_of_to() {
         ..Message::default()
     };
     assert!(dm_no_addressee.is_addressed_to("pm"));
-    assert!(dm_no_addressee.is_addressed_to("dev")); // addressee: None = everyone
+    assert!(dm_no_addressee.is_addressed_to("dev"));
 }
 
 #[test]

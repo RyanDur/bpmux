@@ -1,7 +1,3 @@
-//! Unit tests for the pure `resolve_diag_path` router. Drives every
-//! precedence branch from #512: BPMUX_LOG override, BPMUX_TEST_MODE,
-//! cargo-test exe-path detection, prod-default, no-home fallback.
-
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use super::diag::{path_has_deps_segment, resolve_diag_path};

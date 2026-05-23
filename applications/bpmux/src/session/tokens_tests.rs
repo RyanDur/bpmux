@@ -1,17 +1,5 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-// Unit tests for the `tokens` module — #179 dimension 3.
-//
-// **Scope**: these are UNIT TESTS on the `TokenRow` struct and the
-// `append_token_row` / `read_token_rows` pure file-IO functions.
-// They call the functions directly and assert on return values.
-// They do NOT exercise the full adapter → log → `/tokens` view path
-// — that's covered end-to-end by a future story60-style harness
-// test once the TUI view lands.
-//
-// Naming follows `feedback_test_name_matches_content.md`: these tests
-// describe what the functions return, not what a system does.
-
 use super::tokens::*;
 use tempfile::tempdir;
 
@@ -38,10 +26,8 @@ fn append_token_row_writes_jsonl_line() {
     let path = dir.path().join("log.jsonl");
     append_token_row(&path, &sample_row()).unwrap();
     let contents = std::fs::read_to_string(&path).unwrap();
-    // One line, trailing newline.
     assert_eq!(contents.lines().count(), 1);
     assert!(contents.ends_with('\n'));
-    // Line is valid JSON and round-trips.
     let line = contents.lines().next().unwrap();
     let parsed: TokenRow = serde_json::from_str(line).unwrap();
     assert_eq!(parsed.role, "dev");
@@ -79,15 +65,9 @@ fn read_token_rows_returns_empty_for_missing_file() {
 
 #[test]
 fn read_token_rows_skips_malformed_lines_but_keeps_valid_ones() {
-    // If an adapter writes a corrupted line, it shouldn't poison the
-    // rest of the log. Malformed lines are skipped silently (the
-    // diagnostic is just that the row count is lower than expected —
-    // a future diag hook could log this, but for now we favor
-    // availability of valid data over visibility of the corruption).
     let dir = tempdir().unwrap();
     let path = dir.path().join("log.jsonl");
     append_token_row(&path, &sample_row()).unwrap();
-    // Inject a malformed line directly into the file.
     use std::io::Write;
     let mut f = std::fs::OpenOptions::new()
         .append(true)
@@ -105,8 +85,6 @@ fn read_token_rows_skips_malformed_lines_but_keeps_valid_ones() {
 
 #[test]
 fn resolve_tokens_log_path_uses_home_dir_when_no_env_override() {
-    // Guards against a rename to e.g. `~/.claude/...` that would
-    // silently move the log. Pure function, no env coupling.
     let home = std::path::PathBuf::from("/fake/home");
     let path = resolve_tokens_log_path(&home, None);
     let s = path.to_string_lossy();
@@ -115,8 +93,6 @@ fn resolve_tokens_log_path_uses_home_dir_when_no_env_override() {
 
 #[test]
 fn resolve_tokens_log_path_honors_env_override_when_set() {
-    // Guards the env var path — tests and adapters use it to redirect
-    // writes to a tempdir.
     let home = std::path::PathBuf::from("/fake/home");
     let path = resolve_tokens_log_path(&home, Some("/tmp/custom-tokens"));
     assert_eq!(
@@ -124,13 +100,6 @@ fn resolve_tokens_log_path_honors_env_override_when_set() {
         std::path::PathBuf::from("/tmp/custom-tokens/log.jsonl")
     );
 }
-
-// ─────────────────────────────────────────────────────────────────────
-// Aggregation helper tests — pure functions over `&[TokenRow]`. These
-// power the `/tokens` view's rollups. Unit-named per the test-name
-// discipline: they describe what the function returns, not a system
-// behavior.
-// ─────────────────────────────────────────────────────────────────────
 
 fn row_for(role: &str, total_in: u64, out: u64) -> TokenRow {
     TokenRow {
@@ -158,9 +127,6 @@ fn totals_by_role_returns_sum_of_total_tokens_per_role() {
         row_for("designer", 150, 25),
     ];
     let totals = totals_by_role(&rows);
-    // dev: (100+50) + (300+100) = 550
-    // pm: 200+75 = 275
-    // designer: 150+25 = 175
     assert_eq!(totals.get("dev").copied().unwrap_or(0), 550);
     assert_eq!(totals.get("pm").copied().unwrap_or(0), 275);
     assert_eq!(totals.get("designer").copied().unwrap_or(0), 175);
@@ -181,28 +147,24 @@ fn build_token_report_summarizes_rows_into_grand_total_and_role_breakdown() {
         row_for("dev", 300, 100),
     ];
     let report = build_token_report(&rows);
-    assert_eq!(report.total_tokens, 825); // 150 + 275 + 400
+    assert_eq!(report.total_tokens, 825);
     assert_eq!(report.row_count, 3);
     assert_eq!(report.by_role.get("dev").copied(), Some(550));
     assert_eq!(report.by_role.get("pm").copied(), Some(275));
-    // Recent: newest-first order.
     assert_eq!(report.recent.len(), 3);
-    assert_eq!(report.recent[0].role, "dev"); // last appended
+    assert_eq!(report.recent[0].role, "dev");
     assert_eq!(report.recent[0].total_tokens, 400);
 }
 
 #[test]
 fn build_token_report_caps_recent_at_ten_rows() {
-    // 15 rows — recent should contain 10 newest.
     let rows: Vec<TokenRow> = (0..15)
         .map(|i| row_for("dev", (i + 1) as u64 * 10, 0))
         .collect();
     let report = build_token_report(&rows);
     assert_eq!(report.row_count, 15);
     assert_eq!(report.recent.len(), 10);
-    // Newest first — recent[0] should correspond to i=14 (total = 150).
     assert_eq!(report.recent[0].total_tokens, 150);
-    // Oldest kept — recent[9] should correspond to i=5 (total = 60).
     assert_eq!(report.recent[9].total_tokens, 60);
 }
 

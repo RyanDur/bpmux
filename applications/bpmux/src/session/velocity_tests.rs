@@ -14,7 +14,6 @@ fn msg(text: &str, ts: DateTime<Utc>) -> Message {
 }
 
 fn now() -> DateTime<Utc> {
-    // Fixed reference instant for deterministic window math.
     DateTime::parse_from_rfc3339("2026-04-15T12:00:00Z")
         .unwrap()
         .with_timezone(&Utc)
@@ -62,8 +61,8 @@ fn deliveries_outside_14_day_window_are_excluded() {
     let messages = vec![
         msg("#1 delivered", now() - ChronoDuration::days(1)),
         msg("#2 delivered", now() - ChronoDuration::days(7)),
-        msg("#3 delivered", now() - ChronoDuration::days(20)), // outside window
-        msg("#4 delivered", now() + ChronoDuration::hours(1)), // future
+        msg("#3 delivered", now() - ChronoDuration::days(20)),
+        msg("#4 delivered", now() + ChronoDuration::hours(1)),
     ];
     let m = compute(&messages, now(), |_| true);
     assert_eq!(m.delivered_in_window, 2);
@@ -87,7 +86,6 @@ fn pickup_to_deliver_median_pairs_start_and_deliver_by_issue() {
         msg("#12 (baz) delivered", base + ChronoDuration::hours(10)),
     ];
     let m = compute(&messages, now(), |_| true);
-    // durations: 3, 1, 6 → sorted [1, 3, 6] → median 3
     assert_eq!(m.median_pickup_to_deliver_hours, Some(3.0));
 }
 
@@ -101,7 +99,6 @@ fn deliver_to_accept_median_pairs_by_issue() {
         msg("#21 accepted. pick next", base + ChronoDuration::hours(5)),
     ];
     let m = compute(&messages, now(), |_| true);
-    // durations: 2h, 4.5h → median 3.25
     assert_eq!(m.median_deliver_to_accept_hours, Some(3.25));
 }
 
@@ -120,19 +117,12 @@ fn rework_rate_counts_failed_desk_checks_per_unique_delivery() {
         msg("#33 delivered", base + ChronoDuration::hours(6)),
     ];
     let m = compute(&messages, now(), |_| true);
-    // 4 unique delivered stories (#30 once even though re-delivered,
-    // plus #31/#32/#33). 1 fail-desk-check event → 1/4 = 0.25.
-    // Before #277: delivered counted all events = 5, rework = 0.2.
-    // Re-deliveries no longer inflate velocity (#277).
     assert_eq!(m.delivered_in_window, 4);
     assert_eq!(m.rework_rate, Some(0.25));
 }
 
 #[test]
 fn re_delivered_story_counts_once_in_delivered_in_window() {
-    // Regression guard for the inflation Ryan flagged during
-    // acceptance 2026-04-17. Re-deliveries for FAIL-fix cycles
-    // should not double-count toward velocity.
     let base = now() - ChronoDuration::days(1);
     let messages = vec![
         msg("#50 delivered", base),
@@ -178,7 +168,7 @@ fn non_chat_messages_are_ignored() {
         from: "dev:claude-code".to_string(),
         text: "#99 delivered".to_string(),
         ts: now() - ChronoDuration::hours(1),
-        message_type: MessageType::Activity, // not Chat
+        message_type: MessageType::Activity,
         ..Message::default()
     };
     let m = compute(&[activity], now(), |_| true);
@@ -206,7 +196,7 @@ fn text_without_number_is_not_parsed_as_lifecycle() {
             "hello team, just some broadcast",
             now() - ChronoDuration::hours(1),
         ),
-        msg("delivered yesterday", now() - ChronoDuration::hours(2)), // no #N
+        msg("delivered yesterday", now() - ChronoDuration::hours(2)),
     ];
     let m = compute(&messages, now(), |_| true);
     assert_eq!(m.delivered_in_window, 0);
@@ -214,9 +204,6 @@ fn text_without_number_is_not_parsed_as_lifecycle() {
 
 #[test]
 fn plumbing_stories_filtered_out_of_velocity() {
-    // Three deliveries in-window, but only #2 is a feature.
-    // Velocity should count 1, not 3 — matching the
-    // "business-value only" rule.
     let messages = vec![
         msg("#1 delivered", now() - ChronoDuration::hours(1)),
         msg("#2 delivered", now() - ChronoDuration::hours(2)),
@@ -230,10 +217,6 @@ fn plumbing_stories_filtered_out_of_velocity() {
 
 #[test]
 fn predicate_drives_what_gets_counted() {
-    // `|_| true` counts every event; a predicate that rejects one
-    // specific issue counts fewer. Demonstrates the filter is the
-    // causal input, not just a pass-through — distinguishes "filter
-    // works" from "filter is silently ignored."
     let messages = vec![
         msg("#1 delivered", now() - ChronoDuration::hours(1)),
         msg("#2 delivered", now() - ChronoDuration::hours(2)),
@@ -247,8 +230,6 @@ fn predicate_drives_what_gets_counted() {
 
 #[test]
 fn no_features_produces_zero_velocity() {
-    // All plumbing → 0 deliveries counted. Not just sparse —
-    // actually zero. The metric reads honestly low.
     let messages = vec![
         msg("#1 delivered", now() - ChronoDuration::hours(1)),
         msg("#2 delivered", now() - ChronoDuration::hours(2)),
@@ -278,7 +259,6 @@ fn is_feature_verdict_rejects_chore_and_bug_labels() {
 #[test]
 fn is_feature_verdict_falls_back_to_title_prefix() {
     use crate::session::velocity::is_feature_verdict;
-    // New canonical prefixes
     assert!(is_feature_verdict(&[], "[Feature] ship the thing"));
     assert!(!is_feature_verdict(&[], "[Chore] refactor the thing"));
     assert!(!is_feature_verdict(&[], "[Bug] fix the thing"));
@@ -288,8 +268,6 @@ fn is_feature_verdict_falls_back_to_title_prefix() {
 #[test]
 fn is_feature_verdict_supports_legacy_prefixes_during_migration() {
     use crate::session::velocity::is_feature_verdict;
-    // Pre-#264 prefixes still parse correctly so backfill can run
-    // without racing the filter update.
     assert!(is_feature_verdict(&[], "[vertical] a feature"));
     assert!(is_feature_verdict(
         &[],
@@ -302,8 +280,6 @@ fn is_feature_verdict_supports_legacy_prefixes_during_migration() {
 #[test]
 fn is_feature_verdict_defaults_to_feature_for_untagged() {
     use crate::session::velocity::is_feature_verdict;
-    // Default-to-Feature: un-tagged stories don't silently drop from
-    // velocity. Better to overcount slightly than undercount silently.
     assert!(is_feature_verdict(&[], ""));
     assert!(is_feature_verdict(
         &["ready".to_string()],
@@ -314,8 +290,6 @@ fn is_feature_verdict_defaults_to_feature_for_untagged() {
 #[test]
 fn is_feature_verdict_label_beats_title() {
     use crate::session::velocity::is_feature_verdict;
-    // Label is authoritative when both label and title carry a type.
-    // Label says Chore, title says [Feature] → Chore wins.
     assert!(!is_feature_verdict(
         &["Chore".to_string()],
         "[Feature] misleading prefix"

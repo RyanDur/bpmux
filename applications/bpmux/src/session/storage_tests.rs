@@ -3,18 +3,6 @@
 #![allow(clippy::panic)]
 #![allow(unsafe_code)]
 
-//! Tests for #1289: Store-trait DI refactor.
-//!
-//! Contract tests proving `FileStorage` + `MemoryStorage` behave
-//! identically for every method on the `Storage` trait. Sister-pattern
-//! to PM/designer agreement (2026-05-11 12:32 UTC trait-shape review):
-//! both implementations must satisfy the same semantic contract;
-//! file-system idiosyncrasies stay inside `FileStorage` per
-//! `feedback_external_system_idiosyncrasies_at_boundary`.
-//!
-//! The shared `contract` macro runs the same assertion suite against
-//! both impls so future trait extensions automatically verify parity.
-
 use crate::board::domain::{Story, StoryState};
 use crate::session::lessons::LessonIndex;
 use crate::session::message::Message;
@@ -46,9 +34,6 @@ fn fresh_message(text: &str) -> Message {
 
 fn file_storage() -> (Arc<dyn Storage>, tempfile::TempDir) {
     let dir = tempfile::tempdir().unwrap();
-    // #1289: inject per-test board-store + outbox paths so the contract
-    // tests don't read/write Ryan's ~/.bpmux/board-store.json or
-    // ~/.bpmux/board-outbox.json.
     let board_path = dir.path().join("board-store.json");
     let outbox_path = dir.path().join("board-outbox.json");
     let storage: Arc<dyn Storage> = Arc::new(
@@ -60,8 +45,6 @@ fn file_storage() -> (Arc<dyn Storage>, tempfile::TempDir) {
 }
 
 fn memory_storage() -> (Arc<dyn Storage>, tempfile::TempDir) {
-    // MemoryStorage takes a marker path returned by dir(); use a
-    // tempdir so it's unique per test. No I/O is performed against it.
     let dir = tempfile::tempdir().unwrap();
     let storage: Arc<dyn Storage> = Arc::new(MemoryStorage::new(dir.path().to_path_buf()));
     (storage, dir)
@@ -77,9 +60,6 @@ fn seed_story(number: u64, title: &str) -> Story {
     )
 }
 
-/// Run a contract assertion against both `FileStorage` + `MemoryStorage`.
-/// Both must satisfy the same observable behavior; the macro fails if
-/// either diverges so divergence is caught at test-write time.
 macro_rules! contract {
     ($name:ident, $check:expr) => {
         mod $name {
@@ -99,8 +79,6 @@ macro_rules! contract {
         }
     };
 }
-
-// ── Messages ──
 
 contract!(
     append_then_read_returns_message_in_order,
@@ -139,8 +117,6 @@ contract!(search_returns_matching_messages, |storage: &dyn Storage| {
     });
     assert_eq!(results.len(), 1, "search for 'hello' returns 1 match");
 });
-
-// ── Lessons ──
 
 contract!(load_lessons_default_when_empty, |storage: &dyn Storage| {
     let idx = storage.load_lessons();
@@ -184,8 +160,6 @@ contract!(add_lesson_appends_to_index, |storage: &dyn Storage| {
     assert_eq!(idx.lessons[0].topic, "topic-1");
 });
 
-// ── Peer lessons ──
-
 contract!(
     load_peer_lessons_default_when_empty,
     |storage: &dyn Storage| {
@@ -224,8 +198,6 @@ contract!(list_peers_reflects_saved_peers, |storage: &dyn Storage| {
     assert!(peers.contains(&"pm".to_string()));
 });
 
-// ── Generic key-value state ──
-
 contract!(
     load_state_returns_none_when_unset,
     |storage: &dyn Storage| {
@@ -247,8 +219,6 @@ contract!(
     }
 );
 
-// ── dir() contract ──
-
 contract!(
     dir_returns_path_passed_at_construction,
     |storage: &dyn Storage| {
@@ -256,8 +226,6 @@ contract!(
         assert!(!d.as_os_str().is_empty());
     }
 );
-
-// ── Board snapshot (#1289 Phase-1 step 1) ──
 
 contract!(
     load_board_snapshot_empty_when_unset,
@@ -298,8 +266,6 @@ contract!(
         assert_eq!(loaded.get(&100).unwrap().title, "v2");
     }
 );
-
-// ── Outbox (#1289 Phase-1 step 3) ──
 
 fn seed_outbox_event(number: u64, label: &str) -> crate::board::orchestrator::QueuedEvent {
     use crate::board::events::{BoardEvent, EventMeta};
@@ -345,8 +311,6 @@ contract!(save_outbox_overwrites_previous, |storage: &dyn Storage| {
     assert_eq!(loaded.len(), 2);
 });
 
-// ── Bookmark (#1289 Phase-2 step 1) ──
-
 contract!(load_bookmark_default_when_unset, |storage: &dyn Storage| {
     let bm = storage.load_bookmark("dev");
     assert!(bm.current_task.is_empty());
@@ -386,8 +350,6 @@ contract!(per_role_bookmark_isolation, |storage: &dyn Storage| {
     assert_eq!(storage.load_bookmark("pm").current_task, "pm task");
 });
 
-// ── Reactions (#1289 Phase-2 step 3) ──
-
 contract!(load_reactions_empty_when_unset, |storage: &dyn Storage| {
     let store = storage.load_reactions();
     assert!(store.channels.is_empty());
@@ -402,10 +364,6 @@ contract!(
         assert!(loaded.channels.is_empty());
     }
 );
-
-// ── Iteration markers (#1289 Phase-2 step 4) ──
-
-// ── GlobalStore: priority (#1289 Phase-3 step 1) ──
 
 fn file_global() -> (Arc<dyn GlobalStore>, tempfile::TempDir) {
     let dir = tempfile::tempdir().unwrap();
@@ -450,8 +408,6 @@ macro_rules! global_contract {
         }
     };
 }
-
-// ── GlobalStore: identity (#1290 Phase-3 step 2) ──
 
 global_contract!(
     load_identity_default_when_unset,
@@ -499,8 +455,6 @@ global_contract!(per_role_identity_isolation, |global: &dyn GlobalStore| {
     assert_eq!(global.load_identity("pm").values[0].description, "pm-val");
 });
 
-// ── GlobalStore: briefing (#1290 Phase-3 step 3) ──
-
 global_contract!(
     load_briefing_empty_when_unset,
     |global: &dyn GlobalStore| {
@@ -526,8 +480,6 @@ global_contract!(per_role_briefing_isolation, |global: &dyn GlobalStore| {
     assert_eq!(global.load_briefing("dev"), "dev-content");
     assert_eq!(global.load_briefing("pm"), "pm-content");
 });
-
-// ── GlobalStore: tokens (#1290 Phase-3 step 4) ──
 
 fn sample_token_row(ts: &str, output: u64) -> crate::session::tokens::TokenRow {
     crate::session::tokens::TokenRow {
@@ -582,8 +534,6 @@ global_contract!(
     }
 );
 
-// ── GlobalStore: usage (#1290 Phase-3 step 5) ──
-
 global_contract!(load_usage_empty_when_unset, |global: &dyn GlobalStore| {
     let map = global.load_usage();
     assert!(map.is_empty());
@@ -637,13 +587,6 @@ global_contract!(
     }
 );
 
-// ── GlobalStore: auth_token (#1290 Phase-3 step 6, AC 18) ──
-//
-// Divergent contract: FileGlobalStore supports the operation;
-// MemoryGlobalStore returns Unsupported per boundary-discipline. Tests
-// here assert that divergence directly rather than running through the
-// `global_contract!` macro.
-
 #[test]
 fn file_global_ensure_auth_token_generates_and_reads_back() {
     let (global, _dir) = file_global();
@@ -670,8 +613,6 @@ fn memory_global_auth_token_returns_unsupported() {
     let err = global.read_auth_token().unwrap_err();
     assert_eq!(err.kind(), std::io::ErrorKind::Unsupported);
 }
-
-// ── BoardStore ↔ Storage trait integration (#1289 Phase-1 step 2) ──
 
 #[test]
 fn board_store_roundtrips_via_memory_storage() {
@@ -703,16 +644,6 @@ fn board_store_load_from_empty_storage_returns_empty() {
     assert!(store.all_stories().is_empty());
 }
 
-// ── AC 12 substrate-enabler proof (#1289) ──
-//
-// Verifies the `BPMUX_STORAGE_BACKEND=memory` env-var actually swaps
-// the Session::new storage backend to MemoryStorage. Behavioral test
-// rather than type-check: append a message via storage, observe that
-// memory-mode writes no file but file-mode does. This is the
-// unit-level proof-of-mechanism for AC 12; quantitative wall-clock
-// e2e measurement ships in the follow-up sister-story (per designer's
-// Cure 1.5 + PM's #1289 → [test-seed-API] chain).
-
 #[test]
 fn session_with_memory_backend_env_skips_disk_io() {
     let _env_guard = lock_storage_backend_env();
@@ -731,8 +662,6 @@ fn session_with_memory_backend_env_skips_disk_io() {
         tx,
     ));
 
-    // Append via the storage trait; if MemoryStorage is wired, the
-    // message lives in memory and no file gets written.
     session
         .storage
         .append_message(&fresh_message("memory-mode-test"))
@@ -744,7 +673,6 @@ fn session_with_memory_backend_env_skips_disk_io() {
         "BPMUX_STORAGE_BACKEND=memory must keep storage pure-in-memory; log file at {log_path:?} should not exist after append"
     );
 
-    // Verify the in-memory append was actually applied.
     let messages = session.storage.read_messages().unwrap();
     assert_eq!(
         messages.len(),
@@ -753,7 +681,6 @@ fn session_with_memory_backend_env_skips_disk_io() {
     );
     assert_eq!(messages[0].text, "memory-mode-test");
 
-    // Cleanup env var so subsequent tests get default FileStorage.
     unsafe {
         match prior {
             Some(v) => std::env::set_var("BPMUX_STORAGE_BACKEND", v),
@@ -797,8 +724,6 @@ fn session_without_backend_env_writes_disk_io() {
         }
     }
 }
-
-// ── MemoryStorage-specific: per-instance isolation ──
 
 #[test]
 fn memory_storage_instances_are_isolated() {

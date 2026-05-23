@@ -1,7 +1,5 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-//! Tests for session::usage (#230). Pure IO helpers over a tempdir.
-
 use super::usage::{Record, Source, key_for, last_used_datetime, load_from, parse_key, save_to};
 use std::collections::HashMap;
 use tempfile::TempDir;
@@ -68,9 +66,6 @@ fn load_from_corrupt_file_returns_empty() {
 
 #[test]
 fn load_from_legacy_format_survives() {
-    // #195's initial format was HashMap<String, (usize, String)>.
-    // New format is HashMap<String, Record>. Legacy files should
-    // still load so counts aren't lost on upgrade.
     let (_dir, path) = tmp_path();
     let legacy = r#"{"slash:/board": [3, "2026-04-10T10:00:00+00:00"]}"#;
     std::fs::write(&path, legacy).unwrap();
@@ -92,14 +87,11 @@ fn last_used_datetime_parses_roundtrip() {
 
 #[test]
 fn save_then_reload_preserves_counts_across_restarts() {
-    // Simulates the cross-session persistence AC: write from one
-    // "session," read from the next, see the prior counts.
     let (_dir, path) = tmp_path();
     let mut map = HashMap::new();
     map.insert("slash:/view".to_string(), Record::now(7));
     save_to(&path, &map).expect("save");
 
-    // "Restart" — fresh load from disk.
     let loaded = load_from(&path);
     assert_eq!(loaded.get("slash:/view").unwrap().count, 7);
 }
