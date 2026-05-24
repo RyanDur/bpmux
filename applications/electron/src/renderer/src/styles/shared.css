@@ -77,7 +77,7 @@ textarea {
   min-height: 0;
 }
 
-/* visually-hidden utility — clip-path keeps the element in the a11y
+/* keep+flag(a11y): visually-hidden utility — clip-path keeps the element in the a11y
  * tree while removing it from visual layout. NOT display:none (hides
  * from AT) NOR 0/0 sizing (some AT skip it); this AT-presence guard is
  * un-test-pinned. Carries SR-only prefixes like the per-row sender. */

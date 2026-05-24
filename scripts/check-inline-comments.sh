@@ -8,7 +8,7 @@ fi
 if [ -z "$DIFF_OUTPUT" ]; then
     REPO_ROOT="$(git rev-parse --show-toplevel)"
     cd "$REPO_ROOT"
-    DIFF_OUTPUT=$(git diff --cached --unified=0 -- '*.rs' '*.ts' '*.tsx' '*.js' '*.jsx' 2>/dev/null)
+    DIFF_OUTPUT=$(git diff --cached --unified=0 -- '*.rs' '*.ts' '*.tsx' '*.js' '*.jsx' '*.css' 2>/dev/null)
 fi
 
 violations=$(
@@ -32,6 +32,13 @@ violations=$(
         text = substr($0, 2)
         stripped = text
         sub(/^[[:space:]]+/, "", stripped)
+        if (file ~ /\.css$/) {
+            if (file !~ /reset\.css$/ && stripped ~ /^\/\*/ && stripped !~ /^\/\* keep[+]flag\((a11y|motion|placeholder|layout-edge)(, (interim|until: #[0-9]+))?\): /) {
+                printf "%s:%d: css comment without keep+flag(<axis>) marker — retire it, or mark per kb/documentation-honest-homes (axis = a11y|motion|placeholder|layout-edge)\n", file, line
+            }
+            line++
+            next
+        }
         cls = ""
         if (stripped ~ /^\/\/!/) cls = "//!"
         else if (stripped ~ /^\/\/\//) cls = "///"

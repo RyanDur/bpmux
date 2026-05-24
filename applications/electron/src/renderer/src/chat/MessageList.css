@@ -123,7 +123,7 @@
     font-size: 0.875rem;
     line-height: 1.5;
 
-    /* overflow-wrap: anywhere (NOT word-wrap: break-word) so wrap
+    /* keep+flag(layout-edge, interim): overflow-wrap anywhere NOT word-wrap break-word so wrap
      * points count toward min-content sizing — that's what lets the
      * row's min-width:0 + the article grid's minmax(0,1fr) shrink to
      * 0 for long unbroken tokens. Don't "simplify" any of the three

@@ -217,7 +217,7 @@
       color: var(--fg-primary);
     }
 
-    /* Drop-target uses SHAPE (dashed border + ::before dot), not color
+    /* keep+flag(a11y): Drop-target uses SHAPE (dashed border + ::before dot), not color
      * alone, so colorblind / low-vision users still see it; this
      * redundancy is un-test-pinned. */
     &.board-story-row--drop-before {
@@ -962,7 +962,7 @@
   }
 }
 
-/* Badges aren't color-only (WCAG 1.4.1) — 3 redundant axes:
+/* keep+flag(a11y): badges aren't color-only (WCAG 1.4.1) — 3 redundant axes:
  * COLOR = state, SHAPE = lane (outlined owner / solid team),
  * TEXT = label + glyph. Colorblind / monochrome readers rely on
  * shape + text; this redundancy is un-test-pinned. */

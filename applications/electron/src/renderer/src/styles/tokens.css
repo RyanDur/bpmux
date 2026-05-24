@@ -1,5 +1,5 @@
 :root {
-  /* Enables keyword-size interpolation so <details> height + auto↔0
+  /* keep+flag(motion): keyword-size interpolation lets <details> height + auto↔0
    * transitions can animate; no effect on explicit-size transitions. */
   interpolate-size: allow-keywords;
 
@@ -46,7 +46,7 @@
   --motion-ease-in: cubic-bezier(0.4, 0, 1, 1);
   --motion-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
 
-  /* invisible-but-layout-preserved (drag-source hide): keeps the slot
+  /* keep+flag(placeholder): invisible-but-layout-preserved drag-source-hide keeps the slot
    * in flow. 0.001 not 0 — 0 gets optimized out of the a11y tree. */
   --invisible-placeholder: 0.001;
 }

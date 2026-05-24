@@ -23,7 +23,7 @@
     color: var(--accent-warning);
   }
 
-  /* quota_exhausted reads as "paused" not "broken" — amber signals
+  /* keep+flag(a11y): quota_exhausted reads as "paused" not "broken" — amber signals
    * attention-needed without failure-red's intensity. Pairs with the
    * ⏸ glyph so color + shape both communicate the state (colorblind
    * safe; the conclusion→glyph+color redundancy is un-test-pinned). */

@@ -52,7 +52,7 @@
   border-left: 2px solid var(--border-strong);
 }
 
-/* font-weight 600 is a second differentiation axis beyond role-color
+/* keep+flag(a11y): font-weight 600 is a second differentiation axis beyond role-color
  * for monochrome / low-contrast viewers; this color+weight redundancy
  * is un-test-pinned. */
 .markdown-body .message-mention {
