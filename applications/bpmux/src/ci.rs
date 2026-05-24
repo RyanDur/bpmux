@@ -84,8 +84,17 @@ pub(crate) fn build_multi_depth_for_transition(event: &CiEvent) -> MultiDepthPay
     }
 }
 
-pub fn github_actions_url() -> &'static str {
-    "https://github.com/RyanDur/bpmux/actions"
+pub const DEFAULT_CI_ACTIONS_URL: &str = "https://github.com/RyanDur/bpmux/actions";
+
+pub fn github_actions_url() -> String {
+    resolve_ci_actions_url(std::env::var("BPMUX_CI_ACTIONS_URL").ok())
+}
+
+pub(crate) fn resolve_ci_actions_url(configured: Option<String>) -> String {
+    configured
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| DEFAULT_CI_ACTIONS_URL.to_string())
 }
 
 pub(crate) fn build_dev_ci_signal(text: &str) -> Message {

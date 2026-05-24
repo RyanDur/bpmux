@@ -28,7 +28,7 @@ pub fn build_ci_state_report(runs: &[RunEntry]) -> CiStateReport {
         CiState::QuotaExhausted => "quota_exhausted",
         CiState::Unknown => "unknown",
     };
-    let url = github_actions_url().to_string();
+    let url = github_actions_url();
     CiStateReport {
         conclusion,
         last_run_id: event.run_id,
@@ -49,7 +49,7 @@ pub fn unknown_ci_state_report() -> CiStateReport {
         conclusion: "unknown",
         last_run_id: None,
         branch: "main",
-        url: github_actions_url().to_string(),
+        url: github_actions_url(),
         head_sha: None,
         display_title: None,
         last_updated_at: None,

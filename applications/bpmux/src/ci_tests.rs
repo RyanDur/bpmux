@@ -374,9 +374,27 @@ fn build_dev_ci_signal_from_is_bpmux() {
 }
 
 #[test]
-fn github_actions_url_points_to_repo_actions_tab() {
+fn github_actions_url_defaults_to_repo_actions_tab_when_unconfigured() {
+    assert_eq!(github_actions_url(), DEFAULT_CI_ACTIONS_URL);
+}
+
+#[test]
+fn resolve_ci_actions_url_defaults_when_unset() {
+    assert_eq!(resolve_ci_actions_url(None), DEFAULT_CI_ACTIONS_URL);
+}
+
+#[test]
+fn resolve_ci_actions_url_honors_configured_override() {
     assert_eq!(
-        github_actions_url(),
-        "https://github.com/RyanDur/bpmux/actions"
+        resolve_ci_actions_url(Some("https://github.com/acme/bpmux/actions".to_string())),
+        "https://github.com/acme/bpmux/actions"
+    );
+}
+
+#[test]
+fn resolve_ci_actions_url_ignores_blank_override() {
+    assert_eq!(
+        resolve_ci_actions_url(Some("   ".to_string())),
+        DEFAULT_CI_ACTIONS_URL
     );
 }
