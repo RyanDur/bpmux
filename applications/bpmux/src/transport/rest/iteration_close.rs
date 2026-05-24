@@ -228,10 +228,9 @@ pub(crate) async fn promote_members_then_close_iteration(
         }
     }
     refresh
-        .mutate_sync(crate::board::BoardEvent::TagRemoved {
+        .mutate_sync(crate::board::BoardEvent::CurrentIterationCleared {
             meta: meta(),
             number: iteration_number,
-            label: crate::board::adapters::gh_label_codec::CURRENT_ITERATION_LABEL.to_string(),
         })
         .map_err(|e| {
             rollback_promoted_members(refresh, &applied);

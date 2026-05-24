@@ -375,6 +375,36 @@ impl SourceAdapter for GitHubSourceAdapter {
                     labels,
                 }))
             }
+            BoardEvent::CurrentIterationDesignated { number, .. } => {
+                let labels = self
+                    .inner
+                    .add_label(
+                        *number,
+                        crate::board::adapters::gh_label_codec::CURRENT_ITERATION_LABEL,
+                    )
+                    .await
+                    .map_err(SyncError::Other)?;
+                Ok(Some(BoardEvent::LabelsRefreshed {
+                    meta: crate::board::orchestrator::cache_fill_meta(),
+                    number: *number,
+                    labels,
+                }))
+            }
+            BoardEvent::CurrentIterationCleared { number, .. } => {
+                let labels = self
+                    .inner
+                    .remove_label(
+                        *number,
+                        crate::board::adapters::gh_label_codec::CURRENT_ITERATION_LABEL,
+                    )
+                    .await
+                    .map_err(SyncError::Other)?;
+                Ok(Some(BoardEvent::LabelsRefreshed {
+                    meta: crate::board::orchestrator::cache_fill_meta(),
+                    number: *number,
+                    labels,
+                }))
+            }
             BoardEvent::BodyFetched { .. }
             | BoardEvent::FreeCommentsFetched { .. }
             | BoardEvent::GateCommentsFetched { .. }

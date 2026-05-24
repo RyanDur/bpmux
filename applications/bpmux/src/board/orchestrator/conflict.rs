@@ -24,7 +24,9 @@ pub fn classify_conflict(
         | BoardEvent::StoryReopened { .. }
         | BoardEvent::ParentEpicSet { .. }
         | BoardEvent::ParentEpicUnset { .. }
-        | BoardEvent::IterationMembershipSet { .. } => None,
+        | BoardEvent::IterationMembershipSet { .. }
+        | BoardEvent::CurrentIterationDesignated { .. }
+        | BoardEvent::CurrentIterationCleared { .. } => None,
         BoardEvent::StoryCreated { .. }
         | BoardEvent::GateCommentAppended { .. }
         | BoardEvent::FreeCommentAppended { .. }

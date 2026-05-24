@@ -230,17 +230,15 @@ pub(crate) async fn handle_designate_current_iteration(
         .map(|s| s.number)
         .collect();
     for n in prior {
-        r.mutate_sync(crate::board::BoardEvent::TagRemoved {
+        r.mutate_sync(crate::board::BoardEvent::CurrentIterationCleared {
             meta: meta(),
             number: n,
-            label: crate::board::adapters::gh_label_codec::CURRENT_ITERATION_LABEL.to_string(),
         })
         .map_err(|e| format!("#{n} current-designation-clear enqueue failed: {e}"))?;
     }
-    r.mutate_sync(crate::board::BoardEvent::TagAdded {
+    r.mutate_sync(crate::board::BoardEvent::CurrentIterationDesignated {
         meta: meta(),
         number: iteration_number,
-        label: crate::board::adapters::gh_label_codec::CURRENT_ITERATION_LABEL.to_string(),
     })
     .map_err(|e| format!("#{iteration_number} current-designation enqueue failed: {e}"))?;
     broadcast_board_invalidate(ws_tx).await;

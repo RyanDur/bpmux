@@ -333,6 +333,16 @@ impl BoardStore {
                     story.iteration_membership = Some((*iteration_number, *position));
                 }
             }
+            BoardEvent::CurrentIterationDesignated { .. } => {
+                if let Some(story) = w.get_mut(&number) {
+                    story.is_current = true;
+                }
+            }
+            BoardEvent::CurrentIterationCleared { .. } => {
+                if let Some(story) = w.get_mut(&number) {
+                    story.is_current = false;
+                }
+            }
             BoardEvent::StoryRefreshed { story, .. } => {
                 if let Some(existing) = w.get_mut(&number) {
                     existing.title = story.title.clone();
@@ -342,6 +352,7 @@ impl BoardStore {
                     existing.is_closed = story.is_closed;
                     existing.parent_epic = story.parent_epic;
                     existing.iteration_membership = story.iteration_membership;
+                    existing.is_current = story.is_current;
                     if story.body.is_some() {
                         existing.body = story.body.clone();
                         existing.acceptance_test_path = story.acceptance_test_path.clone();
@@ -366,6 +377,8 @@ impl BoardStore {
                         crate::board::adapters::github::parent_epic_from_labels(labels);
                     existing.iteration_membership =
                         crate::board::adapters::github::iteration_membership_from_labels(labels);
+                    existing.is_current =
+                        crate::board::adapters::github::is_current_from_labels(labels);
                     existing.raw_labels = labels.clone();
                 }
             }
