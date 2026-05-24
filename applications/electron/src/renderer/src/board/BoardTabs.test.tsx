@@ -116,7 +116,7 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
     expect(anchor.textContent).not.toContain('Iteration Sextans')
   })
 
-  test('Scenario 3-rework: anchor picks iter with in-flight children over iter-with-only-icebox-children', () => {
+  test('#1547 facet 3: anchor picks the designated-first (lowest iteration-order) iter regardless of which iter has in-flight children', () => {
     const microscopium = iterationStory({
       number: 1398,
       title: 'Iteration Microscopium',
@@ -138,13 +138,11 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
       iteration_membership: { iteration_number: 1458, position: 100 }
     })
     const { getByTestId } = render(
-      <BoardTabs
-        {...buildProps([microscopium, pictor, microscopiumIcebox, pictorInProgress])}
-      />
+      <BoardTabs {...buildProps([microscopium, pictor, microscopiumIcebox, pictorInProgress])} />
     )
     const anchor = getByTestId('board-now-iteration-anchor')
-    expect(anchor.textContent).toContain('Pictor')
-    expect(anchor.textContent).not.toContain('Microscopium')
+    expect(anchor.textContent).toContain('Microscopium')
+    expect(anchor.textContent).not.toContain('Pictor')
   })
 
   test('Scenario 3 cont.: Now tab Epic-card shows only Epics belonging to current iteration', () => {

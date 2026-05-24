@@ -5,17 +5,7 @@ import {
   positionInParentIteration
 } from './iterationMembers'
 import { themeNameFromTitle } from './labelSchema'
-import type { BoardStory, StoryState } from './types'
-
-const IN_FLIGHT_STORY_STATES: ReadonlySet<StoryState> = new Set([
-  'ready',
-  'in-progress',
-  'desk-check',
-  'delivered',
-  'ready-for-accept',
-  'needs-fixes',
-  'rejected'
-])
+import type { BoardStory } from './types'
 
 const compareByIterationOrder = (a: BoardStory, b: BoardStory): number => {
   const ao = positionInIterationOrder(a)
@@ -29,16 +19,7 @@ const compareByIterationOrder = (a: BoardStory, b: BoardStory): number => {
 export const findCurrentIteration = (stories: BoardStory[]): BoardStory | null => {
   const openIterations = stories.filter((s) => isIterationStory(s) && s.gh_state !== 'closed')
   if (openIterations.length === 0) return null
-  const inFlightIterations = openIterations.filter((iter) =>
-    stories.some(
-      (s) =>
-        !isIterationStory(s) &&
-        IN_FLIGHT_STORY_STATES.has(s.state) &&
-        isMemberOfIteration(s, iter)
-    )
-  )
-  const candidates = inFlightIterations.length > 0 ? inFlightIterations : openIterations
-  const ordered = [...candidates].sort(compareByIterationOrder)
+  const ordered = [...openIterations].sort(compareByIterationOrder)
   return ordered[0] ?? null
 }
 

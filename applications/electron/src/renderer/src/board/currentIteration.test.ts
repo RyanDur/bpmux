@@ -77,113 +77,82 @@ describe('#1453 findCurrentIteration', () => {
     expect(findCurrentIteration([closed, open])?.number).toBe(2)
   })
 
-  test('#1453-rework: picks iter with in-flight children over iter with only-iceboxed children', () => {
-    const microscopium = iterationStory({
-      number: 1398,
-      title: 'Iteration Microscopium',
-      labels: ['iteration', 'iteration-order.100']
-    })
-    const pictor = iterationStory({
-      number: 1458,
-      title: 'Iteration Pictor',
-      labels: ['iteration', 'iteration-order.200']
-    })
-    const microscopiumIcebox = story({
-      number: 9001,
-      state: 'icebox',
-      iteration_membership: { iteration_number: 1398, position: 100 }
-    })
-    const pictorInProgress = story({
-      number: 9002,
-      state: 'in-progress',
-      iteration_membership: { iteration_number: 1458, position: 100 }
-    })
-    expect(
-      findCurrentIteration([microscopium, pictor, microscopiumIcebox, pictorInProgress])?.number
-    ).toBe(1458)
-  })
-
-  test('#1453-rework: tie-breaker = lowest iteration-order among multiple in-flight iters', () => {
-    const iterA = iterationStory({
+  test('child workflow-state is irrelevant — the lowest iteration-order open iteration wins regardless of its members states', () => {
+    const a = iterationStory({
       number: 100,
       title: 'A',
       labels: ['iteration', 'iteration-order.200']
     })
-    const iterB = iterationStory({
+    const b = iterationStory({
       number: 200,
       title: 'B',
       labels: ['iteration', 'iteration-order.100']
     })
-    const aMember = story({
+    const aReady = story({
       number: 9001,
       state: 'ready',
       iteration_membership: { iteration_number: 100, position: 100 }
     })
-    const bMember = story({
+    const bIcebox = story({
       number: 9002,
-      state: 'in-progress',
+      state: 'icebox',
       iteration_membership: { iteration_number: 200, position: 100 }
     })
-    expect(findCurrentIteration([iterA, iterB, aMember, bMember])?.number).toBe(200)
+    expect(findCurrentIteration([a, b, aReady, bIcebox])?.number).toBe(200)
   })
+})
 
-  test('#1453-rework: in-flight states covered (ready / in-progress / desk-check / delivered / ready-for-accept / needs-fixes / rejected)', () => {
-    const inFlightStates = [
-      'ready',
-      'in-progress',
-      'desk-check',
-      'delivered',
-      'ready-for-accept',
-      'needs-fixes',
-      'rejected'
-    ] as const
-    for (const state of inFlightStates) {
-      const candidate = iterationStory({
-        number: 1,
-        title: 'A',
-        labels: ['iteration', 'iteration-order.200']
-      })
-      const other = iterationStory({
-        number: 2,
-        title: 'B',
-        labels: ['iteration', 'iteration-order.100']
-      })
-      const inFlightChild = story({
-        number: 9001,
-        state,
-        iteration_membership: { iteration_number: 1, position: 100 }
-      })
-      const otherIcebox = story({
-        number: 9002,
-        state: 'icebox',
-        iteration_membership: { iteration_number: 2, position: 100 }
-      })
-      expect(findCurrentIteration([candidate, other, inFlightChild, otherIcebox])?.number).toBe(1)
-    }
-  })
-
-  test('#1453-rework: terminal-state children (accepted / retired) do NOT promote iter as current', () => {
-    const a = iterationStory({
-      number: 1,
-      title: 'A',
-      labels: ['iteration', 'iteration-order.200']
-    })
-    const b = iterationStory({
-      number: 2,
-      title: 'B',
+describe('#1547 facet 3 — findCurrentIteration is designation-authoritative (decoupled from in-flight)', () => {
+  test('an in-flight member in a later-ordered iteration does NOT override the designated-first', () => {
+    const crux = iterationStory({
+      number: 1543,
+      title: 'Iteration Crux',
       labels: ['iteration', 'iteration-order.100']
     })
-    const acceptedChildOfA = story({
+    const reticulum = iterationStory({
+      number: 1464,
+      title: 'Iteration Reticulum',
+      labels: ['iteration', 'iteration-order.200']
+    })
+    const reticulumInProgress = story({
       number: 9001,
-      state: 'accepted',
-      iteration_membership: { iteration_number: 1, position: 100 }
+      state: 'in-progress',
+      iteration_membership: { iteration_number: 1464, position: 100 }
     })
-    const retiredChildOfA = story({
-      number: 9002,
-      state: 'retired',
-      iteration_membership: { iteration_number: 1, position: 200 }
+    expect(findCurrentIteration([crux, reticulum, reticulumInProgress])?.number).toBe(1543)
+  })
+
+  test('shows the designated-next (lowest iteration-order) with ZERO in-flight members', () => {
+    const crux = iterationStory({
+      number: 1543,
+      title: 'Iteration Crux',
+      labels: ['iteration', 'iteration-order.100']
     })
-    expect(findCurrentIteration([a, b, acceptedChildOfA, retiredChildOfA])?.number).toBe(2)
+    const reticulum = iterationStory({
+      number: 1464,
+      title: 'Iteration Reticulum',
+      labels: ['iteration', 'iteration-order.200']
+    })
+    expect(findCurrentIteration([crux, reticulum])?.number).toBe(1543)
+  })
+
+  test('lower iteration-order wins over lower issue-number even when the lower-number iter is in-flight', () => {
+    const microscopium = iterationStory({
+      number: 1398,
+      title: 'Iteration Microscopium',
+      labels: ['iteration', 'iteration-order.200']
+    })
+    const crux = iterationStory({
+      number: 1543,
+      title: 'Iteration Crux',
+      labels: ['iteration', 'iteration-order.100']
+    })
+    const microscopiumInProgress = story({
+      number: 9001,
+      state: 'in-progress',
+      iteration_membership: { iteration_number: 1398, position: 100 }
+    })
+    expect(findCurrentIteration([microscopium, crux, microscopiumInProgress])?.number).toBe(1543)
   })
 })
 
