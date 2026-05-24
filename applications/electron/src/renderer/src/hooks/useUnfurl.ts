@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 const URL_RE = /https?:\/\/[^\s<>"')(]+/g
 const TRAILING_PUNCT_RE = /[.,!?;:)\]'"*]+$/
@@ -45,13 +45,6 @@ export const useUnfurl = ({
 }: UseUnfurlArgs): Map<string, UnfurlData | undefined> => {
   const [, bumpVersion] = useState<number>(0)
   const bump = (): void => bumpVersion((v) => v + 1)
-  const mountedRef = useRef<boolean>(true)
-  useEffect(() => {
-    mountedRef.current = true
-    return () => {
-      mountedRef.current = false
-    }
-  }, [])
 
   useEffect(() => {
     if (!apiBase) return
@@ -73,10 +66,10 @@ export const useUnfurl = ({
             }
           }
           cache.set(url, { state: 'resolved', data })
-          if (mountedRef.current) bump()
+          bump()
         } catch {
           cache.set(url, { state: 'resolved', data: { url } })
-          if (mountedRef.current) bump()
+          bump()
         }
       })()
     }
