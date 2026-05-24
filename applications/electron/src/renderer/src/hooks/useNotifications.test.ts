@@ -1,5 +1,7 @@
-import { describe, expect, it } from 'vitest'
-import { isRelevant } from './useNotifications'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { renderHook } from '@testing-library/react'
+import { isRelevant, useNotifications } from './useNotifications'
+import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import type { ChatMessage } from '../transport/types'
 
 const SELF = 'dev'
@@ -98,5 +100,49 @@ describe('#382 isRelevant — notification gating matrix', () => {
       messageType: 'chat'
     })
     expect(isRelevant(msg, SELF)).toBe(false)
+  })
+})
+
+describe('#1499 useNotifications — first-run suppression without firstRunRef', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  const relevant = (id: string): ChatMessage =>
+    baseMsg({ id, from: 'pm:claude-code', addressee: RENDERER_IDENTITY })
+
+  const installNotificationSpy = (): ReturnType<typeof vi.fn> => {
+    const ctor = vi.fn()
+    class FakeNotification {
+      onclick: (() => void) | null = null
+      constructor(title: string, opts?: NotificationOptions) {
+        ctor(title, opts)
+      }
+      close = vi.fn()
+      static permission = 'granted'
+      static requestPermission = vi.fn()
+    }
+    vi.stubGlobal('Notification', FakeNotification as unknown as typeof Notification)
+    return ctor
+  }
+
+  it('emits NO notification on first run even when a relevant message is already present', () => {
+    vi.spyOn(document, 'hasFocus').mockReturnValue(false)
+    const ctor = installNotificationSpy()
+    renderHook(({ messages }) => useNotifications(messages), {
+      initialProps: { messages: [relevant('seed-1')] }
+    })
+    expect(ctor).not.toHaveBeenCalled()
+  })
+
+  it('emits a notification when a new relevant message arrives after the first run', () => {
+    vi.spyOn(document, 'hasFocus').mockReturnValue(false)
+    const ctor = installNotificationSpy()
+    const { rerender } = renderHook(({ messages }) => useNotifications(messages), {
+      initialProps: { messages: [relevant('seed-1')] }
+    })
+    rerender({ messages: [relevant('seed-1'), relevant('fresh-2')] })
+    expect(ctor).toHaveBeenCalledTimes(1)
   })
 })
