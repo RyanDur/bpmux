@@ -103,6 +103,32 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
     expect(doneRadio.checked).toBe(false)
   })
 
+  test('#1549: NOW sections show the current iteration members per state, not the global ready column', () => {
+    const carina = iterationStory({ number: 1552, title: 'Iteration Carina', is_current: true })
+    const m1 = featureStory({
+      number: 9001,
+      state: 'ready',
+      iteration_membership: { iteration_number: 1552, position: 100 }
+    })
+    const m2 = featureStory({
+      number: 9002,
+      state: 'in-progress',
+      iteration_membership: { iteration_number: 1552, position: 200 }
+    })
+    const nonMember = featureStory({ number: 9999, state: 'ready' })
+    const { getByTestId } = render(<BoardTabs {...buildProps([carina, m1, m2, nonMember])} />)
+    const now = getByTestId('board-tabpanel-now')
+    expect(now.querySelector('[data-test="board-story-9001"]')).toBeTruthy()
+    expect(now.querySelector('[data-test="board-story-9002"]')).toBeTruthy()
+    expect(now.querySelector('[data-test="board-story-9999"]')).toBeNull()
+  })
+
+  test('#1549: NOW shows "No iteration designated" when none is current', () => {
+    const open = iterationStory({ number: 1, title: 'A', gh_state: 'open' })
+    const { getByTestId } = render(<BoardTabs {...buildProps([open])} />)
+    expect(getByTestId('board-now-empty').textContent).toContain('No iteration designated')
+  })
+
   test('Scenario 3: Now tab anchor displays theme name (Iteration prefix stripped) for current iteration', () => {
     const iter = iterationStory({ number: 1500, title: 'Iteration Sextans', is_current: true })
     const inFlightChild = featureStory({
@@ -215,15 +241,20 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
     expect(doneRadio.checked).toBe(true)
   })
 
-  test('Scenario 10: section discrimination — ready stories appear only in Now panel', () => {
-    const ready = featureStory({ number: 9101, state: 'ready' })
-    const { getByTestId } = render(<BoardTabs {...buildProps([ready])} />)
-    const nowPanel = getByTestId('board-tabpanel-now')
-    const planPanel = getByTestId('board-tabpanel-plan')
-    const donePanel = getByTestId('board-tabpanel-done')
-    expect(nowPanel.querySelector('[data-test="board-group-ready"]')).toBeTruthy()
-    expect(planPanel.querySelector('[data-test="board-group-ready"]')).toBeNull()
-    expect(donePanel.querySelector('[data-test="board-group-ready"]')).toBeNull()
+  test('Scenario 10: section discrimination — a current-iteration member appears in Now, not Done', () => {
+    const carina = iterationStory({ number: 1552, title: 'Iteration Carina', is_current: true })
+    const member = featureStory({
+      number: 9101,
+      state: 'ready',
+      iteration_membership: { iteration_number: 1552, position: 100 }
+    })
+    const { getByTestId } = render(<BoardTabs {...buildProps([carina, member])} />)
+    expect(
+      getByTestId('board-tabpanel-now').querySelector('[data-test="board-story-9101"]')
+    ).toBeTruthy()
+    expect(
+      getByTestId('board-tabpanel-done').querySelector('[data-test="board-story-9101"]')
+    ).toBeNull()
   })
 
   test('Scenario regression: legacy iteration-{Theme}.{N} label still derives current-iter Epic', () => {

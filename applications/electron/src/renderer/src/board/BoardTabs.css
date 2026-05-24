@@ -35,4 +35,10 @@
     font-weight: 600;
   }
 
+  & .board-now-empty {
+    padding: var(--space-8);
+    text-align: center;
+    color: var(--fg-dim);
+  }
+
 }

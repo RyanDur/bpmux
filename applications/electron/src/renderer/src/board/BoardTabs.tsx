@@ -6,6 +6,7 @@ import Tabs, { type TabDef } from './Tabs'
 import { useTabStorage } from '../lib/useTabStorage'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import { epicNumbersInIteration, findCurrentIteration } from './currentIteration'
+import { isIterationStory, positionInParentIteration } from './iterationMembers'
 import { themeNameFromTitle } from './labelSchema'
 import {
   GROUP_ORDER,
@@ -21,8 +22,9 @@ export type BoardTabId = 'now' | 'plan' | 'done'
 const BOARD_TAB_STORAGE_PREFIX = 'bpmux-board-active-tab'
 const VALID_TAB_IDS: ReadonlyArray<BoardTabId> = ['now', 'plan', 'done'] as const
 
-const NOW_STATES: ReadonlyArray<ColumnState> = ['ready', 'in-progress', 'desk-check', 'delivered']
 const DONE_STATES: ReadonlyArray<ColumnState> = ['accepted', 'retired']
+
+const NOW_STATES: ReadonlyArray<ColumnState> = ['ready', 'in-progress', 'desk-check', 'delivered']
 
 const groupsFor = (states: ReadonlyArray<ColumnState>): GroupSpec[] =>
   states
@@ -81,6 +83,15 @@ const BoardTabs = ({
     const inIter = new Set(currentIterationEpicNumbers)
     return stories.filter((s) => isActiveEpic(s) && inIter.has(s.number))
   }, [stories, currentIteration, currentIterationEpicNumbers])
+  const currentIterationMemberNumbers = useMemo<Set<number>>(() => {
+    if (currentIteration === null) return new Set()
+    const out = new Set<number>()
+    for (const s of stories) {
+      if (isIterationStory(s)) continue
+      if (positionInParentIteration(s, currentIteration.number) !== null) out.add(s.number)
+    }
+    return out
+  }, [stories, currentIteration])
 
   const tabDefs: ReadonlyArray<TabDef<BoardTabId>> = useMemo(
     () => [
@@ -96,12 +107,17 @@ const BoardTabs = ({
     []
   )
 
-  const renderGroup = (group: GroupSpec, children?: React.ReactNode): React.JSX.Element => (
+  const renderGroup = (
+    group: GroupSpec,
+    children?: React.ReactNode,
+    storiesOverride?: BoardStory[]
+  ): React.JSX.Element => (
     <BoardGroup
       key={group.state}
       group={group}
       stories={
-        group.state === 'icebox' ? iterationContainerStories : (grouped.get(group.state) ?? [])
+        storiesOverride ??
+        (group.state === 'icebox' ? iterationContainerStories : (grouped.get(group.state) ?? []))
       }
       epicTitleByNumber={epicTitleByNumber}
       loading={loading}
@@ -117,18 +133,35 @@ const BoardTabs = ({
     </BoardGroup>
   )
 
-  const renderNow = (): React.JSX.Element => (
-    <section className="board-tabpanel-content" data-test="board-tabpanel-now-content">
-      {currentIteration !== null && (
+  const renderNow = (): React.JSX.Element => {
+    if (currentIteration === null) {
+      return (
+        <section className="board-tabpanel-content" data-test="board-tabpanel-now-content">
+          <p className="board-now-empty" data-test="board-now-empty">
+            No iteration designated
+          </p>
+        </section>
+      )
+    }
+    return (
+      <section className="board-tabpanel-content" data-test="board-tabpanel-now-content">
         <header className="board-now-anchor" data-test="board-now-iteration-anchor">
           <small className="board-now-anchor-label">Iteration</small>
           <b className="board-now-anchor-title">{themeNameFromTitle(currentIteration.title)}</b>
         </header>
-      )}
-      <Epic epics={currentIterationEpics} stories={stories} onOpen={onOpen} />
-      {groupsFor(NOW_STATES).map((group) => renderGroup(group))}
-    </section>
-  )
+        <Epic epics={currentIterationEpics} stories={stories} onOpen={onOpen} />
+        {groupsFor(NOW_STATES).map((group) =>
+          renderGroup(
+            group,
+            undefined,
+            (grouped.get(group.state) ?? []).filter((s) =>
+              currentIterationMemberNumbers.has(s.number)
+            )
+          )
+        )}
+      </section>
+    )
+  }
 
   const renderPlan = (): React.JSX.Element => {
     const icebox = iceboxGroup()
