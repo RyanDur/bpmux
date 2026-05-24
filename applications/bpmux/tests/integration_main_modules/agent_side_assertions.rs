@@ -503,20 +503,13 @@ fn accept_story_refuses_designer_and_dev_per_workflow_substrate() {
 /// with a clear message, not a raw gh error.
 #[test]
 fn accept_story_is_idempotent_on_already_closed() {
-    use harness::mock_gh::{issue_json, mock_story_mutations};
-    use httpmock::{Method, MockServer};
-    use serde_json::Value;
+    use harness::mock_gh::{issue_json, mock_story_full};
+    use httpmock::MockServer;
 
     let server = MockServer::start();
     let base_url = format!("{}/", server.base_url());
     let issue = issue_json(213, "accept-idempotent-target", &["delivered"], None);
-    server.mock(|when, then| {
-        when.method(Method::GET).path("/repos/acme/bpmux/issues");
-        then.status(200)
-            .header("content-type", "application/json")
-            .body(Value::Array(vec![issue.clone()]).to_string());
-    });
-    mock_story_mutations(&server, 213, &issue);
+    mock_story_full(&server, 213, &issue);
 
     let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");

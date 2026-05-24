@@ -132,20 +132,13 @@ fn accept_story_rejects_unknown_role() {
 
 #[test]
 fn accept_story_view_board_reflects_accepted_via_mocked_seed() {
-    use harness::mock_gh::{issue_json, mock_story_mutations};
-    use httpmock::{Method, MockServer};
-    use serde_json::Value;
+    use harness::mock_gh::{issue_json, mock_story_full};
+    use httpmock::MockServer;
 
     let server = MockServer::start();
     let base_url = format!("{}/", server.base_url());
     let issue = issue_json(600, "Pre-seeded delivered", &["delivered"], None);
-    server.mock(|when, then| {
-        when.method(Method::GET).path("/repos/acme/bpmux/issues");
-        then.status(200)
-            .header("content-type", "application/json")
-            .body(Value::Array(vec![issue.clone()]).to_string());
-    });
-    mock_story_mutations(&server, 600, &issue);
+    mock_story_full(&server, 600, &issue);
 
     let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
@@ -174,6 +167,59 @@ fn accept_story_view_board_reflects_accepted_via_mocked_seed() {
         assert!(
             view_text.contains("#600") && view_text.contains("ACCEPTED"),
             "view_board reflects accepted state for mocked story #600 post-accept_story; got:\n{view_text}"
+        );
+
+        pm.close().await;
+    });
+}
+
+#[test]
+fn accept_role_survives_ingest_poll_after_acceptor_label_seed_1550() {
+    use harness::mock_gh::{issue_json, mock_story_full};
+    use httpmock::MockServer;
+
+    let server = MockServer::start();
+    let base_url = format!("{}/", server.base_url());
+    let issue = issue_json(601, "1550-ingest-clobber-guard", &["delivered"], None);
+    let issue_state = mock_story_full(&server, 601, &issue);
+
+    let bpmux = TestBpmux::start_with_mock_gh(&base_url);
+    let rt = tokio::runtime::Runtime::new().expect("rt");
+    rt.block_on(async {
+        let pm = TestBridge::connect_with_mock_gh(&bpmux, "pm", &base_url).await;
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        harness::story_helpers::seed_team_verifiable_evidence_with_mock_gh(&bpmux, &base_url, 601)
+            .await;
+
+        let mut pushed = false;
+        for _ in 0..50 {
+            if issue_state
+                .lock()
+                .unwrap()
+                .labels
+                .iter()
+                .any(|l| l == "awaiting team")
+            {
+                pushed = true;
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+        assert!(
+            pushed,
+            "outbox pushed the acceptor-label to the GitHub mock (read-your-writes) before re-ingest"
+        );
+
+        tokio::time::sleep(Duration::from_millis(1500)).await;
+
+        pm.call_tool(
+            "accept_story",
+            serde_json::json!({"number": 601, "would_file_bug": false}),
+        )
+        .await
+        .expect(
+            "accept survives the re-ingest poll: the stateful GET /issues mock reflects the pushed acceptor-label, so seed_all does not clobber it to OwnerWalk/[ryan]",
         );
 
         pm.close().await;

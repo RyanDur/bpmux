@@ -47,13 +47,30 @@ pub fn label_json(name: &str) -> Value {
 /// per test (different labels/seeds). This helper registers per-issue
 /// endpoints (issue detail + mutations) only.
 pub fn mock_story_mutations(server: &MockServer, number: u64, issue_response: &Value) {
-    let initial_labels = labels_from_issue(issue_response);
-    let initial_is_closed = issue_response
-        .get("state")
-        .and_then(|v| v.as_str())
-        .map(|s| s == "closed")
-        .unwrap_or(false);
-    let state = Arc::new(Mutex::new(MockIssueState {
+    let state = Arc::new(Mutex::new(issue_state_from_json(issue_response)));
+    mock_story_mutations_with_state(server, number, state);
+}
+
+pub fn mock_story_full(
+    server: &MockServer,
+    number: u64,
+    issue_response: &Value,
+) -> Arc<Mutex<MockIssueState>> {
+    let state = Arc::new(Mutex::new(issue_state_from_json(issue_response)));
+    let list_state = Arc::clone(&state);
+    server.mock(|when, then| {
+        when.method(Method::GET).path("/repos/acme/bpmux/issues");
+        then.respond_with(move |_req: &HttpMockRequest| {
+            let snap = list_state.lock().unwrap().clone();
+            json_response(Value::Array(vec![snap.to_issue_json(number)]))
+        });
+    });
+    mock_story_mutations_with_state(server, number, Arc::clone(&state));
+    state
+}
+
+fn issue_state_from_json(issue_response: &Value) -> MockIssueState {
+    MockIssueState {
         title: issue_response
             .get("title")
             .and_then(|v| v.as_str())
@@ -63,10 +80,13 @@ pub fn mock_story_mutations(server: &MockServer, number: u64, issue_response: &V
             .get("body")
             .and_then(|v| v.as_str())
             .map(str::to_string),
-        labels: initial_labels,
-        is_closed: initial_is_closed,
-    }));
-    mock_story_mutations_with_state(server, number, state);
+        labels: labels_from_issue(issue_response),
+        is_closed: issue_response
+            .get("state")
+            .and_then(|v| v.as_str())
+            .map(|s| s == "closed")
+            .unwrap_or(false),
+    }
 }
 
 pub fn mock_story_mutations_with_state(
