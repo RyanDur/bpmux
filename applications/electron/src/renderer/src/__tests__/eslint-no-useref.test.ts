@@ -5,12 +5,13 @@ import { resolve } from 'path'
 const ELECTRON_APP_ROOT = resolve(__dirname, '../../../..')
 const STUB_PRODUCTION_TSX = resolve(ELECTRON_APP_ROOT, 'src/renderer/src/__useref_stub__.tsx')
 const STUB_TEST_TSX = resolve(ELECTRON_APP_ROOT, 'src/renderer/src/__useref_stub__.test.tsx')
-const WAIVED_FILE = resolve(ELECTRON_APP_ROOT, 'src/renderer/src/board/BoardResizeHandle.tsx')
+const WAIVED_FILE = resolve(ELECTRON_APP_ROOT, 'src/renderer/src/chat/Input.tsx')
 const WAIVED_TSX = resolve(ELECTRON_APP_ROOT, 'src/renderer/src/board/Comments.tsx')
-const UNWAIVED_1537_FILES = [
+const ENFORCED_DISCHARGED_FILES = [
   'src/renderer/src/transport/useWebSocket.ts',
   'src/renderer/src/board/useRefetchOnReconnect.ts',
-  'src/renderer/src/hooks/useNotifications.ts'
+  'src/renderer/src/hooks/useNotifications.ts',
+  'src/renderer/src/board/BoardResizeHandle.tsx'
 ].map((f) => resolve(ELECTRON_APP_ROOT, f))
 
 const lintAs = async (code: string, filePath: string): Promise<ESLint.LintResult[]> => {
@@ -42,15 +43,15 @@ describe('#1499 ESLint no-useRef substrate — Ryan-canon "no refs unless no oth
     expect(refViolations(result.messages)).toEqual([])
   })
 
-  test('waived file (BoardResizeHandle.tsx, until:#1538): useRef is allowed (conditional keep)', async () => {
+  test('waived file (Input.tsx, unconditional DOM-ref): useRef is allowed', async () => {
     const code = `import { useRef } from 'react'\nexport const C = () => { const r = useRef(0); return r.current }\n`
     const [result] = await lintAs(code, WAIVED_FILE)
     expect(refViolations(result.messages)).toEqual([])
   })
 
-  test('#1537: the formerly-waived WS files now ENFORCE no-useRef (waiver discharged)', async () => {
+  test('#1537+#1538: the formerly-waived WS + width-collapse files now ENFORCE no-useRef (waivers discharged)', async () => {
     const code = `import { useRef } from 'react'\nexport const C = () => { const r = useRef(0); return r.current }\n`
-    for (const file of UNWAIVED_1537_FILES) {
+    for (const file of ENFORCED_DISCHARGED_FILES) {
       const [result] = await lintAs(code, file)
       expect(refViolations(result.messages).length).toBeGreaterThan(0)
     }

@@ -23,4 +23,23 @@ export const widthPercent = (width: number, viewportWidth: number): number => {
   return Math.round(fraction * 100)
 }
 
+export interface CollapseToggle {
+  nextWidth: number
+  nextRestoreWidth: number
+}
+
+export const computeCollapseToggle = (
+  width: number,
+  restoreWidth: number,
+  viewportWidth: number
+): CollapseToggle => {
+  if (width > BOARD_MIN_WIDTH) {
+    return { nextWidth: BOARD_MIN_WIDTH, nextRestoreWidth: width }
+  }
+  return {
+    nextWidth: clampBoardWidth(restoreWidth, viewportWidth),
+    nextRestoreWidth: restoreWidth
+  }
+}
+
 export { computeMaxWidth }

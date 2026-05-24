@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   BOARD_MIN_WIDTH,
   BOARD_RESIZE_KEYBOARD_STEP,
@@ -11,14 +11,19 @@ import './BoardResizeHandle.css'
 interface Props {
   width: number
   setWidth: (next: number) => void
+  onToggleCollapse: (viewportWidth: number) => void
   controlsId: string
 }
 
-const BoardResizeHandle = ({ width, setWidth, controlsId }: Props): React.JSX.Element => {
+const BoardResizeHandle = ({
+  width,
+  setWidth,
+  onToggleCollapse,
+  controlsId
+}: Props): React.JSX.Element => {
   const [viewportWidth, setViewportWidth] = useState<number>(() =>
     typeof window === 'undefined' ? 1024 : window.innerWidth
   )
-  const lastWidthBeforeCollapse = useRef<number>(width)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -82,16 +87,11 @@ const BoardResizeHandle = ({ width, setWidth, controlsId }: Props): React.JSX.El
       }
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault()
-        if (width > BOARD_MIN_WIDTH) {
-          lastWidthBeforeCollapse.current = width
-          setWidth(BOARD_MIN_WIDTH)
-        } else {
-          setWidth(clampBoardWidth(lastWidthBeforeCollapse.current, viewportWidth))
-        }
+        onToggleCollapse(viewportWidth)
         return
       }
     },
-    [setWidth, viewportWidth, width]
+    [onToggleCollapse, setWidth, viewportWidth, width]
   )
 
   return (

@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react'
 import Board from './board/Board'
 import BoardResizeHandle from './board/BoardResizeHandle'
-import { BOARD_DEFAULT_WIDTH, clampBoardWidth } from './board/BoardResizeHandle.utils'
+import {
+  BOARD_DEFAULT_WIDTH,
+  clampBoardWidth,
+  computeCollapseToggle
+} from './board/BoardResizeHandle.utils'
 import Chat from './chat/Chat'
 import CiGlyph from './ci/CiGlyph'
 import { useMessageFilter } from './hooks/useMessageFilter'
@@ -89,12 +93,22 @@ const AppShell = ({
     RENDERER_IDENTITY,
     BOARD_DEFAULT_WIDTH
   )
+  const [restoreWidth, setRestoreWidth] = useState<number>(boardWidthStorage.width)
   const setBoardWidth = (next: number): void => {
     if (typeof window === 'undefined') {
       boardWidthStorage.setWidth(next)
       return
     }
     boardWidthStorage.setWidth(clampBoardWidth(next, window.innerWidth))
+  }
+  const toggleBoardCollapse = (viewportWidth: number): void => {
+    const { nextWidth, nextRestoreWidth } = computeCollapseToggle(
+      boardWidthStorage.width,
+      restoreWidth,
+      viewportWidth
+    )
+    setRestoreWidth(nextRestoreWidth)
+    boardWidthStorage.setWidth(nextWidth)
   }
   const initialScope = readScope()
   const [recipient, setRecipient] = useState<string[] | null>(
@@ -213,6 +227,7 @@ const AppShell = ({
           <BoardResizeHandle
             width={boardWidthStorage.width}
             setWidth={setBoardWidth}
+            onToggleCollapse={toggleBoardCollapse}
             controlsId="board-region"
           />
         ) : null}

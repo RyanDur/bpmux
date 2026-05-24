@@ -111,12 +111,6 @@ export default defineConfig(
     ],
     rules: { 'no-restricted-syntax': ['error', ...NO_DIV_SPAN] }
   },
-  // CONDITIONAL until:#1538 — width-memory is parent-state mis-located in the child;
-  // collapse-lift-to-parent removes the ref.
-  {
-    files: ['src/renderer/src/board/BoardResizeHandle.tsx'], // lastWidthBeforeCollapse — non-render value read only in onKeyDown; lifts to the parent that owns width
-    rules: { 'no-restricted-syntax': ['error', ...NO_DIV_SPAN] }
-  },
   // CONDITIONAL until:#1539 — sync-status polling is a cross-cutting resource;
   // extract to a sync-status service (useSyncExternalStore) removes the ref.
   {
