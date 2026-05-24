@@ -16,21 +16,6 @@ pub fn parse_iteration_label<C: LabelCodec>(codec: &C, label: &str) -> Option<It
     codec.decode_iteration(label)
 }
 
-pub fn story_iteration_label_for_theme<C: LabelCodec>(
-    codec: &C,
-    story: &Story,
-    theme_name: &str,
-) -> Option<String> {
-    for raw in &story.raw_labels {
-        if let Some(parts) = codec.decode_iteration(raw)
-            && parts.theme_name == theme_name
-        {
-            return Some(raw.clone());
-        }
-    }
-    None
-}
-
 pub const DEFAULT_FIRST_POSITION: u32 = 100;
 pub const DEFAULT_STEP: u32 = 100;
 
@@ -58,29 +43,6 @@ pub fn compute_insert_position(insert_index: usize, existing_positions: &[u32]) 
         return left + gap / 2;
     }
     left
-}
-
-pub fn members_with_iteration_label<C: LabelCodec>(
-    codec: &C,
-    stories: &[Story],
-    theme_name: &str,
-) -> Vec<u64> {
-    let mut members: Vec<(u64, u32)> = stories
-        .iter()
-        .filter(|s| !s.is_closed)
-        .filter_map(|s| {
-            for raw in &s.raw_labels {
-                if let Some(parts) = codec.decode_iteration(raw)
-                    && parts.theme_name == theme_name
-                {
-                    return Some((s.number, parts.position));
-                }
-            }
-            None
-        })
-        .collect();
-    members.sort_by_key(|(_, pos)| *pos);
-    members.into_iter().map(|(n, _)| n).collect()
 }
 
 pub fn members_of_iteration(stories: &[Story], iteration_number: u64) -> Vec<u64> {
@@ -177,65 +139,6 @@ mod tests {
     }
 
     #[test]
-    fn members_walk_returns_only_matching_theme() {
-        let stories = vec![
-            seed(200, vec!["iteration-Pegasus.100".to_string()]),
-            seed(201, vec!["iteration-Pegasus.200".to_string()]),
-            seed(300, vec!["iteration-Cassiopeia.100".to_string()]),
-        ];
-        assert_eq!(
-            members_with_iteration_label(&GhLabelCodec, &stories, "Pegasus"),
-            vec![200, 201]
-        );
-    }
-
-    #[test]
-    fn members_walk_sorts_by_label_position_ascending() {
-        let stories = vec![
-            seed(200, vec!["iteration-Pegasus.300".to_string()]),
-            seed(201, vec!["iteration-Pegasus.100".to_string()]),
-            seed(202, vec!["iteration-Pegasus.200".to_string()]),
-        ];
-        assert_eq!(
-            members_with_iteration_label(&GhLabelCodec, &stories, "Pegasus"),
-            vec![201, 202, 200]
-        );
-    }
-
-    #[test]
-    fn members_walk_skips_closed_stories() {
-        let mut s = seed(200, vec!["iteration-Pegasus.100".to_string()]);
-        s.is_closed = true;
-        let stories = vec![s];
-        assert!(members_with_iteration_label(&GhLabelCodec, &stories, "Pegasus").is_empty());
-    }
-
-    #[test]
-    fn story_iteration_label_returns_member_carried_label() {
-        let s = seed(
-            200,
-            vec![
-                "icebox".to_string(),
-                "iteration-Pegasus.250".to_string(),
-                "feature".to_string(),
-            ],
-        );
-        assert_eq!(
-            story_iteration_label_for_theme(&GhLabelCodec, &s, "Pegasus"),
-            Some("iteration-Pegasus.250".to_string())
-        );
-    }
-
-    #[test]
-    fn story_iteration_label_returns_none_when_theme_absent() {
-        let s = seed(200, vec!["iteration-Cassiopeia.100".to_string()]);
-        assert_eq!(
-            story_iteration_label_for_theme(&GhLabelCodec, &s, "Pegasus"),
-            None
-        );
-    }
-
-    #[test]
     fn compute_insert_position_empty_container_returns_default_first() {
         assert_eq!(compute_insert_position(0, &[]), DEFAULT_FIRST_POSITION);
         assert_eq!(compute_insert_position(5, &[]), DEFAULT_FIRST_POSITION);
@@ -273,42 +176,6 @@ mod tests {
     #[test]
     fn compute_insert_position_sorts_input_before_computing() {
         assert_eq!(compute_insert_position(1, &[300, 100, 200]), 150);
-    }
-
-    struct StubLabelCodec;
-
-    impl LabelCodec for StubLabelCodec {
-        fn decode_ready_order(&self, _label: &str) -> Option<u32> {
-            None
-        }
-        fn decode_iteration(&self, label: &str) -> Option<IterationLabelParts> {
-            let rest = label.strip_prefix("iter|")?;
-            let (theme, pos_str) = rest.rsplit_once(':')?;
-            let position = pos_str.parse().ok()?;
-            if theme.is_empty() {
-                return None;
-            }
-            Some(IterationLabelParts {
-                theme_name: theme.to_string(),
-                position,
-            })
-        }
-        fn is_iteration_label_loose(&self, label: &str) -> bool {
-            label.starts_with("iter|") && label.contains(':')
-        }
-        fn encode_parent_epic(&self, issue_number: u64) -> String {
-            format!("parent|{issue_number}")
-        }
-        fn encode_ready_order(&self, position: u32) -> String {
-            format!("rdy:{position}")
-        }
-        fn encode_iteration(&self, theme_name: &str, position: u32) -> String {
-            format!("iter|{theme_name}:{position}")
-        }
-        fn iteration_label_class(&self, label: &str) -> Option<String> {
-            let parts = self.decode_iteration(label)?;
-            Some(format!("iter|{}:", parts.theme_name))
-        }
     }
 
     fn seed_with_iteration_membership(number: u64, iteration_number: u64, position: u32) -> Story {
@@ -404,21 +271,6 @@ mod tests {
             members_of_iteration(&stories, 2000),
             vec![2001],
             "canonical identity attribution is name-independent; survives a rename"
-        );
-    }
-
-    #[test]
-    fn substrate_test_members_walk_works_with_arbitrary_codec_syntax() {
-        let stories = vec![
-            seed(200, vec!["iter|Pegasus:300".to_string()]),
-            seed(201, vec!["iter|Pegasus:100".to_string()]),
-            seed(202, vec!["iter|Pegasus:200".to_string()]),
-            seed(300, vec!["iter|Cassiopeia:100".to_string()]),
-        ];
-        assert_eq!(
-            members_with_iteration_label(&StubLabelCodec, &stories, "Pegasus"),
-            vec![201, 202, 200],
-            "stub-syntax iter|Theme:N sorts correctly without GH-syntax dependency"
         );
     }
 }

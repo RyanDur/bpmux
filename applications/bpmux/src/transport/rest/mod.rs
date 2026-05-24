@@ -21,9 +21,7 @@ pub use ci::{get_ci, get_ci_jobs, get_ci_log, post_ci_rerun};
 pub use classifier::{ClassifierMisfire, post_classifier_misfire};
 pub use iteration_close::{CloseIterationRequest, post_close_iteration};
 #[cfg(test)]
-pub(crate) use iteration_close::{
-    collect_ready_queue_blockers, promote_members_then_close_iteration,
-};
+pub(crate) use iteration_close::{close_iteration_canonical, collect_ready_queue_blockers};
 pub use lessons::{
     LessonsQuery, PeerLessonsQuery, SaveLessonPayload, get_lessons, get_peer_lessons, post_lesson,
 };

@@ -83,33 +83,21 @@ async fn post_close_iteration_canonical(
             )),
         );
     }
-    let theme_name = crate::board::iteration_label::theme_name_from_title(&iteration.title);
-    let codec = crate::board::adapters::gh_label_codec::GhLabelCodec;
-    let promoted: Vec<u64> = crate::board::iteration_label::members_with_iteration_label(
-        &codec,
-        &refresh.all_stories(),
-        &theme_name,
-    );
     let ready_queue_blockers = collect_ready_queue_blockers(refresh.as_ref()).await;
     if !ready_queue_blockers.is_empty() {
         let body = build_close_iteration_ready_queue_blocked_body(&ready_queue_blockers);
         broadcast_iteration_close_blocked(&session, &ready_queue_blockers);
         return (StatusCode::CONFLICT, json_headers(), body);
     }
-    match promote_members_then_close_iteration(refresh, iteration_number, &promoted).await {
-        Ok(()) => {}
-        Err(rollback_summary) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                json_headers(),
-                err_body(&format!(
-                    "close_iteration(canonical) failed: {rollback_summary}"
-                )),
-            );
-        }
+    if let Err(close_err) = close_iteration_canonical(refresh, iteration_number).await {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json_headers(),
+            err_body(&format!("close_iteration(canonical) failed: {close_err}")),
+        );
     }
     let payload = session::message::StateDeltaPayload::IterationClose {
-        promoted: promoted.clone(),
+        promoted: Vec::new(),
         deleted_marker_id: None,
     };
     let delta_msg = session::Message {
@@ -121,13 +109,11 @@ async fn post_close_iteration_canonical(
         ..session::Message::default()
     };
     if let Some(t) = tracker.as_ref() {
-        for n in promoted.iter() {
-            let body = "iteration-close: promoted to ready via canonical-via-GH ceremony (#1300; iteration_id substrate per slice 2).";
-            if let Err(e) = t.post_story_comment(*n, body).await {
-                session::diag::log_diag(&format!(
-                    "[#1300] comment_on_story #{n} (promoted) failed: {e}"
-                ));
-            }
+        let body = "iteration-close: terminal close, promote-on-close retired (#1556).";
+        if let Err(e) = t.post_story_comment(iteration_number, body).await {
+            session::diag::log_diag(&format!(
+                "[#1556] comment_on_story #{iteration_number} (close) failed: {e}"
+            ));
         }
     }
     if let Err(e) = session.broadcast(&delta_msg) {
@@ -137,7 +123,7 @@ async fn post_close_iteration_canonical(
     }
     broadcast_board_invalidate(&session);
     let body = serde_json::json!({
-        "promoted": promoted,
+        "promoted": Vec::<u64>::new(),
         "deleted_marker_id": serde_json::Value::Null,
         "iteration_number": iteration_number,
     });
@@ -167,119 +153,31 @@ fn build_close_iteration_ready_queue_blocked_body(blockers: &[IterationCloseBloc
     .to_string()
 }
 
-pub(crate) async fn promote_members_then_close_iteration(
+pub(crate) async fn close_iteration_canonical(
     refresh: &Arc<dyn crate::board::RefreshDriver>,
     iteration_number: u64,
-    promoted: &[u64],
 ) -> Result<(), String> {
-    let iteration_story = refresh
-        .story(iteration_number)
-        .ok_or_else(|| format!("iteration #{iteration_number} not found in store"))?;
-    let theme_name = crate::board::iteration_label::theme_name_from_title(&iteration_story.title);
     let meta = || crate::board::events::EventMeta {
         actor: "pm".to_string(),
         ts: chrono::Utc::now(),
         peer_id: crate::board::PeerId::local(),
     };
-    let codec = crate::board::adapters::gh_label_codec::GhLabelCodec;
-    let mut applied: Vec<(u64, String)> = Vec::with_capacity(promoted.len());
-    for &n in promoted {
-        let member = refresh
-            .story(n)
-            .ok_or_else(|| format!("member #{n} not found in store"))?;
-        let member_label = crate::board::iteration_label::story_iteration_label_for_theme(
-            &codec,
-            &member,
-            &theme_name,
-        )
-        .ok_or_else(|| {
-            format!("member #{n} carries no iteration-{theme_name}.* label (substrate-disconnect)")
-        })?;
-        let result: Result<(), String> = (|| {
-            refresh
-                .mutate_sync(crate::board::BoardEvent::TagAdded {
-                    meta: meta(),
-                    number: n,
-                    label: "ready".to_string(),
-                })
-                .map_err(|e| format!("#{n} ready-tag enqueue failed: {e}"))?;
-            refresh
-                .mutate_sync(crate::board::BoardEvent::StateTransitioned {
-                    meta: meta(),
-                    number: n,
-                    new_state: crate::board::domain::StoryState::Ready,
-                })
-                .map_err(|e| format!("#{n} state-transition enqueue failed: {e}"))?;
-            refresh
-                .mutate_sync(crate::board::BoardEvent::TagRemoved {
-                    meta: meta(),
-                    number: n,
-                    label: member_label.clone(),
-                })
-                .map_err(|e| format!("#{n} iteration-label-remove enqueue failed: {e}"))?;
-            Ok(())
-        })();
-        match result {
-            Ok(()) => applied.push((n, member_label)),
-            Err(e) => {
-                rollback_promoted_members(refresh, &applied);
-                return Err(format!("promote failed at #{n}: {e} (rolled back)"));
-            }
-        }
-    }
     refresh
         .mutate_sync(crate::board::BoardEvent::CurrentIterationCleared {
             meta: meta(),
             number: iteration_number,
         })
         .map_err(|e| {
-            rollback_promoted_members(refresh, &applied);
-            format!(
-                "#{iteration_number} current-designation-clear enqueue failed: {e} (members rolled back)"
-            )
+            format!("#{iteration_number} current-designation-clear enqueue failed: {e}")
         })?;
     refresh
         .mutate_sync(crate::board::BoardEvent::StoryClosed {
             meta: meta(),
             number: iteration_number,
-            reason: Some(format!(
-                "iteration-close (#1300 canonical-via-GH; {} members promoted)",
-                applied.len()
-            )),
+            reason: Some("iteration-close (terminal; promote-on-close retired #1556)".to_string()),
         })
-        .map_err(|e| {
-            rollback_promoted_members(refresh, &applied);
-            format!("#{iteration_number} iteration-close enqueue failed: {e} (members rolled back; iteration-issue unchanged)")
-        })?;
+        .map_err(|e| format!("#{iteration_number} iteration-close enqueue failed: {e}"))?;
     Ok(())
-}
-
-fn rollback_promoted_members(
-    refresh: &Arc<dyn crate::board::RefreshDriver>,
-    applied: &[(u64, String)],
-) {
-    let meta = || crate::board::events::EventMeta {
-        actor: "pm".to_string(),
-        ts: chrono::Utc::now(),
-        peer_id: crate::board::PeerId::local(),
-    };
-    for (n, label) in applied {
-        let _ = refresh.mutate_sync(crate::board::BoardEvent::TagRemoved {
-            meta: meta(),
-            number: *n,
-            label: "ready".to_string(),
-        });
-        let _ = refresh.mutate_sync(crate::board::BoardEvent::StateTransitioned {
-            meta: meta(),
-            number: *n,
-            new_state: crate::board::domain::StoryState::Icebox,
-        });
-        let _ = refresh.mutate_sync(crate::board::BoardEvent::TagAdded {
-            meta: meta(),
-            number: *n,
-            label: label.clone(),
-        });
-    }
 }
 
 #[derive(Debug, Clone, serde::Serialize)]

@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import { launchTwoElectronsSharedBackend } from './helpers/launch'
 
 test.describe('#1300 Scenario 2 — two bpmux instances see the same iteration-close outcome', () => {
-  test('close_iteration in instance A promotes members + closes container in instance B via WS state-delta', async () => {
+  test('close_iteration in instance A closes the container in instance B via WS state-delta; members are NOT promoted (promote-on-close retired #1556)', async () => {
     const { win1, win2, apiBase, authToken, cleanup } = await launchTwoElectronsSharedBackend()
     try {
       const seedRes = await fetch(`${apiBase}/api/test/seed_stories`, {
@@ -101,8 +101,8 @@ test.describe('#1300 Scenario 2 — two bpmux instances see the same iteration-c
 
       const finalState = await stateOf()
       expect(finalState.iterationClosed).toBe(true)
-      expect(finalState.memberStates[9411]).toBe('ready')
-      expect(finalState.memberStates[9412]).toBe('ready')
+      expect(finalState.memberStates[9411]).toBe('icebox')
+      expect(finalState.memberStates[9412]).toBe('icebox')
     } finally {
       await cleanup()
     }

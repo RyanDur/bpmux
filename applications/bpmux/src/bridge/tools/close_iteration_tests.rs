@@ -9,9 +9,7 @@ mod canonical_via_gh_1300 {
     use crate::board::domain::{Story, StoryState, StoryType};
     use crate::board::orchestrator::SyncOrchestrator;
     use crate::board::store::BoardStore;
-    use crate::transport::rest::{
-        collect_ready_queue_blockers, promote_members_then_close_iteration,
-    };
+    use crate::transport::rest::{close_iteration_canonical, collect_ready_queue_blockers};
     use chrono::{TimeZone, Utc};
     use std::sync::Arc;
 
@@ -57,26 +55,36 @@ mod canonical_via_gh_1300 {
     }
 
     #[tokio::test]
-    async fn promotes_each_member_to_ready_and_closes_iteration_issue() {
+    async fn close_promotes_nothing_and_does_not_error_on_canonical_member_1556() {
+        let mut canonical_member = Story::new_minimal(
+            200,
+            "[Feature] canonical-member".to_string(),
+            StoryState::Icebox,
+            Utc.with_ymd_and_hms(2026, 5, 12, 0, 0, 0).unwrap(),
+            "pm".to_string(),
+        );
+        canonical_member.raw_labels = vec![
+            "icebox".to_string(),
+            "parent-iteration-#1400.100".to_string(),
+        ];
         let refresh = build_refresh(vec![
             seed_iteration_issue(1400, "Pegasus"),
-            seed_member(200, StoryState::Icebox, Some(("Pegasus", 100))),
-            seed_member(201, StoryState::Icebox, Some(("Pegasus", 200))),
+            canonical_member,
         ])
         .await;
 
-        promote_members_then_close_iteration(&refresh, 1400, &[200, 201])
+        close_iteration_canonical(&refresh, 1400)
             .await
-            .expect("canonical-via-GH close_iteration succeeds");
+            .expect("close succeeds without erroring on a canonically-attributed member");
 
         let iter = refresh.story(1400).expect("iteration-issue still exists");
-        assert!(iter.is_closed, "iteration-issue closed (AC1)");
-
-        let s200 = refresh.story(200).expect("member 200 exists");
-        assert_eq!(s200.state, StoryState::Ready, "AC2: member 200 promoted");
-
-        let s201 = refresh.story(201).expect("member 201 exists");
-        assert_eq!(s201.state, StoryState::Ready, "AC2: member 201 promoted");
+        assert!(iter.is_closed, "iteration closed — close is terminal");
+        let member = refresh.story(200).expect("member 200 exists");
+        assert_eq!(
+            member.state,
+            StoryState::Icebox,
+            "#1556: close promotes NOTHING — the member stays in its state, not moved to ready"
+        );
     }
 
     #[tokio::test]
@@ -90,7 +98,7 @@ mod canonical_via_gh_1300 {
             "precondition: iteration #1400 is the current designation"
         );
 
-        promote_members_then_close_iteration(&refresh, 1400, &[])
+        close_iteration_canonical(&refresh, 1400)
             .await
             .expect("canonical-via-GH close_iteration succeeds");
 
@@ -137,9 +145,7 @@ mod canonical_via_gh_1300 {
             seed_member(200, StoryState::Icebox, Some(("Pegasus", 100))),
         ])
         .await;
-        promote_members_then_close_iteration(&refresh, 1400, &[200])
-            .await
-            .unwrap();
+        close_iteration_canonical(&refresh, 1400).await.unwrap();
         let iter = refresh.story(1400).expect("history-preserved iteration");
         assert!(iter.is_closed);
         assert!(matches!(iter.story_type, StoryType::Iteration));
@@ -149,7 +155,7 @@ mod canonical_via_gh_1300 {
     #[tokio::test]
     async fn empty_member_list_closes_iteration_issue_gracefully() {
         let refresh = build_refresh(vec![seed_iteration_issue(1400, "Pegasus")]).await;
-        promote_members_then_close_iteration(&refresh, 1400, &[])
+        close_iteration_canonical(&refresh, 1400)
             .await
             .expect("empty-member close succeeds");
         let iter = refresh.story(1400).unwrap();
@@ -157,71 +163,7 @@ mod canonical_via_gh_1300 {
     }
 
     #[tokio::test]
-    async fn close_walks_by_iteration_theme_label_not_by_priority_json_position() {
-        use crate::board::adapters::gh_label_codec::GhLabelCodec;
-        use crate::board::iteration_label::members_with_iteration_label;
-        let refresh = build_refresh(vec![
-            seed_iteration_issue(1400, "Pegasus"),
-            seed_iteration_issue(1401, "Cassiopeia"),
-            seed_member(200, StoryState::Icebox, Some(("Cassiopeia", 100))),
-            seed_member(201, StoryState::Icebox, Some(("Cassiopeia", 200))),
-            seed_member(300, StoryState::Icebox, Some(("Pegasus", 100))),
-            seed_member(901, StoryState::Icebox, None),
-        ])
-        .await;
-
-        let cassiopeia_members =
-            members_with_iteration_label(&GhLabelCodec, &refresh.all_stories(), "Cassiopeia");
-        assert_eq!(
-            cassiopeia_members,
-            vec![200, 201],
-            "label-walk finds Cassiopeia-tagged members in position-order"
-        );
-
-        promote_members_then_close_iteration(&refresh, 1401, &cassiopeia_members)
-            .await
-            .expect("label-walk close succeeds for Cassiopeia");
-
-        assert_eq!(
-            refresh.story(200).unwrap().state,
-            StoryState::Ready,
-            "Cassiopeia member 200 promoted"
-        );
-        assert_eq!(
-            refresh.story(201).unwrap().state,
-            StoryState::Ready,
-            "Cassiopeia member 201 promoted"
-        );
-        assert_eq!(
-            refresh.story(300).unwrap().state,
-            StoryState::Icebox,
-            "Pegasus-tagged 300 stays — not in Cassiopeia's label-band"
-        );
-        assert_eq!(
-            refresh.story(901).unwrap().state,
-            StoryState::Icebox,
-            "untagged story 901 stays — no iteration-label means not a member"
-        );
-
-        let s200 = refresh.story(200).unwrap();
-        assert!(
-            !s200
-                .raw_labels
-                .iter()
-                .any(|l| l == "iteration-Cassiopeia.100"),
-            "member 200's iteration-Cassiopeia.100 label removed on promote (raw_labels={:?})",
-            s200.raw_labels
-        );
-        let s300 = refresh.story(300).unwrap();
-        assert!(
-            s300.raw_labels.iter().any(|l| l == "iteration-Pegasus.100"),
-            "non-member 300's iteration-Pegasus.100 label untouched (raw_labels={:?})",
-            s300.raw_labels
-        );
-    }
-
-    #[tokio::test]
-    async fn iteration_close_uses_canonical_mutation_chain_for_member_promotion() {
+    async fn close_fires_storyclosed_without_member_promotion_mutations_1556() {
         let refresh = build_refresh(vec![
             seed_iteration_issue(1400, "Pegasus"),
             seed_member(200, StoryState::Icebox, Some(("Pegasus", 100))),
@@ -229,38 +171,28 @@ mod canonical_via_gh_1300 {
         .await;
         let store = refresh.store();
         let mut rx = store.subscribe();
-        promote_members_then_close_iteration(&refresh, 1400, &[200])
-            .await
-            .unwrap();
+        close_iteration_canonical(&refresh, 1400).await.unwrap();
         let mut events = Vec::new();
         while let Ok(e) = rx.try_recv() {
             events.push(e);
         }
-        let names: Vec<&str> = events
-            .iter()
-            .map(|e| match e {
-                crate::board::BoardEvent::TagAdded { .. } => "TagAdded",
-                crate::board::BoardEvent::TagRemoved { .. } => "TagRemoved",
-                crate::board::BoardEvent::StateTransitioned { .. } => "StateTransitioned",
-                crate::board::BoardEvent::StoryClosed { .. } => "StoryClosed",
-                _ => "other",
-            })
-            .collect();
+        let member_promotion_touch = events.iter().any(|e| {
+            matches!(
+                e,
+                crate::board::BoardEvent::TagAdded { number, .. }
+                    | crate::board::BoardEvent::StateTransitioned { number, .. }
+                    if *number == 200
+            )
+        });
         assert!(
-            names.contains(&"TagAdded"),
-            "TagAdded fired (ready label): {names:?}"
+            !member_promotion_touch,
+            "#1556: close promotes nothing — no member TagAdded/StateTransitioned: {events:?}"
         );
         assert!(
-            names.contains(&"StateTransitioned"),
-            "StateTransitioned fired: {names:?}"
-        );
-        assert!(
-            names.contains(&"TagRemoved"),
-            "TagRemoved fired (iteration label cleared): {names:?}"
-        );
-        assert!(
-            names.contains(&"StoryClosed"),
-            "StoryClosed fired (iteration-issue): {names:?}"
+            events
+                .iter()
+                .any(|e| matches!(e, crate::board::BoardEvent::StoryClosed { .. })),
+            "StoryClosed still fires for the iteration-issue: {events:?}"
         );
     }
 }

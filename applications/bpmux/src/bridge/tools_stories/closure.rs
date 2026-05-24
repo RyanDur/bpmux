@@ -92,6 +92,51 @@ pub(crate) fn is_retire_reason(reason: &str) -> bool {
         || lower.starts_with("retired")
 }
 
+pub(crate) async fn handle_close_iteration(
+    agent_name: &str,
+    args: &serde_json::Map<String, serde_json::Value>,
+    ws_tx: &Mutex<Option<WsSink>>,
+    port: u16,
+) -> Result<String, String> {
+    require_purpose(agent_name, &["pm"], "close iteration")?;
+    let iteration_number = args.get("iteration_number").and_then(|v| v.as_u64());
+    post_close_iteration(port, iteration_number).await?;
+    let signal = build_iteration_close_signal();
+    let json = serde_json::to_string(&signal).map_err(|e| format!("signal: {e}"))?;
+    if let Err(e) = ws_send(ws_tx, json).await {
+        crate::session::diag::log_diag(&format!("bridge: iteration-close signal send failed: {e}"));
+    }
+    Ok(
+        "iteration closed (terminal; promote-on-close retired #1556) — agents prompted to flush unsaved findings."
+            .to_string(),
+    )
+}
+
+async fn post_close_iteration(port: u16, iteration_number: Option<u64>) -> Result<(), String> {
+    let token_path = crate::session::auth_token::default_auth_token_path()
+        .ok_or_else(|| "cannot resolve auth-token path (HOME unset?)".to_string())?;
+    let token = crate::session::auth_token::read(&token_path)
+        .map_err(|e| format!("read auth-token from {}: {e}", token_path.display()))?;
+    let url = crate::transport::local_url::api_url(port, "/api/close_iteration");
+    let body = serde_json::json!({ "iteration_number": iteration_number });
+    let res = reqwest::Client::new()
+        .post(&url)
+        .header(reqwest::header::AUTHORIZATION, format!("Bearer {token}"))
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("close_iteration: bpmux-server unreachable at {url}: {e}"))?;
+    let status = res.status();
+    let text = res
+        .text()
+        .await
+        .map_err(|e| format!("close_iteration: read body: {e}"))?;
+    if !status.is_success() {
+        return Err(format!("close_iteration: {status} — {text}"));
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::is_retire_reason;
@@ -124,65 +169,4 @@ mod tests {
         assert!(!is_retire_reason("the feature looks great"));
         assert!(!is_retire_reason(""));
     }
-}
-
-pub(crate) async fn handle_close_iteration(
-    agent_name: &str,
-    args: &serde_json::Map<String, serde_json::Value>,
-    ws_tx: &Mutex<Option<WsSink>>,
-    port: u16,
-) -> Result<String, String> {
-    require_purpose(agent_name, &["pm"], "close iteration")?;
-    let iteration_number = args.get("iteration_number").and_then(|v| v.as_u64());
-    let outcome = post_close_iteration(port, iteration_number).await?;
-    let signal = build_iteration_close_signal();
-    let json = serde_json::to_string(&signal).map_err(|e| format!("signal: {e}"))?;
-    if let Err(e) = ws_send(ws_tx, json).await {
-        crate::session::diag::log_diag(&format!("bridge: iteration-close signal send failed: {e}"));
-    }
-    Ok(format!(
-        "iteration-close signal broadcast — agents prompted to flush unsaved findings. \
-         promoted: {} stories; deleted marker: {}",
-        outcome.promoted.len(),
-        outcome
-            .deleted_marker_id
-            .map(|id| id.to_string())
-            .unwrap_or_else(|| "none (no markers in icebox)".to_string()),
-    ))
-}
-
-#[derive(Debug, Default, serde::Deserialize)]
-struct CloseIterationOutcomeJson {
-    #[serde(default)]
-    promoted: Vec<u64>,
-    #[serde(default)]
-    deleted_marker_id: Option<u64>,
-}
-
-async fn post_close_iteration(
-    port: u16,
-    iteration_number: Option<u64>,
-) -> Result<CloseIterationOutcomeJson, String> {
-    let token_path = crate::session::auth_token::default_auth_token_path()
-        .ok_or_else(|| "cannot resolve auth-token path (HOME unset?)".to_string())?;
-    let token = crate::session::auth_token::read(&token_path)
-        .map_err(|e| format!("read auth-token from {}: {e}", token_path.display()))?;
-    let url = crate::transport::local_url::api_url(port, "/api/close_iteration");
-    let body = serde_json::json!({ "iteration_number": iteration_number });
-    let res = reqwest::Client::new()
-        .post(&url)
-        .header(reqwest::header::AUTHORIZATION, format!("Bearer {token}"))
-        .json(&body)
-        .send()
-        .await
-        .map_err(|e| format!("close_iteration: bpmux-server unreachable at {url}: {e}"))?;
-    let status = res.status();
-    let text = res
-        .text()
-        .await
-        .map_err(|e| format!("close_iteration: read body: {e}"))?;
-    if !status.is_success() {
-        return Err(format!("close_iteration: {status} — {text}"));
-    }
-    serde_json::from_str(&text).map_err(|e| format!("close_iteration: parse outcome: {e}"))
 }

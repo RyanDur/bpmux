@@ -134,7 +134,7 @@ pub fn build_advertised_tools() -> Vec<rmcp::model::Tool> {
             "Mark a story as delivered. DEV ONLY — other roles are rejected.",
         ),
         crate::mcp::tools::close_iteration_tool(
-            "Close the current iteration: promote stories above the topmost iteration marker to ready, delete the consumed marker, broadcast the externalize-prompt (#282). PM ONLY. GUARDED (#1258 Ryan 2026-05-10 21:49 UTC): blocks with 409 if any non-icebox/non-accepted story exists in the pipeline (ready/in-progress/desk-check/delivered). Owner must accept or move_story-out all in-flight stories before close_iteration can fire.",
+            "Close an iteration: terminal close — closes the iteration-issue, clears its current-designation, broadcasts the externalize-prompt. Promotes nothing (promote-on-close retired #1556 — members reach ready via the open/designate ceremony). PM ONLY. GUARDED (#1258 Ryan 2026-05-10 21:49 UTC): blocks with 409 if any non-icebox/non-accepted story exists in the pipeline (ready/in-progress/desk-check/delivered). Owner must accept or move_story-out all in-flight stories before close_iteration can fire.",
         ),
         crate::mcp::tools::label_story_tool(
             "Add a label to a story (ready, blocked, icebox, deferred). PM ONLY — other roles are rejected.",

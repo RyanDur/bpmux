@@ -13,27 +13,16 @@ pub fn filter_retired_empty_iterations(stories: Vec<Story>) -> Vec<Story> {
 
 pub fn iteration_numbers_to_purge_as_retired_empty(stories: &[Story]) -> Vec<u64> {
     use crate::board::domain::StoryType;
-    let retired_iterations: Vec<(&Story, String)> = stories
+    stories
         .iter()
         .filter(|s| s.story_type == StoryType::Iteration && s.state == StoryState::Retired)
-        .filter_map(|s| {
-            s.title
-                .strip_prefix("Iteration ")
-                .map(|theme| (s, theme.to_string()))
+        .map(|s| s.number)
+        .filter(|iteration_number| {
+            !stories.iter().any(|s| {
+                s.iteration_membership
+                    .is_some_and(|(member_of, _)| member_of == *iteration_number)
+            })
         })
-        .collect();
-    if retired_iterations.is_empty() {
-        return Vec::new();
-    }
-    retired_iterations
-        .into_iter()
-        .filter(|(_, theme)| {
-            let prefix = format!("iteration-{theme}.");
-            !stories
-                .iter()
-                .any(|s| s.raw_labels.iter().any(|l| l.starts_with(&prefix)))
-        })
-        .map(|(s, _)| s.number)
         .collect()
 }
 
@@ -55,7 +44,7 @@ mod filter_retired_empty_iterations_tests {
         s
     }
 
-    fn member_story(number: u64, theme: &str, position: u64) -> Story {
+    fn member_story(number: u64, iteration_number: u64, position: u32) -> Story {
         let mut s = Story::new_minimal(
             number,
             format!("[Feature] member-{number}"),
@@ -64,7 +53,7 @@ mod filter_retired_empty_iterations_tests {
             "test".to_string(),
         );
         s.story_type = StoryType::Feature;
-        s.raw_labels.push(format!("iteration-{theme}.{position}"));
+        s.iteration_membership = Some((iteration_number, position));
         s
     }
 
@@ -82,8 +71,8 @@ mod filter_retired_empty_iterations_tests {
     fn retired_with_members_preserved_history_value() {
         let stories = vec![
             iter_story(1, "Andromeda", StoryState::Retired),
-            member_story(2, "Andromeda", 100),
-            member_story(3, "Andromeda", 200),
+            member_story(2, 1, 100),
+            member_story(3, 1, 200),
         ];
         let filtered = filter_retired_empty_iterations(stories);
         assert_eq!(filtered.len(), 3, "closed+N kept; got {filtered:?}");
@@ -101,7 +90,7 @@ mod filter_retired_empty_iterations_tests {
     fn open_with_members_preserved() {
         let stories = vec![
             iter_story(1, "Carina", StoryState::Icebox),
-            member_story(2, "Carina", 100),
+            member_story(2, 1, 100),
         ];
         let filtered = filter_retired_empty_iterations(stories);
         assert_eq!(filtered.len(), 2);
@@ -111,7 +100,7 @@ mod filter_retired_empty_iterations_tests {
     fn closed_accepted_with_members_preserved() {
         let stories = vec![
             iter_story(1, "Pegasus", StoryState::Accepted),
-            member_story(2, "Pegasus", 100),
+            member_story(2, 1, 100),
         ];
         let filtered = filter_retired_empty_iterations(stories);
         assert_eq!(
@@ -126,7 +115,7 @@ mod filter_retired_empty_iterations_tests {
         let stories = vec![
             iter_story(1, "Empty", StoryState::Retired),
             iter_story(2, "WithKids", StoryState::Retired),
-            member_story(3, "WithKids", 100),
+            member_story(3, 2, 100),
         ];
         let filtered = filter_retired_empty_iterations(stories);
         assert_eq!(filtered.len(), 2);
@@ -148,5 +137,23 @@ mod filter_retired_empty_iterations_tests {
         let stories = vec![s];
         let filtered = filter_retired_empty_iterations(stories);
         assert_eq!(filtered.len(), 1, "only iteration-type-class is filtered");
+    }
+
+    #[test]
+    fn retired_iteration_with_canonical_members_not_purged_1556() {
+        let stories = vec![
+            iter_story(1400, "Carina", StoryState::Retired),
+            member_story(200, 1400, 100),
+        ];
+        let filtered = filter_retired_empty_iterations(stories);
+        assert!(
+            filtered.iter().any(|s| s.number == 1400),
+            "retired iteration with a canonically-attributed member (no name-label) is NOT purged: {filtered:?}"
+        );
+        assert_eq!(
+            filtered.len(),
+            2,
+            "iteration + its canonical member both preserved"
+        );
     }
 }
