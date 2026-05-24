@@ -231,6 +231,15 @@ pub(crate) async fn dispatch_test_add_story_to_iteration(
     tools_stories::handle_add_story_to_iteration(&args, agent_name, &empty_ws, refresh).await
 }
 
+pub(crate) async fn dispatch_test_designate_current_iteration(
+    args: serde_json::Map<String, serde_json::Value>,
+    agent_name: &str,
+    refresh: Option<&Arc<dyn crate::board::RefreshDriver>>,
+) -> Result<String, String> {
+    let empty_ws: tokio::sync::Mutex<Option<WsSink>> = tokio::sync::Mutex::new(None);
+    tools_stories::handle_designate_current_iteration(&args, agent_name, &empty_ws, refresh).await
+}
+
 pub(crate) async fn dispatch_test_reorder_story(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,

@@ -22,6 +22,7 @@ fn sample_story(state: StoryState, story_type: StoryType, is_closed: bool) -> St
         raw_labels: Vec::new(),
         body_etag: None,
         iteration_membership: None,
+        is_current: false,
     }
 }
 
@@ -40,6 +41,7 @@ fn story_to_board_json_emits_renderer_wire_format_field_list() {
         "labels",
         "parent_epic",
         "iteration_membership",
+        "is_current",
         "assignees",
         "created_at",
         "body",
@@ -50,7 +52,7 @@ fn story_to_board_json_emits_renderer_wire_format_field_list() {
             "wire-format must include `{required}` (drift catches #451-class regression); keys present: {keys:?}"
         );
     }
-    assert_eq!(obj.len(), 11, "no spurious keys; keys present: {keys:?}");
+    assert_eq!(obj.len(), 12, "no spurious keys; keys present: {keys:?}");
 }
 
 #[test]

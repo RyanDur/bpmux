@@ -60,6 +60,7 @@ export interface BoardStory {
   body: string
   parent_epic?: number
   iteration_membership?: IterationMembership | null
+  is_current?: boolean
   rework_comment?: string | null
 }
 

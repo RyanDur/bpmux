@@ -199,6 +199,8 @@ pub struct Story {
     pub body_etag: Option<String>,
     #[serde(default)]
     pub iteration_membership: Option<(u64, u32)>,
+    #[serde(default)]
+    pub is_current: bool,
 }
 
 impl Story {
@@ -230,6 +232,7 @@ impl Story {
             raw_labels,
             body_etag: None,
             iteration_membership: None,
+            is_current: false,
         }
     }
 }

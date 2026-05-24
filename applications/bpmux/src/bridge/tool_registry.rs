@@ -151,6 +151,9 @@ pub fn build_advertised_tools() -> Vec<rmcp::model::Tool> {
         crate::mcp::tools::add_story_to_iteration_tool(
             "Add a story to an iteration at substrate-data-axis (#1399). Args: { iteration_number: int (parent iteration entity), story_number: int (member story), position: int (1-indexed). PM ONLY — workflow-role-not-allowed for non-PM. Replace-semantic: prior parent-iteration-#* labels are cleared before the new one is written, so single-iteration-membership invariant is preserved. Validates that iteration_number references a story with story_type=Iteration. Persisted as `parent-iteration-#{iteration_number}.{position}` label (sister-pattern to parent-epic-#{N}); consumers read typed `story.iteration_membership: Option<(u64, u32)>` field. Legacy `iteration-{Theme}.{N}` labels still readable per Scenario 4 backward-compat.",
         ),
+        crate::mcp::tools::designate_current_iteration_tool(
+            "Designate which iteration is the current iteration (the one the NOW view shows). PM ONLY. Args: iteration_number (the Iteration entity to make current). Board-singleton replace-semantic: clears any prior current designation before setting this one. Validates iteration_number references an open story_type=Iteration. Cleared automatically at iteration-close; the NOW view reads null-if-none (honest-empty, never auto-picks). Persisted as a `current-iteration` marker label; consumers read the typed `story.is_current` field.",
+        ),
         crate::mcp::tools::close_story_tool(
             "Close a story with a reason (superseded / duplicate / won't-fix). Adds the reason as a comment on the issue + closes it. PM ONLY — accept/reject are separate paths for delivered stories. Use this for pre-delivery closures that don't route through the ship chain. Args: number + reason (required).",
         ),
@@ -258,6 +261,7 @@ pub const DISPATCHED_TOOL_NAMES: &[&str] = &[
     "set_parent_epic",
     "unset_parent_epic",
     "add_story_to_iteration",
+    "designate_current_iteration",
     "reorder_story",
     "edit_story",
     "view_board",

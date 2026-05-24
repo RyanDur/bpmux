@@ -68,7 +68,13 @@ impl GhLabelCodec {
         rest.get(dot_idx + 1..)
             .is_some_and(|tail| !tail.is_empty() && tail.chars().all(|c| c.is_ascii_digit()))
     }
+
+    pub fn is_current_iteration_label(&self, label: &str) -> bool {
+        label == CURRENT_ITERATION_LABEL
+    }
 }
+
+pub const CURRENT_ITERATION_LABEL: &str = "current-iteration";
 
 #[cfg(test)]
 mod tests {

@@ -194,6 +194,59 @@ pub(crate) async fn handle_add_story_to_iteration(
     ))
 }
 
+pub(crate) async fn handle_designate_current_iteration(
+    args: &serde_json::Map<String, serde_json::Value>,
+    agent_name: &str,
+    ws_tx: &Mutex<Option<WsSink>>,
+    refresh: Option<&std::sync::Arc<dyn crate::board::RefreshDriver>>,
+) -> Result<String, String> {
+    require_purpose(agent_name, &["pm"], "designate current iteration")?;
+    let iteration_number = args
+        .get("iteration_number")
+        .and_then(|v| v.as_u64())
+        .ok_or("missing 'iteration_number' argument")?;
+    let r = refresh.ok_or("designate_current_iteration requires refresh (RefreshDriver)")?;
+    let target = ensure_story_in_canonical_store(r, iteration_number).await?;
+    if target.story_type != crate::board::domain::StoryType::Iteration {
+        return Err(format!(
+            "story #{iteration_number} is not an Iteration (story_type={:?}); only Iteration stories can be designated current",
+            target.story_type
+        ));
+    }
+    if target.is_closed {
+        return Err(format!(
+            "iteration #{iteration_number} is closed; a closed iteration cannot be the current iteration"
+        ));
+    }
+    let meta = || crate::board::events::EventMeta {
+        actor: crate::transport::ws::short_name(agent_name).to_string(),
+        ts: chrono::Utc::now(),
+        peer_id: crate::board::PeerId::local(),
+    };
+    let prior: Vec<u64> = r
+        .all_stories()
+        .into_iter()
+        .filter(|s| s.is_current && s.number != iteration_number)
+        .map(|s| s.number)
+        .collect();
+    for n in prior {
+        r.mutate_sync(crate::board::BoardEvent::TagRemoved {
+            meta: meta(),
+            number: n,
+            label: crate::board::adapters::gh_label_codec::CURRENT_ITERATION_LABEL.to_string(),
+        })
+        .map_err(|e| format!("#{n} current-designation-clear enqueue failed: {e}"))?;
+    }
+    r.mutate_sync(crate::board::BoardEvent::TagAdded {
+        meta: meta(),
+        number: iteration_number,
+        label: crate::board::adapters::gh_label_codec::CURRENT_ITERATION_LABEL.to_string(),
+    })
+    .map_err(|e| format!("#{iteration_number} current-designation enqueue failed: {e}"))?;
+    broadcast_board_invalidate(ws_tx).await;
+    Ok(format!("iteration #{iteration_number} designated current"))
+}
+
 pub(crate) async fn handle_unset_parent_epic(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,

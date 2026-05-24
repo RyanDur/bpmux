@@ -54,6 +54,7 @@ pub fn story_to_board_json<C: LabelCodec>(codec: &C, story: &Story) -> serde_jso
         "labels": labels,
         "parent_epic": story.parent_epic,
         "iteration_membership": iteration_membership,
+        "is_current": story.is_current,
         "assignees": Vec::<String>::new(),
         "created_at": story.filed_at.to_rfc3339(),
         "body": story.body.clone().unwrap_or_default(),

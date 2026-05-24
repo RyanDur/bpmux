@@ -287,7 +287,7 @@ describe('#1454 Iteration list scaling — section-grouped (Active+Planned / Clo
     expect(html.slice(closedCountIdx, closedCountIdx + 200)).toContain('(2)')
   })
 
-  test('Scenario 6 (fallback): first active iteration by iteration-order gets anchor when no iter has in-flight work', () => {
+  test('#1540: no iteration is anchored when none is designated (honest-empty, no auto-pick)', () => {
     const first = iterationStory({
       number: 9001,
       title: 'Iteration First',
@@ -301,17 +301,10 @@ describe('#1454 Iteration list scaling — section-grouped (Active+Planned / Clo
       labels: ['iteration', 'iteration-order.200']
     })
     const html = renderToStaticMarkup(<Iteration stories={[second, first]} onOpen={() => {}} />)
-    const firstAnchor = html.match(
-      /data-test="board-iteration-9001"[^>]*data-current-iteration="true"/
-    )
-    const secondAnchor = html.match(
-      /data-test="board-iteration-9002"[^>]*data-current-iteration="true"/
-    )
-    expect(firstAnchor).toBeTruthy()
-    expect(secondAnchor).toBeNull()
+    expect(html.match(/data-current-iteration="true"/)).toBeNull()
   })
 
-  test('#1547 facet 3: the designated-first (lowest iteration-order) iter is anchored regardless of which iter has in-flight children', () => {
+  test('#1540: the explicitly-designated iteration is anchored regardless of order or in-flight children', () => {
     const iterFirst = iterationStory({
       number: 9001,
       title: 'Iteration First',
@@ -322,7 +315,8 @@ describe('#1454 Iteration list scaling — section-grouped (Active+Planned / Clo
       number: 9002,
       title: 'Iteration Second',
       gh_state: 'open',
-      labels: ['iteration', 'iteration-order.200']
+      labels: ['iteration', 'iteration-order.200'],
+      is_current: true
     })
     const firstIceboxChild = memberStory({
       number: 9501,
@@ -341,10 +335,10 @@ describe('#1454 Iteration list scaling — section-grouped (Active+Planned / Clo
       />
     )
     expect(
-      html.match(/data-test="board-iteration-9001"[^>]*data-current-iteration="true"/)
+      html.match(/data-test="board-iteration-9002"[^>]*data-current-iteration="true"/)
     ).toBeTruthy()
     expect(
-      html.match(/data-test="board-iteration-9002"[^>]*data-current-iteration="true"/)
+      html.match(/data-test="board-iteration-9001"[^>]*data-current-iteration="true"/)
     ).toBeNull()
   })
 

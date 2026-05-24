@@ -80,6 +80,29 @@ mod canonical_via_gh_1300 {
     }
 
     #[tokio::test]
+    async fn closing_the_current_iteration_clears_its_designation_1540() {
+        let mut current = seed_iteration_issue(1400, "Pegasus");
+        current.raw_labels.push("current-iteration".to_string());
+        current.is_current = true;
+        let refresh = build_refresh(vec![current]).await;
+        assert!(
+            refresh.story(1400).expect("iteration exists").is_current,
+            "precondition: iteration #1400 is the current designation"
+        );
+
+        promote_members_then_close_iteration(&refresh, 1400, &[])
+            .await
+            .expect("canonical-via-GH close_iteration succeeds");
+
+        let iter = refresh.story(1400).expect("iteration-issue still exists");
+        assert!(iter.is_closed, "iteration closed");
+        assert!(
+            !iter.is_current,
+            "#1540 AC1: closing the current iteration clears its designation — NOW falls to honest-empty, never auto-jumps"
+        );
+    }
+
+    #[tokio::test]
     async fn ready_queue_empty_guard_blocks_close_when_stories_in_ready() {
         let refresh = build_refresh(vec![
             seed_iteration_issue(1400, "Pegasus"),

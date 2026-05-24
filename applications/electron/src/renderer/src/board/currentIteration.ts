@@ -1,24 +1,11 @@
-import {
-  isIterationStory,
-  positionInIterationOrder,
-  positionInParentIteration
-} from './iterationMembers'
+import { isIterationStory, positionInParentIteration } from './iterationMembers'
 import type { BoardStory } from './types'
 
-const compareByIterationOrder = (a: BoardStory, b: BoardStory): number => {
-  const ao = positionInIterationOrder(a)
-  const bo = positionInIterationOrder(b)
-  if (ao !== null && bo !== null) return ao - bo
-  if (ao !== null) return -1
-  if (bo !== null) return 1
-  return a.number - b.number
-}
-
 export const findCurrentIteration = (stories: BoardStory[]): BoardStory | null => {
-  const openIterations = stories.filter((s) => isIterationStory(s) && s.gh_state !== 'closed')
-  if (openIterations.length === 0) return null
-  const ordered = [...openIterations].sort(compareByIterationOrder)
-  return ordered[0] ?? null
+  return (
+    stories.find((s) => isIterationStory(s) && s.gh_state !== 'closed' && s.is_current === true) ??
+    null
+  )
 }
 
 export const isMemberOfIteration = (story: BoardStory, iteration: BoardStory): boolean => {

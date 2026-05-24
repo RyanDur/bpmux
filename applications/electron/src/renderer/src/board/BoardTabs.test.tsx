@@ -104,7 +104,7 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
   })
 
   test('Scenario 3: Now tab anchor displays theme name (Iteration prefix stripped) for current iteration', () => {
-    const iter = iterationStory({ number: 1500, title: 'Iteration Sextans' })
+    const iter = iterationStory({ number: 1500, title: 'Iteration Sextans', is_current: true })
     const inFlightChild = featureStory({
       number: 9101,
       state: 'in-progress',
@@ -116,7 +116,7 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
     expect(anchor.textContent).not.toContain('Iteration Sextans')
   })
 
-  test('#1547 facet 3: anchor picks the designated-first (lowest iteration-order) iter regardless of which iter has in-flight children', () => {
+  test('#1540: anchor shows the explicitly-designated iteration regardless of order or in-flight children', () => {
     const microscopium = iterationStory({
       number: 1398,
       title: 'Iteration Microscopium',
@@ -125,7 +125,8 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
     const pictor = iterationStory({
       number: 1458,
       title: 'Iteration Pictor',
-      labels: ['iteration', 'iteration-order.200']
+      labels: ['iteration', 'iteration-order.200'],
+      is_current: true
     })
     const microscopiumIcebox = featureStory({
       number: 9001,
@@ -141,8 +142,8 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
       <BoardTabs {...buildProps([microscopium, pictor, microscopiumIcebox, pictorInProgress])} />
     )
     const anchor = getByTestId('board-now-iteration-anchor')
-    expect(anchor.textContent).toContain('Microscopium')
-    expect(anchor.textContent).not.toContain('Pictor')
+    expect(anchor.textContent).toContain('Pictor')
+    expect(anchor.textContent).not.toContain('Microscopium')
   })
 
   test('Scenario 3 cont.: Now tab Epic-card shows only Epics belonging to current iteration', () => {
