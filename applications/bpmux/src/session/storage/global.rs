@@ -1,0 +1,279 @@
+use std::collections::HashMap;
+use std::path::PathBuf;
+use std::sync::Mutex;
+
+use super::GlobalStore;
+
+pub struct FileGlobalStore {
+    identity_dir: Option<PathBuf>,
+    briefings_dir: Option<PathBuf>,
+    tokens_log_path: Option<PathBuf>,
+    usage_path: Option<PathBuf>,
+    auth_token_path: Option<PathBuf>,
+}
+
+impl Default for FileGlobalStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl FileGlobalStore {
+    pub fn new() -> Self {
+        Self {
+            identity_dir: None,
+            briefings_dir: None,
+            tokens_log_path: None,
+            usage_path: None,
+            auth_token_path: None,
+        }
+    }
+
+    pub fn with_identity_dir(mut self, dir: PathBuf) -> Self {
+        self.identity_dir = Some(dir);
+        self
+    }
+
+    pub fn with_briefings_dir(mut self, dir: PathBuf) -> Self {
+        self.briefings_dir = Some(dir);
+        self
+    }
+
+    pub fn with_tokens_log_path(mut self, path: PathBuf) -> Self {
+        self.tokens_log_path = Some(path);
+        self
+    }
+
+    pub fn with_usage_path(mut self, path: PathBuf) -> Self {
+        self.usage_path = Some(path);
+        self
+    }
+
+    pub fn with_auth_token_path(mut self, path: PathBuf) -> Self {
+        self.auth_token_path = Some(path);
+        self
+    }
+
+    fn resolve_identity_dir(&self) -> Result<PathBuf, std::io::Error> {
+        if let Some(d) = &self.identity_dir {
+            return Ok(d.clone());
+        }
+        crate::session::identity::default_identity_dir()
+    }
+
+    fn resolve_briefings_dir(&self) -> PathBuf {
+        if let Some(d) = &self.briefings_dir {
+            return d.clone();
+        }
+        crate::session::briefing::briefings_dir()
+    }
+
+    fn resolve_tokens_log_path(&self) -> Result<PathBuf, crate::session::log::LogError> {
+        if let Some(p) = &self.tokens_log_path {
+            return Ok(p.clone());
+        }
+        crate::session::tokens::default_tokens_log_path()
+    }
+
+    fn resolve_usage_path(&self) -> Option<PathBuf> {
+        if let Some(p) = &self.usage_path {
+            return Some(p.clone());
+        }
+        crate::session::usage::default_usage_path()
+    }
+
+    fn resolve_auth_token_path(&self) -> std::io::Result<PathBuf> {
+        if let Some(p) = &self.auth_token_path {
+            return Ok(p.clone());
+        }
+        crate::session::auth_token::default_auth_token_path().ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "home directory not found for auth_token",
+            )
+        })
+    }
+}
+
+impl GlobalStore for FileGlobalStore {
+    fn load_identity(&self, role: &str) -> crate::session::identity::IdentityIndex {
+        match self.resolve_identity_dir() {
+            Ok(dir) => crate::session::identity::load_identity(&dir, role),
+            Err(_) => crate::session::identity::IdentityIndex::default(),
+        }
+    }
+
+    fn save_identity(
+        &self,
+        role: &str,
+        index: &crate::session::identity::IdentityIndex,
+    ) -> Result<(), std::io::Error> {
+        let dir = self.resolve_identity_dir()?;
+        crate::session::identity::save_identity(&dir, role, index)
+    }
+
+    fn load_briefing(&self, role: &str) -> String {
+        crate::session::briefing::load_briefing_in(&self.resolve_briefings_dir(), role)
+    }
+
+    fn save_briefing(&self, role: &str, content: &str) -> Result<(), std::io::Error> {
+        crate::session::briefing::save_briefing_in(&self.resolve_briefings_dir(), role, content)
+    }
+
+    fn append_token_row(
+        &self,
+        row: &crate::session::tokens::TokenRow,
+    ) -> Result<(), crate::session::log::LogError> {
+        let path = self.resolve_tokens_log_path()?;
+        crate::session::tokens::append_token_row(&path, row)
+    }
+
+    fn read_token_rows(
+        &self,
+    ) -> Result<Vec<crate::session::tokens::TokenRow>, crate::session::log::LogError> {
+        let path = self.resolve_tokens_log_path()?;
+        crate::session::tokens::read_token_rows(&path)
+    }
+
+    fn load_usage(&self) -> std::collections::HashMap<String, crate::session::usage::Record> {
+        let Some(path) = self.resolve_usage_path() else {
+            return std::collections::HashMap::new();
+        };
+        crate::session::usage::load_from(&path)
+    }
+
+    fn save_usage(
+        &self,
+        map: &std::collections::HashMap<String, crate::session::usage::Record>,
+    ) -> Result<(), std::io::Error> {
+        let Some(path) = self.resolve_usage_path() else {
+            return Ok(());
+        };
+        crate::session::usage::save_to(&path, map)
+    }
+
+    fn ensure_auth_token(&self) -> std::io::Result<String> {
+        let path = self.resolve_auth_token_path()?;
+        crate::session::auth_token::ensure(&path)
+    }
+
+    fn read_auth_token(&self) -> std::io::Result<String> {
+        let path = self.resolve_auth_token_path()?;
+        crate::session::auth_token::read(&path)
+    }
+}
+
+pub struct MemoryGlobalStore {
+    identity: Mutex<HashMap<String, crate::session::identity::IdentityIndex>>,
+    briefings: Mutex<HashMap<String, String>>,
+    tokens: Mutex<Vec<crate::session::tokens::TokenRow>>,
+    usage: Mutex<HashMap<String, crate::session::usage::Record>>,
+}
+
+impl Default for MemoryGlobalStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl MemoryGlobalStore {
+    pub fn new() -> Self {
+        Self {
+            identity: Mutex::new(HashMap::new()),
+            briefings: Mutex::new(HashMap::new()),
+            tokens: Mutex::new(Vec::new()),
+            usage: Mutex::new(HashMap::new()),
+        }
+    }
+}
+
+impl GlobalStore for MemoryGlobalStore {
+    fn load_identity(&self, role: &str) -> crate::session::identity::IdentityIndex {
+        self.identity
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(role)
+            .cloned()
+            .unwrap_or_default()
+    }
+
+    fn save_identity(
+        &self,
+        role: &str,
+        index: &crate::session::identity::IdentityIndex,
+    ) -> Result<(), std::io::Error> {
+        self.identity
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .insert(role.to_string(), index.clone());
+        Ok(())
+    }
+
+    fn load_briefing(&self, role: &str) -> String {
+        self.briefings
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(role)
+            .cloned()
+            .unwrap_or_default()
+    }
+
+    fn save_briefing(&self, role: &str, content: &str) -> Result<(), std::io::Error> {
+        self.briefings
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .insert(role.to_string(), content.to_string());
+        Ok(())
+    }
+
+    fn append_token_row(
+        &self,
+        row: &crate::session::tokens::TokenRow,
+    ) -> Result<(), crate::session::log::LogError> {
+        self.tokens
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .push(row.clone());
+        Ok(())
+    }
+
+    fn read_token_rows(
+        &self,
+    ) -> Result<Vec<crate::session::tokens::TokenRow>, crate::session::log::LogError> {
+        Ok(self
+            .tokens
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone())
+    }
+
+    fn load_usage(&self) -> HashMap<String, crate::session::usage::Record> {
+        self.usage.lock().unwrap_or_else(|e| e.into_inner()).clone()
+    }
+
+    fn save_usage(
+        &self,
+        map: &HashMap<String, crate::session::usage::Record>,
+    ) -> Result<(), std::io::Error> {
+        *self.usage.lock().unwrap_or_else(|e| e.into_inner()) = map.clone();
+        Ok(())
+    }
+
+    fn ensure_auth_token(&self) -> std::io::Result<String> {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::Unsupported,
+            "MemoryGlobalStore does not support auth_token (process-owned secret \
+             requires mode-0600 filesystem semantics); use FileGlobalStore with \
+             BPMUX_AUTH_TOKEN_PATH for test isolation",
+        ))
+    }
+
+    fn read_auth_token(&self) -> std::io::Result<String> {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::Unsupported,
+            "MemoryGlobalStore does not support auth_token (process-owned secret \
+             requires mode-0600 filesystem semantics); use FileGlobalStore with \
+             BPMUX_AUTH_TOKEN_PATH for test isolation",
+        ))
+    }
+}
