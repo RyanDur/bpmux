@@ -1,12 +1,10 @@
-import { storyTypeFromLabels, type BoardStory } from './types'
+import { type BoardStory } from './types'
 
-export type BadgeKind = 'team-accepted' | 'accepted' | 'rework' | 'blocked'
+export type BadgeKind = 'team-accepted' | 'accepted' | 'dev-accepted' | 'pending' | 'rework' | 'blocked'
 
 const DESK_CHECK_FAIL_LABEL = 'desk-check-fail'
 const BLOCKED_LABEL = 'blocked'
 const BLOCKED_BY_PREFIX = 'blocked-by:'
-const ACCEPTOR_TEAM_LABEL = 'awaiting team'
-const ACCEPTOR_OWNER_LABEL = 'awaiting owner'
 
 export const blockerNumberFromLabels = (labels: string[]): number | null => {
   for (const l of labels) {
@@ -26,18 +24,28 @@ export const deriveBadge = (story: BoardStory): BadgeKind | null => {
     return 'blocked'
   }
   if (normalized.includes(DESK_CHECK_FAIL_LABEL)) return 'rework'
-  if (normalized.includes(ACCEPTOR_TEAM_LABEL)) return 'team-accepted'
-  if (normalized.includes(ACCEPTOR_OWNER_LABEL)) return 'accepted'
-  const type = storyTypeFromLabels(story.labels)
-  if (type === 'bug' || type === 'chore') return 'team-accepted'
-  return 'accepted'
+  switch (story.acceptor) {
+    case 'team':
+      return 'team-accepted'
+    case 'owner':
+      return 'accepted'
+    case 'dev':
+      return 'dev-accepted'
+    default:
+      return 'pending'
+  }
 }
 
 export const labelFor = (kind: BadgeKind, state: BoardStory['state']): string => {
   if (kind === 'blocked') return 'blocked'
   if (kind === 'rework') return 'rework'
+  if (kind === 'pending') return 'awaiting verdict'
   if (state === 'accepted') {
-    return kind === 'team-accepted' ? 'team-accepted' : 'owner-accepted'
+    if (kind === 'team-accepted') return 'team-accepted'
+    if (kind === 'dev-accepted') return 'dev-accepted'
+    return 'owner-accepted'
   }
-  return kind === 'team-accepted' ? 'awaiting team' : 'awaiting owner'
+  if (kind === 'team-accepted') return 'awaiting team'
+  if (kind === 'dev-accepted') return 'awaiting dev'
+  return 'awaiting owner'
 }

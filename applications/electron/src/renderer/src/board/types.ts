@@ -44,6 +44,8 @@ export const columnFor = (
 
 export type StoryType = 'feature' | 'bug' | 'chore' | 'epic' | 'iteration' | 'unknown'
 
+export type Acceptor = 'team' | 'owner' | 'dev'
+
 export interface IterationMembership {
   iteration_number: number
   position: number
@@ -61,6 +63,7 @@ export interface BoardStory {
   parent_epic?: number
   iteration_membership?: IterationMembership | null
   is_current?: boolean
+  acceptor?: Acceptor | null
   rework_comment?: string | null
 }
 

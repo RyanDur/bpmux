@@ -72,13 +72,45 @@ impl GhLabelCodec {
     pub fn is_current_iteration_label(&self, label: &str) -> bool {
         label == CURRENT_ITERATION_LABEL
     }
+
+    pub fn decode_acceptor(&self, label: &str) -> Option<crate::board::domain::Acceptor> {
+        use crate::board::domain::Acceptor;
+        match label {
+            ACCEPTOR_TEAM_LABEL => Some(Acceptor::Team),
+            ACCEPTOR_OWNER_LABEL => Some(Acceptor::Owner),
+            ACCEPTOR_DEV_LABEL => Some(Acceptor::Dev),
+            _ => None,
+        }
+    }
 }
 
 pub const CURRENT_ITERATION_LABEL: &str = "current-iteration";
+pub const ACCEPTOR_TEAM_LABEL: &str = "awaiting team";
+pub const ACCEPTOR_OWNER_LABEL: &str = "awaiting owner";
+pub const ACCEPTOR_DEV_LABEL: &str = "awaiting dev";
 
 #[cfg(test)]
 mod tests {
     use super::GhLabelCodec;
+    use crate::board::domain::Acceptor;
+
+    #[test]
+    fn decode_acceptor_maps_each_awaiting_label_1551() {
+        assert_eq!(
+            GhLabelCodec.decode_acceptor("awaiting team"),
+            Some(Acceptor::Team)
+        );
+        assert_eq!(
+            GhLabelCodec.decode_acceptor("awaiting owner"),
+            Some(Acceptor::Owner)
+        );
+        assert_eq!(
+            GhLabelCodec.decode_acceptor("awaiting dev"),
+            Some(Acceptor::Dev)
+        );
+        assert_eq!(GhLabelCodec.decode_acceptor("feature"), None);
+        assert_eq!(GhLabelCodec.decode_acceptor("blocked"), None);
+    }
 
     #[test]
     fn decode_parent_epic_parses_issue_number() {

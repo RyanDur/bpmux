@@ -65,6 +65,7 @@ fn sync_raw_labels_on_tag_added(story: &mut Story, label: &str) {
     story.iteration_membership =
         crate::board::adapters::github::iteration_membership_from_labels(&story.raw_labels);
     story.is_current = crate::board::adapters::github::is_current_from_labels(&story.raw_labels);
+    story.acceptor = crate::board::adapters::github::acceptor_from_labels(&story.raw_labels);
 }
 
 fn sync_raw_labels_on_tag_removed(story: &mut Story, label: &str) {
@@ -73,6 +74,7 @@ fn sync_raw_labels_on_tag_removed(story: &mut Story, label: &str) {
     story.iteration_membership =
         crate::board::adapters::github::iteration_membership_from_labels(&story.raw_labels);
     story.is_current = crate::board::adapters::github::is_current_from_labels(&story.raw_labels);
+    story.acceptor = crate::board::adapters::github::acceptor_from_labels(&story.raw_labels);
 }
 
 const SUBSCRIBE_BUFFER: usize = 1_000;
@@ -238,6 +240,7 @@ impl BoardStore {
                     body_etag: None,
                     iteration_membership: None,
                     is_current: false,
+                    acceptor: None,
                 };
                 w.insert(*n, story);
             }
@@ -353,6 +356,7 @@ impl BoardStore {
                     existing.parent_epic = story.parent_epic;
                     existing.iteration_membership = story.iteration_membership;
                     existing.is_current = story.is_current;
+                    existing.acceptor = story.acceptor;
                     if story.body.is_some() {
                         existing.body = story.body.clone();
                         existing.acceptance_test_path = story.acceptance_test_path.clone();
@@ -379,6 +383,8 @@ impl BoardStore {
                         crate::board::adapters::github::iteration_membership_from_labels(labels);
                     existing.is_current =
                         crate::board::adapters::github::is_current_from_labels(labels);
+                    existing.acceptor =
+                        crate::board::adapters::github::acceptor_from_labels(labels);
                     existing.raw_labels = labels.clone();
                 }
             }

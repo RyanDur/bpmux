@@ -2,7 +2,7 @@
 
 use chrono::{TimeZone, Utc};
 
-use super::domain::{FreeComment, Gate, Story, StoryState, StoryType, Tag};
+use super::domain::{Acceptor, FreeComment, Gate, Story, StoryState, StoryType, Tag};
 use super::events::{BoardEvent, EventMeta, event_wins};
 use super::peer::PeerId;
 use super::store::BoardStore;
@@ -334,6 +334,39 @@ fn tag_added_event_appends_to_story_tags() {
         label: "blocked".to_string(),
     });
     assert_eq!(store.story(1).unwrap().tags, vec![Tag::Blocked]);
+}
+
+#[test]
+fn tag_added_awaiting_label_rederives_acceptor_then_removal_clears_it_1551() {
+    let store = BoardStore::new();
+    store.apply(&BoardEvent::StoryCreated {
+        meta: meta("pm", 2026, "local"),
+        number: 1,
+        title: "t".to_string(),
+        body: "b".to_string(),
+        initial_state: StoryState::Delivered,
+        story_type: StoryType::Feature,
+    });
+    store.apply(&BoardEvent::TagAdded {
+        meta: meta("designer", 2026, "local"),
+        number: 1,
+        label: "awaiting team".to_string(),
+    });
+    assert_eq!(
+        store.story(1).unwrap().acceptor,
+        Some(Acceptor::Team),
+        "the awaiting-label add re-derives the typed acceptor (closes the view refresh-gap)"
+    );
+    store.apply(&BoardEvent::TagRemoved {
+        meta: meta("designer", 2026, "local"),
+        number: 1,
+        label: "awaiting team".to_string(),
+    });
+    assert_eq!(
+        store.story(1).unwrap().acceptor,
+        None,
+        "removing the awaiting-label clears the acceptor — honest-neutral, not stale"
+    );
 }
 
 #[test]

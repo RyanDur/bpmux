@@ -20,6 +20,7 @@ const MOCK_BOARD = {
       title: 'Delivered feature awaiting owner',
       state: 'delivered',
       labels: ['Feature', 'delivered', 'ready for accept'],
+      acceptor: 'owner',
       assignees: ['dev'],
       created_at: '2026-04-22T16:00:00Z',
       body: ''
@@ -29,6 +30,7 @@ const MOCK_BOARD = {
       title: 'Delivered chore awaiting team',
       state: 'delivered',
       labels: ['Chore', 'delivered', 'ready for accept'],
+      acceptor: 'team',
       assignees: ['dev'],
       created_at: '2026-04-22T16:00:00Z',
       body: ''
@@ -38,6 +40,7 @@ const MOCK_BOARD = {
       title: 'Accepted feature',
       state: 'accepted',
       labels: ['Feature', 'accepted'],
+      acceptor: 'owner',
       assignees: ['dev'],
       created_at: '2026-04-22T16:00:00Z',
       body: ''
@@ -47,6 +50,7 @@ const MOCK_BOARD = {
       title: 'Accepted chore',
       state: 'accepted',
       labels: ['Chore', 'accepted'],
+      acceptor: 'team',
       assignees: ['dev'],
       created_at: '2026-04-22T16:00:00Z',
       body: ''

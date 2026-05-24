@@ -17,6 +17,7 @@ fn decode_story_metadata_covers_every_metadata_axis_field_via_roundtrip() {
             {"name": "parent-epic-#100"},
             {"name": "iteration-#200"},
             {"name": "blocked"},
+            {"name": "awaiting owner"},
         ],
         "created_at": "2026-05-15T01:00:00+00:00",
         "user": {"login": "FIELD_COMPLETENESS_SENTINEL_FILER"},
@@ -45,6 +46,7 @@ fn assert_metadata_axis_complete(decoded: &Story) {
         body_etag,
         iteration_membership: _,
         is_current: _,
+        acceptor,
     } = decoded;
 
     assert_eq!(*number, 42, "number must roundtrip from JSON");
@@ -93,6 +95,11 @@ fn assert_metadata_axis_complete(decoded: &Story) {
     assert!(
         !raw_labels.is_empty(),
         "raw_labels must roundtrip from JSON labels"
+    );
+    assert_eq!(
+        *acceptor,
+        Some(crate::board::domain::Acceptor::Owner),
+        "acceptor must decode from the 'awaiting owner' label"
     );
 
     let _ = free_comments;

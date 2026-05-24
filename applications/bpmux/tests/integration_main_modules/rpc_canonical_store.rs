@@ -57,6 +57,7 @@ fn seed_story(adapter: &InMemorySourceAdapter, number: u64, title: &str) {
         body_etag: None,
         iteration_membership: None,
         is_current: false,
+        acceptor: None,
     };
     adapter.seed_stories(vec![story]);
 }

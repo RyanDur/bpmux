@@ -95,6 +95,24 @@ pub fn story_type_from_labels_or_title(labels: &[String], title: &str) -> StoryT
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Acceptor {
+    Team,
+    Owner,
+    Dev,
+}
+
+impl Acceptor {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Acceptor::Team => "team",
+            Acceptor::Owner => "owner",
+            Acceptor::Dev => "dev",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Tag {
     Blocked,
 }
@@ -201,6 +219,8 @@ pub struct Story {
     pub iteration_membership: Option<(u64, u32)>,
     #[serde(default)]
     pub is_current: bool,
+    #[serde(default)]
+    pub acceptor: Option<Acceptor>,
 }
 
 impl Story {
@@ -233,6 +253,7 @@ impl Story {
             body_etag: None,
             iteration_membership: None,
             is_current: false,
+            acceptor: None,
         }
     }
 }

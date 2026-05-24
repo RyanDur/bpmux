@@ -17,6 +17,7 @@ const MOCK_BOARD = {
       title: 'Team-accepted chore',
       state: 'delivered',
       labels: ['Chore', 'delivered', 'ready for accept'],
+      acceptor: 'team',
       assignees: ['dev'],
       created_at: '2026-04-22T16:00:00Z',
       body: 'Chore body.'
@@ -26,6 +27,7 @@ const MOCK_BOARD = {
       title: 'Owner-accept feature',
       state: 'delivered',
       labels: ['Feature', 'delivered', 'ready for accept'],
+      acceptor: 'owner',
       assignees: ['dev'],
       created_at: '2026-04-22T16:00:00Z',
       body: 'Feature body.'

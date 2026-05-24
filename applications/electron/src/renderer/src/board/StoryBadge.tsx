@@ -12,14 +12,11 @@ const tooltipFor = (
       : 'blocked — (no blocker specified)'
   }
   if (kind === 'rework') return 'rework cycle — awaiting re-delivery'
-  if (kind === 'team-accepted') {
-    return state === 'accepted'
-      ? 'accepted by team (bug/chore lane)'
-      : 'awaiting team accept (bug/chore lane)'
-  }
-  return state === 'accepted'
-    ? 'accepted by owner (feature lane)'
-    : 'awaiting owner accept (feature lane)'
+  if (kind === 'pending') return 'delivered — awaiting desk-check verdict (acceptor not yet assigned)'
+  const accepted = state === 'accepted'
+  if (kind === 'team-accepted') return accepted ? 'accepted by team' : 'awaiting team accept'
+  if (kind === 'dev-accepted') return accepted ? 'accepted by dev' : 'awaiting dev accept'
+  return accepted ? 'accepted by owner' : 'awaiting owner accept'
 }
 
 const BlockerGlyph = (): React.JSX.Element => (
@@ -32,6 +29,8 @@ const BlockerGlyph = (): React.JSX.Element => (
 const KIND_GLYPH: Record<Exclude<BadgeKind, 'blocked'>, string> = {
   'team-accepted': '✓',
   accepted: '✓',
+  'dev-accepted': '✓',
+  pending: '⋯',
   rework: '↻'
 }
 

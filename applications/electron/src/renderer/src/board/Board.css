@@ -1021,6 +1021,23 @@
   border-color: var(--accent-warning);
 }
 
+.story-badge--dev-accepted {
+  background: var(--accent-info);
+  color: var(--bg-base);
+  border-color: var(--accent-info);
+}
+
+.story-badge--dev-accepted[data-state='delivered'] {
+  background: transparent;
+  color: var(--accent-info);
+}
+
+.story-badge--pending {
+  background: transparent;
+  color: var(--fg-dim);
+  border-color: var(--border-subtle);
+}
+
 .story-badge--rework {
   background: var(--accent-error);
   color: var(--bg-base);

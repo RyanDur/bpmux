@@ -23,6 +23,7 @@ fn sample_story(state: StoryState, story_type: StoryType, is_closed: bool) -> St
         body_etag: None,
         iteration_membership: None,
         is_current: false,
+        acceptor: None,
     }
 }
 
@@ -42,6 +43,7 @@ fn story_to_board_json_emits_renderer_wire_format_field_list() {
         "parent_epic",
         "iteration_membership",
         "is_current",
+        "acceptor",
         "assignees",
         "created_at",
         "body",
@@ -52,7 +54,7 @@ fn story_to_board_json_emits_renderer_wire_format_field_list() {
             "wire-format must include `{required}` (drift catches #451-class regression); keys present: {keys:?}"
         );
     }
-    assert_eq!(obj.len(), 12, "no spurious keys; keys present: {keys:?}");
+    assert_eq!(obj.len(), 13, "no spurious keys; keys present: {keys:?}");
 }
 
 #[test]
@@ -76,6 +78,29 @@ fn story_to_board_json_iteration_membership_object_when_set_1492() {
         .expect("iteration_membership object when Some");
     assert_eq!(membership["iteration_number"].as_u64(), Some(1464));
     assert_eq!(membership["position"].as_u64(), Some(100));
+}
+
+#[test]
+fn story_to_board_json_acceptor_null_when_none_1551() {
+    let s = sample_story(StoryState::Delivered, StoryType::Feature, false);
+    let json = story_to_board_json(&GhLabelCodec, &s);
+    assert!(
+        json["acceptor"].is_null(),
+        "acceptor emits JSON null when unassigned (honest-neutral, not a type-guess); got: {}",
+        json["acceptor"]
+    );
+}
+
+#[test]
+fn story_to_board_json_acceptor_emits_class_string_1551() {
+    let mut s = sample_story(StoryState::Delivered, StoryType::Feature, false);
+    s.acceptor = Some(crate::board::domain::Acceptor::Dev);
+    let json = story_to_board_json(&GhLabelCodec, &s);
+    assert_eq!(
+        json["acceptor"].as_str(),
+        Some("dev"),
+        "acceptor emits the canonical class string for the renderer"
+    );
 }
 
 #[test]

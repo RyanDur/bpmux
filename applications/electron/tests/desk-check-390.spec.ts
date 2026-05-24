@@ -41,6 +41,7 @@ const MOCK_BOARD = {
       title: 'Delivered unblocked awaiting owner',
       state: 'delivered',
       labels: ['Feature', 'delivered', 'ready for accept'],
+      acceptor: 'owner',
       assignees: ['dev'],
       created_at: '2026-04-23T02:00:00Z',
       body: ''
@@ -50,6 +51,7 @@ const MOCK_BOARD = {
       title: 'Blocker story (drill-in target)',
       state: 'delivered',
       labels: ['Feature', 'delivered', 'ready for accept'],
+      acceptor: 'owner',
       assignees: ['dev'],
       created_at: '2026-04-23T02:00:00Z',
       body: ''
