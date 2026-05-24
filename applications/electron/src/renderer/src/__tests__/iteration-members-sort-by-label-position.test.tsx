@@ -29,21 +29,21 @@ describe('#1339 — iteration members sort by iteration-{Name}.{position} label'
         title: 'story alpha',
         story_type: 'feature',
         initial_state: 'icebox',
-        labels: ['iteration-Aquila.200']
+        labels: ['parent-iteration-#7401.200']
       },
       {
         number: 7412,
         title: 'story bravo',
         story_type: 'feature',
         initial_state: 'icebox',
-        labels: ['iteration-Aquila.100']
+        labels: ['parent-iteration-#7401.100']
       },
       {
         number: 7413,
         title: 'story charlie',
         story_type: 'feature',
         initial_state: 'icebox',
-        labels: ['iteration-Aquila.300']
+        labels: ['parent-iteration-#7401.300']
       }
     ])
 

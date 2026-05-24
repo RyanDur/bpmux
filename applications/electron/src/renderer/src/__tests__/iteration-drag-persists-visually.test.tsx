@@ -29,21 +29,21 @@ describe('#1339 — drag-within-iteration visual no snap-back (optimistic UI)', 
         title: 'opt-alpha',
         story_type: 'feature',
         initial_state: 'icebox',
-        labels: ['iteration-OptimisticVisualTheme.100']
+        labels: ['parent-iteration-#7701.100']
       },
       {
         number: 7712,
         title: 'opt-bravo',
         story_type: 'feature',
         initial_state: 'icebox',
-        labels: ['iteration-OptimisticVisualTheme.200']
+        labels: ['parent-iteration-#7701.200']
       },
       {
         number: 7713,
         title: 'opt-charlie',
         story_type: 'feature',
         initial_state: 'icebox',
-        labels: ['iteration-OptimisticVisualTheme.300']
+        labels: ['parent-iteration-#7701.300']
       }
     ])
 

@@ -29,21 +29,21 @@ describe('#1339 step 2d-b — eager-reorder during drag-over (ChosenPicachu patt
         title: 'orion-alpha',
         story_type: 'feature',
         initial_state: 'icebox',
-        labels: ['iteration-Orion.100']
+        labels: ['parent-iteration-#7901.100']
       },
       {
         number: 7912,
         title: 'orion-bravo',
         story_type: 'feature',
         initial_state: 'icebox',
-        labels: ['iteration-Orion.200']
+        labels: ['parent-iteration-#7901.200']
       },
       {
         number: 7913,
         title: 'orion-charlie',
         story_type: 'feature',
         initial_state: 'icebox',
-        labels: ['iteration-Orion.300']
+        labels: ['parent-iteration-#7901.300']
       }
     ])
 

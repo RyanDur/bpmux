@@ -2,8 +2,8 @@ import { GripIcon } from './GripIcon'
 import { ReworkGlyph } from './ReworkGlyph'
 import StoryBadge from './StoryBadge'
 import StoryTypeGlyph from './StoryTypeGlyph'
-import { computeDropMutation } from './iterationPosition'
-import { parseIterationLabel } from './labelSchema'
+import { computeMemberDropMutation } from './iterationPosition'
+import { parseParentIterationLabel } from './labelSchema'
 import { STORY_GRIP_TEST_ID } from './testIds'
 import { GROUP_ORDER, columnFor, storyTypeFromLabels, type BoardStory } from './types'
 import { type DragPayload, eagerReorder, postLabelMutation } from './iterationMembers'
@@ -31,16 +31,14 @@ const activeStateLabel = (story: BoardStory): string | null => {
 
 interface Props {
   iteration: BoardStory
-  themeName: string
   members: IterationMember[]
-  setPending: (storyNumber: number, theme: string, position: number) => void
+  setPending: (storyNumber: number, iterationNumber: number, position: number) => void
   onOpen: (n: number) => void
   onReorderAnnounce?: (text: string) => void
 }
 
 const MemberList = ({
   iteration,
-  themeName,
   members,
   setPending,
   onOpen,
@@ -83,21 +81,20 @@ const MemberList = ({
             if (payload.storyNumber === targetNumber) return
             const originalIdx = members.findIndex((m) => m.story.number === targetNumber)
             if (originalIdx === -1) return
-            const mutation = computeDropMutation({
-              draggedNumber: payload.storyNumber,
-              draggedThemeName: payload.themeName,
+            const mutation = computeMemberDropMutation({
+              draggedIterationNumber: payload.iterationNumber,
               draggedOldPosition: payload.oldPosition,
-              targetThemeName: themeName,
+              targetIterationNumber: iteration.number,
               targetMemberPositions: members.map((m) => m.position),
               targetMemberIndex: originalIdx,
-              targetMembersIncludeDragged: payload.themeName === themeName
+              targetMembersIncludeDragged: payload.iterationNumber === iteration.number
             })
             if (!mutation) return
             postLabelMutation(payload.storyNumber, mutation.add, mutation.remove)
             const addedLabel = mutation.add[0]
-            const parsed = addedLabel ? parseIterationLabel(addedLabel) : null
+            const parsed = addedLabel ? parseParentIterationLabel(addedLabel) : null
             if (parsed) {
-              setPending(payload.storyNumber, parsed.name, parsed.position)
+              setPending(payload.storyNumber, parsed.iterationNumber, parsed.position)
             }
             endDrag()
           }}
@@ -128,11 +125,10 @@ const MemberList = ({
                 return
               }
               const targetMemberIndex = direction === 'up' ? originalIdx - 1 : originalIdx + 1
-              const mutation = computeDropMutation({
-                draggedNumber: story.number,
-                draggedThemeName: themeName,
+              const mutation = computeMemberDropMutation({
+                draggedIterationNumber: iteration.number,
                 draggedOldPosition: position,
-                targetThemeName: themeName,
+                targetIterationNumber: iteration.number,
                 targetMemberPositions: members.map((m) => m.position),
                 targetMemberIndex,
                 targetMembersIncludeDragged: true
@@ -140,9 +136,9 @@ const MemberList = ({
               if (!mutation) return
               postLabelMutation(story.number, mutation.add, mutation.remove)
               const addedLabel = mutation.add[0]
-              const parsedKey = addedLabel ? parseIterationLabel(addedLabel) : null
+              const parsedKey = addedLabel ? parseParentIterationLabel(addedLabel) : null
               if (parsedKey) {
-                setPending(story.number, parsedKey.name, parsedKey.position)
+                setPending(story.number, parsedKey.iterationNumber, parsedKey.position)
               }
               const newIdx = direction === 'up' ? originalIdx - 1 : originalIdx + 1
               onReorderAnnounce?.(
@@ -161,7 +157,7 @@ const MemberList = ({
               onDragStart={(event) => {
                 const payload: DragPayload = {
                   storyNumber: story.number,
-                  themeName,
+                  iterationNumber: iteration.number,
                   oldPosition: position
                 }
                 startDrag(event, story.number, payload)

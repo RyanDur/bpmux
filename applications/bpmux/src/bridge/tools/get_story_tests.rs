@@ -443,7 +443,7 @@ fn make_iteration(number: u64, theme: &str, body: &str) -> Story {
     s
 }
 
-fn make_member(number: u64, title: &str, theme: &str, position: u32) -> Story {
+fn make_member(number: u64, title: &str, iteration_number: u64, position: u32) -> Story {
     let mut s = Story::new_minimal(
         number,
         title.into(),
@@ -451,7 +451,8 @@ fn make_member(number: u64, title: &str, theme: &str, position: u32) -> Story {
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    s.raw_labels = vec!["ready".into(), format!("iteration-{theme}.{position}")];
+    s.raw_labels = vec!["ready".into()];
+    s.iteration_membership = Some((iteration_number, position));
     s
 }
 
@@ -462,7 +463,7 @@ const ITERATION_BODY_TEMPLATE: &str = "## Iteration Telescopium\n\
 \n\
 ## Member stories\n\
 \n\
-<!-- Members carry `iteration-Telescopium.{position}` labels;\n\
+<!-- Members are attributed by canonical iteration membership (parent-iteration-#N);\n\
      ordering is by position ascending. -->\n\
 \n\
 _(no members yet)_\n\
@@ -475,9 +476,9 @@ bpmux iteration substrate.\n";
 async fn get_story_auto_derives_iteration_members_into_body_1462() {
     let iteration = make_iteration(1397, "Telescopium", ITERATION_BODY_TEMPLATE);
     let members = vec![
-        make_member(1309, "ci_get_job_status MCP tool", "Telescopium", 100),
-        make_member(1265, "reorder_story PM-only gate", "Telescopium", 200),
-        make_member(1463, "Split e2e workflow", "Telescopium", 300),
+        make_member(1309, "ci_get_job_status MCP tool", 1397, 100),
+        make_member(1265, "reorder_story PM-only gate", 1397, 200),
+        make_member(1463, "Split e2e workflow", 1397, 300),
     ];
     let mut all = vec![iteration];
     all.extend(members);
@@ -552,9 +553,9 @@ async fn get_story_does_not_derive_members_for_non_iteration_stories_1462() {
 #[tokio::test]
 async fn get_story_excludes_closed_member_stories_from_derivation_1462() {
     let iteration = make_iteration(1397, "Telescopium", ITERATION_BODY_TEMPLATE);
-    let mut closed_member = make_member(1309, "Already shipped", "Telescopium", 100);
+    let mut closed_member = make_member(1309, "Already shipped", 1397, 100);
     closed_member.is_closed = true;
-    let open_member = make_member(1265, "Still open", "Telescopium", 200);
+    let open_member = make_member(1265, "Still open", 1397, 200);
     let (store, orch) =
         seeded_orchestrator(vec![iteration, closed_member, open_member], vec![]).await;
     let args = serde_json::json!({"number": 1397});

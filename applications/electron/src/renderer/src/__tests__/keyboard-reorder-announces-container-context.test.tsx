@@ -31,21 +31,21 @@ describe('#1339 step 2h-2 — keyboard-reorder announces container-context for s
         title: 'phoenix-alpha',
         story_type: 'feature',
         initial_state: 'icebox',
-        labels: ['iteration-Phoenix.100']
+        labels: ['parent-iteration-#7901.100']
       },
       {
         number: 7912,
         title: 'phoenix-bravo',
         story_type: 'feature',
         initial_state: 'icebox',
-        labels: ['iteration-Phoenix.200']
+        labels: ['parent-iteration-#7901.200']
       },
       {
         number: 7913,
         title: 'phoenix-charlie',
         story_type: 'feature',
         initial_state: 'icebox',
-        labels: ['iteration-Phoenix.300']
+        labels: ['parent-iteration-#7901.300']
       }
     ])
 

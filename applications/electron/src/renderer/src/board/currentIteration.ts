@@ -1,10 +1,8 @@
 import {
   isIterationStory,
-  positionInIteration,
   positionInIterationOrder,
   positionInParentIteration
 } from './iterationMembers'
-import { themeNameFromTitle } from './labelSchema'
 import type { BoardStory } from './types'
 
 const compareByIterationOrder = (a: BoardStory, b: BoardStory): number => {
@@ -24,9 +22,7 @@ export const findCurrentIteration = (stories: BoardStory[]): BoardStory | null =
 }
 
 export const isMemberOfIteration = (story: BoardStory, iteration: BoardStory): boolean => {
-  if (positionInParentIteration(story, iteration.number) !== null) return true
-  const themeName = themeNameFromTitle(iteration.title)
-  return positionInIteration(story, themeName) !== null
+  return positionInParentIteration(story, iteration.number) !== null
 }
 
 export const epicNumbersInIteration = (stories: BoardStory[], iteration: BoardStory): number[] => {

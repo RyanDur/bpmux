@@ -62,11 +62,15 @@ fn sync_raw_labels_on_tag_added(story: &mut Story, label: &str) {
         story.raw_labels.push(label.to_string());
     }
     story.parent_epic = crate::board::adapters::github::parent_epic_from_labels(&story.raw_labels);
+    story.iteration_membership =
+        crate::board::adapters::github::iteration_membership_from_labels(&story.raw_labels);
 }
 
 fn sync_raw_labels_on_tag_removed(story: &mut Story, label: &str) {
     story.raw_labels.retain(|l| l != label);
     story.parent_epic = crate::board::adapters::github::parent_epic_from_labels(&story.raw_labels);
+    story.iteration_membership =
+        crate::board::adapters::github::iteration_membership_from_labels(&story.raw_labels);
 }
 
 const SUBSCRIBE_BUFFER: usize = 1_000;

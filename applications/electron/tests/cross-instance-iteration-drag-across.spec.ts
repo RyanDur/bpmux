@@ -30,21 +30,21 @@ test.describe('#1339 Scenario 2 — drag-across iteration cross-instance: member
               title: 'volans-member',
               story_type: 'feature',
               initial_state: 'icebox',
-              labels: ['iteration-Volans.100']
+              labels: ['parent-iteration-#9601.100']
             },
             {
               number: 9620,
               title: 'volans-anchor',
               story_type: 'feature',
               initial_state: 'icebox',
-              labels: ['iteration-Volans.200']
+              labels: ['parent-iteration-#9601.200']
             },
             {
               number: 9621,
               title: 'crater-anchor',
               story_type: 'feature',
               initial_state: 'icebox',
-              labels: ['iteration-Crater.100']
+              labels: ['parent-iteration-#9602.100']
             }
           ]
         })
@@ -81,8 +81,8 @@ test.describe('#1339 Scenario 2 — drag-across iteration cross-instance: member
           Authorization: `Bearer ${authToken}`
         },
         body: JSON.stringify({
-          add: ['iteration-Crater.100'],
-          remove: ['iteration-Volans.100']
+          add: ['parent-iteration-#9602.100'],
+          remove: ['parent-iteration-#9601.100']
         })
       })
       expect(mutateRes.ok).toBe(true)

@@ -428,6 +428,52 @@ fn tag_removed_unknown_label_is_noop() {
 }
 
 #[test]
+fn tag_added_parent_iteration_label_rederives_iteration_membership_1553() {
+    let store = BoardStore::new();
+    store.apply(&BoardEvent::StoryCreated {
+        meta: meta("pm", 2026, "local"),
+        number: 1,
+        title: "t".to_string(),
+        body: "b".to_string(),
+        initial_state: StoryState::Ready,
+        story_type: StoryType::Feature,
+    });
+    store.apply(&BoardEvent::TagAdded {
+        meta: meta("pm", 2026, "local"),
+        number: 1,
+        label: "parent-iteration-#9301.100".to_string(),
+    });
+    assert_eq!(
+        store.story(1).unwrap().iteration_membership,
+        Some((9301, 100))
+    );
+}
+
+#[test]
+fn tag_removed_parent_iteration_label_clears_iteration_membership_1553() {
+    let store = BoardStore::new();
+    store.apply(&BoardEvent::StoryCreated {
+        meta: meta("pm", 2026, "local"),
+        number: 1,
+        title: "t".to_string(),
+        body: "b".to_string(),
+        initial_state: StoryState::Ready,
+        story_type: StoryType::Feature,
+    });
+    store.apply(&BoardEvent::TagAdded {
+        meta: meta("pm", 2026, "local"),
+        number: 1,
+        label: "parent-iteration-#9301.100".to_string(),
+    });
+    store.apply(&BoardEvent::TagRemoved {
+        meta: meta("pm", 2026, "local"),
+        number: 1,
+        label: "parent-iteration-#9301.100".to_string(),
+    });
+    assert_eq!(store.story(1).unwrap().iteration_membership, None);
+}
+
+#[test]
 fn story_created_event_carries_story_type() {
     let store = BoardStore::new();
     store.apply(&BoardEvent::StoryCreated {

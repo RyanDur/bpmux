@@ -1,4 +1,4 @@
-import { iterationLabel, readyOrderLabel } from './labelSchema'
+import { iterationOrderLabel, parentIterationLabel, readyOrderLabel } from './labelSchema'
 
 export const DEFAULT_FIRST_POSITION = 100
 export const DEFAULT_STEP = 100
@@ -37,42 +37,72 @@ export const computeInsertPosition = (
   return { position: left, cascadeNeeded: true }
 }
 
-export interface DropMutationInput {
-  draggedNumber: number
-  draggedThemeName: string
-  draggedOldPosition: number
-  targetThemeName: string
-  targetMemberPositions: number[]
-  targetMemberIndex: number
-  targetMembersIncludeDragged: boolean
-}
-
 export interface DropMutation {
   add: string[]
   remove: string[]
 }
 
-export const computeDropMutation = (input: DropMutationInput): DropMutation | null => {
-  const {
-    draggedNumber: _draggedNumber,
-    draggedThemeName,
-    draggedOldPosition,
-    targetThemeName,
-    targetMemberPositions,
-    targetMemberIndex,
-    targetMembersIncludeDragged
-  } = input
-  const sameContainer = draggedThemeName === targetThemeName
+const resolveReorderPosition = (
+  sameContainer: boolean,
+  draggedOldPosition: number,
+  targetMemberPositions: number[],
+  targetMemberIndex: number,
+  targetMembersIncludeDragged: boolean
+): number | null => {
   const withoutSource =
     sameContainer && targetMembersIncludeDragged
       ? targetMemberPositions.filter((p) => p !== draggedOldPosition)
       : targetMemberPositions
-  const adjustedIdx = targetMemberIndex
-  const { position: newPosition } = computeInsertPosition(adjustedIdx, withoutSource)
-  if (sameContainer && newPosition === draggedOldPosition) return null
+  const { position } = computeInsertPosition(targetMemberIndex, withoutSource)
+  if (sameContainer && position === draggedOldPosition) return null
+  return position
+}
+
+export interface OrderDropMutationInput {
+  draggedOldPosition: number
+  targetMemberPositions: number[]
+  targetMemberIndex: number
+  targetMembersIncludeDragged: boolean
+}
+
+export const computeIterationOrderMutation = (
+  input: OrderDropMutationInput
+): DropMutation | null => {
+  const position = resolveReorderPosition(
+    true,
+    input.draggedOldPosition,
+    input.targetMemberPositions,
+    input.targetMemberIndex,
+    input.targetMembersIncludeDragged
+  )
+  if (position === null) return null
   return {
-    add: [iterationLabel(targetThemeName, newPosition)],
-    remove: [iterationLabel(draggedThemeName, draggedOldPosition)]
+    add: [iterationOrderLabel(position)],
+    remove: [iterationOrderLabel(input.draggedOldPosition)]
+  }
+}
+
+export interface MemberDropMutationInput {
+  draggedIterationNumber: number
+  draggedOldPosition: number
+  targetIterationNumber: number
+  targetMemberPositions: number[]
+  targetMemberIndex: number
+  targetMembersIncludeDragged: boolean
+}
+
+export const computeMemberDropMutation = (input: MemberDropMutationInput): DropMutation | null => {
+  const position = resolveReorderPosition(
+    input.draggedIterationNumber === input.targetIterationNumber,
+    input.draggedOldPosition,
+    input.targetMemberPositions,
+    input.targetMemberIndex,
+    input.targetMembersIncludeDragged
+  )
+  if (position === null) return null
+  return {
+    add: [parentIterationLabel(input.targetIterationNumber, position)],
+    remove: [parentIterationLabel(input.draggedIterationNumber, input.draggedOldPosition)]
   }
 }
 

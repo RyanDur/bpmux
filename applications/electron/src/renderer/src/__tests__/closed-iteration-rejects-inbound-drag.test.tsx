@@ -36,7 +36,7 @@ describe('#1339 Scenario 5 — closed iteration rejects inbound drag with visual
         title: 'carina-member',
         story_type: 'feature',
         initial_state: 'icebox',
-        labels: ['iteration-Carina.100']
+        labels: ['parent-iteration-#8501.100']
       }
     ])
 
@@ -78,10 +78,12 @@ describe('#1339 Scenario 5 — closed iteration rejects inbound drag with visual
       headers: { Authorization: `Bearer ${authToken}` }
     })
     const boardBody = (await boardRes.json()) as {
-      stories: { number: number; labels: string[] }[]
+      stories: {
+        number: number
+        iteration_membership: { iteration_number: number; position: number } | null
+      }[]
     }
     const member = boardBody.stories.find((s) => s.number === 8511)
-    expect(member?.labels).toContain('iteration-Carina.100')
-    expect(member?.labels?.some((l) => l.startsWith('iteration-Eridanus.'))).toBe(false)
+    expect(member?.iteration_membership).toEqual({ iteration_number: 8501, position: 100 })
   }, 25_000)
 })

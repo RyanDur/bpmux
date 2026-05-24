@@ -29,21 +29,21 @@ describe('#1339 — drag-within-iteration persists via label mutation', () => {
         title: 'alpha',
         story_type: 'feature',
         initial_state: 'icebox',
-        labels: ['iteration-Pegasus.100']
+        labels: ['parent-iteration-#7601.100']
       },
       {
         number: 7612,
         title: 'bravo',
         story_type: 'feature',
         initial_state: 'icebox',
-        labels: ['iteration-Pegasus.200']
+        labels: ['parent-iteration-#7601.200']
       },
       {
         number: 7613,
         title: 'charlie',
         story_type: 'feature',
         initial_state: 'icebox',
-        labels: ['iteration-Pegasus.300']
+        labels: ['parent-iteration-#7601.300']
       }
     ])
 
@@ -85,11 +85,13 @@ describe('#1339 — drag-within-iteration persists via label mutation', () => {
           headers: { Authorization: `Bearer ${authToken}` }
         })
         const boardBody = (await boardRes.json()) as {
-          stories: { number: number; labels: string[] }[]
+          stories: {
+            number: number
+            iteration_membership: { iteration_number: number; position: number } | null
+          }[]
         }
         const charlie = boardBody.stories.find((s) => s.number === 7613)
-        expect(charlie?.labels).toContain('iteration-Pegasus.50')
-        expect(charlie?.labels).not.toContain('iteration-Pegasus.300')
+        expect(charlie?.iteration_membership).toEqual({ iteration_number: 7601, position: 50 })
       },
       { timeout: 10_000, interval: 200 }
     )

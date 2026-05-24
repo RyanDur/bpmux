@@ -31,14 +31,14 @@ describe('#1339 step 2h-3 — keyboard-reorder edge-cases announce intent to SR 
         title: 'andromeda-alpha',
         story_type: 'feature',
         initial_state: 'icebox',
-        labels: ['iteration-Andromeda.100']
+        labels: ['parent-iteration-#8201.100']
       },
       {
         number: 8212,
         title: 'andromeda-bravo',
         story_type: 'feature',
         initial_state: 'icebox',
-        labels: ['iteration-Andromeda.200']
+        labels: ['parent-iteration-#8201.200']
       }
     ])
 
@@ -69,10 +69,13 @@ describe('#1339 step 2h-3 — keyboard-reorder edge-cases announce intent to SR 
       headers: { Authorization: `Bearer ${authToken}` }
     })
     const boardBody = (await boardRes.json()) as {
-      stories: { number: number; labels: string[] }[]
+      stories: {
+        number: number
+        iteration_membership: { iteration_number: number; position: number } | null
+      }[]
     }
     const alpha = boardBody.stories.find((s) => s.number === 8211)
-    expect(alpha?.labels).toContain('iteration-Andromeda.100')
+    expect(alpha?.iteration_membership).toEqual({ iteration_number: 8201, position: 100 })
   }, 25_000)
 
   it('Ctrl+Shift+ArrowDown on last-position Perseus member announces "already at last position" and does not mutate labels', async () => {
@@ -92,14 +95,14 @@ describe('#1339 step 2h-3 — keyboard-reorder edge-cases announce intent to SR 
         title: 'perseus-alpha',
         story_type: 'feature',
         initial_state: 'icebox',
-        labels: ['iteration-Perseus.100']
+        labels: ['parent-iteration-#8301.100']
       },
       {
         number: 8312,
         title: 'perseus-bravo',
         story_type: 'feature',
         initial_state: 'icebox',
-        labels: ['iteration-Perseus.200']
+        labels: ['parent-iteration-#8301.200']
       }
     ])
 
@@ -130,9 +133,12 @@ describe('#1339 step 2h-3 — keyboard-reorder edge-cases announce intent to SR 
       headers: { Authorization: `Bearer ${authToken}` }
     })
     const boardBody = (await boardRes.json()) as {
-      stories: { number: number; labels: string[] }[]
+      stories: {
+        number: number
+        iteration_membership: { iteration_number: number; position: number } | null
+      }[]
     }
     const bravo = boardBody.stories.find((s) => s.number === 8312)
-    expect(bravo?.labels).toContain('iteration-Perseus.200')
+    expect(bravo?.iteration_membership).toEqual({ iteration_number: 8301, position: 200 })
   }, 25_000)
 })

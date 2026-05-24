@@ -31,21 +31,21 @@ describe('#1339 step 2h-1 — keyboard-reorder within iteration container persis
         title: 'lacerta-alpha',
         story_type: 'feature',
         initial_state: 'icebox',
-        labels: ['iteration-Lacerta.100']
+        labels: ['parent-iteration-#7801.100']
       },
       {
         number: 7812,
         title: 'lacerta-bravo',
         story_type: 'feature',
         initial_state: 'icebox',
-        labels: ['iteration-Lacerta.200']
+        labels: ['parent-iteration-#7801.200']
       },
       {
         number: 7813,
         title: 'lacerta-charlie',
         story_type: 'feature',
         initial_state: 'icebox',
-        labels: ['iteration-Lacerta.300']
+        labels: ['parent-iteration-#7801.300']
       }
     ])
 
@@ -68,11 +68,13 @@ describe('#1339 step 2h-1 — keyboard-reorder within iteration container persis
           headers: { Authorization: `Bearer ${authToken}` }
         })
         const boardBody = (await boardRes.json()) as {
-          stories: { number: number; labels: string[] }[]
+          stories: {
+            number: number
+            iteration_membership: { iteration_number: number; position: number } | null
+          }[]
         }
         const alpha = boardBody.stories.find((s) => s.number === 7811)
-        expect(alpha?.labels).toContain('iteration-Lacerta.250')
-        expect(alpha?.labels).not.toContain('iteration-Lacerta.100')
+        expect(alpha?.iteration_membership).toEqual({ iteration_number: 7801, position: 250 })
       },
       { timeout: 10_000, interval: 200 }
     )
@@ -95,21 +97,21 @@ describe('#1339 step 2h-1 — keyboard-reorder within iteration container persis
         title: 'centaurus-alpha',
         story_type: 'feature',
         initial_state: 'icebox',
-        labels: ['iteration-Centaurus.100']
+        labels: ['parent-iteration-#7701.100']
       },
       {
         number: 7712,
         title: 'centaurus-bravo',
         story_type: 'feature',
         initial_state: 'icebox',
-        labels: ['iteration-Centaurus.200']
+        labels: ['parent-iteration-#7701.200']
       },
       {
         number: 7713,
         title: 'centaurus-charlie',
         story_type: 'feature',
         initial_state: 'icebox',
-        labels: ['iteration-Centaurus.300']
+        labels: ['parent-iteration-#7701.300']
       }
     ])
 
@@ -139,11 +141,13 @@ describe('#1339 step 2h-1 — keyboard-reorder within iteration container persis
           headers: { Authorization: `Bearer ${authToken}` }
         })
         const boardBody = (await boardRes.json()) as {
-          stories: { number: number; labels: string[] }[]
+          stories: {
+            number: number
+            iteration_membership: { iteration_number: number; position: number } | null
+          }[]
         }
         const charlie = boardBody.stories.find((s) => s.number === 7713)
-        expect(charlie?.labels).toContain('iteration-Centaurus.150')
-        expect(charlie?.labels).not.toContain('iteration-Centaurus.300')
+        expect(charlie?.iteration_membership).toEqual({ iteration_number: 7701, position: 150 })
       },
       { timeout: 10_000, interval: 200 }
     )

@@ -29,7 +29,7 @@ describe('#1339 step 2d — dragged member carries data-dragging during drag ges
         title: 'lyra-member',
         story_type: 'feature',
         initial_state: 'icebox',
-        labels: ['iteration-Lyra.100']
+        labels: ['parent-iteration-#7801.100']
       }
     ])
 

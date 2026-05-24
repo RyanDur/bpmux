@@ -83,29 +83,13 @@ pub fn members_with_iteration_label<C: LabelCodec>(
     members.into_iter().map(|(n, _)| n).collect()
 }
 
-pub fn members_of_iteration<C: LabelCodec>(
-    codec: &C,
-    stories: &[Story],
-    iteration_number: u64,
-    theme_name: &str,
-) -> Vec<u64> {
+pub fn members_of_iteration(stories: &[Story], iteration_number: u64) -> Vec<u64> {
     let mut members: Vec<(u64, u32)> = stories
         .iter()
         .filter(|s| !s.is_closed)
-        .filter_map(|s| {
-            if let Some((it, pos)) = s.iteration_membership
-                && it == iteration_number
-            {
-                return Some((s.number, pos));
-            }
-            for raw in &s.raw_labels {
-                if let Some(parts) = codec.decode_iteration(raw)
-                    && parts.theme_name == theme_name
-                {
-                    return Some((s.number, parts.position));
-                }
-            }
-            None
+        .filter_map(|s| match s.iteration_membership {
+            Some((it, pos)) if it == iteration_number => Some((s.number, pos)),
+            _ => None,
         })
         .collect();
     members.sort_by_key(|(_, pos)| *pos);
@@ -334,51 +318,46 @@ mod tests {
     }
 
     #[test]
-    fn members_of_iteration_reads_canonical_relation_field_first_1399() {
+    fn members_of_iteration_attributes_by_canonical_identity_1553() {
         let stories = vec![
             seed_with_iteration_membership(2001, 1397, 100),
             seed_with_iteration_membership(2002, 1397, 200),
         ];
-        assert_eq!(
-            members_of_iteration(&GhLabelCodec, &stories, 1397, "Telescopium"),
-            vec![2001, 2002]
-        );
+        assert_eq!(members_of_iteration(&stories, 1397), vec![2001, 2002]);
     }
 
     #[test]
-    fn members_of_iteration_falls_back_to_legacy_theme_label_1399() {
+    fn members_of_iteration_no_longer_attributes_legacy_theme_label_1553() {
         let stories = vec![
             seed(2001, vec!["iteration-Telescopium.100".to_string()]),
             seed(2002, vec!["iteration-Telescopium.200".to_string()]),
         ];
-        assert_eq!(
-            members_of_iteration(&GhLabelCodec, &stories, 1397, "Telescopium"),
-            vec![2001, 2002]
+        assert!(
+            members_of_iteration(&stories, 1397).is_empty(),
+            "legacy theme-name labels are retired; attribution is identity-only"
         );
     }
 
     #[test]
-    fn members_of_iteration_unions_canonical_relation_and_legacy_theme_label_1399() {
+    fn members_of_iteration_returns_only_canonical_members_dropping_legacy_only_1553() {
         let stories = vec![
             seed_with_iteration_membership(2001, 1397, 100),
             seed(2002, vec!["iteration-Telescopium.200".to_string()]),
             seed_with_iteration_membership(2003, 1397, 300),
         ];
         assert_eq!(
-            members_of_iteration(&GhLabelCodec, &stories, 1397, "Telescopium"),
-            vec![2001, 2002, 2003]
+            members_of_iteration(&stories, 1397),
+            vec![2001, 2003],
+            "a legacy-only member drops; only identity-attributed members remain"
         );
     }
 
     #[test]
-    fn members_of_iteration_canonical_relation_takes_precedence_when_both_present_1399() {
+    fn members_of_iteration_ignores_legacy_label_when_canonical_present_1553() {
         let mut s = seed(2001, vec!["iteration-Telescopium.999".to_string()]);
         s.iteration_membership = Some((1397, 100));
         let stories = vec![s];
-        assert_eq!(
-            members_of_iteration(&GhLabelCodec, &stories, 1397, "Telescopium"),
-            vec![2001]
-        );
+        assert_eq!(members_of_iteration(&stories, 1397), vec![2001]);
     }
 
     #[test]
@@ -386,10 +365,7 @@ mod tests {
         let mut closed = seed_with_iteration_membership(2001, 1397, 100);
         closed.is_closed = true;
         let stories = vec![closed, seed_with_iteration_membership(2002, 1397, 200)];
-        assert_eq!(
-            members_of_iteration(&GhLabelCodec, &stories, 1397, "Telescopium"),
-            vec![2002]
-        );
+        assert_eq!(members_of_iteration(&stories, 1397), vec![2002]);
     }
 
     #[test]
@@ -398,22 +374,36 @@ mod tests {
             seed_with_iteration_membership(2001, 1397, 100),
             seed_with_iteration_membership(2002, 1398, 200),
         ];
-        assert_eq!(
-            members_of_iteration(&GhLabelCodec, &stories, 1397, "Telescopium"),
-            vec![2001]
+        assert_eq!(members_of_iteration(&stories, 1397), vec![2001]);
+    }
+
+    #[test]
+    fn members_of_iteration_sorts_canonical_members_by_position_ascending_1553() {
+        let stories = vec![
+            seed_with_iteration_membership(2001, 1397, 300),
+            seed_with_iteration_membership(2002, 1397, 100),
+            seed_with_iteration_membership(2003, 1397, 200),
+        ];
+        assert_eq!(members_of_iteration(&stories, 1397), vec![2002, 2003, 2001]);
+    }
+
+    #[test]
+    fn members_of_iteration_does_not_inherit_legacy_same_named_iteration_1553() {
+        let legacy_only = seed(2001, vec!["iteration-Carina.100".to_string()]);
+        let stories = vec![legacy_only];
+        assert!(
+            members_of_iteration(&stories, 2000).is_empty(),
+            "a new iteration must not claim a story by a retired same-named iteration's name"
         );
     }
 
     #[test]
-    fn members_of_iteration_sorts_position_ascending_across_substrates_1399() {
-        let stories = vec![
-            seed(2001, vec!["iteration-Telescopium.300".to_string()]),
-            seed_with_iteration_membership(2002, 1397, 100),
-            seed(2003, vec!["iteration-Telescopium.200".to_string()]),
-        ];
+    fn members_of_iteration_attributes_by_identity_across_rename_1553() {
+        let stories = vec![seed_with_iteration_membership(2001, 2000, 1)];
         assert_eq!(
-            members_of_iteration(&GhLabelCodec, &stories, 1397, "Telescopium"),
-            vec![2002, 2003, 2001]
+            members_of_iteration(&stories, 2000),
+            vec![2001],
+            "canonical identity attribution is name-independent; survives a rename"
         );
     }
 

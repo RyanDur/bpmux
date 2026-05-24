@@ -35,14 +35,14 @@ describe('#1339 — drag-across-iteration retags member with new iteration prefi
         title: 'vela-member-one',
         story_type: 'feature',
         initial_state: 'icebox',
-        labels: ['iteration-Vela.100']
+        labels: ['parent-iteration-#7701.100']
       },
       {
         number: 7721,
         title: 'cygnus-member-one',
         story_type: 'feature',
         initial_state: 'icebox',
-        labels: ['iteration-Cygnus.100']
+        labels: ['parent-iteration-#7702.100']
       }
     ])
 
@@ -83,11 +83,13 @@ describe('#1339 — drag-across-iteration retags member with new iteration prefi
           headers: { Authorization: `Bearer ${authToken}` }
         })
         const boardBody = (await boardRes.json()) as {
-          stories: { number: number; labels: string[] }[]
+          stories: {
+            number: number
+            iteration_membership: { iteration_number: number; position: number } | null
+          }[]
         }
         const moved = boardBody.stories.find((s) => s.number === 7711)
-        expect(moved?.labels).toContain('iteration-Cygnus.50')
-        expect(moved?.labels).not.toContain('iteration-Vela.100')
+        expect(moved?.iteration_membership).toEqual({ iteration_number: 7702, position: 50 })
       },
       { timeout: 10_000, interval: 200 }
     )

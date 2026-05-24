@@ -4,7 +4,6 @@ import {
   type PendingMemberPosition,
   isIterationStory,
   isLooseStory,
-  positionInIteration,
   positionInIterationOrder,
   positionInParentIteration,
   positionInUnscheduled
@@ -18,8 +17,8 @@ export interface IterationMember {
 export interface UseIterationMembersResult {
   sortedIterations: BoardStory[]
   sortedLoose: BoardStory[]
-  getMembersFor: (themeName: string, iterationNumber: number) => IterationMember[]
-  setPending: (storyNumber: number, theme: string, position: number) => void
+  getMembersFor: (iterationNumber: number) => IterationMember[]
+  setPending: (storyNumber: number, iterationNumber: number, position: number) => void
 }
 
 const compareIterations = (a: BoardStory, b: BoardStory): number => {
@@ -50,7 +49,9 @@ export const useIterationMembers = (stories: BoardStory[]): UseIterationMembersR
     for (const [numStr, pending] of Object.entries(pendingMemberPosition)) {
       const num = Number(numStr)
       const story = stories.find((s) => s.number === num)
-      const actualPosition = story ? positionInIteration(story, pending.theme) : null
+      const actualPosition = story
+        ? positionInParentIteration(story, pending.iterationNumber)
+        : null
       if (actualPosition === pending.position) continue
       out[num] = pending
     }
@@ -65,25 +66,21 @@ export const useIterationMembers = (stories: BoardStory[]): UseIterationMembersR
   const sortedLoose = useMemo(() => [...stories.filter(isLooseStory)].sort(compareLoose), [stories])
 
   const getMembersFor = useCallback(
-    (themeName: string, iterationNumber: number): IterationMember[] =>
+    (iterationNumber: number): IterationMember[] =>
       stories
         .map((s) => {
           if (isIterationStory(s)) return null
           const pending = effectivePending[s.number]
-          const legacyPosition = positionInIteration(s, themeName)
-          const canonicalPosition = positionInParentIteration(s, iterationNumber)
-          const labelPosition = canonicalPosition ?? legacyPosition
+          const labelPosition = positionInParentIteration(s, iterationNumber)
           const pendingPosition =
-            pending !== undefined && pending.theme === themeName ? pending.position : null
+            pending !== undefined && pending.iterationNumber === iterationNumber
+              ? pending.position
+              : null
           if (pendingPosition !== null) {
             return { story: s, position: pendingPosition }
           }
           if (labelPosition === null) return null
-          if (
-            pending !== undefined &&
-            pending.theme !== themeName &&
-            pending.theme.toLowerCase() !== themeName.toLowerCase()
-          ) {
+          if (pending !== undefined && pending.iterationNumber !== iterationNumber) {
             return null
           }
           return { story: s, position: labelPosition }
@@ -93,12 +90,15 @@ export const useIterationMembers = (stories: BoardStory[]): UseIterationMembersR
     [stories, effectivePending]
   )
 
-  const setPending = useCallback((storyNumber: number, theme: string, position: number): void => {
-    setPendingMemberPosition((prev) => ({
-      ...prev,
-      [storyNumber]: { theme, position }
-    }))
-  }, [])
+  const setPending = useCallback(
+    (storyNumber: number, iterationNumber: number, position: number): void => {
+      setPendingMemberPosition((prev) => ({
+        ...prev,
+        [storyNumber]: { iterationNumber, position }
+      }))
+    },
+    []
+  )
 
   return { sortedIterations, sortedLoose, getMembersFor, setPending }
 }

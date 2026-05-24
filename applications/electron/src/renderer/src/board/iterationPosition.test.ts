@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  computeDropMutation,
   computeInsertPosition,
+  computeIterationOrderMutation,
+  computeMemberDropMutation,
   computeReadyDropMutation,
   DEFAULT_FIRST_POSITION
 } from './iterationPosition'
@@ -67,29 +68,27 @@ describe('computeInsertPosition — sparse-numeric position-suffix for iteration
   })
 })
 
-describe('computeDropMutation — drag-drop yields canonical add/remove label-pair', () => {
+describe('computeMemberDropMutation — canonical identity add/remove label-pair', () => {
   it('within-iteration reorder produces single-iteration add/remove pair', () => {
-    const result = computeDropMutation({
-      draggedNumber: 7411,
-      draggedThemeName: 'Cassiopeia',
+    const result = computeMemberDropMutation({
+      draggedIterationNumber: 1464,
       draggedOldPosition: 300,
-      targetThemeName: 'Cassiopeia',
+      targetIterationNumber: 1464,
       targetMemberPositions: [100, 200, 300],
       targetMemberIndex: 0,
       targetMembersIncludeDragged: true
     })
     expect(result).toEqual({
-      add: ['iteration-Cassiopeia.50'],
-      remove: ['iteration-Cassiopeia.300']
+      add: ['parent-iteration-#1464.50'],
+      remove: ['parent-iteration-#1464.300']
     })
   })
 
   it('within-iteration drop on own position returns null (no-op)', () => {
-    const result = computeDropMutation({
-      draggedNumber: 7411,
-      draggedThemeName: 'Cassiopeia',
+    const result = computeMemberDropMutation({
+      draggedIterationNumber: 1464,
       draggedOldPosition: 200,
-      targetThemeName: 'Cassiopeia',
+      targetIterationNumber: 1464,
       targetMemberPositions: [100, 200, 300],
       targetMemberIndex: 1,
       targetMembersIncludeDragged: true
@@ -97,78 +96,98 @@ describe('computeDropMutation — drag-drop yields canonical add/remove label-pa
     expect(result).toBeNull()
   })
 
-  it('cross-iteration drop retags with new iteration prefix', () => {
-    const result = computeDropMutation({
-      draggedNumber: 7411,
-      draggedThemeName: 'Cassiopeia',
+  it('cross-iteration drop retags with the target iteration identity', () => {
+    const result = computeMemberDropMutation({
+      draggedIterationNumber: 1464,
       draggedOldPosition: 200,
-      targetThemeName: 'Pegasus',
+      targetIterationNumber: 1491,
       targetMemberPositions: [100, 200],
       targetMemberIndex: 0,
       targetMembersIncludeDragged: false
     })
     expect(result).toEqual({
-      add: ['iteration-Pegasus.50'],
-      remove: ['iteration-Cassiopeia.200']
+      add: ['parent-iteration-#1491.50'],
+      remove: ['parent-iteration-#1464.200']
     })
   })
 
   it('cross-iteration drop into empty container places at default-first', () => {
-    const result = computeDropMutation({
-      draggedNumber: 7411,
-      draggedThemeName: 'Cassiopeia',
+    const result = computeMemberDropMutation({
+      draggedIterationNumber: 1464,
       draggedOldPosition: 200,
-      targetThemeName: 'Pegasus',
+      targetIterationNumber: 1491,
       targetMemberPositions: [],
       targetMemberIndex: 0,
       targetMembersIncludeDragged: false
     })
     expect(result).toEqual({
-      add: ['iteration-Pegasus.100'],
-      remove: ['iteration-Cassiopeia.200']
+      add: ['parent-iteration-#1491.100'],
+      remove: ['parent-iteration-#1464.200']
     })
   })
 
   it('within-iteration drop on last places source AT last (after stepping past last)', () => {
-    const result = computeDropMutation({
-      draggedNumber: 7411,
-      draggedThemeName: 'Cassiopeia',
+    const result = computeMemberDropMutation({
+      draggedIterationNumber: 1464,
       draggedOldPosition: 100,
-      targetThemeName: 'Cassiopeia',
+      targetIterationNumber: 1464,
       targetMemberPositions: [100, 200, 300],
       targetMemberIndex: 2,
       targetMembersIncludeDragged: true
     })
-    expect(result?.add).toEqual(['iteration-Cassiopeia.400'])
-    expect(result?.remove).toEqual(['iteration-Cassiopeia.100'])
+    expect(result?.add).toEqual(['parent-iteration-#1464.400'])
+    expect(result?.remove).toEqual(['parent-iteration-#1464.100'])
   })
 
   it('within-iteration adjacent-downward swap produces non-null mutation between target and next', () => {
-    const result = computeDropMutation({
-      draggedNumber: 7411,
-      draggedThemeName: 'Cassiopeia',
+    const result = computeMemberDropMutation({
+      draggedIterationNumber: 1464,
       draggedOldPosition: 100,
-      targetThemeName: 'Cassiopeia',
+      targetIterationNumber: 1464,
       targetMemberPositions: [100, 200, 300],
       targetMemberIndex: 1,
       targetMembersIncludeDragged: true
     })
-    expect(result?.add).toEqual(['iteration-Cassiopeia.250'])
-    expect(result?.remove).toEqual(['iteration-Cassiopeia.100'])
+    expect(result?.add).toEqual(['parent-iteration-#1464.250'])
+    expect(result?.remove).toEqual(['parent-iteration-#1464.100'])
   })
 
   it('within-iteration adjacent-upward swap places source before target', () => {
-    const result = computeDropMutation({
-      draggedNumber: 7411,
-      draggedThemeName: 'Cassiopeia',
+    const result = computeMemberDropMutation({
+      draggedIterationNumber: 1464,
       draggedOldPosition: 200,
-      targetThemeName: 'Cassiopeia',
+      targetIterationNumber: 1464,
       targetMemberPositions: [100, 200, 300],
       targetMemberIndex: 0,
       targetMembersIncludeDragged: true
     })
-    expect(result?.add).toEqual(['iteration-Cassiopeia.50'])
-    expect(result?.remove).toEqual(['iteration-Cassiopeia.200'])
+    expect(result?.add).toEqual(['parent-iteration-#1464.50'])
+    expect(result?.remove).toEqual(['parent-iteration-#1464.200'])
+  })
+})
+
+describe('computeIterationOrderMutation — iteration-order.N reorder label-pair', () => {
+  it('reorder produces an iteration-order add/remove pair', () => {
+    const result = computeIterationOrderMutation({
+      draggedOldPosition: 300,
+      targetMemberPositions: [100, 200, 300],
+      targetMemberIndex: 0,
+      targetMembersIncludeDragged: true
+    })
+    expect(result).toEqual({
+      add: ['iteration-order.50'],
+      remove: ['iteration-order.300']
+    })
+  })
+
+  it('drop on own position returns null (no-op)', () => {
+    const result = computeIterationOrderMutation({
+      draggedOldPosition: 200,
+      targetMemberPositions: [100, 200, 300],
+      targetMemberIndex: 1,
+      targetMembersIncludeDragged: true
+    })
+    expect(result).toBeNull()
   })
 })
 

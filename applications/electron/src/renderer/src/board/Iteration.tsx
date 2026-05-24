@@ -2,7 +2,7 @@ import { GripIcon } from './GripIcon'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import { useIterationCollapse } from './useIterationCollapse'
 import { useCollapsibleSectionsStorage } from '../lib/useCollapsibleSectionsStorage'
-import { computeDropMutation } from './iterationPosition'
+import { computeIterationOrderMutation } from './iterationPosition'
 import { themeNameFromTitle } from './labelSchema'
 import { ITERATION_GRIP_TEST_ID, boardIterationTestId } from './testIds'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
@@ -62,7 +62,7 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
   const renderIterationRow = (iteration: BoardStory): React.JSX.Element => {
     const key = String(iteration.number)
     const themeName = themeNameFromTitle(iteration.title)
-    const members = getMembersFor(themeName, iteration.number)
+    const members = getMembersFor(iteration.number)
     const defaultOpen = iteration.gh_state !== 'closed'
     const open = collapse.isOpen(key, defaultOpen)
     const isCurrent = iteration.number === currentIterationNumber
@@ -114,11 +114,8 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
             if (targetIdx === -1) return
             const draggedOldOrder = payload.oldOrder
             if (draggedOldOrder === null) return
-            const mutation = computeDropMutation({
-              draggedNumber: payload.iterationNumber,
-              draggedThemeName: 'order',
+            const mutation = computeIterationOrderMutation({
               draggedOldPosition: draggedOldOrder,
-              targetThemeName: 'order',
               targetMemberPositions: allOrders,
               targetMemberIndex: targetIdx,
               targetMembersIncludeDragged: true
@@ -207,11 +204,8 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
                   .map((it) => positionInIterationOrder(it))
                   .filter((p): p is number => p !== null)
                 const targetMemberIndex = direction === 'up' ? iterationIdx - 1 : iterationIdx + 1
-                const mutation = computeDropMutation({
-                  draggedNumber: iteration.number,
-                  draggedThemeName: 'order',
+                const mutation = computeIterationOrderMutation({
                   draggedOldPosition: myOrder,
-                  targetThemeName: 'order',
                   targetMemberPositions: allOrders,
                   targetMemberIndex,
                   targetMembersIncludeDragged: true
@@ -237,7 +231,6 @@ const Iteration = ({ stories, onOpen, onReorderAnnounce }: Props): React.JSX.Ele
           </summary>
           <MemberList
             iteration={iteration}
-            themeName={themeName}
             members={members}
             setPending={setPending}
             onOpen={onOpen}

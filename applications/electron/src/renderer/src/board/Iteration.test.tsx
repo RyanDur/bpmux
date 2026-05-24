@@ -52,8 +52,14 @@ describe('#1413 Iteration — renders regardless of member-count or open/closed 
 
   test('Scenario 3 (regression-anchor): open + N members surfaces with member-count', () => {
     const carina = iterationStory({ number: 9002, title: 'Iteration Carina', gh_state: 'open' })
-    const m1 = memberStory({ number: 9201, labels: ['Feature', iterationLabel('Carina', 100)] })
-    const m2 = memberStory({ number: 9202, labels: ['Feature', iterationLabel('Carina', 200)] })
+    const m1 = memberStory({
+      number: 9201,
+      iteration_membership: { iteration_number: 9002, position: 100 }
+    })
+    const m2 = memberStory({
+      number: 9202,
+      iteration_membership: { iteration_number: 9002, position: 200 }
+    })
     const html = renderToStaticMarkup(<Iteration stories={[carina, m1, m2]} onOpen={() => {}} />)
     expect(html).toContain('data-test="board-iteration-9002"')
     expect(html).toContain('Iteration Carina')
@@ -67,7 +73,10 @@ describe('#1413 Iteration — renders regardless of member-count or open/closed 
       title: 'Iteration Andromeda',
       gh_state: 'closed'
     })
-    const m1 = memberStory({ number: 9301, labels: ['Feature', iterationLabel('Andromeda', 100)] })
+    const m1 = memberStory({
+      number: 9301,
+      iteration_membership: { iteration_number: 9003, position: 100 }
+    })
     const html = renderToStaticMarkup(<Iteration stories={[andromeda, m1]} onOpen={() => {}} />)
     expect(html).toContain('data-test="board-iteration-9003"')
     expect(html).toContain('Iteration Andromeda')
@@ -102,7 +111,7 @@ describe('#1492 Iteration — reads canonical-relation iteration_membership type
     expect(html).toContain('(2)')
   })
 
-  test('Scenario 6 (regression-anchor): mixed legacy-label + canonical-typed members union + dedupe', () => {
+  test('Scenario 6 (regression-anchor): legacy-only member is dropped; only canonical-typed members count', () => {
     const caelum = iterationStory({ number: 1491, title: 'Iteration Caelum', gh_state: 'open' })
     const legacyOnly = memberStory({
       number: 9601,
@@ -122,7 +131,7 @@ describe('#1492 Iteration — reads canonical-relation iteration_membership type
     )
     expect(html).toContain('data-test="board-iteration-1491"')
     expect(html).toContain('Iteration Caelum')
-    expect(html).toContain('(3)')
+    expect(html).toContain('(2)')
   })
 
   test('Scenario 7 (drill-in-axis): canonical-typed members enumerated in member-list', () => {

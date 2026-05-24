@@ -1,14 +1,10 @@
-import {
-  parseIterationLabel,
-  parseIterationOrderPosition,
-  parseUnscheduledPosition
-} from './labelSchema'
+import { parseIterationOrderPosition, parseUnscheduledPosition } from './labelSchema'
 import { postStoryLabels } from '../api/labelsClient'
 import { storyTypeFromLabels, type BoardStory } from './types'
 
 export interface DragPayload {
   storyNumber: number
-  themeName: string
+  iterationNumber: number
   oldPosition: number
 }
 
@@ -18,7 +14,7 @@ export interface IterationDragPayload {
 }
 
 export interface PendingMemberPosition {
-  theme: string
+  iterationNumber: number
   position: number
 }
 
@@ -32,14 +28,6 @@ export const positionInIterationOrder = (story: BoardStory): number | null => {
 
 export const isIterationStory = (story: BoardStory): boolean =>
   storyTypeFromLabels(story.labels) === 'iteration'
-
-export const positionInIteration = (story: BoardStory, themeName: string): number | null => {
-  for (const label of story.labels) {
-    const parsed = parseIterationLabel(label)
-    if (parsed?.name === themeName) return parsed.position
-  }
-  return null
-}
 
 export const positionInParentIteration = (
   story: BoardStory,
@@ -63,11 +51,7 @@ export const positionInUnscheduled = (story: BoardStory): number | null => {
 export const isLooseStory = (story: BoardStory): boolean => {
   if (isIterationStory(story)) return false
   if (story.state !== 'icebox') return false
-  const hasNamedIterationLabel = story.labels.some((l) => {
-    const parsed = parseIterationLabel(l)
-    return parsed !== null && parsed.name !== 'Unscheduled'
-  })
-  return !hasNamedIterationLabel
+  return story.iteration_membership === undefined || story.iteration_membership === null
 }
 
 export const eagerReorder = <T>(

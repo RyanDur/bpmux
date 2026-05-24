@@ -29,21 +29,21 @@ describe('#1339 Sc1 user-axis — drop on displaced source row still posts label
         title: 'displaced-alpha',
         story_type: 'feature',
         initial_state: 'icebox',
-        labels: ['iteration-DisplacedDropTheme.100']
+        labels: ['parent-iteration-#9501.100']
       },
       {
         number: 9512,
         title: 'displaced-bravo',
         story_type: 'feature',
         initial_state: 'icebox',
-        labels: ['iteration-DisplacedDropTheme.200']
+        labels: ['parent-iteration-#9501.200']
       },
       {
         number: 9513,
         title: 'displaced-charlie',
         story_type: 'feature',
         initial_state: 'icebox',
-        labels: ['iteration-DisplacedDropTheme.300']
+        labels: ['parent-iteration-#9501.300']
       }
     ])
 
@@ -83,11 +83,13 @@ describe('#1339 Sc1 user-axis — drop on displaced source row still posts label
           headers: { Authorization: `Bearer ${authToken}` }
         })
         const boardBody = (await boardRes.json()) as {
-          stories: { number: number; labels: string[] }[]
+          stories: {
+            number: number
+            iteration_membership: { iteration_number: number; position: number } | null
+          }[]
         }
         const moved = boardBody.stories.find((s) => s.number === 9513)
-        expect(moved?.labels).toContain('iteration-DisplacedDropTheme.50')
-        expect(moved?.labels).not.toContain('iteration-DisplacedDropTheme.300')
+        expect(moved?.iteration_membership).toEqual({ iteration_number: 9501, position: 50 })
       },
       { timeout: 10_000, interval: 200 }
     )

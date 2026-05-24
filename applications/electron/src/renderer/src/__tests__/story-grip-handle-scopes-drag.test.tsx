@@ -30,7 +30,7 @@ describe('#1339 Scenario 4 — grip-handle is the sole drag-initiator', () => {
         title: 'draggable member',
         story_type: 'feature',
         initial_state: 'icebox',
-        labels: ['iteration-GripTest.100']
+        labels: ['parent-iteration-#8801.100']
       }
     ])
 
@@ -82,7 +82,7 @@ describe('#1339 Scenario 4 — grip-handle is the sole drag-initiator', () => {
         title: 'member of closed iteration',
         story_type: 'feature',
         initial_state: 'icebox',
-        labels: ['iteration-ClosedGripTest.100']
+        labels: ['parent-iteration-#8802.100']
       }
     ])
 

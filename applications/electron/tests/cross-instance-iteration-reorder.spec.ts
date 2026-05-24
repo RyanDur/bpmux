@@ -24,21 +24,21 @@ test.describe('#1339 Scenario 1 — two bpmux instances see the same iteration o
               title: 'reticulum-alpha',
               story_type: 'feature',
               initial_state: 'icebox',
-              labels: ['iteration-Reticulum.100']
+              labels: ['parent-iteration-#9301.100']
             },
             {
               number: 9312,
               title: 'reticulum-bravo',
               story_type: 'feature',
               initial_state: 'icebox',
-              labels: ['iteration-Reticulum.200']
+              labels: ['parent-iteration-#9301.200']
             },
             {
               number: 9313,
               title: 'reticulum-charlie',
               story_type: 'feature',
               initial_state: 'icebox',
-              labels: ['iteration-Reticulum.300']
+              labels: ['parent-iteration-#9301.300']
             }
           ]
         })
@@ -84,8 +84,8 @@ test.describe('#1339 Scenario 1 — two bpmux instances see the same iteration o
           Authorization: `Bearer ${authToken}`
         },
         body: JSON.stringify({
-          add: ['iteration-Reticulum.50'],
-          remove: ['iteration-Reticulum.300']
+          add: ['parent-iteration-#9301.50'],
+          remove: ['parent-iteration-#9301.300']
         })
       })
       expect(mutateRes.ok).toBe(true)
