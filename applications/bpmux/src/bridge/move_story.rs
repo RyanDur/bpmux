@@ -141,6 +141,16 @@ pub(in crate::bridge) async fn handle_move_story(
         "rationale is required (#1188 falsifier-b — every move must surface an audit-trail reason)",
     )?;
 
+    let actor_role = crate::transport::ws::short_name(agent_name);
+    let workflow = crate::workflow::current_workflow();
+    let transition = crate::workflow::resolve_transition(
+        workflow,
+        "move-with-position",
+        crate::workflow::GateClass::None,
+    )
+    .map_err(|e| e.as_json_string())?;
+    crate::workflow::check_role_allowed(transition, actor_role).map_err(|e| e.as_json_string())?;
+
     if position.is_some() {
         let allows_position = matches!(
             target,
@@ -152,16 +162,6 @@ pub(in crate::bridge) async fn handle_move_story(
                 target.as_display()
             ));
         }
-        let actor_role = crate::transport::ws::short_name(agent_name);
-        let workflow = crate::workflow::current_workflow();
-        let transition = crate::workflow::resolve_transition(
-            workflow,
-            "move-with-position",
-            crate::workflow::GateClass::None,
-        )
-        .map_err(|e| e.as_json_string())?;
-        crate::workflow::check_role_allowed(transition, actor_role)
-            .map_err(|e| e.as_json_string())?;
     }
 
     let r = refresh

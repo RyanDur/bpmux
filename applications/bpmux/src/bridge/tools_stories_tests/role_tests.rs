@@ -226,6 +226,74 @@ fn reorder_args(
     args
 }
 
+fn move_args(
+    number: u64,
+    target_state: &str,
+    position: Option<u64>,
+) -> serde_json::Map<String, serde_json::Value> {
+    let mut args = serde_json::Map::new();
+    args.insert("number".into(), serde_json::json!(number));
+    args.insert("target_state".into(), serde_json::json!(target_state));
+    args.insert(
+        "rationale".into(),
+        serde_json::json!("test: move role-gate"),
+    );
+    if let Some(p) = position {
+        args.insert("position".into(), serde_json::json!(p));
+    }
+    args
+}
+
+#[tokio::test]
+async fn move_story_bare_column_move_is_pm_only_1548() {
+    let ws_tx = tokio::sync::Mutex::new(None);
+    for caller in ["dev:claude-code", "designer:claude-code"] {
+        let args = move_args(42, "ready", None);
+        let err = crate::bridge::move_story::handle_move_story(&args, caller, &ws_tx, None)
+            .await
+            .expect_err(&format!("{caller}: bare column-move must be role-rejected"));
+        assert!(
+            err.contains("\"kind\":\"workflow-role-not-allowed\""),
+            "{caller}: bare column-move must 409 workflow-role-not-allowed; got {err}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn move_story_positioned_move_is_pm_only_1548() {
+    let ws_tx = tokio::sync::Mutex::new(None);
+    for caller in ["dev:claude-code", "designer:claude-code"] {
+        let args = move_args(42, "ready", Some(1));
+        let err = crate::bridge::move_story::handle_move_story(&args, caller, &ws_tx, None)
+            .await
+            .expect_err(&format!("{caller}: positioned move must be role-rejected"));
+        assert!(
+            err.contains("\"kind\":\"workflow-role-not-allowed\""),
+            "{caller}: positioned move must 409 workflow-role-not-allowed; got {err}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn move_story_pm_passes_role_gate_on_both_paths_1548() {
+    let ws_tx = tokio::sync::Mutex::new(None);
+    for position in [None, Some(1)] {
+        let args = move_args(42, "ready", position);
+        let err =
+            crate::bridge::move_story::handle_move_story(&args, "pm:claude-code", &ws_tx, None)
+                .await
+                .expect_err("pm passes the role-gate then hits refresh-absent");
+        assert!(
+            !err.contains("workflow-role-not-allowed"),
+            "pm must NOT be role-rejected (position={position:?}); got {err}"
+        );
+        assert!(
+            err.contains("requires refresh"),
+            "pm passes role-gate → reaches refresh-required (position={position:?}); got {err}"
+        );
+    }
+}
+
 #[tokio::test]
 async fn reorder_story_returns_tool_retired_regardless_of_role_1403() {
     let ws_tx = tokio::sync::Mutex::new(None);

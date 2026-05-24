@@ -279,13 +279,8 @@ fn move_story_recovers_closed_story_back_to_ready_per_falsifier_c() {
     });
 }
 
-/// Falsifier-a positive case: any-role can move COLUMNS without
-/// position. Ryan 2026-05-05 01:54 UTC: "we need a tool that allows
-/// an agent to put a story wherever it needs to be." dev-without-
-/// position must succeed for a column move; the existing dev-with-
-/// position rejection only covers the negative side.
 #[test]
-fn move_story_dev_caller_column_only_succeeds_per_falsifier_a() {
+fn move_story_dev_bare_column_move_is_pm_rejected_1548() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
@@ -296,28 +291,27 @@ fn move_story_dev_caller_column_only_succeeds_per_falsifier_a() {
         let target_number = create_target_story(
             &pm,
             "[Feature] move-story-dev-column-only-target",
-            "reject if dev can't move column WITHOUT specifying position",
+            "reject if dev bare column-move is not PM-gated (#1548 supersedes Ryan-01:54 agent-class column-move with the Ryan-2026-05-24 role-reset: the board is the PM's lane)",
         )
         .await;
 
-        let result = dev
+        let err = dev
             .call_tool(
                 "move_story",
                 serde_json::json!({
                     "number": target_number,
                     "target_state": "icebox",
-                    "rationale": "dev moves column without position — agent-class column-move per Ryan 01:54"
+                    "rationale": "dev bare column-move must be role-rejected per #1548 PM-only-on-all-paths"
                 }),
             )
             .await
-            .expect(
-                "dev-without-position must succeed — column-move is agent-class per Ryan 01:54 + scope-question 1 reconciliation",
+            .expect_err(
+                "dev bare column-move must 409 — move_story is PM-only on ALL paths (#1548, Ryan 2026-05-24 role-reset)",
             );
 
-        let msg = result.as_str().unwrap_or("").to_string();
         assert!(
-            msg.contains(&format!("#{target_number}")) && msg.contains("icebox"),
-            "column-move-success message names target + destination; got {msg}"
+            err.contains("\"kind\":\"workflow-role-not-allowed\"") && err.contains("\"actor_role\":\"dev\""),
+            "dev bare column-move rejection cites workflow-role-not-allowed for actor dev; got {err}"
         );
 
         pm.close().await;
