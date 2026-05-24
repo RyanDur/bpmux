@@ -122,7 +122,7 @@ pub fn build_advertised_tools() -> Vec<rmcp::model::Tool> {
             "View team velocity metrics (#209a) computed from workflow-signal timestamps over a rolling 14-day window. Returns JSON with delivered count, delivered-per-day, median pickup→deliver hours, median deliver→accept hours, rework rate, and a `sparse` flag when under-3-deliveries makes the medians indicative only. Objective data — no self-report. Also opens the velocity view in Ryan's TUI (project panel) so he can see it alongside your response — call this when he asks about velocity, not proactively.",
         ),
         crate::mcp::tools::create_story_tool(
-            "Create a new story (GitHub issue). PM ONLY — dev/designer/ryan/other roles are rejected with a message redirecting to broadcast: surface the pain in chat and pm files the story. Story starts unlabeled in the icebox.",
+            "Create a new story (GitHub issue). PM-lane — PM creates any type; dev may author [Chore]-class stories only (chore-ownership canon); designer/ryan/other roles are rejected with a message redirecting to broadcast: surface the pain in chat and pm files the story. Story starts unlabeled in the icebox.",
         ),
         crate::mcp::tools::create_iteration_tool(
             "Create a new iteration-issue (#1297, Epic #1189 architectural-pivot slice 1). PM ONLY. theme_name surfaces as the GH issue title 'Iteration {theme_name}' and the issue carries the 'iteration' label so it decodes as story_type=Iteration. Sister to the Epic story_type — iteration-issues are the canonical substrate for iteration entities, replacing local markers-store. Rejects with named-collision error if an OPEN iteration with the same theme_name already exists (sister-discipline to #1281).",
