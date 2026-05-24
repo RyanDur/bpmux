@@ -20,9 +20,9 @@ pub use capture::{ElectronCaptureQuery, get_electron_capture, get_screen};
 pub use ci::{get_ci, get_ci_jobs, get_ci_log, post_ci_rerun};
 pub use classifier::{ClassifierMisfire, post_classifier_misfire};
 pub use iteration_close::{CloseIterationRequest, post_close_iteration};
-#[allow(unused_imports)]
+#[cfg(test)]
 pub(crate) use iteration_close::{
-    IterationCloseBlocker, collect_ready_queue_blockers, promote_members_then_close_iteration,
+    collect_ready_queue_blockers, promote_members_then_close_iteration,
 };
 pub use lessons::{
     LessonsQuery, PeerLessonsQuery, SaveLessonPayload, get_lessons, get_peer_lessons, post_lesson,
@@ -31,11 +31,11 @@ pub use messages::{
     DEFAULT_MESSAGE_LIMIT, GetMessagesParams, PostMessage, get_messages, post_message,
 };
 pub use metrics::get_metrics;
-#[allow(unused_imports)]
-pub(crate) use reactions::{
-    EXCERPT_MAX_LEN, build_reaction_event_text_with_excerpt, find_message_excerpt, truncate_excerpt,
-};
 pub use reactions::{ReactionToggle, ReactionsChannelQuery, get_reactions, post_reaction};
+#[cfg(test)]
+pub(crate) use reactions::{
+    build_reaction_event_text_with_excerpt, find_message_excerpt, truncate_excerpt,
+};
 pub use roster::{
     RosterEntry, get_roster, get_sync_status, post_acknowledge_dropped, post_force_sync,
 };

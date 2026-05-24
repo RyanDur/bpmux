@@ -56,6 +56,9 @@ tower = { version = "0.5", features = ["util"] }
 http-body-util = "0.1"
 httpmock = "0.8"
 
+[lints.rust]
+dead_code = "deny"
+
 [lints.clippy]
 unwrap_used = "deny"
 expect_used = "deny"
