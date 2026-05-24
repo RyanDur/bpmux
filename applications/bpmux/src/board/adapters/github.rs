@@ -527,31 +527,17 @@ pub fn decode_story_metadata(v: &serde_json::Value) -> Option<Story> {
 pub fn parent_epic_from_labels(labels: &[String]) -> Option<u64> {
     labels
         .iter()
-        .find_map(|l| l.strip_prefix("parent-epic-#").and_then(|n| n.parse().ok()))
+        .find_map(|l| crate::board::adapters::gh_label_codec::GhLabelCodec.decode_parent_epic(l))
 }
 
 pub fn iteration_membership_from_labels(labels: &[String]) -> Option<(u64, u32)> {
     labels.iter().find_map(|l| {
-        let rest = l.strip_prefix("parent-iteration-#")?;
-        let (n_str, p_str) = rest.split_once('.')?;
-        let iteration_number: u64 = n_str.parse().ok()?;
-        let position: u32 = p_str.parse().ok()?;
-        Some((iteration_number, position))
+        crate::board::adapters::gh_label_codec::GhLabelCodec.decode_parent_iteration(l)
     })
 }
 
 fn is_iteration_position_label(label: &str) -> bool {
-    let Some(rest) = label.strip_prefix("iteration-") else {
-        return false;
-    };
-    if rest.starts_with("order.") {
-        return false;
-    }
-    let Some(dot_idx) = rest.rfind('.') else {
-        return false;
-    };
-    rest.get(dot_idx + 1..)
-        .is_some_and(|tail| !tail.is_empty() && tail.chars().all(|c| c.is_ascii_digit()))
+    crate::board::adapters::gh_label_codec::GhLabelCodec.is_iteration_position_label(label)
 }
 
 fn is_position_label(label: &str) -> bool {
