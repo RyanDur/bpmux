@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { describeHttpError, http } from '../api/http'
 import './Metrics.css'
 
@@ -54,7 +54,6 @@ const Metrics = ({ apiBase, authToken, onClose, open }: Props): React.JSX.Elemen
   const [data, setData] = useState<VelocityPayload | null>(null)
   const [fetchError, setFetchError] = useState<string | null>(null)
   const error = open && !apiBase ? 'backend not reachable' : fetchError
-  const dialogRef = useRef<HTMLDialogElement | null>(null)
 
   useEffect(() => {
     if (!open || !apiBase) return
@@ -72,19 +71,9 @@ const Metrics = ({ apiBase, authToken, onClose, open }: Props): React.JSX.Elemen
     return () => controller.abort()
   }, [open, apiBase, authToken])
 
-  useEffect(() => {
-    const dialog = dialogRef.current
-    if (!dialog) return
-    if (open && !dialog.open) {
-      dialog.show()
-    } else if (!open && dialog.open) {
-      dialog.close()
-    }
-  }, [open])
-
   return (
     <dialog
-      ref={dialogRef}
+      open={open}
       className="metrics"
       aria-label="Metrics"
       data-test="metrics-overlay"
