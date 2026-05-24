@@ -111,12 +111,6 @@ export default defineConfig(
     ],
     rules: { 'no-restricted-syntax': ['error', ...NO_DIV_SPAN] }
   },
-  // CONDITIONAL until:#1539 — sync-status polling is a cross-cutting resource;
-  // extract to a sync-status service (useSyncExternalStore) removes the ref.
-  {
-    files: ['src/renderer/src/sync/SyncStatusGlyph.tsx'], // fetchOnceRef — latest-callback decoupler for the poll-loop; the service owns the loop
-    rules: { 'no-restricted-syntax': ['error', ...NO_DIV_SPAN] }
-  },
   {
     files: ['**/*.test.{ts,tsx}', '**/__tests__/**/*.{ts,tsx}', 'tests/**/*.{ts,tsx}'],
     plugins: {

@@ -1,28 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useSyncExternalStore } from 'react'
 import './SyncStatusGlyph.css'
-
-interface DroppedEvent {
-  story_number: number
-  error: string
-  ts: string
-}
-
-interface SyncStatusReport {
-  last_ingest_at: string | null
-  last_push_at: string | null
-  pending_events: number
-  last_error: string | null
-  dropped_events: DroppedEvent[]
-  recovering_from_corruption: boolean
-  stale: boolean
-  startup_fail: boolean
-}
-
-type FetchOk<T> = { ok: true; data: T }
-type FetchErr = { ok: false; error: string }
-type FetchResult<T> = FetchOk<T> | FetchErr
-
-const POLL_MS = 5_000
+import {
+  acknowledge,
+  ensureSyncStatusStarted,
+  forceSync,
+  getSyncStatusSnapshot,
+  refreshSyncStatusNow,
+  subscribeSyncStatus,
+  type SyncStatusReport
+} from './syncStatusService'
 
 type SyncState =
   | 'connected'
@@ -124,43 +110,6 @@ const buildTooltip = (state: SyncState, report: SyncStatusReport | null): string
   return lines.join('\n')
 }
 
-const fetchSyncStatus = async (
-  apiBase: string,
-  authToken: string,
-  signal?: AbortSignal
-): Promise<FetchResult<SyncStatusReport>> => {
-  const res = await fetch(`${apiBase}/api/sync-status`, {
-    headers: { Authorization: `Bearer ${authToken}` },
-    signal
-  })
-  if (!res.ok) return { ok: false, error: `HTTP ${res.status}` }
-  const data = (await res.json()) as SyncStatusReport
-  return { ok: true, data }
-}
-
-const postForceSync = async (apiBase: string, authToken: string): Promise<FetchResult<null>> => {
-  const res = await fetch(`${apiBase}/api/sync-status/force-sync`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${authToken}` }
-  })
-  if (!res.ok) return { ok: false, error: `HTTP ${res.status}` }
-  return { ok: true, data: null }
-}
-
-const postAcknowledge = async (apiBase: string, authToken: string): Promise<FetchResult<null>> => {
-  const res = await fetch(`${apiBase}/api/sync-status/acknowledge`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${authToken}` }
-  })
-  if (!res.ok) return { ok: false, error: `HTTP ${res.status}` }
-  return { ok: true, data: null }
-}
-
-const networkErrorToResult = (err: unknown): FetchErr => ({
-  ok: false,
-  error: (err as Error)?.name === 'AbortError' ? '' : String(err)
-})
-
 interface Props {
   apiBase?: string
   authToken?: string
@@ -168,47 +117,22 @@ interface Props {
 }
 
 const SyncStatusGlyph = ({ apiBase, authToken, syncStatusTick }: Props): React.JSX.Element => {
-  const [report, setReport] = useState<SyncStatusReport | null>(null)
-  const [fetchError, setFetchError] = useState<string | null>(null)
-  const error = apiBase ? fetchError : 'no backend'
-  const setError = setFetchError
-  const fetchOnceRef = useRef<() => Promise<void>>(async () => {})
-
-  const fetchOnce = useCallback(
-    async (signal?: AbortSignal): Promise<void> => {
-      if (!apiBase) return
-      const result = await fetchSyncStatus(apiBase, authToken ?? '', signal).catch(
-        networkErrorToResult
-      )
-      if (result.ok) {
-        setReport(result.data)
-        setError(null)
-      } else if (result.error.length > 0) {
-        setError(result.error)
-      }
-    },
-    [apiBase, authToken]
-  )
-
   useEffect(() => {
-    if (!apiBase) return
-    const controller = new AbortController()
-    const onceWithSignal = (): Promise<void> => fetchOnce(controller.signal)
-    fetchOnceRef.current = onceWithSignal
-    void onceWithSignal()
-    const id = setInterval(() => {
-      void onceWithSignal()
-    }, POLL_MS)
-    return () => {
-      controller.abort()
-      clearInterval(id)
-    }
-  }, [apiBase, fetchOnce])
+    ensureSyncStatusStarted({ apiBase, authToken })
+  }, [apiBase, authToken])
 
   useEffect(() => {
     if (!syncStatusTick) return
-    void fetchOnceRef.current()
+    refreshSyncStatusNow()
   }, [syncStatusTick])
+
+  const snapshot = useSyncExternalStore(
+    subscribeSyncStatus,
+    getSyncStatusSnapshot,
+    getSyncStatusSnapshot
+  )
+  const report = snapshot.report
+  const error = apiBase ? snapshot.error : 'no backend'
 
   const state = deriveState(report)
   const count =
@@ -216,25 +140,19 @@ const SyncStatusGlyph = ({ apiBase, authToken, syncStatusTick }: Props): React.J
       ? (report?.dropped_events.length ?? 0)
       : (report?.pending_events ?? 0)
 
-  const handleClick = useCallback(async () => {
+  const handleClick = (): void => {
     if (!apiBase) return
-    const token = authToken ?? ''
-    let result: FetchResult<null> | null = null
     if (state === 'drained-permanent-failure') {
-      result = await postAcknowledge(apiBase, token).catch(networkErrorToResult)
+      void acknowledge()
     } else if (
       state === 'offline-queued' ||
       state === 'syncing' ||
       state === 'stale' ||
       state === 'startup-fail'
     ) {
-      result = await postForceSync(apiBase, token).catch(networkErrorToResult)
+      void forceSync()
     }
-    if (result && !result.ok && result.error.length > 0) {
-      setError(result.error)
-    }
-    await fetchOnce()
-  }, [apiBase, authToken, fetchOnce, state])
+  }
 
   const glyph = stateGlyph(state)
   const ariaLabel = stateAriaLabel(state, count)

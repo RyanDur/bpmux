@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import SyncStatusGlyph from './SyncStatusGlyph'
+import { __resetSyncStatusForTest } from './syncStatusService'
 
 const fetchSpy = vi.fn()
 
@@ -22,10 +23,12 @@ beforeEach(() => {
   fetchSpy.mockReset()
   fetchSpy.mockResolvedValue({ ok: true, json: async () => report } as unknown as Response)
   vi.stubGlobal('fetch', fetchSpy)
+  __resetSyncStatusForTest()
 })
 
 afterEach(() => {
   cleanup()
+  __resetSyncStatusForTest()
   vi.unstubAllGlobals()
   vi.clearAllMocks()
 })

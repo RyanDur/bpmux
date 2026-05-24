@@ -3,6 +3,7 @@ import { inject } from 'vitest'
 
 import App from '@renderer/App'
 import { __resetWsForTest } from '@renderer/transport/wsService'
+import { __resetSyncStatusForTest } from '@renderer/sync/syncStatusService'
 
 import { installBpmuxShim, uninstallBpmuxShim } from './bpmuxShim'
 
@@ -27,6 +28,7 @@ export const renderApp = (opts: RenderAppOptions = {}): RenderAppResult => {
   const wsUrl = opts.wsUrl ?? `ws://127.0.0.1:${port}/ws`
 
   __resetWsForTest()
+  __resetSyncStatusForTest()
   installBpmuxShim({ wsUrl, authToken, apiBase })
   const result = render(<App />)
   return {
@@ -37,6 +39,7 @@ export const renderApp = (opts: RenderAppOptions = {}): RenderAppResult => {
     cleanup: () => {
       result.unmount()
       __resetWsForTest()
+      __resetSyncStatusForTest()
       uninstallBpmuxShim()
     }
   }
