@@ -1,29 +1,30 @@
 use std::collections::VecDeque;
-use std::future::Future;
 use std::path::PathBuf;
-use std::pin::Pin;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::atomic::AtomicU64;
 
 use chrono::Utc;
-use serde::{Deserialize, Serialize};
 
 use super::domain::{FreeComment, GateComment, Story};
-use super::events::{BoardEvent, EventMeta};
-use super::peer::PeerId;
+use super::events::BoardEvent;
 use super::store::{BoardStore, PersistError};
 use super::sync::{ConditionalBody, SourceAdapter, SyncError};
 
 mod coalesce;
 mod conflict;
 mod drain;
+mod driver;
 mod outbox;
+mod race_window;
 mod status;
+mod types;
 
 use coalesce::{coalesce_iteration_label_events, stale_state_labels_for};
 pub use conflict::{ConflictKind, ConflictResolveOrigin, classify_conflict};
+pub use driver::*;
 pub use outbox::{default_outbox_path, load_outbox_from_disk};
+pub use race_window::*;
 pub use status::{
     DroppedEvent, SyncStatus, acknowledge_dropped, is_stale, is_startup_fail,
     mark_recovering_from_corruption, staleness_threshold_secs,
@@ -32,170 +33,7 @@ use status::{
     decrement_pending, record_conflicts_pending, record_dropped, record_error,
     record_ingest_success, record_push_success, set_pending_events,
 };
-
-#[derive(
-    Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize,
-)]
-pub struct MutationId(pub u64);
-
-impl std::fmt::Display for MutationId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-pub type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
-
-#[derive(Debug)]
-pub enum DrainOneOutcome {
-    Confirmed,
-    RolledBack { server_story: Option<Box<Story>> },
-    TransientError(SyncError),
-    NotFound,
-}
-
-pub trait RefreshDriver: Send + Sync {
-    fn refresh_story(&self, number: u64) -> BoxedFuture<'_, Result<Option<Story>, SyncError>>;
-    fn refresh_all(&self) -> BoxedFuture<'_, Result<(), SyncError>>;
-    fn refresh_all_since(
-        &self,
-        _since: Option<chrono::DateTime<chrono::Utc>>,
-    ) -> BoxedFuture<'_, Result<(), SyncError>> {
-        self.refresh_all()
-    }
-    fn mutate_sync(&self, event: BoardEvent) -> Result<(), SyncError>;
-    fn drain_one_by_id(&self, id: MutationId) -> BoxedFuture<'_, DrainOneOutcome>;
-    fn apply_server_rollback(&self, story: Story) -> BoxedFuture<'_, ()>;
-    fn snapshot_pending_for_mutation(&self, id: MutationId) -> Option<u64>;
-    fn issue_lock(&self, issue: u64) -> BoxedFuture<'_, Arc<tokio::sync::Mutex<()>>>;
-    fn snapshot_status(&self) -> SyncStatus;
-    fn acknowledge_dropped(&self) -> usize;
-    fn mark_recovering_from_corruption(&self);
-    fn drain_pending(&self) -> BoxedFuture<'_, Result<usize, SyncError>>;
-    fn reconcile_dual_state_labels(&self) -> BoxedFuture<'_, Result<usize, SyncError>>;
-    fn fetch_body(&self, number: u64) -> BoxedFuture<'_, Result<String, SyncError>>;
-    fn fetch_body_conditional(
-        &self,
-        number: u64,
-        _prior_etag: Option<String>,
-    ) -> BoxedFuture<'_, Result<ConditionalBody, SyncError>> {
-        Box::pin(async move {
-            self.fetch_body(number)
-                .await
-                .map(|body| ConditionalBody::Modified { body, etag: None })
-        })
-    }
-    fn fetch_free_comments(
-        &self,
-        number: u64,
-    ) -> BoxedFuture<'_, Result<Vec<FreeComment>, SyncError>>;
-    fn fetch_gate_comments(
-        &self,
-        number: u64,
-    ) -> BoxedFuture<'_, Result<Vec<GateComment>, SyncError>>;
-    fn create_story(&self, title: String, body: String) -> BoxedFuture<'_, Result<u64, SyncError>>;
-    fn story(&self, number: u64) -> Option<Story>;
-    fn all_stories(&self) -> Vec<Story>;
-    fn store(&self) -> Arc<BoardStore>;
-    fn update_body(&self, number: u64, body: String) -> BoxedFuture<'_, Result<(), SyncError>>;
-
-    fn update_title(&self, number: u64, title: String) -> BoxedFuture<'_, Result<(), SyncError>>;
-
-    fn ci_state(&self) -> Option<crate::workflow::CiSnapshot> {
-        None
-    }
-
-    fn test_race_window_rendezvous(&self) -> BoxedFuture<'_, ()> {
-        Box::pin(async {})
-    }
-
-    fn test_race_window_complete(&self) {}
-}
-
-pub struct RaceWindowBarrier {
-    target: usize,
-    arrival_barrier: tokio::sync::Barrier,
-    leader_done_tx: tokio::sync::watch::Sender<bool>,
-    leader_done_rx: tokio::sync::watch::Receiver<bool>,
-}
-
-impl RaceWindowBarrier {
-    pub fn new(target: usize) -> Self {
-        let (tx, rx) = tokio::sync::watch::channel(false);
-        Self {
-            target,
-            arrival_barrier: tokio::sync::Barrier::new(target.max(1)),
-            leader_done_tx: tx,
-            leader_done_rx: rx,
-        }
-    }
-
-    pub async fn arrive(&self) {
-        if self.target == 0 {
-            return;
-        }
-        let is_leader = self.arrival_barrier.wait().await.is_leader();
-        if is_leader {
-            return;
-        }
-        let mut rx = self.leader_done_rx.clone();
-        loop {
-            if *rx.borrow_and_update() {
-                return;
-            }
-            if rx.changed().await.is_err() {
-                return;
-            }
-        }
-    }
-
-    pub fn complete(&self) {
-        if self.target == 0 {
-            return;
-        }
-        let _ = self.leader_done_tx.send(true);
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct QueuedEvent {
-    #[serde(default)]
-    pub id: MutationId,
-    pub event: BoardEvent,
-    #[serde(default)]
-    pub pre_state: Option<Story>,
-    #[serde(default)]
-    pub last_classification: Option<ConflictKind>,
-}
-
-impl QueuedEvent {
-    pub fn new(event: BoardEvent, pre_state: Option<Story>) -> Self {
-        Self {
-            id: MutationId::default(),
-            event,
-            pre_state,
-            last_classification: None,
-        }
-    }
-
-    pub fn new_with_id(id: MutationId, event: BoardEvent, pre_state: Option<Story>) -> Self {
-        Self {
-            id,
-            event,
-            pre_state,
-            last_classification: None,
-        }
-    }
-
-    pub fn from_legacy(event: BoardEvent) -> Self {
-        Self {
-            id: MutationId::default(),
-            event,
-            pre_state: None,
-            last_classification: None,
-        }
-    }
-}
+pub use types::*;
 
 pub struct SyncOrchestrator<A: SourceAdapter + 'static> {
     pub(super) store: Arc<BoardStore>,
@@ -577,168 +415,6 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             self.drain_once().await?;
         }
         Ok(repairs)
-    }
-}
-
-impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
-    fn refresh_story(&self, number: u64) -> BoxedFuture<'_, Result<Option<Story>, SyncError>> {
-        Box::pin(self.refresh_story(number))
-    }
-
-    fn refresh_all(&self) -> BoxedFuture<'_, Result<(), SyncError>> {
-        Box::pin(self.refresh_all())
-    }
-
-    fn refresh_all_since(
-        &self,
-        since: Option<chrono::DateTime<chrono::Utc>>,
-    ) -> BoxedFuture<'_, Result<(), SyncError>> {
-        Box::pin(self.ingest_once_since(since))
-    }
-
-    fn mutate_sync(&self, event: BoardEvent) -> Result<(), SyncError> {
-        self.mutate(event)
-    }
-
-    fn drain_one_by_id(&self, id: MutationId) -> BoxedFuture<'_, DrainOneOutcome> {
-        Box::pin(self.drain_one_by_id(id))
-    }
-
-    fn apply_server_rollback(&self, story: Story) -> BoxedFuture<'_, ()> {
-        let store = Arc::clone(&self.store);
-        Box::pin(async move {
-            store.seed_all(vec![story]);
-        })
-    }
-
-    fn snapshot_pending_for_mutation(&self, id: MutationId) -> Option<u64> {
-        self.pending_issue_for_mutation(id)
-    }
-
-    fn issue_lock(&self, issue: u64) -> BoxedFuture<'_, Arc<tokio::sync::Mutex<()>>> {
-        Box::pin(self.issue_lock(issue))
-    }
-
-    fn snapshot_status(&self) -> SyncStatus {
-        self.snapshot_status()
-    }
-
-    fn acknowledge_dropped(&self) -> usize {
-        acknowledge_dropped(&self.status)
-    }
-
-    fn mark_recovering_from_corruption(&self) {
-        mark_recovering_from_corruption(&self.status);
-    }
-
-    fn drain_pending(&self) -> BoxedFuture<'_, Result<usize, SyncError>> {
-        Box::pin(self.drain_once())
-    }
-
-    fn reconcile_dual_state_labels(&self) -> BoxedFuture<'_, Result<usize, SyncError>> {
-        Box::pin(self.reconcile_dual_state_labels())
-    }
-
-    fn fetch_body(&self, number: u64) -> BoxedFuture<'_, Result<String, SyncError>> {
-        Box::pin(self.fetch_body(number))
-    }
-
-    fn fetch_body_conditional(
-        &self,
-        number: u64,
-        prior_etag: Option<String>,
-    ) -> BoxedFuture<'_, Result<ConditionalBody, SyncError>> {
-        Box::pin(self.fetch_body_conditional(number, prior_etag))
-    }
-
-    fn fetch_free_comments(
-        &self,
-        number: u64,
-    ) -> BoxedFuture<'_, Result<Vec<FreeComment>, SyncError>> {
-        Box::pin(self.fetch_free_comments(number))
-    }
-
-    fn fetch_gate_comments(
-        &self,
-        number: u64,
-    ) -> BoxedFuture<'_, Result<Vec<GateComment>, SyncError>> {
-        Box::pin(self.fetch_gate_comments(number))
-    }
-
-    fn create_story(&self, title: String, body: String) -> BoxedFuture<'_, Result<u64, SyncError>> {
-        Box::pin(async move { self.create_story(&title, &body).await })
-    }
-
-    fn story(&self, number: u64) -> Option<Story> {
-        self.store.story(number)
-    }
-
-    fn all_stories(&self) -> Vec<Story> {
-        self.store.all_stories()
-    }
-
-    fn store(&self) -> Arc<BoardStore> {
-        Arc::clone(&self.store)
-    }
-
-    fn update_body(&self, number: u64, body: String) -> BoxedFuture<'_, Result<(), SyncError>> {
-        let adapter = Arc::clone(&self.adapter);
-        let store = Arc::clone(&self.store);
-        Box::pin(async move {
-            let story = adapter.update_body(number, &body).await?;
-            store.apply(&BoardEvent::StoryRefreshed {
-                meta: cache_fill_meta(),
-                number,
-                story: Box::new(story),
-            });
-            Ok(())
-        })
-    }
-
-    fn update_title(&self, number: u64, title: String) -> BoxedFuture<'_, Result<(), SyncError>> {
-        let adapter = Arc::clone(&self.adapter);
-        let store = Arc::clone(&self.store);
-        Box::pin(async move {
-            let story = adapter.update_title(number, &title).await?;
-            store.apply(&BoardEvent::StoryRefreshed {
-                meta: cache_fill_meta(),
-                number,
-                story: Box::new(story),
-            });
-            Ok(())
-        })
-    }
-
-    fn ci_state(&self) -> Option<crate::workflow::CiSnapshot> {
-        let store = self.ci_state_store.as_ref()?;
-        let report = store.read()?;
-        Some(crate::workflow::CiSnapshot {
-            conclusion: report.conclusion.to_string(),
-            head_sha: report.head_sha.unwrap_or_default(),
-        })
-    }
-
-    fn test_race_window_rendezvous(&self) -> BoxedFuture<'_, ()> {
-        let barrier = self.race_window_barrier.clone();
-        Box::pin(async move {
-            if let Some(b) = barrier {
-                b.arrive().await;
-            }
-        })
-    }
-
-    fn test_race_window_complete(&self) {
-        if let Some(b) = self.race_window_barrier.as_ref() {
-            b.complete();
-        }
-    }
-}
-
-pub(crate) fn cache_fill_meta() -> EventMeta {
-    EventMeta {
-        actor: "source-ingest".to_string(),
-        ts: Utc::now(),
-        peer_id: PeerId::local(),
     }
 }
 
