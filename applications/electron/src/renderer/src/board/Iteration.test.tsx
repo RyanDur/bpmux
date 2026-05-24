@@ -168,6 +168,61 @@ describe('#1492 Iteration — reads canonical-relation iteration_membership type
   })
 })
 
+describe('#1547 facet 1 — member workflow-state is legible in the iteration-view', () => {
+  test('a ready member renders a visible state label hooked on data-state', () => {
+    const crux = iterationStory({ number: 1543, title: 'Iteration Crux', gh_state: 'open' })
+    const readyMember = memberStory({
+      number: 1537,
+      title: 'ready-member',
+      state: 'ready',
+      iteration_membership: { iteration_number: 1543, position: 100 }
+    })
+    const html = renderToStaticMarkup(<Iteration stories={[crux, readyMember]} onOpen={() => {}} />)
+    expect(html).toContain('ready-member')
+    expect(html).toContain('board-iteration-member-state')
+    expect(html).toContain('data-state="ready"')
+    expect(html).toContain('>Ready<')
+  })
+
+  test('in-progress and desk-check members carry their own legible state labels', () => {
+    const crux = iterationStory({ number: 1543, title: 'Iteration Crux', gh_state: 'open' })
+    const inProgress = memberStory({
+      number: 1538,
+      title: 'in-progress-member',
+      state: 'in-progress',
+      iteration_membership: { iteration_number: 1543, position: 100 }
+    })
+    const deskCheck = memberStory({
+      number: 1539,
+      title: 'desk-check-member',
+      state: 'desk-check',
+      iteration_membership: { iteration_number: 1543, position: 200 }
+    })
+    const html = renderToStaticMarkup(
+      <Iteration stories={[crux, inProgress, deskCheck]} onOpen={() => {}} />
+    )
+    expect(html).toContain('data-state="in-progress"')
+    expect(html).toContain('>In Progress<')
+    expect(html).toContain('data-state="desk-check"')
+    expect(html).toContain('>Desk Check<')
+  })
+
+  test('an icebox member stays neutral — no active-state label (icebox is the planned default)', () => {
+    const crux = iterationStory({ number: 1543, title: 'Iteration Crux', gh_state: 'open' })
+    const iceboxMember = memberStory({
+      number: 1540,
+      title: 'icebox-member',
+      state: 'icebox',
+      iteration_membership: { iteration_number: 1543, position: 100 }
+    })
+    const html = renderToStaticMarkup(
+      <Iteration stories={[crux, iceboxMember]} onOpen={() => {}} />
+    )
+    expect(html).toContain('icebox-member')
+    expect(html).not.toContain('board-iteration-member-state')
+  })
+})
+
 describe('#1454 Iteration list scaling — section-grouped (Active+Planned / Closed)', () => {
   test('Scenario 1: renders 2 sub-sections with canonical labels + counts', () => {
     const active1 = iterationStory({

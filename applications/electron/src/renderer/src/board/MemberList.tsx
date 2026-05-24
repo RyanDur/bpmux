@@ -5,7 +5,7 @@ import StoryTypeGlyph from './StoryTypeGlyph'
 import { computeDropMutation } from './iterationPosition'
 import { parseIterationLabel } from './labelSchema'
 import { STORY_GRIP_TEST_ID } from './testIds'
-import { storyTypeFromLabels, type BoardStory } from './types'
+import { GROUP_ORDER, columnFor, storyTypeFromLabels, type BoardStory } from './types'
 import { type DragPayload, eagerReorder, postLabelMutation } from './iterationMembers'
 import type { IterationMember } from './useIterationMembers'
 import { DRAG_MIMETYPE_REGISTRY, useStoryDrag } from './useStoryDrag'
@@ -16,6 +16,17 @@ const decodeDragPayload = (raw: string): DragPayload | null => {
   } catch {
     return null
   }
+}
+
+const activeStateLabel = (story: BoardStory): string | null => {
+  if (story.state === 'icebox') return null
+  const column = columnFor(
+    story.state,
+    story.gh_state === 'closed',
+    storyTypeFromLabels(story.labels)
+  )
+  if (column === 'icebox') return null
+  return GROUP_ORDER.find((group) => group.state === column)?.label ?? null
 }
 
 interface Props {
@@ -163,6 +174,11 @@ const MemberList = ({
           <small className="board-story-number">#{story.number}</small>
           <StoryTypeGlyph type={storyTypeFromLabels(story.labels)} />
           <StoryBadge story={story} onOpenBlocker={onOpen} />
+          {activeStateLabel(story) !== null && (
+            <small className="board-iteration-member-state" data-state={story.state}>
+              {activeStateLabel(story)}
+            </small>
+          )}
           <b className="board-story-title" data-test="story-title">
             {story.title}
           </b>

@@ -10,8 +10,10 @@ import {
   type ColumnState
 } from './types'
 
-const hasIterationMemberLabel = (labels: string[]): boolean =>
-  labels.some((l) => isIterationPositionLabel(l))
+const isIterationMember = (story: BoardStory): boolean => {
+  if (story.iteration_membership != null) return true
+  return story.labels.some((l) => isIterationPositionLabel(l))
+}
 
 export interface UseBoardDataResult {
   stories: BoardStory[]
@@ -42,7 +44,7 @@ export const useBoardData = (data: BoardResponse | null): UseBoardDataResult => 
       nonEpicStories.filter((s) => {
         if (storyTypeFromLabels(s.labels) === 'iteration') return true
         if (s.state === 'icebox') return true
-        if (hasIterationMemberLabel(s.labels)) return true
+        if (isIterationMember(s)) return true
         return false
       }),
     [nonEpicStories]
