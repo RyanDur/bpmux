@@ -111,17 +111,6 @@ export default defineConfig(
     ],
     rules: { 'no-restricted-syntax': ['error', ...NO_DIV_SPAN] }
   },
-  // CONDITIONAL until:#1537 — irreducible WHILE the WS connection/message-stream lives
-  // in-component; ref-free design = extract to a module WS service (useSyncExternalStore).
-  // #1537's falsifier requires removing these 8 waivered refs.
-  {
-    files: [
-      'src/renderer/src/transport/useWebSocket.ts', // socketRef/backoffRef/reconnectTimerRef/unmountedRef/msgCounterRef/historyLoadedRef → module-state in the #1537 service
-      'src/renderer/src/board/useRefetchOnReconnect.ts', // wasDisconnectedRef — tracks WS connection-status; follows it into the #1537 service
-      'src/renderer/src/hooks/useNotifications.ts' // lastSeenRef — tracks last-seen of the WS message-stream; subscribes to the #1537 message-store
-    ],
-    rules: { 'no-restricted-syntax': ['error', ...NO_DIV_SPAN] }
-  },
   // CONDITIONAL until:#1538 — width-memory is parent-state mis-located in the child;
   // collapse-lift-to-parent removes the ref.
   {

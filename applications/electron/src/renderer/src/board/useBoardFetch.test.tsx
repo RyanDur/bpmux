@@ -27,7 +27,6 @@ afterEach(() => vi.clearAllMocks())
 describe('#1456 useBoardFetch — refetch survives the ingest-strip (tick replaces marker-scan)', () => {
   const props = {
     boardInvalidateTick: 0,
-    wsStatus: 'connected' as const,
     apiBase: 'http://127.0.0.1:9',
     authToken: 'tok'
   }

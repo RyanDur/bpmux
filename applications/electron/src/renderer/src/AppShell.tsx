@@ -221,7 +221,6 @@ const AppShell = ({
           syncStatusTick={syncStatusTick}
           hidden={!boardOpen}
           width={boardWidthStorage.width}
-          wsStatus={status}
         />
       </section>
     </main>

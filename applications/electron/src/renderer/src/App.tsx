@@ -37,7 +37,7 @@ const App = (): React.JSX.Element => {
     }
   )
 
-  useNotifications(combinedMessages)
+  useNotifications()
 
   return (
     <AppShell

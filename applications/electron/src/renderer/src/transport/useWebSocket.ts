@@ -1,34 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { describeHttpError, http } from '../api/http'
-import { asyncTryCatch } from '../lib/asyncResult'
-import { tryCatch } from '../lib/result'
-import { applyStateDelta, applyStateSnapshot, emptyMirrorState } from './state-delta'
-import type { MirrorState } from './state-delta'
+import { useEffect, useSyncExternalStore } from 'react'
 import {
-  BOARD_INVALIDATE_MARKER,
-  SYNC_STATUS_UPDATE_MARKER,
-  type ChatMessage,
-  type ClientMessage,
-  type ConnectionStatus,
-  type ServerMessage
-} from './types'
+  ensureWsStarted,
+  getWsSnapshot,
+  sendChat,
+  subscribeWs,
+  type SendOptions
+} from './wsService'
+import type { MirrorState } from './state-delta'
+import type { ChatMessage, ConnectionStatus } from './types'
 
-export const RENDERER_IDENTITY = 'ryan'
-const RENDERER_TOOL = 'electron'
-
-const INITIAL_BACKOFF_MS = 1000
-const MAX_BACKOFF_MS = 8000
+export { RENDERER_IDENTITY } from './wsService'
+export type { SendOptions } from './wsService'
 
 export const MAX_MESSAGES = 500
 export const CAP_TRIGGER_THRESHOLD = MAX_MESSAGES * 2
-
-export const HISTORY_CHAT_LIMIT = 200
-export const HISTORY_ACTIVITY_LIMIT = 50
-
-export interface SendOptions {
-  addressee?: string | null
-  to?: string[] | null
-}
 
 export interface UseWebSocketOptions {
   apiBase?: string
@@ -45,18 +30,6 @@ export interface UseWebSocketResult {
   syncStatusTick: number
 }
 
-interface HistoryMessage {
-  from: string
-  text: string
-  ts: string
-  to?: string[] | null
-  addressee?: string | null
-  message_type?: string | null
-}
-
-const messageKey = (m: { from: string; text: string; ts: string }): string =>
-  `${m.ts}|${m.from}|${m.text}`
-
 export const capMessages = (messages: ChatMessage[], max: number): ChatMessage[] =>
   messages.length > max ? messages.slice(messages.length - max) : messages
 
@@ -71,255 +44,17 @@ export const useWebSocket = (
   opts: UseWebSocketOptions = {}
 ): UseWebSocketResult => {
   const { apiBase, authToken } = opts
-  const [status, setStatus] = useState<ConnectionStatus>(url ? 'connecting' : 'disconnected')
-  const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [sessionId, setSessionId] = useState<string | null>(null)
-  const [mirror, setMirror] = useState<MirrorState>(emptyMirrorState)
-  const [boardInvalidateTick, setBoardInvalidateTick] = useState<number>(0)
-  const [syncStatusTick, setSyncStatusTick] = useState<number>(0)
-
-  const socketRef = useRef<WebSocket | null>(null)
-  const backoffRef = useRef<number>(INITIAL_BACKOFF_MS)
-  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const unmountedRef = useRef<boolean>(false)
-  const msgCounterRef = useRef<number>(0)
-  const historyLoadedRef = useRef<boolean>(false)
-
-  const sendJson = useCallback((msg: ClientMessage) => {
-    const sock = socketRef.current
-    if (!sock || sock.readyState !== WebSocket.OPEN) {
-      console.error('bpmux ws: send dropped, socket not open', msg)
-      return
-    }
-    sock.send(JSON.stringify(msg))
-  }, [])
-
-  const sendChat = useCallback(
-    (text: string, opts?: SendOptions) => {
-      const trimmed = text.trim()
-      if (!trimmed) return
-      const frame: ClientMessage = { type: 'send', text: trimmed }
-      if (opts?.addressee) frame.addressee = opts.addressee
-      if (opts?.to && opts.to.length > 0) frame.to = opts.to
-      sendJson(frame)
-    },
-    [sendJson]
-  )
-
-  const handleServerMessage = useCallback((raw: string) => {
-    const parseResult = tryCatch(
-      () => JSON.parse(raw) as ServerMessage,
-      (err) => err
-    )
-    if (parseResult.kind === 'failure') {
-      console.error('bpmux ws: non-JSON frame', parseResult.reason, raw)
-      return
-    }
-    const parsed = parseResult.value
-    switch (parsed.type) {
-      case 'welcome':
-        setSessionId(parsed.session_id)
-        break
-      case 'message': {
-        if (parsed.message_type === 'state-snapshot' && parsed.state_snapshot) {
-          const snap = parsed.state_snapshot
-          setMirror((prev) => applyStateSnapshot(prev, snap))
-          break
-        }
-        if (parsed.message_type === 'state-delta' && parsed.state_delta) {
-          const delta = parsed.state_delta
-          setMirror((prev) => applyStateDelta(prev, delta))
-          break
-        }
-        if (parsed.text === BOARD_INVALIDATE_MARKER) {
-          setBoardInvalidateTick((n) => n + 1)
-          break
-        }
-        if (parsed.text === SYNC_STATUS_UPDATE_MARKER) {
-          setSyncStatusTick((n) => n + 1)
-          break
-        }
-        msgCounterRef.current += 1
-        const id = `${parsed.ts}-${msgCounterRef.current}`
-        const chat: ChatMessage = {
-          id,
-          from: parsed.from,
-          text: parsed.text,
-          ts: parsed.ts,
-          to: parsed.to ?? null,
-          addressee: parsed.addressee ?? null,
-          messageType: parsed.message_type ?? null
-        }
-        const key = messageKey(chat)
-        setMessages((prev) => {
-          if (prev.some((m) => messageKey(m) === key)) return prev
-          return [...prev, chat]
-        })
-        break
-      }
-      case 'error':
-        console.error('bpmux ws: server error', parsed.reason)
-        break
-      case 'pong':
-        break
-      default:
-        console.error('bpmux ws: unknown frame', parsed)
-    }
-  }, [])
-
   useEffect(() => {
-    if (!url) {
-      console.error('bpmux ws: no url provided via window.bpmux.wsUrl')
-      return
-    }
-
-    unmountedRef.current = false
-
-    if (!historyLoadedRef.current && apiBase && authToken) {
-      historyLoadedRef.current = true
-      const controller = new AbortController()
-      const fetchHistoryWithRetry = async (endpoint: string): Promise<HistoryMessage[]> => {
-        const delays = [0, 200, 500]
-        let lastErr: unknown = null
-        for (const delay of delays) {
-          if (controller.signal.aborted) throw new Error('aborted')
-          if (delay > 0) {
-            await new Promise<void>((resolve) => setTimeout(resolve, delay))
-            if (controller.signal.aborted) throw new Error('aborted')
-          }
-          const result = await http.get<HistoryMessage[]>(
-            { apiBase, authToken },
-            endpoint,
-            controller.signal
-          ).value
-          if (result.kind === 'success') return result.value
-          if (result.reason.kind === 'network' && result.reason.message.includes('abort')) {
-            throw new Error('aborted')
-          }
-          lastErr = new Error(describeHttpError(result.reason))
-        }
-        throw lastErr instanceof Error ? lastErr : new Error(String(lastErr))
-      }
-      void asyncTryCatch(() =>
-        Promise.all([
-          fetchHistoryWithRetry(`/api/messages?chat_only=true&limit=${HISTORY_CHAT_LIMIT}`),
-          fetchHistoryWithRetry(
-            `/api/messages?message_type=activity&limit=${HISTORY_ACTIVITY_LIMIT}`
-          )
-        ])
-      )
-        .onSuccess(([chat, activity]) => {
-          if (unmountedRef.current) return
-          const combined = [...chat, ...activity].sort((a, b) => a.ts.localeCompare(b.ts))
-          setMessages((live) => {
-            const seen = new Set<string>()
-            const merged: ChatMessage[] = []
-            for (const h of combined) {
-              const chat: ChatMessage = {
-                id: `hist-${h.ts}-${merged.length}`,
-                from: h.from,
-                text: h.text,
-                ts: h.ts,
-                to: h.to ?? null,
-                addressee: h.addressee ?? null,
-                messageType: h.message_type ?? null
-              }
-              const k = messageKey(chat)
-              if (seen.has(k)) continue
-              seen.add(k)
-              merged.push(chat)
-            }
-            for (const m of live) {
-              const k = messageKey(m)
-              if (seen.has(k)) continue
-              seen.add(k)
-              merged.push(m)
-            }
-            return merged
-          })
-        })
-        .onFailure((err) => {
-          if (err.name === 'AbortError' || err.message === 'aborted') return
-          console.error('bpmux ws: history fetch failed', err)
-          historyLoadedRef.current = false
-        }).value
-    }
-
-    const connect = (): void => {
-      if (unmountedRef.current) return
-      setStatus('connecting')
-      const constructResult = tryCatch(
-        () => new WebSocket(url),
-        (err) => err
-      )
-      if (constructResult.kind === 'failure') {
-        console.error('bpmux ws: construct failed', constructResult.reason)
-        scheduleReconnect()
-        return
-      }
-      const sock = constructResult.value
-      socketRef.current = sock
-
-      sock.onopen = () => {
-        if (socketRef.current !== sock) return
-        backoffRef.current = INITIAL_BACKOFF_MS
-        setStatus('connected')
-        sendJson({
-          type: 'identify',
-          name: RENDERER_IDENTITY,
-          tool: RENDERER_TOOL
-        })
-      }
-
-      sock.onmessage = (ev) => {
-        if (socketRef.current !== sock) return
-        if (typeof ev.data === 'string') {
-          handleServerMessage(ev.data)
-        }
-      }
-
-      sock.onerror = (ev) => {
-        if (socketRef.current !== sock) return
-        console.error('bpmux ws: socket error', ev)
-      }
-
-      sock.onclose = (ev) => {
-        if (socketRef.current !== sock) return
-        console.error('bpmux ws: closed', ev.code, ev.reason)
-        socketRef.current = null
-        setStatus('disconnected')
-        scheduleReconnect()
-      }
-    }
-
-    const scheduleReconnect = (): void => {
-      if (unmountedRef.current) return
-      const delay = backoffRef.current
-      backoffRef.current = Math.min(delay * 2, MAX_BACKOFF_MS)
-      reconnectTimerRef.current = setTimeout(connect, delay)
-    }
-
-    connect()
-
-    return () => {
-      unmountedRef.current = true
-      if (reconnectTimerRef.current) {
-        clearTimeout(reconnectTimerRef.current)
-        reconnectTimerRef.current = null
-      }
-      const sock = socketRef.current
-      socketRef.current = null
-      if (sock) {
-        sock.onopen = null
-        sock.onmessage = null
-        sock.onerror = null
-        sock.onclose = null
-        if (sock.readyState === WebSocket.OPEN || sock.readyState === WebSocket.CONNECTING) {
-          sock.close(1000, 'renderer unmounting')
-        }
-      }
-    }
-  }, [url, sendJson, handleServerMessage])
-
-  return { status, messages, sessionId, sendChat, mirror, boardInvalidateTick, syncStatusTick }
+    ensureWsStarted({ url, apiBase, authToken })
+  }, [url, apiBase, authToken])
+  const snapshot = useSyncExternalStore(subscribeWs, getWsSnapshot, getWsSnapshot)
+  return {
+    status: snapshot.status,
+    messages: snapshot.messages,
+    sessionId: snapshot.sessionId,
+    sendChat,
+    mirror: snapshot.mirror,
+    boardInvalidateTick: snapshot.boardInvalidateTick,
+    syncStatusTick: snapshot.syncStatusTick
+  }
 }

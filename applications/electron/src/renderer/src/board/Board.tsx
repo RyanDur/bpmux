@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useCollapsibleSectionsStorage } from '../lib/useCollapsibleSectionsStorage'
-import type { ConnectionStatus } from '../transport/types'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
 import SyncStatusGlyph from '../sync/SyncStatusGlyph'
 import DrillIn from './DrillIn'
@@ -28,20 +27,17 @@ interface BoardProps {
   syncStatusTick: number
   hidden?: boolean
   width?: number
-  wsStatus?: ConnectionStatus
 }
 
 const Board = ({
   boardInvalidateTick,
   syncStatusTick,
   hidden,
-  width,
-  wsStatus
+  width
 }: BoardProps): React.JSX.Element => {
   const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
   const { data, setData, loading, error, setError, usingMock, refetch } = useBoardFetch({
     boardInvalidateTick,
-    wsStatus,
     apiBase: bridge?.apiBase,
     authToken: bridge?.authToken
   })

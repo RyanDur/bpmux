@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { describeHttpError } from '../api/http'
 import { getBoard } from '../api/boardClient'
-import type { ConnectionStatus } from '../transport/types'
 import { MOCK_BOARD_RESPONSE } from './mockBoard'
 import { useRefetchOnReconnect } from './useRefetchOnReconnect'
 import type { BoardResponse } from './types'
@@ -11,7 +10,6 @@ const RETRY_DELAYS_MS = [0, 200, 500] as const
 
 export interface UseBoardFetchOptions {
   boardInvalidateTick: number
-  wsStatus: ConnectionStatus | undefined
   apiBase: string | undefined
   authToken: string | undefined
 }
@@ -28,7 +26,6 @@ export interface UseBoardFetchResult {
 
 export const useBoardFetch = ({
   boardInvalidateTick,
-  wsStatus,
   apiBase,
   authToken
 }: UseBoardFetchOptions): UseBoardFetchResult => {
@@ -87,9 +84,7 @@ export const useBoardFetch = ({
     }
   }, [fetchBoard])
 
-  useRefetchOnReconnect(wsStatus ?? 'disconnected', () => {
-    fetchBoard()
-  })
+  useRefetchOnReconnect(fetchBoard)
 
   useEffect(() => {
     if (boardInvalidateTick === 0) return

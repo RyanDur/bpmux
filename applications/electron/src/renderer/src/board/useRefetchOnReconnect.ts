@@ -1,31 +1,10 @@
-import { useEffect, useRef } from 'react'
-import type { ConnectionStatus } from '../transport/types'
+import { useEffect, useSyncExternalStore } from 'react'
+import { getWsSnapshot, subscribeWs } from '../transport/wsService'
 
-export interface ReconnectDecision {
-  wasDisconnected: boolean
-  shouldRefetch: boolean
-}
-
-export const decideRefetchOnStatus = (
-  status: ConnectionStatus,
-  wasDisconnected: boolean
-): ReconnectDecision => {
-  if (status === 'disconnected') {
-    return { wasDisconnected: true, shouldRefetch: false }
-  }
-  if (status === 'connected' && wasDisconnected) {
-    return { wasDisconnected: false, shouldRefetch: true }
-  }
-  return { wasDisconnected, shouldRefetch: false }
-}
-
-export const useRefetchOnReconnect = (status: ConnectionStatus, refetch: () => void): void => {
-  const wasDisconnectedRef = useRef<boolean>(false)
+export const useRefetchOnReconnect = (refetch: () => void): void => {
+  const readReconnectTick = (): number => getWsSnapshot().reconnectTick
+  const reconnectTick = useSyncExternalStore(subscribeWs, readReconnectTick, readReconnectTick)
   useEffect(() => {
-    const decision = decideRefetchOnStatus(status, wasDisconnectedRef.current)
-    wasDisconnectedRef.current = decision.wasDisconnected
-    if (decision.shouldRefetch) {
-      refetch()
-    }
-  }, [status, refetch])
+    if (reconnectTick > 0) refetch()
+  }, [reconnectTick, refetch])
 }

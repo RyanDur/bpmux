@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { tryCatch } from '../lib/result'
 import type { ChatMessage } from '../transport/types'
 import { RENDERER_IDENTITY } from '../transport/useWebSocket'
+import { subscribeWsLiveMessages } from '../transport/wsService'
 
 const shortName = (identity: string): string => {
   const idx = identity.indexOf(':')
@@ -21,9 +22,34 @@ const isViewerActive = (): boolean => {
   return document.hasFocus() && document.visibilityState === 'visible'
 }
 
-export const useNotifications = (messages: ChatMessage[]): void => {
-  const lastSeenRef = useRef<number>(messages.length)
+const notify = (msg: ChatMessage): void => {
+  if (isViewerActive()) return
+  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
+  if (!isRelevant(msg, RENDERER_IDENTITY)) return
+  const senderShort = shortName(msg.from)
+  const titlePrefix =
+    msg.addressee === RENDERER_IDENTITY ? `@mention from ${senderShort}` : `DM from ${senderShort}`
+  tryCatch(
+    () =>
+      new Notification(titlePrefix, {
+        body: msg.text.length > 140 ? `${msg.text.slice(0, 140)}…` : msg.text,
+        tag: 'bpmux',
+        silent: false
+      }),
+    (err) => err
+  )
+    .onSuccess((notification) => {
+      notification.onclick = () => {
+        window.focus()
+        notification.close()
+      }
+    })
+    .onFailure((err) => {
+      console.error('bpmux notification: failed to construct', err)
+    })
+}
 
+export const useNotifications = (): void => {
   useEffect(() => {
     if (typeof Notification === 'undefined') return
     if (Notification.permission === 'default') {
@@ -31,39 +57,5 @@ export const useNotifications = (messages: ChatMessage[]): void => {
     }
   }, [])
 
-  useEffect(() => {
-    const from = lastSeenRef.current
-    lastSeenRef.current = messages.length
-    if (messages.length <= from) return
-    if (isViewerActive()) return
-    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
-
-    const fresh = messages.slice(from)
-    for (const msg of fresh) {
-      if (!isRelevant(msg, RENDERER_IDENTITY)) continue
-      const senderShort = shortName(msg.from)
-      const titlePrefix =
-        msg.addressee === RENDERER_IDENTITY
-          ? `@mention from ${senderShort}`
-          : `DM from ${senderShort}`
-      tryCatch(
-        () =>
-          new Notification(titlePrefix, {
-            body: msg.text.length > 140 ? `${msg.text.slice(0, 140)}…` : msg.text,
-            tag: 'bpmux',
-            silent: false
-          }),
-        (err) => err
-      )
-        .onSuccess((notification) => {
-          notification.onclick = () => {
-            window.focus()
-            notification.close()
-          }
-        })
-        .onFailure((err) => {
-          console.error('bpmux notification: failed to construct', err)
-        })
-    }
-  }, [messages])
+  useEffect(() => subscribeWsLiveMessages(notify), [])
 }

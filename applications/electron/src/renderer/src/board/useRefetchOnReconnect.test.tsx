@@ -1,46 +1,52 @@
-import { describe, expect, test } from 'vitest'
-import { decideRefetchOnStatus } from './useRefetchOnReconnect'
+import { afterEach, describe, expect, test, vi } from 'vitest'
+import { act, cleanup, renderHook } from '@testing-library/react'
 
-describe('#511 decideRefetchOnStatus — WS-reconnect refetch policy', () => {
-  test('connecting (initial) does NOT set wasDisconnected; no refetch', () => {
-    expect(decideRefetchOnStatus('connecting', false)).toEqual({
-      wasDisconnected: false,
-      shouldRefetch: false
-    })
+let reconnectTick = 0
+const listeners = new Set<() => void>()
+
+vi.mock('../transport/wsService', () => ({
+  subscribeWs: (l: () => void) => {
+    listeners.add(l)
+    return () => listeners.delete(l)
+  },
+  getWsSnapshot: () => ({ reconnectTick })
+}))
+
+import { useRefetchOnReconnect } from './useRefetchOnReconnect'
+
+const signalReconnect = (): void => {
+  reconnectTick += 1
+  for (const l of listeners) l()
+}
+
+afterEach(() => {
+  cleanup()
+  reconnectTick = 0
+  listeners.clear()
+})
+
+describe('#1537 useRefetchOnReconnect — refetch on the service reconnect signal (no local ref)', () => {
+  test('does NOT refetch on mount when no reconnect has occurred (tick 0)', () => {
+    const refetch = vi.fn()
+    renderHook(() => useRefetchOnReconnect(refetch))
+    expect(refetch).not.toHaveBeenCalled()
   })
 
-  test('connected without prior-disconnect does NOT refetch (initial connect, not reconnect)', () => {
-    expect(decideRefetchOnStatus('connected', false)).toEqual({
-      wasDisconnected: false,
-      shouldRefetch: false
-    })
+  test('refetches when the service signals a reconnect (disconnect→connect tick increment)', () => {
+    const refetch = vi.fn()
+    renderHook(() => useRefetchOnReconnect(refetch))
+    act(() => signalReconnect())
+    expect(refetch).toHaveBeenCalledTimes(1)
   })
 
-  test('disconnected sets wasDisconnected; no refetch yet', () => {
-    expect(decideRefetchOnStatus('disconnected', false)).toEqual({
-      wasDisconnected: true,
-      shouldRefetch: false
-    })
-  })
-
-  test('disconnected→disconnected stays sticky; no refetch', () => {
-    expect(decideRefetchOnStatus('disconnected', true)).toEqual({
-      wasDisconnected: true,
-      shouldRefetch: false
-    })
-  })
-
-  test('connecting (after a disconnect) preserves wasDisconnected; no refetch yet', () => {
-    expect(decideRefetchOnStatus('connecting', true)).toEqual({
-      wasDisconnected: true,
-      shouldRefetch: false
-    })
-  })
-
-  test('connected after prior-disconnect FIRES refetch and clears wasDisconnected', () => {
-    expect(decideRefetchOnStatus('connected', true)).toEqual({
-      wasDisconnected: false,
-      shouldRefetch: true
-    })
+  test('refetches once per reconnect, not on every render (stable-refetch contract)', () => {
+    const refetch = vi.fn()
+    const { rerender } = renderHook(() => useRefetchOnReconnect(refetch))
+    act(() => signalReconnect())
+    rerender()
+    rerender()
+    expect(refetch).toHaveBeenCalledTimes(1)
+    act(() => signalReconnect())
+    expect(refetch).toHaveBeenCalledTimes(2)
   })
 })
