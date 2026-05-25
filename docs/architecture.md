@@ -287,8 +287,8 @@ user-job:
 | B     | #1339  | Iteration-marker drag preserves Iteration variant through the canonical reorder; closed iteration markers lock drag                                                  |
 | C     | #1300  | `close_iteration` derives members via above-marker positional walk (bounded by previous marker or top-of-icebox); marker stays at position with closed-state visual treatment; promoted entries evict from `icebox_unified`                                                                          |
 | D     | #1301  | One-shot Cassiopeia migration: `auto_heal_icebox_at_path` invokes `migrate_existing_iterations_into_icebox_unified` to drop stale `Iteration` entries + append canonical iteration numbers. Idempotent; sister to `migrate_icebox_unified` at #1258 axis. Audit-log: `docs/audit-logs/2026-05-15-cassiopeia-iteration-migration.md`. |
-| E     | #1299  | Retire iteration_id-axis surface (planned)                                                                                                                            |
-| close | #1302  | Iteration-Epic close-out (planned)                                                                                                                                    |
+| E     | #1299  | Retire iteration_id-axis surface — shipped + accepted (positional became the sole membership shape; Carina later re-grounded it on canonical identity, see below)      |
+| close | #1302  | Iteration-Epic close-out — this audit (2026-05-25); see the Carina ratification below for the post-pivot final state                                                   |
 
 **Positional-implicit-membership canon**: position in `icebox_unified`
 relative to iteration markers IS the membership signal. No explicit
@@ -309,6 +309,84 @@ batch-of-stories experience. Migration documents which existing
 iterations carried forward (5 canonical iterations as of 2026-05-15;
 Aquila B disambiguation already encoded in as-filed titles — see
 audit-log for the named rule).
+
+### Carina ratification (2026-05-24, Epic #1189 Wave-D)
+
+Cassiopeia made positional-implicit membership the canon but kept
+attribution **name-derived** — a leak of the GitHub-issues storage into
+the domain. Three user-job failures surfaced on the board 2026-05-24: a
+newly-created iteration inherited a retired same-named iteration's
+completed stories (name-collision); the NOW view auto-picked a current
+iteration (lowest-# fallback) instead of honoring an explicit choice;
+and the acceptor-badge guessed from story-TYPE, collapsing
+awaiting-owner / dev-accepted stories to a wrong "team" badge. Carina
+(Wave-D) pivots attribution from name-derived to **canonical-identity-
+derived** while preserving the positional user-job, and corrects the
+NOW-derivation + acceptor-render.
+
+**The synthesis — `parent-iteration-#<number>.<position>`**: Carina did
+not undo Cassiopeia's positional membership; it grounded it on a stable
+identity. The membership label encodes BOTH the iteration's canonical
+issue-**number** (identity — survives a rename, immune to same-name
+reuse) AND the story's **position** within the iteration (preserving
+Cassiopeia's positional-order user-job). `decode_parent_iteration`
+(`board/adapters/gh_label_codec.rs`) parses it to `(u64, u32)`. One
+label carries both axes; attribution keys on the number, order reads
+from the position.
+
+| Slice | Issue | Surface |
+|---|---|---|
+| 1 | #1553 | Membership attributes by canonical iteration-number (`parent-iteration-#N`), not the legacy `iteration-{theme}.N` name-match — a new iteration can't inherit a retired same-named iteration's members, and a rename can't detach them. Name-match path retired. |
+| 2 | #1540 | Explicit current-designation: `BoardEvent::CurrentIterationDesignated/Cleared { number }` domain verbs; `designate_current_iteration` is a deliberate PM-fire (no auto-set on create/open), rejects a closed iteration, board-singleton replace-semantic (designating clears any prior current-holder). Closing clears the designation; NOW reads null-if-none — no lowest-# fallback. |
+| 3 | #1549 | NOW work-list IS the designated iteration's members: `Story.is_current` is the single derivation-root feeding the existing collapsible state-sections (Ready → In Progress → Desk Check → Acceptance), scoped to the current iteration — header/name + EPICS + member-list all re-derive off the one designated-id, never the global all-iterations list; honest-empty when none designated. |
+| 4 | #1551 | Acceptor-badge reads the honest acceptor-class: `decode_acceptor` maps the `awaiting {team,owner,dev}` label → `Acceptor` enum (returns `None` → honest neutral when absent), never inferred from story-TYPE. The owner can tell at a glance which stories need HIS walk. |
+
+**Close-promote retirement (#1556 — behavior change)**: Cassiopeia's
+Slice C promoted above-marker stories to ready on close. Carina
+**retires** that (Ryan-directed 2026-05-24): `close_iteration_canonical`
+(`transport/rest/iteration_close.rs`) is now a **terminal close** — it
+fires `CurrentIterationCleared` then `StoryClosed`, with `promoted: []`
+and no member state-transition. Members stay in their state; opening /
+designating the next iteration is the deliberate promotion gesture. This
+is the one Litetracker reference-behavior consciously superseded rather
+than preserved — the membership/designation pivot made auto-promote-on-
+close the wrong default (it conflated close with hand-off). The #1258
+ready-queue-empty guard still gates close — a **global** invariant, not
+iteration-scoped: `collect_ready_queue_blockers` checks `all_stories()`
+for `Ready && !is_closed`, so closing any iteration returns 409 while any
+story sits in the Ready queue (not just the closing iteration's members).
+
+**Edge-isolation (storage stays in the adapter)**: the domain speaks in
+verbs (`CurrentIterationDesignated/Cleared`) and typed fields
+(`Story.is_current`, `Story.acceptor`); only the GitHub adapter names
+the `current-iteration` / `parent-iteration-#N` / `awaiting-*` labels
+(`gh_label_codec.rs` + `is_current_from_labels` / `acceptor_from_labels`).
+Per `feedback_storage_serialization_stays_in_the_adapter` the render and
+stories read the typed domain field, never the storage label.
+
+**Chokepoint inheritance**: `BoardStore::apply` (`board/store/apply.rs` +
+`store/mod.rs`) syncs `is_current` + `acceptor` from labels on every
+`StoryCreated` / `LabelsRefreshed` and flips `is_current` on
+`CurrentIterationDesignated/Cleared` — the Carina fields inherit the
+#1282 fire-ordering invariant automatically, same as the Cassiopeia
+substrate.
+
+**User-job invariant preserved**: per
+`feedback_architecture_pivot_preserves_user_job_invariant`, the three
+positional-experience reference-behaviors survive (positional-order,
+drop-to-add implicit membership, drag-to-reshape); the fourth
+(promote-on-close) is the deliberate supersession above. The iteration-
+as-batch-of-stories experience is unchanged; the attribution underneath
+moved from name to identity.
+
+**Strangler-fig sister-pattern**: Pegasus (iteration_id foreign-key) →
+Cassiopeia (positional-implicit) → Carina (`parent-iteration-#N.<pos>`
+identity+position) is the durable reference-arc for future substrate-
+pivots: ship the new shape alongside the legacy path, prove it, then
+retire the legacy seam atomically — and when an earlier pivot's
+convenience (name-derivation) leaks storage into the domain, the fix is
+to ground attribution on a canonical identity, not to add another
+parallel path. Audit-trail: #1302 (2026-05-25).
 
 ## Testing substrate: RTL+real-backend (primary) + Playwright (edge-coverage) (Epic #1247)
 
