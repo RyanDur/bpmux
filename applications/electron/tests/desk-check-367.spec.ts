@@ -3,24 +3,14 @@ import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
+import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
 
 const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
-
-const ITERATION_NUMBER = 999
 
 const MOCK_BOARD = {
   fetched_at: '2026-04-22T16:00:00Z',
   stories: [
-    {
-      number: ITERATION_NUMBER,
-      title: 'Iteration DeskCheck367',
-      state: 'in-progress',
-      labels: ['iteration'],
-      assignees: [],
-      created_at: '2026-04-22T16:00:00Z',
-      body: '',
-      is_current: true
-    },
+    mockCurrentIteration('DeskCheck367', '2026-04-22T16:00:00Z'),
     {
       number: 367,
       title: 'Timeline audit-trail',
@@ -29,7 +19,7 @@ const MOCK_BOARD = {
       assignees: ['dev'],
       created_at: '2026-04-22T16:00:00Z',
       body: 'Timeline story body.',
-      iteration_membership: { iteration_number: ITERATION_NUMBER, position: 1 }
+      ...inMockCurrentIteration(1)
     }
   ]
 }

@@ -3,6 +3,7 @@ import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
+import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
 
 const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 
@@ -18,6 +19,7 @@ const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 const MOCK_BOARD = {
   fetched_at: '2026-04-23T02:00:00Z',
   stories: [
+    mockCurrentIteration('DeskCheck390', '2026-04-23T02:00:00Z'),
     {
       number: 990,
       title: 'Delivered blocked with blocker reference',
@@ -25,7 +27,8 @@ const MOCK_BOARD = {
       labels: ['Feature', 'delivered', 'blocked', 'blocked-by:337'],
       assignees: ['dev'],
       created_at: '2026-04-23T02:00:00Z',
-      body: ''
+      body: '',
+      ...inMockCurrentIteration(1)
     },
     {
       number: 991,
@@ -34,7 +37,8 @@ const MOCK_BOARD = {
       labels: ['Feature', 'delivered', 'blocked'],
       assignees: ['dev'],
       created_at: '2026-04-23T02:00:00Z',
-      body: ''
+      body: '',
+      ...inMockCurrentIteration(2)
     },
     {
       number: 992,
@@ -44,7 +48,8 @@ const MOCK_BOARD = {
       acceptor: 'owner',
       assignees: ['dev'],
       created_at: '2026-04-23T02:00:00Z',
-      body: ''
+      body: '',
+      ...inMockCurrentIteration(3)
     },
     {
       number: 337,
@@ -54,7 +59,8 @@ const MOCK_BOARD = {
       acceptor: 'owner',
       assignees: ['dev'],
       created_at: '2026-04-23T02:00:00Z',
-      body: ''
+      body: '',
+      ...inMockCurrentIteration(4)
     }
   ]
 }
@@ -118,14 +124,14 @@ test.describe('desk-check #390 blocked visual indicator', () => {
     await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
     await openDelivered(win)
 
-    const blocked = win.locator('[data-test="board-story-990"] [data-test="story-badge"]')
+    const blocked = win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-990"] [data-test="story-badge"]')
     await expect(blocked).toHaveAttribute('data-badge-kind', 'blocked')
     await expect(blocked).toContainText('blocked')
     await expect(blocked).toHaveAttribute('title', /waiting on #337/)
     await expect(blocked).toHaveAttribute('aria-label', /waiting on #337/)
     await expect(blocked).toHaveAttribute('aria-label', /open blocker/)
 
-    const row = win.locator('[data-test="board-story-990"]')
+    const row = win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-990"]')
     await expect(row).toHaveClass(/board-story-row--blocked/)
 
     await win.screenshot({
@@ -140,14 +146,14 @@ test.describe('desk-check #390 blocked visual indicator', () => {
     const win = await app.firstWindow()
     await openDelivered(win)
 
-    const blocked = win.locator('[data-test="board-story-991"] [data-test="story-badge"]')
+    const blocked = win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-991"] [data-test="story-badge"]')
     await expect(blocked).toHaveAttribute('data-badge-kind', 'blocked')
     await expect(blocked).toContainText('blocked')
     await expect(blocked).toHaveAttribute('title', /no blocker specified/)
 
     // Row still carries the dim class — nothing-hidden principle:
     // block-state is visible even when the reference isn't captured.
-    const row = win.locator('[data-test="board-story-991"]')
+    const row = win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-991"]')
     await expect(row).toHaveClass(/board-story-row--blocked/)
 
     await app.close()
@@ -158,11 +164,11 @@ test.describe('desk-check #390 blocked visual indicator', () => {
     const win = await app.firstWindow()
     await openDelivered(win)
 
-    const baseline = win.locator('[data-test="board-story-992"] [data-test="story-badge"]')
+    const baseline = win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-992"] [data-test="story-badge"]')
     await expect(baseline).toHaveAttribute('data-badge-kind', 'accepted')
     await expect(baseline).toContainText('awaiting owner')
 
-    const row = win.locator('[data-test="board-story-992"]')
+    const row = win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-992"]')
     await expect(row).not.toHaveClass(/board-story-row--blocked/)
 
     await app.close()
@@ -173,7 +179,7 @@ test.describe('desk-check #390 blocked visual indicator', () => {
     const win = await app.firstWindow()
     await openDelivered(win)
 
-    const badge = win.locator('[data-test="board-story-990"] [data-test="story-badge"]')
+    const badge = win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-990"] [data-test="story-badge"]')
     await badge.click()
 
     // Drill-in for the blocker (#337), not #990 — the click routes

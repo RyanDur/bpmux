@@ -3,6 +3,7 @@ import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
+import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
 
 const launchWith = async (
   board: object
@@ -143,6 +144,7 @@ test.describe('desk-check #457 slice 6 — Epic hybrid state-derivation + lane f
     const { app, consoleErrors } = await launchWith({
       fetched_at: ts,
       stories: [
+        mockCurrentIteration('DeskCheck457Slice6', ts),
         {
           number: 931,
           title: 'Lone epic in ready',
@@ -159,15 +161,18 @@ test.describe('desk-check #457 slice 6 — Epic hybrid state-derivation + lane f
           labels: ['Feature'],
           assignees: [],
           created_at: ts,
-          body: ''
+          body: '',
+          ...inMockCurrentIteration(1)
         }
       ]
     })
     const win = await app.firstWindow()
-    await expect(win.locator('[data-test="board-story-932"]')).toBeVisible()
-    await expect(win.locator('[data-test="board-story-931"]')).toHaveCount(0)
+    const nowPanel = win.locator('[data-test="board-tabpanel-now-content"]')
+    await expect(nowPanel.locator('[data-test="board-story-932"]')).toBeVisible()
+    await expect(nowPanel.locator('[data-test="board-story-931"]')).toHaveCount(0)
     await win.locator('[data-test="board-tab-plan"]').click()
-    await expect(win.locator('[data-test="board-epic-931"]')).toBeVisible()
+    const planPanel = win.locator('[data-test="board-tabpanel-plan-content"]')
+    await expect(planPanel.locator('[data-test="board-epic-931"]')).toBeVisible()
     expect(consoleErrors).toEqual([])
     await app.close()
   })

@@ -3,12 +3,14 @@ import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
+import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
 
 const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 
 const MOCK_BOARD = {
   fetched_at: '2026-04-22T16:00:00Z',
   stories: [
+    mockCurrentIteration('DeskCheck345', '2026-04-22T16:00:00Z'),
     {
       number: 345,
       title: 'Desk-check story for #345 live comment refresh',
@@ -16,7 +18,8 @@ const MOCK_BOARD = {
       labels: ['Feature', 'ready'],
       assignees: ['dev'],
       created_at: '2026-04-22T16:00:00Z',
-      body: 'Body for #345 desk-check.'
+      body: 'Body for #345 desk-check.',
+      ...inMockCurrentIteration(1)
     }
   ]
 }
@@ -74,7 +77,7 @@ test.describe('desk-check #345 live comment refresh', () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="board-region"]')).toBeVisible()
-    await win.locator('[data-test="board-story-345"] .board-story-navigate').click()
+    await win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-345"] .board-story-navigate').click()
     await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
     await win.waitForTimeout(500)
 
@@ -96,7 +99,7 @@ test.describe('desk-check #345 live comment refresh', () => {
   test('optimistic render: typed comment appears immediately on submit', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await win.locator('[data-test="board-story-345"] .board-story-navigate').click()
+    await win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-345"] .board-story-navigate').click()
     await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
     await win.waitForTimeout(500)
 
@@ -152,7 +155,7 @@ test.describe('desk-check #345 live comment refresh', () => {
     })
     await win.reload()
 
-    await win.locator('[data-test="board-story-345"] .board-story-navigate').click()
+    await win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-345"] .board-story-navigate').click()
     await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
     await win.waitForTimeout(500)
 

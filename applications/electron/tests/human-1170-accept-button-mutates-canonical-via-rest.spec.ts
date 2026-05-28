@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
 import { seedTeamVerdicts } from './helpers/seed-evidence'
+import { setupCurrentIterationViaRpc } from './helpers/iteration-fixture'
 
 test.describe('#1170 — UI accept-button mutates canonical store via REST (no silent-fail)', () => {
   test('accept-button click transitions delivered → accepted in canonical AND renderer', async () => {
@@ -30,6 +31,8 @@ test.describe('#1170 — UI accept-button mutates canonical store via REST (no s
         'pm'
       )
       expect(createResp.status).toBe(200)
+
+      await setupCurrentIterationViaRpc(rpc, 1, 'Human1170AcceptCanonical')
 
       const startResp = await rpc('start_story', {
         number: 1,
@@ -92,8 +95,9 @@ test.describe('#1170 — UI accept-button mutates canonical store via REST (no s
       const acceptedCard = win.locator('#board-group-accepted-content [data-test="board-story-1"]')
       await expect(acceptedCard).toBeVisible()
 
-      for (const otherState of ['ready', 'in-progress', 'desk-check', 'delivered', 'icebox']) {
-        const elsewhere = win.locator(
+      const nowPanel = win.locator('[data-test="board-tabpanel-now-content"]')
+      for (const otherState of ['ready', 'in-progress', 'desk-check', 'delivered']) {
+        const elsewhere = nowPanel.locator(
           `#board-group-${otherState}-content [data-test="board-story-1"]`
         )
         await expect(elsewhere).toHaveCount(0)

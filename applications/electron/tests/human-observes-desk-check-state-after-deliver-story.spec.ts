@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { launchWithMockGh } from './helpers/launch'
+import { setupCurrentIterationViaRpc } from './helpers/iteration-fixture'
 
 // #1127 sub-slice 1: pattern-establish migration off BPMUX_TEST_MODE +
 // /api/test/<gate> onto httpmock-wrapped GitHubSourceAdapter +
@@ -50,6 +51,8 @@ test.describe('human-side E2E #476 — observation-class — deliver_story', () 
       )
       expect(createResp.status).toBe(200)
 
+      await setupCurrentIterationViaRpc(rpc, 1, 'HumanObservesDeskCheck')
+
       const startResp = await rpc('start_story', {
         number: 1,
         pickup_paraphrase:
@@ -62,7 +65,8 @@ test.describe('human-side E2E #476 — observation-class — deliver_story', () 
       await win.reload()
       await expect(win.locator('[data-test="board-region"]')).toBeVisible()
 
-      const storyInProgress = win.locator(
+      const nowPanel = win.locator('[data-test="board-tabpanel-now-content"]')
+      const storyInProgress = nowPanel.locator(
         '#board-group-in-progress-content [data-test="board-story-1"]'
       )
       await expect(storyInProgress).toContainText('human-observes-delivered')
@@ -85,13 +89,13 @@ test.describe('human-side E2E #476 — observation-class — deliver_story', () 
       // destination of deliver_story per Ryan 2026-04-27/28 + state
       // machine in domain.rs:23) is mechanism-fidelity, not user-job
       // shape-change.
-      const storyDeskCheck = win.locator(
+      const storyDeskCheck = nowPanel.locator(
         '#board-group-desk-check-content [data-test="board-story-1"]'
       )
       await expect(storyDeskCheck).toContainText('human-observes-delivered')
 
-      for (const otherState of ['ready', 'in-progress', 'icebox', 'accepted', 'delivered']) {
-        const storyElsewhere = win.locator(
+      for (const otherState of ['ready', 'in-progress', 'delivered']) {
+        const storyElsewhere = nowPanel.locator(
           `#board-group-${otherState}-content [data-test="board-story-1"]`
         )
         await expect(storyElsewhere).toHaveCount(0)

@@ -3,12 +3,14 @@ import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
+import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
 
 const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 
 const MOCK_BOARD = {
   fetched_at: '2026-04-22T16:00:00Z',
   stories: [
+    mockCurrentIteration('DeskCheck351', '2026-04-22T16:00:00Z'),
     {
       number: 351,
       title: 'Desk-check story for #351 transitions',
@@ -16,7 +18,8 @@ const MOCK_BOARD = {
       labels: ['Feature', 'ready'],
       assignees: ['dev'],
       created_at: '2026-04-22T16:00:00Z',
-      body: 'Body.'
+      body: 'Body.',
+      ...inMockCurrentIteration(1)
     }
   ]
 }
@@ -118,7 +121,7 @@ test.describe('desk-check #351 high-signal transitions', () => {
   test('drill-in surface has transition declared on enter state', async () => {
     const { app } = await launchWithBoard()
     const win = await app.firstWindow()
-    await win.locator('[data-test="board-story-351"] .board-story-navigate').click()
+    await win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-351"] .board-story-navigate').click()
     await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
     await win.waitForTimeout(400)
 

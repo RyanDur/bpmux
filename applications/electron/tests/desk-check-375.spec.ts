@@ -3,6 +3,7 @@ import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
+import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
 
 const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 
@@ -15,6 +16,7 @@ const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 const MOCK_BOARD = {
   fetched_at: '2026-04-22T16:00:00Z',
   stories: [
+    mockCurrentIteration('DeskCheck375', '2026-04-22T16:00:00Z'),
     {
       number: 900,
       title: 'Delivered feature awaiting owner',
@@ -23,7 +25,8 @@ const MOCK_BOARD = {
       acceptor: 'owner',
       assignees: ['dev'],
       created_at: '2026-04-22T16:00:00Z',
-      body: ''
+      body: '',
+      ...inMockCurrentIteration(1)
     },
     {
       number: 901,
@@ -33,7 +36,8 @@ const MOCK_BOARD = {
       acceptor: 'team',
       assignees: ['dev'],
       created_at: '2026-04-22T16:00:00Z',
-      body: ''
+      body: '',
+      ...inMockCurrentIteration(2)
     },
     {
       number: 902,
@@ -110,11 +114,12 @@ test.describe('desk-check #375 state-aware badge labels', () => {
     await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
     await openGroup(win, 'delivered')
 
-    const feat = win.locator('[data-test="board-story-900"] [data-test="story-badge"]')
+    const nowPanel = win.locator('[data-test="board-tabpanel-now-content"]')
+    const feat = nowPanel.locator('[data-test="board-story-900"] [data-test="story-badge"]')
     await expect(feat).toHaveAttribute('data-badge-kind', 'accepted')
     await expect(feat).toContainText('awaiting owner')
 
-    const chore = win.locator('[data-test="board-story-901"] [data-test="story-badge"]')
+    const chore = nowPanel.locator('[data-test="board-story-901"] [data-test="story-badge"]')
     await expect(chore).toHaveAttribute('data-badge-kind', 'team-accepted')
     await expect(chore).toContainText('awaiting team')
 

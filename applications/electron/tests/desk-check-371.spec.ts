@@ -3,6 +3,7 @@ import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
+import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
 
 // Playwright can't interact with native Electron Menus — menu.popup()
 // is an OS-level affordance that lives outside the browser DOM. So
@@ -14,6 +15,7 @@ import { launchIsolatedElectron } from './helpers/launch'
 const MOCK_BOARD = {
   fetched_at: '2026-04-22T16:00:00Z',
   stories: [
+    mockCurrentIteration('DeskCheck371', '2026-04-22T16:00:00Z'),
     {
       number: 371,
       title: 'Right-click quote-excerpt',
@@ -21,7 +23,8 @@ const MOCK_BOARD = {
       labels: ['Feature', 'ready'],
       assignees: ['dev'],
       created_at: '2026-04-22T16:00:00Z',
-      body: 'Right-click quote feature story.'
+      body: 'Right-click quote feature story.',
+      ...inMockCurrentIteration(1)
     }
   ]
 }
@@ -71,7 +74,7 @@ test.describe('desk-check #371 right-click quote context menu', () => {
   test('simulated Quote-in-reply IPC inserts blockquote into draft', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    const storyCard = win.locator('[data-test="board-story-371"]')
+    const storyCard = win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-371"]')
     await storyCard.first().click()
     await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
     await expect(win.locator('[data-test="drill-in-comment"]').first()).toBeVisible()

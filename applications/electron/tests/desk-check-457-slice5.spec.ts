@@ -3,10 +3,12 @@ import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
+import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
 
 const MOCK_BOARD = {
   fetched_at: '2026-04-26T00:00:00Z',
   stories: [
+    mockCurrentIteration('DeskCheck457Slice5', '2026-04-26T00:00:00Z'),
     {
       number: 901,
       title: 'Epic: substrate consolidation',
@@ -24,7 +26,8 @@ const MOCK_BOARD = {
       assignees: [],
       created_at: '2026-04-26T00:00:00Z',
       body: '',
-      parent_epic: 901
+      parent_epic: 901,
+      ...inMockCurrentIteration(1)
     },
     {
       number: 903,
@@ -43,7 +46,8 @@ const MOCK_BOARD = {
       labels: ['Feature'],
       assignees: [],
       created_at: '2026-04-26T00:00:00Z',
-      body: ''
+      body: '',
+      ...inMockCurrentIteration(2)
     }
   ]
 }
@@ -75,22 +79,23 @@ test.describe('desk-check #457 slice 5 — Electron Epic-summary section', () =>
 
     await win.locator('[data-test="board-tab-plan"]').click()
 
-    const epics = win.locator('[data-test="board-epics"]')
+    const planPanel = win.locator('[data-test="board-tabpanel-plan-content"]')
+    const epics = planPanel.locator('[data-test="board-epics"]')
     await expect(epics).toBeVisible()
 
-    const epic901 = win.locator('[data-test="board-epic-901"]')
+    const epic901 = planPanel.locator('[data-test="board-epic-901"]')
     await expect(epic901).toBeVisible()
 
-    const progress = win.locator('[data-test="board-epic-901-progress"]')
+    const progress = planPanel.locator('[data-test="board-epic-901-progress"]')
     await expect(progress).toBeVisible()
     await expect(progress).toHaveAttribute('value', '1')
     await expect(progress).toHaveAttribute('max', '2')
 
-    const miniboard = win.locator('[data-test="board-epic-901-miniboard"]')
+    const miniboard = planPanel.locator('[data-test="board-epic-901-miniboard"]')
     await expect(miniboard).toBeVisible()
-    const acceptedCol = win.locator('[data-test="board-epic-901-miniboard-column-accepted"]')
+    const acceptedCol = planPanel.locator('[data-test="board-epic-901-miniboard-column-accepted"]')
     await expect(acceptedCol).toContainText('(1)')
-    const readyCol = win.locator('[data-test="board-epic-901-miniboard-column-ready"]')
+    const readyCol = planPanel.locator('[data-test="board-epic-901-miniboard-column-ready"]')
     await expect(readyCol).toContainText('(1)')
 
     await expect(epic901.locator('.board-epic-children')).toHaveCount(0)
@@ -98,7 +103,7 @@ test.describe('desk-check #457 slice 5 — Electron Epic-summary section', () =>
     await expect(epic901.locator('.board-story-row')).toHaveCount(0)
 
     await expect(epic901.locator('.board-epic-summary button')).toHaveCount(0)
-    await expect(win.locator('[data-test="board-epic-901-view-details"]')).toBeVisible()
+    await expect(planPanel.locator('[data-test="board-epic-901-view-details"]')).toBeVisible()
 
     await app.close()
   })
@@ -108,7 +113,8 @@ test.describe('desk-check #457 slice 5 — Electron Epic-summary section', () =>
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="board-region"]')).toBeVisible()
 
-    const childRow = win.locator('[data-test="board-story-902"]')
+    const nowPanel = win.locator('[data-test="board-tabpanel-now-content"]')
+    const childRow = nowPanel.locator('[data-test="board-story-902"]')
     await expect(childRow).toBeVisible()
     const epicRef = childRow.locator('[data-test="epic-link"]')
     await expect(epicRef).toHaveText('↳ Epic #901')
@@ -117,7 +123,7 @@ test.describe('desk-check #457 slice 5 — Electron Epic-summary section', () =>
       /open epic #901 Epic: substrate consolidation/
     )
 
-    const standaloneRow = win.locator('[data-test="board-story-904"]')
+    const standaloneRow = nowPanel.locator('[data-test="board-story-904"]')
     await expect(standaloneRow).toBeVisible()
     await expect(standaloneRow.locator('[data-test="epic-link"]')).toHaveCount(0)
 

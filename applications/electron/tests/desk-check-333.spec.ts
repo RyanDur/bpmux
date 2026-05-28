@@ -3,6 +3,7 @@ import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
+import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
 
 // #333 rework: drag-to-reorder in the Ready column must persist
 // (no snap-back) + the dragged row must hide during the drag
@@ -17,9 +18,12 @@ import { launchIsolatedElectron } from './helpers/launch'
 // Hide-while-dragging: parent BoardGroup tracks `draggingNumber`;
 // the dragged <li> gets data-dragging="true" → CSS opacity:0.
 
+const ITERATION_STORY = mockCurrentIteration('DeskCheck333', '2026-04-23T03:00:00Z')
+
 const MOCK_BOARD_BEFORE = {
   fetched_at: '2026-04-23T03:00:00Z',
   stories: [
+    ITERATION_STORY,
     {
       number: 701,
       title: 'First ready story',
@@ -27,7 +31,8 @@ const MOCK_BOARD_BEFORE = {
       labels: ['Feature', 'ready'],
       assignees: [],
       created_at: '2026-04-23T03:00:00Z',
-      body: ''
+      body: '',
+      ...inMockCurrentIteration(1)
     },
     {
       number: 702,
@@ -36,7 +41,8 @@ const MOCK_BOARD_BEFORE = {
       labels: ['Feature', 'ready'],
       assignees: [],
       created_at: '2026-04-23T03:00:00Z',
-      body: ''
+      body: '',
+      ...inMockCurrentIteration(2)
     },
     {
       number: 703,
@@ -45,7 +51,8 @@ const MOCK_BOARD_BEFORE = {
       labels: ['Feature', 'ready'],
       assignees: [],
       created_at: '2026-04-23T03:00:00Z',
-      body: ''
+      body: '',
+      ...inMockCurrentIteration(3)
     }
   ]
 }
@@ -56,9 +63,10 @@ const MOCK_BOARD_BEFORE = {
 const MOCK_BOARD_AFTER = {
   fetched_at: '2026-04-23T03:00:05Z',
   stories: [
-    { ...MOCK_BOARD_BEFORE.stories[2] }, // 703 first
-    { ...MOCK_BOARD_BEFORE.stories[0] }, // 701 second
-    { ...MOCK_BOARD_BEFORE.stories[1] } // 702 last
+    ITERATION_STORY,
+    { ...MOCK_BOARD_BEFORE.stories[3] }, // 703 first (skip iteration at idx 0)
+    { ...MOCK_BOARD_BEFORE.stories[1] }, // 701 second
+    { ...MOCK_BOARD_BEFORE.stories[2] } // 702 last
   ]
 }
 
@@ -106,7 +114,7 @@ test.describe('desk-check #333 drag-to-reorder (rework)', () => {
     await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
     await expect(win.locator('[data-test="board-group-ready"]').first()).toBeVisible()
 
-    const row = win.locator('[data-test="board-story-701"]')
+    const row = win.locator('#board-group-ready-content [data-test="board-story-701"]')
     const grip = row.locator('[data-test="story-grip"]')
     await expect(row).toBeVisible()
     await expect(grip).toBeVisible()
@@ -149,7 +157,7 @@ test.describe('desk-check #333 drag-to-reorder (rework)', () => {
     // Simulate keyboard reorder — the same handleReorder path fires
     // the POST. Ctrl+Shift+Down on the first row bumps it past the
     // second, matching the existing keyboard-reorder contract (#357).
-    const firstRow = win.locator('[data-test="board-story-701"] .board-story-navigate')
+    const firstRow = win.locator('#board-group-ready-content [data-test="board-story-701"] .board-story-navigate')
     await firstRow.focus()
     await firstRow.press('Control+Shift+ArrowDown')
 

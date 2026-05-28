@@ -3,6 +3,7 @@ import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
+import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
 
 const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 
@@ -14,6 +15,7 @@ const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 const MOCK_BOARD = {
   fetched_at: '2026-04-22T16:00:00Z',
   stories: [
+    mockCurrentIteration('DeskCheck376', '2026-04-22T16:00:00Z'),
     {
       number: 950,
       title: 'delivered feature (awaiting owner)',
@@ -22,7 +24,8 @@ const MOCK_BOARD = {
       acceptor: 'owner',
       assignees: ['dev'],
       created_at: '2026-04-22T16:00:00Z',
-      body: ''
+      body: '',
+      ...inMockCurrentIteration(1)
     },
     {
       number: 951,
@@ -42,7 +45,8 @@ const MOCK_BOARD = {
       acceptor: 'team',
       assignees: ['dev'],
       created_at: '2026-04-22T16:00:00Z',
-      body: ''
+      body: '',
+      ...inMockCurrentIteration(2)
     }
   ]
 }
@@ -98,15 +102,15 @@ test.describe('desk-check #376 color-differentiate awaiting vs accepted', () => 
     await openGroup(win, 'accepted')
 
     await expect(
-      win.locator('[data-test="board-story-950"] [data-test="story-badge"]')
+      win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-950"] [data-test="story-badge"]')
     ).toHaveAttribute('data-state', 'delivered')
 
     await expect(
-      win.locator('[data-test="board-story-951"] [data-test="story-badge"]')
+      win.locator('[data-test="board-tabpanel-done-content"] [data-test="board-story-951"] [data-test="story-badge"]')
     ).toHaveAttribute('data-state', 'accepted')
 
     await expect(
-      win.locator('[data-test="board-story-952"] [data-test="story-badge"]')
+      win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-952"] [data-test="story-badge"]')
     ).toHaveAttribute('data-state', 'delivered')
     await app.close()
   })
@@ -122,13 +126,13 @@ test.describe('desk-check #376 color-differentiate awaiting vs accepted', () => 
     // read computed styles so "same color" regressions (Ryan's
     // img_10 observation) fail the test — a simpler attribute
     // assertion wouldn't catch a CSS rule deleted.
-    const readBorderColor = async (n: number): Promise<string> =>
+    const readBorderColor = async (n: number, panel: 'now' | 'done'): Promise<string> =>
       win
-        .locator(`[data-test="board-story-${n}"] [data-test="story-badge"]`)
+        .locator(`[data-test="board-tabpanel-${panel}-content"] [data-test="board-story-${n}"] [data-test="story-badge"]`)
         .evaluate((el: HTMLElement) => getComputedStyle(el).borderTopColor)
 
-    const deliveredColor = await readBorderColor(950)
-    const acceptedColor = await readBorderColor(951)
+    const deliveredColor = await readBorderColor(950, 'now')
+    const acceptedColor = await readBorderColor(951, 'done')
     console.log(`#376 delivered badge border: ${deliveredColor}`)
     console.log(`#376 accepted badge border: ${acceptedColor}`)
     expect(deliveredColor).not.toBe(acceptedColor)

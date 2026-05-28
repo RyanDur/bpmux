@@ -3,6 +3,7 @@ import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
+import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
 
 // #357 rework: keyboard-accessible drag-reorder. Ryan observed at
 // 2026-04-22 23:13 UTC that Ctrl+Shift+Up/Down on a focused Ready
@@ -14,21 +15,10 @@ import { launchIsolatedElectron } from './helpers/launch'
 // path's a11y surface: announcement, focus-retention, and
 // boundary no-op.
 
-const ITERATION_NUMBER = 999
-
 const MOCK_BOARD_BEFORE = {
   fetched_at: '2026-04-23T11:00:00Z',
   stories: [
-    {
-      number: ITERATION_NUMBER,
-      title: 'Iteration DeskCheck357',
-      state: 'in-progress',
-      labels: ['iteration'],
-      assignees: [],
-      created_at: '2026-04-23T11:00:00Z',
-      body: '',
-      is_current: true
-    },
+    mockCurrentIteration('DeskCheck357', '2026-04-23T11:00:00Z'),
     {
       number: 811,
       title: 'First ready story',
@@ -37,7 +27,7 @@ const MOCK_BOARD_BEFORE = {
       assignees: [],
       created_at: '2026-04-23T11:00:00Z',
       body: '',
-      iteration_membership: { iteration_number: ITERATION_NUMBER, position: 1 }
+      ...inMockCurrentIteration(1)
     },
     {
       number: 812,
@@ -47,7 +37,7 @@ const MOCK_BOARD_BEFORE = {
       assignees: [],
       created_at: '2026-04-23T11:00:00Z',
       body: '',
-      iteration_membership: { iteration_number: ITERATION_NUMBER, position: 2 }
+      ...inMockCurrentIteration(2)
     },
     {
       number: 813,
@@ -57,7 +47,7 @@ const MOCK_BOARD_BEFORE = {
       assignees: [],
       created_at: '2026-04-23T11:00:00Z',
       body: '',
-      iteration_membership: { iteration_number: ITERATION_NUMBER, position: 3 }
+      ...inMockCurrentIteration(3)
     }
   ]
 }

@@ -3,6 +3,7 @@ import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
+import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
 
 // #337 rework regression: the observation-falsifier from the pickup-
 // gate paraphrase: "I would reject if, after opening any drill-in
@@ -31,6 +32,7 @@ ${'AC line to add vertical bulk. '.repeat(30)}
 const MOCK_BOARD = {
   fetched_at: '2026-04-22T16:00:00Z',
   stories: [
+    mockCurrentIteration('DeskCheck337', '2026-04-22T16:00:00Z'),
     {
       number: 337,
       title: 'Drill-in scroll rework fixture',
@@ -38,7 +40,8 @@ const MOCK_BOARD = {
       labels: ['Feature', 'ready'],
       assignees: ['dev'],
       created_at: '2026-04-22T16:00:00Z',
-      body: LONG_BODY
+      body: LONG_BODY,
+      ...inMockCurrentIteration(1)
     }
   ]
 }
@@ -91,7 +94,7 @@ test.describe('desk-check #337 rework: drill-in scroll reaches comments', () => 
     await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
 
     // Open drill-in.
-    const card = win.locator('[data-test="board-story-337"]')
+    const card = win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-337"]')
     await card.first().click()
     const drillIn = win.locator('[data-test="board-drill-in"]')
     await expect(drillIn).toBeVisible()
@@ -134,7 +137,7 @@ test.describe('desk-check #337 rework: drill-in scroll reaches comments', () => 
   test('back-crumb header stays sticky during scroll', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    await win.locator('[data-test="board-story-337"] .board-story-navigate').click()
+    await win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-337"] .board-story-navigate').click()
     const drillIn = win.locator('[data-test="board-drill-in"]')
 
     const backButton = win.locator('.drill-in-back')

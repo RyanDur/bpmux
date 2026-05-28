@@ -3,22 +3,12 @@ import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
-
-const ITERATION_NUMBER = 999
+import { mockCurrentIteration, inMockCurrentIteration } from './helpers/iteration-fixture'
 
 const MOCK_BOARD = {
   fetched_at: '2026-04-22T18:00:00Z',
   stories: [
-    {
-      number: ITERATION_NUMBER,
-      title: 'Iteration DeskCheck356',
-      state: 'in-progress',
-      labels: ['iteration'],
-      assignees: [],
-      created_at: '2026-04-22T16:00:00Z',
-      body: '',
-      is_current: true
-    },
+    mockCurrentIteration('DeskCheck356', '2026-04-22T16:00:00Z'),
     {
       number: 356,
       title: 'Story for Cmd+Enter comment submit',
@@ -27,7 +17,7 @@ const MOCK_BOARD = {
       assignees: ['dev'],
       created_at: '2026-04-22T16:00:00Z',
       body: 'Body.',
-      iteration_membership: { iteration_number: ITERATION_NUMBER, position: 1 }
+      ...inMockCurrentIteration(1)
     }
   ]
 }
