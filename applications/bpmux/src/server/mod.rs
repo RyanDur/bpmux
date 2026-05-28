@@ -260,6 +260,18 @@ pub async fn run_server(
                 axum::routing::post(transport::test_routes::post_test_create_iteration),
             )
             .route(
+                "/api/test/designate_current_iteration",
+                axum::routing::post(transport::test_routes::post_test_designate_current_iteration),
+            )
+            .route(
+                "/api/test/move_story",
+                axum::routing::post(transport::test_routes::post_test_move_story),
+            )
+            .route(
+                "/api/test/edit_story",
+                axum::routing::post(transport::test_routes::post_test_edit_story),
+            )
+            .route(
                 "/api/test/comment_on_story",
                 axum::routing::post(transport::test_routes::post_test_comment_on_story),
             )

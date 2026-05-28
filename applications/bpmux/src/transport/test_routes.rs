@@ -136,6 +136,151 @@ pub async fn post_test_create_iteration(
 }
 
 #[derive(Debug, Deserialize)]
+pub struct DesignateCurrentIterationReq {
+    pub iteration_number: u64,
+    pub agent: Option<String>,
+}
+
+pub async fn post_test_designate_current_iteration(
+    State(session): State<Arc<session::Session>>,
+    axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
+    Json(req): Json<DesignateCurrentIterationReq>,
+) -> impl IntoResponse {
+    let Some(refresh) = refresh else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(serde_json::json!({
+                "error": "BPMUX_TEST_MODE not enabled — test routes inactive"
+            })),
+        );
+    };
+    let mut args = serde_json::Map::new();
+    args.insert(
+        "iteration_number".to_string(),
+        serde_json::Value::Number(req.iteration_number.into()),
+    );
+    let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
+    let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;
+    match bridge::dispatch_test_designate_current_iteration(args, &agent, Some(refresh_ref)).await {
+        Ok(message) => {
+            fire_board_invalidate(&session);
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({ "message": message })),
+            )
+        }
+        Err(e) => (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "error": e })),
+        ),
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MoveStoryReq {
+    pub number: u64,
+    pub target_state: String,
+    pub rationale: String,
+    pub position: Option<u64>,
+    pub agent: Option<String>,
+}
+
+pub async fn post_test_move_story(
+    State(session): State<Arc<session::Session>>,
+    axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
+    Json(req): Json<MoveStoryReq>,
+) -> impl IntoResponse {
+    let Some(refresh) = refresh else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(serde_json::json!({
+                "error": "BPMUX_TEST_MODE not enabled — test routes inactive"
+            })),
+        );
+    };
+    let mut args = serde_json::Map::new();
+    args.insert(
+        "number".to_string(),
+        serde_json::Value::Number(req.number.into()),
+    );
+    args.insert(
+        "target_state".to_string(),
+        serde_json::Value::String(req.target_state),
+    );
+    args.insert(
+        "rationale".to_string(),
+        serde_json::Value::String(req.rationale),
+    );
+    if let Some(p) = req.position {
+        args.insert("position".to_string(), serde_json::Value::Number(p.into()));
+    }
+    let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
+    let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;
+    match bridge::dispatch_test_move_story(args, &agent, Some(refresh_ref)).await {
+        Ok(message) => {
+            fire_board_invalidate(&session);
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({ "message": message })),
+            )
+        }
+        Err(e) => (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "error": e })),
+        ),
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct EditStoryReq {
+    pub number: u64,
+    pub title: Option<String>,
+    pub body: Option<String>,
+    pub agent: Option<String>,
+}
+
+pub async fn post_test_edit_story(
+    State(session): State<Arc<session::Session>>,
+    axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
+    Json(req): Json<EditStoryReq>,
+) -> impl IntoResponse {
+    let Some(refresh) = refresh else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(serde_json::json!({
+                "error": "BPMUX_TEST_MODE not enabled — test routes inactive"
+            })),
+        );
+    };
+    let mut args = serde_json::Map::new();
+    args.insert(
+        "number".to_string(),
+        serde_json::Value::Number(req.number.into()),
+    );
+    if let Some(t) = req.title {
+        args.insert("title".to_string(), serde_json::Value::String(t));
+    }
+    if let Some(b) = req.body {
+        args.insert("body".to_string(), serde_json::Value::String(b));
+    }
+    let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
+    let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;
+    match bridge::dispatch_test_edit_story(args, &agent, Some(refresh_ref)).await {
+        Ok(message) => {
+            fire_board_invalidate(&session);
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({ "message": message })),
+            )
+        }
+        Err(e) => (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "error": e })),
+        ),
+    }
+}
+
+#[derive(Debug, Deserialize)]
 pub struct CommentOnStoryReq {
     pub number: u64,
     pub body: String,
