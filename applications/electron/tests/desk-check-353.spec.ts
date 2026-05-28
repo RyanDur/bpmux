@@ -6,9 +6,21 @@ import { launchIsolatedElectron } from './helpers/launch'
 
 const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 
+const ITERATION_NUMBER = 999
+
 const MOCK_BOARD = {
   fetched_at: '2026-04-22T16:00:00Z',
   stories: [
+    {
+      number: ITERATION_NUMBER,
+      title: 'Iteration DeskCheck353',
+      state: 'in-progress',
+      labels: ['iteration'],
+      assignees: [],
+      created_at: '2026-04-22T16:00:00Z',
+      body: '',
+      is_current: true
+    },
     {
       number: 353,
       title: 'Story for live board refresh test',
@@ -16,7 +28,8 @@ const MOCK_BOARD = {
       labels: ['Feature'],
       assignees: ['dev'],
       created_at: '2026-04-22T16:00:00Z',
-      body: 'Body.'
+      body: 'Body.',
+      iteration_membership: { iteration_number: ITERATION_NUMBER, position: 1 }
     }
   ]
 }
@@ -53,7 +66,7 @@ test.describe('desk-check #353 WS board invalidate', () => {
     const { app } = await launchWithBoard()
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="board-region"]')).toBeVisible()
-    await expect(win.locator('[data-test="board-story-353"]')).toBeVisible()
+    await expect(win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-353"]')).toBeVisible()
     await win.waitForTimeout(300)
     await win.locator('[data-test="board-region"]').screenshot({
       path: join(EVIDENCE_DIR, '80-board-live-refresh-baseline.png')
@@ -72,7 +85,7 @@ test.describe('desk-check #353 WS board invalidate', () => {
     // grows past the last-seen ref. We can't simulate that from the
     // test process without the multi-party-peer-post harness per
     // dev's commit-body note + #345 precedent.
-    const mounted = await win.locator('[data-test="board-story-353"]').isVisible()
+    const mounted = await win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-353"]').isVisible()
     console.log(`#353 mount: story row present = ${mounted}`)
 
     // Confirm Board.tsx is exported + wired in the bundle by checking
@@ -97,7 +110,7 @@ test.describe('desk-check #353 WS board invalidate', () => {
     // Full poll-interval regression would need a custom fetch counter
     // hook which is over-scope.
     await win.waitForTimeout(2000)
-    const stillVisible = await win.locator('[data-test="board-story-353"]').isVisible()
+    const stillVisible = await win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-353"]').isVisible()
     console.log(`#353 after 2s idle: story still visible = ${stillVisible}`)
     expect(stillVisible).toBe(true)
     await app.close()

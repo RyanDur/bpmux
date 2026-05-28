@@ -6,12 +6,24 @@ import { launchIsolatedElectron } from './helpers/launch'
 
 const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 
+const ITERATION_NUMBER = 999
+
 // Fixture board covers the three badge variants: team-accept lane
 // (chore in delivered state), owner-accept lane (feature in delivered
 // state), rework cycle (any type with desk-check-fail label present).
 const MOCK_BOARD = {
   fetched_at: '2026-04-22T16:00:00Z',
   stories: [
+    {
+      number: ITERATION_NUMBER,
+      title: 'Iteration DeskCheck368',
+      state: 'in-progress',
+      labels: ['iteration'],
+      assignees: [],
+      created_at: '2026-04-22T16:00:00Z',
+      body: '',
+      is_current: true
+    },
     {
       number: 800,
       title: 'Team-accepted chore',
@@ -20,7 +32,8 @@ const MOCK_BOARD = {
       acceptor: 'team',
       assignees: ['dev'],
       created_at: '2026-04-22T16:00:00Z',
-      body: 'Chore body.'
+      body: 'Chore body.',
+      iteration_membership: { iteration_number: ITERATION_NUMBER, position: 1 }
     },
     {
       number: 801,
@@ -30,7 +43,8 @@ const MOCK_BOARD = {
       acceptor: 'owner',
       assignees: ['dev'],
       created_at: '2026-04-22T16:00:00Z',
-      body: 'Feature body.'
+      body: 'Feature body.',
+      iteration_membership: { iteration_number: ITERATION_NUMBER, position: 2 }
     },
     {
       number: 802,
@@ -39,7 +53,8 @@ const MOCK_BOARD = {
       labels: ['Feature', 'delivered', 'desk-check-fail'],
       assignees: ['dev'],
       created_at: '2026-04-22T16:00:00Z',
-      body: 'Rework body.'
+      body: 'Rework body.',
+      iteration_membership: { iteration_number: ITERATION_NUMBER, position: 3 }
     },
     {
       number: 803,
@@ -48,7 +63,8 @@ const MOCK_BOARD = {
       labels: ['Feature', 'ready'],
       assignees: ['dev'],
       created_at: '2026-04-22T16:00:00Z',
-      body: 'Upstream state.'
+      body: 'Upstream state.',
+      iteration_membership: { iteration_number: ITERATION_NUMBER, position: 4 }
     }
   ]
 }
@@ -102,7 +118,9 @@ test.describe('desk-check #368 team-accept badge', () => {
       await deliveredSummary.click()
     }
 
-    const chore = win.locator('[data-test="board-story-800"]')
+    const nowPanel = win.locator('[data-test="board-tabpanel-now-content"]')
+
+    const chore = nowPanel.locator('[data-test="board-story-800"]')
     await expect(chore).toBeVisible()
     await expect(chore.locator('[data-test="story-badge"]')).toHaveAttribute(
       'data-badge-kind',
@@ -112,7 +130,7 @@ test.describe('desk-check #368 team-accept badge', () => {
     // "awaiting team" (tense-correct for pre-accept state).
     await expect(chore.locator('[data-test="story-badge"]')).toContainText('awaiting team')
 
-    const feature = win.locator('[data-test="board-story-801"]')
+    const feature = nowPanel.locator('[data-test="board-story-801"]')
     await expect(feature.locator('[data-test="story-badge"]')).toHaveAttribute(
       'data-badge-kind',
       'accepted'
@@ -122,7 +140,7 @@ test.describe('desk-check #368 team-accept badge', () => {
     // for a row the owner hasn't accepted yet).
     await expect(feature.locator('[data-test="story-badge"]')).toContainText('awaiting owner')
 
-    const rework = win.locator('[data-test="board-story-802"]')
+    const rework = nowPanel.locator('[data-test="board-story-802"]')
     await expect(rework.locator('[data-test="story-badge"]')).toHaveAttribute(
       'data-badge-kind',
       'rework'
@@ -130,7 +148,7 @@ test.describe('desk-check #368 team-accept badge', () => {
     await expect(rework.locator('[data-test="story-badge"]')).toContainText('rework')
 
     // Upstream states should NOT carry a badge.
-    const plain = win.locator('[data-test="board-story-803"]')
+    const plain = nowPanel.locator('[data-test="board-story-803"]')
     await expect(plain.locator('[data-test="story-badge"]')).toHaveCount(0)
 
     await win.screenshot({
@@ -153,7 +171,9 @@ test.describe('desk-check #368 team-accept badge', () => {
       await deliveredSummary.click()
     }
 
-    const badge = win.locator('[data-test="board-story-800"] [data-test="story-badge"]').first()
+    const badge = win
+      .locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-800"] [data-test="story-badge"]')
+      .first()
     await badge.click()
 
     // Drill-in should be open.

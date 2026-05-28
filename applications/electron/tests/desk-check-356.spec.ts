@@ -4,9 +4,21 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
 
+const ITERATION_NUMBER = 999
+
 const MOCK_BOARD = {
   fetched_at: '2026-04-22T18:00:00Z',
   stories: [
+    {
+      number: ITERATION_NUMBER,
+      title: 'Iteration DeskCheck356',
+      state: 'in-progress',
+      labels: ['iteration'],
+      assignees: [],
+      created_at: '2026-04-22T16:00:00Z',
+      body: '',
+      is_current: true
+    },
     {
       number: 356,
       title: 'Story for Cmd+Enter comment submit',
@@ -14,7 +26,8 @@ const MOCK_BOARD = {
       labels: ['Feature'],
       assignees: ['dev'],
       created_at: '2026-04-22T16:00:00Z',
-      body: 'Body.'
+      body: 'Body.',
+      iteration_membership: { iteration_number: ITERATION_NUMBER, position: 1 }
     }
   ]
 }
@@ -51,7 +64,7 @@ test.describe('desk-check #356 comment Cmd+Enter submit', () => {
   test('Cmd+Enter (or Ctrl+Enter) fires POST + clears draft', async () => {
     const { app, postCount } = await launchBoard()
     const win = await app.firstWindow()
-    await win.locator('[data-test="board-story-356"] .board-story-navigate').click()
+    await win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-356"] .board-story-navigate').click()
     await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
     await win.waitForTimeout(500)
 
@@ -76,7 +89,7 @@ test.describe('desk-check #356 comment Cmd+Enter submit', () => {
   test('Shift+Enter still inserts newline (does NOT submit)', async () => {
     const { app, postCount } = await launchBoard()
     const win = await app.firstWindow()
-    await win.locator('[data-test="board-story-356"] .board-story-navigate').click()
+    await win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-356"] .board-story-navigate').click()
     await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
     await win.waitForTimeout(500)
 

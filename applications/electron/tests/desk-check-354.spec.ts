@@ -4,9 +4,21 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
 
+const ITERATION_NUMBER = 999
+
 const MOCK_BOARD = {
   fetched_at: '2026-04-22T16:00:00Z',
   stories: [
+    {
+      number: ITERATION_NUMBER,
+      title: 'Iteration DeskCheck354',
+      state: 'in-progress',
+      labels: ['iteration'],
+      assignees: [],
+      created_at: '2026-04-22T16:00:00Z',
+      body: '',
+      is_current: true
+    },
     {
       number: 354,
       title: 'Close-direction desk-check',
@@ -14,7 +26,8 @@ const MOCK_BOARD = {
       labels: ['Feature'],
       assignees: ['dev'],
       created_at: '2026-04-22T16:00:00Z',
-      body: 'Body.'
+      body: 'Body.',
+      iteration_membership: { iteration_number: ITERATION_NUMBER, position: 1 }
     }
   ]
 }
@@ -47,7 +60,7 @@ test.describe('desk-check #354 close-direction animations', () => {
   test('drill-in stays mounted during exit transition (data-visible toggles)', async () => {
     const { app } = await launchWithBoard()
     const win = await app.firstWindow()
-    await win.locator('[data-test="board-story-354"] .board-story-navigate').click()
+    await win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-354"] .board-story-navigate').click()
     await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
     await win.waitForTimeout(400)
 
@@ -82,7 +95,7 @@ test.describe('desk-check #354 close-direction animations', () => {
   test('drill-in exit transition has transform + opacity declared at close', async () => {
     const { app } = await launchWithBoard()
     const win = await app.firstWindow()
-    await win.locator('[data-test="board-story-354"] .board-story-navigate').click()
+    await win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-354"] .board-story-navigate').click()
     await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
     await win.waitForTimeout(400)
 
@@ -107,7 +120,7 @@ test.describe('desk-check #354 close-direction animations', () => {
   test('reduced-motion: drill-in exit uses 0s duration + transform none', async () => {
     const { app } = await launchWithBoard('reduce')
     const win = await app.firstWindow()
-    await win.locator('[data-test="board-story-354"] .board-story-navigate').click()
+    await win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-354"] .board-story-navigate').click()
     await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
     await win.waitForTimeout(300)
 

@@ -6,9 +6,21 @@ import { launchIsolatedElectron } from './helpers/launch'
 
 const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 
+const ITERATION_NUMBER = 999
+
 const MOCK_BOARD = {
   fetched_at: '2026-04-22T16:00:00Z',
   stories: [
+    {
+      number: ITERATION_NUMBER,
+      title: 'Iteration DeskCheck367',
+      state: 'in-progress',
+      labels: ['iteration'],
+      assignees: [],
+      created_at: '2026-04-22T16:00:00Z',
+      body: '',
+      is_current: true
+    },
     {
       number: 367,
       title: 'Timeline audit-trail',
@@ -16,7 +28,8 @@ const MOCK_BOARD = {
       labels: ['Feature', 'ready'],
       assignees: ['dev'],
       created_at: '2026-04-22T16:00:00Z',
-      body: 'Timeline story body.'
+      body: 'Timeline story body.',
+      iteration_membership: { iteration_number: ITERATION_NUMBER, position: 1 }
     }
   ]
 }
@@ -114,7 +127,7 @@ test.describe('desk-check #367 timeline audit-trail', () => {
     const win = await app.firstWindow()
     await expect(win.locator('[data-test="chat-region"]')).toBeVisible()
 
-    const storyButton = win.locator('[data-test="board-story-367"] .board-story-navigate')
+    const storyButton = win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-367"] .board-story-navigate')
     await storyButton.click()
     await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
 
@@ -158,7 +171,7 @@ test.describe('desk-check #367 timeline audit-trail', () => {
   test('show-all toggle reveals non-gate events', async () => {
     const { app } = await launchWithFixture()
     const win = await app.firstWindow()
-    const storyButton = win.locator('[data-test="board-story-367"] .board-story-navigate')
+    const storyButton = win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-367"] .board-story-navigate')
     await storyButton.click()
     const timeline = win.locator('[data-test="drill-in-timeline"]')
     await timeline.locator('summary').click()
