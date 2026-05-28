@@ -256,6 +256,10 @@ pub async fn run_server(
                 axum::routing::post(transport::test_routes::post_test_create_story),
             )
             .route(
+                "/api/test/create_iteration",
+                axum::routing::post(transport::test_routes::post_test_create_iteration),
+            )
+            .route(
                 "/api/test/comment_on_story",
                 axum::routing::post(transport::test_routes::post_test_comment_on_story),
             )

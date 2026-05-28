@@ -95,6 +95,47 @@ pub async fn post_test_create_story(
 }
 
 #[derive(Debug, Deserialize)]
+pub struct CreateIterationReq {
+    pub theme_name: String,
+    pub agent: Option<String>,
+}
+
+pub async fn post_test_create_iteration(
+    State(session): State<Arc<session::Session>>,
+    axum::Extension(refresh): axum::Extension<TestRefreshHandle>,
+    Json(req): Json<CreateIterationReq>,
+) -> impl IntoResponse {
+    let Some(refresh) = refresh else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(serde_json::json!({
+                "error": "BPMUX_TEST_MODE not enabled — test routes inactive"
+            })),
+        );
+    };
+    let mut args = serde_json::Map::new();
+    args.insert(
+        "theme_name".to_string(),
+        serde_json::Value::String(req.theme_name),
+    );
+    let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
+    let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;
+    match bridge::dispatch_test_create_iteration(args, &agent, Some(refresh_ref)).await {
+        Ok(message) => {
+            fire_board_invalidate(&session);
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({ "message": message })),
+            )
+        }
+        Err(e) => (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "error": e })),
+        ),
+    }
+}
+
+#[derive(Debug, Deserialize)]
 pub struct CommentOnStoryReq {
     pub number: u64,
     pub body: String,
