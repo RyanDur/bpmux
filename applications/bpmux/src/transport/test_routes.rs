@@ -163,6 +163,14 @@ pub async fn post_test_designate_current_iteration(
     let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;
     match bridge::dispatch_test_designate_current_iteration(args, &agent, Some(refresh_ref)).await {
         Ok(message) => {
+            if let Err(e) = refresh.drain_pending().await {
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({
+                        "error": format!("drain_pending after designate failed: {e}")
+                    })),
+                );
+            }
             fire_board_invalidate(&session);
             (
                 StatusCode::OK,

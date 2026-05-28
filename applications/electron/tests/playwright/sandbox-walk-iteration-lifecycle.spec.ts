@@ -18,15 +18,11 @@ const capture = async (win: Page, name: string): Promise<string> => {
 }
 
 const switchToTab = async (win: Page, tabId: string): Promise<void> => {
-  const tab = win.locator(`[data-test="board-tab-${tabId}"]`).first()
-  const fallback = win.locator(`role=tab[name=/${tabId}/i]`).first()
-  if (await tab.isVisible().catch(() => false)) {
-    await tab.click()
-    return
-  }
-  if (await fallback.isVisible().catch(() => false)) {
-    await fallback.click()
-  }
+  await win.locator(`label[data-test="board-tab-${tabId}"]`).first().click()
+  await win
+    .locator(`[data-test="board-tab-${tabId}"] input[type="radio"]:checked`)
+    .first()
+    .waitFor({ timeout: 5_000 })
 }
 
 const postTest = async (
@@ -44,8 +40,15 @@ const postTest = async (
   return { ok: res.ok, status: res.status, json }
 }
 
+const parseCreatedIterationNumber = (msg: unknown): number => {
+  const match = String(msg ?? '').match(/iteration created: #(\d+) /)
+  expect(match, 'create_iteration must return numbered confirmation').not.toBeNull()
+  return Number(match![1])
+}
+
 test.describe('#1569 — live-walk harness slice 2/2: full iteration lifecycle drive+capture', () => {
-  test('designate → reorder → rename → close, each step capturable, isolated from production', async () => {
+  test.setTimeout(90_000)
+  test('designate → reorder → rename → close, each step capturable + visually featured', async () => {
     const { app, win, backendPort } = await launchIsolatedWithWindow({
       extraEnv: { BPMUX_TEST_MODE: '1' }
     })
@@ -53,71 +56,90 @@ test.describe('#1569 — live-walk harness slice 2/2: full iteration lifecycle d
       const token = await win.evaluate(
         () => (window as unknown as { bpmux?: { authToken?: string } }).bpmux?.authToken ?? ''
       )
+      const stamp = Date.now()
+      const themeA = `LifecycleWalkA-${stamp}`
+      const themeB = `LifecycleWalkB-${stamp}`
+      const themeC = `LifecycleWalkC-${stamp}`
 
-      const theme = `LifecycleWalk-${Date.now()}`
       const createA = await postTest(backendPort, token, 'create_iteration', {
-        theme_name: theme,
+        theme_name: themeA,
         agent: 'pm:test'
       })
       expect(createA.ok, JSON.stringify(createA.json)).toBe(true)
-      const createMatch = String(createA.json.message ?? '').match(/iteration created: #(\d+) /)
-      expect(createMatch, 'create_iteration must return numbered confirmation').not.toBeNull()
-      const iterationNumber = Number(createMatch![1])
+      const numberA = parseCreatedIterationNumber(createA.json.message)
 
-      await expect(win.locator(`text=Iteration ${theme}`).first()).toBeAttached({ timeout: 15_000 })
+      const createB = await postTest(backendPort, token, 'create_iteration', {
+        theme_name: themeB,
+        agent: 'pm:test'
+      })
+      expect(createB.ok, JSON.stringify(createB.json)).toBe(true)
+      parseCreatedIterationNumber(createB.json.message)
+
+      const createC = await postTest(backendPort, token, 'create_iteration', {
+        theme_name: themeC,
+        agent: 'pm:test'
+      })
+      expect(createC.ok, JSON.stringify(createC.json)).toBe(true)
+      const numberC = parseCreatedIterationNumber(createC.json.message)
+
       await switchToTab(win, 'plan')
+      await expect(win.locator(`text=Iteration ${themeA}`).first()).toBeAttached({
+        timeout: 15_000
+      })
       await capture(win, 'lifecycle-01-created')
 
       const designate = await postTest(backendPort, token, 'designate_current_iteration', {
-        iteration_number: iterationNumber,
+        iteration_number: numberA,
         agent: 'pm:test'
       })
       expect(designate.ok, JSON.stringify(designate.json)).toBe(true)
 
       await switchToTab(win, 'now')
-      await expect(win.locator(`text=Iteration ${theme}`).first()).toBeAttached({ timeout: 15_000 })
+      const nowAnchor = win.locator('[data-test="board-now-iteration-anchor"]')
+      await expect(nowAnchor).toBeVisible({ timeout: 15_000 })
+      await expect(nowAnchor.locator('.board-now-anchor-title')).toContainText(themeA, {
+        timeout: 15_000
+      })
       await capture(win, 'lifecycle-02-designated')
 
-      const reorderTheme = `LifecycleWalk-Sister-${Date.now()}`
-      const createB = await postTest(backendPort, token, 'create_iteration', {
-        theme_name: reorderTheme,
-        agent: 'pm:test'
-      })
-      expect(createB.ok, JSON.stringify(createB.json)).toBe(true)
-      const reorderMatch = String(createB.json.message ?? '').match(/iteration created: #(\d+) /)
-      expect(reorderMatch, 'create_iteration B must return numbered confirmation').not.toBeNull()
-      const reorderNumber = Number(reorderMatch![1])
       const reorder = await postTest(backendPort, token, 'move_story', {
-        number: reorderNumber,
+        number: numberC,
         target_state: 'icebox',
         position: 1,
-        rationale: 'live-walk slice 2/2 reorder-step substrate-verification',
+        rationale: 'live-walk slice 2/2 reorder-step — promote C to top of icebox',
         agent: 'pm:test'
       })
       expect(reorder.ok, JSON.stringify(reorder.json)).toBe(true)
       await switchToTab(win, 'plan')
-      await expect(win.locator(`text=Iteration ${reorderTheme}`).first()).toBeAttached({
-        timeout: 15_000
-      })
+      const cardC = win.locator(`[data-iteration-name="${themeC}"]`).first()
+      const cardB = win.locator(`[data-iteration-name="${themeB}"]`).first()
+      await expect(cardC).toBeAttached({ timeout: 15_000 })
+      await expect(cardB).toBeAttached({ timeout: 15_000 })
       await capture(win, 'lifecycle-03-reordered')
 
-      const renameTitle = `Iteration ${theme}-RENAMED`
+      const renameTitle = `Iteration ${themeA}-RENAMED`
       const rename = await postTest(backendPort, token, 'edit_story', {
-        number: iterationNumber,
+        number: numberA,
         title: renameTitle,
         agent: 'pm:test'
       })
       expect(rename.ok, JSON.stringify(rename.json)).toBe(true)
       await switchToTab(win, 'now')
-      await expect(win.locator(`text=${renameTitle}`).first()).toBeAttached({ timeout: 15_000 })
+      await expect(nowAnchor).toBeVisible({ timeout: 30_000 })
+      await expect(nowAnchor.locator('.board-now-anchor-title')).toContainText(
+        `${themeA}-RENAMED`,
+        { timeout: 15_000 }
+      )
       await capture(win, 'lifecycle-04-renamed')
 
       const close = await postTest(backendPort, token, 'close_story', {
-        number: iterationNumber,
+        number: numberA,
         reason: 'live-walk slice 2/2 close-step substrate-verification',
         agent: 'pm:test'
       })
       expect(close.ok, JSON.stringify(close.json)).toBe(true)
+      await switchToTab(win, 'now')
+      await expect(win.locator('[data-test="board-now-empty"]')).toBeVisible({ timeout: 15_000 })
       await capture(win, 'lifecycle-05-closed')
 
       expect(backendPort).not.toBe(4117)

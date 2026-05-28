@@ -256,6 +256,27 @@ impl SourceAdapter for InMemorySourceAdapter {
                     story.state = *new_state;
                 }
             }
+            BoardEvent::CurrentIterationDesignated { number, .. } => {
+                if let Some(story) = s.stories.get_mut(number) {
+                    story.is_current = true;
+                }
+            }
+            BoardEvent::CurrentIterationCleared { number, .. } => {
+                if let Some(story) = s.stories.get_mut(number) {
+                    story.is_current = false;
+                }
+            }
+            BoardEvent::StoryCreated {
+                number,
+                story_type,
+                initial_state,
+                ..
+            } => {
+                if let Some(story) = s.stories.get_mut(number) {
+                    story.story_type = *story_type;
+                    story.state = *initial_state;
+                }
+            }
             _ => {}
         }
         Ok(None)
