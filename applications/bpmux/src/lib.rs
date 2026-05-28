@@ -10,6 +10,7 @@ pub mod mcp;
 pub mod orchestrator;
 pub mod reload;
 pub mod roadmap;
+pub mod room;
 pub mod server;
 pub mod session;
 pub mod transport;
@@ -85,6 +86,34 @@ enum Command {
         #[arg(long)]
         role: Option<String>,
     },
+    Room {
+        #[command(subcommand)]
+        action: RoomAction,
+    },
+}
+
+#[derive(Subcommand)]
+enum RoomAction {
+    Spawn {
+        role: String,
+        #[arg(long, default_value = "claude-code")]
+        agent: String,
+        #[arg(long)]
+        headless: bool,
+    },
+}
+
+fn run_room_spawn(role: &str, agent: &str, _headless: bool) -> anyhow::Result<()> {
+    let storage = room::FileRoomStorage::from_env();
+    let pid = room::spawn_pty(agent, &[])?;
+    let entry = room::Room {
+        role: role.to_string(),
+        agent: agent.to_string(),
+        pid,
+        created_at: chrono::Utc::now(),
+    };
+    <room::FileRoomStorage as room::RoomStore>::save(&storage, &entry)?;
+    Ok(())
 }
 
 fn resolve_session_base(cli_base: &Option<String>) -> anyhow::Result<std::path::PathBuf> {
@@ -246,6 +275,15 @@ pub fn run() -> anyhow::Result<()> {
 
     if let Some(Command::EmitPrecommitPassed { sha, role }) = &cli.command {
         return run_emit_precommit_passed(sha, role);
+    }
+
+    if let Some(Command::Room { action }) = &cli.command {
+        let RoomAction::Spawn {
+            role,
+            agent,
+            headless,
+        } = action;
+        return run_room_spawn(role, agent, *headless);
     }
 
     run_server_only(&cli)

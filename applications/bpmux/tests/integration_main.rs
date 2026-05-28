@@ -131,6 +131,8 @@ mod reject_story_e2e;
 mod reorder_story_e2e;
 #[path = "integration_main_modules/reorder_story_retire_e2e.rs"]
 mod reorder_story_retire_e2e;
+#[path = "integration_main_modules/room_spawn_e2e.rs"]
+mod room_spawn_e2e;
 #[path = "integration_main_modules/roster_rename_reap_e2e.rs"]
 mod roster_rename_reap_e2e;
 #[path = "integration_main_modules/rpc_canonical_store.rs"]
