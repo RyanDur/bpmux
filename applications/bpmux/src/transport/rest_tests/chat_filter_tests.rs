@@ -200,6 +200,140 @@ async fn post_message_accepts_chat_message_type() {
     assert_eq!(msg.text, "hello");
 }
 
+fn seed_to_arity_messages(dir: &TempDir) -> Arc<session::Session> {
+    let (tx, _rx) = broadcast::channel(16);
+    let session = Arc::new(session::Session::new(
+        dir.path().to_path_buf(),
+        "test".to_string(),
+        tx,
+    ));
+    let broadcast_msg = session::Message {
+        from: "ryan".to_string(),
+        text: "all-hands broadcast".to_string(),
+        ts: chrono::Utc::now(),
+        ..session::Message::default()
+    };
+    let multi_recipient = session::Message {
+        from: "ryan".to_string(),
+        text: "multi-recipient pm+dev".to_string(),
+        ts: chrono::Utc::now(),
+        to: Some(vec!["pm".to_string(), "dev".to_string()]),
+        explicit_privacy: true,
+        ..session::Message::default()
+    };
+    let single_dm = session::Message {
+        from: "ryan".to_string(),
+        text: "single dm to designer".to_string(),
+        ts: chrono::Utc::now(),
+        to: Some(vec!["designer".to_string()]),
+        explicit_privacy: true,
+        ..session::Message::default()
+    };
+    session.broadcast(&broadcast_msg).expect("broadcast 1");
+    session.broadcast(&multi_recipient).expect("broadcast 2");
+    session.broadcast(&single_dm).expect("broadcast 3");
+    session
+}
+
+#[tokio::test]
+async fn issue_1319_scenario_1_recipient_sees_multi_recipient_to_scoped_history() {
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let session = seed_to_arity_messages(&dir);
+    let router = axum::Router::new()
+        .route("/api/messages", axum::routing::get(get_messages))
+        .with_state(session);
+    let request = Request::builder()
+        .method("GET")
+        .uri("/api/messages?as=dev&limit=50")
+        .body(Body::empty())
+        .expect("build request");
+    let response = router.oneshot(request).await.expect("response");
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .expect("read body");
+    let msgs: Vec<serde_json::Value> = serde_json::from_slice(&body).expect("parse json");
+    let texts: Vec<&str> = msgs.iter().filter_map(|m| m["text"].as_str()).collect();
+    assert!(
+        texts.contains(&"all-hands broadcast"),
+        "dev must see broadcast (no `to:`) history; got {texts:?}"
+    );
+    assert!(
+        texts.contains(&"multi-recipient pm+dev"),
+        "dev must see multi-recipient `to:` history when dev is in the recipient list; got {texts:?}"
+    );
+    assert!(
+        !texts.contains(&"single dm to designer"),
+        "dev must NOT see a single-recipient DM for designer; got {texts:?}"
+    );
+}
+
+#[tokio::test]
+async fn issue_1319_scenario_2_non_recipient_does_not_see_to_scoped_history() {
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let session = seed_to_arity_messages(&dir);
+    let router = axum::Router::new()
+        .route("/api/messages", axum::routing::get(get_messages))
+        .with_state(session);
+    let request = Request::builder()
+        .method("GET")
+        .uri("/api/messages?as=qa&limit=50")
+        .body(Body::empty())
+        .expect("build request");
+    let response = router.oneshot(request).await.expect("response");
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .expect("read body");
+    let msgs: Vec<serde_json::Value> = serde_json::from_slice(&body).expect("parse json");
+    let texts: Vec<&str> = msgs.iter().filter_map(|m| m["text"].as_str()).collect();
+    assert!(
+        texts.contains(&"all-hands broadcast"),
+        "qa must still see the broadcast (no `to:`); got {texts:?}"
+    );
+    assert!(
+        !texts.contains(&"multi-recipient pm+dev"),
+        "qa must NOT see a multi-recipient `to:` that excludes qa; got {texts:?}"
+    );
+    assert!(
+        !texts.contains(&"single dm to designer"),
+        "qa must NOT see a single-recipient DM for designer; got {texts:?}"
+    );
+}
+
+#[tokio::test]
+async fn issue_1319_scenario_3_owner_view_sees_all_messages_including_to_scoped() {
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let session = seed_to_arity_messages(&dir);
+    let router = axum::Router::new()
+        .route("/api/messages", axum::routing::get(get_messages))
+        .with_state(session);
+    let request = Request::builder()
+        .method("GET")
+        .uri("/api/messages?limit=50")
+        .body(Body::empty())
+        .expect("build request");
+    let response = router.oneshot(request).await.expect("response");
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .expect("read body");
+    let msgs: Vec<serde_json::Value> = serde_json::from_slice(&body).expect("parse json");
+    let texts: Vec<&str> = msgs.iter().filter_map(|m| m["text"].as_str()).collect();
+    assert!(
+        texts.contains(&"all-hands broadcast"),
+        "owner-view sees broadcast; got {texts:?}"
+    );
+    assert!(
+        texts.contains(&"multi-recipient pm+dev"),
+        "owner-view sees multi-recipient `to:` regardless of role-membership per feedback_nothing_hidden_from_owner; got {texts:?}"
+    );
+    assert!(
+        texts.contains(&"single dm to designer"),
+        "owner-view sees single DM regardless of role-membership per feedback_nothing_hidden_from_owner; got {texts:?}"
+    );
+}
+
 #[tokio::test]
 async fn post_message_accepts_default_message_type() {
     let dir = TempDir::new().expect("tmpdir");

@@ -199,3 +199,54 @@ describe('#1537 wsService — reconnect with backoff', () => {
     expect(getWsSnapshot().reconnectTick).toBe(1)
   })
 })
+
+describe('#1319 wsService — reconnect re-fetches history to recover the disconnect gap', () => {
+  test('on reconnect, history is re-fetched so a group/broadcast message sent during the gap appears after recovery', async () => {
+    vi.useFakeTimers()
+    historyResponse = [{ from: 'pm', text: 'pre-gap', ts: '2026-05-28T00:00:00.000Z' }]
+    ensureWsStarted({ url: 'ws://test', apiBase: 'http://api', authToken: 'tok' })
+    MockWebSocket.latest().open()
+    await vi.waitFor(() =>
+      expect(getWsSnapshot().messages.some((m) => m.text === 'pre-gap')).toBe(true)
+    )
+    const callsBeforeDrop = httpGet.mock.calls.length
+
+    MockWebSocket.latest().drop()
+    expect(getWsSnapshot().status).toBe('disconnected')
+
+    historyResponse = [
+      { from: 'pm', text: 'pre-gap', ts: '2026-05-28T00:00:00.000Z' },
+      { from: 'designer', text: 'sent-during-gap', ts: '2026-05-28T00:01:00.000Z' }
+    ]
+
+    vi.advanceTimersByTime(1000)
+    expect(MockWebSocket.instances.length).toBe(2)
+    MockWebSocket.latest().open()
+
+    await vi.waitFor(() =>
+      expect(httpGet.mock.calls.length).toBeGreaterThan(callsBeforeDrop)
+    )
+    await vi.waitFor(() =>
+      expect(getWsSnapshot().messages.some((m) => m.text === 'sent-during-gap')).toBe(true)
+    )
+  })
+
+  test('on reconnect-refetch, a duplicate pre-gap message (already in state) does not appear twice', async () => {
+    vi.useFakeTimers()
+    historyResponse = [{ from: 'pm', text: 'pre-gap', ts: '2026-05-28T00:00:00.000Z' }]
+    ensureWsStarted({ url: 'ws://test', apiBase: 'http://api', authToken: 'tok' })
+    MockWebSocket.latest().open()
+    await vi.waitFor(() =>
+      expect(getWsSnapshot().messages.some((m) => m.text === 'pre-gap')).toBe(true)
+    )
+
+    MockWebSocket.latest().drop()
+    vi.advanceTimersByTime(1000)
+    MockWebSocket.latest().open()
+
+    await vi.waitFor(() => expect(httpGet.mock.calls.length).toBeGreaterThan(2))
+
+    const preGapCount = getWsSnapshot().messages.filter((m) => m.text === 'pre-gap').length
+    expect(preGapCount).toBe(1)
+  })
+})

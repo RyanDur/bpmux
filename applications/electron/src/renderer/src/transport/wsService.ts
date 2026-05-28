@@ -262,13 +262,19 @@ const connect = (url: string): void => {
   sock.onopen = () => {
     if (state.socket !== sock) return
     state.backoff = INITIAL_BACKOFF_MS
-    if (state.awaitingReconnect) {
+    const recovering = state.awaitingReconnect
+    if (recovering) {
       state.awaitingReconnect = false
       patch({ status: 'connected', reconnectTick: state.snapshot.reconnectTick + 1 })
     } else {
       patch({ status: 'connected' })
     }
     sendJson({ type: 'identify', name: RENDERER_IDENTITY, tool: RENDERER_TOOL })
+    if (recovering && state.config?.apiBase && state.config?.authToken) {
+      state.historyAbort?.abort()
+      state.historyLoaded = false
+      loadHistory(state.config.apiBase, state.config.authToken)
+    }
   }
 
   sock.onmessage = (ev) => {
