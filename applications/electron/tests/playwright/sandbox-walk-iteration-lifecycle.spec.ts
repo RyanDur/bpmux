@@ -139,7 +139,7 @@ test.describe('#1569 — live-walk harness slice 2/2: full iteration lifecycle d
       })
       expect(close.ok, JSON.stringify(close.json)).toBe(true)
       await switchToTab(win, 'now')
-      await expect(win.locator('[data-test="board-now-empty"]')).toBeVisible({ timeout: 15_000 })
+      await expect(nowAnchor).toBeHidden({ timeout: 15_000 })
       await capture(win, 'lifecycle-05-closed')
 
       expect(backendPort).not.toBe(4117)

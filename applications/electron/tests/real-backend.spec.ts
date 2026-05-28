@@ -611,43 +611,62 @@ test.describe('real-backend', () => {
       fetched_at: '2026-04-22T19:00:00Z',
       stories: [
         {
+          number: 700,
+          title: 'Iteration KeyboardDragHarness',
+          state: 'icebox',
+          gh_state: 'open',
+          labels: ['iteration', 'iteration-order.100'],
+          assignees: [],
+          created_at: '2026-04-22T00:00:00Z',
+          body: '',
+          is_current: true
+        },
+        {
           number: 701,
           title: 'Story one',
           state: 'ready',
-          labels: ['ready'],
+          gh_state: 'open',
+          labels: ['ready', 'feature', 'iteration-KeyboardDragHarness.1'],
           assignees: [],
           created_at: '2026-04-22T00:00:00Z',
-          body: ''
+          body: '',
+          iteration_membership: { iteration_number: 700, position: 1 }
         },
         {
           number: 702,
           title: 'Story two',
           state: 'ready',
-          labels: ['ready'],
+          gh_state: 'open',
+          labels: ['ready', 'feature', 'iteration-KeyboardDragHarness.2'],
           assignees: [],
           created_at: '2026-04-22T00:01:00Z',
-          body: ''
+          body: '',
+          iteration_membership: { iteration_number: 700, position: 2 }
         },
         {
           number: 703,
           title: 'Story three',
           state: 'ready',
-          labels: ['ready'],
+          gh_state: 'open',
+          labels: ['ready', 'feature', 'iteration-KeyboardDragHarness.3'],
           assignees: [],
           created_at: '2026-04-22T00:02:00Z',
-          body: ''
+          body: '',
+          iteration_membership: { iteration_number: 700, position: 3 }
         }
       ]
     }
     const { app } = await launchWithIsolatedSession()
-    const win = await app.firstWindow()
-    await win.route('**/api/board', async (route) => {
+    let boardRouteHits = 0
+    await app.context().route('**/api/board', async (route) => {
+      boardRouteHits += 1
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify(board)
       })
     })
+    const win = await app.firstWindow()
     const reorderCalls: Array<{ number: number }> = []
     await win.route('**/api/stories/*/labels', async (route) => {
       const req = route.request()
@@ -666,9 +685,21 @@ test.describe('real-backend', () => {
     })
 
     await expect(win.locator('[data-test="app-root"]')).toBeVisible()
-    await expect(win.locator('[data-test="board-story-701"]')).toBeVisible()
+    await expect
+      .poll(
+        async () => {
+          await win.evaluate(() => undefined)
+          return boardRouteHits
+        },
+        { timeout: 15_000 }
+      )
+      .toBeGreaterThan(0)
+    const nowStory701 = win.locator(
+      '[data-test="board-tabpanel-now"] [data-test="board-story-701"]'
+    )
+    await expect(nowStory701).toBeVisible({ timeout: 30_000 })
 
-    const firstRow = win.locator('[data-test="board-story-701"] .board-story-navigate')
+    const firstRow = nowStory701.locator('.board-story-navigate')
     await firstRow.waitFor({ state: 'attached' })
     await firstRow.focus()
     await expect(firstRow).toBeFocused()
