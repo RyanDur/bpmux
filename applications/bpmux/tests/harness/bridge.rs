@@ -126,6 +126,12 @@ impl TestBridge {
                     .into_owned(),
             ));
         }
+        if !env_owned.iter().any(|(k, _)| k == "BPMUX_BRIEFINGS_DIR") {
+            env_owned.push((
+                "BPMUX_BRIEFINGS_DIR".to_string(),
+                bpmux.briefings_dir_path().to_string_lossy().into_owned(),
+            ));
+        }
         let process = TokioChildProcess::new(tokio::process::Command::new(bin).configure(|cmd| {
             cmd.arg("bridge")
                 .arg("--port")

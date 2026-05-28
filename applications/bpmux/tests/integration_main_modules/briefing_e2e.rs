@@ -181,6 +181,40 @@ fn get_briefing_includes_team_doctrine_pointer_list_for_three_canonical_docs() {
 }
 
 #[test]
+fn save_briefing_writes_into_session_briefings_dir_not_home() {
+    let bpmux = TestBpmux::start();
+    let briefings_dir = bpmux.briefings_dir_path();
+    let rt = tokio::runtime::Runtime::new().expect("rt");
+    rt.block_on(async {
+        let dev = TestBridge::connect(&bpmux, "dev").await;
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        let marker = "BRIEFINGS_ISOLATION_REGRESSION_MARKER_1563";
+        let content = format!("## Isolation regression test\n\n{marker}\n");
+        dev.call_tool(
+            "save_briefing",
+            serde_json::json!({"content": content.clone()}),
+        )
+        .await
+        .expect("save_briefing should succeed");
+
+        let written = briefings_dir.join("dev.md");
+        let body = std::fs::read_to_string(&written).unwrap_or_else(|e| {
+            panic!(
+                "save_briefing must land in session_dir/briefings/dev.md ({}); read error: {e}",
+                written.display()
+            )
+        });
+        assert!(
+            body.contains(marker),
+            "marker round-trips through the session-isolated briefings dir; got:\n{body}"
+        );
+
+        dev.close().await;
+    });
+}
+
+#[test]
 fn get_briefing_response_size_under_5kb_per_context_budget_discipline() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");

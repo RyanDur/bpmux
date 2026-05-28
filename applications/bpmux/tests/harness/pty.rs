@@ -187,6 +187,7 @@ impl TestBpmux {
         // bookmark / session-dir / current-symlink state. Mirrors
         // BPMUX_AUTH_TOKEN_PATH (#537) and BPMUX_USAGE_PATH (#230).
         cmd.env("BPMUX_SESSIONS_BASE", session_dir.path());
+        cmd.env("BPMUX_BRIEFINGS_DIR", session_dir.path().join("briefings"));
         // #724 slice 30: route the spawned bpmux's `log_diag` to the
         // canonical test-diag path instead of the developer's
         // `~/.bpmux/diag.log`. `session::diag::resolve_diag_path` walks
@@ -317,6 +318,14 @@ impl TestBpmux {
             .expect("session dir taken before reading sessions_base_path")
             .path()
             .to_path_buf()
+    }
+
+    pub fn briefings_dir_path(&self) -> std::path::PathBuf {
+        self.session_dir
+            .as_ref()
+            .expect("session dir taken before reading briefings_dir_path")
+            .path()
+            .join("briefings")
     }
 
     pub async fn authed_post(&self, path: &str, body: serde_json::Value) -> reqwest::Response {
