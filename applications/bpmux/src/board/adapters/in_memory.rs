@@ -284,6 +284,30 @@ impl SourceAdapter for InMemorySourceAdapter {
                     story.state = *initial_state;
                 }
             }
+            BoardEvent::ParentEpicSet {
+                number,
+                epic_number,
+                ..
+            } => {
+                if let Some(story) = s.stories.get_mut(number) {
+                    story.parent_epic = Some(*epic_number);
+                }
+            }
+            BoardEvent::ParentEpicUnset { number, .. } => {
+                if let Some(story) = s.stories.get_mut(number) {
+                    story.parent_epic = None;
+                }
+            }
+            BoardEvent::IterationMembershipSet {
+                number,
+                iteration_number,
+                position,
+                ..
+            } => {
+                if let Some(story) = s.stories.get_mut(number) {
+                    story.iteration_membership = Some((*iteration_number, *position));
+                }
+            }
             _ => {}
         }
         Ok(None)

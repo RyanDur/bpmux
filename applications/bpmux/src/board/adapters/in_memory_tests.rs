@@ -226,3 +226,117 @@ async fn tag_removed_drops_label_from_ingested_raw_labels() {
         "TagRemoved must drop the label from raw_labels"
     );
 }
+
+#[tokio::test]
+async fn parent_epic_set_surfaces_in_ingested_metadata() {
+    let adapter = InMemorySourceAdapter::new();
+    adapter.seed_stories(vec![seed_story(42, "child")]);
+    adapter
+        .push_event(&BoardEvent::ParentEpicSet {
+            meta: meta(),
+            number: 42,
+            epic_number: 7,
+        })
+        .await
+        .unwrap();
+    let stories = adapter.ingest_metadata().await.unwrap();
+    let story = stories.iter().find(|s| s.number == 42).unwrap();
+    assert_eq!(
+        story.parent_epic,
+        Some(7),
+        "ParentEpicSet must surface parent_epic in the round-tripped Story"
+    );
+    let fetched = adapter.fetch_story_metadata(42).await.unwrap().unwrap();
+    assert_eq!(
+        fetched.parent_epic,
+        Some(7),
+        "ParentEpicSet must also surface via fetch_story_metadata"
+    );
+}
+
+#[tokio::test]
+async fn parent_epic_unset_clears_in_ingested_metadata() {
+    let adapter = InMemorySourceAdapter::new();
+    adapter.seed_stories(vec![seed_story(42, "child")]);
+    adapter
+        .push_event(&BoardEvent::ParentEpicSet {
+            meta: meta(),
+            number: 42,
+            epic_number: 7,
+        })
+        .await
+        .unwrap();
+    adapter
+        .push_event(&BoardEvent::ParentEpicUnset {
+            meta: meta(),
+            number: 42,
+        })
+        .await
+        .unwrap();
+    let stories = adapter.ingest_metadata().await.unwrap();
+    let story = stories.iter().find(|s| s.number == 42).unwrap();
+    assert_eq!(
+        story.parent_epic, None,
+        "ParentEpicUnset must clear parent_epic in the round-tripped Story"
+    );
+    let fetched = adapter.fetch_story_metadata(42).await.unwrap().unwrap();
+    assert_eq!(
+        fetched.parent_epic, None,
+        "ParentEpicUnset must also clear via fetch_story_metadata"
+    );
+}
+
+#[tokio::test]
+async fn iteration_membership_set_surfaces_in_ingested_metadata() {
+    let adapter = InMemorySourceAdapter::new();
+    adapter.seed_stories(vec![seed_story(42, "member")]);
+    adapter
+        .push_event(&BoardEvent::IterationMembershipSet {
+            meta: meta(),
+            number: 42,
+            iteration_number: 1300,
+            position: 200,
+        })
+        .await
+        .unwrap();
+    let stories = adapter.ingest_metadata().await.unwrap();
+    let story = stories.iter().find(|s| s.number == 42).unwrap();
+    assert_eq!(
+        story.iteration_membership,
+        Some((1300, 200)),
+        "IterationMembershipSet must surface iteration_membership in the round-tripped Story"
+    );
+    let fetched = adapter.fetch_story_metadata(42).await.unwrap().unwrap();
+    assert_eq!(
+        fetched.iteration_membership,
+        Some((1300, 200)),
+        "IterationMembershipSet must also surface via fetch_story_metadata"
+    );
+}
+
+#[tokio::test]
+async fn membership_and_parent_epic_events_no_op_for_unseeded_story() {
+    let adapter = InMemorySourceAdapter::new();
+    adapter
+        .push_event(&BoardEvent::IterationMembershipSet {
+            meta: meta(),
+            number: 999,
+            iteration_number: 1,
+            position: 1,
+        })
+        .await
+        .unwrap();
+    adapter
+        .push_event(&BoardEvent::ParentEpicSet {
+            meta: meta(),
+            number: 999,
+            epic_number: 1,
+        })
+        .await
+        .unwrap();
+    let stories = adapter.ingest_metadata().await.unwrap();
+    assert!(
+        stories.iter().all(|s| s.number != 999),
+        "events for an unseeded story must no-op, never phantom-create"
+    );
+}
