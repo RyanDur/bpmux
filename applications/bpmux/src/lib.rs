@@ -101,6 +101,7 @@ enum RoomAction {
         #[arg(long)]
         headless: bool,
     },
+    List {},
 }
 
 fn run_room_spawn(role: &str, agent: &str, _headless: bool) -> anyhow::Result<()> {
@@ -113,6 +114,16 @@ fn run_room_spawn(role: &str, agent: &str, _headless: bool) -> anyhow::Result<()
         created_at: chrono::Utc::now(),
     };
     <room::FileRoomStorage as room::RoomStore>::save(&storage, &entry)?;
+    Ok(())
+}
+
+fn run_room_list() -> anyhow::Result<()> {
+    let storage = room::FileRoomStorage::from_env();
+    let mut rooms = <room::FileRoomStorage as room::RoomStore>::list(&storage)?;
+    rooms.sort_by(|a, b| a.role.cmp(&b.role));
+    for room in &rooms {
+        println!("{}\t{}\t{}", room.role, room.agent, room.pid);
+    }
     Ok(())
 }
 
@@ -278,12 +289,14 @@ pub fn run() -> anyhow::Result<()> {
     }
 
     if let Some(Command::Room { action }) = &cli.command {
-        let RoomAction::Spawn {
-            role,
-            agent,
-            headless,
-        } = action;
-        return run_room_spawn(role, agent, *headless);
+        return match action {
+            RoomAction::Spawn {
+                role,
+                agent,
+                headless,
+            } => run_room_spawn(role, agent, *headless),
+            RoomAction::List {} => run_room_list(),
+        };
     }
 
     run_server_only(&cli)

@@ -18,6 +18,8 @@ pub struct Room {
 
 pub trait RoomStore {
     fn save(&self, room: &Room) -> std::io::Result<()>;
+
+    fn list(&self) -> std::io::Result<Vec<Room>>;
 }
 
 pub fn rooms_dir() -> PathBuf {

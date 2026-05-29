@@ -30,6 +30,26 @@ impl RoomStore for FileRoomStorage {
         std::fs::write(&path, body)?;
         Ok(())
     }
+
+    fn list(&self) -> std::io::Result<Vec<Room>> {
+        let entries = match std::fs::read_dir(&self.base) {
+            Ok(entries) => entries,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+            Err(e) => return Err(e),
+        };
+        let mut rooms = Vec::new();
+        for entry in entries {
+            let config = entry?.path().join("config.json");
+            if !config.is_file() {
+                continue;
+            }
+            let body = std::fs::read_to_string(&config)?;
+            let room: Room = serde_json::from_str(&body)
+                .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+            rooms.push(room);
+        }
+        Ok(rooms)
+    }
 }
 
 #[cfg(test)]
@@ -78,5 +98,36 @@ mod tests {
         let body = std::fs::read_to_string(storage.config_path("designer")).unwrap();
         let parsed: Room = serde_json::from_str(&body).unwrap();
         assert_eq!(parsed.pid, 99);
+    }
+
+    #[test]
+    fn list_returns_empty_vec_when_base_dir_is_absent() {
+        let dir = tempdir().unwrap();
+        let storage = FileRoomStorage::new(dir.path().join("never-created"));
+        assert_eq!(storage.list().unwrap(), vec![]);
+    }
+
+    #[test]
+    fn list_returns_empty_vec_when_base_dir_has_no_rooms() {
+        let dir = tempdir().unwrap();
+        let storage = FileRoomStorage::new(dir.path().to_path_buf());
+        assert_eq!(storage.list().unwrap(), vec![]);
+    }
+
+    #[test]
+    fn list_enumerates_every_saved_room() {
+        let dir = tempdir().unwrap();
+        let storage = FileRoomStorage::new(dir.path().to_path_buf());
+        storage.save(&fixture("pm")).unwrap();
+        storage.save(&fixture("dev")).unwrap();
+
+        let mut roles: Vec<String> = storage
+            .list()
+            .unwrap()
+            .into_iter()
+            .map(|r| r.role)
+            .collect();
+        roles.sort();
+        assert_eq!(roles, vec!["dev".to_string(), "pm".to_string()]);
     }
 }

@@ -72,3 +72,82 @@ fn room_spawn_overwrites_a_previous_room_config_for_same_role() {
         "respawn must refresh config with the new child's PID; got identical pid {pid1}"
     );
 }
+
+#[test]
+fn room_list_enumerates_every_spawned_room() {
+    let rooms = TempDir::new().expect("tempdir");
+    let bin = env!("CARGO_BIN_EXE_bpmux");
+
+    for role in ["pm", "dev"] {
+        let status = Command::new(bin)
+            .args(["room", "spawn", role, "--agent", "/bin/sh", "--headless"])
+            .env("BPMUX_ROOMS_DIR", rooms.path())
+            .env("HOME", rooms.path())
+            .status()
+            .expect("spawn bpmux room spawn");
+        assert!(status.success(), "spawn {role} must exit 0; got {status}");
+    }
+
+    let output = Command::new(bin)
+        .args(["room", "list"])
+        .env("BPMUX_ROOMS_DIR", rooms.path())
+        .env("HOME", rooms.path())
+        .output()
+        .expect("run bpmux room list");
+    assert!(
+        output.status.success(),
+        "bpmux room list must exit 0; got {}",
+        output.status
+    );
+
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    let lines: Vec<&str> = stdout.lines().collect();
+    assert_eq!(
+        lines.len(),
+        2,
+        "AC(a): list must enumerate exactly the 2 spawned rooms; got {lines:?}"
+    );
+    assert_eq!(
+        lines[0].split('\t').next(),
+        Some("dev"),
+        "rooms must enumerate sorted by role for deterministic scripted asserts; got {lines:?}"
+    );
+    assert_eq!(lines[1].split('\t').next(), Some("pm"), "got {lines:?}");
+    for line in &lines {
+        let fields: Vec<&str> = line.split('\t').collect();
+        assert_eq!(
+            fields.len(),
+            3,
+            "each room line is role\\tagent\\tpid; got {line:?}"
+        );
+        assert_eq!(fields[1], "/bin/sh", "agent field; got {line:?}");
+        assert!(
+            fields[2].parse::<u32>().is_ok(),
+            "pid field must be a number; got {line:?}"
+        );
+    }
+}
+
+#[test]
+fn room_list_on_empty_rooms_dir_exits_zero_with_no_output() {
+    let rooms = TempDir::new().expect("tempdir");
+    let bin = env!("CARGO_BIN_EXE_bpmux");
+
+    let output = Command::new(bin)
+        .args(["room", "list"])
+        .env("BPMUX_ROOMS_DIR", rooms.path())
+        .env("HOME", rooms.path())
+        .output()
+        .expect("run bpmux room list");
+
+    assert!(
+        output.status.success(),
+        "AC(c): list on empty rooms-dir must exit 0 (clean, not error); got {}",
+        output.status
+    );
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    assert!(
+        stdout.trim().is_empty(),
+        "AC(c): no rooms means no output; got {stdout:?}"
+    );
+}
