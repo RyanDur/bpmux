@@ -22,6 +22,25 @@ pub fn spawn_pty(command: &str, args: &[String]) -> std::io::Result<u32> {
     Ok(pid)
 }
 
+pub fn spawn_captured(
+    command: &str,
+    args: &[String],
+    log_path: &std::path::Path,
+) -> std::io::Result<u32> {
+    if let Some(parent) = log_path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let log = std::fs::File::create(log_path)?;
+    let log_err = log.try_clone()?;
+    let child = std::process::Command::new(command)
+        .args(args)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::from(log))
+        .stderr(std::process::Stdio::from(log_err))
+        .spawn()?;
+    Ok(child.id())
+}
+
 fn io_other<E: std::fmt::Display>(e: E) -> std::io::Error {
     std::io::Error::other(e.to_string())
 }

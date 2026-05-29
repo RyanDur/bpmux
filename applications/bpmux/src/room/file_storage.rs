@@ -18,6 +18,10 @@ impl FileRoomStorage {
     pub fn config_path(&self, role: &str) -> PathBuf {
         self.base.join(role).join("config.json")
     }
+
+    pub fn output_path(&self, role: &str) -> PathBuf {
+        self.base.join(role).join("output.log")
+    }
 }
 
 impl RoomStore for FileRoomStorage {
@@ -49,6 +53,28 @@ impl RoomStore for FileRoomStorage {
             rooms.push(room);
         }
         Ok(rooms)
+    }
+
+    fn read(&self, role: &str, lines: Option<usize>) -> std::io::Result<String> {
+        if !self.config_path(role).is_file() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!("room '{role}' is not spawned"),
+            ));
+        }
+        let body = match std::fs::read_to_string(self.output_path(role)) {
+            Ok(body) => body,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(String::new()),
+            Err(e) => return Err(e),
+        };
+        match lines {
+            Some(n) => {
+                let all: Vec<&str> = body.lines().collect();
+                let start = all.len().saturating_sub(n);
+                Ok(all[start..].join("\n"))
+            }
+            None => Ok(body),
+        }
     }
 }
 
@@ -129,5 +155,40 @@ mod tests {
             .collect();
         roles.sort();
         assert_eq!(roles, vec!["dev".to_string(), "pm".to_string()]);
+    }
+
+    #[test]
+    fn read_errors_when_room_is_not_spawned() {
+        let dir = tempdir().unwrap();
+        let storage = FileRoomStorage::new(dir.path().to_path_buf());
+        let err = storage.read("ghost", None).unwrap_err();
+        assert_eq!(err.kind(), std::io::ErrorKind::NotFound);
+        assert!(err.to_string().contains("ghost"));
+    }
+
+    #[test]
+    fn read_returns_empty_when_spawned_but_no_output_captured_yet() {
+        let dir = tempdir().unwrap();
+        let storage = FileRoomStorage::new(dir.path().to_path_buf());
+        storage.save(&fixture("pm")).unwrap();
+        assert_eq!(storage.read("pm", None).unwrap(), "");
+    }
+
+    #[test]
+    fn read_returns_the_full_captured_output_by_default() {
+        let dir = tempdir().unwrap();
+        let storage = FileRoomStorage::new(dir.path().to_path_buf());
+        storage.save(&fixture("pm")).unwrap();
+        std::fs::write(storage.output_path("pm"), "line1\nline2\nline3\n").unwrap();
+        assert_eq!(storage.read("pm", None).unwrap(), "line1\nline2\nline3\n");
+    }
+
+    #[test]
+    fn read_returns_only_the_last_n_lines_when_bounded() {
+        let dir = tempdir().unwrap();
+        let storage = FileRoomStorage::new(dir.path().to_path_buf());
+        storage.save(&fixture("pm")).unwrap();
+        std::fs::write(storage.output_path("pm"), "l1\nl2\nl3\nl4\nl5\n").unwrap();
+        assert_eq!(storage.read("pm", Some(2)).unwrap(), "l4\nl5");
     }
 }

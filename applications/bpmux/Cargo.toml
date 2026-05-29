@@ -45,6 +45,7 @@ http = "1"
 http-body-util = "0.1"
 toml = "0.8"
 portable-pty = "0.9"
+strip-ansi-escapes = "0.2"
 
 [dev-dependencies]
 tempfile = "3"

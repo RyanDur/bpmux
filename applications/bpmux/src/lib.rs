@@ -102,11 +102,20 @@ enum RoomAction {
         headless: bool,
     },
     List {},
+    Read {
+        role: String,
+        #[arg(long)]
+        lines: Option<usize>,
+    },
 }
 
-fn run_room_spawn(role: &str, agent: &str, _headless: bool) -> anyhow::Result<()> {
+fn run_room_spawn(role: &str, agent: &str, headless: bool) -> anyhow::Result<()> {
     let storage = room::FileRoomStorage::from_env();
-    let pid = room::spawn_pty(agent, &[])?;
+    let pid = if headless {
+        room::spawn_captured(agent, &[], &storage.output_path(role))?
+    } else {
+        room::spawn_pty(agent, &[])?
+    };
     let entry = room::Room {
         role: role.to_string(),
         agent: agent.to_string(),
@@ -124,6 +133,13 @@ fn run_room_list() -> anyhow::Result<()> {
     for room in &rooms {
         println!("{}\t{}\t{}", room.role, room.agent, room.pid);
     }
+    Ok(())
+}
+
+fn run_room_read(role: &str, lines: Option<usize>) -> anyhow::Result<()> {
+    let storage = room::FileRoomStorage::from_env();
+    let raw = <room::FileRoomStorage as room::RoomStore>::read(&storage, role, lines)?;
+    print!("{}", room::strip_ansi(&raw));
     Ok(())
 }
 
@@ -296,6 +312,7 @@ pub fn run() -> anyhow::Result<()> {
                 headless,
             } => run_room_spawn(role, agent, *headless),
             RoomAction::List {} => run_room_list(),
+            RoomAction::Read { role, lines } => run_room_read(role, *lines),
         };
     }
 

@@ -1,9 +1,36 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+use std::os::unix::fs::PermissionsExt;
 use std::process::Command;
+use std::time::{Duration, Instant};
 
 use serde_json::Value;
 use tempfile::TempDir;
+
+fn write_marker_agent(dir: &std::path::Path, name: &str, marker: &str) -> std::path::PathBuf {
+    let script = dir.join(name);
+    std::fs::write(&script, format!("#!/bin/sh\necho {marker}\n")).expect("write agent script");
+    std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755))
+        .expect("chmod agent script");
+    script
+}
+
+fn wait_for_capture(log: &std::path::Path, marker: &str) {
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        if let Ok(body) = std::fs::read_to_string(log)
+            && body.contains(marker)
+        {
+            return;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "marker {marker:?} never captured to {}",
+            log.display()
+        );
+        std::thread::sleep(Duration::from_millis(50));
+    }
+}
 
 #[test]
 fn room_spawn_creates_config_json_with_role_agent_pid_at_isolated_rooms_dir() {
@@ -33,7 +60,7 @@ fn room_spawn_creates_config_json_with_role_agent_pid_at_isolated_rooms_dir() {
     assert_eq!(parsed["role"].as_str(), Some("pm"));
     assert_eq!(parsed["agent"].as_str(), Some("/bin/sh"));
     let pid = parsed["pid"].as_u64().expect("pid field must be a number");
-    assert!(pid > 0, "AC(b): a PTY child must be spawned; got pid={pid}");
+    assert!(pid > 0, "AC(b): a child must be spawned; got pid={pid}");
     assert!(
         parsed["created_at"].is_string(),
         "created_at must be an RFC3339 timestamp string"
@@ -149,5 +176,153 @@ fn room_list_on_empty_rooms_dir_exits_zero_with_no_output() {
     assert!(
         stdout.trim().is_empty(),
         "AC(c): no rooms means no output; got {stdout:?}"
+    );
+}
+
+#[test]
+fn room_read_returns_the_spawned_agents_captured_stdout() {
+    let rooms = TempDir::new().expect("tempdir");
+    let bin = env!("CARGO_BIN_EXE_bpmux");
+    let agent = write_marker_agent(rooms.path(), "emit.sh", "ROOM_READ_MARKER_pm");
+
+    let status = Command::new(bin)
+        .args([
+            "room",
+            "spawn",
+            "pm",
+            "--agent",
+            agent.to_str().expect("agent path utf8"),
+            "--headless",
+        ])
+        .env("BPMUX_ROOMS_DIR", rooms.path())
+        .env("HOME", rooms.path())
+        .status()
+        .expect("spawn marker agent");
+    assert!(status.success(), "spawn must exit 0; got {status}");
+
+    wait_for_capture(
+        &rooms.path().join("pm").join("output.log"),
+        "ROOM_READ_MARKER_pm",
+    );
+
+    let output = Command::new(bin)
+        .args(["room", "read", "pm", "--lines", "20"])
+        .env("BPMUX_ROOMS_DIR", rooms.path())
+        .env("HOME", rooms.path())
+        .output()
+        .expect("run room read");
+    assert!(
+        output.status.success(),
+        "room read must exit 0; got {}",
+        output.status
+    );
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    assert!(
+        stdout.contains("ROOM_READ_MARKER_pm"),
+        "AC(a): room read must return the agent's captured stdout; got {stdout:?}"
+    );
+    assert!(
+        !stdout.contains('\u{1b}'),
+        "AC(c): no raw escape-sequence leak in the returned stream; got {stdout:?}"
+    );
+}
+
+#[test]
+fn room_read_returns_only_the_named_rooms_output_no_cross_room_bleed() {
+    let rooms = TempDir::new().expect("tempdir");
+    let bin = env!("CARGO_BIN_EXE_bpmux");
+    let pm_agent = write_marker_agent(rooms.path(), "pm.sh", "MARK_PM_ONLY");
+    let dev_agent = write_marker_agent(rooms.path(), "dev.sh", "MARK_DEV_ONLY");
+
+    for (role, agent) in [("pm", &pm_agent), ("dev", &dev_agent)] {
+        let status = Command::new(bin)
+            .args([
+                "room",
+                "spawn",
+                role,
+                "--agent",
+                agent.to_str().expect("agent path utf8"),
+                "--headless",
+            ])
+            .env("BPMUX_ROOMS_DIR", rooms.path())
+            .env("HOME", rooms.path())
+            .status()
+            .expect("spawn marker agent");
+        assert!(status.success(), "spawn {role} must exit 0; got {status}");
+    }
+    wait_for_capture(&rooms.path().join("pm").join("output.log"), "MARK_PM_ONLY");
+    wait_for_capture(
+        &rooms.path().join("dev").join("output.log"),
+        "MARK_DEV_ONLY",
+    );
+
+    let output = Command::new(bin)
+        .args(["room", "read", "pm", "--lines", "20"])
+        .env("BPMUX_ROOMS_DIR", rooms.path())
+        .env("HOME", rooms.path())
+        .output()
+        .expect("run room read");
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    assert!(
+        stdout.contains("MARK_PM_ONLY"),
+        "AC(b): pm read must contain pm's output; got {stdout:?}"
+    );
+    assert!(
+        !stdout.contains("MARK_DEV_ONLY"),
+        "AC(b): pm read must NOT bleed dev's output; got {stdout:?}"
+    );
+}
+
+#[test]
+fn room_read_on_a_non_spawned_room_errors_clearly() {
+    let rooms = TempDir::new().expect("tempdir");
+    let bin = env!("CARGO_BIN_EXE_bpmux");
+
+    let output = Command::new(bin)
+        .args(["room", "read", "ghost", "--lines", "20"])
+        .env("BPMUX_ROOMS_DIR", rooms.path())
+        .env("HOME", rooms.path())
+        .output()
+        .expect("run room read");
+    assert!(
+        !output.status.success(),
+        "AC(d): reading a non-spawned room must error (non-zero exit); got {}",
+        output.status
+    );
+    let stderr = String::from_utf8(output.stderr).expect("stderr utf8");
+    assert!(
+        stderr.contains("ghost"),
+        "AC(d): error must clearly name the missing room; got {stderr:?}"
+    );
+}
+
+#[test]
+fn room_read_on_a_spawned_but_silent_room_is_a_clean_empty_not_an_error() {
+    let rooms = TempDir::new().expect("tempdir");
+    let bin = env!("CARGO_BIN_EXE_bpmux");
+
+    let status = Command::new(bin)
+        .args(["room", "spawn", "pm", "--agent", "/bin/sh", "--headless"])
+        .env("BPMUX_ROOMS_DIR", rooms.path())
+        .env("HOME", rooms.path())
+        .status()
+        .expect("spawn silent agent");
+    assert!(status.success(), "spawn must exit 0; got {status}");
+
+    let output = Command::new(bin)
+        .args(["room", "read", "pm"])
+        .env("BPMUX_ROOMS_DIR", rooms.path())
+        .env("HOME", rooms.path())
+        .output()
+        .expect("run room read");
+    assert!(
+        output.status.success(),
+        "AC(d): a spawned-but-silent room reads clean (exit 0), not an error; got {}",
+        output.status
+    );
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    assert!(
+        stdout.trim().is_empty(),
+        "spawned-but-silent room has no captured output yet; got {stdout:?}"
     );
 }

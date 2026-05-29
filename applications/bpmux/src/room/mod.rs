@@ -6,7 +6,7 @@ pub mod file_storage;
 pub mod spawn;
 
 pub use file_storage::FileRoomStorage;
-pub use spawn::spawn_pty;
+pub use spawn::{spawn_captured, spawn_pty};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Room {
@@ -20,6 +20,12 @@ pub trait RoomStore {
     fn save(&self, room: &Room) -> std::io::Result<()>;
 
     fn list(&self) -> std::io::Result<Vec<Room>>;
+
+    fn read(&self, role: &str, lines: Option<usize>) -> std::io::Result<String>;
+}
+
+pub fn strip_ansi(input: &str) -> String {
+    String::from_utf8_lossy(&strip_ansi_escapes::strip(input)).into_owned()
 }
 
 pub fn rooms_dir() -> PathBuf {
@@ -66,6 +72,18 @@ mod tests {
     fn resolve_falls_back_to_tmp_when_both_unset() {
         let dir = resolve_rooms_dir(None, None);
         assert_eq!(dir, PathBuf::from("/tmp/.bpmux/rooms"));
+    }
+
+    #[test]
+    fn strip_ansi_removes_color_escape_sequences() {
+        let raw = "\x1b[31mred\x1b[0m plain";
+        assert_eq!(strip_ansi(raw), "red plain");
+        assert!(!strip_ansi(raw).contains('\u{1b}'));
+    }
+
+    #[test]
+    fn strip_ansi_leaves_clean_text_untouched() {
+        assert_eq!(strip_ansi("just text\nline two"), "just text\nline two");
     }
 
     #[test]
