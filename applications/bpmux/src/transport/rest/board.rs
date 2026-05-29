@@ -45,8 +45,7 @@ pub async fn get_board(
             .iter()
             .map(|s| crate::board::adapters::json::story_to_board_json(&codec, s))
             .collect();
-        let ordered =
-            crate::board::ready_order_label::sort_board_by_ready_order_labels(&codec, stories);
+        let ordered = crate::board::ready_order_label::sort_board_ready_by_membership(stories);
         let body = serde_json::json!({
             "stories": ordered,
             "fetched_at": chrono::Utc::now().to_rfc3339(),
@@ -62,9 +61,7 @@ pub async fn get_board(
     };
     match tracker.fetch_board_stories().await {
         Ok(stories) => {
-            let codec = crate::board::adapters::gh_label_codec::GhLabelCodec;
-            let ordered =
-                crate::board::ready_order_label::sort_board_by_ready_order_labels(&codec, stories);
+            let ordered = crate::board::ready_order_label::sort_board_ready_by_membership(stories);
             let body = serde_json::json!({
                 "stories": ordered,
                 "fetched_at": chrono::Utc::now().to_rfc3339(),

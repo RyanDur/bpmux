@@ -252,8 +252,18 @@ pub(in crate::bridge) async fn handle_move_story(
     if target_is_icebox && let Some(pos) = position {
         crate::bridge::tools_stories::reorder_icebox_story_via_labels(r, number, pos)?;
     }
-    if target_is_ready && let Some(pos) = position {
-        crate::bridge::tools_stories::reorder_ready_story_via_labels(r, number, pos)?;
+    if target_is_ready
+        && let Some(pos) = position
+        && let Some(iteration_number) =
+            crate::board::iteration_label::current_iteration_number(&r.all_stories())
+    {
+        r.mutate_sync(crate::board::BoardEvent::IterationMembershipSet {
+            meta: meta.clone(),
+            number,
+            iteration_number,
+            position: pos as u32,
+        })
+        .map_err(|e| format!("#{number} ready-order (iteration-membership) enqueue failed: {e}"))?;
     }
 
     let body = audit_comment_body(&actor_short, &from_display, target, position, &rationale);
@@ -281,3 +291,7 @@ mod tests;
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 #[path = "move_story_icebox_label_substrate_tests_1301.rs"]
 mod move_story_icebox_label_substrate_tests_1301;
+
+#[cfg(test)]
+#[path = "move_story_ready_order_burst_tests.rs"]
+mod move_story_ready_order_burst_tests;

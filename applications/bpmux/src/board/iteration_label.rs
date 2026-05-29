@@ -45,6 +45,17 @@ pub fn compute_insert_position(insert_index: usize, existing_positions: &[u32]) 
     left
 }
 
+pub fn current_iteration_number(stories: &[Story]) -> Option<u64> {
+    stories
+        .iter()
+        .find(|s| {
+            !s.is_closed
+                && s.is_current
+                && s.story_type == crate::board::domain::StoryType::Iteration
+        })
+        .map(|s| s.number)
+}
+
 pub fn members_of_iteration(stories: &[Story], iteration_number: u64) -> Vec<u64> {
     let mut members: Vec<(u64, u32)> = stories
         .iter()
