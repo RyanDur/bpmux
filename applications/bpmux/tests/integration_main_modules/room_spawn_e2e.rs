@@ -8,8 +8,16 @@ use serde_json::Value;
 use tempfile::TempDir;
 
 fn write_marker_agent(dir: &std::path::Path, name: &str, marker: &str) -> std::path::PathBuf {
+    write_agent(dir, name, &format!("echo {marker}"))
+}
+
+fn write_ansi_agent(dir: &std::path::Path, name: &str, marker: &str) -> std::path::PathBuf {
+    write_agent(dir, name, &format!("printf '\\033[31m{marker}\\033[0m\\n'"))
+}
+
+fn write_agent(dir: &std::path::Path, name: &str, command: &str) -> std::path::PathBuf {
     let script = dir.join(name);
-    std::fs::write(&script, format!("#!/bin/sh\necho {marker}\n")).expect("write agent script");
+    std::fs::write(&script, format!("#!/bin/sh\n{command}\n")).expect("write agent script");
     std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755))
         .expect("chmod agent script");
     script
@@ -183,7 +191,7 @@ fn room_list_on_empty_rooms_dir_exits_zero_with_no_output() {
 fn room_read_returns_the_spawned_agents_captured_stdout() {
     let rooms = TempDir::new().expect("tempdir");
     let bin = env!("CARGO_BIN_EXE_bpmux");
-    let agent = write_marker_agent(rooms.path(), "emit.sh", "ROOM_READ_MARKER_pm");
+    let agent = write_ansi_agent(rooms.path(), "emit.sh", "ROOM_READ_MARKER_pm");
 
     let status = Command::new(bin)
         .args([
@@ -200,9 +208,13 @@ fn room_read_returns_the_spawned_agents_captured_stdout() {
         .expect("spawn marker agent");
     assert!(status.success(), "spawn must exit 0; got {status}");
 
-    wait_for_capture(
-        &rooms.path().join("pm").join("output.log"),
-        "ROOM_READ_MARKER_pm",
+    let log = rooms.path().join("pm").join("output.log");
+    wait_for_capture(&log, "ROOM_READ_MARKER_pm");
+    let raw = std::fs::read_to_string(&log).expect("read raw output.log");
+    assert!(
+        raw.contains('\u{1b}'),
+        "precondition: the ANSI agent must have emitted a real escape into the raw log, \
+         else the strip assertion below is vacuous; got {raw:?}"
     );
 
     let output = Command::new(bin)
@@ -223,7 +235,7 @@ fn room_read_returns_the_spawned_agents_captured_stdout() {
     );
     assert!(
         !stdout.contains('\u{1b}'),
-        "AC(c): no raw escape-sequence leak in the returned stream; got {stdout:?}"
+        "AC(c): the raw log carried an escape, room read must strip it (load-bearing on strip_ansi wiring); got {stdout:?}"
     );
 }
 
@@ -324,5 +336,62 @@ fn room_read_on_a_spawned_but_silent_room_is_a_clean_empty_not_an_error() {
     assert!(
         stdout.trim().is_empty(),
         "spawned-but-silent room has no captured output yet; got {stdout:?}"
+    );
+}
+
+#[test]
+fn room_read_after_respawn_does_not_return_the_prior_childs_output() {
+    let rooms = TempDir::new().expect("tempdir");
+    let bin = env!("CARGO_BIN_EXE_bpmux");
+    let log = rooms.path().join("pm").join("output.log");
+
+    let old_agent = write_marker_agent(rooms.path(), "old.sh", "STALE_OLD_MARKER");
+    let status = Command::new(bin)
+        .args([
+            "room",
+            "spawn",
+            "pm",
+            "--agent",
+            old_agent.to_str().expect("agent path utf8"),
+            "--headless",
+        ])
+        .env("BPMUX_ROOMS_DIR", rooms.path())
+        .env("HOME", rooms.path())
+        .status()
+        .expect("first spawn");
+    assert!(status.success(), "first spawn must exit 0; got {status}");
+    wait_for_capture(&log, "STALE_OLD_MARKER");
+
+    let new_agent = write_marker_agent(rooms.path(), "new.sh", "FRESH_NEW_MARKER");
+    let status = Command::new(bin)
+        .args([
+            "room",
+            "spawn",
+            "pm",
+            "--agent",
+            new_agent.to_str().expect("agent path utf8"),
+            "--headless",
+        ])
+        .env("BPMUX_ROOMS_DIR", rooms.path())
+        .env("HOME", rooms.path())
+        .status()
+        .expect("respawn");
+    assert!(status.success(), "respawn must exit 0; got {status}");
+    wait_for_capture(&log, "FRESH_NEW_MARKER");
+
+    let output = Command::new(bin)
+        .args(["room", "read", "pm"])
+        .env("BPMUX_ROOMS_DIR", rooms.path())
+        .env("HOME", rooms.path())
+        .output()
+        .expect("run room read");
+    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
+    assert!(
+        stdout.contains("FRESH_NEW_MARKER"),
+        "respawn's output must be readable; got {stdout:?}"
+    );
+    assert!(
+        !stdout.contains("STALE_OLD_MARKER"),
+        "AC(b): respawn must truncate the prior child's captured output, not append; got {stdout:?}"
     );
 }
