@@ -76,6 +76,21 @@ impl RoomStore for FileRoomStorage {
             None => Ok(body),
         }
     }
+
+    fn get(&self, role: &str) -> std::io::Result<Room> {
+        let body = match std::fs::read_to_string(self.config_path(role)) {
+            Ok(body) => body,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    format!("room '{role}' is not spawned"),
+                ));
+            }
+            Err(e) => return Err(e),
+        };
+        serde_json::from_str(&body)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))
+    }
 }
 
 #[cfg(test)]
@@ -190,5 +205,23 @@ mod tests {
         storage.save(&fixture("pm")).unwrap();
         std::fs::write(storage.output_path("pm"), "l1\nl2\nl3\nl4\nl5\n").unwrap();
         assert_eq!(storage.read("pm", Some(2)).unwrap(), "l4\nl5");
+    }
+
+    #[test]
+    fn get_returns_the_saved_room() {
+        let dir = tempdir().unwrap();
+        let storage = FileRoomStorage::new(dir.path().to_path_buf());
+        let room = fixture("pm");
+        storage.save(&room).unwrap();
+        assert_eq!(storage.get("pm").unwrap(), room);
+    }
+
+    #[test]
+    fn get_errors_when_room_is_not_spawned() {
+        let dir = tempdir().unwrap();
+        let storage = FileRoomStorage::new(dir.path().to_path_buf());
+        let err = storage.get("ghost").unwrap_err();
+        assert_eq!(err.kind(), std::io::ErrorKind::NotFound);
+        assert!(err.to_string().contains("ghost"));
     }
 }

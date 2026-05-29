@@ -6,7 +6,7 @@ pub mod file_storage;
 pub mod spawn;
 
 pub use file_storage::FileRoomStorage;
-pub use spawn::{spawn_captured, spawn_pty};
+pub use spawn::{spawn_captured, spawn_pty, terminate};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Room {
@@ -22,6 +22,8 @@ pub trait RoomStore {
     fn list(&self) -> std::io::Result<Vec<Room>>;
 
     fn read(&self, role: &str, lines: Option<usize>) -> std::io::Result<String>;
+
+    fn get(&self, role: &str) -> std::io::Result<Room>;
 }
 
 pub fn strip_ansi(input: &str) -> String {

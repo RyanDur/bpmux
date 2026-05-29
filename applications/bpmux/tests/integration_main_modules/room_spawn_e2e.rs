@@ -40,6 +40,49 @@ fn wait_for_capture(log: &std::path::Path, marker: &str) {
     }
 }
 
+fn process_alive(pid: u32) -> bool {
+    Command::new("kill")
+        .args(["-0", &pid.to_string()])
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
+}
+
+fn wait_for_death(pid: u32) {
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while process_alive(pid) {
+        assert!(
+            Instant::now() < deadline,
+            "AC(b): process {pid} still alive after room kill — orphan"
+        );
+        std::thread::sleep(Duration::from_millis(50));
+    }
+}
+
+fn pid_of(rooms: &std::path::Path, role: &str) -> u32 {
+    let body =
+        std::fs::read_to_string(rooms.join(role).join("config.json")).expect("read config.json");
+    let parsed: Value = serde_json::from_str(&body).expect("config.json valid");
+    parsed["pid"].as_u64().expect("pid field") as u32
+}
+
+fn spawn_headless(bin: &str, rooms: &std::path::Path, role: &str, agent: &std::path::Path) {
+    let status = Command::new(bin)
+        .args([
+            "room",
+            "spawn",
+            role,
+            "--agent",
+            agent.to_str().expect("agent path utf8"),
+            "--headless",
+        ])
+        .env("BPMUX_ROOMS_DIR", rooms)
+        .env("HOME", rooms)
+        .status()
+        .expect("spawn agent");
+    assert!(status.success(), "spawn {role} must exit 0; got {status}");
+}
+
 #[test]
 fn room_spawn_creates_config_json_with_role_agent_pid_at_isolated_rooms_dir() {
     let rooms = TempDir::new().expect("tempdir");
@@ -393,5 +436,136 @@ fn room_read_after_respawn_does_not_return_the_prior_childs_output() {
     assert!(
         !stdout.contains("STALE_OLD_MARKER"),
         "AC(b): respawn must truncate the prior child's captured output, not append; got {stdout:?}"
+    );
+}
+
+#[test]
+fn room_kill_terminates_the_occupant_with_no_orphan() {
+    let rooms = TempDir::new().expect("tempdir");
+    let bin = env!("CARGO_BIN_EXE_bpmux");
+    let agent = write_agent(rooms.path(), "sleeper.sh", "exec sleep 30");
+
+    spawn_headless(bin, rooms.path(), "pm", &agent);
+    let pid = pid_of(rooms.path(), "pm");
+    assert!(
+        process_alive(pid),
+        "occupant must be alive before kill; pid={pid}"
+    );
+
+    let status = Command::new(bin)
+        .args(["room", "kill", "pm"])
+        .env("BPMUX_ROOMS_DIR", rooms.path())
+        .env("HOME", rooms.path())
+        .status()
+        .expect("run room kill");
+    assert!(status.success(), "AC: room kill must exit 0; got {status}");
+
+    wait_for_death(pid);
+}
+
+#[test]
+fn room_kill_on_an_already_killed_room_is_a_clean_no_op() {
+    let rooms = TempDir::new().expect("tempdir");
+    let bin = env!("CARGO_BIN_EXE_bpmux");
+    let agent = write_agent(rooms.path(), "sleeper.sh", "exec sleep 30");
+
+    spawn_headless(bin, rooms.path(), "pm", &agent);
+    let pid = pid_of(rooms.path(), "pm");
+
+    let first = Command::new(bin)
+        .args(["room", "kill", "pm"])
+        .env("BPMUX_ROOMS_DIR", rooms.path())
+        .env("HOME", rooms.path())
+        .status()
+        .expect("first kill");
+    assert!(first.success(), "first kill must exit 0; got {first}");
+    wait_for_death(pid);
+
+    let second = Command::new(bin)
+        .args(["room", "kill", "pm"])
+        .env("BPMUX_ROOMS_DIR", rooms.path())
+        .env("HOME", rooms.path())
+        .status()
+        .expect("second kill");
+    assert!(
+        second.success(),
+        "AC(d): killing an already-killed room is a clean no-op (exit 0); got {second}"
+    );
+}
+
+#[test]
+fn room_kill_on_a_non_spawned_room_errors_clearly() {
+    let rooms = TempDir::new().expect("tempdir");
+    let bin = env!("CARGO_BIN_EXE_bpmux");
+
+    let output = Command::new(bin)
+        .args(["room", "kill", "ghost"])
+        .env("BPMUX_ROOMS_DIR", rooms.path())
+        .env("HOME", rooms.path())
+        .output()
+        .expect("run room kill");
+    assert!(
+        !output.status.success(),
+        "killing a non-spawned room must error (non-zero exit); got {}",
+        output.status
+    );
+    let stderr = String::from_utf8(output.stderr).expect("stderr utf8");
+    assert!(
+        stderr.contains("ghost"),
+        "error must clearly name the missing room; got {stderr:?}"
+    );
+}
+
+#[test]
+fn room_kill_leaves_the_home_intact_room_stays_listed_and_post_mortem_readable() {
+    let rooms = TempDir::new().expect("tempdir");
+    let bin = env!("CARGO_BIN_EXE_bpmux");
+    let agent = write_agent(rooms.path(), "home.sh", "echo HOME_MARKER\nexec sleep 30");
+
+    spawn_headless(bin, rooms.path(), "pm", &agent);
+    let pid = pid_of(rooms.path(), "pm");
+    wait_for_capture(&rooms.path().join("pm").join("output.log"), "HOME_MARKER");
+
+    let kill = Command::new(bin)
+        .args(["room", "kill", "pm"])
+        .env("BPMUX_ROOMS_DIR", rooms.path())
+        .env("HOME", rooms.path())
+        .status()
+        .expect("run room kill");
+    assert!(kill.success(), "room kill must exit 0; got {kill}");
+    wait_for_death(pid);
+
+    assert!(
+        rooms.path().join("pm").join("config.json").exists(),
+        "AC: kill leaves the room-home (config.json) on disk intact"
+    );
+
+    let list = Command::new(bin)
+        .args(["room", "list"])
+        .env("BPMUX_ROOMS_DIR", rooms.path())
+        .env("HOME", rooms.path())
+        .output()
+        .expect("run room list");
+    let list_out = String::from_utf8(list.stdout).expect("stdout utf8");
+    assert!(
+        list_out.lines().any(|l| l.split('\t').next() == Some("pm")),
+        "rooms-as-homes: a killed room's home persists in room list; got {list_out:?}"
+    );
+
+    let read = Command::new(bin)
+        .args(["room", "read", "pm"])
+        .env("BPMUX_ROOMS_DIR", rooms.path())
+        .env("HOME", rooms.path())
+        .output()
+        .expect("run room read");
+    assert!(
+        read.status.success(),
+        "post-mortem read must exit 0; got {}",
+        read.status
+    );
+    let read_out = String::from_utf8(read.stdout).expect("stdout utf8");
+    assert!(
+        read_out.contains("HOME_MARKER"),
+        "post-mortem read must still return the dead occupant's final output; got {read_out:?}"
     );
 }

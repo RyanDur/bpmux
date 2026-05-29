@@ -107,6 +107,9 @@ enum RoomAction {
         #[arg(long)]
         lines: Option<usize>,
     },
+    Kill {
+        role: String,
+    },
 }
 
 fn run_room_spawn(role: &str, agent: &str, headless: bool) -> anyhow::Result<()> {
@@ -140,6 +143,13 @@ fn run_room_read(role: &str, lines: Option<usize>) -> anyhow::Result<()> {
     let storage = room::FileRoomStorage::from_env();
     let raw = <room::FileRoomStorage as room::RoomStore>::read(&storage, role, lines)?;
     print!("{}", room::strip_ansi(&raw));
+    Ok(())
+}
+
+fn run_room_kill(role: &str) -> anyhow::Result<()> {
+    let storage = room::FileRoomStorage::from_env();
+    let entry = <room::FileRoomStorage as room::RoomStore>::get(&storage, role)?;
+    room::terminate(entry.pid)?;
     Ok(())
 }
 
@@ -313,6 +323,7 @@ pub fn run() -> anyhow::Result<()> {
             } => run_room_spawn(role, agent, *headless),
             RoomAction::List {} => run_room_list(),
             RoomAction::Read { role, lines } => run_room_read(role, *lines),
+            RoomAction::Kill { role } => run_room_kill(role),
         };
     }
 

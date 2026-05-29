@@ -41,6 +41,42 @@ pub fn spawn_captured(
     Ok(child.id())
 }
 
+pub fn process_alive(pid: u32) -> bool {
+    std::process::Command::new("kill")
+        .args(["-0", &pid.to_string()])
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .map(|status| status.success())
+        .unwrap_or(false)
+}
+
+pub fn terminate(pid: u32) -> std::io::Result<()> {
+    if !process_alive(pid) {
+        return Ok(());
+    }
+    signal(pid, "TERM")?;
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
+    while process_alive(pid) {
+        if std::time::Instant::now() >= deadline {
+            signal(pid, "KILL")?;
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    Ok(())
+}
+
+fn signal(pid: u32, sig: &str) -> std::io::Result<()> {
+    std::process::Command::new("kill")
+        .arg(format!("-{sig}"))
+        .arg(pid.to_string())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()?;
+    Ok(())
+}
+
 fn io_other<E: std::fmt::Display>(e: E) -> std::io::Error {
     std::io::Error::other(e.to_string())
 }
@@ -50,20 +86,12 @@ fn io_other<E: std::fmt::Display>(e: E) -> std::io::Error {
 mod tests {
     use super::*;
 
-    fn process_is_alive(pid: u32) -> bool {
-        std::process::Command::new("kill")
-            .args(["-0", &pid.to_string()])
-            .status()
-            .map(|s| s.success())
-            .unwrap_or(false)
-    }
-
     #[test]
     fn spawn_pty_returns_positive_pid_for_running_child() {
         let pid = spawn_pty("/bin/sh", &["-c".into(), "sleep 1".into()]).unwrap();
         assert!(pid > 0, "spawn must return a child PID; got {pid}");
         assert!(
-            process_is_alive(pid),
+            process_alive(pid),
             "child {pid} must be alive immediately after spawn"
         );
     }
@@ -73,7 +101,7 @@ mod tests {
         let pid = spawn_pty("/bin/sh", &["-c".into(), "sleep 2".into()]).unwrap();
         std::thread::sleep(std::time::Duration::from_millis(150));
         assert!(
-            process_is_alive(pid),
+            process_alive(pid),
             "child {pid} must outlive the spawn handles being dropped"
         );
     }
