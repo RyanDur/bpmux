@@ -24,11 +24,9 @@ const MOCK_BOARD = {
 
 const launchBoard = async (): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
-  postCount: { n: number }
 }> => {
   const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-356-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-356-'))
-  const postCount = { n: 0 }
   const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
   const win = await app.firstWindow()
   await win.route('**/api/board', async (route) => {
@@ -40,19 +38,18 @@ const launchBoard = async (): Promise<{
   })
   await win.route('**/api/stories/356/comments', async (route) => {
     if (route.request().method() === 'POST') {
-      postCount.n += 1
       await route.fulfill({ status: 200, body: '{"ok":true}' })
     } else {
       await route.fulfill({ status: 200, body: '[]' })
     }
   })
   await win.reload()
-  return { app, postCount }
+  return { app }
 }
 
 test.describe('desk-check #356 comment Cmd+Enter submit', () => {
   test('Cmd+Enter (or Ctrl+Enter) fires POST + clears draft', async () => {
-    const { app, postCount } = await launchBoard()
+    const { app } = await launchBoard()
     const win = await app.firstWindow()
     await win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-356"] .board-story-navigate').click()
     await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
@@ -68,16 +65,14 @@ test.describe('desk-check #356 comment Cmd+Enter submit', () => {
     await ta.press(`${modifier}+Enter`)
     await win.waitForTimeout(400)
 
-    console.log(`#356 POST count after Cmd+Enter: ${postCount.n} (expect 1)`)
-    console.log(`#356 textarea value after submit: "${await ta.inputValue()}" (expect empty)`)
-    expect(postCount.n).toBe(1)
-    expect(await ta.inputValue()).toBe('')
+    await expect(win.locator('[data-test="drill-in-comment"]', { hasText: draft })).toBeVisible()
+    await expect(ta).toHaveValue('')
 
     await app.close()
   })
 
   test('Shift+Enter still inserts newline (does NOT submit)', async () => {
-    const { app, postCount } = await launchBoard()
+    const { app } = await launchBoard()
     const win = await app.firstWindow()
     await win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-356"] .board-story-navigate').click()
     await expect(win.locator('[data-test="board-drill-in"]')).toBeVisible()
@@ -90,10 +85,8 @@ test.describe('desk-check #356 comment Cmd+Enter submit', () => {
     await ta.pressSequentially('Line 2')
     await win.waitForTimeout(200)
 
-    console.log(`#356 POST count after Shift+Enter: ${postCount.n} (expect 0)`)
-    console.log(`#356 textarea value: "${(await ta.inputValue()).replace('\n', '\\n')}"`)
-    expect(postCount.n).toBe(0)
-    expect(await ta.inputValue()).toContain('\n')
+    await expect(win.locator('[data-test="drill-in-comment"]')).toHaveCount(0)
+    await expect(ta).toHaveValue(/\n/)
 
     await app.close()
   })

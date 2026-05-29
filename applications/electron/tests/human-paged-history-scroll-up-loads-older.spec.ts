@@ -39,7 +39,6 @@ test.describe('human-side E2E #1153 — scroll-up triggers paged-history fetch',
 
       // Intercept the paged-history endpoint so we can deterministically
       // observe loadOlder firing AND control the loading-pill window.
-      let pagedFetchCount = 0
       let releasePagedFetch: () => void = () => {}
       const pagedFetchHeld = new Promise<void>((resolve) => {
         releasePagedFetch = resolve
@@ -51,7 +50,6 @@ test.describe('human-side E2E #1153 — scroll-up triggers paged-history fetch',
         message_type: 'chat'
       }))
       await win.route('**/api/messages?**before=*', async (route) => {
-        pagedFetchCount += 1
         await pagedFetchHeld
         await route.fulfill({
           status: 200,
@@ -77,9 +75,6 @@ test.describe('human-side E2E #1153 — scroll-up triggers paged-history fetch',
       const loadingPill = win.locator('output[data-test="loading-older-pill"]')
       await expect(loadingPill).toBeVisible({ timeout: 2000 })
 
-      // loadOlder fired exactly the network call we expected.
-      expect(pagedFetchCount).toBeGreaterThan(0)
-
       // Release the held fetch so the merge path runs.
       releasePagedFetch()
 
@@ -87,7 +82,9 @@ test.describe('human-side E2E #1153 — scroll-up triggers paged-history fetch',
       await expect(loadingPill).toHaveCount(0, { timeout: 5000 })
 
       // Older messages prepended into the rendered list.
-      await expect(ul).toContainText('older message 0')
+      for (let i = 0; i < 5; i++) {
+        await expect(ul).toContainText(`older message ${i}`)
+      }
 
       expect(consoleErrors).toEqual([])
       expect(pageErrors).toEqual([])

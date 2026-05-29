@@ -94,7 +94,7 @@ test.describe('#1569 — live-walk harness slice 2/2: full iteration lifecycle d
       parseCreatedIterationNumber(createC.json.message)
 
       await switchToTab(win, 'plan')
-      await expect(win.locator(`text=Iteration ${themeA}`).first()).toBeAttached({
+      await expect(win.locator(`text=Iteration ${themeA}`).first()).toBeVisible({
         timeout: 15_000
       })
       await capture(win, 'lifecycle-01-created')

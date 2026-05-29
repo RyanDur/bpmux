@@ -100,9 +100,9 @@ test.describe('desk-check #353 WS board invalidate', () => {
     // Full poll-interval regression would need a custom fetch counter
     // hook which is over-scope.
     await win.waitForTimeout(2000)
-    const stillVisible = await win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-353"]').isVisible()
-    console.log(`#353 after 2s idle: story still visible = ${stillVisible}`)
-    expect(stillVisible).toBe(true)
+    await expect(
+      win.locator('[data-test="board-tabpanel-now-content"] [data-test="board-story-353"]')
+    ).toBeVisible()
     await app.close()
   })
 })

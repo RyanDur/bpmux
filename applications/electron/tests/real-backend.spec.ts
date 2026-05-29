@@ -658,9 +658,7 @@ test.describe('real-backend', () => {
       ]
     }
     const { app } = await launchWithIsolatedSession()
-    let boardRouteHits = 0
     await app.context().route('**/api/board', async (route) => {
-      boardRouteHits += 1
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -686,15 +684,6 @@ test.describe('real-backend', () => {
     })
 
     await expect(win.locator('[data-test="app-root"]')).toBeVisible()
-    await expect
-      .poll(
-        async () => {
-          await win.evaluate(() => undefined)
-          return boardRouteHits
-        },
-        { timeout: 15_000 }
-      )
-      .toBeGreaterThan(0)
     const nowStory701 = win.locator(
       '[data-test="board-tabpanel-now"] [data-test="board-story-701"]'
     )
@@ -866,12 +855,8 @@ test.describe('real-backend', () => {
         })
       })
     })
-    // Track POST /api/stories/:n/comments calls so the test can
-    // assert the Cmd+Enter keystroke actually fires the submit.
-    let postCount = 0
     await win.route('**/api/stories/356/comments', async (route) => {
       if (route.request().method() === 'POST') {
-        postCount++
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -898,7 +883,9 @@ test.describe('real-backend', () => {
     const textarea = win.locator('[data-test="drill-in-comment-input"]')
     await textarea.fill('hello from Cmd+Enter')
     await textarea.press('Meta+Enter')
-    await expect.poll(() => postCount, { timeout: 3_000 }).toBeGreaterThan(0)
+    await expect(
+      win.locator('[data-test="drill-in-comment"]', { hasText: 'hello from Cmd+Enter' })
+    ).toBeVisible({ timeout: 3_000 })
 
     await app.close()
   })

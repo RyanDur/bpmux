@@ -23,7 +23,12 @@ test.describe('#1564 — live-walk harness slice 1/2: boot + seed + drive create
       const body = await create.json()
       expect(body.message, body.error ?? 'no message in response').toMatch(/iteration created: #\d+ Iteration /)
 
-      await expect(win.locator(`text=Iteration ${themeName}`).first()).toBeAttached({
+      await win.locator('label[data-test="board-tab-plan"]').first().click()
+      await win
+        .locator('[data-test="board-tab-plan"] input[type="radio"]:checked')
+        .first()
+        .waitFor({ timeout: 5_000 })
+      await expect(win.locator(`text=Iteration ${themeName}`).first()).toBeVisible({
         timeout: 15_000
       })
 
